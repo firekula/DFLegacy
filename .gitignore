@@ -14,3 +14,4 @@ tools/pydeps/
 *.log
 /docs
 AGENTS.md
+DNF2008/

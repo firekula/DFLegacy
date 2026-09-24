@@ -63,6 +63,7 @@ public sealed record DungeonMazeDefinition(
 public sealed class DungeonLayout
 {
     private readonly Dictionary<DungeonRoomPosition, ushort> _resolvedMaps = new();
+    private readonly HashSet<DungeonRoomPosition> _questRescueRooms = [];
 
     internal DungeonLayout(
         ushort dungeonId,
@@ -101,6 +102,18 @@ public sealed class DungeonLayout
 
     internal void SetResolvedMap(DungeonRoomPosition position, ushort mapId) =>
         _resolvedMaps.TryAdd(position, mapId);
+
+    // True when an active clear-map quest's [appear map] substituted this room's
+    // map. The room keeps the rescue map's own data but must settle like the
+    // boss room it stands in for.
+    internal bool IsQuestRescueRoom(DungeonRoomPosition position) =>
+        _questRescueRooms.Contains(position);
+
+    internal void SetQuestRescueMap(DungeonRoomPosition position, ushort mapId)
+    {
+        _resolvedMaps[position] = mapId;
+        _questRescueRooms.Add(position);
+    }
 }
 
 public sealed record DungeonPassiveWeightedItem(ushort ItemId, int Weight);
@@ -401,20 +414,12 @@ public sealed class DungeonCatalog
     {
         questMapId = 0;
         var state = _state.Value;
-        var bosses = layout.Maze.BossPositions;
-        var bossIndex = Array.FindIndex(bosses,
-            point => point.X == layout.BossX && point.Y == layout.BossY);
-        if (bossIndex < 0 || bosses.Length < 2)
-        {
-            return false;
-        }
-
-        // 13339 SetGridPath (0x82FFF70) uses the next boss candidate,
-        // or the previous candidate when the selected boss is last.
-        var position = bosses[bossIndex + 1 < bosses.Length ? bossIndex + 1 : bossIndex - 1];
-        if (position.X == layout.StartX && position.Y == layout.StartY
-            || position.X == layout.BossX && position.Y == layout.BossY
-            || layout.TryGetResolvedMap(position, out _))
+        // The reference client substitutes an active rescue quest's [appear map]
+        // into the run's final room. Anchoring it to the boss room keeps the
+        // rescue on the path every clear walks, instead of parking it on an
+        // unused boss candidate the client's grid may never open.
+        var position = new DungeonRoomPosition(layout.BossX, layout.BossY);
+        if (layout.TryGetResolvedMap(position, out _))
         {
             return false;
         }
@@ -441,7 +446,7 @@ public sealed class DungeonCatalog
             // Rescue maps can omit [dungeon] and [greed]; never put them in
             // the general random pool. Persist this choice for room revisits.
             questMapId = map.MapId;
-            layout.SetResolvedMap(position, questMapId);
+            layout.SetQuestRescueMap(position, questMapId);
             return true;
         }
 
@@ -519,15 +524,28 @@ public sealed class DungeonCatalog
             return false;
         }
 
-        return TryBuildRoom(
-            state,
-            definition,
-            map,
-            topology,
-            dungeonDifficulty,
-            random,
-            isHellRoom: false,
-            out room);
+        if (!TryBuildRoom(
+                state,
+                definition,
+                map,
+                topology,
+                dungeonDifficulty,
+                random,
+                isHellRoom: false,
+                out room))
+        {
+            return false;
+        }
+
+        // A quest rescue map substituted into the boss room keeps its own normal
+        // map data, but the room still has to settle like the boss room it stands
+        // in for.
+        if (layout.IsQuestRescueRoom(point) && room.MapType != DungeonMapType.Boss)
+        {
+            room = room with { MapType = DungeonMapType.Boss };
+        }
+
+        return true;
     }
 
     public bool TryCreateHellRoom(

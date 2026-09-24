@@ -34,6 +34,13 @@ public sealed class CharacterExperienceCatalog
             LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
+    /// <summary>
+    /// Cumulative experience required to each level (thresholds[level-2] is the
+    /// entry requirement of `level`), exposed so the SP catalog can pay each
+    /// level's skill points progressively across its experience span.
+    /// </summary>
+    public IReadOnlyList<uint> ExperienceThresholds => _thresholds.Value;
+
     public uint CalculateQuestExperience(CharacterRecord character, QuestDefinition quest)
     {
         if (quest.Repeatable || character.Level >= MaximumLevel)

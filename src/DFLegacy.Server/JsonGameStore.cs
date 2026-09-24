@@ -3450,9 +3450,9 @@ public sealed class JsonGameStore(
             var progression = characterExperienceCatalog.Grant(
                 character,
                 experienceAmount);
-            var grantedSkillPoints = spCatalog.CalculateLevelUpReward(
-                progression.PreviousLevel,
-                progression.Level);
+            var grantedSkillPoints = spCatalog.CalculateProgressiveSpGrant(
+                progression,
+                characterExperienceCatalog.ExperienceThresholds);
             var remainingItemCount = inventory[itemIndex].CountOrValue - 1;
             if (remainingItemCount == 0)
             {
@@ -3603,9 +3603,9 @@ public sealed class JsonGameStore(
                     ExperienceBookItemUseFailure.InvalidRequest);
             }
 
-            var grantedSkillPoints = spCatalog.CalculateLevelUpReward(
-                progression.PreviousLevel,
-                progression.Level);
+            var grantedSkillPoints = spCatalog.CalculateProgressiveSpGrant(
+                progression,
+                characterExperienceCatalog.ExperienceThresholds);
             var remainingItemCount = inventory[itemIndex].CountOrValue - 1;
             if (remainingItemCount == 0)
             {
@@ -5115,9 +5115,9 @@ public sealed class JsonGameStore(
 
                         var experience = experienceCatalog.CalculateQuestExperience(character, quest);
                         var progression = experienceCatalog.Grant(character, experience);
-                        var grantedSkillPoints = spCatalog.CalculateLevelUpReward(
-                            progression.PreviousLevel,
-                            progression.Level);
+                        var grantedSkillPoints = spCatalog.CalculateProgressiveSpGrant(
+                            progression,
+                            experienceCatalog.ExperienceThresholds);
                         character = character with
                         {
                             Level = progression.Level,

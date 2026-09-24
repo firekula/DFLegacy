@@ -61,11 +61,13 @@ internal static class QuestMapSmokeTests
                     && normal.MapId == 2,
                 "without unfinished quests a rescue map cannot enter the normal pool");
             var layout = NewLayout();
-            check(catalog.TryApplyQuestMap(layout, [quest], out var selected, random)
+            check(layout.BossX == 2 && layout.BossY == 0
+                    && catalog.TryApplyQuestMap(layout, [quest], out var selected, random)
                     && selected == 2224
                     && catalog.TryCreateRoom(layout, 2, 0, out var boss, random: random)
+                    && boss.MapId == 2224
                     && boss.MapType == DungeonMapType.Boss,
-                "rescue map occupies an unused boss candidate without replacing the boss");
+                "an active rescue map replaces the boss room and settles as the boss room");
             check(!catalog.TryApplyQuestMap(layout, [quest], out _, random),
                 "resolved rescue coordinate is not rerolled");
             check(!catalog.TryApplyQuestMap(NewLayout(),
@@ -78,7 +80,8 @@ internal static class QuestMapSmokeTests
 
             var run = new DungeonRunState(catalog);
             check(run.TryStart(layout, 0, 0, out _, random)
-                    && run.TryMoveRoom(1, 0, out var rescue, random)
+                    && run.TryMoveRoom(1, 0, out _, random)
+                    && run.TryMoveRoom(2, 0, out var rescue, random)
                     && rescue.Room.MapId == 2224,
                 "entering the selected rescue room loads its actual map and monster rows");
             check(!QuestMapRequirement.TryApplyClientCompletion(quest, 0, run, out _),
@@ -93,9 +96,11 @@ internal static class QuestMapSmokeTests
                     && !QuestMapRequirement.TryApplyClientCompletion(
                         quest with { ConditionRows = [[999]] }, 0, run, out _),
                 "CMD35 action zero completes only a genuinely cleared target map");
-            check(run.TryMoveRoom(0, 0, out _, random)
+            check(run.TryMoveRoom(1, 0, out _, random)
+                    && run.TryMoveRoom(0, 0, out _, random)
                     && run.HasClearedMap(2224)
-                    && run.TryMoveRoom(1, 0, out var revisit, random)
+                    && run.TryMoveRoom(1, 0, out _, random)
+                    && run.TryMoveRoom(2, 0, out var revisit, random)
                     && revisit.Revisit && revisit.Room.MapId == 2224
                     && revisit.Room.Monsters.Length == 0,
                 "room revisit retains rescue completion and does not respawn its monsters");

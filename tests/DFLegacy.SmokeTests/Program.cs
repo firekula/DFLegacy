@@ -3687,7 +3687,9 @@ try
             {
                 Success: true,
                 RemainingItemCount: 1,
-                GrantedSkillPoints: 30,
+                // Progressive payout: 30 SP at the level-2 boundary plus 16 for
+                // the 550/1014 experience progress into level 2.
+                GrantedSkillPoints: 46,
                 Failure: ExperienceBookItemUseFailure.None,
                 Progression:
                 {
@@ -3701,7 +3703,7 @@ try
                 == ExperienceBookItemUseFailure.ItemStateChanged
             && reloadedExperienceBookCharacter.Level == 2
             && reloadedExperienceBookCharacter.Experience == 1_000
-            && reloadedExperienceBookCharacter.Sp == experienceBookCharacter.Sp + 30
+            && reloadedExperienceBookCharacter.Sp == experienceBookCharacter.Sp + 46
             && reloadedExperienceBookCharacter.Inventory?.Single(item => item.Slot == 41)
                 is { ItemId: 1_035, CountOrValue: 1 },
             "experience books atomically consume one item, grant cumulative experience, cross levels and persist SP-table rewards");

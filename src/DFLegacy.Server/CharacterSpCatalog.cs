@@ -5,6 +5,12 @@ namespace DFLegacy.Server;
 public sealed class CharacterSpCatalog
 {
     private const string ScriptPath = "etc/sptable.etc";
+    private const int MaximumSupportedLevel = 200;
+
+    // Built-in copy of the reference PVF's [sp table] rows, used when the active
+    // Script.pvf omits etc/sptable.etc. rewards[level] is the SP granted upon
+    // reaching that level.
+    private static readonly uint[] FallbackRewards = BuildFallbackRewards();
 
     private static readonly Regex TableRowPattern = new(
         @"^\s*(\d+)\s+(\d+)\s*$",
@@ -56,15 +62,83 @@ public sealed class CharacterSpCatalog
     public int CalculateTotalReward(int level) =>
         CalculateLevelUpReward(0, level);
 
+    /// <summary>
+    /// SP earned by a single experience grant. Mirrors the reference client's
+    /// sp_entitlement delta: each level's SP budget is paid out progressively
+    /// across that level's experience span instead of a lump sum at the
+    /// level-up boundary, so gaining experience yields skill points mid-level.
+    /// </summary>
+    public int CalculateProgressiveSpGrant(
+        CharacterExperienceGrant progression,
+        IReadOnlyList<uint>? experienceThresholds)
+    {
+        if (progression.GrantedExperience == 0)
+        {
+            return 0;
+        }
+
+        var before = CalculateProgressiveEntitlement(
+            progression.PreviousLevel,
+            progression.PreviousExperience,
+            experienceThresholds);
+        var after = CalculateProgressiveEntitlement(
+            progression.Level,
+            progression.Experience,
+            experienceThresholds);
+        return Math.Max(0, after - before);
+    }
+
+    /// <summary>
+    /// Cumulative SP a character has earned at (level, experience): the
+    /// level-boundary total plus the share of the current level's SP budget
+    /// proportional to experience progress through the level. Falls back to
+    /// the level-boundary total when the experience table is unavailable.
+    /// </summary>
+    public int CalculateProgressiveEntitlement(
+        int level,
+        uint experience,
+        IReadOnlyList<uint>? experienceThresholds)
+    {
+        level = Math.Max(1, level);
+        var baseSp = CalculateTotalReward(level);
+        var rewards = _rewards.Value;
+        var nextLevel = level + 1;
+        // SP budget for the level -> level+1 stretch, granted on reaching level+1.
+        var budget = nextLevel > 0 && nextLevel < rewards.Length
+            ? (long)rewards[nextLevel]
+            : 0L;
+        if (budget <= 0 || experienceThresholds is null || experienceThresholds.Count == 0)
+        {
+            return baseSp;
+        }
+
+        // Cumulative experience to reach `level` (thresholds[level-2], 0 at level 1).
+        long spanLow = level >= 2 && level - 2 < experienceThresholds.Count
+            ? experienceThresholds[level - 2]
+            : 0L;
+        // Cumulative experience to reach `level`+1 (thresholds[level-1]).
+        long spanHigh = level - 1 >= 0 && level - 1 < experienceThresholds.Count
+            ? experienceThresholds[level - 1]
+            : 0L;
+        if (spanHigh <= spanLow)
+        {
+            return baseSp;
+        }
+
+        var span = spanHigh - spanLow;
+        var progress = Math.Min(Math.Max((long)experience - spanLow, 0L), span);
+        return checked((int)(baseSp + progress * budget / span));
+    }
+
     private uint[] LoadRewards()
     {
         if (!_scripts.FileExists(ScriptPath))
         {
             _logger.LogWarning(
-                "Character SP table {ScriptPath} was not found in {Source}; level-ups will grant no SP.",
+                "Character SP table {ScriptPath} was not found in {Source}; using the built-in fallback SP table.",
                 ScriptPath,
                 _scripts.SourceDescription);
-            return [0];
+            return FallbackRewards;
         }
 
         var rewardsByLevel = new SortedDictionary<int, uint>();
@@ -134,5 +208,27 @@ public sealed class CharacterSpCatalog
     {
         var commentIndex = value.IndexOf("//", StringComparison.Ordinal);
         return commentIndex >= 0 ? value[..commentIndex] : value;
+    }
+
+    // Mirrors the [sp table] rows of the reference Script.pvf: 30 SP per level
+    // 2-10, then +30 every ten levels (60 for 11-20, 90 for 21-30) with the
+    // 31-50 stretch held at 120 and the 51-200 stretches stepping by 30.
+    private static uint[] BuildFallbackRewards()
+    {
+        var rewards = new uint[MaximumSupportedLevel + 1];
+        for (var level = 1; level <= MaximumSupportedLevel; level++)
+        {
+            rewards[level] = level switch
+            {
+                <= 1 => 0u,
+                <= 10 => 30u,
+                <= 20 => 60u,
+                <= 30 => 90u,
+                <= 50 => 120u,
+                _ => checked((uint)(150 + (level - 51) / 10 * 30))
+            };
+        }
+
+        return rewards;
     }
 }

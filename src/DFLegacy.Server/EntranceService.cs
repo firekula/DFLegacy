@@ -402,9 +402,9 @@ public sealed class EntranceService(
 
                 int ApplyLevelUpSkillPoints(CharacterExperienceGrant progression)
                 {
-                    var granted = spCatalog.CalculateLevelUpReward(
-                        progression.PreviousLevel,
-                        progression.Level);
+                    var granted = spCatalog.CalculateProgressiveSpGrant(
+                        progression,
+                        experienceCatalog.ExperienceThresholds);
                     if (granted == 0)
                     {
                         return 0;
@@ -4416,9 +4416,9 @@ public sealed class EntranceService(
                             var progression = experienceCatalog.Grant(
                                 activeCharacter,
                                 questExperience);
-                            var grantedSkillPoints = spCatalog.CalculateLevelUpReward(
-                                progression.PreviousLevel,
-                                progression.Level);
+                            var grantedSkillPoints = spCatalog.CalculateProgressiveSpGrant(
+                                progression,
+                                experienceCatalog.ExperienceThresholds);
                             var nextSkillPoints = checked(currentSp + grantedSkillPoints);
                             var nextGrowType = previousGrowType;
                             var nextAwakeningType = previousAwakeningType;
@@ -4443,7 +4443,10 @@ public sealed class EntranceService(
                                             : [],
                                     awakeningType: nextAwakeningType);
                                 nextSkillPoints = checked(
-                                    spCatalog.CalculateTotalReward(progression.Level)
+                                    spCatalog.CalculateProgressiveEntitlement(
+                                        progression.Level,
+                                        progression.Experience,
+                                        experienceCatalog.ExperienceThresholds)
                                     + Math.Max(0, activeCharacter.BonusSp));
                             }
                             else if (questChainType == 2)
@@ -5218,7 +5221,10 @@ public sealed class EntranceService(
                                             : [],
                                     awakeningType: activeCharacter.AwakeningType);
                                 var accumulatedLevelSkillPoints =
-                                    spCatalog.CalculateTotalReward(activeCharacter.Level);
+                                    spCatalog.CalculateProgressiveEntitlement(
+                                        activeCharacter.Level,
+                                        activeCharacter.Experience,
+                                        experienceCatalog.ExperienceThresholds);
                                 var resetResult = await store.UseSkillResetItemAsync(
                                     accountName,
                                     activeCharacter.Id,
@@ -11698,9 +11704,9 @@ public sealed class EntranceService(
                                             activeCharacter,
                                             calculatedClearExperience.TotalExperience);
                                         clearGrantedSkillPoints =
-                                            spCatalog.CalculateLevelUpReward(
-                                                clearProgression.PreviousLevel,
-                                                clearProgression.Level);
+                                            spCatalog.CalculateProgressiveSpGrant(
+                                                clearProgression,
+                                                experienceCatalog.ExperienceThresholds);
                                         var settledSp = checked(
                                             currentSp + clearGrantedSkillPoints);
                                         var savedProgression =
