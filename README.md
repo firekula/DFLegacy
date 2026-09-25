@@ -30,6 +30,7 @@
 | 本文件 | 项目概况、模块职责、已实现内容、平台支持与配置速查。 |
 | [BUILDING.md](BUILDING.md) | 各平台从源码构建可执行文件与原生模块、发布产物、构建排障。 |
 | [DEPLOYING.md](DEPLOYING.md) | 部署形态、目录结构、网络与端口、容器部署、数据备份、升级流程、部署排障。 |
+| [STATUS.md](STATUS.md) | 项目状态与接续说明：已验证/未验证内容、可复用的验证方法、待办与环境注意事项。 |
 | [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
 
 容器部署使用仓库根目录的 `Dockerfile`、`.dockerignore` 与 `compose.yaml`，说明见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)。

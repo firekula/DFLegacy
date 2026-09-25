@@ -133,6 +133,38 @@ podman build -t dflegacy-server:1.0.0 .
 
 标签要与 `compose.yaml` 里的 `image:` 一致（默认 `dflegacy-server:1.0.0`）。compose 文件只引用镜像、不负责构建，所以先构建（或 `docker load` 一个导出的镜像）再 `docker compose up -d`。
 
+**把镜像搬到另一台机器部署**（推荐，不需要在服务器上装 SDK）：
+
+```bash
+# 构建侧：导出镜像（约 95MB）
+docker save dflegacy-server:1.0.0 | gzip > dflegacy-server-1.0.0.tar.gz
+
+# 服务器侧：只需要 镜像 tar.gz、compose.yaml、Script.pvf 三样
+sudo mkdir -p /srv/dflegacy/data
+sudo chown -R 1654:1654 /srv/dflegacy/data      # 容器以内置的 UID 1654 非 root 运行
+cd /srv/dflegacy                                 # 三个文件都放这里
+docker load -i dflegacy-server-1.0.0.tar.gz
+docker images | grep dflegacy                    # 确认出现了 dflegacy-server:1.0.0
+vi compose.yaml                                  # 只需改 DFLegacy__GameplayDatagram__AdvertisedHost
+docker compose up -d
+docker compose logs -f
+```
+
+要改的是 `AdvertisedHost` —— 填**客户端能访问到**的公网地址（IPv6 或域名），容器无法自行得知。留成通配地址时启动日志会打印 `clients would be told ... cannot dial` 警告。
+
+**用哪一份 `compose.yaml`**：用**部署目录里这一份**即可（与仓库根目录那份内容相同）。仓库根目录的那份给"在服务器上从源码构建"的人用——先 `docker build` 再 `docker compose up -d`；两种路径都是同一个 `image:` 标签。注意老版 `docker-compose`（v1，没有 `compose` 子命令）默认不识别 `compose.yaml` 这个文件名，需要显式指定：`docker-compose -f compose.yaml up -d`。
+
+部署后先核对这几点：
+
+```bash
+docker compose ps                                  # 状态应为 healthy
+docker compose logs | grep -E "Entrance listener ready|dungeons|warn"
+ss -lntup | grep -E ":(2311|7001|7002|7003|8080)"   # 应看到 :::2311 这类双栈监听
+curl -s http://127.0.0.1:8081/health                # 在服务器本机执行
+```
+
+防火墙/安全组需放通 **TCP 2311、7001、8080** 与 **UDP 2311、7002、7003**（注意要 IPv6 规则）。`8081` 不必放通：镜像默认把它绑在容器内的 `127.0.0.1`（即宿主机自身），需要看后台页面时用 SSH 隧道 `ssh -L 8081:127.0.0.1:8081 user@server`，再访问 `http://127.0.0.1:8081/admin/index.html`。
+
 直接 `docker run`（桥接网络 + 端口映射）：
 
 ```bash

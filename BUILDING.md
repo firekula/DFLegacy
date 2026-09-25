@@ -46,6 +46,11 @@
 msbuild .\DFLegacy.Emulator.slnx /m /restore /p:Configuration=Release
 ```
 
+若 `msbuild` 不在 `PATH`（未打开开发者命令行），可直接用完整路径，例如
+`"C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"`。
+
+在 **Git Bash** 里执行时，MSBuild 开关必须用 `-` 前缀（`-m -restore -p:Configuration=Release`）。写 `/m`、`/restore` 会被 MSYS 当成路径转换成 `M:/`、`D:/Program Files/Git/restore`，报 `MSB1008: 只能指定一个项目`。
+
 `DFLegacy.Emulator.slnx` 同时包含两个 `.vcxproj`，只有 .NET Framework 版 MSBuild（即 Visual Studio 自带的 `msbuild`）能构建它们；`dotnet build` 不能，原因见 [§8](#8-常见构建问题)。
 
 服务端项目在 Visual Studio / `msbuild` 下会把原生随机桥作为项目引用一起构建（`DFLegacy.Server.csproj` 中的 `BuildRandomNativeReference` 条件为 `'$(MSBuildRuntimeType)' == 'Full'`），并把产物复制到输出目录。
