@@ -23,6 +23,15 @@
 
 使用本项目即代表您已阅读并同意以上声明内容。
 
+## 文档
+
+| 文档 | 内容 |
+| --- | --- |
+| 本文件 | 项目概况、模块职责、已实现内容、平台支持与配置速查。 |
+| [BUILDING.md](BUILDING.md) | 各平台从源码构建可执行文件与原生模块、发布产物、构建排障。 |
+| [DEPLOYING.md](DEPLOYING.md) | 部署形态、目录结构、网络与端口、数据备份、升级流程、部署排障。 |
+| [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
+
 ## 模块说明
 
 | 模块 | 作用 |
@@ -35,6 +44,19 @@
 | `wwwroot/admin` | 独立的中文后台管理页面，使用现代浏览器访问，不依赖前端构建工具。 |
 | `wwwroot/client` | 充值及会员服务页面，与后台管理页面分离。 |
 | `tests/DFLegacy.SmokeTests` | 协议、数据解析和主要业务规则的冒烟测试。 |
+
+## 平台支持
+
+| 组件 | Windows | Linux | 说明 |
+| --- | --- | --- | --- |
+| `DFLegacy.Server` | 支持 | 支持 | 纯托管代码，只依赖 .NET 10 与 Kestrel，无强制原生依赖 |
+| `DFLegacy.Protocol`、冒烟测试 | 支持 | 支持 | 纯托管代码 |
+| `DFLegacy.Launcher` | 支持 | 不支持 | WinForms 程序，且需要检测 D3D9 设备 |
+| `DFLegacy.Ijl15`（32 位客户端补丁） | 支持 | 不支持 | 原生 C++，用于替换客户端模块 |
+| `DFLegacy.RandomNative`（64 位随机桥） | 支持 | 不支持 | 可选；缺失或不可用时自动回退到托管随机 |
+| 游戏客户端 | 支持 | 不支持 | 原版 32 位 Windows 客户端 |
+
+服务端因此可以部署在 Linux 上、由 Windows 客户端远程连接；构建方式见 [BUILDING.md](BUILDING.md)，部署与网络配置见 [DEPLOYING.md](DEPLOYING.md)。
 
 ## 当前实现
 
@@ -71,12 +93,13 @@
 
 ## 运行环境
 
-- Windows；客户端及 IJL15 为 32 位，硬件随机桥接为 64 位，建议使用 64 位 .NET 运行服务端。
-- 从源码构建需要 .NET 10 SDK、带桌面 C++ 开发组件的 Visual Studio，以及 CMake。
-- 使用下述默认发布方式运行时，需要相应的 .NET 10 运行时，包括 ASP.NET Core 和 Windows Desktop 运行时；安装 SDK 的开发机通常已具备。
-- 通过 Launcher 启动需要可用的图形桌面。启动器会检查 Direct3D 9 HAL 设备，远程或无显示环境可能无法通过检查。
+- **服务端**：需要 .NET 10 运行时（含 ASP.NET Core），Windows 与 Linux 均可；Linux 不需要 C++ 工具链，但最小化系统还需 ICU 与时区数据，见 [DEPLOYING.md](DEPLOYING.md#4-linux无头服务端部署)。
+- **客户端与启动器**：仅 Windows。客户端及 IJL15 为 32 位，硬件随机桥接为 64 位；启动器需要可用的图形桌面，会检查 Direct3D 9 HAL 设备，远程或无显示环境可能无法通过检查。
+- **从源码构建**：需要 .NET 10 SDK；构建原生模块与启动器还需要带桌面 C++ 开发组件的 Visual Studio 和 CMake ≥ 3.24，见 [BUILDING.md](BUILDING.md)。
 
 ## 构建与启动
+
+各平台的构建差异、原生模块与发布产物见 [BUILDING.md](BUILDING.md)，部署、网络配置与升级流程见 [DEPLOYING.md](DEPLOYING.md)。下面是 Windows 单机环境的快速开始。
 
 在仓库根目录打开 Visual Studio 开发者 PowerShell，先构建混合解决方案：
 
