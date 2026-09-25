@@ -1,56 +1,69 @@
-# DFLegacy 服务端容器编排示例（仅服务端；游戏客户端是 32 位 Windows 程序，不入容器）。
+# DFLegacy 服务端容器编排（面向 IPv6 公网服务器；只含服务端，游戏客户端是 32 位 Windows 程序）。
 #
-# Docker：  docker compose up -d --build
-# Podman：  podman compose up -d --build   （需要 compose provider）
-#           podman-compose up -d --build
+# 部署步骤：
+#   1) 载入镜像：      docker load -i dflegacy-server-<版本>.tar
+#   2) 放入 PVF：      把客户端的 Script.pvf 复制到本文件所在目录
+#   3) 建数据目录：    mkdir -p data && sudo chown 1654:1654 data
+#   4) 改下面的 AdvertisedHost 为客户端可达的地址（公网 IPv6 或域名）
+#   5) 启动：          docker compose up -d
 #
-# 完整说明见 DEPLOYING.md 的「容器部署」一节。
+# 完整说明见仓库 DEPLOYING.md 的「容器部署」一节。
 
 services:
   dflegacy:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: dflegacy-server:local
+    image: dflegacy-server:1.0.0
     container_name: dflegacy-server
+    # host 网络：Linux 下容器直接使用宿主机的网络栈，IPv6 开箱可用，
+    # 也不需要任何端口映射。业务端口默认绑定 "::"（Linux 上是双栈，IPv4/IPv6 都收）。
+    network_mode: host
     restart: unless-stopped
     environment:
       # 【必填】下发给客户端用于连接玩法 UDP 端口的地址。
-      # 必须是客户端能访问到的地址（宿主机局域网 IP 或公网域名），
-      # 填 0.0.0.0 或 127.0.0.1 会导致客户端进图失败。启动时若配置有问题会打警告。
+      # 必须填客户端能访问到的地址：服务器的公网 IPv6（如 2001:db8::10）或域名。
+      # 填 0.0.0.0 / :: 会让客户端进图失败；配置有问题时启动日志会打印警告。
       DFLegacy__GameplayDatagram__AdvertisedHost: "change-me.example.com"
 
-      # 让容器内后台管理界面可被映射出去；默认镜像只监听容器内 127.0.0.1。
-      # 后台接口没有鉴权，下面的端口映射已把它限制在宿主机回环地址上。
-      DFLegacy__Admin__Host: "0.0.0.0"
+      # 可选：需要从容器外访问后台管理页时打开。该接口没有鉴权，
+      # 建议只在本机或 SSH 隧道内使用（默认只监听 127.0.0.1，即宿主机自身）。
+      # DFLegacy__Admin__Host: "::"
 
-      # 其余可选覆盖项（键名 = server.json 里的层级，用双下划线分隔）：
+      # 其它按需覆盖（键名 = server.json 的层级，用双下划线分隔）：
       # DFLegacy__Experience__MonsterMultiplier: "1.0"
-      # DFLegacy__Experience__ClearMultiplier: "1.0"
       # DFLegacy__Drop__RatePercent: "100"
-      # DFLegacy__Drop__EconomicRate: "1.0"
       # DFLegacy__Entrance__Port: "2311"
-    ports:
-      - "2311:2311/tcp"          # 登录入口
-      - "7001:7001/tcp"          # 频道入口
-      - "8080:8080/tcp"          # 登录入口附加端口
-      - "2311:2311/udp"          # 角色数据报
-      - "7002:7002/udp"          # 玩法主端口
-      - "7003:7003/udp"          # 玩法次端口
-      # 后台管理没有登录与鉴权，只映射到宿主机回环地址；
-      # 确需远程管理时，在前面加一层带认证的反向代理。
-      - "127.0.0.1:8081:8081/tcp"
+      # DFLegacy__GameplayDatagram__PrimaryPort: "7002"
     volumes:
       # 客户端的 Script.pvf，只读挂载。镜像不包含也不应包含 PVF。
       - ./Script.pvf:/pvf/Script.pvf:ro
-      # 存档数据。使用具名卷可开箱即用（首次自动继承镜像内目录属主）。
-      - dflegacy-data:/app/data
-      # 若改用绑定挂载以便直接备份，需先让容器用户（UID 1654）可写：
-      #   mkdir -p data && sudo chown 1654:1654 data
-      #   - ./data:/app/data
-      #
-      # Podman + SELinux 环境需要在挂载项末尾追加 :Z（或 :z），例如：
-      #   - ./Script.pvf:/pvf/Script.pvf:ro,Z
+      # 存档数据：绑定挂载到当前目录下的 data/，便于直接备份与迁移。
+      # 首次启动前需要让容器用户（UID 1654）可写，见文件头的第 3 步。
+      - ./data:/app/data
+    # Podman + SELinux 环境需给挂载项追加 :Z，例如：
+    #   - ./Script.pvf:/pvf/Script.pvf:ro,Z
+    #   - ./data:/app/data:Z
 
-volumes:
-  dflegacy-data:
+# ---------------------------------------------------------------------------
+# 备选：桥接网络 + 端口映射
+#
+# 仅当你想用端口映射（例如 Docker 已启用 IPv6 桥接，或本机就是 IPv4 环境）时才用这套。
+# 注意默认桥接网络是 IPv4-only：要让容器服务 IPv6，需要在 Docker 守护进程启用 ipv6
+# 并创建 IPv6 网络，否则宿主的 IPv6 流量到不了容器。
+#
+# services:
+#   dflegacy:
+#     image: dflegacy-server:1.0.0
+#     restart: unless-stopped
+#     environment:
+#       DFLegacy__GameplayDatagram__AdvertisedHost: "change-me.example.com"
+#       DFLegacy__Admin__Host: "::"      # 让上面的 8081 映射能访问到后台
+#     ports:
+#       - "2311:2311/tcp"                # 登录入口
+#       - "7001:7001/tcp"                # 频道入口
+#       - "8080:8080/tcp"                # 登录入口附加端口
+#       - "2311:2311/udp"                # 角色数据报
+#       - "7002:7002/udp"                # 玩法主端口
+#       - "7003:7003/udp"                # 玩法次端口
+#       - "127.0.0.1:8081:8081/tcp"      # 后台管理无鉴权：只映射到宿主回环
+#     volumes:
+#       - ./Script.pvf:/pvf/Script.pvf:ro
+#       - ./data:/app/data

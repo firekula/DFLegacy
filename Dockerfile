@@ -43,16 +43,19 @@ RUN apt-get update \
 USER app
 
 # Bind every interface inside the container; reachability is controlled by the
-# published ports. Admin stays on the image default 127.0.0.1 so the
-# unauthenticated admin API is not exposed unless an operator asks for it.
+# published ports (or by host networking). The business listeners default to
+# "::" rather than "0.0.0.0": on Linux that is dual-stack, so the container
+# accepts IPv4 and IPv6 clients alike, which an IPv6 public deployment needs.
+# Admin stays on the image default 127.0.0.1 so the unauthenticated admin API is
+# not exposed unless an operator asks for it.
 #
 # DFLegacy__GameplayDatagram__AdvertisedHost must be supplied at run time: it is
 # the address handed to clients for the gameplay UDP ports, and a container
 # cannot discover the host address clients use.
 ENV DFLegacy__ScriptPvfPath=/pvf/Script.pvf \
-    DFLegacy__Entrance__Host=0.0.0.0 \
-    DFLegacy__CharacterDatagram__Host=0.0.0.0 \
-    DFLegacy__GameplayDatagram__Host=0.0.0.0
+    DFLegacy__Entrance__Host=:: \
+    DFLegacy__CharacterDatagram__Host=:: \
+    DFLegacy__GameplayDatagram__Host=::
 
 # The server binds every listener from its own configuration, so clear the base
 # image defaults (ASPNETCORE_HTTP_PORTS=8080 / ASPNETCORE_URLS) that would

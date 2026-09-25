@@ -195,8 +195,8 @@ public sealed class GameplayDatagramService(
         var secondaryEndpoint = new IPEndPoint(
             address,
             options.GameplayDatagram.SecondaryPort);
-        _primary = new UdpClient(primaryEndpoint);
-        _secondary = new UdpClient(secondaryEndpoint);
+        _primary = DualStackUdp.Bind(primaryEndpoint);
+        _secondary = DualStackUdp.Bind(secondaryEndpoint);
         logger.LogInformation(
             "Gameplay UDP primary/secondary listeners ready at {Primary} and {Secondary}",
             primaryEndpoint,

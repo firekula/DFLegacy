@@ -237,8 +237,8 @@ docker run -d --name dflegacy-server \
 | 通道 | IPv6 支持 | 依据 |
 | --- | --- | --- |
 | 后台管理 HTTP | **可用** | `Admin.Host` 设为 `::` 即可；实测（Linux 容器）在 `[::1]` 与 `127.0.0.1` 上都能访问 |
-| 登录入口 TCP、角色 UDP | 服务端可绑定 IPv6 字面量；端到端未验证 | 监听器统一走 `IPAddress.Parse(Host)`，未指定地址族；但 `Channel.Host` 以固定 16 字节下发，且客户端行为未知 |
-| 玩法 UDP（进图通信） | **不可用** | 协议用固定 4 字节表达地址：客户端上报的 NAT 报文里本地/公网地址各占 4 字节，服务端下发的对端地址经 `MapToIPv4()`，会话键也按 IPv4 归并 |
+| 登录入口 TCP、角色 UDP、玩法 UDP | **服务端可用**（`::` 为双栈）；客户端侧需中继 | 监听器统一走 `IPAddress.Parse(Host)`；绑定 `::` 时 TCP 与 UDP 均已开启双栈（见下），实测 IPv4 与 IPv6 客户端都能连上。原版客户端自身仍只支持 IPv4，见 §6.4 |
+| 玩法 UDP 的**地址字段** | **不可用** | 协议用固定 4 字节表达地址：客户端上报的 NAT 报文里本地/公网地址各占 4 字节，服务端下发的对端地址经 `MapToIPv4()`，会话键也按 IPv4 归并。这些字段不参与路由（唯一的发送链路当前无调用者），因此不影响游玩 |
 
 其它限制：
 
@@ -247,7 +247,9 @@ docker run -d --name dflegacy-server \
 - 客户端 `DNF.exe` 不在本仓库内，无法确认它是否打开 IPv6 socket；但客户端自己发出的 NAT 报文用 4 字节地址字段，倾向于 IPv4-only。
 - 启动日志中的 `Admin API ready at http://{Host}:{Port}` 对 IPv6 未加方括号，会打印成 `http://:::8081` 这种非法 URL；不影响实际监听，照 §6.1 用 `[::]` 访问即可。
 
-实践建议：需要同时服务两类客户端时，把 `Admin.Host` 设为 `::`（同时接受 IPv4 与 IPv6），业务端口保持 IPv4 或纯 IPv6 单一栈，不要期望副本内流量走 IPv6。
+**关于 `::` 的双栈行为**：`TcpListener` 与 Kestrel 默认就接受 IPv4-mapped 对端，而 `UdpClient` 不会——它会把 socket 保持在 `IPV6_V6ONLY=1`，于是绑 `::` 的 UDP 端口会**只服务 IPv6**（表现为 IPv4 客户端与容器的 UDP 端口映射都收不到回包）。服务端已在 `DualStackUdp.Bind` 中为 IPv6 UDP 监听显式开启双栈，因此现在填 `::` 时 TCP 与 UDP 都同时服务 IPv4 与 IPv6。
+
+实践建议：需要同时服务两类客户端时，把各项 `Host` 设为 `::`（双栈，IPv4/IPv6 都能连），`Admin.Host` 保持 `127.0.0.1` 以免暴露无鉴权的后台；不要期望副本内流量走 IPv6。
 
 ### 6.4 让 IPv4 客户端连接 IPv6 服务器（DFLegacy.Relay）
 

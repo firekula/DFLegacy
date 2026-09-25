@@ -30,7 +30,7 @@ public sealed class CharacterDatagramService(
         var endpoint = new IPEndPoint(
             IPAddress.Parse(options.CharacterDatagram.Host),
             options.CharacterDatagram.Port);
-        _listener = new UdpClient(endpoint);
+        _listener = DualStackUdp.Bind(endpoint);
         logger.LogInformation("Character datagram listener ready at {Endpoint}", endpoint);
 
         try
