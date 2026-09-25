@@ -360,8 +360,8 @@ internal static class Program
         catch (SocketException exception)
         {
             throw new InvalidOperationException(
-                $"本地中继无法绑定 {RelayListenAddress} 的转发端口：{exception.Message}。" +
-                "端口可能被上一个未退出的实例占用。",
+                $"本地中继无法绑定 {RelayListenAddress} 的转发端口：{exception.Message}" +
+                "（端口可能被上一个未退出的实例占用）",
                 exception);
         }
 
