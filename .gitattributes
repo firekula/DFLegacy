@@ -1,5 +1,7 @@
 # 容器相关文件必须保持 LF 换行：在 Windows 上以 CRLF 检出会破坏 Dockerfile
 # 的行继续（反斜杠后跟回车），导致 docker build 失败。
+# 自身也固定为 LF，否则行尾的 CR 会让 eol=lf 被解析成非法属性而静默失效。
+.gitattributes text eol=lf
 Dockerfile text eol=lf
 .dockerignore text eol=lf
 compose.yaml text eol=lf
