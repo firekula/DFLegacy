@@ -14,5 +14,18 @@
   "StartServer": true,
   "D3D9Adapter": 0,
   "D3D9TimeoutSeconds": 30,
-  "D3D9RetryIntervalSeconds": 1
+  "D3D9RetryIntervalSeconds": 1,
+  "Relay": {
+    // 启用后启动器会自动拉起同目录的 DFLegacy.Relay.exe，并让客户端连接本机中继（127.0.0.1），
+    // 由中继拨号下面的 EntranceHost。用于"客户端只能 IPv4、服务器只有 IPv6"的场景；
+    // 此时 EntranceHost 必须是服务器地址（域名或 IP），不能填 127.0.0.1。
+    // 中继随 DNF.exe 退出自动结束，因此不需要手动清理。
+    "Enabled": false,
+    // 可选：需要转发的端口，留空使用中继默认值（TCP 2311,7001,8080 / UDP 2311,7002,7003）。
+    // 服务端改过端口时在这里同步；EntrancePort 总会被包含。
+    "TcpPorts": null,
+    "UdpPorts": null,
+    // 解析 EntranceHost 时优先使用的地址族：ipv6 或 ipv4。
+    "Preference": "ipv6"
+  }
 }

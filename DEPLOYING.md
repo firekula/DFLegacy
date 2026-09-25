@@ -263,13 +263,25 @@ docker run -d --name dflegacy-server \
 }
 ```
 
-**客户端与中继**：
+**方式一：让启动器自动拉起（推荐）**
+
+在 `launcher.json` 里把 `EntranceHost` 指向真实服务器，并打开 `Relay`：
+
+```jsonc
+"EntranceHost": "game.example.com",   // 真实服务器（域名或 IP），不能填 127.0.0.1
+"EntrancePort": 2311,
+"Relay": { "Enabled": true }          // 可选：TcpPorts / UdpPorts / Preference
+```
+
+之后照常运行 `DFLegacy.Launcher.exe` 即可，不需要额外的步骤：启动器会先拉起同目录的 `DFLegacy.Relay.exe`，等它监听就绪后再启动客户端，并自动把客户端的登录地址改写成 `127.0.0.1`。中继随 `DNF.exe` 退出自动结束，不会残留占用端口。
+
+**方式二：手动运行中继**
 
 ```powershell
-# 1) 启动中继：转发默认端口，随 DNF.exe 退出自动结束
+# 启动中继：转发默认端口，随 DNF.exe 退出自动结束
 .\DFLegacy.Relay.exe --server game.example.com --exit-with-image DNF.exe
 
-# 2) 启动器 launcher.json 里把 EntranceHost 设为 127.0.0.1（端口保持 2311），再启动客户端
+# 随后把 launcher.json 的 EntranceHost 设为 127.0.0.1（端口保持 2311），再启动客户端
 ```
 
 命令行选项：
@@ -328,6 +340,10 @@ docker run -d --name dflegacy-server \
 - `Account` / `Password`，或 `Accounts` + `AccountIndex`：登录凭据。默认示例是 `test/test`，**不要随发布分发含真实密码的配置**。
 - `StartServer`：是否由启动器按需启动本地服务端。
 - `D3D9Adapter` / `D3D9TimeoutSeconds` / `D3D9RetryIntervalSeconds`：D3D9 设备检测参数。
+- `Relay`：让启动器自动拉起本地中继，用于客户端只能 IPv4、服务器只有 IPv6 的场景，见 §6.4。
+  - `Enabled`：是否启用；启用时 `EntranceHost` 必须是真实服务器地址（不能是 `127.0.0.1`）。
+  - `TcpPorts` / `UdpPorts`：需要转发的端口，留空使用中继默认值（`2311,7001,8080` / `2311,7002,7003`）；`EntrancePort` 总会被包含。
+  - `Preference`：解析 `EntranceHost` 时的地址族偏好，`ipv6`（默认）或 `ipv4`。
 
 ### 7.3 客户端 `Config.ini`（IJL15）
 

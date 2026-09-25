@@ -115,6 +115,12 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 
 发布产物包含启动器本体、`launcher.json`、`Config.ini` 和 32 位 `ijl15.dll`。按 [README](README.md#构建与启动) 的默认做法，启动器与服务端发布到同一目录即可。
 
+启用 `launcher.json` 的 `Relay`（见 [DEPLOYING.md §6.4](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)）时，还要把客户端中继发布到同一目录，否则启动器会报缺少 `DFLegacy.Relay.exe`：
+
+```powershell
+dotnet publish .\src\DFLegacy.Relay\DFLegacy.Relay.csproj -c Release -o .\dist\DFLegacy.Server
+```
+
 ### 6.2 原生模块单独构建
 
 两个脚本都支持 `-Configuration Debug|Release` 与可选的 `-RunTests`：

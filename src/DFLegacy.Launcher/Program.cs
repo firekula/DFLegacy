@@ -9,6 +9,10 @@ internal static class Program
     internal const string DefaultClientPath = @"D:\DFLegacy\DF2008\DNF.exe";
     private const int ServerStartupAttempts = 40;
     private static readonly TimeSpan PortProbeTimeout = TimeSpan.FromMilliseconds(250);
+    private const string RelayListenAddress = "127.0.0.1";
+    private const string ClientImageName = "DNF.exe";
+    private static readonly int[] RelayDefaultTcpPorts = [2311, 7001, 8080];
+    private static readonly int[] RelayDefaultUdpPorts = [2311, 7002, 7003];
 
     [STAThread]
     private static async Task<int> Main(string[] args)
@@ -67,7 +71,7 @@ internal static class Program
                     $"sha256={ijl15Install.Sha256}; " +
                     $"backup={ijl15Install.BackupPath ?? "(none)"}.");
             }
-            await EnsureServerReadyAsync(options);
+            await EnsureEndpointReadyAsync(options);
             var client = ClientProcessLauncher.Start(clientPath, launcherData);
             TryRaisePriority(client);
             WriteLauncherLog(
@@ -95,10 +99,16 @@ internal static class Program
     {
         ValidateOptions(options);
         var account = options.GetSelectedAccount();
+        // With the relay enabled the client talks to the local relay instead of
+        // the real server, which is what lets an IPv4-only client reach an IPv6
+        // server.
+        var entranceHost = options.Relay.Enabled
+            ? RelayListenAddress
+            : options.EntranceHost;
         return string.Join('?',
         [
             "99",
-            options.EntranceHost,
+            entranceHost,
             options.EntrancePort.ToString(System.Globalization.CultureInfo.InvariantCulture),
             account.Account,
             account.Password,
@@ -168,6 +178,22 @@ internal static class Program
         ArgumentOutOfRangeException.ThrowIfLessThan(
             options.D3D9RetryIntervalSeconds,
             0.1);
+
+        if (options.Relay.Enabled)
+        {
+            if (IsIPv4LoopbackLiteral(options.EntranceHost))
+            {
+                throw new InvalidDataException(
+                    "启用 Relay 时 EntranceHost 必须是中继要拨号的服务器地址，" +
+                    "不能是 127.0.0.1（否则中继只会转发给自己）。");
+            }
+
+            if (!string.Equals(options.Relay.Preference, "ipv6", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(options.Relay.Preference, "ipv4", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("Relay.Preference 只支持 ipv6 或 ipv4。");
+            }
+        }
     }
 
     private static void ApplyCommandLineAccountSelection(
@@ -258,6 +284,119 @@ internal static class Program
                 scriptPvfPath);
         }
     }
+
+    // Brings up whatever has to be listening before the client connects: the
+    // local server when the entrance is loopback, plus the local relay when
+    // launcher.json asks for it.
+    private static async Task EnsureEndpointReadyAsync(LauncherOptions options)
+    {
+        if (!options.Relay.Enabled)
+        {
+            await EnsureServerReadyAsync(options);
+            return;
+        }
+
+        // The relay dials the entrance host itself, so a remote target needs no
+        // local server; a loopback target still does.
+        if (IsLoopbackHost(options.EntranceHost))
+        {
+            await EnsureServerReadyAsync(options);
+        }
+
+        await EnsureRelayReadyAsync(options);
+    }
+
+    private static async Task EnsureRelayReadyAsync(LauncherOptions options)
+    {
+        var relayPath = Path.Combine(AppContext.BaseDirectory, "DFLegacy.Relay.exe");
+        if (!File.Exists(relayPath))
+        {
+            throw new FileNotFoundException(
+                "launcher.json 启用了 Relay，但发布目录内缺少 DFLegacy.Relay.exe。",
+                relayPath);
+        }
+
+        var startInfo = new ProcessStartInfo(relayPath)
+        {
+            WorkingDirectory = AppContext.BaseDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        startInfo.ArgumentList.Add("--server");
+        startInfo.ArgumentList.Add(options.EntranceHost);
+        startInfo.ArgumentList.Add("--bind");
+        startInfo.ArgumentList.Add(RelayListenAddress);
+        startInfo.ArgumentList.Add("--prefer");
+        startInfo.ArgumentList.Add(options.Relay.Preference);
+        startInfo.ArgumentList.Add("--tcp");
+        startInfo.ArgumentList.Add(BuildRelayPortList(
+            options.Relay.TcpPorts,
+            RelayDefaultTcpPorts,
+            options.EntrancePort));
+        startInfo.ArgumentList.Add("--udp");
+        startInfo.ArgumentList.Add(BuildRelayPortList(
+            options.Relay.UdpPorts,
+            RelayDefaultUdpPorts,
+            requiredPort: null));
+        // Tie the relay's lifetime to the game client so a stale instance never
+        // keeps holding the local ports on the next launch.
+        startInfo.ArgumentList.Add("--exit-with-image");
+        startInfo.ArgumentList.Add(ClientImageName);
+
+        var relay = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("无法启动本地中继。");
+        WriteLauncherLog(
+            $"Started local relay process {relay.Id}; target={options.EntranceHost}, " +
+            $"listening={RelayListenAddress}, prefer={options.Relay.Preference}.");
+
+        for (var attempt = 0; attempt < ServerStartupAttempts; attempt++)
+        {
+            await Task.Delay(250);
+            if (await IsPortOpenAsync(RelayListenAddress, options.EntrancePort))
+            {
+                return;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"本地中继启动失败：{RelayListenAddress}:{options.EntrancePort} 没有开始监听" +
+            $"（目标 {options.EntranceHost}）。");
+    }
+
+    // Configured ports, or the defaults, plus the entrance port the client has to
+    // reach through the relay.
+    private static string BuildRelayPortList(
+        string? configured,
+        int[] defaults,
+        int? requiredPort)
+    {
+        var ports = new SortedSet<int>();
+        var tokens = string.IsNullOrWhiteSpace(configured)
+            ? defaults.Select(port =>
+                port.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            : configured.Split(
+                [',', ';', ' '],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var token in tokens)
+        {
+            if (!int.TryParse(token, out var port) || port is < 1 or > 65535)
+            {
+                throw new InvalidDataException($"Relay 端口列表包含无效项：{token}");
+            }
+
+            ports.Add(port);
+        }
+
+        if (requiredPort is { } required)
+        {
+            ports.Add(required);
+        }
+
+        return string.Join(',', ports);
+    }
+
+    private static bool IsIPv4LoopbackLiteral(string host) =>
+        host.StartsWith("127.", StringComparison.Ordinal);
 
     private static async Task EnsureServerReadyAsync(LauncherOptions options)
     {
@@ -388,6 +527,7 @@ internal sealed class LauncherOptions
     public int D3D9Adapter { get; set; }
     public double D3D9TimeoutSeconds { get; set; } = 30;
     public double D3D9RetryIntervalSeconds { get; set; } = 1;
+    public LauncherRelayOptions Relay { get; set; } = new();
 
     public LauncherAccountProfile GetSelectedAccount() =>
         Accounts.Count == 0
@@ -399,4 +539,25 @@ internal sealed class LauncherAccountProfile
 {
     public string Account { get; set; } = "test";
     public string Password { get; set; } = "test";
+}
+
+/// <summary>
+/// Auto-starts <c>DFLegacy.Relay.exe</c> beside the launcher and points the
+/// client at it. Needed when the client (IPv4-only) has to reach a server that
+/// only speaks IPv6.
+/// </summary>
+internal sealed class LauncherRelayOptions
+{
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// TCP/UDP port lists to forward; null means the relay's own defaults
+    /// (2311,7001,8080 / 2311,7002,7003). The entrance port is always included.
+    /// </summary>
+    public string? TcpPorts { get; set; }
+
+    public string? UdpPorts { get; set; }
+
+    /// <summary>Address family the relay prefers when resolving the target host.</summary>
+    public string Preference { get; set; } = "ipv6";
 }
