@@ -155,7 +155,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | `Experience.ClearMultiplier` | 通关基础经验及评分奖励倍率，默认 `1.0`。 |
 | `EnablePacketTracing` | 协议包跟踪开关，用于排查客户端交互问题。 |
 
-默认 TCP 端口为 `2311`、`7001`、`8080`，管理 HTTP 为 `8081`；默认 UDP 端口为 `2311`、`7002`、`7003`。更改网络配置时，应同步检查启动器与频道地址。
+默认 TCP 端口为 `2311`、`7001`、`8080`，管理 HTTP 为 `8081`；默认 UDP 端口为 `2311`、`7002`、`7003`。更改网络配置时，应同步检查启动器与频道地址。监听地址与下发地址的区别、IP 地址族（IPv6）支持现状见 [DEPLOYING.md](DEPLOYING.md#6-网络配置)。
 
 ### 启动器
 

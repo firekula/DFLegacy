@@ -201,7 +201,11 @@ docker run -d --name dflegacy-server \
 | `GameplayDatagram.AdvertisedHost` | 下发给客户端的玩法地址；留空则回退为 `Host` | **是** |
 | `Admin.Host` / `Port` | 后台管理 HTTP 监听地址与端口 | 否 |
 | `GameProbe.Host` / `Port` | 可选协议探针，默认关闭 | 否 |
-| `Channel.Host` | **未参与监听或下发** | 否 |
+| `Channel.Name` / `ChannelNumber` | 频道显示名与编号 | **是**（固定 20 字节 ASCII 显示名，且名称不能含数字） |
+| `Channel.ServerNumber` | 仅用于通关经验分档，不参与显示或下发 | 否 |
+| `Channel.Host` | **不参与监听**，但作为登录通道地址下发给客户端 | **是**（固定 16 字节 ASCII 字段，见 §6.3） |
+| `Channel.Port` | 同时用于识别连接是否落在频道端口上 | **是**（int32） |
+| `Channel.MaximumUsers` / `CurrentUsers` | 频道人数显示 | **是**（int32） |
 
 因此：
 
@@ -225,6 +229,25 @@ docker run -d --name dflegacy-server \
 | `7003` | UDP | 玩法次端口 | `GameplayDatagram.SecondaryPort` |
 
 对外开放时至少需要放通上述 TCP 与 UDP 端口。`Entrance` 与 `CharacterDatagram` 默认复用 `2311`，注意 TCP/UDP 是两套规则。
+
+### 6.3 IPv6 支持现状
+
+**只有后台管理接口可以完整走 IPv6；登录与角色通道服务端能绑定 IPv6 但客户端侧未经验证；副本内的玩法流量被协议格式限制为 IPv4。**
+
+| 通道 | IPv6 支持 | 依据 |
+| --- | --- | --- |
+| 后台管理 HTTP | **可用** | `Admin.Host` 设为 `::` 即可；实测（Linux 容器）在 `[::1]` 与 `127.0.0.1` 上都能访问 |
+| 登录入口 TCP、角色 UDP | 服务端可绑定 IPv6 字面量；端到端未验证 | 监听器统一走 `IPAddress.Parse(Host)`，未指定地址族；但 `Channel.Host` 以固定 16 字节下发，且客户端行为未知 |
+| 玩法 UDP（进图通信） | **不可用** | 协议用固定 4 字节表达地址：客户端上报的 NAT 报文里本地/公网地址各占 4 字节，服务端下发的对端地址经 `MapToIPv4()`，会话键也按 IPv4 归并 |
+
+其它限制：
+
+- 所有 `Host` 只接受 **IP 字面量**，不支持主机名（代码中没有任何 DNS 解析）。
+- 登录通道地址（`Channel.Host`）在协议里是**固定 16 字节** ASCII 字段：`::`、`::1`、`2001:db8::1` 这类短地址能放下，完整的 39 字符地址会直接抛异常导致该响应构建失败。
+- 客户端 `DNF.exe` 不在本仓库内，无法确认它是否打开 IPv6 socket；但客户端自己发出的 NAT 报文用 4 字节地址字段，倾向于 IPv4-only。
+- 启动日志中的 `Admin API ready at http://{Host}:{Port}` 对 IPv6 未加方括号，会打印成 `http://:::8081` 这种非法 URL；不影响实际监听，照 §6.1 用 `[::]` 访问即可。
+
+实践建议：需要同时服务两类客户端时，把 `Admin.Host` 设为 `::`（同时接受 IPv4 与 IPv6），业务端口保持 IPv4 或纯 IPv6 单一栈，不要期望副本内流量走 IPv6。
 
 ## 7. 配置文件
 
