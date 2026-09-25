@@ -1,0 +1,56 @@
+# DFLegacy 服务端容器编排示例（仅服务端；游戏客户端是 32 位 Windows 程序，不入容器）。
+#
+# Docker：  docker compose up -d --build
+# Podman：  podman compose up -d --build   （需要 compose provider）
+#           podman-compose up -d --build
+#
+# 完整说明见 DEPLOYING.md 的「容器部署」一节。
+
+services:
+  dflegacy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dflegacy-server:local
+    container_name: dflegacy-server
+    restart: unless-stopped
+    environment:
+      # 【必填】下发给客户端用于连接玩法 UDP 端口的地址。
+      # 必须是客户端能访问到的地址（宿主机局域网 IP 或公网域名），
+      # 填 0.0.0.0 或 127.0.0.1 会导致客户端进图失败。启动时若配置有问题会打警告。
+      DFLegacy__GameplayDatagram__AdvertisedHost: "change-me.example.com"
+
+      # 让容器内后台管理界面可被映射出去；默认镜像只监听容器内 127.0.0.1。
+      # 后台接口没有鉴权，下面的端口映射已把它限制在宿主机回环地址上。
+      DFLegacy__Admin__Host: "0.0.0.0"
+
+      # 其余可选覆盖项（键名 = server.json 里的层级，用双下划线分隔）：
+      # DFLegacy__Experience__MonsterMultiplier: "1.0"
+      # DFLegacy__Experience__ClearMultiplier: "1.0"
+      # DFLegacy__Drop__RatePercent: "100"
+      # DFLegacy__Drop__EconomicRate: "1.0"
+      # DFLegacy__Entrance__Port: "2311"
+    ports:
+      - "2311:2311/tcp"          # 登录入口
+      - "7001:7001/tcp"          # 频道入口
+      - "8080:8080/tcp"          # 登录入口附加端口
+      - "2311:2311/udp"          # 角色数据报
+      - "7002:7002/udp"          # 玩法主端口
+      - "7003:7003/udp"          # 玩法次端口
+      # 后台管理没有登录与鉴权，只映射到宿主机回环地址；
+      # 确需远程管理时，在前面加一层带认证的反向代理。
+      - "127.0.0.1:8081:8081/tcp"
+    volumes:
+      # 客户端的 Script.pvf，只读挂载。镜像不包含也不应包含 PVF。
+      - ./Script.pvf:/pvf/Script.pvf:ro
+      # 存档数据。使用具名卷可开箱即用（首次自动继承镜像内目录属主）。
+      - dflegacy-data:/app/data
+      # 若改用绑定挂载以便直接备份，需先让容器用户（UID 1654）可写：
+      #   mkdir -p data && sudo chown 1654:1654 data
+      #   - ./data:/app/data
+      #
+      # Podman + SELinux 环境需要在挂载项末尾追加 :Z（或 :z），例如：
+      #   - ./Script.pvf:/pvf/Script.pvf:ro,Z
+
+volumes:
+  dflegacy-data:

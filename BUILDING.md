@@ -7,9 +7,9 @@
 
 | 项目 | 目标框架 | 可构建平台 | 需要的工具链 |
 | --- | --- | --- | --- |
-| `DFLegacy.Server` | `net10.0` | Windows、Linux | .NET 10 SDK |
-| `DFLegacy.Protocol` | `net10.0` | Windows、Linux | .NET 10 SDK |
-| `tests/DFLegacy.SmokeTests` | `net10.0` | Windows、Linux | .NET 10 SDK |
+| `DFLegacy.Server` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
+| `DFLegacy.Protocol` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
+| `tests/DFLegacy.SmokeTests` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
 | `DFLegacy.Launcher` | `net10.0-windows`（WinForms） | 仅 Windows | .NET 10 SDK + PowerShell 7 + CMake + VS C++ |
 | `DFLegacy.Ijl15` | 原生 C++17，32 位 | 仅 Windows | VS C++ + CMake ≥ 3.24 |
 | `DFLegacy.RandomNative` | 原生 C++17，64 位 | 仅 Windows | VS C++ + CMake ≥ 3.24 |
@@ -19,7 +19,7 @@
 - `src/DFLegacy.Ijl15/CMakeLists.txt`：`NOT WIN32` 报错；必须 `-A Win32`（32 位，因为要替换客户端的 `ijl15.dll`）。
 - `src/DFLegacy.RandomNative/CMakeLists.txt`：`NOT WIN32` 报错；必须 `-A x64`（64 位，配合 64 位服务端进程）。
 
-服务端本身**没有强制性的原生依赖**：`DFLegacy.RandomNative.dll` 只用于 RDSEED 硬件随机，由 `GameRandomSource` 在 Windows + 64 位进程下探测加载，缺失或加载失败时回退到 `RandomNumberGenerator` / `Random.Shared`。因此 Linux 上可以只构建服务端。
+服务端本身**没有强制性的原生依赖**：`DFLegacy.RandomNative.dll` 只用于 RDSEED 硬件随机，由 `GameRandomSource` 在 Windows + 64 位进程下探测加载，缺失或加载失败时回退到 `RandomNumberGenerator` / `Random.Shared`。因此 Linux 与 macOS 上可以只构建服务端；也可以直接用容器构建，见 [DEPLOYING.md §5](DEPLOYING.md#5-容器部署docker--podman)。
 
 ## 2. 前置条件
 
@@ -33,7 +33,7 @@
 - **CMake 3.24 或更新版本**，且能生成 Visual Studio 工程（构建脚本会自动在 `Visual Studio 18 2026` / `17 2022` / `16 2019` 中挑选可用的生成器）。
 - **PowerShell 7（`pwsh`）**：构建脚本与启动器发布都通过 `pwsh` 调用。
 
-### 2.3 Linux
+### 2.3 Linux / macOS
 
 - **.NET 10 SDK**。不构建原生模块与启动器，因此不需要 C++ 工具链。
 
@@ -75,25 +75,32 @@ dotnet publish .\src\DFLegacy.Server\DFLegacy.Server.csproj -c Release -o .\dist
 - 这种构建方式**不会**构建原生随机桥，服务端自动回退到托管随机。若此前已经用 §3 或 §7 生成了 `artifacts/native/random/Release/DFLegacy.RandomNative.dll`，发布时会自动带上它（csproj 里的 `Content` 条件为"文件存在或处于完整 MSBuild"）。
 - 发布目录会生成 `web.config`，那是 `Microsoft.NET.Sdk.Web` 的默认产物。服务端只用 Kestrel，不注册 IIS/HTTP.sys，该文件在非 IIS 部署下不生效，可忽略。
 
-## 5. Linux：构建并发布服务端
+## 5. Linux 与 macOS：构建并发布服务端
 
 ```bash
 dotnet build src/DFLegacy.Server/DFLegacy.Server.csproj -c Release
 dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o ./dist/DFLegacy.Server
 ```
 
-需要独立运行时（目标机没装 .NET 10）时显式指定 RID 与自包含：
+需要独立运行时（目标机没装 .NET 10）或需要跨平台发布时，显式指定 RID：
 
 ```bash
+# 在目标平台上直接发布（框架依赖）
+dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o ./dist/DFLegacy.Server
+
+# 自包含，不要求目标机安装 .NET
 dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release \
   -r linux-x64 --self-contained true -o ./dist/DFLegacy.Server
 ```
 
+可用的服务端 RID：`linux-x64`、`linux-arm64`、`osx-x64`（Intel Mac）、`osx-arm64`（Apple 芯片）。在 Windows 上也可以交叉发布这些目标，产物直接拷到目标机运行。
+
 注意：
 
-- **不要用 `DFLegacy.Emulator.slnx`**。它包含两个 `.vcxproj`，Linux 上的 .NET MSBuild 无法构建（参见 §8）。
-- 发布产物包含当前平台的应用宿主（在 Linux 上为 ELF 可执行文件 `DFLegacy.Server`），因此既可以直接运行它，也可以用 `dotnet DFLegacy.Server.dll` 启动。跨平台发布需显式指定 `-r`（见上）。
-- 原生随机桥与客户端补丁均为 Windows 专属，Linux 上不存在也不需要。
+- **不要用 `DFLegacy.Emulator.slnx`**。它包含两个 `.vcxproj`，Linux 与 macOS 上的 .NET MSBuild 无法构建（参见 §8）。
+- 发布产物包含当前平台的应用宿主（Linux 上为 ELF、macOS 上为 Mach-O 可执行文件 `DFLegacy.Server`），因此既可以直接运行它，也可以用 `dotnet DFLegacy.Server.dll` 启动。交叉发布时必须指定 `-r`。
+- 原生随机桥与客户端补丁均为 Windows 专属，Linux 与 macOS 上不存在也不需要。
+- macOS 自带 ICU 与时区数据，无需额外安装；Linux 的最小化系统需要，见 [DEPLOYING.md §4](DEPLOYING.md#4-linux-与-macos-无头服务端部署)。
 
 ## 6. 启动器与原生模块
 
@@ -131,7 +138,7 @@ pwsh .\src\DFLegacy.RandomNative\build-native.ps1 -Configuration Release -RunTes
 | 服务端 | `dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o <dir>` | `DFLegacy.Server.dll` / `.exe`、`DFLegacy.Protocol.dll`、`server.json`、`wwwroot/`、`web.config`；若已构建则含 `DFLegacy.RandomNative.dll` |
 | 启动器 | `dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -o <dir>` | `DFLegacy.Launcher.exe`、`DFLegacy.Protocol.dll`、`launcher.json`、`Config.ini`、`ijl15.dll` |
 
-`server.json` 与 `launcher.json` 都以 `PreserveNewest` 方式复制，源文件比目标新时会覆盖目标。反复发布到同一个目录前请先备份这两个文件，详见 [DEPLOYING.md](DEPLOYING.md#9-升级流程)。
+`server.json` 与 `launcher.json` 都以 `PreserveNewest` 方式复制，源文件比目标新时会覆盖目标。反复发布到同一个目录前请先备份这两个文件，详见 [DEPLOYING.md](DEPLOYING.md#10-升级流程)。
 
 ## 8. 常见构建问题
 

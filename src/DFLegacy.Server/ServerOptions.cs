@@ -24,10 +24,19 @@ public sealed class GameplayDatagramOptions
 {
     public bool Enabled { get; set; } = true;
     public string Host { get; set; } = "127.0.0.1";
+
+    // Address handed to clients so they can reach the gameplay UDP ports. Empty
+    // means "same as Host". Set it when the bind address is not reachable from
+    // clients, e.g. 0.0.0.0 inside a container or a LAN bind behind NAT.
+    public string AdvertisedHost { get; set; } = "";
+
     public int PrimaryPort { get; set; } = 7002;
     public int SecondaryPort { get; set; } = 7003;
     public ushort MonsterObjectType { get; set; } = 0x0211;
     public byte SenderPartyIndex { get; set; } = 0;
+
+    public string ResolveAdvertisedHost() =>
+        string.IsNullOrWhiteSpace(AdvertisedHost) ? Host : AdvertisedHost;
 }
 
 public sealed class DropOptions

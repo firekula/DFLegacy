@@ -18,6 +18,11 @@ builder.Configuration.AddJsonFile(
     Path.Combine(AppContext.BaseDirectory, "server.json"),
     optional: false,
     reloadOnChange: true);
+// Registered after server.json so environment variables take precedence, as in
+// a default host. Container and NAT deployments rely on this:
+// DFLegacy__ScriptPvfPath=/pvf/Script.pvf, DFLegacy__Entrance__Host=0.0.0.0,
+// DFLegacy__GameplayDatagram__AdvertisedHost=<address clients can reach>, ...
+builder.Configuration.AddEnvironmentVariables();
 
 var options = builder.Configuration.GetSection("DFLegacy").Get<ServerOptions>() ?? new ServerOptions();
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -79,6 +84,25 @@ app.Logger.LogInformation(
     randomStatus.CpuSupportsRdSeed,
     randomStatus.NativeBridgeLoaded,
     randomStatus.RdSeedEnabled);
+
+// Binding every interface while advertising that same wildcard address leaves
+// clients with nowhere to dial. This is the default failure mode of a container
+// or NAT deployment that only sets GameplayDatagram.Host.
+var advertisedGameplayHost = options.GameplayDatagram.ResolveAdvertisedHost();
+if (options.GameplayDatagram.Enabled
+    && IPAddress.TryParse(options.GameplayDatagram.Host, out var gameplayBindAddress)
+    && (IPAddress.Any.Equals(gameplayBindAddress)
+        || IPAddress.IPv6Any.Equals(gameplayBindAddress))
+    && (!IPAddress.TryParse(advertisedGameplayHost, out var gameplayAdvertisedAddress)
+        || IPAddress.Any.Equals(gameplayAdvertisedAddress)
+        || IPAddress.IPv6Any.Equals(gameplayAdvertisedAddress)))
+{
+    app.Logger.LogWarning(
+        "GameplayDatagram.Host is {BindHost} but clients would be told '{AdvertisedHost}', which they cannot dial. Set DFLegacy:GameplayDatagram:AdvertisedHost (DFLegacy__GameplayDatagram__AdvertisedHost) to the address or host name clients reach this server on.",
+        options.GameplayDatagram.Host,
+        advertisedGameplayHost);
+}
+
 var itemCatalog = app.Services.GetRequiredService<ItemCatalog>();
 itemCatalog.Initialize();
 var gameStore = app.Services.GetRequiredService<JsonGameStore>();

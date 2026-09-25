@@ -29,8 +29,10 @@
 | --- | --- |
 | 本文件 | 项目概况、模块职责、已实现内容、平台支持与配置速查。 |
 | [BUILDING.md](BUILDING.md) | 各平台从源码构建可执行文件与原生模块、发布产物、构建排障。 |
-| [DEPLOYING.md](DEPLOYING.md) | 部署形态、目录结构、网络与端口、数据备份、升级流程、部署排障。 |
+| [DEPLOYING.md](DEPLOYING.md) | 部署形态、目录结构、网络与端口、容器部署、数据备份、升级流程、部署排障。 |
 | [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
+
+容器部署使用仓库根目录的 `Dockerfile`、`.dockerignore` 与 `compose.yaml`，说明见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)。
 
 ## 模块说明
 
@@ -47,16 +49,17 @@
 
 ## 平台支持
 
-| 组件 | Windows | Linux | 说明 |
-| --- | --- | --- | --- |
-| `DFLegacy.Server` | 支持 | 支持 | 纯托管代码，只依赖 .NET 10 与 Kestrel，无强制原生依赖 |
-| `DFLegacy.Protocol`、冒烟测试 | 支持 | 支持 | 纯托管代码 |
-| `DFLegacy.Launcher` | 支持 | 不支持 | WinForms 程序，且需要检测 D3D9 设备 |
-| `DFLegacy.Ijl15`（32 位客户端补丁） | 支持 | 不支持 | 原生 C++，用于替换客户端模块 |
-| `DFLegacy.RandomNative`（64 位随机桥） | 支持 | 不支持 | 可选；缺失或不可用时自动回退到托管随机 |
-| 游戏客户端 | 支持 | 不支持 | 原版 32 位 Windows 客户端 |
+| 组件 | Windows | Linux | macOS | 说明 |
+| --- | --- | --- | --- | --- |
+| `DFLegacy.Server` | 支持 | 支持 | 支持 | 纯托管代码，只依赖 .NET 10 与 Kestrel，无强制原生依赖 |
+| `DFLegacy.Protocol`、冒烟测试 | 支持 | 支持 | 支持 | 纯托管代码 |
+| 服务端容器镜像 | 支持 | 支持 | 支持 | 见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)；宿主只需能运行 Docker 或 Podman |
+| `DFLegacy.Launcher` | 支持 | 不支持 | 不支持 | WinForms 程序，且需要检测 D3D9 设备 |
+| `DFLegacy.Ijl15`（32 位客户端补丁） | 支持 | 不支持 | 不支持 | 原生 C++，用于替换客户端模块 |
+| `DFLegacy.RandomNative`（64 位随机桥） | 支持 | 不支持 | 不支持 | 可选；缺失或不可用时自动回退到托管随机 |
+| 游戏客户端 | 支持 | 不支持 | 不支持 | 原版 32 位 Windows 客户端 |
 
-服务端因此可以部署在 Linux 上、由 Windows 客户端远程连接；构建方式见 [BUILDING.md](BUILDING.md)，部署与网络配置见 [DEPLOYING.md](DEPLOYING.md)。
+因此服务端可以部署在 Linux 或 macOS 上、也可以放进容器，由 Windows 客户端远程连接；构建方式见 [BUILDING.md](BUILDING.md)，部署与网络配置见 [DEPLOYING.md](DEPLOYING.md)。
 
 ## 当前实现
 
@@ -93,7 +96,7 @@
 
 ## 运行环境
 
-- **服务端**：需要 .NET 10 运行时（含 ASP.NET Core），Windows 与 Linux 均可；Linux 不需要 C++ 工具链，但最小化系统还需 ICU 与时区数据，见 [DEPLOYING.md](DEPLOYING.md#4-linux无头服务端部署)。
+- **服务端**：需要 .NET 10 运行时（含 ASP.NET Core），Windows、Linux、macOS 均可；Linux 不需要 C++ 工具链，但最小化系统还需 ICU 与时区数据，见 [DEPLOYING.md](DEPLOYING.md#4-linux-与-macos-无头服务端部署)。也可以直接用容器（Docker / Podman）运行，见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)。
 - **客户端与启动器**：仅 Windows。客户端及 IJL15 为 32 位，硬件随机桥接为 64 位；启动器需要可用的图形桌面，会检查 Direct3D 9 HAL 设备，远程或无显示环境可能无法通过检查。
 - **从源码构建**：需要 .NET 10 SDK；构建原生模块与启动器还需要带桌面 C++ 开发组件的 Visual Studio 和 CMake ≥ 3.24，见 [BUILDING.md](BUILDING.md)。
 
@@ -143,6 +146,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | `Admin` | HTTP 监听地址和端口，默认 `127.0.0.1:8081`。 |
 | `Entrance` / `Channel` | 登录入口和频道连接配置。 |
 | `CharacterDatagram` / `GameplayDatagram` | 客户端 UDP 监听配置。 |
+| `GameplayDatagram.AdvertisedHost` | 下发给客户端的玩法地址，留空时回退为 `GameplayDatagram.Host`；容器与 NAT 部署必填，详见 [DEPLOYING.md](DEPLOYING.md#61-监听与下发地址)。 |
 | `Drop.Enabled` | 服务端掉落总开关。 |
 | `Drop.RatePercent` | 普通掉落倍率百分比，`100` 使用 PVF 原始概率。 |
 | `Drop.EconomicRate` | 金币倍率，默认 `1.0`。 |

@@ -1,0 +1,17 @@
+# Keep the build context small; only src/, server.json and the Dockerfile are used.
+**/bin/
+**/obj/
+artifacts/
+dist/
+data/
+.git/
+.gitignore
+DNF2008/
+third_party/
+tests/
+docs/
+*.md
+LICENSE
+launcher.json
+compose.yaml
+.dockerignore
