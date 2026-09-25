@@ -3,36 +3,25 @@ using System.Net.Sockets;
 
 namespace DFLegacy.Relay;
 
-internal static class Log
+public enum RelayLogLevel
 {
-    private static readonly object Gate = new();
-
-    public static void Info(string message) => Write("info", message);
-
-    public static void Warn(string message) => Write("warn", message);
-
-    public static void Error(string message) => Write("error", message);
-
-    public static string Format(IPAddress address, int port) =>
-        address.AddressFamily == AddressFamily.InterNetworkV6
-            ? $"[{address}]:{port}"
-            : $"{address}:{port}";
-
-    private static void Write(string level, string message)
-    {
-        lock (Gate)
-        {
-            Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} {level}: {message}");
-        }
-    }
+    Info,
+    Warn,
+    Error
 }
 
+public delegate void RelayLog(RelayLogLevel level, string message);
+
 /// <summary>
-/// Forwards one TCP port to the server. Each accepted connection gets its own
+/// Forwards one TCP port to a target. Each accepted connection gets its own
 /// outgoing socket, which is what lets the listening side stay IPv4 while the
 /// outgoing side follows the target's address family.
 /// </summary>
-internal sealed class TcpForwarder(IPAddress bindAddress, int port, IPAddress targetAddress)
+internal sealed class TcpForwarder(
+    IPAddress bindAddress,
+    int port,
+    IPAddress targetAddress,
+    RelayLog log)
 {
     private readonly TcpListener _listener = new(bindAddress, port);
 
@@ -42,7 +31,9 @@ internal sealed class TcpForwarder(IPAddress bindAddress, int port, IPAddress ta
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
-        Log.Info($"TCP  {Log.Format(bindAddress, port)} -> {Log.Format(targetAddress, port)}");
+        log(
+            RelayLogLevel.Info,
+            $"TCP  {RelayHost.FormatEndpoint(bindAddress, port)} -> {RelayHost.FormatEndpoint(targetAddress, port)}");
         while (!cancellationToken.IsCancellationRequested)
         {
             TcpClient client;
@@ -56,7 +47,7 @@ internal sealed class TcpForwarder(IPAddress bindAddress, int port, IPAddress ta
             }
             catch (SocketException exception)
             {
-                Log.Warn($"TCP {port}: accept failed: {exception.Message}");
+                log(RelayLogLevel.Warn, $"TCP {port}: accept failed: {exception.Message}");
                 continue;
             }
 
@@ -77,8 +68,9 @@ internal sealed class TcpForwarder(IPAddress bindAddress, int port, IPAddress ta
             }
             catch (Exception exception)
             {
-                Log.Warn(
-                    $"TCP {port}: cannot reach {Log.Format(targetAddress, port)}: {exception.Message}");
+                log(
+                    RelayLogLevel.Warn,
+                    $"TCP {port}: cannot reach {RelayHost.FormatEndpoint(targetAddress, port)}: {exception.Message}");
                 return;
             }
 
@@ -92,7 +84,7 @@ internal sealed class TcpForwarder(IPAddress bindAddress, int port, IPAddress ta
 
     // Copies one direction, then half-closes the far side so it observes EOF
     // instead of waiting for a timeout.
-    private static async Task PumpAsync(
+    private async Task PumpAsync(
         NetworkStream from,
         NetworkStream to,
         Socket toSocket,
@@ -121,12 +113,16 @@ internal sealed class TcpForwarder(IPAddress bindAddress, int port, IPAddress ta
 }
 
 /// <summary>
-/// Forwards one UDP port to the server. UDP cannot cross address families on a
+/// Forwards one UDP port to the target. UDP cannot cross address families on a
 /// single socket: a socket bound to an IPv4 address cannot send to an IPv6 peer.
 /// So this keeps one socket facing the game client and one facing the server and
 /// carries datagrams between them.
 /// </summary>
-internal sealed class UdpForwarder(IPAddress bindAddress, int port, IPAddress targetAddress)
+internal sealed class UdpForwarder(
+    IPAddress bindAddress,
+    int port,
+    IPAddress targetAddress,
+    RelayLog log)
 {
     private const int MaxConsecutiveReceiveFailures = 10;
 
@@ -154,7 +150,9 @@ internal sealed class UdpForwarder(IPAddress bindAddress, int port, IPAddress ta
         var clientSide = _clientSide!;
         var serverSide = _serverSide!;
         var target = new IPEndPoint(targetAddress, port);
-        Log.Info($"UDP  {Log.Format(bindAddress, port)} -> {Log.Format(targetAddress, port)}");
+        log(
+            RelayLogLevel.Info,
+            $"UDP  {RelayHost.FormatEndpoint(bindAddress, port)} -> {RelayHost.FormatEndpoint(targetAddress, port)}");
 
         await Task.WhenAll(
             PumpAsync(clientSide, serverSide, target, fromClient: true, cancellationToken),
@@ -184,25 +182,24 @@ internal sealed class UdpForwarder(IPAddress bindAddress, int port, IPAddress ta
             catch (Exception exception)
             {
                 // A persistent failure must not spin: log the first few, back off,
-                // and give up rather than flooding the console.
+                // and give up rather than flooding the log.
                 consecutiveFailures++;
                 if (consecutiveFailures > MaxConsecutiveReceiveFailures)
                 {
-                    Log.Error(
+                    log(
+                        RelayLogLevel.Error,
                         $"UDP {port}: 连续 {consecutiveFailures} 次接收失败，停止该端口（{exception.Message}）。");
                     return;
                 }
 
                 if (consecutiveFailures <= 3)
                 {
-                    Log.Warn($"UDP {port}: receive failed ({exception.Message})");
+                    log(RelayLogLevel.Warn, $"UDP {port}: receive failed ({exception.Message})");
                 }
 
                 try
                 {
-                    await Task.Delay(
-                        TimeSpan.FromMilliseconds(500),
-                        cancellationToken);
+                    await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -235,8 +232,141 @@ internal sealed class UdpForwarder(IPAddress bindAddress, int port, IPAddress ta
             }
             catch (Exception exception)
             {
-                Log.Warn($"UDP {port}: send failed ({exception.Message})");
+                log(RelayLogLevel.Warn, $"UDP {port}: send failed ({exception.Message})");
             }
         }
     }
+}
+
+/// <summary>
+/// A local IPv4/IPv6 port relay for one game client: the client keeps talking to
+/// <see cref="BindAddress"/> on the usual ports while the relay dials the target.
+/// Hosts it either in a dedicated process (<c>DFLegacy.Relay</c>) or inside the
+/// launcher, which then stays resident for the duration of the game.
+/// </summary>
+public sealed class RelayHost(
+    IPAddress bindAddress,
+    IPAddress targetAddress,
+    IReadOnlyCollection<int> tcpPorts,
+    IReadOnlyCollection<int> udpPorts,
+    RelayLog log)
+{
+    private readonly List<TcpForwarder> _tcp = [];
+    private readonly List<UdpForwarder> _udp = [];
+
+    public IPAddress BindAddress { get; } = bindAddress;
+
+    public IPAddress TargetAddress { get; } = targetAddress;
+
+    /// <summary>
+    /// Binds every port. Throws <see cref="SocketException"/> when a port is
+    /// taken, which is normally a stale relay still holding it.
+    /// </summary>
+    public void Start()
+    {
+        foreach (var port in tcpPorts)
+        {
+            var forwarder = new TcpForwarder(BindAddress, port, TargetAddress, log);
+            forwarder.Start();
+            _tcp.Add(forwarder);
+        }
+
+        foreach (var port in udpPorts)
+        {
+            var forwarder = new UdpForwarder(BindAddress, port, TargetAddress, log);
+            forwarder.Start();
+            _udp.Add(forwarder);
+        }
+
+        log(
+            RelayLogLevel.Info,
+            $"relay ready: {_tcp.Count} TCP / {_udp.Count} UDP port(s) on {BindAddress}, target {TargetAddress}.");
+    }
+
+    public void Stop()
+    {
+        foreach (var forwarder in _tcp)
+        {
+            forwarder.Stop();
+        }
+
+        _tcp.Clear();
+        foreach (var forwarder in _udp)
+        {
+            forwarder.Stop();
+        }
+
+        _udp.Clear();
+    }
+
+    /// <summary>Pumps traffic until the token is cancelled, then stops.</summary>
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        var tasks = _tcp
+            .Select(forwarder => forwarder.RunAsync(cancellationToken))
+            .Concat(_udp.Select(forwarder => forwarder.RunAsync(cancellationToken)))
+            .ToArray();
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        finally
+        {
+            Stop();
+            log(RelayLogLevel.Info, "relay stopped.");
+        }
+    }
+
+    /// <summary>
+    /// Resolves a host name honouring the address-family preference. Literal IPs
+    /// (optionally bracketed) are returned as-is.
+    /// </summary>
+    public static async Task<IPAddress?> ResolveTargetAsync(
+        string host,
+        bool preferIPv6,
+        RelayLog log,
+        CancellationToken cancellationToken)
+    {
+        var literal = host.Trim().Trim('[', ']');
+        if (IPAddress.TryParse(literal, out var parsed))
+        {
+            return parsed;
+        }
+
+        IPAddress[] addresses;
+        try
+        {
+            addresses = await Dns.GetHostAddressesAsync(literal, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            log(RelayLogLevel.Error, $"无法解析 {literal}：{exception.Message}");
+            return null;
+        }
+
+        if (addresses.Length == 0)
+        {
+            log(RelayLogLevel.Error, $"域名 {literal} 没有解析到任何地址。");
+            return null;
+        }
+
+        var preferred = preferIPv6
+            ? AddressFamily.InterNetworkV6
+            : AddressFamily.InterNetwork;
+        var chosen = Array.Find(addresses, address => address.AddressFamily == preferred);
+        if (chosen is null)
+        {
+            log(
+                RelayLogLevel.Warn,
+                $"解析结果没有 {(preferIPv6 ? "IPv6" : "IPv4")} 地址，改用 {addresses[0].AddressFamily}。");
+            chosen = addresses[0];
+        }
+
+        return chosen;
+    }
+
+    internal static string FormatEndpoint(IPAddress address, int port) =>
+        address.AddressFamily == AddressFamily.InterNetworkV6
+            ? $"[{address}]:{port}"
+            : $"{address}:{port}";
 }

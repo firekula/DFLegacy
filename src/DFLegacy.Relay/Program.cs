@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using System.Net.Sockets;
 
 namespace DFLegacy.Relay;
@@ -29,123 +28,56 @@ internal static class Program
             shutdown.Cancel();
         };
 
-        var target = await ResolveTargetAsync(options, shutdown.Token);
+        var target = await RelayHost.ResolveTargetAsync(
+            options.ServerHost,
+            options.Preference == AddressPreference.IPv6,
+            Log,
+            shutdown.Token);
         if (target is null)
         {
             return 1;
         }
 
-        Log.Info($"target {options.ServerHost} -> {target}");
-        var preferred = options.Preference == AddressPreference.IPv6
-            ? AddressFamily.InterNetworkV6
-            : AddressFamily.InterNetwork;
-        if (IPAddress.TryParse(options.ServerHost.Trim('[', ']'), out _)
-            is false
-            && target.AddressFamily != preferred)
-        {
-            Log.Warn(
-                $"解析结果没有 {(preferred == AddressFamily.InterNetworkV6 ? "IPv6" : "IPv4")} 地址，改用 {target.AddressFamily}。");
-        }
+        Log(RelayLogLevel.Info, $"target {options.ServerHost} -> {target}");
 
-        // Bind every port up front so a clash is reported once, before the relay
-        // claims to be ready. A stale instance holding the ports is the usual cause.
-        var tcp = new List<TcpForwarder>();
-        var udp = new List<UdpForwarder>();
+        RelayHost relay;
         try
         {
-            foreach (var port in options.TcpPorts)
-            {
-                var forwarder = new TcpForwarder(options.BindAddress, port, target);
-                forwarder.Start();
-                tcp.Add(forwarder);
-            }
-
-            foreach (var port in options.UdpPorts)
-            {
-                var forwarder = new UdpForwarder(options.BindAddress, port, target);
-                forwarder.Start();
-                udp.Add(forwarder);
-            }
+            // Binding every port up front means a clash is reported once, before
+            // the relay claims to be ready. A stale instance holding the ports is
+            // the usual cause.
+            relay = new RelayHost(
+                options.BindAddress,
+                target,
+                options.TcpPorts,
+                options.UdpPorts,
+                Log);
+            relay.Start();
         }
         catch (SocketException exception)
         {
-            Log.Error($"无法绑定本地端口：{exception.Message}");
-            Log.Error("端口可能被另一个中继实例占用；请先结束旧实例再启动本中继。");
-            StopAll(tcp, udp);
+            Log(RelayLogLevel.Error, $"无法绑定本地端口：{exception.Message}");
+            Log(RelayLogLevel.Error, "端口可能被另一个中继实例占用；请先结束旧实例再启动本中继。");
             return 1;
         }
 
         MonitorExitProcess(options.ExitWithProcessId, shutdown);
         MonitorExitImage(options.ExitWithImage, shutdown);
+        Log(RelayLogLevel.Info, "按 Ctrl+C 停止。");
 
-        var tasks = tcp
-            .Select(forwarder => forwarder.RunAsync(shutdown.Token))
-            .Concat(udp.Select(forwarder => forwarder.RunAsync(shutdown.Token)))
-            .ToArray();
-
-        Log.Info(
-            $"relay ready: {tcp.Count} TCP / {udp.Count} UDP port(s) on {options.BindAddress}. 按 Ctrl+C 停止。");
-
-        try
-        {
-            await Task.WhenAll(tasks);
-        }
-        finally
-        {
-            StopAll(tcp, udp);
-        }
-
-        Log.Info("relay stopped.");
+        await relay.RunAsync(shutdown.Token);
         return 0;
     }
 
-    private static void StopAll(
-        IEnumerable<TcpForwarder> tcp,
-        IEnumerable<UdpForwarder> udp)
+    private static void Log(RelayLogLevel level, string message)
     {
-        foreach (var forwarder in tcp)
+        var name = level switch
         {
-            forwarder.Stop();
-        }
-
-        foreach (var forwarder in udp)
-        {
-            forwarder.Stop();
-        }
-    }
-
-    private static async Task<IPAddress?> ResolveTargetAsync(
-        RelayOptions options,
-        CancellationToken cancellationToken)
-    {
-        var host = options.ServerHost.Trim('[', ']');
-        if (IPAddress.TryParse(host, out var literal))
-        {
-            return literal;
-        }
-
-        IPAddress[] addresses;
-        try
-        {
-            addresses = await Dns.GetHostAddressesAsync(host, cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            Log.Error($"无法解析 {host}：{exception.Message}");
-            return null;
-        }
-
-        if (addresses.Length == 0)
-        {
-            Log.Error($"域名 {host} 没有解析到任何地址。");
-            return null;
-        }
-
-        var preferred = options.Preference == AddressPreference.IPv6
-            ? AddressFamily.InterNetworkV6
-            : AddressFamily.InterNetwork;
-        return Array.Find(addresses, address => address.AddressFamily == preferred)
-            ?? addresses[0];
+            RelayLogLevel.Warn => "warn",
+            RelayLogLevel.Error => "error",
+            _ => "info"
+        };
+        Console.WriteLine($"{DateTimeOffset.Now:HH:mm:ss} {name}: {message}");
     }
 
     private static void MonitorExitProcess(
@@ -173,11 +105,11 @@ internal static class Program
                     }
                 },
                 TaskScheduler.Default);
-            Log.Info($"process {pid} 退出时本中继也会退出。");
+            Log(RelayLogLevel.Info, $"process {pid} 退出时本中继也会退出。");
         }
         catch (ArgumentException)
         {
-            Log.Warn($"进程 {pid} 不存在，立即停止。");
+            Log(RelayLogLevel.Warn, $"进程 {pid} 不存在，立即停止。");
             shutdown.Cancel();
         }
     }
@@ -208,7 +140,7 @@ internal static class Program
                         if (!seen)
                         {
                             seen = true;
-                            Log.Info($"{imageName} 已启动，其退出后本中继也会退出。");
+                            Log(RelayLogLevel.Info, $"{imageName} 已启动，其退出后本中继也会退出。");
                         }
 
                         continue;
@@ -216,7 +148,7 @@ internal static class Program
 
                     if (seen)
                     {
-                        Log.Info($"{imageName} 已退出，停止中继。");
+                        Log(RelayLogLevel.Info, $"{imageName} 已退出，停止中继。");
                         shutdown.Cancel();
                         return;
                     }
@@ -228,7 +160,7 @@ internal static class Program
             }
             catch (Exception exception)
             {
-                Log.Warn($"监视 {imageName} 失败，中继将继续运行：{exception.Message}");
+                Log(RelayLogLevel.Warn, $"监视 {imageName} 失败，中继将继续运行：{exception.Message}");
             }
         });
     }

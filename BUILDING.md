@@ -113,9 +113,9 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 
 发布过程会通过 `BuildIjl15` 目标调用 `pwsh` 执行 `src/DFLegacy.Ijl15/build-native.ps1`，因此这一步**必须**具备 PowerShell 7、CMake 和 Visual Studio C++ 生成器；缺失会在发布时报错，而不是静默跳过。
 
-发布产物包含启动器本体、`launcher.json`、`Config.ini` 和 32 位 `ijl15.dll`。按 [README](README.md#构建与启动) 的默认做法，启动器与服务端发布到同一目录即可。
+发布产物包含启动器本体、`launcher.json`、`Config.ini`、`DFLegacy.Relay.Core.dll` 和 32 位 `ijl15.dll`。按 [README](README.md#构建与启动) 的默认做法，启动器与服务端发布到同一目录即可。
 
-启用 `launcher.json` 的 `Relay`（见 [DEPLOYING.md §6.4](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)）时，还要把客户端中继发布到同一目录，否则启动器会报缺少 `DFLegacy.Relay.exe`：
+`launcher.json` 的 `Relay`（见 [DEPLOYING.md §6.4](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)）由启动器在自身进程内运行，中继核心作为项目引用自动随发布输出，因此无需额外步骤。只有不使用启动器、要单独运行中继时，才需要额外发布那个独立可执行文件：
 
 ```powershell
 dotnet publish .\src\DFLegacy.Relay\DFLegacy.Relay.csproj -c Release -o .\dist\DFLegacy.Server

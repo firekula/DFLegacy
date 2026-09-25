@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using DFLegacy.Relay;
 
 namespace DFLegacy.Launcher;
 
@@ -10,7 +12,6 @@ internal static class Program
     private const int ServerStartupAttempts = 40;
     private static readonly TimeSpan PortProbeTimeout = TimeSpan.FromMilliseconds(250);
     private const string RelayListenAddress = "127.0.0.1";
-    private const string ClientImageName = "DNF.exe";
     private static readonly int[] RelayDefaultTcpPorts = [2311, 7001, 8080];
     private static readonly int[] RelayDefaultUdpPorts = [2311, 7002, 7003];
 
@@ -71,11 +72,48 @@ internal static class Program
                     $"sha256={ijl15Install.Sha256}; " +
                     $"backup={ijl15Install.BackupPath ?? "(none)"}.");
             }
-            await EnsureEndpointReadyAsync(options);
+            // The relay runs inside this process, so it has to exist before the
+            // client starts.
+            var relay = await StartRelayIfConfiguredAsync(options);
+            if (relay is null || IsLoopbackHost(options.EntranceHost))
+            {
+                // Without a relay the entrance host may be the local server this
+                // launcher starts on demand. With a relay only a loopback target
+                // can be that local server; a remote target is the relay's job.
+                await EnsureServerReadyAsync(options);
+            }
+
             var client = ClientProcessLauncher.Start(clientPath, launcherData);
             TryRaisePriority(client);
             WriteLauncherLog(
-                $"Started DFLegacy client process {client.Id}; entrance={options.EntranceHost}:{options.EntrancePort}.");
+                $"Started DFLegacy client process {client.Id}; " +
+                $"entrance={(relay is null ? options.EntranceHost : RelayListenAddress)}:{options.EntrancePort}" +
+                (relay is null ? "." : $"; relay target={relay.TargetAddress}."));
+
+            if (relay is null)
+            {
+                return 0;
+            }
+
+            // Staying resident is the price of not spawning a helper process: the
+            // launcher owns the listening sockets, so it lives exactly as long as
+            // the game does.
+            using var shutdown = new CancellationTokenSource();
+            _ = client.WaitForExitAsync().ContinueWith(
+                _ =>
+                {
+                    try
+                    {
+                        shutdown.Cancel();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Already shut down.
+                    }
+                },
+                TaskScheduler.Default);
+            await relay.RunAsync(shutdown.Token);
+            WriteLauncherLog($"Client process {client.Id} exited; launcher stopping.");
             return 0;
         }
         catch (Exception exception)
@@ -285,87 +323,60 @@ internal static class Program
         }
     }
 
-    // Brings up whatever has to be listening before the client connects: the
-    // local server when the entrance is loopback, plus the local relay when
-    // launcher.json asks for it.
-    private static async Task EnsureEndpointReadyAsync(LauncherOptions options)
+    // Hosts the relay inside this process when launcher.json asks for it, so the
+    // user never has to start a second program. Returns null when disabled.
+    private static async Task<RelayHost?> StartRelayIfConfiguredAsync(LauncherOptions options)
     {
         if (!options.Relay.Enabled)
         {
-            await EnsureServerReadyAsync(options);
-            return;
+            return null;
         }
 
-        // The relay dials the entrance host itself, so a remote target needs no
-        // local server; a loopback target still does.
-        if (IsLoopbackHost(options.EntranceHost))
+        var preferIPv6 = !string.Equals(
+            options.Relay.Preference,
+            "ipv4",
+            StringComparison.OrdinalIgnoreCase);
+        var target = await RelayHost.ResolveTargetAsync(
+            options.EntranceHost,
+            preferIPv6,
+            LogRelay,
+            CancellationToken.None);
+        if (target is null)
         {
-            await EnsureServerReadyAsync(options);
+            throw new InvalidOperationException(
+                $"无法解析中继目标 {options.EntranceHost}，请检查 Relay 与 EntranceHost 配置。");
         }
 
-        await EnsureRelayReadyAsync(options);
+        var relay = new RelayHost(
+            IPAddress.Loopback,
+            target,
+            BuildRelayPorts(options.Relay.TcpPorts, RelayDefaultTcpPorts, options.EntrancePort),
+            BuildRelayPorts(options.Relay.UdpPorts, RelayDefaultUdpPorts, requiredPort: null),
+            LogRelay);
+        try
+        {
+            relay.Start();
+        }
+        catch (SocketException exception)
+        {
+            throw new InvalidOperationException(
+                $"本地中继无法绑定 {RelayListenAddress} 的转发端口：{exception.Message}。" +
+                "端口可能被上一个未退出的实例占用。",
+                exception);
+        }
+
+        WriteLauncherLog($"Local relay listening on {RelayListenAddress}; target={target}.");
+        return relay;
     }
 
-    private static async Task EnsureRelayReadyAsync(LauncherOptions options)
-    {
-        var relayPath = Path.Combine(AppContext.BaseDirectory, "DFLegacy.Relay.exe");
-        if (!File.Exists(relayPath))
-        {
-            throw new FileNotFoundException(
-                "launcher.json 启用了 Relay，但发布目录内缺少 DFLegacy.Relay.exe。",
-                relayPath);
-        }
-
-        var startInfo = new ProcessStartInfo(relayPath)
-        {
-            WorkingDirectory = AppContext.BaseDirectory,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        startInfo.ArgumentList.Add("--server");
-        startInfo.ArgumentList.Add(options.EntranceHost);
-        startInfo.ArgumentList.Add("--bind");
-        startInfo.ArgumentList.Add(RelayListenAddress);
-        startInfo.ArgumentList.Add("--prefer");
-        startInfo.ArgumentList.Add(options.Relay.Preference);
-        startInfo.ArgumentList.Add("--tcp");
-        startInfo.ArgumentList.Add(BuildRelayPortList(
-            options.Relay.TcpPorts,
-            RelayDefaultTcpPorts,
-            options.EntrancePort));
-        startInfo.ArgumentList.Add("--udp");
-        startInfo.ArgumentList.Add(BuildRelayPortList(
-            options.Relay.UdpPorts,
-            RelayDefaultUdpPorts,
-            requiredPort: null));
-        // Tie the relay's lifetime to the game client so a stale instance never
-        // keeps holding the local ports on the next launch.
-        startInfo.ArgumentList.Add("--exit-with-image");
-        startInfo.ArgumentList.Add(ClientImageName);
-
-        var relay = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("无法启动本地中继。");
-        WriteLauncherLog(
-            $"Started local relay process {relay.Id}; target={options.EntranceHost}, " +
-            $"listening={RelayListenAddress}, prefer={options.Relay.Preference}.");
-
-        for (var attempt = 0; attempt < ServerStartupAttempts; attempt++)
-        {
-            await Task.Delay(250);
-            if (await IsPortOpenAsync(RelayListenAddress, options.EntrancePort))
-            {
-                return;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"本地中继启动失败：{RelayListenAddress}:{options.EntrancePort} 没有开始监听" +
-            $"（目标 {options.EntranceHost}）。");
-    }
+    private static void LogRelay(RelayLogLevel level, string message) =>
+        WriteLauncherLog(level == RelayLogLevel.Info
+            ? $"[relay] {message}"
+            : $"[relay] {level}: {message}");
 
     // Configured ports, or the defaults, plus the entrance port the client has to
     // reach through the relay.
-    private static string BuildRelayPortList(
+    private static int[] BuildRelayPorts(
         string? configured,
         int[] defaults,
         int? requiredPort)
@@ -392,7 +403,7 @@ internal static class Program
             ports.Add(required);
         }
 
-        return string.Join(',', ports);
+        return [.. ports];
     }
 
     private static bool IsIPv4LoopbackLiteral(string host) =>

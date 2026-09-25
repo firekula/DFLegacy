@@ -13,6 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+    <ProjectReference Include="../DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
     <ProjectReference Include="../DFLegacy.Ijl15/DFLegacy.Ijl15.vcxproj"
                       ReferenceOutputAssembly="false"
                       Condition="'$(MSBuildRuntimeType)' != 'Core'" />
