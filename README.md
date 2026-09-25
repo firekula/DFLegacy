@@ -40,6 +40,7 @@
 | --- | --- |
 | `DFLegacy.Server` | 主业务、PVF 数据读取、账号角色持久化、TCP/UDP 服务及 HTTP 管理接口。 |
 | `DFLegacy.Protocol` | 登录与通信协议的编解码、请求解析、响应与通知包构建。 |
+| `DFLegacy.Relay` | 本机 TCP/UDP 端口中继：让只支持 IPv4 的原版客户端经本机连接 IPv6 服务器，见 [DEPLOYING.md](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)。 |
 | `DFLegacy.Launcher` | Windows 启动器，管理登录配置、检查运行环境、安装 IJL15 模块并启动客户端，可按需启动本地服务端。 |
 | `DFLegacy.Ijl15` | 32 位 C++ `ijl15.dll` 兼容模块，提供客户端所需的 JPEG 功能及进程内兼容补丁、窗口缩放等功能。 |
 | `DFLegacy.RandomNative` | 64 位 C++ 硬件随机种子桥接，为玩法随机提供 RDSEED 支持；不支持该指令时自动回退，不是运行必需项。 |
@@ -53,6 +54,7 @@
 | --- | --- | --- | --- | --- |
 | `DFLegacy.Server` | 支持 | 支持 | 支持 | 纯托管代码，只依赖 .NET 10 与 Kestrel，无强制原生依赖 |
 | `DFLegacy.Protocol`、冒烟测试 | 支持 | 支持 | 支持 | 纯托管代码 |
+| `DFLegacy.Relay` | 支持 | 支持 | 支持 | 纯托管端口中继，无原生依赖 |
 | 服务端容器镜像 | 支持 | 支持 | 支持 | 见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)；宿主只需能运行 Docker 或 Podman |
 | `DFLegacy.Launcher` | 支持 | 不支持 | 不支持 | WinForms 程序，且需要检测 D3D9 设备 |
 | `DFLegacy.Ijl15`（32 位客户端补丁） | 支持 | 不支持 | 不支持 | 原生 C++，用于替换客户端模块 |

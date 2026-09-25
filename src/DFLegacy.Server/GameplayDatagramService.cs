@@ -22,7 +22,7 @@ public sealed class GameplayDatagramService(
         ArgumentNullException.ThrowIfNull(tcpAddress);
         _sessions[runtimeSession.Id] = new GameplaySession(
             runtimeSession,
-            tcpAddress.MapToIPv4());
+            NormalizeAddress(tcpAddress));
     }
 
     public void UnregisterChannelSession(Guid sessionId)
@@ -270,7 +270,7 @@ public sealed class GameplayDatagramService(
     private void ObserveEndpoint(IPEndPoint remote)
     {
         var addressKey = AddressKey(remote.Address);
-        var observed = new IPEndPoint(remote.Address.MapToIPv4(), remote.Port);
+        var observed = new IPEndPoint(NormalizeAddress(remote.Address), remote.Port);
         _observedByAddress[addressKey] = observed;
 
         foreach (var session in _sessions.Values)
@@ -309,7 +309,7 @@ public sealed class GameplayDatagramService(
         }
 
         return new IPEndPoint(
-            report.PublicAddress.MapToIPv4(),
+            NormalizeAddress(report.PublicAddress),
             report.PublicPort);
     }
 
@@ -413,10 +413,18 @@ public sealed class GameplayDatagramService(
     }
 
     private static string AddressKey(IPAddress address) =>
-        address.MapToIPv4().ToString();
+        NormalizeAddress(address).ToString();
 
     private static string EndpointKey(IPEndPoint endpoint) =>
         $"{AddressKey(endpoint.Address)}:{endpoint.Port}";
+
+    // An IPv4-mapped IPv6 peer (a real IPv4 client on a dual-stack socket) is the
+    // same host as its IPv4 form and keeps collapsing exactly as before, so
+    // existing IPv4 deployments are unaffected. A genuine IPv6 peer must stay
+    // IPv6: MapToIPv4() keeps only the low 32 bits, which would collide distinct
+    // peers onto one key and store a fabricated send target.
+    private static IPAddress NormalizeAddress(IPAddress address) =>
+        address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
 
     private sealed class GameplaySession(
         RuntimeSession runtimeSession,

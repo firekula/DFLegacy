@@ -9,6 +9,7 @@
 | --- | --- | --- | --- |
 | `DFLegacy.Server` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
 | `DFLegacy.Protocol` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
+| `DFLegacy.Relay` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
 | `tests/DFLegacy.SmokeTests` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
 | `DFLegacy.Launcher` | `net10.0-windows`（WinForms） | 仅 Windows | .NET 10 SDK + PowerShell 7 + CMake + VS C++ |
 | `DFLegacy.Ijl15` | 原生 C++17，32 位 | 仅 Windows | VS C++ + CMake ≥ 3.24 |
@@ -137,6 +138,7 @@ pwsh .\src\DFLegacy.RandomNative\build-native.ps1 -Configuration Release -RunTes
 | --- | --- | --- |
 | 服务端 | `dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o <dir>` | `DFLegacy.Server.dll` / `.exe`、`DFLegacy.Protocol.dll`、`server.json`、`wwwroot/`、`web.config`；若已构建则含 `DFLegacy.RandomNative.dll` |
 | 启动器 | `dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -o <dir>` | `DFLegacy.Launcher.exe`、`DFLegacy.Protocol.dll`、`launcher.json`、`Config.ini`、`ijl15.dll` |
+| 客户端中继 | `dotnet publish src/DFLegacy.Relay/DFLegacy.Relay.csproj -c Release -o <dir>` | `DFLegacy.Relay.exe` / `.dll`、`DFLegacy.Relay.deps.json`、`DFLegacy.Relay.runtimeconfig.json` |
 
 `server.json` 与 `launcher.json` 都以 `PreserveNewest` 方式复制，源文件比目标新时会覆盖目标。反复发布到同一个目录前请先备份这两个文件，详见 [DEPLOYING.md](DEPLOYING.md#10-升级流程)。
 
