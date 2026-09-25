@@ -126,25 +126,30 @@ WantedBy=multi-user.target
 ### 5.1 构建与运行
 
 ```bash
-docker build -t dflegacy-server:local .
+docker build -t dflegacy-server:1.0.0 .
 # 或
-podman build -t dflegacy-server:local .
+podman build -t dflegacy-server:1.0.0 .
 ```
 
-运行（挂载 PVF，并设置客户端可达地址）：
+标签要与 `compose.yaml` 里的 `image:` 一致（默认 `dflegacy-server:1.0.0`）。compose 文件只引用镜像、不负责构建，所以先构建（或 `docker load` 一个导出的镜像）再 `docker compose up -d`。
+
+直接 `docker run`（桥接网络 + 端口映射）：
 
 ```bash
 docker run -d --name dflegacy-server \
   -e DFLegacy__GameplayDatagram__AdvertisedHost=192.168.1.10 \
+  -e DFLegacy__Admin__Host=:: \
   -v /srv/pvf/Script.pvf:/pvf/Script.pvf:ro \
   -v dflegacy-data:/app/data \
   -p 2311:2311/tcp -p 7001:7001/tcp -p 8080:8080/tcp \
   -p 2311:2311/udp -p 7002:7002/udp -p 7003:7003/udp \
   -p 127.0.0.1:8081:8081/tcp \
-  dflegacy-server:local
+  dflegacy-server:1.0.0
 ```
 
-编排方式见 `compose.yaml`：Docker 用 `docker compose up -d --build`，Podman 用 `podman compose up -d --build` 或 `podman-compose up -d --build`。
+注意 `-e DFLegacy__Admin__Host=::`：镜像默认把后台管理绑在容器内的 `127.0.0.1`，不设置这一项时映射出去的 8081 无法访问。
+
+编排方式见 `compose.yaml`：默认使用 host 网络（IPv6 部署推荐，不需要端口映射），文件末尾附有桥接 + 端口映射的备选写法。Docker 用 `docker compose up -d`，Podman 用 `podman compose up -d` 或 `podman-compose up -d`。
 
 ### 5.2 镜像约定
 
