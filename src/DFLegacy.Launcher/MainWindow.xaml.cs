@@ -172,7 +172,32 @@ public partial class MainWindow : System.Windows.Window
             Growl.Warning($"重新加载本地账号列表失败：{ex.Message}");
         }
     }
-    private void ConfigBtn_Click(object sender, RoutedEventArgs e) { }        // Task 7 接入
+    private void ConfigBtn_Click(object sender, RoutedEventArgs e)
+    {
+        Views.ConfigWindow win;
+        try
+        {
+            // 配置窗口在构造里会 Load 一份 launcher.json 快照，文件损坏时这里就抛；
+            // 不能让异常沿事件处理器冒泡成进程崩溃。
+            win = new Views.ConfigWindow(_store) { Owner = this };
+        }
+        catch (Exception ex)
+        {
+            Growl.Warning($"加载配置失败：{ex.Message}");
+            return;
+        }
+        win.ShowDialog();
+        try
+        {
+            _options = _store.Load();      // 设置变更后重新加载（host/url/relay 等）
+            RefreshAccounts();
+        }
+        catch (Exception ex)
+        {
+            // 重载失败时内存保留打开设置前的快照：提示用户但不崩溃，下次启动以磁盘为准。
+            Growl.Warning($"重新加载配置失败：{ex.Message}");
+        }
+    }
 
     protected override void OnClosing(CancelEventArgs e)
     {
