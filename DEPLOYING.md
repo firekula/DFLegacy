@@ -210,9 +210,11 @@ docker run -d --name dflegacy-server \
 | `DFLegacy__Entrance__Host` | `DFLegacy.Entrance.Host` |
 | `DFLegacy__GameplayDatagram__AdvertisedHost` | `DFLegacy.GameplayDatagram.AdvertisedHost` |
 | `DFLegacy__Admin__Host` | `DFLegacy.Admin.Host` |
-| `DFLegacy__Admin__Users__0` | `DFLegacy.Admin.Users[0]`（引导管理员名单，可继续 `__1`、`__2`） |
+| `DFLegacy__Admin__Users__0` | `DFLegacy.Admin.Users[0]`（引导管理员名单，可继续 `__1`、`__2`；只在启动时提升） |
 | `DFLegacy__Admin__TokenHours` | `DFLegacy.Admin.TokenHours` |
-| `DFLegacy__Admin__LoginMaxAttempts` | `DFLegacy.Admin.LoginMaxAttempts` |
+| `DFLegacy__Admin__MaxTokenLifetimeHours` | `DFLegacy.Admin.MaxTokenLifetimeHours`（token 绝对上限） |
+| `DFLegacy__Admin__LoginSourceMaxAttempts` | `DFLegacy.Admin.LoginSourceMaxAttempts`（单来源尝试额度） |
+| `DFLegacy__Admin__LoginAccountLockSources` | `DFLegacy.Admin.LoginAccountLockSources`（账号锁定所需来源数） |
 | `DFLegacy__Experience__MonsterMultiplier` | `DFLegacy.Experience.MonsterMultiplier` |
 
 ### 5.4 必填项与常见坑

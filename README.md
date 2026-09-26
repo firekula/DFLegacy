@@ -148,7 +148,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | --- | --- |
 | `ScriptPvfPath` | PVF 路径；相对路径以服务端程序目录为基准。更新 PVF 后重启服务端重新加载。 |
 | `DataPath` | 存档路径，默认 `data/state.json`，相对路径以服务端程序目录为基准。 |
-| `Admin` | 后台监听地址与端口，默认 `::`（双栈）+ `8081`。**全部管理接口需要登录**（Bearer token），并分「玩家 / 管理员」两档：玩家只能看自己的角色，管理员可发邮件、广播、充值、改角色档位。`Admin.Users` 为引导管理员名单；`TokenHours` / `LoginMaxAttempts` / `LoginLockoutMinutes` 控制 token 有效期与登录限流。详见 [ADMIN_API.md §1.2](ADMIN_API.md#12-鉴权与权限) 与 [DEPLOYING.md](DEPLOYING.md) 的安全边界。 |
+| `Admin` | 后台监听地址与端口，默认 `::`（双栈）+ `8081`。**全部管理接口需要登录**（Bearer token），并分「玩家 / 管理员」两档：玩家只能看自己的角色，管理员可发邮件、广播、充值、改角色档位。`Admin.Users` 为引导管理员名单（**只在启动时提升**，防抢注提权）；`TokenHours` / `MaxTokenLifetimeHours` 控制 token 滑动有效期与绝对上限；`LoginSourceMaxAttempts` / `LoginAccountLockSources` / `LoginLockoutMinutes` 控制两级登录限流（单来源尝试额度 + 多来源才锁账号）。详见 [ADMIN_API.md §1.2](ADMIN_API.md#12-鉴权与权限) 与 [DEPLOYING.md](DEPLOYING.md) 的安全边界。 |
 | `Entrance` / `Channel` | 登录入口和频道连接配置。 |
 | `CharacterDatagram` / `GameplayDatagram` | 客户端 UDP 监听配置。 |
 | `GameplayDatagram.AdvertisedHost` | 下发给客户端的玩法地址，留空时回退为 `GameplayDatagram.Host`；容器与 NAT 部署必填，详见 [DEPLOYING.md](DEPLOYING.md#61-监听与下发地址)。 |
