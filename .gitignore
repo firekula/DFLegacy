@@ -13,5 +13,6 @@ tools/pydeps/
 *.user
 *.log
 /docs
+/.superpowers/
 AGENTS.md
 DNF2008/
