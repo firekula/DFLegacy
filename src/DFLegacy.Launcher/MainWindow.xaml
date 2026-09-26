@@ -13,6 +13,8 @@
     按原版 2008 登录器 1:1 还原：窗口 567x512 + backgd_di1.png 背景。
     所有元素坐标取自客户端 config\layout\QQLogin.xml（Left/Top/Width/Height 一一对应）；
     按钮文字已烙在原始图片里，因此全部用图片按钮（三态在 SkinImage.cs 中切换）。
+    背景图的品红透明区已用 tools/key-magenta.ps1 抠成 alpha=0，配合 AllowsTransparency
+    由系统按 alpha 合成，透明处的点击也会穿透到桌面（沿用原版 RegionSet 的效果）。
   -->
   <Window.Resources>
     <!-- 原版输入框：无边框、透明底、白字白光标（QQLogin.xml: HasBorder=false, TextColor=0xffffff） -->

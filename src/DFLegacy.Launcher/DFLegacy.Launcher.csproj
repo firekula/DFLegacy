@@ -15,7 +15,10 @@
     <PackageReference Include="HandyControl" Version="3.5.1" />
   </ItemGroup>
   <!-- 原版 2008 登录器皮肤素材（取自客户端 start\data\ui 与 config\layout\QQLogin.xml 的布局定义），
-       以 WPF 资源内嵌，发布后自带、不依赖机器上是否留有原版安装。 -->
+       以 WPF 资源内嵌，发布后自带、不依赖机器上是否留有原版安装。
+       注意：backgd_di1.png 原图的透明区是 2008 年的色键做法（不透明品红 0xFF00FF，由原版
+       RegionSet FROMBGIMAGES 抠掉），入库前已用 tools/key-magenta.ps1 抠成真 alpha=0，
+       否则 WPF 会把品红原样画出来。 -->
   <ItemGroup>
     <Resource Include="Assets\Skin\*.png" />
     <Resource Include="Assets\Skin\QQGame.ico" />
