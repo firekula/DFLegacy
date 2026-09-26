@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DFLegacy 玩家中心</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body class="player-page">
+  <div class="workspace">
+    <header class="topbar">
+      <div class="page-brand">
+        <span class="brand-mark">DF</span>
+        <div>
+          <h1>我的角色</h1>
+          <p>账号 <strong id="ownerName">—</strong> 名下的角色列表</p>
+        </div>
+      </div>
+      <div class="topbar-meta">
+        <div class="identity">
+          <span id="identityRole" class="identity-role">当前身份：未登录</span>
+          <span id="identityName" class="identity-name">—</span>
+        </div>
+        <div id="serverState" class="server-state pending">
+          <span class="state-dot"></span>
+          <span>正在连接服务端</span>
+        </div>
+        <button id="logoutButton" class="quiet-button" type="button">退出登录</button>
+      </div>
+    </header>
+
+    <section class="surface form-layout">
+      <div class="section-heading">
+        <h2>我的角色</h2>
+        <p>只显示当前账号自己的角色；进入游戏创建角色后会出现在这里。</p>
+      </div>
+      <div class="table-scroll">
+        <table id="characterTable" class="data-table">
+          <thead>
+            <tr>
+              <th>角色名</th>
+              <th>等级</th>
+              <th>职业</th>
+              <th>槽位</th>
+            </tr>
+          </thead>
+          <tbody id="characterTableBody"></tbody>
+        </table>
+      </div>
+      <p id="characterEmpty" class="empty-hint hidden">该账号还没有角色，进入游戏创建角色后会显示在这里。</p>
+      <div class="form-actions">
+        <button id="reloadCharacters" class="secondary-button" type="button">刷新角色</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="loginOverlay" class="login-overlay hidden">
+    <form id="loginForm" class="surface login-card">
+      <div class="login-head">
+        <span class="brand-mark">DF</span>
+        <div>
+          <h2>登录 DFLegacy</h2>
+          <p>请输入账号和密码</p>
+        </div>
+      </div>
+      <label class="field">
+        <span>账号</span>
+        <input id="loginUserName" name="userName" autocomplete="username" required>
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="loginError" class="login-error hidden" role="alert"></p>
+      <div class="form-actions login-actions">
+        <button id="loginSubmit" class="primary-button" type="submit">登录</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    const SESSION_TOKEN_KEY = "dflegacy.admin.token";
+    const SESSION_USER_KEY = "dflegacy.admin.userName";
+    const SESSION_ROLE_KEY = "dflegacy.admin.role";
+
+    const ROLE_ADMIN = 1;
+
+    // 与 QuestCatalog.JobNames 保持一致，仅用于展示。
+    const JOB_NAMES = { 0: "鬼剑士", 1: "格斗家", 2: "神枪手", 3: "魔法师", 4: "圣职者" };
+
+    const auth = {
+      token: "",
+      userName: "",
+      role: 0,
+      waiters: []
+    };
+
+    const state = { toastTimer: null };
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const errorText = body =>
+      body && typeof body === "object" && body.error ? String(body.error) : "";
+    const errorMessage = error => (error instanceof Error ? error.message : String(error));
+    const isAdmin = () => auth.role === ROLE_ADMIN;
+    const jobLabel = job => JOB_NAMES[job] || `职业 ${job}`;
+
+    function loadSession() {
+      auth.token = sessionStorage.getItem(SESSION_TOKEN_KEY) || "";
+      auth.userName = sessionStorage.getItem(SESSION_USER_KEY) || "";
+      auth.role = Number(sessionStorage.getItem(SESSION_ROLE_KEY)) === ROLE_ADMIN ? ROLE_ADMIN : 0;
+    }
+
+    function saveSession() {
+      sessionStorage.setItem(SESSION_TOKEN_KEY, auth.token);
+      sessionStorage.setItem(SESSION_USER_KEY, auth.userName);
+      sessionStorage.setItem(SESSION_ROLE_KEY, String(auth.role));
+    }
+
+    function clearSession() {
+      auth.token = "";
+      auth.userName = "";
+      auth.role = 0;
+      sessionStorage.removeItem(SESSION_TOKEN_KEY);
+      sessionStorage.removeItem(SESSION_USER_KEY);
+      sessionStorage.removeItem(SESSION_ROLE_KEY);
+    }
+
+    const authHeaders = () => (auth.token ? { Authorization: `Bearer ${auth.token}` } : {});
+
+    function showToast(message, error = false) {
+      const toast = $("#toast");
+      toast.textContent = message;
+      toast.classList.toggle("error", error);
+      toast.classList.add("visible");
+      clearTimeout(state.toastTimer);
+      state.toastTimer = setTimeout(() => toast.classList.remove("visible"), 3200);
+    }
+
+    function setLoginError(message) {
+      const element = $("#loginError");
+      element.textContent = message || "";
+      element.classList.toggle("hidden", !message);
+    }
+
+    function showLogin() {
+      $("#loginOverlay").classList.remove("hidden");
+      setLoginError("");
+      $("#loginPassword").value = "";
+      const target = $("#loginUserName").value.trim() ? $("#loginPassword") : $("#loginUserName");
+      target.focus();
+    }
+
+    function hideLogin() {
+      $("#loginOverlay").classList.add("hidden");
+      setLoginError("");
+    }
+
+    function waitForLogin() {
+      return new Promise(resolve => auth.waiters.push(resolve));
+    }
+
+    function applyIdentity() {
+      const admin = isAdmin();
+      const guest = !auth.token;
+      $("#identityRole").textContent = guest
+        ? "当前身份：未登录"
+        : (admin ? "当前身份：管理员" : "当前身份：玩家");
+      $("#identityName").textContent = auth.userName || "—";
+      $("#ownerName").textContent = auth.userName || "—";
+      $("#logoutButton").disabled = guest;
+    }
+
+    async function requestLogin(userName, password) {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userName, password })
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const body = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error(errorText(body) || "失败次数过多，请稍后再试。");
+        }
+        if (response.status === 401) {
+          throw new Error("账号或密码错误。");
+        }
+        throw new Error(errorText(body) || `登录失败（${response.status}）`);
+      }
+      return body;
+    }
+
+    function completeLogin(payload) {
+      auth.token = payload.token || "";
+      auth.userName = payload.userName || $("#loginUserName").value.trim();
+      auth.role = Number(payload.role) === ROLE_ADMIN ? ROLE_ADMIN : 0;
+      saveSession();
+      applyIdentity();
+      hideLogin();
+      const waiters = auth.waiters.splice(0);
+      if (waiters.length > 0) {
+        waiters.forEach(resolve => resolve());
+      } else {
+        loadCharacters();
+      }
+    }
+
+    async function submitLoginForm(event) {
+      event.preventDefault();
+      const userName = $("#loginUserName").value.trim();
+      const password = $("#loginPassword").value;
+      if (!userName || !password) {
+        setLoginError("请输入账号和密码。");
+        return;
+      }
+      const button = $("#loginSubmit");
+      button.disabled = true;
+      setLoginError("");
+      try {
+        completeLogin(await requestLogin(userName, password));
+      } catch (error) {
+        setLoginError(errorMessage(error));
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function logout() {
+      const token = auth.token;
+      clearSession();
+      applyIdentity();
+      $("#characterTableBody").replaceChildren();
+      $("#characterTable").classList.add("hidden");
+      $("#characterEmpty").classList.add("hidden");
+      setServerState("pending", "未登录");
+      showLogin();
+      if (!token) {
+        return;
+      }
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+        });
+      } catch {
+        // 本地已清除会话，服务端 token 过期后自然失效。
+      }
+    }
+
+    async function api(path, options = {}, retry = true) {
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(),
+          ...(options.headers || {})
+        }
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const body = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+      if (response.status === 401) {
+        clearSession();
+        applyIdentity();
+        showLogin();
+        if (retry) {
+          await waitForLogin();
+          return api(path, options, false);
+        }
+        throw new Error(errorText(body) || "需要登录（token 缺失或已失效）。");
+      }
+      if (response.status === 403) {
+        const message = errorText(body) || "没有权限查看该账号。";
+        showToast(message, true);
+        throw new Error(message);
+      }
+      if (!response.ok) {
+        throw new Error(errorText(body) || `${response.status} ${response.statusText}`);
+      }
+      return body;
+    }
+
+    function renderCharacters(characters) {
+      const body = $("#characterTableBody");
+      body.replaceChildren();
+      characters.forEach(character => {
+        const row = document.createElement("tr");
+        [character.name, `Lv.${character.level}`, jobLabel(character.job), String(character.slot)]
+          .forEach(text => {
+            const element = document.createElement("td");
+            element.textContent = text;
+            row.append(element);
+          });
+        body.append(row);
+      });
+      $("#characterTable").classList.toggle("hidden", characters.length === 0);
+      $("#characterEmpty").classList.toggle("hidden", characters.length > 0);
+    }
+
+    function setServerState(mode, text) {
+      const element = $("#serverState");
+      element.className = `server-state ${mode}`;
+      element.lastElementChild.textContent = text;
+    }
+
+    async function loadCharacters() {
+      if (!auth.token) {
+        return;
+      }
+      setServerState("pending", "正在读取角色");
+      try {
+        const account = await api(`/api/accounts/${encodeURIComponent(auth.userName)}/characters`);
+        const characters = Array.isArray(account?.characters) ? account.characters : [];
+        renderCharacters(characters);
+        setServerState("online", `共 ${characters.length} 个角色`);
+      } catch (error) {
+        setServerState("error", "无法读取角色");
+        showToast(errorMessage(error), true);
+      }
+    }
+
+    function initialize() {
+      loadSession();
+      $("#loginForm").addEventListener("submit", submitLoginForm);
+      $("#logoutButton").addEventListener("click", logout);
+      $("#reloadCharacters").addEventListener("click", loadCharacters);
+      applyIdentity();
+      if (!auth.token) {
+        showLogin();
+        return;
+      }
+      loadCharacters();
+    }
+
+    document.addEventListener("DOMContentLoaded", initialize);
+  </script>
+</body>
+</html>

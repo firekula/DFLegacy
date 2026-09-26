@@ -17,13 +17,15 @@
         </div>
       </div>
       <nav class="nav" aria-label="后台功能">
-        <button class="nav-item active" type="button" data-view="mail">邮件</button>
-        <button class="nav-item" type="button" data-view="direct">单人通知</button>
-        <button class="nav-item" type="button" data-view="broadcast">广播通知</button>
-        <button class="nav-item" type="button" data-view="dungeon">副本权限</button>
+        <button class="nav-item active admin-only" type="button" data-view="mail">邮件</button>
+        <button class="nav-item admin-only" type="button" data-view="direct">单人通知</button>
+        <button class="nav-item admin-only" type="button" data-view="broadcast">广播通知</button>
+        <button class="nav-item admin-only" type="button" data-view="dungeon">副本权限</button>
+        <button class="nav-item admin-only" type="button" data-view="users">用户角色</button>
+        <button class="nav-item player-only" type="button" data-view="characters">我的角色</button>
       </nav>
       <div class="sidebar-foot">
-        <span id="onlineCount">0 名角色在线</span>
+        <span id="onlineCount" class="admin-only">0 名角色在线</span>
         <button id="refreshData" class="quiet-button" type="button">刷新数据</button>
       </div>
     </aside>
@@ -34,13 +36,20 @@
           <h1 id="pageTitle">邮件</h1>
           <p id="pageSubtitle">发送系统邮件和游戏物品</p>
         </div>
-        <div id="serverState" class="server-state pending">
-          <span class="state-dot"></span>
-          <span>正在连接服务端</span>
+        <div class="topbar-meta">
+          <div class="identity">
+            <span id="identityRole" class="identity-role">当前身份：未登录</span>
+            <span id="identityName" class="identity-name">—</span>
+          </div>
+          <div id="serverState" class="server-state pending">
+            <span class="state-dot"></span>
+            <span>正在连接服务端</span>
+          </div>
+          <button id="logoutButton" class="quiet-button" type="button">退出登录</button>
         </div>
       </header>
 
-      <section class="view active" data-view-panel="mail">
+      <section class="view active admin-only" data-view-panel="mail">
         <form id="mailForm" class="surface form-layout">
           <div class="section-heading">
             <h2>新邮件</h2>
@@ -97,7 +106,7 @@
         </form>
       </section>
 
-      <section class="view" data-view-panel="direct">
+      <section class="view admin-only" data-view-panel="direct">
         <div class="split-layout">
           <form id="directPopupForm" class="surface form-layout">
             <div class="section-heading">
@@ -141,7 +150,7 @@
         </div>
       </section>
 
-      <section class="view" data-view-panel="broadcast">
+      <section class="view admin-only" data-view-panel="broadcast">
         <div class="split-layout">
           <form id="broadcastPopupForm" class="surface form-layout danger-surface">
             <div class="section-heading">
@@ -177,7 +186,7 @@
         </div>
       </section>
 
-      <section class="view" data-view-panel="dungeon">
+      <section class="view admin-only" data-view-panel="dungeon">
         <form id="dungeonForm" class="surface form-layout compact-form">
           <div class="section-heading">
             <h2>开放副本难度</h2>
@@ -206,8 +215,83 @@
         </form>
       </section>
 
+      <section class="view admin-only" data-view-panel="users">
+        <div class="surface form-layout">
+          <div class="section-heading">
+            <h2>用户角色</h2>
+            <p>提升或降级账号的后台权限；角色变更会立即作废该账号已登录的 token。</p>
+          </div>
+          <div class="table-scroll">
+            <table id="userTable" class="data-table">
+              <thead>
+                <tr>
+                  <th>账号</th>
+                  <th>角色</th>
+                  <th>角色数</th>
+                  <th>UID 段</th>
+                  <th class="align-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody"></tbody>
+            </table>
+          </div>
+          <p id="userEmpty" class="empty-hint hidden">还没有任何账号。</p>
+        </div>
+      </section>
+
+      <section class="view player-only" data-view-panel="characters">
+        <div class="surface form-layout">
+          <div class="section-heading">
+            <h2>我的角色</h2>
+            <p>账号 <strong id="ownerName">—</strong> 名下的角色列表。</p>
+          </div>
+          <div class="table-scroll">
+            <table id="characterTable" class="data-table">
+              <thead>
+                <tr>
+                  <th>角色名</th>
+                  <th>等级</th>
+                  <th>职业</th>
+                  <th>槽位</th>
+                </tr>
+              </thead>
+              <tbody id="characterTableBody"></tbody>
+            </table>
+          </div>
+          <p id="characterEmpty" class="empty-hint hidden">该账号还没有角色，进入游戏创建角色后会显示在这里。</p>
+          <div class="form-actions">
+            <a class="secondary-button link-button" href="/admin/player.html">打开玩家页面 player.html</a>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
+
+  <div id="loginOverlay" class="login-overlay hidden">
+    <form id="loginForm" class="surface login-card">
+      <div class="login-head">
+        <span class="brand-mark">DF</span>
+        <div>
+          <h2>登录 DFLegacy</h2>
+          <p>请输入账号和密码</p>
+        </div>
+      </div>
+      <label class="field">
+        <span>账号</span>
+        <input id="loginUserName" name="userName" autocomplete="username" required>
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="loginError" class="login-error hidden" role="alert"></p>
+      <div class="form-actions login-actions">
+        <button id="loginSubmit" class="primary-button" type="submit">登录</button>
+      </div>
+    </form>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/admin/admin.js" defer></script>
 </body>
