@@ -45,20 +45,67 @@ public sealed class AccountServiceClient
         };
     }
 
+    /// <summary>
+    /// 登录取 token。8081 对外后改密等接口不再接受匿名调用：客户端先用旧密码登录换 token，
+    /// 爆破面因此收敛到登录一处（服务端按「账号 + 来源 IP」限流）。
+    /// </summary>
+    public async Task<LoginResult> LoginAsync(
+        string userName, string password,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new LoginRequest(userName, password);
+        using var response = await PostJsonAsync("api/auth/login", body, cancellationToken);
+        switch (response.StatusCode)
+        {
+            case HttpStatusCode.OK:
+                var payload = await ReadAsync<LoginResponse>(response, cancellationToken);
+                return payload is { Success: true, Token: { Length: > 0 } token }
+                    ? new LoginResult(LoginOutcome.Success, token, payload.UserName, payload.Role, null)
+                    : new LoginResult(
+                        LoginOutcome.InvalidRequest, null, null, 0, "服务端登录响应缺少 token。");
+            case HttpStatusCode.Unauthorized:
+                // 服务端刻意不区分"账号不存在"与"密码错误"，这里同样只给一句模糊提示。
+                return new LoginResult(LoginOutcome.InvalidCredentials, null, null, 0, "账号或密码错误。");
+            case HttpStatusCode.TooManyRequests:
+                return new LoginResult(
+                    LoginOutcome.Locked, null, null, 0,
+                    await ReadErrorAsync(response, cancellationToken) ?? "失败次数过多，请稍后再试。");
+            default:
+                return new LoginResult(
+                    LoginOutcome.InvalidRequest, null, null, 0,
+                    await ReadErrorAsync(response, cancellationToken));
+        }
+    }
+
     public async Task<PasswordResult> ChangePasswordAsync(
         string userName, string oldPassword, string newPassword,
+        string? token = null,
         CancellationToken cancellationToken = default)
     {
         var body = new ChangeAccountPasswordRequest(oldPassword, newPassword);
         using var response = await PutJsonAsync(
-            $"api/accounts/{UrlEncode(userName)}/password", body, cancellationToken);
-        return response.StatusCode switch
+            $"api/accounts/{UrlEncode(userName)}/password", body, cancellationToken, token);
+        if (response.StatusCode == HttpStatusCode.OK)
         {
-            HttpStatusCode.OK => new PasswordResult(PasswordOutcome.Success, null),
-            HttpStatusCode.Unauthorized => new PasswordResult(PasswordOutcome.InvalidCredentials, "账号或密码错误。"),
-            _ => new PasswordResult(PasswordOutcome.InvalidRequest,
-                await ReadErrorAsync(response, cancellationToken))
-        };
+            return new PasswordResult(PasswordOutcome.Success, null);
+        }
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            // 401 有两种来源：旧密码错误（端点返回，无体）与 token 缺失/失效（中间件返回，带 error 体）。
+            // 用"调用方是否带了 token"区分最可靠——靠响应体判断会被 ReasonPhrase 兜底干扰。
+            if (!string.IsNullOrEmpty(token))
+            {
+                return new PasswordResult(
+                    PasswordOutcome.InvalidRequest,
+                    await ReadErrorAsync(response, cancellationToken) ?? "登录状态已失效，请重试。");
+            }
+
+            return new PasswordResult(PasswordOutcome.InvalidCredentials, "账号或密码错误。");
+        }
+
+        return new PasswordResult(PasswordOutcome.InvalidRequest,
+            await ReadErrorAsync(response, cancellationToken));
     }
 
     public async Task<PasswordResult> ResetPasswordAsync(
@@ -90,18 +137,28 @@ public sealed class AccountServiceClient
         }
     }
 
-    private async Task<HttpResponseMessage> PostJsonAsync(string relativeUri, object body, CancellationToken ct)
-    {
-        var content = new StringContent(
-            JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
-        return await _http.PostAsync(relativeUri, content, ct);
-    }
+    private Task<HttpResponseMessage> PostJsonAsync(
+        string relativeUri, object body, CancellationToken ct, string? token = null) =>
+        SendJsonAsync(HttpMethod.Post, relativeUri, body, token, ct);
 
-    private async Task<HttpResponseMessage> PutJsonAsync(string relativeUri, object body, CancellationToken ct)
+    private Task<HttpResponseMessage> PutJsonAsync(
+        string relativeUri, object body, CancellationToken ct, string? token = null) =>
+        SendJsonAsync(HttpMethod.Put, relativeUri, body, token, ct);
+
+    // 用 HttpRequestMessage 而不是给 HttpClient 挂默认头：默认头是共享状态，
+    // 多窗口并发调用时会串号。
+    private async Task<HttpResponseMessage> SendJsonAsync(
+        HttpMethod method, string relativeUri, object body, string? token, CancellationToken ct)
     {
         var content = new StringContent(
             JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
-        return await _http.PutAsync(relativeUri, content, ct);
+        using var request = new HttpRequestMessage(method, relativeUri) { Content = content };
+        if (!string.IsNullOrEmpty(token))
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {token}");
+        }
+
+        return await _http.SendAsync(request, ct);
     }
 
     private static async Task<T?> ReadAsync<T>(HttpResponseMessage response, CancellationToken ct)

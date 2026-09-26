@@ -27,11 +27,39 @@ public partial class ModifyWindow : System.Windows.Window
         if (user.Length is < 4 or > 32 || newP.Length is < 6 or > 128) { Growl.Info("账号 4-32、新密码 6-128。"); return; }
 
         SubmitBtn.IsEnabled = false;
-        PasswordResult r;
+        // 8081 对外后改密接口要求身份：先用旧密码登录换 token（失败限流集中在登录一处，
+        // 旧密码错误也在这一步暴露），再带 token 改密。
+        LoginResult login;
         try
         {
             // try/catch 只包网络请求：本地持久化失败不能伪装成"请求失败"。
-            r = await _account.ChangePasswordAsync(user, oldP, newP);
+            login = await _account.LoginAsync(user, oldP);
+        }
+        catch (Exception ex)
+        {
+            Growl.Info($"请求失败：{ex.Message}");
+            SubmitBtn.IsEnabled = true;
+            return;
+        }
+
+        if (login.Outcome == LoginOutcome.Locked)
+        {
+            Growl.Warning(login.Error ?? "失败次数过多，请稍后再试。");
+            SubmitBtn.IsEnabled = true;
+            return;
+        }
+
+        if (login.Outcome != LoginOutcome.Success)
+        {
+            Growl.Warning(login.Error ?? "账号或密码错误（旧密码不正确）。");
+            SubmitBtn.IsEnabled = true;
+            return;
+        }
+
+        PasswordResult r;
+        try
+        {
+            r = await _account.ChangePasswordAsync(user, oldP, newP, login.Token);
         }
         catch (Exception ex)
         {
