@@ -1,5 +1,4 @@
 using System.Windows;
-using HandyControl.Controls;
 using HandyControl.Data;
 
 namespace DFLegacy.Launcher;
@@ -19,10 +18,23 @@ public partial class App : Application
             Shutdown(code);
             return;
         }
-        ApplyTheme(Program.LoadOptions().Theme);
-        var window = new MainWindow();
-        MainWindow = window;
-        window.Show();
+        try
+        {
+            ApplyTheme(Program.LoadOptions().Theme);
+            var window = new MainWindow();
+            MainWindow = window;
+            window.Show();
+        }
+        catch (Exception exception)
+        {
+            // launcher.json 损坏等配置错误会从 LoadOptions 或 MainWindow 构造内的
+            // _store.Load 抛出（InvalidDataException / JsonException）。async void
+            // OnStartup 的未处理异常会以 WPF 崩溃对话框收场，这里与 headless 的
+            // catch 保持同一交互方式：友好弹窗 + 以退出码 1 结束。
+            MessageBox.Show(exception.Message, "DFLegacy 启动失败",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+        }
     }
 
     internal static void ApplyTheme(string theme)
