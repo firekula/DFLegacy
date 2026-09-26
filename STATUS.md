@@ -14,6 +14,7 @@
 | 绑 `::` 时 UDP 也是真双栈（此前只服务 IPv6） | `DualStackUdp.Bind` |
 | 服务端/中继可用环境变量覆盖配置（`DFLegacy__X__Y`） | `Program.cs`（在 server.json 之后注册） |
 | 容器镜像与编排（host 网络、双栈、PVF/存档挂载） | `Dockerfile`、`compose.yaml` |
+| 启动器账号 UI：WPF + HandyControl 交互式登录壳（注册/登录/改密/找回/账号管理/设置），headless 路径保留 | `DFLegacy.Launcher`（`MainWindow`、`Views/*`、`App.xaml.cs`）、`DFLegacy.AccountClient` |
 
 ## 2. 验证状态
 
@@ -31,7 +32,31 @@
 - 用真实 `DNF.exe` 的完整游戏内流程（登录、进图、任务、SP 增长、召唤师转职）。
 - 公网 IPv6 的真实可达性：本机没有公网 IPv6，容器/服务端的 IPv6 行为只在回环与容器网络内验证过。
 - Podman：本机 podman 机器损坏（WSL 发行版缺失，`WSL_E_DISTRO_NOT_FOUND`），只做了 Docker 验证；Dockerfile 只用经典指令，理论上 Buildah 可用。
-- 冒烟测试中有 8 项**既有的**与 PVF 版本相关的失败（本仓库 PVF 缺 `etc/sptable.etc`、文件数/商城定价/宠物进化数据与测试基准不同），与上述改动无关；改动前后失败项一致。
+- 冒烟测试此前记录的 8 项与 PVF 版本相关的**既有失败**在本机已不复现：2026-09-26 全量冒烟全绿（含 AccountClient 契约测试，见 2.1）。换用不同版本的 PVF 时，数据相关测试仍可能再次与基准不一致。
+
+### 2.1 启动器账号 UI
+
+启动器已从无头程序改为 WPF 交互式登录壳（HandyControl 3.5.1）：无参运行打开主窗口（账号下拉 + 密码 + 服务端状态灯），注册、登录、改密、找回、账号管理与设置（主题）都在界面内完成；带 `--headless`/`--account`/`--account-index` 等开关时仍走无头路径（不打开界面，退出码保留）。
+
+**已实测（可复现，2026-09-26）**
+
+- `dotnet build src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -p:DesignTimeBuild=true`：成功，0 警告 0 错误（本机没有 CMake，`DesignTimeBuild=true` 跳过原生 ijl15 目标，见 §5）。
+- `dotnet run --project tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj -c Release`：退出 0、全绿，含 `AccountClientSmokeTests` 契约测试（桩 `HttpMessageHandler`：注册 201/409/400、改密 200/401/400、找回 200/401/400、健康检查 200 与不可达）。
+- `dotnet run --project src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -p:DesignTimeBuild=true -- --check-d3d9`：退出 0（headless 回归，无 UI 依赖）。
+- `dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -p:DesignTimeBuild=true -o ./dist/launcher-test`：产物含 `DFLegacy.Launcher.exe`、`DFLegacy.AccountClient.dll`、`HandyControl.dll`、`launcher.json`；此方式不含 `ijl15.dll`（需含 ijl15 的分发产物用带 C++ 工作负载的 VS msbuild 另行发布，见 BUILDING）。
+
+**手动验证清单（需要桌面与真实客户端，接手时优先做）**
+
+1. 启动器无参运行 → 出现主窗口。
+2. 点注册 → 注册成功 → 账号自动加入下拉列表 → 启动游戏 → 游戏内登录成功。
+3. 改密、找回、账号管理、设置（主题切换）各走一遍。
+4. 远程 IPv6 场景：账号 API（8081）默认无法触达，属预期（中继不转发 8081，见 DEPLOYING §6.4）；如需开启按该节操作。
+
+**已知限制**
+
+- 账号的 `RememberPassword=false` 时配置只保存空密码：UI 流程不受影响（启动前在界面输入密码即可）；但无头启动（`--headless`/`--account X`）会因「Password 不能为空，也不能包含空白、问号或双引号。」校验失败——无头模式需要存储密码。
+- 找回密码成功后，本地记住的密码不会自动更新：下次启动若勾选记住密码，需在 UI 重新输入一次（游戏内登录用的才是新密码）。
+- `launcher.json` 经 UI 保存后会重写整个文件，中文注释会丢失（System.Text.Json 不支持注释往返，已确认接受；字段说明以 README 为准）。
 
 ## 3. 可复用的验证方法
 

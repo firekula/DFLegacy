@@ -5,7 +5,9 @@
   "ClientPath": "../DNF.exe",
   "EntranceHost": "127.0.0.1",
   "EntrancePort": 2311,
+  // 账号 HTTP API 基址，即服务端 Admin 端口（默认 http://127.0.0.1:8081）。启动器的注册/改密/找回经此访问。
   "AccountServiceUrl": "http://127.0.0.1:8081",
+  // 启动器界面主题：auto / light / dark。
   "Theme": "auto",
   "Account": "test",
   "Password": "test",
@@ -16,6 +18,7 @@
       "DisplayName": "测试账号",
       "CreateTime": "2026-09-26T12:00:00+08:00",
       "OicqCode": null,
+      // 为 false 时该账号只保存空密码，启动前需在界面输入密码；无头启动（--headless / --account）需要存储密码。
       "RememberPassword": true
     }
   ],

@@ -19,7 +19,7 @@
 | `DFLegacy.Server` | 支持 | 支持 | 支持 | 纯托管代码 + Kestrel，无强制原生依赖 |
 | `DFLegacy.Protocol`、冒烟测试 | 支持 | 支持 | 支持 | 纯托管代码 |
 | 服务端容器镜像 | 支持 | 支持 | 支持 | 见 §5，宿主只需能运行 Docker 或 Podman |
-| `DFLegacy.Launcher` | 支持 | 不支持 | 不支持 | WinForms 程序，且需要检测 D3D9 设备 |
+| `DFLegacy.Launcher` | 支持 | 不支持 | 不支持 | WPF 程序，且需要检测 D3D9 设备 |
 | `ijl15.dll` 客户端补丁 | 支持 | 不支持 | 不支持 | 32 位 Windows DLL，替换客户端模块 |
 | `DFLegacy.RandomNative.dll` | 支持（可选） | 不支持 | 不支持 | 仅提供 RDSEED 硬件随机，缺失时自动回退 |
 | 游戏客户端本身 | 支持 | 不支持 | 不支持 | 原版 32 位 Windows 客户端 |
@@ -78,7 +78,10 @@ DFLegacy.Launcher.exe --install-ijl15               # 只安装 ijl15 补丁
 DFLegacy.Launcher.exe --self-test                   # 自检并输出启动器日志
 DFLegacy.Launcher.exe --account-index 1             # 临时选用 launcher.json 中第 2 个账号
 DFLegacy.Launcher.exe --account another-account     # 按账号名临时选用
+DFLegacy.Launcher.exe --headless --account test     # 不打开界面，直接按已存账号启动客户端
 ```
+
+带上面任意开关（含 `--account`/`--account-index`）时启动器都走无头路径，不打开交互界面；此时使用账号配置里存储的密码（`RememberPassword=false` 的账号只保存空密码，无法无头启动，见 [STATUS.md](STATUS.md) 的已知限制）。
 
 ## 4. Linux 与 macOS 无头服务端部署
 
@@ -345,6 +348,8 @@ docker run -d --name dflegacy-server \
 - 反向场景同样适用：IPv4 服务器 + 客户端所在网络只有 IPv6 时，把 `--server` 指向 IPv4 地址即可，中继按解析结果选择地址族。
 - 已知限制：协议中客户端地址字段是固定 4 字节（NAT 上报、对端信息），IPv6 对端经中继时这些字段没有意义；模拟器不用它们做路由（那条发送链路当前无调用者），不影响游玩。
 
+账号管理 API（8081）默认仅服务端 loopback、且不随中继转发（中继只覆盖游戏端口 TCP 2311/7001/8080、UDP 2311/7002/7003）。远程玩家使用运营方预创建的账号；注册/改密/找回仅在本地或受信内网使用。如需远程访问 8081，由运营方在 `server.json` 设 `Admin.Host=::` 并在 `launcher.json` 的 `Relay.TcpPorts` 追加 `8081`，**但 8081 无鉴权且 `GET /api/accounts` 会泄露账号名，仅在受信网络启用**。
+
 ### 6.5 局域网、公网与域名连接
 
 | 场景 | 客户端侧（启动器 / 中继） | 服务端侧 |
@@ -380,7 +385,9 @@ docker run -d --name dflegacy-server \
 
 - `ClientPath`：客户端 `DNF.exe` 的完整路径（必填）。
 - `EntranceHost` / `EntrancePort`：客户端要连接的登录入口，需与 `Entrance` 配置一致。
-- `Account` / `Password`，或 `Accounts` + `AccountIndex`：登录凭据。默认示例是 `test/test`，**不要随发布分发含真实密码的配置**。
+- `Account` / `Password`，或 `Accounts` + `AccountIndex`：登录凭据。默认示例是 `test/test`，**不要随发布分发含真实密码的配置**。`Accounts` 每项还可填 `DisplayName`、`CreateTime`、`OicqCode` 与 `RememberPassword`（默认 `true`；为 `false` 时只保存空密码，无头启动需要存储密码），字段说明见 [README](README.md#启动器)。
+- `AccountServiceUrl`：账号 HTTP API 基址，默认 `http://127.0.0.1:8081`（服务端 Admin 端口），注册/改密/找回经此访问；远程场景见 §6.4。
+- `Theme`：启动器界面主题，`auto`（默认）/ `light` / `dark`。
 - `StartServer`：是否由启动器按需启动本地服务端。
 - `D3D9Adapter` / `D3D9TimeoutSeconds` / `D3D9RetryIntervalSeconds`：D3D9 设备检测参数。
 - `Relay`：让启动器在**自己进程内**托管本地中继，用于客户端只能 IPv4、服务器只有 IPv6 的场景，见 §6.4。启用后启动器会驻留到客户端退出为止（不会另起进程）。

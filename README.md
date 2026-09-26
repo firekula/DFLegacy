@@ -42,7 +42,8 @@
 | `DFLegacy.Server` | 主业务、PVF 数据读取、账号角色持久化、TCP/UDP 服务及 HTTP 管理接口。 |
 | `DFLegacy.Protocol` | 登录与通信协议的编解码、请求解析、响应与通知包构建。 |
 | `DFLegacy.Relay` / `DFLegacy.Relay.Core` | 本机 TCP/UDP 端口中继：让只支持 IPv4 的原版客户端经本机连接 IPv6 服务器。核心库由启动器在自身进程内托管，独立可执行文件供手动运行。见 [DEPLOYING.md](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)。 |
-| `DFLegacy.Launcher` | Windows 启动器，管理登录配置、检查运行环境、安装 IJL15 模块并启动客户端，可按需启动本地服务端。 |
+| `DFLegacy.Launcher` | Windows 启动器：WPF 交互式登录壳，含注册/登录/改密/找回/账号管理/配置；检查运行环境、安装 IJL15 模块并启动客户端，可按需启动本地服务端。`--headless`/`--account` 仍支持双击即玩。 |
+| `DFLegacy.AccountClient` | 启动器使用的账号 HTTP 客户端（注册、改密、找回密码、健康检查）。 |
 | `DFLegacy.Ijl15` | 32 位 C++ `ijl15.dll` 兼容模块，提供客户端所需的 JPEG 功能及进程内兼容补丁、窗口缩放等功能。 |
 | `DFLegacy.RandomNative` | 64 位 C++ 硬件随机种子桥接，为玩法随机提供 RDSEED 支持；不支持该指令时自动回退，不是运行必需项。 |
 | `wwwroot/admin` | 独立的中文后台管理页面，使用现代浏览器访问，不依赖前端构建工具。 |
@@ -57,7 +58,7 @@
 | `DFLegacy.Protocol`、冒烟测试 | 支持 | 支持 | 支持 | 纯托管代码 |
 | `DFLegacy.Relay` | 支持 | 支持 | 支持 | 纯托管端口中继，无原生依赖 |
 | 服务端容器镜像 | 支持 | 支持 | 支持 | 见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)；宿主只需能运行 Docker 或 Podman |
-| `DFLegacy.Launcher` | 支持 | 不支持 | 不支持 | WinForms 程序，且需要检测 D3D9 设备 |
+| `DFLegacy.Launcher` | 支持 | 不支持 | 不支持 | WPF 程序，且需要检测 D3D9 设备 |
 | `DFLegacy.Ijl15`（32 位客户端补丁） | 支持 | 不支持 | 不支持 | 原生 C++，用于替换客户端模块 |
 | `DFLegacy.RandomNative`（64 位随机桥） | 支持 | 不支持 | 不支持 | 可选；缺失或不可用时自动回退到托管随机 |
 | 游戏客户端 | 支持 | 不支持 | 不支持 | 原版 32 位 Windows 客户端 |
@@ -162,7 +163,15 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 
 ### 启动器
 
-`launcher.json` 支持 `Accounts` 账号列表及 `AccountIndex`；也可以使用 `--account-index N` 或 `--account NAME` 临时选择已配置账号。默认测试凭据为 `test/test`，请勿将包含真实密码的配置公开分发。`Relay.Enabled` 打开后，启动器会把本地中继托管在自己进程内（启动客户端后驻留到客户端退出，不额外产生进程），用于客户端只能 IPv4、服务器只有 IPv6 的场景，见 [DEPLOYING.md](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)。
+`launcher.json` 支持 `Accounts` 账号列表及 `AccountIndex`；也可以使用 `--account-index N` 或 `--account NAME` 临时选择已配置账号。默认测试凭据为 `test/test`，请勿将包含真实密码的配置公开分发。启动器无参运行时打开交互界面（账号下拉 + 密码 + 服务端状态灯），注册、登录、改密、找回与账号管理都在界面内完成。
+
+| 设置 | 用途 |
+| --- | --- |
+| `AccountServiceUrl` | 账号 HTTP API 基址，默认 `http://127.0.0.1:8081`（服务端 Admin 端口）；注册/改密/找回经此访问。 |
+| `Theme` | 启动器界面主题：`auto` / `light` / `dark`。 |
+| `Accounts[]` 子项 | 除 `Account` / `Password` 外还支持 `DisplayName`（显示名）、`CreateTime`（创建时间）、`OicqCode` 与 `RememberPassword`（记住密码，默认 `true`；为 `false` 时只保存空密码，启动前需在界面输入，无头启动需要存储密码）。 |
+
+`Relay.Enabled` 打开后，启动器会把本地中继托管在自己进程内（启动客户端后驻留到客户端退出，不额外产生进程），用于客户端只能 IPv4、服务器只有 IPv6 的场景，见 [DEPLOYING.md](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)。
 
 启动器会安装发布目录中的 `ijl15.dll`，首次替换已有模块时保留 `ijl15.original.dll`，缺少客户端 `Config.ini` 时复制默认配置。IJL15 补丁只修改当前进程内存，不改写磁盘上的 PE；Launcher 启动器本身不读写客户端进程内存。
 
