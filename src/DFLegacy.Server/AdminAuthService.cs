@@ -45,7 +45,15 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
     {
         public int Count;
         public DateTimeOffset LockedUntil;
+        public DateTimeOffset LastTouchedAt;
     }
+
+    // 登录失败记录与 token 都是对公网可达的内存表：必须有界，否则攻击者用海量
+    // 随机用户名刷失败、或用自己账号反复登录，就能把内存堆上去。
+    private static readonly TimeSpan FailureRetention = TimeSpan.FromHours(1);
+    private const int MaximumFailureEntries = 20_000;
+    private const int MaximumTokenEntries = 20_000;
+    private const int MaximumSessionsPerUser = 5;
 
     internal TimeSpan TokenLifetime =>
         TimeSpan.FromHours(Math.Clamp(options.Admin.TokenHours, 1, 24 * 30));
@@ -56,6 +64,9 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
         TimeSpan.FromMinutes(Math.Clamp(options.Admin.LoginLockoutMinutes, 1, 24 * 60));
 
     public int ActiveTokenCount => _tokens.Count;
+
+    /// <summary>当前跟踪的「账号+来源」失败记录数（测试与观测用，正常远小于上限）。</summary>
+    public int TrackedFailureCount => _failures.Count;
 
     public bool IsLocked(string userName, string? sourceKey)
     {
@@ -73,17 +84,21 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
     /// <summary>记一次登录失败；达到阈值时开始锁定，返回锁定截止时间（未触发限流返回 null）。</summary>
     public DateTimeOffset? RegisterFailure(string userName, string? sourceKey)
     {
+        var now = clock.GetUtcNow();
         var state = _failures.GetOrAdd(FailureKey(userName, sourceKey), _ => new FailureState());
         lock (state)
         {
+            state.LastTouchedAt = now;
             state.Count++;
             if (state.Count < MaxAttempts)
             {
+                PurgeFailuresIfNeeded(now);
                 return null;
             }
 
             state.Count = 0;
-            state.LockedUntil = clock.GetUtcNow() + LockoutDuration;
+            state.LockedUntil = now + LockoutDuration;
+            PurgeFailuresIfNeeded(now);
             return state.LockedUntil;
         }
     }
@@ -93,6 +108,8 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
 
     public AdminLoginResult IssueToken(string userName, AccountRole role)
     {
+        EvictExcessSessionsOf(userName);
+        PurgeTokensIfNeeded();
         var token = CreateToken();
         var expiresAt = clock.GetUtcNow() + TokenLifetime;
         _tokens[token] = new AdminTokenInfo(userName, role, expiresAt);
@@ -104,6 +121,24 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
             userName,
             role,
             expiresAt);
+    }
+
+    /// <summary>同一账号最多保留 <see cref="MaximumSessionsPerUser"/> 个会话，超出时顶掉最久未用的。</summary>
+    private void EvictExcessSessionsOf(string userName)
+    {
+        var mine = _tokens
+            .Where(pair => string.Equals(pair.Value.UserName, userName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (mine.Count < MaximumSessionsPerUser)
+        {
+            return;
+        }
+
+        var excess = mine.Count - MaximumSessionsPerUser + 1;
+        foreach (var pair in mine.OrderBy(pair => pair.Value.ExpiresAt).Take(excess))
+        {
+            _tokens.TryRemove(pair.Key, out _);
+        }
     }
 
     /// <summary>校验 token；通过则滑动续期（活跃会话不会中途掉线），过期即作废。</summary>
@@ -155,6 +190,83 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
             .Replace('+', '-')
             .Replace('/', '_')
             .TrimEnd('=');
+
+    // 超限时先按时间回收：保留仍在锁定/活跃的条目，丢掉一小时没动过的记录。
+    // 仍然超限就按最旧优先丢弃——宁可放宽限流也不能让内存无界增长。
+    private void PurgeFailuresIfNeeded(DateTimeOffset now)
+    {
+        if (_failures.Count <= MaximumFailureEntries)
+        {
+            return;
+        }
+
+        var cutoff = now - FailureRetention;
+        foreach (var pair in _failures)
+        {
+            DateTimeOffset touched;
+            lock (pair.Value)
+            {
+                touched = pair.Value.LastTouchedAt;
+            }
+
+            if (touched < cutoff)
+            {
+                _failures.TryRemove(pair.Key, out _);
+            }
+        }
+
+        if (_failures.Count <= MaximumFailureEntries)
+        {
+            return;
+        }
+
+        var excess = _failures.Count - MaximumFailureEntries;
+        var oldest = _failures
+            .OrderBy(pair => pair.Value.LastTouchedAt)
+            .Take(excess)
+            .Select(pair => pair.Key)
+            .ToArray();
+        foreach (var key in oldest)
+        {
+            _failures.TryRemove(key, out _);
+        }
+    }
+
+    // 在插入新 token 之前调用：按"插入后"的数量判断，否则会稳定超出上限 1 个。
+    private void PurgeTokensIfNeeded()
+    {
+        if (_tokens.Count + 1 <= MaximumTokenEntries)
+        {
+            return;
+        }
+
+        var now = clock.GetUtcNow();
+        foreach (var pair in _tokens)
+        {
+            if (pair.Value.ExpiresAt <= now)
+            {
+                _tokens.TryRemove(pair.Key, out _);
+            }
+        }
+
+        if (_tokens.Count + 1 <= MaximumTokenEntries)
+        {
+            return;
+        }
+
+        // 仍然超限（大量"仍然有效"的会话）：按最久未用顶掉，宁可让部分会话重新登录，
+        // 也不让内存无界增长。
+        var excess = _tokens.Count + 1 - MaximumTokenEntries;
+        var oldest = _tokens
+            .OrderBy(pair => pair.Value.ExpiresAt)
+            .Take(excess)
+            .Select(pair => pair.Key)
+            .ToArray();
+        foreach (var key in oldest)
+        {
+            _tokens.TryRemove(key, out _);
+        }
+    }
 
     private static string FailureKey(string userName, string? sourceKey) =>
         $"{userName.Trim().ToLowerInvariant()}|{sourceKey ?? "unknown"}";

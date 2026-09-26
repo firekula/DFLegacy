@@ -10,7 +10,45 @@ internal static class AdminAuthSmokeTests
         CheckBearerParsing(check);
         CheckTokenLifecycle(check);
         CheckLoginRateLimit(check);
+        CheckBoundedMemory(check);
         await CheckRoleModelAsync(check);
+    }
+
+    // 登录失败表与 token 表都对公网可达：必须有界，否则刷量就能把内存堆上去。
+    private static void CheckBoundedMemory(Action<bool, string> check)
+    {
+        var start = new DateTimeOffset(2026, 9, 26, 12, 0, 0, TimeSpan.Zero);
+        var clock = new FakeClock(start);
+        var auth = new AdminAuthService(new ServerOptions(), clock);
+
+        for (var i = 0; i < 25_000; i++)
+        {
+            auth.RegisterFailure($"flood{i}", "10.0.0.9");
+        }
+
+        check(auth.TrackedFailureCount <= 20_000,
+            $"failure tracking stays bounded under username flooding (got {auth.TrackedFailureCount})");
+
+        // 单账号反复登录：最多保留 5 个会话，最久未用的被顶掉
+        // （每次登录推进 1 秒，让 token 的过期时间可区分——真实场景时间本来就在走）
+        var tokens = new List<string>();
+        for (var i = 0; i < 10; i++)
+        {
+            clock.Now = start.AddSeconds(i);
+            tokens.Add(auth.IssueToken("solo", AccountRole.Player).Token!);
+        }
+
+        check(auth.Validate(tokens[0]) is null && auth.Validate(tokens[^1]) is not null,
+            "the oldest session of a repeatedly logging-in account is evicted (max 5 concurrent)");
+
+        // 海量不同账号登录：token 表同样有界
+        for (var i = 0; i < 25_000; i++)
+        {
+            auth.IssueToken($"burst{i}", AccountRole.Player);
+        }
+
+        check(auth.ActiveTokenCount <= 20_000,
+            $"token table stays bounded under login flooding (got {auth.ActiveTokenCount})");
     }
 
     // 权限表是纯函数：这组断言就是"哪一个接口需要什么权限"的唯一权威清单，
