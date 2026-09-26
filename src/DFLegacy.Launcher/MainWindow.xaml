@@ -30,7 +30,7 @@
     </StackPanel>
 
     <UniformGrid Grid.Row="3" Columns="2" Rows="3" Margin="0,8,0,8">
-      <Button x:Name="RegisterBtn"   Content="注册账号" IsEnabled="False" Margin="4" Click="RegisterBtn_Click"/>
+      <Button x:Name="RegisterBtn"   Content="注册账号" IsEnabled="True" Margin="4" Click="RegisterBtn_Click"/>
       <Button x:Name="ModifyBtn"     Content="修改密码" IsEnabled="False" Margin="4" Click="ModifyBtn_Click"/>
       <Button x:Name="ResetBtn"      Content="找回密码" IsEnabled="False" Margin="4" Click="ResetBtn_Click"/>
       <Button x:Name="AccountEditBtn" Content="账号管理" IsEnabled="False" Margin="4" Click="AccountEditBtn_Click"/>

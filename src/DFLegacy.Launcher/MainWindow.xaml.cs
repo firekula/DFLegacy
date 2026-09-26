@@ -82,7 +82,23 @@ public partial class MainWindow : System.Windows.Window
     }
 
     private async void RefreshBtn_Click(object sender, RoutedEventArgs e) => await RefreshStatusAsync();
-    private void RegisterBtn_Click(object sender, RoutedEventArgs e) { }      // Task 4 接入
+    private void RegisterBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var win = new Views.RegisterWindow(_account, OnRegistered);
+        win.Owner = this;
+        win.ShowDialog();
+    }
+
+    private void OnRegistered(LauncherAccountProfile profile, bool remember)
+    {
+        profile.RememberPassword = remember;
+        _options.Accounts.Add(profile);
+        _options.AccountIndex = _options.Accounts.Count - 1;
+        _store.Save(_options);
+        RefreshAccounts();
+        if (_options.Accounts.Count > 0)
+            AccountBox.SelectedIndex = _options.Accounts.Count - 1;
+    }
     private void ModifyBtn_Click(object sender, RoutedEventArgs e) { }        // Task 5 接入
     private void ResetBtn_Click(object sender, RoutedEventArgs e) { }        // Task 5 接入
     private void AccountEditBtn_Click(object sender, RoutedEventArgs e) { }   // Task 6 接入

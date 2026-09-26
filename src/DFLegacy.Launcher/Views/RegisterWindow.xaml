@@ -1,0 +1,27 @@
+<Window x:Class="DFLegacy.Launcher.Views.RegisterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        Title="注册账号" Height="380" Width="360"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <TextBlock Grid.Row="0" Text="用户名（4-32）"/>
+    <TextBox    Grid.Row="1" x:Name="UserNameBox" Margin="0,4,0,8"/>
+    <TextBlock Grid.Row="2" Text="密码（6-128）"/>
+    <PasswordBox Grid.Row="3" x:Name="PasswordBox" Margin="0,4,0,8"/>
+    <TextBlock Grid.Row="4" Text="确认密码"/>
+    <PasswordBox Grid.Row="5" x:Name="ConfirmBox" Margin="0,4,0,8"/>
+    <StackPanel Grid.Row="6" Orientation="Horizontal">
+      <TextBlock Text="QQ（找回密码用）" VerticalAlignment="Center"/>
+      <TextBox x:Name="OicqBox" Width="140" Margin="12,0,0,0"/>
+      <CheckBox x:Name="TestAccountBox" Content="测试账号" Margin="12,0,0,0" VerticalAlignment="Center"/>
+    </StackPanel>
+    <Button Grid.Row="7" x:Name="SubmitBtn" Content="注册" Height="36" Margin="0,12,0,0" Click="SubmitBtn_Click"/>
+  </Grid>
+</Window>
