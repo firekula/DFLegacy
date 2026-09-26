@@ -166,7 +166,7 @@ ss -lntup | grep -E ":(2311|7001|7002|7003|8080)"   # 应看到 :::2311 这类�
 curl -s http://127.0.0.1:8081/health                # 在服务器本机执行
 ```
 
-防火墙/安全组需放通 **TCP 2311、7001、8080** 与 **UDP 2311、7002、7003**（注意要 IPv6 规则）。`8081` 不必放通：镜像默认把它绑在容器内的 `127.0.0.1`（即宿主机自身），需要看后台页面时用 SSH 隧道 `ssh -L 8081:127.0.0.1:8081 user@server`，再访问 `http://127.0.0.1:8081/admin/index.html`。
+防火墙/安全组需放通 **TCP 2311、7001、8080** 与 **UDP 2311、7002、7003**（注意要 IPv6 规则）。后台管理端口 **8081 现在需要登录**（Bearer token + 角色档位，见 [ADMIN_API.md §1.2](ADMIN_API.md#12-鉴权与权限)），但仍建议二选一：①**不放通 8081**，改用 SSH 隧道 `ssh -L 8081:127.0.0.1:8081 user@server`（容器里同时把 `DFLegacy__Admin__Host` 设为 `127.0.0.1`，并在 compose 里配好 `DFLegacy__Admin__Users__0`）；②确实要远程管理就放通 8081，但必须**限制来源网段**，并在前面挂一层 HTTPS 反向代理——token 走明文 HTTP 时可被链路嗅探。
 
 直接 `docker run`（桥接网络 + 端口映射）：
 
@@ -182,7 +182,7 @@ docker run -d --name dflegacy-server \
   dflegacy-server:1.0.0
 ```
 
-注意 `-e DFLegacy__Admin__Host=::`：镜像默认把后台管理绑在容器内的 `127.0.0.1`，不设置这一项时映射出去的 8081 无法访问。
+注意 `-e DFLegacy__Admin__Host=::`：`server.json` 的默认值已经是 `::`（双栈，IPv4/IPv6 都收），这里显式写出来是强调"映射出去的 8081 需要它"；只在容器内自用就改回 `127.0.0.1` 并去掉 8081 映射。**别忘了配 `DFLegacy__Admin__Users__0=<你的管理员账号>`**，否则没有任何账号能进后台。
 
 编排方式见 `compose.yaml`：默认使用 host 网络（IPv6 部署推荐，不需要端口映射），文件末尾附有桥接 + 端口映射的备选写法。Docker 用 `docker compose up -d`，Podman 用 `podman compose up -d` 或 `podman-compose up -d`。
 
@@ -194,7 +194,7 @@ docker run -d --name dflegacy-server \
 | 运行用户 | 非 root 的 `app`（UID 1654） |
 | PVF | 镜像**不含**，固定从 `/pvf/Script.pvf` 读取，需只读挂载 |
 | 存档 | `/app/data/state.json`，建议挂载具名卷或已授权的绑定目录 |
-| 默认监听 | 登录、角色、玩法均为 `0.0.0.0`；后台管理保持 `127.0.0.1` |
+| 默认监听 | 登录、角色、玩法均为 `::`（双栈）；后台管理同为 `::`，且**需要登录**（Bearer token + 角色档位） |
 | 健康检查 | 容器内 `curl http://127.0.0.1:8081/health` |
 
 镜像内已清空基础镜像的 `ASPNETCORE_HTTP_PORTS`/`ASPNETCORE_URLS`，因为服务端始终按自身配置绑定监听地址。
@@ -210,12 +210,15 @@ docker run -d --name dflegacy-server \
 | `DFLegacy__Entrance__Host` | `DFLegacy.Entrance.Host` |
 | `DFLegacy__GameplayDatagram__AdvertisedHost` | `DFLegacy.GameplayDatagram.AdvertisedHost` |
 | `DFLegacy__Admin__Host` | `DFLegacy.Admin.Host` |
+| `DFLegacy__Admin__Users__0` | `DFLegacy.Admin.Users[0]`（引导管理员名单，可继续 `__1`、`__2`） |
+| `DFLegacy__Admin__TokenHours` | `DFLegacy.Admin.TokenHours` |
+| `DFLegacy__Admin__LoginMaxAttempts` | `DFLegacy.Admin.LoginMaxAttempts` |
 | `DFLegacy__Experience__MonsterMultiplier` | `DFLegacy.Experience.MonsterMultiplier` |
 
 ### 5.4 必填项与常见坑
 
 - **必须设置 `DFLegacy__GameplayDatagram__AdvertisedHost`**：它是下发给客户端用于连接玩法 UDP 端口的地址，容器无法自行得知宿主机的对外地址。缺失时启动日志会打印明确警告（因为此时会把 `0.0.0.0` 下发给客户端）。
-- 后台管理接口没有鉴权（见 [ADMIN_API.md §1.2](ADMIN_API.md#12-安全边界)）。镜像默认只在容器内监听 `127.0.0.1`；要从宿主机访问需设置 `DFLegacy__Admin__Host=0.0.0.0`，并**只把 8081 映射到宿主机回环地址**（`compose.yaml` 已如此配置）。
+- 后台管理接口**需要登录**（见 [ADMIN_API.md §1.2](ADMIN_API.md#12-鉴权与权限)）：Bearer token + 角色档位。默认监听 `::`，从宿主或公网可访问——**必须**配合防火墙限制来源与 HTTPS 反向代理；不打算远程管理就在容器里设 `DFLegacy__Admin__Host=127.0.0.1` 并只留 SSH 隧道。**同时务必设置 `DFLegacy__Admin__Users__0=<管理员账号>`**，否则没人能进后台。
 - 用**绑定挂载**保存档时，宿主机目录必须让 UID 1654 可写，否则写盘失败：
 
   ```bash
@@ -239,7 +242,7 @@ docker run -d --name dflegacy-server \
 | `CharacterDatagram.Host` / `Port` | 角色数据 UDP 监听地址与端口 | 否 |
 | `GameplayDatagram.Host` / `PrimaryPort` / `SecondaryPort` | 玩法 UDP 监听地址与端口 | 两个端口**是**；地址取决于下一行 |
 | `GameplayDatagram.AdvertisedHost` | 下发给客户端的玩法地址；留空则回退为 `Host` | **是** |
-| `Admin.Host` / `Port` | 后台管理 HTTP 监听地址与端口 | 否 |
+| `Admin.Host` / `Port` | 后台管理 HTTP 监听地址与端口（默认 `::`，**需要登录**，见 ADMIN_API.md §1.2） | 否 |
 | `GameProbe.Host` / `Port` | 可选协议探针，默认关闭 | 否 |
 | `Channel.Name` / `ChannelNumber` | 频道显示名与编号 | **是**（固定 20 字节 ASCII 显示名，且名称不能含数字） |
 | `Channel.ServerNumber` | 仅用于通关经验分档，不参与显示或下发 | 否 |
@@ -254,7 +257,7 @@ docker run -d --name dflegacy-server \
 - **玩法地址必须让客户端能访问到**：`GameplayDatagram.Host` 同时承担"监听"和"下发"，只有在服务器确实能绑定对外地址时才可直接填局域网/公网 IP。容器、NAT 或多网卡场景下无法两者兼顾，此时把 `GameplayDatagram.Host` 设为 `0.0.0.0` 监听、把 `GameplayDatagram.AdvertisedHost` 设为客户端实际使用的 IP 或域名。只绑定了通配地址却没设置 `AdvertisedHost` 时，启动日志会打印明确警告（因为会把 `0.0.0.0` 下发给客户端）。
 - `Channel.Port` 应与 `Entrance.AdditionalPorts` 中的频道端口（默认 `7001`）保持一致；服务端用它判断连接是否落在频道端口上。
 - `GameProbe.Port` 默认 `7001`，与 `Entrance.AdditionalPorts` 中的 `7001` **相同**。探针默认关闭所以不冲突；若要启用，必须先把二者错开。
-- 后台管理接口没有登录与鉴权（见 [ADMIN_API.md §1.2](ADMIN_API.md#12-安全边界)），默认只监听 `127.0.0.1`。**不要把 `Admin.Host` 直接改成 `0.0.0.0` 暴露到不可信网络**；确需远程管理时，在反向代理或防火墙层做认证与来源限制。
+- 后台管理接口需要登录与角色（见 [ADMIN_API.md §1.2](ADMIN_API.md#12-鉴权与权限)），默认监听 `::`。暴露到公网前请在反向代理或防火墙层限制来源并终止 HTTPS；只想本机管理就把 `Admin.Host` 设回 `127.0.0.1` 走 SSH 隧道。
 
 ### 6.2 端口清单
 
@@ -348,7 +351,14 @@ docker run -d --name dflegacy-server \
 - 反向场景同样适用：IPv4 服务器 + 客户端所在网络只有 IPv6 时，把 `--server` 指向 IPv4 地址即可，中继按解析结果选择地址族。
 - 已知限制：协议中客户端地址字段是固定 4 字节（NAT 上报、对端信息），IPv6 对端经中继时这些字段没有意义；模拟器不用它们做路由（那条发送链路当前无调用者），不影响游玩。
 
-账号管理 API（8081）默认仅服务端 loopback、且不随中继转发（中继只覆盖游戏端口 TCP 2311/7001/8080、UDP 2311/7002/7003）。远程玩家使用运营方预创建的账号；注册/改密/找回仅在本地或受信内网使用。如需远程访问 8081，由运营方在 `server.json` 设 `Admin.Host=::` 并在 `launcher.json` 的 `Relay.TcpPorts` 追加 `8081`，**但 8081 无鉴权且 `GET /api/accounts` 会泄露账号名，仅在受信网络启用**。
+账号 API（8081）**不随中继转发**（中继只覆盖游戏端口 TCP 2311/7001/8080、UDP 2311/7002/7003），所以远程玩家要么用运营方预创建的账号（游戏内登录走中继游戏端口，不受影响），要么直连服务端的 8081。自本次鉴权改造后，8081 默认绑定 `::`（对外）、且**所有管理接口都需要 Bearer token**：普通玩家只能看自己的角色，注册/改密/找回为公开接口。
+
+启动器侧有两种用法：
+
+- **推荐**：把启动器 `launcher.json` 的 `AccountServiceUrl` 直接指向服务器（如 `http://你的域名:8081`），注册/改密/找回都直连远端；改密现在会先自动登录取 token（用户无感）。
+- 仅在受信网络内才把 `8081` 追加进 `launcher.json` 的 `Relay.TcpPorts`（本机回环转发到远端），否则不如直连。
+
+⚠️ 无论哪种，8081 暴露到公网都必须限制来源并在前置代理终止 HTTPS（token 明文可被嗅探）；只在本机管理就设 `Admin.Host=127.0.0.1` 走 SSH 隧道。
 
 ### 6.5 局域网、公网与域名连接
 
@@ -386,7 +396,7 @@ docker run -d --name dflegacy-server \
 - `ClientPath`：客户端 `DNF.exe` 的完整路径（必填）。
 - `EntranceHost` / `EntrancePort`：客户端要连接的登录入口，需与 `Entrance` 配置一致。
 - `Account` / `Password`，或 `Accounts` + `AccountIndex`：登录凭据。默认示例是 `test/test`，**不要随发布分发含真实密码的配置**。`Accounts` 每项还可填 `DisplayName`、`CreateTime`、`OicqCode` 与 `RememberPassword`（默认 `true`；为 `false` 时只保存空密码，无头启动需要存储密码），字段说明见 [README](README.md#启动器)。
-- `AccountServiceUrl`：账号 HTTP API 基址，默认 `http://127.0.0.1:8081`（服务端 Admin 端口），注册/改密/找回经此访问；远程场景见 §6.4。
+- `AccountServiceUrl`：账号 HTTP API 基址，默认 `http://127.0.0.1:8081`（服务端 Admin 端口），注册/改密/找回经此访问；远程场景见 §6.4。改密会先调 `POST /api/auth/login` 取 token，因此该地址必须指向**已启用鉴权的新版服务端**。
 - `Theme`：启动器界面主题，`auto`（默认）/ `light` / `dark`。
 - `StartServer`：是否由启动器按需启动本地服务端。
 - `D3D9Adapter` / `D3D9TimeoutSeconds` / `D3D9RetryIntervalSeconds`：D3D9 设备检测参数。

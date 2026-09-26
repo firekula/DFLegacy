@@ -46,7 +46,7 @@
 | `DFLegacy.AccountClient` | 启动器使用的账号 HTTP 客户端（注册、改密、找回密码、健康检查）。 |
 | `DFLegacy.Ijl15` | 32 位 C++ `ijl15.dll` 兼容模块，提供客户端所需的 JPEG 功能及进程内兼容补丁、窗口缩放等功能。 |
 | `DFLegacy.RandomNative` | 64 位 C++ 硬件随机种子桥接，为玩法随机提供 RDSEED 支持；不支持该指令时自动回退，不是运行必需项。 |
-| `wwwroot/admin` | 独立的中文后台管理页面，使用现代浏览器访问，不依赖前端构建工具。 |
+| `wwwroot/admin` | 独立的中文后台管理页面，使用现代浏览器访问，不依赖前端构建工具。需登录：管理员看到全部 GM 功能与「用户角色」，普通玩家只看到自己的角色（另有独立的玩家页 `player.html`）。 |
 | `wwwroot/client` | 充值及会员服务页面，与后台管理页面分离。 |
 | `tests/DFLegacy.SmokeTests` | 协议、数据解析和主要业务规则的冒烟测试。 |
 
@@ -70,6 +70,7 @@
 | 系统 | 已实现内容 |
 | --- | --- |
 | 账号与角色 | 注册、登录、改密与找回密码；角色创建、选择及状态保存；支持多账号；点券、契约及黑钻等服务按账号管理。 |
+| 后台权限 | 8081 管理接口需 Bearer token 登录，账号分「玩家 / 管理员」两档并持久化角色：玩家只能查自己的角色，管理员可发邮件、广播、充值、改副本难度、提升/降级他人。登录失败按账号+来源 IP 限流，角色变更即时吊销旧 token。 |
 | 角色成长 | 怪物经验、通关经验及结算字段；SP 随当前等级的经验进度渐进发放，PVF 缺少 `etc/sptable.etc` 时回退到与原版一致的内置 SP 表；经验书、升级券、属性类道具；技能学习、重置、转职与觉醒相关处理。 |
 | 副本 | 进入条件、疲劳消耗与恢复、虚弱及定时恢复、难度解锁；房间切换与重访状态保存；精英怪、深渊入口与相关掉落处理。 |
 | 掉落与奖励 | PVF 掉落表、怪物独立掉落、精英专属掉落及任务掉落；地面物品、拾取、负重检查；翻牌结算处理。 |
@@ -147,7 +148,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | --- | --- |
 | `ScriptPvfPath` | PVF 路径；相对路径以服务端程序目录为基准。更新 PVF 后重启服务端重新加载。 |
 | `DataPath` | 存档路径，默认 `data/state.json`，相对路径以服务端程序目录为基准。 |
-| `Admin` | HTTP 监听地址和端口，默认 `127.0.0.1:8081`。 |
+| `Admin` | 后台监听地址与端口，默认 `::`（双栈）+ `8081`。**全部管理接口需要登录**（Bearer token），并分「玩家 / 管理员」两档：玩家只能看自己的角色，管理员可发邮件、广播、充值、改角色档位。`Admin.Users` 为引导管理员名单；`TokenHours` / `LoginMaxAttempts` / `LoginLockoutMinutes` 控制 token 有效期与登录限流。详见 [ADMIN_API.md §1.2](ADMIN_API.md#12-鉴权与权限) 与 [DEPLOYING.md](DEPLOYING.md) 的安全边界。 |
 | `Entrance` / `Channel` | 登录入口和频道连接配置。 |
 | `CharacterDatagram` / `GameplayDatagram` | 客户端 UDP 监听配置。 |
 | `GameplayDatagram.AdvertisedHost` | 下发给客户端的玩法地址，留空时回退为 `GameplayDatagram.Host`；容器与 NAT 部署必填，详见 [DEPLOYING.md](DEPLOYING.md#61-监听与下发地址)。 |

@@ -11,8 +11,12 @@
 后台监听地址由 `server.json` 中的 `DFLegacy.Admin` 决定，默认值是：
 
 ```text
-http://127.0.0.1:8081
+http://[::]:8081
 ```
+
+`::` 是**双栈**绑定：IPv4 与 IPv6 都接受。服务端玩法面是 IPv6（客户端经中继拨 IPv6
+地址），若把 `Host` 写成 `0.0.0.0` 就只监听 IPv4，IPv6 侧将访问不到后台；只允许本机
+访问则写 `127.0.0.1`。容器里用 `DFLegacy__Admin__Host` / `DFLegacy__Admin__Port` 覆盖。
 
 下文用 `$baseUrl` 表示该地址：
 
@@ -20,15 +24,42 @@ http://127.0.0.1:8081
 $baseUrl = 'http://127.0.0.1:8081'
 ```
 
-### 1.2 安全边界
+### 1.2 鉴权与权限
 
-当前后台接口没有登录、令牌、权限或 CSRF 校验。默认只监听 `127.0.0.1`，设计目标是
-本机管理及客户端内嵌页面调用。
+后台接口需要 **Bearer token**（`POST /api/auth/login` 用账号密码换取）。没有 token 调用
+受保护接口返回 `401`，权限不足返回 `403`，登录失败过多返回 `429`。
 
-不要把 `DFLegacy.Admin.Host` 直接改成 `0.0.0.0` 并暴露到不可信网络。确需远程管理时，
-应在反向代理或防火墙层增加身份认证、来源限制和 HTTPS。
+权限分两档，保存在账号的 `role` 字段里（持久化于 `data/state.json`）：
 
-### 1.3 JSON、编码与时间
+| 档位 | `role` | 能做什么 |
+|---|---|---|
+| 普通玩家 `Player` | `0` | 只看自己的角色（`GET /api/accounts/{自己}/characters`）、改自己的密码 |
+| 管理员 `Admin` | `1` | 发邮件、广播、充值、改疲劳、看全站账号与会话、提升/降级他人角色 |
+
+**公开接口**（无需登录）：`/health`、`/`、`/client*`、`/admin*`（页面本身）、
+`POST /api/accounts`（注册）、`POST /api/accounts/{userName}/password/reset`（QQ 找回）、
+`POST /api/auth/login`。其余 `/api/**` 一律需要登录，且多数需要管理员。
+
+**引导管理员**：`server.json` 的 `DFLegacy.Admin.Users` 列出用户名，这些账号在启动时与
+注册时自动成为管理员；名单里尚未注册的账号会在启动日志给出警告。**至少要有一名管理员，
+否则没人能进后台**，因此服务端拒绝降级最后一名管理员，也拒绝管理员降级自己。
+
+**登录限流**：同一「账号 + 来源 IP」连续失败 `Admin.LoginMaxAttempts`（默认 5）次后锁定
+`Admin.LoginLockoutMinutes`（默认 5）分钟，锁定期内即使密码正确也一律拒绝。
+
+token 是服务端内存中的随机串，有效期 `Admin.TokenHours`（默认 12 小时），每次使用滑动续期；
+`POST /api/auth/logout` 与角色变更会**立即**作废 token（降级即时生效）。服务端重启后需重新登录。
+
+### 1.3 部署安全边界（必读）
+
+把后台暴露到公网时至少要做到：
+
+- 在反向代理（Caddy/nginx）或 SSH 隧道层终止 **HTTPS**——token 走明文 HTTP 时可被链路嗅探；
+- 用防火墙/安全组限制来源网段；
+- 只把可信账号写进 `Admin.Users`，并定期用 `GET /api/admin/users` 复核角色；
+- 8081 与游戏端口使用不同端口（默认已分开），避免把管理面混进公网游戏流量。
+
+### 1.4 JSON、编码与时间
 
 - 写接口使用 `Content-Type: application/json`。
 - 普通 JSON 字段使用 `camelCase`。
@@ -57,28 +88,82 @@ Invoke-RestMethod `
 
 ## 2. 接口总览
 
-| 方法 | 路径 | 用途 |
-|---|---|---|
-| `GET` | `/health` | 最小存活检查 |
-| `GET` | `/api/status` | 服务、监听端口、随机源和 PVF 缓存状态 |
-| `GET` | `/api/sessions` | 当前网络会话 |
-| `GET` | `/api/packets` | 最近的协议包记录 |
-| `GET` | `/api/accounts` | 账号及全部角色持久化数据 |
-| `POST` | `/api/client-pay/cera` | 给账号增加点券 |
-| `POST` | `/api/client-pay/diamond` | 给账号开通 30 天黑钻 |
-| `POST` | `/api/client-pay/premium` | 给账号开通黑钻、霸王契约或达人契约 |
-| `POST` | `/api/accounts` | 创建账号 |
-| `PUT` | `/api/accounts/{userName}/password` | 使用旧密码修改密码 |
-| `POST` | `/api/accounts/{userName}/password/reset` | 使用 QQ 恢复信息重置密码 |
-| `POST` | `/api/accounts/{userName}/characters` | 创建角色 |
-| `PUT` | `/api/characters/{characterId}/fatigue` | 修改角色当天已消耗疲劳 |
-| `GET` | `/api/characters/{characterId}/mail` | 查询角色有效邮件 |
-| `POST` | `/api/characters/{characterId}/mail` | 给角色发送邮件 |
-| `POST` | `/api/characters/{characterId}/message` | 给在线角色发送聊天栏通知 |
-| `POST` | `/api/characters/{characterId}/popup` | 给在线角色发送自定义弹窗 |
+`权限` 列：`公开` = 无需登录；`本人` = 需登录且只能操作路径里的那个账号（管理员可代操作）；
+`管理员` = 需要 `role=1`。所有非公开接口都要带 `Authorization: Bearer <token>`。
+
+| 方法 | 路径 | 权限 | 用途 |
+|---|---|---|---|
+| `GET` | `/health` | 公开 | 最小存活检查 |
+| `POST` | `/api/auth/login` | 公开 | 账号密码换取 Bearer token |
+| `POST` | `/api/auth/logout` | 本人 | 作废当前 token |
+| `GET` | `/api/status` | 管理员 | 服务、监听端口、随机源和 PVF 缓存状态 |
+| `GET` | `/api/sessions` | 管理员 | 当前网络会话 |
+| `GET` | `/api/packets` | 管理员 | 最近的协议包记录 |
+| `GET` | `/api/accounts` | 管理员 | 账号及全部角色持久化数据 |
+| `GET` | `/api/accounts/{userName}/characters` | 本人 | 查看该账号的角色列表 |
+| `POST` | `/api/client-pay/cera` | 管理员 | 给账号增加点券 |
+| `POST` | `/api/client-pay/diamond` | 管理员 | 给账号开通 30 天黑钻 |
+| `POST` | `/api/client-pay/premium` | 管理员 | 给账号开通黑钻、霸王契约或达人契约 |
+| `POST` | `/api/accounts` | 公开 | 创建账号（注册） |
+| `PUT` | `/api/accounts/{userName}/password` | 本人 | 携带 token 并使用旧密码修改密码 |
+| `POST` | `/api/accounts/{userName}/password/reset` | 公开 | 使用 QQ 恢复信息重置密码 |
+| `POST` | `/api/accounts/{userName}/characters` | 管理员 | 创建角色 |
+| `PUT` | `/api/characters/{characterId}/fatigue` | 管理员 | 修改角色当天已消耗疲劳 |
+| `GET` | `/api/characters/{characterId}/mail` | 管理员 | 查询角色有效邮件 |
+| `POST` | `/api/characters/{characterId}/mail` | 管理员 | 给角色发送邮件 |
+| `POST` | `/api/characters/{characterId}/message` | 管理员 | 给在线角色发送聊天栏通知 |
+| `POST` | `/api/characters/{characterId}/popup` | 管理员 | 给在线角色发送自定义弹窗 |
+| `GET` | `/api/admin/characters` | 管理员 | 角色列表（含在线状态） |
+| `GET` | `/api/admin/items` | 管理员 | 物品检索 |
+| `GET` | `/api/admin/dungeons` | 管理员 | 副本目录 |
+| `GET` | `/api/admin/message-types` | 管理员 | 消息类型目录 |
+| `POST` | `/api/admin/characters/{characterId}/mail` | 管理员 | 后台工具发送邮件 |
+| `PUT` | `/api/admin/characters/{characterId}/dungeons/{dungeonId}` | 管理员 | 设置角色副本难度权限 |
+| `POST` | `/api/admin/broadcast/message` | 管理员 | 全服聊天栏广播 |
+| `POST` | `/api/admin/broadcast/popup` | 管理员 | 全服弹窗广播 |
+| `GET` | `/api/admin/users` | 管理员 | 账号列表（含角色档位） |
+| `PUT` | `/api/admin/users/{userName}/role` | 管理员 | 提升/降级账号角色 |
 
 `/client`、`/client/`、`/client/client_pay` 和 `/client/client_diamond` 是客户端内嵌管理
 页面入口或重定向，不是 JSON API。
+
+## 2.1 登录与登出
+
+### `POST /api/auth/login`
+
+请求体：
+
+```json
+{ "userName": "test", "password": "test" }
+```
+
+成功返回 `200`：
+
+```json
+{
+  "success": true,
+  "failure": 0,
+  "error": null,
+  "token": "<随机串>",
+  "userName": "test",
+  "role": 1,
+  "expiresAt": "2026-09-27T03:30:05.3188781+00:00"
+}
+```
+
+`role` 是数字（`0` 玩家 / `1` 管理员）。失败：`400`（缺字段）、`401`（账号或密码错误，
+刻意不区分二者）、`429`（触发限流，`{"error":"失败次数过多，请稍后再试。"}`）。
+
+```powershell
+$login = Invoke-RestMethod -Method Post -Uri "$baseUrl/api/auth/login" `
+  -ContentType 'application/json' -Body '{"userName":"test","password":"test"}'
+$headers = @{ Authorization = "Bearer $($login.token)" }
+Invoke-RestMethod -Uri "$baseUrl/api/admin/characters" -Headers $headers
+```
+
+### `POST /api/auth/logout`
+
+带 token 调用即作废该 token，返回 `{"success":true}`。之后再用同一 token 会得到 `401`。
 
 ## 3. 状态与诊断
 
@@ -298,6 +383,12 @@ $character.id
 - 账号不存在或旧密码错误：`401`。
 - 新密码不满足 6～128 个字符等输入错误：`400`。
 
+**本接口需要登录**：先 `POST /api/auth/login` 拿 token，再用
+`Authorization: Bearer <token>` 调用；token 的身份必须等于路径里的 `{userName}`
+（管理员可代改任意账号，见 §1.2）。`401` 有两层含义：没带/失效 token（响应体带
+`{"error":...}`），或旧密码错误（无响应体）。启动器的「修改密码」窗口就是先登录再改密，
+用户无感。
+
 响应中的 `failure` 是数字：`0=None`、`1=InvalidRequest`、
 `2=InvalidCredentials`、`3=InvalidRecoveryInformation`。
 
@@ -356,6 +447,62 @@ $character.id
 
 成功返回 `200` 和更新后的角色；角色不存在返回 `404`；超过 188 返回 `400`。该接口
 只持久化数据，没有主动向已在线客户端推送疲劳刷新包，联调时应重新登录或触发完整状态同步。
+
+### 4.7 `GET /api/accounts/{userName}/characters`
+
+查看某个账号的角色列表。**普通玩家只能查自己**（token 身份 = `{userName}`），管理员可查
+任意账号；越权返回 `403 {"error":"只能操作自己的账号。"}`。
+
+返回 `200` 与 `PublicAccountRecord`（与 `GET /api/accounts` 的单条结构一致）：
+
+```json
+{
+  "id": "…",
+  "userName": "alice",
+  "characters": [ { "id": "…", "name": "Berserker", "level": 70, "job": 0, "slot": 0 } ],
+  "accountUid": 18000001,
+  "kind": 3,
+  "cash": 50000,
+  "role": 0
+}
+```
+
+账号不存在返回 `404`。玩家后台页 `/admin/player.html` 用的就是这个接口。
+
+### 4.8 `GET /api/admin/users`
+
+管理员接口：返回全部账号的 `PublicAccountRecord` 数组（含 `role` 与 `characters`），
+用于后台「用户角色」页。
+
+### 4.9 `PUT /api/admin/users/{userName}/role`
+
+管理员接口：提升/降级账号角色。
+
+```json
+{ "role": "Admin" }
+```
+
+`role` 只接受 `Admin` 或 `Player`（大小写不敏感）。成功返回 `200`：
+
+```json
+{ "success": true, "userName": "alice", "role": "Admin", "revokedTokens": 1 }
+```
+
+`revokedTokens` 是被立即作废的该账号 token 数——**降级立即生效**，被降级者需要重新登录
+（提权同样需要重新登录才能拿到新角色）。失败返回 `400`，`error` 说明原因：
+
+| `error` | 含义 |
+|---|---|
+| `账号不存在。` | `{userName}` 没有对应账号 |
+| `不能降级自己的账号。` | 管理员试图把自己降级为玩家 |
+| `至少需要保留一名管理员。` | 目标账号是当前唯一的管理员 |
+
+### 4.10 角色档位与引导管理员
+
+- 新注册账号默认是 `Player`；`server.json` 的 `DFLegacy.Admin.Users` 名单里的账号在注册
+  时直接是 `Admin`，名单里已存在的账号在服务端启动时被提升为 `Admin`。
+- 角色持久化在 `data/state.json` 的账号记录里；旧存档没有该字段时按 `Player` 解析。
+- 角色的作用是**后台权限**，与账号 UID 段（`Test`/`Reserved`/`Normal`）无关，不影响游戏内玩法。
 
 ## 5. 邮件接口
 
@@ -780,6 +927,12 @@ Invoke-RestMethod `
 
 | 现象 | 原因与处理 |
 |---|---|
+| 任何 `/api/**` 返回 `401 {"error":"需要登录（token 缺失或已失效）。"}` | 没带 token 或 token 已过期/被吊销（登出、角色变更、服务端重启都会作废）。重新 `POST /api/auth/login` |
+| 返回 `403 {"error":"需要管理员权限。"}` | 用玩家账号调了管理接口；把该账号加入 `Admin.Users` 或由管理员提升角色 |
+| 返回 `403 {"error":"只能操作自己的账号。"}` | 玩家 token 访问了别人的 `/api/accounts/{他人}/...` |
+| 返回 `429 {"error":"失败次数过多，请稍后再试。"}` | 登录连续失败触发限流，等 `Admin.LoginLockoutMinutes` 分钟或调整配置 |
+| 升级后原来的匿名 curl 脚本全部 `401` | 这是本次鉴权改造的预期破坏性变更：所有管理接口都需要 Bearer token（见 §1.2、§2.1） |
+| 改了账号角色但仍能/不能调管理接口 | 角色变更会作废该账号的旧 token；请用新角色重新登录 |
 | 邮件创建返回 `201`，客户端却无法领取 | `itemId` 不在当前 PVF、分类空间已满、快捷栏也满、超重，或装备/Avatar 字段不符合语义 |
 | 可堆叠物被拆成很多邮件 | 调用方错误地按单个数量循环；应在一封邮件中设置总 `countOrValue` |
 | 装备领取后耐久为 0 | 后台把 `durability` 省略或写成 0；0 是真实损坏状态，应传 PVF `[durability]` |

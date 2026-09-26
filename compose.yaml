@@ -23,9 +23,22 @@ services:
       # 填 0.0.0.0 / :: 会让客户端进图失败；配置有问题时启动日志会打印警告。
       DFLegacy__GameplayDatagram__AdvertisedHost: "change-me.example.com"
 
-      # 可选：需要从容器外访问后台管理页时打开。该接口没有鉴权，
-      # 建议只在本机或 SSH 隧道内使用（默认只监听 127.0.0.1，即宿主机自身）。
-      # DFLegacy__Admin__Host: "::"
+      # 后台管理（8081）现在需要登录：Bearer token + 角色档位，见 ADMIN_API.md §1.2。
+      # 默认绑定 "::"（双栈），host 网络下即宿主机 8081 对外可访问——这正是远程管理所需的，
+      # 但请务必：①用防火墙限制来源；②在反向代理层终止 HTTPS（token 走明文 HTTP 可被嗅探）。
+      #
+      # 【必配】引导管理员名单：写在这里的用户名注册/启动后自动成为管理员。
+      # 不配的话没有任何账号能进后台（注册出来的全是普通玩家）。
+      DFLegacy__Admin__Users__0: "test"
+      #
+      # 只允许宿主机本机访问后台（配 SSH 隧道用）时改成 127.0.0.1：
+      # DFLegacy__Admin__Host: "127.0.0.1"
+      #
+      # host 网络下，服务端绑定的每个端口都直接占用宿主机端口（见下文 volumes 旁的
+      # network_mode 注释），所以 admin 默认的 8081 若与宿主上其它服务（含别的容器
+      # 发布到宿主的 8081）撞端口，启动会以 "address already in use" 崩溃重启。
+      # 撞了就把它挪到一个空闲端口，例如：
+      # DFLegacy__Admin__Port: "18081"
 
       # 其它按需覆盖（键名 = server.json 的层级，用双下划线分隔）：
       # DFLegacy__Experience__MonsterMultiplier: "1.0"
@@ -55,7 +68,8 @@ services:
 #     restart: unless-stopped
 #     environment:
 #       DFLegacy__GameplayDatagram__AdvertisedHost: "change-me.example.com"
-#       DFLegacy__Admin__Host: "::"      # 让上面的 8081 映射能访问到后台
+#       DFLegacy__Admin__Host: "::"      # 让上面的 8081 映射能访问到后台（默认已是 ::）
+#       DFLegacy__Admin__Users__0: "test" # 引导管理员（必配，否则没人能进后台）
 #     ports:
 #       - "2311:2311/tcp"                # 登录入口
 #       - "7001:7001/tcp"                # 频道入口
@@ -63,7 +77,8 @@ services:
 #       - "2311:2311/udp"                # 角色数据报
 #       - "7002:7002/udp"                # 玩法主端口
 #       - "7003:7003/udp"                # 玩法次端口
-#       - "127.0.0.1:8081:8081/tcp"      # 后台管理无鉴权：只映射到宿主回环
+#       - "127.0.0.1:8081:8081/tcp"      # 后台管理：需要登录；只映射到宿主回环最稳妥，
+#                                        # 要远程访问则改为 "8081:8081/tcp" 并在前置代理上做 HTTPS
 #     volumes:
 #       - ./Script.pvf:/pvf/Script.pvf:ro
 #       - ./data:/app/data
