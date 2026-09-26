@@ -285,7 +285,9 @@ public sealed record AccountRecord(
     uint? LegacyBlackDiamondExpireAt = null,
     List<AccountPremiumServiceRecord>? PremiumServices = null,
     int? Cash = null,
-    string? OicqCode = null);
+    string? OicqCode = null,
+    // 8081 管理接口的权限档位。旧 state.json 没有这个字段，反序列化后是 Player（向后兼容）。
+    AccountRole Role = AccountRole.Player);
 
 public sealed record ClientCeraTopUpRequest(string Account, int Amount);
 public sealed record ClientDiamondGrantRequest(string Account, int Days);
@@ -345,7 +347,8 @@ public sealed record PublicAccountRecord(
     List<CharacterRecord> Characters,
     uint AccountUid = 0,
     AccountKind Kind = AccountKind.Invalid,
-    int Cash = 0);
+    int Cash = 0,
+    AccountRole Role = AccountRole.Player);
 
 public sealed record CreateAccountRequest(
     string UserName,
@@ -1665,7 +1668,9 @@ public sealed class JsonGameStore(
                 accountUid,
                 PresetCharactersInitialized: !request.TestAccount,
                 Cash: DefaultAccountCash,
-                OicqCode: oicqCode);
+                OicqCode: oicqCode,
+                // 引导名单里的账号注册时直接就是管理员（运营方不必先注册再手工提权）。
+                Role: IsBootstrapAdmin(userName) ? AccountRole.Admin : AccountRole.Player);
             if (request.TestAccount)
             {
                 account.Characters.Add(CreatePresetCharacterLocked(accountUid, slot: 0));
@@ -5575,6 +5580,168 @@ public sealed class JsonGameStore(
         return null;
     }
 
+    public async Task<PublicAccountRecord?> GetAccountAsync(
+        string userName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            return null;
+        }
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var account = FindAccountLocked(userName);
+            return account is null ? null : ToPublic(account);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<AccountRole> GetRoleAsync(
+        string userName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            return AccountRole.Player;
+        }
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            return FindAccountLocked(userName)?.Role ?? AccountRole.Player;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// 启动引导：把 <c>Admin.Users</c> 名单里的账号提升为管理员。
+    /// 名单里写了但还不存在的账号记一条警告（账号注册时会自动带上管理员角色）。
+    /// </summary>
+    public async Task<int> ApplyBootstrapAdminsAsync(CancellationToken cancellationToken = default)
+    {
+        if (options.Admin.Users.Length == 0)
+        {
+            return 0;
+        }
+
+        var promoted = 0;
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            foreach (var name in options.Admin.Users)
+            {
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    continue;
+                }
+
+                var index = _accounts.FindIndex(account =>
+                    string.Equals(account.UserName, name.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (index < 0)
+                {
+                    logger.LogWarning(
+                        "Admin.Users lists {UserName}, but no such account exists yet; " +
+                        "the account becomes an admin automatically once it is registered.",
+                        name);
+                    continue;
+                }
+
+                if (_accounts[index].Role == AccountRole.Admin)
+                {
+                    continue;
+                }
+
+                _accounts[index] = _accounts[index] with { Role = AccountRole.Admin };
+                promoted++;
+            }
+
+            if (promoted > 0)
+            {
+                await SaveLockedAsync(cancellationToken);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        if (promoted > 0)
+        {
+            logger.LogInformation("Promoted {Count} bootstrap admin account(s).", promoted);
+        }
+
+        return promoted;
+    }
+
+    /// <summary>
+    /// 提升/降级账号角色。<paramref name="actorUserName"/> 是发起人，用于两条安全约束：
+    /// 不能降级自己、不能把最后一名管理员降级（否则没人能再进管理接口）。
+    /// </summary>
+    public async Task<(bool Success, string? Error)> SetRoleAsync(
+        string userName,
+        AccountRole role,
+        string actorUserName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(actorUserName))
+        {
+            return (false, "账号不能为空。");
+        }
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var index = _accounts.FindIndex(account =>
+                string.Equals(account.UserName, userName.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                return (false, "账号不存在。");
+            }
+
+            if (_accounts[index].Role == role)
+            {
+                return (true, null);
+            }
+
+            if (role == AccountRole.Player)
+            {
+                if (string.Equals(
+                        _accounts[index].UserName,
+                        actorUserName.Trim(),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return (false, "不能降级自己的账号。");
+                }
+
+                if (_accounts.Count(account => account.Role == AccountRole.Admin) <= 1)
+                {
+                    return (false, "至少需要保留一名管理员。");
+                }
+            }
+
+            _accounts[index] = _accounts[index] with { Role = role };
+            await SaveLockedAsync(cancellationToken);
+            return (true, null);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private bool IsBootstrapAdmin(string userName) =>
+        options.Admin.Users.Any(name =>
+            !string.IsNullOrWhiteSpace(name)
+            && string.Equals(name.Trim(), userName, StringComparison.OrdinalIgnoreCase));
+
     private static PublicAccountRecord ToPublic(AccountRecord account) =>
         new(
             account.Id,
@@ -5582,7 +5749,8 @@ public sealed class JsonGameStore(
             account.Characters,
             account.AccountUid,
             AccountUidRules.Classify(account.AccountUid),
-            Math.Max(0, account.Cash ?? DefaultAccountCash));
+            Math.Max(0, account.Cash ?? DefaultAccountCash),
+            account.Role);
 
     private static AuthenticatedAccount ToAuthenticatedAccount(AccountRecord account) =>
         new(account.AccountUid, account.UserName, AccountUidRules.Classify(account.AccountUid));

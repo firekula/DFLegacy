@@ -70,8 +70,23 @@ public sealed class ChannelOptions
 
 public sealed class AdminOptions
 {
-    public string Host { get; set; } = "127.0.0.1";
+    // 双栈绑定：:: 同时接受 IPv4 与 IPv6。服务端玩法面是 IPv6（客户端经中继拨 IPv6），
+    // 绑 0.0.0.0 会让 IPv6 侧访问不到管理接口；只需 IPv4 就填 0.0.0.0，只本机访问填 127.0.0.1。
+    public string Host { get; set; } = "::";
+
     public int Port { get; set; } = 8081;
+
+    /// <summary>引导管理员名单：名单里的账号在启动时与注册时被提升为管理员。</summary>
+    public string[] Users { get; set; } = [];
+
+    /// <summary>登录 token 有效期（小时）；每次使用滑动续期。</summary>
+    public int TokenHours { get; set; } = 12;
+
+    /// <summary>同一「账号 + 来源 IP」连续登录失败达到该次数后锁定。</summary>
+    public int LoginMaxAttempts { get; set; } = 5;
+
+    /// <summary>触发限流后的锁定时长（分钟）。</summary>
+    public int LoginLockoutMinutes { get; set; } = 5;
 }
 
 public sealed class ListenerOptions

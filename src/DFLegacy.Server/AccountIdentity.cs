@@ -8,6 +8,19 @@ public enum AccountKind
     Normal
 }
 
+/// <summary>
+/// 管理接口的权限档位。与 <see cref="AccountKind"/>（UID 段分类）无关：
+/// Kind 决定账号在游戏里的身份段，Role 只决定 8081 管理接口能做什么。
+/// </summary>
+public enum AccountRole
+{
+    /// <summary>普通玩家：只能看自己的角色。</summary>
+    Player = 0,
+
+    /// <summary>管理员：发邮件、广播、充值、改疲劳等。</summary>
+    Admin = 1
+}
+
 public static class AccountUidRules
 {
     public const uint InvalidUid = 0;

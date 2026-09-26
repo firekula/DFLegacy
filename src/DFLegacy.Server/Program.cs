@@ -37,6 +37,10 @@ builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<ScriptFileSystem>();
 builder.Services.AddSingleton<RuntimeState>();
 builder.Services.AddSingleton<JsonGameStore>();
+// 8081 管理接口的 token 鉴权（内存 token + 滑动过期 + 登录失败限流）。
+// TimeProvider 显式注册，便于测试注入假时钟。
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
 builder.Services.AddSingleton<SkillCatalog>();
 builder.Services.AddSingleton<QuestCatalog>();
@@ -107,6 +111,8 @@ var itemCatalog = app.Services.GetRequiredService<ItemCatalog>();
 itemCatalog.Initialize();
 var gameStore = app.Services.GetRequiredService<JsonGameStore>();
 await gameStore.InitializeAsync();
+// 引导管理员：Admin.Users 名单里的账号在启动时提为 Admin（名单里还没注册的账号记警告）。
+await gameStore.ApplyBootstrapAdminsAsync();
 var compoundCatalog = app.Services.GetRequiredService<CompoundCatalog>();
 compoundCatalog.Initialize();
 var avatarCompoundCatalog =
@@ -203,6 +209,50 @@ await gameStore.MigrateLegacyQuestRewardsAsync(
     skillCatalog: app.Services.GetRequiredService<SkillCatalog>());
 
 app.UseStaticFiles();
+
+// 8081 管理接口鉴权。刻意集中成"路由表 + 一个中间件"而不是给三十多条路由各挂过滤器：
+// 集中判定漏一条一眼可见，逐路由挂则漏挂一处就是一个越权口子（判定表见 AdminAccessPolicy，
+// 并有 smoke 测试逐条钉死）。静态页面和注册/找回在表里是 Public，无需登录。
+app.Use(async (context, next) =>
+{
+    var decision = AdminAccessPolicy.Resolve(
+        context.Request.Method,
+        context.Request.Path.Value ?? "/");
+    if (decision.Access == AdminAccess.Public)
+    {
+        await next(context);
+        return;
+    }
+
+    var auth = context.RequestServices.GetRequiredService<AdminAuthService>();
+    var token = AdminAccessPolicy.BearerToken(context.Request.Headers.Authorization.ToString());
+    var info = auth.Validate(token);
+    if (info is null)
+    {
+        await WriteJsonErrorAsync(
+            context,
+            StatusCodes.Status401Unauthorized,
+            "需要登录（token 缺失或已失效）。");
+        return;
+    }
+
+    if (decision.Access == AdminAccess.Admin && info.Role != AccountRole.Admin)
+    {
+        await WriteJsonErrorAsync(context, StatusCodes.Status403Forbidden, "需要管理员权限。");
+        return;
+    }
+
+    if (decision.Access == AdminAccess.SelfAccount
+        && info.Role != AccountRole.Admin
+        && !string.Equals(info.UserName, decision.AccountName, StringComparison.OrdinalIgnoreCase))
+    {
+        await WriteJsonErrorAsync(context, StatusCodes.Status403Forbidden, "只能操作自己的账号。");
+        return;
+    }
+
+    context.Items[AdminAccessPolicy.TokenInfoKey] = info;
+    await next(context);
+});
 app.MapGet("/client", () => Results.Redirect("/client/client_pay.htm"));
 app.MapGet("/client/", () => Results.Redirect("/client/client_pay.htm"));
 app.MapGet("/client/client_pay", () => Results.Redirect("/client/client_pay.htm"));
@@ -601,6 +651,103 @@ app.MapPost("/api/client-pay/premium", async (
     return Results.Ok(result);
 });
 
+// 登录换取 Bearer token。失败按「账号 + 来源 IP」限流，且不区分"账号不存在/密码错误"，
+// 不给攻击者枚举账号的额外信息。
+app.MapPost("/api/auth/login", async (
+    AdminLoginRequest request,
+    JsonGameStore store,
+    AdminAuthService auth,
+    HttpContext http,
+    CancellationToken token) =>
+{
+    var userName = request.UserName?.Trim();
+    if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrEmpty(request.Password))
+    {
+        return Results.BadRequest(new { error = "账号和密码不能为空。" });
+    }
+
+    var source = http.Connection.RemoteIpAddress?.ToString();
+    if (auth.IsLocked(userName, source))
+    {
+        return Results.Json(
+            new { error = "失败次数过多，请稍后再试。" },
+            statusCode: StatusCodes.Status429TooManyRequests);
+    }
+
+    var account = await store.AuthenticateAsync(userName, request.Password, token);
+    if (account is null)
+    {
+        var lockedUntil = auth.RegisterFailure(userName, source);
+        return lockedUntil is null
+            ? Results.Unauthorized()
+            : Results.Json(
+                new { error = "失败次数过多，请稍后再试。" },
+                statusCode: StatusCodes.Status429TooManyRequests);
+    }
+
+    auth.ClearFailures(userName, source);
+    var role = await store.GetRoleAsync(account.UserName, token);
+    return Results.Ok(auth.IssueToken(account.UserName, role));
+});
+
+app.MapPost("/api/auth/logout", (AdminAuthService auth, HttpContext http) =>
+{
+    auth.Logout(AdminAccessPolicy.BearerToken(http.Request.Headers.Authorization.ToString()));
+    return Results.Ok(new { success = true });
+});
+
+// 本人的角色列表：普通用户只能看自己（策略表里是 SelfAccount），管理员可查任意账号。
+app.MapGet("/api/accounts/{userName}/characters", async (
+    string userName,
+    JsonGameStore store,
+    CancellationToken token) =>
+{
+    var account = await store.GetAccountAsync(userName, token);
+    return account is null
+        ? Results.NotFound(new { error = "账号不存在。" })
+        : Results.Ok(account);
+});
+
+app.MapGet("/api/admin/users", async (JsonGameStore store, CancellationToken token) =>
+    Results.Ok(await store.GetAccountsAsync(token)));
+
+app.MapPut("/api/admin/users/{userName}/role", async (
+    string userName,
+    SetAccountRoleRequest request,
+    JsonGameStore store,
+    AdminAuthService auth,
+    HttpContext http,
+    CancellationToken token) =>
+{
+    var role = request.Role?.Trim().ToLowerInvariant() switch
+    {
+        "admin" => (AccountRole?)AccountRole.Admin,
+        "player" => AccountRole.Player,
+        _ => null
+    };
+    if (role is null)
+    {
+        return Results.BadRequest(new { error = "role 只能是 Admin 或 Player。" });
+    }
+
+    var actor = http.Items[AdminAccessPolicy.TokenInfoKey] as AdminTokenInfo;
+    var result = await store.SetRoleAsync(userName, role.Value, actor?.UserName ?? string.Empty, token);
+    if (!result.Success)
+    {
+        return Results.BadRequest(new { error = result.Error });
+    }
+
+    // 角色变更立即作废该账号的旧 token：降级立刻生效（提权需重新登录，符合最小惊讶）。
+    var revoked = auth.RevokeUser(userName);
+    return Results.Ok(new
+    {
+        success = true,
+        userName,
+        role = role.Value.ToString(),
+        revokedTokens = revoked
+    });
+});
+
 app.MapPost("/api/accounts", async (CreateAccountRequest request, JsonGameStore store, CancellationToken token) =>
 {
     var result = await store.CreateAccountAsync(request, token);
@@ -813,6 +960,11 @@ app.MapGet("/", () => Results.Text(
 app.Lifetime.ApplicationStarted.Register(() =>
 {
     app.Logger.LogInformation("Admin API ready at http://{Host}:{Port}", options.Admin.Host, options.Admin.Port);
+    var auth = app.Services.GetRequiredService<AdminAuthService>();
+    app.Logger.LogInformation(
+        "Admin API requires login; bootstrap admins: {Admins}. (Bearer token, {Hours}h sliding)",
+        options.Admin.Users.Length == 0 ? "(none configured)" : string.Join(", ", options.Admin.Users),
+        options.Admin.TokenHours);
     var scripts = app.Services.GetRequiredService<ScriptFileSystem>();
     if (!scripts.FileExists("etc/channel_info.etc"))
     {
@@ -822,3 +974,10 @@ app.Lifetime.ApplicationStarted.Register(() =>
 });
 
 await app.RunAsync();
+
+static async Task WriteJsonErrorAsync(HttpContext context, int statusCode, string message)
+{
+    context.Response.StatusCode = statusCode;
+    context.Response.ContentType = "application/json; charset=utf-8";
+    await context.Response.WriteAsJsonAsync(new { error = message });
+}

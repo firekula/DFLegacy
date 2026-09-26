@@ -1,8 +1,17 @@
 {
   "DFLegacy": {
     "Admin": {
-      "Host": "127.0.0.1",
-      "Port": 8081
+      "//": "管理接口（含后台页面与 API）。:: 为双栈（IPv4+IPv6 都通）；服务端玩法面是 IPv6，绑 0.0.0.0 会让 IPv6 侧访问不到。只本机访问填 127.0.0.1。",
+      "Host": "::",
+      "Port": 8081,
+      "//Users": "引导管理员名单：这些账号在启动时/注册时自动成为管理员，拥有发邮件、广播、充值等权限；普通玩家只能看自己的角色。",
+      "Users": [],
+      "//TokenHours": "登录 token 有效期（小时），每次使用滑动续期。",
+      "TokenHours": 12,
+      "//LoginMaxAttempts": "同一「账号+来源 IP」连续登录失败达到该次数即锁定（防爆破）。",
+      "LoginMaxAttempts": 5,
+      "//LoginLockoutMinutes": "触发限流后的锁定时长（分钟）。",
+      "LoginLockoutMinutes": 5
     },
     "Entrance": {
       "Enabled": true,
