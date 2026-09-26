@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Windows;
 using DFLegacy.Relay;
 
 namespace DFLegacy.Launcher;
@@ -10,18 +11,18 @@ internal static class Program
     internal const string DefaultClientPath = @"D:\DFLegacy\DF2008\DNF.exe";
     private const int ServerStartupAttempts = 40;
     private static readonly TimeSpan PortProbeTimeout = TimeSpan.FromMilliseconds(250);
-    private const string RelayListenAddress = "127.0.0.1";
+    internal const string RelayListenAddress = "127.0.0.1";
     private static readonly int[] RelayDefaultTcpPorts = [2311, 7001, 8080];
     private static readonly int[] RelayDefaultUdpPorts = [2311, 7002, 7003];
 
-    [STAThread]
-    private static async Task<int> Main(string[] args)
+    // WPF 的入口由 App.xaml.cs 的 App 间接承载（SDK 自动生成 Main 调用 new App().Run()）。
+    // headless 分支由 App.OnStartup 调用本方法，保留原 Main 的全部行为。
+    internal static async Task<int> RunHeadlessAsync(string[] args)
     {
         var noDialog = args.Contains("--no-dialog", StringComparer.OrdinalIgnoreCase)
             || args.Contains("--self-test", StringComparer.OrdinalIgnoreCase)
             || args.Contains("--install-ijl15", StringComparer.OrdinalIgnoreCase)
             || args.Contains("--check-d3d9", StringComparer.OrdinalIgnoreCase);
-
         try
         {
             var options = LoadOptions();
@@ -37,97 +38,33 @@ internal static class Program
             var clientPath = ResolveClientPath(options.ClientPath);
             ValidateClient(clientPath);
             ValidateScriptPvf(clientPath);
-            var bundledIjl15 =
-                Ijl15ReplacementInstaller.ValidateBundledReplacement();
-            var launcherData = BuildLauncherData(options);
+            var bundledIjl15 = Ijl15ReplacementInstaller.ValidateBundledReplacement();
+            _ = BuildLauncherData(options); // 触发字段校验，与原 Main 行为一致
 
             if (args.Contains("--install-ijl15", StringComparer.OrdinalIgnoreCase))
             {
                 var install = Ijl15ReplacementInstaller.Install(clientPath);
-                WriteLauncherLog(
-                    install.Installed
-                        ? $"Installed x86 ijl15 replacement at {install.TargetPath}; " +
-                          $"sha256={install.Sha256}; " +
-                          $"backup={install.BackupPath ?? "(none)"}."
-                        : $"x86 ijl15 replacement is already installed at " +
-                          $"{install.TargetPath}; sha256={install.Sha256}.");
+                WriteLauncherLog(install.Installed
+                    ? $"Installed x86 ijl15 replacement at {install.TargetPath}; sha256={install.Sha256}; backup={install.BackupPath ?? "(none)"}."
+                    : $"x86 ijl15 replacement is already installed at {install.TargetPath}; sha256={install.Sha256}.");
                 return 0;
             }
 
             if (args.Contains("--self-test", StringComparer.OrdinalIgnoreCase))
             {
-                WriteLauncherLog(
-                    $"Self-test passed for DFLegacy client {clientPath} " +
-                    $"(file version check disabled); ijl15={bundledIjl15.Sha256}.");
+                WriteLauncherLog($"Self-test passed for DFLegacy client {clientPath} (file version check disabled); ijl15={bundledIjl15.Sha256}.");
                 return 0;
             }
 
-            await EnsureD3D9AvailableAsync(options);
-            var ijl15Install = Ijl15ReplacementInstaller.Install(clientPath);
-            if (ijl15Install.Installed)
-            {
-                WriteLauncherLog(
-                    $"Installed x86 ijl15 replacement at {ijl15Install.TargetPath}; " +
-                    $"sha256={ijl15Install.Sha256}; " +
-                    $"backup={ijl15Install.BackupPath ?? "(none)"}.");
-            }
-            // The relay runs inside this process, so it has to exist before the
-            // client starts.
-            var relay = await StartRelayIfConfiguredAsync(options);
-            if (relay is null || IsLoopbackHost(options.EntranceHost))
-            {
-                // Without a relay the entrance host may be the local server this
-                // launcher starts on demand. With a relay only a loopback target
-                // can be that local server; a remote target is the relay's job.
-                await EnsureServerReadyAsync(options);
-            }
-
-            var client = ClientProcessLauncher.Start(clientPath, launcherData);
-            TryRaisePriority(client);
-            WriteLauncherLog(
-                $"Started DFLegacy client process {client.Id}; " +
-                $"entrance={(relay is null ? options.EntranceHost : RelayListenAddress)}:{options.EntrancePort}" +
-                (relay is null ? "." : $"; relay target={relay.TargetAddress}."));
-
-            if (relay is null)
-            {
-                return 0;
-            }
-
-            // Staying resident is the price of not spawning a helper process: the
-            // launcher owns the listening sockets, so it lives exactly as long as
-            // the game does.
-            using var shutdown = new CancellationTokenSource();
-            _ = client.WaitForExitAsync().ContinueWith(
-                _ =>
-                {
-                    try
-                    {
-                        shutdown.Cancel();
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        // Already shut down.
-                    }
-                },
-                TaskScheduler.Default);
-            await relay.RunAsync(shutdown.Token);
-            WriteLauncherLog($"Client process {client.Id} exited; launcher stopping.");
+            await LaunchFlow.RunAsync(options, options.GetSelectedAccount());
             return 0;
         }
         catch (Exception exception)
         {
             WriteLauncherLog($"Launcher failed: {exception}");
             if (!noDialog)
-            {
-                ApplicationConfiguration.Initialize();
-                MessageBox.Show(
-                    exception.Message,
-                    "DFLegacy 启动失败",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-            }
-
+                MessageBox.Show(exception.Message, "DFLegacy 启动失败",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             return 1;
         }
     }
@@ -159,7 +96,7 @@ internal static class Program
         return new LauncherAccountStore(path).Load();
     }
 
-    private static string ResolveClientPath(string configuredPath)
+    internal static string ResolveClientPath(string configuredPath)
     {
         var path = string.IsNullOrWhiteSpace(configuredPath)
             ? DefaultClientPath
@@ -170,7 +107,7 @@ internal static class Program
                 : Path.Combine(AppContext.BaseDirectory, path));
     }
 
-    private static void ValidateOptions(LauncherOptions options)
+    internal static void ValidateOptions(LauncherOptions options)
     {
         if (string.IsNullOrWhiteSpace(options.EntranceHost))
         {
@@ -273,7 +210,7 @@ internal static class Program
         options.AccountIndex = selectedIndex;
     }
 
-    private static void ValidateLauncherField(string value, string name)
+    internal static void ValidateLauncherField(string value, string name)
     {
         if (string.IsNullOrEmpty(value)
             || value.Contains('?')
@@ -285,7 +222,7 @@ internal static class Program
         }
     }
 
-    private static void ValidateClient(string clientPath)
+    internal static void ValidateClient(string clientPath)
     {
         if (!File.Exists(clientPath))
         {
@@ -299,7 +236,7 @@ internal static class Program
         // launcher must not reject a locally rebuilt or relabeled executable.
     }
 
-    private static void ValidateScriptPvf(string clientPath)
+    internal static void ValidateScriptPvf(string clientPath)
     {
         var scriptPvfPath = Path.Combine(Path.GetDirectoryName(clientPath)!, "Script.pvf");
         if (!File.Exists(scriptPvfPath))
@@ -312,7 +249,7 @@ internal static class Program
 
     // Hosts the relay inside this process when launcher.json asks for it, so the
     // user never has to start a second program. Returns null when disabled.
-    private static async Task<RelayHost?> StartRelayIfConfiguredAsync(LauncherOptions options)
+    internal static async Task<RelayHost?> StartRelayIfConfiguredAsync(LauncherOptions options)
     {
         if (!options.Relay.Enabled)
         {
@@ -396,7 +333,7 @@ internal static class Program
     private static bool IsIPv4LoopbackLiteral(string host) =>
         host.StartsWith("127.", StringComparison.Ordinal);
 
-    private static async Task EnsureServerReadyAsync(LauncherOptions options)
+    internal static async Task EnsureServerReadyAsync(LauncherOptions options)
     {
         if (await IsPortOpenAsync(options.EntranceHost, options.EntrancePort))
         {
@@ -443,7 +380,7 @@ internal static class Program
             $"模拟服务端启动失败，{options.EntranceHost}:{options.EntrancePort} 没有开始监听。");
     }
 
-    private static async Task EnsureD3D9AvailableAsync(LauncherOptions options)
+    internal static async Task EnsureD3D9AvailableAsync(LauncherOptions options)
     {
         var result = await D3D9DeviceProbe.WaitForDeviceAsync(
             options.D3D9Adapter,
@@ -478,12 +415,12 @@ internal static class Program
         }
     }
 
-    private static bool IsLoopbackHost(string host) =>
+    internal static bool IsLoopbackHost(string host) =>
         string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)
         || string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
         || string.Equals(host, "::1", StringComparison.OrdinalIgnoreCase);
 
-    private static void TryRaisePriority(Process client)
+    internal static void TryRaisePriority(Process client)
     {
         try
         {
@@ -497,7 +434,7 @@ internal static class Program
         }
     }
 
-    private static void WriteLauncherLog(string message)
+    internal static void WriteLauncherLog(string message)
     {
         try
         {

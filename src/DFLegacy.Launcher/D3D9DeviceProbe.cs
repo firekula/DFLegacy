@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -322,25 +323,124 @@ internal static class D3D9DeviceProbe
         internal uint PresentationInterval;
     }
 
-    private sealed class ProbeWindow : NativeWindow, IDisposable
+    // WPF 转换移除了 WinForms（NativeWindow 所在框架），这里用原始 Win32 调用创建
+    // 探测窗口。D3D9 设备创建只需要一个有效 HWND：窗口从不显示、也不跑消息泵，
+    // 与原 NativeWindow 实现行为一致。
+    private sealed class ProbeWindow : IDisposable
     {
+        private readonly string className = $"DFLegacyProbe-{Guid.NewGuid():N}";
+        private readonly WndProcDelegate wndProc = DefWindowProcW;
+        private nint handle;
+
         internal ProbeWindow()
         {
-            CreateHandle(new CreateParams
+            var instance = GetModuleHandleW(null);
+            var classEx = new WndClassEx
             {
-                Caption = "DFLegacy D3D9 probe",
-                X = 0,
-                Y = 0,
-                Width = (int)ProbeWidth,
-                Height = (int)ProbeHeight,
-                Style = 0x00CF0000
-            });
+                CbSize = (uint)Marshal.SizeOf<WndClassEx>(),
+                LpfnWndProc = wndProc,
+                HInstance = instance,
+                LpszClassName = className
+            };
+            var atom = RegisterClassExW(ref classEx);
+            if (atom == 0)
+            {
+                throw new Win32Exception(
+                    Marshal.GetLastWin32Error(),
+                    "RegisterClassEx failed for the D3D9 probe window.");
+            }
+
+            try
+            {
+                handle = CreateWindowExW(
+                    0,
+                    className,
+                    "DFLegacy D3D9 probe",
+                    0x00CF0000, // WS_OVERLAPPEDWINDOW，与原 CreateParams.Style 一致
+                    0,
+                    0,
+                    (int)ProbeWidth,
+                    (int)ProbeHeight,
+                    0,
+                    0,
+                    instance,
+                    0);
+                if (handle == 0)
+                {
+                    throw new Win32Exception(
+                        Marshal.GetLastWin32Error(),
+                        "CreateWindowEx failed for the D3D9 probe window.");
+                }
+            }
+            catch
+            {
+                UnregisterClassW(className, instance);
+                throw;
+            }
         }
+
+        internal nint Handle => handle;
 
         public void Dispose()
         {
-            DestroyHandle();
+            if (handle != 0)
+            {
+                DestroyWindow(handle);
+                handle = 0;
+            }
+
+            UnregisterClassW(className, GetModuleHandleW(null));
         }
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate nint WndProcDelegate(nint hwnd, uint message, nint wParam, nint lParam);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct WndClassEx
+        {
+            internal uint CbSize;
+            internal uint Style;
+            internal WndProcDelegate LpfnWndProc;
+            internal int CbClsExtra;
+            internal int CbWndExtra;
+            internal nint HInstance;
+            internal nint HIcon;
+            internal nint HCursor;
+            internal nint HbrBackground;
+            internal string? LpszMenuName;
+            internal string LpszClassName;
+            internal nint HIconSm;
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        private static extern ushort RegisterClassExW(ref WndClassEx lpWndClass);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        private static extern nint CreateWindowExW(
+            uint dwExStyle,
+            string lpClassName,
+            string lpWindowName,
+            uint dwStyle,
+            int x,
+            int y,
+            int nWidth,
+            int nHeight,
+            nint hWndParent,
+            nint hMenu,
+            nint hInstance,
+            nint lpParam);
+
+        [DllImport("user32.dll", ExactSpelling = true)]
+        private static extern int DestroyWindow(nint hwnd);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        private static extern int UnregisterClassW(string lpClassName, nint hInstance);
+
+        [DllImport("kernel32.dll", ExactSpelling = true)]
+        private static extern nint GetModuleHandleW(string? lpModuleName);
+
+        [DllImport("user32.dll", ExactSpelling = true)]
+        private static extern nint DefWindowProcW(nint hwnd, uint message, nint wParam, nint lParam);
     }
 }
 
