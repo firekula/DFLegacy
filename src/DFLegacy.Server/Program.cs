@@ -651,8 +651,12 @@ app.MapPost("/api/client-pay/premium", async (
     return Results.Ok(result);
 });
 
-// 登录换取 Bearer token。失败按「账号 + 来源 IP」限流，且不区分"账号不存在/密码错误"，
-// 不给攻击者枚举账号的额外信息。
+// 登录换取 Bearer token。限流语义（安全复审后重设计）：
+//   1) 来源级预算：同一 IP 的总尝试次数受限，挡单机扫号/枚举；
+//   2) 账号级预算：同一账号的错误密码额度受限（跨来源），挡分布式定向爆破；
+//   3) **凭据正确一律放行**并清零失败预算——否则匿名者连续失败 5 次就能把唯一管理员
+//      永久锁在门外，那是比爆破更廉价的拒绝服务。
+// 失败响应不区分"账号不存在/密码错误"，不给攻击者枚举账号的额外信息。
 app.MapPost("/api/auth/login", async (
     AdminLoginRequest request,
     JsonGameStore store,
@@ -667,26 +671,35 @@ app.MapPost("/api/auth/login", async (
     }
 
     var source = http.Connection.RemoteIpAddress?.ToString();
-    if (auth.IsLocked(userName, source))
+    // 两道预算都在校验凭据之前判定（命中即 429，不做凭据比较，这才真正拖慢爆破）：
+    //   来源级 = 单机尝试额度；账号级 = 失败来自多个不同来源（分布式）才锁。
+    if (auth.IsSourceThrottled(source))
     {
         return Results.Json(
-            new { error = "失败次数过多，请稍后再试。" },
+            new { error = "尝试过于频繁，请稍后再试。" },
             statusCode: StatusCodes.Status429TooManyRequests);
     }
+
+    if (auth.IsAccountThrottled(userName))
+    {
+        return Results.Json(
+            new { error = "该账号失败次数过多，暂时无法登录，请稍后再试。" },
+            statusCode: StatusCodes.Status429TooManyRequests);
+    }
+
+    auth.RegisterAttempt(source);
 
     var account = await store.AuthenticateAsync(userName, request.Password, token);
     if (account is null)
     {
-        var lockedUntil = auth.RegisterFailure(userName, source);
-        return lockedUntil is null
-            ? Results.Unauthorized()
-            : Results.Json(
-                new { error = "失败次数过多，请稍后再试。" },
-                statusCode: StatusCodes.Status429TooManyRequests);
+        auth.RegisterFailure(userName, source);
+        return Results.Unauthorized();
     }
 
-    auth.ClearFailures(userName, source);
+    auth.ClearFailures(account.UserName);
     var role = await store.GetRoleAsync(account.UserName, token);
+    // token 不进任何缓存（含中间代理）。
+    http.Response.Headers.CacheControl = "no-store";
     return Results.Ok(auth.IssueToken(account.UserName, role));
 });
 
@@ -765,12 +778,19 @@ app.MapPut("/api/accounts/{userName}/password", async (
     string userName,
     ChangeAccountPasswordRequest request,
     JsonGameStore store,
+    AdminAuthService auth,
     CancellationToken token) =>
 {
     var result = await store.ChangePasswordAsync(userName, request, token);
+    if (result.Success)
+    {
+        // 凭据变了，旧会话立即失效（安全复审 F3）：改密后必须重新登录。
+        auth.RevokeUser(userName);
+        return Results.Ok(result);
+    }
+
     return result switch
     {
-        { Success: true } => Results.Ok(result),
         { Failure: AccountPasswordUpdateFailure.InvalidCredentials } => Results.Unauthorized(),
         _ => Results.BadRequest(result)
     };
@@ -780,12 +800,32 @@ app.MapPost("/api/accounts/{userName}/password/reset", async (
     string userName,
     ResetAccountPasswordRequest request,
     JsonGameStore store,
+    AdminAuthService auth,
+    HttpContext http,
     CancellationToken token) =>
 {
+    // 找回密码是公开接口（忘记密码时无路可走更糟），但 QQ 码是可猜的短密钥，
+    // 必须与登录共用同一套预算（安全复审 F1：否则等于一条无认证的账号接管通道）。
+    var source = http.Connection.RemoteIpAddress?.ToString();
+    if (auth.IsSourceThrottled(source) || auth.IsAccountThrottled(userName))
+    {
+        return Results.Json(
+            new { error = "尝试过于频繁，请稍后再试。" },
+            statusCode: StatusCodes.Status429TooManyRequests);
+    }
+
+    auth.RegisterAttempt(source);
     var result = await store.ResetPasswordAsync(userName, request, token);
+    if (result.Success)
+    {
+        auth.ClearFailures(userName);
+        auth.RevokeUser(userName);
+        return Results.Ok(result);
+    }
+
+    auth.RegisterFailure(userName, source);
     return result switch
     {
-        { Success: true } => Results.Ok(result),
         { Failure: AccountPasswordUpdateFailure.InvalidRecoveryInformation } => Results.Unauthorized(),
         _ => Results.BadRequest(result)
     };
@@ -960,11 +1000,12 @@ app.MapGet("/", () => Results.Text(
 app.Lifetime.ApplicationStarted.Register(() =>
 {
     app.Logger.LogInformation("Admin API ready at http://{Host}:{Port}", options.Admin.Host, options.Admin.Port);
-    var auth = app.Services.GetRequiredService<AdminAuthService>();
     app.Logger.LogInformation(
-        "Admin API requires login; bootstrap admins: {Admins}. (Bearer token, {Hours}h sliding)",
+        "Admin API requires login; bootstrap admins: {Admins}. (Bearer token, {Hours}h sliding, {MaxHours}h max)",
         options.Admin.Users.Length == 0 ? "(none configured)" : string.Join(", ", options.Admin.Users),
-        options.Admin.TokenHours);
+        options.Admin.TokenHours,
+        options.Admin.MaxTokenLifetimeHours);
+    WarnAboutBootstrapAndExposure(app, options);
     var scripts = app.Services.GetRequiredService<ScriptFileSystem>();
     if (!scripts.FileExists("etc/channel_info.etc"))
     {
@@ -972,6 +1013,45 @@ app.Lifetime.ApplicationStarted.Register(() =>
             "etc/channel_info.etc is missing from Script.pvf. Entrance handshake works, but protocol 9 download is disabled.");
     }
 });
+
+// 两条部署期最容易踩的安全坑，启动时说清楚（安全复审 F4/F9）：
+// 1) 引导名单里的账号还没注册 + 管理端口对外 = 任何人抢注该名字后、下次重启就会被提升为管理员；
+// 2) 管理端口绑在通配地址上而没做 TLS 反代 = 密码与 token 明文过网。
+static void WarnAboutBootstrapAndExposure(WebApplication app, ServerOptions options)
+{
+    var wildcardHost = options.Admin.Host is "::" or "0.0.0.0" or "[::]" or "*" or "+";
+    if (wildcardHost)
+    {
+        app.Logger.LogWarning(
+            "Admin.Host={Host} exposes the admin API beyond this machine. " +
+            "Restrict the source range with a firewall and terminate HTTPS in front of it " +
+            "(passwords and bearer tokens are otherwise sent in clear text); " +
+            "or set Admin.Host=127.0.0.1 and use an SSH tunnel.",
+            options.Admin.Host);
+    }
+
+    if (options.Admin.Users.Length == 0)
+    {
+        app.Logger.LogWarning(
+            "Admin.Users is empty: nobody can log into the admin API. " +
+            "Set DFLegacy:Admin:Users (DFLegacy__Admin__Users__0) to the account name you will use.");
+        return;
+    }
+
+    var store = app.Services.GetRequiredService<JsonGameStore>();
+    var missing = options.Admin.Users
+        .Where(name => !string.IsNullOrWhiteSpace(name))
+        .Where(name => store.GetAccountAsync(name).GetAwaiter().GetResult() is null)
+        .ToArray();
+    if (missing.Length > 0)
+    {
+        app.Logger.LogWarning(
+            "Admin.Users lists {Missing}, but those accounts do not exist yet. Promotion happens only " +
+            "at startup, so register those names YOURSELF first, then restart — if the admin port is " +
+            "reachable before you do, somebody else can register the name and be promoted at your next restart.",
+            string.Join(", ", missing));
+    }
+}
 
 await app.RunAsync();
 

@@ -87,6 +87,9 @@ public partial class ModifyWindow : System.Windows.Window
             SubmitBtn.IsEnabled = true;
             return;
         }
+
+        // 服务端改密后已吊销该账号的全部 token；这里再登出一次只是清理，失败无妨。
+        await _account.LogoutAsync(login.Token);
         Close();
     }
 }

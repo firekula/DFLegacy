@@ -77,6 +77,24 @@ public sealed class AccountServiceClient
         }
     }
 
+    /// <summary>作废当前 token。改密/找回后服务端已吊销，这里主动登出只是清理会话，失败无妨。</summary>
+    public async Task LogoutAsync(string? token, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            return;
+        }
+
+        try
+        {
+            using var response = await PostJsonAsync("api/auth/logout", new { }, cancellationToken, token);
+        }
+        catch (HttpRequestException)
+        {
+            // 登出失败不影响用户：服务端侧该 token 已随改密被吊销，或到期后自然失效。
+        }
+    }
+
     public async Task<PasswordResult> ChangePasswordAsync(
         string userName, string oldPassword, string newPassword,
         string? token = null,

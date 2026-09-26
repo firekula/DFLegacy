@@ -82,11 +82,20 @@ public sealed class AdminOptions
     /// <summary>登录 token 有效期（小时）；每次使用滑动续期。</summary>
     public int TokenHours { get; set; } = 12;
 
-    /// <summary>同一「账号 + 来源 IP」连续登录失败达到该次数后锁定。</summary>
-    public int LoginMaxAttempts { get; set; } = 5;
+    /// <summary>
+    /// 触发账号级锁定的「不同失败来源数」阈值：来自这么多不同来源的失败才锁定该账号。
+    /// 取 1 会让单个来源就能锁死别人的账号（拒绝服务），默认 3。
+    /// </summary>
+    public int LoginAccountLockSources { get; set; } = 3;
+
+    /// <summary>同一来源（IP）的总尝试额度（跨账号），挡单机爆破/扫号/枚举。</summary>
+    public int LoginSourceMaxAttempts { get; set; } = 30;
 
     /// <summary>触发限流后的锁定时长（分钟）。</summary>
     public int LoginLockoutMinutes { get; set; } = 5;
+
+    /// <summary>token 绝对有效期上限（小时）：滑动续期也不能让 token 永生。</summary>
+    public int MaxTokenLifetimeHours { get; set; } = 24 * 7;
 }
 
 public sealed class ListenerOptions

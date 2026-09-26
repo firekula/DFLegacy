@@ -1444,10 +1444,7 @@ public sealed class JsonGameStore(
             var accountIndex = _accounts.FindIndex(account =>
                 string.Equals(account.UserName, userName.Trim(), StringComparison.OrdinalIgnoreCase));
             if (accountIndex < 0
-                || !string.Equals(
-                    _accounts[accountIndex].OicqCode,
-                    request.OicqCode.Trim(),
-                    StringComparison.Ordinal))
+                || !FixedTimeEqualsText(_accounts[accountIndex].OicqCode, request.OicqCode.Trim()))
             {
                 return new AccountPasswordUpdateResult(
                     false,
@@ -1645,10 +1642,11 @@ public sealed class JsonGameStore(
         if (string.IsNullOrWhiteSpace(userName)
             || userName.Length is < 4 or > 32
             || !IsValidPassword(request.Password)
+            // QQ 码是找回密码的唯一凭据：太短等于没有（1 位数字只需一次猜测就能接管账号）。
             || string.IsNullOrWhiteSpace(oicqCode)
-            || oicqCode.Length > 32)
+            || oicqCode.Length is < 5 or > 32)
         {
-            return (false, null, "账号长度应为 4-32，密码长度应为 6-128，QQ 不能为空。");
+            return (false, null, "账号长度应为 4-32，密码长度应为 6-128，QQ 不能为空且至少 5 位。");
         }
 
         await _gate.WaitAsync(cancellationToken);
@@ -5770,6 +5768,20 @@ public sealed class JsonGameStore(
 
     private static bool IsValidPassword(string? password) =>
         password is { Length: >= 6 and <= 128 };
+
+    // 找回密码的 QQ 码比对：定长比较，避免按字符提前返回泄露前缀（安全复审 F1）。
+    private static bool FixedTimeEqualsText(string? expected, string? actual)
+    {
+        if (expected is null || actual is null)
+        {
+            return false;
+        }
+
+        var expectedBytes = Encoding.UTF8.GetBytes(expected);
+        var actualBytes = Encoding.UTF8.GetBytes(actual);
+        return expectedBytes.Length == actualBytes.Length
+            && CryptographicOperations.FixedTimeEquals(expectedBytes, actualBytes);
+    }
 
     private static bool PasswordMatches(AccountRecord account, string password)
     {

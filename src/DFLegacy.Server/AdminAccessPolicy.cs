@@ -39,57 +39,60 @@ public static class AdminAccessPolicy
 
     public static AdminAccessDecision Resolve(string method, string path)
     {
-        if (path.Length == 0 || path == "/")
+        // 路由对末尾斜杠是宽容的（/api/auth/login/ 也会命中登录端点），而本表按文本匹配。
+        // 不归一化就会出现"表里判成 Admin、实际是登录接口"这种费解的 fail-closed 偏差。
+        var normalized = NormalizePath(path);
+
+        if (normalized.Length == 0 || normalized == "/")
         {
             return new AdminAccessDecision(AdminAccess.Public, null);
         }
 
-        if (path.StartsWith("/client", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/health", StringComparison.OrdinalIgnoreCase))
+        if (MatchesPrefix(normalized, "/client")
+            || MatchesPrefix(normalized, "/admin")
+            || MatchesPrefix(normalized, "/health"))
         {
             return new AdminAccessDecision(AdminAccess.Public, null);
         }
 
-        if (IsPath(path, "/api/accounts") && IsMethod(method, "POST"))
+        if (IsPath(normalized, "/api/accounts") && IsMethod(method, "POST"))
         {
             return new AdminAccessDecision(AdminAccess.Public, null);
         }
 
-        if (IsPath(path, "/api/auth/login") && IsMethod(method, "POST"))
+        if (IsPath(normalized, "/api/auth/login") && IsMethod(method, "POST"))
         {
             return new AdminAccessDecision(AdminAccess.Public, null);
         }
 
-        if (IsPath(path, "/api/auth/logout") && IsMethod(method, "POST"))
+        if (IsPath(normalized, "/api/auth/logout") && IsMethod(method, "POST"))
         {
             return new AdminAccessDecision(AdminAccess.Authenticated, null);
         }
 
-        // 找回密码靠 QQ 码自证，保持公开（否则忘记密码就无路可走）；同样纳入登录限流。
-        if (TryMatchAccountSubPath(path, "password/reset", out _) && IsMethod(method, "POST"))
+        // 找回密码靠 QQ 码自证，保持公开（否则忘记密码就无路可走）；调用方（Program.cs）
+        // 会把它纳入与登录相同的失败预算（防 QQ 码爆破），见 AdminAuthService 的说明。
+        if (TryMatchAccountSubPath(normalized, "password/reset", out _) && IsMethod(method, "POST"))
         {
             return new AdminAccessDecision(AdminAccess.Public, null);
         }
 
-        if (TryMatchAccountSubPath(path, "password", out var passwordAccount)
+        if (TryMatchAccountSubPath(normalized, "password", out var passwordAccount)
             && IsMethod(method, "PUT"))
         {
             return new AdminAccessDecision(AdminAccess.SelfAccount, passwordAccount);
         }
 
-        if (TryMatchAccountSubPath(path, "characters", out var charactersAccount)
+        if (TryMatchAccountSubPath(normalized, "characters", out var charactersAccount)
             && IsMethod(method, "GET"))
         {
             return new AdminAccessDecision(AdminAccess.SelfAccount, charactersAccount);
         }
 
-        if (path.StartsWith("/api", StringComparison.OrdinalIgnoreCase))
-        {
-            return new AdminAccessDecision(AdminAccess.Admin, null);
-        }
-
-        return new AdminAccessDecision(AdminAccess.Public, null);
+        // 兜底一律按管理员（fail-closed）。静态文件在 UseStaticFiles 就返回了、到不了这里，
+        // 所以剩下的基本是 404 路径与 /api/**；将来新增 /admin/**、/client/** 路由若忘了
+        // 登记进本表，也会落到这条兜底而不是被静默当成公开接口。
+        return new AdminAccessDecision(AdminAccess.Admin, null);
     }
 
     public static string? BearerToken(string? authorizationHeader)
@@ -110,6 +113,16 @@ public static class AdminAccessPolicy
 
     private static bool IsMethod(string method, string expected) =>
         method.Equals(expected, StringComparison.OrdinalIgnoreCase);
+
+    // 只去一个末尾斜杠：/api/auth/login/ -> /api/auth/login；根路径保持 "/"。
+    private static string NormalizePath(string path) =>
+        path.Length > 1 && path[^1] == '/' ? path[..^1] : path;
+
+    // 前缀按"整段"匹配：/client、/client/xxx、/client.css 都算，/clientx 不算。
+    private static bool MatchesPrefix(string path, string prefix) =>
+        path.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>匹配 <c>/api/accounts/{账号}/{子路径}</c>，取出其中的账号名。</summary>
     private static bool TryMatchAccountSubPath(string path, string subPath, out string account)

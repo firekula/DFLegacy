@@ -26,8 +26,12 @@ public partial class RegisterWindow : System.Windows.Window
         var oicq = string.IsNullOrWhiteSpace(OicqBox.Text) ? null : OicqBox.Text.Trim();
         var test = TestAccountBox.IsChecked == true;
         if (pass != confirm) { Growl.Info("两次密码不一致。"); return; }
-        if (user.Length is < 4 or > 32 || pass.Length is < 6 or > 128 || oicq is null || oicq.Length > 32)
-        { Growl.Info("账号 4-32、密码 6-128、QQ 不能为空且 ≤32。"); return; }
+        if (user.Length is < 4 or > 32 || pass.Length is < 6 or > 128
+            || oicq is null || oicq.Length is < 5 or > 32)
+        {
+            Growl.Info("账号 4-32、密码 6-128、QQ 不能为空且至少 5 位。");
+            return;
+        }
 
         SubmitBtn.IsEnabled = false;
         RegistrationResult r;

@@ -9,49 +9,12 @@ internal static class AdminAuthSmokeTests
         CheckPolicyTable(check);
         CheckBearerParsing(check);
         CheckTokenLifecycle(check);
-        CheckLoginRateLimit(check);
+        CheckThrottleSemantics(check);
         CheckBoundedMemory(check);
         await CheckRoleModelAsync(check);
     }
 
-    // 登录失败表与 token 表都对公网可达：必须有界，否则刷量就能把内存堆上去。
-    private static void CheckBoundedMemory(Action<bool, string> check)
-    {
-        var start = new DateTimeOffset(2026, 9, 26, 12, 0, 0, TimeSpan.Zero);
-        var clock = new FakeClock(start);
-        var auth = new AdminAuthService(new ServerOptions(), clock);
-
-        for (var i = 0; i < 25_000; i++)
-        {
-            auth.RegisterFailure($"flood{i}", "10.0.0.9");
-        }
-
-        check(auth.TrackedFailureCount <= 20_000,
-            $"failure tracking stays bounded under username flooding (got {auth.TrackedFailureCount})");
-
-        // 单账号反复登录：最多保留 5 个会话，最久未用的被顶掉
-        // （每次登录推进 1 秒，让 token 的过期时间可区分——真实场景时间本来就在走）
-        var tokens = new List<string>();
-        for (var i = 0; i < 10; i++)
-        {
-            clock.Now = start.AddSeconds(i);
-            tokens.Add(auth.IssueToken("solo", AccountRole.Player).Token!);
-        }
-
-        check(auth.Validate(tokens[0]) is null && auth.Validate(tokens[^1]) is not null,
-            "the oldest session of a repeatedly logging-in account is evicted (max 5 concurrent)");
-
-        // 海量不同账号登录：token 表同样有界
-        for (var i = 0; i < 25_000; i++)
-        {
-            auth.IssueToken($"burst{i}", AccountRole.Player);
-        }
-
-        check(auth.ActiveTokenCount <= 20_000,
-            $"token table stays bounded under login flooding (got {auth.ActiveTokenCount})");
-    }
-
-    // 权限表是纯函数：这组断言就是"哪一个接口需要什么权限"的唯一权威清单，
+    // 权限表是纯函数：这组断言就是"哪一个接口需要什么权限"的权威清单，
     // 改动路由时这里会先红，避免漏挂鉴权。
     private static void CheckPolicyTable(Action<bool, string> check)
     {
@@ -94,7 +57,16 @@ internal static class AdminAuthSmokeTests
             ("POST", "/api/characters/" + characterId + "/popup", AdminAccess.Admin, null),
             // 大小写不敏感：ASP.NET 路由也是不敏感的
             ("get", "/HEALTH", AdminAccess.Public, null),
-            ("put", "/API/ACCOUNTS/Alice/PASSWORD", AdminAccess.SelfAccount, "Alice")
+            ("put", "/API/ACCOUNTS/Alice/PASSWORD", AdminAccess.SelfAccount, "Alice"),
+            // 末尾斜杠归一化：路由对它是宽容的，权限表也要一致（否则登录会被判成管理员接口）
+            ("POST", "/api/auth/login/", AdminAccess.Public, null),
+            ("POST", "/api/accounts/", AdminAccess.Public, null),
+            ("GET", "/api/accounts/alice/characters/", AdminAccess.SelfAccount, "alice"),
+            ("PUT", "/api/accounts/alice/password/", AdminAccess.SelfAccount, "alice"),
+            // 未登记的路径一律 fail-closed（含将来新增的 /admin/**、/client/** 路由）
+            ("GET", "/admin/secret-later", AdminAccess.Public, null),
+            ("GET", "/some-unknown-path", AdminAccess.Admin, null),
+            ("GET", "/clientx", AdminAccess.Admin, null)
         };
 
         foreach (var (method, path, access, account) in cases)
@@ -123,6 +95,7 @@ internal static class AdminAuthSmokeTests
         var clock = new FakeClock(start);
         var options = new ServerOptions();
         options.Admin.TokenHours = 12;
+        options.Admin.MaxTokenLifetimeHours = 24;
         var auth = new AdminAuthService(options, clock);
 
         var issued = auth.IssueToken("alice", AccountRole.Admin);
@@ -145,6 +118,11 @@ internal static class AdminAuthSmokeTests
         check(auth.Validate(issued.Token) is not null,
             "an actively used token stays valid past its original expiry");
 
+        // 绝对上限：一直续期也不能永生（防被窃 token 长期有效）
+        clock.Now = start.AddHours(25);
+        check(auth.Validate(issued.Token) is null,
+            "an endlessly renewed token still dies at the absolute lifetime");
+
         // 超过生命周期不用就失效
         var staleClock = new FakeClock(start);
         var staleAuth = new AdminAuthService(options, staleClock);
@@ -157,7 +135,7 @@ internal static class AdminAuthSmokeTests
         check(auth.Validate("not-a-token") is null, "unknown tokens are rejected");
         check(auth.Validate(null) is null, "missing tokens are rejected");
 
-        // 角色变更时按用户吊销：只清掉该账号自己的 token
+        // 角色变更/改密时按用户吊销：只清掉该账号自己的 token
         clock.Now = start;
         var revokeAuth = new AdminAuthService(options, clock);
         var alice1 = revokeAuth.IssueToken("alice", AccountRole.Admin);
@@ -170,41 +148,93 @@ internal static class AdminAuthSmokeTests
             "revoking a user kills exactly that user's tokens (case-insensitive)");
     }
 
-    private static void CheckLoginRateLimit(Action<bool, string> check)
+    private static void CheckThrottleSemantics(Action<bool, string> check)
     {
         var start = new DateTimeOffset(2026, 9, 26, 12, 0, 0, TimeSpan.Zero);
         var clock = new FakeClock(start);
         var options = new ServerOptions();
-        options.Admin.LoginMaxAttempts = 5;
+        options.Admin.LoginAccountLockSources = 3;
+        options.Admin.LoginSourceMaxAttempts = 30;
         options.Admin.LoginLockoutMinutes = 5;
         var auth = new AdminAuthService(options, clock);
 
-        check(!auth.IsLocked("alice", "10.0.0.1"), "a fresh account is not locked");
-        for (var attempt = 1; attempt <= 4; attempt++)
-        {
-            var lockedUntil = auth.RegisterFailure("alice", "10.0.0.1");
-            check(lockedUntil is null && !auth.IsLocked("alice", "10.0.0.1"),
-                $"failure {attempt} of 5 does not lock the account");
-        }
+        check(!auth.IsAccountThrottled("alice") && !auth.IsSourceThrottled("10.0.0.1"),
+            "a fresh account/source is not throttled");
 
-        check(auth.RegisterFailure("alice", "10.0.0.1") == start.AddMinutes(5)
-                && auth.IsLocked("alice", "10.0.0.1"),
-            "the fifth failure locks the account for the configured window");
-        check(!auth.IsLocked("alice", "10.0.0.2"),
-            "another source IP is not locked by this account's failures");
-
-        clock.Now = start.AddMinutes(5);
-        check(!auth.IsLocked("alice", "10.0.0.1"), "lockout expires after the configured window");
-
-        auth.RegisterFailure("alice", "10.0.0.1");
-        auth.ClearFailures("alice", "10.0.0.1");
-        for (var attempt = 1; attempt <= 4; attempt++)
+        // 单机反复失败【不会】锁定账号：一个来源锁不死别人（安全复审 F2 的核心）
+        for (var i = 0; i < 20; i++)
         {
             auth.RegisterFailure("alice", "10.0.0.1");
         }
 
-        check(!auth.IsLocked("alice", "10.0.0.1"),
-            "a successful login clears accumulated failures");
+        check(!auth.IsAccountThrottled("alice"),
+            "failures from a single source never lock an account (no lockout DoS)");
+
+        // 来自多个不同来源的失败才升级为账号锁定（分布式爆破）
+        auth.RegisterFailure("alice", "10.0.0.2");
+        check(!auth.IsAccountThrottled("alice"), "two failing sources are not enough to lock");
+        auth.RegisterFailure("alice", "10.0.0.3");
+        check(auth.IsAccountThrottled("alice") && auth.IsAccountThrottled("ALICE"),
+            "failures from 3 distinct sources lock the account (keyed case-insensitively)");
+
+        clock.Now = start.AddMinutes(6);
+        check(!auth.IsAccountThrottled("alice"), "the account lock expires");
+
+        // 来源级预算：跨账号、硬拒绝，挡单机爆破/扫号/枚举
+        for (var i = 0; i < 30; i++)
+        {
+            auth.RegisterAttempt("10.0.0.9");
+        }
+
+        check(auth.IsSourceThrottled("10.0.0.9"), "the source budget limits a single origin");
+        check(!auth.IsSourceThrottled("10.0.0.10"), "another origin is unaffected");
+        clock.Now = start.AddMinutes(12);
+        check(!auth.IsSourceThrottled("10.0.0.9"), "the source throttle window expires");
+
+        // 凭据正确时调用方会 ClearFailures（账号预算随即清零）
+        auth.RegisterFailure("bob", "10.0.0.1");
+        auth.RegisterFailure("bob", "10.0.0.2");
+        auth.ClearFailures("bob");
+        auth.RegisterFailure("bob", "10.0.0.2");
+        check(!auth.IsAccountThrottled("bob"), "a successful login clears the account budget");
+    }
+
+    // 登录/找回失败记录与 token 表都对公网可达：必须有界，否则刷量就能把内存堆上去。
+    private static void CheckBoundedMemory(Action<bool, string> check)
+    {
+        var start = new DateTimeOffset(2026, 9, 26, 12, 0, 0, TimeSpan.Zero);
+        var clock = new FakeClock(start);
+        var auth = new AdminAuthService(new ServerOptions(), clock);
+
+        for (var i = 0; i < 25_000; i++)
+        {
+            auth.RegisterFailure($"flood{i}", "10.0.0.1");
+            auth.RegisterAttempt($"10.9.{i / 256 % 256}.{i % 256}");
+        }
+
+        check(auth.TrackedAccountBudgetCount <= 20_000,
+            $"account budgets stay bounded under username flooding (got {auth.TrackedAccountBudgetCount})");
+
+        // 单账号反复登录：最多保留 5 个会话，最久未用的被顶掉
+        // （每次登录推进 1 秒，让 token 的过期时间可区分——真实场景时间本来就在走）
+        var tokens = new List<string>();
+        for (var i = 0; i < 10; i++)
+        {
+            clock.Now = start.AddSeconds(i);
+            tokens.Add(auth.IssueToken("solo", AccountRole.Player).Token!);
+        }
+
+        check(auth.Validate(tokens[0]) is null && auth.Validate(tokens[^1]) is not null,
+            "the oldest session of a repeatedly logging-in account is evicted (max 5 concurrent)");
+
+        // 海量不同账号登录：token 表同样有界
+        for (var i = 0; i < 25_000; i++)
+        {
+            auth.IssueToken($"burst{i}", AccountRole.Player);
+        }
+
+        check(auth.ActiveTokenCount <= 20_000,
+            $"token table stays bounded under login flooding (got {auth.ActiveTokenCount})");
     }
 
     private static async Task CheckRoleModelAsync(Action<bool, string> check)
@@ -244,6 +274,12 @@ internal static class AdminAuthSmokeTests
                 new CreateAccountRequest("alice", "alicepass", OicqCode: "10002"));
             check(playerCreated.Created && playerCreated.Account?.Role == AccountRole.Player,
                 "an ordinary registration stays a player");
+
+            // 太短的 QQ 码不允许注册（1 位数字等于没有找回凭据）
+            var weakCode = await store.CreateAccountAsync(
+                new CreateAccountRequest("weakqq", "weakpass1", OicqCode: "1"));
+            check(!weakCode.Created && weakCode.Error is not null,
+                "a too-short QQ recovery code is rejected at registration");
 
             // 引导提升已存在账号，并且落盘后仍然有效
             var promotedOptions = new ServerOptions
@@ -286,6 +322,15 @@ internal static class AdminAuthSmokeTests
             check(!missing.Success, "promoting an unknown account fails cleanly");
             check(await reloaded.GetAccountAsync("nobody") is null,
                 "an unknown account has no public record");
+
+            // 找回密码：QQ 码错 -> InvalidRecoveryInformation；正确 -> 成功
+            var wrongRecovery = await reloaded.ResetPasswordAsync(
+                "alice", new ResetAccountPasswordRequest("99999", "whatever1"));
+            check(wrongRecovery.Failure == AccountPasswordUpdateFailure.InvalidRecoveryInformation,
+                "a wrong QQ code fails recovery");
+            var okRecovery = await reloaded.ResetPasswordAsync(
+                "alice", new ResetAccountPasswordRequest("10002", "recovered1"));
+            check(okRecovery.Success, "the matching QQ code recovers the password");
 
             // 向后兼容：旧 state.json 没有 Role 字段 -> 解析为 Player 而不是报错
             var stateJson = await File.ReadAllTextAsync(Path.Combine(root, "state.json"));
