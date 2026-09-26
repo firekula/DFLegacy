@@ -1669,8 +1669,18 @@ public sealed class JsonGameStore(
                 PresetCharactersInitialized: !request.TestAccount,
                 Cash: DefaultAccountCash,
                 OicqCode: oicqCode,
-                // 引导名单里的账号注册时直接就是管理员（运营方不必先注册再手工提权）。
-                Role: IsBootstrapAdmin(userName) ? AccountRole.Admin : AccountRole.Player);
+                // 新账号一律是普通玩家。引导管理员【只在启动时】提升（ApplyBootstrapAdminsAsync）：
+                // 如果注册时就按名单提升，那么"名单里的账号尚未注册"的部署窗口里，
+                // 任何人都能抢注该名字直接拿到管理员权限。
+                Role: AccountRole.Player);
+            if (IsBootstrapAdmin(userName))
+            {
+                logger.LogWarning(
+                    "Account {UserName} was registered and is listed in Admin.Users, but bootstrap " +
+                    "promotion only happens at startup. Restart the server to promote it (or promote it " +
+                    "through PUT /api/admin/users/{{userName}}/role).",
+                    userName);
+            }
             if (request.TestAccount)
             {
                 account.Characters.Add(CreatePresetCharacterLocked(accountUid, slot: 0));

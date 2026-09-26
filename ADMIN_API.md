@@ -40,12 +40,14 @@ $baseUrl = 'http://127.0.0.1:8081'
 `POST /api/accounts`（注册）、`POST /api/accounts/{userName}/password/reset`（QQ 找回）、
 `POST /api/auth/login`。其余 `/api/**` 一律需要登录，且多数需要管理员。
 
-**引导管理员**：`server.json` 的 `DFLegacy.Admin.Users` 列出用户名，这些账号在启动时与
-注册时自动成为管理员；名单里尚未注册的账号会在启动日志给出警告。**至少要有一名管理员，
-否则没人能进后台**，因此服务端拒绝降级最后一名管理员，也拒绝管理员降级自己。
+**引导管理员**：`server.json` 的 `DFLegacy.Admin.Users` 列出用户名，这些账号在**服务端启动时**被提升为管理员；名单里尚未注册的账号会在启动日志给出警告。
+
+> ⚠️ 提升刻意**只发生在启动时**，不在注册时。否则当名单里的账号还没注册时，任何人都能抢注该名字直接拿到管理员权限。运维流程：先在游戏/启动器里注册你的管理员账号 → 重启服务端（或由已有管理员用 `PUT /api/admin/users/{userName}/role` 提升）→ 之后即可登录后台。
+
+**至少要有一名管理员，否则没人能进后台**，因此服务端拒绝降级最后一名管理员，也拒绝管理员降级自己。
 
 **登录限流**：同一「账号 + 来源 IP」连续失败 `Admin.LoginMaxAttempts`（默认 5）次后锁定
-`Admin.LoginLockoutMinutes`（默认 5）分钟，锁定期内即使密码正确也一律拒绝。
+`Admin.LoginLockoutMinutes`（默认 5）分钟，锁定期内即使密码正确也一律拒绝。限流按**直连来源 IP** 计数；如果前面有反向代理，所有请求会共用代理的 IP（此时应把限流阈值调大或改用代理层的限流）。
 
 token 是服务端内存中的随机串，有效期 `Admin.TokenHours`（默认 12 小时），每次使用滑动续期；
 `POST /api/auth/logout` 与角色变更会**立即**作废 token（降级即时生效）。服务端重启后需重新登录。
@@ -499,8 +501,8 @@ $character.id
 
 ### 4.10 角色档位与引导管理员
 
-- 新注册账号默认是 `Player`；`server.json` 的 `DFLegacy.Admin.Users` 名单里的账号在注册
-  时直接是 `Admin`，名单里已存在的账号在服务端启动时被提升为 `Admin`。
+- 新注册账号**一律是** `Player`；`server.json` 的 `DFLegacy.Admin.Users` 名单在**服务端启动时**
+  把其中的账号提升为 `Admin`（注册不提升，见 §1.2 的说明：防止抢注名单名字提权）。
 - 角色持久化在 `data/state.json` 的账号记录里；旧存档没有该字段时按 `Player` 解析。
 - 角色的作用是**后台权限**，与账号 UID 段（`Test`/`Reserved`/`Normal`）无关，不影响游戏内玩法。
 

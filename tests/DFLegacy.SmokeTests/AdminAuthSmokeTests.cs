@@ -190,14 +190,18 @@ internal static class AdminAuthSmokeTests
             check((await store.GetAccountAsync("test"))?.Role == AccountRole.Player,
                 "public account records expose the role");
 
-            // 名单里还不存在的账号：记警告、不提升；之后注册时自动成为管理员
+            // 名单里还不存在的账号：记警告、不提升；而且注册时也【不会】直接变管理员
+            // （否则"名单账号尚未注册"的部署窗口里，任何人都能抢注该名字拿到管理员）
             options.Admin.Users = ["boss"];
             check(await store.ApplyBootstrapAdminsAsync() == 0,
                 "a bootstrap admin that does not exist yet promotes nobody");
             var created = await store.CreateAccountAsync(
                 new CreateAccountRequest("boss", "bosspass", OicqCode: "10001"));
-            check(created.Created && created.Account?.Role == AccountRole.Admin,
-                "an account registered from the bootstrap list is an admin");
+            check(created.Created && created.Account?.Role == AccountRole.Player,
+                "registering a name from the bootstrap list does NOT grant admin (privilege-escalation guard)");
+            check(await store.ApplyBootstrapAdminsAsync() == 1
+                    && await store.GetRoleAsync("boss") == AccountRole.Admin,
+                "the bootstrap list promotes that account on the next startup pass");
             var playerCreated = await store.CreateAccountAsync(
                 new CreateAccountRequest("alice", "alicepass", OicqCode: "10002"));
             check(playerCreated.Created && playerCreated.Account?.Role == AccountRole.Player,
