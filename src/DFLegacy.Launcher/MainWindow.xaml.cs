@@ -146,7 +146,32 @@ public partial class MainWindow : System.Windows.Window
         }
     }
 
-    private void AccountEditBtn_Click(object sender, RoutedEventArgs e) { }   // Task 6 接入
+    private void AccountEditBtn_Click(object sender, RoutedEventArgs e)
+    {
+        Views.AccountEditWindow win;
+        try
+        {
+            // 账号管理窗口在构造里会 Load 一份独立的 launcher.json 快照，文件损坏时
+            // 这里就抛；不能让异常沿事件处理器冒泡成进程崩溃。
+            win = new Views.AccountEditWindow(_store) { Owner = this };
+        }
+        catch (Exception ex)
+        {
+            Growl.Warning($"加载本地账号列表失败：{ex.Message}");
+            return;
+        }
+        win.ShowDialog();
+        try
+        {
+            _options = _store.Load();      // 编辑后重新加载
+            RefreshAccounts();
+        }
+        catch (Exception ex)
+        {
+            // 重载失败时内存保留编辑前快照：提示用户但不崩溃，下次启动以磁盘为准。
+            Growl.Warning($"重新加载本地账号列表失败：{ex.Message}");
+        }
+    }
     private void ConfigBtn_Click(object sender, RoutedEventArgs e) { }        // Task 7 接入
 
     protected override void OnClosing(CancelEventArgs e)
