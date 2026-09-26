@@ -14,6 +14,17 @@
   <ItemGroup>
     <PackageReference Include="HandyControl" Version="3.5.1" />
   </ItemGroup>
+  <!-- 原版 2008 登录器皮肤素材（取自客户端 start\data\ui 与 config\layout\QQLogin.xml 的布局定义），
+       以 WPF 资源内嵌，发布后自带、不依赖机器上是否留有原版安装。 -->
+  <ItemGroup>
+    <Resource Include="Assets\Skin\*.png" />
+    <Resource Include="Assets\Skin\QQGame.ico" />
+    <!-- 原版服务条款页（config\fwtk.html）；保留为可直接编辑的文件，方便运营方替换成自己的条款。 -->
+    <Content Include="Assets\Skin\fwtk.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
   <!-- UseWPF 的隐式 usings 会移除 System.IO / System.Net.Http（避免与 WPF 的
        Shapes.Path 等歧义）；本项目大量使用 Path/File 等，按 WinForms 时期语义恢复。 -->
   <ItemGroup>

@@ -1,5 +1,9 @@
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Net.Sockets;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using DFLegacy.AccountClient;
@@ -9,6 +13,9 @@ namespace DFLegacy.Launcher;
 
 public partial class MainWindow : System.Windows.Window
 {
+    /// <summary>原版 QQLogin.xml 的 CaptionHeight：顶部这块区域按下可拖动整个无边框窗口。</summary>
+    private const int CaptionDragHeight = 100;
+
     private readonly LauncherAccountStore _store = new(Path.Combine(AppContext.BaseDirectory, "launcher.json"));
     private AccountServiceClient _account;
     private readonly DispatcherTimer _statusTimer;
@@ -19,7 +26,31 @@ public partial class MainWindow : System.Windows.Window
         InitializeComponent();
         _options = _store.Load();
         _account = new AccountServiceClient(_options.AccountServiceUrl);
+
+        // 原版三态图片按钮：位置/尺寸见 MainWindow.xaml（取自 QQLogin.xml），
+        // 标签烙在图片里，点击动作用这里注入。
+        _ = new SkinImage(CloseImage, "buton_close00.png", "buton_close01.png", "buton_close02.png",
+            () => Close());
+        _ = new SkinImage(RegisterImage, "buton_zczh00.png", "buton_zczh01.png", "buton_zczh02.png",
+            () => RegisterBtn_Click(this, new RoutedEventArgs()));
+        _ = new SkinImage(SiteImage, "buton_gfwz00.png", "buton_gfwz01.png", "buton_gfwz02.png",
+            () => OpenUrl("http://dnf.qq.com/"));
+        _ = new SkinImage(ServiceImage, "buton_kffw00.png", "buton_kffw01.png", "buton_kffw02.png",
+            () => OpenUrl("http://gcs.qq.com/gcs/index.shtml"));
+        _ = new SkinImage(PayImage, "buton_sccz00.png", "buton_sccz01.png", "buton_sccz02.png",
+            () => OpenUrl("http://dnf.qq.com/web200805/pay.htm"));
+        _ = new SkinImage(ForumImage, "buton_yxlt00.png", "buton_yxlt01.png", "buton_yxlt02.png",
+            () => OpenUrl("http://gamebbs.qq.com/"));
+        _ = new SkinImage(AccountsImage, "buton_bs03.png", "buton_bs03.png", "buton_bs03.png",
+            () => AccountEditBtn_Click(this, new RoutedEventArgs()));
+        _ = new SkinImage(SettingsImage, "choose_00.png", "choose_01.png", "choose_02.png",
+            () => ConfigBtn_Click(this, new RoutedEventArgs()));
+        _ = new SkinImage(EnterImage, "enter_00.png", "enter_01.png", "enter_02.png",
+            StartGame);
+
         RefreshAccounts();
+        AccountText.TextChanged += (_, _) => UpdateAccountHint();
+
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
@@ -28,46 +59,131 @@ public partial class MainWindow : System.Windows.Window
 
     private void RefreshAccounts()
     {
-        AccountBox.ItemsSource = _options.Accounts
+        AccountList.ItemsSource = _options.Accounts
             .Select(a => new AccountItem(a.DisplayName ?? a.Account, a.Account)).ToList();
         if (_options.Accounts.Count > 0)
-            AccountBox.SelectedIndex = Math.Clamp(_options.AccountIndex, 0, _options.Accounts.Count - 1);
+        {
+            AccountList.SelectedIndex = Math.Clamp(_options.AccountIndex, 0, _options.Accounts.Count - 1);
+        }
+        else
+        {
+            AccountText.Text = _options.Account;
+            PasswordText.Password = _options.Password;
+        }
+
+        UpdateAccountHint();
     }
 
     private LauncherAccountProfile SelectedProfile() =>
         _options.Accounts.Count == 0
             ? new LauncherAccountProfile { Account = _options.Account, Password = _options.Password }
-            : _options.Accounts[AccountBox.SelectedIndex >= 0 ? AccountBox.SelectedIndex : 0];
+            : _options.Accounts[Math.Clamp(
+                AccountList.SelectedIndex >= 0 ? AccountList.SelectedIndex : 0,
+                0,
+                _options.Accounts.Count - 1)];
 
-    private void AccountBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void AccountList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (AccountBox.SelectedIndex < 0 || _options.Accounts.Count == 0) return;
-        var p = _options.Accounts[AccountBox.SelectedIndex];
-        PasswordBox.Password = p.RememberPassword ? p.Password : string.Empty;
+        if (AccountList.SelectedIndex < 0 || _options.Accounts.Count == 0) return;
+        var profile = _options.Accounts[Math.Clamp(AccountList.SelectedIndex, 0, _options.Accounts.Count - 1)];
+        AccountText.Text = profile.Account;
+        PasswordText.Password = profile.RememberPassword ? profile.Password : string.Empty;
+        UpdateAccountHint();
     }
 
+    private void UpdateAccountHint() =>
+        AccountHint.Visibility = string.IsNullOrEmpty(AccountText.Text) ? Visibility.Visible : Visibility.Collapsed;
+
+    // 状态灯语义按原版：探的是游戏入口（EntranceHost:EntrancePort），不是本机账号 API。
+    // 账号 API（注册/改密/找回用）单独一行显示，避免"远端服务端明明在跑却提示不可达"的误解。
     private async Task RefreshStatusAsync()
     {
         try
         {
-            var ok = await _account.CheckHealthAsync();
-            StatusDot.Fill = ok ? Brushes.Green : Brushes.IndianRed;
-            StatusText.Text = ok ? "服务端在线" : "服务端不可达";
+            var entranceUp = await ProbeTcpAsync(
+                _options.EntranceHost, _options.EntrancePort, TimeSpan.FromSeconds(2));
+            ServerDot.Fill = entranceUp ? Brushes.LimeGreen : Brushes.IndianRed;
+            ServerText.Text = entranceUp ? "服务端已上线" : "服务端未上线";
+            ServerAddr.Text = $"{_options.EntranceHost}:{_options.EntrancePort}";
         }
         catch (Exception)
         {
-            // CheckHealthAsync 只捕获 HttpRequestException；超时会以 TaskCanceledException
-            // 冒出。DispatcherTimer 的 Tick 是 async void，未处理异常会拖垮整个应用，
-            // 所以任何失败都按离线处理。
-            StatusDot.Fill = Brushes.IndianRed;
-            StatusText.Text = "服务端不可达";
+            ServerDot.Fill = Brushes.IndianRed;
+            ServerText.Text = "服务端未上线";
+        }
+
+        try
+        {
+            var apiUp = await _account.CheckHealthAsync();
+            ApiDot.Fill = apiUp ? Brushes.LimeGreen : Brushes.Gray;
+            ApiText.Text = apiUp
+                ? "账号服务：可达"
+                : "账号服务：不可达（注册 / 改密 / 找回需要本机 8081）";
+        }
+        catch (Exception)
+        {
+            // CheckHealthAsync 只捕获 HttpRequestException，超时会以 TaskCanceledException 冒出；
+            // DispatcherTimer 的 Tick 是 async void，任何失败都按不可达处理，避免拖垮应用。
+            ApiDot.Fill = Brushes.Gray;
+            ApiText.Text = "账号服务：不可达";
         }
     }
 
-    private async void StartBtn_Click(object sender, RoutedEventArgs e)
+    private static async Task<bool> ProbeTcpAsync(string host, int port, TimeSpan timeout)
     {
-        var profile = SelectedProfile();
-        profile.Password = PasswordBox.Password;
+        try
+        {
+            using var client = new TcpClient();
+            using var timeoutSource = new CancellationTokenSource(timeout);
+            await client.ConnectAsync(host, port, timeoutSource.Token);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private void StartGame()
+    {
+        if (AgreeBox.IsChecked != true)
+        {
+            Growl.Info("请先勾选同意服务条款。");
+            return;
+        }
+
+        var account = AccountText.Text.Trim();
+        var password = PasswordText.Password;
+        if (string.IsNullOrEmpty(account))
+        {
+            Growl.Info("请输入账号。");
+            AccountText.Focus();
+            return;
+        }
+
+        if (string.IsNullOrEmpty(password))
+        {
+            Growl.Info("请输入密码。");
+            PasswordText.Focus();
+            return;
+        }
+
+        // 用界面当前输入启动（不回写存储，避免把界面里临时输入的密码持久化到 launcher.json）。
+        var stored = SelectedProfile();
+        var launchProfile = new LauncherAccountProfile
+        {
+            Account = account,
+            Password = password,
+            DisplayName = stored.DisplayName,
+            CreateTime = stored.CreateTime,
+            OicqCode = stored.OicqCode,
+            RememberPassword = stored.RememberPassword
+        };
+        _ = StartGameAsync(launchProfile);
+    }
+
+    private async Task StartGameAsync(LauncherAccountProfile profile)
+    {
         try
         {
             Hide();
@@ -81,11 +197,74 @@ public partial class MainWindow : System.Windows.Window
         }
     }
 
-    private async void RefreshBtn_Click(object sender, RoutedEventArgs e) => await RefreshStatusAsync();
+    private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.GetPosition(this).Y <= CaptionDragHeight)
+        {
+            DragMove();
+        }
+    }
+
+    private void Window_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            StartGame();
+            e.Handled = true;
+        }
+    }
+
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Growl.Warning($"打开链接失败：{ex.Message}");
+        }
+    }
+
+    private static void OpenTerms()
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Assets", "Skin", "fwtk.html");
+            if (!File.Exists(path))
+            {
+                Growl.Warning("未找到服务条款页（Assets/Skin/fwtk.html）。");
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Growl.Warning($"打开服务条款失败：{ex.Message}");
+        }
+    }
+
+    private void TermsLink_Click(object sender, MouseButtonEventArgs e) => OpenTerms();
+
+    private void ModifyLink_Click(object sender, MouseButtonEventArgs e) => ModifyBtn_Click(this, new RoutedEventArgs());
+
+    private void ResetLink_Click(object sender, MouseButtonEventArgs e) => ResetBtn_Click(this, new RoutedEventArgs());
+
+    private void ManageLink_Click(object sender, MouseButtonEventArgs e) => AccountEditBtn_Click(this, new RoutedEventArgs());
+
     private void RegisterBtn_Click(object sender, RoutedEventArgs e)
     {
-        var win = new Views.RegisterWindow(_account, OnRegistered);
-        win.Owner = this;
+        Views.RegisterWindow win;
+        try
+        {
+            win = new Views.RegisterWindow(_account, OnRegistered) { Owner = this };
+        }
+        catch (Exception ex)
+        {
+            Growl.Warning($"打开注册窗口失败：{ex.Message}");
+            return;
+        }
         win.ShowDialog();
     }
 
@@ -107,22 +286,49 @@ public partial class MainWindow : System.Windows.Window
             _options.AccountIndex = previousIndex;
             throw;
         }
+
         RefreshAccounts();
         if (_options.Accounts.Count > 0)
-            AccountBox.SelectedIndex = _options.Accounts.Count - 1;
+        {
+            AccountList.SelectedIndex = _options.Accounts.Count - 1;
+        }
     }
+
     private void ResetBtn_Click(object sender, RoutedEventArgs e)
     {
-        var win = new Views.ResetWindow(_account) { Owner = this };
+        Views.ResetWindow win;
+        try
+        {
+            win = new Views.ResetWindow(_account) { Owner = this };
+        }
+        catch (Exception ex)
+        {
+            Growl.Warning($"打开找回密码窗口失败：{ex.Message}");
+            return;
+        }
         win.ShowDialog();
     }
 
     private void ModifyBtn_Click(object sender, RoutedEventArgs e)
     {
-        var win = new Views.ModifyWindow(_account, OnPasswordChanged) { Owner = this };
-        // 预填当前选中账号
-        if (AccountBox.SelectedIndex >= 0 && _options.Accounts.Count > 0)
-            win.UserName.Text = _options.Accounts[AccountBox.SelectedIndex].Account;
+        Views.ModifyWindow win;
+        try
+        {
+            win = new Views.ModifyWindow(_account, OnPasswordChanged) { Owner = this };
+        }
+        catch (Exception ex)
+        {
+            Growl.Warning($"打开修改密码窗口失败：{ex.Message}");
+            return;
+        }
+
+        // 预填界面上当前可见的账号
+        var account = AccountText.Text.Trim();
+        if (!string.IsNullOrEmpty(account))
+        {
+            win.UserName.Text = account;
+        }
+
         win.ShowDialog();
     }
 
@@ -160,6 +366,7 @@ public partial class MainWindow : System.Windows.Window
             Growl.Warning($"加载本地账号列表失败：{ex.Message}");
             return;
         }
+
         win.ShowDialog();
         try
         {
@@ -172,6 +379,7 @@ public partial class MainWindow : System.Windows.Window
             Growl.Warning($"重新加载本地账号列表失败：{ex.Message}");
         }
     }
+
     private void ConfigBtn_Click(object sender, RoutedEventArgs e)
     {
         Views.ConfigWindow win;
@@ -186,6 +394,7 @@ public partial class MainWindow : System.Windows.Window
             Growl.Warning($"加载配置失败：{ex.Message}");
             return;
         }
+
         win.ShowDialog();
         try
         {

@@ -7,8 +7,9 @@
   "EntrancePort": 2311,
   // 账号 HTTP API 基址，即服务端 Admin 端口（默认 http://127.0.0.1:8081）。启动器的注册/改密/找回经此访问。
   "AccountServiceUrl": "http://127.0.0.1:8081",
-  // 启动器界面主题：auto / light / dark。
-  "Theme": "auto",
+  // 启动器界面主题：auto / light / dark。主窗口是原版皮肤（不受主题影响）；
+  // 主题只作用于注册/改密/找回/账号管理/设置这些窗口，默认 dark 与皮肤观感一致。
+  "Theme": "dark",
   "Account": "test",
   "Password": "test",
   "Accounts": [
