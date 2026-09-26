@@ -1,13 +1,22 @@
 {
-  "ClientPath": "D:\\DFLegacy\\DF2008\\DNF.exe",
+  // 客户端主程序路径。支持相对路径，基准为 DFLegacy.Launcher.exe 所在目录（即发布输出目录）。
+  // 分发给他人时建议用相对路径（如 "../DNF.exe"，客户端放在发布目录的上一级），这样解压到任意位置都无需改；
+  // 本机调试若客户端在别处，可临时改回绝对路径（如 "D:\\DFLegacy\\DF2008\\DNF.exe"）。
+  "ClientPath": "../DNF.exe",
   "EntranceHost": "127.0.0.1",
   "EntrancePort": 2311,
+  "AccountServiceUrl": "http://127.0.0.1:8081",
+  "Theme": "auto",
   "Account": "test",
   "Password": "test",
   "Accounts": [
     {
       "Account": "test",
-      "Password": "test"
+      "Password": "test",
+      "DisplayName": "测试账号",
+      "CreateTime": "2026-09-26T12:00:00+08:00",
+      "OicqCode": null,
+      "RememberPassword": true
     }
   ],
   "AccountIndex": 0,

@@ -12,6 +12,7 @@
     <Ijl15Output>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\ijl15.dll'))</Ijl15Output>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
     <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
     <ProjectReference Include="../DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
     <ProjectReference Include="../DFLegacy.Ijl15/DFLegacy.Ijl15.vcxproj"

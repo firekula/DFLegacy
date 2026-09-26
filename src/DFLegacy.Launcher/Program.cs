@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Text.Json;
 using DFLegacy.Relay;
 
 namespace DFLegacy.Launcher;
@@ -154,22 +153,10 @@ internal static class Program
         ]);
     }
 
-    private static LauncherOptions LoadOptions()
+    internal static LauncherOptions LoadOptions()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "launcher.json");
-        if (!File.Exists(path))
-        {
-            return new LauncherOptions();
-        }
-
-        var options = JsonSerializer.Deserialize<LauncherOptions>(
-            File.ReadAllText(path),
-            new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                ReadCommentHandling = JsonCommentHandling.Skip
-            });
-        return options ?? throw new InvalidDataException("launcher.json 不能为空。");
+        return new LauncherAccountStore(path).Load();
     }
 
     private static string ResolveClientPath(string configuredPath)
@@ -523,52 +510,4 @@ internal static class Program
             // Logging must never prevent the target process from starting.
         }
     }
-}
-
-internal sealed class LauncherOptions
-{
-    public string ClientPath { get; set; } = Program.DefaultClientPath;
-    public string EntranceHost { get; set; } = "127.0.0.1";
-    public int EntrancePort { get; set; } = 2311;
-    public string Account { get; set; } = "test";
-    public string Password { get; set; } = "test";
-    public List<LauncherAccountProfile> Accounts { get; set; } = [];
-    public int AccountIndex { get; set; }
-    public bool StartServer { get; set; } = true;
-    public int D3D9Adapter { get; set; }
-    public double D3D9TimeoutSeconds { get; set; } = 30;
-    public double D3D9RetryIntervalSeconds { get; set; } = 1;
-    public LauncherRelayOptions Relay { get; set; } = new();
-
-    public LauncherAccountProfile GetSelectedAccount() =>
-        Accounts.Count == 0
-            ? new LauncherAccountProfile { Account = Account, Password = Password }
-            : Accounts[AccountIndex];
-}
-
-internal sealed class LauncherAccountProfile
-{
-    public string Account { get; set; } = "test";
-    public string Password { get; set; } = "test";
-}
-
-/// <summary>
-/// Auto-starts <c>DFLegacy.Relay.exe</c> beside the launcher and points the
-/// client at it. Needed when the client (IPv4-only) has to reach a server that
-/// only speaks IPv6.
-/// </summary>
-internal sealed class LauncherRelayOptions
-{
-    public bool Enabled { get; set; }
-
-    /// <summary>
-    /// TCP/UDP port lists to forward; null means the relay's own defaults
-    /// (2311,7001,8080 / 2311,7002,7003). The entrance port is always included.
-    /// </summary>
-    public string? TcpPorts { get; set; }
-
-    public string? UdpPorts { get; set; }
-
-    /// <summary>Address family the relay prefers when resolving the target host.</summary>
-    public string Preference { get; set; } = "ipv6";
 }
