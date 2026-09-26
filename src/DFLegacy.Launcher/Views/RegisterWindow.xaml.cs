@@ -30,22 +30,43 @@ public partial class RegisterWindow : System.Windows.Window
         { Growl.Info("账号 4-32、密码 6-128、QQ 不能为空且 ≤32。"); return; }
 
         SubmitBtn.IsEnabled = false;
+        RegistrationResult r;
         try
         {
-            var r = await _account.RegisterAsync(user, pass, oicq, test);
-            if (r.Outcome == RegistrationOutcome.Success)
-            {
-                Growl.Success($"注册成功：{r.Account?.UserName}");
-                _onRegistered(new LauncherAccountProfile
-                {
-                    Account = user, Password = pass, DisplayName = user,
-                    CreateTime = DateTimeOffset.Now, OicqCode = oicq, RememberPassword = true
-                }, true);
-                Close();
-            }
-            else Growl.Warning(r.Outcome == RegistrationOutcome.AlreadyExists ? "账号已存在。" : (r.Error ?? "注册失败。"));
+            // try/catch 只包网络请求：本地持久化失败不能伪装成"请求失败"。
+            r = await _account.RegisterAsync(user, pass, oicq, test);
         }
-        catch (Exception ex) { Growl.Info($"请求失败：{ex.Message}"); }
-        finally { SubmitBtn.IsEnabled = true; }
+        catch (Exception ex)
+        {
+            Growl.Info($"请求失败：{ex.Message}");
+            SubmitBtn.IsEnabled = true;
+            return;
+        }
+
+        if (r.Outcome != RegistrationOutcome.Success)
+        {
+            Growl.Warning(r.Outcome == RegistrationOutcome.AlreadyExists ? "账号已存在。" : (r.Error ?? "注册失败。"));
+            SubmitBtn.IsEnabled = true;
+            return;
+        }
+
+        Growl.Success($"注册成功：{r.Account?.UserName}");
+        var profile = new LauncherAccountProfile
+        {
+            Account = user, Password = pass, DisplayName = user,
+            CreateTime = DateTimeOffset.Now, OicqCode = oicq, RememberPassword = true
+        };
+        try
+        {
+            _onRegistered(profile, true);
+        }
+        catch (Exception ex)
+        {
+            // 服务端账号已创建，只是本地 launcher.json 保存失败：不关窗，可重试或稍后在账号管理处理。
+            Growl.Warning($"注册成功，但保存到本地账号列表失败：{ex.Message}");
+            SubmitBtn.IsEnabled = true;
+            return;
+        }
+        Close();
     }
 }

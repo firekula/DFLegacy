@@ -92,9 +92,21 @@ public partial class MainWindow : System.Windows.Window
     private void OnRegistered(LauncherAccountProfile profile, bool remember)
     {
         profile.RememberPassword = remember;
+        var previousIndex = _options.AccountIndex;
         _options.Accounts.Add(profile);
         _options.AccountIndex = _options.Accounts.Count - 1;
-        _store.Save(_options);
+        try
+        {
+            _store.Save(_options);
+        }
+        catch
+        {
+            // 落盘失败：回滚内存态再抛给窗口（窗口会提示"注册成功但保存失败"且不关窗），
+            // 避免用户重试时内存里出现重复账号。
+            _options.Accounts.Remove(profile);
+            _options.AccountIndex = previousIndex;
+            throw;
+        }
         RefreshAccounts();
         if (_options.Accounts.Count > 0)
             AccountBox.SelectedIndex = _options.Accounts.Count - 1;
