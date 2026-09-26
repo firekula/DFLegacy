@@ -111,8 +111,41 @@ public partial class MainWindow : System.Windows.Window
         if (_options.Accounts.Count > 0)
             AccountBox.SelectedIndex = _options.Accounts.Count - 1;
     }
-    private void ModifyBtn_Click(object sender, RoutedEventArgs e) { }        // Task 5 接入
-    private void ResetBtn_Click(object sender, RoutedEventArgs e) { }        // Task 5 接入
+    private void ResetBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var win = new Views.ResetWindow(_account) { Owner = this };
+        win.ShowDialog();
+    }
+
+    private void ModifyBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var win = new Views.ModifyWindow(_account, OnPasswordChanged) { Owner = this };
+        // 预填当前选中账号
+        if (AccountBox.SelectedIndex >= 0 && _options.Accounts.Count > 0)
+            win.UserName.Text = _options.Accounts[AccountBox.SelectedIndex].Account;
+        win.ShowDialog();
+    }
+
+    private void OnPasswordChanged(string userName, string newPassword)
+    {
+        var idx = _options.Accounts.FindIndex(a =>
+            string.Equals(a.Account, userName, StringComparison.OrdinalIgnoreCase));
+        if (idx < 0 || !_options.Accounts[idx].RememberPassword) return;
+        var previousPassword = _options.Accounts[idx].Password;
+        _options.Accounts[idx].Password = newPassword;
+        try
+        {
+            _store.Save(_options);
+        }
+        catch
+        {
+            // 落盘失败：回滚内存态再抛给窗口（窗口会提示"密码已修改，但保存失败"且不关窗），
+            // 避免内存里的新密码与磁盘不一致被下次启动覆盖。
+            _options.Accounts[idx].Password = previousPassword;
+            throw;
+        }
+    }
+
     private void AccountEditBtn_Click(object sender, RoutedEventArgs e) { }   // Task 6 接入
     private void ConfigBtn_Click(object sender, RoutedEventArgs e) { }        // Task 7 接入
 
