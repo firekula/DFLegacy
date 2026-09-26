@@ -38,7 +38,7 @@
         <TextBlock Text="Preference" VerticalAlignment="Center" Margin="0,0,8,0"/>
         <ComboBox x:Name="PreferenceBox" Width="80" SelectedValuePath="Content"><ComboBoxItem Content="ipv6"/><ComboBoxItem Content="ipv4"/></ComboBox>
     </StackPanel>
-    <StackPanel Grid.Row="12" Orientation="Horizontal" HorizontalAlignment="Right">
+    <StackPanel Grid.Row="13" Orientation="Horizontal" HorizontalAlignment="Right">
         <Button Content="取消" Width="80" Margin="0,0,8,0" Click="Cancel_Click"/>
         <Button Content="保存" Width="80" Click="Save_Click"/>
     </StackPanel>

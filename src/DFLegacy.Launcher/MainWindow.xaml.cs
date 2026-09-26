@@ -10,7 +10,7 @@ namespace DFLegacy.Launcher;
 public partial class MainWindow : System.Windows.Window
 {
     private readonly LauncherAccountStore _store = new(Path.Combine(AppContext.BaseDirectory, "launcher.json"));
-    private readonly AccountServiceClient _account;
+    private AccountServiceClient _account;
     private readonly DispatcherTimer _statusTimer;
     private LauncherOptions _options;
 
@@ -191,6 +191,10 @@ public partial class MainWindow : System.Windows.Window
         {
             _options = _store.Load();      // 设置变更后重新加载（host/url/relay 等）
             RefreshAccounts();
+            // 设置里改了账号 API URL 后必须重建客户端（_account 按构造时的 URL 创建），
+            // 否则状态点与注册/改密/找回窗口会一直打到旧地址；重建后立即重探一次状态。
+            _account = new AccountServiceClient(_options.AccountServiceUrl);
+            _ = RefreshStatusAsync();
         }
         catch (Exception ex)
         {
