@@ -24,6 +24,12 @@ public partial class AccountFieldDialog : System.Windows.Window
         _p.Account = AccountBox.Text;
         _p.Password = PasswordBox.Password;
         _p.RememberPassword = RememberBox.IsChecked == true;
+        // 不记住密码时不把明文落盘：清空已存密码。UI 启动前在界面重新输入即可；
+        // headless 会因「Accounts[i].Password 不能为空…」校验失败（见 STATUS 已知限制）。
+        if (RememberBox.IsChecked != true)
+        {
+            _p.Password = string.Empty;
+        }
         DialogResult = true;
     }
 

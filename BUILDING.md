@@ -11,7 +11,7 @@
 | `DFLegacy.Protocol` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
 | `DFLegacy.Relay` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
 | `tests/DFLegacy.SmokeTests` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
-| `DFLegacy.Launcher` | `net10.0-windows`（WinForms） | 仅 Windows | .NET 10 SDK + PowerShell 7 + CMake + VS C++ |
+| `DFLegacy.Launcher` | `net10.0-windows`（WPF + HandyControl） | 仅 Windows | .NET 10 SDK + PowerShell 7 + CMake + VS C++ |
 | `DFLegacy.Ijl15` | 原生 C++17，32 位 | 仅 Windows | VS C++ + CMake ≥ 3.24 |
 | `DFLegacy.RandomNative` | 原生 C++17，64 位 | 仅 Windows | VS C++ + CMake ≥ 3.24 |
 

@@ -32,7 +32,6 @@
 - 用真实 `DNF.exe` 的完整游戏内流程（登录、进图、任务、SP 增长、召唤师转职）。
 - 公网 IPv6 的真实可达性：本机没有公网 IPv6，容器/服务端的 IPv6 行为只在回环与容器网络内验证过。
 - Podman：本机 podman 机器损坏（WSL 发行版缺失，`WSL_E_DISTRO_NOT_FOUND`），只做了 Docker 验证；Dockerfile 只用经典指令，理论上 Buildah 可用。
-- 冒烟测试此前记录的 8 项与 PVF 版本相关的**既有失败**在本机已不复现：2026-09-26 全量冒烟全绿（含 AccountClient 契约测试，见 2.1）。换用不同版本的 PVF 时，数据相关测试仍可能再次与基准不一致。
 
 ### 2.1 启动器账号 UI
 
@@ -45,16 +44,21 @@
 - `dotnet run --project src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -p:DesignTimeBuild=true -- --check-d3d9`：退出 0（headless 回归，无 UI 依赖）。
 - `dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -p:DesignTimeBuild=true -o ./dist/launcher-test`：产物含 `DFLegacy.Launcher.exe`、`DFLegacy.AccountClient.dll`、`HandyControl.dll`、`launcher.json`；此方式不含 `ijl15.dll`（需含 ijl15 的分发产物用带 C++ 工作负载的 VS msbuild 另行发布，见 BUILDING）。
 
+注：此前记录的 8 项与 PVF 版本相关的**既有**冒烟失败（PVF 缺 `etc/sptable.etc`、文件数/商城定价/宠物进化数据与测试基准不同）在本次运行中未复现；换用不同版本的 PVF 时，数据相关测试仍可能再次与基准不一致。
+
 **手动验证清单（需要桌面与真实客户端，接手时优先做）**
 
 1. 启动器无参运行 → 出现主窗口。
 2. 点注册 → 注册成功 → 账号自动加入下拉列表 → 启动游戏 → 游戏内登录成功。
 3. 改密、找回、账号管理、设置（主题切换）各走一遍。
 4. 远程 IPv6 场景：账号 API（8081）默认无法触达，属预期（中继不转发 8081，见 DEPLOYING §6.4）；如需开启按该节操作。
+5. 确认注册的账号已写入 `launcher.json`。
+6. 客户端退出后启动器随之退出（中继驻留路径）。
+7. headless（`--headless`/`--account X`）仍能端到端启动游戏。
 
 **已知限制**
 
-- 账号的 `RememberPassword=false` 时配置只保存空密码：UI 流程不受影响（启动前在界面输入密码即可）；但无头启动（`--headless`/`--account X`）会因「Password 不能为空，也不能包含空白、问号或双引号。」校验失败——无头模式需要存储密码。
+- 账号的 `RememberPassword=false` 时配置只保存空密码：UI 流程不受影响（启动前在界面输入密码即可）；但无头启动（`--headless`/`--account X`）会因「Accounts[i].Password 不能为空，也不能包含空白、问号或双引号。」校验失败——无头模式需要存储密码。
 - 找回密码成功后，本地记住的密码不会自动更新：下次启动若勾选记住密码，需在 UI 重新输入一次（游戏内登录用的才是新密码）。
 - `launcher.json` 经 UI 保存后会重写整个文件，中文注释会丢失（System.Text.Json 不支持注释往返，已确认接受；字段说明以 README 为准）。
 
