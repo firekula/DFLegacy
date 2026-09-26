@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
     <ProjectReference Include="../../src/DFLegacy.Server/DFLegacy.Server.csproj" />
+    <ProjectReference Include="../../src/DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

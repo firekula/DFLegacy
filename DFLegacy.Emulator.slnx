@@ -11,4 +11,5 @@
   <Project Path="src/DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
   <Project Path="src/DFLegacy.Server/DFLegacy.Server.csproj" />
   <Project Path="tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj" />
+  <Project Path="src/DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
 </Solution>
