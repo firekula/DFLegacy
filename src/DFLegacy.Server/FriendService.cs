@@ -142,12 +142,23 @@ public sealed class FriendService
         // id 63 的 handler 直接调 0x500B00 无条件追加新条目（其 body 里的记录字段
         // A..F 只填 A=0，B..F 读到流尾按 0），所以它自己就能建条目——**不能再补整表
         // 快照**：NOTI 56 同样是无条件追加，会把老好友全部再加一份（重复行的根因）。
-        // 新好友的状态由后续 BUDDY_IN（好友在线时会在其上线时到达）按名字更新首条
-        // 命中，不需要也不允许用快照来补状态。
+        var addedName = friendName.Trim();
+        var addedNameBytes = ClientEncoding.GetBytes(addedName);
         await SendAsync(
             characterName,
-            GameProtocolEngine.CreateAddFriendResult(
-                ClientEncoding.GetBytes(friendName.Trim())),
+            GameProtocolEngine.CreateAddFriendResult(addedNameBytes),
+            cancellationToken);
+
+        // id 63 追加出来的条目停在构造默认状态，若好友此刻已在线，点开列表会看到一条
+        // "刚加的在线好友显示离线"。紧接着补一条状态更新：BUDDY_IN/BUDDY_OUT 在客户端
+        // 是按名字就地改状态（只写首个同名条目，0x4FFDC0）且**不会追加**，正好落在刚
+        // 追加的那一行上；在线发 BUDDY_IN(0)，离线发 BUDDY_OUT(-1) 把默认值钉死。
+        // 只发给执行添加的会话：这条新行只存在于他的列表里，别的会话收到也无处可改。
+        await SendAsync(
+            characterName,
+            _channels.ContainsKey(addedName)
+                ? GameProtocolEngine.CreateBuddyIn(state: 0, addedNameBytes)
+                : GameProtocolEngine.CreateBuddyOut(addedNameBytes),
             cancellationToken);
     }
 
@@ -179,13 +190,14 @@ public sealed class FriendService
     /// </summary>
     /// <remarks>
     /// The target's main-chat line is the NOTI 12 the client resolves from the sender uid
-    /// (that is why the target gets the sender's appearance first). The sender gets no
-    /// NOTI 12 echo — the client's own-uid branch is a design-time no-op (it looks up a 1:1
-    /// window pointer that is permanently NULL). Its own line is instead a NOTI 65 with
-    /// type 1/7, flag 0 and the <em>target</em> name, which the client prints in the main
-    /// chat as '%s : %s'; the target's mode-0 record is pushed first so the local line and
-    /// the friend row can resolve the peer. Both sides also get a 1:1-window NOTI 65
-    /// (type 0x12, flag 0).
+    /// (that is why the target gets the sender's appearance first), and the target also
+    /// gets the 1:1-window line as a NOTI 65 with type 0x12, flag 0 and the sender's name.
+    /// The sender gets no NOTI 12 echo — the client's own-uid branch is a design-time no-op
+    /// (it looks up a 1:1 window pointer that is permanently NULL) — and no 0x12 NOTI 65
+    /// either: it gets exactly one NOTI 65 with type 1/7, flag 0 and the <em>target</em>
+    /// name, which the client prints in the main chat as '%s : %s'; its own 1:1 window line
+    /// is appended locally by the client after sending. The target's mode-0 record is
+    /// pushed to the sender first so the local line and the friend row can resolve the peer.
     /// </remarks>
     public Task WhisperAsync(
         string characterName,

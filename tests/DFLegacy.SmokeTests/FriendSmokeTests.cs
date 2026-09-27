@@ -744,10 +744,14 @@ internal static class FriendSmokeTests
             var daveBeforeAdd = davePackets.Count;
             await service.AddFriendAsync("dave", "戴夫", "艾琳", CancellationToken.None);
             var addTail = davePackets.Skip(daveBeforeAdd).ToArray();
-            check(addTail.Length == 1
+            check(addTail.Length == 2
                     && IsFriendCommandResult(addTail[0], 63, "艾琳")
                     && addTail[0].Payload[0] == 1,
-                "a successful add sends exactly one type-1 id-63 result that appends the entry by name");
+                "a successful add first sends the type-1 id-63 result that appends the entry by name");
+            check(addTail.Length > 1
+                    && addTail[1].ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && BuddyNameExactly(addTail[1], "艾琳"),
+                "an offline friend gets a BUDDY_OUT state update right after the id-63 append, pinning the new row offline");
             check(addTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "add never re-pushes the snapshot: NOTI 56 appends unconditionally, so the whole list would be duplicated");
@@ -1090,6 +1094,47 @@ internal static class FriendSmokeTests
                     && !BuddyNameExactly(caseBuddyOut, "Echo"),
                 "BUDDY_OUT uses the recipient's stored spelling when the online character differs only in case");
 
+            // 加好友后的状态更新：id 63 追加出来的条目停在构造默认状态，必须紧跟一条
+            // BUDDY_IN/BUDDY_OUT（按名字就地改状态、不会追加），否则“刚加的在线好友”
+            // 会一直显示离线，直到对方下一次上线/重登。
+            await store.CreateAccountAsync(new CreateAccountRequest("ivan", "password", OicqCode: "123456"), CancellationToken.None);
+            await store.CreateAccountAsync(new CreateAccountRequest("judy", "password", OicqCode: "123456"), CancellationToken.None);
+            await store.CreateAccountAsync(new CreateAccountRequest("kent", "password", OicqCode: "123456"), CancellationToken.None);
+            check((await store.CreateCharacterAsync("ivan", new CreateCharacterRequest("伊万"), CancellationToken.None)).Created
+                    && (await store.CreateCharacterAsync("judy", new CreateCharacterRequest("朱迪"), CancellationToken.None)).Created
+                    && (await store.CreateCharacterAsync("kent", new CreateCharacterRequest("肯特"), CancellationToken.None)).Created,
+                "the add-state fixture creates its three characters");
+            var ivanPackets = new List<GameServerPacket>();
+            await service.AttachChannelAsync(
+                "ivan", "伊万", areaUserId: 0, Guid.NewGuid(), Record(ivanPackets), CancellationToken.None);
+            await service.AttachChannelAsync(
+                "judy", "朱迪", areaUserId: 21, Guid.NewGuid(), Record(new List<GameServerPacket>()), CancellationToken.None);
+
+            var ivanBeforeOnlineAdd = ivanPackets.Count;
+            await service.AddFriendAsync("ivan", "伊万", "朱迪", CancellationToken.None);
+            var onlineAddTail = ivanPackets.Skip(ivanBeforeOnlineAdd).ToArray();
+            check(onlineAddTail.Length == 2
+                    && IsFriendCommandResult(onlineAddTail[0], 63, "朱迪")
+                    && onlineAddTail[1].ProtocolId == GameProtocolEngine.BuddyInNotification
+                    && onlineAddTail[1].Payload[0] == 0
+                    && BuddyNameExactly(onlineAddTail[1], "朱迪"),
+                "adding an online friend sends the id-63 append then a BUDDY_IN state update for the same name");
+            check(onlineAddTail.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
+                "the online-friend add still sends no snapshot");
+
+            var ivanBeforeOfflineAdd = ivanPackets.Count;
+            await service.AddFriendAsync("ivan", "伊万", "肯特", CancellationToken.None);
+            var offlineAddTail = ivanPackets.Skip(ivanBeforeOfflineAdd).ToArray();
+            check(offlineAddTail.Length == 2
+                    && IsFriendCommandResult(offlineAddTail[0], 63, "肯特")
+                    && offlineAddTail[1].ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && BuddyNameExactly(offlineAddTail[1], "肯特"),
+                "adding an offline friend sends the id-63 append then a BUDDY_OUT state update for the same name");
+            check(offlineAddTail.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
+                "the offline-friend add still sends no snapshot");
+
             // 上限 32：33 个备胎角色放在两个账号上（每个账号最多 24 个可见角色）
             await store.CreateAccountAsync(new CreateAccountRequest("full", "password", OicqCode: "123456"), CancellationToken.None);
             await store.CreateAccountAsync(new CreateAccountRequest("crowd0", "password", OicqCode: "123456"), CancellationToken.None);
@@ -1138,7 +1183,8 @@ internal static class FriendSmokeTests
             return ValueTask.CompletedTask;
         };
 
-    // 42 字节记录偏移 0x21 的 u16：在线好友的区用户 id（客户端“查看信息”按它发 CMD 8 mode 3）。
+    // 42 字节记录偏移 0x21 的 u16：逆向要求恒 0（不参与匹配、被当展示文本指针），
+    // “查看信息”用的 uid 来自本地 user 注册表；这个 helper 只用来钉住它保持零。
     private static ushort FriendRecordAreaUserId(GameServerPacket snapshot, int index) =>
         BinaryPrimitives.ReadUInt16LittleEndian(
             snapshot.Payload.AsSpan(1 + index * 42 + 0x21, 2));
