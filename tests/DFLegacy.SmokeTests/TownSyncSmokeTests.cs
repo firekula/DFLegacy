@@ -16,6 +16,7 @@ internal static class TownSyncSmokeTests
         await CheckGhostBroadcastAsync(check);
         await CheckDirectoryAsync(check);
         await CheckAreaPeerTableAsync(check);
+        await CheckSymmetricIntroductionAsync(check);
         await CheckPositionRateLimitAsync(check);
         await CheckDirectoryMigrationAsync(check);
         await CheckDirectoryConcurrencyAsync(check);
@@ -478,6 +479,231 @@ internal static class TownSyncSmokeTests
     }
 
     /// <summary>
+    /// 对称性开关（Task 13）：客户端可能要求「区域名单里有该 uid」且「收到该 uid 的
+    /// USER_AREA」同时成立才建立同镇角色。这里分别钉住两个开关的报文、内容与顺序，
+    /// 并锁死默认关闭时逐字节与改动前一致、单人成员一个新增包都不收。
+    /// </summary>
+    private static async Task CheckSymmetricIntroductionAsync(Action<bool, string> check)
+    {
+        // ---- 默认关闭：报文序列与改动前逐字节一致 ----
+        var defaultOptions = new ServerOptions();
+        check(!defaultOptions.TownSync.SendUserAreaForExistingMembers
+            && !defaultOptions.TownSync.RefreshRosterOnMembershipChange,
+            "both symmetric introduction switches are off by default");
+
+        var defaultDirectory = new TownSessionDirectory(
+            defaultOptions,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+        var alicePeer = CreatePeer(1, "10.0.0.1", "203.0.113.1", 40001, accountId: 7, natType: 1, mtu: 1400);
+        var bobPeer = CreatePeer(2, "10.0.0.2", "203.0.113.2", 40002, accountId: 8, natType: 2, mtu: 1472);
+        var aliceTownUser = new GameTownUser(1, 474, 234, 5);
+        var bobTownUser = new GameTownUser(2, 474, 234, 5);
+
+        var alice = new FakeChannel();
+        await defaultDirectory.EnterAsync(
+            CreateEntry(1, 1, 1, "Alice", alice, alicePeer),
+            CancellationToken.None);
+        var bob = new FakeChannel();
+        var bobTicket = await defaultDirectory.EnterAsync(
+            CreateEntry(1, 1, 2, "Bob", bob, bobPeer),
+            CancellationToken.None);
+        await defaultDirectory.LeaveAsync(bobTicket, CancellationToken.None);
+
+        // Alice 的旧序列：单人名单 → 单人对端表 → Bob 加入的 USER_AREA → 含 Bob 的对端表
+        // → Bob 离开的 USER_AREA → 只剩自己的对端表。新开关关闭时不得多一个字节。
+        check(PacketsMatch(alice,
+            [
+                GameProtocolEngine.CreateAreaUsers(1, 1, [aliceTownUser]),
+                GameProtocolEngine.CreateUdpPeerInfo([alicePeer]),
+                GameProtocolEngine.CreateUserArea(1, 1, bobTownUser),
+                GameProtocolEngine.CreateUdpPeerInfo([alicePeer, bobPeer]),
+                GameProtocolEngine.CreateUserArea(1, 1, bobTownUser, active: false),
+                GameProtocolEngine.CreateUdpPeerInfo([alicePeer])
+            ]),
+            "with both switches off the existing member gets byte-for-byte the pre-change packet sequence");
+        check(PacketsMatch(bob,
+            [
+                GameProtocolEngine.CreateAreaUsers(1, 1, [bobTownUser, aliceTownUser]),
+                GameProtocolEngine.CreateUdpPeerInfo([bobPeer, alicePeer])
+            ]),
+            "with both switches off the newcomer gets byte-for-byte the pre-change packet sequence");
+        check(alice.Of(GameProtocolEngine.AreaUsersNotification).Count == 1
+            && bob.Of(GameProtocolEngine.AreaUsersNotification).Count == 1
+            && bob.Of(GameProtocolEngine.UserAreaNotification).Count == 0
+            && alice.Of(GameProtocolEngine.UserAreaNotification).Count == 2,
+            "with both switches off no roster refresh and no foreign USER_AREA packets appear");
+
+        // ---- SendUserAreaForExistingMembers：新人补收每个老人的 USER_AREA ----
+        var areaOptions = new ServerOptions();
+        areaOptions.TownSync.SendUserAreaForExistingMembers = true;
+        var areaDirectory = new TownSessionDirectory(
+            areaOptions,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        // 单人成员没有「已有成员」可补，开关打开也不得多收包。
+        var areaSolo = new FakeChannel();
+        await areaDirectory.EnterAsync(
+            CreateEntry(2, 1, 1, "Solo", areaSolo),
+            CancellationToken.None);
+        check(areaSolo.Packets.Count == 1
+            && areaSolo.Packets[0].ProtocolId == GameProtocolEngine.AreaUsersNotification,
+            "a solo member receives no extra packets even with the USER_AREA switch on");
+
+        var areaAlice = new FakeChannel();
+        var areaAliceTicket = await areaDirectory.EnterAsync(
+            CreateEntry(2, 2, 1, "Alice", areaAlice),
+            CancellationToken.None);
+        // 先给 Alice 存一份外观：用来验证 USER_AREA 夹在名单与外观之间。
+        await areaDirectory.RefreshAppearanceAsync(
+            areaAliceTicket,
+            CreateAppearance(1, "Alice"),
+            CancellationToken.None);
+
+        var areaBob = new FakeChannel();
+        await areaDirectory.EnterAsync(
+            CreateEntry(2, 2, 2, "Bob", areaBob),
+            CancellationToken.None);
+        var bobOrder = areaBob.Packets.Select(packet => packet.ProtocolId).ToArray();
+        check(bobOrder.SequenceEqual(new byte[]
+            {
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserAreaNotification,
+                GameProtocolEngine.UserInfoNotification
+            }),
+            "with the USER_AREA switch on the newcomer sees roster, then each foreign USER_AREA, then the appearances");
+
+        var foreignAreas = areaBob.Of(GameProtocolEngine.UserAreaNotification);
+        check(foreignAreas.Count == 1
+            && BinaryPrimitives.ReadUInt16LittleEndian(foreignAreas[0].Payload.AsSpan(0, 2)) == 1
+            && foreignAreas[0].Payload[2] == 2
+            && foreignAreas[0].Payload[3] == 2
+            && BinaryPrimitives.ReadInt16LittleEndian(foreignAreas[0].Payload.AsSpan(4, 2)) == 474
+            && BinaryPrimitives.ReadInt16LittleEndian(foreignAreas[0].Payload.AsSpan(6, 2)) == 234
+            && foreignAreas[0].Payload[8] == 5
+            && foreignAreas[0].Payload[9] == 1,
+            "the newcomer gets one active USER_AREA for the existing member with its uid, area, coordinates and direction");
+        check(foreignAreas.All(packet =>
+                BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(0, 2)) != 2),
+            "the newcomer never receives a USER_AREA for itself");
+        // 老人一侧只保留既有的增量 USER_AREA(active=1)，该开关不给他们加包。
+        var areaAliceJoins = areaAlice.Of(GameProtocolEngine.UserAreaNotification);
+        check(areaAliceJoins.Count == 1
+            && areaAliceJoins[0].Payload[0] == 2
+            && areaAliceJoins[0].Payload[9] == 1,
+            "the USER_AREA switch leaves the existing member's join signal untouched");
+
+        // ---- RefreshRosterOnMembershipChange：老人收到成员变化后的刷新名单 ----
+        var rosterOptions = new ServerOptions();
+        rosterOptions.TownSync.RefreshRosterOnMembershipChange = true;
+        var rosterDirectory = new TownSessionDirectory(
+            rosterOptions,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        var rosterAlice = new FakeChannel();
+        await rosterDirectory.EnterAsync(
+            CreateEntry(3, 1, 1, "Alice", rosterAlice),
+            CancellationToken.None);
+        var soloRosters = rosterAlice.Of(GameProtocolEngine.AreaUsersNotification);
+        check(soloRosters.Count == 1 && ReadRoster(soloRosters[0]).Length == 1,
+            "a solo newcomer's initial roster keeps its old shape when the refresh switch is on");
+        check(rosterAlice.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
+            "the roster-refresh switch alone adds no foreign USER_AREA packets");
+
+        var rosterBob = new FakeChannel();
+        var rosterBobTicket = await rosterDirectory.EnterAsync(
+            CreateEntry(3, 1, 2, "Bob", rosterBob),
+            CancellationToken.None);
+        check(rosterAlice.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
+            {
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserAreaNotification,
+                GameProtocolEngine.AreaUsersNotification
+            }),
+            "the existing member's join signal keeps its place and the refreshed roster is appended after it");
+
+        var aliceRosters = rosterAlice.Of(GameProtocolEngine.AreaUsersNotification);
+        check(aliceRosters.Count == 2,
+            "the existing member receives exactly one refreshed roster when a member joins");
+        var joinedRoster = ReadRoster(aliceRosters[1]);
+        check(joinedRoster.Length == 2
+            && joinedRoster.Any(user => user.UserId == 1)
+            && joinedRoster.Any(user => user.UserId == 2),
+            "the refreshed roster contains both the existing member and the newcomer");
+        var bobRosters = rosterBob.Of(GameProtocolEngine.AreaUsersNotification);
+        check(bobRosters.Count == 1
+            && ReadRoster(bobRosters[0]).Length == 2
+            && ReadRoster(bobRosters[0])[0].UserId == 2
+            && ReadRoster(bobRosters[0])[1].UserId == 1,
+            "the newcomer's own initial roster keeps its old shape and self-first order");
+
+        await rosterDirectory.LeaveAsync(rosterBobTicket, CancellationToken.None);
+        aliceRosters = rosterAlice.Of(GameProtocolEngine.AreaUsersNotification);
+        check(aliceRosters.Count == 3
+            && ReadRoster(aliceRosters[^1]).Length == 1
+            && ReadRoster(aliceRosters[^1])[0].UserId == 1
+            && ReadRoster(aliceRosters[^1])[0].Active == 1,
+            "a departure refreshes the survivor's roster to only the surviving active member");
+        check(rosterBob.Of(GameProtocolEngine.AreaUsersNotification).Count == 1,
+            "the departed member receives no roster refresh");
+        check(rosterAlice.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
+            {
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserAreaNotification,
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserAreaNotification,
+                GameProtocolEngine.AreaUsersNotification
+            }),
+            "the departure signal still precedes the refreshed roster");
+
+        // ---- 迁移：旧区剩下的人也要拿到收窄后的名单 ----
+        var migrationOptions = new ServerOptions();
+        migrationOptions.TownSync.RefreshRosterOnMembershipChange = true;
+        var migrationDirectory = new TownSessionDirectory(
+            migrationOptions,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        var witness = new FakeChannel();
+        await migrationDirectory.EnterAsync(
+            CreateEntry(4, 1, 9, "Witness", witness),
+            CancellationToken.None);
+        var moverId = Guid.NewGuid();
+        await migrationDirectory.EnterAsync(
+            CreateEntry(4, 1, 1, "Mover", new FakeChannel(), moverId),
+            CancellationToken.None);
+        await migrationDirectory.EnterAsync(
+            CreateEntry(4, 2, 5, "Mover", new FakeChannel(), moverId),
+            CancellationToken.None);
+
+        var witnessRosters = witness.Of(GameProtocolEngine.AreaUsersNotification);
+        check(witnessRosters.Count == 3,
+            "a migration refreshes the old area's roster when the switch is on");
+        var migratedRoster = ReadRoster(witnessRosters[^1]);
+        check(migratedRoster.Length == 1 && migratedRoster[0].UserId == 9,
+            "the migrated member is dropped from the old area's refreshed roster");
+        var witnessAreas = witness.Of(GameProtocolEngine.UserAreaNotification);
+        check(witnessAreas.Count == 2 && witnessAreas[1].Payload[9] == 0,
+            "the migration departure signal is still sent before the refreshed roster");
+
+        // ---- 两个开关同时打开：单人成员仍然只收一条旧名单 ----
+        var bothOptions = new ServerOptions();
+        bothOptions.TownSync.SendUserAreaForExistingMembers = true;
+        bothOptions.TownSync.RefreshRosterOnMembershipChange = true;
+        var bothSolo = new FakeChannel();
+        await new TownSessionDirectory(
+                bothOptions,
+                TimeProvider.System,
+                NullLogger<TownSessionDirectory>.Instance)
+            .EnterAsync(CreateEntry(5, 1, 1, "Solo", bothSolo), CancellationToken.None);
+        check(bothSolo.Packets.Count == 1
+            && bothSolo.Packets[0].ProtocolId == GameProtocolEngine.AreaUsersNotification,
+            "a solo member with both switches on receives exactly the single old roster packet");
+    }
+
+    /// <summary>
     /// 位置限流（Task 8）的行为此前没有测试覆盖：默认每秒 10 条，&lt;=0 表示不限制。
     /// 用可控时钟把「同一秒内超限被丢」与「跨秒后预算重置」钉死。
     /// </summary>
@@ -690,6 +916,32 @@ internal static class TownSyncSmokeTests
                     "every roster member is reachable by character id");
             }
         }
+    }
+
+    /// <summary>
+    /// 逐字节对比整条通道的报文序列（类型 + 协议号 + payload），用于钉住「开关关闭时与
+    /// 改动前完全相同」。GameServerPacket 虽是 record，但 payload 是数组、按引用比较，
+    /// 这里必须自己比字节。
+    /// </summary>
+    private static bool PacketsMatch(FakeChannel channel, IReadOnlyList<GameServerPacket> expected)
+    {
+        var actual = channel.Packets;
+        if (actual.Count != expected.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < expected.Count; index++)
+        {
+            if (actual[index].Type != expected[index].Type
+                || actual[index].ProtocolId != expected[index].ProtocolId
+                || !actual[index].Payload.SequenceEqual(expected[index].Payload))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static TownEntryRequest CreateEntry(

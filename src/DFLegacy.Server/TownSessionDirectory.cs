@@ -202,6 +202,15 @@ public sealed class TownSessionDirectory(
                 migratedFrom.AreaId,
                 options.TownSync.DepartureSignal);
 
+            // 迁移同样是一次成员变化：开关打开时旧区剩下的人还要拿到收窄后的名单
+            // （默认的离开信号只让 uid 失效，名单里可能仍写着迁移者）。
+            await SendRosterRefreshAsync(
+                departureTargets,
+                migratedFrom.TownId,
+                migratedFrom.AreaId,
+                [.. departureTargets.Select(other => other.ToTownUser())],
+                cancellationToken);
+
             // 迁移也是一次成员变化：旧区剩下的人要把迁移者从对端表里删掉。
             await SendAreaPeerTableAsync(departureTargets, cancellationToken);
         }
@@ -218,16 +227,41 @@ public sealed class TownSessionDirectory(
             await SendAsync(other, joinArea, cancellationToken);
         }
 
-        // 新人：名单（自己排在第一位，与单人时代的单元素名单一致）→ 其他人的外观。
-        var rosterPacket = GameProtocolEngine.CreateAreaUsers(
+        // 名单快照：新人排第一（与单人时代的单元素名单一致；对端表也按同样约定把自己排最前）。
+        // 新人名单与老人的刷新名单共用这一份，避免同一时刻出现两种成员顺序。
+        var allMembers = new GameTownUser[existing.Length + 1];
+        allMembers[0] = member.ToTownUser();
+        for (var index = 0; index < existing.Length; index++)
+        {
+            allMembers[index + 1] = existing[index].ToTownUser();
+        }
+
+        // 开关打开时老人再收一份含新人的完整名单：既有实现里老人的名单停在进入那一刻，
+        // 不刷新的话它看不到新 uid。追加在既有的增量 USER_AREA 之后，旧报文顺序不变。
+        await SendRosterRefreshAsync(
+            existing,
             request.TownId,
             request.AreaId,
-            [member.ToTownUser(), .. existing.Select(other => other.ToTownUser())]);
+            allMembers,
+            cancellationToken);
+
+        // 新人：名单（自己排在第一位）→ 每个老人的 USER_AREA（开关）→ 其他人的外观。
+        var rosterPacket = GameProtocolEngine.CreateAreaUsers(request.TownId, request.AreaId, allMembers);
         var foreignAppearances = existing
             .Select(other => other.Appearance)
             .Where(appearance => appearance is not null)
             .Select(appearance => appearance!)
             .ToArray();
+
+        // 客户端可能只有在「名单里有该 uid」且「收到该 uid 的 USER_AREA」时才建立同镇角色：
+        // 新人此前只拿到名单与外观，缺了这一半。开关打开时逐人补发 USER_AREA(active=1)。
+        GameServerPacket[] foreignAreaPackets = options.TownSync.SendUserAreaForExistingMembers
+            ? [.. existing.Select(other => GameProtocolEngine.CreateUserArea(
+                request.TownId,
+                request.AreaId,
+                other.ToTownUser(),
+                active: true))]
+            : [];
 
         if (options.TownSync.ForeignAppearanceBeforeRoster)
         {
@@ -237,10 +271,22 @@ public sealed class TownSessionDirectory(
             }
 
             await SendAsync(member, rosterPacket, cancellationToken);
+
+            // 该模式下外观本来就在名单之前，无法同时满足「名单之后、外观之前」；
+            // 只能把新增的 USER_AREA 追加在名单之后，既有报文一个不动。
+            foreach (var areaPacket in foreignAreaPackets)
+            {
+                await SendAsync(member, areaPacket, cancellationToken);
+            }
         }
         else
         {
             await SendAsync(member, rosterPacket, cancellationToken);
+            foreach (var areaPacket in foreignAreaPackets)
+            {
+                await SendAsync(member, areaPacket, cancellationToken);
+            }
+
             foreach (var appearance in foreignAppearances)
             {
                 await SendAsync(member, appearance, cancellationToken);
@@ -401,6 +447,14 @@ public sealed class TownSessionDirectory(
                 options.TownSync.DepartureSignal);
         }
 
+        // 开关打开时离开也要刷新名单：剩下的人手里的名单仍然写着已离开的 uid。
+        await SendRosterRefreshAsync(
+            remaining,
+            member.TownId,
+            member.AreaId,
+            [.. remaining.Select(other => other.ToTownUser())],
+            cancellationToken);
+
         // 任何离开都要刷新对端表（强制移除路径见 RemoveMemberLocallyAsync），
         // 否则剩下的人会继续把离开者当成镇内 UDP 对端。
         await SendAreaPeerTableAsync(remaining, cancellationToken);
@@ -490,6 +544,31 @@ public sealed class TownSessionDirectory(
         // 必须把坏通道的 uid 从对端表里删掉。刷新用 None —— 触发它的发送可能正处于
         // 取消状态，而这次投递没有可取消的会话语义。
         await SendAreaPeerTableAsync(remaining, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// 开关打开时向给定成员重发区域完整名单（AREA_USERS）。既有实现只在进入时给新人
+    /// 发名单，老人的名单永远停在进入那一刻；成员变化后刷新，客户端才能从名单里看到
+    /// 新出现/已离开的 uid。名单内容由调用方按当时的快照传入（与离开信号同一来源），
+    /// recipients 为空（单人区域）时不发任何包，保证单人流程一个新增报文都没有。
+    /// </summary>
+    private async Task SendRosterRefreshAsync(
+        IReadOnlyList<TownMember> recipients,
+        byte townId,
+        byte areaId,
+        IReadOnlyList<GameTownUser> users,
+        CancellationToken cancellationToken)
+    {
+        if (!options.TownSync.RefreshRosterOnMembershipChange || recipients.Count == 0)
+        {
+            return;
+        }
+
+        var packet = GameProtocolEngine.CreateAreaUsers(townId, areaId, users);
+        foreach (var recipient in recipients)
+        {
+            await SendAsync(recipient, packet, cancellationToken);
+        }
     }
 
     /// <summary>

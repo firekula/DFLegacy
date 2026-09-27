@@ -138,6 +138,20 @@ public sealed class TownSyncOptions
     /// </summary>
     public bool SendAreaPeerTable { get; set; } = true;
 
+    /// <summary>
+    /// true = 新人进区时，在名单之后逐个已有成员补发 USER_AREA(active=1)：
+    /// 客户端可能只有在「名单里有该 uid」且「收到该 uid 的 USER_AREA」时才建立同镇角色，
+    /// 新人此前缺的正是后者。默认 false，保持既有报文序列不变（待真机验证的对称性开关）。
+    /// </summary>
+    public bool SendUserAreaForExistingMembers { get; set; } = false;
+
+    /// <summary>
+    /// true = 成员进出/迁移导致成员变化时，向同区其他人重发完整 AREA_USERS 名单。
+    /// 既有实现里老人的名单永远停在进入那一刻；刷新它老人才能在名单里看到新 uid。
+    /// 默认 false 保持旧行为（老人只收增量 USER_AREA，名单不刷新）。
+    /// </summary>
+    public bool RefreshRosterOnMembershipChange { get; set; } = false;
+
     /// <summary>每个成员每秒最多向同区转发的 USER_POSITION 条数；&lt;=0 表示不限制。</summary>
     public int MaxPositionForwardsPerSecond { get; set; } = 10;
 }
