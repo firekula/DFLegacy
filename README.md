@@ -83,12 +83,22 @@
 
 ### 后台管理
 
-默认入口：<http://127.0.0.1:8081/admin/index.html>。
+默认入口：<http://127.0.0.1:8081/admin/index.html>（端口由 `server.json` 的 `Admin.Port` 决定）。页面**需要登录**，账号分「玩家 / 管理员」两档：玩家只能看自己的角色（另有独立玩家页 `/admin/player.html`），管理员才有下面这些 GM 功能。
 
 - 给指定角色发送邮件，可附金币和一项物品附件，区分普通物品、装扮与宠物蛋。
 - 给在线角色发送消息或弹窗，或向当前在线角色广播；消息支持类型选择。
 - 设置角色可进入的副本最高难度。
 - 查看角色在线状态，从已加载 PVF 中搜索物品和选择副本。
+- 「用户角色」页：查看全部账号并提升/降级管理员（不能降级自己，也不能把最后一名管理员降级）。
+
+**第一个管理员怎么来**（部署后必做一次）：管理员只能靠 `server.json` 的 `Admin.Users`（容器里是环境变量 `DFLegacy__Admin__Users__0`，多个依次 `__0`/`__1`）在**服务端启动时**被提升——注册不会自动获得管理员权限（否则谁抢注了名单里的名字谁就是管理员）。所以顺序是：
+
+1. 先注册你要用的账号（启动器的「注册账号」，或公开接口 `POST /api/accounts`，账号名 4-32、密码 6-128、QQ 码至少 5 位）；
+2. 把该账号名写进 `Admin.Users`；
+3. 重启服务端使提升生效（容器请用 `docker compose up -d` 重建：`docker compose restart` 不会读取新的环境变量）；
+4. 启动日志出现 `bootstrap admins: <你的账号>` 即成功；之后再加管理员直接在「用户角色」页操作，不需要重启。
+
+⚠️ 名单里**不要放默认的 `test`**——它密码公开，进了名单等于给所有人管理员权限。后台端口若对外暴露，**必须限制来源并在前面挂 HTTPS**（token 走明文 HTTP 可被链路嗅探），详见 [ADMIN_API.md §1.2](ADMIN_API.md#12-鉴权与权限) 与 [DEPLOYING.md](DEPLOYING.md)。
 
 ## 已知缺口
 
@@ -164,12 +174,13 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 
 ### 启动器
 
-`launcher.json` 支持 `Accounts` 账号列表及 `AccountIndex`；也可以使用 `--account-index N` 或 `--account NAME` 临时选择已配置账号。默认测试凭据为 `test/test`，请勿将包含真实密码的配置公开分发。启动器无参运行时打开交互界面（账号下拉 + 密码 + 服务端状态灯），注册、登录、改密、找回与账号管理都在界面内完成。
+`launcher.json` 支持 `Accounts` 账号列表及 `AccountIndex`；也可以使用 `--account-index N` 或 `--account NAME` 临时选择已配置账号。默认测试凭据为 `test/test`，请勿将包含真实密码的配置公开分发。启动器无参运行时打开**按 DNF2008 原版登录器 1:1 还原的皮肤窗口**（左侧账号列表 + 账号/密码输入 + 服务端与账号服务状态 + 原版按钮），注册、登录、改密、找回与账号管理都在界面内完成。
 
 | 设置 | 用途 |
 | --- | --- |
-| `AccountServiceUrl` | 账号 HTTP API 基址，默认 `http://127.0.0.1:8081`（服务端 Admin 端口）；注册/改密/找回经此访问。 |
-| `Theme` | 启动器界面主题：`auto` / `light` / `dark`。 |
+| `AccountServicePort` | 账号服务（后台）端口，默认 `8081`。**域名与 `EntranceHost` 共用**：实际地址 = `http://{EntranceHost}:{AccountServicePort}`，发布前只改这一个端口，域名不用改两处。 |
+| `AccountServiceUrl` | 可选覆盖：填了就完全使用该地址（账号服务在别的域名或走内网时）；留空即按上面的「域名:端口」自动拼。 |
+| `Theme` | 启动器界面主题：`auto` / `light` / `dark`（只作用于注册/改密/找回/账号管理/设置这些窗口，主窗口是原版皮肤不受影响）。 |
 | `Accounts[]` 子项 | 除 `Account` / `Password` 外还支持 `DisplayName`（显示名）、`CreateTime`（创建时间）、`OicqCode` 与 `RememberPassword`（记住密码，默认 `true`；为 `false` 时只保存空密码，启动前需在界面输入，无头启动需要存储密码）。 |
 
 `Relay.Enabled` 打开后，启动器会把本地中继托管在自己进程内（启动客户端后驻留到客户端退出，不额外产生进程），用于客户端只能 IPv4、服务器只有 IPv6 的场景，见 [DEPLOYING.md](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)。
