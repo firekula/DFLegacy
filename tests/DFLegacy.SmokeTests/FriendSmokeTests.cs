@@ -95,14 +95,22 @@ internal static class FriendSmokeTests
             "1:1 traffic is carried by NOTI 65");
         check(packet.Payload.Length == 2 + 4 + peer.Length + 4 + text.Length
                 && packet.Payload[0] == 0x12
-                && packet.Payload[1] == 1
+                && packet.Payload[1] == 0
                 && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(2, 4))
                     == peer.Length
                 && packet.Payload.AsSpan(6, peer.Length).SequenceEqual(peer)
                 && BinaryPrimitives.ReadUInt32LittleEndian(
                     packet.Payload.AsSpan(6 + peer.Length, 4)) == text.Length
                 && packet.Payload.AsSpan(10 + peer.Length, text.Length).SequenceEqual(text),
-            "NOTI 65 is [type 0x12][flag 1][u32 name + name][u32 text + text]");
+            "NOTI 65 is [type 0x12][flag 0 = body][u32 name + name][u32 text + text]");
+
+        // 悄悄话发送方自己那一行：type 1/7、flag 0、名字=目标，客户端把它打进主聊天栏。
+        var whisperLine = GameProtocolEngine.CreateMessageOtherChannel(peer, text, messageType: 1);
+        check(whisperLine.ProtocolId == 65
+                && whisperLine.Payload[0] == 1
+                && whisperLine.Payload[1] == 0
+                && whisperLine.Payload.Length == packet.Payload.Length,
+            "a whisper sender line is NOTI 65 with type 1/7 and flag 0, differing only in the type byte");
     }
 
     // CMD 8 的 mode 分支：角色选择(0xFFFF + mode 2) 保持账号角色卡列表，城镇“查看信息”
@@ -246,10 +254,7 @@ internal static class FriendSmokeTests
     {
         var packet = GameProtocolEngine.CreateFriendList(
         [
-            new GameFriendEntry(
-                Encoding.GetEncoding(936).GetBytes("阿尔法"),
-                Online: true,
-                AreaUserId: 0x1234),
+            new GameFriendEntry(Encoding.GetEncoding(936).GetBytes("阿尔法"), Online: true),
             new GameFriendEntry(Encoding.ASCII.GetBytes("Bravo"), Online: false)
         ]);
 
@@ -266,8 +271,8 @@ internal static class FriendSmokeTests
         check(firstName[..6].SequenceEqual(Encoding.GetEncoding(936).GetBytes("阿尔法"))
             && firstName[6..].ToArray().All(b => b == 0),
             "the name occupies a NUL-padded thirty-byte field");
-        check(BinaryPrimitives.ReadUInt16LittleEndian(first.Slice(0x21, 2)) == 0x1234,
-            "an online record carries its area user id in the u16 the client's 查看信息 sends back");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(first.Slice(0x21, 2)) == 0,
+            "R+0x21 stays zero even for an online friend: it is not the uid the client sends back (that uid comes from the local user registry)");
         check(first[0x23] == 0 && first[0x24] == 0
             && first[0x25] == 0 && first[0x26] == 0 && first[0x27] == 0 && first[0x28] == 0
             && first[0x29] == 0,
@@ -277,7 +282,7 @@ internal static class FriendSmokeTests
         check(second.Slice(3, 30)[..5].SequenceEqual(Encoding.ASCII.GetBytes("Bravo")),
             "an ASCII name uses the same thirty-byte field");
         check(BinaryPrimitives.ReadUInt16LittleEndian(second.Slice(0x21, 2)) == 0,
-            "a record left at the default carries a zero area user id");
+            "an offline record leaves R+0x21 at zero as well");
         check(packet.Payload[1 + 42 + 0x20] == 0,
             "the last byte of the name field stays inside the record");
     }
@@ -552,13 +557,22 @@ internal static class FriendSmokeTests
             check(alicePackets.Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification),
                 "a friend coming online notifies the accounts whose friend list holds that name");
             var bravoLoginTail = alicePackets.Skip(aliceBeforeBravoLogin).ToArray();
-            var reloginSnapshot = bravoLoginTail
-                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
-            check(bravoLoginTail.Count(packet =>
-                        packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification) == 1
-                    && reloginSnapshot is not null
-                    && FriendRecordAreaUserId(reloginSnapshot, 0) == 1,
-                "a friend coming online re-pushes exactly one snapshot so the entry's uid goes from 0 to its area user id");
+            var bravoOnlineRecord = bravoLoginTail
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.UserInfoNotification);
+            check(bravoLoginTail.Length == 2
+                    && bravoLoginTail[0].ProtocolId == GameProtocolEngine.BuddyInNotification
+                    && BuddyNameExactly(bravoLoginTail[0], "布拉沃")
+                    && bravoOnlineRecord is not null
+                    && bravoOnlineRecord.Payload[0] == 0
+                    && ReadUserInfoRecordUid(bravoOnlineRecord) == 1
+                    && UserInfoRecordNameEquals(bravoOnlineRecord, "布拉沃"),
+                "a friend coming online sends one BUDDY_IN and one mode-0 USERINFO record carrying the friend's area user id");
+            check(bravoLoginTail.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
+                "a presence change re-pushes no snapshot: the client appends one row per snapshot, so the ec67261 re-push duplicated the friend");
+            check(bravoPackets.Count(packet =>
+                        packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification) == 1,
+                "logging in pushes exactly one friend-list snapshot per session");
             check(davePackets.Count == daveBeforeStranger,
                 "an online account with no matching friend entry receives no buddy notification");
 
@@ -586,63 +600,40 @@ internal static class FriendSmokeTests
 
             var aliceBeforeLiveDetach = alicePackets.Count;
             await service.DetachChannelAsync("布拉沃", bravoSession, CancellationToken.None);
-            check(alicePackets.Skip(aliceBeforeLiveDetach)
-                    .Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification),
-                "the session that owns the channel goes offline and friends hear BUDDY_OUT");
-            check(alicePackets.Count(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification) >= 2,
-                "a friend going offline notifies the same accounts with BUDDY_OUT");
             var offlineTail = alicePackets.Skip(aliceBeforeLiveDetach).ToArray();
-            var offlineSnapshot = offlineTail
-                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
-            check(offlineTail.Count(packet =>
-                        packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification) == 1
-                    && offlineSnapshot is not null
-                    && FriendRecordAreaUserId(offlineSnapshot, 0) == 0,
-                "a friend going offline re-pushes one snapshot that zeroes the entry's uid again");
+            check(offlineTail.Length == 1
+                    && offlineTail[0].ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && BuddyNameExactly(offlineTail[0], "布拉沃"),
+                "the session that owns the channel goes offline and friends hear exactly one BUDDY_OUT");
+            check(offlineTail.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
+                "an offline transition re-pushes no snapshot either, so it cannot insert a duplicate row");
 
-            // 删除后仍有存活好友：重推的快照必须保留艾琳（而不是整份清空），
-            // 并照旧给这个离线好友补 BUDDY_OUT（紧跟快照之后）。
+            // 删除只发 type=1 id 64（客户端 vector::erase）。加删都不推快照：NOTI 56 是
+            // 无条件追加条目，推一次就把整份名单（含存活好友）再插一遍。
             check(await store.AddFriendAsync("alice", "艾琳", CancellationToken.None) == FriendUpdateFailure.None,
-                "the removal fixture gives alice a second, offline friend");
+                "the removal fixture gives alice a second friend");
             var removed = alicePackets.Count;
             await service.RemoveFriendAsync("alice", "阿尔法", "布拉沃", CancellationToken.None);
             var removalPackets = alicePackets.Skip(removed).ToArray();
-            var survivorSnapshot = removalPackets
-                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
-            check(survivorSnapshot is not null
-                    && survivorSnapshot.Payload[0] == 1
-                    && HasFriendName(survivorSnapshot, 0, "艾琳"),
-                "removing a friend re-sends a snapshot that still holds the remaining friend");
-            var survivorSnapshotIndex = survivorSnapshot is null
-                ? -1
-                : Array.IndexOf(removalPackets, survivorSnapshot);
-            check(survivorSnapshotIndex >= 0
-                    && removalPackets.Skip(survivorSnapshotIndex).Any(packet =>
-                        packet.ProtocolId == GameProtocolEngine.BuddyOutNotification
-                        && BuddyNameEquals(packet, "艾琳")),
-                "the remaining offline friend is still marked offline after the removal snapshot");
-            var removalResult = removalPackets
-                .FirstOrDefault(packet => packet.Type == 1 && packet.ProtocolId == 64);
-            check(removalResult is not null
-                    && IsFriendCommandResult(removalResult, 64, "布拉沃"),
-                "a successful removal answers with a type-1 id-64 result that erases the entry by name");
-            check(removalResult is not null
-                    && Array.IndexOf(removalPackets, removalResult) > survivorSnapshotIndex,
-                "the removal result follows the refreshed snapshot so the client's last state is the erase");
+            check(removalPackets.Length == 1
+                    && IsFriendCommandResult(removalPackets[0], 64, "布拉沃"),
+                "a successful removal sends exactly one type-1 id-64 erase result");
+            check(removalPackets.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification
+                        && packet.ProtocolId != GameProtocolEngine.BuddyOutNotification),
+                "removal pushes no snapshot: the surviving friend is not re-inserted and no BUDDY_OUT is fanned out");
             var aliceFriendsAfterRemoval = await store.GetFriendsAsync("alice", CancellationToken.None);
             check(aliceFriendsAfterRemoval.Count == 1 && aliceFriendsAfterRemoval[0].Name == "艾琳",
                 "the service persists the removal and keeps the surviving friend");
 
-            // 再删掉最后一位好友：空快照仍然是"条目已消失"的唯一表现。
+            // 再删掉最后一位好友：同样只有 id 64；空快照既清不掉条目也没有必要。
             var removedLast = alicePackets.Count;
             await service.RemoveFriendAsync("alice", "阿尔法", "艾琳", CancellationToken.None);
-            check(alicePackets.Skip(removedLast)
-                    .Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification
-                        && packet.Payload[0] == 0),
-                "removing the last friend re-sends an empty snapshot");
-            check(alicePackets.Skip(removedLast).Any(packet =>
-                    IsFriendCommandResult(packet, 64, "艾琳")),
-                "removing the last friend also sends the id-64 erase result");
+            var lastRemovalPackets = alicePackets.Skip(removedLast).ToArray();
+            check(lastRemovalPackets.Length == 1
+                    && IsFriendCommandResult(lastRemovalPackets[0], 64, "艾琳"),
+                "removing the last friend sends only the id-64 erase result");
             check((await store.GetFriendsAsync("alice", CancellationToken.None)).Count == 0,
                 "the service persists the last removal through the store");
 
@@ -706,17 +697,31 @@ internal static class FriendSmokeTests
                 "a null sender appearance pushes no user-info record");
             check(bravoPackets.Skip(bravoBefore)
                     .Any(packet => IsMessengerMessage(packet, "阿尔法", "你好")),
-                "the target's 1:1 window also gets a NOTI 65 named after the sender, next to the chat line");
-            var echo12 = alicePackets.Skip(aliceBeforeOnlineWhisper)
+                "the target's 1:1 window also gets a NOTI 65 (type 0x12, flag 0) named after the sender");
+            var senderTail = alicePackets.Skip(aliceBeforeOnlineWhisper).ToArray();
+            var echo12 = senderTail
                 .Where(packet => packet.ProtocolId == GameProtocolEngine.MessageNotification)
                 .ToArray();
-            var echo65 = alicePackets.Skip(aliceBeforeOnlineWhisper)
+            var echo65 = senderTail
                 .Where(packet => packet.ProtocolId == 65)
                 .ToArray();
             check(echo12.Length == 0,
                 "the sender gets no NOTI 12 echo: the client's own-uid branch renders nothing");
-            check(echo65.Length == 1 && IsMessengerMessage(echo65[0], "布拉沃", "你好"),
-                "the sender's own 1:1 window gets exactly one NOTI 65 named after the target");
+            check(echo65.Length == 1
+                    && IsMessengerMessage(echo65[0], "布拉沃", "你好", messageType: 1),
+                "the sender gets exactly one NOTI 65 with type 1 / flag 0 / the target name — the main-chat sender line");
+            var whisperSenderRecord = senderTail
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.UserInfoNotification);
+            check(whisperSenderRecord is not null
+                    && whisperSenderRecord.Payload[0] == 0
+                    && ReadUserInfoRecordUid(whisperSenderRecord) == 1
+                    && UserInfoRecordNameEquals(whisperSenderRecord, "布拉沃"),
+                "a whisper pushes the target's minimal mode-0 record to the sender, carrying the target's area user id");
+            check(whisperSenderRecord is not null
+                    && echo65.Length == 1
+                    && Array.IndexOf(senderTail, whisperSenderRecord)
+                        < Array.IndexOf(senderTail, echo65[0]),
+                "the target's record arrives before the sender's own line packet");
 
             var aliceBeforeSelfWhisper = alicePackets.Count;
             await service.WhisperAsync(
@@ -734,28 +739,18 @@ internal static class FriendSmokeTests
                     && ReadMessageText(selfWhisperPackets[0]) == "不能给自己发悄悄话",
                 "whispering to yourself answers 不能给自己发悄悄话 instead of delivering twice");
 
-            // 加好友成功：重推快照，离线的新好友随后被标 -1
+            // 加好友成功：只发 type=1 id 63（客户端据此追加条目并提示"[名字]已被添加到
+            // 好友名单"）。不能再补快照：NOTI 56 无条件追加，会把老好友全部再插一份。
             var daveBeforeAdd = davePackets.Count;
             await service.AddFriendAsync("dave", "戴夫", "艾琳", CancellationToken.None);
-            var addedSnapshot = davePackets.Skip(daveBeforeAdd)
-                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
-            check(addedSnapshot is not null
-                    && addedSnapshot.Payload[0] == 1
-                    && HasFriendName(addedSnapshot, 0, "艾琳"),
-                "a successful add re-sends the adder's snapshot with the new friend");
-            check(davePackets.Skip(daveBeforeAdd).Any(packet =>
-                    packet.ProtocolId == GameProtocolEngine.BuddyOutNotification
-                    && BuddyNameEquals(packet, "艾琳")),
-                "an offline friend is marked offline right after the add snapshot");
             var addTail = davePackets.Skip(daveBeforeAdd).ToArray();
-            var addResult = addTail
-                .FirstOrDefault(packet => packet.Type == 1 && packet.ProtocolId == 63);
-            check(addResult is not null
-                    && IsFriendCommandResult(addResult, 63, "艾琳")
-                    && addResult.Payload[0] == 1,
-                "a successful add answers with a type-1 id-63 result carrying the added name");
-            check(Array.IndexOf(addTail, addResult) < Array.IndexOf(addTail, addedSnapshot),
-                "the add result precedes the snapshot so the snapshot and BUDDY_OUT stay the last writers of the entry state");
+            check(addTail.Length == 1
+                    && IsFriendCommandResult(addTail[0], 63, "艾琳")
+                    && addTail[0].Payload[0] == 1,
+                "a successful add sends exactly one type-1 id-63 result that appends the entry by name");
+            check(addTail.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
+                "add never re-pushes the snapshot: NOTI 56 appends unconditionally, so the whole list would be duplicated");
             check((await store.GetFriendsAsync("dave", CancellationToken.None)).Count == 1,
                 "a successful add is persisted by the store");
 
@@ -769,28 +764,77 @@ internal static class FriendSmokeTests
                     && buddyIn.Payload[0] == 0
                     && BuddyNameEquals(buddyIn, "艾琳"),
                 "an added friend coming online is announced to the account that holds the name");
+            var erinOnlineRecord = davePackets.Skip(daveBeforeAdd)
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.UserInfoNotification);
+            check(erinOnlineRecord is not null
+                    && erinOnlineRecord.Payload[0] == 0
+                    && ReadUserInfoRecordUid(erinOnlineRecord) == 7
+                    && UserInfoRecordNameEquals(erinOnlineRecord, "艾琳"),
+                "a friend coming online also gets his mode-0 USERINFO record pushed to the account that tracks him");
+            var erinRecordClass = erinOnlineRecord is null
+                ? default
+                : ReadUserInfoRecordClass(erinOnlineRecord);
+            check(erinOnlineRecord is not null
+                    && erinRecordClass.Job == erinFixture.Character!.Job
+                    && erinRecordClass.Growth == erinFixture.Character.GrowType
+                    && erinRecordClass.Level
+                        == (byte)Math.Clamp(erinFixture.Character.Level, 1, byte.MaxValue),
+                "the pushed profile record takes job/growth/level from the stored character, not defaults");
 
-            // 重连快照里在线好友不得被标成离线
+            // 重连（再次登录）：恰好一条快照、在线好友不被标离线，且每个在线好友各补
+            // 一条 mode-0 USERINFO 记录（登录路径）。
             var daveReconnect = Guid.NewGuid();
             var daveBeforeReconnect = davePackets.Count;
             await service.AttachChannelAsync(
                 "dave", "戴夫", areaUserId: 4, daveReconnect, Record(davePackets), CancellationToken.None);
-            var reconnectSnapshot = davePackets.Skip(daveBeforeReconnect)
+            var reconnectTail = davePackets.Skip(daveBeforeReconnect).ToArray();
+            var reconnectSnapshot = reconnectTail
                 .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
-            check(reconnectSnapshot is not null
+            check(reconnectTail.Count(packet =>
+                        packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification) == 1
+                    && reconnectSnapshot is not null
                     && reconnectSnapshot.Payload[0] == 1
-                    && HasFriendName(reconnectSnapshot, 0, "艾琳")
-                    && davePackets.Skip(daveBeforeReconnect)
-                        .All(packet => packet.ProtocolId != GameProtocolEngine.BuddyOutNotification),
+                    && HasFriendName(reconnectSnapshot, 0, "艾琳"),
+                "logging in sends exactly one snapshot holding the online friend");
+            check(reconnectTail.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.BuddyOutNotification),
                 "an online friend is not marked offline by BUDDY_OUT after the snapshot");
             check(reconnectSnapshot is not null
-                    && FriendRecordAreaUserId(reconnectSnapshot, 0) == 7,
-                "an online friend's record carries its area user id in the 0x21 field");
+                    && FriendRecordAreaUserId(reconnectSnapshot, 0) == 0,
+                "the snapshot record keeps R+0x21 at zero instead of a uid");
+            var reconnectRecord = reconnectTail
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.UserInfoNotification);
+            check(reconnectRecord is not null
+                    && reconnectRecord.Payload[0] == 0
+                    && ReadUserInfoRecordUid(reconnectRecord) == 7
+                    && UserInfoRecordNameEquals(reconnectRecord, "艾琳"),
+                "logging in pushes one mode-0 USERINFO record for each online friend");
             check(service.TryGetCharacterByAreaUserId(7, out var onlineLookup)
                     && onlineLookup == "艾琳"
                     && !service.TryGetCharacterByAreaUserId(8, out _)
                     && !service.TryGetCharacterByAreaUserId(0, out _),
                 "the friend service resolves an online character by area user id, and rejects free and zero ids");
+
+            // “查看信息”不是好友专属：城镇里右键任何路人玩家同样走 CMD 8 mode 3。
+            // 阿尔法（uid 11）在线但不在戴夫的好友名单里，反查与回包都必须覆盖他。
+            check((await store.GetFriendsAsync("dave", CancellationToken.None))
+                    .All(friend => friend.Name != "阿尔法"),
+                "the fixture keeps 阿尔法 (uid 11) off dave's friend list");
+            check(service.TryGetCharacterByAreaUserId(11, out var passerbyLookup)
+                    && passerbyLookup == "阿尔法",
+                "the uid reverse lookup covers any online character, not only the caller's friends");
+            var passerbyBody = new byte[] { 0, 0, 11, 0, 3 }; // 序列号 + uid=11 + mode=3
+            var passerbyDetail = await EntranceService.ResolveUserInfoReplyAsync(
+                passerbyBody,
+                uid => service.TryGetCharacterByAreaUserId(uid, out var foundName) ? foundName : null,
+                (uid, _) => GameProtocolEngine.CreateCurrentCharacterDetails(uid),
+                () => Task.FromResult(GameProtocolEngine.CreateUserInfo([])));
+            check(passerbyDetail is not null
+                    && passerbyDetail.ProtocolId == GameProtocolEngine.UserInfoNotification
+                    && passerbyDetail.Payload[0] == 1
+                    && BinaryPrimitives.ReadUInt16LittleEndian(passerbyDetail.Payload.AsSpan(1, 2)) == 1
+                    && BinaryPrimitives.ReadUInt16LittleEndian(passerbyDetail.Payload.AsSpan(3, 2)) == 11,
+                "a mode-3 request for a non-friend online character returns that character's profile with the uid echoed");
 
             var appearance = GameProtocolEngine.CreateCurrentCharacterInfo(
                 new GameCharacterSummary(0, encoding.GetBytes("戴夫"), Job: 0, GrowType: 4, Level: 20),
@@ -820,38 +864,66 @@ internal static class FriendSmokeTests
             check(messengerIndex > messageIndex
                     && IsMessengerMessage(erinMessages[messengerIndex], "戴夫", "在吗"),
                 "the target gets the appearance, then NOTI 12, then a NOTI 65 named after the sender");
-            var daveEcho = davePackets.Skip(daveBeforeWhisper)
+            var daveWhisperTail = davePackets.Skip(daveBeforeWhisper).ToArray();
+            var daveEcho = daveWhisperTail
                 .Where(packet => packet.ProtocolId == GameProtocolEngine.MessageNotification)
                 .ToArray();
-            var daveMessenger = davePackets.Skip(daveBeforeWhisper)
+            var daveMessenger = daveWhisperTail
                 .Where(packet => packet.ProtocolId == 65)
                 .ToArray();
             check(daveEcho.Length == 0,
                 "the appearance whisper leaves the sender without a NOTI 12 echo");
             check(daveMessenger.Length == 1
-                    && IsMessengerMessage(daveMessenger[0], "艾琳", "在吗"),
-                "the sender gets exactly one NOTI 65 named after the target");
+                    && IsMessengerMessage(daveMessenger[0], "艾琳", "在吗", messageType: 1),
+                "the sender gets exactly one NOTI 65 (type 1/flag 0) carrying the target name for the main-chat line");
+            var davePeerRecord = daveWhisperTail
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.UserInfoNotification);
+            check(davePeerRecord is not null
+                    && davePeerRecord.Payload[0] == 0
+                    && ReadUserInfoRecordUid(davePeerRecord) == 7
+                    && UserInfoRecordNameEquals(davePeerRecord, "艾琳"),
+                "the sender-side record carries the target's area user id (7), never the sender's (4)");
+            check(davePeerRecord is not null
+                    && daveMessenger.Length == 1
+                    && Array.IndexOf(daveWhisperTail, davePeerRecord)
+                        < Array.IndexOf(daveWhisperTail, daveMessenger[0]),
+                "the target's record precedes the sender's NOTI 65 in the appearance whisper too");
 
-            // CMD 17 类型 18（1:1 窗口消息）：双方各一条 NOTI 65，没有 NOTI 12、没有外观包。
+            // CMD 17 类型 18（1:1 窗口消息）：接收方收「发送者 mode-0 记录 → NOTI 65
+            // type 0x12 flag 0」；发送方自己的行由客户端本地追加，只补一条对端记录。
             var erinBeforeMessenger = erinPackets.Count;
             var daveBeforeMessenger = davePackets.Count;
+            var daveMessengerAppearance = GameProtocolEngine.CreateCurrentCharacterInfo(
+                new GameCharacterSummary(0, encoding.GetBytes("戴夫"), Job: 0, GrowType: 4, Level: 20),
+                userId: 4);
             await service.SendMessengerMessageAsync(
                 "戴夫",
+                daveMessengerAppearance,
                 encoding.GetBytes("艾琳"),
                 encoding.GetBytes("1:1消息"),
                 CancellationToken.None);
             var erinMessenger = erinPackets.Skip(erinBeforeMessenger).ToArray();
-            check(erinMessenger.Length == 1
-                    && IsMessengerMessage(erinMessenger[0], "戴夫", "1:1消息"),
-                "a 1:1 message reaches the peer as a single NOTI 65 named after the sender");
+            check(erinMessenger.Length == 2
+                    && ReferenceEquals(erinMessenger[0], daveMessengerAppearance)
+                    && erinMessenger[0].Payload[0] == 0
+                    && ReadUserInfoRecordUid(erinMessenger[0]) == 4
+                    && UserInfoRecordNameEquals(erinMessenger[0], "戴夫")
+                    && IsMessengerMessage(erinMessenger[1], "戴夫", "1:1消息"),
+                "a 1:1 message pushes the sender's mode-0 record (uid = the sender's area user id 4) to the peer, then the flag-0 NOTI 65 body");
             var daveMessengerReply = davePackets.Skip(daveBeforeMessenger).ToArray();
             check(daveMessengerReply.Length == 1
-                    && IsMessengerMessage(daveMessengerReply[0], "艾琳", "1:1消息"),
-                "the 1:1 sender gets exactly one NOTI 65 named after the peer");
+                    && daveMessengerReply[0].ProtocolId == GameProtocolEngine.UserInfoNotification
+                    && daveMessengerReply[0].Payload[0] == 0
+                    && ReadUserInfoRecordUid(daveMessengerReply[0]) == 7
+                    && UserInfoRecordNameEquals(daveMessengerReply[0], "艾琳"),
+                "the 1:1 sender only gets the target's minimal mode-0 record (uid = the target's area user id 7)");
+            check(daveMessengerReply.All(packet => packet.ProtocolId != 65),
+                "the 1:1 sender gets no NOTI 65 echo: the client appends its own line locally after sending");
 
             var daveBeforeSelfMessenger = davePackets.Count;
             await service.SendMessengerMessageAsync(
                 "戴夫",
+                senderAppearance: null,
                 encoding.GetBytes("戴夫"),
                 encoding.GetBytes("自言自语"),
                 CancellationToken.None);
@@ -896,7 +968,7 @@ internal static class FriendSmokeTests
                     && davePackets.Skip(daveBeforeBrokenWhisper)
                         .All(packet => packet.ProtocolId
                             != GameProtocolEngine.MessageNotification),
-                "a broken target channel does not swallow the sender's 1:1 line");
+                "a broken target channel does not swallow the sender's own line packet");
 
             var daveBeforeDetach = davePackets.Count;
             await service.DetachChannelAsync("艾琳", brokenErinSession, CancellationToken.None);
@@ -923,6 +995,7 @@ internal static class FriendSmokeTests
             var daveBeforeOfflineMessenger = davePackets.Count;
             await service.SendMessengerMessageAsync(
                 "戴夫",
+                senderAppearance: null,
                 encoding.GetBytes("艾琳"),
                 encoding.GetBytes("还在吗"),
                 CancellationToken.None);
@@ -1070,6 +1143,28 @@ internal static class FriendSmokeTests
         BinaryPrimitives.ReadUInt16LittleEndian(
             snapshot.Payload.AsSpan(1 + index * 42 + 0x21, 2));
 
+    // mode-0 USERINFO：payload = [u8 mode][u16 count=1][u16 uid][u32 名字长度 + 名字]…
+    private static ushort ReadUserInfoRecordUid(GameServerPacket packet) =>
+        BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(3, 2));
+
+    private static bool UserInfoRecordNameEquals(GameServerPacket packet, string name)
+    {
+        var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
+        return packet.ProtocolId == GameProtocolEngine.UserInfoNotification
+            && packet.Payload.Length >= 9 + nameBytes.Length
+            && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(5, 4))
+                == nameBytes.Length
+            && packet.Payload.AsSpan(9, nameBytes.Length).SequenceEqual(nameBytes);
+    }
+
+    // mode-0 USERINFO 名字之后的职业 / 成长 / 等级三字节（存档角色的最小投影）。
+    private static (byte Job, byte Growth, byte Level) ReadUserInfoRecordClass(GameServerPacket packet)
+    {
+        var nameLength = (int)BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(5, 4));
+        var offset = 9 + nameLength;
+        return (packet.Payload[offset], packet.Payload[offset + 1], packet.Payload[offset + 2]);
+    }
+
     private static bool HasFriendName(GameServerPacket snapshot, int index, string name)
     {
         var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
@@ -1111,17 +1206,22 @@ internal static class FriendSmokeTests
             && packet.Payload[^1] == 0;
     }
 
-    // NOTI 65：客户端只对 type=0x12 且 flag!=0 走“按名字找/建 1:1 窗口”的分支。
-    // 线上的字节值写死成字面量：常量被改动时这些断言必须变红。
-    private static bool IsMessengerMessage(GameServerPacket packet, string name, string text)
+    // NOTI 65：flag 是状态码，只有 0 才投递正文（非 0 只弹“无法接受信息”并丢掉正文）；
+    // type 0x12 进 1:1 窗口，type 1/7 进主聊天栏。线上的字节值写死成字面量：
+    // 常量被改动时这些断言必须变红。
+    private static bool IsMessengerMessage(
+        GameServerPacket packet,
+        string name,
+        string text,
+        byte messageType = 0x12)
     {
         var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
         var textBytes = Encoding.GetEncoding(936).GetBytes(text);
         return packet.Type == 0
             && packet.ProtocolId == 65
             && packet.Payload.Length == 2 + 4 + nameBytes.Length + 4 + textBytes.Length
-            && packet.Payload[0] == 0x12
-            && packet.Payload[1] == 1
+            && packet.Payload[0] == messageType
+            && packet.Payload[1] == 0
             && BinaryPrimitives.ReadUInt32LittleEndian(
                 packet.Payload.AsSpan(2, 4)) == nameBytes.Length
             && packet.Payload.AsSpan(6, nameBytes.Length).SequenceEqual(nameBytes)

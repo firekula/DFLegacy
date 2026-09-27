@@ -73,9 +73,10 @@ public sealed record GameTownUser(
     short Y,
     byte Direction);
 // 好友列表条目：名字为 CP949/GBK 编码的原始字节（列表内为定长 30 字节字段）。
-// AreaUserId 是记录偏移 0x21 的 u16，客户端“查看信息”按它发 CMD 8 mode 3；
-// 在线好友填其当前会话的区用户 id，离线保持 0。
-public sealed record GameFriendEntry(byte[] NameBytes, bool Online, ushort AreaUserId = 0);
+// 记录偏移 0x21 的 u16 不参与匹配，只被当展示文本指针兜底，逆向要求恒填 0；
+// 客户端“查看信息”用的 uid 来自本地 user 注册表（由 USERINFO mode 0 建立），
+// 不再从这份快照记录里取。
+public sealed record GameFriendEntry(byte[] NameBytes, bool Online);
 public sealed record GameDungeonMonster(
     byte MapListIndex,
     ushort UniqueId,
@@ -362,12 +363,17 @@ public static class GameProtocolEngine
     public const byte BuddyInNotification = 54;      // 好友上线/状态更新（只更新已有条目）
     public const byte BuddyOutNotification = 55;     // 好友下线（条目状态置 -1）
     public const byte BuddyConnListNotification = 56; // 好友列表快照（唯一能新建条目的通知）
-    // 跨频道/按名字投递的消息（1:1 窗口的载体）。客户端 handler 0x41CD9D：
-    // [u8 type][u8 flag][u32 名字长度 + 名字][u32 文本长度 + 文本]；只有 type==0x12 且
-    // flag!=0 才走“按名字找/建 1:1 窗口并追加”（0x810AE0），其余取值是提示分支。
+    // 跨频道/按名字投递的消息（1:1 窗口与悄悄话发送方那一行的载体）。客户端
+    // handler 0x41CD9D：payload = [u8 type][u8 flag][u32 名字长度 + 名字][u32 文本
+    // 长度 + 文本]。flag 是状态码，不是“投递开关”：
+    //   flag == 0        → 正文按名字投递：type 0x12 进 1:1 窗口（0x810A90），
+    //                      type 1/7 进主聊天栏 '%s : %s'（0x849452）。
+    //   flag == 0x4D     → '对方在黑名单中'；0x5A → '无法向GM发送聊天信息'；
+    //   其它非 0（含我们此前发的 1）→ 默认提示 0x81E '对方的当前状态为无法接收信息
+    //   的状态'，且正文被整段丢弃——这正是首轮 1:1 双方都看不到正文的原因。
     public const byte MessageOtherChannelNotification = 65;
     public const byte MessengerMessageType = 0x12;
-    public const byte MessengerMessageFlag = 1;
+    public const byte MessengerMessageFlag = 0;
     public const byte AddFriendCommand = 63;
     public const byte RemoveFriendCommand = 64;
     public const byte CeraShopBuyCommand = 67;
@@ -2309,16 +2315,18 @@ public static class GameProtocolEngine
 
             // 记录布局（客户端 0x425668 逐字段读入）：
             // [0] 状态（0xFF = 保持原状态；离线由 BUDDY_OUT 置 -1），[1] 标志，[2] 保留，
-            // [3..32] 名字（定长 30、NUL 填充），[0x21] u16 = 在线好友的区用户 id（客户端
-            // “查看信息”按它发 CMD 8 mode 3，离线为 0）、[0x23] u8、[0x24] u8 打包、
-            // [0x25] u32、[0x29] u8 —— 后四个字段语义待真机确认，先全 0。
+            // [3..32] 名字（定长 30、NUL 填充，匹配键只有它，大小写敏感逐字节），
+            // [0x21] u16 恒 0：它不参与匹配，客户端把该值当展示文本指针兜底并会被 user
+            // 记录覆盖，给真实 uid 反而让客户端从低地址取文本；[0x23] u8、[0x24] u8 打包、
+            // [0x25] u32、[0x29] u8 —— 后四个字段只在“有快照、无 USERINFO”时决定职业文本，
+            // 语义未考证，先全 0。
             writer.Write((byte)0);                 // state
             writer.Write((byte)0);                 // flag
             writer.Write((byte)0);                 // reserved
             var nameField = new byte[FriendListNameFieldLength];
             friend.NameBytes.CopyTo(nameField, 0);
             writer.Write(nameField);
-            writer.Write(friend.AreaUserId);
+            writer.Write((ushort)0);               // R+0x21：逆向要求恒 0，不是 uid
             writer.Write((byte)0);
             writer.Write((byte)0);
             writer.Write(0u);
@@ -2407,9 +2415,17 @@ public static class GameProtocolEngine
     }
 
     /// <summary>
-    /// 1:1 / 跨频道消息（NOTI 65）：按名字投递到接收方（以及发送方）的 1:1 窗口。
+    /// 1:1 / 跨频道消息（NOTI 65）：按名字投递正文。flag 恒 0（正文模式）；非 0 会被
+    /// 客户端当状态码，只打印提示并丢弃正文。
     /// </summary>
-    public static GameServerPacket CreateMessageOtherChannel(byte[] nameBytes, byte[] textBytes)
+    /// <param name="messageType">
+    /// 0x12：正文进 1:1 窗口（1:1 消息的接收方，以及悄悄话的 1:1 窗口行）；
+    /// 1/7：正文进主聊天栏 '%s : %s'（悄悄话发送方自己那一行）。
+    /// </param>
+    public static GameServerPacket CreateMessageOtherChannel(
+        byte[] nameBytes,
+        byte[] textBytes,
+        byte messageType = MessengerMessageType)
     {
         ArgumentNullException.ThrowIfNull(nameBytes);
         ArgumentNullException.ThrowIfNull(textBytes);
@@ -2436,8 +2452,8 @@ public static class GameProtocolEngine
 
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
-        writer.Write(MessengerMessageType);                 // 只有 0x12 走 1:1 窗口分支
-        writer.Write(MessengerMessageFlag);                 // 非零才投递
+        writer.Write(messageType);                          // 0x12 = 1:1 窗口；1/7 = 主聊天栏
+        writer.Write(MessengerMessageFlag);                 // 0 = 正文；非 0 是状态码（提示并丢弃正文）
         WriteLengthPrefixedBytes(writer, nameBytes);
         WriteLengthPrefixedBytes(writer, textBytes);
         return new GameServerPacket(

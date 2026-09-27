@@ -3569,7 +3569,12 @@ public sealed class EntranceService(
                             // and area, and success is represented by NOTI 12;
                             // there is no separate successful CMD 17 reply.
                             // 类型 18 是 1:1 窗口消息：正文之后跟着对端名字，历史在客户端
-                            // 本地，服务端只把它按名字转发成 NOTI 65。
+                            // 本地。能否渲染由 NOTI 65 的 flag 决定（flag=0 才是正文，
+                            // 非 0 是状态码：默认只弹“对方当前状态为无法接受信息的状态”
+                            // 并丢掉正文）。这里和悄悄话一样先把发送者的 mode-0 外观交给
+                            // 对端，让好友行/“查看信息”的本地 user 注册表有记录；接收方的
+                            // NOTI 65 与发送者侧的目标记录由好友服务补（发送方自己的行由
+                            // 客户端发完包后本地追加，服务器不回显）。
                             if (messageRequest.MessageType
                                 == (byte)GameMessageType.Type18DirectOutput)
                             {
@@ -3586,6 +3591,7 @@ public sealed class EntranceService(
 
                                 await friendService.SendMessengerMessageAsync(
                                     activeCharacter.Name,
+                                    SendTownAppearancePacket(),
                                     messengerPeerName,
                                     messageRequest.MessageBytes,
                                     serverToken);
