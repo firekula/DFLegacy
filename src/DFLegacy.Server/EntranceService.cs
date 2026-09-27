@@ -12,6 +12,8 @@ public sealed class EntranceService(
     RuntimeState runtime,
     JsonGameStore store,
     CharacterSessionRegistry characterSessions,
+    AreaUserIdPool areaUserIds,
+    TownSessionDirectory townDirectory,
     SkillCatalog skillCatalog,
     QuestCatalog questCatalog,
     CharacterExperienceCatalog experienceCatalog,
@@ -190,7 +192,10 @@ public sealed class EntranceService(
             var gameClientCipher = isChannelPort ? new GameClientCipherState() : null;
             var accountName = string.Empty;
             var accountUid = AccountUidRules.InvalidUid;
-            const ushort localUserId = 1;
+            // 区用户 id 由 AreaUserIdPool 在 SELECT_CHARACTER 时分配；第一个玩家仍是 1，
+            // 单人路径的报文与改造前逐字节一致。客户端靠它认定「哪个 actor 是我」。
+            ushort localUserId = 0;
+            TownMemberTicket? townTicket = null;
             CharacterRecord? activeCharacter = null;
             GameCharacterCombatStats? lastProjectedCombatStats = null;
             CharacterSessionLease? activeCharacterLease = null;
@@ -2662,6 +2667,20 @@ public sealed class EntranceService(
                                 "Returned character {CharacterId} to character selection for account {Account}.",
                                 returningCharacterId,
                                 accountName);
+
+                            if (townTicket is not null)
+                            {
+                                var leavingTicket = townTicket;
+                                townTicket = null;
+                                await townDirectory.LeaveAsync(leavingTicket, serverToken);
+                            }
+
+                            if (localUserId != 0)
+                            {
+                                areaUserIds.Release(localUserId);
+                                localUserId = 0;
+                            }
+
                             continue;
                         }
 
@@ -2678,6 +2697,21 @@ public sealed class EntranceService(
                                 await selectError.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, selectError);
+                                continue;
+                            }
+
+                            if (localUserId == 0 && !areaUserIds.TryAllocate(out localUserId))
+                            {
+                                logger.LogWarning(
+                                    "Rejected SELECT_CHARACTER on session {SessionId}: no free area user id (capacity {Capacity}).",
+                                    runtimeSession.Id,
+                                    areaUserIds.Capacity);
+                                var capacityError = GameProtocolEngine.CreateCommandError(
+                                    request,
+                                    errorCode: 2);
+                                await capacityError.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, capacityError);
                                 continue;
                             }
 
@@ -12349,6 +12383,21 @@ public sealed class EntranceService(
                             "Failed to persist the final location for character {CharacterId}.",
                             activeCharacter.Id);
                     }
+                }
+
+                if (townTicket is not null)
+                {
+                    var leavingTicket = townTicket;
+                    townTicket = null;
+                    // 这里的广播发给同区其他人（他们自己的连接仍活着），
+                    // 本会话的流已随 try 块结束而释放，所以不能用会话内的局部函数。
+                    await townDirectory.LeaveAsync(leavingTicket, CancellationToken.None);
+                }
+
+                if (localUserId != 0)
+                {
+                    areaUserIds.Release(localUserId);
+                    localUserId = 0;
                 }
 
                 characterSessions.Release(activeCharacterLease);

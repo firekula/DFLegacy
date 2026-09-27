@@ -33,6 +33,10 @@ internal static class TownSyncSmokeTests
             "USER_AREA marks a joining actor as active");
         check(GameProtocolEngine.CreateUserArea(2, 5, townUser, active: false).Payload[9] == 0,
             "USER_AREA marks a departing actor as inactive");
+
+        var channelSized = new AreaUserIdPool(new ServerOptions().Channel.MaximumUsers);
+        check(channelSized.Capacity == 100,
+            "the pool capacity follows the channel user limit so ids stay inside the client's range");
     }
 
     private static void CheckAreaUserIdPool(Action<bool, string> check)

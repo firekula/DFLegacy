@@ -42,6 +42,9 @@ builder.Services.AddSingleton<JsonGameStore>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
+builder.Services.AddSingleton(serviceProvider => new AreaUserIdPool(
+    serviceProvider.GetRequiredService<ServerOptions>().Channel.MaximumUsers));
+builder.Services.AddSingleton<TownSessionDirectory>();
 builder.Services.AddSingleton<SkillCatalog>();
 builder.Services.AddSingleton<QuestCatalog>();
 builder.Services.AddSingleton<CharacterExperienceCatalog>();
