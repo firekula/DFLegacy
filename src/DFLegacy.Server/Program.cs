@@ -299,21 +299,29 @@ app.MapGet("/api/accounts", async (JsonGameStore store, CancellationToken token)
 app.MapGet("/api/admin/characters", async (
     JsonGameStore store,
     CharacterSessionRegistry sessions,
+    TownSessionDirectory town,
     CancellationToken token) =>
 {
     var accounts = await store.GetAccountsAsync(token);
     return Results.Ok(accounts
-        .SelectMany(account => account.Characters.Select(character => new
+        .SelectMany(account => account.Characters.Select(character =>
         {
-            character.Id,
-            character.CharacterNo,
-            character.Name,
-            character.Job,
-            character.GrowType,
-            character.Level,
-            account.UserName,
-            account.AccountUid,
-            Online = sessions.IsOnline(character.Id)
+            var inTown = town.TryGetSnapshot(character.Id, out var snapshot);
+            return new
+            {
+                character.Id,
+                character.CharacterNo,
+                character.Name,
+                character.Job,
+                character.GrowType,
+                character.Level,
+                account.UserName,
+                account.AccountUid,
+                Online = sessions.IsOnline(character.Id),
+                TownId = inTown ? snapshot.TownId : (byte?)null,
+                AreaId = inTown ? snapshot.AreaId : (byte?)null,
+                AreaUserId = inTown ? snapshot.AreaUserId : (ushort?)null
+            };
         }))
         .OrderByDescending(character => character.Online)
         .ThenBy(character => character.UserName, StringComparer.OrdinalIgnoreCase)

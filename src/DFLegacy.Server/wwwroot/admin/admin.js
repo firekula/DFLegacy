@@ -297,9 +297,12 @@ function renderCharacters() {
       .filter(character => !onlineOnly || character.online)
       .forEach(character => {
         const presence = character.online ? "在线" : "离线";
+        const town = character.townId
+          ? ` · 城镇${character.townId}/区域${character.areaId}`
+          : "";
         select.append(option(
           character.id,
-          `[${presence}] ${character.name} · ${character.userName} · Lv.${character.level}`));
+          `[${presence}] ${character.name} · ${character.userName} · Lv.${character.level}${town}`));
       });
     if ([...select.options].some(item => item.value === previous)) {
       select.value = previous;
