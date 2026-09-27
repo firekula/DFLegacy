@@ -2667,6 +2667,17 @@ public sealed class EntranceService(
                                 await SaveCurrentLocationAsync(serverToken);
                             }
 
+                            if (activeCharacter is not null)
+                            {
+                                // 返回选人界面也等于该角色结束了游戏会话：必须在丢弃
+                                // activeCharacter 之前摘除好友通道，否则好友会一直看到
+                                // 这个角色在线；断线 finally 此时已拿不到角色名。
+                                await friendService.DetachChannelAsync(
+                                    activeCharacter.Name,
+                                    runtimeSession.Id,
+                                    serverToken);
+                            }
+
                             characterSessions.Release(activeCharacterLease);
                             activeCharacterLease = null;
                             activeCharacter = null;
@@ -2800,6 +2811,18 @@ public sealed class EntranceService(
                                 // 旧成员若留在目录里就会与新角色共用同一个 uid，且旧流不会再
                                 // 转发任何报文，永远等不到投递失败把它剔除。
                                 await LeaveTownAreaAsync(serverToken);
+
+                                // 换角色同样要在丢弃 activeCharacter 之前摘掉旧角色的
+                                // 好友通道，否则旧名字会一直滞留为在线，悄悄话也会写进
+                                // 随后换成的新角色会话。
+                                if (activeCharacter is not null)
+                                {
+                                    await friendService.DetachChannelAsync(
+                                        activeCharacter.Name,
+                                        runtimeSession.Id,
+                                        serverToken);
+                                }
+
                                 characterSessions.Release(activeCharacterLease);
                                 activeCharacterLease = null;
                                 activeCharacter = null;
@@ -3108,6 +3131,17 @@ public sealed class EntranceService(
                                     warehouseCapacity);
                                 if (repairedCharacter is null)
                                 {
+                                    // 同一角色重选且背包修复失败时，activeCharacter 还是
+                                    // 旧记录：丢弃前同样先摘好友通道（首次选角时为 null，
+                                    // 此守卫天然跳过）。
+                                    if (activeCharacter is not null)
+                                    {
+                                        await friendService.DetachChannelAsync(
+                                            activeCharacter.Name,
+                                            runtimeSession.Id,
+                                            serverToken);
+                                    }
+
                                     characterSessions.Release(activeCharacterLease);
                                     activeCharacterLease = null;
                                     activeCharacter = null;
