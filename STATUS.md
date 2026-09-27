@@ -15,6 +15,7 @@
 | 服务端/中继可用环境变量覆盖配置（`DFLegacy__X__Y`） | `Program.cs`（在 server.json 之后注册） |
 | 容器镜像与编排（host 网络、双栈、PVF/存档挂载） | `Dockerfile`、`compose.yaml` |
 | 启动器账号 UI：WPF + HandyControl 交互式登录壳（注册/登录/改密/找回/账号管理/设置），headless 路径保留 | `DFLegacy.Launcher`（`MainWindow`、`Views/*`、`App.xaml.cs`）、`DFLegacy.AccountClient` |
+| 城镇同屏与附近聊天：同镇同区的成员目录、外观/位置转发与区域聊天接线完成（真机可见性待 Task 11）；位置走 TCP（默认限速 10 条/秒）；调试幽灵支持单人复现 | `TownSessionDirectory`、`AreaUserIdPool`、`TownGhostService`、`EntranceService` |
 
 ## 2. 验证状态
 
@@ -90,6 +91,50 @@
 - 8081 默认对外（`::`）。**远程部署必须限制来源并在前置代理终止 HTTPS**，否则 token 明文可被嗅探。
 - 密码哈希仍是无盐 SHA-256 + 固定前缀，QQ 码明文存在 `state.json`（既有实现，未在本次改动范围；建议后续换 PBKDF2/Argon2 + 加盐）。
 - 反向代理后所有请求共用代理 IP，来源级限流会一起计数（见 ADMIN_API.md §1.2 的处理建议）。
+
+### 2.3 城镇同屏与附近聊天（本次新增）
+
+服务端按同一城镇同一区域维护在线成员，并向同区投递名单、外观、位置与区域聊天；进入区域（登录、回城、换区）时注册，装备变化广播外观，进入副本、返回角色选择或断线时离开区域；`SEND_MESSAGE`（类型 3）与两条宠物喊话命令改为按区域广播，副本内保留只回显自己的兜底。**客户端上的可见性尚未验证，计划为 Task 11**；`/api/admin/characters` 已返回 `townId`/`areaId`/`areaUserId`（不在城镇区域时均为 null），后台角色下拉显示 `城镇N/区域M`，便于核对两人是否同区。
+
+**自动化（全绿，随每个实现任务运行）**
+
+`dotnet run --project tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj -c Release` 中的 `TownSyncSmokeTests` 覆盖：
+
+- 区用户 id 池：容量跟随 `Channel.MaximumUsers`；首个 id 仍为 1（单人游玩保持字节级不变）；耗尽后拒绝继续分配；回收后可复用；越界释放被拒；0 容量被拒；调试幽灵从池尾反向分配。
+- 配置默认值：`TownSync.Enabled=true`、名单先于外观（`ForeignAppearanceBeforeRoster=false`）、`DepartureSignal=UserAreaInactive`、`MaxPositionForwardsPerSecond=10`、幽灵 `Enabled=false`。
+- `USER_AREA` 的 active 参数：进区 active=1、离区 active=0。
+- 目录：第一个成员收到的名单只含自己且没有外来 `USER_AREA`（与改造前一致）；第二人进区时老人收到 `USER_AREA(active=1)`；新人名单自己在前、老人在后；外观只发给别人不回发本人；位置按 uid 与方向转发且不回发本人；聊天按区域广播（跨区收不到）；同一角色换区为迁移（旧区收到 `USER_AREA(active=0)`，旧 ticket 不能再发包或改状态，空区释放后可重新进入）；投递失败的坏通道成员被移除、健康成员保留；`RosterResend` 信号发出的名单不含离开者；`TownSync.Enabled=false` 时目录完全不动作。
+- 并发：同一角色在两个区域间反复并发进入，任何时刻只登记在一个区域且一定可达。
+- 幽灵：名字编码长度边界；外观为 mode-zero `USERINFO` 且携带幽灵 uid 与配置名字；服务级观察者测试（真实后台服务 + 假通道）断言区域里的观察者能收到幽灵广播的外观，停止后释放 id。
+
+**无头冒烟（幽灵开启，未接客户端）**
+
+服务端发布件以幽灵（1/1、300ms、出现 3 秒/消失 2 秒）运行约 16 秒：日志按周期出现 `Town ghost is ENABLED`、`Town ghost TEST (uid 100) published its appearance.`、`Town member TEST (uid 100) entered 1/1`、`Town area 1/1 is now empty and was released.`，进程无异常退出。这只证明服务端循环、外观构建与目录进出正常，**不证明客户端能看到幽灵**。
+
+**真机验收（Task 11，尚未执行；A1..A7 全部记为待验证）**
+
+| 项 | 内容 | 结论 |
+| --- | --- | --- |
+| A1 | 单人零回归（关幽灵：登录 → 进镇 → 走动 → 换区 → 下副本 → 打完一局 → 回城 → 换装 → 聊天） | 待验证 |
+| A2 | 两人同镇同区互相可见（角色、名字、装备、宠物） | 待验证 |
+| A3 | 同区普通聊天与宠物喊话互通且显示发送者名字 | 待验证 |
+| A4 | 一人走动、另一人看到位置跟随（1 Hz 允许一跳一跳） | 待验证 |
+| A5 | 进副本 / 换区 / 返回角色选择 / 直接关客户端后，另一方数秒内不再看到该角色 | 待验证 |
+| A6 | 不同区域（同镇）与不同城镇互不可见、聊天不互通 | 待验证 |
+| A7 | 结论与证据落盘 | 待验证 |
+
+**待定项（Task 11 判定与兜底）**
+
+- **S1 客户端是否渲染同区他人的角色**：待验证。若客户端不认现有顺序，先把 `TownSync.ForeignAppearanceBeforeRoster` 改为 `true`（先外观后名单）重测。
+- **S2 客户端是否接受 TCP 转发的 `USER_POSITION`**（能看到别人走动）：待验证。若完全不动，判定为客户端不认 TCP 位置包，位置同步转下一轮的 UDP 中枢。
+- **S3 离开信号在客户端的表现**：待验证。默认 `UserAreaInactive`；若无效（对方角色一直留着），改 `DepartureSignal=RosterResend` 重测并观察是否把本地角色扯回；两者都无效时记为已知限制（对方保留到换区）。
+
+**已知限制**
+
+- 只在**同一城镇且同一区域**内互相可见；跨区域或跨城镇不可见属预期（原版客户端按区域渲染，跨区塞人坐标会落在当前地图之外）。
+- 位置同步目前只走 TCP（`SET_USER_POSITION` 转发，每个成员每秒默认上限 10 条）；是否需要 UDP 中枢待真机按 S2 判定。
+- 广播中途通道坏掉的成员会被静默移除，且不会向同区补发离开信号：同区其他人可能保留其静止形象，直到自己换区才消失。
+- 区域目录与 id 池都在内存中，不支持多实例（与现有 JSON 存档一致）。
 
 ## 3. 可复用的验证方法
 
