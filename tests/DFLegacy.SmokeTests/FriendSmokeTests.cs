@@ -284,16 +284,10 @@ internal static class FriendSmokeTests
             check(aliceFixture.Created && bobFixture.Created && daveFixture.Created && erinFixture.Created,
                 "the friend service fixture creates its characters");
 
-            // 登记在线（假通道只记录收到的包）
-            var alicePackets = new List<GameServerPacket>();
-            service.AttachChannel("alice", "阿尔法", packet =>
-            {
-                alicePackets.Add(packet);
-                return ValueTask.CompletedTask;
-            });
-
             await store.AddFriendAsync("alice", "布拉沃", CancellationToken.None);
-            await service.RegisterOnlineAsync("alice", "阿尔法", CancellationToken.None);
+            var alicePackets = new List<GameServerPacket>();
+            await service.AttachChannelAsync(
+                "alice", "阿尔法", Guid.NewGuid(), Record(alicePackets), CancellationToken.None);
 
             var snapshots = alicePackets
                 .Where(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification)
@@ -307,35 +301,56 @@ internal static class FriendSmokeTests
             check(alicePackets.All(packet => packet.ProtocolId != GameProtocolEngine.BuddyInNotification),
                 "an offline friend is never announced as online with BUDDY_IN");
 
-            // 无关账号：在线但没有把任何人加进名单
+            // 无关账号：挂着通道但没有把任何人加进名单
             var davePackets = new List<GameServerPacket>();
-            service.AttachChannel("dave", "戴夫", packet =>
-            {
-                davePackets.Add(packet);
-                return ValueTask.CompletedTask;
-            });
-            await service.RegisterOnlineAsync("dave", "戴夫", CancellationToken.None);
-            check(davePackets.Count == 0,
-                "an account with no friends receives no snapshot because there is nothing to create");
+            var daveSession = Guid.NewGuid();
+            await service.AttachChannelAsync(
+                "dave", "戴夫", daveSession, Record(davePackets), CancellationToken.None);
+            check(davePackets.Count == 1
+                    && davePackets[0].ProtocolId == GameProtocolEngine.BuddyConnListNotification
+                    && davePackets[0].Payload[0] == 0,
+                "an account with no friends still gets an empty snapshot so a stale client list is cleared");
             var daveBeforeStranger = davePackets.Count;
 
             var bravoPackets = new List<GameServerPacket>();
-            service.AttachChannel("bobby", "布拉沃", packet =>
-            {
-                bravoPackets.Add(packet);
-                return ValueTask.CompletedTask;
-            });
-            await service.RegisterOnlineAsync("bobby", "布拉沃", CancellationToken.None);
+            var bravoSession = Guid.NewGuid();
+            await service.AttachChannelAsync(
+                "bobby", "布拉沃", bravoSession, Record(bravoPackets), CancellationToken.None);
             check(alicePackets.Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification),
                 "a friend coming online notifies the accounts whose friend list holds that name");
             check(davePackets.Count == daveBeforeStranger,
                 "an online account with no matching friend entry receives no buddy notification");
 
-            await service.UnregisterOnlineAsync("bobby", "布拉沃", CancellationToken.None);
+            // 陈旧会话的清理不能误删新会话（比较再删）
+            var staleBravoSession = bravoSession;
+            bravoSession = Guid.NewGuid();
+            await service.AttachChannelAsync(
+                "bobby", "布拉沃", bravoSession, Record(bravoPackets), CancellationToken.None);
+            var aliceBeforeStaleDetach = alicePackets.Count;
+            var bravoBeforeStaleDetach = bravoPackets.Count;
+            await service.DetachChannelAsync("布拉沃", staleBravoSession, CancellationToken.None);
+            await service.WhisperAsync(
+                "alice",
+                "阿尔法",
+                senderAreaUserId: 1,
+                senderAppearance: null,
+                encoding.GetBytes("布拉沃"),
+                messageType: 1,
+                encoding.GetBytes("你好"),
+                CancellationToken.None);
+            check(alicePackets.Skip(aliceBeforeStaleDetach)
+                        .All(packet => packet.ProtocolId != GameProtocolEngine.BuddyOutNotification)
+                    && bravoPackets.Skip(bravoBeforeStaleDetach)
+                        .Any(packet => packet.ProtocolId == GameProtocolEngine.MessageNotification),
+                "a detach from an old session cannot take the channel of the current session offline");
+
+            var aliceBeforeLiveDetach = alicePackets.Count;
+            await service.DetachChannelAsync("布拉沃", bravoSession, CancellationToken.None);
+            check(alicePackets.Skip(aliceBeforeLiveDetach)
+                    .Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification),
+                "the session that owns the channel goes offline and friends hear BUDDY_OUT");
             check(alicePackets.Count(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification) >= 2,
                 "a friend going offline notifies the same accounts with BUDDY_OUT");
-            check(davePackets.Count == daveBeforeStranger,
-                "an unrelated account stays silent when somebody else's friend goes offline");
 
             var removed = alicePackets.Count;
             await service.RemoveFriendAsync("alice", "阿尔法", "布拉沃", CancellationToken.None);
@@ -368,9 +383,9 @@ internal static class FriendSmokeTests
                 "阿尔法",
                 senderAreaUserId: 1,
                 senderAppearance: null,
-                Encoding.GetEncoding(936).GetBytes("布拉沃"),
+                encoding.GetBytes("布拉沃"),
                 messageType: 1,
-                Encoding.GetEncoding(936).GetBytes("你好"),
+                encoding.GetBytes("你好"),
                 CancellationToken.None);
             var offlineNotice = alicePackets.Skip(afterOfflineWhisper)
                 .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.MessageNotification);
@@ -381,12 +396,9 @@ internal static class FriendSmokeTests
             check(offlineNotice is not null && ReadMessageText(offlineNotice) == "对方不在线",
                 "the offline whisper notice says 对方不在线");
 
-            service.AttachChannel("bobby", "布拉沃", packet =>
-            {
-                bravoPackets.Add(packet);
-                return ValueTask.CompletedTask;
-            });
-            await service.RegisterOnlineAsync("bobby", "布拉沃", CancellationToken.None);
+            bravoSession = Guid.NewGuid();
+            await service.AttachChannelAsync(
+                "bobby", "布拉沃", bravoSession, Record(bravoPackets), CancellationToken.None);
             var bravoBefore = bravoPackets.Count;
             var aliceBeforeOnlineWhisper = alicePackets.Count;
             await service.WhisperAsync(
@@ -394,9 +406,9 @@ internal static class FriendSmokeTests
                 "阿尔法",
                 senderAreaUserId: 1,
                 senderAppearance: null,
-                Encoding.GetEncoding(936).GetBytes("布拉沃"),
+                encoding.GetBytes("布拉沃"),
                 messageType: 1,
-                Encoding.GetEncoding(936).GetBytes("你好"),
+                encoding.GetBytes("你好"),
                 CancellationToken.None);
             var delivered = bravoPackets.Skip(bravoBefore)
                 .Where(packet => packet.ProtocolId == GameProtocolEngine.MessageNotification)
@@ -414,24 +426,22 @@ internal static class FriendSmokeTests
                     && ReadMessageText(echoed[0]) == "你好",
                 "the sender sees its own whisper echoed once");
 
-            // 陈旧会话的注销不能把新会话踢下线（账号不匹配时必须静默忽略）
-            var aliceBeforeStaleUnregister = alicePackets.Count;
-            var bravoBeforeStaleUnregister = bravoPackets.Count;
-            await service.UnregisterOnlineAsync("dave", "布拉沃", CancellationToken.None);
+            var aliceBeforeSelfWhisper = alicePackets.Count;
             await service.WhisperAsync(
                 "alice",
                 "阿尔法",
                 senderAreaUserId: 1,
                 senderAppearance: null,
-                Encoding.GetEncoding(936).GetBytes("布拉沃"),
+                encoding.GetBytes("阿尔法"),
                 messageType: 1,
-                Encoding.GetEncoding(936).GetBytes("你好"),
+                encoding.GetBytes("自言自语"),
                 CancellationToken.None);
-            check(alicePackets.Skip(aliceBeforeStaleUnregister).All(packet =>
-                        packet.ProtocolId != GameProtocolEngine.BuddyOutNotification)
-                    && bravoPackets.Skip(bravoBeforeStaleUnregister)
-                        .Any(packet => packet.ProtocolId == GameProtocolEngine.MessageNotification),
-                "a stale unregister from another account cannot take a live session offline");
+            var selfWhisperPackets = alicePackets.Skip(aliceBeforeSelfWhisper).ToArray();
+            check(selfWhisperPackets.Length == 1
+                    && selfWhisperPackets[0].ProtocolId == GameProtocolEngine.MessageNotification
+                    && selfWhisperPackets[0].Payload[0] == (byte)GameMessageType.Type03White
+                    && ReadMessageText(selfWhisperPackets[0]) == "不能给自己发悄悄话",
+                "whispering to yourself answers 不能给自己发悄悄话 instead of delivering twice");
 
             // 加好友成功：重推快照，离线的新好友随后被标 -1
             var daveBeforeAdd = davePackets.Count;
@@ -450,19 +460,29 @@ internal static class FriendSmokeTests
                 "a successful add is persisted by the store");
 
             var erinPackets = new List<GameServerPacket>();
-            service.AttachChannel("erin", "艾琳", packet =>
-            {
-                erinPackets.Add(packet);
-                return ValueTask.CompletedTask;
-            });
-            var daveBeforeErinOnline = davePackets.Count;
-            await service.RegisterOnlineAsync("erin", "艾琳", CancellationToken.None);
-            var buddyIn = davePackets.Skip(daveBeforeErinOnline)
+            var erinSession = Guid.NewGuid();
+            await service.AttachChannelAsync(
+                "erin", "艾琳", erinSession, Record(erinPackets), CancellationToken.None);
+            var buddyIn = davePackets.Skip(daveBeforeAdd)
                 .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification);
             check(buddyIn is not null
                     && buddyIn.Payload[0] == 0
                     && BuddyNameEquals(buddyIn, "艾琳"),
                 "an added friend coming online is announced to the account that holds the name");
+
+            // 重连快照里在线好友不得被标成离线
+            var daveReconnect = Guid.NewGuid();
+            var daveBeforeReconnect = davePackets.Count;
+            await service.AttachChannelAsync(
+                "dave", "戴夫", daveReconnect, Record(davePackets), CancellationToken.None);
+            var reconnectSnapshot = davePackets.Skip(daveBeforeReconnect)
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
+            check(reconnectSnapshot is not null
+                    && reconnectSnapshot.Payload[0] == 1
+                    && HasFriendName(reconnectSnapshot, 0, "艾琳")
+                    && davePackets.Skip(daveBeforeReconnect)
+                        .All(packet => packet.ProtocolId != GameProtocolEngine.BuddyOutNotification),
+                "an online friend is not marked offline by BUDDY_OUT after the snapshot");
 
             var appearance = GameProtocolEngine.CreateCurrentCharacterInfo(
                 new GameCharacterSummary(0, encoding.GetBytes("戴夫"), Job: 0, GrowType: 4, Level: 20),
@@ -494,28 +514,45 @@ internal static class FriendSmokeTests
             check(daveEcho.Length == 1 && ReadMessageText(daveEcho[0]) == "在吗",
                 "the sender sees the appearance whisper echoed back to itself once");
 
-            // DetachChannel 单独调用也必须把角色离线告诉好友
-            var erinWentOffline = new TaskCompletionSource();
-            service.AttachChannel("dave", "戴夫", packet =>
-            {
-                davePackets.Add(packet);
-                if (packet.ProtocolId == GameProtocolEngine.BuddyOutNotification)
+            // 目标通道坏掉时，逐接收者 try/catch 保证发送者的回显仍然到达
+            var brokenErinSession = Guid.NewGuid();
+            var breakErinChannel = false;
+            await service.AttachChannelAsync(
+                "erin",
+                "艾琳",
+                brokenErinSession,
+                packet =>
                 {
-                    erinWentOffline.TrySetResult();
-                }
+                    if (breakErinChannel)
+                    {
+                        throw new InvalidOperationException("channel is gone");
+                    }
 
-                return ValueTask.CompletedTask;
-            });
+                    erinPackets.Add(packet);
+                    return ValueTask.CompletedTask;
+                },
+                CancellationToken.None);
+            breakErinChannel = true;
+            var daveBeforeBrokenWhisper = davePackets.Count;
+            await service.WhisperAsync(
+                "dave",
+                "戴夫",
+                senderAreaUserId: 7,
+                senderAppearance: null,
+                encoding.GetBytes("艾琳"),
+                messageType: 1,
+                encoding.GetBytes("在吗"),
+                CancellationToken.None);
+            check(davePackets.Skip(daveBeforeBrokenWhisper).Count(packet =>
+                    packet.ProtocolId == GameProtocolEngine.MessageNotification) == 1,
+                "a broken target channel does not swallow the sender's echo");
+
             var daveBeforeDetach = davePackets.Count;
-            service.DetachChannel("艾琳");
-            _ = await Task.WhenAny(
-                erinWentOffline.Task,
-                Task.Delay(TimeSpan.FromSeconds(5)));
-            check(erinWentOffline.Task.IsCompleted
-                    && davePackets.Skip(daveBeforeDetach).Any(packet =>
-                        packet.ProtocolId == GameProtocolEngine.BuddyOutNotification
-                        && BuddyNameEquals(packet, "艾琳")),
-                "a detached session alone still marks the character offline for its friends");
+            await service.DetachChannelAsync("艾琳", brokenErinSession, CancellationToken.None);
+            check(davePackets.Skip(daveBeforeDetach).Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && BuddyNameEquals(packet, "艾琳")),
+                "a detached session marks the character offline for its friends");
             var erinAfterDetach = erinPackets.Count;
             await service.WhisperAsync(
                 "dave",
@@ -531,12 +568,6 @@ internal static class FriendSmokeTests
                         packet.ProtocolId == GameProtocolEngine.MessageNotification
                         && ReadMessageText(packet) == "对方不在线"),
                 "a whisper to a detached character goes nowhere and tells the sender why");
-
-            // 没有通道就是不在线：登记也不能对外宣告上线
-            var daveBeforeUnattachedRegister = davePackets.Count;
-            await service.RegisterOnlineAsync("erin", "艾琳", CancellationToken.None);
-            check(davePackets.Count == daveBeforeUnattachedRegister,
-                "registering a character without a channel announces nothing to its friends");
 
             // 失败提示逐条映射，且失败不改变任何状态
             var daveBeforeFailedAdd = davePackets.Count;
@@ -567,11 +598,8 @@ internal static class FriendSmokeTests
                 "adding an existing friend explains itself with 已经是好友");
 
             var ghostPackets = new List<GameServerPacket>();
-            service.AttachChannel("ghost-account", "幽灵", packet =>
-            {
-                ghostPackets.Add(packet);
-                return ValueTask.CompletedTask;
-            });
+            await service.AttachChannelAsync(
+                "ghost-account", "幽灵", Guid.NewGuid(), Record(ghostPackets), CancellationToken.None);
             await service.AddFriendAsync("ghost-account", "幽灵", "艾琳", CancellationToken.None);
             check(ghostPackets.Any(packet =>
                     packet.ProtocolId == GameProtocolEngine.MessageNotification
@@ -601,11 +629,8 @@ internal static class FriendSmokeTests
             }
 
             var fullPackets = new List<GameServerPacket>();
-            service.AttachChannel("full", "满载", packet =>
-            {
-                fullPackets.Add(packet);
-                return ValueTask.CompletedTask;
-            });
+            await service.AttachChannelAsync(
+                "full", "满载", Guid.NewGuid(), Record(fullPackets), CancellationToken.None);
             await service.AddFriendAsync("full", "满载", crowdNames[32], CancellationToken.None);
             check(fullPackets.Any(packet =>
                     packet.ProtocolId == GameProtocolEngine.MessageNotification
@@ -619,6 +644,13 @@ internal static class FriendSmokeTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    private static Func<GameServerPacket, ValueTask> Record(List<GameServerPacket> packets) =>
+        packet =>
+        {
+            packets.Add(packet);
+            return ValueTask.CompletedTask;
+        };
 
     private static bool HasFriendName(GameServerPacket snapshot, int index, string name)
     {

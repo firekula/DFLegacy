@@ -10,9 +10,10 @@ namespace DFLegacy.Server;
 /// </summary>
 /// <remarks>
 /// A character is online exactly when it has an attached channel: keeping the send
-/// delegate and the online state in one table means they can never disagree. Task 4
-/// attaches a channel when a game session starts and detaches it (or calls
-/// <see cref="UnregisterOnlineAsync"/>) when the session ends.
+/// delegate and the online state in one table means they can never disagree, and
+/// <see cref="AttachChannelAsync"/> is the single entry point that both registers a
+/// session and announces it, so a live character can never sit online without having
+/// been announced.
 /// The session registry remains part of the constructor because Task 4 wires the service
 /// with it; this channel-based implementation never needs to query it.
 /// </remarks>
@@ -38,62 +39,50 @@ public sealed class FriendService
         _logger = logger;
     }
 
-    /// <summary>Injects the packet channel of a live session (Task 4 calls this from EntranceService).</summary>
-    public void AttachChannel(
+    /// <summary>
+    /// Registers a live session for a character and announces it: pushes the friend-list
+    /// snapshot to that session, marks its offline friends, and sends BUDDY_IN to every
+    /// online account whose friend list holds the name.
+    /// </summary>
+    /// <remarks>
+    /// The session id binds the channel to one specific session so a late cleanup from an
+    /// older session can never detach a newer one (compare-and-remove in
+    /// <see cref="DetachChannelAsync"/>).
+    /// </remarks>
+    public async Task AttachChannelAsync(
         string accountName,
         string characterName,
-        Func<GameServerPacket, ValueTask> send)
+        Guid sessionId,
+        Func<GameServerPacket, ValueTask> send,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterName);
         ArgumentNullException.ThrowIfNull(send);
-        _channels[characterName] = new Channel(accountName, send);
-    }
+        _channels[characterName] = new Channel(accountName, sessionId, send);
 
-    /// <summary>Drops a session's channel; friends that are still online are told it went offline.</summary>
-    public void DetachChannel(string characterName)
-    {
-        if (string.IsNullOrWhiteSpace(characterName)
-            || !_channels.TryRemove(characterName, out _))
-        {
-            return;
-        }
-
-        // Detaching alone takes the character offline, so friends that are still
-        // connected hear about it even when the caller skips UnregisterOnlineAsync.
-        _ = NotifyFriendOwnersAsync(characterName, isOnline: false, CancellationToken.None);
-    }
-
-    public async Task RegisterOnlineAsync(
-        string accountName,
-        string characterName,
-        CancellationToken cancellationToken = default)
-    {
-        if (!_channels.ContainsKey(characterName))
-        {
-            // Online state is the channel table: without a channel there is nobody to
-            // snapshot and nobody who could answer a whisper, so stay silent.
-            return;
-        }
-
-        await PushSnapshotAsync(accountName, characterName, skipWhenEmpty: true, cancellationToken);
+        // The snapshot is what creates buddy entries client-side, and an empty snapshot is
+        // the only way to clear entries left over from another login in the same client
+        // process, so it is always pushed.
+        await PushSnapshotAsync(accountName, characterName, cancellationToken);
         await NotifyFriendOwnersAsync(characterName, isOnline: true, cancellationToken);
     }
 
-    public async Task UnregisterOnlineAsync(
-        string accountName,
+    /// <summary>
+    /// Ends a character session: removes the channel and tells online friends it went
+    /// offline. A detach whose session id does not match the attached channel is ignored
+    /// in full — no removal and no notification.
+    /// </summary>
+    public async Task DetachChannelAsync(
         string characterName,
+        Guid sessionId,
         CancellationToken cancellationToken = default)
     {
-        // Remove only the channel that belongs to this account: a reconnect may already
-        // have attached a fresh session under the same character name.
-        var removed = _channels.TryGetValue(characterName, out var channel)
-            && string.Equals(channel.AccountName, accountName, StringComparison.OrdinalIgnoreCase)
-            && _channels.TryRemove(new KeyValuePair<string, Channel>(characterName, channel));
-        if (!removed)
+        if (string.IsNullOrWhiteSpace(characterName)
+            || !_channels.TryGetValue(characterName, out var existing)
+            || existing.SessionId != sessionId
+            || !_channels.TryRemove(new KeyValuePair<string, Channel>(characterName, existing)))
         {
-            // Somebody else is online under this name (or nobody is): friends already
-            // have the right state, so this stale unregister stays silent.
             return;
         }
 
@@ -115,7 +104,7 @@ public sealed class FriendService
 
         // The client can only create buddy entries from a snapshot, so the new friend has
         // to be part of a fresh list; an offline friend is marked right afterwards.
-        await PushSnapshotAsync(accountName, characterName, skipWhenEmpty: false, cancellationToken);
+        await PushSnapshotAsync(accountName, characterName, cancellationToken);
     }
 
     public async Task RemoveFriendAsync(
@@ -132,7 +121,7 @@ public sealed class FriendService
         }
 
         // An empty snapshot is what tells the client the removed entry is gone.
-        await PushSnapshotAsync(accountName, characterName, skipWhenEmpty: false, cancellationToken);
+        await PushSnapshotAsync(accountName, characterName, cancellationToken);
     }
 
     /// <summary>
@@ -155,41 +144,43 @@ public sealed class FriendService
         ArgumentNullException.ThrowIfNull(targetNameBytes);
         ArgumentNullException.ThrowIfNull(textBytes);
 
-        if (!_channels.TryGetValue(ClientEncoding.GetString(targetNameBytes), out var target))
+        var targetName = ClientEncoding.GetString(targetNameBytes);
+        if (string.Equals(targetName, characterName, StringComparison.OrdinalIgnoreCase))
         {
-            await SendNoticeAsync(characterName, "对方不在线", cancellationToken);
+            await SendNoticeAsync(characterName, "不能给自己发悄悄话", cancellationToken);
             return;
         }
 
-        if (senderAppearance is not null)
+        if (!_channels.TryGetValue(targetName, out var target))
         {
-            // The client turns the sender uid into a name only after it has seen that
-            // character's user-info record, so the appearance goes first.
-            await target.Send(senderAppearance);
+            await SendNoticeAsync(characterName, "对方不在线", cancellationToken);
+            return;
         }
 
         var message = GameProtocolEngine.CreateMessageNotification(
             (GameMessageType)messageType,
             senderAreaUserId,
             textBytes);
-        await target.Send(message);
+
+        // The client turns the sender uid into a name only after it has seen that
+        // character's user-info record, so the appearance goes first. Both target-side
+        // sends are guarded per recipient: a dead target channel must still let the sender
+        // see its echo instead of an exception escaping the command handler.
+        if (senderAppearance is not null)
+        {
+            await TrySendToChannelAsync(targetName, target, senderAppearance, cancellationToken);
+        }
+
+        await TrySendToChannelAsync(targetName, target, message, cancellationToken);
         await SendAsync(characterName, message, cancellationToken);
     }
 
     private async Task PushSnapshotAsync(
         string accountName,
         string characterName,
-        bool skipWhenEmpty,
         CancellationToken cancellationToken)
     {
         var friends = await _store.GetFriendsAsync(accountName, cancellationToken);
-        if (skipWhenEmpty && friends.Count == 0)
-        {
-            // Nothing to create client-side: the buddy window starts empty, so an
-            // account with no friends gets no snapshot when it logs in.
-            return;
-        }
-
         var entries = new List<GameFriendEntry>(friends.Count);
         var offlineNames = new List<byte[]>();
         foreach (var friend in friends)
@@ -219,7 +210,7 @@ public sealed class FriendService
         bool isOnline,
         CancellationToken cancellationToken)
     {
-        foreach (var (ownerName, channel) in _channels)
+        foreach (var (ownerCharacterName, channel) in _channels)
         {
             try
             {
@@ -235,15 +226,15 @@ public sealed class FriendService
                 var packet = isOnline
                     ? GameProtocolEngine.CreateBuddyIn(state: 0, ClientEncoding.GetBytes(storedName))
                     : GameProtocolEngine.CreateBuddyOut(ClientEncoding.GetBytes(storedName));
-                await channel.Send(packet);
+                await TrySendToChannelAsync(ownerCharacterName, channel, packet, cancellationToken);
             }
             catch (Exception exception)
             {
-                // One unreachable friend must not stop the remaining notifications.
+                // A store failure for one owner must not stop the remaining notifications.
                 _logger.LogWarning(
                     exception,
                     "Failed to tell {Owner} that {Character} went {State}.",
-                    ownerName,
+                    channel.AccountName,
                     characterName,
                     isOnline ? "online" : "offline");
             }
@@ -279,6 +270,26 @@ public sealed class FriendService
         await channel.Send(packet);
     }
 
+    private async Task TrySendToChannelAsync(
+        string characterName,
+        Channel channel,
+        GameServerPacket packet,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await channel.Send(packet);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "Failed to push protocol {Protocol} to {Character}.",
+                packet.ProtocolId,
+                characterName);
+        }
+    }
+
     private ValueTask SendNoticeAsync(
         string characterName,
         string text,
@@ -312,5 +323,6 @@ public sealed class FriendService
 
     private readonly record struct Channel(
         string AccountName,
+        Guid SessionId,
         Func<GameServerPacket, ValueTask> Send);
 }
