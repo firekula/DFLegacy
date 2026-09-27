@@ -5,8 +5,11 @@
   "ClientPath": "../DNF.exe",
   "EntranceHost": "127.0.0.1",
   "EntrancePort": 2311,
-  // 账号 HTTP API 基址，即服务端 Admin 端口（默认 http://127.0.0.1:8081）。启动器的注册/改密/找回经此访问。
-  "AccountServiceUrl": "http://127.0.0.1:8081",
+  // 账号服务端口：账号后台与入口共用同一个域名（EntranceHost），只是端口不同。
+  // 实际地址 = http://{EntranceHost}:{AccountServicePort}。发布前改这里的端口即可，域名不用改两处。
+  "AccountServicePort": 8081,
+  // 可选：直接覆盖账号 API 地址（留空即按上面的「域名:端口」自动拼，通常不用填）。
+  "AccountServiceUrl": "",
   // 启动器界面主题：auto / light / dark。主窗口是原版皮肤（不受主题影响）；
   // 主题只作用于注册/改密/找回/账号管理/设置这些窗口，默认 dark 与皮肤观感一致。
   "Theme": "dark",

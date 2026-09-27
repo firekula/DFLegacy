@@ -11,7 +11,7 @@
 
 services:
   dflegacy:
-    image: dflegacy-server:1.0.0
+    image: dflegacy-server:1.1.0
     container_name: dflegacy-server
     # host 网络：Linux 下容器直接使用宿主机的网络栈，IPv6 开箱可用，
     # 也不需要任何端口映射。业务端口默认绑定 "::"（Linux 上是双栈，IPv4/IPv6 都收）。
@@ -65,7 +65,7 @@ services:
 #
 # services:
 #   dflegacy:
-#     image: dflegacy-server:1.0.0
+#     image: dflegacy-server:1.1.0
 #     restart: unless-stopped
 #     environment:
 #       DFLegacy__GameplayDatagram__AdvertisedHost: "change-me.example.com"

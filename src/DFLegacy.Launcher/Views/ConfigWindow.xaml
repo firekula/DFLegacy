@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:hc="https://handyorg.github.io/handycontrol"
-        Title="设置" Height="500" Width="440"
+        Title="设置" Height="560" Width="460"
         WindowStartupLocation="CenterOwner" ResizeMode="CanMinimize">
   <Grid Margin="20">
     <Grid.RowDefinitions>
@@ -12,19 +12,29 @@
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <TextBlock Grid.Row="0" Text="入口 Host"/><TextBox Grid.Row="1" x:Name="HostBox" Margin="0,4,0,8"/>
     <TextBlock Grid.Row="2" Text="入口端口"/><TextBox Grid.Row="3" x:Name="PortBox" Margin="0,4,0,8"/>
-    <TextBlock Grid.Row="4" Text="账号 API URL"/><TextBox Grid.Row="5" x:Name="AccountUrlBox" Margin="0,4,0,8"/>
-    <TextBlock Grid.Row="6" Text="客户端路径"/><StackPanel Grid.Row="7" Orientation="Horizontal" Margin="0,4,0,8">
+    <!-- 账号服务默认与入口同域名、只用独立端口（发布前改这里即可）。
+         “高级：覆盖地址”留空就按 域名:端口 自动拼；填了则以填的为准。 -->
+    <TextBlock Grid.Row="4" Text="账号服务端口（与入口同域名）"/>
+    <StackPanel Grid.Row="5" Margin="0,4,0,4">
+        <TextBox x:Name="AccountPortBox" Width="120" HorizontalAlignment="Left"/>
+        <TextBlock x:Name="AccountUrlHint" Margin="0,4,0,0" Foreground="#888888" FontSize="11"/>
+    </StackPanel>
+    <TextBlock Grid.Row="6" Text="高级：覆盖账号 API 地址（留空即用上面的域名:端口）"/>
+    <TextBox Grid.Row="7" x:Name="AccountUrlBox" Margin="0,4,0,8"/>
+    <TextBlock Grid.Row="8" Text="客户端路径"/><StackPanel Grid.Row="9" Orientation="Horizontal" Margin="0,4,0,8">
         <TextBox x:Name="ClientPathBox" Width="280"/><Button Content="浏览…" Margin="8,0,0,0" Click="Browse_Click"/>
     </StackPanel>
-    <StackPanel Grid.Row="8" Orientation="Horizontal" Margin="0,0,0,8">
+    <StackPanel Grid.Row="10" Orientation="Horizontal" Margin="0,0,0,8">
         <CheckBox x:Name="StartServerBox" Content="本地自动启动服务端" VerticalAlignment="Center"/>
         <CheckBox x:Name="RelayEnabledBox" Content="启用 IPv6 中继" Margin="16,0,0,0" VerticalAlignment="Center"/>
     </StackPanel>
-    <StackPanel Grid.Row="9" Orientation="Horizontal" Margin="0,0,0,8">
+    <StackPanel Grid.Row="11" Orientation="Horizontal" Margin="0,0,0,8">
         <TextBlock Text="主题" VerticalAlignment="Center"/>
         <!-- SelectedValuePath="Content"：非可编辑 ComboBox 且条目是 ComboBoxItem 包装时
              .Text 不可靠（可能为空），代码里读写 SelectedValue（string）。 -->
@@ -32,13 +42,13 @@
             <ComboBoxItem Content="auto"/><ComboBoxItem Content="light"/><ComboBoxItem Content="dark"/>
         </ComboBox>
     </StackPanel>
-    <StackPanel Grid.Row="10" Orientation="Horizontal" Margin="0,0,0,8">
+    <StackPanel Grid.Row="12" Orientation="Horizontal" Margin="0,0,0,8">
         <TextBlock Text="中继 TCP 端口" VerticalAlignment="Center" Margin="0,0,8,0"/>
         <TextBox x:Name="TcpPortsBox" Width="120" Margin="0,0,16,0"/>
         <TextBlock Text="Preference" VerticalAlignment="Center" Margin="0,0,8,0"/>
         <ComboBox x:Name="PreferenceBox" Width="80" SelectedValuePath="Content"><ComboBoxItem Content="ipv6"/><ComboBoxItem Content="ipv4"/></ComboBox>
     </StackPanel>
-    <StackPanel Grid.Row="13" Orientation="Horizontal" HorizontalAlignment="Right">
+    <StackPanel Grid.Row="15" Orientation="Horizontal" HorizontalAlignment="Right">
         <Button Content="取消" Width="80" Margin="0,0,8,0" Click="Cancel_Click"/>
         <Button Content="保存" Width="80" Click="Save_Click"/>
     </StackPanel>

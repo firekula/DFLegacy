@@ -25,7 +25,8 @@ public partial class MainWindow : System.Windows.Window
     {
         InitializeComponent();
         _options = _store.Load();
-        _account = new AccountServiceClient(_options.AccountServiceUrl);
+        // 账号服务地址 = 入口域名 + 账号服务端口（可用 AccountServiceUrl 覆盖），发布前只改端口。
+        _account = new AccountServiceClient(_options.ResolveAccountServiceUrl());
 
         // 原版三态图片按钮：位置/尺寸见 MainWindow.xaml（取自 QQLogin.xml），
         // 标签烙在图片里，点击动作用这里注入。
@@ -117,8 +118,8 @@ public partial class MainWindow : System.Windows.Window
             var apiUp = await _account.CheckHealthAsync();
             ApiDot.Fill = apiUp ? Brushes.LimeGreen : Brushes.Gray;
             ApiText.Text = apiUp
-                ? "账号服务：可达"
-                : "账号服务：不可达（注册 / 改密 / 找回需要本机 8081）";
+                ? $"账号服务：可达（{_options.ResolveAccountServiceUrl()}）"
+                : $"账号服务：不可达（{_options.ResolveAccountServiceUrl()}）";
         }
         catch (Exception)
         {
@@ -402,7 +403,7 @@ public partial class MainWindow : System.Windows.Window
             RefreshAccounts();
             // 设置里改了账号 API URL 后必须重建客户端（_account 按构造时的 URL 创建），
             // 否则状态点与注册/改密/找回窗口会一直打到旧地址；重建后立即重探一次状态。
-            _account = new AccountServiceClient(_options.AccountServiceUrl);
+            _account = new AccountServiceClient(_options.ResolveAccountServiceUrl());
             _ = RefreshStatusAsync();
         }
         catch (Exception ex)

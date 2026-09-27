@@ -18,6 +18,7 @@ public partial class ConfigWindow : System.Windows.Window
         _options = store.Load();
         HostBox.Text = _options.EntranceHost;
         PortBox.Text = _options.EntrancePort.ToString();
+        AccountPortBox.Text = _options.AccountServicePort.ToString();
         AccountUrlBox.Text = _options.AccountServiceUrl;
         ClientPathBox.Text = _options.ClientPath;
         StartServerBox.IsChecked = _options.StartServer;
@@ -27,6 +28,23 @@ public partial class ConfigWindow : System.Windows.Window
         // 非可编辑 ComboBox 的 .Text 在条目为 ComboBoxItem 包装时可能为空。
         PreferenceBox.SelectedValue = _options.Relay.Preference;
         ThemeBox.SelectedValue = _options.Theme;
+
+        // 三处任一改动都刷新"账号服务实际地址"提示。
+        HostBox.TextChanged += (_, _) => UpdateAccountUrlHint();
+        AccountPortBox.TextChanged += (_, _) => UpdateAccountUrlHint();
+        AccountUrlBox.TextChanged += (_, _) => UpdateAccountUrlHint();
+        UpdateAccountUrlHint();
+    }
+
+    /// <summary>实时展示账号服务「实际会用」的地址：域名跟随入口，端口可改，覆盖值优先。</summary>
+    private void UpdateAccountUrlHint()
+    {
+        var host = string.IsNullOrWhiteSpace(HostBox.Text) ? "(未填域名)" : HostBox.Text.Trim();
+        var port = string.IsNullOrWhiteSpace(AccountPortBox.Text) ? "?" : AccountPortBox.Text.Trim();
+        var url = string.IsNullOrWhiteSpace(AccountUrlBox.Text)
+            ? $"http://{host}:{port}"
+            : AccountUrlBox.Text.Trim();
+        AccountUrlHint.Text = $"账号服务地址：{url}";
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)
@@ -38,12 +56,16 @@ public partial class ConfigWindow : System.Windows.Window
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         if (!int.TryParse(PortBox.Text, out var port) || port is < 1 or > 65535)
-        { Growl.Info("端口须为 1-65535。"); return; }
-        if (string.IsNullOrWhiteSpace(HostBox.Text) || string.IsNullOrWhiteSpace(AccountUrlBox.Text))
-        { Growl.Info("Host 与账号 API URL 不能为空。"); return; }
+        { Growl.Info("入口端口须为 1-65535。"); return; }
+        if (!int.TryParse(AccountPortBox.Text, out var accountPort) || accountPort is < 1 or > 65535)
+        { Growl.Info("账号服务端口须为 1-65535。"); return; }
+        if (string.IsNullOrWhiteSpace(HostBox.Text))
+        { Growl.Info("入口 Host 不能为空。"); return; }
 
         _options.EntranceHost = HostBox.Text.Trim();
         _options.EntrancePort = port;
+        _options.AccountServicePort = accountPort;
+        // 覆盖地址可以为空（为空即按 域名:端口 自动拼）。
         _options.AccountServiceUrl = AccountUrlBox.Text.Trim();
         _options.ClientPath = ClientPathBox.Text.Trim();
         _options.StartServer = StartServerBox.IsChecked == true;
