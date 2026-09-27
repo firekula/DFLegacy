@@ -38,7 +38,10 @@ internal static class TownSyncSmokeTests
             "the default private-area list is exactly 1:1 (Seria's room)");
         check(defaults.TownSync.SendAreaPeerTable,
             "the area UDP peer table is sent on membership changes by default");
-        check(!defaults.Debug.TownGhost.Enabled, "the debug town ghost is off by default");
+        check(!defaults.Debug.TownGhost.Enabled
+            && defaults.Debug.TownGhost.TownId == 1
+            && defaults.Debug.TownGhost.AreaId == 0,
+            "the debug town ghost defaults to the shared town square 1/0, never the private Seria room");
 
         var townUser = new GameTownUser(7, 474, 234, 5);
         check(GameProtocolEngine.CreateUserArea(2, 5, townUser).Payload[9] == 1,
@@ -81,6 +84,11 @@ internal static class TownSyncSmokeTests
         check(aliceSoloRoster.Length == 1 && aliceSoloRoster[0].UserId == 1,
             "a private-area member still gets its unconditional entry roster, containing only itself");
 
+        // 打开「新人补收已有成员 USER_AREA」开关：默认关闭时共享区域的新人也不会收到外来
+        // USER_AREA，下面的隔离断言就会空转（删掉实例隔离也照样绿）。开关打开后，共享区域的
+        // 新人必收一条（见后面的对照断言），私密区域的新人仍必须一条都没有。
+        options.TownSync.SendUserAreaForExistingMembers = true;
+
         var bob = new FakeChannel();
         var bobTicket = await directory.EnterAsync(
             CreateEntry(1, 1, 2, "Bob", bob, bobPeer),
@@ -98,7 +106,7 @@ internal static class TownSyncSmokeTests
         check(bob.Of(GameProtocolEngine.UserInfoNotification).Count == 0,
             "a private area never delivers the other member's stored appearance");
         check(bob.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
-            "a private area never delivers a foreign USER_AREA");
+            "a private area never delivers a foreign USER_AREA even with the USER_AREA switch on");
 
         // Bob 广播自己的外观：私人房间里的另一个人既收不到外观，也收不到加入增量。
         await directory.RefreshAppearanceAsync(
@@ -168,6 +176,12 @@ internal static class TownSyncSmokeTests
         check(sharedAppearances.Count == 1
             && BinaryPrimitives.ReadUInt16LittleEndian(sharedAppearances[0].Payload.AsSpan(3, 2)) == 3,
             "a shared area still delivers the existing member's appearance to the newcomer");
+        // 与私密阶段的「零外来 USER_AREA」成对：同一个开关在共享区域必发，证明隔离断言可证伪。
+        var sharedForeignAreas = sharedBob.Of(GameProtocolEngine.UserAreaNotification);
+        check(sharedForeignAreas.Count == 1
+            && sharedForeignAreas[0].Payload[0] == 3
+            && sharedForeignAreas[0].Payload[9] == 1,
+            "the same USER_AREA switch delivers the existing member in a shared area, so the private-area zero-USER_AREA assertion is falsifiable");
 
         await directory.RefreshAppearanceAsync(
             sharedBobTicket,
@@ -252,17 +266,14 @@ internal static class TownSyncSmokeTests
     /// <summary>
     /// 缺陷回归：幽灵曾经只进入、走动、离开，从不广播外观，同区玩家只有坐标没有长相与名字。
     /// 这里启动真实的后台服务，让已在区域的观察者收到幽灵的外观包，锁住这条广播。
+    /// 幽灵与观察者都走**默认区域**（城镇 1/区域 0 广场，共享区）：默认值若落回已私密的
+    /// 1/1，幽灵会与玩家各自成区、观察者收不到外观，这条测试随之变红。
     /// </summary>
     private static async Task CheckGhostBroadcastAsync(Action<bool, string> check)
     {
         var options = new ServerOptions();
-        // 本测试钉的是共享区域里的幽灵广播：显式清空私密区域，让幽灵与观察者进同一个桶
-        // （私密区域行为由 CheckPrivateAreasAsync 单独覆盖）。
-        options.TownSync.PrivateAreas = [];
         options.Debug.TownGhost.Enabled = true;
         options.Debug.TownGhost.Name = "TEST";
-        options.Debug.TownGhost.TownId = 1;
-        options.Debug.TownGhost.AreaId = 1;
         options.Debug.TownGhost.StepIntervalMs = 100;
         // 一直可见：本测试只等第一条外观，不需要出现/消失循环。
         options.Debug.TownGhost.VisibleSeconds = 0;
@@ -274,7 +285,7 @@ internal static class TownSyncSmokeTests
             NullLogger<TownSessionDirectory>.Instance);
         var witness = new FakeChannel();
         await directory.EnterAsync(
-            CreateEntry(1, 1, 1, "Witness", witness),
+            CreateEntry(options.Debug.TownGhost.TownId, options.Debug.TownGhost.AreaId, 1, "Witness", witness),
             CancellationToken.None);
 
         var pool = new AreaUserIdPool(options.Channel.MaximumUsers);

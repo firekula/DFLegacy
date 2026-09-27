@@ -238,11 +238,12 @@ public sealed class TownSessionDirectory(
             }
 
             logger.LogInformation(
-                "Town member {Name} (uid {AreaUserId}) left {TownId}/{AreaId}; signal={Signal}.",
+                "Town member {Name} (uid {AreaUserId}) left {TownId}/{AreaId} (instance {Instance}); signal={Signal}.",
                 migratedFrom!.DisplayName,
                 migratedFrom.AreaUserId,
                 migratedFrom.TownId,
                 migratedFrom.AreaId,
+                migratedFrom.Instance,
                 options.TownSync.DepartureSignal);
 
             // 迁移同样是一次成员变化：开关打开时旧区剩下的人还要拿到收窄后的名单
@@ -322,13 +323,17 @@ public sealed class TownSessionDirectory(
         // 这是新增通知，上述既有报文的顺序与内容都不变。
         await SendAreaPeerTableAsync([member, .. existing], cancellationToken);
 
+        // 私密区域里「members」聚合数会让两个各自成区的成员看起来在同一区：实例号、
+        // 本实例人数与区域实例数都打出来，运维一眼能分辨。
         logger.LogInformation(
-            "Town member {Name} (uid {AreaUserId}) entered {TownId}/{AreaId}; members={Count}, foreignAppearances={Appearances}.",
+            "Town member {Name} (uid {AreaUserId}) entered {TownId}/{AreaId} (instance {Instance}); instanceMembers={Members}, areaInstances={Instances}, foreignAppearances={Appearances}.",
             member.DisplayName,
             member.AreaUserId,
             request.TownId,
             request.AreaId,
-            GetMemberCount(request.TownId, request.AreaId),
+            member.Instance,
+            CountInstanceMembers(member),
+            CountInstances(request.TownId, request.AreaId),
             foreignAppearances.Length);
 
         return new TownMemberTicket(member);
@@ -483,11 +488,12 @@ public sealed class TownSessionDirectory(
             }
 
             logger.LogInformation(
-                "Town member {Name} (uid {AreaUserId}) left {TownId}/{AreaId}; members={Count}, signal={Signal}.",
+                "Town member {Name} (uid {AreaUserId}) left {TownId}/{AreaId} (instance {Instance}); instanceMembers={Count}, signal={Signal}.",
                 member.DisplayName,
                 member.AreaUserId,
                 member.TownId,
                 member.AreaId,
+                member.Instance,
                 remaining.Length,
                 options.TownSync.DepartureSignal);
         }
@@ -542,9 +548,10 @@ public sealed class TownSessionDirectory(
         if (released)
         {
             logger.LogInformation(
-                "Town area {TownId}/{AreaId} is now empty and was released.",
+                "Town area {TownId}/{AreaId} (instance {Instance}) is now empty and was released.",
                 member.TownId,
-                member.AreaId);
+                member.AreaId,
+                member.Instance);
             return [];
         }
 
@@ -806,12 +813,34 @@ public sealed class TownSessionDirectory(
         return [.. members];
     }
 
-    /// <summary>私密区域里每个成员各占一个实例（用其唯一的 AreaUserId），共享区域统一为 0。</summary>
+    /// <summary>
+    /// 私密区域里每个成员各占一个实例（用其唯一的 AreaUserId），共享区域统一为 0。
+    /// AreaUserIdPool 只分配 1..容量，0 不会与共享哨兵相撞（池的既有断言见 AreaUserIdPool）。
+    /// </summary>
     private int ResolveInstance(byte townId, byte areaId, ushort areaUserId) =>
         _privateAreas.Contains((townId, areaId)) ? areaUserId : 0;
 
     private static AreaKey KeyOf(TownMember member) =>
         new(member.TownId, member.AreaId, member.Instance);
+
+    /// <summary>日志用：某成员所在实例的当前人数（共享区域与旧实现的「members」同值）。</summary>
+    private int CountInstanceMembers(TownMember member) =>
+        _areas.TryGetValue(KeyOf(member), out var roster) ? CountMembers(roster) : 0;
+
+    /// <summary>日志用：某区域当前的实例数（共享区域恒为 1，私密区域每个成员一份）。</summary>
+    private int CountInstances(byte townId, byte areaId)
+    {
+        var count = 0;
+        foreach (var key in _areas.Keys)
+        {
+            if (key.TownId == townId && key.AreaId == areaId)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
 
     /// <summary>
     /// 解析 "城镇:区域" 私密区域条目（两侧 1..255），非法条目告警跳过而不是抛异常：

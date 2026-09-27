@@ -171,7 +171,13 @@ public sealed class TownGhostOptions
 {
     public bool Enabled { get; set; } = false;
     public byte TownId { get; set; } = 1;
-    public byte AreaId { get; set; } = 1;
+
+    /// <summary>
+    /// 默认 0（城镇 1 的广场，共享区域）。不能是 1：1/1 是赛利亚房间，默认已是私密区域，
+    /// 幽灵投在那里会与玩家各自成区、单人复现同屏时看不到任何角色。
+    /// </summary>
+    public byte AreaId { get; set; } = 0;
+
     public string Name { get; set; } = "TEST";
     public int StepIntervalMs { get; set; } = 1000;
 
