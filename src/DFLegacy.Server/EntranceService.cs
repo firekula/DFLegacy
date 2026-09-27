@@ -3438,15 +3438,29 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            await SendTypedMessageNotificationAsync(
+                            var chatPacket = GameProtocolEngine.CreateMessageNotification(
                                 GameMessageType.Type03White,
                                 localUserId,
                                 messageRequest.MessageBytes);
+                            var chatRecipients = townTicket is null
+                                ? 0
+                                : await townDirectory.BroadcastToAreaAsync(
+                                    townTicket,
+                                    chatPacket,
+                                    includeSelf: true,
+                                    serverToken);
+                            if (chatRecipients == 0)
+                            {
+                                // 不在城镇（副本内）或目录未启用：保持既有行为，只回显给自己。
+                                await SendTownPacketAsync(chatPacket, serverToken);
+                            }
+
                             logger.LogInformation(
-                                "Map chat from {CharacterName} in town {TownId}, area {AreaId}: {Message}",
+                                "Map chat from {CharacterName} in town {TownId}, area {AreaId} delivered to {Recipients}: {Message}",
                                 activeCharacter.Name,
                                 currentTownId,
                                 currentAreaId,
+                                Math.Max(chatRecipients, 1),
                                 ClientEncoding.GetString(messageRequest.MessageBytes));
                             continue;
                         }
@@ -3492,9 +3506,19 @@ public sealed class EntranceService(
                                     (GameMessageType)messageRequest.MessageType,
                                     localUserId,
                                     messageRequest.MessageBytes);
-                            await creatureMessage.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, creatureMessage);
+                            var creatureRecipients = townTicket is null
+                                ? 0
+                                : await townDirectory.BroadcastToAreaAsync(
+                                    townTicket,
+                                    creatureMessage,
+                                    includeSelf: true,
+                                    serverToken);
+                            if (creatureRecipients == 0)
+                            {
+                                // 不在城镇（副本内）或目录未启用：保持既有行为，只回显给自己。
+                                await SendTownPacketAsync(creatureMessage, serverToken);
+                            }
+
                             logger.LogInformation(
                                 "Creature automatic message from {CharacterName}'s Bobo uid={CreatureUid}: {Message}",
                                 activeCharacter.Name,
@@ -3547,9 +3571,19 @@ public sealed class EntranceService(
                                     (GameMessageType)messageRequest.MessageType,
                                     localUserId,
                                     messageRequest.MessageBytes);
-                            await creatureScriptMessage.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, creatureScriptMessage);
+                            var creatureScriptRecipients = townTicket is null
+                                ? 0
+                                : await townDirectory.BroadcastToAreaAsync(
+                                    townTicket,
+                                    creatureScriptMessage,
+                                    includeSelf: true,
+                                    serverToken);
+                            if (creatureScriptRecipients == 0)
+                            {
+                                // 不在城镇（副本内）或目录未启用：保持既有行为，只回显给自己。
+                                await SendTownPacketAsync(creatureScriptMessage, serverToken);
+                            }
+
                             logger.LogInformation(
                                 "Creature script message from {CharacterName}'s Creature {CreatureId}: {Message}",
                                 activeCharacter.Name,
