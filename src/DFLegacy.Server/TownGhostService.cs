@@ -87,9 +87,10 @@ public sealed class TownGhostService(
                 continue;
             }
 
+            TownMemberTicket? ticket = null;
             try
             {
-                var ticket = await townDirectory.EnterAsync(
+                ticket = await townDirectory.EnterAsync(
                     new TownEntryRequest(
                         ghost.TownId,
                         ghost.AreaId,
@@ -140,6 +141,7 @@ public sealed class TownGhostService(
                 }
 
                 await townDirectory.LeaveAsync(ticket, stoppingToken);
+                ticket = null;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -147,6 +149,13 @@ public sealed class TownGhostService(
             }
             finally
             {
+                if (ticket is not null)
+                {
+                    // 取消可能发生在移除完成之前：必须用 None 补一次移除再回收 uid，
+                    // 否则成员留在目录里而 uid 已回到池子，下一个登录者可能与它撞 id。
+                    await townDirectory.LeaveAsync(ticket, CancellationToken.None);
+                }
+
                 areaUserIds.Release(ghostId);
             }
 

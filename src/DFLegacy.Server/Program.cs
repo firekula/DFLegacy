@@ -42,8 +42,26 @@ builder.Services.AddSingleton<JsonGameStore>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
-builder.Services.AddSingleton(serviceProvider => new AreaUserIdPool(
-    serviceProvider.GetRequiredService<ServerOptions>().Channel.MaximumUsers));
+builder.Services.AddSingleton(serviceProvider =>
+{
+    // 区用户 id 池只接受 1..65535。MaximumUsers 以前超出这个范围只是无意义，现在会让
+    // 工厂抛异常、整个服务起不来；这里夹取并告警，不改 ChannelOptions 的语义。
+    var configuredUsers =
+        serviceProvider.GetRequiredService<ServerOptions>().Channel.MaximumUsers;
+    var capacity = Math.Clamp(configuredUsers, 1, ushort.MaxValue);
+    if (capacity != configuredUsers)
+    {
+        serviceProvider
+            .GetRequiredService<ILogger<AreaUserIdPool>>()
+            .LogWarning(
+                "Channel.MaximumUsers={ConfiguredUsers} is outside 1..{MaximumId}; the area user id pool capacity is clamped to {Capacity}.",
+                configuredUsers,
+                ushort.MaxValue,
+                capacity);
+    }
+
+    return new AreaUserIdPool(capacity);
+});
 builder.Services.AddSingleton<TownSessionDirectory>();
 builder.Services.AddSingleton<SkillCatalog>();
 builder.Services.AddSingleton<QuestCatalog>();

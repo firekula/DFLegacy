@@ -14,6 +14,7 @@ internal static class TownSyncSmokeTests
         CheckGhostAppearance(check);
         await CheckGhostBroadcastAsync(check);
         await CheckDirectoryAsync(check);
+        await CheckPositionRateLimitAsync(check);
         await CheckDirectoryMigrationAsync(check);
         await CheckDirectoryConcurrencyAsync(check);
     }
@@ -156,7 +157,10 @@ internal static class TownSyncSmokeTests
             "a released area user id can be reused");
         check(!pool.Release(0) && !pool.Release(9),
             "releasing an out-of-range id is rejected");
-        check(pool.Release(3) && pool.TryAllocateReverse(out var ghost) && ghost == 3,
+        // 先释放低段（1）与高段（3）各留一个空位：正向扫描会拿到 1，只有从尾部扫描
+        // 才会拿到容量值 3，这句断言才真正钉住「从尾部找」而不是碰巧相等。
+        check(pool.Release(1) && pool.Release(3)
+            && pool.TryAllocateReverse(out var ghost) && ghost == 3,
             "the debug ghost allocates from the back of the pool");
         CheckThrows<ArgumentOutOfRangeException>(
             () => new AreaUserIdPool(0),
@@ -299,6 +303,71 @@ internal static class TownSyncSmokeTests
                 CancellationToken.None) is null
             && ignored.Packets.Count == 0,
             "a disabled town directory does nothing at all");
+    }
+
+    /// <summary>
+    /// 位置限流（Task 8）的行为此前没有测试覆盖：默认每秒 10 条，&lt;=0 表示不限制。
+    /// 用可控时钟把「同一秒内超限被丢」与「跨秒后预算重置」钉死。
+    /// </summary>
+    private static async Task CheckPositionRateLimitAsync(Action<bool, string> check)
+    {
+        var options = new ServerOptions();
+        options.TownSync.MaxPositionForwardsPerSecond = 2;
+        var timeProvider = new FakeTimeProvider();
+        var directory = new TownSessionDirectory(
+            options,
+            timeProvider,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        var witness = new FakeChannel();
+        await directory.EnterAsync(
+            CreateEntry(6, 1, 1, "Witness", witness),
+            CancellationToken.None);
+        var mover = new FakeChannel();
+        var moverTicket = await directory.EnterAsync(
+            CreateEntry(6, 1, 2, "Mover", mover),
+            CancellationToken.None);
+
+        for (var step = 0; step < 3; step++)
+        {
+            await directory.UpdatePositionAsync(
+                moverTicket,
+                (short)(500 + step),
+                300,
+                7,
+                120,
+                CancellationToken.None);
+        }
+
+        check(witness.Of(GameProtocolEngine.UserPositionNotification).Count == 2
+            && mover.Of(GameProtocolEngine.UserPositionNotification).Count == 0,
+            "a per-second position budget forwards only two of three updates and still never echoes to the mover");
+
+        timeProvider.Advance(TimeSpan.FromSeconds(1));
+        await directory.UpdatePositionAsync(
+            moverTicket,
+            600,
+            300,
+            7,
+            120,
+            CancellationToken.None);
+        check(witness.Of(GameProtocolEngine.UserPositionNotification).Count == 3,
+            "the position budget resets after one second");
+
+        options.TownSync.MaxPositionForwardsPerSecond = 0;
+        for (var step = 0; step < 3; step++)
+        {
+            await directory.UpdatePositionAsync(
+                moverTicket,
+                (short)(700 + step),
+                300,
+                7,
+                120,
+                CancellationToken.None);
+        }
+
+        check(witness.Of(GameProtocolEngine.UserPositionNotification).Count == 6,
+            "a zero position budget forwards every update without a limit");
     }
 
     private static async Task CheckDirectoryMigrationAsync(Action<bool, string> check)
@@ -508,6 +577,16 @@ internal static class TownSyncSmokeTests
         }
 
         return users;
+    }
+
+    /// <summary>只覆盖 GetUtcNow 的可控时钟：目录只用它来切分每秒位置预算的窗口。</summary>
+    private sealed class FakeTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        public override DateTimeOffset GetUtcNow() => _now;
+
+        public void Advance(TimeSpan delta) => _now += delta;
     }
 
     private sealed class FakeChannel

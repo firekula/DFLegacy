@@ -887,9 +887,13 @@ public sealed class EntranceService(
                         return;
                     }
 
-                    var leavingTicket = townTicket;
+                    // 先移除、后清 ticket：LeaveAsync 在结构锁等待阶段可能因取消而抛
+                    // OperationCanceledException（同角色重复登录的踢线、关停），此时成员还
+                    // 留在目录里；ticket 必须保留，断线 finally 才能用 CancellationToken.None
+                    // 重试。移除完成后的通知发送在 SendAsync 里吞掉取消与异常，不会再抛，
+                    // 所以这个顺序不会把 ticket 留在一个已被移除的成员上。
+                    await townDirectory.LeaveAsync(townTicket, cancellationToken);
                     townTicket = null;
-                    await townDirectory.LeaveAsync(leavingTicket, cancellationToken);
                 }
 
                 async Task ValidateAndCorrectCharacterStatsAsync(string reason)
@@ -2720,9 +2724,11 @@ public sealed class EntranceService(
 
                             if (townTicket is not null)
                             {
-                                var leavingTicket = townTicket;
+                                // 与 LeaveTownAreaAsync 同理：取消可能发生在移除之前，
+                                // ticket 必须保留给断线 finally 用 None 重试，否则下面就会
+                                // 把 uid 还回池子，而成员还留在目录里。
+                                await townDirectory.LeaveAsync(townTicket, serverToken);
                                 townTicket = null;
-                                await townDirectory.LeaveAsync(leavingTicket, serverToken);
                             }
 
                             if (localUserId != 0)
@@ -2769,6 +2775,10 @@ public sealed class EntranceService(
                                 && activeCharacterLease.CharacterNo != character.CharacterNo)
                             {
                                 await SaveCurrentLocationAsync(serverToken);
+                                // 换角色必须退出旧成员资格：localUserId 会保留给新角色，
+                                // 旧成员若留在目录里就会与新角色共用同一个 uid，且旧流不会再
+                                // 转发任何报文，永远等不到投递失败把它剔除。
+                                await LeaveTownAreaAsync(serverToken);
                                 characterSessions.Release(activeCharacterLease);
                                 activeCharacterLease = null;
                                 activeCharacter = null;
