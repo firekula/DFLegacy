@@ -350,14 +350,40 @@ internal static class FriendSmokeTests
             check(alicePackets.Count(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification) >= 2,
                 "a friend going offline notifies the same accounts with BUDDY_OUT");
 
+            // 删除后仍有存活好友：重推的快照必须保留艾琳（而不是整份清空），
+            // 并照旧给这个离线好友补 BUDDY_OUT（紧跟快照之后）。
+            check(await store.AddFriendAsync("alice", "艾琳", CancellationToken.None) == FriendUpdateFailure.None,
+                "the removal fixture gives alice a second, offline friend");
             var removed = alicePackets.Count;
             await service.RemoveFriendAsync("alice", "阿尔法", "布拉沃", CancellationToken.None);
-            check(alicePackets.Skip(removed)
+            var removalPackets = alicePackets.Skip(removed).ToArray();
+            var survivorSnapshot = removalPackets
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
+            check(survivorSnapshot is not null
+                    && survivorSnapshot.Payload[0] == 1
+                    && HasFriendName(survivorSnapshot, 0, "艾琳"),
+                "removing a friend re-sends a snapshot that still holds the remaining friend");
+            var survivorSnapshotIndex = survivorSnapshot is null
+                ? -1
+                : Array.IndexOf(removalPackets, survivorSnapshot);
+            check(survivorSnapshotIndex >= 0
+                    && removalPackets.Skip(survivorSnapshotIndex).Any(packet =>
+                        packet.ProtocolId == GameProtocolEngine.BuddyOutNotification
+                        && BuddyNameEquals(packet, "艾琳")),
+                "the remaining offline friend is still marked offline after the removal snapshot");
+            var aliceFriendsAfterRemoval = await store.GetFriendsAsync("alice", CancellationToken.None);
+            check(aliceFriendsAfterRemoval.Count == 1 && aliceFriendsAfterRemoval[0].Name == "艾琳",
+                "the service persists the removal and keeps the surviving friend");
+
+            // 再删掉最后一位好友：空快照仍然是"条目已消失"的唯一表现。
+            var removedLast = alicePackets.Count;
+            await service.RemoveFriendAsync("alice", "阿尔法", "艾琳", CancellationToken.None);
+            check(alicePackets.Skip(removedLast)
                     .Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification
                         && packet.Payload[0] == 0),
-                "removing a friend re-sends an empty snapshot");
+                "removing the last friend re-sends an empty snapshot");
             check((await store.GetFriendsAsync("alice", CancellationToken.None)).Count == 0,
-                "the service persists the removal through the store");
+                "the service persists the last removal through the store");
 
             var afterRemove = alicePackets.Count;
             await service.RemoveFriendAsync("alice", "阿尔法", "不存在的人", CancellationToken.None);
@@ -598,6 +624,46 @@ internal static class FriendSmokeTests
                     && ReadMessageText(packet) == "操作失败"),
                 "an operation that fails without a specific reason says 操作失败");
 
+            // 名单条目按"接收方存下来的拼写"匹配与回推：在线角色名只有大小写不同
+            // 时，BUDDY_IN/BUDDY_OUT 也必须用存储拼写，否则客户端更新不到对应条目。
+            await store.CreateAccountAsync(new CreateAccountRequest("frank", "password", OicqCode: "123456"), CancellationToken.None);
+            await store.CreateAccountAsync(new CreateAccountRequest("gina", "password", OicqCode: "123456"), CancellationToken.None);
+            check((await store.CreateCharacterAsync(
+                    "frank",
+                    new CreateCharacterRequest("Echo"),
+                    CancellationToken.None)).Created,
+                "the case-spelling fixture creates the mixed-case character");
+            check(await store.AddFriendAsync("gina", "ECHO", CancellationToken.None) == FriendUpdateFailure.None,
+                "the case-spelling fixture stores the friend under the caller's uppercase spelling");
+            var ginaPackets = new List<GameServerPacket>();
+            await service.AttachChannelAsync("gina", "吉娜", Guid.NewGuid(), Record(ginaPackets), CancellationToken.None);
+            check(ginaPackets.Count == 2
+                    && ginaPackets[0].ProtocolId == GameProtocolEngine.BuddyConnListNotification
+                    && HasFriendName(ginaPackets[0], 0, "ECHO")
+                    && ginaPackets[1].ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && BuddyNameExactly(ginaPackets[1], "ECHO"),
+                "an offline friend is snapshotted and marked offline under its stored spelling");
+
+            var echoSession = Guid.NewGuid();
+            await service.AttachChannelAsync(
+                "frank", "Echo", echoSession, Record(new List<GameServerPacket>()), CancellationToken.None);
+            var caseBuddyIn = ginaPackets
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification);
+            check(caseBuddyIn is not null
+                    && caseBuddyIn.Payload[0] == 0
+                    && BuddyNameExactly(caseBuddyIn, "ECHO")
+                    && !BuddyNameExactly(caseBuddyIn, "Echo"),
+                "BUDDY_IN uses the recipient's stored spelling when the online character differs only in case");
+
+            var ginaBeforeEchoDetach = ginaPackets.Count;
+            await service.DetachChannelAsync("Echo", echoSession, CancellationToken.None);
+            var caseBuddyOut = ginaPackets.Skip(ginaBeforeEchoDetach)
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification);
+            check(caseBuddyOut is not null
+                    && BuddyNameExactly(caseBuddyOut, "ECHO")
+                    && !BuddyNameExactly(caseBuddyOut, "Echo"),
+                "BUDDY_OUT uses the recipient's stored spelling when the online character differs only in case");
+
             // 上限 32：33 个备胎角色放在两个账号上（每个账号最多 24 个可见角色）
             await store.CreateAccountAsync(new CreateAccountRequest("full", "password", OicqCode: "123456"), CancellationToken.None);
             await store.CreateAccountAsync(new CreateAccountRequest("crowd0", "password", OicqCode: "123456"), CancellationToken.None);
@@ -656,6 +722,18 @@ internal static class FriendSmokeTests
     {
         var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
         return packet.Payload.AsSpan(5, nameBytes.Length).SequenceEqual(nameBytes);
+    }
+
+    // 比 BuddyNameEquals 更严：状态字节后必须正好是 u32 长度 + 完整名字 + 标志字节，
+    // 用来钉死"推送里出现的就是这个名字的这份拼写"。
+    private static bool BuddyNameExactly(GameServerPacket packet, string name)
+    {
+        var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
+        return packet.Payload.Length == 1 + sizeof(uint) + nameBytes.Length + 1
+            && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(1, sizeof(uint)))
+                == nameBytes.Length
+            && packet.Payload.AsSpan(5, nameBytes.Length).SequenceEqual(nameBytes)
+            && packet.Payload[^1] == 0;
     }
 
     private static string ReadMessageText(GameServerPacket packet) =>

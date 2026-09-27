@@ -231,6 +231,32 @@ Check(!EntranceService.TryReadSendMessage(
 var emptyMapChatBody = Convert.FromHexString("0A000301000000000000000000");
 Check(!EntranceService.TryReadSendMessage(emptyMapChatBody, out _),
     "CMD 17 parser rejects an empty chat message");
+// 悄悄话（类型 1/7）在正文之后追加"u32 目标名长度 + 目标名"：解析必须接受带尾缀的
+// 正文，并且只把正文（不含尾缀）交给消息服务；这个放宽只作用于 1/7。
+var whisperTextBytes = Encoding.GetEncoding(936).GetBytes("悄悄话");
+var whisperTargetName = Encoding.GetEncoding(936).GetBytes("Bravo");
+var whisperChatBody = new byte[13 + whisperTextBytes.Length + 4 + whisperTargetName.Length];
+whisperChatBody[2] = (byte)GameMessageType.Type01LightGreen;
+BinaryPrimitives.WriteUInt32LittleEndian(whisperChatBody.AsSpan(9, 4), (uint)whisperTextBytes.Length);
+whisperTextBytes.CopyTo(whisperChatBody, 13);
+BinaryPrimitives.WriteUInt32LittleEndian(
+    whisperChatBody.AsSpan(13 + whisperTextBytes.Length, 4),
+    (uint)whisperTargetName.Length);
+whisperTargetName.CopyTo(whisperChatBody, 17 + whisperTextBytes.Length);
+Check(EntranceService.TryReadSendMessage(whisperChatBody, out var whisperRequest)
+    && whisperRequest.MessageType == (byte)GameMessageType.Type01LightGreen
+    && whisperRequest.MessageBytes.SequenceEqual(whisperTextBytes),
+    "a type-1 whisper body parses and its message bytes stop before the target-name trailer");
+Check(!EntranceService.TryReadSendMessage(
+        whisperChatBody[..(13 + whisperTextBytes.Length)],
+        out _),
+    "a type-1 whisper body without the target-name trailer is rejected");
+// 类型 3 不做放宽：正文后出现任何多余字节都要拒绝——尾随字节故意构造成一段合法
+// 尾缀，确保拒绝来自"类型不在 1/7 内"，而不是尾缀本身不合法。
+var type03WithTrailerBody = (byte[])whisperChatBody.Clone();
+type03WithTrailerBody[2] = (byte)GameMessageType.Type03White;
+Check(!EntranceService.TryReadSendMessage(type03WithTrailerBody, out _),
+    "a type-3 body with trailing bytes is still rejected");
 var capturedCreatureAutomaticMessageBody = Convert.FromHexString(
     "3100030000010000000E000000B2E2CAD4B2E2CAD4B2E2CAD4CED2");
 Check(EntranceService.TryReadSendMessage(

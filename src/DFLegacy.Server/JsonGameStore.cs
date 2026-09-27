@@ -302,8 +302,9 @@ public sealed record AccountRecord(
     string? OicqCode = null,
     // 8081 管理接口的权限档位。旧 state.json 没有这个字段，反序列化后是 Player（向后兼容）。
     AccountRole Role = AccountRole.Player,
-    // 账号级好友名单。旧 state.json 没有这个字段，反序列化后是 null（等同空名单），
-    // 且在不发生好友变更时不会被回写。
+    // 账号级好友名单。旧 state.json 里没有这个字段，反序列化后是 null（等同空名单）；
+    // 写入端不忽略 null，因此之后任意一次整档保存都会写出 "Friends": null——与本类其它
+    // 可空成员一致，读取端同样按空名单处理，无副作用。
     List<AccountFriendRecord>? Friends = null);
 
 public sealed record ClientCeraTopUpRequest(string Account, int Amount);

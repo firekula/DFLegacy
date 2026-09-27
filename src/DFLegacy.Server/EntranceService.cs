@@ -3503,8 +3503,7 @@ public sealed class EntranceService(
                             // there is no separate successful CMD 17 reply.
                             // 类型 1/7 是悄悄话：正文之后还跟着目标角色名，由好友服务
                             // 路由到目标会话并把发送者外观一并交给对方。
-                            if (messageRequest.MessageType is (byte)GameMessageType.Type01LightGreen
-                                    or (byte)GameMessageType.Type07LightGreen)
+                            if (IsWhisperMessageType(messageRequest.MessageType))
                             {
                                 if (!GameProtocolEngine.TryReadWhisperTarget(
                                         request.Body,
@@ -14177,6 +14176,12 @@ public sealed class EntranceService(
         uint SlotOrReserved,
         byte[] MessageBytes);
 
+    // 悄悄话消息类型（CMD 17 的 1/7）：解析器为此类正文放宽长度校验，命令分支把
+    // 它们路由给好友服务，两处共用同一份判断。
+    private static bool IsWhisperMessageType(byte messageType) =>
+        messageType is (byte)GameMessageType.Type01LightGreen
+            or (byte)GameMessageType.Type07LightGreen;
+
     private static byte[] EncodeCharacterName(string name)
     {
         var bytes = ClientEncoding.GetBytes(name);
@@ -14220,7 +14225,7 @@ public sealed class EntranceService(
 
         // 悄悄话（类型 1/7）的正文后面还有一段"目标名长度 + 目标名"尾缀，
         // 其余类型仍要求正文正好吃掉剩余全部载荷。
-        var expectsTargetName = messageType is 1 or 7;
+        var expectsTargetName = IsWhisperMessageType(messageType);
         var expectedRemainder = expectsTargetName
             ? body.Length - messageOffset - (int)messageLength
             : 0;
