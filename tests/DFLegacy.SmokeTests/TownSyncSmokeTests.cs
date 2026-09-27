@@ -1,3 +1,4 @@
+using DFLegacy.Protocol;
 using DFLegacy.Server;
 
 internal static class TownSyncSmokeTests
@@ -6,7 +7,27 @@ internal static class TownSyncSmokeTests
     {
         ArgumentNullException.ThrowIfNull(check);
         CheckAreaUserIdPool(check);
+        CheckOptionsAndPackets(check);
         await Task.CompletedTask;
+    }
+
+    private static void CheckOptionsAndPackets(Action<bool, string> check)
+    {
+        var defaults = new ServerOptions();
+        check(defaults.TownSync.Enabled, "town sync is enabled by default");
+        check(!defaults.TownSync.ForeignAppearanceBeforeRoster,
+            "the roster is sent before foreign appearances by default");
+        check(defaults.TownSync.DepartureSignal == TownDepartureSignal.UserAreaInactive,
+            "the default departure signal is USER_AREA with active zero");
+        check(defaults.TownSync.MaxPositionForwardsPerSecond == 10,
+            "position forwarding is capped per member and second");
+        check(!defaults.Debug.TownGhost.Enabled, "the debug town ghost is off by default");
+
+        var townUser = new GameTownUser(7, 474, 234, 5);
+        check(GameProtocolEngine.CreateUserArea(2, 5, townUser).Payload[9] == 1,
+            "USER_AREA marks a joining actor as active");
+        check(GameProtocolEngine.CreateUserArea(2, 5, townUser, active: false).Payload[9] == 0,
+            "USER_AREA marks a departing actor as inactive");
     }
 
     private static void CheckAreaUserIdPool(Action<bool, string> check)

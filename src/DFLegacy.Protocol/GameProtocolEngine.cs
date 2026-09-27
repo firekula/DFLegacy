@@ -2216,7 +2216,8 @@ public static class GameProtocolEngine
     public static GameServerPacket CreateUserArea(
         byte townId,
         byte areaId,
-        GameTownUser user)
+        GameTownUser user,
+        bool active = true)
     {
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
@@ -2226,7 +2227,8 @@ public static class GameProtocolEngine
         writer.Write(user.X);
         writer.Write(user.Y);
         writer.Write(user.Direction);
-        writer.Write((byte)1); // active town actor
+        // 尾字节是该 actor 在区域内是否激活：加入为 1，离开为 0。
+        writer.Write(active ? (byte)1 : (byte)0);
         return new GameServerPacket(
             NotificationPacketType,
             UserAreaNotification,

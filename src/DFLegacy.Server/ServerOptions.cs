@@ -11,6 +11,8 @@ public sealed class ServerOptions
     public string ScriptPvfPath { get; set; } = "data/Script.pvf";
     public string SkillScriptPath { get; set; } = "";
     public string OriginalSkillScriptPath { get; set; } = "";
+    public TownSyncOptions TownSync { get; set; } = new();
+    public DebugOptions Debug { get; set; } = new();
     public ChannelOptions Channel { get; set; } = new();
     public DropOptions Drop { get; set; } = new();
     public ExperienceOptions Experience { get; set; } = new();
@@ -104,4 +106,53 @@ public sealed class ListenerOptions
     public string Host { get; set; } = "127.0.0.1";
     public int Port { get; set; }
     public int[] AdditionalPorts { get; set; } = [];
+}
+
+/// <summary>成员离开区域时用哪种信号告诉同区其他人。</summary>
+public enum TownDepartureSignal
+{
+    /// <summary>发一条同 uid 的 USER_AREA、尾字节 active=0（默认，待真机验证）。</summary>
+    UserAreaInactive = 0,
+
+    /// <summary>向同区其他人重发不含该成员的 AREA_USERS 名单（已知副作用：可能重建区域并扯回本地角色）。</summary>
+    RosterResend = 1,
+}
+
+public sealed class TownSyncOptions
+{
+    /// <summary>城镇同屏与附近聊天总开关。</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// true = 给新人先发同区已有成员的外观、再发 AREA_USERS 名单；
+    /// 默认 false（名单在前，与本地角色"先名单后外观"的既有顺序一致）。
+    /// </summary>
+    public bool ForeignAppearanceBeforeRoster { get; set; } = false;
+
+    /// <summary>成员离开区域时使用的信号。</summary>
+    public TownDepartureSignal DepartureSignal { get; set; } = TownDepartureSignal.UserAreaInactive;
+
+    /// <summary>每个成员每秒最多向同区转发的 USER_POSITION 条数；&lt;=0 表示不限制。</summary>
+    public int MaxPositionForwardsPerSecond { get; set; } = 10;
+}
+
+/// <summary>调试用：往指定区域投一个合成角色，用于单人复现"第二个角色出现/走动/消失"。</summary>
+public sealed class TownGhostOptions
+{
+    public bool Enabled { get; set; } = false;
+    public byte TownId { get; set; } = 1;
+    public byte AreaId { get; set; } = 1;
+    public string Name { get; set; } = "TEST";
+    public int StepIntervalMs { get; set; } = 1000;
+
+    /// <summary>出现时长（秒）；与 HiddenSeconds 同时 &gt;0 时按「出现/消失」循环，用于验证进出与移除。</summary>
+    public int VisibleSeconds { get; set; } = 0;
+
+    /// <summary>消失时长（秒）；0 表示一直留在区域里。</summary>
+    public int HiddenSeconds { get; set; } = 0;
+}
+
+public sealed class DebugOptions
+{
+    public TownGhostOptions TownGhost { get; set; } = new();
 }
