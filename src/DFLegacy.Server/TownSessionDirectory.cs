@@ -83,6 +83,11 @@ public sealed class TownSessionDirectory(
     private readonly ConcurrentDictionary<(byte TownId, byte AreaId), AreaRoster> _areas = new();
     private readonly ConcurrentDictionary<Guid, TownMember> _membersByCharacter = new();
 
+    // 结构锁把「读旧位置 → 摘除 → 登记 → 空区回收」串成一个原子段：同一角色的并发进入
+    // 退化成先后两次迁移，任何时刻只属于一个区域；空区回收也不会与登记交错出孤儿成员。
+    // 锁内只做记账与取快照，网络发送一律留到出锁之后。
+    private readonly SemaphoreSlim _structuralGate = new(1, 1);
+
     public int GetMemberCount(byte townId, byte areaId) =>
         _areas.TryGetValue((townId, areaId), out var roster) ? CountMembers(roster) : 0;
 
@@ -110,13 +115,6 @@ public sealed class TownSessionDirectory(
             return null;
         }
 
-        // 同一角色再次进入（换区/重进）：先摘掉旧位置并向旧区广播离开，
-        // 保证任何时刻一个角色只属于一个区域。
-        if (_membersByCharacter.TryGetValue(request.CharacterId, out var previous))
-        {
-            await RemoveMemberAsync(previous, broadcastDeparture: true, cancellationToken);
-        }
-
         var member = new TownMember
         {
             AreaUserId = request.AreaUserId,
@@ -132,15 +130,73 @@ public sealed class TownSessionDirectory(
             AreaId = request.AreaId
         };
 
-        var roster = _areas.GetOrAdd((request.TownId, request.AreaId), _ => new AreaRoster());
-        TownMember[] existing;
-        lock (roster.Gate)
+        TownMember? migratedFrom = null;
+        TownMember[] existing = [];
+        TownMember[] departureTargets = [];
+        GameServerPacket? departureNotice = null;
+
+        await _structuralGate.WaitAsync(cancellationToken);
+        try
         {
-            existing = [.. roster.Members];
-            roster.Members.Add(member);
+            // 同一角色再次进入（换区/重进）：先摘掉旧位置并准备好向旧区广播的离开信号，
+            // 登记新位置之前旧位置一定已经不存在，保证任何时刻一个角色只属于一个区域。
+            if (_membersByCharacter.TryGetValue(request.CharacterId, out var previous))
+            {
+                migratedFrom = previous;
+                var remaining = RemoveMemberCore(previous, broadcastDeparture: true);
+                if (remaining.Length > 0)
+                {
+                    departureNotice = CreateDepartureNotice(previous, remaining);
+                    departureTargets = remaining;
+                }
+            }
+
+            while (true)
+            {
+                var roster = _areas.GetOrAdd((request.TownId, request.AreaId), _ => new AreaRoster());
+                var registered = false;
+                lock (roster.Gate)
+                {
+                    // 拿到区域 Gate 之前该区域可能刚被最后一个离开的人回收：此时必须换一份
+                    // 名单重试，否则成员会被登记进一个已从 _areas 摘掉的 roster，谁也看不到他。
+                    if (_areas.TryGetValue((request.TownId, request.AreaId), out var current)
+                        && ReferenceEquals(current, roster))
+                    {
+                        existing = [.. roster.Members];
+                        roster.Members.Add(member);
+                        registered = true;
+                    }
+                }
+
+                if (registered)
+                {
+                    break;
+                }
+            }
+
+            _membersByCharacter[request.CharacterId] = member;
+        }
+        finally
+        {
+            _structuralGate.Release();
         }
 
-        _membersByCharacter[request.CharacterId] = member;
+        // 出锁后再发包：迁移先向旧区发离开信号，再走新区自己的进入流程。
+        if (departureNotice is not null)
+        {
+            foreach (var target in departureTargets)
+            {
+                await SendAsync(target, departureNotice, cancellationToken);
+            }
+
+            logger.LogInformation(
+                "Town member {Name} (uid {AreaUserId}) left {TownId}/{AreaId}; signal={Signal}.",
+                migratedFrom!.DisplayName,
+                migratedFrom.AreaUserId,
+                migratedFrom.TownId,
+                migratedFrom.AreaId,
+                options.TownSync.DepartureSignal);
+        }
 
         // 老人：只收增量 USER_AREA(active=1)。新人的外观由本人会话在
         // SendTownAppearanceAsync 里通过 RefreshAppearanceAsync 广播，
@@ -208,12 +264,13 @@ public sealed class TownSessionDirectory(
         ushort movementValue,
         CancellationToken cancellationToken)
     {
-        if (ticket is null || !options.TownSync.Enabled)
+        // 迁移/离开后旧 ticket 立即失效：陈旧凭据既不能改状态，也不能把已离开的头像
+        // 复活到旧区域。
+        if (!TryGetActiveMember(ticket, out var member))
         {
             return;
         }
 
-        var member = ticket.Member;
         member.X = x;
         member.Y = y;
         member.Direction = direction;
@@ -241,12 +298,12 @@ public sealed class TownSessionDirectory(
         GameServerPacket appearance,
         CancellationToken cancellationToken)
     {
-        if (ticket is null || !options.TownSync.Enabled)
+        // 与位置更新同理：陈旧 ticket 不能把自己的外观重播给旧区域。
+        if (!TryGetActiveMember(ticket, out var member))
         {
             return;
         }
 
-        var member = ticket.Member;
         member.Appearance = appearance;
 
         foreach (var other in SnapshotMembers(member.TownId, member.AreaId))
@@ -266,12 +323,12 @@ public sealed class TownSessionDirectory(
         bool includeSelf,
         CancellationToken cancellationToken)
     {
-        if (ticket is null || !options.TownSync.Enabled)
+        // 陈旧 ticket 不属于任何有效区域，既不投递也不计数。
+        if (!TryGetActiveMember(ticket, out var member))
         {
             return 0;
         }
 
-        var member = ticket.Member;
         var delivered = 0;
         foreach (var target in SnapshotMembers(member.TownId, member.AreaId))
         {
@@ -294,66 +351,32 @@ public sealed class TownSessionDirectory(
         bool broadcastDeparture,
         CancellationToken cancellationToken)
     {
-        _membersByCharacter.TryRemove(
-            new KeyValuePair<Guid, TownMember>(member.CharacterId, member));
+        TownMember[] targets = [];
+        GameServerPacket? notice = null;
 
-        if (!_areas.TryGetValue((member.TownId, member.AreaId), out var roster))
+        await _structuralGate.WaitAsync(cancellationToken);
+        try
+        {
+            var remaining = RemoveMemberCore(member, broadcastDeparture);
+            if (remaining.Length > 0)
+            {
+                notice = CreateDepartureNotice(member, remaining);
+                targets = remaining;
+            }
+        }
+        finally
+        {
+            _structuralGate.Release();
+        }
+
+        if (notice is null)
         {
             return;
         }
 
-        TownMember[] remaining;
-        lock (roster.Gate)
+        foreach (var target in targets)
         {
-            if (!roster.Members.Remove(member))
-            {
-                return;
-            }
-
-            remaining = [.. roster.Members];
-        }
-
-        if (remaining.Length == 0)
-        {
-            _areas.TryRemove(
-                new KeyValuePair<(byte TownId, byte AreaId), AreaRoster>(
-                    (member.TownId, member.AreaId),
-                    roster));
-            logger.LogInformation(
-                "Town area {TownId}/{AreaId} is now empty and was released.",
-                member.TownId,
-                member.AreaId);
-            return;
-        }
-
-        if (!broadcastDeparture)
-        {
-            return;
-        }
-
-        if (options.TownSync.DepartureSignal == TownDepartureSignal.RosterResend)
-        {
-            // 备选信号：重发不含该成员的名单。已知副作用：客户端可能重建区域并扯回本地角色。
-            var rosterPacket = GameProtocolEngine.CreateAreaUsers(
-                member.TownId,
-                member.AreaId,
-                [.. remaining.Select(other => other.ToTownUser())]);
-            foreach (var other in remaining)
-            {
-                await SendAsync(other, rosterPacket, cancellationToken);
-            }
-        }
-        else
-        {
-            var departure = GameProtocolEngine.CreateUserArea(
-                member.TownId,
-                member.AreaId,
-                member.ToTownUser(),
-                active: false);
-            foreach (var other in remaining)
-            {
-                await SendAsync(other, departure, cancellationToken);
-            }
+            await SendAsync(target, notice, cancellationToken);
         }
 
         logger.LogInformation(
@@ -362,29 +385,86 @@ public sealed class TownSessionDirectory(
             member.AreaUserId,
             member.TownId,
             member.AreaId,
-            remaining.Length,
+            targets.Length,
             options.TownSync.DepartureSignal);
     }
 
-    private void RemoveMemberLocally(TownMember member)
+    /// <summary>
+    /// 在结构锁内摘除成员并回收空区域，返回出锁后需要通知离开的剩余成员（无需通知时为空）。
+    /// 调用方必须已持有 _structuralGate —— 摘除、登记与空区回收共用同一把结构锁，
+    /// 否则并发的 EnterAsync 会在回收与登记之间插入，留下谁也看不到的孤儿成员。
+    /// </summary>
+    private TownMember[] RemoveMemberCore(TownMember member, bool broadcastDeparture)
     {
-        _membersByCharacter.TryRemove(
-            new KeyValuePair<Guid, TownMember>(member.CharacterId, member));
-        if (!_areas.TryGetValue((member.TownId, member.AreaId), out var roster))
+        // 按「键 + 实例」移除：迁移后旧 ticket 的陈旧移除不能摘掉新登记的同角色成员。
+        if (!_membersByCharacter.TryRemove(
+                new KeyValuePair<Guid, TownMember>(member.CharacterId, member)))
         {
-            return;
+            return [];
         }
 
+        if (!_areas.TryGetValue((member.TownId, member.AreaId), out var roster))
+        {
+            return [];
+        }
+
+        TownMember[] remaining;
+        var released = false;
         lock (roster.Gate)
         {
-            roster.Members.Remove(member);
-            if (roster.Members.Count == 0)
+            if (!roster.Members.Remove(member))
             {
+                return [];
+            }
+
+            remaining = [.. roster.Members];
+            if (remaining.Length == 0)
+            {
+                // 回收与「名单已空」的判断必须在同一把区域 Gate 内完成，
+                // 否则新成员可能已经登记进这份名单，却随即被回收掉。
                 _areas.TryRemove(
                     new KeyValuePair<(byte TownId, byte AreaId), AreaRoster>(
                         (member.TownId, member.AreaId),
                         roster));
+                released = true;
             }
+        }
+
+        if (released)
+        {
+            logger.LogInformation(
+                "Town area {TownId}/{AreaId} is now empty and was released.",
+                member.TownId,
+                member.AreaId);
+            return [];
+        }
+
+        return broadcastDeparture ? remaining : [];
+    }
+
+    private GameServerPacket CreateDepartureNotice(TownMember member, TownMember[] remaining) =>
+        options.TownSync.DepartureSignal == TownDepartureSignal.RosterResend
+            // 备选信号：重发不含该成员的名单。已知副作用：客户端可能重建区域并扯回本地角色。
+            ? GameProtocolEngine.CreateAreaUsers(
+                member.TownId,
+                member.AreaId,
+                [.. remaining.Select(other => other.ToTownUser())])
+            : GameProtocolEngine.CreateUserArea(
+                member.TownId,
+                member.AreaId,
+                member.ToTownUser(),
+                active: false);
+
+    private async ValueTask RemoveMemberLocallyAsync(TownMember member)
+    {
+        await _structuralGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            RemoveMemberCore(member, broadcastDeparture: false);
+        }
+        finally
+        {
+            _structuralGate.Release();
         }
     }
 
@@ -409,9 +489,26 @@ public sealed class TownSessionDirectory(
                 "Town delivery to {Name} (uid {AreaUserId}) failed; removing the member.",
                 member.DisplayName,
                 member.AreaUserId);
-            RemoveMemberLocally(member);
+            await RemoveMemberLocallyAsync(member);
             return false;
         }
+    }
+
+    /// <summary>
+    /// ticket 只有在它指向的实例仍是 _membersByCharacter 里登记的那一个时才算有效：
+    /// 迁移或离开之后，旧 ticket 不再属于任何区域，也不能再发包或改状态。
+    /// </summary>
+    private bool TryGetActiveMember(TownMemberTicket? ticket, out TownMember member)
+    {
+        if (ticket is null || !options.TownSync.Enabled)
+        {
+            member = null!;
+            return false;
+        }
+
+        member = ticket.Member;
+        return _membersByCharacter.TryGetValue(member.CharacterId, out var registered)
+            && ReferenceEquals(registered, member);
     }
 
     private bool TryConsumePositionBudget(TownMember member)

@@ -12,6 +12,8 @@ internal static class TownSyncSmokeTests
         CheckAreaUserIdPool(check);
         CheckOptionsAndPackets(check);
         await CheckDirectoryAsync(check);
+        await CheckDirectoryMigrationAsync(check);
+        await CheckDirectoryConcurrencyAsync(check);
     }
 
     private static void CheckOptionsAndPackets(Action<bool, string> check)
@@ -195,18 +197,177 @@ internal static class TownSyncSmokeTests
             "a disabled town directory does nothing at all");
     }
 
+    private static async Task CheckDirectoryMigrationAsync(Action<bool, string> check)
+    {
+        var directory = new TownSessionDirectory(
+            new ServerOptions(),
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        // 旧区里先放一个旁观者：迁移时它应该收到离开信号。
+        var witness = new FakeChannel();
+        var witnessTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 9, "Witness", witness),
+            CancellationToken.None);
+
+        var moverId = Guid.NewGuid();
+        var oldChannel = new FakeChannel();
+        var oldTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 1, "Mover", oldChannel, moverId),
+            CancellationToken.None);
+        check(oldTicket is not null
+            && oldTicket.CharacterId == moverId
+            && oldTicket.AreaUserId == 1
+            && oldTicket.AreaId == 1
+            && directory.GetMemberCount(1, 1) == 2,
+            "the migrating member first joins the old area");
+
+        var newChannel = new FakeChannel();
+        var newTicket = await directory.EnterAsync(
+            CreateEntry(1, 2, 5, "Mover", newChannel, moverId),
+            CancellationToken.None);
+        check(newTicket is not null
+            && newTicket.CharacterId == moverId
+            && newTicket.AreaUserId == 5
+            && newTicket.AreaId == 2,
+            "re-entering with the same character id migrates the member to the new area");
+        check(directory.GetMemberCount(1, 1) == 1 && directory.GetMemberCount(1, 2) == 1,
+            "a migrated member is counted only in its new area");
+        check(directory.TryGetSnapshot(moverId, out var moverSnapshot)
+            && moverSnapshot.AreaId == 2
+            && moverSnapshot.AreaUserId == 5
+            && moverSnapshot.DisplayName == "Mover"
+            && moverSnapshot.X == 474
+            && moverSnapshot.Y == 234,
+            "the migrated member is reported with the new area, uid, name and position");
+        check(newTicket!.AreaUserId == 5 && oldTicket!.AreaUserId == 1,
+            "the old and new tickets keep their own area user ids");
+
+        var witnessAreas = witness.Of(GameProtocolEngine.UserAreaNotification);
+        check(witnessAreas.Count == 2
+            && witnessAreas[1].Payload[0] == 1
+            && witnessAreas[1].Payload[9] == 0,
+            "the old area is told the migrated member left with USER_AREA(active=0)");
+        var newRoster = ReadRoster(newChannel.Of(GameProtocolEngine.AreaUsersNotification)[0]);
+        check(newRoster.Length == 1 && newRoster[0].UserId == 5,
+            "the new area roster contains only the migrated member");
+
+        // 旧 ticket 已失效：不得发包、不得改状态。
+        await directory.UpdatePositionAsync(oldTicket, 111, 222, 3, 50, CancellationToken.None);
+        check(witness.Of(GameProtocolEngine.UserPositionNotification).Count == 0
+            && newChannel.Of(GameProtocolEngine.UserPositionNotification).Count == 0,
+            "a stale ticket cannot forward a position packet to any area");
+        check(directory.TryGetSnapshot(moverId, out var afterStaleMove)
+            && afterStaleMove.X == 474
+            && afterStaleMove.Y == 234
+            && afterStaleMove.Direction == 5,
+            "a stale ticket cannot change the registered member state");
+
+        await directory.RefreshAppearanceAsync(
+            oldTicket,
+            CreateAppearance(1, "Mover"),
+            CancellationToken.None);
+        check(witness.Of(GameProtocolEngine.UserInfoNotification).Count == 0
+            && newChannel.Of(GameProtocolEngine.UserInfoNotification).Count == 0,
+            "a stale ticket cannot broadcast an appearance to any area");
+
+        var staleChat = GameProtocolEngine.CreateMessageNotification(
+            GameMessageType.Type03White,
+            1,
+            Encoding.ASCII.GetBytes("ghost"));
+        check(await directory.BroadcastToAreaAsync(
+                oldTicket,
+                staleChat,
+                includeSelf: true,
+                CancellationToken.None) == 0
+            && witness.Of(GameProtocolEngine.MessageNotification).Count == 0,
+            "a stale ticket cannot broadcast to the old area");
+
+        // 旧区清空后会被回收，同一 (城镇, 区域) 可以重新进入且名单只含新成员。
+        await directory.LeaveAsync(witnessTicket, CancellationToken.None);
+        check(directory.GetMemberCount(1, 1) == 0,
+            "the old area is released once its last member leaves");
+        check(directory.GetMemberCount(1, 2) == 1,
+            "releasing the old area leaves the migrated member in the new area");
+
+        var reuser = new FakeChannel();
+        var reuserTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 7, "Reuser", reuser),
+            CancellationToken.None);
+        check(reuserTicket is not null
+            && reuserTicket.AreaId == 1
+            && directory.GetMemberCount(1, 1) == 1,
+            "a released area can be entered again");
+        var reusedRoster = ReadRoster(reuser.Of(GameProtocolEngine.AreaUsersNotification)[0]);
+        check(reusedRoster.Length == 1 && reusedRoster[0].UserId == 7,
+            "the rebuilt roster contains only the newcomer of the reused area");
+        check(reuser.Of(GameProtocolEngine.UserAreaNotification).Count == 0
+            && reuser.Of(GameProtocolEngine.UserInfoNotification).Count == 0,
+            "the rebuilt area starts with no foreign packets");
+    }
+
+    private static async Task CheckDirectoryConcurrencyAsync(Action<bool, string> check)
+    {
+        var directory = new TownSessionDirectory(
+            new ServerOptions(),
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        // 同一角色在两个区域之间反复并发迁移：结构锁必须保证它任何时刻只登记在一个区域，
+        // 且登记它的区域一定真的看得见它（空区回收不能留下孤儿成员）。
+        var characterId = Guid.NewGuid();
+        var channels = new[] { new FakeChannel(), new FakeChannel() };
+        var enters = new List<Task>();
+        for (var round = 0; round < 16; round++)
+        {
+            var index = round % 2;
+            var areaId = (byte)(index + 1);
+            var areaUserId = (ushort)(index + 1);
+            enters.Add(Task.Run(() => directory.EnterAsync(
+                CreateEntry(4, areaId, areaUserId, "Racer", channels[index], characterId),
+                CancellationToken.None)));
+        }
+
+        await Task.WhenAll(enters);
+
+        check(directory.TryGetSnapshot(characterId, out var racer)
+            && directory.GetMemberCount(racer.TownId, racer.AreaId) == 1,
+            "a concurrently entered character stays reachable through its registered area");
+        check(directory.GetMemberCount(4, 1) + directory.GetMemberCount(4, 2) == 1,
+            "a character racing between two areas is only ever counted in one of them");
+        foreach (var areaId in new byte[] { 1, 2 })
+        {
+            foreach (var member in directory.Snapshot(4, areaId))
+            {
+                check(directory.TryGetSnapshot(member.CharacterId, out var live)
+                    && live.AreaUserId == member.AreaUserId
+                    && live.AreaId == areaId,
+                    "every roster member is reachable by character id");
+            }
+        }
+    }
+
     private static TownEntryRequest CreateEntry(
         byte townId,
         byte areaId,
         ushort areaUserId,
         string name,
-        FakeChannel channel)
+        FakeChannel channel) =>
+        CreateEntry(townId, areaId, areaUserId, name, channel, Guid.NewGuid());
+
+    private static TownEntryRequest CreateEntry(
+        byte townId,
+        byte areaId,
+        ushort areaUserId,
+        string name,
+        FakeChannel channel,
+        Guid characterId)
     {
         return new TownEntryRequest(
             townId,
             areaId,
             areaUserId,
-            Guid.NewGuid(),
+            characterId,
             areaUserId,
             Encoding.ASCII.GetBytes(name),
             name,
