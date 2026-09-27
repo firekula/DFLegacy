@@ -265,8 +265,7 @@ internal static class FriendSmokeTests
                 ScriptPvfPath = "unused.pvf"
             };
             var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
-            var registry = new CharacterSessionRegistry(NullLogger<CharacterSessionRegistry>.Instance);
-            var service = new FriendService(store, registry, NullLogger<FriendService>.Instance);
+            var service = new FriendService(store, NullLogger<FriendService>.Instance);
             var encoding = Encoding.GetEncoding(936);
 
             await store.CreateAccountAsync(new CreateAccountRequest("alice", "password", OicqCode: "123456"), CancellationToken.None);
@@ -330,7 +329,6 @@ internal static class FriendSmokeTests
             var bravoBeforeStaleDetach = bravoPackets.Count;
             await service.DetachChannelAsync("布拉沃", staleBravoSession, CancellationToken.None);
             await service.WhisperAsync(
-                "alice",
                 "阿尔法",
                 senderAreaUserId: 1,
                 senderAppearance: null,
@@ -379,7 +377,6 @@ internal static class FriendSmokeTests
             var afterOfflineWhisper = alicePackets.Count;
             var bravoBeforeOfflineWhisper = bravoPackets.Count;
             await service.WhisperAsync(
-                "alice",
                 "阿尔法",
                 senderAreaUserId: 1,
                 senderAppearance: null,
@@ -402,7 +399,6 @@ internal static class FriendSmokeTests
             var bravoBefore = bravoPackets.Count;
             var aliceBeforeOnlineWhisper = alicePackets.Count;
             await service.WhisperAsync(
-                "alice",
                 "阿尔法",
                 senderAreaUserId: 1,
                 senderAppearance: null,
@@ -428,7 +424,6 @@ internal static class FriendSmokeTests
 
             var aliceBeforeSelfWhisper = alicePackets.Count;
             await service.WhisperAsync(
-                "alice",
                 "阿尔法",
                 senderAreaUserId: 1,
                 senderAppearance: null,
@@ -490,7 +485,6 @@ internal static class FriendSmokeTests
             var erinBeforeWhisper = erinPackets.Count;
             var daveBeforeWhisper = davePackets.Count;
             await service.WhisperAsync(
-                "dave",
                 "戴夫",
                 senderAreaUserId: 7,
                 senderAppearance: appearance,
@@ -535,7 +529,6 @@ internal static class FriendSmokeTests
             breakErinChannel = true;
             var daveBeforeBrokenWhisper = davePackets.Count;
             await service.WhisperAsync(
-                "dave",
                 "戴夫",
                 senderAreaUserId: 7,
                 senderAppearance: null,
@@ -555,7 +548,6 @@ internal static class FriendSmokeTests
                 "a detached session marks the character offline for its friends");
             var erinAfterDetach = erinPackets.Count;
             await service.WhisperAsync(
-                "dave",
                 "戴夫",
                 senderAreaUserId: 7,
                 senderAppearance: null,

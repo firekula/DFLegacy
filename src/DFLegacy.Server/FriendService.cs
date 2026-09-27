@@ -14,8 +14,6 @@ namespace DFLegacy.Server;
 /// <see cref="AttachChannelAsync"/> is the single entry point that both registers a
 /// session and announces it, so a live character can never sit online without having
 /// been announced.
-/// The session registry remains part of the constructor because Task 4 wires the service
-/// with it; this channel-based implementation never needs to query it.
 /// </remarks>
 public sealed class FriendService
 {
@@ -27,13 +25,9 @@ public sealed class FriendService
     private readonly JsonGameStore _store;
     private readonly ILogger<FriendService> _logger;
 
-    public FriendService(
-        JsonGameStore store,
-        CharacterSessionRegistry sessions,
-        ILogger<FriendService> logger)
+    public FriendService(JsonGameStore store, ILogger<FriendService> logger)
     {
         ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(sessions);
         ArgumentNullException.ThrowIfNull(logger);
         _store = store;
         _logger = logger;
@@ -127,12 +121,7 @@ public sealed class FriendService
     /// <summary>
     /// Routes a whisper (CMD 17 type 1/7) to the live session that owns the target name.
     /// </summary>
-    /// <remarks>
-    /// The account name belongs to the Task 4 wiring contract; routing only needs the
-    /// sender's character name because the target is resolved through the channel table.
-    /// </remarks>
     public async Task WhisperAsync(
-        string accountName,
         string characterName,
         ushort senderAreaUserId,
         GameServerPacket? senderAppearance,
