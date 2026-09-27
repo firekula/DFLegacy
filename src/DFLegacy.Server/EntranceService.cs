@@ -826,6 +826,14 @@ public sealed class EntranceService(
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, appearance);
 
+                    // 同区其他人也要看到这次外观变化（换装/宠物/称号/黑钻/升级）。
+                    // 首次进区域时这条广播顺带把自己的外观快照交给目录，
+                    // 之后进区的人才能拿到它。
+                    await townDirectory.RefreshAppearanceAsync(
+                        townTicket,
+                        appearance,
+                        serverToken);
+
                     // Mode zero is the compact town-actor appearance
                     // projection: Avatar slots 0..8, weapon slot 9, plus the
                     // dedicated title and Creature fields. It drops other worn
@@ -834,6 +842,54 @@ public sealed class EntranceService(
                     // subtype one.
                     await SendCurrentEquipmentStateAsync();
                     await SendInitialStaminaStateAsync();
+                }
+
+                // 供目录向本会话投递报文（同区其他人的名单/外观/位置/消息）。
+                // SerializedWriteStream 已保证跨线程写入串行，不会交错。
+                async ValueTask SendTownPacketAsync(
+                    GameServerPacket packet,
+                    CancellationToken cancellationToken)
+                {
+                    await packet.WriteAsync(stream, cancellationToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, packet);
+                }
+
+                async Task EnterTownAreaAsync(CancellationToken cancellationToken)
+                {
+                    if (activeCharacter is null
+                        || currentDungeonId != 0
+                        || currentTownId == 0)
+                    {
+                        return;
+                    }
+
+                    townTicket = await townDirectory.EnterAsync(
+                        new TownEntryRequest(
+                            currentTownId,
+                            currentAreaId,
+                            localUserId,
+                            activeCharacter.Id,
+                            activeCharacter.CharacterNo,
+                            EncodeCharacterName(activeCharacter.Name),
+                            activeCharacter.Name,
+                            currentX,
+                            currentY,
+                            currentDirection,
+                            SendTownPacketAsync),
+                        cancellationToken);
+                }
+
+                async Task LeaveTownAreaAsync(CancellationToken cancellationToken)
+                {
+                    if (townTicket is null)
+                    {
+                        return;
+                    }
+
+                    var leavingTicket = townTicket;
+                    townTicket = null;
+                    await townDirectory.LeaveAsync(leavingTicket, cancellationToken);
                 }
 
                 async Task ValidateAndCorrectCharacterStatsAsync(string reason)
@@ -1920,13 +1976,7 @@ public sealed class EntranceService(
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, userArea);
 
-                    var areaUsers = GameProtocolEngine.CreateAreaUsers(
-                        currentTownId,
-                        currentAreaId,
-                        [townUser]);
-                    await areaUsers.WriteAsync(stream, serverToken);
-                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                    LogPacket("TX", runtimeSession, areaUsers);
+                    await EnterTownAreaAsync(serverToken);
                     areaRosterInitialized = true;
                     await SendTownFatigueStateAsync();
                     await SendTownAppearanceAsync(waitForTownActor: true);
@@ -9884,19 +9934,7 @@ public sealed class EntranceService(
                             // subsequent coordinates server-side.
                             if (!areaRosterInitialized)
                             {
-                                var townUser = new GameTownUser(
-                                    localUserId,
-                                    currentX,
-                                    currentY,
-                                    currentDirection);
-
-                                var areaUsers = GameProtocolEngine.CreateAreaUsers(
-                                    currentTownId,
-                                    currentAreaId,
-                                    [townUser]);
-                                await areaUsers.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, areaUsers);
+                                await EnterTownAreaAsync(serverToken);
                                 areaRosterInitialized = true;
                                 await SendTownFatigueStateAsync();
                                 await SendTownAppearanceAsync(waitForTownActor: true);
@@ -9939,13 +9977,7 @@ public sealed class EntranceService(
                             // recreates the town actor with stamina zero. Rebuild
                             // its projections, then restore stamina through the
                             // client's silent NOTI 33 path.
-                            var areaUsers = GameProtocolEngine.CreateAreaUsers(
-                                currentTownId,
-                                currentAreaId,
-                                [townUser]);
-                            await areaUsers.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, areaUsers);
+                            await EnterTownAreaAsync(serverToken);
                             areaRosterInitialized = true;
                             await SendTownFatigueStateAsync();
                             await SendTownAppearanceAsync(waitForTownActor: true);
@@ -10193,6 +10225,7 @@ public sealed class EntranceService(
 
                                 var tutorialMonsters = GameProtocolEngine.CreateTutorialMonsters();
                                 inDungeonSelection = false;
+                                await LeaveTownAreaAsync(serverToken);
                                 currentDungeonId = GameProtocolEngine.TutorialDungeonId;
                                 currentDungeonLayout = null;
                                 currentDungeonRoomX = 0;
@@ -10402,6 +10435,7 @@ public sealed class EntranceService(
 
                             inDungeonSelection = false;
                             tutorialDungeonActive = false;
+                            await LeaveTownAreaAsync(serverToken);
                             currentDungeonId = dungeonId;
                             currentDungeonLayout = dungeonLayout;
                             currentDungeonRoomX = dungeonRun.RoomX;
