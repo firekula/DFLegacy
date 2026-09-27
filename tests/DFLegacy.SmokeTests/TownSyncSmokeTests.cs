@@ -12,6 +12,7 @@ internal static class TownSyncSmokeTests
         CheckAreaUserIdPool(check);
         CheckOptionsAndPackets(check);
         CheckGhostAppearance(check);
+        await CheckGhostBroadcastAsync(check);
         await CheckDirectoryAsync(check);
         await CheckDirectoryMigrationAsync(check);
         await CheckDirectoryConcurrencyAsync(check);
@@ -47,16 +48,95 @@ internal static class TownSyncSmokeTests
             "a ghost name within 1..30 encoded bytes is accepted");
         check(!TownGhostService.EncodeGhostName(new string('x', 40), out var tooLong).Any(),
             "an over-long ghost name is rejected instead of building a broken appearance");
-        var appearance = GameProtocolEngine.CreateCurrentCharacterInfo(
-            new GameCharacterSummary(0, nameBytes, 0, 0, 1),
-            7,
-            equippedItems: [],
-            equippedCreature: null,
-            hasBlackDiamond: false);
+        var appearance = TownGhostService.CreateGhostAppearance(7, nameBytes);
         check(appearance.ProtocolId == GameProtocolEngine.UserInfoNotification
             && appearance.Payload[0] == 0
             && BinaryPrimitives.ReadUInt16LittleEndian(appearance.Payload.AsSpan(3, 2)) == 7,
             "the ghost appearance is a mode-zero USERINFO record carrying the ghost uid");
+    }
+
+    /// <summary>
+    /// 缺陷回归：幽灵曾经只进入、走动、离开，从不广播外观，同区玩家只有坐标没有长相与名字。
+    /// 这里启动真实的后台服务，让已在区域的观察者收到幽灵的外观包，锁住这条广播。
+    /// </summary>
+    private static async Task CheckGhostBroadcastAsync(Action<bool, string> check)
+    {
+        var options = new ServerOptions();
+        options.Debug.TownGhost.Enabled = true;
+        options.Debug.TownGhost.Name = "TEST";
+        options.Debug.TownGhost.TownId = 1;
+        options.Debug.TownGhost.AreaId = 1;
+        options.Debug.TownGhost.StepIntervalMs = 100;
+        // 一直可见：本测试只等第一条外观，不需要出现/消失循环。
+        options.Debug.TownGhost.VisibleSeconds = 0;
+        options.Debug.TownGhost.HiddenSeconds = 0;
+
+        var directory = new TownSessionDirectory(
+            options,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+        var witness = new FakeChannel();
+        await directory.EnterAsync(
+            CreateEntry(1, 1, 1, "Witness", witness),
+            CancellationToken.None);
+
+        var pool = new AreaUserIdPool(options.Channel.MaximumUsers);
+        var service = new TownGhostService(
+            options,
+            pool,
+            directory,
+            NullLogger<TownGhostService>.Instance);
+        var expectedGhostId = (ushort)options.Channel.MaximumUsers;
+
+        using var stopping = new CancellationTokenSource();
+        await service.StartAsync(stopping.Token);
+        try
+        {
+            var appearance = await WaitForAppearanceAsync(witness, expectedGhostId);
+            check(appearance is not null,
+                "a running ghost publishes its appearance to the area it joins");
+            check(appearance is not null
+                && appearance.ProtocolId == GameProtocolEngine.UserInfoNotification
+                && appearance.Payload[0] == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(appearance.Payload.AsSpan(3, 2))
+                    == expectedGhostId,
+                "the published appearance is a mode-zero USERINFO record carrying the ghost uid");
+            check(appearance is not null
+                && BinaryPrimitives.ReadUInt32LittleEndian(appearance.Payload.AsSpan(5, 4)) == 4
+                && Encoding.ASCII.GetString(appearance.Payload, 9, 4) == "TEST",
+                "the published appearance carries the configured ghost name");
+        }
+        finally
+        {
+            stopping.Cancel();
+            await service.StopAsync(CancellationToken.None);
+        }
+
+        check(pool.InUseCount == 0,
+            "stopping the ghost releases the area user id it allocated");
+    }
+
+    private static async Task<GameServerPacket?> WaitForAppearanceAsync(
+        FakeChannel channel,
+        ushort expectedUserId)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            var match = channel.Of(GameProtocolEngine.UserInfoNotification)
+                .FirstOrDefault(packet =>
+                    packet.Payload.Length > 4
+                    && BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(3, 2))
+                        == expectedUserId);
+            if (match is not null)
+            {
+                return match;
+            }
+
+            await Task.Delay(20);
+        }
+
+        return null;
     }
 
     private static void CheckAreaUserIdPool(Action<bool, string> check)

@@ -36,6 +36,18 @@ public sealed class TownGhostService(
         return valid ? bytes : [];
     }
 
+    /// <summary>
+    /// 构建幽灵自己的 mode-0 USERINFO 外观包。目录只保存与重放外观，名字与 uid 都必须由
+    /// 幽灵在这里显式提供，否则同区玩家只会看到名单里的坐标、看不到长相与名字。
+    /// </summary>
+    public static GameServerPacket CreateGhostAppearance(ushort ghostId, byte[] nameBytes) =>
+        GameProtocolEngine.CreateCurrentCharacterInfo(
+            new GameCharacterSummary(0, nameBytes, 0, 0, 1),
+            ghostId,
+            equippedItems: [],
+            equippedCreature: null,
+            hasBlackDiamond: false);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var ghost = options.Debug.TownGhost;
@@ -60,6 +72,11 @@ public sealed class TownGhostService(
             ghost.TownId,
             ghost.AreaId,
             stepDelay.TotalMilliseconds);
+        if (!options.TownSync.Enabled)
+        {
+            logger.LogWarning(
+                "TownSync is disabled, so the town ghost will not be visible to anyone.");
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -88,6 +105,20 @@ public sealed class TownGhostService(
                         static (GameServerPacket _, CancellationToken _) =>
                             ValueTask.CompletedTask),
                     stoppingToken);
+
+                // 外观必须显式广播：目录只转发手里已有的外观包，名单本身不带长相与名字。
+                // 广播后进区的人会从目录拿到这份外观，先到的人当场收到。
+                if (ticket is not null)
+                {
+                    await townDirectory.RefreshAppearanceAsync(
+                        ticket,
+                        CreateGhostAppearance(ghostId, nameBytes),
+                        stoppingToken);
+                    logger.LogInformation(
+                        "Town ghost {Name} (uid {AreaUserId}) published its appearance.",
+                        ghost.Name,
+                        ghostId);
+                }
 
                 var visibleUntil = ghost.VisibleSeconds > 0
                     ? DateTimeOffset.UtcNow.AddSeconds(ghost.VisibleSeconds)
