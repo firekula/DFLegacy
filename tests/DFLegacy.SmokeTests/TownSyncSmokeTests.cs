@@ -11,6 +11,7 @@ internal static class TownSyncSmokeTests
         ArgumentNullException.ThrowIfNull(check);
         CheckAreaUserIdPool(check);
         CheckOptionsAndPackets(check);
+        CheckGhostAppearance(check);
         await CheckDirectoryAsync(check);
         await CheckDirectoryMigrationAsync(check);
         await CheckDirectoryConcurrencyAsync(check);
@@ -37,6 +38,25 @@ internal static class TownSyncSmokeTests
         var channelSized = new AreaUserIdPool(new ServerOptions().Channel.MaximumUsers);
         check(channelSized.Capacity == 100,
             "the pool capacity follows the channel user limit so ids stay inside the client's range");
+    }
+
+    private static void CheckGhostAppearance(Action<bool, string> check)
+    {
+        var nameBytes = TownGhostService.EncodeGhostName("TEST", out var valid);
+        check(valid && nameBytes.Length == 4,
+            "a ghost name within 1..30 encoded bytes is accepted");
+        check(!TownGhostService.EncodeGhostName(new string('x', 40), out var tooLong).Any(),
+            "an over-long ghost name is rejected instead of building a broken appearance");
+        var appearance = GameProtocolEngine.CreateCurrentCharacterInfo(
+            new GameCharacterSummary(0, nameBytes, 0, 0, 1),
+            7,
+            equippedItems: [],
+            equippedCreature: null,
+            hasBlackDiamond: false);
+        check(appearance.ProtocolId == GameProtocolEngine.UserInfoNotification
+            && appearance.Payload[0] == 0
+            && BinaryPrimitives.ReadUInt16LittleEndian(appearance.Payload.AsSpan(3, 2)) == 7,
+            "the ghost appearance is a mode-zero USERINFO record carrying the ghost uid");
     }
 
     private static void CheckAreaUserIdPool(Action<bool, string> check)

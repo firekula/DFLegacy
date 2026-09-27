@@ -81,6 +81,7 @@ builder.Services.AddHostedService<FatigueResetService>();
 builder.Services.AddHostedService<WeaknessRecoveryService>();
 builder.Services.AddHostedService(serviceProvider =>
     serviceProvider.GetRequiredService<GameplayDatagramService>());
+builder.Services.AddHostedService<TownGhostService>();
 builder.Services.AddHostedService<ProbeService>();
 
 var app = builder.Build();
