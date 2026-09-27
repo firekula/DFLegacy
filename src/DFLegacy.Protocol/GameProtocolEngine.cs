@@ -360,6 +360,12 @@ public static class GameProtocolEngine
     public const byte BuddyInNotification = 54;      // 好友上线/状态更新（只更新已有条目）
     public const byte BuddyOutNotification = 55;     // 好友下线（条目状态置 -1）
     public const byte BuddyConnListNotification = 56; // 好友列表快照（唯一能新建条目的通知）
+    // 跨频道/按名字投递的消息（1:1 窗口的载体）。客户端 handler 0x41CD9D：
+    // [u8 type][u8 flag][u32 名字长度 + 名字][u32 文本长度 + 文本]；只有 type==0x12 且
+    // flag!=0 才走“按名字找/建 1:1 窗口并追加”（0x810AE0），其余取值是提示分支。
+    public const byte MessageOtherChannelNotification = 65;
+    public const byte MessengerMessageType = 0x12;
+    public const byte MessengerMessageFlag = 1;
     public const byte AddFriendCommand = 63;
     public const byte RemoveFriendCommand = 64;
     public const byte CeraShopBuyCommand = 67;
@@ -2276,6 +2282,8 @@ public static class GameProtocolEngine
 
     private const int FriendListNameFieldLength = 30;
     private const int FriendListRecordLength = 42;
+    // 客户端 NOTI 65 用 0x100 字节缓冲读写文本；CMD 17 的文本长度上限是 255。
+    private const int MessengerTextMaximumLength = 0xFF;
 
     public static GameServerPacket CreateFriendList(IReadOnlyList<GameFriendEntry> friends)
     {
@@ -2348,6 +2356,87 @@ public static class GameProtocolEngine
             payload.ToArray());
     }
 
+    /// <summary>
+    /// ADD_FRIEND 成功结果（type=1 命令包）。客户端接收循环按包头 type 分发：type 1 的
+    /// body 首字节被读作结果标志，handler 从 body+1 继续按长度前缀读名字，最后读一个
+    /// 可选错误码。只有这条包会在客户端打印 “[名字]已被添加到好友名单”。
+    /// </summary>
+    public static GameServerPacket CreateAddFriendResult(byte[] nameBytes) =>
+        CreateFriendCommandResult(AddFriendCommand, nameBytes);
+
+    /// <summary>
+    /// REMOVE_FRIEND 成功结果（type=1 命令包）。客户端 handler 0x414BA7 凭它调用
+    /// CNRDFriendManager::RemoveEntryByName → vector::erase 真正删除条目；通知通道
+    /// （NOTI 56/54/55）只 InsertOrUpdate，永远删不掉条目。
+    /// </summary>
+    public static GameServerPacket CreateRemoveFriendResult(byte[] nameBytes) =>
+        CreateFriendCommandResult(RemoveFriendCommand, nameBytes);
+
+    private static GameServerPacket CreateFriendCommandResult(byte command, byte[] nameBytes)
+    {
+        ArgumentNullException.ThrowIfNull(nameBytes);
+        if (nameBytes.Length is 0 or > FriendListNameFieldLength)
+        {
+            throw new ArgumentException(
+                "Friend names must contain 1-30 encoded bytes.",
+                nameof(nameBytes));
+        }
+
+        if (nameBytes.Contains((byte)0))
+        {
+            throw new ArgumentException(
+                "Friend names must not contain a NUL byte.",
+                nameof(nameBytes));
+        }
+
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);                              // 结果标志，非零即成功
+        WriteLengthPrefixedBytes(writer, nameBytes);
+        writer.Write((byte)0);                              // 错误码 0 = 无错误
+        return new GameServerPacket(CommandPacketType, command, payload.ToArray());
+    }
+
+    /// <summary>
+    /// 1:1 / 跨频道消息（NOTI 65）：按名字投递到接收方（以及发送方）的 1:1 窗口。
+    /// </summary>
+    public static GameServerPacket CreateMessageOtherChannel(byte[] nameBytes, byte[] textBytes)
+    {
+        ArgumentNullException.ThrowIfNull(nameBytes);
+        ArgumentNullException.ThrowIfNull(textBytes);
+        if (nameBytes.Length is 0 or > FriendListNameFieldLength)
+        {
+            throw new ArgumentException(
+                "Messenger peer names must contain 1-30 encoded bytes.",
+                nameof(nameBytes));
+        }
+
+        if (nameBytes.Contains((byte)0))
+        {
+            throw new ArgumentException(
+                "Messenger peer names must not contain a NUL byte.",
+                nameof(nameBytes));
+        }
+
+        if (textBytes.Length is 0 or > MessengerTextMaximumLength || textBytes.Contains((byte)0))
+        {
+            throw new ArgumentException(
+                "Messenger text must contain 1-255 non-NUL encoded bytes.",
+                nameof(textBytes));
+        }
+
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write(MessengerMessageType);                 // 只有 0x12 走 1:1 窗口分支
+        writer.Write(MessengerMessageFlag);                 // 非零才投递
+        WriteLengthPrefixedBytes(writer, nameBytes);
+        WriteLengthPrefixedBytes(writer, textBytes);
+        return new GameServerPacket(
+            NotificationPacketType,
+            MessageOtherChannelNotification,
+            payload.ToArray());
+    }
+
     /// <summary>解析 ADD_FRIEND/REMOVE_FRIEND 的载荷（Body 从序列号起算）。</summary>
     public static bool TryReadFriendName(byte[] body, out byte[] nameBytes)
     {
@@ -2414,6 +2503,28 @@ public static class GameProtocolEngine
         }
 
         targetNameBytes = candidate;
+        return true;
+    }
+
+    /// <summary>
+    /// 解析 CMD 8 GET_USERINFO 的载荷（Body 从序列号起算）：u16 uid + u8 mode。
+    /// 角色选择界面发的是 u16 0xFFFF + u8 2（账号角色卡列表），城镇内“查看信息”/“/info”
+    /// 发的是 u16 uid + u8 3（该角色的资料，客户端用 mode 1/3 解析器读回包）。
+    /// </summary>
+    public static bool TryReadUserInfoRequest(byte[] body, out ushort userId, out byte mode)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        userId = 0;
+        mode = 0;
+        const int payloadOffset = sizeof(ushort);
+        if (body.Length < payloadOffset + sizeof(ushort) + sizeof(byte))
+        {
+            return false;
+        }
+
+        userId = BinaryPrimitives.ReadUInt16LittleEndian(
+            body.AsSpan(payloadOffset, sizeof(ushort)));
+        mode = body[payloadOffset + sizeof(ushort)];
         return true;
     }
 

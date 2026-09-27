@@ -672,6 +672,27 @@ public sealed class EntranceService(
                     lastProjectedCombatStats = projectedStats;
                 }
 
+                GameServerPacket CreateRequestedCharacterDetail(ushort requestedUserId)
+                {
+                    // 城镇内“查看信息”/“/info”（CMD 8 mode 3）：查询自己时回真实资料；
+                    // 其他 uid 只回最小资料记录（名字由客户端按 uid 自行解析）。回包是
+                    // NOTI 2 mode 1、count=1 —— 绝不能落回 mode 2 的账号角色卡列表，否则
+                    // 客户端会用 mode 0/2 解析器读出“通关[%s]…”的系统弹窗。
+                    return activeCharacter is not null && requestedUserId == localUserId
+                        ? GameProtocolEngine.CreateCurrentCharacterDetails(
+                            requestedUserId,
+                            experience: activeCharacter.Experience,
+                            learnedSkills: GetCurrentGameSkills(),
+                            combatStats: characterStatCatalog.Get(activeCharacter),
+                            equippedItems: CreateWornEquipmentSnapshot(
+                                equippedInventory.Values,
+                                creatureInventory),
+                            equippedCreatureLevel: GetEquippedCreatureLevel(
+                                creatureInventory),
+                            staminaRecoveryPercentage: GetProjectedStaminaRecovery())
+                        : GameProtocolEngine.CreateCurrentCharacterDetails(requestedUserId);
+                }
+
                 async Task SendEquippedCreatureDeathAsync(bool force = false)
                 {
                     if (activeCharacter is null
@@ -2621,7 +2642,23 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.GetUserInfoCommand)
                         {
-                            var userInfo = await CreateUserInfoAsync(accountUid, serverToken);
+                            // 同一个 CMD 8 在不同界面 payload 不同：角色选择是 0xFFFF + mode 2
+                            // （账号角色卡列表），城镇“查看信息”/“/info”是 uid + mode 3（该角色
+                            // 资料）。不分 mode 一律回列表，就会在城镇落进 mode 0/2 解析器。
+                            var userInfo = await ResolveUserInfoReplyAsync(
+                                request.Body,
+                                CreateRequestedCharacterDetail,
+                                () => CreateUserInfoAsync(accountUid, serverToken));
+                            if (userInfo is null)
+                            {
+                                // 好友条目里的 uid 字段恒 0：没有可描述的角色时静默忽略，
+                                // 比回一份错误的列表（触发弹窗）好。
+                                logger.LogInformation(
+                                    "Ignored GET_USERINFO mode 3 without a character uid for session {SessionId}.",
+                                    runtimeSession.Id);
+                                continue;
+                            }
+
                             await userInfo.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, userInfo);
@@ -3501,6 +3538,30 @@ public sealed class EntranceService(
                             // original server routes it to the sender's village
                             // and area, and success is represented by NOTI 12;
                             // there is no separate successful CMD 17 reply.
+                            // 类型 18 是 1:1 窗口消息：正文之后跟着对端名字，历史在客户端
+                            // 本地，服务端只把它按名字转发成 NOTI 65。
+                            if (messageRequest.MessageType
+                                == (byte)GameMessageType.Type18DirectOutput)
+                            {
+                                if (!GameProtocolEngine.TryReadWhisperTarget(
+                                        request.Body,
+                                        messageRequest.MessageBytes.Length,
+                                        out var messengerPeerName))
+                                {
+                                    logger.LogWarning(
+                                        "Rejected 1:1 chat without a peer name from character {CharacterId}.",
+                                        activeCharacter.Id);
+                                    continue;
+                                }
+
+                                await friendService.SendMessengerMessageAsync(
+                                    activeCharacter.Name,
+                                    messengerPeerName,
+                                    messageRequest.MessageBytes,
+                                    serverToken);
+                                continue;
+                            }
+
                             // 类型 1/7 是悄悄话：正文之后还跟着目标角色名，由好友服务
                             // 路由到目标会话并把发送者外观一并交给对方。
                             if (IsWhisperMessageType(messageRequest.MessageType))
@@ -14182,6 +14243,66 @@ public sealed class EntranceService(
         messageType is (byte)GameMessageType.Type01LightGreen
             or (byte)GameMessageType.Type07LightGreen;
 
+    // 正文后还带“对端名字”的消息类型：悄悄话 1/7 与 1:1 窗口 18（尾部布局相同）。
+    private static bool ExpectsPeerName(byte messageType) =>
+        IsWhisperMessageType(messageType)
+        || messageType == (byte)GameMessageType.Type18DirectOutput;
+
+    /// <summary>CMD 8 GET_USERINFO 的 mode 分支结果。</summary>
+    internal enum UserInfoReplyKind
+    {
+        /// <summary>mode != 3：保持既有行为，回账号角色卡列表（角色选择界面）。</summary>
+        Roster,
+
+        /// <summary>mode 3 且 uid 非 0：回该角色的资料记录。</summary>
+        CharacterDetail,
+
+        /// <summary>mode 3 但 uid 为 0：没有可描述的角色，静默忽略。</summary>
+        Ignore
+    }
+
+    /// <summary>
+    /// 按 CMD 8 的 mode 字节分支：城镇内“查看信息”/“/info”发 uid + mode 3，
+    /// 角色选择界面发 0xFFFF + mode 2。缺 payload 的旧式请求按列表处理（保持原行为）。
+    /// </summary>
+    internal static UserInfoReplyKind ClassifyUserInfoRequest(
+        byte[] body,
+        out ushort requestedUserId)
+    {
+        requestedUserId = 0;
+        if (!GameProtocolEngine.TryReadUserInfoRequest(body, out var userId, out var mode)
+            || mode != 3)
+        {
+            return UserInfoReplyKind.Roster;
+        }
+
+        if (userId == 0)
+        {
+            return UserInfoReplyKind.Ignore;
+        }
+
+        requestedUserId = userId;
+        return UserInfoReplyKind.CharacterDetail;
+    }
+
+    /// <summary>
+    /// CMD 8 的响应选择：按 <see cref="ClassifyUserInfoRequest"/> 的分支调用资料回包工厂或
+    /// 账号角色卡列表工厂；uid 为 0 的 mode 3 返回 null，由调用方静默忽略。
+    /// 抽成静态函数让冒烟测试直接钉住“mode 3 不回列表”这条分派。
+    /// </summary>
+    internal static async Task<GameServerPacket?> ResolveUserInfoReplyAsync(
+        byte[] body,
+        Func<ushort, GameServerPacket> createCharacterDetail,
+        Func<Task<GameServerPacket>> createRoster)
+    {
+        return ClassifyUserInfoRequest(body, out var requestedUserId) switch
+        {
+            UserInfoReplyKind.CharacterDetail => createCharacterDetail(requestedUserId),
+            UserInfoReplyKind.Ignore => null,
+            _ => await createRoster()
+        };
+    }
+
     private static byte[] EncodeCharacterName(string name)
     {
         var bytes = ClientEncoding.GetBytes(name);
@@ -14223,9 +14344,9 @@ public sealed class EntranceService(
             return false;
         }
 
-        // 悄悄话（类型 1/7）的正文后面还有一段"目标名长度 + 目标名"尾缀，
-        // 其余类型仍要求正文正好吃掉剩余全部载荷。
-        var expectsTargetName = IsWhisperMessageType(messageType);
+        // 悄悄话（类型 1/7）与 1:1 窗口消息（类型 18）的正文后面还有一段
+        // "对端名字长度 + 对端名字"尾缀，其余类型仍要求正文正好吃掉剩余全部载荷。
+        var expectsTargetName = ExpectsPeerName(messageType);
         var expectedRemainder = expectsTargetName
             ? body.Length - messageOffset - (int)messageLength
             : 0;

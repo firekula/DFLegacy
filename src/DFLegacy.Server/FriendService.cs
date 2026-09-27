@@ -96,6 +96,17 @@ public sealed class FriendService
             return;
         }
 
+        // 命令结果必须走 type=1 命令通道：客户端接收循环把包头 type 1 的 body 首字节当
+        // 结果标志走另一张分发表，只有这条包会打印“[名字]已被添加到好友名单”。
+        // 用 store 归一化后的名字（去首尾空格）：客户端按这份拼写建条目。
+        // 结果先于快照：id 63 的条目写入会带出一个默认状态字节，让随后的快照与
+        // BUDDY_OUT 成为条目状态的最后写入者，离线的新好友才不会被它翻成在线。
+        await SendAsync(
+            characterName,
+            GameProtocolEngine.CreateAddFriendResult(
+                ClientEncoding.GetBytes(friendName.Trim())),
+            cancellationToken);
+
         // The client can only create buddy entries from a snapshot, so the new friend has
         // to be part of a fresh list; an offline friend is marked right afterwards.
         await PushSnapshotAsync(accountName, characterName, cancellationToken);
@@ -114,54 +125,117 @@ public sealed class FriendService
             return;
         }
 
-        // An empty snapshot is what tells the client the removed entry is gone.
+        // 快照只负责刷新其余条目：通知通道（NOTI 56/54/55）在客户端全是 InsertOrUpdate，
+        // 永远删不掉条目；条目真正消失靠紧随其后的 type=1 REMOVE_FRIEND 结果包
+        // （客户端 0x414BA7 → CNRDFriendManager::RemoveEntryByName → vector::erase）。
         await PushSnapshotAsync(accountName, characterName, cancellationToken);
+        await SendAsync(
+            characterName,
+            GameProtocolEngine.CreateRemoveFriendResult(
+                ClientEncoding.GetBytes(friendName.Trim())),
+            cancellationToken);
     }
 
     /// <summary>
     /// Routes a whisper (CMD 17 type 1/7) to the live session that owns the target name.
     /// </summary>
-    public async Task WhisperAsync(
+    /// <remarks>
+    /// The target's main-chat line is the NOTI 12 the client resolves from the sender uid,
+    /// and both sides additionally get a NOTI 65 for their 1:1 window. The sender gets no
+    /// NOTI 12 echo: the client's own-uid branch is a design-time no-op (it looks up a 1:1
+    /// window pointer that is permanently NULL), so the echo would never render and would
+    /// only be recorded in the local whisper history.
+    /// </remarks>
+    public Task WhisperAsync(
         string characterName,
         ushort senderAreaUserId,
         GameServerPacket? senderAppearance,
         byte[] targetNameBytes,
         byte messageType,
         byte[] textBytes,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        RoutePeerMessageAsync(
+            characterName,
+            targetNameBytes,
+            textBytes,
+            GameProtocolEngine.CreateMessageNotification(
+                (GameMessageType)messageType,
+                senderAreaUserId,
+                textBytes),
+            senderAppearance,
+            cancellationToken);
+
+    /// <summary>
+    /// Routes a 1:1 window message (CMD 17 type 18) to the live session that owns the peer
+    /// name. Both sides get a NOTI 65 only: there is no main-chat line and no appearance
+    /// push, because the client finds its 1:1 window by name and keeps its history locally.
+    /// </summary>
+    public Task SendMessengerMessageAsync(
+        string characterName,
+        byte[] peerNameBytes,
+        byte[] textBytes,
+        CancellationToken cancellationToken = default) =>
+        RoutePeerMessageAsync(
+            characterName,
+            peerNameBytes,
+            textBytes,
+            mainChatLine: null,
+            receiverPreface: null,
+            cancellationToken);
+
+    private async Task RoutePeerMessageAsync(
+        string characterName,
+        byte[] peerNameBytes,
+        byte[] textBytes,
+        GameServerPacket? mainChatLine,
+        GameServerPacket? receiverPreface,
+        CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(targetNameBytes);
+        ArgumentNullException.ThrowIfNull(peerNameBytes);
         ArgumentNullException.ThrowIfNull(textBytes);
 
-        var targetName = ClientEncoding.GetString(targetNameBytes);
-        if (string.Equals(targetName, characterName, StringComparison.OrdinalIgnoreCase))
+        var peerName = ClientEncoding.GetString(peerNameBytes);
+        if (string.Equals(peerName, characterName, StringComparison.OrdinalIgnoreCase))
         {
             await SendNoticeAsync(characterName, "不能给自己发悄悄话", cancellationToken);
             return;
         }
 
-        if (!_channels.TryGetValue(targetName, out var target))
+        if (!_channels.TryGetValue(peerName, out var target))
         {
             await SendNoticeAsync(characterName, "对方不在线", cancellationToken);
             return;
         }
 
-        var message = GameProtocolEngine.CreateMessageNotification(
-            (GameMessageType)messageType,
-            senderAreaUserId,
-            textBytes);
-
         // The client turns the sender uid into a name only after it has seen that
-        // character's user-info record, so the appearance goes first. Both target-side
-        // sends are guarded per recipient: a dead target channel must still let the sender
-        // see its echo instead of an exception escaping the command handler.
-        if (senderAppearance is not null)
+        // character's user-info record, so the appearance goes first, then the main-chat
+        // line, then the 1:1 line. Every target-side send is guarded per recipient: a dead
+        // target channel must still let the sender see its own 1:1 line instead of an
+        // exception escaping the command handler.
+        if (receiverPreface is not null)
         {
-            await TrySendToChannelAsync(targetName, target, senderAppearance, cancellationToken);
+            await TrySendToChannelAsync(peerName, target, receiverPreface, cancellationToken);
         }
 
-        await TrySendToChannelAsync(targetName, target, message, cancellationToken);
-        await SendAsync(characterName, message, cancellationToken);
+        if (mainChatLine is not null)
+        {
+            await TrySendToChannelAsync(peerName, target, mainChatLine, cancellationToken);
+        }
+
+        // NOTI 65 carries a name, not a uid: the target's 1:1 window keys on the sender's
+        // name, while the sender's own window keys on the peer name it used.
+        await TrySendToChannelAsync(
+            peerName,
+            target,
+            GameProtocolEngine.CreateMessageOtherChannel(
+                ClientEncoding.GetBytes(characterName),
+                textBytes),
+            cancellationToken);
+
+        await SendAsync(
+            characterName,
+            GameProtocolEngine.CreateMessageOtherChannel(peerNameBytes, textBytes),
+            cancellationToken);
     }
 
     private async Task PushSnapshotAsync(
