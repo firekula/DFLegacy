@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using DFLegacy.Protocol;
 
@@ -47,6 +48,19 @@ public sealed class TownGhostService(
             equippedItems: [],
             equippedCreature: null,
             hasBlackDiamond: false);
+
+    /// <summary>
+    /// 幽灵没有真实 NAT 上报，但客户端只为对端表内的 uid 建立同镇角色：给它一个回环
+    /// 合成端点，它才会出现在同区玩家的地图上（端口 0，客户端无法拨通也无所谓）。
+    /// </summary>
+    public static GamePeerInfo CreateGhostPeer(ushort ghostId) => new(
+        ghostId,
+        IPAddress.Loopback,
+        IPAddress.Loopback,
+        PublicPort: 0,
+        AccountId: 0,
+        NatType: 2,
+        Mtu: 1472);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -99,6 +113,7 @@ public sealed class TownGhostService(
                         ghostId,
                         nameBytes,
                         ghost.Name,
+                        CreateGhostPeer(ghostId),
                         Path[0].X,
                         Path[0].Y,
                         Path[0].Direction,

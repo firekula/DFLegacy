@@ -132,6 +132,12 @@ public sealed class TownSyncOptions
     /// <summary>成员离开区域时使用的信号。</summary>
     public TownDepartureSignal DepartureSignal { get; set; } = TownDepartureSignal.UserAreaInactive;
 
+    /// <summary>
+    /// true = 成员变化时向同区成员下发 UDP 对端表（NOTI 11）。客户端只为表内的 uid
+    /// 建立同镇角色，缺了它同区其他人的头像不会出现；关掉可退回只发名单/外观的旧行为。
+    /// </summary>
+    public bool SendAreaPeerTable { get; set; } = true;
+
     /// <summary>每个成员每秒最多向同区转发的 USER_POSITION 条数；&lt;=0 表示不限制。</summary>
     public int MaxPositionForwardsPerSecond { get; set; } = 10;
 }

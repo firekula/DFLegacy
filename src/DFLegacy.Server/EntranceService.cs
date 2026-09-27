@@ -864,6 +864,20 @@ public sealed class EntranceService(
                         return;
                     }
 
+                    // The client only creates town actors for user ids listed in the
+                    // UDP peer table, so each member has to publish the endpoint it
+                    // registered with CMD 2 after login. This is the same lookup and
+                    // the same fixed account id the dungeon-selection path uses;
+                    // without a NAT report (for example a lobby-only session) the
+                    // member is passed as null and stays out of everybody's table.
+                    var localPeer = gameplayDatagram.TryGetPeerInfo(
+                        runtimeSession.Id,
+                        localUserId,
+                        accountId: 1,
+                        out var peer)
+                            ? peer
+                            : null;
+
                     townTicket = await townDirectory.EnterAsync(
                         new TownEntryRequest(
                             currentTownId,
@@ -873,6 +887,7 @@ public sealed class EntranceService(
                             activeCharacter.CharacterNo,
                             EncodeCharacterName(activeCharacter.Name),
                             activeCharacter.Name,
+                            localPeer,
                             currentX,
                             currentY,
                             currentDirection,

@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Net;
 using System.Text;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
@@ -14,6 +15,7 @@ internal static class TownSyncSmokeTests
         CheckGhostAppearance(check);
         await CheckGhostBroadcastAsync(check);
         await CheckDirectoryAsync(check);
+        await CheckAreaPeerTableAsync(check);
         await CheckPositionRateLimitAsync(check);
         await CheckDirectoryMigrationAsync(check);
         await CheckDirectoryConcurrencyAsync(check);
@@ -29,6 +31,8 @@ internal static class TownSyncSmokeTests
             "the default departure signal is USER_AREA with active zero");
         check(defaults.TownSync.MaxPositionForwardsPerSecond == 10,
             "position forwarding is capped per member and second");
+        check(defaults.TownSync.SendAreaPeerTable,
+            "the area UDP peer table is sent on membership changes by default");
         check(!defaults.Debug.TownGhost.Enabled, "the debug town ghost is off by default");
 
         var townUser = new GameTownUser(7, 474, 234, 5);
@@ -106,6 +110,20 @@ internal static class TownSyncSmokeTests
                 && BinaryPrimitives.ReadUInt32LittleEndian(appearance.Payload.AsSpan(5, 4)) == 4
                 && Encoding.ASCII.GetString(appearance.Payload, 9, 4) == "TEST",
                 "the published appearance carries the configured ghost name");
+
+            // 幽灵没有真实 NAT 上报：合成对端是它出现在同区地图上的前提。
+            var ghostTables = witness.Of(GameProtocolEngine.UdpPeerInfoNotification);
+            (ushort UserId, byte[] Local, byte[] Public, ushort PublicPort, uint AccountId, byte NatType, uint Mtu)[] ghostPeers =
+                ghostTables.Count > 0 ? ReadPeerTable(ghostTables[^1]) : [];
+            check(ghostPeers.Length == 1
+                && ghostPeers[0].UserId == expectedGhostId
+                && ghostPeers[0].Local.SequenceEqual(new byte[] { 127, 0, 0, 1 })
+                && ghostPeers[0].Public.SequenceEqual(new byte[] { 127, 0, 0, 1 })
+                && ghostPeers[0].PublicPort == 0
+                && ghostPeers[0].AccountId == 0
+                && ghostPeers[0].NatType == 2
+                && ghostPeers[0].Mtu == 1472,
+                "the ghost publishes a synthetic loopback peer so the client can render it");
         }
         finally
         {
@@ -303,6 +321,160 @@ internal static class TownSyncSmokeTests
                 CancellationToken.None) is null
             && ignored.Packets.Count == 0,
             "a disabled town directory does nothing at all");
+    }
+
+    /// <summary>
+    /// 缺陷回归：客户端只为 UDP 对端表（NOTI 11）里的 uid 建立同镇角色，只有名单/外观/位置
+    /// 时第二个角色不会出现在地图上。这里锁住「成员变化 → 刷新对端表」的每条路径：
+    /// 进入、离开、通道坏掉的强制移除，以及开关关闭时一个包都不发。
+    /// </summary>
+    private static async Task CheckAreaPeerTableAsync(Action<bool, string> check)
+    {
+        var options = new ServerOptions();
+        var directory = new TownSessionDirectory(
+            options,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        var alicePeer = CreatePeer(1, "10.0.0.1", "203.0.113.1", 40001, accountId: 7, natType: 1, mtu: 1400);
+        var bobPeer = CreatePeer(2, "10.0.0.2", "203.0.113.2", 40002, accountId: 8, natType: 2, mtu: 1472);
+
+        // Alice 独自进区：表里只有她自己（这是本任务指定的新增包）。
+        var alice = new FakeChannel();
+        var aliceTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 1, "Alice", alice, alicePeer),
+            CancellationToken.None);
+        check(aliceTicket is not null, "the peer-table member enters the area");
+        var aliceTables = alice.Of(GameProtocolEngine.UdpPeerInfoNotification);
+        check(aliceTables.Count == 1,
+            "a solo member with peer info still receives exactly one peer table");
+        var soloTable = ReadPeerTable(aliceTables[0]);
+        check(soloTable.Length == 1 && soloTable[0].UserId == 1,
+            "the solo table lists exactly the local member itself");
+        // 每条目 21 字节（uid u16 + local 4 + public 4 + port u16 + account u32 +
+        // natType u8 + mtu u32），前面 1 字节是条数：长度必须严丝合缝。
+        check(aliceTables[0].Payload.Length == 1 + 21,
+            "the solo table has exactly the count byte plus one 21-byte entry");
+        check(soloTable[0].Local.SequenceEqual(new byte[] { 10, 0, 0, 1 })
+            && soloTable[0].Public.SequenceEqual(new byte[] { 203, 0, 113, 1 })
+            && soloTable[0].PublicPort == 40001
+            && soloTable[0].AccountId == 7
+            && soloTable[0].NatType == 1
+            && soloTable[0].Mtu == 1400,
+            "the entry carries uid, local/public address, port, account, nat type and mtu in the writer's layout");
+
+        // Bob 进入：新人拿到「自己第一、老人随后」的表，老人拿到含新人的刷新表。
+        var bob = new FakeChannel();
+        var bobTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 2, "Bob", bob, bobPeer),
+            CancellationToken.None);
+        check(bobTicket is not null, "the second peer-table member enters the area");
+        var bobTables = bob.Of(GameProtocolEngine.UdpPeerInfoNotification);
+        check(bobTables.Count == 1, "the newcomer receives exactly one peer table");
+        var bobTable = ReadPeerTable(bobTables[0]);
+        check(bobTable.Length == 2 && bobTable[0].UserId == 2 && bobTable[1].UserId == 1,
+            "the newcomer's table lists itself first, then the existing member");
+        check(bobTables[0].Payload.Length == 1 + (2 * 21)
+            && bobTable[0].PublicPort == 40002
+            && bobTable[0].AccountId == 8
+            && bobTable[0].NatType == 2
+            && bobTable[0].Mtu == 1472
+            && bobTable[1].Local.SequenceEqual(new byte[] { 10, 0, 0, 1 })
+            && bobTable[1].Public.SequenceEqual(new byte[] { 203, 0, 113, 1 })
+            && bobTable[1].PublicPort == 40001
+            && bobTable[1].AccountId == 7
+            && bobTable[1].NatType == 1
+            && bobTable[1].Mtu == 1400,
+            "both entries decode field-for-field in the CreateUdpPeerInfo writer layout");
+        aliceTables = alice.Of(GameProtocolEngine.UdpPeerInfoNotification);
+        check(aliceTables.Count == 2, "the existing member receives one refreshed table");
+        check(ReadPeerTable(aliceTables[1]).Length == 2
+            && ReadPeerTable(aliceTables[1])[0].UserId == 1
+            && ReadPeerTable(aliceTables[1])[1].UserId == 2,
+            "the refreshed table lists the existing member first and now includes the newcomer");
+
+        // Carol 没有对端信息（例如没上报 NAT）：必须被跳过，而不是带着空端点进表。
+        var carol = new FakeChannel();
+        var carolTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 3, "Carol", carol),
+            CancellationToken.None);
+        var carolTables = carol.Of(GameProtocolEngine.UdpPeerInfoNotification);
+        check(carolTables.Count == 1, "a peer-less newcomer still gets the table of endpoints around it");
+        var carolTable = ReadPeerTable(carolTables[0]);
+        check(carolTable.Length == 2
+            && carolTable.All(peer => peer.UserId != 3)
+            && carolTable.Any(peer => peer.UserId == 1)
+            && carolTable.Any(peer => peer.UserId == 2),
+            "the peer-less member is skipped instead of being published with empty endpoints");
+        check(carolTables[0].Payload.Length == 1 + (2 * 21),
+            "skipping the peer-less member shrinks the table to exactly two entries");
+
+        // 离开：剩下的人拿到去掉离开者的刷新表，离开者自己不再收到任何表。
+        await directory.LeaveAsync(bobTicket, CancellationToken.None);
+        aliceTables = alice.Of(GameProtocolEngine.UdpPeerInfoNotification);
+        var aliceAfterDeparture = ReadPeerTable(aliceTables[^1]);
+        // Alice 的表依次来自：自己进入、Bob 进入、Carol 进入、Bob 离开。
+        check(aliceTables.Count == 4
+            && aliceAfterDeparture.Length == 1
+            && aliceAfterDeparture[0].UserId == 1,
+            "a departure refreshes the remaining member's table without the departed member");
+        var carolAfterDeparture = ReadPeerTable(
+            carol.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1]);
+        check(carolAfterDeparture.Length == 1 && carolAfterDeparture[0].UserId == 1,
+            "every remaining member sees the departure in its refreshed table");
+        check(bob.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 2,
+            "the departed member receives no peer table after leaving");
+
+        // 强制移除路径：Carol 的通道在下一次投递时抛异常，她会被目录摘除；
+        // 剩下的人的表里必须也删掉她（嵌套刷新用的是摘除后的现算名单）。
+        var davePeer = CreatePeer(4, "10.0.0.4", "203.0.113.4", 40004, accountId: 9, natType: 1, mtu: 1400);
+        var dave = new FakeChannel();
+        carol.FailNextSend = true;
+        await directory.EnterAsync(
+            CreateEntry(1, 1, 4, "Dave", dave, davePeer),
+            CancellationToken.None);
+        check(directory.GetMemberCount(1, 1) == 2,
+            "a peer-table send to a broken channel removes that member");
+        var aliceAfterForcedRemoval = ReadPeerTable(
+            alice.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1]);
+        check(aliceAfterForcedRemoval.Length == 2
+            && aliceAfterForcedRemoval[0].UserId == 1
+            && aliceAfterForcedRemoval[1].UserId == 4
+            && aliceAfterForcedRemoval.All(peer => peer.UserId != 3),
+            "the forced removal also refreshes the survivors' table without the broken member");
+
+        // 开关关闭：一个对端表包都不发，名单/走进度保持原样。
+        var disabledOptions = new ServerOptions();
+        disabledOptions.TownSync.SendAreaPeerTable = false;
+        var disabledDirectory = new TownSessionDirectory(
+            disabledOptions,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+        var first = new FakeChannel();
+        var firstTicket = await disabledDirectory.EnterAsync(
+            CreateEntry(2, 1, 1, "First", first, alicePeer),
+            CancellationToken.None);
+        var second = new FakeChannel();
+        await disabledDirectory.EnterAsync(
+            CreateEntry(2, 1, 2, "Second", second, bobPeer),
+            CancellationToken.None);
+        await disabledDirectory.LeaveAsync(firstTicket, CancellationToken.None);
+        check(first.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 0
+            && second.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 0,
+            "disabling SendAreaPeerTable sends no peer table on entry or departure");
+        check(first.Of(GameProtocolEngine.AreaUsersNotification).Count == 1
+            && second.Of(GameProtocolEngine.AreaUsersNotification).Count == 1,
+            "disabling SendAreaPeerTable keeps the per-member AREA_USERS roster untouched");
+        var firstAreas = first.Of(GameProtocolEngine.UserAreaNotification);
+        check(firstAreas.Count == 1
+            && firstAreas[0].Payload[0] == 2
+            && firstAreas[0].Payload[9] == 1,
+            "disabling the peer table keeps the existing member's join signal");
+        var secondAreas = second.Of(GameProtocolEngine.UserAreaNotification);
+        check(secondAreas.Count == 1
+            && secondAreas[0].Payload[0] == 1
+            && secondAreas[0].Payload[9] == 0,
+            "disabling the peer table keeps the USER_AREA(active=0) departure signal");
     }
 
     /// <summary>
@@ -525,8 +697,9 @@ internal static class TownSyncSmokeTests
         byte areaId,
         ushort areaUserId,
         string name,
-        FakeChannel channel) =>
-        CreateEntry(townId, areaId, areaUserId, name, channel, Guid.NewGuid());
+        FakeChannel channel,
+        GamePeerInfo? peer = null) =>
+        CreateEntry(townId, areaId, areaUserId, name, channel, Guid.NewGuid(), peer);
 
     private static TownEntryRequest CreateEntry(
         byte townId,
@@ -534,7 +707,8 @@ internal static class TownSyncSmokeTests
         ushort areaUserId,
         string name,
         FakeChannel channel,
-        Guid characterId)
+        Guid characterId,
+        GamePeerInfo? peer = null)
     {
         return new TownEntryRequest(
             townId,
@@ -544,10 +718,54 @@ internal static class TownSyncSmokeTests
             areaUserId,
             Encoding.ASCII.GetBytes(name),
             name,
+            peer,
             474,
             234,
             5,
             channel.SendAsync);
+    }
+
+    private static GamePeerInfo CreatePeer(
+        ushort userId,
+        string localAddress,
+        string publicAddress,
+        ushort publicPort,
+        uint accountId,
+        byte natType,
+        uint mtu) => new(
+        userId,
+        IPAddress.Parse(localAddress),
+        IPAddress.Parse(publicAddress),
+        publicPort,
+        accountId,
+        natType,
+        mtu);
+
+    /// <summary>
+    /// 按 CreateUdpPeerInfo 的写入顺序解码对端表（条数 u8，然后每条：uid u16、local 4B、
+    /// public 4B、publicPort u16、accountId u32、natType u8、mtu u32），用于逐字段钉住布局。
+    /// </summary>
+    private static (ushort UserId, byte[] Local, byte[] Public, ushort PublicPort, uint AccountId, byte NatType, uint Mtu)[]
+        ReadPeerTable(GameServerPacket packet)
+    {
+        var payload = packet.Payload;
+        var count = payload[0];
+        var peers = new (ushort, byte[], byte[], ushort, uint, byte, uint)[count];
+        var offset = 1;
+        for (var index = 0; index < count; index++)
+        {
+            peers[index] = (
+                BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(offset, 2)),
+                payload.AsSpan(offset + 2, 4).ToArray(),
+                payload.AsSpan(offset + 6, 4).ToArray(),
+                BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(offset + 10, 2)),
+                BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(offset + 12, 4)),
+                payload[offset + 16],
+                BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(offset + 17, 4)));
+            offset += 21;
+        }
+
+        return peers;
     }
 
     private static GameServerPacket CreateAppearance(ushort userId, string name) =>

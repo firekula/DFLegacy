@@ -6,6 +6,8 @@ namespace DFLegacy.Server;
 /// <summary>
 /// 目录成员注册请求。外观包由成员所在会话构建（它手里才有装备/宠物状态），
 /// 目录只保存与重放，不读存档、不反向访问别的会话状态。
+/// Peer 是该成员登录后上报的 UDP 端点（可能为 null，例如没有 NAT 上报的大厅会话）；
+/// 目录用它拼镇内对端表，客户端只为表内的 uid 建立同镇角色。
 /// </summary>
 public sealed record TownEntryRequest(
     byte TownId,
@@ -15,6 +17,7 @@ public sealed record TownEntryRequest(
     uint CharacterNo,
     byte[] CharacterNameBytes,
     string DisplayName,
+    GamePeerInfo? Peer,
     short X,
     short Y,
     byte Direction,
@@ -53,6 +56,7 @@ internal sealed class TownMember
     public required byte[] CharacterNameBytes { get; init; }
     public required string DisplayName { get; init; }
     public required Func<GameServerPacket, CancellationToken, ValueTask> SendAsync { get; init; }
+    public GamePeerInfo? Peer { get; init; }
     public GameServerPacket? Appearance { get; set; }
     public short X { get; set; }
     public short Y { get; set; }
@@ -123,6 +127,7 @@ public sealed class TownSessionDirectory(
             CharacterNameBytes = request.CharacterNameBytes,
             DisplayName = request.DisplayName,
             SendAsync = request.SendAsync,
+            Peer = request.Peer,
             X = request.X,
             Y = request.Y,
             Direction = request.Direction,
@@ -143,7 +148,7 @@ public sealed class TownSessionDirectory(
             if (_membersByCharacter.TryGetValue(request.CharacterId, out var previous))
             {
                 migratedFrom = previous;
-                var remaining = RemoveMemberCore(previous, broadcastDeparture: true);
+                var remaining = RemoveMemberCore(previous);
                 if (remaining.Length > 0)
                 {
                     departureNotice = CreateDepartureNotice(previous, remaining);
@@ -196,6 +201,9 @@ public sealed class TownSessionDirectory(
                 migratedFrom.TownId,
                 migratedFrom.AreaId,
                 options.TownSync.DepartureSignal);
+
+            // 迁移也是一次成员变化：旧区剩下的人要把迁移者从对端表里删掉。
+            await SendAreaPeerTableAsync(departureTargets, cancellationToken);
         }
 
         // 老人：只收增量 USER_AREA(active=1)。新人的外观由本人会话在
@@ -238,6 +246,12 @@ public sealed class TownSessionDirectory(
                 await SendAsync(member, appearance, cancellationToken);
             }
         }
+
+        // 对端表在名单/外观之后：客户端只为表内的 uid 建立同镇角色，名单与外观本身
+        // 不带 NAT 端点，缺了这张表第二个角色不会出现在地图上。每人拿到的表都把自己
+        // 排在最前（与名单里新人排第一一致），老人拿到的是含新人的刷新表。
+        // 这是新增通知，上述既有报文的顺序与内容都不变。
+        await SendAreaPeerTableAsync([member, .. existing], cancellationToken);
 
         logger.LogInformation(
             "Town member {Name} (uid {AreaUserId}) entered {TownId}/{AreaId}; members={Count}, foreignAppearances={Appearances}.",
@@ -351,50 +365,53 @@ public sealed class TownSessionDirectory(
         bool broadcastDeparture,
         CancellationToken cancellationToken)
     {
-        TownMember[] targets = [];
-        GameServerPacket? notice = null;
+        TownMember[] remaining;
 
         await _structuralGate.WaitAsync(cancellationToken);
         try
         {
-            var remaining = RemoveMemberCore(member, broadcastDeparture);
-            if (remaining.Length > 0)
-            {
-                notice = CreateDepartureNotice(member, remaining);
-                targets = remaining;
-            }
+            remaining = RemoveMemberCore(member);
         }
         finally
         {
             _structuralGate.Release();
         }
 
-        if (notice is null)
+        // 区域已回收或成员本就不在：没有存活目标需要通知或刷新。
+        if (remaining.Length == 0)
         {
             return;
         }
 
-        foreach (var target in targets)
+        if (broadcastDeparture)
         {
-            await SendAsync(target, notice, cancellationToken);
+            var notice = CreateDepartureNotice(member, remaining);
+            foreach (var target in remaining)
+            {
+                await SendAsync(target, notice, cancellationToken);
+            }
+
+            logger.LogInformation(
+                "Town member {Name} (uid {AreaUserId}) left {TownId}/{AreaId}; members={Count}, signal={Signal}.",
+                member.DisplayName,
+                member.AreaUserId,
+                member.TownId,
+                member.AreaId,
+                remaining.Length,
+                options.TownSync.DepartureSignal);
         }
 
-        logger.LogInformation(
-            "Town member {Name} (uid {AreaUserId}) left {TownId}/{AreaId}; members={Count}, signal={Signal}.",
-            member.DisplayName,
-            member.AreaUserId,
-            member.TownId,
-            member.AreaId,
-            targets.Length,
-            options.TownSync.DepartureSignal);
+        // 任何离开都要刷新对端表（强制移除路径见 RemoveMemberLocallyAsync），
+        // 否则剩下的人会继续把离开者当成镇内 UDP 对端。
+        await SendAreaPeerTableAsync(remaining, cancellationToken);
     }
 
     /// <summary>
-    /// 在结构锁内摘除成员并回收空区域，返回出锁后需要通知离开的剩余成员（无需通知时为空）。
+    /// 在结构锁内摘除成员并回收空区域，返回出锁后仍在区域里的成员（区域已空或成员本就不在时为空）。
     /// 调用方必须已持有 _structuralGate —— 摘除、登记与空区回收共用同一把结构锁，
     /// 否则并发的 EnterAsync 会在回收与登记之间插入，留下谁也看不到的孤儿成员。
     /// </summary>
-    private TownMember[] RemoveMemberCore(TownMember member, bool broadcastDeparture)
+    private TownMember[] RemoveMemberCore(TownMember member)
     {
         // 按「键 + 实例」移除：迁移后旧 ticket 的陈旧移除不能摘掉新登记的同角色成员。
         if (!_membersByCharacter.TryRemove(
@@ -439,7 +456,7 @@ public sealed class TownSessionDirectory(
             return [];
         }
 
-        return broadcastDeparture ? remaining : [];
+        return remaining;
     }
 
     private GameServerPacket CreateDepartureNotice(TownMember member, TownMember[] remaining) =>
@@ -457,15 +474,97 @@ public sealed class TownSessionDirectory(
 
     private async ValueTask RemoveMemberLocallyAsync(TownMember member)
     {
+        TownMember[] remaining;
+
         await _structuralGate.WaitAsync(CancellationToken.None);
         try
         {
-            RemoveMemberCore(member, broadcastDeparture: false);
+            remaining = RemoveMemberCore(member);
         }
         finally
         {
             _structuralGate.Release();
         }
+
+        // 强制移除（通道已坏）不适用于普通离开信号，但同样是一次成员变化：剩下的人
+        // 必须把坏通道的 uid 从对端表里删掉。刷新用 None —— 触发它的发送可能正处于
+        // 取消状态，而这次投递没有可取消的会话语义。
+        await SendAreaPeerTableAsync(remaining, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// 向给定成员逐个发镇内 UDP 对端表（NOTI 11）：客户端只为表内的 uid 建立同镇角色，
+    /// 名单与外观本身不带 NAT 端点，单靠它们第二个角色不会出现在地图上。每个目标都按
+    /// 发送当时的存活成员现算，并把自己排在最前（与 AREA_USERS 里自己排第一一致）——
+    /// 投递过程中可能有成员因通道坏掉被摘除，冻结的名单会把刚离开的 uid 又写回别人的表里。
+    /// 没有端点信息的成员（例如未上报 NAT 的大厅会话）被跳过；一个都不剩时整张表不发。
+    /// </summary>
+    private async Task SendAreaPeerTableAsync(
+        IReadOnlyList<TownMember> recipients,
+        CancellationToken cancellationToken)
+    {
+        if (!options.TownSync.SendAreaPeerTable)
+        {
+            return;
+        }
+
+        foreach (var recipient in recipients)
+        {
+            var peers = BuildPeerTable(recipient);
+            if (peers.Length == 0)
+            {
+                continue;
+            }
+
+            // 表头条数是 u8：区域成员超过 255 时协议放不下（名单的条数是 u16，不受影响）。
+            // 截断并告警，而不是让 CreateUdpPeerInfo 抛异常打断整个进出流程；
+            // 每人自己的端点排在最前，截断不会把收件人自己丢掉。
+            if (peers.Length > byte.MaxValue)
+            {
+                logger.LogWarning(
+                    "Area {TownId}/{AreaId} has {Count} members with endpoints; the client peer table holds at most {Limit}.",
+                    recipient.TownId,
+                    recipient.AreaId,
+                    peers.Length,
+                    byte.MaxValue);
+                peers = peers[..byte.MaxValue];
+            }
+
+            await SendAsync(
+                recipient,
+                GameProtocolEngine.CreateUdpPeerInfo(peers),
+                cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// 现算一个成员应看到的对端表。目标已经不在区域里（自身通道坏掉被强制移除，或刷新
+    /// 途中离开）时返回空表：既不对死通道重发，也不把自己的旧端点写进别人的表。
+    /// </summary>
+    private GamePeerInfo[] BuildPeerTable(TownMember recipient)
+    {
+        var members = SnapshotMembers(recipient.TownId, recipient.AreaId);
+        var self = members.FirstOrDefault(member => ReferenceEquals(member, recipient));
+        if (self is null)
+        {
+            return [];
+        }
+
+        var peers = new List<GamePeerInfo>(members.Length);
+        if (self.Peer is not null)
+        {
+            peers.Add(self.Peer);
+        }
+
+        foreach (var member in members)
+        {
+            if (!ReferenceEquals(member, recipient) && member.Peer is not null)
+            {
+                peers.Add(member.Peer);
+            }
+        }
+
+        return [.. peers];
     }
 
     private async ValueTask<bool> SendAsync(
