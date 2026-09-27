@@ -86,6 +86,7 @@ internal static class FriendSmokeTests
             "an empty friend name is rejected");
         var longName = new byte[2 + 4 + 31];
         BinaryPrimitives.WriteUInt32LittleEndian(longName.AsSpan(2, 4), 31);
+        longName.AsSpan(6).Fill((byte)'a'); // 全非零：长度上限必须是唯一的拒绝理由
         check(!GameProtocolEngine.TryReadFriendName(longName, out _),
             "a name longer than thirty bytes is rejected");
         var embeddedNul = new byte[2 + 4 + 3];
