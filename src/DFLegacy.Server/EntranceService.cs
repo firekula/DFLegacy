@@ -14,6 +14,7 @@ public sealed class EntranceService(
     CharacterSessionRegistry characterSessions,
     AreaUserIdPool areaUserIds,
     TownSessionDirectory townDirectory,
+    FriendService friendService,
     SkillCatalog skillCatalog,
     QuestCatalog questCatalog,
     CharacterExperienceCatalog experienceCatalog,
@@ -794,6 +795,17 @@ public sealed class EntranceService(
                         currentDungeonRoomY);
                 }
 
+                // 当前角色的 mode-0 外观包：悄悄话路由要把它交给目标会话，
+                // 使目标客户端能把发送者 uid 还原成角色名。
+                GameServerPacket SendTownAppearancePacket() =>
+                    CreateTownAppearancePacket(
+                        activeCharacter!,
+                        localUserId,
+                        equippedInventory.Values,
+                        creatureInventory.Values,
+                        HasActivePremiumService(
+                            GameProtocolEngine.BlackDiamondServiceType));
+
                 async Task SendTownAppearanceAsync(bool waitForTownActor = false)
                 {
                     if (activeCharacter is null || currentDungeonId != 0)
@@ -815,13 +827,7 @@ public sealed class EntranceService(
                         // keep the transition de-duplicated.
                         forceDeathNotification: waitForTownActor);
 
-                    var appearance = CreateTownAppearancePacket(
-                        activeCharacter,
-                        localUserId,
-                        equippedInventory.Values,
-                        creatureInventory.Values,
-                        HasActivePremiumService(
-                            GameProtocolEngine.BlackDiamondServiceType));
+                    var appearance = SendTownAppearancePacket();
                     await appearance.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, appearance);
@@ -3432,6 +3438,15 @@ public sealed class EntranceService(
                             // town, so deliver the current character's mailbox
                             // snapshot as part of character initialization.
                             await SendMailboxStateAsync(notifyNewMail: true);
+
+                            // 角色数据包都发完后登记好友通道：推好友名单快照、
+                            // 给好友播报上线，并把本会话的发包入口交给好友服务。
+                            await friendService.AttachChannelAsync(
+                                accountName,
+                                activeCharacter.Name,
+                                runtimeSession.Id,
+                                packet => SendTownPacketAsync(packet, serverToken),
+                                serverToken);
                             continue;
                         }
 
@@ -3452,6 +3467,33 @@ public sealed class EntranceService(
                             // original server routes it to the sender's village
                             // and area, and success is represented by NOTI 12;
                             // there is no separate successful CMD 17 reply.
+                            // 类型 1/7 是悄悄话：正文之后还跟着目标角色名，由好友服务
+                            // 路由到目标会话并把发送者外观一并交给对方。
+                            if (messageRequest.MessageType is (byte)GameMessageType.Type01LightGreen
+                                    or (byte)GameMessageType.Type07LightGreen)
+                            {
+                                if (!GameProtocolEngine.TryReadWhisperTarget(
+                                        request.Body,
+                                        messageRequest.MessageBytes.Length,
+                                        out var whisperTarget))
+                                {
+                                    logger.LogWarning(
+                                        "Rejected whisper without a target name from character {CharacterId}.",
+                                        activeCharacter.Id);
+                                    continue;
+                                }
+
+                                await friendService.WhisperAsync(
+                                    activeCharacter.Name,
+                                    localUserId,
+                                    SendTownAppearancePacket(),
+                                    whisperTarget,
+                                    messageRequest.MessageType,
+                                    messageRequest.MessageBytes,
+                                    serverToken);
+                                continue;
+                            }
+
                             if (messageRequest.MessageType != (byte)GameMessageType.Type03White)
                             {
                                 logger.LogWarning(
@@ -3487,6 +3529,46 @@ public sealed class EntranceService(
                                 currentAreaId,
                                 Math.Max(chatRecipients, 1),
                                 ClientEncoding.GetString(messageRequest.MessageBytes));
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.AddFriendCommand)
+                        {
+                            if (activeCharacter is null
+                                || !GameProtocolEngine.TryReadFriendName(request.Body, out var friendName))
+                            {
+                                logger.LogWarning(
+                                    "Rejected malformed ADD_FRIEND for character {CharacterId}.",
+                                    activeCharacter?.Id);
+                                continue;
+                            }
+
+                            await friendService.AddFriendAsync(
+                                accountName,
+                                activeCharacter.Name,
+                                ClientEncoding.GetString(friendName),
+                                serverToken);
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.RemoveFriendCommand)
+                        {
+                            if (activeCharacter is null
+                                || !GameProtocolEngine.TryReadFriendName(request.Body, out var friendName))
+                            {
+                                logger.LogWarning(
+                                    "Rejected malformed REMOVE_FRIEND for character {CharacterId}.",
+                                    activeCharacter?.Id);
+                                continue;
+                            }
+
+                            await friendService.RemoveFriendAsync(
+                                accountName,
+                                activeCharacter.Name,
+                                ClientEncoding.GetString(friendName),
+                                serverToken);
                             continue;
                         }
 
@@ -12503,6 +12585,15 @@ public sealed class EntranceService(
                     localUserId = 0;
                 }
 
+                if (activeCharacter is not null)
+                {
+                    // sessionId 用同一个连接会话 id：旧会话的延迟清理不会误删新会话的通道。
+                    await friendService.DetachChannelAsync(
+                        activeCharacter.Name,
+                        runtimeSession.Id,
+                        CancellationToken.None);
+                }
+
                 characterSessions.Release(activeCharacterLease);
                 activeCharacterLease = null;
                 gameplayDatagram.UnregisterChannelSession(runtimeSession.Id);
@@ -14088,8 +14179,27 @@ public sealed class EntranceService(
             body.AsSpan(
                 payloadOffset + sizeof(byte) + sizeof(ushort) + sizeof(uint),
                 sizeof(uint)));
-        if (messageLength is 0 or > 0xFF
-            || messageLength != body.Length - messageOffset)
+        if (messageLength is 0 or > 0xFF)
+        {
+            return false;
+        }
+
+        // 悄悄话（类型 1/7）的正文后面还有一段"目标名长度 + 目标名"尾缀，
+        // 其余类型仍要求正文正好吃掉剩余全部载荷。
+        var expectsTargetName = messageType is 1 or 7;
+        var expectedRemainder = expectsTargetName
+            ? body.Length - messageOffset - (int)messageLength
+            : 0;
+        if (!expectsTargetName && messageLength != body.Length - messageOffset)
+        {
+            return false;
+        }
+
+        if (expectsTargetName && (expectedRemainder < sizeof(uint) + 1
+                || !GameProtocolEngine.TryReadWhisperTarget(
+                    body,
+                    (int)messageLength,
+                    out _)))
         {
             return false;
         }

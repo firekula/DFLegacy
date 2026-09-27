@@ -42,6 +42,8 @@ builder.Services.AddSingleton<JsonGameStore>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
+// 好友在线索引按角色名跨连接共享，必须单例：EntranceService 的所有会话共用它。
+builder.Services.AddSingleton<FriendService>();
 builder.Services.AddSingleton(serviceProvider =>
 {
     // 区用户 id 池只接受 1..65535。MaximumUsers 以前超出这个范围只是无意义，现在会让
