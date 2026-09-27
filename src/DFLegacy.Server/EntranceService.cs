@@ -9958,6 +9958,16 @@ public sealed class EntranceService(
                                 currentDirection = request.Body[6];
                                 currentMovementValue = BinaryPrimitives.ReadUInt16LittleEndian(
                                     request.Body.AsSpan(7, sizeof(ushort)));
+
+                                // 同区其他人看到我移动。不回发给自己：本地客户端
+                                // 自己拥有自己的移动，回发会把它扯回原位。
+                                await townDirectory.UpdatePositionAsync(
+                                    townTicket,
+                                    currentX,
+                                    currentY,
+                                    currentDirection,
+                                    currentMovementValue,
+                                    serverToken);
                             }
 
                             // The local client already owns its movement.
