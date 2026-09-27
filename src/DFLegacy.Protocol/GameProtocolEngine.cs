@@ -72,6 +72,8 @@ public sealed record GameTownUser(
     short X,
     short Y,
     byte Direction);
+// 好友列表条目：名字为 CP949/GBK 编码的原始字节（列表内为定长 30 字节字段）。
+public sealed record GameFriendEntry(byte[] NameBytes, bool Online);
 public sealed record GameDungeonMonster(
     byte MapListIndex,
     ushort UniqueId,
@@ -353,6 +355,13 @@ public static class GameProtocolEngine
     public const byte SetPlayResultCommand = 49;
     public const byte DropItemCommand = 50;
     public const byte DecreaseDurabilityCommand = 51;
+    // 好友系统（对照 DNF.exe 1.0.1.9 的 id→名字表，见 .superpowers/sdd/friends-protocol-recon.md）
+    public const byte FriendInfoNotification = 52;   // 本版本客户端空实现，禁止使用
+    public const byte BuddyInNotification = 54;      // 好友上线/状态更新（只更新已有条目）
+    public const byte BuddyOutNotification = 55;     // 好友下线（条目状态置 -1）
+    public const byte BuddyConnListNotification = 56; // 好友列表快照（唯一能新建条目的通知）
+    public const byte AddFriendCommand = 63;
+    public const byte RemoveFriendCommand = 64;
     public const byte CeraShopBuyCommand = 67;
     public const byte GenerateCeraTicketCommand = 68;
     public const byte ScoreScrollStateCommand = 72;
@@ -2263,6 +2272,149 @@ public static class GameProtocolEngine
             NotificationPacketType,
             AreaUsersNotification,
             payload.ToArray());
+    }
+
+    private const int FriendListNameFieldLength = 30;
+    private const int FriendListRecordLength = 42;
+
+    public static GameServerPacket CreateFriendList(IReadOnlyList<GameFriendEntry> friends)
+    {
+        ArgumentNullException.ThrowIfNull(friends);
+        if (friends.Count > byte.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(friends));
+        }
+
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)friends.Count);
+        foreach (var friend in friends)
+        {
+            if (friend.NameBytes.Length is 0 or > FriendListNameFieldLength)
+            {
+                throw new ArgumentException(
+                    "Friend names must contain 1-30 encoded bytes.",
+                    nameof(friends));
+            }
+
+            // 记录布局（客户端 0x425668 逐字段读入）：
+            // [0] 状态（0xFF = 保持原状态；离线由 BUDDY_OUT 置 -1），[1] 标志，[2] 保留，
+            // [3..32] 名字（定长 30、NUL 填充），[0x21] u16、[0x23] u8、[0x24] u8 打包、
+            // [0x25] u32、[0x29] u8 —— 后五个字段语义待真机确认，先全 0。
+            writer.Write((byte)0);                 // state
+            writer.Write((byte)0);                 // flag
+            writer.Write((byte)0);                 // reserved
+            var nameField = new byte[FriendListNameFieldLength];
+            friend.NameBytes.CopyTo(nameField, 0);
+            writer.Write(nameField);
+            writer.Write((ushort)0);
+            writer.Write((byte)0);
+            writer.Write((byte)0);
+            writer.Write(0u);
+            writer.Write((byte)0);
+        }
+
+        return new GameServerPacket(
+            NotificationPacketType,
+            BuddyConnListNotification,
+            payload.ToArray());
+    }
+
+    public static GameServerPacket CreateBuddyIn(byte state, byte[] nameBytes, byte flag = 0)
+    {
+        ArgumentNullException.ThrowIfNull(nameBytes);
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write(state);
+        WriteLengthPrefixedBytes(writer, nameBytes);
+        writer.Write(flag);
+        return new GameServerPacket(
+            NotificationPacketType,
+            BuddyInNotification,
+            payload.ToArray());
+    }
+
+    public static GameServerPacket CreateBuddyOut(byte[] nameBytes, byte flag = 0)
+    {
+        ArgumentNullException.ThrowIfNull(nameBytes);
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)0); // 客户端读入后忽略
+        WriteLengthPrefixedBytes(writer, nameBytes);
+        writer.Write(flag);
+        return new GameServerPacket(
+            NotificationPacketType,
+            BuddyOutNotification,
+            payload.ToArray());
+    }
+
+    /// <summary>解析 ADD_FRIEND/REMOVE_FRIEND 的载荷（Body 从序列号起算）。</summary>
+    public static bool TryReadFriendName(byte[] body, out byte[] nameBytes)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        const int payloadOffset = sizeof(ushort);
+        nameBytes = [];
+        if (body.Length < payloadOffset + sizeof(uint))
+        {
+            return false;
+        }
+
+        var nameLength = BinaryPrimitives.ReadUInt32LittleEndian(
+            body.AsSpan(payloadOffset, sizeof(uint)));
+        if (nameLength is 0 or > FriendListNameFieldLength
+            || nameLength != body.Length - payloadOffset - sizeof(uint))
+        {
+            return false;
+        }
+
+        var candidate = body.AsSpan(payloadOffset + sizeof(uint), (int)nameLength).ToArray();
+        if (candidate.Contains((byte)0))
+        {
+            return false;
+        }
+
+        nameBytes = candidate;
+        return true;
+    }
+
+    /// <summary>解析悄悄话（CMD 17 类型 1/7）正文之后追加的目标角色名。</summary>
+    public static bool TryReadWhisperTarget(
+        byte[] body,
+        int messageLength,
+        out byte[] targetNameBytes)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        const int payloadOffset = sizeof(ushort);
+        var targetLengthOffset = payloadOffset
+            + sizeof(byte)      // message type
+            + sizeof(ushort)    // target
+            + sizeof(uint)      // slot
+            + sizeof(uint)      // message length
+            + messageLength;
+        targetNameBytes = [];
+        if (body.Length < targetLengthOffset + sizeof(uint))
+        {
+            return false;
+        }
+
+        var targetLength = BinaryPrimitives.ReadUInt32LittleEndian(
+            body.AsSpan(targetLengthOffset, sizeof(uint)));
+        if (targetLength is 0 or > FriendListNameFieldLength
+            || targetLength != body.Length - targetLengthOffset - sizeof(uint))
+        {
+            return false;
+        }
+
+        var candidate = body.AsSpan(
+            targetLengthOffset + sizeof(uint),
+            (int)targetLength).ToArray();
+        if (candidate.Contains((byte)0))
+        {
+            return false;
+        }
+
+        targetNameBytes = candidate;
+        return true;
     }
 
     public static GameServerPacket CreateUdpPeerInfo(
