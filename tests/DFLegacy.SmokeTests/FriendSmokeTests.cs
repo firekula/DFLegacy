@@ -739,8 +739,9 @@ internal static class FriendSmokeTests
                     && ReadMessageText(selfWhisperPackets[0]) == "不能给自己发悄悄话",
                 "whispering to yourself answers 不能给自己发悄悄话 instead of delivering twice");
 
-            // 加好友成功：只发 type=1 id 63（客户端据此追加条目并提示"[名字]已被添加到
-            // 好友名单"）。不能再补快照：NOTI 56 无条件追加，会把老好友全部再插一份。
+            // 加好友成功：先发 type=1 id 63 追加条目（客户端提示"[名字]已被添加到好友
+            // 名单"），再按对方在线与否补一条 BUDDY_IN/BUDDY_OUT 就地定状态；绝不发快照
+            // ——NOTI 56 无条件追加，会把老好友全部再插一份。
             var daveBeforeAdd = davePackets.Count;
             await service.AddFriendAsync("dave", "戴夫", "艾琳", CancellationToken.None);
             var addTail = davePackets.Skip(daveBeforeAdd).ToArray();
