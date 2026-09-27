@@ -627,11 +627,11 @@ internal static class TownSyncSmokeTests
         var aliceRosters = rosterAlice.Of(GameProtocolEngine.AreaUsersNotification);
         check(aliceRosters.Count == 2,
             "the existing member receives exactly one refreshed roster when a member joins");
-        var joinedRoster = ReadRoster(aliceRosters[1]);
-        check(joinedRoster.Length == 2
-            && joinedRoster.Any(user => user.UserId == 1)
-            && joinedRoster.Any(user => user.UserId == 2),
-            "the refreshed roster contains both the existing member and the newcomer");
+        var afterBobJoined = ReadRoster(aliceRosters[1]);
+        check(afterBobJoined.Length == 2
+            && afterBobJoined[0].UserId == 1
+            && afterBobJoined[1].UserId == 2,
+            "the refreshed roster contains both members with the recipient first and the newcomer second");
         var bobRosters = rosterBob.Of(GameProtocolEngine.AreaUsersNotification);
         check(bobRosters.Count == 1
             && ReadRoster(bobRosters[0]).Length == 2
@@ -639,24 +639,56 @@ internal static class TownSyncSmokeTests
             && ReadRoster(bobRosters[0])[1].UserId == 1,
             "the newcomer's own initial roster keeps its old shape and self-first order");
 
-        await rosterDirectory.LeaveAsync(rosterBobTicket, CancellationToken.None);
+        // 第三个成员：刷新名单必须按接收者各自「自己排第一」，而不是共享一份新人第一的快照。
+        var rosterCarol = new FakeChannel();
+        var rosterCarolTicket = await rosterDirectory.EnterAsync(
+            CreateEntry(3, 1, 3, "Carol", rosterCarol),
+            CancellationToken.None);
         aliceRosters = rosterAlice.Of(GameProtocolEngine.AreaUsersNotification);
         check(aliceRosters.Count == 3
+            && ReadRoster(aliceRosters[^1]).Select(user => user.UserId).SequenceEqual(new ushort[] { 1, 2, 3 }),
+            "the first member's refresh after a third join starts with itself, then the others in join order");
+        bobRosters = rosterBob.Of(GameProtocolEngine.AreaUsersNotification);
+        check(bobRosters.Count == 2
+            && ReadRoster(bobRosters[^1]).Select(user => user.UserId).SequenceEqual(new ushort[] { 2, 1, 3 }),
+            "the second member's refresh starts with itself, proving each roster is rebuilt per recipient");
+        var carolRosters = rosterCarol.Of(GameProtocolEngine.AreaUsersNotification);
+        check(carolRosters.Count == 1
+            && ReadRoster(carolRosters[0]).Select(user => user.UserId).SequenceEqual(new ushort[] { 3, 1, 2 }),
+            "the third member's initial roster also starts with itself, then the existing members");
+
+        await rosterDirectory.LeaveAsync(rosterCarolTicket, CancellationToken.None);
+        aliceRosters = rosterAlice.Of(GameProtocolEngine.AreaUsersNotification);
+        bobRosters = rosterBob.Of(GameProtocolEngine.AreaUsersNotification);
+        check(aliceRosters.Count == 4
+            && ReadRoster(aliceRosters[^1]).Select(user => user.UserId).SequenceEqual(new ushort[] { 1, 2 }),
+            "a departure refreshes the survivor's roster with itself first and without the departed member");
+        check(bobRosters.Count == 3
+            && ReadRoster(bobRosters[^1]).Select(user => user.UserId).SequenceEqual(new ushort[] { 2, 1 }),
+            "every survivor sees itself first in the departure refresh");
+        check(rosterCarol.Of(GameProtocolEngine.AreaUsersNotification).Count == 1,
+            "the departed member receives no roster refresh");
+
+        await rosterDirectory.LeaveAsync(rosterBobTicket, CancellationToken.None);
+        aliceRosters = rosterAlice.Of(GameProtocolEngine.AreaUsersNotification);
+        check(aliceRosters.Count == 5
             && ReadRoster(aliceRosters[^1]).Length == 1
             && ReadRoster(aliceRosters[^1])[0].UserId == 1
             && ReadRoster(aliceRosters[^1])[0].Active == 1,
-            "a departure refreshes the survivor's roster to only the surviving active member");
-        check(rosterBob.Of(GameProtocolEngine.AreaUsersNotification).Count == 1,
-            "the departed member receives no roster refresh");
+            "the last survivor's refresh keeps a single active self entry");
         check(rosterAlice.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
             {
                 GameProtocolEngine.AreaUsersNotification,
                 GameProtocolEngine.UserAreaNotification,
                 GameProtocolEngine.AreaUsersNotification,
                 GameProtocolEngine.UserAreaNotification,
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserAreaNotification,
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserAreaNotification,
                 GameProtocolEngine.AreaUsersNotification
             }),
-            "the departure signal still precedes the refreshed roster");
+            "every departure signal still precedes its refreshed roster");
 
         // ---- 迁移：旧区剩下的人也要拿到收窄后的名单 ----
         var migrationOptions = new ServerOptions();

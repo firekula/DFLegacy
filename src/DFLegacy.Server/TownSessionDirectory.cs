@@ -66,6 +66,14 @@ internal sealed class TownMember
     public long PositionWindowStartMs { get; set; }
     public int PositionForwardsInWindow { get; set; }
 
+    /// <summary>
+    /// 是否已把自己的加入增量（USER_AREA active=1）发给当时的同区成员。客户端只为已有
+    /// USERINFO 记录的 uid 建立同镇角色，这条增量必须排在该成员的外观之后（见
+    /// RefreshAppearanceAsync），且每人只介绍一次。成员作用域：迁移会新建实例、自动归零，
+    /// 迁移后的新同区成员因此仍能拿到一次「外观 → 加入」。
+    /// </summary>
+    public bool JoinAnnounced { get; set; }
+
     public GameTownUser ToTownUser() => new(AreaUserId, X, Y, Direction);
 }
 
@@ -204,12 +212,7 @@ public sealed class TownSessionDirectory(
 
             // 迁移同样是一次成员变化：开关打开时旧区剩下的人还要拿到收窄后的名单
             // （默认的离开信号只让 uid 失效，名单里可能仍写着迁移者）。
-            await SendRosterRefreshAsync(
-                departureTargets,
-                migratedFrom.TownId,
-                migratedFrom.AreaId,
-                [.. departureTargets.Select(other => other.ToTownUser())],
-                cancellationToken);
+            await SendRosterRefreshAsync(departureTargets, cancellationToken);
 
             // 迁移也是一次成员变化：旧区剩下的人要把迁移者从对端表里删掉。
             await SendAreaPeerTableAsync(departureTargets, cancellationToken);
@@ -227,26 +230,16 @@ public sealed class TownSessionDirectory(
             await SendAsync(other, joinArea, cancellationToken);
         }
 
-        // 名单快照：新人排第一（与单人时代的单元素名单一致；对端表也按同样约定把自己排最前）。
-        // 新人名单与老人的刷新名单共用这一份，避免同一时刻出现两种成员顺序。
-        var allMembers = new GameTownUser[existing.Length + 1];
-        allMembers[0] = member.ToTownUser();
-        for (var index = 0; index < existing.Length; index++)
-        {
-            allMembers[index + 1] = existing[index].ToTownUser();
-        }
-
         // 开关打开时老人再收一份含新人的完整名单：既有实现里老人的名单停在进入那一刻，
-        // 不刷新的话它看不到新 uid。追加在既有的增量 USER_AREA 之后，旧报文顺序不变。
-        await SendRosterRefreshAsync(
-            existing,
+        // 不刷新的话它看不到新 uid。刷新名单按收件人现算、收件人自己排第一
+        // （见 SendRosterRefreshAsync），追加在既有的增量 USER_AREA 之后，旧报文顺序不变。
+        await SendRosterRefreshAsync(existing, cancellationToken);
+
+        // 新人：名单（自己排在第一位，与单人时代的单元素名单一致）→ 每个老人的 USER_AREA（开关）→ 其他人的外观。
+        var rosterPacket = GameProtocolEngine.CreateAreaUsers(
             request.TownId,
             request.AreaId,
-            allMembers,
-            cancellationToken);
-
-        // 新人：名单（自己排在第一位）→ 每个老人的 USER_AREA（开关）→ 其他人的外观。
-        var rosterPacket = GameProtocolEngine.CreateAreaUsers(request.TownId, request.AreaId, allMembers);
+            [member.ToTownUser(), .. existing.Select(other => other.ToTownUser())]);
         var foreignAppearances = existing
             .Select(other => other.Appearance)
             .Where(appearance => appearance is not null)
@@ -448,12 +441,7 @@ public sealed class TownSessionDirectory(
         }
 
         // 开关打开时离开也要刷新名单：剩下的人手里的名单仍然写着已离开的 uid。
-        await SendRosterRefreshAsync(
-            remaining,
-            member.TownId,
-            member.AreaId,
-            [.. remaining.Select(other => other.ToTownUser())],
-            cancellationToken);
+        await SendRosterRefreshAsync(remaining, cancellationToken);
 
         // 任何离开都要刷新对端表（强制移除路径见 RemoveMemberLocallyAsync），
         // 否则剩下的人会继续把离开者当成镇内 UDP 对端。
@@ -547,16 +535,17 @@ public sealed class TownSessionDirectory(
     }
 
     /// <summary>
-    /// 开关打开时向给定成员重发区域完整名单（AREA_USERS）。既有实现只在进入时给新人
+    /// 开关打开时向给定成员逐个重发区域完整名单（AREA_USERS）。既有实现只在进入时给新人
     /// 发名单，老人的名单永远停在进入那一刻；成员变化后刷新，客户端才能从名单里看到
-    /// 新出现/已离开的 uid。名单内容由调用方按当时的快照传入（与离开信号同一来源），
-    /// recipients 为空（单人区域）时不发任何包，保证单人流程一个新增报文都没有。
+    /// 新出现/已离开的 uid。与 BuildPeerTable 同款做法：每个收件人的名单都按发送当时的
+    /// 存活成员现算，并把**收件人自己排第一**、其余按名单登记顺序——「名单第一条是本人」
+    /// 是本文件与 AREA_USERS 的既有约定，共享一份「新人第一」的快照会让加入事件的收件人
+    /// 把第 0 条误当成自己的角色并重建/错位。现算顺带保证：投递过程中收件人自己已不在
+    /// 区域里（通道坏掉被摘除或刷新途中离开）时跳过，不对死通道重发，也不把刚离开的 uid
+    /// 写回别人的名单。recipients 为空（单人区域）时不发任何包。
     /// </summary>
     private async Task SendRosterRefreshAsync(
         IReadOnlyList<TownMember> recipients,
-        byte townId,
-        byte areaId,
-        IReadOnlyList<GameTownUser> users,
         CancellationToken cancellationToken)
     {
         if (!options.TownSync.RefreshRosterOnMembershipChange || recipients.Count == 0)
@@ -564,10 +553,30 @@ public sealed class TownSessionDirectory(
             return;
         }
 
-        var packet = GameProtocolEngine.CreateAreaUsers(townId, areaId, users);
         foreach (var recipient in recipients)
         {
-            await SendAsync(recipient, packet, cancellationToken);
+            var members = SnapshotMembers(recipient.TownId, recipient.AreaId);
+            var self = members.FirstOrDefault(candidate => ReferenceEquals(candidate, recipient));
+            if (self is null)
+            {
+                continue;
+            }
+
+            var users = new GameTownUser[members.Length];
+            users[0] = self.ToTownUser();
+            var index = 1;
+            foreach (var member in members)
+            {
+                if (!ReferenceEquals(member, recipient))
+                {
+                    users[index++] = member.ToTownUser();
+                }
+            }
+
+            await SendAsync(
+                recipient,
+                GameProtocolEngine.CreateAreaUsers(recipient.TownId, recipient.AreaId, users),
+                cancellationToken);
         }
     }
 
