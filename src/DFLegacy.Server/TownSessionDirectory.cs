@@ -218,24 +218,16 @@ public sealed class TownSessionDirectory(
             await SendAreaPeerTableAsync(departureTargets, cancellationToken);
         }
 
-        // 老人：只收增量 USER_AREA(active=1)。新人的外观由本人会话在
-        // SendTownAppearanceAsync 里通过 RefreshAppearanceAsync 广播，
-        // 避免同一次进入把外观发两遍。
-        var joinArea = GameProtocolEngine.CreateUserArea(
-            request.TownId,
-            request.AreaId,
-            member.ToTownUser());
-        foreach (var other in existing)
-        {
-            await SendAsync(other, joinArea, cancellationToken);
-        }
-
-        // 开关打开时老人再收一份含新人的完整名单：既有实现里老人的名单停在进入那一刻，
+        // 老人不在这里收新人的加入增量：客户端只为已有 USERINFO 记录的 uid 建立同镇角色，
+        // 此刻新人的外观还没广播（它由本人会话在 SendTownAppearanceAsync 里通过
+        // RefreshAppearanceAsync 发出），抢先发 USER_AREA 会被客户端静默丢掉。加入增量
+        // 改由 RefreshAppearanceAsync 在同一个成员的外观之后补发一次（见 JoinAnnounced）。
+        // 开关打开时老人先收一份含新人的完整名单：既有实现里老人的名单停在进入那一刻，
         // 不刷新的话它看不到新 uid。刷新名单按收件人现算、收件人自己排第一
-        // （见 SendRosterRefreshAsync），追加在既有的增量 USER_AREA 之后，旧报文顺序不变。
+        // （见 SendRosterRefreshAsync）。
         await SendRosterRefreshAsync(existing, cancellationToken);
 
-        // 新人：名单（自己排在第一位，与单人时代的单元素名单一致）→ 每个老人的 USER_AREA（开关）→ 其他人的外观。
+        // 新人：同区已有成员的外观 → 名单（自己排在第一位，与单人时代的单元素名单一致）。
         var rosterPacket = GameProtocolEngine.CreateAreaUsers(
             request.TownId,
             request.AreaId,
@@ -258,6 +250,8 @@ public sealed class TownSessionDirectory(
 
         if (options.TownSync.ForeignAppearanceBeforeRoster)
         {
+            // 默认顺序。客户端对 AREA_USERS/USER_AREA 里没有 USERINFO 记录的 uid 会静默
+            // 跳过该条目，旧顺序（名单在前）下老人永远建不出同镇角色。
             foreach (var appearance in foreignAppearances)
             {
                 await SendAsync(member, appearance, cancellationToken);
@@ -274,6 +268,7 @@ public sealed class TownSessionDirectory(
         }
         else
         {
+            // 对照实验用的旧顺序：名单 → 补发的 USER_AREA → 外观。
             await SendAsync(member, rosterPacket, cancellationToken);
             foreach (var areaPacket in foreignAreaPackets)
             {
@@ -359,15 +354,37 @@ public sealed class TownSessionDirectory(
 
         member.Appearance = appearance;
 
-        foreach (var other in SnapshotMembers(member.TownId, member.AreaId))
-        {
-            if (other.CharacterId == member.CharacterId)
-            {
-                continue;
-            }
+        // 收件人只算一次：加入增量必须发给刚拿到这份外观的同一批人，投递路上新进来的
+        // 成员不能先收到「加入」却没收到外观（顺序反了客户端同样会丢掉这条增量）。
+        var others = SnapshotMembers(member.TownId, member.AreaId)
+            .Where(other => other.CharacterId != member.CharacterId)
+            .ToArray();
 
+        foreach (var other in others)
+        {
             await SendAsync(other, appearance, cancellationToken);
         }
+
+        // 新人进入时不同步发加入增量（见 EnterAsync）：客户端只为已有 USERINFO 记录的 uid
+        // 建立同镇角色，所以这条 USER_AREA 必须紧跟本成员的外观之后，每个成员只介绍一次；
+        // 后续换装/宠物变化重播外观时不再重复。当时没有同区观众（单人区域）不算介绍过：
+        // 下一次广播仍是「外观 → 加入」，第一个到场的人也拿得到完整顺序。
+        if (member.JoinAnnounced || others.Length == 0)
+        {
+            return;
+        }
+
+        var joinArea = GameProtocolEngine.CreateUserArea(
+            member.TownId,
+            member.AreaId,
+            member.ToTownUser(),
+            active: true);
+        foreach (var other in others)
+        {
+            await SendAsync(other, joinArea, cancellationToken);
+        }
+
+        member.JoinAnnounced = true;
     }
 
     public async Task<int> BroadcastToAreaAsync(

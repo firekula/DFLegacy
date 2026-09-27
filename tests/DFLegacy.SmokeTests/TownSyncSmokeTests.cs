@@ -26,8 +26,8 @@ internal static class TownSyncSmokeTests
     {
         var defaults = new ServerOptions();
         check(defaults.TownSync.Enabled, "town sync is enabled by default");
-        check(!defaults.TownSync.ForeignAppearanceBeforeRoster,
-            "the roster is sent before foreign appearances by default");
+        check(defaults.TownSync.ForeignAppearanceBeforeRoster,
+            "foreign appearances precede the roster by default so every roster uid already has a USERINFO record");
         check(defaults.TownSync.DepartureSignal == TownDepartureSignal.UserAreaInactive,
             "the default departure signal is USER_AREA with active zero");
         check(defaults.TownSync.MaxPositionForwardsPerSecond == 10,
@@ -218,19 +218,35 @@ internal static class TownSyncSmokeTests
         var sharedRoster = ReadRoster(bob.Of(GameProtocolEngine.AreaUsersNotification)[0]);
         check(sharedRoster.Length == 2 && sharedRoster[0].UserId == 2 && sharedRoster[1].UserId == 1,
             "the newcomer roster carries itself first and the existing member second");
-        // Alice 只在 Bob 加入时收到一条 USER_AREA（她自己进入时不会收到自己的）。
+        // 加入增量不在进入时发：此刻客户端还没有 Bob 的 USERINFO 记录，这条 USER_AREA 会被丢掉。
+        check(alice.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
+            "the existing member gets no join signal before the newcomer's appearance exists");
+
+        var appearance = CreateAppearance(2, "Bob");
+        await directory.RefreshAppearanceAsync(bobTicket, appearance, CancellationToken.None);
+        // 老人一侧的完整顺序：自己的名单 → 新人的外观 → 新人的加入增量。外观必须先到，
+        // 客户端才有 Bob 的 USERINFO 记录来承接后面的 USER_AREA。
+        check(alice.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
+            {
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserInfoNotification,
+                GameProtocolEngine.UserAreaNotification
+            }),
+            "the existing member receives the newcomer's appearance before its join USER_AREA");
         var joinPacket = alice.Of(GameProtocolEngine.UserAreaNotification);
         check(joinPacket.Count == 1
             && joinPacket[0].Payload[0] == 2
             && joinPacket[0].Payload[9] == 1,
-            "existing members receive USER_AREA(active=1) for the newcomer");
-
-        var appearance = CreateAppearance(2, "Bob");
-        await directory.RefreshAppearanceAsync(bobTicket, appearance, CancellationToken.None);
-        check(alice.Of(GameProtocolEngine.UserInfoNotification).Count == 1,
-            "an appearance refresh reaches the other member");
+            "the join USER_AREA(active=1) arrives exactly once, right after the appearance");
         check(bob.Of(GameProtocolEngine.UserInfoNotification).Count == 0,
             "an appearance refresh never echoes back to its owner");
+
+        // 换装/宠物变化反复刷新外观：外观重播，加入增量不再重复。
+        await directory.RefreshAppearanceAsync(bobTicket, CreateAppearance(2, "Bob"), CancellationToken.None);
+        await directory.RefreshAppearanceAsync(bobTicket, CreateAppearance(2, "Bob"), CancellationToken.None);
+        check(alice.Of(GameProtocolEngine.UserInfoNotification).Count == 3
+            && alice.Of(GameProtocolEngine.UserAreaNotification).Count == 1,
+            "later appearance refreshes replay the appearance but never repeat the join signal");
 
         await directory.UpdatePositionAsync(bobTicket, 500, 300, 7, 120, CancellationToken.None);
         var moved = alice.Of(GameProtocolEngine.UserPositionNotification);
@@ -456,8 +472,15 @@ internal static class TownSyncSmokeTests
             CreateEntry(2, 1, 1, "First", first, alicePeer),
             CancellationToken.None);
         var second = new FakeChannel();
-        await disabledDirectory.EnterAsync(
+        var secondTicket = await disabledDirectory.EnterAsync(
             CreateEntry(2, 1, 2, "Second", second, bobPeer),
+            CancellationToken.None);
+        // 加入增量跟着 Second 的外观广播走：开关不打开时也不在进入时抢先发。
+        check(first.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
+            "disabling the peer table does not bring the join signal forward to entry time");
+        await disabledDirectory.RefreshAppearanceAsync(
+            secondTicket,
+            CreateAppearance(2, "Second"),
             CancellationToken.None);
         await disabledDirectory.LeaveAsync(firstTicket, CancellationToken.None);
         check(first.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 0
@@ -466,6 +489,13 @@ internal static class TownSyncSmokeTests
         check(first.Of(GameProtocolEngine.AreaUsersNotification).Count == 1
             && second.Of(GameProtocolEngine.AreaUsersNotification).Count == 1,
             "disabling SendAreaPeerTable keeps the per-member AREA_USERS roster untouched");
+        check(first.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
+            {
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserInfoNotification,
+                GameProtocolEngine.UserAreaNotification
+            }),
+            "disabling the peer table keeps the appearance → join order for the existing member");
         var firstAreas = first.Of(GameProtocolEngine.UserAreaNotification);
         check(firstAreas.Count == 1
             && firstAreas[0].Payload[0] == 2
@@ -479,13 +509,13 @@ internal static class TownSyncSmokeTests
     }
 
     /// <summary>
-    /// 对称性开关（Task 13）：客户端可能要求「区域名单里有该 uid」且「收到该 uid 的
-    /// USER_AREA」同时成立才建立同镇角色。这里分别钉住两个开关的报文、内容与顺序，
-    /// 并锁死默认关闭时逐字节与改动前一致、单人成员一个新增包都不收。
+    /// 对称性开关（Task 13）：客户端只为已有 USERINFO 记录的 uid 建立同镇角色，所以顺序
+    /// 必须是「外观 → 名单」与「外观 → 加入增量」。这里钉住默认顺序（逐字节）、两个开关
+    /// 各自的报文与顺序，以及单人成员一个新增包都不收。
     /// </summary>
     private static async Task CheckSymmetricIntroductionAsync(Action<bool, string> check)
     {
-        // ---- 默认关闭：报文序列与改动前逐字节一致 ----
+        // ---- 默认配置：外观先于名单，加入增量跟在外观之后（逐个报文逐字节钉死） ----
         var defaultOptions = new ServerOptions();
         check(!defaultOptions.TownSync.SendUserAreaForExistingMembers
             && !defaultOptions.TownSync.RefreshRosterOnMembershipChange,
@@ -501,38 +531,68 @@ internal static class TownSyncSmokeTests
         var bobTownUser = new GameTownUser(2, 474, 234, 5);
 
         var alice = new FakeChannel();
-        await defaultDirectory.EnterAsync(
+        var aliceTicket = await defaultDirectory.EnterAsync(
             CreateEntry(1, 1, 1, "Alice", alice, alicePeer),
             CancellationToken.None);
+        // Alice 先广播外观：新人进区时拿到的就是这份已存档的外观快照。
+        await defaultDirectory.RefreshAppearanceAsync(
+            aliceTicket,
+            CreateAppearance(1, "Alice"),
+            CancellationToken.None);
+
         var bob = new FakeChannel();
         var bobTicket = await defaultDirectory.EnterAsync(
             CreateEntry(1, 1, 2, "Bob", bob, bobPeer),
             CancellationToken.None);
+        // 新人默认顺序：老人外观（先建 USERINFO 记录）→ 名单 → 对端表。
+        // 客户端对名单里没有记录的 uid 会静默跳过，所以外观必须排在名单前面。
+        check(PacketsMatch(bob,
+            [
+                CreateAppearance(1, "Alice"),
+                GameProtocolEngine.CreateAreaUsers(1, 1, [bobTownUser, aliceTownUser]),
+                GameProtocolEngine.CreateUdpPeerInfo([bobPeer, alicePeer])
+            ]),
+            "by default the newcomer receives the existing member's appearance before its roster");
+
+        await defaultDirectory.RefreshAppearanceAsync(
+            bobTicket,
+            CreateAppearance(2, "Bob"),
+            CancellationToken.None);
+        // 换装/宠物变化再刷两次：外观重播，加入增量只发一次。
+        await defaultDirectory.RefreshAppearanceAsync(
+            bobTicket,
+            CreateAppearance(2, "Bob"),
+            CancellationToken.None);
+        await defaultDirectory.RefreshAppearanceAsync(
+            bobTicket,
+            CreateAppearance(2, "Bob"),
+            CancellationToken.None);
         await defaultDirectory.LeaveAsync(bobTicket, CancellationToken.None);
 
-        // Alice 的旧序列：单人名单 → 单人对端表 → Bob 加入的 USER_AREA → 含 Bob 的对端表
-        // → Bob 离开的 USER_AREA → 只剩自己的对端表。新开关关闭时不得多一个字节。
+        // Alice 的默认序列：单人名单 → 单人对端表 → 含 Bob 的对端表 → Bob 的外观 →
+        // 一次加入 USER_AREA → 两次重播外观（没有第二次加入）→ Bob 离开的 USER_AREA
+        // → 只剩自己的对端表。
         check(PacketsMatch(alice,
             [
                 GameProtocolEngine.CreateAreaUsers(1, 1, [aliceTownUser]),
                 GameProtocolEngine.CreateUdpPeerInfo([alicePeer]),
-                GameProtocolEngine.CreateUserArea(1, 1, bobTownUser),
                 GameProtocolEngine.CreateUdpPeerInfo([alicePeer, bobPeer]),
+                CreateAppearance(2, "Bob"),
+                GameProtocolEngine.CreateUserArea(1, 1, bobTownUser),
+                CreateAppearance(2, "Bob"),
+                CreateAppearance(2, "Bob"),
                 GameProtocolEngine.CreateUserArea(1, 1, bobTownUser, active: false),
                 GameProtocolEngine.CreateUdpPeerInfo([alicePeer])
             ]),
-            "with both switches off the existing member gets byte-for-byte the pre-change packet sequence");
-        check(PacketsMatch(bob,
-            [
-                GameProtocolEngine.CreateAreaUsers(1, 1, [bobTownUser, aliceTownUser]),
-                GameProtocolEngine.CreateUdpPeerInfo([bobPeer, alicePeer])
-            ]),
-            "with both switches off the newcomer gets byte-for-byte the pre-change packet sequence");
+            "the existing member gets appearance → join once, later appearances without a second join, then the departure signal");
         check(alice.Of(GameProtocolEngine.AreaUsersNotification).Count == 1
-            && bob.Of(GameProtocolEngine.AreaUsersNotification).Count == 1
-            && bob.Of(GameProtocolEngine.UserAreaNotification).Count == 0
+            && bob.Of(GameProtocolEngine.AreaUsersNotification).Count == 1,
+            "with both switches off no roster refresh is sent");
+        check(bob.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
+            "with both switches off the newcomer receives no foreign USER_AREA packet");
+        check(alice.Of(GameProtocolEngine.UserInfoNotification).Count == 3
             && alice.Of(GameProtocolEngine.UserAreaNotification).Count == 2,
-            "with both switches off no roster refresh and no foreign USER_AREA packets appear");
+            "repeated appearance refreshes replay only the appearance and leave the join signal at one");
 
         // ---- SendUserAreaForExistingMembers：新人补收每个老人的 USER_AREA ----
         var areaOptions = new ServerOptions();
@@ -555,24 +615,24 @@ internal static class TownSyncSmokeTests
         var areaAliceTicket = await areaDirectory.EnterAsync(
             CreateEntry(2, 2, 1, "Alice", areaAlice),
             CancellationToken.None);
-        // 先给 Alice 存一份外观：用来验证 USER_AREA 夹在名单与外观之间。
+        // 先给 Alice 存一份外观：新人要先拿到它，补发的 USER_AREA 追加在名单之后。
         await areaDirectory.RefreshAppearanceAsync(
             areaAliceTicket,
             CreateAppearance(1, "Alice"),
             CancellationToken.None);
 
         var areaBob = new FakeChannel();
-        await areaDirectory.EnterAsync(
+        var areaBobTicket = await areaDirectory.EnterAsync(
             CreateEntry(2, 2, 2, "Bob", areaBob),
             CancellationToken.None);
         var bobOrder = areaBob.Packets.Select(packet => packet.ProtocolId).ToArray();
         check(bobOrder.SequenceEqual(new byte[]
             {
+                GameProtocolEngine.UserInfoNotification,
                 GameProtocolEngine.AreaUsersNotification,
-                GameProtocolEngine.UserAreaNotification,
-                GameProtocolEngine.UserInfoNotification
+                GameProtocolEngine.UserAreaNotification
             }),
-            "with the USER_AREA switch on the newcomer sees roster, then each foreign USER_AREA, then the appearances");
+            "with the USER_AREA switch on the newcomer sees the appearance, then the roster, then each foreign USER_AREA");
 
         var foreignAreas = areaBob.Of(GameProtocolEngine.UserAreaNotification);
         check(foreignAreas.Count == 1
@@ -587,7 +647,18 @@ internal static class TownSyncSmokeTests
         check(foreignAreas.All(packet =>
                 BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(0, 2)) != 2),
             "the newcomer never receives a USER_AREA for itself");
-        // 老人一侧只保留既有的增量 USER_AREA(active=1)，该开关不给他们加包。
+        // 老人一侧不加包：加入增量仍只在 Bob 自己广播外观之后出现一次（该开关只补新人那侧）。
+        await areaDirectory.RefreshAppearanceAsync(
+            areaBobTicket,
+            CreateAppearance(2, "Bob"),
+            CancellationToken.None);
+        check(areaAlice.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
+            {
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserInfoNotification,
+                GameProtocolEngine.UserAreaNotification
+            }),
+            "the USER_AREA switch leaves the existing member with appearance → join only");
         var areaAliceJoins = areaAlice.Of(GameProtocolEngine.UserAreaNotification);
         check(areaAliceJoins.Count == 1
             && areaAliceJoins[0].Payload[0] == 2
@@ -616,13 +687,19 @@ internal static class TownSyncSmokeTests
         var rosterBobTicket = await rosterDirectory.EnterAsync(
             CreateEntry(3, 1, 2, "Bob", rosterBob),
             CancellationToken.None);
+        // 加入增量跟着 Bob 的外观广播走：进区时先到刷新名单，随后才是「外观 → 加入」。
+        await rosterDirectory.RefreshAppearanceAsync(
+            rosterBobTicket,
+            CreateAppearance(2, "Bob"),
+            CancellationToken.None);
         check(rosterAlice.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
             {
                 GameProtocolEngine.AreaUsersNotification,
-                GameProtocolEngine.UserAreaNotification,
-                GameProtocolEngine.AreaUsersNotification
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserInfoNotification,
+                GameProtocolEngine.UserAreaNotification
             }),
-            "the existing member's join signal keeps its place and the refreshed roster is appended after it");
+            "with the refresh switch on the refreshed roster arrives at entry and the join follows the newcomer's appearance");
 
         var aliceRosters = rosterAlice.Of(GameProtocolEngine.AreaUsersNotification);
         check(aliceRosters.Count == 2,
@@ -679,8 +756,8 @@ internal static class TownSyncSmokeTests
         check(rosterAlice.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
             {
                 GameProtocolEngine.AreaUsersNotification,
-                GameProtocolEngine.UserAreaNotification,
                 GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserInfoNotification,
                 GameProtocolEngine.UserAreaNotification,
                 GameProtocolEngine.AreaUsersNotification,
                 GameProtocolEngine.UserAreaNotification,
@@ -688,9 +765,9 @@ internal static class TownSyncSmokeTests
                 GameProtocolEngine.UserAreaNotification,
                 GameProtocolEngine.AreaUsersNotification
             }),
-            "every departure signal still precedes its refreshed roster");
+            "the join still follows the newcomer's appearance, and every departure signal still precedes its refreshed roster");
 
-        // ---- 迁移：旧区剩下的人也要拿到收窄后的名单 ----
+        // ---- 迁移：加入增量随新成员对象重来，旧区仍拿到离开信号 ----
         var migrationOptions = new ServerOptions();
         migrationOptions.TownSync.RefreshRosterOnMembershipChange = true;
         var migrationDirectory = new TownSessionDirectory(
@@ -698,26 +775,64 @@ internal static class TownSyncSmokeTests
             TimeProvider.System,
             NullLogger<TownSessionDirectory>.Instance);
 
-        var witness = new FakeChannel();
+        var witnessOld = new FakeChannel();
         await migrationDirectory.EnterAsync(
-            CreateEntry(4, 1, 9, "Witness", witness),
+            CreateEntry(4, 1, 9, "WitnessOld", witnessOld),
+            CancellationToken.None);
+        var witnessNew = new FakeChannel();
+        await migrationDirectory.EnterAsync(
+            CreateEntry(4, 2, 8, "WitnessNew", witnessNew),
             CancellationToken.None);
         var moverId = Guid.NewGuid();
-        await migrationDirectory.EnterAsync(
+        var oldMoverTicket = await migrationDirectory.EnterAsync(
             CreateEntry(4, 1, 1, "Mover", new FakeChannel(), moverId),
             CancellationToken.None);
-        await migrationDirectory.EnterAsync(
+        // 迁移前已在旧区广播过外观：旧成员对象上的 JoinAnnounced 已经是 true。
+        await migrationDirectory.RefreshAppearanceAsync(
+            oldMoverTicket,
+            CreateAppearance(1, "Mover"),
+            CancellationToken.None);
+        var witnessOldAreas = witnessOld.Of(GameProtocolEngine.UserAreaNotification);
+        check(witnessOldAreas.Count == 1
+            && witnessOldAreas[0].Payload[0] == 1
+            && witnessOldAreas[0].Payload[9] == 1,
+            "the mover announces its join to the old area after its appearance");
+
+        var newMoverTicket = await migrationDirectory.EnterAsync(
             CreateEntry(4, 2, 5, "Mover", new FakeChannel(), moverId),
             CancellationToken.None);
+        await migrationDirectory.RefreshAppearanceAsync(
+            newMoverTicket,
+            CreateAppearance(5, "Mover"),
+            CancellationToken.None);
 
-        var witnessRosters = witness.Of(GameProtocolEngine.AreaUsersNotification);
+        // 迁移后的成员对象是新的：JoinAnnounced 自动归零，新区观众同样拿到「外观 → 加入」。
+        check(witnessNew.Packets.Select(packet => packet.ProtocolId).SequenceEqual(new byte[]
+            {
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.AreaUsersNotification,
+                GameProtocolEngine.UserInfoNotification,
+                GameProtocolEngine.UserAreaNotification
+            }),
+            "the new area's witness receives the migrated member's appearance before its join");
+        var witnessNewAreas = witnessNew.Of(GameProtocolEngine.UserAreaNotification);
+        check(witnessNewAreas.Count == 1
+            && witnessNewAreas[0].Payload[0] == 5
+            && witnessNewAreas[0].Payload[9] == 1,
+            "the migration resets JoinAnnounced so the new area gets exactly one join increment");
+        check(witnessOld.Of(GameProtocolEngine.UserInfoNotification).Count == 1
+            && witnessOld.Of(GameProtocolEngine.UserAreaNotification).Count == 2,
+            "the old area keeps its appearance → join and then the departure signal");
+
+        var witnessRosters = witnessOld.Of(GameProtocolEngine.AreaUsersNotification);
         check(witnessRosters.Count == 3,
             "a migration refreshes the old area's roster when the switch is on");
         var migratedRoster = ReadRoster(witnessRosters[^1]);
         check(migratedRoster.Length == 1 && migratedRoster[0].UserId == 9,
             "the migrated member is dropped from the old area's refreshed roster");
-        var witnessAreas = witness.Of(GameProtocolEngine.UserAreaNotification);
-        check(witnessAreas.Count == 2 && witnessAreas[1].Payload[9] == 0,
+        check(witnessOld.Packets[^2].ProtocolId == GameProtocolEngine.UserAreaNotification
+            && witnessOld.Packets[^1].ProtocolId == GameProtocolEngine.AreaUsersNotification
+            && witnessOld.Packets[^2].Payload[9] == 0,
             "the migration departure signal is still sent before the refreshed roster");
 
         // ---- 两个开关同时打开：单人成员仍然只收一条旧名单 ----
@@ -846,11 +961,16 @@ internal static class TownSyncSmokeTests
         check(newTicket!.AreaUserId == 5 && oldTicket!.AreaUserId == 1,
             "the old and new tickets keep their own area user ids");
 
+        // 迁移者从未广播外观，因此这里只有离开信号、没有加入增量（加入增量跟在外观之后）。
         var witnessAreas = witness.Of(GameProtocolEngine.UserAreaNotification);
-        check(witnessAreas.Count == 2
-            && witnessAreas[1].Payload[0] == 1
-            && witnessAreas[1].Payload[9] == 0,
+        check(witnessAreas.Count == 1
+            && witnessAreas[0].Payload[0] == 1
+            && witnessAreas[0].Payload[9] == 0,
             "the old area is told the migrated member left with USER_AREA(active=0)");
+        // 尾沿：没有外观广播就没有加入增量。加入增量只可能从 RefreshAppearanceAsync 发出，
+        // 一个从不广播外观的成员对同区其他人只留下名单/对端表，事后也不会补一条 USER_AREA。
+        check(witnessAreas.All(packet => packet.Payload[9] == 0),
+            "a member that never broadcasts an appearance is never announced with a join increment");
         var newRoster = ReadRoster(newChannel.Of(GameProtocolEngine.AreaUsersNotification)[0]);
         check(newRoster.Length == 1 && newRoster[0].UserId == 5,
             "the new area roster contains only the migrated member");

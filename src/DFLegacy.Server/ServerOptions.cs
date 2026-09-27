@@ -124,10 +124,12 @@ public sealed class TownSyncOptions
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    /// true = 给新人先发同区已有成员的外观、再发 AREA_USERS 名单；
-    /// 默认 false（名单在前，与本地角色"先名单后外观"的既有顺序一致）。
+    /// true（默认）= 给新人先发同区已有成员的外观（USERINFO mode 0），再发 AREA_USERS 名单。
+    /// 客户端处理 AREA_USERS/USER_AREA 时会先查该 uid 的 USERINFO 记录，查不到就静默跳过
+    /// 该条目，所以名单在前时新人建不出任何同镇角色（真机症状：同区两人互不可见）；
+    /// 必须先有记录、后给区域条目。保留开关是为了能切回旧顺序做对照实验，不要再当作默认。
     /// </summary>
-    public bool ForeignAppearanceBeforeRoster { get; set; } = false;
+    public bool ForeignAppearanceBeforeRoster { get; set; } = true;
 
     /// <summary>成员离开区域时使用的信号。</summary>
     public TownDepartureSignal DepartureSignal { get; set; } = TownDepartureSignal.UserAreaInactive;

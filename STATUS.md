@@ -96,14 +96,16 @@
 
 服务端按同一城镇同一区域维护在线成员，并向同区投递名单、外观、位置与区域聊天；进入区域（登录、回城、换区）时注册，装备变化广播外观，进入副本、返回角色选择或断线时离开区域；`SEND_MESSAGE`（类型 3）与两条宠物喊话命令改为按区域广播，副本内保留只回显自己的兜底。**客户端上的可见性尚未验证，计划为 Task 11**；`/api/admin/characters` 已返回 `townId`/`areaId`/`areaUserId`（不在城镇区域时均为 null），后台角色下拉显示 `城镇N/区域M`，便于核对两人是否同区。
 
+**逆向确认的客户端顺序要求（「两人同区互不可见」的根因）**：客户端只从 `USER_AREA`（通知 23）/`AREA_USERS`（通知 24）建立外来角色，且两条通知都会先按 uid 查 `USERINFO`（通知 2，mode 0）记录、查不到就静默跳过该条目；而创建记录的路径只有 `USERINFO mode 0`。所以顺序必须是**先 `USERINFO`、后该 uid 的区域条目**。此前两个方向都发反了：新人先收名单（名单里老人的 uid 还没有记录），老人收到的加入增量又早于新人的外观广播——两边都被客户端默默丢掉且不报错，这就是同区双方都看不到对方的原因。修复：默认改为外观先于名单（`ForeignAppearanceBeforeRoster=true`），加入增量不再在进入时发，改为在该成员的外观广播之后补发一次（目录用 `TownMember.JoinAnnounced` 保证每人只发一次，迁移后的新成员对象自动归零）。
+
 **自动化（全绿，随每个实现任务运行）**
 
 `dotnet run --project tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj -c Release` 中的 `TownSyncSmokeTests` 覆盖：
 
 - 区用户 id 池：容量跟随 `Channel.MaximumUsers`；首个 id 仍为 1（单人游玩保持字节级不变）；耗尽后拒绝继续分配；回收后可复用；越界释放被拒；0 容量被拒；调试幽灵从池尾反向分配。
-- 配置默认值：`TownSync.Enabled=true`、名单先于外观（`ForeignAppearanceBeforeRoster=false`）、`DepartureSignal=UserAreaInactive`、`MaxPositionForwardsPerSecond=10`、幽灵 `Enabled=false`。
+- 配置默认值：`TownSync.Enabled=true`、外观先于名单（`ForeignAppearanceBeforeRoster=true`；`SendUserAreaForExistingMembers`/`RefreshRosterOnMembershipChange` 两个对称性开关默认仍为关闭）、`DepartureSignal=UserAreaInactive`、`MaxPositionForwardsPerSecond=10`、幽灵 `Enabled=false`。
 - `USER_AREA` 的 active 参数：进区 active=1、离区 active=0。
-- 目录：第一个成员收到的名单只含自己且没有外来 `USER_AREA`（与改造前一致）；第二人进区时老人收到 `USER_AREA(active=1)`；新人名单自己在前、老人在后；外观只发给别人不回发本人；位置按 uid 与方向转发且不回发本人；聊天按区域广播（跨区收不到）；同一角色换区为迁移（旧区收到 `USER_AREA(active=0)`，旧 ticket 不能再发包或改状态，空区释放后可重新进入）；投递失败的坏通道成员被移除、健康成员保留；`RosterResend` 信号发出的名单不含离开者；`TownSync.Enabled=false` 时目录完全不动作。
+- 目录：第一个成员收到的名单只含自己且没有外来 `USER_AREA`（与改造前一致）；新人默认先收老人外观再收名单；老人收到的加入 `USER_AREA(active=1)` 排在 `USER_AREA` 所属成员的外观广播之后且只发一次（换装重播外观不重复）；从不广播外观的成员不会产生加入增量；新人名单自己在前、老人在后；外观只发给别人不回发本人；位置按 uid 与方向转发且不回发本人；聊天按区域广播（跨区收不到）；同一角色换区为迁移（旧区收到 `USER_AREA(active=0)`，迁移后新区仍会补一次「外观 → 加入」，旧 ticket 不能再发包或改状态，空区释放后可重新进入）；投递失败的坏通道成员被移除、健康成员保留；`RosterResend` 信号发出的名单不含离开者；`TownSync.Enabled=false` 时目录完全不动作。
 - 并发：同一角色在两个区域间反复并发进入，任何时刻只登记在一个区域且一定可达。
 - 幽灵：名字编码长度边界；外观为 mode-zero `USERINFO` 且携带幽灵 uid 与配置名字；服务级观察者测试（真实后台服务 + 假通道）断言区域里的观察者能收到幽灵广播的外观，停止后释放 id。
 
@@ -125,7 +127,7 @@
 
 **待定项（Task 11 判定与兜底）**
 
-- **S1 客户端是否渲染同区他人的角色**：待验证。若客户端不认现有顺序，先把 `TownSync.ForeignAppearanceBeforeRoster` 改为 `true`（先外观后名单）重测。
+- **S1 客户端是否渲染同区他人的角色**：待验证（顺序根因已按逆向结论修正，见上文「逆向确认的客户端顺序要求」）。若仍不可见，再确认对端表是否到达、并用 `TownSync.ForeignAppearanceBeforeRoster=false` 切回旧顺序做对照。
 - **S2 客户端是否接受 TCP 转发的 `USER_POSITION`**（能看到别人走动）：待验证。若完全不动，判定为客户端不认 TCP 位置包，位置同步转下一轮的 UDP 中枢。
 - **S3 离开信号在客户端的表现**：待验证。默认 `UserAreaInactive`；若无效（对方角色一直留着），改 `DepartureSignal=RosterResend` 重测并观察是否把本地角色扯回；两者都无效时记为已知限制（对方保留到换区）。
 

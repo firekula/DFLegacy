@@ -50,8 +50,8 @@
     "TownSync": {
       "//": "城镇同屏与附近聊天：仅在【同一城镇 + 同一区域】内生效；跨区/跨城镇不可见属预期。",
       "Enabled": true,
-      "//ForeignAppearanceBeforeRoster": "给新进区域的人先发别人的外观还是先发名单；默认名单在前。客户端不认时可切换。",
-      "ForeignAppearanceBeforeRoster": false,
+      "//ForeignAppearanceBeforeRoster": "给新进区域的人先发别人的外观（USERINFO 记录）还是先发名单；默认 true（外观在前）。客户端会静默丢弃 AREA_USERS/USER_AREA 里没有 USERINFO 记录的 uid，名单在前时新人看不到任何人；仅作对照实验时才改为 false。",
+      "ForeignAppearanceBeforeRoster": true,
       "//DepartureSignal": "成员离开区域时的通知信号：UserAreaInactive（默认）或 RosterResend（重发名单，可能扯回本地角色）。",
       "DepartureSignal": "UserAreaInactive",
       "//MaxPositionForwardsPerSecond": "每个成员每秒最多转发的位置包数；<=0 不限制。",
