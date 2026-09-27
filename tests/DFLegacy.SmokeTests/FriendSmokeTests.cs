@@ -168,6 +168,16 @@ internal static class FriendSmokeTests
             check((await store.GetFriendsAsync(other, CancellationToken.None)).Count == 0,
                 "adding a friend is one-way: the other account's list is untouched");
 
+            check(await store.AddFriendAsync("ghost-account", "法师", CancellationToken.None)
+                    == FriendUpdateFailure.AccountNotFound,
+                "adding a friend to an unknown account reports AccountNotFound");
+            check(await store.RemoveFriendAsync("ghost-account", "法师", CancellationToken.None)
+                    == FriendUpdateFailure.AccountNotFound,
+                "removing a friend from an unknown account reports AccountNotFound");
+            check((await store.GetFriendsAsync(owner, CancellationToken.None)).Count == 1
+                    && (await store.GetFriendsAsync(other, CancellationToken.None)).Count == 0,
+                "unknown-account updates leave existing friend lists untouched");
+
             var reloaded = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
             await reloaded.InitializeAsync(CancellationToken.None);
             var persisted = await reloaded.GetFriendsAsync(owner, CancellationToken.None);
@@ -179,6 +189,34 @@ internal static class FriendSmokeTests
                 "removing a friend works");
             check(await store.RemoveFriendAsync(owner, "法师", CancellationToken.None) == FriendUpdateFailure.NotFriend,
                 "removing a non-friend is rejected");
+
+            // trim：存下来的是去掉首尾空格后的调用方名字
+            check(await store.AddFriendAsync(owner, "  法师  ", CancellationToken.None) == FriendUpdateFailure.None,
+                "a friend name with surrounding whitespace is accepted");
+            var trimmed = await store.GetFriendsAsync(owner, CancellationToken.None);
+            check(trimmed.Count == 1 && trimmed[0].Name == "法师",
+                "the stored friend name is the trimmed caller name");
+            check(await store.AddFriendAsync(owner, "法师", CancellationToken.None) == FriendUpdateFailure.AlreadyFriend,
+                "the trimmed name is what duplicate detection compares");
+            check(await store.RemoveFriendAsync(owner, "  法师  ", CancellationToken.None) == FriendUpdateFailure.None
+                    && (await store.GetFriendsAsync(owner, CancellationToken.None)).Count == 0,
+                "removal trims the caller's surrounding whitespace too");
+
+            // 大小写：存储保留调用方大小写，角色名匹配大小写不敏感
+            await store.CreateCharacterAsync(
+                other,
+                new CreateCharacterRequest("Bravo"),
+                CancellationToken.None);
+            check(await store.AddFriendAsync(owner, "BRAVO", CancellationToken.None) == FriendUpdateFailure.None,
+                "an existing character is found regardless of the caller's casing");
+            var cased = await store.GetFriendsAsync(owner, CancellationToken.None);
+            check(cased.Count == 1 && cased[0].Name == "BRAVO",
+                "the stored friend name keeps the caller's casing, not the character's");
+            check(await store.AddFriendAsync(owner, "Bravo", CancellationToken.None) == FriendUpdateFailure.AlreadyFriend,
+                "a differently cased duplicate is still rejected");
+            check(await store.RemoveFriendAsync(owner, "bravo", CancellationToken.None) == FriendUpdateFailure.None
+                    && (await store.GetFriendsAsync(owner, CancellationToken.None)).Count == 0,
+                "removal matches the friend name case-insensitively");
 
             // 上限 32：好友角色建在各自独立的账号上（同一账号的角色槽位有限）
             for (var index = 0; index < 33; index++)
