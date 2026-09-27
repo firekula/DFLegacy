@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
@@ -63,6 +64,13 @@ internal sealed class TownMember
     public byte Direction { get; set; }
     public byte TownId { get; set; }
     public byte AreaId { get; set; }
+
+    /// <summary>
+    /// 区域实例号：共享区域恒为 0；私密区域（<see cref="TownSyncOptions.PrivateAreas"/>）取成员
+    /// 自己的 AreaUserId（在线角色唯一），同一 (城镇, 区域) 因此按成员各成一份名单。
+    /// </summary>
+    public required int Instance { get; init; }
+
     public long PositionWindowStartMs { get; set; }
     public int PositionForwardsInWindow { get; set; }
 
@@ -78,7 +86,10 @@ internal sealed class TownMember
 }
 
 /// <summary>
-/// 城镇区域在线表：按 (城镇, 区域) 维护成员，负责名单、外观、位置与消息的区域投递。
+/// 城镇区域在线表：按 (城镇, 区域, 实例) 维护成员，负责名单、外观、位置与消息的区域投递。
+/// 共享区域的实例恒为 0（与改造前的 (城镇, 区域) 分桶逐字节一致）；配置为私密区域
+/// （默认只有赛利亚房间 1/1）时每个成员各占一个实例，彼此看不到也听不到。公开的
+/// <see cref="GetMemberCount"/> / <see cref="Snapshot"/> 按区域聚合全部实例。
 /// 客户端按 uid 认人，成员 id 必须由 AreaUserIdPool 分配且唯一（见 EntranceService）。
 /// </summary>
 public sealed class TownSessionDirectory(
@@ -92,16 +103,38 @@ public sealed class TownSessionDirectory(
         public readonly List<TownMember> Members = [];
     }
 
-    private readonly ConcurrentDictionary<(byte TownId, byte AreaId), AreaRoster> _areas = new();
+    /// <summary>名单键：共享区域 Instance=0，私密区域 Instance=成员 AreaUserId（见 <see cref="TownMember.Instance"/>）。</summary>
+    private readonly record struct AreaKey(byte TownId, byte AreaId, int Instance);
+
+    private readonly ConcurrentDictionary<AreaKey, AreaRoster> _areas = new();
     private readonly ConcurrentDictionary<Guid, TownMember> _membersByCharacter = new();
+
+    /// <summary>
+    /// 私密区域集合，构造时从配置解析一次：条目必须是 "城镇:区域"，两侧 1..255；
+    /// 非法条目告警跳过，绝不让服务因配置笔误起不来。
+    /// </summary>
+    private readonly HashSet<(byte TownId, byte AreaId)> _privateAreas =
+        ParsePrivateAreas(options.TownSync.PrivateAreas, logger);
 
     // 结构锁把「读旧位置 → 摘除 → 登记 → 空区回收」串成一个原子段：同一角色的并发进入
     // 退化成先后两次迁移，任何时刻只属于一个区域；空区回收也不会与登记交错出孤儿成员。
     // 锁内只做记账与取快照，网络发送一律留到出锁之后。
     private readonly SemaphoreSlim _structuralGate = new(1, 1);
 
-    public int GetMemberCount(byte townId, byte areaId) =>
-        _areas.TryGetValue((townId, areaId), out var roster) ? CountMembers(roster) : 0;
+    public int GetMemberCount(byte townId, byte areaId)
+    {
+        // 私密区域可能有多份实例名单（每成员一份），管理面看到的应是该区域的总人数。
+        var count = 0;
+        foreach (var (key, roster) in _areas)
+        {
+            if (key.TownId == townId && key.AreaId == areaId)
+            {
+                count += CountMembers(roster);
+            }
+        }
+
+        return count;
+    }
 
     public TownMemberSnapshot[] Snapshot(byte townId, byte areaId) =>
         [.. SnapshotMembers(townId, areaId).Select(ToSnapshot)];
@@ -140,8 +173,10 @@ public sealed class TownSessionDirectory(
             Y = request.Y,
             Direction = request.Direction,
             TownId = request.TownId,
-            AreaId = request.AreaId
+            AreaId = request.AreaId,
+            Instance = ResolveInstance(request.TownId, request.AreaId, request.AreaUserId)
         };
+        var areaKey = KeyOf(member);
 
         TownMember? migratedFrom = null;
         TownMember[] existing = [];
@@ -166,13 +201,13 @@ public sealed class TownSessionDirectory(
 
             while (true)
             {
-                var roster = _areas.GetOrAdd((request.TownId, request.AreaId), _ => new AreaRoster());
+                var roster = _areas.GetOrAdd(areaKey, _ => new AreaRoster());
                 var registered = false;
                 lock (roster.Gate)
                 {
                     // 拿到区域 Gate 之前该区域可能刚被最后一个离开的人回收：此时必须换一份
                     // 名单重试，否则成员会被登记进一个已从 _areas 摘掉的 roster，谁也看不到他。
-                    if (_areas.TryGetValue((request.TownId, request.AreaId), out var current)
+                    if (_areas.TryGetValue(areaKey, out var current)
                         && ReferenceEquals(current, roster))
                     {
                         existing = [.. roster.Members];
@@ -329,7 +364,7 @@ public sealed class TownSessionDirectory(
         }
 
         var packet = GameProtocolEngine.CreateUserPosition(member.ToTownUser(), movementValue);
-        foreach (var other in SnapshotMembers(member.TownId, member.AreaId))
+        foreach (var other in SnapshotMembers(member.TownId, member.AreaId, member.Instance))
         {
             if (other.CharacterId == member.CharacterId)
             {
@@ -356,7 +391,7 @@ public sealed class TownSessionDirectory(
 
         // 收件人只算一次：加入增量必须发给刚拿到这份外观的同一批人，投递路上新进来的
         // 成员不能先收到「加入」却没收到外观（顺序反了客户端同样会丢掉这条增量）。
-        var others = SnapshotMembers(member.TownId, member.AreaId)
+        var others = SnapshotMembers(member.TownId, member.AreaId, member.Instance)
             .Where(other => other.CharacterId != member.CharacterId)
             .ToArray();
 
@@ -400,7 +435,7 @@ public sealed class TownSessionDirectory(
         }
 
         var delivered = 0;
-        foreach (var target in SnapshotMembers(member.TownId, member.AreaId))
+        foreach (var target in SnapshotMembers(member.TownId, member.AreaId, member.Instance))
         {
             if (!includeSelf && target.CharacterId == member.CharacterId)
             {
@@ -479,7 +514,8 @@ public sealed class TownSessionDirectory(
             return [];
         }
 
-        if (!_areas.TryGetValue((member.TownId, member.AreaId), out var roster))
+        var areaKey = KeyOf(member);
+        if (!_areas.TryGetValue(areaKey, out var roster))
         {
             return [];
         }
@@ -498,10 +534,7 @@ public sealed class TownSessionDirectory(
             {
                 // 回收与「名单已空」的判断必须在同一把区域 Gate 内完成，
                 // 否则新成员可能已经登记进这份名单，却随即被回收掉。
-                _areas.TryRemove(
-                    new KeyValuePair<(byte TownId, byte AreaId), AreaRoster>(
-                        (member.TownId, member.AreaId),
-                        roster));
+                _areas.TryRemove(new KeyValuePair<AreaKey, AreaRoster>(areaKey, roster));
                 released = true;
             }
         }
@@ -572,7 +605,7 @@ public sealed class TownSessionDirectory(
 
         foreach (var recipient in recipients)
         {
-            var members = SnapshotMembers(recipient.TownId, recipient.AreaId);
+            var members = SnapshotMembers(recipient.TownId, recipient.AreaId, recipient.Instance);
             var self = members.FirstOrDefault(candidate => ReferenceEquals(candidate, recipient));
             if (self is null)
             {
@@ -648,7 +681,7 @@ public sealed class TownSessionDirectory(
     /// </summary>
     private GamePeerInfo[] BuildPeerTable(TownMember recipient)
     {
-        var members = SnapshotMembers(recipient.TownId, recipient.AreaId);
+        var members = SnapshotMembers(recipient.TownId, recipient.AreaId, recipient.Instance);
         var self = members.FirstOrDefault(member => ReferenceEquals(member, recipient));
         if (self is null)
         {
@@ -739,9 +772,10 @@ public sealed class TownSessionDirectory(
         return true;
     }
 
-    private TownMember[] SnapshotMembers(byte townId, byte areaId)
+    /// <summary>单个实例的成员快照：投递路径一律只在该实例内选收件人。</summary>
+    private TownMember[] SnapshotMembers(byte townId, byte areaId, int instance)
     {
-        if (!_areas.TryGetValue((townId, areaId), out var roster))
+        if (!_areas.TryGetValue(new AreaKey(townId, areaId, instance), out var roster))
         {
             return [];
         }
@@ -750,6 +784,63 @@ public sealed class TownSessionDirectory(
         {
             return [.. roster.Members];
         }
+    }
+
+    /// <summary>按区域聚合全部实例（公开的 <see cref="Snapshot"/> 用）；共享区域只有一个实例。</summary>
+    private TownMember[] SnapshotMembers(byte townId, byte areaId)
+    {
+        var members = new List<TownMember>();
+        foreach (var (key, roster) in _areas)
+        {
+            if (key.TownId != townId || key.AreaId != areaId)
+            {
+                continue;
+            }
+
+            lock (roster.Gate)
+            {
+                members.AddRange(roster.Members);
+            }
+        }
+
+        return [.. members];
+    }
+
+    /// <summary>私密区域里每个成员各占一个实例（用其唯一的 AreaUserId），共享区域统一为 0。</summary>
+    private int ResolveInstance(byte townId, byte areaId, ushort areaUserId) =>
+        _privateAreas.Contains((townId, areaId)) ? areaUserId : 0;
+
+    private static AreaKey KeyOf(TownMember member) =>
+        new(member.TownId, member.AreaId, member.Instance);
+
+    /// <summary>
+    /// 解析 "城镇:区域" 私密区域条目（两侧 1..255），非法条目告警跳过而不是抛异常：
+    /// 一个笔误不该让服务端起不来，最多是该区域仍按共享处理。
+    /// </summary>
+    private static HashSet<(byte TownId, byte AreaId)> ParsePrivateAreas(
+        string[] entries,
+        ILogger<TownSessionDirectory> logger)
+    {
+        var areas = new HashSet<(byte TownId, byte AreaId)>();
+        foreach (var entry in entries ?? [])
+        {
+            var parts = (entry ?? string.Empty).Split(':');
+            if (parts.Length == 2
+                && byte.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var townId)
+                && byte.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var areaId)
+                && townId >= 1
+                && areaId >= 1)
+            {
+                areas.Add((townId, areaId));
+                continue;
+            }
+
+            logger.LogWarning(
+                "TownSync.PrivateAreas entry {Entry} is not a valid \"town:area\" pair with 1..255 on both sides; skipping it.",
+                entry);
+        }
+
+        return areas;
     }
 
     private static int CountMembers(AreaRoster roster)

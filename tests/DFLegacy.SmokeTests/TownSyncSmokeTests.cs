@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class TownSyncSmokeTests
@@ -12,6 +13,7 @@ internal static class TownSyncSmokeTests
         ArgumentNullException.ThrowIfNull(check);
         CheckAreaUserIdPool(check);
         CheckOptionsAndPackets(check);
+        await CheckPrivateAreasAsync(check);
         CheckGhostAppearance(check);
         await CheckGhostBroadcastAsync(check);
         await CheckDirectoryAsync(check);
@@ -32,6 +34,8 @@ internal static class TownSyncSmokeTests
             "the default departure signal is USER_AREA with active zero");
         check(defaults.TownSync.MaxPositionForwardsPerSecond == 10,
             "position forwarding is capped per member and second");
+        check(defaults.TownSync.PrivateAreas.Length == 1 && defaults.TownSync.PrivateAreas[0] == "1:1",
+            "the default private-area list is exactly 1:1 (Seria's room)");
         check(defaults.TownSync.SendAreaPeerTable,
             "the area UDP peer table is sent on membership changes by default");
         check(!defaults.Debug.TownGhost.Enabled, "the debug town ghost is off by default");
@@ -45,6 +49,190 @@ internal static class TownSyncSmokeTests
         var channelSized = new AreaUserIdPool(new ServerOptions().Channel.MaximumUsers);
         check(channelSized.Capacity == 100,
             "the pool capacity follows the channel user limit so ids stay inside the client's range");
+    }
+
+    /// <summary>
+    /// 缺陷回归（双客户端验收）：赛利亚房间（城镇 1/区域 1）在原作里是单人实例，服务端此前
+    /// 按 (城镇, 区域) 分桶，两名玩家各自站在房间里也能互相看见。这里钉住私密区域的完整边界：
+    /// 名单/外观/位置/聊天都只及于成员自己，进入快照与离开（离线标记）照常，管理面按区域聚合，
+    /// 且同一份配置下的共享区域行为完全不变。
+    /// </summary>
+    private static async Task CheckPrivateAreasAsync(Action<bool, string> check)
+    {
+        var options = new ServerOptions();
+        var directory = new TownSessionDirectory(
+            options,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        var alicePeer = CreatePeer(1, "10.0.0.1", "203.0.113.1", 40001, accountId: 7, natType: 1, mtu: 1400);
+        var bobPeer = CreatePeer(2, "10.0.0.2", "203.0.113.2", 40002, accountId: 8, natType: 2, mtu: 1472);
+
+        // Alice 先进入并广播外观：若 1/1 是共享区域，后来者必然能拿到这份已存档的外观。
+        var alice = new FakeChannel();
+        var aliceTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 1, "Alice", alice, alicePeer),
+            CancellationToken.None);
+        await directory.RefreshAppearanceAsync(
+            aliceTicket,
+            CreateAppearance(1, "Alice"),
+            CancellationToken.None);
+        var aliceSoloRoster = ReadRoster(alice.Of(GameProtocolEngine.AreaUsersNotification)[0]);
+        check(aliceSoloRoster.Length == 1 && aliceSoloRoster[0].UserId == 1,
+            "a private-area member still gets its unconditional entry roster, containing only itself");
+
+        var bob = new FakeChannel();
+        var bobTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 2, "Bob", bob, bobPeer),
+            CancellationToken.None);
+        check(bobTicket is not null
+            && directory.GetMemberCount(1, 1) == 2
+            && directory.Snapshot(1, 1).Select(member => member.AreaUserId).OrderBy(id => id)
+                .SequenceEqual(new ushort[] { 1, 2 }),
+            "both members enter the private area and the admin-facing count/snapshot aggregate both instances");
+        var bobRoster = ReadRoster(bob.Of(GameProtocolEngine.AreaUsersNotification)[0]);
+        check(bob.Of(GameProtocolEngine.AreaUsersNotification).Count == 1
+            && bobRoster.Length == 1
+            && bobRoster[0].UserId == 2,
+            "a private-area newcomer's roster contains only itself");
+        check(bob.Of(GameProtocolEngine.UserInfoNotification).Count == 0,
+            "a private area never delivers the other member's stored appearance");
+        check(bob.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
+            "a private area never delivers a foreign USER_AREA");
+
+        // Bob 广播自己的外观：私人房间里的另一个人既收不到外观，也收不到加入增量。
+        await directory.RefreshAppearanceAsync(
+            bobTicket,
+            CreateAppearance(2, "Bob"),
+            CancellationToken.None);
+        check(alice.Of(GameProtocolEngine.UserInfoNotification).Count == 0
+            && alice.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
+            "a private-area appearance and its join increment never reach the other member");
+
+        // 位置：私密区域里没有别的收件人（也不回发移动者本人），一个包都不发。
+        await directory.UpdatePositionAsync(bobTicket, 500, 300, 7, 120, CancellationToken.None);
+        check(alice.Of(GameProtocolEngine.UserPositionNotification).Count == 0
+            && bob.Of(GameProtocolEngine.UserPositionNotification).Count == 0,
+            "a private-area position update is delivered to nobody else");
+
+        // 聊天：投递计数只算自己一个。
+        var chat = GameProtocolEngine.CreateMessageNotification(
+            GameMessageType.Type03White,
+            2,
+            Encoding.ASCII.GetBytes("hello"));
+        check(await directory.BroadcastToAreaAsync(bobTicket, chat, includeSelf: true, CancellationToken.None) == 1,
+            "a private-area broadcast reaches exactly one recipient: the sender itself");
+        check(bob.Of(GameProtocolEngine.MessageNotification).Count == 1
+            && alice.Of(GameProtocolEngine.MessageNotification).Count == 0,
+            "the other private-area member never receives the broadcast");
+
+        // 对端表照常工作，但只列自己（客户端仍需要自己的端点）。
+        var bobPeers = ReadPeerTable(bob.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1]);
+        var alicePeers = ReadPeerTable(alice.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1]);
+        check(bobPeers.Length == 1 && bobPeers[0].UserId == 2
+            && alicePeers.Length == 1 && alicePeers[0].UserId == 1,
+            "a private-area peer table keeps working per member and lists only its owner");
+
+        // 离线标记：Alice 离开后自己的实例被回收，Bob 看不到这条私人房间里的信号。
+        var bobPacketsBeforeAliceLeft = bob.Packets.Count;
+        await directory.LeaveAsync(aliceTicket, CancellationToken.None);
+        check(directory.GetMemberCount(1, 1) == 1
+            && !directory.TryGetSnapshot(aliceTicket!.CharacterId, out _),
+            "a private-area member's departure still clears its own registration");
+        check(bob.Packets.Count == bobPacketsBeforeAliceLeft
+            && bob.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
+            "the surviving private-area member sees nothing of the other member's offline marking");
+
+        await directory.LeaveAsync(bobTicket, CancellationToken.None);
+        check(directory.GetMemberCount(1, 1) == 0,
+            "the private area is released once its last instance empties");
+
+        // 同一份默认配置（PrivateAreas=["1:1"]）下的共享区域 1/2：两人行为与改造前一致。
+        var sharedAlice = new FakeChannel();
+        var sharedAliceTicket = await directory.EnterAsync(
+            CreateEntry(1, 2, 3, "Alice", sharedAlice, alicePeer),
+            CancellationToken.None);
+        await directory.RefreshAppearanceAsync(
+            sharedAliceTicket,
+            CreateAppearance(3, "Alice"),
+            CancellationToken.None);
+
+        var sharedBob = new FakeChannel();
+        var sharedBobTicket = await directory.EnterAsync(
+            CreateEntry(1, 2, 4, "Bob", sharedBob, bobPeer),
+            CancellationToken.None);
+        var sharedRoster = ReadRoster(sharedBob.Of(GameProtocolEngine.AreaUsersNotification)[0]);
+        check(sharedRoster.Length == 2 && sharedRoster[0].UserId == 4 && sharedRoster[1].UserId == 3,
+            "under the same private-area config a shared area still delivers a two-member roster");
+        var sharedAppearances = sharedBob.Of(GameProtocolEngine.UserInfoNotification);
+        check(sharedAppearances.Count == 1
+            && BinaryPrimitives.ReadUInt16LittleEndian(sharedAppearances[0].Payload.AsSpan(3, 2)) == 3,
+            "a shared area still delivers the existing member's appearance to the newcomer");
+
+        await directory.RefreshAppearanceAsync(
+            sharedBobTicket,
+            CreateAppearance(4, "Bob"),
+            CancellationToken.None);
+        var sharedJoins = sharedAlice.Of(GameProtocolEngine.UserAreaNotification);
+        check(sharedJoins.Count == 1
+            && sharedJoins[0].Payload[0] == 4
+            && sharedJoins[0].Payload[9] == 1,
+            "a shared area still announces the newcomer's join to the existing member");
+
+        check(await directory.BroadcastToAreaAsync(sharedBobTicket, chat, includeSelf: true, CancellationToken.None) == 2,
+            "a shared-area broadcast still reaches both members");
+        check(await directory.BroadcastToAreaAsync(sharedBobTicket, chat, includeSelf: false, CancellationToken.None) == 1,
+            "a shared-area broadcast without self still reaches only the other member");
+
+        // 共享区域的离线标记（USER_AREA active=0）同样不受私密区域配置影响。
+        await directory.LeaveAsync(sharedBobTicket, CancellationToken.None);
+        var sharedDepartures = sharedAlice.Of(GameProtocolEngine.UserAreaNotification);
+        check(sharedDepartures.Count == 2
+            && sharedDepartures[1].Payload[0] == 4
+            && sharedDepartures[1].Payload[9] == 0
+            && directory.GetMemberCount(1, 2) == 1,
+            "the shared-area offline marking still fires under the private-area config");
+
+        // ---- 配置解析：合法条目生效，非法条目告警跳过，绝不抛异常 ----
+        var parsedOptions = new ServerOptions();
+        parsedOptions.TownSync.PrivateAreas = ["2:5", "0:1", "1:abc", "abc", "256:1", "1:256", ""];
+        var parseLogger = new RecordingLogger<TownSessionDirectory>();
+        TownSessionDirectory parsed;
+        try
+        {
+            parsed = new TownSessionDirectory(parsedOptions, TimeProvider.System, parseLogger);
+            check(true, "invalid private-area entries are skipped without throwing");
+        }
+        catch (Exception exception)
+        {
+            check(false, $"invalid private-area entries are skipped without throwing ({exception.GetType().Name})");
+            return;
+        }
+
+        check(parseLogger.Entries.Count(entry => entry.Level == LogLevel.Warning) == 6,
+            "each invalid private-area entry is logged once and skipped");
+
+        var privateOne = new FakeChannel();
+        await parsed.EnterAsync(CreateEntry(2, 5, 1, "P1", privateOne), CancellationToken.None);
+        var privateTwo = new FakeChannel();
+        await parsed.EnterAsync(CreateEntry(2, 5, 2, "P2", privateTwo), CancellationToken.None);
+        check(parsed.GetMemberCount(2, 5) == 2
+            && ReadRoster(privateTwo.Of(GameProtocolEngine.AreaUsersNotification)[0]).Length == 1,
+            "a valid private-area entry is honoured");
+
+        // 被跳过的非法条目不得把任何区域变成私密：1/1 与 0/1 仍按共享处理。
+        var sharedOne = new FakeChannel();
+        await parsed.EnterAsync(CreateEntry(1, 1, 1, "S1", sharedOne), CancellationToken.None);
+        var sharedTwo = new FakeChannel();
+        await parsed.EnterAsync(CreateEntry(1, 1, 2, "S2", sharedTwo), CancellationToken.None);
+        check(ReadRoster(sharedTwo.Of(GameProtocolEngine.AreaUsersNotification)[0]).Length == 2,
+            "the invalid 1:abc and abc entries never make 1:1 private");
+        var zeroAreaOne = new FakeChannel();
+        await parsed.EnterAsync(CreateEntry(0, 1, 1, "Z1", zeroAreaOne), CancellationToken.None);
+        var zeroAreaTwo = new FakeChannel();
+        await parsed.EnterAsync(CreateEntry(0, 1, 2, "Z2", zeroAreaTwo), CancellationToken.None);
+        check(ReadRoster(zeroAreaTwo.Of(GameProtocolEngine.AreaUsersNotification)[0]).Length == 2,
+            "the invalid 0:1 entry never makes an area private");
     }
 
     private static void CheckGhostAppearance(Action<bool, string> check)
@@ -68,6 +256,9 @@ internal static class TownSyncSmokeTests
     private static async Task CheckGhostBroadcastAsync(Action<bool, string> check)
     {
         var options = new ServerOptions();
+        // 本测试钉的是共享区域里的幽灵广播：显式清空私密区域，让幽灵与观察者进同一个桶
+        // （私密区域行为由 CheckPrivateAreasAsync 单独覆盖）。
+        options.TownSync.PrivateAreas = [];
         options.Debug.TownGhost.Enabled = true;
         options.Debug.TownGhost.Name = "TEST";
         options.Debug.TownGhost.TownId = 1;
@@ -190,6 +381,8 @@ internal static class TownSyncSmokeTests
     private static async Task CheckDirectoryAsync(Action<bool, string> check)
     {
         var options = new ServerOptions();
+        // 共享区域的既有行为：显式清空私密区域（默认的 1/1 私密性由 CheckPrivateAreasAsync 覆盖）。
+        options.TownSync.PrivateAreas = [];
         var directory = new TownSessionDirectory(
             options,
             TimeProvider.System,
@@ -348,6 +541,8 @@ internal static class TownSyncSmokeTests
     private static async Task CheckAreaPeerTableAsync(Action<bool, string> check)
     {
         var options = new ServerOptions();
+        // 共享区域的对端表行为：显式清空私密区域（默认的 1/1 私密性由 CheckPrivateAreasAsync 覆盖）。
+        options.TownSync.PrivateAreas = [];
         var directory = new TownSessionDirectory(
             options,
             TimeProvider.System,
@@ -517,6 +712,8 @@ internal static class TownSyncSmokeTests
     {
         // ---- 默认配置：外观先于名单，加入增量跟在外观之后（逐个报文逐字节钉死） ----
         var defaultOptions = new ServerOptions();
+        // 本测试钉共享区域的报文序列：清空私密区域（1/1 的默认私密性由 CheckPrivateAreasAsync 覆盖）。
+        defaultOptions.TownSync.PrivateAreas = [];
         check(!defaultOptions.TownSync.SendUserAreaForExistingMembers
             && !defaultOptions.TownSync.RefreshRosterOnMembershipChange,
             "both symmetric introduction switches are off by default");
@@ -917,8 +1114,11 @@ internal static class TownSyncSmokeTests
 
     private static async Task CheckDirectoryMigrationAsync(Action<bool, string> check)
     {
+        var options = new ServerOptions();
+        // 迁移测试用 1/1 当通用的共享区域：显式清空私密区域（默认私密性由 CheckPrivateAreasAsync 覆盖）。
+        options.TownSync.PrivateAreas = [];
         var directory = new TownSessionDirectory(
-            new ServerOptions(),
+            options,
             TimeProvider.System,
             NullLogger<TownSessionDirectory>.Instance);
 
@@ -1199,6 +1399,41 @@ internal static class TownSyncSmokeTests
         }
 
         return users;
+    }
+
+    /// <summary>只收集日志级别与文本的假 logger：用于断言非法私密区域条目告警且被跳过。</summary>
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        private readonly List<(LogLevel Level, string Message)> _entries = [];
+
+        public IReadOnlyList<(LogLevel Level, string Message)> Entries
+        {
+            get
+            {
+                lock (_entries)
+                {
+                    return [.. _entries];
+                }
+            }
+        }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            lock (_entries)
+            {
+                _entries.Add((logLevel, formatter(state, exception)));
+            }
+        }
     }
 
     /// <summary>只覆盖 GetUtcNow 的可控时钟：目录只用它来切分每秒位置预算的窗口。</summary>

@@ -156,6 +156,14 @@ public sealed class TownSyncOptions
 
     /// <summary>每个成员每秒最多向同区转发的 USER_POSITION 条数；&lt;=0 表示不限制。</summary>
     public int MaxPositionForwardsPerSecond { get; set; } = 10;
+
+    /// <summary>
+    /// 单人实例区域列表，条目为 <c>"城镇:区域"</c>（两侧均为 1..255）。默认 <c>["1:1"]</c>：
+    /// 城镇 1 / 区域 1 就是赛利亚房间——原作里玩家各自独立的私人起始房间，同一区域也按成员
+    /// 各自成区，谁也看不到谁；其余区域仍是共享区域。非法条目（如 <c>"0:1"</c>、<c>"1:abc"</c>、
+    /// <c>"abc"</c>）在启动时告警并跳过，不阻止服务启动。
+    /// </summary>
+    public string[] PrivateAreas { get; set; } = ["1:1"];
 }
 
 /// <summary>调试用：往指定区域投一个合成角色，用于单人复现"第二个角色出现/走动/消失"。</summary>
