@@ -95,6 +95,20 @@ public sealed record CharacterMailSendResult(
     CharacterMailRecord? Mail,
     CharacterMailSendFailure Failure);
 
+/// <summary>账号级好友条目：客户端按角色名工作，这里只存名字与添加时间。</summary>
+public sealed record AccountFriendRecord(string Name, long AddedAtUnix);
+
+public enum FriendUpdateFailure
+{
+    None,
+    AccountNotFound,
+    CharacterNotFound,
+    AlreadyFriend,
+    Self,
+    FriendListFull,
+    NotFriend
+}
+
 public enum IncreaseStatusItemUseFailure
 {
     None,
@@ -287,7 +301,10 @@ public sealed record AccountRecord(
     int? Cash = null,
     string? OicqCode = null,
     // 8081 管理接口的权限档位。旧 state.json 没有这个字段，反序列化后是 Player（向后兼容）。
-    AccountRole Role = AccountRole.Player);
+    AccountRole Role = AccountRole.Player,
+    // 账号级好友名单。旧 state.json 没有这个字段，反序列化后是 null（等同空名单），
+    // 且在不发生好友变更时不会被回写。
+    List<AccountFriendRecord>? Friends = null);
 
 public sealed record ClientCeraTopUpRequest(string Account, int Amount);
 public sealed record ClientDiamondGrantRequest(string Account, int Days);
@@ -403,6 +420,9 @@ public sealed class JsonGameStore(
     public const int PresetCharacterGrowType = 3;
     public const uint PresetCharacterExperience = 270_812_393;
     private const string PasswordHashPrefix = "dfls-local:";
+
+    /// <summary>客户端好友窗口上限为 32 条（DNF.exe 0x4FF710），服务端独立校验。</summary>
+    public const int MaximumFriends = 32;
 
     private static readonly CharacterItemRecord[] PresetArmor =
     [
@@ -2763,6 +2783,119 @@ public sealed class JsonGameStore(
             }
 
             return false;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<IReadOnlyList<AccountFriendRecord>> GetFriendsAsync(
+        string accountName,
+        CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var account = FindAccountLocked(accountName);
+            return account?.Friends?.ToArray() ?? [];
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<FriendUpdateFailure> AddFriendAsync(
+        string accountName,
+        string friendName,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmedName = friendName.Trim();
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var accountIndex = _accounts.FindIndex(candidate =>
+                string.Equals(candidate.UserName, accountName, StringComparison.OrdinalIgnoreCase));
+            if (accountIndex < 0)
+            {
+                return FriendUpdateFailure.AccountNotFound;
+            }
+
+            var account = _accounts[accountIndex];
+            if (account.Characters.Any(character =>
+                    string.Equals(character.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return FriendUpdateFailure.Self;
+            }
+
+            var targetExists = _accounts.Any(candidate => candidate.Characters.Any(character =>
+                string.Equals(character.Name, trimmedName, StringComparison.OrdinalIgnoreCase)));
+            if (!targetExists)
+            {
+                return FriendUpdateFailure.CharacterNotFound;
+            }
+
+            var friends = account.Friends ?? [];
+            if (friends.Any(friend =>
+                    string.Equals(friend.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return FriendUpdateFailure.AlreadyFriend;
+            }
+
+            if (friends.Count >= MaximumFriends)
+            {
+                return FriendUpdateFailure.FriendListFull;
+            }
+
+            friends.Add(new AccountFriendRecord(
+                trimmedName,
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+            _accounts[accountIndex] = account with { Friends = friends };
+            await SaveLockedAsync(cancellationToken);
+            logger.LogInformation(
+                "Account {Account} added friend {Friend}; total={Count}.",
+                account.UserName,
+                trimmedName,
+                friends.Count);
+            return FriendUpdateFailure.None;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<FriendUpdateFailure> RemoveFriendAsync(
+        string accountName,
+        string friendName,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmedName = friendName.Trim();
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var account = FindAccountLocked(accountName);
+            if (account is null)
+            {
+                return FriendUpdateFailure.AccountNotFound;
+            }
+
+            var friend = account.Friends?.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, trimmedName, StringComparison.OrdinalIgnoreCase));
+            if (friend is null)
+            {
+                return FriendUpdateFailure.NotFriend;
+            }
+
+            account.Friends!.Remove(friend);
+            await SaveLockedAsync(cancellationToken);
+            logger.LogInformation(
+                "Account {Account} removed friend {Friend}; total={Count}.",
+                account.UserName,
+                trimmedName,
+                account.Friends.Count);
+            return FriendUpdateFailure.None;
         }
         finally
         {

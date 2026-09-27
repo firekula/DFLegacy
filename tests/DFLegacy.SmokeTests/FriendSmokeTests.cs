@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Text;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
+using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class FriendSmokeTests
 {
@@ -9,11 +10,11 @@ internal static class FriendSmokeTests
     {
         ArgumentNullException.ThrowIfNull(check);
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        await Task.CompletedTask;
         CheckFriendListPacket(check);
         CheckBuddyPackets(check);
         CheckFriendNameParsing(check);
         CheckWhisperParsing(check);
+        await CheckFriendStorageAsync(check);
     }
 
     private static void CheckFriendListPacket(Action<bool, string> check)
@@ -117,5 +118,99 @@ internal static class FriendSmokeTests
 
         check(!GameProtocolEngine.TryReadWhisperTarget(body[..(body.Length - 1)], text.Length, out _),
             "a whisper without a target name is rejected");
+    }
+
+    private static async Task CheckFriendStorageAsync(Action<bool, string> check)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dflegacy-friend-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var options = new ServerOptions
+            {
+                DataPath = Path.Combine(directory, "state.json"),
+                ScriptPvfPath = "unused.pvf"
+            };
+            var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+
+            const string owner = "owner";
+            const string other = "other";
+            await store.CreateAccountAsync(
+                new CreateAccountRequest(owner, "password", OicqCode: "123456"),
+                CancellationToken.None);
+            await store.CreateAccountAsync(
+                new CreateAccountRequest(other, "password", OicqCode: "123456"),
+                CancellationToken.None);
+            await store.CreateCharacterAsync(
+                owner,
+                new CreateCharacterRequest("圣骑士", GrowType: 4),
+                CancellationToken.None);
+            await store.CreateCharacterAsync(
+                other,
+                new CreateCharacterRequest("法师", GrowType: 3),
+                CancellationToken.None);
+
+            check((await store.GetFriendsAsync(owner, CancellationToken.None)).Count == 0,
+                "a fresh account has no friends");
+            check(await store.AddFriendAsync(owner, "法师", CancellationToken.None) == FriendUpdateFailure.None,
+                "adding an existing character name succeeds");
+            check(await store.AddFriendAsync(owner, "法师", CancellationToken.None) == FriendUpdateFailure.AlreadyFriend,
+                "adding the same friend twice is rejected");
+            check(await store.AddFriendAsync(owner, "圣骑士", CancellationToken.None) == FriendUpdateFailure.Self,
+                "adding your own character is rejected");
+            check(await store.AddFriendAsync(owner, "不存在的人", CancellationToken.None)
+                    == FriendUpdateFailure.CharacterNotFound,
+                "adding an unknown character is rejected");
+
+            var friends = await store.GetFriendsAsync(owner, CancellationToken.None);
+            check(friends.Count == 1 && friends[0].Name == "法师",
+                "the friend list round-trips through the save file");
+            check((await store.GetFriendsAsync(other, CancellationToken.None)).Count == 0,
+                "adding a friend is one-way: the other account's list is untouched");
+
+            var reloaded = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+            await reloaded.InitializeAsync(CancellationToken.None);
+            var persisted = await reloaded.GetFriendsAsync(owner, CancellationToken.None);
+            check(persisted.Count == 1 && persisted[0].Name == "法师" && persisted[0].AddedAtUnix > 0,
+                "the friend list is written to disk and survives a store reload");
+
+            check(await store.RemoveFriendAsync(owner, "法师", CancellationToken.None) == FriendUpdateFailure.None
+                && (await store.GetFriendsAsync(owner, CancellationToken.None)).Count == 0,
+                "removing a friend works");
+            check(await store.RemoveFriendAsync(owner, "法师", CancellationToken.None) == FriendUpdateFailure.NotFriend,
+                "removing a non-friend is rejected");
+
+            // 上限 32：好友角色建在各自独立的账号上（同一账号的角色槽位有限）
+            for (var index = 0; index < 33; index++)
+            {
+                var friendAccount = $"friend{index:D2}";
+                await store.CreateAccountAsync(
+                    new CreateAccountRequest(friendAccount, "password", OicqCode: "123456"),
+                    CancellationToken.None);
+                await store.CreateCharacterAsync(
+                    friendAccount,
+                    new CreateCharacterRequest($"好友{index:D2}"),
+                    CancellationToken.None);
+            }
+
+            var added = 0;
+            for (var index = 0; index < 32; index++)
+            {
+                if (await store.AddFriendAsync(owner, $"好友{index:D2}", CancellationToken.None)
+                    == FriendUpdateFailure.None)
+                {
+                    added++;
+                }
+            }
+
+            check(added == 32, "the first thirty-two friends are accepted");
+            check(await store.AddFriendAsync(owner, "好友32", CancellationToken.None)
+                    == FriendUpdateFailure.FriendListFull,
+                "the thirty-third friend is rejected because the client's window holds thirty-two");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 }
