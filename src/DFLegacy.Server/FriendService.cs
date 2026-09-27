@@ -41,11 +41,14 @@ public sealed class FriendService
     /// <remarks>
     /// The session id binds the channel to one specific session so a late cleanup from an
     /// older session can never detach a newer one (compare-and-remove in
-    /// <see cref="DetachChannelAsync"/>).
+    /// <see cref="DetachChannelAsync"/>). <paramref name="areaUserId"/> is the area user id
+    /// allocated for this session at SELECT_CHARACTER: the friend snapshot publishes it in
+    /// each online entry so the client's “查看信息” can ask for that character back by uid.
     /// </remarks>
     public async Task AttachChannelAsync(
         string accountName,
         string characterName,
+        ushort areaUserId,
         Guid sessionId,
         Func<GameServerPacket, ValueTask> send,
         CancellationToken cancellationToken = default)
@@ -53,7 +56,7 @@ public sealed class FriendService
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterName);
         ArgumentNullException.ThrowIfNull(send);
-        _channels[characterName] = new Channel(accountName, sessionId, send);
+        _channels[characterName] = new Channel(accountName, areaUserId, sessionId, send);
 
         // The snapshot is what creates buddy entries client-side, and an empty snapshot is
         // the only way to clear entries left over from another login in the same client
@@ -83,6 +86,29 @@ public sealed class FriendService
         await NotifyFriendOwnersAsync(characterName, isOnline: false, cancellationToken);
     }
 
+    /// <summary>
+    /// 按区用户 id 反查当前持有它的在线角色名（CMD 8 mode 3“查看信息”的 uid → 角色）。
+    /// 区用户 id 由 <c>AreaUserIdPool</c> 全局分配，同一时刻只有一个会话持有，
+    /// 这里按通道表线性查找；uid 为 0 或无人持有时返回 false。
+    /// </summary>
+    public bool TryGetCharacterByAreaUserId(ushort areaUserId, out string characterName)
+    {
+        if (areaUserId != 0)
+        {
+            foreach (var (name, channel) in _channels)
+            {
+                if (channel.AreaUserId == areaUserId)
+                {
+                    characterName = name;
+                    return true;
+                }
+            }
+        }
+
+        characterName = string.Empty;
+        return false;
+    }
+
     public async Task AddFriendAsync(
         string accountName,
         string characterName,
@@ -99,8 +125,10 @@ public sealed class FriendService
         // 命令结果必须走 type=1 命令通道：客户端接收循环把包头 type 1 的 body 首字节当
         // 结果标志走另一张分发表，只有这条包会打印“[名字]已被添加到好友名单”。
         // 用 store 归一化后的名字（去首尾空格）：客户端按这份拼写建条目。
-        // 结果先于快照：id 63 的条目写入会带出一个默认状态字节，让随后的快照与
-        // BUDDY_OUT 成为条目状态的最后写入者，离线的新好友才不会被它翻成在线。
+        // 结果先于快照（顺序是有意的）：id 63 只带 [标志][名字][0]，客户端会把缺省的
+        // A..F 读成 0 并可能据此 SetEntryState(0)；让快照与随后的 BUDDY_OUT 成为条目
+        // 状态的最后写入者，离线的新好友才不会显示成在线。真机上若新好友的状态显示
+        // 不对，先怀疑这个顺序与 A..F 的缺省读取，而不是重新推理快照布局。
         await SendAsync(
             characterName,
             GameProtocolEngine.CreateAddFriendResult(
@@ -249,12 +277,19 @@ public sealed class FriendService
         foreach (var friend in friends)
         {
             var nameBytes = ClientEncoding.GetBytes(friend.Name);
-            var online = _channels.ContainsKey(friend.Name);
-            entries.Add(new GameFriendEntry(nameBytes, online));
-            if (!online)
+            if (_channels.TryGetValue(friend.Name, out var friendChannel))
             {
-                offlineNames.Add(nameBytes);
+                // 在线好友带上它的区用户 id：客户端条目记录的 0x21 字段，好友窗口的
+                // “查看信息”正是拿这个 uid 发 CMD 8 mode 3；离线保持 0（没有可用 uid）。
+                entries.Add(new GameFriendEntry(
+                    nameBytes,
+                    Online: true,
+                    AreaUserId: friendChannel.AreaUserId));
+                continue;
             }
+
+            entries.Add(new GameFriendEntry(nameBytes, Online: false));
+            offlineNames.Add(nameBytes);
         }
 
         await SendAsync(characterName, GameProtocolEngine.CreateFriendList(entries), cancellationToken);
@@ -386,6 +421,7 @@ public sealed class FriendService
 
     private readonly record struct Channel(
         string AccountName,
+        ushort AreaUserId,
         Guid SessionId,
         Func<GameServerPacket, ValueTask> Send);
 }

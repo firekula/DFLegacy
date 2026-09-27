@@ -672,13 +672,19 @@ public sealed class EntranceService(
                     lastProjectedCombatStats = projectedStats;
                 }
 
-                GameServerPacket CreateRequestedCharacterDetail(ushort requestedUserId)
+                GameServerPacket CreateRequestedCharacterDetail(
+                    ushort requestedUserId,
+                    string requestedCharacterName)
                 {
                     // 城镇内“查看信息”/“/info”（CMD 8 mode 3）：查询自己时回真实资料；
                     // 其他 uid 只回最小资料记录（名字由客户端按 uid 自行解析）。回包是
                     // NOTI 2 mode 1、count=1 —— 绝不能落回 mode 2 的账号角色卡列表，否则
                     // 客户端会用 mode 0/2 解析器读出“通关[%s]…”的系统弹窗。
-                    return activeCharacter is not null && requestedUserId == localUserId
+                    return activeCharacter is not null
+                        && string.Equals(
+                            activeCharacter.Name,
+                            requestedCharacterName,
+                            StringComparison.OrdinalIgnoreCase)
                         ? GameProtocolEngine.CreateCurrentCharacterDetails(
                             requestedUserId,
                             experience: activeCharacter.Experience,
@@ -692,6 +698,12 @@ public sealed class EntranceService(
                             staminaRecoveryPercentage: GetProjectedStaminaRecovery())
                         : GameProtocolEngine.CreateCurrentCharacterDetails(requestedUserId);
                 }
+
+                // CMD 8 mode 3 的 uid 反查：好友通道表按区用户 id 找当前持有它的在线角色。
+                string? FindOnlineCharacterByAreaUserId(ushort areaUserId) =>
+                    friendService.TryGetCharacterByAreaUserId(areaUserId, out var onlineName)
+                        ? onlineName
+                        : null;
 
                 async Task SendEquippedCreatureDeathAsync(bool force = false)
                 {
@@ -2647,15 +2659,21 @@ public sealed class EntranceService(
                             // 资料）。不分 mode 一律回列表，就会在城镇落进 mode 0/2 解析器。
                             var userInfo = await ResolveUserInfoReplyAsync(
                                 request.Body,
+                                FindOnlineCharacterByAreaUserId,
                                 CreateRequestedCharacterDetail,
                                 () => CreateUserInfoAsync(accountUid, serverToken));
                             if (userInfo is null)
                             {
-                                // 好友条目里的 uid 字段恒 0：没有可描述的角色时静默忽略，
-                                // 比回一份错误的列表（触发弹窗）好。
+                                // uid 为 0（好友离线时条目里就是 0）或没有在线角色持有它：
+                                // 静默忽略，比回一份错误的列表（触发弹窗）好。
+                                _ = GameProtocolEngine.TryReadUserInfoRequest(
+                                    request.Body,
+                                    out var ignoredUserId,
+                                    out _);
                                 logger.LogInformation(
-                                    "Ignored GET_USERINFO mode 3 without a character uid for session {SessionId}.",
-                                    runtimeSession.Id);
+                                    "Ignored GET_USERINFO mode 3 for session {SessionId}: no online character holds area user id {AreaUserId}.",
+                                    runtimeSession.Id,
+                                    ignoredUserId);
                                 continue;
                             }
 
@@ -3515,6 +3533,7 @@ public sealed class EntranceService(
                             await friendService.AttachChannelAsync(
                                 accountName,
                                 activeCharacter.Name,
+                                localUserId,
                                 runtimeSession.Id,
                                 packet => SendTownPacketAsync(packet, serverToken),
                                 serverToken);
@@ -14287,20 +14306,29 @@ public sealed class EntranceService(
 
     /// <summary>
     /// CMD 8 的响应选择：按 <see cref="ClassifyUserInfoRequest"/> 的分支调用资料回包工厂或
-    /// 账号角色卡列表工厂；uid 为 0 的 mode 3 返回 null，由调用方静默忽略。
-    /// 抽成静态函数让冒烟测试直接钉住“mode 3 不回列表”这条分派。
+    /// 账号角色卡列表工厂。mode 3 必须先按 uid 反查到“当前持有该区用户 id 的在线角色”
+    /// （<paramref name="findOnlineCharacter"/>，好友通道表里就有这个 id）才回资料；
+    /// uid 为 0 或查不到 → 返回 null，由调用方静默忽略并发一条日志。
+    /// 抽成静态函数让冒烟测试直接钉住“mode 3 不回列表”与“反查不到不回包”两条分派。
     /// </summary>
     internal static async Task<GameServerPacket?> ResolveUserInfoReplyAsync(
         byte[] body,
-        Func<ushort, GameServerPacket> createCharacterDetail,
+        Func<ushort, string?> findOnlineCharacter,
+        Func<ushort, string, GameServerPacket> createCharacterDetail,
         Func<Task<GameServerPacket>> createRoster)
     {
-        return ClassifyUserInfoRequest(body, out var requestedUserId) switch
+        switch (ClassifyUserInfoRequest(body, out var requestedUserId))
         {
-            UserInfoReplyKind.CharacterDetail => createCharacterDetail(requestedUserId),
-            UserInfoReplyKind.Ignore => null,
-            _ => await createRoster()
-        };
+            case UserInfoReplyKind.CharacterDetail:
+                var characterName = findOnlineCharacter(requestedUserId);
+                return characterName is null
+                    ? null
+                    : createCharacterDetail(requestedUserId, characterName);
+            case UserInfoReplyKind.Ignore:
+                return null;
+            default:
+                return await createRoster();
+        }
     }
 
     private static byte[] EncodeCharacterName(string name)

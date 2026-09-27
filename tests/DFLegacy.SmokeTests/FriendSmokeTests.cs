@@ -115,22 +115,29 @@ internal static class FriendSmokeTests
             "a mode-2 GET_USERINFO keeps the account-roster reply");
 
         var rosterInvoked = false;
+        var lookupInvoked = false;
         var detailInvoked = false;
         var roster = GameProtocolEngine.CreateUserInfo([]);
         var resolvedRoster = await EntranceService.ResolveUserInfoReplyAsync(
             rosterBody,
-            uid =>
+            _ =>
+            {
+                lookupInvoked = true;
+                return "谁";
+            },
+            (_, _) =>
             {
                 detailInvoked = true;
-                return GameProtocolEngine.CreateCurrentCharacterDetails(uid);
+                return roster;
             },
             () =>
             {
                 rosterInvoked = true;
                 return Task.FromResult(roster);
             });
-        check(rosterInvoked && !detailInvoked && ReferenceEquals(resolvedRoster, roster),
-            "a mode-2 request still resolves to the account roster, never to a detail record");
+        check(rosterInvoked && !detailInvoked && !lookupInvoked
+                && ReferenceEquals(resolvedRoster, roster),
+            "a mode-2 request still resolves to the account roster and never looks a uid up");
         check(roster.Payload.Length == 3
                 && roster.Payload[0] == 2
                 && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(1, 2)) == 0,
@@ -143,14 +150,23 @@ internal static class FriendSmokeTests
             "a mode-3 GET_USERINFO asks for that uid's character detail");
 
         rosterInvoked = false;
+        lookupInvoked = false;
         detailInvoked = false;
         ushort detailFactoryUid = 0;
+        var detailFactoryName = string.Empty;
         var resolvedDetail = await EntranceService.ResolveUserInfoReplyAsync(
             detailBody,
             uid =>
             {
+                lookupInvoked = true;
+                check(uid == 0x5678, "the uid reverse lookup receives the requested uid");
+                return "艾琳";
+            },
+            (uid, name) =>
+            {
                 detailInvoked = true;
                 detailFactoryUid = uid;
+                detailFactoryName = name;
                 return GameProtocolEngine.CreateCurrentCharacterDetails(uid);
             },
             () =>
@@ -158,8 +174,10 @@ internal static class FriendSmokeTests
                 rosterInvoked = true;
                 return Task.FromResult(roster);
             });
-        check(detailInvoked && !rosterInvoked && detailFactoryUid == 0x5678,
-            "a mode-3 request resolves to the detail factory for the requested uid, never to the roster");
+        check(lookupInvoked && detailInvoked && !rosterInvoked
+                && detailFactoryUid == 0x5678
+                && detailFactoryName == "艾琳",
+            "a mode-3 request looks the uid up and resolves to that character's detail, never the roster");
         check(resolvedDetail is not null
                 && resolvedDetail.ProtocolId == GameProtocolEngine.UserInfoNotification
                 && resolvedDetail.Payload[0] == 1
@@ -173,27 +191,52 @@ internal static class FriendSmokeTests
                     resolvedDetail.Payload.AsSpan(9, 4)) == 81,
             "the detail record starts with uid, a u32 and the 81-byte stat blob the mode-1/3 parser reads");
 
-        var emptyUidBody = new byte[] { 0, 0, 0, 0, 3 };
-        check(EntranceService.ClassifyUserInfoRequest(emptyUidBody, out var emptyUid)
-                == EntranceService.UserInfoReplyKind.Ignore
-                && emptyUid == 0,
-            "a mode-3 GET_USERINFO without a uid is ignored instead of answered with the roster");
+        // uid 无人持有（离线/别的区）：反查落空 → 不回包。
         rosterInvoked = false;
         detailInvoked = false;
-        var resolvedIgnore = await EntranceService.ResolveUserInfoReplyAsync(
-            emptyUidBody,
-            uid =>
+        var resolvedUnknown = await EntranceService.ResolveUserInfoReplyAsync(
+            detailBody,
+            _ => null,
+            (_, _) =>
             {
                 detailInvoked = true;
-                return GameProtocolEngine.CreateCurrentCharacterDetails(uid);
+                return roster;
             },
             () =>
             {
                 rosterInvoked = true;
                 return Task.FromResult(roster);
             });
-        check(resolvedIgnore is null && !detailInvoked && !rosterInvoked,
-            "a uid-less mode-3 request resolves to no reply at all");
+        check(resolvedUnknown is null && !detailInvoked && !rosterInvoked,
+            "a mode-3 request for a uid no online character holds gets no reply at all");
+
+        var emptyUidBody = new byte[] { 0, 0, 0, 0, 3 };
+        check(EntranceService.ClassifyUserInfoRequest(emptyUidBody, out var emptyUid)
+                == EntranceService.UserInfoReplyKind.Ignore
+                && emptyUid == 0,
+            "a mode-3 GET_USERINFO without a uid is ignored instead of answered with the roster");
+        rosterInvoked = false;
+        lookupInvoked = false;
+        detailInvoked = false;
+        var resolvedIgnore = await EntranceService.ResolveUserInfoReplyAsync(
+            emptyUidBody,
+            _ =>
+            {
+                lookupInvoked = true;
+                return null;
+            },
+            (_, _) =>
+            {
+                detailInvoked = true;
+                return roster;
+            },
+            () =>
+            {
+                rosterInvoked = true;
+                return Task.FromResult(roster);
+            });
+        check(resolvedIgnore is null && !lookupInvoked && !detailInvoked && !rosterInvoked,
+            "a uid-less mode-3 request resolves to no reply at all and never reaches the lookup");
         check(EntranceService.ClassifyUserInfoRequest([0, 0], out _)
                 == EntranceService.UserInfoReplyKind.Roster,
             "a GET_USERINFO without a payload keeps the legacy roster behaviour");
@@ -203,7 +246,10 @@ internal static class FriendSmokeTests
     {
         var packet = GameProtocolEngine.CreateFriendList(
         [
-            new GameFriendEntry(Encoding.GetEncoding(936).GetBytes("阿尔法"), Online: true),
+            new GameFriendEntry(
+                Encoding.GetEncoding(936).GetBytes("阿尔法"),
+                Online: true,
+                AreaUserId: 0x1234),
             new GameFriendEntry(Encoding.ASCII.GetBytes("Bravo"), Online: false)
         ]);
 
@@ -220,14 +266,18 @@ internal static class FriendSmokeTests
         check(firstName[..6].SequenceEqual(Encoding.GetEncoding(936).GetBytes("阿尔法"))
             && firstName[6..].ToArray().All(b => b == 0),
             "the name occupies a NUL-padded thirty-byte field");
-        check(first[0x21] == 0 && first[0x22] == 0 && first[0x23] == 0 && first[0x24] == 0
+        check(BinaryPrimitives.ReadUInt16LittleEndian(first.Slice(0x21, 2)) == 0x1234,
+            "an online record carries its area user id in the u16 the client's 查看信息 sends back");
+        check(first[0x23] == 0 && first[0x24] == 0
             && first[0x25] == 0 && first[0x26] == 0 && first[0x27] == 0 && first[0x28] == 0
             && first[0x29] == 0,
-            "the five fields with unknown semantics are zero-filled for now");
+            "the four fields with unknown semantics are zero-filled for now");
 
         var second = packet.Payload.AsSpan(1 + 42, 42);
         check(second.Slice(3, 30)[..5].SequenceEqual(Encoding.ASCII.GetBytes("Bravo")),
             "an ASCII name uses the same thirty-byte field");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(second.Slice(0x21, 2)) == 0,
+            "a record left at the default carries a zero area user id");
         check(packet.Payload[1 + 42 + 0x20] == 0,
             "the last byte of the name field stays inside the record");
     }
@@ -467,7 +517,7 @@ internal static class FriendSmokeTests
             await store.AddFriendAsync("alice", "布拉沃", CancellationToken.None);
             var alicePackets = new List<GameServerPacket>();
             await service.AttachChannelAsync(
-                "alice", "阿尔法", Guid.NewGuid(), Record(alicePackets), CancellationToken.None);
+                "alice", "阿尔法", areaUserId: 11, Guid.NewGuid(), Record(alicePackets), CancellationToken.None);
 
             var snapshots = alicePackets
                 .Where(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification)
@@ -476,6 +526,8 @@ internal static class FriendSmokeTests
                     && snapshots[0].Payload[0] == 1
                     && HasFriendName(snapshots[0], 0, "布拉沃"),
                 "logging in sends exactly one friend-list snapshot holding the account's friends");
+            check(FriendRecordAreaUserId(snapshots[0], 0) == 0,
+                "an offline friend's record leaves the 0x21 uid field at zero, so 查看信息 stays silent");
             check(alicePackets.Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification),
                 "an offline friend is marked offline by BUDDY_OUT right after the snapshot");
             check(alicePackets.All(packet => packet.ProtocolId != GameProtocolEngine.BuddyInNotification),
@@ -485,7 +537,7 @@ internal static class FriendSmokeTests
             var davePackets = new List<GameServerPacket>();
             var daveSession = Guid.NewGuid();
             await service.AttachChannelAsync(
-                "dave", "戴夫", daveSession, Record(davePackets), CancellationToken.None);
+                "dave", "戴夫", areaUserId: 4, daveSession, Record(davePackets), CancellationToken.None);
             check(davePackets.Count == 1
                     && davePackets[0].ProtocolId == GameProtocolEngine.BuddyConnListNotification
                     && davePackets[0].Payload[0] == 0,
@@ -495,7 +547,7 @@ internal static class FriendSmokeTests
             var bravoPackets = new List<GameServerPacket>();
             var bravoSession = Guid.NewGuid();
             await service.AttachChannelAsync(
-                "bobby", "布拉沃", bravoSession, Record(bravoPackets), CancellationToken.None);
+                "bobby", "布拉沃", areaUserId: 1, bravoSession, Record(bravoPackets), CancellationToken.None);
             check(alicePackets.Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification),
                 "a friend coming online notifies the accounts whose friend list holds that name");
             check(davePackets.Count == daveBeforeStranger,
@@ -505,7 +557,7 @@ internal static class FriendSmokeTests
             var staleBravoSession = bravoSession;
             bravoSession = Guid.NewGuid();
             await service.AttachChannelAsync(
-                "bobby", "布拉沃", bravoSession, Record(bravoPackets), CancellationToken.None);
+                "bobby", "布拉沃", areaUserId: 1, bravoSession, Record(bravoPackets), CancellationToken.None);
             var aliceBeforeStaleDetach = alicePackets.Count;
             var bravoBeforeStaleDetach = bravoPackets.Count;
             await service.DetachChannelAsync("布拉沃", staleBravoSession, CancellationToken.None);
@@ -616,7 +668,7 @@ internal static class FriendSmokeTests
 
             bravoSession = Guid.NewGuid();
             await service.AttachChannelAsync(
-                "bobby", "布拉沃", bravoSession, Record(bravoPackets), CancellationToken.None);
+                "bobby", "布拉沃", areaUserId: 1, bravoSession, Record(bravoPackets), CancellationToken.None);
             var bravoBefore = bravoPackets.Count;
             var aliceBeforeOnlineWhisper = alicePackets.Count;
             await service.WhisperAsync(
@@ -693,7 +745,7 @@ internal static class FriendSmokeTests
             var erinPackets = new List<GameServerPacket>();
             var erinSession = Guid.NewGuid();
             await service.AttachChannelAsync(
-                "erin", "艾琳", erinSession, Record(erinPackets), CancellationToken.None);
+                "erin", "艾琳", areaUserId: 7, erinSession, Record(erinPackets), CancellationToken.None);
             var buddyIn = davePackets.Skip(daveBeforeAdd)
                 .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification);
             check(buddyIn is not null
@@ -705,7 +757,7 @@ internal static class FriendSmokeTests
             var daveReconnect = Guid.NewGuid();
             var daveBeforeReconnect = davePackets.Count;
             await service.AttachChannelAsync(
-                "dave", "戴夫", daveReconnect, Record(davePackets), CancellationToken.None);
+                "dave", "戴夫", areaUserId: 4, daveReconnect, Record(davePackets), CancellationToken.None);
             var reconnectSnapshot = davePackets.Skip(daveBeforeReconnect)
                 .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
             check(reconnectSnapshot is not null
@@ -714,6 +766,14 @@ internal static class FriendSmokeTests
                     && davePackets.Skip(daveBeforeReconnect)
                         .All(packet => packet.ProtocolId != GameProtocolEngine.BuddyOutNotification),
                 "an online friend is not marked offline by BUDDY_OUT after the snapshot");
+            check(reconnectSnapshot is not null
+                    && FriendRecordAreaUserId(reconnectSnapshot, 0) == 7,
+                "an online friend's record carries its area user id in the 0x21 field");
+            check(service.TryGetCharacterByAreaUserId(7, out var onlineLookup)
+                    && onlineLookup == "艾琳"
+                    && !service.TryGetCharacterByAreaUserId(8, out _)
+                    && !service.TryGetCharacterByAreaUserId(0, out _),
+                "the friend service resolves an online character by area user id, and rejects free and zero ids");
 
             var appearance = GameProtocolEngine.CreateCurrentCharacterInfo(
                 new GameCharacterSummary(0, encoding.GetBytes("戴夫"), Job: 0, GrowType: 4, Level: 20),
@@ -778,6 +838,7 @@ internal static class FriendSmokeTests
             await service.AttachChannelAsync(
                 "erin",
                 "艾琳",
+                areaUserId: 7,
                 brokenErinSession,
                 packet =>
                 {
@@ -879,7 +940,7 @@ internal static class FriendSmokeTests
 
             var ghostPackets = new List<GameServerPacket>();
             await service.AttachChannelAsync(
-                "ghost-account", "幽灵", Guid.NewGuid(), Record(ghostPackets), CancellationToken.None);
+                "ghost-account", "幽灵", areaUserId: 0, Guid.NewGuid(), Record(ghostPackets), CancellationToken.None);
             await service.AddFriendAsync("ghost-account", "幽灵", "艾琳", CancellationToken.None);
             check(ghostPackets.Any(packet =>
                     packet.ProtocolId == GameProtocolEngine.MessageNotification
@@ -898,7 +959,7 @@ internal static class FriendSmokeTests
             check(await store.AddFriendAsync("gina", "ECHO", CancellationToken.None) == FriendUpdateFailure.None,
                 "the case-spelling fixture stores the friend under the caller's uppercase spelling");
             var ginaPackets = new List<GameServerPacket>();
-            await service.AttachChannelAsync("gina", "吉娜", Guid.NewGuid(), Record(ginaPackets), CancellationToken.None);
+            await service.AttachChannelAsync("gina", "吉娜", areaUserId: 0, Guid.NewGuid(), Record(ginaPackets), CancellationToken.None);
             check(ginaPackets.Count == 2
                     && ginaPackets[0].ProtocolId == GameProtocolEngine.BuddyConnListNotification
                     && HasFriendName(ginaPackets[0], 0, "ECHO")
@@ -908,7 +969,7 @@ internal static class FriendSmokeTests
 
             var echoSession = Guid.NewGuid();
             await service.AttachChannelAsync(
-                "frank", "Echo", echoSession, Record(new List<GameServerPacket>()), CancellationToken.None);
+                "frank", "Echo", areaUserId: 0, echoSession, Record(new List<GameServerPacket>()), CancellationToken.None);
             var caseBuddyIn = ginaPackets
                 .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification);
             check(caseBuddyIn is not null
@@ -950,7 +1011,7 @@ internal static class FriendSmokeTests
 
             var fullPackets = new List<GameServerPacket>();
             await service.AttachChannelAsync(
-                "full", "满载", Guid.NewGuid(), Record(fullPackets), CancellationToken.None);
+                "full", "满载", areaUserId: 0, Guid.NewGuid(), Record(fullPackets), CancellationToken.None);
             await service.AddFriendAsync("full", "满载", crowdNames[32], CancellationToken.None);
             check(fullPackets.Any(packet =>
                     packet.ProtocolId == GameProtocolEngine.MessageNotification
@@ -973,6 +1034,11 @@ internal static class FriendSmokeTests
             packets.Add(packet);
             return ValueTask.CompletedTask;
         };
+
+    // 42 字节记录偏移 0x21 的 u16：在线好友的区用户 id（客户端“查看信息”按它发 CMD 8 mode 3）。
+    private static ushort FriendRecordAreaUserId(GameServerPacket snapshot, int index) =>
+        BinaryPrimitives.ReadUInt16LittleEndian(
+            snapshot.Payload.AsSpan(1 + index * 42 + 0x21, 2));
 
     private static bool HasFriendName(GameServerPacket snapshot, int index, string name)
     {

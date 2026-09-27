@@ -73,7 +73,9 @@ public sealed record GameTownUser(
     short Y,
     byte Direction);
 // 好友列表条目：名字为 CP949/GBK 编码的原始字节（列表内为定长 30 字节字段）。
-public sealed record GameFriendEntry(byte[] NameBytes, bool Online);
+// AreaUserId 是记录偏移 0x21 的 u16，客户端“查看信息”按它发 CMD 8 mode 3；
+// 在线好友填其当前会话的区用户 id，离线保持 0。
+public sealed record GameFriendEntry(byte[] NameBytes, bool Online, ushort AreaUserId = 0);
 public sealed record GameDungeonMonster(
     byte MapListIndex,
     ushort UniqueId,
@@ -2307,15 +2309,16 @@ public static class GameProtocolEngine
 
             // 记录布局（客户端 0x425668 逐字段读入）：
             // [0] 状态（0xFF = 保持原状态；离线由 BUDDY_OUT 置 -1），[1] 标志，[2] 保留，
-            // [3..32] 名字（定长 30、NUL 填充），[0x21] u16、[0x23] u8、[0x24] u8 打包、
-            // [0x25] u32、[0x29] u8 —— 后五个字段语义待真机确认，先全 0。
+            // [3..32] 名字（定长 30、NUL 填充），[0x21] u16 = 在线好友的区用户 id（客户端
+            // “查看信息”按它发 CMD 8 mode 3，离线为 0）、[0x23] u8、[0x24] u8 打包、
+            // [0x25] u32、[0x29] u8 —— 后四个字段语义待真机确认，先全 0。
             writer.Write((byte)0);                 // state
             writer.Write((byte)0);                 // flag
             writer.Write((byte)0);                 // reserved
             var nameField = new byte[FriendListNameFieldLength];
             friend.NameBytes.CopyTo(nameField, 0);
             writer.Write(nameField);
-            writer.Write((ushort)0);
+            writer.Write(friend.AreaUserId);
             writer.Write((byte)0);
             writer.Write((byte)0);
             writer.Write(0u);
