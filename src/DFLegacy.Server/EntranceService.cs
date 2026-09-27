@@ -2665,15 +2665,26 @@ public sealed class EntranceService(
                             if (userInfo is null)
                             {
                                 // uid 为 0（好友离线时条目里就是 0）或没有在线角色持有它：
-                                // 静默忽略，比回一份错误的列表（触发弹窗）好。
+                                // 静默忽略，比回一份错误的列表（触发弹窗）好。两种原因分开
+                                // 措辞，真机排查时一眼能看出是客户端发了 0 还是 uid 没人认领。
                                 _ = GameProtocolEngine.TryReadUserInfoRequest(
                                     request.Body,
                                     out var ignoredUserId,
                                     out _);
-                                logger.LogInformation(
-                                    "Ignored GET_USERINFO mode 3 for session {SessionId}: no online character holds area user id {AreaUserId}.",
-                                    runtimeSession.Id,
-                                    ignoredUserId);
+                                if (ignoredUserId == 0)
+                                {
+                                    logger.LogInformation(
+                                        "Ignored GET_USERINFO mode 3 for session {SessionId}: the client sent area user id 0.",
+                                        runtimeSession.Id);
+                                }
+                                else
+                                {
+                                    logger.LogInformation(
+                                        "Ignored GET_USERINFO mode 3 for session {SessionId}: no online character holds area user id {AreaUserId}.",
+                                        runtimeSession.Id,
+                                        ignoredUserId);
+                                }
+
                                 continue;
                             }
 

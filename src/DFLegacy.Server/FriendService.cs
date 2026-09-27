@@ -191,6 +191,7 @@ public sealed class FriendService
                 senderAreaUserId,
                 textBytes),
             senderAppearance,
+            selfNoticeText: "不能给自己发悄悄话",
             cancellationToken);
 
     /// <summary>
@@ -209,6 +210,7 @@ public sealed class FriendService
             textBytes,
             mainChatLine: null,
             receiverPreface: null,
+            selfNoticeText: "不能和自己进行1:1聊天",
             cancellationToken);
 
     private async Task RoutePeerMessageAsync(
@@ -217,6 +219,7 @@ public sealed class FriendService
         byte[] textBytes,
         GameServerPacket? mainChatLine,
         GameServerPacket? receiverPreface,
+        string selfNoticeText,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(peerNameBytes);
@@ -225,7 +228,8 @@ public sealed class FriendService
         var peerName = ClientEncoding.GetString(peerNameBytes);
         if (string.Equals(peerName, characterName, StringComparison.OrdinalIgnoreCase))
         {
-            await SendNoticeAsync(characterName, "不能给自己发悄悄话", cancellationToken);
+            // 悄悄话与 1:1 窗口是两套界面，自投的提示文案各自贴合自己的上下文。
+            await SendNoticeAsync(characterName, selfNoticeText, cancellationToken);
             return;
         }
 
@@ -319,12 +323,29 @@ public sealed class FriendService
                     continue;
                 }
 
-                // Use the name the recipient stored: the client matches buddy entries by
-                // the exact name it sent when the friend was added.
-                var packet = isOnline
-                    ? GameProtocolEngine.CreateBuddyIn(state: 0, ClientEncoding.GetBytes(storedName))
-                    : GameProtocolEngine.CreateBuddyOut(ClientEncoding.GetBytes(storedName));
-                await TrySendToChannelAsync(ownerCharacterName, channel, packet, cancellationToken);
+                if (isOnline)
+                {
+                    // Use the name the recipient stored: the client matches buddy entries by
+                    // the exact name it sent when the friend was added.
+                    await TrySendToChannelAsync(
+                        ownerCharacterName,
+                        channel,
+                        GameProtocolEngine.CreateBuddyIn(
+                            state: 0,
+                            ClientEncoding.GetBytes(storedName)),
+                        cancellationToken);
+                }
+
+                // BUDDY_IN/BUDDY_OUT 只带状态、名字和标志，没有 uid；好友条目记录 0x21
+                // 的区用户 id 只随快照下发，而客户端的“查看信息”正是拿这个 uid 发
+                // CMD 8 mode 3。若状态变化后不重推快照，观察者的条目会一直带着旧 uid
+                // （先登录、好友后上线时就是恒 0），查看信息直到下一次重登才恢复。
+                // 所以每次状态变化都给受影响账号补一次完整快照：在线时它写入新 uid；
+                // 离线时它把该字段写回 0（避免 uid 被回收后误认成别人）。每个受影响
+                // 账号只推一次。离线不再单独发 BUDDY_OUT：快照先写占位状态，随后
+                // PushSnapshotAsync 内部为不在线好友补的 BUDDY_OUT(-1) 才是最后写入者，
+                // 既保证最终离线，也免去同一名字的两条 BUDDY_OUT。
+                await PushSnapshotAsync(channel.AccountName, ownerCharacterName, cancellationToken);
             }
             catch (Exception exception)
             {

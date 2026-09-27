@@ -2361,8 +2361,9 @@ public static class GameProtocolEngine
 
     /// <summary>
     /// ADD_FRIEND 成功结果（type=1 命令包）。客户端接收循环按包头 type 分发：type 1 的
-    /// body 首字节被读作结果标志，handler 从 body+1 继续按长度前缀读名字，最后读一个
-    /// 可选错误码。只有这条包会在客户端打印 “[名字]已被添加到好友名单”。
+    /// body 首字节被读作结果标志，handler 从 body+1 继续按长度前缀读名字，再读记录字段
+    /// A..F（本包只带 A=0，其余读到流尾按 0 处理）。只有这条包会在客户端打印
+    /// “[名字]已被添加到好友名单”；标志为 0 的失败分支才读一个独立错误码。
     /// </summary>
     public static GameServerPacket CreateAddFriendResult(byte[] nameBytes) =>
         CreateFriendCommandResult(AddFriendCommand, nameBytes);
@@ -2396,7 +2397,12 @@ public static class GameProtocolEngine
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)1);                              // 结果标志，非零即成功
         WriteLengthPrefixedBytes(writer, nameBytes);
-        writer.Write((byte)0);                              // 错误码 0 = 无错误
+        // 尾字节的含义随命令不同，不能统一写成“错误码”：
+        // - REMOVE_FRIEND（id 64）的 handler 把它读作可选结果码（0x15 = 对方不在好友名单中），
+        //   这里发 0 表示无错误；
+        // - ADD_FRIEND（id 63）的成功分支把它读作好友记录字段 A（随后 B..F 读到流尾按 0
+        //   处理），客户端据此调 InsertOrUpdateEntry / SetEntryState。
+        writer.Write((byte)0);
         return new GameServerPacket(CommandPacketType, command, payload.ToArray());
     }
 

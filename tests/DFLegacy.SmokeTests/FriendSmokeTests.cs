@@ -37,7 +37,7 @@ internal static class FriendSmokeTests
             "a successful add answers on the type-1 command channel with id 63");
         check(add.Payload.SequenceEqual(
                 new byte[] { 1, 5, 0, 0, 0, (byte)'B', (byte)'r', (byte)'a', (byte)'v', (byte)'o', 0 }),
-            "the add result bytes are exactly [non-zero flag][u32 name length + name][error code 0]");
+            "the add result bytes are exactly [non-zero flag][u32 name length + name][record field A = 0]");
 
         var gbkName = Encoding.GetEncoding(936).GetBytes("布拉沃");
         var remove = GameProtocolEngine.CreateRemoveFriendResult(gbkName);
@@ -546,10 +546,19 @@ internal static class FriendSmokeTests
 
             var bravoPackets = new List<GameServerPacket>();
             var bravoSession = Guid.NewGuid();
+            var aliceBeforeBravoLogin = alicePackets.Count;
             await service.AttachChannelAsync(
                 "bobby", "布拉沃", areaUserId: 1, bravoSession, Record(bravoPackets), CancellationToken.None);
             check(alicePackets.Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification),
                 "a friend coming online notifies the accounts whose friend list holds that name");
+            var bravoLoginTail = alicePackets.Skip(aliceBeforeBravoLogin).ToArray();
+            var reloginSnapshot = bravoLoginTail
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
+            check(bravoLoginTail.Count(packet =>
+                        packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification) == 1
+                    && reloginSnapshot is not null
+                    && FriendRecordAreaUserId(reloginSnapshot, 0) == 1,
+                "a friend coming online re-pushes exactly one snapshot so the entry's uid goes from 0 to its area user id");
             check(davePackets.Count == daveBeforeStranger,
                 "an online account with no matching friend entry receives no buddy notification");
 
@@ -582,6 +591,14 @@ internal static class FriendSmokeTests
                 "the session that owns the channel goes offline and friends hear BUDDY_OUT");
             check(alicePackets.Count(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification) >= 2,
                 "a friend going offline notifies the same accounts with BUDDY_OUT");
+            var offlineTail = alicePackets.Skip(aliceBeforeLiveDetach).ToArray();
+            var offlineSnapshot = offlineTail
+                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification);
+            check(offlineTail.Count(packet =>
+                        packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification) == 1
+                    && offlineSnapshot is not null
+                    && FriendRecordAreaUserId(offlineSnapshot, 0) == 0,
+                "a friend going offline re-pushes one snapshot that zeroes the entry's uid again");
 
             // 删除后仍有存活好友：重推的快照必须保留艾琳（而不是整份清空），
             // 并照旧给这个离线好友补 BUDDY_OUT（紧跟快照之后）。
@@ -831,6 +848,19 @@ internal static class FriendSmokeTests
             check(daveMessengerReply.Length == 1
                     && IsMessengerMessage(daveMessengerReply[0], "艾琳", "1:1消息"),
                 "the 1:1 sender gets exactly one NOTI 65 named after the peer");
+
+            var daveBeforeSelfMessenger = davePackets.Count;
+            await service.SendMessengerMessageAsync(
+                "戴夫",
+                encoding.GetBytes("戴夫"),
+                encoding.GetBytes("自言自语"),
+                CancellationToken.None);
+            var selfMessenger = davePackets.Skip(daveBeforeSelfMessenger).ToArray();
+            check(selfMessenger.Length == 1
+                    && selfMessenger[0].ProtocolId == GameProtocolEngine.MessageNotification
+                    && selfMessenger[0].Payload[0] == (byte)GameMessageType.Type03White
+                    && ReadMessageText(selfMessenger[0]) == "不能和自己进行1:1聊天",
+                "a 1:1 message to yourself answers with the 1:1 wording instead of the whisper notice");
 
             // 目标通道坏掉时，逐接收者 try/catch 保证发送者自己的 1:1 行仍然到达
             var brokenErinSession = Guid.NewGuid();
