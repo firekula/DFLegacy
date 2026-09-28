@@ -276,7 +276,7 @@
 
 城镇内组队，服务端全量实现：城镇右键"邀请组队"与列表"申请加入"（**同一个包** `CMD 10 peerType=0`）→ 对方应答窗 → 接受 → 建队/并入 → 4 人名册（成员槽、队长、预置队名）；退出/踢人/掉线/切换角色/切换频道的移除与**队长自动继任**；进副本、回城、换城镇、城镇内换区都**不退队**；「队伍信息」列表与「推荐伙伴」所依赖的数据前提（名册按区域广播 + 进区补发）一并落地。协议与实现依据：`.superpowers/sdd/party-protocol-recon.md`（合并卷，含对 A 卷的两条勘误）与四份分卷 `party-protocol-recon-a-core.md` / `-b-membership.md` / `-c-partylist.md` / `-d-recommend.md`、设计稿 `docs/superpowers/specs/2026-09-28-party-system-design.md`、计划 `docs/superpowers/plans/2026-09-28-party-system.md`。
 
-**当前状态（诚实标注）**：代码在分支 `feat/party`。提交锚点（**按提交号记，不记总数**——总数会随每次文档提交变化）：代码提交 8 个 `c76c142^..a79c548`（`A..B` 记法不含 A，字面只有 7 个）（**实测：`git log --oneline main..feat/party | wc -l` = 9、`git rev-parse --short HEAD` = `c859137`**），本次修正提交（curl 调用形状 / 分支状态 / 顺序前提）又在其上。代码通过逐任务评审，`PartySmokeTests` 全绿；**真机双客户端验收尚未进行**（下表全部"待验证"）。验收环境由发布件现启：`dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o /g/Game/DNF_ACT1/DF/town-test` → 还原 `server.json` → 在 `DF/town-test` 启动（完整命令与核对项见本节"无头冒烟"与 `docs/superpowers/handoff-party.md`），PID 以实际为准。
+**当前状态（诚实标注）**：代码在分支 `feat/party`。提交锚点（**按提交号记，不记总数**——总数会随每次文档提交变化）：代码提交 8 个 `c76c142^..a79c548`（`A..B` 记法不含 A，字面只有 7 个）（**实测：`git log --oneline main..feat/party | wc -l` = 9、`git rev-parse --short HEAD` = `c859137`**），本次修正提交（curl 调用形状 / 分支状态 / 顺序前提）又在其上，**终局全分支评审修复提交 `7803c62`**（进区名册时序 / 死代码清理 / 请求竞态与覆盖）再在其上（`git rev-parse --short HEAD` 以实际为准）。代码通过逐任务评审，`PartySmokeTests` 全绿；**真机双客户端验收尚未进行**（下表全部"待验证"）。验收环境由发布件现启：`dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o /g/Game/DNF_ACT1/DF/town-test` → 还原 `server.json` → 在 `DF/town-test` 启动（完整命令与核对项见本节"无头冒烟"与 `docs/superpowers/handoff-party.md`），PID 以实际为准。
 
 **协议要点（含本轮勘察勘误与硬约束，真机最容易踩的就是这几条）**
 
