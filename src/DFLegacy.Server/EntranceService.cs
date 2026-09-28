@@ -16,6 +16,7 @@ public sealed class EntranceService(
     TownSessionDirectory townDirectory,
     FriendService friendService,
     ItemTradeService itemTradeService,
+    PartyService partyService,
     SkillCatalog skillCatalog,
     QuestCatalog questCatalog,
     CharacterExperienceCatalog experienceCatalog,
@@ -996,6 +997,19 @@ public sealed class EntranceService(
                             currentDirection,
                             SendTownPacketAsync),
                         cancellationToken);
+
+                    // 组队名册跟着区域走：更新本会话 uid、重播名册、并把本区域现有队伍补发给这位客户端
+                    //（「队伍信息」列表与「推荐伙伴」都依赖这些名册，设计稿 §6.2）。
+                    // 必须在 EnterAsync 成功之后：OnAreaChangedAsync 判定"谁和谁同区域"用的是目录快照。
+                    if (activeCharacter is not null)
+                    {
+                        await partyService.OnAreaChangedAsync(
+                            activeCharacter.Id,
+                            currentTownId,
+                            currentAreaId,
+                            localUserId,
+                            cancellationToken);
+                    }
                 }
 
                 async Task LeaveTownAreaAsync(CancellationToken cancellationToken)
@@ -1016,6 +1030,13 @@ public sealed class EntranceService(
                         await itemTradeService.CancelForAreaChangeAsync(
                             activeCharacter.Id,
                             cancellationToken);
+                    }
+
+                    // 组队**不因换区退队**（用户决策）：只重播名册，让旧区域的旁观者把这一格看成 0。
+                    // 目录随后才退出，此刻名册广播仍能到达旧区域的在世会话。
+                    if (activeCharacter is not null)
+                    {
+                        await partyService.OnLeftAreaAsync(activeCharacter.Id, cancellationToken);
                     }
 
                     await townDirectory.LeaveAsync(townTicket, cancellationToken);
@@ -2845,6 +2866,12 @@ public sealed class EntranceService(
                                     activeCharacter.Id,
                                     runtimeSession.Id,
                                     serverToken);
+                                // 组队通道同理：返回选人即会话结束，留到断线 finally 就晚了
+                                // （finally 里 activeCharacter 已为 null），该角色会一直留在队伍里。
+                                await partyService.DetachChannelAsync(
+                                    activeCharacter.Id,
+                                    runtimeSession.Id,
+                                    serverToken);
                             }
 
                             characterSessions.Release(activeCharacterLease);
@@ -2993,6 +3020,12 @@ public sealed class EntranceService(
                                     // 换角色：旧角色的在途交易同样要结束并通知对手，
                                     // 否则对手会一直等一个已经不在线的会话。
                                     await itemTradeService.DetachChannelAsync(
+                                        activeCharacter.Id,
+                                        runtimeSession.Id,
+                                        serverToken);
+                                    // 换角色不摘组队通道的话，旧角色会留在队伍里、小队还会
+                                    // 试图往这个已被替换的会话发包（设计稿 §5.5 的自动退队来源）。
+                                    await partyService.DetachChannelAsync(
                                         activeCharacter.Id,
                                         runtimeSession.Id,
                                         serverToken);
@@ -3338,6 +3371,12 @@ public sealed class EntranceService(
                                         // 选角失败会丢弃 activeCharacter：在途交易也要
                                         // 在这里结束，否则对手永远等不到取消。
                                         await itemTradeService.DetachChannelAsync(
+                                            activeCharacter.Id,
+                                            runtimeSession.Id,
+                                            serverToken);
+                                        // 组队通道同样必须在丢弃 activeCharacter 之前摘除，
+                                        // 否则旧角色会以"在线且在队"的状态滞留。
+                                        await partyService.DetachChannelAsync(
                                             activeCharacter.Id,
                                             runtimeSession.Id,
                                             serverToken);
@@ -3687,6 +3726,16 @@ public sealed class EntranceService(
                             // 交易通道与好友通道同生命周期：同一个 SendTownPacketAsync 入口
                             // （SerializedWriteStream 保证跨线程写入串行，不会交错）。
                             await itemTradeService.AttachChannelAsync(
+                                accountName,
+                                activeCharacter.Name,
+                                activeCharacter.Id,
+                                localUserId,
+                                runtimeSession.Id,
+                                packet => SendTownPacketAsync(packet, serverToken),
+                                serverToken);
+
+                            // 组队通道与好友/交易通道同生命周期：同一个 SendTownPacketAsync 入口。
+                            await partyService.AttachChannelAsync(
                                 accountName,
                                 activeCharacter.Name,
                                 activeCharacter.Id,
@@ -6771,6 +6820,26 @@ public sealed class EntranceService(
                                     requesterWeightDelta,
                                     serverToken);
                             }
+                            else if (activeCharacter is not null
+                                && GameProtocolEngine.TryReadPartyRequestPeer(
+                                    request.Body,
+                                    out var partyTargetUid,
+                                    out var partyReviveCoins))
+                            {
+                                // peerType==0：组队邀请 / 申请加入（同一个包，设计稿 §5.1）。
+                                // X 是请求者自报的复活币个数，只用于应答窗显示；疲劳取本会话存档，
+                                // 虚弱% 目前没有服务端来源 → 0（真机项：数值不对再改）。
+                                await partyService.HandleRequestAsync(
+                                    activeCharacter.Id,
+                                    partyTargetUid,
+                                    new PartyRequestInfo(
+                                        partyReviveCoins,
+                                        // UsedFatigue 是 ushort：直接 Clamp 会命中 int/ushort 两个重载
+                                        // 而二义（CS0121），显式按 int 夹取再转回 ushort。
+                                        (ushort)Math.Clamp((int)activeCharacter.UsedFatigue, 0, ushort.MaxValue),
+                                        WeaknessPercent: 0),
+                                    serverToken);
+                            }
 
                             continue;
                         }
@@ -6792,6 +6861,17 @@ public sealed class EntranceService(
                                     tradeRequesterUid,
                                     accept: true,
                                     accepterWeightDelta,
+                                    serverToken);
+                            }
+                            else if (activeCharacter is not null
+                                && GameProtocolEngine.TryReadPartyResponsePeer(
+                                    request.Body,
+                                    out var partyRequesterUid))
+                            {
+                                // peerType==0：组队应答（客户端不发"拒绝"，所以到这里就是接受）。
+                                await partyService.HandleResponseAsync(
+                                    activeCharacter.Id,
+                                    partyRequesterUid,
                                     serverToken);
                             }
 
@@ -6821,6 +6901,56 @@ public sealed class EntranceService(
                                     mainInventory = (tradeOutcome.ReplacementState.Inventory ?? [])
                                         .ToDictionary(item => item.Slot);
                                 }
+                            }
+
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.SetPartyInfoCommand)
+                        {
+                            // CMD 12：u8 预置队名下标 + （sel==0 时的 u32 长度+名字）+ u8 人数上限。
+                            // 无队伍时它是"新建队伍"（1 人队），只有队长能改（设计稿 §5.7）。
+                            if (activeCharacter is not null
+                                && GameProtocolEngine.TryReadSetPartyInfo(
+                                    request.Body,
+                                    out var partyNameSelection,
+                                    out var partyNameBytes,
+                                    out var partyMaxMembers))
+                            {
+                                await partyService.HandleSetInfoAsync(
+                                    activeCharacter.Id,
+                                    partyNameSelection,
+                                    partyNameBytes,
+                                    partyMaxMembers,
+                                    serverToken);
+                            }
+
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.LeavePartyCommand)
+                        {
+                            // CMD 13 无载荷：退出队伍。
+                            if (activeCharacter is not null)
+                            {
+                                await partyService.HandleLeaveAsync(activeCharacter.Id, serverToken);
+                            }
+
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.WalkoutPartyMemberCommand)
+                        {
+                            // CMD 14：载荷是**槽位下标**（不是 uid，B 卷 §6.2）；body[0..1] 是序列号。
+                            if (activeCharacter is not null && request.Body.Length >= 3)
+                            {
+                                await partyService.HandleKickAsync(
+                                    activeCharacter.Id,
+                                    request.Body[2],
+                                    serverToken);
                             }
 
                             continue;
@@ -13214,6 +13344,12 @@ public sealed class EntranceService(
                     // 断线：流已经释放，走 CancellationToken.None 的旁路结束在途交易
                     // （DetachChannelAsync 会把发起者当成已离场，只通知还活着的对手）。
                     await itemTradeService.DetachChannelAsync(
+                        activeCharacter.Id,
+                        runtimeSession.Id,
+                        CancellationToken.None);
+                    // 断线是「自动退队」的最后一个来源（设计稿 §5.5）；目录已在上面
+                    // 退出，所以这里的名册广播不会再往本会话这条已死的流发送。
+                    await partyService.DetachChannelAsync(
                         activeCharacter.Id,
                         runtimeSession.Id,
                         CancellationToken.None);

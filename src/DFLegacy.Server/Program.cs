@@ -47,6 +47,9 @@ builder.Services.AddSingleton<FriendService>();
 // 通道表/会话表同样跨连接共享；托管后台扫描，单例与托管服务必须是同一个实例。
 builder.Services.AddSingleton<ItemTradeService>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ItemTradeService>());
+// 组队通道与队伍表跨连接共享；托管后台扫描（超时收尾），单例与托管服务必须是同一个实例。
+builder.Services.AddSingleton<PartyService>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<PartyService>());
 builder.Services.AddSingleton(serviceProvider =>
 {
     // 区用户 id 池只接受 1..65535。MaximumUsers 以前超出这个范围只是无意义，现在会让
