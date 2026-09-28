@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Text;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
@@ -21,6 +22,8 @@ internal static class TradeSmokeTests
         await CheckSettlementGoldMissingAsync(check);
         await CheckConcurrentConfirmSettlesOnceAsync(check);
         await CheckConfirmAfterCancelIsInertAsync(check);
+        await CheckConfirmAfterPeerDetachAsync(check);
+        await CheckOfflinePeerAbortsSettlementAsync(check);
     }
 
     // 逐字段依据 .superpowers/sdd/trade-protocol-recon.md §2/§3：
@@ -1338,6 +1341,101 @@ internal static class TradeSmokeTests
         check(cancelled != settled,
             "a cancel racing a final confirm is mutually exclusive: either the cancel wins (no NOTI 18) "
             + "or the confirm wins (no NOTI 16), never both");
+    }
+
+    /// <summary>
+    /// 评审给的顺序路径：双方锁定、一方已确认，随后对方 DetachChannelAsync，再让另一方确认。
+    /// 注意这条路径**不能**当回归哨兵：DetachChannelAsync 的摘通道与取消会话是同一次同步调用，
+    /// 会话会先被正常取消，之后的确认自然找不到会话。真正的窗口见
+    /// <see cref="CheckOfflinePeerAbortsSettlementAsync"/>。
+    /// </summary>
+    private static async Task CheckConfirmAfterPeerDetachAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, []);
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 3, CancellationToken.None);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        await harness.Service.DetachChannelAsync(
+            harness.IdOf("布拉沃"), harness.SessionIdOf("布拉沃"), CancellationToken.None);
+        var late = await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 3, CancellationToken.None);
+        check(!late.SettlementApplied
+                && harness.Of("阿尔法").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification)
+                && harness.Of("阿尔法").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.FinishItemTradeNotification)
+                && !harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 5),
+            "a peer detaching after one side confirmed cancels the trade: the survivor is told and nothing settles");
+    }
+
+    /// <summary>
+    /// 回归哨兵（评审第 2 轮 Important）：抢占 <c>Settling</c> 之后才发现对方通道已经消失
+    /// （对方正在掉线：通道先摘、它自己的取消步骤还没走到），必须走**结算旁路**把整笔中止。
+    /// 修复前这里会被取消守卫吞掉：会话既不摘除也不通知，`SweepExpiredAsync`/`CMD 26` 全被挡回，
+    /// 两个角色从此永久无法交易、托管物品永久冻结，直到进程重启。
+    /// 公开 API 只能「摘通道 + 结束会话」一起做，因此用反射只摘通道，构造真实掉线窗口的状态。
+    /// </summary>
+    private static async Task CheckOfflinePeerAbortsSettlementAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, []);
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        // 布拉沃先确认，于是阿尔法是「后确认者」，由它抢占 Settling。
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 3, CancellationToken.None);
+        DropChannelForTests(harness.Service, harness.IdOf("布拉沃"));
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        var outcome = await harness.Service.HandleStateAsync(
+            harness.IdOf("阿尔法"), 3, CancellationToken.None);
+        check(!outcome.SettlementApplied
+                && harness.Of("阿尔法").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification)
+                && harness.Of("阿尔法").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.UpdateItemListNotification)
+                && harness.Of("阿尔法").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.FinishItemTradeNotification)
+                && harness.Of("布拉沃").Count == 0,
+            "a peer that vanished before the settle aborts the trade: NOTI 16 + gold refresh to the survivor, no NOTI 18");
+
+        check(!harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 5),
+            "the aborted session is really removed: the escrowed slot is released instead of freezing forever in Settling");
+        var alphaAfter = await harness.Store.GetCharacterAsync("alice", harness.IdOf("阿尔法"), CancellationToken.None);
+        check(alphaAfter is not null && alphaAfter.Inventory is not null
+                && alphaAfter.Gold == 5_000
+                && alphaAfter.Inventory.Single(item => item.Slot == 5).CountOrValue == 10,
+            "the aborted trade never touched the store: the potion never left the owner");
+    }
+
+    /// <summary>
+    /// 测试专用：只摘掉角色通道、不结束会话，构造「通道已消失但会话仍在册」的真实掉线窗口状态。
+    /// 若字段被改名，这条测试会以 FAIL（结算照常成功）而不是静默跳过的方式暴露。
+    /// </summary>
+    private static void DropChannelForTests(ItemTradeService service, Guid characterId)
+    {
+        var field = typeof(ItemTradeService).GetField(
+            "_channels",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var channels = (ConcurrentDictionary<Guid, ItemTradeChannel>?)field?.GetValue(service);
+        channels?.TryRemove(characterId, out _);
     }
 }
 

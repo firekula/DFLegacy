@@ -447,10 +447,12 @@ public sealed class ItemTradeService : BackgroundService
     {
         // 会话已在 ConfirmAsync 的锁内抢占为 Settling：结算期间不再接受托管变动或取消；
         // 确认瞬间对方掉线就按取消处理，绝不把货发给已离开的会话。
+        // 这里必须走结算旁路：会话此刻是 Settling，被守卫的 CancelSessionAsync 会直接返回，
+        // 会话既不摘除也不通知（SweepExpired 也清不掉），两个角色会永久卡在同一笔交易里。
         if (!IsOnline(session.Initiator.Channel.CharacterId)
             || !IsOnline(session.Partner.Channel.CharacterId))
         {
-            await CancelSessionAsync(session, absentCharacterId: null, cancellationToken);
+            await AbortSettlementAsync(session, cancellationToken);
             return new ItemTradeStateOutcome(false, null);
         }
 
