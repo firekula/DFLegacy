@@ -2067,6 +2067,20 @@ public static class GameProtocolEngine
             payload.ToArray());
     }
 
+    /// <summary>
+    /// NOTI 8（组队）：请求方聊天栏打出"[X]已接受组队请求"（dnf.str 0x270，A 卷 §5）。
+    /// 组队分支**不开窗、不建队伍**（那要靠 NOTI 9）；尾部的 u32 客户端在组队分支不读，填 0。
+    /// </summary>
+    public static GameServerPacket CreatePartyAcceptedNotification(ushort accepterUid)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write(accepterUid);
+        writer.Write((byte)0);
+        writer.Write(0u);
+        return new GameServerPacket(NotificationPacketType, ResponsePeerNotification, payload.ToArray());
+    }
+
     /// <summary>CMD 11 成功：给接受方开交易窗（0x4104FF 分支）。</summary>
     public static GameServerPacket CreateResponsePeerReply(ushort requesterUid, byte mode)
     {

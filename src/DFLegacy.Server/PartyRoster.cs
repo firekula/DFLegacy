@@ -50,12 +50,6 @@ internal sealed class PartyRoster
     public PartyMember Leader => _members[0];
     public bool IsFull => _members.Count >= MaxMembers;
 
-    /// <summary>
-    /// 改状态与取快照的互斥对象（沿用 ItemTradeSession.Sync 的用法）：
-    /// 锁内只改状态/取快照，<b>锁内不做 await</b>，发包一律留到出锁之后。
-    /// </summary>
-    public object Sync { get; } = new();
-
     public bool Contains(Guid characterId) => IndexOf(characterId) >= 0;
 
     public int IndexOf(Guid characterId)

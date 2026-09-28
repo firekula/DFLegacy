@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
+using System.Text;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
+using Microsoft.Extensions.Logging.Abstractions;
 
 /// <summary>
 /// 组队协议与服务的冒烟测试。包布局的权威说明见
@@ -8,7 +10,7 @@ using DFLegacy.Server;
 /// </summary>
 internal static class PartySmokeTests
 {
-    public static Task RunAsync(Action<bool, string> check)
+    public static async Task RunAsync(Action<bool, string> check)
     {
         CheckPartyInfoNotificationLayout(check);
         CheckPartyDisbandNotificationLayout(check);
@@ -16,8 +18,21 @@ internal static class PartySmokeTests
         CheckRequestPartyNotificationLayout(check);
         CheckPartyCommandErrorLayout(check);
         CheckPartyRequestParsers(check);
+        CheckPartyAcceptedNotificationLayout(check);
         CheckPartyRoster(check);
-        return Task.CompletedTask;
+        await CheckPartyServiceAsync(check);
+    }
+
+    /// <summary>NOTI 8（组队）：u16 接受者 uid + u8 peerType=0 + u32 未用 → 7 字节（A 卷 §5）。</summary>
+    private static void CheckPartyAcceptedNotificationLayout(Action<bool, string> check)
+    {
+        var packet = GameProtocolEngine.CreatePartyAcceptedNotification(accepterUid: 88);
+        check(packet.Type == GameProtocolEngine.NotificationPacketType
+                && packet.ProtocolId == GameProtocolEngine.ResponsePeerNotification
+                && packet.Payload.Length == 7
+                && BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(0, 2)) == 88
+                && packet.Payload[2] == 0,
+            "party NOTI 8 is 7 bytes with peerType 0 so the client prints its party chat line");
     }
 
     /// <summary>
@@ -254,5 +269,401 @@ internal static class PartySmokeTests
         check(PartyRoster.TryAllocatePartyId([1, 2, 3], preferred: 0, out var scanned)
                 && scanned is not 0 and not 1 and not 2 and not 3,
             "party id allocation scans for a free value when the preferred one is unusable");
+    }
+
+    private static async Task CheckPartyServiceAsync(Action<bool, string> check)
+    {
+        await CheckInviteFlowAsync(check);
+        await CheckApplyToJoinFlowAsync(check);
+        await CheckRequestRefusalsAsync(check);
+        await CheckTimeoutAndBlacklistAsync(check);
+        await CheckLeaveAndKickAsync(check);
+        await CheckSetPartyInfoAsync(check);
+    }
+
+    /// <summary>邀请：A 邀请 B（都无队伍）→ B 收 NOTI 7 → B 接受 → 双方各收一条 NOTI 9，A 另收 NOTI 8。</summary>
+    private static async Task CheckInviteFlowAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"),
+            harness.UidOf("布拉沃"),
+            PartyHarness.DefaultInfo,
+            CancellationToken.None);
+
+        var invitation = harness.FirstOf("布拉沃", GameProtocolEngine.RequestPeerNotification);
+        check(invitation is { Payload.Length: 11 }
+                && invitation.Payload[2] == 0
+                && BinaryPrimitives.ReadUInt32LittleEndian(invitation.Payload.AsSpan(3, 4)) == 7
+                && harness.Of("阿尔法").Count == 0,
+            "an invite reaches the target as an 11-byte NOTI 7 and the requester sees nothing yet");
+
+        harness.ClearAll();
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        var alphaRoster = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
+        var bravoRoster = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
+        check(alphaRoster is { Payload.Length: 20 } && bravoRoster is { Payload.Length: 20 },
+            "both sides receive a 20-byte NOTI 9 roster");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster!.Payload.AsSpan(2, 2)) == harness.UidOf("阿尔法"),
+            "the roster uid is the stable party id (the requester's uid), identical for every receiver");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃")
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster.Payload.AsSpan(13, 2)) == 0xFFFF
+                && bravoRoster.Payload[19] == 0,
+            "the invited member sees leader then itself in slots 0..1 and slot 0 is the leader");
+        check(harness.Of("阿尔法").Any(packet =>
+                packet.ProtocolId == GameProtocolEngine.ResponsePeerNotification && packet.Payload.Length == 7),
+            "the requester also gets the 7-byte NOTI 8 chat line");
+        check(harness.Of("布拉沃").All(packet =>
+                packet.ProtocolId != GameProtocolEngine.ResponsePeerNotification),
+            "the accepter does not get a NOTI 8 for its own acceptance");
+    }
+
+    /// <summary>"申请加入"：目标（队长）已有队伍、请求者无队伍 → 接受后**请求者并入目标队伍**（设计稿 §5.1）。</summary>
+    private static async Task CheckApplyToJoinFlowAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("查理"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("查理"), harness.UidOf("布拉沃"), CancellationToken.None);
+        harness.ClearAll();
+
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.FirstOf("布拉沃", GameProtocolEngine.RequestPeerNotification) is not null,
+            "applying to a leader is the same CMD 10/NOTI 7 pair as an invite");
+
+        harness.ClearAll();
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        var roster = harness.FirstOf("查理", GameProtocolEngine.PartyInfoNotification);
+        check(roster is not null
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(2, 2)) == harness.UidOf("布拉沃"),
+            "the party keeps its id and its leader after the applicant joins");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(roster!.Payload.AsSpan(7, 2)) == harness.UidOf("布拉沃")
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(10, 2)) == harness.UidOf("查理")
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(13, 2)) == harness.UidOf("阿尔法"),
+            "the applicant is appended in join order behind the existing members");
+    }
+
+    /// <summary>拒绝路径：都只回请求方，不打扰目标。</summary>
+    private static async Task CheckRequestRefusalsAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+
+        // ① 指向自己：客户端发不出（uid 是本区域的别人），服务端按"目标找不到"处理。
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("阿尔法"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload.SequenceEqual(new byte[] { 0, 100, 0 })
+                && harness.Of("布拉沃").Count == 0,
+            "a request aimed at yourself fails with CMD 11 [0,100,0] and never reaches anybody");
+
+        // ② 限流：3 秒内的第二次请求被静默丢弃。
+        harness.ClearAll();
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.Of("布拉沃").Count == 1,
+            "a second invite inside the 3 second window is dropped by the rate limiter");
+
+        // ③ 目标已有待决请求：给新来者回失败，不给他再弹一个窗。
+        // 只清申请人的收件箱：布拉沃那条窗口（②留下的待决请求）正是"没有第二个窗"的判据。
+        harness.Clear("查理");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("查理"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("查理"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.Of("查理").Count == 1
+                && harness.Of("查理")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("布拉沃").Count == 1,
+            "a target that already has a pending request refuses the newcomer without a second window");
+    }
+
+    /// <summary>踢人 / 退队 / 掉线：NOTI 10 必须早于 NOTI 9；最后一人退队走 kind=3。</summary>
+    private static async Task CheckLeaveAndKickAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+        harness.ClearAll();
+
+        await harness.Service.HandleKickAsync(harness.IdOf("阿尔法"), slot: 1, CancellationToken.None);
+        var bravoPackets = harness.Of("布拉沃");
+        var walkoutIndex = bravoPackets.FindIndex(packet =>
+            packet.ProtocolId == GameProtocolEngine.WalkoutNotification);
+        var rosterIndex = bravoPackets.FindIndex(packet =>
+            packet.ProtocolId == GameProtocolEngine.PartyInfoNotification);
+        check(walkoutIndex >= 0
+                && rosterIndex > walkoutIndex
+                && bravoPackets[walkoutIndex].Payload.SequenceEqual(new byte[] { 1, 0 }),
+            "NOTI 10 [slot, 0] precedes the roster refresh that clears that slot");
+        check(bravoPackets[rosterIndex].Payload[13] == 0xFF && bravoPackets[rosterIndex].Payload[14] == 0xFF,
+            "the kicked member's slot becomes 0xFFFF on the roster it receives");
+
+        harness.ClearAll();
+        await harness.Service.HandleLeaveAsync(harness.IdOf("阿尔法"), CancellationToken.None);
+        var disbanded = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
+        check(disbanded is { Payload.Length: 5 } && disbanded.Payload[4] == 3,
+            "the last member leaving dissolves the party with a 5-byte kind=3 record");
+
+        harness.ClearAll();
+        // 限流是真实时钟的 3 秒窗口，而测试是瞬时的：重发前先清掉本测试早先那次邀请的时间戳。
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+        harness.ClearAll();
+        await harness.Service.DetachChannelAsync(
+            harness.IdOf("布拉沃"), harness.SessionIdOf("布拉沃"), CancellationToken.None);
+        check(harness.Of("阿尔法").Any(packet =>
+                packet.ProtocolId == GameProtocolEngine.WalkoutNotification
+                && packet.Payload.SequenceEqual(new byte[] { 1, 1 })),
+            "a disconnect tells the remaining member with NOTI 10 [slot, 1]");
+        check(harness.Of("布拉沃").Count == 0,
+            "the disconnected session receives nothing");
+    }
+
+    /// <summary>
+    /// 超时与拉黑（设计稿 §5.1/§5.2）：客户端"拒绝"不发包 → 超时是唯一能告诉请求方"对方没答应"的途径；
+    /// 被拉黑时目标完全无感知，但发起方仍会拿到**同形**的失败提示（否则"立刻能重发"就成了拉黑的旁证）。
+    /// </summary>
+    private static async Task CheckTimeoutAndBlacklistAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        harness.ClearAll();
+
+        harness.Service.ExpirePendingForTests();
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload.SequenceEqual(new byte[] { 0, 100, 0 }),
+            "an unanswered party request ends with CMD 11 [0,100,0] for the requester when the window expires");
+        check(harness.Of("布拉沃").Count == 0,
+            "the timeout tells nobody else");
+
+        // 拉黑：bobby（布拉沃的账号）把 阿尔法 拉黑 → 目标零感知、发起方仍收到同形失败。
+        harness.ClearAll();
+        check(await harness.Store.AddBlacklistAsync("bobby", "阿尔法", CancellationToken.None)
+                == BlacklistUpdateFailure.None,
+            "the harness can blacklist the requester on the target's account");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.Of("布拉沃").Count == 0,
+            "a blacklisted requester's invitation never reaches the target (no NOTI 7)");
+        harness.Service.ExpirePendingForTests();
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].Payload.SequenceEqual(new byte[] { 0, 100, 0 }),
+            "the blacklisted requester sees exactly the same failure as a plain unanswered request");
+    }
+
+    private static async Task CheckSetPartyInfoAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+
+        await harness.Service.HandleSetInfoAsync(
+            harness.IdOf("阿尔法"), nameSelection: 5, nameBytes: [], maxMembers: 4, CancellationToken.None);
+        var roster = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
+        check(roster is not null
+                && roster.Payload[5] == 5
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(10, 2)) == 0xFFFF,
+            "CMD 12 with no party creates a one-member party led by the requester");
+
+        harness.ClearAll();
+        await harness.Service.HandleSetInfoAsync(
+            harness.IdOf("阿尔法"), nameSelection: 0, nameBytes: [0x41, 0x42], maxMembers: 2,
+            CancellationToken.None);
+        var resized = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
+        check(resized is not null && resized.Payload[5] == 0 && resized.Payload[6] == 2,
+            "CMD 12 updates the preset name index and the member cap");
+
+        harness.ClearAll();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), CancellationToken.None);
+        harness.ClearAll();
+        await harness.Service.HandleSetInfoAsync(
+            harness.IdOf("布拉沃"), nameSelection: 3, nameBytes: [], maxMembers: 4, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 0 && harness.Of("布拉沃").Count == 0,
+            "a non-leader CMD 12 is ignored");
+    }
+}
+
+/// <summary>
+/// 组队服务测试台：真 store（临时目录）+ 真 TownSessionDirectory + 真 PartyService，
+/// 只把发包换成写进 List（沿用 TradeHarness 的做法）；三个角色都在 1/0 号城镇区域。
+/// </summary>
+internal sealed class PartyHarness : IAsyncDisposable
+{
+    /// <summary>
+    /// CMD 10 里客户端自报的三个显示值。复活币取 7 而不是 0：这个值会原样进 NOTI 7 的正文，
+    /// 非零才能验证"服务端把它透传给了被邀请者"（0 的断言在任何实现下都成立，等于没测）。
+    /// </summary>
+    public static readonly PartyRequestInfo DefaultInfo = new(ReviveCoins: 7, Fatigue: 0, WeaknessPercent: 0);
+
+    private readonly Dictionary<string, List<GameServerPacket>> _packets = new();
+    private readonly Dictionary<string, (Guid Id, string Account)> _characters = new();
+    private readonly Dictionary<string, Guid> _sessionIds = new();
+    private readonly Dictionary<string, ushort> _uids = new();
+
+    private PartyHarness(string root, ServerOptions options, JsonGameStore store, TownSessionDirectory directory)
+    {
+        Root = root;
+        Options = options;
+        Store = store;
+        Directory = directory;
+    }
+
+    public string Root { get; }
+    public ServerOptions Options { get; }
+    public JsonGameStore Store { get; }
+    public TownSessionDirectory Directory { get; }
+    public PartyService Service { get; private set; } = null!;
+
+    public Guid IdOf(string characterName) => _characters[characterName].Id;
+    public ushort UidOf(string characterName) => _uids[characterName];
+    public Guid SessionIdOf(string characterName) => _sessionIds[characterName];
+
+    /// <summary>返回 List（而不是 IReadOnlyList）以便用例用 FindIndex 断言包的先后顺序。</summary>
+    public List<GameServerPacket> Of(string characterName)
+    {
+        lock (_packets[characterName])
+        {
+            return [.. _packets[characterName]];
+        }
+    }
+
+    public GameServerPacket? FirstOf(string characterName, byte protocolId) =>
+        Of(characterName).FirstOrDefault(packet => packet.ProtocolId == protocolId);
+
+    public void Clear(string characterName)
+    {
+        lock (_packets[characterName])
+        {
+            _packets[characterName].Clear();
+        }
+    }
+
+    public void ClearAll()
+    {
+        foreach (var name in _packets.Keys)
+        {
+            Clear(name);
+        }
+    }
+
+    public static async Task<PartyHarness> CreateAsync()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"dflegacy-party-harness-{Guid.NewGuid():N}");
+        System.IO.Directory.CreateDirectory(root);
+        var options = new ServerOptions
+        {
+            DataPath = Path.Combine(root, "state.json"),
+            ScriptPvfPath = string.Empty,
+            SkillScriptPath = root
+        };
+        var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+        var directory = new TownSessionDirectory(
+            options,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+        var harness = new PartyHarness(root, options, store, directory);
+
+        var fixtures = new (string Account, string Name)[]
+        {
+            ("alice", "阿尔法"),
+            ("bobby", "布拉沃"),
+            ("carol", "查理")
+        };
+        foreach (var (account, name) in fixtures)
+        {
+            await store.CreateAccountAsync(
+                new CreateAccountRequest(account, "password", OicqCode: "123456"),
+                CancellationToken.None);
+            var created = (await store.CreateCharacterAsync(
+                account,
+                new CreateCharacterRequest(name),
+                CancellationToken.None)).Character!;
+            harness._packets[name] = [];
+            harness._characters[name] = (created.Id, account);
+            harness._sessionIds[name] = Guid.NewGuid();
+        }
+
+        harness.Service = new PartyService(
+            store,
+            directory,
+            TimeProvider.System,
+            NullLogger<PartyService>.Instance);
+        ushort uid = 1;
+        foreach (var (account, name) in fixtures)
+        {
+            harness._uids[name] = uid++;
+            await harness.Service.AttachChannelAsync(
+                account,
+                name,
+                harness._characters[name].Id,
+                harness._uids[name],
+                harness._sessionIds[name],
+                harness.Record(name),
+                CancellationToken.None);
+            // 三个角色都进 1/0：组队请求要求请求者与目标同城镇同区域（设计稿 §5.1）。
+            await directory.EnterAsync(
+                new TownEntryRequest(
+                    TownId: 1,
+                    AreaId: 0,
+                    AreaUserId: harness._uids[name],
+                    CharacterId: harness._characters[name].Id,
+                    CharacterNo: 100u + harness._uids[name],
+                    CharacterNameBytes: Encoding.ASCII.GetBytes(name),
+                    DisplayName: name,
+                    Peer: null,
+                    X: 10,
+                    Y: 10,
+                    Direction: 0,
+                    SendAsync: (packet, _) => harness.Record(name)(packet)),
+                CancellationToken.None);
+        }
+
+        return harness;
+    }
+
+    private Func<GameServerPacket, ValueTask> Record(string characterName) =>
+        packet =>
+        {
+            lock (_packets[characterName])
+            {
+                _packets[characterName].Add(packet);
+            }
+
+            return ValueTask.CompletedTask;
+        };
+
+    public async ValueTask DisposeAsync()
+    {
+        await Service.StopAsync(CancellationToken.None);
+        if (System.IO.Directory.Exists(Root))
+        {
+            System.IO.Directory.Delete(Root, recursive: true);
+        }
     }
 }
