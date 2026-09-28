@@ -97,6 +97,14 @@ public sealed class PartyService : BackgroundService
     /// <summary>CMD 11 失败包的 peerType：100 且 code=0 → "对方不在线，或拒绝了您的组队请求"（0x7567）。</summary>
     private const byte RequestRefusedPeerType = 100;
 
+    /// <summary>
+    /// 出站名册的 nameSel 永远不会是 0：客户端只在 nameSel==0 时走"取文本 0x272（'无队伍名'）并写队伍名"
+    /// 这条路径（0x41B933-0x41B95A），而真机证据表明 nameSel=0 的名册在被接受/补播时**完全无效**
+    /// （零链接、无聊天行、推荐伙伴照旧），nameSel=1 的同样名册立刻生效。
+    /// 所以自定义队名（客户端 sel=0）在出站时降级为预置名第 1 项——与"自定义队名不传播"的既有结论一致。
+    /// </summary>
+    private const byte DefaultPartyNameSelection = 1;
+
     private readonly JsonGameStore _store;
     private readonly TownSessionDirectory _directory;
     private readonly TimeProvider _timeProvider;
@@ -750,6 +758,7 @@ public sealed class PartyService : BackgroundService
         var now = _timeProvider.GetUtcNow();
         List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
         List<(byte TownId, byte AreaId, GameServerPacket Packet)> areas = [];
+        int memberCount;
         lock (_gate)
         {
             // "名册此刻仍在册"（而不是 partyId 被同名的新队伍占用）：两种用途都要它——
@@ -768,6 +777,9 @@ public sealed class PartyService : BackgroundService
                 return;
             }
 
+            // 人数在锁内取（与 members 同一把锁下的同一个名册），出锁后只读这个 int。
+            memberCount = roster.Count;
+
             if (recipients is null)
             {
                 recipients = [.. roster.Members.Select(member => member.CharacterId)];
@@ -783,6 +795,14 @@ public sealed class PartyService : BackgroundService
                 areas.Add((townId, areaId, BuildRosterPacketForArea(roster, townId, areaId)));
             }
         }
+
+        // 真机核对用：出站 nameSel 是这次修复的判据（0 从不出现，自定义名显示为 1）。与既有日志同风格。
+        _logger.LogInformation(
+            "Party roster {PartyId} published: nameSel {StoredNameSelection}->{OutboundNameSelection}, {MemberCount} member(s).",
+            roster.PartyId,
+            roster.NameSelection,
+            NormalizeNameSelection(roster.NameSelection),
+            memberCount);
 
         foreach (var (characterId, packet) in direct)
         {
@@ -832,11 +852,19 @@ public sealed class PartyService : BackgroundService
         return [.. areas];
     }
 
+    /// <summary>
+    /// **出站边界**把 nameSel 规范化（见 <see cref="DefaultPartyNameSelection"/>）：0（自定义名，也是
+    /// 服务端建队时的初值）降级为预置名第 1 项。**存储不动**：<see cref="PartyRoster.NameSelection"/>
+    /// 保留客户端给的原值，这样"自定义名不传播"只是出站策略，将来要改也不用动名册。
+    /// </summary>
+    private static byte NormalizeNameSelection(byte nameSelection) =>
+        nameSelection == 0 ? DefaultPartyNameSelection : nameSelection;
+
     /// <summary>同一区域内所有收包者共用的那份名册（能解析到的成员填真实 uid，其余 0）。</summary>
     private GameServerPacket BuildRosterPacketForArea(PartyRoster roster, byte townId, byte areaId) =>
         GameProtocolEngine.CreatePartyInfoNotification(
             roster.PartyId,
-            roster.NameSelection,
+            NormalizeNameSelection(roster.NameSelection),
             roster.MaxMembers,
             roster.SlotUids(member =>
                 _directory.TryGetSnapshot(member.CharacterId, out var snapshot)
@@ -876,7 +904,7 @@ public sealed class PartyService : BackgroundService
         });
         return GameProtocolEngine.CreatePartyInfoNotification(
             roster.PartyId,
-            roster.NameSelection,
+            NormalizeNameSelection(roster.NameSelection),
             roster.MaxMembers,
             slots,
             roster.LeaderSlot);

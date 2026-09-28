@@ -346,6 +346,7 @@ internal static class PartySmokeTests
         await CheckLeaderLeaveKeepsMemberSlotsAsync(check);
         await CheckKickFromNonZeroLeaderSlotAsync(check);
         await CheckSetPartyInfoAsync(check);
+        await CheckOutboundNameSelectionAsync(check);
         await CheckAreaBroadcastAsync(check);
         await CheckRosterResettleAsync(check);
         await CheckAreaChangeResettleAsync(check);
@@ -1043,8 +1044,10 @@ internal static class PartySmokeTests
             harness.IdOf("阿尔法"), nameSelection: 0, nameBytes: [0x41, 0x42], maxMembers: 2,
             CancellationToken.None);
         var resized = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
-        check(resized is not null && resized.Payload[5] == 0 && resized.Payload[6] == 2,
-            "CMD 12 updates the preset name index and the member cap");
+        // nameSel：客户端给的是 0（自定义名），出站被规范化成预置名第 1 项（见 DefaultPartyNameSelection）——
+        // NOTI 9 本来就带不了自定义名，而且真机上 nameSel=0 的名册完全无效（见 CheckOutboundNameSelectionAsync）。
+        check(resized is not null && resized.Payload[5] == 1 && resized.Payload[6] == 2,
+            "CMD 12 updates the member cap and ships the degraded preset name index (custom sel=0 -> 1)");
 
         harness.ClearAll();
         await harness.Service.HandleRequestAsync(
@@ -1056,6 +1059,54 @@ internal static class PartySmokeTests
             harness.IdOf("布拉沃"), nameSelection: 3, nameBytes: [], maxMembers: 4, CancellationToken.None);
         check(harness.Of("阿尔法").Count == 0 && harness.Of("布拉沃").Count == 0,
             "a non-leader CMD 12 is ignored");
+    }
+
+    /// <summary>
+    /// ★ 回归（真机证据：接受邀请发出的 nameSel=0 名册**完全无效**）：出站名册的 nameSel 永远不是 0。
+    /// 客户端只在 `nameSel == 0` 时走"取 dnf.str `0x272`（'无队伍名'）→ snprintf → 写队伍名"那条路径
+    /// （`0x41B933`-`0x41B95A`），`nameSel != 0` 时整段跳过。真机上接受邀请时发出的三份（0s/+3s/+7s，
+    /// 逐字节相同）nameSel=0 名册双方都看不见：零链接、无聊天行、推荐伙伴照旧把队友当无队伍；
+    /// 1 分多钟后由 CMD 12 触发的一份**只有 nameSel 0→1 不同**的名册一到，队伍立刻出现。服务端改不了
+    /// 客户端，于是把出站值钉在合法的预置名下标上：自定义名（sel=0）降级为预置名第 1 项
+    /// （`DefaultPartyNameSelection`）——与"自定义队名不传播"的既有结论一致。
+    /// **把 `NormalizeNameSelection` 从两个 Build 点摘掉时，本用例的两条断言都会变红。**
+    /// </summary>
+    private static async Task CheckOutboundNameSelectionAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+
+        // ① 接受邀请新建的队伍：服务端建队时存的是 nameSel 0（= 客户端"自定义名"的初值），
+        //    出站必须非 0——成员定向（BuildRosterPacket）与区域广播（BuildRosterPacketForArea，
+        //    收件人是旁观者 德尔塔）两条路都算在内，共 2+2+1 份。
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        var rosters = RostersOf(harness, "阿尔法")
+            .Concat(RostersOf(harness, "布拉沃"))
+            .Concat(RostersOf(harness, "德尔塔"))
+            .ToList();
+        check(rosters.Count == 5
+                && rosters.All(packet => packet.Payload.Length == 20)
+                && rosters.All(packet => packet.Payload[5] != 0),
+            "a party created by an accept stores nameSel 0 but ships a non-zero nameSel to both members and the bystander");
+
+        // ② 队长用 CMD 12 起一个自定义名（sel=0 + 名字正文）：出站仍是预置名第 1 项，队伍 id 不变。
+        harness.ClearAll();
+        await harness.Service.HandleSetInfoAsync(
+            harness.IdOf("阿尔法"),
+            nameSelection: 0,
+            nameBytes: [0x41, 0x42],
+            maxMembers: 4,
+            CancellationToken.None);
+        var renamed = RostersOf(harness, "阿尔法");
+        check(renamed.Count > 0
+                && renamed.All(packet => packet.Payload[5] == 1
+                    && BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(2, 2))
+                        == harness.UidOf("阿尔法")),
+            "CMD 12 with a custom name (sel=0) still ships nameSel 1 for the same party");
     }
 }
 
