@@ -98,6 +98,12 @@ public sealed record CharacterMailSendResult(
 /// <summary>账号级好友条目：客户端按角色名工作，这里只存名字与添加时间。</summary>
 public sealed record AccountFriendRecord(string Name, long AddedAtUnix);
 
+/// <summary>
+/// 账号级黑名单条目：只存名字与添加当天的日期（客户端黑名单窗口没有 uid/等级/职业）。
+/// 与好友条目不同，名字匹配在客户端是逐字节大小写敏感的（CNRDBlackListdManager::FindByName）。
+/// </summary>
+public sealed record AccountBlacklistRecord(string Name, int Year, int Month, int Day);
+
 public enum FriendUpdateFailure
 {
     None,
@@ -107,6 +113,16 @@ public enum FriendUpdateFailure
     Self,
     FriendListFull,
     NotFriend
+}
+
+public enum BlacklistUpdateFailure
+{
+    None,
+    AccountNotFound,
+    CharacterNotFound,
+    AlreadyBlacklisted,
+    BlacklistFull,
+    NotBlacklisted
 }
 
 public enum IncreaseStatusItemUseFailure
@@ -305,7 +321,10 @@ public sealed record AccountRecord(
     // 账号级好友名单。旧 state.json 里没有这个字段，反序列化后是 null（等同空名单）；
     // 写入端不忽略 null，因此之后任意一次整档保存都会写出 "Friends": null——与本类其它
     // 可空成员一致，读取端同样按空名单处理，无副作用。
-    List<AccountFriendRecord>? Friends = null);
+    List<AccountFriendRecord>? Friends = null,
+    // 账号级黑名单。旧 state.json 里没有这个字段，反序列化后是 null（等同空名单）；
+    // 与 Friends 一样按可空成员处理，上限见 JsonGameStore.MaximumBlacklist。
+    List<AccountBlacklistRecord>? Blacklist = null);
 
 public sealed record ClientCeraTopUpRequest(string Account, int Amount);
 public sealed record ClientDiamondGrantRequest(string Account, int Days);
@@ -424,6 +443,9 @@ public sealed class JsonGameStore(
 
     /// <summary>客户端好友窗口上限为 32 条（DNF.exe 0x4FF710），服务端独立校验。</summary>
     public const int MaximumFriends = 32;
+
+    /// <summary>客户端黑名单上限为 10 条（DNF.exe 0x4FFE60 `cmp eax,0xA`），服务端独立校验。</summary>
+    public const int MaximumBlacklist = 10;
 
     private static readonly CharacterItemRecord[] PresetArmor =
     [
@@ -2897,6 +2919,130 @@ public sealed class JsonGameStore(
                 trimmedName,
                 account.Friends.Count);
             return FriendUpdateFailure.None;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<IReadOnlyList<AccountBlacklistRecord>> GetBlacklistAsync(
+        string accountName,
+        CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var account = FindAccountLocked(accountName);
+            return account?.Blacklist?.ToArray() ?? [];
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// 往账号黑名单追加一条。失败判定与好友一致，但**名字比较全部用 Ordinal**：
+    /// 客户端 CNRDBlackListdManager 的 FindByName 是逐字节大小写敏感比较，连
+    /// “角色是否存在”也按精确拼写判定（客户端失败码 0x4C 的文案就是“无法找到的名字，
+    /// 请确认是否大小写错误或频道错误”）。这与好友名单的 OrdinalIgnoreCase 语义相反。
+    /// </summary>
+    /// <remarks>
+    /// 自己的角色名同样可以加进黑名单：原版服务端对被拉黑的自我的行为未知，客户端
+    /// 社区菜单只在“目标不是本机角色”时才提供该项，而任务给定的失败码只有 74/76/78，
+    /// 所以这里不做自身特判（悄悄话到自己的路径本来就被“不能给自己发悄悄话”拦住）。
+    /// </remarks>
+    public async Task<BlacklistUpdateFailure> AddBlacklistAsync(
+        string accountName,
+        string blacklistName,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmedName = blacklistName.Trim();
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var accountIndex = _accounts.FindIndex(candidate =>
+                string.Equals(candidate.UserName, accountName, StringComparison.OrdinalIgnoreCase));
+            if (accountIndex < 0)
+            {
+                return BlacklistUpdateFailure.AccountNotFound;
+            }
+
+            var account = _accounts[accountIndex];
+            var targetExists = _accounts.Any(candidate => candidate.Characters.Any(character =>
+                string.Equals(character.Name, trimmedName, StringComparison.Ordinal)));
+            if (!targetExists)
+            {
+                return BlacklistUpdateFailure.CharacterNotFound;
+            }
+
+            var blacklist = account.Blacklist ?? [];
+            if (blacklist.Any(entry =>
+                    string.Equals(entry.Name, trimmedName, StringComparison.Ordinal)))
+            {
+                return BlacklistUpdateFailure.AlreadyBlacklisted;
+            }
+
+            if (blacklist.Count >= MaximumBlacklist)
+            {
+                return BlacklistUpdateFailure.BlacklistFull;
+            }
+
+            // 日期语义与客户端一致：128 回包不带日期，客户端按本机时间填；服务端在
+            // 130 快照里回 (年-1900, 月-1, 日)，用添加当天的本地日期最贴近用户看到的值。
+            var addedAt = DateTime.Now;
+            blacklist.Add(new AccountBlacklistRecord(
+                trimmedName,
+                addedAt.Year,
+                addedAt.Month,
+                addedAt.Day));
+            _accounts[accountIndex] = account with { Blacklist = blacklist };
+            await SaveLockedAsync(cancellationToken);
+            logger.LogInformation(
+                "Account {Account} blacklisted {Name}; total={Count}.",
+                account.UserName,
+                trimmedName,
+                blacklist.Count);
+            return BlacklistUpdateFailure.None;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>按名字（Ordinal，大小写敏感）从账号黑名单里删掉一条。</summary>
+    public async Task<BlacklistUpdateFailure> RemoveBlacklistAsync(
+        string accountName,
+        string blacklistName,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmedName = blacklistName.Trim();
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var account = FindAccountLocked(accountName);
+            if (account is null)
+            {
+                return BlacklistUpdateFailure.AccountNotFound;
+            }
+
+            var entry = account.Blacklist?.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, trimmedName, StringComparison.Ordinal));
+            if (entry is null)
+            {
+                return BlacklistUpdateFailure.NotBlacklisted;
+            }
+
+            account.Blacklist!.Remove(entry);
+            await SaveLockedAsync(cancellationToken);
+            logger.LogInformation(
+                "Account {Account} removed blacklist entry {Name}; total={Count}.",
+                account.UserName,
+                trimmedName,
+                account.Blacklist.Count);
+            return BlacklistUpdateFailure.None;
         }
         finally
         {

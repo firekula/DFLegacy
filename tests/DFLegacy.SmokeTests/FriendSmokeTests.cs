@@ -16,9 +16,13 @@ internal static class FriendSmokeTests
         CheckWhisperParsing(check);
         CheckFriendCommandResults(check);
         CheckMessengerMessage(check);
+        CheckRequestedUserInfoDetailPacket(check);
+        CheckBlacklistProtocol(check);
         await CheckUserInfoRequestBranchAsync(check);
         await CheckFriendStorageAsync(check);
+        await CheckBlacklistStorageAsync(check);
         await CheckFriendServiceAsync(check);
+        await CheckBlacklistServiceAsync(check);
     }
 
     // type=1 命令通道上的加/删好友结果：客户端接收循环把包头 type 1 的 body 首字节当结果
@@ -124,6 +128,196 @@ internal static class FriendSmokeTests
             "NOTI 65 is [type 0x12][flag 0 = body][u32 name + name][u32 text + text]");
     }
 
+    // “查看信息”的回包必须是 mode 3：mode 1/3 共用同一条记录解析器（0x41A764），但只有
+    // mode-3 记录尾部的 28 字节会打开资料卡窗口（CNRDAnotherUserPopUpWindow，窗口 id
+    // 0x16）；回 mode 1 只更新目标模型，卡片根本不弹（“点了没反应”）。布局逐段对照
+    // .superpowers/sdd/viewinfo-blacklist-recon.md §1.6。
+    private static void CheckRequestedUserInfoDetailPacket(Action<bool, string> check)
+    {
+        var equipment = new[]
+        {
+            new GameInventoryEntry(
+                Slot: 3,
+                ItemId: 0x1234,
+                CountOrValue: 7,
+                State: 2,
+                Durability: 55),
+            new GameInventoryEntry(
+                Slot: 10,
+                ItemId: 0x4321,
+                CountOrValue: 0,
+                State: 0,
+                Durability: 0),
+            // 客户端只认槽 0..22；更高的槽必须被投影丢掉，否则它会进资料卡窗口的装备表。
+            new GameInventoryEntry(Slot: 23, ItemId: 0xFFFF, CountOrValue: 1)
+        };
+        var packet = GameProtocolEngine.CreateRequestedUserInfoDetail(
+            userId: 0x5678,
+            equippedItems: equipment,
+            equippedCreatureLevel: 9,
+            flag: 0);
+
+        check(packet.Type == 0 && packet.ProtocolId == GameProtocolEngine.UserInfoNotification,
+            "the requested-user detail is a USERINFO notification");
+        // 头部 13 字节 + 81 字节战斗数值块 + 装备表(1+2×10) + nPairs/creature 2 字节 + 28 字节尾。
+        check(packet.Payload.Length == 1 + 2 + 2 + 4 + 4 + 81 + 1 + 2 * 10 + 1 + 1 + 28,
+            "the mode-3 record is header + stat blob + equipment + nPairs + creature + the 28-byte tail");
+        check(packet.Payload[0] == 3,
+            "the record starts with mode 3: mode 1 would never open the info card");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(1, 2)) == 1,
+            "the mode-3 record count is one");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(3, 2)) == 0x5678,
+            "the record echoes the requested uid verbatim");
+        check(BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(5, 4)) == 0,
+            "the u32 name-slot flag is written as zero (semantics unknown, zero is the safest)");
+        check(BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(9, 4)) == 81
+                && packet.Payload.Length >= 13 + 81,
+            "the stat blob keeps the existing 81-byte length-prefixed projection");
+
+        const int equipmentOffset = 13 + 81;
+        check(packet.Payload[equipmentOffset] == 2,
+            "the equipment list is the two visible slots: slot 23 is outside the client's table");
+        check(packet.Payload[equipmentOffset + 1] == 3
+                && BinaryPrimitives.ReadUInt16LittleEndian(
+                    packet.Payload.AsSpan(equipmentOffset + 2, 2)) == 0x1234
+                && BinaryPrimitives.ReadUInt32LittleEndian(
+                    packet.Payload.AsSpan(equipmentOffset + 4, 4)) == 7
+                && packet.Payload[equipmentOffset + 8] == 2
+                && BinaryPrimitives.ReadUInt16LittleEndian(
+                    packet.Payload.AsSpan(equipmentOffset + 9, 2)) == 55,
+            "an equipment entry is slot:u8, item:u16, value:u32, state:u8, durability:u16");
+        check(packet.Payload[equipmentOffset + 11] == 10
+                && BinaryPrimitives.ReadUInt16LittleEndian(
+                    packet.Payload.AsSpan(equipmentOffset + 12, 2)) == 0x4321,
+            "the second worn slot follows at a ten-byte stride");
+
+        const int pairsOffset = equipmentOffset + 1 + 2 * 10;
+        check(packet.Payload[pairsOffset] == 0,
+            "nPairs is zero: the mode-3 parser reads two bytes per pair and would misalign the 28-byte tail");
+        check(packet.Payload[pairsOffset + 1] == 9,
+            "the creature byte follows the empty pair table");
+        // 先判长度再切片：28 字节尾被截断时必须是一条失败断言，而不是测试自身越界崩溃。
+        var tailOffset = pairsOffset + 2;
+        var tail = packet.Payload.Length >= tailOffset + 28
+            ? packet.Payload.AsSpan(tailOffset, 28)
+            : Span<byte>.Empty;
+        check(tail.Length == 28 && tail.ToArray().All(value => value == 0),
+            "the mode-3-only 28-byte tail is present and zero-filled (meanings unknown, pending live tuning)");
+
+        var empty = GameProtocolEngine.CreateRequestedUserInfoDetail(userId: 7);
+        // 零装备记录 = 头部 13 + 81 字节 blob + 1 条数 + 1 nPairs + 1 creature + 28 尾 = 125。
+        // （勘察里“44 字节”是 blobLen=0 的极简形态；本实现沿用现有 81 字节战斗数值块。）
+        check(empty.Payload.Length == 125
+                && empty.Payload[0] == 3
+                && empty.Payload[13 + 81] == 0
+                && empty.Payload[13 + 81 + 1] == 0
+                && empty.Payload[13 + 81 + 2] == 0,
+            "a minimal mode-3 record keeps the 81-byte blob: empty equipment, zero pairs and creature, and the tail");
+    }
+
+    // 黑名单三条命令/回包的字节布局（viewinfo-blacklist-recon.md §2）：全部走 type=1
+    // 命令通道、没有通知包；130 是“清空 + 全量追加”的快照，可随时重发。
+    private static void CheckBlacklistProtocol(Action<bool, string> check)
+    {
+        check(GameProtocolEngine.CommandPacketType == 1
+                && GameProtocolEngine.RegisterToBlacklistCommand == 128
+                && GameProtocolEngine.DeleteToBlacklistCommand == 129
+                && GameProtocolEngine.RequestBlacklistCommand == 130,
+            "the blacklist ids stay on the client's tables: type 1, add 128, remove 129, snapshot 130");
+        check(GameProtocolEngine.BlacklistAlreadyListedError == 74
+                && GameProtocolEngine.BlacklistCharacterNotFoundError == 76
+                && GameProtocolEngine.BlacklistFullError == 78
+                && GameProtocolEngine.BlacklistNotListedError == 0x4B,
+            "the failure codes are the ones the client maps to its four blacklist messages");
+
+        var name = Encoding.GetEncoding(936).GetBytes("布拉沃");
+        var body = new byte[2 + 4 + name.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(body.AsSpan(2, 4), (uint)name.Length);
+        name.CopyTo(body, 6);
+        check(GameProtocolEngine.TryReadBlacklistName(body, out var parsed)
+                && parsed.SequenceEqual(name),
+            "CMD 128/129 carry u32 name length + name after the sequence number");
+        check(!GameProtocolEngine.TryReadBlacklistName(body[..5], out _),
+            "a truncated blacklist command is rejected");
+        check(!GameProtocolEngine.TryReadBlacklistName([0, 0, 0, 0, 0, 0], out _),
+            "an empty blacklist name is rejected");
+        var embeddedNul = new byte[2 + 4 + 3];
+        BinaryPrimitives.WriteUInt32LittleEndian(embeddedNul.AsSpan(2, 4), 3);
+        embeddedNul[6] = (byte)'a';
+        embeddedNul[7] = 0;
+        check(!GameProtocolEngine.TryReadBlacklistName(embeddedNul, out _),
+            "a blacklist name containing a NUL byte is rejected");
+        var longName = new byte[2 + 4 + 31];
+        BinaryPrimitives.WriteUInt32LittleEndian(longName.AsSpan(2, 4), 31);
+        longName.AsSpan(6).Fill((byte)'a');
+        check(!GameProtocolEngine.TryReadBlacklistName(longName, out _),
+            "a blacklist name longer than thirty bytes is rejected");
+
+        var add = GameProtocolEngine.CreateBlacklistAddResult(name);
+        check(add.Type == 1 && add.ProtocolId == 128
+                && add.Payload.Length == 1 + 4 + name.Length
+                && add.Payload[0] == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(add.Payload.AsSpan(1, 4)) == name.Length
+                && add.Payload.AsSpan(5, name.Length).SequenceEqual(name),
+            "a successful 128 replies [non-zero][u32 name length + name]");
+        check(GameProtocolEngine.CreateBlacklistError(128, 74).Payload.SequenceEqual(new byte[] { 0, 74 })
+                && GameProtocolEngine.CreateBlacklistError(128, 76).Payload.SequenceEqual(new byte[] { 0, 76 })
+                && GameProtocolEngine.CreateBlacklistError(128, 78).Payload.SequenceEqual(new byte[] { 0, 78 }),
+            "a failed 128 replies [0][74 already listed / 76 character not found / 78 list full]");
+        check(GameProtocolEngine.CreateBlacklistError(128, 74).ProtocolId == 128,
+            "the failure answers on the same id as its command");
+
+        var remove = GameProtocolEngine.CreateBlacklistRemoveResult(name);
+        check(remove.Type == 1 && remove.ProtocolId == 129
+                && remove.Payload.Length == 1 + 4 + name.Length
+                && remove.Payload[0] == 1
+                && remove.Payload.AsSpan(5, name.Length).SequenceEqual(name),
+            "a successful 129 replies the same [non-zero][u32 name length + name]");
+        check(GameProtocolEngine.CreateBlacklistError(129, 0x4B).Payload
+                .SequenceEqual(new byte[] { 0, 0x4B }),
+            "a failed 129 replies [0][0x4B not on the list]");
+
+        var snapshot = GameProtocolEngine.CreateBlacklistSnapshot(
+        [
+            new GameBlacklistEntry(Encoding.GetEncoding(936).GetBytes("布拉沃"), 2026, 9, 27),
+            new GameBlacklistEntry(Encoding.ASCII.GetBytes("Bravo"), 2001, 1, 5)
+        ]);
+        check(snapshot.Type == 1 && snapshot.ProtocolId == 130,
+            "the full snapshot answers on the type-1 command channel with id 130");
+        check(snapshot.Payload.Length == 2 + (4 + 6 + 3) + (4 + 5 + 3)
+                && snapshot.Payload[0] != 0
+                && snapshot.Payload[1] == 2,
+            "the 130 snapshot is [non-zero flag][count] + one record per entry");
+        check(BinaryPrimitives.ReadUInt32LittleEndian(snapshot.Payload.AsSpan(2, 4)) == 6
+                && snapshot.Payload.AsSpan(6, 6)
+                    .SequenceEqual(Encoding.GetEncoding(936).GetBytes("布拉沃"))
+                && snapshot.Payload[12] == 2026 - 1900
+                && snapshot.Payload[13] == 8
+                && snapshot.Payload[14] == 27,
+            "a snapshot record is u32 name length + name + (year-1900, month-1, day)");
+        check(BinaryPrimitives.ReadUInt32LittleEndian(snapshot.Payload.AsSpan(15, 4)) == 5
+                && snapshot.Payload.AsSpan(19, 5).SequenceEqual(Encoding.ASCII.GetBytes("Bravo"))
+                && snapshot.Payload[24] == 101
+                && snapshot.Payload[25] == 0
+                && snapshot.Payload[26] == 5,
+            "the second record keeps the same layout and the date offsets");
+        check(GameProtocolEngine.CreateBlacklistSnapshot([]).Payload
+                .SequenceEqual(new byte[] { 1, 0 }),
+            "an empty snapshot still carries the non-zero flag so the client clears its list");
+
+        var rejectedEmpty = false;
+        try
+        {
+            GameProtocolEngine.CreateBlacklistAddResult([]);
+        }
+        catch (ArgumentException)
+        {
+            rejectedEmpty = true;
+        }
+
+        check(rejectedEmpty, "an empty blacklist name cannot produce a command result packet");
+    }
+
     // CMD 8 的 mode 分支：角色选择(0xFFFF + mode 2) 保持账号角色卡列表，城镇“查看信息”
     // (uid + mode 3) 必须回该角色资料；一律回 mode 2 列表正是“通关[%s]…”弹窗的成因。
     private static async Task CheckUserInfoRequestBranchAsync(Action<bool, string> check)
@@ -147,7 +341,7 @@ internal static class FriendSmokeTests
             (_, _) =>
             {
                 detailInvoked = true;
-                return roster;
+                return Task.FromResult(roster);
             },
             () =>
             {
@@ -186,7 +380,7 @@ internal static class FriendSmokeTests
                 detailInvoked = true;
                 detailFactoryUid = uid;
                 detailFactoryName = name;
-                return GameProtocolEngine.CreateCurrentCharacterDetails(uid);
+                return Task.FromResult(GameProtocolEngine.CreateRequestedUserInfoDetail(uid));
             },
             () =>
             {
@@ -199,13 +393,13 @@ internal static class FriendSmokeTests
             "a mode-3 request looks the uid up and resolves to that character's detail, never the roster");
         check(resolvedDetail is not null
                 && resolvedDetail.ProtocolId == GameProtocolEngine.UserInfoNotification
-                && resolvedDetail.Payload[0] == 1
+                && resolvedDetail.Payload[0] == 3
                 && BinaryPrimitives.ReadUInt16LittleEndian(resolvedDetail.Payload.AsSpan(1, 2)) == 1
                 && BinaryPrimitives.ReadUInt16LittleEndian(
                     resolvedDetail.Payload.AsSpan(3, 2)) == 0x5678,
-            "the mode-3 reply is USERINFO mode 1, count 1, echoing the requested uid");
+            "the mode-3 reply is USERINFO mode 3, count 1, echoing the requested uid");
         check(resolvedDetail is not null
-                && resolvedDetail.Payload.Length == 97
+                && resolvedDetail.Payload.Length == 125
                 && BinaryPrimitives.ReadUInt32LittleEndian(
                     resolvedDetail.Payload.AsSpan(9, 4)) == 81,
             "the detail record starts with uid, a u32 and the 81-byte stat blob the mode-1/3 parser reads");
@@ -219,7 +413,7 @@ internal static class FriendSmokeTests
             (_, _) =>
             {
                 detailInvoked = true;
-                return roster;
+                return Task.FromResult(roster);
             },
             () =>
             {
@@ -247,7 +441,7 @@ internal static class FriendSmokeTests
             (_, _) =>
             {
                 detailInvoked = true;
-                return roster;
+                return Task.FromResult(roster);
             },
             () =>
             {
@@ -493,6 +687,134 @@ internal static class FriendSmokeTests
             check(await store.AddFriendAsync(owner, "好友32", CancellationToken.None)
                     == FriendUpdateFailure.FriendListFull,
                 "the thirty-third friend is rejected because the client's window holds thirty-two");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    // 账号级黑名单存储：上限 10、名字唯一，且**所有名字比较都是大小写敏感的 Ordinal**
+    // （与好友名单的 OrdinalIgnoreCase 相反，勘察 CNRDBlackListdManager::FindByName）。
+    private static async Task CheckBlacklistStorageAsync(Action<bool, string> check)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dflegacy-blacklist-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var options = new ServerOptions
+            {
+                DataPath = Path.Combine(directory, "state.json"),
+                ScriptPvfPath = "unused.pvf"
+            };
+            var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+
+            const string owner = "owner";
+            const string other = "other";
+            await store.CreateAccountAsync(
+                new CreateAccountRequest(owner, "password", OicqCode: "123456"),
+                CancellationToken.None);
+            await store.CreateAccountAsync(
+                new CreateAccountRequest(other, "password", OicqCode: "123456"),
+                CancellationToken.None);
+            await store.CreateCharacterAsync(
+                owner,
+                new CreateCharacterRequest("圣骑士", GrowType: 4),
+                CancellationToken.None);
+            await store.CreateCharacterAsync(
+                other,
+                new CreateCharacterRequest("法师", GrowType: 3),
+                CancellationToken.None);
+            await store.CreateCharacterAsync(
+                other,
+                new CreateCharacterRequest("Bravo"),
+                CancellationToken.None);
+
+            check((await store.GetBlacklistAsync(owner, CancellationToken.None)).Count == 0,
+                "a fresh account has an empty blacklist");
+            check(await store.AddBlacklistAsync(owner, "法师", CancellationToken.None)
+                    == BlacklistUpdateFailure.None,
+                "blacklisting an existing character name succeeds");
+            check(await store.AddBlacklistAsync(owner, "法师", CancellationToken.None)
+                    == BlacklistUpdateFailure.AlreadyBlacklisted,
+                "blacklisting the same name twice is rejected");
+            check(await store.AddBlacklistAsync(owner, "不存在的人", CancellationToken.None)
+                    == BlacklistUpdateFailure.CharacterNotFound,
+                "blacklisting an unknown character is rejected");
+            // 角色存在性也走 Ordinal：客户端失败码 0x4C 的文案就是“请确认是否大小写错误”。
+            check(await store.AddBlacklistAsync(owner, "bravo", CancellationToken.None)
+                    == BlacklistUpdateFailure.CharacterNotFound,
+                "a character is only found with its exact casing, unlike the friend list");
+            check(await store.AddBlacklistAsync(owner, "Bravo", CancellationToken.None)
+                    == BlacklistUpdateFailure.None,
+                "the exact casing of the same character is accepted");
+
+            var blacklist = await store.GetBlacklistAsync(owner, CancellationToken.None);
+            check(blacklist.Count == 2
+                    && blacklist[0].Name == "法师"
+                    && blacklist[1].Name == "Bravo"
+                    && blacklist.All(entry => entry.Year > 2000 && entry.Month is >= 1 and <= 12
+                        && entry.Day is >= 1 and <= 31),
+                "the blacklist keeps the insertion order, the exact name and a real date");
+
+            var reloaded = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+            await reloaded.InitializeAsync(CancellationToken.None);
+            var persisted = await reloaded.GetBlacklistAsync(owner, CancellationToken.None);
+            check(persisted.Count == 2
+                    && persisted[0].Name == "法师"
+                    && persisted[1].Name == "Bravo"
+                    && persisted[0].Year == blacklist[0].Year
+                    && persisted[0].Month == blacklist[0].Month
+                    && persisted[0].Day == blacklist[0].Day,
+                "the blacklist is written to disk and survives a store reload");
+
+            check(await store.RemoveBlacklistAsync(owner, "bravo", CancellationToken.None)
+                    == BlacklistUpdateFailure.NotBlacklisted,
+                "removal matches the entry name case-sensitively, unlike the friend list");
+            check(await store.RemoveBlacklistAsync(owner, "  法师  ", CancellationToken.None)
+                    == BlacklistUpdateFailure.None
+                    && (await store.GetBlacklistAsync(owner, CancellationToken.None)).Count == 1,
+                "removal trims the caller's surrounding whitespace and deletes the entry");
+            check(await store.RemoveBlacklistAsync(owner, "法师", CancellationToken.None)
+                    == BlacklistUpdateFailure.NotBlacklisted,
+                "removing a non-listed name reports NotBlacklisted");
+
+            check(await store.AddBlacklistAsync("ghost-account", "法师", CancellationToken.None)
+                    == BlacklistUpdateFailure.AccountNotFound
+                && await store.RemoveBlacklistAsync("ghost-account", "法师", CancellationToken.None)
+                    == BlacklistUpdateFailure.AccountNotFound,
+                "blacklist updates on an unknown account report AccountNotFound");
+            check((await store.GetBlacklistAsync("ghost-account", CancellationToken.None)).Count == 0,
+                "an unknown account reads as an empty blacklist");
+
+            // 上限 10：目标角色都放在同一个账号上（单账号可见角色上限 24）。
+            check(await store.RemoveBlacklistAsync(owner, "Bravo", CancellationToken.None)
+                    == BlacklistUpdateFailure.None
+                && (await store.GetBlacklistAsync(owner, CancellationToken.None)).Count == 0,
+                "the cap fixture clears the remaining entry");
+            var targetNames = new List<string>();
+            for (var index = 0; index < 10; index++)
+            {
+                var name = $"目标{index:D2}";
+                await store.CreateCharacterAsync(
+                    other,
+                    new CreateCharacterRequest(name),
+                    CancellationToken.None);
+                targetNames.Add(name);
+            }
+
+            for (var index = 0; index < 10; index++)
+            {
+                check(await store.AddBlacklistAsync(owner, targetNames[index], CancellationToken.None)
+                        == BlacklistUpdateFailure.None,
+                    $"blacklist entry {index + 1} of the ten-entry cap is accepted");
+            }
+
+            check(await store.AddBlacklistAsync(owner, "圣骑士", CancellationToken.None)
+                    == BlacklistUpdateFailure.BlacklistFull,
+                "the eleventh blacklist entry is rejected because the client's window holds ten");
+            check((await store.GetBlacklistAsync(owner, CancellationToken.None)).Count == 10,
+                "a rejected over-cap entry does not change the stored list");
         }
         finally
         {
@@ -830,11 +1152,11 @@ internal static class FriendSmokeTests
             var passerbyDetail = await EntranceService.ResolveUserInfoReplyAsync(
                 passerbyBody,
                 uid => service.TryGetCharacterByAreaUserId(uid, out var foundName) ? foundName : null,
-                (uid, _) => GameProtocolEngine.CreateCurrentCharacterDetails(uid),
+                (uid, _) => Task.FromResult(GameProtocolEngine.CreateRequestedUserInfoDetail(uid)),
                 () => Task.FromResult(GameProtocolEngine.CreateUserInfo([])));
             check(passerbyDetail is not null
                     && passerbyDetail.ProtocolId == GameProtocolEngine.UserInfoNotification
-                    && passerbyDetail.Payload[0] == 1
+                    && passerbyDetail.Payload[0] == 3
                     && BinaryPrimitives.ReadUInt16LittleEndian(passerbyDetail.Payload.AsSpan(1, 2)) == 1
                     && BinaryPrimitives.ReadUInt16LittleEndian(passerbyDetail.Payload.AsSpan(3, 2)) == 11,
                 "a mode-3 request for a non-friend online character returns that character's profile with the uid echoed");
@@ -1168,6 +1490,250 @@ internal static class FriendSmokeTests
         }
     }
 
+    // 黑名单服务层：三条命令的应答、130 的可重发全量快照，以及“客户端不拦、服务端
+    // 双向拦”的悄悄话/1:1 过滤（viewinfo-blacklist-recon.md §2.4）。
+    private static async Task CheckBlacklistServiceAsync(Action<bool, string> check)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dflegacy-blacklist-service-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var options = new ServerOptions
+            {
+                DataPath = Path.Combine(directory, "state.json"),
+                ScriptPvfPath = "unused.pvf"
+            };
+            var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+            var service = new FriendService(store, NullLogger<FriendService>.Instance);
+            var encoding = Encoding.GetEncoding(936);
+
+            await store.CreateAccountAsync(new CreateAccountRequest("alpha", "password", OicqCode: "123456"), CancellationToken.None);
+            await store.CreateAccountAsync(new CreateAccountRequest("bravo", "password", OicqCode: "123456"), CancellationToken.None);
+            check((await store.CreateCharacterAsync(
+                        "alpha",
+                        new CreateCharacterRequest("阿尔法", GrowType: 3),
+                        CancellationToken.None)).Created
+                    && (await store.CreateCharacterAsync(
+                        "bravo",
+                        new CreateCharacterRequest("布拉沃", GrowType: 2),
+                        CancellationToken.None)).Created,
+                "the blacklist service fixture creates its characters");
+
+            var alphaPackets = new List<GameServerPacket>();
+            await service.AttachChannelAsync(
+                "alpha", "阿尔法", areaUserId: 11, Guid.NewGuid(), Record(alphaPackets), CancellationToken.None);
+            var bravoPackets = new List<GameServerPacket>();
+            await service.AttachChannelAsync(
+                "bravo", "布拉沃", areaUserId: 1, Guid.NewGuid(), Record(bravoPackets), CancellationToken.None);
+
+            // CMD 128：成功回名字；重复回 74；找不到角色回 76。
+            var beforeAdd = alphaPackets.Count;
+            await service.AddBlacklistAsync(
+                "alpha", "阿尔法", encoding.GetBytes("布拉沃"), CancellationToken.None);
+            check(alphaPackets.Skip(beforeAdd).Count() == 1
+                    && IsBlacklistResult(alphaPackets[beforeAdd], 128, "布拉沃"),
+                "CMD 128 success sends exactly one type-1 id-128 result echoing the stored name");
+            var beforeDuplicate = alphaPackets.Count;
+            await service.AddBlacklistAsync(
+                "alpha", "阿尔法", encoding.GetBytes("布拉沃"), CancellationToken.None);
+            check(alphaPackets.Skip(beforeDuplicate).Count() == 1
+                    && IsBlacklistError(alphaPackets[beforeDuplicate], 128, 74),
+                "a duplicate CMD 128 answers [0][74] instead of a success flag");
+            var beforeUnknown = alphaPackets.Count;
+            await service.AddBlacklistAsync(
+                "alpha", "阿尔法", encoding.GetBytes("不存在的人"), CancellationToken.None);
+            check(alphaPackets.Skip(beforeUnknown).Count() == 1
+                    && IsBlacklistError(alphaPackets[beforeUnknown], 128, 76),
+                "blacklisting an unknown character answers [0][76]");
+
+            // CMD 130：全量快照；可随时重发（客户端先 clear 再追加），没有每会话一次的约束。
+            var beforeSnapshot = alphaPackets.Count;
+            await service.SendBlacklistSnapshotAsync("alpha", "阿尔法", CancellationToken.None);
+            check(alphaPackets.Skip(beforeSnapshot).Count() == 1
+                    && IsBlacklistSnapshot(alphaPackets[beforeSnapshot], ["布拉沃"]),
+                "CMD 130 replies the full snapshot on the type-1 id-130 packet");
+            var beforeSecondSnapshot = alphaPackets.Count;
+            await service.SendBlacklistSnapshotAsync("alpha", "阿尔法", CancellationToken.None);
+            check(alphaPackets.Skip(beforeSecondSnapshot).Count() == 1
+                    && IsBlacklistSnapshot(alphaPackets[beforeSecondSnapshot], ["布拉沃"]),
+                "CMD 130 can be repeated: the client clears and re-appends, so there is no once-per-session guard");
+
+            // 服务端双向拦截：A 拉黑 B 后，A→B 与 B→A 的悄悄话都被拒且各给发起者一条提示。
+            var alphaBeforeBlockedWhisper = alphaPackets.Count;
+            var bravoBeforeBlockedWhisper = bravoPackets.Count;
+            await service.WhisperAsync(
+                "阿尔法",
+                senderAreaUserId: 11,
+                senderAppearance: GameProtocolEngine.CreateCurrentCharacterInfo(
+                    new GameCharacterSummary(0, encoding.GetBytes("阿尔法"), Job: 0, GrowType: 3, Level: 20),
+                    userId: 11),
+                encoding.GetBytes("布拉沃"),
+                messageType: 1,
+                encoding.GetBytes("你好"),
+                CancellationToken.None);
+            var blockedBySender = alphaPackets.Skip(alphaBeforeBlockedWhisper).ToArray();
+            check(bravoPackets.Count == bravoBeforeBlockedWhisper,
+                "a blacklisted target receives nothing at all, not even the sender's appearance record");
+            check(blockedBySender.Length == 1
+                    && IsWhiteNotice(blockedBySender[0], "对方当前无法接收消息"),
+                "the whisperer who blacklisted the peer gets one white notice and no delivery");
+
+            var alphaBeforeCounterWhisper = alphaPackets.Count;
+            var bravoBeforeCounterWhisper = bravoPackets.Count;
+            await service.WhisperAsync(
+                "布拉沃",
+                senderAreaUserId: 1,
+                senderAppearance: null,
+                encoding.GetBytes("阿尔法"),
+                messageType: 1,
+                encoding.GetBytes("在吗"),
+                CancellationToken.None);
+            var blockedByTarget = bravoPackets.Skip(bravoBeforeCounterWhisper).ToArray();
+            check(alphaPackets.Count == alphaBeforeCounterWhisper,
+                "the blacklister receives no line when the blocked peer whispers them");
+            check(blockedByTarget.Length == 1
+                    && IsWhiteNotice(blockedByTarget[0], "对方当前无法接收消息"),
+                "the blocked peer gets the same neutral white notice, which does not reveal the blacklist");
+            check(alphaPackets.Skip(alphaBeforeBlockedWhisper)
+                    .Concat(bravoPackets.Skip(bravoBeforeBlockedWhisper))
+                    .All(packet => packet.Type != GameProtocolEngine.CommandPacketType),
+                "a refused whisper sends no type-1 command packet to either side");
+
+            // 1:1（NOTI 65）复用同一张双向检查：原版客户端在这条路径上同样不拦。
+            var alphaBeforeBlockedMessenger = alphaPackets.Count;
+            var bravoBeforeBlockedMessenger = bravoPackets.Count;
+            await service.SendMessengerMessageAsync(
+                "布拉沃",
+                senderAppearance: null,
+                encoding.GetBytes("阿尔法"),
+                encoding.GetBytes("1:1消息"),
+                CancellationToken.None);
+            check(alphaPackets.Count == alphaBeforeBlockedMessenger
+                    && bravoPackets.Count == bravoBeforeBlockedMessenger + 1
+                    && IsWhiteNotice(bravoPackets[^1], "对方当前无法接收消息"),
+                "1:1 messages reuse the same two-way blacklist check: no NOTI 65, only the notice");
+
+            // 解除拉黑后投递恢复（129 回成功结果，拦截随之解除）。
+            await service.RemoveBlacklistAsync(
+                "alpha", "阿尔法", encoding.GetBytes("布拉沃"), CancellationToken.None);
+            check(IsBlacklistResult(alphaPackets[^1], 129, "布拉沃"),
+                "CMD 129 success sends the id-129 result with the name");
+            var bravoBeforeUnblocked = bravoPackets.Count;
+            await service.WhisperAsync(
+                "阿尔法",
+                senderAreaUserId: 11,
+                senderAppearance: null,
+                encoding.GetBytes("布拉沃"),
+                messageType: 1,
+                encoding.GetBytes("现在可以了"),
+                CancellationToken.None);
+            check(bravoPackets.Skip(bravoBeforeUnblocked).Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.MessageNotification
+                    && ReadMessageText(packet) == "现在可以了"),
+                "removing the blacklist entry lifts the whisper block");
+            var beforeFailedRemoval = alphaPackets.Count;
+            await service.RemoveBlacklistAsync(
+                "alpha", "阿尔法", encoding.GetBytes("布拉沃"), CancellationToken.None);
+            check(alphaPackets.Skip(beforeFailedRemoval).Count() == 1
+                    && IsBlacklistError(alphaPackets[beforeFailedRemoval], 129, 0x4B),
+                "removing a name that is not on the list answers [0][0x4B]");
+
+            // 名单已满：服务层把 BlacklistFull 映射成 78。
+            await store.CreateAccountAsync(new CreateAccountRequest("crowd", "password", OicqCode: "123456"), CancellationToken.None);
+            await store.CreateAccountAsync(new CreateAccountRequest("delta", "password", OicqCode: "123456"), CancellationToken.None);
+            for (var index = 0; index < 11; index++)
+            {
+                await store.CreateCharacterAsync(
+                    "crowd",
+                    new CreateCharacterRequest($"备胎{index:D2}"),
+                    CancellationToken.None);
+            }
+
+            check((await store.CreateCharacterAsync(
+                    "delta",
+                    new CreateCharacterRequest("德尔塔"),
+                    CancellationToken.None)).Created,
+                "the full-blacklist fixture creates its owner character");
+            for (var index = 0; index < 10; index++)
+            {
+                await store.AddBlacklistAsync("delta", $"备胎{index:D2}", CancellationToken.None);
+            }
+
+            var deltaPackets = new List<GameServerPacket>();
+            await service.AttachChannelAsync(
+                "delta", "德尔塔", areaUserId: 21, Guid.NewGuid(), Record(deltaPackets), CancellationToken.None);
+            var beforeFullAdd = deltaPackets.Count;
+            await service.AddBlacklistAsync(
+                "delta", "德尔塔", encoding.GetBytes("备胎10"), CancellationToken.None);
+            check(deltaPackets.Skip(beforeFullAdd).Count() == 1
+                    && IsBlacklistError(deltaPackets[beforeFullAdd], 128, 78),
+                "a full blacklist answers [0][78] and sends no success flag");
+
+            // 大小写敏感：拦截比较是逐字节 Ordinal（客户端 CNRDBlackListdManager::FindByName）。
+            // 精确拼写命中 -> 拒绝；只差大小写 -> 不算命中，照常投递。
+            await store.CreateAccountAsync(new CreateAccountRequest("frank", "password", OicqCode: "123456"), CancellationToken.None);
+            await store.CreateAccountAsync(new CreateAccountRequest("gina", "password", OicqCode: "123456"), CancellationToken.None);
+            check((await store.CreateCharacterAsync(
+                        "frank",
+                        new CreateCharacterRequest("Echo"),
+                        CancellationToken.None)).Created
+                    && (await store.CreateCharacterAsync(
+                        "gina",
+                        new CreateCharacterRequest("Gina"),
+                        CancellationToken.None)).Created,
+                "the case-sensitivity fixture creates the mixed-case characters");
+            check(await store.AddBlacklistAsync("gina", "Echo", CancellationToken.None)
+                    == BlacklistUpdateFailure.None,
+                "gina blacklists the exact spelling Echo");
+            var frankPackets = new List<GameServerPacket>();
+            await service.AttachChannelAsync(
+                "frank", "Echo", areaUserId: 5, Guid.NewGuid(), Record(frankPackets), CancellationToken.None);
+            var ginaPackets = new List<GameServerPacket>();
+            await service.AttachChannelAsync(
+                "gina", "Gina", areaUserId: 6, Guid.NewGuid(), Record(ginaPackets), CancellationToken.None);
+
+            var ginaBeforeExact = ginaPackets.Count;
+            var frankBeforeExact = frankPackets.Count;
+            await service.WhisperAsync(
+                "Gina",
+                senderAreaUserId: 6,
+                senderAppearance: null,
+                encoding.GetBytes("Echo"),
+                messageType: 1,
+                encoding.GetBytes("精确拼写"),
+                CancellationToken.None);
+            check(ginaPackets.Skip(ginaBeforeExact).Count() == 1
+                    && IsWhiteNotice(ginaPackets[ginaBeforeExact], "对方当前无法接收消息")
+                    && frankPackets.Count == frankBeforeExact,
+                "the exact blacklisted spelling is refused before delivery");
+
+            var ginaBeforeDifferentCase = ginaPackets.Count;
+            var frankBeforeDifferentCase = frankPackets.Count;
+            await service.WhisperAsync(
+                "Gina",
+                senderAreaUserId: 6,
+                senderAppearance: null,
+                encoding.GetBytes("echo"),
+                messageType: 1,
+                encoding.GetBytes("不同大小写"),
+                CancellationToken.None);
+            check(frankPackets.Skip(frankBeforeDifferentCase).Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.MessageNotification
+                    && ReadMessageText(packet) == "不同大小写"),
+                "a differently-cased name is not the blacklisted entry: the whisper is still delivered");
+            check(ginaPackets.Skip(ginaBeforeDifferentCase).All(packet =>
+                    !IsWhiteNotice(packet, "对方当前无法接收消息")),
+                "a case-mismatched name draws no blacklist notice");
+            check(await store.RemoveBlacklistAsync("gina", "echo", CancellationToken.None)
+                    == BlacklistUpdateFailure.NotBlacklisted,
+                "the stored entry cannot be removed with a differently-cased spelling");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static Func<GameServerPacket, ValueTask> Record(List<GameServerPacket> packets) =>
         packet =>
         {
@@ -1269,6 +1835,68 @@ internal static class FriendSmokeTests
             && tail[7] == 0
             && tail[8] == 0;
     }
+
+    // type=1 黑名单成功结果（128/129）：[非零标志][u32 名字长度 + 名字]。id 与字节值
+    // 都写死成字面量：命令表/布局被改动时这些断言必须变红。
+    private static bool IsBlacklistResult(GameServerPacket packet, byte command, string name)
+    {
+        var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
+        return packet.Type == 1
+            && packet.ProtocolId == command
+            && packet.Payload.Length == 1 + sizeof(uint) + nameBytes.Length
+            && packet.Payload[0] != 0
+            && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(1, sizeof(uint)))
+                == nameBytes.Length
+            && packet.Payload.AsSpan(5, nameBytes.Length).SequenceEqual(nameBytes);
+    }
+
+    // type=1 黑名单失败结果：[0][u8 失败码]。
+    private static bool IsBlacklistError(GameServerPacket packet, byte command, byte errorCode) =>
+        packet.Type == 1
+        && packet.ProtocolId == command
+        && packet.Payload.SequenceEqual(new[] { (byte)0, errorCode });
+
+    // type=1 id130 全量快照：名字与顺序完全一致、每条带 3 字节日期才算过
+    // （130 的语义就是 clear + 全量追加，快照必须覆盖整份名单）。
+    private static bool IsBlacklistSnapshot(GameServerPacket packet, IReadOnlyList<string> names)
+    {
+        var clientEncoding = Encoding.GetEncoding(936);
+        if (packet.Type != 1
+            || packet.ProtocolId != 130
+            || packet.Payload.Length < 2
+            || packet.Payload[0] == 0
+            || packet.Payload[1] != names.Count)
+        {
+            return false;
+        }
+
+        var offset = 2;
+        foreach (var name in names)
+        {
+            var nameBytes = clientEncoding.GetBytes(name);
+            if (packet.Payload.Length < offset + sizeof(uint) + nameBytes.Length + 3
+                || BinaryPrimitives.ReadUInt32LittleEndian(
+                    packet.Payload.AsSpan(offset, sizeof(uint))) != nameBytes.Length
+                || !packet.Payload
+                    .AsSpan(offset + sizeof(uint), nameBytes.Length)
+                    .SequenceEqual(nameBytes))
+            {
+                return false;
+            }
+
+            offset += sizeof(uint) + nameBytes.Length + 3;
+        }
+
+        return offset == packet.Payload.Length;
+    }
+
+    // 白字系统提示（NOTI 12 类型 3）：黑名单拒绝只给发起者这一条。
+    private static bool IsWhiteNotice(GameServerPacket packet, string text) =>
+        packet.Type == 0
+        && packet.ProtocolId == GameProtocolEngine.MessageNotification
+        && packet.Payload.Length >= 7
+        && packet.Payload[0] == (byte)GameMessageType.Type03White
+        && ReadMessageText(packet) == text;
 
     // NOTI 65：只服务 CMD 17 类型 18 的 1:1 频道，type 恒 0x12；flag 是状态码，只有 0
     // 才投递正文（非 0 只弹“无法接受信息”并丢掉正文）。线上的字节值写死成字面量：

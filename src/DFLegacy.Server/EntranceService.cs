@@ -672,31 +672,89 @@ public sealed class EntranceService(
                     lastProjectedCombatStats = projectedStats;
                 }
 
-                GameServerPacket CreateRequestedCharacterDetail(
+                async Task<GameServerPacket> CreateRequestedCharacterDetailAsync(
                     ushort requestedUserId,
                     string requestedCharacterName)
                 {
-                    // 城镇内“查看信息”/“/info”（CMD 8 mode 3）：查询自己时回真实资料；
-                    // 其他 uid 只回最小资料记录（名字由客户端按 uid 自行解析）。回包是
-                    // NOTI 2 mode 1、count=1 —— 绝不能落回 mode 2 的账号角色卡列表，否则
-                    // 客户端会用 mode 0/2 解析器读出“通关[%s]…”的系统弹窗。
-                    return activeCharacter is not null
+                    // 城镇内“查看信息”/“/info”（CMD 8 mode 3）：只能回 NOTI 2 **mode 3**。
+                    // mode 1/3 共用同一条记录解析器，但只有 mode-3 的 28 字节尾会打开资料卡
+                    // 窗口（CNRDAnotherUserPopUpWindow，窗口 id 0x16）：回 mode 1 只更新目标
+                    // 模型、卡片根本不弹（“点了没反应”的根因）；落回 mode 2 更糟——客户端用
+                    // 账号角色卡解析器读出“通关[%s]…”的系统弹窗。记录里没有名字字段，卡片上
+                    // 的名字来自客户端本地 user 注册表（登录时“记录先于快照”的顺序已修好）。
+                    if (activeCharacter is not null
                         && string.Equals(
                             activeCharacter.Name,
                             requestedCharacterName,
-                            StringComparison.OrdinalIgnoreCase)
-                        ? GameProtocolEngine.CreateCurrentCharacterDetails(
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        return GameProtocolEngine.CreateRequestedUserInfoDetail(
                             requestedUserId,
-                            experience: activeCharacter.Experience,
-                            learnedSkills: GetCurrentGameSkills(),
-                            combatStats: characterStatCatalog.Get(activeCharacter),
                             equippedItems: CreateWornEquipmentSnapshot(
                                 equippedInventory.Values,
                                 creatureInventory),
+                            combatStats: characterStatCatalog.Get(activeCharacter),
                             equippedCreatureLevel: GetEquippedCreatureLevel(
                                 creatureInventory),
-                            staminaRecoveryPercentage: GetProjectedStaminaRecovery())
-                        : GameProtocolEngine.CreateCurrentCharacterDetails(requestedUserId);
+                            staminaRecoveryPercentage: GetProjectedStaminaRecovery());
+                    }
+
+                    // 别人：卡片渲染的是目标的 actor，装备列表未覆盖的槽会被客户端删掉，
+                    // 所以必须从存档记录取目标当前穿的装备（与 mode-1 的装备投影同源）。
+                    var storedCharacter = await FindStoredCharacterAsync(
+                        requestedUserId,
+                        requestedCharacterName,
+                        serverToken);
+                    if (storedCharacter is null)
+                    {
+                        // 反查到的名字在存档里找不到（竞态/带外数据）：回最小 mode-3 记录
+                        // （空装备）。卡片仍会弹出、按本地 user 记录渲染名字，比静默不回包
+                        // 更容易在真机上定位。
+                        return GameProtocolEngine.CreateRequestedUserInfoDetail(requestedUserId);
+                    }
+
+                    var storedCreatureInventory = new Dictionary<ushort, CharacterItemRecord>();
+                    foreach (var creature in storedCharacter.CreatureInventory ?? [])
+                    {
+                        storedCreatureInventory.TryAdd(creature.Slot, creature);
+                    }
+
+                    return GameProtocolEngine.CreateRequestedUserInfoDetail(
+                        requestedUserId,
+                        equippedItems: CreateWornEquipmentSnapshot(
+                            storedCharacter.Equipment ?? [],
+                            storedCreatureInventory),
+                        combatStats: characterStatCatalog.Get(storedCharacter),
+                        equippedCreatureLevel: GetEquippedCreatureLevel(
+                            storedCreatureInventory));
+                }
+
+                // CMD 8 mode 3 的 uid → 存档角色：区用户 id 先在好友通道表里反查到在线
+                // 角色与账号（与分派用的是同一张表），再从该账号的存档里取同名角色。
+                async Task<CharacterRecord?> FindStoredCharacterAsync(
+                    ushort areaUserId,
+                    string requestedCharacterName,
+                    CancellationToken cancellationToken)
+                {
+                    if (!friendService.TryGetOnlineCharacter(
+                            areaUserId,
+                            out var onlineName,
+                            out var accountName)
+                        || !string.Equals(
+                            onlineName,
+                            requestedCharacterName,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        return null;
+                    }
+
+                    var characters = await store.GetCharactersAsync(
+                        accountName,
+                        cancellationToken);
+                    return characters.FirstOrDefault(character => string.Equals(
+                        character.Name,
+                        requestedCharacterName,
+                        StringComparison.OrdinalIgnoreCase));
                 }
 
                 // CMD 8 mode 3 的 uid 反查：好友通道表按区用户 id 找当前持有它的在线角色。
@@ -2660,7 +2718,7 @@ public sealed class EntranceService(
                             var userInfo = await ResolveUserInfoReplyAsync(
                                 request.Body,
                                 FindOnlineCharacterByAreaUserId,
-                                CreateRequestedCharacterDetail,
+                                CreateRequestedCharacterDetailAsync,
                                 () => CreateUserInfoAsync(accountUid, serverToken));
                             if (userInfo is null)
                             {
@@ -3698,6 +3756,77 @@ public sealed class EntranceService(
                                 accountName,
                                 activeCharacter.Name,
                                 ClientEncoding.GetString(friendName),
+                                serverToken);
+                            continue;
+                        }
+
+                        // 黑名单三条命令都在 type=1 命令通道上、没有通知包：128 加、129 删、
+                        // 130 拉全量快照（客户端打开社区窗口黑名单页时发，可随时重发）。
+                        // 失败同样用 type-1 应答包承载（[0][失败码]），不能发白字提示。
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId
+                                == GameProtocolEngine.RegisterToBlacklistCommand)
+                        {
+                            if (activeCharacter is null
+                                || !GameProtocolEngine.TryReadBlacklistName(
+                                    request.Body,
+                                    out var blacklistName))
+                            {
+                                logger.LogWarning(
+                                    "Rejected malformed REGISTER_TO_BLACKLIST for character {CharacterId}.",
+                                    activeCharacter?.Id);
+                                continue;
+                            }
+
+                            await friendService.AddBlacklistAsync(
+                                accountName,
+                                activeCharacter.Name,
+                                blacklistName,
+                                serverToken);
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId
+                                == GameProtocolEngine.DeleteToBlacklistCommand)
+                        {
+                            if (activeCharacter is null
+                                || !GameProtocolEngine.TryReadBlacklistName(
+                                    request.Body,
+                                    out var removedBlacklistName))
+                            {
+                                logger.LogWarning(
+                                    "Rejected malformed DELETE_TO_BLACKLIST for character {CharacterId}.",
+                                    activeCharacter?.Id);
+                                continue;
+                            }
+
+                            await friendService.RemoveBlacklistAsync(
+                                accountName,
+                                activeCharacter.Name,
+                                removedBlacklistName,
+                                serverToken);
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId
+                                == GameProtocolEngine.RequestBlacklistCommand)
+                        {
+                            // 空载荷。黑名单页在城镇里，必须有活动角色/已挂通道才能回包；
+                            // 没有活动角色时静态落回 GameProtocolEngine.Handle 的旧
+                            // [1][0]（恰好等价于空名单快照），所以这里显式拦下并记日志。
+                            if (activeCharacter is null)
+                            {
+                                logger.LogWarning(
+                                    "Ignored REQUEST_BLACKLIST for session {SessionId}: no active character.",
+                                    runtimeSession.Id);
+                                continue;
+                            }
+
+                            await friendService.SendBlacklistSnapshotAsync(
+                                accountName,
+                                activeCharacter.Name,
                                 serverToken);
                             continue;
                         }
@@ -14326,12 +14455,14 @@ public sealed class EntranceService(
     /// 账号角色卡列表工厂。mode 3 必须先按 uid 反查到“当前持有该区用户 id 的在线角色”
     /// （<paramref name="findOnlineCharacter"/>，好友通道表里就有这个 id）才回资料；
     /// uid 为 0 或查不到 → 返回 null，由调用方静默忽略并发一条日志。
-    /// 抽成静态函数让冒烟测试直接钉住“mode 3 不回列表”与“反查不到不回包”两条分派。
+    /// 资料工厂是异步的：mode-3 要从存档里取目标角色的装备（资料卡渲染的是目标 actor，
+    /// 未列的装备槽会被客户端删掉）。抽成静态函数让冒烟测试直接钉住“mode 3 不回列表”
+    /// 与“反查不到不回包”两条分派。
     /// </summary>
     internal static async Task<GameServerPacket?> ResolveUserInfoReplyAsync(
         byte[] body,
         Func<ushort, string?> findOnlineCharacter,
-        Func<ushort, string, GameServerPacket> createCharacterDetail,
+        Func<ushort, string, Task<GameServerPacket>> createCharacterDetail,
         Func<Task<GameServerPacket>> createRoster)
     {
         switch (ClassifyUserInfoRequest(body, out var requestedUserId))
@@ -14340,7 +14471,7 @@ public sealed class EntranceService(
                 var characterName = findOnlineCharacter(requestedUserId);
                 return characterName is null
                     ? null
-                    : createCharacterDetail(requestedUserId, characterName);
+                    : await createCharacterDetail(requestedUserId, characterName);
             case UserInfoReplyKind.Ignore:
                 return null;
             default:

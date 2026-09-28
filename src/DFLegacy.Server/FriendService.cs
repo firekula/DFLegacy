@@ -6,7 +6,9 @@ namespace DFLegacy.Server;
 
 /// <summary>
 /// Turns account-level friend-list changes into the buddy notifications the 2008 client
-/// understands and routes whispers between live game-channel sessions.
+/// understands, serves the account blacklist commands (CMD 128/129/130) on the type-1
+/// command channel, and routes whispers/1:1 messages between live game-channel sessions
+/// with the server-side blacklist filter applied.
 /// </summary>
 /// <remarks>
 /// A character is online exactly when it has an attached channel: keeping the send
@@ -112,7 +114,17 @@ public sealed class FriendService
     /// 时返回 false。客户端侧"能右键到的人"都有本地 user 记录：好友由本服务的 USERINFO
     /// 推送提供，同区路人由城镇同屏的外观推送（目录重放 mode-0 记录）提供。
     /// </remarks>
-    public bool TryGetCharacterByAreaUserId(ushort areaUserId, out string characterName)
+    public bool TryGetCharacterByAreaUserId(ushort areaUserId, out string characterName) =>
+        TryGetOnlineCharacter(areaUserId, out characterName, out _);
+
+    /// <summary>
+    /// 按区用户 id 反查当前持有它的在线角色名**及其账号名**。账号名用于 CMD 8 mode 3
+    /// 从存档里取该角色的装备（资料卡渲染目标 actor，必须带装备）以及将来的跨账号查询。
+    /// </summary>
+    public bool TryGetOnlineCharacter(
+        ushort areaUserId,
+        out string characterName,
+        out string accountName)
     {
         if (areaUserId != 0)
         {
@@ -121,12 +133,14 @@ public sealed class FriendService
                 if (channel.AreaUserId == areaUserId)
                 {
                     characterName = name;
+                    accountName = channel.AccountName;
                     return true;
                 }
             }
         }
 
         characterName = string.Empty;
+        accountName = string.Empty;
         return false;
     }
 
@@ -215,6 +229,102 @@ public sealed class FriendService
     }
 
     /// <summary>
+    /// CMD 128 REGISTER_TO_BLACKLIST：把名字写进账号黑名单并回 type-1 id 128 结果。
+    /// 成功回 [非零][u32 名字长度 + 名字]（客户端按本机日期追加条目并提示“已被添加到
+    /// 黑名单”）；失败回 [0][u8 失败码]（74 已在该名单 / 76 找不到该角色 / 78 名单已满）。
+    /// </summary>
+    /// <remarks>
+    /// 黑名单**没有通知包**（勘察：通知名表里没有 BLACKLIST 条目），列表窗口完全靠
+    /// 这三条 type-1 回包驱动，所以失败也必须是应答包而不是白字提示。名字比较大小写
+    /// 敏感的说明见 <see cref="JsonGameStore.AddBlacklistAsync"/>。
+    /// </remarks>
+    public async Task AddBlacklistAsync(
+        string accountName,
+        string characterName,
+        byte[] blacklistNameBytes,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(blacklistNameBytes);
+        var name = ClientEncoding.GetString(blacklistNameBytes).Trim();
+        var failure = await _store.AddBlacklistAsync(accountName, name, cancellationToken);
+        var packet = failure switch
+        {
+            BlacklistUpdateFailure.None =>
+                GameProtocolEngine.CreateBlacklistAddResult(ClientEncoding.GetBytes(name)),
+            BlacklistUpdateFailure.AlreadyBlacklisted => GameProtocolEngine.CreateBlacklistError(
+                GameProtocolEngine.RegisterToBlacklistCommand,
+                GameProtocolEngine.BlacklistAlreadyListedError),
+            BlacklistUpdateFailure.CharacterNotFound => GameProtocolEngine.CreateBlacklistError(
+                GameProtocolEngine.RegisterToBlacklistCommand,
+                GameProtocolEngine.BlacklistCharacterNotFoundError),
+            BlacklistUpdateFailure.BlacklistFull => GameProtocolEngine.CreateBlacklistError(
+                GameProtocolEngine.RegisterToBlacklistCommand,
+                GameProtocolEngine.BlacklistFullError),
+            // 会话的账号在存档里消失（内部不一致）没有专属失败码，按“找不到该角色”回，
+            // 客户端至少有“无法找到的名字…”文案，不会静默。
+            _ => GameProtocolEngine.CreateBlacklistError(
+                GameProtocolEngine.RegisterToBlacklistCommand,
+                GameProtocolEngine.BlacklistCharacterNotFoundError)
+        };
+        await SendAsync(characterName, packet, cancellationToken);
+    }
+
+    /// <summary>
+    /// CMD 129 DELETE_TO_BLACKLIST：按名字从账号黑名单里删掉一条并回 type-1 id 129 结果。
+    /// 成功回 [非零][u32 名字长度 + 名字]；失败一律回 [0][0x4B]（客户端文案“对方不在
+    /// 黑名单中”）。
+    /// </summary>
+    public async Task RemoveBlacklistAsync(
+        string accountName,
+        string characterName,
+        byte[] blacklistNameBytes,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(blacklistNameBytes);
+        var name = ClientEncoding.GetString(blacklistNameBytes).Trim();
+        var failure = await _store.RemoveBlacklistAsync(accountName, name, cancellationToken);
+        var packet = failure == BlacklistUpdateFailure.None
+            ? GameProtocolEngine.CreateBlacklistRemoveResult(ClientEncoding.GetBytes(name))
+            : GameProtocolEngine.CreateBlacklistError(
+                GameProtocolEngine.DeleteToBlacklistCommand,
+                GameProtocolEngine.BlacklistNotListedError);
+        await SendAsync(characterName, packet, cancellationToken);
+    }
+
+    /// <summary>
+    /// CMD 130 REQUEST_BLACKLIST：回 type-1 id 130 的黑名单**全量快照**
+    /// （[非零][u8 条数] + 每条(u32 名字长度 + 名字 + u8 年-1900 + u8 月-1 + u8 日)）。
+    /// </summary>
+    /// <remarks>
+    /// 客户端收到后先 clear 再逐条追加，所以这是“清空 + 全量追加”，**没有每会话一次的
+    /// 约束**：社区窗口每次打开/刷新黑名单页都会重发本命令（客户端侧只有 3s/10s 节流），
+    /// 这里每次都按存档回完整名单，不做任何会话标记——与好友名单的 NOTI 56 快照相反
+    /// （那个只能推一次，重复推送会追加出重复行）。
+    /// </remarks>
+    public async Task SendBlacklistSnapshotAsync(
+        string accountName,
+        string characterName,
+        CancellationToken cancellationToken = default)
+    {
+        var blacklist = await _store.GetBlacklistAsync(accountName, cancellationToken);
+        var entries = new GameBlacklistEntry[blacklist.Count];
+        for (var index = 0; index < blacklist.Count; index++)
+        {
+            var entry = blacklist[index];
+            entries[index] = new GameBlacklistEntry(
+                ClientEncoding.GetBytes(entry.Name),
+                entry.Year,
+                entry.Month,
+                entry.Day);
+        }
+
+        await SendAsync(
+            characterName,
+            GameProtocolEngine.CreateBlacklistSnapshot(entries),
+            cancellationToken);
+    }
+
+    /// <summary>
     /// Routes a whisper (CMD 17 type 1/7) to the live session that owns the target name.
     /// </summary>
     /// <remarks>
@@ -295,6 +405,22 @@ public sealed class FriendService
             return;
         }
 
+        // 黑名单是**双向的服务器侧过滤**：客户端在发送路径（0x8464F0/0x8495B0/0x811D21）
+        // 和接收路径（NOTI 12 handler 0x41C994）都没有任何 CNRDBlackListdManager 访问，
+        // 被拉黑的人收不到任何提示也由服务器保证。任一方向命中都拒绝投递，只给发起者
+        // 一条中性白字提示——**原版拒绝文案未知**（这里自定义），且不区分“谁拉黑了谁”，
+        // 避免把名单状态透给对端。
+        // 名字比较按客户端语义**逐字节、大小写敏感**（CNRDBlackListdManager::FindByName
+        // 的手写 strcmp），与好友名单的 OrdinalIgnoreCase 相反；客户端只会按本地 user
+        // 注册表里的精确拼写发目标名，所以线上正常路径永远命中。
+        // TODO(交易/组队邀请)：原版客户端对这些路径同样不做黑名单检查（0xB5DCD0 的
+        // 引用点里没有它们），落地时必须复用这里的双向检查。
+        if (await IsBlockedByBlacklistAsync(characterName, peerName, cancellationToken))
+        {
+            await SendNoticeAsync(characterName, "对方当前无法接收消息", cancellationToken);
+            return;
+        }
+
         if (!_channels.TryGetValue(peerName, out var target))
         {
             await SendNoticeAsync(characterName, "对方不在线", cancellationToken);
@@ -334,6 +460,46 @@ public sealed class FriendService
         {
             await SendAsync(characterName, peerRecord, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// 双向黑名单检查：发起者的名单里有对端，或对端的名单里有发起者，都算命中。
+    /// </summary>
+    /// <remarks>
+    /// 对端离线时拿不到它的账号，只检查发起者自己的名单——离线对端本来也收不到消息
+    /// （调用方随后会回“对方不在线”），不存在旁路。名字比较是 Ordinal（大小写敏感），
+    /// 见 <see cref="RoutePeerMessageAsync"/> 的说明。
+    /// </remarks>
+    private async Task<bool> IsBlockedByBlacklistAsync(
+        string characterName,
+        string peerName,
+        CancellationToken cancellationToken)
+    {
+        if (_channels.TryGetValue(characterName, out var sender)
+            && await IsBlacklistedAsync(sender.AccountName, peerName, cancellationToken))
+        {
+            return true;
+        }
+
+        return _channels.TryGetValue(peerName, out var peer)
+            && await IsBlacklistedAsync(peer.AccountName, characterName, cancellationToken);
+    }
+
+    private async Task<bool> IsBlacklistedAsync(
+        string accountName,
+        string characterName,
+        CancellationToken cancellationToken)
+    {
+        var blacklist = await _store.GetBlacklistAsync(accountName, cancellationToken);
+        foreach (var entry in blacklist)
+        {
+            if (string.Equals(entry.Name, characterName, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

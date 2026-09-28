@@ -77,6 +77,12 @@ public sealed record GameTownUser(
 // 客户端“查看信息”用的 uid 来自本地 user 注册表（由 USERINFO mode 0 建立），
 // 不再从这份快照记录里取。
 public sealed record GameFriendEntry(byte[] NameBytes, bool Online);
+
+/// <summary>
+/// CMD 130 黑名单快照条目。线上的日期是 (年-1900, 月-1, 日) 三个字节，
+/// 客户端收包后做 +1900 / +1 修正，所以这里保留日历语义、由构建器做偏移。
+/// </summary>
+public sealed record GameBlacklistEntry(byte[] NameBytes, int Year, int Month, int Day);
 public sealed record GameDungeonMonster(
     byte MapListIndex,
     ushort UniqueId,
@@ -376,6 +382,19 @@ public static class GameProtocolEngine
     public const byte MessengerMessageFlag = 0;
     public const byte AddFriendCommand = 63;
     public const byte RemoveFriendCommand = 64;
+    // 黑名单（对照 DNF.exe 1.0.1.9，见 .superpowers/sdd/viewinfo-blacklist-recon.md §2）：
+    // 三条命令都走 type=1 命令通道，**没有任何通知包**；130 是“清空 + 全量追加”的
+    // 快照（客户端打开社区窗口的黑名单页时发，空载荷），可随时重发，没有“每会话一次”
+    // 的约束。名字匹配在客户端是逐字节大小写敏感比较。
+    public const byte RegisterToBlacklistCommand = 128;
+    public const byte DeleteToBlacklistCommand = 129;
+    // CMD 128/129 失败码（客户端 0x414CFA/0x414D0C/0x414D1E/0x414D34 分支）：
+    // 74=0x4A“对方已在黑名单中”、76=0x4C“无法找到的名字…”、78=0x4E“黑名单已满…”、
+    // 0x4B=75“对方不在黑名单中”。
+    public const byte BlacklistAlreadyListedError = 74;
+    public const byte BlacklistNotListedError = 0x4B;
+    public const byte BlacklistCharacterNotFoundError = 76;
+    public const byte BlacklistFullError = 78;
     public const byte CeraShopBuyCommand = 67;
     public const byte GenerateCeraTicketCommand = 68;
     public const byte ScoreScrollStateCommand = 72;
@@ -390,7 +409,11 @@ public static class GameProtocolEngine
     public const byte MailboxOpenCommand = 99;
     public const byte CompoundAvatarCommand = 102;
     public const byte BossDieCheckCommand = 127;
+    // 130 现按“黑名单请求”处理：定点勘察确认它就是 REQUEST_BLACKLIST（push 0x82、
+    // 空载荷、客户端仅从社区窗口的黑名单页发出）。早期把它猜成“交换服务器角色信息”
+    // 并回 [1][0]；旧名保留给既有调用点与冒烟测试，新代码用 RequestBlacklistCommand。
     public const byte ExchangeServerCharacterInfoCommand = 130;
+    public const byte RequestBlacklistCommand = ExchangeServerCharacterInfoCommand;
     public const byte BackToVillageCommand = 142;
     public const byte MailboxStateCommand = 144;
     public const byte AllDieMonsterCommand = 148;
@@ -2432,20 +2455,120 @@ public static class GameProtocolEngine
         return new GameServerPacket(CommandPacketType, RemoveFriendCommand, payload.ToArray());
     }
 
-    private static void ValidateFriendName(byte[] nameBytes)
+    /// <summary>
+    /// CMD 128 成功结果（type=1 命令包）。客户端 handler 0x414C2B 从 body 第 1 字节读结果
+    /// 标志，非零后读长度前缀名字，然后按**本机时间**给条目填年/月/日并追加，聊天栏打印
+    /// “[%s]已被添加到黑名单”。失败必须走 <see cref="CreateBlacklistError"/> 的 0 标志。
+    /// </summary>
+    public static GameServerPacket CreateBlacklistAddResult(byte[] nameBytes)
+    {
+        ValidateBlacklistName(nameBytes);
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);                              // 结果标志，非零即成功
+        WriteLengthPrefixedBytes(writer, nameBytes);
+        return new GameServerPacket(
+            CommandPacketType,
+            RegisterToBlacklistCommand,
+            payload.ToArray());
+    }
+
+    /// <summary>
+    /// CMD 129 成功结果（type=1 命令包）。客户端 handler 0x414D34 凭它按名字
+    /// FindByName + vector::erase 删除条目（名字比较大小写敏感）。
+    /// </summary>
+    public static GameServerPacket CreateBlacklistRemoveResult(byte[] nameBytes)
+    {
+        ValidateBlacklistName(nameBytes);
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);
+        WriteLengthPrefixedBytes(writer, nameBytes);
+        return new GameServerPacket(
+            CommandPacketType,
+            DeleteToBlacklistCommand,
+            payload.ToArray());
+    }
+
+    /// <summary>
+    /// CMD 128/129 失败结果：body = [0][u8 失败码]。客户端 128 认识 74/76/78、
+    /// 129 认识 0x4B，其它码无动作（所以失败必须是这条包，不能发成功标志+名字）。
+    /// </summary>
+    public static GameServerPacket CreateBlacklistError(byte command, byte errorCode) =>
+        new(CommandPacketType, command, [0, errorCode]);
+
+    /// <summary>
+    /// CMD 130 黑名单全量快照（type=1 命令包 id 130）：[非零标志][u8 条数] +
+    /// 每条(u32 名字长度 + 名字, u8 年-1900, u8 月-1, u8 日)。客户端 handler 0x414D97
+    /// 先 vector clear 再逐条追加，所以这就是“清空 + 全量追加”：任何时刻都可以重发，
+    /// 重发前不需要任何会话状态（与好友名单的“每会话一次”快照相反）。
+    /// </summary>
+    public static GameServerPacket CreateBlacklistSnapshot(
+        IReadOnlyList<GameBlacklistEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        if (entries.Count > byte.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(entries));
+        }
+
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);                  // 标志必须非零，否则客户端整包忽略
+        writer.Write((byte)entries.Count);
+        foreach (var entry in entries)
+        {
+            ValidateBlacklistName(entry.NameBytes);
+            if (entry.Year is < 1900 or > 2155)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(entries),
+                    "The blacklist year must fit the client's year-1900 byte.");
+            }
+
+            if (entry.Month is < 1 or > 12)
+            {
+                throw new ArgumentOutOfRangeException(nameof(entries), "The blacklist month must be 1-12.");
+            }
+
+            if (entry.Day is < 1 or > 31)
+            {
+                throw new ArgumentOutOfRangeException(nameof(entries), "The blacklist day must be 1-31.");
+            }
+
+            WriteLengthPrefixedBytes(writer, entry.NameBytes);
+            // 客户端收包后做 +0x76C(1900) / +1 修正，所以线上存 (年-1900, 月-1, 日)。
+            writer.Write(checked((byte)(entry.Year - 1900)));
+            writer.Write(checked((byte)(entry.Month - 1)));
+            writer.Write(checked((byte)entry.Day));
+        }
+
+        return new GameServerPacket(
+            CommandPacketType,
+            RequestBlacklistCommand,
+            payload.ToArray());
+    }
+
+    private static void ValidateFriendName(byte[] nameBytes) =>
+        ValidateNameBytes(nameBytes, "Friend");
+
+    private static void ValidateBlacklistName(byte[] nameBytes) =>
+        ValidateNameBytes(nameBytes, "Blacklist");
+
+    private static void ValidateNameBytes(byte[] nameBytes, string subject)
     {
         ArgumentNullException.ThrowIfNull(nameBytes);
         if (nameBytes.Length is 0 or > FriendListNameFieldLength)
         {
             throw new ArgumentException(
-                "Friend names must contain 1-30 encoded bytes.",
+                $"{subject} names must contain 1-30 encoded bytes.",
                 nameof(nameBytes));
         }
 
         if (nameBytes.Contains((byte)0))
         {
             throw new ArgumentException(
-                "Friend names must not contain a NUL byte.",
+                $"{subject} names must not contain a NUL byte.",
                 nameof(nameBytes));
         }
     }
@@ -2494,7 +2617,17 @@ public static class GameProtocolEngine
     }
 
     /// <summary>解析 ADD_FRIEND/REMOVE_FRIEND 的载荷（Body 从序列号起算）。</summary>
-    public static bool TryReadFriendName(byte[] body, out byte[] nameBytes)
+    public static bool TryReadFriendName(byte[] body, out byte[] nameBytes) =>
+        TryReadLengthPrefixedName(body, out nameBytes);
+
+    /// <summary>
+    /// 解析 CMD 128/129（黑名单增删）的载荷（Body 从序列号起算）：u32 名字长度 + 名字。
+    /// 与好友命令同形，但名字在客户端是**大小写敏感**匹配的（见 FriendService 的说明）。
+    /// </summary>
+    public static bool TryReadBlacklistName(byte[] body, out byte[] nameBytes) =>
+        TryReadLengthPrefixedName(body, out nameBytes);
+
+    private static bool TryReadLengthPrefixedName(byte[] body, out byte[] nameBytes)
     {
         ArgumentNullException.ThrowIfNull(body);
         const int payloadOffset = sizeof(ushort);
@@ -3498,65 +3631,7 @@ public static class GameProtocolEngine
                 nameof(staminaRecoveryPercentage));
         }
 
-        combatStats ??= new GameCharacterCombatStats(
-            MaximumHp: 11_600,
-            MaximumMp: 11_900,
-            PhysicalAttack: 75,
-            PhysicalDefense: 75,
-            MagicalAttack: 45,
-            MagicalDefense: 45,
-            FireResistance: 0,
-            WaterResistance: 0,
-            DarkResistance: 0,
-            LightResistance: 0,
-            InventoryLimit: 480_000,
-            HpRegeneration: 0,
-            MpRegeneration: 500,
-            MovementSpeed: 8_500,
-            AttackSpeed: 8_500,
-            CastSpeed: 7_000,
-            HitRecovery: 6_000,
-            JumpPower: 4_300,
-            Weight: 500_000);
-
-        using var statsPayload = new MemoryStream();
-        using (var stats = new BinaryWriter(statsPayload, System.Text.Encoding.UTF8, leaveOpen: true))
-        {
-            // DFLegacy reads a length-prefixed 81-byte combat-stat block.
-            stats.Write(combatStats.MaximumHp);
-            stats.Write(combatStats.MaximumMp);
-            stats.Write(combatStats.PhysicalAttack);
-            stats.Write(combatStats.PhysicalDefense);
-            stats.Write(combatStats.MagicalAttack);
-            stats.Write(combatStats.MagicalDefense);
-            stats.Write(combatStats.FireResistance);
-            stats.Write(combatStats.WaterResistance);
-            stats.Write(combatStats.DarkResistance);
-            stats.Write(combatStats.LightResistance);
-            for (var index = 0; index < 17; index++)
-            {
-                stats.Write((ushort)0); // active-status resistances
-            }
-
-            stats.Write(combatStats.InventoryLimit);
-            stats.Write(combatStats.HpRegeneration);
-            stats.Write(combatStats.MpRegeneration);
-            stats.Write(combatStats.MovementSpeed);
-            stats.Write(combatStats.AttackSpeed);
-            stats.Write(combatStats.CastSpeed);
-            stats.Write(combatStats.HitRecovery);
-            stats.Write(combatStats.JumpPower);
-            stats.Write(combatStats.Weight);
-            // The old client stores its current weakness/stamina recovery
-            // percentage in the final byte of this exact 81-byte block.
-            stats.Write(staminaRecoveryPercentage);
-        }
-
-        var statBytes = statsPayload.ToArray();
-        if (statBytes.Length != 81)
-        {
-            throw new InvalidOperationException("The DFLegacy combat-stat block must contain exactly 81 bytes.");
-        }
+        var statBytes = CreateCombatStatBlock(combatStats, staminaRecoveryPercentage);
 
         learnedSkills ??= [];
         if (learnedSkills.Count > byte.MaxValue)
@@ -3564,14 +3639,7 @@ public static class GameProtocolEngine
             throw new ArgumentOutOfRangeException(nameof(learnedSkills));
         }
 
-        var equipment = (equippedItems ?? [])
-            .Where(item => item.Slot < 23)
-            .OrderBy(item => item.Slot)
-            .ToArray();
-        if (equipment.Length > byte.MaxValue)
-        {
-            throw new ArgumentOutOfRangeException(nameof(equippedItems));
-        }
+        var equipment = ProjectWornEquipment(equippedItems, nameof(equippedItems));
 
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
@@ -3610,6 +3678,177 @@ public static class GameProtocolEngine
             NotificationPacketType,
             UserInfoNotification,
             payload.ToArray());
+    }
+
+    /// <summary>
+    /// “查看信息”（CMD 8 mode 3）的资料回包：NOTI 2 mode 3、count 1。
+    /// </summary>
+    /// <remarks>
+    /// mode 1/3 共用客户端同一条记录解析器（0x41A764），但**只有 mode-3 记录尾部的
+    /// 28 字节会打开资料卡窗口**（CNRDAnotherUserPopUpWindow，窗口 id 0x16）；
+    /// 回 mode 1 只更新目标角色的模型/装备，卡片窗口根本不弹——“点了没反应”的根因。
+    /// 回包记录的精确布局（勘察逐条 `call 0x8F5120/40/60` 得到，全部是硬证据）：
+    /// [u8 mode=3][u16 count=1] 后接每条记录
+    /// [u16 uid][u32 flag][u32 blobLen + blob][u8 nEq + n×10 字节装备]
+    /// [u8 nPairs][u8 creature][28 字节 mode-3 专用尾]。
+    /// 记录里**没有名字字段**：卡片上的名字来自客户端本地 user 注册表（mode-0 USERINFO
+    /// 记录），所以回包前必须已经推过该 uid 的 mode-0 记录。装备列表是必需的：客户端会
+    /// 删除列表未覆盖的 0..22 槽（0x41AC50），不发的槽在卡片里就是空的。
+    /// </remarks>
+    public static GameServerPacket CreateRequestedUserInfoDetail(
+        ushort userId,
+        IReadOnlyCollection<GameInventoryEntry>? equippedItems = null,
+        GameCharacterCombatStats? combatStats = null,
+        byte equippedCreatureLevel = 0,
+        byte staminaRecoveryPercentage = 100,
+        uint flag = 0)
+    {
+        if (userId == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(userId));
+        }
+
+        if (staminaRecoveryPercentage > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(staminaRecoveryPercentage));
+        }
+
+        var statBytes = CreateCombatStatBlock(combatStats, staminaRecoveryPercentage);
+        var equipment = ProjectWornEquipment(equippedItems, nameof(equippedItems));
+
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        // mode 必须写 3：回 1 不会解析 28 字节尾，也就不会弹资料卡。
+        writer.Write((byte)3);
+        writer.Write((ushort)1);     // 记录条数
+        writer.Write(userId);        // 客户端按它 FindByUid，必须原样回发请求里的 uid
+        // 客户端把它当 actor->vtbl[0x490](值, 名字) 的槽位参数（在 0x4974E0 里与 1 比较
+        // 后作为索引使用），含义未定；0 与现 emulator 对 1 级角色的取值一致，最稳。
+        writer.Write(flag);
+        writer.Write((uint)statBytes.Length);
+        writer.Write(statBytes);
+        writer.Write((byte)equipment.Length);
+        foreach (var item in equipment)
+        {
+            // 与 mode-1 相同的 10 字节装备记录：slot:u8, item-id:u16, 实例值:u32,
+            // 状态:u8, 耐久:u16。客户端对未列出的槽执行删除，所以卡片要显示装备就必须
+            // 把目标当前穿的槽逐条发全（按 slot 升序）。
+            writer.Write(checked((byte)item.Slot));
+            writer.Write(item.ItemId);
+            writer.Write(item.CountOrValue);
+            writer.Write(item.State);
+            writer.Write(item.Durability);
+        }
+
+        // nPairs 必须为 0：mode-3 解析器按**每条 2 字节**（u8,u8）读成对表，而 mode-1
+        // 构建器写的是 u16 技能 id + u8 等级 = 3 字节；条数 ≥2 时整个 28 字节尾都会
+        // 错位（读越界/窗口参数是垃圾）。详情卡不展示技能，直接发 0 条。
+        writer.Write((byte)0);
+        writer.Write(equippedCreatureLevel);
+
+        // mode-3 专用 28 字节尾 = 3×u32 + 4×u8 + 3×u32。勘察只确认了落点：
+        // A/B/C → 资料卡窗口 +0x50/+0x54/+0x58，a..d → 栈上结构体 +0x10..+0x13
+        // （+0x11..+0x13 全二进制只写不读），X/Y/Z → user 记录 +0xDC/+0xE0/+0xE4
+        // （未找到读取点）。语义未定，先全部填 0，真机出现卡片布局异常时按落点逐字节微调。
+        writer.Write(0u);   // A：资料卡窗口 +0x50
+        writer.Write(0u);   // B：资料卡窗口 +0x54
+        writer.Write(0u);   // C：资料卡窗口 +0x58
+        writer.Write((byte)0); // a：窗口 +0x5C（四个 u8 里唯一有读取点的）
+        writer.Write((byte)0); // b：结构体 +0x11（只写不读）
+        writer.Write((byte)0); // c：结构体 +0x12（只写不读）
+        writer.Write((byte)0); // d：结构体 +0x13（只写不读）
+        writer.Write(0u);   // X：user 记录 +0xDC
+        writer.Write(0u);   // Y：user 记录 +0xE0
+        writer.Write(0u);   // Z：user 记录 +0xE4
+
+        return new GameServerPacket(
+            NotificationPacketType,
+            UserInfoNotification,
+            payload.ToArray());
+    }
+
+    private static readonly GameCharacterCombatStats DefaultCombatStats = new(
+        MaximumHp: 11_600,
+        MaximumMp: 11_900,
+        PhysicalAttack: 75,
+        PhysicalDefense: 75,
+        MagicalAttack: 45,
+        MagicalDefense: 45,
+        FireResistance: 0,
+        WaterResistance: 0,
+        DarkResistance: 0,
+        LightResistance: 0,
+        InventoryLimit: 480_000,
+        HpRegeneration: 0,
+        MpRegeneration: 500,
+        MovementSpeed: 8_500,
+        AttackSpeed: 8_500,
+        CastSpeed: 7_000,
+        HitRecovery: 6_000,
+        JumpPower: 4_300,
+        Weight: 500_000);
+
+    private static GameInventoryEntry[] ProjectWornEquipment(
+        IReadOnlyCollection<GameInventoryEntry>? equippedItems,
+        string parameterName)
+    {
+        var equipment = (equippedItems ?? [])
+            .Where(item => item.Slot < 23)
+            .OrderBy(item => item.Slot)
+            .ToArray();
+        if (equipment.Length > byte.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(parameterName);
+        }
+
+        return equipment;
+    }
+
+    private static byte[] CreateCombatStatBlock(
+        GameCharacterCombatStats? combatStats,
+        byte staminaRecoveryPercentage)
+    {
+        var stats = combatStats ?? DefaultCombatStats;
+        using var statsPayload = new MemoryStream();
+        using (var writer = new BinaryWriter(statsPayload, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            // DFLegacy reads a length-prefixed 81-byte combat-stat block.
+            writer.Write(stats.MaximumHp);
+            writer.Write(stats.MaximumMp);
+            writer.Write(stats.PhysicalAttack);
+            writer.Write(stats.PhysicalDefense);
+            writer.Write(stats.MagicalAttack);
+            writer.Write(stats.MagicalDefense);
+            writer.Write(stats.FireResistance);
+            writer.Write(stats.WaterResistance);
+            writer.Write(stats.DarkResistance);
+            writer.Write(stats.LightResistance);
+            for (var index = 0; index < 17; index++)
+            {
+                writer.Write((ushort)0); // active-status resistances
+            }
+
+            writer.Write(stats.InventoryLimit);
+            writer.Write(stats.HpRegeneration);
+            writer.Write(stats.MpRegeneration);
+            writer.Write(stats.MovementSpeed);
+            writer.Write(stats.AttackSpeed);
+            writer.Write(stats.CastSpeed);
+            writer.Write(stats.HitRecovery);
+            writer.Write(stats.JumpPower);
+            writer.Write(stats.Weight);
+            // The old client stores its current weakness/stamina recovery
+            // percentage in the final byte of this exact 81-byte block.
+            writer.Write(staminaRecoveryPercentage);
+        }
+
+        var statBytes = statsPayload.ToArray();
+        if (statBytes.Length != 81)
+        {
+            throw new InvalidOperationException("The DFLegacy combat-stat block must contain exactly 81 bytes.");
+        }
+
+        return statBytes;
     }
 
     private static void WriteLengthPrefixedBytes(BinaryWriter writer, byte[] value)
