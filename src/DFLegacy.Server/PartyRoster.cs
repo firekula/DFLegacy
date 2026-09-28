@@ -19,52 +19,108 @@ internal sealed record PartyMember
 }
 
 /// <summary>
-/// 队伍纯模型（无 IO、无锁）：4 个槽位紧凑排列，**队长恒在 0 号槽**。
+/// 队伍纯模型（无 IO、无锁）：**固定 4 槽、槽位下标稳定**——成员一旦进队就终生占住它的槽位下标，
+/// 任何情况下都不在槽位之间搬动；队长由 <see cref="LeaderSlot"/> 字段表达，允许非 0。
 /// 槽位 uid 的生成规则见 <see cref="SlotUids"/>。
 /// </summary>
+/// <remarks>
+/// **为什么槽位必须稳定（真机 bug 根因）**：客户端的槽位写入 `CNRDPartyManager::SetMember`
+/// （`DNF.exe 0x4FE690`）是**逐槽 clear-then-set**——先清旧占用者的 `user+0xFC`（队伍指针），
+/// 再给新占用者挂上。搬动成员（如队长退队后把队员紧凑到槽 0）会让被搬者先在槽 0 被挂上链接、
+/// 又在处理他自己原先那个槽（已被写成 `0xFFFF`）时**被清成 0** → 客户端误判"我离队了"
+/// （`wasBefore && !isAfter`）→ HUD 消失而服务端仍认为他在队里（"幽灵队伍"）。
+/// 保持下标稳定后，他在自己的槽位上 uid 值没变，`SetMember` 的"值没变 → 什么都不做"分支
+/// （`0x4FE6A2`）直接跳过，链接不受影响。
+/// </remarks>
 internal sealed class PartyRoster
 {
-    /// <summary>队长固定占 0 号槽：换队长 = 把新队长移到 0 号再广播（NOTI 9 的 leaderSlot 因此恒为 0）。</summary>
-    public const byte LeaderSlot = 0;
-
-    private readonly List<PartyMember> _members = [];
+    private readonly PartyMember?[] _slots = new PartyMember?[GameProtocolEngine.PartyMemberSlotCount];
 
     public PartyRoster(ushort partyId, PartyMember leader, byte maxMembers, byte nameSelection)
     {
         PartyId = partyId;
         MaxMembers = ClampMaxMembers(maxMembers);
         NameSelection = nameSelection;
-        _members.Add(leader);
+        LeaderSlot = 0;
+        _slots[0] = leader;
+        Count = 1;
     }
 
     public ushort PartyId { get; }
     public byte NameSelection { get; private set; }
     public byte MaxMembers { get; private set; }
-    public int Count => _members.Count;
+
     /// <summary>
-    /// 名册快照：返回**新数组**。调用方（`PartyService`）的惯用法是"锁内取快照、出锁发包"，
-    /// 直接交出去内部的 `List` 会让出锁后的枚举撞上并发 `TryAdd`/`Remove` 的版本检查异常；
-    /// 成员对象本身也不可变，所以数组里的元素可以安全地在锁外读。
+    /// 队长所在的**槽位下标**（0..3）。建队时恒为 0；队长离开时就地继任 → 变成剩余成员里
+    /// 槽下标最小的那个（不搬动）。NOTI 9 的最后一个字节就是这个值。
     /// </summary>
-    public PartyMember[] Members => [.. _members];
-    public PartyMember Leader => _members[0];
-    public bool IsFull => _members.Count >= MaxMembers;
+    public byte LeaderSlot { get; private set; }
 
-    public bool Contains(Guid characterId) => IndexOf(characterId) >= 0;
+    public int Count { get; private set; }
 
-    public int IndexOf(Guid characterId)
+    /// <summary>
+    /// 名册快照：返回**新数组**，内容 = 按槽下标升序的已占用成员（元素数 = <see cref="Count"/>）。
+    /// 调用方（`PartyService`）的惯用法是"锁内取快照、出锁发包"，直接交出去内部的数组会让出锁后的
+    /// 枚举撞上并发 `TryAdd`/`Remove` 的版本检查异常；成员对象本身也不可变，所以数组里的元素可以
+    /// 安全地在锁外读。**注意 <c>Members[i]</c> 的槽下标不一定等于 i**（槽位不搬动、可有空洞）——
+    /// 用槽位下标的地方必须走 <see cref="TryGetSlot(Guid, out byte)"/> / <see cref="TryGetSlot(byte, out PartyMember)"/>。
+    /// </summary>
+    public PartyMember[] Members
     {
-        for (var index = 0; index < _members.Count; index++)
+        get
         {
-            if (_members[index].CharacterId == characterId)
+            var members = new PartyMember[Count];
+            var next = 0;
+            foreach (var member in _slots)
             {
-                return index;
+                if (member is not null)
+                {
+                    members[next++] = member;
+                }
+            }
+
+            return members;
+        }
+    }
+
+    public PartyMember Leader => _slots[LeaderSlot]!;
+    public bool IsFull => Count >= MaxMembers;
+
+    public bool Contains(Guid characterId) => TryGetSlot(characterId, out _);
+
+    /// <summary>
+    /// 成员 → 他的**槽位下标**（0..3）。**不是"第几个成员"**：CMD 14 踢人与 NOTI 10 要的都是槽下标。
+    /// 角色不在队里时返回 false。
+    /// </summary>
+    public bool TryGetSlot(Guid characterId, out byte slot)
+    {
+        for (byte index = 0; index < _slots.Length; index++)
+        {
+            if (_slots[index]?.CharacterId == characterId)
+            {
+                slot = index;
+                return true;
             }
         }
 
-        return -1;
+        slot = 0;
+        return false;
     }
 
+    /// <summary>槽位下标 → 成员（踢人要用）。空槽返回 false。</summary>
+    public bool TryGetSlot(byte slot, out PartyMember member)
+    {
+        member = null!;
+        if (slot >= _slots.Length || _slots[slot] is not { } found)
+        {
+            return false;
+        }
+
+        member = found;
+        return true;
+    }
+
+    /// <summary>加入**最小的空闲槽下标**（不做紧凑排列：新成员可能填进比现有成员更小的下标）。</summary>
     public bool TryAdd(PartyMember member)
     {
         if (IsFull || Contains(member.CharacterId))
@@ -72,24 +128,52 @@ internal sealed class PartyRoster
             return false;
         }
 
-        _members.Add(member);
-        return true;
+        for (byte index = 0; index < _slots.Length; index++)
+        {
+            if (_slots[index] is null)
+            {
+                _slots[index] = member;
+                Count++;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
-    /// 移除成员；移除的是队长时把**最早加入的剩余成员**提到 0 号槽（设计稿 §4.2 的自动继任）。
+    /// 移除成员：**只清空他自己那个槽**，其余成员原地不动（槽位不搬动）。移除的是队长时**就地继任**——
+    /// 队长身份交给槽下标最小的剩余成员（只更新 <see cref="LeaderSlot"/>，成员不动）。
     /// 返回 false 表示该角色本来就不在队里（不产生任何变化）。
     /// </summary>
     public bool Remove(Guid characterId)
     {
-        var index = IndexOf(characterId);
-        if (index < 0)
+        if (!TryGetSlot(characterId, out var slot))
         {
             return false;
         }
 
-        _members.RemoveAt(index);
+        _slots[slot] = null;
+        Count--;
+        if (slot == LeaderSlot)
+        {
+            PromoteLowestSlot();
+        }
+
         return true;
+    }
+
+    /// <summary>就地继任：把队长身份交给槽下标最小的剩余成员；队伍空时保持原值（调用方随即解散，不再读 Leader）。</summary>
+    private void PromoteLowestSlot()
+    {
+        for (byte index = 0; index < _slots.Length; index++)
+        {
+            if (_slots[index] is not null)
+            {
+                LeaderSlot = index;
+                return;
+            }
+        }
     }
 
     /// <summary>
@@ -100,19 +184,18 @@ internal sealed class PartyRoster
     public void SetInfo(byte nameSelection, byte maxMembers)
     {
         NameSelection = nameSelection;
-        MaxMembers = (byte)Math.Clamp((int)maxMembers, _members.Count, GameProtocolEngine.PartyMemberSlotCount);
+        MaxMembers = (byte)Math.Clamp((int)maxMembers, Count, GameProtocolEngine.PartyMemberSlotCount);
     }
 
     public bool UpdateLocation(Guid characterId, byte townId, byte areaId, ushort areaUserId)
     {
-        var index = IndexOf(characterId);
-        if (index < 0)
+        if (!TryGetSlot(characterId, out var slot))
         {
             return false;
         }
 
         // 替换元素而不是原地改写：成员不可变，锁外读快照的人不会看到半个新位置（撕裂）。
-        _members[index] = _members[index] with
+        _slots[slot] = _slots[slot]! with
         {
             TownId = townId,
             AreaId = areaId,
@@ -122,25 +205,22 @@ internal sealed class PartyRoster
     }
 
     /// <summary>
-    /// 生成 4 个槽位 uid。顺序**恒为加入顺序**（队长在 0 号）——踢人的 `CMD 14` 用的是槽位下标，
-    /// 顺序全局一致时服务端可以直接把它映射到 <see cref="Members"/>。
+    /// 生成 4 个槽位 uid，**按槽位下标 0..3 遍历**：该槽有成员 → `resolve(member) ?? 0`；空槽 → `0xFFFF`。
+    /// 顺序语义与旧实现一致（所有收包者看到的槽位下标相同），只是"哪些下标被占用"不再连续。
+    /// 踢人的 `CMD 14` 用的就是这些下标，所以服务端可以用 <see cref="TryGetSlot(Guid, out byte)"/> 直接映射。
     /// <paramref name="resolveUid"/> 返回"该收包者能解析到的 uid"（同区域 = 成员的真实 uid），
     /// 返回 null 表示该成员对这个收包者不可见（缺席）→ 填 **0**：填真实 uid 会在对方区域
-    /// 解析成别人的名字（设计稿 §2.2.2）；超出成员数的槽填 0xFFFF。
+    /// 解析成别人的名字（设计稿 §2.2.2）。
     /// </summary>
     public ushort[] SlotUids(Func<PartyMember, ushort?> resolveUid)
     {
         ArgumentNullException.ThrowIfNull(resolveUid);
         var slots = new ushort[GameProtocolEngine.PartyMemberSlotCount];
-        for (var index = 0; index < slots.Length; index++)
+        for (byte index = 0; index < slots.Length; index++)
         {
-            if (index >= _members.Count)
-            {
-                slots[index] = 0xFFFF;
-                continue;
-            }
-
-            slots[index] = resolveUid(_members[index]) ?? 0;
+            slots[index] = _slots[index] is { } member
+                ? resolveUid(member) ?? 0
+                : (ushort)0xFFFF;
         }
 
         return slots;

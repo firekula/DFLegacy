@@ -179,8 +179,9 @@ internal static class PartySmokeTests
     }
 
     /// <summary>
-    /// 队伍模型不变量（设计稿 §4）：上限 4、槽位紧凑、**队长恒在 0 号槽**（换队长 = 新队长移到 0 号）、
-    /// 槽位 uid 按**收包者所在区域**替换（同区域填真实 uid / 异区域填 0 / 空槽 0xFFFF）。
+    /// 队伍模型不变量（设计稿 §4）：上限 4、**槽位下标稳定（成员从不搬动）**、队长由 `LeaderSlot`
+    /// 表达（建队时 0，队长离开后就地继任给最小占用槽）、槽位 uid 按**收包者所在区域**替换
+    /// （同区域填真实 uid / 异区域填 0 / 空槽 0xFFFF）。
     /// </summary>
     private static void CheckPartyRoster(Action<bool, string> check)
     {
@@ -193,7 +194,7 @@ internal static class PartySmokeTests
             AreaId = 0
         };
         var roster = new PartyRoster(partyId: 11, leader, maxMembers: 4, nameSelection: 0);
-        check(roster.Count == 1 && roster.Leader == leader && PartyRoster.LeaderSlot == 0,
+        check(roster.Count == 1 && roster.Leader == leader && roster.LeaderSlot == 0,
             "a fresh party has exactly the leader in slot 0");
 
         var sameArea = new PartyMember
@@ -243,11 +244,20 @@ internal static class PartySmokeTests
         check(roster.TryAdd(fourth) && roster.IsFull && !roster.TryAdd(fifth),
             "the fourth member fits and the fifth is refused (hard cap 4)");
 
-        check(roster.Remove(leader.CharacterId) && roster.Leader == sameArea && roster.Count == 3,
-            "removing the leader promotes the earliest remaining member into slot 0");
+        // ★ 回归（"幽灵队伍"根因）：队长退队**不得搬动**任何成员 —— 只清空他自己的槽、就地继任。
+        // 客户端逐槽 clear-then-set：搬动会让被搬者的 user+0xFC 链接在"他原先那一格被写成 0xFFFF"
+        // 时被清掉，客户端误判"我离队了"（设计稿 §11）。这里断言槽下标与槽位 uid 都不动。
+        check(roster.Remove(leader.CharacterId) && roster.Count == 3
+                && roster.LeaderSlot == 1 && roster.Leader == sameArea
+                && !roster.TryGetSlot(leader.CharacterId, out _)
+                && roster.TryGetSlot(sameArea.CharacterId, out var sameAreaSlot) && sameAreaSlot == 1
+                && roster.TryGetSlot(otherArea.CharacterId, out var otherAreaSlot) && otherAreaSlot == 2
+                && roster.TryGetSlot(fourth.CharacterId, out var fourthSlot) && fourthSlot == 3
+                && roster.TryGetSlot(slot: 1, out var atSlotOne) && atSlotOne == sameArea,
+            "removing the leader keeps every remaining member in his own slot (no compaction) and promotes the lowest occupied slot");
         check(roster.SlotUids(member => member.IsIn(1, 0) ? member.AreaUserId : null)
-                .SequenceEqual(new ushort[] { 12, 0, 14, 0xFFFF }),
-            "after the leader leaves the roster stays compact");
+                .SequenceEqual(new ushort[] { 0xFFFF, 12, 0, 14 }),
+            "after the leader leaves only his slot becomes 0xFFFF; the others keep their slot uids");
 
         check(!roster.Remove(Guid.NewGuid()), "removing a character that is not in the party changes nothing");
 
@@ -258,8 +268,59 @@ internal static class PartySmokeTests
         check(roster.UpdateLocation(sameArea.CharacterId, townId: 2, areaId: 3, areaUserId: 99),
             "a member's area change updates its stored location");
         check(roster.SlotUids(member => member.IsIn(2, 3) ? member.AreaUserId : null)
-                .SequenceEqual(new ushort[] { 99, 0, 0, 0xFFFF }),
-            "the moved member is resolvable only in its new area");
+                .SequenceEqual(new ushort[] { 0xFFFF, 99, 0, 0 }),
+            "the moved member is resolvable only in its new area (and stays in his own slot)");
+
+        // ★ 回归（真机"幽灵队伍"的最小复现形状）：三人队 [甲@0, 乙@1, 丙@2] 移除队长甲 ——
+        // 乙、丙的槽下标原地不动（不紧凑、不搬到槽 0），空出的是槽 0（0xFFFF），队长槽 = 1。
+        var trioLeader = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "甲",
+            AreaUserId = 21,
+            TownId = 1,
+            AreaId = 0
+        };
+        var trioSecond = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "乙",
+            AreaUserId = 22,
+            TownId = 1,
+            AreaId = 0
+        };
+        var trioThird = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "丙",
+            AreaUserId = 23,
+            TownId = 1,
+            AreaId = 0
+        };
+        var trio = new PartyRoster(partyId: 12, trioLeader, maxMembers: 4, nameSelection: 0);
+        check(trio.TryAdd(trioSecond) && trio.TryAdd(trioThird),
+            "the three-member regression party fills slots 0..2 in join order");
+        check(trio.Remove(trioLeader.CharacterId) && trio.Count == 2
+                && trio.LeaderSlot == 1 && trio.Leader == trioSecond
+                && !trio.TryGetSlot(trioLeader.CharacterId, out _)
+                && trio.TryGetSlot(trioSecond.CharacterId, out var trioSecondSlot) && trioSecondSlot == 1
+                && trio.TryGetSlot(trioThird.CharacterId, out var trioThirdSlot) && trioThirdSlot == 2
+                && trio.SlotUids(member => member.AreaUserId).SequenceEqual(new ushort[] { 0xFFFF, 22, 23, 0xFFFF }),
+            "regression (ghost party): losing the leader blanks only slot 0; the other two keep their slot indexes and uids");
+        var trioFourth = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "丁",
+            AreaUserId = 24,
+            TownId = 1,
+            AreaId = 0
+        };
+        check(trio.TryAdd(trioFourth)
+                && trio.TryGetSlot(trioFourth.CharacterId, out var trioFourthSlot) && trioFourthSlot == 0
+                && trio.TryGetSlot(trioSecond.CharacterId, out var trioSecondAgain) && trioSecondAgain == 1
+                && trio.TryGetSlot(trioThird.CharacterId, out var trioThirdAgain) && trioThirdAgain == 2
+                && trio.LeaderSlot == 1 && trio.Leader == trioSecond,
+            "a newcomer takes the lowest free slot without moving anybody (and the leader stays put)");
 
         check(PartyRoster.TryAllocatePartyId([11, 12], preferred: 12, out var allocated)
                 && allocated != 0
@@ -282,6 +343,7 @@ internal static class PartySmokeTests
         await CheckDuplicateAcceptIsInertAsync(check);
         await CheckTimeoutAndBlacklistAsync(check);
         await CheckLeaveAndKickAsync(check);
+        await CheckLeaderLeaveKeepsMemberSlotsAsync(check);
         await CheckSetPartyInfoAsync(check);
         await CheckAreaBroadcastAsync(check);
     }
@@ -663,6 +725,59 @@ internal static class PartySmokeTests
             "a disconnect tells the remaining member with NOTI 10 [slot, 1]");
         check(harness.Of("布拉沃").Count == 0,
             "the disconnected session receives nothing");
+    }
+
+    /// <summary>
+    /// ★ 回归（真机"幽灵队伍"）：三人队 [阿尔法@0, 布拉沃@1, 查理@2]，**队长退队后**发给剩余成员的
+    /// NOTI 9 里，布拉沃的 uid 必须**仍在槽 1**（槽 0 变 0xFFFF、leaderSlot=1）——他**不能**被搬到槽 0。
+    /// 客户端 `SetMember`（`0x4FE690`）逐槽 clear-then-set：一旦被搬动，处理他原先那一格（写成 0xFFFF）
+    /// 时会把他刚挂上的 `user+0xFC` 清成 0，客户端误判"我离队了"→ HUD 消失但服务端仍认为他在队里。
+    /// 本用例在实现回退成"紧凑排列"时会变红（断言"uid 没被搬到槽 0"）。
+    /// </summary>
+    private static async Task CheckLeaderLeaveKeepsMemberSlotsAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        // 三人队：阿尔法（队长）先邀布拉沃、再邀查理（都在 1/0 同区域，接受即入队）。
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+        // 限流是真实时钟的 3 秒窗口，而测试是瞬时的：同一个人连邀两次前先清掉上次的时间戳。
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("查理"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("查理"), harness.UidOf("阿尔法"), CancellationToken.None);
+        harness.ClearAll();
+
+        await harness.Service.HandleLeaveAsync(harness.IdOf("阿尔法"), CancellationToken.None);
+
+        var bravoRoster = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
+        check(bravoRoster is { Payload.Length: 20 }
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster.Payload.AsSpan(2, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster.Payload.AsSpan(7, 2)) == 0xFFFF
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃")
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster.Payload.AsSpan(13, 2)) == harness.UidOf("查理")
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoRoster.Payload.AsSpan(16, 2)) == 0xFFFF
+                && bravoRoster.Payload[19] == 1,
+            "regression: after the leader leaves, the remaining member's uid stays in his own slot (never compacted into slot 0) and leaderSlot points at slot 1");
+
+        // 查理那份同理：只看槽位（uid 与布拉沃相同，因为同区域）。
+        var charlieRoster = harness.FirstOf("查理", GameProtocolEngine.PartyInfoNotification);
+        check(charlieRoster is { Payload.Length: 20 }
+                && BinaryPrimitives.ReadUInt16LittleEndian(charlieRoster.Payload.AsSpan(7, 2)) == 0xFFFF
+                && BinaryPrimitives.ReadUInt16LittleEndian(charlieRoster.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃")
+                && BinaryPrimitives.ReadUInt16LittleEndian(charlieRoster.Payload.AsSpan(13, 2)) == harness.UidOf("查理")
+                && charlieRoster.Payload[19] == 1,
+            "every remaining member receives the same stable slot layout with leaderSlot=1");
+
+        // 名册里没有任何一格指向离队者 → 他自己的客户端仍能正确自我清理（这条路径不受修复影响，作对照）。
+        var alphaRoster = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
+        check(alphaRoster is { Payload.Length: 20 }
+                && Enumerable.Range(0, 4).All(slot =>
+                    BinaryPrimitives.ReadUInt16LittleEndian(alphaRoster.Payload.AsSpan(7 + slot * 3, 2))
+                    != harness.UidOf("阿尔法")),
+            "the leaver's own copy has no slot pointing at him");
     }
 
     /// <summary>

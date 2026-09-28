@@ -471,14 +471,15 @@ public sealed class PartyService : BackgroundService
         var isLeader = false;
         lock (_gate)
         {
-            // 判定在锁内一次做完：锁外读 `Leader`（= `_members[0]`）会撞上名册被清空而抛异常。
+            // 判定在锁内一次做完：锁外读 `Leader`（= 队长槽里的成员）会撞上名册被清空而抛异常。
+            // 槽位下标按**稳定槽位**解释（成员不搬动）：`TryGetSlot(slot)` 就是客户端界面上那一格。
             if (TryGetPartyOf(leaderCharacterId, out var roster)
                 && roster.Leader.CharacterId == leaderCharacterId)
             {
                 isLeader = true;
-                if (slot < roster.Count && slot != PartyRoster.LeaderSlot)
+                if (slot != roster.LeaderSlot && roster.TryGetSlot(slot, out var target))
                 {
-                    victim = roster.Members[slot].CharacterId;
+                    victim = target.CharacterId;
                 }
             }
         }
@@ -755,11 +756,11 @@ public sealed class PartyService : BackgroundService
                 && snapshot.AreaId == areaId
                     ? snapshot.AreaUserId
                     : null),
-            PartyRoster.LeaderSlot);
+            roster.LeaderSlot);
 
     /// <summary>
     /// 为某个收包者生成名册包（设计稿 §2.2.2）：同区域成员填真实 uid；收包者自己永远填自己的 uid
-    /// （本地 user 表里必定有自己）；其余填 0（缺席哨兵）。**顺序恒为加入顺序**。
+    /// （本地 user 表里必定有自己）；其余填 0（缺席哨兵）。**槽位下标全局一致（成员从不搬动）**。
     /// </summary>
     private GameServerPacket BuildRosterPacket(PartyRoster roster, Guid receiverCharacterId)
     {
@@ -790,7 +791,7 @@ public sealed class PartyService : BackgroundService
             roster.NameSelection,
             roster.MaxMembers,
             slots,
-            PartyRoster.LeaderSlot);
+            roster.LeaderSlot);
     }
 
     /// <summary>
@@ -824,7 +825,9 @@ public sealed class PartyService : BackgroundService
             recipients = [.. roster.Members.Select(member => member.CharacterId)];
             // 解散时通知的区域也在 Remove **之前**取：离场者此刻站的区域也要清（否则那里的列表留脏行）。
             knownAreas = NotifiedAreas(roster);
-            slot = (byte)Math.Clamp(roster.IndexOf(characterId), 0, GameProtocolEngine.PartyMemberSlotCount - 1);
+            // NOTI 10 用的是**离队者的槽位下标**（稳定槽位：成员从不搬动，所以他此刻的槽下标就是
+            // 名册里那一格）。取不到（名册与映射不一致的异常态）按 0 处理，与旧实现同形。
+            slot = roster.TryGetSlot(characterId, out var memberSlot) ? memberSlot : (byte)0;
             if (roster.Remove(characterId))
             {
                 _partyByCharacter.TryRemove(characterId, out _);
