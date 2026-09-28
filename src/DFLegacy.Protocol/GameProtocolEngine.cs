@@ -73,10 +73,25 @@ public sealed record GameTownUser(
     short Y,
     byte Direction);
 // 好友列表条目：名字为 CP949/GBK 编码的原始字节（列表内为定长 30 字节字段）。
-// 记录偏移 0x21 的 u16 不参与匹配，只被当展示文本指针兜底，逆向要求恒填 0；
-// 客户端“查看信息”用的 uid 来自本地 user 注册表（由 USERINFO mode 0 建立），
-// 不再从这份快照记录里取。
-public sealed record GameFriendEntry(byte[] NameBytes, bool Online);
+// 好友行绘制（0x7F7F30）的等级/职业：**优先用本地 user 表记录**（0x500070 会用记录里的
+// 等级、职业系、成长/觉醒覆盖条目字段），**没有记录时退回快照记录的这三个字段** ——
+// 0x21（等级 u16）、0x23（职业系，必须 <5）、0x24（打包成长：低半字节 GrowType、
+// 高半字节 AwakeningType）。离线好友没有 user 记录，正是靠回退路径画 `Lv.%d 职业名`，
+// 不填就是“Lv.0 鬼剑士”。旧结论“0x21 必须为 0”是把 SecureInt 解密 0x402030 误当成取
+// 字符串得来的，已作废。
+// 客户端“查看信息”用的 uid 仍来自本地 user 注册表（由 USERINFO mode 0 建立），
+// 不从这份快照记录里取。
+public sealed record GameFriendEntry(
+    byte[] NameBytes,
+    bool Online,
+    // 等级：R+0x21 的 u16，好友行 `Lv.%d` 直接读它。
+    ushort Level = 0,
+    // 职业系 0..4（0=鬼剑士/1=格斗/2=枪手/3=魔法师/4=圣职者）：R+0x23。
+    // 客户端 0x500B00 有 `cmp arg3,5; jge` 守卫，>=5 会**整条拒绝**，构建器会钳到 0..4。
+    byte Job = 0,
+    // 成长阶（低半字节）与觉醒阶（高半字节）：R+0x24。
+    byte GrowType = 0,
+    byte AwakeningType = 0);
 
 /// <summary>
 /// CMD 130 黑名单快照条目。线上的日期是 (年-1900, 月-1, 日) 三个字节，
@@ -2354,24 +2369,27 @@ public static class GameProtocolEngine
                     nameof(friends));
             }
 
-            // 记录布局（客户端 0x425668 逐字段读入）：
-            // [0] 状态（0xFF = 保持原状态；离线由 BUDDY_OUT 置 -1），[1] 标志，[2] 保留，
+            // 记录布局（客户端 0x425668 逐字段读入；行绘制 0x7F7F30 在**没有本地 user
+            // 记录**时就用下面这三组值画 `Lv.%d 职业名`，所以离线好友也必须真填）：
+            // [0] 状态（0xFF = 保持原状态；离线由 BUDDY_OUT 置 -1），[1] 标志（BUDDY_OUT 置 1
+            //     时行转灰=未连接样式），[2] 保留，
             // [3..32] 名字（定长 30、NUL 填充，匹配键只有它，大小写敏感逐字节），
-            // [0x21] u16 恒 0：它不参与匹配，客户端把该值当展示文本指针兜底并会被 user
-            // 记录覆盖，给真实 uid 反而让客户端从低地址取文本；[0x23] u8、[0x24] u8 打包、
-            // [0x25] u32、[0x29] u8 —— 后四个字段只在“有快照、无 USERINFO”时决定职业文本，
-            // 语义未考证，先全 0。
+            // [0x21] u16 等级（→ entry+0x1C，Lv.%d），
+            // [0x23] u8 职业系（→ entry+0x20；客户端 `cmp arg3,5; jge` 会拒绝 >=5 的条目），
+            // [0x24] u8 打包成长（低半字节 GrowType → entry+0x24，高半字节 AwakeningType
+            //        → entry+0x28；两个半字节都要放对，否则“有记录/无记录”两种画法不一致），
+            // [0x25] u32、[0x29] u8 —— 语义未考证，保持 0。
             writer.Write((byte)0);                 // state
             writer.Write((byte)0);                 // flag
             writer.Write((byte)0);                 // reserved
             var nameField = new byte[FriendListNameFieldLength];
             friend.NameBytes.CopyTo(nameField, 0);
             writer.Write(nameField);
-            writer.Write((ushort)0);               // R+0x21：逆向要求恒 0，不是 uid
-            writer.Write((byte)0);
-            writer.Write((byte)0);
-            writer.Write(0u);
-            writer.Write((byte)0);
+            writer.Write(friend.Level);            // R+0x21：等级（不是 uid）
+            writer.Write(ClampFriendJob(friend.Job)); // R+0x23：职业系，必须 <5
+            writer.Write(PackGrowthType(friend.GrowType, friend.AwakeningType)); // R+0x24
+            writer.Write(0u);                      // R+0x25（→ entry+0x34，语义未考证）
+            writer.Write((byte)0);                 // R+0x29（→ entry+0x2C，职业查询 arg4）
         }
 
         return new GameServerPacket(
@@ -2394,12 +2412,23 @@ public static class GameProtocolEngine
             payload.ToArray());
     }
 
-    public static GameServerPacket CreateBuddyOut(byte[] nameBytes, byte flag = 0)
+    /// <summary>
+    /// 好友下线（NOTI 55）。payload = [u8 0][u32 名字长度 + 名字][u8 flag]。
+    /// </summary>
+    /// <remarks>
+    /// flag 必须为 **1**：行的颜色/分组/徽标在有本地 user 记录时读 entry+0x38 与 entry+0xBC，
+    /// 只有 flag==1 会让该行走“无记录”的灰色未连接画法并排到最后一组（0x7F8031 的分支与
+    /// 0x7F75F0 排序的第四组）。这也是本版本唯一能让“已推过 USERINFO 的好友”看得出下线的
+    /// 服务端手段——user 记录在客户端没有删除路径，entry+0x30=-1 只在无记录时才参与绘制。
+    /// 代价（**真机观察项**）：flag!=0 时 0x501140 不再打“[%s]已退出游戏”聊天栏提示。
+    /// BUDDY_IN 的 flag 保持 0（上线正常显示）。
+    /// </remarks>
+    public static GameServerPacket CreateBuddyOut(byte[] nameBytes, byte flag = 1)
     {
         ArgumentNullException.ThrowIfNull(nameBytes);
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
-        writer.Write((byte)0); // 客户端读入后忽略
+        writer.Write((byte)0); // 客户端读入后忽略（SetOffline 只用名字与 flag）
         WriteLengthPrefixedBytes(writer, nameBytes);
         writer.Write(flag);
         return new GameServerPacket(
@@ -2417,26 +2446,40 @@ public static class GameProtocolEngine
     /// 尾部 6 个字段（1+1+1+4+1+1 共 9 字节）。读不到时整包剩余部分被 0x30 填充：
     /// 其中 B 落在记录偏移 0x23，而条目追加函数 0x500B00 的守卫是 B &lt; 5，0x30=48
     /// 会让条目被静默拒绝（聊天栏提示照打）——这正是“加好友不进列表”的根因，所以
-    /// 尾部 9 字节必须发全，B 固定 0。
-    /// A/C/E 固定 0；D 是好友的区用户 id（在线时填，客户端用它 FindByUid 给 user
-    /// 对象打好友标记），离线填 0；F 不用 0xFF（“保持原状态”对新条目无意义），
-    /// 状态由紧随其后的 BUDDY_IN/BUDDY_OUT 决定。
+    /// 尾部 9 字节必须发全。
+    /// 尾部语义（与 NOTI 56 的记录同源同序，见 GameFriendEntry）：
+    /// A=等级（u8）、B=职业系（&lt;5）、C=打包成长（低半字节 GrowType、高半字节 AwakeningType）、
+    /// D=好友区用户 id（在线时填，客户端用它 FindByUid 给 user 对象打好友标记；离线填 0）、
+    /// E=记录 0x29（保持 0）、F=状态（不用 0xFF；“保持原状态”对新条目无意义，状态由紧随
+    /// 其后的 BUDDY_IN/BUDDY_OUT 决定）。新加的条目因此立刻带着真实 Lv./职业，不会再显示
+    /// “Lv.0 鬼剑士”。
     /// </remarks>
-    public static GameServerPacket CreateAddFriendResult(byte[] nameBytes, ushort areaUserId = 0)
+    public static GameServerPacket CreateAddFriendResult(
+        byte[] nameBytes,
+        ushort areaUserId = 0,
+        ushort level = 0,
+        byte job = 0,
+        byte growType = 0,
+        byte awakeningType = 0)
     {
         ValidateFriendName(nameBytes);
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)1);                              // 结果标志，非零即成功
         WriteLengthPrefixedBytes(writer, nameBytes);
-        writer.Write((byte)0);                              // A：记录字段（对应 0x21），保持 0
-        writer.Write((byte)0);                              // B：必须 < 5（0x500B00 的 N 守卫）
-        writer.Write((byte)0);                              // C：记录 0x24 的低/高半字节
-        writer.Write((uint)areaUserId);                     // D：好友 uid（在线）/ 0（离线）
-        writer.Write((byte)0);                              // E：记录 0x29
-        writer.Write((byte)0);                              // F：0 = SetEntryState(状态 0) 由 BUDDY_* 纠正
+        // A 是 u8（记录 0x21 是 u16，但 id63 的 A 只有一字节；本版本等级上限 60）。
+        writer.Write((byte)Math.Clamp((int)level, 0, byte.MaxValue)); // A：等级
+        writer.Write(ClampFriendJob(job));                       // B：职业系，必须 < 5
+        writer.Write(PackGrowthType(growType, awakeningType));   // C：打包成长
+        writer.Write((uint)areaUserId);                          // D：好友 uid（在线）/ 0（离线）
+        writer.Write((byte)0);                                   // E：记录 0x29
+        writer.Write((byte)0);                                   // F：0 = SetEntryState(状态 0) 由 BUDDY_* 纠正
         return new GameServerPacket(CommandPacketType, AddFriendCommand, payload.ToArray());
     }
+
+    // 职业系必须 <5：客户端条目插入 0x500B00 的 `cmp arg3,5; jge` 守卫会拒绝整条记录
+    // （聊天栏提示照打、列表里却没有）。坏存档里的越界值钳到 4，至少让好友行还在。
+    private static byte ClampFriendJob(byte job) => (byte)Math.Clamp((int)job, 0, 4);
 
     /// <summary>
     /// REMOVE_FRIEND 成功结果（type=1 命令包）。客户端 handler 0x414BA7 凭它调用
@@ -3680,8 +3723,11 @@ public static class GameProtocolEngine
     /// 回 mode 1 只更新目标角色的模型/装备，卡片窗口根本不弹——“点了没反应”的根因。
     /// 回包记录的精确布局（勘察逐条 `call 0x8F5120/40/60` 得到，全部是硬证据）：
     /// [u8 mode=3][u16 count=1] 后接每条记录
-    /// [u16 uid][u32 flag][u32 blobLen + blob][u8 nEq + n×10 字节装备]
+    /// [u16 uid][u32 经验][u32 blobLen + blob][u8 nEq + n×10 字节装备]
     /// [u8 nPairs][u8 creature][28 字节 mode-3 专用尾]。
+    /// uid 之后的 u32 是**累计总经验**（0x41A828 ReadU32 → 0x41A85A 调
+    /// `actor->vtbl[0x490](值, 本地记录等级)`，即 0x4974E0 的经验 setter：本级已得 =
+    /// 值−本级起始经验）；它**不是**名字槽位参数（旧注释按 “flag” 写 0，卡片经验才显示 0）。
     /// 记录里**没有名字字段**：卡片上的名字来自客户端本地 user 注册表（mode-0 USERINFO
     /// 记录），所以回包前必须已经推过该 uid 的 mode-0 记录。装备列表是必需的：客户端会
     /// 删除列表未覆盖的 0..22 槽（0x41AC50），不发的槽在卡片里就是空的。
@@ -3692,7 +3738,7 @@ public static class GameProtocolEngine
         GameCharacterCombatStats? combatStats = null,
         byte equippedCreatureLevel = 0,
         byte staminaRecoveryPercentage = 100,
-        uint flag = 0)
+        uint experience = 0)
     {
         if (userId == 0)
         {
@@ -3713,9 +3759,12 @@ public static class GameProtocolEngine
         writer.Write((byte)3);
         writer.Write((ushort)1);     // 记录条数
         writer.Write(userId);        // 客户端按它 FindByUid，必须原样回发请求里的 uid
-        // 客户端把它当 actor->vtbl[0x490](值, 名字) 的槽位参数（在 0x4974E0 里与 1 比较
-        // 后作为索引使用），含义未定；0 与现 emulator 对 1 级角色的取值一致，最稳。
-        writer.Write(flag);
+        // 累计总经验（客户端 0x41A828 读出后交给 0x4974E0 经验 setter）。写 0 时卡片
+        // 经验显示 0；目标角色的存档 Experience 与 mode-1 本地玩家用的是同一个字段。
+        writer.Write(experience);
+        // 81 字节 blob 是战斗数值块（HP/MP/攻防/抗性/速度/负重 + 体力恢复%），
+        // 走 actor->vtbl[0x49C]（0x495D40）写 actor 的状态块，卡片**不从它读经验**。
+        // 内容语义未证实（客户端只做原样拷贝），待真机确认。
         writer.Write((uint)statBytes.Length);
         writer.Write(statBytes);
         writer.Write((byte)equipment.Length);
@@ -3737,20 +3786,22 @@ public static class GameProtocolEngine
         writer.Write((byte)0);
         writer.Write(equippedCreatureLevel);
 
-        // mode-3 专用 28 字节尾 = 3×u32 + 4×u8 + 3×u32。勘察只确认了落点：
-        // A/B/C → 资料卡窗口 +0x50/+0x54/+0x58，a..d → 栈上结构体 +0x10..+0x13
-        // （+0x11..+0x13 全二进制只写不读），X/Y/Z → user 记录 +0xDC/+0xE0/+0xE4
-        // （未找到读取点）。语义未定，先全部填 0，真机出现卡片布局异常时按落点逐字节微调。
-        writer.Write(0u);   // A：资料卡窗口 +0x50
+        // mode-3 专用 28 字节尾 = 3×u32 + 4×u8 + 3×u32。勘察确认的落点与读数：
+        // A/B → 资料卡窗口 +0x50/+0x54（卡片画 `%d胜 %d败` 与 A/(A+B) 百分比，新号 0 正确）；
+        // C → +0x58，a..d → 栈上结构体 +0x10..+0x13（+0x11..+0x13 全二进制只写不读）；
+        // X/Y → user 记录 +0xDC/+0xE0（卡片画 **Y*100/X 的百分比**，中等置信度），Z → +0xE4
+        // （未找到读取点）。当前全 0；经验的主来源是上面的 u32，若真机卡片仍显示 0%，
+        // 再试 X=本级所需经验、Y=本级已得经验（此项待真机确认）。
+        writer.Write(0u);   // A：资料卡窗口 +0x50（胜负/百分比）
         writer.Write(0u);   // B：资料卡窗口 +0x54
         writer.Write(0u);   // C：资料卡窗口 +0x58
         writer.Write((byte)0); // a：窗口 +0x5C（四个 u8 里唯一有读取点的）
         writer.Write((byte)0); // b：结构体 +0x11（只写不读）
         writer.Write((byte)0); // c：结构体 +0x12（只写不读）
         writer.Write((byte)0); // d：结构体 +0x13（只写不读）
-        writer.Write(0u);   // X：user 记录 +0xDC
-        writer.Write(0u);   // Y：user 记录 +0xE0
-        writer.Write(0u);   // Z：user 记录 +0xE4
+        writer.Write(0u);   // X：user 记录 +0xDC（Y*100/X 的分母，待真机确认）
+        writer.Write(0u);   // Y：user 记录 +0xE0（Y*100/X 的分子，待真机确认）
+        writer.Write(0u);   // Z：user 记录 +0xE4（未找到读取点）
 
         return new GameServerPacket(
             NotificationPacketType,
@@ -3848,12 +3899,15 @@ public static class GameProtocolEngine
         writer.Write(value);
     }
 
-    private static byte PackGrowthType(GameCharacterSummary character)
+    private static byte PackGrowthType(GameCharacterSummary character) =>
+        PackGrowthType(character.GrowType, character.AwakeningType);
+
+    private static byte PackGrowthType(byte growType, byte awakeningType)
     {
         // DF2008 stores the first growth branch in bits 0-3 and the awakening
-        // stage in bits 4-6 of the same USERINFO byte.
-        return (byte)((character.GrowType & 0x0F)
-            | ((character.AwakeningType & 0x07) << 4));
+        // stage in bits 4-6 of the same USERINFO byte; the friend-list record's
+        // R+0x24 and the id-63 C byte use exactly the same packing.
+        return (byte)((growType & 0x0F) | ((awakeningType & 0x07) << 4));
     }
 
     private static void WriteIpv4Address(BinaryWriter writer, System.Net.IPAddress address)

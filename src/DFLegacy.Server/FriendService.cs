@@ -44,9 +44,10 @@ public sealed class FriendService
     /// The session id binds the channel to one specific session so a late cleanup from an
     /// older session can never detach a newer one (compare-and-remove in
     /// <see cref="DetachChannelAsync"/>). <paramref name="areaUserId"/> is the area user id
-    /// allocated for this session at SELECT_CHARACTER: it is not written into the friend
-    /// snapshot any more (R+0x21 must stay 0); it identifies this character in the USERINFO
-    /// record pushed to friends and in the CMD 8 mode-3 reverse lookup.
+    /// allocated for this session at SELECT_CHARACTER: it identifies this character in the
+    /// USERINFO record pushed to friends and in the CMD 8 mode-3 reverse lookup. It is not
+    /// written into the friend snapshot: R+0x21 carries the friend's level instead (the old
+    /// “R+0x21 must stay 0” reading mistook the SecureInt decoder 0x402030 for a string getter).
     /// </remarks>
     /// <remarks>
     /// 顺序必须「在线好友记录 → 名单快照」：客户端追加条目的 0x500B00 会按名字查本地
@@ -168,11 +169,18 @@ public sealed class FriendService
         var addedName = friendName.Trim();
         var addedNameBytes = ClientEncoding.GetBytes(addedName);
         var isOnline = _channels.TryGetValue(addedName, out var addedChannel);
+        // 尾部 A/B/C = 等级/职业系/打包成长（与 NOTI 56 记录同源同序）：取存档投影，
+        // 新加的离线好友也立刻显示真实 Lv./职业，不再停在 Lv.0 鬼剑士。
+        var addedProfile = await GetFriendProfileAsync(addedName, cancellationToken);
         await SendAsync(
             characterName,
             GameProtocolEngine.CreateAddFriendResult(
                 addedNameBytes,
-                isOnline ? addedChannel!.AreaUserId : (ushort)0),
+                isOnline ? addedChannel!.AreaUserId : (ushort)0,
+                addedProfile.Level,
+                addedProfile.Job,
+                addedProfile.GrowType,
+                addedProfile.AwakeningType),
             cancellationToken);
 
         // id 63 追加出来的条目停在构造默认状态，若好友此刻已在线，点开列表会看到一条
@@ -555,28 +563,76 @@ public sealed class FriendService
         foreach (var friend in friends)
         {
             var nameBytes = ClientEncoding.GetBytes(friend.Name);
+            // 等级/职业/成长取存档投影：好友行在没有本地 user 记录时（离线好友的常见
+            // 情况）就用 R+0x21/+0x23/+0x24 画 `Lv.%d 职业`，不填就会显示 Lv.0 鬼剑士。
+            // 区用户 id **不**进快照（R+0x21 现在是等级）。
+            var profile = await GetFriendProfileAsync(friend.Name, cancellationToken);
             if (_channels.ContainsKey(friend.Name))
             {
-                // 在线与否只影响随后的 BUDDY_OUT 补发；记录里的 R+0x21 不再写 uid
-                // （逆向要求恒 0），所以这里不取通道的区用户 id。
-                entries.Add(new GameFriendEntry(nameBytes, Online: true));
+                entries.Add(new GameFriendEntry(
+                    nameBytes,
+                    Online: true,
+                    profile.Level,
+                    profile.Job,
+                    profile.GrowType,
+                    profile.AwakeningType));
                 continue;
             }
 
-            entries.Add(new GameFriendEntry(nameBytes, Online: false));
+            entries.Add(new GameFriendEntry(
+                nameBytes,
+                Online: false,
+                profile.Level,
+                profile.Job,
+                profile.GrowType,
+                profile.AwakeningType));
             offlineNames.Add(nameBytes);
         }
 
         await SendAsync(characterName, GameProtocolEngine.CreateFriendList(entries), cancellationToken);
 
         // The 42-byte snapshot record cannot express "offline": 0xFF keeps the client's
-        // previous state and -1 only comes from BUDDY_OUT, so every friend without an
-        // attached channel is marked offline right after the snapshot.
+        // previous state and the -1 only comes from BUDDY_OUT, so every friend without an
+        // attached channel is marked offline right after the snapshot. BUDDY_OUT now carries
+        // flag=1: with a user record present (every online friend got one) only flag!=0 makes
+        // the row switch to the grey "not connected" style.
         foreach (var nameBytes in offlineNames)
         {
             await SendAsync(characterName, GameProtocolEngine.CreateBuddyOut(nameBytes), cancellationToken);
         }
     }
+
+    /// <summary>
+    /// 好友行 / id-63 尾部需要的存档投影：等级、职业系、成长阶、觉醒阶。
+    /// </summary>
+    /// <remarks>
+    /// 数据源是存档里的 <c>CharacterRecord</c>（<see cref="JsonGameStore.GetCharacterByNameAsync"/>），
+    /// 不依赖对方是否在线、也不依赖任何会话数据——离线好友因此也能显示真实 Lv./职业。
+    /// 职业系钳到 0..4：客户端条目插入 0x500B00 的 `cmp arg3,5; jge` 会拒绝越界条目。
+    /// 存档里查不到（角色已删/竞态）时返回全 0，行至少还在。
+    /// </remarks>
+    private async Task<FriendProfile> GetFriendProfileAsync(
+        string friendName,
+        CancellationToken cancellationToken)
+    {
+        var character = await _store.GetCharacterByNameAsync(friendName, cancellationToken);
+        if (character is null)
+        {
+            return default;
+        }
+
+        return new FriendProfile(
+            (ushort)Math.Clamp(character.Level, 1, ushort.MaxValue),
+            (byte)Math.Clamp(character.Job, 0, 4),
+            (byte)Math.Clamp(character.GrowType, 0, 15),
+            (byte)Math.Clamp(character.AwakeningType, 0, 7));
+    }
+
+    private readonly record struct FriendProfile(
+        ushort Level,
+        byte Job,
+        byte GrowType,
+        byte AwakeningType);
 
     /// <summary>
     /// 给刚登录的会话补推"当前在线好友"的 mode-0 USERINFO 记录（uid = 好友的区用户 id）。

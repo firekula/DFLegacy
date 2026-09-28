@@ -696,7 +696,10 @@ public sealed class EntranceService(
                             combatStats: characterStatCatalog.Get(activeCharacter),
                             equippedCreatureLevel: GetEquippedCreatureLevel(
                                 creatureInventory),
-                            staminaRecoveryPercentage: GetProjectedStaminaRecovery());
+                            staminaRecoveryPercentage: GetProjectedStaminaRecovery(),
+                            // uid 后那个 u32 是累计总经验（卡片经验条的来源），
+                            // 与 mode-1 本地玩家用的是同一个存档字段。
+                            experience: activeCharacter.Experience);
                     }
 
                     // 别人：卡片渲染的是目标的 actor，装备列表未覆盖的槽会被客户端删掉，
@@ -726,7 +729,9 @@ public sealed class EntranceService(
                             storedCreatureInventory),
                         combatStats: characterStatCatalog.Get(storedCharacter),
                         equippedCreatureLevel: GetEquippedCreatureLevel(
-                            storedCreatureInventory));
+                            storedCreatureInventory),
+                        // 卡片经验条读 uid 后那个 u32：他人在线与否都用存档的累计经验。
+                        experience: storedCharacter.Experience);
                 }
 
                 // CMD 8 mode 3 的 uid → 存档角色：区用户 id 先在好友通道表里反查到在线

@@ -1591,6 +1591,41 @@ public sealed class JsonGameStore(
         }
     }
 
+    /// <summary>
+    /// 按角色名跨账号查一条存档角色（只读）。好友名单快照/id63 需要离线好友的
+    /// 等级/职业/成长（好友行 `Lv.%d 职业` 在**没有本地 user 记录**时就读这些字段，
+    /// 离线好友正是这种情况），而好友条目只有名字、拿不到账号，所以必须在存档里反查。
+    /// </summary>
+    /// <remarks>
+    /// 名字比较用 OrdinalIgnoreCase（角色名语义与好友/通道表一致；黑名单是唯一的
+    /// Ordinal 例外）。同名不同大小写存在于多个账号时返回第一个命中，与
+    /// <c>AddFriendAsync</c> 的“存在性检查”口径一致。
+    /// </remarks>
+    public async Task<CharacterRecord?> GetCharacterByNameAsync(
+        string characterName,
+        CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            foreach (var account in _accounts)
+            {
+                var character = account.Characters.FirstOrDefault(candidate =>
+                    string.Equals(candidate.Name, characterName, StringComparison.OrdinalIgnoreCase));
+                if (character is not null)
+                {
+                    return character;
+                }
+            }
+
+            return null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<CharacterRosterEntry[]> GetCharacterRosterAsync(
         uint accountUid,
         CancellationToken cancellationToken = default)

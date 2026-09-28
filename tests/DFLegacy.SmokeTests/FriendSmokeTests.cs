@@ -53,7 +53,7 @@ internal static class FriendSmokeTests
                 && BinaryPrimitives.ReadUInt32LittleEndian(addTail.Slice(3, 4)) == 0x1234
                 && addTail[7] == 0
                 && addTail[8] == 0,
-            "the add tail is [A=0][B=0][C=0][u32 D=uid][E=0][F=0] (B stays 0 so the entry is appended)");
+            "the add tail is [A=0][B=0][C=0][u32 D=uid][E=0][F=0] when no profile is supplied");
         var offlineAdd = GameProtocolEngine.CreateAddFriendResult(asciiName).Payload;
         var offlineTail = offlineAdd.Length >= 14 + asciiName.Length
             ? offlineAdd.AsSpan(1 + sizeof(uint) + asciiName.Length, 9)
@@ -61,6 +61,24 @@ internal static class FriendSmokeTests
         check(offlineTail.Length == 9
                 && BinaryPrimitives.ReadUInt32LittleEndian(offlineTail.Slice(3, 4)) == 0,
             "an offline add carries D=0 in the same 9-byte tail");
+
+        // A/B/C = 等级/职业系/打包成长（与 NOTI 56 记录同源同序）：新加的条目立刻带真实
+        // Lv./职业，不再停在 Lv.0 鬼剑士。A 是 u8，B 必须 <5（钳到 4 才能过 AppendEntry 守卫）。
+        var profiledAdd = GameProtocolEngine.CreateAddFriendResult(
+            asciiName,
+            areaUserId: 0,
+            level: 42,
+            job: 5,
+            growType: 13,
+            awakeningType: 2).Payload;
+        var profiledTail = profiledAdd.AsSpan(1 + sizeof(uint) + asciiName.Length, 9);
+        check(profiledTail[0] == 42
+                && profiledTail[1] == 4
+                && profiledTail[2] == 0x2D
+                && BinaryPrimitives.ReadUInt32LittleEndian(profiledTail.Slice(3, 4)) == 0
+                && profiledTail[7] == 0
+                && profiledTail[8] == 0,
+            "the id-63 tail carries A=level, B=job (clamped <5), C=packed growth, and D=0 offline");
 
         var gbkName = Encoding.GetEncoding(936).GetBytes("布拉沃");
         var remove = GameProtocolEngine.CreateRemoveFriendResult(gbkName);
@@ -155,7 +173,7 @@ internal static class FriendSmokeTests
             userId: 0x5678,
             equippedItems: equipment,
             equippedCreatureLevel: 9,
-            flag: 0);
+            experience: 123_456);
 
         check(packet.Type == 0 && packet.ProtocolId == GameProtocolEngine.UserInfoNotification,
             "the requested-user detail is a USERINFO notification");
@@ -168,11 +186,13 @@ internal static class FriendSmokeTests
             "the mode-3 record count is one");
         check(BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(3, 2)) == 0x5678,
             "the record echoes the requested uid verbatim");
-        check(BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(5, 4)) == 0,
-            "the u32 name-slot flag is written as zero (semantics unknown, zero is the safest)");
+        // uid 后那个 u32 是经验值（客户端 0x41A828 读出后交给 0x4974E0 经验 setter），
+        // 不是名字槽位参数；写 0 时卡片经验条显示 0。
+        check(BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(5, 4)) == 123_456,
+            "the u32 after uid is the character's experience, echoed verbatim into the card");
         check(BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(9, 4)) == 81
                 && packet.Payload.Length >= 13 + 81,
-            "the stat blob keeps the existing 81-byte length-prefixed projection");
+            "the stat blob keeps the existing 81-byte length-prefixed projection (it carries no experience)");
 
         const int equipmentOffset = 13 + 81;
         check(packet.Payload[equipmentOffset] == 2,
@@ -470,19 +490,43 @@ internal static class FriendSmokeTests
             "a GET_USERINFO without a payload keeps the legacy roster behaviour");
     }
 
+    // 好友行的等级/职业/成长：R+0x21 = 等级 u16、R+0x23 = 职业系（<5）、R+0x24 = 打包成长。
+    // 旧结论“R+0x21 必须为 0”已作废（把 SecureInt 解密误当成取字符串）。
     private static void CheckFriendListPacket(Action<bool, string> check)
     {
         var packet = GameProtocolEngine.CreateFriendList(
         [
-            new GameFriendEntry(Encoding.GetEncoding(936).GetBytes("阿尔法"), Online: true),
-            new GameFriendEntry(Encoding.ASCII.GetBytes("Bravo"), Online: false)
+            // 在线好友：等级 42、职业系 4（圣职者）、成长 13、觉醒 2 -> packed 0x2D。
+            new GameFriendEntry(
+                Encoding.GetEncoding(936).GetBytes("阿尔法"),
+                Online: true,
+                Level: 42,
+                Job: 4,
+                GrowType: 13,
+                AwakeningType: 2),
+            // 离线好友：同样带真实的等级/职业（行绘制在没有 user 记录时就读这些字段）。
+            new GameFriendEntry(
+                Encoding.ASCII.GetBytes("Bravo"),
+                Online: false,
+                Level: 7,
+                Job: 1,
+                GrowType: 1,
+                AwakeningType: 0),
+            // 越界职业 5：客户端 0x500B00 的 `cmp arg3,5; jge` 会整条拒绝，必须钳到 4。
+            new GameFriendEntry(
+                Encoding.ASCII.GetBytes("Clamp"),
+                Online: false,
+                Level: 60,
+                Job: 5,
+                GrowType: 0,
+                AwakeningType: 0)
         ]);
 
         check(packet.ProtocolId == GameProtocolEngine.BuddyConnListNotification,
             "the friend list uses notification fifty-six, the only notification that creates entries");
-        check(packet.Payload.Length == 1 + 42 * 2,
+        check(packet.Payload.Length == 1 + 42 * 3,
             "the friend list is a byte count plus 42-byte records");
-        check(packet.Payload[0] == 2, "the friend list header carries the entry count");
+        check(packet.Payload[0] == 3, "the friend list header carries the entry count");
 
         var first = packet.Payload.AsSpan(1, 42);
         check(first[0] == 0 && first[1] == 0 && first[2] == 0,
@@ -491,20 +535,30 @@ internal static class FriendSmokeTests
         check(firstName[..6].SequenceEqual(Encoding.GetEncoding(936).GetBytes("阿尔法"))
             && firstName[6..].ToArray().All(b => b == 0),
             "the name occupies a NUL-padded thirty-byte field");
-        check(BinaryPrimitives.ReadUInt16LittleEndian(first.Slice(0x21, 2)) == 0,
-            "R+0x21 stays zero even for an online friend: it is not the uid the client sends back (that uid comes from the local user registry)");
-        check(first[0x23] == 0 && first[0x24] == 0
-            && first[0x25] == 0 && first[0x26] == 0 && first[0x27] == 0 && first[0x28] == 0
+        check(BinaryPrimitives.ReadUInt16LittleEndian(first.Slice(0x21, 2)) == 42,
+            "R+0x21 is the friend's level: the row renders Lv.%d from it (not a uid, not a pointer)");
+        check(first[0x23] == 4,
+            "R+0x23 is the job branch the row passes to the job-name lookup");
+        check(first[0x24] == 0x2D,
+            "R+0x24 packs growth 13 in the low nibble and awakening 2 in the high nibble");
+        check(first[0x25] == 0 && first[0x26] == 0 && first[0x27] == 0 && first[0x28] == 0
             && first[0x29] == 0,
-            "the four fields with unknown semantics are zero-filled for now");
+            "R+0x25 and R+0x29 keep their unknown-semantics zero values");
 
         var second = packet.Payload.AsSpan(1 + 42, 42);
         check(second.Slice(3, 30)[..5].SequenceEqual(Encoding.ASCII.GetBytes("Bravo")),
             "an ASCII name uses the same thirty-byte field");
-        check(BinaryPrimitives.ReadUInt16LittleEndian(second.Slice(0x21, 2)) == 0,
-            "an offline record leaves R+0x21 at zero as well");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(second.Slice(0x21, 2)) == 7
+            && second[0x23] == 1
+            && second[0x24] == 0x01,
+            "an offline friend also carries level/job/growth: its row draws Lv.7 from these bytes");
         check(packet.Payload[1 + 42 + 0x20] == 0,
             "the last byte of the name field stays inside the record");
+
+        var third = packet.Payload.AsSpan(1 + 42 * 2, 42);
+        check(third[0x23] == 4
+            && BinaryPrimitives.ReadUInt16LittleEndian(third.Slice(0x21, 2)) == 60,
+            "an out-of-range job is clamped to 4 so the client's <5 guard cannot reject the whole entry");
     }
 
     private static void CheckBuddyPackets(Action<bool, string> check)
@@ -518,14 +572,19 @@ internal static class FriendSmokeTests
             && BinaryPrimitives.ReadUInt32LittleEndian(buddyIn.Payload.AsSpan(1, 4)) == nameBytes.Length
             && buddyIn.Payload.AsSpan(5, nameBytes.Length).SequenceEqual(nameBytes)
             && buddyIn.Payload[^1] == 0,
-            "BUDDY_IN is state + length-prefixed name + flag");
+            "BUDDY_IN is state + length-prefixed name + flag, and its flag stays zero");
 
-        var buddyOut = GameProtocolEngine.CreateBuddyOut(nameBytes, flag: 0);
+        // flag=1：有 user 记录时行才会取灰色的“未连接”样式并排到末组（0x7F8031 的分支 +
+        // 0x7F75F0 的第四组）；代价是 [%s]已退出游戏 聊天提示被抑制（真机观察项）。
+        var buddyOut = GameProtocolEngine.CreateBuddyOut(nameBytes);
         check(buddyOut.ProtocolId == GameProtocolEngine.BuddyOutNotification,
             "an offline friend uses BUDDY_OUT");
         check(buddyOut.Payload.Length == 1 + 4 + nameBytes.Length + 1
-            && buddyOut.Payload[0] == 0,
-            "BUDDY_OUT's first byte is ignored by the client and sent as zero");
+            && buddyOut.Payload[0] == 0
+            && BinaryPrimitives.ReadUInt32LittleEndian(buddyOut.Payload.AsSpan(1, 4)) == nameBytes.Length
+            && buddyOut.Payload.AsSpan(5, nameBytes.Length).SequenceEqual(nameBytes)
+            && buddyOut.Payload[^1] == 1,
+            "BUDDY_OUT keeps its layout but carries flag 1, the only value that greys the row out");
     }
 
     private static void CheckFriendNameParsing(Action<bool, string> check)
@@ -879,10 +938,17 @@ internal static class FriendSmokeTests
                     && snapshots[0].Payload[0] == 1
                     && HasFriendName(snapshots[0], 0, "布拉沃"),
                 "logging in sends exactly one friend-list snapshot holding the account's friends");
-            check(FriendRecordAreaUserId(snapshots[0], 0) == 0,
-                "an offline friend's record leaves the 0x21 uid field at zero, so 查看信息 stays silent");
-            check(alicePackets.Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification),
-                "an offline friend is marked offline by BUDDY_OUT right after the snapshot");
+            // 离线好友没有本地 user 记录，行就靠快照这三个字段画 `Lv.%d 职业`：必须真填，
+            // 否则就是“离线好友显示 Lv.0 鬼剑士”。等级/职业来自该好友的存档角色投影。
+            check(FriendRecordLevel(snapshots[0], 0) == bobFixture.Character!.Level
+                    && FriendRecordClass(snapshots[0], 0) == (
+                        (byte)Math.Clamp(bobFixture.Character.Job, 0, 4),
+                        (byte)((bobFixture.Character.GrowType & 0x0F)
+                            | ((bobFixture.Character.AwakeningType & 0x07) << 4))),
+                "an offline friend's snapshot row carries his stored level/job/growth, so it no longer renders Lv.0");
+            check(alicePackets.Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && packet.Payload[^1] == 1),
+                "an offline friend is marked offline by a flag-1 BUDDY_OUT right after the snapshot");
             check(alicePackets.All(packet => packet.ProtocolId != GameProtocolEngine.BuddyInNotification),
                 "an offline friend is never announced as online with BUDDY_IN");
 
@@ -951,8 +1017,9 @@ internal static class FriendSmokeTests
             var offlineTail = alicePackets.Skip(aliceBeforeLiveDetach).ToArray();
             check(offlineTail.Length == 1
                     && offlineTail[0].ProtocolId == GameProtocolEngine.BuddyOutNotification
-                    && BuddyNameExactly(offlineTail[0], "布拉沃"),
-                "the session that owns the channel goes offline and friends hear exactly one BUDDY_OUT");
+                    && BuddyNameExactly(offlineTail[0], "布拉沃")
+                    && offlineTail[0].Payload[^1] == 1,
+                "the session that owns the channel goes offline and friends hear exactly one flag-1 BUDDY_OUT");
             check(offlineTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "an offline transition re-pushes no snapshot either, so it cannot insert a duplicate row");
@@ -1073,13 +1140,21 @@ internal static class FriendSmokeTests
             await service.AddFriendAsync("dave", "戴夫", "艾琳", CancellationToken.None);
             var addTail = davePackets.Skip(daveBeforeAdd).ToArray();
             check(addTail.Length == 2
-                    && IsAddFriendResult(addTail[0], "艾琳", areaUserId: 0)
+                    && IsAddFriendResult(
+                        addTail[0],
+                        "艾琳",
+                        areaUserId: 0,
+                        level: (ushort)erinFixture.Character!.Level,
+                        job: (byte)Math.Clamp(erinFixture.Character.Job, 0, 4),
+                        growType: (byte)Math.Clamp(erinFixture.Character.GrowType, 0, 15),
+                        awakeningType: (byte)Math.Clamp(erinFixture.Character.AwakeningType, 0, 7))
                     && addTail[0].Payload[0] == 1,
-                "a successful add first sends the full 14+nameLen id-63 result (offline friend: D=0) that appends the entry by name");
+                "a successful add first sends the full id-63 result carrying the friend's level/job/growth (offline: D=0)");
             check(addTail.Length > 1
                     && addTail[1].ProtocolId == GameProtocolEngine.BuddyOutNotification
-                    && BuddyNameExactly(addTail[1], "艾琳"),
-                "an offline friend gets a BUDDY_OUT state update right after the id-63 append, pinning the new row offline");
+                    && BuddyNameExactly(addTail[1], "艾琳")
+                    && addTail[1].Payload[^1] == 1,
+                "an offline friend gets a flag-1 BUDDY_OUT right after the id-63 append, greying the new row out");
             check(addTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "add never re-pushes the snapshot: NOTI 56 appends unconditionally, so the whole list would be duplicated");
@@ -1135,8 +1210,12 @@ internal static class FriendSmokeTests
                         packet.ProtocolId != GameProtocolEngine.BuddyOutNotification),
                 "an online friend is not marked offline by BUDDY_OUT after the snapshot");
             check(reconnectSnapshot is not null
-                    && FriendRecordAreaUserId(reconnectSnapshot, 0) == 0,
-                "the snapshot record keeps R+0x21 at zero instead of a uid");
+                    && FriendRecordLevel(reconnectSnapshot, 0) == erinFixture.Character!.Level
+                    && FriendRecordClass(reconnectSnapshot, 0) == (
+                        (byte)Math.Clamp(erinFixture.Character.Job, 0, 4),
+                        (byte)((erinFixture.Character.GrowType & 0x0F)
+                            | ((erinFixture.Character.AwakeningType & 0x07) << 4))),
+                "an online friend's snapshot row also carries his stored level/job/growth (R+0x21 is the level)");
             var reconnectRecord = reconnectTail
                 .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.UserInfoNotification);
             check(reconnectRecord is not null
@@ -1391,8 +1470,9 @@ internal static class FriendSmokeTests
                     && ginaPackets[0].ProtocolId == GameProtocolEngine.BuddyConnListNotification
                     && HasFriendName(ginaPackets[0], 0, "ECHO")
                     && ginaPackets[1].ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && ginaPackets[1].Payload[^1] == 1
                     && BuddyNameExactly(ginaPackets[1], "ECHO"),
-                "an offline friend is snapshotted and marked offline under its stored spelling");
+                "an offline friend is snapshotted and marked offline (flag 1) under its stored spelling");
 
             var echoSession = Guid.NewGuid();
             await service.AttachChannelAsync(
@@ -1410,9 +1490,10 @@ internal static class FriendSmokeTests
             var caseBuddyOut = ginaPackets.Skip(ginaBeforeEchoDetach)
                 .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification);
             check(caseBuddyOut is not null
+                    && caseBuddyOut.Payload[^1] == 1
                     && BuddyNameExactly(caseBuddyOut, "ECHO")
                     && !BuddyNameExactly(caseBuddyOut, "Echo"),
-                "BUDDY_OUT uses the recipient's stored spelling when the online character differs only in case");
+                "BUDDY_OUT uses the recipient's stored spelling and flag 1 when the character logs out");
 
             // 加好友后的状态更新：id 63 追加出来的条目停在构造默认状态，必须紧跟一条
             // BUDDY_IN/BUDDY_OUT（按名字就地改状态、不会追加），否则“刚加的在线好友”
@@ -1420,9 +1501,10 @@ internal static class FriendSmokeTests
             await store.CreateAccountAsync(new CreateAccountRequest("ivan", "password", OicqCode: "123456"), CancellationToken.None);
             await store.CreateAccountAsync(new CreateAccountRequest("judy", "password", OicqCode: "123456"), CancellationToken.None);
             await store.CreateAccountAsync(new CreateAccountRequest("kent", "password", OicqCode: "123456"), CancellationToken.None);
-            check((await store.CreateCharacterAsync("ivan", new CreateCharacterRequest("伊万"), CancellationToken.None)).Created
-                    && (await store.CreateCharacterAsync("judy", new CreateCharacterRequest("朱迪"), CancellationToken.None)).Created
-                    && (await store.CreateCharacterAsync("kent", new CreateCharacterRequest("肯特"), CancellationToken.None)).Created,
+            var ivanFixture = await store.CreateCharacterAsync("ivan", new CreateCharacterRequest("伊万"), CancellationToken.None);
+            var judyFixture = await store.CreateCharacterAsync("judy", new CreateCharacterRequest("朱迪"), CancellationToken.None);
+            var kentFixture = await store.CreateCharacterAsync("kent", new CreateCharacterRequest("肯特"), CancellationToken.None);
+            check(ivanFixture.Created && judyFixture.Created && kentFixture.Created,
                 "the add-state fixture creates its three characters");
             var ivanPackets = new List<GameServerPacket>();
             await service.AttachChannelAsync(
@@ -1434,11 +1516,19 @@ internal static class FriendSmokeTests
             await service.AddFriendAsync("ivan", "伊万", "朱迪", CancellationToken.None);
             var onlineAddTail = ivanPackets.Skip(ivanBeforeOnlineAdd).ToArray();
             check(onlineAddTail.Length == 3
-                    && IsAddFriendResult(onlineAddTail[0], "朱迪", areaUserId: 21)
+                    && IsAddFriendResult(
+                        onlineAddTail[0],
+                        "朱迪",
+                        areaUserId: 21,
+                        level: (ushort)judyFixture.Character!.Level,
+                        job: (byte)Math.Clamp(judyFixture.Character.Job, 0, 4),
+                        growType: (byte)Math.Clamp(judyFixture.Character.GrowType, 0, 15),
+                        awakeningType: (byte)Math.Clamp(judyFixture.Character.AwakeningType, 0, 7))
                     && onlineAddTail[1].ProtocolId == GameProtocolEngine.BuddyInNotification
                     && onlineAddTail[1].Payload[0] == 0
+                    && onlineAddTail[1].Payload[^1] == 0
                     && BuddyNameExactly(onlineAddTail[1], "朱迪"),
-                "adding an online friend sends the id-63 append carrying D=his area user id, then a BUDDY_IN state update");
+                "adding an online friend sends the id-63 append carrying his level and uid, then a flag-0 BUDDY_IN");
             check(onlineAddTail.Length == 3
                     && onlineAddTail[2].ProtocolId == GameProtocolEngine.UserInfoNotification
                     && onlineAddTail[2].Payload[0] == 0
@@ -1453,10 +1543,18 @@ internal static class FriendSmokeTests
             await service.AddFriendAsync("ivan", "伊万", "肯特", CancellationToken.None);
             var offlineAddTail = ivanPackets.Skip(ivanBeforeOfflineAdd).ToArray();
             check(offlineAddTail.Length == 2
-                    && IsAddFriendResult(offlineAddTail[0], "肯特", areaUserId: 0)
+                    && IsAddFriendResult(
+                        offlineAddTail[0],
+                        "肯特",
+                        areaUserId: 0,
+                        level: (ushort)kentFixture.Character!.Level,
+                        job: (byte)Math.Clamp(kentFixture.Character.Job, 0, 4),
+                        growType: (byte)Math.Clamp(kentFixture.Character.GrowType, 0, 15),
+                        awakeningType: (byte)Math.Clamp(kentFixture.Character.AwakeningType, 0, 7))
                     && offlineAddTail[1].ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && offlineAddTail[1].Payload[^1] == 1
                     && BuddyNameExactly(offlineAddTail[1], "肯特"),
-                "adding an offline friend sends the id-63 append with D=0, then a BUDDY_OUT state update");
+                "adding an offline friend sends the id-63 append with D=0, then a flag-1 BUDDY_OUT");
             check(offlineAddTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.UserInfoNotification),
                 "the offline-friend add pushes no USERINFO record");
@@ -1754,11 +1852,17 @@ internal static class FriendSmokeTests
             return ValueTask.CompletedTask;
         };
 
-    // 42 字节记录偏移 0x21 的 u16：逆向要求恒 0（不参与匹配、被当展示文本指针），
-    // “查看信息”用的 uid 来自本地 user 注册表；这个 helper 只用来钉住它保持零。
-    private static ushort FriendRecordAreaUserId(GameServerPacket snapshot, int index) =>
+    // 42 字节记录偏移 0x21 的 u16：好友行 `Lv.%d` 直接读它（旧结论“必须为 0”已作废）。
+    private static ushort FriendRecordLevel(GameServerPacket snapshot, int index) =>
         BinaryPrimitives.ReadUInt16LittleEndian(
             snapshot.Payload.AsSpan(1 + index * 42 + 0x21, 2));
+
+    // 记录偏移 0x23（职业系）与 0x24（打包成长）：行在无本地 user 记录时就用它们画职业。
+    private static (byte Job, byte PackedGrowth) FriendRecordClass(GameServerPacket snapshot, int index)
+    {
+        var record = snapshot.Payload.AsSpan(1 + index * 42, 42);
+        return (record[0x23], record[0x24]);
+    }
 
     // mode-0 USERINFO：payload = [u8 mode][u16 count=1][u16 uid][u32 名字长度 + 名字]…
     private static ushort ReadUserInfoRecordUid(GameServerPacket packet) =>
@@ -1797,15 +1901,15 @@ internal static class FriendSmokeTests
     }
 
     // 比 BuddyNameEquals 更严：状态字节后必须正好是 u32 长度 + 完整名字 + 标志字节，
-    // 用来钉死"推送里出现的就是这个名字的这份拼写"。
+    // 用来钉死"推送里出现的就是这个名字的这份拼写"。末尾标志字节不在这里判：
+    // BUDDY_IN 是 0、BUDDY_OUT 是 1（行转灰），各自在调用点显式断言。
     private static bool BuddyNameExactly(GameServerPacket packet, string name)
     {
         var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
         return packet.Payload.Length == 1 + sizeof(uint) + nameBytes.Length + 1
             && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(1, sizeof(uint)))
                 == nameBytes.Length
-            && packet.Payload.AsSpan(5, nameBytes.Length).SequenceEqual(nameBytes)
-            && packet.Payload[^1] == 0;
+            && packet.Payload.AsSpan(5, nameBytes.Length).SequenceEqual(nameBytes);
     }
 
     // type=1 删除结果（id 64）：[非零标志][u32 名字长度 + 名字][u8 可选结果码]。
@@ -1824,9 +1928,16 @@ internal static class FriendSmokeTests
     }
 
     // type=1/id63 加好友成功结果（完整 14+nameLen 字节）：
-    // [非零标志][u32 名字长度 + 名字][A=0][B=0][C=0][u32 D][E=0][F=0]。
+    // [非零标志][u32 名字长度 + 名字][A=等级][B=职业系][C=打包成长][u32 D=uid][E=0][F=0]。
     // B 必须 < 5（客户端 AppendEntry 的守卫），尾部少发会被填 0x30 直接拒绝追加。
-    private static bool IsAddFriendResult(GameServerPacket packet, string name, ushort areaUserId)
+    private static bool IsAddFriendResult(
+        GameServerPacket packet,
+        string name,
+        ushort areaUserId,
+        ushort level,
+        byte job,
+        byte growType,
+        byte awakeningType)
     {
         var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
         if (packet.Type != 1
@@ -1841,9 +1952,9 @@ internal static class FriendSmokeTests
         }
 
         var tail = packet.Payload.AsSpan(5 + nameBytes.Length);
-        return tail[0] == 0
-            && tail[1] == 0
-            && tail[2] == 0
+        return tail[0] == (byte)Math.Clamp((int)level, 0, byte.MaxValue)
+            && tail[1] == (byte)Math.Clamp((int)job, 0, 4)
+            && tail[2] == (byte)((growType & 0x0F) | ((awakeningType & 0x07) << 4))
             && BinaryPrimitives.ReadUInt32LittleEndian(tail.Slice(3, 4)) == areaUserId
             && tail[7] == 0
             && tail[8] == 0;
