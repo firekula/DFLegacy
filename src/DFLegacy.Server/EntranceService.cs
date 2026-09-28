@@ -3087,18 +3087,19 @@ public sealed class EntranceService(
 
                             // 结算后的交付安装自愈：这个角色可能带着"未安装交付"的守门标记
                             // （被动方在结算登记前后掉线、或在安装前回了选人）。选角路径下面的
-                            // 背包修复是盲写，标记不清会被 store 拒绝并让选角永久失败；这里先
-                            // 消费一次待安装记录、销掉标记，并直接采用结算后的存档记录。
+                            // 背包修复是盲写，标记不清会被 store 拒绝并让选角永久失败；这里只消费
+                            // 一次待安装记录、销掉标记——**不**用那份提交时刻的记录整份覆盖刚读出来
+                            // 的角色，否则会把提交之后的位置/疲劳等字段回退掉。上面刚重新读取过
+                            // 存档，本来就该以存档为准。
                             if (itemTradeService.TryTakePendingInstall(
                                     character.Id,
                                     out var selectingTradeInstall))
                             {
-                                character = selectingTradeInstall.State;
                                 store.AcknowledgeTradeDelivery(
                                     character.Id,
                                     selectingTradeInstall.TradeId);
                                 logger.LogInformation(
-                                    "Installed settled trade {TradeId} into character {CharacterId} during character selection.",
+                                    "Consumed the settled trade {TradeId} delivery marker for character {CharacterId} during character selection.",
                                     selectingTradeInstall.TradeId,
                                     character.Id);
                             }
@@ -6452,6 +6453,26 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            // 托管中的物品在服务端背包里没动过，整理会把它挪到别的槽 → 结算复核按
+                            // (SourceSlot, InstanceId) 找不到 → SettlementEscrowMissing 整笔中止
+                            // （玩家一整理交易就莫名失败）。命中托管就按该分支既有的失败结构拒绝。
+                            if (itemSpace == 0
+                                && mainInventory.Keys.Any(slot => itemTradeService.IsEscrowed(
+                                    activeCharacter.Id,
+                                    0,
+                                    slot)))
+                            {
+                                var errorReply = GameProtocolEngine.CreateSortItemError(
+                                    itemSpace);
+                                await errorReply.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, errorReply);
+                                logger.LogWarning(
+                                    "Rejected main-inventory sort for character {CharacterId}: an item in the trade panel must stay in its slot.",
+                                    activeCharacter.Id);
+                                continue;
+                            }
+
                             var arrangedMain = itemSpace == 0
                                 ? CharacterInventorySorter.SortMain(mainInventory, itemCatalog)
                                 : mainInventory;
@@ -6786,6 +6807,9 @@ public sealed class EntranceService(
                                 if (tradeOutcome.SettlementApplied
                                     && tradeOutcome.ReplacementState is not null)
                                 {
+                                    // 权威全量刷新（NOTI 13）由 ItemTradeService 在结算成功时直接
+                                    // 发给确认方（与被动方的会话顶部安装刷新共用同一个构建器），
+                                    // 这里只做本会话的内存状态安装。
                                     activeCharacter = tradeOutcome.ReplacementState;
                                     currentGold = Math.Max(0, tradeOutcome.ReplacementState.Gold);
                                     mainInventory = (tradeOutcome.ReplacementState.Inventory ?? [])
@@ -13338,6 +13362,20 @@ public sealed class EntranceService(
         int gold,
         uint victoryPoints,
         IEnumerable<CharacterItemRecord> inventory,
+        ushort? preferredLastSlot = null) =>
+        CreateMainInventoryRefresh(gold, victoryPoints, inventory, itemCatalog, preferredLastSlot);
+
+    /// <summary>
+    /// 权威主背包全量刷新（NOTI 13，含金币与胜利点数）。除本类各处的刷新外，交易结算的**确认方**
+    /// 由 <see cref="ItemTradeService"/> 直接调用这一条：它的会话只是静默换掉内存状态，没有别的
+    /// 权威刷新来源（被动方由会话顶部的待安装安装刷新）。做成静态、接收目录，是为了让不持有会话
+    /// 的调用方复用同一份过滤与投影，避免两条刷新路径漂移。
+    /// </summary>
+    internal static GameServerPacket CreateMainInventoryRefresh(
+        int gold,
+        uint victoryPoints,
+        IEnumerable<CharacterItemRecord> inventory,
+        ItemCatalog itemCatalog,
         ushort? preferredLastSlot = null)
     {
         var entries = inventory
@@ -13354,7 +13392,7 @@ public sealed class EntranceService(
                     ? 1
                     : 0)
             .ThenBy(item => item.Slot)
-            .Select(ToGameInventoryEntry)
+            .Select(item => ProjectInventoryEntry(item, itemCatalog))
             .ToArray();
         return GameProtocolEngine.CreateMainItemList(
             checked((uint)Math.Max(0, gold)),
@@ -13499,7 +13537,12 @@ public sealed class EntranceService(
         yield return CreateMainInventoryPacket(gold, victoryPoints, inventory);
     }
 
-    private GameInventoryEntry ToGameInventoryEntry(CharacterItemRecord item)
+    private GameInventoryEntry ToGameInventoryEntry(CharacterItemRecord item) =>
+        ProjectInventoryEntry(item, itemCatalog);
+
+    private static GameInventoryEntry ProjectInventoryEntry(
+        CharacterItemRecord item,
+        ItemCatalog itemCatalog)
     {
         var wire = CharacterItemWireProjection.Project(item, itemCatalog);
         return new GameInventoryEntry(

@@ -3385,7 +3385,7 @@ public sealed class JsonGameStore(
         }
     }
 
-    private static CharacterRecord ApplyTradePlan(CharacterRecord character, ItemTradeSidePlan plan)
+    private CharacterRecord ApplyTradePlan(CharacterRecord character, ItemTradeSidePlan plan)
     {
         var inventory = (character.Inventory ?? []).ToDictionary(item => item.Slot);
         foreach (var removal in plan.Removals)
@@ -3393,7 +3393,17 @@ public sealed class JsonGameStore(
             if (!inventory.TryGetValue(removal.SourceSlot, out var current)
                 || current.InstanceId != removal.InstanceId)
             {
-                continue;
+                // 规划阶段刚在同一把 _gate 内复核过（TryPlanSide 的托管复核），这里再对不上就说明
+                // 不变量被破坏。静默 continue 会变成"一方加货、一方没扣"的复制，必须整笔失败。
+                // 抛出点在两条记录写盘之前（内存的 Characters[] 赋值也在两次 ApplyTradePlan 之后），
+                // 因此不会留下部分应用的状态。
+                logger.LogError(
+                    "Refused to apply a trade plan for character {CharacterId}: slot {Slot} no longer holds instance {InstanceId}.",
+                    character.Id,
+                    removal.SourceSlot,
+                    removal.InstanceId);
+                throw new InvalidOperationException(
+                    $"Trade plan for character {character.Id} no longer matches inventory slot {removal.SourceSlot}.");
             }
 
             if (removal.RemainingCount == 0)

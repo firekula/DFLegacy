@@ -1558,6 +1558,7 @@ var parsedInventoryMove = inventoryMoveParser is not null
 Check(parsedInventoryMove
     && (byte)inventoryMoveArguments[1]! == 0
     && (ushort)inventoryMoveArguments[2]! == 10
+    && (ushort)inventoryMoveArguments[3]! == 0x69D5
     && (int)inventoryMoveArguments[4]! == 1
     && (byte)inventoryMoveArguments[5]! == 3
     && (ushort)inventoryMoveArguments[6]! == 9,
@@ -1582,6 +1583,7 @@ var parsedWarehouseMove = inventoryMoveParser is not null
 Check(parsedWarehouseMove
     && (byte)warehouseMoveArguments[1]! == 0
     && (ushort)warehouseMoveArguments[2]! == 10
+    && (ushort)warehouseMoveArguments[3]! == 0x1CAF
     && (int)warehouseMoveArguments[4]! == 1
     && (byte)warehouseMoveArguments[5]! == 2
     && (ushort)warehouseMoveArguments[6]! == 7,

@@ -25,8 +25,6 @@ internal sealed class ItemTradeChannel
 internal sealed class ItemTradeSide
 {
     public required ItemTradeChannel Channel { get; init; }
-    public required byte TownId { get; init; }
-    public required byte AreaId { get; init; }
     public required bool IsInitiator { get; init; }
     public List<ItemTradeEscrow> Escrows { get; } = [];
     public int OfferedGold { get; set; }
@@ -110,7 +108,7 @@ public sealed class ItemTradeService : BackgroundService
     internal void ResetRequestThrottleForTests(Guid characterId) =>
         _lastRequestAt.TryRemove(characterId, out _);
 
-    public Task AttachChannelAsync(
+    public async Task AttachChannelAsync(
         string accountName,
         string characterName,
         Guid characterId,
@@ -122,6 +120,16 @@ public sealed class ItemTradeService : BackgroundService
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterName);
         ArgumentNullException.ThrowIfNull(send);
+        // 顶号/重登：旧连接可能还挂着一笔会话（旧通道已消失、它自己的拆除步骤未必跑到）。
+        // 不在这里取消的话，该角色会一直"忙"到 5 分钟扫描，旧槽位也一直冻结。
+        // 旧通道被当作已离场（不给他发包），存活方照常拿 NOTI 16。
+        if (_sessions.ContainsKey(characterId)
+            && (!_channels.TryGetValue(characterId, out var previous)
+                || previous.SessionId != sessionId))
+        {
+            await CancelSessionForCharacterAsync(characterId, characterId, cancellationToken);
+        }
+
         _channels[characterId] = new ItemTradeChannel
         {
             AccountName = accountName,
@@ -131,7 +139,6 @@ public sealed class ItemTradeService : BackgroundService
             SessionId = sessionId,
             Send = send
         };
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -154,6 +161,19 @@ public sealed class ItemTradeService : BackgroundService
         // 带着「未安装交付」掉线的角色如果不清掉 store 的守门标记，之后所有盲写保存都会拒绝他。
         _store.ClearTradeDeliveryPending(characterId);
         _lastRequestAt.TryRemove(characterId, out _);
+        if (_sessions.TryGetValue(characterId, out var session)
+            && session.State == ItemTradeSessionState.Settling
+            && !IsOnline(session.Initiator.Channel.CharacterId)
+            && !IsOnline(session.Partner.Channel.CharacterId))
+        {
+            // 兜底：结算在途时双方通道都已消失，正常守卫不会让任何取消路径插手，会话会永远留在
+            // _sessions 里（按 characterId 键控，重登也带着它）。两侧都不在线时强制收尾，绝不在
+            // 还有一侧在线时插手（那一侧的结算/拆除路径会自己处理）。拆除路径的 token 可能已取消，
+            // 通知一律尽力而为——会话摘除在锁内同步完成，不受影响。
+            await BestEffortAsync(() => AbortSettlementAsync(session, cancellationToken));
+            return;
+        }
+
         await CancelSessionForCharacterAsync(characterId, characterId, cancellationToken);
     }
 
@@ -237,15 +257,11 @@ public sealed class ItemTradeService : BackgroundService
             Initiator = new ItemTradeSide
             {
                 Channel = requester,
-                TownId = requesterTown.TownId,
-                AreaId = requesterTown.AreaId,
                 IsInitiator = true
             },
             Partner = new ItemTradeSide
             {
                 Channel = target,
-                TownId = targetTown.TownId,
-                AreaId = targetTown.AreaId,
                 IsInitiator = false
             },
             CreatedAt = now,
@@ -463,70 +479,156 @@ public sealed class ItemTradeService : BackgroundService
             return new ItemTradeStateOutcome(false, null);
         }
 
-        var commit = await _store.CommitItemTradeAsync(
-            new ItemTradeCommitRequest(
-                session.Initiator.Channel.CharacterId,
-                session.Initiator.Channel.AccountName,
-                session.Partner.Channel.CharacterId,
-                session.Partner.Channel.AccountName,
-                [.. session.Initiator.Escrows],
-                [.. session.Partner.Escrows],
-                session.Initiator.OfferedGold,
-                session.Partner.OfferedGold),
-            cancellationToken);
-        if (!commit.Committed
-            || commit.Initiator is null
-            || commit.Partner is null
-            || commit.Plan is null)
+        // 提交 + 双方发包 + 登记待安装/ack 整段兜底：磁盘 IO 失败、确认瞬间被顶号/停服导致
+        // token 已取消、提交后的发包被连接 token 取消——任何一种逃出去都会把会话永久留在
+        // Settling（所有退出路径都被守卫拦着），对手收不到 NOTI 16/18、两个角色永久"已在交易中"、
+        // 托管物品在所有冻结路径上永久冻结。这里无论成败都先收尾，再决定是否重新抛出。
+        var committed = false;
+        ItemTradeCommitResult? commit = null;
+        try
         {
-            _logger.LogWarning(
-                "Trade {TradeId} settlement failed: {Failure}; the whole trade is aborted.",
-                session.TradeId,
-                commit.Failure);
+            commit = await _store.CommitItemTradeAsync(
+                new ItemTradeCommitRequest(
+                    session.Initiator.Channel.CharacterId,
+                    session.Initiator.Channel.AccountName,
+                    session.Partner.Channel.CharacterId,
+                    session.Partner.Channel.AccountName,
+                    [.. session.Initiator.Escrows],
+                    [.. session.Partner.Escrows],
+                    session.Initiator.OfferedGold,
+                    session.Partner.OfferedGold),
+                cancellationToken);
+            if (!commit.Committed
+                || commit.Initiator is null
+                || commit.Partner is null
+                || commit.Plan is null)
+            {
+                _logger.LogWarning(
+                    "Trade {TradeId} settlement failed: {Failure}; the whole trade is aborted.",
+                    session.TradeId,
+                    commit.Failure);
+                await SendAsync(
+                    actor.Channel.CharacterId,
+                    GameProtocolEngine.CreateSetItemTradeStateResult(
+                        success: false,
+                        errorCode: commit.Failure is ItemTradeCommitFailure.NoSpace
+                            or ItemTradeCommitFailure.WeightExceeded
+                                ? (byte)4
+                                : (byte)1),
+                    cancellationToken);
+                await AbortSettlementAsync(session, cancellationToken);
+                return new ItemTradeStateOutcome(false, null);
+            }
+
+            committed = true;
+            var actorIsInitiator = session.Initiator.Channel.CharacterId == actor.Channel.CharacterId;
+            var passiveSide = actorIsInitiator ? session.Partner : session.Initiator;
+            var passiveRecord = actorIsInitiator ? commit.Partner : commit.Initiator;
+            // 待安装登记必须在 NOTI 18 之前：被动方收到 NOTI 18 后的第一条命令就要能先安装
+            // 新状态，而不是先被守门拒绝一次再自愈。
+            _pendingInstalls[passiveSide.Channel.CharacterId] =
+                new ItemTradePendingInstall(commit.TradeId, passiveRecord);
+            // 上面「双方在线」复核到这次登记之间，被动方可能刚好掉线：它的拆除清理
+            // 已经跑完，既不会消费这条登记，也不会清掉 store 里刚打上的交付守门标记。再查一次
+            // 在线状态，离线就撤销登记并清标记——否则这个角色的下一次盲写（含选角时的背包修复）
+            // 会被守门永久拒绝，锁死到重启。结算本身仍然有效：存档已提交，他重登读到的就是结果。
+            if (!IsOnline(passiveSide.Channel.CharacterId))
+            {
+                _pendingInstalls.TryRemove(passiveSide.Channel.CharacterId, out _);
+                _store.ClearTradeDeliveryPending(passiveSide.Channel.CharacterId);
+                _logger.LogInformation(
+                    "Trade {TradeId}: {Passive} disconnected before the delivery could be installed; the settlement stands and the blind-write gate was released.",
+                    commit.TradeId,
+                    passiveSide.Channel.CharacterName);
+            }
+
+            await SendFinishAsync(session.Initiator, commit.Plan.Initiator, commit.Initiator, cancellationToken);
+            await SendFinishAsync(session.Partner, commit.Plan.Partner, commit.Partner, cancellationToken);
+            // 设计 §2.3.5/§2.5.5：结算后**双方**都要拿到权威全量背包刷新。被动方由它的会话在
+            // 顶部安装待安装状态时刷新；确认方（主动方）的会话只是静默换掉内存，必须在这里就地
+            // 补一条（与那条刷新共用 EntranceService.CreateMainInventoryRefresh，避免两份投影漂移）。
+            var actorRecord = actorIsInitiator ? commit.Initiator : commit.Partner;
             await SendAsync(
                 actor.Channel.CharacterId,
-                GameProtocolEngine.CreateSetItemTradeStateResult(
-                    success: false,
-                    errorCode: commit.Failure is ItemTradeCommitFailure.NoSpace
-                        or ItemTradeCommitFailure.WeightExceeded
-                            ? (byte)4
-                            : (byte)1),
+                EntranceService.CreateMainInventoryRefresh(
+                    actorRecord.Gold,
+                    actorRecord.VictoryPoints,
+                    actorRecord.Inventory ?? [],
+                    _itemCatalog),
                 cancellationToken);
-            await AbortSettlementAsync(session, cancellationToken);
-            return new ItemTradeStateOutcome(false, null);
-        }
-
-        await SendFinishAsync(session.Initiator, commit.Plan.Initiator, commit.Initiator, cancellationToken);
-        await SendFinishAsync(session.Partner, commit.Plan.Partner, commit.Partner, cancellationToken);
-        var actorIsInitiator = session.Initiator.Channel.CharacterId == actor.Channel.CharacterId;
-        var passiveSide = actorIsInitiator ? session.Partner : session.Initiator;
-        var passiveRecord = actorIsInitiator ? commit.Partner : commit.Initiator;
-        _pendingInstalls[passiveSide.Channel.CharacterId] =
-            new ItemTradePendingInstall(commit.TradeId, passiveRecord);
-        // 上面第 459 行的 IsOnline 判定到这次登记之间，被动方可能刚好掉线：它的拆除清理
-        // 已经跑完，既不会消费这条登记，也不会清掉 store 里刚打上的交付守门标记。再查一次
-        // 在线状态，离线就撤销登记并清标记——否则这个角色的下一次盲写（含选角时的背包修复）
-        // 会被守门永久拒绝，锁死到重启。结算本身仍然有效：存档已提交，他重登读到的就是结果。
-        if (!IsOnline(passiveSide.Channel.CharacterId))
-        {
-            _pendingInstalls.TryRemove(passiveSide.Channel.CharacterId, out _);
-            _store.ClearTradeDeliveryPending(passiveSide.Channel.CharacterId);
+            _store.AcknowledgeTradeDelivery(actor.Channel.CharacterId, commit.TradeId);
+            RemoveSession(session);
             _logger.LogInformation(
-                "Trade {TradeId}: {Passive} disconnected before the delivery could be installed; the settlement stands and the blind-write gate was released.",
-                commit.TradeId,
-                passiveSide.Channel.CharacterName);
+                "Trade {TradeId} completed between {Initiator} and {Partner}.",
+                session.TradeId,
+                session.Initiator.Channel.CharacterName,
+                session.Partner.Channel.CharacterName);
+            return new ItemTradeStateOutcome(true, actorRecord);
         }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Trade {TradeId} settlement between {Initiator} and {Partner} threw (commit={Committed}); the session is finished before the error is handled.",
+                session.TradeId,
+                session.Initiator.Channel.CharacterName,
+                session.Partner.Channel.CharacterName,
+                committed);
 
-        _store.AcknowledgeTradeDelivery(actor.Channel.CharacterId, commit.TradeId);
-        RemoveSession(session);
-        _logger.LogInformation(
-            "Trade {TradeId} completed between {Initiator} and {Partner}.",
-            session.TradeId,
-            session.Initiator.Channel.CharacterName,
-            session.Partner.Channel.CharacterName);
-        return new ItemTradeStateOutcome(
-            true,
-            actorIsInitiator ? commit.Initiator : commit.Partner);
+            if (!committed)
+            {
+                // 提交没有生效（异常来自 store 或 store 之前的路径）：整笔中止，按失败路径的
+                // 通用错误码 1 给确认方回包，并走结算旁路摘会话 + 通知存活方。
+                await BestEffortAsync(() => SendAsync(
+                    actor.Channel.CharacterId,
+                    GameProtocolEngine.CreateSetItemTradeStateResult(success: false, errorCode: 1),
+                    cancellationToken));
+            }
+            else
+            {
+                // 提交已生效：交易已经达成，绝不能再回失败包（那会让客户端回滚一笔已完成的
+                // 交易）；只需保证主动方的守门标记释放、会话摘除，并把自己的新记录交还给
+                // 会话安装。被动方的待安装登记在发包之前就已写下，会照常被消费。
+                _store.AcknowledgeTradeDelivery(actor.Channel.CharacterId, commit!.TradeId);
+            }
+
+            await BestEffortAsync(() => AbortSettlementAsync(session, cancellationToken));
+
+            if (exception is OperationCanceledException)
+            {
+                // 取消语义照旧上抛（会话循环按"服务端在关停/连接已断"处理），但收尾必须已经完成。
+                throw;
+            }
+
+            return new ItemTradeStateOutcome(
+                committed,
+                committed
+                    ? (session.Initiator.Channel.CharacterId == actor.Channel.CharacterId
+                        ? commit!.Initiator
+                        : commit!.Partner)
+                    : null);
+        }
+    }
+
+    /// <summary>
+    /// 兜底收尾期间的尽力而为：这里的任何异常都不能再逃出去——异常本身可能就是取消
+    /// （连接 token 已废），此时发包会二次抛出；就算换成别的 IO/连接异常，收尾也必须走完
+    /// （重新抛出取消语义、或把会话的新记录交还给它），不能让它顶掉原始错误或漏掉摘除。
+    /// 会话摘除由 <see cref="CancelSessionAsyncCore"/> 在锁内同步完成，不依赖通知是否送达
+    /// （连接已死时本来也没有收件人）。
+    /// </summary>
+    private async Task BestEffortAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "A best-effort trade session cleanup step failed; the session removal itself is not affected.");
+        }
     }
 
     private async Task SendFinishAsync(
@@ -658,7 +760,18 @@ public sealed class ItemTradeService : BackgroundService
         {
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                await SweepExpiredAsync(_timeProvider.GetUtcNow(), stoppingToken);
+                try
+                {
+                    await SweepExpiredAsync(_timeProvider.GetUtcNow(), stoppingToken);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    // 单次扫描的任何异常都不能杀掉全局扫描器：否则 30 秒/5 分钟窗口永远不再过期，
+                    // 每个卡住的会话都会活到进程重启。取消（关停）照旧交给外层 catch 结束循环。
+                    _logger.LogError(
+                        exception,
+                        "A trade session sweep failed; the scanner keeps running.");
+                }
             }
         }
         catch (OperationCanceledException)
@@ -756,20 +869,28 @@ public sealed class ItemTradeService : BackgroundService
                 continue;
             }
 
-            await SendCancelToSideAsync(side, cancellationToken);
+            await SendCancelToSideAsync(session, side, cancellationToken);
         }
     }
 
     private async Task SendCancelToSideAsync(
+        ItemTradeSession session,
         ItemTradeSide side,
         CancellationToken cancellationToken)
     {
-        var entries = side.Escrows
-            .Select(escrow => new GameItemTradeCancelEntry(
-                escrow.PanelSlot,
-                escrow.PanelSlot == ItemTradePlanner.GoldPanelSlot ? (byte)0 : escrow.SourceListType,
-                escrow.PanelSlot == ItemTradePlanner.GoldPanelSlot ? (ushort)0 : escrow.SourceSlot))
-            .ToList();
+        // 快照必须在 session.Sync 内取：托管的唯一写入方（PlaceAsync/ReleaseAsync）在同一把
+        // 锁里改 Escrows，锁外枚举会在它 Add 的瞬间抛 InvalidOperationException（杀掉扫描器）。
+        List<GameItemTradeCancelEntry> entries;
+        lock (session.Sync)
+        {
+            entries = side.Escrows
+                .Select(escrow => new GameItemTradeCancelEntry(
+                    escrow.PanelSlot,
+                    escrow.PanelSlot == ItemTradePlanner.GoldPanelSlot ? (byte)0 : escrow.SourceListType,
+                    escrow.PanelSlot == ItemTradePlanner.GoldPanelSlot ? (ushort)0 : escrow.SourceSlot))
+                .ToList();
+        }
+
         await SendAsync(
             side.Channel.CharacterId,
             GameProtocolEngine.CreateCancelItemTrade(entries),
@@ -833,8 +954,26 @@ public sealed class ItemTradeService : BackgroundService
                 return false;
             }
 
-            ReplaceEscrow(mine, goldEscrow);
-            mine.OfferedGold = checked((int)count);
+            // HandleMoveAsync 的状态判定在 await store 之前，对手的连接线程可以在任意时刻取消
+            // 同一会话（关窗 = CMD 26=2）。复核必须和内存改动在同一把锁里完成，否则会出现
+            // 「服务端已取消、客户端却收到 CMD 19 成功 + NOTI 15」——面板里留下一个任何取消/
+            // 完成清单都不会归还的物品，而服务端从未移动它。
+            if (!TryMutateEscrows(session, () =>
+                {
+                    ReplaceEscrow(mine, goldEscrow);
+                    mine.OfferedGold = checked((int)count);
+                }))
+            {
+                _logger.LogInformation(
+                    "Trade {TradeId}: dropped a gold offer from {Character}: the session is no longer open.",
+                    session.TradeId,
+                    mine.Channel.CharacterName);
+                await SendMoveFailureAsync(
+                    mine.Channel.CharacterId, sourceListType, sourceSlot, count,
+                    GameProtocolEngine.ItemTradeListType, panelSlot, cancellationToken);
+                return false;
+            }
+
             await SendAsync(
                 mine.Channel.CharacterId,
                 GameProtocolEngine.CreateMoveItemSpaceReply(
@@ -877,7 +1016,18 @@ public sealed class ItemTradeService : BackgroundService
             return false;
         }
 
-        mine.Escrows.Add(escrow);
+        if (!TryMutateEscrows(session, () => mine.Escrows.Add(escrow)))
+        {
+            _logger.LogInformation(
+                "Trade {TradeId}: dropped an escrow from {Character}: the session is no longer open.",
+                session.TradeId,
+                mine.Channel.CharacterName);
+            await SendMoveFailureAsync(
+                mine.Channel.CharacterId, sourceListType, sourceSlot, count,
+                GameProtocolEngine.ItemTradeListType, panelSlot, cancellationToken);
+            return false;
+        }
+
         await SendAsync(
             mine.Channel.CharacterId,
             GameProtocolEngine.CreateMoveItemSpaceReply(
@@ -934,10 +1084,28 @@ public sealed class ItemTradeService : BackgroundService
             return false;
         }
 
-        mine.Escrows.Remove(released);
-        if (panelSlot == ItemTradePlanner.GoldPanelSlot)
+        if (!TryMutateEscrows(session, () =>
+            {
+                mine.Escrows.Remove(released);
+                if (panelSlot == ItemTradePlanner.GoldPanelSlot)
+                {
+                    mine.OfferedGold = 0;
+                }
+            }))
         {
-            mine.OfferedGold = 0;
+            _logger.LogInformation(
+                "Trade {TradeId}: dropped a release from {Character}: the session is no longer open.",
+                session.TradeId,
+                mine.Channel.CharacterName);
+            await SendMoveFailureAsync(
+                mine.Channel.CharacterId,
+                GameProtocolEngine.ItemTradeListType,
+                panelSlot,
+                count,
+                0,
+                destinationSlot,
+                cancellationToken);
+            return false;
         }
 
         await SendAsync(
@@ -967,6 +1135,27 @@ public sealed class ItemTradeService : BackgroundService
     {
         side.Escrows.RemoveAll(candidate => candidate.PanelSlot == escrow.PanelSlot);
         side.Escrows.Add(escrow);
+    }
+
+    /// <summary>
+    /// 托管表改动的第二道闸：放入/取回在 <c>await _store.GetCharacterAsync</c> 之前判过会话
+    /// 状态，但对手的连接线程可以在那个 await 期间取消同一会话。这里在同一把锁里复核
+    /// <see cref="ItemTradeSessionState.Open"/> 并仍在册，通过后才执行内存改动（锁内不含 await，
+    /// 发包一律留到锁外）。返回 false 表示会话已经没了：调用者只回自己的 CMD 19 失败包，
+    /// 绝不再通知对端。
+    /// </summary>
+    private bool TryMutateEscrows(ItemTradeSession session, Action mutate)
+    {
+        lock (session.Sync)
+        {
+            if (session.State != ItemTradeSessionState.Open || !IsStillRegistered(session))
+            {
+                return false;
+            }
+
+            mutate();
+            return true;
+        }
     }
 
     /// <summary>

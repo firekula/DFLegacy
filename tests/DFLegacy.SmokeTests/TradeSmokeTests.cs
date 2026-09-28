@@ -15,11 +15,14 @@ internal static class TradeSmokeTests
         await CheckStoreAsync(check);
         await CheckRequestFlowAsync(check);
         await CheckMoveFlowAsync(check);
+        await CheckMoveAfterCancelIsInertAsync(check);
+        await CheckReattachCancelsStaleSessionAsync(check);
         await CheckSettlementFlowAsync(check);
         await CheckCancelFlowAsync(check);
         await CheckDetachClearsDeliveryMarkAsync(check);
         await CheckSettlementFailureAsync(check);
         await CheckSettlementGoldMissingAsync(check);
+        await CheckSettlementSaveFailureAsync(check);
         await CheckConcurrentConfirmSettlesOnceAsync(check);
         await CheckConfirmAfterCancelIsInertAsync(check);
         await CheckConfirmAfterPeerDetachAsync(check);
@@ -341,6 +344,38 @@ internal static class TradeSmokeTests
                     && failure == ItemTradeFailure.SettlementEscrowMissing,
                 "a settlement whose escrowed instance vanished is refused before any write");
 
+            // 原地改状态/耐久（强化、属性修改）不换 InstanceId 也不换数量：只看身份与数量的复核
+            // 会把旧快照交付出去，因此这类改动同样必须整笔中止（仍报 SettlementEscrowMissing）。
+            var restatedInventory = new Dictionary<ushort, CharacterItemRecord>(inventory)
+            {
+                [5] = potion with { State = 1 }
+            };
+            check(potionPlaced
+                    && !ItemTradePlanner.TryPlanSettlement(
+                        new ItemTradeSettlementRequest(
+                            TradeFixtures.CreateCharacter("阿尔法", 5_000, restatedInventory),
+                            characterB,
+                            sideA,
+                            sideB),
+                        items, TradeFixtures.CreateStats(fixtureRoot), out _, out failure)
+                    && failure == ItemTradeFailure.SettlementEscrowMissing,
+                "a settlement whose escrowed item changed state in place is refused (state/durability recheck)");
+
+            var rewearedInventory = new Dictionary<ushort, CharacterItemRecord>(inventory)
+            {
+                [5] = potion with { Durability = 7 }
+            };
+            check(potionPlaced
+                    && !ItemTradePlanner.TryPlanSettlement(
+                        new ItemTradeSettlementRequest(
+                            TradeFixtures.CreateCharacter("阿尔法", 5_000, rewearedInventory),
+                            characterB,
+                            sideA,
+                            sideB),
+                        items, TradeFixtures.CreateStats(fixtureRoot), out _, out failure)
+                    && failure == ItemTradeFailure.SettlementEscrowMissing,
+                "a settlement whose escrowed item changed durability in place is refused (state/durability recheck)");
+
             // 结算失败码逐条：托管数量不足 / 本侧金币不足 / 收货方负重超限 / 收货方无空位 / 金币溢出。
             // 这些场景自建角色，不依赖上面的托管结果。
             var shortPotion = new CharacterItemRecord(
@@ -653,14 +688,19 @@ internal static class TradeSmokeTests
         // 同一时间只能一笔：已在会话中的角色（含等待应答的 Requested）再发请求被静默丢弃——
         // 既不给自己回失败包，也不打扰对手。清空两侧收件箱后再断言，否则前一笔的 NOTI 7
         // 会掩盖后一笔多发出来的包。
+        // 旧断言恒真：上一行刚清空阿尔法信箱，对空列表 All() 永远为 true。改成可失败的计数
+        // 断言，并给布拉沃信箱一个非空前提：上一相位阿尔法发起的请求在它那里留下了一条 NOTI 7，
+        // 保留它、只清阿尔法信箱；被静默丢弃的第二次请求（布拉沃 → 阿尔法）不得在任一侧新增包。
         harness.Clear("阿尔法");
-        harness.Clear("布拉沃");
+        var bravoBeforeSecondRequest = harness.Of("布拉沃");
         await harness.Service.HandleRequestAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
-        check(harness.Of("布拉沃").Count == 0
-                && harness.Of("阿尔法").All(packet =>
-                    packet.ProtocolId != GameProtocolEngine.RequestPeerNotification
-                    && packet.ProtocolId != GameProtocolEngine.ResponsePeerNotification),
-            "a second request while one is pending is dropped silently for both sides");
+        var bravoAfterSecondRequest = harness.Of("布拉沃");
+        check(bravoBeforeSecondRequest.Count == 1
+                && bravoBeforeSecondRequest[0].ProtocolId == GameProtocolEngine.RequestPeerNotification
+                && bravoAfterSecondRequest.Count == 1
+                && bravoAfterSecondRequest[0].ProtocolId == GameProtocolEngine.RequestPeerNotification
+                && harness.Of("阿尔法").Count == 0,
+            "a second request while one is pending is dropped silently: no new packet on either side");
 
         harness.Clear("阿尔法");
         harness.Clear("布拉沃");
@@ -912,6 +952,95 @@ internal static class TradeSmokeTests
             "the frozen-slot query answers per character, not globally");
     }
 
+    /// <summary>
+    /// 评审 Important 2：托管表的改动此前完全在 <c>session.Sync</c> 之外——<c>HandleMoveAsync</c>
+    /// 在 <c>await store.GetCharacterAsync</c> 之前判会话状态、await 之后才 Add，对手的连接线程可以
+    /// 在同一时刻取消会话，于是「服务端已取消、客户端却收到 CMD 19 成功 + NOTI 15」。
+    /// 公开 API 无法把取消精确插进那个 await 窗口（需要测试专用的 store 钩子；本轮不改 store 接口），
+    /// 因此这里锁住等价的顺序语义：取消之后到达的放入/取回必须回失败包、对端零包、托管表已清空。
+    /// 覆盖强度如实标注：修复后由「锁内复核 + 锁内改动」保证任何交错都不会双写；本用例只确定性
+    /// 覆盖「取消先完成 → 放入不得落地」这一半。
+    /// </summary>
+    private static async Task CheckMoveAfterCancelIsInertAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, []);
+        await harness.OpenTradeAsync();
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3,
+                CancellationToken.None),
+            "the potion is escrowed before the peer cancels (positive control)");
+
+        // 对手关窗取消（CMD 26=2）：此刻阿尔法的客户端可能还有一条放入在途。
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 2, CancellationToken.None);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        var lateMove = await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 4, 3, TradeFixtures.PotionItemId, 4, 0, 5,
+            CancellationToken.None);
+        check(!lateMove
+                && harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.MoveItemSpaceCommand
+                && harness.Of("阿尔法")[0].Payload[0] == 0
+                && harness.Of("布拉沃").Count == 0
+                && !harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 5),
+            "a move arriving after the cancel answers only its own CMD 19 failure, never a peer NOTI 15, and keeps no escrow");
+
+        var alphaAfter = await harness.Store.GetCharacterAsync("alice", harness.IdOf("阿尔法"), CancellationToken.None);
+        check(alphaAfter is not null && alphaAfter.Inventory is not null
+                && alphaAfter.Gold == 5_000
+                && alphaAfter.Inventory.Single(item => item.Slot == 5).CountOrValue == 10,
+            "the late move changed nothing in the store: the potion never left the owner");
+    }
+
+    /// <summary>
+    /// 评审 Minor 3：顶号/重登时旧会话可能活到 5 分钟扫描——期间该角色「忙」、旧槽位被冻结。
+    /// 新通道挂载时若发现该角色已有会话且会话 id 不同，必须先取消旧会话（通知存活方）。
+    /// </summary>
+    private static async Task CheckReattachCancelsStaleSessionAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, []);
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        await harness.Service.AttachChannelAsync(
+            "alice",
+            "阿尔法",
+            harness.IdOf("阿尔法"),
+            areaUserId: 1,
+            sessionId: Guid.NewGuid(),
+            _ => ValueTask.CompletedTask,
+            CancellationToken.None);
+        check(harness.Of("布拉沃").Count(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification) == 1
+                && !harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 5),
+            "attaching a new channel for a character cancels the stale session and tells the survivor");
+
+        // 新通道可用：旧会话已被清掉，重新发起一笔交易照常成立。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.OpenTradeAsync();
+        check(harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.RequestPeerNotification)
+                && harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.ResponsePeerCommand),
+            "the freshly attached channel can start a new trade (the character is not stuck busy)");
+    }
+
     private static async Task CheckSettlementFlowAsync(Action<bool, string> check)
     {
         await using var harness = await TradeHarness.CreateAsync();
@@ -990,6 +1119,14 @@ internal static class TradeSmokeTests
                     packet.ProtocolId == GameProtocolEngine.UpdateItemListNotification
                     && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(7, 4)) == 8_000),
             "each side receives an authoritative gold refresh (NOTI 14 slot 0) after the settlement");
+
+        // 设计 §2.3.5/§2.5.5：结算后**双方**都要拿到权威全量背包刷新（NOTI 13 含金币字段）。
+        // 被动方（阿尔法）由会话顶部安装待安装状态时刷新；确认方（布拉沃）此前完全没有刷新包，
+        // 必须在结算成功时就地补一条，否则它的背包只能靠后续的增量包自愈。
+        check(harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.ItemListNotification
+                    && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(7, 4)) == 8_000),
+            "the confirming side also receives the authoritative full inventory refresh (NOTI 13 with gold)");
 
         var alphaAfter = await harness.Store.GetCharacterAsync("alice", harness.IdOf("阿尔法"), CancellationToken.None);
         var bravoAfter = await harness.Store.GetCharacterAsync("bobby", harness.IdOf("布拉沃"), CancellationToken.None);
@@ -1081,9 +1218,10 @@ internal static class TradeSmokeTests
             harness.IdOf("布拉沃"), 0, 6, TradeFixtures.PotionItemId, 1, 4, 3, CancellationToken.None);
         harness.Clear("布拉沃");
         await harness.Service.DetachChannelAsync(harness.IdOf("阿尔法"), sessionId, CancellationToken.None);
-        check(harness.Of("布拉沃").Any(packet =>
-                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification),
-            "when one side disconnects the survivor is told to close the window and take its items back");
+        // 恰好一条：结构上由 RemoveSession 的原子摘除保证，重复取消会漏出第二条。
+        check(harness.Of("布拉沃").Count(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification) == 1,
+            "when one side disconnects the survivor is told to close the window and take its items back (exactly one NOTI 16)");
         var survivor = await harness.Store.GetCharacterAsync("bobby", harness.IdOf("布拉沃"), CancellationToken.None);
         check(survivor is not null && survivor.Inventory is not null
                 && survivor.Gold == 7_000
@@ -1220,6 +1358,94 @@ internal static class TradeSmokeTests
                 && alphaAfter.Inventory.Single(item => item.Slot == 5).CountOrValue == 10
                 && !harness.Store.IsTradeDeliveryPending(harness.IdOf("阿尔法")),
             "the aborted trade neither pays out nor moves the escrowed potion");
+    }
+
+    /// <summary>
+    /// 评审 Important 1：结算的「提交 + 双方发包 + 登记待安装/ack」原先全是裸 await。磁盘 IO 失败
+    /// （store 还原内存后重新抛出）会一路冒到会话循环的 catch 并断开连接，而会话此刻是 Settling，
+    /// 所有退出路径都被守卫拦着——`_sessions` 里永远留着它：对手收不到 NOTI 16/18（客户端挂在交易窗），
+    /// 两个角色永久"已在交易中"，托管物品在所有冻结路径上永久冻结（重登也是，会话按 characterId 键控）。
+    /// 这里把存档目录换成一个同名文件，让结算落库必然 IOException，断言：确认方收 CMD 26 [0,1]、
+    /// 双方各收一条 NOTI 16、会话真的被摘除（IsEscrowed 归 false）、store 与提交前一致、无守门标记残留。
+    /// </summary>
+    private static async Task CheckSettlementSaveFailureAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        var sword = new CharacterItemRecord(9, TradeFixtures.SwordItemId, 1, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, [sword]);
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("布拉沃"), 0, 9, TradeFixtures.SwordItemId, 1, 4, 4, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 3, CancellationToken.None);
+
+        // 让结算时的落库必然失败：把存档目录换成一个同名文件（SaveLockedAsync 的
+        // Directory.CreateDirectory 会抛 IOException）。harness 的 store 已全在内存，其余断言不受影响。
+        System.IO.Directory.Delete(harness.Root, recursive: true);
+        File.WriteAllText(harness.Root, "blocked");
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        // 修复前这里会直接抛出 store 的 IOException（结算整段是裸 await），于是用例以未处理异常
+        // 中断而不是 FAIL 行；先接住它，让"异常逃出结算"本身成为一条可读的失败断言。
+        ItemTradeStateOutcome? outcome = null;
+        Exception? escapedSettlementException = null;
+        try
+        {
+            outcome = await harness.Service.HandleStateAsync(
+                harness.IdOf("布拉沃"), 3, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            escapedSettlementException = exception;
+        }
+
+        check(escapedSettlementException is null
+                && outcome is not null
+                && !outcome.SettlementApplied
+                && outcome.ReplacementState is null
+                && harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.SetItemTradeStateCommand
+                    && packet.Payload is [0, 1])
+                && harness.Of("阿尔法").Count(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification) == 1
+                && harness.Of("布拉沃").Count(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification) == 1
+                && harness.Of("阿尔法").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.FinishItemTradeNotification)
+                && harness.Of("布拉沃").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.FinishItemTradeNotification)
+                && !harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 5)
+                && !harness.Service.IsEscrowed(harness.IdOf("布拉沃"), 0, 9)
+                && !harness.Store.IsTradeDeliveryPending(harness.IdOf("阿尔法"))
+                && !harness.Store.IsTradeDeliveryPending(harness.IdOf("布拉沃")),
+            $"a settlement whose save throws is aborted on the wire and the session is really removed (not stuck in Settling; escaped={escapedSettlementException})");
+
+        var alphaAfter = await harness.Store.GetCharacterAsync("alice", harness.IdOf("阿尔法"), CancellationToken.None);
+        var bravoAfter = await harness.Store.GetCharacterAsync("bobby", harness.IdOf("布拉沃"), CancellationToken.None);
+        check(alphaAfter is not null && alphaAfter.Inventory is not null
+                && bravoAfter is not null && bravoAfter.Inventory is not null
+                && alphaAfter.Gold == 5_000
+                && alphaAfter.Inventory.Single(item => item.Slot == 5).CountOrValue == 10
+                && bravoAfter.Gold == 7_000
+                && bravoAfter.Inventory.Single(item => item.Slot == 9).InstanceId == sword.InstanceId,
+            "the failed settlement rolled both characters back: the store matches the pre-commit state");
+
+        // 会话确实从 _sessions 里摘掉了：之后的任何交易命令都不再产生包（也不会永久占着两个角色）。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        var later = await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 3, CancellationToken.None);
+        check(!later.SettlementApplied
+                && harness.Of("阿尔法").Count == 0
+                && harness.Of("布拉沃").Count == 0,
+            "after the aborted settlement neither side can re-enter the dead session");
     }
 
     /// <summary>

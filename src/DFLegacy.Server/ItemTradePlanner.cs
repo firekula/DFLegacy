@@ -316,10 +316,14 @@ public static class ItemTradePlanner
         foreach (var escrow in ownState.Escrows.Where(candidate => candidate.Snapshot.ItemId != 0))
         {
             failure = ItemTradeFailure.SettlementEscrowMissing;
+            // State/Durability 也一并复核：原地改状态（强化、属性修改）不换 InstanceId 也不换
+            // 数量，只看身份与数量会把「已经变了的物品」按旧快照交付出去。
             if (!working.TryGetValue(escrow.SourceSlot, out var current)
                 || current.InstanceId != escrow.InstanceId
                 || current.ItemId != escrow.Snapshot.ItemId
-                || current.CountOrValue < escrow.Count)
+                || current.CountOrValue < escrow.Count
+                || current.State != escrow.Snapshot.State
+                || current.Durability != escrow.Snapshot.Durability)
             {
                 return false;
             }
