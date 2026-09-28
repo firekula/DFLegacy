@@ -146,20 +146,6 @@ internal sealed class PartyRoster
         return slots;
     }
 
-    public IReadOnlyList<(byte TownId, byte AreaId)> DistinctAreas()
-    {
-        var areas = new List<(byte, byte)>();
-        foreach (var member in _members)
-        {
-            if (!areas.Contains((member.TownId, member.AreaId)))
-            {
-                areas.Add((member.TownId, member.AreaId));
-            }
-        }
-
-        return areas;
-    }
-
     /// <summary>
     /// partyId 分配（设计稿 §2.2.1）：优先用 <paramref name="preferred"/>（建队时队长的 uid），
     /// 被现有队伍占用时扫描一个未占用的非 0 u16。

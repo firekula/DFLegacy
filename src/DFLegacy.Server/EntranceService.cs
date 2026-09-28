@@ -998,18 +998,11 @@ public sealed class EntranceService(
                             SendTownPacketAsync),
                         cancellationToken);
 
-                    // 组队名册跟着区域走：更新本会话 uid、重播名册、并把本区域现有队伍补发给这位客户端
-                    //（「队伍信息」列表与「推荐伙伴」都依赖这些名册，设计稿 §6.2）。
-                    // 必须在 EnterAsync 成功之后：OnAreaChangedAsync 判定"谁和谁同区域"用的是目录快照。
-                    if (activeCharacter is not null)
-                    {
-                        await partyService.OnAreaChangedAsync(
-                            activeCharacter.Id,
-                            currentTownId,
-                            currentAreaId,
-                            localUserId,
-                            cancellationToken);
-                    }
+                    // 组队名册**不在这里**发：必须等本成员的外观（USERINFO）广播出去之后，否则同区
+                    // 旁观者先收到 NOTI 9、后来才拿到他的 user 记录，槽位 uid 查不到人 → 不建立
+                    // "谁属于哪支队伍"的链接（设计稿 §6.5，与 STATUS §2.3 的"外观先于名单"同类）。
+                    // 三个进入区域点（副本回城 / 首次进城镇 / CMD 38 换区）各自在
+                    // SendTownAppearanceAsync(waitForTownActor: true) 之后调用 OnAreaChangedAsync。
                 }
 
                 async Task LeaveTownAreaAsync(CancellationToken cancellationToken)
@@ -2134,6 +2127,19 @@ public sealed class EntranceService(
                     areaRosterInitialized = true;
                     await SendTownFatigueStateAsync();
                     await SendTownAppearanceAsync(waitForTownActor: true);
+
+                    // 组队名册必须晚于本成员的外观（USERINFO）：客户端按 uid 查本地 user 表建立
+                    // "谁属于哪支队伍"的链接，晚到的记录只会存槽位、不建链接（设计稿 §6.5）。
+                    if (activeCharacter is not null)
+                    {
+                        await partyService.OnAreaChangedAsync(
+                            activeCharacter.Id,
+                            currentTownId,
+                            currentAreaId,
+                            localUserId,
+                            serverToken);
+                    }
+
                     await SendSilentTownStaminaStateAsync();
                     await SendEnterGameWorldCompleteAsync();
                     if (leveledUp)
@@ -10817,6 +10823,19 @@ public sealed class EntranceService(
                                 areaRosterInitialized = true;
                                 await SendTownFatigueStateAsync();
                                 await SendTownAppearanceAsync(waitForTownActor: true);
+
+                                // 组队名册必须晚于本成员的外观（USERINFO）：客户端按 uid 查本地 user 表
+                                // 建立"谁属于哪支队伍"的链接，晚到的记录只会存槽位、不建链接（设计稿 §6.5）。
+                                if (activeCharacter is not null)
+                                {
+                                    await partyService.OnAreaChangedAsync(
+                                        activeCharacter.Id,
+                                        currentTownId,
+                                        currentAreaId,
+                                        localUserId,
+                                        serverToken);
+                                }
+
                                 await SendEnterGameWorldCompleteAsync();
                             }
                             continue;
@@ -10869,6 +10888,19 @@ public sealed class EntranceService(
                             areaRosterInitialized = true;
                             await SendTownFatigueStateAsync();
                             await SendTownAppearanceAsync(waitForTownActor: true);
+
+                            // 组队名册必须晚于本成员的外观（USERINFO）：客户端按 uid 查本地 user 表建立
+                            // "谁属于哪支队伍"的链接，晚到的记录只会存槽位、不建链接（设计稿 §6.5）。
+                            if (activeCharacter is not null)
+                            {
+                                await partyService.OnAreaChangedAsync(
+                                    activeCharacter.Id,
+                                    currentTownId,
+                                    currentAreaId,
+                                    localUserId,
+                                    serverToken);
+                            }
+
                             await SendSilentTownStaminaStateAsync();
                             await SendEnterGameWorldCompleteAsync();
                             continue;

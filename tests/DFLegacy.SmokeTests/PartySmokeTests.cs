@@ -275,7 +275,9 @@ internal static class PartySmokeTests
     {
         await CheckInviteFlowAsync(check);
         await CheckApplyToJoinFlowAsync(check);
+        await CheckAccepterJoinsRequesterPartyAsync(check);
         await CheckRequestRefusalsAsync(check);
+        await CheckPartyFullRefusalAsync(check);
         await CheckResponseRefusalShapeAsync(check);
         await CheckDuplicateAcceptIsInertAsync(check);
         await CheckTimeoutAndBlacklistAsync(check);
@@ -340,11 +342,16 @@ internal static class PartySmokeTests
                 && BinaryPrimitives.ReadUInt16LittleEndian(offTownCopy.Payload.AsSpan(7, 2)) == 0
                 && BinaryPrimitives.ReadUInt16LittleEndian(offTownCopy.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃"),
             "a member outside every town area still gets his own copy: only himself is resolvable");
-        check(harness.Of("阿尔法").All(packet =>
+        // 先断言两个收件箱**非空**再 All：空列表上的 All 恒真，等于没测（评审修复）。
+        var alphaAfterLeave = harness.Of("阿尔法");
+        var bravoAfterLeave = harness.Of("布拉沃");
+        check(alphaAfterLeave.Count > 0
+                && bravoAfterLeave.Count > 0
+                && alphaAfterLeave.All(packet =>
                     packet.ProtocolId != GameProtocolEngine.WalkoutNotification)
-                && harness.Of("布拉沃").All(packet =>
+                && bravoAfterLeave.All(packet =>
                     packet.ProtocolId != GameProtocolEngine.WalkoutNotification),
-            "leaving town does not drop the member from the party (nobody gets a NOTI 10)");
+            "leaving town does not drop the member from the party (both members got the roster refresh, nobody a NOTI 10)");
 
         // 解散：旁观者也要收到 kind=3，否则列表里会留一支永远点不开的队伍。
         harness.ClearAll();
@@ -499,6 +506,75 @@ internal static class PartySmokeTests
                 && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(10, 2)) == harness.UidOf("查理")
                 && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(13, 2)) == harness.UidOf("阿尔法"),
             "the applicant is appended in join order behind the existing members");
+    }
+
+    /// <summary>
+    /// 请求者有队伍、目标无队伍 → 接受后**目标并入请求者的队伍**（设计稿 §5.1 的第三种情形；
+    /// 已有用例 `CheckApplyToJoinFlowAsync` 覆盖的是反过来的"请求者并入目标队伍"）。
+    /// </summary>
+    private static async Task CheckAccepterJoinsRequesterPartyAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        await harness.Service.HandleSetInfoAsync(
+            harness.IdOf("阿尔法"), nameSelection: 5, nameBytes: [], maxMembers: 4, CancellationToken.None);
+        harness.ClearAll();
+
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.FirstOf("布拉沃", GameProtocolEngine.RequestPeerNotification) is not null,
+            "a party member who invites an unaffiliated player produces the standard NOTI 7 window");
+
+        harness.ClearAll();
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        var roster = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
+        check(roster is { Payload.Length: 20 }
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(2, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃")
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(13, 2)) == 0xFFFF
+                && roster.Payload[19] == 0,
+            "the accepter joins the requester's party: party id and leader slot stay with the requester");
+        check(harness.Of("阿尔法").Any(packet =>
+                packet.ProtocolId == GameProtocolEngine.ResponsePeerNotification && packet.Payload.Length == 7),
+            "the requester gets the NOTI 8 chat line when the accepter joins his party");
+    }
+
+    /// <summary>
+    /// 队满：目标队伍已达上限（这里用 `CMD 12` 把上限改成 3，凑满 3 人）时再被邀请 →
+    /// 请求方立刻收 `CMD 11 [0,100,0]`，目标**不**收 `NOTI 7`（设计稿 §5.1 的"其余校验"：
+    /// 不能给目标弹一个接受后必定失败的窗）、也不收任何包。
+    /// </summary>
+    private static async Task CheckPartyFullRefusalAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        // 阿尔法 建 3 人上限的队，再让 布拉沃/查理 申请加入 → 满员。
+        await harness.Service.HandleSetInfoAsync(
+            harness.IdOf("阿尔法"), nameSelection: 5, nameBytes: [], maxMembers: 3, CancellationToken.None);
+        foreach (var applicant in new[] { "布拉沃", "查理" })
+        {
+            await harness.Service.HandleRequestAsync(
+                harness.IdOf(applicant),
+                harness.UidOf("阿尔法"),
+                PartyHarness.DefaultInfo,
+                CancellationToken.None);
+            await harness.Service.HandleResponseAsync(
+                harness.IdOf("阿尔法"),
+                harness.UidOf(applicant),
+                CancellationToken.None);
+        }
+
+        harness.ClearAll();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("德尔塔"), harness.UidOf("阿尔法"), PartyHarness.DefaultInfo, CancellationToken.None);
+
+        check(harness.Of("德尔塔").Count == 1
+                && harness.Of("德尔塔")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("德尔塔")[0].Payload.SequenceEqual(new byte[] { 0, 100, 0 }),
+            "inviting a full party fails the requester immediately with CMD 11 [0,100,0]");
+        check(harness.Of("阿尔法").Count == 0,
+            "the full party's leader gets no NOTI 7 window (and no packet at all) for a request that cannot succeed");
     }
 
     /// <summary>拒绝路径：都只回请求方，不打扰目标。</summary>

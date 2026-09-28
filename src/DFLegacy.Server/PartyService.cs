@@ -33,7 +33,6 @@ internal sealed class PartyPendingRequest
     public required Guid RequesterCharacterId { get; init; }
     public required ushort RequesterUid { get; init; }
     public required DateTimeOffset ExpiresAt { get; init; }
-    public required PartyRequestInfo Info { get; init; }
 }
 
 /// <summary>
@@ -108,8 +107,6 @@ public sealed class PartyService : BackgroundService
         _logger = logger;
     }
 
-    public bool IsOnline(Guid characterId) => _channels.ContainsKey(characterId);
-
     /// <summary>测试用：清掉 CMD 10 的服务端限流时间戳（真机路径不会调用）。</summary>
     internal void ResetRequestThrottleForTests(Guid characterId) => _lastRequestAt.TryRemove(characterId, out _);
 
@@ -126,8 +123,7 @@ public sealed class PartyService : BackgroundService
             {
                 RequesterCharacterId = request.RequesterCharacterId,
                 RequesterUid = request.RequesterUid,
-                ExpiresAt = expired,
-                Info = request.Info
+                ExpiresAt = expired
             };
         }
 
@@ -194,9 +190,9 @@ public sealed class PartyService : BackgroundService
     /// <summary>
     /// CMD 10（peerType=0）：邀请 / 申请加入。校验顺序与失败形状见设计稿 §5.1：
     /// 目标解析不到 → `CMD 11 [0,100,0]`；双方都有队伍 / 目标不是队长 / 限流 → 静默；
-    /// **目标已有待决请求 → 先到者优先**：后来者立刻收同形的 `CMD 11 [0,100,0]`（不用等 30 秒），
-    /// 目标正在看的那个窗口也不会被换掉；
-    /// 被目标拉黑 → 只登记发起方（目标无感知），30 秒后照常给发起方失败提示。
+    /// **目标已有待决请求 → 先到者优先**：占位用一次 `TryAdd` 原子完成，后来者立刻收同形的
+    /// `CMD 11 [0,100,0]`（不用等 30 秒），目标正在看的那个窗口也不会被换掉；
+    /// 被目标拉黑 → 只登记发起方（目标无感知，**不写** `_pending`），30 秒后照常给发起方失败提示。
     /// </summary>
     public async Task HandleRequestAsync(
         Guid requesterCharacterId,
@@ -208,6 +204,11 @@ public sealed class PartyService : BackgroundService
         {
             return;
         }
+
+        // uid **只取一次**：换区会改 PartyChannel.AreaUserId，而下面的拉黑判定要 await——
+        // 两次读之间换区会让存下的 RequesterUid 与 NOTI 7 里发出去的 uid 不一致，
+        // 接受方的 CMD 11 就永远对不上，请求方白等 30 秒。
+        var requesterUid = requester.AreaUserId;
 
         var now = _timeProvider.GetUtcNow();
         if (_lastRequestAt.TryGetValue(requesterCharacterId, out var lastRequest)
@@ -267,21 +268,15 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        if (_pending.ContainsKey(target.CharacterId))
-        {
-            // 先到者优先：目标已经有一条待决请求时不动它，只给后来者同形失败（设计稿 §5.1）。
-            await SendRequestFailureAsync(requesterCharacterId, cancellationToken);
-            return;
-        }
-
+        // 被拉黑：目标完全无感知；但登记一个只属于发起方的到期项，让 30 秒后照常收到
+        // 与"对方没理"完全同形的失败提示（否则"立刻能重发"会成为拉黑的旁证）。
+        // 这条分支**不写** _pending（只登记 _blockedRequests）。
         var blocked = await IsBlacklistedAsync(
             target.AccountName,
             requester.CharacterName,
             cancellationToken);
         if (blocked)
         {
-            // 被拉黑：目标完全无感知；但登记一个只属于发起方的到期项，让 30 秒后照常收到
-            // 与"对方没理"完全同形的失败提示（否则"立刻能重发"会成为拉黑的旁证）。
             _blockedRequests[requesterCharacterId] = now + RequestWindow;
             _logger.LogInformation(
                 "Silently dropped a party request from {Requester} to {Target}: the target's blacklist holds the requester.",
@@ -290,17 +285,26 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        _pending[target.CharacterId] = new PartyPendingRequest
+        var pending = new PartyPendingRequest
         {
             RequesterCharacterId = requesterCharacterId,
-            RequesterUid = requester.AreaUserId,
-            ExpiresAt = now + RequestWindow,
-            Info = info
+            RequesterUid = requesterUid,
+            ExpiresAt = now + RequestWindow
         };
+
+        // 原子占位："目标已有待决请求"的判定与写入必须是**一个操作**：先 ContainsKey 后赋值的写法在
+        // 中间隔着一个 await（拉黑查询）时会放两个并发请求都通过判定。TryAdd 失败 = 目标已被更早的
+        // 请求占住 → 后来者立刻收同形失败（先到者优先，设计稿 §5.1），目标正在看的窗口也不会被换掉。
+        if (!_pending.TryAdd(target.CharacterId, pending))
+        {
+            await SendRequestFailureAsync(requesterCharacterId, cancellationToken);
+            return;
+        }
+
         await SendAsync(
             target.CharacterId,
             GameProtocolEngine.CreateRequestPartyNotification(
-                requester.AreaUserId,
+                requesterUid,
                 info.ReviveCoins,
                 info.Fatigue,
                 info.WeaknessPercent),
