@@ -12,6 +12,7 @@ internal static class TradeSmokeTests
         CheckTradePackets(check);
         CheckPlanner(check);
         await CheckStoreAsync(check);
+        await CheckRequestFlowAsync(check);
     }
 
     // 逐字段依据 .superpowers/sdd/trade-protocol-recon.md §2/§3：
@@ -582,6 +583,119 @@ internal static class TradeSmokeTests
             }
         }
     }
+
+    private static async Task CheckRequestFlowAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", townId: 1, areaId: 2, areaUserId: 1);
+        await harness.EnterTownAsync("布拉沃", townId: 1, areaId: 2, areaUserId: 2);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        // 服务端独立限流：同一角色 3 秒内的第二条 CMD 10 直接丢弃（客户端 CMD 10 里的 u32
+        // 时间差只够防客户端自身抖动，服务端不能依赖它）。
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1,
+            "two back-to-back requests inside the throttle window answer exactly one failure");
+
+        harness.Clear("阿尔法");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        var alicePackets = harness.Of("阿尔法");
+        var bravoPackets = harness.Of("布拉沃");
+        check(alicePackets.Count == 0,
+            "the initiator gets no reply: the client prints 已发出交易请求 locally");
+        check(bravoPackets.Count == 1
+                && bravoPackets[0].Type == 0
+                && bravoPackets[0].ProtocolId == GameProtocolEngine.RequestPeerNotification
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoPackets[0].Payload.AsSpan(0, 2)) == 1,
+            "the target receives exactly one NOTI 7 carrying the requester's area user id");
+
+        // 同一时间只能一笔：目标再被请求
+        await harness.Service.HandleRequestAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        check(harness.Of("阿尔法").Count(packet =>
+                    packet.ProtocolId == GameProtocolEngine.ResponsePeerNotification) == 0,
+            "a second request while one is pending is dropped");
+
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        await harness.Service.HandleResponseAsync(harness.IdOf("布拉沃"), 1, accept: true, CancellationToken.None);
+        var alphaTail = harness.Of("阿尔法");
+        var bravoTail = harness.Of("布拉沃");
+        check(alphaTail.Count == 1
+                && alphaTail[0].Type == 0
+                && alphaTail[0].ProtocolId == GameProtocolEngine.ResponsePeerNotification
+                && BinaryPrimitives.ReadUInt16LittleEndian(alphaTail[0].Payload.AsSpan(0, 2)) == 2
+                && alphaTail[0].Payload[^1] == 0,
+            "the requester opens the window with NOTI 8 carrying the accepter's uid (mode 0)");
+        check(bravoTail.Count == 1
+                && bravoTail[0].Type == 1
+                && bravoTail[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && bravoTail[0].Payload[0] == 1
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoTail[0].Payload.AsSpan(1, 2)) == 1,
+            "the accepter opens the window with CMD 11 [1, requesterUid, 1, mode]");
+
+        // 上一笔已经 Open：先用离区取消把它收掉（Task 4 还没有 CMD 26 的接口），
+        // 否则"同时只能一笔"会让下面的新请求直接被丢掉。
+        await harness.Service.CancelForAreaChangeAsync(harness.IdOf("阿尔法"), CancellationToken.None);
+        check(harness.Of("阿尔法").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification)
+                && harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification),
+            "leaving the area cancels the open trade and both sides are told (NOTI 16)");
+
+        // 拒绝/超时：30 秒后请求方收到失败提示，双方可再次发起
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        harness.Clear("阿尔法");
+        check(await harness.Service.SweepExpiredAsync(
+                    DateTimeOffset.UtcNow + TimeSpan.FromSeconds(31),
+                    CancellationToken.None) == 1,
+            "the request window expires after 30 seconds");
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].Type == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload[0] == 0
+                && harness.Of("阿尔法")[0].Payload[1] == GameProtocolEngine.ItemTradePeerType
+                && harness.Of("阿尔法")[0].Payload[2] == 1,
+            "an expired request answers CMD 11 [0, 100, 1]: 对方不在线，或拒绝了您的交易请求");
+        check(harness.Of("布拉沃").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.CancelItemTradeNotification),
+            "an expired request never sends NOTI 16: no panel was ever open");
+
+        // 目标离线 / 不在同镇 / 自己
+        harness.Clear("阿尔法");
+        await harness.EnterTownAsync("布拉沃", townId: 3, areaId: 4, areaUserId: 2);
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload[0] == 0,
+            "a target in another town is refused with the same CMD 11 failure");
+
+        // 自己：客户端本来就把菜单项拦掉了（0x139/0x13D），改造客户端发来时按"目标不可达"
+        // 回同一条失败包——静默只留给被拉黑那一档（设计稿 §2.6）。
+        // 布拉沃的收件箱里还留着上一条 30 秒超时请求的 NOTI 7，这里一并清掉再断言。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload[0] == 0
+                && harness.Of("布拉沃").Count == 0,
+            "a request against your own uid answers the same CMD 11 failure and never reaches anyone else");
+
+        harness.Clear("阿尔法");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].Payload[0] == 0,
+            "an unknown area user id is refused");
+    }
 }
 
 internal static class TradeFixtures
@@ -674,6 +788,7 @@ internal sealed class TradeHarness : IAsyncDisposable
 {
     private readonly Dictionary<string, List<GameServerPacket>> _packets = new();
     private readonly Dictionary<string, (Guid Id, string Account)> _characters = new();
+    private readonly Dictionary<string, Guid> _sessionIds = new();
 
     private TradeHarness(
         string root,
@@ -697,8 +812,12 @@ internal sealed class TradeHarness : IAsyncDisposable
     public CharacterStatCatalog Stats { get; }
     public JsonGameStore Store { get; }
     public TownSessionDirectory Directory { get; }
+    public ItemTradeService Service { get; private set; } = null!;
 
     public Guid IdOf(string characterName) => _characters[characterName].Id;
+
+    /// <summary>本会话的会话 id：拆除通道（Task 6 的掉线用例）要带它才能生效。</summary>
+    public Guid SessionIdOf(string characterName) => _sessionIds[characterName];
 
     public IReadOnlyList<GameServerPacket> Of(string characterName)
     {
@@ -755,7 +874,32 @@ internal sealed class TradeHarness : IAsyncDisposable
         harness._packets["布拉沃"] = [];
         harness._characters["阿尔法"] = (alpha.Id, "alice");
         harness._characters["布拉沃"] = (bravo.Id, "bobby");
-        // Task 4 补：ItemTradeService 与 AttachChannelAsync
+        harness._sessionIds["阿尔法"] = Guid.NewGuid();
+        harness._sessionIds["布拉沃"] = Guid.NewGuid();
+        harness.Service = new ItemTradeService(
+            store,
+            items,
+            stats,
+            directory,
+            TimeProvider.System,
+            NullLogger<ItemTradeService>.Instance);
+        // 两个角色的区用户 id 与 EnterTownAsync 里登记的一致：交易命令里只有 uid。
+        await harness.Service.AttachChannelAsync(
+            "alice",
+            "阿尔法",
+            alpha.Id,
+            areaUserId: 1,
+            harness._sessionIds["阿尔法"],
+            harness.Record("阿尔法"),
+            CancellationToken.None);
+        await harness.Service.AttachChannelAsync(
+            "bobby",
+            "布拉沃",
+            bravo.Id,
+            areaUserId: 2,
+            harness._sessionIds["布拉沃"],
+            harness.Record("布拉沃"),
+            CancellationToken.None);
         return harness;
     }
 
@@ -817,20 +961,20 @@ internal sealed class TradeHarness : IAsyncDisposable
             CancellationToken.None);
     }
 
-    public Task LeaveTownAsync(string characterName)
+    public async Task LeaveTownAsync(string characterName)
     {
         var (id, _) = _characters[characterName];
         if (Directory.TryGetSnapshot(id, out _))
         {
-            // Task 4 补：交易服务落地后在这里取消该角色参与的交易。
+            // 交易要求双方同镇同区：离开该区域即取消并退回（仍在场的另一方收到 NOTI 16）。
+            await Service.CancelForAreaChangeAsync(id, CancellationToken.None);
         }
-
-        return Task.CompletedTask;
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        // Task 4 补：ItemTradeService 落地后这里加 `await Service.StopAsync(CancellationToken.None);`
+        // 服务是后台任务：先停掉扫描循环再删目录（没启动过时 StopAsync 是空操作）。
+        await Service.StopAsync(CancellationToken.None);
         try
         {
             System.IO.Directory.Delete(Root, recursive: true);
@@ -838,7 +982,5 @@ internal sealed class TradeHarness : IAsyncDisposable
         catch (IOException)
         {
         }
-
-        return ValueTask.CompletedTask;
     }
 }
