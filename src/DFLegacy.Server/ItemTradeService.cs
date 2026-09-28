@@ -503,6 +503,20 @@ public sealed class ItemTradeService : BackgroundService
         var passiveRecord = actorIsInitiator ? commit.Partner : commit.Initiator;
         _pendingInstalls[passiveSide.Channel.CharacterId] =
             new ItemTradePendingInstall(commit.TradeId, passiveRecord);
+        // 上面第 459 行的 IsOnline 判定到这次登记之间，被动方可能刚好掉线：它的拆除清理
+        // 已经跑完，既不会消费这条登记，也不会清掉 store 里刚打上的交付守门标记。再查一次
+        // 在线状态，离线就撤销登记并清标记——否则这个角色的下一次盲写（含选角时的背包修复）
+        // 会被守门永久拒绝，锁死到重启。结算本身仍然有效：存档已提交，他重登读到的就是结果。
+        if (!IsOnline(passiveSide.Channel.CharacterId))
+        {
+            _pendingInstalls.TryRemove(passiveSide.Channel.CharacterId, out _);
+            _store.ClearTradeDeliveryPending(passiveSide.Channel.CharacterId);
+            _logger.LogInformation(
+                "Trade {TradeId}: {Passive} disconnected before the delivery could be installed; the settlement stands and the blind-write gate was released.",
+                commit.TradeId,
+                passiveSide.Channel.CharacterName);
+        }
+
         _store.AcknowledgeTradeDelivery(actor.Channel.CharacterId, commit.TradeId);
         RemoveSession(session);
         _logger.LogInformation(

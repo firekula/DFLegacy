@@ -3084,6 +3084,25 @@ public sealed class EntranceService(
                                 .FirstOrDefault(candidate =>
                                     candidate.CharacterNo == character.CharacterNo)
                                 ?? character;
+
+                            // 结算后的交付安装自愈：这个角色可能带着"未安装交付"的守门标记
+                            // （被动方在结算登记前后掉线、或在安装前回了选人）。选角路径下面的
+                            // 背包修复是盲写，标记不清会被 store 拒绝并让选角永久失败；这里先
+                            // 消费一次待安装记录、销掉标记，并直接采用结算后的存档记录。
+                            if (itemTradeService.TryTakePendingInstall(
+                                    character.Id,
+                                    out var selectingTradeInstall))
+                            {
+                                character = selectingTradeInstall.State;
+                                store.AcknowledgeTradeDelivery(
+                                    character.Id,
+                                    selectingTradeInstall.TradeId);
+                                logger.LogInformation(
+                                    "Installed settled trade {TradeId} into character {CharacterId} during character selection.",
+                                    selectingTradeInstall.TradeId,
+                                    character.Id);
+                            }
+
                             var persistedWarehouseCapacity = character.WarehouseCapacity;
                             warehouseCapacity = CharacterWarehouseProgression.Normalize(
                                 persistedWarehouseCapacity);
@@ -5586,6 +5605,36 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            // 托管冻结：交易要求只从主背包托管，分解读的正是主背包 9..40 槽，
+                            // 托管中的装备不能被分解（按 (栏,格) 或 InstanceId 命中即拒，
+                            // 走本分支既有的失败回包，服务端物品不动）。
+                            mainInventory.TryGetValue(
+                                disjointPlan.SourceSlot,
+                                out var disjointItem);
+                            if (itemTradeService.IsEscrowed(
+                                    activeCharacter.Id,
+                                    0,
+                                    disjointPlan.SourceSlot)
+                                || (disjointItem is not null
+                                    && itemTradeService.IsEscrowedInstance(
+                                        activeCharacter.Id,
+                                        disjointItem.InstanceId)))
+                            {
+                                var error = GameProtocolEngine.CreateCommandError(
+                                    request,
+                                    errorCode: 17);
+                                await error.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, error);
+                                logger.LogWarning(
+                                    "escrowed item {ItemId} at ({ListType},{Slot}) refused for {Command}",
+                                    disjointItem?.ItemId,
+                                    0,
+                                    disjointPlan.SourceSlot,
+                                    "DisjointItem");
+                                continue;
+                            }
+
                             var disjointWarehouseSettlement =
                                 PlanWarehouseUpgradeSettlement(
                                     disjointPlan.MainInventory.Values,
@@ -6958,6 +7007,32 @@ public sealed class EntranceService(
                                         itemToMoveIntoEmptySlot,
                                         sourceSlot))
                                 {
+                                    // 托管冻结：这一支是"拖到空格"的真实编码，被搬动的
+                                    // 物品其实在目标格，按 (栏,格) 或 InstanceId 命中即拒，
+                                    // 客户端按 no-op 回包回滚。
+                                    if (itemTradeService.IsEscrowed(
+                                            activeCharacter.Id,
+                                            0,
+                                            destinationSlot)
+                                        || itemTradeService.IsEscrowedInstance(
+                                            activeCharacter.Id,
+                                            itemToMoveIntoEmptySlot.InstanceId))
+                                    {
+                                        await SendInventoryMoveNoOpAsync(
+                                            sourceListType,
+                                            sourceSlot,
+                                            destinationListType,
+                                            destinationSlot,
+                                            "the item is escrowed in an open trade");
+                                        logger.LogWarning(
+                                            "escrowed item {ItemId} at ({ListType},{Slot}) refused for {Command}",
+                                            itemToMoveIntoEmptySlot.ItemId,
+                                            0,
+                                            destinationSlot,
+                                            "MoveItemSpace");
+                                        continue;
+                                    }
+
                                     mainInventory.Remove(destinationSlot);
                                     mainInventory[sourceSlot] = itemToMoveIntoEmptySlot with
                                     {
@@ -10590,6 +10665,15 @@ public sealed class EntranceService(
                             // sequence, byte town, byte area, int16 x, int16 y
                             if (request.Body.Length >= 8)
                             {
+                                if (activeCharacter is not null)
+                                {
+                                    // 交易要求双方同镇同区：换区即取消并退回（此刻人还在线，
+                                    // 双方都要拿到 NOTI 16），必须在改区域之前。
+                                    await itemTradeService.CancelForAreaChangeAsync(
+                                        activeCharacter.Id,
+                                        serverToken);
+                                }
+
                                 currentTownId = request.Body[2];
                                 currentAreaId = request.Body[3];
                                 currentX = BinaryPrimitives.ReadInt16LittleEndian(
