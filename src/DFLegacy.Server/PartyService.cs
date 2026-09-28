@@ -84,6 +84,16 @@ public sealed class PartyService : BackgroundService
     private readonly ConcurrentDictionary<Guid, PartyPendingRequest> _pending = new();
     private readonly ConcurrentDictionary<Guid, DateTimeOffset> _blockedRequests = new();
     private readonly ConcurrentDictionary<Guid, DateTimeOffset> _lastRequestAt = new();
+
+    /// <summary>
+    /// 每支队"曾经通知过哪些区域"（partyId → 区域累积集）。客户端没有列表查询包，「队伍信息」列表
+    /// 完全由"客户端本地是否知道这支队伍"推导，所以名册变化与解散都必须通知**每一个曾经收到过名册的区域**，
+    /// 而不只是"此刻还有队员站在"的区域——队伍撤出的那些区域里的旁观者手里还留着上一份名册的本地副本，
+    /// 不刷新就会一直显示过时的成员/人数，点"加入"甚至会把申请发给已经退队的人（设计稿 §6.2.3 明文要求
+    /// 解散时通知"广播过的各区域旁观者"）。只在 <see cref="_gate"/> 内读写；队伍解散时随队伍一起清除——
+    /// partyId 会被复用，残留条目会把新队伍的名册广播到上一支队伍的旧区域。
+    /// </summary>
+    private readonly Dictionary<ushort, List<(byte TownId, byte AreaId)>> _notifiedAreas = new();
     private readonly object _gate = new();
 
     public PartyService(
@@ -417,7 +427,11 @@ public sealed class PartyService : BackgroundService
             created ? " (created)" : string.Empty);
     }
 
-    /// <summary>CMD 13：退出队伍（无载荷）。失败码 18 = 未组队、19 = 队伍状态已变化。</summary>
+    /// <summary>
+    /// CMD 13：退出队伍（无载荷）。失败码只有 **18 = 未组队**（dnf.str 0x2CE）：本路径发不出别的码——
+    /// "取到名册后又消失"的并发窗口由 <see cref="RemoveMemberFromPartyAsync"/> 静默收场，
+    /// 客户端那边看到的仍然是"退队成功"（Task 3 评审删掉了永远发不出的 19 = 状态已变化）。
+    /// </summary>
     public async Task HandleLeaveAsync(Guid characterId, CancellationToken cancellationToken = default)
     {
         PartyRoster? roster;
@@ -441,7 +455,8 @@ public sealed class PartyService : BackgroundService
 
     /// <summary>
     /// CMD 14：踢人（载荷 = 槽位下标 0..3，不是 uid）。只有队长能踢，且必须指向队伍里的别人：
-    /// 失败码 4 = 不是队长、19 = 状态已变化、8 = 该槽位没人（B 卷 §6.4）。
+    /// 失败码只有 **4 = 不是队长、8 = 该槽位没人**（B 卷 §6.4；19 = 状态已变化在 Task 3 评审里
+    /// 删掉了——本路径发不出来，判定与摘除都在同一个锁内一次做完）。
     /// </summary>
     public async Task HandleKickAsync(
         Guid leaderCharacterId,
@@ -543,8 +558,111 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
-    /// 名册下发：Task 4 会在这里补上"区域广播（含旁观者）"；本 Task 先把每个成员自己那份发全，
-    /// 其中**不在任何城镇区域的成员**（在副本里等）只给"他自己可解析"的那一份（设计稿 §2.2.2）。
+    /// 进区/换区（`CMD 38` 与副本结束回城都会走到）：**不退队**（设计稿 §4.4 的用户决策），
+    /// 只做三件事：①把本会话的 uid 更新成新区域的；②更新该成员在名册里的位置并重播名册
+    /// （旧区域版本里他会变成 0、新区域版本里是真实 uid）；③**进区补发**——把本区域现有队伍
+    /// 逐支发给刚进来的这位，否则他的「队伍信息」列表是空的、推荐伙伴也过滤不准（设计稿 §6.2）。
+    /// 已知边界：私密区域（默认只有赛利亚房间 1/1）里每个成员各占一个实例，同 (城镇, 区域) 的
+    /// "真实 uid"在对方的本地 user 表里解析不出来 → 那一行空白；私密区域里也无法组队
+    /// （对方在他的实例里不可见，请求根本发不出）。
+    /// </summary>
+    public async Task OnAreaChangedAsync(
+        Guid characterId,
+        byte townId,
+        byte areaId,
+        ushort areaUserId,
+        CancellationToken cancellationToken = default)
+    {
+        List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
+        List<(byte TownId, byte AreaId, GameServerPacket Packet)> areas = [];
+        lock (_gate)
+        {
+            if (_channels.TryGetValue(characterId, out var channel))
+            {
+                channel.AreaUserId = areaUserId;
+            }
+
+            if (TryGetPartyOf(characterId, out var roster) && roster is not null)
+            {
+                roster.UpdateLocation(characterId, townId, areaId, areaUserId);
+                foreach (var member in roster.Members)
+                {
+                    direct.Add((member.CharacterId, BuildRosterPacket(roster, member.CharacterId)));
+                }
+
+                // 新区域这一份 + "曾通知过的区域"各一份：旧区域的旁观者在这一份里看到他的格子变 0
+                // （即使旧区域已经一个队员都不剩——它仍然"知道"这支队伍，设计稿 §5.6）。
+                foreach (var (memberTownId, memberAreaId) in NotifiedAreas(roster))
+                {
+                    areas.Add((
+                        memberTownId,
+                        memberAreaId,
+                        BuildRosterPacketForArea(roster, memberTownId, memberAreaId)));
+                }
+            }
+
+            foreach (var visible in RostersVisibleIn(townId, areaId))
+            {
+                direct.Add((characterId, BuildRosterPacket(visible, characterId)));
+            }
+        }
+
+        foreach (var (target, packet) in direct)
+        {
+            await SendAsync(target, packet, cancellationToken);
+        }
+
+        foreach (var (memberTownId, memberAreaId, packet) in areas)
+        {
+            await _directory.BroadcastPartyPacketAsync(memberTownId, memberAreaId, packet, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// 离开城镇区域（进副本 / 回登录前的离场）：**不退队**（设计稿 §4.4），只重播名册——
+    /// 目录里已经没有他，"曾通知过的区域"收到的那一份里他那一格因此变成 0
+    /// （旁观者不会把 uid 解析到别人身上；设计稿 §5.6）。
+    /// </summary>
+    public async Task OnLeftAreaAsync(Guid characterId, CancellationToken cancellationToken = default)
+    {
+        PartyRoster? roster;
+        lock (_gate)
+        {
+            TryGetPartyOf(characterId, out roster);
+        }
+
+        if (roster is null)
+        {
+            return;
+        }
+
+        await PublishRosterAsync(roster, cancellationToken);
+    }
+
+    /// <summary>**锁内调用**：此刻在 (townId, areaId) 有成员站着的队伍（进区补发用；目录是权威）。</summary>
+    private List<PartyRoster> RostersVisibleIn(byte townId, byte areaId)
+    {
+        var visible = new List<PartyRoster>();
+        foreach (var roster in _parties.Values)
+        {
+            foreach (var member in roster.Members)
+            {
+                if (_directory.TryGetSnapshot(member.CharacterId, out var snapshot)
+                    && snapshot.TownId == townId
+                    && snapshot.AreaId == areaId)
+                {
+                    visible.Add(roster);
+                    break;
+                }
+            }
+        }
+
+        return visible;
+    }
+
+    /// <summary>
+    /// 名册下发：每个成员自己那份（按他自己的区域替换槽位 uid）+ "曾通知过的区域"的旁观者那份。
+    /// **不在任何城镇区域的成员**（在副本里等）只给"他自己可解析"的那一份（设计稿 §2.2.2）。
     /// </summary>
     internal Task PublishRosterAsync(PartyRoster roster, CancellationToken cancellationToken)
     {
@@ -558,28 +676,82 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
-    /// 给指定收件人各发一份名册：收件人**不等于**名册成员（离队/被踢的人也要收一份"没有他"的新名册，
-    /// 客户端靠它自我清理并提示"已退出队伍"，设计稿 §5.3/§5.4）。Task 4 把它换成区域广播。
+    /// 名册下发：给 <paramref name="recipients"/> 各发一份按**他自己**区域替换的版本（内部薄包装
+    /// <see cref="PublishRosterAsync"/> 传的就是当前成员），并顺带刷新"曾通知过的区域"里的旁观者。
+    /// 收件人**不等于**名册成员（离队/被踢的人也要收一份"没有他"的新名册，
+    /// 客户端靠它自我清理并提示"已退出队伍"，设计稿 §5.3/§5.4）。
     /// </summary>
     private async Task PublishRosterToAsync(
         PartyRoster roster,
         IReadOnlyList<Guid> recipients,
         CancellationToken cancellationToken)
     {
-        List<(Guid CharacterId, GameServerPacket Packet)> packets = [];
+        List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
+        List<(byte TownId, byte AreaId, GameServerPacket Packet)> areas = [];
         lock (_gate)
         {
             foreach (var characterId in recipients)
             {
-                packets.Add((characterId, BuildRosterPacket(roster, characterId)));
+                direct.Add((characterId, BuildRosterPacket(roster, characterId)));
+            }
+
+            foreach (var (townId, areaId) in NotifiedAreas(roster))
+            {
+                areas.Add((townId, areaId, BuildRosterPacketForArea(roster, townId, areaId)));
             }
         }
 
-        foreach (var (characterId, packet) in packets)
+        foreach (var (characterId, packet) in direct)
         {
             await SendAsync(characterId, packet, cancellationToken);
         }
+
+        foreach (var (townId, areaId, packet) in areas)
+        {
+            await _directory.BroadcastPartyPacketAsync(townId, areaId, packet, cancellationToken);
+        }
     }
+
+    /// <summary>
+    /// **锁内调用**：本队"曾经通知过的区域" ∪ 此刻有成员站着的区域，并把新出现的区域记进累积集。
+    /// 目录是位置的权威：副本里/离开城镇的成员不在任何区域，只有此刻站在城镇区域的他才贡献区域。
+    /// </summary>
+    private List<(byte TownId, byte AreaId)> NotifiedAreas(PartyRoster roster)
+    {
+        _notifiedAreas.TryGetValue(roster.PartyId, out var registered);
+        var areas = registered is null ? new List<(byte, byte)>() : [.. registered];
+        foreach (var member in roster.Members)
+        {
+            if (_directory.TryGetSnapshot(member.CharacterId, out var snapshot)
+                && !areas.Contains((snapshot.TownId, snapshot.AreaId)))
+            {
+                areas.Add((snapshot.TownId, snapshot.AreaId));
+            }
+        }
+
+        // 只有"仍在册"的队伍才登记累积集：并发路径可能拿着已解散的名册出锁后才来发包，
+        // 那时 partyId 可能已经归新队伍所有，残留条目会把新队伍的名册广播给上一支队伍的旧区域。
+        if (_parties.TryGetValue(roster.PartyId, out var live) && ReferenceEquals(live, roster))
+        {
+            _notifiedAreas[roster.PartyId] = areas;
+        }
+
+        return [.. areas];
+    }
+
+    /// <summary>同一区域内所有收包者共用的那份名册（能解析到的成员填真实 uid，其余 0）。</summary>
+    private GameServerPacket BuildRosterPacketForArea(PartyRoster roster, byte townId, byte areaId) =>
+        GameProtocolEngine.CreatePartyInfoNotification(
+            roster.PartyId,
+            roster.NameSelection,
+            roster.MaxMembers,
+            roster.SlotUids(member =>
+                _directory.TryGetSnapshot(member.CharacterId, out var snapshot)
+                && snapshot.TownId == townId
+                && snapshot.AreaId == areaId
+                    ? snapshot.AreaUserId
+                    : null),
+            PartyRoster.LeaderSlot);
 
     /// <summary>
     /// 为某个收包者生成名册包（设计稿 §2.2.2）：同区域成员填真实 uid；收包者自己永远填自己的 uid
@@ -623,8 +795,9 @@ public sealed class PartyService : BackgroundService
     ///    （按**离开者当时的槽位**）——它的分支按槽位查成员对象取名字，`NOTI 9` 会把那个槽清成 0xFFFF
     ///    （B 卷 §4.1）；收件人是**离开者本人 + 其余成员**：被踢者自己也要看到"已被队长强行请出队伍"
     ///    （设计稿 §5.4），掉线路径里离开者已离线、给他的那份自然落空（设计稿 §5.5）；
-    /// 2) 同一批人各收一份新名册（离开者那份的槽数组里没有他 → 客户端自我清理，设计稿 §5.3）；
-    /// 3) 队伍空了 → 销毁并给"知道它的人"发 kind=3（Task 4 补旁观者）。
+    /// 2) 同一批人各收一份新名册（离开者那份的槽数组里没有他 → 客户端自我清理，设计稿 §5.3），
+    ///    同时刷新"曾通知过的区域"的旁观者；
+    /// 3) 队伍空了 → 销毁，并给"知道它的人"（成员 + 曾通知过的每个区域）发 kind=3。
     /// </summary>
     private async Task RemoveMemberFromPartyAsync(
         Guid characterId,
@@ -633,6 +806,7 @@ public sealed class PartyService : BackgroundService
     {
         PartyRoster? roster;
         Guid[] recipients = [];
+        List<(byte TownId, byte AreaId)> knownAreas = [];
         byte slot = 0;
         var dissolved = false;
         lock (_gate)
@@ -644,6 +818,8 @@ public sealed class PartyService : BackgroundService
 
             // 收件人在 Remove **之前**取：离队者本人也要收 NOTI 10 和新名册（设计稿 §5.3/§5.4）。
             recipients = [.. roster.Members.Select(member => member.CharacterId)];
+            // 解散时通知的区域也在 Remove **之前**取：离场者此刻站的区域也要清（否则那里的列表留脏行）。
+            knownAreas = NotifiedAreas(roster);
             slot = (byte)Math.Clamp(roster.IndexOf(characterId), 0, GameProtocolEngine.PartyMemberSlotCount - 1);
             if (roster.Remove(characterId))
             {
@@ -654,6 +830,8 @@ public sealed class PartyService : BackgroundService
             {
                 dissolved = true;
                 _parties.TryRemove(roster.PartyId, out _);
+                // 队伍没了，累积的区域集也要跟着走：partyId 会被复用，残留会把新队伍的名册发到旧区域。
+                _notifiedAreas.Remove(roster.PartyId);
             }
         }
 
@@ -675,8 +853,7 @@ public sealed class PartyService : BackgroundService
 
         if (dissolved)
         {
-            // 队伍只剩 0 人：kind=3 发给离开者（发给旁观者由 Task 4 补，设计稿 §5.5）。
-            await BroadcastDisbandAsync(roster.PartyId, [], characterId, cancellationToken);
+            await BroadcastDisbandAsync(roster.PartyId, [], characterId, knownAreas, cancellationToken);
             _logger.LogInformation("Party {PartyId} dissolved.", roster.PartyId);
             return;
         }
@@ -689,11 +866,15 @@ public sealed class PartyService : BackgroundService
             roster.Count);
     }
 
-    /// <summary>解散：给离开者与所有"知道该队伍的人"发 kind=3（Task 4 会补旁观者）。</summary>
+    /// <summary>
+    /// 解散：给离开者、剩余成员、以及**曾通知过的每个区域**的旁观者各发一条 kind=3
+    /// （设计稿 §6.2.3）——旁观者收到后会把该队伍从本地队伍表摘除，否则列表里会留一支点不开的队伍。
+    /// </summary>
     private async Task BroadcastDisbandAsync(
         ushort partyId,
         IReadOnlyList<Guid> remaining,
         Guid leavingCharacterId,
+        IReadOnlyList<(byte TownId, byte AreaId)> knownAreas,
         CancellationToken cancellationToken)
     {
         var packet = GameProtocolEngine.CreatePartyDisbandNotification(partyId);
@@ -701,6 +882,11 @@ public sealed class PartyService : BackgroundService
         foreach (var member in remaining)
         {
             await SendAsync(member, packet, cancellationToken);
+        }
+
+        foreach (var (townId, areaId) in knownAreas)
+        {
+            await _directory.BroadcastPartyPacketAsync(townId, areaId, packet, cancellationToken);
         }
     }
 

@@ -456,6 +456,35 @@ public sealed class TownSessionDirectory(
         return delivered;
     }
 
+    /// <summary>
+    /// 组队名册的区域广播：把 <paramref name="packet"/> 投给该 (城镇, 区域) **全部实例**的成员
+    /// （含私密实例），坏通道沿用 <see cref="SendAsync(TownMember, GameServerPacket, CancellationToken)"/>
+    /// 的剔除逻辑。调用方（PartyService）负责按区域生成不同的 body，并保证
+    /// **调用本方法时不持有自己的锁**（避免与目录的结构锁形成嵌套）。
+    /// </summary>
+    internal async Task<int> BroadcastPartyPacketAsync(
+        byte townId,
+        byte areaId,
+        GameServerPacket packet,
+        CancellationToken cancellationToken)
+    {
+        if (!options.TownSync.Enabled)
+        {
+            return 0;
+        }
+
+        var delivered = 0;
+        foreach (var member in SnapshotMembers(townId, areaId))
+        {
+            if (await SendAsync(member, packet, cancellationToken))
+            {
+                delivered++;
+            }
+        }
+
+        return delivered;
+    }
+
     private async Task RemoveMemberAsync(
         TownMember member,
         bool broadcastDeparture,

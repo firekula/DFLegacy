@@ -281,6 +281,80 @@ internal static class PartySmokeTests
         await CheckTimeoutAndBlacklistAsync(check);
         await CheckLeaveAndKickAsync(check);
         await CheckSetPartyInfoAsync(check);
+        await CheckAreaBroadcastAsync(check);
+    }
+
+    /// <summary>
+    /// 「队伍信息」列表与「推荐伙伴」的过滤都靠"附近玩家身上挂着队伍"这条链接（C 卷 §2.2），
+    /// 所以名册必须广播给**同区域的所有客户端**（含不在这支队伍里的旁观者），并在进区时补发。
+    /// </summary>
+    private static async Task CheckAreaBroadcastAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        var bystander = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
+        check(bystander is { Payload.Length: 20 }
+                && BinaryPrimitives.ReadUInt16LittleEndian(bystander.Payload.AsSpan(2, 2)) == harness.UidOf("阿尔法"),
+            "a bystander in the same area learns the new party (same party id as the members)");
+        check(harness.Of("艾琳").Count == 0,
+            "a client in another area of the same town gets no party roster");
+
+        // 换区：旧区域版本里离场成员变 0，新区域版本里他是真实 uid（设计稿 §2.2.2）。
+        harness.ClearAll();
+        await harness.MoveToAsync("布拉沃", townId: 1, areaId: 1, uid: 21);
+        var oldAreaRoster = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
+        check(oldAreaRoster is not null
+                && BinaryPrimitives.ReadUInt16LittleEndian(oldAreaRoster.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(oldAreaRoster.Payload.AsSpan(10, 2)) == 0,
+            "the roster sent to the area the member left substitutes 0 for that member");
+        var newAreaRoster = harness.FirstOf("艾琳", GameProtocolEngine.PartyInfoNotification);
+        check(newAreaRoster is not null
+                && BinaryPrimitives.ReadUInt16LittleEndian(newAreaRoster.Payload.AsSpan(7, 2)) == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(newAreaRoster.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃"),
+            "the roster sent to the area the member entered carries its real uid there");
+
+        // 进区补发：队伍先建好，旁观者后进这个区域，也要看得见。
+        harness.ClearAll();
+        await harness.MoveToAsync("查理", townId: 1, areaId: 0, uid: 31);
+        check(harness.FirstOf("查理", GameProtocolEngine.PartyInfoNotification) is not null,
+            "a client entering the area is back-filled with the rosters of the parties living there");
+
+        // 离区（进副本）：**不退队**（设计稿 §4.4），只重播名册——目录里已经没有他，
+        // 于是"曾通知过的区域"收到的那份里他那一格变成 0（旁观者不会把 uid 解析到别人身上）。
+        harness.ClearAll();
+        await harness.LeaveTownAsync("布拉沃");
+        var afterLeaveArea = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
+        check(afterLeaveArea is not null
+                && BinaryPrimitives.ReadUInt16LittleEndian(afterLeaveArea.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(afterLeaveArea.Payload.AsSpan(10, 2)) == 0,
+            "leaving town for a dungeon blanks the member's slot in the area he left");
+        // 他自己那份走的是另一条"填 0"分支：收包者不在任何城镇区域 → 除自己外全部 0
+        // （Task 3 评审留下的覆盖缺口：异区/不可解析的成员必须填 0，不能填真实 uid，设计稿 §2.2.2）。
+        var offTownCopy = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
+        check(offTownCopy is { Payload.Length: 20 }
+                && BinaryPrimitives.ReadUInt16LittleEndian(offTownCopy.Payload.AsSpan(7, 2)) == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(offTownCopy.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃"),
+            "a member outside every town area still gets his own copy: only himself is resolvable");
+        check(harness.Of("阿尔法").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.WalkoutNotification)
+                && harness.Of("布拉沃").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.WalkoutNotification),
+            "leaving town does not drop the member from the party (nobody gets a NOTI 10)");
+
+        // 解散：旁观者也要收到 kind=3，否则列表里会留一支永远点不开的队伍。
+        harness.ClearAll();
+        await harness.Service.HandleLeaveAsync(harness.IdOf("阿尔法"), CancellationToken.None);
+        await harness.Service.HandleLeaveAsync(harness.IdOf("布拉沃"), CancellationToken.None);
+        check(harness.Of("德尔塔").Any(packet =>
+                packet.ProtocolId == GameProtocolEngine.PartyInfoNotification
+                && packet.Payload.Length == 5
+                && packet.Payload[4] == 3),
+            "a disband reaches the bystanders (every area the party ever announced itself in) as a kind=3 record");
     }
 
     /// <summary>
@@ -314,10 +388,12 @@ internal static class PartySmokeTests
 
     /// <summary>
     /// 重复接受必须幂等：同一份待决请求被接受两次（第二次与第一次并发）只产出**一套**包 ——
-    /// 每个成员一条名册 + 请求方一条 NOTI 8，绝不多发一条失败回执（评审修复）。
+    /// 每个成员各一份名册（Task 4 起同区成员是两份**相同**的：一份定向、一份区域广播）+ 请求方一条 NOTI 8，
+    /// 绝不多发一条失败回执（评审修复）。
     /// 说明：`_pending.TryRemove` 的"读到了 / 还没摘掉"那个窗口里没有 await，冒烟用例无法在不加生产钩子的
     /// 前提下把两次接受真的压进窗口里；这里断言的是**可观测契约**（第二次接受不产出任何包），
-    /// 守卫本身（检查 TryRemove 的返回值）靠代码可读性 + 评审保证。
+    /// 守卫本身（检查 TryRemove 的返回值）靠代码可读性 + 评审保证。第二发若没被守住，这里会变成四份名册
+    /// 或冒出一条失败回执。
     /// </summary>
     private static async Task CheckDuplicateAcceptIsInertAsync(Action<bool, string> check)
     {
@@ -335,17 +411,23 @@ internal static class PartySmokeTests
             harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
         await Task.WhenAll(first, second);
 
-        check(harness.Of("布拉沃").Count(packet =>
-                        packet.ProtocolId == GameProtocolEngine.PartyInfoNotification) == 1
-                && harness.Of("阿尔法").Count(packet =>
-                        packet.ProtocolId == GameProtocolEngine.PartyInfoNotification) == 1
+        var alphaRosters = harness.Of("阿尔法")
+            .Where(packet => packet.ProtocolId == GameProtocolEngine.PartyInfoNotification)
+            .ToList();
+        var bravoRosters = harness.Of("布拉沃")
+            .Where(packet => packet.ProtocolId == GameProtocolEngine.PartyInfoNotification)
+            .ToList();
+        check(alphaRosters.Count == 2
+                && bravoRosters.Count == 2
+                && alphaRosters.All(packet => packet.Payload.SequenceEqual(alphaRosters[0].Payload))
+                && bravoRosters.All(packet => packet.Payload.SequenceEqual(bravoRosters[0].Payload))
                 && harness.Of("阿尔法").Count(packet =>
                         packet.ProtocolId == GameProtocolEngine.ResponsePeerNotification) == 1
                 && harness.Of("布拉沃").All(packet =>
                         packet.ProtocolId != GameProtocolEngine.ResponsePeerCommand)
                 && harness.Of("阿尔法").All(packet =>
                         packet.ProtocolId != GameProtocolEngine.ResponsePeerCommand),
-            "a second (concurrent) accept is inert: one roster each plus one NOTI 8, never a failure receipt");
+            "a second (concurrent) accept is inert: one roster set each plus one NOTI 8, never a failure receipt");
     }
 
     /// <summary>邀请：A 邀请 B（都无队伍）→ B 收 NOTI 7 → B 接受 → 双方各收一条 NOTI 9，A 另收 NOTI 8。</summary>
@@ -493,6 +575,10 @@ internal static class PartySmokeTests
         await harness.Service.HandleResponseAsync(
             harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
         harness.ClearAll();
+        // 断线是**整个会话**结束：城镇目录里也不再有人。不先退目录的话，区域广播还会经目录通道投给他，
+        // 而真机上那条通道已经死了（目录会把坏通道按掉线剔除），这里就测不到"拿不到任何包"。
+        await harness.LeaveTownAsync("布拉沃");
+        harness.ClearAll();
         await harness.Service.DetachChannelAsync(
             harness.IdOf("布拉沃"), harness.SessionIdOf("布拉沃"), CancellationToken.None);
         check(harness.Of("阿尔法").Any(packet =>
@@ -578,7 +664,8 @@ internal static class PartySmokeTests
 
 /// <summary>
 /// 组队服务测试台：真 store（临时目录）+ 真 TownSessionDirectory + 真 PartyService，
-/// 只把发包换成写进 List（沿用 TradeHarness 的做法）；三个角色都在 1/0 号城镇区域。
+/// 只把发包换成写进 List（沿用 TradeHarness 的做法）；阿尔法/布拉沃/查理/德尔塔在 1/0 号共享区域，
+/// 艾琳在 1/1（赛利亚房间，私密区域，每个成员一个实例）——用来验证区域广播不跨区、进区要补发。
 /// </summary>
 internal sealed class PartyHarness : IAsyncDisposable
 {
@@ -592,6 +679,9 @@ internal sealed class PartyHarness : IAsyncDisposable
     private readonly Dictionary<string, (Guid Id, string Account)> _characters = new();
     private readonly Dictionary<string, Guid> _sessionIds = new();
     private readonly Dictionary<string, ushort> _uids = new();
+
+    /// <summary>进入区域拿到的凭据：换区/离区必须带它退旧区（沿用 TownSessionDirectory 的凭据语义）。</summary>
+    private readonly Dictionary<string, TownMemberTicket> _tickets = new();
 
     private PartyHarness(string root, ServerOptions options, JsonGameStore store, TownSessionDirectory directory)
     {
@@ -656,13 +746,15 @@ internal sealed class PartyHarness : IAsyncDisposable
             NullLogger<TownSessionDirectory>.Instance);
         var harness = new PartyHarness(root, options, store, directory);
 
-        var fixtures = new (string Account, string Name)[]
+        var fixtures = new (string Account, string Name, byte AreaId)[]
         {
-            ("alice", "阿尔法"),
-            ("bobby", "布拉沃"),
-            ("carol", "查理")
+            ("alice", "阿尔法", 0),
+            ("bobby", "布拉沃", 0),
+            ("carol", "查理", 0),
+            ("dave", "德尔塔", 0),
+            ("erin", "艾琳", 1)
         };
-        foreach (var (account, name) in fixtures)
+        foreach (var (account, name, _) in fixtures)
         {
             await store.CreateAccountAsync(
                 new CreateAccountRequest(account, "password", OicqCode: "123456"),
@@ -682,7 +774,7 @@ internal sealed class PartyHarness : IAsyncDisposable
             TimeProvider.System,
             NullLogger<PartyService>.Instance);
         ushort uid = 1;
-        foreach (var (account, name) in fixtures)
+        foreach (var (account, name, areaId) in fixtures)
         {
             harness._uids[name] = uid++;
             await harness.Service.AttachChannelAsync(
@@ -693,11 +785,11 @@ internal sealed class PartyHarness : IAsyncDisposable
                 harness._sessionIds[name],
                 harness.Record(name),
                 CancellationToken.None);
-            // 三个角色都进 1/0：组队请求要求请求者与目标同城镇同区域（设计稿 §5.1）。
-            await directory.EnterAsync(
+            // 四个角色在 1/0：组队请求要求请求者与目标同城镇同区域（设计稿 §5.1）。
+            var ticket = await directory.EnterAsync(
                 new TownEntryRequest(
                     TownId: 1,
-                    AreaId: 0,
+                    AreaId: areaId,
                     AreaUserId: harness._uids[name],
                     CharacterId: harness._characters[name].Id,
                     CharacterNo: 100u + harness._uids[name],
@@ -709,9 +801,50 @@ internal sealed class PartyHarness : IAsyncDisposable
                     Direction: 0,
                     SendAsync: (packet, _) => harness.Record(name)(packet)),
                 CancellationToken.None);
+            if (ticket is not null)
+            {
+                harness._tickets[name] = ticket;
+            }
         }
 
         return harness;
+    }
+
+    /// <summary>把角色搬到另一个城镇区域：先退旧区、再进新区，并通知 PartyService（模拟 CMD 38 钩子）。</summary>
+    public async Task MoveToAsync(string characterName, byte townId, byte areaId, ushort uid)
+    {
+        if (_tickets.TryGetValue(characterName, out var ticket))
+        {
+            await Directory.LeaveAsync(ticket, CancellationToken.None);
+        }
+
+        _uids[characterName] = uid;
+        var characterId = _characters[characterName].Id;
+        var entered = await Directory.EnterAsync(
+            new TownEntryRequest(
+                townId, areaId, uid, characterId, 100u + uid,
+                Encoding.ASCII.GetBytes(characterName), characterName,
+                Peer: null, X: 10, Y: 10, Direction: 0,
+                SendAsync: (packet, _) => Record(characterName)(packet)),
+            CancellationToken.None);
+        if (entered is not null)
+        {
+            _tickets[characterName] = entered;
+        }
+
+        await Service.OnAreaChangedAsync(characterId, townId, areaId, uid, CancellationToken.None);
+    }
+
+    /// <summary>离开城镇区域（进副本等）：只退目录，不动队伍（设计稿 §4.4/§5.6）。</summary>
+    public async Task LeaveTownAsync(string characterName)
+    {
+        if (_tickets.TryGetValue(characterName, out var ticket))
+        {
+            await Directory.LeaveAsync(ticket, CancellationToken.None);
+            _tickets.Remove(characterName);
+        }
+
+        await Service.OnLeftAreaAsync(_characters[characterName].Id, CancellationToken.None);
     }
 
     /// <summary>
