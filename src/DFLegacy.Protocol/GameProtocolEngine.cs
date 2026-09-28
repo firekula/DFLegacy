@@ -3071,17 +3071,24 @@ public static class GameProtocolEngine
     /// <summary>
     /// CMD 11：与 CMD 10 同前缀（u16 uid + u8 peerType + u32 weightDelta），只有 type==1 是交易应答。
     /// weightDelta 语义与 CMD 10 完全一致，原样回传进 NOTI 8。
+    /// **接受 vs 拒绝**由 <see cref="IsPeerResponseAccepted"/> 判定：真机（G 卷 §2.1/§2.3）的
+    /// 交易应答窗 `CNRDResponsePeerWindow`，【是】（`0x821E46`）发 9 字节 `[u16 seq][u16 uid][u8 01][u32 X]`；
+    /// 【否】（`0x821F77`）发同样的 9 字节再追加 `u16 0x0064`（字节 `64 00`），共 11 字节。
+    /// 此前只看前 7 字节、长度放宽成 `>= 9`，把拒绝包当成了接受（真机实证：
+    /// 用户点否的包 `0200 01 50730000 6400`）。
     /// </summary>
     public static bool TryReadResponsePeer(
         byte[] body,
         out ushort requesterUid,
         out byte peerType,
-        out uint weightDelta)
+        out uint weightDelta,
+        out bool accepted)
     {
         ArgumentNullException.ThrowIfNull(body);
         requesterUid = 0;
         peerType = 0;
         weightDelta = 0;
+        accepted = false;
         // 真机 CMD 11（0x821E4E 起）同样以 u32 的「当前负重 − 负重上限」收尾。
         if (body.Length < 2 + 2 + 1 + 4)
         {
@@ -3091,6 +3098,7 @@ public static class GameProtocolEngine
         requesterUid = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
         peerType = body[4];
         weightDelta = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(5, 4));
+        accepted = IsPeerResponseAccepted(body);
         return peerType == 1;
     }
 
@@ -3115,19 +3123,34 @@ public static class GameProtocolEngine
         return body[4] == 0;
     }
 
-    /// <summary>CMD 11 的**组队**分支：前缀同 CMD 10，只有 peerType==0 才是组队应答。</summary>
-    public static bool TryReadPartyResponsePeer(byte[] body, out ushort requesterUid)
+    /// <summary>
+    /// CMD 11 的**组队**分支：前缀同 CMD 10，只有 peerType==0 才是组队应答。
+    /// **接受 vs 拒绝**同交易：真机（G 卷 §2.1/§2.2）里【是】（`0x4FEBC0`）发 9 字节
+    /// `[u16 seq][u16 uid][u8 00][u32 0]`；【否】（`0x821FBA`）把同样 9 字节再追加 `u16 0x0064`
+    /// （字节 `64 00`）成 11 字节。真机实证：用户点否的包 `0100 00 00000000 6400` 被旧实现当成了接受。
+    /// </summary>
+    public static bool TryReadPartyResponsePeer(byte[] body, out ushort requesterUid, out bool accepted)
     {
         ArgumentNullException.ThrowIfNull(body);
         requesterUid = 0;
+        accepted = false;
         if (body.Length < 2 + 2 + 1 + 4)
         {
             return false;
         }
 
         requesterUid = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
+        accepted = IsPeerResponseAccepted(body);
         return body[4] == 0;
     }
+
+    /// <summary>
+    /// 拒绝判据（G 卷真机 + 反汇编）：小窗【否】发的包与【是】同前缀，但**尾部多一个 u16 0x0064**。
+    /// 即 9 字节 = 接受；11 字节且 body[9..10] == 64 00 = 拒绝。别的长度（异常）保守当作接受，
+    /// 与改动前行为一致。
+    /// </summary>
+    private static bool IsPeerResponseAccepted(byte[] body) =>
+        !(body.Length >= 11 && body[9] == 0x64 && body[10] == 0x00);
 
     /// <summary>
     /// CMD 12：`[u16 seq][u8 sel]` + （`sel == 0` 时 `u32 长度 + 名字`）+ `[u8 人数上限]`（B 卷 §5、C 卷 §7）。

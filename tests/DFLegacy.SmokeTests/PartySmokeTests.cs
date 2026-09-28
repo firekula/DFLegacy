@@ -149,10 +149,26 @@ internal static class PartySmokeTests
         check(!GameProtocolEngine.TryReadPartyRequestPeer(new byte[8], out _, out _),
             "party CMD 10 parser rejects a truncated body");
 
-        var response = new byte[] { 0x11, 0x22, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        check(GameProtocolEngine.TryReadPartyResponsePeer(response, out var requesterUid)
-                && requesterUid == 1000,
-            "party CMD 11 parser reads the requester uid when peerType==0");
+        // ★ CMD 11 组队：9 字节 = 【是】（接受）；同前缀再追加 u16 0x0064（字节 `64 00`）= 11 字节 = 小窗【否】
+        //（拒绝）——G 卷 §2.1/§2.2 的两条发送路径（0x4FEBC0 / 0x821FBA）+ 真机日志 `...0000 00000000 6400`。
+        var accept = new byte[] { 0x11, 0x22, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00 };
+        check(GameProtocolEngine.TryReadPartyResponsePeer(accept, out var requesterUid, out var accepted)
+                && requesterUid == 1000
+                && accepted,
+            "party CMD 11 parser reads the requester uid and treats a 9-byte body as accept");
+
+        var refuse = new byte[] { 0x11, 0x22, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x00 };
+        check(GameProtocolEngine.TryReadPartyResponsePeer(refuse, out var refusedUid, out var refusedAccepted)
+                && refusedUid == 1000
+                && !refusedAccepted,
+            "party CMD 11 parser treats an 11-byte body ending in 64 00 as the 【否】 button (reject)");
+
+        var tradeResponse = new byte[] { 0x11, 0x22, 0xE8, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00 };
+        check(!GameProtocolEngine.TryReadPartyResponsePeer(tradeResponse, out _, out _),
+            "party CMD 11 parser rejects peerType==1 so the trade path keeps its own packet");
+
+        check(!GameProtocolEngine.TryReadPartyResponsePeer(new byte[8], out _, out _),
+            "party CMD 11 parser rejects a truncated body");
 
         // CMD 12 body = [u16 seq][u8 sel] + (sel==0 ? u32 长度+名字) + [u8 上限]。
         var withName = new byte[] { 0x11, 0x22, 0x00, 0x03, 0x00, 0x00, 0x00, 0x41, 0x42, 0x43, 0x04 };
@@ -335,6 +351,7 @@ internal static class PartySmokeTests
     private static async Task CheckPartyServiceAsync(Action<bool, string> check)
     {
         await CheckInviteFlowAsync(check);
+        await CheckRejectFlowAsync(check);
         await CheckApplyToJoinFlowAsync(check);
         await CheckAccepterJoinsRequesterPartyAsync(check);
         await CheckRequestRefusalsAsync(check);
@@ -369,7 +386,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         var bystander = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
         check(bystander is { Payload.Length: 20 }
@@ -456,7 +473,7 @@ internal static class PartySmokeTests
         harness.ClearAll();
 
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         check(harness.Of("布拉沃").Count == 1
                 && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
@@ -485,9 +502,9 @@ internal static class PartySmokeTests
         // 不 await 第一发就发第二发：harness 的发包会 await Task.Yield()，所以第一次接受会停在
         // "给第一个成员发名册"处，第二次接受是**真的与它重叠**（而不是被同步跑完）。
         var first = harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
         var second = harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
         await Task.WhenAll(first, second);
 
         var alphaRosters = harness.Of("阿尔法")
@@ -507,6 +524,63 @@ internal static class PartySmokeTests
                 && harness.Of("阿尔法").All(packet =>
                         packet.ProtocolId != GameProtocolEngine.ResponsePeerCommand),
             "a second (concurrent) accept is inert: one roster set each plus one NOTI 8, never a failure receipt");
+    }
+
+    /// <summary>
+    /// ★ 回归（真机「点【否】也等于接受」）：小窗【否】发的 11 字节拒绝包（与【是】同前缀、尾部多
+    /// `64 00`，G 卷 §2.2）经协议层判成 `accepted: false` 之后，服务端必须**只**给请求方回一条与
+    /// 超时/拉黑同形的 `CMD 11 [0,100,0]`、接受方零包，且**不建队、不加人**；待决项已被原子摘除，
+    /// 30 秒超时不会再补一条失败，随后再邀请一次也必须能成功（"先到者优先"不会误挡）。
+    /// **变异验证**：把 `PartyService.HandleResponseAsync` 里的 `if (!accepted)` 分支摘掉（或让
+    /// `IsPeerResponseAccepted` 恒为 true），"no NOTI 9" 与 "zero packet for the refuser" 两条断言变红
+    ///（会建出队伍并向双方+旁观者广播名册、给接受方回 NOTI 8）。
+    /// </summary>
+    private static async Task CheckRejectFlowAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.FirstOf("布拉沃", GameProtocolEngine.RequestPeerNotification) is not null,
+            "the reject flow starts from a normal NOTI 7 window");
+        harness.ClearAll();
+
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: false, CancellationToken.None);
+
+        check(harness.Of("阿尔法").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.PartyInfoNotification)
+                && harness.Of("布拉沃").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.PartyInfoNotification)
+                && harness.Of("德尔塔").Count == 0,
+            "a refusal builds no party: nobody gets a NOTI 9 roster (neither side, nor the same-area bystander)");
+        check(harness.Of("阿尔法").All(packet =>
+                packet.ProtocolId != GameProtocolEngine.ResponsePeerNotification),
+            "the requester gets no NOTI 8 chat line when the target refuses");
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload.SequenceEqual(new byte[] { 0, 100, 0 }),
+            "the requester gets exactly the same CMD 11 [0,100,0] as an unanswered (timed out) request");
+        check(harness.Of("布拉沃").Count == 0,
+            "the refuser gets no packet at all (the client closes its own window on 【否】)");
+
+        // 待决项必须在拒绝时就被摘掉：否则 30 秒的收尾会再补一条失败，而且第二次邀请会被"先到者优先"回绝。
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1 && harness.Of("布拉沃").Count == 0,
+            "the refused request is already gone from the pending table: the 30-second sweep adds nothing");
+
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        harness.ClearAll();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.FirstOf("布拉沃", GameProtocolEngine.RequestPeerNotification) is not null
+                && harness.Of("阿尔法").Count == 0,
+            "the pending slot was released: an immediate re-invite reaches the target instead of the late-arrival refusal");
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
+        check(harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification) is not null
+                && harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification) is not null,
+            "the re-invite can then be accepted: the party forms normally");
     }
 
     /// <summary>邀请：A 邀请 B（都无队伍）→ B 收 NOTI 7 → B 接受 → 双方各收一条 NOTI 9，A 另收 NOTI 8。</summary>
@@ -530,7 +604,7 @@ internal static class PartySmokeTests
 
         harness.ClearAll();
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         var alphaRoster = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
         var bravoRoster = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
@@ -558,7 +632,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("布拉沃"), harness.UidOf("查理"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("查理"), harness.UidOf("布拉沃"), CancellationToken.None);
+            harness.IdOf("查理"), harness.UidOf("布拉沃"), accepted: true, CancellationToken.None);
         harness.ClearAll();
 
         await harness.Service.HandleRequestAsync(
@@ -568,7 +642,7 @@ internal static class PartySmokeTests
 
         harness.ClearAll();
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         var roster = harness.FirstOf("查理", GameProtocolEngine.PartyInfoNotification);
         check(roster is not null
@@ -598,7 +672,7 @@ internal static class PartySmokeTests
 
         harness.ClearAll();
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         var roster = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
         check(roster is { Payload.Length: 20 }
@@ -634,6 +708,7 @@ internal static class PartySmokeTests
             await harness.Service.HandleResponseAsync(
                 harness.IdOf("阿尔法"),
                 harness.UidOf(applicant),
+                accepted: true,
                 CancellationToken.None);
         }
 
@@ -693,7 +768,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
         harness.ClearAll();
 
         await harness.Service.HandleKickAsync(harness.IdOf("阿尔法"), slot: 1, CancellationToken.None);
@@ -721,7 +796,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
         harness.ClearAll();
         // 断线是**整个会话**结束：城镇目录里也不再有人。不先退目录的话，区域广播还会经目录通道投给他，
         // 而真机上那条通道已经死了（目录会把坏通道按掉线剔除），这里就测不到"拿不到任何包"。
@@ -751,13 +826,13 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
         // 限流是真实时钟的 3 秒窗口，而测试是瞬时的：同一个人连邀两次前先清掉上次的时间戳。
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("查理"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("查理"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("查理"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
         harness.ClearAll();
 
         await harness.Service.HandleLeaveAsync(harness.IdOf("阿尔法"), CancellationToken.None);
@@ -811,7 +886,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         // 基线：一次发布 = 每个同区域收包者两份相同名册（一份定向 + 一份区域广播），20 字节。
         var alphaBaseline = RostersOf(harness, "阿尔法");
@@ -880,7 +955,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         // 先把"接受那一次发布"排的补播放掉：否则下面那次过期 + 扫描打的是它的排期，
         // 换区到底排没排补播就测不出来了（初版用例正是被这个残留排期掩盖的）。
@@ -925,13 +1000,13 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
         // 限流是真实时钟的 3 秒窗口，而测试是瞬时的：同一个人连邀两次前先清掉上次的时间戳。
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("查理"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("查理"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("查理"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
         // ② 槽 0 的队长退队 → 布拉沃（槽 1）就地继任。
         await harness.Service.HandleLeaveAsync(harness.IdOf("阿尔法"), CancellationToken.None);
         harness.ClearAll();
@@ -940,7 +1015,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         var setup = RostersOf(harness, "查理").FirstOrDefault();
         check(setup is { Payload.Length: 20 }
@@ -1053,7 +1128,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), CancellationToken.None);
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), accepted: true, CancellationToken.None);
         harness.ClearAll();
         await harness.Service.HandleSetInfoAsync(
             harness.IdOf("布拉沃"), nameSelection: 3, nameBytes: [], maxMembers: 4, CancellationToken.None);
@@ -1082,7 +1157,7 @@ internal static class PartySmokeTests
         await harness.Service.HandleRequestAsync(
             harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
         await harness.Service.HandleResponseAsync(
-            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
 
         var rosters = RostersOf(harness, "阿尔法")
             .Concat(RostersOf(harness, "布拉沃"))

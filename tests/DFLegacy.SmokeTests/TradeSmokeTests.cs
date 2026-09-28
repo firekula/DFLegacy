@@ -179,12 +179,30 @@ internal static class TradeSmokeTests
             "a positive (already overweight) delta parses unsigned: the server passes it through as-is");
 
         check(GameProtocolEngine.TryReadResponsePeer(
-                    requestBody, out var requesterUid, out var responseType, out var responseWeightDelta)
+                    requestBody, out var requesterUid, out var responseType, out var responseWeightDelta,
+                    out var tradeAccepted)
                 && requesterUid == 0x4321
                 && responseType == 1
-                && responseWeightDelta == 0xFFFF8C1D,
-            "CMD 11 shares the [u16 uid][u8 type 1][u32 weightDelta] prefix");
-        check(!GameProtocolEngine.TryReadResponsePeer(requestBody[..8], out _, out _, out _),
+                && responseWeightDelta == 0xFFFF8C1D
+                && tradeAccepted,
+            "CMD 11 shares the [u16 uid][u8 type 1][u32 weightDelta] prefix and a 9-byte body means accept");
+        // ★ 小窗【否】：与【是】同前缀，尾部多一个 u16 0x0064（`64 00`）→ 11 字节（G 卷 §2.3 的 0x821F77；
+        // 真机日志 `0200 01 50730000 6400`）。旧实现只看前 7 字节，把点否当成接受。
+        var refusedBody = new byte[11];
+        Array.Copy(requestBody, refusedBody, requestBody.Length);
+        refusedBody[9] = 0x64;
+        refusedBody[10] = 0x00;
+        check(GameProtocolEngine.TryReadResponsePeer(
+                    refusedBody, out var refusedUid, out var refusedType, out _, out var refusedAccepted)
+                && refusedUid == 0x4321
+                && refusedType == 1
+                && !refusedAccepted,
+            "an 11-byte CMD 11 ending in 64 00 is the trade window's 【否】: still peerType 1, but not accepted");
+        var wrongTypeBody2 = (byte[])requestBody.Clone();
+        wrongTypeBody2[4] = 0;
+        check(!GameProtocolEngine.TryReadResponsePeer(wrongTypeBody2, out _, out _, out _, out _),
+            "a CMD 11 for team/duel (type != 1) is not a trade response");
+        check(!GameProtocolEngine.TryReadResponsePeer(requestBody[..8], out _, out _, out _, out _),
             "a truncated CMD 11 is rejected");
 
         var stateBody = new byte[3];

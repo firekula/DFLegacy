@@ -6856,31 +6856,36 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.ResponsePeerCommand)
                         {
-                            // 客户端的「拒绝」只关窗不发包，所以这里只可能是接受。
+                            // 小窗【是】/【否】**都发包**（G 卷 §2.2/§2.3）：【是】9 字节，【否】同样的
+                            // 9 字节再追加 u16 0x0064（`64 00`）成 11 字节 —— 协议层按此判出 accepted。
                             // 尾部 u32 与 CMD 10 同义（接受方的负重余量），原样透传进 NOTI 8。
                             if (activeCharacter is not null
                                 && GameProtocolEngine.TryReadResponsePeer(
                                     request.Body,
                                     out var tradeRequesterUid,
                                     out _,
-                                    out var accepterWeightDelta))
+                                    out var accepterWeightDelta,
+                                    out var tradeAccepted))
                             {
+                                // 交易侧：拒绝走既有的 !accept → CancelSessionAsync 分支，语义不变。
                                 await itemTradeService.HandleResponseAsync(
                                     activeCharacter.Id,
                                     tradeRequesterUid,
-                                    accept: true,
+                                    accept: tradeAccepted,
                                     accepterWeightDelta,
                                     serverToken);
                             }
                             else if (activeCharacter is not null
                                 && GameProtocolEngine.TryReadPartyResponsePeer(
                                     request.Body,
-                                    out var partyRequesterUid))
+                                    out var partyRequesterUid,
+                                    out var partyAccepted))
                             {
-                                // peerType==0：组队应答（客户端不发"拒绝"，所以到这里就是接受）。
+                                // peerType==0：组队应答（accepted=false 就是小窗【否】，只回请求方失败）。
                                 await partyService.HandleResponseAsync(
                                     activeCharacter.Id,
                                     partyRequesterUid,
+                                    partyAccepted,
                                     serverToken);
                             }
 

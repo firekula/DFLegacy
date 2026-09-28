@@ -17,8 +17,16 @@ internal sealed class PartyChannel
 }
 
 /// <summary>
-/// CMD 10 里客户端自报的三个显示值（应答窗正文，dnf.str 4150；A 卷 §3.2）。服务端把它们原样
-/// 放进 NOTI 7 交给被邀请者，自己不做校验（设计稿 §5.1 的真机待验项之一）。
+/// NOTI 7 应答窗正文（dnf.str 4150：`Lv.%d%s [%s](复活币%d个、疲劳值%d点、虚弱%d%%)请求加入[%s]队伍`）
+/// 里的三个显示值，由 <c>EntranceService</c> 在收到 CMD 10 时算好传入。三个值的口径：
+/// <list type="bullet">
+/// <item><c>ReviveCoins</c> = 请求者客户端自报的复活币个数（CMD 10 尾部的 u32，**原样透传**；
+/// 真机上它显示的 0 是客户端自己算的）。</item>
+/// <item><c>Fatigue</c> = **剩余疲劳** = 本会话口径的疲劳上限（含黑钻加成）− 已耗疲劳，下限 0 ——
+/// 与客户端 HUD 疲劳条/`疲劳值%d点`同一口径（真机回归：旧实现填的是 `UsedFatigue` 已耗值）。</item>
+/// <item><c>WeaknessPercent</c> = **虚弱%** = `FullStamina − 当前耐力值`（钳 0..100），耐力值取服务端
+/// 发给该客户端的投影（`GetProjectedStaminaRecovery`，见 EntranceService）。</item>
+/// </list>
 /// public 是必须的：public 的 <see cref="PartyService.HandleRequestAsync"/> 以它为参数类型
 /// （C# 不允许 public 方法暴露更低的参数类型）。
 /// </summary>
@@ -61,7 +69,11 @@ public sealed class PartyService : BackgroundService
     /// <summary>两次组队请求之间的最小间隔（与交易的 3 秒同款，防连点）。</summary>
     public const int MinimumRequestIntervalMilliseconds = 3_000;
 
-    /// <summary>待决请求的存活窗口：客户端"拒绝"不发包，只能靠它收尾（设计稿 §5.2）。</summary>
+    /// <summary>
+    /// 待决请求的存活窗口（设计稿 §5.2）。客户端点【否】**会**发包（11 字节带 `64 00`，G 卷 §2.2），
+    /// 走 <see cref="HandleResponseAsync"/> 的拒绝分支；超时收尾针对的是"客户端什么都不发"的三种情形：
+    /// 决斗邀请（peerType 2/3）点否只关窗、发起者下线/守卫失败静默关窗、窗口自身计时器到点静默关窗。
+    /// </summary>
     public static readonly TimeSpan RequestWindow = TimeSpan.FromSeconds(30);
 
     /// <summary>
@@ -374,13 +386,18 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
-    /// CMD 11（peerType=0）：接受。四种情形按双方此刻的队伍状态决定（设计稿 §5.1）：
-    /// 接受者在队伍里 → 请求者并入接受者的队伍；请求者在队伍里 → 接受者并入请求者的队伍；
-    /// 都没有 → 新建队伍（请求者为队长，partyId = 请求者 uid）；接受者不是队长 / 队满 → 回失败。
+    /// CMD 11（peerType=0）：应答。`accepted == false` 是小窗【否】——真机（G 卷 §2.2）里它**会发包**：
+    /// 与【是】同前缀、尾部多一个 u16 0x0064（9 字节 vs 11 字节），由协议层判出。拒绝的收尾与超时 /
+    /// 拉黑**完全同形**：待决项先被原子摘除、给请求方一条 `CMD 11 [0,100,0]`（"对方不在线，或拒绝了
+    /// 您的组队请求"）、接受方零包，**不建队、不加人**（不得走到下面的建队逻辑）。
+    /// 接受时四种情形按双方此刻的队伍状态决定（设计稿 §5.1）：接受者在队伍里 → 请求者并入接受者的队伍；
+    /// 请求者在队伍里 → 接受者并入请求者的队伍；都没有 → 新建队伍（请求者为队长，partyId = 请求者 uid）；
+    /// 接受者不是队长 / 队满 → 回失败。
     /// </summary>
     public async Task HandleResponseAsync(
         Guid accepterCharacterId,
         ushort requesterUid,
+        bool accepted,
         CancellationToken cancellationToken = default)
     {
         if (!_pending.TryGetValue(accepterCharacterId, out var pending))
@@ -402,6 +419,18 @@ public sealed class PartyService : BackgroundService
         // 第二个要么重复广播名册，要么回一条本不该有的失败包。
         if (!_pending.TryRemove(new KeyValuePair<Guid, PartyPendingRequest>(accepterCharacterId, pending)))
         {
+            return;
+        }
+
+        // 小窗【否】：待决项已经在上面被原子摘除（30 秒超时不会再补一条失败）。只给请求方一条与超时
+        // 完全同形的 `CMD 11 [0,100,0]`，接受方零包，**绝不**往下走建队/并队。
+        if (!accepted)
+        {
+            _logger.LogInformation(
+                "{Accepter} refused the party request from {Requester}.",
+                accepterCharacterId,
+                pending.RequesterCharacterId);
+            await SendRequestFailureAsync(pending.RequesterCharacterId, cancellationToken);
             return;
         }
 
