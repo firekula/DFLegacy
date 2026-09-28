@@ -17,6 +17,7 @@ internal static class PartySmokeTests
         CheckWalkoutNotificationLayout(check);
         CheckRequestPartyNotificationLayout(check);
         CheckPartyCommandErrorLayout(check);
+        CheckPartyRequestInfoValues(check);
         CheckPartyRequestParsers(check);
         CheckPartyAcceptedNotificationLayout(check);
         CheckPartyRoster(check);
@@ -131,6 +132,27 @@ internal static class PartySmokeTests
                 && packet.Payload[0] == 0
                 && packet.Payload[1] == 4,
             "party command failure is a two-byte [0, code] receipt");
+    }
+
+    /// <summary>
+    /// 应答窗正文（NOTI 7）两个服务端取值口径的真机回归：疲劳必须是**剩余疲劳**（旧实现填的是已耗值
+    /// `UsedFatigue`），虚弱% 必须由服务端耐力状态换算（旧实现固定 0）：
+    /// 疲劳 = 上限（含黑钻加成，`GameProtocolEngine.DefaultMaximumFatigue`/`BlackDiamondBonusFatigue`）− 已耗，
+    /// 下限 0；虚弱% = `DungeonWeaknessPolicy.FullStamina(100) − 当前耐力值`，钳 0..100。
+    /// **变异验证**：把 `RemainingFatigue` 换成回传 `usedFatigue`、或把 `WeaknessPercent` 换成恒 0，本用例变红。
+    /// </summary>
+    private static void CheckPartyRequestInfoValues(Action<bool, string> check)
+    {
+        check(EntranceService.RemainingFatigue(maximumFatigue: 156, usedFatigue: 100) == 56
+                && EntranceService.RemainingFatigue(maximumFatigue: 188, usedFatigue: 0) == 188
+                && EntranceService.RemainingFatigue(maximumFatigue: 156, usedFatigue: 156) == 0
+                && EntranceService.RemainingFatigue(maximumFatigue: 156, usedFatigue: 200) == 0,
+            "the party window's fatigue value is remaining fatigue (maximum incl. black diamond - used), floored at 0");
+        check(EntranceService.WeaknessPercent(DungeonWeaknessPolicy.FullStamina) == 0
+                && EntranceService.WeaknessPercent(100) == 0
+                && EntranceService.WeaknessPercent(30) == 70
+                && EntranceService.WeaknessPercent(DungeonWeaknessPolicy.MinimumRecovery) == 90,
+            "the party window's weakness% is FullStamina - current stamina (0 when healthy, 90 at the floor of 10)");
     }
 
     private static void CheckPartyRequestParsers(Action<bool, string> check)

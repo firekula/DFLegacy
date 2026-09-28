@@ -647,6 +647,29 @@ public sealed class EntranceService(
                         DungeonWeaknessPolicy.FullStamina);
                 }
 
+                /// <summary>本会话口径的疲劳上限（基础 + 黑钻加成）：与疲劳条同一算法，只此一处。</summary>
+                ushort GetMaximumFatigue() =>
+                    checked((ushort)(GameProtocolEngine.DefaultMaximumFatigue
+                        + (HasActivePremiumService(GameProtocolEngine.BlackDiamondServiceType)
+                            ? GameProtocolEngine.BlackDiamondBonusFatigue
+                            : 0)));
+
+                /// <summary>
+                /// **剩余疲劳**（上限 − 已耗，下限 0）：与客户端 HUD 的疲劳条、"疲劳值%d点"同一口径。
+                /// 回归：组队应答窗此前填的是已耗值 <c>UsedFatigue</c>（真机数值对不上）。
+                /// </summary>
+                ushort GetRemainingFatigue() =>
+                    RemainingFatigue(GetMaximumFatigue(), activeCharacter?.UsedFatigue ?? 0);
+
+                /// <summary>
+                /// **虚弱%** = `FullStamina(100) − 当前耐力值`（钳 0..100）。服务端保存耐力/虚弱状态的是
+                /// 存档字段 <c>CharacterRecord.WeaknessRecovery</c>（0..100，<c>IsWeakened</c> =
+                /// `WeaknessRecovery &lt; FullStamina`；由 WeaknessRecoveryService 随时间推进），
+                /// 会话发给客户端的"当前耐力值"就是 <see cref="GetProjectedStaminaRecovery"/> 的投影
+                /// （未虚弱/黑钻 = 100 → 虚弱% 0）。回归：组队应答窗此前固定填 0。
+                /// </summary>
+                ushort GetWeaknessPercent() => WeaknessPercent(GetProjectedStaminaRecovery());
+
                 async Task SendCurrentEquipmentStateAsync(
                     GameCharacterCombatStats? validatedStats = null)
                 {
@@ -1130,8 +1153,7 @@ public sealed class EntranceService(
                             GameProtocolEngine.BlackDiamondServiceType)
                         ? GameProtocolEngine.BlackDiamondBonusFatigue
                         : (ushort)0;
-                    var maximumFatigue = checked((ushort)(
-                        GameProtocolEngine.DefaultMaximumFatigue + premiumFatigue));
+                    var maximumFatigue = GetMaximumFatigue();
                     var fatigue = GameProtocolEngine.CreateFatigue(
                         usedFatigue: Math.Min(
                             activeCharacter?.UsedFatigue ?? 0,
@@ -1156,8 +1178,7 @@ public sealed class EntranceService(
                             GameProtocolEngine.BlackDiamondServiceType)
                         ? GameProtocolEngine.BlackDiamondBonusFatigue
                         : (ushort)0;
-                    var maximumFatigue = checked((ushort)(
-                        GameProtocolEngine.DefaultMaximumFatigue + premiumFatigue));
+                    var maximumFatigue = GetMaximumFatigue();
                     var consumption =
                         await store.ConsumeDungeonRoomFatigueAsync(
                             activeCharacter.Id,
@@ -6836,17 +6857,16 @@ public sealed class EntranceService(
                                     out var partyReviveCoins))
                             {
                                 // peerType==0：组队邀请 / 申请加入（同一个包，设计稿 §5.1）。
-                                // X 是请求者自报的复活币个数，只用于应答窗显示；疲劳取本会话存档，
-                                // 虚弱% 目前没有服务端来源 → 0（真机项：数值不对再改）。
+                                // 应答窗正文的三个显示值：复活币是请求者客户端自报的（X 原样透传）；
+                                // 疲劳用**剩余疲劳**（上限 − 已耗，含黑钻加成），虚弱% 由服务端耐力状态换算
+                                // （100 − 当前耐力值）——真机回归：旧实现填的是已耗疲劳与固定 0。
                                 await partyService.HandleRequestAsync(
                                     activeCharacter.Id,
                                     partyTargetUid,
                                     new PartyRequestInfo(
                                         partyReviveCoins,
-                                        // UsedFatigue 是 ushort：直接 Clamp 会命中 int/ushort 两个重载
-                                        // 而二义（CS0121），显式按 int 夹取再转回 ushort。
-                                        (ushort)Math.Clamp((int)activeCharacter.UsedFatigue, 0, ushort.MaxValue),
-                                        WeaknessPercent: 0),
+                                        GetRemainingFatigue(),
+                                        GetWeaknessPercent()),
                                     serverToken);
                             }
 
@@ -15035,6 +15055,26 @@ public sealed class EntranceService(
 
         return Encoding.ASCII.GetBytes(name.Length == 0 ? "DFLegacy" : name[..Math.Min(name.Length, 20)]);
     }
+
+    /// <summary>
+    /// 组队应答窗正文（NOTI 7）"疲劳值%d点"的口径：**剩余疲劳** = 上限 − 已耗，下限 0。
+    /// 上限已含黑钻加成（<see cref="GameProtocolEngine.DefaultMaximumFatigue"/> +
+    /// <see cref="GameProtocolEngine.BlackDiamondBonusFatigue"/>），与客户端 HUD 疲劳条同一口径；
+    /// 已耗超过上限时按 0 报（不回绕成巨大的 ushort）。
+    /// </summary>
+    internal static ushort RemainingFatigue(ushort maximumFatigue, ushort usedFatigue) =>
+        (ushort)(maximumFatigue - Math.Min(usedFatigue, maximumFatigue));
+
+    /// <summary>
+    /// 组队应答窗正文（NOTI 7）"虚弱%d%%"的口径：`FullStamina(100) − 当前耐力值`，钳 0..100。
+    /// "当前耐力值"就是服务端投影给该客户端的那一个（未虚弱 / 黑钻 = 100 → 虚弱% 0；虚弱时 =
+    /// 存档字段 `CharacterRecord.WeaknessRecovery`）。
+    /// </summary>
+    internal static ushort WeaknessPercent(byte projectedStamina) =>
+        (ushort)Math.Clamp(
+            DungeonWeaknessPolicy.FullStamina - projectedStamina,
+            0,
+            DungeonWeaknessPolicy.FullStamina);
 
     internal static bool TryReadSendMessage(
         byte[] body,
