@@ -43,6 +43,12 @@ internal sealed class ItemTradeSession
     public ItemTradeSessionState State { get; set; } = ItemTradeSessionState.Requested;
     public DateTimeOffset LastActivityAt { get; set; }
 
+    /// <summary>
+    /// 会话状态迁移的互斥对象：锁定广播、最终确认的「双方都确认 → 抢占 Settling」与取消的
+    /// 「结算在途不得插手」判定都必须在同一把锁里完成（锁内全同步、不含 await）。
+    /// </summary>
+    public object Sync { get; } = new();
+
     public ItemTradeSide SideOf(Guid characterId) =>
         Initiator.Channel.CharacterId == characterId ? Initiator : Partner;
 
@@ -311,14 +317,22 @@ public sealed class ItemTradeService : BackgroundService
         byte state,
         CancellationToken cancellationToken = default)
     {
-        if (!_sessions.TryGetValue(characterId, out var session)
-            || session.State != ItemTradeSessionState.Open)
+        if (!_sessions.TryGetValue(characterId, out var session))
+        {
+            return new ItemTradeStateOutcome(false, null);
+        }
+
+        if (state == 3)
+        {
+            return await ConfirmAsync(session, characterId, cancellationToken);
+        }
+
+        if (session.State != ItemTradeSessionState.Open)
         {
             return new ItemTradeStateOutcome(false, null);
         }
 
         var mine = session.SideOf(characterId);
-        var other = session.OtherOf(characterId);
         session.LastActivityAt = _timeProvider.GetUtcNow();
         switch (state)
         {
@@ -340,21 +354,6 @@ public sealed class ItemTradeService : BackgroundService
                 await CancelSessionAsync(session, absentCharacterId: null, cancellationToken);
                 return new ItemTradeStateOutcome(false, null);
 
-            case 3:
-                if (!mine.Locked || !other.Locked)
-                {
-                    await SendAsync(
-                        characterId,
-                        GameProtocolEngine.CreateSetItemTradeStateResult(success: false, errorCode: 1),
-                        cancellationToken);
-                    return new ItemTradeStateOutcome(false, null);
-                }
-
-                mine.FinalConfirmed = true;
-                return other.FinalConfirmed
-                    ? await SettleAsync(session, mine, cancellationToken)
-                    : new ItemTradeStateOutcome(false, null);
-
             default:
                 // CMD 26 的 state 4（0x7C9C90）语义未定（勘察 §7.1 / 设计稿 T2）：忽略并记日志。
                 _logger.LogInformation(
@@ -365,13 +364,68 @@ public sealed class ItemTradeService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// CMD 26 = 3。整段状态判定与迁移在 <see cref="ItemTradeSession.Sync"/> 内原子完成：
+    /// 双方都锁定、本人尚未确认过，最后一名确认者把会话抢占为 <c>Settling</c> 并在锁外发起结算。
+    /// 并发确认因此只有一个调用者能进入 <see cref="SettleAsync"/>（不会重复交付/重复转账），
+    /// 落败方只会看到结算已开始。
+    /// </summary>
+    private async Task<ItemTradeStateOutcome> ConfirmAsync(
+        ItemTradeSession session,
+        Guid characterId,
+        CancellationToken cancellationToken)
+    {
+        var mine = session.SideOf(characterId);
+        var other = session.OtherOf(characterId);
+        var settle = false;
+        var rejected = false;
+        lock (session.Sync)
+        {
+            if (session.State != ItemTradeSessionState.Open)
+            {
+                return new ItemTradeStateOutcome(false, null);
+            }
+
+            session.LastActivityAt = _timeProvider.GetUtcNow();
+            // 设计 §2.4：只有双方都已锁定才接受确认；同一侧重复确认不得重设标志或重复结算。
+            if (!mine.Locked || !other.Locked || mine.FinalConfirmed)
+            {
+                rejected = true;
+            }
+            else
+            {
+                mine.FinalConfirmed = true;
+                if (other.FinalConfirmed)
+                {
+                    session.State = ItemTradeSessionState.Settling;
+                    settle = true;
+                }
+            }
+        }
+
+        if (settle)
+        {
+            return await SettleAsync(session, mine, cancellationToken);
+        }
+
+        if (rejected)
+        {
+            await SendAsync(
+                characterId,
+                GameProtocolEngine.CreateSetItemTradeStateResult(success: false, errorCode: 1),
+                cancellationToken);
+        }
+
+        return new ItemTradeStateOutcome(false, null);
+    }
+
     private async Task<ItemTradeStateOutcome> SettleAsync(
         ItemTradeSession session,
         ItemTradeSide actor,
         CancellationToken cancellationToken)
     {
-        // 结算期间不再接受任何托管变动；确认瞬间对方掉线就按取消处理，绝不把货发给已离开的会话。
-        session.State = ItemTradeSessionState.Settling;
+        // 会话已在 ConfirmAsync 的锁内抢占为 Settling：结算期间不再接受托管变动或取消；
+        // 确认瞬间对方掉线就按取消处理，绝不把货发给已离开的会话。
         if (!IsOnline(session.Initiator.Channel.CharacterId)
             || !IsOnline(session.Partner.Channel.CharacterId))
         {
@@ -408,7 +462,7 @@ public sealed class ItemTradeService : BackgroundService
                             ? (byte)4
                             : (byte)1),
                 cancellationToken);
-            await CancelSessionAsync(session, absentCharacterId: null, cancellationToken);
+            await AbortSettlementAsync(session, cancellationToken);
             return new ItemTradeStateOutcome(false, null);
         }
 
@@ -599,14 +653,37 @@ public sealed class ItemTradeService : BackgroundService
     /// 结束一笔会话。<paramref name="absentCharacterId"/> 为已离场的角色（掉线/返回选人）：
     /// 不给他发包；为 null 时双方都要收到通知（取消、超时、换区）。
     /// </summary>
-    private async Task CancelSessionAsync(
+    private Task CancelSessionAsync(
         ItemTradeSession session,
         Guid? absentCharacterId,
+        CancellationToken cancellationToken) =>
+        CancelSessionAsyncCore(session, absentCharacterId, ignoreSettling: false, cancellationToken);
+
+    /// <summary>
+    /// 结算失败中止：这一次「整笔退回」由结算路径自己发起（会话已被它抢占为 Settling），
+    /// 因此绕过取消路径的 Settling 保护——那条保护只针对外部的取消/超时/换区/掉线。
+    /// </summary>
+    private Task AbortSettlementAsync(ItemTradeSession session, CancellationToken cancellationToken) =>
+        CancelSessionAsyncCore(session, absentCharacterId: null, ignoreSettling: true, cancellationToken);
+
+    private async Task CancelSessionAsyncCore(
+        ItemTradeSession session,
+        Guid? absentCharacterId,
+        bool ignoreSettling,
         CancellationToken cancellationToken)
     {
-        if (!RemoveSession(session))
+        lock (session.Sync)
         {
-            return;
+            // 结算在途：取消、超时、换区、掉线都不得插手，成功或失败由结算路径自己收尾。
+            if (!ignoreSettling && session.State == ItemTradeSessionState.Settling)
+            {
+                return;
+            }
+
+            if (!RemoveSession(session))
+            {
+                return;
+            }
         }
 
         if (session.State == ItemTradeSessionState.Requested)
