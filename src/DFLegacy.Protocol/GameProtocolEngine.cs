@@ -2017,31 +2017,39 @@ public static class GameProtocolEngine
             DropItemCommand,
             [0, errorCode, itemSpace]);
 
-    /// <summary>NOTI 7：被请求方弹「接受/拒绝」小窗；reserved 回传请求方 uid（真机确认项 T1）。</summary>
-    public static GameServerPacket CreateRequestPeerNotification(ushort requesterUid, uint reserved)
+    /// <summary>
+    /// NOTI 7：被请求方弹「接受/拒绝」小窗。<paramref name="weightDelta"/> 必须是请求方 CMD 10 带来的
+    /// 原值「当前负重 − 负重上限」（克，负数走二补码）：客户端 type==1 分支把它写进
+    /// <c>CNUser+0xF4</c>（0x41B5E9），锁定时的负重自检（0x4623A0）直接读它。
+    /// 传 uid 或 0 会让对方算出 1 克的假缺额并拒绝发锁定包。
+    /// </summary>
+    public static GameServerPacket CreateRequestPeerNotification(ushort requesterUid, uint weightDelta)
     {
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write(requesterUid);
         writer.Write((byte)1);
-        writer.Write(reserved);
+        writer.Write(weightDelta);
         return new GameServerPacket(
             NotificationPacketType,
             RequestPeerNotification,
             payload.ToArray());
     }
 
-    /// <summary>NOTI 8：请求方开窗并在聊天栏打「[X]已接受交易请求」；mode 填 0。</summary>
+    /// <summary>
+    /// NOTI 8：请求方开窗并在聊天栏打「[X]已接受交易请求」；<paramref name="weightDelta"/> 必须是
+    /// 接受方 CMD 11 带来的原值（0x41B727 写进请求方客户端上的 <c>CNUser+0xF4</c>），mode 填 0。
+    /// </summary>
     public static GameServerPacket CreateResponsePeerNotification(
         ushort accepterUid,
-        uint reserved,
+        uint weightDelta,
         byte mode)
     {
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write(accepterUid);
         writer.Write((byte)1);
-        writer.Write(reserved);
+        writer.Write(weightDelta);
         writer.Write(mode);
         return new GameServerPacket(
             NotificationPacketType,
@@ -2914,41 +2922,56 @@ public static class GameProtocolEngine
         return true;
     }
 
-    /// <summary>CMD 10：u16 目标 uid + u8 peerType；只有 type==1 才是交易请求。</summary>
+    /// <summary>
+    /// CMD 10：u16 目标 uid + u8 peerType + u32 weightDelta；只有 type==1 才是交易请求。
+    /// weightDelta = 客户端自算的「当前负重 − 负重上限」（克，正常为负，u32 二补码），
+    /// 必须原样回传进 NOTI 7（trade-weight-check-recon §3.3/§5.1），客户端的锁定自检要用它。
+    /// </summary>
     public static bool TryReadRequestPeer(
         byte[] body,
         out ushort targetUid,
-        out byte peerType)
+        out byte peerType,
+        out uint weightDelta)
     {
         ArgumentNullException.ThrowIfNull(body);
         targetUid = 0;
         peerType = 0;
-        if (body.Length < 2 + 2 + 1)
+        weightDelta = 0;
+        // body = [u16 seq][u16 uid][u8 type][u32 weightDelta]，真机 CMD 10（0x4624F9）恒发后 4 字节。
+        if (body.Length < 2 + 2 + 1 + 4)
         {
             return false;
         }
 
         targetUid = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
         peerType = body[4];
+        weightDelta = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(5, 4));
         return peerType == 1;
     }
 
-    /// <summary>CMD 11：与 CMD 10 同前缀（u16 uid + u8 peerType），只有 type==1 是交易应答。</summary>
+    /// <summary>
+    /// CMD 11：与 CMD 10 同前缀（u16 uid + u8 peerType + u32 weightDelta），只有 type==1 是交易应答。
+    /// weightDelta 语义与 CMD 10 完全一致，原样回传进 NOTI 8。
+    /// </summary>
     public static bool TryReadResponsePeer(
         byte[] body,
         out ushort requesterUid,
-        out byte peerType)
+        out byte peerType,
+        out uint weightDelta)
     {
         ArgumentNullException.ThrowIfNull(body);
         requesterUid = 0;
         peerType = 0;
-        if (body.Length < 2 + 2 + 1)
+        weightDelta = 0;
+        // 真机 CMD 11（0x821E4E 起）同样以 u32 的「当前负重 − 负重上限」收尾。
+        if (body.Length < 2 + 2 + 1 + 4)
         {
             return false;
         }
 
         requesterUid = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
         peerType = body[4];
+        weightDelta = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(5, 4));
         return peerType == 1;
     }
 

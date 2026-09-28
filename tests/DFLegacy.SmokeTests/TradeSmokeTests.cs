@@ -30,8 +30,9 @@ internal static class TradeSmokeTests
         await CheckOfflinePeerAbortsSettlementAsync(check);
     }
 
-    // 逐字段依据 .superpowers/sdd/trade-protocol-recon.md §2/§3：
-    // NOTI 7/8 与 CMD 11 的尾部 u32 是客户端请求时的时间差回填位（T1 真机确认），
+    // 逐字段依据 .superpowers/sdd/trade-weight-check-recon.md §3.3/§5：
+    // NOTI 7/8 与 CMD 10/11 尾部的 u32 是客户端自算的「当前负重 − 负重上限」（克，正常为负，
+    // 二补码 u32），服务端必须原样透传（旧报告把它当"时间差/回传 uid"已作废）；
     // CMD 19 结果必须 10 字节且首字节为 resultFlag=1，否则操作者交易栏永远空。
     private static void CheckTradePackets(Action<bool, string> check)
     {
@@ -45,21 +46,23 @@ internal static class TradeSmokeTests
                 && GameProtocolEngine.FinishItemTradeNotification == 18,
             "the trade ids match the client's tables: NOTI 7/8/15/16/17/18 and CMD 10/11");
 
-        var request = GameProtocolEngine.CreateRequestPeerNotification(0x1234, 0x1234);
+        var request = GameProtocolEngine.CreateRequestPeerNotification(0x1234, 0xFFFF8C1D);
         check(request.Type == 0 && request.ProtocolId == 7
                 && request.Payload.Length == 2 + 1 + 4
                 && BinaryPrimitives.ReadUInt16LittleEndian(request.Payload.AsSpan(0, 2)) == 0x1234
                 && request.Payload[2] == 1
-                && BinaryPrimitives.ReadUInt32LittleEndian(request.Payload.AsSpan(3, 4)) == 0x1234,
-            "NOTI 7 is [u16 requesterUid][u8 type 1][u32 reserved]");
+                && BinaryPrimitives.ReadUInt32LittleEndian(request.Payload.AsSpan(3, 4)) == 0xFFFF8C1D
+                && request.Payload.AsSpan(3, 4).SequenceEqual(new byte[] { 0x1D, 0x8C, 0xFF, 0xFF }),
+            "NOTI 7 is [u16 requesterUid][u8 type 1][u32 weightDelta], a negative delta kept as two's complement");
 
-        var accepted = GameProtocolEngine.CreateResponsePeerNotification(0x0102, 0, 0);
+        var accepted = GameProtocolEngine.CreateResponsePeerNotification(0x0102, 0xFFFF8C55, 0);
         check(accepted.Type == 0 && accepted.ProtocolId == 8
                 && accepted.Payload.Length == 2 + 1 + 4 + 1
                 && BinaryPrimitives.ReadUInt16LittleEndian(accepted.Payload.AsSpan(0, 2)) == 0x0102
                 && accepted.Payload[2] == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(accepted.Payload.AsSpan(3, 4)) == 0xFFFF8C55
                 && accepted.Payload[^1] == 0,
-            "NOTI 8 is [u16 accepterUid][u8 type 1][u32 reserved][u8 mode]");
+            "NOTI 8 is [u16 accepterUid][u8 type 1][u32 weightDelta][u8 mode]");
 
         var openWindow = GameProtocolEngine.CreateResponsePeerReply(0x2222, 0);
         check(openWindow.Type == 1 && openWindow.ProtocolId == 11
@@ -144,23 +147,45 @@ internal static class TradeSmokeTests
                 && moveFailure.Payload.SequenceEqual(new byte[] { 0, 0x17, 0, 4 }),
             "a CMD 19 failure is exactly [0, errorCode, srcType, destType]: 4 bytes, no slot/count echo");
 
-        // 解析：载荷从 Body+2 起算，前 2 字节是序列号。
+        // 解析：载荷从 Body+2 起算，前 2 字节是序列号；尾部 4 字节是「当前负重 − 负重上限」。
         var requestBody = new byte[2 + 2 + 1 + 4];
         BinaryPrimitives.WriteUInt16LittleEndian(requestBody.AsSpan(2, 2), 0x4321);
         requestBody[4] = 1;
-        check(GameProtocolEngine.TryReadRequestPeer(requestBody, out var targetUid, out var peerType)
-                && targetUid == 0x4321 && peerType == 1,
-            "CMD 10 parses [u16 targetUid][u8 type 1]");
+        BinaryPrimitives.WriteUInt32LittleEndian(requestBody.AsSpan(5, 4), 0xFFFF8C1D);
+        check(GameProtocolEngine.TryReadRequestPeer(
+                    requestBody, out var targetUid, out var peerType, out var requestWeightDelta)
+                && targetUid == 0x4321
+                && peerType == 1
+                && requestWeightDelta == 0xFFFF8C1D,
+            "CMD 10 parses [u16 targetUid][u8 type 1][u32 weightDelta], negative delta included");
         var wrongTypeBody = (byte[])requestBody.Clone();
         wrongTypeBody[4] = 2;
-        check(!GameProtocolEngine.TryReadRequestPeer(wrongTypeBody, out _, out _),
+        check(!GameProtocolEngine.TryReadRequestPeer(wrongTypeBody, out _, out _, out _),
             "a CMD 10 for team/duel (type != 1) is not a trade request");
-        check(!GameProtocolEngine.TryReadRequestPeer(requestBody[..4], out _, out _),
+        // 截断（< 9 字节）在旧实现里会被当成合法请求，现在必须拒绝并把三个 out 全部清掉：
+        // 少 4 字节的负重差要么读越界要么是别的命令，绝不能拿默认值当负重回传。
+        check(!GameProtocolEngine.TryReadRequestPeer(
+                    requestBody[..8], out var shortUid, out _, out var shortDelta)
+                && shortUid == 0
+                && shortDelta == 0,
+            "a truncated CMD 10 (missing the weight delta) is rejected and leaves the outs cleared");
+        check(!GameProtocolEngine.TryReadRequestPeer(requestBody[..4], out _, out _, out _),
             "a truncated CMD 10 is rejected");
+        var positiveDeltaBody = (byte[])requestBody.Clone();
+        BinaryPrimitives.WriteUInt32LittleEndian(positiveDeltaBody.AsSpan(5, 4), 0x00004E20);
+        check(GameProtocolEngine.TryReadRequestPeer(
+                    positiveDeltaBody, out _, out _, out var overweightDelta)
+                && overweightDelta == 0x00004E20,
+            "a positive (already overweight) delta parses unsigned: the server passes it through as-is");
 
-        check(GameProtocolEngine.TryReadResponsePeer(requestBody, out var requesterUid, out var responseType)
-                && requesterUid == 0x4321 && responseType == 1,
-            "CMD 11 shares the [u16 uid][u8 type 1] prefix");
+        check(GameProtocolEngine.TryReadResponsePeer(
+                    requestBody, out var requesterUid, out var responseType, out var responseWeightDelta)
+                && requesterUid == 0x4321
+                && responseType == 1
+                && responseWeightDelta == 0xFFFF8C1D,
+            "CMD 11 shares the [u16 uid][u8 type 1][u32 weightDelta] prefix");
+        check(!GameProtocolEngine.TryReadResponsePeer(requestBody[..8], out _, out _, out _),
+            "a truncated CMD 11 is rejected");
 
         var stateBody = new byte[3];
         stateBody[2] = 3;
@@ -690,7 +715,7 @@ internal static class TradeSmokeTests
         // TradeHarness.CreateAsync 只挂通道、不进镇：先验证"在线但不在任何城镇区域"的
         // 请求被拒（设计 §2.4：双方都在城镇区域是放行条件之一），且目标完全无感知。
         harness.Clear("阿尔法");
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, weightDelta: 0, CancellationToken.None);
         check(harness.Of("阿尔法").Count == 1
                 && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
                 && harness.Of("阿尔法")[0].Payload[0] == 0
@@ -702,18 +727,22 @@ internal static class TradeSmokeTests
         harness.Clear("阿尔法");
         harness.Clear("布拉沃");
 
-        // 服务端独立限流：同一角色 3 秒内的第二条 CMD 10 直接丢弃（客户端 CMD 10 里的 u32
-        // 时间差只够防客户端自身抖动，服务端不能依赖它）。上面那条"未进镇"的请求也会打
+        // 服务端独立限流：同一角色 3 秒内的第二条 CMD 10 直接丢弃（客户端 CMD 10 的 u32 是
+        // 负重差、不是防抖时间戳，服务端不能依赖它）。上面那条"未进镇"的请求也会打
         // 限流时间戳，所以这一相位前先重置。
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, CancellationToken.None);
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, weightDelta: 0, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, weightDelta: 0, CancellationToken.None);
         check(harness.Of("阿尔法").Count == 1,
             "two back-to-back requests inside the throttle window answer exactly one failure");
 
         harness.Clear("阿尔法");
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        // 真机负值（-29.667 kg）：CMD 10 的这个 u32 必须逐字节进入 NOTI 7——被请求方的锁定自检
+        // 读的正是它，回传 uid 或 0 就是"负缺 0.001kg"那个真机 bug。
+        const uint RequesterWeightDelta = 0xFFFF8C1D;
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), 2, RequesterWeightDelta, CancellationToken.None);
         var alicePackets = harness.Of("阿尔法");
         var bravoPackets = harness.Of("布拉沃");
         check(alicePackets.Count == 0,
@@ -721,8 +750,11 @@ internal static class TradeSmokeTests
         check(bravoPackets.Count == 1
                 && bravoPackets[0].Type == 0
                 && bravoPackets[0].ProtocolId == GameProtocolEngine.RequestPeerNotification
-                && BinaryPrimitives.ReadUInt16LittleEndian(bravoPackets[0].Payload.AsSpan(0, 2)) == 1,
-            "the target receives exactly one NOTI 7 carrying the requester's area user id");
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoPackets[0].Payload.AsSpan(0, 2)) == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(bravoPackets[0].Payload.AsSpan(3, 4))
+                    == RequesterWeightDelta
+                && bravoPackets[0].Payload.AsSpan(3, 4).SequenceEqual(new byte[] { 0x1D, 0x8C, 0xFF, 0xFF }),
+            "the target receives exactly one NOTI 7: [requesterUid][1][the requester's weight delta bytes]");
 
         // 同一时间只能一笔：已在会话中的角色（含等待应答的 Requested）再发请求被静默丢弃——
         // 既不给自己回失败包，也不打扰对手。清空两侧收件箱后再断言，否则前一笔的 NOTI 7
@@ -732,7 +764,8 @@ internal static class TradeSmokeTests
         // 保留它、只清阿尔法信箱；被静默丢弃的第二次请求（布拉沃 → 阿尔法）不得在任一侧新增包。
         harness.Clear("阿尔法");
         var bravoBeforeSecondRequest = harness.Of("布拉沃");
-        await harness.Service.HandleRequestAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("布拉沃"), 1, weightDelta: 0, CancellationToken.None);
         var bravoAfterSecondRequest = harness.Of("布拉沃");
         check(bravoBeforeSecondRequest.Count == 1
                 && bravoBeforeSecondRequest[0].ProtocolId == GameProtocolEngine.RequestPeerNotification
@@ -743,15 +776,21 @@ internal static class TradeSmokeTests
 
         harness.Clear("阿尔法");
         harness.Clear("布拉沃");
-        await harness.Service.HandleResponseAsync(harness.IdOf("布拉沃"), 1, accept: true, CancellationToken.None);
+        // 接受方 CMD 11 的 u32 同样要逐字节进入 NOTI 8：请求方靠它判断锁定后接受方会不会超重。
+        const uint AccepterWeightDelta = 0xFFFF8C55;
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), 1, accept: true, AccepterWeightDelta, CancellationToken.None);
         var alphaTail = harness.Of("阿尔法");
         var bravoTail = harness.Of("布拉沃");
         check(alphaTail.Count == 1
                 && alphaTail[0].Type == 0
                 && alphaTail[0].ProtocolId == GameProtocolEngine.ResponsePeerNotification
                 && BinaryPrimitives.ReadUInt16LittleEndian(alphaTail[0].Payload.AsSpan(0, 2)) == 2
+                && BinaryPrimitives.ReadUInt32LittleEndian(alphaTail[0].Payload.AsSpan(3, 4))
+                    == AccepterWeightDelta
+                && alphaTail[0].Payload.AsSpan(3, 4).SequenceEqual(new byte[] { 0x55, 0x8C, 0xFF, 0xFF })
                 && alphaTail[0].Payload[^1] == 0,
-            "the requester opens the window with NOTI 8 carrying the accepter's uid (mode 0)");
+            "the requester opens the window with NOTI 8 [accepterUid][1][accepter's weight delta][mode 0]");
         check(bravoTail.Count == 1
                 && bravoTail[0].Type == 1
                 && bravoTail[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
@@ -772,7 +811,7 @@ internal static class TradeSmokeTests
         harness.Clear("阿尔法");
         harness.Clear("布拉沃");
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, weightDelta: 0, CancellationToken.None);
         harness.Clear("阿尔法");
         check(await harness.Service.SweepExpiredAsync(
                     DateTimeOffset.UtcNow + TimeSpan.FromSeconds(31),
@@ -793,7 +832,7 @@ internal static class TradeSmokeTests
         harness.Clear("阿尔法");
         await harness.EnterTownAsync("布拉沃", townId: 3, areaId: 4, areaUserId: 2);
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, weightDelta: 0, CancellationToken.None);
         check(harness.Of("阿尔法").Count == 1
                 && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
                 && harness.Of("阿尔法")[0].Payload[0] == 0,
@@ -805,7 +844,7 @@ internal static class TradeSmokeTests
         harness.Clear("阿尔法");
         harness.Clear("布拉沃");
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 1, weightDelta: 0, CancellationToken.None);
         check(harness.Of("阿尔法").Count == 1
                 && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
                 && harness.Of("阿尔法")[0].Payload[0] == 0
@@ -814,7 +853,7 @@ internal static class TradeSmokeTests
 
         harness.Clear("阿尔法");
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, weightDelta: 0, CancellationToken.None);
         check(harness.Of("阿尔法").Count == 1
                 && harness.Of("阿尔法")[0].Payload[0] == 0,
             "an unknown area user id is refused");
@@ -828,7 +867,7 @@ internal static class TradeSmokeTests
                 == BlacklistUpdateFailure.None,
             "the target puts the requester on its blacklist");
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
-        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, weightDelta: 0, CancellationToken.None);
         check(harness.Of("布拉沃").Count == 0,
             "a blacklisted target never learns about the request: not a single packet, not even NOTI 7");
         check(await harness.Service.SweepExpiredAsync(
@@ -848,7 +887,7 @@ internal static class TradeSmokeTests
         harness.Clear("阿尔法");
         harness.Clear("布拉沃");
         harness.Service.ResetRequestThrottleForTests(harness.IdOf("布拉沃"));
-        await harness.Service.HandleRequestAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        await harness.Service.HandleRequestAsync(harness.IdOf("布拉沃"), 1, weightDelta: 0, CancellationToken.None);
         check(harness.Of("阿尔法").Count == 1
                 && harness.Of("阿尔法")[0].Type == 0
                 && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.RequestPeerNotification
@@ -2155,11 +2194,16 @@ internal sealed class TradeHarness : IAsyncDisposable
 
     /// <summary>
     /// 便捷方法：阿尔法向布拉沃发起、布拉沃接受（uid 与 AttachChannelAsync/EnterTownAsync 的约定一致）。
+    /// 默认带一组真机形状的负值负重差（0xFFFF8Cxx）：NOTI 7/8 要把它逐字节透传，交易前置自检才过得去。
     /// </summary>
-    public async Task OpenTradeAsync()
+    public async Task OpenTradeAsync(
+        uint requesterWeightDelta = 0xFFFF8C1D,
+        uint accepterWeightDelta = 0xFFFF8C55)
     {
-        await Service.HandleRequestAsync(_characters["阿尔法"].Id, 2, CancellationToken.None);
-        await Service.HandleResponseAsync(_characters["布拉沃"].Id, 1, accept: true, CancellationToken.None);
+        await Service.HandleRequestAsync(
+            _characters["阿尔法"].Id, 2, requesterWeightDelta, CancellationToken.None);
+        await Service.HandleResponseAsync(
+            _characters["布拉沃"].Id, 1, accept: true, accepterWeightDelta, CancellationToken.None);
     }
 
     public async ValueTask DisposeAsync()

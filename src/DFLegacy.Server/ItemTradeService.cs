@@ -30,6 +30,15 @@ internal sealed class ItemTradeSide
     public int OfferedGold { get; set; }
     public bool Locked { get; set; }
     public bool FinalConfirmed { get; set; }
+
+    /// <summary>
+    /// 本侧客户端在 CMD 10 / CMD 11 里带来的 u32＝「当前负重 − 负重上限」（克，正常为负，二补码）。
+    /// 它必须原样回传给另一方（NOTI 7 给被请求方、NOTI 8 给请求方）：客户端把它存进
+    /// <c>CNUser+0xF4</c>，锁定时的负重自检（0x4623A0）就是 <c>该值 + 对方面板重 − 我方面板重 &gt;= 0</c>。
+    /// 服务端不自行换算——客户端用自己的重量模型算，换算尺度与 wire 单位不一定一致
+    /// （trade-weight-check-recon §5.1）。
+    /// </summary>
+    public uint WeightDelta { get; set; }
 }
 
 internal sealed class ItemTradeSession
@@ -65,7 +74,7 @@ public sealed record ItemTradeStateOutcome(bool SettlementApplied, CharacterReco
 /// </summary>
 public sealed class ItemTradeService : BackgroundService
 {
-    /// <summary>客户端 CMD 10 自带时间差防抖；服务端独立限流，避免被单包装满。</summary>
+    /// <summary>服务端独立限流（客户端 CMD 10 的 u32 是负重差、不承担防抖）；避免被单包装满。</summary>
     public const int MinimumRequestIntervalMilliseconds = 3_000;
 
     public static readonly TimeSpan RequestWindow = TimeSpan.FromSeconds(30);
@@ -187,6 +196,7 @@ public sealed class ItemTradeService : BackgroundService
     public async Task HandleRequestAsync(
         Guid characterId,
         ushort targetAreaUserId,
+        uint weightDelta,
         CancellationToken cancellationToken = default)
     {
         if (!_channels.TryGetValue(characterId, out var requester))
@@ -257,7 +267,8 @@ public sealed class ItemTradeService : BackgroundService
             Initiator = new ItemTradeSide
             {
                 Channel = requester,
-                IsInitiator = true
+                IsInitiator = true,
+                WeightDelta = weightDelta
             },
             Partner = new ItemTradeSide
             {
@@ -280,19 +291,25 @@ public sealed class ItemTradeService : BackgroundService
         _sessions[target.CharacterId] = session;
         await SendAsync(
             session.Partner,
-            GameProtocolEngine.CreateRequestPeerNotification(requester.AreaUserId, requester.AreaUserId),
+            // 被请求方要拿请求方的「当前负重 − 负重上限」来判断锁定后请求方会不会超重：
+            // 原样透传 CMD 10 的 u32（旧实现回传 requester.AreaUserId 正是真机 1 克假报错的根因）。
+            GameProtocolEngine.CreateRequestPeerNotification(
+                session.Initiator.Channel.AreaUserId,
+                session.Initiator.WeightDelta),
             cancellationToken);
         _logger.LogInformation(
-            "Trade {TradeId}: {Requester} requested {Target}.",
+            "Trade {TradeId}: {Requester} requested {Target} (weight delta 0x{WeightDelta:X8}).",
             session.TradeId,
             requester.CharacterName,
-            target.CharacterName);
+            target.CharacterName,
+            session.Initiator.WeightDelta);
     }
 
     public async Task HandleResponseAsync(
         Guid characterId,
         ushort requesterAreaUserId,
         bool accept,
+        uint weightDelta,
         CancellationToken cancellationToken = default)
     {
         if (!_sessions.TryGetValue(characterId, out var session)
@@ -309,13 +326,16 @@ public sealed class ItemTradeService : BackgroundService
             return;
         }
 
+        session.Partner.WeightDelta = weightDelta;
         session.State = ItemTradeSessionState.Open;
         session.LastActivityAt = _timeProvider.GetUtcNow();
         await SendAsync(
             session.Initiator,
+            // 请求方同样要用接受方的「当前负重 − 负重上限」做锁定自检：原样透传 CMD 11 的 u32
+            // （旧实现填 0 会让请求方永远算出 1 克假缺额，锁不上）。
             GameProtocolEngine.CreateResponsePeerNotification(
                 session.Partner.Channel.AreaUserId,
-                0,
+                session.Partner.WeightDelta,
                 mode: 0),
             cancellationToken);
         await SendAsync(
@@ -325,10 +345,11 @@ public sealed class ItemTradeService : BackgroundService
                 mode: 0),
             cancellationToken);
         _logger.LogInformation(
-            "Trade {TradeId} opened between {Initiator} and {Partner}.",
+            "Trade {TradeId} opened between {Initiator} and {Partner} (accepter weight delta 0x{WeightDelta:X8}).",
             session.TradeId,
             session.Initiator.Channel.CharacterName,
-            session.Partner.Channel.CharacterName);
+            session.Partner.Channel.CharacterName,
+            session.Partner.WeightDelta);
     }
 
     /// <summary>

@@ -6756,16 +6756,19 @@ public sealed class EntranceService(
                             && request.ProtocolId == GameProtocolEngine.RequestPeerCommand)
                         {
                             // CMD 10 同时承载组队/决斗（type != 1）：本分支只处理交易，
-                            // 其它类型保持既有行为（未实现 → 忽略）。
+                            // 其它类型保持既有行为（未实现 → 忽略）。尾部的 u32 是客户端自算的
+                            // 「当前负重 − 负重上限」，原样透传进 NOTI 7（trade-weight-check-recon §5.1）。
                             if (activeCharacter is not null
                                 && GameProtocolEngine.TryReadRequestPeer(
                                     request.Body,
                                     out var tradeTargetUid,
-                                    out _))
+                                    out _,
+                                    out var requesterWeightDelta))
                             {
                                 await itemTradeService.HandleRequestAsync(
                                     activeCharacter.Id,
                                     tradeTargetUid,
+                                    requesterWeightDelta,
                                     serverToken);
                             }
 
@@ -6776,16 +6779,19 @@ public sealed class EntranceService(
                             && request.ProtocolId == GameProtocolEngine.ResponsePeerCommand)
                         {
                             // 客户端的「拒绝」只关窗不发包，所以这里只可能是接受。
+                            // 尾部 u32 与 CMD 10 同义（接受方的负重余量），原样透传进 NOTI 8。
                             if (activeCharacter is not null
                                 && GameProtocolEngine.TryReadResponsePeer(
                                     request.Body,
                                     out var tradeRequesterUid,
-                                    out _))
+                                    out _,
+                                    out var accepterWeightDelta))
                             {
                                 await itemTradeService.HandleResponseAsync(
                                     activeCharacter.Id,
                                     tradeRequesterUid,
                                     accept: true,
+                                    accepterWeightDelta,
                                     serverToken);
                             }
 
