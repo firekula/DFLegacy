@@ -276,7 +276,7 @@
 
 城镇内组队，服务端全量实现：城镇右键"邀请组队"与列表"申请加入"（**同一个包** `CMD 10 peerType=0`）→ 对方应答窗 → 接受 → 建队/并入 → 4 人名册（成员槽、队长、预置队名）；退出/踢人/掉线/切换角色/切换频道的移除与**队长自动继任**；进副本、回城、换城镇、城镇内换区都**不退队**；「队伍信息」列表与「推荐伙伴」所依赖的数据前提（名册按区域广播 + 进区补发）一并落地。协议与实现依据：`.superpowers/sdd/party-protocol-recon.md`（合并卷，含对 A 卷的两条勘误）与四份分卷 `party-protocol-recon-a-core.md` / `-b-membership.md` / `-c-partylist.md` / `-d-recommend.md`、设计稿 `docs/superpowers/specs/2026-09-28-party-system-design.md`、计划 `docs/superpowers/plans/2026-09-28-party-system.md`。
 
-**当前状态（诚实标注）**：代码在分支 `feat/party`（HEAD `a79c548`）完成并通过逐任务评审，`PartySmokeTests` 全绿；**真机双客户端验收尚未进行**（下表全部"待验证"）。服务端已以 Release 配置发布到 `G:/Game/DNF_ACT1/DF/town-test` 并**处于运行状态**（`server.json` 已还原为本机值），供验收使用。
+**当前状态（诚实标注）**：代码在分支 `feat/party`。提交锚点（**按提交号记，不记总数**——总数会随每次文档提交变化）：代码提交 8 个 `c76c142`..`a79c548`，文档提交 `c859137` 在其上（**实测：`git log --oneline main..feat/party | wc -l` = 9、`git rev-parse --short HEAD` = `c859137`**），本次修正提交（curl 调用形状 / 分支状态 / 顺序前提）又在其上。代码通过逐任务评审，`PartySmokeTests` 全绿；**真机双客户端验收尚未进行**（下表全部"待验证"）。验收环境由发布件现启：`dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o /g/Game/DNF_ACT1/DF/town-test` → 还原 `server.json` → 在 `DF/town-test` 启动（完整命令与核对项见本节"无头冒烟"与 `docs/superpowers/handoff-party.md`），PID 以实际为准。
 
 **协议要点（含本轮勘察勘误与硬约束，真机最容易踩的就是这几条）**
 
@@ -302,7 +302,7 @@
 
 **无头冒烟（发布件启动，未接客户端，2026-09-28）**
 
-`dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o /g/Game/DNF_ACT1/DF/town-test` → 还原 `server.json`（发布件会用仓库样例覆盖）→ 在 `DF/town-test` 启动 `./DFLegacy.Server.exe > server-party.log 2>&1`。实见：`Indexed 48343 script files`、`Entrance listener ready at 127.0.0.1:2311 / 7001 / 8080`（另有 `CharacterDatagramService` 2311、`GameplayDatagramService` 7002/7003）、后台 `http://127.0.0.1:8081` 就绪；整份启动日志**无 `Exception`/`error:`**（既无未处理异常也无启动期告警）。登录接口用 `curl -X POST http://127.0.0.1:8081/api/auth/login -d '{"userName":"test","password":"test"}'` 返回 **415**——curl 的 `-d` 默认发 `application/x-www-form-urlencoded`，补 `-H "Content-Type: application/json"` 后返回 **200** 并下发了 token（登录路径本身正常，是取 HTTP 码时容易踩的坑）。服务端**留在运行状态**供双客户端验收；本次冒烟只证明服务端装配与启动，不涉及客户端。
+`dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o /g/Game/DNF_ACT1/DF/town-test` → 还原 `server.json`（发布件会用仓库样例覆盖）→ 在 `DF/town-test` 启动 `./DFLegacy.Server.exe > server-party.log 2>&1`。实见：`Indexed 48343 script files`、`Entrance listener ready at 127.0.0.1:2311 / 7001 / 8080`（另有 `CharacterDatagramService` 2311、`GameplayDatagramService` 7002/7003）、后台 `http://127.0.0.1:8081` 就绪；整份启动日志**无 `Exception`/`error:`**（既无未处理异常也无启动期告警）。登录接口用 `curl -X POST http://127.0.0.1:8081/api/auth/login -d '{"userName":"test","password":"test"}'` 返回 **415**——curl 的 `-d` 默认发 `application/x-www-form-urlencoded`，补 `-H "Content-Type: application/json"` 后返回 **200** 并下发了 token（登录路径本身正常，是取 HTTP 码时容易踩的坑）。该次冒烟后服务端保持运行供双客户端验收（**PID 以实际为准**，易过期；验收时按上面的命令现启即可）；本次冒烟只证明服务端装配与启动，不涉及客户端。
 
 **真机验收（本机双客户端，尚未进行；环境 `G:/Game/DNF_ACT1/DF/town-test`，日志 `server-party.log`，`EnablePacketTracing=true`）**
 
@@ -319,9 +319,9 @@
 | P7 | 组队窗的"新建队伍"入口（若找得到）选预置队名 | 待验证（期望：队名在双方窗口/列表里一致；自定义名显示"无队伍名"） |
 | P8 | 与交易并发、单人零回归 | 待验证（期望：交易照常；无队伍时无任何新包） |
 | P9 | B 进副本 → 回城 | 待验证（期望：**队伍仍在**（用户决策）；回到同区域后队友行恢复显示名字等级） |
-| L1 | B 打开「队伍信息」（热键 `]`） | 待验证（期望：能看到同区域的其他队伍、人数/4、队长） |
+| L1 | B 打开「队伍信息」（热键 `]`） | 待验证（期望：能看到同区域的其他队伍、人数/4、队长；**列表为空先查发包时序**——名册必须晚于对方的 `USERINFO`/区域条目，见"已知限制"与设计稿 §6.5） |
 | L2 | B 在列表里选 A 的队伍 → 申请加入 → A 收应答窗 → 接受 | 待验证（期望：B 入队、A 仍是队长） |
-| L3 | B 打开「推荐伙伴」（热键 `[`） | 待验证（期望：列出同区域、无队伍、等级差 ≤5 的玩家；点人可邀请） |
+| L3 | B 打开「推荐伙伴」（热键 `[`） | 待验证（期望：列出同区域、无队伍、等级差 ≤5 的玩家；点人可邀请。"排除已有队伍的人"依赖队伍链接，**推荐出有队伍的人同样先查发包时序**，见"已知限制"§6.5） |
 | L4 | 预置队名（`sel` 1..6） | 待验证（期望：别人的窗口/列表显示同一队名） |
 | L6 | 一人换区后看对方那一行 | 待验证（**允许空白，绝不能显示别人的名字**；出现错名立即记录并回报） |
 | L7 | 两人分开后又回到同区域 | 待验证（期望：队友行恢复显示名字等级） |
@@ -340,6 +340,7 @@
 - **跨区域队友行可能空白**：`NOTI 9` 不携带名字/等级，客户端按**本区域**用户表解析槽位 uid；异区域成员按设计填 `0` 哨兵 → 该行空白，但**绝不显示别人的名字**（真机 L6/L7）。这是原版协议的固有限制，不是服务端 bug。
 - **自定义队名不传播**：`NOTI 9` 只有预置名下标编号这一个字段，`sel==0`（自定义）在别人那边一律显示"无队伍名"。
 - 「队伍信息」列表与「推荐伙伴」只能看到**本区域**有成员的队伍/玩家（列表是客户端遍历本区域用户表本地推导的，服务端**不存在**列表请求/响应包）；服务端只负责广播与补发。
+- **名册必须晚于该成员在本地的 `USERINFO` 与区域条目**（设计稿 §6.5）：`NOTI 9` 的槽位写入是按 uid 查客户端**本地 user 表**，查不到就只存槽位、**不建立"某玩家属于这支队"的链接**——旁观者列表能列出这支队伍、推荐伙伴能把有队伍的人过滤掉，靠的都是这条链接。城镇同屏的进入序列本就是"外观 → 名单"，队伍广播必须排在其后（与 §2.3 的"外观必须先于名单"是同一类坑）。**真机若出现"列表里看不到对方的队伍"或推荐伙伴推荐了有队伍的人，第一件事查发包时序**（队伍记录 vs 该成员的 `USERINFO`/`USER_AREA`）。
 - **区域广播的包量随区域人数/队伍数线性增长**（每次名册变化 + 每次进区补发各发一轮）；队伍 ≤4 人、朋友间小规模同玩下用户已确认可接受（设计稿 §0/§6.2 的代价）。
 - **不支持主动转让队长**：客户端会发 `CMD 131`（把某成员设为队长），但其下行被客户端丢弃、服务端也不处理 → 点它没有反应；本轮只有"队长离开/掉线/被摘除时自动继任"。
 - 不做等级差/COF 限制、不做组队经验与掉落分配（`ClearRewardCatalog.PartyMultipliers` 保持不动）；「拒绝组队」是**客户端本地选项、服务端不可见** → 无法据此过滤（对方开启后邀请仍会弹窗）。
