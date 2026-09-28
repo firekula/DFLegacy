@@ -16,6 +16,7 @@
 | 容器镜像与编排（host 网络、双栈、PVF/存档挂载） | `Dockerfile`、`compose.yaml` |
 | 启动器账号 UI：WPF + HandyControl 交互式登录壳（注册/登录/改密/找回/账号管理/设置），headless 路径保留 | `DFLegacy.Launcher`（`MainWindow`、`Views/*`、`App.xaml.cs`）、`DFLegacy.AccountClient` |
 | 城镇同屏与附近聊天：同镇同区的成员目录、外观/位置转发与区域聊天接线完成（真机可见性待 Task 11）；位置走 TCP（默认限速 10 条/秒）；调试幽灵支持单人复现 | `TownSessionDirectory`、`AreaUserIdPool`、`TownGhostService`、`EntranceService` |
+| 交易系统：城镇内双向交易（24 物品格 + 金币、锁定/最终确认/原子结算、取消/超时/掉线/换区整笔回退）；协议要点与真机结论见 §2.5 | `ItemTradeService`、`ItemTradePlanner`、`JsonGameStore.CommitItemTradeAsync`、`EntranceService`（CMD 10/11/19/26） |
 
 ## 2. 验证状态
 
@@ -212,6 +213,64 @@
 - 好友名字最长 30 字节；服务端匹配不区分大小写，显示用添加时保存的名字。名单上限 32 由服务端独立校验，不依赖客户端拦截。
 - 存档里记录的好友角色即使已被删除也会留在名单中并永久显示离线（本轮不做自动清理）。
 
+### 2.5 交易系统（本次新增）
+
+城镇内玩家对玩家交易，服务端全量实现：请求/应答开窗、**24 物品格双向 + 金币**、逐侧锁定、双方最终确认、原子结算，以及取消/超时/掉线/换区/进副本的**整笔回退**（托管期间服务端从未把物品搬离原背包，所以"回滚"只是释放内存标记，掉线/崩溃零丢失）。协议与实现依据：`.superpowers/sdd/trade-protocol-recon.md`（初版静态勘察）、`trade-protocol-recon-2.md`（真机暴露问题后的定向勘察）、`trade-weight-check-recon.md`（负重自检字段）、设计稿 `docs/superpowers/specs/2026-09-28-trade-system-design.md`、计划 `docs/superpowers/plans/2026-09-28-trade-system.md`。
+
+**协议要点（含真机纠正后的最终结论）**
+
+- 流程：城镇右键 → `CMD 10 REQUEST_PEER (u16 uid, u8 type=1, u32 weightDelta)` → 对方 `NOTI 7 (u16 requesterUid, u8 1, u32 weightDelta)` 弹应答窗 → 对方接受发 `CMD 11 (u16 requesterUid, u8 1, u32 weightDelta)` → **请求方收 `NOTI 8`**、**接受方收 `CMD 11` 成功包 `[1, uid, 1, mode]`**，两端开窗。客户端的"拒绝"只关本地小窗、**不发包**，服务端靠 30 秒请求窗超时兜底（给请求方 `CMD 11 [0,0x64,1]`）。
+- **`CMD 10/11` 尾部的 u32 = 客户端自己的「当前负重 − 负重上限」（二补码）**，服务端**必须原样回传**到 `NOTI 7`（请求方的值）与 `NOTI 8`（接受方的值）：客户端把它写进对方 user 的 `CNUser+0xF4`，锁定前那条"交易对象的负重上限不足，还缺少 X kg"检查（`SetReady` 0x4623A0）就是 `[对方+0xF4] + 我收到重量 − 我给出重量 < 0`。旧结论"这是客户端时间差/防抖字段"与"NOTI 7 的 X 写进 `user+0xC`"**均已作废**（反汇编证据见 `trade-weight-check-recon.md`）。
+- 放入物品：`CMD 19 MOVE_ITEMSPACE`（与背包移动**同一布局**；`Body[5..6]` 是客户端自报的 itemId，仅用于日志）。**客户端的 `destTradeSlot` 恒为 0**（槽位分配权在服务端，`0x4627A3: xor esi,esi`）→ 服务端分配 `3..26` 的最小空槽（客户端给的槽合法且空闲时采纳），该槽号统一用于 CMD 19 成功回包、对端 `NOTI 15`、托管表，并自然派生 `NOTI 16/18`。
+- **CMD 19 成功回包 = `[1, u8 srcType, u16 srcSlot, u32 count, u8 destType, u16 destSlot]`（11 字节）**，操作者面板只由它驱动（客户端不本地插入）；**失败回包 = `[0, u8 errorCode, u8 srcType, u8 destType]`（4 字节，不回显槽/数量）**，错误码走客户端 switch（`0x11` 物品不存在/数量不足、`0x12/0x17` 栏中有物、`0x13` 无权限、`0x5E` 超出对方金币上限）——发错形状（例如回显式 11 字节）会让客户端读成 `errorCode=0` 而**完全静默**。
+- 金币：点面板金币行或拖金币图标都走 `CMD 19`（`srcType=0, srcSlot=0, itemId=0, count=金额, destType=4, destSlot=0`），面板槽 0；金额必须 ≤ 服务端记录的金币，重复放入按"覆盖"。
+- `NOTI 15 (u16 slot, u16 itemId, u32 count, u8 state, u16 durability；itemId=0xFFFF 清格)` 的槽域 = **面板内部下标**（0=金币、1/2 保留、3..26 物品）；`NOTI 16`（`u16 count` + N×`u16 面板槽, u8 原栏, u16 原格`）与 `NOTI 18`（N×`u16 对方面板槽, u16 我的背包格`）同域。
+- `CMD 26`：0 解锁 / 1 锁定 / 2 取消 / 3 最终确认（需**双方都已锁定**，否则回 `[0,1]`）/ 4 含义未定（忽略并记日志）；**双方都确认**后由后确认方结算。`NOTI 17 (u16 uid, u8 lock)` 的 uid = 变更方（客户端按 uid 决定写 myLock 还是 otherLock）。
+- `protocol 161 = ENUM_CMDPACKET_ANTIBOT`：TerSafe 反外挂插件的 **60 秒心跳**（每客户端一条，与金币无关），服务端静默并把日志降到 Debug；160..162 同处理。
+
+**复制防线（本系统的第一原则，代码里逐条可查）**
+
+1. **只信服务端自己的 `(srcType, srcSlot)` 记录**：CMD 19 里的 itemId/count/金币只做校验与钳制（`ItemTradePlanner.TryPlaceEscrow`），托管快照存服务端记录（含 `InstanceId`）。
+2. **结算原子**：`JsonGameStore.CommitItemTradeAsync` 在同一把 `_gate` 内"读完双方 → 计划（负重/空位/金币充足性/托管复核）→ 应用 → 一次 `SaveLockedAsync`"；任一步失败**不写盘**；保存抛异常时双方内存记录回滚并重新抛出（落盘是 `state.json.tmp` + `File.Move` 原子替换）。
+3. **托管期冻结**：放入面板的物品仍留在原主背包，但 9 条写入路径（CMD 19 主路径、反向编码拖拽、丢弃、出售、删除、邮寄、合成、分解、整理）命中即按该路径既有失败回包拒绝；结算时再按 `InstanceId + 源格 + 数量 + State/Durability` 复核，不符即整笔中止。
+4. **跨会话一致性**：结算后给被动方登记"待安装"，由它在会话循环顶部安装并推权威背包+金币；在确认安装之前，`JsonGameStore` 的 **15 处盲写型 API** 拒绝该角色的写入（`_pendingTradeDeliveries` 守门），杜绝"被动方用陈旧内存覆盖交易结果"。结算成功时双方各自拿到 `NOTI 18` + 金币 `NOTI 14` + 权威全量 `NOTI 13`。
+
+**自动化（全绿，随每个实现任务运行）**
+
+`dotnet run --project tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj -c Release` 中的 `TradeSmokeTests` 覆盖：协议字节级（NOTI 7/8 的 uid+type+负重差、NOTI 15/16/17/18 布局、CMD 11 成功/失败、CMD 19 成功 11 字节与失败 4 字节、CMD 26 结果、三个 `TryRead*` 的截断与负数、`TryReadInventoryMove` 的 itemId 字段）；`ItemTradePlanner` 纯逻辑（托管校验/取回/金币覆盖/结算计划、InstanceId+State/Durability 复核、负重/空位/金币充足性、面板槽分配、错误码映射）；`JsonGameStore`（双方一次落库的原子性、失败不写盘、保存抛异常回滚、15 处盲写守门与确认后可写）；`ItemTradeService`（请求→NOTI 7→接受→NOTI 8/CMD 11、自请求/未知 uid/离线/不同镇/已在交易中/被拉黑静默 30 秒同形失败/限流、放入回显+对端 NOTI 15+锁定清零、金币、取回、面板槽分配与采纳、锁定广播、单方确认不结算、双方确认结算并落库、失败码 `[0,4]`/`[0,1]`、并发确认只结算一次、取消/空闲超时/掉线清标记与待安装自愈、掉线窗口哨兵）。
+
+**真机验收（本机双客户端；环境 `G:/Game/DNF_ACT1/DF/town-test`，日志 `server-trade.log`，`EnablePacketTracing=true`）**
+
+| 项 | 内容 | 结论 |
+| --- | --- | --- |
+| T1 | 请求 → 对方应答窗 → 接受 → 双方开窗 | ✅ 日志 `Trade … requested …` / `opened …` |
+| T2 | 双向放物（服务端分配面板槽） | ✅ `escrowed item 1004 x3 from slot 43 into panel slot 3`、`3037 x10 from slot 73 into panel slot 3`；面板实时可见 |
+| T3 | 取回 | ✅ CMD 19 `srcType=4` 回包与对端 `NOTI 15 itemId=0xFFFF` 成对 |
+| T4 | 金币放入/修改 | ✅ 回包 `[1,0,0,10000,4,0]` + 对端 `NOTI 15 slot=0,itemId=0,count=10000` |
+| T5 | 锁定（含客户端"对方负重上限"自检） | ✅ 负重差原样回传后锁定包到达、双方 `NOTI 17` 同步 |
+| T6 | 双方最终确认 → 结算交付 | ✅ `Committed item trade … 1/1 item(s)` + 双方 `NOTI 18` + `NOTI 14`/`NOTI 13` 权威刷新 |
+| T7 | 面板为空时确认 | ✅ 正确结算为 0 件（早期一轮日志） |
+| T8 | 拒绝不发包 → 30 秒超时失败提示 | 未逐条复验（服务端超时逻辑由自动化覆盖） |
+| T9 | 取消 / 掉线 / 进副本 / 换区 / 一人一笔 / 冻结抽查（V8–V12） | 未逐条复验；取消与掉线-结算窗口有自动化哨兵，冻结路径由自动化 + 结算复核双保险 |
+
+**六轮验收中发现并修复的根因**（每条都有反汇编/日志证据）：
+
+1. **放入的目标槽由服务端分配**：客户端 `destSlot` 恒 0，此前按 3..26 校验导致每次放入都被拒（`PanelSlotOutOfRange`），面板毫无变化。
+2. **CMD 19 失败回包形状**：客户端只读 `[errorCode, srcType, destType]` 4 字节；回显式 11 字节让它读成 `errorCode=0` → 一字不弹（"静默失败"）。
+3. **CMD 10/11 的负重差必须回传**：NOTI 7 填 uid、NOTI 8 填 0 会让客户端的"对方负重上限"检查恒失败（"还缺少 0.001kg"），且**锁定包根本不发**。
+4. 顺带确认 `protocol 161` 是反外挂心跳（不是金币命令），金币走的一直是 CMD 19。
+
+**已知限制**
+
+- 放入**只接受主背包**（`srcType==0`）：仓库/时装/宠物/装备栏拖入一律拒绝；取回与取消统一退回主背包（托管记录已存源栏位，将来放开只需放宽校验）。
+- 结算交付**只落空格、不叠堆**（避免猜客户端"同类物品"的合并判据），收货方类别段满了就整笔失败并提示"交易对象的物品栏空间不足"。
+- **不做等级金币上限**（只防 `int` 溢出）；`NOTI 51` 与 `CMD 26` 的 0x46/0x47 未使用。
+- `CMD 26` 的 state 4 忽略（语义未定）；取回不校验目的栏位（服务端不搬物，回显统一主背包）。
+- 锁定广播每次每侧发 1 条 `NOTI 17`（设计稿读作 2 条，功能等价：客户端只需知道"该方已锁定"）。
+- `SetUserAreaCommand`（38）到达即取消交易、不比较新旧区域：同区重载若也发此包会误取消（真机未观察到；出现再加差异判断）。
+- `EntranceService` 侧的通道挂载/摘除、离区取消、待安装安装、冻结判定没有会话级自动化 harness（只有服务层与规划器的单测），这几条只能靠真机复验。
+- 设计稿 §2.4 的"非私密区域"子句用现有 `TownSessionDirectory` API 无法实现（快照不含 Instance）；可达性低（私密区是单人实例）。
+
 ## 3. 可复用的验证方法
 
 ### 3.1 中继 / IPv6 端到端
@@ -232,7 +291,9 @@
 
 ## 4. 待办 / 已知事项
 
-- 用真实客户端做一次完整试玩（这是目前唯一缺失的端到端环节）。
+- 用真实客户端做一次完整试玩（这是目前唯一缺失的端到端环节）。**交易已做过双客户端完整试玩**（见 §2.5），城镇同屏/好友的遗留项仍在 §2.3/§2.4 各自的"待验证"里。
+- **交易的遗留复验项（不阻塞）**：V8–V12（取消退回、掉线退回、进副本/换区取消、一人只能一笔、交易中丢弃/出售/分解/整理被拒）未逐条真机确认；其中取消与掉线-结算窗口有自动化哨兵，冻结路径由自动化 + 结算复核双保险。若真机发现"同区重载也会取消交易"，说明 `SetUserAreaCommand` 需要加新旧区域差异判断。
+- **交易将来可做**（本轮明确不做，设计稿 §2.7）：仓库/时装/宠物栏放入、交付时按同类物品叠堆、等级金币上限（`NOTI 51`/`CMD 26` 0x46/0x47）、`CMD 26` state 4 的语义。
 - **本地部署目录（`DF/dist`）仍是双栈修复之前的构建**：当时服务端正在运行、文件被占用，未替换。该修复对 `127.0.0.1` 部署是 no-op，等停服后替换即可。
 - 容器编排默认 host 网络；文件末尾的"桥接 + 端口映射"写法未在真实 IPv6 桥接环境验证过。
 - 客户端目录的 `ijl15.dll` 已被启动器替换为 DFLegacy 补丁（原版备份为 `ijl15.original.dll`）。
