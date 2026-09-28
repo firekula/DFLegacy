@@ -60,9 +60,10 @@ internal sealed class PartyRoster
 
     /// <summary>
     /// 名册快照：返回**新数组**，内容 = 按槽下标升序的已占用成员（元素数 = <see cref="Count"/>）。
-    /// 调用方（`PartyService`）的惯用法是"锁内取快照、出锁发包"，直接交出去内部的数组会让出锁后的
-    /// 枚举撞上并发 `TryAdd`/`Remove` 的版本检查异常；成员对象本身也不可变，所以数组里的元素可以
-    /// 安全地在锁外读。**注意 <c>Members[i]</c> 的槽下标不一定等于 i**（槽位不搬动、可有空洞）——
+    /// 返回新数组的理由是**快照一致性**：调用方（`PartyService`）的惯用法是"锁内取快照、出锁发包"，
+    /// 交出去内部数组的话，出锁后的枚举会看到并发 `TryAdd`/`Remove` 改到一半的名册（成员数与内容
+    /// 对不上的撕裂状态）；新数组在锁内复制完成，出锁后不再变化。成员对象本身也不可变，所以数组里的
+    /// 元素可以安全地在锁外读。**注意 <c>Members[i]</c> 的槽下标不一定等于 i**（槽位不搬动、可有空洞）——
     /// 用槽位下标的地方必须走 <see cref="TryGetSlot(Guid, out byte)"/> / <see cref="TryGetSlot(byte, out PartyMember)"/>。
     /// </summary>
     public PartyMember[] Members

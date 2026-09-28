@@ -64,6 +64,25 @@ public sealed class PartyService : BackgroundService
     /// <summary>待决请求的存活窗口：客户端"拒绝"不发包，只能靠它收尾（设计稿 §5.2）。</summary>
     public static readonly TimeSpan RequestWindow = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// 名册补播的第一次延迟（相对发布时刻），第二次见 <see cref="SecondResettleDelay"/>。
+    /// **为什么要补播**：客户端对**同一份**名册不重试——收到 NOTI 9 后它做两件事，任一件在"那一刻"
+    /// 不成立就无声丢帧，且不会自己再来一次：①收尾两道门（`DNF.exe 0x41BDA8`：`[myUser+0xFC] != party` →
+    /// 跳过整个 UI 收尾，HUD 逐槽、列表刷新、成员数组提交全在跳过范围内；`0x41BEA5`：`0x4FE850` 解析到的
+    /// 成员数 < 2 → 跳过 HUD 组激活）；②逐槽填充用 `0x4FDDB0(userMgr, slotUid)` 解析，取不到 user 就
+    /// **静默跳过该行**，永久丢到下一份名册为止（勘察见 party-protocol-recon-e-window-open.md §7、
+    /// -f-partyui.md §「门控」）。
+    /// 真机证据（2026-09-28）：A 邀请 B、B 接受那一步发出的 NOTI 9 双方都看不见（HUD 不激活、队伍信息
+    /// 列表为空、推荐伙伴仍把队友当无队伍的人）；1 分多钟后由 CMD 12 触发的一份内容几乎相同（只有
+    /// nameSel 0→1）的 NOTI 9 一到，队伍立刻出现 ⇒ 包本身没错，只是客户端在那一刻没渲染、也不会自己重试。
+    /// 所以每次发布都排两次补播：给客户端两个"重来一次"的机会（这是对客户端不重试的兜底）。
+    /// 重复发同一份名册是安全的：客户端本来就收两份（定向 + 区域广播）。
+    /// </summary>
+    private static readonly TimeSpan FirstResettleDelay = TimeSpan.FromSeconds(2);
+
+    /// <summary>名册补播的第二次延迟（见 <see cref="FirstResettleDelay"/>）。</summary>
+    private static readonly TimeSpan SecondResettleDelay = TimeSpan.FromSeconds(6);
+
     /// <summary>CMD 13 失败码 18：未组队（dnf.str 0x2CE）。本轮只发得出这一个 CMD 13 失败码。</summary>
     private const byte NotInPartyErrorCode = 18;
     /// <summary>CMD 14 失败码 4：不是队长（dnf.str 0x2D0）。</summary>
@@ -83,6 +102,16 @@ public sealed class PartyService : BackgroundService
     private readonly ConcurrentDictionary<Guid, PartyPendingRequest> _pending = new();
     private readonly ConcurrentDictionary<Guid, DateTimeOffset> _blockedRequests = new();
     private readonly ConcurrentDictionary<Guid, DateTimeOffset> _lastRequestAt = new();
+
+    /// <summary>
+    /// 待补播表：partyId → 该队尚未到期的两个补播时刻（见 <see cref="FirstResettleDelay"/>）。
+    /// **只有真正的发布点 <see cref="PublishRosterToAsync"/> 在 <see cref="_gate"/> 内登记**，而且是
+    /// 覆盖式登记（同一支队永远只留"最近一次发布"排的两个时刻，表不会随发布次数无界增长）；
+    /// 补播自己走 `registerResettle: false` 的那条路，**绝不登记新项**——否则就成了无限循环。
+    /// 队伍解散（<see cref="_parties.TryRemove"/> 那条路径）时随队伍一起清掉：partyId 会被复用，
+    /// 残留项只会让新队伍白白多发一份名册。
+    /// </summary>
+    private readonly ConcurrentDictionary<ushort, ResettleSchedule> _resettleSchedule = new();
 
     /// <summary>
     /// 每支队"曾经通知过哪些区域"（partyId → 区域累积集）。客户端没有列表查询包，「队伍信息」列表
@@ -130,6 +159,19 @@ public sealed class PartyService : BackgroundService
         foreach (var (requesterCharacterId, _) in _blockedRequests)
         {
             _blockedRequests[requesterCharacterId] = expired;
+        }
+    }
+
+    /// <summary>
+    /// 测试用：把待补播项统统推到过期，好让 <see cref="SweepExpiredAsync"/> 覆盖到"补播时刻到了"的路径
+    /// （真机路径不会调用；生产代码靠真实时钟等满 2 秒 / 6 秒）。
+    /// </summary>
+    internal void ExpireRefreshForTests()
+    {
+        var expired = _timeProvider.GetUtcNow() - TimeSpan.FromSeconds(1);
+        foreach (var (partyId, _) in _resettleSchedule)
+        {
+            _resettleSchedule[partyId] = new ResettleSchedule(expired, expired);
         }
     }
 
@@ -229,8 +271,9 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        // 队伍状态必须**在锁内**一次判完：名册是共享可变对象，锁外读 `Leader`（= `_members[0]`）
-        // 可能正好撞上"队长与最后一名队员先后退队"而抛 ArgumentOutOfRangeException 逸出 handler。
+        // 队伍状态必须**在锁内**一次判完：名册是共享可变对象（成员会随并发退队/掉线被摘掉），
+        // 判定结果在锁内落成 bool 快照（队长是谁、上限多少）再带出锁，出锁后只读这些 bool，
+        // 不再碰名册本身——名册可以在两次读之间变空，出锁读到的就是撕裂的中间状态。
         var bothInParties = false;
         var targetIsNotLeader = false;
         var partyIsFull = false;
@@ -677,7 +720,7 @@ public sealed class PartyService : BackgroundService
             recipients = [.. roster.Members.Select(member => member.CharacterId)];
         }
 
-        return PublishRosterToAsync(roster, recipients, cancellationToken);
+        return PublishRosterToAsync(roster, recipients, cancellationToken, registerResettle: true);
     }
 
     /// <summary>
@@ -685,16 +728,39 @@ public sealed class PartyService : BackgroundService
     /// <see cref="PublishRosterAsync"/> 传的就是当前成员），并顺带刷新"曾通知过的区域"里的旁观者。
     /// 收件人**不等于**名册成员（离队/被踢的人也要收一份"没有他"的新名册，
     /// 客户端靠它自我清理并提示"已退出队伍"，设计稿 §5.3/§5.4）。
+    /// 这里是**唯一的补播登记点**：真发布（<paramref name="registerResettle"/> = true）在锁内排两次补播
+    /// （见 <see cref="FirstResettleDelay"/>）；补播自己（false）不再排期，否则无限循环。
     /// </summary>
     private async Task PublishRosterToAsync(
         PartyRoster roster,
         IReadOnlyList<Guid> recipients,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool registerResettle)
     {
+        var now = _timeProvider.GetUtcNow();
         List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
         List<(byte TownId, byte AreaId, GameServerPacket Packet)> areas = [];
         lock (_gate)
         {
+            // "名册此刻仍在册"（而不是 partyId 被同名的新队伍占用）：两种用途都要它——
+            // 真发布只给在册的队伍排补播（不给陈旧引用留垃圾项）；补播则靠它拒绝把已解散队伍的名册
+            // 再发一遍（客户端收到会把队伍重新加回本地列表）。
+            var live = _parties.TryGetValue(roster.PartyId, out var current) && ReferenceEquals(current, roster);
+            if (registerResettle)
+            {
+                if (live)
+                {
+                    // 覆盖式登记：总是"最近一次发布"之后 2 秒 / 6 秒各补播一次（见 FirstResettleDelay）。
+                    _resettleSchedule[roster.PartyId] = new ResettleSchedule(
+                        now + FirstResettleDelay,
+                        now + SecondResettleDelay);
+                }
+            }
+            else if (!live)
+            {
+                return;
+            }
+
             foreach (var characterId in recipients)
             {
                 direct.Add((characterId, BuildRosterPacket(roster, characterId)));
@@ -837,8 +903,10 @@ public sealed class PartyService : BackgroundService
             {
                 dissolved = true;
                 _parties.TryRemove(roster.PartyId, out _);
-                // 队伍没了，累积的区域集也要跟着走：partyId 会被复用，残留会把新队伍的名册发到旧区域。
+                // 队伍没了，累积的区域集与补播排期也要跟着走：partyId 会被复用，
+                // 区域集残留会把新队伍的名册发到旧区域，补播残留只是让新队伍多发一份（同样不该留）。
                 _notifiedAreas.Remove(roster.PartyId);
+                _resettleSchedule.TryRemove(roster.PartyId, out _);
             }
         }
 
@@ -865,7 +933,7 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        await PublishRosterToAsync(roster, recipients, cancellationToken);
+        await PublishRosterToAsync(roster, recipients, cancellationToken, registerResettle: true);
         _logger.LogInformation(
             "Character {CharacterId} left party {PartyId}; {Count} member(s) remain.",
             characterId,
@@ -926,8 +994,11 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
-    /// 超时收尾：待决请求到期 → 给请求方 `CMD 11 [0,100,0]`。客户端的"拒绝"不发包（`0x821EA8`），
-    /// 所以这是唯一能告诉请求方"对方没答应"的途径（与交易同构，设计稿 §5.2）。
+    /// 每秒扫描一次：①超时收尾——待决请求到期 → 给请求方 `CMD 11 [0,100,0]`（客户端的"拒绝"不发包，
+    /// `0x821EA8`，所以这是唯一能告诉请求方"对方没答应"的途径，与交易同构，设计稿 §5.2）；
+    /// ②名册补播——发布时排的两个时刻到点就重发一份名册（对客户端"对同一份名册不重试"的兜底，
+    /// 见 <see cref="FirstResettleDelay"/>）。**补播走 `registerResettle: false`**：它自己不再排期，
+    /// 否则每轮扫描都会把补播续下去，永远停不下来。
     /// </summary>
     internal async Task SweepExpiredAsync(CancellationToken cancellationToken)
     {
@@ -953,6 +1024,52 @@ public sealed class PartyService : BackgroundService
             {
                 await SendRequestFailureAsync(requesterCharacterId, cancellationToken);
             }
+        }
+
+        // 补播：到点的 partyId 重发一份**当前**名册（完整发布：成员定向 + 区域广播）。
+        // 先摘/推进待补播项再发包：一轮扫描里同一支队最多补播一次（名册幂等，客户端本来就收两份），
+        // 而且摘项失败（期间有新的一次发布换掉了它）就跳过本轮——那一份自己会重新排期。
+        List<PartyRoster> resettle = [];
+        foreach (var (partyId, schedule) in _resettleSchedule)
+        {
+            if (now < schedule.First)
+            {
+                continue;
+            }
+
+            PartyRoster? roster;
+            lock (_gate)
+            {
+                _parties.TryGetValue(partyId, out roster);
+            }
+
+            // 已解散 → 整个待补播项清掉（第二次也不补了，避免无界增长）；第二次也到点 → 摘掉整项；
+            // 否则推进到第二次。
+            if (roster is null || now >= schedule.Second)
+            {
+                if (!_resettleSchedule.TryRemove(new KeyValuePair<ushort, ResettleSchedule>(partyId, schedule)))
+                {
+                    continue;
+                }
+            }
+            else if (!_resettleSchedule.TryUpdate(partyId, schedule with { First = schedule.Second }, schedule))
+            {
+                continue;
+            }
+
+            if (roster is not null)
+            {
+                resettle.Add(roster);
+            }
+        }
+
+        foreach (var roster in resettle)
+        {
+            await PublishRosterToAsync(
+                roster,
+                [.. roster.Members.Select(member => member.CharacterId)],
+                cancellationToken,
+                registerResettle: false);
         }
     }
 
@@ -1039,6 +1156,13 @@ public sealed class PartyService : BackgroundService
         byte errorCode,
         CancellationToken cancellationToken) =>
         SendAsync(characterId, GameProtocolEngine.CreatePartyCommandError(commandId, errorCode), cancellationToken);
+
+    /// <summary>
+    /// 一支队伍的补播排期：两个尚未到期的补播时刻（第一次、第二次）。值类型 + 整体替换（而不是原地改）
+    /// 是为了让 <see cref="SweepExpiredAsync"/> 的"摘掉/推进"能用 <c>TryRemove/TryUpdate</c> 的
+    /// 比较交换语义与"期间新发布的一次登记"互不踩踏。
+    /// </summary>
+    private readonly record struct ResettleSchedule(DateTimeOffset First, DateTimeOffset Second);
 
     private async Task SendAsync(
         Guid characterId,

@@ -344,9 +344,17 @@ internal static class PartySmokeTests
         await CheckTimeoutAndBlacklistAsync(check);
         await CheckLeaveAndKickAsync(check);
         await CheckLeaderLeaveKeepsMemberSlotsAsync(check);
+        await CheckKickFromNonZeroLeaderSlotAsync(check);
         await CheckSetPartyInfoAsync(check);
         await CheckAreaBroadcastAsync(check);
+        await CheckRosterResettleAsync(check);
     }
+
+    /// <summary>某个角色收件箱里的 NOTI 9 列表（断言"补播了一份逐字节相同的名册"用）。</summary>
+    private static List<GameServerPacket> RostersOf(PartyHarness harness, string characterName) =>
+        harness.Of(characterName)
+            .Where(packet => packet.ProtocolId == GameProtocolEngine.PartyInfoNotification)
+            .ToList();
 
     /// <summary>
     /// 「队伍信息」列表与「推荐伙伴」的过滤都靠"附近玩家身上挂着队伍"这条链接（C 卷 §2.2），
@@ -778,6 +786,149 @@ internal static class PartySmokeTests
                     BinaryPrimitives.ReadUInt16LittleEndian(alphaRoster.Payload.AsSpan(7 + slot * 3, 2))
                     != harness.UidOf("阿尔法")),
             "the leaver's own copy has no slot pointing at him");
+    }
+
+    /// <summary>
+    /// 名册补播（真机阻塞项：B 接受邀请后**双方都看不到队伍 UI**）。客户端对**同一份**名册不重试：
+    /// NOTI 9 的收尾有两道门（`0x41BDA8`：`[myUser+0xFC] != party` → 整个 UI 收尾跳过；`0x41BEA5`：
+    /// 能解析到的成员数 &lt; 2 → 跳过 HUD 激活），逐槽填充又用 `0x4FDDB0(userMgr, slotUid)` 解析、
+    /// 取不到 user 就静默跳过该行——那一刻没渲染出来就永久丢（勘察见
+    /// party-protocol-recon-e-window-open.md §7、-f-partyui.md §门控）。真机证据：接受时的 NOTI 9
+    /// 双方都看不见，1 分多钟后由 CMD 12 触发的、内容几乎相同的一份一到，队伍立刻显示 ⇒ 包没错，
+    /// 客户端只是不自己重试。服务端的兜底是"每次发布之后排两次补播"。
+    /// 本用例把补播时刻直接推到过期，断言每个收包者（含同区域的旁观者）又收到一份**逐字节相同**的名册；
+    /// 再断言已解散的队伍不会被补播。**把 `PublishRosterToAsync` 里的补播登记去掉（或让扫描不处理
+    /// 待补播项）时，"an expired refresh re-publishes ..." 那条断言会变红**（已实测）。
+    /// </summary>
+    private static async Task CheckRosterResettleAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        // 基线：一次发布 = 每个同区域收包者两份相同名册（一份定向 + 一份区域广播），20 字节。
+        var alphaBaseline = RostersOf(harness, "阿尔法");
+        var bravoBaseline = RostersOf(harness, "布拉沃");
+        check(alphaBaseline.Count == 2
+                && bravoBaseline.Count == 2
+                && alphaBaseline.All(packet =>
+                    packet.Payload.Length == 20 && packet.Payload.SequenceEqual(alphaBaseline[0].Payload))
+                && bravoBaseline.All(packet => packet.Payload.SequenceEqual(bravoBaseline[0].Payload)),
+            "baseline: one publish gives every member two identical 20-byte rosters (direct + area broadcast)");
+
+        harness.ClearAll();
+        harness.Service.ExpireRefreshForTests();
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+
+        var alphaResettled = RostersOf(harness, "阿尔法");
+        var bravoResettled = RostersOf(harness, "布拉沃");
+        var bystanderResettled = RostersOf(harness, "德尔塔");
+        // 成员各两份（定向 + 区域广播）、旁观者一份（区域广播）：补播走的是**完整发布**，两条路都重发。
+        check(alphaResettled.Count == 2
+                && bravoResettled.Count == 2
+                && bystanderResettled.Count == 1
+                && alphaResettled.All(packet => packet.Payload.SequenceEqual(alphaBaseline[0].Payload))
+                && bravoResettled.All(packet => packet.Payload.SequenceEqual(bravoBaseline[0].Payload))
+                && bystanderResettled.All(packet => packet.Payload.Length == 20),
+            "an expired refresh re-publishes the byte-identical roster to both members and to the area (full publish)");
+        check(harness.Of("阿尔法").All(packet =>
+                packet.ProtocolId == GameProtocolEngine.PartyInfoNotification)
+                && harness.Of("布拉沃").All(packet =>
+                    packet.ProtocolId == GameProtocolEngine.PartyInfoNotification),
+            "a refresh produces rosters only (no NOTI 10, no failure receipt, nobody is dropped by it)");
+
+        // 解散：待补播项随队伍清掉，扫描再没有任何包可发（含旁观者）——绝不能把已不存在的队伍的
+        // 名册再发一遍（客户端收到会把它重新加回本地队伍列表）。
+        await harness.Service.HandleLeaveAsync(harness.IdOf("阿尔法"), CancellationToken.None);
+        await harness.Service.HandleLeaveAsync(harness.IdOf("布拉沃"), CancellationToken.None);
+        harness.ClearAll();
+        harness.Service.ExpireRefreshForTests();
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 0
+                && harness.Of("布拉沃").Count == 0
+                && harness.Of("德尔塔").Count == 0,
+            "a dissolved party is never resettled: its pending refreshes die with it");
+    }
+
+    /// <summary>
+    /// 稳定槽位下的踢人（终局评审留的 Important 覆盖缺口）：队长允许坐在**非 0 槽**，所以判定必须按
+    /// 槽位下标比较（`slot != roster.LeaderSlot`），既不能假设"队长在槽 0"，也不能假设"比队长低的槽位
+    /// 一定不属于别人"（槽位不搬动，队长退队会留下空洞，后来的成员会填进那个空洞）。
+    /// 构造 [阿尔法@0, 布拉沃@1（队长）, 查理@2]：三人队建好后让槽 0 的原队长退队（布拉沃就地继任 →
+    /// 队长身份落到槽 1），再让阿尔法重新入队——他填进空出来的槽 0。
+    /// **有人日后把 `slot != roster.LeaderSlot` 删掉（或写成 `slot != 0`）时，②③ 两条断言会变红**
+    /// （已实测）：踢"自己那一格"会真的把队长踢出队伍（而不是回 `CMD 14 [0,8]`），队伍随之换队长，
+    /// ③ 紧接着也会跟着崩。
+    /// </summary>
+    private static async Task CheckKickFromNonZeroLeaderSlotAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        // ① 三人队 [阿尔法@0, 布拉沃@1, 查理@2]。
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+        // 限流是真实时钟的 3 秒窗口，而测试是瞬时的：同一个人连邀两次前先清掉上次的时间戳。
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("查理"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("查理"), harness.UidOf("阿尔法"), CancellationToken.None);
+        // ② 槽 0 的队长退队 → 布拉沃（槽 1）就地继任。
+        await harness.Service.HandleLeaveAsync(harness.IdOf("阿尔法"), CancellationToken.None);
+        harness.ClearAll();
+        // ③ 阿尔法重新申请入队 → TryAdd 填进最小的空槽 0，于是队长在槽 1、槽 0 是他的队员。
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        var setup = RostersOf(harness, "查理").FirstOrDefault();
+        check(setup is { Payload.Length: 20 }
+                && BinaryPrimitives.ReadUInt16LittleEndian(setup.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(setup.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃")
+                && BinaryPrimitives.ReadUInt16LittleEndian(setup.Payload.AsSpan(13, 2)) == harness.UidOf("查理")
+                && setup.Payload[19] == 1,
+            "setup: the party is [阿尔法@0, 布拉沃@1 (leader), 查理@2] with a non-zero leader slot");
+
+        // ① 队长（槽 1）踢槽 0 的队员：必须成功——被踢者收 NOTI 10 [0,0] 与一份不含他的新名册。
+        harness.ClearAll();
+        await harness.Service.HandleKickAsync(harness.IdOf("布拉沃"), slot: 0, CancellationToken.None);
+        var kicked = harness.Of("阿尔法");
+        var walkoutIndex = kicked.FindIndex(packet =>
+            packet.ProtocolId == GameProtocolEngine.WalkoutNotification);
+        var roster = kicked.FirstOrDefault(packet =>
+            packet.ProtocolId == GameProtocolEngine.PartyInfoNotification);
+        check(walkoutIndex >= 0
+                && kicked[walkoutIndex].Payload.SequenceEqual(new byte[] { 0, 0 })
+                && roster is { Payload.Length: 20 }
+                && BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(7, 2)) == 0xFFFF
+                && roster.Payload[19] == 1
+                && Enumerable.Range(0, 4).All(slot =>
+                    BinaryPrimitives.ReadUInt16LittleEndian(roster.Payload.AsSpan(7 + slot * 3, 2))
+                    != harness.UidOf("阿尔法")),
+            "a leader sitting in slot 1 can kick the member in slot 0 (NOTI 10 [0,0] plus a roster without him)");
+
+        // ② 踢自己那一格（slot == LeaderSlot = 1）：槽里"没有人"→ CMD 14 回 [0,8]。
+        harness.ClearAll();
+        await harness.Service.HandleKickAsync(harness.IdOf("布拉沃"), slot: 1, CancellationToken.None);
+        check(harness.Of("布拉沃").Count == 1
+                && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.WalkoutPartyMemberCommand
+                && harness.Of("布拉沃")[0].Payload.SequenceEqual(new byte[] { 0, 8 })
+                && harness.Of("查理").Count == 0,
+            "kicking the leader's own slot (leaderSlot = 1) is refused with CMD 14 [0,8] and changes nothing");
+
+        // ③ 空槽（槽 3）：同样 CMD 14 回 [0,8]。
+        harness.ClearAll();
+        await harness.Service.HandleKickAsync(harness.IdOf("布拉沃"), slot: 3, CancellationToken.None);
+        check(harness.Of("布拉沃").Count == 1
+                && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.WalkoutPartyMemberCommand
+                && harness.Of("布拉沃")[0].Payload.SequenceEqual(new byte[] { 0, 8 })
+                && harness.Of("查理").Count == 0,
+            "kicking an empty slot is refused with CMD 14 [0,8] and changes nothing");
     }
 
     /// <summary>
