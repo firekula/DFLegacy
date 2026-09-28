@@ -325,6 +325,76 @@ public sealed class ItemTradeService : BackgroundService
         return expired;
     }
 
+    /// <summary>
+    /// 托管查询：EntranceService 的核心写入路径用它冻结"已放进交易栏"的物品。
+    /// </summary>
+    public bool IsEscrowed(Guid characterId, byte listType, ushort slot) =>
+        _sessions.TryGetValue(characterId, out var session)
+        && session.SideOf(characterId).Escrows.Any(escrow =>
+            escrow.SourceListType == listType
+            && escrow.PanelSlot != ItemTradePlanner.GoldPanelSlot
+            && escrow.SourceSlot == slot);
+
+    public bool IsEscrowedInstance(Guid characterId, Guid instanceId) =>
+        instanceId != Guid.Empty
+        && _sessions.TryGetValue(characterId, out var session)
+        && session.SideOf(characterId).Escrows.Any(escrow => escrow.InstanceId == instanceId);
+
+    public async Task<bool> HandleMoveAsync(
+        Guid characterId,
+        byte sourceListType,
+        ushort sourceSlot,
+        ushort itemId,
+        uint count,
+        byte destinationListType,
+        ushort destinationSlot,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_sessions.TryGetValue(characterId, out var session)
+            || session.State != ItemTradeSessionState.Open)
+        {
+            await SendMoveFailureAsync(
+                characterId, sourceListType, sourceSlot, count, destinationListType, destinationSlot,
+                cancellationToken);
+            return false;
+        }
+
+        var mine = session.SideOf(characterId);
+        var other = session.OtherOf(characterId);
+        var character = await _store.GetCharacterAsync(
+            mine.Channel.AccountName,
+            characterId,
+            cancellationToken);
+        if (character is null)
+        {
+            await SendMoveFailureAsync(
+                characterId, sourceListType, sourceSlot, count, destinationListType, destinationSlot,
+                cancellationToken);
+            return false;
+        }
+
+        session.LastActivityAt = _timeProvider.GetUtcNow();
+        if (destinationListType == GameProtocolEngine.ItemTradeListType)
+        {
+            return await PlaceAsync(
+                session, mine, other, character,
+                sourceListType, sourceSlot, itemId, count, destinationSlot,
+                cancellationToken);
+        }
+
+        if (sourceListType == GameProtocolEngine.ItemTradeListType)
+        {
+            return await ReleaseAsync(
+                session, mine, other, panelSlot: sourceSlot, count, destinationSlot,
+                cancellationToken);
+        }
+
+        await SendMoveFailureAsync(
+            characterId, sourceListType, sourceSlot, count, destinationListType, destinationSlot,
+            cancellationToken);
+        return false;
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
@@ -447,6 +517,214 @@ public sealed class ItemTradeService : BackgroundService
             [new GameInventoryEntry(0, 0, checked((uint)Math.Max(0, character.Gold)))]);
         await SendAsync(channel.CharacterId, update, cancellationToken);
     }
+
+    private async Task<bool> PlaceAsync(
+        ItemTradeSession session,
+        ItemTradeSide mine,
+        ItemTradeSide other,
+        CharacterRecord character,
+        byte sourceListType,
+        ushort sourceSlot,
+        ushort itemId,
+        uint count,
+        ushort panelSlot,
+        CancellationToken cancellationToken)
+    {
+        // 金币：srcType 0 / srcSlot 0 / itemId 0，面板固定 0 号格。
+        if (sourceListType == 0 && sourceSlot == 0 && itemId == 0
+            && panelSlot == ItemTradePlanner.GoldPanelSlot)
+        {
+            if (!ItemTradePlanner.TryPlaceGoldEscrow(
+                    mine.Escrows,
+                    mine.Locked,
+                    count,
+                    character.Gold,
+                    out var goldEscrow,
+                    out var goldFailure))
+            {
+                _logger.LogInformation(
+                    "Trade {TradeId}: {Character} gold offer {Count} refused: {Failure}.",
+                    session.TradeId,
+                    mine.Channel.CharacterName,
+                    count,
+                    goldFailure);
+                await SendMoveFailureAsync(
+                    mine.Channel.CharacterId, sourceListType, sourceSlot, count,
+                    GameProtocolEngine.ItemTradeListType, panelSlot, cancellationToken);
+                return false;
+            }
+
+            ReplaceEscrow(mine, goldEscrow);
+            mine.OfferedGold = checked((int)count);
+            await SendAsync(
+                mine.Channel.CharacterId,
+                GameProtocolEngine.CreateMoveItemSpaceReply(
+                    sourceListType, sourceSlot, count,
+                    GameProtocolEngine.ItemTradeListType, panelSlot),
+                cancellationToken);
+            await SendAsync(
+                other,
+                GameProtocolEngine.CreateChangeItemTradeItem(
+                    ItemTradePlanner.ProjectPanelEntry(goldEscrow, _itemCatalog)),
+                cancellationToken);
+            await ClearLocksAsync(session, cancellationToken);
+            return true;
+        }
+
+        var inventory = (character.Inventory ?? []).ToDictionary(item => item.Slot);
+        if (!ItemTradePlanner.TryPlaceEscrow(
+                inventory,
+                mine.Escrows,
+                mine.Locked,
+                sourceListType,
+                sourceSlot,
+                panelSlot,
+                count,
+                _itemCatalog,
+                out var escrow,
+                out var failure))
+        {
+            _logger.LogInformation(
+                "Trade {TradeId}: {Character} could not escrow slot {Slot} ({ItemId} x{Count}): {Failure}.",
+                session.TradeId,
+                mine.Channel.CharacterName,
+                sourceSlot,
+                itemId,
+                count,
+                failure);
+            await SendMoveFailureAsync(
+                mine.Channel.CharacterId, sourceListType, sourceSlot, count,
+                GameProtocolEngine.ItemTradeListType, panelSlot, cancellationToken);
+            return false;
+        }
+
+        mine.Escrows.Add(escrow);
+        await SendAsync(
+            mine.Channel.CharacterId,
+            GameProtocolEngine.CreateMoveItemSpaceReply(
+                sourceListType, sourceSlot, count,
+                GameProtocolEngine.ItemTradeListType, panelSlot),
+            cancellationToken);
+        await SendAsync(
+            other,
+            GameProtocolEngine.CreateChangeItemTradeItem(
+                ItemTradePlanner.ProjectPanelEntry(escrow, _itemCatalog)),
+            cancellationToken);
+        await ClearLocksAsync(session, cancellationToken);
+        _logger.LogInformation(
+            "Trade {TradeId}: {Character} escrowed item {ItemId} x{Count} from slot {Slot} into panel slot {PanelSlot}.",
+            session.TradeId,
+            mine.Channel.CharacterName,
+            escrow.Snapshot.ItemId,
+            escrow.Count,
+            sourceSlot,
+            panelSlot);
+        return true;
+    }
+
+    private async Task<bool> ReleaseAsync(
+        ItemTradeSession session,
+        ItemTradeSide mine,
+        ItemTradeSide other,
+        ushort panelSlot,
+        uint count,
+        ushort destinationSlot,
+        CancellationToken cancellationToken)
+    {
+        if (!ItemTradePlanner.TryReleaseEscrow(
+                mine.Escrows,
+                mine.Locked,
+                panelSlot,
+                out var released,
+                out var failure))
+        {
+            _logger.LogInformation(
+                "Trade {TradeId}: {Character} could not take back panel slot {PanelSlot}: {Failure}.",
+                session.TradeId,
+                mine.Channel.CharacterName,
+                panelSlot,
+                failure);
+            await SendMoveFailureAsync(
+                mine.Channel.CharacterId,
+                GameProtocolEngine.ItemTradeListType,
+                panelSlot,
+                count,
+                0,
+                destinationSlot,
+                cancellationToken);
+            return false;
+        }
+
+        mine.Escrows.Remove(released);
+        if (panelSlot == ItemTradePlanner.GoldPanelSlot)
+        {
+            mine.OfferedGold = 0;
+        }
+
+        await SendAsync(
+            mine.Channel.CharacterId,
+            GameProtocolEngine.CreateMoveItemSpaceReply(
+                GameProtocolEngine.ItemTradeListType,
+                panelSlot,
+                released.Count,
+                0,
+                destinationSlot),
+            cancellationToken);
+        await SendAsync(
+            other,
+            GameProtocolEngine.CreateChangeItemTradeItem(
+                new GameItemTradeEntry(
+                    panelSlot,
+                    GameProtocolEngine.ClearItemTradeSlot,
+                    0,
+                    0,
+                    0)),
+            cancellationToken);
+        await ClearLocksAsync(session, cancellationToken);
+        return true;
+    }
+
+    private static void ReplaceEscrow(ItemTradeSide side, ItemTradeEscrow escrow)
+    {
+        side.Escrows.RemoveAll(candidate => candidate.PanelSlot == escrow.PanelSlot);
+        side.Escrows.Add(escrow);
+    }
+
+    /// <summary>
+    /// 任何托管变动都把双方锁定清零（客户端 0x411040 自己也这么做），
+    /// 并给双方各发两条 NOTI 17：接收端按 uid 决定写 myLock 还是 otherLock。
+    /// </summary>
+    private async Task ClearLocksAsync(ItemTradeSession session, CancellationToken cancellationToken)
+    {
+        session.Initiator.Locked = false;
+        session.Partner.Locked = false;
+        session.Initiator.FinalConfirmed = false;
+        session.Partner.FinalConfirmed = false;
+        foreach (var side in new[] { session.Initiator, session.Partner })
+        {
+            foreach (var target in new[] { session.Initiator, session.Partner })
+            {
+                await SendAsync(
+                    target.Channel.CharacterId,
+                    GameProtocolEngine.CreateStateItemTrade(side.Channel.AreaUserId, locked: false),
+                    cancellationToken);
+            }
+        }
+    }
+
+    private async Task SendMoveFailureAsync(
+        Guid characterId,
+        byte sourceListType,
+        ushort sourceSlot,
+        uint count,
+        byte destinationListType,
+        ushort destinationSlot,
+        CancellationToken cancellationToken) =>
+        await SendAsync(
+            characterId,
+            GameProtocolEngine.CreateMoveItemSpaceFailure(
+                sourceListType, sourceSlot, count, destinationListType, destinationSlot),
+            cancellationToken);
 
     private bool RemoveSession(ItemTradeSession session)
     {

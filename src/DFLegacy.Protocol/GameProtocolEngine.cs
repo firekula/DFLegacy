@@ -1760,6 +1760,28 @@ public static class GameProtocolEngine
             payload.ToArray());
     }
 
+    /// <summary>CMD 19 失败：客户端据此把本地乐观移动回滚（4↔0/1/3/7 分支有专门文案）。</summary>
+    public static GameServerPacket CreateMoveItemSpaceFailure(
+        byte sourceListType,
+        ushort sourceSlot,
+        uint movedCount,
+        byte destinationListType,
+        ushort destinationSlot)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)0);
+        writer.Write(sourceListType);
+        writer.Write(sourceSlot);
+        writer.Write(movedCount);
+        writer.Write(destinationListType);
+        writer.Write(destinationSlot);
+        return new GameServerPacket(
+            CommandPacketType,
+            MoveItemSpaceCommand,
+            payload.ToArray());
+    }
+
     public static GameServerPacket CreateSortItemReply(byte itemSpace) =>
         new(CommandPacketType, SortItemCommand, [1, itemSpace]);
 

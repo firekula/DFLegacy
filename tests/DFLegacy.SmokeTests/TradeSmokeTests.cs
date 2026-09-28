@@ -13,6 +13,7 @@ internal static class TradeSmokeTests
         CheckPlanner(check);
         await CheckStoreAsync(check);
         await CheckRequestFlowAsync(check);
+        await CheckMoveFlowAsync(check);
     }
 
     // 逐字段依据 .superpowers/sdd/trade-protocol-recon.md §2/§3：
@@ -114,6 +115,20 @@ internal static class TradeSmokeTests
                 && BinaryPrimitives.ReadUInt16LittleEndian(finish.Payload.AsSpan(6, 2)) == 4
                 && BinaryPrimitives.ReadUInt16LittleEndian(finish.Payload.AsSpan(8, 2)) == 9,
             "NOTI 18 is [u16 count] + count x [u16 otherPanelSlot][u16 myInventorySlot]");
+
+        // CMD 19 失败：与成功回包同形（resultFlag + 10 字节字段 = 11，逐字节见 Program.cs 的
+        // CreateMoveItemSpaceReply 断言），首字节 resultFlag 改 0，客户端据此把本地乐观移动回滚。
+        var moveFailure = GameProtocolEngine.CreateMoveItemSpaceFailure(0, 5, 4, 4, 6);
+        check(moveFailure.Type == 1
+                && moveFailure.ProtocolId == GameProtocolEngine.MoveItemSpaceCommand
+                && moveFailure.Payload.Length == 11
+                && moveFailure.Payload[0] == 0
+                && moveFailure.Payload[1] == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(moveFailure.Payload.AsSpan(2, 2)) == 5
+                && BinaryPrimitives.ReadUInt32LittleEndian(moveFailure.Payload.AsSpan(4, 4)) == 4
+                && moveFailure.Payload[8] == 4
+                && BinaryPrimitives.ReadUInt16LittleEndian(moveFailure.Payload.AsSpan(9, 2)) == 6,
+            "a CMD 19 failure keeps the 11-byte shape but flips resultFlag to 0: [0, 0, 5, 4, 4, 6]");
 
         // 解析：载荷从 Body+2 起算，前 2 字节是序列号。
         var requestBody = new byte[2 + 2 + 1 + 4];
@@ -747,6 +762,132 @@ internal static class TradeSmokeTests
                 && !harness.Directory.TryGetSnapshot(harness.IdOf("布拉沃"), out _),
             "LeaveTownAsync cancels the in-flight request window and really leaves the directory");
     }
+
+    private static async Task CheckMoveFlowAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        await harness.SetInventoryAsync("阿尔法", 5_000, []);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        // 6 号格另放一组药水：「同一来源格不能押两次」（规划器 SourceEscrowed / 设计 §2.4），
+        // 「客户端自报 itemId 不可信」要在一格尚未被托管的来源上验证。
+        var spare = new CharacterItemRecord(6, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        var sword = new CharacterItemRecord(
+            9, TradeFixtures.SwordItemId, 1,
+            EquipmentQualitySeed: 0x1234, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion, spare, sword]);
+        await harness.OpenTradeAsync();
+
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 5, itemId: TradeFixtures.PotionItemId, count: 4,
+                destinationListType: 4, destinationSlot: 3,
+                CancellationToken.None),
+            "escrowing four potions succeeds");
+        var echo = harness.Of("阿尔法");
+        var peer = harness.Of("布拉沃");
+        // 操作者收到 CMD 19 结果 + 两条 NOTI 17（设计 §2.3.3：双方锁定清零、各发两条）。
+        check(echo.Count == 3
+                && echo[0].Type == 1
+                && echo[0].ProtocolId == GameProtocolEngine.MoveItemSpaceCommand
+                && echo[0].Payload.Length == 11
+                && echo[0].Payload[0] == 1
+                && echo[0].Payload[1] == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(echo[0].Payload.AsSpan(2, 2)) == 5
+                && BinaryPrimitives.ReadUInt32LittleEndian(echo[0].Payload.AsSpan(4, 4)) == 4
+                && echo[0].Payload[8] == 4
+                && BinaryPrimitives.ReadUInt16LittleEndian(echo[0].Payload.AsSpan(9, 2)) == 3,
+            "the actor's own panel is driven only by the CMD 19 result [1, 0, 5, 4, 4, 3]");
+        check(peer.Count == 3
+                && peer[0].ProtocolId == GameProtocolEngine.ChangeItemTradeItemNotification
+                && BinaryPrimitives.ReadUInt16LittleEndian(peer[0].Payload.AsSpan(0, 2)) == 3
+                && BinaryPrimitives.ReadUInt16LittleEndian(peer[0].Payload.AsSpan(2, 2)) == TradeFixtures.PotionItemId
+                && BinaryPrimitives.ReadUInt32LittleEndian(peer[0].Payload.AsSpan(4, 4)) == 4
+                && peer.Count(packet => packet.ProtocolId == GameProtocolEngine.StateItemTradeNotification) == 2
+                && peer.Where(packet => packet.ProtocolId == GameProtocolEngine.StateItemTradeNotification)
+                    .All(packet => packet.Payload[2] == 0),
+            "the peer sees NOTI 15 with only the escrowed portion, then two NOTI 17 clearing both locks");
+        check(echo.Count(packet => packet.ProtocolId == GameProtocolEngine.StateItemTradeNotification) == 2,
+            "the actor also gets its two lock-cleared NOTI 17 (the client clears both locally as well)");
+
+        // 客户端自报的 itemId 不可信：服务端按自己的 (0,6) 记录写入
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 6, itemId: TradeFixtures.SwordItemId, count: 2,
+                destinationListType: 4, destinationSlot: 4,
+                CancellationToken.None),
+            "a mismatched itemId in the request does not break the move: the server trusts its own slot record");
+        check(BinaryPrimitives.ReadUInt16LittleEndian(
+                    harness.Of("布拉沃")[0].Payload.AsSpan(2, 2)) == TradeFixtures.PotionItemId,
+            "the peer is told about the server's item, not the client's claim");
+
+        // 装备（不可堆叠）：客户端报的 count 被忽略，整件押上
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 9, itemId: TradeFixtures.SwordItemId, count: 1,
+                destinationListType: 4, destinationSlot: 5,
+                CancellationToken.None)
+            && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.ChangeItemTradeItemNotification
+            && BinaryPrimitives.ReadUInt32LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(4, 4)) == 0x1234,
+            "an equipment escrow keeps the whole item and the peer sees the quality seed as the wire count (T5)");
+        harness.Clear("阿尔法");
+        check(!await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 5, itemId: TradeFixtures.PotionItemId, count: 99,
+                destinationListType: 4, destinationSlot: 6,
+                CancellationToken.None)
+            && harness.Of("阿尔法")[0].Payload[0] == 0,
+            "a count above the server's stack record is refused");
+
+        // 金币
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 0, itemId: 0, count: 1_200,
+                destinationListType: 4, destinationSlot: 0,
+                CancellationToken.None),
+            "offering 1200 gold succeeds");
+        check(harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.ChangeItemTradeItemNotification
+                && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(0, 2)) == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(2, 2)) == 0
+                && BinaryPrimitives.ReadUInt32LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(4, 4)) == 1_200,
+            "gold is announced as panel slot 0 / itemId 0 / count = amount");
+        harness.Clear("阿尔法");
+        check(!await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 0, itemId: 0, count: 99_999,
+                destinationListType: 4, destinationSlot: 0,
+                CancellationToken.None),
+            "an offer above the character's gold is refused");
+
+        // 取回
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 4, sourceSlot: 3, itemId: TradeFixtures.PotionItemId, count: 4,
+                destinationListType: 0, destinationSlot: 5,
+                CancellationToken.None)
+            && harness.Of("阿尔法")[0].Payload[0] == 1
+            && harness.Of("阿尔法")[0].Payload[1] == 4
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(2, 2))
+                == GameProtocolEngine.ClearItemTradeSlot,
+            "taking the potions back clears the peer's slot with itemId 0xFFFF");
+
+        // 冻结查询
+        check(harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 9)
+                && harness.Service.IsEscrowedInstance(harness.IdOf("阿尔法"), sword.InstanceId)
+                && !harness.Service.IsEscrowed(harness.IdOf("布拉沃"), 0, 9),
+            "the frozen-slot query answers per character, not globally");
+    }
 }
 
 internal static class TradeFixtures
@@ -1026,6 +1167,15 @@ internal sealed class TradeHarness : IAsyncDisposable
         _tickets.Remove(characterName);
         await Service.CancelForAreaChangeAsync(_characters[characterName].Id, CancellationToken.None);
         await Directory.LeaveAsync(ticket, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// 便捷方法：阿尔法向布拉沃发起、布拉沃接受（uid 与 AttachChannelAsync/EnterTownAsync 的约定一致）。
+    /// </summary>
+    public async Task OpenTradeAsync()
+    {
+        await Service.HandleRequestAsync(_characters["阿尔法"].Id, 2, CancellationToken.None);
+        await Service.HandleResponseAsync(_characters["布拉沃"].Id, 1, accept: true, CancellationToken.None);
     }
 
     public async ValueTask DisposeAsync()
