@@ -2236,6 +2236,12 @@ public static class GameProtocolEngine
             payload.ToArray());
     }
 
+    /// <summary>
+    /// 离开信号用的 (town, area) 哨兵：真实城镇/区域 id 远小于它，收包客户端必然判定
+    /// “与当前区域不匹配”，从而走销毁角色的分支。
+    /// </summary>
+    public const byte DepartureSentinel = 0xFF;
+
     public static GameServerPacket CreateUserArea(
         byte townId,
         byte areaId,
@@ -2250,13 +2256,23 @@ public static class GameProtocolEngine
         writer.Write(user.X);
         writer.Write(user.Y);
         writer.Write(user.Direction);
-        // 尾字节是该 actor 在区域内是否激活：加入为 1，离开为 0。
+        // 尾字节只是该 actor 的激活标记（creature+0x3E4），加入为 1、离开为 0；
+        // 它**不销毁**角色（不移除地图实体与显示子对象），见 CreateUserAreaDeparture。
         writer.Write(active ? (byte)1 : (byte)0);
         return new GameServerPacket(
             NotificationPacketType,
             UserAreaNotification,
             payload.ToArray());
     }
+
+    /// <summary>
+    /// 离开区域的销毁信号（USER_AREA）：把 (town, area) 写成 0xFF/0xFF 哨兵，
+    /// 收包客户端只有在包里的 (town, area) 与自己当前 scene 不一致时才会
+    /// mapMgr->RemoveCreature（0x41EC1F，递归摘掉角色及其显示/特效子对象）。
+    /// active 尾字节仍写 0，但那只是隐藏标记，单独发它不移除任何东西。
+    /// </summary>
+    public static GameServerPacket CreateUserAreaDeparture(GameTownUser user) =>
+        CreateUserArea(DepartureSentinel, DepartureSentinel, user, active: false);
 
     public static GameServerPacket CreateAreaUsers(
         byte townId,
@@ -2368,23 +2384,53 @@ public static class GameProtocolEngine
     }
 
     /// <summary>
-    /// ADD_FRIEND 成功结果（type=1 命令包）。客户端接收循环按包头 type 分发：type 1 的
-    /// body 首字节被读作结果标志，handler 从 body+1 继续按长度前缀读名字，再读记录字段
-    /// A..F（本包只带 A=0，其余读到流尾按 0 处理）。只有这条包会在客户端打印
-    /// “[名字]已被添加到好友名单”；标志为 0 的失败分支才读一个独立错误码。
+    /// ADD_FRIEND 成功结果（type=1 命令包，成功分支 handler 0x414986）。body 恰好
+    /// 14+nameLen 字节：[非零标志][u32 名字长度 + 名字][A][B][C][u32 D][E][F]。
     /// </summary>
-    public static GameServerPacket CreateAddFriendResult(byte[] nameBytes) =>
-        CreateFriendCommandResult(AddFriendCommand, nameBytes);
+    /// <remarks>
+    /// 客户端接收循环把 body[0] 当结果字节吃掉，再从 body+1 读名字，然后**无条件**读
+    /// 尾部 6 个字段（1+1+1+4+1+1 共 9 字节）。读不到时整包剩余部分被 0x30 填充：
+    /// 其中 B 落在记录偏移 0x23，而条目追加函数 0x500B00 的守卫是 B &lt; 5，0x30=48
+    /// 会让条目被静默拒绝（聊天栏提示照打）——这正是“加好友不进列表”的根因，所以
+    /// 尾部 9 字节必须发全，B 固定 0。
+    /// A/C/E 固定 0；D 是好友的区用户 id（在线时填，客户端用它 FindByUid 给 user
+    /// 对象打好友标记），离线填 0；F 不用 0xFF（“保持原状态”对新条目无意义），
+    /// 状态由紧随其后的 BUDDY_IN/BUDDY_OUT 决定。
+    /// </remarks>
+    public static GameServerPacket CreateAddFriendResult(byte[] nameBytes, ushort areaUserId = 0)
+    {
+        ValidateFriendName(nameBytes);
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);                              // 结果标志，非零即成功
+        WriteLengthPrefixedBytes(writer, nameBytes);
+        writer.Write((byte)0);                              // A：记录字段（对应 0x21），保持 0
+        writer.Write((byte)0);                              // B：必须 < 5（0x500B00 的 N 守卫）
+        writer.Write((byte)0);                              // C：记录 0x24 的低/高半字节
+        writer.Write((uint)areaUserId);                     // D：好友 uid（在线）/ 0（离线）
+        writer.Write((byte)0);                              // E：记录 0x29
+        writer.Write((byte)0);                              // F：0 = SetEntryState(状态 0) 由 BUDDY_* 纠正
+        return new GameServerPacket(CommandPacketType, AddFriendCommand, payload.ToArray());
+    }
 
     /// <summary>
     /// REMOVE_FRIEND 成功结果（type=1 命令包）。客户端 handler 0x414BA7 凭它调用
     /// CNRDFriendManager::RemoveEntryByName → vector::erase 真正删除条目；通知通道
-    /// （NOTI 56/54/55）只 InsertOrUpdate，永远删不掉条目。
+    /// （NOTI 56/54/55）只 InsertOrUpdate，永远删不掉条目。body = [非零标志][名字][0]。
     /// </summary>
-    public static GameServerPacket CreateRemoveFriendResult(byte[] nameBytes) =>
-        CreateFriendCommandResult(RemoveFriendCommand, nameBytes);
+    public static GameServerPacket CreateRemoveFriendResult(byte[] nameBytes)
+    {
+        ValidateFriendName(nameBytes);
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);                              // 结果标志，非零即成功
+        WriteLengthPrefixedBytes(writer, nameBytes);
+        // handler 把它读作可选结果码（0x15 = 对方不在好友名单中），0 表示无错误。
+        writer.Write((byte)0);
+        return new GameServerPacket(CommandPacketType, RemoveFriendCommand, payload.ToArray());
+    }
 
-    private static GameServerPacket CreateFriendCommandResult(byte command, byte[] nameBytes)
+    private static void ValidateFriendName(byte[] nameBytes)
     {
         ArgumentNullException.ThrowIfNull(nameBytes);
         if (nameBytes.Length is 0 or > FriendListNameFieldLength)
@@ -2400,32 +2446,15 @@ public static class GameProtocolEngine
                 "Friend names must not contain a NUL byte.",
                 nameof(nameBytes));
         }
-
-        using var payload = new MemoryStream();
-        using var writer = new BinaryWriter(payload);
-        writer.Write((byte)1);                              // 结果标志，非零即成功
-        WriteLengthPrefixedBytes(writer, nameBytes);
-        // 尾字节的含义随命令不同，不能统一写成“错误码”：
-        // - REMOVE_FRIEND（id 64）的 handler 把它读作可选结果码（0x15 = 对方不在好友名单中），
-        //   这里发 0 表示无错误；
-        // - ADD_FRIEND（id 63）的成功分支把它读作好友记录字段 A（随后 B..F 读到流尾按 0
-        //   处理），客户端据此调 InsertOrUpdateEntry / SetEntryState。
-        writer.Write((byte)0);
-        return new GameServerPacket(CommandPacketType, command, payload.ToArray());
     }
 
     /// <summary>
-    /// 1:1 / 跨频道消息（NOTI 65）：按名字投递正文。flag 恒 0（正文模式）；非 0 会被
-    /// 客户端当状态码，只打印提示并丢弃正文。
+    /// 1:1 窗口消息（NOTI 65）：type 0x12、flag 0，按名字把正文投递进 1:1 窗口。
+    /// 只有 CMD 17 类型 18（真正的 1:1 频道）用它：悄悄话（类型 1/7）不应该开/写
+    /// 1:1 窗口，普通悄悄话的接收端只收 NOTI 12。flag 必须 0——非 0 是状态码，
+    /// 客户端只弹提示并丢弃正文。
     /// </summary>
-    /// <param name="messageType">
-    /// 0x12：正文进 1:1 窗口（1:1 消息的接收方，以及悄悄话的 1:1 窗口行）；
-    /// 1/7：正文进主聊天栏 '%s : %s'（悄悄话发送方自己那一行）。
-    /// </param>
-    public static GameServerPacket CreateMessageOtherChannel(
-        byte[] nameBytes,
-        byte[] textBytes,
-        byte messageType = MessengerMessageType)
+    public static GameServerPacket CreateMessageOtherChannel(byte[] nameBytes, byte[] textBytes)
     {
         ArgumentNullException.ThrowIfNull(nameBytes);
         ArgumentNullException.ThrowIfNull(textBytes);
@@ -2452,7 +2481,7 @@ public static class GameProtocolEngine
 
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
-        writer.Write(messageType);                          // 0x12 = 1:1 窗口；1/7 = 主聊天栏
+        writer.Write(MessengerMessageType);                 // 只有 0x12：进 1:1 窗口
         writer.Write(MessengerMessageFlag);                 // 0 = 正文；非 0 是状态码（提示并丢弃正文）
         WriteLengthPrefixedBytes(writer, nameBytes);
         WriteLengthPrefixedBytes(writer, textBytes);

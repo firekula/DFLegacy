@@ -31,7 +31,7 @@ internal static class TownSyncSmokeTests
         check(defaults.TownSync.ForeignAppearanceBeforeRoster,
             "foreign appearances precede the roster by default so every roster uid already has a USERINFO record");
         check(defaults.TownSync.DepartureSignal == TownDepartureSignal.UserAreaInactive,
-            "the default departure signal is USER_AREA with active zero");
+            "the default departure signal is the USER_AREA region-mismatch destroy signal");
         check(defaults.TownSync.MaxPositionForwardsPerSecond == 10,
             "position forwarding is capped per member and second");
         check(defaults.TownSync.PrivateAreas.Length == 1 && defaults.TownSync.PrivateAreas[0] == "1:1",
@@ -48,6 +48,16 @@ internal static class TownSyncSmokeTests
             "USER_AREA marks a joining actor as active");
         check(GameProtocolEngine.CreateUserArea(2, 5, townUser, active: false).Payload[9] == 0,
             "USER_AREA marks a departing actor as inactive");
+        // 真正的销毁信号：同区 + active=0 只写 creature 的激活字节（隐藏），客户端只有在
+        // (town, area) 与自己当前 scene 不一致时才 RemoveCreature；所以离场包必须带哨兵。
+        var departure = GameProtocolEngine.CreateUserAreaDeparture(townUser);
+        check(departure.ProtocolId == GameProtocolEngine.UserAreaNotification
+                && departure.Payload.Length == 10
+                && departure.Payload[0] == 7
+                && departure.Payload[2] == 0xFF
+                && departure.Payload[3] == 0xFF
+                && departure.Payload[9] == 0,
+            "the departure signal is USER_AREA with 0xFF/0xFF (region mismatch) so the client destroys the actor");
 
         var channelSized = new AreaUserIdPool(new ServerOptions().Channel.MaximumUsers);
         check(channelSized.Capacity == 100,
@@ -198,14 +208,16 @@ internal static class TownSyncSmokeTests
         check(await directory.BroadcastToAreaAsync(sharedBobTicket, chat, includeSelf: false, CancellationToken.None) == 1,
             "a shared-area broadcast without self still reaches only the other member");
 
-        // 共享区域的离线标记（USER_AREA active=0）同样不受私密区域配置影响。
+        // 共享区域的销毁信号（USER_AREA 0xFF/0xFF 哨兵）同样不受私密区域配置影响。
         await directory.LeaveAsync(sharedBobTicket, CancellationToken.None);
         var sharedDepartures = sharedAlice.Of(GameProtocolEngine.UserAreaNotification);
         check(sharedDepartures.Count == 2
             && sharedDepartures[1].Payload[0] == 4
+            && sharedDepartures[1].Payload[2] == 0xFF
+            && sharedDepartures[1].Payload[3] == 0xFF
             && sharedDepartures[1].Payload[9] == 0
             && directory.GetMemberCount(1, 2) == 1,
-            "the shared-area offline marking still fires under the private-area config");
+            "the shared-area departure still fires the region-mismatch signal under the private-area config");
 
         // ---- 配置解析：合法条目生效，非法条目告警跳过，绝不抛异常 ----
         var parsedOptions = new ServerOptions();
@@ -487,8 +499,10 @@ internal static class TownSyncSmokeTests
         var departure = alice.Of(GameProtocolEngine.UserAreaNotification);
         check(departure.Count == 2
             && departure[1].Payload[0] == 2
+            && departure[1].Payload[2] == 0xFF
+            && departure[1].Payload[3] == 0xFF
             && departure[1].Payload[9] == 0,
-            "leaving is signalled with USER_AREA(active=0) by default");
+            "leaving is signalled with USER_AREA(town=0xFF, area=0xFF) so the client destroys the actor");
         check(!directory.TryGetSnapshot(bobTicket!.CharacterId, out _),
             "a departed member is no longer reported by character id");
 
@@ -511,8 +525,12 @@ internal static class TownSyncSmokeTests
             CancellationToken.None);
         await resendDirectory.LeaveAsync(erinTicket, CancellationToken.None);
         var resent = dave.Of(GameProtocolEngine.AreaUsersNotification);
+        // 备选信号只重发名单：AREA_USERS 逐条只做加/更新，缺席 uid 不会被处理，
+        // 所以这条信号**不能销毁**角色——这里同时钉住“它不发 USER_AREA”。
         check(resent.Count == 2 && ReadRoster(resent[1]).Length == 1,
             "the roster-resend signal sends a roster without the departed member");
+        check(dave.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
+            "the roster-resend signal emits no USER_AREA and therefore cannot remove the actor (client rosters only add/update)");
 
         // Frank 的通道坏掉：Dave 刷新外观时投递给 Frank 会抛异常，Frank 被移除。
         var failing = new FakeChannel();
@@ -710,8 +728,10 @@ internal static class TownSyncSmokeTests
         var secondAreas = second.Of(GameProtocolEngine.UserAreaNotification);
         check(secondAreas.Count == 1
             && secondAreas[0].Payload[0] == 1
+            && secondAreas[0].Payload[2] == 0xFF
+            && secondAreas[0].Payload[3] == 0xFF
             && secondAreas[0].Payload[9] == 0,
-            "disabling the peer table keeps the USER_AREA(active=0) departure signal");
+            "disabling the peer table keeps the region-mismatch USER_AREA departure signal");
     }
 
     /// <summary>
@@ -789,7 +809,7 @@ internal static class TownSyncSmokeTests
                 GameProtocolEngine.CreateUserArea(1, 1, bobTownUser),
                 CreateAppearance(2, "Bob"),
                 CreateAppearance(2, "Bob"),
-                GameProtocolEngine.CreateUserArea(1, 1, bobTownUser, active: false),
+                GameProtocolEngine.CreateUserAreaDeparture(bobTownUser),
                 GameProtocolEngine.CreateUdpPeerInfo([alicePeer])
             ]),
             "the existing member gets appearance → join once, later appearances without a second join, then the departure signal");

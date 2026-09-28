@@ -52,7 +52,7 @@
       "Enabled": true,
       "//ForeignAppearanceBeforeRoster": "给新进区域的人先发别人的外观（USERINFO 记录）还是先发名单；默认 true（外观在前）。客户端会静默丢弃 AREA_USERS/USER_AREA 里没有 USERINFO 记录的 uid，名单在前时新人看不到任何人；仅作对照实验时才改为 false。",
       "ForeignAppearanceBeforeRoster": true,
-      "//DepartureSignal": "成员离开区域时的通知信号：UserAreaInactive（默认）或 RosterResend（重发名单，可能扯回本地角色）。",
+      "//DepartureSignal": "成员离开区域时的通知信号：UserAreaInactive（默认，发带 0xFF/0xFF 哨兵的 USER_AREA，客户端因区域不匹配销毁角色及其特效）或 RosterResend（重发不含该成员的名单；AREA_USERS 只增不减，**不能移除角色**，残留特效/旧位置依旧，仅作兼容备选）。",
       "DepartureSignal": "UserAreaInactive",
       "//MaxPositionForwardsPerSecond": "每个成员每秒最多转发的位置包数；<=0 不限制。",
       "MaxPositionForwardsPerSecond": 10,

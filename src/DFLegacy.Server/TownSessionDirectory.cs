@@ -247,7 +247,7 @@ public sealed class TownSessionDirectory(
                 options.TownSync.DepartureSignal);
 
             // 迁移同样是一次成员变化：开关打开时旧区剩下的人还要拿到收窄后的名单
-            // （默认的离开信号只让 uid 失效，名单里可能仍写着迁移者）。
+            // （默认的离开信号销毁旧 actor，但客户端名单里可能仍写着迁移者）。
             await SendRosterRefreshAsync(departureTargets, cancellationToken);
 
             // 迁移也是一次成员变化：旧区剩下的人要把迁移者从对端表里删掉。
@@ -560,16 +560,19 @@ public sealed class TownSessionDirectory(
 
     private GameServerPacket CreateDepartureNotice(TownMember member, TownMember[] remaining) =>
         options.TownSync.DepartureSignal == TownDepartureSignal.RosterResend
-            // 备选信号：重发不含该成员的名单。已知副作用：客户端可能重建区域并扯回本地角色。
+            // 备选信号：重发不含该成员的名单。注意它**不能移除角色**——客户端的
+            // AREA_USERS 逐条只做“加/更新”，对名单里缺席的 uid 不做任何处理，
+            // 所以残留的 actor/显示特效依旧在，重登还可能显示旧位置；保留此选项仅为
+            // 兼容旧配置，默认信号不用它。
             ? GameProtocolEngine.CreateAreaUsers(
                 member.TownId,
                 member.AreaId,
                 [.. remaining.Select(other => other.ToTownUser())])
-            : GameProtocolEngine.CreateUserArea(
-                member.TownId,
-                member.AreaId,
-                member.ToTownUser(),
-                active: false);
+            // 真正的销毁信号：USER_AREA 带 0xFF/0xFF 哨兵，收包客户端发现 (town, area)
+            // 与自己当前 scene 不一致，调 mapMgr->RemoveCreature（0x41EC1F）递归摘掉
+            // 角色及其显示/特效子对象。此前的“同区域 + active=0”只写 creature+0x3E4
+            //（隐藏），既不销毁也不清特效，正是“下线不消失/重登显示旧位置”的根因。
+            : GameProtocolEngine.CreateUserAreaDeparture(member.ToTownUser());
 
     private async ValueTask RemoveMemberLocallyAsync(TownMember member)
     {

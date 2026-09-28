@@ -34,10 +34,9 @@ public sealed class FriendService
     }
 
     /// <summary>
-    /// Registers a live session for a character and announces it: pushes the friend-list
-    /// snapshot to that session, pushes a USERINFO record for every online friend, marks
-    /// its offline friends, and sends BUDDY_IN to every online account whose friend list
-    /// holds the name.
+    /// Registers a live session for a character and announces it: pushes a USERINFO record
+    /// for every online friend, then the friend-list snapshot (which marks offline friends),
+    /// and sends BUDDY_IN to every online account whose friend list holds the name.
     /// </summary>
     /// <remarks>
     /// The session id binds the channel to one specific session so a late cleanup from an
@@ -46,6 +45,13 @@ public sealed class FriendService
     /// allocated for this session at SELECT_CHARACTER: it is not written into the friend
     /// snapshot any more (R+0x21 must stay 0); it identifies this character in the USERINFO
     /// record pushed to friends and in the CMD 8 mode-3 reverse lookup.
+    /// </remarks>
+    /// <remarks>
+    /// 顺序必须「在线好友记录 → 名单快照」：客户端追加条目的 0x500B00 会按名字查本地
+    /// user 注册表并把 user* 存进 entry+0x38，记录先到才拿得到（“查看信息”的菜单门正
+    /// 依赖它）。已知限制：登录时**不在线**的好友，快照追加条目时没有 user 对象，要等
+    /// 他到下一次上线（<see cref="NotifyFriendOwnersAsync"/> 会先推记录再播报 BUDDY_IN）
+    /// 或本会话下次登录才可“查看信息”；不能用重发快照补救（名单只增不减，会出重复行）。
     /// </remarks>
     public async Task AttachChannelAsync(
         string accountName,
@@ -60,16 +66,17 @@ public sealed class FriendService
         ArgumentNullException.ThrowIfNull(send);
         _channels[characterName] = new Channel(accountName, areaUserId, sessionId, send);
 
+        // 好友行/“查看信息”/社区菜单都先查本地 user 注册表（FindByUid）：没有 USERINFO
+        // 记录时点“查看信息”连 CMD 8 都不会发。登录时把当前在线好友各推一条 mode-0
+        // 记录（uid = 对方的区用户 id），**必须先于快照**——快照追加条目时按名字查注册
+        // 表填 entry+0x38，记录迟到就只能等 USERINFO 尾部的 RefreshAll 补。
+        await PushOnlineFriendRecordsAsync(accountName, characterName, cancellationToken);
+
         // 快照每个会话只推这一次：客户端收到 NOTI 56 是无条件追加条目（不去重），
         // 同名再推就会多出一行；之后的状态变化一律只走 BUDDY_IN/BUDDY_OUT。
         // 空快照在这里仍要推：客户端好友管理器随选角界面重建时是空的，同一进程
         // 换号登录时靠它把上一份列表的状态归位。
         await PushSnapshotAsync(accountName, characterName, cancellationToken);
-
-        // 好友行/“查看信息”/社区菜单都先查本地 user 注册表（FindByUid）：没有 USERINFO
-        // 记录时点“查看信息”连 CMD 8 都不会发。登录时把当前在线好友各推一条 mode-0
-        // 记录（uid = 对方的区用户 id）。
-        await PushOnlineFriendRecordsAsync(accountName, characterName, cancellationToken);
 
         await NotifyFriendOwnersAsync(characterName, isOnline: true, cancellationToken);
     }
@@ -139,14 +146,19 @@ public sealed class FriendService
         // 命令结果必须走 type=1 命令通道：客户端接收循环把包头 type 1 的 body 首字节当
         // 结果标志走另一张分发表，只有这条包会打印“[名字]已被添加到好友名单”。
         // 用 store 归一化后的名字（去首尾空格）：客户端按这份拼写建条目。
-        // id 63 的 handler 直接调 0x500B00 无条件追加新条目（其 body 里的记录字段
-        // A..F 只填 A=0，B..F 读到流尾按 0），所以它自己就能建条目——**不能再补整表
-        // 快照**：NOTI 56 同样是无条件追加，会把老好友全部再加一份（重复行的根因）。
+        // id 63 的 handler 会无条件追加条目，但**必须把尾部 9 字节发全**：读不到的部分
+        // 被接收缓冲填成 0x30，其中 B=0x30 撞上 0x500B00 的 `B < 5` 守卫，条目会被静默
+        // 拒绝（聊天栏提示照打）——这就是“加好友不进列表”的根因。尾部 D 填好友的区用户
+        // id（客户端顺带用它给 user 对象打好友标记），离线填 0。**不能再补整表快照**：
+        // NOTI 56 同样是无条件追加，会把老好友全部再加一份（重复行的根因）。
         var addedName = friendName.Trim();
         var addedNameBytes = ClientEncoding.GetBytes(addedName);
+        var isOnline = _channels.TryGetValue(addedName, out var addedChannel);
         await SendAsync(
             characterName,
-            GameProtocolEngine.CreateAddFriendResult(addedNameBytes),
+            GameProtocolEngine.CreateAddFriendResult(
+                addedNameBytes,
+                isOnline ? addedChannel!.AreaUserId : (ushort)0),
             cancellationToken);
 
         // id 63 追加出来的条目停在构造默认状态，若好友此刻已在线，点开列表会看到一条
@@ -156,7 +168,7 @@ public sealed class FriendService
         // 只发给执行添加的会话：这条新行只存在于他的列表里，别的会话收到也无处可改。
         await SendAsync(
             characterName,
-            _channels.ContainsKey(addedName)
+            isOnline
                 ? GameProtocolEngine.CreateBuddyIn(state: 0, addedNameBytes)
                 : GameProtocolEngine.CreateBuddyOut(addedNameBytes),
             cancellationToken);
@@ -190,14 +202,13 @@ public sealed class FriendService
     /// </summary>
     /// <remarks>
     /// The target's main-chat line is the NOTI 12 the client resolves from the sender uid
-    /// (that is why the target gets the sender's appearance first), and the target also
-    /// gets the 1:1-window line as a NOTI 65 with type 0x12, flag 0 and the sender's name.
-    /// The sender gets no NOTI 12 echo — the client's own-uid branch is a design-time no-op
-    /// (it looks up a 1:1 window pointer that is permanently NULL) — and no 0x12 NOTI 65
-    /// either: it gets exactly one NOTI 65 with type 1/7, flag 0 and the <em>target</em>
-    /// name, which the client prints in the main chat as '%s : %s'; its own 1:1 window line
-    /// is appended locally by the client after sending. The target's mode-0 record is
-    /// pushed to the sender first so the local line and the friend row can resolve the peer.
+    /// (that is why the target gets the sender's appearance first), and that is the whole
+    /// delivery: a whisper must not open or write a 1:1 window, so the target gets no
+    /// NOTI 65. The sender gets nothing at all — the client's own line is assembled
+    /// locally as '给[X] : 文本' and dropped by its own-uid branch (the 1:1 window pointer
+    /// on its record is permanently NULL), and there is no server packet that can render
+    /// that line: the main chat always prints the packet name as the speaker, and a NOTI 65
+    /// named after the target would mirror the text into the sender's 1:1 window.
     /// </remarks>
     public Task WhisperAsync(
         string characterName,
@@ -216,23 +227,21 @@ public sealed class FriendService
                 senderAreaUserId,
                 textBytes),
             senderAppearance,
-            senderLineMessageType: messageType,
             selfNoticeText: "不能给自己发悄悄话",
             cancellationToken);
 
     /// <summary>
     /// Routes a 1:1 window message (CMD 17 type 18) to the live session that owns the peer
-    /// name. Both sides get the other party's mode-0 user-info record and then a NOTI 65:
-    /// there is no main-chat line, and the history stays in the client's local ring buffer.
+    /// name. The target gets the sender's mode-0 record and then a NOTI 65 (type 0x12,
+    /// flag 0); the sender gets the target's record only, because the client appends its
+    /// own line locally after sending. There is no main-chat line, and the history stays
+    /// in the client's local ring buffer.
     /// </summary>
     /// <remarks>
-    /// The target receives the sender's appearance exactly like the whisper path; the
-    /// sender's side gets a minimal record of the target built by
-    /// <see cref="RoutePeerMessageAsync"/>. Both records feed the local user registry
-    /// (friend rows and the community menu's “查看信息”), which is why the sender keeps
-    /// its record even though a 1:1 line needs no server echo: the client appends its own
-    /// line locally after sending. The wire line itself is flag 0 — a non-zero flag is a
-    /// status code and makes the client drop the body.
+    /// NOTI 65 is the 1:1-channel carrier and is used only here — a whisper (types 1/7)
+    /// must not create a 1:1 window. Both records feed the local user registry (friend rows
+    /// and the community menu's “查看信息”): the target's record lets it resolve the sender
+    /// name, the sender's copy of the target record keeps the newly appended row usable.
     /// </remarks>
     public Task SendMessengerMessageAsync(
         string characterName,
@@ -246,9 +255,6 @@ public sealed class FriendService
             textBytes,
             mainChatLine: null,
             receiverPreface: senderAppearance,
-            // 1:1 发送方自己的那一行由客户端发完包后本地追加（0x811D8A → 0x811A00），
-            // 服务端不要再回显 NOTI 65。
-            senderLineMessageType: null,
             selfNoticeText: "不能和自己进行1:1聊天",
             cancellationToken);
 
@@ -258,7 +264,6 @@ public sealed class FriendService
         byte[] textBytes,
         GameServerPacket? mainChatLine,
         GameServerPacket? receiverPreface,
-        byte? senderLineMessageType,
         string selfNoticeText,
         CancellationToken cancellationToken)
     {
@@ -279,23 +284,23 @@ public sealed class FriendService
             return;
         }
 
-        // The client turns the sender uid into a name only after it has seen that
-        // character's user-info record, so the appearance goes first, then the main-chat
-        // line, then the 1:1 line. Every target-side send is guarded per recipient: a dead
-        // target channel must still let the sender see its own 1:1 line instead of an
-        // exception escaping the command handler.
+        // 目标侧的记录必须最先到：客户端要靠它把包里的 uid（NOTI 12）或名字解析出来。
+        // 每个接收者单独 try/catch：目标通道坏掉也不能让异常逃出命令处理。
         if (receiverPreface is not null)
         {
             await TrySendToChannelAsync(peerName, target, receiverPreface, cancellationToken);
         }
 
+        // 悄悄话：主聊天窗那一行（NOTI 12）是唯一的投递，发送方无包可发（见 WhisperAsync
+        // 的 remarks）；也**不**发 NOTI 65——那会让客户端为一条悄悄话开/写 1:1 窗口。
         if (mainChatLine is not null)
         {
             await TrySendToChannelAsync(peerName, target, mainChatLine, cancellationToken);
+            return;
         }
 
-        // NOTI 65 carries a name, not a uid: the target's 1:1 window keys on the sender's
-        // name, while the sender's own window keys on the peer name it used.
+        // 1:1（CMD 17 type 18）：按名字把正文投递进对端的 1:1 窗口。
+        // NOTI 65 带的是名字不是 uid：目标窗口按发送者名建/找。
         await TrySendToChannelAsync(
             peerName,
             target,
@@ -304,23 +309,13 @@ public sealed class FriendService
                 textBytes),
             cancellationToken);
 
-        // 发送者侧先补一条对端的 mode-0 USERINFO：好友行/社区菜单按本地 user 注册表
-        // 工作（没有记录时“查看信息”连 CMD 8 都不发），悄悄话的正名也依赖注册表。
+        // 发送者侧补一条目标的 mode-0 USERINFO：1:1 发送方自己的行由客户端本地追加，
+        // 但好友行/“查看信息”的本地 user 注册表仍需要目标记录（没有记录时点“查看信息”
+        // 连 CMD 8 都不发）。
         var peerRecord = await CreateMinimalPeerRecordAsync(peerName, target, cancellationToken);
         if (peerRecord is not null)
         {
             await SendAsync(characterName, peerRecord, cancellationToken);
-        }
-
-        // 悄悄话发送方自己那一行：客户端本地拼的“给[X] : 文本”会走自 uid 分支被丢弃，
-        // 唯一能在主聊天栏显示的是服务端发 [type=1/7][flag=0][目标名][正文]。
-        // 1:1（senderLineMessageType == null）不回显：客户端已在窗口本地追加。
-        if (senderLineMessageType is { } lineType)
-        {
-            await SendAsync(
-                characterName,
-                GameProtocolEngine.CreateMessageOtherChannel(peerNameBytes, textBytes, lineType),
-                cancellationToken);
         }
     }
 
@@ -448,22 +443,11 @@ public sealed class FriendService
                     continue;
                 }
 
-                // 状态变化只发 BUDDY_IN/BUDDY_OUT。客户端收到 NOTI 56 快照是无条件追加
-                // 条目（不去重，按名字更新状态只更新首个命中），状态变化时重推快照会让
-                // 每次好友重登都在观察者列表里多出一行同名好友；ec67261 的线上重推正是
-                // 这样被真机验收否掉的。不要再往这里补快照。
-                //
-                // Use the name the recipient stored: the client matches buddy entries by
-                // the exact name it sent when the friend was added.
-                var packet = isOnline
-                    ? GameProtocolEngine.CreateBuddyIn(state: 0, ClientEncoding.GetBytes(storedName))
-                    : GameProtocolEngine.CreateBuddyOut(ClientEncoding.GetBytes(storedName));
-                await TrySendToChannelAsync(ownerCharacterName, channel, packet, cancellationToken);
-
-                // 好友上线时把他的 mode-0 USERINFO 记录补推给名单里含他的账号：
-                // “查看信息”从本地 user 注册表取 uid（没有记录时连 CMD 8 都不发），
-                // 悄悄话也要按 uid 反查发送者名字。记录按接收方的存储拼写之外的角色
-                // 正名构建（CreateMinimalPeerRecordAsync 用存档角色记录）。
+                // 好友上线时先推他的 mode-0 USERINFO 记录，再播报 BUDDY_IN：记录先到，
+                // 客户端后续按名字刷新 entry+0x38（“查看信息”的菜单门要用）与 uid 反查
+                // 表。“查看信息”从本地 user 注册表取 uid（没有记录时连 CMD 8 都不发），
+                // 悄悄话也要按 uid 反查发送者名字。记录用存档角色的正名构建
+                // （CreateMinimalPeerRecordAsync）。
                 if (isOnline && _channels.TryGetValue(characterName, out var onlineChannel))
                 {
                     var friendRecord = await CreateMinimalPeerRecordAsync(
@@ -475,6 +459,18 @@ public sealed class FriendService
                         await TrySendToChannelAsync(ownerCharacterName, channel, friendRecord, cancellationToken);
                     }
                 }
+
+                // 状态变化只发 BUDDY_IN/BUDDY_OUT。客户端收到 NOTI 56 快照是无条件追加
+                // 条目（不去重，按名字更新状态只更新首个命中），状态变化时重推快照会让
+                // 每次好友重登都在观察者列表里多出一行同名好友；ec67261 的线上重推正是
+                // 这样被真机验收否掉的。不要再往这里补快照。
+                //
+                // Use the name the recipient stored: the client matches buddy entries by
+                // the exact name it sent when the friend was added.
+                var packet = isOnline
+                    ? GameProtocolEngine.CreateBuddyIn(state: 0, ClientEncoding.GetBytes(storedName))
+                    : GameProtocolEngine.CreateBuddyOut(ClientEncoding.GetBytes(storedName));
+                await TrySendToChannelAsync(ownerCharacterName, channel, packet, cancellationToken);
             }
             catch (Exception exception)
             {
