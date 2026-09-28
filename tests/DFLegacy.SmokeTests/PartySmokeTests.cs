@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using DFLegacy.Protocol;
+using DFLegacy.Server;
 
 /// <summary>
 /// 组队协议与服务的冒烟测试。包布局的权威说明见
@@ -15,6 +16,7 @@ internal static class PartySmokeTests
         CheckRequestPartyNotificationLayout(check);
         CheckPartyCommandErrorLayout(check);
         CheckPartyRequestParsers(check);
+        CheckPartyRoster(check);
         return Task.CompletedTask;
     }
 
@@ -159,5 +161,108 @@ internal static class PartySmokeTests
         var badName = new byte[] { 0x11, 0x22, 0x00, 0x09, 0x00, 0x00, 0x00, 0x41, 0x42, 0x04 };
         check(!GameProtocolEngine.TryReadSetPartyInfo(badName, out _, out _, out _),
             "party CMD 12 parser rejects a name length that overruns the body");
+    }
+
+    /// <summary>
+    /// 队伍模型不变量（设计稿 §4）：上限 4、槽位紧凑、**队长恒在 0 号槽**（换队长 = 新队长移到 0 号）、
+    /// 槽位 uid 按**收包者所在区域**替换（同区域填真实 uid / 异区域填 0 / 空槽 0xFFFF）。
+    /// </summary>
+    private static void CheckPartyRoster(Action<bool, string> check)
+    {
+        var leader = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "队长",
+            AreaUserId = 11,
+            TownId = 1,
+            AreaId = 0
+        };
+        var roster = new PartyRoster(partyId: 11, leader, maxMembers: 4, nameSelection: 0);
+        check(roster.Count == 1 && roster.Leader == leader && PartyRoster.LeaderSlot == 0,
+            "a fresh party has exactly the leader in slot 0");
+
+        var sameArea = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "同区",
+            AreaUserId = 12,
+            TownId = 1,
+            AreaId = 0
+        };
+        var otherArea = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "异区",
+            AreaUserId = 13,
+            TownId = 1,
+            AreaId = 1
+        };
+        check(roster.TryAdd(sameArea) && roster.TryAdd(otherArea) && roster.Count == 3,
+            "members join in order while the party has room");
+
+        var slotsForHome = roster.SlotUids(member => member.IsIn(1, 0) ? member.AreaUserId : null);
+        var slotsForElsewhere = roster.SlotUids(member => member.IsIn(1, 1) ? member.AreaUserId : null);
+        // 期望值修正：异区域成员（异区 = 1/1）对 (1,0) 收包者不可解析 → 槽位填 0（设计稿 §2.2.2
+        // "与 R 不同区域 → 0"，填真实 uid 会在对方区域解析成别人的名字）；brief 原文写 13 与同一次
+        // 执行里的 slotsForElsewhere 断言（要求同区成员填 0）互相矛盾，任何实现都无法同时满足。
+        check(slotsForHome.SequenceEqual(new ushort[] { 11, 12, 0, 0xFFFF }),
+            "slots carry real uids for members the receiver can resolve");
+        check(slotsForElsewhere.SequenceEqual(new ushort[] { 0, 0, 13, 0xFFFF }),
+            "slots keep the global join order and substitute 0 for members the receiver cannot resolve");
+        check(roster.SlotUids(_ => null).SequenceEqual(new ushort[] { 0, 0, 0, 0xFFFF }),
+            "a receiver who cannot resolve anybody still gets four slots");
+
+        var fourth = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "第四",
+            AreaUserId = 14,
+            TownId = 1,
+            AreaId = 0
+        };
+        var fifth = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "第五",
+            AreaUserId = 15,
+            TownId = 1,
+            AreaId = 0
+        };
+        check(roster.TryAdd(fourth) && roster.IsFull && !roster.TryAdd(fifth),
+            "the fourth member fits and the fifth is refused (hard cap 4)");
+
+        check(roster.Remove(leader.CharacterId) && roster.Leader == sameArea && roster.Count == 3,
+            "removing the leader promotes the earliest remaining member into slot 0");
+        // 期望值修正：槽位顺序仍是加入顺序（12 在 0 号、14 在 2 号），但异区成员（异区 = 1/1）的槽位是
+        // 0（缺席哨兵）而不是它的真实 uid 13——0 仍算成员，只有超出成员数的槽才是空槽 0xFFFF（设计稿 §2.2.2）。
+        check(roster.SlotUids(member => member.IsIn(1, 0) ? member.AreaUserId : null)
+                .SequenceEqual(new ushort[] { 12, 0, 14, 0xFFFF }),
+            "after the leader leaves the roster stays compact");
+
+        check(!roster.Remove(Guid.NewGuid()), "removing a character that is not in the party changes nothing");
+
+        roster.SetInfo(nameSelection: 6, maxMembers: 2);
+        check(roster.NameSelection == 6 && roster.MaxMembers == 2 && roster.IsFull,
+            "CMD 12 updates the preset name index and the member cap");
+
+        check(roster.UpdateLocation(sameArea.CharacterId, townId: 2, areaId: 3, areaUserId: 99),
+            "a member's area change updates its stored location");
+        // 期望值修正：队长已移除，同区成员现在是 0 号槽，所以换区后的 uid 99 落在槽 0；brief 原文把 99
+        // 写在槽 1（相当于队长仍在队里），与上面"移除队长后槽位重排"的断言不一致。
+        check(roster.SlotUids(member => member.IsIn(2, 3) ? member.AreaUserId : null)
+                .SequenceEqual(new ushort[] { 99, 0, 0, 0xFFFF }),
+            "the moved member is resolvable only in its new area");
+
+        // 期望值修正：brief 原文期望 allocated == 11，但 11 就在 takenIds 里——设计稿 §2.2.1 的硬约束是
+        // "不与其它队伍撞号"，任何合法分配都不能返回已占用的 11（实现向上扫描的结果是空闲的 1）。
+        // 这里改为断言测试名所述的性质：结果非 0、且不落在已占用的 id 上。
+        check(PartyRoster.TryAllocatePartyId([11, 12], preferred: 12, out var allocated)
+                && allocated != 0
+                && allocated != 11
+                && allocated != 12,
+            "party id allocation skips a preferred id that is already taken");
+        check(PartyRoster.TryAllocatePartyId([1, 2, 3], preferred: 0, out var scanned)
+                && scanned is not 0 and not 1 and not 2 and not 3,
+            "party id allocation scans for a free value when the preferred one is unusable");
     }
 }
