@@ -378,8 +378,18 @@ public static class GameProtocolEngine
     // docs/superpowers/specs/2026-09-28-trade-system-design.md §1。
     public const byte RequestPeerCommand = 10;
     public const byte ResponsePeerCommand = 11;
+    /// <summary>CMD 12：队伍名（预置名下标）与人数上限。</summary>
+    public const byte SetPartyInfoCommand = 12;
+    /// <summary>CMD 13：退出队伍（无载荷）。</summary>
+    public const byte LeavePartyCommand = 13;
+    /// <summary>CMD 14：踢人（载荷 = u8 槽位下标）。</summary>
+    public const byte WalkoutPartyMemberCommand = 14;
     public const byte RequestPeerNotification = 7;
     public const byte ResponsePeerNotification = 8;
+    /// <summary>NOTI 9：队伍名册/解散。</summary>
+    public const byte PartyInfoNotification = 9;
+    /// <summary>NOTI 10：被踢/掉线离队（按槽位）。</summary>
+    public const byte WalkoutNotification = 10;
     public const byte ChangeItemTradeItemNotification = 15;
     public const byte CancelItemTradeNotification = 16;
     public const byte StateItemTradeNotification = 17;
@@ -2076,6 +2086,99 @@ public static class GameProtocolEngine
     public static GameServerPacket CreateResponsePeerError(byte peerType, byte code) =>
         new(CommandPacketType, ResponsePeerCommand, [0, peerType, code]);
 
+    /// <summary>
+    /// NOTI 9：队伍名册（客户端建立队伍与刷新成员列表的**唯一**来源；A 卷 §6）。
+    /// body 无序列号前缀，布局 = u16 count(=1), u16 partyId, u8 kind(=0), u8 nameSel, u8 maxMembers,
+    /// {u16 slotUid; u8 memberByte}×4（**交错**，合并卷 §2.1）, u8 leaderSlot —— 共 20 字节。
+    /// <paramref name="slotUids"/> 必须 4 项：空槽 0xFFFF；**与收包者不同区域的成员填 0**（缺席哨兵，
+    /// 设计稿 §2.2.2——填真实 uid 会在对方区域解析成别的玩家）；memberByte 语义未知，恒 0。
+    /// </summary>
+    public static GameServerPacket CreatePartyInfoNotification(
+        ushort partyId,
+        byte nameSel,
+        byte maxMembers,
+        ReadOnlySpan<ushort> slotUids,
+        byte leaderSlot)
+    {
+        if (slotUids.Length != PartyMemberSlotCount)
+        {
+            throw new ArgumentException(
+                $"Party rosters always carry {PartyMemberSlotCount} slots.",
+                nameof(slotUids));
+        }
+
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((ushort)1);
+        writer.Write(partyId);
+        writer.Write((byte)0);
+        writer.Write(nameSel);
+        writer.Write(maxMembers);
+        for (var slot = 0; slot < PartyMemberSlotCount; slot++)
+        {
+            writer.Write(slotUids[slot]);
+            writer.Write((byte)0);
+        }
+
+        writer.Write(leaderSlot);
+        return new GameServerPacket(NotificationPacketType, PartyInfoNotification, payload.ToArray());
+    }
+
+    /// <summary>
+    /// NOTI 9 的解散形式：1 条 kind=3 记录（**不带**名册，必须每条单独发；A 卷 §6.3）。
+    /// 客户端据此清空 4 个槽、按 uid 把该队伍从本地队伍表摘除、清成员的队伍指针，并提示"队伍已解散"。
+    /// </summary>
+    public static GameServerPacket CreatePartyDisbandNotification(ushort partyId)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((ushort)1);
+        writer.Write(partyId);
+        writer.Write((byte)3);
+        return new GameServerPacket(NotificationPacketType, PartyInfoNotification, payload.ToArray());
+    }
+
+    /// <summary>
+    /// NOTI 10：被踢（kind=0）/ 掉线（kind=1）离队。载荷 = u8 槽位(0..3) + u8 kind。
+    /// **必须早于**把该槽清空的 NOTI 9 发出：它的分支按槽位查成员对象取名字（B 卷 §4.1）。
+    /// </summary>
+    public static GameServerPacket CreateWalkoutNotification(byte slot, bool disconnected)
+    {
+        if (slot >= PartyMemberSlotCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(slot));
+        }
+
+        return new GameServerPacket(
+            NotificationPacketType,
+            WalkoutNotification,
+            [slot, disconnected ? (byte)1 : (byte)0]);
+    }
+
+    /// <summary>
+    /// NOTI 7（组队）：被请求者的应答窗。比交易版多两个 u16（A 卷 §3.1）：
+    /// u16 请求者 uid, u8 peerType(=0), u32 复活币, u16 疲劳值, u16 虚弱% —— 共 11 字节。
+    /// </summary>
+    public static GameServerPacket CreateRequestPartyNotification(
+        ushort requesterUid,
+        uint reviveCoins,
+        ushort fatigue,
+        ushort weaknessPercent)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write(requesterUid);
+        writer.Write((byte)0);
+        writer.Write(reviveCoins);
+        writer.Write(fatigue);
+        writer.Write(weaknessPercent);
+        return new GameServerPacket(NotificationPacketType, RequestPeerNotification, payload.ToArray());
+    }
+
+    /// <summary>命令通道的失败回包：body = [resultFlag=0, errorCode]（B 卷 §6.4 读出的失败码 switch）。</summary>
+    public static GameServerPacket CreatePartyCommandError(byte commandId, byte errorCode) =>
+        new(CommandPacketType, commandId, [0, errorCode]);
+
     /// <summary>CMD 26 结果：成功 [1]；失败 [0, errorCode]（1 = 无法继续交易，4 = 对方物品栏空间不足）。</summary>
     public static GameServerPacket CreateSetItemTradeStateResult(bool success, byte errorCode) =>
         success
@@ -2537,6 +2640,8 @@ public static class GameProtocolEngine
     }
 
     private const int FriendListNameFieldLength = 30;
+    /// <summary>队伍成员槽位固定 4 个（客户端硬编码上限，A 卷 §7.1 / B 卷 §10.1）。</summary>
+    public const int PartyMemberSlotCount = 4;
     private const int FriendListRecordLength = 42;
     // 客户端 NOTI 65 用 0x100 字节缓冲读写文本；CMD 17 的文本长度上限是 255。
     private const int MessengerTextMaximumLength = 0xFF;
@@ -2973,6 +3078,98 @@ public static class GameProtocolEngine
         peerType = body[4];
         weightDelta = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(5, 4));
         return peerType == 1;
+    }
+
+    /// <summary>
+    /// CMD 10 的**组队**分支：与交易同前缀 `[u16 seq][u16 uid][u8 peerType][u32 X]`，
+    /// 只有 peerType==0 才是组队（0=组队 / 1=交易 / 2,3,4=决斗场；A 卷 §2.1-2.2）。
+    /// `X` 是请求者客户端自报的复活币个数（仅用于应答窗显示）。
+    /// 与 <see cref="TryReadRequestPeer"/> 分开：交易路径的语义一个字都不动。
+    /// </summary>
+    public static bool TryReadPartyRequestPeer(byte[] body, out ushort targetUid, out uint reviveCoins)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        targetUid = 0;
+        reviveCoins = 0;
+        if (body.Length < 2 + 2 + 1 + 4)
+        {
+            return false;
+        }
+
+        targetUid = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
+        reviveCoins = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(5, 4));
+        return body[4] == 0;
+    }
+
+    /// <summary>CMD 11 的**组队**分支：前缀同 CMD 10，只有 peerType==0 才是组队应答。</summary>
+    public static bool TryReadPartyResponsePeer(byte[] body, out ushort requesterUid)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        requesterUid = 0;
+        if (body.Length < 2 + 2 + 1 + 4)
+        {
+            return false;
+        }
+
+        requesterUid = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
+        return body[4] == 0;
+    }
+
+    /// <summary>
+    /// CMD 12：`[u16 seq][u8 sel]` + （`sel == 0` 时 `u32 长度 + 名字`）+ `[u8 人数上限]`（B 卷 §5、C 卷 §7）。
+    /// `sel` = 预置队名下标（1..6；0 = 自定义名，此时才带名字串）。名字不超过
+    /// <see cref="FriendListNameFieldLength"/> 字节且不含 NUL（与好友名同规矩）。
+    /// </summary>
+    public static bool TryReadSetPartyInfo(
+        byte[] body,
+        out byte nameSelection,
+        out byte[] nameBytes,
+        out byte maxMembers)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        nameSelection = 0;
+        nameBytes = [];
+        maxMembers = 0;
+        const int payloadOffset = sizeof(ushort);
+        if (body.Length < payloadOffset + 1)
+        {
+            return false;
+        }
+
+        nameSelection = body[payloadOffset];
+        var cursor = payloadOffset + 1;
+        if (nameSelection == 0)
+        {
+            if (body.Length < cursor + sizeof(uint))
+            {
+                return false;
+            }
+
+            var nameLength = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(cursor, sizeof(uint)));
+            cursor += sizeof(uint);
+            if (nameLength is 0 or > FriendListNameFieldLength
+                || body.Length < cursor + nameLength + 1)
+            {
+                return false;
+            }
+
+            var candidate = body.AsSpan(cursor, (int)nameLength).ToArray();
+            if (candidate.Contains((byte)0))
+            {
+                return false;
+            }
+
+            nameBytes = candidate;
+            cursor += (int)nameLength;
+        }
+
+        if (body.Length < cursor + 1)
+        {
+            return false;
+        }
+
+        maxMembers = body[cursor];
+        return true;
     }
 
     /// <summary>CMD 26：单字节状态（0 解锁 / 1 锁定 / 2 取消 / 3 最终确认 / 4 未定）。</summary>
