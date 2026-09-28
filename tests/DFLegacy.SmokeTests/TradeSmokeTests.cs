@@ -20,6 +20,7 @@ internal static class TradeSmokeTests
         await CheckSettlementFailureAsync(check);
         await CheckSettlementGoldMissingAsync(check);
         await CheckConcurrentConfirmSettlesOnceAsync(check);
+        await CheckConfirmAfterCancelIsInertAsync(check);
     }
 
     // 逐字段依据 .superpowers/sdd/trade-protocol-recon.md §2/§3：
@@ -1263,6 +1264,80 @@ internal static class TradeSmokeTests
                 && harness.Of("阿尔法").Count == 0
                 && harness.Of("布拉沃").Count == 0,
             "confirming again after the settlement is a no-op: no settlement and no packets at all");
+    }
+
+    /// <summary>
+    /// 设计 §2.4⑥：确认前必须复核双方会话仍存活。取消之后到达的确认不得结算，也不得再发包。
+    /// 公开 API 无法稳定复现「取消之前就取到会话引用」的陈旧引用路径（那条路径只可能出现在服务
+    /// 内部与取消并发时），因此这里先用确定性用例锁住顺序语义，再用栅栏并发让两种顺序都至少
+    /// 覆盖一次，断言「NOTI 16 与结算互斥」。
+    /// </summary>
+    private static async Task CheckConfirmAfterCancelIsInertAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, []);
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 3, CancellationToken.None);
+
+        // ① 顺序路径：取消先完成，之后任何一方的确认都必须是无包无结算的空操作。
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        var lateAlpha = await harness.Service.HandleStateAsync(
+            harness.IdOf("阿尔法"), 3, CancellationToken.None);
+        var lateBravo = await harness.Service.HandleStateAsync(
+            harness.IdOf("布拉沃"), 3, CancellationToken.None);
+        var lateAlphaAfter = await harness.Store.GetCharacterAsync(
+            "alice", harness.IdOf("阿尔法"), CancellationToken.None);
+        check(!lateAlpha.SettlementApplied
+                && !lateBravo.SettlementApplied
+                && harness.Of("阿尔法").Count == 0
+                && harness.Of("布拉沃").Count == 0
+                && lateAlphaAfter is not null && lateAlphaAfter.Inventory is not null
+                && lateAlphaAfter.Gold == 5_000
+                && lateAlphaAfter.Inventory.Single(item => item.Slot == 5).CountOrValue == 10,
+            "a final confirm arriving after the cancel is inert: no settlement, no packets, escrow untouched");
+
+        // ② 并发路径：取消与确认同时冲进去，两种先后都不能既发 NOTI 16 又结算。
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 3, CancellationToken.None);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        using var start = new Barrier(2);
+        var outcomes = await Task.WhenAll(
+            Task.Run(() =>
+            {
+                start.SignalAndWait();
+                return harness.Service.HandleStateAsync(
+                    harness.IdOf("阿尔法"), 2, CancellationToken.None);
+            }),
+            Task.Run(() =>
+            {
+                start.SignalAndWait();
+                return harness.Service.HandleStateAsync(
+                    harness.IdOf("布拉沃"), 3, CancellationToken.None);
+            }));
+
+        var cancelled = harness.Of("布拉沃").Any(packet =>
+            packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification);
+        var settled = outcomes.Count(outcome => outcome.SettlementApplied) == 1;
+        check(cancelled != settled,
+            "a cancel racing a final confirm is mutually exclusive: either the cancel wins (no NOTI 18) "
+            + "or the confirm wins (no NOTI 16), never both");
     }
 }
 

@@ -338,17 +338,31 @@ public sealed class ItemTradeService : BackgroundService
         {
             case 0:
             case 1:
-                mine.Locked = state == 1;
-                mine.FinalConfirmed = false;
+            {
+                var locked = state == 1;
+                lock (session.Sync)
+                {
+                    // 取消/超时/换区/掉线会在同一把锁内把会话从 _sessions 摘掉：持旧引用的
+                    // 锁定/解锁不得再给一个已经关闭的窗口广播 NOTI 17。
+                    if (session.State != ItemTradeSessionState.Open || !IsStillRegistered(session))
+                    {
+                        return new ItemTradeStateOutcome(false, null);
+                    }
+
+                    mine.Locked = locked;
+                    mine.FinalConfirmed = false;
+                }
+
                 foreach (var target in new[] { session.Initiator, session.Partner })
                 {
                     await SendAsync(
                         target.Channel.CharacterId,
-                        GameProtocolEngine.CreateStateItemTrade(mine.Channel.AreaUserId, mine.Locked),
+                        GameProtocolEngine.CreateStateItemTrade(mine.Channel.AreaUserId, locked),
                         cancellationToken);
                 }
 
                 return new ItemTradeStateOutcome(false, null);
+            }
 
             case 2:
                 await CancelSessionAsync(session, absentCharacterId: null, cancellationToken);
@@ -382,6 +396,13 @@ public sealed class ItemTradeService : BackgroundService
         lock (session.Sync)
         {
             if (session.State != ItemTradeSessionState.Open)
+            {
+                return new ItemTradeStateOutcome(false, null);
+            }
+
+            // 取消/跑单会在同一把锁内把会话从 _sessions 摘掉：持旧引用的确认必须在锁内重新确认
+            // 自己仍是在册会话，否则会出现「客户端已被通知取消、服务端却仍然结算」。
+            if (!IsStillRegistered(session))
             {
                 return new ItemTradeStateOutcome(false, null);
             }
@@ -960,6 +981,17 @@ public sealed class ItemTradeService : BackgroundService
             GameProtocolEngine.CreateMoveItemSpaceFailure(
                 sourceListType, sourceSlot, count, destinationListType, destinationSlot),
             cancellationToken);
+
+    /// <summary>
+    /// 会话是否仍是在册会话（取消/超时/换区/掉线/结算收尾都会把它从 <see cref="_sessions"/> 摘掉）。
+    /// 在摘除之前就取到会话引用的调用者必须在 <see cref="ItemTradeSession.Sync"/> 内用它复核，
+    /// 否则会出现「客户端已被通知取消，服务端却仍然广播锁定或结算」。
+    /// </summary>
+    private bool IsStillRegistered(ItemTradeSession session) =>
+        _sessions.TryGetValue(session.Initiator.Channel.CharacterId, out var initiator)
+        && ReferenceEquals(initiator, session)
+        && _sessions.TryGetValue(session.Partner.Channel.CharacterId, out var partner)
+        && ReferenceEquals(partner, session);
 
     private bool RemoveSession(ItemTradeSession session)
     {
