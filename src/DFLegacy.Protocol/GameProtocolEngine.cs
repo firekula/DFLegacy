@@ -2073,6 +2073,12 @@ public static class GameProtocolEngine
     public static GameServerPacket CreateResponsePeerError(byte peerType, byte code) =>
         new(CommandPacketType, ResponsePeerCommand, [0, peerType, code]);
 
+    /// <summary>CMD 26 结果：成功 [1]；失败 [0, errorCode]（1 = 无法继续交易，4 = 对方物品栏空间不足）。</summary>
+    public static GameServerPacket CreateSetItemTradeStateResult(bool success, byte errorCode) =>
+        success
+            ? new GameServerPacket(CommandPacketType, SetItemTradeStateCommand, [1])
+            : new GameServerPacket(CommandPacketType, SetItemTradeStateCommand, [0, errorCode]);
+
     /// <summary>NOTI 15：对方交易栏某格变化（itemId 0xFFFF = 清格）。</summary>
     public static GameServerPacket CreateChangeItemTradeItem(GameItemTradeEntry entry)
     {

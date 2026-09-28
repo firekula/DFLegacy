@@ -14,6 +14,9 @@ internal static class TradeSmokeTests
         await CheckStoreAsync(check);
         await CheckRequestFlowAsync(check);
         await CheckMoveFlowAsync(check);
+        await CheckSettlementFlowAsync(check);
+        await CheckCancelFlowAsync(check);
+        await CheckDetachClearsDeliveryMarkAsync(check);
     }
 
     // 逐字段依据 .superpowers/sdd/trade-protocol-recon.md §2/§3：
@@ -887,6 +890,187 @@ internal static class TradeSmokeTests
                 && harness.Service.IsEscrowedInstance(harness.IdOf("阿尔法"), sword.InstanceId)
                 && !harness.Service.IsEscrowed(harness.IdOf("布拉沃"), 0, 9),
             "the frozen-slot query answers per character, not globally");
+    }
+
+    private static async Task CheckSettlementFlowAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        var sword = new CharacterItemRecord(
+            9, TradeFixtures.SwordItemId, 1,
+            EquipmentQualitySeed: 0x1234, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, [sword]);
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("布拉沃"), 0, 9, TradeFixtures.SwordItemId, 1, 4, 4, CancellationToken.None);
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 0, 0, 1_000, 4, 0, CancellationToken.None);
+
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        check(harness.Of("布拉沃").Count(packet =>
+                    packet.ProtocolId == GameProtocolEngine.StateItemTradeNotification
+                    && packet.Payload[2] == 1) == 1,
+            "locking broadcasts one NOTI 17 about the locker to the peer");
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        var singleConfirm = await harness.Service.HandleStateAsync(
+            harness.IdOf("阿尔法"), 3, CancellationToken.None);
+        check(!singleConfirm.SettlementApplied
+                && harness.Of("阿尔法").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.FinishItemTradeNotification)
+                && harness.Of("布拉沃").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.FinishItemTradeNotification),
+            "one side's final confirm does not settle anything by itself");
+
+        var settled = await harness.Service.HandleStateAsync(
+            harness.IdOf("布拉沃"), 3, CancellationToken.None);
+        check(settled.SettlementApplied && settled.ReplacementState is not null,
+            "the second final confirm settles the trade and hands the actor its new record");
+
+        var alphaFinish = harness.Of("阿尔法").FirstOrDefault(packet =>
+            packet.ProtocolId == GameProtocolEngine.FinishItemTradeNotification);
+        var bravoFinish = harness.Of("布拉沃").FirstOrDefault(packet =>
+            packet.ProtocolId == GameProtocolEngine.FinishItemTradeNotification);
+        check(alphaFinish is not null && bravoFinish is not null
+                && BinaryPrimitives.ReadUInt16LittleEndian(alphaFinish.Payload.AsSpan(0, 2)) == 1
+                && BinaryPrimitives.ReadUInt16LittleEndian(alphaFinish.Payload.AsSpan(2, 2)) == 4
+                && BinaryPrimitives.ReadUInt16LittleEndian(alphaFinish.Payload.AsSpan(4, 2)) == 9,
+            "the giver is told (peer panel slot 4 -> my inventory slot 9) so the client merges the sword in");
+        check(bravoFinish is not null
+                && bravoFinish.Payload.Length == 2 + 4
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoFinish.Payload.AsSpan(2, 2)) == 3
+                && BinaryPrimitives.ReadUInt16LittleEndian(bravoFinish.Payload.AsSpan(4, 2)) == 73,
+            "the receiver is told (peer panel slot 3 -> my inventory slot 73, the first free material slot)");
+        // NOTI 14 载荷 = [u8 listType][u16 count][u16 slot][u16 itemId][u32 CountOrValue]…
+        check(harness.Of("阿尔法").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.UpdateItemListNotification
+                    && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(7, 4)) == 4_000)
+                && harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.UpdateItemListNotification
+                    && BinaryPrimitives.ReadUInt32LittleEndian(packet.Payload.AsSpan(7, 4)) == 8_000),
+            "each side receives an authoritative gold refresh (NOTI 14 slot 0) after the settlement");
+
+        var alphaAfter = await harness.Store.GetCharacterAsync("alice", harness.IdOf("阿尔法"), CancellationToken.None);
+        var bravoAfter = await harness.Store.GetCharacterAsync("bobby", harness.IdOf("布拉沃"), CancellationToken.None);
+        check(alphaAfter!.Gold == 4_000
+                && alphaAfter.Inventory!.Single(item => item.Slot == 5).CountOrValue == 6
+                && alphaAfter.Inventory!.Single(item => item.Slot == 9).InstanceId == sword.InstanceId
+                && bravoAfter!.Gold == 8_000
+                && bravoAfter.Inventory!.Single(item => item.Slot == 73).InstanceId == potion.InstanceId,
+            "the persisted state matches the wire result on both sides");
+
+        check(harness.Service.TryTakePendingInstall(harness.IdOf("阿尔法"), out var install)
+                && install.TradeId != Guid.Empty
+                && install.State.Inventory!.Single(item => item.Slot == 9).InstanceId == sword.InstanceId
+                && !harness.Store.IsTradeDeliveryPending(harness.IdOf("布拉沃"))
+                && harness.Store.IsTradeDeliveryPending(harness.IdOf("阿尔法")),
+            "only the passive side keeps a pending install (its own session will consume it)");
+        harness.Store.AcknowledgeTradeDelivery(harness.IdOf("阿尔法"), install.TradeId);
+        check(!harness.Store.IsTradeDeliveryPending(harness.IdOf("阿尔法")),
+            "acknowledging the install clears the blind-write guard");
+    }
+
+    private static async Task CheckCancelFlowAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        var bravoPotion = new CharacterItemRecord(6, TradeFixtures.PotionItemId, 3, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, [bravoPotion]);
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        check(harness.Of("阿尔法").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification)
+                && harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification),
+            "a cancel sends NOTI 16 to both sides (each returns its own panel items)");
+        var alphaCancel = harness.Of("阿尔法").First(packet =>
+            packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification);
+        check(BinaryPrimitives.ReadUInt16LittleEndian(alphaCancel.Payload.AsSpan(0, 2)) == 1
+                && BinaryPrimitives.ReadUInt16LittleEndian(alphaCancel.Payload.AsSpan(2, 2)) == 3
+                && alphaCancel.Payload[4] == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(alphaCancel.Payload.AsSpan(5, 2)) == 5,
+            "the cancel entry points back at the original (list type 0, slot 5)");
+        var afterCancel = await harness.Store.GetCharacterAsync("alice", harness.IdOf("阿尔法"), CancellationToken.None);
+        check(afterCancel!.Inventory!.Single(item => item.Slot == 5).CountOrValue == 10
+                && afterCancel.Gold == 5_000,
+            "a cancelled trade changes nothing in the store: the items never left the owner");
+
+        // 空闲超时：5 分钟后双方自动取消（第二次发起前要清限流时间戳，否则 CMD 10 被丢弃）
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.OpenTradeAsync();
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.SweepExpiredAsync(
+                    DateTimeOffset.UtcNow + TimeSpan.FromMinutes(6),
+                    CancellationToken.None) == 1
+                && harness.Of("阿尔法").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification)
+                && harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification),
+            "an idle trade window expires after five minutes and both sides are told");
+
+        // 掉线：另一方收到取消，物品不丢（同样先清限流时间戳）
+        var sessionId = harness.SessionIdOf("阿尔法");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("布拉沃"), 0, 6, TradeFixtures.PotionItemId, 1, 4, 3, CancellationToken.None);
+        harness.Clear("布拉沃");
+        await harness.Service.DetachChannelAsync(harness.IdOf("阿尔法"), sessionId, CancellationToken.None);
+        check(harness.Of("布拉沃").Any(packet =>
+                    packet.ProtocolId == GameProtocolEngine.CancelItemTradeNotification),
+            "when one side disconnects the survivor is told to close the window and take its items back");
+        var survivor = await harness.Store.GetCharacterAsync("bobby", harness.IdOf("布拉沃"), CancellationToken.None);
+        check(survivor!.Gold == 7_000
+                && survivor.Inventory!.Single(item => item.Slot == 6).CountOrValue == 3,
+            "the survivor's escrowed potion is still in his inventory: the store never moved it");
+    }
+
+    /// <summary>
+    /// Task 4 评审的遗留项：掉线时除了摘掉待安装状态，还必须清掉 store 的「未确认交付」标记，
+    /// 否则带着未安装交付掉线的角色会被 JsonGameStore 的全部盲写保存永久拒绝。
+    /// </summary>
+    private static async Task CheckDetachClearsDeliveryMarkAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [potion]);
+        await harness.SetInventoryAsync("布拉沃", 7_000, []);
+        await harness.OpenTradeAsync();
+        await harness.Service.HandleMoveAsync(
+            harness.IdOf("阿尔法"), 0, 5, TradeFixtures.PotionItemId, 4, 4, 3, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 3, CancellationToken.None);
+        var settled = await harness.Service.HandleStateAsync(
+            harness.IdOf("布拉沃"), 3, CancellationToken.None);
+        check(settled.SettlementApplied
+                && harness.Store.IsTradeDeliveryPending(harness.IdOf("阿尔法")),
+            "the passive side carries the store's pending-delivery mark after a settlement");
+
+        await harness.Service.DetachChannelAsync(
+            harness.IdOf("阿尔法"), harness.SessionIdOf("阿尔法"), CancellationToken.None);
+        check(!harness.Store.IsTradeDeliveryPending(harness.IdOf("阿尔法")),
+            "a disconnect clears the pending-delivery mark so the character is never refused by every blind write");
     }
 }
 

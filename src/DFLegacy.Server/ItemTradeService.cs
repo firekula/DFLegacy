@@ -7,7 +7,8 @@ namespace DFLegacy.Server;
 internal enum ItemTradeSessionState
 {
     Requested,
-    Open
+    Open,
+    Settling
 }
 
 /// <summary>一条在线角色通道：会话建立时登记，拆除时摘除（沿用 FriendService 的模式）。</summary>
@@ -144,6 +145,8 @@ public sealed class ItemTradeService : BackgroundService
         }
 
         _pendingInstalls.TryRemove(characterId, out _);
+        // 带着「未安装交付」掉线的角色如果不清掉 store 的守门标记，之后所有盲写保存都会拒绝他。
+        _store.ClearTradeDeliveryPending(characterId);
         _lastRequestAt.TryRemove(characterId, out _);
         await CancelSessionForCharacterAsync(characterId, characterId, cancellationToken);
     }
@@ -298,6 +301,161 @@ public sealed class ItemTradeService : BackgroundService
             session.Initiator.Channel.CharacterName,
             session.Partner.Channel.CharacterName);
     }
+
+    /// <summary>
+    /// CMD 26：0/1 = 取消/设置锁定并给双方广播 NOTI 17，2 = 取消交易，3 = 最终确认
+    /// （只有双方都锁定才接受，双方都确认才由后确认者结算）。
+    /// </summary>
+    public async Task<ItemTradeStateOutcome> HandleStateAsync(
+        Guid characterId,
+        byte state,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_sessions.TryGetValue(characterId, out var session)
+            || session.State != ItemTradeSessionState.Open)
+        {
+            return new ItemTradeStateOutcome(false, null);
+        }
+
+        var mine = session.SideOf(characterId);
+        var other = session.OtherOf(characterId);
+        session.LastActivityAt = _timeProvider.GetUtcNow();
+        switch (state)
+        {
+            case 0:
+            case 1:
+                mine.Locked = state == 1;
+                mine.FinalConfirmed = false;
+                foreach (var target in new[] { session.Initiator, session.Partner })
+                {
+                    await SendAsync(
+                        target.Channel.CharacterId,
+                        GameProtocolEngine.CreateStateItemTrade(mine.Channel.AreaUserId, mine.Locked),
+                        cancellationToken);
+                }
+
+                return new ItemTradeStateOutcome(false, null);
+
+            case 2:
+                await CancelSessionAsync(session, absentCharacterId: null, cancellationToken);
+                return new ItemTradeStateOutcome(false, null);
+
+            case 3:
+                if (!mine.Locked || !other.Locked)
+                {
+                    await SendAsync(
+                        characterId,
+                        GameProtocolEngine.CreateSetItemTradeStateResult(success: false, errorCode: 1),
+                        cancellationToken);
+                    return new ItemTradeStateOutcome(false, null);
+                }
+
+                mine.FinalConfirmed = true;
+                return other.FinalConfirmed
+                    ? await SettleAsync(session, mine, cancellationToken)
+                    : new ItemTradeStateOutcome(false, null);
+
+            default:
+                // CMD 26 的 state 4（0x7C9C90）语义未定（勘察 §7.1 / 设计稿 T2）：忽略并记日志。
+                _logger.LogInformation(
+                    "Ignored CMD 26 state {State} in trade {TradeId}.",
+                    state,
+                    session.TradeId);
+                return new ItemTradeStateOutcome(false, null);
+        }
+    }
+
+    private async Task<ItemTradeStateOutcome> SettleAsync(
+        ItemTradeSession session,
+        ItemTradeSide actor,
+        CancellationToken cancellationToken)
+    {
+        // 结算期间不再接受任何托管变动；确认瞬间对方掉线就按取消处理，绝不把货发给已离开的会话。
+        session.State = ItemTradeSessionState.Settling;
+        if (!IsOnline(session.Initiator.Channel.CharacterId)
+            || !IsOnline(session.Partner.Channel.CharacterId))
+        {
+            await CancelSessionAsync(session, absentCharacterId: null, cancellationToken);
+            return new ItemTradeStateOutcome(false, null);
+        }
+
+        var commit = await _store.CommitItemTradeAsync(
+            new ItemTradeCommitRequest(
+                session.Initiator.Channel.CharacterId,
+                session.Initiator.Channel.AccountName,
+                session.Partner.Channel.CharacterId,
+                session.Partner.Channel.AccountName,
+                [.. session.Initiator.Escrows],
+                [.. session.Partner.Escrows],
+                session.Initiator.OfferedGold,
+                session.Partner.OfferedGold),
+            cancellationToken);
+        if (!commit.Committed
+            || commit.Initiator is null
+            || commit.Partner is null
+            || commit.Plan is null)
+        {
+            _logger.LogWarning(
+                "Trade {TradeId} settlement failed: {Failure}; the whole trade is aborted.",
+                session.TradeId,
+                commit.Failure);
+            await SendAsync(
+                actor.Channel.CharacterId,
+                GameProtocolEngine.CreateSetItemTradeStateResult(
+                    success: false,
+                    errorCode: commit.Failure is ItemTradeCommitFailure.NoSpace
+                        or ItemTradeCommitFailure.WeightExceeded
+                            ? (byte)4
+                            : (byte)1),
+                cancellationToken);
+            await CancelSessionAsync(session, absentCharacterId: null, cancellationToken);
+            return new ItemTradeStateOutcome(false, null);
+        }
+
+        await SendFinishAsync(session.Initiator, commit.Plan.Initiator, commit.Initiator, cancellationToken);
+        await SendFinishAsync(session.Partner, commit.Plan.Partner, commit.Partner, cancellationToken);
+        var actorIsInitiator = session.Initiator.Channel.CharacterId == actor.Channel.CharacterId;
+        var passiveSide = actorIsInitiator ? session.Partner : session.Initiator;
+        var passiveRecord = actorIsInitiator ? commit.Partner : commit.Initiator;
+        _pendingInstalls[passiveSide.Channel.CharacterId] =
+            new ItemTradePendingInstall(commit.TradeId, passiveRecord);
+        _store.AcknowledgeTradeDelivery(actor.Channel.CharacterId, commit.TradeId);
+        RemoveSession(session);
+        _logger.LogInformation(
+            "Trade {TradeId} completed between {Initiator} and {Partner}.",
+            session.TradeId,
+            session.Initiator.Channel.CharacterName,
+            session.Partner.Channel.CharacterName);
+        return new ItemTradeStateOutcome(
+            true,
+            actorIsInitiator ? commit.Initiator : commit.Partner);
+    }
+
+    private async Task SendFinishAsync(
+        ItemTradeSide side,
+        ItemTradeSidePlan plan,
+        CharacterRecord updated,
+        CancellationToken cancellationToken)
+    {
+        var entries = plan.Deliveries
+            .Select(delivery => new GameItemTradeDeliveryEntry(
+                delivery.PanelSlot,
+                delivery.DestinationSlot))
+            .ToList();
+        await SendAsync(
+            side.Channel.CharacterId,
+            GameProtocolEngine.CreateFinishItemTrade(entries),
+            cancellationToken);
+        await SendAsync(
+            side.Channel.CharacterId,
+            GameProtocolEngine.CreateUpdateItemList(
+                0,
+                [new GameInventoryEntry(0, 0, checked((uint)Math.Max(0, updated.Gold)))]),
+            cancellationToken);
+    }
+
+    public bool TryTakePendingInstall(Guid characterId, out ItemTradePendingInstall install) =>
+        _pendingInstalls.TryRemove(characterId, out install!);
 
     /// <summary>30 秒请求窗口 / 5 分钟空闲窗口；由 <see cref="ExecuteAsync"/> 每秒调用。</summary>
     public async Task<int> SweepExpiredAsync(
