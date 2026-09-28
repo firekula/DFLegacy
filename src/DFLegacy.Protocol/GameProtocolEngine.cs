@@ -393,6 +393,23 @@ public static class GameProtocolEngine
 
     /// <summary>NOTI 15 用 itemId 0xFFFF 表示清空该面板格（0x41D942 分支）。</summary>
     public const ushort ClearItemTradeSlot = 0xFFFF;
+
+    /// <summary>
+    /// CMD 19 失败回包的错误码。客户端 handler 0x4110FE 的 switch（recon-2 §4.1）只认这几档，
+    /// 其余码一个字都不弹：0x11 = 要移动的物品不存在或数量不足（含金币不够），
+    /// 0x13 = 您没有移动的权限，0x17 = 栏中有其他物品、无法放置。
+    /// </summary>
+    public const byte MoveItemSpaceFailureNotFound = 0x11;
+    public const byte MoveItemSpaceFailureNotAllowed = 0x13;
+    public const byte MoveItemSpaceFailureDestinationOccupied = 0x17;
+
+    // ── 反外挂/插件通道（send-only，客户端永不接收）────────────────────────────
+    // 真机反汇编：命令行名表 0xB54430 的 160/161/162（recon-2 §2.1），161 是 TerSafe.dll
+    // 每 60 秒一条的 ANTI_BOT 上报（§2.3）。客户端入站分发只覆盖 id 1..159（0x40F2B6），
+    // 服务端既不解析也不回包，只需在兜底告警前静默。
+    public const byte SdcDamageCheckCommand = 160;
+    public const byte AntibotCommand = 161;
+    public const byte DprotoCommand = 162;
     public const byte CompoundItemCommand = 27;
     public const byte DisjointItemCommand = 28;
     public const byte UseLotteryItemCommand = 29;
@@ -1760,27 +1777,21 @@ public static class GameProtocolEngine
             payload.ToArray());
     }
 
-    /// <summary>CMD 19 失败：客户端据此把本地乐观移动回滚（4↔0/1/3/7 分支有专门文案）。</summary>
+    /// <summary>
+    /// CMD 19 失败：真机反汇编（recon-2 §4.1，客户端 handler 0x4110FE）读的是
+    /// <c>[0, u8 errorCode, u8 srcType, u8 destType]</c> 共 4 字节，随后按 errorCode 弹文案，
+    /// 末尾只用 srcType/destType 刷新显示。**不要**照抄成功回包的 11 字节回显：
+    /// 那会让客户端把 srcType 当 errorCode（0 不在它的 switch 里 ⇒ 一个字都不弹，面板毫无变化）。
+    /// 成功回包仍是 11 字节 <see cref="CreateMoveItemSpaceReply"/>。
+    /// </summary>
     public static GameServerPacket CreateMoveItemSpaceFailure(
+        byte errorCode,
         byte sourceListType,
-        ushort sourceSlot,
-        uint movedCount,
-        byte destinationListType,
-        ushort destinationSlot)
-    {
-        using var payload = new MemoryStream();
-        using var writer = new BinaryWriter(payload);
-        writer.Write((byte)0);
-        writer.Write(sourceListType);
-        writer.Write(sourceSlot);
-        writer.Write(movedCount);
-        writer.Write(destinationListType);
-        writer.Write(destinationSlot);
-        return new GameServerPacket(
+        byte destinationListType) =>
+        new(
             CommandPacketType,
             MoveItemSpaceCommand,
-            payload.ToArray());
-    }
+            [0, errorCode, sourceListType, destinationListType]);
 
     public static GameServerPacket CreateSortItemReply(byte itemSpace) =>
         new(CommandPacketType, SortItemCommand, [1, itemSpace]);

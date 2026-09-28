@@ -13069,6 +13069,21 @@ public sealed class EntranceService(
                             : GameProtocolEngine.Handle(request, protocolSession.SessionToken);
                         if (gameReply is null)
                         {
+                            // 160..162（SDC_DAMAGE_CHECK / ANTIBOT / DPROTO）是 TerSafe.dll 的
+                            // send-only 通道：161 每 60 秒一条反外挂心跳（recon-2 §2.3），客户端入站
+                            // 分发只覆盖 id 1..159（0x40F2B6），回包会被它丢弃。这里既不回包也不打
+                            // 警告——每客户端每分钟一条会把真机日志淹掉；确认过它们不属任何交易分支。
+                            if (request.Type == GameProtocolEngine.CommandPacketType
+                                && request.ProtocolId is GameProtocolEngine.SdcDamageCheckCommand
+                                    or GameProtocolEngine.AntibotCommand
+                                    or GameProtocolEngine.DprotoCommand)
+                            {
+                                logger.LogDebug(
+                                    "Ignored a send-only plugin-channel packet (protocol {ProtocolId}).",
+                                    request.ProtocolId);
+                                continue;
+                            }
+
                             logger.LogWarning(
                                 "No channel handler for packet type {Type}, protocol {ProtocolId}; frame retained in logs.",
                                 request.Type, request.ProtocolId);

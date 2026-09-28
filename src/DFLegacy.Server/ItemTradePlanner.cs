@@ -76,6 +76,54 @@ public static class ItemTradePlanner
     public const ushort FirstItemPanelSlot = 3;
     public const ushort LastItemPanelSlot = 26;
 
+    /// <summary>
+    /// 放入方向的面板槽分配（recon-2 §4.2-1）。真机上客户端拖物品进交易栏时 CMD 19 的
+    /// destinationSlot 恒为 0（0x4627A3 的 <c>xor esi,esi</c>：空位搜索的结果根本不进包，
+    /// 分配权留给服务端），所以服务端必须自己挑槽。规则：客户端若给了一个 [3,26] 且本侧
+    /// 尚未占用的槽就采用它（兼容将来送真实槽的请求），否则取最小空槽 3..26；24 格全占返回 false。
+    /// </summary>
+    public static bool TryAllocatePanelSlot(
+        IReadOnlyList<ItemTradeEscrow> escrows,
+        ushort requestedSlot,
+        out ushort panelSlot)
+    {
+        if (requestedSlot is >= FirstItemPanelSlot and <= LastItemPanelSlot
+            && escrows.All(candidate => candidate.PanelSlot != requestedSlot))
+        {
+            panelSlot = requestedSlot;
+            return true;
+        }
+
+        for (var slot = (int)FirstItemPanelSlot; slot <= LastItemPanelSlot; slot++)
+        {
+            if (escrows.All(candidate => candidate.PanelSlot != slot))
+            {
+                panelSlot = (ushort)slot;
+                return true;
+            }
+        }
+
+        panelSlot = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// 放入/取回失败 → CMD 19 失败回包的错误码（客户端 handler 0x4110FE 的 switch，recon-2 §4.1）。
+    /// 只有这个 switch 认识的码才会弹文案，其余会让客户端静默失败（"面板毫无变化"）。
+    /// 目标面板格被占 = 0x17；不允许的移动（已锁定 / 非主背包来源 / 不可交易道具）= 0x13；
+    /// 其余（源格没有物品、数量不足、金币不够、会话已关闭…）= 0x11。
+    /// </summary>
+    public static byte ToMoveErrorCode(ItemTradeFailure failure) => failure switch
+    {
+        ItemTradeFailure.PanelSlotOccupied =>
+            GameProtocolEngine.MoveItemSpaceFailureDestinationOccupied,
+        ItemTradeFailure.Locked
+            or ItemTradeFailure.InvalidSourceSpace
+            or ItemTradeFailure.NotTradeable =>
+            GameProtocolEngine.MoveItemSpaceFailureNotAllowed,
+        _ => GameProtocolEngine.MoveItemSpaceFailureNotFound
+    };
+
     public static bool TryPlaceEscrow(
         IReadOnlyDictionary<ushort, CharacterItemRecord> inventory,
         IReadOnlyList<ItemTradeEscrow> escrows,
@@ -102,6 +150,9 @@ public static class ItemTradePlanner
             return false;
         }
 
+        // 防线，不是入参校验：放入方向的面板槽由服务端分配（客户端 CMD 19 的 destSlot 恒为 0，
+        // 证据 0x4627A3 的 xor esi,esi，见 recon-2 §3.2/§4.2-1），调用者必须先过
+        // TryAllocatePanelSlot 得到 3..26 再进来；这里的范围断言只用于兜住任何绕过分配的路径。
         failure = ItemTradeFailure.PanelSlotOutOfRange;
         if (panelSlot < FirstItemPanelSlot || panelSlot > LastItemPanelSlot)
         {

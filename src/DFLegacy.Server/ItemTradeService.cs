@@ -712,7 +712,7 @@ public sealed class ItemTradeService : BackgroundService
             || session.State != ItemTradeSessionState.Open)
         {
             await SendMoveFailureAsync(
-                characterId, sourceListType, sourceSlot, count, destinationListType, destinationSlot,
+                characterId, sourceListType, destinationListType, ItemTradeFailure.NotOpen,
                 cancellationToken);
             return false;
         }
@@ -726,7 +726,7 @@ public sealed class ItemTradeService : BackgroundService
         if (character is null)
         {
             await SendMoveFailureAsync(
-                characterId, sourceListType, sourceSlot, count, destinationListType, destinationSlot,
+                characterId, sourceListType, destinationListType, ItemTradeFailure.NotOpen,
                 cancellationToken);
             return false;
         }
@@ -737,6 +737,10 @@ public sealed class ItemTradeService : BackgroundService
             return await PlaceAsync(
                 session, mine, other, character,
                 sourceListType, sourceSlot, itemId, count, destinationSlot,
+                // 真机放入：客户端 CMD 19 的 destinationSlot 恒为 0（0x4627A3 的 xor esi,esi，
+                // recon-2 §3.2），面板槽必须由服务端分配。面板→面板（srcType==4）不是放入，
+                // 保持原样交给规划器拒绝。
+                allocatePanelSlot: sourceListType != GameProtocolEngine.ItemTradeListType,
                 cancellationToken);
         }
 
@@ -748,7 +752,7 @@ public sealed class ItemTradeService : BackgroundService
         }
 
         await SendMoveFailureAsync(
-            characterId, sourceListType, sourceSlot, count, destinationListType, destinationSlot,
+            characterId, sourceListType, destinationListType, ItemTradeFailure.InvalidSourceSpace,
             cancellationToken);
         return false;
     }
@@ -928,9 +932,11 @@ public sealed class ItemTradeService : BackgroundService
         ushort itemId,
         uint count,
         ushort panelSlot,
+        bool allocatePanelSlot,
         CancellationToken cancellationToken)
     {
         // 金币：srcType 0 / srcSlot 0 / itemId 0，面板固定 0 号格。
+        // 这是客户端唯一会自带真实目的槽的放入动作（金币伪物品常驻面板列表下标 0），保持不变。
         if (sourceListType == 0 && sourceSlot == 0 && itemId == 0
             && panelSlot == ItemTradePlanner.GoldPanelSlot)
         {
@@ -949,8 +955,8 @@ public sealed class ItemTradeService : BackgroundService
                     count,
                     goldFailure);
                 await SendMoveFailureAsync(
-                    mine.Channel.CharacterId, sourceListType, sourceSlot, count,
-                    GameProtocolEngine.ItemTradeListType, panelSlot, cancellationToken);
+                    mine.Channel.CharacterId, sourceListType,
+                    GameProtocolEngine.ItemTradeListType, goldFailure, cancellationToken);
                 return false;
             }
 
@@ -969,8 +975,8 @@ public sealed class ItemTradeService : BackgroundService
                     session.TradeId,
                     mine.Channel.CharacterName);
                 await SendMoveFailureAsync(
-                    mine.Channel.CharacterId, sourceListType, sourceSlot, count,
-                    GameProtocolEngine.ItemTradeListType, panelSlot, cancellationToken);
+                    mine.Channel.CharacterId, sourceListType,
+                    GameProtocolEngine.ItemTradeListType, ItemTradeFailure.NotOpen, cancellationToken);
                 return false;
             }
 
@@ -987,6 +993,36 @@ public sealed class ItemTradeService : BackgroundService
                 cancellationToken);
             await ClearLocksAsync(session, cancellationToken);
             return true;
+        }
+
+        if (allocatePanelSlot)
+        {
+            // 真机放入：客户端 CMD 19 的 destinationSlot 恒为 0（它把分配权留给服务端，recon-2 §3.2），
+            // 不能用它当面板槽。服务端按自己的托管表分配（recon-2 §4.2-1）：客户端给的槽在 [3,26]
+            // 且本侧空着就采用，否则取最小空槽 3..26；24 格全占则失败。
+            // 分配结果统一用于托管登记、CMD 19 成功回包与对端 NOTI 15——后两者都从 escrow.PanelSlot
+            // 读，NOTI 16/18 也一样，不需要各自改写。
+            bool allocated;
+            lock (session.Sync)
+            {
+                allocated = ItemTradePlanner.TryAllocatePanelSlot(mine.Escrows, panelSlot, out panelSlot);
+            }
+
+            if (!allocated)
+            {
+                _logger.LogInformation(
+                    "Trade {TradeId}: {Character} could not escrow slot {Slot} ({ItemId} x{Count}): all 24 panel slots are occupied.",
+                    session.TradeId,
+                    mine.Channel.CharacterName,
+                    sourceSlot,
+                    itemId,
+                    count);
+                await SendMoveFailureAsync(
+                    mine.Channel.CharacterId, sourceListType,
+                    GameProtocolEngine.ItemTradeListType, ItemTradeFailure.PanelSlotOccupied,
+                    cancellationToken);
+                return false;
+            }
         }
 
         var inventory = (character.Inventory ?? []).ToDictionary(item => item.Slot);
@@ -1011,8 +1047,8 @@ public sealed class ItemTradeService : BackgroundService
                 count,
                 failure);
             await SendMoveFailureAsync(
-                mine.Channel.CharacterId, sourceListType, sourceSlot, count,
-                GameProtocolEngine.ItemTradeListType, panelSlot, cancellationToken);
+                mine.Channel.CharacterId, sourceListType,
+                GameProtocolEngine.ItemTradeListType, failure, cancellationToken);
             return false;
         }
 
@@ -1023,8 +1059,8 @@ public sealed class ItemTradeService : BackgroundService
                 session.TradeId,
                 mine.Channel.CharacterName);
             await SendMoveFailureAsync(
-                mine.Channel.CharacterId, sourceListType, sourceSlot, count,
-                GameProtocolEngine.ItemTradeListType, panelSlot, cancellationToken);
+                mine.Channel.CharacterId, sourceListType,
+                GameProtocolEngine.ItemTradeListType, ItemTradeFailure.NotOpen, cancellationToken);
             return false;
         }
 
@@ -1076,10 +1112,8 @@ public sealed class ItemTradeService : BackgroundService
             await SendMoveFailureAsync(
                 mine.Channel.CharacterId,
                 GameProtocolEngine.ItemTradeListType,
-                panelSlot,
-                count,
                 0,
-                destinationSlot,
+                failure,
                 cancellationToken);
             return false;
         }
@@ -1100,10 +1134,8 @@ public sealed class ItemTradeService : BackgroundService
             await SendMoveFailureAsync(
                 mine.Channel.CharacterId,
                 GameProtocolEngine.ItemTradeListType,
-                panelSlot,
-                count,
                 0,
-                destinationSlot,
+                ItemTradeFailure.NotOpen,
                 cancellationToken);
             return false;
         }
@@ -1180,18 +1212,22 @@ public sealed class ItemTradeService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// CMD 19 失败：客户端只读前 4 字节 [0, errorCode, srcType, destType]（recon-2 §4.1），
+    /// 所以要按 <see cref="ItemTradeFailure"/> 映射到它 switch 里的错误码，**不能**回显 srcSlot/count/destSlot。
+    /// </summary>
     private async Task SendMoveFailureAsync(
         Guid characterId,
         byte sourceListType,
-        ushort sourceSlot,
-        uint count,
         byte destinationListType,
-        ushort destinationSlot,
+        ItemTradeFailure failure,
         CancellationToken cancellationToken) =>
         await SendAsync(
             characterId,
             GameProtocolEngine.CreateMoveItemSpaceFailure(
-                sourceListType, sourceSlot, count, destinationListType, destinationSlot),
+                ItemTradePlanner.ToMoveErrorCode(failure),
+                sourceListType,
+                destinationListType),
             cancellationToken);
 
     /// <summary>

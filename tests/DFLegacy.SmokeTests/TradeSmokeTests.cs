@@ -15,6 +15,7 @@ internal static class TradeSmokeTests
         await CheckStoreAsync(check);
         await CheckRequestFlowAsync(check);
         await CheckMoveFlowAsync(check);
+        await CheckPanelSlotAllocationAsync(check);
         await CheckMoveAfterCancelIsInertAsync(check);
         await CheckReattachCancelsStaleSessionAsync(check);
         await CheckSettlementFlowAsync(check);
@@ -129,19 +130,19 @@ internal static class TradeSmokeTests
                 && BinaryPrimitives.ReadUInt16LittleEndian(finish.Payload.AsSpan(8, 2)) == 9,
             "NOTI 18 is [u16 count] + count x [u16 otherPanelSlot][u16 myInventorySlot]");
 
-        // CMD 19 失败：与成功回包同形（resultFlag + 10 字节字段 = 11，逐字节见 Program.cs 的
-        // CreateMoveItemSpaceReply 断言），首字节 resultFlag 改 0，客户端据此把本地乐观移动回滚。
-        var moveFailure = GameProtocolEngine.CreateMoveItemSpaceFailure(0, 5, 4, 4, 6);
+        // CMD 19 失败：真机反汇编（recon-2 §4.1，客户端 handler 0x4110FE）只读前 4 字节
+        // [0, errorCode, srcType, destType]，errorCode 不在它的 switch 里就一个字都不弹。
+        // 旧实现的 11 字节回显（[0, srcType, srcSlot, count, destType, destSlot]）会让客户端把
+        // srcType 当 errorCode（=0）⇒ 静默失败，正是真机上"面板毫无变化"的直接原因。
+        // 成功回包仍是 11 字节（Program.cs 的 CreateMoveItemSpaceReply 断言）。
+        var moveFailure = GameProtocolEngine.CreateMoveItemSpaceFailure(
+            GameProtocolEngine.MoveItemSpaceFailureDestinationOccupied,
+            sourceListType: 0,
+            destinationListType: 4);
         check(moveFailure.Type == 1
                 && moveFailure.ProtocolId == GameProtocolEngine.MoveItemSpaceCommand
-                && moveFailure.Payload.Length == 11
-                && moveFailure.Payload[0] == 0
-                && moveFailure.Payload[1] == 0
-                && BinaryPrimitives.ReadUInt16LittleEndian(moveFailure.Payload.AsSpan(2, 2)) == 5
-                && BinaryPrimitives.ReadUInt32LittleEndian(moveFailure.Payload.AsSpan(4, 4)) == 4
-                && moveFailure.Payload[8] == 4
-                && BinaryPrimitives.ReadUInt16LittleEndian(moveFailure.Payload.AsSpan(9, 2)) == 6,
-            "a CMD 19 failure keeps the 11-byte shape but flips resultFlag to 0: [0, 0, 5, 4, 4, 6]");
+                && moveFailure.Payload.SequenceEqual(new byte[] { 0, 0x17, 0, 4 }),
+            "a CMD 19 failure is exactly [0, errorCode, srcType, destType]: 4 bytes, no slot/count echo");
 
         // 解析：载荷从 Body+2 起算，前 2 字节是序列号。
         var requestBody = new byte[2 + 2 + 1 + 4];
@@ -284,6 +285,44 @@ internal static class TradeSmokeTests
                         out _, out failure)
                     && failure == ItemTradeFailure.InsufficientGold,
                 "an offer above the character's gold is refused");
+
+            // 真机放入的面板槽分配（recon-2 §4.2-1）：客户端 CMD 19 的 destSlot 恒为 0，
+            // 服务端取最小空槽；客户端若送了一个 [3,26] 且空着的槽则采用它（兼容将来自带真实槽的请求）。
+            check(ItemTradePlanner.TryAllocatePanelSlot([], requestedSlot: 0, out var firstAllocation)
+                    && firstAllocation == 3,
+                "the first panel slot allocated for a real-machine place (destSlot=0) is 3");
+            check(ItemTradePlanner.TryAllocatePanelSlot(escrows, requestedSlot: 0, out var nextAllocation)
+                    && nextAllocation == 5,
+                "with 3 and 4 taken the next allocated slot is the smallest free one (5)");
+            check(ItemTradePlanner.TryAllocatePanelSlot(escrows, requestedSlot: 4, out var occupiedRedirect)
+                    && occupiedRedirect == 5,
+                "a client slot that is already occupied falls back to the smallest free slot");
+            check(ItemTradePlanner.TryAllocatePanelSlot(escrows, requestedSlot: 8, out var adoptedSlot)
+                    && adoptedSlot == 8,
+                "a plausible client slot (8) that is still free is adopted");
+            var fullPanel = new List<ItemTradeEscrow>();
+            for (var slot = (int)ItemTradePlanner.FirstItemPanelSlot;
+                 slot <= ItemTradePlanner.LastItemPanelSlot;
+                 slot++)
+            {
+                fullPanel.Add(new ItemTradeEscrow(
+                    (ushort)slot, 0, 0, Guid.Empty, 0, new CharacterItemRecord(0, 0, 0)));
+            }
+
+            check(!ItemTradePlanner.TryAllocatePanelSlot(fullPanel, requestedSlot: 0, out _),
+                "24 occupied panel slots leave no room: allocation fails instead of overwriting");
+
+            // 失败码映射：客户端 handler 0x4110FE 的 switch（recon-2 §4.1）只认这几档，
+            // 其它码会静默——所以"目标格被占 / 无权限 / 其它"必须分别落到 0x17 / 0x13 / 0x11。
+            check(ItemTradePlanner.ToMoveErrorCode(ItemTradeFailure.PanelSlotOccupied) == 0x17
+                    && ItemTradePlanner.ToMoveErrorCode(ItemTradeFailure.Locked) == 0x13
+                    && ItemTradePlanner.ToMoveErrorCode(ItemTradeFailure.InvalidSourceSpace) == 0x13
+                    && ItemTradePlanner.ToMoveErrorCode(ItemTradeFailure.NotTradeable) == 0x13
+                    && ItemTradePlanner.ToMoveErrorCode(ItemTradeFailure.SourceMissing) == 0x11
+                    && ItemTradePlanner.ToMoveErrorCode(ItemTradeFailure.InvalidCount) == 0x11
+                    && ItemTradePlanner.ToMoveErrorCode(ItemTradeFailure.InsufficientGold) == 0x11
+                    && ItemTradePlanner.ToMoveErrorCode(ItemTradeFailure.NotOpen) == 0x11,
+                "move failures map onto the client's CMD 19 switch: 0x17 occupied, 0x13 forbidden, else 0x11");
 
             // 结算：A 给 4 瓶药 + 1000 金，B 给 1 把剑
             var characterA = TradeFixtures.CreateCharacter("阿尔法", gold: 5_000, inventory);
@@ -906,8 +945,10 @@ internal static class TradeSmokeTests
                 sourceListType: 0, sourceSlot: 5, itemId: TradeFixtures.PotionItemId, count: 99,
                 destinationListType: 4, destinationSlot: 6,
                 CancellationToken.None)
-            && harness.Of("阿尔法")[0].Payload[0] == 0,
-            "a count above the server's stack record is refused");
+            && harness.Of("阿尔法")[0].Payload.Length == 4
+            && harness.Of("阿尔法")[0].Payload[0] == 0
+            && harness.Of("阿尔法")[0].Payload[1] == GameProtocolEngine.MoveItemSpaceFailureNotFound,
+            "a count above the server's stack is refused with a 4-byte [0, 0x11, ...] failure");
 
         // 金币
         harness.Clear("阿尔法");
@@ -928,8 +969,10 @@ internal static class TradeSmokeTests
                 harness.IdOf("阿尔法"),
                 sourceListType: 0, sourceSlot: 0, itemId: 0, count: 99_999,
                 destinationListType: 4, destinationSlot: 0,
-                CancellationToken.None),
-            "an offer above the character's gold is refused");
+                CancellationToken.None)
+            && harness.Of("阿尔法")[0].Payload.SequenceEqual(
+                new byte[] { 0, GameProtocolEngine.MoveItemSpaceFailureNotFound, 0, 4 }),
+            "an offer above the character's gold is refused as a 4-byte [0, 0x11, 0, 4] failure");
 
         // 取回
         harness.Clear("阿尔法");
@@ -950,6 +993,158 @@ internal static class TradeSmokeTests
                 && harness.Service.IsEscrowedInstance(harness.IdOf("阿尔法"), sword.InstanceId)
                 && !harness.Service.IsEscrowed(harness.IdOf("布拉沃"), 0, 9),
             "the frozen-slot query answers per character, not globally");
+    }
+
+    /// <summary>
+    /// 真机勘察 recon-2 §3.2/§4.2-1：客户端拖物品进交易栏时 CMD 19 的 destinationSlot 恒为 0
+    /// （空位搜索的结果根本不进包，分配权留给服务端）。这里逐条验证服务端分配：
+    /// ① 连续放入分配 3、4，CMD 19 结果与对端 NOTI 15 都带该槽；客户端送了 3..26 的槽时空着就采用、
+    /// 被占就退回最小空槽；② 用分配出的槽取回 → 对应托管项移除、对端收 NOTI 15 itemId=0xFFFF；
+    /// ③ 金币仍走 0 号格（[1,0,0,金额,4,0]）；④ 失败回包是 4 字节 [0, errorCode, srcType, destType]，
+    /// 数量超量 = 0x11、锁定 = 0x13，且失败时对端零包。
+    /// </summary>
+    private static async Task CheckPanelSlotAllocationAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", 1, 2, 1);
+        await harness.EnterTownAsync("布拉沃", 1, 2, 2);
+        var first = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        var second = new CharacterItemRecord(6, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        var third = new CharacterItemRecord(8, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        var fourth = new CharacterItemRecord(10, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        await harness.SetInventoryAsync("阿尔法", 5_000, [first, second, third, fourth]);
+        await harness.OpenTradeAsync();
+
+        // ① 真机形态：destinationSlot = 0（客户端从不送 3..26）→ 服务端分配 3。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 5, itemId: TradeFixtures.PotionItemId, count: 4,
+                destinationListType: 4, destinationSlot: 0,
+                CancellationToken.None)
+            && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.MoveItemSpaceCommand
+            && harness.Of("阿尔法")[0].Payload.Length == 11
+            && harness.Of("阿尔法")[0].Payload[0] == 1
+            && harness.Of("阿尔法")[0].Payload[8] == 4
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(9, 2)) == 3,
+            "a real-machine place (destinationSlot = 0) is accepted and the CMD 19 result carries the allocated slot 3");
+        var firstPeerPackets = harness.Of("布拉沃");
+        // 对端信箱 = NOTI 15 + 两条锁定清零的 NOTI 17（设计 §2.3.3）。
+        check(firstPeerPackets.Count == 3
+                && firstPeerPackets[0].ProtocolId == GameProtocolEngine.ChangeItemTradeItemNotification
+                && BinaryPrimitives.ReadUInt16LittleEndian(firstPeerPackets[0].Payload.AsSpan(0, 2)) == 3
+                && BinaryPrimitives.ReadUInt16LittleEndian(firstPeerPackets[0].Payload.AsSpan(2, 2))
+                    == TradeFixtures.PotionItemId
+                && BinaryPrimitives.ReadUInt32LittleEndian(firstPeerPackets[0].Payload.AsSpan(4, 4)) == 4,
+            "the peer's NOTI 15 uses the same allocated slot 3 (player-visible first cell)");
+
+        // 第二件物品仍送 0 → 下一个最小空槽 4。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 6, itemId: TradeFixtures.PotionItemId, count: 10,
+                destinationListType: 4, destinationSlot: 0,
+                CancellationToken.None)
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(9, 2)) == 4
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(0, 2)) == 4,
+            "a second place lands in the next free slot 4 (CMD 19 result and peer NOTI 15 agree)");
+
+        // 客户端给了被占用的槽（3）→ 退回最小空槽 5；给了空着的槽（7）→ 采用 7。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 8, itemId: TradeFixtures.PotionItemId, count: 10,
+                destinationListType: 4, destinationSlot: 3,
+                CancellationToken.None)
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(9, 2)) == 5
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(0, 2)) == 5,
+            "an occupied client slot falls back to the smallest free slot (5) so two items never overlap");
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 10, itemId: TradeFixtures.PotionItemId, count: 10,
+                destinationListType: 4, destinationSlot: 7,
+                CancellationToken.None)
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(9, 2)) == 7
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(0, 2)) == 7,
+            "a free client-supplied slot (7) is adopted as-is");
+
+        // ② 取回必须用服务端分配出的槽（3）：托管移除 + 对端清格 0xFFFF。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: GameProtocolEngine.ItemTradeListType, sourceSlot: 3,
+                itemId: TradeFixtures.PotionItemId, count: 4,
+                destinationListType: 0, destinationSlot: 5,
+                CancellationToken.None)
+            && harness.Of("阿尔法")[0].Payload[0] == 1
+            && harness.Of("阿尔法")[0].Payload[1] == 4
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(2, 2)) == 3
+            && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.ChangeItemTradeItemNotification
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(0, 2)) == 3
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(2, 2))
+                == GameProtocolEngine.ClearItemTradeSlot,
+            "taking back the allocated slot 3 clears exactly that slot on the peer (itemId 0xFFFF)");
+        check(!harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 5)
+                && harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 6)
+                && harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 10),
+            "only the released escrow is gone: the others stay frozen");
+
+        // ③ 金币保持原样：destSlot=0 是金币在面板列表里的真实槽位，不进服务端分配。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 0, itemId: 0, count: 1_200,
+                destinationListType: 4, destinationSlot: 0,
+                CancellationToken.None)
+            && harness.Of("阿尔法")[0].Payload.Length == 11
+            && harness.Of("阿尔法")[0].Payload[0] == 1
+            && harness.Of("阿尔法")[0].Payload[1] == 0
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(2, 2)) == 0
+            && BinaryPrimitives.ReadUInt32LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(4, 4)) == 1_200
+            && harness.Of("阿尔法")[0].Payload[8] == 4
+            && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(9, 2)) == 0,
+            "gold keeps the 11-byte success [1, 0, 0, 1200, 4, 0]: panel slot 0 is its real slot");
+        check(harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.ChangeItemTradeItemNotification
+                && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(0, 2)) == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(2, 2)) == 0
+                && BinaryPrimitives.ReadUInt32LittleEndian(harness.Of("布拉沃")[0].Payload.AsSpan(4, 4)) == 1_200,
+            "the peer's gold NOTI 15 stays slot 0 / itemId 0 / count = amount");
+
+        // ④ 失败回包：4 字节 [0, errorCode, srcType, destType]，对端零包。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(!await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 5, itemId: TradeFixtures.PotionItemId, count: 99,
+                destinationListType: 4, destinationSlot: 0,
+                CancellationToken.None)
+            && harness.Of("阿尔法").Count == 1
+            && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.MoveItemSpaceCommand
+            && harness.Of("阿尔法")[0].Payload.SequenceEqual(
+                new byte[] { 0, GameProtocolEngine.MoveItemSpaceFailureNotFound, 0, 4 })
+            && harness.Of("布拉沃").Count == 0,
+            "a count above the stack answers the real 4-byte failure [0, 0x11, 0, 4] and never notifies the peer");
+
+        await harness.Service.HandleStateAsync(harness.IdOf("阿尔法"), 1, CancellationToken.None);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(!await harness.Service.HandleMoveAsync(
+                harness.IdOf("阿尔法"),
+                sourceListType: 0, sourceSlot: 5, itemId: TradeFixtures.PotionItemId, count: 10,
+                destinationListType: 4, destinationSlot: 0,
+                CancellationToken.None)
+            && harness.Of("阿尔法").Count == 1
+            && harness.Of("阿尔法")[0].Payload.SequenceEqual(
+                new byte[] { 0, GameProtocolEngine.MoveItemSpaceFailureNotAllowed, 0, 4 })
+            && harness.Of("布拉沃").Count == 0,
+            "a locked side answers [0, 0x13, 0, 4]: the client prints 您没有移动的权限 instead of staying silent");
     }
 
     /// <summary>
@@ -986,7 +1181,8 @@ internal static class TradeSmokeTests
         check(!lateMove
                 && harness.Of("阿尔法").Count == 1
                 && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.MoveItemSpaceCommand
-                && harness.Of("阿尔法")[0].Payload[0] == 0
+                && harness.Of("阿尔法")[0].Payload.SequenceEqual(
+                    new byte[] { 0, GameProtocolEngine.MoveItemSpaceFailureNotFound, 4, 0 })
                 && harness.Of("布拉沃").Count == 0
                 && !harness.Service.IsEscrowed(harness.IdOf("阿尔法"), 0, 5),
             "a move arriving after the cancel answers only its own CMD 19 failure, never a peer NOTI 15, and keeps no escrow");
