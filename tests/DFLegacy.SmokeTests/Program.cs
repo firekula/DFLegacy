@@ -1548,6 +1548,7 @@ object?[] inventoryMoveArguments =
     },
     (byte)0,
     (ushort)0,
+    (ushort)0,
     0,
     (byte)0,
     (ushort)0
@@ -1557,9 +1558,9 @@ var parsedInventoryMove = inventoryMoveParser is not null
 Check(parsedInventoryMove
     && (byte)inventoryMoveArguments[1]! == 0
     && (ushort)inventoryMoveArguments[2]! == 10
-    && (int)inventoryMoveArguments[3]! == 1
-    && (byte)inventoryMoveArguments[4]! == 3
-    && (ushort)inventoryMoveArguments[5]! == 9,
+    && (int)inventoryMoveArguments[4]! == 1
+    && (byte)inventoryMoveArguments[5]! == 3
+    && (ushort)inventoryMoveArguments[6]! == 9,
     "DFLegacy move-item request skips the complete source endpoint before reading the destination");
 object?[] warehouseMoveArguments =
 [
@@ -1571,6 +1572,7 @@ object?[] warehouseMoveArguments =
     },
     (byte)0,
     (ushort)0,
+    (ushort)0,
     0,
     (byte)0,
     (ushort)0
@@ -1580,9 +1582,9 @@ var parsedWarehouseMove = inventoryMoveParser is not null
 Check(parsedWarehouseMove
     && (byte)warehouseMoveArguments[1]! == 0
     && (ushort)warehouseMoveArguments[2]! == 10
-    && (int)warehouseMoveArguments[3]! == 1
-    && (byte)warehouseMoveArguments[4]! == 2
-    && (ushort)warehouseMoveArguments[5]! == 7,
+    && (int)warehouseMoveArguments[4]! == 1
+    && (byte)warehouseMoveArguments[5]! == 2
+    && (ushort)warehouseMoveArguments[6]! == 7,
     "captured DFLegacy cargo move maps the personal warehouse to item-list type two");
 Check(EntranceService.ShouldUseIncrementalMainMoveRefresh(0, 10, 0, 6)
     && EntranceService.ShouldUseIncrementalMainMoveRefresh(0, 3, 0, 41)
@@ -1826,9 +1828,6 @@ Check(soldSlotOnlyUpdate.Payload.Length == 15
     && BinaryPrimitives.ReadUInt16LittleEndian(
         soldSlotOnlyUpdate.Payload.AsSpan(5, 2)) == ushort.MaxValue,
     "post-sale inventory refresh touches only the sold bag slot, not victory-point or Cera slots");
-Check(GameProtocolEngine.CreateSetItemTradeStateReply(28223, 0).Payload.SequenceEqual(
-        new byte[] { 1, 0x3F, 0x6E, 0, 0 }),
-    "55 item-trade-state reply carries item id, list and an empty mutation list");
 Check(GameProtocolEngine.CreateChangeSkillSlotReply(0x34, 7).Payload.SequenceEqual(
         new byte[] { 1, 0x34, 7 })
     && GameProtocolEngine.CreateChangeSkillSlotReply(0x34, 7).ProtocolId == 30,

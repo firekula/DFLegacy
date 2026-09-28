@@ -2006,22 +2006,6 @@ public static class GameProtocolEngine
             DropItemCommand,
             [0, errorCode, itemSpace]);
 
-    public static GameServerPacket CreateSetItemTradeStateReply(
-        ushort itemId,
-        byte listType)
-    {
-        using var payload = new MemoryStream();
-        using var writer = new BinaryWriter(payload);
-        writer.Write((byte)1);
-        writer.Write(itemId);
-        writer.Write(listType);
-        writer.Write((byte)0);
-        return new GameServerPacket(
-            CommandPacketType,
-            SetItemTradeStateCommand,
-            payload.ToArray());
-    }
-
     /// <summary>NOTI 7：被请求方弹「接受/拒绝」小窗；reserved 回传请求方 uid（真机确认项 T1）。</summary>
     public static GameServerPacket CreateRequestPeerNotification(ushort requesterUid, uint reserved)
     {

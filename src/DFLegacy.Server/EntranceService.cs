@@ -15,6 +15,7 @@ public sealed class EntranceService(
     AreaUserIdPool areaUserIds,
     TownSessionDirectory townDirectory,
     FriendService friendService,
+    ItemTradeService itemTradeService,
     SkillCatalog skillCatalog,
     QuestCatalog questCatalog,
     CharacterExperienceCatalog experienceCatalog,
@@ -6553,15 +6554,100 @@ public sealed class EntranceService(
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.RequestPeerCommand)
+                        {
+                            // CMD 10 同时承载组队/决斗（type != 1）：本分支只处理交易，
+                            // 其它类型保持既有行为（未实现 → 忽略）。
+                            if (activeCharacter is not null
+                                && GameProtocolEngine.TryReadRequestPeer(
+                                    request.Body,
+                                    out var tradeTargetUid,
+                                    out _))
+                            {
+                                await itemTradeService.HandleRequestAsync(
+                                    activeCharacter.Id,
+                                    tradeTargetUid,
+                                    serverToken);
+                            }
+
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.ResponsePeerCommand)
+                        {
+                            // 客户端的「拒绝」只关窗不发包，所以这里只可能是接受。
+                            if (activeCharacter is not null
+                                && GameProtocolEngine.TryReadResponsePeer(
+                                    request.Body,
+                                    out var tradeRequesterUid,
+                                    out _))
+                            {
+                                await itemTradeService.HandleResponseAsync(
+                                    activeCharacter.Id,
+                                    tradeRequesterUid,
+                                    accept: true,
+                                    serverToken);
+                            }
+
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.SetItemTradeStateCommand)
+                        {
+                            if (activeCharacter is not null
+                                && GameProtocolEngine.TryReadItemTradeStateRequest(
+                                    request.Body,
+                                    out var tradeState))
+                            {
+                                var tradeOutcome = await itemTradeService.HandleStateAsync(
+                                    activeCharacter.Id,
+                                    tradeState,
+                                    serverToken);
+                                if (tradeOutcome.SettlementApplied
+                                    && tradeOutcome.ReplacementState is not null)
+                                {
+                                    activeCharacter = tradeOutcome.ReplacementState;
+                                    currentGold = Math.Max(0, tradeOutcome.ReplacementState.Gold);
+                                    mainInventory = (tradeOutcome.ReplacementState.Inventory ?? [])
+                                        .ToDictionary(item => item.Slot);
+                                }
+                            }
+
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.MoveItemSpaceCommand)
                         {
                             var parsedMove = TryReadInventoryMove(
                                 request.Body,
                                 out var sourceListType,
                                 out var sourceSlot,
+                                out var tradeItemId,
                                 out var moveCount,
                                 out var destinationListType,
                                 out var destinationSlot);
+                            // 交易栏（listType 4）不是背包空间：src 或 dest 命中就走交易服务，
+                            // 由它按服务端托管表校验并成对发出「操作者 CMD 19 结果 + 对端 NOTI 15」。
+                            if (activeCharacter is not null
+                                && parsedMove
+                                && (sourceListType == GameProtocolEngine.ItemTradeListType
+                                    || destinationListType == GameProtocolEngine.ItemTradeListType))
+                            {
+                                await itemTradeService.HandleMoveAsync(
+                                    activeCharacter.Id,
+                                    sourceListType,
+                                    sourceSlot,
+                                    tradeItemId,
+                                    (uint)moveCount,
+                                    destinationListType,
+                                    destinationSlot,
+                                    serverToken);
+                                continue;
+                            }
+
                             if (activeCharacter is not null
                                 && parsedMove
                                 && (sourceListType == 7 || destinationListType == 7))
@@ -9970,93 +10056,6 @@ public sealed class EntranceService(
                                 compoundPlan.MaterialItemId,
                                 compoundPlan.MaterialConsumed,
                                 compoundPlan.MaterialRemaining);
-                            continue;
-                        }
-
-                        if (request.Type == GameProtocolEngine.CommandPacketType
-                            && request.ProtocolId == GameProtocolEngine.SetItemTradeStateCommand)
-                        {
-                            if (activeCharacter is null
-                                || !TryReadSetItemTradeState(
-                                    request.Body,
-                                    out var listType,
-                                    out var slot,
-                                    out var state)
-                                || !TryGetInventorySpace(
-                                    listType,
-                                    mainInventory,
-                                    avatarInventory,
-                                    equippedInventory,
-                                    warehouseInventory,
-                                    out var itemSpace)
-                                || !itemSpace.TryGetValue(slot, out var item)
-                                || !itemCatalog.TryCalculateSellPrice(
-                                    item.ItemId,
-                                    item.Durability,
-                                    out var unitSellPrice))
-                            {
-                                var error = GameProtocolEngine.CreateCommandError(request, 0x11);
-                                await error.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, error);
-                                continue;
-                            }
-
-                            var soldCount = Math.Min(
-                                item.CountOrValue,
-                                state == 0 ? 1u : state);
-                            var remaining = item.CountOrValue - soldCount;
-                            if (remaining == 0)
-                            {
-                                itemSpace.Remove(slot);
-                            }
-                            else
-                            {
-                                itemSpace[slot] = item with
-                                {
-                                    CountOrValue = remaining
-                                };
-                            }
-
-                            currentGold = checked(
-                                currentGold
-                                + unitSellPrice * (int)soldCount);
-                            activeCharacter = await store.SaveCharacterItemSpacesAsync(
-                                accountName,
-                                activeCharacter.Id,
-                                currentGold,
-                                mainInventory.Values,
-                                equippedInventory.Values,
-                                warehouseInventory.Values,
-                                serverToken,
-                                avatarInventory: avatarInventory.Values) ?? activeCharacter;
-
-                            var stateReply =
-                                GameProtocolEngine.CreateSetItemTradeStateReply(
-                                    item.ItemId,
-                                    listType);
-                            await stateReply.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, stateReply);
-
-                            var sellReply = GameProtocolEngine.CreateSellItemReply(
-                                updatedGold: checked((uint)currentGold),
-                                itemSpace: listType,
-                                slot,
-                                soldCount: checked((ushort)soldCount));
-                            await sellReply.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, sellReply);
-
-                            logger.LogInformation(
-                                "Sold item {ItemId} x{SoldCount} through item-trade state at {ListType}:{Slot}; unitPrice={UnitPrice}, durability={Durability}, gold={Gold}",
-                                item.ItemId,
-                                soldCount,
-                                listType,
-                                slot,
-                                unitSellPrice,
-                                item.Durability,
-                                currentGold);
                             continue;
                         }
 
@@ -13999,12 +13998,14 @@ public sealed class EntranceService(
         byte[] body,
         out byte sourceListType,
         out ushort sourceSlot,
+        out ushort itemId,
         out int moveCount,
         out byte destinationListType,
         out ushort destinationSlot)
     {
         sourceListType = 0;
         sourceSlot = 0;
+        itemId = 0;
         moveCount = 0;
         destinationListType = 0;
         destinationSlot = 0;
@@ -14015,6 +14016,9 @@ public sealed class EntranceService(
 
         sourceListType = body[2];
         var signedSourceSlot = BinaryPrimitives.ReadInt16LittleEndian(body.AsSpan(3, 2));
+        // body[5..6] 是客户端自报的 itemId（金币包为 0）。服务端只用它做一致性日志，
+        // 真正的身份来自 (sourceListType, sourceSlot) 上的服务端记录（交易防复制）。
+        itemId = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(5, 2));
         moveCount = BinaryPrimitives.ReadInt32LittleEndian(body.AsSpan(7, 4));
         destinationListType = body[11];
         var signedDestinationSlot = BinaryPrimitives.ReadInt16LittleEndian(body.AsSpan(12, 2));
@@ -14367,26 +14371,6 @@ public sealed class EntranceService(
 
         slot = (ushort)legacySlot;
         return count > 0;
-    }
-
-    private static bool TryReadSetItemTradeState(
-        byte[] body,
-        out byte listType,
-        out ushort slot,
-        out ushort state)
-    {
-        listType = 0;
-        slot = 0;
-        state = 0;
-        if (body.Length < 7 || body[2] is not (0 or 3))
-        {
-            return false;
-        }
-
-        listType = body[2];
-        slot = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(3, 2));
-        state = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(5, 2));
-        return true;
     }
 
     private bool IsEquipmentItem(ushort itemId) => itemCatalog.IsEquipment(itemId);
