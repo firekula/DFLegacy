@@ -21,6 +21,7 @@ public enum ItemTradeFailure
     SettlementEscrowMissing,
     SettlementNoSpace,
     SettlementWeightExceeded,
+    SettlementGoldMissing,
     SettlementGoldOverflow
 }
 
@@ -127,7 +128,8 @@ public static class ItemTradePlanner
             return false;
         }
 
-        // 装备的 CountOrValue 是品质种子，客户端给不出有意义的数量（T5）：整件押上。
+        // 非堆叠物整件押上：CountOrValue 是本实例件数，装备的品质另存 EquipmentQualitySeed，
+        // 客户端给的数量对它没有意义（T5），托管 Count 记 1。
         failure = ItemTradeFailure.InvalidCount;
         if (definition.IsStackable)
         {
@@ -322,7 +324,7 @@ public static class ItemTradePlanner
                 return false;
             }
 
-            // 非堆叠物整件押上、整件移除（CountOrValue 是品质种子，不是可拆分数量）；
+            // 非堆叠物整件押上、整件移除（CountOrValue 是本实例件数，不参与拆分）；
             // 堆叠物只扣掉托管的那一份。
             var stackable = catalog.TryGetDefinition(current.ItemId, out var currentDefinition)
                 && currentDefinition.IsStackable;
@@ -353,13 +355,13 @@ public static class ItemTradePlanner
             }
 
             failure = ItemTradeFailure.SettlementNoSpace;
-            var destination = FindFreeSlot(working, definition, catalog);
+            var destination = FindFreeSlot(working, definition);
             if (destination is null)
             {
                 return false;
             }
 
-            // 堆叠物只交付托管的份额；装备/普通物的 CountOrValue 是品质种子，保持原样。
+            // 堆叠物只交付托管的份额；非堆叠物整件搬运，记录（含品质种子等字段）原样保留。
             var moved = definition.IsStackable
                 ? escrow.Snapshot with { CountOrValue = escrow.Count }
                 : escrow.Snapshot;
@@ -381,10 +383,19 @@ public static class ItemTradePlanner
             return false;
         }
 
+        // 本侧必须**现在**还拿得出自己承诺的金币：托管之后金币可能被别的途径扣掉（如邮件寄钱），
+        // 只校验「结果不为负」会把别人的钱赔出去（设计 §2.4②）。
+        failure = ItemTradeFailure.SettlementGoldMissing;
+        if (own.Gold < ownState.OfferedGold)
+        {
+            return false;
+        }
+
+        // 上一条已保证 own.Gold >= ownState.OfferedGold，因此 finalGold 不可能为负，只可能上溢。
         failure = ItemTradeFailure.SettlementGoldOverflow;
         var goldDelta = incomingGold - ownState.OfferedGold;
         var finalGold = (long)own.Gold + goldDelta;
-        if (finalGold < 0 || finalGold > int.MaxValue)
+        if (finalGold > int.MaxValue)
         {
             return false;
         }
@@ -396,13 +407,12 @@ public static class ItemTradePlanner
 
     private static ushort? FindFreeSlot(
         IReadOnlyDictionary<ushort, CharacterItemRecord> inventory,
-        ItemDefinition definition,
-        ItemCatalog catalog)
+        ItemDefinition definition)
     {
-        // 只落该物品的**类别段**（装备 9..41 / 消耗 41..73 / 材料 73..105 / 任务 105..137），
-        // 与邮件与地面拾取共用的 CharacterInventoryPlanner.EnumerateCandidateSlots 一致：
-        // 快速栏（3..8）虽然 IsCompatibleSlot 也放行，但那只是玩家手工摆放的自由，
-        // 服务器自动落点不往那儿塞，免得与原作的自动整理观感不一致。
+        // 只落该物品的**类别段**（装备 9..41 / 消耗 41..73 / 材料 73..105 / 任务 105..137）。
+        // 快速栏（3..8）虽然 IsCompatibleSlot 也放行（那是玩家手工摆放的自由；邮件/地面拾取
+        // 的 EnumerateCandidateSlots 也把快速栏当兜底候选），但交易交付不往那儿塞，
+        // 免得与原作的自动整理观感不一致。
         if (!CharacterInventoryLayout.TryGetCategoryRange(
                 definition.InventoryCategory,
                 out var start,

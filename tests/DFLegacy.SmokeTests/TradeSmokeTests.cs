@@ -165,25 +165,32 @@ internal static class TradeSmokeTests
             };
             var escrows = new List<ItemTradeEscrow>();
 
-            check(ItemTradePlanner.TryPlaceEscrow(
-                    inventory, escrows, locked: false, sourceListType: 0, sourceSlot: 5,
-                    panelSlot: 3, count: 4, items, out var potionEscrow, out var failure)
+            var potionPlaced = ItemTradePlanner.TryPlaceEscrow(
+                inventory, escrows, locked: false, sourceListType: 0, sourceSlot: 5,
+                panelSlot: 3, count: 4, items, out var potionEscrow, out var failure);
+            check(potionPlaced
                     && failure == ItemTradeFailure.None
                     && potionEscrow.Count == 4
                     && potionEscrow.InstanceId == potion.InstanceId
                     && potionEscrow.Snapshot == potion,
                 "a stackable escrow keeps the server record and the requested partial count");
-            escrows.Add(potionEscrow);
+            if (potionPlaced)
+            {
+                // 放置失败时 escrow 为 null，入列表会让后续断言的失败变成 NRE 中断（而不是 FAIL 行）。
+                escrows.Add(potionEscrow);
+            }
 
-            check(ItemTradePlanner.ProjectPanelEntry(potionEscrow, items)
-                    is { Slot: 3, ItemId: TradeFixtures.PotionItemId, CountOrValue: 4 },
+
+            check(potionPlaced
+                    && ItemTradePlanner.ProjectPanelEntry(potionEscrow, items)
+                        is { Slot: 3, ItemId: TradeFixtures.PotionItemId, CountOrValue: 4 },
                 "the peer sees the escrowed portion (4), not the whole stack (10)");
 
             check(ItemTradePlanner.TryPlaceEscrow(
                     inventory, escrows, locked: false, sourceListType: 0, sourceSlot: 9,
-                    panelSlot: 4, count: 1, items, out var swordEscrow, out failure)
+                    panelSlot: 4, count: 9, items, out var swordEscrow, out failure)
                     && swordEscrow.Count == 1,
-                "a non-stackable escrow ignores the client count and escrows the whole item");
+                "a non-stackable escrow ignores the client count (9) and escrows the whole item");
             escrows.Add(swordEscrow);
             check(ItemTradePlanner.ProjectPanelEntry(swordEscrow, items).CountOrValue == 0x1234,
                 "equipment keeps its quality seed as the wire count (T5)");
@@ -214,15 +221,34 @@ internal static class TradeSmokeTests
                     && failure == ItemTradeFailure.InvalidCount,
                 "a count above the server's stack is refused");
             check(!ItemTradePlanner.TryPlaceEscrow(
+                        inventory, escrows, locked: false, sourceListType: 0, sourceSlot: 5,
+                        panelSlot: 8, count: 0, items, out _, out failure)
+                    && failure == ItemTradeFailure.InvalidCount,
+                "a zero-count stack offer is refused");
+            check(!ItemTradePlanner.TryPlaceEscrow(
                         inventory, escrows, locked: true, sourceListType: 0, sourceSlot: 5,
                         panelSlot: 8, count: 4, items, out _, out failure)
                     && failure == ItemTradeFailure.Locked,
                 "a locked side cannot change its offer");
 
-            check(ItemTradePlanner.TryPlaceGoldEscrow(
-                    escrows, locked: false, count: 1_000, currentGold: 5_000,
-                    out var goldEscrow, out failure)
-                    && goldEscrow.PanelSlot == 0 && goldEscrow.Count == 1_000,
+            check(ItemTradePlanner.TryReleaseEscrow(
+                    escrows, locked: false, panelSlot: 3, out var releasedEscrow, out failure)
+                    && failure == ItemTradeFailure.None
+                    && releasedEscrow == potionEscrow,
+                "a release returns the escrow sitting in that panel slot");
+            check(!ItemTradePlanner.TryReleaseEscrow(
+                        escrows, locked: false, panelSlot: 8, out _, out failure)
+                    && failure == ItemTradeFailure.NotEscrowed,
+                "a release for a panel slot that holds no escrow is refused");
+            check(!ItemTradePlanner.TryReleaseEscrow(
+                        escrows, locked: true, panelSlot: 3, out _, out failure)
+                    && failure == ItemTradeFailure.Locked,
+                "a locked side cannot take an offer back");
+
+            var goldPlaced = ItemTradePlanner.TryPlaceGoldEscrow(
+                escrows, locked: false, count: 1_000, currentGold: 5_000,
+                out var goldEscrow, out failure);
+            check(goldPlaced && goldEscrow.PanelSlot == 0 && goldEscrow.Count == 1_000,
                 "gold is a panel slot 0 escrow with the offered amount");
             check(!ItemTradePlanner.TryPlaceGoldEscrow(
                         escrows, locked: false, count: 6_000, currentGold: 5_000,
@@ -242,12 +268,20 @@ internal static class TradeSmokeTests
                 characterB.Id,
                 [new ItemTradeEscrow(3, 0, 7, bravoSword.InstanceId, 1, bravoSword)],
                 0);
-            check(ItemTradePlanner.TryPlanSettlement(
+            // 失败时 out plan 为 null：先断言成功，再解引用（否则失败会变成 NRE 中断而不是 FAIL 行）。
+            var settlementPlanned = false;
+            ItemTradeSettlementPlan plan = null!;
+            if (potionPlaced && goldPlaced)
+            {
+                settlementPlanned = ItemTradePlanner.TryPlanSettlement(
                     new ItemTradeSettlementRequest(characterA, characterB, sideA, sideB),
-                    items, TradeFixtures.CreateStats(fixtureRoot), out var plan, out failure),
+                    items, TradeFixtures.CreateStats(fixtureRoot), out plan, out failure);
+            }
+
+            check(settlementPlanned,
                 $"the settlement plan validates both sides (failure={failure})");
             // A 的背包 {5:药, 9:剑, 10:不可交易} 移除 4 瓶后仍占着 9/10，剑落进装备段第一个空格 11。
-            check(plan.Initiator.Removals.Count == 1
+            check(settlementPlanned && plan.Initiator.Removals.Count == 1
                     && plan.Initiator.Removals[0] is { SourceSlot: 5, RemovedCount: 4, RemainingCount: 6 }
                     && plan.Initiator.GoldDelta == -1_000
                     && plan.Initiator.Deliveries.Count == 1
@@ -256,7 +290,7 @@ internal static class TradeSmokeTests
                     && plan.Initiator.Deliveries[0].Item.Slot == 11,
                 "the receiver's plan removes only the escrowed portion and delivers a sword into the first free equipment slot");
             // B 的背包只有 slot 7 的剑；移除后材料段的第一个空格是 73。
-            check(plan.Partner.Removals.Count == 1
+            check(settlementPlanned && plan.Partner.Removals.Count == 1
                     && plan.Partner.Removals[0] is { SourceSlot: 7, RemovedCount: 1, RemainingCount: 0 }
                     && plan.Partner.GoldDelta == 1_000
                     && plan.Partner.Deliveries.Count == 1
@@ -270,15 +304,112 @@ internal static class TradeSmokeTests
             {
                 [5] = potion with { InstanceId = Guid.NewGuid() }
             };
+            check(potionPlaced
+                    && !ItemTradePlanner.TryPlanSettlement(
+                        new ItemTradeSettlementRequest(
+                            TradeFixtures.CreateCharacter("阿尔法", 5_000, movedInventory),
+                            characterB,
+                            sideA,
+                            sideB),
+                        items, TradeFixtures.CreateStats(fixtureRoot), out _, out failure)
+                    && failure == ItemTradeFailure.SettlementEscrowMissing,
+                "a settlement whose escrowed instance vanished is refused before any write");
+
+            // 结算失败码逐条：托管数量不足 / 本侧金币不足 / 收货方负重超限 / 收货方无空位 / 金币溢出。
+            // 这些场景自建角色，不依赖上面的托管结果。
+            var shortPotion = new CharacterItemRecord(
+                5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+            var shortA = TradeFixtures.CreateCharacter(
+                "阿尔法", gold: 5_000,
+                new Dictionary<ushort, CharacterItemRecord> { [5] = shortPotion });
             check(!ItemTradePlanner.TryPlanSettlement(
                     new ItemTradeSettlementRequest(
-                        TradeFixtures.CreateCharacter("阿尔法", 5_000, movedInventory),
+                        shortA,
                         characterB,
-                        sideA,
+                        new ItemTradeSideState(
+                            shortA.Id,
+                            [new ItemTradeEscrow(3, 0, 5, shortPotion.InstanceId, 11, shortPotion)],
+                            0),
                         sideB),
                     items, TradeFixtures.CreateStats(fixtureRoot), out _, out failure)
                     && failure == ItemTradeFailure.SettlementEscrowMissing,
-                "a settlement whose escrowed instance vanished is refused before any write");
+                "an escrow that asks for more than the stack still holds is refused");
+
+            var poorPotion = new CharacterItemRecord(
+                5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+            var poorA = TradeFixtures.CreateCharacter(
+                "阿尔法", gold: 500,
+                new Dictionary<ushort, CharacterItemRecord> { [5] = poorPotion });
+            check(!ItemTradePlanner.TryPlanSettlement(
+                    new ItemTradeSettlementRequest(
+                        poorA,
+                        characterB,
+                        new ItemTradeSideState(
+                            poorA.Id,
+                            [new ItemTradeEscrow(3, 0, 5, poorPotion.InstanceId, 4, poorPotion)],
+                            1_000),
+                        sideB),
+                    items, TradeFixtures.CreateStats(fixtureRoot), out _, out failure)
+                    && failure == ItemTradeFailure.SettlementGoldMissing,
+                "gold that vanished after the escrow (mailed away) aborts the settlement");
+
+            var heavy = new CharacterItemRecord(
+                9, TradeFixtures.HeavyItemId, 1, InstanceId: Guid.NewGuid());
+            var heavyCarrier = TradeFixtures.CreateCharacter(
+                "查理", gold: 1_000,
+                new Dictionary<ushort, CharacterItemRecord> { [9] = heavy });
+            var heavyReceiver = TradeFixtures.CreateCharacter(
+                "德尔塔", gold: 1_000, new Dictionary<ushort, CharacterItemRecord>());
+            var stats = TradeFixtures.CreateStats(fixtureRoot);
+            var deliveredWeight = CharacterInventoryPlanner.CalculateCarriedWeight(
+                [heavy with { Slot = 9 }], [], [], items);
+            var receiverWeightLimit = CharacterInventoryPlanner.CalculateCarriedWeightLimit(
+                stats.Get(heavyReceiver).InventoryLimit, [], items);
+            check(deliveredWeight > receiverWeightLimit
+                    && !ItemTradePlanner.TryPlanSettlement(
+                        new ItemTradeSettlementRequest(
+                            heavyReceiver,
+                            heavyCarrier,
+                            new ItemTradeSideState(heavyReceiver.Id, [], 0),
+                            new ItemTradeSideState(
+                                heavyCarrier.Id,
+                                [new ItemTradeEscrow(3, 0, 9, heavy.InstanceId, 1, heavy)],
+                                0)),
+                        items, stats, out _, out failure)
+                    && failure == ItemTradeFailure.SettlementWeightExceeded,
+                $"a delivery past the receiver's weight limit is refused ({deliveredWeight} > {receiverWeightLimit})");
+
+            var fullEquipment = new Dictionary<ushort, CharacterItemRecord>();
+            for (var slot = (int)CharacterInventoryLayout.EquipmentSlotStart;
+                 slot < CharacterInventoryLayout.EquipmentSlotEnd;
+                 slot++)
+            {
+                fullEquipment[(ushort)slot] = new CharacterItemRecord(
+                    (ushort)slot, TradeFixtures.SwordItemId, 1, InstanceId: Guid.NewGuid());
+            }
+
+            var crowded = TradeFixtures.CreateCharacter("回声", gold: 1_000, fullEquipment);
+            check(!ItemTradePlanner.TryPlanSettlement(
+                    new ItemTradeSettlementRequest(
+                        crowded,
+                        characterB,
+                        new ItemTradeSideState(crowded.Id, [], 0),
+                        sideB),
+                    items, TradeFixtures.CreateStats(fixtureRoot), out _, out failure)
+                    && failure == ItemTradeFailure.SettlementNoSpace,
+                "a receiver whose equipment span is full refuses the sword delivery (no stacking, no quick-slot fallback)");
+
+            var rich = TradeFixtures.CreateCharacter(
+                "福克斯", gold: int.MaxValue - 100, new Dictionary<ushort, CharacterItemRecord>());
+            check(!ItemTradePlanner.TryPlanSettlement(
+                    new ItemTradeSettlementRequest(
+                        rich,
+                        characterB,
+                        new ItemTradeSideState(rich.Id, [], 0),
+                        sideB with { OfferedGold = 1_000 }),
+                    items, TradeFixtures.CreateStats(fixtureRoot), out _, out failure)
+                    && failure == ItemTradeFailure.SettlementGoldOverflow,
+                "a gold result above int.MaxValue is refused instead of wrapping");
         }
         finally
         {
@@ -295,6 +426,7 @@ internal static class TradeFixtures
     public const ushort PotionItemId = 3001;   // 可交易、可堆叠（stack limit 100）
     public const ushort SwordItemId = 1000;    // 可交易装备
     public const ushort BannedItemId = 3002;   // [attach type] `[trade]`：CanTrade 判据拒绝
+    public const ushort HeavyItemId = 1001;    // 可交易装备，[weight] 100000：结算负重超限场景
 
     public static void Create(string root)
     {
@@ -305,13 +437,21 @@ internal static class TradeFixtures
 
         File.WriteAllText(
             Path.Combine(root, "equipment", "equipment.lst"),
-            $"{SwordItemId} `character/test/weapon/test.equ`\n");
+            $"{SwordItemId} `character/test/weapon/test.equ`\n"
+            + $"{HeavyItemId} `character/test/weapon/heavy.equ`\n");
         File.WriteAllText(
             Path.Combine(equipmentDirectory, "test.equ"),
             "[name] `Test Sword`\n"
             + "[equipment type] `[weapon]`\n"
             + "[attach type] `[free]`\n"
             + "[weight] 10\n"
+            + "[durability] 35\n");
+        File.WriteAllText(
+            Path.Combine(equipmentDirectory, "heavy.equ"),
+            "[name] `Test Heavy`\n"
+            + "[equipment type] `[weapon]`\n"
+            + "[attach type] `[free]`\n"
+            + "[weight] 100000\n"
             + "[durability] 35\n");
         File.WriteAllText(
             Path.Combine(root, "stackable", "stackable.lst"),
