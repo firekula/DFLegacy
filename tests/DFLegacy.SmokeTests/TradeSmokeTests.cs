@@ -499,6 +499,88 @@ internal static class TradeSmokeTests
         check(!failed.Committed && failed.Failure == ItemTradeCommitFailure.EscrowMissing
                 && File.ReadAllText(harness.Options.DataPath) == before,
             "a settlement whose escrowed instance vanished writes nothing at all (atomic all-or-nothing)");
+
+        // 保存失败 = 结算没成功：异常上抛、内存回滚、两侧都不许留下未安装交付标记。
+        var crashRoot = Path.Combine(Path.GetTempPath(), $"dflegacy-trade-crash-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(crashRoot);
+        try
+        {
+            TradeFixtures.Create(crashRoot);
+            var crashOptions = new ServerOptions
+            {
+                DataPath = Path.Combine(crashRoot, "state.json"),
+                ScriptPvfPath = string.Empty,
+                SkillScriptPath = crashRoot
+            };
+            var crashStore = new JsonGameStore(
+                crashOptions,
+                NullLogger<JsonGameStore>.Instance,
+                itemCatalog: TradeFixtures.CreateItems(crashRoot),
+                statCatalog: TradeFixtures.CreateStats(crashRoot));
+            await crashStore.CreateAccountAsync(
+                new CreateAccountRequest("carol", "password", OicqCode: "123456"),
+                CancellationToken.None);
+            await crashStore.CreateAccountAsync(
+                new CreateAccountRequest("dave", "password", OicqCode: "123456"),
+                CancellationToken.None);
+            var carol = (await crashStore.CreateCharacterAsync(
+                "carol", new CreateCharacterRequest("查理", GrowType: 3), CancellationToken.None)).Character!;
+            var dave = (await crashStore.CreateCharacterAsync(
+                "dave", new CreateCharacterRequest("德尔塔", GrowType: 3), CancellationToken.None)).Character!;
+            var crashPotion = new CharacterItemRecord(
+                5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+            var crashSword = new CharacterItemRecord(
+                9, TradeFixtures.SwordItemId, 1, InstanceId: Guid.NewGuid());
+            await crashStore.SaveCharacterItemSpacesAsync(
+                "carol", carol.Id, 5_000, [crashPotion], [], [], CancellationToken.None);
+            await crashStore.SaveCharacterItemSpacesAsync(
+                "dave", dave.Id, 7_000, [crashSword], [], [], CancellationToken.None);
+
+            // 让下一次保存必然失败：把存档目录换成一个同名文件，Directory.CreateDirectory 会抛。
+            Directory.Delete(crashRoot, recursive: true);
+            File.WriteAllText(crashRoot, "blocked");
+
+            Exception? saveFailure = null;
+            try
+            {
+                await crashStore.CommitItemTradeAsync(
+                    new ItemTradeCommitRequest(
+                        carol.Id, "carol",
+                        dave.Id, "dave",
+                        [new ItemTradeEscrow(3, 0, 5, crashPotion.InstanceId, 4, crashPotion)],
+                        [new ItemTradeEscrow(3, 0, 9, crashSword.InstanceId, 1, crashSword)],
+                        InitiatorOfferedGold: 0,
+                        PartnerOfferedGold: 0));
+            }
+            catch (Exception exception)
+            {
+                saveFailure = exception;
+            }
+
+            var rolledBackInitiator = await crashStore.GetCharacterAsync("carol", carol.Id, CancellationToken.None);
+            var rolledBackPartner = await crashStore.GetCharacterAsync("dave", dave.Id, CancellationToken.None);
+            check(saveFailure is IOException
+                    && !crashStore.IsTradeDeliveryPending(carol.Id)
+                    && !crashStore.IsTradeDeliveryPending(dave.Id)
+                    && rolledBackInitiator is not null
+                    && rolledBackInitiator.Gold == 5_000
+                    && rolledBackInitiator.Inventory!.Single(item => item.Slot == 5).CountOrValue == 10
+                    && rolledBackPartner is not null
+                    && rolledBackPartner.Gold == 7_000
+                    && rolledBackPartner.Inventory!.Single(item => item.Slot == 9).ItemId == TradeFixtures.SwordItemId,
+                $"a settlement whose save throws rolls both characters back and leaves no pending marker (failure={saveFailure})");
+        }
+        finally
+        {
+            if (File.Exists(crashRoot))
+            {
+                File.Delete(crashRoot);
+            }
+            else if (Directory.Exists(crashRoot))
+            {
+                Directory.Delete(crashRoot, recursive: true);
+            }
+        }
     }
 }
 

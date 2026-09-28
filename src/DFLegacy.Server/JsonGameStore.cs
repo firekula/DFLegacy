@@ -3276,6 +3276,8 @@ public sealed class JsonGameStore(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.InitiatorEscrows);
+        ArgumentNullException.ThrowIfNull(request.PartnerEscrows);
         await _gate.WaitAsync(cancellationToken);
         try
         {
@@ -3338,13 +3340,28 @@ public sealed class JsonGameStore(
             }
 
             var tradeId = Guid.NewGuid();
+            var previousInitiator = initiator;
+            var previousPartner = partner;
             var updatedInitiator = ApplyTradePlan(initiator, plan.Initiator);
             var updatedPartner = ApplyTradePlan(partner, plan.Partner);
             initiatorAccount.Characters[initiatorIndex] = updatedInitiator;
             partnerAccount.Characters[partnerIndex] = updatedPartner;
+            try
+            {
+                await SaveLockedAsync(cancellationToken);
+            }
+            catch
+            {
+                // 保存失败 = 结算没成功：把内存里的双方状态还原，并且不能留下未安装交付标记，
+                // 否则两个角色会在进程余生里拒绝全部盲写 API，而没有任何人被告知交易成功。
+                initiatorAccount.Characters[initiatorIndex] = previousInitiator;
+                partnerAccount.Characters[partnerIndex] = previousPartner;
+                throw;
+            }
+
+            // 设计 §2.5：结算成功落盘之后才给两侧打「未安装交付」标记。
             _pendingTradeDeliveries[request.InitiatorCharacterId] = tradeId;
             _pendingTradeDeliveries[request.PartnerCharacterId] = tradeId;
-            await SaveLockedAsync(cancellationToken);
             logger.LogInformation(
                 "Committed item trade {TradeId} between {Initiator} and {Partner}: gold {InitiatorGold:+0;-0;0}/{PartnerGold:+0;-0;0}, {InitiatorItems}/{PartnerItems} item(s).",
                 tradeId,
