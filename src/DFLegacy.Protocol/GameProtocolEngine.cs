@@ -256,6 +256,25 @@ public enum GameMessageType : byte
     Type18DirectOutput = 18
 }
 
+/// <summary>NOTI 15 的载荷：与背包 ITEM_LIST 记录同构（少一个 SealState）。</summary>
+public readonly record struct GameItemTradeEntry(
+    ushort Slot,
+    ushort ItemId,
+    uint CountOrValue,
+    byte State,
+    ushort Durability);
+
+/// <summary>NOTI 16 的退条目：把「我的」面板格放回 (destListType, destSlot)。</summary>
+public readonly record struct GameItemTradeCancelEntry(
+    ushort PanelSlot,
+    byte DestinationListType,
+    ushort DestinationSlot);
+
+/// <summary>NOTI 18 的交付条目：对方面板格 → 我的主背包格。</summary>
+public readonly record struct GameItemTradeDeliveryEntry(
+    ushort OtherPanelSlot,
+    ushort DestinationSlot);
+
 /// <summary>
 /// Handles the initial command exchange used after the client selects a channel.
 /// Game/channel packets share the ten-byte transport header with entrance packets,
@@ -354,6 +373,26 @@ public static class GameProtocolEngine
     public const byte SellItemCommand = 24;
     public const byte RepairEquipmentCommand = 25;
     public const byte SetItemTradeStateCommand = 26;
+    // ── 交易（ITEMTRADE）：客户端 id 表 通知 0xB54170 / 命令 0xB54430 ──────────
+    // 逐字段布局与证据地址见 .superpowers/sdd/trade-protocol-recon.md 与设计稿
+    // docs/superpowers/specs/2026-09-28-trade-system-design.md §1。
+    public const byte RequestPeerCommand = 10;
+    public const byte ResponsePeerCommand = 11;
+    public const byte RequestPeerNotification = 7;
+    public const byte ResponsePeerNotification = 8;
+    public const byte ChangeItemTradeItemNotification = 15;
+    public const byte CancelItemTradeNotification = 16;
+    public const byte StateItemTradeNotification = 17;
+    public const byte FinishItemTradeNotification = 18;
+
+    /// <summary>CMD 11 失败包的 peerType：0x64 命中客户端 0x7570「对方不在线，或拒绝了您的交易请求」。</summary>
+    public const byte ItemTradePeerType = 100;
+
+    /// <summary>CMD 19 结果包里的交易栏 listType（客户端固定 4，见 0x462660）。</summary>
+    public const byte ItemTradeListType = 4;
+
+    /// <summary>NOTI 15 用 itemId 0xFFFF 表示清空该面板格（0x41D942 分支）。</summary>
+    public const ushort ClearItemTradeSlot = 0xFFFF;
     public const byte CompoundItemCommand = 27;
     public const byte DisjointItemCommand = 28;
     public const byte UseLotteryItemCommand = 29;
@@ -1961,6 +2000,128 @@ public static class GameProtocolEngine
             payload.ToArray());
     }
 
+    /// <summary>NOTI 7：被请求方弹「接受/拒绝」小窗；reserved 回传请求方 uid（真机确认项 T1）。</summary>
+    public static GameServerPacket CreateRequestPeerNotification(ushort requesterUid, uint reserved)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write(requesterUid);
+        writer.Write((byte)1);
+        writer.Write(reserved);
+        return new GameServerPacket(
+            NotificationPacketType,
+            RequestPeerNotification,
+            payload.ToArray());
+    }
+
+    /// <summary>NOTI 8：请求方开窗并在聊天栏打「[X]已接受交易请求」；mode 填 0。</summary>
+    public static GameServerPacket CreateResponsePeerNotification(
+        ushort accepterUid,
+        uint reserved,
+        byte mode)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write(accepterUid);
+        writer.Write((byte)1);
+        writer.Write(reserved);
+        writer.Write(mode);
+        return new GameServerPacket(
+            NotificationPacketType,
+            ResponsePeerNotification,
+            payload.ToArray());
+    }
+
+    /// <summary>CMD 11 成功：给接受方开交易窗（0x4104FF 分支）。</summary>
+    public static GameServerPacket CreateResponsePeerReply(ushort requesterUid, byte mode)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);
+        writer.Write(requesterUid);
+        writer.Write((byte)1);
+        writer.Write(mode);
+        return new GameServerPacket(
+            CommandPacketType,
+            ResponsePeerCommand,
+            payload.ToArray());
+    }
+
+    /// <summary>CMD 11 失败：peerType 100/code 1 = 「对方不在线，或拒绝了您的交易请求」。</summary>
+    public static GameServerPacket CreateResponsePeerError(byte peerType, byte code) =>
+        new(CommandPacketType, ResponsePeerCommand, [0, peerType, code]);
+
+    /// <summary>NOTI 15：对方交易栏某格变化（itemId 0xFFFF = 清格）。</summary>
+    public static GameServerPacket CreateChangeItemTradeItem(GameItemTradeEntry entry)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write(entry.Slot);
+        writer.Write(entry.ItemId);
+        writer.Write(entry.CountOrValue);
+        writer.Write(entry.State);
+        writer.Write(entry.Durability);
+        return new GameServerPacket(
+            NotificationPacketType,
+            ChangeItemTradeItemNotification,
+            payload.ToArray());
+    }
+
+    /// <summary>NOTI 16：取消/超时/中止时把面板物品按原 (栏,格) 退回。</summary>
+    public static GameServerPacket CreateCancelItemTrade(
+        IReadOnlyList<GameItemTradeCancelEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        if (entries.Count > ushort.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(entries));
+        }
+
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((ushort)entries.Count);
+        foreach (var entry in entries)
+        {
+            writer.Write(entry.PanelSlot);
+            writer.Write(entry.DestinationListType);
+            writer.Write(entry.DestinationSlot);
+        }
+
+        return new GameServerPacket(
+            NotificationPacketType,
+            CancelItemTradeNotification,
+            payload.ToArray());
+    }
+
+    /// <summary>NOTI 17：锁定状态广播；接收端按 uid 是否等于自己决定写 myLock 还是 otherLock。</summary>
+    public static GameServerPacket CreateStateItemTrade(ushort uid, bool locked) =>
+        new(NotificationPacketType, StateItemTradeNotification, [.. BitConverter.GetBytes(uid), locked ? (byte)1 : (byte)0]);
+
+    /// <summary>NOTI 18：完成交付，客户端自行并包并关窗。</summary>
+    public static GameServerPacket CreateFinishItemTrade(
+        IReadOnlyList<GameItemTradeDeliveryEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        if (entries.Count > ushort.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(entries));
+        }
+
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((ushort)entries.Count);
+        foreach (var entry in entries)
+        {
+            writer.Write(entry.OtherPanelSlot);
+            writer.Write(entry.DestinationSlot);
+        }
+
+        return new GameServerPacket(
+            NotificationPacketType,
+            FinishItemTradeNotification,
+            payload.ToArray());
+    }
+
     public static GameServerPacket CreateChangeSkillSlotReply(
         byte sourceSlot,
         byte destinationSlot) =>
@@ -2727,6 +2888,58 @@ public static class GameProtocolEngine
         }
 
         targetNameBytes = candidate;
+        return true;
+    }
+
+    /// <summary>CMD 10：u16 目标 uid + u8 peerType；只有 type==1 才是交易请求。</summary>
+    public static bool TryReadRequestPeer(
+        byte[] body,
+        out ushort targetUid,
+        out byte peerType)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        targetUid = 0;
+        peerType = 0;
+        if (body.Length < 2 + 2 + 1)
+        {
+            return false;
+        }
+
+        targetUid = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
+        peerType = body[4];
+        return peerType == 1;
+    }
+
+    /// <summary>CMD 11：与 CMD 10 同前缀（u16 uid + u8 peerType），只有 type==1 是交易应答。</summary>
+    public static bool TryReadResponsePeer(
+        byte[] body,
+        out ushort requesterUid,
+        out byte peerType)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        requesterUid = 0;
+        peerType = 0;
+        if (body.Length < 2 + 2 + 1)
+        {
+            return false;
+        }
+
+        requesterUid = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
+        peerType = body[4];
+        return peerType == 1;
+    }
+
+    /// <summary>CMD 26：单字节状态（0 解锁 / 1 锁定 / 2 取消 / 3 最终确认 / 4 未定）。</summary>
+    public static bool TryReadItemTradeStateRequest(byte[] body, out byte state)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        state = 0;
+        if (body.Length < 3)
+        {
+            return false;
+        }
+
+        state = body[2];
         return true;
     }
 
