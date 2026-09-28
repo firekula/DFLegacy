@@ -612,13 +612,26 @@ internal static class TradeSmokeTests
     private static async Task CheckRequestFlowAsync(Action<bool, string> check)
     {
         await using var harness = await TradeHarness.CreateAsync();
+
+        // TradeHarness.CreateAsync 只挂通道、不进镇：先验证"在线但不在任何城镇区域"的
+        // 请求被拒（设计 §2.4：双方都在城镇区域是放行条件之一），且目标完全无感知。
+        harness.Clear("阿尔法");
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload[0] == 0
+                && harness.Of("布拉沃").Count == 0,
+            "a requester outside any town area is refused before the target ever sees a NOTI 7");
+
         await harness.EnterTownAsync("阿尔法", townId: 1, areaId: 2, areaUserId: 1);
         await harness.EnterTownAsync("布拉沃", townId: 1, areaId: 2, areaUserId: 2);
         harness.Clear("阿尔法");
         harness.Clear("布拉沃");
 
         // 服务端独立限流：同一角色 3 秒内的第二条 CMD 10 直接丢弃（客户端 CMD 10 里的 u32
-        // 时间差只够防客户端自身抖动，服务端不能依赖它）。
+        // 时间差只够防客户端自身抖动，服务端不能依赖它）。上面那条"未进镇"的请求也会打
+        // 限流时间戳，所以这一相位前先重置。
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
         await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, CancellationToken.None);
         await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 0x4321, CancellationToken.None);
         check(harness.Of("阿尔法").Count == 1,

@@ -1010,6 +1010,14 @@ public sealed class EntranceService(
                     // 留在目录里；ticket 必须保留，断线 finally 才能用 CancellationToken.None
                     // 重试。移除完成后的通知发送在 SendAsync 里吞掉取消与异常，不会再抛，
                     // 所以这个顺序不会把 ticket 留在一个已被移除的成员上。
+                    if (activeCharacter is not null)
+                    {
+                        // 交易要求双方同镇同区：进副本 / 换区 / 回城离开该区域即取消并退回。
+                        await itemTradeService.CancelForAreaChangeAsync(
+                            activeCharacter.Id,
+                            cancellationToken);
+                    }
+
                     await townDirectory.LeaveAsync(townTicket, cancellationToken);
                     townTicket = null;
                 }
@@ -2598,6 +2606,31 @@ public sealed class EntranceService(
                         break;
                     }
 
+                    // 被动方的交易交付：服务端已经落库，但本会话的内存背包还是旧的。
+                    // 必须在处理下一条请求之前安装，否则玩家一动背包就会用陈旧状态覆盖交易结果。
+                    if (activeCharacter is not null
+                        && itemTradeService.TryTakePendingInstall(
+                            activeCharacter.Id,
+                            out var tradeInstall))
+                    {
+                        activeCharacter = tradeInstall.State;
+                        currentGold = Math.Max(0, tradeInstall.State.Gold);
+                        mainInventory = (tradeInstall.State.Inventory ?? [])
+                            .ToDictionary(item => item.Slot);
+                        var tradeRefresh = CreateMainInventoryPacket(
+                            currentGold,
+                            currentVictoryPoints,
+                            mainInventory.Values);
+                        await tradeRefresh.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, tradeRefresh);
+                        store.AcknowledgeTradeDelivery(activeCharacter.Id, tradeInstall.TradeId);
+                        logger.LogInformation(
+                            "Installed settled trade {TradeId} into the live session of character {CharacterId}.",
+                            tradeInstall.TradeId,
+                            activeCharacter.Id);
+                    }
+
                     if (Interlocked.Exchange(ref pendingMailAlarm, 0) != 0
                         && activeCharacter is not null)
                     {
@@ -2806,6 +2839,12 @@ public sealed class EntranceService(
                                     activeCharacter.Name,
                                     runtimeSession.Id,
                                     serverToken);
+                                // 交易通道必须与好友通道同时摘除：返回选人后本会话
+                                // 已经不处理该角色的报文，在途交易要在这里结束并通知对手。
+                                await itemTradeService.DetachChannelAsync(
+                                    activeCharacter.Id,
+                                    runtimeSession.Id,
+                                    serverToken);
                             }
 
                             characterSessions.Release(activeCharacterLease);
@@ -2949,6 +2988,12 @@ public sealed class EntranceService(
                                 {
                                     await friendService.DetachChannelAsync(
                                         activeCharacter.Name,
+                                        runtimeSession.Id,
+                                        serverToken);
+                                    // 换角色：旧角色的在途交易同样要结束并通知对手，
+                                    // 否则对手会一直等一个已经不在线的会话。
+                                    await itemTradeService.DetachChannelAsync(
+                                        activeCharacter.Id,
                                         runtimeSession.Id,
                                         serverToken);
                                 }
@@ -3268,6 +3313,12 @@ public sealed class EntranceService(
                                     {
                                         await friendService.DetachChannelAsync(
                                             activeCharacter.Name,
+                                            runtimeSession.Id,
+                                            serverToken);
+                                        // 选角失败会丢弃 activeCharacter：在途交易也要
+                                        // 在这里结束，否则对手永远等不到取消。
+                                        await itemTradeService.DetachChannelAsync(
+                                            activeCharacter.Id,
                                             runtimeSession.Id,
                                             serverToken);
                                     }
@@ -3608,6 +3659,17 @@ public sealed class EntranceService(
                             await friendService.AttachChannelAsync(
                                 accountName,
                                 activeCharacter.Name,
+                                localUserId,
+                                runtimeSession.Id,
+                                packet => SendTownPacketAsync(packet, serverToken),
+                                serverToken);
+
+                            // 交易通道与好友通道同生命周期：同一个 SendTownPacketAsync 入口
+                            // （SerializedWriteStream 保证跨线程写入串行，不会交错）。
+                            await itemTradeService.AttachChannelAsync(
+                                accountName,
+                                activeCharacter.Name,
+                                activeCharacter.Id,
                                 localUserId,
                                 runtimeSession.Id,
                                 packet => SendTownPacketAsync(packet, serverToken),
@@ -4226,6 +4288,33 @@ public sealed class EntranceService(
                                     await error.WriteAsync(stream, serverToken);
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
                                     LogPacket("TX", runtimeSession, error);
+                                    continue;
+                                }
+
+                                // 托管冻结：交易栏里的物品不能再被邮寄（按 (栏,格) 或
+                                // InstanceId 命中即拒，服务端物品不动）。activeCharacter 由
+                                // 本分支开头的守卫保证非空，这里不再重复判空（否则会把流分析
+                                // 的"非空"状态打回"可能为空"）。
+                                if (itemTradeService.IsEscrowed(
+                                        activeCharacter.Id,
+                                        sendRequest.ListType,
+                                        sourceItem.Slot)
+                                    || itemTradeService.IsEscrowedInstance(
+                                        activeCharacter.Id,
+                                        sourceItem.InstanceId))
+                                {
+                                    var escrowError = GameProtocolEngine.CreateCommandError(
+                                        request,
+                                        errorCode: 7);
+                                    await escrowError.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, escrowError);
+                                    logger.LogWarning(
+                                        "escrowed item {ItemId} at ({ListType},{Slot}) refused for {Command}",
+                                        sourceItem.ItemId,
+                                        sendRequest.ListType,
+                                        sourceItem.Slot,
+                                        "MailboxSend");
                                     continue;
                                 }
 
@@ -5312,6 +5401,46 @@ public sealed class EntranceService(
                                     compoundItemCommand.SourceValue,
                                     compoundItemCommand.CraftCount,
                                     compoundItemFailure);
+                                continue;
+                            }
+
+                            // 托管冻结：材料里任何一件还在交易栏里就拒绝整次合成
+                            // （按 (栏,格) 或 InstanceId 命中即拒，服务端物品不动）。
+                            var compoundMaterialEscrowed = false;
+                            foreach (var compoundMaterial in compoundItemPlan.ConsumedItems)
+                            {
+                                mainInventory.TryGetValue(
+                                    compoundMaterial.Slot,
+                                    out var candidateMaterial);
+                                if (!itemTradeService.IsEscrowed(
+                                        activeCharacter.Id,
+                                        compoundMaterial.ListType,
+                                        compoundMaterial.Slot)
+                                    && (candidateMaterial is null
+                                        || !itemTradeService.IsEscrowedInstance(
+                                            activeCharacter.Id,
+                                            candidateMaterial.InstanceId)))
+                                {
+                                    continue;
+                                }
+
+                                compoundMaterialEscrowed = true;
+                                logger.LogWarning(
+                                    "escrowed item {ItemId} at ({ListType},{Slot}) refused for {Command}",
+                                    candidateMaterial?.ItemId,
+                                    compoundMaterial.ListType,
+                                    compoundMaterial.Slot,
+                                    "CompoundItem");
+                                break;
+                            }
+
+                            if (compoundMaterialEscrowed)
+                            {
+                                var escrowError = GameProtocolEngine.CreateCompoundItemFailure(
+                                    (byte)CompoundItemFailure.InvalidRecipe);
+                                await escrowError.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, escrowError);
                                 continue;
                             }
 
@@ -7262,6 +7391,33 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            // 交易托管冻结：放进交易栏的物品在托管期内不许再被搬走
+                            // （按 (栏,格) 或 InstanceId 命中即拒，客户端按 no-op 回包回滚）。
+                            // 上面的守卫已经保证 activeCharacter 非空，这里不再重复判空
+                            // （否则会把流分析的"非空"状态打回"可能为空"）。
+                            if (itemTradeService.IsEscrowed(
+                                    activeCharacter.Id,
+                                    sourceListType,
+                                    sourceSlot)
+                                || itemTradeService.IsEscrowedInstance(
+                                    activeCharacter.Id,
+                                    sourceItem.InstanceId))
+                            {
+                                await SendInventoryMoveNoOpAsync(
+                                    sourceListType,
+                                    sourceSlot,
+                                    destinationListType,
+                                    destinationSlot,
+                                    "the item is escrowed in an open trade");
+                                logger.LogWarning(
+                                    "escrowed item {ItemId} at ({ListType},{Slot}) refused for {Command}",
+                                    sourceItem.ItemId,
+                                    sourceListType,
+                                    sourceSlot,
+                                    "MoveItemSpace");
+                                continue;
+                            }
+
                             // A forward cargo withdrawal carries the occupied
                             // cargo source and an explicit empty bag target.
                             // Treat it as a newly entering bag item: fill every
@@ -7819,6 +7975,26 @@ public sealed class EntranceService(
                                         requestedConsumption.ItemId,
                                         inventoryItem?.ItemId,
                                         requestedConsumption.RequestedCount);
+                                    validTransaction = false;
+                                    break;
+                                }
+
+                                // 托管冻结：交易栏里的物品不能再被删除/消耗；命中即走
+                                // 本分支既有的失败回包（CreateDeleteItemError），物品不动。
+                                if (itemTradeService.IsEscrowed(
+                                        activeCharacter.Id,
+                                        listType,
+                                        requestedConsumption.Slot)
+                                    || itemTradeService.IsEscrowedInstance(
+                                        activeCharacter.Id,
+                                        inventoryItem.InstanceId))
+                                {
+                                    logger.LogWarning(
+                                        "escrowed item {ItemId} at ({ListType},{Slot}) refused for {Command}",
+                                        inventoryItem.ItemId,
+                                        listType,
+                                        requestedConsumption.Slot,
+                                        "DeleteItem");
                                     validTransaction = false;
                                     break;
                                 }
@@ -9478,6 +9654,31 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            // 托管冻结：交易栏里的物品不能再卖给 NPC（按 (栏,格) 或
+                            // InstanceId 命中即拒，走本分支既有的失败回包，物品不动）。
+                            if (itemTradeService.IsEscrowed(
+                                    activeCharacter.Id,
+                                    listType,
+                                    slot)
+                                || itemTradeService.IsEscrowedInstance(
+                                    activeCharacter.Id,
+                                    soldItem.InstanceId))
+                            {
+                                var escrowError = GameProtocolEngine.CreateCommandError(
+                                    request,
+                                    0x11);
+                                await escrowError.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, escrowError);
+                                logger.LogWarning(
+                                    "escrowed item {ItemId} at ({ListType},{Slot}) refused for {Command}",
+                                    soldItem.ItemId,
+                                    listType,
+                                    slot,
+                                    "SellItem");
+                                continue;
+                            }
+
                             var soldCount = (uint)Math.Clamp(
                                 requestedCount,
                                 1,
@@ -10129,6 +10330,32 @@ public sealed class EntranceService(
                                     dropCommand.Slot,
                                     dropCommand.Count,
                                     dropFailure);
+                                continue;
+                            }
+
+                            // 托管冻结：交易栏里的物品不能丢到地上（按 (栏,格) 或
+                            // InstanceId 命中即拒，走本分支既有的失败回包，物品不动）。
+                            if (itemTradeService.IsEscrowed(
+                                    activeCharacter.Id,
+                                    dropCommand.ItemSpace,
+                                    dropCommand.Slot)
+                                || itemTradeService.IsEscrowedInstance(
+                                    activeCharacter.Id,
+                                    dropPlan.DroppedItem.InstanceId))
+                            {
+                                var escrowError =
+                                    GameProtocolEngine.CreateDropItemErrorReply(
+                                        23,
+                                        replyItemSpace);
+                                await escrowError.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, escrowError);
+                                logger.LogWarning(
+                                    "escrowed item {ItemId} at ({ListType},{Slot}) refused for {Command}",
+                                    dropPlan.DroppedItem.ItemId,
+                                    dropCommand.ItemSpace,
+                                    dropCommand.Slot,
+                                    "DropItem");
                                 continue;
                             }
 
@@ -12853,6 +13080,12 @@ public sealed class EntranceService(
                     // sessionId 用同一个连接会话 id：旧会话的延迟清理不会误删新会话的通道。
                     await friendService.DetachChannelAsync(
                         activeCharacter.Name,
+                        runtimeSession.Id,
+                        CancellationToken.None);
+                    // 断线：流已经释放，走 CancellationToken.None 的旁路结束在途交易
+                    // （DetachChannelAsync 会把发起者当成已离场，只通知还活着的对手）。
+                    await itemTradeService.DetachChannelAsync(
+                        activeCharacter.Id,
                         runtimeSession.Id,
                         CancellationToken.None);
                 }

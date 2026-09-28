@@ -189,9 +189,16 @@ public sealed class ItemTradeService : BackgroundService
 
         // 客户端只能右键到同区可见的人，服务端仍独立判定：双方都在同一城镇同一区域，
         // 且都不在交易中（含等待应答的 Requested）。
-        if (_sessions.ContainsKey(characterId)
-            || !_townDirectory.TryGetSnapshot(characterId, out var requesterTown))
+        if (_sessions.ContainsKey(characterId))
         {
+            // 已在会话中（含 Requested）：静默丢弃，既不给自己回包也不打扰对手。
+            return;
+        }
+
+        if (!_townDirectory.TryGetSnapshot(characterId, out var requesterTown))
+        {
+            // 设计 §2.4：请求方不在城镇区域（刚进副本 / 已被移出区域目录）→ CMD 11 [0,0x64,1]。
+            await SendRequestFailureAsync(requester, cancellationToken);
             return;
         }
 
