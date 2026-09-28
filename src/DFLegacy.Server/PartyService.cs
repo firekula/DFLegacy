@@ -75,8 +75,13 @@ public sealed class PartyService : BackgroundService
     /// 真机证据（2026-09-28）：A 邀请 B、B 接受那一步发出的 NOTI 9 双方都看不见（HUD 不激活、队伍信息
     /// 列表为空、推荐伙伴仍把队友当无队伍的人）；1 分多钟后由 CMD 12 触发的一份内容几乎相同（只有
     /// nameSel 0→1）的 NOTI 9 一到，队伍立刻出现 ⇒ 包本身没错，只是客户端在那一刻没渲染、也不会自己重试。
-    /// 所以每次发布都排两次补播：给客户端两个"重来一次"的机会（这是对客户端不重试的兜底）。
+    /// 所以名册下发之后一律排两次补播：给客户端两个"重来一次"的机会（这是对客户端不重试的兜底）。
     /// 重复发同一份名册是安全的：客户端本来就收两份（定向 + 区域广播）。
+    /// **覆盖范围**：①所有走 <see cref="PublishRosterToAsync"/> 的发布（接受、CMD 12 改名、退队/被踢、
+    /// 离区）与 ②<see cref="OnAreaChangedAsync"/> 的换区/进区重播（它自己按区域 Build 包、不走上面那条
+    /// 发布路径，在 <see cref="_gate"/> 内单独排期）。
+    /// **边界**：补播只是"把同一份名册再发一遍"，治不了"客户端此刻根本解析不到某个成员 user"这类
+    /// 持续性的缺失（例如对方迟迟没出现在他的本地 user 表里）——那属于时序上游的问题，本兜底不保证能救。
     /// </summary>
     private static readonly TimeSpan FirstResettleDelay = TimeSpan.FromSeconds(2);
 
@@ -105,8 +110,9 @@ public sealed class PartyService : BackgroundService
 
     /// <summary>
     /// 待补播表：partyId → 该队尚未到期的两个补播时刻（见 <see cref="FirstResettleDelay"/>）。
-    /// **只有真正的发布点 <see cref="PublishRosterToAsync"/> 在 <see cref="_gate"/> 内登记**，而且是
-    /// 覆盖式登记（同一支队永远只留"最近一次发布"排的两个时刻，表不会随发布次数无界增长）；
+    /// **只在 <see cref="_gate"/> 内登记，且只有两处**：真正的发布点 <see cref="PublishRosterToAsync"/>
+    /// （真发布）与换区/进区重播 <see cref="OnAreaChangedAsync"/>，都走 <see cref="ScheduleResettle"/>；
+    /// 登记是覆盖式的（同一支队永远只留"最近一次下发"排的两个时刻，表不会随次数无界增长）；
     /// 补播自己走 `registerResettle: false` 的那条路，**绝不登记新项**——否则就成了无限循环。
     /// 队伍解散（<see cref="_parties.TryRemove"/> 那条路径）时随队伍一起清掉：partyId 会被复用，
     /// 残留项只会让新队伍白白多发一份名册。
@@ -166,7 +172,7 @@ public sealed class PartyService : BackgroundService
     /// 测试用：把待补播项统统推到过期，好让 <see cref="SweepExpiredAsync"/> 覆盖到"补播时刻到了"的路径
     /// （真机路径不会调用；生产代码靠真实时钟等满 2 秒 / 6 秒）。
     /// </summary>
-    internal void ExpireRefreshForTests()
+    internal void ExpireResettleForTests()
     {
         var expired = _timeProvider.GetUtcNow() - TimeSpan.FromSeconds(1);
         foreach (var (partyId, _) in _resettleSchedule)
@@ -613,6 +619,9 @@ public sealed class PartyService : BackgroundService
     /// 已知边界：私密区域（默认只有赛利亚房间 1/1）里每个成员各占一个实例，同 (城镇, 区域) 的
     /// "真实 uid"在对方的本地 user 表里解析不出来 → 那一行空白；私密区域里也无法组队
     /// （对方在他的实例里不可见，请求根本发不出）。
+    /// 本路径自己 Build 包（按区域替换槽位 uid），不走 <see cref="PublishRosterToAsync"/>，
+    /// 所以**补播要在这里单独排**（<see cref="ScheduleResettle"/>）：客户端在同一个门控上静默丢帧
+    /// 且不重试，换区/进区重播的故障面与发布完全相同（真机 L7：回到同区域后队友行才恢复显示）。
     /// </summary>
     public async Task OnAreaChangedAsync(
         Guid characterId,
@@ -621,6 +630,7 @@ public sealed class PartyService : BackgroundService
         ushort areaUserId,
         CancellationToken cancellationToken = default)
     {
+        var now = _timeProvider.GetUtcNow();
         List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
         List<(byte TownId, byte AreaId, GameServerPacket Packet)> areas = [];
         lock (_gate)
@@ -647,10 +657,15 @@ public sealed class PartyService : BackgroundService
                         memberAreaId,
                         BuildRosterPacketForArea(roster, memberTownId, memberAreaId)));
                 }
+
+                ScheduleResettle(roster, now);
             }
 
             foreach (var visible in RostersVisibleIn(townId, areaId))
             {
+                // 进区补发也一样：这份名册被客户端静默丢掉时，他的列表就一直空着（不会自己重试），
+                // 所以涉及的每支队伍都排一次补播（幂等，代价 = 每次换区多两次名册）。
+                ScheduleResettle(visible, now);
                 direct.Add((characterId, BuildRosterPacket(visible, characterId)));
             }
         }
@@ -712,28 +727,23 @@ public sealed class PartyService : BackgroundService
     /// 名册下发：每个成员自己那份（按他自己的区域替换槽位 uid）+ "曾通知过的区域"的旁观者那份。
     /// **不在任何城镇区域的成员**（在副本里等）只给"他自己可解析"的那一份（设计稿 §2.2.2）。
     /// </summary>
-    internal Task PublishRosterAsync(PartyRoster roster, CancellationToken cancellationToken)
-    {
-        Guid[] recipients;
-        lock (_gate)
-        {
-            recipients = [.. roster.Members.Select(member => member.CharacterId)];
-        }
-
-        return PublishRosterToAsync(roster, recipients, cancellationToken, registerResettle: true);
-    }
+    internal Task PublishRosterAsync(PartyRoster roster, CancellationToken cancellationToken) =>
+        // recipients 交给 PublishRosterToAsync 在**锁内**现取（= 此刻的成员），避免锁外读名册快照。
+        PublishRosterToAsync(roster, recipients: null, cancellationToken, registerResettle: true);
 
     /// <summary>
-    /// 名册下发：给 <paramref name="recipients"/> 各发一份按**他自己**区域替换的版本（内部薄包装
-    /// <see cref="PublishRosterAsync"/> 传的就是当前成员），并顺带刷新"曾通知过的区域"里的旁观者。
-    /// 收件人**不等于**名册成员（离队/被踢的人也要收一份"没有他"的新名册，
+    /// 名册下发：给 <paramref name="recipients"/> 各发一份按**他自己**区域替换的版本
+    /// （<paramref name="recipients"/> = null 时在**锁内**取当前成员），并顺带刷新"曾通知过的区域"里的
+    /// 旁观者。收件人**不等于**名册成员（离队/被踢的人也要收一份"没有他"的新名册，
     /// 客户端靠它自我清理并提示"已退出队伍"，设计稿 §5.3/§5.4）。
-    /// 这里是**唯一的补播登记点**：真发布（<paramref name="registerResettle"/> = true）在锁内排两次补播
-    /// （见 <see cref="FirstResettleDelay"/>）；补播自己（false）不再排期，否则无限循环。
+    /// 真发布（<paramref name="registerResettle"/> = true）在锁内排两次补播（见
+    /// <see cref="FirstResettleDelay"/>）；补播自己（false）不再排期，否则无限循环。
+    /// 名册成员/收件人**一律在锁内**取：`PartyRoster.Members` 先读 `Count` 再遍历槽数组，
+    /// 锁外读会撞上并发的 `TryAdd`（越界写）或 `Remove`（数组尾部留 null → 枚举时 NRE）。
     /// </summary>
     private async Task PublishRosterToAsync(
         PartyRoster roster,
-        IReadOnlyList<Guid> recipients,
+        IReadOnlyList<Guid>? recipients,
         CancellationToken cancellationToken,
         bool registerResettle)
     {
@@ -750,15 +760,17 @@ public sealed class PartyService : BackgroundService
             {
                 if (live)
                 {
-                    // 覆盖式登记：总是"最近一次发布"之后 2 秒 / 6 秒各补播一次（见 FirstResettleDelay）。
-                    _resettleSchedule[roster.PartyId] = new ResettleSchedule(
-                        now + FirstResettleDelay,
-                        now + SecondResettleDelay);
+                    ScheduleResettle(roster, now);
                 }
             }
             else if (!live)
             {
                 return;
+            }
+
+            if (recipients is null)
+            {
+                recipients = [.. roster.Members.Select(member => member.CharacterId)];
             }
 
             foreach (var characterId in recipients)
@@ -782,6 +794,16 @@ public sealed class PartyService : BackgroundService
             await _directory.BroadcastPartyPacketAsync(townId, areaId, packet, cancellationToken);
         }
     }
+
+    /// <summary>
+    /// **锁内调用**：给这支队伍排补播——覆盖成"最近一次下发之后 2 秒 / 6 秒各一次"
+    /// （为什么要补播见 <see cref="FirstResettleDelay"/>）。覆盖式 ⇒ 同一支队最多留两项，
+    /// 表不随下发次数（发布 + 换区重播）无界增长；补播路径本身**不会**走到这里。
+    /// </summary>
+    private void ScheduleResettle(PartyRoster roster, DateTimeOffset now) =>
+        _resettleSchedule[roster.PartyId] = new ResettleSchedule(
+            now + FirstResettleDelay,
+            now + SecondResettleDelay);
 
     /// <summary>
     /// **锁内调用**：本队"曾经通知过的区域" ∪ 此刻有成员站着的区域，并把新出现的区域记进累积集。
@@ -880,6 +902,9 @@ public sealed class PartyService : BackgroundService
         List<(byte TownId, byte AreaId)> knownAreas = [];
         byte slot = 0;
         var dissolved = false;
+        // 出锁后要用的名册数据（剩余人数）也在锁内取：出锁后一律不碰名册的可变成员
+        // （`Members`/`Count` 都是"先读一个值、再遍历/推导"的复合读，锁外读会撞上并发增删）。
+        var remainingCount = 0;
         lock (_gate)
         {
             if (!TryGetPartyOf(characterId, out roster))
@@ -908,6 +933,8 @@ public sealed class PartyService : BackgroundService
                 _notifiedAreas.Remove(roster.PartyId);
                 _resettleSchedule.TryRemove(roster.PartyId, out _);
             }
+
+            remainingCount = roster.Count;
         }
 
         if (roster is null)
@@ -938,7 +965,7 @@ public sealed class PartyService : BackgroundService
             "Character {CharacterId} left party {PartyId}; {Count} member(s) remain.",
             characterId,
             roster.PartyId,
-            roster.Count);
+            remainingCount);
     }
 
     /// <summary>
@@ -1065,11 +1092,12 @@ public sealed class PartyService : BackgroundService
 
         foreach (var roster in resettle)
         {
-            await PublishRosterToAsync(
-                roster,
-                [.. roster.Members.Select(member => member.CharacterId)],
-                cancellationToken,
-                registerResettle: false);
+            // recipients 传 null：收件人（此刻的成员）由 PublishRosterToAsync **在锁内**取。
+            // 别在这里先取快照再传进去——那是锁外读 `Members`：它先读 Count 再遍历槽数组，
+            // 并发 `TryAdd` 会让写入越界（IndexOutOfRangeException）、并发 `Remove` 会在数组尾部
+            // 留 null（枚举时 NRE），而异常被 ExecuteAsync 吞掉记日志后，这一轮已经摘掉/推进的补播项
+            // 不会重来——丢的恰好是这条兜底本身。
+            await PublishRosterToAsync(roster, recipients: null, cancellationToken, registerResettle: false);
         }
     }
 

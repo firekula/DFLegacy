@@ -348,6 +348,7 @@ internal static class PartySmokeTests
         await CheckSetPartyInfoAsync(check);
         await CheckAreaBroadcastAsync(check);
         await CheckRosterResettleAsync(check);
+        await CheckAreaChangeResettleAsync(check);
     }
 
     /// <summary>某个角色收件箱里的 NOTI 9 列表（断言"补播了一份逐字节相同的名册"用）。</summary>
@@ -795,10 +796,13 @@ internal static class PartySmokeTests
     /// 取不到 user 就静默跳过该行——那一刻没渲染出来就永久丢（勘察见
     /// party-protocol-recon-e-window-open.md §7、-f-partyui.md §门控）。真机证据：接受时的 NOTI 9
     /// 双方都看不见，1 分多钟后由 CMD 12 触发的、内容几乎相同的一份一到，队伍立刻显示 ⇒ 包没错，
-    /// 客户端只是不自己重试。服务端的兜底是"每次发布之后排两次补播"。
+    /// 客户端只是不自己重试。服务端的兜底是"名册下发之后排两次补播"（发布路径 + 换区/进区重播，
+    /// 后者见 `CheckAreaChangeResettleAsync`）。
     /// 本用例把补播时刻直接推到过期，断言每个收包者（含同区域的旁观者）又收到一份**逐字节相同**的名册；
-    /// 再断言已解散的队伍不会被补播。**把 `PublishRosterToAsync` 里的补播登记去掉（或让扫描不处理
-    /// 待补播项）时，"an expired refresh re-publishes ..." 那条断言会变红**（已实测）。
+    /// 再断言补播**不再排期**（不自激）与已解散的队伍不会被补播。**把 `PublishRosterToAsync` 里的补播
+    /// 登记去掉（或让扫描不处理待补播项）时，"an expired refresh re-publishes ..." 那条断言会变红；
+    /// 把补播路径的 `registerResettle: false` 误改回 true 时，"a resettle never schedules another one ..."
+    /// 那条断言会变红**（前者已实测）。
     /// </summary>
     private static async Task CheckRosterResettleAsync(Action<bool, string> check)
     {
@@ -819,7 +823,7 @@ internal static class PartySmokeTests
             "baseline: one publish gives every member two identical 20-byte rosters (direct + area broadcast)");
 
         harness.ClearAll();
-        harness.Service.ExpireRefreshForTests();
+        harness.Service.ExpireResettleForTests();
         await harness.Service.SweepExpiredAsync(CancellationToken.None);
 
         var alphaResettled = RostersOf(harness, "阿尔法");
@@ -839,17 +843,68 @@ internal static class PartySmokeTests
                     packet.ProtocolId == GameProtocolEngine.PartyInfoNotification),
             "a refresh produces rosters only (no NOTI 10, no failure receipt, nobody is dropped by it)");
 
+        // 补播**不自激**：补播路径不再排期，所以同一支队在一轮补播之后再推过期 + 扫描必须零包
+        // （否则每一次补播都会续出下一次，扫描每个周期都在无限重发）。有人把补播那一路的
+        // `registerResettle: false` 误改回 true 时，这条断言会变红（已实测）。
+        harness.ClearAll();
+        harness.Service.ExpireResettleForTests();
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 0
+                && harness.Of("布拉沃").Count == 0
+                && harness.Of("德尔塔").Count == 0,
+            "a resettle never schedules another one: a second expiry sweep produces no packets at all");
+
         // 解散：待补播项随队伍清掉，扫描再没有任何包可发（含旁观者）——绝不能把已不存在的队伍的
         // 名册再发一遍（客户端收到会把它重新加回本地队伍列表）。
         await harness.Service.HandleLeaveAsync(harness.IdOf("阿尔法"), CancellationToken.None);
         await harness.Service.HandleLeaveAsync(harness.IdOf("布拉沃"), CancellationToken.None);
         harness.ClearAll();
-        harness.Service.ExpireRefreshForTests();
+        harness.Service.ExpireResettleForTests();
         await harness.Service.SweepExpiredAsync(CancellationToken.None);
         check(harness.Of("阿尔法").Count == 0
                 && harness.Of("布拉沃").Count == 0
                 && harness.Of("德尔塔").Count == 0,
             "a dissolved party is never resettled: its pending refreshes die with it");
+    }
+
+    /// <summary>
+    /// 换区/进区重播也要进补播表（评审留的**同类缺口**）：`OnAreaChangedAsync` 自己按区域 Build 包
+    /// （不走 <c>PublishRosterToAsync</c>），所以补播要在它内部单独排。客户端在同一个门控上静默丢帧
+    /// 且不重试，换区重播的故障面与发布完全相同（真机 L7："回到同区域后队友行恢复显示"）。
+    /// **把 `OnAreaChangedAsync` 里的 `ScheduleResettle` 调用删掉时，补播那条断言会变红**（已实测）。
+    /// </summary>
+    private static async Task CheckAreaChangeResettleAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        // 先把"接受那一次发布"排的补播放掉：否则下面那次过期 + 扫描打的是它的排期，
+        // 换区到底排没排补播就测不出来了（初版用例正是被这个残留排期掩盖的）。
+        harness.Service.ExpireResettleForTests();
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+
+        // 换区：布拉沃去 1/1（同城镇另一个区域）——这一步的名册重播绕开了发布路径。
+        harness.ClearAll();
+        await harness.MoveToAsync("布拉沃", townId: 1, areaId: 1, uid: 21);
+        var alphaMoved = RostersOf(harness, "阿尔法").FirstOrDefault();
+        var bravoMoved = RostersOf(harness, "布拉沃").FirstOrDefault();
+        check(alphaMoved is { Payload.Length: 20 } && bravoMoved is { Payload.Length: 20 },
+            "baseline: the area change replays the roster to both members");
+
+        harness.ClearAll();
+        harness.Service.ExpireResettleForTests();
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+
+        var alphaResettled = RostersOf(harness, "阿尔法");
+        var bravoResettled = RostersOf(harness, "布拉沃");
+        check(alphaResettled.Count > 0
+                && bravoResettled.Count > 0
+                && alphaResettled.All(packet => packet.Payload.SequenceEqual(alphaMoved!.Payload))
+                && bravoResettled.All(packet => packet.Payload.SequenceEqual(bravoMoved!.Payload)),
+            "an area change schedules the resettle too: the replayed roster is re-sent byte-identically");
     }
 
     /// <summary>
