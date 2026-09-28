@@ -2503,6 +2503,11 @@ public static class GameProtocolEngine
     /// 先 vector clear 再逐条追加，所以这就是“清空 + 全量追加”：任何时刻都可以重发，
     /// 重发前不需要任何会话状态（与好友名单的“每会话一次”快照相反）。
     /// </summary>
+    /// <remarks>
+    /// 日期只做**钳制**、不抛异常：条目来自存档（旧档/手改可能带越界值），130 是玩家
+    /// 打开黑名单页就会发的回包，一个坏日期不能让整条会话被兜底逻辑断掉。钳制后写出的
+    /// 一定是 u8 能表示的 (年-1900, 月-1, 日)。
+    /// </remarks>
     public static GameServerPacket CreateBlacklistSnapshot(
         IReadOnlyList<GameBlacklistEntry> entries)
     {
@@ -2519,28 +2524,14 @@ public static class GameProtocolEngine
         foreach (var entry in entries)
         {
             ValidateBlacklistName(entry.NameBytes);
-            if (entry.Year is < 1900 or > 2155)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(entries),
-                    "The blacklist year must fit the client's year-1900 byte.");
-            }
-
-            if (entry.Month is < 1 or > 12)
-            {
-                throw new ArgumentOutOfRangeException(nameof(entries), "The blacklist month must be 1-12.");
-            }
-
-            if (entry.Day is < 1 or > 31)
-            {
-                throw new ArgumentOutOfRangeException(nameof(entries), "The blacklist day must be 1-31.");
-            }
-
+            var year = Math.Clamp(entry.Year, 1900, 2155);
+            var month = Math.Clamp(entry.Month, 1, 12);
+            var day = Math.Clamp(entry.Day, 1, 31);
             WriteLengthPrefixedBytes(writer, entry.NameBytes);
             // 客户端收包后做 +0x76C(1900) / +1 修正，所以线上存 (年-1900, 月-1, 日)。
-            writer.Write(checked((byte)(entry.Year - 1900)));
-            writer.Write(checked((byte)(entry.Month - 1)));
-            writer.Write(checked((byte)entry.Day));
+            writer.Write((byte)(year - 1900));
+            writer.Write((byte)(month - 1));
+            writer.Write((byte)day);
         }
 
         return new GameServerPacket(

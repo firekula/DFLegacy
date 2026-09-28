@@ -407,17 +407,31 @@ public sealed class FriendService
 
         // 黑名单是**双向的服务器侧过滤**：客户端在发送路径（0x8464F0/0x8495B0/0x811D21）
         // 和接收路径（NOTI 12 handler 0x41C994）都没有任何 CNRDBlackListdManager 访问，
-        // 被拉黑的人收不到任何提示也由服务器保证。任一方向命中都拒绝投递，只给发起者
-        // 一条中性白字提示——**原版拒绝文案未知**（这里自定义），且不区分“谁拉黑了谁”，
-        // 避免把名单状态透给对端。
+        // 过滤只能由服务器做。
+        // 两个方向都拒绝投递，但提示是不对称的：
+        //   命中来自**发起者自己的名单** → 发起者知道自己在拉黑谁，回一条中性白字提示；
+        //   命中来自**对端的名单**（= 自己被对方拉黑）→ **静默丢弃，一个包都不发**，
+        //   原版行为就是“被拉黑的人看不到任何提示”（勘察 §2.4），拒绝本身也不能泄露名单
+        //   状态。**原版提示文案未知**（“对方当前无法接收消息”是自定义的）。
+        // 注意“发起者完全无感知”服务端保证不了：悄悄话发起者的客户端在发包后会本地渲染
+        // 自己那一行（“给[X] : 文本”，见 WhisperAsync 的 remarks），我们唯一能保证的是
+        // 一个包都不发；这行是否仍然出现属真机观察项。
         // 名字比较按客户端语义**逐字节、大小写敏感**（CNRDBlackListdManager::FindByName
         // 的手写 strcmp），与好友名单的 OrdinalIgnoreCase 相反；客户端只会按本地 user
         // 注册表里的精确拼写发目标名，所以线上正常路径永远命中。
         // TODO(交易/组队邀请)：原版客户端对这些路径同样不做黑名单检查（0xB5DCD0 的
-        // 引用点里没有它们），落地时必须复用这里的双向检查。
-        if (await IsBlockedByBlacklistAsync(characterName, peerName, cancellationToken))
+        // 引用点里没有它们），落地时必须复用这里的两向检查；“对端名单命中”那一路同样
+        // 要保持静默。
+        if (_channels.TryGetValue(characterName, out var senderChannel)
+            && await IsBlacklistedAsync(senderChannel.AccountName, peerName, cancellationToken))
         {
             await SendNoticeAsync(characterName, "对方当前无法接收消息", cancellationToken);
+            return;
+        }
+
+        if (_channels.TryGetValue(peerName, out var peerChannel)
+            && await IsBlacklistedAsync(peerChannel.AccountName, characterName, cancellationToken))
+        {
             return;
         }
 
@@ -463,28 +477,14 @@ public sealed class FriendService
     }
 
     /// <summary>
-    /// 双向黑名单检查：发起者的名单里有对端，或对端的名单里有发起者，都算命中。
+    /// 查询某个账号的黑名单里是否有这个名字。名字比较是 Ordinal（大小写敏感），
+    /// 与客户端 CNRDBlackListdManager::FindByName 的逐字节比较一致。
     /// </summary>
     /// <remarks>
-    /// 对端离线时拿不到它的账号，只检查发起者自己的名单——离线对端本来也收不到消息
-    /// （调用方随后会回“对方不在线”），不存在旁路。名字比较是 Ordinal（大小写敏感），
-    /// 见 <see cref="RoutePeerMessageAsync"/> 的说明。
+    /// 对端离线时查不到它的账号，只能查发起者自己的名单——离线对端本来也收不到消息
+    /// （调用方随后会回“对方不在线”），不存在旁路。两向检查与提示的不对称规则见
+    /// <see cref="RoutePeerMessageAsync"/> 的说明。
     /// </remarks>
-    private async Task<bool> IsBlockedByBlacklistAsync(
-        string characterName,
-        string peerName,
-        CancellationToken cancellationToken)
-    {
-        if (_channels.TryGetValue(characterName, out var sender)
-            && await IsBlacklistedAsync(sender.AccountName, peerName, cancellationToken))
-        {
-            return true;
-        }
-
-        return _channels.TryGetValue(peerName, out var peer)
-            && await IsBlacklistedAsync(peer.AccountName, characterName, cancellationToken);
-    }
-
     private async Task<bool> IsBlacklistedAsync(
         string accountName,
         string characterName,

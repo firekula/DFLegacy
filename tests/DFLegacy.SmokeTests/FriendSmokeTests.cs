@@ -305,6 +305,21 @@ internal static class FriendSmokeTests
                 .SequenceEqual(new byte[] { 1, 0 }),
             "an empty snapshot still carries the non-zero flag so the client clears its list");
 
+        // 越界日期来自坏存档/手改：必须钳制到 u8 可表示范围，而不是抛异常把会话断掉。
+        var clamped = GameProtocolEngine.CreateBlacklistSnapshot(
+        [
+            new GameBlacklistEntry(Encoding.ASCII.GetBytes("Bad"), 1800, 0, 99),
+            new GameBlacklistEntry(Encoding.ASCII.GetBytes("Worse"), 9999, 13, 0)
+        ]);
+        check(clamped.Payload[1] == 2
+                && clamped.Payload[9] == 0        // 年 1800 -> 1900
+                && clamped.Payload[10] == 0       // 月 0 -> 1
+                && clamped.Payload[11] == 31      // 日 99 -> 31
+                && clamped.Payload[21] == 255     // 年 9999 -> 2155
+                && clamped.Payload[22] == 11      // 月 13 -> 12
+                && clamped.Payload[23] == 1,      // 日 0 -> 1
+            "out-of-range saved dates are clamped to the wire range, so a bad save cannot kill the session");
+
         var rejectedEmpty = false;
         try
         {
@@ -1558,7 +1573,8 @@ internal static class FriendSmokeTests
                     && IsBlacklistSnapshot(alphaPackets[beforeSecondSnapshot], ["布拉沃"]),
                 "CMD 130 can be repeated: the client clears and re-appends, so there is no once-per-session guard");
 
-            // 服务端双向拦截：A 拉黑 B 后，A→B 与 B→A 的悄悄话都被拒且各给发起者一条提示。
+            // 服务端双向拦截：A 拉黑 B 后，A→B 被拒且发起者（A）收到提示；B→A 也被拒，
+            // 但被拉黑的一方（B）**一个包都不收**（原版“被拉黑的人看不到任何提示”）。
             var alphaBeforeBlockedWhisper = alphaPackets.Count;
             var bravoBeforeBlockedWhisper = bravoPackets.Count;
             await service.WhisperAsync(
@@ -1588,18 +1604,16 @@ internal static class FriendSmokeTests
                 messageType: 1,
                 encoding.GetBytes("在吗"),
                 CancellationToken.None);
-            var blockedByTarget = bravoPackets.Skip(bravoBeforeCounterWhisper).ToArray();
-            check(alphaPackets.Count == alphaBeforeCounterWhisper,
-                "the blacklister receives no line when the blocked peer whispers them");
-            check(blockedByTarget.Length == 1
-                    && IsWhiteNotice(blockedByTarget[0], "对方当前无法接收消息"),
-                "the blocked peer gets the same neutral white notice, which does not reveal the blacklist");
+            check(alphaPackets.Count == alphaBeforeCounterWhisper
+                    && bravoPackets.Count == bravoBeforeCounterWhisper,
+                "a whisperer blacklisted by the peer is dropped in total silence: no packet to either side");
             check(alphaPackets.Skip(alphaBeforeBlockedWhisper)
                     .Concat(bravoPackets.Skip(bravoBeforeBlockedWhisper))
                     .All(packet => packet.Type != GameProtocolEngine.CommandPacketType),
                 "a refused whisper sends no type-1 command packet to either side");
 
-            // 1:1（NOTI 65）复用同一张双向检查：原版客户端在这条路径上同样不拦。
+            // 1:1（NOTI 65）复用同一套两向检查：原版客户端在这条路径上同样不拦；
+            // 命中对端名单的那一路同样静默（一个包都不发）。
             var alphaBeforeBlockedMessenger = alphaPackets.Count;
             var bravoBeforeBlockedMessenger = bravoPackets.Count;
             await service.SendMessengerMessageAsync(
@@ -1609,9 +1623,8 @@ internal static class FriendSmokeTests
                 encoding.GetBytes("1:1消息"),
                 CancellationToken.None);
             check(alphaPackets.Count == alphaBeforeBlockedMessenger
-                    && bravoPackets.Count == bravoBeforeBlockedMessenger + 1
-                    && IsWhiteNotice(bravoPackets[^1], "对方当前无法接收消息"),
-                "1:1 messages reuse the same two-way blacklist check: no NOTI 65, only the notice");
+                    && bravoPackets.Count == bravoBeforeBlockedMessenger,
+                "a 1:1 message from a blacklisted peer is dropped silently too: no NOTI 65 and no notice");
 
             // 解除拉黑后投递恢复（129 回成功结果，拦截随之解除）。
             await service.RemoveBlacklistAsync(
