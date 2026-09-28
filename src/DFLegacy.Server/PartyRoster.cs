@@ -4,16 +4,16 @@ namespace DFLegacy.Server;
 
 /// <summary>
 /// 队伍成员：角色 id + 显示名 + **当前**所在区域与区用户 id。
-/// 区域字段会在换区时更新（设计稿 §5.6）：NOTI 9 的槽位 uid 必须按收包者所在区域生成，
-/// 所以队伍必须知道每个成员"此刻在哪"。
+/// 区域字段会在换区时更新（设计稿 §5.6）——用 `with` **替换**名册里的元素而不是原地改写：
+/// 成员对象不可变，`PartyRoster.Members` 才能给出"锁外可用"的快照（见 <see cref="PartyRoster.Members"/>）。
 /// </summary>
-internal sealed class PartyMember
+internal sealed record PartyMember
 {
     public required Guid CharacterId { get; init; }
     public required string CharacterName { get; init; }
-    public required ushort AreaUserId { get; set; }
-    public required byte TownId { get; set; }
-    public required byte AreaId { get; set; }
+    public required ushort AreaUserId { get; init; }
+    public required byte TownId { get; init; }
+    public required byte AreaId { get; init; }
 
     public bool IsIn(byte townId, byte areaId) => TownId == townId && AreaId == areaId;
 }
@@ -41,7 +41,12 @@ internal sealed class PartyRoster
     public byte NameSelection { get; private set; }
     public byte MaxMembers { get; private set; }
     public int Count => _members.Count;
-    public IReadOnlyList<PartyMember> Members => _members;
+    /// <summary>
+    /// 名册快照：返回**新数组**。调用方（`PartyService`）的惯用法是"锁内取快照、出锁发包"，
+    /// 直接交出去内部的 `List` 会让出锁后的枚举撞上并发 `TryAdd`/`Remove` 的版本检查异常；
+    /// 成员对象本身也不可变，所以数组里的元素可以安全地在锁外读。
+    /// </summary>
+    public PartyMember[] Members => [.. _members];
     public PartyMember Leader => _members[0];
     public bool IsFull => _members.Count >= MaxMembers;
 
@@ -93,10 +98,15 @@ internal sealed class PartyRoster
         return true;
     }
 
+    /// <summary>
+    /// 改队名与人数上限。上限**不会低于当前人数**：降到一个比现有成员还小的值会让队伍处在
+    /// "3/2" 这种自相矛盾的状态，而客户端对这种状态的渲染未知（真机项），所以钳到
+    /// <c>[成员数, 4]</c>（设计稿 §2.5）。
+    /// </summary>
     public void SetInfo(byte nameSelection, byte maxMembers)
     {
         NameSelection = nameSelection;
-        MaxMembers = ClampMaxMembers(maxMembers);
+        MaxMembers = (byte)Math.Clamp((int)maxMembers, _members.Count, GameProtocolEngine.PartyMemberSlotCount);
     }
 
     public bool UpdateLocation(Guid characterId, byte townId, byte areaId, ushort areaUserId)
@@ -107,10 +117,13 @@ internal sealed class PartyRoster
             return false;
         }
 
-        var member = _members[index];
-        member.TownId = townId;
-        member.AreaId = areaId;
-        member.AreaUserId = areaUserId;
+        // 替换元素而不是原地改写：成员不可变，锁外读快照的人不会看到半个新位置（撕裂）。
+        _members[index] = _members[index] with
+        {
+            TownId = townId,
+            AreaId = areaId,
+            AreaUserId = areaUserId
+        };
         return true;
     }
 
