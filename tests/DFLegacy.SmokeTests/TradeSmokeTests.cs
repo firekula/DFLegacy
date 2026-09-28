@@ -11,7 +11,7 @@ internal static class TradeSmokeTests
         ArgumentNullException.ThrowIfNull(check);
         CheckTradePackets(check);
         CheckPlanner(check);
-        await Task.CompletedTask;
+        await CheckStoreAsync(check);
     }
 
     // 逐字段依据 .superpowers/sdd/trade-protocol-recon.md §2/§3：
@@ -419,6 +419,87 @@ internal static class TradeSmokeTests
             }
         }
     }
+
+    private static async Task CheckStoreAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        var potion = new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid());
+        var sword = new CharacterItemRecord(
+            9, TradeFixtures.SwordItemId, 1,
+            EquipmentQualitySeed: 0x4321, InstanceId: Guid.NewGuid());
+        check(await harness.SetInventoryAsync("阿尔法", gold: 5_000, [potion]) is not null
+                && await harness.SetInventoryAsync("布拉沃", gold: 7_000, [sword]) is not null,
+            "the two trade parties start with a persisted inventory");
+
+        var commit = await harness.Store.CommitItemTradeAsync(
+            new ItemTradeCommitRequest(
+                harness.IdOf("阿尔法"), "alice",
+                harness.IdOf("布拉沃"), "bobby",
+                [
+                    new ItemTradeEscrow(3, 0, 5, potion.InstanceId, 4, potion),
+                    new ItemTradeEscrow(0, 0, 0, Guid.Empty, 1_000, new CharacterItemRecord(0, 0, 1_000))
+                ],
+                [new ItemTradeEscrow(3, 0, 9, sword.InstanceId, 1, sword)],
+                InitiatorOfferedGold: 1_000,
+                PartnerOfferedGold: 0));
+        check(commit.Committed && commit.Failure == ItemTradeCommitFailure.None
+                && commit.Initiator is not null && commit.Partner is not null,
+            "a valid trade commits in one call");
+
+        var aliceInventory = commit.Initiator!.Inventory!;
+        var bravoInventory = commit.Partner!.Inventory!;
+        check(aliceInventory.Single(item => item.Slot == 5).CountOrValue == 6
+                && aliceInventory.Single(item => item.InstanceId == sword.InstanceId) is { Slot: 9 }
+                && commit.Initiator.Gold == 4_000,
+            "the giver keeps the unescrowed portion, receives the peer's item in a free slot and loses the offered gold");
+        check(bravoInventory.All(item => item.ItemId != TradeFixtures.SwordItemId)
+                && bravoInventory.Single(item => item.InstanceId == potion.InstanceId) is { CountOrValue: 4 }
+                && commit.Partner.Gold == 8_000,
+            "the receiver loses the escrowed item, receives exactly the escrowed portion and gains the gold");
+
+        var reloaded = new JsonGameStore(
+            harness.Options,
+            NullLogger<JsonGameStore>.Instance,
+            itemCatalog: harness.Items,
+            statCatalog: harness.Stats);
+        await reloaded.InitializeAsync(CancellationToken.None);
+        var persisted = await reloaded.GetCharacterAsync("alice", harness.IdOf("阿尔法"), CancellationToken.None);
+        check(persisted is not null
+                && persisted.Gold == 4_000
+                && persisted.Inventory!.Single(item => item.Slot == 5).CountOrValue == 6,
+            "the settlement is written to state.json, not only kept in memory");
+
+        // 盲写守门：交付未确认前，被动方的任何盲写保存都必须被拒（否则复制）
+        check(harness.Store.IsTradeDeliveryPending(harness.IdOf("阿尔法"))
+                && harness.Store.IsTradeDeliveryPending(harness.IdOf("布拉沃")),
+            "both characters carry a pending trade delivery until their session installs it");
+        check(await harness.Store.SaveCharacterItemSpacesAsync(
+                    "alice", harness.IdOf("阿尔法"), 4_000,
+                    [new CharacterItemRecord(5, TradeFixtures.PotionItemId, 10, InstanceId: potion.InstanceId)],
+                    [], [], CancellationToken.None) is null,
+            "a blind inventory save from a stale session is refused while the delivery is pending");
+        harness.Store.AcknowledgeTradeDelivery(harness.IdOf("阿尔法"), commit.TradeId);
+        check(!harness.Store.IsTradeDeliveryPending(harness.IdOf("阿尔法"))
+                && await harness.Store.SaveCharacterItemSpacesAsync(
+                    "alice", harness.IdOf("阿尔法"), 4_000,
+                    commit.Initiator.Inventory!,
+                    [], [], CancellationToken.None) is not null,
+            "after the session acknowledges, the same save path works again");
+
+        // 失败路径：托管物已被动过 → 不写盘
+        var before = File.ReadAllText(harness.Options.DataPath);
+        var failed = await harness.Store.CommitItemTradeAsync(
+            new ItemTradeCommitRequest(
+                harness.IdOf("布拉沃"), "bobby",
+                harness.IdOf("阿尔法"), "alice",
+                [new ItemTradeEscrow(3, 0, 5, Guid.NewGuid(), 1, potion)],
+                [],
+                InitiatorOfferedGold: 0,
+                PartnerOfferedGold: 0));
+        check(!failed.Committed && failed.Failure == ItemTradeCommitFailure.EscrowMissing
+                && File.ReadAllText(harness.Options.DataPath) == before,
+            "a settlement whose escrowed instance vanished writes nothing at all (atomic all-or-nothing)");
+    }
 }
 
 internal static class TradeFixtures
@@ -505,4 +586,177 @@ internal static class TradeFixtures
             Cash: 0,
             Gold: gold,
             Inventory: [.. inventory.Values]);
+}
+
+internal sealed class TradeHarness : IAsyncDisposable
+{
+    private readonly Dictionary<string, List<GameServerPacket>> _packets = new();
+    private readonly Dictionary<string, (Guid Id, string Account)> _characters = new();
+
+    private TradeHarness(
+        string root,
+        ServerOptions options,
+        ItemCatalog items,
+        CharacterStatCatalog stats,
+        JsonGameStore store,
+        TownSessionDirectory directory)
+    {
+        Root = root;
+        Options = options;
+        Items = items;
+        Stats = stats;
+        Store = store;
+        Directory = directory;
+    }
+
+    public string Root { get; }
+    public ServerOptions Options { get; }
+    public ItemCatalog Items { get; }
+    public CharacterStatCatalog Stats { get; }
+    public JsonGameStore Store { get; }
+    public TownSessionDirectory Directory { get; }
+
+    public Guid IdOf(string characterName) => _characters[characterName].Id;
+
+    public IReadOnlyList<GameServerPacket> Of(string characterName)
+    {
+        lock (_packets[characterName])
+        {
+            return [.. _packets[characterName]];
+        }
+    }
+
+    public void Clear(string characterName)
+    {
+        lock (_packets[characterName])
+        {
+            _packets[characterName].Clear();
+        }
+    }
+
+    public static async Task<TradeHarness> CreateAsync()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"dflegacy-trade-harness-{Guid.NewGuid():N}");
+        System.IO.Directory.CreateDirectory(root);
+        TradeFixtures.Create(root);
+        var options = new ServerOptions
+        {
+            DataPath = Path.Combine(root, "state.json"),
+            ScriptPvfPath = string.Empty,
+            SkillScriptPath = root
+        };
+        var items = TradeFixtures.CreateItems(root);
+        var stats = TradeFixtures.CreateStats(root);
+        var store = new JsonGameStore(
+            options,
+            NullLogger<JsonGameStore>.Instance,
+            itemCatalog: items,
+            statCatalog: stats);
+        var directory = new TownSessionDirectory(
+            options,
+            TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+
+        await store.CreateAccountAsync(
+            new CreateAccountRequest("alice", "password", OicqCode: "123456"),
+            CancellationToken.None);
+        await store.CreateAccountAsync(
+            new CreateAccountRequest("bobby", "password", OicqCode: "123456"),
+            CancellationToken.None);
+        var alpha = (await store.CreateCharacterAsync(
+            "alice", new CreateCharacterRequest("阿尔法", GrowType: 3), CancellationToken.None)).Character!;
+        var bravo = (await store.CreateCharacterAsync(
+            "bobby", new CreateCharacterRequest("布拉沃", GrowType: 3), CancellationToken.None)).Character!;
+
+        var harness = new TradeHarness(root, options, items, stats, store, directory);
+        harness._packets["阿尔法"] = [];
+        harness._packets["布拉沃"] = [];
+        harness._characters["阿尔法"] = (alpha.Id, "alice");
+        harness._characters["布拉沃"] = (bravo.Id, "bobby");
+        // Task 4 补：ItemTradeService 与 AttachChannelAsync
+        return harness;
+    }
+
+    private Func<GameServerPacket, ValueTask> Record(string characterName) =>
+        packet =>
+        {
+            lock (_packets[characterName])
+            {
+                _packets[characterName].Add(packet);
+            }
+
+            return ValueTask.CompletedTask;
+        };
+
+    public async Task<CharacterRecord?> SetInventoryAsync(
+        string characterName,
+        int gold,
+        IReadOnlyList<CharacterItemRecord> inventory)
+    {
+        var record = await Store.SaveCharacterItemSpacesAsync(
+            _characters[characterName].Account,
+            _characters[characterName].Id,
+            gold,
+            inventory,
+            [],
+            [],
+            CancellationToken.None);
+        // 交易测试自己造出来的存档状态不需要守门：直接把该角色的守门标记清掉。
+        if (record is not null)
+        {
+            Store.ClearTradeDeliveryPending(record.Id);
+        }
+
+        return record;
+    }
+
+    public async Task EnterTownAsync(
+        string characterName,
+        byte townId,
+        byte areaId,
+        ushort areaUserId)
+    {
+        var (id, account) = _characters[characterName];
+        // 交易只用到快照里的 (TownId, AreaId)；CharacterNo 不是本测试的关注点，填 0。
+        await Directory.EnterAsync(
+            new TownEntryRequest(
+                TownId: townId,
+                AreaId: areaId,
+                AreaUserId: areaUserId,
+                CharacterId: id,
+                CharacterNo: 0,
+                CharacterNameBytes: Encoding.ASCII.GetBytes(characterName),
+                DisplayName: characterName,
+                Peer: null,
+                X: 474,
+                Y: 234,
+                Direction: 5,
+                SendAsync: (_, _) => ValueTask.CompletedTask),
+            CancellationToken.None);
+    }
+
+    public Task LeaveTownAsync(string characterName)
+    {
+        var (id, _) = _characters[characterName];
+        if (Directory.TryGetSnapshot(id, out _))
+        {
+            // Task 4 补：交易服务落地后在这里取消该角色参与的交易。
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        // Task 4 补：ItemTradeService 落地后这里加 `await Service.StopAsync(CancellationToken.None);`
+        try
+        {
+            System.IO.Directory.Delete(Root, recursive: true);
+        }
+        catch (IOException)
+        {
+        }
+
+        return ValueTask.CompletedTask;
+    }
 }

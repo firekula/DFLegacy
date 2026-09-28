@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -103,6 +104,38 @@ public sealed record AccountFriendRecord(string Name, long AddedAtUnix);
 /// 与好友条目不同，名字匹配在客户端是逐字节大小写敏感的（CNRDBlackListdManager::FindByName）。
 /// </summary>
 public sealed record AccountBlacklistRecord(string Name, int Year, int Month, int Day);
+
+/// <summary>一笔交易的落库请求：两侧的托管快照 + 各自报出的金币。</summary>
+public sealed record ItemTradeCommitRequest(
+    Guid InitiatorCharacterId,
+    string InitiatorAccountName,
+    Guid PartnerCharacterId,
+    string PartnerAccountName,
+    IReadOnlyList<ItemTradeEscrow> InitiatorEscrows,
+    IReadOnlyList<ItemTradeEscrow> PartnerEscrows,
+    int InitiatorOfferedGold,
+    int PartnerOfferedGold);
+
+public enum ItemTradeCommitFailure
+{
+    None,
+    CatalogUnavailable,
+    CharacterMissing,
+    EscrowMissing,
+    NoSpace,
+    WeightExceeded,
+    GoldOverflow,
+    // 托管期间金币被别的途径扣掉（如邮件寄钱）：结算失败并按 CMD 26 code 1 中止整笔。
+    GoldMissing
+}
+
+public sealed record ItemTradeCommitResult(
+    bool Committed,
+    ItemTradeCommitFailure Failure,
+    Guid TradeId,
+    CharacterRecord? Initiator,
+    CharacterRecord? Partner,
+    ItemTradeSettlementPlan? Plan);
 
 public enum FriendUpdateFailure
 {
@@ -430,7 +463,8 @@ public sealed class JsonGameStore(
     ServerOptions options,
     ILogger<JsonGameStore> logger,
     CharacterExperienceCatalog? experienceCatalog = null,
-    ItemCatalog? itemCatalog = null)
+    ItemCatalog? itemCatalog = null,
+    CharacterStatCatalog? statCatalog = null)
 {
     private const byte LegacyOverlordContractServiceType = 17;
     private const int DefaultAccountCash = 50_000;
@@ -542,6 +576,12 @@ public sealed class JsonGameStore(
     ];
 
     private readonly SemaphoreSlim _gate = new(1, 1);
+
+    // 交易交付守门：一笔交易落库后，两个角色在各自会话安装新状态之前，
+    // 拒绝任何"把调用方内存里的背包整份写回"的盲写保存——否则被动方会话会
+    // 用陈旧内存覆盖掉刚收到的物品，等价于复制。
+    private readonly ConcurrentDictionary<Guid, Guid> _pendingTradeDeliveries = new();
+
     private List<AccountRecord> _accounts = [];
     private uint _nextCharacterNo = 1;
     private uint _nextNormalAccountUid = AccountUidRules.NormalUidStart;
@@ -558,6 +598,32 @@ public sealed class JsonGameStore(
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
+
+    public bool IsTradeDeliveryPending(Guid characterId) =>
+        _pendingTradeDeliveries.ContainsKey(characterId);
+
+    public void AcknowledgeTradeDelivery(Guid characterId, Guid tradeId) =>
+        _pendingTradeDeliveries.TryRemove(new KeyValuePair<Guid, Guid>(characterId, tradeId));
+
+    internal void ClearTradeDeliveryPending(Guid characterId) =>
+        _pendingTradeDeliveries.TryRemove(characterId, out _);
+
+    private bool TryFindCharacterLocked(
+        string accountName,
+        Guid characterId,
+        out AccountRecord account,
+        out int index,
+        out CharacterRecord character)
+    {
+        var found = _accounts.FirstOrDefault(candidate =>
+            string.Equals(candidate.UserName, accountName, StringComparison.OrdinalIgnoreCase));
+        account = found!;
+        index = found is null
+            ? -1
+            : found.Characters.FindIndex(candidate => candidate.Id == characterId);
+        character = index >= 0 ? found!.Characters[index] : null!;
+        return index >= 0;
+    }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -1626,6 +1692,25 @@ public sealed class JsonGameStore(
         }
     }
 
+    /// <summary>按 (账号, 角色 id) 读角色：交易服务校验托管与算金币要用。</summary>
+    public async Task<CharacterRecord?> GetCharacterAsync(
+        string accountName,
+        Guid characterId,
+        CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            return TryFindCharacterLocked(accountName, characterId, out _, out _, out var character)
+                ? character
+                : null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<CharacterRosterEntry[]> GetCharacterRosterAsync(
         uint accountUid,
         CancellationToken cancellationToken = default)
@@ -2510,6 +2595,18 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(senderCharacterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return new CharacterMailSendResult(
+                    false,
+                    null,
+                    Guid.Empty,
+                    null,
+                    CharacterMailSendFailure.SenderStateChanged);
+            }
+
             var senderOwner = _accounts.FirstOrDefault(account =>
                 string.Equals(account.UserName, userName, StringComparison.OrdinalIgnoreCase));
             var senderIndex = senderOwner?.Characters.FindIndex(character =>
@@ -2691,6 +2788,13 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return null;
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(candidate.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
@@ -3099,6 +3203,13 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return null;
+            }
+
             var account = _accounts.FirstOrDefault(x =>
                 string.Equals(x.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
@@ -3156,6 +3267,143 @@ public sealed class JsonGameStore(
         }
     }
 
+    /// <summary>
+    /// 一笔交易的原子结算：同一把 _gate 内读完双方 → 校验与规划 → 应用 → 一次落库。
+    /// 任一步失败都返回失败且**不写盘**，所以不存在"一方加货一方没扣"的中间态。
+    /// </summary>
+    public async Task<ItemTradeCommitResult> CommitItemTradeAsync(
+        ItemTradeCommitRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (itemCatalog is null || statCatalog is null)
+            {
+                return new ItemTradeCommitResult(
+                    false, ItemTradeCommitFailure.CatalogUnavailable, Guid.Empty, null, null, null);
+            }
+
+            if (!TryFindCharacterLocked(
+                    request.InitiatorAccountName,
+                    request.InitiatorCharacterId,
+                    out var initiatorAccount,
+                    out var initiatorIndex,
+                    out var initiator)
+                || !TryFindCharacterLocked(
+                    request.PartnerAccountName,
+                    request.PartnerCharacterId,
+                    out var partnerAccount,
+                    out var partnerIndex,
+                    out var partner))
+            {
+                return new ItemTradeCommitResult(
+                    false, ItemTradeCommitFailure.CharacterMissing, Guid.Empty, null, null, null);
+            }
+
+            var settlementRequest = new ItemTradeSettlementRequest(
+                initiator,
+                partner,
+                new ItemTradeSideState(
+                    request.InitiatorCharacterId,
+                    request.InitiatorEscrows,
+                    request.InitiatorOfferedGold),
+                new ItemTradeSideState(
+                    request.PartnerCharacterId,
+                    request.PartnerEscrows,
+                    request.PartnerOfferedGold));
+            if (!ItemTradePlanner.TryPlanSettlement(
+                    settlementRequest,
+                    itemCatalog,
+                    statCatalog,
+                    out var plan,
+                    out var failure))
+            {
+                return new ItemTradeCommitResult(
+                    false,
+                    failure switch
+                    {
+                        ItemTradeFailure.SettlementNoSpace => ItemTradeCommitFailure.NoSpace,
+                        ItemTradeFailure.SettlementWeightExceeded => ItemTradeCommitFailure.WeightExceeded,
+                        ItemTradeFailure.SettlementGoldOverflow => ItemTradeCommitFailure.GoldOverflow,
+                        ItemTradeFailure.SettlementGoldMissing => ItemTradeCommitFailure.GoldMissing,
+                        ItemTradeFailure.SettlementEscrowMissing => ItemTradeCommitFailure.EscrowMissing,
+                        _ => ItemTradeCommitFailure.EscrowMissing
+                    },
+                    Guid.Empty,
+                    null,
+                    null,
+                    null);
+            }
+
+            var tradeId = Guid.NewGuid();
+            var updatedInitiator = ApplyTradePlan(initiator, plan.Initiator);
+            var updatedPartner = ApplyTradePlan(partner, plan.Partner);
+            initiatorAccount.Characters[initiatorIndex] = updatedInitiator;
+            partnerAccount.Characters[partnerIndex] = updatedPartner;
+            _pendingTradeDeliveries[request.InitiatorCharacterId] = tradeId;
+            _pendingTradeDeliveries[request.PartnerCharacterId] = tradeId;
+            await SaveLockedAsync(cancellationToken);
+            logger.LogInformation(
+                "Committed item trade {TradeId} between {Initiator} and {Partner}: gold {InitiatorGold:+0;-0;0}/{PartnerGold:+0;-0;0}, {InitiatorItems}/{PartnerItems} item(s).",
+                tradeId,
+                initiator.Name,
+                partner.Name,
+                plan.Initiator.GoldDelta,
+                plan.Partner.GoldDelta,
+                plan.Initiator.Deliveries.Count,
+                plan.Partner.Deliveries.Count);
+            return new ItemTradeCommitResult(
+                true,
+                ItemTradeCommitFailure.None,
+                tradeId,
+                updatedInitiator,
+                updatedPartner,
+                plan);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private static CharacterRecord ApplyTradePlan(CharacterRecord character, ItemTradeSidePlan plan)
+    {
+        var inventory = (character.Inventory ?? []).ToDictionary(item => item.Slot);
+        foreach (var removal in plan.Removals)
+        {
+            if (!inventory.TryGetValue(removal.SourceSlot, out var current)
+                || current.InstanceId != removal.InstanceId)
+            {
+                continue;
+            }
+
+            if (removal.RemainingCount == 0)
+            {
+                inventory.Remove(removal.SourceSlot);
+            }
+            else
+            {
+                inventory[removal.SourceSlot] = current with
+                {
+                    CountOrValue = removal.RemainingCount
+                };
+            }
+        }
+
+        foreach (var delivery in plan.Deliveries)
+        {
+            inventory[delivery.DestinationSlot] = delivery.Item;
+        }
+
+        return character with
+        {
+            Inventory = inventory.Values.OrderBy(item => item.Slot).ToList(),
+            Gold = Math.Max(0, character.Gold + plan.GoldDelta)
+        };
+    }
+
     public async Task<CharacterRecord?> CommitCompoundItemAsync(
         string userName,
         Guid characterId,
@@ -3189,6 +3437,13 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return null;
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -3276,6 +3531,13 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return null;
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -3350,6 +3612,13 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return null;
+            }
+
             var account = _accounts.FirstOrDefault(x =>
                 string.Equals(x.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
@@ -3432,6 +3701,13 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return null;
+            }
+
             var accountIndex = _accounts.FindIndex(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -3632,6 +3908,17 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return new IncreaseStatusItemUseResult(
+                    false,
+                    null,
+                    0,
+                    IncreaseStatusItemUseFailure.ItemStateChanged);
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -3730,6 +4017,19 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return new ExperienceBookItemUseResult(
+                    false,
+                    null,
+                    0,
+                    null,
+                    0,
+                    ExperienceBookItemUseFailure.ItemStateChanged);
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -3843,6 +4143,19 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return new ExperienceBookItemUseResult(
+                    false,
+                    null,
+                    0,
+                    null,
+                    0,
+                    ExperienceBookItemUseFailure.ItemStateChanged);
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -4000,6 +4313,21 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return new PvpExperienceItemUseResult(
+                    false,
+                    null,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    PvpExperienceItemUseFailure.ItemStateChanged);
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -4125,6 +4453,18 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return new SkillResetItemUseResult(
+                    false,
+                    null,
+                    0,
+                    0,
+                    SkillResetItemUseFailure.ItemStateChanged);
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -4259,6 +4599,19 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return new FatigueRecoveryItemUseResult(
+                    false,
+                    null,
+                    0,
+                    0,
+                    0,
+                    FatigueRecoveryItemUseFailure.ItemStateChanged);
+            }
+
             var account = _accounts.FirstOrDefault(candidate =>
                 string.Equals(
                     candidate.UserName,
@@ -4598,6 +4951,13 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return null;
+            }
+
             var account = _accounts.FirstOrDefault(x =>
                 string.Equals(x.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
@@ -5263,6 +5623,13 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            {
+                // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
+                // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
+                return null;
+            }
+
             var account = _accounts.FirstOrDefault(x =>
                 string.Equals(x.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
