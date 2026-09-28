@@ -1270,21 +1270,17 @@ internal static class FriendSmokeTests
             && tail[8] == 0;
     }
 
-    // NOTI 65：flag 是状态码，只有 0 才投递正文（非 0 只弹“无法接受信息”并丢掉正文）；
-    // type 0x12 进 1:1 窗口，type 1/7 进主聊天栏。线上的字节值写死成字面量：
+    // NOTI 65：只服务 CMD 17 类型 18 的 1:1 频道，type 恒 0x12；flag 是状态码，只有 0
+    // 才投递正文（非 0 只弹“无法接受信息”并丢掉正文）。线上的字节值写死成字面量：
     // 常量被改动时这些断言必须变红。
-    private static bool IsMessengerMessage(
-        GameServerPacket packet,
-        string name,
-        string text,
-        byte messageType = 0x12)
+    private static bool IsMessengerMessage(GameServerPacket packet, string name, string text)
     {
         var nameBytes = Encoding.GetEncoding(936).GetBytes(name);
         var textBytes = Encoding.GetEncoding(936).GetBytes(text);
         return packet.Type == 0
             && packet.ProtocolId == 65
             && packet.Payload.Length == 2 + 4 + nameBytes.Length + 4 + textBytes.Length
-            && packet.Payload[0] == messageType
+            && packet.Payload[0] == 0x12
             && packet.Payload[1] == 0
             && BinaryPrimitives.ReadUInt32LittleEndian(
                 packet.Payload.AsSpan(2, 4)) == nameBytes.Length

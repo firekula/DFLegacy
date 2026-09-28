@@ -111,10 +111,18 @@ public sealed class ListenerOptions
 /// <summary>成员离开区域时用哪种信号告诉同区其他人。</summary>
 public enum TownDepartureSignal
 {
-    /// <summary>发一条同 uid 的 USER_AREA、尾字节 active=0（默认，待真机验证）。</summary>
+    /// <summary>
+    /// 发一条 USER_AREA，且 (town, area) 填 0xFF/0xFF 哨兵（默认）。客户端只有在包里的
+    /// (town, area) 与自己当前区域不一致时才 mapMgr->RemoveCreature，递归销毁角色及其
+    /// 显示/特效子对象；同区 + active=0 只是隐藏标记，不会移除。
+    /// </summary>
     UserAreaInactive = 0,
 
-    /// <summary>向同区其他人重发不含该成员的 AREA_USERS 名单（已知副作用：可能重建区域并扯回本地角色）。</summary>
+    /// <summary>
+    /// 向同区其他人重发不含该成员的 AREA_USERS 名单。注意它**不能移除角色**：客户端的
+    /// AREA_USERS 逐条只做加/更新，对名单里缺席的 uid 不做任何处理（残留 actor 与特效
+    /// 依旧、重登可能显示旧位置），仅作兼容备选。
+    /// </summary>
     RosterResend = 1,
 }
 

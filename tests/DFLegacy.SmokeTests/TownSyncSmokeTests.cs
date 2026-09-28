@@ -47,7 +47,7 @@ internal static class TownSyncSmokeTests
         check(GameProtocolEngine.CreateUserArea(2, 5, townUser).Payload[9] == 1,
             "USER_AREA marks a joining actor as active");
         check(GameProtocolEngine.CreateUserArea(2, 5, townUser, active: false).Payload[9] == 0,
-            "USER_AREA marks a departing actor as inactive");
+            "the bare builder's active=0 tail is only the hide flag; it is not the departure signal");
         // 真正的销毁信号：同区 + active=0 只写 creature 的激活字节（隐藏），客户端只有在
         // (town, area) 与自己当前 scene 不一致时才 RemoveCreature；所以离场包必须带哨兵。
         var departure = GameProtocolEngine.CreateUserAreaDeparture(townUser);
@@ -67,8 +67,8 @@ internal static class TownSyncSmokeTests
     /// <summary>
     /// 缺陷回归（双客户端验收）：赛利亚房间（城镇 1/区域 1）在原作里是单人实例，服务端此前
     /// 按 (城镇, 区域) 分桶，两名玩家各自站在房间里也能互相看见。这里钉住私密区域的完整边界：
-    /// 名单/外观/位置/聊天都只及于成员自己，进入快照与离开（离线标记）照常，管理面按区域聚合，
-    /// 且同一份配置下的共享区域行为完全不变。
+    /// 名单/外观/位置/聊天都只及于成员自己，进入快照与离开（0xFF/0xFF 销毁信号）照常，
+    /// 管理面按区域聚合，且同一份配置下的共享区域行为完全不变。
     /// </summary>
     private static async Task CheckPrivateAreasAsync(Action<bool, string> check)
     {
@@ -151,7 +151,7 @@ internal static class TownSyncSmokeTests
             && alicePeers.Length == 1 && alicePeers[0].UserId == 1,
             "a private-area peer table keeps working per member and lists only its owner");
 
-        // 离线标记：Alice 离开后自己的实例被回收，Bob 看不到这条私人房间里的信号。
+        // 离开信号：Alice 离开后自己的实例被回收，Bob 看不到这条私人房间里的信号。
         var bobPacketsBeforeAliceLeft = bob.Packets.Count;
         await directory.LeaveAsync(aliceTicket, CancellationToken.None);
         check(directory.GetMemberCount(1, 1) == 1
@@ -159,7 +159,7 @@ internal static class TownSyncSmokeTests
             "a private-area member's departure still clears its own registration");
         check(bob.Packets.Count == bobPacketsBeforeAliceLeft
             && bob.Of(GameProtocolEngine.UserAreaNotification).Count == 0,
-            "the surviving private-area member sees nothing of the other member's offline marking");
+            "the surviving private-area member sees nothing of the other member's departure signal");
 
         await directory.LeaveAsync(bobTicket, CancellationToken.None);
         check(directory.GetMemberCount(1, 1) == 0,
@@ -1196,8 +1196,10 @@ internal static class TownSyncSmokeTests
         var witnessAreas = witness.Of(GameProtocolEngine.UserAreaNotification);
         check(witnessAreas.Count == 1
             && witnessAreas[0].Payload[0] == 1
+            && witnessAreas[0].Payload[2] == 0xFF
+            && witnessAreas[0].Payload[3] == 0xFF
             && witnessAreas[0].Payload[9] == 0,
-            "the old area is told the migrated member left with USER_AREA(active=0)");
+            "the old area is told the migrated member left with the 0xFF/0xFF region-mismatch USER_AREA");
         // 尾沿：没有外观广播就没有加入增量。加入增量只可能从 RefreshAppearanceAsync 发出，
         // 一个从不广播外观的成员对同区其他人只留下名单/对端表，事后也不会补一条 USER_AREA。
         check(witnessAreas.All(packet => packet.Payload[9] == 0),
