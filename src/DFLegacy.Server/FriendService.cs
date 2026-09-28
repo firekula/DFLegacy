@@ -172,6 +172,23 @@ public sealed class FriendService
                 ? GameProtocolEngine.CreateBuddyIn(state: 0, addedNameBytes)
                 : GameProtocolEngine.CreateBuddyOut(addedNameBytes),
             cancellationToken);
+
+        // 最后给添加者补一条在线好友的 mode-0 USERINFO 记录：条目与状态都有了，但添加者
+        // 客户端的本地 user 注册表里还没有这个 uid，“查看信息”的 FindByUid 门会静默
+        // 落空。登录时的记录推送覆盖不到“添加这一刻”，所以在这里补；离线好友没有可用
+        // uid（也还没有需要它的场景），不发——对方的记录会在下次上线播报（记录先于
+        // BUDDY_IN）时补上。
+        if (isOnline)
+        {
+            var friendRecord = await CreateMinimalPeerRecordAsync(
+                addedName,
+                addedChannel!,
+                cancellationToken);
+            if (friendRecord is not null)
+            {
+                await SendAsync(characterName, friendRecord, cancellationToken);
+            }
+        }
     }
 
     public async Task RemoveFriendAsync(

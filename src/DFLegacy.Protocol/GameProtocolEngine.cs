@@ -2237,8 +2237,10 @@ public static class GameProtocolEngine
     }
 
     /// <summary>
-    /// 离开信号用的 (town, area) 哨兵：真实城镇/区域 id 远小于它，收包客户端必然判定
-    /// “与当前区域不匹配”，从而走销毁角色的分支。
+    /// 离开信号用的 (town, area) 哨兵。安全性论证：客户端是拿这两个字节与**接收者自己
+    /// 当前所在区域**（scene+0x88/+0x8C）比较，只要不相等就走销毁角色的分支；而本服
+    /// 真实数据里不存在 town/area = 0xFF（城镇只有 1..5，区域取值远小于 0xFF），所以
+    /// 任何收包者都必然判定为“不匹配”，不会误伤，也不需要按收件人现算不同城镇。
     /// </summary>
     public const byte DepartureSentinel = 0xFF;
 

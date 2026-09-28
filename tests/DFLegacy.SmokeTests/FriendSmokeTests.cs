@@ -729,8 +729,9 @@ internal static class FriendSmokeTests
                 "whispering to yourself answers 不能给自己发悄悄话 instead of delivering twice");
 
             // 加好友成功：先发 type=1 id 63 追加条目（客户端提示"[名字]已被添加到好友
-            // 名单"），再按对方在线与否补一条 BUDDY_IN/BUDDY_OUT 就地定状态；绝不发快照
-            // ——NOTI 56 无条件追加，会把老好友全部再插一份。
+            // 名单"），再按对方在线与否补一条 BUDDY_IN/BUDDY_OUT 就地定状态，在线时最后
+            // 再补一条该好友的 USERINFO 记录（“查看信息”的 FindByUid 门要用）；绝不发
+            // 快照——NOTI 56 无条件追加，会把老好友全部再插一份。
             var daveBeforeAdd = davePackets.Count;
             await service.AddFriendAsync("dave", "戴夫", "艾琳", CancellationToken.None);
             var addTail = davePackets.Skip(daveBeforeAdd).ToArray();
@@ -745,6 +746,9 @@ internal static class FriendSmokeTests
             check(addTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "add never re-pushes the snapshot: NOTI 56 appends unconditionally, so the whole list would be duplicated");
+            check(addTail.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.UserInfoNotification),
+                "an offline friend's add pushes no USERINFO record: there is no uid to register");
             check((await store.GetFriendsAsync("dave", CancellationToken.None)).Count == 1,
                 "a successful add is persisted by the store");
 
@@ -1092,12 +1096,18 @@ internal static class FriendSmokeTests
             var ivanBeforeOnlineAdd = ivanPackets.Count;
             await service.AddFriendAsync("ivan", "伊万", "朱迪", CancellationToken.None);
             var onlineAddTail = ivanPackets.Skip(ivanBeforeOnlineAdd).ToArray();
-            check(onlineAddTail.Length == 2
+            check(onlineAddTail.Length == 3
                     && IsAddFriendResult(onlineAddTail[0], "朱迪", areaUserId: 21)
                     && onlineAddTail[1].ProtocolId == GameProtocolEngine.BuddyInNotification
                     && onlineAddTail[1].Payload[0] == 0
                     && BuddyNameExactly(onlineAddTail[1], "朱迪"),
                 "adding an online friend sends the id-63 append carrying D=his area user id, then a BUDDY_IN state update");
+            check(onlineAddTail.Length == 3
+                    && onlineAddTail[2].ProtocolId == GameProtocolEngine.UserInfoNotification
+                    && onlineAddTail[2].Payload[0] == 0
+                    && ReadUserInfoRecordUid(onlineAddTail[2]) == 21
+                    && UserInfoRecordNameEquals(onlineAddTail[2], "朱迪"),
+                "the online friend's USERINFO record is pushed last, so 查看信息 can resolve the freshly added uid");
             check(onlineAddTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "the online-friend add still sends no snapshot");
@@ -1110,6 +1120,9 @@ internal static class FriendSmokeTests
                     && offlineAddTail[1].ProtocolId == GameProtocolEngine.BuddyOutNotification
                     && BuddyNameExactly(offlineAddTail[1], "肯特"),
                 "adding an offline friend sends the id-63 append with D=0, then a BUDDY_OUT state update");
+            check(offlineAddTail.All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.UserInfoNotification),
+                "the offline-friend add pushes no USERINFO record");
             check(offlineAddTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "the offline-friend add still sends no snapshot");
