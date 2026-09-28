@@ -65,10 +65,8 @@ public sealed class PartyService : BackgroundService
     /// <summary>待决请求的存活窗口：客户端"拒绝"不发包，只能靠它收尾（设计稿 §5.2）。</summary>
     public static readonly TimeSpan RequestWindow = TimeSpan.FromSeconds(30);
 
-    /// <summary>CMD 13 失败码 18：未组队（dnf.str 0x2CE）。</summary>
+    /// <summary>CMD 13 失败码 18：未组队（dnf.str 0x2CE）。本轮只发得出这一个 CMD 13 失败码。</summary>
     private const byte NotInPartyErrorCode = 18;
-    /// <summary>CMD 13/14 失败码 19：队伍状态已变化（dnf.str 0x2CF）。</summary>
-    private const byte StateChangedErrorCode = 19;
     /// <summary>CMD 14 失败码 4：不是队长（dnf.str 0x2D0）。</summary>
     private const byte NotLeaderErrorCode = 4;
     /// <summary>CMD 14 失败码 8：槽位里没有人（dnf.str 0x2D2）。</summary>
@@ -185,7 +183,9 @@ public sealed class PartyService : BackgroundService
 
     /// <summary>
     /// CMD 10（peerType=0）：邀请 / 申请加入。校验顺序与失败形状见设计稿 §5.1：
-    /// 目标解析不到 → CMD 11 [0,100,0]；双方都有队伍 / 目标不是队长 / 限流 / 已有待决 → 静默；
+    /// 目标解析不到 → `CMD 11 [0,100,0]`；双方都有队伍 / 目标不是队长 / 限流 → 静默；
+    /// **目标已有待决请求 → 先到者优先**：后来者立刻收同形的 `CMD 11 [0,100,0]`（不用等 30 秒），
+    /// 目标正在看的那个窗口也不会被换掉；
     /// 被目标拉黑 → 只登记发起方（目标无感知），30 秒后照常给发起方失败提示。
     /// </summary>
     public async Task HandleRequestAsync(
@@ -218,15 +218,21 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        PartyRoster? requesterParty;
-        PartyRoster? targetParty;
+        // 队伍状态必须**在锁内**一次判完：名册是共享可变对象，锁外读 `Leader`（= `_members[0]`）
+        // 可能正好撞上"队长与最后一名队员先后退队"而抛 ArgumentOutOfRangeException 逸出 handler。
+        var bothInParties = false;
+        var targetIsNotLeader = false;
+        var partyIsFull = false;
         lock (_gate)
         {
-            TryGetPartyOf(requesterCharacterId, out requesterParty);
-            TryGetPartyOf(target.CharacterId, out targetParty);
+            TryGetPartyOf(requesterCharacterId, out var requesterParty);
+            TryGetPartyOf(target.CharacterId, out var targetParty);
+            bothInParties = requesterParty is not null && targetParty is not null;
+            targetIsNotLeader = targetParty is not null && targetParty.Leader.CharacterId != target.CharacterId;
+            partyIsFull = (targetParty?.IsFull ?? false) || (requesterParty?.IsFull ?? false);
         }
 
-        if (requesterParty is not null && targetParty is not null)
+        if (bothInParties)
         {
             _logger.LogInformation(
                 "Ignored a party request from {Requester} to {Target}: both are already in parties.",
@@ -235,7 +241,7 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        if (targetParty is not null && targetParty.Leader.CharacterId != target.CharacterId)
+        if (targetIsNotLeader)
         {
             // 客户端只会把请求发给队长（列表详情窗取 leaderSlot 的 uid），到不了这里的是异常包。
             _logger.LogInformation(
@@ -245,7 +251,7 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        if ((targetParty?.IsFull ?? false) || (requesterParty?.IsFull ?? false))
+        if (partyIsFull)
         {
             await SendRequestFailureAsync(requesterCharacterId, cancellationToken);
             return;
@@ -253,6 +259,7 @@ public sealed class PartyService : BackgroundService
 
         if (_pending.ContainsKey(target.CharacterId))
         {
+            // 先到者优先：目标已经有一条待决请求时不动它，只给后来者同形失败（设计稿 §5.1）。
             await SendRequestFailureAsync(requesterCharacterId, cancellationToken);
             return;
         }
@@ -320,7 +327,13 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        _pending.TryRemove(new KeyValuePair<Guid, PartyPendingRequest>(accepterCharacterId, pending));
+        // 幂等：拿不到（并发/重复的第二次接受）就直接收场。丢掉返回值会让两个并发接受都往下跑，
+        // 第二个要么重复广播名册，要么回一条本不该有的失败包。
+        if (!_pending.TryRemove(new KeyValuePair<Guid, PartyPendingRequest>(accepterCharacterId, pending)))
+        {
+            return;
+        }
+
         if (_timeProvider.GetUtcNow() > pending.ExpiresAt)
         {
             await SendRequestFailureAsync(pending.RequesterCharacterId, cancellationToken);
@@ -382,12 +395,11 @@ public sealed class PartyService : BackgroundService
 
         if (roster is null)
         {
-            // 队伍在等待期间满了 / 双方都有队伍：给接受方也回失败（两边都是"队伍状态变了"）。
-            await SendCommandErrorAsync(
-                accepterCharacterId,
-                GameProtocolEngine.ResponsePeerCommand,
-                StateChangedErrorCode,
-                cancellationToken);
+            // 队伍在等待期间满了 / 双方都有队伍 / 接受者已不是队长：给接受方也回失败。
+            // **形状必须与请求方完全一致**：`CMD 11 [0,100,0]`（peerType=100 → 文案 0x7567）。
+            // CMD 11 的客户端分支按 body[1] 当 peerType 分流（100 → 提示，1 → 交易窗），
+            // 填别的 errorCode（如 19）是未知 peerType → 接受方**什么都看不到**，静默失败（设计稿 §2.1）。
+            await SendRequestFailureAsync(accepterCharacterId, cancellationToken);
             return;
         }
 
@@ -437,20 +449,22 @@ public sealed class PartyService : BackgroundService
         CancellationToken cancellationToken = default)
     {
         Guid? victim = null;
-        PartyRoster? roster = null;
+        var isLeader = false;
         lock (_gate)
         {
-            TryGetPartyOf(leaderCharacterId, out roster);
-            if (roster is not null
-                && roster.Leader.CharacterId == leaderCharacterId
-                && slot < roster.Count
-                && slot != PartyRoster.LeaderSlot)
+            // 判定在锁内一次做完：锁外读 `Leader`（= `_members[0]`）会撞上名册被清空而抛异常。
+            if (TryGetPartyOf(leaderCharacterId, out var roster)
+                && roster.Leader.CharacterId == leaderCharacterId)
             {
-                victim = roster.Members[slot].CharacterId;
+                isLeader = true;
+                if (slot < roster.Count && slot != PartyRoster.LeaderSlot)
+                {
+                    victim = roster.Members[slot].CharacterId;
+                }
             }
         }
 
-        if (roster is null || roster.Leader.CharacterId != leaderCharacterId)
+        if (!isLeader)
         {
             await SendCommandErrorAsync(
                 leaderCharacterId,

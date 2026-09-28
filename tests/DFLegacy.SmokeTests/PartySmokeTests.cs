@@ -276,9 +276,76 @@ internal static class PartySmokeTests
         await CheckInviteFlowAsync(check);
         await CheckApplyToJoinFlowAsync(check);
         await CheckRequestRefusalsAsync(check);
+        await CheckResponseRefusalShapeAsync(check);
+        await CheckDuplicateAcceptIsInertAsync(check);
         await CheckTimeoutAndBlacklistAsync(check);
         await CheckLeaveAndKickAsync(check);
         await CheckSetPartyInfoAsync(check);
+    }
+
+    /// <summary>
+    /// 接受方也会失败（双方在等待期间各自建了队）——失败包的形状必须与请求方**完全一致**：
+    /// `CMD 11 [0,100,0]`。CMD 11 的客户端分支按 `body[1]` 当 peerType 分流，填别的 errorCode
+    /// （如 19）是未知 peerType → 接受方什么都看不到（设计稿 §2.1 的"三条必须遵守的形状"）。
+    /// </summary>
+    private static async Task CheckResponseRefusalShapeAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        // 等待期间双方各自用 CMD 12 建了 1 人队 → 接受时"双方都有队伍" → 接受方收失败。
+        await harness.Service.HandleSetInfoAsync(
+            harness.IdOf("阿尔法"), nameSelection: 5, nameBytes: [], maxMembers: 4, CancellationToken.None);
+        await harness.Service.HandleSetInfoAsync(
+            harness.IdOf("布拉沃"), nameSelection: 5, nameBytes: [], maxMembers: 4, CancellationToken.None);
+        harness.ClearAll();
+
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+
+        check(harness.Of("布拉沃").Count == 1
+                && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("布拉沃")[0].Payload.SequenceEqual(new byte[] { 0, 100, 0 })
+                && harness.Of("阿尔法").Count == 0,
+            "the accepter's refusal keeps the CMD 11 [0,100,0] shape instead of an unknown peerType that the client drops");
+    }
+
+    /// <summary>
+    /// 重复接受必须幂等：同一份待决请求被接受两次（第二次与第一次并发）只产出**一套**包 ——
+    /// 每个成员一条名册 + 请求方一条 NOTI 8，绝不多发一条失败回执（评审修复）。
+    /// 说明：`_pending.TryRemove` 的"读到了 / 还没摘掉"那个窗口里没有 await，冒烟用例无法在不加生产钩子的
+    /// 前提下把两次接受真的压进窗口里；这里断言的是**可观测契约**（第二次接受不产出任何包），
+    /// 守卫本身（检查 TryRemove 的返回值）靠代码可读性 + 评审保证。
+    /// </summary>
+    private static async Task CheckDuplicateAcceptIsInertAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        harness.ClearAll();
+
+        // 不 await 第一发就发第二发：harness 的发包会 await Task.Yield()，所以第一次接受会停在
+        // "给第一个成员发名册"处，第二次接受是**真的与它重叠**（而不是被同步跑完）。
+        var first = harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+        var second = harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), CancellationToken.None);
+        await Task.WhenAll(first, second);
+
+        check(harness.Of("布拉沃").Count(packet =>
+                        packet.ProtocolId == GameProtocolEngine.PartyInfoNotification) == 1
+                && harness.Of("阿尔法").Count(packet =>
+                        packet.ProtocolId == GameProtocolEngine.PartyInfoNotification) == 1
+                && harness.Of("阿尔法").Count(packet =>
+                        packet.ProtocolId == GameProtocolEngine.ResponsePeerNotification) == 1
+                && harness.Of("布拉沃").All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.ResponsePeerCommand)
+                && harness.Of("阿尔法").All(packet =>
+                        packet.ProtocolId != GameProtocolEngine.ResponsePeerCommand),
+            "a second (concurrent) accept is inert: one roster each plus one NOTI 8, never a failure receipt");
     }
 
     /// <summary>邀请：A 邀请 B（都无队伍）→ B 收 NOTI 7 → B 接受 → 双方各收一条 NOTI 9，A 另收 NOTI 8。</summary>
@@ -647,15 +714,18 @@ internal sealed class PartyHarness : IAsyncDisposable
         return harness;
     }
 
+    /// <summary>
+    /// 记录发包。刻意 <c>await Task.Yield()</c>（真机的 socket 写本来就是异步的）：只有让 handler 在
+    /// 发包处真的让出线程，"重复/并发接受"这类竞态用例才会交错到第二个 handler，而不是被同步跑完。
+    /// </summary>
     private Func<GameServerPacket, ValueTask> Record(string characterName) =>
-        packet =>
+        async packet =>
         {
+            await Task.Yield();
             lock (_packets[characterName])
             {
                 _packets[characterName].Add(packet);
             }
-
-            return ValueTask.CompletedTask;
         };
 
     public async ValueTask DisposeAsync()
