@@ -2416,12 +2416,13 @@ public static class GameProtocolEngine
     /// 好友下线（NOTI 55）。payload = [u8 0][u32 名字长度 + 名字][u8 flag]。
     /// </summary>
     /// <remarks>
-    /// flag 必须为 **1**：行的颜色/分组/徽标在有本地 user 记录时读 entry+0x38 与 entry+0xBC，
-    /// 只有 flag==1 会让该行走“无记录”的灰色未连接画法并排到最后一组（0x7F8031 的分支与
-    /// 0x7F75F0 排序的第四组）。这也是本版本唯一能让“已推过 USERINFO 的好友”看得出下线的
-    /// 服务端手段——user 记录在客户端没有删除路径，entry+0x30=-1 只在无记录时才参与绘制。
-    /// 代价（**真机观察项**）：flag!=0 时 0x501140 不再打“[%s]已退出游戏”聊天栏提示。
-    /// BUDDY_IN 的 flag 保持 0（上线正常显示）。
+    /// flag 的两个语义（两条都写 entry+0x30=-1，只有 +0xBC 与提示不同）：
+    ///   flag==0 → 只打“[%s]已退出游戏”聊天栏提示（0x501140），行样式不动；
+    ///   flag==1 → 行走“无记录”的灰色未连接画法并排到最后一组（0x7F8031 的分支与
+    ///             0x7F75F0 排序的第四组），同时抑制自己的重复提示。
+    /// 好友下线时 <see cref="FriendService"/> 先发 flag=0 再发 flag=1：既保留退出提示，
+    /// 又让行转灰（顺序反了提示会被抑制）。默认值 1 用于“只想要灰色”的场合（登录快照
+    /// 标记离线好友、加好友后的离线状态钉死）。BUDDY_IN 的 flag 保持 0（上线正常显示）。
     /// </remarks>
     public static GameServerPacket CreateBuddyOut(byte[] nameBytes, byte flag = 1)
     {

@@ -706,10 +706,35 @@ public sealed class FriendService
                 //
                 // Use the name the recipient stored: the client matches buddy entries by
                 // the exact name it sent when the friend was added.
-                var packet = isOnline
-                    ? GameProtocolEngine.CreateBuddyIn(state: 0, ClientEncoding.GetBytes(storedName))
-                    : GameProtocolEngine.CreateBuddyOut(ClientEncoding.GetBytes(storedName));
-                await TrySendToChannelAsync(ownerCharacterName, channel, packet, cancellationToken);
+                var storedNameBytes = ClientEncoding.GetBytes(storedName);
+                if (isOnline)
+                {
+                    // 上线只有一条 BUDDY_IN（flag=0，正常显示）。
+                    await TrySendToChannelAsync(
+                        ownerCharacterName,
+                        channel,
+                        GameProtocolEngine.CreateBuddyIn(state: 0, storedNameBytes),
+                        cancellationToken);
+                    continue;
+                }
+
+                // 下线要**两条** BUDDY_OUT，才能同时保留退出提示与灰色“未连接”样式：
+                //   第 1 条 flag=0 → 触发客户端聊天栏的“[%s]已退出游戏”提示（0x501140），
+                //                    行样式不动；
+                //   第 2 条 flag=1 → 行转灰/排末组（entry+0xBC=1），同时抑制它自己的
+                //                    重复提示（0x501140 的 flag 门），所以不会打两遍。
+                // 顺序必须是 0 → 1：反过来第二条会把第一条的提示抑制掉。两条的名字与
+                // 首字节完全一致，只有末尾 flag 不同。
+                await TrySendToChannelAsync(
+                    ownerCharacterName,
+                    channel,
+                    GameProtocolEngine.CreateBuddyOut(storedNameBytes, flag: 0),
+                    cancellationToken);
+                await TrySendToChannelAsync(
+                    ownerCharacterName,
+                    channel,
+                    GameProtocolEngine.CreateBuddyOut(storedNameBytes, flag: 1),
+                    cancellationToken);
             }
             catch (Exception exception)
             {

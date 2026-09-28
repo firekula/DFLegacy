@@ -979,8 +979,9 @@ internal static class FriendSmokeTests
                     && ReadUserInfoRecordUid(bravoOnlineRecord) == 1
                     && UserInfoRecordNameEquals(bravoOnlineRecord, "布拉沃")
                     && bravoLoginTail[1].ProtocolId == GameProtocolEngine.BuddyInNotification
+                    && bravoLoginTail[1].Payload[^1] == 0
                     && BuddyNameExactly(bravoLoginTail[1], "布拉沃"),
-                "a friend coming online pushes his mode-0 USERINFO record first, then BUDDY_IN for the stored name");
+                "a friend coming online pushes his mode-0 USERINFO record first, then exactly one flag-0 BUDDY_IN");
             check(bravoLoginTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "a presence change re-pushes no snapshot: the client appends one row per snapshot, so the ec67261 re-push duplicated the friend");
@@ -1015,11 +1016,20 @@ internal static class FriendSmokeTests
             var aliceBeforeLiveDetach = alicePackets.Count;
             await service.DetachChannelAsync("布拉沃", bravoSession, CancellationToken.None);
             var offlineTail = alicePackets.Skip(aliceBeforeLiveDetach).ToArray();
-            check(offlineTail.Length == 1
+            // 下线两条 BUDDY_OUT：flag 0（“[%s]已退出游戏”提示）在前、flag 1（灰色未连接）
+            // 在后；顺序反了提示会被 flag=1 的守卫抑制。
+            check(offlineTail.Length == 2
                     && offlineTail[0].ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && offlineTail[0].Payload[^1] == 0
+                    && offlineTail[1].ProtocolId == GameProtocolEngine.BuddyOutNotification
+                    && offlineTail[1].Payload[^1] == 1
+                    // 两条除末尾 flag 外完全一致：首字节 0、名字同拼写同长度。
+                    && offlineTail[0].Payload[0] == 0
+                    && offlineTail[1].Payload[0] == 0
                     && BuddyNameExactly(offlineTail[0], "布拉沃")
-                    && offlineTail[0].Payload[^1] == 1,
-                "the session that owns the channel goes offline and friends hear exactly one flag-1 BUDDY_OUT");
+                    && BuddyNameExactly(offlineTail[1], "布拉沃")
+                    && offlineTail[0].Payload.Length == offlineTail[1].Payload.Length,
+                "a logout sends exactly two BUDDY_OUT for the stored name: flag 0 (chat notice) then flag 1 (grey row)");
             check(offlineTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "an offline transition re-pushes no snapshot either, so it cannot insert a duplicate row");
@@ -1375,10 +1385,15 @@ internal static class FriendSmokeTests
 
             var daveBeforeDetach = davePackets.Count;
             await service.DetachChannelAsync("艾琳", brokenErinSession, CancellationToken.None);
-            check(davePackets.Skip(daveBeforeDetach).Any(packet =>
-                    packet.ProtocolId == GameProtocolEngine.BuddyOutNotification
-                    && BuddyNameEquals(packet, "艾琳")),
-                "a detached session marks the character offline for its friends");
+            var daveOfflinePackets = davePackets.Skip(daveBeforeDetach)
+                .Where(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification)
+                .ToArray();
+            check(daveOfflinePackets.Length == 2
+                    && daveOfflinePackets[0].Payload[^1] == 0
+                    && daveOfflinePackets[1].Payload[^1] == 1
+                    && BuddyNameEquals(daveOfflinePackets[0], "艾琳")
+                    && BuddyNameEquals(daveOfflinePackets[1], "艾琳"),
+                "a detached session marks the character offline for its friends (notice then grey flag)");
             var erinAfterDetach = erinPackets.Count;
             await service.WhisperAsync(
                 "戴夫",
@@ -1487,13 +1502,17 @@ internal static class FriendSmokeTests
 
             var ginaBeforeEchoDetach = ginaPackets.Count;
             await service.DetachChannelAsync("Echo", echoSession, CancellationToken.None);
-            var caseBuddyOut = ginaPackets.Skip(ginaBeforeEchoDetach)
-                .FirstOrDefault(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification);
-            check(caseBuddyOut is not null
-                    && caseBuddyOut.Payload[^1] == 1
-                    && BuddyNameExactly(caseBuddyOut, "ECHO")
-                    && !BuddyNameExactly(caseBuddyOut, "Echo"),
-                "BUDDY_OUT uses the recipient's stored spelling and flag 1 when the character logs out");
+            var caseBuddyOuts = ginaPackets.Skip(ginaBeforeEchoDetach)
+                .Where(packet => packet.ProtocolId == GameProtocolEngine.BuddyOutNotification)
+                .ToArray();
+            check(caseBuddyOuts.Length == 2
+                    && caseBuddyOuts[0].Payload[^1] == 0
+                    && caseBuddyOuts[1].Payload[^1] == 1
+                    && BuddyNameExactly(caseBuddyOuts[0], "ECHO")
+                    && BuddyNameExactly(caseBuddyOuts[1], "ECHO")
+                    && !BuddyNameExactly(caseBuddyOuts[0], "Echo")
+                    && !BuddyNameExactly(caseBuddyOuts[1], "Echo"),
+                "the two logout BUDDY_OUT packets use the recipient's stored spelling, flags 0 then 1");
 
             // 加好友后的状态更新：id 63 追加出来的条目停在构造默认状态，必须紧跟一条
             // BUDDY_IN/BUDDY_OUT（按名字就地改状态、不会追加），否则“刚加的在线好友”
