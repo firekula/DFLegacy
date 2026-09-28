@@ -1032,15 +1032,18 @@ public sealed class EntranceService(
                             cancellationToken);
                     }
 
-                    // 组队**不因换区退队**（用户决策）：只重播名册，让旧区域的旁观者把这一格看成 0。
-                    // 目录随后才退出，此刻名册广播仍能到达旧区域的在世会话。
+                    await townDirectory.LeaveAsync(townTicket, cancellationToken);
+                    townTicket = null;
+
+                    // 组队**不因换区退队**（用户决策）：只重播名册。必须放在 LeaveAsync 之后：
+                    // 目录摘除前调用的话，旧区域那份名册仍会把离场成员的槽位填成真实 uid，
+                    // 而他的 user 对象马上要随离区销毁、该 uid 可能被新玩家复用——正是"异区域
+                    // 必须填 0"要避免的错名风险；此刻目录里已经没有他，各区域的版本才会把该
+                    // 槽位替换成 0（设计稿 §2.2.2/§5.6）。
                     if (activeCharacter is not null)
                     {
                         await partyService.OnLeftAreaAsync(activeCharacter.Id, cancellationToken);
                     }
-
-                    await townDirectory.LeaveAsync(townTicket, cancellationToken);
-                    townTicket = null;
                 }
 
                 async Task ValidateAndCorrectCharacterStatsAsync(string reason)
