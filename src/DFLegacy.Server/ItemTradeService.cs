@@ -203,15 +203,17 @@ public sealed class ItemTradeService : BackgroundService
             return;
         }
 
-        // 被对方拉黑：完全静默（与悄悄话的既有策略一致，不向被拉黑方暴露）。
-        if (await IsBlacklistedAsync(target.AccountName, requester.CharacterName, cancellationToken))
-        {
-            _logger.LogInformation(
-                "Silently dropped a trade request from {Requester} to {Target}: the target's blacklist holds the requester.",
-                requester.CharacterName,
-                target.CharacterName);
-            return;
-        }
+        // 被对方拉黑：对目标完全静默（与悄悄话的既有策略一致），但"静默"只是其中一半——
+        // 设计 §2.6 的另一半是「请求方 30 秒后收到失败提示」，而且必须与普通「对方没理」
+        // 完全同形，否则"立刻就能重发"会成为拉黑的旁证。于是：
+        //   ① 不发 NOTI 7：目标无感知；
+        //   ② 只登记发起方的键（不登记目标）：不占用目标的交易名额，"同时只能一笔"不会
+        //      把目标自己发起的请求挡掉；
+        //   ③ 会话照建：30 秒扫描照常触发 Requested 分支，只给发起方回 CMD 11 [0,100,1]。
+        var blocked = await IsBlacklistedAsync(
+            target.AccountName,
+            requester.CharacterName,
+            cancellationToken);
 
         var session = new ItemTradeSession
         {
@@ -234,6 +236,15 @@ public sealed class ItemTradeService : BackgroundService
             LastActivityAt = now
         };
         _sessions[requester.CharacterId] = session;
+        if (blocked)
+        {
+            _logger.LogInformation(
+                "Silently dropped a trade request from {Requester} to {Target}: the target's blacklist holds the requester.",
+                requester.CharacterName,
+                target.CharacterName);
+            return;
+        }
+
         _sessions[target.CharacterId] = session;
         await SendAsync(
             session.Partner,

@@ -612,11 +612,17 @@ internal static class TradeSmokeTests
                 && BinaryPrimitives.ReadUInt16LittleEndian(bravoPackets[0].Payload.AsSpan(0, 2)) == 1,
             "the target receives exactly one NOTI 7 carrying the requester's area user id");
 
-        // 同一时间只能一笔：目标再被请求
+        // 同一时间只能一笔：已在会话中的角色（含等待应答的 Requested）再发请求被静默丢弃——
+        // 既不给自己回失败包，也不打扰对手。清空两侧收件箱后再断言，否则前一笔的 NOTI 7
+        // 会掩盖后一笔多发出来的包。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
         await harness.Service.HandleRequestAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
-        check(harness.Of("阿尔法").Count(packet =>
-                    packet.ProtocolId == GameProtocolEngine.ResponsePeerNotification) == 0,
-            "a second request while one is pending is dropped");
+        check(harness.Of("布拉沃").Count == 0
+                && harness.Of("阿尔法").All(packet =>
+                    packet.ProtocolId != GameProtocolEngine.RequestPeerNotification
+                    && packet.ProtocolId != GameProtocolEngine.ResponsePeerNotification),
+            "a second request while one is pending is dropped silently for both sides");
 
         harness.Clear("阿尔法");
         harness.Clear("布拉沃");
@@ -695,6 +701,51 @@ internal static class TradeSmokeTests
         check(harness.Of("阿尔法").Count == 1
                 && harness.Of("阿尔法")[0].Payload[0] == 0,
             "an unknown area user id is refused");
+
+        // 被拉黑（设计 §2.6 的两半）：目标侧完全无感知（没有 NOTI 7），发起方 30 秒后收到
+        // 与"对方没理"完全同形的 CMD 11 [0,100,1]——否则"立刻就能重发"会成为拉黑的旁证。
+        await harness.EnterTownAsync("布拉沃", townId: 1, areaId: 2, areaUserId: 2);
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        check(await harness.Store.AddBlacklistAsync("bobby", "阿尔法", CancellationToken.None)
+                == BlacklistUpdateFailure.None,
+            "the target puts the requester on its blacklist");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(harness.IdOf("阿尔法"), 2, CancellationToken.None);
+        check(harness.Of("布拉沃").Count == 0,
+            "a blacklisted target never learns about the request: not a single packet, not even NOTI 7");
+        check(await harness.Service.SweepExpiredAsync(
+                    DateTimeOffset.UtcNow + TimeSpan.FromSeconds(31),
+                    CancellationToken.None) == 1,
+            "the silently dropped request still holds the requester's own slot for 30 seconds");
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].Type == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload[0] == 0
+                && harness.Of("阿尔法")[0].Payload[1] == GameProtocolEngine.ItemTradePeerType
+                && harness.Of("阿尔法")[0].Payload[2] == 1
+                && harness.Of("布拉沃").Count == 0,
+            "the blacklisted request fails exactly like an ignored one (CMD 11 [0, 100, 1]) and the target stays silent");
+
+        // 对方的名额没有被占：被拉黑期间，目标自己照样能发起交易（发起方的键才登记）。
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("布拉沃"));
+        await harness.Service.HandleRequestAsync(harness.IdOf("布拉沃"), 1, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].Type == 0
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.RequestPeerNotification
+                && BinaryPrimitives.ReadUInt16LittleEndian(harness.Of("阿尔法")[0].Payload.AsSpan(0, 2)) == 2,
+            "the blacklisted target can still start its own trade: the dropped request never held its slot");
+
+        // 离区钩子（Task 6 的掉线/离区路径也走这里）：先取消这笔在途请求，再真的离区，
+        // 票据被用掉后目录里不再有这名角色。
+        await harness.LeaveTownAsync("布拉沃");
+        check(harness.Of("布拉沃").Count == 1
+                && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("布拉沃")[0].Payload[0] == 0
+                && !harness.Directory.TryGetSnapshot(harness.IdOf("布拉沃"), out _),
+            "LeaveTownAsync cancels the in-flight request window and really leaves the directory");
     }
 }
 
@@ -789,6 +840,7 @@ internal sealed class TradeHarness : IAsyncDisposable
     private readonly Dictionary<string, List<GameServerPacket>> _packets = new();
     private readonly Dictionary<string, (Guid Id, string Account)> _characters = new();
     private readonly Dictionary<string, Guid> _sessionIds = new();
+    private readonly Dictionary<string, TownMemberTicket?> _tickets = new();
 
     private TradeHarness(
         string root,
@@ -944,7 +996,8 @@ internal sealed class TradeHarness : IAsyncDisposable
     {
         var (id, account) = _characters[characterName];
         // 交易只用到快照里的 (TownId, AreaId)；CharacterNo 不是本测试的关注点，填 0。
-        await Directory.EnterAsync(
+        // 票据留下：LeaveTownAsync 要拿它真正离区（换区时后一张覆盖前一张）。
+        _tickets[characterName] = await Directory.EnterAsync(
             new TownEntryRequest(
                 TownId: townId,
                 AreaId: areaId,
@@ -963,12 +1016,16 @@ internal sealed class TradeHarness : IAsyncDisposable
 
     public async Task LeaveTownAsync(string characterName)
     {
-        var (id, _) = _characters[characterName];
-        if (Directory.TryGetSnapshot(id, out _))
+        // 与 EntranceService.LeaveTownAreaAsync 同序：先取消交易（此刻客户端仍在线上，对手
+        // 还收得到 NOTI 16），再真正离开区域。没有票据 = 本来就不在城镇里，什么都不做。
+        if (!_tickets.TryGetValue(characterName, out var ticket))
         {
-            // 交易要求双方同镇同区：离开该区域即取消并退回（仍在场的另一方收到 NOTI 16）。
-            await Service.CancelForAreaChangeAsync(id, CancellationToken.None);
+            return;
         }
+
+        _tickets.Remove(characterName);
+        await Service.CancelForAreaChangeAsync(_characters[characterName].Id, CancellationToken.None);
+        await Directory.LeaveAsync(ticket, CancellationToken.None);
     }
 
     public async ValueTask DisposeAsync()
