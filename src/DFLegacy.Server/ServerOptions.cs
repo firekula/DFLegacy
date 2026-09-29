@@ -196,53 +196,7 @@ public sealed class TownGhostOptions
     public int HiddenSeconds { get; set; } = 0;
 }
 
-/// <summary>
-/// 调试用：把进入副本的会话按一个「虚拟区域」注册进城镇目录，从而复用同一套
-/// USERINFO/AREA_USERS/USER_POSITION 报文，用来真机判定客户端在副本里是否接受
-/// 这套同屏机制（决定副本内队友位置同步走 TCP 还是服务端 UDP 中枢）。生产保持 false。
-/// </summary>
-public sealed class DungeonPeerProbeOptions
-{
-    public bool Enabled { get; set; } = false;
-
-    /// <summary>
-    /// <c>"PartyPush"</c>（默认）= 按客户端自带的副本组队机制：队长进副本时把同一份
-    /// NOTI 26/28/29 推给同区域的其他队员（客户端 DUNGEON_INFO 处理体对 4 个队伍槽位
-    /// 逐个设置副本上下文、FINISH_LOADING 处理体装队伍 HUD）。
-    /// <c>"AreaRecycle"</c> = 旧的对照实验：副本会话按城镇目录的虚拟区域重新注册，
-    /// 复用 USERINFO + AREA_USERS + 对端表 + USER_POSITION。
-    /// </summary>
-    public string Mode { get; set; } = "PartyPush";
-
-    /// <summary>PartyPush 模式下是否顺带互推各成员的 USERINFO(mode 0)（副本内队伍槽位要靠它解析出 user 对象）。</summary>
-    public bool PushAppearances { get; set; } = true;
-
-    /// <summary>
-    /// PartyPush 模式下**额外**在副本地图就绪后补发 <c>USER_AREA</c>（NOTI 23）区域条目。
-    /// 静态证据：客户端全二进制里能给"外来 uid"创建地图角色的只有 NOTI 23/24 两条路径
-    /// （USER_AREA 0x41EAB0 / AREA_USERS 0x41EEAF），NOTI 28 对队员的调用只能配置已有对象。
-    /// **副本里只能用 NOTI 23**：NOTI 24（AREA_USERS）的处理体会调用客户端的 SetTown，
-    /// 让客户端重新加载城镇地图（真机：队长被拉回城镇、会话在副本里却上报城镇坐标）。
-    /// </summary>
-    public bool AreaRecycle { get; set; } = false;
-
-    /// <summary>区域注册的延迟毫秒数（等客户端把副本地图加载完，否则角色会建在城镇地图上）。</summary>
-    public int AreaRecycleDelayMs { get; set; } = 2000;
-
-    /// <summary>AreaRecycle 模式：true = 用会话当前的城镇/区域注册（客户端能识别），false = 用下面两个值。</summary>
-    public bool UseSessionArea { get; set; } = true;
-
-    /// <summary>AreaRecycle + UseSessionArea=false 时使用的区域坐标。</summary>
-    public byte TownId { get; set; } = 1;
-    public byte AreaId { get; set; } = 0;
-
-    /// <summary>副本内收到 SET_USER_POSITION 时是否打日志（判定客户端在副本内是否照发位置）。</summary>
-    public bool LogPositions { get; set; } = true;
-}
-
 public sealed class DebugOptions
 {
     public TownGhostOptions TownGhost { get; set; } = new();
-
-    public DungeonPeerProbeOptions DungeonPeerProbe { get; set; } = new();
 }

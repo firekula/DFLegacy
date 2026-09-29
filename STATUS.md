@@ -18,6 +18,7 @@
 | 城镇同屏与附近聊天：同镇同区的成员目录、外观/位置转发与区域聊天接线完成（真机可见性待 Task 11）；位置走 TCP（默认限速 10 条/秒）；调试幽灵支持单人复现 | `TownSessionDirectory`、`AreaUserIdPool`、`TownGhostService`、`EntranceService` |
 | 交易系统：城镇内双向交易（24 物品格 + 金币、锁定/最终确认/原子结算、取消/超时/掉线/换区整笔回退）；协议要点与真机结论见 §2.5 | `ItemTradeService`、`ItemTradePlanner`、`JsonGameStore.CommitItemTradeAsync`、`EntranceService`（CMD 10/11/19/26） |
 | 组队系统：城镇内组队（邀请/申请加入、成员名单与队长、退出/踢人/掉线、队伍信息列表与推荐伙伴的数据前提）；协议要点与真机验收清单见 §2.6 | `PartyService`、`PartyRoster`、`EntranceService`（CMD 10/11/12/13/14） |
+| 同队进副本：每队共享副本实例（队员由自己会话入场、门口集结制换房、共享广播/掉落先到先得/各自结算）；实现摘要与真机验收清单见 §2.7 | `DungeonInstance`、`DungeonInstanceRegistry`、`DungeonPartyService`、`DungeonDoorAssembly`、`EntranceService` |
 
 ## 2. 验证状态
 
@@ -351,7 +352,64 @@
 - 不做等级差/COF 限制、不做组队经验与掉落分配（`ClearRewardCatalog.PartyMultipliers` 保持不动）；「拒绝组队」是**客户端本地选项、服务端不可见** → 无法据此过滤（对方开启后邀请仍会弹窗）。
 - `memberByte` 恒 0（语义未知）；队伍是**内存态、不落盘**，服务端重启即全部解散（与城镇目录一致）。
 - 同区成员会收到**两份逐字节相同的名册**（定向一份 + 区域广播一份）——无害冗余，真机 L1 顺带观察客户端是否幂等。
-- **副本内组队**（同队进图、共享副本实例、副本内队友位置同步）留待第二轮；本轮"进副本不退队"只是队伍记录跨区域持续。
+- **副本内组队**（同队进图、共享副本实例、副本内队友位置同步）留待第二轮；本轮"进副本不退队"只是队伍记录跨区域持续（第二轮已完成，见 §2.7）。
+
+### 2.7 同队进副本（组队第二轮）
+
+同队进副本已实现（设计稿 `docs/superpowers/specs/2026-09-29-dungeon-party-design.md`，计划 `docs/superpowers/plans/2026-09-29-dungeon-party.md`）：**每队共享一份副本实例**（布局/怪物/掉落/房间开放/结算全员共享）；**单人 = 以角色 id 为键的独立实例**，报文与改造前一致（自动化钉住）；**队员由自己的会话入场**（队长只投"待入队请求"，队员取走后自己执行，同区域是硬前提）；**门口集结制换房间**；**掉落全队共享、先到先得**；**结算各自出结果屏**、奖励按人数加成、卡片槽位取自己所处实例名册。实现提交 10 个（`1a0371d..39e7b0a`，其上另有 9 个探针/勘察提交 `8d5fdac..d7052b6`）；本轮 **Task 7 把临时探针整体退役**、全量验证并备好真机环境。**真机双客户端验收待用户按下方清单逐项填写结论**（2026-09-29 环境已备好，见下"无头冒烟"）。
+
+**实现要点（关键位置）**
+
+- **每队一个实例**：`DungeonInstanceRegistry`（`_byParty` 按 partyId、`_soloByCharacter` 按角色 id 两张键表，互不串用）、`DungeonInstance`（`IsParty => PartyId != 0`）；队伍实例在**最后一个成员离开**时就地销毁（`UnbindCharacter` → `Remove` → `StopRun`），其余成员的房间/掉落/run 原样保留。
+- **队员入场**：队长进副本成功后由 `DungeonPartyService.PostEntryRequests(...)` 在锁外投递（全员必须在队长进图前的同一 `(town, area)`，任一人不在 → **整队中止**、只记 `party entry aborted` 日志）；队员的包由**他自己的会话**发：取走请求 → 同区域/实例存活/仍有槽位三重校验 → 离城 → 绑实例 → **外观 → 名册 → `NOTI 26`（自己的槽位）→ `NOTI 11` → `NOTI 28` → `NOTI 29`**（`DungeonEntryPackets.PlanMemberEntry`；顺序沿用探针真机结论 `3d5bb45`——外观/名册必须先于副本报文）。
+- **门口集结制换房间**：`DungeonDoorAssembly`——第一个 `CMD 48` 只登记目标房间与到门口的人；**全员到齐立即推进**；**过半到门口开 10 秒倒计时**，到点强制推进（`TryAdvanceOnCountdown`；人数缩水会带着新人数重新评估，不能当成推进）。推进时给已到门口者补发 `CMD 48` 成功回包（客户端还在等）。
+- **共享广播**：击杀/房间开放/掉落向**同实例全员**各发一份（包由成员自己的发送句柄出，`NOTI 40` 见"已知限制"）；房间开放状态（`RoomStateFlag`）随实例，不随某个客户端。
+- **拾取**：`DungeonInstance` 锁内"取快照 + 摘除"一次完成——**全队共享、先到先得**；落库失败放回原地，别人仍可捡。
+- **结算**：各自结算、各自结果屏；`clear-card rewards prepared` 以 `partyMemberCount: instance.MemberCount` 计算人数加成；卡片槽位取实例名册里自己的那一格。
+
+**探针退役（本次）**
+
+- 删除 `EnterDungeonPeerProbeAsync` 与调用点、`DungeonProbeSpawnFor`、`SET_USER_POSITION` 的探针日志块（同段 `UpdatePositionAsync` 坐标转发保留）、`ServerOptions.DungeonPeerProbeOptions` 与 `DebugOptions.DungeonPeerProbe`、`GameplayDatagramService` 的 UDP 探针日志块。
+- 部署目录里仍带 `Debug.DungeonPeerProbe`（Enabled=true、AreaRecycle=true）的旧 `server.json` 已用干净备份还原。
+- 验证：`grep -rn "DungeonPeerProbe\|AreaRecycle\|DungeonPartyProbeState\|TryReadArea" src/ tests/ server.json` **无输出**（exit 1）。探针最后一次迭代保留在历史里备查（`d7052b6` 等 9 个提交）。
+
+**自动化（全绿，2026-09-29 本次运行）**
+
+- `dotnet run --project tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj -c Release` → 末行 `All DFLegacy protocol smoke tests passed.`
+- `dotnet build src/DFLegacy.Server/DFLegacy.Server.csproj -c Release --no-incremental` → **0 警告 0 错误**。
+- `DungeonPartySmokeTests`（1252 行）覆盖：实例/注册表并发语义（单人键与队伍键互不串用、最后一人离场销毁、断线不崩）、单人零回归（报文与改造前逐字节一致）、入场报文序列与顺序（外观 → 名册 → `NOTI 26/11/28/29`、`NOTI 26` 槽位=自己、无名册时退化）、同区域校验（异区整队不投递）、共享广播（击杀/掉落对全员各一次、捡拾者不收回自己的掉落广播）、拾取先到先得（并发争抢只出一个赢家、落库失败放回可再捡）、门口集结（全员即推 / 倒计时扫全队 / 坏成员不卡死 / 单人实例不参与）。
+
+**无头冒烟（发布件启动，未接客户端，2026-09-29 本次运行）**
+
+`taskkill` 停掉旧服 → `dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o /g/Game/DNF_ACT1/DF/town-test` → 还原 `server.json`（`.superpowers/sdd/2026-09-28-trade-system/town-test-server.json.bak`；旧部署配置里的 `Debug.DungeonPeerProbe` 块借此清除）→ 在 `DF/town-test` 起服（`./DFLegacy.Server.exe > server-dungeon-party.log 2>&1 &`）。实见：`Indexed 48343 script files`、`Entrance listener ready at 127.0.0.1:2311 / 7001 / 8080`（另有 `CharacterDatagramService` 2311、`GameplayDatagramService` 7002/7003、后台 `http://127.0.0.1:8081`）、整份启动日志**无 `Exception`/`error:`/告警**。核对完**该服务端已停掉**（不占端口，验收时按上面的命令现启即可；日志文件保留，重启用 `>>` 追加或先备份）。
+
+**真机验收清单（双客户端，2026-09-29；环境 `G:/Game/DNF_ACT1/DF/town-test`，日志 `server-dungeon-party.log`；账号见 §2.6，`test`/`test` 与 `shizuku`/`shizuku`）**
+
+清单照设计稿 §6，逐项**留空待用户填写**（结论列）；日志关键字供排查用。
+
+| # | 检查项 | 日志关键字 | 结论 |
+| --- | --- | --- | --- |
+| P1 | 同区域组队 → 队长选图 → 两人进入、同一房间看到同一批怪 | `Party member … entered dungeon`、`party instance` | 待填写 |
+| P2 | **两人能看到对方角色并看到移动**（A2 假设核心验证点） | 客户端画面 | 待填写 |
+| P3 | 一方杀怪 → 另一方**怪物消失/房间开放**同步 | `broadcast`/`MonsterDie` 相关 | 待填写 |
+| P4 | 掉落共享（一方捡走，另一方看到消失；顺带看非物主是否被客户端置灰） | — | 待填写 |
+| P5 | 通关结算：双方各自结果屏、奖励按人数加成 | `clear-card rewards prepared` | 待填写 |
+| P6 | 队员自己能回城；队长退出后队员仍在副本且实例不崩；其余成员能看到离开者角色消失 | `left dungeon instance` | 待填写 |
+| P7 | 队员不在同一区域 → 整队进不去（服务端日志有中止原因） | `party entry aborted` | 待填写 |
+| P8 | **单人进副本零回归**（报文序列 + 实玩一次） | 与改造前日志比对 | 待填写 |
+
+**真机重点检查点（待验证，先于清单细项看这三条）**
+
+1. **延迟的 `CMD 48` 回包客户端能否接受**：两人都走到门口时，全员到齐立即推进不受影响；只有"过半 → 10 秒倒计时"时先到的人要等回包。若客户端卡死/超时：把 `DungeonDoorAssembly` 的"过半开倒计时"改成"**立即推进 + 已有集合里的人照常，其余人被强制**"（`StartedCountdown` 分支也走 `Advance`，一步改动），并把真机结论记回本节。
+2. **队员客户端停在选图界面时完全不发包**：待入队请求只在队员**下一条包**到达时才被取走（主循环顶部，与交易"待安装"同位置）。若观察到"队员不进图"，先查是不是客户端停在选图界面一个包都不发；必要时给待入队请求加超时/提示。
+3. **P2 失败（两人互相不可见）的兜底**：静态证据指向客户端没有为队友建档/没登记进显示链表（勘察 §5.2 `creature[+0xE4]` 与 `sub_4C7890` 的登记门控）。兜底是按探针最后一次迭代（`d7052b6`）重新实现到生产路径：补发 `USER_AREA`（`NOTI 23`），用副本地图的 `[dungeon start area]` 出生点坐标、以"进副本前的 (town, area)"为区域、每轮 **外观 → `USER_AREA`（双向）→ 名册 → `NOTI 28`**、2.5s/6s/10s 三轮。**绝不用 `AREA_USERS`（`NOTI 24`——会把客户端拉回城镇地图）**。
+
+**已知限制**
+
+- **地狱模式的队员入场券不消耗**（只扣队长）：入场券在队长会话的入场路径扣（`Rejected hell entry…` 也在队长侧），队员会话只走待入队请求，不碰背包。将来要么改为全员扣、要么改成队伍共享一张（用户未拍板）。
+- **玩家丢弃（`NOTI 40`）不广播**：本轮只广播击杀/房间开放/掉落，主动丢弃的地面物品其他成员看不到。
+- **跨区域组队进图不做**：任一队员不在队长进图时的同一 `(town, area)` → 整队中止（队长按单人惯例回城，只记 `party entry aborted` 日志），这是设计稿 §3.2 的硬约束，不是 bug。
+- **疲劳按每房各自扣**：每个成员的会话在自己入场/换房时各扣一次（`ConsumeDungeonRoomFatigueAsync`，已有 `lastSettledRoomX/Y` 防镜像刷新重复扣），与原版"每人各自扣"一致。
 
 ## 3. 可复用的验证方法
 

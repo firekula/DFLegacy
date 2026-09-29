@@ -1071,81 +1071,6 @@ public sealed class EntranceService(
                     }
                 }
 
-                // 探针（临时，Debug.DungeonPeerProbe）：副本内重新走一遍「进区域」序列
-                // （外观 → 名单 → 对端表 → 组队名册），用来真机判定客户端在副本里是否接受
-                // 这套同屏机制（决定副本内队友位置同步走 TCP 复用还是服务端 UDP 中枢）。
-                //
-                // 区域坐标必须用会话当前的城镇/区域（客户端能识别的合法组合）：客户端的
-                // SetTown(town, area) 会按自己的城镇表校验，查不到就不更新场景区域指针，
-                // 之后所有 USER_AREA 都走「不匹配 → 移除」分支（探针会假阴性）。副本地图
-                // 没有 [path info] 标签，客户端进副本后场景区域仍是进入前的城镇区域。
-                // 探针关闭时立即返回，正常路径的报文一个不动。
-                async Task EnterDungeonPeerProbeAsync(CancellationToken cancellationToken)
-                {
-                    var probe = options.Debug.DungeonPeerProbe;
-                    if (!probe.Enabled || activeCharacter is null || currentTownId == 0)
-                    {
-                        return;
-                    }
-
-                    var probeTownId = probe.UseSessionArea ? currentTownId : probe.TownId;
-                    var probeAreaId = probe.UseSessionArea ? currentAreaId : probe.AreaId;
-
-                    var probePeer = gameplayDatagram.TryGetPeerInfo(
-                        runtimeSession.Id,
-                        localUserId,
-                        accountId: 1,
-                        out var peer)
-                            ? peer
-                            : null;
-
-                    townTicket = await townDirectory.EnterAsync(
-                        new TownEntryRequest(
-                            probeTownId,
-                            probeAreaId,
-                            localUserId,
-                            activeCharacter.Id,
-                            activeCharacter.CharacterNo,
-                            EncodeCharacterName(activeCharacter.Name),
-                            activeCharacter.Name,
-                            probePeer,
-                            currentX,
-                            currentY,
-                            currentDirection,
-                            SendTownPacketAsync),
-                        cancellationToken);
-
-                    // 与城镇进入一致：外观交给目录（存快照 + 广播给同区域其他人），
-                    // 后进的人才能在名单之前拿到它。这里不重复发 NOTI 33 之类的城镇包。
-                    var probeAppearance = SendTownAppearancePacket();
-                    await probeAppearance.WriteAsync(stream, cancellationToken);
-                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                    LogPacket("TX", runtimeSession, probeAppearance);
-                    await townDirectory.RefreshAppearanceAsync(
-                        townTicket,
-                        probeAppearance,
-                        cancellationToken);
-
-                    // 组队名册同样必须晚于外观：客户端按 uid 查本地 user 表建立
-                    // "谁属于哪支队伍"的链接。副本内重播一次，顺带看 P14 里缺的那一行能否恢复。
-                    await partyService.OnAreaChangedAsync(
-                        activeCharacter.Id,
-                        probeTownId,
-                        probeAreaId,
-                        localUserId,
-                        cancellationToken);
-
-                    logger.LogInformation(
-                        "Dungeon peer probe: {Name} (uid {UserId}) re-entered area {TownId}/{AreaId} while in dungeon {DungeonId} (ticket={HasTicket}, useSessionArea={UseSessionArea}).",
-                        activeCharacter.Name,
-                        localUserId,
-                        probeTownId,
-                        probeAreaId,
-                        currentDungeonId,
-                        townTicket is not null,
-                        probe.UseSessionArea);
-                }
-
                 // 队伍对端表（每人的 UDP 端点），收件人自己排第一：客户端按它建/更新同队成员的 UDP 通道。
                 GameServerPacket? BuildPartyPeerTable(
                     IReadOnlyList<PartySlotHandle>? slots,
@@ -11436,23 +11361,6 @@ public sealed class EntranceService(
                                     currentDirection,
                                     currentMovementValue,
                                     serverToken);
-
-                                // 探针：副本内客户端是否照发 SET_USER_POSITION——这决定
-                                // 副本内位置同步能否继续走 TCP 转发（而不是 UDP 中枢）。
-                                if (currentDungeonId != 0
-                                    && options.Debug.DungeonPeerProbe is
-                                        { Enabled: true, LogPositions: true })
-                                {
-                                    logger.LogInformation(
-                                        "Dungeon peer probe: SET_USER_POSITION from {Name} (uid {UserId}) in dungeon {DungeonId}: ({X},{Y}) direction={Direction} movement={MovementValue}.",
-                                        activeCharacter?.Name ?? "?",
-                                        localUserId,
-                                        currentDungeonId,
-                                        currentX,
-                                        currentY,
-                                        currentDirection,
-                                        currentMovementValue);
-                                }
                             }
 
                             // The local client already owns its movement.
@@ -12210,17 +12118,6 @@ public sealed class EntranceService(
                                 currentDungeonRoomX,
                                 currentDungeonRoomY);
                             await EnableEmptyBossRoomSettlementAsync(currentDungeonRoom);
-
-                            // 探针（临时，AreaRecycle 对照实验）：Task 7 退役前的真机兜底对照。
-                            // 与下面的正式组队入场**不是**互斥分支：探针只在显式配置时跑，
-                            // 绝不能反过来变成"关掉探针就等于关掉组队入场"。
-                            if (string.Equals(
-                                    options.Debug.DungeonPeerProbe.Mode,
-                                    "AreaRecycle",
-                                    StringComparison.OrdinalIgnoreCase))
-                            {
-                                await EnterDungeonPeerProbeAsync(serverToken);
-                            }
 
                             // 组队：队长自己的 NOTI 28/29 已经发完，现在给同区队员各投一条"待入队"请求
                             // ——队员的包由他自己的会话发（设计稿 §3.2），这里不代发任何包。
@@ -16330,20 +16227,6 @@ public sealed class EntranceService(
         ushort ItemId,
         uint CountOrValue,
         string Text);
-
-    /// <summary>
-    /// 探针（临时）：副本房间地图自带的出生点像素坐标（`[dungeon start area]`，用
-    /// <c>tools</c> 里的 PVF 读取脚本从 Script.pvf 读出；洛兰 s1/s2/s3 = map 2/3/4）。
-    /// 副本内画队友时用它当落点——用城镇坐标会让角色落在房间之外。
-    /// 没有该标签的地图回落到 s1 的出生点。
-    /// </summary>
-    private static (short X, short Y) DungeonProbeSpawnFor(ushort mapId) => mapId switch
-    {
-        2 => (272, 377),
-        3 => (787, 330),
-        4 => (775, 314),
-        _ => (272, 377),
-    };
 
     private EntranceContent LoadContent()
     {
