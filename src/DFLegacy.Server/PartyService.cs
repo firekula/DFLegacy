@@ -882,6 +882,32 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
+    /// 探针（临时）：按收包者生成组队名册包（收件人自己那份，槽位按他的区域解析）；不在队伍 → null。
+    /// 用于「外观（USERINFO）→ 名册 → 副本报文」的补播顺序（客户端槽位是在收名册那一刻按 uid
+    /// 查本地 user 表建链接的，记录晚到就建不出链接，与城镇同屏的"外观先于名单"同类）。
+    /// </summary>
+    internal GameServerPacket? GetProbeRosterPacket(Guid characterId)
+    {
+        if (!_partyByCharacter.TryGetValue(characterId, out var partyId)
+            || !_parties.TryGetValue(partyId, out var roster))
+        {
+            return null;
+        }
+
+        lock (_gate)
+        {
+            return BuildRosterPacket(roster, characterId);
+        }
+    }
+
+    /// <summary>探针（临时）：把包发给指定角色的通道；通道不在（离线/已摘除）时静默忽略。</summary>
+    internal Task SendProbeToCharacterAsync(
+        Guid characterId,
+        GameServerPacket packet,
+        CancellationToken cancellationToken) =>
+        SendAsync(characterId, packet, cancellationToken);
+
+    /// <summary>
     /// 探针（临时）：把包发给该角色所在队伍的**其他**成员（不含自己）；不在队伍时返回 0。
     /// 发送异常沿用 <see cref="SendAsync"/> 的口径：坏通道只告警、不影响其他人。
     /// </summary>

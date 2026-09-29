@@ -1165,6 +1165,22 @@ public sealed class EntranceService(
                     var permissions = GameProtocolEngine.CreateDungeonPermissions(
                         GetDungeonPermissions());
 
+                    // 记录先行：把自己的外观推给队员（客户端名册槽位是收名册那一刻按 uid 查本地
+                    // user 表的，记录晚到就只存槽位、不建"谁属于哪支队伍"的链接）。
+                    if (probe.PushAppearances)
+                    {
+                        var leaderAppearance = SendTownAppearancePacket();
+                        var pushed = await partyService.SendProbeToOtherMembersAsync(
+                            activeCharacter.Id,
+                            leaderAppearance,
+                            cancellationToken);
+                        logger.LogInformation(
+                            "Dungeon party probe: leader appearance of {Name} (uid {Uid}) pushed to {Count} member(s) before selection packets.",
+                            activeCharacter.Name,
+                            localUserId,
+                            pushed);
+                    }
+
                     foreach (var member in slots)
                     {
                         if (member.CharacterId == activeCharacter.Id)
@@ -1185,7 +1201,13 @@ public sealed class EntranceService(
                             continue;
                         }
 
-                        // 顺序与队长自己那份完全一致：状态 → 对端表 → UDP 主机 → 权限 → 选图资格。
+                        // 顺序：名册（此刻双方记录已就位）→ 状态 → 对端表 → UDP 主机 → 权限 → 选图资格。
+                        var memberRoster = partyService.GetProbeRosterPacket(member.CharacterId);
+                        if (memberRoster is not null)
+                        {
+                            await member.Send(memberRoster);
+                        }
+
                         await member.Send(GameProtocolEngine.CreateUserState(member.AreaUserId, state: 1));
                         var peerTable = BuildPartyPeerTableProbe(slots, member);
                         if (peerTable is not null)
@@ -1201,6 +1223,22 @@ public sealed class EntranceService(
                             member.CharacterName,
                             member.SlotIndex,
                             member.AreaUserId);
+                    }
+
+                    // 开外观窗口：队员本人的会话在随后的包处理里把自己的 USERINFO 推给队长
+                    // （只有他本人的会话才建得出自己的外观包）。窗口比选图停留时间略长。
+                    if (probe.PushAppearances)
+                    {
+                        foreach (var slot in slots)
+                        {
+                            DungeonPartyProbeState.OpenAppearanceWindow(
+                                slot.CharacterId,
+                                TimeSpan.FromSeconds(60));
+                        }
+
+                        logger.LogInformation(
+                            "Dungeon party probe: appearance windows opened at selection for {Count} member(s).",
+                            slots.Length);
                     }
                 }
 
@@ -1316,13 +1354,22 @@ public sealed class EntranceService(
 
                     foreach (var member in others)
                     {
+                        // 顺序必须是「名册 → 副本报文」：客户端收到名册那一刻按 uid 查本地 user 表
+                        // 建立"谁属于哪支队伍"的链接，NOTI 28 的 4 槽循环只有链接建好才会设置副本
+                        // 上下文（真机第一轮：记录/名册晚到 → 双方都看不到对方）。
+                        var memberRoster = partyService.GetProbeRosterPacket(member.CharacterId);
+                        if (memberRoster is not null)
+                        {
+                            await member.Send(memberRoster);
+                        }
+
                         // UDP_HOST 的 partyIndex = 该成员自己的队伍槽位下标（第一轮的槽位稳定不搬动）。
                         var udpHost = GameProtocolEngine.CreateUdpHost((byte)member.SlotIndex);
                         await member.Send(udpHost);
                         await member.Send(dungeonInfo);
                         await member.Send(startMap);
                         logger.LogInformation(
-                            "Dungeon party probe: pushed dungeon {DungeonId} (difficulty {Difficulty}, map {MapId}, room {RoomX},{RoomY}, monsters {Monsters}) to {Name} (slot {Slot}, uid {Uid}).",
+                            "Dungeon party probe: pushed roster+dungeon {DungeonId} (difficulty {Difficulty}, map {MapId}, room {RoomX},{RoomY}, monsters {Monsters}) to {Name} (slot {Slot}, uid {Uid}).",
                             dungeonId,
                             difficulty,
                             mapId,
@@ -1350,17 +1397,60 @@ public sealed class EntranceService(
 
                     if (probe.PushAppearances)
                     {
-                        foreach (var slot in slots)
+                        // 队长的记录此刻可能才刚到对方客户端：+2.5s 给两边各补一次「名册 → 副本信息」。
+                        // 只补名册与 DUNGEON_INFO，**不补 START_MAP**（重发会让客户端重建房间）。
+                        var memberIds = others
+                            .Select(member => (member.CharacterId, member.CharacterName))
+                            .ToArray();
+                        var leaderId = activeCharacter.Id;
+                        var leaderName = activeCharacter.Name;
+                        _ = Task.Run(async () =>
                         {
-                            DungeonPartyProbeState.OpenAppearanceWindow(
-                                slot.CharacterId,
-                                TimeSpan.FromSeconds(20));
-                        }
+                            try
+                            {
+                                await Task.Delay(TimeSpan.FromMilliseconds(2500));
+                                foreach (var (memberId, memberName) in memberIds)
+                                {
+                                    var roster = partyService.GetProbeRosterPacket(memberId);
+                                    if (roster is not null)
+                                    {
+                                        await partyService.SendProbeToCharacterAsync(
+                                            memberId,
+                                            roster,
+                                            CancellationToken.None);
+                                    }
 
-                        logger.LogInformation(
-                            "Dungeon party probe: appearance windows opened for {Count} member(s) (slots {Slots}).",
-                            slots.Length,
-                            string.Join(',', slots.Select(slot => slot.SlotIndex)));
+                                    await partyService.SendProbeToCharacterAsync(
+                                        memberId,
+                                        dungeonInfo,
+                                        CancellationToken.None);
+                                    logger.LogInformation(
+                                        "Dungeon party probe: replayed roster+dungeon info to {Name} after appearance window.",
+                                        memberName);
+                                }
+
+                                var leaderRoster = partyService.GetProbeRosterPacket(leaderId);
+                                if (leaderRoster is not null)
+                                {
+                                    await leaderRoster.WriteAsync(stream, CancellationToken.None);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, leaderRoster);
+                                }
+
+                                await dungeonInfo.WriteAsync(stream, CancellationToken.None);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, dungeonInfo);
+                                logger.LogInformation(
+                                    "Dungeon party probe: replayed roster+dungeon info to leader {Name}.",
+                                    leaderName);
+                            }
+                            catch (Exception exception) when (exception is not OperationCanceledException)
+                            {
+                                logger.LogDebug(
+                                    exception,
+                                    "Dungeon party probe: delayed roster/dungeon replay failed.");
+                            }
+                        });
                     }
                 }
 
