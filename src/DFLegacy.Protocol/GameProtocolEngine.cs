@@ -2106,8 +2106,10 @@ public static class GameProtocolEngine
     /// NOTI 9：队伍名册（客户端建立队伍与刷新成员列表的**唯一**来源；A 卷 §6）。
     /// body 无序列号前缀，布局 = u16 count(=1), u16 partyId, u8 kind(=0), u8 nameSel, u8 maxMembers,
     /// {u16 slotUid; u8 memberByte}×4（**交错**，合并卷 §2.1）, u8 leaderSlot —— 共 20 字节。
-    /// <paramref name="slotUids"/> 必须 4 项：空槽 0xFFFF；**与收包者不同区域的成员填 0**（缺席哨兵，
-    /// 设计稿 §2.2.2——填真实 uid 会在对方区域解析成别的玩家）；memberByte 语义未知，恒 0。
+    /// <paramref name="slotUids"/> 必须 4 项：**空槽只能是 0xFFFF；非空槽永远填一个真实的成员 uid**
+    /// （收包者解析不到时只是那一行空白）。**绝不能填 0**：真机上 0 会被客户端当成"该成员已离开"，
+    /// 跨区域时两端会同时弹出"队伍中只剩下[X]"并散队（设计稿 §2.2.2 的真机证据）。
+    /// memberByte 语义未知，恒 0。
     /// </summary>
     public static GameServerPacket CreatePartyInfoNotification(
         ushort partyId,
