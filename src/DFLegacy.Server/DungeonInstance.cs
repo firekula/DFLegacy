@@ -1,4 +1,4 @@
-using DFLegacy.Protocol;
+﻿using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
 
@@ -127,6 +127,49 @@ internal sealed class DungeonInstance(
     /// 锁内写（TryStartRun/TryMoveRoom/EnterDetachedRoom/StopRun）、锁内只读。
     /// </summary>
     public bool LastRoomEntryWasFirstVisit { get; private set; }
+
+    // 击杀计数**实例级共享**（真机 2026-09-29，server-party3.log：改造前是会话局部，
+    // 同队两人各按自己杀的那几只算 → 两个客户端的通关评分/奖励完全不同：
+    // user 2 记 normalKills=17、user 1 记 normalKills=4+bossKills=1）。评分/奖励的输入必须全队一致。
+    public int NormalMonsterKills { get; private set; }
+
+    public int ChampionMonsterKills { get; private set; }
+
+    public int BossMonsterKills { get; private set; }
+
+    /// <summary>Champion/SuperChampion 奖励动画的进度（每局至多 11 次，全队共享同一序号）。</summary>
+    public int ChampionRewardOrdinal { get; private set; }
+
+    /// <summary>
+    /// 记一只怪的死（锁内）：累计计数并给出该次击杀的奖励动画序号。
+    /// 并发上报只会进来一次（唯一判定是 <see cref="TryTakeMonsterDeath"/> 的返回值）。
+    /// </summary>
+    public sbyte RegisterMonsterKill(byte type)
+    {
+        lock (Gate)
+        {
+            Version++;
+            switch (type)
+            {
+                case GameDungeonMonsterTypes.Champion:
+                case GameDungeonMonsterTypes.SuperChampion:
+                    ChampionMonsterKills = Math.Min(ushort.MaxValue, ChampionMonsterKills + 1);
+                    if (ChampionRewardOrdinal < GameProtocolEngine.MaximumChampionRewardOrdinal)
+                    {
+                        ChampionRewardOrdinal++;
+                        return checked((sbyte)ChampionRewardOrdinal);
+                    }
+
+                    return GameProtocolEngine.NoChampionRewardOrdinal;
+                case GameDungeonMonsterTypes.Boss:
+                    BossMonsterKills = Math.Min(ushort.MaxValue, BossMonsterKills + 1);
+                    return GameProtocolEngine.NoChampionRewardOrdinal;
+                default:
+                    NormalMonsterKills = Math.Min(ushort.MaxValue, NormalMonsterKills + 1);
+                    return GameProtocolEngine.NoChampionRewardOrdinal;
+            }
+        }
+    }
 
     // —— 成员 ——
 
@@ -277,6 +320,7 @@ internal sealed class DungeonInstance(
         _detachedRoom = null;
         _registeredPassiveRooms.Clear();
         ResetRoomCollections(transition.Room.Monsters);
+        ResetKillCounters();
         Doors.Reset();
         Version++;
         return true;
@@ -296,6 +340,7 @@ internal sealed class DungeonInstance(
             LastRoomEntryWasFirstVisit = true;
             _registeredPassiveRooms.Clear();
             ResetRoomCollections(room.Monsters);
+            ResetKillCounters();
             Doors.Reset();
             Version++;
         }
@@ -538,6 +583,7 @@ internal sealed class DungeonInstance(
             LastRoomEntryWasFirstVisit = false;
             _registeredPassiveRooms.Clear();
             ResetRoomCollections([]);
+            ResetKillCounters();
             Doors.Reset();
             Version++;
         }
@@ -862,6 +908,15 @@ internal sealed class DungeonInstance(
         ReportedBossDeaths.Clear();
         BossCascadeMonsterDeaths.Clear();
         DestroyedPassiveObjects.Clear();
+    }
+
+    /// <summary>开新局/教学局时清掉本局的击杀统计（每局一份，全队共享）。</summary>
+    private void ResetKillCounters()
+    {
+        NormalMonsterKills = 0;
+        ChampionMonsterKills = 0;
+        BossMonsterKills = 0;
+        ChampionRewardOrdinal = 0;
     }
 
     private GamePassiveObjectDrop[] RegisterRoomPassiveDropsLocked(

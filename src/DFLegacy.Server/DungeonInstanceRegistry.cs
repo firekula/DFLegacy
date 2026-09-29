@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 
 namespace DFLegacy.Server;
 
@@ -14,6 +14,16 @@ internal sealed record DungeonEntryRequest(
     byte LeaderTownId,
     byte LeaderAreaId,
     Guid LeaderCharacterId);
+
+/// <summary>
+/// 一只怪的死（给队友算经验用）：等级/类型/索引 + 是否 boss 级联死亡（级联不算经验）。
+/// 难度与副本定义由收件人从实例现取（每人的等级不同，所以经验必须各算各的）。
+/// </summary>
+internal sealed record DungeonMonsterKillCredit(
+    byte MonsterLevel,
+    byte MonsterType,
+    ushort MonsterIndex,
+    bool IsBossCascadeDeath);
 
 /// <summary>
 /// 副本实例注册表（设计稿 §3.1）：队伍键 / 角色绑定 / 单人键三张表 + 待选图、待入队两个信箱。
@@ -36,6 +46,12 @@ public sealed class DungeonInstanceRegistry
     private readonly ConcurrentDictionary<Guid, DungeonInstance> _soloByCharacter = new();
     private readonly ConcurrentDictionary<Guid, DungeonEntryRequest> _pendingEntries = new();
     private readonly ConcurrentDictionary<Guid, Guid> _pendingSelections = new();
+
+    /// <summary>"队长退了选图，你也回城吧"（真机 2026-09-29）。</summary>
+    private readonly ConcurrentDictionary<Guid, bool> _pendingSelectionCancels = new();
+
+    /// <summary>队友击杀的经验信用队列（每成员一条队列，一次连杀会堆多条）。</summary>
+    private readonly ConcurrentDictionary<Guid, ConcurrentQueue<DungeonMonsterKillCredit>> _pendingKillCredits = new();
 
     internal DungeonInstance GetOrCreateForParty(ushort partyId, Func<DungeonInstance> create) =>
         _byParty.GetOrAdd(partyId, _ => create());
@@ -68,6 +84,8 @@ public sealed class DungeonInstanceRegistry
     {
         _pendingEntries.TryRemove(characterId, out _);
         _pendingSelections.TryRemove(characterId, out _);
+        _pendingSelectionCancels.TryRemove(characterId, out _);
+        _pendingKillCredits.TryRemove(characterId, out _);
         if (!_byCharacter.TryRemove(characterId, out var instance))
         {
             return null;
@@ -110,12 +128,14 @@ public sealed class DungeonInstanceRegistry
         _pendingEntries.TryRemove(characterId, out request!);
 
     /// <summary>
-    /// 两个信箱任一有货（终审 P2）：会话主循环的读等待是"等包或超时"，而信箱只在**有包**的
-    /// 路径被取——队员客户端停在选图界面时一个包都不发，待入队请求会一直躺着（真机检查点 2）。
-    /// 只有真的有货时才把读等待缩短到一个短 tick；单人永远没有待处理邮箱。
+    /// 有任一待处理邮件（终审 P2 + 真机 2026-09-29）：会话主循环的读等待是"等包或超时"，
+    /// 而信箱只在**有包**的路径被取——队员客户端静止时上百秒不发一个包，请求会一直躺着。
     /// </summary>
     internal bool HasPendingMail(Guid characterId) =>
-        _pendingEntries.ContainsKey(characterId) || _pendingSelections.ContainsKey(characterId);
+        _pendingEntries.ContainsKey(characterId)
+        || _pendingSelections.ContainsKey(characterId)
+        || _pendingSelectionCancels.ContainsKey(characterId)
+        || _pendingKillCredits.ContainsKey(characterId);
 
     /// <summary>队长开选图界面时给队员投的"待选图"请求（只记队长角色 id，队员自己把状态发给自己客户端）。</summary>
     internal void PostSelectionRequest(Guid characterId, Guid leaderCharacterId) =>
@@ -123,6 +143,33 @@ public sealed class DungeonInstanceRegistry
 
     internal bool TryTakeSelectionRequest(Guid characterId, out Guid leaderCharacterId) =>
         _pendingSelections.TryRemove(characterId, out leaderCharacterId);
+
+    /// <summary>
+    /// 队长退出选图（点了返回城镇 / 超时回城）→ 通知其余队员**退出选图状态回城**。
+    /// 真机 2026-09-29：队长按返回后队员一直卡在选图界面（设计稿没写这条收尾）。
+    /// </summary>
+    internal void PostSelectionCancel(Guid characterId) => _pendingSelectionCancels[characterId] = true;
+
+    internal bool TryTakeSelectionCancel(Guid characterId) =>
+        _pendingSelectionCancels.TryRemove(characterId, out _);
+
+    /// <summary>
+    /// 队友击杀的"经验信用"（真机 2026-09-29：只有击杀者拿到经验）。
+    /// 击杀者的会话给同实例其他成员各投一条，收到的人在自己的会话里给自己算经验
+    /// （每人的等级不同，所以必须各算各的）。队列（不是单槽）：一次拉怪可能连杀好几只。
+    /// </summary>
+    internal void PostKillCredit(Guid characterId, DungeonMonsterKillCredit credit)
+    {
+        var queue = _pendingKillCredits.GetOrAdd(characterId, _ => new ConcurrentQueue<DungeonMonsterKillCredit>());
+        queue.Enqueue(credit);
+    }
+
+    internal bool TryTakeKillCredit(Guid characterId, out DungeonMonsterKillCredit credit)
+    {
+        credit = default!;
+        return _pendingKillCredits.TryGetValue(characterId, out var queue)
+            && queue.TryDequeue(out credit!);
+    }
 
     /// <summary>倒计时扫描用：此刻还活着的实例（拷贝，出锁遍历）。</summary>
     internal DungeonInstance[] Instances =>
@@ -145,5 +192,7 @@ public sealed class DungeonInstanceRegistry
         _soloByCharacter.Clear();
         _pendingEntries.Clear();
         _pendingSelections.Clear();
+        _pendingSelectionCancels.Clear();
+        _pendingKillCredits.Clear();
     }
 }

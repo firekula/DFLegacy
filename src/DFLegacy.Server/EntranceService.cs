@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
@@ -58,8 +58,9 @@ public sealed class EntranceService(
     private static readonly TimeSpan ClearRewardCardSelectionTimeout =
         TimeSpan.FromSeconds(4);
     // 组队信箱的读等待 tick（终审 P2 + 真机修正）：队员客户端静止时可能上百秒不发包
-    // （真机测量 108 秒），而待选图/待入队请求是**别的会话**投的——只按"已有货"缩短等待没有用，
-    // 会话早已阻塞在无限读里。所以"在队伍里且不在副本内"就按这个间隔轮询信箱；
+    // （真机测量 108 秒），而待选图/待入队/退出选图/队友击杀经验都是**别的会话**投的——
+    // 只按"已有货"缩短等待没有用，会话早已阻塞在无限读里。所以"在队伍里"就按这个间隔轮询信箱
+    // （副本内也要，否则队友击杀的经验信用取不回来）。
     // 单人（不在队伍）永不进入该分支，等待时长与改造前逐字一致。
     private static readonly TimeSpan PendingPartyMailCheckInterval =
         TimeSpan.FromMilliseconds(250);
@@ -309,13 +310,6 @@ public sealed class EntranceService(
             uint dungeonConsumedFatigue = 0;
             long? dungeonCreatureStomachCheckpointSeconds = null;
             var dungeonLeveledUp = false;
-            var dungeonNormalMonsterKills = 0;
-            var dungeonChampionMonsterKills = 0;
-            var dungeonBossMonsterKills = 0;
-            // 13338 displays at most eleven Champion/SuperChampion reward
-            // animations before the clear-card screen. This ordinal is per
-            // dungeon run and is independent from the kill-count weighting.
-            var dungeonChampionRewardOrdinal = 0;
             short currentX = 474;
             short currentY = 234;
             byte currentDirection = 5;
@@ -2435,69 +2429,81 @@ public sealed class EntranceService(
                         "Party member {Name} (uid {UserId}, slot {Slot}) entered dungeon {DungeonId} instance {PartyId} room ({RoomX},{RoomY}) map {MapId}.",
                         activeCharacter.Name, localUserId, slotIndex,
                         request.DungeonId, request.PartyId, room.RoomX, room.RoomY, room.MapId);
-                    SchedulePartyRoomReload(instance, "member-entry");
                 }
 
-                // 真机实验（2026-09-29）：副本内看不到队友角色（只有对方神枪手的子弹可见）。
-                // A2 假设要求"客户端加载副本地图时已经知道队友的 user 记录"，而地图切换很可能
-                // 清空了本地 user 表（勘察 §3 不确定项 2）→ 加载器没有为队友建档 → 画不出来。
-                // 这里在双方外观都推完之后**重发一次本房间的 START_MAP**，让客户端拿"已知队友"的
-                // user 表再走一遍加载流程（=勘察里"加载器建档"那条路）。
-                // 两轮（+2.5s/+7s）覆盖两边加载完成的先后差；只在组队实例里做，**单人一字不发**。
-                // 若真机证明有效，再把它变成正式行为（并能解释"为什么要重载房间"）；无效则整段删除。
-                void SchedulePartyRoomReload(DungeonInstance instance, string reason)
+                // 队友击杀的经验信用（真机 2026-09-29）：与击杀者那条路径同一套算法，
+                // 只是等级/经验/SP 都是本会话的（每人的等级不同，必须各算各的）。
+                async Task GrantPartyKillCreditsAsync()
                 {
-                    if (!instance.IsParty || activeCharacter is null)
+                    if (activeCharacter is null)
                     {
                         return;
                     }
 
-                    var characterId = activeCharacter.Id;
-                    var characterName = activeCharacter.Name;
-                    var expectedRoomX = currentDungeonRoomX;
-                    var expectedRoomY = currentDungeonRoomY;
-                    var dungeonId = currentDungeonId;
-                    _ = Task.Run(async () =>
+                    while (dungeonInstanceRegistry.TryTakeKillCredit(
+                               activeCharacter.Id,
+                               out var credit))
                     {
-                        var elapsed = TimeSpan.Zero;
-                        foreach (var target in new[] { TimeSpan.FromSeconds(2.5), TimeSpan.FromSeconds(7) })
+                        if (credit.IsBossCascadeDeath
+                            || currentDungeonId == 0
+                            || !dungeonCatalog.TryGetDefinition(currentDungeonId, out var creditDungeon))
                         {
-                            try
-                            {
-                                await Task.Delay(target - elapsed, serverToken);
-                                elapsed = target;
-                                // 仍然是同一个实例、同一个房间时才重载（换过房间/回过城就不补）。
-                                if (dungeonInstanceRegistry.TryGetForCharacter(characterId) is not { } bound
-                                    || !ReferenceEquals(bound, instance)
-                                    || currentDungeonId != dungeonId
-                                    || (currentDungeonRoomX, currentDungeonRoomY) != (expectedRoomX, expectedRoomY)
-                                    || !instance.TryCaptureCurrentRoomSnapshot(localUserId, out var reloadRoom))
-                                {
-                                    return;
-                                }
-
-                                var reload = DungeonEntryPackets.PlanStartMap(reloadRoom);
-                                await reload.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, reload);
-                                logger.LogInformation(
-                                    "Party room reload ({Reason}) sent to {Name} in dungeon {DungeonId} room ({RoomX},{RoomY}) — peer-visibility experiment.",
-                                    reason, characterName, dungeonId, expectedRoomX, expectedRoomY);
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                return;
-                            }
-                            catch (Exception exception)
-                            {
-                                logger.LogDebug(
-                                    exception,
-                                    "Party room reload ({Reason}) failed for {Name}.",
-                                    reason, characterName);
-                                return;
-                            }
+                            continue;
                         }
-                    });
+
+                        var gained = dungeonExperienceCatalog.CalculateMonsterExperience(
+                            activeCharacter.Level,
+                            credit.MonsterLevel,
+                            credit.MonsterType,
+                            credit.MonsterIndex,
+                            creditDungeon,
+                            currentDungeonDifficulty,
+                            partyMemberCount: dungeonInstance?.MemberCount ?? 1);
+                        var progression = experienceCatalog.Grant(activeCharacter, gained);
+                        if (progression.GrantedExperience <= 0)
+                        {
+                            continue;
+                        }
+
+                        ApplyLevelUpSkillPoints(progression);
+                        var savedProgression = await store.SaveCharacterProgressionAsync(
+                            accountName,
+                            activeCharacter.Id,
+                            progression.Level,
+                            progression.Experience,
+                            currentSp,
+                            serverToken);
+                        if (savedProgression is null)
+                        {
+                            logger.LogWarning(
+                                "Could not persist party kill experience for character {CharacterId}.",
+                                activeCharacter.Id);
+                            continue;
+                        }
+
+                        activeCharacter = savedProgression;
+                        dungeonMonsterExperienceGained = (uint)Math.Min(
+                            uint.MaxValue,
+                            (ulong)dungeonMonsterExperienceGained + progression.GrantedExperience);
+                        dungeonLeveledUp |= progression.LeveledUp;
+                        var experienceGained = GameProtocolEngine.CreateExperienceGained(
+                            checked((byte)Math.Clamp(activeCharacter.Level, 1, byte.MaxValue)),
+                            activeCharacter.Experience,
+                            extraExperienceA: 0,
+                            extraExperienceB: 0,
+                            skillPoints: checked((ushort)Math.Min(currentSp, ushort.MaxValue)));
+                        await experienceGained.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, experienceGained);
+                        logger.LogInformation(
+                            "Party kill credit (monster {MonsterIndex}/{MonsterType}) granted {GrantedExperience} EXP to {Name}; cumulative EXP is {Experience} at level {Level}.",
+                            credit.MonsterIndex,
+                            credit.MonsterType,
+                            progression.GrantedExperience,
+                            activeCharacter.Name,
+                            activeCharacter.Experience,
+                            activeCharacter.Level);
+                    }
                 }
 
                 async Task ReturnToTownFromDungeonAsync(
@@ -2627,10 +2633,6 @@ public sealed class EntranceService(
                     dungeonConsumedFatigue = 0;
                     dungeonCreatureStomachCheckpointSeconds = null;
                     dungeonLeveledUp = false;
-                    dungeonNormalMonsterKills = 0;
-                    dungeonChampionMonsterKills = 0;
-                    dungeonBossMonsterKills = 0;
-                    dungeonChampionRewardOrdinal = 0;
                     currentTownId = dungeonReturnTownId;
                     currentAreaId = dungeonReturnAreaId;
                     currentX = dungeonReturnX;
@@ -2690,6 +2692,21 @@ public sealed class EntranceService(
                             "Dungeon selection returned user {UserId} to town through {Reason}.",
                             localUserId,
                             reason);
+
+                        // 退出选图 = 这次进副本作废：其余队员也要退出选图回城
+                        // （真机 2026-09-29：队长点返回城镇后，队员一直卡在选图界面）。
+                        // 收件人不在选图状态时那条邮件是 no-op，所以重复投递无副作用。
+                        if (activeCharacter is not null
+                            && partyService.GetPartySlots(activeCharacter.Id) is { Length: > 1 } selectionSlots)
+                        {
+                            foreach (var slot in selectionSlots)
+                            {
+                                if (slot.CharacterId != activeCharacter.Id)
+                                {
+                                    dungeonInstanceRegistry.PostSelectionCancel(slot.CharacterId);
+                                }
+                            }
+                        }
                     }
                     else
                     {
@@ -2992,8 +3009,7 @@ public sealed class EntranceService(
                         var partyMailboxTick = isChannelPort
                             && activeCharacter is not null
                             && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id)
-                                || currentDungeonId == 0
-                                && partyService.GetPartySlots(activeCharacter.Id) is { Length: > 1 });
+                                || partyService.GetPartySlots(activeCharacter.Id) is { Length: > 1 });
                         if (isChannelPort && inDungeonSelection
                             && dungeonSelectionDeadline is { } selectionDeadline)
                         {
@@ -3306,6 +3322,20 @@ public sealed class EntranceService(
                                 activeCharacter.Name, entryRequest.DungeonId, entryRequest.PartyId);
                             await EnterPartyDungeonAsync(entryRequest, serverToken);
                         }
+
+                        // 队长退出选图 → 自己也回城（真机 2026-09-29：队长返回城镇后队员一直卡在选图界面）。
+                        if (dungeonInstanceRegistry.TryTakeSelectionCancel(activeCharacter.Id)
+                            && inDungeonSelection
+                            && currentDungeonId == 0)
+                        {
+                            logger.LogInformation(
+                                "Party selection was cancelled by the leader; returning {Name} to town.",
+                                activeCharacter.Name);
+                            await ReturnToTownFromDungeonAsync("party-selection-cancelled");
+                        }
+
+                        // 队友击杀的经验信用（真机 2026-09-29：只有击杀者有经验）：按自己的等级结算。
+                        await GrantPartyKillCreditsAsync();
                     }
 
                     await HandlePendingPartyMailAsync();
@@ -3609,10 +3639,6 @@ public sealed class EntranceService(
                             dungeonConsumedFatigue = 0;
                             dungeonCreatureStomachCheckpointSeconds = null;
                             dungeonLeveledUp = false;
-                            dungeonNormalMonsterKills = 0;
-                            dungeonChampionMonsterKills = 0;
-                            dungeonBossMonsterKills = 0;
-                            dungeonChampionRewardOrdinal = 0;
                             currentMovementValue = 100;
                             areaRosterInitialized = false;
                             staminaStateInitialized = false;
@@ -11907,10 +11933,6 @@ public sealed class EntranceService(
                                 dungeonConsumedFatigue = 0;
                                 dungeonCreatureStomachCheckpointSeconds = null;
                                 dungeonLeveledUp = false;
-                                dungeonNormalMonsterKills = 0;
-                                dungeonChampionMonsterKills = 0;
-                                dungeonBossMonsterKills = 0;
-                                dungeonChampionRewardOrdinal = 0;
 
                                 var tutorialInfo =
                                     GameProtocolEngine.CreateTutorialDungeonInfo(difficulty);
@@ -12276,10 +12298,6 @@ public sealed class EntranceService(
                             dungeonConsumedFatigue = 0;
                             dungeonCreatureStomachCheckpointSeconds = null;
                             dungeonLeveledUp = false;
-                            dungeonNormalMonsterKills = 0;
-                            dungeonChampionMonsterKills = 0;
-                            dungeonBossMonsterKills = 0;
-                            dungeonChampionRewardOrdinal = 0;
                             // 本会话刚推进了房间：镜像与实例对齐（版本号也一起记下）。
                             ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
 
@@ -12371,8 +12389,6 @@ public sealed class EntranceService(
                                 logger.LogInformation(
                                     "Dungeon {DungeonId} party instance {PartyId} ready; entry requests posted to {Count} member(s).",
                                     dungeonId, dungeonInstance!.PartyId, posted);
-                                // 队友可见性实验：外观推完之后重载一次本房间（见 SchedulePartyRoomReload）。
-                                SchedulePartyRoomReload(dungeonInstance, "leader-entry");
                             }
                             logger.LogInformation(
                                 "Dungeon {DungeonId} selected maze {MazeIndex}, start ({StartX},{StartY}), boss ({BossX},{BossY}), start map {MapId}, monsters={MonsterCount}, champions={ChampionCount}, mapChampionBase={MapChampionBase}, clientSeed={ClientSeed}, hellMode={HellMode}, partyMode={HellPartyMode}, ticket={TicketItemId}.",
@@ -12920,34 +12936,10 @@ public sealed class EntranceService(
                                     continue;
                                 }
 
+                                // 击杀计数与奖励动画序号都在**实例**里累计（真机 2026-09-29：
+                                // 计数在会话里时同队两人各算各的 → 通关评分/奖励完全不同）。
                                 var championRewardOrdinal =
-                                    GameProtocolEngine.NoChampionRewardOrdinal;
-
-                                switch (defeatedMonster.Type)
-                                {
-                                    case GameDungeonMonsterTypes.Champion:
-                                    case GameDungeonMonsterTypes.SuperChampion:
-                                        dungeonChampionMonsterKills = Math.Min(
-                                            ushort.MaxValue,
-                                            dungeonChampionMonsterKills + 1);
-                                        if (dungeonChampionRewardOrdinal
-                                            < GameProtocolEngine.MaximumChampionRewardOrdinal)
-                                        {
-                                            championRewardOrdinal = checked((sbyte)(
-                                                ++dungeonChampionRewardOrdinal));
-                                        }
-                                        break;
-                                    case GameDungeonMonsterTypes.Boss:
-                                        dungeonBossMonsterKills = Math.Min(
-                                            ushort.MaxValue,
-                                            dungeonBossMonsterKills + 1);
-                                        break;
-                                    default:
-                                        dungeonNormalMonsterKills = Math.Min(
-                                            ushort.MaxValue,
-                                            dungeonNormalMonsterKills + 1);
-                                        break;
-                                }
+                                    dungeonInstance!.RegisterMonsterKill(defeatedMonster.Type);
 
                                 var protocolDrops = new List<GameDungeonDrop>(6);
                                 if (!isBossCascadeDeath)
@@ -13049,6 +13041,25 @@ public sealed class EntranceService(
 
                                 if (!isBossCascadeDeath && activeCharacter is not null)
                                 {
+                                    // 队友也要拿这只怪的经验（真机 2026-09-29：只有击杀者有经验）。
+                                    // 击杀判定只有一次，所以由这里给同实例其他成员各投一条"经验信用"，
+                                    // 收件人在自己的会话里按**自己的等级**结算（等级不同，必须各算各的）。
+                                    if (dungeonInstance is { IsParty: true } creditInstance)
+                                    {
+                                        var credit = new DungeonMonsterKillCredit(
+                                            defeatedMonster.Level,
+                                            defeatedMonster.Type,
+                                            defeatedMonster.MonsterIndex,
+                                            IsBossCascadeDeath: false);
+                                        foreach (var member in creditInstance.Members)
+                                        {
+                                            if (member.CharacterId != activeCharacter.Id)
+                                            {
+                                                dungeonInstanceRegistry.PostKillCredit(member.CharacterId, credit);
+                                            }
+                                        }
+                                    }
+
                                     var gainedExperience =
                                         dungeonCatalog.TryGetDefinition(
                                             currentDungeonId,
@@ -13709,9 +13720,9 @@ public sealed class EntranceService(
                                                 settledDungeon,
                                                 currentDungeonDifficulty,
                                                 resultCode,
-                                                dungeonNormalMonsterKills
-                                                + dungeonChampionMonsterKills
-                                                + dungeonBossMonsterKills,
+                                                dungeonInstance!.NormalMonsterKills
+                                                + dungeonInstance.ChampionMonsterKills
+                                                + dungeonInstance.BossMonsterKills,
                                                 partyMemberCount: dungeonInstance!.MemberCount,
                                                 bonuses: new DungeonClearBonusContext(
                                                     HasAvatar: avatarInventory.Values.Any(item =>
@@ -13788,9 +13799,9 @@ public sealed class EntranceService(
                                         GameProtocolEngine.BlackDiamondServiceType),
                                     !hasDungeonDefinition || settledDungeon.GoldCardUse,
                                     partyMemberCount: dungeonInstance!.MemberCount,
-                                    normalMonsterKills: dungeonNormalMonsterKills,
-                                    championMonsterKills: dungeonChampionMonsterKills,
-                                    bossMonsterKills: dungeonBossMonsterKills);
+                                    normalMonsterKills: dungeonInstance!.NormalMonsterKills,
+                                    championMonsterKills: dungeonInstance.ChampionMonsterKills,
+                                    bossMonsterKills: dungeonInstance.BossMonsterKills);
                                 var clearReward =
                                     GameProtocolEngine.CreateClearDungeonReward(
                                         localUserId,
@@ -13812,10 +13823,10 @@ public sealed class EntranceService(
                                     "Dungeon {DungeonId} clear-card rewards prepared for user {UserId}: normalKills={NormalKills}, championKills={ChampionKills}, bossKills={BossKills}, championAnimationCount={ChampionAnimationCount}, freeGold={FreeGold}, freeItem={FreeItemId}, premiumItem={PremiumItemId}, goldItem={GoldItemId}, partyMemberCount={PartyMemberCount}.",
                                     currentDungeonId,
                                     localUserId,
-                                    dungeonNormalMonsterKills,
-                                    dungeonChampionMonsterKills,
-                                    dungeonBossMonsterKills,
-                                    dungeonChampionRewardOrdinal,
+                                    dungeonInstance!.NormalMonsterKills,
+                                    dungeonInstance.ChampionMonsterKills,
+                                    dungeonInstance.BossMonsterKills,
+                                    dungeonInstance.ChampionRewardOrdinal,
                                     roomSettlement.ClearReward.FreeGoldAmount,
                                     roomSettlement.ClearReward.FreeItemId,
                                     roomSettlement.ClearReward.PremiumItemId,

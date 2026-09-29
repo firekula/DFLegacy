@@ -29,6 +29,8 @@ internal static class DungeonPartySmokeTests
         await CheckDoorAssemblySweepIgnoresSoloInstancesAsync(check, fixture);
         CheckRegistryEntryRequestMailbox(check, fixture);
         CheckPendingPartyMailLookup(check, fixture);
+        CheckKillCountersAreShared(check, fixture);
+        CheckChampionRewardOrdinalCap(check, fixture);
         CheckRunStartArbitration(check, fixture);
         CheckLockedRunReadAccessors(check, fixture);
         CheckHellRoomPassiveDetachOnMove(check, fixture);
@@ -1165,6 +1167,80 @@ internal static class DungeonPartySmokeTests
         registry.UnbindCharacter(characterId);
         check(!registry.HasPendingMail(characterId),
             "unbinding the character clears both mailboxes");
+
+        // 真机 2026-09-29 新增的两类邮件：队长退选图的取消通知、队友击杀的经验信用。
+        registry.PostSelectionCancel(characterId);
+        check(registry.HasPendingMail(characterId) && registry.TryTakeSelectionCancel(characterId),
+            "a selection cancel counts as pending mail and is taken exactly once");
+        check(!registry.TryTakeSelectionCancel(characterId),
+            "a taken selection cancel is gone");
+        var credit = new DungeonMonsterKillCredit(
+            MonsterLevel: 12, MonsterType: 0, MonsterIndex: 3, IsBossCascadeDeath: false);
+        registry.PostKillCredit(characterId, credit);
+        registry.PostKillCredit(characterId, credit with { MonsterIndex = 4 });
+        check(registry.HasPendingMail(characterId),
+            "kill credits count as pending mail (the member session must wake up to settle them)");
+        check(registry.TryTakeKillCredit(characterId, out var first)
+                && first.MonsterIndex == 3
+                && registry.TryTakeKillCredit(characterId, out var second)
+                && second.MonsterIndex == 4
+                && !registry.TryTakeKillCredit(characterId, out _),
+            "kill credits are queued FIFO (one drain per kill, not last-write-wins)");
+        registry.UnbindCharacter(characterId);
+        check(!registry.HasPendingMail(characterId),
+            "unbinding also clears the cancel/kill-credit mailboxes");
+    }
+
+    /// <summary>
+    /// 击杀计数与奖励动画序号在**实例**上共享（真机 2026-09-29：计数留在会话里时，
+    /// 同队两人各按自己杀的那几只算 → 两个客户端的通关评分/奖励完全不同）。
+    /// **变异验证**：把 `RegisterMonsterKill` 的计数改成只返回不累加，下面的共享断言变红。
+    /// </summary>
+    private static void CheckKillCountersAreShared(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        check(instance.TryStartRun(fixture.Layout, difficulty: 0, dungeonOption: 0, out _),
+            "the fixture run starts for the shared kill counters");
+        check(instance.NormalMonsterKills == 0
+                && instance.ChampionMonsterKills == 0
+                && instance.BossMonsterKills == 0
+                && instance.ChampionRewardOrdinal == 0,
+            "a fresh run starts with zeroed kill counters");
+        check(instance.RegisterMonsterKill(GameDungeonMonsterTypes.Normal)
+                == GameProtocolEngine.NoChampionRewardOrdinal
+                && instance.NormalMonsterKills == 1,
+            "a normal kill counts once and carries no champion reward ordinal");
+        check(instance.RegisterMonsterKill(GameDungeonMonsterTypes.Champion) == 1
+                && instance.RegisterMonsterKill(GameDungeonMonsterTypes.SuperChampion) == 2
+                && instance.ChampionMonsterKills == 2
+                && instance.ChampionRewardOrdinal == 2,
+            "champion kills share one monotonic reward-ordinal sequence across the party");
+        check(instance.RegisterMonsterKill(GameDungeonMonsterTypes.Boss)
+                == GameProtocolEngine.NoChampionRewardOrdinal
+                && instance.BossMonsterKills == 1,
+            "a boss kill counts into the boss bucket");
+        instance.StopRun();
+        check(instance.NormalMonsterKills == 0 && instance.ChampionRewardOrdinal == 0,
+            "stopping the run clears the per-run kill counters");
+    }
+
+    /// <summary>奖励动画序号的封顶（13338 至多 11 次）：到顶后不再增长、也不再返回序号。</summary>
+    private static void CheckChampionRewardOrdinalCap(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
+            "the fixture run starts for the ordinal cap");
+        for (var i = 1; i <= GameProtocolEngine.MaximumChampionRewardOrdinal; i++)
+        {
+            check(instance.RegisterMonsterKill(GameDungeonMonsterTypes.Champion) == (sbyte)i,
+                $"champion reward ordinal {i} is handed out in order");
+        }
+
+        check(instance.RegisterMonsterKill(GameDungeonMonsterTypes.Champion)
+                == GameProtocolEngine.NoChampionRewardOrdinal
+                && instance.ChampionRewardOrdinal == GameProtocolEngine.MaximumChampionRewardOrdinal
+                && instance.ChampionMonsterKills == GameProtocolEngine.MaximumChampionRewardOrdinal + 1,
+            "past the animation cap the ordinal stops while the kill count keeps rising");
     }
 
     /// <summary>
