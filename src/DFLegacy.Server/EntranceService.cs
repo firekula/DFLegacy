@@ -57,9 +57,10 @@ public sealed class EntranceService(
     private const int CompoundReplayCapacity = 256;
     private static readonly TimeSpan ClearRewardCardSelectionTimeout =
         TimeSpan.FromSeconds(4);
-    // 有"待处理组队邮箱"（待选图/待入队）时的读等待 tick（终审 P2）：队员客户端停在选图/入场
-    // 界面时一个包都不发，两个信箱只在"有包"的路径被取，待入队请求会一直躺着。只有确实有货时
-    // 才用这个短 tick 唤醒主循环去取件；无货时等待时长一行不变（单人永远无货）。
+    // 组队信箱的读等待 tick（终审 P2 + 真机修正）：队员客户端静止时可能上百秒不发包
+    // （真机测量 108 秒），而待选图/待入队请求是**别的会话**投的——只按"已有货"缩短等待没有用，
+    // 会话早已阻塞在无限读里。所以"在队伍里且不在副本内"就按这个间隔轮询信箱；
+    // 单人（不在队伍）永不进入该分支，等待时长与改造前逐字一致。
     private static readonly TimeSpan PendingPartyMailCheckInterval =
         TimeSpan.FromMilliseconds(250);
     private const string FatigueRecoveryRejectedMessage =
@@ -2918,12 +2919,18 @@ public sealed class EntranceService(
                             stream,
                             options.MaximumPacketLength,
                             serverToken).AsTask();
-                        // 有没有待取的组队邮箱（待选图/待入队）——在超时分支之外算好，只用来
-                        // 决定**下一次等待的时长**：有货 → 短 tick；无货/单人 → 完全按原样等待。
-                        // 单人（不在队伍）时 HasPendingMail 恒 false，一行行为都不变（零回归红线）。
-                        var hasPendingPartyMail = isChannelPort
+                        // 组队信箱的分支必须让等待**有界**，判据不能只是"信箱里已有货"：
+                        // 待选图/待入队请求是**别的会话**投的，本会话一旦阻塞在无限读等待里，
+                        // 除客户端自己发包没有任何东西能唤醒它。真机（server-party1.log 18:28:49）：
+                        // 队员静止时客户端整整 108 秒不发一个包，请求就一直躺在信箱里，队员比队长晚 48 秒才进图。
+                        // 所以"在队伍里（≥2 人）"就要按短 tick 轮询；城镇外收不到这类请求
+                        // （投递侧要求同区域目录快照），故只在 currentDungeonId == 0 时轮询，避免副本内空转。
+                        // 单人（不在队伍）→ 与改造前完全一致的无限等待（零回归红线）。
+                        var partyMailboxTick = isChannelPort
                             && activeCharacter is not null
-                            && dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id);
+                            && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id)
+                                || currentDungeonId == 0
+                                && partyService.GetPartySlots(activeCharacter.Id) is { Length: > 1 });
                         if (isChannelPort && inDungeonSelection
                             && dungeonSelectionDeadline is { } selectionDeadline)
                         {
@@ -3079,11 +3086,12 @@ public sealed class EntranceService(
                                 continue;
                             }
                         }
-                        else if (hasPendingPartyMail)
+                        else if (partyMailboxTick)
                         {
-                            // 有货才缩到短 tick（终审 P2）：队员停在选图/入场界面时不发包，
-                            // 上面的无限等待会让待入队请求永远取不走（真机检查点 2）。
-                            // 到点且无包 → idlePartyMailTick，下面只取信箱、不解码。
+                            // 在队伍里（或信箱已有货）就缩到短 tick（终审 P2 + 真机修正）：
+                            // 队员停在城镇/选图界面时客户端可能上百秒不发包，无限等待会让
+                            // 待选图/待入队请求一直取不走。到点且无包 → idlePartyMailTick，
+                            // 下面只取信箱、不解码、不发任何包。
                             var completed = await Task.WhenAny(
                                 pendingPacketRead,
                                 Task.Delay(PendingPartyMailCheckInterval, serverToken));
