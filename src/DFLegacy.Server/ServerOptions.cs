@@ -196,7 +196,26 @@ public sealed class TownGhostOptions
     public int HiddenSeconds { get; set; } = 0;
 }
 
+/// <summary>
+/// 调试用：把进入副本的会话按一个「虚拟区域」注册进城镇目录，从而复用同一套
+/// USERINFO/AREA_USERS/USER_POSITION 报文，用来真机判定客户端在副本里是否接受
+/// 这套同屏机制（决定副本内队友位置同步走 TCP 还是服务端 UDP 中枢）。生产保持 false。
+/// </summary>
+public sealed class DungeonPeerProbeOptions
+{
+    public bool Enabled { get; set; } = false;
+
+    /// <summary>虚拟区域坐标；必须避开真实城镇/区域（城镇 id 通常很小，默认 200:200）。</summary>
+    public byte TownId { get; set; } = 200;
+    public byte AreaId { get; set; } = 200;
+
+    /// <summary>副本内收到 SET_USER_POSITION 时是否打日志（判定客户端在副本内是否照发位置）。</summary>
+    public bool LogPositions { get; set; } = true;
+}
+
 public sealed class DebugOptions
 {
     public TownGhostOptions TownGhost { get; set; } = new();
+
+    public DungeonPeerProbeOptions DungeonPeerProbe { get; set; } = new();
 }

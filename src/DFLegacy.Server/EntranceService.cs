@@ -1062,6 +1062,63 @@ public sealed class EntranceService(
                     }
                 }
 
+                // 探针（临时，Debug.DungeonPeerProbe）：把进副本的会话按配置的虚拟区域注册进
+                // 城镇目录，从而原样复用「外观 → 名单 → 对端表」与 USER_POSITION 转发，用来真机
+                // 判定客户端在副本里是否接受这套同屏机制（决定位置同步走 TCP 还是 UDP 中枢）。
+                // 探针关闭时立即返回，正常路径的报文一个不动。
+                async Task EnterDungeonPeerProbeAsync(CancellationToken cancellationToken)
+                {
+                    var probe = options.Debug.DungeonPeerProbe;
+                    if (!probe.Enabled || activeCharacter is null)
+                    {
+                        return;
+                    }
+
+                    var probePeer = gameplayDatagram.TryGetPeerInfo(
+                        runtimeSession.Id,
+                        localUserId,
+                        accountId: 1,
+                        out var peer)
+                            ? peer
+                            : null;
+
+                    townTicket = await townDirectory.EnterAsync(
+                        new TownEntryRequest(
+                            probe.TownId,
+                            probe.AreaId,
+                            localUserId,
+                            activeCharacter.Id,
+                            activeCharacter.CharacterNo,
+                            EncodeCharacterName(activeCharacter.Name),
+                            activeCharacter.Name,
+                            probePeer,
+                            currentX,
+                            currentY,
+                            currentDirection,
+                            SendTownPacketAsync),
+                        cancellationToken);
+
+                    // 与城镇进入一致：外观交给目录（存快照 + 广播给同虚拟区域的其他人），
+                    // 后进的人才能在名单之前拿到它。这里不重复发 NOTI 33 之类的城镇包。
+                    var probeAppearance = SendTownAppearancePacket();
+                    await probeAppearance.WriteAsync(stream, cancellationToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, probeAppearance);
+                    await townDirectory.RefreshAppearanceAsync(
+                        townTicket,
+                        probeAppearance,
+                        cancellationToken);
+
+                    logger.LogInformation(
+                        "Dungeon peer probe: {Name} (uid {UserId}) registered in virtual area {TownId}/{AreaId} while in dungeon {DungeonId} (ticket={HasTicket}).",
+                        activeCharacter.Name,
+                        localUserId,
+                        probe.TownId,
+                        probe.AreaId,
+                        currentDungeonId,
+                        townTicket is not null);
+                }
+
                 async Task ValidateAndCorrectCharacterStatsAsync(string reason)
                 {
                     if (activeCharacter is null)
@@ -10846,6 +10903,23 @@ public sealed class EntranceService(
                                     currentDirection,
                                     currentMovementValue,
                                     serverToken);
+
+                                // 探针：副本内客户端是否照发 SET_USER_POSITION——这决定
+                                // 副本内位置同步能否继续走 TCP 转发（而不是 UDP 中枢）。
+                                if (currentDungeonId != 0
+                                    && options.Debug.DungeonPeerProbe is
+                                        { Enabled: true, LogPositions: true })
+                                {
+                                    logger.LogInformation(
+                                        "Dungeon peer probe: SET_USER_POSITION from {Name} (uid {UserId}) in dungeon {DungeonId}: ({X},{Y}) direction={Direction} movement={MovementValue}.",
+                                        activeCharacter?.Name ?? "?",
+                                        localUserId,
+                                        currentDungeonId,
+                                        currentX,
+                                        currentY,
+                                        currentDirection,
+                                        currentMovementValue);
+                                }
                             }
 
                             // The local client already owns its movement.
@@ -11480,6 +11554,10 @@ public sealed class EntranceService(
                                 currentDungeonRoomX,
                                 currentDungeonRoomY);
                             await EnableEmptyBossRoomSettlementAsync(currentDungeonRoom);
+
+                            // 探针：副本（含 START_MAP）全部下发之后再注册虚拟区域，
+                            // 保证客户端的副本地图已经就位、区域名单落在新地图上。
+                            await EnterDungeonPeerProbeAsync(serverToken);
                             logger.LogInformation(
                                 "Dungeon {DungeonId} selected maze {MazeIndex}, start ({StartX},{StartY}), boss ({BossX},{BossY}), start map {MapId}, monsters={MonsterCount}, champions={ChampionCount}, mapChampionBase={MapChampionBase}, clientSeed={ClientSeed}, hellMode={HellMode}, partyMode={HellPartyMode}, ticket={TicketItemId}.",
                                 dungeonId,

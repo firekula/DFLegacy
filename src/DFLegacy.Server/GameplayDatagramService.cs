@@ -402,6 +402,21 @@ public sealed class GameplayDatagramService(
                     frame.Flag,
                     application.ProtocolId,
                     application.Payload.Length);
+
+                // 探针：副本内队友位置同步若走 UDP，这里是唯一的入口证据
+                // （客户端发什么协议、SenderPartyIndex 是否按队伍槽位标记）。
+                if (options.Debug.DungeonPeerProbe.Enabled)
+                {
+                    logger.LogInformation(
+                        "Dungeon peer probe: RX gameplay UDP from {Remote}: block={BlockType} sequence={Sequence} sender={Sender} flag={Flag} protocol={ProtocolId} payload={PayloadLength}",
+                        remote,
+                        frame.BlockType,
+                        frame.Sequence,
+                        frame.SenderPartyIndex,
+                        frame.Flag,
+                        application.ProtocolId,
+                        application.Payload.Length);
+                }
             }
             else
             {
