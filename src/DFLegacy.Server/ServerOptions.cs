@@ -205,9 +205,24 @@ public sealed class DungeonPeerProbeOptions
 {
     public bool Enabled { get; set; } = false;
 
-    /// <summary>虚拟区域坐标；必须避开真实城镇/区域（城镇 id 通常很小，默认 200:200）。</summary>
-    public byte TownId { get; set; } = 200;
-    public byte AreaId { get; set; } = 200;
+    /// <summary>
+    /// <c>"PartyPush"</c>（默认）= 按客户端自带的副本组队机制：队长进副本时把同一份
+    /// NOTI 26/28/29 推给同区域的其他队员（客户端 DUNGEON_INFO 处理体对 4 个队伍槽位
+    /// 逐个设置副本上下文、FINISH_LOADING 处理体装队伍 HUD）。
+    /// <c>"AreaRecycle"</c> = 旧的对照实验：副本会话按城镇目录的虚拟区域重新注册，
+    /// 复用 USERINFO + AREA_USERS + 对端表 + USER_POSITION。
+    /// </summary>
+    public string Mode { get; set; } = "PartyPush";
+
+    /// <summary>PartyPush 模式下是否顺带互推各成员的 USERINFO(mode 0)（副本内队伍槽位要靠它解析出 user 对象）。</summary>
+    public bool PushAppearances { get; set; } = true;
+
+    /// <summary>AreaRecycle 模式：true = 用会话当前的城镇/区域注册（客户端能识别），false = 用下面两个值。</summary>
+    public bool UseSessionArea { get; set; } = true;
+
+    /// <summary>AreaRecycle + UseSessionArea=false 时使用的区域坐标。</summary>
+    public byte TownId { get; set; } = 1;
+    public byte AreaId { get; set; } = 0;
 
     /// <summary>副本内收到 SET_USER_POSITION 时是否打日志（判定客户端在副本内是否照发位置）。</summary>
     public bool LogPositions { get; set; } = true;

@@ -17,6 +17,19 @@ internal sealed class PartyChannel
 }
 
 /// <summary>
+/// 探针（临时）用的队伍槽位快照：槽位下标 + 该成员的通道发送句柄。
+/// **只读**，不参与任何既有语义——<c>Debug.DungeonPeerProbe</c> 的 PartyPush 模式靠它
+/// 把副本入场报文推给队员（客户端副本内按 4 个队伍槽位做副本上下文/队伍 HUD）。
+/// </summary>
+internal sealed record PartyProbeSlot(
+    int SlotIndex,
+    Guid CharacterId,
+    Guid SessionId,
+    ushort AreaUserId,
+    string CharacterName,
+    Func<GameServerPacket, ValueTask> Send);
+
+/// <summary>
 /// NOTI 7 应答窗正文（dnf.str 4150：`Lv.%d%s [%s](复活币%d个、疲劳值%d点、虚弱%d%%)请求加入[%s]队伍`）
 /// 里的三个显示值，由 <c>EntranceService</c> 在收到 CMD 10 时算好传入。三个值的口径：
 /// <list type="bullet">
@@ -830,6 +843,85 @@ public sealed class PartyService : BackgroundService
     internal Task PublishRosterAsync(PartyRoster roster, CancellationToken cancellationToken) =>
         // recipients 交给 PublishRosterToAsync 在**锁内**现取（= 此刻的成员），避免锁外读名册快照。
         PublishRosterToAsync(roster, recipients: null, cancellationToken, registerResettle: true);
+
+    /// <summary>
+    /// 探针（临时）：该角色所在队伍的槽位快照（含槽位下标与通道发送句柄）；不在队伍 → null。
+    /// 纯只读：在 <see cref="_gate"/> 内取成员快照，不改任何既有状态。
+    /// </summary>
+    internal PartyProbeSlot[]? GetProbeSlots(Guid characterId)
+    {
+        if (!_partyByCharacter.TryGetValue(characterId, out var partyId)
+            || !_parties.TryGetValue(partyId, out var roster))
+        {
+            return null;
+        }
+
+        List<PartyProbeSlot> slots = [];
+        lock (_gate)
+        {
+            foreach (var member in roster.Members)
+            {
+                // 槽位下标一律走 TryGetSlot（成员从不搬动，下标就是权威值）。
+                if (!roster.TryGetSlot(member.CharacterId, out var slot)
+                    || !_channels.TryGetValue(member.CharacterId, out var channel))
+                {
+                    continue;
+                }
+
+                slots.Add(new PartyProbeSlot(
+                    slot,
+                    channel.CharacterId,
+                    channel.SessionId,
+                    channel.AreaUserId,
+                    channel.CharacterName,
+                    channel.Send));
+            }
+        }
+
+        return [.. slots];
+    }
+
+    /// <summary>
+    /// 探针（临时）：把包发给该角色所在队伍的**其他**成员（不含自己）；不在队伍时返回 0。
+    /// 发送异常沿用 <see cref="SendAsync"/> 的口径：坏通道只告警、不影响其他人。
+    /// </summary>
+    internal async Task<int> SendProbeToOtherMembersAsync(
+        Guid omitCharacterId,
+        GameServerPacket packet,
+        CancellationToken cancellationToken)
+    {
+        var slots = GetProbeSlots(omitCharacterId);
+        if (slots is null)
+        {
+            return 0;
+        }
+
+        var sent = 0;
+        foreach (var slot in slots)
+        {
+            if (slot.CharacterId == omitCharacterId)
+            {
+                continue;
+            }
+
+            try
+            {
+                await slot.Send(packet);
+                sent++;
+            }
+            catch (Exception exception) when (
+                exception is IOException or ObjectDisposedException or SocketException)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Probe: could not deliver party dungeon packet {ProtocolId} to {CharacterId}.",
+                    packet.ProtocolId,
+                    slot.CharacterId);
+            }
+        }
+
+        return sent;
+    }
 
     /// <summary>
     /// 名册下发：给 <paramref name="recipients"/> 各发一份按**他自己**区域替换的版本
