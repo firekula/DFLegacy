@@ -1404,11 +1404,78 @@ public sealed class EntranceService(
                             .ToArray();
                         var leaderId = activeCharacter.Id;
                         var leaderName = activeCharacter.Name;
+                        // 快照：区域条目要用"进副本前所在区域"（客户端场景区域仍是它）。
+                        var probeTownIdSnapshot = currentTownId;
+                        var probeAreaIdSnapshot = currentAreaId;
+                        var leaderUidSnapshot = localUserId;
+                        var leaderXSnapshot = currentX;
+                        var leaderYSnapshot = currentY;
+                        var leaderDirectionSnapshot = currentDirection;
+                        var areaEntries = probe.AreaRecycle;
                         _ = Task.Run(async () =>
                         {
                             try
                             {
-                                await Task.Delay(TimeSpan.FromMilliseconds(2500));
+                                // 等各客户端把副本地图加载完（此刻发区域条目才会把角色建在副本地图上）。
+                                await Task.Delay(TimeSpan.FromMilliseconds(
+                                    Math.Max(0, probe.AreaRecycleDelayMs)));
+
+                                // ① USER_AREA（NOTI 23）建角色：客户端对它的处理是"区域匹配 → 建角色 +
+                                // 加入当前地图"，**不会**调 SetTown；AREA_USERS（NOTI 24）会调 SetTown
+                                // 让客户端重新加载城镇地图（真机：队长被拉回城镇、仍在发城镇坐标）。
+                                // 所以副本内只能用 NOTI 23，绝不能用 NOTI 24。
+                                if (areaEntries)
+                                {
+                                var leaderEntry = GameProtocolEngine.CreateUserArea(
+                                    probeTownIdSnapshot,
+                                    probeAreaIdSnapshot,
+                                    new GameTownUser(
+                                        leaderUidSnapshot,
+                                        leaderXSnapshot,
+                                        leaderYSnapshot,
+                                        leaderDirectionSnapshot),
+                                    active: true);
+                                foreach (var (memberId, memberName) in memberIds)
+                                {
+                                    await partyService.SendProbeToCharacterAsync(
+                                        memberId,
+                                        leaderEntry,
+                                        CancellationToken.None);
+                                    logger.LogInformation(
+                                        "Dungeon party probe: USER_AREA of leader {Leader} sent to {Name} (dungeon area {Town}/{Area}).",
+                                        leaderName,
+                                        memberName,
+                                        probeTownIdSnapshot,
+                                        probeAreaIdSnapshot);
+                                }
+
+                                foreach (var (memberId, memberName) in memberIds)
+                                {
+                                    if (!townDirectory.TryGetSnapshot(memberId, out var memberSnapshot))
+                                    {
+                                        continue;
+                                    }
+
+                                    var memberEntry = GameProtocolEngine.CreateUserArea(
+                                        probeTownIdSnapshot,
+                                        probeAreaIdSnapshot,
+                                        new GameTownUser(
+                                            memberSnapshot.AreaUserId,
+                                            memberSnapshot.X,
+                                            memberSnapshot.Y,
+                                            memberSnapshot.Direction),
+                                        active: true);
+                                    await memberEntry.WriteAsync(stream, CancellationToken.None);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, memberEntry);
+                                    logger.LogInformation(
+                                        "Dungeon party probe: USER_AREA of {Name} sent to leader {Leader}.",
+                                        memberName,
+                                        leaderName);
+                                }
+                                }
+
+                                // ② 名册与副本信息补播：名册要在记录/区域条目之后（槽位按 uid 查本地 user 表）。
                                 foreach (var (memberId, memberName) in memberIds)
                                 {
                                     var roster = partyService.GetProbeRosterPacket(memberId);
@@ -1425,7 +1492,7 @@ public sealed class EntranceService(
                                         dungeonInfo,
                                         CancellationToken.None);
                                     logger.LogInformation(
-                                        "Dungeon party probe: replayed roster+dungeon info to {Name} after appearance window.",
+                                        "Dungeon party probe: replayed roster+dungeon info to {Name} after area entries.",
                                         memberName);
                                 }
 
@@ -1448,7 +1515,7 @@ public sealed class EntranceService(
                             {
                                 logger.LogDebug(
                                     exception,
-                                    "Dungeon party probe: delayed roster/dungeon replay failed.");
+                                    "Dungeon party probe: delayed area-entry replay failed.");
                             }
                         });
                     }
@@ -11966,28 +12033,6 @@ public sealed class EntranceService(
                             }
                             else
                             {
-                                // 延迟到客户端把副本地图加载完之后再做区域注册：早于地图就绪时，
-                                // AREA_USERS 建出的角色会落在城镇地图上、随切图被销毁。
-                                if (options.Debug.DungeonPeerProbe is { Enabled: true, AreaRecycle: true })
-                                {
-                                    var areaRecycleDelay = TimeSpan.FromMilliseconds(
-                                        Math.Max(0, options.Debug.DungeonPeerProbe.AreaRecycleDelayMs));
-                                    _ = Task.Run(async () =>
-                                    {
-                                        try
-                                        {
-                                            await Task.Delay(areaRecycleDelay);
-                                            await EnterDungeonPeerProbeAsync(CancellationToken.None);
-                                        }
-                                        catch (Exception exception) when (exception is not OperationCanceledException)
-                                        {
-                                            logger.LogDebug(
-                                                exception,
-                                                "Dungeon peer probe: delayed area registration failed.");
-                                        }
-                                    });
-                                }
-
                                 await PushPartyDungeonEntryProbeAsync(
                                     dungeonId,
                                     difficulty,
