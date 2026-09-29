@@ -15,6 +15,7 @@ internal static class DungeonPartySmokeTests
         using var fixture = new DungeonFixture();
         CheckSoloInstanceKey(check, fixture);
         CheckInstanceMembershipLifecycle(check, fixture);
+        CheckLastMemberDestroysInstance(check, fixture);
         CheckConcurrentKillSettlesOnce(check, fixture);
         CheckRoomSnapshotsAndPassiveDrops(check, fixture);
         CheckLiveJoinDoesNotReplenishPassiveDrops(check, fixture);
@@ -37,6 +38,7 @@ internal static class DungeonPartySmokeTests
         await CheckBroadcastReachesEveryMemberOnceAsync(check, fixture);
         await CheckPickupBroadcastOmitsSenderAsync(check, fixture);
         CheckGroundItemClaimIsFirstComeFirstServed(check, fixture);
+        await CheckMemberDeparturePacketAsync(check, fixture);
     }
 
     /// <summary>
@@ -451,6 +453,84 @@ internal static class DungeonPartySmokeTests
             "unbinding the last member removes it from the instance");
         check(registry.TryGetForParty(1000) is null && !instance.Run.IsActive,
             "the last member leaving destroys the party instance and discards its run");
+    }
+
+    /// <summary>
+    /// 收尾（设计稿 §3.4）：任一成员离开 → 只解绑自己，实例仍活（房间/掉落/run 留给其余成员）；
+    /// 最后一个成员离开 → 实例销毁（房间/掉落全部丢弃）；队长离开不特殊——实例留给其余成员。
+    /// 先起 run 再解绑：不起 run 的话 `Run.IsActive` 的两条断言恒真（Task 1 评审的"断言重言"教训）。
+    /// **变异验证**（已实测变红后回滚）：把 `UnbindCharacter` 的"空了才 Remove"改成"每次解绑都
+    /// Remove" → 上面三条（run 还活着 / 按队伍仍查得到 / 最后一人销毁并丢 run）变红；第一条
+    /// （解绑返回值 MemberCount==1）**不会**变红——返回值来自实例本身，与注册表是否销毁它无关，
+    /// 这正是必须补后两条断言的原因。
+    /// </summary>
+    private static void CheckLastMemberDestroysInstance(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var registry = new DungeonInstanceRegistry();
+        var instance = registry.GetOrCreateForParty(1000, () => fixture.CreatePartyInstance(1000));
+        var alpha = Guid.NewGuid();
+        var bravo = Guid.NewGuid();
+        instance.AddMember(fixture.Member(alpha, 0, "阿尔法"));
+        instance.AddMember(fixture.Member(bravo, 2, "布拉沃"));
+        registry.BindCharacter(alpha, instance);
+        registry.BindCharacter(bravo, instance);
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _, random: fixture.Random),
+            "the party instance runs before anyone leaves it");
+        check(registry.UnbindCharacter(alpha) is { MemberCount: 1 },
+            "leaving the party instance keeps it alive for the remaining member");
+        // 关键：离开的那个人没有把"别人的一局"带走——其余成员还要接着打（真机第 6 项）。
+        check(instance.Run.IsActive,
+            "one member leaving does not stop the shared run (the survivors keep their rooms and drops)");
+        check(ReferenceEquals(instance, registry.TryGetForParty(1000)),
+            "the surviving member can still find the instance by party id");
+        check(registry.UnbindCharacter(bravo) is { MemberCount: 0 }
+                && registry.TryGetForParty(1000) is null
+                && registry.TryGetForCharacter(bravo) is null
+                && !instance.Run.IsActive,
+            "the last member leaving destroys the instance and discards its run");
+    }
+
+    /// <summary>
+    /// 离开提示（设计稿 §3.4）：离开者自己收不到（他已经在回城/断线路径上，客户端侧不留 actor），
+    /// 其余成员各收一份既有的"角色离场"信号——USER_AREA 带 0xFF/0xFF 哨兵 + 离开者的 uid
+    /// （客户端按区域不匹配销毁该 actor，见 TownSyncSmokeTests 的离场断言）。
+    /// **变异验证**：把 `BroadcastToMembersAsync` 的 omit 去掉 → 第一条变红；
+    /// 把 `CreateUserAreaDeparture` 换成同区域 `CreateUserArea(active: false)` → 第二条变红。
+    /// 会话接线（三条离开路径何时调用它）不可单测：真机检查点是 Task 7 第 6 项。
+    /// </summary>
+    private static async Task CheckMemberDeparturePacketAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        using var service = new DungeonPartyService(
+            harness.Service,
+            harness.Directory,
+            new DungeonInstanceRegistry(),
+            TimeProvider.System,
+            NullLogger<DungeonPartyService>.Instance);
+        var instance = fixture.CreatePartyInstance(1000);
+        var leaver = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var leaverInbox = new List<GameServerPacket>();
+        var survivorInbox = new List<GameServerPacket>();
+        instance.AddMember(new DungeonInstanceMember(
+            leaver, 7, 0, "离开者", packet => { leaverInbox.Add(packet); return ValueTask.CompletedTask; }));
+        instance.AddMember(new DungeonInstanceMember(
+            survivor, 8, 1, "留守者", packet => { survivorInbox.Add(packet); return ValueTask.CompletedTask; }));
+
+        await service.NotifyMemberLeftAsync(
+            instance, leaver, areaUserId: 7, x: 120, y: 340, direction: 3);
+
+        check(leaverInbox.Count == 0,
+            "the member who left receives no departure notice of their own");
+        check(survivorInbox.Count == 1
+                && survivorInbox[0].ProtocolId == GameProtocolEngine.UserAreaNotification
+                && survivorInbox[0].Payload.Length == 10
+                && survivorInbox[0].Payload[0] == 7
+                && survivorInbox[0].Payload[2] == 0xFF
+                && survivorInbox[0].Payload[3] == 0xFF,
+            "the remaining member receives the USER_AREA departure signal with the leaver's uid (0xFF/0xFF sentinel)");
     }
 
     /// <summary>

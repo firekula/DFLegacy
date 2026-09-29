@@ -213,6 +213,34 @@ public sealed class DungeonPartyService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// 有成员离开副本（回城/掉线/换角色）：给其余成员的客户端发既有的"角色离场"信号
+    /// （USER_AREA 带 0xFF/0xFF 哨兵 → 客户端按区域不匹配销毁该 actor，见 TownSyncSmokeTests 的离场断言）。
+    /// **必须在 <see cref="DungeonInstanceRegistry.UnbindCharacter"/> 之前捕获 (uid, 坐标)**——
+    /// 解绑之后实例里已经没有这个人了。单人实例没有"其余成员"，调用方跳过（自己也要走了）。
+    /// 令牌一律用 <c>CancellationToken.None</c>：这是给别人的收尾包，离开者的会话令牌在掉线路径上
+    /// 已经取消、在回城/回选人路径上也不代表收件人。
+    /// 真机检查点：Task 7 第 6 项（其余成员是否看到对方角色消失）。
+    /// internal（不是任务书写的 public）：<see cref="DungeonInstance"/> 是 internal，public 方法收不了它
+    /// （CS0051）；与 <see cref="BroadcastToMembersAsync"/> 同一可见性，也是冒烟测试的接缝。
+    /// </summary>
+    internal async Task NotifyMemberLeftAsync(
+        DungeonInstance instance,
+        Guid characterId,
+        ushort areaUserId,
+        short x,
+        short y,
+        byte direction,
+        CancellationToken cancellationToken = default)
+    {
+        var departure = GameProtocolEngine.CreateUserAreaDeparture(
+            new GameTownUser(areaUserId, x, y, direction));
+        await BroadcastToMembersAsync(instance, departure, characterId, cancellationToken);
+        _logger.LogInformation(
+            "Party member {CharacterId} left dungeon instance {PartyId}; departure sent to {Count} remaining member(s).",
+            characterId, instance.PartyId, instance.MemberCount);
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try

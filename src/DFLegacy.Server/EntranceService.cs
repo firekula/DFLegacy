@@ -2148,6 +2148,21 @@ public sealed class EntranceService(
                     }
                 }
 
+                // 单人实例的"回城/回选人"收尾（Task 2 映射表的口径）：整局就是本会话的，
+                // 房间/掉落/run 随人一起丢弃。**组队不适用**：实例属于全体成员（设计稿 §3.4
+                // "队长离开 → 实例保留"）——照抄单人的 StopRun 会把别人的房间/掉落/run 一起清掉，
+                // 其余成员的镜像刷新随即看到"没有房间了"，currentDungeonId 被抹成 0
+                // （人还站在副本里，却已经出局）。实例只由最后一个成员解绑时销毁。
+                void TeardownSoloDungeonInstance()
+                {
+                    if (dungeonInstance is { IsParty: false } soloInstance)
+                    {
+                        soloInstance.ResetGroundItems();
+                        soloInstance.StopRun();
+                        ApplyDungeonInstanceSnapshot(soloInstance.Snapshot());
+                    }
+                }
+
                 // 共享状态广播（设计稿 §3.3）：单人实例只有自己一人 → 仍然走本会话的发送路径
                 // （报文逐字节与改造前一致：stream + 计数 + 日志）；组队实例走成员句柄广播。
                 // 调用点必须已经用实例的原子方法判定过（TryTakeMonsterDeath/TryEnableClear/
@@ -2592,17 +2607,18 @@ public sealed class EntranceService(
                     inDungeonSelection = false;
                     dungeonSelectionDeadline = null;
                     selectionWorldMap = null;
-                    dungeonInstance?.ResetGroundItems();
-                    dungeonInstance?.StopRun();
-                    if (dungeonInstance is not null)
-                    {
-                        ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
-                    }
-
+                    // 单人：本会话就是整局，照旧丢弃房间/掉落、停 run；组队：房间/掉落/run 留给其余成员。
+                    TeardownSoloDungeonInstance();
                     if (activeCharacter is not null)
                     {
-                        // 回城 = 本角色离开实例；最后一个成员离开时实例就地销毁（设计稿 §3.4）。
-                        dungeonInstanceRegistry.UnbindCharacter(activeCharacter.Id);
+                        // 回城 = 本角色离开实例（设计稿 §3.4）：解绑自己（最后一个成员离开即销毁实例），
+                        // 并让其余成员的客户端收到"角色离场"信号；uid/坐标在解绑前从会话局部量传入。
+                        await LeaveDungeonInstanceAsync(
+                            activeCharacter.Id,
+                            localUserId,
+                            currentX,
+                            currentY,
+                            currentDirection);
                     }
 
                     dungeonInstance = null;
@@ -3495,17 +3511,19 @@ public sealed class EntranceService(
                             currentDungeonRoomX = 0;
                             currentDungeonRoomY = 0;
                             currentDungeonDifficulty = 0;
-                            dungeonInstance?.ResetGroundItems();
-                            dungeonInstance?.StopRun();
-                            if (dungeonInstance is not null)
+                            // 单人：本会话就是整局，照旧丢弃房间/掉落、停 run；组队：实例留给其余成员。
+                            TeardownSoloDungeonInstance();
+                            if (returningCharacterId is { } leavingCharacterId)
                             {
-                                ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
-                            }
-
-                            if (returningCharacterId is not null)
-                            {
-                                // 换角色/回选人 = 该角色离开实例（设计稿 §3.4）。
-                                dungeonInstanceRegistry.UnbindCharacter(returningCharacterId.Value);
+                                // 换角色/回选人 = 该角色离开实例（设计稿 §3.4）：解绑自己（最后一个成员
+                                // 离开即销毁实例），并让其余成员的客户端收到"角色离场"信号。必须用上面
+                                // 记下的 returningCharacterId：activeCharacter 已经先一步清空。
+                                await LeaveDungeonInstanceAsync(
+                                    leavingCharacterId,
+                                    localUserId,
+                                    currentX,
+                                    currentY,
+                                    currentDirection);
                             }
 
                             dungeonInstance = null;
@@ -14275,6 +14293,19 @@ public sealed class EntranceService(
                     await townDirectory.LeaveAsync(leavingTicket, CancellationToken.None);
                 }
 
+                if (activeCharacter is not null)
+                {
+                    // 掉线/被踢：把角色从副本实例里摘掉（最后一个成员离开即销毁，设计稿 §3.4），
+                    // 并让其余成员收到"角色离场"信号。必须在下面把 localUserId 还回池子**之前**：
+                    // 离场信号里的 uid 就是它还活着时的值（还回去之后可能被别的会话复用）。
+                    await LeaveDungeonInstanceAsync(
+                        activeCharacter.Id,
+                        localUserId,
+                        currentX,
+                        currentY,
+                        currentDirection);
+                }
+
                 if (localUserId != 0)
                 {
                     areaUserIds.Release(localUserId);
@@ -14343,6 +14374,55 @@ public sealed class EntranceService(
             weightDelta,
             cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// 离开副本实例的收尾（三条路径共用：回城 CMD 45/142/结算、掉线、换角色/回选人，设计稿 §3.4）：
+    /// 解绑这个角色 → 最后一个成员离开时 <see cref="DungeonInstanceRegistry.UnbindCharacter"/> 就地
+    /// 销毁实例；还剩成员的**组队**实例补发既有的"角色离场"信号（USER_AREA 带 0xFF/0xFF 哨兵 →
+    /// 其余成员客户端销毁该 actor，见 TownSyncSmokeTests 的离场断言）。单人实例没有"其余成员"，
+    /// 一个包都不发（单人零回归）。
+    /// (uid, 坐标) 由调用方在解绑**之前**从会话局部量传入：解绑之后实例里已经没有这个人了。
+    /// 放在类方法而不是会话里的局部函数：掉线路径的调用点在 <c>finally</c> 里，而 <c>try</c> 的
+    /// 局部函数在那个作用域看不到。发包一律 <c>CancellationToken.None</c>——这是给别人的收尾包，
+    /// 离开者的会话令牌在掉线时已经取消、在回城/回选人时也不代表收件人。
+    /// </summary>
+    private async Task LeaveDungeonInstanceAsync(
+        Guid characterId,
+        ushort areaUserId,
+        short x,
+        short y,
+        byte direction)
+    {
+        var leavingInstance = dungeonInstanceRegistry.UnbindCharacter(characterId);
+        if (leavingInstance is not { IsParty: true }
+            || areaUserId == 0
+            || leavingInstance.MemberCount == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await dungeonPartyService.NotifyMemberLeftAsync(
+                leavingInstance,
+                characterId,
+                areaUserId,
+                x,
+                y,
+                direction,
+                CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            // 离场提示是给**别的成员**的收尾包：坏通道/目标会话已取消都不该把离开者自己的
+            // 收尾（掉线 finally 里的通道摘除与角色租约释放）带下去。
+            logger.LogWarning(
+                exception,
+                "Could not notify the remaining members that {CharacterId} left dungeon instance {PartyId}.",
+                characterId,
+                leavingInstance.PartyId);
+        }
     }
 
     private async Task<GameServerPacket> CreateUserInfoAsync(uint accountUid, CancellationToken cancellationToken)
