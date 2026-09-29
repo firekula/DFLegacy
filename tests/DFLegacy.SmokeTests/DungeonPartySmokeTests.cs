@@ -24,8 +24,38 @@ internal static class DungeonPartySmokeTests
         CheckSoloRunBindsByCharacterId(check, fixture);
         CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
         CheckSoloLookupNeverReusesPartyBinding(check, fixture);
+        CheckStoppedInstanceCannotBeJoined(check, fixture);
         await CheckGatheringValidationAsync(check, fixture);
+        await CheckRequestTargetingAsync(check, fixture);
         CheckMemberEntryPacketOrder(check, fixture);
+    }
+
+    /// <summary>
+    /// I2（评审 Important 2）：入场中止路径（`TryStartRun` 失败 / 地狱票被拒 / 票落库失败）会留下
+    /// "有成员、run 已停"的实例；那种实例**不可加入**，且取当前房间快照必须返回 false 而不是抛
+    /// （异常逃到会话外层 catch 会把会话打断）。
+    /// **变异验证**：① 把 `CanAcceptJoin` 里的 `_run.IsActive` 去掉 → 第三条断言变红；
+    /// ② 把 `TryCaptureCurrentRoomSnapshot` 改回"没有房间就抛" → 第一条/第四条断言变红（异常）。
+    /// </summary>
+    private static void CheckStoppedInstanceCannotBeJoined(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        instance.AddMember(fixture.Member(Guid.NewGuid(), slot: 0, "队长"));
+        check(!instance.CanAcceptJoin
+                && !instance.TryCaptureCurrentRoomSnapshot(ownerUserId: 1, out _),
+            "an instance whose run never started cannot be joined and has no current room");
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
+            "the fixture instance starts a run");
+        check(instance.CanAcceptJoin
+                && instance.TryCaptureCurrentRoomSnapshot(ownerUserId: 1, out var liveRoom)
+                && liveRoom.RoomX == instance.Run.RoomX
+                && liveRoom.RoomY == instance.Run.RoomY,
+            "a live instance accepts joins and hands out its current room");
+        instance.StopRun();
+        check(!instance.CanAcceptJoin,
+            "stopping the run closes the instance to joins");
+        check(!instance.TryCaptureCurrentRoomSnapshot(ownerUserId: 1, out _),
+            "a stopped instance reports no current room instead of throwing");
     }
 
     /// <summary>
@@ -75,6 +105,47 @@ internal static class DungeonPartySmokeTests
         check(blocked is null && blockedOutsiders.Length == 1 && blockedOutsiders[0] == member,
             "one member outside the leader's area aborts the whole party entry");
         _ = fixture;
+    }
+
+    /// <summary>
+    /// 请求投递的成员过滤（Task 3 评审 Minor 4）：**队长自己不被投递**；不在同一区域的队员不被投递
+    /// （异区时整队 abort，两条投递路径都返回 0）。全部走 `PartyHarness` 的真实组队/换区流程。
+    /// **变异验证**：把投递循环里的"跳过队长"判断去掉 → 第一条/第二条断言变红；
+    /// 把同区域校验换成"永远放行" → 第三条/第四条断言变红。
+    /// </summary>
+    private static async Task CheckRequestTargetingAsync(Action<bool, string> check, DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        var registry = new DungeonInstanceRegistry();
+        using var service = new DungeonPartyService(
+            harness.Service, harness.Directory, registry, TimeProvider.System,
+            NullLogger<DungeonPartyService>.Instance);
+        await harness.InviteAndAcceptAsync("阿尔法", "布拉沃");
+        var leader = harness.IdOf("阿尔法");
+        var member = harness.IdOf("布拉沃");
+        var instance = fixture.CreatePartyInstance(1000);
+
+        check(service.PostEntryRequests(instance, 14, 0, 0, leader, townId: 1, areaId: 0) == 1
+                && !registry.TryTakeEntryRequest(leader, out _)
+                && registry.TryTakeEntryRequest(member, out var entry)
+                && entry.LeaderCharacterId == leader,
+            "an entry request goes to the other member only, never to the leader");
+        check(service.PostSelectionRequests(leader, townId: 1, areaId: 0) == 1
+                && !registry.TryTakeSelectionRequest(leader, out _)
+                && registry.TryTakeSelectionRequest(member, out var selectionLeader)
+                && selectionLeader == leader,
+            "a selection request goes to the other member only, never to the leader");
+
+        // 异区：整队放弃，两条投递路径都不投任何人（谁的状态都不改）。
+        await harness.MoveToAreaAsync("布拉沃", townId: 1, areaId: 1);
+        check(service.PostEntryRequests(instance, 14, 0, 0, leader, townId: 1, areaId: 0) == 0
+                && !registry.TryTakeEntryRequest(leader, out _)
+                && !registry.TryTakeEntryRequest(member, out _),
+            "an outsider blocks the whole party: no entry request is posted");
+        check(service.PostSelectionRequests(leader, townId: 1, areaId: 0) == 0
+                && !registry.TryTakeSelectionRequest(leader, out _)
+                && !registry.TryTakeSelectionRequest(member, out _),
+            "an outsider blocks the whole party: no selection request is posted");
     }
 
     /// <summary>

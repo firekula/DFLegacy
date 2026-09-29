@@ -2095,6 +2095,29 @@ public sealed class EntranceService(
                         selectionWorldMap?.Id, activeCharacter?.Id, questsMet, missingItems);
                 }
 
+                // 进入选图状态的三连包：USER_STATE(state 1) → NOTI 11（本机对端表）→ NOTI 26（本机槽位）。
+                // 单人 CMD 15 与组队队员的"进入选图状态"共用同一条路径（报文条数/顺序/实参一致）；
+                // 单人侧传 0（与 CreateUdpHost() 的默认值同包）。
+                async Task SendDungeonSelectionStateAsync(byte slotIndex)
+                {
+                    var dungeonState = GameProtocolEngine.CreateUserState(localUserId, state: 1);
+                    await dungeonState.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, dungeonState);
+                    var peerInfo = gameplayDatagram.TryGetPeerInfo(
+                        runtimeSession.Id, localUserId, accountId: 1, out var localPeer)
+                            ? new[] { localPeer }
+                            : [];
+                    var udpPeers = GameProtocolEngine.CreateUdpPeerInfo(peerInfo);
+                    await udpPeers.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, udpPeers);
+                    var udpHost = GameProtocolEngine.CreateUdpHost(slotIndex);
+                    await udpHost.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, udpHost);
+                }
+
                 // 把实例的权威状态抄进会话的 currentDungeon* 局部量（只抄，不判逻辑）。
                 // 换算口径与改造前各赋值点完全一致：房间坐标/房间/布局/难度都取自实例。
                 // 教学副本例外：实例的 detached room 没有 PVF 迷宫（DungeonId=0），会话的合成
@@ -2145,26 +2168,11 @@ public sealed class EntranceService(
                     var delivered = await partyService.SendToOtherMembersAsync(
                         activeCharacter.Id, appearance, cancellationToken);
 
-                    // ② 自己的选图状态（复用单人 CMD 15 的那套报文，只是收件人是自己）。
-                    var dungeonState = GameProtocolEngine.CreateUserState(localUserId, state: 1);
-                    await dungeonState.WriteAsync(stream, serverToken);
-                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                    LogPacket("TX", runtimeSession, dungeonState);
-                    var peerInfo = gameplayDatagram.TryGetPeerInfo(
-                        runtimeSession.Id, localUserId, accountId: 1, out var localPeer)
-                            ? new[] { localPeer }
-                            : [];
-                    var udpPeers = GameProtocolEngine.CreateUdpPeerInfo(peerInfo);
-                    await udpPeers.WriteAsync(stream, serverToken);
-                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                    LogPacket("TX", runtimeSession, udpPeers);
+                    // ② 自己的选图状态（复用单人 CMD 15 的三连包，NOTI 26 的槽位换成队员自己的）。
                     var memberSlots = partyService.GetPartySlots(activeCharacter.Id);
                     var memberSlot = memberSlots?
                         .FirstOrDefault(slot => slot.CharacterId == activeCharacter.Id)?.SlotIndex ?? 0;
-                    var udpHost = GameProtocolEngine.CreateUdpHost(checked((byte)memberSlot));
-                    await udpHost.WriteAsync(stream, serverToken);
-                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                    LogPacket("TX", runtimeSession, udpHost);
+                    await SendDungeonSelectionStateAsync(checked((byte)memberSlot));
                     await SendDungeonPermissionsAsync();
                     await SendDungeonSelectionEligibilityAsync();
                     logger.LogInformation(
@@ -2208,6 +2216,27 @@ public sealed class EntranceService(
                         return;
                     }
 
+                    // 投递与处理之间队员可能已经退队：没有槽位快照就没有"自己的槽位/名册/对端表"，
+                    // 静默按槽位 0 入场只会进一个不属于他的副本，直接中止。
+                    var slots = partyService.GetPartySlots(activeCharacter.Id);
+                    if (slots is null)
+                    {
+                        logger.LogWarning(
+                            "Party dungeon entry aborted for {Name}: no party slots (left the party?).",
+                            activeCharacter.Name);
+                        return;
+                    }
+
+                    // 竞态兜底：实例的 run 可能已被收尾（队长回城/换局）。取不到当前房间就中止——
+                    // 此刻还没离城、没绑定（不入场、不绑定）。
+                    if (!instance.TryCaptureCurrentRoomSnapshot(localUserId, out var room))
+                    {
+                        logger.LogWarning(
+                            "Party dungeon entry aborted for {Name}: instance {PartyId} has no current room (run stopped).",
+                            activeCharacter.Name, request.PartyId);
+                        return;
+                    }
+
                     // ② 离城（同时重播名册）；③ 绑实例。
                     inDungeonSelection = false;
                     dungeonReturnTownId = currentTownId;
@@ -2218,8 +2247,7 @@ public sealed class EntranceService(
                     await LeaveTownAreaAsync(serverToken);
                     dungeonInstance = instance;
                     dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, instance);
-                    var slots = partyService.GetPartySlots(activeCharacter.Id);
-                    var slotIndex = slots?
+                    var slotIndex = slots
                         .FirstOrDefault(slot => slot.CharacterId == activeCharacter.Id)?.SlotIndex ?? 0;
                     // 先摘后挂（幂等）：上一次入场失败可能留下带旧 AreaUserId/旧发送句柄的成员记录。
                     instance.RemoveMember(activeCharacter.Id);
@@ -2237,10 +2265,10 @@ public sealed class EntranceService(
                         activeCharacter.Id, appearance, cancellationToken);
 
                     // ⑤ 名册 → NOTI 26（自己的槽位）→ NOTI 11 → NOTI 28 → NOTI 29。
+                    // 队员进的是"实例当前的房间"：room 是上面 TryCaptureCurrentRoomSnapshot 的锁内快照
+                    // （不是 TryMoveRoom，不推进房间）。
                     var roster = partyService.GetRosterPacketFor(activeCharacter.Id);
                     var peerTable = BuildPartyPeerTable(slots, activeCharacter.Id);
-                    // 队员进的是"实例当前的房间"：用 CaptureCurrentRoomSnapshot（不是 TryMoveRoom）。
-                    var room = instance.CaptureCurrentRoomSnapshot(localUserId);
                     foreach (var packet in DungeonEntryPackets.PlanMemberEntry(
                                  instance, room, roster, peerTable, checked((byte)slotIndex)))
                     {
@@ -11400,29 +11428,7 @@ public sealed class EntranceService(
                             dungeonSelectionDeadline = requiresTutorial
                                 ? null : DateTimeOffset.UtcNow.AddSeconds(30);
                             await SaveCurrentLocationAsync(serverToken);
-                            var dungeonState = GameProtocolEngine.CreateUserState(
-                                localUserId,
-                                state: 1);
-                            await dungeonState.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, dungeonState);
-
-                            var peerInfo = gameplayDatagram.TryGetPeerInfo(
-                                runtimeSession.Id,
-                                localUserId,
-                                accountId: 1,
-                                out var localPeer)
-                                    ? new[] { localPeer }
-                                    : [];
-                            var udpPeers = GameProtocolEngine.CreateUdpPeerInfo(peerInfo);
-                            await udpPeers.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, udpPeers);
-
-                            var udpHost = GameProtocolEngine.CreateUdpHost();
-                            await udpHost.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, udpHost);
+                            await SendDungeonSelectionStateAsync(slotIndex: 0);
 
                             await SendDungeonPermissionsAsync();
 
@@ -11725,8 +11731,27 @@ public sealed class EntranceService(
                                 : 0;
                             if (partyEntry
                                 && dungeonInstanceRegistry.TryGetForParty(entrySlots![0].PartyId)
-                                    is { MemberCount: > 0 } liveInstance)
+                                    is { CanAcceptJoin: true } liveInstance)
                             {
+                                // 门槛过后仍有竞态（别的成员刚回城/收尾）：取不到当前房间就中止。
+                                // 此刻还没绑定、没入场 —— "不入场、不绑定"（异常逃到外层 catch 会打断会话）。
+                                if (!liveInstance.TryCaptureCurrentRoomSnapshot(localUserId, out var liveRoom))
+                                {
+                                    logger.LogWarning(
+                                        "Party leader {Name} could not join instance {PartyId}: its run stopped before entry.",
+                                        activeCharacter!.Name, liveInstance.PartyId);
+                                    continue;
+                                }
+
+                                // CMD 15 设的选图状态与 30 秒截止必须在这里收尾：否则主循环到点会按
+                                // "选图超时"把刚进图的队长拉回城镇（回城路径还会停掉这间别人的房间）；
+                                // 同时城镇 ticket 还活着 = 幽灵占位 + 目录残留。与正常入场路径同形，
+                                // 但**不动** run 状态（ResetGroundItems/ResetClear 是别人的房间）。
+                                // selectionWorldMap 与正常入场路径一致：不在这里清（下次 CMD 15 会重写）。
+                                inDungeonSelection = false;
+                                dungeonSelectionDeadline = null;
+                                await LeaveTownAreaAsync(serverToken);
+
                                 dungeonInstance = liveInstance;
                                 dungeonInstanceRegistry.BindCharacter(activeCharacter!.Id, dungeonInstance);
                                 // 先摘后挂（幂等）：上一次入场中途失败可能留下"旧 AreaUserId + 旧发送句柄"
@@ -11738,7 +11763,6 @@ public sealed class EntranceService(
                                     checked((byte)leaderSlotIndex),
                                     activeCharacter.Name,
                                     packet => SendTownPacketAsync(packet, serverToken)));
-                                var liveRoom = dungeonInstance.CaptureCurrentRoomSnapshot(localUserId);
                                 foreach (var packet in DungeonEntryPackets.PlanMemberEntry(
                                              dungeonInstance,
                                              liveRoom,
@@ -11788,6 +11812,11 @@ public sealed class EntranceService(
                                     dungeonLayout.MazeIndex,
                                     dungeonLayout.StartX,
                                     dungeonLayout.StartY);
+                                // 中止即解绑：不解绑会在注册表里留下"有成员、run 已停"的实例，
+                                // 重试时按成员数命中 → 取当前房间失败/拿到没有房间的实例。
+                                dungeonInstanceRegistry.UnbindCharacter(activeCharacter.Id);
+                                dungeonInstance = null;
+                                dungeonInstanceVersion = -1;
                                 continue;
                             }
 
@@ -11800,6 +11829,11 @@ public sealed class EntranceService(
                                     || !selectionWorldMap.TryConsumeHellItems(mainInventory, out plannedInventory))
                                 {
                                     dungeonInstance!.StopRun();
+                                    // 中止即解绑（同 TryStartRun 失败路径）：不让"有成员、run 已停"的
+                                    // 实例留在注册表里被下一次入场按成员数命中。
+                                    dungeonInstanceRegistry.UnbindCharacter(activeCharacter.Id);
+                                    dungeonInstance = null;
+                                    dungeonInstanceVersion = -1;
                                     var ticketError = GameProtocolEngine.CreateCommandError(
                                         request,
                                         errorCode: 14);
@@ -11831,6 +11865,10 @@ public sealed class EntranceService(
                                 if (savedTicketConsumption is null)
                                 {
                                     dungeonInstance!.StopRun();
+                                    // 中止即解绑（同前两条中止路径）。
+                                    dungeonInstanceRegistry.UnbindCharacter(activeCharacter.Id);
+                                    dungeonInstance = null;
+                                    dungeonInstanceVersion = -1;
                                     var ticketSaveError = GameProtocolEngine.CreateCommandError(
                                         request,
                                         errorCode: 19);

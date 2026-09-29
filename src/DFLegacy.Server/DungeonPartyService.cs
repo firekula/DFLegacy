@@ -211,30 +211,60 @@ public sealed class DungeonPartyService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await Task.Delay(SweepInterval, _timeProvider, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
+                try
+                {
+                    await Task.Delay(SweepInterval, _timeProvider, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
 
-            await SweepDoorAssembliesAsync(stoppingToken);
+                await SweepDoorAssembliesAsync(stoppingToken);
+            }
         }
-
-        Registry.Clear();
+        finally
+        {
+            // 只在取消/退出时清空：放在循环之后的话，扫描里任何一个异常都会跳过它，
+            // 让托管服务带着一注册表的活实例挂掉（Task 5 的扫描逻辑正在长出来）。
+            Registry.Clear();
+        }
     }
 
     /// <summary>
     /// 门口集结倒计时（设计稿 §3.3 第 4 条）：到点的实例 → 锁内推进房间取快照 → 出锁给全员发 NOTI 29。
     /// 被强制推进的成员自己不操作，所以这里**不发**命令回包（只给到过门口的人补回包）。
+    /// 单个实例的异常只告警、不影响其它实例（扫描是每实例独立的一步）。
     /// </summary>
     private async Task SweepDoorAssembliesAsync(CancellationToken cancellationToken)
     {
-        // Task 5 实现（倒计时到点 → instance.TryMoveRoom + 广播 NOTI 29）。
+        foreach (var instance in Registry.Instances)
+        {
+            try
+            {
+                await SweepDoorAssemblyAsync(instance, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Door assembly sweep failed for instance {PartyId}.",
+                    instance.PartyId);
+            }
+        }
+    }
+
+    /// <summary>单个实例的集结扫描（Task 5 填：倒计时到点 → instance.TryMoveRoom + 广播 NOTI 29）。</summary>
+    private async Task SweepDoorAssemblyAsync(DungeonInstance instance, CancellationToken cancellationToken)
+    {
         await Task.CompletedTask;
     }
 }

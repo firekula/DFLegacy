@@ -171,6 +171,23 @@ internal sealed class DungeonInstance(
         }
     }
 
+    /// <summary>
+    /// 可以"加入现有实例"（设计稿 §3.1）：**已有成员且 run 还活着**。
+    /// 入场中止路径（`TryStartRun` 失败 / 地狱票被拒 / 落库失败）会留下"有成员、run 已停"的实例
+    /// （Task 2 评审遗留项）；那种实例没有当前房间，按成员数命中就会在取快照处炸掉。
+    /// 门槛收在这里，会话代码与冒烟测试用同一个判据。
+    /// </summary>
+    public bool CanAcceptJoin
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _members.Count > 0 && _run.IsActive;
+            }
+        }
+    }
+
     public DungeonInstanceMember? FindMember(Guid characterId)
     {
         lock (Gate)
@@ -485,13 +502,31 @@ internal sealed class DungeonInstance(
     /// <summary>
     /// 加入现有实例（队长/队员进一个"已经在跑的"实例）：取**当前房间**的发包快照，不推进房间。
     /// 当前房间的被动掉落若还没登记过就现在登记（与首次进房同一条路径）。
+    /// 实例没有当前房间时抛 <see cref="InvalidOperationException"/>；会话路径要用不抛的
+    /// <see cref="TryCaptureCurrentRoomSnapshot"/>。
     /// </summary>
-    public DungeonInstanceRoomSnapshot CaptureCurrentRoomSnapshot(ushort ownerUserId)
+    public DungeonInstanceRoomSnapshot CaptureCurrentRoomSnapshot(ushort ownerUserId) =>
+        TryCaptureCurrentRoomSnapshot(ownerUserId, out var room)
+            ? room
+            : throw new InvalidOperationException("Dungeon instance has no current room.");
+
+    /// <summary>
+    /// 不抛的"取当前房间快照"（加入现有实例的门槛）：实例的 run 已停 / 从未开局时返回 false。
+    /// 会话据此中止入场（不入场、不绑定），而不是让异常逃到外层 catch 把会话打断。
+    /// </summary>
+    public bool TryCaptureCurrentRoomSnapshot(
+        ushort ownerUserId,
+        out DungeonInstanceRoomSnapshot room)
     {
         lock (Gate)
         {
-            var room = CurrentRoomLocked()
-                ?? throw new InvalidOperationException("Dungeon instance has no current room.");
+            var current = CurrentRoomLocked();
+            if (current is null)
+            {
+                room = null!;
+                return false;
+            }
+
             var roomX = _run.IsActive ? _run.RoomX : (byte)0;
             var roomY = _run.IsActive ? _run.RoomY : (byte)0;
             var registered = GetRoomPassiveDropsLocked(roomX, roomY);
@@ -500,22 +535,23 @@ internal sealed class DungeonInstance(
             // 客户端多出幽灵被动物件 → 复制道具（后进队的会话正好走这条路径）。
             var drops = _registeredPassiveRooms.Contains(new DungeonRoomPosition(roomX, roomY))
                 ? registered
-                : RegisterRoomPassiveDropsLocked(room, ownerUserId, roomX, roomY);
+                : RegisterRoomPassiveDropsLocked(current, ownerUserId, roomX, roomY);
             var (hellX, hellY) = HellRoomPositionLocked();
-            return new DungeonInstanceRoomSnapshot(
+            room = new DungeonInstanceRoomSnapshot(
                 roomX,
                 roomY,
-                room.MapId,
-                room.ClientRandomSeed,
+                current.MapId,
+                current.ClientRandomSeed,
                 _run.RoomStateFlag,
                 _run.CurrentHellPartyMode,
                 hellX,
                 hellY,
-                room,
-                room.Monsters,
+                current,
+                current.Monsters,
                 drops,
                 FirstVisit: true,
                 ReuseClientRoomState: false);
+            return true;
         }
     }
 
