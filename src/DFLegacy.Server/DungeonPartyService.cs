@@ -1,4 +1,3 @@
-using System.Net.Sockets;
 using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
@@ -184,7 +183,10 @@ public sealed class DungeonPartyService : BackgroundService
         return posted;
     }
 
-    /// <summary>给同实例所有成员（可跳过自己）投一份包；坏通道只告警不影响其他人。</summary>
+    /// <summary>
+    /// 给同实例所有成员（可跳过自己）投一份包；坏通道（含**被踢/掉线成员自己的** OCE）只告警、
+    /// 不影响其他人，也不把异常顺着发送者的会话冒泡（终审 I1：护栏见 <see cref="CrossSessionDelivery"/>）。
+    /// </summary>
     internal async Task BroadcastToMembersAsync(
         DungeonInstance instance,
         GameServerPacket packet,
@@ -198,18 +200,12 @@ public sealed class DungeonPartyService : BackgroundService
                 continue;
             }
 
-            try
-            {
-                await member.Send(packet);
-            }
-            catch (Exception exception) when (exception is IOException or ObjectDisposedException or SocketException)
-            {
-                _logger.LogWarning(
-                    exception,
-                    "Could not deliver dungeon packet {ProtocolId} to {CharacterId}.",
-                    packet.ProtocolId,
-                    member.CharacterId);
-            }
+            await CrossSessionDelivery.SendSafelyAsync(
+                _logger,
+                packet,
+                CrossSessionDelivery.Describe(
+                    member.CharacterId, member.CharacterName, member.AreaUserId),
+                member.Send);
         }
     }
 
@@ -227,6 +223,7 @@ public sealed class DungeonPartyService : BackgroundService
     internal async Task NotifyMemberLeftAsync(
         DungeonInstance instance,
         Guid characterId,
+        string characterName,
         ushort areaUserId,
         short x,
         short y,
@@ -237,8 +234,8 @@ public sealed class DungeonPartyService : BackgroundService
             new GameTownUser(areaUserId, x, y, direction));
         await BroadcastToMembersAsync(instance, departure, characterId, cancellationToken);
         _logger.LogInformation(
-            "Party member {CharacterId} left dungeon instance {PartyId}; departure sent to {Count} remaining member(s).",
-            characterId, instance.PartyId, instance.MemberCount);
+            "Party member {CharacterName} (uid {AreaUserId}, {CharacterId}) left dungeon instance {PartyId}; departure sent to {Count} remaining member(s).",
+            characterName, areaUserId, characterId, instance.PartyId, instance.MemberCount);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -378,22 +375,15 @@ public sealed class DungeonPartyService : BackgroundService
     }
 
     /// <summary>
-    /// 跨会话投递的坏通道护栏（与 <see cref="BroadcastToMembersAsync"/> 同一组异常）：
+    /// 跨会话投递的坏通道护栏（与 <see cref="BroadcastToMembersAsync"/> 同一份
+    /// <see cref="CrossSessionDelivery"/> 判定，含被踢成员自己的 OCE）：
     /// 扫描是每实例独立的一步，一个断线成员不该把整轮推进打断（其余成员仍要收到 NOTI 29）。
     /// </summary>
-    private async Task SendSafelyAsync(DungeonInstanceMember member, GameServerPacket packet)
-    {
-        try
-        {
-            await member.Send(packet);
-        }
-        catch (Exception exception) when (exception is IOException or ObjectDisposedException or SocketException)
-        {
-            _logger.LogWarning(
-                exception,
-                "Could not deliver dungeon packet {ProtocolId} to {CharacterId}.",
-                packet.ProtocolId,
-                member.CharacterId);
-        }
-    }
+    private Task SendSafelyAsync(DungeonInstanceMember member, GameServerPacket packet) =>
+        CrossSessionDelivery.SendSafelyAsync(
+            _logger,
+            packet,
+            CrossSessionDelivery.Describe(
+                member.CharacterId, member.CharacterName, member.AreaUserId),
+            member.Send);
 }

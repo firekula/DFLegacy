@@ -902,16 +902,11 @@ public sealed class PartyService : BackgroundService
         }
     }
 
-    /// <summary>把包发给指定角色的通道；通道不在（离线/已摘除）时静默忽略。</summary>
-    internal Task SendToCharacterAsync(
-        Guid characterId,
-        GameServerPacket packet,
-        CancellationToken cancellationToken) =>
-        SendAsync(characterId, packet, cancellationToken);
-
     /// <summary>
-    /// 把包发给该角色所在队伍的**其他**成员（不含自己）；不在队伍时返回 0。
-    /// 发送异常沿用 <see cref="SendAsync"/> 的口径：坏通道只告警、不影响其他人。
+    /// 把包发给该角色所在队伍的**其他**成员（不含自己）；不在队伍时返回 0
+    /// （单人路径因此一份包都不会多发——队长的外观推送靠这条护栏）。
+    /// 坏通道（含被踢/掉线成员自己的 OCE）走 <see cref="CrossSessionDelivery"/>：只告警、
+    /// 不影响其他收件人，也不把异常顺着发送者的会话冒泡（终审 I1）。
     /// </summary>
     internal async Task<int> SendToOtherMembersAsync(
         Guid omitCharacterId,
@@ -937,14 +932,14 @@ public sealed class PartyService : BackgroundService
                 await slot.Send(packet);
                 sent++;
             }
-            catch (Exception exception) when (
-                exception is IOException or ObjectDisposedException or SocketException)
+            catch (Exception exception) when (CrossSessionDelivery.IsBrokenChannel(exception))
             {
                 _logger.LogWarning(
                     exception,
-                    "Could not deliver party packet {ProtocolId} to {CharacterId}.",
+                    "Could not deliver party packet {ProtocolId} to {Recipient}.",
                     packet.ProtocolId,
-                    slot.CharacterId);
+                    CrossSessionDelivery.Describe(
+                        slot.CharacterId, slot.CharacterName, slot.AreaUserId));
             }
         }
 

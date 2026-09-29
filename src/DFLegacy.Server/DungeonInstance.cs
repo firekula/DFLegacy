@@ -31,6 +31,17 @@ internal sealed record DungeonInstanceSnapshot(
     bool ClearEnabled,
     int MemberCount);
 
+/// <summary>
+/// 队长开局的结果（<see cref="DungeonInstance.TryStartRunForEntry"/>，终审 P5）：
+/// <see cref="AlreadyActive"/> = 这支队的 run 已经被另一个会话开好，调用方必须改走 live-join。
+/// </summary>
+public enum DungeonRunEntryDecision
+{
+    Started,
+    AlreadyActive,
+    StartFailed
+}
+
 /// <summary>进入房间后的发包快照：NOTI 28 的 hell 房坐标 + NOTI 29 的房间/怪物/被动掉落。</summary>
 internal sealed record DungeonInstanceRoomSnapshot(
     byte RoomX,
@@ -216,22 +227,59 @@ internal sealed class DungeonInstance(
     {
         lock (Gate)
         {
-            if (!_run.TryStart(layout, difficulty, dungeonOption, out transition, random))
+            return StartRunLocked(layout, difficulty, dungeonOption, out transition, random);
+        }
+    }
+
+    /// <summary>
+    /// 队长开局的仲裁点（终审 P5）：`TryGetForParty(...).CanAcceptJoin` 与 `TryStartRun` 之间
+    /// 有窗口——两个成员会话可能都通过门槛，第二个的 `TryStartRun` 会先 `Stop()` 掉先到者的 run
+    /// （重掷迷宫 → 两人房间几何不一致、先到者的 NOTI 29 已经发出去）。这里把"判定 + 开局"
+    /// 收进**同一次锁内**：run 已经活了 → <see cref="DungeonRunEntryDecision.AlreadyActive"/>，
+    /// 调用方必须改走"加入现有实例"（live-join），绝不重掷对方的迷宫。
+    /// </summary>
+    public DungeonRunEntryDecision TryStartRunForEntry(
+        DungeonLayout layout,
+        byte difficulty,
+        byte dungeonOption,
+        out DungeonRoomTransition transition)
+    {
+        lock (Gate)
+        {
+            if (_run.IsActive)
             {
-                return false;
+                transition = null!;
+                return DungeonRunEntryDecision.AlreadyActive;
             }
 
-            DungeonOption = dungeonOption;
-            Layout = layout;
-            ClearEnabled = false;
-            LastRoomEntryWasFirstVisit = transition.FirstVisit;
-            _detachedRoom = null;
-            _registeredPassiveRooms.Clear();
-            ResetRoomCollections(transition.Room.Monsters);
-            Doors.Reset();
-            Version++;
-            return true;
+            return StartRunLocked(layout, difficulty, dungeonOption, out transition, random: null)
+                ? DungeonRunEntryDecision.Started
+                : DungeonRunEntryDecision.StartFailed;
         }
+    }
+
+    private bool StartRunLocked(
+        DungeonLayout layout,
+        byte difficulty,
+        byte dungeonOption,
+        out DungeonRoomTransition transition,
+        IDropRandomSource? random)
+    {
+        if (!_run.TryStart(layout, difficulty, dungeonOption, out transition, random))
+        {
+            return false;
+        }
+
+        DungeonOption = dungeonOption;
+        Layout = layout;
+        ClearEnabled = false;
+        LastRoomEntryWasFirstVisit = transition.FirstVisit;
+        _detachedRoom = null;
+        _registeredPassiveRooms.Clear();
+        ResetRoomCollections(transition.Room.Monsters);
+        Doors.Reset();
+        Version++;
+        return true;
     }
 
     /// <summary>教学副本：布局不是 PVF 迷宫，直接给定房间（`Run` 保持空）。</summary>
@@ -261,6 +309,8 @@ internal sealed class DungeonInstance(
     {
         lock (Gate)
         {
+            var previousRoomX = _run.RoomX;
+            var previousRoomY = _run.RoomY;
             if (!_run.TryMoveRoom(roomX, roomY, out transition, random))
             {
                 return false;
@@ -271,6 +321,22 @@ internal sealed class DungeonInstance(
             LastRoomEntryWasFirstVisit = transition.FirstVisit;
             Doors.Reset();
             ResetRoomCollections(transition.Room.Monsters);
+            // 地狱房的被动掉落 detach（终审 I3，从单人的 CMD 48 分支集中到这里）：
+            // ①退出**未清**的地狱房（`CompletedHellRoomOnExit`，客户端场景要重建为空的地图房）
+            //    → 离开的那间房的被动掉落永远不可达；
+            // ②进入**已清**的地狱房（客户端重建空场景）→ 目标房间那次遭遇留下的被动掉落不该存在。
+            // 单人的调用点原来在会话里（报文之前/之后各一处），搬进来后三条换房路径
+            // （单人立即推进 / 组队自己推进 / 倒计时强制推进）共用同一份，且与房间状态同锁。
+            if (transition.CompletedHellRoomOnExit)
+            {
+                GroundItems.DetachAllPassiveObjectItems(previousRoomX, previousRoomY);
+            }
+
+            if (_run.IsCurrentHellRoomCleared)
+            {
+                GroundItems.DetachAllPassiveObjectItems(roomX, roomY);
+            }
+
             Version++;
             return true;
         }
@@ -397,6 +463,33 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             return _run.IsCurrentHellRoomCleared;
+        }
+    }
+
+    /// <summary>锁内读地狱模式标记（终审 P6：会话的票务/NOTI 28 判定用，别裸读 `_run`）。</summary>
+    public bool HellMode
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _run.HellMode;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 锁内读"run 的当前房间"（终审 P6；run 未活时为 null——与教学副本的 detached room 无关，
+    /// 那是 <see cref="Snapshot"/> 的口径）。会话不能裸读 <c>_run.CurrentRoom</c>。
+    /// </summary>
+    public DungeonRoomDefinition? RunCurrentRoom
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _run.IsActive ? _run.CurrentRoom : null;
+            }
         }
     }
 

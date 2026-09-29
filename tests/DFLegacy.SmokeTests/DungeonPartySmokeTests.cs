@@ -28,6 +28,10 @@ internal static class DungeonPartySmokeTests
         await CheckDoorAssemblySweepSurvivesBrokenMemberAsync(check, fixture);
         await CheckDoorAssemblySweepIgnoresSoloInstancesAsync(check, fixture);
         CheckRegistryEntryRequestMailbox(check, fixture);
+        CheckPendingPartyMailLookup(check, fixture);
+        CheckRunStartArbitration(check, fixture);
+        CheckLockedRunReadAccessors(check, fixture);
+        CheckHellRoomPassiveDetachOnMove(check, fixture);
         CheckSoloRunBindsByCharacterId(check, fixture);
         CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
         CheckSoloLookupNeverReusesPartyBinding(check, fixture);
@@ -39,6 +43,7 @@ internal static class DungeonPartySmokeTests
         await CheckPickupBroadcastOmitsSenderAsync(check, fixture);
         CheckGroundItemClaimIsFirstComeFirstServed(check, fixture);
         await CheckMemberDeparturePacketAsync(check, fixture);
+        await CheckCrossSessionDeliverySurvivesCanceledMembersAsync(check, fixture);
     }
 
     /// <summary>
@@ -520,7 +525,7 @@ internal static class DungeonPartySmokeTests
             survivor, 8, 1, "留守者", packet => { survivorInbox.Add(packet); return ValueTask.CompletedTask; }));
 
         await service.NotifyMemberLeftAsync(
-            instance, leaver, areaUserId: 7, x: 120, y: 340, direction: 3);
+            instance, leaver, characterName: "离开者", areaUserId: 7, x: 120, y: 340, direction: 3);
 
         check(leaverInbox.Count == 0,
             "the member who left receives no departure notice of their own");
@@ -1125,6 +1130,288 @@ internal static class DungeonPartySmokeTests
         check(!registry.TryTakeEntryRequest(characterId, out _),
             "taking the request clears it so the entry runs once");
     }
+
+    /// <summary>
+    /// 待处理组队邮箱的"有没有货"查询（终审 P2）：会话主循环的读等待只有在这个查询为真时才
+    /// 缩短到短 tick，否则完全按原样等待（单人零回归）。两个信箱**任一**有货即为 true；
+    /// 取走/解绑后必须回到 false——否则主循环会永远 250ms 空转。
+    /// **变异验证**：把 `HasPendingMail` 改成恒 false（或只看其中一个信箱）→ 第三/第四/第五
+    /// 条断言之一变红。会话里"用它缩短等待 + 短 tick 到点取件"的接线不可单测（无会话接缝），
+    /// 真机检查点是 Task 7 的第 2 项。
+    /// </summary>
+    private static void CheckPendingPartyMailLookup(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var registry = new DungeonInstanceRegistry();
+        var characterId = Guid.NewGuid();
+        check(!registry.HasPendingMail(characterId),
+            "an untouched character has no pending party mail (the read wait stays untouched)");
+        registry.PostSelectionRequest(characterId, Guid.NewGuid());
+        check(registry.HasPendingMail(characterId),
+            "a pending selection request counts as pending mail");
+        registry.PostEntryRequest(
+            characterId,
+            new DungeonEntryRequest(
+                PartyId: 1000, DungeonId: 14, Difficulty: 0, DungeonOption: 0,
+                LeaderTownId: 1, LeaderAreaId: 0, LeaderCharacterId: Guid.NewGuid()));
+        check(registry.TryTakeSelectionRequest(characterId, out _) && registry.HasPendingMail(characterId),
+            "taking the selection request leaves the entry request pending");
+        check(registry.TryTakeEntryRequest(characterId, out _) && !registry.HasPendingMail(characterId),
+            "taking the last request clears the pending-mail signal");
+        registry.PostEntryRequest(
+            characterId,
+            new DungeonEntryRequest(
+                PartyId: 1000, DungeonId: 14, Difficulty: 0, DungeonOption: 0,
+                LeaderTownId: 1, LeaderAreaId: 0, LeaderCharacterId: Guid.NewGuid()));
+        registry.UnbindCharacter(characterId);
+        check(!registry.HasPendingMail(characterId),
+            "unbinding the character clears both mailboxes");
+    }
+
+    /// <summary>
+    /// 并发 CMD 16 的开局仲裁（终审 P5）：两个成员会话可能都通过 CanAcceptJoin 门槛，
+    /// 第二个人若照旧 `TryStartRun`，`DungeonRunState.TryStart` 会先 `Stop()` 把先到者的
+    /// 迷宫/房间几何重掷成另一套（先到者的 NOTI 28/29 已经发出去）。
+    /// `TryStartRunForEntry` 把"判定 + 开局"收进锁内：第二个人拿 `AlreadyActive`，房间一字不动。
+    /// **变异验证**：把方法里的 `if (_run.IsActive) return AlreadyActive;` 删掉（或改回
+    /// 无条件 `TryStartRun`）→ 第二/第三条断言变红（返回 Started、迷宫被重掷）。
+    /// 会话说"拿到 AlreadyActive 就改走 live-join"的接线不可单测（会话无接缝）。
+    /// </summary>
+    private static void CheckRunStartArbitration(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        instance.AddMember(fixture.Member(Guid.NewGuid(), 0, "队长"));
+        var first = instance.TryStartRunForEntry(fixture.Layout, 0, 0, out var firstTransition);
+        check(first == DungeonRunEntryDecision.Started
+                && instance.Run.IsActive
+                && firstTransition.Room.MapId != 0,
+            "the first entry claims the run start and enters the start room");
+        // 让先到者真正离开起始房间并开放房间：一旦第二个人把 run 重掷（TryStart 会 Stop + 重进
+        // 起始房间），下面两条断言都会看到 (0,0)/未开放而变红——这就是"重掷迷宫几何"的可观测面。
+        check(instance.TryMoveRoom(1, 0, out _), "the claimed run advances to the next room");
+        instance.TryEnableClear();
+        var second = instance.TryStartRunForEntry(fixture.Layout, 0, 0, out _);
+        check(second == DungeonRunEntryDecision.AlreadyActive,
+            "the second concurrent entry is told the run is already active (it must live-join instead)");
+        check(instance.Run.IsActive
+                && instance.Run.RoomX == 1
+                && instance.Run.RoomY == 0
+                && instance.ClearEnabled,
+            "the already-active run keeps its room and clear flags (a restart would re-enter the start room)");
+        check(instance.TryStartRunForEntry(fixture.Layout, 0, 0, out _)
+                == DungeonRunEntryDecision.AlreadyActive
+                && instance.MemberCount == 1,
+            "repeated arbitration is idempotent and never touches the roster");
+    }
+
+    /// <summary>
+    /// 锁内的运行态只读（终审 P6）：会话不再裸读 `_run` 的 `HellMode`/`CurrentRoom`，
+    /// 走实例的锁内访问器。访问器必须与 `DungeonRunState` 同口径（非地狱模式恒 false、
+    /// run 未活时当前房间为 null）。
+    /// **变异验证**：把 `HellMode` 改成恒 true（或 `RunCurrentRoom` 改成恒 null）→ 断言变红。
+    /// 会话三处调用点的替换不可单测（同一接缝限制），但它们都只是取值来源的替换。
+    /// </summary>
+    private static void CheckLockedRunReadAccessors(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        instance.AddMember(fixture.Member(Guid.NewGuid(), 0, "队长"));
+        check(!instance.HellMode && instance.RunCurrentRoom is null,
+            "an idle instance reports neither hell mode nor a current room");
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _)
+                && !instance.HellMode
+                && instance.RunCurrentRoom is { MapId: not 0 },
+            "a normal run reports its current room through the locked accessor");
+        check(instance.TryMoveRoom(1, 0, out var transition)
+                && instance.RunCurrentRoom is { } movedRoom
+                && movedRoom.MapId == transition.Room.MapId
+                && movedRoom.Monsters.Length == transition.Room.Monsters.Length,
+            "the locked current-room accessor follows the room the run actually entered");
+
+        var hell = fixture.CreateInstance();
+        hell.AddMember(fixture.Member(Guid.NewGuid(), 0, "队长"));
+        check(hell.TryStartRun(fixture.HellLayout, 0, dungeonOption: 1, out _) && hell.HellMode,
+            "a hell dungeon run reports hell mode through the locked accessor");
+    }
+
+    /// <summary>
+    /// 地狱房的被动掉落 detach（终审 I3）：detach 从单人的 CMD 48 分支搬进
+    /// `DungeonInstance.TryMoveRoom` 的锁内后，三条换房路径（单人立即推进 / 组队自己推进 /
+    /// 倒计时强制推进）都拿到同一份行为。两个条件各一个用例：
+    /// ①退出**未清**的地狱房（`CompletedHellRoomOnExit`）→ 离开的那间房的被动掉落失联；
+    /// ②走进**已清**的地狱房（客户端重建空场景）→ 那间房留下的被动掉落失联。
+    /// detach 只摘掉"被动物件关联"（掉落本身还在本房间的地面表里，仍是普通掉落）——
+    /// 所以两条都同时断言 `GetRoomGroundItems` 仍是 2 条。
+    /// **变异验证**：把 `TryMoveRoom` 里那两段 detach 删掉 → 第二/第四条断言变红（掉落没被摘）。
+    /// 组队两条推进路径的调用点（AdvancePartyRoomAsync / 扫描）不额外断言——它们走
+    /// `TryMoveRoom` 同一份实现，本用例覆盖的就是那份实现。
+    /// </summary>
+    private static void CheckHellRoomPassiveDetachOnMove(Action<bool, string> check, DungeonFixture fixture)
+    {
+        // ① 退出未清的地狱房：`CompletedHellRoomOnExit` → detach 离开的那间房。
+        var exit = fixture.CreateInstance();
+        exit.AddMember(fixture.Member(Guid.NewGuid(), 0, "队长"));
+        check(exit.TryStartRun(fixture.HellLayout, 0, dungeonOption: 1, out _)
+                && exit.TryMoveRoom(1, 0, out _),
+            "the hell-mode run enters the hell room");
+        check(exit.RegisterRoomPassiveDrops(
+                    DungeonFixture.Room([], passiveDropCount: 2), 1, 1, 0).Length == 2
+                && exit.GetRoomPassiveDrops(1, 0).Length == 2,
+            "two passive drops are registered in the hell room");
+        check(exit.TryMoveRoom(0, 0, out var leavingHell) && leavingHell.CompletedHellRoomOnExit,
+            "leaving the uncleared hell room reports CompletedHellRoomOnExit");
+        check(exit.GetRoomPassiveDrops(1, 0).Length == 0
+                && exit.GetRoomGroundItems(1, 0).Length == 2,
+            "leaving an uncleared hell room detaches its passive drops (they stay as plain ground items)");
+
+        // ② 走进已清的地狱房：目标房间那次的被动掉落要 detach（客户端重建的是空场景）。
+        var cleared = fixture.CreateInstance();
+        cleared.AddMember(fixture.Member(Guid.NewGuid(), 0, "队长"));
+        check(cleared.TryStartRun(fixture.HellLayout, 0, dungeonOption: 1, out _)
+                && cleared.TryMoveRoom(1, 0, out _),
+            "the second hell-mode run enters the hell room");
+        check(cleared.RegisterRoomPassiveDrops(
+                    DungeonFixture.Room([], passiveDropCount: 2), 1, 1, 0).Length == 2,
+            "the second hell room also holds two passive drops");
+        var hellRoomMonsters = cleared.RunCurrentRoom?.Monsters ?? [];
+        check(hellRoomMonsters.Length != 0,
+            "the hell room exposes its monsters through the locked current-room accessor");
+        foreach (var monster in hellRoomMonsters)
+        {
+            cleared.TryTakeMonsterDeath(monster.UniqueId, out _);
+        }
+
+        check(cleared.IsCurrentHellRoomCleared(),
+            "the hell encounter is cleared once every hell-room monster is defeated");
+        check(cleared.TryMoveRoom(0, 0, out var leftCleared) && !leftCleared.CompletedHellRoomOnExit
+                && cleared.GetRoomPassiveDrops(1, 0).Length == 2,
+            "leaving a cleared hell room keeps its drops (the detach belongs to the return entry)");
+        check(cleared.TryMoveRoom(1, 0, out _)
+                && cleared.IsCurrentHellRoomCleared()
+                && cleared.GetRoomPassiveDrops(1, 0).Length == 0
+                && cleared.GetRoomGroundItems(1, 0).Length == 2,
+            "re-entering the cleared hell room detaches the previous encounter's passive drops");
+    }
+
+    /// <summary>
+    /// 跨会话投递的坏通道护栏（终审 I1）：每个成员句柄写的是**他自己会话**的流，
+    /// 被踢/掉线的成员会抛**他自己 token** 的 `OperationCanceledException`；
+    /// 现在的 filter 只捕 IOException/ObjectDisposed/Socket，OCE 会顺着**发送者**的会话冒泡
+    /// （击杀/开放/拾取广播把健康玩家打断；扫描里让房间已经换了、后面的成员收不到 NOTI 29）。
+    /// 两条生产路径：①`DungeonPartyService.BroadcastToMembersAsync`（生产广播实现）；
+    /// ②`PartyService.SendToOtherMembersAsync`（队长外观推送走的真通道）。
+    /// 同时钉住 P1 的单人护栏：不在队伍的角色一份包都不会多发。
+    /// **变异验证**：把 `CrossSessionDelivery.IsBrokenChannel` 里的 `or OperationCanceledException`
+    /// 删掉 → 第一次 await 就把 OCE 抛出去，本用例变红。
+    /// 会话里的局部发送函数（AdvancePartyRoomAsync）与会话接线同一局限，但共用这份判定。
+    /// </summary>
+    private static async Task CheckCrossSessionDeliverySurvivesCanceledMembersAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        var registry = new DungeonInstanceRegistry();
+        using var service = new DungeonPartyService(
+            harness.Service,
+            harness.Directory,
+            registry,
+            TimeProvider.System,
+            NullLogger<DungeonPartyService>.Instance);
+
+        // ① 实例广播：第一个成员（被踢）的句柄抛 OCE，排在它后面的健康成员仍各收一份。
+        var instance = registry.GetOrCreateForParty(1000, () => fixture.CreatePartyInstance(1000));
+        var canceledMember = Guid.NewGuid();
+        var alpha = Guid.NewGuid();
+        var bravo = Guid.NewGuid();
+        var alphaInbox = new List<GameServerPacket>();
+        var bravoInbox = new List<GameServerPacket>();
+        instance.AddMember(new DungeonInstanceMember(
+            canceledMember, 1, 0, "被踢", _ => throw new OperationCanceledException()));
+        instance.AddMember(new DungeonInstanceMember(
+            alpha, 2, 1, "甲", packet => { alphaInbox.Add(packet); return ValueTask.CompletedTask; }));
+        instance.AddMember(new DungeonInstanceMember(
+            bravo, 3, 2, "乙", packet => { bravoInbox.Add(packet); return ValueTask.CompletedTask; }));
+        await service.BroadcastToMembersAsync(
+            instance, GameProtocolEngine.CreateEnableClearDungeon());
+        check(alphaInbox.Count == 1 && bravoInbox.Count == 1,
+            "members queued after a canceled channel still receive the instance broadcast");
+
+        // 扫全员的强制推进同一条护栏（先补 CMD 48 回包、再发 NOTI 29，两步都走 SendSafelyAsync）：
+        // 被踢成员排在第一个，去掉 OCE 的话它的异常会把整轮推进打断、健康成员两份都收不到。
+        var sweepInstance = registry.GetOrCreateForParty(
+            1001, () => fixture.CreatePartyInstance(1001));
+        var sweepInbox = new List<GameServerPacket>();
+        var stayed = Guid.NewGuid();
+        sweepInstance.AddMember(new DungeonInstanceMember(
+            canceledMember, 1, 0, "被踢", _ => throw new OperationCanceledException()));
+        sweepInstance.AddMember(new DungeonInstanceMember(
+            bravo, 2, 1, "乙", packet => { sweepInbox.Add(packet); return ValueTask.CompletedTask; }));
+        sweepInstance.AddMember(new DungeonInstanceMember(stayed, 3, 2, "没到门口", _ => ValueTask.CompletedTask));
+        check(sweepInstance.TryStartRun(fixture.Layout, 0, 0, out _),
+            "the sweep instance starts a run for the canceled-member case");
+        var target = new DungeonRoomPosition(1, 0);
+        lock (sweepInstance.Gate)
+        {
+            // 3 人里 2 人到门口（过半）→ 开倒计时；Register 的 now 取"倒计时之前"，
+            // 于是扫描一进来就是"倒计时已到点"的强制推进：逐个补回包、再给全员发 NOTI 29。
+            var beforeCountdown = DateTimeOffset.UtcNow - DungeonDoorAssembly.Countdown;
+            sweepInstance.Doors.Register(
+                target, canceledMember, memberCount: 3, beforeCountdown, Reply(canceledMember));
+            sweepInstance.Doors.Register(
+                target, bravo, memberCount: 3, beforeCountdown, Reply(bravo));
+        }
+
+        await service.SweepDoorAssembliesAsync(CancellationToken.None);
+        check(sweepInbox.Count == 2
+                && sweepInbox.Any(packet => packet.ProtocolId == GameProtocolEngine.StartMapNotification),
+            "a forced advance still delivers the reply and NOTI 29 past a canceled member");
+
+        // ② PartyService 真通道（队长外观推送走的就是这条）：目标通道抛 OCE → 只告警、返回 0、
+        //    不冒泡；不在队伍的角色（单人）走同一条路时零投递（P1 的"单人绝不多发一份包"护栏）。
+        await harness.InviteAndAcceptAsync("阿尔法", "布拉沃");
+        var bravoId = harness.IdOf("布拉沃");
+        await harness.Service.AttachChannelAsync(
+            "bobby",
+            "布拉沃",
+            bravoId,
+            harness.UidOf("布拉沃"),
+            harness.SessionIdOf("布拉沃"),
+            _ => throw new OperationCanceledException(),
+            CancellationToken.None);
+        var delivered = await harness.Service.SendToOtherMembersAsync(
+            harness.IdOf("阿尔法"),
+            GameProtocolEngine.CreateEnableClearDungeon(),
+            CancellationToken.None);
+        check(delivered == 0,
+            "a party send to a canceled channel returns 0 instead of throwing the recipient's OCE");
+
+        var partyInbox = new List<GameServerPacket>();
+        await harness.Service.AttachChannelAsync(
+            "bobby",
+            "布拉沃",
+            bravoId,
+            harness.UidOf("布拉沃"),
+            harness.SessionIdOf("布拉沃"),
+            packet => { partyInbox.Add(packet); return ValueTask.CompletedTask; },
+            CancellationToken.None);
+        var deliveredAgain = await harness.Service.SendToOtherMembersAsync(
+            harness.IdOf("阿尔法"),
+            GameProtocolEngine.CreateEnableClearDungeon(),
+            CancellationToken.None);
+        check(deliveredAgain == 1 && partyInbox.Count == 1,
+            "a healthy member still receives the party send exactly once");
+
+        partyInbox.Clear();
+        harness.ClearAll();
+        var soloDelivered = await harness.Service.SendToOtherMembersAsync(
+            harness.IdOf("查理"),
+            GameProtocolEngine.CreateEnableClearDungeon(),
+            CancellationToken.None);
+        check(soloDelivered == 0
+                && partyInbox.Count == 0
+                && harness.Of("阿尔法").Count == 0
+                && harness.Of("布拉沃").Count == 0
+                && harness.Of("查理").Count == 0,
+            "a character outside any party delivers nothing (the solo path can never add a packet)");
+    }
 }
 
 /// <summary>测试夹具：一份最小 PVF（3×1 迷宫 + 3 张地图）与实例工厂。</summary>
@@ -1140,16 +1427,24 @@ internal sealed class DungeonFixture : IDisposable
             Directory.CreateDirectory(Path.Combine(_root, directory));
         }
 
-        File.WriteAllText(Path.Combine(_root, "dungeon/dungeon.lst"), "14 `test.dgn`\n");
+        File.WriteAllText(Path.Combine(_root, "dungeon/dungeon.lst"), "14 `test.dgn`\n15 `hell.dgn`\n");
         File.WriteAllText(Path.Combine(_root, "dungeon/test.dgn"),
             "[minimum level] 1\n[basis level] 1\n[maze info]\n[size] 3 1\n"
             + "[greed]\n`PPP`\n[start map]\n0 0\n[/start map]\n"
             + "[boss map]\n2 0\n1 0\n[/boss map]\n");
+        // 地狱副本（终审 I3 用例）：地狱房在 (1,0)、封门地图 = normal.map（2）；boss 房在 (2,0)。
+        File.WriteAllText(Path.Combine(_root, "dungeon/hell.dgn"),
+            "[minimum level] 1\n[basis level] 1\n[hell dungeon] 1\n"
+            + "[seal door map index] 2\n[seal door pos] 1 0\n"
+            + "[maze info]\n[size] 3 1\n"
+            + "[greed]\n`PPP`\n[start map]\n0 0\n[/start map]\n"
+            + "[boss map]\n2 0\n[/boss map]\n");
         File.WriteAllText(Path.Combine(_root, "map/map.lst"), "1 `start.map`\n2 `normal.map`\n3 `boss.map`\n");
         foreach (var name in new[] { "start", "normal", "boss" })
         {
+            // 两张地图表共用这三张 .map（与真实 PVF 一样按 [dungeon] 列出多个副本 id）。
             File.WriteAllText(Path.Combine(_root, $"map/{name}.map"),
-                "[dungeon]\n14\n[/dungeon]\n"
+                "[dungeon]\n14\n15\n[/dungeon]\n"
                 + $"[type] `[{(name == "boss" ? "boss" : "normal")}]`\n"
                 + "[greed]\n`P`\n[monster]\n1 1 1 100 100 0 1 1 `[fixed]` `[normal]`\n[/monster]\n");
         }
@@ -1163,18 +1458,23 @@ internal sealed class DungeonFixture : IDisposable
             NullLogger<DungeonCatalog>.Instance);
         Items = new ItemCatalog(scripts, NullLogger<ItemCatalog>.Instance);
         Random = new ZeroDropRandomSource();
-        if (!Catalog.TryCreateLayout(14, out var layout, random: Random))
+        if (!Catalog.TryCreateLayout(14, out var layout, random: Random)
+            || !Catalog.TryCreateLayout(15, out var hellLayout, random: Random))
         {
             throw new InvalidOperationException("the fixture dungeon layout is missing");
         }
 
         Layout = layout;
+        HellLayout = hellLayout;
     }
 
     public DungeonCatalog Catalog { get; }
     public ItemCatalog Items { get; }
     public ZeroDropRandomSource Random { get; }
     public DungeonLayout Layout { get; }
+
+    /// <summary>地狱副本（id 15，`[hell dungeon] 1`，地狱房 (1,0)）的布局，I3 的被动掉落 detach 用例用。</summary>
+    public DungeonLayout HellLayout { get; }
 
     /// <summary>合成怪：只关心 UniqueId 与 Type（`EnterDetachedRoom` 路径不经过 PVF 解析）。</summary>
     public static GameDungeonMonster Monster(ushort uniqueId, byte type = GameDungeonMonsterTypes.Normal) =>

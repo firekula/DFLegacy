@@ -109,6 +109,14 @@ public sealed class DungeonInstanceRegistry
     internal bool TryTakeEntryRequest(Guid characterId, out DungeonEntryRequest request) =>
         _pendingEntries.TryRemove(characterId, out request!);
 
+    /// <summary>
+    /// 两个信箱任一有货（终审 P2）：会话主循环的读等待是"等包或超时"，而信箱只在**有包**的
+    /// 路径被取——队员客户端停在选图界面时一个包都不发，待入队请求会一直躺着（真机检查点 2）。
+    /// 只有真的有货时才把读等待缩短到一个短 tick；单人永远没有待处理邮箱。
+    /// </summary>
+    internal bool HasPendingMail(Guid characterId) =>
+        _pendingEntries.ContainsKey(characterId) || _pendingSelections.ContainsKey(characterId);
+
     /// <summary>队长开选图界面时给队员投的"待选图"请求（只记队长角色 id，队员自己把状态发给自己客户端）。</summary>
     internal void PostSelectionRequest(Guid characterId, Guid leaderCharacterId) =>
         _pendingSelections[characterId] = leaderCharacterId;

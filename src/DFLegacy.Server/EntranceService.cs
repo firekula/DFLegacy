@@ -57,6 +57,11 @@ public sealed class EntranceService(
     private const int CompoundReplayCapacity = 256;
     private static readonly TimeSpan ClearRewardCardSelectionTimeout =
         TimeSpan.FromSeconds(4);
+    // 有"待处理组队邮箱"（待选图/待入队）时的读等待 tick（终审 P2）：队员客户端停在选图/入场
+    // 界面时一个包都不发，两个信箱只在"有包"的路径被取，待入队请求会一直躺着。只有确实有货时
+    // 才用这个短 tick 唤醒主循环去取件；无货时等待时长一行不变（单人永远无货）。
+    private static readonly TimeSpan PendingPartyMailCheckInterval =
+        TimeSpan.FromMilliseconds(250);
     private const string FatigueRecoveryRejectedMessage =
         "疲劳值低于126点时才可以使用";
     private const string LevelUpCouponSuccessMessage = "Lv上升";
@@ -2190,25 +2195,16 @@ public sealed class EntranceService(
                     ResetRoomSettlementState();
 
                     // 跨会话投递的坏通道护栏（与 PartyService.SendToOtherMembersAsync /
-                    // DungeonPartyService.BroadcastToMembersAsync 同一组异常）：一个断线成员不该把
-                    // "触发推进的会话"打成断线——房间已经推进了，其余成员仍要收到 NOTI 29。
-                    async Task SendToMemberAsync(DungeonInstanceMember member, GameServerPacket packet)
-                    {
-                        try
-                        {
-                            await member.Send(packet);
-                        }
-                        catch (Exception exception) when (exception is IOException
-                            or ObjectDisposedException
-                            or SocketException)
-                        {
-                            logger.LogWarning(
-                                exception,
-                                "Could not deliver dungeon packet {ProtocolId} to {CharacterId}.",
-                                packet.ProtocolId,
-                                member.CharacterId);
-                        }
-                    }
+                    // DungeonPartyService.BroadcastToMembersAsync 共用 CrossSessionDelivery 的判定，
+                    // 含被踢成员自己的 OCE）：一个断线成员不该把"触发推进的会话"打成断线——房间已经
+                    // 推进了，其余成员仍要收到 NOTI 29。
+                    Task SendToMemberAsync(DungeonInstanceMember member, GameServerPacket packet) =>
+                        CrossSessionDelivery.SendSafelyAsync(
+                            logger,
+                            packet,
+                            CrossSessionDelivery.Describe(
+                                member.CharacterId, member.CharacterName, member.AreaUserId),
+                            member.Send);
 
                     foreach (var arrival in outcome.Arrivals)
                     {
@@ -2900,16 +2896,26 @@ public sealed class EntranceService(
 
                 PacketFrame? queuedRequest = null;
                 Task<PacketFrame?>? pendingPacketRead = null;
+                // "短 tick 到点但一个包都没有"（终审 P2）：流程不落进解码/镜像（那是"有包"路径的
+                // 事），只把信箱取走就回到循环顶部。每轮重置。
+                var idlePartyMailTick = false;
                 while (!serverToken.IsCancellationRequested)
                 {
                     var request = queuedRequest;
                     queuedRequest = null;
+                    idlePartyMailTick = false;
                     if (request is null)
                     {
                         pendingPacketRead ??= PacketFrame.ReadAsync(
                             stream,
                             options.MaximumPacketLength,
                             serverToken).AsTask();
+                        // 有没有待取的组队邮箱（待选图/待入队）——在超时分支之外算好，只用来
+                        // 决定**下一次等待的时长**：有货 → 短 tick；无货/单人 → 完全按原样等待。
+                        // 单人（不在队伍）时 HasPendingMail 恒 false，一行行为都不变（零回归红线）。
+                        var hasPendingPartyMail = isChannelPort
+                            && activeCharacter is not null
+                            && dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id);
                         if (isChannelPort && inDungeonSelection
                             && dungeonSelectionDeadline is { } selectionDeadline)
                         {
@@ -3065,11 +3071,40 @@ public sealed class EntranceService(
                                 continue;
                             }
                         }
+                        else if (hasPendingPartyMail)
+                        {
+                            // 有货才缩到短 tick（终审 P2）：队员停在选图/入场界面时不发包，
+                            // 上面的无限等待会让待入队请求永远取不走（真机检查点 2）。
+                            // 到点且无包 → idlePartyMailTick，下面只取信箱、不解码。
+                            var completed = await Task.WhenAny(
+                                pendingPacketRead,
+                                Task.Delay(PendingPartyMailCheckInterval, serverToken));
+                            if (completed == pendingPacketRead)
+                            {
+                                request = await pendingPacketRead;
+                                pendingPacketRead = null;
+                                if (request is null)
+                                {
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                idlePartyMailTick = true;
+                            }
+                        }
                         else
                         {
                             request = await pendingPacketRead;
                             pendingPacketRead = null;
                         }
+                    }
+
+                    if (idlePartyMailTick)
+                    {
+                        // 短 tick 到点仍无包：只把信箱取走（取件顺序与"有包"路径同一份实现）。
+                        await HandlePendingPartyMailAsync();
+                        continue;
                     }
 
                     if (request is null)
@@ -3131,39 +3166,63 @@ public sealed class EntranceService(
                     // 镜像刷新后：房间是"别人推进的"（本会话没做过饱食度结算、房间疲劳与结算标志重置），补上。
                     // 单人不会走这条（本会话自己换房间时已内联结算/重置，坐标一致 → 这里不触发）。
                     // 三者共用同一个"房间变了"判据：一次换房只补一次（同一坐标在本会话只命中一回）。
-                    if (dungeonInstance is { IsParty: true } catchUpInstance
-                        && (currentDungeonRoomX, currentDungeonRoomY) != (lastSettledRoomX, lastSettledRoomY))
+                    if (dungeonInstance is { IsParty: true } catchUpInstance)
                     {
-                        lastSettledRoomX = currentDungeonRoomX;
-                        lastSettledRoomY = currentDungeonRoomY;
-                        ResetRoomSettlementState();
-                        await SettleDungeonCreatureHungerAsync(notifyClient: true, serverToken);
-                        // 与单人同口径：**只有首次访问**的房间才扣疲劳（重访走客户端的缓存快照，不扣）。
-                        // 标记由实例按"最近一次进房"维护（TryStartRun/TryMoveRoom 写），与本块判清楚的
-                        // 坐标来自同一次换房——极端并发连跳时可能取到更新一次的标记，只影响一次扣费口径
-                        // （见任务报告"已知局限"）。
-                        if (catchUpInstance.LastRoomEntryWasFirstVisit)
+                        if ((currentDungeonRoomX, currentDungeonRoomY) != (lastSettledRoomX, lastSettledRoomY))
                         {
-                            await ConsumeDungeonRoomFatigueAsync(currentDungeonRoomX, currentDungeonRoomY);
+                            lastSettledRoomX = currentDungeonRoomX;
+                            lastSettledRoomY = currentDungeonRoomY;
+                            ResetRoomSettlementState();
+                            await SettleDungeonCreatureHungerAsync(notifyClient: true, serverToken);
+                            // 与单人同口径：**只有首次访问**的房间才扣疲劳（重访走客户端的缓存快照，不扣）。
+                            // 标记由实例按"最近一次进房"维护（TryStartRun/TryMoveRoom 写），与本块判清楚的
+                            // 坐标来自同一次换房——极端并发连跳时可能取到更新一次的标记，只影响一次扣费口径
+                            // （见任务报告"已知局限"）。
+                            if (catchUpInstance.LastRoomEntryWasFirstVisit)
+                            {
+                                await ConsumeDungeonRoomFatigueAsync(currentDungeonRoomX, currentDungeonRoomY);
+                            }
+                        }
+
+                        // 空 boss 房可结算（终审 I3）：单人的 CMD 48/CMD 16 各有一次，两条**组队**推进
+                        // 路径（发起者 AdvancePartyRoomAsync、倒计时扫描）此前都没有 → 队伍走进"空 boss
+                        // 房/战争房"（.map 没有静态怪的行为房）永远不 TryEnableClear，房间打不完。
+                        // 集中在这里：组队成员的任何一条包都会走到，且**不能**放进上面的坐标变化块——
+                        // 队员加入一个已经在空 boss 房的实例时坐标没变，也会漏掉。幂等由实例的
+                        // TryEnableClear（从关到开只一次）保证；ClearEnabled 一开就早退，不存在重复报文。
+                        if (currentDungeonRoom is { } catchUpRoom)
+                        {
+                            await EnableEmptyBossRoomSettlementAsync(catchUpRoom);
                         }
                     }
 
-                    // 待选图请求（队长开选图界面时投的）：把自己的外观推给同队其他人，
-                    // 再把"选图状态"发给自己客户端（顺序：外观 → 名册 → 状态）。
-                    if (activeCharacter is not null
-                        && dungeonInstanceRegistry.TryTakeSelectionRequest(
-                            activeCharacter.Id, out var selectionLeader))
+                    // 两个信箱（待选图/待入队）的取件。两条路径都走这里：**有包**的正常路径，
+                    // 以及"确实有货时的短 tick 到点"（终审 P2，见下面的读等待分支）——取件顺序
+                    // 与报文一字未改。
+                    async Task HandlePendingPartyMailAsync()
                     {
-                        await EnterPartyDungeonSelectionAsync(selectionLeader, serverToken);
+                        if (activeCharacter is null)
+                        {
+                            return;
+                        }
+
+                        // 待选图请求（队长开选图界面时投的）：把自己的外观推给同队其他人，
+                        // 再把"选图状态"发给自己客户端（顺序：外观 → 名册 → 状态）。
+                        if (dungeonInstanceRegistry.TryTakeSelectionRequest(
+                                activeCharacter.Id, out var selectionLeader))
+                        {
+                            await EnterPartyDungeonSelectionAsync(selectionLeader, serverToken);
+                        }
+
+                        // 待入队请求（队长入场成功后投的）：自己执行入场（设计稿 §3.2）。
+                        if (dungeonInstanceRegistry.TryTakeEntryRequest(
+                                activeCharacter.Id, out var entryRequest))
+                        {
+                            await EnterPartyDungeonAsync(entryRequest, serverToken);
+                        }
                     }
 
-                    // 待入队请求（队长入场成功后投的）：自己执行入场（设计稿 §3.2）。
-                    if (activeCharacter is not null
-                        && dungeonInstanceRegistry.TryTakeEntryRequest(
-                            activeCharacter.Id, out var entryRequest))
-                    {
-                        await EnterPartyDungeonAsync(entryRequest, serverToken);
-                    }
+                    await HandlePendingPartyMailAsync();
 
                     // 被动方的交易交付：服务端已经落库，但本会话的内存背包还是旧的。
                     // 必须在处理下一条请求之前安装，否则玩家一动背包就会用陈旧状态覆盖交易结果。
@@ -3574,11 +3633,31 @@ public sealed class EntranceService(
                                         serverToken);
                                 }
 
+                                // 换角色 = 旧角色离开副本实例（照上面 CMD 7 回选人的收尾同序，终审 I2）：
+                                // 不摘的话旧角色永久留在成员表与 `_byCharacter` 里（实例永不销毁、幽灵
+                                // 成员），而旧成员的 Send 句柄写的正是**同一条连接**的流 → 新选的角色的
+                                // 客户端会收到那支队伍的副本包；旧角色的两个信箱也由 UnbindCharacter 一并清掉。
+                                // 身份必须在 activeCharacter 置空之前记下。
+                                var switchedCharacterId = activeCharacter?.Id;
                                 characterSessions.Release(activeCharacterLease);
                                 activeCharacterLease = null;
                                 activeCharacter = null;
                                 lastProjectedCombatStats = null;
                                 premiumExpiryUnix.Clear();
+                                // 单人：本会话就是整局，照旧丢弃房间/掉落、停 run；组队：实例留给其余成员。
+                                TeardownSoloDungeonInstance();
+                                if (switchedCharacterId is { } leavingSwitchCharacterId)
+                                {
+                                    await LeaveDungeonInstanceAsync(
+                                        leavingSwitchCharacterId,
+                                        localUserId,
+                                        currentX,
+                                        currentY,
+                                        currentDirection);
+                                }
+
+                                dungeonInstance = null;
+                                dungeonInstanceVersion = -1;
                             }
 
                             activeCharacterLease = await characterSessions.ClaimAsync(
@@ -11874,18 +11953,20 @@ public sealed class EntranceService(
                                     .FirstOrDefault(slot => slot.CharacterId == activeCharacter!.Id)?
                                     .SlotIndex ?? 0
                                 : 0;
-                            if (partyEntry
-                                && dungeonInstanceRegistry.TryGetForParty(entrySlots![0].PartyId)
-                                    is { CanAcceptJoin: true } liveInstance)
+                            // 队长"加入一支已经在跑的队伍实例"（live-join）：不推进房间、不重建 run，
+                            // 只把自己绑进成员表并发出自己的 名册 → NOTI 26 → NOTI 11 → NOTI 28 → NOTI 29。
+                            // 抽成局部函数是因为并发 CMD 16 会在**两个**判定点命中它（终审 P5）：
+                            // 抢先的那个会话可能刚好把 run 开起来，后到的必须加入而不是重掷迷宫。
+                            // 返回 false = 门槛过后实例又被收尾（取不到当前房间）：不入场、不绑定
+                            // （异常逃到外层 catch 会打断会话）。
+                            async Task<bool> TryJoinLivePartyInstanceAsync(DungeonInstance liveInstance)
                             {
-                                // 门槛过后仍有竞态（别的成员刚回城/收尾）：取不到当前房间就中止。
-                                // 此刻还没绑定、没入场 —— "不入场、不绑定"（异常逃到外层 catch 会打断会话）。
                                 if (!liveInstance.TryCaptureCurrentRoomSnapshot(localUserId, out var liveRoom))
                                 {
                                     logger.LogWarning(
                                         "Party leader {Name} could not join instance {PartyId}: its run stopped before entry.",
                                         activeCharacter!.Name, liveInstance.PartyId);
-                                    continue;
+                                    return false;
                                 }
 
                                 // CMD 15 设的选图状态与 30 秒截止必须在这里收尾：否则主循环到点会按
@@ -11921,10 +12002,28 @@ public sealed class EntranceService(
                                 }
 
                                 ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
+                                // 加入的是**别人开好的房间**：这间房的疲劳与"已结算"标记照队员入场
+                                // 路径（EnterPartyDungeonAsync）补上（终审 P4）——少了它，加入 (0,0)
+                                // 这类初始坐标的房间时追赶块永不触发，房费/饱食度少结算一次。
+                                // Apply 之后 currentDungeonId 才是副本 id（Consume 的前置条件）。
+                                dungeonCreatureStomachCheckpointSeconds =
+                                    DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                                await ConsumeDungeonRoomFatigueAsync(liveRoom.RoomX, liveRoom.RoomY);
+                                lastSettledRoomX = liveRoom.RoomX;
+                                lastSettledRoomY = liveRoom.RoomY;
                                 logger.LogInformation(
                                     "Party leader {Name} joined the live instance {PartyId} of dungeon {DungeonId} room ({RoomX},{RoomY}).",
                                     activeCharacter.Name, dungeonInstance.PartyId,
-                                    dungeonInstance.Run.DungeonId, liveRoom.RoomX, liveRoom.RoomY);
+                                    currentDungeonId, liveRoom.RoomX, liveRoom.RoomY);
+                                return true;
+                            }
+
+                            if (partyEntry
+                                && dungeonInstanceRegistry.TryGetForParty(entrySlots![0].PartyId)
+                                    is { CanAcceptJoin: true } liveInstance)
+                            {
+                                // 失败（实例刚被收尾）与原来一样中止：不入场、不绑定。
+                                await TryJoinLivePartyInstanceAsync(liveInstance);
                                 continue;
                             }
 
@@ -11945,11 +12044,42 @@ public sealed class EntranceService(
                                 activeCharacter.Name,
                                 packet => SendTownPacketAsync(packet, serverToken)));
 
-                            if (!dungeonInstance.TryStartRun(
+                            // 开局仲裁（终审 P5）：两个成员会话可能都通过了上面的 CanAcceptJoin 门槛
+                            // （或都发现实例还不存在而一起 GetOrCreateForParty），`TryStartRun` 会先
+                            // `Stop()` 掉先到者的 run → 重掷迷宫、两人房间几何不一致（先到者的
+                            // NOTI 28/29 已经发出去）。组队走"判定 + 开局"同一次锁内的
+                            // TryStartRunForEntry，命中"已经被别人开好"就加入它，绝不重掷；
+                            // 单人实例照旧走 TryStartRun（语义一字不改，零回归）。
+                            DungeonRoomTransition initialTransition;
+                            DungeonRunEntryDecision startDecision;
+                            if (partyEntry)
+                            {
+                                startDecision = dungeonInstance.TryStartRunForEntry(
                                     dungeonLayout,
                                     difficulty,
                                     dungeonOption,
-                                    out var initialTransition))
+                                    out initialTransition);
+                            }
+                            else
+                            {
+                                startDecision = dungeonInstance.TryStartRun(
+                                    dungeonLayout,
+                                    difficulty,
+                                    dungeonOption,
+                                    out initialTransition)
+                                        ? DungeonRunEntryDecision.Started
+                                        : DungeonRunEntryDecision.StartFailed;
+                            }
+
+                            if (startDecision == DungeonRunEntryDecision.AlreadyActive)
+                            {
+                                // 并发 CMD 16 的输家：另一个会话已经把 run 开好（房间/布局归它）。
+                                // 绑定与成员登记上面已按幂等写过，live-join 会原样覆盖。
+                                await TryJoinLivePartyInstanceAsync(dungeonInstance);
+                                continue;
+                            }
+
+                            if (startDecision == DungeonRunEntryDecision.StartFailed)
                             {
                                 logger.LogWarning(
                                     "Dungeon {DungeonId} maze {MazeIndex} start room ({RoomX},{RoomY}) has no map.",
@@ -11967,7 +12097,8 @@ public sealed class EntranceService(
 
                             CharacterItemRecord? consumedHellTicket = null;
                             GameServerPacket? pendingHellTicketUpdate = null;
-                            if (DungeonRun().HellMode)
+                            // 锁内读地狱模式（终审 P6）：裸读 `DungeonRun()` 会与并发收尾/别人的开局撞上。
+                            if (dungeonInstance!.HellMode)
                             {
                                 var plannedInventory = mainInventory.ToDictionary();
                                 if (selectionWorldMap is null
@@ -12068,7 +12199,7 @@ public sealed class EntranceService(
 
                             byte hellRoomX = 0;
                             byte hellRoomY = 0;
-                            if (DungeonRun().HellMode)
+                            if (dungeonInstance.HellMode)
                             {
                                 _ = dungeonCatalog.TryGetHellRoom(
                                     dungeonId,
@@ -12123,6 +12254,17 @@ public sealed class EntranceService(
                             // ——队员的包由他自己的会话发（设计稿 §3.2），这里不代发任何包。
                             if (partyEntry)
                             {
+                                // 队长自己的外观也要推给同队（终审 P1，队员进场时在
+                                // EnterPartyDungeonAsync 里推自己的，队长此前只在选图/回城推）：
+                                // 客户端加载副本地图时会重查本地 user 表——若它丢弃了城镇期拿到的
+                                // actor，真机第 2 项（互相可见）就会在"队员→队长"方向失败。
+                                // 顺序与队员侧一致：外观在名册/NOTI 之前；`SendToOtherMembersAsync`
+                                // 对不在队伍的角色返回 0，**单人绝不会多发任何一份包**。
+                                await partyService.SendToOtherMembersAsync(
+                                    activeCharacter!.Id,
+                                    SendTownAppearancePacket(),
+                                    serverToken);
+
                                 // UDP_HOST 的 partyIndex 必须是队长自己的槽位（CMD 15 那条路径恒发 0）。
                                 if (leaderSlotIndex != 0)
                                 {
@@ -12303,8 +12445,6 @@ public sealed class EntranceService(
                                         targetY,
                                         out var transition))
                                 {
-                                    var previousRoomX = currentDungeonRoomX;
-                                    var previousRoomY = currentDungeonRoomY;
                                     await SettleDungeonCreatureHungerAsync(
                                         notifyClient: true,
                                         serverToken);
@@ -12320,13 +12460,8 @@ public sealed class EntranceService(
                                     // its non-zero routing bytes as dice results, while the
                                     // authoritative item remains unclaimed on the server.
 
-                                    if (transition.CompletedHellRoomOnExit)
-                                    {
-                                        dungeonInstance.DetachAllPassiveObjectItems(
-                                            previousRoomX,
-                                            previousRoomY);
-                                    }
-
+                                    // 地狱房的被动掉落 detach 已经在实例的 TryMoveRoom 锁内做过
+                                    // （终审 I3：单人/组队/扫描三条换房路径共用同一份），这里不再重复。
                                     currentDungeonRoomX = targetX;
                                     currentDungeonRoomY = targetY;
                                     // 本会话自己换的房间（单人的立即推进）：这就是本会话结算的那间房，
@@ -12338,13 +12473,8 @@ public sealed class EntranceService(
                                     // 共享集合（存活怪/boss 上报/被动物件）由实例的 TryMoveRoom 重建。
                                     currentDungeonRoom = transition.Room;
                                     // 本会话刚推进了房间：镜像与实例对齐（版本号也一起记下）。
+                                    // （"进的是已清地狱房"的被动掉落 detach 同 TryMoveRoom 锁内已完成。）
                                     ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
-                                    if (DungeonRun().IsCurrentHellRoomCleared)
-                                    {
-                                        dungeonInstance.DetachAllPassiveObjectItems(
-                                            targetX,
-                                            targetY);
-                                    }
                                     GameServerPacket nextMap;
                                     if (transition.ReuseClientRoomState)
                                     {
@@ -12645,9 +12775,9 @@ public sealed class EntranceService(
                                             passiveObjectIndex,
                                             currentDungeonRoomX,
                                             currentDungeonRoomY);
-                                        currentDungeonRoom = DungeonRun().IsActive
-                                            ? DungeonRun().CurrentRoom
-                                            : currentDungeonRoom;
+                                        // 锁内读当前房间（终审 P6）：`DungeonRun()` 的裸读会与并发换房/收尾竞争。
+                                        currentDungeonRoom = dungeonInstance!.RunCurrentRoom
+                                            ?? currentDungeonRoom;
                                         logger.LogInformation(
                                             "Passive object code {PassiveObjectCode}, association {PassiveObjectIndex} destroyed in room ({RoomX},{RoomY}); activatedItems={ActivatedItemCount}.",
                                             dieCommand.EntityId,
@@ -14291,6 +14421,10 @@ public sealed class EntranceService(
         short y,
         byte direction)
     {
+        // 真机验收要看的日志用角色名，别只打 GUID（成员句柄登记了名字）；解绑之后实例里
+        // 已经没有这个人，所以必须在 UnbindCharacter 之前从注册表的绑定里取。
+        var leavingName = dungeonInstanceRegistry.TryGetForCharacter(characterId)?
+            .FindMember(characterId)?.CharacterName;
         var leavingInstance = dungeonInstanceRegistry.UnbindCharacter(characterId);
         if (leavingInstance is not { IsParty: true }
             || areaUserId == 0
@@ -14304,6 +14438,7 @@ public sealed class EntranceService(
             await dungeonPartyService.NotifyMemberLeftAsync(
                 leavingInstance,
                 characterId,
+                leavingName ?? characterId.ToString(),
                 areaUserId,
                 x,
                 y,
