@@ -272,6 +272,11 @@ public sealed class EntranceService(
             DateTimeOffset? dungeonSelectionDeadline = null;
             byte currentDungeonRoomX = 0;
             byte currentDungeonRoomY = 0;
+            // 「这个房间的疲劳/饱食度本会话已经结算过」的坐标（Task 5 门口集结制）：
+            // 组队推进是**跨会话**的（别人/扫描循环换的房间），镜像刷新后要补上自己那份结算；
+            // 本会话自己换房间/入场的四个点则要把这两个值同步成新房间，避免重复扣（见各调用点）。
+            byte lastSettledRoomX = 0;
+            byte lastSettledRoomY = 0;
             byte currentDungeonDifficulty = 0;
             DungeonLayout? currentDungeonLayout = null;
             DungeonRoomDefinition? currentDungeonRoom = null;
@@ -2206,6 +2211,81 @@ public sealed class EntranceService(
                         instance, pickupPacket, character.Id, serverToken);
                 }
 
+                // 门口集结推进（设计稿 §3.3 第 3/4 条）：锁内换房间取快照 → 出锁给**全员**发
+                // 各自的命令回包（到过门口的人）与一份 NOTI 29（含被强制的人）。
+                // 由**触发推进的那个会话**调用（本会话发起 CMD 48）；倒计时到点的强制推进在扫描循环里。
+                async Task AdvancePartyRoomAsync(
+                    DungeonInstance instance,
+                    byte targetX,
+                    byte targetY,
+                    DungeonDoorOutcome outcome,
+                    CancellationToken cancellationToken)
+                {
+                    DungeonInstanceRoomSnapshot room;
+                    DungeonInstanceMember[] members;
+                    ushort dungeonId;
+                    lock (instance.Gate)
+                    {
+                        if (!instance.TryMoveRoom(targetX, targetY, out var transition))
+                        {
+                            logger.LogWarning(
+                                "Dungeon {DungeonId} door assembly could not move to room ({RoomX},{RoomY}).",
+                                instance.Run.DungeonId, targetX, targetY);
+                            return;
+                        }
+
+                        dungeonId = instance.Run.DungeonId;
+                        // 被动掉落物主用"触发推进的会话"（与改造前 ownerUserId = 本会话等价）。
+                        room = instance.CaptureRoomSnapshot(targetX, targetY, transition, localUserId);
+                        members = instance.Members;
+                    }
+
+                    // 跨会话投递的坏通道护栏（与 PartyService.SendToOtherMembersAsync /
+                    // DungeonPartyService.BroadcastToMembersAsync 同一组异常）：一个断线成员不该把
+                    // "触发推进的会话"打成断线——房间已经推进了，其余成员仍要收到 NOTI 29。
+                    async Task SendToMemberAsync(DungeonInstanceMember member, GameServerPacket packet)
+                    {
+                        try
+                        {
+                            await member.Send(packet);
+                        }
+                        catch (Exception exception) when (exception is IOException
+                            or ObjectDisposedException
+                            or SocketException)
+                        {
+                            logger.LogWarning(
+                                exception,
+                                "Could not deliver dungeon packet {ProtocolId} to {CharacterId}.",
+                                packet.ProtocolId,
+                                member.CharacterId);
+                        }
+                    }
+
+                    foreach (var arrival in outcome.Arrivals)
+                    {
+                        var member = members.FirstOrDefault(
+                            candidate => candidate.CharacterId == arrival.CharacterId);
+                        if (member is null)
+                        {
+                            continue;
+                        }
+
+                        await SendToMemberAsync(member, arrival.Reply);
+                    }
+
+                    var startMap = DungeonEntryPackets.PlanStartMap(room);
+                    foreach (var member in members)
+                    {
+                        await SendToMemberAsync(member, startMap);
+                    }
+
+                    logger.LogInformation(
+                        "Dungeon {DungeonId} party room advanced to ({RoomX},{RoomY}) map {MapId} (forced={Forced}, arrived={Arrived}/{Total}).",
+                        dungeonId, targetX, targetY, room.MapId,
+                        outcome.Forced, outcome.Arrivals.Count, members.Length);
+                    _ = cancellationToken;
+                }
+
                 // 拾取仲裁（设计稿 §7 决策 5：全队共享、先到先得）：赢下这个掉落实体才允许落库。
                 // 返回 null = 输掉竞态（队友先拿走/房间重置/重开）——调用方必须直接 continue：
                 // 不落库、不发自己那份包、不广播。归属（OwnerUserId）只做客户端显示，不参与准入。
@@ -2393,6 +2473,10 @@ public sealed class EntranceService(
                     dungeonCreatureStomachCheckpointSeconds =
                         DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                     await ConsumeDungeonRoomFatigueAsync(room.RoomX, room.RoomY);
+                    // 本会话自己入场：这个房间的疲劳已经在这里扣过 → 记进"已结算"，
+                    // 镜像刷新后的补结算不会再对着同一间房扣第二次（Task 5）。
+                    lastSettledRoomX = room.RoomX;
+                    lastSettledRoomY = room.RoomY;
                     logger.LogInformation(
                         "Party member {Name} (uid {UserId}, slot {Slot}) entered dungeon {DungeonId} instance {PartyId} room ({RoomX},{RoomY}) map {MapId}.",
                         activeCharacter.Name, localUserId, slotIndex,
@@ -3098,6 +3182,17 @@ public sealed class EntranceService(
                                 dungeonInstanceVersion = dungeonSnapshot.Version;
                             }
                         }
+                    }
+
+                    // 镜像刷新后：房间是"别人推进的"（本会话没做过饱食度结算与房间疲劳），补上。
+                    // 单人不会走这条（本会话自己换房间时已内联结算，坐标一致 → 这里不触发）。
+                    if (dungeonInstance is { IsParty: true }
+                        && (currentDungeonRoomX, currentDungeonRoomY) != (lastSettledRoomX, lastSettledRoomY))
+                    {
+                        lastSettledRoomX = currentDungeonRoomX;
+                        lastSettledRoomY = currentDungeonRoomY;
+                        await SettleDungeonCreatureHungerAsync(notifyClient: true, serverToken);
+                        await ConsumeDungeonRoomFatigueAsync(currentDungeonRoomX, currentDungeonRoomY);
                     }
 
                     // 待选图请求（队长开选图界面时投的）：把自己的外观推给同队其他人，
@@ -11700,6 +11795,10 @@ public sealed class EntranceService(
                                 // 教学副本的实例没有 PVF 迷宫（DungeonId=0）：Apply 只抄房间/坐标，
                                 // 合成的 TutorialDungeonId 与难度保留（见 ApplyDungeonInstanceSnapshot）。
                                 ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
+                                // 本会话自己入场（教学）：教学房不扣房间疲劳；坐标同步进"已结算"，
+                                // 镜像刷新后的补结算不会对着教学房再触发一次（Task 5）。
+                                lastSettledRoomX = currentDungeonRoomX;
+                                lastSettledRoomY = currentDungeonRoomY;
                                 tutorialDungeonActive = true;
                                 dungeonCharacterAlive = true;
                                 dungeonDeathGeneration++;
@@ -12014,6 +12113,10 @@ public sealed class EntranceService(
                             currentDungeonLayout = dungeonLayout;
                             currentDungeonRoomX = DungeonRun().RoomX;
                             currentDungeonRoomY = DungeonRun().RoomY;
+                            // 本会话自己入场：起始房间的疲劳就在下面扣（组队开局也一样），
+                            // 先记进"已结算"，镜像刷新后的补结算不会重复扣这件事（Task 5）。
+                            lastSettledRoomX = currentDungeonRoomX;
+                            lastSettledRoomY = currentDungeonRoomY;
                             currentDungeonDifficulty = difficulty;
                             currentDungeonRoom = initialTransition.Room;
                             // 共享集合（存活怪/boss 上报/被动物件）由实例的 TryStartRun 重建，会话不再各存一份；
@@ -12233,6 +12336,59 @@ public sealed class EntranceService(
                                         targetX,
                                         targetY);
                                 }
+                                else if (dungeonInstance is { IsParty: true } partyInstance)
+                                {
+                                    // 门口集结制（设计稿 §3.3，用户拍板）：第一个 CMD 48 只登记，
+                                    // 全员/过半到齐才推进；命令回包**延迟到推进那一刻**补发。
+                                    // 真机检查点：客户端能否接受延迟的 CMD 48 回包（Task 7 第 1 项）。
+                                    DungeonDoorOutcome assemblyOutcome;
+                                    DungeonRoomPosition? pendingDoor;
+                                    lock (partyInstance.Gate)
+                                    {
+                                        assemblyOutcome = partyInstance.Doors.Register(
+                                            new DungeonRoomPosition(targetX, targetY),
+                                            activeCharacter!.Id,
+                                            partyInstance.MemberCount,
+                                            DateTimeOffset.UtcNow,
+                                            GameProtocolEngine.CreateCommandReply(request, success: true));
+                                        // 锁内取走要记日志的集结状态（Doors 只在实例锁内用，勿在锁外读）。
+                                        pendingDoor = partyInstance.Doors.PendingTarget;
+                                    }
+
+                                    if (assemblyOutcome.Decision == DungeonDoorDecision.Ignored)
+                                    {
+                                        logger.LogInformation(
+                                            "Ignored MOVE_MAP for dungeon {DungeonId} room ({RoomX},{RoomY}): another door ({PendingX},{PendingY}) is already gathering.",
+                                            currentDungeonId, targetX, targetY,
+                                            pendingDoor?.X ?? 0,
+                                            pendingDoor?.Y ?? 0);
+                                        continue;
+                                    }
+
+                                    if (assemblyOutcome.Decision == DungeonDoorDecision.StartedCountdown)
+                                    {
+                                        logger.LogInformation(
+                                            "Dungeon {DungeonId} door assembly for room ({RoomX},{RoomY}): {Arrived}/{Total} arrived, {Seconds} second countdown started.",
+                                            currentDungeonId, targetX, targetY,
+                                            assemblyOutcome.Arrivals.Count, partyInstance.MemberCount,
+                                            DungeonDoorAssembly.Countdown.TotalSeconds);
+                                        continue;
+                                    }
+
+                                    if (assemblyOutcome.Decision == DungeonDoorDecision.Waiting)
+                                    {
+                                        continue;
+                                    }
+
+                                    // Advance（全员到齐，或单人退化的立即推进）：锁外发包。
+                                    await AdvancePartyRoomAsync(
+                                        partyInstance,
+                                        targetX,
+                                        targetY,
+                                        assemblyOutcome,
+                                        serverToken);
+                                    continue;
+                                }
                                 else if (dungeonInstance!.TryMoveRoom(
                                         targetX,
                                         targetY,
@@ -12264,6 +12420,10 @@ public sealed class EntranceService(
 
                                     currentDungeonRoomX = targetX;
                                     currentDungeonRoomY = targetY;
+                                    // 本会话自己换的房间（单人的立即推进）：这就是本会话结算的那间房，
+                                    // 镜像刷新后的补结算不该再扣一次（Task 5；组队推进不走这里）。
+                                    lastSettledRoomX = targetX;
+                                    lastSettledRoomY = targetY;
                                     dungeonInstance.ResetClear();
                                     dungeonResultSent = false;
                                     dungeonCardLayoutSent = false;

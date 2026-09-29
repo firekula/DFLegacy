@@ -20,6 +20,10 @@ internal static class DungeonPartySmokeTests
         CheckLiveJoinDoesNotReplenishPassiveDrops(check, fixture);
         CheckSharedCollectionAccessors(check, fixture);
         CheckDoorAssemblyRules(check);
+        CheckPlanStartMapSharedPlanner(check, fixture);
+        await CheckDoorAssemblySweepAdvancesWholePartyAsync(check, fixture);
+        await CheckDoorAssemblySweepSurvivesBrokenMemberAsync(check, fixture);
+        await CheckDoorAssemblySweepIgnoresSoloInstancesAsync(check, fixture);
         CheckRegistryEntryRequestMailbox(check, fixture);
         CheckSoloRunBindsByCharacterId(check, fixture);
         CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
@@ -672,15 +676,257 @@ internal static class DungeonPartySmokeTests
         check(settled is { Decision: DungeonDoorDecision.Advance, Forced: false }
                 && settled.Arrivals.Count == 2 && !assembly.IsWaiting,
             "a roster shrinking to the arrived headcount advances immediately");
+    }
 
-        static GameServerPacket Reply(Guid _) =>
-            GameProtocolEngine.CreateCommandReply(
-                new PacketFrame(
-                    GameProtocolEngine.CommandPacketType,
-                    GameProtocolEngine.MoveMapCommand,
-                    DeclaredCrc32: 0,
-                    Body: [0, 0, 1, 0]),
-                success: true);
+    /// <summary>
+    /// 门口集结里"到过门口的人"各自的那份 `CMD 48` 成功回包（生产代码在 `Register` 时用请求帧就地生成）。
+    /// 用例传的是**逐人独立**的实例：推进入口要把它原样投给那个成员的收件箱（不是别的人那份）。
+    /// </summary>
+    private static GameServerPacket Reply(Guid _) =>
+        GameProtocolEngine.CreateCommandReply(
+            new PacketFrame(
+                GameProtocolEngine.CommandPacketType,
+                GameProtocolEngine.MoveMapCommand,
+                DeclaredCrc32: 0,
+                Body: [0, 0, 1, 0]),
+            success: true);
+
+    /// <summary>
+    /// 换房间报文的共享规划器（Task 5 Step 1：`PlanStartMap` 从 `PlanMemberEntry` 抽出来复用）：
+    /// 首次进房 → 完整 `START_MAP`（房间/地图 id/怪物表都在载荷里）；重访（客户端复用上次快照）
+    /// → 四字节的 cached `START_MAP`（第四字节 = 0，客户端据此跳过地图/怪物/掉落段）。
+    /// **变异验证**：把 `PlanStartMap` 的 `ReuseClientRoomState` 分支删掉（恒发完整 START_MAP）→ 第二条变红。
+    /// </summary>
+    private static void CheckPlanStartMapSharedPlanner(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out var start),
+            "the fixture run starts for the shared START_MAP planner case");
+        var fresh = instance.CaptureRoomSnapshot(instance.Run.RoomX, instance.Run.RoomY, start, ownerUserId: 7);
+        var startMap = DungeonEntryPackets.PlanStartMap(fresh);
+        // START_MAP 布局：roomX(0) roomY(1) randomSeed(2..5) roomStateFlag(6) mapId(7..8) ...
+        check(startMap.Type == GameProtocolEngine.NotificationPacketType
+                && startMap.ProtocolId == GameProtocolEngine.StartMapNotification
+                && startMap.Payload.Length > 9
+                && startMap.Payload[0] == fresh.RoomX
+                && startMap.Payload[1] == fresh.RoomY
+                && BinaryPrimitives.ReadUInt16LittleEndian(startMap.Payload.AsSpan(7, 2)) == fresh.MapId,
+            "a first visit plans a full START_MAP carrying the room, the map id and the monster table");
+
+        // `out` 单独一句话（放在 && 里编译器会报"未赋值"）。
+        check(instance.TryMoveRoom(1, 0, out _), "the planner case moves away from the start room");
+        var revisited = instance.TryMoveRoom(0, 0, out var revisit);
+        check(revisited, "walking back to the start room is a revisit");
+        var revisitSnapshot = instance.CaptureRoomSnapshot(0, 0, revisit, ownerUserId: 7);
+        var cached = DungeonEntryPackets.PlanStartMap(revisitSnapshot);
+        // cached START_MAP 布局：roomX(0) roomY(1) randomSeed(2..5) state(6)=0，没有地图/怪物/掉落段。
+        check(revisitSnapshot.ReuseClientRoomState
+                && cached.ProtocolId == GameProtocolEngine.StartMapNotification
+                && cached.Payload.Length == 7
+                && cached.Payload[6] == 0,
+            "a revisit plans the cached START_MAP without the map/monster sections");
+    }
+
+    /// <summary>
+    /// 倒计时到点的强制推进（Task 5 Step 4，设计稿 §3.3 第 3/4 条）：扫描循环每实例一轮 ——
+    /// 锁内换房间取快照 → 出锁**先**给"到过门口的人"补各自的 CMD 48 成功回包（只有到门口的人有、
+    /// 各自一份）→ **再**给全员（含没到门口、被强制的人）各发一份 NOTI 29。
+    /// 同时钉住：①没过半不推进；②人数缩水后重新过半 → 扫描里只重开倒计时（`StartedCountdown`：
+    /// 不改房间、不发包）；③没到点不推进；④到点强制推进并清空集结。
+    /// **变异验证**：①把 `SweepDoorAssemblyAsync` 里"判定前捕获 `PendingTarget`"改回任务书的
+    /// "返回后再读"（到点那次 `PendingTarget` 已被 Reset）→ 推进断言变红（房间不换、只剩一条告警日志）；
+    /// ②把 `StartedCountdown` 当成推进处理 → 第二条变红；③把回包改成发给全员 → 归属断言变红。
+    /// </summary>
+    private static async Task CheckDoorAssemblySweepAdvancesWholePartyAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        var registry = new DungeonInstanceRegistry();
+        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        using var service = new DungeonPartyService(
+            harness.Service, harness.Directory, registry, clock,
+            NullLogger<DungeonPartyService>.Instance);
+        var instance = registry.GetOrCreateForParty(4242, () => fixture.CreatePartyInstance(4242));
+        var alpha = Guid.NewGuid();
+        var bravo = Guid.NewGuid();
+        var charlie = Guid.NewGuid();
+        var delta = Guid.NewGuid();
+        var inbox = new Dictionary<Guid, List<GameServerPacket>>();
+        foreach (var characterId in new[] { alpha, bravo, charlie, delta })
+        {
+            var owner = characterId;
+            inbox[owner] = [];
+            instance.AddMember(new DungeonInstanceMember(
+                owner, 1, 0, "成员", packet => { inbox[owner].Add(packet); return ValueTask.CompletedTask; }));
+        }
+
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
+            "the party instance starts a run for the sweep case");
+        var target = new DungeonRoomPosition(1, 0);
+        var alphaReply = Reply(alpha);
+        var bravoReply = Reply(bravo);
+        lock (instance.Gate)
+        {
+            var first = instance.Doors.Register(target, alpha, memberCount: 4, clock.GetUtcNow(), alphaReply);
+            var second = instance.Doors.Register(target, bravo, memberCount: 4, clock.GetUtcNow(), bravoReply);
+            check(first.Decision == DungeonDoorDecision.Waiting
+                    && second.Decision == DungeonDoorDecision.Waiting,
+                "two of four at the door is not yet a majority and starts no countdown");
+        }
+
+        // 人数缩水（delta 回城）→ 2/3 过半：扫描循环必须重新评估成 `StartedCountdown`，
+        // 只重开倒计时，不改房间、不发包（到点由下一轮扫描推进）。
+        instance.RemoveMember(delta);
+        await service.SweepDoorAssembliesAsync(CancellationToken.None);
+        check(instance.Run.RoomX == 0 && instance.Run.RoomY == 0
+                && inbox.Values.All(packets => packets.Count == 0),
+            "a roster shrink re-evaluates the door into a countdown without moving the room or sending anything");
+        check(instance.Doors.CountdownDeadline == clock.GetUtcNow() + DungeonDoorAssembly.Countdown,
+            "the re-evaluated countdown starts at the sweep tick");
+
+        clock.Advance(TimeSpan.FromSeconds(9));
+        await service.SweepDoorAssembliesAsync(CancellationToken.None);
+        check(instance.Run.RoomX == 0
+                && inbox.Values.All(packets => packets.Count == 0)
+                && instance.Doors.IsWaiting,
+            "the countdown does not fire early");
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await service.SweepDoorAssembliesAsync(CancellationToken.None);
+        check(instance.Run.RoomX == target.X && instance.Run.RoomY == target.Y
+                && !instance.Doors.IsWaiting && instance.Doors.CountdownDeadline is null,
+            "the expired countdown forces the whole party into the next room and clears the assembly");
+        var alphaPackets = inbox[alpha];
+        var bravoPackets = inbox[bravo];
+        var charliePackets = inbox[charlie];
+        var alphaReplySeen = PacketAt(alphaPackets, 0);
+        var alphaStartMap = PacketAt(alphaPackets, 1);
+        var bravoReplySeen = PacketAt(bravoPackets, 0);
+        var bravoStartMap = PacketAt(bravoPackets, 1);
+        var charlieStartMap = PacketAt(charliePackets, 0);
+        check(alphaPackets.Count == 2
+                && ReferenceEquals(alphaReplySeen, alphaReply)
+                && alphaReplySeen is { } alphaReplyPacket
+                && alphaReplyPacket.Payload[0] == 1,
+            "an arrived member gets their own CMD 48 success reply first");
+        check(bravoPackets.Count == 2 && ReferenceEquals(bravoReplySeen, bravoReply),
+            "the second arrived member gets their own reply packet, not the other member's");
+        check(alphaStartMap is { } alphaMap
+                && alphaMap.ProtocolId == GameProtocolEngine.StartMapNotification
+                && bravoStartMap is { } bravoMap
+                && bravoMap.ProtocolId == GameProtocolEngine.StartMapNotification
+                && charliePackets.Count == 1
+                && charlieStartMap is { } charlieMap
+                && charlieMap.ProtocolId == GameProtocolEngine.StartMapNotification,
+            "every member (including the one forced along) receives exactly one NOTI 29 and nobody else a reply");
+        check(alphaStartMap is { } moved
+                && moved.Payload.Length > 3
+                && moved.Payload[0] == target.X
+                && charlieStartMap is { } forced
+                && forced.Payload.Length > 3
+                && forced.Payload[0] == target.X,
+            "the forced NOTI 29 describes the room that was actually advanced to");
+    }
+
+    /// <summary>
+    /// 扫描的**每实例独立**语义（Task 3 的壳 + Task 5 强化）：一个成员的发送通道坏了
+    /// （IOException）只记告警——房间照推进，**排在它后面**的健康成员仍各收到一份 NOTI 29。
+    /// 坏成员故意排在**第一个**：广播顺序就是成员顺序，去掉护栏时它会把后面的投递一起打断。
+    /// **变异验证**：把 `SendSafelyAsync` 的 try/catch 拆掉（裸 `member.Send`）→ 后续成员少收包，本用例变红。
+    /// </summary>
+    private static async Task CheckDoorAssemblySweepSurvivesBrokenMemberAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        var registry = new DungeonInstanceRegistry();
+        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        using var service = new DungeonPartyService(
+            harness.Service, harness.Directory, registry, clock,
+            NullLogger<DungeonPartyService>.Instance);
+        var instance = registry.GetOrCreateForParty(4243, () => fixture.CreatePartyInstance(4243));
+        var alpha = Guid.NewGuid();
+        var bravo = Guid.NewGuid();
+        var broken = Guid.NewGuid();
+        var alphaInbox = new List<GameServerPacket>();
+        var bravoInbox = new List<GameServerPacket>();
+        instance.AddMember(new DungeonInstanceMember(
+            broken, 1, 0, "断线", _ => throw new IOException("broken pipe")));
+        instance.AddMember(new DungeonInstanceMember(
+            alpha, 2, 1, "甲", packet => { alphaInbox.Add(packet); return ValueTask.CompletedTask; }));
+        instance.AddMember(new DungeonInstanceMember(
+            bravo, 3, 2, "乙", packet => { bravoInbox.Add(packet); return ValueTask.CompletedTask; }));
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
+            "the party instance starts a run for the broken-member case");
+        var target = new DungeonRoomPosition(1, 0);
+        lock (instance.Gate)
+        {
+            instance.Doors.Register(target, alpha, memberCount: 3, clock.GetUtcNow(), Reply(alpha));
+            instance.Doors.Register(target, bravo, memberCount: 3, clock.GetUtcNow(), Reply(bravo));
+        }
+
+        clock.Advance(DungeonDoorAssembly.Countdown);
+        await service.SweepDoorAssembliesAsync(CancellationToken.None);
+        check(instance.Run.RoomX == target.X,
+            "a member with a broken send channel cannot stop the forced room advance");
+        check(alphaInbox.Count == 2 && bravoInbox.Count == 2
+                && PacketAt(alphaInbox, 1)?.ProtocolId == GameProtocolEngine.StartMapNotification
+                && PacketAt(bravoInbox, 1)?.ProtocolId == GameProtocolEngine.StartMapNotification,
+            "the healthy members still receive their reply and the forced NOTI 29");
+    }
+
+    /// <summary>
+    /// 收件箱取第 index 份包（越界返回 null）：变异让某个成员少收/收错包时，
+    /// 断言给的是一条可读的失败，而不是 <see cref="IndexOutOfRangeException"/> 把整个测试进程打断。
+    /// </summary>
+    private static GameServerPacket? PacketAt(IReadOnlyList<GameServerPacket> packets, int index) =>
+        index < packets.Count ? packets[index] : null;
+
+    /// <summary>
+    /// 扫描只处理**队伍实例**（单人零回归的结构性护栏）：单人的 `CMD 48` 走会话里那条立即推进的分支，
+    /// 永远不会在实例的 `Doors` 里留下集结。这里在单人实例上人为摆一个"已到点的集结"（只有模型能造出
+    /// 这个状态）——扫描必须原样无视它（不改房间、不发包），否则单人会在客户端没发 CMD 48 时被换房间。
+    /// **变异验证**：把 `SweepDoorAssemblyAsync` 开头的 `if (!instance.IsParty) return;` 删掉 → 本用例变红。
+    /// </summary>
+    private static async Task CheckDoorAssemblySweepIgnoresSoloInstancesAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        var registry = new DungeonInstanceRegistry();
+        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        using var service = new DungeonPartyService(
+            harness.Service, harness.Directory, registry, clock,
+            NullLogger<DungeonPartyService>.Instance);
+        var soloCharacterId = Guid.NewGuid();
+        var solo = registry.GetOrCreateForSolo(
+            soloCharacterId, () => fixture.CreateSoloInstance(soloCharacterId));
+        var alpha = Guid.NewGuid();
+        var bravo = Guid.NewGuid();
+        var charlie = Guid.NewGuid();
+        var inbox = new List<GameServerPacket>();
+        solo.AddMember(new DungeonInstanceMember(
+            alpha, 1, 0, "独行", packet => { inbox.Add(packet); return ValueTask.CompletedTask; }));
+        solo.AddMember(new DungeonInstanceMember(bravo, 2, 0, "陪衬", _ => ValueTask.CompletedTask));
+        solo.AddMember(new DungeonInstanceMember(charlie, 3, 0, "陪衬", _ => ValueTask.CompletedTask));
+        check(solo.TryStartRun(fixture.Layout, 0, 0, out _),
+            "the solo instance starts a run for the sweep-ignore case");
+        var target = new DungeonRoomPosition(1, 0);
+        lock (solo.Gate)
+        {
+            // 过半 + 倒计时已过期：这一套在队伍实例上必推进（见上一个用例），单人必须纹丝不动。
+            solo.Doors.Register(target, alpha, memberCount: 3,
+                clock.GetUtcNow() - DungeonDoorAssembly.Countdown, Reply(alpha));
+            solo.Doors.Register(target, bravo, memberCount: 3,
+                clock.GetUtcNow() - DungeonDoorAssembly.Countdown, Reply(bravo));
+        }
+
+        await service.SweepDoorAssembliesAsync(CancellationToken.None);
+        check(!solo.IsParty && solo.Run.RoomX == 0 && solo.Doors.IsWaiting,
+            "the sweep never advances a solo instance (its MOVE_MAP path is the immediate one)");
+        check(inbox.Count == 0,
+            "a solo instance whose assembly state was somehow populated still receives no scan packets");
     }
 
     /// <summary>待入队信箱：同一角色只留最后一条（重复投递幂等）、取走即清、未投递时为 false。</summary>
@@ -811,4 +1057,17 @@ internal sealed class DungeonFixture : IDisposable
         {
         }
     }
+}
+
+/// <summary>
+/// 可手动推进的 <see cref="TimeProvider"/>：倒计时扫描的用例不该真睡 10 秒。
+/// 生产代码只经 `DungeonPartyService._timeProvider.GetUtcNow()` 取时刻，所以这一层就够。
+/// </summary>
+internal sealed class ManualTimeProvider(DateTimeOffset now) : TimeProvider
+{
+    private DateTimeOffset _now = now;
+
+    public override DateTimeOffset GetUtcNow() => _now;
+
+    public void Advance(TimeSpan delta) => _now += delta;
 }
