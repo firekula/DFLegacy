@@ -712,7 +712,8 @@ public sealed class PartyService : BackgroundService
     /// <summary>
     /// 进区/换区（`CMD 38` 与副本结束回城都会走到）：**不退队**（设计稿 §4.4 的用户决策），
     /// 只做三件事：①把本会话的 uid 更新成新区域的；②更新该成员在名册里的位置并重播名册
-    /// （旧区域版本里他会变成 0、新区域版本里是真实 uid）；③**进区补发**——把本区域现有队伍
+    /// （新区域版本里他是真实 uid；旧区域版本里他回落到**他自己的 uid**——**绝不填 0**，
+    /// 真机证明 0 会被客户端当成"该成员已离开"→ 跨区域散队，见 `PartyRoster.SlotUids`）；③**进区补发**——把本区域现有队伍
     /// 逐支发给刚进来的这位，否则他的「队伍信息」列表是空的、推荐伙伴也过滤不准（设计稿 §6.2）。
     /// 已知边界：私密区域（默认只有赛利亚房间 1/1）里每个成员各占一个实例，同 (城镇, 区域) 的
     /// "真实 uid"在对方的本地 user 表里解析不出来 → 那一行空白；私密区域里也无法组队
@@ -746,8 +747,9 @@ public sealed class PartyService : BackgroundService
                     direct.Add((member.CharacterId, BuildRosterPacket(roster, member.CharacterId)));
                 }
 
-                // 新区域这一份 + "曾通知过的区域"各一份：旧区域的旁观者在这一份里看到他的格子变 0
-                // （即使旧区域已经一个队员都不剩——它仍然"知道"这支队伍，设计稿 §5.6）。
+                // 新区域这一份 + "曾通知过的区域"各一份：旧区域版本里他那一格回落到他自己的 uid
+                // （**不是 0**：0 会被客户端当成"该成员已离开"→ 跨区域散队，见 `PartyRoster.SlotUids`；
+                // 即使旧区域已经一个队员都不剩——它仍然"知道"这支队伍，设计稿 §5.6）。
                 foreach (var (memberTownId, memberAreaId) in NotifiedAreas(roster))
                 {
                     areas.Add((
@@ -781,8 +783,8 @@ public sealed class PartyService : BackgroundService
 
     /// <summary>
     /// 离开城镇区域（进副本 / 回登录前的离场）：**不退队**（设计稿 §4.4），只重播名册——
-    /// 目录里已经没有他，"曾通知过的区域"收到的那一份里他那一格因此变成 0
-    /// （旁观者不会把 uid 解析到别人身上；设计稿 §5.6）。
+    /// 目录里已经没有他，"曾通知过的区域"收到的那一份里他那一格回落到**他自己的 uid**
+    /// （**绝不填 0**：真机证明 0 会被客户端当成"该成员已离开"→ 散队，见 `PartyRoster.SlotUids`；设计稿 §5.6）。
     /// </summary>
     public async Task OnLeftAreaAsync(Guid characterId, CancellationToken cancellationToken = default)
     {
@@ -957,7 +959,11 @@ public sealed class PartyService : BackgroundService
     private static byte NormalizeNameSelection(byte nameSelection) =>
         nameSelection == 0 ? DefaultPartyNameSelection : nameSelection;
 
-    /// <summary>同一区域内所有收包者共用的那份名册（能解析到的成员填真实 uid，其余 0）。</summary>
+    /// <summary>
+    /// 同一区域内所有收包者共用的那份名册：能解析（与收包者同区域且在目录里）的成员填真实 uid；
+    /// 解析不到 → 返回 null，由 <see cref="PartyRoster.SlotUids"/> 回落成**该成员自己的 uid**
+    /// （**绝不填 0**——真机证明 0 会被客户端当成"该成员已离开"→ 跨区域散队，见 `PartyRoster.SlotUids`）。
+    /// </summary>
     private GameServerPacket BuildRosterPacketForArea(PartyRoster roster, byte townId, byte areaId) =>
         GameProtocolEngine.CreatePartyInfoNotification(
             roster.PartyId,
@@ -972,14 +978,19 @@ public sealed class PartyService : BackgroundService
             roster.LeaderSlot);
 
     /// <summary>
-    /// 为某个收包者生成名册包（设计稿 §2.2.2）：同区域成员填真实 uid；收包者自己永远填自己的 uid
-    /// （本地 user 表里必定有自己）；其余填 0（缺席哨兵）。**槽位下标全局一致（成员从不搬动）**。
+    /// 为某个收包者生成名册包（设计稿 §2.2.2）：能解析（与收包者同区域且在目录里）的成员填真实 uid；
+    /// 收包者自己永远填自己的 uid（本地 user 表里必定有自己）；解析不到 → 返回 null，由
+    /// <see cref="PartyRoster.SlotUids"/> 回落成**该成员自己的 uid**（**绝不填 0**——真机证明 0 会被
+    /// 客户端当成"该成员已离开"→ 跨区域散队，见 `PartyRoster.SlotUids`）。
+    /// **槽位下标全局一致（成员从不搬动）**。
     /// </summary>
     private GameServerPacket BuildRosterPacket(PartyRoster roster, Guid receiverCharacterId)
     {
+        // 收包者自己走通道里的当前 uid；通道不在（理论上的异常态：名册成员在 AttachChannelAsync 时必挂通道、
+        // DetachChannelAsync 会同时退队）→ null，由 SlotUids 回落成名册里他自己的 uid，**绝不填 0**。
         var receiverUid = _channels.TryGetValue(receiverCharacterId, out var receiver)
             ? receiver.AreaUserId
-            : (ushort)0;
+            : (ushort?)null;
         var receiverInTown = _directory.TryGetSnapshot(receiverCharacterId, out var receiverTown);
         var slots = roster.SlotUids(member =>
         {
@@ -988,12 +999,9 @@ public sealed class PartyService : BackgroundService
                 return receiverUid;
             }
 
-            if (!receiverInTown)
-            {
-                return null;
-            }
-
-            return _directory.TryGetSnapshot(member.CharacterId, out var memberTown)
+            // 解析不到（收包者不在城镇 / 成员与收包者不同区域 / 目录里查不到）→ null（槽位回落见上）。
+            return receiverInTown
+                && _directory.TryGetSnapshot(member.CharacterId, out var memberTown)
                 && memberTown.TownId == receiverTown.TownId
                 && memberTown.AreaId == receiverTown.AreaId
                     ? memberTown.AreaUserId

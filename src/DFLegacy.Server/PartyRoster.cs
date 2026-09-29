@@ -223,12 +223,16 @@ internal sealed class PartyRoster
     }
 
     /// <summary>
-    /// 生成 4 个槽位 uid，**按槽位下标 0..3 遍历**：该槽有成员 → `resolve(member) ?? 0`；空槽 → `0xFFFF`。
-    /// 顺序语义与旧实现一致（所有收包者看到的槽位下标相同），只是"哪些下标被占用"不再连续。
+    /// 生成 4 个槽位 uid，**按槽位下标 0..3 遍历**：该槽有成员 → `resolve(member) ?? 该成员自己的 uid`；
+    /// **空槽只能是 `0xFFFF`**。顺序语义与旧实现一致（所有收包者看到的槽位下标相同），只是"哪些下标被占用"不再连续。
     /// 踢人的 `CMD 14` 用的就是这些下标，所以服务端可以用 <see cref="TryGetSlot(Guid, out byte)"/> 直接映射。
     /// <paramref name="resolveUid"/> 返回"该收包者能解析到的 uid"（同区域 = 成员的真实 uid），
-    /// 返回 null 表示该成员对这个收包者不可见（缺席）→ 填 **0**：填真实 uid 会在对方区域
-    /// 解析成别人的名字（设计稿 §2.2.2）。
+    /// 返回 null 表示该成员对这个收包者不可见（跨区域 / 目录里查不到）→ 填**该成员自己的 uid**，
+    /// **绝不填 0**（真机证据：把 0 填给"与收包者不在同一区域的成员"后，客户端把 0 当成"这个槽没有人/
+    /// 该成员已离开"——换区后两端的名册里对方那一格都是 0，**两端同时**弹"队伍中只剩下[X]。要继续保留队伍吗？"
+    /// 并各自把对方摘掉，队伍退化成两个单人队；填一个本地解析不到的 uid 只是那一行显示空白，成员仍在队伍里）。
+    /// 填成员自己的 uid 在对方区域**可能撞号**、解析成同区另一位玩家的名字——次要的正确性问题，
+    /// 本轮不改 uid 池，取舍与已知限制见设计稿 §2.2.2/§11。
     /// </summary>
     public ushort[] SlotUids(Func<PartyMember, ushort?> resolveUid)
     {
@@ -237,7 +241,7 @@ internal sealed class PartyRoster
         for (byte index = 0; index < slots.Length; index++)
         {
             slots[index] = _slots[index] is { } member
-                ? resolveUid(member) ?? 0
+                ? resolveUid(member) ?? member.AreaUserId
                 : (ushort)0xFFFF;
         }
 

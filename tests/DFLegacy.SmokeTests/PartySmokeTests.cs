@@ -219,7 +219,8 @@ internal static class PartySmokeTests
     /// <summary>
     /// 队伍模型不变量（设计稿 §4）：上限 4、**槽位下标稳定（成员从不搬动）**、队长由 `LeaderSlot`
     /// 表达（建队时 0，队长离开后就地继任给最小占用槽）、槽位 uid 按**收包者所在区域**替换
-    /// （同区域填真实 uid / 异区域填 0 / 空槽 0xFFFF）。
+    /// （同区域填真实 uid / 解析不到填**该成员自己的 uid** / 空槽 0xFFFF——**绝不填 0**：
+    /// 真机证明 0 会被客户端当成"该成员已离开"，跨区域换区后两端同时弹"队伍中只剩下[X]"并散队）。
     /// </summary>
     private static void CheckPartyRoster(Action<bool, string> check)
     {
@@ -256,12 +257,21 @@ internal static class PartySmokeTests
 
         var slotsForHome = roster.SlotUids(member => member.IsIn(1, 0) ? member.AreaUserId : null);
         var slotsForElsewhere = roster.SlotUids(member => member.IsIn(1, 1) ? member.AreaUserId : null);
-        check(slotsForHome.SequenceEqual(new ushort[] { 11, 12, 0, 0xFFFF }),
+        check(slotsForHome.SequenceEqual(new ushort[] { 11, 12, 13, 0xFFFF }),
             "slots carry real uids for members the receiver can resolve");
-        check(slotsForElsewhere.SequenceEqual(new ushort[] { 0, 0, 13, 0xFFFF }),
-            "slots keep the global join order and substitute 0 for members the receiver cannot resolve");
-        check(roster.SlotUids(_ => null).SequenceEqual(new ushort[] { 0, 0, 0, 0xFFFF }),
-            "a receiver who cannot resolve anybody still gets four slots");
+        check(slotsForElsewhere.SequenceEqual(new ushort[] { 11, 12, 13, 0xFFFF }),
+            "slots keep the global slot order and substitute the member's own uid for members the receiver cannot resolve");
+
+        // ★ 回归（真机"跨区域散队"）：解析不到（跨区域 / 目录里查不到）的成员，槽位必须是**他自己的 uid**，
+        // 既不能是 0 也不能是 0xFFFF——真机上 0 被客户端当成"这个槽没有人 / 该成员已离开"：换区后两端名册里
+        // 对方那一格都是 0 → **两端同时**弹"队伍中只剩下[X]。要继续保留队伍吗？"并各自摘掉对方，队伍退化成
+        // 两个单人队（设计稿 §2.2.2/§11）。填一个本地解析不到的 uid 只是那一行显示空白，成员仍在队伍里。
+        // **变异验证**：把 `PartyRoster.SlotUids` 的回落值改回 0 → 本条断言变红。
+        var unresolvableSlots = roster.SlotUids(_ => null);
+        check(unresolvableSlots.SequenceEqual(new ushort[] { 11, 12, 13, 0xFFFF })
+                && unresolvableSlots.Take(3).All(uid => uid is not 0 and not 0xFFFF)
+                && unresolvableSlots[3] == 0xFFFF,
+            "regression (cross-area party break): a member the receiver cannot resolve keeps his own uid (0 would read as 'he left the party'; 0xFFFF would read as 'empty slot')");
 
         var fourth = new PartyMember
         {
@@ -294,8 +304,8 @@ internal static class PartySmokeTests
                 && roster.TryGetSlot(slot: 1, out var atSlotOne) && atSlotOne == sameArea,
             "removing the leader keeps every remaining member in his own slot (no compaction) and promotes the lowest occupied slot");
         check(roster.SlotUids(member => member.IsIn(1, 0) ? member.AreaUserId : null)
-                .SequenceEqual(new ushort[] { 0xFFFF, 12, 0, 14 }),
-            "after the leader leaves only his slot becomes 0xFFFF; the others keep their slot uids");
+                .SequenceEqual(new ushort[] { 0xFFFF, 12, 13, 14 }),
+            "after the leader leaves only his slot becomes 0xFFFF; the others keep their slot uids (an unresolvable member keeps his own uid)");
 
         check(!roster.Remove(Guid.NewGuid()), "removing a character that is not in the party changes nothing");
 
@@ -306,8 +316,8 @@ internal static class PartySmokeTests
         check(roster.UpdateLocation(sameArea.CharacterId, townId: 2, areaId: 3, areaUserId: 99),
             "a member's area change updates its stored location");
         check(roster.SlotUids(member => member.IsIn(2, 3) ? member.AreaUserId : null)
-                .SequenceEqual(new ushort[] { 0xFFFF, 99, 0, 0 }),
-            "the moved member is resolvable only in its new area (and stays in his own slot)");
+                .SequenceEqual(new ushort[] { 0xFFFF, 99, 13, 14 }),
+            "the moved member is resolvable only in its new area (and stays in his own slot; the others fall back to their own uids)");
 
         // ★ 回归（真机"幽灵队伍"的最小复现形状）：三人队 [甲@0, 乙@1, 丙@2] 移除队长甲 ——
         // 乙、丙的槽下标原地不动（不紧凑、不搬到槽 0），空出的是槽 0（0xFFFF），队长槽 = 1。
@@ -433,6 +443,7 @@ internal static class PartySmokeTests
         await CheckAreaBroadcastAsync(check);
         await CheckRosterResettleAsync(check);
         await CheckAreaChangeResettleAsync(check);
+        await CheckCrossAreaRosterKeepsBothMembersAsync(check);
     }
 
     /// <summary>某个角色收件箱里的 NOTI 9 列表（断言"补播了一份逐字节相同的名册"用）。</summary>
@@ -440,6 +451,12 @@ internal static class PartySmokeTests
         harness.Of(characterName)
             .Where(packet => packet.ProtocolId == GameProtocolEngine.PartyInfoNotification)
             .ToList();
+
+    /// <summary>NOTI 9 的 4 个槽位 uid（交错布局：body 偏移 7 起每 3 字节一个 u16）。</summary>
+    private static ushort[] SlotUidsOf(GameServerPacket packet) =>
+        Enumerable.Range(0, 4)
+            .Select(slot => BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(7 + slot * 3, 2)))
+            .ToArray();
 
     /// <summary>
     /// 「队伍信息」列表与「推荐伙伴」的过滤都靠"附近玩家身上挂着队伍"这条链接（C 卷 §2.2），
@@ -461,19 +478,20 @@ internal static class PartySmokeTests
         check(harness.Of("艾琳").Count == 0,
             "a client in another area of the same town gets no party roster");
 
-        // 换区：旧区域版本里离场成员变 0，新区域版本里他是真实 uid（设计稿 §2.2.2）。
+        // 换区：旧区域版本里离场成员**回落成他自己的 uid**（不是 0——真机证明 0 会被客户端当成
+        // "该成员已离开"，跨区域散队根因，设计稿 §2.2.2）；新区域版本里他是真实 uid。
         harness.ClearAll();
         await harness.MoveToAsync("布拉沃", townId: 1, areaId: 1, uid: 21);
         var oldAreaRoster = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
         check(oldAreaRoster is not null
                 && BinaryPrimitives.ReadUInt16LittleEndian(oldAreaRoster.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
-                && BinaryPrimitives.ReadUInt16LittleEndian(oldAreaRoster.Payload.AsSpan(10, 2)) == 0,
-            "the roster sent to the area the member left substitutes 0 for that member");
+                && BinaryPrimitives.ReadUInt16LittleEndian(oldAreaRoster.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃"),
+            "the roster sent to the area the member left keeps his own uid (never 0, which the client reads as 'he left the party')");
         var newAreaRoster = harness.FirstOf("艾琳", GameProtocolEngine.PartyInfoNotification);
         check(newAreaRoster is not null
-                && BinaryPrimitives.ReadUInt16LittleEndian(newAreaRoster.Payload.AsSpan(7, 2)) == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(newAreaRoster.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
                 && BinaryPrimitives.ReadUInt16LittleEndian(newAreaRoster.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃"),
-            "the roster sent to the area the member entered carries its real uid there");
+            "the roster sent to the area the member entered carries his real uid there (and the far-away member's own uid, never 0)");
 
         // 进区补发：队伍先建好，旁观者后进这个区域，也要看得见。
         harness.ClearAll();
@@ -482,21 +500,21 @@ internal static class PartySmokeTests
             "a client entering the area is back-filled with the rosters of the parties living there");
 
         // 离区（进副本）：**不退队**（设计稿 §4.4），只重播名册——目录里已经没有他，
-        // 于是"曾通知过的区域"收到的那份里他那一格变成 0（旁观者不会把 uid 解析到别人身上）。
+        // 于是"曾通知过的区域"收到的那份里他那一格回落到他自己的 uid（不是 0——0 会被当成"他已离队"）。
         harness.ClearAll();
         await harness.LeaveTownAsync("布拉沃");
         var afterLeaveArea = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
         check(afterLeaveArea is not null
                 && BinaryPrimitives.ReadUInt16LittleEndian(afterLeaveArea.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
-                && BinaryPrimitives.ReadUInt16LittleEndian(afterLeaveArea.Payload.AsSpan(10, 2)) == 0,
-            "leaving town for a dungeon blanks the member's slot in the area he left");
-        // 他自己那份走的是另一条"填 0"分支：收包者不在任何城镇区域 → 除自己外全部 0
-        // （Task 3 评审留下的覆盖缺口：异区/不可解析的成员必须填 0，不能填真实 uid，设计稿 §2.2.2）。
+                && BinaryPrimitives.ReadUInt16LittleEndian(afterLeaveArea.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃"),
+            "leaving town for a dungeon keeps the member's own uid in his slot for the area he left (never a 0 that reads as 'he left the party')");
+        // 他自己那份：收包者不在任何城镇区域 → 除自己外全部解析不到 → 其余成员也填他们**自己的 uid**，
+        // 绝不填 0（真机证明 0 会让客户端以为对方已离队 → 跨区域/进副本后散队，设计稿 §2.2.2）。
         var offTownCopy = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
         check(offTownCopy is { Payload.Length: 20 }
-                && BinaryPrimitives.ReadUInt16LittleEndian(offTownCopy.Payload.AsSpan(7, 2)) == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(offTownCopy.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
                 && BinaryPrimitives.ReadUInt16LittleEndian(offTownCopy.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃"),
-            "a member outside every town area still gets his own copy: only himself is resolvable");
+            "a member outside every town area still gets a full roster: nobody's slot is 0, only himself is locally resolvable");
         // 先断言两个收件箱**非空**再 All：空列表上的 All 恒真，等于没测（评审修复）。
         var alphaAfterLeave = harness.Of("阿尔法");
         var bravoAfterLeave = harness.Of("布拉沃");
@@ -1047,6 +1065,47 @@ internal static class PartySmokeTests
                 && alphaResettled.All(packet => packet.Payload.SequenceEqual(alphaMoved!.Payload))
                 && bravoResettled.All(packet => packet.Payload.SequenceEqual(bravoMoved!.Payload)),
             "an area change schedules the resettle too: the replayed roster is re-sent byte-identically");
+    }
+
+    /// <summary>
+    /// ★ 回归（真机"跨区域散队"）：两人在 1/0 组队成功后，其中一人走到同城镇的另一个区域（1/1）——
+    /// 发给**两端**的名册里，对方那一格都必须是他的真实 uid（离场者是"回落成他自己的 uid"那一支），
+    /// **绝不能是 0**：真机上客户端把 0 当成"这个槽没有人 / 该成员已离开"，于是两端同时弹
+    /// "队伍中只剩下[X]。要继续保留队伍吗？"并各自把对方摘掉，队伍退化成两个单人队。
+    /// 同时名册的"人数"不能变：4 个槽里非 0xFFFF 的仍是 2（客户端只把 0xFFFF 当空，0 仍算成员）。
+    /// **变异验证**：把 `PartyRoster.SlotUids` 的回落值改回 0 → 本用例的两条断言变红。
+    /// </summary>
+    private static async Task CheckCrossAreaRosterKeepsBothMembersAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
+
+        // 布拉沃换到同城镇的另一个区域（1/1，uid 21）：阿尔法是"留下来那位"。
+        harness.ClearAll();
+        await harness.MoveToAsync("布拉沃", townId: 1, areaId: 1, uid: 21);
+
+        var alphaRoster = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
+        var bravoRoster = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
+        check(alphaRoster is { Payload.Length: 20 } && bravoRoster is { Payload.Length: 20 },
+            "an area change still delivers a 20-byte roster to both members");
+
+        var alphaSlots = SlotUidsOf(alphaRoster!);
+        var bravoSlots = SlotUidsOf(bravoRoster!);
+        // 人数不变：非 0xFFFF 的槽位仍是 2（0xFFFF 才是"空槽"，0 从来不是合法值）。
+        check(alphaSlots.Count(uid => uid != 0xFFFF) == 2
+                && bravoSlots.Count(uid => uid != 0xFFFF) == 2,
+            "the cross-area roster keeps both members: exactly two non-0xFFFF slots on each side");
+        // 留下来那位（阿尔法）收到的名册：离场者（布拉沃）那一格是他的真实 uid（21），不是 0。
+        check(alphaSlots.SequenceEqual(new[] { harness.UidOf("阿尔法"), harness.UidOf("布拉沃"), (ushort)0xFFFF, (ushort)0xFFFF })
+                && alphaSlots.All(uid => uid != 0),
+            "the member left behind still sees the moved member's real uid (a 0 would make the client drop him from the party)");
+        // 离场者自己收到的名册：留下者那一格同样不是 0（跨区域双方都无法在本地解析对方，但都不填 0）。
+        check(bravoSlots.SequenceEqual(new[] { harness.UidOf("阿尔法"), harness.UidOf("布拉沃"), (ushort)0xFFFF, (ushort)0xFFFF })
+                && bravoSlots.All(uid => uid != 0),
+            "the moved member's own copy keeps the other member's uid too (neither side may read a 0 as 'he left the party')");
     }
 
     /// <summary>
