@@ -1416,100 +1416,123 @@ public sealed class EntranceService(
                         {
                             try
                             {
-                                // 等各客户端把副本地图加载完（此刻发区域条目才会把角色建在副本地图上）。
-                                await Task.Delay(TimeSpan.FromMilliseconds(
-                                    Math.Max(0, probe.AreaRecycleDelayMs)));
-
-                                // ① USER_AREA（NOTI 23）建角色：客户端对它的处理是"区域匹配 → 建角色 +
-                                // 加入当前地图"，**不会**调 SetTown；AREA_USERS（NOTI 24）会调 SetTown
-                                // 让客户端重新加载城镇地图（真机：队长被拉回城镇、仍在发城镇坐标）。
-                                // 所以副本内只能用 NOTI 23，绝不能用 NOTI 24。
-                                if (areaEntries)
+                                // 多轮补播：各客户端加载副本地图 / 场景就绪的时刻不同步，且场景切换
+                                // 可能清空本地 user 表——只发一遍很容易落在"记录刚被清掉"的窗口里。
+                                // 每轮固定顺序：外观（本机）→ USER_AREA（双向）→ 名册 → DUNGEON_INFO。
+                                var offsets = new[]
                                 {
-                                var leaderEntry = GameProtocolEngine.CreateUserArea(
-                                    probeTownIdSnapshot,
-                                    probeAreaIdSnapshot,
-                                    new GameTownUser(
-                                        leaderUidSnapshot,
-                                        leaderXSnapshot,
-                                        leaderYSnapshot,
-                                        leaderDirectionSnapshot),
-                                    active: true);
-                                foreach (var (memberId, memberName) in memberIds)
+                                    Math.Max(0, probe.AreaRecycleDelayMs),
+                                    Math.Max(0, probe.AreaRecycleDelayMs) + 3_500,
+                                    Math.Max(0, probe.AreaRecycleDelayMs) + 7_500,
+                                };
+                                var started = DateTimeOffset.UtcNow;
+                                foreach (var offset in offsets)
                                 {
-                                    await partyService.SendProbeToCharacterAsync(
-                                        memberId,
-                                        leaderEntry,
-                                        CancellationToken.None);
-                                    logger.LogInformation(
-                                        "Dungeon party probe: USER_AREA of leader {Leader} sent to {Name} (dungeon area {Town}/{Area}).",
-                                        leaderName,
-                                        memberName,
-                                        probeTownIdSnapshot,
-                                        probeAreaIdSnapshot);
-                                }
-
-                                foreach (var (memberId, memberName) in memberIds)
-                                {
-                                    if (!townDirectory.TryGetSnapshot(memberId, out var memberSnapshot))
+                                    var wait = offset - (DateTimeOffset.UtcNow - started).TotalMilliseconds;
+                                    if (wait > 0)
                                     {
-                                        continue;
+                                        await Task.Delay(TimeSpan.FromMilliseconds(wait));
                                     }
 
-                                    var memberEntry = GameProtocolEngine.CreateUserArea(
-                                        probeTownIdSnapshot,
-                                        probeAreaIdSnapshot,
-                                        new GameTownUser(
-                                            memberSnapshot.AreaUserId,
-                                            memberSnapshot.X,
-                                            memberSnapshot.Y,
-                                            memberSnapshot.Direction),
-                                        active: true);
-                                    await memberEntry.WriteAsync(stream, CancellationToken.None);
-                                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                                    LogPacket("TX", runtimeSession, memberEntry);
-                                    logger.LogInformation(
-                                        "Dungeon party probe: USER_AREA of {Name} sent to leader {Leader}.",
-                                        memberName,
-                                        leaderName);
-                                }
-                                }
+                                    // ① 本机外观（队长自己的那份必须由本会话构建）。
+                                    var roundAppearance = SendTownAppearancePacket();
+                                    await partyService.SendProbeToOtherMembersAsync(
+                                        leaderId,
+                                        roundAppearance,
+                                        CancellationToken.None);
 
-                                // ② 名册与副本信息补播：名册要在记录/区域条目之后（槽位按 uid 查本地 user 表）。
-                                foreach (var (memberId, memberName) in memberIds)
-                                {
-                                    var roster = partyService.GetProbeRosterPacket(memberId);
-                                    if (roster is not null)
+                                    // ② USER_AREA（NOTI 23）建角色：客户端对它的处理是"区域匹配 →
+                                    // 建角色 + 加入当前地图"，**不会**调 SetTown；AREA_USERS（NOTI 24）
+                                    // 会调 SetTown 让客户端重新加载城镇地图（真机：队长被拉回城镇）。
+                                    // 所以副本内只能用 NOTI 23，绝不能用 NOTI 24。
+                                    if (areaEntries)
                                     {
+                                        var leaderEntry = GameProtocolEngine.CreateUserArea(
+                                            probeTownIdSnapshot,
+                                            probeAreaIdSnapshot,
+                                            new GameTownUser(
+                                                leaderUidSnapshot,
+                                                leaderXSnapshot,
+                                                leaderYSnapshot,
+                                                leaderDirectionSnapshot),
+                                            active: true);
+                                        foreach (var (memberId, memberName) in memberIds)
+                                        {
+                                            await partyService.SendProbeToCharacterAsync(
+                                                memberId,
+                                                leaderEntry,
+                                                CancellationToken.None);
+                                            logger.LogInformation(
+                                                "Dungeon party probe: round {Round} USER_AREA of leader {Leader} sent to {Name} (area {Town}/{Area}).",
+                                                offset,
+                                                leaderName,
+                                                memberName,
+                                                probeTownIdSnapshot,
+                                                probeAreaIdSnapshot);
+                                        }
+
+                                        foreach (var (memberId, memberName) in memberIds)
+                                        {
+                                            if (!townDirectory.TryGetSnapshot(memberId, out var memberSnapshot))
+                                            {
+                                                continue;
+                                            }
+
+                                            var memberEntry = GameProtocolEngine.CreateUserArea(
+                                                probeTownIdSnapshot,
+                                                probeAreaIdSnapshot,
+                                                new GameTownUser(
+                                                    memberSnapshot.AreaUserId,
+                                                    memberSnapshot.X,
+                                                    memberSnapshot.Y,
+                                                    memberSnapshot.Direction),
+                                                active: true);
+                                            await memberEntry.WriteAsync(stream, CancellationToken.None);
+                                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                                            LogPacket("TX", runtimeSession, memberEntry);
+                                            logger.LogInformation(
+                                                "Dungeon party probe: round {Round} USER_AREA of {Name} sent to leader {Leader}.",
+                                                offset,
+                                                memberName,
+                                                leaderName);
+                                        }
+                                    }
+
+                                    // ③ 名册与副本信息：名册要在记录/区域条目之后（槽位按 uid 查本地 user 表）。
+                                    foreach (var (memberId, _) in memberIds)
+                                    {
+                                        var roster = partyService.GetProbeRosterPacket(memberId);
+                                        if (roster is not null)
+                                        {
+                                            await partyService.SendProbeToCharacterAsync(
+                                                memberId,
+                                                roster,
+                                                CancellationToken.None);
+                                        }
+
                                         await partyService.SendProbeToCharacterAsync(
                                             memberId,
-                                            roster,
+                                            dungeonInfo,
                                             CancellationToken.None);
                                     }
 
-                                    await partyService.SendProbeToCharacterAsync(
-                                        memberId,
-                                        dungeonInfo,
-                                        CancellationToken.None);
-                                    logger.LogInformation(
-                                        "Dungeon party probe: replayed roster+dungeon info to {Name} after area entries.",
-                                        memberName);
-                                }
+                                    var leaderRoster = partyService.GetProbeRosterPacket(leaderId);
+                                    if (leaderRoster is not null)
+                                    {
+                                        await leaderRoster.WriteAsync(stream, CancellationToken.None);
+                                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                                        LogPacket("TX", runtimeSession, leaderRoster);
+                                    }
 
-                                var leaderRoster = partyService.GetProbeRosterPacket(leaderId);
-                                if (leaderRoster is not null)
-                                {
-                                    await leaderRoster.WriteAsync(stream, CancellationToken.None);
+                                    await dungeonInfo.WriteAsync(stream, CancellationToken.None);
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
-                                    LogPacket("TX", runtimeSession, leaderRoster);
+                                    LogPacket("TX", runtimeSession, dungeonInfo);
+                                    logger.LogInformation(
+                                        "Dungeon party probe: round {Round} appearance+USER_AREA+roster+dungeon info replayed to leader {Leader} and {Count} member(s).",
+                                        offset,
+                                        leaderName,
+                                        memberIds.Length);
                                 }
-
-                                await dungeonInfo.WriteAsync(stream, CancellationToken.None);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, dungeonInfo);
-                                logger.LogInformation(
-                                    "Dungeon party probe: replayed roster+dungeon info to leader {Name}.",
-                                    leaderName);
                             }
                             catch (Exception exception) when (exception is not OperationCanceledException)
                             {
