@@ -2287,6 +2287,14 @@ public sealed class EntranceService(
                 {
                     if (activeCharacter is null || currentDungeonId != 0 || inDungeonSelection)
                     {
+                        // 真机诊断：请求确实取到了、但被状态挡下（以前静默返回，日志里看不到）。
+                        logger.LogInformation(
+                            "Party dungeon-selection request for {Name} was dropped by state: hasCharacter={HasCharacter}, dungeon={DungeonId}, inSelection={InSelection}, leader={Leader}.",
+                            activeCharacter?.Name ?? "?",
+                            activeCharacter is not null,
+                            currentDungeonId,
+                            inDungeonSelection,
+                            leaderCharacterId);
                         return;
                     }
 
@@ -3211,6 +3219,10 @@ public sealed class EntranceService(
                         if (dungeonInstanceRegistry.TryTakeSelectionRequest(
                                 activeCharacter.Id, out var selectionLeader))
                         {
+                            // 真机诊断：区分"没投递"与"投了但没被取走"（投递侧日志见 DungeonPartyService）。
+                            logger.LogInformation(
+                                "Party member {Name} picked up the dungeon-selection request from leader {Leader}.",
+                                activeCharacter.Name, selectionLeader);
                             await EnterPartyDungeonSelectionAsync(selectionLeader, serverToken);
                         }
 
@@ -3218,6 +3230,9 @@ public sealed class EntranceService(
                         if (dungeonInstanceRegistry.TryTakeEntryRequest(
                                 activeCharacter.Id, out var entryRequest))
                         {
+                            logger.LogInformation(
+                                "Party member {Name} picked up the dungeon entry request for dungeon {DungeonId} (party {PartyId}).",
+                                activeCharacter.Name, entryRequest.DungeonId, entryRequest.PartyId);
                             await EnterPartyDungeonAsync(entryRequest, serverToken);
                         }
                     }

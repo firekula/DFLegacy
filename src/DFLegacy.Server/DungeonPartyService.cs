@@ -125,8 +125,13 @@ public sealed class DungeonPartyService : BackgroundService
     /// <summary>队长开选图界面：给每个同区队员投一条"待选图"请求（他的会话自己把选图状态发给自己客户端）。</summary>
     internal int PostSelectionRequests(Guid leaderCharacterId, byte townId, byte areaId)
     {
-        if (TryGetGatheringParty(leaderCharacterId, townId, areaId, out _) is not { } slots)
+        if (TryGetGatheringParty(leaderCharacterId, townId, areaId, out var selectionOutsiders) is not { } slots)
         {
+            // 真机诊断（选图推送失败时唯一的线索）：没队伍 / 队伍只有自己 / 有人在别的区域，
+            // 这三种都投不出去，以前是静默 return 0。
+            _logger.LogInformation(
+                "Dungeon selection push skipped for leader {Leader} at area {TownId}/{AreaId}: no gathering party (outsiders={Outsiders}).",
+                leaderCharacterId, townId, areaId, selectionOutsiders.Length);
             return 0;
         }
 
@@ -140,6 +145,13 @@ public sealed class DungeonPartyService : BackgroundService
 
             Registry.PostSelectionRequest(slot.CharacterId, leaderCharacterId);
             posted++;
+        }
+
+        if (posted == 0)
+        {
+            _logger.LogInformation(
+                "Dungeon selection push for leader {Leader}: the gathering party has no other member (slots={Slots}).",
+                leaderCharacterId, slots.Length);
         }
 
         return posted;
