@@ -43,6 +43,7 @@ internal static class DungeonPartySmokeTests
         CheckMemberEntryPacketOrder(check, fixture);
         await CheckBroadcastReachesEveryMemberOnceAsync(check, fixture);
         await CheckPickupBroadcastOmitsSenderAsync(check, fixture);
+        await CheckClearRewardAndFinishLoadingPartyDispatchAsync(check, fixture);
         CheckGroundItemClaimIsFirstComeFirstServed(check, fixture);
         await CheckMemberDeparturePacketAsync(check, fixture);
         await CheckCrossSessionDeliverySurvivesCanceledMembersAsync(check, fixture);
@@ -222,6 +223,172 @@ internal static class DungeonPartySmokeTests
         await service.BroadcastToMembersAsync(instance, pickup);
         check(pickerInbox.Count == 1 && peerInbox.Count == 2,
             "without an omit target the same packet reaches every member (no delivery is swallowed)");
+    }
+
+    /// <summary>
+    /// 结算期两条"按队伍派发"的模型级断言（真机 ⑧ 的两条修复，参考实现 opendnf-win-0.0.3 的日志证据）：
+    /// ① CMD 74 选牌快照：发给发包者自己的那份回包会被**原样**（同一包实例）广播给同实例其他成员、
+    ///    omit 自己；快照里被选中的 free 列标的是**发包者自己的槽位**（参考日志："select_card: pick
+    ///    recorded, cmd 74 broadcast unique_id=3 party_index=0 card_type=1 card_number=0 member_slot=0"）；
+    /// ② CMD 40 完成加载：其他成员先收**属于他自己的那份名册**（`GetRosterPacketFor` 按收件人解析槽位），
+    ///    紧接着收一条空载荷 NOTI 30（参考日志："finish loading dispatched to party handler=..." /
+    ///    "dispatch_finish_loading: found party user_idx=2 party_index=0"）。顺序必须名册 → NOTI 30：
+    ///    客户端在收到 NOTI 30 那一刻按 uid 查本地 user 表装队伍 HUD，记录晚到 HUD 就永久空着。
+    /// 覆盖到的生产件：`GameProtocolEngine` 的两个构建器、`DungeonPartyService.BroadcastToMembersAsync`
+    /// （omit 语义）、`PartyService.GetRosterPacketFor`、`CrossSessionDelivery`。
+    /// **会话接线本身不可触达**：EntranceService 里"仅 `IsParty` 时调这几步、且名册循环在 NOTI 30 广播
+    /// 之前"是会话局部闭包（与 CheckBroadcastReachesEveryMemberOnceAsync / CheckGroundItemClaimIsFirstComeFirstServed
+    /// 同一局限）——本用例复述的是那两步的**顺序契约**与可测的生产件，不假装覆盖接线。
+    /// **变异验证**（实测变红后回滚）：
+    /// ① 把 `GetRosterPacketFor` 改成对 `Guid.Empty` 建名册（收件人自己那格不再走他的通道 uid）→
+    ///    "名册逐人取件"断言变红；
+    /// ② 把 `BroadcastToMembersAsync` 的 omit 判断删掉 → "发包者零额外包"两条断言变红
+    ///    （与 CheckPickupBroadcastOmitsSenderAsync 钉的是同一条护栏）。
+    /// </summary>
+    private static async Task CheckClearRewardAndFinishLoadingPartyDispatchAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        using var service = new DungeonPartyService(
+            harness.Service,
+            harness.Directory,
+            new DungeonInstanceRegistry(),
+            TimeProvider.System,
+            NullLogger<DungeonPartyService>.Instance);
+
+        // ① CMD 74：发包者 = slot 1、选走 free 列 0——与 SendCardSelectionSnapshotAsync 同一构建器、
+        // 同一槽位口径（localPartyIndex: PartySlotIndexOfThisSession()）。
+        var selectionInstance = fixture.CreatePartyInstance(2000);
+        var picker = Guid.NewGuid();
+        var peer = Guid.NewGuid();
+        var pickerInbox = new List<GameServerPacket>();
+        var peerInbox = new List<GameServerPacket>();
+        selectionInstance.AddMember(new DungeonInstanceMember(
+            picker, 1, 0, "队长", packet => { pickerInbox.Add(packet); return ValueTask.CompletedTask; }));
+        selectionInstance.AddMember(new DungeonInstanceMember(
+            peer, 2, 1, "队员", packet => { peerInbox.Add(packet); return ValueTask.CompletedTask; }));
+        var selectionSnapshot = GameProtocolEngine.CreateSelectCardReply(
+            freeCardIndex: 0,
+            goldCardIndex: null,
+            goldRewardRevealed: false,
+            goldRewardItemId: null,
+            localPartyIndex: 1);
+        // 布局：u8 1 + 每列(free 归属 u8, gold 归属 u8, gold 预览 u8)；列 0 的 free 归属 = 发包者槽位。
+        check(selectionSnapshot.Payload.Length == 13
+                && selectionSnapshot.Payload[0] == 1
+                && selectionSnapshot.Payload[1] == 1
+                && selectionSnapshot.Payload[2] == byte.MaxValue
+                && selectionSnapshot.Payload[4] == byte.MaxValue,
+            "the CMD 74 snapshot marks the picked free column with the picker's own party slot");
+
+        await service.BroadcastToMembersAsync(
+            selectionInstance, selectionSnapshot, omitCharacterId: picker);
+        check(pickerInbox.Count == 0,
+            "the picker gets no second CMD 74 copy (its own reply already went out on the session stream)");
+        check(peerInbox.Count == 1
+                && ReferenceEquals(peerInbox[0], selectionSnapshot)
+                && peerInbox[0].ProtocolId == GameProtocolEngine.SelectCardCommand,
+            "the other member receives the picker's exact CMD 74 snapshot (the same packet instance)");
+
+        // 单人零回归的结构面：单人实例 IsParty=false，接线里的广播分支进不去；即使误调广播，
+        // omit 自己也让唯一成员零投递。
+        var soloPicker = Guid.NewGuid();
+        var soloInstance = fixture.CreateSoloInstance(soloPicker);
+        var soloInbox = new List<GameServerPacket>();
+        soloInstance.AddMember(new DungeonInstanceMember(
+            soloPicker, 1, 0, "独行", packet => { soloInbox.Add(packet); return ValueTask.CompletedTask; }));
+        check(!soloInstance.IsParty,
+            "a solo instance can never enter the CMD 74 broadcast branch");
+        await service.BroadcastToMembersAsync(soloInstance, selectionSnapshot, omitCharacterId: soloPicker);
+        check(soloInbox.Count == 0,
+            "a solo instance's broadcast omits its only member (not a single packet added)");
+
+        // ② CMD 40：真实队伍（名册状态与槽位走 PartyService 真实路径）。把"布拉沃"的**通道** uid
+        // 换成副本内的 44（目录里仍是城镇 uid 2）：这样"布拉沃自己那份名册"与"阿尔法视角的名册"
+        // 必须在布拉沃那一格上不同——正好证明派发是**逐人取件**，而不是把同一个名册包广播出去。
+        await harness.InviteAndAcceptAsync("阿尔法", "布拉沃");
+        var alphaId = harness.IdOf("阿尔法");
+        var bravoId = harness.IdOf("布拉沃");
+        var alphaInbox = new List<GameServerPacket>();
+        var bravoInbox = new List<GameServerPacket>();
+        await harness.Service.AttachChannelAsync(
+            "alice",
+            "阿尔法",
+            alphaId,
+            harness.UidOf("阿尔法"),
+            harness.SessionIdOf("阿尔法"),
+            packet => { alphaInbox.Add(packet); return ValueTask.CompletedTask; },
+            CancellationToken.None);
+        await harness.Service.AttachChannelAsync(
+            "bobby",
+            "布拉沃",
+            bravoId,
+            44,
+            harness.SessionIdOf("布拉沃"),
+            packet => { bravoInbox.Add(packet); return ValueTask.CompletedTask; },
+            CancellationToken.None);
+
+        var loadingInstance = fixture.CreatePartyInstance(3000);
+        loadingInstance.AddMember(new DungeonInstanceMember(
+            alphaId, harness.UidOf("阿尔法"), 0, "阿尔法",
+            packet => { alphaInbox.Add(packet); return ValueTask.CompletedTask; }));
+        loadingInstance.AddMember(new DungeonInstanceMember(
+            bravoId, 44, 1, "布拉沃",
+            packet => { bravoInbox.Add(packet); return ValueTask.CompletedTask; }));
+
+        // 复述 CMD 40 处理体的两步：先给每个其他成员重播他自己的名册，再广播 NOTI 30（omit 发包者）。
+        foreach (var member in loadingInstance.Members)
+        {
+            if (member.CharacterId == alphaId)
+            {
+                continue;
+            }
+
+            var memberRoster = harness.Service.GetRosterPacketFor(member.CharacterId);
+            if (memberRoster is null)
+            {
+                continue;
+            }
+
+            await CrossSessionDelivery.SendSafelyAsync(
+                NullLogger.Instance,
+                memberRoster,
+                CrossSessionDelivery.Describe(
+                    member.CharacterId, member.CharacterName, member.AreaUserId),
+                member.Send);
+        }
+
+        await service.BroadcastToMembersAsync(
+            loadingInstance,
+            GameProtocolEngine.CreateFinishLoading(),
+            alphaId,
+            CancellationToken.None);
+
+        var bravoRosterIndex = bravoInbox.FindIndex(
+            packet => packet.ProtocolId == GameProtocolEngine.PartyInfoNotification);
+        var bravoFinishIndex = bravoInbox.FindIndex(
+            packet => packet.ProtocolId == GameProtocolEngine.FinishLoadingNotification);
+        var bravoRoster = bravoRosterIndex >= 0 ? bravoInbox[bravoRosterIndex] : null;
+        var bravoFinish = bravoFinishIndex >= 0 ? bravoInbox[bravoFinishIndex] : null;
+        check(bravoInbox.Count == 2 && bravoRosterIndex == 0 && bravoFinishIndex == 1,
+            "the other member receives exactly two packets: its own roster, then NOTI 30");
+        check(bravoFinish is { } finishPacket && finishPacket.Payload.Length == 0,
+            "the dispatched NOTI 30 is the empty-payload notification the client HUD rebuild listens on");
+
+        // 名册布局：u16 1, u16 partyId, u8 0, u8 nameSel, u8 maxMembers, 4 × (u16 uid, u8 0), u8 leaderSlot
+        // → 槽位 slot 的 uid 在偏移 7 + 3 * slot。
+        static ushort SlotUid(GameServerPacket? roster, int slot) =>
+            roster is { } packet && packet.Payload.Length >= 7 + 3 * 4
+                ? BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(7 + 3 * slot, 2))
+                : ushort.MaxValue;
+        var alphaViewRoster = harness.Service.GetRosterPacketFor(alphaId);
+        check(SlotUid(bravoRoster, 1) == 44
+                && SlotUid(alphaViewRoster, 1) == harness.UidOf("布拉沃")
+                && !ReferenceEquals(bravoRoster, alphaViewRoster),
+            "the roster replay is built per recipient: each member's own slot resolves against their own channel uid");
+        check(alphaInbox.Count == 0,
+            "the CMD 40 sender gets no extra packet from the party dispatch (its own two went out on its stream)");
     }
 
     /// <summary>

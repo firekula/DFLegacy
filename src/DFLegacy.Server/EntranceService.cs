@@ -1658,11 +1658,13 @@ public sealed class EntranceService(
                         rewardItemId);
                 }
 
-                async Task SendCardSelectionSnapshotAsync(bool inventoryChanged)
+                // 返回值 = 刚发给发包者自己的那份 CMD 74 回包（结算面板快照）；调用方在**组队**时
+                // 把它原样广播给同实例其他成员（见 CMD 74 处理体）。单人路径不看返回值、不发任何包。
+                async Task<GameServerPacket?> SendCardSelectionSnapshotAsync(bool inventoryChanged)
                 {
                     if (roomSettlement.ClearReward is null)
                     {
-                        return;
+                        return null;
                     }
 
                     var selectCardReply = GameProtocolEngine.CreateSelectCardReply(
@@ -1677,7 +1679,7 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, selectCardReply);
                     if (!inventoryChanged)
                     {
-                        return;
+                        return selectCardReply;
                     }
 
                     var inventoryRefresh = CreateMainInventoryPacket(
@@ -1687,6 +1689,7 @@ public sealed class EntranceService(
                     await inventoryRefresh.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, inventoryRefresh);
+                    return selectCardReply;
                 }
 
                 async Task<bool> TryAutomaticallySelectFreeCardAsync(string source)
@@ -14231,7 +14234,8 @@ public sealed class EntranceService(
                                 // (paid). A black-diamond character's second
                                 // free reward is NOTI 35 group 3 at the same
                                 // selected column and is settled with type 0.
-                                await SendCardSelectionSnapshotAsync(inventoryChanged);
+                                var selectionSnapshot =
+                                    await SendCardSelectionSnapshotAsync(inventoryChanged);
                                 logger.LogInformation(
                                     "Dungeon {DungeonId} card type {CardType}, index {CardIndex} processed for user {UserId}; accepted={Accepted}, reward={RewardItemId}",
                                     currentDungeonId,
@@ -14240,6 +14244,31 @@ public sealed class EntranceService(
                                     localUserId,
                                     selectionAccepted,
                                     selectedRewardItemId);
+
+                                // 参考实现证据（opendnf-win-0.0.3 的 _logs/game.log，逐字）：
+                                //   "select_card: pick recorded, cmd 74 broadcast unique_id=3
+                                //    party_index=0 card_type=1 card_number=0 member_slot=0 ..."
+                                // 选牌 CMD 74 是**广播给全队**的：客户端在结算页等的是"全队都选完了"
+                                // 的广播（按 party_index/member_slot 把该列标成别人的），不只是自己那份回包。
+                                // 只回给点牌的人，另一个客户端的结算页就永远停在"队友未响应"（真机 ⑧）。
+                                // 广播的就是上面刚发给发包者自己的那一份（同一个包实例、同一构建器、
+                                // 同一 localPartyIndex=发包者自己的槽位，与 SendCardSelectionSnapshotAsync 的
+                                // 取值口径完全一致，不另造）；omit 自己 → 绝不重复发。单人实例没有其他成员，
+                                // 一份包都不多发（零回归）。
+                                if (selectionSnapshot is { } selectCardBroadcast
+                                    && dungeonInstance is { IsParty: true } cardInstance
+                                    && activeCharacter is { } cardPicker)
+                                {
+                                    await dungeonPartyService.BroadcastToMembersAsync(
+                                        cardInstance,
+                                        selectCardBroadcast,
+                                        omitCharacterId: cardPicker.Id);
+                                    logger.LogInformation(
+                                        "Dungeon {DungeonId} CMD 74 selection snapshot of user {UserId} broadcast to the other members of instance {PartyId}.",
+                                        currentDungeonId,
+                                        localUserId,
+                                        cardInstance.PartyId);
+                                }
                             }
                             else
                             {
@@ -14349,6 +14378,66 @@ public sealed class EntranceService(
                             // reported the same transition in an earlier map.
                             await SendEquippedCreatureHungerAsync(
                                 forceDeathNotification: currentDungeonId != 0);
+
+                            // 参考实现证据（opendnf-win-0.0.3 的 _logs/game.log，逐字）：
+                            //   "finish loading dispatched to party handler="DisPatcher_FinishLoad"
+                            //    user_idx=2 state=5 ..." 与 "dispatch_finish_loading: found party
+                            //    user_idx=2 party_index=0"
+                            // 它在 CMD 40 上是**按队伍派发**的，不是只回发包者。我们的队员客户端一直
+                            // "队伍 HUD 只有自己一个人"：客户端的 HUD/成员行是在收到 NOTI 30 的那一刻
+                            // **按 uid 查本地 user 表**装配的，而队友的本地 user 记录来自名册（NOTI 6）——
+                            // 记录没到/晚到，成员行就永久空着（第一轮与探针反复证实的"记录必须先于 HUD"；
+                            // 与城镇的"外观 → 名册"同一根因）。这一轮对方 actor 的区域条目已经补发
+                            // （外来 uid 已进入本机地图/区域列表），此时给**其他成员**各重播一份属于
+                            // 他自己的名册（GetRosterPacketFor 按收件人解析 uid，槽位是收件人视角的），
+                            // 紧接着补一条 NOTI 30，让 HUD 在"记录已就位"之后重建一次。
+                            // **顺序必须是 名册 → NOTI 30**（先记录、后 HUD）；单人实例没有别的成员，
+                            // 一个包都不发（零回归）。
+                            if (dungeonInstance is { IsParty: true } finishLoadingInstance
+                                && activeCharacter is { } finishLoadingCharacter)
+                            {
+                                var rosterReplayCount = 0;
+                                foreach (var member in finishLoadingInstance.Members)
+                                {
+                                    if (member.CharacterId == finishLoadingCharacter.Id)
+                                    {
+                                        continue;
+                                    }
+
+                                    var memberRoster =
+                                        partyService.GetRosterPacketFor(member.CharacterId);
+                                    if (memberRoster is null)
+                                    {
+                                        continue;
+                                    }
+
+                                    // 每个成员拿到的都是"按收件人自己解析槽位"的那一份（不是同一个包
+                                    // 广播），所以必须逐人投递；坏通道只告警，不能打断其余成员（与
+                                    // AdvancePartyRoomAsync 的 SendToMemberAsync 同一护栏）。
+                                    await CrossSessionDelivery.SendSafelyAsync(
+                                        logger,
+                                        memberRoster,
+                                        CrossSessionDelivery.Describe(
+                                            member.CharacterId,
+                                            member.CharacterName,
+                                            member.AreaUserId),
+                                        member.Send);
+                                    rosterReplayCount++;
+                                }
+
+                                var partyLoadingNotification =
+                                    GameProtocolEngine.CreateFinishLoading();
+                                await dungeonPartyService.BroadcastToMembersAsync(
+                                    finishLoadingInstance,
+                                    partyLoadingNotification,
+                                    finishLoadingCharacter.Id,
+                                    serverToken);
+                                logger.LogInformation(
+                                    "Dungeon {DungeonId} finish-loading dispatched to party instance {PartyId}: roster replayed for {RosterCount} other member(s), then NOTI 30 to the rest.",
+                                    currentDungeonId,
+                                    finishLoadingInstance.PartyId,
+                                    rosterReplayCount);
+                            }
                             continue;
                         }
 
