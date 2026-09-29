@@ -59,9 +59,17 @@ internal sealed class DungeonDoorAssembly
         }
 
         PendingTarget ??= target;
-        if (!_arrivals.Any(arrival => arrival.CharacterId == characterId))
+        var existingIndex = _arrivals.FindIndex(arrival => arrival.CharacterId == characterId);
+        if (existingIndex < 0)
         {
             _arrivals.Add(new DungeonDoorArrival(characterId, reply));
+        }
+        else
+        {
+            // 客户端在等回包期间又发了一次 CMD 48（真机第一检查点就是"客户端能否接受延迟回包"）：
+            // 推进时补发的必须是**最新**那一份回包（旧序列号客户端对不上号）；同一角色仍只算
+            // 一个到门口者，顺序不变。
+            _arrivals[existingIndex] = new DungeonDoorArrival(characterId, reply);
         }
 
         return Evaluate(memberCount, now, characterId);

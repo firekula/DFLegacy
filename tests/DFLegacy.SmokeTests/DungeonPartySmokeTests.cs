@@ -19,6 +19,8 @@ internal static class DungeonPartySmokeTests
         CheckRoomSnapshotsAndPassiveDrops(check, fixture);
         CheckLiveJoinDoesNotReplenishPassiveDrops(check, fixture);
         CheckSharedCollectionAccessors(check, fixture);
+        CheckRoomSettlementReset(check);
+        CheckRoomFirstVisitFlag(check, fixture);
         CheckDoorAssemblyRules(check);
         CheckPlanStartMapSharedPlanner(check, fixture);
         await CheckDoorAssemblySweepAdvancesWholePartyAsync(check, fixture);
@@ -604,9 +606,86 @@ internal static class DungeonPartySmokeTests
     }
 
     /// <summary>
+    /// 换房间必须重置会话级「每房结算」标志（Task 5 评审 Important）：结果屏/卡片布局/选卡权/选卡截止/
+    /// 结算奖励/两张已选卡要整组回到默认，否则 `ClearEnabled &amp;&amp; !ResultSent` 的守卫
+    /// （`EntranceService` 的 `SET_PLAY_RESULT` 分支）会把第二间及以后的结算整个吞掉。
+    /// 单人 <c>CMD 48</c> 一直这么做；门口集结制让房间也能被**别人**推进，所以这套状态搬进可测对象，
+    /// 三条换房路径（单人立即推进 / 组队自己推进 / 被强制推进后的镜像追赶）共用
+    /// `ResetRoomSettlementState()` → 这里的 `Reset()`。
+    /// **变异验证**：删掉 `Reset()` 里任意一条赋值（实测删 `ResultSent = false;`）→ 第一条断言变红。
+    /// </summary>
+    private static void CheckRoomSettlementReset(Action<bool, string> check)
+    {
+        check(new DungeonRoomSettlementState() is
+                {
+                    ResultSent: false,
+                    CardLayoutSent: false,
+                    CardRightsSent: false,
+                    CardSelectionDeadline: null,
+                    ClearReward: null,
+                    FreeCardIndex: null,
+                    GoldCardIndex: null
+                },
+            "a fresh room starts with no settlement state (no result screen, cards or reward)");
+
+        var state = new DungeonRoomSettlementState
+        {
+            ResultSent = true,
+            CardLayoutSent = true,
+            CardRightsSent = true,
+            CardSelectionDeadline = DateTimeOffset.UtcNow.AddSeconds(30),
+            ClearReward = new DungeonClearRewardRoll(
+                GoldCardCost: 1000,
+                GoldCardEnabled: true,
+                FreeGoldAmount: 100,
+                FreeItemId: 1,
+                PremiumItemId: 2,
+                GoldItemId: 3),
+            FreeCardIndex = 1,
+            GoldCardIndex = 2
+        };
+        state.Reset();
+        check(state is
+                {
+                    ResultSent: false,
+                    CardLayoutSent: false,
+                    CardRightsSent: false,
+                    CardSelectionDeadline: null,
+                    ClearReward: null,
+                    FreeCardIndex: null,
+                    GoldCardIndex: null
+                },
+            "a room change resets every per-room settlement flag (the next room settles again)");
+    }
+
+    /// <summary>
+    /// 追赶式房间疲劳的"首访才扣"门控（Task 5 评审 Minor 2）：`DungeonInstance.LastRoomEntryWasFirstVisit`
+    /// 跟着**最近一次进房**走——开局与新房间是首访（true），重访是 false（重访让客户端复用缓存快照，
+    /// 单人不扣、组队的镜像追赶也不能扣），实例收尾后没有当前房间 → 回到 false。
+    /// **变异验证**：把 `TryMoveRoom` 里那行 `LastRoomEntryWasFirstVisit = transition.FirstVisit;`
+    /// 改成恒 `true` → 第三条断言变红（实测）。
+    /// </summary>
+    private static void CheckRoomFirstVisitFlag(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _) && instance.LastRoomEntryWasFirstVisit,
+            "starting the run counts as a first visit (the catch-up path charges the start room)");
+        var moved = instance.TryMoveRoom(1, 0, out var firstMove);
+        check(moved && firstMove.FirstVisit && instance.LastRoomEntryWasFirstVisit,
+            "moving into a new room counts as a first visit");
+        var revisited = instance.TryMoveRoom(0, 0, out var revisit);
+        check(revisited && !revisit.FirstVisit && !instance.LastRoomEntryWasFirstVisit,
+            "walking back into a visited room clears the first-visit flag (a revisit charges no fatigue)");
+        instance.StopRun();
+        check(!instance.LastRoomEntryWasFirstVisit,
+            "a stopped instance has no current room and no first-visit flag");
+    }
+
+    /// <summary>
     /// 门口集结（设计稿 §3.3）：
     /// ①第一个请求只登记、不推进；②不同目标的请求忽略；③全员到齐立即推进；
-    /// ④过半开 10 秒倒计时、到点强制推进；⑤推进后状态清空（下一次从零开始）。
+    /// ④过半开 10 秒倒计时、到点强制推进；⑤推进后状态清空（下一次从零开始）；
+    /// ⑥同一成员重复登记（等待期间重发 CMD 48）仍只算一个到门口者，但回包换成**最新**那一份。
     /// </summary>
     private static void CheckDoorAssemblyRules(Action<bool, string> check)
     {
@@ -676,6 +755,26 @@ internal static class DungeonPartySmokeTests
         check(settled is { Decision: DungeonDoorDecision.Advance, Forced: false }
                 && settled.Arrivals.Count == 2 && !assembly.IsWaiting,
             "a roster shrinking to the arrived headcount advances immediately");
+
+        // 重复登记：客户端在等回包期间重发 CMD 48（真机第一检查点就是"客户端能否接受延迟回包"）。
+        // 同一角色仍只算一个到门口者，但推进时补发的必须是**最新**那份回包（旧序列号客户端对不上号）。
+        var reRegisterAssembly = new DungeonDoorAssembly();
+        var staleAlphaReply = Reply(alpha);
+        var latestAlphaReply = Reply(alpha);
+        var firstRegister = reRegisterAssembly.Register(target, alpha, memberCount: 2, now, staleAlphaReply);
+        var secondRegister = reRegisterAssembly.Register(target, alpha, memberCount: 2, now, latestAlphaReply);
+        check(firstRegister.Decision == DungeonDoorDecision.Waiting
+                && secondRegister.Decision == DungeonDoorDecision.Waiting
+                && secondRegister.Arrivals.Count == 1
+                && ReferenceEquals(secondRegister.Arrivals[0].Reply, latestAlphaReply)
+                && !ReferenceEquals(secondRegister.Arrivals[0].Reply, staleAlphaReply),
+            "re-registering the same member keeps exactly one arrival but swaps in the newest CMD 48 reply");
+        var afterReRegister = reRegisterAssembly.Register(target, bravo, memberCount: 2, now, Reply(bravo));
+        check(afterReRegister.Decision == DungeonDoorDecision.Advance
+                && afterReRegister.Arrivals.Count == 2
+                && afterReRegister.Arrivals[0].CharacterId == alpha
+                && ReferenceEquals(afterReRegister.Arrivals[0].Reply, latestAlphaReply),
+            "the swapped-in reply is the one the advance later delivers to that member");
     }
 
     /// <summary>

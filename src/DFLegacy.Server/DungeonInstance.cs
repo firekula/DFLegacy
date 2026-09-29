@@ -109,6 +109,14 @@ internal sealed class DungeonInstance(
     /// <summary>房间清空 / 空 boss 房可结算（= 改造前的 dungeonClearEnabled，实例级共享）。</summary>
     public bool ClearEnabled { get; private set; }
 
+    /// <summary>
+    /// 最近一次进房是不是**首次访问**（`transition.FirstVisit` 的口径）。
+    /// 单人只对首访扣房间疲劳（重访走客户端缓存快照）；组队的换房由**别的会话**推进时，本会话
+    /// 只能在镜像追赶里补扣，需要这个标记才知道该不该扣（设计稿 §7 决策 6"每人各自扣"）。
+    /// 锁内写（TryStartRun/TryMoveRoom/EnterDetachedRoom/StopRun）、锁内只读。
+    /// </summary>
+    public bool LastRoomEntryWasFirstVisit { get; private set; }
+
     // —— 成员 ——
 
     public bool AddMember(DungeonInstanceMember member)
@@ -216,6 +224,7 @@ internal sealed class DungeonInstance(
             DungeonOption = dungeonOption;
             Layout = layout;
             ClearEnabled = false;
+            LastRoomEntryWasFirstVisit = transition.FirstVisit;
             _detachedRoom = null;
             _registeredPassiveRooms.Clear();
             ResetRoomCollections(transition.Room.Monsters);
@@ -235,6 +244,8 @@ internal sealed class DungeonInstance(
             Layout = null;
             DungeonOption = 0;
             ClearEnabled = false;
+            // 教学副本的合成房间也算"首次进房"（没有迷宫/重访概念）。
+            LastRoomEntryWasFirstVisit = true;
             _registeredPassiveRooms.Clear();
             ResetRoomCollections(room.Monsters);
             Doors.Reset();
@@ -257,6 +268,7 @@ internal sealed class DungeonInstance(
 
             // 与改造前 CMD 48 的行为一致：换房间清掉"本房间"的临时集合与开放标记。
             ClearEnabled = false;
+            LastRoomEntryWasFirstVisit = transition.FirstVisit;
             Doors.Reset();
             ResetRoomCollections(transition.Room.Monsters);
             Version++;
@@ -429,6 +441,8 @@ internal sealed class DungeonInstance(
             Layout = null;
             DungeonOption = 0;
             ClearEnabled = false;
+            // 没有当前房间了：标记回到"未进房"，别让收尾后的会话按陈旧标记补扣房间疲劳。
+            LastRoomEntryWasFirstVisit = false;
             _registeredPassiveRooms.Clear();
             ResetRoomCollections([]);
             Doors.Reset();

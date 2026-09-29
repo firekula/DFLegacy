@@ -293,13 +293,11 @@ public sealed class EntranceService(
             var dungeonCharacterAlive = true;
             long dungeonDeathGeneration = 0;
             (long Generation, DateTimeOffset Deadline)? dungeonDeathTimeout = null;
-            var dungeonResultSent = false;
-            var dungeonCardLayoutSent = false;
-            var dungeonCardRightsSent = false;
-            DateTimeOffset? dungeonCardSelectionDeadline = null;
-            DungeonClearRewardRoll? dungeonClearReward = null;
-            byte? dungeonFreeCardIndex = null;
-            byte? dungeonGoldCardIndex = null;
+            // 本房间的「结算」标志（结果屏/卡片布局/选卡权/选卡截止/奖励与已选卡）：换房间要整组重置。
+            // 原本是七个会话局部量；Task 5 的门口集结制让房间可以由**别的会话**推进，"换房就要重置"
+            // 必须在三条路径上一致执行（单人立即推进 / 组队自己推进 / 被强制推进后的追赶），而局部量
+            // 无法从冒烟测试驱动 —— 搬进可测的 DungeonRoomSettlementState（Reset 语义 = 原来的七句赋值）。
+            var roomSettlement = new DungeonRoomSettlementState();
             uint dungeonMonsterExperienceGained = 0;
             GameDungeonClearExperienceBreakdown? dungeonClearExperience = null;
             uint dungeonConsumedFatigue = 0;
@@ -1691,42 +1689,42 @@ public sealed class EntranceService(
                 async Task<(bool Saved, bool InventoryChanged, ushort? RewardItemId)>
                     GrantFreeClearRewardAsync(byte selectedCardIndex)
                 {
-                    if (dungeonClearReward is null
+                    if (roomSettlement.ClearReward is null
                         || selectedCardIndex >= GameProtocolEngine.ClearRewardCardColumnCount)
                     {
                         return (false, false, null);
                     }
 
-                    if (dungeonFreeCardIndex.HasValue)
+                    if (roomSettlement.FreeCardIndex.HasValue)
                     {
                         return (
-                            dungeonFreeCardIndex == selectedCardIndex,
+                            roomSettlement.FreeCardIndex == selectedCardIndex,
                             false,
-                            dungeonClearReward.FreeItemId
-                                ?? dungeonClearReward.PremiumItemId);
+                            roomSettlement.ClearReward.FreeItemId
+                                ?? roomSettlement.ClearReward.PremiumItemId);
                     }
 
                     var goldBeforeGrant = currentGold;
                     var settledGold = (int)Math.Min(
                         int.MaxValue,
-                        (long)currentGold + dungeonClearReward.FreeGoldAmount);
+                        (long)currentGold + roomSettlement.ClearReward.FreeGoldAmount);
                     var freeGrant = await SaveClearRewardEquipmentAsync(
                         settledGold,
                         [
-                            dungeonClearReward.FreeItemId,
-                            dungeonClearReward.PremiumItemId
+                            roomSettlement.ClearReward.FreeItemId,
+                            roomSettlement.ClearReward.PremiumItemId
                         ]);
                     if (!freeGrant.Saved)
                     {
                         return (false, false, null);
                     }
 
-                    dungeonFreeCardIndex = selectedCardIndex;
-                    dungeonCardSelectionDeadline = null;
+                    roomSettlement.FreeCardIndex = selectedCardIndex;
+                    roomSettlement.CardSelectionDeadline = null;
                     var rewardItemId = freeGrant.Granted[0]
-                        ? dungeonClearReward.FreeItemId
+                        ? roomSettlement.ClearReward.FreeItemId
                         : freeGrant.Granted[1]
-                            ? dungeonClearReward.PremiumItemId
+                            ? roomSettlement.ClearReward.PremiumItemId
                             : null;
                     return (
                         true,
@@ -1737,16 +1735,16 @@ public sealed class EntranceService(
 
                 async Task SendCardSelectionSnapshotAsync(bool inventoryChanged)
                 {
-                    if (dungeonClearReward is null)
+                    if (roomSettlement.ClearReward is null)
                     {
                         return;
                     }
 
                     var selectCardReply = GameProtocolEngine.CreateSelectCardReply(
-                        dungeonFreeCardIndex,
-                        dungeonGoldCardIndex,
-                        goldRewardRevealed: dungeonGoldCardIndex.HasValue,
-                        goldRewardItemId: dungeonClearReward.GoldItemId,
+                        roomSettlement.FreeCardIndex,
+                        roomSettlement.GoldCardIndex,
+                        goldRewardRevealed: roomSettlement.GoldCardIndex.HasValue,
+                        goldRewardItemId: roomSettlement.ClearReward.GoldItemId,
                         // 自己的卡片列（设计稿 §7 决策 3/6）；单人 = 0，零回归。
                         localPartyIndex: PartySlotIndexOfThisSession());
                     await selectCardReply.WriteAsync(stream, serverToken);
@@ -1768,7 +1766,7 @@ public sealed class EntranceService(
 
                 async Task<bool> TryAutomaticallySelectFreeCardAsync(string source)
                 {
-                    if (dungeonClearReward is null || dungeonFreeCardIndex.HasValue)
+                    if (roomSettlement.ClearReward is null || roomSettlement.FreeCardIndex.HasValue)
                     {
                         return true;
                     }
@@ -2211,6 +2209,13 @@ public sealed class EntranceService(
                         instance, pickupPacket, character.Id, serverToken);
                 }
 
+                // 换房间：把"本房间结算"标志整组清零（不清的话 `ClearEnabled && !ResultSent` 的守卫
+                // 会把第二间及以后的 SET_PLAY_RESULT/结算奖励整个吞掉）。三条路径共用这一份——
+                // 单人立即推进（CMD 48）、组队自己推进（AdvancePartyRoomAsync）、被强制推进后的镜像
+                // 追赶（主循环顶部那句"房间是别人推进的"）。容器与 Reset 的契约见
+                // DungeonRoomSettlementState（冒烟用例 CheckRoomSettlementReset + 变异验证钉住）。
+                void ResetRoomSettlementState() => roomSettlement.Reset();
+
                 // 门口集结推进（设计稿 §3.3 第 3/4 条）：锁内换房间取快照 → 出锁给**全员**发
                 // 各自的命令回包（到过门口的人）与一份 NOTI 29（含被强制的人）。
                 // 由**触发推进的那个会话**调用（本会话发起 CMD 48）；倒计时到点的强制推进在扫描循环里。
@@ -2239,6 +2244,10 @@ public sealed class EntranceService(
                         room = instance.CaptureRoomSnapshot(targetX, targetY, transition, localUserId);
                         members = instance.Members;
                     }
+
+                    // 发起推进的会话（我自己）：房间已经换好了，按单人同款重置本房间的结算标志
+                    // （否则下一间房的 SET_PLAY_RESULT 会被上一间房留下的 ResultSent 吞掉）。
+                    ResetRoomSettlementState();
 
                     // 跨会话投递的坏通道护栏（与 PartyService.SendToOtherMembersAsync /
                     // DungeonPartyService.BroadcastToMembersAsync 同一组异常）：一个断线成员不该把
@@ -2603,13 +2612,7 @@ public sealed class EntranceService(
                     dungeonDeathGeneration++;
                     dungeonDeathTimeout = null;
                     currentDungeonDifficulty = 0;
-                    dungeonResultSent = false;
-                    dungeonCardLayoutSent = false;
-                    dungeonCardRightsSent = false;
-                    dungeonCardSelectionDeadline = null;
-                    dungeonClearReward = null;
-                    dungeonFreeCardIndex = null;
-                    dungeonGoldCardIndex = null;
+                    ResetRoomSettlementState();
                     dungeonMonsterExperienceGained = 0;
                     dungeonClearExperience = null;
                     dungeonConsumedFatigue = 0;
@@ -3035,7 +3038,7 @@ public sealed class EntranceService(
                             }
                         }
                         else if (isChannelPort
-                            && dungeonCardSelectionDeadline is { } cardSelectionDeadline)
+                            && roomSettlement.CardSelectionDeadline is { } cardSelectionDeadline)
                         {
                             var remaining = cardSelectionDeadline - DateTimeOffset.UtcNow;
                             if (remaining > TimeSpan.Zero)
@@ -3056,17 +3059,17 @@ public sealed class EntranceService(
 
                             if (request is null)
                             {
-                                if (dungeonCardSelectionDeadline
+                                if (roomSettlement.CardSelectionDeadline
                                         == cardSelectionDeadline)
                                 {
-                                    dungeonCardSelectionDeadline = null;
-                                    if (dungeonCardRightsSent
-                                        && dungeonClearReward is not null
-                                        && !dungeonFreeCardIndex.HasValue
+                                    roomSettlement.CardSelectionDeadline = null;
+                                    if (roomSettlement.CardRightsSent
+                                        && roomSettlement.ClearReward is not null
+                                        && !roomSettlement.FreeCardIndex.HasValue
                                         && !await TryAutomaticallySelectFreeCardAsync(
                                             "card-selection-timer"))
                                     {
-                                        dungeonCardSelectionDeadline =
+                                        roomSettlement.CardSelectionDeadline =
                                             DateTimeOffset.UtcNow
                                             + TimeSpan.FromSeconds(1);
                                     }
@@ -3184,15 +3187,24 @@ public sealed class EntranceService(
                         }
                     }
 
-                    // 镜像刷新后：房间是"别人推进的"（本会话没做过饱食度结算与房间疲劳），补上。
-                    // 单人不会走这条（本会话自己换房间时已内联结算，坐标一致 → 这里不触发）。
-                    if (dungeonInstance is { IsParty: true }
+                    // 镜像刷新后：房间是"别人推进的"（本会话没做过饱食度结算、房间疲劳与结算标志重置），补上。
+                    // 单人不会走这条（本会话自己换房间时已内联结算/重置，坐标一致 → 这里不触发）。
+                    // 三者共用同一个"房间变了"判据：一次换房只补一次（同一坐标在本会话只命中一回）。
+                    if (dungeonInstance is { IsParty: true } catchUpInstance
                         && (currentDungeonRoomX, currentDungeonRoomY) != (lastSettledRoomX, lastSettledRoomY))
                     {
                         lastSettledRoomX = currentDungeonRoomX;
                         lastSettledRoomY = currentDungeonRoomY;
+                        ResetRoomSettlementState();
                         await SettleDungeonCreatureHungerAsync(notifyClient: true, serverToken);
-                        await ConsumeDungeonRoomFatigueAsync(currentDungeonRoomX, currentDungeonRoomY);
+                        // 与单人同口径：**只有首次访问**的房间才扣疲劳（重访走客户端的缓存快照，不扣）。
+                        // 标记由实例按"最近一次进房"维护（TryStartRun/TryMoveRoom 写），与本块判清楚的
+                        // 坐标来自同一次换房——极端并发连跳时可能取到更新一次的标记，只影响一次扣费口径
+                        // （见任务报告"已知局限"）。
+                        if (catchUpInstance.LastRoomEntryWasFirstVisit)
+                        {
+                            await ConsumeDungeonRoomFatigueAsync(currentDungeonRoomX, currentDungeonRoomY);
+                        }
                     }
 
                     // 待选图请求（队长开选图界面时投的）：把自己的外观推给同队其他人，
@@ -3503,13 +3515,7 @@ public sealed class EntranceService(
                             dungeonDeathGeneration++;
                             dungeonDeathTimeout = null;
                             // 实例已解绑丢弃（StopRun 复位了 ClearEnabled），会话不再单存开放标记。
-                            dungeonResultSent = false;
-                            dungeonCardLayoutSent = false;
-                            dungeonCardRightsSent = false;
-                            dungeonCardSelectionDeadline = null;
-                            dungeonClearReward = null;
-                            dungeonFreeCardIndex = null;
-                            dungeonGoldCardIndex = null;
+                            ResetRoomSettlementState();
                             dungeonMonsterExperienceGained = 0;
                             dungeonClearExperience = null;
                             dungeonConsumedFatigue = 0;
@@ -11804,13 +11810,7 @@ public sealed class EntranceService(
                                 dungeonDeathGeneration++;
                                 dungeonDeathTimeout = null;
                                 dungeonInstance?.ResetClear();
-                                dungeonResultSent = false;
-                                dungeonCardLayoutSent = false;
-                                dungeonCardRightsSent = false;
-                                dungeonCardSelectionDeadline = null;
-                                dungeonClearReward = null;
-                                dungeonFreeCardIndex = null;
-                                dungeonGoldCardIndex = null;
+                                ResetRoomSettlementState();
                                 dungeonMonsterExperienceGained = 0;
                                 dungeonClearExperience = null;
                                 dungeonConsumedFatigue = 0;
@@ -12127,13 +12127,7 @@ public sealed class EntranceService(
                             dungeonDeathGeneration++;
                             dungeonDeathTimeout = null;
                             dungeonInstance!.ResetClear();
-                            dungeonResultSent = false;
-                            dungeonCardLayoutSent = false;
-                            dungeonCardRightsSent = false;
-                            dungeonCardSelectionDeadline = null;
-                            dungeonClearReward = null;
-                            dungeonFreeCardIndex = null;
-                            dungeonGoldCardIndex = null;
+                            ResetRoomSettlementState();
                             dungeonMonsterExperienceGained = 0;
                             dungeonClearExperience = null;
                             dungeonConsumedFatigue = 0;
@@ -12425,13 +12419,7 @@ public sealed class EntranceService(
                                     lastSettledRoomX = targetX;
                                     lastSettledRoomY = targetY;
                                     dungeonInstance.ResetClear();
-                                    dungeonResultSent = false;
-                                    dungeonCardLayoutSent = false;
-                                    dungeonCardRightsSent = false;
-                                    dungeonCardSelectionDeadline = null;
-                                    dungeonClearReward = null;
-                                    dungeonFreeCardIndex = null;
-                                    dungeonGoldCardIndex = null;
+                                    ResetRoomSettlementState();
                                     // 共享集合（存活怪/boss 上报/被动物件）由实例的 TryMoveRoom 重建。
                                     currentDungeonRoom = transition.Room;
                                     // 本会话刚推进了房间：镜像与实例对齐（版本号也一起记下）。
@@ -13535,7 +13523,7 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            if (dungeonInstance?.ClearEnabled == true && !dungeonResultSent)
+                            if (dungeonInstance?.ClearEnabled == true && !roomSettlement.ResultSent)
                             {
                                 var hasClearScore = DungeonClearScore.TryParse(
                                     request.Body,
@@ -13655,7 +13643,7 @@ public sealed class EntranceService(
                                         activeCharacter?.Level ?? 1,
                                         1,
                                         byte.MaxValue));
-                                dungeonClearReward ??= clearRewardGenerator.Generate(
+                                roomSettlement.ClearReward ??= clearRewardGenerator.Generate(
                                     generationLevel,
                                     currentDungeonDifficulty,
                                     HasActivePremiumService(
@@ -13668,14 +13656,14 @@ public sealed class EntranceService(
                                 var clearReward =
                                     GameProtocolEngine.CreateClearDungeonReward(
                                         localUserId,
-                                        dungeonClearReward.GoldCardCost,
-                                        dungeonClearReward.FreeGoldAmount,
-                                        dungeonClearReward.FreeItemId,
-                                        goldCardEnabled: dungeonClearReward.GoldCardEnabled,
-                                        goldItemId: dungeonClearReward.GoldItemId,
+                                        roomSettlement.ClearReward.GoldCardCost,
+                                        roomSettlement.ClearReward.FreeGoldAmount,
+                                        roomSettlement.ClearReward.FreeItemId,
+                                        goldCardEnabled: roomSettlement.ClearReward.GoldCardEnabled,
+                                        goldItemId: roomSettlement.ClearReward.GoldItemId,
                                         premiumCardEnabled: HasActivePremiumService(
                                             GameProtocolEngine.BlackDiamondServiceType),
-                                        premiumItemId: dungeonClearReward.PremiumItemId,
+                                        premiumItemId: roomSettlement.ClearReward.PremiumItemId,
                                         experience: settledClearExperience,
                                         // 卡片屏高亮"自己那一列"（设计稿 §7 决策 3/6）；单人 = 0，零回归。
                                         localPartyIndex: PartySlotIndexOfThisSession());
@@ -13690,14 +13678,14 @@ public sealed class EntranceService(
                                     dungeonChampionMonsterKills,
                                     dungeonBossMonsterKills,
                                     dungeonChampionRewardOrdinal,
-                                    dungeonClearReward.FreeGoldAmount,
-                                    dungeonClearReward.FreeItemId,
-                                    dungeonClearReward.PremiumItemId,
-                                    dungeonClearReward.GoldItemId,
+                                    roomSettlement.ClearReward.FreeGoldAmount,
+                                    roomSettlement.ClearReward.FreeItemId,
+                                    roomSettlement.ClearReward.PremiumItemId,
+                                    roomSettlement.ClearReward.GoldItemId,
                                     // 日志口径与上面 Generate/CreateClearDungeonReward 的入参一致
                                     // （原来写死 1，组队时会误导真机核对）。
                                     dungeonInstance!.MemberCount);
-                                dungeonResultSent = true;
+                                roomSettlement.ResultSent = true;
                                 if (dungeonMonsterExperienceGained > 0
                                     || settledClearExperience.TotalExperience > 0)
                                 {
@@ -13792,7 +13780,7 @@ public sealed class EntranceService(
                                     localUserId,
                                     clientResultValue,
                                     resultCode,
-                                    dungeonClearReward.GoldCardCost,
+                                    roomSettlement.ClearReward.GoldCardCost,
                                     dungeonMonsterExperienceGained,
                                     settledClearExperience.TotalExperience,
                                     settledClearExperience.BaseExperience,
@@ -13827,9 +13815,9 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            if (dungeonResultSent && !dungeonCardLayoutSent)
+                            if (roomSettlement.ResultSent && !roomSettlement.CardLayoutSent)
                             {
-                                dungeonCardLayoutSent = true;
+                                roomSettlement.CardLayoutSent = true;
                                 var scoreScrollReply =
                                     GameProtocolEngine.CreateScoreScrollStateReply();
                                 await scoreScrollReply.WriteAsync(stream, serverToken);
@@ -13867,10 +13855,10 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.CardSelectRightStateCommand)
                         {
-                            if (dungeonCardLayoutSent && !dungeonCardRightsSent)
+                            if (roomSettlement.CardLayoutSent && !roomSettlement.CardRightsSent)
                             {
-                                dungeonCardRightsSent = true;
-                                dungeonCardSelectionDeadline =
+                                roomSettlement.CardRightsSent = true;
+                                roomSettlement.CardSelectionDeadline =
                                     DateTimeOffset.UtcNow
                                     + ClearRewardCardSelectionTimeout;
                                 var cardRights =
@@ -13892,7 +13880,7 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.SelectCardCommand)
                         {
-                            if (dungeonCardRightsSent && dungeonClearReward is not null)
+                            if (roomSettlement.CardRightsSent && roomSettlement.ClearReward is not null)
                             {
                                 var cardType = request.Body.Length >= 3
                                     ? request.Body[2]
@@ -13910,7 +13898,7 @@ public sealed class EntranceService(
                                         selectedCardIndex,
                                         localUserId);
                                 }
-                                else if (cardType == 0 && !dungeonFreeCardIndex.HasValue)
+                                else if (cardType == 0 && !roomSettlement.FreeCardIndex.HasValue)
                                 {
                                     var freeGrant = await GrantFreeClearRewardAsync(
                                         selectedCardIndex);
@@ -13922,36 +13910,36 @@ public sealed class EntranceService(
                                     }
                                 }
                                 else if (cardType == 1
-                                    && !dungeonGoldCardIndex.HasValue
-                                    && dungeonClearReward.GoldCardEnabled
-                                    && dungeonClearReward.GoldCardCost <= int.MaxValue
-                                    && currentGold >= (int)dungeonClearReward.GoldCardCost)
+                                    && !roomSettlement.GoldCardIndex.HasValue
+                                    && roomSettlement.ClearReward.GoldCardEnabled
+                                    && roomSettlement.ClearReward.GoldCardCost <= int.MaxValue
+                                    && currentGold >= (int)roomSettlement.ClearReward.GoldCardCost)
                                 {
                                     var goldGrant = await SaveClearRewardEquipmentAsync(
-                                        currentGold - (int)dungeonClearReward.GoldCardCost,
-                                        [dungeonClearReward.GoldItemId]);
+                                        currentGold - (int)roomSettlement.ClearReward.GoldCardCost,
+                                        [roomSettlement.ClearReward.GoldItemId]);
                                     if (goldGrant.Saved)
                                     {
-                                        dungeonGoldCardIndex = selectedCardIndex;
+                                        roomSettlement.GoldCardIndex = selectedCardIndex;
                                         selectionAccepted = true;
                                         selectedRewardItemId = goldGrant.Granted[0]
-                                            ? dungeonClearReward.GoldItemId
+                                            ? roomSettlement.ClearReward.GoldItemId
                                             : null;
                                         inventoryChanged = true;
                                     }
                                 }
                                 else if (cardType == 0
-                                    && dungeonFreeCardIndex == selectedCardIndex)
+                                    && roomSettlement.FreeCardIndex == selectedCardIndex)
                                 {
                                     selectionAccepted = true;
-                                    selectedRewardItemId = dungeonClearReward.FreeItemId
-                                        ?? dungeonClearReward.PremiumItemId;
+                                    selectedRewardItemId = roomSettlement.ClearReward.FreeItemId
+                                        ?? roomSettlement.ClearReward.PremiumItemId;
                                 }
                                 else if (cardType == 1
-                                    && dungeonGoldCardIndex == selectedCardIndex)
+                                    && roomSettlement.GoldCardIndex == selectedCardIndex)
                                 {
                                     selectionAccepted = true;
-                                    selectedRewardItemId = dungeonClearReward.GoldItemId;
+                                    selectedRewardItemId = roomSettlement.ClearReward.GoldItemId;
                                 }
                                 else if (cardType is not 0 and not 1)
                                 {
@@ -14028,9 +14016,9 @@ public sealed class EntranceService(
                                 : (byte)0;
 
                             if (state == 1
-                                && dungeonCardRightsSent
-                                && dungeonClearReward is not null
-                                && !dungeonFreeCardIndex.HasValue)
+                                && roomSettlement.CardRightsSent
+                                && roomSettlement.ClearReward is not null
+                                && !roomSettlement.FreeCardIndex.HasValue)
                             {
                                 if (!await TryAutomaticallySelectFreeCardAsync(
                                     "eplp-fallback"))
@@ -14051,7 +14039,7 @@ public sealed class EntranceService(
 
                             if (state == 1)
                             {
-                                var freeCardWasSelected = dungeonFreeCardIndex.HasValue;
+                                var freeCardWasSelected = roomSettlement.FreeCardIndex.HasValue;
                                 await ReturnToTownFromDungeonAsync(
                                     freeCardWasSelected
                                         ? "settlement-after-card"
