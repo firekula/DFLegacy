@@ -360,6 +360,49 @@ internal static class PartySmokeTests
                 && trio.LeaderSlot == 1 && trio.Leader == trioSecond,
             "a newcomer takes the lowest free slot without moving anybody (and the leader stays put)");
 
+        // ★ CMD 131 模型层：就地转交队长 —— 只改 LeaderSlot，**不搬动任何成员**（槽位下标与槽位 uid 都不变）。
+        var hostLeader = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "队长甲",
+            AreaUserId = 31,
+            TownId = 1,
+            AreaId = 0
+        };
+        var hostSecond = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "队员乙",
+            AreaUserId = 32,
+            TownId = 1,
+            AreaId = 0
+        };
+        var hostThird = new PartyMember
+        {
+            CharacterId = Guid.NewGuid(),
+            CharacterName = "队员丙",
+            AreaUserId = 33,
+            TownId = 1,
+            AreaId = 0
+        };
+        var hostParty = new PartyRoster(partyId: 13, hostLeader, maxMembers: 4, nameSelection: 0);
+        check(hostParty.TryAdd(hostSecond) && hostParty.TryAdd(hostThird),
+            "the CMD 131 party fills slots 0..2 in join order");
+        check(hostParty.TryPromoteLeader(slot: 2)
+                && hostParty.LeaderSlot == 2
+                && hostParty.Leader == hostThird
+                && hostParty.TryGetSlot(hostLeader.CharacterId, out var hostLeaderSlot) && hostLeaderSlot == 0
+                && hostParty.TryGetSlot(hostSecond.CharacterId, out var hostSecondSlot) && hostSecondSlot == 1
+                && hostParty.TryGetSlot(hostThird.CharacterId, out var hostThirdSlot) && hostThirdSlot == 2
+                && hostParty.SlotUids(member => member.AreaUserId).SequenceEqual(new ushort[] { 31, 32, 33, 0xFFFF }),
+            "CMD 131 promotes slot 2 in place: leaderSlot moves and every member keeps his slot index and slot uid");
+        check(!hostParty.TryPromoteLeader(slot: 3)
+                && !hostParty.TryPromoteLeader(slot: 4)
+                && !hostParty.TryPromoteLeader(slot: 2)
+                && hostParty.LeaderSlot == 2
+                && hostParty.Leader == hostThird,
+            "promoting an empty slot (or the current leader slot) is refused and leaves leaderSlot unchanged");
+
         check(PartyRoster.TryAllocatePartyId([11, 12], preferred: 12, out var allocated)
                 && allocated != 0
                 && allocated != 11
@@ -384,6 +427,7 @@ internal static class PartySmokeTests
         await CheckLeaveAndKickAsync(check);
         await CheckLeaderLeaveKeepsMemberSlotsAsync(check);
         await CheckKickFromNonZeroLeaderSlotAsync(check);
+        await CheckChangeHostAsync(check);
         await CheckSetPartyInfoAsync(check);
         await CheckOutboundNameSelectionAsync(check);
         await CheckAreaBroadcastAsync(check);
@@ -1082,6 +1126,67 @@ internal static class PartySmokeTests
                 && harness.Of("布拉沃")[0].Payload.SequenceEqual(new byte[] { 0, 8 })
                 && harness.Of("查理").Count == 0,
             "kicking an empty slot is refused with CMD 14 [0,8] and changes nothing");
+    }
+
+    /// <summary>
+    /// CMD 131 转交队长（B 卷 §4.3）：载荷 = u8 槽位，形状与 CMD 14 一致。客户端收不到 CMD 131 的**任何**
+    /// 回包（分发表把它映射到默认空分支），所以结果只能经 `NOTI 9` 的 `leaderSlot` 广播；失败必须静默。
+    /// 构造三人队 [阿尔法@0（队长）, 布拉沃@1, 查理@2]，队长把队长身份转交槽 1。
+    /// **变异验证（已实测）**：把 `PartyRoster.TryPromoteLeader` 改成搬动成员（把新队长换到槽 0）→
+    /// "槽位布局逐字节不变"断言变红；删掉 `HandleChangeHostAsync` 的队长校验 → 非队长那条零包断言变红。
+    /// </summary>
+    private static async Task CheckChangeHostAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        // ① 三人队 [阿尔法@0（队长）, 布拉沃@1, 查理@2]。
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
+        // 限流是真实时钟的 3 秒窗口，而测试是瞬时的：同一个人连邀两次前先清掉上次的时间戳。
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("查理"), PartyHarness.DefaultInfo, CancellationToken.None);
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("查理"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
+
+        // 查理同时是"区域旁观者"：第一次接受（2 人队）也会广播给他，所以要取**最后**一份名册（3 人队）。
+        var before = RostersOf(harness, "查理").LastOrDefault();
+        check(before is { Payload.Length: 20 }
+                && before.Payload[19] == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(before.Payload.AsSpan(7, 2)) == harness.UidOf("阿尔法")
+                && BinaryPrimitives.ReadUInt16LittleEndian(before.Payload.AsSpan(10, 2)) == harness.UidOf("布拉沃")
+                && BinaryPrimitives.ReadUInt16LittleEndian(before.Payload.AsSpan(13, 2)) == harness.UidOf("查理"),
+            "setup: 阿尔法 leads the three-member party from slot 0");
+
+        // ② 队长转交通知槽 1 的布拉沃：三名成员**每人**都收到带 leaderSlot=1 的新名册，
+        //    而 slots/nameSel/maxMembers/partyId 与转交前逐字节相同（就地提升，不搬动槽位）。
+        harness.ClearAll();
+        await harness.Service.HandleChangeHostAsync(harness.IdOf("阿尔法"), slot: 1, CancellationToken.None);
+        foreach (var member in new[] { "阿尔法", "布拉沃", "查理" })
+        {
+            var updated = RostersOf(harness, member);
+            check(updated.Count > 0
+                    && updated.All(packet => packet is { Payload.Length: 20 }
+                        && packet.Payload[19] == 1
+                        && before!.Payload.AsSpan(0, 19).SequenceEqual(packet.Payload.AsSpan(0, 19))),
+                $"CMD 131 notifies {member} with a roster whose only change is leaderSlot = 1");
+        }
+
+        // ③ 非队长（仍在槽 0 的阿尔法）再发 CMD 131：零包——客户端没有失败回包可收，静默是设计。
+        harness.ClearAll();
+        await harness.Service.HandleChangeHostAsync(harness.IdOf("阿尔法"), slot: 2, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 0
+                && harness.Of("布拉沃").Count == 0
+                && harness.Of("查理").Count == 0,
+            "a non-leader's CMD 131 is silently ignored (no failure packet, no roster)");
+
+        // ④ 新队长转交空槽（槽 3）与自己的槽（槽 1）：同样零包，leaderSlot 不变。
+        harness.ClearAll();
+        await harness.Service.HandleChangeHostAsync(harness.IdOf("布拉沃"), slot: 3, CancellationToken.None);
+        await harness.Service.HandleChangeHostAsync(harness.IdOf("布拉沃"), slot: 1, CancellationToken.None);
+        check(harness.Of("布拉沃").Count == 0 && harness.Of("查理").Count == 0,
+            "CMD 131 to an empty slot or to the leader's own slot is silently ignored");
     }
 
     /// <summary>

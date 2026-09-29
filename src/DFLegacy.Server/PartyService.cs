@@ -594,6 +594,67 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
+    /// CMD 131：转交队长（载荷 = 槽位下标 0..3，B 卷 §4.3）。只有队长能转交、目标槽位必须有人且
+    /// 不是自己；失败**静默**——客户端收不到 CMD 131 的任何回包（分发到默认空分支），设计上不给失败码。
+    /// 成功后广播新名册（`leaderSlot` 变了），客户端用它驱动队长标记与"我是否队长"的 UI 切换。
+    /// </summary>
+    public async Task HandleChangeHostAsync(
+        Guid leaderCharacterId,
+        byte slot,
+        CancellationToken cancellationToken = default)
+    {
+        PartyRoster? roster = null;
+        string newLeaderName = string.Empty;
+        string ignoredReason = string.Empty;
+        lock (_gate)
+        {
+            // 校验与提升在**同一个锁内**一次做完（与 CMD 14 同款）：锁外读 `Leader`（= 队长槽里的成员）
+            // 会撞上名册被清空而抛异常；槽位下标按稳定槽位解释，`TryPromoteLeader` 只改 LeaderSlot、
+            // 不搬动任何成员（搬动会让客户端误判退队——"幽灵队伍"根因，见 PartyRoster 的 remarks）。
+            if (!TryGetPartyOf(leaderCharacterId, out var party))
+            {
+                ignoredReason = "the requester is not in a party";
+            }
+            else if (party.Leader.CharacterId != leaderCharacterId)
+            {
+                ignoredReason = "the requester is not the party leader";
+            }
+            else if (slot == party.LeaderSlot)
+            {
+                ignoredReason = "the target slot is already the leader";
+            }
+            else if (!party.TryPromoteLeader(slot))
+            {
+                ignoredReason = "the target slot has no member";
+            }
+            else
+            {
+                roster = party;
+                // 队长名在锁内取：出锁后并发 `Remove` 可能清空这个槽，锁外再读 `Leader` 会 NRE。
+                newLeaderName = party.Leader.CharacterName;
+            }
+        }
+
+        if (roster is null)
+        {
+            _logger.LogInformation(
+                "CMD 131 change-host from {CharacterId} to slot {Slot} was ignored: {Reason}.",
+                leaderCharacterId,
+                slot,
+                ignoredReason);
+            return;
+        }
+
+        _logger.LogInformation(
+            "Party {PartyId}: {CharacterId} handed the leadership to slot {Slot} ({NewLeader}) via CMD 131.",
+            roster.PartyId,
+            leaderCharacterId,
+            slot,
+            newLeaderName);
+        await PublishRosterAsync(roster, cancellationToken);
+    }
+
+    /// <summary>
     /// CMD 12：队伍名与人数上限。无队伍时 = "新建队伍"（1 人队，队长是自己，partyId = 自己的 uid）；
     /// 只有队长能改（非队长静默忽略——客户端没有这条失败路径）。自定义队名不传播（设计稿 §2.4）。
     /// </summary>

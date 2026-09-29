@@ -178,6 +178,23 @@ internal sealed class PartyRoster
     }
 
     /// <summary>
+    /// 转交队长：把队长身份交给 <paramref name="slot"/> 上的成员（B 卷 §4.3 的 CMD 131）。
+    /// **就地**改 LeaderSlot，不移动任何成员（槽位下标稳定是本服务的硬约束——搬动槽位会让客户端
+    /// 误判退队，见 README/设计稿里的"幽灵队伍"根因）。返回 false 表示该槽位没有人或本来就是队长。
+    /// </summary>
+    public bool TryPromoteLeader(byte slot)
+    {
+        // 空槽与越界都走 TryGetSlot（它同时负责边界检查）；"本来就是队长"不产生任何变化。
+        if (slot == LeaderSlot || !TryGetSlot(slot, out _))
+        {
+            return false;
+        }
+
+        LeaderSlot = slot;
+        return true;
+    }
+
+    /// <summary>
     /// 改队名与人数上限。上限**不会低于当前人数**：降到一个比现有成员还小的值会让队伍处在
     /// "3/2" 这种自相矛盾的状态，而客户端对这种状态的渲染未知（真机项），所以钳到
     /// <c>[成员数, 4]</c>（设计稿 §2.5）。

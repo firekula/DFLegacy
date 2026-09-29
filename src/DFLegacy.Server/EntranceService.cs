@@ -6991,6 +6991,22 @@ public sealed class EntranceService(
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.ChangeHostCommand)
+                        {
+                            // CMD 131：转交队长，载荷形状与 CMD 14 一致（**槽位下标**，B 卷 §4.3）；
+                            // 下行被客户端丢弃，结果只经 NOTI 9 的 leaderSlot 通知，失败静默。
+                            if (activeCharacter is not null && request.Body.Length >= 3)
+                            {
+                                await partyService.HandleChangeHostAsync(
+                                    activeCharacter.Id,
+                                    request.Body[2],
+                                    serverToken);
+                            }
+
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.MoveItemSpaceCommand)
                         {
                             var parsedMove = TryReadInventoryMove(

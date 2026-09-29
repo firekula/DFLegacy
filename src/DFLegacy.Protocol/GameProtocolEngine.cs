@@ -384,6 +384,8 @@ public static class GameProtocolEngine
     public const byte LeavePartyCommand = 13;
     /// <summary>CMD 14：踢人（载荷 = u8 槽位下标）。</summary>
     public const byte WalkoutPartyMemberCommand = 14;
+    /// <summary>CMD 131：转交队长（客户端 → 服务端；载荷 = u8 槽位。下行被客户端丢弃，所以只用 NOTI 9 广播结果）。</summary>
+    public const byte ChangeHostCommand = 131;
     public const byte RequestPeerNotification = 7;
     public const byte ResponsePeerNotification = 8;
     /// <summary>NOTI 9：队伍名册/解散。</summary>
