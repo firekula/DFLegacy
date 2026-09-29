@@ -52,6 +52,9 @@ builder.Services.AddSingleton<PartyService>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<PartyService>());
 // 副本实例表跨连接共享（设计稿 §3.1）：单人 = 以角色 id 为键的实例，组队 = 以队伍 id 为键。
 builder.Services.AddSingleton<DungeonInstanceRegistry>();
+// 组队副本的编排跨连接共享（设计稿 §3.2）：同区域校验、选图/入场请求、跨会话广播、门口集结扫描。
+builder.Services.AddSingleton<DungeonPartyService>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<DungeonPartyService>());
 builder.Services.AddSingleton(serviceProvider =>
 {
     // 区用户 id 池只接受 1..65535。MaximumUsers 以前超出这个范围只是无意义，现在会让

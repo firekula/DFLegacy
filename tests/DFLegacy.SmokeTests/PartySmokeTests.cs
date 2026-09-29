@@ -1544,6 +1544,35 @@ internal sealed class PartyHarness : IAsyncDisposable
         await Service.OnAreaChangedAsync(characterId, townId, areaId, uid, CancellationToken.None);
     }
 
+    /// <summary>测试用：让两名已建角色的成员组队成功（走真实的接受流程，保证槽位/名册状态真实）。</summary>
+    public async Task InviteAndAcceptAsync(string inviter, string target)
+    {
+        await Service.HandleRequestAsync(
+            _characters[inviter].Id, _uids[target], DefaultInfo, CancellationToken.None);
+        await Service.HandleResponseAsync(
+            _characters[target].Id, _uids[inviter], accepted: true, CancellationToken.None);
+    }
+
+    /// <summary>测试用：把成员挪到别的区域（目录 + 名册都刷新）。</summary>
+    public async Task MoveToAreaAsync(string characterName, byte townId, byte areaId)
+    {
+        await Directory.LeaveAsync(_tickets[characterName], CancellationToken.None);
+        var entered = await Directory.EnterAsync(
+            new TownEntryRequest(
+                townId, areaId, _uids[characterName], _characters[characterName].Id, CharacterNo: 0,
+                CharacterNameBytes: Encoding.UTF8.GetBytes(characterName), DisplayName: characterName,
+                Peer: null, X: 474, Y: 234, Direction: 5,
+                SendAsync: (packet, _) => Record(characterName)(packet)),
+            CancellationToken.None);
+        if (entered is not null)
+        {
+            _tickets[characterName] = entered;
+        }
+
+        await Service.OnAreaChangedAsync(
+            _characters[characterName].Id, townId, areaId, _uids[characterName], CancellationToken.None);
+    }
+
     /// <summary>离开城镇区域（进副本等）：只退目录，不动队伍（设计稿 §4.4/§5.6）。</summary>
     public async Task LeaveTownAsync(string characterName)
     {

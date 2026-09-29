@@ -17,17 +17,18 @@ internal sealed class PartyChannel
 }
 
 /// <summary>
-/// 探针（临时）用的队伍槽位快照：槽位下标 + 该成员的通道发送句柄。
-/// **只读**，不参与任何既有语义——<c>Debug.DungeonPeerProbe</c> 的 PartyPush 模式靠它
-/// 把副本入场报文推给队员（客户端副本内按 4 个队伍槽位做副本上下文/队伍 HUD）。
+/// 队伍槽位快照：槽位下标 + 该成员的通道发送句柄 + 队伍 id。
+/// **只读**，不参与任何既有语义——组队副本的编排（<c>DungeonPartyService</c>）靠它把
+/// 选图/入场请求投给队员，队员会话靠它取自己的槽位与队伍实例键。
 /// </summary>
-internal sealed record PartyProbeSlot(
+internal sealed record PartySlotHandle(
     int SlotIndex,
     Guid CharacterId,
     Guid SessionId,
     ushort AreaUserId,
     string CharacterName,
-    Func<GameServerPacket, ValueTask> Send);
+    Func<GameServerPacket, ValueTask> Send,
+    ushort PartyId);
 
 /// <summary>
 /// NOTI 7 应答窗正文（dnf.str 4150：`Lv.%d%s [%s](复活币%d个、疲劳值%d点、虚弱%d%%)请求加入[%s]队伍`）
@@ -845,10 +846,10 @@ public sealed class PartyService : BackgroundService
         PublishRosterToAsync(roster, recipients: null, cancellationToken, registerResettle: true);
 
     /// <summary>
-    /// 探针（临时）：该角色所在队伍的槽位快照（含槽位下标与通道发送句柄）；不在队伍 → null。
-    /// 纯只读：在 <see cref="_gate"/> 内取成员快照，不改任何既有状态。
+    /// 只读：该角色所在队伍的槽位快照（槽位下标 + 通道发送句柄）。不在队伍 → null。
+    /// 槽位下标一律走 <see cref="PartyRoster.TryGetSlot"/>（成员从不搬动，下标就是权威值）。
     /// </summary>
-    internal PartyProbeSlot[]? GetProbeSlots(Guid characterId)
+    internal PartySlotHandle[]? GetPartySlots(Guid characterId)
     {
         if (!_partyByCharacter.TryGetValue(characterId, out var partyId)
             || !_parties.TryGetValue(partyId, out var roster))
@@ -856,7 +857,7 @@ public sealed class PartyService : BackgroundService
             return null;
         }
 
-        List<PartyProbeSlot> slots = [];
+        List<PartySlotHandle> slots = [];
         lock (_gate)
         {
             foreach (var member in roster.Members)
@@ -868,13 +869,14 @@ public sealed class PartyService : BackgroundService
                     continue;
                 }
 
-                slots.Add(new PartyProbeSlot(
+                slots.Add(new PartySlotHandle(
                     slot,
                     channel.CharacterId,
                     channel.SessionId,
                     channel.AreaUserId,
                     channel.CharacterName,
-                    channel.Send));
+                    channel.Send,
+                    roster.PartyId));
             }
         }
 
@@ -882,11 +884,11 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
-    /// 探针（临时）：按收包者生成组队名册包（收件人自己那份，槽位按他的区域解析）；不在队伍 → null。
+    /// 按收包者生成组队名册包（收件人自己那份，槽位按他的区域解析）；不在队伍 → null。
     /// 用于「外观（USERINFO）→ 名册 → 副本报文」的补播顺序（客户端槽位是在收名册那一刻按 uid
     /// 查本地 user 表建链接的，记录晚到就建不出链接，与城镇同屏的"外观先于名单"同类）。
     /// </summary>
-    internal GameServerPacket? GetProbeRosterPacket(Guid characterId)
+    internal GameServerPacket? GetRosterPacketFor(Guid characterId)
     {
         if (!_partyByCharacter.TryGetValue(characterId, out var partyId)
             || !_parties.TryGetValue(partyId, out var roster))
@@ -900,23 +902,23 @@ public sealed class PartyService : BackgroundService
         }
     }
 
-    /// <summary>探针（临时）：把包发给指定角色的通道；通道不在（离线/已摘除）时静默忽略。</summary>
-    internal Task SendProbeToCharacterAsync(
+    /// <summary>把包发给指定角色的通道；通道不在（离线/已摘除）时静默忽略。</summary>
+    internal Task SendToCharacterAsync(
         Guid characterId,
         GameServerPacket packet,
         CancellationToken cancellationToken) =>
         SendAsync(characterId, packet, cancellationToken);
 
     /// <summary>
-    /// 探针（临时）：把包发给该角色所在队伍的**其他**成员（不含自己）；不在队伍时返回 0。
+    /// 把包发给该角色所在队伍的**其他**成员（不含自己）；不在队伍时返回 0。
     /// 发送异常沿用 <see cref="SendAsync"/> 的口径：坏通道只告警、不影响其他人。
     /// </summary>
-    internal async Task<int> SendProbeToOtherMembersAsync(
+    internal async Task<int> SendToOtherMembersAsync(
         Guid omitCharacterId,
         GameServerPacket packet,
         CancellationToken cancellationToken)
     {
-        var slots = GetProbeSlots(omitCharacterId);
+        var slots = GetPartySlots(omitCharacterId);
         if (slots is null)
         {
             return 0;
@@ -940,7 +942,7 @@ public sealed class PartyService : BackgroundService
             {
                 _logger.LogWarning(
                     exception,
-                    "Probe: could not deliver party dungeon packet {ProtocolId} to {CharacterId}.",
+                    "Could not deliver party packet {ProtocolId} to {CharacterId}.",
                     packet.ProtocolId,
                     slot.CharacterId);
             }

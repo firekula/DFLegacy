@@ -18,6 +18,7 @@ public sealed class EntranceService(
     ItemTradeService itemTradeService,
     PartyService partyService,
     DungeonInstanceRegistry dungeonInstanceRegistry,
+    DungeonPartyService dungeonPartyService,
     SkillCatalog skillCatalog,
     QuestCatalog questCatalog,
     CharacterExperienceCatalog experienceCatalog,
@@ -1142,118 +1143,18 @@ public sealed class EntranceService(
                         probe.UseSessionArea);
                 }
 
-                // 探针（临时，Debug.DungeonPeerProbe.Mode=PartyPush）：队长进副本门口（CMD 15）时，
-                // 把同一套「进入选图状态」报文推给同区域的其他队员（每人一份、按各自的 uid/槽位）。
-                // 真机证据：只推 NOTI 28/29 队员客户端完全不反应——队员的客户端必须先进入选图状态
-                // （NOTI 27 的处理体会切 UI 状态 1/2），才会接受随后的 DUNGEON_INFO/START_MAP。
-                async Task PushPartyDungeonSelectionProbeAsync(CancellationToken cancellationToken)
+                // 队伍对端表（每人的 UDP 端点），收件人自己排第一：客户端按它建/更新同队成员的 UDP 通道。
+                GameServerPacket? BuildPartyPeerTable(
+                    IReadOnlyList<PartySlotHandle>? slots,
+                    Guid recipientCharacterId)
                 {
-                    var probe = options.Debug.DungeonPeerProbe;
-                    if (!probe.Enabled
-                        || !string.Equals(probe.Mode, "PartyPush", StringComparison.OrdinalIgnoreCase)
-                        || activeCharacter is null)
+                    if (slots is null)
                     {
-                        return;
+                        return null;
                     }
 
-                    var slots = partyService.GetProbeSlots(activeCharacter.Id);
-                    if (slots is null || slots.Length <= 1)
-                    {
-                        return;
-                    }
-
-                    // 与队长自己那份同形（成员各自的权限/资格列表未知，探针复用队长的近似值；
-                    // 队员不操作选图界面，这里只为让它进入同一状态机）。
-                    var selectionPacket = GameProtocolEngine.CreateEnterSelectDungeon(
-                        hellQuestsCompleted: false,
-                        missingHellItemPartyIndices: []);
-                    var permissions = GameProtocolEngine.CreateDungeonPermissions(
-                        GetDungeonPermissions());
-
-                    // 记录先行：把自己的外观推给队员（客户端名册槽位是收名册那一刻按 uid 查本地
-                    // user 表的，记录晚到就只存槽位、不建"谁属于哪支队伍"的链接）。
-                    if (probe.PushAppearances)
-                    {
-                        var leaderAppearance = SendTownAppearancePacket();
-                        var pushed = await partyService.SendProbeToOtherMembersAsync(
-                            activeCharacter.Id,
-                            leaderAppearance,
-                            cancellationToken);
-                        logger.LogInformation(
-                            "Dungeon party probe: leader appearance of {Name} (uid {Uid}) pushed to {Count} member(s) before selection packets.",
-                            activeCharacter.Name,
-                            localUserId,
-                            pushed);
-                    }
-
-                    foreach (var member in slots)
-                    {
-                        if (member.CharacterId == activeCharacter.Id)
-                        {
-                            continue;
-                        }
-
-                        if (!townDirectory.TryGetSnapshot(member.CharacterId, out var snapshot)
-                            || snapshot.TownId != currentTownId
-                            || snapshot.AreaId != currentAreaId)
-                        {
-                            logger.LogInformation(
-                                "Dungeon party probe: selection push skipped — {Name} (slot {Slot}) is not in the leader's area {TownId}/{AreaId}.",
-                                member.CharacterName,
-                                member.SlotIndex,
-                                currentTownId,
-                                currentAreaId);
-                            continue;
-                        }
-
-                        // 顺序：名册（此刻双方记录已就位）→ 状态 → 对端表 → UDP 主机 → 权限 → 选图资格。
-                        var memberRoster = partyService.GetProbeRosterPacket(member.CharacterId);
-                        if (memberRoster is not null)
-                        {
-                            await member.Send(memberRoster);
-                        }
-
-                        await member.Send(GameProtocolEngine.CreateUserState(member.AreaUserId, state: 1));
-                        var peerTable = BuildPartyPeerTableProbe(slots, member);
-                        if (peerTable is not null)
-                        {
-                            await member.Send(peerTable);
-                        }
-
-                        await member.Send(GameProtocolEngine.CreateUdpHost((byte)member.SlotIndex));
-                        await member.Send(permissions);
-                        await member.Send(selectionPacket);
-                        logger.LogInformation(
-                            "Dungeon party probe: pushed dungeon-selection state (NOTI 3/11/26/5/27) to {Name} (slot {Slot}, uid {Uid}).",
-                            member.CharacterName,
-                            member.SlotIndex,
-                            member.AreaUserId);
-                    }
-
-                    // 开外观窗口：队员本人的会话在随后的包处理里把自己的 USERINFO 推给队长
-                    // （只有他本人的会话才建得出自己的外观包）。窗口比选图停留时间略长。
-                    if (probe.PushAppearances)
-                    {
-                        foreach (var slot in slots)
-                        {
-                            DungeonPartyProbeState.OpenAppearanceWindow(
-                                slot.CharacterId,
-                                TimeSpan.FromSeconds(60));
-                        }
-
-                        logger.LogInformation(
-                            "Dungeon party probe: appearance windows opened at selection for {Count} member(s).",
-                            slots.Length);
-                    }
-                }
-
-                // 探针（临时）：队伍成员的对端表（每人的 UDP 端点），自己排第一。
-                GameServerPacket? BuildPartyPeerTableProbe(
-                    IReadOnlyList<PartyProbeSlot> slots,
-                    PartyProbeSlot recipient)
-                {
                     List<GamePeerInfo> peers = [];
-                    foreach (var slot in slots.OrderBy(slot => slot.CharacterId == recipient.CharacterId ? 0 : 1))
+                    foreach (var slot in slots.OrderBy(slot => slot.CharacterId == recipientCharacterId ? 0 : 1))
                     {
                         if (gameplayDatagram.TryGetPeerInfo(
                                 slot.SessionId,
@@ -1266,340 +1167,6 @@ public sealed class EntranceService(
                     }
 
                     return peers.Count == 0 ? null : GameProtocolEngine.CreateUdpPeerInfo(peers);
-                }
-
-                // 探针（临时，Debug.DungeonPeerProbe.Mode=PartyPush）：组队进副本。
-                // 客户端本来就有这条路径——DUNGEON_INFO（NOTI 28）处理体对 4 个队伍槽位逐个
-                // 设置副本上下文、FINISH_LOADING（NOTI 30）装队伍 HUD、UDP_HOST（NOTI 26）
-                // 标记本机在队伍里的下标；服务端此前只发给选图的那一个人，队员因此留在城镇。
-                // 这里把同一份入场报文（同一房间/同一批怪）推给同区域的其他队员，并给他们开
-                // 一个「外观互推窗口」（副本内队伍槽位按 uid 查本地 user 表，没有记录画不出那一行）。
-                async Task PushPartyDungeonEntryProbeAsync(
-                    ushort dungeonId,
-                    byte difficulty,
-                    byte mazeIndex,
-                    byte bossX,
-                    byte bossY,
-                    byte hellRoomX,
-                    byte hellRoomY,
-                    byte roomX,
-                    byte roomY,
-                    ushort mapId,
-                    IReadOnlyList<GameDungeonMonster> monsters,
-                    IReadOnlyList<GamePassiveObjectDrop> passiveObjectDrops,
-                    uint randomSeed,
-                    byte roomStateFlag,
-                    byte hellPartyMode,
-                    CancellationToken cancellationToken)
-                {
-                    var probe = options.Debug.DungeonPeerProbe;
-                    if (!probe.Enabled
-                        || !string.Equals(probe.Mode, "PartyPush", StringComparison.OrdinalIgnoreCase)
-                        || activeCharacter is null)
-                    {
-                        return;
-                    }
-
-                    var slots = partyService.GetProbeSlots(activeCharacter.Id);
-                    if (slots is null || slots.Length <= 1)
-                    {
-                        logger.LogInformation(
-                            "Dungeon party probe: {Name} entered dungeon {DungeonId} without a party (slots={Slots}); nothing pushed.",
-                            activeCharacter.Name,
-                            dungeonId,
-                            slots?.Length ?? 0);
-                        return;
-                    }
-
-                    // 用户硬性要求：队员不在同一区域**不能**一起进副本（客户端本地已有"4 槽聚集"
-                    // 检查，服务端也自己校验）。此刻队长已离开目录，用 currentTownId/currentAreaId
-                    // （进副本前所在区域）逐人核对，任何一人不匹配就整队放弃、只记日志。
-                    List<PartyProbeSlot> others = [];
-                    foreach (var slot in slots)
-                    {
-                        if (slot.CharacterId == activeCharacter.Id)
-                        {
-                            continue;
-                        }
-
-                        var inLeaderArea = townDirectory.TryGetSnapshot(slot.CharacterId, out var snapshot)
-                            && snapshot.TownId == currentTownId
-                            && snapshot.AreaId == currentAreaId;
-                        if (!inLeaderArea)
-                        {
-                            logger.LogInformation(
-                                "Dungeon party probe: party entry aborted — {Name} (slot {Slot}) is not in the leader's area {TownId}/{AreaId}.",
-                                slot.CharacterName,
-                                slot.SlotIndex,
-                                currentTownId,
-                                currentAreaId);
-                            return;
-                        }
-
-                        others.Add(slot);
-                    }
-
-                    var dungeonInfo = GameProtocolEngine.CreateDungeonInfo(
-                        dungeonId,
-                        difficulty,
-                        mazeIndex,
-                        bossX,
-                        bossY,
-                        hellRoomX,
-                        hellRoomY);
-                    var startMap = GameProtocolEngine.CreateStartMap(
-                        roomX,
-                        roomY,
-                        mapId,
-                        monsters,
-                        passiveObjectDrops,
-                        randomSeed,
-                        roomStateFlag,
-                        hellPartyMode);
-
-                    foreach (var member in others)
-                    {
-                        // 顺序必须是「名册 → 副本报文」：客户端收到名册那一刻按 uid 查本地 user 表
-                        // 建立"谁属于哪支队伍"的链接，NOTI 28 的 4 槽循环只有链接建好才会设置副本
-                        // 上下文（真机第一轮：记录/名册晚到 → 双方都看不到对方）。
-                        var memberRoster = partyService.GetProbeRosterPacket(member.CharacterId);
-                        if (memberRoster is not null)
-                        {
-                            await member.Send(memberRoster);
-                        }
-
-                        // UDP_HOST 的 partyIndex = 该成员自己的队伍槽位下标（第一轮的槽位稳定不搬动）。
-                        var udpHost = GameProtocolEngine.CreateUdpHost((byte)member.SlotIndex);
-                        await member.Send(udpHost);
-                        await member.Send(dungeonInfo);
-                        await member.Send(startMap);
-                        logger.LogInformation(
-                            "Dungeon party probe: pushed roster+dungeon {DungeonId} (difficulty {Difficulty}, map {MapId}, room {RoomX},{RoomY}, monsters {Monsters}) to {Name} (slot {Slot}, uid {Uid}).",
-                            dungeonId,
-                            difficulty,
-                            mapId,
-                            roomX,
-                            roomY,
-                            monsters.Count,
-                            member.CharacterName,
-                            member.SlotIndex,
-                            member.AreaUserId);
-                    }
-
-                    // 队长自己的 partyIndex 也要按槽位对齐（CMD 15 那条路径此前恒发 0）。
-                    if (partyService.GetProbeSlots(activeCharacter.Id) is { } leaderSlots)
-                    {
-                        var leaderSlot = leaderSlots
-                            .FirstOrDefault(slot => slot.CharacterId == activeCharacter.Id)?.SlotIndex ?? 0;
-                        if (leaderSlot != 0)
-                        {
-                            var leaderUdpHost = GameProtocolEngine.CreateUdpHost((byte)leaderSlot);
-                            await leaderUdpHost.WriteAsync(stream, cancellationToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, leaderUdpHost);
-                        }
-                    }
-
-                    if (probe.PushAppearances)
-                    {
-                        // 队长的记录此刻可能才刚到对方客户端：+2.5s 给两边各补一次「名册 → 副本信息」。
-                        // 只补名册与 DUNGEON_INFO，**不补 START_MAP**（重发会让客户端重建房间）。
-                        var memberIds = others
-                            .Select(member => (member.CharacterId, member.CharacterName))
-                            .ToArray();
-                        var leaderId = activeCharacter.Id;
-                        var leaderName = activeCharacter.Name;
-                        // 快照：区域条目要用"进副本前所在区域"（客户端场景区域仍是它，见
-                        // SetTown 调用点：副本地图加载时客户端自己也会 SetTown(1,2)）。
-                        var probeTownIdSnapshot = currentTownId;
-                        var probeAreaIdSnapshot = currentAreaId;
-                        var leaderUidSnapshot = localUserId;
-                        // 角色在副本里的落点：用房间地图自带的出生点（`[dungeon start area]`，从
-                        // Script.pvf 读出）。用城镇坐标会让角色落在副本地图之外 → 看不见。
-                        var (spawnX, spawnY) = DungeonProbeSpawnFor(mapId);
-                        var leaderXSnapshot = spawnX;
-                        var leaderYSnapshot = spawnY;
-                        var leaderDirectionSnapshot = currentDirection;
-                        var areaEntries = probe.AreaRecycle;
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                // 多轮补播：各客户端加载副本地图 / 场景就绪的时刻不同步，且场景切换
-                                // 可能清空本地 user 表——只发一遍很容易落在"记录刚被清掉"的窗口里。
-                                // 每轮固定顺序：外观（本机）→ USER_AREA（双向）→ 名册 → DUNGEON_INFO。
-                                var offsets = new[]
-                                {
-                                    Math.Max(0, probe.AreaRecycleDelayMs),
-                                    Math.Max(0, probe.AreaRecycleDelayMs) + 3_500,
-                                    Math.Max(0, probe.AreaRecycleDelayMs) + 7_500,
-                                };
-                                var started = DateTimeOffset.UtcNow;
-                                foreach (var offset in offsets)
-                                {
-                                    var wait = offset - (DateTimeOffset.UtcNow - started).TotalMilliseconds;
-                                    if (wait > 0)
-                                    {
-                                        await Task.Delay(TimeSpan.FromMilliseconds(wait));
-                                    }
-
-                                    // ① 本机外观（队长自己的那份必须由本会话构建）。
-                                    var roundAppearance = SendTownAppearancePacket();
-                                    await partyService.SendProbeToOtherMembersAsync(
-                                        leaderId,
-                                        roundAppearance,
-                                        CancellationToken.None);
-
-                                    // ② USER_AREA（NOTI 23）建角色：客户端对它的处理是"区域匹配 →
-                                    // 建角色 + 加入当前地图"，**不会**调 SetTown；AREA_USERS（NOTI 24）
-                                    // 会调 SetTown 让客户端重新加载城镇地图（真机：队长被拉回城镇）。
-                                    // 所以副本内只能用 NOTI 23，绝不能用 NOTI 24。
-                                    if (areaEntries)
-                                    {
-                                        var leaderEntry = GameProtocolEngine.CreateUserArea(
-                                            probeTownIdSnapshot,
-                                            probeAreaIdSnapshot,
-                                            new GameTownUser(
-                                                leaderUidSnapshot,
-                                                leaderXSnapshot,
-                                                leaderYSnapshot,
-                                                leaderDirectionSnapshot),
-                                            active: true);
-                                        foreach (var (memberId, memberName) in memberIds)
-                                        {
-                                            await partyService.SendProbeToCharacterAsync(
-                                                memberId,
-                                                leaderEntry,
-                                                CancellationToken.None);
-                                            logger.LogInformation(
-                                                "Dungeon party probe: round {Round} USER_AREA of leader {Leader} sent to {Name} (area {Town}/{Area}).",
-                                                offset,
-                                                leaderName,
-                                                memberName,
-                                                probeTownIdSnapshot,
-                                                probeAreaIdSnapshot);
-                                        }
-
-                                        foreach (var (memberId, memberName) in memberIds)
-                                        {
-                                            if (!townDirectory.TryGetSnapshot(memberId, out var memberSnapshot))
-                                            {
-                                                continue;
-                                            }
-
-                                            var memberEntry = GameProtocolEngine.CreateUserArea(
-                                                probeTownIdSnapshot,
-                                                probeAreaIdSnapshot,
-                                                new GameTownUser(
-                                                    memberSnapshot.AreaUserId,
-                                                    spawnX,
-                                                    spawnY,
-                                                    memberSnapshot.Direction),
-                                                active: true);
-                                            await memberEntry.WriteAsync(stream, CancellationToken.None);
-                                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                                            LogPacket("TX", runtimeSession, memberEntry);
-                                            logger.LogInformation(
-                                                "Dungeon party probe: round {Round} USER_AREA of {Name} sent to leader {Leader}.",
-                                                offset,
-                                                memberName,
-                                                leaderName);
-                                        }
-                                    }
-
-                                    // ③ 名册与副本信息：名册要在记录/区域条目之后（槽位按 uid 查本地 user 表）。
-                                    foreach (var (memberId, _) in memberIds)
-                                    {
-                                        var roster = partyService.GetProbeRosterPacket(memberId);
-                                        if (roster is not null)
-                                        {
-                                            await partyService.SendProbeToCharacterAsync(
-                                                memberId,
-                                                roster,
-                                                CancellationToken.None);
-                                        }
-
-                                        await partyService.SendProbeToCharacterAsync(
-                                            memberId,
-                                            dungeonInfo,
-                                            CancellationToken.None);
-                                    }
-
-                                    var leaderRoster = partyService.GetProbeRosterPacket(leaderId);
-                                    if (leaderRoster is not null)
-                                    {
-                                        await leaderRoster.WriteAsync(stream, CancellationToken.None);
-                                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                                        LogPacket("TX", runtimeSession, leaderRoster);
-                                    }
-
-                                    await dungeonInfo.WriteAsync(stream, CancellationToken.None);
-                                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                                    LogPacket("TX", runtimeSession, dungeonInfo);
-                                    logger.LogInformation(
-                                        "Dungeon party probe: round {Round} appearance+USER_AREA+roster+dungeon info replayed to leader {Leader} and {Count} member(s).",
-                                        offset,
-                                        leaderName,
-                                        memberIds.Length);
-                                }
-                            }
-                            catch (Exception exception) when (exception is not OperationCanceledException)
-                            {
-                                logger.LogDebug(
-                                    exception,
-                                    "Dungeon party probe: delayed area-entry replay failed.");
-                            }
-                        });
-                    }
-                }
-
-                // 探针（临时）：把自己的 USERINFO(mode 0) 推给同队其他人，并补播两次——
-                // 各客户端加载副本地图的时刻先后不一，只发一次可能落在对方地图就绪之前。
-                async Task PublishDungeonProbeAppearanceAsync(CancellationToken cancellationToken)
-                {
-                    if (activeCharacter is null)
-                    {
-                        return;
-                    }
-
-                    var appearance = SendTownAppearancePacket();
-                    var delivered = await partyService.SendProbeToOtherMembersAsync(
-                        activeCharacter.Id,
-                        appearance,
-                        cancellationToken);
-                    logger.LogInformation(
-                        "Dungeon peer probe: appearance of {Name} (uid {UserId}) pushed to {Count} party member(s).",
-                        activeCharacter.Name,
-                        localUserId,
-                        delivered);
-
-                    var characterId = activeCharacter.Id;
-                    var characterName = activeCharacter.Name;
-                    _ = Task.Run(async () =>
-                    {
-                        foreach (var delay in new[]
-                                 {
-                                     TimeSpan.FromSeconds(2),
-                                     TimeSpan.FromSeconds(6),
-                                 })
-                        {
-                            try
-                            {
-                                await Task.Delay(delay);
-                                await partyService.SendProbeToOtherMembersAsync(
-                                    characterId,
-                                    appearance,
-                                    CancellationToken.None);
-                            }
-                            catch (Exception exception) when (exception is not OperationCanceledException)
-                            {
-                                logger.LogDebug(
-                                    exception,
-                                    "Dungeon peer probe: delayed appearance resend for {Name} failed.",
-                                    characterName);
-                            }
-                        }
-                    });
                 }
 
                 async Task ValidateAndCorrectCharacterStatsAsync(string reason)
@@ -2553,6 +2120,144 @@ public sealed class EntranceService(
                     }
                 }
 
+                // 队员侧的"进入选图状态"（设计稿 §3.2 的前置）：只有本会话建得出自己的 USERINFO，
+                // 所以外观必须由这里推给同队其他人（探针的"外观窗口"就是这件事的临时实现）。
+                async Task EnterPartyDungeonSelectionAsync(Guid leaderCharacterId, CancellationToken cancellationToken)
+                {
+                    if (activeCharacter is null || currentDungeonId != 0 || inDungeonSelection)
+                    {
+                        return;
+                    }
+
+                    inDungeonSelection = true;
+                    dungeonReturnTownId = currentTownId;
+                    dungeonReturnAreaId = currentAreaId;
+                    dungeonReturnX = currentX;
+                    dungeonReturnY = currentY;
+                    dungeonReturnDirection = currentDirection;
+                    selectionWorldMap = worldMapCatalog.TryGetForGate(
+                        currentTownId, currentAreaId, out var gateWorldMap) ? gateWorldMap : null;
+                    // 队员不设 30 秒截止：选图是队长的事，队长超时由他自己回城，队员留在选图界面等。
+                    dungeonSelectionDeadline = null;
+
+                    // ① 外观先行：把自己的 USERINFO 推给同队其他人（客户端按 uid 查本地 user 表）。
+                    var appearance = SendTownAppearancePacket();
+                    var delivered = await partyService.SendToOtherMembersAsync(
+                        activeCharacter.Id, appearance, cancellationToken);
+
+                    // ② 自己的选图状态（复用单人 CMD 15 的那套报文，只是收件人是自己）。
+                    var dungeonState = GameProtocolEngine.CreateUserState(localUserId, state: 1);
+                    await dungeonState.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, dungeonState);
+                    var peerInfo = gameplayDatagram.TryGetPeerInfo(
+                        runtimeSession.Id, localUserId, accountId: 1, out var localPeer)
+                            ? new[] { localPeer }
+                            : [];
+                    var udpPeers = GameProtocolEngine.CreateUdpPeerInfo(peerInfo);
+                    await udpPeers.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, udpPeers);
+                    var memberSlots = partyService.GetPartySlots(activeCharacter.Id);
+                    var memberSlot = memberSlots?
+                        .FirstOrDefault(slot => slot.CharacterId == activeCharacter.Id)?.SlotIndex ?? 0;
+                    var udpHost = GameProtocolEngine.CreateUdpHost(checked((byte)memberSlot));
+                    await udpHost.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, udpHost);
+                    await SendDungeonPermissionsAsync();
+                    await SendDungeonSelectionEligibilityAsync();
+                    logger.LogInformation(
+                        "Party member {Name} (uid {UserId}) entered dungeon selection; appearance delivered to {Count} member(s), slot {Slot}, leader {Leader}.",
+                        activeCharacter.Name, localUserId, delivered, memberSlot, leaderCharacterId);
+                }
+
+                // 队员侧入场（设计稿 §3.2）：校验 → 离城 → 绑实例 → 外观/名册 → NOTI 26/11/28/29。
+                async Task EnterPartyDungeonAsync(DungeonEntryRequest request, CancellationToken cancellationToken)
+                {
+                    if (activeCharacter is null)
+                    {
+                        return;
+                    }
+
+                    if (currentDungeonId != 0 || dungeonInstance is not null)
+                    {
+                        logger.LogInformation(
+                            "Ignored party dungeon entry for {Name}: already in dungeon {DungeonId}.",
+                            activeCharacter.Name, currentDungeonId);
+                        return;
+                    }
+
+                    // ① 还在队长进图前的同一 (town, area)？不满足只记日志、不入场（用户硬性要求）。
+                    if (townTicket is null
+                        || currentTownId != request.LeaderTownId
+                        || currentAreaId != request.LeaderAreaId)
+                    {
+                        logger.LogWarning(
+                            "Party dungeon entry aborted for {Name}: expected area {TownId}/{AreaId}, currently {CurrentTownId}/{CurrentAreaId}.",
+                            activeCharacter.Name, request.LeaderTownId, request.LeaderAreaId,
+                            currentTownId, currentAreaId);
+                        return;
+                    }
+
+                    if (dungeonInstanceRegistry.TryGetForParty(request.PartyId) is not { } instance)
+                    {
+                        logger.LogWarning(
+                            "Party dungeon entry aborted for {Name}: instance of party {PartyId} is gone.",
+                            activeCharacter.Name, request.PartyId);
+                        return;
+                    }
+
+                    // ② 离城（同时重播名册）；③ 绑实例。
+                    inDungeonSelection = false;
+                    dungeonReturnTownId = currentTownId;
+                    dungeonReturnAreaId = currentAreaId;
+                    dungeonReturnX = currentX;
+                    dungeonReturnY = currentY;
+                    dungeonReturnDirection = currentDirection;
+                    await LeaveTownAreaAsync(serverToken);
+                    dungeonInstance = instance;
+                    dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, instance);
+                    var slots = partyService.GetPartySlots(activeCharacter.Id);
+                    var slotIndex = slots?
+                        .FirstOrDefault(slot => slot.CharacterId == activeCharacter.Id)?.SlotIndex ?? 0;
+                    // 先摘后挂（幂等）：上一次入场失败可能留下带旧 AreaUserId/旧发送句柄的成员记录。
+                    instance.RemoveMember(activeCharacter.Id);
+                    instance.AddMember(new DungeonInstanceMember(
+                        activeCharacter.Id,
+                        localUserId,
+                        checked((byte)slotIndex),
+                        activeCharacter.Name,
+                        packet => SendTownPacketAsync(packet, serverToken)));
+                    ApplyDungeonInstanceSnapshot(instance.Snapshot());
+
+                    // ④ 外观先行（对同一个收包者的顺序：外观 → 名册 → 副本报文）。
+                    var appearance = SendTownAppearancePacket();
+                    await partyService.SendToOtherMembersAsync(
+                        activeCharacter.Id, appearance, cancellationToken);
+
+                    // ⑤ 名册 → NOTI 26（自己的槽位）→ NOTI 11 → NOTI 28 → NOTI 29。
+                    var roster = partyService.GetRosterPacketFor(activeCharacter.Id);
+                    var peerTable = BuildPartyPeerTable(slots, activeCharacter.Id);
+                    // 队员进的是"实例当前的房间"：用 CaptureCurrentRoomSnapshot（不是 TryMoveRoom）。
+                    var room = instance.CaptureCurrentRoomSnapshot(localUserId);
+                    foreach (var packet in DungeonEntryPackets.PlanMemberEntry(
+                                 instance, room, roster, peerTable, checked((byte)slotIndex)))
+                    {
+                        await packet.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, packet);
+                    }
+
+                    dungeonCreatureStomachCheckpointSeconds =
+                        DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    await ConsumeDungeonRoomFatigueAsync(room.RoomX, room.RoomY);
+                    logger.LogInformation(
+                        "Party member {Name} (uid {UserId}, slot {Slot}) entered dungeon {DungeonId} instance {PartyId} room ({RoomX},{RoomY}) map {MapId}.",
+                        activeCharacter.Name, localUserId, slotIndex,
+                        request.DungeonId, request.PartyId, room.RoomX, room.RoomY, room.MapId);
+                }
+
                 async Task ReturnToTownFromDungeonAsync(
                     string reason,
                     bool forcedDungeonExit = false)
@@ -3254,6 +2959,23 @@ public sealed class EntranceService(
                         }
                     }
 
+                    // 待选图请求（队长开选图界面时投的）：把自己的外观推给同队其他人，
+                    // 再把"选图状态"发给自己客户端（顺序：外观 → 名册 → 状态）。
+                    if (activeCharacter is not null
+                        && dungeonInstanceRegistry.TryTakeSelectionRequest(
+                            activeCharacter.Id, out var selectionLeader))
+                    {
+                        await EnterPartyDungeonSelectionAsync(selectionLeader, serverToken);
+                    }
+
+                    // 待入队请求（队长入场成功后投的）：自己执行入场（设计稿 §3.2）。
+                    if (activeCharacter is not null
+                        && dungeonInstanceRegistry.TryTakeEntryRequest(
+                            activeCharacter.Id, out var entryRequest))
+                    {
+                        await EnterPartyDungeonAsync(entryRequest, serverToken);
+                    }
+
                     // 被动方的交易交付：服务端已经落库，但本会话的内存背包还是旧的。
                     // 必须在处理下一条请求之前安装，否则玩家一动背包就会用陈旧状态覆盖交易结果。
                     if (activeCharacter is not null
@@ -3277,19 +2999,6 @@ public sealed class EntranceService(
                             "Installed settled trade {TradeId} into the live session of character {CharacterId}.",
                             tradeInstall.TradeId,
                             activeCharacter.Id);
-                    }
-
-                    // 探针（临时，PartyPush）：副本入场后的短窗口内，把自己的外观推给同队其他人。
-                    // 客户端副本内的队伍槽位是按 uid 查**本地 user 表**解析角色对象的，本地没有
-                    // 记录那一行就画不出来（P14）；窗口由队长进副本时统一打开。
-                    if (activeCharacter is not null
-                        && options.Debug.DungeonPeerProbe is
-                            { Enabled: true, Mode: "PartyPush", PushAppearances: true }
-                        && DungeonPartyProbeState.IsAppearanceWindowOpen(activeCharacter.Id))
-                    {
-                        // 一个窗口只推一次（+2s/+6s 补播在函数里排期），避免窗口内每条包都重推。
-                        DungeonPartyProbeState.CloseAppearanceWindow(activeCharacter.Id);
-                        await PublishDungeonProbeAppearanceAsync(serverToken);
                     }
 
                     if (Interlocked.Exchange(ref pendingMailAlarm, 0) != 0
@@ -11719,8 +11428,21 @@ public sealed class EntranceService(
 
                             await SendDungeonSelectionEligibilityAsync();
 
-                            // 探针：队员也要进入选图状态（真机：只推入场报文队员不反应）。
-                            await PushPartyDungeonSelectionProbeAsync(serverToken);
+                            // 组队：队长开选图界面时给同区队员各投一条"待选图"请求——队员的客户端必须先进入
+                            // 选图状态（NOTI 27 的处理体会切 UI 状态），否则后来的 NOTI 28/29 它完全不反应
+                            // （探针真机：commit 7690a89）。队员自己那份状态由他的会话发。
+                            if (activeCharacter is not null)
+                            {
+                                var posted = dungeonPartyService.PostSelectionRequests(
+                                    activeCharacter.Id, currentTownId, currentAreaId);
+                                if (posted > 0)
+                                {
+                                    logger.LogInformation(
+                                        "Dungeon selection state posted to {Count} party member(s) for leader {Leader}.",
+                                        posted, activeCharacter.Id);
+                                }
+                            }
+
                             continue;
                         }
 
@@ -11836,6 +11558,10 @@ public sealed class EntranceService(
                                     activeCharacter!.Id,
                                     () => new DungeonInstance(0, activeCharacter.Id, dungeonCatalog, itemCatalog));
                                 dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, dungeonInstance);
+                                // 先摘后挂（幂等）：上一次入场中途失败可能留下带旧 AreaUserId/旧发送句柄的
+                                // 成员记录，直接 AddMember 会被幂等跳过（本任务硬规则，三条任务书路径之外
+                                // 的教学路径同样适用）。
+                                dungeonInstance.RemoveMember(activeCharacter!.Id);
                                 dungeonInstance.AddMember(new DungeonInstanceMember(
                                     activeCharacter.Id,
                                     localUserId,
@@ -11907,6 +11633,22 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            // 用户硬性要求：队员不在同一区域 → 整队进不去（只记日志、谁的状态都不改）。
+                            // 校验用"队长进图前所在区域"（此刻队长还没 LeaveTownArea），队员侧以目录为准。
+                            // 不再重复 `activeCharacter is not null`：上面两行前的守卫已证明非空，
+                            // 多写一次会把后面的 `activeCharacter.Id` 打成 CS8602（可空流分析的状态被重置）。
+                            if (partyService.GetPartySlots(activeCharacter.Id) is { Length: > 1 })
+                            {
+                                if (dungeonPartyService.TryGetGatheringParty(
+                                        activeCharacter.Id, currentTownId, currentAreaId, out var outsiders) is null)
+                                {
+                                    logger.LogWarning(
+                                        "Dungeon {DungeonId} party entry aborted for leader {CharacterId}: {Count} member(s) outside area {TownId}/{AreaId}.",
+                                        dungeonId, activeCharacter.Id, outsiders.Length, currentTownId, currentAreaId);
+                                    continue;
+                                }
+                            }
+
                             if (!GetVisibleDungeonIds().Contains(dungeonId))
                             {
                                 var lockedDungeonError = GameProtocolEngine.CreateCommandError(
@@ -11968,17 +11710,69 @@ public sealed class EntranceService(
                                     dungeonId, questMapId, activeCharacter.Id);
                             }
 
-                            // 单人零回归：实例 = 以自己角色 id 为键的实例，成员只有自己。
-                            // 队伍路径在 Task 3 里换成队伍实例（同一个入口，见 dungeonPartyService）。
-                            // 必须在 TryStartRun 之前：实例是 DungeonRunState 的主人，布局/房间由它建档。
-                            dungeonInstance = dungeonInstanceRegistry.GetOrCreateForSolo(
-                                activeCharacter.Id,
-                                () => new DungeonInstance(0, activeCharacter.Id, dungeonCatalog, itemCatalog));
-                            dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, dungeonInstance);
+                            // 实例的选择（设计稿 §3.1/§3.2，**必须在 TryStartRun 之前**：布局/房间归实例所有）：
+                            // ①有队伍且实例已存在、还有成员 → 队长按"加入现有实例"走（不重建房间）；
+                            // ②有队伍 → 用队伍实例（本次创建，随后由队长的 TryStartRun 建布局）；
+                            // ③没队伍 → 以自己角色 id 为键的单人实例（Task 2 的口径，零回归）。
+                            var entrySlots = activeCharacter is null
+                                ? null
+                                : partyService.GetPartySlots(activeCharacter.Id);
+                            var partyEntry = entrySlots is { Length: > 1 };
+                            var leaderSlotIndex = partyEntry
+                                ? entrySlots!
+                                    .FirstOrDefault(slot => slot.CharacterId == activeCharacter!.Id)?
+                                    .SlotIndex ?? 0
+                                : 0;
+                            if (partyEntry
+                                && dungeonInstanceRegistry.TryGetForParty(entrySlots![0].PartyId)
+                                    is { MemberCount: > 0 } liveInstance)
+                            {
+                                dungeonInstance = liveInstance;
+                                dungeonInstanceRegistry.BindCharacter(activeCharacter!.Id, dungeonInstance);
+                                // 先摘后挂（幂等）：上一次入场中途失败可能留下"旧 AreaUserId + 旧发送句柄"
+                                // 的成员记录，直接 AddMember 会被幂等跳过 → 本会话的广播发到上个会话的句柄。
+                                dungeonInstance.RemoveMember(activeCharacter.Id);
+                                dungeonInstance.AddMember(new DungeonInstanceMember(
+                                    activeCharacter.Id,
+                                    localUserId,
+                                    checked((byte)leaderSlotIndex),
+                                    activeCharacter.Name,
+                                    packet => SendTownPacketAsync(packet, serverToken)));
+                                var liveRoom = dungeonInstance.CaptureCurrentRoomSnapshot(localUserId);
+                                foreach (var packet in DungeonEntryPackets.PlanMemberEntry(
+                                             dungeonInstance,
+                                             liveRoom,
+                                             partyService.GetRosterPacketFor(activeCharacter.Id),
+                                             BuildPartyPeerTable(entrySlots, activeCharacter.Id),
+                                             checked((byte)leaderSlotIndex)))
+                                {
+                                    await packet.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, packet);
+                                }
+
+                                ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
+                                logger.LogInformation(
+                                    "Party leader {Name} joined the live instance {PartyId} of dungeon {DungeonId} room ({RoomX},{RoomY}).",
+                                    activeCharacter.Name, dungeonInstance.PartyId,
+                                    dungeonInstance.Run.DungeonId, liveRoom.RoomX, liveRoom.RoomY);
+                                continue;
+                            }
+
+                            dungeonInstance = partyEntry
+                                ? dungeonInstanceRegistry.GetOrCreateForParty(
+                                    entrySlots![0].PartyId,
+                                    () => new DungeonInstance(
+                                        entrySlots[0].PartyId, Guid.Empty, dungeonCatalog, itemCatalog))
+                                : dungeonInstanceRegistry.GetOrCreateForSolo(
+                                    activeCharacter!.Id,
+                                    () => new DungeonInstance(0, activeCharacter.Id, dungeonCatalog, itemCatalog));
+                            dungeonInstanceRegistry.BindCharacter(activeCharacter!.Id, dungeonInstance);
+                            dungeonInstance.RemoveMember(activeCharacter!.Id);
                             dungeonInstance.AddMember(new DungeonInstanceMember(
                                 activeCharacter.Id,
                                 localUserId,
-                                PartySlot: 0,
+                                checked((byte)leaderSlotIndex),
                                 activeCharacter.Name,
                                 packet => SendTownPacketAsync(packet, serverToken)));
 
@@ -12144,8 +11938,9 @@ public sealed class EntranceService(
                                 currentDungeonRoomY);
                             await EnableEmptyBossRoomSettlementAsync(currentDungeonRoom);
 
-                            // 探针：副本（含 START_MAP）全部下发之后再推送/重注册，
-                            // 保证客户端的副本地图已经就位、区域名单落在新地图上。
+                            // 探针（临时，AreaRecycle 对照实验）：Task 7 退役前的真机兜底对照。
+                            // 与下面的正式组队入场**不是**互斥分支：探针只在显式配置时跑，
+                            // 绝不能反过来变成"关掉探针就等于关掉组队入场"。
                             if (string.Equals(
                                     options.Debug.DungeonPeerProbe.Mode,
                                     "AreaRecycle",
@@ -12153,25 +11948,31 @@ public sealed class EntranceService(
                             {
                                 await EnterDungeonPeerProbeAsync(serverToken);
                             }
-                            else
+
+                            // 组队：队长自己的 NOTI 28/29 已经发完，现在给同区队员各投一条"待入队"请求
+                            // ——队员的包由他自己的会话发（设计稿 §3.2），这里不代发任何包。
+                            if (partyEntry)
                             {
-                                await PushPartyDungeonEntryProbeAsync(
+                                // UDP_HOST 的 partyIndex 必须是队长自己的槽位（CMD 15 那条路径恒发 0）。
+                                if (leaderSlotIndex != 0)
+                                {
+                                    var leaderUdpHost = GameProtocolEngine.CreateUdpHost(checked((byte)leaderSlotIndex));
+                                    await leaderUdpHost.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, leaderUdpHost);
+                                }
+
+                                var posted = dungeonPartyService.PostEntryRequests(
+                                    dungeonInstance!,
                                     dungeonId,
                                     difficulty,
-                                    dungeonLayout.MazeIndex,
-                                    dungeonLayout.BossX,
-                                    dungeonLayout.BossY,
-                                    hellRoomX,
-                                    hellRoomY,
-                                    currentDungeonRoomX,
-                                    currentDungeonRoomY,
-                                    currentDungeonRoom.MapId,
-                                    currentDungeonRoom.Monsters,
-                                    passiveObjectDrops,
-                                    currentDungeonRoom.ClientRandomSeed,
-                                    DungeonRun().RoomStateFlag,
-                                    DungeonRun().CurrentHellPartyMode,
-                                    serverToken);
+                                    dungeonOption,
+                                    activeCharacter!.Id,
+                                    currentTownId,
+                                    currentAreaId);
+                                logger.LogInformation(
+                                    "Dungeon {DungeonId} party instance {PartyId} ready; entry requests posted to {Count} member(s).",
+                                    dungeonId, dungeonInstance!.PartyId, posted);
                             }
                             logger.LogInformation(
                                 "Dungeon {DungeonId} selected maze {MazeIndex}, start ({StartX},{StartY}), boss ({BossX},{BossY}), start map {MapId}, monsters={MonsterCount}, champions={ChampionCount}, mapChampionBase={MapChampionBase}, clientSeed={ClientSeed}, hellMode={HellMode}, partyMode={HellPartyMode}, ticket={TicketItemId}.",

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 /// </summary>
 internal static class DungeonPartySmokeTests
 {
-    public static Task RunAsync(Action<bool, string> check)
+    public static async Task RunAsync(Action<bool, string> check)
     {
         using var fixture = new DungeonFixture();
         CheckSoloInstanceKey(check, fixture);
@@ -23,7 +23,94 @@ internal static class DungeonPartySmokeTests
         CheckRegistryEntryRequestMailbox(check, fixture);
         CheckSoloRunBindsByCharacterId(check, fixture);
         CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
-        return Task.CompletedTask;
+        CheckSoloLookupNeverReusesPartyBinding(check, fixture);
+        await CheckGatheringValidationAsync(check, fixture);
+        CheckMemberEntryPacketOrder(check, fixture);
+    }
+
+    /// <summary>
+    /// 硬规则 2（Task 2 评审遗留项）：`_byCharacter` 同时被 `BindCharacter` 用于队员（指向**队伍**实例），
+    /// `GetOrCreateForSolo` **只许复用单人实例**——命中队伍实例时必须另建单人实例，
+    /// 否则单人入场会把自己塞进队伍实例，房间/掉落/成员广播被两队共用。
+    /// **变异验证**：把 `GetOrCreateForSolo` 改回 `_byCharacter.GetOrAdd`，本用例第一条变红。
+    /// </summary>
+    private static void CheckSoloLookupNeverReusesPartyBinding(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var registry = new DungeonInstanceRegistry();
+        var characterId = Guid.NewGuid();
+        var party = registry.GetOrCreateForParty(1000, () => fixture.CreatePartyInstance(1000));
+        registry.BindCharacter(characterId, party);
+        var solo = registry.GetOrCreateForSolo(
+            characterId, () => fixture.CreateSoloInstance(characterId));
+        check(!solo.IsParty && !ReferenceEquals(solo, party) && solo.SoloCharacterId == characterId,
+            "GetOrCreateForSolo never hands out the party instance a character is bound to");
+        check(ReferenceEquals(
+                solo,
+                registry.GetOrCreateForSolo(characterId, () => fixture.CreateSoloInstance(characterId))),
+            "the solo instance is still reused for that character");
+    }
+
+    /// <summary>
+    /// 同区域校验（用户硬性要求，设计稿 §3.2）：队长 `CMD 16` 时逐人核对 `(town, area)`，
+    /// 任一队员不在同一区域 → 整队放弃（只记日志、谁的状态都不改）。
+    /// </summary>
+    private static async Task CheckGatheringValidationAsync(Action<bool, string> check, DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        var registry = new DungeonInstanceRegistry();
+        // BackgroundService 不实现 IAsyncDisposable（.NET 10 实测 CS8417），用同步 Dispose。
+        using var service = new DungeonPartyService(
+            harness.Service, harness.Directory, registry, TimeProvider.System,
+            NullLogger<DungeonPartyService>.Instance);
+        await harness.InviteAndAcceptAsync("阿尔法", "布拉沃");
+        var leader = harness.IdOf("阿尔法");
+        var member = harness.IdOf("布拉沃");
+        var gathering = service.TryGetGatheringParty(leader, townId: 1, areaId: 0, out var outsiders);
+        check(gathering is { Length: 2 } && outsiders.Length == 0,
+            "a party standing in the same area passes the gathering check");
+
+        // 把布拉沃挪到别的区域（目录是权威），队长再校验 → 整队放弃。
+        await harness.MoveToAreaAsync("布拉沃", townId: 1, areaId: 1);
+        var blocked = service.TryGetGatheringParty(leader, townId: 1, areaId: 0, out var blockedOutsiders);
+        check(blocked is null && blockedOutsiders.Length == 1 && blockedOutsiders[0] == member,
+            "one member outside the leader's area aborts the whole party entry");
+        _ = fixture;
+    }
+
+    /// <summary>
+    /// 队员入场报文序列（设计稿 §3.2，硬顺序）：**名册 → NOTI 26（自己的槽位）→ NOTI 11 → NOTI 28 → NOTI 29**；
+    /// 没有名册时名册位跳过，其余顺序不变。`NOTI 26` 的 partyIndex 必须是**收件人自己的槽位**。
+    /// **变异验证**：把 udpHost 的槽位改成 0、或把 dungeonInfo 放到 roster 之前，本用例变红。
+    /// </summary>
+    private static void CheckMemberEntryPacketOrder(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        check(instance.TryStartRun(fixture.Layout, difficulty: 0, dungeonOption: 0, out var transition),
+            "the fixture run starts");
+        var snapshot = instance.CaptureRoomSnapshot(instance.Run.RoomX, instance.Run.RoomY, transition, 7);
+        var roster = GameProtocolEngine.CreatePartyInfoNotification(
+            1000, nameSel: 1, maxMembers: 4, slotUids: [11, 22, 0xFFFF, 0xFFFF], leaderSlot: 0);
+        var peerTable = GameProtocolEngine.CreateUdpPeerInfo([]);
+        var packets = DungeonEntryPackets.PlanMemberEntry(instance, snapshot, roster, peerTable, slotIndex: 2);
+        var ids = packets.Select(packet => (packet.Type, packet.ProtocolId)).ToArray();
+        check(ids is
+            [
+                (GameProtocolEngine.NotificationPacketType, GameProtocolEngine.PartyInfoNotification),
+                (GameProtocolEngine.NotificationPacketType, GameProtocolEngine.UdpHostNotification),
+                (GameProtocolEngine.NotificationPacketType, GameProtocolEngine.UdpPeerInfoNotification),
+                (GameProtocolEngine.NotificationPacketType, GameProtocolEngine.DungeonInfoNotification),
+                (GameProtocolEngine.NotificationPacketType, GameProtocolEngine.StartMapNotification)
+            ],
+            "member entry sends roster, UDP host, peer table, DUNGEON_INFO and START_MAP in that order");
+        check(packets[1].Payload[0] == 2,
+            "NOTI 26 carries the member's own party slot index");
+        var startMap = packets[4];
+        // START_MAP 布局：roomX(0) roomY(1) randomSeed(2..5) roomStateFlag(6) mapId(7..8) ...
+        check(BinaryPrimitives.ReadUInt16LittleEndian(startMap.Payload.AsSpan(7, 2)) == snapshot.MapId,
+            "START_MAP carries the instance room map id");
+        var withoutRoster = DungeonEntryPackets.PlanMemberEntry(instance, snapshot, null, peerTable, 2);
+        check(withoutRoster.Count == 4 && withoutRoster[0].ProtocolId == GameProtocolEngine.UdpHostNotification,
+            "a missing roster is skipped without disturbing the rest of the order");
     }
 
     /// <summary>
@@ -71,8 +158,9 @@ internal static class DungeonPartySmokeTests
                 instance,
                 registry.GetOrCreateForSolo(characterId, () => fixture.CreateSoloInstance(characterId))),
             "asking for the same solo character twice returns the same instance");
-        // 单人的键就是角色 id：GetOrCreateForSolo 落地即可被按角色查到（_byCharacter 既是单人键表
-        // 也是会话绑定表）。未登记过的角色才查不到。
+        // 单人的键就是角色 id：`GetOrCreateForSolo` 用**单人专属**的键表（`_soloByCharacter`），
+        // 与 <c>BindCharacter</c> 的会话绑定表（`_byCharacter`）分开——后者也会指向队伍实例。
+        // 未登记过的角色才查不到。
         check(registry.TryGetForCharacter(Guid.NewGuid()) is null,
             "a character that never bound itself has no dungeon instance");
         registry.BindCharacter(characterId, instance);

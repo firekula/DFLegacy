@@ -16,7 +16,7 @@ internal sealed record DungeonEntryRequest(
     Guid LeaderCharacterId);
 
 /// <summary>
-/// 副本实例注册表（设计稿 §3.1）：队伍键 / 角色键两张表 + 待入队信箱。
+/// 副本实例注册表（设计稿 §3.1）：队伍键 / 角色绑定 / 单人键三张表 + 待选图、待入队两个信箱。
 /// 纯内存、不落盘；实例在"最后一个成员离开"时销毁（<see cref="UnbindCharacter"/> 返回值），
 /// 服务端关停时由托管服务调 <see cref="Clear"/>。
 /// 类型是 public 只是因为 <see cref="EntranceService"/>（public 祖先类的公开构造函数）要构造注入它；
@@ -26,13 +26,22 @@ public sealed class DungeonInstanceRegistry
 {
     private readonly ConcurrentDictionary<ushort, DungeonInstance> _byParty = new();
     private readonly ConcurrentDictionary<Guid, DungeonInstance> _byCharacter = new();
+
+    /// <summary>
+    /// 单人实例的**专属**键表（设计稿 §7 决策 1）：只有 <see cref="GetOrCreateForSolo"/>用它。
+    /// 不能拿 <see cref="_byCharacter"/> 当单人表——那张表同时被 <see cref="BindCharacter"/> 用于队员绑定
+    /// （指向队伍实例），一个作为队员绑定过队伍实例的角色进来开单人副本时会直接复用那支队伍的实例，
+    /// 房间/掉落/成员广播被两队共用（Task 2 评审遗留项）。
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, DungeonInstance> _soloByCharacter = new();
     private readonly ConcurrentDictionary<Guid, DungeonEntryRequest> _pendingEntries = new();
+    private readonly ConcurrentDictionary<Guid, Guid> _pendingSelections = new();
 
     internal DungeonInstance GetOrCreateForParty(ushort partyId, Func<DungeonInstance> create) =>
         _byParty.GetOrAdd(partyId, _ => create());
 
     internal DungeonInstance GetOrCreateForSolo(Guid characterId, Func<DungeonInstance> create) =>
-        _byCharacter.GetOrAdd(characterId, _ => create());
+        _soloByCharacter.GetOrAdd(characterId, _ => create());
 
     internal DungeonInstance? TryGetForParty(ushort partyId) =>
         _byParty.TryGetValue(partyId, out var instance) ? instance : null;
@@ -58,6 +67,7 @@ public sealed class DungeonInstanceRegistry
     internal DungeonInstance? UnbindCharacter(Guid characterId)
     {
         _pendingEntries.TryRemove(characterId, out _);
+        _pendingSelections.TryRemove(characterId, out _);
         if (!_byCharacter.TryRemove(characterId, out var instance))
         {
             return null;
@@ -77,6 +87,13 @@ public sealed class DungeonInstanceRegistry
         {
             _byParty.TryRemove(new KeyValuePair<ushort, DungeonInstance>(instance.PartyId, instance));
         }
+        else
+        {
+            // 单人实例销毁后必须忘掉键：否则下一次 GetOrCreateForSolo 会拿到一个没有成员、
+            // run 已停的尸体实例（键不匹配 / 从未登记过时是 no-op）。
+            _soloByCharacter.TryRemove(
+                new KeyValuePair<Guid, DungeonInstance>(instance.SoloCharacterId, instance));
+        }
 
         foreach (var member in instance.Members)
         {
@@ -92,9 +109,20 @@ public sealed class DungeonInstanceRegistry
     internal bool TryTakeEntryRequest(Guid characterId, out DungeonEntryRequest request) =>
         _pendingEntries.TryRemove(characterId, out request!);
 
+    /// <summary>队长开选图界面时给队员投的"待选图"请求（只记队长角色 id，队员自己把状态发给自己客户端）。</summary>
+    internal void PostSelectionRequest(Guid characterId, Guid leaderCharacterId) =>
+        _pendingSelections[characterId] = leaderCharacterId;
+
+    internal bool TryTakeSelectionRequest(Guid characterId, out Guid leaderCharacterId) =>
+        _pendingSelections.TryRemove(characterId, out leaderCharacterId);
+
     /// <summary>倒计时扫描用：此刻还活着的实例（拷贝，出锁遍历）。</summary>
     internal DungeonInstance[] Instances =>
-        _byParty.Values.Concat(_byCharacter.Values).Distinct().ToArray();
+        _byParty.Values
+            .Concat(_byCharacter.Values)
+            .Concat(_soloByCharacter.Values)
+            .Distinct()
+            .ToArray();
 
     /// <summary>服务端关停：清空所有实例（设计稿 §3.1 生命周期最后一条）。</summary>
     internal void Clear()
@@ -106,6 +134,8 @@ public sealed class DungeonInstanceRegistry
 
         _byParty.Clear();
         _byCharacter.Clear();
+        _soloByCharacter.Clear();
         _pendingEntries.Clear();
+        _pendingSelections.Clear();
     }
 }
