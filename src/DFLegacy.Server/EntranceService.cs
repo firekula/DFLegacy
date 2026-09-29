@@ -1404,12 +1404,16 @@ public sealed class EntranceService(
                             .ToArray();
                         var leaderId = activeCharacter.Id;
                         var leaderName = activeCharacter.Name;
-                        // 快照：区域条目要用"进副本前所在区域"（客户端场景区域仍是它）。
+                        // 快照：区域条目要用"进副本前所在区域"（客户端场景区域仍是它，见
+                        // SetTown 调用点：副本地图加载时客户端自己也会 SetTown(1,2)）。
                         var probeTownIdSnapshot = currentTownId;
                         var probeAreaIdSnapshot = currentAreaId;
                         var leaderUidSnapshot = localUserId;
-                        var leaderXSnapshot = currentX;
-                        var leaderYSnapshot = currentY;
+                        // 角色在副本里的落点：用房间地图自带的出生点（`[dungeon start area]`，从
+                        // Script.pvf 读出）。用城镇坐标会让角色落在副本地图之外 → 看不见。
+                        var (spawnX, spawnY) = DungeonProbeSpawnFor(mapId);
+                        var leaderXSnapshot = spawnX;
+                        var leaderYSnapshot = spawnY;
                         var leaderDirectionSnapshot = currentDirection;
                         var areaEntries = probe.AreaRecycle;
                         _ = Task.Run(async () =>
@@ -1483,8 +1487,8 @@ public sealed class EntranceService(
                                                 probeAreaIdSnapshot,
                                                 new GameTownUser(
                                                     memberSnapshot.AreaUserId,
-                                                    memberSnapshot.X,
-                                                    memberSnapshot.Y,
+                                                    spawnX,
+                                                    spawnY,
                                                     memberSnapshot.Direction),
                                                 active: true);
                                             await memberEntry.WriteAsync(stream, CancellationToken.None);
@@ -15969,6 +15973,20 @@ public sealed class EntranceService(
         ushort ItemId,
         uint CountOrValue,
         string Text);
+
+    /// <summary>
+    /// 探针（临时）：副本房间地图自带的出生点像素坐标（`[dungeon start area]`，用
+    /// <c>tools</c> 里的 PVF 读取脚本从 Script.pvf 读出；洛兰 s1/s2/s3 = map 2/3/4）。
+    /// 副本内画队友时用它当落点——用城镇坐标会让角色落在房间之外。
+    /// 没有该标签的地图回落到 s1 的出生点。
+    /// </summary>
+    private static (short X, short Y) DungeonProbeSpawnFor(ushort mapId) => mapId switch
+    {
+        2 => (272, 377),
+        3 => (787, 330),
+        4 => (775, 314),
+        _ => (272, 377),
+    };
 
     private GamePassiveObjectDrop[] RegisterPassiveObjectDrops(
         DungeonRoomDefinition room,
