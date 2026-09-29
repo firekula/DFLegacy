@@ -2953,6 +2953,8 @@ public sealed class EntranceService(
                             { Enabled: true, Mode: "PartyPush", PushAppearances: true }
                         && DungeonPartyProbeState.IsAppearanceWindowOpen(activeCharacter.Id))
                     {
+                        // 一个窗口只推一次（+2s/+6s 补播在函数里排期），避免窗口内每条包都重推。
+                        DungeonPartyProbeState.CloseAppearanceWindow(activeCharacter.Id);
                         await PublishDungeonProbeAppearanceAsync(serverToken);
                     }
 
