@@ -1137,6 +1137,94 @@ public sealed class EntranceService(
                         probe.UseSessionArea);
                 }
 
+                // 探针（临时，Debug.DungeonPeerProbe.Mode=PartyPush）：队长进副本门口（CMD 15）时，
+                // 把同一套「进入选图状态」报文推给同区域的其他队员（每人一份、按各自的 uid/槽位）。
+                // 真机证据：只推 NOTI 28/29 队员客户端完全不反应——队员的客户端必须先进入选图状态
+                // （NOTI 27 的处理体会切 UI 状态 1/2），才会接受随后的 DUNGEON_INFO/START_MAP。
+                async Task PushPartyDungeonSelectionProbeAsync(CancellationToken cancellationToken)
+                {
+                    var probe = options.Debug.DungeonPeerProbe;
+                    if (!probe.Enabled
+                        || !string.Equals(probe.Mode, "PartyPush", StringComparison.OrdinalIgnoreCase)
+                        || activeCharacter is null)
+                    {
+                        return;
+                    }
+
+                    var slots = partyService.GetProbeSlots(activeCharacter.Id);
+                    if (slots is null || slots.Length <= 1)
+                    {
+                        return;
+                    }
+
+                    // 与队长自己那份同形（成员各自的权限/资格列表未知，探针复用队长的近似值；
+                    // 队员不操作选图界面，这里只为让它进入同一状态机）。
+                    var selectionPacket = GameProtocolEngine.CreateEnterSelectDungeon(
+                        hellQuestsCompleted: false,
+                        missingHellItemPartyIndices: []);
+                    var permissions = GameProtocolEngine.CreateDungeonPermissions(
+                        GetDungeonPermissions());
+
+                    foreach (var member in slots)
+                    {
+                        if (member.CharacterId == activeCharacter.Id)
+                        {
+                            continue;
+                        }
+
+                        if (!townDirectory.TryGetSnapshot(member.CharacterId, out var snapshot)
+                            || snapshot.TownId != currentTownId
+                            || snapshot.AreaId != currentAreaId)
+                        {
+                            logger.LogInformation(
+                                "Dungeon party probe: selection push skipped — {Name} (slot {Slot}) is not in the leader's area {TownId}/{AreaId}.",
+                                member.CharacterName,
+                                member.SlotIndex,
+                                currentTownId,
+                                currentAreaId);
+                            continue;
+                        }
+
+                        // 顺序与队长自己那份完全一致：状态 → 对端表 → UDP 主机 → 权限 → 选图资格。
+                        await member.Send(GameProtocolEngine.CreateUserState(member.AreaUserId, state: 1));
+                        var peerTable = BuildPartyPeerTableProbe(slots, member);
+                        if (peerTable is not null)
+                        {
+                            await member.Send(peerTable);
+                        }
+
+                        await member.Send(GameProtocolEngine.CreateUdpHost((byte)member.SlotIndex));
+                        await member.Send(permissions);
+                        await member.Send(selectionPacket);
+                        logger.LogInformation(
+                            "Dungeon party probe: pushed dungeon-selection state (NOTI 3/11/26/5/27) to {Name} (slot {Slot}, uid {Uid}).",
+                            member.CharacterName,
+                            member.SlotIndex,
+                            member.AreaUserId);
+                    }
+                }
+
+                // 探针（临时）：队伍成员的对端表（每人的 UDP 端点），自己排第一。
+                GameServerPacket? BuildPartyPeerTableProbe(
+                    IReadOnlyList<PartyProbeSlot> slots,
+                    PartyProbeSlot recipient)
+                {
+                    List<GamePeerInfo> peers = [];
+                    foreach (var slot in slots.OrderBy(slot => slot.CharacterId == recipient.CharacterId ? 0 : 1))
+                    {
+                        if (gameplayDatagram.TryGetPeerInfo(
+                                slot.SessionId,
+                                slot.AreaUserId,
+                                accountId: 1,
+                                out var peer))
+                        {
+                            peers.Add(peer);
+                        }
+                    }
+
+                    return peers.Count == 0 ? null : GameProtocolEngine.CreateUdpPeerInfo(peers);
+                }
+
                 // 探针（临时，Debug.DungeonPeerProbe.Mode=PartyPush）：组队进副本。
                 // 客户端本来就有这条路径——DUNGEON_INFO（NOTI 28）处理体对 4 个队伍槽位逐个
                 // 设置副本上下文、FINISH_LOADING（NOTI 30）装队伍 HUD、UDP_HOST（NOTI 26）
@@ -11373,6 +11461,9 @@ public sealed class EntranceService(
                             await SendDungeonPermissionsAsync();
 
                             await SendDungeonSelectionEligibilityAsync();
+
+                            // 探针：队员也要进入选图状态（真机：只推入场报文队员不反应）。
+                            await PushPartyDungeonSelectionProbeAsync(serverToken);
                             continue;
                         }
 
