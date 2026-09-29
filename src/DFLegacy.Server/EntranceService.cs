@@ -2435,6 +2435,69 @@ public sealed class EntranceService(
                         "Party member {Name} (uid {UserId}, slot {Slot}) entered dungeon {DungeonId} instance {PartyId} room ({RoomX},{RoomY}) map {MapId}.",
                         activeCharacter.Name, localUserId, slotIndex,
                         request.DungeonId, request.PartyId, room.RoomX, room.RoomY, room.MapId);
+                    SchedulePartyRoomReload(instance, "member-entry");
+                }
+
+                // 真机实验（2026-09-29）：副本内看不到队友角色（只有对方神枪手的子弹可见）。
+                // A2 假设要求"客户端加载副本地图时已经知道队友的 user 记录"，而地图切换很可能
+                // 清空了本地 user 表（勘察 §3 不确定项 2）→ 加载器没有为队友建档 → 画不出来。
+                // 这里在双方外观都推完之后**重发一次本房间的 START_MAP**，让客户端拿"已知队友"的
+                // user 表再走一遍加载流程（=勘察里"加载器建档"那条路）。
+                // 两轮（+2.5s/+7s）覆盖两边加载完成的先后差；只在组队实例里做，**单人一字不发**。
+                // 若真机证明有效，再把它变成正式行为（并能解释"为什么要重载房间"）；无效则整段删除。
+                void SchedulePartyRoomReload(DungeonInstance instance, string reason)
+                {
+                    if (!instance.IsParty || activeCharacter is null)
+                    {
+                        return;
+                    }
+
+                    var characterId = activeCharacter.Id;
+                    var characterName = activeCharacter.Name;
+                    var expectedRoomX = currentDungeonRoomX;
+                    var expectedRoomY = currentDungeonRoomY;
+                    var dungeonId = currentDungeonId;
+                    _ = Task.Run(async () =>
+                    {
+                        var elapsed = TimeSpan.Zero;
+                        foreach (var target in new[] { TimeSpan.FromSeconds(2.5), TimeSpan.FromSeconds(7) })
+                        {
+                            try
+                            {
+                                await Task.Delay(target - elapsed, serverToken);
+                                elapsed = target;
+                                // 仍然是同一个实例、同一个房间时才重载（换过房间/回过城就不补）。
+                                if (dungeonInstanceRegistry.TryGetForCharacter(characterId) is not { } bound
+                                    || !ReferenceEquals(bound, instance)
+                                    || currentDungeonId != dungeonId
+                                    || (currentDungeonRoomX, currentDungeonRoomY) != (expectedRoomX, expectedRoomY)
+                                    || !instance.TryCaptureCurrentRoomSnapshot(localUserId, out var reloadRoom))
+                                {
+                                    return;
+                                }
+
+                                var reload = DungeonEntryPackets.PlanStartMap(reloadRoom);
+                                await reload.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, reload);
+                                logger.LogInformation(
+                                    "Party room reload ({Reason}) sent to {Name} in dungeon {DungeonId} room ({RoomX},{RoomY}) — peer-visibility experiment.",
+                                    reason, characterName, dungeonId, expectedRoomX, expectedRoomY);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                return;
+                            }
+                            catch (Exception exception)
+                            {
+                                logger.LogDebug(
+                                    exception,
+                                    "Party room reload ({Reason}) failed for {Name}.",
+                                    reason, characterName);
+                                return;
+                            }
+                        }
+                    });
                 }
 
                 async Task ReturnToTownFromDungeonAsync(
@@ -12308,6 +12371,8 @@ public sealed class EntranceService(
                                 logger.LogInformation(
                                     "Dungeon {DungeonId} party instance {PartyId} ready; entry requests posted to {Count} member(s).",
                                     dungeonId, dungeonInstance!.PartyId, posted);
+                                // 队友可见性实验：外观推完之后重载一次本房间（见 SchedulePartyRoomReload）。
+                                SchedulePartyRoomReload(dungeonInstance, "leader-entry");
                             }
                             logger.LogInformation(
                                 "Dungeon {DungeonId} selected maze {MazeIndex}, start ({StartX},{StartY}), boss ({BossX},{BossY}), start map {MapId}, monsters={MonsterCount}, champions={ChampionCount}, mapChampionBase={MapChampionBase}, clientSeed={ClientSeed}, hellMode={HellMode}, partyMode={HellPartyMode}, ticket={TicketItemId}.",
@@ -12412,9 +12477,14 @@ public sealed class EntranceService(
                                 }
                                 else if (dungeonInstance is { IsParty: true } partyInstance)
                                 {
-                                    // 门口集结制（设计稿 §3.3，用户拍板）：第一个 CMD 48 只登记，
-                                    // 全员/过半到齐才推进；命令回包**延迟到推进那一刻**补发。
-                                    // 真机检查点：客户端能否接受延迟的 CMD 48 回包（Task 7 第 1 项）。
+                                    // 门口集结制（设计稿 §3.3，用户拍板）：登记到门口的人，全员/过半
+                                    // 才推进。**但真机（2026-09-29，server-party2.log）证明 2008 客户端
+                                    // 不会让每个队员都上报 CMD 48**：整局只有一方发过（另一方从不发），
+                                    // 于是"全员到齐"永远不成立、连"过半"也谈不上 → 门打不开。
+                                    // 按设计稿 §3.3 已写明的兜底：**立即推进 + 其余人被强制**。
+                                    // 实现上把"到门口人数"按 1 计，复用状态机里"门口只有我一个人 → 立即推进"
+                                    // 的既有分支（Doors 的全员/倒计时规则原样保留，日后若客户端确实会上报，
+                                    // 把这里的 1 换回 partyInstance.MemberCount 即可恢复集结制）。
                                     DungeonDoorOutcome assemblyOutcome;
                                     DungeonRoomPosition? pendingDoor;
                                     lock (partyInstance.Gate)
@@ -12422,7 +12492,7 @@ public sealed class EntranceService(
                                         assemblyOutcome = partyInstance.Doors.Register(
                                             new DungeonRoomPosition(targetX, targetY),
                                             activeCharacter!.Id,
-                                            partyInstance.MemberCount,
+                                            memberCount: 1,
                                             DateTimeOffset.UtcNow,
                                             GameProtocolEngine.CreateCommandReply(request, success: true));
                                         // 锁内取走要记日志的集结状态（Doors 只在实例锁内用，勿在锁外读）。
