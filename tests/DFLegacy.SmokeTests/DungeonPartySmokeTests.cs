@@ -28,6 +28,94 @@ internal static class DungeonPartySmokeTests
         await CheckGatheringValidationAsync(check, fixture);
         await CheckRequestTargetingAsync(check, fixture);
         CheckMemberEntryPacketOrder(check, fixture);
+        await CheckBroadcastReachesEveryMemberOnceAsync(check, fixture);
+        await CheckPickupBroadcastOmitsSenderAsync(check, fixture);
+    }
+
+    /// <summary>
+    /// 共享状态广播（设计稿 §3.3）：击杀/房间开放只判定一次（实例的原子方法），
+    /// 但**每个成员各收一份**；单人实例的广播只及于自己。
+    /// **变异验证**：把 sent 累加改成"只发给第一个成员"，本用例变红。
+    /// </summary>
+    private static async Task CheckBroadcastReachesEveryMemberOnceAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        var alpha = Guid.NewGuid();
+        var bravo = Guid.NewGuid();
+        List<GameServerPacket> alphaInbox = [];
+        List<GameServerPacket> bravoInbox = [];
+        instance.AddMember(new DungeonInstanceMember(
+            alpha, 1, 0, "阿尔法", packet => { alphaInbox.Add(packet); return ValueTask.CompletedTask; }));
+        instance.AddMember(new DungeonInstanceMember(
+            bravo, 2, 1, "布拉沃", packet => { bravoInbox.Add(packet); return ValueTask.CompletedTask; }));
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
+            "the fixture run starts for the broadcast case");
+        var victim = instance.AliveMonsters.First();
+        // 任务书原文这里传 `championRewardOrdinal: 0`：0 既不是"无奖励"哨兵（-1）也不在 1..11，
+        // `CreateMonsterDie` 会抛 ArgumentOutOfRangeException（实测）。普通怪用引擎的哨兵常量。
+        var monsterDie = GameProtocolEngine.CreateMonsterDie(
+            uniqueId: victim, drops: [], championRewardOrdinal: GameProtocolEngine.NoChampionRewardOrdinal);
+        // 模拟"两个会话都上报了同一只怪"：只有第一次判定成立，但成立的这一次要发给**每个人**。
+        for (var round = 0; round < 2; round++)
+        {
+            if (!instance.TryTakeMonsterDeath(victim, out _))
+            {
+                continue;
+            }
+
+            foreach (var member in instance.Members)
+            {
+                await member.Send(monsterDie);
+            }
+        }
+
+        check(alphaInbox.Count == 1 && bravoInbox.Count == 1
+                && alphaInbox[0].ProtocolId == GameProtocolEngine.MonsterDieNotification
+                && bravoInbox[0].ProtocolId == GameProtocolEngine.MonsterDieNotification,
+            "a single kill is broadcast once to every member and stale reports broadcast nothing");
+    }
+
+    /// <summary>
+    /// 拾取广播的 omit 语义（任务书 Step 4③的硬要求）：`BroadcastToMembersAsync` 只发给
+    /// "除 omit 以外"的成员——拾取者那一份已经走本会话的 `stream` 发过，**绝不能再收第二份**。
+    /// 会话接线本身没有单测（Task 2 已记），这里是能自动化的那一半证据。
+    /// **变异验证**：把 `BroadcastToMembersAsync` 里的 omit 判断删掉 → 第一条断言变红。
+    /// </summary>
+    private static async Task CheckPickupBroadcastOmitsSenderAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        using var service = new DungeonPartyService(
+            harness.Service,
+            harness.Directory,
+            new DungeonInstanceRegistry(),
+            TimeProvider.System,
+            NullLogger<DungeonPartyService>.Instance);
+        var instance = fixture.CreatePartyInstance(1000);
+        var picker = Guid.NewGuid();
+        var peer = Guid.NewGuid();
+        var pickerInbox = new List<GameServerPacket>();
+        var peerInbox = new List<GameServerPacket>();
+        instance.AddMember(new DungeonInstanceMember(
+            picker, 1, 0, "拾取者", packet => { pickerInbox.Add(packet); return ValueTask.CompletedTask; }));
+        instance.AddMember(new DungeonInstanceMember(
+            peer, 2, 1, "队友", packet => { peerInbox.Add(packet); return ValueTask.CompletedTask; }));
+        var pickup = GameProtocolEngine.CreateGoldItemPickup(
+            groundId: 7, pickerUserId: 1, goldAmount: 100, pickerPartyIndex: 0);
+
+        await service.BroadcastToMembersAsync(instance, pickup, omitCharacterId: picker);
+
+        check(pickerInbox.Count == 0,
+            "the picker's own broadcast copy is omitted (it already went out on the session stream)");
+        check(peerInbox.Count == 1 && peerInbox[0].ProtocolId == GameProtocolEngine.GetItemNotification,
+            "the other members receive exactly one pickup notification");
+        // 不 omit 时两个成员各收一份：证明上面那次"0 份"确实来自 omit，而不是投递被吞了。
+        await service.BroadcastToMembersAsync(instance, pickup);
+        check(pickerInbox.Count == 1 && peerInbox.Count == 2,
+            "without an omit target the same packet reaches every member (no delivery is swallowed)");
     }
 
     /// <summary>

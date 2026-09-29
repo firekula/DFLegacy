@@ -906,13 +906,13 @@ public sealed class EntranceService(
                     // War-room scripts (2000-2002) use timed dynamic spawns
                     // rather than static .map monster rows. Until that mode is
                     // simulated, an empty terminal room must remain settleable.
-                    // TryEnableClear 的返回值就是"从关到开"，与改造前的 !dungeonClearEnabled 同口径
-                    // （调用方已经判过，这里只落状态）。
-                    dungeonInstance!.TryEnableClear();
-                    var enableClear = GameProtocolEngine.CreateEnableClearDungeon();
-                    await enableClear.WriteAsync(stream, serverToken);
-                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                    LogPacket("TX", runtimeSession, enableClear);
+                    // TryEnableClear 的返回值就是"从关到开"（调用方已经判过，这里只落状态）；
+                    // 判定成立才广播 = 房间开放只此一份（并发/重复进入不发第二次，设计稿 §3.3）。
+                    if (dungeonInstance!.TryEnableClear())
+                    {
+                        var enableClear = GameProtocolEngine.CreateEnableClearDungeon();
+                        await BroadcastToInstanceAsync(enableClear, serverToken);
+                    }
                     await CompleteClearQuestTriggersAsync(
                         "empty boss-room settlement");
                     logger.LogInformation(
@@ -1741,7 +1741,9 @@ public sealed class EntranceService(
                         dungeonFreeCardIndex,
                         dungeonGoldCardIndex,
                         goldRewardRevealed: dungeonGoldCardIndex.HasValue,
-                        goldRewardItemId: dungeonClearReward.GoldItemId);
+                        goldRewardItemId: dungeonClearReward.GoldItemId,
+                        // 自己的卡片列（设计稿 §7 决策 3/6）；单人 = 0，零回归。
+                        localPartyIndex: PartySlotIndexOfThisSession());
                     await selectCardReply.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, selectCardReply);
@@ -2141,6 +2143,57 @@ public sealed class EntranceService(
                         currentDungeonId = snapshot.DungeonId;
                         currentDungeonDifficulty = snapshot.Difficulty;
                     }
+                }
+
+                // 共享状态广播（设计稿 §3.3）：单人实例只有自己一人 → 仍然走本会话的发送路径
+                // （报文逐字节与改造前一致：stream + 计数 + 日志）；组队实例走成员句柄广播。
+                // 调用点必须已经用实例的原子方法判定过（TryTakeMonsterDeath/TryEnableClear/
+                // RemoveGroundItem 的返回值），本函数只负责投递、不做第二次判定——并发上报
+                // 只会有一次判定成立，因此也只广播一份。
+                async Task BroadcastToInstanceAsync(
+                    GameServerPacket packet,
+                    CancellationToken cancellationToken)
+                {
+                    if (dungeonInstance is null)
+                    {
+                        return;
+                    }
+
+                    if (!dungeonInstance.IsParty)
+                    {
+                        await packet.WriteAsync(stream, cancellationToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, packet);
+                        return;
+                    }
+
+                    await dungeonPartyService.BroadcastToMembersAsync(
+                        dungeonInstance, packet, cancellationToken: cancellationToken);
+                }
+
+                // 本会话在队伍里的槽位下标（单人 / 不在队伍 → 0）。槽位稳定不搬动（第一轮硬约束）。
+                // 结算卡片屏按"自己那一列"高亮，7 处恒 0/恒 1 的取值之一（设计稿 §7 决策 3/6）。
+                byte PartySlotIndexOfThisSession()
+                {
+                    var character = activeCharacter;
+                    return character is null
+                        ? (byte)0
+                        : checked((byte)(partyService.GetPartySlots(character.Id)?
+                            .FirstOrDefault(slot => slot.CharacterId == character.Id)?.SlotIndex ?? 0));
+                }
+
+                // 掉落拾取的广播（设计稿 §3.3/§7 决策 5）：调用前自己那一份已经走 stream 发过，
+                // 这里只补发给同实例的**其他人**（omit 自己，绝不重复发）；单人实例没有人可补发。
+                async Task BroadcastPickupToInstanceAsync(GameServerPacket pickupPacket)
+                {
+                    var character = activeCharacter;
+                    if (dungeonInstance is not { IsParty: true } instance || character is null)
+                    {
+                        return;
+                    }
+
+                    await dungeonPartyService.BroadcastToMembersAsync(
+                        instance, pickupPacket, character.Id, serverToken);
                 }
 
                 // 队员侧的"进入选图状态"（设计稿 §3.2 的前置）：只有本会话建得出自己的 USERINFO，
@@ -11692,10 +11745,17 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            // 迷宫生成按"本次入图的队伍人数"（单人 / 不在队伍 = 1，零回归）。
+                            // **任务书此处写 `dungeonInstance!.MemberCount` 会 NRE**：实例要到下面
+                            // （"实例的选择"段）才被选/建，这个时点 `dungeonInstance` 还是 null。
+                            // 人数只能来自队伍槽位快照；`TryCreateLayout` 目前忽略该参数
+                            // （DungeonCatalog.cs:278 `_ = partyMemberCount;`），不影响格局。
+                            var layoutPartyMemberCount =
+                                partyService.GetPartySlots(activeCharacter.Id)?.Length ?? 1;
                             if (!dungeonCatalog.TryCreateLayout(
                                     dungeonId,
                                     out var dungeonLayout,
-                                    partyMemberCount: 1))
+                                    partyMemberCount: layoutPartyMemberCount))
                             {
                                 logger.LogWarning(
                                     "Dungeon {DungeonId} has no usable maze layout; request ignored.",
@@ -12631,9 +12691,9 @@ public sealed class EntranceService(
                                         monsterUniqueId,
                                         protocolDrops,
                                         championRewardOrdinal);
-                                await monsterDie.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, monsterDie);
+                                // 击杀判定只有一次（TryTakeMonsterDeath 的返回值），但成立的那一次
+                                // 要发给同实例的**每个人**（设计稿 §3.3）；单人仍走本会话路径。
+                                await BroadcastToInstanceAsync(monsterDie, serverToken);
 
                                 if (!isBossCascadeDeath && !tutorialDungeonActive)
                                 {
@@ -12654,7 +12714,7 @@ public sealed class EntranceService(
                                                 defeatedMonster.MonsterIndex,
                                                 experienceDungeon,
                                                 currentDungeonDifficulty,
-                                                partyMemberCount: 1)
+                                                partyMemberCount: dungeonInstance!.MemberCount)
                                             : 0;
                                     var progression = experienceCatalog.Grant(
                                         activeCharacter,
@@ -12772,9 +12832,9 @@ public sealed class EntranceService(
                                     }
                                     var enableClear =
                                         GameProtocolEngine.CreateEnableClearDungeon();
-                                    await enableClear.WriteAsync(stream, serverToken);
-                                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                                    LogPacket("TX", runtimeSession, enableClear);
+                                    // 房间开放（NOTI 31）：TryEnableClear 的返回值就是"从关到开"，
+                                    // 判定只此一次；成立时同实例每人各一份（设计稿 §3.3）。
+                                    await BroadcastToInstanceAsync(enableClear, serverToken);
                                     logger.LogInformation(
                                         "Dungeon {DungeonId} boss map room ({RoomX},{RoomY}) cleared by {ClearReason}; settlement enabled",
                                         currentDungeonId,
@@ -12855,10 +12915,14 @@ public sealed class EntranceService(
                                 var pickup = GameProtocolEngine.CreateGoldItemPickup(
                                     groundId,
                                     localUserId,
-                                    groundItem.CountOrValue);
+                                    groundItem.CountOrValue,
+                                    pickerPartyIndex: PartySlotIndexOfThisSession());
                                 await pickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, pickup);
+                                // 掉落拾取（先到先得，设计稿 §7 决策 5）：摘掉掉落实体后，同实例其他人
+                                // 的客户端也要让该掉落实体消失——自己那一份已经发过（上面），广播跳过自己。
+                                await BroadcastPickupToInstanceAsync(pickup);
 
                                 var refresh = CreateMainInventoryPacket(
                                     currentGold,
@@ -12904,6 +12968,7 @@ public sealed class EntranceService(
                                 await upgradePickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, upgradePickup);
+                                await BroadcastPickupToInstanceAsync(upgradePickup);
 
                                 var inventoryRefresh = CreateMainInventoryPacket(
                                     currentGold,
@@ -13031,6 +13096,7 @@ public sealed class EntranceService(
                                 await creaturePickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, creaturePickup);
+                                await BroadcastPickupToInstanceAsync(creaturePickup);
 
                                 foreach (var creatureRefresh in
                                          CreateCreatureInventoryPackets(
@@ -13106,6 +13172,7 @@ public sealed class EntranceService(
                                 await avatarPickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, avatarPickup);
+                                await BroadcastPickupToInstanceAsync(avatarPickup);
 
                                 var avatarRefresh = CreateAvatarInventoryPacket(
                                     avatarInventory.Values);
@@ -13155,6 +13222,7 @@ public sealed class EntranceService(
                             await itemPickup.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, itemPickup);
+                            await BroadcastPickupToInstanceAsync(itemPickup);
 
                             var itemRefresh = CreateMainInventoryPacket(
                                 currentGold,
@@ -13230,7 +13298,7 @@ public sealed class EntranceService(
                                                 dungeonNormalMonsterKills
                                                 + dungeonChampionMonsterKills
                                                 + dungeonBossMonsterKills,
-                                                partyMemberCount: 1,
+                                                partyMemberCount: dungeonInstance!.MemberCount,
                                                 bonuses: new DungeonClearBonusContext(
                                                     HasAvatar: avatarInventory.Values.Any(item =>
                                                         itemCatalog.TryGetDefinition(item.ItemId, out var avatar)
@@ -13305,7 +13373,7 @@ public sealed class EntranceService(
                                     HasActivePremiumService(
                                         GameProtocolEngine.BlackDiamondServiceType),
                                     !hasDungeonDefinition || settledDungeon.GoldCardUse,
-                                    partyMemberCount: 1,
+                                    partyMemberCount: dungeonInstance!.MemberCount,
                                     normalMonsterKills: dungeonNormalMonsterKills,
                                     championMonsterKills: dungeonChampionMonsterKills,
                                     bossMonsterKills: dungeonBossMonsterKills);
@@ -13320,7 +13388,9 @@ public sealed class EntranceService(
                                         premiumCardEnabled: HasActivePremiumService(
                                             GameProtocolEngine.BlackDiamondServiceType),
                                         premiumItemId: dungeonClearReward.PremiumItemId,
-                                        experience: settledClearExperience);
+                                        experience: settledClearExperience,
+                                        // 卡片屏高亮"自己那一列"（设计稿 §7 决策 3/6）；单人 = 0，零回归。
+                                        localPartyIndex: PartySlotIndexOfThisSession());
                                 await clearReward.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, clearReward);
@@ -13336,7 +13406,9 @@ public sealed class EntranceService(
                                     dungeonClearReward.FreeItemId,
                                     dungeonClearReward.PremiumItemId,
                                     dungeonClearReward.GoldItemId,
-                                    1);
+                                    // 日志口径与上面 Generate/CreateClearDungeonReward 的入参一致
+                                    // （原来写死 1，组队时会误导真机核对）。
+                                    dungeonInstance!.MemberCount);
                                 dungeonResultSent = true;
                                 if (dungeonMonsterExperienceGained > 0
                                     || settledClearExperience.TotalExperience > 0)
@@ -13514,7 +13586,9 @@ public sealed class EntranceService(
                                     DateTimeOffset.UtcNow
                                     + ClearRewardCardSelectionTimeout;
                                 var cardRights =
-                                    GameProtocolEngine.CreateCardSelectRightState();
+                                    GameProtocolEngine.CreateCardSelectRightState(
+                                        // 自己的卡片列（设计稿 §7 决策 3/6）；单人 = 0，零回归。
+                                        localPartyIndex: PartySlotIndexOfThisSession());
                                 await cardRights.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, cardRights);
