@@ -17,6 +17,8 @@ internal static class DungeonPartySmokeTests
         CheckInstanceMembershipLifecycle(check, fixture);
         CheckConcurrentKillSettlesOnce(check, fixture);
         CheckRoomSnapshotsAndPassiveDrops(check, fixture);
+        CheckLiveJoinDoesNotReplenishPassiveDrops(check, fixture);
+        CheckSharedCollectionAccessors(check, fixture);
         CheckDoorAssemblyRules(check);
         CheckRegistryEntryRequestMailbox(check, fixture);
         return Task.CompletedTask;
@@ -59,6 +61,10 @@ internal static class DungeonPartySmokeTests
         check(instance.RemoveMember(bravo) && instance.MemberCount == 1 && !instance.ContainsMember(bravo),
             "leaving removes exactly that member");
         check(!instance.RemoveMember(bravo), "removing an absent member is a no-op");
+
+        // 先起一局：解绑时的 StopRun 必须真的被断言到（不起 run 的话 !Run.IsActive 恒真）。
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _, random: fixture.Random),
+            "the party instance starts a run before its last member leaves");
 
         // 设计稿 §3.4：最后一个成员离开 → 实例就地销毁（注册表两张表都要摘掉，运行态清空）。
         registry.BindCharacter(alpha, instance);
@@ -132,6 +138,95 @@ internal static class DungeonPartySmokeTests
     }
 
     /// <summary>
+    /// "加入一个已经在跑的实例"（`CaptureCurrentRoomSnapshot`）不许把被动掉落重新登记一遍：
+    /// 判据必须是"这个房间登记过没有"，而不是"现在还剩几条掉落"——掉落被捡走（`Remove`）或 detach 后
+    /// 后者会归零，而房间定义里的 `PassiveItemSpawns` 是静态的，重登 = 新 GroundId + 客户端幽灵物件 = 复制道具。
+    /// 用 `EnterDetachedRoom`（教学副本路径）喂一个合成房间：不依赖 PVF 掉落脚本，跑的是同一条
+    /// `CaptureCurrentRoomSnapshot → RegisterRoomPassiveDropsLocked` 代码。
+    /// </summary>
+    private static void CheckLiveJoinDoesNotReplenishPassiveDrops(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        var room = DungeonFixture.Room(
+            [DungeonFixture.Monster(uniqueId: 0), DungeonFixture.Monster(uniqueId: 1)],
+            passiveDropCount: 2);
+        instance.EnterDetachedRoom(room);
+
+        var firstJoin = instance.CaptureCurrentRoomSnapshot(ownerUserId: 7);
+        check(firstJoin.PassiveObjectDrops.Length == 2
+                && firstJoin.PassiveObjectDrops.All(drop => drop.OwnerUserId == 7)
+                && instance.GetRoomGroundItems(0, 0).Length == 2,
+            "a live join registers the room passive drops exactly once");
+        var lootedGroundIds = instance.GetRoomGroundItems(0, 0)
+            .Select(item => item.GroundId)
+            .ToArray();
+
+        // 队友进来之前这批掉落已经被捡光（= DungeonGroundItemState.Remove）。
+        foreach (var groundId in lootedGroundIds)
+        {
+            instance.RemoveGroundItem(groundId);
+        }
+
+        var secondJoin = instance.CaptureCurrentRoomSnapshot(ownerUserId: 8);
+        check(secondJoin.PassiveObjectDrops.Length == 0
+                && instance.GetRoomGroundItems(0, 0).Length == 0,
+            "a live join must not re-register passive drops that were already looted");
+
+        // 换局/重开必须忘掉登记表：同一个实例再进这个房间时要重新登记（新 GroundId）。
+        instance.EnterDetachedRoom(room);
+        var reopened = instance.CaptureCurrentRoomSnapshot(ownerUserId: 9);
+        check(reopened.PassiveObjectDrops.Length == 2
+                && reopened.PassiveObjectDrops.All(drop => !lootedGroundIds.Contains(drop.GroundId)),
+            "re-entering the room after a reset registers a fresh passive drop set");
+    }
+
+    /// <summary>
+    /// 实例共享集合的锁内访问口（评审 Important 3）：裸集合一律 internal、只许在 `lock (Gate)` 内碰；
+    /// `TryReportBossDeath` 复刻改造前 BOSS_DIE_CHECK 的"上报 + 全 boss 到齐后级联"三句
+    /// （EntranceService.cs:12333-12341），并保持"同一 boss 重复上报幂等、不重复级联"。
+    /// </summary>
+    private static void CheckSharedCollectionAccessors(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        instance.EnterDetachedRoom(DungeonFixture.Room(
+            [
+                DungeonFixture.Monster(uniqueId: 0, type: GameDungeonMonsterTypes.Boss),
+                DungeonFixture.Monster(uniqueId: 1, type: GameDungeonMonsterTypes.Boss),
+                DungeonFixture.Monster(uniqueId: 2)
+            ]));
+
+        check(instance.AliveMonsterCount == 3,
+            "the alive monster count is read behind the instance gate");
+        var aliveCopy = instance.SnapshotAliveMonsters();
+        aliveCopy.Remove(0);
+        check(instance.AliveMonsterCount == 3 && instance.SnapshotAliveMonsters().SetEquals([0, 1, 2]),
+            "the alive monster snapshot is a copy that cannot corrupt the instance");
+
+        ushort[] bossIds = [0, 1];
+        check(instance.TryReportBossDeath(0, bossIds, out var allBossesReported)
+                && !allBossesReported && instance.ReportedBossDeathCount == 1,
+            "the first boss report is recorded without completing the boss list");
+        check(!instance.TryReportBossDeath(0, bossIds, out _) && instance.ReportedBossDeathCount == 1,
+            "a repeated boss report is idempotent");
+        check(instance.TryReportBossDeath(1, bossIds, out allBossesReported) && allBossesReported
+                && instance.ReportedBossDeathCount == 2
+                && instance.BossCascadeMonsterDeaths.SetEquals([2]),
+            "completing the boss list cascades the remaining non-boss monsters");
+
+        var droppedItem = new CharacterItemRecord(Slot: ushort.MaxValue, ItemId: 3, CountOrValue: 5);
+        var groundItem = instance.AddPlayerDroppedGroundItem(
+            droppedItem, ownerUserId: 7, roomX: 0, roomY: 0, x: 12, y: 34);
+        check(groundItem.ItemId == 3 && groundItem.CountOrValue == 5
+                && instance.TryGetGroundItem(groundItem.GroundId, 0, 0, out var found)
+                && ReferenceEquals(groundItem, found)
+                && instance.GetRoomGroundItems(0, 0).Length == 1,
+            "a player-dropped item is registered behind the instance gate");
+        instance.ResetGroundItems();
+        check(instance.GetRoomGroundItems(0, 0).Length == 0,
+            "resetting the dungeon drops every ground item");
+    }
+
+    /// <summary>
     /// 门口集结（设计稿 §3.3）：
     /// ①第一个请求只登记、不推进；②不同目标的请求忽略；③全员到齐立即推进；
     /// ④过半开 10 秒倒计时、到点强制推进；⑤推进后状态清空（下一次从零开始）。
@@ -151,7 +246,7 @@ internal static class DungeonPartySmokeTests
                 && assembly.PendingTarget == target,
             "the first door request only registers and waits");
         var wrongDoor = assembly.Register(other, bravo, memberCount: 4, now, Reply(bravo));
-        check(wrongDoor.Decision == DungeonDoorDecision.Ignored && first.Arrivals.Count == 1,
+        check(wrongDoor.Decision == DungeonDoorDecision.Ignored && wrongDoor.Arrivals.Count == 1,
             "a request for a different door is ignored");
         var second = assembly.Register(target, bravo, memberCount: 4, now, Reply(bravo));
         check(second.Decision == DungeonDoorDecision.Waiting,
@@ -175,6 +270,35 @@ internal static class DungeonPartySmokeTests
         check(complete.Decision == DungeonDoorDecision.Advance && !complete.Forced
                 && complete.Arrivals.Count == 3,
             "every member at the door advances immediately without waiting for the countdown");
+
+        // 单人（memberCount <= 1）：门口请求直接推进，不进等待/倒计时。
+        var solo = assembly.Register(target, alpha, memberCount: 1, now, Reply(alpha));
+        check(solo.Decision == DungeonDoorDecision.Advance && !solo.Forced && !assembly.IsWaiting,
+            "a single-member door request advances immediately");
+
+        // 人数缩水：4 人时 2 人到门口只是 Waiting；只剩 3 人时 2/3 已过半，扫描循环必须能重新评估，
+        // 否则这批人既拿不到 CMD 48 回包、也永远换不了房间。
+        assembly.Register(target, alpha, memberCount: 4, now, Reply(alpha));
+        assembly.Register(target, bravo, memberCount: 4, now, Reply(bravo));
+        var shrunk = assembly.TryAdvanceOnCountdown(now, memberCount: 3);
+        check(shrunk is { Decision: DungeonDoorDecision.StartedCountdown, Forced: false }
+                && shrunk.CountdownDeadline == now + DungeonDoorAssembly.Countdown,
+            "a shrinking roster re-evaluates the door into a countdown");
+        check(assembly.TryAdvanceOnCountdown(now, memberCount: 3) is null,
+            "re-evaluating again before the deadline changes nothing");
+        var shrunkForced = assembly.TryAdvanceOnCountdown(
+            now + DungeonDoorAssembly.Countdown, memberCount: 3);
+        check(shrunkForced is { Decision: DungeonDoorDecision.Advance, Forced: true }
+                && !assembly.IsWaiting && assembly.CountdownDeadline is null,
+            "the re-evaluated countdown still expires into a forced advance");
+
+        // 人数缩到与到门口人数相等 → 与 Register 的全员到齐走同一条路径（不必等倒计时）。
+        assembly.Register(target, alpha, memberCount: 4, now, Reply(alpha));
+        assembly.Register(target, bravo, memberCount: 4, now, Reply(bravo));
+        var settled = assembly.TryAdvanceOnCountdown(now, memberCount: 2);
+        check(settled is { Decision: DungeonDoorDecision.Advance, Forced: false }
+                && settled.Arrivals.Count == 2 && !assembly.IsWaiting,
+            "a roster shrinking to the arrived headcount advances immediately");
 
         static GameServerPacket Reply(Guid _) =>
             GameProtocolEngine.CreateCommandReply(
@@ -253,6 +377,42 @@ internal sealed class DungeonFixture : IDisposable
     public ItemCatalog Items { get; }
     public ZeroDropRandomSource Random { get; }
     public DungeonLayout Layout { get; }
+
+    /// <summary>合成怪：只关心 UniqueId 与 Type（`EnterDetachedRoom` 路径不经过 PVF 解析）。</summary>
+    public static GameDungeonMonster Monster(ushort uniqueId, byte type = GameDungeonMonsterTypes.Normal) =>
+        new(MapListIndex: checked((byte)uniqueId), uniqueId, MonsterIndex: 1, Level: 2, Type: type);
+
+    /// <summary>
+    /// 合成房间（喂 `EnterDetachedRoom` 的"教学副本"路径）：`passiveDropCount` 个被动掉落。
+    /// 用金币是为了不依赖物品脚本——`CreateGeneratedItem` 对金币直接返回 null，
+    /// `GetClientAddInfo` 也走 `CountOrValue` 直通；非金币会落到 `CharacterItemWireProjection`。
+    /// </summary>
+    public static DungeonRoomDefinition Room(
+        GameDungeonMonster[] monsters,
+        int passiveDropCount = 0)
+    {
+        var spawns = new DungeonPassiveItemSpawn[passiveDropCount];
+        for (var index = 0; index < passiveDropCount; index++)
+        {
+            spawns[index] = new DungeonPassiveItemSpawn(
+                PassiveObjectIndex: checked((byte)index),
+                AssociationSlot: checked((byte)index),
+                new DungeonGeneratedDrop(IsGold: true, ItemId: 0, CountOrValue: 100))
+            {
+                X = 100,
+                Y = 100
+            };
+        }
+
+        return new DungeonRoomDefinition(
+            MapId: 2,
+            DungeonMapType.Normal,
+            monsters,
+            Topology: 'P',
+            HasScriptBossActor: false,
+            PassiveObjects: [],
+            PassiveItemSpawns: spawns);
+    }
 
     /// <summary>单人实例工厂（键 = 角色 id）。</summary>
     public DungeonInstance CreateSoloInstance(Guid characterId) =>

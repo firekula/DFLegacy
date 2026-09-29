@@ -30,6 +30,7 @@ internal sealed record DungeonDoorOutcome(
 /// <summary>
 /// 「门口集结制」换房间（设计稿 §3.3，用户 2026-09-29 拍板）：第一个 CMD 48 只登记目标房间与到门口的人；
 /// 全员到齐 → 立即推进；过半（&gt; 人数/2）→ 10 秒倒计时，到点由扫描循环强制推进。
+/// 人数缩水（有人退队/回城）由扫描循环 <see cref="TryAdvanceOnCountdown"/> 带着新的 memberCount 重新评估。
 /// 纯状态机：不碰锁、不碰 IO、时间由调用方传入（可单测）。调用方负责在实例锁内使用。
 /// </summary>
 internal sealed class DungeonDoorAssembly
@@ -66,12 +67,36 @@ internal sealed class DungeonDoorAssembly
         return Evaluate(memberCount, now, characterId);
     }
 
-    /// <summary>倒计时到点 → 强制推进；未到点或没有集结时返回 null。</summary>
+    /// <summary>
+    /// 扫描循环用（人数会在等待期间缩水）：① 到齐 → 立即推进；② 过半且还没起倒计时 → 起倒计时；
+    /// ③ 倒计时到点 → 强制推进；④ 其余返回 null（调用方只记日志、不改房间）。
+    /// 没有 ①② 两次重估，人一走少剩下的人就永远卡在门口：既拿不到 CMD 48 回包，也不会过半。
+    /// </summary>
     public DungeonDoorOutcome? TryAdvanceOnCountdown(DateTimeOffset now, int memberCount)
     {
-        if (PendingTarget is null
-            || CountdownDeadline is not { } deadline
-            || now < deadline)
+        if (PendingTarget is null)
+        {
+            return null;
+        }
+
+        // 严格大于 1：单人没有"集结"这回事，别把 memberCount 缩到 1 之后的等待当成到齐。
+        if (memberCount > 1 && AllArrived(memberCount))
+        {
+            return TakeAllArrivedAdvance();
+        }
+
+        // 人数缩水可能让"过半"第一次成立（4 人时 2 人 Waiting → 剩 3 人时 2/3 已过半）。
+        if (CountdownDeadline is null && _arrivals.Count * 2 > memberCount)
+        {
+            CountdownDeadline = now + Countdown;
+            return new DungeonDoorOutcome(
+                DungeonDoorDecision.StartedCountdown,
+                [.. _arrivals],
+                Forced: false,
+                CountdownDeadline);
+        }
+
+        if (CountdownDeadline is not { } deadline || now < deadline)
         {
             return null;
         }
@@ -94,15 +119,9 @@ internal sealed class DungeonDoorAssembly
 
     private DungeonDoorOutcome Evaluate(int memberCount, DateTimeOffset now, Guid lastArrival)
     {
-        if (memberCount <= 1 || _arrivals.Count >= memberCount)
+        if (memberCount <= 1 || AllArrived(memberCount))
         {
-            var outcome = new DungeonDoorOutcome(
-                DungeonDoorDecision.Advance,
-                [.. _arrivals],
-                Forced: false,
-                CountdownDeadline);
-            Reset();
-            return outcome;
+            return TakeAllArrivedAdvance();
         }
 
         // 过半（> 人数/2）→ 开倒计时；倒计时期间又有人到齐 → 上面的分支立即推进。
@@ -118,5 +137,20 @@ internal sealed class DungeonDoorAssembly
 
         _ = lastArrival;
         return new DungeonDoorOutcome(DungeonDoorDecision.Waiting, [.. _arrivals], false, CountdownDeadline);
+    }
+
+    /// <summary>到门口的人数已达到当前人数（人数缩水后同样成立）。</summary>
+    private bool AllArrived(int memberCount) => _arrivals.Count >= memberCount;
+
+    /// <summary>全员到齐的推进结果：逐字复用（不再等倒计时），并清空本次集结。</summary>
+    private DungeonDoorOutcome TakeAllArrivedAdvance()
+    {
+        var outcome = new DungeonDoorOutcome(
+            DungeonDoorDecision.Advance,
+            [.. _arrivals],
+            Forced: false,
+            CountdownDeadline);
+        Reset();
+        return outcome;
     }
 }

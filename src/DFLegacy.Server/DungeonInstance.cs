@@ -51,6 +51,9 @@ internal sealed record DungeonInstanceRoomSnapshot(
 /// 一个副本实例（设计稿 §3.1）：每队一份；单人 = 以角色 id 为键的实例（设计稿 §7 决策 1）。
 /// 房间/已杀怪/掉落/房间开放集中在这里，用 <see cref="Gate"/> 保护：
 /// 锁内改状态并取快照，出锁再发包（沿用 PartyService/ItemTradeService 的并发约定）。
+/// 共享集合（`AliveMonsters`/`ReportedBossDeaths`/`BossCascadeMonsterDeaths`/`DestroyedPassiveObjects`/`GroundItems`）
+/// 一律 internal：**只允许在 `lock (Gate)` 内访问**（本类内部，或后续 Task 在实例锁内拿它们写实现）；
+/// 会话代码不许持裸句柄跨线程读写，只走本类的锁内方法（`SnapshotAliveMonsters`/`GetRoomGroundItems`/…）。
 /// </summary>
 internal sealed class DungeonInstance(
     ushort partyId,
@@ -60,6 +63,11 @@ internal sealed class DungeonInstance(
 {
     private readonly List<DungeonInstanceMember> _members = [];
     private readonly DungeonRunState _run = new(catalog);
+
+    // 被动掉落"登记过"的房间。判据必须是这个集合，而不是"现在还剩几条掉落"：
+    // 捡走（Remove）/detach 会让后者归零，而房间定义里的 PassiveItemSpawns 是静态的。
+    private readonly HashSet<DungeonRoomPosition> _registeredPassiveRooms = [];
+
     private DungeonRoomDefinition? _detachedRoom;
 
     public ushort PartyId { get; } = partyId;
@@ -79,16 +87,20 @@ internal sealed class DungeonInstance(
 
     public DungeonRunState Run => _run;
 
-    public DungeonGroundItemState GroundItems { get; } = new();
+    /// <summary>实例的地面掉落。**只允许在 <see cref="Gate"/> 内访问**；会话走 `GetRoomGroundItems`/`AddGroundItem` 等方法。</summary>
+    internal DungeonGroundItemState GroundItems { get; } = new();
 
-    /// <summary>本房间还活着的怪（换房间时按新房间重建，与改造前的 aliveDungeonMonsters 同口径）。</summary>
-    public HashSet<ushort> AliveMonsters { get; } = [];
+    /// <summary>本房间还活着的怪（换房间时按新房间重建，与改造前的 aliveDungeonMonsters 同口径）。**只允许在 <see cref="Gate"/> 内访问**。</summary>
+    internal HashSet<ushort> AliveMonsters { get; } = [];
 
-    public HashSet<ushort> ReportedBossDeaths { get; } = [];
+    /// <summary>BOSS_DIE_CHECK 已上报的 boss。**只允许在 <see cref="Gate"/> 内访问**；会话走 <see cref="TryReportBossDeath"/>。</summary>
+    internal HashSet<ushort> ReportedBossDeaths { get; } = [];
 
-    public HashSet<ushort> BossCascadeMonsterDeaths { get; } = [];
+    /// <summary>全部 boss 上报后要一起死的怪（改造前的 bossCascadeMonsterDeaths）。**只允许在 <see cref="Gate"/> 内访问**。</summary>
+    internal HashSet<ushort> BossCascadeMonsterDeaths { get; } = [];
 
-    public HashSet<byte> DestroyedPassiveObjects { get; } = [];
+    /// <summary>已 destroy 的被动物件 index。**只允许在 <see cref="Gate"/> 内访问**；会话走 <see cref="TryMarkPassiveObjectDestroyed"/>。</summary>
+    internal HashSet<byte> DestroyedPassiveObjects { get; } = [];
 
     public DungeonDoorAssembly Doors { get; } = new();
 
@@ -188,6 +200,7 @@ internal sealed class DungeonInstance(
             Layout = layout;
             ClearEnabled = false;
             _detachedRoom = null;
+            _registeredPassiveRooms.Clear();
             ResetRoomCollections(transition.Room.Monsters);
             Doors.Reset();
             Version++;
@@ -205,6 +218,7 @@ internal sealed class DungeonInstance(
             Layout = null;
             DungeonOption = 0;
             ClearEnabled = false;
+            _registeredPassiveRooms.Clear();
             ResetRoomCollections(room.Monsters);
             Doors.Reset();
             Version++;
@@ -250,6 +264,71 @@ internal sealed class DungeonInstance(
             _run.MarkMonsterDefeated(uniqueId);
             Version++;
             return true;
+        }
+    }
+
+    /// <summary>本房间还活着的怪数量（锁内；会话的日志/判定用）。</summary>
+    public int AliveMonsterCount
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return AliveMonsters.Count;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 存活怪的锁内拷贝：喂 `DungeonRoomClearRules.Evaluate` 与"级联杀"的差集。
+    /// 裸 `HashSet` 会给两个会话互相改坏的机会，所以只给拷贝。
+    /// </summary>
+    public HashSet<ushort> SnapshotAliveMonsters()
+    {
+        lock (Gate)
+        {
+            return [.. AliveMonsters];
+        }
+    }
+
+    /// <summary>
+    /// BOSS_DIE_CHECK 上报（改造前 `EntranceService.cs:12333-12341` 的三句）：上报的 boss 覆盖
+    /// <paramref name="roomBossIds"/> 全部时，把存活集合里不属于 boss 的怪并进级联死亡集合。
+    /// 返回 false = 这个 bossId 之前已上报（幂等：不重复级联、不重复加版本）。
+    /// </summary>
+    public bool TryReportBossDeath(
+        ushort bossId,
+        IReadOnlyCollection<ushort> roomBossIds,
+        out bool allBossesReported)
+    {
+        lock (Gate)
+        {
+            var firstReport = ReportedBossDeaths.Add(bossId);
+            allBossesReported = roomBossIds.All(ReportedBossDeaths.Contains);
+            if (firstReport && allBossesReported)
+            {
+                BossCascadeMonsterDeaths.UnionWith(
+                    AliveMonsters.Where(monsterId => !roomBossIds.Contains(monsterId)));
+            }
+
+            if (firstReport)
+            {
+                Version++;
+            }
+
+            return firstReport;
+        }
+    }
+
+    /// <summary>已上报的 boss 数（锁内；日志用）。</summary>
+    public int ReportedBossDeathCount
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return ReportedBossDeaths.Count;
+            }
         }
     }
 
@@ -333,6 +412,7 @@ internal sealed class DungeonInstance(
             Layout = null;
             DungeonOption = 0;
             ClearEnabled = false;
+            _registeredPassiveRooms.Clear();
             ResetRoomCollections([]);
             Doors.Reset();
             Version++;
@@ -415,7 +495,10 @@ internal sealed class DungeonInstance(
             var roomX = _run.IsActive ? _run.RoomX : (byte)0;
             var roomY = _run.IsActive ? _run.RoomY : (byte)0;
             var registered = GetRoomPassiveDropsLocked(roomX, roomY);
-            var drops = registered.Length > 0 || room.PassiveItemSpawns.Length == 0
+            // 判据是"这个房间登记过没有"。用 registered.Length > 0 会在掉落被捡光/detach 后
+            // 误判成"没登记过"，把房间定义里的 PassiveItemSpawns 再登记一遍 → 新 GroundId +
+            // 客户端多出幽灵被动物件 → 复制道具（后进队的会话正好走这条路径）。
+            var drops = _registeredPassiveRooms.Contains(new DungeonRoomPosition(roomX, roomY))
                 ? registered
                 : RegisterRoomPassiveDropsLocked(room, ownerUserId, roomX, roomY);
             var (hellX, hellY) = HellRoomPositionLocked();
@@ -484,11 +567,37 @@ internal sealed class DungeonInstance(
         }
     }
 
+    /// <summary>玩家主动丢弃（CMD DropItem；改造前 `groundDungeonItems.AddPlayerDropped`，EntranceService.cs:11194）。</summary>
+    public DungeonGroundItem AddPlayerDroppedGroundItem(
+        CharacterItemRecord droppedItem,
+        ushort ownerUserId,
+        byte roomX,
+        byte roomY,
+        short x,
+        short y)
+    {
+        lock (Gate)
+        {
+            var item = GroundItems.AddPlayerDropped(droppedItem, ownerUserId, roomX, roomY, x, y);
+            Version++;
+            return item;
+        }
+    }
+
     public bool TryGetGroundItem(ushort groundId, byte roomX, byte roomY, out DungeonGroundItem item)
     {
         lock (Gate)
         {
             return GroundItems.TryGet(groundId, roomX, roomY, out item);
+        }
+    }
+
+    /// <summary>本房间的地面掉落（锁内拷贝；被动掉落 + 玩家丢弃，调用方出锁遍历）。</summary>
+    public DungeonGroundItem[] GetRoomGroundItems(byte roomX, byte roomY)
+    {
+        lock (Gate)
+        {
+            return [.. GroundItems.GetRoomItems(roomX, roomY)];
         }
     }
 
@@ -503,6 +612,16 @@ internal sealed class DungeonInstance(
 
             Version++;
             return true;
+        }
+    }
+
+    /// <summary>回城 / 重开：清空地面掉落（改造前 `groundDungeonItems.ResetDungeon()`，EntranceService.cs:2630/3483/11773/11976）。</summary>
+    public void ResetGroundItems()
+    {
+        lock (Gate)
+        {
+            GroundItems.ResetDungeon();
+            Version++;
         }
     }
 
@@ -553,6 +672,8 @@ internal sealed class DungeonInstance(
         byte roomX,
         byte roomY)
     {
+        // 登记表在添加之前落笔：只要进过这条路径，这个房间的被动掉落就"登记过了"。
+        _registeredPassiveRooms.Add(new DungeonRoomPosition(roomX, roomY));
         var result = new List<GamePassiveObjectDrop>(room.PassiveItemSpawns.Length);
         foreach (var spawn in room.PassiveItemSpawns)
         {
