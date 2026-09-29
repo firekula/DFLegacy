@@ -217,6 +217,17 @@ public sealed class DungeonPeerProbeOptions
     /// <summary>PartyPush 模式下是否顺带互推各成员的 USERINFO(mode 0)（副本内队伍槽位要靠它解析出 user 对象）。</summary>
     public bool PushAppearances { get; set; } = true;
 
+    /// <summary>
+    /// PartyPush 模式下**额外**做一次城镇目录的区域注册（= 原 AreaRecycle 那套：外观 → AREA_USERS/USER_AREA）。
+    /// 静态证据：客户端全二进制里能给"外来 uid"创建地图角色的只有 NOTI 23/24 两条路径
+    /// （USER_AREA/AREA_USERS，0x41EAB0 / 0x41EEAF），NOTI 28 对队员的调用只能配置已有对象。
+    /// 所以副本内要让队友被画出来，两套必须一起用：推送把人带进副本，区域条目在副本地图里建角色。
+    /// </summary>
+    public bool AreaRecycle { get; set; } = false;
+
+    /// <summary>区域注册的延迟毫秒数（等客户端把副本地图加载完，否则角色会建在城镇地图上）。</summary>
+    public int AreaRecycleDelayMs { get; set; } = 2000;
+
     /// <summary>AreaRecycle 模式：true = 用会话当前的城镇/区域注册（客户端能识别），false = 用下面两个值。</summary>
     public bool UseSessionArea { get; set; } = true;
 

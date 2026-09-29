@@ -11966,6 +11966,28 @@ public sealed class EntranceService(
                             }
                             else
                             {
+                                // 延迟到客户端把副本地图加载完之后再做区域注册：早于地图就绪时，
+                                // AREA_USERS 建出的角色会落在城镇地图上、随切图被销毁。
+                                if (options.Debug.DungeonPeerProbe is { Enabled: true, AreaRecycle: true })
+                                {
+                                    var areaRecycleDelay = TimeSpan.FromMilliseconds(
+                                        Math.Max(0, options.Debug.DungeonPeerProbe.AreaRecycleDelayMs));
+                                    _ = Task.Run(async () =>
+                                    {
+                                        try
+                                        {
+                                            await Task.Delay(areaRecycleDelay);
+                                            await EnterDungeonPeerProbeAsync(CancellationToken.None);
+                                        }
+                                        catch (Exception exception) when (exception is not OperationCanceledException)
+                                        {
+                                            logger.LogDebug(
+                                                exception,
+                                                "Dungeon peer probe: delayed area registration failed.");
+                                        }
+                                    });
+                                }
+
                                 await PushPartyDungeonEntryProbeAsync(
                                     dungeonId,
                                     difficulty,
