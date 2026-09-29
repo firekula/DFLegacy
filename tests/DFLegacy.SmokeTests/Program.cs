@@ -21,6 +21,7 @@ await TownSyncSmokeTests.RunAsync(Check);
 await FriendSmokeTests.RunAsync(Check);
 await TradeSmokeTests.RunAsync(Check);
 await PartySmokeTests.RunAsync(Check);
+await DungeonPartySmokeTests.RunAsync(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 QuestMapSmokeTests.Run(Check);
