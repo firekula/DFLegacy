@@ -2429,6 +2429,99 @@ public sealed class EntranceService(
                         "Party member {Name} (uid {UserId}, slot {Slot}) entered dungeon {DungeonId} instance {PartyId} room ({RoomX},{RoomY}) map {MapId}.",
                         activeCharacter.Name, localUserId, slotIndex,
                         request.DungeonId, request.PartyId, room.RoomX, room.RoomY, room.MapId);
+                    // 队友可见性：补发自己的区域条目，让**对方客户端**把本角色加进它的当前地图
+                    // （真机 2026-09-29 内存读数：不发的后果见 PushPartyAreaEntryAsync 注释）。
+                    SchedulePartyAreaEntries(instance, "member-entry");
+                }
+
+                // 副本房间地图的出生点（`[dungeon start area]`，从 Script.pvf 抄来的固定表）。
+                // 副本里客户端一条位置包都不发（探针实测 CMD 37 = 0），服务端拿不到任何真实坐标，
+                // 补发区域条目时只能用它当落点。
+                static (short X, short Y) DungeonSpawnFor(ushort mapId) => mapId switch
+                {
+                    2 => (272, 377),
+                    3 => (787, 330),
+                    4 => (775, 314),
+                    _ => (272, 377),
+                };
+
+                // 副本内的"区域条目"（USER_AREA / NOTI 23）——**这是外来 uid 进入当前地图的唯一路径**：
+                // IDA 证据：客户端把 creature 加进当前地图的调用（`AddCreature`）只从 NOTI 23/24 两个处理体走，
+                // NOTI 23 处理体在"区域匹配（包里的 town/area == 本机场景区域）"时执行
+                // `sub_4C7AE0(18, uid, creature, 0, 0)` = 建角色 + 加入当前地图。
+                // 真机内存读数（2026-09-29）：不发的后果是**对方的 user 记录在、creature 也在，
+                // 但没进当前地图**（creature 不被 mapMgr 引用），队伍 HUD 与渲染都拿不到它
+                // → 两人互相看不见。补发后由客户端自己完成"加入当前地图"（服务端不再管位置）。
+                // 只在组队实例里发；单人**一字不发**（零回归红线）。
+                // 多轮补播：两端的副本地图加载完成时刻不同步，只发一遍容易落在"记录还没就绪"的窗口里。
+                async Task PushPartyAreaEntryAsync(
+                    DungeonInstance instance,
+                    string reason,
+                    CancellationToken cancellationToken)
+                {
+                    if (!instance.IsParty
+                        || activeCharacter is null
+                        || currentDungeonId == 0
+                        || currentDungeonRoom is null)
+                    {
+                        return;
+                    }
+
+                    var (spawnX, spawnY) = DungeonSpawnFor(currentDungeonRoom.MapId);
+                    var entry = GameProtocolEngine.CreateUserArea(
+                        currentTownId,
+                        currentAreaId,
+                        new GameTownUser(localUserId, spawnX, spawnY, currentDirection),
+                        active: true);
+                    var delivered = await partyService.SendToOtherMembersAsync(
+                        activeCharacter.Id, entry, cancellationToken);
+                    logger.LogInformation(
+                        "Party area entry ({Reason}) for {Name} (uid {UserId}) at {TownId}/{AreaId} ({X},{Y}) delivered to {Count} member(s) — dungeon spawn point.",
+                        reason, activeCharacter.Name, localUserId, currentTownId, currentAreaId,
+                        spawnX, spawnY, delivered);
+                }
+
+                // 两轮补播（+1.5s / +5s）：覆盖两端副本地图加载完成的先后差。
+                void SchedulePartyAreaEntries(DungeonInstance instance, string reason)
+                {
+                    if (!instance.IsParty || activeCharacter is null)
+                    {
+                        return;
+                    }
+
+                    var characterId = activeCharacter.Id;
+                    _ = Task.Run(async () =>
+                    {
+                        var elapsed = TimeSpan.Zero;
+                        foreach (var target in new[] { TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(5) })
+                        {
+                            try
+                            {
+                                await Task.Delay(target - elapsed, serverToken);
+                                elapsed = target;
+                                // 还在同一个实例、同一个房间时才补（换房/回城就不补了）。
+                                if (dungeonInstanceRegistry.TryGetForCharacter(characterId) is not { } bound
+                                    || !ReferenceEquals(bound, instance))
+                                {
+                                    return;
+                                }
+
+                                await PushPartyAreaEntryAsync(instance, reason, serverToken);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                return;
+                            }
+                            catch (Exception exception)
+                            {
+                                logger.LogDebug(
+                                    exception,
+                                    "Party area entry ({Reason}) failed for {CharacterId}.",
+                                    reason, characterId);
+                                return;
+                            }
+                        }
+                    });
                 }
 
                 // 队友击杀的经验信用（真机 2026-09-29）：与击杀者那条路径同一套算法，
@@ -12389,6 +12482,8 @@ public sealed class EntranceService(
                                 logger.LogInformation(
                                     "Dungeon {DungeonId} party instance {PartyId} ready; entry requests posted to {Count} member(s).",
                                     dungeonId, dungeonInstance!.PartyId, posted);
+                                // 队友可见性：队长也补发自己的区域条目（与队员侧同一套）。
+                                SchedulePartyAreaEntries(dungeonInstance!, "leader-entry");
                             }
                             logger.LogInformation(
                                 "Dungeon {DungeonId} selected maze {MazeIndex}, start ({StartX},{StartY}), boss ({BossX},{BossY}), start map {MapId}, monsters={MonsterCount}, champions={ChampionCount}, mapChampionBase={MapChampionBase}, clientSeed={ClientSeed}, hellMode={HellMode}, partyMode={HellPartyMode}, ticket={TicketItemId}.",
