@@ -50,6 +50,8 @@ builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequired
 // 组队通道与队伍表跨连接共享；托管后台扫描（超时收尾），单例与托管服务必须是同一个实例。
 builder.Services.AddSingleton<PartyService>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<PartyService>());
+// 副本实例表跨连接共享（设计稿 §3.1）：单人 = 以角色 id 为键的实例，组队 = 以队伍 id 为键。
+builder.Services.AddSingleton<DungeonInstanceRegistry>();
 builder.Services.AddSingleton(serviceProvider =>
 {
     // 区用户 id 池只接受 1..65535。MaximumUsers 以前超出这个范围只是无意义，现在会让

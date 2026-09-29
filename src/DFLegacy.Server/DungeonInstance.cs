@@ -556,12 +556,21 @@ internal sealed class DungeonInstance(
         byte roomX,
         byte roomY,
         short x,
-        short y)
+        short y,
+        CharacterItemRecord? preservedItem = null)
     {
         lock (Gate)
         {
             var item = GroundItems.Add(
-                drop, ownerUserId, sourceMonsterUniqueId, roomX, roomY, x: x, y: y, catalog: itemCatalog);
+                drop,
+                ownerUserId,
+                sourceMonsterUniqueId,
+                roomX,
+                roomY,
+                preservedItem,
+                x: x,
+                y: y,
+                catalog: itemCatalog);
             Version++;
             return item;
         }

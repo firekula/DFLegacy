@@ -17,6 +17,7 @@ public sealed class EntranceService(
     FriendService friendService,
     ItemTradeService itemTradeService,
     PartyService partyService,
+    DungeonInstanceRegistry dungeonInstanceRegistry,
     SkillCatalog skillCatalog,
     QuestCatalog questCatalog,
     CharacterExperienceCatalog experienceCatalog,
@@ -273,17 +274,19 @@ public sealed class EntranceService(
             byte currentDungeonDifficulty = 0;
             DungeonLayout? currentDungeonLayout = null;
             DungeonRoomDefinition? currentDungeonRoom = null;
-            var aliveDungeonMonsters = new HashSet<ushort>();
-            var reportedBossDeaths = new HashSet<ushort>();
-            var bossCascadeMonsterDeaths = new HashSet<ushort>();
-            var destroyedPassiveObjects = new HashSet<byte>();
-            var groundDungeonItems = new DungeonGroundItemState();
-            var dungeonRun = new DungeonRunState(dungeonCatalog);
+            // 副本实例（设计稿 §3.1）：单人 = 以自己角色 id 为键的实例；队员入场时换成队伍的实例。
+            // 会话不再各存一份运行态与共享集合（存活怪/boss 上报/级联死亡/被动物件/地面掉落）：
+            // 它们的主人都是这个实例，会话只经实例的锁内方法读写。
+            DungeonInstance? dungeonInstance = null;
+            long dungeonInstanceVersion = -1;
+
+            // 本会话读"当前实例运行态"的只读直通：只用于只读取值（房间/地狱模式标记）或
+            // "本会话自己刚改过"的读。共享集合一律走实例的锁内方法，不从这里拿裸句柄。
+            DungeonRunState DungeonRun() => dungeonInstance!.Run;
             var tutorialDungeonActive = false;
             var dungeonCharacterAlive = true;
             long dungeonDeathGeneration = 0;
             (long Generation, DateTimeOffset Deadline)? dungeonDeathTimeout = null;
-            var dungeonClearEnabled = false;
             var dungeonResultSent = false;
             var dungeonCardLayoutSent = false;
             var dungeonCardRightsSent = false;
@@ -893,7 +896,7 @@ public sealed class EntranceService(
                 async Task EnableEmptyBossRoomSettlementAsync(DungeonRoomDefinition room)
                 {
                     if (room.Monsters.Length != 0
-                        || dungeonClearEnabled
+                        || dungeonInstance?.ClearEnabled == true
                         || room.MapType != DungeonMapType.Boss)
                     {
                         return;
@@ -902,7 +905,9 @@ public sealed class EntranceService(
                     // War-room scripts (2000-2002) use timed dynamic spawns
                     // rather than static .map monster rows. Until that mode is
                     // simulated, an empty terminal room must remain settleable.
-                    dungeonClearEnabled = true;
+                    // TryEnableClear 的返回值就是"从关到开"，与改造前的 !dungeonClearEnabled 同口径
+                    // （调用方已经判过，这里只落状态）。
+                    dungeonInstance!.TryEnableClear();
                     var enableClear = GameProtocolEngine.CreateEnableClearDungeon();
                     await enableClear.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
@@ -2451,11 +2456,11 @@ public sealed class EntranceService(
                             questCatalog.TryGetDefinition(
                                 quest.QuestId,
                                 out var definition)
-                            && ((dungeonClearEnabled
+                            && ((dungeonInstance?.ClearEnabled == true
                                     && QuestDungeonClearRequirement.IsSimpleClear(definition)
                                     && QuestDungeonClearRequirement.Matches(
                                         definition, currentDungeonId, currentDungeonDifficulty))
-                                || dungeonRun.HasClearedMap(
+                                || dungeonInstance!.HasClearedMap(
                                     QuestMapRequirement.GetTargetMapId(definition))))
                         .Select(quest => quest.QuestId)
                         .ToHashSet();
@@ -2521,6 +2526,31 @@ public sealed class EntranceService(
                     logger.LogInformation(
                         "World map {WorldMapId} eligibility for {CharacterId}: hellQuests={QuestsMet}, missingHellItems={MissingItems}.",
                         selectionWorldMap?.Id, activeCharacter?.Id, questsMet, missingItems);
+                }
+
+                // 把实例的权威状态抄进会话的 currentDungeon* 局部量（只抄，不判逻辑）。
+                // 换算口径与改造前各赋值点完全一致：房间坐标/房间/布局/难度都取自实例。
+                // 教学副本例外：实例的 detached room 没有 PVF 迷宫（DungeonId=0），会话的合成
+                // id（TutorialDungeonId=10000）保留；否则后续的版本刷新会把"在副本内"抹成 0。
+                void ApplyDungeonInstanceSnapshot(DungeonInstanceSnapshot snapshot)
+                {
+                    dungeonInstanceVersion = snapshot.Version;
+                    currentDungeonLayout = snapshot.Layout;
+                    currentDungeonRoomX = snapshot.RoomX;
+                    currentDungeonRoomY = snapshot.RoomY;
+                    currentDungeonRoom = snapshot.Room;
+                    if (snapshot.Room is null)
+                    {
+                        currentDungeonId = 0;
+                        currentDungeonDifficulty = 0;
+                        return;
+                    }
+
+                    if (snapshot.DungeonId != 0)
+                    {
+                        currentDungeonId = snapshot.DungeonId;
+                        currentDungeonDifficulty = snapshot.Difficulty;
+                    }
                 }
 
                 async Task ReturnToTownFromDungeonAsync(
@@ -2595,7 +2625,7 @@ public sealed class EntranceService(
                             activeCharacter.Level,
                             forcedDungeonExit,
                             dungeonActive: leavingDungeonId != 0,
-                            dungeonCleared: dungeonClearEnabled,
+                            dungeonCleared: dungeonInstance?.ClearEnabled == true,
                             hasBlackDiamond))
                     {
                         var weakenedCharacter = await store.SetCharacterWeaknessRecoveryAsync(
@@ -2623,18 +2653,26 @@ public sealed class EntranceService(
                     inDungeonSelection = false;
                     dungeonSelectionDeadline = null;
                     selectionWorldMap = null;
-                    aliveDungeonMonsters.Clear();
-                    reportedBossDeaths.Clear();
-                    bossCascadeMonsterDeaths.Clear();
-                    destroyedPassiveObjects.Clear();
-                    groundDungeonItems.ResetDungeon();
-                    dungeonRun.Stop();
+                    dungeonInstance?.ResetGroundItems();
+                    dungeonInstance?.StopRun();
+                    if (dungeonInstance is not null)
+                    {
+                        ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
+                    }
+
+                    if (activeCharacter is not null)
+                    {
+                        // 回城 = 本角色离开实例；最后一个成员离开时实例就地销毁（设计稿 §3.4）。
+                        dungeonInstanceRegistry.UnbindCharacter(activeCharacter.Id);
+                    }
+
+                    dungeonInstance = null;
+                    dungeonInstanceVersion = -1;
                     tutorialDungeonActive = false;
                     dungeonCharacterAlive = true;
                     dungeonDeathGeneration++;
                     dungeonDeathTimeout = null;
                     currentDungeonDifficulty = 0;
-                    dungeonClearEnabled = false;
                     dungeonResultSent = false;
                     dungeonCardLayoutSent = false;
                     dungeonCardRightsSent = false;
@@ -2874,8 +2912,8 @@ public sealed class EntranceService(
                 {
                     if (activeCharacter is null
                         || !tutorialDungeonActive
-                        || !dungeonClearEnabled
-                        || aliveDungeonMonsters.Count != 0)
+                        || dungeonInstance?.ClearEnabled != true
+                        || dungeonInstance!.AliveMonsterCount != 0)
                     {
                         logger.LogWarning(
                             "Ignored tutorial completion because its room is not cleared for user {UserId}.",
@@ -3192,6 +3230,30 @@ public sealed class EntranceService(
                         break;
                     }
 
+                    // 副本实例的权威状态可能被别的成员（击杀/换房间）或倒计时扫描推进：
+                    // 会话在自己的主循环顶部按版本号决定要不要刷新镜像（设计稿 §3.1）。
+                    // 只有"本会话不在实例当前房间里"才抄房间本身：currentDungeonRoom 的既有语义是
+                    // "进入本房间时的房间定义快照"——BOSS_DIE_CHECK 的 bossIds 与 START_MAP 的怪物表
+                    // 都依赖它仍包含已死的 boss/怪，房间内的击杀/掉落只记版本、不覆盖这个快照。
+                    // （本会话自己换房间的四个点已经显式调用 ApplyDungeonInstanceSnapshot。）
+                    if (dungeonInstance is not null)
+                    {
+                        var dungeonSnapshot = dungeonInstance.Snapshot();
+                        if (dungeonSnapshot.Version != dungeonInstanceVersion)
+                        {
+                            if (dungeonSnapshot.Room is null
+                                || dungeonSnapshot.RoomX != currentDungeonRoomX
+                                || dungeonSnapshot.RoomY != currentDungeonRoomY)
+                            {
+                                ApplyDungeonInstanceSnapshot(dungeonSnapshot);
+                            }
+                            else
+                            {
+                                dungeonInstanceVersion = dungeonSnapshot.Version;
+                            }
+                        }
+                    }
+
                     // 被动方的交易交付：服务端已经落库，但本会话的内存背包还是旧的。
                     // 必须在处理下一条请求之前安装，否则玩家一动背包就会用陈旧状态覆盖交易结果。
                     if (activeCharacter is not null
@@ -3476,17 +3538,26 @@ public sealed class EntranceService(
                             currentDungeonRoomX = 0;
                             currentDungeonRoomY = 0;
                             currentDungeonDifficulty = 0;
-                            aliveDungeonMonsters.Clear();
-                            reportedBossDeaths.Clear();
-                            bossCascadeMonsterDeaths.Clear();
-                            destroyedPassiveObjects.Clear();
-                            groundDungeonItems.ResetDungeon();
-                            dungeonRun.Stop();
+                            dungeonInstance?.ResetGroundItems();
+                            dungeonInstance?.StopRun();
+                            if (dungeonInstance is not null)
+                            {
+                                ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
+                            }
+
+                            if (returningCharacterId is not null)
+                            {
+                                // 换角色/回选人 = 该角色离开实例（设计稿 §3.4）。
+                                dungeonInstanceRegistry.UnbindCharacter(returningCharacterId.Value);
+                            }
+
+                            dungeonInstance = null;
+                            dungeonInstanceVersion = -1;
                             tutorialDungeonActive = false;
                             dungeonCharacterAlive = true;
                             dungeonDeathGeneration++;
                             dungeonDeathTimeout = null;
-                            dungeonClearEnabled = false;
+                            // 实例已解绑丢弃（StopRun 复位了 ClearEnabled），会话不再单存开放标记。
                             dungeonResultSent = false;
                             dungeonCardLayoutSent = false;
                             dungeonCardRightsSent = false;
@@ -5368,8 +5439,11 @@ public sealed class EntranceService(
                                 }
                                 else if (QuestMapRequirement.IsClearMap(definition))
                                 {
-                                    validTrigger = QuestMapRequirement.TryApplyClientCompletion(
-                                        definition, triggerAction, dungeonRun, out trigger);
+                                    // 不在副本里（没有实例）时与改造前一致：停摆的 run 没有清过的地图，
+                                    // HasClearedMap 恒为 false（这里不能直接拆实例的 Run，会 NRE）。
+                                    validTrigger = dungeonInstance is not null
+                                        && QuestMapRequirement.TryApplyClientCompletion(
+                                            definition, triggerAction, DungeonRun(), out trigger);
                                 }
                                 else if (QuestDungeonClearRequirement.IsDungeonClearCondition(
                                              definition))
@@ -5379,7 +5453,7 @@ public sealed class EntranceService(
                                     // When the configured clear condition is met it
                                     // sends CMD 35 with action 0, meaning complete.
                                     validTrigger = currentDungeonId != 0
-                                        && dungeonClearEnabled
+                                        && dungeonInstance?.ClearEnabled == true
                                         && QuestDungeonClearRequirement.Matches(
                                             definition,
                                             currentDungeonId,
@@ -5799,7 +5873,7 @@ public sealed class EntranceService(
 
                             foreach (var rewardItem in questGroundRewards)
                             {
-                                var groundItem = groundDungeonItems.Add(
+                                var groundItem = dungeonInstance!.AddGroundItem(
                                     new DungeonGeneratedDrop(
                                         false,
                                         rewardItem.ItemId,
@@ -5808,7 +5882,9 @@ public sealed class EntranceService(
                                     ushort.MaxValue,
                                     currentDungeonRoomX,
                                     currentDungeonRoomY,
-                                    new CharacterItemRecord(
+                                    x: currentX,
+                                    y: currentY,
+                                    preservedItem: new CharacterItemRecord(
                                         ushort.MaxValue,
                                         rewardItem.ItemId,
                                         rewardItem.CountOrValue,
@@ -5818,10 +5894,7 @@ public sealed class EntranceService(
                                         rewardItem.AvatarRemainingSeconds,
                                         rewardItem.AvatarAbilityIndex,
                                         EquipmentQualitySeed: rewardItem.EquipmentQualitySeed,
-                                        InstanceId: rewardItem.InstanceId),
-                                    x: currentX,
-                                    y: currentY,
-                                    catalog: itemCatalog);
+                                        InstanceId: rewardItem.InstanceId));
                                 var dropNotification = GameProtocolEngine.CreateDropItem(
                                     localUserId,
                                     currentX,
@@ -11191,7 +11264,7 @@ public sealed class EntranceService(
                             DungeonGroundItem groundItem;
                             try
                             {
-                                groundItem = groundDungeonItems.AddPlayerDropped(
+                                groundItem = dungeonInstance!.AddPlayerDroppedGroundItem(
                                     dropPlan.DroppedItem,
                                     localUserId,
                                     currentDungeonRoomX,
@@ -11233,7 +11306,7 @@ public sealed class EntranceService(
                                 creatureInventory: plannedCreatureInventory.Values);
                             if (savedDrop is null)
                             {
-                                groundDungeonItems.Remove(groundItem.GroundId);
+                                dungeonInstance!.RemoveGroundItem(groundItem.GroundId);
                                 var error =
                                     GameProtocolEngine.CreateDropItemErrorReply(
                                         19,
@@ -11756,27 +11829,37 @@ public sealed class EntranceService(
                                 currentDungeonRoomX = 0;
                                 currentDungeonRoomY = 0;
                                 currentDungeonDifficulty = difficulty;
-                                currentDungeonRoom = new DungeonRoomDefinition(
+                                // 教学副本也是"单人实例"（键 = 自己角色 id），房间是实例的
+                                // detached room（没有 PVF 迷宫布局）：共享集合的重建由实例负责。
+                                dungeonInstance?.StopRun();
+                                dungeonInstance = dungeonInstanceRegistry.GetOrCreateForSolo(
+                                    activeCharacter!.Id,
+                                    () => new DungeonInstance(0, activeCharacter.Id, dungeonCatalog, itemCatalog));
+                                dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, dungeonInstance);
+                                dungeonInstance.AddMember(new DungeonInstanceMember(
+                                    activeCharacter.Id,
+                                    localUserId,
+                                    PartySlot: 0,
+                                    activeCharacter.Name,
+                                    packet => SendTownPacketAsync(packet, serverToken)));
+                                dungeonInstance.EnterDetachedRoom(new DungeonRoomDefinition(
                                     GameProtocolEngine.TutorialMapId,
                                     DungeonMapType.Boss,
                                     tutorialMonsters,
                                     Topology: 'B',
                                     HasScriptBossActor: false,
                                     PassiveObjects: [],
-                                    PassiveItemSpawns: []);
-                                aliveDungeonMonsters.Clear();
-                                aliveDungeonMonsters.UnionWith(
-                                    tutorialMonsters.Select(monster => monster.UniqueId));
-                                reportedBossDeaths.Clear();
-                                bossCascadeMonsterDeaths.Clear();
-                                destroyedPassiveObjects.Clear();
-                                groundDungeonItems.ResetDungeon();
-                                dungeonRun.Stop();
+                                    PassiveItemSpawns: []));
+                                // 与改造前的 ResetDungeon（改前 :11773）同口径：EnterDetachedRoom 只重建房间集合，不清掉落表。
+                                dungeonInstance.ResetGroundItems();
+                                // 教学副本的实例没有 PVF 迷宫（DungeonId=0）：Apply 只抄房间/坐标，
+                                // 合成的 TutorialDungeonId 与难度保留（见 ApplyDungeonInstanceSnapshot）。
+                                ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
                                 tutorialDungeonActive = true;
                                 dungeonCharacterAlive = true;
                                 dungeonDeathGeneration++;
                                 dungeonDeathTimeout = null;
-                                dungeonClearEnabled = false;
+                                dungeonInstance?.ResetClear();
                                 dungeonResultSent = false;
                                 dungeonCardLayoutSent = false;
                                 dungeonCardRightsSent = false;
@@ -11885,7 +11968,21 @@ public sealed class EntranceService(
                                     dungeonId, questMapId, activeCharacter.Id);
                             }
 
-                            if (!dungeonRun.TryStart(
+                            // 单人零回归：实例 = 以自己角色 id 为键的实例，成员只有自己。
+                            // 队伍路径在 Task 3 里换成队伍实例（同一个入口，见 dungeonPartyService）。
+                            // 必须在 TryStartRun 之前：实例是 DungeonRunState 的主人，布局/房间由它建档。
+                            dungeonInstance = dungeonInstanceRegistry.GetOrCreateForSolo(
+                                activeCharacter.Id,
+                                () => new DungeonInstance(0, activeCharacter.Id, dungeonCatalog, itemCatalog));
+                            dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, dungeonInstance);
+                            dungeonInstance.AddMember(new DungeonInstanceMember(
+                                activeCharacter.Id,
+                                localUserId,
+                                PartySlot: 0,
+                                activeCharacter.Name,
+                                packet => SendTownPacketAsync(packet, serverToken)));
+
+                            if (!dungeonInstance.TryStartRun(
                                     dungeonLayout,
                                     difficulty,
                                     dungeonOption,
@@ -11902,13 +11999,13 @@ public sealed class EntranceService(
 
                             CharacterItemRecord? consumedHellTicket = null;
                             GameServerPacket? pendingHellTicketUpdate = null;
-                            if (dungeonRun.HellMode)
+                            if (DungeonRun().HellMode)
                             {
                                 var plannedInventory = mainInventory.ToDictionary();
                                 if (selectionWorldMap is null
                                     || !selectionWorldMap.TryConsumeHellItems(mainInventory, out plannedInventory))
                                 {
-                                    dungeonRun.Stop();
+                                    dungeonInstance!.StopRun();
                                     var ticketError = GameProtocolEngine.CreateCommandError(
                                         request,
                                         errorCode: 14);
@@ -11939,7 +12036,7 @@ public sealed class EntranceService(
                                         serverToken);
                                 if (savedTicketConsumption is null)
                                 {
-                                    dungeonRun.Stop();
+                                    dungeonInstance!.StopRun();
                                     var ticketSaveError = GameProtocolEngine.CreateCommandError(
                                         request,
                                         errorCode: 19);
@@ -11963,21 +12060,18 @@ public sealed class EntranceService(
                             await LeaveTownAreaAsync(serverToken);
                             currentDungeonId = dungeonId;
                             currentDungeonLayout = dungeonLayout;
-                            currentDungeonRoomX = dungeonRun.RoomX;
-                            currentDungeonRoomY = dungeonRun.RoomY;
+                            currentDungeonRoomX = DungeonRun().RoomX;
+                            currentDungeonRoomY = DungeonRun().RoomY;
                             currentDungeonDifficulty = difficulty;
                             currentDungeonRoom = initialTransition.Room;
-                            aliveDungeonMonsters.Clear();
-                            aliveDungeonMonsters.UnionWith(
-                                currentDungeonRoom.Monsters.Select(monster => monster.UniqueId));
-                            reportedBossDeaths.Clear();
-                            bossCascadeMonsterDeaths.Clear();
-                            destroyedPassiveObjects.Clear();
-                            groundDungeonItems.ResetDungeon();
+                            // 共享集合（存活怪/boss 上报/被动物件）由实例的 TryStartRun 重建，会话不再各存一份；
+                            // 地面掉落要显式清空（与改造前的 ResetDungeon 调用同口径，改前 :11976）：
+                            // TryStartRun 不重建掉落表，实例可能带着上一局（含掉线遗留）的掉落被复用。
+                            dungeonInstance!.ResetGroundItems();
                             dungeonCharacterAlive = true;
                             dungeonDeathGeneration++;
                             dungeonDeathTimeout = null;
-                            dungeonClearEnabled = false;
+                            dungeonInstance!.ResetClear();
                             dungeonResultSent = false;
                             dungeonCardLayoutSent = false;
                             dungeonCardRightsSent = false;
@@ -11994,10 +12088,12 @@ public sealed class EntranceService(
                             dungeonChampionMonsterKills = 0;
                             dungeonBossMonsterKills = 0;
                             dungeonChampionRewardOrdinal = 0;
+                            // 本会话刚推进了房间：镜像与实例对齐（版本号也一起记下）。
+                            ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
 
                             byte hellRoomX = 0;
                             byte hellRoomY = 0;
-                            if (dungeonRun.HellMode)
+                            if (DungeonRun().HellMode)
                             {
                                 _ = dungeonCatalog.TryGetHellRoom(
                                     dungeonId,
@@ -12024,9 +12120,8 @@ public sealed class EntranceService(
                                 LogPacket("TX", runtimeSession, pendingHellTicketUpdate);
                             }
 
-                            var passiveObjectDrops = RegisterPassiveObjectDrops(
+                            var passiveObjectDrops = dungeonInstance.RegisterRoomPassiveDrops(
                                 currentDungeonRoom,
-                                groundDungeonItems,
                                 localUserId,
                                 currentDungeonRoomX,
                                 currentDungeonRoomY);
@@ -12037,8 +12132,8 @@ public sealed class EntranceService(
                                 monsters: currentDungeonRoom.Monsters,
                                 passiveObjectDrops: passiveObjectDrops,
                                 randomSeed: currentDungeonRoom.ClientRandomSeed,
-                                roomStateFlag: dungeonRun.RoomStateFlag,
-                                hellPartyMode: dungeonRun.CurrentHellPartyMode);
+                                roomStateFlag: DungeonRun().RoomStateFlag,
+                                hellPartyMode: DungeonRun().CurrentHellPartyMode);
                             await startMap.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, startMap);
@@ -12074,8 +12169,8 @@ public sealed class EntranceService(
                                     currentDungeonRoom.Monsters,
                                     passiveObjectDrops,
                                     currentDungeonRoom.ClientRandomSeed,
-                                    dungeonRun.RoomStateFlag,
-                                    dungeonRun.CurrentHellPartyMode,
+                                    DungeonRun().RoomStateFlag,
+                                    DungeonRun().CurrentHellPartyMode,
                                     serverToken);
                             }
                             logger.LogInformation(
@@ -12092,8 +12187,8 @@ public sealed class EntranceService(
                                     monster.Type == GameDungeonMonsterTypes.Champion),
                                 currentDungeonRoom.BaseChampionCount,
                                 currentDungeonRoom.ClientRandomSeed,
-                                dungeonRun.HellMode,
-                                dungeonRun.CurrentHellPartyMode,
+                                DungeonRun().HellMode,
+                                DungeonRun().CurrentHellPartyMode,
                                 consumedHellTicket?.ItemId ?? 0);
                             continue;
                         }
@@ -12179,7 +12274,7 @@ public sealed class EntranceService(
                                         targetX,
                                         targetY);
                                 }
-                                else if (dungeonRun.TryMoveRoom(
+                                else if (dungeonInstance!.TryMoveRoom(
                                         targetX,
                                         targetY,
                                         out var transition))
@@ -12203,14 +12298,14 @@ public sealed class EntranceService(
 
                                     if (transition.CompletedHellRoomOnExit)
                                     {
-                                        groundDungeonItems.DetachAllPassiveObjectItems(
+                                        dungeonInstance.DetachAllPassiveObjectItems(
                                             previousRoomX,
                                             previousRoomY);
                                     }
 
                                     currentDungeonRoomX = targetX;
                                     currentDungeonRoomY = targetY;
-                                    dungeonClearEnabled = false;
+                                    dungeonInstance.ResetClear();
                                     dungeonResultSent = false;
                                     dungeonCardLayoutSent = false;
                                     dungeonCardRightsSent = false;
@@ -12218,17 +12313,13 @@ public sealed class EntranceService(
                                     dungeonClearReward = null;
                                     dungeonFreeCardIndex = null;
                                     dungeonGoldCardIndex = null;
-                                    aliveDungeonMonsters.Clear();
-                                    reportedBossDeaths.Clear();
-                                    bossCascadeMonsterDeaths.Clear();
-                                    destroyedPassiveObjects.Clear();
+                                    // 共享集合（存活怪/boss 上报/被动物件）由实例的 TryMoveRoom 重建。
                                     currentDungeonRoom = transition.Room;
-                                    aliveDungeonMonsters.UnionWith(
-                                        currentDungeonRoom.Monsters.Select(monster =>
-                                            monster.UniqueId));
-                                    if (dungeonRun.IsCurrentHellRoomCleared)
+                                    // 本会话刚推进了房间：镜像与实例对齐（版本号也一起记下）。
+                                    ApplyDungeonInstanceSnapshot(dungeonInstance.Snapshot());
+                                    if (DungeonRun().IsCurrentHellRoomCleared)
                                     {
-                                        groundDungeonItems.DetachAllPassiveObjectItems(
+                                        dungeonInstance.DetachAllPassiveObjectItems(
                                             targetX,
                                             targetY);
                                     }
@@ -12243,14 +12334,12 @@ public sealed class EntranceService(
                                     else
                                     {
                                         var passiveObjectDrops = transition.FirstVisit
-                                            ? RegisterPassiveObjectDrops(
+                                            ? dungeonInstance.RegisterRoomPassiveDrops(
                                                 currentDungeonRoom,
-                                                groundDungeonItems,
                                                 localUserId,
                                                 targetX,
                                                 targetY)
-                                            : GetRegisteredPassiveObjectDrops(
-                                                groundDungeonItems,
+                                            : dungeonInstance.GetRoomPassiveDrops(
                                                 targetX,
                                                 targetY);
                                         nextMap = GameProtocolEngine.CreateStartMap(
@@ -12260,8 +12349,8 @@ public sealed class EntranceService(
                                             currentDungeonRoom.Monsters,
                                             passiveObjectDrops,
                                             randomSeed: currentDungeonRoom.ClientRandomSeed,
-                                            roomStateFlag: dungeonRun.RoomStateFlag,
-                                            hellPartyMode: dungeonRun.CurrentHellPartyMode);
+                                            roomStateFlag: DungeonRun().RoomStateFlag,
+                                            hellPartyMode: DungeonRun().CurrentHellPartyMode);
                                     }
                                     await nextMap.WriteAsync(stream, serverToken);
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
@@ -12287,7 +12376,7 @@ public sealed class EntranceService(
                                         currentDungeonRoom.ClientRandomSeed,
                                         transition.FirstVisit,
                                         transition.ReuseClientRoomState,
-                                        dungeonRun.CurrentHellPartyMode,
+                                        DungeonRun().CurrentHellPartyMode,
                                         transition.CompletedHellRoomOnExit);
                                 }
                                 else
@@ -12330,16 +12419,11 @@ public sealed class EntranceService(
                             GameServerPacket bossDieReply;
                             if (validBoss)
                             {
-                                reportedBossDeaths.Add(bossDieCheck.BossId);
-                                var allBossesReported = bossIds.All(
-                                    reportedBossDeaths.Contains);
-                                if (allBossesReported)
-                                {
-                                    bossCascadeMonsterDeaths.UnionWith(
-                                        aliveDungeonMonsters.Where(monsterId =>
-                                            !bossIds.Contains(monsterId)));
-                                }
-
+                                // 上报 + "全部 boss 到齐后级联"三句由实例在锁内一次完成（幂等）。
+                                _ = dungeonInstance!.TryReportBossDeath(
+                                    bossDieCheck.BossId,
+                                    bossIds,
+                                    out var allBossesReported);
                                 bossDieReply = GameProtocolEngine.CreateBossDieCheck(
                                     success: true,
                                     allBossesReported,
@@ -12349,7 +12433,7 @@ public sealed class EntranceService(
                                     currentDungeonId,
                                     bossDieCheck.ParticipantId,
                                     bossDieCheck.BossId,
-                                    reportedBossDeaths.Count,
+                                    dungeonInstance!.ReportedBossDeathCount,
                                     bossIds.Count,
                                     allBossesReported,
                                     bossDieCheck.SkillChecksum);
@@ -12531,17 +12615,17 @@ public sealed class EntranceService(
                                 if (dieCommand.IsPassiveObject)
                                 {
                                     if (currentDungeonRoom is not null
-                                        && dungeonRun.TryMarkPassiveObjectDestroyed(
+                                        && dungeonInstance!.TryMarkPassiveObjectDestroyed(
                                             dieCommand.EntityId,
                                             out var passiveObjectIndex))
                                     {
-                                        destroyedPassiveObjects.Add(passiveObjectIndex);
-                                        var activatedItemCount = groundDungeonItems.ActivatePassiveObject(
+                                        var activatedItemCount = dungeonInstance.ActivatePassiveObject(
                                             passiveObjectIndex,
                                             currentDungeonRoomX,
                                             currentDungeonRoomY);
-                                        currentDungeonRoom = dungeonRun.CurrentRoom
-                                            ?? currentDungeonRoom;
+                                        currentDungeonRoom = DungeonRun().IsActive
+                                            ? DungeonRun().CurrentRoom
+                                            : currentDungeonRoom;
                                         logger.LogInformation(
                                             "Passive object code {PassiveObjectCode}, association {PassiveObjectIndex} destroyed in room ({RoomX},{RoomY}); activatedItems={ActivatedItemCount}.",
                                             dieCommand.EntityId,
@@ -12563,11 +12647,19 @@ public sealed class EntranceService(
                                 }
 
                                 var monsterUniqueId = dieCommand.EntityId;
-                                var wasHellFiend = dungeonRun.IsHellFiend(monsterUniqueId);
-                                var hellPartyMode = dungeonRun.CurrentHellPartyMode;
-                                var isBossCascadeDeath =
-                                    bossCascadeMonsterDeaths.Remove(monsterUniqueId);
-                                var wasAlive = aliveDungeonMonsters.Remove(monsterUniqueId);
+                                var wasHellFiend = dungeonInstance?.IsHellFiend(monsterUniqueId) ?? false;
+                                var hellPartyMode = dungeonInstance?.Run.CurrentHellPartyMode ?? 0;
+                                var isBossCascadeDeath = false;
+                                // 存活判定的唯一所有者 = 实例：并发上报只有一次能进来（Task 1 的单测钉住了）。
+                                // 不在副本里（没有实例）时与改造前同口径：没有存活的怪 → 下面的"陈旧死亡"分支。
+                                var wasAlive = false;
+                                if (dungeonInstance is not null)
+                                {
+                                    wasAlive = dungeonInstance.TryTakeMonsterDeath(
+                                        monsterUniqueId,
+                                        out isBossCascadeDeath);
+                                }
+
                                 var defeatedMonster = wasAlive
                                     && currentDungeonRoom is not null
                                     ? currentDungeonRoom.Monsters.FirstOrDefault(monster =>
@@ -12582,8 +12674,6 @@ public sealed class EntranceService(
                                         currentDungeonRoomY);
                                     continue;
                                 }
-
-                                dungeonRun.MarkMonsterDefeated(monsterUniqueId);
 
                                 var championRewardOrdinal =
                                     GameProtocolEngine.NoChampionRewardOrdinal;
@@ -12622,15 +12712,14 @@ public sealed class EntranceService(
                                                  defeatedMonster.Type,
                                                  currentDungeonDifficulty))
                                     {
-                                        var groundItem = groundDungeonItems.Add(
+                                        var groundItem = dungeonInstance!.AddGroundItem(
                                             generatedDrop,
                                             localUserId,
                                             monsterUniqueId,
                                             currentDungeonRoomX,
                                             currentDungeonRoomY,
                                             x: unchecked((short)defeatedMonster.X),
-                                            y: unchecked((short)defeatedMonster.Y),
-                                            catalog: itemCatalog);
+                                            y: unchecked((short)defeatedMonster.Y));
                                         protocolDrops.Add(new GameDungeonDrop(
                                             groundItem.GroundId,
                                             groundItem.ItemId,
@@ -12643,15 +12732,14 @@ public sealed class EntranceService(
                                                  defeatedMonster.MonsterIndex,
                                                  defeatedMonster.Type))
                                     {
-                                        var groundItem = groundDungeonItems.Add(
+                                        var groundItem = dungeonInstance!.AddGroundItem(
                                             generatedDrop,
                                             localUserId,
                                             monsterUniqueId,
                                             currentDungeonRoomX,
                                             currentDungeonRoomY,
                                             x: unchecked((short)defeatedMonster.X),
-                                            y: unchecked((short)defeatedMonster.Y),
-                                            catalog: itemCatalog);
+                                            y: unchecked((short)defeatedMonster.Y));
                                         protocolDrops.Add(new GameDungeonDrop(
                                             groundItem.GroundId,
                                             groundItem.ItemId,
@@ -12678,7 +12766,7 @@ public sealed class EntranceService(
                                             monsterUniqueId, hellHit, hellItemId);
                                         if (hellHit)
                                         {
-                                            var hellGroundItem = groundDungeonItems.Add(
+                                            var hellGroundItem = dungeonInstance!.AddGroundItem(
                                                 new DungeonGeneratedDrop(
                                                     IsGold: false,
                                                     hellItemId,
@@ -12688,8 +12776,7 @@ public sealed class EntranceService(
                                                 currentDungeonRoomX,
                                                 currentDungeonRoomY,
                                                 x: unchecked((short)defeatedMonster.X),
-                                                y: unchecked((short)defeatedMonster.Y),
-                                                catalog: itemCatalog);
+                                                y: unchecked((short)defeatedMonster.Y));
                                             protocolDrops.Add(new GameDungeonDrop(
                                                 hellGroundItem.GroundId,
                                                 hellGroundItem.ItemId,
@@ -12826,7 +12913,7 @@ public sealed class EntranceService(
                                 var clearDecision = DungeonRoomClearRules.Evaluate(
                                     currentDungeonRoom!,
                                     defeatedMonster,
-                                    aliveDungeonMonsters);
+                                    dungeonInstance!.SnapshotAliveMonsters());
                                 if (clearDecision.ForcedMonsterIds.Length > 0)
                                 {
                                     logger.LogWarning(
@@ -12837,9 +12924,9 @@ public sealed class EntranceService(
                                         currentDungeonRoomY);
                                 }
 
-                                if (clearDecision.ShouldEnableClear && !dungeonClearEnabled)
+                                // TryEnableClear 的返回值就是"从关到开"（避免改造前"先看标记再置位"的竞态）。
+                                if (clearDecision.ShouldEnableClear && dungeonInstance.TryEnableClear())
                                 {
-                                    dungeonClearEnabled = true;
                                     if (!tutorialDungeonActive)
                                     {
                                         await GrantClearQuestItemsAsync();
@@ -12878,7 +12965,7 @@ public sealed class EntranceService(
 
                             var groundId = BinaryPrimitives.ReadUInt16LittleEndian(
                                 request.Body.AsSpan(2, sizeof(ushort)));
-                            if (!groundDungeonItems.TryGet(
+                            if (!dungeonInstance!.TryGetGroundItem(
                                     groundId,
                                     currentDungeonRoomX,
                                     currentDungeonRoomY,
@@ -12925,7 +13012,7 @@ public sealed class EntranceService(
 
                                 activeCharacter = saved;
                                 currentGold = updatedGold;
-                                groundDungeonItems.Remove(groundId);
+                                dungeonInstance!.RemoveGroundItem(groundId);
                                 var pickup = GameProtocolEngine.CreateGoldItemPickup(
                                     groundId,
                                     localUserId,
@@ -12969,7 +13056,7 @@ public sealed class EntranceService(
                                 }
 
                                 _ = AdoptSavedWarehouseUpgradeState(savedUpgrade);
-                                groundDungeonItems.Remove(groundId);
+                                dungeonInstance!.RemoveGroundItem(groundId);
                                 var upgradePickup =
                                     GameProtocolEngine.CreateInventoryItemPickup(
                                         groundId,
@@ -13096,7 +13183,7 @@ public sealed class EntranceService(
 
                                 activeCharacter = savedCreaturePickup;
                                 creatureInventory = creaturePickupPlan.Inventory;
-                                groundDungeonItems.Remove(groundId);
+                                dungeonInstance!.RemoveGroundItem(groundId);
                                 var creaturePickup =
                                     GameProtocolEngine.CreateInventoryItemPickup(
                                         groundId,
@@ -13171,7 +13258,7 @@ public sealed class EntranceService(
 
                                 activeCharacter = savedAvatarPickup;
                                 avatarInventory = avatarPickupPlan.Inventory;
-                                groundDungeonItems.Remove(groundId);
+                                dungeonInstance!.RemoveGroundItem(groundId);
                                 var avatarPickup =
                                     GameProtocolEngine.CreateInventoryItemPickup(
                                         groundId,
@@ -13221,7 +13308,7 @@ public sealed class EntranceService(
 
                             activeCharacter = savedInventory;
                             mainInventory = pickupPlan.Inventory;
-                            groundDungeonItems.Remove(groundId);
+                            dungeonInstance!.RemoveGroundItem(groundId);
                             var itemPickup = GameProtocolEngine.CreateInventoryItemPickup(
                                 groundId,
                                 localUserId,
@@ -13253,7 +13340,7 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            if (dungeonClearEnabled && !dungeonResultSent)
+                            if (dungeonInstance?.ClearEnabled == true && !dungeonResultSent)
                             {
                                 var hasClearScore = DungeonClearScore.TryParse(
                                     request.Body,
@@ -13527,7 +13614,8 @@ public sealed class EntranceService(
                         {
                             if (tutorialDungeonActive)
                             {
-                                if (dungeonClearEnabled && aliveDungeonMonsters.Count == 0)
+                                if (dungeonInstance?.ClearEnabled == true
+                                    && dungeonInstance!.AliveMonsterCount == 0)
                                 {
                                     await CompleteTutorialAndReturnAsync(
                                         "tutorial-score-scroll-fallback");
@@ -13567,8 +13655,8 @@ public sealed class EntranceService(
                             LogPacket("TX", runtimeSession, tutorialModuleReply);
 
                             if (tutorialDungeonActive
-                                && dungeonClearEnabled
-                                && aliveDungeonMonsters.Count == 0
+                                && dungeonInstance?.ClearEnabled == true
+                                && dungeonInstance!.AliveMonsterCount == 0
                                 && GameProtocolEngine.IsTutorialCompletionModule(request.Body))
                             {
                                 await CompleteTutorialAndReturnAsync(
@@ -15987,50 +16075,6 @@ public sealed class EntranceService(
         4 => (775, 314),
         _ => (272, 377),
     };
-
-    private GamePassiveObjectDrop[] RegisterPassiveObjectDrops(
-        DungeonRoomDefinition room,
-        DungeonGroundItemState groundItems,
-        ushort ownerUserId,
-        byte roomX,
-        byte roomY)
-    {
-        var result = new List<GamePassiveObjectDrop>(room.PassiveItemSpawns.Length);
-        foreach (var spawn in room.PassiveItemSpawns)
-        {
-            var groundItem = groundItems.AddPassive(
-                spawn.Drop,
-                ownerUserId,
-                spawn.PassiveObjectIndex,
-                spawn.AssociationSlot,
-                roomX,
-                roomY,
-                x: unchecked((short)spawn.X),
-                y: unchecked((short)spawn.Y),
-                catalog: itemCatalog);
-            result.Add(new GamePassiveObjectDrop(
-                spawn.AssociationSlot,
-                groundItem.GroundId,
-                groundItem.ItemId,
-                groundItem.GetClientAddInfo(itemCatalog),
-                groundItem.OwnerUserId));
-        }
-
-        return result.ToArray();
-    }
-
-    private GamePassiveObjectDrop[] GetRegisteredPassiveObjectDrops(
-        DungeonGroundItemState groundItems,
-        byte roomX,
-        byte roomY) =>
-        groundItems.GetPassiveObjectItems(roomX, roomY)
-            .Select(item => new GamePassiveObjectDrop(
-                item.PassiveItemSlot,
-                item.GroundId,
-                item.ItemId,
-                item.GetClientAddInfo(itemCatalog),
-                item.OwnerUserId))
-            .ToArray();
 
     private EntranceContent LoadContent()
     {

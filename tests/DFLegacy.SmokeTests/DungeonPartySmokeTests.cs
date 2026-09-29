@@ -21,7 +21,42 @@ internal static class DungeonPartySmokeTests
         CheckSharedCollectionAccessors(check, fixture);
         CheckDoorAssemblyRules(check);
         CheckRegistryEntryRequestMailbox(check, fixture);
+        CheckSoloRunBindsByCharacterId(check, fixture);
+        CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 单人零回归的结构性断言（设计稿 §4/§6 第 8 项）：单人进场绑定的是"以自己角色 id 为键"的实例、
+    /// 实例里只有自己一个成员、`IsParty == false`（因此 `CMD 48` 走"立即换房间"、不走门口集结）。
+    /// **变异验证**：把 `GetOrCreateForSolo` 换成 `GetOrCreateForParty`、或让 AddMember 加两个人，本用例变红。
+    /// </summary>
+    private static void CheckSoloRunBindsByCharacterId(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var registry = new DungeonInstanceRegistry();
+        var characterId = Guid.NewGuid();
+        var instance = registry.GetOrCreateForSolo(characterId, () => fixture.CreateSoloInstance(characterId));
+        registry.BindCharacter(characterId, instance);
+        instance.AddMember(fixture.Member(characterId, slot: 0, "独行"));
+        check(!instance.IsParty && instance.MemberCount == 1
+                && ReferenceEquals(instance, registry.TryGetForCharacter(characterId)),
+            "a solo dungeon runs in a single-member instance keyed by the character id");
+        check(!instance.Doors.IsWaiting,
+            "a solo instance never enters the door assembly state (CMD 48 keeps advancing immediately)");
+    }
+
+    /// <summary>单人换房间：`TryMoveRoom` 立即推进（没有"等其他人"这一步），掉落在实例里跟着走。</summary>
+    private static void CheckSoloRoomChangeKeepsImmediateBehaviour(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        instance.AddMember(fixture.Member(Guid.NewGuid(), slot: 0, "独行"));
+        var started = instance.TryStartRun(fixture.Layout, 0, 0, out _);
+        // `out` 一定要单独一句话（放在 && 里编译器会报"未赋值"）：先无条件调一次再断言结论。
+        var moved = instance.TryMoveRoom(1, 0, out var transition);
+        check(started && moved && instance.Run.RoomX == 1 && !instance.Doors.IsWaiting,
+            "a solo room change applies immediately and leaves no pending door assembly");
+        check(instance.CaptureRoomSnapshot(1, 0, transition, ownerUserId: 1).RoomX == 1,
+            "the room snapshot follows the solo move");
     }
 
     /// <summary>单人实例：键 = 角色 id、单成员、`IsParty == false`（设计稿 §3.1/§7 决策 1）。</summary>
