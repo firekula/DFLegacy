@@ -30,12 +30,103 @@ internal static class DungeonPartySmokeTests
         CheckMemberEntryPacketOrder(check, fixture);
         await CheckBroadcastReachesEveryMemberOnceAsync(check, fixture);
         await CheckPickupBroadcastOmitsSenderAsync(check, fixture);
+        CheckGroundItemClaimIsFirstComeFirstServed(check, fixture);
+    }
+
+    /// <summary>
+    /// 掉落拾取的"先到先得"与落库回滚（评审 Important 1/2，设计稿 §7 决策 5）：
+    /// ①准入不看归属：阿尔法（uid 1）掉的（OwnerUserId=1）布拉沃（uid 2）照样能赢下；
+    /// ②无主掉落（OwnerUserId=0，Task 5 的强制推进会登记这种）同样能捡；
+    /// ③同一个 groundId 的并发/重复 claim 只有一个 true（输的一方拿到 false，实体已消失）；
+    /// ④落库失败的原样放回：`TryReAddGroundItem` 之后同一个 GroundId/归属还在，别人还能再捡。
+    /// **变异验证**（三处模型层变异，实测变红后已回滚）：
+    /// ①让 `OwnerUserId` 重新参与准入 → 第一/第二条断言变红；
+    /// ②`TryClaimGroundItem` 不看 `GroundItems.Remove` 的返回值 → 第三条变红；
+    /// ③`TryReAddGroundItem` 不放回（直接 false）→ 第四条变红。
+    /// 会话侧那几行（claim 的返回值决定 continue、落库失败调放回）不可单测——与会话接线同一局限。
+    /// </summary>
+    private static void CheckGroundItemClaimIsFirstComeFirstServed(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        var alpha = Guid.NewGuid();
+        var bravo = Guid.NewGuid();
+        instance.AddMember(new DungeonInstanceMember(
+            alpha, 1, 0, "阿尔法", _ => ValueTask.CompletedTask));
+        instance.AddMember(new DungeonInstanceMember(
+            bravo, 2, 1, "布拉沃", _ => ValueTask.CompletedTask));
+        instance.EnterDetachedRoom(DungeonFixture.Room([DungeonFixture.Monster(uniqueId: 0)]));
+
+        DungeonGroundItem Drop(ushort ownerUserId) => instance.AddGroundItem(
+            new DungeonGeneratedDrop(IsGold: true, ItemId: 0, CountOrValue: 100),
+            ownerUserId,
+            sourceMonsterUniqueId: 0,
+            roomX: 0,
+            roomY: 0,
+            x: 10,
+            y: 20);
+
+        // ① 怪物掉落的 OwnerUserId 恒是击杀者（uid 1）：归属只做显示，uid 2 的队友照样赢下。
+        var ownedDrop = Drop(ownerUserId: 1);
+        check(instance.TryGetGroundItem(ownedDrop.GroundId, 0, 0, out var ownedSeen)
+                && ownedSeen.OwnerUserId == 1,
+            "a monster drop keeps its owner id for the client-side ownership display");
+        check(instance.TryClaimGroundItem(ownedDrop.GroundId, 0, 0, out var ownedClaim)
+                && ownedClaim.GroundId == ownedDrop.GroundId
+                && ownedClaim.OwnerUserId == 1
+                && !instance.TryGetGroundItem(ownedDrop.GroundId, 0, 0, out _),
+            "a teammate can claim another member's drop (ownership never gates the pickup)");
+
+        // ② 无主掉落（Task 5 的倒计时强制推进按 ownerUserId=0 登记）也必须能捡。
+        var ownerlessDrop = Drop(ownerUserId: 0);
+        check(instance.TryClaimGroundItem(ownerlessDrop.GroundId, 0, 0, out var ownerlessClaim)
+                && ownerlessClaim.OwnerUserId == 0,
+            "an ownerless drop (OwnerUserId 0) can be claimed as well");
+
+        // ③ 并发仲裁：只有一次 true（这就是会话里 continue 与否的唯一判定）。
+        var contestedDrop = Drop(ownerUserId: 1);
+        var winners = 0;
+        Parallel.For(0, 8, iteration =>
+        {
+            _ = iteration;
+            if (instance.TryClaimGroundItem(contestedDrop.GroundId, 0, 0, out _))
+            {
+                Interlocked.Increment(ref winners);
+            }
+        });
+        check(winners == 1, "eight concurrent claims settle exactly one winner");
+        check(!instance.TryClaimGroundItem(contestedDrop.GroundId, 0, 0, out _)
+                && !instance.TryGetGroundItem(contestedDrop.GroundId, 0, 0, out _),
+            "the loser of the race gets false and the entity is gone (nothing left to persist or broadcast)");
+
+        // ④ 落库失败的原样放回：同一个 GroundId/归属，别人还能再捡。
+        // 断言要对"claim 失败"保持可读（别在契约被破坏时抛 NRE）：先落成可空局部再判。
+        var returnedDrop = Drop(ownerUserId: 1);
+        var claimedForReturn = instance.TryClaimGroundItem(
+            returnedDrop.GroundId, 0, 0, out var claimedEntity)
+                ? claimedEntity
+                : null;
+        check(claimedForReturn is not null,
+            "the entity is claimed before the pickup persistence runs");
+        check(claimedForReturn is not null
+                && instance.TryReAddGroundItem(claimedForReturn)
+                && instance.TryGetGroundItem(returnedDrop.GroundId, 0, 0, out var restored)
+                && restored.GroundId == claimedForReturn.GroundId
+                && restored.OwnerUserId == claimedForReturn.OwnerUserId,
+            "a failed pickup persistence returns the exact entity (same ground id and owner)");
+        check(claimedForReturn is not null && !instance.TryReAddGroundItem(claimedForReturn),
+            "returning the same entity twice cannot duplicate the row");
+        check(instance.TryClaimGroundItem(returnedDrop.GroundId, 0, 0, out _),
+            "the returned entity can be claimed again (first come, first served)");
     }
 
     /// <summary>
     /// 共享状态广播（设计稿 §3.3）：击杀/房间开放只判定一次（实例的原子方法），
-    /// 但**每个成员各收一份**；单人实例的广播只及于自己。
-    /// **变异验证**：把 sent 累加改成"只发给第一个成员"，本用例变红。
+    /// 但**每个成员各收一份**；判定不成立的陈旧上报一份都不发。
+    /// 注意：本用例跑的是**模型层的口径复述**（自己在 `Members` 上循环），不经过生产的
+    /// `DungeonPartyService.BroadcastToMembersAsync`——生产广播（含 omit 自己）的护栏是同文件的
+    /// <see cref="CheckPickupBroadcastOmitsSenderAsync"/>，那里才有可复核的变异验证。
     /// </summary>
     private static async Task CheckBroadcastReachesEveryMemberOnceAsync(
         Action<bool, string> check,

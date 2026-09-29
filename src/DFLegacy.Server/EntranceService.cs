@@ -2173,13 +2173,23 @@ public sealed class EntranceService(
 
                 // 本会话在队伍里的槽位下标（单人 / 不在队伍 → 0）。槽位稳定不搬动（第一轮硬约束）。
                 // 结算卡片屏按"自己那一列"高亮，7 处恒 0/恒 1 的取值之一（设计稿 §7 决策 3/6）。
+                // **权威来源是实例名册里那份**（入场时定下，中途退队/被踢也不会掉回 0）；
+                // 取不到（还没入场/不在副本里）才退回现算的队伍槽位快照。
                 byte PartySlotIndexOfThisSession()
                 {
                     var character = activeCharacter;
-                    return character is null
-                        ? (byte)0
-                        : checked((byte)(partyService.GetPartySlots(character.Id)?
-                            .FirstOrDefault(slot => slot.CharacterId == character.Id)?.SlotIndex ?? 0));
+                    if (character is null)
+                    {
+                        return 0;
+                    }
+
+                    if (dungeonInstance?.FindMember(character.Id) is { } member)
+                    {
+                        return member.PartySlot;
+                    }
+
+                    return checked((byte)(partyService.GetPartySlots(character.Id)?
+                        .FirstOrDefault(slot => slot.CharacterId == character.Id)?.SlotIndex ?? 0));
                 }
 
                 // 掉落拾取的广播（设计稿 §3.3/§7 决策 5）：调用前自己那一份已经走 stream 发过，
@@ -2194,6 +2204,56 @@ public sealed class EntranceService(
 
                     await dungeonPartyService.BroadcastToMembersAsync(
                         instance, pickupPacket, character.Id, serverToken);
+                }
+
+                // 拾取仲裁（设计稿 §7 决策 5：全队共享、先到先得）：赢下这个掉落实体才允许落库。
+                // 返回 null = 输掉竞态（队友先拿走/房间重置/重开）——调用方必须直接 continue：
+                // 不落库、不发自己那份包、不广播。归属（OwnerUserId）只做客户端显示，不参与准入。
+                DungeonGroundItem? TryClaimGroundItemForPickup(ushort groundId) =>
+                    dungeonInstance!.TryClaimGroundItem(
+                        groundId,
+                        currentDungeonRoomX,
+                        currentDungeonRoomY,
+                        out var claimed)
+                        ? claimed
+                        : null;
+
+                // 落库失败 → 把刚赢下的实体按原 GroundId 原样放回（改造前口径"掉落保留在原地"，
+                // 不许静默丢件）。放回后别人仍能捡（先到先得）。
+                void ReturnGroundItemForPickup(DungeonGroundItem claimedItem, ushort groundId)
+                {
+                    if (!dungeonInstance!.TryReAddGroundItem(claimedItem))
+                    {
+                        logger.LogError(
+                            "Ground item {GroundId} could not be returned after a failed pickup persistence; it is lost.",
+                            groundId);
+                    }
+                }
+
+                // 赢下实体之后的落库：**返回 null（业务拒绝）或抛异常（IO）都算落库失败**——
+                // 判定已经提到落库之前，这里不兜住就会静默丢件，所以两种失败都必须放回原地；
+                // 异常原样上抛，会话层照旧收尾。调用方只需保留既有的 null 分支日志。
+                async Task<CharacterRecord?> PersistClaimedPickupAsync(
+                    DungeonGroundItem claimedItem,
+                    ushort groundId,
+                    Func<Task<CharacterRecord?>> persist)
+                {
+                    try
+                    {
+                        var persisted = await persist();
+                        if (persisted is not null)
+                        {
+                            return persisted;
+                        }
+                    }
+                    catch
+                    {
+                        ReturnGroundItemForPickup(claimedItem, groundId);
+                        throw;
+                    }
+
+                    ReturnGroundItemForPickup(claimedItem, groundId);
+                    return null;
                 }
 
                 // 队员侧的"进入选图状态"（设计稿 §3.2 的前置）：只有本会话建得出自己的 USERINFO，
@@ -12864,12 +12924,15 @@ public sealed class EntranceService(
 
                             var groundId = BinaryPrimitives.ReadUInt16LittleEndian(
                                 request.Body.AsSpan(2, sizeof(ushort)));
+                            // 设计稿 §7 决策 5：全队共享、**先到先得**——`OwnerUserId` 只做客户端归属显示，
+                            // **不参与准入**（队友能捡别人的掉落，Task 5 强制推进产生的无主掉落 0 也能捡）。
+                            // 这里只看"当前房间里这个掉落实体还在不在"；真正的并发仲裁是下面的
+                            // TryClaimGroundItem（锁内摘除，返回值唯一）。
                             if (!dungeonInstance!.TryGetGroundItem(
                                     groundId,
                                     currentDungeonRoomX,
                                     currentDungeonRoomY,
-                                    out var groundItem)
-                                || groundItem.OwnerUserId != localUserId)
+                                    out var groundItem))
                             {
                                 logger.LogWarning(
                                     "Ignored invalid or duplicate pickup of ground item {GroundId} for user {UserId}.",
@@ -12894,13 +12957,27 @@ public sealed class EntranceService(
                                     continue;
                                 }
 
-                                var saved = await store.SaveCharacterInventoryAsync(
-                                    accountName,
-                                    activeCharacter.Id,
-                                    updatedGold,
-                                    mainInventory.Values,
-                                    equippedInventory.Values,
-                                    serverToken);
+                                // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                                var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                                if (claimedGroundItem is null)
+                                {
+                                    logger.LogWarning(
+                                        "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                        groundId,
+                                        localUserId);
+                                    continue;
+                                }
+
+                                var saved = await PersistClaimedPickupAsync(
+                                    claimedGroundItem,
+                                    groundId,
+                                    () => store.SaveCharacterInventoryAsync(
+                                        accountName,
+                                        activeCharacter.Id,
+                                        updatedGold,
+                                        mainInventory.Values,
+                                        equippedInventory.Values,
+                                        serverToken));
                                 if (saved is null)
                                 {
                                     logger.LogWarning(
@@ -12911,7 +12988,6 @@ public sealed class EntranceService(
 
                                 activeCharacter = saved;
                                 currentGold = updatedGold;
-                                dungeonInstance!.RemoveGroundItem(groundId);
                                 var pickup = GameProtocolEngine.CreateGoldItemPickup(
                                     groundId,
                                     localUserId,
@@ -12920,8 +12996,8 @@ public sealed class EntranceService(
                                 await pickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, pickup);
-                                // 掉落拾取（先到先得，设计稿 §7 决策 5）：摘掉掉落实体后，同实例其他人
-                                // 的客户端也要让该掉落实体消失——自己那一份已经发过（上面），广播跳过自己。
+                                // 掉落拾取广播（设计稿 §7 决策 5）：赢下实体并落库之后，同实例其他人的
+                                // 客户端也要让该掉落实体消失——自己那一份已经发过（上面），广播跳过自己。
                                 await BroadcastPickupToInstanceAsync(pickup);
 
                                 var refresh = CreateMainInventoryPacket(
@@ -12941,15 +13017,29 @@ public sealed class EntranceService(
                                 var plannedCapacity = Math.Max(
                                     warehouseCapacity,
                                     groundUpgradeTarget);
-                                var savedUpgrade = await store.SaveCharacterInventoryAsync(
-                                    accountName,
-                                    activeCharacter.Id,
-                                    currentGold,
-                                    mainInventory.Values,
-                                    equippedInventory.Values,
-                                    serverToken,
-                                    warehouseCapacity: plannedCapacity,
-                                    expectedWarehouseCapacity: warehouseCapacity);
+                                // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                                var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                                if (claimedGroundItem is null)
+                                {
+                                    logger.LogWarning(
+                                        "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                        groundId,
+                                        localUserId);
+                                    continue;
+                                }
+
+                                var savedUpgrade = await PersistClaimedPickupAsync(
+                                    claimedGroundItem,
+                                    groundId,
+                                    () => store.SaveCharacterInventoryAsync(
+                                        accountName,
+                                        activeCharacter.Id,
+                                        currentGold,
+                                        mainInventory.Values,
+                                        equippedInventory.Values,
+                                        serverToken,
+                                        warehouseCapacity: plannedCapacity,
+                                        expectedWarehouseCapacity: warehouseCapacity));
                                 if (savedUpgrade is null)
                                 {
                                     logger.LogWarning(
@@ -12959,7 +13049,6 @@ public sealed class EntranceService(
                                 }
 
                                 _ = AdoptSavedWarehouseUpgradeState(savedUpgrade);
-                                dungeonInstance!.RemoveGroundItem(groundId);
                                 var upgradePickup =
                                     GameProtocolEngine.CreateInventoryItemPickup(
                                         groundId,
@@ -13065,18 +13154,32 @@ public sealed class EntranceService(
                                     continue;
                                 }
 
+                                // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                                var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                                if (claimedGroundItem is null)
+                                {
+                                    logger.LogWarning(
+                                        "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                        groundId,
+                                        localUserId);
+                                    continue;
+                                }
+
                                 var savedCreaturePickup =
-                                    await store.SaveCharacterItemSpacesAsync(
-                                        accountName,
-                                        activeCharacter.Id,
-                                        currentGold,
-                                        mainInventory.Values,
-                                        equippedInventory.Values,
-                                        warehouseInventory.Values,
-                                        serverToken,
-                                        avatarInventory: avatarInventory.Values,
-                                        creatureInventory:
-                                            creaturePickupPlan.Inventory.Values);
+                                    await PersistClaimedPickupAsync(
+                                        claimedGroundItem,
+                                        groundId,
+                                        () => store.SaveCharacterItemSpacesAsync(
+                                            accountName,
+                                            activeCharacter.Id,
+                                            currentGold,
+                                            mainInventory.Values,
+                                            equippedInventory.Values,
+                                            warehouseInventory.Values,
+                                            serverToken,
+                                            avatarInventory: avatarInventory.Values,
+                                            creatureInventory:
+                                                creaturePickupPlan.Inventory.Values));
                                 if (savedCreaturePickup is null)
                                 {
                                     logger.LogWarning(
@@ -13087,7 +13190,6 @@ public sealed class EntranceService(
 
                                 activeCharacter = savedCreaturePickup;
                                 creatureInventory = creaturePickupPlan.Inventory;
-                                dungeonInstance!.RemoveGroundItem(groundId);
                                 var creaturePickup =
                                     GameProtocolEngine.CreateInventoryItemPickup(
                                         groundId,
@@ -13143,16 +13245,30 @@ public sealed class EntranceService(
                                     continue;
                                 }
 
+                                // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                                var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                                if (claimedGroundItem is null)
+                                {
+                                    logger.LogWarning(
+                                        "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                        groundId,
+                                        localUserId);
+                                    continue;
+                                }
+
                                 var savedAvatarPickup =
-                                    await store.SaveCharacterItemSpacesAsync(
-                                        accountName,
-                                        activeCharacter.Id,
-                                        currentGold,
-                                        mainInventory.Values,
-                                        equippedInventory.Values,
-                                        warehouseInventory.Values,
-                                        serverToken,
-                                        avatarInventory: avatarPickupPlan.Inventory.Values);
+                                    await PersistClaimedPickupAsync(
+                                        claimedGroundItem,
+                                        groundId,
+                                        () => store.SaveCharacterItemSpacesAsync(
+                                            accountName,
+                                            activeCharacter.Id,
+                                            currentGold,
+                                            mainInventory.Values,
+                                            equippedInventory.Values,
+                                            warehouseInventory.Values,
+                                            serverToken,
+                                            avatarInventory: avatarPickupPlan.Inventory.Values));
                                 if (savedAvatarPickup is null)
                                 {
                                     logger.LogWarning(
@@ -13163,7 +13279,6 @@ public sealed class EntranceService(
 
                                 activeCharacter = savedAvatarPickup;
                                 avatarInventory = avatarPickupPlan.Inventory;
-                                dungeonInstance!.RemoveGroundItem(groundId);
                                 var avatarPickup =
                                     GameProtocolEngine.CreateInventoryItemPickup(
                                         groundId,
@@ -13197,13 +13312,27 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            var savedInventory = await store.SaveCharacterInventoryAsync(
-                                accountName,
-                                activeCharacter.Id,
-                                currentGold,
-                                pickupPlan.Inventory.Values,
-                                equippedInventory.Values,
-                                serverToken);
+                            // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                            var claimedInventoryItem = TryClaimGroundItemForPickup(groundId);
+                            if (claimedInventoryItem is null)
+                            {
+                                logger.LogWarning(
+                                    "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                    groundId,
+                                    localUserId);
+                                continue;
+                            }
+
+                            var savedInventory = await PersistClaimedPickupAsync(
+                                claimedInventoryItem,
+                                groundId,
+                                () => store.SaveCharacterInventoryAsync(
+                                    accountName,
+                                    activeCharacter.Id,
+                                    currentGold,
+                                    pickupPlan.Inventory.Values,
+                                    equippedInventory.Values,
+                                    serverToken));
                             if (savedInventory is null)
                             {
                                 logger.LogWarning(
@@ -13214,7 +13343,6 @@ public sealed class EntranceService(
 
                             activeCharacter = savedInventory;
                             mainInventory = pickupPlan.Inventory;
-                            dungeonInstance!.RemoveGroundItem(groundId);
                             var itemPickup = GameProtocolEngine.CreateInventoryItemPickup(
                                 groundId,
                                 localUserId,

@@ -660,6 +660,52 @@ internal sealed class DungeonInstance(
         }
     }
 
+    /// <summary>
+    /// 拾取仲裁（设计稿 §7 决策 5：全队共享、**先到先得**）：锁内"取快照 + 摘除"一次完成，
+    /// 返回值就是"我赢下了这个掉落实体"（并发/重复上报只有一个 true，输的一方拿到的 item 为 null）。
+    /// **准入不看 <see cref="DungeonGroundItem.OwnerUserId"/>**——归属只做客户端显示
+    /// （无主掉落 OwnerUserId=0 同样能捡）；准入只要求"这个房间里的这个实体还在"。
+    /// 调用方赢下之后才可落库/发包；落库失败必须走 <see cref="TryReAddGroundItem"/> 放回。
+    /// </summary>
+    public bool TryClaimGroundItem(
+        ushort groundId,
+        byte roomX,
+        byte roomY,
+        out DungeonGroundItem item)
+    {
+        lock (Gate)
+        {
+            if (!GroundItems.TryGet(groundId, roomX, roomY, out item)
+                || !GroundItems.Remove(groundId))
+            {
+                item = null!;
+                return false;
+            }
+
+            Version++;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 拾取落库失败的"原样放回"：把 <see cref="TryClaimGroundItem"/> 摘掉的那条记录按原 GroundId 放回
+    /// （改造前口径"落库失败 → 掉落保留在原地"）。放回后别人仍可捡（先到先得）。
+    /// 返回 false = 放不回去（id 已被占用，不许静默丢件，调用方要记错误）。
+    /// </summary>
+    public bool TryReAddGroundItem(DungeonGroundItem item)
+    {
+        lock (Gate)
+        {
+            if (!GroundItems.TryReAdd(item))
+            {
+                return false;
+            }
+
+            Version++;
+            return true;
+        }
+    }
+
     /// <summary>回城 / 重开：清空地面掉落（改造前 `groundDungeonItems.ResetDungeon()`，EntranceService.cs:2630/3483/11773/11976）。</summary>
     public void ResetGroundItems()
     {

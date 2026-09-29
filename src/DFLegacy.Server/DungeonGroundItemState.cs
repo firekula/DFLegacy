@@ -186,6 +186,13 @@ public sealed class DungeonGroundItemState
 
     public bool Remove(ushort groundId) => _items.Remove(groundId);
 
+    /// <summary>
+    /// 落库失败时把刚摘掉的掉落**按原 GroundId 原样放回**（记录里的房间/归属/被动物件关联/耐久/坐标
+    /// 全在快照里，直接放回即可）。GroundId 若已被别人占用（理论上的 id 回绕）返回 false，
+    /// 调用方要记错误日志——不许静默丢件。
+    /// </summary>
+    public bool TryReAdd(DungeonGroundItem item) => _items.TryAdd(item.GroundId, item);
+
     public IReadOnlyList<DungeonGroundItem> GetRoomItems(byte roomX, byte roomY) =>
         _items.Values
             .Where(item => item.RoomX == roomX && item.RoomY == roomY)
