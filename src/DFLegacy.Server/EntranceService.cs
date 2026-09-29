@@ -2481,7 +2481,14 @@ public sealed class EntranceService(
                         spawnX, spawnY, delivered);
                 }
 
-                // 两轮补播（+1.5s / +5s）：覆盖两端副本地图加载完成的先后差。
+                // 补播排期：先两轮区域条目（+1.5s / +5s，覆盖两端地图加载完成的先后差），
+                // 再在 +6.5s **重载一次本房间**（重发 START_MAP）。理由（IDA 实证）：
+                // 客户端给**外来** uid 建"外观载体"（user+0x110）的只有地图加载器（`sub_4086F0`
+                // 里 `sub_4FD880`），NOTI 23 的处理体只做 AddCreature（入图）+ 落点，**不建载体**；
+                // 而加载器只在"加载地图那一刻"跑。所以必须让加载器在"对方已经进了区域列表"
+                // 之后再跑一次——这就是这次重载的用途（真机内存读数：补发区域条目后
+                // 对方的 creature 已被放到出生点、引用数上升，就差载体这一步）。
+                // 单人一个包都不发。
                 void SchedulePartyAreaEntries(DungeonInstance instance, string reason)
                 {
                     if (!instance.IsParty || activeCharacter is null)
@@ -2490,10 +2497,18 @@ public sealed class EntranceService(
                     }
 
                     var characterId = activeCharacter.Id;
+                    var characterName = activeCharacter.Name;
+                    var expectedRoomX = currentDungeonRoomX;
+                    var expectedRoomY = currentDungeonRoomY;
                     _ = Task.Run(async () =>
                     {
                         var elapsed = TimeSpan.Zero;
-                        foreach (var target in new[] { TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(5) })
+                        foreach (var target in new[]
+                                 {
+                                     TimeSpan.FromSeconds(1.5),
+                                     TimeSpan.FromSeconds(5),
+                                     TimeSpan.FromSeconds(6.5)
+                                 })
                         {
                             try
                             {
@@ -2501,12 +2516,31 @@ public sealed class EntranceService(
                                 elapsed = target;
                                 // 还在同一个实例、同一个房间时才补（换房/回城就不补了）。
                                 if (dungeonInstanceRegistry.TryGetForCharacter(characterId) is not { } bound
-                                    || !ReferenceEquals(bound, instance))
+                                    || !ReferenceEquals(bound, instance)
+                                    || (currentDungeonRoomX, currentDungeonRoomY) != (expectedRoomX, expectedRoomY))
                                 {
                                     return;
                                 }
 
-                                await PushPartyAreaEntryAsync(instance, reason, serverToken);
+                                if (target < TimeSpan.FromSeconds(6.5))
+                                {
+                                    await PushPartyAreaEntryAsync(instance, reason, serverToken);
+                                    continue;
+                                }
+
+                                // 房间重载：让加载器带着"已知对方"的区域列表再建一次档。
+                                if (!instance.TryCaptureCurrentRoomSnapshot(localUserId, out var reloadRoom))
+                                {
+                                    return;
+                                }
+
+                                var reload = DungeonEntryPackets.PlanStartMap(reloadRoom);
+                                await reload.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, reload);
+                                logger.LogInformation(
+                                    "Party room reload ({Reason}) sent to {Name} in dungeon {DungeonId} room ({RoomX},{RoomY}) so the loader rebuilds actors with the peer already in the area list.",
+                                    reason, characterName, currentDungeonId, expectedRoomX, expectedRoomY);
                             }
                             catch (OperationCanceledException)
                             {
