@@ -6879,23 +6879,19 @@ public sealed class EntranceService(
                             // 小窗【是】/【否】**都发包**（G 卷 §2.2/§2.3）：【是】9 字节，【否】同样的
                             // 9 字节再追加 u16 0x0064（`64 00`）成 11 字节 —— 协议层按此判出 accepted。
                             // 尾部 u32 与 CMD 10 同义（接受方的负重余量），原样透传进 NOTI 8。
+                            // 判据 → 参数的映射整体在 TryHandleTradeResponseAsync 里（真机回归「点【否】也
+                            // 成立交易」的承重点），好让冒烟测试不带套接字就能钉住它。
                             if (activeCharacter is not null
-                                && GameProtocolEngine.TryReadResponsePeer(
-                                    request.Body,
-                                    out var tradeRequesterUid,
-                                    out _,
-                                    out var accepterWeightDelta,
-                                    out var tradeAccepted))
-                            {
-                                // 交易侧：拒绝走既有的 !accept → CancelSessionAsync 分支，语义不变。
-                                await itemTradeService.HandleResponseAsync(
+                                && await TryHandleTradeResponseAsync(
+                                    itemTradeService,
                                     activeCharacter.Id,
-                                    tradeRequesterUid,
-                                    accept: tradeAccepted,
-                                    accepterWeightDelta,
-                                    serverToken);
+                                    request.Body,
+                                    serverToken))
+                            {
+                                continue;
                             }
-                            else if (activeCharacter is not null
+
+                            if (activeCharacter is not null
                                 && GameProtocolEngine.TryReadPartyResponsePeer(
                                     request.Body,
                                     out var partyRequesterUid,
@@ -8597,8 +8593,8 @@ public sealed class EntranceService(
                                         GameProtocolEngine.BlackDiamondServiceType)
                                     ? GameProtocolEngine.BlackDiamondBonusFatigue
                                     : (ushort)0;
-                                var maximumFatigue = checked((ushort)(
-                                    GameProtocolEngine.DefaultMaximumFatigue + premiumFatigue));
+                                // 上限与疲劳条共用同一个口径（基础 + 黑钻加成），不再手抄表达式。
+                                var maximumFatigue = GetMaximumFatigue();
                                 var useResult = await store.UseFatigueRecoveryItemAsync(
                                     accountName,
                                     activeCharacter.Id,
@@ -13438,6 +13434,40 @@ public sealed class EntranceService(
                 logger.LogInformation("Entrance client {SessionId} disconnected.", runtimeSession.Id);
             }
         }
+    }
+
+    /// <summary>
+    /// CMD 11 的**交易分支**（peerType==1）：真机小窗【是】9 字节、【否】同前缀再追加 `u16 0x0064`
+    /// （`64 00`）成 11 字节（G 卷 §2.1/§2.3），判据在 <see cref="GameProtocolEngine.TryReadResponsePeer"/>。
+    /// 判据 → <see cref="ItemTradeService.HandleResponseAsync"/> 参数的映射放在这里：`accept:` 曾硬编码
+    /// `true`，真机上点【否】也成立交易。抽成内部静态方法是为了让冒烟测试**不带套接字**直接驱动
+    /// 这条回归（与 <see cref="ClassifyUserInfoRequest"/> 同一套做法）；判据本身一个字未动。
+    /// </summary>
+    /// <returns>true = 这是一笔交易应答（已交给服务处理）；false = peerType != 1，调用方继续判组队应答。</returns>
+    internal static async Task<bool> TryHandleTradeResponseAsync(
+        ItemTradeService itemTradeService,
+        Guid characterId,
+        byte[] body,
+        CancellationToken cancellationToken)
+    {
+        if (!GameProtocolEngine.TryReadResponsePeer(
+                body,
+                out var requesterUid,
+                out _,
+                out var weightDelta,
+                out var accepted))
+        {
+            return false;
+        }
+
+        // 交易侧：拒绝走既有的 !accept → CancelSessionAsync 分支，语义不变。
+        await itemTradeService.HandleResponseAsync(
+            characterId,
+            requesterUid,
+            accept: accepted,
+            weightDelta,
+            cancellationToken);
+        return true;
     }
 
     private async Task<GameServerPacket> CreateUserInfoAsync(uint accountUid, CancellationToken cancellationToken)

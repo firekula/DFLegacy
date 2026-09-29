@@ -849,6 +849,8 @@ public sealed class PartyService : BackgroundService
         List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
         List<(byte TownId, byte AreaId, GameServerPacket Packet)> areas = [];
         int memberCount;
+        byte storedNameSelection;
+        byte outboundNameSelection;
         lock (_gate)
         {
             // "名册此刻仍在册"（而不是 partyId 被同名的新队伍占用）：两种用途都要它——
@@ -867,8 +869,12 @@ public sealed class PartyService : BackgroundService
                 return;
             }
 
-            // 人数在锁内取（与 members 同一把锁下的同一个名册），出锁后只读这个 int。
+            // 人数与出站 nameSel 都在锁内取（与 members 同一把锁下的同一个名册）：并发改名时，
+            // 锁外读 `NameSelection` 再归一化会打印**并非真正发出去的值**，而这行日志正是真机核对
+            // nameSel 用的（`NormalizeNameSelection` 与 BuildRosterPacket 里的出站取值同源）。
             memberCount = roster.Count;
+            storedNameSelection = roster.NameSelection;
+            outboundNameSelection = NormalizeNameSelection(roster.NameSelection);
 
             if (recipients is null)
             {
@@ -886,12 +892,13 @@ public sealed class PartyService : BackgroundService
             }
         }
 
-        // 真机核对用：出站 nameSel 是这次修复的判据（0 从不出现，自定义名显示为 1）。与既有日志同风格。
+        // 真机核对用：出站 nameSel 是这次修复的判据（0 从不出现，自定义名显示为 1）。与既有日志同风格；
+        // 两个值都取自锁内局部变量（见上），保证与真正发出去的那份名册同值。
         _logger.LogInformation(
             "Party roster {PartyId} published: nameSel {StoredNameSelection}->{OutboundNameSelection}, {MemberCount} member(s).",
             roster.PartyId,
-            roster.NameSelection,
-            NormalizeNameSelection(roster.NameSelection),
+            storedNameSelection,
+            outboundNameSelection,
             memberCount);
 
         foreach (var (characterId, packet) in direct)
@@ -1139,8 +1146,10 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
-    /// 每秒扫描一次：①超时收尾——待决请求到期 → 给请求方 `CMD 11 [0,100,0]`（客户端的"拒绝"不发包，
-    /// `0x821EA8`，所以这是唯一能告诉请求方"对方没答应"的途径，与交易同构，设计稿 §5.2）；
+    /// 每秒扫描一次：①超时收尾——待决请求到期 → 给请求方 `CMD 11 [0,100,0]`。小窗【否】会发包
+    /// （11 字节带尾 `64 00`，G 卷 §2.2），由 <see cref="HandleResponseAsync"/> 立刻回同样的失败包；
+    /// 超时只兜底三种**静默**情形：决斗（peerType 2/3）点【否】不发包、请求方在窗口内离线/守卫失败、
+    /// 窗口计时器到点静默关窗（设计稿 §5.2）；
     /// ②名册补播——发布时排的两个时刻到点就重发一份名册（对客户端"对同一份名册不重试"的兜底，
     /// 见 <see cref="FirstResettleDelay"/>）。**补播走 `registerResettle: false`**：它自己不再排期，
     /// 否则每轮扫描都会把补播续下去，永远停不下来。

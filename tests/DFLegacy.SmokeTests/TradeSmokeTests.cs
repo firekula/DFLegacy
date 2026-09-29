@@ -14,6 +14,7 @@ internal static class TradeSmokeTests
         CheckPlanner(check);
         await CheckStoreAsync(check);
         await CheckRequestFlowAsync(check);
+        await CheckResponseRejectFlowAsync(check);
         await CheckMoveFlowAsync(check);
         await CheckPanelSlotAllocationAsync(check);
         await CheckMoveAfterCancelIsInertAsync(check);
@@ -920,6 +921,84 @@ internal static class TradeSmokeTests
                 && harness.Of("布拉沃")[0].Payload[0] == 0
                 && !harness.Directory.TryGetSnapshot(harness.IdOf("布拉沃"), out _),
             "LeaveTownAsync cancels the in-flight request window and really leaves the directory");
+    }
+
+    /// <summary>
+    /// ★ 回归（真机「点【否】也成立交易」）：交易应答窗【否】发的是 11 字节 CMD 11——与【是】同前缀、
+    /// 尾部多一个 `u16 0x0064`（`64 00`），由协议层判成 `accepted: false`（G 卷 §2.1/§2.3）。
+    /// **承重点**是 EntranceService 的交易应答分支：必须把判出的 accepted 原样传给
+    /// <see cref="ItemTradeService.HandleResponseAsync"/>（`accept: accepted`，曾硬编码 `true`）。
+    /// 这个用例拿真机形状的字节走完整条链——判据（TryReadResponsePeer）→ 分派
+    /// （EntranceService.TryHandleTradeResponseAsync）→ 服务语义（`!accept` → 取消流程）：
+    /// 请求方恰好收一条 `CMD 11 [0, 100, 1]`、接受方零包（窗口从未打开，因此没有 NOTI 8/16），
+    /// 会话就地摘除、双方立刻能重新发起；同一分派对 9 字节【是】必须照样开窗。
+    /// **变异验证**：把 `TryHandleTradeResponseAsync` 里的 `accept: accepted` 改回硬编码 `true`，
+    /// 前两条断言即变红（会走 Open 分支：请求方收 NOTI 8、接受方收 CMD 11 [1, ...]）。
+    /// </summary>
+    private static async Task CheckResponseRejectFlowAsync(Action<bool, string> check)
+    {
+        await using var harness = await TradeHarness.CreateAsync();
+        await harness.EnterTownAsync("阿尔法", townId: 1, areaId: 2, areaUserId: 1);
+        await harness.EnterTownAsync("布拉沃", townId: 1, areaId: 2, areaUserId: 2);
+
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), 2, weightDelta: 0xFFFF8C1D, CancellationToken.None);
+        check(harness.Of("布拉沃").Count == 1
+                && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.RequestPeerNotification,
+            "the refusal test starts from a real pending request window (NOTI 7)");
+        harness.Clear("阿尔法");
+        harness.Clear("布拉沃");
+
+        // 真机拒绝包（G 卷 §2.3 的 0x821F77）：[u16 seq][u16 uid=1][u8 选择子 1=交易][u32 负重差] + u16 0x0064。
+        // 第 5 字节（下沉到 Body 的 index 4）是**选择子** 1，不是失败包里的 ItemTradePeerType(100)。
+        var acceptedResponse = new byte[9];
+        BinaryPrimitives.WriteUInt16LittleEndian(acceptedResponse.AsSpan(2, 2), 1);
+        acceptedResponse[4] = 1;
+        BinaryPrimitives.WriteUInt32LittleEndian(acceptedResponse.AsSpan(5, 4), 0xFFFF8C55);
+        var refusedResponse = new byte[11];
+        Array.Copy(acceptedResponse, refusedResponse, acceptedResponse.Length);
+        refusedResponse[9] = 0x64;
+        refusedResponse[10] = 0x00;
+
+        check(await EntranceService.TryHandleTradeResponseAsync(
+                harness.Service,
+                harness.IdOf("布拉沃"),
+                refusedResponse,
+                CancellationToken.None),
+            "the 11-byte CMD 11 (peerType 1, tail 64 00) takes the trade-response branch");
+
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].Type == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("阿尔法")[0].Payload.SequenceEqual(
+                    new byte[] { 0, GameProtocolEngine.ItemTradePeerType, 1 }),
+            "【否】 answers the requester exactly one CMD 11 [0, 100, 1]: the trade never opens");
+        check(harness.Of("布拉沃").Count == 0,
+            "the refuser gets zero packets: no window was opened, so no NOTI 8 / CMD 11 [1, ...] / NOTI 16");
+
+        // 会话已被摘除：重置限流后同一对角色立刻能再发起（对方再收一条 NOTI 7）。
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), 2, weightDelta: 0, CancellationToken.None);
+        check(harness.Of("布拉沃").Count == 1
+                && harness.Of("布拉沃")[0].ProtocolId == GameProtocolEngine.RequestPeerNotification
+                && harness.Of("阿尔法").Count == 1,
+            "the refused session is really gone: an immediate re-request reaches the target");
+
+        // 同一分派必须对【是】照样开窗（9 字节、无 `64 00` 尾）：防止"把判据写成一律拒绝"的过度修复。
+        check(await EntranceService.TryHandleTradeResponseAsync(
+                harness.Service,
+                harness.IdOf("布拉沃"),
+                acceptedResponse,
+                CancellationToken.None),
+            "the 9-byte CMD 11 (no tail) still takes the same trade-response branch");
+        check(harness.Of("阿尔法").Count == 2
+                && harness.Of("阿尔法")[1].Type == 0
+                && harness.Of("阿尔法")[1].ProtocolId == GameProtocolEngine.ResponsePeerNotification
+                && harness.Of("布拉沃").Count == 2
+                && harness.Of("布拉沃")[1].ProtocolId == GameProtocolEngine.ResponsePeerCommand
+                && harness.Of("布拉沃")[1].Payload[0] == 1,
+            "the 9-byte 【是】 still opens the window: NOTI 8 for the requester, CMD 11 [1, ...] for the accepter");
     }
 
     private static async Task CheckMoveFlowAsync(Action<bool, string> check)
