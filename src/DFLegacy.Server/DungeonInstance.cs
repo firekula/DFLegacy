@@ -70,7 +70,8 @@ internal sealed class DungeonInstance(
     ushort partyId,
     Guid soloCharacterId,
     DungeonCatalog catalog,
-    ItemCatalog itemCatalog)
+    ItemCatalog itemCatalog,
+    TimeSpan? doorGrace = null)
 {
     private readonly List<DungeonInstanceMember> _members = [];
     private readonly DungeonRunState _run = new(catalog);
@@ -119,7 +120,11 @@ internal sealed class DungeonInstance(
     /// <summary>已 destroy 的被动物件 index。**只允许在 <see cref="Gate"/> 内访问**；会话走 <see cref="TryMarkPassiveObjectDestroyed"/>。</summary>
     internal HashSet<byte> DestroyedPassiveObjects { get; } = [];
 
-    public DungeonDoorAssembly Doors { get; } = new();
+    /// <summary>
+    /// 门口集结状态机。宽限窗口由 <c>ServerOptions.Dungeon.DoorGraceSeconds</c> 注入
+    /// （不传 = <see cref="DungeonDoorAssembly.DefaultGrace"/>，测试与旧调用点行为不变）。
+    /// </summary>
+    public DungeonDoorAssembly Doors { get; } = new(doorGrace);
 
     public byte DungeonOption { get; private set; }
 

@@ -875,7 +875,31 @@
       正对上用户 2026-10-01 的推断（"服务端觉得两人都到了、某个客户端还没到"）。
       **下一步候选修法**：给第一个报到者开一个**短宽限窗口**（复用既有倒计时机制，例如 1.5–2 秒内等其他人；
       到点仍按现在的强制推进兜底）——既不破坏"现在能开门"的兜底，又能消掉绝大多数不同步窗口。
-      **不要**直接把 `memberCount: 1` 改回 `MemberCount`（按注释会重演"门永远打不开"）。
+22. **2026-10-01 门口宽限窗口已实现（第 21 条那条线索的修法）**
+    - **实现**：CMD 48 的组队分支不再写死 `memberCount: 1`，改为传**真实人数**
+      （`EntranceService.cs` 门口集结段）→ `DungeonDoorAssembly` 在"有人在门口、又**没过半**"时开一个
+      **宽限窗口**（`ServerOptions.Dungeon.DoorGraceSeconds`，默认 **2 秒**，0 = 关闭并退回旧行为）：
+      窗口内全员到齐 → 立即推进；**窗口到点仍有人没报 → 照旧强制推进**（门绝不会永远打不开）。
+      过半（严格 &gt; 人数/2）时**不开**窗口，让既有的 10 秒倒计时独占节奏（既有集结行为逐字不变）。
+      两条兜底路径都带 `Forced=true`，靠新增的 `DungeonDoorOutcome.GraceExpired` 在日志里区分：
+      宽限窗口到点记 `Door assembly grace window (Ns) expired … (arrived=A/T)`。
+    - **诊断行已扩展**：`Door assembly diagnostics: …` 追加了 `doorGraceSeconds=` 与 `graceDeadline=`，
+      真机复验时把"谁几点报的门""窗口几点到"和 `party room advanced …` 对齐即可判定窗口够不够长。
+    - **自动化**（`DungeonPartySmokeTests`，全绿；**变异验证**：把 `DoorGraceSeconds` 默认值改成 0 →
+      5 条断言变红，说明"配置默认值 → 实例 → 状态机"这条接线真的被测到了）：
+      ①单人上报不再立刻推进、窗口为 `now + 配置值`；②窗口未到点不推进；③窗口到点强制推进
+      （`GraceExpired=true`、清空集结）；④窗口内第二人到齐 → 立即推进且不遗留窗口；
+      ⑤**没到过半才开窗口**、过半时窗口恒为 null；⑥扫描闭环：两人队只有一人上报 → 窗口内房间不动、
+      到点两人一起换房（上报者先拿 CMD 48 回包再收 NOTI 29，未上报者只收 1 条 NOTI 29）。
+    - **⚠️ 必须真机复验的疑点（本次证据反而指向"2 秒可能不够"）**：`server-party28.log` 里
+      fb805b2a 会话 7 次换房全部上报、88037268 会话**一次都没上报**（`RX … protocol=48` 计数 7 : 0）。
+      也就是说这一次 run 里另一方**完全没有**在窗口内上报过；若"被拽进新房的客户端要 7 秒左右才会
+      在下一次进房时报 CMD 48"（party28 `00:30:37` 服务端发进房包 → `00:30:44` 该会话才上报），
+      2 秒窗口仍会到点强制推进。**所以真机复验要看两件事**：队友端是否出现
+      `Door assembly diagnostics` 里第二个人在窗口内的上报；以及窗口是否需要调大（改 `server.json`
+      即可，不必重新发版）。窗口调大只增加等待、不改变兜底，仍不会重演"门永远打不开"。
+      **不要**直接把 `memberCount: 1` 改回 `MemberCount`（那是本次修法之前的退化写法，会重演"门永远打不开"）；
+      正确写法是传**真实人数**并让宽限窗口兜底。
 
 ## 3. 可复用的验证方法
 
@@ -916,4 +940,13 @@
   `dotnet build` 处理 `.slnx` 会因 `.vcxproj` 报 `MSB4278`（见 BUILDING §8）。发布启动器用 MSBuild 的 Publish 目标：`-t:Publish -p:PublishDir=<绝对路径>\`，它会一并输出启动器、`DFLegacy.Relay.Core.dll` 与 `ijl15.dll`。
 - **Git Bash 下 MSBuild 开关要用 `-` 前缀**（`-m`、`-restore`、`-p:Configuration=Release`）。写 `/m` `/restore` 会被 MSYS 当成路径转换成 `M:/`、`D:/Program Files/Git/restore`，报 `MSB1008: 只能指定一个项目`。
 - 本机**没有安装 cmake**，因此 `build-native.ps1` 不可用；原生模块改由 `.vcxproj` 构建，产物落在 `artifacts/native/{ijl15,random}/<Configuration>/`，服务端发布时会自动带上随机桥 DLL。
+- **构建被"访问被拒绝 / 无法获取锁文件"挡住时先清孤儿进程**（2026-10-01 实际踩过）：
+  `dotnet build` 报 `MSB3491: Could not write lines to file "…obj\Release\net10.0\…AssemblyInfoInputs.cache". Access to the path … is denied`，
+  或 restore 报 `Unable to obtain lock file access on …\NuGetScratch\lock\…` 时，先怀疑**残留的 MSBuild 工作进程**而不是权限本身：
+  一次失败的构建会留下上百个孤儿 `dotnet` 进程，它们持有 `obj` 与 NuGet 锁。**不要直接删 NuGet 锁文件**——先按启动时间清掉孤儿进程即可：
+  ```powershell
+  Get-Process dotnet | Where-Object { $_.StartTime -gt (Get-Date '2026-10-01 01:00') } | Stop-Process -Force
+  ```
+  （按时间窗筛，别误杀正在托管的 node/服务进程；`DFLegacy.Server` 是游戏服务端，不是 `dotnet` 进程名，不受影响。）
+  另：`src` 及其下 `obj` 目录曾缺"当前用户完全控制"，由 `diagnose-windows-sandbox-acl` 技能的一条命令补齐（会给这些目录加一条当前用户的完全控制权限、不改文件内容），修好后构建即通过。
 - 服务端的 `server.json`、启动器的 `launcher.json` 都以 `PreserveNewest` 复制到发布目录：重复发布前先备份，或发布后改回本机值（见 DEPLOYING §10）。

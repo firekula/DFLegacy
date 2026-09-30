@@ -12127,7 +12127,8 @@ public sealed class EntranceService(
                                 dungeonInstance?.StopRun();
                                 dungeonInstance = dungeonInstanceRegistry.GetOrCreateForSolo(
                                     activeCharacter!.Id,
-                                    () => new DungeonInstance(0, activeCharacter.Id, dungeonCatalog, itemCatalog));
+                                    () => new DungeonInstance(
+                                        0, activeCharacter.Id, dungeonCatalog, itemCatalog, options.Dungeon.DoorGrace));
                                 dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, dungeonInstance);
                                 // 先摘后挂（幂等）：上一次入场中途失败可能留下带旧 AreaUserId/旧发送句柄的
                                 // 成员记录，直接 AddMember 会被幂等跳过（本任务硬规则，三条任务书路径之外
@@ -12373,10 +12374,12 @@ public sealed class EntranceService(
                                 ? dungeonInstanceRegistry.GetOrCreateForParty(
                                     entrySlots![0].PartyId,
                                     () => new DungeonInstance(
-                                        entrySlots[0].PartyId, Guid.Empty, dungeonCatalog, itemCatalog))
+                                        entrySlots[0].PartyId, Guid.Empty, dungeonCatalog, itemCatalog,
+                                        options.Dungeon.DoorGrace))
                                 : dungeonInstanceRegistry.GetOrCreateForSolo(
                                     activeCharacter!.Id,
-                                    () => new DungeonInstance(0, activeCharacter.Id, dungeonCatalog, itemCatalog));
+                                    () => new DungeonInstance(
+                                        0, activeCharacter.Id, dungeonCatalog, itemCatalog, options.Dungeon.DoorGrace));
                             dungeonInstanceRegistry.BindCharacter(activeCharacter!.Id, dungeonInstance);
                             dungeonInstance.RemoveMember(activeCharacter!.Id);
                             dungeonInstance.AddMember(new DungeonInstanceMember(
@@ -12735,34 +12738,40 @@ public sealed class EntranceService(
                                 }
                                 else if (dungeonInstance is { IsParty: true } partyInstance)
                                 {
-                                    // 门口集结制（设计稿 §3.3，用户拍板）：登记到门口的人，全员/过半
-                                    // 才推进。**但真机（2026-09-29，server-party2.log）证明 2008 客户端
-                                    // 不会让每个队员都上报 CMD 48**：整局只有一方发过（另一方从不发），
-                                    // 于是"全员到齐"永远不成立、连"过半"也谈不上 → 门打不开。
-                                    // 按设计稿 §3.3 已写明的兜底：**立即推进 + 其余人被强制**。
-                                    // 实现上把"到门口人数"按 1 计，复用状态机里"门口只有我一个人 → 立即推进"
-                                    // 的既有分支（Doors 的全员/倒计时规则原样保留，日后若客户端确实会上报，
-                                    // 把这里的 1 换回 partyInstance.MemberCount 即可恢复集结制）。
+                                    // 门口集结制（设计稿 §3.3，用户拍板）：登记到门口的人，登记后由
+                                    // 状态机决定"立即推进 / 等其他人 / 过半点倒计时"。**真机（2026-09-29
+                                    // server-party2.log、2026-10-01 party26/27/28）证明 2008 客户端不会让
+                                    // 每个队员都上报 CMD 48**：party28 的 7 次换房**全部**由同一个会话上报
+                                    // （7 条 `RX … protocol=48` 对 7 条 `party room advanced … (arrived=1/2)`），
+                                    // 另一会话 0 条，于是"全员到齐"永远不成立。
+                                    // 此前这里写死 `memberCount: 1` → 第一个上报者**立刻**推进，队友还在
+                                    // 加载就被拽进下一房（疑似 `Eip=0x009019C1` 硬崩的诱因）。
+                                    // 现在传**真实人数**：第一个上报者只会开一个短宽限窗口等其他人
+                                    // （`ServerOptions.Dungeon.DoorGraceSeconds`，默认 2 秒），窗口内有人到齐
+                                    // 就正常推进，窗口到点仍没人报 → 照旧强制推进（门绝不会永远打不开）。
                                     DungeonDoorOutcome assemblyOutcome;
                                     DungeonRoomPosition? pendingDoor;
+                                    DateTimeOffset? graceDeadline;
                                     lock (partyInstance.Gate)
                                     {
                                         assemblyOutcome = partyInstance.Doors.Register(
                                             new DungeonRoomPosition(targetX, targetY),
                                             activeCharacter!.Id,
-                                            memberCount: 1,
+                                            memberCount: partyInstance.MemberCount,
                                             DateTimeOffset.UtcNow,
                                             GameProtocolEngine.CreateCommandReply(request, success: true));
                                         // 锁内取走要记日志的集结状态（Doors 只在实例锁内用，勿在锁外读）。
                                         pendingDoor = partyInstance.Doors.PendingTarget;
+                                        graceDeadline = partyInstance.Doors.GraceDeadline;
                                     }
 
                                     // 门口集结诊断（不改变行为，只落证据）：用户 2026-10-01 推断"服务端以为
                                     // 两人都到门口、某个客户端其实还在跑"是硬崩诱因——这里把**谁在何时、
                                     // 从哪个坐标**上报 CMD 48、判定结果、已到人数与队伍人数一并记下；
                                     // 配合既有的 `party room advanced … (arrived=N/M)` 一行即可对齐时间线。
+                                    // 宽限窗口到点时看 `graceSeconds` 与两端的 CMD 48 时间差就能判断窗口是否够长。
                                     logger.LogInformation(
-                                        "Door assembly diagnostics: {Name} (uid {Uid}, slot {Slot}) reported MOVE_MAP ({TargetX},{TargetY}) from room ({FromX},{FromY}) at ({X},{Y}); decision={Decision}, arrivedCount={Arrived}, partySize={PartySize} (registration deliberately uses memberCount=1: the 2008 client does not report CMD 48 from every member, so the door advances on the first reporter).",
+                                        "Door assembly diagnostics: {Name} (uid {Uid}, slot {Slot}) reported MOVE_MAP ({TargetX},{TargetY}) from room ({FromX},{FromY}) at ({X},{Y}); decision={Decision}, arrivedCount={Arrived}, partySize={PartySize}, doorGraceSeconds={GraceSeconds}, graceDeadline={GraceDeadline}.",
                                         activeCharacter!.Name,
                                         localUserId,
                                         PartySlotIndexOfThisSession(),
@@ -12774,7 +12783,11 @@ public sealed class EntranceService(
                                         currentY,
                                         assemblyOutcome.Decision,
                                         assemblyOutcome.Arrivals.Count,
-                                        partyInstance.MemberCount);
+                                        partyInstance.MemberCount,
+                                        partyInstance.Doors.Grace.TotalSeconds,
+                                        graceDeadline is { } deadline
+                                            ? deadline.ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture)
+                                            : "none");
 
                                     if (assemblyOutcome.Decision == DungeonDoorDecision.Ignored)
                                     {

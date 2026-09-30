@@ -518,9 +518,26 @@ public sealed class DungeonPartyService : BackgroundService
             await SendSafelyAsync(member, startMap);
         }
 
-        _logger.LogInformation(
-            "Door assembly countdown expired for dungeon {DungeonId}; forced the party into room ({RoomX},{RoomY}).",
-            dungeonId, room.RoomX, room.RoomY);
+        // 两条兜底路径都带 Forced=true，靠 GraceExpired 分清：宽限窗口到点（客户端不每人都报
+        // CMD 48）还是过半倒计时到点。真机排查"窗口够不够长"就靠这一行与 Door assembly diagnostics 对齐。
+        if (outcome.GraceExpired)
+        {
+            _logger.LogInformation(
+                "Door assembly grace window ({Seconds}s) expired for dungeon {DungeonId} with {Arrived}/{Total} at the door; forced the party into room ({RoomX},{RoomY}).",
+                instance.Doors.Grace.TotalSeconds,
+                dungeonId,
+                outcome.Arrivals.Count,
+                members.Length,
+                room.RoomX,
+                room.RoomY);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Door assembly countdown expired for dungeon {DungeonId}; forced the party into room ({RoomX},{RoomY}).",
+                dungeonId, room.RoomX, room.RoomY);
+        }
+
         _ = cancellationToken;
     }
 

@@ -16,6 +16,7 @@ public sealed class ServerOptions
     public ChannelOptions Channel { get; set; } = new();
     public DropOptions Drop { get; set; } = new();
     public ExperienceOptions Experience { get; set; } = new();
+    public DungeonOptions Dungeon { get; set; } = new();
     public int MaximumPacketLength { get; set; } = 4 * 1024 * 1024;
     public bool RejectBadCrc32 { get; set; } = false;
     public bool EnablePacketTracing { get; set; } = false;
@@ -57,6 +58,29 @@ public sealed class ExperienceOptions
     public double ClearEventBonusRate { get; set; }
     public DateTimeOffset? ClearEventStartsAt { get; set; }
     public DateTimeOffset? ClearEventEndsAt { get; set; }
+}
+
+/// <summary>
+/// 副本（含组队副本）行为开关。默认值就是生产口径，保留可配置是为了真机调参不必重新发版。
+/// </summary>
+public sealed class DungeonOptions
+{
+    /// <summary>
+    /// 门口集结的**宽限窗口**（秒；0 = 关闭，退回"第一个上报者立刻推进"的旧行为）。
+    /// 2026-10-01 真机证据：一次队伍 run 里 7 次换房**全部只由同一个会话**上报 CMD 48
+    /// （`server-party28.log`：7 条 `RX fb805b2a… protocol=48` 对 7 条
+    /// `party room advanced … (arrived=1/2)`；party26/27 同形），所以"全员到齐/过半"这两条
+    /// 自然判据永远不成立——此前按 `memberCount: 1` 登记让第一个上报者**立刻**推进，
+    /// 把还在加载的队友拽进下一房（疑似 `Eip=0x009019C1` 硬崩的诱因）。
+    /// 窗口内全员到齐即推进；到点仍有人没报 → 照旧强制推进（绝不能重演"门永远打不开"）。
+    /// 扫描循环每秒一轮，实际生效时间 = 窗口 + 最多 1 秒。
+    /// </summary>
+    public double DoorGraceSeconds { get; set; } = 2;
+
+    /// <summary>负值按 0 处理（配置写错不该让门永远打不开，也不该让门提前开）。</summary>
+    public TimeSpan DoorGrace => DoorGraceSeconds > 0
+        ? TimeSpan.FromSeconds(DoorGraceSeconds)
+        : TimeSpan.Zero;
 }
 
 public sealed class ChannelOptions
