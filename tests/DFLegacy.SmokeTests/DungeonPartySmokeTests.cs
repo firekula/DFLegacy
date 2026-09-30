@@ -39,6 +39,7 @@ internal static class DungeonPartySmokeTests
         CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
         CheckAllMemberLoadingBarrier(check, fixture);
         CheckSettlementReturnTimeout(check, fixture);
+        CheckSettlementReturnPullsWholeParty(check, fixture);
         await CheckSettlementCountdownAsync(check, fixture);
         CheckSoloLookupNeverReusesPartyBinding(check, fixture);
         CheckStoppedInstanceCannotBeJoined(check, fixture);
@@ -632,6 +633,49 @@ internal static class DungeonPartySmokeTests
             "the countdown line carries the remaining seconds and where the player is going");
         check(captainInbox.All(packet => packet.ProtocolId != GameProtocolEngine.MessageNotification),
             "the other member's chat box is left alone");
+    }
+
+    /// <summary>
+    /// 官服：**一个人在篝火页选"返回城镇" → 全队一起回城**（不是各自等自己的超时）。
+    /// `[静态]` 依据两处：① `CParty::ReturnToVillage` @0x085aca60 的组队分支是**按槽位循环**
+    /// （`for i in 0..3: CParty::_checkValidUser(i) → CUser::make_basic_info(member[i]) →
+    /// GameWorld::out_from_dungeon(member[i])`，循环增量在 0x085acf1d-0x085acf2a，成员指针 = `party+0x78+i*0x18`）；
+    /// ② `Dispatcher_EPLPCommand::isReTurnToVillage` @0x0825f7f4 只判"这个人在副本里"
+    /// （`CUser::getMoveSpace() == 1` → 返回 1，0x0825f828）——**不判是不是队长**。
+    /// 所以我们把"其余成员"各投一次强制回城信箱（会话取走后走同一条 `ReturnToTownFromDungeonAsync`）。
+    /// **变异验证**：把 `IsParty` 前置判断去掉 → 单人那条变红；把"跳过发起者"去掉 → 第一条变红。
+    /// </summary>
+    private static void CheckSettlementReturnPullsWholeParty(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        var registry = new DungeonInstanceRegistry();
+        var instance = fixture.CreatePartyInstance(1700);
+        var captain = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        instance.AddMember(fixture.Member(captain, slot: 0, "队长"));
+        instance.AddMember(fixture.Member(member, slot: 1, "队员"));
+        registry.BindCharacter(captain, instance);
+        registry.BindCharacter(member, instance);
+
+        var pulled = DungeonPartyService.PostSettlementReturnsForOthers(registry, captain, "settlement-party-return");
+
+        check(pulled == 1 && !registry.TryTakeSettlementReturn(captain, out _),
+            "the member who chose to return is not queued again (he is already returning on his own path)");
+        check(registry.TryTakeSettlementReturn(member, out var reason)
+                && reason == "settlement-party-return",
+            "the other party member is queued for the same town return (official ReturnToVillage loops every slot)");
+        check(!registry.TryTakeSettlementReturn(member, out _),
+            "the queued return is taken exactly once");
+
+        // 单人副本不参与：单人会话本来就是自己回城（且扫掠对非组队实例整体早退）。
+        var soloOwner = Guid.NewGuid();
+        var solo = fixture.CreateSoloInstance(soloOwner);
+        solo.AddMember(fixture.Member(soloOwner, slot: 0, "独狼"));
+        registry.BindCharacter(soloOwner, solo);
+        check(DungeonPartyService.PostSettlementReturnsForOthers(registry, soloOwner, "settlement-party-return") == 0
+                && !registry.TryTakeSettlementReturn(soloOwner, out _),
+            "a solo instance never pulls anybody (single-player zero regression)");
     }
 
     /// <summary>

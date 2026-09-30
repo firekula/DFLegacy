@@ -99,6 +99,42 @@ public sealed class DungeonPartyService : BackgroundService
     public DungeonInstanceRegistry Registry { get; }
 
     /// <summary>
+    /// 官服：**篝火页上任何一个成员选"返回城镇"，全队一起回城**（不是各自等各自的超时）。
+    /// `[静态]` 两处依据：① `CParty::ReturnToVillage` @0x085aca60 的组队分支**按槽位循环**——
+    /// `for i in 0..3: CParty::_checkValidUser(i) → CUser::make_basic_info(member[i]) →
+    /// GameWorld::out_from_dungeon(member[i])`（成员指针 = `party+0x78+i*0x18`，循环增量在
+    /// 0x085acf1d-0x085acf2a）；② `Dispatcher_EPLPCommand::isReTurnToVillage` @0x0825f7f4 只判
+    /// "这个人在副本里"（`CUser::getMoveSpace() == 1` → 1，0x0825f828-0x0825f83c），**不判是不是队长**。
+    /// 实现：给其余成员各投一次"强制回城"信箱，他们的会话取走后走同一条
+    /// `ReturnToTownFromDungeonAsync`（各自的城镇收尾、结算、退队判定都照旧）。
+    /// 单人实例 / 不在实例里 → 返回 0 且一个信箱都不投（单人零回归）。
+    /// </summary>
+    internal static int PostSettlementReturnsForOthers(
+        DungeonInstanceRegistry registry,
+        Guid characterId,
+        string reason)
+    {
+        if (registry.TryGetForCharacter(characterId) is not { IsParty: true } instance)
+        {
+            return 0;
+        }
+
+        var posted = 0;
+        foreach (var member in instance.Members)
+        {
+            if (member.CharacterId == characterId)
+            {
+                continue;
+            }
+
+            registry.PostSettlementReturn(member.CharacterId, reason);
+            posted++;
+        }
+
+        return posted;
+    }
+
+    /// <summary>
     /// 第 13 条：**副本内擅自退出 = 退队**（官服语义）。触发点是客户端上行 CMD 45（GIVEUP_GAME，
     /// 副本内"返回城镇"按钮），官服 `CParty::giveup_game` 里就是 `CParty::leave_user(party, user, 2)`
     /// ——与 CMD 13（退出队伍）**同一个函数、同一个实参**，所以这里复用 CMD 13 的

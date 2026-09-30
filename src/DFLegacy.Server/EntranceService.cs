@@ -14463,6 +14463,24 @@ public sealed class EntranceService(
                             if (state == 1)
                             {
                                 var freeCardWasSelected = roomSettlement.FreeCardIndex.HasValue;
+                                // 官服 `CParty::ReturnToVillage` 是**全队**回城（按槽位循环，见该函数注释）：
+                                // 篝火页上任何一个成员选"返回城镇"，其余成员也一起回去——不是各自等自己的超时。
+                                // 给其余成员投"强制回城"信箱，他们各自的会话取走后走同一条回城路径。
+                                if (activeCharacter is not null)
+                                {
+                                    var pulled = DungeonPartyService.PostSettlementReturnsForOthers(
+                                        dungeonInstanceRegistry,
+                                        activeCharacter.Id,
+                                        "settlement-party-return");
+                                    if (pulled > 0)
+                                    {
+                                        logger.LogInformation(
+                                            "Settlement town return by {Name} pulls {Count} remaining party member(s) back to town.",
+                                            activeCharacter.Name,
+                                            pulled);
+                                    }
+                                }
+
                                 await ReturnToTownFromDungeonAsync(
                                     freeCardWasSelected
                                         ? "settlement-after-card"
