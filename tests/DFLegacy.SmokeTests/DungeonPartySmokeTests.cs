@@ -935,9 +935,12 @@ internal static class DungeonPartySmokeTests
     /// 的 58 个内部调用里**没有** `leave_user`；副本内死亡 `DisPatcher_DieCharacInDungeon::process`
     /// @0x081c2a12 调的是 `CParty::die_user` 而不是 `leave_user`。所以本用例也钉住"不在**队伍**实例里
     /// 一律一个包都不发"（单人零回归 + 选图界面/城镇里收到 CMD 45 都不该退队）。
+    /// **"擅自退出"只在队里还有别人时才真的把他移出队伍**（用户 2026-09-30 真机更正）：一个人退队后名册为空
+    /// **不解散**——他仍是这支 1 人队的队长（官服 `CParty::leave_user` 只有 `IsSinglePlay` 那支才 `CParty::destroy`）。
     /// **变异验证**：把 `AbandonPartyForDungeonGiveUpAsync` 的 `IsParty` 前置判断去掉 → 单人/未绑定那两条变红；
     /// 把通知换成 `PartyLeaveNotice.Kicked`/`Disconnected` → "没有人收到 NOTI 10" 变红；
-    /// 不调 `TryLeavePartySilentlyAsync` → 前三条变红。
+    /// 不调 `TryLeavePartySilentlyAsync` → 前三条变红；
+    /// 把"只有别人时才算退队"改成无条件退队 → C 组（队伍保留）变红。
     /// 会话接线（哪条回城路径调它）不可单测：真机检查点见 STATUS.md 第 13 条。
     /// </summary>
     private static async Task CheckGiveUpLeavesPartyAsync(
@@ -1027,15 +1030,19 @@ internal static class DungeonPartySmokeTests
             check(harness.Of("查理").All(packet => packet.ProtocolId != GameProtocolEngine.WalkoutNotification),
                 "the departing leader is not announced with NOTI 10 either");
 
-            // ---- C) 队伍实例里只剩自己时退出：队伍解散（kind=3），与 CMD 13 的最后一人同形 ----
+            // ---- C) 队里只剩自己时擅自退出：**队伍保留**，他仍是这支 1 人队的队长（用户 2026-09-30 真机更正） ----
+            // 官服语义：退队后名册为空**不**解散（`CParty::leave_user` 只有 `IsSinglePlay` 那支才 `CParty::destroy`，
+            // 玩家自建的 1 人队不走那条）——所以"擅自退出"只在**还有别人**时才真把他移出队伍。
             leaderRegistry.UnbindCharacter(goingLeader);
             harness.ClearAll();
-            check(await leaderService.AbandonPartyForDungeonGiveUpAsync(successor)
-                    && harness.Service.GetPartySlots(successor) is null,
-                "the last member giving up dissolves the party");
-            var disband = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
-            check(disband is { Payload.Length: 5 } && disband.Payload[4] == 3,
-                "the last member gets the 5-byte kind=3 disband record");
+            check(!await leaderService.AbandonPartyForDungeonGiveUpAsync(successor),
+                "the last member giving up does not remove him from his own party");
+            var keptSlots = harness.Service.GetPartySlots(successor);
+            check(keptSlots is { Length: 1 } && keptSlots[0].CharacterId == successor
+                    && harness.Service.TryGetLeaderSlot(successor) == 1,
+                "he stays in the party as its leader (single-member party, own slot, no slot move)");
+            check(harness.Of("德尔塔").Count == 0,
+                "nothing is sent when the party is kept (no disband record, no roster churn)");
         }
 
         // ---- D) 单人副本：一个包都不发（单人零回归）；E) 不在任何实例（选图/城镇里收到 CMD 45）同样不发 ----

@@ -574,6 +574,30 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
+    /// "擅自退出"专用的静默退队：**只在队里还有别人时才真的把他移出队伍**（用户 2026-09-30 真机更正）。
+    /// 官方语义：退队后名册为空**不**解散——他仍是这支 1 人队的队长（`CParty::leave_user` 只有
+    /// `IsSinglePlay` 那支才 `CParty::destroy`，玩家自建的 1 人队不走那条）；真机 2026-09-30 party26
+    /// 的对照组就是"队长先擅自退出 → 队员成为 1 人队队长 → 队员再擅自退出时队伍不该消失"。
+    /// 不在队里 / 只有自己 → 返回 false 且**一个包都不发**，队伍原样保留。
+    /// （显式的 CMD 13 退队不走这里：那条按玩家意图退队，最后一人退队仍然解散。）
+    /// </summary>
+    internal async Task<bool> TryLeavePartySilentlyIfOthersRemainAsync(
+        Guid characterId,
+        CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            if (!TryGetPartyOf(characterId, out var roster) || roster is null || roster.Count <= 1)
+            {
+                return false;
+            }
+        }
+
+        await RemoveMemberFromPartyAsync(characterId, PartyLeaveNotice.Silent, cancellationToken);
+        return true;
+    }
+
+    /// <summary>
     /// CMD 14：踢人（载荷 = 槽位下标 0..3，不是 uid）。只有队长能踢，且必须指向队伍里的别人：
     /// 失败码只有 **4 = 不是队长、8 = 该槽位没人**（B 卷 §6.4；19 = 状态已变化在 Task 3 评审里
     /// 删掉了——本路径发不出来，判定与摘除都在同一个锁内一次做完）。

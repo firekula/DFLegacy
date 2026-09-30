@@ -159,11 +159,20 @@ public sealed class DungeonPartyService : BackgroundService
             return false;
         }
 
-        var left = await _partyService.TryLeavePartySilentlyAsync(characterId, cancellationToken);
+        // **只在队里还有别人时才算"退队"**（用户 2026-09-30 真机更正）：最后一人擅自退出时队伍保留，
+        // 他仍是这支 1 人队的队长（官方 `CParty::leave_user` 只有 `IsSinglePlay` 那支才 `CParty::destroy`）。
+        var left = await _partyService.TryLeavePartySilentlyIfOthersRemainAsync(characterId, cancellationToken);
         if (left)
         {
             _logger.LogInformation(
                 "Party member {CharacterId} gave up inside party dungeon {PartyId} and left the party (official giveup semantics).",
+                characterId,
+                instance.PartyId);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Party member {CharacterId} gave up inside party dungeon {PartyId} as the only member; party kept (he stays its leader).",
                 characterId,
                 instance.PartyId);
         }

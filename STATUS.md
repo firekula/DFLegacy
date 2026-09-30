@@ -721,10 +721,16 @@
 16. **2026-09-30 真机 party26（`server-party26.log`，用户九条反馈）逐条判定**
     （证据都在那份日志里，行内给了时间戳，可 grep 复核）：
     - **① 队长中途返回 → 只他自己退队，队友变 1 人队 ✅**：`23:27:00` `gave up inside party dungeon 1` +
-      `left party 1; 1 member(s) remain` + `returned user 1 through giveup-game`；
-      **队友随后自己返回时变成"无队伍" ✅ 也是对的**：`23:27:13` 队友 `CMD 45` → `Party 1 dissolved`
-      ——一个人退队后名册为空，官服 `CParty::leave_user` 里就是 `CParty::destroy`（该函数末尾那条），
-      所以"队伍里只剩他一个 + 他退队"= 解散。若当时还有第三个人在队里，队伍会保留。
+      `left party 1; 1 member(s) remain` + `returned user 1 through giveup-game`。
+      **【同日更正（用户）：我先前把"队友随后自己返回 → 无队伍"判成"✅ 也是对的"是错的】**
+      官方语义是 **最后一人擅自退出时队伍保留**——他仍是这支 1 人队的队长
+      （`CParty::leave_user` 只有 `IsSinglePlay` 那支才 `CParty::destroy`；玩家自建的 1 人队不走那条）。
+      **已修**：`PartyService.TryLeavePartySilentlyIfOthersRemainAsync`（**只有队里还有别人**才真把他移出队伍；
+      不在队里/只有自己 → false 且一个包都不发）+ `DungeonPartyService.AbandonPartyForDungeonGiveUpAsync`
+      改用它，并记 `… as the only member; party kept (he stays its leader).`。
+      真机 party26 `23:27:13` 那条 `Party 1 dissolved` 是**修之前的旧行为**（当时的 build），修后应变成"保留"。
+      **显式 `CMD 13` 退队不变**（`23:33:47` 那条 `protocol=13 → Party 1 dissolved` 仍然是对的：
+      玩家自己点了退队，最后一人退队就解散）。
     - **② 战斗途中弹 `error : 3525:100` 后闪退（队长端）⚠️ 仍是未解那一条**：`23:29:16` 队长 `CMD 48`
       推房间（`arrived=1/2`）→ `23:29:17` 双方 `CMD 40` → 全员加载 → 之后队长只收到正常的
       36(疲劳)/37(经验)/38(怪物死)/39(拾取)，**崩溃窗口内一条 `protocol=2`（外观/详情）都没有**
