@@ -4213,22 +4213,34 @@ public static class GameProtocolEngine
     }
 
     /// <summary>
-    /// “查看信息”（CMD 8 mode 3）的资料回包：NOTI 2 mode 3、count 1。
+    /// “查看信息”（CMD 8 mode 3）的资料回包：NOTI 2 mode 3、count 1；
+    /// 或 mode 1 的“只补模型”记录（给其他玩家补 <c>CNUser+0x110</c> 模型对象，见下）。
     /// </summary>
     /// <remarks>
     /// mode 1/3 共用客户端同一条记录解析器（0x41A764），但**只有 mode-3 记录尾部的
     /// 28 字节会打开资料卡窗口**（CNRDAnotherUserPopUpWindow，窗口 id 0x16）；
     /// 回 mode 1 只更新目标角色的模型/装备，卡片窗口根本不弹——“点了没反应”的根因。
     /// 回包记录的精确布局（勘察逐条 `call 0x8F5120/40/60` 得到，全部是硬证据）：
-    /// [u8 mode=3][u16 count=1] 后接每条记录
+    /// [u8 mode][u16 count=1] 后接每条记录
     /// [u16 uid][u32 经验][u32 blobLen + blob][u8 nEq + n×10 字节装备]
     /// [u8 nPairs][u8 creature][28 字节 mode-3 专用尾]。
     /// uid 之后的 u32 是**累计总经验**（0x41A828 ReadU32 → 0x41A85A 调
     /// `actor->vtbl[0x490](值, 本地记录等级)`，即 0x4974E0 的经验 setter：本级已得 =
-    /// 值−本级起始经验）；它**不是**名字槽位参数（旧注释按 “flag” 写 0，卡片经验才显示 0）。
-    /// 记录里**没有名字字段**：卡片上的名字来自客户端本地 user 注册表（mode-0 USERINFO
+    /// 值−本级起始等级经验）；它**不是**名字槽位参数（旧注释按 “flag” 写 0，卡片经验才显示 0）。
+    /// 记录里**没有名字字段**：名字来自客户端本地 user 注册表（mode-0 USERINFO
     /// 记录），所以回包前必须已经推过该 uid 的 mode-0 记录。装备列表是必需的：客户端会
     /// 删除列表未覆盖的 0..22 槽（0x41AC50），不发的槽在卡片里就是空的。
+    /// <para>
+    /// **mode 1 的用途（2026-09-30 真机定位的崩溃根因）**：客户端 `NOTI 2` 按 mode 分派到
+    /// 两个不同解析器——mode 0 走 `0x419BEF`（“区域用户”，只登记区域 actor），
+    /// **只有 mode 1/3 走 `0x41A764` 详情解析器**，而后者才是建 `CNUser+0x110` 模型对象的地方：
+    /// `0x417AB0(record)` 取 `+0x110` → 为 0 则 `0x654E50(*(record+0x14))`（职业工厂）新建 →
+    /// `0x4FD880(record, actor)` 挂上去。给**其他玩家**只发 mode 0 时，其 `CNUser` 会被
+    /// 创建（`0x4FDF60`）但**模型对象永远是 NULL**，结算/奖励界面（状态机 state 8）解引用
+    /// 该指针即空指针读 → 队员端客户端崩溃；同一原因也让副本内看不到队友。
+    /// 因此“他人外观”必须 **mode 0（进名字与 actor）+ mode 1（补模型）成对、且 mode 0 在前**。
+    /// mode 1 不带 28 字节尾（写了会被当成资料卡参数读走，窗口行为不可控）。
+    /// </para>
     /// </remarks>
     public static GameServerPacket CreateRequestedUserInfoDetail(
         ushort userId,
@@ -4236,11 +4248,18 @@ public static class GameProtocolEngine
         GameCharacterCombatStats? combatStats = null,
         byte equippedCreatureLevel = 0,
         byte staminaRecoveryPercentage = 100,
-        uint experience = 0)
+        uint experience = 0,
+        byte mode = 3)
     {
         if (userId == 0)
         {
             throw new ArgumentOutOfRangeException(nameof(userId));
+        }
+
+        if (mode is not (1 or 3))
+        {
+            // 0 是“区域用户”解析器、2 是账号角色列表，都不是这条记录的形状。
+            throw new ArgumentOutOfRangeException(nameof(mode), mode, "mode 只能是 1 或 3。");
         }
 
         if (staminaRecoveryPercentage > 100)
@@ -4253,8 +4272,8 @@ public static class GameProtocolEngine
 
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
-        // mode 必须写 3：回 1 不会解析 28 字节尾，也就不会弹资料卡。
-        writer.Write((byte)3);
+        // mode 3 = 资料卡（带 28 字节尾）；mode 1 = 只补模型（无尾）。两者共用解析器。
+        writer.Write(mode);
         writer.Write((ushort)1);     // 记录条数
         writer.Write(userId);        // 客户端按它 FindByUid，必须原样回发请求里的 uid
         // 累计总经验（客户端 0x41A828 读出后交给 0x4974E0 经验 setter）。写 0 时卡片
@@ -4284,22 +4303,26 @@ public static class GameProtocolEngine
         writer.Write((byte)0);
         writer.Write(equippedCreatureLevel);
 
-        // mode-3 专用 28 字节尾 = 3×u32 + 4×u8 + 3×u32。勘察确认的落点与读数：
-        // A/B → 资料卡窗口 +0x50/+0x54（卡片画 `%d胜 %d败` 与 A/(A+B) 百分比，新号 0 正确）；
-        // C → +0x58，a..d → 栈上结构体 +0x10..+0x13（+0x11..+0x13 全二进制只写不读）；
-        // X/Y → user 记录 +0xDC/+0xE0（卡片画 **Y*100/X 的百分比**，中等置信度），Z → +0xE4
-        // （未找到读取点）。当前全 0；经验的主来源是上面的 u32，若真机卡片仍显示 0%，
-        // 再试 X=本级所需经验、Y=本级已得经验（此项待真机确认）。
-        writer.Write(0u);   // A：资料卡窗口 +0x50（胜负/百分比）
-        writer.Write(0u);   // B：资料卡窗口 +0x54
-        writer.Write(0u);   // C：资料卡窗口 +0x58
-        writer.Write((byte)0); // a：窗口 +0x5C（四个 u8 里唯一有读取点的）
-        writer.Write((byte)0); // b：结构体 +0x11（只写不读）
-        writer.Write((byte)0); // c：结构体 +0x12（只写不读）
-        writer.Write((byte)0); // d：结构体 +0x13（只写不读）
-        writer.Write(0u);   // X：user 记录 +0xDC（Y*100/X 的分母，待真机确认）
-        writer.Write(0u);   // Y：user 记录 +0xE0（Y*100/X 的分子，待真机确认）
-        writer.Write(0u);   // Z：user 记录 +0xE4（未找到读取点）
+        if (mode == 3)
+        {
+            // mode-3 专用 28 字节尾 = 3×u32 + 4×u8 + 3×u32。勘察确认的落点与读数：
+            // A/B → 资料卡窗口 +0x50/+0x54（卡片画 `%d胜 %d败` 与 A/(A+B) 百分比，新号 0 正确）；
+            // C → +0x58，a..d → 栈上结构体 +0x10..+0x13（+0x11..+0x13 全二进制只写不读）；
+            // X/Y → user 记录 +0xDC/+0xE0（卡片画 **Y*100/X 的百分比**，中等置信度），Z → +0xE4
+            // （未找到读取点）。当前全 0；经验的主来源是上面的 u32，若真机卡片仍显示 0%，
+            // 再试 X=本级所需经验、Y=本级已得经验（此项待真机确认）。
+            // mode 1 绝不写这段：写了会被详情解析器当成资料卡参数读走。
+            writer.Write(0u);   // A：资料卡窗口 +0x50（胜负/百分比）
+            writer.Write(0u);   // B：资料卡窗口 +0x54
+            writer.Write(0u);   // C：资料卡窗口 +0x58
+            writer.Write((byte)0); // a：窗口 +0x5C（四个 u8 里唯一有读取点的）
+            writer.Write((byte)0); // b：结构体 +0x11（只写不读）
+            writer.Write((byte)0); // c：结构体 +0x12（只写不读）
+            writer.Write((byte)0); // d：结构体 +0x13（只写不读）
+            writer.Write(0u);   // X：user 记录 +0xDC（Y*100/X 的分母，待真机确认）
+            writer.Write(0u);   // Y：user 记录 +0xE0（Y*100/X 的分子，待真机确认）
+            writer.Write(0u);   // Z：user 记录 +0xE4（未找到读取点）
+        }
 
         return new GameServerPacket(
             NotificationPacketType,

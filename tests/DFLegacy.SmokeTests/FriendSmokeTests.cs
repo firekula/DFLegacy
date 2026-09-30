@@ -224,6 +224,36 @@ internal static class FriendSmokeTests
         check(tail.Length == 28 && tail.ToArray().All(value => value == 0),
             "the mode-3-only 28-byte tail is present and zero-filled (meanings unknown, pending live tuning)");
 
+        // mode 1 = 给“其他玩家外观”补 CNUser+0x110 模型对象用的形态（2026-09-30 真机定位：
+        // 只发 mode-0 区域用户记录时，他人记录里的模型对象永远是 NULL，结算界面 state 8 解引用即崩）。
+        // 同一份记录，**只少 28 字节尾**——写了尾就会被详情解析器当资料卡参数读走。
+        var modelOnly = GameProtocolEngine.CreateRequestedUserInfoDetail(
+            userId: 0x5678,
+            equippedItems: equipment,
+            equippedCreatureLevel: 9,
+            experience: 123_456,
+            mode: 1);
+        check(modelOnly.Payload[0] == 1,
+            "the model-only record starts with mode 1");
+        check(modelOnly.Payload.Length == packet.Payload.Length - 28,
+            "mode 1 is byte-for-byte the mode-3 record without its 28-byte tail");
+        check(modelOnly.Payload.AsSpan(1).SequenceEqual(
+                packet.Payload.AsSpan(1, packet.Payload.Length - 1 - 28)),
+            "everything after the mode byte is shared; mode 3 only appends the tail");
+
+        var modeRejected = false;
+        try
+        {
+            GameProtocolEngine.CreateRequestedUserInfoDetail(userId: 7, mode: 0);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            modeRejected = true;
+        }
+
+        check(modeRejected,
+            "mode 0 is the area-user record, not a detail record: the builder refuses it");
+
         var empty = GameProtocolEngine.CreateRequestedUserInfoDetail(userId: 7);
         // 零装备记录 = 头部 13 + 81 字节 blob + 1 条数 + 1 nPairs + 1 creature + 28 尾 = 125。
         // （勘察里“44 字节”是 blobLen=0 的极简形态；本实现沿用现有 81 字节战斗数值块。）

@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
@@ -54,6 +54,13 @@ public sealed class EntranceService(
     private const ushort FatigueRecoveryAmount = 30;
     private const ushort BoboCreatureItemId = 63_023;
     private const ushort EquippedTitleSlot = 10;
+    // 临时诊断开关（判定完即删）：外观包"最小化"级别——0 = 正常，1 = 去掉称号与宠物，
+    // 2 = 再去掉全部装备。用于判定结算期队员客户端立绘崩溃是否由外观包的这两类额外精灵引起。
+    private static readonly int AppearanceMinimalLevel = int.TryParse(
+        Environment.GetEnvironmentVariable("DFLEGACY_APPEARANCE_MINIMAL"),
+        out var appearanceMinimalLevel)
+        ? appearanceMinimalLevel
+        : 0;
     private const int CompoundReplayCapacity = 256;
     private static readonly TimeSpan ClearRewardCardSelectionTimeout =
         TimeSpan.FromSeconds(4);
@@ -935,6 +942,32 @@ public sealed class EntranceService(
                         creatureInventory.Values,
                         HasActivePremiumService(
                             GameProtocolEngine.BlackDiamondServiceType));
+
+                // 与上面那条**成对**的"补模型"包（NOTI 2 mode 1）：客户端只有 mode 1/3 的详情
+                // 解析器（0x41A764）会建 `CNUser+0x110` 模型对象（0x417AB0 取不到 →
+                // 0x654E50(职业) 新建 → 0x4FD880 挂上），而 mode 0 的"区域用户"解析器（0x419BEF）
+                // 只登记区域 actor。给他人只发 mode 0 ⇒ 对方的 CNUser 有、模型永远为 NULL ⇒
+                // 结算界面状态机 state 8 解引用空指针，队员端崩溃（2026-09-30 真机定位）；
+                // "副本里看不到队友"也是同一条根因。
+                // 记录里**没有名字**：名字靠先行的 mode-0 记录进客户端本地注册表，
+                // 所以两个包必须成对、且 mode 0 一定在前。mode 1（不是 3）：只补模型，不弹资料卡。
+                // 装备用与 mode-0 包同源的磨损快照：详情解析器会删除列表未覆盖的 0..22 槽。
+                //
+                // ⚠️ 经验字段**必须写 0**（真机 A/B 实测，2026-09-30 party17/19）：
+                // 该 u32 在 mode-1 路径里会被详情解析器当**索引**用（勘察 `0x4974E0`：
+                // `cmp eax,1; mov edi,[eax*4+0xBDB5E8]`），塞真实经验（11311）会让队员端弹
+                // `error : 3525:100` 并掉线；写 0 之后：零异常、开局位置正确、双向同步、
+                // 结算选牌成功（party19 队员端 33MB 采样 EXCEPTION_RECORD = 0）。
+                // mode-3（资料卡）那条路径继续传真实经验——两处用途不同，不要合并。
+                GameServerPacket SendTownAppearanceDetailPacket() =>
+                    GameProtocolEngine.CreateRequestedUserInfoDetail(
+                        localUserId,
+                        CreateWornEquipmentSnapshot(equippedInventory.Values, creatureInventory),
+                        characterStatCatalog.Get(activeCharacter!),
+                        // 宠物外观由 mode-0 包负责；这里只补模型对象，宠物字段留 0。
+                        equippedCreatureLevel: 0,
+                        experience: 0,
+                        mode: 1);
 
                 async Task SendTownAppearanceAsync(bool waitForTownActor = false)
                 {
@@ -2365,6 +2398,10 @@ public sealed class EntranceService(
                     var appearance = SendTownAppearancePacket();
                     var delivered = await partyService.SendToOtherMembersAsync(
                         activeCharacter.Id, appearance, cancellationToken);
+                    // 同一批收件人再补一条 mode-1 详情：让他们的客户端把"我"的模型对象建出来
+                    // （否则他人记录里 `CNUser+0x110` 永远是 NULL，结算期必崩）。
+                    await partyService.SendToOtherMembersAsync(
+                        activeCharacter.Id, SendTownAppearanceDetailPacket(), cancellationToken);
 
                     // ② 自己的选图状态（复用单人 CMD 15 的三连包）。NOTI 26 的载荷是**主机（队长）槽位**
                     //    （官服 `CParty::send_host_info`：全队同一个值 = `party->host` 所在槽位）。
@@ -2464,6 +2501,9 @@ public sealed class EntranceService(
                     var appearance = SendTownAppearancePacket();
                     await partyService.SendToOtherMembersAsync(
                         activeCharacter.Id, appearance, cancellationToken);
+                    // ⑤ 补模型：mode-1 详情记录（与上一条同 uid、紧跟在它后面）。
+                    await partyService.SendToOtherMembersAsync(
+                        activeCharacter.Id, SendTownAppearanceDetailPacket(), cancellationToken);
 
                     // ⑤ 名册 → NOTI 26（主机槽位）→ NOTI 11 → NOTI 28 → NOTI 29。
                     // 队员进的是"实例当前的房间"：room 是上面 TryCaptureCurrentRoomSnapshot 的锁内快照
@@ -2567,11 +2607,17 @@ public sealed class EntranceService(
                     _ = Task.Run(async () =>
                     {
                         var elapsed = TimeSpan.Zero;
+                        // 补播排期：两轮区域条目（+1.5s / +5s），覆盖两端地图加载完成的先后差。
+                        // ⚠️ 曾经还有第三轮 +6.5s 的"房间重载"（重发 START_MAP 让地图加载器带着
+                        // 对方的区域列表再建一次档）——那是早期以为"外来角色的外观载体只能由地图
+                        // 加载器建"时加的补丁。2026-09-30 起外来角色的模型由 `NOTI 2` **mode-1**
+                        // 补包直接建出来（`CNUser+0x110`，见 SendTownAppearanceDetailPacket），
+                        // 重载不再必要，而且它自己会造成"刷新之后位置短暂错位、要再动一次才对"。
+                        // 用户 2026-09-30 真机确认可以去掉。
                         foreach (var target in new[]
                                  {
                                      TimeSpan.FromSeconds(1.5),
-                                     TimeSpan.FromSeconds(5),
-                                     TimeSpan.FromSeconds(6.5)
+                                     TimeSpan.FromSeconds(5)
                                  })
                         {
                             try
@@ -2586,25 +2632,7 @@ public sealed class EntranceService(
                                     return;
                                 }
 
-                                if (target < TimeSpan.FromSeconds(6.5))
-                                {
-                                    await PushPartyAreaEntryAsync(instance, reason, serverToken);
-                                    continue;
-                                }
-
-                                // 房间重载：让加载器带着"已知对方"的区域列表再建一次档。
-                                if (!instance.TryCaptureCurrentRoomSnapshot(localUserId, out var reloadRoom))
-                                {
-                                    return;
-                                }
-
-                                var reload = DungeonEntryPackets.PlanStartMap(reloadRoom);
-                                await reload.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, reload);
-                                logger.LogInformation(
-                                    "Party room reload ({Reason}) sent to {Name} in dungeon {DungeonId} room ({RoomX},{RoomY}) so the loader rebuilds actors with the peer already in the area list.",
-                                    reason, characterName, currentDungeonId, expectedRoomX, expectedRoomY);
+                                await PushPartyAreaEntryAsync(instance, reason, serverToken);
                             }
                             catch (OperationCanceledException)
                             {
@@ -12588,6 +12616,12 @@ public sealed class EntranceService(
                                     activeCharacter!.Id,
                                     SendTownAppearancePacket(),
                                     serverToken);
+                                // 与上一条成对：mode-1 详情记录，专门用来让收件人客户端
+                                // 把"队长"这个外来 uid 的模型对象（CNUser+0x110）建出来。
+                                await partyService.SendToOtherMembersAsync(
+                                    activeCharacter!.Id,
+                                    SendTownAppearanceDetailPacket(),
+                                    serverToken);
 
                                 // UDP_HOST 的 partyIndex 必须是队长自己的槽位（CMD 15 那条路径恒发 0）。
                                 if (leaderSlotIndex != 0)
@@ -15428,6 +15462,23 @@ public sealed class EntranceService(
         bool hasBlackDiamond)
     {
         var equipmentSnapshot = equipment.ToArray();
+
+        // 临时诊断开关（DFLEGACY_APPEARANCE_MINIMAL）——真机 2026-09-30：队员客户端在
+        // `CMD 73` 之后 ~10 秒崩在一次**界面立绘绘制**里（`d3d8.dll` 内部的绘制调用，
+        // DNF 侧路径 `sub_496F20`（画角色）→ `sub_47CCE0`（装载 `equipment/chara`、
+        // `title/animation`、`interface/newre…` 立绘）→ 精灵绘制）。这条 UI 路径只在结算/
+        // 篝火界面用得上，城里不画它，所以"城里正常、结算必崩"。外观包里能喂坏这条路径的
+        // 只有两类"额外精灵"：**称号（slot 10）**与**宠物（creature）**。
+        //   1 = 去掉称号与宠物；2 = 再去掉全部装备（只剩身体/职业）。
+        // 只改外观包**内容**，一个包都不增删、不改序；单人在同一开关下同样生效（纯外观诊断项）。
+        var appearanceMinimalLevel = AppearanceMinimalLevel;
+        if (appearanceMinimalLevel >= 1)
+        {
+            equipmentSnapshot = appearanceMinimalLevel >= 2
+                ? []
+                : equipmentSnapshot.Where(item => item.Slot < EquippedTitleSlot).ToArray();
+            creatureInventory = [];
+        }
 
         return GameProtocolEngine.CreateCurrentCharacterInfo(
             new GameCharacterSummary(
