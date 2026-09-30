@@ -598,10 +598,25 @@
     **结算 → 翻牌 → 篝火页（再次挑战 / 选择其他地下城 / 返回城镇）→ EPLP**；因此当时特意把超时登记点从"结算包发出"改到"翻牌完成"，
     免得 20 秒在翻牌中途到点把玩家从选牌界面拽走）。
     ⇒ 队长那侧点了"返回城镇"（party19 `17:22:09/10` 两次 `CMD 75`）→ `settlement-after-card` 正常回城；
-    队员那侧没点 → 20 秒静默被 `SettlementReturnTimeout = 20s`（与参考实现 `town return: eplp timer 20` 一致）兜底送回。
+    队员那侧没点 → 被 `SettlementReturnTimeout` 兜底送回（**当时是 20 秒**，与参考实现 `town return: eplp timer 20` 一致）。
     全量日志规律（"自己回城"的永远是队长一侧）由此解释，无需改动。
-    **下次真机的观察点（改成可判定的）**：队员端结算后应出现**篝火页**并有"**返回城镇**"选项；**点它应立即回城**（日志 `settlement-after-card`），
-    不点则应恰好 20 秒后被兜底送回。若点了却不回 / 或根本没有该选项，才是缺陷。
+    **【2026-09-30 真机更正（用户）：20 秒是错的】** 原版（官服）的自动返回是**两分钟**，而且**最后 10 秒会在聊天框
+    逐秒发系统消息倒计时**——20 秒会把还停在篝火页（"再次挑战 / 选择其他地下城"都还没选）的队员硬拽回城。
+    已改：`DungeonPartyService.SettlementReturnTimeout = 120s` + `SettlementCountdownSeconds = 10`
+    （`DungeonInstance.TakeSettlementCountdowns` 逐秒取"还剩几秒"，10..1 各播一次；扫描用成员自己的发送句柄发
+    **NOTI 12 + `Type16Brown` + 目标 uid 0** 的系统消息 "`N 秒后自动返回城镇。`"，与"负重超限"提示同一口径）。
+    官服侧旁证 `[静态]`：确实有**两个**回城定时器——`TimerEPLPReturnVillage::dispatch_sig` @0x08634c06
+    （`check_timer_key(party, **20**, key)` → `CParty::ReturnToVillage`）与 `TimerEPLPCommandWait::dispatch_sig`
+    @0x08634c6a（key **21**；`GetSelectedEPLPCmd()==3` 时不回城，否则 `GetEPLPState()==2` → 回城），
+    两者都由 `TimerDispatcher` 构造（0x08631501 / 0x08631523）。
+    **`[未验证]`**：这两个定时器的**装配间隔**没定死——`TimerQueue::InsertTimer` 把第 4 个形参交给
+    `SECOND_TO_MILISECOND`（⇒ 那一位是"秒"），而 `CParty::check_allmember_loading` 里 key 21 那一支传的是
+    `0x258 = 600`；要断言"600 秒 / 还是别的单位"得先用已知的 4 秒、30 秒（key 16/19）交叉验证参数位序，
+    这轮没做完。**用户报的两分钟按 `[真机]` 采信并实现**。
+    **下次真机的观察点（改成可判定的）**：队员端结算后应出现**篝火页**并有"**返回城镇**"选项；
+    **点它应立即回城**（日志 `settlement-after-card`）；**不点则约两分钟后**被兜底送回
+    （日志 `settlement EPLP timeout: forced town return queued`），且**最后 10 秒聊天框每秒一行**
+    "`N 秒后自动返回城镇。`"（文案是一行常量，不对就说一声）。
 13. **副本内擅自退出 = 退队（✅ 已按官服语义实现，2026-09-30；真机待验）**：客户端上行 **CMD 45 GIVEUP_GAME**
     （副本内"返回城镇"按钮；真机日志 `RX … protocol=45`，party18/party19 各一次）在官服 `CParty::giveup_game`
     @0x085b2baa（`opcode_cmd.txt` 第 45 项 = GIVEUP_GAME）里就是 **`CParty::leave_user(party, user, 2)`**
@@ -655,6 +670,18 @@
       "选图阶段被移出队伍"的另一条语义，我们没实现（我们走 `party-selection-cancelled`，保留队伍）。
     **真机观察点**：见 `work/RUN-verify-A.md`（队员副本内点"返回城镇"→ 城镇里**不应**再显示组队、
     队长端副本内队伍只剩自己；日志 `gave up inside party dungeon … and left the party`）。
+    **【2026-09-30 首次真机（party22）：队员侧 ✅ 生效；队长侧"看起来被解散"需要下一轮判定】**
+    `[真机]` 21:53:23 队员（圣骑士/uid 1）发 `CMD 45 body=1300` → 服务端 `Party roster 2 published:
+    nameSel 0->1, **1 member(s)**` + 给**两个会话**各发一份 NOTI 9（`payload=01000200000104020000FFFF00FFFF00FFFF0000`
+    = partyId 2、只有槽 0 的 uid 2 = 队长、leaderSlot 0）+ 2 秒后补播一次；**没有任何 kind=3（解散）**。
+    21:53:27 队长（test/uid 2）自己发 `CMD 45 body=1900` → 这时才 `Party 2 dissolved`（kind=3）。
+    ⇒ **服务端在队员离开后确实让队长留在"单人队伍"里**，解散来自队长自己按的返回城镇（4 秒后）。
+    用户看到的是**队长端界面上队伍消失**：这与客户端对"成员数 < 2 的名册跳过 HUD 组激活"
+    （party-protocol-recon 记的 `DNF.exe 0x41BEA5` 那道门）一致，属客户端显示行为，不是服务端把队伍拆了。
+    **下一轮判定（可判定化）**：队员在副本点返回城镇后，**队长端**分别看两处——
+    ① 队伍 HUD（预期：没有别人时就是空的，与官服同源）；② **队伍信息窗口 / 推荐伙伴列表**
+    （预期：仍显示自己这支 1 人队）。若 ② 也空了，那才是缺陷，届时用 `work/probe_party_table.py`
+    读队长端活内存的 `CNRDPartyManager`（四槽 + `G+0x20`）来区分"服务端没保住"还是"客户端没渲染"。
 14. **每次进副本都会再刷新一次房间**（早期为"让地图加载器重建外来角色"加的补丁，`13f3f2a`/`017425c`）：
     **用户已确认现在可以去掉**——`mode 1` 补包已承担"建外来角色模型"的职责；去掉后应同时消除
     "刷新后位置短暂错位、需要再移动一次才恢复"的现象（用户 2026-09-30 观察）。
