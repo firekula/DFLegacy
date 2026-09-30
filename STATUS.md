@@ -416,13 +416,15 @@
    换房时全员标志清零（官方 `resetFinishLoadingVar`）。单人/非队伍实例仍"立即发"，报文逐字节不变。
    观察点：队员过图时 `NOTI 30` 应出现在**两人都上报 `CMD 40` 之后**；若有人卡在加载中，日志会打
    `waiting for the remaining member(s)`，全员齐时打 `all N member(s) finished loading`。
-7. **结算期队员客户端崩溃（2026-09-30 真机，排查中）**：四局（party8/10/11/13）复现同一规律——**队员**客户端在
-   `CMD 73`（选牌权）后**恰好 15 秒**（= 服务端自动选牌计时器 4 秒 + 11 秒）连接被 RST、进程退出；队长全程正常；
-   单人结算正常。日志侧看不到触发点（party13 里队员从选牌到死亡之间服务端一个包都没发），判据是**客户端内部计时器**。
-   已否证"槽位字段"假设：`DFLEGACY_FORCE_SLOT_ZERO=1`（把所有喂给该会话的自身槽位写成 0）下 party13 队员仍在同一时刻死
-   （已核对该局 `CMD 74` 自身列值确为 `0x00`、诊断确实生效；该开关已删、从未提交）。下一步靠**客户端线程栈**：
-   `work/wow64_stack.py`（`Wow64GetThreadContext`；WOW64_CONTEXT 偏移 `Eip=184/Esp=196/Ebp=180`；线程枚举须走 PowerShell——
-   本环境沙箱会过滤 Toolhelp 的线程表）+ `work/watch_clients.py`（每 1.2 秒采样所有 `DNF.exe`，落 `G:/tmp/stacks/stacks_<pid>.txt`）。
+7. **结算期队员客户端崩溃（2026-09-30 真机，排查中）**：四局（party8/10/11/13）+ party15 复现同一规律——**队员**客户端在收到**自己那份 `CMD 73`** 后
+   **恰好 15 秒**连接被 RST、进程退出；队长全程正常；单人结算正常。party15 补充的判定：①**不是 UI 挂起**——主线程一直在正常消息泵里，
+   直到最后自己走进 `BugTrap`（崩溃处理器）⇒ 是一次**主线程异常**，而 BugTrap 配置成**用 wininet 上传报告、不写本地 dump**（客户端目录/临时目录都没有 `crashdump.dmp`）；
+   ②该局**双方都是手动选牌、两份 `CMD 74` 都广播了**，队员仍死 ⇒"队友那一列没广播"不是死因（第 8 条的广播对称化仍是官服语义，但与本崩溃无关）；
+   ③该局服务端**从未触发自动选牌**（无 `automatically selected` 行），排除自动选牌路径。已否证"槽位字段"假设：`DFLEGACY_FORCE_SLOT_ZERO=1` 下 party13
+   队员仍在同一时刻死（已核对 `CMD 74` 自身列值确为 `0x00`、诊断确实生效；开关已删、从未提交）。下一步靠**客户端线程栈 + 崩溃瞬间原始栈**：
+   `work/wow64_stack.py`（`Wow64GetThreadContext`；WOW64_CONTEXT 偏移 `Eip=184/Esp=196/Ebp=180`；线程枚举须走 PowerShell——本环境沙箱会过滤 Toolhelp 线程表；
+   链上出现 `BugTrap` 的线程会附带 `rawstack@esp` 十六进制转储 ⇒ 异常记录就在里面）+ `work/watch_clients.py`（每 1.2 秒采样所有 `DNF.exe`，
+   落 `G:/tmp/stacks/stacks_<pid>.txt`）+ `work/scan_exception.py`（扫 `EXCEPTION_RECORD`：`0xC0000005` 等）+ `work/analyze_hang.py`。
 8. **自动选牌也要广播 `CMD 74`**（本次提交，真机未验）：官服 `CParty::SendEachCardInfo` 构造后走 `send_to_party`；
    我们此前**只有手动选牌**那份广播（party10 10:05:09 队员会话确实收到了队长那一列），**自动选牌（4 秒计时器）那份只回发包者**
    → 另一名成员的结算页永远少一列。现在两条路径共用 `BroadcastCardSelectionSnapshotAsync`（`IsParty` 为真才发，单人一个包都不多发）。
