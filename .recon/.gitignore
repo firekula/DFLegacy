@@ -1,0 +1,6 @@
+# 机器产物：不提交（配置与 onboarding.md 必须提交）
+derived/
+captures/
+out/
+inbox/
+*.jsonl
