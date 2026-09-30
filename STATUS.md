@@ -432,6 +432,14 @@
    的角色由谁承担）：审计每 10 秒按远端打一行（`nat-probe`/`nat-keepalive`/`mt` 计数 + 协议号直方图 + 首包 hex）。
    若显示"`mt` 数据报发给服务端" → 缺的是频道服的 UDP 中继转发（问题 1/3/4 可能同源）。顺带结论：`CMD 100`（PEER_CONNECT_RESULT）
    在官服 `Dispatcher_PeerConnectResult::dispatch_sig` 里**只做 NAT 统计**（`IncreaseNatType`），不回复、不推进状态机——我们忽略它是对的。
+10. **官服结算状态机（静态实证，2026-09-30 第三轮，`df_game_r`）**：`dungeon_clear_state` 走 2→3→4→5，全部由服务端定时器推进——
+   `TimerClearDungeonReward`（key 17）在 state 2 向全队广播 **CMD 72** → state 3；`TimerClearDungeonScoreScoll`（key 18）在 state 3 向全队广播
+   **CMD 73** → state 4，并插入 `card_select_right`(30s, key 19) 与 `card_select`(4s, key 16)；`TimerCardSelect`（key 16，4 秒）在 state 4 里
+   `CompleteCardSelect` + **`SendEachCardInfo`（CMD 74 全队广播）** → state 5 + `dungeon_clear`；`TimerClearDungeonCardSelectRight`（key 19，30 秒）兜底 state 4→5。
+   客户端上行 **CMD 73**（`Dispatcher_Card_Select_Right_State`）要求 `CheckRecvFromAllMember` 为真，回包走 `send_to_party`，**每槽位 ushort = 该成员的疲劳状态**
+   （`0`=疲劳已满 / `1`=还有疲劳 / `0xFFFF`=**空槽位**）——我们目前把"非自己的槽位"一律写 `0xFFFF`（等于宣称队友是空位），与本条语义不符，待判。
+   客户端上行 **CMD 74**（`Dispatcher_Select_Card`）每次选牌都 `SetCardNumber` + `SendEachCardInfo`（= 我们已有的逐次广播 ✓，本次修复把自动选牌那份也补上 ✓）；
+   全员选完那一刻才 `set_dungeon_clear_state(5)` + `CParty::dungeon_clear`（逐人发奖励物品、`SetEPLPState(2)`、起 60 秒 key 21 计时器）。
 
 **已知限制**
 
