@@ -13,6 +13,14 @@ public sealed class GameplayDatagramService(
     private readonly ConcurrentDictionary<Guid, GameplaySession> _sessions = new();
     private readonly ConcurrentDictionary<string, IPEndPoint> _observedByAddress = new();
     private readonly ConcurrentDictionary<string, Guid> _sessionsByEndpoint = new();
+
+    // 临时审计（DFLEGACY_UDP_AUDIT=1）：只加日志、不发包、不改协议。
+    // 目的：判定客户端把游戏 UDP 发到哪里去了——是发给对端（NOTI 11 的地址）还是发给服务端
+    // （即官方架构里"relay 8101-8300"的角色由频道服承担）。这决定"同队进副本"三件老大难
+    // （对端角色载体、怪物同步、结算期队员等待）要不要在服务端做 UDP 转发。判定完即删。
+    private readonly bool _auditEnabled =
+        Environment.GetEnvironmentVariable("DFLEGACY_UDP_AUDIT") == "1";
+    private readonly ConcurrentDictionary<string, UdpAudit> _audit = new();
     private UdpClient? _primary;
     private UdpClient? _secondary;
 
@@ -204,9 +212,19 @@ public sealed class GameplayDatagramService(
 
         try
         {
-            await Task.WhenAll(
+            var loops = new List<Task>
+            {
                 ReceiveLoopAsync(_primary, "primary", stoppingToken),
-                ReceiveLoopAsync(_secondary, "secondary", stoppingToken));
+                ReceiveLoopAsync(_secondary, "secondary", stoppingToken),
+            };
+            if (_auditEnabled)
+            {
+                logger.LogInformation(
+                    "Gameplay UDP audit enabled (DFLEGACY_UDP_AUDIT=1): logging only, no forwarding.");
+                loops.Add(AuditLoopAsync(stoppingToken));
+            }
+
+            await Task.WhenAll(loops);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -243,6 +261,7 @@ public sealed class GameplayDatagramService(
                 await listener.SendAsync(response, remote, cancellationToken);
                 TraceDatagram(remote, datagram, "RX-UDP-NAT");
                 TraceDatagram(remote, response, "TX-UDP-NAT", countReceived: false);
+                Audit(remote, datagram, "nat-probe");
                 logger.LogDebug(
                     "Handled gameplay UDP NAT probe {ProbeType} on {Listener} from {Remote}",
                     datagram[0],
@@ -255,6 +274,7 @@ public sealed class GameplayDatagramService(
             {
                 ObserveEndpoint(remote);
                 TraceDatagram(remote, datagram, "RX-UDP-NAT-KEEPALIVE");
+                Audit(remote, datagram, "nat-keepalive");
                 logger.LogDebug(
                     "Handled gameplay UDP NAT keepalive on {Listener} from {Remote}",
                     listenerName,
@@ -263,7 +283,8 @@ public sealed class GameplayDatagramService(
             }
 
             TraceDatagram(remote, datagram, "RX-UDP");
-            LogMtUdpBlocks(remote, datagram);
+            var frames = LogMtUdpBlocks(remote, datagram);
+            Audit(remote, datagram, "mt", frames);
         }
     }
 
@@ -364,8 +385,9 @@ public sealed class GameplayDatagramService(
         }
     }
 
-    private void LogMtUdpBlocks(IPEndPoint remote, ReadOnlySpan<byte> datagram)
+    private List<byte> LogMtUdpBlocks(IPEndPoint remote, ReadOnlySpan<byte> datagram)
     {
+        var protocols = new List<byte>();
         var offset = 0;
         while (offset < datagram.Length)
         {
@@ -380,7 +402,7 @@ public sealed class GameplayDatagramService(
                     remote,
                     offset,
                     datagram.Length);
-                return;
+                return protocols;
             }
 
             offset += consumed;
@@ -393,6 +415,7 @@ public sealed class GameplayDatagramService(
                     frame.Application,
                     out var application))
             {
+                protocols.Add((byte)application.ProtocolId);
                 logger.LogDebug(
                     "RX gameplay UDP from {Remote}: block={BlockType} sequence={Sequence} sender={Sender} flag={Flag} protocol={ProtocolId} payload={PayloadLength}",
                     remote,
@@ -408,6 +431,113 @@ public sealed class GameplayDatagramService(
                 logger.LogWarning(
                     "Gameplay UDP application from {Remote} failed CRC or cipher validation.",
                     remote);
+            }
+        }
+
+        return protocols;
+    }
+
+    private void Audit(
+        IPEndPoint remote,
+        ReadOnlySpan<byte> datagram,
+        string kind,
+        List<byte>? protocols = null)
+    {
+        if (!_auditEnabled)
+        {
+            return;
+        }
+
+        var entry = _audit.GetOrAdd(
+            $"{remote.Address}:{remote.Port}",
+            _ => new UdpAudit());
+        entry.Record(kind, datagram, protocols);
+    }
+
+    private async Task AuditLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            foreach (var (key, entry) in _audit)
+            {
+                logger.LogInformation(
+                    "UDP audit {Remote}: natProbe={Probe} keepAlive={KeepAlive} mt={Mt} mtBytes={MtBytes} protocols={Protocols} firstPeek={Peek}",
+                    key,
+                    entry.NatProbes,
+                    entry.KeepAlives,
+                    entry.MtDatagrams,
+                    entry.MtBytes,
+                    entry.DescribeProtocols(),
+                    entry.FirstPeek);
+            }
+        }
+    }
+
+    private sealed class UdpAudit
+    {
+        private readonly object _gate = new();
+        private readonly Dictionary<byte, long> _protocols = [];
+        private long _natProbes;
+        private long _keepAlives;
+        private long _mtDatagrams;
+        private long _mtBytes;
+
+        public string FirstPeek { get; private set; } = string.Empty;
+
+        public long NatProbes { get { lock (_gate) { return _natProbes; } } }
+
+        public long KeepAlives { get { lock (_gate) { return _keepAlives; } } }
+
+        public long MtDatagrams { get { lock (_gate) { return _mtDatagrams; } } }
+
+        public long MtBytes { get { lock (_gate) { return _mtBytes; } } }
+
+        public void Record(string kind, ReadOnlySpan<byte> datagram, List<byte>? protocols)
+        {
+            lock (_gate)
+            {
+                switch (kind)
+                {
+                    case "nat-probe":
+                        _natProbes++;
+                        break;
+                    case "nat-keepalive":
+                        _keepAlives++;
+                        break;
+                    default:
+                        _mtDatagrams++;
+                        _mtBytes += datagram.Length;
+                        if (protocols is not null)
+                        {
+                            foreach (var protocol in protocols)
+                            {
+                                _protocols[protocol] = _protocols.GetValueOrDefault(protocol) + 1;
+                            }
+                        }
+
+                        break;
+                }
+
+                if (FirstPeek.Length == 0)
+                {
+                    var peek = datagram.Length > 24 ? datagram[..24] : datagram;
+                    FirstPeek = $"{kind}:{Convert.ToHexString(peek)}";
+                }
+            }
+        }
+
+        public string DescribeProtocols()
+        {
+            lock (_gate)
+            {
+                return _protocols.Count == 0
+                    ? "-"
+                    : string.Join(
+                        ",",
+                        _protocols.OrderByDescending(pair => pair.Value)
+                            .Take(8)
+                            .Select(pair => $"{pair.Key}x{pair.Value}"));
             }
         }
     }
