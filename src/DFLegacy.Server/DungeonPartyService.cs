@@ -96,6 +96,40 @@ public sealed class DungeonPartyService : BackgroundService
     public DungeonInstanceRegistry Registry { get; }
 
     /// <summary>
+    /// 第 13 条：**副本内擅自退出 = 退队**（官服语义）。触发点是客户端上行 CMD 45（GIVEUP_GAME，
+    /// 副本内"返回城镇"按钮），官服 `CParty::giveup_game` 里就是 `CParty::leave_user(party, user, 2)`
+    /// ——与 CMD 13（退出队伍）**同一个函数、同一个实参**，所以这里复用 CMD 13 的
+    /// `PartyLeaveNotice.Silent`（只重发名册、不发 NOTI 10；NOTI 10 属于 `CParty::walkout_member`）。
+    /// **前置条件**：只有"确实在**队伍**副本实例里"才动队伍——单人实例/不在任何实例（选图界面、
+    /// 城镇里收到 CMD 45）一律返回 false 且一个包都不发（单人零回归；结算回城 `CParty::ReturnToVillage`
+    /// 与副本内死亡 `die_user` 在官服里同样不调用 `leave_user`，所以它们不走这里）。
+    /// 调用方必须在 `LeaveDungeonInstanceAsync` **之前**调用：解绑之后实例里就没有这个人了。
+    /// </summary>
+    internal async Task<bool> AbandonPartyForDungeonGiveUpAsync(
+        Guid characterId,
+        CancellationToken cancellationToken = default)
+    {
+        // 只有"确实在**队伍**副本实例里"才动队伍：单人实例（键 = 角色 id，IsParty == false）与
+        // 根本不在实例里的会话（选图界面、城镇里收到 CMD 45）一律原样返回——单人路径一个包都不发。
+        var instance = Registry.TryGetForCharacter(characterId);
+        if (instance is not { IsParty: true })
+        {
+            return false;
+        }
+
+        var left = await _partyService.TryLeavePartySilentlyAsync(characterId, cancellationToken);
+        if (left)
+        {
+            _logger.LogInformation(
+                "Party member {CharacterId} gave up inside party dungeon {PartyId} and left the party (official giveup semantics).",
+                characterId,
+                instance.PartyId);
+        }
+
+        return left;
+    }
+
+    /// <summary>
     /// 同区域校验（用户硬性要求）：返回队长所在队伍的槽位快照；**任一同队队员不在 (<paramref name="townId"/>, <paramref name="areaId"/>)**
     /// → 返回 null 并把不满足的人放进 <paramref name="outsiders"/>（调用方只记日志、整队放弃）。
     /// </summary>

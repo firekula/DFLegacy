@@ -48,6 +48,7 @@ internal static class DungeonPartySmokeTests
         await CheckClearRewardAndFinishLoadingPartyDispatchAsync(check, fixture);
         CheckGroundItemClaimIsFirstComeFirstServed(check, fixture);
         await CheckMemberDeparturePacketAsync(check, fixture);
+        await CheckGiveUpLeavesPartyAsync(check, fixture);
         await CheckCrossSessionDeliverySurvivesCanceledMembersAsync(check, fixture);
     }
 
@@ -783,6 +784,148 @@ internal static class DungeonPartySmokeTests
                 && survivorInbox[0].Payload[2] == 0xFF
                 && survivorInbox[0].Payload[3] == 0xFF,
             "the remaining member receives the USER_AREA departure signal with the leaver's uid (0xFF/0xFF sentinel)");
+    }
+
+    /// <summary>
+    /// 第 13 条（官服语义：**副本内擅自退出 = 退队**）。官服 `df_game_r` 三处实证：
+    /// ① 客户端上行 **CMD 45 GIVEUP_GAME**（副本内"返回城镇"按钮，真机日志 `protocol=45`；`opcode_cmd.txt`
+    ///    第 45 项）→ `CParty::giveup_game` @0x085b2baa，其中两处 `CParty::leave_user(party, user, 2)`
+    ///    （0x085b2f2c / 0x085b33c1）；
+    /// ② **CMD 13 LEAVE_PARTY** → `DisPatcher_LeaveParty::process` @0x081c4256 也是
+    ///    `leave_user(party, user, 2)`（0x081c42f3）——**同一个函数、同一个实参**，所以"擅自退出"的
+    ///    退队形态就是既有 CMD 13 的形态；
+    /// ③ `CParty::leave_user` @0x0859c114（1822B）只 `CParty::change_manager` + `GameWorld::send_party_info_to_all`
+    ///    （NOTI 9）与 `send_party_realtime_info`，**不含 NOTI 10**——NOTI 10 在另一个函数
+    ///    `CParty::walkout_member` @0x0859ca4a → `CParty::SendWalkout` @0x0859cb00 里
+    ///    ⇒ 对应 <see cref="PartyLeaveNotice.Silent"/>（既有 CMD 13 路径）。
+    /// 反过来**不算**擅自退出的两条（同一份实证）：结算回城 `CParty::ReturnToVillage` @0x085aca60
+    /// 的 58 个内部调用里**没有** `leave_user`；副本内死亡 `DisPatcher_DieCharacInDungeon::process`
+    /// @0x081c2a12 调的是 `CParty::die_user` 而不是 `leave_user`。所以本用例也钉住"不在**队伍**实例里
+    /// 一律一个包都不发"（单人零回归 + 选图界面/城镇里收到 CMD 45 都不该退队）。
+    /// **变异验证**：把 `AbandonPartyForDungeonGiveUpAsync` 的 `IsParty` 前置判断去掉 → 单人/未绑定那两条变红；
+    /// 把通知换成 `PartyLeaveNotice.Kicked`/`Disconnected` → "没有人收到 NOTI 10" 变红；
+    /// 不调 `TryLeavePartySilentlyAsync` → 前三条变红。
+    /// 会话接线（哪条回城路径调它）不可单测：真机检查点见 STATUS.md 第 13 条。
+    /// </summary>
+    private static async Task CheckGiveUpLeavesPartyAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+
+        // ---- A) 队员擅自退出：自己退队，队长留下（队伍只少他一个） ----
+        var memberInstance = fixture.CreatePartyInstance(1500);
+        var memberRegistry = new DungeonInstanceRegistry();
+        using (var service = new DungeonPartyService(
+            harness.Service,
+            harness.Directory,
+            memberRegistry,
+            TimeProvider.System,
+            NullLogger<DungeonPartyService>.Instance))
+        {
+            await harness.InviteAndAcceptAsync("阿尔法", "布拉沃");
+            var leader = harness.IdOf("阿尔法");
+            var leaver = harness.IdOf("布拉沃");
+            var leaderUid = harness.UidOf("阿尔法");
+            memberInstance.AddMember(new DungeonInstanceMember(
+                leader, leaderUid, 0, "阿尔法", _ => ValueTask.CompletedTask));
+            memberInstance.AddMember(new DungeonInstanceMember(
+                leaver, harness.UidOf("布拉沃"), 1, "布拉沃", _ => ValueTask.CompletedTask));
+            memberRegistry.BindCharacter(leader, memberInstance);
+            memberRegistry.BindCharacter(leaver, memberInstance);
+            harness.ClearAll();
+
+            var removed = await service.AbandonPartyForDungeonGiveUpAsync(leaver);
+
+            check(removed && harness.Service.GetPartySlots(leaver) is null,
+                "giving up inside a party dungeon takes the member out of the party");
+            var leaderSlots = harness.Service.GetPartySlots(leader);
+            check(leaderSlots is { Length: 1 } && leaderSlots[0].CharacterId == leader,
+                "the leader keeps the party with exactly one member left");
+            var leaderRoster = harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification);
+            check(leaderRoster is { Payload.Length: 20 }
+                    && BinaryPrimitives.ReadUInt16LittleEndian(leaderRoster.Payload.AsSpan(7, 2)) == leaderUid
+                    && leaderRoster.Payload[10] == 0xFF
+                    && leaderRoster.Payload[11] == 0xFF
+                    && leaderRoster.Payload[19] == 0,
+                "the remaining member receives the roster with the leaver's slot cleared (leader unchanged)");
+            var leaverRoster = harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification);
+            check(leaverRoster is { Payload.Length: 20 }
+                    && leaverRoster.Payload[10] == 0xFF
+                    && leaverRoster.Payload[11] == 0xFF,
+                "the member who gave up receives a roster without themselves (client self-cleans, CMD 13 shape)");
+            check(harness.Of("阿尔法").All(packet => packet.ProtocolId != GameProtocolEngine.WalkoutNotification)
+                    && harness.Of("布拉沃").All(packet => packet.ProtocolId != GameProtocolEngine.WalkoutNotification),
+                "nobody receives NOTI 10: the official give-up path is the silent leave (leave_user, not walkout_member)");
+            check(memberInstance.MemberCount == 2,
+                "the party leave does not touch the dungeon instance: unbinding stays with the session's return-to-town path");
+
+            // ---- B) 队长的 CMD 45：队长也退队，队长身份**就地**继任（槽位不搬动） ----
+            var leaderInstance = fixture.CreatePartyInstance(1501);
+            var leaderRegistry = new DungeonInstanceRegistry();
+            using var leaderService = new DungeonPartyService(
+                harness.Service,
+                harness.Directory,
+                leaderRegistry,
+                TimeProvider.System,
+                NullLogger<DungeonPartyService>.Instance);
+            await harness.InviteAndAcceptAsync("查理", "德尔塔");
+            var goingLeader = harness.IdOf("查理");
+            var successor = harness.IdOf("德尔塔");
+            var successorUid = harness.UidOf("德尔塔");
+            leaderInstance.AddMember(new DungeonInstanceMember(
+                goingLeader, harness.UidOf("查理"), 0, "查理", _ => ValueTask.CompletedTask));
+            leaderInstance.AddMember(new DungeonInstanceMember(
+                successor, successorUid, 1, "德尔塔", _ => ValueTask.CompletedTask));
+            leaderRegistry.BindCharacter(goingLeader, leaderInstance);
+            leaderRegistry.BindCharacter(successor, leaderInstance);
+            harness.ClearAll();
+
+            check(await leaderService.AbandonPartyForDungeonGiveUpAsync(goingLeader)
+                    && harness.Service.GetPartySlots(goingLeader) is null,
+                "a leader giving up leaves the party as well");
+            check(harness.Service.TryGetLeaderSlot(successor) == 1,
+                "the remaining member takes over as leader in place (slot 1, never moved to slot 0)");
+            var successorRoster = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
+            check(successorRoster is { Payload.Length: 20 }
+                    && BinaryPrimitives.ReadUInt16LittleEndian(successorRoster.Payload.AsSpan(10, 2)) == successorUid
+                    && successorRoster.Payload[19] == 1,
+                "the successor's roster keeps him in his own slot and marks him leader");
+            check(harness.Of("查理").All(packet => packet.ProtocolId != GameProtocolEngine.WalkoutNotification),
+                "the departing leader is not announced with NOTI 10 either");
+
+            // ---- C) 队伍实例里只剩自己时退出：队伍解散（kind=3），与 CMD 13 的最后一人同形 ----
+            leaderRegistry.UnbindCharacter(goingLeader);
+            harness.ClearAll();
+            check(await leaderService.AbandonPartyForDungeonGiveUpAsync(successor)
+                    && harness.Service.GetPartySlots(successor) is null,
+                "the last member giving up dissolves the party");
+            var disband = harness.FirstOf("德尔塔", GameProtocolEngine.PartyInfoNotification);
+            check(disband is { Payload.Length: 5 } && disband.Payload[4] == 3,
+                "the last member gets the 5-byte kind=3 disband record");
+        }
+
+        // ---- D) 单人副本：一个包都不发（单人零回归）；E) 不在任何实例（选图/城镇里收到 CMD 45）同样不发 ----
+        var soloRegistry = new DungeonInstanceRegistry();
+        using (var soloService = new DungeonPartyService(
+            harness.Service,
+            harness.Directory,
+            soloRegistry,
+            TimeProvider.System,
+            NullLogger<DungeonPartyService>.Instance))
+        {
+            var alpha = harness.IdOf("阿尔法");
+            soloRegistry.BindCharacter(alpha, fixture.CreateSoloInstance(alpha));
+            harness.ClearAll();
+            check(!await soloService.AbandonPartyForDungeonGiveUpAsync(alpha)
+                    && harness.Of("阿尔法").Count == 0,
+                "a solo dungeon instance never touches the party (single-player zero regression)");
+            soloRegistry.UnbindCharacter(alpha);
+            harness.ClearAll();
+            check(!await soloService.AbandonPartyForDungeonGiveUpAsync(alpha)
+                    && harness.Of("阿尔法").Count == 0,
+                "a member who is not in any dungeon instance is left alone (selection screen / town)");
+        }
     }
 
     /// <summary>

@@ -538,6 +538,26 @@ public sealed class PartyService : BackgroundService
     /// </summary>
     public async Task HandleLeaveAsync(Guid characterId, CancellationToken cancellationToken = default)
     {
+        if (!await TryLeavePartySilentlyAsync(characterId, cancellationToken))
+        {
+            await SendCommandErrorAsync(
+                characterId,
+                GameProtocolEngine.LeavePartyCommand,
+                NotInPartyErrorCode,
+                cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// "主动退队"（= CMD 13 成功分支）的最小入口：**不在队伍里返回 false 且一个包都不发**。
+    /// 与 <see cref="HandleLeaveAsync"/> 的差别只有"没有请求包要回、所以不发失败码"这一条——
+    /// 官服 CMD 45（副本内擅自退出，第 13 条）走的就是同一次 `CParty::leave_user(party, user, 2)`，
+    /// 那条路径没有 CMD 13 的请求包，回失败码 18 只会给客户端一个它没问过的包。
+    /// </summary>
+    internal async Task<bool> TryLeavePartySilentlyAsync(
+        Guid characterId,
+        CancellationToken cancellationToken = default)
+    {
         PartyRoster? roster;
         lock (_gate)
         {
@@ -546,15 +566,11 @@ public sealed class PartyService : BackgroundService
 
         if (roster is null)
         {
-            await SendCommandErrorAsync(
-                characterId,
-                GameProtocolEngine.LeavePartyCommand,
-                NotInPartyErrorCode,
-                cancellationToken);
-            return;
+            return false;
         }
 
         await RemoveMemberFromPartyAsync(characterId, PartyLeaveNotice.Silent, cancellationToken);
+        return true;
     }
 
     /// <summary>

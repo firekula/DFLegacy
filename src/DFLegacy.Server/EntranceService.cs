@@ -2699,7 +2699,8 @@ public sealed class EntranceService(
 
                 async Task ReturnToTownFromDungeonAsync(
                     string reason,
-                    bool forcedDungeonExit = false)
+                    bool forcedDungeonExit = false,
+                    bool abandonsParty = false)
                 {
                     if (currentDungeonId == 0 && !inDungeonSelection)
                     {
@@ -2797,6 +2798,21 @@ public sealed class EntranceService(
                     inDungeonSelection = false;
                     dungeonSelectionDeadline = null;
                     selectionWorldMap = null;
+                    // 第 13 条（官服语义：**副本内擅自退出 = 退队**）：客户端上行 CMD 45（GIVEUP_GAME，
+                    // 副本内"返回城镇"按钮；`Reason == "giveup-game"`）在官服 `CParty::giveup_game` 里就是
+                    // `CParty::leave_user(party, user, 2)`，与 CMD 13（退出队伍）**同一个函数、同一个实参**
+                    // （df_game_r 0x085b2f2c/0x085b33c1 与 0x081c42f3 实证）⇒ 退队形态 = CMD 13 的 silent 形态。
+                    // 只有这条路径传 `abandonsParty: true`：结算回城 `CParty::ReturnToVillage` 与副本内死亡
+                    // `DisPatcher_DieCharacInDungeon`（调 `CParty::die_user`）在官服里都**不**调用 `leave_user`。
+                    // 必须在 `LeaveDungeonInstanceAsync` **之前**：那个函数会把本角色从实例里解绑，
+                    // 之后"我是否在一个队伍实例里"就无从判断了（前置判断会落空）。
+                    if (abandonsParty && activeCharacter is not null)
+                    {
+                        await dungeonPartyService.AbandonPartyForDungeonGiveUpAsync(
+                            activeCharacter.Id,
+                            serverToken);
+                    }
+
                     // 单人：本会话就是整局，照旧丢弃房间/掉落、停 run；组队：房间/掉落/run 留给其余成员。
                     TeardownSoloDungeonInstance();
                     if (activeCharacter is not null)
@@ -14363,9 +14379,11 @@ public sealed class EntranceService(
                             // The in-dungeon Return to Town button uses command
                             // 45 in DNF 1.0.1.9. It does not use EPLP (75),
                             // which is reserved for the post-settlement screen.
+                            // 第 13 条：这条路 = 官服 `CParty::giveup_game`，要按官服语义退队（见参数说明）。
                             await ReturnToTownFromDungeonAsync(
                                 "giveup-game",
-                                forcedDungeonExit: true);
+                                forcedDungeonExit: true,
+                                abandonsParty: true);
                             continue;
                         }
 
