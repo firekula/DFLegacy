@@ -40,7 +40,7 @@
 | 依赖 | 位置 | 校验 |
 | --- | --- | --- |
 | 真实客户端 | `G:/Game/DNF_ACT1/DF/DNF.exe` | `Test-Path G:\Game\DNF_ACT1\DF\DNF.exe` |
-| 客户端 IDA 标注库 | `G:/Game/DNF_ACT1/DF/DNF.exe.i64`（54MB） | `Test-Path ...\DNF.exe.i64` |
+| 客户端 IDA 标注库 | **`G:/Game/DNF_ACT1/DF/DNF.exe.idb`**（约 100MB；本客户端是 **32 位**，IDA 按目标位数命名库 ⇒ `.idb`） | `Test-Path ...\DNF.exe.idb`（同目录的 `DNF.exe.i64` 是旧副本，见 §5.3） |
 | IDA Pro 8.3 | `D:/Program Files (x86)/IDA_Pro_8.3/idat.exe` | `Test-Path`；`ida-dec` 跑一次即可 |
 | **Git Bash** | `D:/Program Files/Git/bin/bash.exe` | **必须**：PATH 里的 `bash` 是 WSL 的，`/d/...` 路径会直接失败 |
 | Python 3.12 | `D:/Program Files/Python312/python.exe`（`python` 已解析到它） | `python --version`；官服脚本另需 `capstone`(5.0.7 已装)、`pefile` |
@@ -73,7 +73,15 @@
    （`DNF.exe` = `0x400000`）。早先按偏移直接反编译得到的是另一个函数（`STATUS.md:430`）。
 2. **必须用 Git Bash**：`run-ida.sh` 用 `/d/...` 形式调用 IDA，WSL bash 会报
    "No such file or directory"（症状像"IDA 没装"）。
-3. **IDA 数据库是单写的**：`idat.exe` 退出时把库写回 `.i64`；同一时刻只允许一个 IDA 任务。
+3. **IDA 数据库是单写的**：`idat.exe` 退出时把库写回活动库；同一时刻只允许一个 IDA 任务。
+   **活动库是哪个文件（2026-09-30 更正）**：本项目客户端是 **32 位**，IDA 按**被分析目标的位数**命名数据库
+   （32 位 `.idb`、64 位 `.i64`）⇒ 活动库 = `G:/Game/DNF_ACT1/DF/DNF.exe.idb`（约 100MB，每次运行都被重写；
+   在 IDA 里 `idaapi.get_path(PATH_TYPE_IDB)` 报的就是它）。目录里那个 `DNF.exe.i64`（99MB、mtime 停在 9/29）
+   是 `work/build_db.py` 早期把 `save_database()` 的目标硬编码成 `"DNF.exe.i64"` 另存出来的**旧副本**，
+   **不是**活动库；它之所以"看起来还能用"，只是因为同目录还有 `DNF.exe` 与 `DNF.exe.idb`，IDA 自己解析回了
+   活动库——单独把 `.i64` 拷到别处喂给 idat 会被直接拒收：
+   `You can't disassemble file with such an extension: ...i64`。`work/run_ida.sh` 的默认库已改为 `.idb`
+   （要覆盖仍可用 `DNF_IDB=`）。
 4. **沙箱**：本项目工作区曾被 DSH 自身的 workspace 授权卡住（`SetNamedSecurityInfoW ... Win32 5`），
    已用 `diagnose-windows-sandbox-acl` 修复（`G:/Game/DNF_ACT1/DFLegacy._acl-report/` 留了回滚脚本）。
    另：枚举线程的 Toolhelp 在受限模式下会被过滤，故采样器改用 PowerShell 取线程 id。

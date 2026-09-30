@@ -416,7 +416,7 @@
    换房时全员标志清零（官方 `resetFinishLoadingVar`）。单人/非队伍实例仍"立即发"，报文逐字节不变。
    观察点：队员过图时 `NOTI 30` 应出现在**两人都上报 `CMD 40` 之后**；若有人卡在加载中，日志会打
    `waiting for the remaining member(s)`，全员齐时打 `all N member(s) finished loading`。
-7. **结算期队员客户端崩溃（2026-09-30 真机，排查中）**：**五局**（party8/10/11/13/15）复现同一规律——**队员**客户端在收到**自己那份 `CMD 73`** 后
+7. **结算期队员客户端崩溃（2026-09-30 真机；✅ 已修复并真机验收，过程与全部证据保留在下方）**：**五局**（party8/10/11/13/15）复现同一规律——**队员**客户端在收到**自己那份 `CMD 73`** 后
    **恰好 15 秒**连接被 RST、进程退出；队长全程正常；单人结算正常。party15 的两局补充判定：①**不是 UI 挂起**——主线程一直在正常消息泵里，
    最后自己走进 `BugTrap`（崩溃处理器）⇒ 一次**主线程异常**；异常约在 `CMD 73 + 9~10 秒`抛出，BugTrap 用 **wininet 上传报告、不写本地 dump**
    （客户端目录/临时目录都没有 `crashdump.dmp`），约 5 秒后进程退出 ⇒ 那 15 秒是"异常→退出"的总时延；②两局都**双方手动选牌、两份 `CMD 74` 都广播**
@@ -428,6 +428,135 @@
    沙箱过滤 Toolhelp 线程表；**eip 不在系统 DLL 里的线程**与**链上出现 `BugTrap` 的线程**都会附带 `rawstack@esp` 十六进制转储，后者窗口 4 KB）
    + `work/watch_clients.py`（0.5 秒/次，落 `G:/tmp/stacks/stacks_<pid>.txt`）+ `work/scan_exception.py`（扫 `EXCEPTION_RECORD`）+ `work/analyze_hang.py`。
    **注意地址口径**：采样器打印的 `模块+0xNNN` 是"VA − 模块基址"，IDA 里要加回基址（DNF.exe 基址 `0x400000`——早先按偏移反编译得到的是另一个函数）。
+   **【2026-09-30 更正：崩溃点不是 `d3d8`，是 `DNF.exe` 里的空指针读】**
+   从 party15 第二局**队员端已有的看门狗采样**里把异常记录本身恢复了出来（新脚本 `work/recover_exception.py`；
+   判据是 `EXCEPTION_RECORD` 与 WOW64 `CONTEXT` **成对出现且 `ExceptionAddress == Context.Eip`**，因此不是巧合）：
+   `0xC0000005`、`ExceptionAddress = 0x0087A46E`（= **`DNF.exe+0x47A46E`**）、参数 = (读, `0x00000000`) ⇒ **空指针读**；
+   同一现场两次采样给出同一组寄存器：`Eip=0x0087A46E Esp=0x001AFD7C Ebp=0x001AFD94 Eax=Ebx=0x17C95400 Ecx=0 Edx=3 Esi=0x10 Edi=0x1788DBB0`。
+   **上面"崩溃现场在 D3D8 绘制调用内（`d3d8.dll+0x99B4A`）"作废**：那个地址是**渲染热循环**（客户端健康时 11:18:47 也采样到它），
+   不是崩溃点；`d3d8.dll` 只在最后两秒的链上，栈顶异常在 `DNF.exe` 内。[作废] 依据即本条。
+   机制（**三来源交叉校验**：capstone 反汇编、GNU objdump、IDA Hex-Rays C 伪码，再加运行时寄存器；产物 `.recon/out/pseudo.txt`）：
+   崩溃在函数 **`sub_87A340`**（IDA 名；VA `0x87A340..0x87A7AD` = `DNF.exe+0x47A340..+0x47A7AD`）内，按 `this->[+4]` 走
+   **10 路 switch**（IDA 自己标注 `jmp jpt_87A384[eax*4]`，且 `0x87A422` = `jumptable 0087A384 case 8`）。case 8 的伪码就是崩溃表达式：
+   `if (v6 != v7 || !(*(int (__thiscall **)(_DWORD))(**(_DWORD **)(*(_DWORD *)(v5*4 + dword_B5DCC8) + 272) + 84))(*(_DWORD *)(*(_DWORD *)(v5*4 + dword_B5DCC8) + 272)))`
+   —— 遍历 `G+0x10..+0x1C`（`v5=4..7`，`v5*4` 即字节偏移；`G = dword_B5DCC8`）四个槽，与 `G[G[8]]` 比较（`sub_4FE830` 在
+   UI 状态 ∈ {4,6,7,9} 时返回 -1 ⇒ 退回 `G[0]`），命中后取 `iface = [slot+0x110]`（伪码里的 `+272`）并
+   `call [iface->vtbl+0x54]`（伪码里的 `+84`）。现场 `Esi=0x10` ⇒ 崩在**第 0 个槽**；`Ecx=0` ⇒ `[slot+0x110]` 为 NULL；
+   异常记录 `Info=(读, 0x00000000)` 与 `0x87A46E` 的字节 `8B 11`（`mov edx,[ecx]`）逐条对上，紧跟的 `FF 52 54` 即该虚调用。
+   **口径坑（本次实测踩到，记下来）**：把采样器打印的 `模块+0xNNN`（**偏移**）直接交给 IDA，会问到镜像里另一个地方、并返回
+   "看起来合理"的结果（我据此一度得出"IDA 在这区域 code=False、分析坏了"的错误结论）；**VA = 偏移 + `0x400000`**。
+   **运维事实**：IDA 实际打开的库是 `G:\Game\DNF_ACT1\DF\DNF.exe.idb`（**不是** `.recon/onboarding.md` 写的 `.i64`——后者的 mtime
+   停在 9/29，是旧的打包副本；单独拷贝 `.i64` 会被 IDA 拒收 `You can't disassemble file with such an extension`）。
+   本次 IDA 退出时重写了 `.idb`（hash 变了，**语义未改**：探针里的 `add_func` 分支从未执行；改动前备份在 `G:\tmp\DNF.exe.*.bak`）。
+   **静态补充（VA 口径修正后才取到的证据）**：`sub_404320(G, i)` 就是"取第 i 个槽"——伪码 `if (a2 >= 4) return 0; else return this[a2 + 4];`，
+   而它的调用者里有 **0x78Dxxx 段的组队槽位代码**（`sub_78D3A0`/`sub_78DBD0`/`sub_78EE00`；第 4 条那个"客户端把 `NOTI 26` 当槽位索引"
+   的判读点就在 `DNF.exe` 0x78D2B1 附近）⇒ `G+0x10..+0x1C` 这四个槽**很可能就是队伍槽位** [推断]，`G+0x20`（即 `sub_4FE830` 的返回值，
+   UI 状态 ∈ {4,6,7,9} 时为 -1）是"自己那一格"的索引。`sub_87A340` 本身是**状态设置器**：调用者清一色
+   `mov eax,[esi+4]; inc eax; push eax; mov ecx,esi; call sub_87A340`，而它的 `this` = `*(dword_B5DCE8 + 0xF1C)`、
+   调用者之一（`0x87B0C9`）紧邻字符串 **`REWARD_DIVIDE`**（结算奖励界面）——这与"崩溃只发生在结算期"吻合。
+   因此新探针 `work/probe_party_table.py` **一次读全**：`G`、`G+0x20`、四个槽、每槽 `[+0x110]`/vtable/`[vtable+0x54]`，
+   外加那个状态对象的 `[+4]`（= 崩溃那一支的 case 号；跑到 8 就是崩溃前夜）。
+   **【party16 真机（2026-09-30 16:07–16:10）：机制已完整定位，且能用探针客观复现】**
+   这一轮**没改服务端行为**（外观开关 OFF），三个只读仪器在跑（协议 `work/RUN-party16-protocol.md`；产物 `G:\tmp\party16*`）。
+   结果：**P2（新采样独立复现同一条异常记录）✔**——`recover_exception.py` 在队员端 7 次采样里都恢复出同一条
+   `0xC0000005 / Eip=0x0087A46E / badaddr=0 / Ecx=0 / Esi=0x10 / Esp=0x001AFD7C / Ebp=0x001AFD94`，与 party15 **逐字段相同**。
+   **P1（队员端被选槽的接口为 NULL）✔**，而且**四个操作数在活内存里一一对上**：
+   | 现场（运行时） | 活内存（探针同时读到） |
+   | --- | --- |
+   | `Edi = 0x17981790` = `*(0xB5DCC8)` | 探针 `G = 0x17981790` |
+   | `Eax = Ebx = 0x06E73D80` = 被解引用的槽对象 | 探针 `slot0 = 0x06E73D80` |
+   | `Ecx = 0` = `[slot+0x110]` | 探针 `slot0 [+0x110] = NULL` |
+   | `Esi = 0x10` ⇒ 循环第 0 格、`G+0x20 = 0` ⇒ 选中的是槽 0 | 探针 `own/slot index (G+20) = 0` |
+   **类别已定名（客户端自带 MSVC RTTI，不是我猜的）**：`dword_B5DCC8` 指向 **`CNRDPartyManager`**（`??_R4CNRDPartyManager@@6B@`）；
+   它的四个槽（`+0x10..+0x1C`）装的是 **`CNUser`**（`??_7CNUser@@6B@`，由 `sub_490D00` 构造）＝**队伍成员**；
+   `CNUser+0x110` 指向**按职业实例化的角色对象**：队长 `test` = **`CNGunner`**（vtbl 0xA0451C / locator `??_R4CNGunner@@6B@`），
+   队员 `ʥ��ʿ` = **`CNPriest`**（vtbl 0xA0515C / locator `??_R4CNPriest@@6B@`）。这些对象由工厂 `sub_654E50(job)` 建：
+   `case 0..4` 各 new 一个职业对象，**`default: return 0`** —— 职业号不认识就返回 **NULL**，正是我们看到的那个空指针。
+   **非对称性由此完全解释**（两台客户端的实测槽表）：
+   | 客户端 | `G+0x20` | slot0（`G+0x10`） | slot1（`G+0x14`） |
+   | --- | --- | --- | --- |
+   | **队员**（崩溃的那个） | 0 | `CNUser`＝**队长**，`[+0x110] = NULL` ← 崩在这里 | `CNUser`＝自己，`[+0x110]`＝`CNPriest`（有效） |
+   | **队长**（对照组，存活） | 0 | `CNUser`＝**自己**，`[+0x110]`＝`CNGunner`（有效） | `CNUser`＝**队员**，`[+0x110] = NULL`（结算期实测 16:09:40–16:09:50） |
+   **两台客户端的缺陷一模一样：外来成员的 `CNUser` 都没有职业对象**（各自只把自己那一格建全了）。差别只在"槽 `G[G+0x20]`"指向谁：
+   两边的 `G+0x20` 都是 0，队长端的槽 0 是**自己**（对象完整 ⇒ 什么都不发生），队员端的槽 0 是**队长**（对象残缺 ⇒ 空指针）。
+   写入/清空路径也已定名：`sub_4FD880(user, classObj)` 就是往 `CNUser+0x110` 存职业对象的那一句（伪码首行 `*(_DWORD *)(this + 272) = a2;`，
+   且 `a2 == 0` 是被允许的状态——所以"没有职业对象"不会当场崩，只会在结算界面被解引用时崩）；`sub_4FD2D0` 是把它清零的复位函数；
+   成套动作在用户构建器 `sub_4086F0` 里：`sub_4FDF60`（取或建 `CNUser`）→ `sub_654E50(job)`（建职业对象）→ `sub_4FD880`（存进去）。
+   **下一步（修）**：让"外来成员"走到并走完这一成套动作——即把 `sub_654E50` 拿到的职业号喂对（工厂 `case 0..4`，越界即 `default: 0`），
+   或补上客户端缺的那条构建路径。这条与 P2 是同一件事，**而且现在可以客观验证**（见下）。
+   即：**奖励/结算界面（状态机跑到 state 8，探针实测 `0→2→4→5→6→7→8`）会去解引用"槽 `G[G+0x20]`"的 `[+0x110]`**；
+   两台客户端的 `G+0x20` 都是 **0**，但**槽 0 的含义不同**——队长端的槽 0 是"自己"（对象完整，无事），
+   队员端的槽 0 是**队长**，而队员端**从未把队长的职业对象建出来**（`[+0x110] = NULL`）⇒ 空指针读、BugTrap、RST。
+   **这与 P2（队员看不到队长/外来角色没被完整建出来）是同一个根因**：`sub_4086F0` 里"取或建 `CNUser`（`sub_4FDF60`）→
+   建职业对象（`sub_654E50`）"的成套动作，在队员端只完成了前半截。
+   **更正一条旧结论**：正文说的"恰好 15 秒"不是常数——本轮异常在 `CMD73 + 11s`（16:09:53→16:10:04）、RST 在 `+32s`（16:10:25），
+   5 秒与 21 秒的差别是 BugTrap 处理（含那次注定失败的 wininet 上传）耗时，**只有"异常≈+10s"是稳定量**。
+   **新能力（这条比崩溃本身更值钱）**：`work/probe_party_table.py` 可以在**任意时刻**读出某个客户端的队伍槽表与
+   `CNUser+0x110` ⇒ **"外来角色有没有被完整建出来"从此是可测量信号**，P2 的修复不必再打到结算才知道成不成——
+   组队进图后看队员端 `slot0 [+0x110]` 是不是非 0 即可。
+   **【根因与修的方向已定：`NOTI 2`(USERINFO) 的 mode 用错了】**
+   客户端 `NOTI 2` 处理器（`0x419A57`）**按 mode 分派到两个不同解析器**（本项目自己的勘察 `.superpowers/sdd/viewinfo-blacklist-recon.md` Q1 已把这条写成硬证据）：
+   - `mode 0` → `0x419BEF`（"区域用户"解析器）——**只登记区域里的 actor，不建 `CNUser+0x110` 的模型对象**；
+   - `mode 1/3` → `0x41A764`（"详情"解析器）——正是**建模型对象**的那一支：
+     `0x417AB0(record)` 取 `+0x110`，为 0 就 `0x654E50(*(record+0x14))`（职业工厂）新建，再 `0x4FD880(record, actor)` 挂上去；
+     两者共用解析器，**只有 mode 3 会多解析 28 字节尾并弹资料卡**（mode 1 只补模型、不弹窗）。
+   而我们目前**给其他玩家发的外观包走的是 `CreateCurrentCharacterInfo` = mode 0**（`EntranceService.CreateTownAppearancePacket`，第 587/938/4604 三处调用点），
+   于是：外来成员的 `CNUser` 有了（`0x4FDF60` FindOrCreate），**模型对象永远没建** ⇒ `+0x110 = NULL` ⇒
+   结算界面 state 8 解引用它 ⇒ 崩；**同时这也解释了 P2（副本里看不到队友）**——同一条"模型没建出来"。
+   注意这与 `DFLEGACY_APPEARANCE_MINIMAL` 那个诊断开关无关（那条注释依据的 `d3d8` 立绘结论已作废）。
+   **修（待实施）**：给**其他玩家**在既有 mode-0 包之后**追加一条 mode-1 的详情记录**（复用 `GameProtocolEngine.CreateRequestedUserInfoDetail`，
+   把 mode 参数化：`mode==3` 才写 28 字节尾；mode-1 记录**不含名字**，名字由先行的 mode-0 记录进本地注册表，故必须"先 mode 0 再 mode 1"、且**只对他人**发、自己保持 mode 0 不变）。
+   **验证很快**：不用打到结算——组队进图后用 `work/probe_party_table.py` 看**外来成员那一格的 `[+0x110]` 是否非 0** 即可判成没成。
+   **【party17 真机（2026-09-30 16:53，这一轮带 mode-1 补包）：机制修好了，但冒出一个新症状】**
+   队员 `圣骑士`(Priest) / 队长 `test`(Gunner)；日志 `server-party17.log`。
+   **修成立的部分（两条独立证据）**：①**活内存**——两台客户端的每个已填槽位 `[+0x110]` 都非 0（party16 时外来成员那格是 `NULL`）：
+   队员端 slot0(=队长) `0x18343C60` vtbl `0xA0451C`=CNGunner、slot1(=自己) `0x17F48980` vtbl `0xA0515C`=CNPriest；
+   队长端 slot0(=自己) `0x17D088C8`、slot1(=队员) `0x181313A8`；②**线上**——`TX … protocol=2` 里 mode 0（带名字，能看到 ASCII `test`）之后紧跟同 uid 的 mode 1
+   （`01 0100 0200 2F2C0000 51000000…` = mode1/count1/uid2/exp11311/blobLen81）✓。
+   顺带证实：**登录时每个客户端本来就收自己那条 mode-0 + mode-1**（既有 `CreateCurrentCharacterDetails`，不是本次改动）——所以"给自己发 mode-1"本身不是新变量。
+   **新症状（阻塞结算验证）**：进图后**能看到队员了**（P2 有改善）**但位置不对**；队员**移动之后**其客户端弹出
+   **`error : 3525:100`**，随后 16:54:00 会话**优雅关闭**（`disconnected.`，进程仍存活且 Responding）。之后队长端看不到队员、队员打不死怪（等同掉线）。
+   静态定位到该弹窗：客户端硬编码字符串 `"error : 3525"`（VA `0xA89E4C`），由 `sub_8BEAD0` 用 `"%s:%d"` 格式化后经
+   `sub_799EF0(CNGameCore, 0x23, …)` 弹窗；触发条件是 `sub_402030(this+0x10) == 1`（即"被校验对象的类号 == 1"），
+   `sub_8BECD0` 是它的回调、由 `sub_8BECF0` 经 `sub_901430` 注册（`0x9014xx` = 该校验/报错模块）。
+   根因未定：可能是 mode-1 包内容，也可能是"模型被建出来之后才走到的代码路径"（此前外来成员根本没有模型，那些路径从未被触发）。
+   **已加临时 A/B 开关（判定完即删）**：现场存在 `no-userinfo-detail.flag` 时**不发** mode-1 补包——用文件而非环境变量，可不重启服务端切换。
+   判定顺序：先关掉补包跑一遍（若 3525 消失 ⇒ 与补包相关；不消失 ⇒ 是模型存在后的其它路径），再逐字段二分（经验值/装备表/战斗数值块）。
+   **【party19 真机（2026-09-30 17:18–17:23，`exp0` 变体）：原始崩溃未复现，队员端结算走通】**
+   （变体 u32 写 0 生效后）这一轮：`17:21:40` 结算包发双方 → `17:21:54` 双方 ack 记分卷 → `17:21:58` 双方收到 `CMD 73` →
+   **`17:22:01` 队员（user 1）`card type 0, index 0 processed … accepted=True, reward=27300`**、**`17:22:02` 再选第二张（reward=13200）**
+   → `17:22:10` 队长走出副本（`settlement-after-card` 正常回城）→ `17:22:22` 队员由 **EPLP 20 秒计时器正常送回城**
+   （`forced town return … settlement-eplp-timeout`）——**这条 EPLP 是结算流程的正常收尾**（官服同款 `town return: eplp timer 20`），不是症状。
+   **客户端侧独立证据**：队员端（PID 56360，会话 4fd84c0a）**33MB 看门狗采样里 `EXCEPTION_RECORD` 条数 = 0**
+   （`recover_exception.py` 报 `records seen: 0`）；期间各线程都在 ntdll 正常等待或 AMDXN32.DLL（显卡驱动）渲染里，**没有 BugTrap**。
+   ⇒ **`CNUser+0x110` 为空导致的结算期空指针崩溃，在"别人发 mode-1（且 u32 写 0）"之后不再出现。**
+   **仍未解决（与本崩溃分开记）**：
+   ① **偶发崩溃**：同一天 17:11 那一轮（同样 `exp0`）队员端在小怪死亡后 ~37 s **RST 退出**（`ended with an error`）——两次里中一次，
+      需要崩溃窗口内有采样才能定位（看门狗必须在场；后台常驻采样器会卡在内核等待，得用前台/短窗跑）。
+   ② **位置瑕疵**：进图初期位置正确、双向同步正常，但"刷新一次"（房间重载）之后短暂错位，再移动一次才回到正确位置。
+   ③ `exp0` 这个结论还只是在**临时变体开关**里（`userinfo-detail.txt`，判定完即删）：要把"mode-1 记录的 u32 恒为 0"写进代码并退役开关，
+      同时保留 mode-3（资料卡）那条路径继续传真实经验（勘察说该字段语义未定，两处按各自用途分开）。
+   **角色归因（可复现，`work/analyze_settlement_crash.py`）**：party8/10/11/13/15 五份日志的 6 次事件，**死的全是队员会话**
+   （`CMD73+15s` 被 RST；11:28:06 主线程已在 `BugTrap` 处理函数内 = `CMD73+~10s` 抛异常），**队长全部存活**；队员在
+   party8/10 是 `test`、在 party11/13/15 是 `ʥ��ʿ` ⇒ **与角色无关、与分工有关**。队员在自己那份 `CMD 73` 后 ~0.5 s 仍活着
+   （发出 `CMD 74`），此后服务端到它崩溃**一个包都没发**；`work/compare_sessions.py` 另确认结算阶段双方收到的报文**种类一致**
+   （不存在"队员少收一个包"）。
+   已否证：①选中"空奖励卡"（party8/13/15-2 队员选中的卡都有奖励，照样死）；②槽位字段（先前 `DFLEGACY_FORCE_SLOT_ZERO`）。
+   **待判（下一轮真机，协议 `work/RUN-party16-protocol.md`）**：`[slot+0x110]` 为 NULL 是否**队员端独有**、是哪个槽 ——
+   即"外来角色的对象/接口没被完整建出来"（与 P2 同源）还是另一回事。
+   采样器两处缺陷本次一并修掉（旧采样因此拿不到调用链）：`watch_clients.py` 不认 `.recon/collect-dnf-stacks.ps1` 传的
+   `--pid`（客户端真在跑时必定 `ValueError`）；`wow64_stack.py` 转储窗口固定 0x600，而异常帧在 `handler-ESP+0x2F8`(记录)/`+0x348`(上下文)、
+   **出错帧本身在 `+0x7B0`（窗口外）** ⇒ 现在可用 `DFLEGACY_STACK_DUMP_BYTES_ON_CRASH` 单独放宽崩溃线程的窗口。
+   对照（负例）：队长那份 40MB 采样里 `EXCEPTION_RECORD` 条数为 **0**，即上述判据不会在健康客户端上误报。
+   **✅ 验收结论（2026-09-30 17:18–17:23 party19 真机，修复已锁定并部署）**：
+   根因是"**给其他玩家只发 `NOTI 2` mode 0**"——客户端 mode-0 解析器只登记区域 actor，**不建 `CNUser+0x110` 模型对象**；
+   只有 mode 1/3 的详情解析器会建。修法：在每个"他人外观"推送点，于 mode-0 之后**紧跟一条同 uid 的 mode 1**
+   （记录里**经验字段写 0**——真机 A/B 实测：写真实经验会让队员端弹 `error : 3525:100` 并掉线；`mode 3` 资料卡那条路径仍传真实经验）。
+   验收证据：队员端**完整走通组队结算**（`17:22:01`/`17:22:02` 两次选牌 `accepted=True`、reward `27300`/`13200`；
+   队长 `settlement-after-card` 正常回城；队员由 **EPLP 20 秒计时器正常送回城**——这条 EPLP 是结算流程的正常收尾，不是症状），
+   且队员端 **33MB 采样里 `EXCEPTION_RECORD` = 0、`BugTrap` 从未进入任何调用链**（`chain-mentions=0`）。
+   改动：`GameProtocolEngine.CreateRequestedUserInfoDetail` 增 `mode` 参数（默认为 3，行为不变）+ `EntranceService` 三个他人推送点；
+   临时诊断开关（`userinfo-detail.txt` / `no-userinfo-detail.flag`）**已退役**（源码无残留）。
 8. **自动选牌也要广播 `CMD 74`**（本次提交，真机未验）：官服 `CParty::SendEachCardInfo` 构造后走 `send_to_party`；
    我们此前**只有手动选牌**那份广播（party10 10:05:09 队员会话确实收到了队长那一列），**自动选牌（4 秒计时器）那份只回发包者**
    → 另一名成员的结算页永远少一列。现在两条路径共用 `BroadcastCardSelectionSnapshotAsync`（`IsParty` 为真才发，单人一个包都不多发）。
@@ -455,6 +584,91 @@
 - **跨会话投递的 OCE 窗口（本轮已修，真机未验）**：每个成员句柄写的是**他自己会话**的流，成员被踢/掉线会抛他自己 token 的 `OperationCanceledException`；此前四处投递护栏只捕 `IOException/ObjectDisposed/Socket` → 击杀/开放/拾取/NOTI 29 的广播会顺着**发送者**的会话冒泡（打断健康玩家），扫描里会让"房间已换、后面几个成员的 `NOTI 29` 没发出去"。现在四处共用 `CrossSessionDelivery` 判定（模型层有 OCE 用例钉住）。**真机未验**：验收时可顺带观察"踢掉一个队员后其余人是否仍收到广播/换房包"。
 - **跨区域组队进图不做**：任一队员不在队长进图时的同一 `(town, area)` → 整队中止（队长按单人惯例回城，只记 `party entry aborted` 日志），这是设计稿 §3.2 的硬约束，不是 bug。
 - **疲劳按每房各自扣**：每个成员的会话在自己入场/换房时各扣一次（`ConsumeDungeonRoomFatigueAsync`，已有 `lastSettledRoomX/Y` 防镜像刷新重复扣），与原版"每人各自扣"一致。
+
+**party19 之后的待办（2026-09-30 用户真机反馈 + 本轮遗留）**
+
+11. **偶发崩溃（未解）**：同一份 build（`mode 1` + u32=0）下，**17:11 那一轮队员端在小怪死亡后约 37 秒 RST 退出**
+    （日志 `ended with an error`；两次尝试里中一次），而 17:18 那一轮零异常走通结算 ⇒ **不是原崩溃，是另一处偶发问题**。
+    定位前提：**看门狗要在崩溃窗口内在场**——后台常驻采样进程会卡在内核等待（CPU 不增长、无输出），
+    必须用**前台/短窗口**跑（`work/watch_clients.py <分钟> <目录> 0.5`）；抓到后 `work/recover_exception.py`
+    取 `EXCEPTION_RECORD` + `CONTEXT`，再回 IDA。
+12. **结算后队员不跟队长一起回城** —— **结案：不是缺陷，是官服语义**。
+    `EPLP` 就是客户端上行 **`CMD 75`**（`GameProtocolEngine.EplpCommand`；`EntranceService.cs:14407` 收、`CreateEplpReply` 回），
+    而它的**触发点是"篝火页"上玩家的选择**（本项目 `2026-09-29-dungeon-party/progress.md:192-193` 记着用户澄清的流程：
+    **结算 → 翻牌 → 篝火页（再次挑战 / 选择其他地下城 / 返回城镇）→ EPLP**；因此当时特意把超时登记点从"结算包发出"改到"翻牌完成"，
+    免得 20 秒在翻牌中途到点把玩家从选牌界面拽走）。
+    ⇒ 队长那侧点了"返回城镇"（party19 `17:22:09/10` 两次 `CMD 75`）→ `settlement-after-card` 正常回城；
+    队员那侧没点 → 20 秒静默被 `SettlementReturnTimeout = 20s`（与参考实现 `town return: eplp timer 20` 一致）兜底送回。
+    全量日志规律（"自己回城"的永远是队长一侧）由此解释，无需改动。
+    **下次真机的观察点（改成可判定的）**：队员端结算后应出现**篝火页**并有"**返回城镇**"选项；**点它应立即回城**（日志 `settlement-after-card`），
+    不点则应恰好 20 秒后被兜底送回。若点了却不回 / 或根本没有该选项，才是缺陷。
+13. **副本内擅自退出 = 退队（✅ 已按官服语义实现，2026-09-30；真机待验）**：客户端上行 **CMD 45 GIVEUP_GAME**
+    （副本内"返回城镇"按钮；真机日志 `RX … protocol=45`，party18/party19 各一次）在官服 `CParty::giveup_game`
+    @0x085b2baa（`opcode_cmd.txt` 第 45 项 = GIVEUP_GAME）里就是 **`CParty::leave_user(party, user, 2)`**
+    （0x085b2f2c / 0x085b33c1，实参是**字面量 2**），而 CMD 13「退出队伍」（`DisPatcher_LeaveParty::process`
+    @0x081c4256）也是**同一个函数、同一个实参**（`leave_user(party, user, 2)` @0x081c42f3）
+    ⇒ "擅自退出"的退队形态**就是既有 CMD 13 的形态**，不需要新协议。
+    `CParty::leave_user` @0x0859c114（1822B）只做 `change_manager`（队长继任/换主机）+
+    `GameWorld::send_party_info_to_all`（NOTI 9）+ `send_party_realtime_info`（NOTI 153），**不发 NOTI 10**
+    ——NOTI 10 在另一个函数 `CParty::walkout_member` @0x0859ca4a → `CParty::SendWalkout` @0x0859cb00 里
+    ⇒ 我们走 `PartyLeaveNotice.Silent`。
+    **只对"擅自退出"生效**（同一份实证排除另外两条回城路径）：结算回城 `CParty::ReturnToVillage` @0x085aca60
+    的 58 个内部调用里**没有** `leave_user`（所以结算后队伍保留、"再次挑战"不受影响）；副本内死亡
+    `DisPatcher_DieCharacInDungeon::process` @0x081c2a12 调的是 `CParty::die_user` 而**不是** `leave_user`
+    ⇒ 死亡本身不算退队（**待真机确认**：死亡倒计时被送回城时客户端会不会自己发 CMD 45；若发，就自动走本路径）。
+    **实现**：`DungeonPartyService.AbandonPartyForDungeonGiveUpAsync`（只在"确实绑定在**队伍**副本实例里"时动手；
+    单人实例/选图界面/城镇里收到 CMD 45 一律返回 false 且**一个包都不发** = 单人零回归）+
+    `PartyService.TryLeavePartySilentlyAsync`（把 CMD 13 的成功分支抽成"无回执"入口，不在队里不发失败码）；
+    接线点 `EntranceService.ReturnToTownFromDungeonAsync(..., abandonsParty: true)`，位置**在实例解绑之前**
+    （与官服同序：`leave_user` 早于 `GameWorld::out_from_dungeon`）。
+    **自动化**：`DungeonPartySmokeTests.CheckGiveUpLeavesPartyAsync`（9 条断言：队员退队/队长继任不搬槽位/
+    最后一解散 kind=3/没有人收到 NOTI 10/实例不被这次退队动到/单人实例零包/不在实例里零包）；
+    两处**变异实测变红后已回滚**（① 通知换成 `Kicked` → 两条"没有 NOTI 10"断言红；
+    ② 去掉 `IsParty` 前置判断 → 单人零回归断言红）。
+    **证据工具**（可复核）：`work/calls_in.py <addr>+<size>`（官服函数调用序列，capstone + 符号表）+
+    新增 `work/dis_range.py <func>+<size> --show lo,hi`（**从函数起点对齐解码**再打印窗口——不对齐会从半个指令
+    解出垃圾，第一版就是这么读错第二处 `leave_user` 现场的）。
+    **证据与类别**（六类标记见 `.recon/onboarding.md` §4；命令都可重跑）：
+    - `[静态]` **CMD 45 → 退队**：`work/xrefs_elf.py 0x085b2baa` 给出 `CParty::giveup_game` 的 6 个调用点，
+      其中 **`DisPatcher_GiveUpGame::process+297`**（0x081c41dd）就是 CMD 45 的派发器（该派发器 @0x081c40b4
+      先 `check_error`，再按 `CUser::get_state()` 分支：10 → 死亡之塔、12 → Boss 塔、其余 → 普通副本
+      `CParty::giveup_game`）；两处 `leave_user` 的**实参 2** 由
+      `work/dis_range.py 0x085b2baa+0x976 --show 0x085b2ef0,0x085b2f40` 读出（0x085b2f2c：`[esp+8]=2`）。
+    - `[静态]` **CMD 13 是同一个调用**：`DisPatcher_LeaveParty::process` @0x081c4256 → 0x081c42f3
+      `leave_user(party, user, 2)`（同一函数、同一实参 ⇒ 报文形态必然相同）。
+    - `[静态]` **缺席证据**（`work/xrefs_elf.py 0x0859c114` 的 **13 个调用点完整清单**里没有结算/死亡族）：
+      `Dispatcher_EPLPCommand::dispatch_sig` @0x081feedc、`TimerEPLPReturnVillage::dispatch_sig`、
+      `TimerEPLPCommandWait::dispatch_sig`、`DisPatcher_DieCharacInDungeon::process` @0x081c2a12
+      **都不在**调用 `leave_user` 的清单里 ⇒ 结算回城（含 20 秒兜底）与副本内死亡都不会退队。
+      （`ReturnToVillage` 自身不调用只是第一层；列全调用点才算数。）
+    - `[真机]` 客户端确实发 CMD 45：`server-party18.log:468`（`protocol=45 … body=2000`）、
+      `server-party19.log:432`（`body=2100`）；全量日志计数 `protocol=45` 5 次、选择界面的返回 `protocol=142`
+      7 次、**`protocol=135` 0 次**（135 才是官方表里的 BACK_2_VILLAGE）。
+    - `[静态]+[未验证]` **邻接发现（本轮刻意未改，待拍板）**：官方
+      `Dispatcher_Back2Village::dispatch_sig` @0x0820559a 在 `CParty::getManager(party) != user`
+      （**非队长**）时 `leave_user(party, user, 2)`（0x08205655；队长走另一支 → `ReturnToVillage`）。
+      但它是**官方 135** 的派发器，而我们的客户端在选择界面发的是 **142**（官服表里 142 =
+      GUILD_MEMER_LIST_NEXT，不是同一条命令）⇒ **不能据此改我们的 142 行为**，要单独判定
+      （真机观察点：队员在**选图界面**点"返回城镇"后，城镇里队伍还在不在——现在的实现是**保留**）。
+    - `[静态]+[未验证]` `DisPatcher_SelectDungeon::process` @0x081c8102 另有
+      `leave_user(party, user, **3**)`（0x081c828d；type=3 与 CMD 13/giveup 的 2 **不同**）——
+      "选图阶段被移出队伍"的另一条语义，我们没实现（我们走 `party-selection-cancelled`，保留队伍）。
+    **真机观察点**：见 `work/RUN-verify-A.md`（队员副本内点"返回城镇"→ 城镇里**不应**再显示组队、
+    队长端副本内队伍只剩自己；日志 `gave up inside party dungeon … and left the party`）。
+14. **每次进副本都会再刷新一次房间**（早期为"让地图加载器重建外来角色"加的补丁，`13f3f2a`/`017425c`）：
+    **用户已确认现在可以去掉**——`mode 1` 补包已承担"建外来角色模型"的职责；去掉后应同时消除
+    "刷新后位置短暂错位、需要再移动一次才恢复"的现象（用户 2026-09-30 观察）。
+15. **圣职者（Priest）buff 技能跨端不同步** —— **已重新定性（2026-09-30 官服二进制实证）：不是"我们漏发一条包"，而是它本来就不走服务端。**
+    官服 `DisPatcher_UseSkill::read/process`（`0x081CAC5E`/`0x081CADAA`）读四个字段
+    （`+13` 必须为 1、`+14`=技能号、`+15`=**目标 u16**、`+17`=另一个 u16），然后只做两件事：
+    反外挂校验（`CHackLog_InvalidUsingSkill`）与 **`CParty::use_skill`（`0x085A77D8`）→ `CParty::OnUsedSkill`（`0x085B5F8E`）
+    ＝按队伍槽位累加使用次数/统计，`OnUsedSkill` 里**没有任何发包**。**服务器不会把"某成员用了技能"广播给队友。**
+    ⇒ 目标端能看到特效/回血，靠的是**客户端↔客户端通道**（官服架构里的 relay/P2P），也就是 §2.7 第 9 条那个仍未结案的
+    "游戏 UDP 去向审计"（我们的 UDP 审计至今显示成员只发 NAT 探测/keepalive，`mt=0`）。
+    **两条路可选（待用户拍板）**：① 按官服架构补 P2P/中继（正路，工作量大，且第 9 条先要判定客户端把游戏数据发给了谁）；
+    ② 服务端**模拟**：收到 `CMD 41` 后主动向同实例其他成员广播一条等价效果包（偏离官服协议，但便宜、可先验证"效果能不能显示/回血"）。
+    **注意**：我们现在对 `CMD 41` 只回一个成功字节（`CreateUseSkillReply`），连"用技能"这件事都没告诉队友——这与①/②的取舍无关，
+    是**确定的缺失**（只是这条缺失在官服里本来也不由服务端承担）。
 
 ## 3. 可复用的验证方法
 
