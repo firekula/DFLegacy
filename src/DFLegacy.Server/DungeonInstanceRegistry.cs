@@ -128,6 +128,19 @@ public sealed class DungeonInstanceRegistry
         _pendingEntries.TryRemove(characterId, out request!);
 
     /// <summary>
+    /// 结算期"强制回城"信箱（官服结算包发出后的 EPLP 超时；参考实现日志逐字 `town return: eplp timer 20`）：
+    /// 到点由扫掠（<see cref="DungeonPartyService"/>）投递，收件会话在主循环里取走并回城。
+    /// **只有组队实例会被投**（扫掠对非组队实例整体早退），所以单人路径永远不出现这个信箱。
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, string> _pendingSettlementReturns = new();
+
+    internal void PostSettlementReturn(Guid characterId, string reason) =>
+        _pendingSettlementReturns[characterId] = reason;
+
+    internal bool TryTakeSettlementReturn(Guid characterId, out string reason) =>
+        _pendingSettlementReturns.TryRemove(characterId, out reason!);
+
+    /// <summary>
     /// 有任一待处理邮件（终审 P2 + 真机 2026-09-29）：会话主循环的读等待是"等包或超时"，
     /// 而信箱只在**有包**的路径被取——队员客户端静止时上百秒不发一个包，请求会一直躺着。
     /// </summary>
@@ -135,7 +148,8 @@ public sealed class DungeonInstanceRegistry
         _pendingEntries.ContainsKey(characterId)
         || _pendingSelections.ContainsKey(characterId)
         || _pendingSelectionCancels.ContainsKey(characterId)
-        || _pendingKillCredits.ContainsKey(characterId);
+        || _pendingKillCredits.ContainsKey(characterId)
+        || _pendingSettlementReturns.ContainsKey(characterId);
 
     /// <summary>队长开选图界面时给队员投的"待选图"请求（只记队长角色 id，队员自己把状态发给自己客户端）。</summary>
     internal void PostSelectionRequest(Guid characterId, Guid leaderCharacterId) =>

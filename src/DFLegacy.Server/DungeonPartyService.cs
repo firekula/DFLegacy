@@ -66,6 +66,14 @@ public sealed class DungeonPartyService : BackgroundService
     /// <summary>门口集结倒计时的扫描间隔（与交易/组队超时同一套 TimeProvider 惯例）。</summary>
     public static readonly TimeSpan SweepInterval = TimeSpan.FromSeconds(1);
 
+    /// <summary>
+    /// 结算期 EPLP 超时：结算包（NOTI 34/35）发出后这么久仍没收到该成员的 EPLP（CMD 75），
+    /// 就由扫掠给他投"强制回城"信箱。官服同款机制，参考实现日志逐字 `town return: eplp timer 20`。
+    /// 真机 2026-09-30：队员结算页卡死（客户端未响应、一个包都不发），只认 EPLP 就永远留在副本里。
+    /// 只对组队实例生效（扫掠对非组队实例整体早退），单人路径不受影响。
+    /// </summary>
+    public static readonly TimeSpan SettlementReturnTimeout = TimeSpan.FromSeconds(20);
+
     private readonly PartyService _partyService;
     private readonly TownSessionDirectory _directory;
     private readonly TimeProvider _timeProvider;
@@ -330,6 +338,17 @@ public sealed class DungeonPartyService : BackgroundService
         }
 
         var now = _timeProvider.GetUtcNow();
+
+        // 结算期 EPLP 超时（与门口集结无关，先判）：到点把"还没走"的成员投进强制回城信箱。
+        foreach (var pendingCharacterId in instance.TakeExpiredSettlementReturns(now))
+        {
+            Registry.PostSettlementReturn(pendingCharacterId, "settlement-eplp-timeout");
+            _logger.LogInformation(
+                "Dungeon {DungeonId} settlement EPLP timeout: forced town return queued for {CharacterId}.",
+                instance.Run.DungeonId,
+                pendingCharacterId);
+        }
+
         DungeonDoorOutcome? outcome;
         DungeonInstanceMember[] members;
         DungeonInstanceRoomSnapshot? room = null;

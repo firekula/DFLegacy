@@ -3467,6 +3467,19 @@ public sealed class EntranceService(
                             await EnterPartyDungeonAsync(entryRequest, serverToken);
                         }
 
+                        // 结算期强制回城（EPLP 超时；官服同款）：客户端卡死不发 EPLP 时由扫掠投这里的信箱。
+                        if (activeCharacter is { } settlementReturnMember
+                            && dungeonInstanceRegistry.TryTakeSettlementReturn(
+                                settlementReturnMember.Id, out var settlementReturnReason))
+                        {
+                            logger.LogInformation(
+                                "Dungeon {DungeonId} forced town return for {Name} ({Reason}).",
+                                currentDungeonId,
+                                settlementReturnMember.Name,
+                                settlementReturnReason);
+                            await ReturnToTownFromDungeonAsync(settlementReturnReason);
+                        }
+
                         // 队长退出选图 → 自己也回城（真机 2026-09-29：队长返回城镇后队员一直卡在选图界面）。
                         if (dungeonInstanceRegistry.TryTakeSelectionCancel(activeCharacter.Id)
                             && inDungeonSelection
@@ -14087,6 +14100,18 @@ public sealed class EntranceService(
                                     settledClearExperience.EventBonus,
                                     settledClearExperience.BlackDiamondBonus,
                                     settledClearExperience.ChannelBonus);
+
+                                // 结算期 EPLP 超时（官服同款；参考实现日志 `town return: eplp timer 20`）：
+                                // 结算包发出即登记到点时间——客户端若一直不发 EPLP（真机 2026-09-30：队员
+                                // 结算页卡死、一个包都不发），扫掠到点会投"强制回城"信箱，本会话在主循环里
+                                // 取走后走与 EPLP 相同的回城路径。单人是非组队实例：扫掠整体早退，永不投递。
+                                if (dungeonInstance is { } settlementReturnInstance
+                                    && activeCharacter is { } settlementReturnCharacter)
+                                {
+                                    settlementReturnInstance.ArmSettlementReturn(
+                                        settlementReturnCharacter.Id,
+                                        DateTimeOffset.UtcNow + DungeonPartyService.SettlementReturnTimeout);
+                                }
                             }
                             continue;
                         }

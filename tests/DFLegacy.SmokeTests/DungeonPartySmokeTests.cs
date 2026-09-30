@@ -37,6 +37,7 @@ internal static class DungeonPartySmokeTests
         CheckSoloRunBindsByCharacterId(check, fixture);
         CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
         CheckAllMemberLoadingBarrier(check, fixture);
+        CheckSettlementReturnTimeout(check, fixture);
         CheckSoloLookupNeverReusesPartyBinding(check, fixture);
         CheckStoppedInstanceCannotBeJoined(check, fixture);
         await CheckGatheringValidationAsync(check, fixture);
@@ -508,6 +509,41 @@ internal static class DungeonPartySmokeTests
                 && !registry.TryTakeSelectionRequest(leader, out _)
                 && !registry.TryTakeSelectionRequest(member, out _),
             "an outsider blocks the whole party: no selection request is posted");
+    }
+
+    /// <summary>
+    /// 结算期 EPLP 超时（官服同款；参考实现日志逐字 `town return: eplp timer 20`）：
+    /// 结算包发出时登记到点时间，到点由扫掠取走并投"强制回城"信箱（只取一次）；
+    /// 换房与成员离开都让排队中的到点时间作废。真机 2026-09-30：队员结算页卡死、一个包都不发，
+    /// 只认客户端 EPLP 就永远回不去。
+    /// </summary>
+    private static void CheckSettlementReturnTimeout(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        var memberA = Guid.NewGuid();
+        var memberB = Guid.NewGuid();
+        instance.AddMember(fixture.Member(memberA, slot: 0, "队长"));
+        instance.AddMember(fixture.Member(memberB, slot: 1, "队员"));
+        var now = DateTimeOffset.UtcNow;
+        instance.ArmSettlementReturn(memberA, now.AddSeconds(20));
+        instance.ArmSettlementReturn(memberB, now.AddSeconds(20));
+        check(instance.TakeExpiredSettlementReturns(now.AddSeconds(19)).Length == 0,
+            "a settlement return deadline that has not expired yet is kept");
+        var expired = instance.TakeExpiredSettlementReturns(now.AddSeconds(21));
+        check(expired.Length == 2 && expired.Contains(memberA) && expired.Contains(memberB),
+            "expired settlement return deadlines hand back every pending member");
+        check(instance.TakeExpiredSettlementReturns(now.AddSeconds(22)).Length == 0,
+            "an expired settlement return deadline is taken exactly once");
+
+        instance.ArmSettlementReturn(memberA, now.AddSeconds(20));
+        instance.ResetMemberLoadingForRoomChange();
+        check(instance.TakeExpiredSettlementReturns(now.AddSeconds(21)).Length == 0,
+            "a room change cancels queued settlement returns (the new room settles on its own)");
+
+        instance.ArmSettlementReturn(memberB, now.AddSeconds(20));
+        instance.RemoveMember(memberB);
+        check(instance.TakeExpiredSettlementReturns(now.AddSeconds(21)).Length == 0,
+            "a departing member drops their queued settlement return");
     }
 
     /// <summary>

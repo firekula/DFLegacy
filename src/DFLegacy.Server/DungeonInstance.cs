@@ -206,6 +206,7 @@ internal sealed class DungeonInstance(
             }
 
             _loadedMembers.Remove(characterId);
+            _settlementReturnDeadlines.Remove(characterId);
             Version++;
             return true;
         }
@@ -253,6 +254,8 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             _loadedMembers.Clear();
+            // 换房即新房间：上一间房排队等着"强制回城"的到点时间一并作废。
+            _settlementReturnDeadlines.Clear();
         }
     }
 
@@ -290,6 +293,57 @@ internal sealed class DungeonInstance(
                 return _members.Count > 0
                     && _members.All(member => _loadedMembers.Contains(member.CharacterId));
             }
+        }
+    }
+
+    // —— 结算期"EPLP 超时"（官服：结算包发出后由服务端定时把队伍送回城）——
+    // 参考实现日志逐字：`WARN town return: eplp timer 20 party_index=0`。真机 2026-09-30：
+    // 队员在结算页卡死、一个包都不发（客户端"未响应"），只认客户端 EPLP 就永远回不去。
+    // 只在 `lock (Gate)` 内读写。
+    private readonly Dictionary<Guid, DateTimeOffset> _settlementReturnDeadlines = [];
+
+    /// <summary>结算包（NOTI 34/35）发出时登记：到点仍没收到该成员的 EPLP 就强制送他回城。</summary>
+    internal void ArmSettlementReturn(Guid characterId, DateTimeOffset deadline)
+    {
+        lock (Gate)
+        {
+            if (_members.Any(member => member.CharacterId == characterId))
+            {
+                _settlementReturnDeadlines[characterId] = deadline;
+            }
+        }
+    }
+
+    /// <summary>取走所有已到点的成员（非空即代表这些会话该被送回城）；调用方负责投信箱。</summary>
+    internal Guid[] TakeExpiredSettlementReturns(DateTimeOffset now)
+    {
+        lock (Gate)
+        {
+            if (_settlementReturnDeadlines.Count == 0)
+            {
+                return [];
+            }
+
+            List<Guid>? expired = null;
+            foreach (var pair in _settlementReturnDeadlines)
+            {
+                if (pair.Value <= now)
+                {
+                    (expired ??= []).Add(pair.Key);
+                }
+            }
+
+            if (expired is null)
+            {
+                return [];
+            }
+
+            foreach (var characterId in expired)
+            {
+                _settlementReturnDeadlines.Remove(characterId);
+            }
+
+            return [.. expired];
         }
     }
 
