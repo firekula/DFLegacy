@@ -257,9 +257,13 @@ internal sealed class DungeonInstance(
     }
 
     /// <summary>
-    /// 标记某成员"本房间加载完成"（CMD 40）。返回 true = **这次调用之后全员已加载**
-    /// （官方 `check_allmember_loading` 返回 true 的那一刻：服务端才广播 NOTI 30）。
-    /// 幂等：同一成员重复上报不会重复返回 true（除首次把最后一位补齐那次）。
+    /// 标记某成员"本房间加载完成"（CMD 40）。返回 true = **此刻全员已加载**
+    /// （官方 `check_allmember_loading`：服务端据此广播 NOTI 30）。
+    /// 注意：**重复上报也必须照常返回 true**——本服务端有一条"区域条目后再重载一次房间"的补包路径
+    /// （为了让客户端地图加载器给外来角色建外观载体），客户端重载地图后会**再报一次 CMD 40**；
+    /// 若把重复上报按官方 `if (loaded[i]) return;` 的幂等早退处理，就再也不会放行 NOTI 30，
+    /// 两个客户端会一起停在黑屏（真机 2026-09-30 08:55:30 实测）。
+    /// 门槛本身不变：只有**全员**都标记过才返回 true。
     /// </summary>
     internal bool TryMarkMemberLoaded(Guid characterId)
     {
@@ -270,10 +274,9 @@ internal sealed class DungeonInstance(
                 return false;
             }
 
-            var added = _loadedMembers.Add(characterId);
-            var allLoaded = _members.Count > 0
+            _loadedMembers.Add(characterId);
+            return _members.Count > 0
                 && _members.All(member => _loadedMembers.Contains(member.CharacterId));
-            return added && allLoaded;
         }
     }
 

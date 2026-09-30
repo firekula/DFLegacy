@@ -568,9 +568,13 @@ internal static class DungeonPartySmokeTests
         check(!instance.TryMarkMemberLoaded(memberA),
             "the first member reporting CMD 40 does not complete the barrier");
         check(!instance.AllMembersLoaded && !instance.TryMarkMemberLoaded(memberA),
-            "the same member reporting twice is idempotent and still does not complete the barrier");
+            "the same member reporting twice still does not complete the barrier while the other is unloaded");
         check(instance.TryMarkMemberLoaded(memberB),
-            "the last member completing the barrier is reported exactly once");
+            "the last member completing the barrier is reported");
+        // 真机 2026-09-30 08:55:30：客户端重载地图（"区域条目后重载房间"补包路径）会**再报一次 CMD 40**，
+        // 这时必须继续放行 NOTI 30，否则两端一起黑屏。
+        check(instance.TryMarkMemberLoaded(memberA),
+            "a repeated CMD 40 after everyone is loaded still releases the party (reload case)");
 
         instance.ResetMemberLoadingForRoomChange();
         check(!instance.AllMembersLoaded,
