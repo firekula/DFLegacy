@@ -884,6 +884,28 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
+    /// 该角色所在队伍的**队长槽位**（0..3），不在队伍返回 null。
+    /// 用途：NOTI 26 UDP_HOST 的载荷。官服实证（df_game_r `CParty::send_host_info` 反汇编）：
+    /// 载荷 = 找到 `member[i] == party->host` 的那个**槽位号 i**，且**全队收到同一个值**——
+    /// 即"主机（队长）的槽位"，不是收件人自己的槽位；客户端把它当 0..7 的槽位索引使用
+    /// （DNF.exe 0x78D2B1 段：`mov esi,[eax+28h]; cmp esi,8; jge`）。
+    /// 派发器只在 `CParty::game_start` 与 `change_manager*`（队长变更）里发这个包。
+    /// </summary>
+    internal byte? TryGetLeaderSlot(Guid characterId)
+    {
+        if (!_partyByCharacter.TryGetValue(characterId, out var partyId)
+            || !_parties.TryGetValue(partyId, out var roster))
+        {
+            return null;
+        }
+
+        lock (_gate)
+        {
+            return roster.LeaderSlot;
+        }
+    }
+
+    /// <summary>
     /// 按收包者生成组队名册包（收件人自己那份，槽位按他的区域解析）；不在队伍 → null。
     /// 用于「外观（USERINFO）→ 名册 → 副本报文」的补播顺序（客户端槽位是在收名册那一刻按 uid
     /// 查本地 user 表建链接的，记录晚到就建不出链接，与城镇同屏的"外观先于名单"同类）。

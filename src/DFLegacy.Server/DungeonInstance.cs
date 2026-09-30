@@ -75,6 +75,12 @@ internal sealed class DungeonInstance(
     private readonly List<DungeonInstanceMember> _members = [];
     private readonly DungeonRunState _run = new(catalog);
 
+    // 本房间"已加载"的成员（官方 `CParty::loaded[]`，party+892+i 的等价物）：
+    // 过图 / 入场时清零，成员发 CMD 40（FINISH_LOADING）时置位；**全员齐了才向全队广播 NOTI 30**
+    // （官方 `CParty::check_allmember_loading` 的语义，2026-09-30 静态实证）。
+    // 只在 `lock (Gate)` 内读写。
+    private readonly HashSet<Guid> _loadedMembers = [];
+
     // 被动掉落"登记过"的房间。判据必须是这个集合，而不是"现在还剩几条掉落"：
     // 捡走（Remove）/detach 会让后者归零，而房间定义里的 PassiveItemSpawns 是静态的。
     private readonly HashSet<DungeonRoomPosition> _registeredPassiveRooms = [];
@@ -183,6 +189,8 @@ internal sealed class DungeonInstance(
             }
 
             _members.Add(member);
+            // 新成员默认"未加载"：要等他自己发 CMD 40（FINISH_LOADING）才算这一房间加载完成。
+            _loadedMembers.Remove(member.CharacterId);
             Version++;
             return true;
         }
@@ -197,6 +205,7 @@ internal sealed class DungeonInstance(
                 return false;
             }
 
+            _loadedMembers.Remove(characterId);
             Version++;
             return true;
         }
@@ -229,6 +238,54 @@ internal sealed class DungeonInstance(
             lock (Gate)
             {
                 return _members.Count;
+            }
+        }
+    }
+
+    // —— 全员加载门槛（官方 `CParty::resetFinishLoadingVar` / `CParty::check_allmember_loading`）——
+
+    /// <summary>
+    /// 换房间时清空"已加载"标志（官方 `CParty::resetFinishLoadingVar`：`for (i=0..3) loaded[i]=0`）。
+    /// **必须在 <see cref="TryMoveRoom"/> 同一把锁内调用**；单人实例没有集结，由调用方按 IsParty 早退。
+    /// </summary>
+    internal void ResetMemberLoadingForRoomChange()
+    {
+        lock (Gate)
+        {
+            _loadedMembers.Clear();
+        }
+    }
+
+    /// <summary>
+    /// 标记某成员"本房间加载完成"（CMD 40）。返回 true = **这次调用之后全员已加载**
+    /// （官方 `check_allmember_loading` 返回 true 的那一刻：服务端才广播 NOTI 30）。
+    /// 幂等：同一成员重复上报不会重复返回 true（除首次把最后一位补齐那次）。
+    /// </summary>
+    internal bool TryMarkMemberLoaded(Guid characterId)
+    {
+        lock (Gate)
+        {
+            if (!_members.Any(member => member.CharacterId == characterId))
+            {
+                return false;
+            }
+
+            var added = _loadedMembers.Add(characterId);
+            var allLoaded = _members.Count > 0
+                && _members.All(member => _loadedMembers.Contains(member.CharacterId));
+            return added && allLoaded;
+        }
+    }
+
+    /// <summary>锁内查询：当前是否全员已加载（成员离开后重新评估用）。</summary>
+    internal bool AllMembersLoaded
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _members.Count > 0
+                    && _members.All(member => _loadedMembers.Contains(member.CharacterId));
             }
         }
     }

@@ -2028,10 +2028,13 @@ public sealed class EntranceService(
                         selectionWorldMap?.Id, activeCharacter?.Id, questsMet, missingItems);
                 }
 
-                // 进入选图状态的三连包：USER_STATE(state 1) → NOTI 11（本机对端表）→ NOTI 26（本机槽位）。
+                // 进入选图状态的三连包：USER_STATE(state 1) → NOTI 11（本机对端表）→ NOTI 26（**主机槽位**）。
                 // 单人 CMD 15 与组队队员的"进入选图状态"共用同一条路径（报文条数/顺序/实参一致）；
-                // 单人侧传 0（与 CreateUdpHost() 的默认值同包）。
-                async Task SendDungeonSelectionStateAsync(byte slotIndex)
+                // 单人侧传 0（= 单人时主机就是自己，与 CreateUdpHost() 的默认值同包）。
+                // 组队侧必须传**队长槽位**：官服 `CParty::send_host_info` 给全队发同一个主机槽位
+                // （2026-09-30 df_game_r 反汇编 + DNF.exe 0x78D2B1 段双向实证），发"自己的槽位"
+                // 会让每个客户端都以为自己是主机。
+                async Task SendDungeonSelectionStateAsync(byte hostSlot)
                 {
                     var dungeonState = GameProtocolEngine.CreateUserState(localUserId, state: 1);
                     await dungeonState.WriteAsync(stream, serverToken);
@@ -2045,7 +2048,7 @@ public sealed class EntranceService(
                     await udpPeers.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, udpPeers);
-                    var udpHost = GameProtocolEngine.CreateUdpHost(slotIndex);
+                    var udpHost = GameProtocolEngine.CreateUdpHost(hostSlot);
                     await udpHost.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, udpHost);
@@ -2185,6 +2188,10 @@ public sealed class EntranceService(
                         dungeonId = instance.Run.DungeonId;
                         // 被动掉落物主用"触发推进的会话"（与改造前 ownerUserId = 本会话等价）。
                         room = instance.CaptureRoomSnapshot(targetX, targetY, transition, localUserId);
+                        // 官方 `CParty::move_map` 在每次换房时清零全员的"已加载"标志
+                        // （`resetFinishLoadingVar`：4 个 `loaded[i]` 归零）——新房间要求每个人
+                        // 重新上报 CMD 40，全员齐了才广播 NOTI 30。必须在同一把锁内做。
+                        instance.ResetMemberLoadingForRoomChange();
                         members = instance.Members;
                     }
 
@@ -2312,11 +2319,14 @@ public sealed class EntranceService(
                     var delivered = await partyService.SendToOtherMembersAsync(
                         activeCharacter.Id, appearance, cancellationToken);
 
-                    // ② 自己的选图状态（复用单人 CMD 15 的三连包，NOTI 26 的槽位换成队员自己的）。
+                    // ② 自己的选图状态（复用单人 CMD 15 的三连包）。NOTI 26 的载荷是**主机（队长）槽位**
+                    //    （官服 `CParty::send_host_info`：全队同一个值 = `party->host` 所在槽位）。
                     var memberSlots = partyService.GetPartySlots(activeCharacter.Id);
                     var memberSlot = memberSlots?
                         .FirstOrDefault(slot => slot.CharacterId == activeCharacter.Id)?.SlotIndex ?? 0;
-                    await SendDungeonSelectionStateAsync(checked((byte)memberSlot));
+                    var selectionHostSlot = partyService.TryGetLeaderSlot(activeCharacter.Id)
+                        ?? checked((byte)memberSlot);
+                    await SendDungeonSelectionStateAsync(checked((byte)selectionHostSlot));
                     await SendDungeonPermissionsAsync();
                     await SendDungeonSelectionEligibilityAsync();
                     logger.LogInformation(
@@ -2408,13 +2418,17 @@ public sealed class EntranceService(
                     await partyService.SendToOtherMembersAsync(
                         activeCharacter.Id, appearance, cancellationToken);
 
-                    // ⑤ 名册 → NOTI 26（自己的槽位）→ NOTI 11 → NOTI 28 → NOTI 29。
+                    // ⑤ 名册 → NOTI 26（主机槽位）→ NOTI 11 → NOTI 28 → NOTI 29。
                     // 队员进的是"实例当前的房间"：room 是上面 TryCaptureCurrentRoomSnapshot 的锁内快照
                     // （不是 TryMoveRoom，不推进房间）。
+                    // NOTI 26 载荷 = 队长槽位（官服 `CParty::send_host_info` 对全队发同一个主机槽位；
+                    // 与 live-join 路径一致；单人/无队伍时回退到自己的槽位）。
                     var roster = partyService.GetRosterPacketFor(activeCharacter.Id);
                     var peerTable = BuildPartyPeerTable(slots, activeCharacter.Id);
+                    var entryHostSlot = partyService.TryGetLeaderSlot(activeCharacter.Id)
+                        ?? checked((byte)slotIndex);
                     foreach (var packet in DungeonEntryPackets.PlanMemberEntry(
-                                 instance, room, roster, peerTable, checked((byte)slotIndex)))
+                                 instance, room, roster, peerTable, checked((byte)entryHostSlot)))
                     {
                         await packet.WriteAsync(stream, serverToken);
                         Interlocked.Increment(ref runtimeSession.SentPackets);
@@ -11889,7 +11903,7 @@ public sealed class EntranceService(
                             dungeonSelectionDeadline = requiresTutorial
                                 ? null : DateTimeOffset.UtcNow.AddSeconds(30);
                             await SaveCurrentLocationAsync(serverToken);
-                            await SendDungeonSelectionStateAsync(slotIndex: 0);
+                            await SendDungeonSelectionStateAsync(hostSlot: 0);
 
                             await SendDungeonPermissionsAsync();
 
@@ -14368,10 +14382,25 @@ public sealed class EntranceService(
                             // expects notification 30 to release its remaining
                             // town-side managers. This build's handler consumes
                             // no notification payload.
-                            var loadingNotification = GameProtocolEngine.CreateFinishLoading();
-                            await loadingNotification.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, loadingNotification);
+                            //
+                            // 时机按官方语义分两种（df_game_r 实证，2026-09-30）：
+                            //   单人 / 不在队伍实例：立即发 —— 官方 `check_allmember_loading` 在单人恒成立，
+                            //     报文条数/顺序逐字节保持既有行为（单人零回归红线）；
+                            //   组队实例：**不**立即发，等**全员 CMD 40 齐了**再向全队广播（见下方门槛）。
+                            // 官方依据：`CParty::finish_loading` 置 `loaded[i]`（party+892+i）后调
+                            // `check_allmember_loading`，只有 4 个标志全为 1 时才构造空载荷 NOTI 30 → `send_to_party`。
+                            var partyFinishInstance =
+                                dungeonInstance is { IsParty: true } finishInstance
+                                    && activeCharacter is not null
+                                        ? finishInstance
+                                        : null;
+                            if (partyFinishInstance is null)
+                            {
+                                var loadingNotification = GameProtocolEngine.CreateFinishLoading();
+                                await loadingNotification.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, loadingNotification);
+                            }
                             // FinishLoading reconstructs the local map actor.
                             // Replay a persisted zero-stomach death marker for
                             // dungeon scenes even if this connection already
@@ -14390,14 +14419,36 @@ public sealed class EntranceService(
                             // 与城镇的"外观 → 名册"同一根因）。这一轮对方 actor 的区域条目已经补发
                             // （外来 uid 已进入本机地图/区域列表），此时给**其他成员**各重播一份属于
                             // 他自己的名册（GetRosterPacketFor 按收件人解析 uid，槽位是收件人视角的），
-                            // 紧接着补一条 NOTI 30，让 HUD 在"记录已就位"之后重建一次。
+                            // 紧接在 NOTI 30 之前，让 HUD 在"记录已就位"之后重建一次。
                             // **顺序必须是 名册 → NOTI 30**（先记录、后 HUD）；单人实例没有别的成员，
                             // 一个包都不发（零回归）。
-                            if (dungeonInstance is { IsParty: true } finishLoadingInstance
+                            //
+                            // 全员加载门槛（2026-09-30 官服实证：`CParty::finish_loading` 置位后
+                            // `check_allmember_loading` 才广播 NOTI 30；`resetFinishLoadingVar` 在每次
+                            // 换房时把全员标志清零）：组队实例里，这个成员刚上报的这一份只是"他加载完了"，
+                            // **要等所有人都上报过**才向**全队**（含发包者）广播空载荷 NOTI 30。
+                            if (partyFinishInstance is not null
                                 && activeCharacter is { } finishLoadingCharacter)
                             {
+                                bool allMembersLoaded;
+                                lock (partyFinishInstance.Gate)
+                                {
+                                    allMembersLoaded =
+                                        partyFinishInstance.TryMarkMemberLoaded(finishLoadingCharacter.Id);
+                                }
+
+                                if (!allMembersLoaded)
+                                {
+                                    logger.LogInformation(
+                                        "Dungeon {DungeonId} party instance {PartyId}: {Name} finished loading; waiting for the remaining member(s).",
+                                        currentDungeonId,
+                                        partyFinishInstance.PartyId,
+                                        finishLoadingCharacter.Name);
+                                    continue;
+                                }
+
                                 var rosterReplayCount = 0;
-                                foreach (var member in finishLoadingInstance.Members)
+                                foreach (var member in partyFinishInstance.Members)
                                 {
                                     if (member.CharacterId == finishLoadingCharacter.Id)
                                     {
@@ -14428,14 +14479,15 @@ public sealed class EntranceService(
                                 var partyLoadingNotification =
                                     GameProtocolEngine.CreateFinishLoading();
                                 await dungeonPartyService.BroadcastToMembersAsync(
-                                    finishLoadingInstance,
+                                    partyFinishInstance,
                                     partyLoadingNotification,
-                                    finishLoadingCharacter.Id,
+                                    omitCharacterId: null,
                                     serverToken);
                                 logger.LogInformation(
-                                    "Dungeon {DungeonId} finish-loading dispatched to party instance {PartyId}: roster replayed for {RosterCount} other member(s), then NOTI 30 to the rest.",
+                                    "Dungeon {DungeonId} party instance {PartyId}: all {Count} member(s) finished loading; roster replayed for {RosterCount} other member(s), then NOTI 30 broadcast to the whole party.",
                                     currentDungeonId,
-                                    finishLoadingInstance.PartyId,
+                                    partyFinishInstance.PartyId,
+                                    partyFinishInstance.MemberCount,
                                     rosterReplayCount);
                             }
                             continue;

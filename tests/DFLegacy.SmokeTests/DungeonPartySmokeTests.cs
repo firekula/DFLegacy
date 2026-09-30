@@ -36,6 +36,7 @@ internal static class DungeonPartySmokeTests
         CheckHellRoomPassiveDetachOnMove(check, fixture);
         CheckSoloRunBindsByCharacterId(check, fixture);
         CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
+        CheckAllMemberLoadingBarrier(check, fixture);
         CheckSoloLookupNeverReusesPartyBinding(check, fixture);
         CheckStoppedInstanceCannotBeJoined(check, fixture);
         await CheckGatheringValidationAsync(check, fixture);
@@ -510,8 +511,10 @@ internal static class DungeonPartySmokeTests
     }
 
     /// <summary>
-    /// 队员入场报文序列（设计稿 §3.2，硬顺序）：**名册 → NOTI 26（自己的槽位）→ NOTI 11 → NOTI 28 → NOTI 29**；
-    /// 没有名册时名册位跳过，其余顺序不变。`NOTI 26` 的 partyIndex 必须是**收件人自己的槽位**。
+    /// 队员入场报文序列（设计稿 §3.2，硬顺序）：**名册 → NOTI 26（主机槽位）→ NOTI 11 → NOTI 28 → NOTI 29**；
+    /// 没有名册时名册位跳过，其余顺序不变。`NOTI 26` 的载荷是**主机（队长）的槽位**（可以不是收件人的槽位）：
+    /// 官服 `CParty::send_host_info` 反汇编实证 = 找到 `member[i] == party->host` 的槽位号 i 后 `put_byte(i)`
+    /// 并 `send_to_party`（全队同一个值）；客户端把它当 0..7 槽位索引使用（DNF.exe 0x78D2B1 段）。
     /// **变异验证**：把 udpHost 的槽位改成 0、或把 dungeonInfo 放到 roster 之前，本用例变红。
     /// </summary>
     private static void CheckMemberEntryPacketOrder(Action<bool, string> check, DungeonFixture fixture)
@@ -523,7 +526,8 @@ internal static class DungeonPartySmokeTests
         var roster = GameProtocolEngine.CreatePartyInfoNotification(
             1000, nameSel: 1, maxMembers: 4, slotUids: [11, 22, 0xFFFF, 0xFFFF], leaderSlot: 0);
         var peerTable = GameProtocolEngine.CreateUdpPeerInfo([]);
-        var packets = DungeonEntryPackets.PlanMemberEntry(instance, snapshot, roster, peerTable, slotIndex: 2);
+        // 收件人是槽位 2 的队员，主机（队长）在槽位 0：两者必须不同，才能钉住"发的是主机槽位"。
+        var packets = DungeonEntryPackets.PlanMemberEntry(instance, snapshot, roster, peerTable, hostSlot: 0);
         var ids = packets.Select(packet => (packet.Type, packet.ProtocolId)).ToArray();
         check(ids is
             [
@@ -534,15 +538,49 @@ internal static class DungeonPartySmokeTests
                 (GameProtocolEngine.NotificationPacketType, GameProtocolEngine.StartMapNotification)
             ],
             "member entry sends roster, UDP host, peer table, DUNGEON_INFO and START_MAP in that order");
-        check(packets[1].Payload[0] == 2,
-            "NOTI 26 carries the member's own party slot index");
+        check(packets[1].Payload[0] == 0,
+            "NOTI 26 carries the host (leader) party slot index, not the recipient's own slot");
         var startMap = packets[4];
         // START_MAP 布局：roomX(0) roomY(1) randomSeed(2..5) roomStateFlag(6) mapId(7..8) ...
         check(BinaryPrimitives.ReadUInt16LittleEndian(startMap.Payload.AsSpan(7, 2)) == snapshot.MapId,
             "START_MAP carries the instance room map id");
-        var withoutRoster = DungeonEntryPackets.PlanMemberEntry(instance, snapshot, null, peerTable, 2);
+        var withoutRoster = DungeonEntryPackets.PlanMemberEntry(instance, snapshot, null, peerTable, 0);
         check(withoutRoster.Count == 4 && withoutRoster[0].ProtocolId == GameProtocolEngine.UdpHostNotification,
             "a missing roster is skipped without disturbing the rest of the order");
+    }
+
+    /// <summary>
+    /// 全员加载门槛（官服 `CParty::finish_loading` + `check_allmember_loading` 的语义）：
+    /// 成员入队/入场默认"未加载"；每人上报 CMD 40 置位；**只有最后一位补齐时才报告"全员已加载"**；
+    /// 换房（`ResetMemberLoadingForRoomChange`）清零，要求全员重新上报；成员离开后分母变小、重新评估。
+    /// </summary>
+    private static void CheckAllMemberLoadingBarrier(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var instance = fixture.CreateInstance();
+        var memberA = Guid.NewGuid();
+        var memberB = Guid.NewGuid();
+        instance.AddMember(fixture.Member(memberA, slot: 0, "队长"));
+        instance.AddMember(fixture.Member(memberB, slot: 1, "队员"));
+        check(instance.MemberCount == 2, "the barrier fixture has two members");
+
+        check(!instance.AllMembersLoaded,
+            "a freshly entered member counts as not loaded (no NOTI 30 until they report CMD 40)");
+        check(!instance.TryMarkMemberLoaded(memberA),
+            "the first member reporting CMD 40 does not complete the barrier");
+        check(!instance.AllMembersLoaded && !instance.TryMarkMemberLoaded(memberA),
+            "the same member reporting twice is idempotent and still does not complete the barrier");
+        check(instance.TryMarkMemberLoaded(memberB),
+            "the last member completing the barrier is reported exactly once");
+
+        instance.ResetMemberLoadingForRoomChange();
+        check(!instance.AllMembersLoaded,
+            "a room change clears every member's loaded flag (official resetFinishLoadingVar)");
+        check(!instance.TryMarkMemberLoaded(memberA),
+            "after a room change the remaining member still has to report CMD 40 again");
+
+        check(instance.RemoveMember(memberB), "the fixture drops the second member");
+        check(instance.AllMembersLoaded,
+            "after a member leaves, the remaining (already loaded) members count as all-loaded");
     }
 
     /// <summary>

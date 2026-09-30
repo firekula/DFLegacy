@@ -4,8 +4,10 @@ namespace DFLegacy.Server;
 
 /// <summary>
 /// 队员入场的报文规划器（**纯函数**，不碰 IO，方便冒烟测试钉住顺序与槽位）。
-/// 硬顺序（设计稿 §3.2 + 探针真机证据 3d5bb45）：名册 → NOTI 26（自己的槽位）→ NOTI 11 → NOTI 28 → NOTI 29。
+/// 硬顺序（设计稿 §3.2 + 探针真机证据 3d5bb45）：名册 → NOTI 26（**主机槽位**）→ NOTI 11 → NOTI 28 → NOTI 29。
 /// 名册必须早于副本报文：客户端在**收到名册那一刻**按 uid 查本地 user 表建"谁属于哪支队伍"的链接。
+/// NOTI 26 载荷口径见 <see cref="PartyService.TryGetLeaderSlot"/>：官服 `CParty::send_host_info` 发的是
+/// **主机（队长）的槽位、全队同一个值**（2026-09-30 静态实证），不是收件人自己的槽位。
 /// </summary>
 internal static class DungeonEntryPackets
 {
@@ -14,7 +16,7 @@ internal static class DungeonEntryPackets
         DungeonInstanceRoomSnapshot room,
         GameServerPacket? roster,
         GameServerPacket? peerTable,
-        byte slotIndex)
+        byte hostSlot)
     {
         var packets = new List<GameServerPacket>(5);
         if (roster is not null)
@@ -22,7 +24,7 @@ internal static class DungeonEntryPackets
             packets.Add(roster);
         }
 
-        packets.Add(GameProtocolEngine.CreateUdpHost(slotIndex));
+        packets.Add(GameProtocolEngine.CreateUdpHost(hostSlot));
         if (peerTable is not null)
         {
             packets.Add(peerTable);
@@ -248,6 +250,18 @@ public sealed class DungeonPartyService : BackgroundService
         _logger.LogInformation(
             "Party member {CharacterName} (uid {AreaUserId}, {CharacterId}) left dungeon instance {PartyId}; departure sent to {Count} remaining member(s).",
             characterName, areaUserId, characterId, instance.PartyId, instance.MemberCount);
+
+        // 全员加载门槛的安全网：走后人少了，"剩下的都加载完了"可能刚好成立——
+        // 官方 `check_allmember_loading` 每收到一份 CMD 40 都会重评，成员离开也会改变分母；
+        // 不在这里补一次广播，剩下的人就会一直等到超时（官方有 `map_load_forced_finish` 兜底）。
+        if (instance.IsParty && instance.AllMembersLoaded)
+        {
+            await BroadcastToMembersAsync(
+                instance, GameProtocolEngine.CreateFinishLoading(), cancellationToken: cancellationToken);
+            _logger.LogInformation(
+                "Dungeon instance {PartyId}: remaining {Count} member(s) are all loaded after the departure; NOTI 30 broadcast.",
+                instance.PartyId, instance.MemberCount);
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -348,6 +362,9 @@ public sealed class DungeonPartyService : BackgroundService
             {
                 // 物主填 0（无主）：被强制推进的成员没有"谁先到门口"的语义，掉落按先到先得。
                 room = instance.CaptureRoomSnapshot(target.X, target.Y, transition, ownerUserId: 0);
+                // 官方 `CParty::move_map` 的 `resetFinishLoadingVar`：换房即清零全员"已加载"标志，
+                // 等每个人重新上报 CMD 40（同一把锁内做）。
+                instance.ResetMemberLoadingForRoomChange();
             }
 
             members = instance.Members;
