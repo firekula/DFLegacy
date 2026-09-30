@@ -804,6 +804,17 @@
     **与 line 626 那次硬崩的区别**：party27 `00:13:11` 队员端是**硬崩**（`ended with an error` = RST +
     看门狗抓到 `ACCESS_VIOLATION @Eip=0x9019C1`），而 party26/party27-00:09 两次是**客户端的优雅关闭** ✅
     ⇒ 两条不同的失败路径要分开查（前者是客户端校验模块里的越界，后者是客户端主动退出）。
+    **【2026-10-01 00:31–00:38 party28：一轮"没有崩"的对照（`[真机]`）】** 看门狗前台 7 分钟
+    （`work/watch_clients.py 7 G:\tmp\party28 0.5`）覆盖两端各 **2582 / 2366** 次采样，
+    `recover_exception.py` 两次都报 **`records seen: 0`**；服务端 `server-party28.log` 里
+    **没有任何 `TRACE_ERROR`**、也没有 `ended with an error` ⇒ 这一轮客户端一次都没报错。
+    同一轮里确认到位的行为：`00:31:18` 与 `00:34:54` **两次**"最后一人擅自退出 → `party kept
+    (he stays its leader)`"；`00:33:53` 结算页返回把队友一起带回（`returned user 1 through
+    settlement-party-return`）；`00:38:42/45` 两人各一条 `settlement-eplp-timeout`（两分钟兜底）。
+    **金标准比对的障碍（记一笔，别重复踩）**：`captured-run1/captured-run2` 里 game 通道（port 30011）的
+    **载荷是加密的**（高熵密文；帧头可见 `00 01 00 <len u16> …`），要拿参考实现的 `NOTI 29` 逐字段比对，
+    必须先用客户端载荷密码（本项目 `GameClientPayloadCipher`）解出明文——这是一件独立的事；
+    参考实现的**可读来源**是它自己的 `_logs/game.log`（行为/顺序），不是抓包载荷。
 
 ## 3. 可复用的验证方法
 
