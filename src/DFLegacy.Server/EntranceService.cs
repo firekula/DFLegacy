@@ -1689,6 +1689,21 @@ public sealed class EntranceService(
                     await inventoryRefresh.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, inventoryRefresh);
+
+                    // 翻牌完成（本会话的免费卡已定）→ 起"EPLP 超时"（官服同款；参考实现日志
+                    // `town return: eplp timer 20`）。真机 2026-09-30：选牌结束、篝火结算页出现时
+                    // 队员客户端卡死（"未响应"），按不出"返回城镇"、一个包都不发；登记在这里而不是
+                    // 结算包发出时——否则 20 秒会在翻牌**中途**到点、把人从选牌界面拽走。
+                    // 单人是非组队实例：扫掠整体早退，永不投递（零回归）。
+                    if (roomSettlement.FreeCardIndex.HasValue
+                        && dungeonInstance is { } settlementReturnInstance
+                        && activeCharacter is { } settlementReturnCharacter)
+                    {
+                        settlementReturnInstance.ArmSettlementReturn(
+                            settlementReturnCharacter.Id,
+                            DateTimeOffset.UtcNow + DungeonPartyService.SettlementReturnTimeout);
+                    }
+
                     return selectCardReply;
                 }
 
@@ -14101,17 +14116,6 @@ public sealed class EntranceService(
                                     settledClearExperience.BlackDiamondBonus,
                                     settledClearExperience.ChannelBonus);
 
-                                // 结算期 EPLP 超时（官服同款；参考实现日志 `town return: eplp timer 20`）：
-                                // 结算包发出即登记到点时间——客户端若一直不发 EPLP（真机 2026-09-30：队员
-                                // 结算页卡死、一个包都不发），扫掠到点会投"强制回城"信箱，本会话在主循环里
-                                // 取走后走与 EPLP 相同的回城路径。单人是非组队实例：扫掠整体早退，永不投递。
-                                if (dungeonInstance is { } settlementReturnInstance
-                                    && activeCharacter is { } settlementReturnCharacter)
-                                {
-                                    settlementReturnInstance.ArmSettlementReturn(
-                                        settlementReturnCharacter.Id,
-                                        DateTimeOffset.UtcNow + DungeonPartyService.SettlementReturnTimeout);
-                                }
                             }
                             continue;
                         }

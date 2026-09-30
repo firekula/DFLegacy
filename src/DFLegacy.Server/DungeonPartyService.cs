@@ -259,17 +259,11 @@ public sealed class DungeonPartyService : BackgroundService
             "Party member {CharacterName} (uid {AreaUserId}, {CharacterId}) left dungeon instance {PartyId}; departure sent to {Count} remaining member(s).",
             characterName, areaUserId, characterId, instance.PartyId, instance.MemberCount);
 
-        // 全员加载门槛的安全网：走后人少了，"剩下的都加载完了"可能刚好成立——
-        // 官方 `check_allmember_loading` 每收到一份 CMD 40 都会重评，成员离开也会改变分母；
-        // 不在这里补一次广播，剩下的人就会一直等到超时（官方有 `map_load_forced_finish` 兜底）。
-        if (instance.IsParty && instance.AllMembersLoaded)
-        {
-            await BroadcastToMembersAsync(
-                instance, GameProtocolEngine.CreateFinishLoading(), cancellationToken: cancellationToken);
-            _logger.LogInformation(
-                "Dungeon instance {PartyId}: remaining {Count} member(s) are all loaded after the departure; NOTI 30 broadcast.",
-                instance.PartyId, instance.MemberCount);
-        }
+        // 刻意**不**在这里补发 NOTI 30（2026-09-30 真机反证）：NOTI 30 的语义是"地图开始/全员加载完成"，
+        // 而正在篝火结算页的客户端收到它可能会重新走"开始地图"的流程而崩溃退出（真机 09:10:26 发、
+        // :10:30 客户端进程死亡；改动前同一时刻不发 NOTI 30 的日志里，留下的队员活得好好的）。
+        // 门槛也不需要这个安全网：成员离开会把它从 _members 摘掉，剩下的人下次上报 CMD 40 时
+        // "全员已加载"自然成立（`TryMarkMemberLoaded` 实时按当前成员表判定）。
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
