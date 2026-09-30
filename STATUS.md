@@ -815,6 +815,24 @@
     **载荷是加密的**（高熵密文；帧头可见 `00 01 00 <len u16> …`），要拿参考实现的 `NOTI 29` 逐字段比对，
     必须先用客户端载荷密码（本项目 `GameClientPayloadCipher`）解出明文——这是一件独立的事；
     参考实现的**可读来源**是它自己的 `_logs/game.log`（行为/顺序），不是抓包载荷。
+18. **翻牌/奖励面板：两边看到同一个人翻的内容（2026-10-01 用户真机；已定位到代码，待修）**
+    **现象**（用户截图）：奖励面板每行是"成员名 + 卡 + 金币"，两个客户端都把自己那一份**填进了两行**
+    （A 端两行都是"破损的武士刀 +12 金币"、B 端两行都是"+11 金币"）；而**付费/高级那两行两边一致且正确**
+    （test 行都是"破损的青铜肩甲"、圣骑士行都是"破旧的手套"）。
+    **定位**：面板的"免费卡"那组来自 **NOTI 35（`CLEAR_REWARD`）的第 1 组 4 列**，我们
+    `GameProtocolEngine.CreateClearDungeonReward`（`src/DFLegacy.Protocol/GameProtocolEngine.cs:3778-3787`）
+    **把 4 列全部写成收件人自己的 `freeItemId/freeGoldAmount`**（注释原文："Keep all four columns present
+    even in solo play"），而调用点 `EntranceService.cs:14062` 每个会话只为自己生成、只发给自己
+    ⇒ 客户端按列渲染各成员行时，就成了"每个人看到的那一行都是自己"。
+    **付费那组为什么是对的**：它只写 `partyIndex == localPartyIndex` 那一列，而**各成员的选择由
+    CMD 74（`SendEachCardInfo`）广播给全队**（`BroadcastCardSelectionSnapshotAsync`，真机 party10 已验证过
+    广播），所以两边都能看到对方的真实付费卡 ⇒ 两组行为差正好把根因钉在"NOTI 35 的 4 列"上。
+    **修法（两步）**：① **先确认列↔成员的映射**——把第 1 组的 4 列按
+    "本地列 = 自己的奖励、其余列 = 一个可辨认的哨兵（如 0 金币）"发一次，真机看队友那一行是"变空/显示哨兵/
+    还是照旧"，一次就能判定客户端是"按列取成员"还是"只用本地列"；② 若确认按列：给
+    `DungeonInstance` 加"每成员已生成奖励"的共享登记（各会话生成后发布），`CreateClearDungeonReward`
+    改成**按列**写（列 i ← 槽位 i 成员的 `FreeItemId/FreeGoldAmount`），并处理"队友还没发布就被先发"的时序
+    （与既有 `NOTI 30` 全员加载门槛同一套路子：齐了再发，或各自发布后统一由一次广播收口）。
 
 ## 3. 可复用的验证方法
 
