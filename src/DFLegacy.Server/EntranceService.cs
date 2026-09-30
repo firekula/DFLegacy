@@ -1707,6 +1707,37 @@ public sealed class EntranceService(
                     return selectCardReply;
                 }
 
+                // 选牌快照的全队广播——**手动与自动两条路径共用同一份包、同一口径**
+                // （`SendCardSelectionSnapshotAsync` 的返回值，不另造）。
+                // 官服依据：`CParty::SendEachCardInfo` 构造 CMD 74 后调 `send_to_party`
+                // （`this+516+i`/`this+520+i` 四个槽位无条件都写，逐成员 `CUser::Send`）。
+                // 真机依据（2026-09-30）：手动选牌那份会广播（party10 10:05:09 队员会话收到队长
+                // 那一列），**自动选牌（TimerCardSel 4s 兜底）那份从来只回发包者**，另一名成员的
+                // 结算页因此永远少一列（party10/party11/party13 三局都停在"最后一列不来"）。
+                // 单人 / 非组队实例：`IsParty` 为假直接早退，一个包都不多发（零回归）。
+                async Task BroadcastCardSelectionSnapshotAsync(
+                    GameServerPacket? snapshot,
+                    string source)
+                {
+                    if (snapshot is not { } selectCardBroadcast
+                        || dungeonInstance is not { IsParty: true } cardInstance
+                        || activeCharacter is not { } cardPicker)
+                    {
+                        return;
+                    }
+
+                    await dungeonPartyService.BroadcastToMembersAsync(
+                        cardInstance,
+                        selectCardBroadcast,
+                        omitCharacterId: cardPicker.Id);
+                    logger.LogInformation(
+                        "Dungeon {DungeonId} CMD 74 selection snapshot of user {UserId} broadcast to the other members of instance {PartyId} through {Source}.",
+                        currentDungeonId,
+                        localUserId,
+                        cardInstance.PartyId,
+                        source);
+                }
+
                 async Task<bool> TryAutomaticallySelectFreeCardAsync(string source)
                 {
                     if (roomSettlement.ClearReward is null || roomSettlement.FreeCardIndex.HasValue)
@@ -1737,8 +1768,9 @@ public sealed class EntranceService(
 
                     // DNF 1.0.1.9 consumes the same CMD 74 ownership snapshot
                     // for manual and TimerCardSelect assignments.
-                    await SendCardSelectionSnapshotAsync(
+                    var automaticSnapshot = await SendCardSelectionSnapshotAsync(
                         automaticGrant.InventoryChanged);
+                    await BroadcastCardSelectionSnapshotAsync(automaticSnapshot, source);
                     logger.LogInformation(
                         "Dungeon {DungeonId} automatically selected free card {CardIndex} for user {UserId} through {Source}; reward={RewardItemId}",
                         currentDungeonId,
@@ -14298,20 +14330,9 @@ public sealed class EntranceService(
                                 // 同一 localPartyIndex=发包者自己的槽位，与 SendCardSelectionSnapshotAsync 的
                                 // 取值口径完全一致，不另造）；omit 自己 → 绝不重复发。单人实例没有其他成员，
                                 // 一份包都不多发（零回归）。
-                                if (selectionSnapshot is { } selectCardBroadcast
-                                    && dungeonInstance is { IsParty: true } cardInstance
-                                    && activeCharacter is { } cardPicker)
-                                {
-                                    await dungeonPartyService.BroadcastToMembersAsync(
-                                        cardInstance,
-                                        selectCardBroadcast,
-                                        omitCharacterId: cardPicker.Id);
-                                    logger.LogInformation(
-                                        "Dungeon {DungeonId} CMD 74 selection snapshot of user {UserId} broadcast to the other members of instance {PartyId}.",
-                                        currentDungeonId,
-                                        localUserId,
-                                        cardInstance.PartyId);
-                                }
+                                await BroadcastCardSelectionSnapshotAsync(
+                                    selectionSnapshot,
+                                    "manual-card-selection");
                             }
                             else
                             {

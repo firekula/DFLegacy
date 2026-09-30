@@ -416,6 +416,22 @@
    换房时全员标志清零（官方 `resetFinishLoadingVar`）。单人/非队伍实例仍"立即发"，报文逐字节不变。
    观察点：队员过图时 `NOTI 30` 应出现在**两人都上报 `CMD 40` 之后**；若有人卡在加载中，日志会打
    `waiting for the remaining member(s)`，全员齐时打 `all N member(s) finished loading`。
+7. **结算期队员客户端崩溃（2026-09-30 真机，排查中）**：四局（party8/10/11/13）复现同一规律——**队员**客户端在
+   `CMD 73`（选牌权）后**恰好 15 秒**（= 服务端自动选牌计时器 4 秒 + 11 秒）连接被 RST、进程退出；队长全程正常；
+   单人结算正常。日志侧看不到触发点（party13 里队员从选牌到死亡之间服务端一个包都没发），判据是**客户端内部计时器**。
+   已否证"槽位字段"假设：`DFLEGACY_FORCE_SLOT_ZERO=1`（把所有喂给该会话的自身槽位写成 0）下 party13 队员仍在同一时刻死
+   （已核对该局 `CMD 74` 自身列值确为 `0x00`、诊断确实生效；该开关已删、从未提交）。下一步靠**客户端线程栈**：
+   `work/wow64_stack.py`（`Wow64GetThreadContext`；WOW64_CONTEXT 偏移 `Eip=184/Esp=196/Ebp=180`；线程枚举须走 PowerShell——
+   本环境沙箱会过滤 Toolhelp 的线程表）+ `work/watch_clients.py`（每 1.2 秒采样所有 `DNF.exe`，落 `G:/tmp/stacks/stacks_<pid>.txt`）。
+8. **自动选牌也要广播 `CMD 74`**（本次提交，真机未验）：官服 `CParty::SendEachCardInfo` 构造后走 `send_to_party`；
+   我们此前**只有手动选牌**那份广播（party10 10:05:09 队员会话确实收到了队长那一列），**自动选牌（4 秒计时器）那份只回发包者**
+   → 另一名成员的结算页永远少一列。现在两条路径共用 `BroadcastCardSelectionSnapshotAsync`（`IsParty` 为真才发，单人一个包都不多发）。
+9. **游戏 UDP 去向审计**（临时开关 `DFLEGACY_UDP_AUDIT=1`，只加日志、不发包、不改协议）：客户端把自己的 UDP 端口同时声明在
+   `CMD 2`（`nat_type/inner_ip/nat_ip/nat_port/mtu`，我们已 ACK 并落库）与 `NOTI 11` 对端表里（两处一致，127.0.0.1 可直达），
+   但副本内始终看不到对端角色/怪物同步。要判的是**客户端把游戏 UDP 发给对端还是发给服务端**（官方架构里 relay `8101-8300`
+   的角色由谁承担）：审计每 10 秒按远端打一行（`nat-probe`/`nat-keepalive`/`mt` 计数 + 协议号直方图 + 首包 hex）。
+   若显示"`mt` 数据报发给服务端" → 缺的是频道服的 UDP 中继转发（问题 1/3/4 可能同源）。顺带结论：`CMD 100`（PEER_CONNECT_RESULT）
+   在官服 `Dispatcher_PeerConnectResult::dispatch_sig` 里**只做 NAT 统计**（`IncreaseNatType`），不回复、不推进状态机——我们忽略它是对的。
 
 **已知限制**
 
