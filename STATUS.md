@@ -617,6 +617,19 @@
     **点它应立即回城**（日志 `settlement-after-card`）；**不点则约两分钟后**被兜底送回
     （日志 `settlement EPLP timeout: forced town return queued`），且**最后 10 秒聊天框每秒一行**
     "`N 秒后自动返回城镇。`"（文案是一行常量，不对就说一声）。
+    **【2026-09-30 真机补充（用户）：回城是"全队"一起】** 队长在篝火页点"返回城镇"后，队员**应当跟着一起回**
+    （用户原版观察），而此前只有点的人回、其余人各自等超时。
+    官服 `[静态]`：`CParty::ReturnToVillage` @0x085aca60 的组队分支**按槽位循环**——
+    `for i in 0..3: CParty::_checkValidUser(i) → CUser::make_basic_info(member[i]) →
+    GameWorld::out_from_dungeon(member[i])`（成员指针 `party+0x78+i*0x18`，循环增量在
+    0x085acf1d-0x085acf2a）；而 `Dispatcher_EPLPCommand::isReTurnToVillage` @0x0825f7f4 只判
+    `CUser::getMoveSpace() == 1`（在副本里），**不判是不是队长** ⇒ 任何人在篝火页选"返回城镇"都把全队送回城。
+    已改：`DungeonPartyService.PostSettlementReturnsForOthers` 给同实例其余成员各投一次"强制回城"信箱
+    （各自的会话取走后走同一条 `ReturnToTownFromDungeonAsync`）；单人/不在实例里不投。
+    `[真机]` party22 实测信箱从投递到被会话取走约 **1 秒**（21:56:06 投、21:56:07 取）⇒ "跟着回"是秒级生效的。
+    **下次真机观察点**：队长点「返回城镇」后，队员端应在**约 1 秒内**也被送回城
+    （日志 `Settlement town return by … pulls N remaining party member(s) back to town.`），
+    **不再需要等两分钟**；两分钟那条只用于"谁都没点"的情形。
 13. **副本内擅自退出 = 退队（✅ 已按官服语义实现，2026-09-30；真机待验）**：客户端上行 **CMD 45 GIVEUP_GAME**
     （副本内"返回城镇"按钮；真机日志 `RX … protocol=45`，party18/party19 各一次）在官服 `CParty::giveup_game`
     @0x085b2baa（`opcode_cmd.txt` 第 45 项 = GIVEUP_GAME）里就是 **`CParty::leave_user(party, user, 2)`**
