@@ -416,15 +416,18 @@
    换房时全员标志清零（官方 `resetFinishLoadingVar`）。单人/非队伍实例仍"立即发"，报文逐字节不变。
    观察点：队员过图时 `NOTI 30` 应出现在**两人都上报 `CMD 40` 之后**；若有人卡在加载中，日志会打
    `waiting for the remaining member(s)`，全员齐时打 `all N member(s) finished loading`。
-7. **结算期队员客户端崩溃（2026-09-30 真机，排查中）**：四局（party8/10/11/13）+ party15 复现同一规律——**队员**客户端在收到**自己那份 `CMD 73`** 后
-   **恰好 15 秒**连接被 RST、进程退出；队长全程正常；单人结算正常。party15 补充的判定：①**不是 UI 挂起**——主线程一直在正常消息泵里，
-   直到最后自己走进 `BugTrap`（崩溃处理器）⇒ 是一次**主线程异常**，而 BugTrap 配置成**用 wininet 上传报告、不写本地 dump**（客户端目录/临时目录都没有 `crashdump.dmp`）；
-   ②该局**双方都是手动选牌、两份 `CMD 74` 都广播了**，队员仍死 ⇒"队友那一列没广播"不是死因（第 8 条的广播对称化仍是官服语义，但与本崩溃无关）；
-   ③该局服务端**从未触发自动选牌**（无 `automatically selected` 行），排除自动选牌路径。已否证"槽位字段"假设：`DFLEGACY_FORCE_SLOT_ZERO=1` 下 party13
-   队员仍在同一时刻死（已核对 `CMD 74` 自身列值确为 `0x00`、诊断确实生效；开关已删、从未提交）。下一步靠**客户端线程栈 + 崩溃瞬间原始栈**：
-   `work/wow64_stack.py`（`Wow64GetThreadContext`；WOW64_CONTEXT 偏移 `Eip=184/Esp=196/Ebp=180`；线程枚举须走 PowerShell——本环境沙箱会过滤 Toolhelp 线程表；
-   链上出现 `BugTrap` 的线程会附带 `rawstack@esp` 十六进制转储 ⇒ 异常记录就在里面）+ `work/watch_clients.py`（每 1.2 秒采样所有 `DNF.exe`，
-   落 `G:/tmp/stacks/stacks_<pid>.txt`）+ `work/scan_exception.py`（扫 `EXCEPTION_RECORD`：`0xC0000005` 等）+ `work/analyze_hang.py`。
+7. **结算期队员客户端崩溃（2026-09-30 真机，排查中）**：**五局**（party8/10/11/13/15）复现同一规律——**队员**客户端在收到**自己那份 `CMD 73`** 后
+   **恰好 15 秒**连接被 RST、进程退出；队长全程正常；单人结算正常。party15 的两局补充判定：①**不是 UI 挂起**——主线程一直在正常消息泵里，
+   最后自己走进 `BugTrap`（崩溃处理器）⇒ 一次**主线程异常**；异常约在 `CMD 73 + 9~10 秒`抛出，BugTrap 用 **wininet 上传报告、不写本地 dump**
+   （客户端目录/临时目录都没有 `crashdump.dmp`），约 5 秒后进程退出 ⇒ 那 15 秒是"异常→退出"的总时延；②两局都**双方手动选牌、两份 `CMD 74` 都广播**
+   且**服务端从未触发自动选牌**，队员仍死 ⇒ 广播对称化（第 8 条）与本崩溃无关（该修复仍是官服语义，保留）；③崩溃现场（看门狗 1.2 秒采样）：
+   主线程 `eip` 为 **`d3d8.dll+0x99B4A`**（`movss xmm1, [ecx+4]`——读一段浮点向量时指针无效），DNF 侧调用链经过精灵绘制助手 `sub_82E3A0`，
+   其邻域引用字符串 **`equipment/chara`、`title/animation`、`interface/newre…`** ⇒ **结算/篝火场景里"画角色（装备/称号立绘）"时崩在 D3D8 绘制调用内部**，
+   不是死锁、也不是缺服务端包（崩溃前服务端一个包都没发）。已否证：槽位字段（`DFLEGACY_FORCE_SLOT_ZERO` 下 party13 仍死）、队友选牌广播、自动选牌路径。
+   下一步仪器（已就位）：`work/wow64_stack.py`（`Wow64GetThreadContext`；WOW64_CONTEXT 偏移 `Eip=184/Esp=196/Ebp=180`；线程枚举走 PowerShell——
+   沙箱过滤 Toolhelp 线程表；**eip 不在系统 DLL 里的线程**与**链上出现 `BugTrap` 的线程**都会附带 `rawstack@esp` 十六进制转储，后者窗口 4 KB）
+   + `work/watch_clients.py`（0.5 秒/次，落 `G:/tmp/stacks/stacks_<pid>.txt`）+ `work/scan_exception.py`（扫 `EXCEPTION_RECORD`）+ `work/analyze_hang.py`。
+   **注意地址口径**：采样器打印的 `模块+0xNNN` 是"VA − 模块基址"，IDA 里要加回基址（DNF.exe 基址 `0x400000`——早先按偏移反编译得到的是另一个函数）。
 8. **自动选牌也要广播 `CMD 74`**（本次提交，真机未验）：官服 `CParty::SendEachCardInfo` 构造后走 `send_to_party`；
    我们此前**只有手动选牌**那份广播（party10 10:05:09 队员会话确实收到了队长那一列），**自动选牌（4 秒计时器）那份只回发包者**
    → 另一名成员的结算页永远少一列。现在两条路径共用 `BroadcastCardSelectionSnapshotAsync`（`IsParty` 为真才发，单人一个包都不多发）。
