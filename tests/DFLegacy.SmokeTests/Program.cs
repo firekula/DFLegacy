@@ -293,8 +293,29 @@ Check(EntranceService.TryReadSendMessage(
     && Encoding.GetEncoding(936).GetString(
         capturedCreatureScriptType02.MessageBytes) == "啧啧",
     "captured 2008 CMD 132 also preserves the Creature type-2 script channel");
-var notificationText = Encoding.GetEncoding(936).GetBytes("系统通知");
-var messageNotification = GameProtocolEngine.CreateMessageNotification(
+// CMD 118 TRACE_ERROR：客户端在弹 `error : 3525:100` / 崩溃之前发出的**最后一个上行包**
+// （真机两轮逐字段相同：party26 23:29:33 队长端 body=`3B000801000000`、party27 00:09:14 队员端
+// body=`1F000801000000`）。官服 `Dispatcher_TraceError::dispatch_sig` @0x08204b0c 只 `get_byte` ×2 +
+// `cMyTrace`（不回包、不改状态），所以这里只需要把 code/flag 解析对 + 长度不足不抛。
+Check(EntranceService.TryReadTraceError(
+        Convert.FromHexString("3B000801000000"),
+        out var traceCodeCaptain,
+        out var traceFlagCaptain)
+    && traceCodeCaptain == 8
+    && traceFlagCaptain == 1,
+    "the captured TRACE_ERROR from the captain (party26) parses as code 8 / flag 1");
+Check(EntranceService.TryReadTraceError(
+        Convert.FromHexString("1F000801000000"),
+        out var traceCodeMember,
+        out var traceFlagMember)
+    && traceCodeMember == 8
+    && traceFlagMember == 1,
+    "the captured TRACE_ERROR from the member (party27) parses to the same code / flag");
+Check(!EntranceService.TryReadTraceError([0x1F, 0x00], out _, out _)
+    && !EntranceService.TryReadTraceError([], out _, out _),
+    "a TRACE_ERROR body without the two fields is rejected instead of throwing");
+
+var notificationText = Encoding.GetEncoding(936).GetBytes("系统通知");var messageNotification = GameProtocolEngine.CreateMessageNotification(
     messageType: GameMessageType.Type00DualRouteBrown,
     targetAreaUserId: 0x1234,
     notificationText);

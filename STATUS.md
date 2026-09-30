@@ -789,6 +789,21 @@
     （`ida-dec`/`ida-script` 是 mutate 类工具、本会话审批被拒 ⇒ 用 `insns.txt` 全量反汇编 +
     自写 capstone 扫 `DNF.exe` 的字符串引用）；③ 与金标准抓包（`ref-proxy`）**逐字段比对我们的
     NOTI 29 载荷**（`protocol=29 length=63` 那条）——崩溃紧随过图，最值得比的就是它。
+    **【2026-10-01 追加：找到了客户端自己的"错误上报"——`CMD 118 TRACE_ERROR`】**
+    官方命令表逐字：`118 TRACE_ERROR`（`Dispatcher_TraceError::dispatch_sig` @0x08204b0c **只做
+    `PacketBuf::get_byte` ×2 + `cMyTrace`**，不回包、不改任何状态）。`[真机]` 两轮、两个不同的端，
+    客户端在**弹 `error : 3525:100` 或崩溃之前的最后一个上行包**都是它，body 逐字段相同：
+    - party26 `23:29:33` **队长端**（会话 6886c6cd）`body=3B000801000000`，随后**干净**断线（无 WARN）；
+    - party27 `00:09:14` **队员端**（会话 1b533fe0，**组队成功后 8 秒、还在城镇里**）
+      `body=1F000801000000`，随后也是**干净**断线（无 WARN）。
+    ⇒ ① `error : 3525:100` 会走"客户端自己关会话（回选人）"这条路（进程还活着），与 party17 那次
+    "优雅关闭"同一个模式；② 它**不依赖副本/过图**（第二例在城镇里、刚组完队），所以不是 NOTI 29 专属。
+    **已实现**（提交 `诊断：识别并记录 CMD 118 TRACE_ERROR`）：`GameProtocolEngine.TraceErrorCommand = 118`、
+    `EntranceService.TryReadTraceError`（u16 序列后的两字节 = code/flag；两例都是 `code=8, flag=1`）、
+    会话收到就记 Warning（code/flag/整包 hex），**不改任何状态**（照官服）。下一份现场会自带这个码。
+    **与 line 626 那次硬崩的区别**：party27 `00:13:11` 队员端是**硬崩**（`ended with an error` = RST +
+    看门狗抓到 `ACCESS_VIOLATION @Eip=0x9019C1`），而 party26/party27-00:09 两次是**客户端的优雅关闭** ✅
+    ⇒ 两条不同的失败路径要分开查（前者是客户端校验模块里的越界，后者是客户端主动退出）。
 
 ## 3. 可复用的验证方法
 

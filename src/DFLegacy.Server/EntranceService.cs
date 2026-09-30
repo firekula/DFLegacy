@@ -14394,6 +14394,36 @@ public sealed class EntranceService(
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.TraceErrorCommand)
+                        {
+                            // 官服 `118 TRACE_ERROR`（`Dispatcher_TraceError::dispatch_sig` @0x08204b0c 只
+                            // `get_byte` ×2 + `cMyTrace`，不回包、不改状态）：客户端把"我这边出错了"报上来。
+                            // 真机两轮（party26 23:29:33 队长、party27 00:09:14 队员）都是**弹
+                            // `error : 3525:100` / 崩溃前的最后一个上行包**，我们此前直接忽略。
+                            // 照官服口径**只记录**：以后每份崩溃现场都自带客户端的错误码。
+                            if (TryReadTraceError(request.Body, out var traceCode, out var traceFlag))
+                            {
+                                logger.LogWarning(
+                                    "Client TRACE_ERROR (CMD 118) from {CharacterId} ({Name}): code={Code}, flag={Flag}, body={Body}.",
+                                    activeCharacter?.Id,
+                                    activeCharacter?.Name,
+                                    traceCode,
+                                    traceFlag,
+                                    Convert.ToHexString(request.Body));
+                            }
+                            else
+                            {
+                                logger.LogWarning(
+                                    "Client TRACE_ERROR (CMD 118) with a short body from {CharacterId} ({Name}): {Body}.",
+                                    activeCharacter?.Id,
+                                    activeCharacter?.Name,
+                                    Convert.ToHexString(request.Body));
+                            }
+
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.GiveupGameCommand)
                         {
                             if (activeCharacter is { TutorialStarted: false })
@@ -16622,6 +16652,27 @@ public sealed class EntranceService(
             DungeonWeaknessPolicy.FullStamina - projectedStamina,
             0,
             DungeonWeaknessPolicy.FullStamina);
+
+    /// <summary>
+    /// `CMD 118 TRACE_ERROR` 的载荷解析（官服 `Dispatcher_TraceError::dispatch_sig` @0x08204b0c 就是
+    /// `PacketBuf::get_byte` ×2 + `cMyTrace`，**不回包、不改状态**）：u16 序列之后是
+    /// `code`（1 字节）+ `flag`（1 字节）。真机抓到的两轮都是 `…08 01 00 00 00`（party26 队长 / party27 队员），
+    /// 也就是客户端在"出错→断线"之前告诉我们的唯一信息。长度不足就返回 false（不抛）。
+    /// </summary>
+    internal static bool TryReadTraceError(byte[] body, out byte code, out byte flag)
+    {
+        code = 0;
+        flag = 0;
+        const int codeOffset = sizeof(ushort);
+        if (body.Length < codeOffset + 2)
+        {
+            return false;
+        }
+
+        code = body[codeOffset];
+        flag = body[codeOffset + 1];
+        return true;
+    }
 
     internal static bool TryReadSendMessage(
         byte[] body,
