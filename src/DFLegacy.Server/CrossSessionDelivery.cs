@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Text;
 using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
@@ -14,6 +15,19 @@ namespace DFLegacy.Server;
 /// </summary>
 internal static class CrossSessionDelivery
 {
+    /// <summary>
+    /// 客户端文本编码（GBK / CP936，带替换回退——2008 客户端只认它）。
+    /// 与 <c>EntranceService.CreateClientEncoding</c>、<c>FriendService.CreateClientEncoding</c> 同一口径；
+    /// 放在这里是为了让**扫描线程**（<see cref="DungeonPartyService"/> 的结算倒计时系统消息）不必再抄一份。
+    /// </summary>
+    public static Encoding ClientEncoding { get; } = CreateClientEncoding();
+
+    private static Encoding CreateClientEncoding()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(936, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+    }
+
     /// <summary>坏通道判定：目标会话已经不可投递（断线/被踢/服务端关停）。</summary>
     public static bool IsBrokenChannel(Exception exception) =>
         exception is IOException

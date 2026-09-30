@@ -72,7 +72,10 @@ public sealed class DungeonPartyService : BackgroundService
     /// 真机 2026-09-30：队员结算页卡死（客户端未响应、一个包都不发），只认 EPLP 就永远留在副本里。
     /// 只对组队实例生效（扫掠对非组队实例整体早退），单人路径不受影响。
     /// </summary>
-    public static readonly TimeSpan SettlementReturnTimeout = TimeSpan.FromSeconds(20);
+    public static readonly TimeSpan SettlementReturnTimeout = TimeSpan.FromSeconds(120);
+
+    /// <summary>结算期自动返回前，用聊天框系统消息逐秒播报的秒数（用户 2026-09-30 反馈的原版行为）。</summary>
+    public const int SettlementCountdownSeconds = 10;
 
     private readonly PartyService _partyService;
     private readonly TownSessionDirectory _directory;
@@ -366,6 +369,29 @@ public sealed class DungeonPartyService : BackgroundService
         }
 
         var now = _timeProvider.GetUtcNow();
+
+        // 结算期最后 10 秒的聊天框系统消息（用户 2026-09-30 报的原版行为）：逐秒播报"还剩几秒"，
+        // 到点才由下面的 EPLP 超时真正送回城。**只发给本人**（别人的聊天框不该出现这行），
+        // 走成员自己的发送句柄（与共享广播同一条路），坏通道由 SendSafely 吞掉。
+        foreach (var (pendingCharacterId, remainingSeconds) in
+                 instance.TakeSettlementCountdowns(now, SettlementCountdownSeconds))
+        {
+            var announced = instance.FindMember(pendingCharacterId);
+            if (announced is null)
+            {
+                continue;
+            }
+
+            var countdownText = CrossSessionDelivery.ClientEncoding.GetBytes(
+                $"{remainingSeconds} 秒后自动返回城镇。");
+            await SendSafelyAsync(
+                announced,
+                GameProtocolEngine.CreateMessageNotification(
+                    GameMessageType.Type16Brown,
+                    // 目标 uid 0 = 不加发言人前缀（系统消息形态，与"负重超限"提示同一口径）。
+                    0,
+                    countdownText));
+        }
 
         // 结算期 EPLP 超时（与门口集结无关，先判）：到点把"还没走"的成员投进强制回城信箱。
         foreach (var pendingCharacterId in instance.TakeExpiredSettlementReturns(now))

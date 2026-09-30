@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Text;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -38,6 +39,7 @@ internal static class DungeonPartySmokeTests
         CheckSoloRoomChangeKeepsImmediateBehaviour(check, fixture);
         CheckAllMemberLoadingBarrier(check, fixture);
         CheckSettlementReturnTimeout(check, fixture);
+        await CheckSettlementCountdownAsync(check, fixture);
         CheckSoloLookupNeverReusesPartyBinding(check, fixture);
         CheckStoppedInstanceCannotBeJoined(check, fixture);
         await CheckGatheringValidationAsync(check, fixture);
@@ -545,6 +547,91 @@ internal static class DungeonPartySmokeTests
         instance.RemoveMember(memberB);
         check(instance.TakeExpiredSettlementReturns(now.AddSeconds(21)).Length == 0,
             "a departing member drops their queued settlement return");
+    }
+
+    /// <summary>
+    /// 结算期最后 10 秒的聊天框倒计时（用户 2026-09-30 真机反馈的原版行为：自动返回前 10 秒
+    /// 在聊天框逐秒发系统消息）。**只播 10..1 各一次**、到点的不播（那条走强制回城）、
+    /// 成员离开（deadline 被取消）后不再播，且只发给本人（别人的聊天框不受影响）。
+    /// 机制用既有且真机验过的系统消息形态：NOTI 12 + `Type16Brown` + **目标 uid 0**（无发言人前缀）。
+    /// **变异验证**：把"同一个整秒只播一次"的判定去掉 → 第二条变红；
+    /// 把窗口判断改成"所有 pending 都播" → 第一条变红。
+    /// </summary>
+    private static async Task CheckSettlementCountdownAsync(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        // ---- A) 模型层：窗口/去重/到点 ----
+        var instance = fixture.CreatePartyInstance(1600);
+        var captain = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        instance.AddMember(fixture.Member(captain, slot: 0, "队长"));
+        instance.AddMember(fixture.Member(member, slot: 1, "队员"));
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _), "the fixture run starts for the countdown case");
+        var now = new DateTimeOffset(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
+        check(DungeonPartyService.SettlementReturnTimeout == TimeSpan.FromMinutes(2),
+            "the settlement auto-return waits the original two minutes (user report), not the reference build's twenty seconds");
+        check(DungeonPartyService.SettlementCountdownSeconds == 10,
+            "the chat countdown covers the last ten seconds");
+        instance.ArmSettlementReturn(member, now.AddSeconds(DungeonPartyService.SettlementReturnTimeout.TotalSeconds));
+
+        check(instance.TakeSettlementCountdowns(now, DungeonPartyService.SettlementCountdownSeconds).Length == 0,
+            "a settlement deadline far away announces nothing");
+        var ten = instance.TakeSettlementCountdowns(now.AddSeconds(110), DungeonPartyService.SettlementCountdownSeconds);
+        check(ten.Length == 1 && ten[0].CharacterId == member && ten[0].RemainingSeconds == 10,
+            "entering the last ten seconds announces ten exactly once");
+        check(instance.TakeSettlementCountdowns(now.AddSeconds(110.4), DungeonPartyService.SettlementCountdownSeconds)
+                .Length == 0,
+            "the same whole second is never announced twice");
+        var nine = instance.TakeSettlementCountdowns(now.AddSeconds(111), DungeonPartyService.SettlementCountdownSeconds);
+        check(nine.Length == 1 && nine[0].RemainingSeconds == 9, "the following second announces nine");
+        check(instance.TakeSettlementCountdowns(now.AddSeconds(120), DungeonPartyService.SettlementCountdownSeconds)
+                .Length == 0,
+            "an expired deadline is not announced (it goes to the forced town return instead)");
+        check(instance.TakeExpiredSettlementReturns(now.AddSeconds(120)).Length == 1,
+            "the expired deadline is still handed to the forced town return");
+
+        // 成员离开（解绑）后 deadline 被取消：不再有任何播报。
+        instance.ArmSettlementReturn(captain, now.AddSeconds(5));
+        instance.RemoveMember(captain);
+        check(instance.TakeSettlementCountdowns(now, DungeonPartyService.SettlementCountdownSeconds).Length == 0,
+            "a departed member's settlement deadline is cancelled (nothing is announced)");
+
+        // ---- B) 服务层：扫描把系统消息发给**该成员本人**，别人一份都不发 ----
+        await using var harness = await PartyHarness.CreateAsync();
+        var registry = new DungeonInstanceRegistry();
+        var clock = new ManualTimeProvider(now);
+        using var service = new DungeonPartyService(
+            harness.Service,
+            harness.Directory,
+            registry,
+            clock,
+            NullLogger<DungeonPartyService>.Instance);
+        var sweepInstance = fixture.CreatePartyInstance(1601);
+        var sweepCaptain = Guid.NewGuid();
+        var sweepMember = Guid.NewGuid();
+        var captainInbox = new List<GameServerPacket>();
+        var memberInbox = new List<GameServerPacket>();
+        sweepInstance.AddMember(new DungeonInstanceMember(
+            sweepCaptain, 1, 0, "队长", packet => { captainInbox.Add(packet); return ValueTask.CompletedTask; }));
+        sweepInstance.AddMember(new DungeonInstanceMember(
+            sweepMember, 2, 1, "队员", packet => { memberInbox.Add(packet); return ValueTask.CompletedTask; }));
+        registry.BindCharacter(sweepCaptain, sweepInstance);
+        sweepInstance.ArmSettlementReturn(sweepMember, now.AddSeconds(5));
+
+        await service.SweepDoorAssembliesAsync(CancellationToken.None);
+
+        var notice = memberInbox.Find(packet => packet.ProtocolId == GameProtocolEngine.MessageNotification);
+        check(notice is not null
+                && notice.Payload[0] == (byte)GameMessageType.Type16Brown
+                && BinaryPrimitives.ReadUInt16LittleEndian(notice.Payload.AsSpan(1, 2)) == 0,
+            "the sweep sends the countdown as a system chat line (no speaker prefix) to the member whose deadline is near");
+        check(notice is not null
+                && Encoding.GetEncoding(936).GetString(notice.Payload[7..]).Contains('5')
+                && Encoding.GetEncoding(936).GetString(notice.Payload[7..]).Contains("返回城镇"),
+            "the countdown line carries the remaining seconds and where the player is going");
+        check(captainInbox.All(packet => packet.ProtocolId != GameProtocolEngine.MessageNotification),
+            "the other member's chat box is left alone");
     }
 
     /// <summary>

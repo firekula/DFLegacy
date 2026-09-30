@@ -1,4 +1,4 @@
-﻿using DFLegacy.Protocol;
+using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
 
@@ -207,6 +207,7 @@ internal sealed class DungeonInstance(
 
             _loadedMembers.Remove(characterId);
             _settlementReturnDeadlines.Remove(characterId);
+            _announcedSettlementCountdowns.Remove(characterId);
             Version++;
             return true;
         }
@@ -256,6 +257,7 @@ internal sealed class DungeonInstance(
             _loadedMembers.Clear();
             // 换房即新房间：上一间房排队等着"强制回城"的到点时间一并作废。
             _settlementReturnDeadlines.Clear();
+            _announcedSettlementCountdowns.Clear();
         }
     }
 
@@ -310,7 +312,55 @@ internal sealed class DungeonInstance(
             if (_members.Any(member => member.CharacterId == characterId))
             {
                 _settlementReturnDeadlines[characterId] = deadline;
+                // 重新登记 = 新的一次结算期：把"上一个播报过的整秒"清掉，倒计时从头再播。
+                _announcedSettlementCountdowns.Remove(characterId);
             }
+        }
+    }
+
+    /// <summary>
+    /// 结算期最后 N 秒的逐秒播报（用户 2026-09-30 报的原版行为：自动返回前 10 秒在聊天框发系统消息）。
+    /// 记录"这个成员上一个播报过的整秒"，保证 10..1 每个数只播一次；deadline 被取消/移除时同步清掉。
+    /// 只在 <see cref="Gate"/> 内读写。
+    /// </summary>
+    private readonly Dictionary<Guid, int> _announcedSettlementCountdowns = [];
+
+    /// <summary>
+    /// 本秒要播报的结算倒计时（10..1 各一次）：返回 (成员, 剩余整秒)，调用方负责投系统消息。
+    /// 到点的（remaining &lt;= 0）**不在这里**——那条走 <see cref="TakeExpiredSettlementReturns"/> 的强制回城。
+    /// </summary>
+    internal (Guid CharacterId, int RemainingSeconds)[] TakeSettlementCountdowns(
+        DateTimeOffset now,
+        int windowSeconds)
+    {
+        lock (Gate)
+        {
+            if (_settlementReturnDeadlines.Count == 0)
+            {
+                return [];
+            }
+
+            List<(Guid, int)>? announcements = null;
+            foreach (var pair in _settlementReturnDeadlines)
+            {
+                // 向上取整 = "还差几秒"，因此同一整秒只会命中一次（扫描抖动不会重复播报）；
+                // 到点（remaining <= 0）不在这里：那条走 TakeExpiredSettlementReturns 的强制回城。
+                var remaining = (int)Math.Ceiling((pair.Value - now).TotalSeconds);
+                if (remaining is <= 0 || remaining > windowSeconds)
+                {
+                    continue;
+                }
+
+                if (_announcedSettlementCountdowns.TryGetValue(pair.Key, out var announced) && announced == remaining)
+                {
+                    continue;
+                }
+
+                _announcedSettlementCountdowns[pair.Key] = remaining;
+                (announcements ??= []).Add((pair.Key, remaining));
+            }
+
+            return announcements is null ? [] : [.. announcements];
         }
     }
 
