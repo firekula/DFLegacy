@@ -14463,15 +14463,21 @@ public sealed class EntranceService(
                             if (state == 1)
                             {
                                 var freeCardWasSelected = roomSettlement.FreeCardIndex.HasValue;
-                                // 官服 `CParty::ReturnToVillage` 是**全队**回城（按槽位循环，见该函数注释）：
-                                // 篝火页上任何一个成员选"返回城镇"，其余成员也一起回去——不是各自等自己的超时。
-                                // 给其余成员投"强制回城"信箱，他们各自的会话取走后走同一条回城路径。
+                                // 用户 2026-09-30 拍板的两条语义（官服 `CParty::ReturnToVillage` 只由
+                                // EPLP 那两条路径调用：`Dispatcher_EPLPCommand::dispatch_sig` 与 EPLP 定时器）：
+                                //   ① **通关后**在结算页点「返回城镇」= **全队**回城（ReturnToVillage 按槽位循环）；
+                                //   ② 副本内（没通关）来的返回 = **擅自退出**：自己退队回城，不拉别人（与 CMD 45 同语义）。
+                                // "这一局确实结算过"用 `ClearReward` 判定（结算包 34/35 与翻牌都建立在它之上）。
+                                // 本机客户端实测：ESC 的返回城镇走 CMD 45、EPLP 只在结算页出现（24 次 CMD 75 全在
+                                // `boss map cleared` 之后）——这条判定是把"别拉全队"写成显式条件，免得换个客户端版本就错拉。
+                                var dungeonCleared = roomSettlement.ClearReward is not null;
                                 if (activeCharacter is not null)
                                 {
                                     var pulled = DungeonPartyService.PostSettlementReturnsForOthers(
                                         dungeonInstanceRegistry,
                                         activeCharacter.Id,
-                                        "settlement-party-return");
+                                        "settlement-party-return",
+                                        dungeonCleared);
                                     if (pulled > 0)
                                     {
                                         logger.LogInformation(
@@ -14481,10 +14487,20 @@ public sealed class EntranceService(
                                     }
                                 }
 
-                                await ReturnToTownFromDungeonAsync(
-                                    freeCardWasSelected
-                                        ? "settlement-after-card"
-                                        : "settlement-without-card");
+                                if (dungeonCleared)
+                                {
+                                    await ReturnToTownFromDungeonAsync(
+                                        freeCardWasSelected
+                                            ? "settlement-after-card"
+                                            : "settlement-without-card");
+                                }
+                                else
+                                {
+                                    await ReturnToTownFromDungeonAsync(
+                                        "eplp-without-clear",
+                                        forcedDungeonExit: true,
+                                        abandonsParty: true);
+                                }
                             }
                             continue;
                         }

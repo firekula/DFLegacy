@@ -643,7 +643,12 @@ internal static class DungeonPartySmokeTests
     /// ② `Dispatcher_EPLPCommand::isReTurnToVillage` @0x0825f7f4 只判"这个人在副本里"
     /// （`CUser::getMoveSpace() == 1` → 返回 1，0x0825f828）——**不判是不是队长**。
     /// 所以我们把"其余成员"各投一次强制回城信箱（会话取走后走同一条 `ReturnToTownFromDungeonAsync`）。
-    /// **变异验证**：把 `IsParty` 前置判断去掉 → 单人那条变红；把"跳过发起者"去掉 → 第一条变红。
+    /// **但只在"通关后的结算页"**（用户 2026-09-30 拍板）：副本内 ESC 的「返回城镇」是**擅自退出**
+    /// （退队 + 自己回，不拉人），所以拉人这道门必须由"这一局确实结算过"（`ClearReward` 已备好）来把住——
+    /// 本机客户端实测 ESC 走的是 CMD 45、EPLP 只在结算页出现（24 次 CMD 75 全部发生在
+    /// `boss map cleared` 之后），这里把它写成显式条件，免得换成别的客户端版本就错拉全队。
+    /// **变异验证**：把 `IsParty` 前置判断去掉 → 单人那条变红；把"跳过发起者"去掉 → 第一条变红；
+    /// 把"通关才拉人"的门去掉 → 未通关那条变红。
     /// </summary>
     private static void CheckSettlementReturnPullsWholeParty(
         Action<bool, string> check,
@@ -658,7 +663,8 @@ internal static class DungeonPartySmokeTests
         registry.BindCharacter(captain, instance);
         registry.BindCharacter(member, instance);
 
-        var pulled = DungeonPartyService.PostSettlementReturnsForOthers(registry, captain, "settlement-party-return");
+        var pulled = DungeonPartyService.PostSettlementReturnsForOthers(
+            registry, captain, "settlement-party-return", dungeonCleared: true);
 
         check(pulled == 1 && !registry.TryTakeSettlementReturn(captain, out _),
             "the member who chose to return is not queued again (he is already returning on his own path)");
@@ -668,12 +674,19 @@ internal static class DungeonPartySmokeTests
         check(!registry.TryTakeSettlementReturn(member, out _),
             "the queued return is taken exactly once");
 
+        // 没通关就来的 EPLP（副本内 ESC 那种"擅自退出"）**不许拉全队**：那个人自己退队回城就行。
+        check(DungeonPartyService.PostSettlementReturnsForOthers(
+                    registry, captain, "eplp-without-clear", dungeonCleared: false) == 0
+                && !registry.TryTakeSettlementReturn(member, out _),
+            "a return-to-town that did not come from the cleared settlement page never pulls the party along");
+
         // 单人副本不参与：单人会话本来就是自己回城（且扫掠对非组队实例整体早退）。
         var soloOwner = Guid.NewGuid();
         var solo = fixture.CreateSoloInstance(soloOwner);
         solo.AddMember(fixture.Member(soloOwner, slot: 0, "独狼"));
         registry.BindCharacter(soloOwner, solo);
-        check(DungeonPartyService.PostSettlementReturnsForOthers(registry, soloOwner, "settlement-party-return") == 0
+        check(DungeonPartyService.PostSettlementReturnsForOthers(
+                    registry, soloOwner, "settlement-party-return", dungeonCleared: true) == 0
                 && !registry.TryTakeSettlementReturn(soloOwner, out _),
             "a solo instance never pulls anybody (single-player zero regression)");
     }
