@@ -407,7 +407,11 @@
 4. **NOTI 26 现在发"主机（队长）槽位"**（提交 `99d55e1`，真机未验）：官服 `CParty::send_host_info` 反汇编证明
    载荷 = `party->host` 所在**槽位号**、全队同一个值；我们客户端把它当 0..7 的槽位索引用（`DNF.exe` 0x78D2B1 段）。
    此前队员主入场路径发的是**收件人自己的槽位**（队员会自认主机）。观察点：双人进副本后队员端"UDP 主机"应指向队长。
-5. **全员加载门槛（`NOTI 30` 的时机）**（提交 `99d55e1`，真机未验）：官方 `CParty::finish_loading` +
+5. **结算期"EPLP 超时"**（提交 `d6d6d3e`，真机未验）：队员在结算页卡死、一个包都不发时，
+   结算包发出后 20 秒由服务端把他送回城（官服同款；参考实现日志 `town return: eplp timer 20`）。
+   观察点：卡死后约 20 秒应自动回城，日志 `settlement EPLP timeout: forced town return queued` 与
+   `forced town return for <名字> (settlement-eplp-timeout)`。
+6. **全员加载门槛（`NOTI 30` 的时机）**（提交 `99d55e1`，真机未验）：官方 `CParty::finish_loading` +
    `check_allmember_loading` 语义 = 每个成员上报 `CMD 40` 只置自己那位，**全员齐了**才向全队广播空载荷 `NOTI 30`；
    换房时全员标志清零（官方 `resetFinishLoadingVar`）。单人/非队伍实例仍"立即发"，报文逐字节不变。
    观察点：队员过图时 `NOTI 30` 应出现在**两人都上报 `CMD 40` 之后**；若有人卡在加载中，日志会打
