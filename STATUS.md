@@ -630,6 +630,16 @@
     **下次真机观察点**：队长点「返回城镇」后，队员端应在**约 1 秒内**也被送回城
     （日志 `Settlement town return by … pulls N remaining party member(s) back to town.`），
     **不再需要等两分钟**；两分钟那条只用于"谁都没点"的情形。
+    **【2026-09-30 用户拍板：两种「返回城镇」必须分开】** ① **通关后**结算页的「返回城镇」（EPLP）=
+    **全队**回城；② 副本内（没通关）**ESC** 的「返回城镇」（`CMD 45`）= **擅自退出**，**只自己退队回城、
+    绝不拉队友**。实现上把"拉全队"的门**显式化**：`PostSettlementReturnsForOthers(..., dungeonCleared)`
+    未通关直接返回 0（一个信箱都不投），会话侧用 `roomSettlement.ClearReward is not null` 判"这一局确实
+    结算过"；未通关的 EPLP 走 `abandonsParty: true` 的新 reason `eplp-without-clear`（与 CMD 45 同语义）。
+    `[真机]` **本机客户端实测这条门是"显式化"而非修 bug**：全量日志里 **24 次 `CMD 75` 全部**发生在
+    `boss map cleared` / 结算包之后（篝火页），副本内 ESC 的返回 **5 次全部是 `CMD 45`**
+    （如 `server-party18.log:468`、`server-party19.log:432`、`server-party22.log:341`）；
+    `[静态]` 官服 `CParty::ReturnToVillage` 的调用者只有 `Dispatcher_EPLPCommand::dispatch_sig+1089`
+    与 EPLP 定时器两处，`CParty::giveup_game` **不**调用它 ⇒ 换客户端版本这条判定仍然成立。
 13. **副本内擅自退出 = 退队（✅ 已按官服语义实现，2026-09-30；真机待验）**：客户端上行 **CMD 45 GIVEUP_GAME**
     （副本内"返回城镇"按钮；真机日志 `RX … protocol=45`，party18/party19 各一次）在官服 `CParty::giveup_game`
     @0x085b2baa（`opcode_cmd.txt` 第 45 项 = GIVEUP_GAME）里就是 **`CParty::leave_user(party, user, 2)`**
