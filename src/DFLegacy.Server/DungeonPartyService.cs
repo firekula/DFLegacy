@@ -107,22 +107,16 @@ public sealed class DungeonPartyService : BackgroundService
     /// "这个人在副本里"（`CUser::getMoveSpace() == 1` → 1，0x0825f828-0x0825f83c），**不判是不是队长**。
     /// 实现：给其余成员各投一次"强制回城"信箱，他们的会话取走后走同一条
     /// `ReturnToTownFromDungeonAsync`（各自的城镇收尾、结算、退队判定都照旧）。
-    /// **只有"通关后从结算页返回"才拉全队**（用户 2026-09-30 拍板）：副本内 ESC 的「返回城镇」是
-    /// **擅自退出**（那个人自己退队回城，见 <see cref="AbandonPartyForDungeonGiveUpAsync"/>），
-    /// 不许把还在打怪的队友拽出来 ⇒ 拉人这道门由 <paramref name="dungeonCleared"/>（这一局确实结算过）把住。
+    /// **不额外区分"是不是通关后"**（用户 2026-09-30 决定）：本机客户端 ESC 的「返回城镇」走 `CMD 45`、
+    /// EPLP 只在结算页出现（24 次 `CMD 75` 全在 `boss map cleared` 之后），且客户端版本不再更换，
+    /// 所以保持简单形式、不引"通关过没有"的判定。
     /// 单人实例 / 不在实例里 → 返回 0 且一个信箱都不投（单人零回归）。
     /// </summary>
     internal static int PostSettlementReturnsForOthers(
         DungeonInstanceRegistry registry,
         Guid characterId,
-        string reason,
-        bool dungeonCleared)
+        string reason)
     {
-        if (!dungeonCleared)
-        {
-            return 0;
-        }
-
         if (registry.TryGetForCharacter(characterId) is not { IsParty: true } instance)
         {
             return 0;
