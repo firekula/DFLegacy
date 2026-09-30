@@ -2221,20 +2221,6 @@ public sealed class EntranceService(
                         .FirstOrDefault(slot => slot.CharacterId == character.Id)?.SlotIndex ?? 0));
                 }
 
-                // 掉落拾取的广播（设计稿 §3.3/§7 决策 5）：调用前自己那一份已经走 stream 发过，
-                // 这里只补发给同实例的**其他人**（omit 自己，绝不重复发）；单人实例没有人可补发。
-                async Task BroadcastPickupToInstanceAsync(GameServerPacket pickupPacket)
-                {
-                    var character = activeCharacter;
-                    if (dungeonInstance is not { IsParty: true } instance || character is null)
-                    {
-                        return;
-                    }
-
-                    await dungeonPartyService.BroadcastToMembersAsync(
-                        instance, pickupPacket, character.Id, serverToken);
-                }
-
                 // 换房间：把"本房间结算"标志整组清零（不清的话 `ClearEnabled && !ResultSent` 的守卫
                 // 会把第二间及以后的 SET_PLAY_RESULT/结算奖励整个吞掉）。三条路径共用这一份——
                 // 单人立即推进（CMD 48）、组队自己推进（AdvancePartyRoomAsync）、被强制推进后的镜像
@@ -12771,6 +12757,25 @@ public sealed class EntranceService(
                                         pendingDoor = partyInstance.Doors.PendingTarget;
                                     }
 
+                                    // 门口集结诊断（不改变行为，只落证据）：用户 2026-10-01 推断"服务端以为
+                                    // 两人都到门口、某个客户端其实还在跑"是硬崩诱因——这里把**谁在何时、
+                                    // 从哪个坐标**上报 CMD 48、判定结果、已到人数与队伍人数一并记下；
+                                    // 配合既有的 `party room advanced … (arrived=N/M)` 一行即可对齐时间线。
+                                    logger.LogInformation(
+                                        "Door assembly diagnostics: {Name} (uid {Uid}, slot {Slot}) reported MOVE_MAP ({TargetX},{TargetY}) from room ({FromX},{FromY}) at ({X},{Y}); decision={Decision}, arrivedCount={Arrived}, partySize={PartySize} (registration deliberately uses memberCount=1: the 2008 client does not report CMD 48 from every member, so the door advances on the first reporter).",
+                                        activeCharacter!.Name,
+                                        localUserId,
+                                        PartySlotIndexOfThisSession(),
+                                        targetX,
+                                        targetY,
+                                        currentDungeonRoomX,
+                                        currentDungeonRoomY,
+                                        currentX,
+                                        currentY,
+                                        assemblyOutcome.Decision,
+                                        assemblyOutcome.Arrivals.Count,
+                                        partyInstance.MemberCount);
+
                                     if (assemblyOutcome.Decision == DungeonDoorDecision.Ignored)
                                     {
                                         logger.LogInformation(
@@ -13551,7 +13556,6 @@ public sealed class EntranceService(
                                 LogPacket("TX", runtimeSession, pickup);
                                 // 掉落拾取广播（设计稿 §7 决策 5）：赢下实体并落库之后，同实例其他人的
                                 // 客户端也要让该掉落实体消失——自己那一份已经发过（上面），广播跳过自己。
-                                await BroadcastPickupToInstanceAsync(pickup);
 
                                 var refresh = CreateMainInventoryPacket(
                                     currentGold,
@@ -13610,7 +13614,6 @@ public sealed class EntranceService(
                                 await upgradePickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, upgradePickup);
-                                await BroadcastPickupToInstanceAsync(upgradePickup);
 
                                 var inventoryRefresh = CreateMainInventoryPacket(
                                     currentGold,
@@ -13751,7 +13754,6 @@ public sealed class EntranceService(
                                 await creaturePickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, creaturePickup);
-                                await BroadcastPickupToInstanceAsync(creaturePickup);
 
                                 foreach (var creatureRefresh in
                                          CreateCreatureInventoryPackets(
@@ -13840,7 +13842,6 @@ public sealed class EntranceService(
                                 await avatarPickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, avatarPickup);
-                                await BroadcastPickupToInstanceAsync(avatarPickup);
 
                                 var avatarRefresh = CreateAvatarInventoryPacket(
                                     avatarInventory.Values);
@@ -13903,7 +13904,6 @@ public sealed class EntranceService(
                             await itemPickup.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, itemPickup);
-                            await BroadcastPickupToInstanceAsync(itemPickup);
 
                             var itemRefresh = CreateMainInventoryPacket(
                                 currentGold,

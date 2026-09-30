@@ -3679,6 +3679,15 @@ public static class GameProtocolEngine
             payload.ToArray());
     }
 
+    /// <summary>
+    /// `NOTI 39 GET_ITEM`：**只发给拾取者本人**（用户 2026-10-01 真机口径：原版里队友不会看到"XX 获得…"）。
+    /// `[静态]` 官服 `DisPatcher_GetItem::process` @0x081c35c0 的广播包只有
+    /// `put_byte + put_short(CUser::get_unique_id) + put_int` 七字节，**不含这里这 12 字节里的入包槽位信息**；
+    /// 客户端正是按这些信息打印"获得…"行 ⇒ 把完整包广播给全队，别人就会打出 `[名字]获得…`。
+    /// **结论：不要广播它**（5 个拾取点原来的 `BroadcastPickupToInstanceAsync` 已于 2026-10-01 删除）。
+    /// **待真机确认**：队友再也收不到"地面物消失"信号 ⇒ 地面那件东西会不会留到换房才消失；
+    /// 若要保留消失语义，应照官服那 7 字节形态**另发**一条不含入包信息的移除包。
+    /// </summary>
     public static GameServerPacket CreateInventoryItemPickup(
         ushort groundId,
         ushort pickerUserId,

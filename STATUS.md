@@ -858,6 +858,24 @@
     `[静态]` 官服侧已经有对应子系统可查：`CParty::IsRoutingState` / `CParty::get_item` /
     **`CSpecialItemRoutingManager`（`ProcessFailEtc`、`ProcessGiveUp`——后者正是 `CParty::giveup_game` 的调用点之一）**
     ⇒ "掷骰路由"在官服是一套独立管理器，值得照它实现，而不是我们在会话里随手随机。
+21. **2026-10-01 两处修复 + 一条很可能解释硬崩的线索**
+    - **拾取刷屏已修**：删掉 5 处 `BroadcastPickupToInstanceAsync`（金币/强化/宠物/时装/道具），
+      拾取包**只发给拾取者本人**；`CreateInventoryItemPickup` 注释里记了官服那 7 字节广播形态
+      （`put_byte + put_short(uid) + put_int`）与"将来若要保留地面消失语义该怎么补一条移除包"。
+      **待真机确认**：队友端"获得…"不再出现；**并且**地上那件东西在队友屏幕上是否仍会消失
+      （若不消失 = 需要补一条不含入包信息的移除包）。
+    - **门口集结诊断已加**（**不改变行为**）：会话每收到一次 CMD 48 就记
+      `Door assembly diagnostics: <名字> (uid …, slot …) reported MOVE_MAP (tx,ty) from room (fx,fy) at (x,y);
+      decision=…, arrivedCount=…, partySize=…`，与既有的
+      `party room advanced … (arrived=N/M)` 对齐，就能直接看出"服务端先推进、另一客户端还没到"。
+    - **🔑 关键线索（很可能就是硬崩诱因）**：CMD 48 的**组队分支故意用 `memberCount: 1` 登记**
+      （`EntranceService.cs` 门口集结段；注释写明理由：真机 2026-09-29 证明 **2008 客户端不会每个队员都上报
+      CMD 48**，"全员到齐"永不成立 ⇒ 用"**立即推进 + 其余人被强制**"兜底）
+      ⇒ **只要一个人报到，服务端就把房间推进**，另一个人可能还在后一房走动 ⇒ 两边数据不同步，
+      正对上用户 2026-10-01 的推断（"服务端觉得两人都到了、某个客户端还没到"）。
+      **下一步候选修法**：给第一个报到者开一个**短宽限窗口**（复用既有倒计时机制，例如 1.5–2 秒内等其他人；
+      到点仍按现在的强制推进兜底）——既不破坏"现在能开门"的兜底，又能消掉绝大多数不同步窗口。
+      **不要**直接把 `memberCount: 1` 改回 `MemberCount`（按注释会重演"门永远打不开"）。
 
 ## 3. 可复用的验证方法
 
