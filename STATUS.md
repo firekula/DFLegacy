@@ -765,6 +765,30 @@
       （用户看到的"半血"）。修它需要两半：服务端**收**客户端上报的自身实时信息（官服对应 **CMD 169**；
       我们的客户端本轮日志里 `protocol=169` 出现 **0 次**，所以还要先判定这个 2008 客户端用什么上报）
       + 服务端**广播** NOTI 153。**下一步的候选任务**（`[静态]` 已有一半证据，还需要客户端侧取证）。
+17. **2026-10-01 00:13 崩溃捕获（party27：`[真机]` 现场 + 看门狗）**：这次崩的是**队员端**
+    （PID 54136；`server-party27.log` `00:13:11` 会话 `b64ac305`（圣骑士/uid 1）`ended with an error`
+    → `left dungeon instance 2` → `left party 2; 1 member(s) remain`）。
+    看门狗（前台 5 分钟窗口：`work/watch_clients.py 5 G:\tmp\party27 0.5`）抓到 **2 组成对的
+    EXCEPTION_RECORD + WOW64 CONTEXT**（`work/recover_exception.py`），`00:13:07` 与 `00:13:09` 两次
+    **逐字段相同**：`ACCESS_VIOLATION`（读，`badaddr=0x223B0000`）、`fault Eip=0x009019C1`
+    （= `DNF.exe+0x5019C1`）、`Esp=0x001AFDC0 Ebp=0x001AFDF0 Eax=0x04DB0640`（= 全局 `[0xcfd458]` 的对象）、
+    `Ecx=0x3F800000`（上一轮读到的 1.0f）、`Edx=0x223B0000`、`Esi=0x06F80D44`、`Edi=0x04DB0640`、`Ebx=0x00050663`。
+    崩溃指令（`friends-protocol-recon/work/insns.txt` 全量反汇编表）：`009019C1 mov ecx, dword ptr [edx]`，
+    而 `edx = [eax+0x44] + ([esi+4])*4`（`009019B1..009019BE`）⇒ **索引越界**（`[esi+4]` 那一位坏了）。
+    所在函数入口 **`0x901900`**（prologue `push 0x9902e2` = SEH 作用域；调用点只有 `0x8C7FEE` 与 `0x901ECD`）。
+    **时间线**：崩溃前 5 秒（`00:13:06`）队员端**只收到一个包**——`TX protocol=29 length=63`
+    （**NOTI 29 START_MAP**，即过图到下一房间）⇒ 与用户观察"队员视角两人都在门口、进了下一房之后出事"一致。
+    **模块归属**：第 16 条记的 `error : 3525` 来自 `0x9014xx` 那套校验/报错模块（`sub_901430` 注册回调），
+    本次崩溃在 **`0x9019xx`**——**同一个模块** ⇒ 支持用户"这是客户端自己的保护措施"的判断
+    （崩在客户端校验路径上，不是"某个服务端包解析不了"那么简单）。
+    **同一轮的好消息**：`00:14:26` 出现
+    `Party member a27fdf04… gave up inside party dungeon 2 **as the only member; party kept (he stays its leader)**`
+    ⇒ 第 16 条 ① 的修复（最后一人保留 1 人队）**真机生效** ✅。
+    第二轮看门狗（`00:18:03–00:21:04`，`G:\tmp\party27b`）**没有异常记录** ⇒ 偶发。
+    **下一步**：① 再崩就再抓（每份现场都能收窄 `[esi+4]` 的来源）；② 只用**只读**手段做静态
+    （`ida-dec`/`ida-script` 是 mutate 类工具、本会话审批被拒 ⇒ 用 `insns.txt` 全量反汇编 +
+    自写 capstone 扫 `DNF.exe` 的字符串引用）；③ 与金标准抓包（`ref-proxy`）**逐字段比对我们的
+    NOTI 29 载荷**（`protocol=29 length=63` 那条）——崩溃紧随过图，最值得比的就是它。
 
 ## 3. 可复用的验证方法
 
