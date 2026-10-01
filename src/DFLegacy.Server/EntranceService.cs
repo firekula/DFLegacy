@@ -2200,6 +2200,62 @@ public sealed class EntranceService(
                         dungeonInstance, packet, cancellationToken: cancellationToken);
                 }
 
+                // 房间清空判定 + 开结算（`NOTI 31`）。**两条路径共用**：
+                //   ① 普通 `MONSTER_DIE`（客户端逐只上报死亡）；
+                //   ② `ALLDIE_MONSTER`（客户端要求全场小怪一起死，见 HandleAllDieMonsterAsync）。
+                // 只让 ① 跑是 2026-10-01 17:32 真机事故的根因：boss 死后服务端把 5 只小怪清掉了，
+                // 却**没有任何代码重新判定清房** ⇒ `TryEnableClear`/`NOTI 31` 永不发出
+                // ⇒ 小怪"瞬间消失而不是死亡"、房间无法通关。
+                // `ForcedMonsterIds` 非空 = 还有小怪没死（`ShouldEnableClear` 为 false），只记一行告警等级联。
+                async Task TryEnableRoomClearAsync(GameDungeonMonster defeatedMonster)
+                {
+                    if (currentDungeonRoom is null || dungeonInstance is null)
+                    {
+                        return;
+                    }
+
+                    var clearDecision = DungeonRoomClearRules.Evaluate(
+                        currentDungeonRoom,
+                        defeatedMonster,
+                        dungeonInstance.SnapshotAliveMonsters());
+                    if (clearDecision.ForcedMonsterIds.Length > 0)
+                    {
+                        logger.LogWarning(
+                            "Dungeon {DungeonId} received the final boss MONSTER_DIE with {MonsterCount} monsters still alive in room ({RoomX},{RoomY}); waiting for the native BOSS_DIE_CHECK/ALLDIE_MONSTER cascade instead of injecting a solo UDP peer packet.",
+                            currentDungeonId,
+                            clearDecision.ForcedMonsterIds.Length,
+                            currentDungeonRoomX,
+                            currentDungeonRoomY);
+                    }
+
+                    // TryEnableClear 的返回值就是"从关到开"（避免改造前"先看标记再置位"的竞态）。
+                    if (!clearDecision.ShouldEnableClear || !dungeonInstance.TryEnableClear())
+                    {
+                        return;
+                    }
+
+                    if (!tutorialDungeonActive)
+                    {
+                        await GrantClearQuestItemsAsync();
+                    }
+
+                    var enableClear = GameProtocolEngine.CreateEnableClearDungeon();
+                    // 房间开放（NOTI 31）：TryEnableClear 的返回值就是"从关到开"，
+                    // 判定只此一次；成立时同实例每人各一份（设计稿 §3.3）。
+                    await BroadcastToInstanceAsync(enableClear, serverToken);
+                    logger.LogInformation(
+                        "Dungeon {DungeonId} boss map room ({RoomX},{RoomY}) cleared by {ClearReason}; settlement enabled",
+                        currentDungeonId,
+                        currentDungeonRoomX,
+                        currentDungeonRoomY,
+                        clearDecision.Reason);
+                    if (!tutorialDungeonActive)
+                    {
+                        await CompleteClearQuestTriggersAsync(
+                            $"map {currentDungeonRoom.MapId} monster death");
+                    }
+                }
+
                 // 客户端要求"全场小怪一起死"（`ALLDIE_MONSTER`，boss 死后的连锁）。
                 // **顺序是硬要求**：
                 //   ① 先给全员广播每只怪的 `NOTI 38`（普通死亡形态、零掉落、哨兵序号）；
@@ -2226,6 +2282,20 @@ public sealed class EntranceService(
                     // 广播完才摘：客户端若接着自己上报这些死亡，`TryTakeMonsterDeath` 仍能给出真实击杀
                     // （掉落/经验照常走那条成熟路径，不会因为我们提前摘除而变成"陈旧死亡"）。
                     dungeonInstance.ForceAllMonstersDead(allDieMonsters);
+
+                    // **关键**：小怪清完必须重新走一次清房判定，否则 `NOTI 31`（房间开放/可结算）永远不发，
+                    // 表现就是"小怪瞬间消失但无法通关"（2026-10-01 17:32 真机）。用"最后一只 boss"作为
+                    // 本次判定的触发怪：boss 房打掉 boss 后 `Evaluate` 会以 `AllMonstersDefeated` 收口。
+                    if (currentDungeonRoom is { MapType: DungeonMapType.Boss } allDieRoom)
+                    {
+                        var bossAfterCascade = allDieRoom.Monsters.FirstOrDefault(monster =>
+                            monster.Type == GameDungeonMonsterTypes.Boss);
+                        if (bossAfterCascade is not null)
+                        {
+                            await TryEnableRoomClearAsync(bossAfterCascade);
+                        }
+                    }
+
                     return allDieMonsters.Count;
                 }
 
@@ -13476,45 +13546,7 @@ public sealed class EntranceService(
                                         currentDungeonRoomY);
                                 }
 
-                                var clearDecision = DungeonRoomClearRules.Evaluate(
-                                    currentDungeonRoom!,
-                                    defeatedMonster,
-                                    dungeonInstance!.SnapshotAliveMonsters());
-                                if (clearDecision.ForcedMonsterIds.Length > 0)
-                                {
-                                    logger.LogWarning(
-                                        "Dungeon {DungeonId} received the final boss MONSTER_DIE with {MonsterCount} monsters still alive in room ({RoomX},{RoomY}); waiting for the native BOSS_DIE_CHECK/ALLDIE_MONSTER cascade instead of injecting a solo UDP peer packet.",
-                                        currentDungeonId,
-                                        clearDecision.ForcedMonsterIds.Length,
-                                        currentDungeonRoomX,
-                                        currentDungeonRoomY);
-                                }
-
-                                // TryEnableClear 的返回值就是"从关到开"（避免改造前"先看标记再置位"的竞态）。
-                                if (clearDecision.ShouldEnableClear && dungeonInstance.TryEnableClear())
-                                {
-                                    if (!tutorialDungeonActive)
-                                    {
-                                        await GrantClearQuestItemsAsync();
-                                    }
-                                    var enableClear =
-                                        GameProtocolEngine.CreateEnableClearDungeon();
-                                    // 房间开放（NOTI 31）：TryEnableClear 的返回值就是"从关到开"，
-                                    // 判定只此一次；成立时同实例每人各一份（设计稿 §3.3）。
-                                    await BroadcastToInstanceAsync(enableClear, serverToken);
-                                    logger.LogInformation(
-                                        "Dungeon {DungeonId} boss map room ({RoomX},{RoomY}) cleared by {ClearReason}; settlement enabled",
-                                        currentDungeonId,
-                                        currentDungeonRoomX,
-                                        currentDungeonRoomY,
-                                        clearDecision.Reason);
-                                }
-
-                                if (!tutorialDungeonActive)
-                                {
-                                    await CompleteClearQuestTriggersAsync(
-                                        $"map {currentDungeonRoom!.MapId} monster death");
-                                }
+                                await TryEnableRoomClearAsync(defeatedMonster);
                             }
                             continue;
                         }

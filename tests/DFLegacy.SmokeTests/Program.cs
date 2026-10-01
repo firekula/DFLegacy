@@ -7113,6 +7113,25 @@ Check(finalCascadeDeathDecision.Reason
         && finalCascadeDeathDecision.ShouldEnableClear,
     "the boss room becomes clear only after every cascaded monster confirms normal death");
 
+// 2026-10-01 17:32 真机事故：服务端按客户端 `ALLDIE_MONSTER` 把所有小怪直接清掉之后，
+// **没有任何代码重新判定清房** ⇒ `NOTI 31` 永不发出 ⇒ 小怪"瞬间消失"且无法通关。
+// 这条钉死"清完小怪后必须能判定为可清房"。`Evaluate` 的顺序是先判"最后一只 boss 已死"
+// （⇒ LastBossDefeated），所以用最后一只 boss 当触发怪时走的是那条；**两条分支都必须可清**。
+var allDieBossTriggerDecision = DungeonRoomClearRules.Evaluate(
+    multiBossMap,
+    secondBossActor,
+    new HashSet<ushort>());
+Check(allDieBossTriggerDecision.ShouldEnableClear
+        && allDieBossTriggerDecision.ForcedMonsterIds.Length == 0,
+    "after an all-die sweep the boss room must re-evaluate to clearable (otherwise the room never opens)");
+var allDieNormalTriggerDecision = DungeonRoomClearRules.Evaluate(
+    multiBossMap,
+    secondTrailingNormalActor,
+    new HashSet<ushort>());
+Check(allDieNormalTriggerDecision.Reason == DungeonRoomClearReason.AllMonstersDefeated
+        && allDieNormalTriggerDecision.ShouldEnableClear,
+    "an all-die sweep re-evaluated with a non-boss trigger also clears the room once nothing is alive");
+
 var noBossMap = CreateDungeonRoom(
     DungeonMapType.Boss,
     normalActor with { MapListIndex = 0, UniqueId = 0 },
