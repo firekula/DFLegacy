@@ -19,5 +19,30 @@ internal static class PartyCardSelectionSmokeTests
         check(instance.SnapshotPartyCards().FreeOwners[0] != 99, "snapshot ownership is copied");
         check(instance.TryReservePartyCard(b, PartyCardType.Free, 1, generation + 1).Status == PartyCardSelectionStatus.Rejected, "stale generation rejected");
         check(instance.IsParty, "party instance remains isolated");
+        check(instance.TryReservePartyCard(a, PartyCardType.Free, 3, generation).Status == PartyCardSelectionStatus.Rejected, "auto completion closes remaining free columns");
+        check(instance.TryReservePartyCard(a, PartyCardType.Paid, 3, generation).Status == PartyCardSelectionStatus.Reserved, "paid reservations remain open after free auto completion");
+        var g = instance.BeginPartyCardSettlement();
+        check(instance.TryReservePartyCard(a, PartyCardType.Paid, 2, g).Accepted, "paid reservation accepted");
+        check(!instance.TryReservePartyCard(b, PartyCardType.Paid, 2, g).Accepted, "paid column unique");
+        check(!instance.TryReservePartyCard(a, PartyCardType.Paid, 1, g).Accepted, "paid member unique");
+        check(!instance.TryReservePartyCard(a, (PartyCardType)8, 0, g).Accepted, "invalid type rejected");
+        check(!instance.TryReservePartyCard(a, PartyCardType.Free, 4, g).Accepted, "invalid column rejected");
+        check(!instance.TryReservePartyCard(Guid.NewGuid(), PartyCardType.Free, 0, g).Accepted, "absent member rejected");
+        check(instance.SnapshotPartyCards().MemberSlots.SequenceEqual(new byte[] { 0, 2, 3 }), "slot holes preserved");
+        instance.TryReservePartyCard(a, PartyCardType.Free, 3, g);
+        instance.RemoveMember(a); instance.RemoveMember(b);
+        instance.CompletePartyCardSelection(g);
+        check(instance.SnapshotPartyCards().FreeOwners.SequenceEqual(new byte[] { 3, 255, 255, 2 }), "departed members excluded and reserved ownership retained");
+        var duplicate = new DungeonInstance(2, Guid.Empty, null!, null!);
+        duplicate.AddMember(new DungeonInstanceMember(a, 1, 2, "A", _ => ValueTask.CompletedTask));
+        duplicate.AddMember(new DungeonInstanceMember(b, 2, 2, "B", _ => ValueTask.CompletedTask));
+        var dg = duplicate.BeginPartyCardSettlement();
+        check(!duplicate.TryReservePartyCard(a, PartyCardType.Free, 0, dg).Accepted && !duplicate.TryReservePartyCard(b, PartyCardType.Free, 0, dg).Accepted, "duplicate slots excluded");
+        var solo = new DungeonInstance(0, a, null!, null!);
+        check(solo.BeginPartyCardSettlement() == 0 && !solo.CompletePartyCardSelection(0).Accepted, "solo card model remains inactive");
+        var beforeStop = instance.BeginPartyCardSettlement(); instance.StopRun();
+        check(!instance.CompletePartyCardSelection(beforeStop).Accepted, "StopRun invalidates generation");
+        var beforeRoom = instance.BeginPartyCardSettlement(); instance.EnterDetachedRoom(DungeonFixture.Room([]));
+        check(!instance.CompletePartyCardSelection(beforeRoom).Accepted, "EnterDetachedRoom invalidates generation");
     }
 }

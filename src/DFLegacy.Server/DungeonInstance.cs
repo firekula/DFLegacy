@@ -527,7 +527,6 @@ internal sealed class DungeonInstance(
             _partyCards.Invalidate();
             _detachedRoom = room;
             Layout = null;
-            _partyCards.Invalidate();
             DungeonOption = 0;
             ClearEnabled = false;
             // 教学副本的合成房间也算"首次进房"（没有迷宫/重访概念）。
