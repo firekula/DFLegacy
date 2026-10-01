@@ -13002,11 +13002,32 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.AllDieMonsterCommand)
                         {
+                            // 客户端要求"全场小怪一起死"（boss 死后的连锁）。**必须由服务端真的杀掉**：
+                            // 此前只记一行"waiting for normal monster-death confirmations"就 continue，
+                            // 于是 2008 客户端那边小怪永远站着、boss 房卡在"sential 之前"
+                            // （真机 2026-10-01 15:47：boss 死后 6 只小怪不自动死，13 秒后玩家手动清完
+                            //  才 AllMonstersDefeated）。客户端自己**不会**再逐只上报这些怪的死亡：
+                            // 它把"全灭"的裁定权交给了服务端。
+                            // 掉落/经验一概不发（连锁死亡没有战利品），与既有的 isBossCascadeDeath 口径一致。
+                            var allDieMonsters = dungeonInstance is null
+                                ? []
+                                : dungeonInstance.SnapshotAliveMonsters();
+                            if (dungeonInstance is not null)
+                            {
+                                dungeonInstance.ForceAllMonstersDead(allDieMonsters);
+                                foreach (var uniqueId in allDieMonsters)
+                                {
+                                    var cascadeDie = GameProtocolEngine.CreateMonsterDie(uniqueId, [], 0);
+                                    await BroadcastToInstanceAsync(cascadeDie, serverToken);
+                                }
+                            }
+
                             logger.LogInformation(
-                                "Accepted DFLegacy ALLDIE_MONSTER for dungeon {DungeonId}, room ({RoomX},{RoomY}); waiting for normal monster-death confirmations.",
+                                "Handled ALLDIE_MONSTER for dungeon {DungeonId}, room ({RoomX},{RoomY}): killed {Count} remaining monster(s) server-side.",
                                 currentDungeonId,
                                 currentDungeonRoomX,
-                                currentDungeonRoomY);
+                                currentDungeonRoomY,
+                                allDieMonsters.Count);
                             continue;
                         }
 

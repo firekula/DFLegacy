@@ -576,6 +576,43 @@ internal sealed class DungeonInstance(
         }
     }
 
+    /// <summary>
+    /// 客户端要求"全场小怪一起死"（ALLDIE_MONSTER / BOSS_DIE_CHECK 的 native-all-die）时，
+    /// 由**服务端**把剩下的活怪一次性摘掉并返回它们的 uniqueId（调用方逐只广播 NOTI 38）。
+    /// 已摘掉的怪也一并返回：客户端可能只是它的本地标记丢了，死亡包是幂等的，
+    /// **不回包就等于小怪永远站着**（真机 2026-10-01 15:47：boss 死后 6 只小怪不自动死，
+    /// 服务端只记了"waiting for ... cascade"却什么都没做）。
+    /// 名单由调用方在进入本方法**之前**用 <see cref="SnapshotAliveMonsters"/> 取（本方法只做摘除），
+    /// 保证"名单里有、集合里没有"的怪也能被通知到，同时避免在锁内做 IO。
+    /// </summary>
+    public void ForceAllMonstersDead(IReadOnlyCollection<ushort>? knownAliveIds = null)
+    {
+        lock (Gate)
+        {
+            if (knownAliveIds is not null)
+            {
+                foreach (var uniqueId in knownAliveIds)
+                {
+                    if (AliveMonsters.Remove(uniqueId))
+                    {
+                        _run.MarkMonsterDefeated(uniqueId);
+                    }
+                }
+            }
+            else
+            {
+                foreach (var uniqueId in AliveMonsters)
+                {
+                    _run.MarkMonsterDefeated(uniqueId);
+                }
+
+                AliveMonsters.Clear();
+            }
+
+            Version++;
+        }
+    }
+
     /// <summary>本房间还活着的怪数量（锁内；会话的日志/判定用）。</summary>
     public int AliveMonsterCount
     {

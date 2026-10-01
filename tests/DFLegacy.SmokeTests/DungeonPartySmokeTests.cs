@@ -24,6 +24,7 @@ internal static class DungeonPartySmokeTests
         CheckRoomSettlementReset(check);
         CheckRoomFirstVisitFlag(check, fixture);
         CheckDoorAssemblyRules(check);
+        CheckForceAllMonstersDead(check, fixture);
         CheckPlanStartMapSharedPlanner(check, fixture);
         await CheckDoorAssemblySweepAdvancesWholePartyAsync(check, fixture);
         await CheckDoorAssemblyGraceWindowSweepAsync(check, fixture);
@@ -1104,6 +1105,47 @@ internal static class DungeonPartySmokeTests
             }
         });
         check(clearWins == 1, "enabling room settlement flips exactly once");
+    }
+
+    /// <summary>
+    /// 客户端要求"全场小怪一起死"（ALLDIE_MONSTER / BOSS_DIE_CHECK 的 native-all-die）时，
+    /// 服务端必须**真的**把剩下的怪摘掉——否则 boss 死后小怪永远站着
+    /// （真机 2026-10-01 15:47：日志只写 `waiting for normal monster-death confirmations`，
+    /// 6 只小怪不自动死，13 秒后玩家手动打完才 `AllMonstersDefeated`）。
+    /// **变异验证**：把 <see cref="DungeonInstance.ForceAllMonstersDead"/> 的摘除改成空实现 → 本用例变红。
+    /// </summary>
+    private static void CheckForceAllMonstersDead(Action<bool, string> check, DungeonFixture fixture)
+    {
+        // ① 带名单（调用方先取 SnapshotAliveMonsters）：名单里的全部摘掉，缺席的（= 客户端本地已清）
+        //    不能把活怪留下，也不能把已经不在集合里的 id 当成有效死亡。
+        var instance = fixture.CreateInstance();
+        instance.EnterDetachedRoom(DungeonFixture.Room(
+            [
+                DungeonFixture.Monster(uniqueId: 0, type: GameDungeonMonsterTypes.Boss),
+                DungeonFixture.Monster(uniqueId: 1),
+                DungeonFixture.Monster(uniqueId: 2)
+            ]));
+        var reportedAlive = instance.SnapshotAliveMonsters();
+        reportedAlive.Add(99); // 客户端本地已经清掉的 id：摘不动，但要允许被"通知死亡"
+        check(instance.TryTakeMonsterDeath(0, out _), "the boss dies normally before the all-die request");
+        instance.ForceAllMonstersDead(reportedAlive);
+        check(instance.AliveMonsterCount == 0 && instance.SnapshotAliveMonsters().Count == 0,
+            "an all-die request removes every monster still alive in the room");
+        check(!instance.TryTakeMonsterDeath(1, out _),
+            "a monster forced dead by the all-die request can no longer be reported as a fresh kill");
+
+        // ② 没有名单时退回"全清"分支（调用方不持有快照的路径）。
+        var bulk = fixture.CreateInstance();
+        bulk.EnterDetachedRoom(DungeonFixture.Room(
+            [
+                DungeonFixture.Monster(uniqueId: 0),
+                DungeonFixture.Monster(uniqueId: 1),
+                DungeonFixture.Monster(uniqueId: 2),
+                DungeonFixture.Monster(uniqueId: 3)
+            ]));
+        check(bulk.AliveMonsterCount == 4, "the bulk all-die case starts with four monsters");
+        bulk.ForceAllMonstersDead();
+        check(bulk.AliveMonsterCount == 0, "the no-list all-die path clears the whole alive set");
     }
 
     /// <summary>房间快照：换房间刷新 `AliveMonsters`；被动掉落只在首次访问登记一次，重访只读已登记的。</summary>
