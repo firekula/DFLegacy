@@ -54,6 +54,13 @@ public sealed class EntranceService(
     private const ushort FatigueRecoveryAmount = 30;
     private const ushort BoboCreatureItemId = 63_023;
     private const ushort EquippedTitleSlot = 10;
+
+    /// <summary>
+    /// `ALLDIE_MONSTER` 之后留给"客户端自己上报这些小怪的死亡"的时间窗。
+    /// 窗口内客户端上报的死亡会走正常路径（有掉落/经验/击杀统计，并触发清房判定）；
+    /// 窗口到点仍未上报的怪才由服务端补摘，保证房间一定能开（真机 2026-10-01 §10/§11 两次事故的教训）。
+    /// </summary>
+    private static readonly TimeSpan AllDieReconcileDelay = TimeSpan.FromSeconds(5);
     // 临时诊断开关（判定完即删）：外观包"最小化"级别——0 = 正常，1 = 去掉称号与宠物，
     // 2 = 再去掉全部装备。用于判定结算期队员客户端立绘崩溃是否由外观包的这两类额外精灵引起。
     private static readonly int AppearanceMinimalLevel = int.TryParse(
@@ -2257,14 +2264,17 @@ public sealed class EntranceService(
                 }
 
                 // 客户端要求"全场小怪一起死"（`ALLDIE_MONSTER`，boss 死后的连锁）。
-                // **顺序是硬要求**：
-                //   ① 先给全员广播每只怪的 `NOTI 38`（普通死亡形态、零掉落、哨兵序号）；
-                //   ② 再把服务端存活集合里的这些怪摘掉。
-                // 反过来的话（先摘再广播）客户端会因为"服务端已经不认这只怪了"而把死亡当成陈旧上报，
-                // 表现为真机 2026-10-01 17:18：**小怪被直接删掉而不是正常死亡 → 房间不结算 → 两人卡住**。
+                // **分工**：我们只**广播死亡包**，把"结算这次死亡"留给客户端自己上报走正常路径
+                // （有掉落/经验/击杀统计、并且会触发清房判定）；**不立刻替它摘除**。
+                // 真机教训（2026-10-01，连续两版都栽在这里）：
+                //   §10 先摘后广播 ⇒ 客户端上报被判"陈旧"、小怪被删且不结算；
+                //   §11 先广播后摘 ⇒ 客户端上报仍被判"陈旧"（服务端已经把这些怪移出存活集合了），
+                //        而且清完没人重判清房 ⇒ 房间不开。**"我们代杀"这个动作本身就是错的。**
+                // 兜底：客户端若在 `AllDieReconcileDelay` 内没有全部上报（它理应会报），
+                // 由延迟任务补摘剩余的怪并重判清房 —— 保证"门一定能开"这条底线不被破坏。
                 // 死亡包参数必须是哨兵 `NoChampionRewardOrdinal(-1)`：传 0 会被 `CreateMonsterDie` 拒绝，
                 // 异常冒泡会直接打断会话（真机 16:29 踩过，见 STATUS §8）。
-                // 返回实际广播出去的怪数（= 本次服务端认为"还活着"的怪）。
+                // 返回本次广播出去的死亡包数量（= 服务端认为"还活着"的怪）。
                 async Task<int> HandleAllDieMonsterAsync(CancellationToken cancellationToken)
                 {
                     if (dungeonInstance is null)
@@ -2279,24 +2289,56 @@ public sealed class EntranceService(
                         await BroadcastToInstanceAsync(cascadeDie, cancellationToken);
                     }
 
-                    // 广播完才摘：客户端若接着自己上报这些死亡，`TryTakeMonsterDeath` 仍能给出真实击杀
-                    // （掉落/经验照常走那条成熟路径，不会因为我们提前摘除而变成"陈旧死亡"）。
-                    dungeonInstance.ForceAllMonstersDead(allDieMonsters);
-
-                    // **关键**：小怪清完必须重新走一次清房判定，否则 `NOTI 31`（房间开放/可结算）永远不发，
-                    // 表现就是"小怪瞬间消失但无法通关"（2026-10-01 17:32 真机）。用"最后一只 boss"作为
-                    // 本次判定的触发怪：boss 房打掉 boss 后 `Evaluate` 会以 `AllMonstersDefeated` 收口。
-                    if (currentDungeonRoom is { MapType: DungeonMapType.Boss } allDieRoom)
+                    if (allDieMonsters.Count > 0)
                     {
-                        var bossAfterCascade = allDieRoom.Monsters.FirstOrDefault(monster =>
-                            monster.Type == GameDungeonMonsterTypes.Boss);
-                        if (bossAfterCascade is not null)
-                        {
-                            await TryEnableRoomClearAsync(bossAfterCascade);
-                        }
+                        // 延迟补刀：客户端上报完的怪会在 `TryTakeMonsterDeath` 里被正常结算（拿到掉落/经验），
+                        // 这里只会摘掉"客户端始终没报"的漏网之鱼。
+                        _ = ReconcileAllDieAsync(dungeonInstance, allDieMonsters);
                     }
 
                     return allDieMonsters.Count;
+                }
+
+                // 延迟补刀 + 重判清房。放在独立任务里是为了**给客户端的 `MONSTER_DIE` 上报留出时间窗**：
+                // 那些上报会走正常路径（`TryTakeMonsterDeath` → 掉落/经验 → 清房判定），
+                // 提前摘除就等于把它们变成"陈旧死亡"（2026-10-01 17:18/17:32 两次真机事故）。
+                async Task ReconcileAllDieAsync(
+                    DungeonInstance instance,
+                    HashSet<ushort> announcedMonsters)
+                {
+                    try
+                    {
+                        await Task.Delay(AllDieReconcileDelay);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+
+                    var aliveAfterGrace = instance.SnapshotAliveMonsters();
+                    var stillAlive = announcedMonsters
+                        .Where(aliveAfterGrace.Contains)
+                        .ToArray();
+                    if (stillAlive.Length > 0)
+                    {
+                        instance.ForceAllMonstersDead(stillAlive);
+                        logger.LogWarning(
+                            "Dungeon {DungeonId} ALLDIE reconcile: {Count} monster(s) were never confirmed dead by the client; removed them server-side and re-checked the room.",
+                            instance.Run.DungeonId,
+                            stillAlive.Length);
+                    }
+
+                    // 清完（或客户端已报完）才重判清房：否则 `NOTI 31`（房间开放/可结算）永不发出，
+                    // 表现就是"小怪消失但无法通关"（2026-10-01 17:32 真机）。
+                    if (currentDungeonRoom is { MapType: DungeonMapType.Boss } bossRoom)
+                    {
+                        var bossActor = bossRoom.Monsters.FirstOrDefault(monster =>
+                            monster.Type == GameDungeonMonsterTypes.Boss);
+                        if (bossActor is not null)
+                        {
+                            await TryEnableRoomClearAsync(bossActor);
+                        }
+                    }
                 }
 
                 // 本会话在队伍里的槽位下标（单人 / 不在队伍 → 0）。槽位稳定不搬动（第一轮硬约束）。
