@@ -20,6 +20,7 @@ internal static class PartyCardSelectionSmokeTests
         check(instance.TryReservePartyCard(b, PartyCardType.Free, 1, generation + 1).Status == PartyCardSelectionStatus.Rejected, "stale generation rejected");
         check(instance.IsParty, "party instance remains isolated");
         check(instance.TryReservePartyCard(c, PartyCardType.Free, 3, generation).Status == PartyCardSelectionStatus.Rejected, "auto completion closes remaining free columns for unused member");
+        check(instance.TryReservePartyCard(a, PartyCardType.Free, 0, generation).Status == PartyCardSelectionStatus.AlreadyReserved, "auto completion preserves existing owner retry");
         check(instance.TryReservePartyCard(a, PartyCardType.Free, 3, generation).Status == PartyCardSelectionStatus.Rejected, "auto completion closes remaining free columns");
         check(instance.TryReservePartyCard(a, PartyCardType.Paid, 3, generation).Status == PartyCardSelectionStatus.Reserved, "paid reservations remain open after free auto completion");
         var g = instance.BeginPartyCardSettlement();

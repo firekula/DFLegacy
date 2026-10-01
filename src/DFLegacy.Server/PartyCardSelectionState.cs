@@ -57,6 +57,8 @@ internal sealed class PartyCardSelectionState
         var owners = type == PartyCardType.Free ? _freeOwners : type == PartyCardType.Paid ? _paidOwners : null;
         if (owners is null) return new(PartyCardSelectionStatus.Rejected, _generation, column, slot);
         if (owners[column] == slot) return new(PartyCardSelectionStatus.AlreadyReserved, _generation, column, slot);
+        if (_autoCompleted && type == PartyCardType.Free)
+            return new(PartyCardSelectionStatus.Rejected, _generation, column, slot);
         if (owners.Contains(slot) || owners[column] != Unassigned)
             return new(PartyCardSelectionStatus.Rejected, _generation, column, slot);
         owners[column] = slot;
