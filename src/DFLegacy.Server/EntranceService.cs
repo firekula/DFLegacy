@@ -12757,7 +12757,9 @@ public sealed class EntranceService(
                                         assemblyOutcome = partyInstance.Doors.Register(
                                             new DungeonRoomPosition(targetX, targetY),
                                             activeCharacter!.Id,
-                                            memberCount: partyInstance.MemberCount,
+                                            // 窗口开着就传真实人数（状态机开窗口等其他人）；窗口关了就退化传 1
+                                            // （复用"门口只有我一个人 → 立即推进"），否则既凑不齐也没窗口到点 = 门死锁。
+                                            memberCount: options.Dungeon.ResolveDoorMemberCount(partyInstance.MemberCount),
                                             DateTimeOffset.UtcNow,
                                             GameProtocolEngine.CreateCommandReply(request, success: true));
                                         // 锁内取走要记日志的集结状态（Doors 只在实例锁内用，勿在锁外读）。

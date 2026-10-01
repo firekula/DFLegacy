@@ -66,7 +66,9 @@ public sealed class ExperienceOptions
 public sealed class DungeonOptions
 {
     /// <summary>
-    /// 门口集结的**宽限窗口**（秒；0 = 关闭，退回"第一个上报者立刻推进"的旧行为）。
+    /// 门口集结的**宽限窗口**（秒）。&gt; 0 = 等这么久；<b>&lt;= 0 = 关闭窗口</b>，
+    /// 由 <see cref="ResolveDoorMemberCount"/> 退回"第一个上报者立刻推进"的旧行为
+    /// （**不是**"死等全员到齐"——那样门会永远打不开，2026-10-01 真机踩过）。
     /// 2026-10-01 真机证据：一次队伍 run 里 7 次换房**全部只由同一个会话**上报 CMD 48
     /// （`server-party28.log`：7 条 `RX fb805b2a… protocol=48` 对 7 条
     /// `party room advanced … (arrived=1/2)`；party26/27 同形），所以"全员到齐/过半"这两条
@@ -77,10 +79,19 @@ public sealed class DungeonOptions
     /// </summary>
     public double DoorGraceSeconds { get; set; } = 2;
 
-    /// <summary>负值按 0 处理（配置写错不该让门永远打不开，也不该让门提前开）。</summary>
+    /// <summary>宽限窗口时长；&lt;= 0 表示关闭（调用方须同时用 <see cref="ResolveDoorMemberCount"/>）。</summary>
     public TimeSpan DoorGrace => DoorGraceSeconds > 0
         ? TimeSpan.FromSeconds(DoorGraceSeconds)
         : TimeSpan.Zero;
+
+    /// <summary>
+    /// CMD 48 登记时该传的"到门口人数"。
+    /// 窗口 &gt; 0：传**真实人数**——状态机就会开窗口等其他人，到点才强制推进。
+    /// 窗口 &lt;= 0：退化传 1——复用"门口只有我一个人 → 立即推进"的既有分支，
+    /// **保住"门一定能打开"这条底线**（只传真实人数而不开窗口 = 既没人凑齐、也没窗口到点 ⇒ 门死锁）。
+    /// </summary>
+    public int ResolveDoorMemberCount(int realMemberCount) =>
+        DoorGrace > TimeSpan.Zero ? realMemberCount : 1;
 }
 
 public sealed class ChannelOptions

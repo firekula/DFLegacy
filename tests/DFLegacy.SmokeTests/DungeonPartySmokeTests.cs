@@ -1389,6 +1389,23 @@ internal static class DungeonPartySmokeTests
         check(graceAll.TryAdvanceOnCountdown(graceStart + graceAssembly.Grace, memberCount: 2) is null,
             "the window leaves nothing behind once everybody reported");
 
+        // 窗口**关闭**（Dungeon.DoorGraceSeconds <= 0）时传真实人数 ⇒ 既没人凑齐、也没有窗口到点：
+        // 门会永远打不开。生产接线必须在这种配置下退化传 1（2026-10-01 真机踩过：把窗口设成 0
+        // 之后"直接过不去门"）。这条断言锁死"0 不许死等"这条底线。
+        var noGrace = new DungeonDoorAssembly(TimeSpan.Zero);
+        var noGraceOutcome = noGrace.Register(target, alpha, memberCount: 1, graceStart, Reply(alpha));
+        check(noGraceOutcome.Decision == DungeonDoorDecision.Advance
+                && !noGraceOutcome.Forced
+                && !noGrace.IsWaiting
+                && noGrace.GraceDeadline is null,
+            "with the window disabled and the degraded head-count, the first reporter still advances immediately");
+        var gracefulTake = new DungeonOptions { DoorGraceSeconds = 0 };
+        check(gracefulTake.ResolveDoorMemberCount(realMemberCount: 4) == 1,
+            "a disabled window degrades the door head-count to one so the door can never deadlock");
+        check(new DungeonOptions().ResolveDoorMemberCount(realMemberCount: 4) == 4
+                && new DungeonOptions().DoorGrace > TimeSpan.Zero,
+            "the default window keeps the real head-count so the assembly waits for stragglers");
+
         // 人数缩水：4 人时 2 人到门口只是 Waiting；只剩 3 人时 2/3 已过半，扫描循环必须能重新评估，
         // 否则这批人既拿不到 CMD 48 回包、也永远换不了房间。
         assembly.Register(target, alpha, memberCount: 4, now, Reply(alpha));
