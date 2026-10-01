@@ -1146,6 +1146,28 @@ internal static class DungeonPartySmokeTests
         check(bulk.AliveMonsterCount == 4, "the bulk all-die case starts with four monsters");
         bulk.ForceAllMonstersDead();
         check(bulk.AliveMonsterCount == 0, "the no-list all-die path clears the whole alive set");
+
+        // 连锁死亡包的参数必须合法：`championRewardOrdinal` 只接受哨兵值 -1（不写这一段）或 1..11。
+        // 2026-10-01 16:29 真机：ALLDIE 分支写成 `CreateMonsterDie(id, [], 0)` ⇒ 抛
+        // ArgumentOutOfRangeException('championRewardOrdinal') ⇒ 异常冒泡到会话 ⇒ 服务端主动断开
+        // ⟹ 客户端弹"网络连接被中断"后卡死闪退、队长房间无法通关。下面两条把该 API 的契约钉死。
+        check(GameProtocolEngine.CreateMonsterDie(7).ProtocolId == GameProtocolEngine.MonsterDieNotification
+                && GameProtocolEngine.NoChampionRewardOrdinal < 0,
+            "a cascade-death packet built with the no-champion-reward sentinel is a valid monster-death notification");
+        var ordinalZeroRejected = false;
+        try
+        {
+            _ = GameProtocolEngine.CreateMonsterDie(7, [], 0);
+        }
+        catch (ArgumentOutOfRangeException exception)
+            when (exception.ParamName == "championRewardOrdinal")
+        {
+            ordinalZeroRejected = true;
+        }
+
+        check(ordinalZeroRejected,
+            "ordinal 0 is rejected by the protocol engine — whoever builds a cascade-death packet must pass " +
+            "the sentinel (ordinal 0 killed the member session live at 2026-10-01 16:29)");
     }
 
     /// <summary>房间快照：换房间刷新 `AliveMonsters`；被动掉落只在首次访问登记一次，重访只读已登记的。</summary>

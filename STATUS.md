@@ -1058,5 +1058,32 @@
 - **保留价值**：签名本身（`0x78C9F6` 读 `0xCDCDCD*`）值得留着——`0xCDCDCD*` 是客户端给"未初始化/已标记删除"
   内存填的模式值，将来若在**正常游戏中**看到它，就说明"某对象（对端角色/怪物）没登记就被解引用"，
   与 §2.3"必须先有 `USERINFO` 记录、后有区域条目"是同一家族。
+
+## 8. 2026-10-01 16:29 真机：我上一版的 ALLDIE 修复**参数写错，把队员会话打断了**（已修）
+
+- **现象**（用户截图 + `server-party34.log`）：队员打掉 boss 后客户端弹「**网络连接被中断**」→ 卡死 → 几秒后闪退；
+  队长那边房间虽然没怪了，但**无法通关**，只能手动回城。
+- **根因**：我在 `ALLDIE_MONSTER` 分支里写的是
+  `GameProtocolEngine.CreateMonsterDie(uniqueId, [], 0)`——第三个参数 `championRewardOrdinal`
+  **只接受哨兵值 `-1`（`NoChampionRewardOrdinal`）或 `1..11`**，传 `0` 直接抛
+  `ArgumentOutOfRangeException('championRewardOrdinal')`；异常顺着会话冒泡 ⇒ **服务端主动断开该会话**。
+  ```
+  16:29:16 warn: Entrance session 922fe57b… ended with an error.
+      System.ArgumentOutOfRangeException: (Parameter 'championRewardOrdinal')
+      at GameProtocolEngine.CreateMonsterDie(…) line 3597
+      at EntranceService.HandleClientAsync(…) line 13020
+  ```
+- **客户端侧的连锁**（看门狗 `G:\tmp\party33\stacks_48852.txt`，进程 `16:25:33` 起、`16:29:21` 消失）：
+  `16:29:18` 与 `16:29:21` 各一条
+  `ACCESS_VIOLATION … badaddr=0xCDCDCDD5, fault Eip=0x0078C9F6, Eax=0xCDCDCDCD` ——
+  **与 §7 那条 15:36 的记录逐字段相同**。⇒ **因果闭合：服务端主动断开会话 ⇒ 客户端在掉线处理路径里踩空闪退**
+  （§7 那条"重启后客户端自行关闭"其实也走这条路；它不是独立故障，而是**被断开**的结果）。
+- **修法**（提交见下）：`ALLDIE_MONSTER` 分支改为 `CreateMonsterDie(uniqueId)`——用默认哨兵值，不写奖励序号段。
+  同时补回归护栏：协议引擎对 `ordinal = 0` 必须抛 `ArgumentOutOfRangeException('championRewardOrdinal')`
+  （谁再传 0 都会被同一条异常打死，所以护栏测的是"引擎契约"而不是某个调用点）。
+- **顺带确认的事实**：那一轮 `ALLDIE` 到达时服务端存活集合**已经是空的**（日志 `killed 0 remaining monster(s)`），
+  而 **16:29:21–23 是队长端自己在逐只上报 7 只怪的死亡**（服务端回 `Ignored stale or unknown monster death`）
+  ⇒ **"连锁全灭"本来就由客户端自己广播**，我们只需**别插坏手**。所以服务端那条广播是"有则补、无则无"的幂等兜底，
+  真正致命的只是那个非法参数。
 - **排查入口**：`insns.txt` 里 `0x78C9F6` 所在函数的反汇编（尚未看过），
   以及客户端目录各自的 `LagLog.txt`（两个客户端目录分开后才有独立归因价值）。

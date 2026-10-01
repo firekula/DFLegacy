@@ -13017,7 +13017,11 @@ public sealed class EntranceService(
                                 dungeonInstance.ForceAllMonstersDead(allDieMonsters);
                                 foreach (var uniqueId in allDieMonsters)
                                 {
-                                    var cascadeDie = GameProtocolEngine.CreateMonsterDie(uniqueId, [], 0);
+                                    // 不传 championRewardOrdinal：默认就是哨兵值 NoChampionRewardOrdinal(-1)。
+                                    // 传 0 会被 CreateMonsterDie 拒绝（合法值只有 -1 或 1..11），
+                                    // 异常会冒泡到会话 ⇒ 服务端主动断开 ⇒ 客户端"网络连接被中断"后闪退
+                                    // （2026-10-01 16:29 真机踩过，见 STATUS §8）。
+                                    var cascadeDie = GameProtocolEngine.CreateMonsterDie(uniqueId);
                                     await BroadcastToInstanceAsync(cascadeDie, serverToken);
                                 }
                             }
