@@ -1013,3 +1013,27 @@
   （按时间窗筛，别误杀正在托管的 node/服务进程；`DFLegacy.Server` 是游戏服务端，不是 `dotnet` 进程名，不受影响。）
   另：`src` 及其下 `obj` 目录曾缺"当前用户完全控制"，由 `diagnose-windows-sandbox-acl` 技能的一条命令补齐（会给这些目录加一条当前用户的完全控制权限、不改文件内容），修好后构建即通过。
 - 服务端的 `server.json`、启动器的 `launcher.json` 都以 `PreserveNewest` 复制到发布目录：重复发布前先备份，或发布后改回本机值（见 DEPLOYING §10）。
+
+## 6. 2026-10-01 下午：ALLDIE_MONSTER 不杀怪（boss 死后小怪不自动死）
+
+- **现象**（用户 2026-10-01 15:47 真机，`server-party33.log`）：boss 死亡后**房间里的 6 只小怪不自动死**；
+  用户还提到 boss 房打碎箱子/门冒出的怪"正常在 boss 死后一出来就自动死"，当时也不死。
+- **根因**：客户端**明确要求全灭**——日志里同时有
+  `accepted BOSS_DIE_CHECK … native-all-die=True` 与 `Accepted DFLegacy ALLDIE_MONSTER …`；
+  而 `EntranceService` 的 `ALLDIE_MONSTER` 分支**只写一行
+  `waiting for normal monster-death confirmations` 就 `continue`**，什么都没做。
+  实例侧的 `BossCascadeMonsterDeaths` 只是"标记"，它由 `TryTakeMonsterDeath` 在客户端**逐只上报死亡**时才消费——
+  可客户端把"全灭"的裁定权交给了服务端，**不会再逐只报**。于是双方互等，小怪一直站着，
+  13 秒后玩家手动打完才 `AllMonstersDefeated` 结算。
+- **修法**（提交 `eb2d8ef`）：`ALLDIE_MONSTER` 分支改为
+  「`SnapshotAliveMonsters()` 取名单 → `DungeonInstance.ForceAllMonstersDead(名单)` 锁内摘除 →
+  逐只 `CreateMonsterDie(uniqueId, [], 0)` + `BroadcastToInstanceAsync`」。
+  连锁死亡**不发掉落、不发经验**（与既有 `isBossCascadeDeath` 口径一致）。
+  同时修掉一条相关告警路径的语义：boss 房里"最后一只 boss 的 MONSTER_DIE 时还有小怪存活"
+  不再是"等客户端级联"，而是由上面的全灭路径收口。
+- **自动化**：`DungeonPartySmokeTests.CheckForceAllMonstersDead` —— ①带名单（含一个"客户端本地已清"的 id）
+  必须把活怪全摘掉、且被摘的怪不能再被当成新鲜击杀；②无名单兜底分支全清。
+  **变异验证**：把 `AliveMonsters.Remove` 跳过 → 两条断言立刻变红。
+- **待真机复验**：①boss 死后小怪是否立刻全灭；②**打碎箱子冒出的怪**是否也随 boss 死亡自动死
+  ——那种怪是**运行中动态生成**的（不在 `currentDungeonRoom.Monsters` 里，服务端不知道它出生），
+  若仍有残留，需要另找"boss 已死 ⇒ 新出现的怪立即死亡"的判据。
