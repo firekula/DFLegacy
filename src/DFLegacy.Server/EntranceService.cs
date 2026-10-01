@@ -2200,6 +2200,35 @@ public sealed class EntranceService(
                         dungeonInstance, packet, cancellationToken: cancellationToken);
                 }
 
+                // 客户端要求"全场小怪一起死"（`ALLDIE_MONSTER`，boss 死后的连锁）。
+                // **顺序是硬要求**：
+                //   ① 先给全员广播每只怪的 `NOTI 38`（普通死亡形态、零掉落、哨兵序号）；
+                //   ② 再把服务端存活集合里的这些怪摘掉。
+                // 反过来的话（先摘再广播）客户端会因为"服务端已经不认这只怪了"而把死亡当成陈旧上报，
+                // 表现为真机 2026-10-01 17:18：**小怪被直接删掉而不是正常死亡 → 房间不结算 → 两人卡住**。
+                // 死亡包参数必须是哨兵 `NoChampionRewardOrdinal(-1)`：传 0 会被 `CreateMonsterDie` 拒绝，
+                // 异常冒泡会直接打断会话（真机 16:29 踩过，见 STATUS §8）。
+                // 返回实际广播出去的怪数（= 本次服务端认为"还活着"的怪）。
+                async Task<int> HandleAllDieMonsterAsync(CancellationToken cancellationToken)
+                {
+                    if (dungeonInstance is null)
+                    {
+                        return 0;
+                    }
+
+                    var allDieMonsters = dungeonInstance.SnapshotAliveMonsters();
+                    foreach (var uniqueId in allDieMonsters)
+                    {
+                        var cascadeDie = GameProtocolEngine.CreateMonsterDie(uniqueId);
+                        await BroadcastToInstanceAsync(cascadeDie, cancellationToken);
+                    }
+
+                    // 广播完才摘：客户端若接着自己上报这些死亡，`TryTakeMonsterDeath` 仍能给出真实击杀
+                    // （掉落/经验照常走那条成熟路径，不会因为我们提前摘除而变成"陈旧死亡"）。
+                    dungeonInstance.ForceAllMonstersDead(allDieMonsters);
+                    return allDieMonsters.Count;
+                }
+
                 // 本会话在队伍里的槽位下标（单人 / 不在队伍 → 0）。槽位稳定不搬动（第一轮硬约束）。
                 // 结算卡片屏按"自己那一列"高亮，7 处恒 0/恒 1 的取值之一（设计稿 §7 决策 3/6）。
                 // **权威来源是实例名册里那份**（入场时定下，中途退队/被踢也不会掉回 0）；
@@ -13002,36 +13031,16 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.AllDieMonsterCommand)
                         {
-                            // 客户端要求"全场小怪一起死"（boss 死后的连锁）。**必须由服务端真的杀掉**：
-                            // 此前只记一行"waiting for normal monster-death confirmations"就 continue，
-                            // 于是 2008 客户端那边小怪永远站着、boss 房卡在"sential 之前"
-                            // （真机 2026-10-01 15:47：boss 死后 6 只小怪不自动死，13 秒后玩家手动清完
-                            //  才 AllMonstersDefeated）。客户端自己**不会**再逐只上报这些怪的死亡：
-                            // 它把"全灭"的裁定权交给了服务端。
-                            // 掉落/经验一概不发（连锁死亡没有战利品），与既有的 isBossCascadeDeath 口径一致。
-                            var allDieMonsters = dungeonInstance is null
-                                ? []
-                                : dungeonInstance.SnapshotAliveMonsters();
-                            if (dungeonInstance is not null)
-                            {
-                                dungeonInstance.ForceAllMonstersDead(allDieMonsters);
-                                foreach (var uniqueId in allDieMonsters)
-                                {
-                                    // 不传 championRewardOrdinal：默认就是哨兵值 NoChampionRewardOrdinal(-1)。
-                                    // 传 0 会被 CreateMonsterDie 拒绝（合法值只有 -1 或 1..11），
-                                    // 异常会冒泡到会话 ⇒ 服务端主动断开 ⇒ 客户端"网络连接被中断"后闪退
-                                    // （2026-10-01 16:29 真机踩过，见 STATUS §8）。
-                                    var cascadeDie = GameProtocolEngine.CreateMonsterDie(uniqueId);
-                                    await BroadcastToInstanceAsync(cascadeDie, serverToken);
-                                }
-                            }
-
+                            // 客户端要求"全场小怪一起死"（boss 死后的连锁）。见 HandleAllDieMonsterAsync：
+                            // **必须先广播死亡包、再清服务端存活集合**。顺序反了会出真机故障
+                            // （2026-10-01 17:18：小怪被"直接删掉"而不是正常死亡、之后不结算、两人卡住）。
+                            var killedByAllDie = await HandleAllDieMonsterAsync(serverToken);
                             logger.LogInformation(
                                 "Handled ALLDIE_MONSTER for dungeon {DungeonId}, room ({RoomX},{RoomY}): killed {Count} remaining monster(s) server-side.",
                                 currentDungeonId,
                                 currentDungeonRoomX,
                                 currentDungeonRoomY,
-                                allDieMonsters.Count);
+                                killedByAllDie);
                             continue;
                         }
 

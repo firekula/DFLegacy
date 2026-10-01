@@ -1168,6 +1168,33 @@ internal static class DungeonPartySmokeTests
         check(ordinalZeroRejected,
             "ordinal 0 is rejected by the protocol engine — whoever builds a cascade-death packet must pass " +
             "the sentinel (ordinal 0 killed the member session live at 2026-10-01 16:29)");
+
+        // 顺序契约（2026-10-01 17:18 真机事故）：处理 ALLDIE 必须**先广播死亡包、再清存活集合**。
+        // 顺序反了的症状：小怪被"直接删掉"而不是正常死亡 → 客户端随后自己上报的死亡被当成陈旧
+        // （`Ignored stale or unknown monster death`）→ 房间不结算 → 队长与队友都卡住。
+        // 这里按生产顺序走一遍：快照 → 广播 → 客户端逐只上报（必须仍算有效击杀）→ 最后才清。
+        var ordered = fixture.CreateInstance();
+        ordered.EnterDetachedRoom(DungeonFixture.Room(
+            [
+                DungeonFixture.Monster(uniqueId: 1),
+                DungeonFixture.Monster(uniqueId: 2),
+                DungeonFixture.Monster(uniqueId: 3)
+            ]));
+        var orderedSnapshot = ordered.SnapshotAliveMonsters();
+        foreach (var uniqueId in orderedSnapshot)
+        {
+            // 生产代码在这里广播 NOTI 38（CreateMonsterDie 的契约已由上面几条钉住）。
+            check(GameProtocolEngine.CreateMonsterDie(uniqueId).ProtocolId
+                    == GameProtocolEngine.MonsterDieNotification,
+                "the all-die broadcast builds a valid death notification before the alive set is cleared");
+        }
+
+        var creditedKills = orderedSnapshot.Count(uniqueId => ordered.TryTakeMonsterDeath(uniqueId, out _));
+        check(creditedKills == orderedSnapshot.Count,
+            "a monster the all-die broadcast already announced is still credited when the client reports its death " +
+            "(clearing the alive set first would make every one of these a stale report)");
+        ordered.ForceAllMonstersDead(orderedSnapshot);
+        check(ordered.AliveMonsterCount == 0, "the all-die sweep still clears the room after the broadcast");
     }
 
     /// <summary>房间快照：换房间刷新 `AliveMonsters`；被动掉落只在首次访问登记一次，重访只读已登记的。</summary>
