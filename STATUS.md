@@ -1143,5 +1143,31 @@
   `ACCESS_VIOLATION badaddr=0x253B0000 / Eip=0x009019C1`（`records seen: 2`，同一 tid `55044`、逐字段相同）
   —— 正是 §4 第 16/17 条那条**未解**硬崩（`0x9019C1` 读 `0x253B0000`，函数入口 `0x901900`）。
   ⇒ 那条硬崩**不是偶发**：它会在同一帧反复触发。**下一次进副本时应重点复现并抓这条**（弹窗那条 3525 是另一条路）。
+
+## 11. 2026-10-01 17:32 真机：ALLDIE 清完小怪**从未重新判定清房** → 小怪"瞬间消失"、无法通关（已修）
+
+- **现象**（用户真机）：boss 死亡时小怪**瞬间消失而不是正常死亡**，**无法通关**（与 §10 的症状相似但根因不同）。
+- **日志**（`server-party36.log`，跑的是 §10 修复后的 build）：
+  ```
+  17:32:55 Handled ALLDIE_MONSTER for dungeon 1, room (2,0): killed 5 remaining monster(s) server-side
+  17:33:01 Ignored stale or unknown monster death 4 in room (2,0)
+  ```
+  **关键缺失**：这一局**没有** `boss map room … cleared by …`、也没有 `NOTI 31`、更没有 `settlement sent`。
+- **根因**：清房判定那条链（`DungeonRoomClearRules.Evaluate` → `TryEnableClear` → **`NOTI 31` 房间开放** →
+  结算）**只写在"普通 `MONSTER_DIE`"路径里**。
+  - 普通路径在"最后一只 boss 死、还有小怪存活"时返回 `LastBossDefeated` + `ForcedMonsterIds≠空`
+    ⇒ `ShouldEnableClear=false`，**本意是"等客户端把级联死亡确认完再清"**；
+  - 而那个级联现在由 `ALLDIE_MONSTER` 收口，**收口之后没有任何代码重新判定** ⇒ 永远等不到清房 ⇒
+    小怪被清掉、房间不开、无法通关。
+  （§10 修的是"顺序"（先广播后清），§11 修的是"清完之后没人重判"——两处都在这条链上，缺一不可。）
+- **修法**（提交 `9abf9b4`）：抽出 `TryEnableRoomClearAsync`（清房判定 + `TryEnableClear` + `NOTI 31` +
+  清房任务触发），**两条路径共用**；`ALLDIE` 清完怪后以"最后一只 boss"为触发怪**重判一次**
+  （boss 房会以 `LastBossDefeated` / `AllMonstersDefeated` 收口 ⇒ 可清房）。
+- **测试**：规则层钉两条分支（最后一只 boss 触发 / 非 boss 触发，存活集合清空后都必须 `ShouldEnableClear`）。
+  **⚠️ 已知覆盖缺口**：规则层测试**抓不到"ALLDIE 调用点缺失"**——变异验证（把那次重判调用删掉）仍全绿。
+  该项**只能靠真机日志**验证：出现 `boss map room … cleared by …` + 随后 `settlement sent` 才算过。
+- **教训（写给下一段）**：这条链上已经连续踩了三次（§6 没杀、§10 顺序反、§11 没重判）。
+  **以后凡是在"清房/结算"附近动 ALLDIE，必须同时核对三件事**：
+  ① 死亡包**先广播后摘除**；② 清完**重新判定**清房；③ 判定成立要发 **`NOTI 31`** 并触发 `CompleteClearQuestTriggersAsync`。
 - **排查入口**：`insns.txt` 里 `0x78C9F6` 所在函数的反汇编（尚未看过），
   以及客户端目录各自的 `LagLog.txt`（两个客户端目录分开后才有独立归因价值）。
