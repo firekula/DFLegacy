@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--party-card"))
+{
+    PartyCardSelectionSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Party card smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+
 static ScriptFileSystem CreateScripts(ServerOptions options) =>
     new(options, NullLogger<ScriptFileSystem>.Instance);
 
@@ -22,6 +30,7 @@ await FriendSmokeTests.RunAsync(Check);
 await TradeSmokeTests.RunAsync(Check);
 await PartySmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
+PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 QuestMapSmokeTests.Run(Check);

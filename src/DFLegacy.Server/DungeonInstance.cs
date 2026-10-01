@@ -75,6 +75,27 @@ internal sealed class DungeonInstance(
 {
     private readonly List<DungeonInstanceMember> _members = [];
     private readonly DungeonRunState _run = new(catalog);
+    private readonly PartyCardSelectionState _partyCards = new();
+
+    internal long BeginPartyCardSettlement()
+    {
+        lock (Gate) return IsParty ? _partyCards.Begin(_members) : 0;
+    }
+
+    internal PartyCardSelectionOutcome TryReservePartyCard(Guid characterId, PartyCardType type, byte column, long generation)
+    {
+        lock (Gate) return _partyCards.TryReserve(characterId, type, column, generation);
+    }
+
+    internal PartyCardSelectionOutcome CompletePartyCardSelection(long generation)
+    {
+        lock (Gate) return _partyCards.CompleteAuto(generation);
+    }
+
+    internal PartyCardSelectionSnapshot SnapshotPartyCards()
+    {
+        lock (Gate) return _partyCards.Snapshot().Copy();
+    }
 
     // 本房间"已加载"的成员（官方 `CParty::loaded[]`，party+892+i 的等价物）：
     // 过图 / 入场时清零，成员发 CMD 40（FINISH_LOADING）时置位；**全员齐了才向全队广播 NOTI 30**
@@ -211,6 +232,7 @@ internal sealed class DungeonInstance(
             }
 
             _loadedMembers.Remove(characterId);
+            _partyCards.RemoveMember(characterId);
             _settlementReturnDeadlines.Remove(characterId);
             _announcedSettlementCountdowns.Remove(characterId);
             Version++;
@@ -482,6 +504,7 @@ internal sealed class DungeonInstance(
             return false;
         }
 
+        _partyCards.Invalidate();
         DungeonOption = dungeonOption;
         Layout = layout;
         ClearEnabled = false;
@@ -501,8 +524,10 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
+            _partyCards.Invalidate();
             _detachedRoom = room;
             Layout = null;
+            _partyCards.Invalidate();
             DungeonOption = 0;
             ClearEnabled = false;
             // 教学副本的合成房间也算"首次进房"（没有迷宫/重访概念）。
@@ -530,6 +555,7 @@ internal sealed class DungeonInstance(
                 return false;
             }
 
+            _partyCards.Invalidate();
             // 与改造前 CMD 48 的行为一致：换房间清掉"本房间"的临时集合与开放标记。
             ClearEnabled = false;
             LastRoomEntryWasFirstVisit = transition.FirstVisit;
@@ -781,6 +807,7 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
+            _partyCards.Invalidate();
             _detachedRoom = null;
             Layout = null;
             DungeonOption = 0;
