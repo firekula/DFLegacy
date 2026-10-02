@@ -1,4 +1,5 @@
 using DFLegacy.Server;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class DungeonRewardUnknownSmokeTests
@@ -11,8 +12,8 @@ internal static class DungeonRewardUnknownSmokeTests
             Directory.CreateDirectory(stageRoot);
             var path = Path.Combine(stageRoot, "store.json");
             var writer = new FailingWriter(stage);
-            var store = new JsonGameStore(new ServerOptions { DataPath = path },
-                NullLogger<JsonGameStore>.Instance, writer);
+            var logger = new CaptureLogger();
+            var store = new JsonGameStore(new ServerOptions { DataPath = path }, logger, writer);
             await store.InitializeAsync();
             var character = (await store.GetCharactersAsync("test"))[0];
             var request = new DungeonRewardCommitRequest("unknown-key", "", "test", character.Id,
@@ -48,9 +49,22 @@ internal static class DungeonRewardUnknownSmokeTests
                     character.Gold, character.Inventory ?? [], character.Equipment ?? []);
                 check(savedAfterReload is not null, "pre-replace failure plus unguarded save does not permanently quarantine reload");
             }
+            var beforeClear = await File.ReadAllTextAsync(path);
             var rejectedClear = await store.ForceClearRewardQuarantineAsync(" ");
-            check(rejectedClear.Decision == StoreRecoveryDecision.Refused,
+            check(rejectedClear.Decision == StoreRecoveryDecision.Refused && await File.ReadAllTextAsync(path) == beforeClear,
                 "blank operator reason refuses without state changes");
+            if (stage == FailureStage.BeforeReplace)
+            {
+                var discarded = await store.ForceClearRewardQuarantineAsync("operator test");
+                check(discarded.Decision == StoreRecoveryDecision.Discarded && discarded.DiscardedEntryCount >= 1, "BeforeReplace operator discard");
+                var disk = await File.ReadAllTextAsync(path);
+                check(disk.Contains("\"Status\": 1") && disk.Contains("operator-discarded"), "operator discard persisted ledger");
+                check(await store.SaveCharacterInventoryAsync("test", character.Id, character.Gold, character.Inventory ?? [], character.Equipment ?? []) is not null, "discard ordinary write");
+                check(logger.Messages.Any(x => x.Contains("operator test") && x.Contains("Discarded")), "operator audit logged");
+                var restarted = new JsonGameStore(new ServerOptions { DataPath = path }, NullLogger<JsonGameStore>.Instance);
+                await restarted.InitializeAsync();
+                check(await restarted.SaveCharacterInventoryAsync("test", character.Id, character.Gold, character.Inventory ?? [], character.Equipment ?? []) is not null, "discard survives restart");
+            }
             var recovered = await store.RecoverDungeonRewardAsync(request.IdempotencyKey);
             if (stage == FailureStage.AfterReplace)
             {
@@ -69,9 +83,17 @@ internal static class DungeonRewardUnknownSmokeTests
                 try { await store.SaveCharacterInventoryAsync("test", character.Id,
                     character.Gold, character.Inventory ?? [], character.Equipment ?? []); }
                 catch (InvalidOperationException) { stillBlocked = true; }
-                check(stillBlocked, $"{stage}: failed recovery remains quarantined");
+                check(stage == FailureStage.BeforeReplace || stillBlocked, $"{stage}: failed recovery remains quarantined unless operator discarded");
             }
         }
+    }
+
+    private sealed class CaptureLogger : ILogger<JsonGameStore>
+    {
+        internal List<string> Messages { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel level) => true;
+        public void Log<TState>(LogLevel level, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
     }
 
     private enum FailureStage { BeforeTemp, BeforeReplace, AfterReplace, CancelDuringWrite }
