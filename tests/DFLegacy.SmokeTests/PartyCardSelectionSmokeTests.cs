@@ -24,6 +24,8 @@ internal static class PartyCardSelectionSmokeTests
         var packetB = DFLegacy.Protocol.GameProtocolEngine.CreateSelectCardReply(new byte[] { 2, 0, 255, 255 }, new byte[] { 255, 255, 255, 255 }, new ushort?[] { null, null, null, null });
         check(packetA.Payload.SequenceEqual(packetB.Payload), "shared CMD74 bytes identical");
         check(packetA.Payload.Length == 13, "shared CMD74 uses four fixed columns");
+        var paidAssigned = DFLegacy.Protocol.GameProtocolEngine.CreateSelectCardReply(new byte[] { 255, 255, 255, 255 }, new byte[] { 0, 255, 255, 255 }, new ushort?[] { null, null, null, null });
+        check(paidAssigned.Payload[3] == 1, "assigned paid column emits one empty reward record");
         check(instance.IsParty, "party instance remains isolated");
         check(instance.TryReservePartyCard(a, PartyCardType.Free, 0, generation).Status == PartyCardSelectionStatus.AlreadyReserved, "auto completion preserves existing owner retry");
         check(instance.TryReservePartyCard(a, PartyCardType.Free, 3, generation).Status == PartyCardSelectionStatus.Rejected, "auto completion closes remaining free columns");
@@ -59,5 +61,9 @@ internal static class PartyCardSelectionSmokeTests
         var startGeneration = running.BeginPartyCardSettlement();
         check(running.TryMoveRoom(1, 0, out _), "TryMoveRoom succeeds for lifecycle test");
         check(!running.CompletePartyCardSelection(startGeneration).Accepted, "TryMoveRoom invalidates generation");
+        check(!running.TryTakePartyCardPublication(preStartGeneration, out _), "StartRun invalidates content publication");
+        check(!running.TryTakePartyCardPublication(startGeneration, out _), "TryMoveRoom invalidates content publication");
+        check(!instance.TryTakePartyCardPublication(beforeRoom, out _), "EnterDetachedRoom invalidates content publication");
+        check(!instance.TryTakePartyCardPublication(beforeStop, out _), "StopRun invalidates content publication");
     }
 }

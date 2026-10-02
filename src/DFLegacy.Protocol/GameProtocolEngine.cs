@@ -3866,11 +3866,17 @@ public static class GameProtocolEngine
         {
             writer.Write(freeOwners[i]);
             writer.Write(paidOwners[i]);
-            writer.Write((byte)(paidItems[i].HasValue ? 2 : 0));
-            if (paidItems[i].HasValue)
+            var assigned = paidOwners[i] != byte.MaxValue;
+            writer.Write((byte)(assigned ? paidItems[i].HasValue ? 2 : 1 : 0));
+            if (assigned)
             {
-                writer.Write((ushort)0); writer.Write(0u);
-                writer.Write(paidItems[i]!.Value); writer.Write(0u);
+                writer.Write((ushort)0);
+                writer.Write(0u);
+                if (paidItems[i].HasValue)
+                {
+                    writer.Write(paidItems[i]!.Value);
+                    writer.Write(0u);
+                }
             }
         }
         return new GameServerPacket(CommandPacketType, SelectCardCommand, payload.ToArray());

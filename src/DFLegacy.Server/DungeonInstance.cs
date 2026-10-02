@@ -99,7 +99,7 @@ internal sealed class DungeonInstance(
     {
         lock (Gate)
         {
-            if (generation != _partyContentGeneration || !_members.Any(m => m.CharacterId == characterId)) return false;
+            if (generation != _partyContentGeneration || generation != _partyCards.Generation || !_members.Any(m => m.CharacterId == characterId)) return false;
             var owners = _partyCards.Snapshot();
             if (!_partySettlementSlots.TryGetValue(characterId, out var memberSlot)) return false;
             var owner = type switch
@@ -127,10 +127,12 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             snapshot = null;
-            if (generation != _partyContentGeneration || _partyCardPublished) return false;
+            if (generation != _partyContentGeneration || generation != _partyCards.Generation || _partyCardPublished) return false;
             var owners = _partyCards.Snapshot();
             foreach (var owner in owners.FreeOwners.Where(x => x != PartyCardSelectionState.Unassigned))
                 if (!_partyCardContent.Any(x => x.Key.Type == PartyCardType.Free && x.Key.Slot == owner && x.Value.Status is PartyCardCommitStatus.Committed or PartyCardCommitStatus.Rejected)) return false;
+            foreach (var owner in owners.PaidOwners.Where(x => x != PartyCardSelectionState.Unassigned))
+                if (!_partyCardContent.Any(x => x.Key.Type == PartyCardType.Paid && x.Key.Slot == owner && x.Value.Status is PartyCardCommitStatus.Committed or PartyCardCommitStatus.Rejected)) return false;
             _partyCardPublished = true;
             snapshot = new PartyCardPublishedSnapshot(
                 generation,

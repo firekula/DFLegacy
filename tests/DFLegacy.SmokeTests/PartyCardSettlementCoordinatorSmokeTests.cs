@@ -32,5 +32,15 @@ internal static class PartyCardSettlementCoordinatorSmokeTests
         check(instance.TryTakePartyCardPublication(next, out var snapshot), "all known terminal owners publish");
         check(snapshot is not null && snapshot.Generation == next, "publication is correct generation");
         check(!instance.TryTakePartyCardPublication(next, out _), "publication once");
+        instance.AddMember(new(a, 1, 0, "A", _ => ValueTask.CompletedTask));
+        var lifecycle = instance.BeginPartyCardSettlement();
+        instance.TryReservePartyCard(a, PartyCardType.Paid, 0, lifecycle);
+        instance.CompletePartyCardSelection(lifecycle);
+        instance.ReportPartyCardCommit(a, PartyCardType.Free, 0, lifecycle, roll, DungeonRewardLedgerStatus.Committed);
+        instance.ReportPartyCardCommit(b, PartyCardType.Free, 1, lifecycle, roll, DungeonRewardLedgerStatus.Committed);
+        check(!instance.TryTakePartyCardPublication(lifecycle, out _), "pending paid owner blocks publication");
+        instance.StopRun();
+        check(!instance.ReportPartyCardCommit(a, PartyCardType.Paid, 0, lifecycle, roll, DungeonRewardLedgerStatus.Committed), "StopRun invalidates content report");
+        check(!instance.TryTakePartyCardPublication(lifecycle, out _), "StopRun invalidates publication");
     }
 }
