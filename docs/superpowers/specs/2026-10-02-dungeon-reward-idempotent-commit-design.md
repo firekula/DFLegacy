@@ -124,7 +124,7 @@ public sealed record DungeonRewardCommitRequest(
     ushort? ExpectedWarehouseCapacity);
 
 public readonly record struct DungeonRewardCommitResult(
-    DungeonRewardCommitStatus Status,
+    DungeonRewardLedgerStatus Status,
     CharacterRecord? UpdatedCharacter,
     ushort? RewardItemId,
     int GoldDelta,
