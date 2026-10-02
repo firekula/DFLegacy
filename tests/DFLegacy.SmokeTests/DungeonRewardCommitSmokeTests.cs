@@ -73,6 +73,7 @@ internal static class DungeonRewardCommitSmokeTests
                 "ordinary snapshot save preserves existing ledger in the same file");
             check(Directory.GetFiles(tempRoot).Length == 1,
                 "no second ledger file is created");
+            await DungeonRewardStoreSmokeTests.RunAsync(check, tempRoot);
         }
         finally
         {
