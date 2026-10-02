@@ -3200,7 +3200,8 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var fingerprint = ComputeDungeonRewardFingerprint(request);
+            var frozenRequest = request with { ExpectedInventory = expectedInventory, ExpectedEquipment = expectedEquipment, PlannedInventory = plannedInventory, PlannedEquipment = plannedEquipment, GeneratedMails = mails };
+            var fingerprint = ComputeDungeonRewardFingerprint(frozenRequest);
             if (fingerprint.Length == 0 || string.IsNullOrWhiteSpace(request.IdempotencyKey)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-request", null);
             if (string.IsNullOrWhiteSpace(request.PayloadFingerprint) || !string.Equals(request.PayloadFingerprint, fingerprint, StringComparison.OrdinalIgnoreCase)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "payload-fingerprint-mismatch", null);
             var prior = _dungeonRewardLedger.FirstOrDefault(x => x.IdempotencyKey == request.IdempotencyKey);
@@ -3219,10 +3220,10 @@ public sealed class JsonGameStore(
     }
     internal static string ComputeDungeonRewardFingerprint(DungeonRewardCommitRequest request)
     {
-        var expectedInventory = request.ExpectedInventory?.ToArray();
-        var expectedEquipment = request.ExpectedEquipment?.ToArray();
-        var plannedInventory = request.PlannedInventory?.ToArray();
-        var plannedEquipment = request.PlannedEquipment?.ToArray();
+        var expectedInventory = request.ExpectedInventory?.OrderBy(x => x.Slot).ToArray();
+        var expectedEquipment = request.ExpectedEquipment?.OrderBy(x => x.Slot).ToArray();
+        var plannedInventory = request.PlannedInventory?.OrderBy(x => x.Slot).ToArray();
+        var plannedEquipment = request.PlannedEquipment?.OrderBy(x => x.Slot).ToArray();
         var mails = request.GeneratedMails?.ToArray();
         var canonical = JsonSerializer.Serialize(new { request.IdempotencyKey, request.UserName, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, request.TargetGold, request.ExpectedGold, expectedInventory, expectedEquipment, plannedInventory, plannedEquipment, mails, request.WarehouseCapacity, request.ExpectedWarehouseCapacity });
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
