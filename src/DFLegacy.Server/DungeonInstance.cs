@@ -71,7 +71,8 @@ internal sealed class DungeonInstance(
     Guid soloCharacterId,
     DungeonCatalog catalog,
     ItemCatalog itemCatalog,
-    TimeSpan? doorGrace = null)
+    TimeSpan? doorGrace = null,
+    TimeSpan? partyCardAgentTimeout = null)
 {
     private readonly List<DungeonInstanceMember> _members = [];
     private readonly DungeonRunState _run = new(catalog);
@@ -82,6 +83,29 @@ internal sealed class DungeonInstance(
     private readonly Dictionary<Guid, byte> _partySettlementSlots = [];
     private readonly Dictionary<Guid, IPartyCardRewardAgent> _partyCardAgents = [];
     private readonly HashSet<(long Generation, PartyCardType Type, byte Column, Guid CharacterId)> _partyCardAttempts = [];
+    private readonly List<PartyCardAuditEntry> _partyCardAudit = [];
+    // 代理在一次归属预留里的等待上限：超过即视为 Unknown（不发布、不重试、留审计）。
+    // 它只用来**别把发包会话钉死在一个卡住的代理上**；正常本地提交是毫秒级。
+    private readonly TimeSpan _partyCardAgentTimeout = partyCardAgentTimeout ?? TimeSpan.FromSeconds(5);
+
+    /// <summary>取走并清空审计（会话在出锁后写日志；测试用它断言"不重试、不发布、留痕"）。</summary>
+    internal IReadOnlyList<PartyCardAuditEntry> DrainPartyCardAudit()
+    {
+        lock (Gate)
+        {
+            if (_partyCardAudit.Count == 0)
+            {
+                return [];
+            }
+
+            var drained = _partyCardAudit.ToArray();
+            _partyCardAudit.Clear();
+            return drained;
+        }
+    }
+
+    private void NotePartyCardAudit(long generation, PartyCardType type, byte column, Guid characterId, string reason)
+        => _partyCardAudit.Add(new PartyCardAuditEntry(generation, type, column, characterId, reason));
 
     internal void RegisterPartyCardRewardAgent(Guid characterId, IPartyCardRewardAgent agent)
     {
@@ -94,28 +118,78 @@ internal sealed class DungeonInstance(
     internal async Task SettleOwnPartyCardAsync(Guid characterId, PartyCardType type, byte column, long generation, CancellationToken ct)
     {
         IPartyCardRewardAgent? agent;
+        byte slot;
         lock (Gate)
         {
             if (generation != _partyCards.Generation || !_members.Any(x => x.CharacterId == characterId)) return;
             var owners = _partyCards.Snapshot();
-            var slot = _partySettlementSlots.GetValueOrDefault(characterId, byte.MaxValue);
+            slot = _partySettlementSlots.GetValueOrDefault(characterId, byte.MaxValue);
             var owner = type == PartyCardType.Free ? owners.FreeOwners.ElementAtOrDefault(column) : owners.PaidOwners.ElementAtOrDefault(column);
+            // 归属校验在**调用代理之前**：只有这一列的归属成员自己的会话能推进它（R1′）。
             if (column >= 4 || owner != slot) return;
+            // 一次预留只尝试一次：失败（异常/取消/超时/Unknown）绝不重试（R4）。
             if (!_partyCardAttempts.Add((generation, type, column, characterId))) return;
-            _partyCardAgents.TryGetValue(characterId, out agent);
+            if (!_partyCardAgents.TryGetValue(characterId, out agent))
+            {
+                NotePartyCardAudit(generation, type, column, characterId, "agent-missing");
+                return;
+            }
         }
-        if (agent is null) return;
+
+        PartyCardContent content;
         try
         {
-            var content = agent.RollOwnColumn(type, column, generation);
-            if (content.Type != type || content.Column != column || content.PartySlot != _partySettlementSlots.GetValueOrDefault(characterId, byte.MaxValue)) return;
-            var outcome = await agent.CommitOwnColumnAsync(type, column, generation, content, ct);
-            ReportPartyCardCommitFromAgent(characterId, type, column, generation, content, outcome);
+            content = agent.RollOwnColumn(type, column, generation);
         }
-        catch
+        catch (Exception)
         {
-            // A failed agent is deliberately never retried for this reservation.
+            lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-exception");
+            return;
         }
+
+        if (content is null
+            || content.Type != type
+            || content.Column != column
+            || content.PartySlot != slot)
+        {
+            lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-content-mismatch");
+            return;
+        }
+
+        PartyCardCommitOutcome outcome;
+        try
+        {
+            // 同步抛出与"返回故障 Task"都算代理异常：两种都要挡住（本地代理是会话实现的，未定义行为不可信）。
+            var commit = agent.CommitOwnColumnAsync(type, column, generation, content, ct);
+            if (commit is null)
+            {
+                lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-exception");
+                return;
+            }
+
+            // 有界等待：代理卡住不能把发包会话一起钉死；超时按 Unknown 处理（不发布、不重试、留审计）。
+            var finished = await Task.WhenAny(commit, Task.Delay(_partyCardAgentTimeout));
+            if (finished != commit)
+            {
+                lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-timeout");
+                _ = commit.ContinueWith(static task => _ = task.Exception, TaskScheduler.Default);
+                return;
+            }
+
+            outcome = await commit;
+        }
+        catch (OperationCanceledException)
+        {
+            lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-cancelled");
+            return;
+        }
+        catch (Exception)
+        {
+            lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-exception");
+            return;
+        }
+
+        ReportPartyCardCommitFromAgent(characterId, type, column, generation, content, outcome);
     }
 
     internal long BeginPartyCardSettlement()
@@ -136,16 +210,31 @@ internal sealed class DungeonInstance(
     {
         lock (Gate)
         {
-            if (generation != _partyContentGeneration || generation != _partyCards.Generation || !_members.Any(m => m.CharacterId == characterId)) return false;
+            if (generation != _partyContentGeneration || generation != _partyCards.Generation || !_members.Any(m => m.CharacterId == characterId))
+            {
+                NotePartyCardAudit(generation, type, column, characterId, "report-rejected");
+                return false;
+            }
+
             var owners = _partyCards.Snapshot();
-            if (!_partySettlementSlots.TryGetValue(characterId, out var memberSlot)) return false;
+            if (!_partySettlementSlots.TryGetValue(characterId, out var memberSlot))
+            {
+                NotePartyCardAudit(generation, type, column, characterId, "report-rejected");
+                return false;
+            }
+
             var owner = type switch
             {
                 PartyCardType.Free when column < 4 => owners.FreeOwners[column],
                 PartyCardType.Paid when column < 4 => owners.PaidOwners[column],
                 _ => PartyCardSelectionState.Unassigned
             };
-            if (owner == PartyCardSelectionState.Unassigned || owner != memberSlot) return false;
+            if (owner == PartyCardSelectionState.Unassigned || owner != memberSlot)
+            {
+                NotePartyCardAudit(generation, type, column, characterId, "report-rejected");
+                return false;
+            }
+
             var key = (type, column, owner);
             var commitStatus = outcome.Status switch
             {
@@ -153,8 +242,24 @@ internal sealed class DungeonInstance(
                 DungeonRewardLedgerStatus.Rejected => PartyCardCommitStatus.Rejected,
                 _ => PartyCardCommitStatus.Unknown
             };
-            if (_partyCardContent.ContainsKey(key)) return false;
-            if (content.Type != type || content.Column != column || content.PartySlot != owner) return false;
+            if (_partyCardContent.ContainsKey(key)
+                || content.Type != type
+                || content.Column != column
+                || content.PartySlot != owner)
+            {
+                NotePartyCardAudit(generation, type, column, characterId, "report-rejected");
+                return false;
+            }
+
+            if (commitStatus == PartyCardCommitStatus.Rejected)
+            {
+                NotePartyCardAudit(generation, type, column, characterId, "commit-rejected");
+            }
+            else if (commitStatus == PartyCardCommitStatus.Unknown)
+            {
+                NotePartyCardAudit(generation, type, column, characterId, "commit-unknown");
+            }
+
             _partyCardContent[key] = content with { Status = commitStatus };
             return true;
         }

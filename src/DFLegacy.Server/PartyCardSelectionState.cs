@@ -10,7 +10,50 @@ internal interface IPartyCardRewardAgent
     Task<PartyCardCommitOutcome> CommitOwnColumnAsync(PartyCardType cardType, byte column, long generation, PartyCardContent content, CancellationToken cancellationToken);
 }
 internal sealed record PartyCardContent(PartyCardType Type, byte Column, byte PartySlot, DungeonClearRewardRoll Roll, PartyCardCommitStatus Status);
-internal sealed record PartyCardPublishedSnapshot(long Generation, PartyCardSelectionSnapshot Selection, IReadOnlyList<PartyCardContent> Contents);
+internal sealed record PartyCardPublishedSnapshot(long Generation, PartyCardSelectionSnapshot Selection, IReadOnlyList<PartyCardContent> Contents)
+{
+    /// <summary>
+    /// 整表 CMD 74 的付费列记录：某列已归属时给出该列归属成员自己掷出的付费物品 id
+    /// （没有物品 → null = 只有一条零金币记录）。构包口径见
+    /// <c>GameProtocolEngine.CreateSelectCardReply(freeOwners, paidOwners, paidItems)</c>。
+    /// </summary>
+    internal ushort?[] PaidItems()
+    {
+        var items = new ushort?[4];
+        for (byte column = 0; column < 4; column++)
+        {
+            var owner = Selection.PaidOwners[column];
+            if (owner == PartyCardSelectionState.Unassigned)
+            {
+                continue;
+            }
+
+            foreach (var content in Contents)
+            {
+                if (content.Type == PartyCardType.Paid
+                    && content.Column == column
+                    && content.PartySlot == owner)
+                {
+                    items[column] = content.Roll.GoldItemId;
+                    break;
+                }
+            }
+        }
+
+        return items;
+    }
+}
+
+/// <summary>
+/// 翻牌接线的一笔审计：代理缺失 / 代理异常 / 代理超时 / 上报被拒 / 提交非 Committed。
+/// 这些路径一律**不重试、不发布**，只留痕（R4）。持锁写入，由会话取出后写日志。
+/// </summary>
+internal readonly record struct PartyCardAuditEntry(
+    long Generation,
+    PartyCardType Type,
+    byte Column,
+    Guid CharacterId,
+    string Reason);
 
 internal readonly record struct PartyCardSelectionOutcome(
     PartyCardSelectionStatus Status, long Generation, byte Column, byte PartySlot)
