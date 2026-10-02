@@ -23,6 +23,7 @@ internal static class PartySmokeTests
         CheckPartyRoster(check);
         await CheckPartyServiceAsync(check);
         await CheckHostSlotIsSharedByEveryMemberAsync(check);
+        CheckEnterSelectDungeonLayout(check);
     }
 
     /// <summary>NOTI 8（组队）：u16 接受者 uid + u8 peerType=0 + u32 未用 → 7 字节（A 卷 §5）。</summary>
@@ -1417,6 +1418,39 @@ internal static class PartySmokeTests
             "after the leader leaves, the successor's own slot becomes the host slot (no compaction to slot 0)");
         check(harness.Service.TryGetLeaderSlot(leader) is null,
             "the departed leader no longer resolves any host slot");
+    }
+
+    /// <summary>
+    /// NOTI 27（ENTER_SELECT_DUNGEON）的载荷必须保持**本客户端要的三字段**：
+    /// `bool 地狱任务是否满足` + `byte 缺失物品的槽位个数` + u16 **槽位下标**数组。
+    /// 客户端处理器 `0x41F16C` 的读取序列 = `byte, byte, short`（`client_surface.py noti-fields 27`；
+    /// 三个读取点在 `0x41F1CF`/`0x41F27A`/`0x41F2BE`）。
+    /// **禁止照抄官服** `CParty::game_start`（`0x0859dd4f`）里那份：它是 `put_int` 开头的**更晚客户端**布局
+    /// （`put_int + put_byte + put_short + put_byte×2 + put_byte(1) + put_byte(0)`）——
+    /// 照抄会让本客户端从 int 里读出垃圾。同样的警告也写在 `GameProtocolEngine.cs:3307-3309`。
+    /// **既有覆盖**：`Program.cs` 里已有 4 条 NOTI 27 布局用例（"blocks hell quests with string 5431"、
+    /// "names missing-item party slot zero with string 5430"、"carries independent quest and item restrictions"、
+    /// "dungeon-gate entry uses the exact DFLegacy quest/item-party-slot layout"）——**它们才是主护栏**。
+    /// 本用例**补的是**：① 显式断言"绝不是以 int 开头的官服形态"（把警告变成可执行约束）；
+    /// ② 缺失物品槽位的 `[2,3]` 组合（既有用例只覆盖了槽位 0）。
+    /// **变异验证**（实测）：把 `CreateEnterSelectDungeon` 改成先 `writer.Write((int)0)`（官服形态）→
+    /// 全量冒烟里**连本用例共 7 条**断言变红（本用例 3 条 + 既有 4 条）⇒ 布局确实被钉住。
+    /// **真机交叉**（run #43）：队员会话收到 `protocol=27 length=8` ⇒ body 2 字节 = `[1, 0]`（合格且无缺失物品）✓。
+    /// </summary>
+    private static void CheckEnterSelectDungeonLayout(Action<bool, string> check)
+    {
+        var eligible = GameProtocolEngine.CreateEnterSelectDungeon(
+            hellQuestsCompleted: true, missingHellItemPartyIndices: []);
+        check(eligible.ProtocolId == GameProtocolEngine.EnterSelectDungeonNotification
+                && eligible.Payload.SequenceEqual(new byte[] { 1, 0 }),
+            "an eligible NOTI 27 body is exactly [hellQuestsCompleted=1, count=0] (client reads byte,byte,short)");
+
+        var missing = GameProtocolEngine.CreateEnterSelectDungeon(
+            hellQuestsCompleted: false, missingHellItemPartyIndices: [2, 3]);
+        check(missing.Payload.SequenceEqual(new byte[] { 0, 2, 2, 0, 3, 0 }),
+            "missing hell items ship as count + u16 PARTY SLOTS (2 and 3), never as an int-prefixed layout");
+        check(missing.Payload.Length == 6,
+            "the official later-client NOTI 27 layout starts with a 4-byte int — emitting it would break this client");
     }
 }
 

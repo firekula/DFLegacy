@@ -185,43 +185,59 @@
 
 ## ② 进副本与换房（S3·S4）
 
-### PD-2001 `CParty::game_start` 的完整调用序列是入场流程的骨架
-- 官服行为: 校验区域 → 准备成员基础信息 → `GameWorld::goto_dungeon` → 队伍广播 → `set_host`/`send_host_info` → 生成 layout
-- 官服证据: CParty::game_start@0x0859d718(2489)；调用序列见 `official/calls_party_dungeon.txt`
+### PD-2001 `CParty::game_start` 建三个包：NOTI 2(mode1) → NOTI 3 → NOTI 27，随后才 `set_host`/`send_host_info`
+- 官服行为: `game_start` 依次建 ①`class=0 cmd=2`（NOTI 2 USERINFO，`put_byte(1)`=mode1 + `put_short(member_count)`）②`class=0 cmd=3`（USER_STATE：`put_byte` + `put_short(uid)` + `put_byte(1)`）③`class=0 cmd=27`（ENTER_SELECT_DUNGEON）；②③ 经 `CParty::send_to_party` 广播；之后 `set_host` → `send_host_info`(NOTI 26)；尾部还有 `GameWorld::GetWorldMapIndex`/`CWorldMapList::find_world_map`/地狱脚本值/`make_blood_dungeon_info`
+- 官服证据: CParty::game_start@0x0859d718(2489)；put_header 点 `0x0859d75e`(NOTI 2)/`0x0859d7ec`(NOTI 3)/`0x0859dd4f`(NOTI 27)；`set_host`@0x0859dcc7、`send_host_info`@0x0859dcd2；发送者 `CParty::send_to_party`@0x0859dc50 与 @0x0859e031
 - 可重跑命令:
   ```
-  python calls_in.py 0x0859d718+2489 | findstr /C:"send_host_info"
+  python ../../2026-10-02-party-dungeon-official-rewrite/work/official_surface.py packets CParty::game_start | findstr /C:"cmd=27"
+  python calls_in.py 0x0859d718+0x9b9 | findstr /C:"send_host_info"
   ```
-- 客户端可达性: 不适用（服务端流程）
-- 现状: `DungeonPartyService.PostEntryRequests`（队长投递待入队请求）
-- 裁决: 对齐
-- 验收判据: 单测：入场报文序列与顺序（外观 → 名册 → NOTI 26/11/28/29）；真机双人进图
+  （**口径坑**：`calls_in.py` 的 `+size` 按**十六进制**解析，2489 要写 `0x9b9`；写 `+2489` 会被当成 9353 字节）
+- 客户端可达性: NOTI 2/3/27 的处理器都在跳转表内（2→0x419A57、3→0x41B0D3、27→0x41F16C）；但 **NOTI 27 的 body 必须是本客户端的三字段形态**，见 PD-2011
+- 现状: 我们的入场**不是**"队长动作触发的队伍广播"形态，而是**队员自己的会话发自己的入场包**（`DungeonPartyService.PlanMemberEntry`）；官服那 3 个包在我们这侧分散在：外观（NOTI 2 mode0+mode1，由他人推送点发）、NOTI 3/27 各自的本地路径
+- 裁决: 保留
+- 验收判据: 官服 3 包与我们的对应关系已写明；队员入场逐包顺序由 run #43 真机核对（PD-2003）；**不要**照抄官服 NOTI 27 的 body（PD-2011 的护栏）；形态改动（改成队长统一 `goto_dungeon`）不在本片范围——它会动到会话所有权，价值低风险高
 - 归属切片: S3
 
-### PD-2002 同区域是硬前提（异队整队不进）
-- 官服行为: `game_start` 先校验成员是否同一城镇/区域，不满足则不进
-- 官服证据: CParty::game_start@0x0859d718(2489)
+### PD-2002 同区域是硬前提（每个成员的 `(vill, area)` 必须等于队长的，快速组队例外）
+- 官服行为: `game_start` 按槽位循环，`_checkValidUser` 通过后取该成员的 `getCurCharacVill()`/`get_area()`，与队长的逐字段比较；**不等**时再看 `CParty::is_quick_party`（快速组队才例外）
+- 官服证据: CParty::game_start@0x0859d718(2489) 的门禁指令：`0x0859d8b9`（取队长 vill）、`0x0859d8bd`（`cmp al,[成员 vill]`）、`0x0859d8c2`（取队长 area）、`0x0859d8c5`（`cmp eax,[成员 area]`）、`0x0859d8ca`（不等 → `CParty::is_quick_party`）
 - 可重跑命令:
   ```
-  python ../../2026-10-02-party-dungeon-official-rewrite/work/official_surface.py func CParty::game_start | findstr /C:"0x0859D718"
+  python dis_range.py 0x0859d718+0x9b9 --show 0x0859d8b0,0x0859d8d0 | findstr /C:"0x0859d8bd"
   ```
-- 客户端可达性: 不适用
-- 现状: 任一队员不在同一 `(town, area)` → 整队中止（只记 `party entry aborted`）
+- 客户端可达性: 不适用（服务端判定）
+- 现状: 任一队员不在与队长相同的 `(town, area)` → 整队中止（只记 `party entry aborted`；我们只有普通组队，没有"快速组队"这条例外）
 - 裁决: 对齐
-- 验收判据: 单测（已有"异区整队不投递"）；真机 P7：异区组队点进图 → 日志有中止原因、没人进图
+- 验收判据: 单测（已有 `CheckRequestTargetingAsync` 的"异区整队不投递"）；真机 P7：异区组队点进图 → 日志有中止原因、没人进图
 - 归属切片: S3
 
-### PD-2003 队员入场报文序列（证据类别 = 真机，官服无单一对应函数）
-- 官服行为: 官服没有"队员自己入场"这个单独入口——队员的入图由 `game_start` 内的 `goto_dungeon` 统一完成；我们的"待入队请求 + 队员自己执行"是**实现手段**，不是官服形态
-- 官服证据: 无（序列证据来自探针真机结论 `3d5bb45`，见 STATUS §2.7）
+### PD-2003 队员入场报文序列（本客户端形态；run #43 真机逐包核对）
+- 官服行为: 官服**没有**"队员自己入场"这个独立入口——队员的入图由队长那次 `game_start` 的 `goto_dungeon` + 队伍广播统一完成；我们的"队长投待入队请求 + 队员自己执行"是**实现手段**，不是官服形态
+- 官服证据: 无（对应的是 PD-2001 的 `game_start`；序列证据来自 [真机] 探针 `3d5bb45` + 本轮 run #43）
 - 可重跑命令:
   ```
   python ../../2026-10-02-party-dungeon-official-rewrite/work/client_surface.py noti 26 | findstr /C:"handler=0x0041F144"
   ```
+  （序列本身的复现：grep run #43 归档日志的队员会话 `TX 34765968`，见下面的验收判据）
 - 客户端可达性: NOTI 26/11/28/29 全部在跳转表内（逐条已验）
-- 现状: `DungeonEntryPackets.PlanMemberEntry`
+- 现状: `DungeonPartyService.PlanMemberEntry`（`DungeonPartyService.cs:14-43`）硬顺序 = 名册 → NOTI 26 → NOTI 11 → NOTI 28 → NOTI 29
 - 裁决: 保留
-- 验收判据: 真机逐包核对顺序（外观 → 名册 → NOTI 26 → 11 → 28 → 29）；S3 需判断是否改成官服的"队长统一 goto_dungeon"形态（会动到会话所有权，风险高）
+- 验收判据: **run #43 真机实测（队员会话 `34765968`）**：`01:17:13` 进选图 = `3(9B) → 11(28B) → 26(7B) → 5(119B) → 27(8B)`；`01:17:18` 进副本 = `23(16B) → 11(28B) → 9(26B)×2 → 2(87B) → 2(203B,mode1) → 9(26B)×2 → 26(7B) → 11(49B) → 28(14B) → 29(54B) → 36(12B)` —— **外观先于名册、名册先于 26/11/28/29** 与规划器逐条吻合 ✓
+- 归属切片: S3
+
+### PD-2011 NOTI 27 的 body 必须保持本客户端的三字段形态（禁止照抄官服 game_start 那份）
+- 官服行为: `game_start` 在 `0x0859dd4f` 给全队发 NOTI 27，body = `put_int` + `put_byte` + `put_short` + `put_byte(0)` + `put_byte(0)` + `put_byte(1)` + `put_byte(0)`
+- 官服证据: CParty::game_start@0x0859d718 的 `0x0859dd4f` 站点（`official_surface.py layout CParty::game_start` 直读）
+- 可重跑命令:
+  ```
+  python ../../2026-10-02-party-dungeon-official-rewrite/work/official_surface.py layout CParty::game_start | findstr /C:"cmd=27"
+  ```
+- 客户端可达性: NOTI 27 → 处理器 `0x41F16C`；读取序列 = `byte, byte, short`（读取点 `0x41F1CF`/`0x41F27A`/`0x41F2BE`）⇒ **官服那份以 4 字节 int 开头，本客户端读不了**（会把 int 的低字节当地狱任务标志，其余字段全部错位）
+- 现状: `GameProtocolEngine.CreateEnterSelectDungeon`（`GameProtocolEngine.cs:3303-3326`）写 `bool hellQuestsCompleted` + `byte count` + `u16 槽位数组`；注释 `3307-3309` 已写明"不要用更晚服务端的 NOTI 27 布局"，但没有把"官服形态"变成可执行约束 ⇒ 我们的三字段形态是本客户端**唯一可读**的形态（官服那份读不了，所以不发）
+- 裁决: 保留
+- 验收判据: 主护栏是 `Program.cs` 里既有 4 条 NOTI 27 用例；本轮补 `PartySmokeTests.CheckEnterSelectDungeonLayout`（显式断言"绝不以 int 开头"+ 缺失槽位 `[2,3]` 组合）。**变异验证（实测）**：把 builder 改成先写 `int` → 全量冒烟 **7 条**断言变红（本用例 3 条 + 既有 4 条），回滚后全绿。**真机交叉**：run #43 队员会话 `protocol=27 length=8` ⇒ body 2 字节 = `[1, 0]` ✓
 - 归属切片: S3
 
 ### PD-2004 CMD 48 官服 reader 读 10 个字段
