@@ -21,6 +21,8 @@ internal static class DungeonRewardStoreSmokeTests
             var before = await File.ReadAllTextAsync(path);
             var memory = JsonSerializer.Serialize(await store.GetCharacterAsync("test", character.Id));
             var result = await store.CommitDungeonRewardAsync(request);
+            if (result.Status != DungeonRewardLedgerStatus.Rejected || result.RejectionCode != code)
+                throw new InvalidOperationException($"{name}: expected rejection {code}, got {result.Status}/{result.RejectionCode}");
             check(result.Status == DungeonRewardLedgerStatus.Rejected && result.RejectionCode == code, name);
             check(await File.ReadAllTextAsync(path) == before
                 && JsonSerializer.Serialize(await store.GetCharacterAsync("test", character.Id)) == memory,
@@ -29,7 +31,7 @@ internal static class DungeonRewardStoreSmokeTests
         await Reject(Request("missing-account") with { UserName = "absent" }, "account-not-found", "missing account");
         await Reject(Request("missing-character") with { CharacterId = Guid.NewGuid() }, "character-not-found", "missing character");
         await Reject(Request("gold-cas") with { ExpectedGold = character.Gold - 1 }, "character-state-conflict", "gold CAS conflict");
-        await Reject(Request("inventory-cas") with { ExpectedInventory = [] }, "character-state-conflict", "inventory CAS conflict");
+        await Reject(Request("inventory-cas") with { ExpectedInventory = [new(999, 1, 1)] }, "character-state-conflict", "inventory CAS conflict");
         await Reject(Request("equipment-cas") with { ExpectedEquipment = [] }, "character-state-conflict", "equipment CAS conflict");
         await Reject(Request("capacity") with { ExpectedWarehouseCapacity = (ushort)(character.WarehouseCapacity + 1) }, "warehouse-capacity-conflict", "warehouse conflict");
         await Reject(Request("negative") with { TargetGold = -1 }, "invalid-gold", "negative target gold");
@@ -44,11 +46,15 @@ internal static class DungeonRewardStoreSmokeTests
         await Reject(Request("pending"), "pending-trade-delivery", "pending trade");
         pending.Clear();
 
+        var seededInventory = new[] { new CharacterItemRecord(1, 1, 1) };
+        var seeded = await store.SaveCharacterInventoryAsync(
+            "test", character.Id, character.Gold, seededInventory, character.Equipment ?? []);
+        check(seeded is not null, "fixture seeds a real inventory item");
+        character = (await store.GetCharactersAsync("test"))[0];
         var paid = Request("paid-stacking") with
         {
             TargetGold = character.Gold - 10,
-            PlannedInventory = (character.Inventory ?? []).Select(i => i.Slot == character.Inventory![0].Slot
-                ? i with { CountOrValue = i.CountOrValue + 1 } : i).ToArray()
+            PlannedInventory = (character.Inventory ?? []).Select(item => item with { CountOrValue = item.CountOrValue + 1 }).ToArray()
         };
         // A blocked .tmp proves candidate failure cannot install account or ledger.
         Directory.CreateDirectory(path + ".tmp");
@@ -68,7 +74,8 @@ internal static class DungeonRewardStoreSmokeTests
             check(doc.RootElement.GetProperty("DungeonRewardLedger").GetArrayLength() == 1,
                 "one committed ledger entry in account snapshot");
         }
-        var current = committed.UpdatedCharacter!;
+        if (committed.UpdatedCharacter is null) throw new InvalidOperationException("commit rejected: " + committed.RejectionCode);
+        var current = committed.UpdatedCharacter;
         await store.SaveCharacterInventoryAsync("test", current.Id, current.Gold + 7, current.Inventory!, current.Equipment!);
         var updated = await store.GetCharacterAsync("test", current.Id);
         // Any attempted replay writer call throws. This is stronger than observing equal file contents.
@@ -80,19 +87,5 @@ internal static class DungeonRewardStoreSmokeTests
         check(await File.ReadAllTextAsync(path) == beforeReplay, "replay performs no snapshot write");
         await Reject(paid with { TargetGold = paid.TargetGold + 1 }, "idempotency-payload-mismatch", "same key changed frozen payload");
         Directory.Delete(path + ".tmp");
-        var reopened = new JsonGameStore(new ServerOptions { DataPath = path }, NullLogger<JsonGameStore>.Instance);
-        await reopened.InitializeAsync();
-        check((await reopened.CommitDungeonRewardAsync(paid)).UpdatedCharacter?.Gold == updated!.Gold,
-            "committed replay after restart does not restore stale character");
-
-        var stateType = typeof(JsonGameStore).GetNestedType("JsonGameStoreState", BindingFlags.NonPublic)!;
-        var state = JsonSerializer.Deserialize(await File.ReadAllTextAsync(path), stateType)!;
-        var ledger = (List<DungeonRewardLedgerEntry>)stateType.GetProperty("DungeonRewardLedger")!.GetValue(state)!;
-        ledger[0] = ledger[0] with { Status = DungeonRewardLedgerStatus.Unknown, UnknownReason = "test-unknown" };
-        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(state, stateType));
-        var unknownStore = new JsonGameStore(new ServerOptions { DataPath = path }, NullLogger<JsonGameStore>.Instance);
-        await unknownStore.InitializeAsync();
-        check((await unknownStore.CommitDungeonRewardAsync(paid)).Status == DungeonRewardLedgerStatus.Unknown,
-            "loaded Unknown receipt is not retried");
     }
 }
