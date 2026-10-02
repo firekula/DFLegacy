@@ -1,6 +1,6 @@
 # Store 写事务边界决策
 
-普通写入口通过 SaveLockedAsync 保存正式 JSON；唯一例外为 CommitDungeonRewardAsync 经 SaveSnapshotLockedAsync/_rewardWriter 写候选快照。核查方式：grep JsonGameStore 的 File.Move/File.Create/WriteAllBytes 与 SaveSnapshot 调用。未来新增绕过路径会使证明失效。
+普通写入口通过 SaveLockedAsync 保存正式 JSON；奖励提交与 operator discard 通过 _rewardWriter 特权快照路径写正式 JSON，二者是明确的两条例外。核查方式：grep JsonGameStore 的 File.Move/File.Create/WriteAllBytes 与 SaveSnapshot 调用。未来新增绕过路径会使证明失效。
 
 quarantine 漏斗守卫阻止普通写盘；高风险背包/交易/邮件/密码等入口另有改内存前守卫。其他写入口仅靠漏斗，可能在异常前产生临时内存变化；只读查询不保存。
 

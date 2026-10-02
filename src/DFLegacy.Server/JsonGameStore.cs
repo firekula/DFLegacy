@@ -3282,35 +3282,63 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (File.Exists(StorePath))
-            {
-                var state = JsonSerializer.Deserialize<JsonGameStoreState>(await File.ReadAllTextAsync(StorePath, cancellationToken));
-                var committed = state?.DungeonRewardLedger.Where(x => x.Status == DungeonRewardLedgerStatus.Committed).ToDictionary(x => x.IdempotencyKey);
-                if (committed is not null && _dungeonRewardLedger.Any(x => committed.TryGetValue(x.IdempotencyKey, out var disk) && disk.PayloadFingerprint == x.PayloadFingerprint))
-                {
-                    _accounts = state!.Accounts; _dungeonRewardLedger = state.DungeonRewardLedger; _rewardQuarantined = false;
-                    logger.LogWarning("Reward quarantine recovered; reason={Reason}, decision=Recovered, keys={Keys}", reason, committed.Keys.ToArray());
-                    return new(StoreRecoveryDecision.Recovered, "official-committed-receipt", 0);
-                }
-            }
             var unknown = _dungeonRewardLedger.Where(x => x.Status == DungeonRewardLedgerStatus.Unknown).ToArray();
-            var originalLedger = _dungeonRewardLedger;
-            var discardedLedger = _dungeonRewardLedger.Select(x => x.Status == DungeonRewardLedgerStatus.Unknown ? x with { Status = DungeonRewardLedgerStatus.Rejected, RejectionCode = "operator-discarded", UnknownReason = reason } : x).ToList();
-            try
+            if (!File.Exists(StorePath)) return new(StoreRecoveryDecision.Refused, "official-state-missing", 0);
+            var state = JsonSerializer.Deserialize<JsonGameStoreState>(await File.ReadAllTextAsync(StorePath, cancellationToken))
+                ?? throw new InvalidDataException("Invalid official store state");
+            var allCommitted = unknown.Length > 0 && unknown.All(pending => state.DungeonRewardLedger.Any(disk =>
+                disk.IdempotencyKey == pending.IdempotencyKey && disk.PayloadFingerprint == pending.PayloadFingerprint
+                && disk.Status == DungeonRewardLedgerStatus.Committed));
+            if (allCommitted && !state.DungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown))
             {
-                await WriteRewardStatePrivilegedAsync(_accounts, discardedLedger, cancellationToken);
+                InstallRewardRootLocked(state);
+                logger.LogWarning("Reward quarantine recovered; reason={Reason}, decision=Recovered, keys={Keys}, count={Count}",
+                    reason, unknown.Select(x => x.IdempotencyKey).ToArray(), unknown.Length);
+                return new(StoreRecoveryDecision.Recovered, "official-committed-receipt", 0);
             }
-            catch
+            var discarded = unknown.Where(pending => !state.DungeonRewardLedger.Any(disk =>
+                disk.IdempotencyKey == pending.IdempotencyKey && disk.PayloadFingerprint == pending.PayloadFingerprint
+                && disk.Status == DungeonRewardLedgerStatus.Committed)).ToArray();
+            var alreadyResolved = unknown.Length > 0 && unknown.All(pending => state.DungeonRewardLedger.Any(disk =>
+                disk.IdempotencyKey == pending.IdempotencyKey && disk.PayloadFingerprint == pending.PayloadFingerprint
+                && (disk.Status == DungeonRewardLedgerStatus.Committed ||
+                    disk.Status == DungeonRewardLedgerStatus.Rejected && disk.RejectionCode == "operator-discarded")));
+            if (alreadyResolved && !state.DungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown))
             {
-                _dungeonRewardLedger = originalLedger;
-                throw;
+                InstallRewardRootLocked(state);
+                logger.LogWarning("Reward quarantine resolved from official receipts; reason={Reason}, decision=Discarded, keys={Keys}, count={Count}",
+                    reason, unknown.Select(x => x.IdempotencyKey).ToArray(), unknown.Length);
+                return new(StoreRecoveryDecision.Discarded, reason, discarded.Length);
             }
-            _dungeonRewardLedger = discardedLedger;
-            _rewardQuarantined = false;
+            foreach (var pending in discarded)
+            {
+                state.DungeonRewardLedger.RemoveAll(x => x.IdempotencyKey == pending.IdempotencyKey);
+                state.DungeonRewardLedger.Add(pending with
+                {
+                    Status = DungeonRewardLedgerStatus.Rejected, RejectionCode = "operator-discarded", UnknownReason = reason
+                });
+            }
+            if (state.DungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown))
+                return new(StoreRecoveryDecision.Refused, "unresolved-official-unknown", 0);
+            // Operator privilege: persist only the official root plus rejection decisions while quarantine remains held.
+            var snapshot = JsonSerializer.SerializeToUtf8Bytes(state, new JsonSerializerOptions { WriteIndented = true });
+            await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
+            InstallRewardRootLocked(state);
             logger.LogWarning("Reward quarantine discarded; reason={Reason}, decision=Discarded, keys={Keys}, count={Count}", reason, unknown.Select(x => x.IdempotencyKey).ToArray(), unknown.Length);
             return new(StoreRecoveryDecision.Discarded, reason, unknown.Length);
         }
         finally { _gate.Release(); }
+    }
+
+    private void InstallRewardRootLocked(JsonGameStoreState state)
+    {
+        _nextCharacterNo = state.NextCharacterNo;
+        _nextNormalAccountUid = state.NextNormalAccountUid;
+        _nextTestAccountUid = state.NextTestAccountUid;
+        _fatigueDayKey = state.FatigueDayKey;
+        _accounts = state.Accounts;
+        _dungeonRewardLedger = state.DungeonRewardLedger;
+        _rewardQuarantined = false;
     }
 
     internal async Task<DungeonRewardCommitResult> RecoverDungeonRewardAsync(string idempotencyKey)
@@ -3324,13 +3352,7 @@ public sealed class JsonGameStore(
             var entry = state?.DungeonRewardLedger.FirstOrDefault(x => x.IdempotencyKey == idempotencyKey && x.Status == DungeonRewardLedgerStatus.Committed);
             if (entry is null || expected is null || entry.PayloadFingerprint != expected.PayloadFingerprint)
                 return new(DungeonRewardLedgerStatus.Unknown, null, null, 0, null, "committed-receipt-missing-or-mismatch");
-            _nextCharacterNo = state!.NextCharacterNo;
-            _nextNormalAccountUid = state.NextNormalAccountUid;
-            _nextTestAccountUid = state.NextTestAccountUid;
-            _fatigueDayKey = state.FatigueDayKey;
-            _accounts = state.Accounts;
-            _dungeonRewardLedger = state.DungeonRewardLedger;
-            _rewardQuarantined = false;
+            InstallRewardRootLocked(state!);
             var character = _accounts.SelectMany(x => x.Characters).FirstOrDefault(x => x.Id == entry.CharacterId);
             return new(DungeonRewardLedgerStatus.Committed, character, entry.RewardItemId, entry.GoldDelta, null, null);
         }

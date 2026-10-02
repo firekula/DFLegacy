@@ -76,7 +76,6 @@ internal static class DungeonRewardUnknownSmokeTests
                 await restarted.InitializeAsync();
                 check(await restarted.SaveCharacterInventoryAsync("test", character.Id, character.Gold, character.Inventory ?? [], character.Equipment ?? []) is not null, "discard survives restart");
             }
-            var recovered = await store.RecoverDungeonRewardAsync(request.IdempotencyKey);
             if (stage == FailureStage.AfterReplace)
             {
                 var operatorRecovered = await store.ForceClearRewardQuarantineAsync("operator test");
@@ -85,6 +84,7 @@ internal static class DungeonRewardUnknownSmokeTests
                 var diskAfterRecovery = await File.ReadAllTextAsync(path);
                 check(diskAfterRecovery.Split("unknown-key").Length == 2, "AfterReplace ledger remains single committed entry");
                 check(await store.SaveCharacterInventoryAsync("test", character.Id, request.TargetGold, character.Inventory ?? [], character.Equipment ?? []) is not null, "AfterReplace ordinary write succeeds");
+                var recovered = await store.RecoverDungeonRewardAsync(request.IdempotencyKey);
                 check(recovered.Status == DungeonRewardLedgerStatus.Committed
                     && recovered.UpdatedCharacter?.Gold == request.TargetGold,
                     "after replacement recovery installs official committed state");
@@ -94,6 +94,7 @@ internal static class DungeonRewardUnknownSmokeTests
             }
             else
             {
+                var recovered = await store.RecoverDungeonRewardAsync(request.IdempotencyKey);
                 check(recovered.Status == DungeonRewardLedgerStatus.Unknown,
                     $"{stage}: absent committed receipt cannot clear quarantine");
                 var stillBlocked = false;
