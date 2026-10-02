@@ -48,6 +48,9 @@ internal static class DungeonRewardUnknownSmokeTests
                     character.Gold, character.Inventory ?? [], character.Equipment ?? []);
                 check(savedAfterReload is not null, "pre-replace failure plus unguarded save does not permanently quarantine reload");
             }
+            var rejectedClear = await store.ForceClearRewardQuarantineAsync(" ");
+            check(rejectedClear.Decision == StoreRecoveryDecision.Refused,
+                "blank operator reason refuses without state changes");
             var recovered = await store.RecoverDungeonRewardAsync(request.IdempotencyKey);
             if (stage == FailureStage.AfterReplace)
             {

@@ -459,6 +459,9 @@ public sealed record FatigueResetResult(
     IReadOnlyList<Guid> CharacterIds,
     int FatigueDayKey);
 
+internal enum StoreRecoveryDecision { Recovered, Discarded, Refused }
+internal readonly record struct StoreRecoveryResult(StoreRecoveryDecision Decision, string? Reason, int DiscardedEntryCount);
+
 internal interface IDungeonRewardSnapshotWriter
 {
     Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken);
@@ -708,6 +711,10 @@ public sealed class JsonGameStore(
                 if (stateChanged && !_rewardQuarantined)
                 {
                     await SaveLockedAsync(cancellationToken);
+                }
+                else if (stateChanged && _rewardQuarantined)
+                {
+                    logger.LogWarning("Startup migrations applied in memory but not persisted because reward store is quarantined; restart or rerun migrations after recovery.");
                 }
 
                 return;
@@ -3269,6 +3276,33 @@ public sealed class JsonGameStore(
         }
         finally { _gate.Release(); }
     }
+    internal async Task<StoreRecoveryResult> ForceClearRewardQuarantineAsync(string reason, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) return new(StoreRecoveryDecision.Refused, "reason-required", 0);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (File.Exists(StorePath))
+            {
+                var state = JsonSerializer.Deserialize<JsonGameStoreState>(await File.ReadAllTextAsync(StorePath, cancellationToken));
+                var committed = state?.DungeonRewardLedger.Where(x => x.Status == DungeonRewardLedgerStatus.Committed).ToDictionary(x => x.IdempotencyKey);
+                if (committed is not null && _dungeonRewardLedger.Any(x => committed.TryGetValue(x.IdempotencyKey, out var disk) && disk.PayloadFingerprint == x.PayloadFingerprint))
+                {
+                    _accounts = state!.Accounts; _dungeonRewardLedger = state.DungeonRewardLedger; _rewardQuarantined = false;
+                    logger.LogWarning("Reward quarantine recovered; reason={Reason}, decision=Recovered, keys={Keys}", reason, committed.Keys.ToArray());
+                    return new(StoreRecoveryDecision.Recovered, "official-committed-receipt", 0);
+                }
+            }
+            var unknown = _dungeonRewardLedger.Where(x => x.Status == DungeonRewardLedgerStatus.Unknown).ToArray();
+            _dungeonRewardLedger = _dungeonRewardLedger.Select(x => x.Status == DungeonRewardLedgerStatus.Unknown ? x with { Status = DungeonRewardLedgerStatus.Rejected, RejectionCode = "operator-discarded", UnknownReason = reason } : x).ToList();
+            _rewardQuarantined = false;
+            await SaveLockedAsync(cancellationToken);
+            logger.LogWarning("Reward quarantine discarded; reason={Reason}, decision=Discarded, keys={Keys}, count={Count}", reason, unknown.Select(x => x.IdempotencyKey).ToArray(), unknown.Length);
+            return new(StoreRecoveryDecision.Discarded, reason, unknown.Length);
+        }
+        finally { _gate.Release(); }
+    }
+
     internal async Task<DungeonRewardCommitResult> RecoverDungeonRewardAsync(string idempotencyKey)
     {
         await _gate.WaitAsync();
