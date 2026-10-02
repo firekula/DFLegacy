@@ -17,7 +17,23 @@ internal static class PartyCardAgentAuditSmokeTests
         await CheckAgentTimeoutAuditedAsync(check);
         await CheckContentMismatchAuditedAsync(check);
         await CheckCommitOutcomeAuditedAsync(check);
+        await CheckAgentReceivesSettlementIdAsync(check);
         await CheckForgedReportRejectedAsync(check);
+    }
+
+    /// <summary>
+    /// 代理拿到的结算标识必须是实例在当前这把锁里认下的那一份：会话用它算幂等键，
+    /// 拿错了（例如"局 A 的代次 + 局 B 的标识"）会让本局奖励撞上别的键而永久发不出去。
+    /// </summary>
+    private static async Task CheckAgentReceivesSettlementIdAsync(Action<bool, string> check)
+    {
+        var (instance, a, _, generation) = CreateSettlement();
+        var agent = new Agent(0, DungeonRewardLedgerStatus.Committed);
+        instance.RegisterPartyCardRewardAgent(a, agent);
+        await instance.SettleOwnPartyCardAsync(a, PartyCardType.Free, 0, generation, CancellationToken.None);
+        check(agent.LastSettlementId == instance.PartyCardSettlementId,
+            "the agent is handed the settlement id the instance validated the owner against");
+        check(agent.LastSettlementId != Guid.Empty, "the settlement id is never empty");
     }
 
     private static (DungeonInstance Instance, Guid A, Guid B, long Generation) CreateSettlement(
@@ -187,15 +203,20 @@ internal static class PartyCardAgentAuditSmokeTests
     private sealed class Agent(byte slot, DungeonRewardLedgerStatus status) : IPartyCardRewardAgent
     {
         public int Commits { get; private set; }
+        public Guid LastSettlementId { get; private set; }
         public bool ThrowOnCommit { get; init; }
         public bool ThrowCancellation { get; init; }
         public bool HangOnCommit { get; init; }
         public byte RollColumnOffset { get; init; }
 
-        public PartyCardContent RollOwnColumn(PartyCardType type, byte column, long generation) =>
-            new(type, (byte)(column + RollColumnOffset), slot, new(10, true, 20, 30, null, 40), PartyCardCommitStatus.Pending);
+        public PartyCardContent RollOwnColumn(Guid settlementId, PartyCardType type, byte column, long generation)
+        {
+            LastSettlementId = settlementId;
+            return new(type, (byte)(column + RollColumnOffset), slot, new(10, true, 20, 30, null, 40), PartyCardCommitStatus.Pending);
+        }
 
         public Task<PartyCardCommitOutcome> CommitOwnColumnAsync(
+            Guid settlementId,
             PartyCardType type,
             byte column,
             long generation,

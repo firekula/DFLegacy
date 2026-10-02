@@ -6,8 +6,13 @@ internal enum PartyCardCommitStatus : byte { Pending, Committed, Rejected, Unkno
 internal readonly record struct PartyCardCommitOutcome(DungeonRewardLedgerStatus Status, string? AuditReason);
 internal interface IPartyCardRewardAgent
 {
-    PartyCardContent RollOwnColumn(PartyCardType cardType, byte column, long generation);
-    Task<PartyCardCommitOutcome> CommitOwnColumnAsync(PartyCardType cardType, byte column, long generation, PartyCardContent content, CancellationToken cancellationToken);
+    /// <summary>
+    /// 用**这个成员自己**的参数掷出它那一列的内容（<paramref name="settlementId"/> 是实例在
+    /// 校验归属的同一把锁里给出的本局结算标识，幂等键必须用它，不能用会话当时读到的"当前值"）。
+    /// </summary>
+    PartyCardContent RollOwnColumn(Guid settlementId, PartyCardType cardType, byte column, long generation);
+
+    Task<PartyCardCommitOutcome> CommitOwnColumnAsync(Guid settlementId, PartyCardType cardType, byte column, long generation, PartyCardContent content, CancellationToken cancellationToken);
 }
 internal sealed record PartyCardContent(PartyCardType Type, byte Column, byte PartySlot, DungeonClearRewardRoll Roll, PartyCardCommitStatus Status);
 internal sealed record PartyCardPublishedSnapshot(long Generation, PartyCardSelectionSnapshot Selection, IReadOnlyList<PartyCardContent> Contents)

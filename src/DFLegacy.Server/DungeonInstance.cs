@@ -122,6 +122,7 @@ internal sealed class DungeonInstance(
     {
         IPartyCardRewardAgent? agent;
         byte slot;
+        Guid settlementId;
         lock (Gate)
         {
             if (generation != _partyCards.Generation || !_members.Any(x => x.CharacterId == characterId)) return;
@@ -137,12 +138,15 @@ internal sealed class DungeonInstance(
                 NotePartyCardAudit(generation, type, column, characterId, "agent-missing");
                 return;
             }
+
+            // 结算标识与代次**在同一把锁里**取：会话拿它算幂等键，绝不会把"局 A 的代次"配上"局 B 的标识"。
+            settlementId = _partyCards.SettlementId;
         }
 
         PartyCardContent content;
         try
         {
-            content = agent.RollOwnColumn(type, column, generation);
+            content = agent.RollOwnColumn(settlementId, type, column, generation);
         }
         catch (Exception)
         {
@@ -163,7 +167,7 @@ internal sealed class DungeonInstance(
         try
         {
             // 同步抛出与"返回故障 Task"都算代理异常：两种都要挡住（本地代理是会话实现的，未定义行为不可信）。
-            var commit = agent.CommitOwnColumnAsync(type, column, generation, content, ct);
+            var commit = agent.CommitOwnColumnAsync(settlementId, type, column, generation, content, ct);
             if (commit is null)
             {
                 lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-exception");

@@ -60,7 +60,7 @@ internal static class PartyCardSettlementFlowSmokeTests
     {
         var member = new MemberHarness(store, fixture.Items, character, slot, userName, roll);
         instance.AddMember(new(character.Id, checked((ushort)(slot + 1)), slot, character.Name, _ => ValueTask.CompletedTask));
-        instance.RegisterPartyCardRewardAgent(character.Id, member);
+        instance.RegisterPartyCardRewardAgent(character.Id, member.CreateAgent());
         return member;
     }
 
@@ -244,11 +244,9 @@ internal static class PartyCardSettlementFlowSmokeTests
         CharacterRecord character,
         byte slot,
         string userName,
-        DungeonClearRewardRoll roll) : IPartyCardRewardAgent
+        DungeonClearRewardRoll roll)
     {
         private CharacterRecord _character = character;
-        // 会话侧同样从自己手上的 dungeonInstance 读"本局结算 id"（幂等键的一部分）。
-        private DungeonInstance? _instance;
 
         public Guid CharacterId => _character.Id;
         public byte Slot => slot;
@@ -260,29 +258,20 @@ internal static class PartyCardSettlementFlowSmokeTests
         public List<GameServerPacket> Received { get; } = [];
         public List<PartyCardAuditEntry> Audit { get; } = [];
 
-        public Task<PartyCardSettlementResult> SettleAutomaticAsync(DungeonInstance instance, bool alreadySettled = false)
-        {
-            _instance = instance;
-            return PartyCardSettlementFlow.SettleAutomaticFreeCardAsync(
+        public Task<PartyCardSettlementResult> SettleAutomaticAsync(DungeonInstance instance, bool alreadySettled = false) =>
+            PartyCardSettlementFlow.SettleAutomaticFreeCardAsync(
                 instance, CharacterId, alreadySettled, "smoke",
                 DeliverToSelf, BroadcastToPeers, Audit.Add, CancellationToken.None);
-        }
 
-        public Task<PartyCardSettlementResult> PickFreeCardAsync(DungeonInstance instance, byte column)
-        {
-            _instance = instance;
-            return PartyCardSettlementFlow.PickFreeCardAsync(
+        public Task<PartyCardSettlementResult> PickFreeCardAsync(DungeonInstance instance, byte column) =>
+            PartyCardSettlementFlow.PickFreeCardAsync(
                 instance, CharacterId, column, "smoke",
                 DeliverToSelf, BroadcastToPeers, Audit.Add, CancellationToken.None);
-        }
 
-        public Task<PartyCardSettlementResult> BuyPaidCardAsync(DungeonInstance instance, byte column, bool canAfford)
-        {
-            _instance = instance;
-            return PartyCardSettlementFlow.BuyPaidCardAsync(
+        public Task<PartyCardSettlementResult> BuyPaidCardAsync(DungeonInstance instance, byte column, bool canAfford) =>
+            PartyCardSettlementFlow.BuyPaidCardAsync(
                 instance, CharacterId, column, () => canAfford, "smoke",
                 DeliverToSelf, BroadcastToPeers, Audit.Add, CancellationToken.None);
-        }
 
         private Task DeliverToSelf(GameServerPacket packet)
         {
@@ -300,10 +289,15 @@ internal static class PartyCardSettlementFlowSmokeTests
             return Task.CompletedTask;
         }
 
-        public PartyCardContent RollOwnColumn(PartyCardType type, byte column, long generation) =>
+        public PartyCardContent RollOwnColumn(Guid settlementId, PartyCardType type, byte column, long generation) =>
             new(type, column, slot, roll, PartyCardCommitStatus.Pending);
 
+        /// <summary>生产那一份会话代理适配器（会话侧同一个类型），把两件事交回"它自己的会话"。</summary>
+        public IPartyCardRewardAgent CreateAgent() =>
+            new SessionPartyCardRewardAgent(CharacterId, RollOwnColumn, CommitOwnColumnAsync);
+
         public async Task<PartyCardCommitOutcome> CommitOwnColumnAsync(
+            Guid settlementId,
             PartyCardType type,
             byte column,
             long generation,
@@ -317,32 +311,30 @@ internal static class PartyCardSettlementFlowSmokeTests
             }
 
             var expectedGold = _character.Gold;
-            var targetGold = type == PartyCardType.Free
-                ? expectedGold + (int)roll.FreeGoldAmount
-                : expectedGold - (int)roll.GoldCardCost;
-            IReadOnlyList<ushort?> itemIds = type == PartyCardType.Free
-                ? [roll.FreeItemId, roll.PremiumItemId]
-                : [roll.GoldItemId];
-            var plan = ClearRewardGrantPlanner.Plan(
+            // 走**生产**那一份落库机制（会话侧同一个调用）：内容与基线全部来自这个成员自己。
+            var commit = await PartyCardOwnColumnCommitter.CommitAsync(
+                store,
+                userName,
+                _character,
+                slot,
+                type,
+                column,
+                generation,
+                settlementId,
+                roll,
+                expectedGold,
                 _character.Inventory?.ToDictionary(item => item.Slot) ?? [],
+                (_character.Equipment ?? []).ToArray(),
                 _character.WarehouseCapacity,
-                targetGold,
-                itemIds,
                 inventoryWeightLimit: 100_000,
-                itemCatalog);
-            var request = ClearRewardGrantPlanner.BuildCommitRequest(
-                ClearRewardGrantPlanner.IdempotencyKey(_instance!.PartyCardSettlementId, CharacterId, type, column),
-                userName, CharacterId, generation, slot, type, column,
-                expectedGold, targetGold,
-                (_character.Inventory ?? []).ToArray(), (_character.Equipment ?? []).ToArray(),
-                _character.WarehouseCapacity, plan);
-            var result = await store.CommitDungeonRewardAsync(request, cancellationToken);
-            if (result.Status == DungeonRewardLedgerStatus.Committed && result.UpdatedCharacter is { } updated)
+                itemCatalog,
+                cancellationToken);
+            if (commit.InstalledCharacter is { } installed)
             {
-                _character = updated;
+                _character = installed;
             }
 
-            return new PartyCardCommitOutcome(result.Status, result.RejectionCode);
+            return commit.Outcome;
         }
     }
 }

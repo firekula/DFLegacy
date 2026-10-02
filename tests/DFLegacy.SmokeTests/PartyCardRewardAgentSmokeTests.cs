@@ -27,8 +27,8 @@ internal static class PartyCardRewardAgentSmokeTests
     private sealed class Agent(byte slot, DungeonRewardLedgerStatus status) : IPartyCardRewardAgent
     {
         public int Commits { get; private set; }
-        public PartyCardContent RollOwnColumn(PartyCardType type, byte column, long generation) => new(type, column, slot, new(10, true, 20, 30, null, 40), PartyCardCommitStatus.Pending);
-        public Task<PartyCardCommitOutcome> CommitOwnColumnAsync(PartyCardType type, byte column, long generation, PartyCardContent content, CancellationToken ct)
+        public PartyCardContent RollOwnColumn(Guid settlementId, PartyCardType type, byte column, long generation) => new(type, column, slot, new(10, true, 20, 30, null, 40), PartyCardCommitStatus.Pending);
+        public Task<PartyCardCommitOutcome> CommitOwnColumnAsync(Guid settlementId, PartyCardType type, byte column, long generation, PartyCardContent content, CancellationToken ct)
         {
             Commits++;
             return Task.FromResult(new PartyCardCommitOutcome(status, null));
