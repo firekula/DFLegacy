@@ -16,6 +16,42 @@ internal static class PartyCardEntryPointSmokeTests
         CheckSoloStaysInactive(check);
         CheckOwnColumnLookup(check);
         CheckPaidItemsMapping(check);
+        CheckSoloPacketLayoutUnchanged(check);
+    }
+
+    /// <summary>
+    /// R6：单人路径继续用会话本地那一个构图器（<c>CreateSelectCardReply(freeCardIndex, goldCardIndex, …)</c>），
+    /// 字节形状一字不变 —— 组队的新构图器是**另一个重载**，新增逻辑一律 IsParty 门控。
+    /// </summary>
+    private static void CheckSoloPacketLayoutUnchanged(Action<bool, string> check)
+    {
+        var free = DFLegacy.Protocol.GameProtocolEngine.CreateSelectCardReply(
+            freeCardIndex: 1,
+            goldCardIndex: null,
+            goldRewardRevealed: false,
+            goldRewardItemId: null,
+            localPartyIndex: 0);
+        check(free.Payload.SequenceEqual(new byte[]
+            {
+                1,
+                0xFF, 0xFF, 0, 0, 0xFF, 0, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0
+            }),
+            "solo free-card CMD 74 keeps its exact 13-byte layout");
+
+        var paid = DFLegacy.Protocol.GameProtocolEngine.CreateSelectCardReply(
+            freeCardIndex: null,
+            goldCardIndex: 2,
+            goldRewardRevealed: true,
+            goldRewardItemId: 4321,
+            localPartyIndex: 0);
+        check(paid.Payload.SequenceEqual(new byte[]
+            {
+                1,
+                0xFF, 0xFF, 0, 0xFF, 0xFF, 0,
+                0xFF, 0x00, 2, 0, 0, 0, 0, 0, 0, 0xE1, 0x10, 0, 0, 0, 0,
+                0xFF, 0xFF, 0
+            }),
+            "solo paid-card CMD 74 keeps its exact 23-byte layout");
     }
 
     private static (DungeonInstance Instance, Guid A, Guid B) CreateParty()
