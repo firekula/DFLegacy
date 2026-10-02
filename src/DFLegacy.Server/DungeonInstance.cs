@@ -71,10 +71,398 @@ internal sealed class DungeonInstance(
     Guid soloCharacterId,
     DungeonCatalog catalog,
     ItemCatalog itemCatalog,
-    TimeSpan? doorGrace = null)
+    TimeSpan? doorGrace = null,
+    TimeSpan? partyCardAgentTimeout = null)
 {
     private readonly List<DungeonInstanceMember> _members = [];
     private readonly DungeonRunState _run = new(catalog);
+    private readonly PartyCardSelectionState _partyCards = new();
+    private readonly Dictionary<(PartyCardType Type, byte Column, byte Slot), PartyCardContent> _partyCardContent = [];
+    private long _partyContentGeneration;
+    private readonly HashSet<(PartyCardType Type, byte Column, byte Slot)> _partyPublishedOwners = [];
+    private readonly Dictionary<Guid, byte> _partySettlementSlots = [];
+    private readonly Dictionary<Guid, IPartyCardRewardAgent> _partyCardAgents = [];
+    private readonly HashSet<(long Generation, PartyCardType Type, byte Column, Guid CharacterId)> _partyCardAttempts = [];
+    private readonly List<PartyCardAuditEntry> _partyCardAudit = [];
+    // "这一局结算的翻牌代次已经开着"：会话侧 EnsurePartyCardSettlement 的幂等闸门。
+    // 决不能让同一局里第二个到达的会话重开代次（会清掉已发布的归属）。
+    private bool _partyCardSettlementOpen;
+    // 代理在一次归属预留里的等待上限：超过即视为 Unknown（不发布、不重试、留审计）。
+    // 它只用来**别把发包会话钉死在一个卡住的代理上**；正常本地提交是毫秒级。
+    private readonly TimeSpan _partyCardAgentTimeout = partyCardAgentTimeout ?? TimeSpan.FromSeconds(5);
+
+    /// <summary>取走并清空审计（会话在出锁后写日志；测试用它断言"不重试、不发布、留痕"）。</summary>
+    internal IReadOnlyList<PartyCardAuditEntry> DrainPartyCardAudit()
+    {
+        lock (Gate)
+        {
+            if (_partyCardAudit.Count == 0)
+            {
+                return [];
+            }
+
+            var drained = _partyCardAudit.ToArray();
+            _partyCardAudit.Clear();
+            return drained;
+        }
+    }
+
+    /// <summary>
+    /// 审计条目必须写**产生它的那一刻**的结算标识：迟到结果（超时之后才回来）可能已经跨了一次
+    /// 结算重开，此时读"当前值"会把新结算的 id 配上旧代次（评审 N2）。
+    /// </summary>
+    private void NotePartyCardAudit(Guid settlementId, long generation, PartyCardType type, byte column, Guid characterId, string reason)
+        => _partyCardAudit.Add(new PartyCardAuditEntry(settlementId, generation, type, column, characterId, reason));
+
+    internal void RegisterPartyCardRewardAgent(Guid characterId, IPartyCardRewardAgent agent)
+    {
+        lock (Gate)
+        {
+            if (IsParty && _members.Any(x => x.CharacterId == characterId)) _partyCardAgents[characterId] = agent;
+        }
+    }
+
+    internal async Task SettleOwnPartyCardAsync(Guid characterId, PartyCardType type, byte column, long generation, CancellationToken ct)
+    {
+        IPartyCardRewardAgent? agent;
+        byte slot;
+        Guid settlementId;
+        lock (Gate)
+        {
+            if (generation != _partyCards.Generation || !_members.Any(x => x.CharacterId == characterId)) return;
+            var owners = _partyCards.Snapshot();
+            slot = _partySettlementSlots.GetValueOrDefault(characterId, byte.MaxValue);
+            var owner = type == PartyCardType.Free ? owners.FreeOwners.ElementAtOrDefault(column) : owners.PaidOwners.ElementAtOrDefault(column);
+            // 归属校验在**调用代理之前**：只有这一列的归属成员自己的会话能推进它（R1′）。
+            if (column >= 4 || owner != slot) return;
+            // 结算标识与代次**在同一把锁里**取：会话拿它算幂等键，审计条目也用它，
+            // 绝不会把"局 A 的代次"配上"局 B 的标识"。
+            settlementId = _partyCards.SettlementId;
+            // 一次预留只尝试一次：失败（异常/取消/超时/Unknown）绝不重试（R4）。
+            if (!_partyCardAttempts.Add((generation, type, column, characterId))) return;
+            if (!_partyCardAgents.TryGetValue(characterId, out agent))
+            {
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-missing");
+                return;
+            }
+        }
+
+        PartyCardContent content;
+        try
+        {
+            content = agent.RollOwnColumn(settlementId, type, column, generation);
+        }
+        catch (Exception)
+        {
+            lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-exception");
+            return;
+        }
+
+        if (content is null
+            || content.Type != type
+            || content.Column != column
+            || content.PartySlot != slot)
+        {
+            lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-content-mismatch");
+            return;
+        }
+
+        PartyCardCommitOutcome outcome;
+        try
+        {
+            // 同步抛出与"返回故障 Task"都算代理异常：两种都要挡住（本地代理是会话实现的，未定义行为不可信）。
+            var commit = agent.CommitOwnColumnAsync(settlementId, type, column, generation, content, ct);
+            if (commit is null)
+            {
+                lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-exception");
+                return;
+            }
+
+            // 有界等待：代理卡住不能把发包会话一起钉死；超时按 Unknown 处理（不发布、不重试、留审计）。
+            var finished = await Task.WhenAny(commit, Task.Delay(_partyCardAgentTimeout));
+            if (finished != commit)
+            {
+                lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-timeout");
+                // 超时**不等于没落库**：会话那一侧仍在等这次提交，它可能已经把奖励写进存档并采用结果。
+                // 放弃等待但**不放弃结果**：迟到完成时照常上报（代次/归属会在上报里再校验一次），
+                // 并留一条带真实结果的审计 —— 否则审计写着"超时未提交"、存档里却已经发了奖励，
+                // 运维照审计去补发就会发出第二份。
+                ObserveLateAgentCommit(commit, settlementId, characterId, type, column, generation, content);
+                return;
+            }
+
+            outcome = await commit;
+        }
+        catch (OperationCanceledException)
+        {
+            lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-cancelled");
+            return;
+        }
+        catch (Exception)
+        {
+            lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-exception");
+            return;
+        }
+
+        ReportPartyCardCommitFromAgent(settlementId, characterId, type, column, generation, content, outcome);
+    }
+
+    /// <summary>
+    /// 超时之后接管在飞的那次代理提交：完成后按**真实结果**上报（代次/归属仍会被校验，
+    /// 已失效的结算只会留下 <c>report-rejected</c>），并留一条 <c>agent-timeout-late-*</c> 审计。
+    /// 这条路径不是"重试"：它只观察那一次已经发生的提交。
+    /// </summary>
+    private void ObserveLateAgentCommit(
+        Task<PartyCardCommitOutcome> commit,
+        Guid settlementId,
+        Guid characterId,
+        PartyCardType type,
+        byte column,
+        long generation,
+        PartyCardContent content)
+    {
+        _ = ObserveAsync();
+
+        async Task ObserveAsync()
+        {
+            PartyCardCommitOutcome lateOutcome;
+            try
+            {
+                lateOutcome = await commit;
+            }
+            catch (OperationCanceledException)
+            {
+                lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-timeout-late-cancelled");
+                return;
+            }
+            catch (Exception exception)
+            {
+                lock (Gate)
+                {
+                    NotePartyCardAudit(
+                        settlementId,
+                        generation,
+                        type,
+                        column,
+                        characterId,
+                        $"agent-timeout-late-failure:{exception.GetType().Name}");
+                }
+                return;
+            }
+
+            lock (Gate)
+            {
+                NotePartyCardAudit(
+                    settlementId,
+                    generation,
+                    type,
+                    column,
+                    characterId,
+                    $"agent-timeout-late-{lateOutcome.Status.ToString().ToLowerInvariant()}");
+            }
+            ReportPartyCardCommitFromAgent(settlementId, characterId, type, column, generation, content, lateOutcome);
+        }
+    }
+
+    /// <summary>强制开新代次（模型/测试用；会话侧一律走幂等的 <see cref="EnsurePartyCardSettlement"/>）。</summary>
+    internal long BeginPartyCardSettlement()
+    {
+        lock (Gate)
+        {
+            if (!IsParty) return 0;
+            return OpenPartyCardSettlementLocked();
+        }
+    }
+
+    private bool ReportPartyCardCommitFromAgent(Guid settlementId, Guid characterId, PartyCardType type, byte column, long generation, PartyCardContent content, PartyCardCommitOutcome outcome)
+    {
+        lock (Gate)
+        {
+            if (generation != _partyContentGeneration || generation != _partyCards.Generation || !_members.Any(m => m.CharacterId == characterId))
+            {
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "report-rejected");
+                return false;
+            }
+
+            var owners = _partyCards.Snapshot();
+            if (!_partySettlementSlots.TryGetValue(characterId, out var memberSlot))
+            {
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "report-rejected");
+                return false;
+            }
+
+            var owner = type switch
+            {
+                PartyCardType.Free when column < 4 => owners.FreeOwners[column],
+                PartyCardType.Paid when column < 4 => owners.PaidOwners[column],
+                _ => PartyCardSelectionState.Unassigned
+            };
+            if (owner == PartyCardSelectionState.Unassigned || owner != memberSlot)
+            {
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "report-rejected");
+                return false;
+            }
+
+            var key = (type, column, owner);
+            var commitStatus = outcome.Status switch
+            {
+                DungeonRewardLedgerStatus.Committed => PartyCardCommitStatus.Committed,
+                DungeonRewardLedgerStatus.Rejected => PartyCardCommitStatus.Rejected,
+                _ => PartyCardCommitStatus.Unknown
+            };
+            if (_partyCardContent.ContainsKey(key)
+                || content.Type != type
+                || content.Column != column
+                || content.PartySlot != owner)
+            {
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "report-rejected");
+                return false;
+            }
+
+            if (commitStatus == PartyCardCommitStatus.Rejected)
+            {
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "commit-rejected");
+            }
+            else if (commitStatus == PartyCardCommitStatus.Unknown)
+            {
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "commit-unknown");
+            }
+
+            _partyCardContent[key] = content with { Status = commitStatus };
+            return true;
+        }
+    }
+
+    internal bool TryTakePartyCardPublication(long generation, out PartyCardPublishedSnapshot? snapshot)
+    {
+        lock (Gate)
+        {
+            snapshot = null;
+            if (generation != _partyContentGeneration || generation != _partyCards.Generation) return false;
+            var owners = _partyCards.Snapshot();
+            var free = (byte[])owners.FreeOwners.Clone();
+            var paid = (byte[])owners.PaidOwners.Clone();
+            var newlyPublished = new List<(PartyCardType Type, byte Column, byte Slot)>();
+            for (byte column = 0; column < 4; column++)
+            {
+                foreach (var type in new[] { PartyCardType.Free, PartyCardType.Paid })
+                {
+                    var slot = type == PartyCardType.Free ? free[column] : paid[column];
+                    if (slot == PartyCardSelectionState.Unassigned || _partyPublishedOwners.Contains((type, column, slot))) continue;
+                    var key = (type, column, slot);
+                    if (!_partyCardContent.TryGetValue(key, out var content) || content.Status is PartyCardCommitStatus.Pending or PartyCardCommitStatus.Unknown)
+                    {
+                        if (type == PartyCardType.Free) free[column] = PartyCardSelectionState.Unassigned; else paid[column] = PartyCardSelectionState.Unassigned;
+                        continue;
+                    }
+                    newlyPublished.Add(key);
+                }
+            }
+            if (newlyPublished.Count == 0) return false;
+            foreach (var key in newlyPublished) _partyPublishedOwners.Add(key);
+            snapshot = new PartyCardPublishedSnapshot(generation, new PartyCardSelectionSnapshot(generation, owners.AutoCompleted, free, paid, owners.MemberSlots), _partyCardContent.Values.ToArray());
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 会话侧入口：确保"这一局结算"的翻牌代次已经打开，返回该代次（单人 → 0 = 模型不参与）。
+    /// **幂等**：同一局里第二个到达的会话拿到同一代次，绝不重开（重开会清空归属与内容，
+    /// 而客户端的卡位 owner 是首写不覆盖 —— 已发布的列被清掉就永久错位）。
+    /// 生命周期失效（开局/换房/停局）后再调用会开新代次。
+    /// </summary>
+    internal long EnsurePartyCardSettlement()
+    {
+        lock (Gate)
+        {
+            if (!IsParty) return 0;
+            if (_partyCardSettlementOpen) return _partyCards.Generation;
+            return OpenPartyCardSettlementLocked();
+        }
+    }
+
+    /// <summary>
+    /// 开新代次（调用方必须已持 <see cref="Gate"/>）：清空归属/内容/已发布集合/尝试集合与槽位映射。
+    /// 与 <see cref="BeginPartyCardSettlement"/> 同一份语义，只是多了"这一局已经开着"的标志。
+    /// </summary>
+    private long OpenPartyCardSettlementLocked()
+    {
+        _partyContentGeneration = _partyCards.Begin(_members);
+        _partyCardContent.Clear();
+        _partySettlementSlots.Clear();
+        foreach (var member in _members) _partySettlementSlots[member.CharacterId] = member.PartySlot;
+        _partyPublishedOwners.Clear();
+        _partyCardAttempts.Clear();
+        _partyCardSettlementOpen = true;
+        return _partyContentGeneration;
+    }
+
+    /// <summary>
+    /// 开局 / 换房 / 停局的失效点：把"这一局已经开着"的标志一并清掉，
+    /// 否则下一局的 <see cref="EnsurePartyCardSettlement"/> 会拿到一个已经作废的代次。
+    /// </summary>
+    private void InvalidatePartyCardSettlementLocked()
+    {
+        _partyCards.Invalidate();
+        _partyCardSettlementOpen = false;
+    }
+
+    /// <summary>
+    /// 本局结算的全局唯一 id（幂等键的一部分）：代次号只在实例内有意义，跨局会重复。
+    /// </summary>
+    internal Guid PartyCardSettlementId
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _partyCards.SettlementId;
+            }
+        }
+    }
+
+    /// <summary>本会话（这个角色）在指定卡型上的归属列；没有归属 → false（会话据此审计，绝不自己挑列）。</summary>
+    internal bool TryGetOwnPartyCardColumn(Guid characterId, PartyCardType type, out byte column)
+    {
+        lock (Gate)
+        {
+            column = PartyCardSelectionState.Unassigned;
+            if (type is not (PartyCardType.Free or PartyCardType.Paid)
+                || !_partySettlementSlots.TryGetValue(characterId, out var slot)
+                || !_members.Any(member => member.CharacterId == characterId))
+            {
+                return false;
+            }
+
+            var owners = _partyCards.Snapshot();
+            var table = type == PartyCardType.Free ? owners.FreeOwners : owners.PaidOwners;
+            for (byte index = 0; index < 4; index++)
+            {
+                if (table[index] == slot)
+                {
+                    column = index;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    internal PartyCardSelectionOutcome TryReservePartyCard(Guid characterId, PartyCardType type, byte column, long generation)
+    {
+        lock (Gate) return _partyCards.TryReserve(characterId, type, column, generation);
+    }
+
+    internal PartyCardSelectionOutcome CompletePartyCardSelection(long generation)
+    {
+        lock (Gate) return _partyCards.CompleteAuto(generation);
+    }
+
+    internal PartyCardSelectionSnapshot SnapshotPartyCards()
+    {
+        lock (Gate) return _partyCards.Snapshot().Copy();
+    }
 
     // 本房间"已加载"的成员（官方 `CParty::loaded[]`，party+892+i 的等价物）：
     // 过图 / 入场时清零，成员发 CMD 40（FINISH_LOADING）时置位；**全员齐了才向全队广播 NOTI 30**
@@ -211,6 +599,8 @@ internal sealed class DungeonInstance(
             }
 
             _loadedMembers.Remove(characterId);
+            _partyCards.RemoveMember(characterId);
+            _partyCardAgents.Remove(characterId);
             _settlementReturnDeadlines.Remove(characterId);
             _announcedSettlementCountdowns.Remove(characterId);
             Version++;
@@ -482,6 +872,7 @@ internal sealed class DungeonInstance(
             return false;
         }
 
+        InvalidatePartyCardSettlementLocked();
         DungeonOption = dungeonOption;
         Layout = layout;
         ClearEnabled = false;
@@ -501,6 +892,7 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
+            InvalidatePartyCardSettlementLocked();
             _detachedRoom = room;
             Layout = null;
             DungeonOption = 0;
@@ -530,6 +922,7 @@ internal sealed class DungeonInstance(
                 return false;
             }
 
+            InvalidatePartyCardSettlementLocked();
             // 与改造前 CMD 48 的行为一致：换房间清掉"本房间"的临时集合与开放标记。
             ClearEnabled = false;
             LastRoomEntryWasFirstVisit = transition.FirstVisit;
@@ -781,6 +1174,7 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
+            InvalidatePartyCardSettlementLocked();
             _detachedRoom = null;
             Layout = null;
             DungeonOption = 0;

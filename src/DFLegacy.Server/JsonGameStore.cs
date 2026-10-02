@@ -459,6 +459,24 @@ public sealed record FatigueResetResult(
     IReadOnlyList<Guid> CharacterIds,
     int FatigueDayKey);
 
+internal enum StoreRecoveryDecision { Recovered, Discarded, Refused }
+internal readonly record struct StoreRecoveryResult(StoreRecoveryDecision Decision, string? Reason, int DiscardedEntryCount);
+
+internal interface IDungeonRewardSnapshotWriter
+{
+    Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken);
+}
+
+internal sealed class DungeonRewardSnapshotWriter : IDungeonRewardSnapshotWriter
+{
+    public async Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllBytesAsync(path + ".tmp", snapshot.ToArray(), cancellationToken);
+        File.Move(path + ".tmp", path, overwrite: true);
+    }
+}
+
 public sealed class JsonGameStore(
     ServerOptions options,
     ILogger<JsonGameStore> logger,
@@ -576,6 +594,12 @@ public sealed class JsonGameStore(
     ];
 
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly IDungeonRewardSnapshotWriter _rewardWriter = new DungeonRewardSnapshotWriter();
+    private bool _rewardQuarantined;
+
+    internal JsonGameStore(ServerOptions options, ILogger<JsonGameStore> logger, IDungeonRewardSnapshotWriter writer,
+        CharacterExperienceCatalog? experienceCatalog = null, ItemCatalog? itemCatalog = null, CharacterStatCatalog? statCatalog = null)
+        : this(options, logger, experienceCatalog, itemCatalog, statCatalog) => _rewardWriter = writer;
 
     // 交易交付守门：一笔交易落库后，两个角色在各自会话安装新状态之前，
     // 拒绝任何"把调用方内存里的背包整份写回"的盲写保存——否则被动方会话会
@@ -587,6 +611,7 @@ public sealed class JsonGameStore(
     private uint _nextNormalAccountUid = AccountUidRules.NormalUidStart;
     private uint _nextTestAccountUid = 1;
     private int _fatigueDayKey;
+    private List<DungeonRewardLedgerEntry> _dungeonRewardLedger = [];
 
     private sealed class JsonGameStoreState
     {
@@ -595,6 +620,7 @@ public sealed class JsonGameStore(
         public uint NextNormalAccountUid { get; set; } = AccountUidRules.NormalUidStart;
         public uint NextTestAccountUid { get; set; } = 1;
         public int FatigueDayKey { get; set; }
+        public List<DungeonRewardLedgerEntry> DungeonRewardLedger { get; set; } = [];
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
@@ -659,6 +685,8 @@ public sealed class JsonGameStore(
                         ? 1
                         : state.NextTestAccountUid;
                     _fatigueDayKey = state.FatigueDayKey;
+                    _dungeonRewardLedger = state.DungeonRewardLedger ?? [];
+                    _rewardQuarantined = _dungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown);
                 }
 
                 stateChanged |= MigrateIdentityLocked();
@@ -680,9 +708,13 @@ public sealed class JsonGameStore(
                         _fatigueDayKey,
                         startupResetCharacterIds.Length);
                 }
-                if (stateChanged)
+                if (stateChanged && !_rewardQuarantined)
                 {
                     await SaveLockedAsync(cancellationToken);
+                }
+                else if (stateChanged && _rewardQuarantined)
+                {
+                    logger.LogWarning("Startup migrations applied in memory but not persisted because reward store is quarantined; restart or rerun migrations after recovery.");
                 }
 
                 return;
@@ -1503,6 +1535,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             var accountIndex = _accounts.FindIndex(account =>
                 string.Equals(account.UserName, userName.Trim(), StringComparison.OrdinalIgnoreCase));
             if (accountIndex < 0
@@ -1550,6 +1583,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             var accountIndex = _accounts.FindIndex(account =>
                 string.Equals(account.UserName, userName.Trim(), StringComparison.OrdinalIgnoreCase));
             if (accountIndex < 0
@@ -1815,6 +1849,8 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_rewardQuarantined)
+                throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
             if (_accounts.Any(x => string.Equals(x.UserName, userName, StringComparison.OrdinalIgnoreCase)))
             {
                 return (false, null, "账号已存在。");
@@ -2595,6 +2631,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(senderCharacterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -2737,6 +2774,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             foreach (var account in _accounts)
             {
                 var characterIndex = account.Characters.FindIndex(character =>
@@ -2788,6 +2826,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -2877,6 +2916,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             foreach (var account in _accounts)
             {
                 var characterIndex = account.Characters.FindIndex(character =>
@@ -2922,6 +2962,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             foreach (var account in _accounts)
             {
                 var characterIndex = account.Characters.FindIndex(character =>
@@ -3189,6 +3230,160 @@ public sealed class JsonGameStore(
         }
     }
 
+    // Trusted server reward planner contract; not exposed as a network mutation API.
+    internal async Task<DungeonRewardCommitResult> CommitDungeonRewardAsync(DungeonRewardCommitRequest request, CancellationToken cancellationToken = default)
+    {
+        var expectedInventory = request.ExpectedInventory?.ToArray(); var expectedEquipment = request.ExpectedEquipment?.ToArray(); var plannedInventory = request.PlannedInventory?.ToArray(); var plannedEquipment = request.PlannedEquipment?.ToArray(); var mails = request.GeneratedMails?.ToArray();
+        if (expectedInventory is null || expectedEquipment is null || plannedInventory is null || plannedEquipment is null || mails is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-request", null);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var frozenRequest = request with { ExpectedInventory = expectedInventory, ExpectedEquipment = expectedEquipment, PlannedInventory = plannedInventory, PlannedEquipment = plannedEquipment, GeneratedMails = mails };
+            var fingerprint = ComputeDungeonRewardFingerprint(frozenRequest);
+            if (fingerprint.Length == 0 || string.IsNullOrWhiteSpace(request.IdempotencyKey)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-request", null);
+            if (string.IsNullOrWhiteSpace(request.PayloadFingerprint) || !string.Equals(request.PayloadFingerprint, fingerprint, StringComparison.OrdinalIgnoreCase)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "payload-fingerprint-mismatch", null);
+            var prior = _dungeonRewardLedger.FirstOrDefault(x => x.IdempotencyKey == request.IdempotencyKey);
+            if (prior is not null) { if (prior.PayloadFingerprint != fingerprint) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "idempotency-payload-mismatch", null); var c = _accounts.SelectMany(a => a.Characters).FirstOrDefault(x => x.Id == request.CharacterId); return new(prior.Status, c, prior.RewardItemId, prior.GoldDelta, prior.RejectionCode, prior.UnknownReason); }
+            if (_rewardQuarantined)
+                return new(DungeonRewardLedgerStatus.Unknown, null, null, 0, null, "store-quarantined");
+            if (request.TargetGold < 0 || request.ExpectedGold < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-gold", null);
+            if (plannedInventory.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedEquipment.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedInventory.Any(x => x.ItemId == 0) || plannedEquipment.Any(x => x.ItemId == 0)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
+            var account = _accounts.FirstOrDefault(a => string.Equals(a.UserName, request.UserName, StringComparison.OrdinalIgnoreCase)); var index = account?.Characters.FindIndex(x => x.Id == request.CharacterId) ?? -1; if (account is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "account-not-found", null); if (index < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-not-found", null); if (_pendingTradeDeliveries.ContainsKey(request.CharacterId)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "pending-trade-delivery", null);
+            var current = account.Characters[index];
+            if (current.Gold != request.ExpectedGold || !ItemsEqual(current.Inventory, expectedInventory) || !ItemsEqual(current.Equipment, expectedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-state-conflict", null);
+            if (!InventoryPlanPreservesBaseline(current.Inventory, plannedInventory) || !ItemsEqual(current.Equipment, plannedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
+            if (!TryResolveWarehouseCapacityUpdate(current, request.WarehouseCapacity, request.ExpectedWarehouseCapacity, out var capacity)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "warehouse-capacity-conflict", null);
+            if (!TryAppendGeneratedMailsLocked(current, mails, out var mailbox, out _, out var generated)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-mails", null); capacity = Math.Max(capacity, generated);
+            var accounts = JsonSerializer.Deserialize<List<AccountRecord>>(JsonSerializer.Serialize(_accounts))!; var updated = current with { Gold = request.TargetGold, Inventory = plannedInventory.OrderBy(x => x.Slot).ToList(), Equipment = plannedEquipment.OrderBy(x => x.Slot).ToList(), Mailbox = mailbox, WarehouseCapacity = capacity }; accounts.First(a => a.Id == account.Id).Characters[index] = updated; var now = DateTimeOffset.UtcNow; var entry = new DungeonRewardLedgerEntry(request.IdempotencyKey, fingerprint, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, DungeonRewardLedgerStatus.Committed, now, now, null, request.TargetGold - current.Gold, null, null); var ledger = new List<DungeonRewardLedgerEntry>(_dungeonRewardLedger) { entry }; 
+            try
+            {
+                await WriteRewardStatePrivilegedAsync(accounts, ledger, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _rewardQuarantined = true;
+                _dungeonRewardLedger.Add(entry with
+                {
+                    Status = DungeonRewardLedgerStatus.Unknown,
+                    UnknownReason = $"snapshot-write: {ex.GetType().Name}: {ex.Message}"
+                });
+                return new(DungeonRewardLedgerStatus.Unknown, null, null, 0, null,
+                    _dungeonRewardLedger[^1].UnknownReason);
+            }
+            _accounts = accounts;
+            _dungeonRewardLedger = ledger;
+            return new(DungeonRewardLedgerStatus.Committed, updated, null, entry.GoldDelta, null, null);
+        }
+        finally { _gate.Release(); }
+    }
+    internal async Task<StoreRecoveryResult> ForceClearRewardQuarantineAsync(string reason, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) return new(StoreRecoveryDecision.Refused, "reason-required", 0);
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var unknown = _dungeonRewardLedger.Where(x => x.Status == DungeonRewardLedgerStatus.Unknown).ToArray();
+            if (!File.Exists(StorePath)) return new(StoreRecoveryDecision.Refused, "official-state-missing", 0);
+            var state = JsonSerializer.Deserialize<JsonGameStoreState>(await File.ReadAllTextAsync(StorePath, cancellationToken))
+                ?? throw new InvalidDataException("Invalid official store state");
+            unknown = unknown.Concat(state.DungeonRewardLedger.Where(x => x.Status == DungeonRewardLedgerStatus.Unknown))
+                .GroupBy(x => x.IdempotencyKey).Select(x => x.Last()).ToArray();
+            var allCommitted = unknown.Length > 0 && unknown.All(pending => state.DungeonRewardLedger.Any(disk =>
+                disk.IdempotencyKey == pending.IdempotencyKey && disk.PayloadFingerprint == pending.PayloadFingerprint
+                && disk.Status == DungeonRewardLedgerStatus.Committed));
+            if (allCommitted && !state.DungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown))
+            {
+                InstallRewardRootLocked(state);
+                logger.LogWarning("Reward quarantine recovered; reason={Reason}, decision=Recovered, keys={Keys}, count={Count}",
+                    reason, unknown.Select(x => x.IdempotencyKey).ToArray(), unknown.Length);
+                return new(StoreRecoveryDecision.Recovered, "official-committed-receipt", 0);
+            }
+            var discarded = unknown.Where(pending => !state.DungeonRewardLedger.Any(disk =>
+                disk.IdempotencyKey == pending.IdempotencyKey && disk.PayloadFingerprint == pending.PayloadFingerprint
+                && disk.Status == DungeonRewardLedgerStatus.Committed)).ToArray();
+            var alreadyResolved = unknown.Length > 0 && unknown.All(pending => state.DungeonRewardLedger.Any(disk =>
+                disk.IdempotencyKey == pending.IdempotencyKey && disk.PayloadFingerprint == pending.PayloadFingerprint
+                && (disk.Status == DungeonRewardLedgerStatus.Committed ||
+                    disk.Status == DungeonRewardLedgerStatus.Rejected && disk.RejectionCode == "operator-discarded")));
+            if (alreadyResolved && !state.DungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown))
+            {
+                InstallRewardRootLocked(state);
+                logger.LogWarning("Reward quarantine resolved from official receipts; reason={Reason}, decision=Discarded, keys={Keys}, count={Count}",
+                    reason, unknown.Select(x => x.IdempotencyKey).ToArray(), unknown.Length);
+                return new(StoreRecoveryDecision.Discarded, reason, discarded.Length);
+            }
+            foreach (var pending in discarded)
+            {
+                state.DungeonRewardLedger.RemoveAll(x => x.IdempotencyKey == pending.IdempotencyKey);
+                state.DungeonRewardLedger.Add(pending with
+                {
+                    Status = DungeonRewardLedgerStatus.Rejected, RejectionCode = "operator-discarded", UnknownReason = reason
+                });
+            }
+            // Operator privilege: persist only the official root plus rejection decisions while quarantine remains held.
+            var snapshot = JsonSerializer.SerializeToUtf8Bytes(state, new JsonSerializerOptions { WriteIndented = true });
+            await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
+            InstallRewardRootLocked(state);
+            logger.LogWarning("Reward quarantine discarded; reason={Reason}, decision=Discarded, keys={Keys}, count={Count}", reason, unknown.Select(x => x.IdempotencyKey).ToArray(), unknown.Length);
+            return new(StoreRecoveryDecision.Discarded, reason, unknown.Length);
+        }
+        finally { _gate.Release(); }
+    }
+
+    private void InstallRewardRootLocked(JsonGameStoreState state)
+    {
+        _nextCharacterNo = state.NextCharacterNo;
+        _nextNormalAccountUid = state.NextNormalAccountUid;
+        _nextTestAccountUid = state.NextTestAccountUid;
+        _fatigueDayKey = state.FatigueDayKey;
+        _accounts = state.Accounts;
+        _dungeonRewardLedger = state.DungeonRewardLedger;
+        _rewardQuarantined = false;
+    }
+
+    internal async Task<DungeonRewardCommitResult> RecoverDungeonRewardAsync(string idempotencyKey)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            if (!File.Exists(StorePath)) return new(DungeonRewardLedgerStatus.Unknown, null, null, 0, null, "official-state-missing");
+            var state = JsonSerializer.Deserialize<JsonGameStoreState>(await File.ReadAllTextAsync(StorePath));
+            var expected = _dungeonRewardLedger.FirstOrDefault(x => x.IdempotencyKey == idempotencyKey);
+            var entry = state?.DungeonRewardLedger.FirstOrDefault(x => x.IdempotencyKey == idempotencyKey && x.Status == DungeonRewardLedgerStatus.Committed);
+            if (entry is null || expected is null || entry.PayloadFingerprint != expected.PayloadFingerprint)
+                return new(DungeonRewardLedgerStatus.Unknown, null, null, 0, null, "committed-receipt-missing-or-mismatch");
+            InstallRewardRootLocked(state!);
+            var character = _accounts.SelectMany(x => x.Characters).FirstOrDefault(x => x.Id == entry.CharacterId);
+            return new(DungeonRewardLedgerStatus.Committed, character, entry.RewardItemId, entry.GoldDelta, null, null);
+        }
+        finally { _gate.Release(); }
+    }
+
+    internal static string ComputeDungeonRewardFingerprint(DungeonRewardCommitRequest request)
+    {
+        var expectedInventory = request.ExpectedInventory?.OrderBy(x => x.Slot).ToArray();
+        var expectedEquipment = request.ExpectedEquipment?.OrderBy(x => x.Slot).ToArray();
+        var plannedInventory = request.PlannedInventory?.OrderBy(x => x.Slot).ToArray();
+        var plannedEquipment = request.PlannedEquipment?.OrderBy(x => x.Slot).ToArray();
+        var mails = request.GeneratedMails?.ToArray();
+        var canonical = JsonSerializer.Serialize(new { request.IdempotencyKey, request.UserName, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, request.TargetGold, request.ExpectedGold, expectedInventory, expectedEquipment, plannedInventory, plannedEquipment, mails, request.WarehouseCapacity, request.ExpectedWarehouseCapacity });
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+    }
+
+    private static bool ItemsEqual(IEnumerable<CharacterItemRecord>? a, IEnumerable<CharacterItemRecord> b) => (a ?? []).OrderBy(x => x.Slot).SequenceEqual(b.OrderBy(x => x.Slot));
+
+    private static bool InventoryPlanPreservesBaseline(IEnumerable<CharacterItemRecord>? baseline, IEnumerable<CharacterItemRecord> planned)
+    {
+        var oldItems = (baseline ?? []).ToDictionary(x => x.Slot);
+        var newItems = planned.ToDictionary(x => x.Slot);
+        foreach (var pair in oldItems)
+        {
+            if (!newItems.TryGetValue(pair.Key, out var next) || next with { CountOrValue = pair.Value.CountOrValue } != pair.Value || next.CountOrValue < pair.Value.CountOrValue)
+                return false;
+        }
+        return true;
+    }
+
     public async Task<CharacterRecord?> SaveCharacterInventoryAsync(
         string userName,
         Guid characterId,
@@ -3203,6 +3398,8 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_rewardQuarantined)
+                throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -3281,6 +3478,8 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_rewardQuarantined)
+                throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
             if (itemCatalog is null || statCatalog is null)
             {
                 return new ItemTradeCommitResult(
@@ -3464,6 +3663,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -3558,6 +3758,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -3639,6 +3840,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -3728,6 +3930,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -3880,6 +4083,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             var account = _accounts.FirstOrDefault(x =>
                 string.Equals(x.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
@@ -6104,8 +6308,16 @@ public sealed class JsonGameStore(
         return true;
     }
 
+    // Privileged operator recovery: persists a rejection ledger while quarantine is still held.
+    private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger, CancellationToken cancellationToken)
+    {
+        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger }, new JsonSerializerOptions { WriteIndented = true });
+        await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
+    }
+
     private async Task SaveLockedAsync(CancellationToken cancellationToken)
     {
+        ThrowIfRewardQuarantinedLocked();
         _ = SettleWarehouseUpgradeItemsLocked();
         Directory.CreateDirectory(Path.GetDirectoryName(StorePath)!);
         var temporary = StorePath + ".tmp";
@@ -6119,7 +6331,8 @@ public sealed class JsonGameStore(
                     NextCharacterNo = _nextCharacterNo,
                     NextNormalAccountUid = _nextNormalAccountUid,
                     NextTestAccountUid = _nextTestAccountUid,
-                    FatigueDayKey = _fatigueDayKey
+                    FatigueDayKey = _fatigueDayKey,
+                    DungeonRewardLedger = _dungeonRewardLedger
                 },
                 new JsonSerializerOptions { WriteIndented = true },
                 cancellationToken);
@@ -6127,6 +6340,12 @@ public sealed class JsonGameStore(
 
         File.Move(temporary, StorePath, overwrite: true);
         logger.LogInformation("Saved emulator state to {Path}", StorePath);
+    }
+
+    private void ThrowIfRewardQuarantinedLocked()
+    {
+        if (_rewardQuarantined)
+            throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
     }
 
     private bool ResetFatigueForNewDayLocked(

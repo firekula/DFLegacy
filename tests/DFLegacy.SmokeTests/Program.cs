@@ -9,6 +9,39 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--party-card"))
+{
+    PartyCardSettlementCoordinatorSmokeTests.Run(Check);
+    PartyCardSelectionSmokeTests.Run(Check);
+    await PartyCardRewardAgentSmokeTests.RunAsync(Check);
+    await PartyCardAgentAuditSmokeTests.RunAsync(Check);
+    PartyCardEntryPointSmokeTests.Run(Check);
+    await ClearRewardGrantPlannerSmokeTests.RunAsync(Check);
+    await PartyCardSettlementFlowSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Party card smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+
+if (args.Contains("--dungeon-reward-unknown") || args.Contains("--store-write-transaction"))
+{
+    var root = Path.Combine(Path.GetTempPath(), "dflegacy-unknown-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(root);
+    try { await DungeonRewardUnknownSmokeTests.RunAsync(Check, root); }
+    finally { Directory.Delete(root, recursive: true); }
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Store write transaction smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+
+if (args.Contains("--dungeon-reward-commit"))
+{
+    await DungeonRewardCommitSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Dungeon reward commit smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+
 static ScriptFileSystem CreateScripts(ServerOptions options) =>
     new(options, NullLogger<ScriptFileSystem>.Instance);
 
@@ -22,6 +55,7 @@ await FriendSmokeTests.RunAsync(Check);
 await TradeSmokeTests.RunAsync(Check);
 await PartySmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
+PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 QuestMapSmokeTests.Run(Check);

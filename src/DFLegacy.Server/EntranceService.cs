@@ -56,6 +56,17 @@ public sealed class EntranceService(
     private const ushort EquippedTitleSlot = 10;
 
     /// <summary>
+    /// 组队翻牌的三条入口（与 <see cref="PartyCardSettlementFlow"/> 的三个方法一一对应）：
+    /// 自动补全（队员不操作 / 选卡超时 / EPLP 兜底）、手动选自由卡、购买付费卡。
+    /// </summary>
+    private enum PartyCardSettleMode
+    {
+        Automatic,
+        FreePick,
+        Paid
+    }
+
+    /// <summary>
     /// `ALLDIE_MONSTER` 之后留给"客户端自己上报这些小怪的死亡"的时间窗。
     /// 窗口内客户端上报的死亡会走正常路径（有掉落/经验/击杀统计，并触发清房判定）；
     /// 窗口到点仍未上报的怪才由服务端补摘，保证房间一定能开（真机 2026-10-01 §10/§11 两次事故的教训）。
@@ -1550,85 +1561,32 @@ public sealed class EntranceService(
                         return (false, granted);
                     }
 
-                    var plannedInventory = mainInventory.ToDictionary(
-                        pair => pair.Key,
-                        pair => pair.Value);
-                    var plannedWarehouseCapacity = warehouseCapacity;
-                    var overflowMails = new List<CreateCharacterMailRequest>();
-                    for (var index = 0; index < itemIds.Count; index++)
-                    {
-                        if (!itemIds[index].HasValue)
-                        {
-                            continue;
-                        }
-
-                        if (CharacterWarehouseProgression.TryGetItemTargetCapacity(
-                                itemIds[index]!.Value,
-                                out var targetCapacity))
-                        {
-                            plannedWarehouseCapacity = Math.Max(
-                                plannedWarehouseCapacity,
-                                targetCapacity);
-                            granted[index] = true;
-                            continue;
-                        }
-
-                        var rewardItem = CharacterItemIdentity.Ensure(
-                            new CharacterMailAttachmentRecord(
-                            itemIds[index]!.Value,
-                            1,
-                            Durability: itemCatalog.GetInitialDurability(
-                                itemIds[index]!.Value),
-                            SealState: CharacterItemSealing.GetInitialSealState(
-                                itemCatalog,
-                                itemIds[index]!.Value)),
-                            itemCatalog);
-                        if (CharacterInventoryPlanner.TryPlace(
-                                plannedInventory,
-                                rewardItem,
-                                itemCatalog,
-                                GetInventoryWeightLimit(activeCharacter),
-                                out var plan,
-                                out _))
-                        {
-                            plannedInventory = plan.Inventory;
-                            granted[index] = true;
-                            continue;
-                        }
-
-                        if (!itemCatalog.TryGetDefinition(
-                                rewardItem.ItemId,
-                                out _))
-                        {
-                            continue;
-                        }
-
-                        // Card rewards must never become ground drops. Preserve
-                        // the generated instance in the same inventory/mail transaction.
-                        overflowMails.AddRange(CreateOverflowMailRequests(
-                            [rewardItem],
-                            "Dungeon clear reward"));
-
-                        granted[index] = true;
-                    }
-
+                    // 放置语义只有 ClearRewardGrantPlanner 一份（组队翻牌走同一个 Plan；
+                    // 两套"背包放不下怎么办"的实现会漂移，卡牌奖励又会变成地面掉落）。
+                    var plan = ClearRewardGrantPlanner.Plan(
+                        mainInventory,
+                        warehouseCapacity,
+                        targetGold,
+                        itemIds,
+                        GetInventoryWeightLimit(activeCharacter),
+                        itemCatalog);
                     var normalizedGold = Math.Max(0, targetGold);
                     if (normalizedGold == currentGold
-                        && !granted.Any(value => value)
-                        && overflowMails.Count == 0)
+                        && !plan.AnyGranted
+                        && plan.Mails.Count == 0)
                     {
-                        return (true, granted);
+                        return (true, plan.Granted.ToArray());
                     }
 
                     var saved = await store.SaveCharacterInventoryAsync(
                         accountName,
                         activeCharacter.Id,
                         normalizedGold,
-                        plannedInventory.Values,
+                        plan.Inventory.Values,
                         equippedInventory.Values,
                         serverToken,
-                        overflowMails,
-                        warehouseCapacity: plannedWarehouseCapacity,
+                        plan.Mails,
+                        warehouseCapacity: plan.WarehouseCapacity,
                         expectedWarehouseCapacity: warehouseCapacity);
                     if (saved is null)
                     {
@@ -1638,7 +1596,7 @@ public sealed class EntranceService(
                     var warehouseCapacityChanged =
                         AdoptSavedWarehouseUpgradeState(saved);
                     currentGold = normalizedGold;
-                    if (overflowMails.Count > 0)
+                    if (plan.Mails.Count > 0)
                     {
                         characterSessions.NotifyMailReceived(activeCharacter.CharacterNo);
                     }
@@ -1648,7 +1606,7 @@ public sealed class EntranceService(
                         await SendWarehouseStateAsync();
                     }
 
-                    return (true, granted);
+                    return (true, plan.Granted.ToArray());
                 }
 
                 async Task<(bool Saved, bool InventoryChanged, ushort? RewardItemId)>
@@ -1747,14 +1705,19 @@ public sealed class EntranceService(
                     return selectCardReply;
                 }
 
-                // 选牌快照的全队广播——**手动与自动两条路径共用同一份包、同一口径**
+                // 选牌快照的全队广播（**历史路径**）——手动与自动两条路径共用同一份包、同一口径
                 // （`SendCardSelectionSnapshotAsync` 的返回值，不另造）。
                 // 官服依据：`CParty::SendEachCardInfo` 构造 CMD 74 后调 `send_to_party`
                 // （`this+516+i`/`this+520+i` 四个槽位无条件都写，逐成员 `CUser::Send`）。
                 // 真机依据（2026-09-30）：手动选牌那份会广播（party10 10:05:09 队员会话收到队长
                 // 那一列），**自动选牌（TimerCardSel 4s 兜底）那份从来只回发包者**，另一名成员的
                 // 结算页因此永远少一列（party10/party11/party13 三局都停在"最后一列不来"）。
-                // 单人 / 非组队实例：`IsParty` 为假直接早退，一个包都不多发（零回归）。
+                //
+                // **组队已经不再走这里**（评审 F5）：组队的整表发布改由 `PartyCardSettlementFlow`
+                // 从实例那一份表构图（同一个包对象给自己 + 广播给其他成员），两条入口都在本函数
+                // 之前 `continue`/`return`。本函数现在只在单人路径的既有调用点上被调用，而它对
+                // 非组队实例恒早退（下面第一道门）——也就是说它今天是一个**单人的 no-op**，
+                // 保留原样是为了不动单人调用点的形状（R6 零回归）；新读者不要以为组队还走它。
                 async Task BroadcastCardSelectionSnapshotAsync(
                     GameServerPacket? snapshot,
                     string source)
@@ -1778,10 +1741,289 @@ public sealed class EntranceService(
                         source);
                 }
 
+                // —— 组队翻牌接线（Task 2 入口，R1′/R3′/R4/R5/R7′）——
+                // 会话只做三件事：①按 characterId 把自己的代理注册进实例；②用**自己那份掷取**
+                // （roomSettlement.ClearReward，含自己的黑钻标志）产出内容、用**自己角色的精确基线**落库；
+                // ③把实例那一份整表 CMD 74 发给自己 + 广播给其他成员（同一个包对象 → 字节一致、自己只收一份）。
+                // 归属、内容、发布门、代次全部在 DungeonInstance 里；单人（IsParty == false）一律不走这里（R6）。
+                SessionPartyCardRewardAgent? sessionPartyCardAgent = null;
+                var partyCardGrantChangedInventory = false;
+
+                IPartyCardRewardAgent EnsurePartyCardRewardAgent(DungeonInstance instance)
+                {
+                    sessionPartyCardAgent ??= new SessionPartyCardRewardAgent(
+                        activeCharacter!.Id,
+                        RollOwnPartyCardColumn,
+                        CommitOwnPartyCardColumnAsync);
+                    instance.RegisterPartyCardRewardAgent(activeCharacter!.Id, sessionPartyCardAgent);
+                    return sessionPartyCardAgent;
+                }
+
+                // 归属列的内容 = 这个会话自己掷的那一份（绝不跨成员共用一次掷取，R1′）。
+                PartyCardContent RollOwnPartyCardColumn(
+                    Guid settlementId,
+                    PartyCardType cardType,
+                    byte column,
+                    long generation)
+                {
+                    if (roomSettlement.ClearReward is not { } ownRoll
+                        || activeCharacter is null)
+                    {
+                        throw new InvalidOperationException(
+                            "This session has no own clear-reward roll for the party card settlement.");
+                    }
+
+                    return new PartyCardContent(
+                        cardType,
+                        column,
+                        PartySlotIndexOfThisSession(),
+                        ownRoll,
+                        PartyCardCommitStatus.Pending);
+                }
+
+                bool CanAffordOwnPaidCard() =>
+                    roomSettlement.ClearReward is { } paidRoll
+                    && paidRoll.GoldCardEnabled
+                    && paidRoll.GoldCardCost <= int.MaxValue
+                    && currentGold >= (int)paidRoll.GoldCardCost;
+
+                async Task<PartyCardCommitOutcome> CommitOwnPartyCardColumnAsync(
+                    Guid settlementId,
+                    PartyCardType cardType,
+                    byte column,
+                    long generation,
+                    PartyCardContent content,
+                    CancellationToken cancellationToken)
+                {
+                    if (activeCharacter is not { } cardOwner
+                        || roomSettlement.ClearReward is not { } ownRoll)
+                    {
+                        return new PartyCardCommitOutcome(
+                            DungeonRewardLedgerStatus.Rejected,
+                            "no-own-roll");
+                    }
+
+                    var expectedGold = currentGold;
+                    // R4：内容与物品来自**它自己**那份掷取，基线全部来自这个成员自己；
+                    // 幂等键用实例在校验归属的同一把锁里给出的 settlementId（跨局/跨重启都不撞键）。
+                    // 机制在 PartyCardOwnColumnCommitter。
+                    var commit = await PartyCardOwnColumnCommitter.CommitAsync(
+                        store,
+                        accountName,
+                        cardOwner,
+                        PartySlotIndexOfThisSession(),
+                        cardType,
+                        column,
+                        generation,
+                        settlementId,
+                        ownRoll,
+                        expectedGold,
+                        mainInventory,
+                        equippedInventory.Values.ToArray(),
+                        warehouseCapacity,
+                        GetInventoryWeightLimit(cardOwner),
+                        itemCatalog,
+                        cancellationToken);
+                    var grantPlan = commit.Plan;
+                    if (commit.Outcome.Status != DungeonRewardLedgerStatus.Committed)
+                    {
+                        // Rejected = 确定性终态（不给奖、不重试）；Unknown = 不重试、不发布、留审计（R4）。
+                        logger.LogWarning(
+                            "Party card {CardType} column {Column} of character {CharacterId} in settlement {SettlementId} was not committed: {Status}/{Reason}.",
+                            cardType,
+                            column,
+                            cardOwner.Id,
+                            settlementId,
+                            commit.Outcome.Status,
+                            commit.Outcome.AuditReason);
+                        return commit.Outcome;
+                    }
+
+                    if (commit.InstalledCharacter is { } savedOwner)
+                    {
+                        if (AdoptSavedWarehouseUpgradeState(savedOwner))
+                        {
+                            await SendWarehouseStateAsync();
+                        }
+                    }
+                    else
+                    {
+                        logger.LogWarning(
+                            "Party card {CardType} column {Column} committed for character {CharacterId} without a character record; the session keeps its previous inventory snapshot.",
+                            cardType,
+                            column,
+                            cardOwner.Id);
+                    }
+
+                    currentGold = commit.TargetGold;
+                    if (grantPlan.Mails.Count > 0)
+                    {
+                        characterSessions.NotifyMailReceived(cardOwner.CharacterNo);
+                    }
+
+                    if (cardType == PartyCardType.Free)
+                    {
+                        roomSettlement.FreeCardIndex = column;
+                        roomSettlement.CardSelectionDeadline = null;
+                    }
+                    else
+                    {
+                        roomSettlement.GoldCardIndex = column;
+                    }
+
+                    partyCardGrantChangedInventory =
+                        currentGold != expectedGold || grantPlan.AnyGranted;
+                    logger.LogInformation(
+                        "Party card {CardType} column {Column} settled for character {CharacterId} in settlement {SettlementId}: gold {ExpectedGold}->{TargetGold}, items={Items}, mails={Mails}.",
+                        cardType,
+                        column,
+                        cardOwner.Id,
+                        settlementId,
+                        expectedGold,
+                        commit.TargetGold,
+                        (cardType == PartyCardType.Free
+                            ? new ushort?[] { ownRoll.FreeItemId, ownRoll.PremiumItemId }
+                            : [ownRoll.GoldItemId]).Count(id => id.HasValue),
+                        grantPlan.Mails.Count);
+                    return commit.Outcome;
+                }
+
+                async Task SendPartyCardTableToSelfAsync(GameServerPacket table)
+                {
+                    await table.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, table);
+                }
+
+                // 整表只有一份包对象：自己那份直接写，其他成员收到的是**同一份字节**（R3′），
+                // omit 自己 → 触发者绝不重复收。
+                async Task BroadcastPartyCardTableAsync(GameServerPacket table)
+                {
+                    if (dungeonInstance is not { IsParty: true } cardInstance
+                        || activeCharacter is not { } tableBroadcaster)
+                    {
+                        return;
+                    }
+
+                    await dungeonPartyService.BroadcastToMembersAsync(
+                        cardInstance,
+                        table,
+                        omitCharacterId: tableBroadcaster.Id);
+                }
+
+                // 自己那份奖励落地后才需要回背包（顺序与单人一致：整表 → 背包刷新），并起"结算页超时"。
+                async Task SendPartyCardInventoryRefreshAsync()
+                {
+                    var partyCardInventoryRefresh = CreateMainInventoryPacket(
+                        currentGold,
+                        currentVictoryPoints,
+                        mainInventory.Values);
+                    await partyCardInventoryRefresh.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, partyCardInventoryRefresh);
+                    if (roomSettlement.FreeCardIndex.HasValue
+                        && dungeonInstance is { } settlementReturnInstance
+                        && activeCharacter is { } settlementReturnCharacter)
+                    {
+                        settlementReturnInstance.ArmSettlementReturn(
+                            settlementReturnCharacter.Id,
+                            DateTimeOffset.UtcNow + DungeonPartyService.SettlementReturnTimeout);
+                    }
+                }
+
+                // 审计条目自带产生它那一刻的结算标识与代次：绝不拿"当前"值去拼，
+                // 否则换房/停局之后同一行会显示"新结算 id + 旧代次"，运维没法据此对账（评审 F6）。
+                void LogPartyCardAudit(PartyCardAuditEntry entry) =>
+                    logger.LogWarning(
+                        "Party card audit ({Reason}) settlement={SettlementId} generation={Generation} type={CardType} column={Column} character={CharacterId}.",
+                        entry.Reason,
+                        entry.SettlementId,
+                        entry.Generation,
+                        entry.Type,
+                        entry.Column,
+                        entry.CharacterId);
+
+                // 组队三条入口的唯一一处调用点：自动补全 / 手动选自由卡 / 购买付费卡。
+                async Task SettlePartyCardAsync(
+                    DungeonInstance instance,
+                    PartyCardSettleMode mode,
+                    byte manualColumn,
+                    string source)
+                {
+                    if (activeCharacter is not { } cardCharacter
+                        || roomSettlement.ClearReward is null)
+                    {
+                        return;
+                    }
+
+                    partyCardGrantChangedInventory = false;
+                    EnsurePartyCardRewardAgent(instance);
+                    var settlement = mode switch
+                    {
+                        PartyCardSettleMode.Automatic =>
+                            await PartyCardSettlementFlow.SettleAutomaticFreeCardAsync(
+                                instance,
+                                cardCharacter.Id,
+                                roomSettlement.FreeCardIndex.HasValue,
+                                source,
+                                SendPartyCardTableToSelfAsync,
+                                BroadcastPartyCardTableAsync,
+                                LogPartyCardAudit,
+                                serverToken),
+                        PartyCardSettleMode.FreePick =>
+                            await PartyCardSettlementFlow.PickFreeCardAsync(
+                                instance,
+                                cardCharacter.Id,
+                                manualColumn,
+                                source,
+                                SendPartyCardTableToSelfAsync,
+                                BroadcastPartyCardTableAsync,
+                                LogPartyCardAudit,
+                                serverToken),
+                        _ => await PartyCardSettlementFlow.BuyPaidCardAsync(
+                                instance,
+                                cardCharacter.Id,
+                                manualColumn,
+                                CanAffordOwnPaidCard,
+                                source,
+                                SendPartyCardTableToSelfAsync,
+                                BroadcastPartyCardTableAsync,
+                                LogPartyCardAudit,
+                                serverToken)
+                    };
+                    logger.LogInformation(
+                        "Dungeon {DungeonId} party card settlement ({Source}) for user {UserId}: generation={Generation}, column={Column}, accepted={Accepted}, published={Published}.",
+                        currentDungeonId,
+                        source,
+                        localUserId,
+                        settlement.Generation,
+                        settlement.Column,
+                        settlement.Accepted,
+                        settlement.Published);
+                    if (partyCardGrantChangedInventory)
+                    {
+                        await SendPartyCardInventoryRefreshAsync();
+                    }
+                }
+
                 async Task<bool> TryAutomaticallySelectFreeCardAsync(string source)
                 {
                     if (roomSettlement.ClearReward is null || roomSettlement.FreeCardIndex.HasValue)
                     {
+                        return true;
+                    }
+
+                    // 组队：**绝不再由会话本地选"最小可用列"**（每条会话都返回第 0 列 = 这个缺陷的根因）。
+                    // 走实例那一份表：幂等开局 → 整队自动补全 → 读自己那一列 → 由归属成员自己的代理
+                    // 掷内容并用自己基线落库 → 按 R3′ 增长时发布整表。失败一律不重试（R4），所以恒返回 true。
+                    if (dungeonInstance is { IsParty: true } automaticCardInstance
+                        && activeCharacter is not null)
+                    {
+                        await SettlePartyCardAsync(
+                            automaticCardInstance,
+                            PartyCardSettleMode.Automatic,
+                            0,
+                            source);
                         return true;
                     }
 
@@ -14417,6 +14659,34 @@ public sealed class EntranceService(
                                 var selectedCardIndex = request.Body.Length >= 4
                                     ? request.Body[3]
                                     : (byte)0;
+                                // 组队：归属/内容/发布全部走实例那一份表（R1′/R3′/R4/R5），
+                                // **不再**由会话本地掷取与本地选列，也**不再**发会话本地那份 CMD 74。
+                                if (dungeonInstance is { IsParty: true } partyCardInstance
+                                    && activeCharacter is not null)
+                                {
+                                    if (selectedCardIndex >= 4
+                                        || cardType is not (0 or 1))
+                                    {
+                                        logger.LogWarning(
+                                            "Ignored invalid party dungeon card request type {CardType} index {CardIndex} from user {UserId}",
+                                            cardType,
+                                            selectedCardIndex,
+                                            localUserId);
+                                        continue;
+                                    }
+
+                                    await SettlePartyCardAsync(
+                                        partyCardInstance,
+                                        cardType == 0
+                                            ? PartyCardSettleMode.FreePick
+                                            : PartyCardSettleMode.Paid,
+                                        selectedCardIndex,
+                                        cardType == 0
+                                            ? "manual-card-selection"
+                                            : "manual-paid-card-selection");
+                                    continue;
+                                }
+
                                 var inventoryChanged = false;
                                 var selectionAccepted = false;
                                 ushort? selectedRewardItemId = null;
@@ -15141,7 +15411,7 @@ public sealed class EntranceService(
             ? effect.Amount
             : checked(effect.Amount * 10);
 
-    private static CreateCharacterMailRequest[] CreateOverflowMailRequests(
+    internal static CreateCharacterMailRequest[] CreateOverflowMailRequests(
         IEnumerable<CharacterMailAttachmentRecord> items,
         string source) =>
         items.Select(item => new CreateCharacterMailRequest(
