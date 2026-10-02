@@ -17,6 +17,14 @@ if (args.Contains("--party-card"))
     Environment.Exit(failures.Count > 0 ? 1 : 0);
 }
 
+if (args.Contains("--dungeon-reward-commit"))
+{
+    await DungeonRewardCommitSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Dungeon reward commit smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+
 static ScriptFileSystem CreateScripts(ServerOptions options) =>
     new(options, NullLogger<ScriptFileSystem>.Instance);
 

@@ -587,6 +587,7 @@ public sealed class JsonGameStore(
     private uint _nextNormalAccountUid = AccountUidRules.NormalUidStart;
     private uint _nextTestAccountUid = 1;
     private int _fatigueDayKey;
+    private List<DungeonRewardLedgerEntry> _dungeonRewardLedger = [];
 
     private sealed class JsonGameStoreState
     {
@@ -595,6 +596,7 @@ public sealed class JsonGameStore(
         public uint NextNormalAccountUid { get; set; } = AccountUidRules.NormalUidStart;
         public uint NextTestAccountUid { get; set; } = 1;
         public int FatigueDayKey { get; set; }
+        public List<DungeonRewardLedgerEntry> DungeonRewardLedger { get; set; } = [];
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
@@ -659,6 +661,7 @@ public sealed class JsonGameStore(
                         ? 1
                         : state.NextTestAccountUid;
                     _fatigueDayKey = state.FatigueDayKey;
+                    _dungeonRewardLedger = state.DungeonRewardLedger ?? [];
                 }
 
                 stateChanged |= MigrateIdentityLocked();
@@ -6119,7 +6122,8 @@ public sealed class JsonGameStore(
                     NextCharacterNo = _nextCharacterNo,
                     NextNormalAccountUid = _nextNormalAccountUid,
                     NextTestAccountUid = _nextTestAccountUid,
-                    FatigueDayKey = _fatigueDayKey
+                    FatigueDayKey = _fatigueDayKey,
+                    DungeonRewardLedger = _dungeonRewardLedger
                 },
                 new JsonSerializerOptions { WriteIndented = true },
                 cancellationToken);
