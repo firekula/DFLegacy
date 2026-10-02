@@ -9,7 +9,7 @@ internal static class PartyCardSettlementCoordinatorSmokeTests
         // Legacy model transition tests call the private reducer via reflection; production cannot supply a roll.
         var method = typeof(DungeonInstance).GetMethod("ReportPartyCardCommitFromAgent", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
         var content = new PartyCardContent(type, column, Slots[characterId], roll, PartyCardCommitStatus.Pending);
-        return (bool)method.Invoke(instance, [characterId, type, column, generation, content, new PartyCardCommitOutcome(status, null)])!;
+        return (bool)method.Invoke(instance, [instance.PartyCardSettlementId, characterId, type, column, generation, content, new PartyCardCommitOutcome(status, null)])!;
     }
 
     public static void Run(Action<bool, string> check)

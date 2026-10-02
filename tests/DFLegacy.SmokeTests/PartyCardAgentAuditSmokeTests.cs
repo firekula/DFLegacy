@@ -135,6 +135,28 @@ internal static class PartyCardAgentAuditSmokeTests
     /// </summary>
     private static async Task CheckAgentTimeoutLateResultIsReportedAsync(Action<bool, string> check)
     {
+        // 迟到且结算在等待期间已经重开：审计与上报必须仍然属于**旧那一局**（评审 N2）。
+        var (stale, staleMember, _, staleGeneration) = CreateSettlement(TimeSpan.FromMilliseconds(40));
+        var staleSettlementId = stale.PartyCardSettlementId;
+        var staleCommit = new Agent(0, DungeonRewardLedgerStatus.Committed) { HangOnCommit = true };
+        stale.RegisterPartyCardRewardAgent(staleMember, staleCommit);
+        var staleSettle = stale.SettleOwnPartyCardAsync(staleMember, PartyCardType.Free, 0, staleGeneration, CancellationToken.None);
+        check(await Task.WhenAny(staleSettle, Task.Delay(TimeSpan.FromSeconds(5))) == staleSettle,
+            "the reopened-settlement case releases the settling session at the timeout");
+        var reopenedGeneration = stale.BeginPartyCardSettlement();
+        check(stale.PartyCardSettlementId != staleSettlementId,
+            "reopening the settlement issues a new settlement id");
+        check(reopenedGeneration != staleGeneration, "reopening the settlement issues a new generation");
+        staleCommit.CompleteHanging(DungeonRewardLedgerStatus.Committed);
+        var staleAudit = await WaitForAuditAsync(stale, "agent-timeout-late-committed");
+        check(staleAudit.Any(entry => entry.Reason == "agent-timeout-late-committed"),
+            "a late commit landing after a settlement reopen is still audited");
+        check(staleAudit.Where(entry => entry.Reason.StartsWith("agent-timeout", StringComparison.Ordinal))
+                .All(entry => entry.SettlementId == staleSettlementId),
+            "late audit entries keep the settlement id of the settlement they belong to");
+        check(!stale.TryTakePartyCardPublication(staleGeneration, out _),
+            "a stale late report never publishes into the reopened settlement");
+
         // 迟到且成功：内容进表，该列重新可发布。
         var (instance, a, _, generation) = CreateSettlement(TimeSpan.FromMilliseconds(40));
         var committed = new Agent(0, DungeonRewardLedgerStatus.Committed) { HangOnCommit = true };
@@ -240,7 +262,7 @@ internal static class PartyCardAgentAuditSmokeTests
             "ReportPartyCardCommitFromAgent",
             BindingFlags.Instance | BindingFlags.NonPublic)!;
         bool Report(Guid characterId, PartyCardType type, byte column, PartyCardContent content) =>
-            (bool)report.Invoke(instance, [characterId, type, column, generation, content, new PartyCardCommitOutcome(DungeonRewardLedgerStatus.Committed, null)])!;
+            (bool)report.Invoke(instance, [instance.PartyCardSettlementId, characterId, type, column, generation, content, new PartyCardCommitOutcome(DungeonRewardLedgerStatus.Committed, null)])!;
 
         // B 上报"自己的列"但内容是 A 掷的（PartySlot = A 的槽位）→ 拒。
         check(!Report(b, PartyCardType.Free, 1, new PartyCardContent(PartyCardType.Free, 1, slotA, roll, PartyCardCommitStatus.Pending)),
@@ -255,7 +277,7 @@ internal static class PartyCardAgentAuditSmokeTests
         check(!Report(a, PartyCardType.Free, 0, new PartyCardContent(PartyCardType.Paid, 0, slotA, roll, PartyCardCommitStatus.Pending)),
             "content whose type disagrees with the report is refused");
         // 旧代次 → 拒。
-        check(!(bool)report.Invoke(instance, [a, PartyCardType.Free, (byte)0, generation + 1,
+        check(!(bool)report.Invoke(instance, [instance.PartyCardSettlementId, a, PartyCardType.Free, (byte)0, generation + 1,
                 new PartyCardContent(PartyCardType.Free, 0, slotA, roll, PartyCardCommitStatus.Pending),
                 new PartyCardCommitOutcome(DungeonRewardLedgerStatus.Committed, null)])!,
             "stale generation report is refused");

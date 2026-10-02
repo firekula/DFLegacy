@@ -107,8 +107,12 @@ internal sealed class DungeonInstance(
         }
     }
 
-    private void NotePartyCardAudit(long generation, PartyCardType type, byte column, Guid characterId, string reason)
-        => _partyCardAudit.Add(new PartyCardAuditEntry(_partyCards.SettlementId, generation, type, column, characterId, reason));
+    /// <summary>
+    /// 审计条目必须写**产生它的那一刻**的结算标识：迟到结果（超时之后才回来）可能已经跨了一次
+    /// 结算重开，此时读"当前值"会把新结算的 id 配上旧代次（评审 N2）。
+    /// </summary>
+    private void NotePartyCardAudit(Guid settlementId, long generation, PartyCardType type, byte column, Guid characterId, string reason)
+        => _partyCardAudit.Add(new PartyCardAuditEntry(settlementId, generation, type, column, characterId, reason));
 
     internal void RegisterPartyCardRewardAgent(Guid characterId, IPartyCardRewardAgent agent)
     {
@@ -131,16 +135,16 @@ internal sealed class DungeonInstance(
             var owner = type == PartyCardType.Free ? owners.FreeOwners.ElementAtOrDefault(column) : owners.PaidOwners.ElementAtOrDefault(column);
             // 归属校验在**调用代理之前**：只有这一列的归属成员自己的会话能推进它（R1′）。
             if (column >= 4 || owner != slot) return;
+            // 结算标识与代次**在同一把锁里**取：会话拿它算幂等键，审计条目也用它，
+            // 绝不会把"局 A 的代次"配上"局 B 的标识"。
+            settlementId = _partyCards.SettlementId;
             // 一次预留只尝试一次：失败（异常/取消/超时/Unknown）绝不重试（R4）。
             if (!_partyCardAttempts.Add((generation, type, column, characterId))) return;
             if (!_partyCardAgents.TryGetValue(characterId, out agent))
             {
-                NotePartyCardAudit(generation, type, column, characterId, "agent-missing");
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-missing");
                 return;
             }
-
-            // 结算标识与代次**在同一把锁里**取：会话拿它算幂等键，绝不会把"局 A 的代次"配上"局 B 的标识"。
-            settlementId = _partyCards.SettlementId;
         }
 
         PartyCardContent content;
@@ -150,7 +154,7 @@ internal sealed class DungeonInstance(
         }
         catch (Exception)
         {
-            lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-exception");
+            lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-exception");
             return;
         }
 
@@ -159,7 +163,7 @@ internal sealed class DungeonInstance(
             || content.Column != column
             || content.PartySlot != slot)
         {
-            lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-content-mismatch");
+            lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-content-mismatch");
             return;
         }
 
@@ -170,7 +174,7 @@ internal sealed class DungeonInstance(
             var commit = agent.CommitOwnColumnAsync(settlementId, type, column, generation, content, ct);
             if (commit is null)
             {
-                lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-exception");
+                lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-exception");
                 return;
             }
 
@@ -178,12 +182,12 @@ internal sealed class DungeonInstance(
             var finished = await Task.WhenAny(commit, Task.Delay(_partyCardAgentTimeout));
             if (finished != commit)
             {
-                lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-timeout");
+                lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-timeout");
                 // 超时**不等于没落库**：会话那一侧仍在等这次提交，它可能已经把奖励写进存档并采用结果。
                 // 放弃等待但**不放弃结果**：迟到完成时照常上报（代次/归属会在上报里再校验一次），
                 // 并留一条带真实结果的审计 —— 否则审计写着"超时未提交"、存档里却已经发了奖励，
                 // 运维照审计去补发就会发出第二份。
-                ObserveLateAgentCommit(commit, characterId, type, column, generation, content);
+                ObserveLateAgentCommit(commit, settlementId, characterId, type, column, generation, content);
                 return;
             }
 
@@ -191,16 +195,16 @@ internal sealed class DungeonInstance(
         }
         catch (OperationCanceledException)
         {
-            lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-cancelled");
+            lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-cancelled");
             return;
         }
         catch (Exception)
         {
-            lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-exception");
+            lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-exception");
             return;
         }
 
-        ReportPartyCardCommitFromAgent(characterId, type, column, generation, content, outcome);
+        ReportPartyCardCommitFromAgent(settlementId, characterId, type, column, generation, content, outcome);
     }
 
     /// <summary>
@@ -210,6 +214,7 @@ internal sealed class DungeonInstance(
     /// </summary>
     private void ObserveLateAgentCommit(
         Task<PartyCardCommitOutcome> commit,
+        Guid settlementId,
         Guid characterId,
         PartyCardType type,
         byte column,
@@ -227,7 +232,7 @@ internal sealed class DungeonInstance(
             }
             catch (OperationCanceledException)
             {
-                lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-timeout-late-cancelled");
+                lock (Gate) NotePartyCardAudit(settlementId, generation, type, column, characterId, "agent-timeout-late-cancelled");
                 return;
             }
             catch (Exception exception)
@@ -235,6 +240,7 @@ internal sealed class DungeonInstance(
                 lock (Gate)
                 {
                     NotePartyCardAudit(
+                        settlementId,
                         generation,
                         type,
                         column,
@@ -247,13 +253,14 @@ internal sealed class DungeonInstance(
             lock (Gate)
             {
                 NotePartyCardAudit(
+                    settlementId,
                     generation,
                     type,
                     column,
                     characterId,
                     $"agent-timeout-late-{lateOutcome.Status.ToString().ToLowerInvariant()}");
             }
-            ReportPartyCardCommitFromAgent(characterId, type, column, generation, content, lateOutcome);
+            ReportPartyCardCommitFromAgent(settlementId, characterId, type, column, generation, content, lateOutcome);
         }
     }
 
@@ -267,20 +274,20 @@ internal sealed class DungeonInstance(
         }
     }
 
-    private bool ReportPartyCardCommitFromAgent(Guid characterId, PartyCardType type, byte column, long generation, PartyCardContent content, PartyCardCommitOutcome outcome)
+    private bool ReportPartyCardCommitFromAgent(Guid settlementId, Guid characterId, PartyCardType type, byte column, long generation, PartyCardContent content, PartyCardCommitOutcome outcome)
     {
         lock (Gate)
         {
             if (generation != _partyContentGeneration || generation != _partyCards.Generation || !_members.Any(m => m.CharacterId == characterId))
             {
-                NotePartyCardAudit(generation, type, column, characterId, "report-rejected");
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "report-rejected");
                 return false;
             }
 
             var owners = _partyCards.Snapshot();
             if (!_partySettlementSlots.TryGetValue(characterId, out var memberSlot))
             {
-                NotePartyCardAudit(generation, type, column, characterId, "report-rejected");
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "report-rejected");
                 return false;
             }
 
@@ -292,7 +299,7 @@ internal sealed class DungeonInstance(
             };
             if (owner == PartyCardSelectionState.Unassigned || owner != memberSlot)
             {
-                NotePartyCardAudit(generation, type, column, characterId, "report-rejected");
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "report-rejected");
                 return false;
             }
 
@@ -308,17 +315,17 @@ internal sealed class DungeonInstance(
                 || content.Column != column
                 || content.PartySlot != owner)
             {
-                NotePartyCardAudit(generation, type, column, characterId, "report-rejected");
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "report-rejected");
                 return false;
             }
 
             if (commitStatus == PartyCardCommitStatus.Rejected)
             {
-                NotePartyCardAudit(generation, type, column, characterId, "commit-rejected");
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "commit-rejected");
             }
             else if (commitStatus == PartyCardCommitStatus.Unknown)
             {
-                NotePartyCardAudit(generation, type, column, characterId, "commit-unknown");
+                NotePartyCardAudit(settlementId, generation, type, column, characterId, "commit-unknown");
             }
 
             _partyCardContent[key] = content with { Status = commitStatus };

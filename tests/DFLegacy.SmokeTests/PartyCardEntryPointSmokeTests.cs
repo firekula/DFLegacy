@@ -34,7 +34,7 @@ internal static class PartyCardEntryPointSmokeTests
         var report = typeof(DungeonInstance).GetMethod(
             "ReportPartyCardCommitFromAgent",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-        check((bool)report.Invoke(instance, [a, PartyCardType.Paid, (byte)1, generation,
+        check((bool)report.Invoke(instance, [instance.PartyCardSettlementId, a, PartyCardType.Paid, (byte)1, generation,
                 new PartyCardContent(PartyCardType.Paid, 1, 0, roll, PartyCardCommitStatus.Pending),
                 new PartyCardCommitOutcome(DungeonRewardLedgerStatus.Rejected, "smoke")])!,
             "rejected paid content is recorded as a deterministic terminal state");
@@ -189,7 +189,7 @@ internal static class PartyCardEntryPointSmokeTests
             "ReportPartyCardCommitFromAgent",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
         bool Report(Guid characterId, PartyCardType type, byte column, PartyCardContent content) =>
-            (bool)report.Invoke(instance, [characterId, type, column, generation, content, new PartyCardCommitOutcome(DungeonRewardLedgerStatus.Committed, null)])!;
+            (bool)report.Invoke(instance, [instance.PartyCardSettlementId, characterId, type, column, generation, content, new PartyCardCommitOutcome(DungeonRewardLedgerStatus.Committed, null)])!;
         // 付费列还没有内容 → 该列不可发布（保持 0xFF），所以先看未归属/未终态两种取值为 null。
         check(!Report(b, PartyCardType.Paid, 2, new PartyCardContent(PartyCardType.Paid, 2, 1, roll, PartyCardCommitStatus.Pending)),
             "another member cannot fill A's paid column");
