@@ -240,30 +240,58 @@
 - 验收判据: 主护栏是 `Program.cs` 里既有 4 条 NOTI 27 用例；本轮补 `PartySmokeTests.CheckEnterSelectDungeonLayout`（显式断言"绝不以 int 开头"+ 缺失槽位 `[2,3]` 组合）。**变异验证（实测）**：把 builder 改成先写 `int` → 全量冒烟 **7 条**断言变红（本用例 3 条 + 既有 4 条），回滚后全绿。**真机交叉**：run #43 队员会话 `protocol=27 length=8` ⇒ body 2 字节 = `[1, 0]` ✓
 - 归属切片: S3
 
-### PD-2004 CMD 48 官服 reader 读 10 个字段
-- 官服行为: `DisPatcher_MoveMap::read` 依次读 byte,byte,uint,uint,byte,ushort,ushort,uint,ushort,int
-- 官服证据: DisPatcher_MoveMap::read@0x081c47ba(726)
+### PD-2004 CMD 48 官服 reader 读 10 个字段（附字段用途：坐标/自检/分层图/座位）
+- 官服行为: `DisPatcher_MoveMap::read` 依次读 byte,byte,uint,uint,byte,ushort,ushort,uint,ushort,int；`move_map` 里对各字段的用法（**同一份伪码**）：`a3[13]`/`a3[14]` = 目标 tx/ty（char）、`a3[15]`/`a3[19]`（dword）进反外挂 `CheckMoveMapFitInPathHackCnt`、`a3[23] == 1` 时先 `CBattle_Field::checkLayeredMap(field, a3[13], a3[14])`、`a3[26]` 必须 == 1（否则记 hack 602）、`a3[57]` = 座位号（`SetCurSeatNo`）
+- 官服证据: DisPatcher_MoveMap::read@0x081c47ba(726)；字段用途见 `official\ida_targeted_out.txt:362-454`（`CParty::move_map` 伪码）与 `DisPatcher_MoveMap::process@0x081c5330`
 - 可重跑命令:
   ```
   python ../../2026-10-02-party-dungeon-official-rewrite/work/official_surface.py func DisPatcher_MoveMap::read | findstr /C:"0x081C47BA"
+  findstr /C:"a3[26] != 1" official\ida_targeted_out.txt
   ```
 - 客户端可达性: 客户端确实会发（run #42 `seen_as_cmd=12`）
-- 现状: 我们只按需读若干字段（EntranceService 门口段）
+- 现状: 我们只按需读若干字段（`EntranceService.cs:13095-13160` 的 CMD 48 段），反外挂/分层图/座位三个用途都未实现
 - 裁决: 对齐
-- 验收判据: S4 逐个字段与我们的读取对齐（至少确认目标房间坐标/tx/ty 的位置）
+- 验收判据: 逐字段与我们的读取对齐（至少钉住目标 tx/ty = `a3[13]`/`a3[14]` 与自检字节 `a3[26]`）；`a3[26] != 1` 的 hack 分支按"我们的客户端总是发 1"处理并记录
 - 归属切片: S4
 
-### PD-2005 `CParty::move_map` 的推进判据（决定自研门口集结的去留）
-- 官服行为: `move_map` 用服务端 `CBattle_Field` 状态校验后推进一次，广播 NOTI 29，并启动全员加载检查（清零 loaded）
-- 官服证据: CParty::move_map@0x085a8f4e(987)
+### PD-2005 `CParty::move_map` 的推进判据 = **一次合法请求推进整队，没有"全员到门口"**
+- 官服行为: ①`party[106] != 2` → `CMD 48` 错误码 **19** 返回；②`!CDungeon::IsEnterEachMap(dungeon) && CBattle_Field::IsClearDungeon(field)` → 同样错误码 19；③按**请求者自己**的 `(tx,ty)` 调 `CBattle_Field::MoveMap(field, tx, ty, &v9)` 作唯一判定；④成功（返回 ≤ 0）则 `MakePacket(29 或 211)` → **`CParty::send_to_party` 广播全队**、`send_loadingcheck_msg`、**`resetFinishLoadingVar`（清零全员 loaded）**、成员信息与战斗数据更新；⑤失败则以 `MoveMap` 的返回码回 `CMD 48` 错误。**全程没有任何"全员到门口/等人"的条件**
+- 官服证据: CParty::move_map@0x085a8f4e(987)，伪码 `official\ida_targeted_out.txt:362-454`；入口 `DisPatcher_MoveMap::process@0x081c5330(432)`
 - 可重跑命令:
   ```
   python ../../2026-10-02-party-dungeon-official-rewrite/work/official_surface.py func CParty::move_map | findstr /C:"0x085A8F4E"
+  findstr /C:"IsEnterEachMap" official\ida_targeted_out.txt
   ```
-- 客户端可达性: 不适用（服务端内部）
-- 现状: `DungeonDoorAssembly`（自研：宽限窗口、`memberCount: 1` 退化、强制推进）——**这些都不是官服行为**
-- 裁决: 保留
-- 验收判据: S4 **前置**：反编译 `move_map` 拿到"谁在什么条件下允许推进"（是否要求全员在同房间/门口）；拿到之后才能决定宽限窗口/强制推进的删除范围；真机验证"删掉兜底后门仍能开"
+- 客户端可达性: 不适用（服务端判定）；广播用的 `NOTI 29` 在跳转表内，`NOTI 211` **不在**（见 PD-2012/PD-2013）
+- 现状: `DungeonDoorAssembly`（189 行：`Register`/到达登记/`Grace` 2s/`Countdown` 10s/`TryAdvanceOnCountdown`/`PendingTarget`）+ `EntranceService.cs:13095-13160` 的窗口包装 + `ServerOptions.Dungeon.DoorGraceSeconds` 与 `ResolveDoorMemberCount`（`memberCount:1` 退化）+ `DungeonInstance.cs:512` 附近的门状态 —— **全部是自研，官服无对应物**
+- 裁决: 对齐
+- 验收判据: ① 模型层唯一入口 `TryAdvanceRoom`：**第一个合法请求即推进**（不等第二人）、陈旧请求不重复推进、已清房且非逐图进 → 错误 19、非法目标 → 该错误码；② `DungeonDoorAssembly.cs` 与两个选项**从代码里消失**（删除而非绕过）；③ **变异验证**：把"第一个请求即推进"改成"等第二个人"→ 第①条必红；④ 真机：删窗口后门仍能开（2026-10-01 踩过"窗口=0 → 门打不开"）；单人路径零回归
+- 归属切片: S4
+
+### PD-2012 CMD 48 的失败要回错误包（19 = 状态门；MoveMap 返回码 = 目标不合法）
+- 官服行为: 失败时 `send_to_party_cmd_error(party, 48, code)` 广播错误：队伍状态门（`party[106] != 2`）与"已清房且非 `IsEnterEachMap`"门用 **19**，目标不合法用 `CBattle_Field::MoveMap` 返回码的低字节
+- 官服证据: CParty::move_map@0x085a8f4e 的 `LABEL_2`（伪码 `official\ida_targeted_out.txt:391-394`：`send_to_party_cmd_error(a1, 48, 19)`）与失败分支（`:448`：`(u8)v11`）
+- 可重跑命令:
+  ```
+  findstr /C:"send_to_party_cmd_error" official\ida_targeted_out.txt
+  ```
+- 客户端可达性: CMD 48 是客户端上行命令，其错误回包走 class=1/cmd=48（客户端在等门开时收到错误码；我们目前一个错误包都不发）
+- 现状: `GameProtocolEngine` 里 `MoveMapCommand = 48` **只有常量**，没有任何 CMD 48 错误包构造器；失败时我们只是"不推进"（客户端一直等）
+- 裁决: 对齐
+- 验收判据: 单测：队伍状态门与已清房门回 `[flags=0, 19]`；目标非法回 `[flags=0, code]`；单人路径**不发**任何 CMD 48 错误（单人立即推进）
+- 归属切片: S4
+
+### PD-2013 官服成功路径的 `NOTI 211` 分支对本客户端不可达 ⇒ 永不发
+- 官服行为: 换房成功后按 `dungeon[2207] > 0` 选择发 `NOTI 211` 或 `NOTI 29`
+- 官服证据: CParty::move_map@0x085a8f4e 的 `MakePacket(..., 211, ...)`（伪码 `official\ida_targeted_out.txt:414-417`）
+- 可重跑命令:
+  ```
+  python ../../2026-10-02-party-dungeon-official-rewrite/work/client_surface.py noti 211 | findstr /C:"out-of-table"
+  ```
+- 客户端可达性: **`NOTI 211` out-of-table**（211 > 0x97 = 151，分发器 `cmp …,0x97; ja default`）⇒ 本客户端不处理；`NOTI 29` 在表内（→ `0x41F7D3`）
+- 现状: 我们只发 `NOTI 29`（本来就没有 211 路径）
+- 裁决: 无法实现
+- 验收判据: 断言全代码库**没有** NOTI 211 的构包/发送路径（`grep 211 src/` 无命中）；真机：换房后客户端正常加载新房间（29 足够）
 - 归属切片: S4
 
 ### PD-2006 全员加载门槛：CMD 40 只标自己，齐了才广播
