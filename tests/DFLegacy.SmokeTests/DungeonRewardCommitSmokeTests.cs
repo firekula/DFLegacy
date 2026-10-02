@@ -66,7 +66,7 @@ internal static class DungeonRewardCommitSmokeTests
             check(ledgerField?.GetValue(reloadedStore) is List<DungeonRewardLedgerEntry> loaded
                 && loaded.Count == 1 && loaded[0] == entry,
                 "store loads ledger without interpreting Unknown as committed");
-            var created = await reloadedStore.CreateAccountAsync(new CreateAccountRequest("ledger", "password"));
+            var created = await reloadedStore.CreateAccountAsync(new CreateAccountRequest("ledger", "password", OicqCode: "123456"));
             check(created.Created, "ordinary save fixture actually creates an account");
             using var persisted = JsonDocument.Parse(await File.ReadAllTextAsync(path));
             check(persisted.RootElement.GetProperty("DungeonRewardLedger").GetArrayLength() == 1,
