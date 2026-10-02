@@ -7,7 +7,9 @@ internal static class DungeonRewardUnknownSmokeTests
     {
         foreach (var stage in Enum.GetValues<FailureStage>())
         {
-            var path = Path.Combine(root, $"unknown-{stage}.json");
+            var stageRoot = Path.Combine(root, $"unknown-{stage}");
+            Directory.CreateDirectory(stageRoot);
+            var path = Path.Combine(stageRoot, "store.json");
             var writer = new FailingWriter(stage);
             var store = new JsonGameStore(new ServerOptions { DataPath = path },
                 NullLogger<JsonGameStore>.Instance, writer);
@@ -26,9 +28,12 @@ internal static class DungeonRewardUnknownSmokeTests
             var replay = await store.CommitDungeonRewardAsync(request);
             check(replay.Status == DungeonRewardLedgerStatus.Unknown && writer.Calls == calls,
                 $"{stage}: Unknown never retries writer");
-            var ordinary = await store.SaveCharacterInventoryAsync("test", character.Id,
-                character.Gold + 1, character.Inventory ?? [], character.Equipment ?? []);
-            check(ordinary is null && await File.ReadAllTextAsync(path) == before,
+            CharacterRecord? ordinary = null;
+            var blocked = false;
+            try { ordinary = await store.SaveCharacterInventoryAsync("test", character.Id,
+                character.Gold + 1, character.Inventory ?? [], character.Equipment ?? []); }
+            catch (InvalidOperationException) { blocked = true; }
+            check(blocked && ordinary is null && await File.ReadAllTextAsync(path) == before,
                 $"{stage}: quarantine blocks ordinary stale snapshot save");
             var recovered = await store.RecoverDungeonRewardAsync(request.IdempotencyKey);
             if (stage == FailureStage.AfterReplace)
@@ -44,9 +49,11 @@ internal static class DungeonRewardUnknownSmokeTests
             {
                 check(recovered.Status == DungeonRewardLedgerStatus.Unknown,
                     $"{stage}: absent committed receipt cannot clear quarantine");
-                check(await store.SaveCharacterInventoryAsync("test", character.Id,
-                    character.Gold, character.Inventory ?? [], character.Equipment ?? []) is null,
-                    $"{stage}: failed recovery remains quarantined");
+                var stillBlocked = false;
+                try { await store.SaveCharacterInventoryAsync("test", character.Id,
+                    character.Gold, character.Inventory ?? [], character.Equipment ?? []); }
+                catch (InvalidOperationException) { stillBlocked = true; }
+                check(stillBlocked, $"{stage}: failed recovery remains quarantined");
             }
         }
     }

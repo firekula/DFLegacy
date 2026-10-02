@@ -66,7 +66,18 @@ internal static class DungeonRewardCommitSmokeTests
             check(ledgerField?.GetValue(reloadedStore) is List<DungeonRewardLedgerEntry> loaded
                 && loaded.Count == 1 && loaded[0] == entry,
                 "store loads ledger without interpreting Unknown as committed");
-            var created = await reloadedStore.CreateAccountAsync(new CreateAccountRequest("ledger", "password", OicqCode: "123456"));
+            var quarantineRejected = false;
+            try { await reloadedStore.CreateAccountAsync(new CreateAccountRequest("blocked", "password", OicqCode: "123456")); }
+            catch (InvalidOperationException) { quarantineRejected = true; }
+            check(quarantineRejected && await File.ReadAllTextAsync(path) == rootJson,
+                "restarted Unknown ledger blocks legacy disk writes");
+            // Ordinary ledger preservation uses a separate committed fixture, not quarantined state.
+            var committedEntry = entry with { Status = DungeonRewardLedgerStatus.Committed, UnknownReason = null };
+            ledgerProperty.SetValue(oldState, new List<DungeonRewardLedgerEntry> { committedEntry });
+            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(oldState, stateType));
+            var ordinaryStore = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+            await ordinaryStore.InitializeAsync();
+            var created = await ordinaryStore.CreateAccountAsync(new CreateAccountRequest("ledger", "password", OicqCode: "123456"));
             check(created.Created, "ordinary save fixture actually creates an account");
             using var persisted = JsonDocument.Parse(await File.ReadAllTextAsync(path));
             check(persisted.RootElement.GetProperty("DungeonRewardLedger").GetArrayLength() == 1,

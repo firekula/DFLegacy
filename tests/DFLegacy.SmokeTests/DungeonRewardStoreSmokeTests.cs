@@ -66,11 +66,15 @@ internal static class DungeonRewardStoreSmokeTests
         // A blocked .tmp proves candidate failure cannot install account or ledger.
         Directory.CreateDirectory(path + ".tmp");
         var beforeFailure = JsonSerializer.Serialize(await store.GetCharacterAsync("test", character.Id));
-        var threw = false;
-        try { await store.CommitDungeonRewardAsync(paid); } catch (IOException) { threw = true; } catch (UnauthorizedAccessException) { threw = true; }
-        check(threw && JsonSerializer.Serialize(await store.GetCharacterAsync("test", character.Id)) == beforeFailure,
-            "writer failure propagates without installing candidate");
+        var failed = await store.CommitDungeonRewardAsync(paid);
+        check(failed.Status == DungeonRewardLedgerStatus.Unknown && JsonSerializer.Serialize(await store.GetCharacterAsync("test", character.Id)) == beforeFailure,
+            "writer failure returns Unknown without installing candidate");
         Directory.Delete(path + ".tmp");
+        check((await store.CommitDungeonRewardAsync(paid)).Status == DungeonRewardLedgerStatus.Unknown,
+            "removing temp obstacle cannot implicitly retry unknown operation");
+        // Successful commit/replay has an independent live fixture loaded from untouched official state.
+        store = new JsonGameStore(new ServerOptions { DataPath = path }, NullLogger<JsonGameStore>.Instance);
+        await store.InitializeAsync();
         var committed = await store.CommitDungeonRewardAsync(paid);
         check(committed.Status == DungeonRewardLedgerStatus.Committed && committed.GoldDelta == -10,
             "first paid commit succeeds with exact baseline");
