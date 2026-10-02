@@ -22,6 +22,7 @@ internal static class PartySmokeTests
         CheckPartyAcceptedNotificationLayout(check);
         CheckPartyRoster(check);
         await CheckPartyServiceAsync(check);
+        await CheckHostSlotIsSharedByEveryMemberAsync(check);
     }
 
     /// <summary>NOTI 8（组队）：u16 接受者 uid + u8 peerType=0 + u32 未用 → 7 字节（A 卷 §5）。</summary>
@@ -1368,6 +1369,54 @@ internal static class PartySmokeTests
                     && BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(2, 2))
                         == harness.UidOf("阿尔法")),
             "CMD 12 with a custom name (sel=0) still ships nameSel 1 for the same party");
+    }
+
+    /// <summary>
+    /// S1 不变量（官服对齐）：<c>TryGetLeaderSlot(任意成员)</c> 必须返回**同一个值 = 队长的槽位**。
+    /// 它是三处 NOTI 26 的**唯一输入**：进选图（`EntranceService.cs:2779`）、队员入场（`:2884`）、
+    /// live-join（`:13001`）；官服 `CParty::send_host_info`（@0x0859cdd2）给全队发同一个主机槽位，
+    /// 客户端把它当 0..7 的槽位索引用（`DNF.exe 0x78D2B1`：`mov esi,[eax+28h]; cmp esi,8; jge`）。
+    /// 发成"收件人自己的槽位"会让**每个**客户端都以为自己是主机（各模拟各的怪物）。
+    /// **判别力（为什么既有用例抓不到）**：`DungeonPartySmokeTests.CheckGiveUpLeavesPartyAsync` 只问
+    /// **队长/继任者**的 host 槽位 —— 那时"自己的槽位"与"队长的槽位"重合，把实现改成"返回自己的槽位"
+    /// **变异存活**。本用例问的是**非队长的队员**（自己的槽位 1 ≠ 队长的槽位 0），变异必红。
+    /// **变异验证**（实测变红后已回滚）：把 `PartyService.TryGetLeaderSlot` 改成
+    /// `roster.TryGetSlot(characterId, out var slot) ? slot : null`（返回调用者自己的槽位）
+    /// → 第一条断言 `every member resolves the SAME host slot` 变红。
+    /// </summary>
+    private static async Task CheckHostSlotIsSharedByEveryMemberAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        await harness.InviteAndAcceptAsync("阿尔法", "布拉沃");
+        var leader = harness.IdOf("阿尔法");
+        var member = harness.IdOf("布拉沃");
+
+        // 前置：建队时队长占槽 0、被邀请者占槽 1（TryAdd 取最小空闲槽下标）。
+        // 这一步本身也是断言——若槽位分配变了，下面"自己槽位 ≠ 主机槽位"的判别力就没了。
+        var leaderOwnSlot = harness.Service.GetPartySlots(leader)!
+            .Single(slot => slot.CharacterId == leader).SlotIndex;
+        var memberOwnSlot = harness.Service.GetPartySlots(member)!
+            .Single(slot => slot.CharacterId == member).SlotIndex;
+        check(leaderOwnSlot == 0 && memberOwnSlot == 1,
+            "the fixture really puts the leader in slot 0 and the member in slot 1");
+
+        // ① 关键断言：两人查到**同一个** host 槽位，且等于队长的（不是队员自己的）。
+        check(harness.Service.TryGetLeaderSlot(leader) == 0
+                && harness.Service.TryGetLeaderSlot(member) == 0,
+            "every member resolves the SAME host slot (the leader's), never his own");
+        check(harness.Service.TryGetLeaderSlot(member) != memberOwnSlot,
+            "a member's host slot is deliberately NOT his own slot (that mistake makes both clients claim to host)");
+
+        // ② 不在任何队伍 → null（调用点据此回退 0，即单人语义：主机就是自己）。
+        check(harness.Service.TryGetLeaderSlot(Guid.NewGuid()) is null,
+            "a character outside every party has no host slot (call sites fall back to 0 for solo play)");
+
+        // ③ 队长退队 → 队员**就地**继任（槽位不搬动）：host 槽位随之变成 1；已退队者查不到。
+        await harness.Service.HandleLeaveAsync(leader, CancellationToken.None);
+        check(harness.Service.TryGetLeaderSlot(member) == 1,
+            "after the leader leaves, the successor's own slot becomes the host slot (no compaction to slot 0)");
+        check(harness.Service.TryGetLeaderSlot(leader) is null,
+            "the departed leader no longer resolves any host slot");
     }
 }
 
