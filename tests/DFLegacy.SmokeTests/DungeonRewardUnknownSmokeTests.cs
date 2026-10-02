@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using DFLegacy.Server;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -38,6 +39,8 @@ internal static class DungeonRewardUnknownSmokeTests
                 $"{stage}: quarantine blocks ordinary stale snapshot save");
             if (stage == FailureStage.BeforeReplace)
             {
+                var officialBefore = JsonNode.Parse(before)!;
+                var officialFatigue = officialBefore["Accounts"]![0]! ["Characters"]![0]!["UsedFatigue"]!.GetValue<ushort>();
                 var funnelBlocked = false;
                 try { await store.SetCharacterUsedFatigueAsync(character.Id, 1); }
                 catch (InvalidOperationException) { funnelBlocked = true; }
@@ -70,6 +73,9 @@ internal static class DungeonRewardUnknownSmokeTests
                 check(discarded.Decision == StoreRecoveryDecision.Discarded && discarded.DiscardedEntryCount >= 1, "BeforeReplace operator discard");
                 var disk = await File.ReadAllTextAsync(path);
                 check(disk.Contains("\"Status\": 1") && disk.Contains("operator-discarded"), "operator discard persisted ledger");
+                var officialAfter = JsonNode.Parse(disk)!;
+                check(officialAfter["Accounts"]![0]!["Characters"]![0]!["UsedFatigue"]!.GetValue<ushort>() == character.UsedFatigue,
+                    "discard never persists failed in-memory fatigue mutation");
                 check(await store.SaveCharacterInventoryAsync("test", character.Id, character.Gold, character.Inventory ?? [], character.Equipment ?? []) is not null, "discard ordinary write");
                 check(logger.Messages.Any(x => x.Contains("operator test") && x.Contains("Discarded")), "operator audit logged");
                 var restarted = new JsonGameStore(new ServerOptions { DataPath = path }, NullLogger<JsonGameStore>.Instance);
@@ -114,15 +120,6 @@ internal static class DungeonRewardUnknownSmokeTests
         public void Log<TState>(LogLevel level, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
     }
 
-    private sealed class SuccessWriter : IDungeonRewardSnapshotWriter
-    {
-        public async Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken)
-        {
-            await File.WriteAllBytesAsync(path + ".tmp", snapshot.ToArray(), cancellationToken);
-            File.Move(path + ".tmp", path, overwrite: true);
-        }
-    }
-
     private enum FailureStage { BeforeTemp, BeforeReplace, AfterReplace, CancelDuringWrite }
 
     // Internal snapshot persistence abstraction, not a public production test callback.
@@ -130,6 +127,7 @@ internal static class DungeonRewardUnknownSmokeTests
     {
         public int Calls { get; private set; }
         public bool Succeed { get; set; }
+        public bool ReplaceThenThrowOnce { get; set; }
         public async Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken)
         {
             Calls++;

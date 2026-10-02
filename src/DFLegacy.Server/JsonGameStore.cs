@@ -3286,6 +3286,8 @@ public sealed class JsonGameStore(
             if (!File.Exists(StorePath)) return new(StoreRecoveryDecision.Refused, "official-state-missing", 0);
             var state = JsonSerializer.Deserialize<JsonGameStoreState>(await File.ReadAllTextAsync(StorePath, cancellationToken))
                 ?? throw new InvalidDataException("Invalid official store state");
+            unknown = unknown.Concat(state.DungeonRewardLedger.Where(x => x.Status == DungeonRewardLedgerStatus.Unknown))
+                .GroupBy(x => x.IdempotencyKey).Select(x => x.Last()).ToArray();
             var allCommitted = unknown.Length > 0 && unknown.All(pending => state.DungeonRewardLedger.Any(disk =>
                 disk.IdempotencyKey == pending.IdempotencyKey && disk.PayloadFingerprint == pending.PayloadFingerprint
                 && disk.Status == DungeonRewardLedgerStatus.Committed));
@@ -3318,8 +3320,6 @@ public sealed class JsonGameStore(
                     Status = DungeonRewardLedgerStatus.Rejected, RejectionCode = "operator-discarded", UnknownReason = reason
                 });
             }
-            if (state.DungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown))
-                return new(StoreRecoveryDecision.Refused, "unresolved-official-unknown", 0);
             // Operator privilege: persist only the official root plus rejection decisions while quarantine remains held.
             var snapshot = JsonSerializer.SerializeToUtf8Bytes(state, new JsonSerializerOptions { WriteIndented = true });
             await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
