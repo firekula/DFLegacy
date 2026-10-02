@@ -35,6 +35,19 @@ internal static class DungeonRewardUnknownSmokeTests
             catch (InvalidOperationException) { blocked = true; }
             check(blocked && ordinary is null && await File.ReadAllTextAsync(path) == before,
                 $"{stage}: quarantine blocks ordinary stale snapshot save");
+            if (stage == FailureStage.BeforeReplace)
+            {
+                var funnelBlocked = false;
+                try { await store.SetCharacterUsedFatigueAsync(character.Id, 1); }
+                catch (InvalidOperationException) { funnelBlocked = true; }
+                check(funnelBlocked && await File.ReadAllTextAsync(path) == before,
+                    "funnel prevents uncertain ledger leaking through unguarded fatigue save");
+                var reloaded = new JsonGameStore(new ServerOptions { DataPath = path }, NullLogger<JsonGameStore>.Instance);
+                await reloaded.InitializeAsync();
+                var savedAfterReload = await reloaded.SaveCharacterInventoryAsync("test", character.Id,
+                    character.Gold, character.Inventory ?? [], character.Equipment ?? []);
+                check(savedAfterReload is not null, "pre-replace failure plus unguarded save does not permanently quarantine reload");
+            }
             var recovered = await store.RecoverDungeonRewardAsync(request.IdempotencyKey);
             if (stage == FailureStage.AfterReplace)
             {

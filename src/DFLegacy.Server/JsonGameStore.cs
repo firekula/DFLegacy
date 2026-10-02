@@ -705,7 +705,7 @@ public sealed class JsonGameStore(
                         _fatigueDayKey,
                         startupResetCharacterIds.Length);
                 }
-                if (stateChanged)
+                if (stateChanged && !_rewardQuarantined)
                 {
                     await SaveLockedAsync(cancellationToken);
                 }
@@ -3405,6 +3405,8 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            if (_rewardQuarantined)
+                throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
             if (itemCatalog is null || statCatalog is null)
             {
                 return new ItemTradeCommitResult(
@@ -6236,6 +6238,8 @@ public sealed class JsonGameStore(
 
     private async Task SaveLockedAsync(CancellationToken cancellationToken)
     {
+        if (_rewardQuarantined)
+            throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
         _ = SettleWarehouseUpgradeItemsLocked();
         Directory.CreateDirectory(Path.GetDirectoryName(StorePath)!);
         var temporary = StorePath + ".tmp";
