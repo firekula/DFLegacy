@@ -1528,6 +1528,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             var accountIndex = _accounts.FindIndex(account =>
                 string.Equals(account.UserName, userName.Trim(), StringComparison.OrdinalIgnoreCase));
             if (accountIndex < 0
@@ -1575,6 +1576,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             var accountIndex = _accounts.FindIndex(account =>
                 string.Equals(account.UserName, userName.Trim(), StringComparison.OrdinalIgnoreCase));
             if (accountIndex < 0
@@ -2622,6 +2624,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(senderCharacterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -2764,6 +2767,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             foreach (var account in _accounts)
             {
                 var characterIndex = account.Characters.FindIndex(character =>
@@ -2815,6 +2819,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -2904,6 +2909,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             foreach (var account in _accounts)
             {
                 var characterIndex = account.Characters.FindIndex(character =>
@@ -2949,6 +2955,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             foreach (var account in _accounts)
             {
                 var characterIndex = account.Characters.FindIndex(character =>
@@ -3590,6 +3597,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -3684,6 +3692,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -3765,6 +3774,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -3854,6 +3864,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             if (_pendingTradeDeliveries.ContainsKey(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
@@ -4006,6 +4017,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            ThrowIfRewardQuarantinedLocked();
             var account = _accounts.FirstOrDefault(x =>
                 string.Equals(x.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
@@ -6238,8 +6250,7 @@ public sealed class JsonGameStore(
 
     private async Task SaveLockedAsync(CancellationToken cancellationToken)
     {
-        if (_rewardQuarantined)
-            throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
+        ThrowIfRewardQuarantinedLocked();
         _ = SettleWarehouseUpgradeItemsLocked();
         Directory.CreateDirectory(Path.GetDirectoryName(StorePath)!);
         var temporary = StorePath + ".tmp";
@@ -6262,6 +6273,12 @@ public sealed class JsonGameStore(
 
         File.Move(temporary, StorePath, overwrite: true);
         logger.LogInformation("Saved emulator state to {Path}", StorePath);
+    }
+
+    private void ThrowIfRewardQuarantinedLocked()
+    {
+        if (_rewardQuarantined)
+            throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
     }
 
     private bool ResetFatigueForNewDayLocked(
