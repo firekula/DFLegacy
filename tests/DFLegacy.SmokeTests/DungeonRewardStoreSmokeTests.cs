@@ -94,5 +94,35 @@ internal static class DungeonRewardStoreSmokeTests
         check(await File.ReadAllTextAsync(path) == beforeReplay, "replay performs no snapshot write");
         await Reject(paid with { TargetGold = paid.TargetGold + 1 }, "idempotency-payload-mismatch", "same key changed frozen payload");
         Directory.Delete(path + ".tmp");
+        var stableRequest = paid with
+        {
+            IdempotencyKey = "drift",
+            ExpectedGold = updated!.Gold,
+            TargetGold = updated.Gold,
+            ExpectedInventory = updated.Inventory!.ToArray(),
+            PlannedInventory = updated.Inventory.ToArray()
+        };
+        stableRequest = stableRequest with { PayloadFingerprint = JsonGameStore.ComputeDungeonRewardFingerprint(stableRequest) };
+        var drifting = new DriftingItems(stableRequest.PlannedInventory.ToArray(), new CharacterItemRecord(1, 2, 99));
+        var driftResult = await store.CommitDungeonRewardAsync(stableRequest with { PlannedInventory = drifting });
+        check(driftResult.Status == DungeonRewardLedgerStatus.Committed
+            && driftResult.UpdatedCharacter!.Inventory!.SequenceEqual(stableRequest.PlannedInventory),
+            "single enumeration freezes fingerprint and candidate despite mutable list");
+    }
+
+    private sealed class DriftingItems : IReadOnlyList<CharacterItemRecord>
+    {
+        private readonly CharacterItemRecord[] _stable;
+        private readonly CharacterItemRecord _drift;
+        private int _reads;
+        public DriftingItems(CharacterItemRecord[] stable, CharacterItemRecord drift) { _stable = stable; _drift = drift; }
+        public CharacterItemRecord this[int index] => (_reads++ >= 1 && index == 0) ? _drift : _stable[index];
+        public int Count => _stable.Length;
+        public IEnumerator<CharacterItemRecord> GetEnumerator()
+        {
+            var items = ++_reads == 1 ? _stable : new[] { _drift };
+            return ((IEnumerable<CharacterItemRecord>)items).GetEnumerator();
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
