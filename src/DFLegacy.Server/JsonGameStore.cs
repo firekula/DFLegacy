@@ -3192,17 +3192,17 @@ public sealed class JsonGameStore(
         }
     }
 
-    public async Task<DungeonRewardCommitResult> CommitDungeonRewardAsync(DungeonRewardCommitRequest request, CancellationToken cancellationToken = default)
+    // Trusted server reward planner contract; not exposed as a network mutation API.
+    internal async Task<DungeonRewardCommitResult> CommitDungeonRewardAsync(DungeonRewardCommitRequest request, CancellationToken cancellationToken = default)
     {
         var expectedInventory = request.ExpectedInventory?.ToArray(); var expectedEquipment = request.ExpectedEquipment?.ToArray(); var plannedInventory = request.PlannedInventory?.ToArray(); var plannedEquipment = request.PlannedEquipment?.ToArray(); var mails = request.GeneratedMails?.ToArray();
         if (expectedInventory is null || expectedEquipment is null || plannedInventory is null || plannedEquipment is null || mails is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-request", null);
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var canonical = JsonSerializer.Serialize(new { request.IdempotencyKey, request.UserName, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, request.TargetGold, request.ExpectedGold, expectedInventory, expectedEquipment, plannedInventory, plannedEquipment, mails, request.WarehouseCapacity, request.ExpectedWarehouseCapacity });
-            var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+            var fingerprint = ComputeDungeonRewardFingerprint(request);
             if (fingerprint.Length == 0 || string.IsNullOrWhiteSpace(request.IdempotencyKey)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-request", null);
-            if (!string.IsNullOrEmpty(request.PayloadFingerprint) && !string.Equals(request.PayloadFingerprint, fingerprint, StringComparison.OrdinalIgnoreCase)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "payload-fingerprint-mismatch", null);
+            if (string.IsNullOrWhiteSpace(request.PayloadFingerprint) || !string.Equals(request.PayloadFingerprint, fingerprint, StringComparison.OrdinalIgnoreCase)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "payload-fingerprint-mismatch", null);
             var prior = _dungeonRewardLedger.FirstOrDefault(x => x.IdempotencyKey == request.IdempotencyKey);
             if (prior is not null) { if (prior.PayloadFingerprint != fingerprint) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "idempotency-payload-mismatch", null); var c = _accounts.SelectMany(a => a.Characters).FirstOrDefault(x => x.Id == request.CharacterId); return new(prior.Status, c, prior.RewardItemId, prior.GoldDelta, prior.RejectionCode, prior.UnknownReason); }
             if (request.TargetGold < 0 || request.ExpectedGold < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-gold", null);
@@ -3217,6 +3217,17 @@ public sealed class JsonGameStore(
         }
         finally { _gate.Release(); }
     }
+    internal static string ComputeDungeonRewardFingerprint(DungeonRewardCommitRequest request)
+    {
+        var expectedInventory = request.ExpectedInventory?.ToArray();
+        var expectedEquipment = request.ExpectedEquipment?.ToArray();
+        var plannedInventory = request.PlannedInventory?.ToArray();
+        var plannedEquipment = request.PlannedEquipment?.ToArray();
+        var mails = request.GeneratedMails?.ToArray();
+        var canonical = JsonSerializer.Serialize(new { request.IdempotencyKey, request.UserName, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, request.TargetGold, request.ExpectedGold, expectedInventory, expectedEquipment, plannedInventory, plannedEquipment, mails, request.WarehouseCapacity, request.ExpectedWarehouseCapacity });
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+    }
+
     private static bool ItemsEqual(IEnumerable<CharacterItemRecord>? a, IEnumerable<CharacterItemRecord> b) => (a ?? []).OrderBy(x => x.Slot).SequenceEqual(b.OrderBy(x => x.Slot));
 
     private static bool InventoryPlanPreservesBaseline(IEnumerable<CharacterItemRecord>? baseline, IEnumerable<CharacterItemRecord> planned)
