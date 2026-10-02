@@ -78,7 +78,7 @@ internal sealed class DungeonInstance(
     private readonly PartyCardSelectionState _partyCards = new();
     private readonly Dictionary<(PartyCardType Type, byte Column, byte Slot), PartyCardContent> _partyCardContent = [];
     private long _partyContentGeneration;
-    private bool _partyCardPublished;
+    private readonly HashSet<(PartyCardType Type, byte Column, byte Slot)> _partyPublishedOwners = [];
     private readonly Dictionary<Guid, byte> _partySettlementSlots = [];
 
     internal long BeginPartyCardSettlement()
@@ -90,7 +90,7 @@ internal sealed class DungeonInstance(
             _partyCardContent.Clear();
             _partySettlementSlots.Clear();
             foreach (var member in _members) _partySettlementSlots[member.CharacterId] = member.PartySlot;
-            _partyCardPublished = false;
+            _partyPublishedOwners.Clear();
             return _partyContentGeneration;
         }
     }
@@ -127,17 +127,29 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             snapshot = null;
-            if (generation != _partyContentGeneration || generation != _partyCards.Generation || _partyCardPublished) return false;
+            if (generation != _partyContentGeneration || generation != _partyCards.Generation) return false;
             var owners = _partyCards.Snapshot();
-            foreach (var owner in owners.FreeOwners.Where(x => x != PartyCardSelectionState.Unassigned))
-                if (!_partyCardContent.Any(x => x.Key.Type == PartyCardType.Free && x.Key.Slot == owner && x.Value.Status is PartyCardCommitStatus.Committed or PartyCardCommitStatus.Rejected)) return false;
-            foreach (var owner in owners.PaidOwners.Where(x => x != PartyCardSelectionState.Unassigned))
-                if (!_partyCardContent.Any(x => x.Key.Type == PartyCardType.Paid && x.Key.Slot == owner && x.Value.Status is PartyCardCommitStatus.Committed or PartyCardCommitStatus.Rejected)) return false;
-            _partyCardPublished = true;
-            snapshot = new PartyCardPublishedSnapshot(
-                generation,
-                owners,
-                _partyCardContent.Values.ToArray());
+            var free = (byte[])owners.FreeOwners.Clone();
+            var paid = (byte[])owners.PaidOwners.Clone();
+            var newlyPublished = new List<(PartyCardType Type, byte Column, byte Slot)>();
+            for (byte column = 0; column < 4; column++)
+            {
+                foreach (var type in new[] { PartyCardType.Free, PartyCardType.Paid })
+                {
+                    var slot = type == PartyCardType.Free ? free[column] : paid[column];
+                    if (slot == PartyCardSelectionState.Unassigned || _partyPublishedOwners.Contains((type, column, slot))) continue;
+                    var key = (type, column, slot);
+                    if (!_partyCardContent.TryGetValue(key, out var content) || content.Status is PartyCardCommitStatus.Pending or PartyCardCommitStatus.Unknown)
+                    {
+                        if (type == PartyCardType.Free) free[column] = PartyCardSelectionState.Unassigned; else paid[column] = PartyCardSelectionState.Unassigned;
+                        continue;
+                    }
+                    newlyPublished.Add(key);
+                }
+            }
+            if (newlyPublished.Count == 0) return false;
+            foreach (var key in newlyPublished) _partyPublishedOwners.Add(key);
+            snapshot = new PartyCardPublishedSnapshot(generation, new PartyCardSelectionSnapshot(generation, owners.AutoCompleted, free, paid, owners.MemberSlots), _partyCardContent.Values.ToArray());
             return true;
         }
     }
