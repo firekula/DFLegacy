@@ -97,6 +97,10 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             if (generation != _partyCards.Generation || !_members.Any(x => x.CharacterId == characterId)) return;
+            var owners = _partyCards.Snapshot();
+            var slot = _partySettlementSlots.GetValueOrDefault(characterId, byte.MaxValue);
+            var owner = type == PartyCardType.Free ? owners.FreeOwners.ElementAtOrDefault(column) : owners.PaidOwners.ElementAtOrDefault(column);
+            if (column >= 4 || owner != slot) return;
             if (!_partyCardAttempts.Add((generation, type, column, characterId))) return;
             _partyCardAgents.TryGetValue(characterId, out agent);
         }
@@ -106,7 +110,7 @@ internal sealed class DungeonInstance(
             var content = agent.RollOwnColumn(type, column, generation);
             if (content.Type != type || content.Column != column || content.PartySlot != _partySettlementSlots.GetValueOrDefault(characterId, byte.MaxValue)) return;
             var outcome = await agent.CommitOwnColumnAsync(type, column, generation, content, ct);
-            ReportPartyCardCommit(characterId, type, column, generation, content.Roll, outcome.Status);
+            ReportPartyCardCommitFromAgent(characterId, type, column, generation, content, outcome);
         }
         catch
         {
@@ -128,7 +132,7 @@ internal sealed class DungeonInstance(
         }
     }
 
-    internal bool ReportPartyCardCommit(Guid characterId, PartyCardType type, byte column, long generation, DungeonClearRewardRoll roll, DungeonRewardLedgerStatus status)
+    private bool ReportPartyCardCommitFromAgent(Guid characterId, PartyCardType type, byte column, long generation, PartyCardContent content, PartyCardCommitOutcome outcome)
     {
         lock (Gate)
         {
@@ -143,14 +147,15 @@ internal sealed class DungeonInstance(
             };
             if (owner == PartyCardSelectionState.Unassigned || owner != memberSlot) return false;
             var key = (type, column, owner);
-            var commitStatus = status switch
+            var commitStatus = outcome.Status switch
             {
                 DungeonRewardLedgerStatus.Committed => PartyCardCommitStatus.Committed,
                 DungeonRewardLedgerStatus.Rejected => PartyCardCommitStatus.Rejected,
                 _ => PartyCardCommitStatus.Unknown
             };
             if (_partyCardContent.ContainsKey(key)) return false;
-            _partyCardContent[key] = new PartyCardContent(type, column, owner, roll, commitStatus);
+            if (content.Type != type || content.Column != column || content.PartySlot != owner) return false;
+            _partyCardContent[key] = content with { Status = commitStatus };
             return true;
         }
     }
