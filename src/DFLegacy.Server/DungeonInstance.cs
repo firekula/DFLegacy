@@ -76,10 +76,60 @@ internal sealed class DungeonInstance(
     private readonly List<DungeonInstanceMember> _members = [];
     private readonly DungeonRunState _run = new(catalog);
     private readonly PartyCardSelectionState _partyCards = new();
+    private readonly Dictionary<(PartyCardType Type, byte Column, byte Slot), PartyCardContent> _partyCardContent = [];
+    private long _partyContentGeneration;
+    private bool _partyCardPublished;
+    private readonly Dictionary<Guid, byte> _partySettlementSlots = [];
 
     internal long BeginPartyCardSettlement()
     {
-        lock (Gate) return IsParty ? _partyCards.Begin(_members) : 0;
+        lock (Gate)
+        {
+            if (!IsParty) return 0;
+            _partyContentGeneration = _partyCards.Begin(_members);
+            _partyCardContent.Clear();
+            _partySettlementSlots.Clear();
+            foreach (var member in _members) _partySettlementSlots[member.CharacterId] = member.PartySlot;
+            _partyCardPublished = false;
+            return _partyContentGeneration;
+        }
+    }
+
+    internal bool ReportPartyCardCommit(Guid characterId, PartyCardType type, byte column, long generation, DungeonClearRewardRoll roll, DungeonRewardLedgerStatus status)
+    {
+        lock (Gate)
+        {
+            if (generation != _partyContentGeneration || !_members.Any(m => m.CharacterId == characterId)) return false;
+            var owners = _partyCards.Snapshot();
+            if (!_partySettlementSlots.TryGetValue(characterId, out var memberSlot)) return false;
+            var owner = type == PartyCardType.Free && column < 4 ? owners.FreeOwners[column] : PartyCardSelectionState.Unassigned;
+            if (owner == PartyCardSelectionState.Unassigned || owner != memberSlot) return false;
+            var key = (type, column, owner);
+            var commitStatus = status switch
+            {
+                DungeonRewardLedgerStatus.Committed => PartyCardCommitStatus.Committed,
+                DungeonRewardLedgerStatus.Rejected => PartyCardCommitStatus.Rejected,
+                _ => PartyCardCommitStatus.Unknown
+            };
+            if (_partyCardContent.ContainsKey(key)) return false;
+            _partyCardContent[key] = new PartyCardContent(roll, commitStatus);
+            return true;
+        }
+    }
+
+    internal bool TryTakePartyCardPublication(long generation, out PartyCardSelectionSnapshot? snapshot)
+    {
+        lock (Gate)
+        {
+            snapshot = null;
+            if (generation != _partyContentGeneration || _partyCardPublished) return false;
+            var owners = _partyCards.Snapshot();
+            foreach (var owner in owners.FreeOwners.Where(x => x != PartyCardSelectionState.Unassigned))
+                if (!_partyCardContent.Any(x => x.Key.Type == PartyCardType.Free && x.Key.Slot == owner && x.Value.Status is PartyCardCommitStatus.Committed or PartyCardCommitStatus.Rejected)) return false;
+            _partyCardPublished = true;
+            snapshot = owners;
+            return true;
+        }
     }
 
     internal PartyCardSelectionOutcome TryReservePartyCard(Guid characterId, PartyCardType type, byte column, long generation)
