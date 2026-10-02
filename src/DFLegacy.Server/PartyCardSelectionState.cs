@@ -28,6 +28,7 @@ internal sealed class PartyCardSelectionState
     private long _generation;
     private bool _active;
     private bool _autoCompleted;
+    internal long Generation => _generation;
 
     internal long Begin(IReadOnlyList<DungeonInstanceMember> members)
     {

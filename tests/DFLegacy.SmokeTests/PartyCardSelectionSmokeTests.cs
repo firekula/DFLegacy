@@ -20,6 +20,10 @@ internal static class PartyCardSelectionSmokeTests
         snapshot.FreeOwners[0] = 99;
         check(instance.SnapshotPartyCards().FreeOwners[0] != 99, "snapshot ownership is copied");
         check(instance.TryReservePartyCard(b, PartyCardType.Free, 1, generation + 1).Status == PartyCardSelectionStatus.Rejected, "stale generation rejected");
+        var packetA = DFLegacy.Protocol.GameProtocolEngine.CreateSelectCardReply(new byte[] { 2, 0, 255, 255 }, new byte[] { 255, 255, 255, 255 }, new ushort?[] { null, null, null, null });
+        var packetB = DFLegacy.Protocol.GameProtocolEngine.CreateSelectCardReply(new byte[] { 2, 0, 255, 255 }, new byte[] { 255, 255, 255, 255 }, new ushort?[] { null, null, null, null });
+        check(packetA.Payload.SequenceEqual(packetB.Payload), "shared CMD74 bytes identical");
+        check(packetA.Payload.Length == 13, "shared CMD74 uses four fixed columns");
         check(instance.IsParty, "party instance remains isolated");
         check(instance.TryReservePartyCard(a, PartyCardType.Free, 0, generation).Status == PartyCardSelectionStatus.AlreadyReserved, "auto completion preserves existing owner retry");
         check(instance.TryReservePartyCard(a, PartyCardType.Free, 3, generation).Status == PartyCardSelectionStatus.Rejected, "auto completion closes remaining free columns");

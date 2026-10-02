@@ -3853,6 +3853,30 @@ public static class GameProtocolEngine
     }
 
     public static GameServerPacket CreateSelectCardReply(
+        IReadOnlyList<byte> freeOwners,
+        IReadOnlyList<byte> paidOwners,
+        IReadOnlyList<ushort?> paidItems)
+    {
+        if (freeOwners.Count != ClearRewardCardColumnCount || paidOwners.Count != ClearRewardCardColumnCount || paidItems.Count != ClearRewardCardColumnCount)
+            throw new ArgumentException("Party card snapshot must contain four columns.");
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);
+        for (var i = 0; i < ClearRewardCardColumnCount; i++)
+        {
+            writer.Write(freeOwners[i]);
+            writer.Write(paidOwners[i]);
+            writer.Write((byte)(paidItems[i].HasValue ? 2 : 0));
+            if (paidItems[i].HasValue)
+            {
+                writer.Write((ushort)0); writer.Write(0u);
+                writer.Write(paidItems[i]!.Value); writer.Write(0u);
+            }
+        }
+        return new GameServerPacket(CommandPacketType, SelectCardCommand, payload.ToArray());
+    }
+
+    public static GameServerPacket CreateSelectCardReply(
         byte? freeCardIndex,
         byte? goldCardIndex,
         bool goldRewardRevealed = false,
