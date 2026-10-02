@@ -87,8 +87,8 @@ def selftest() -> int:
     expect("noti 25 is default", handler_of(25), 0x42A069)
     expect("noti 11 handler", handler_of(11), 0x41C7E7)      # STATIC-FINDINGS.md:291
 
-    # NOTI 11 每成员 7 字段：word,dword,dword,word,dword,byte,dword（STATIC-FINDINGS.md:293-301）
-    expect("noti-fields 11", read_sequence(11), ["short", "int", "int", "short", "int", "byte", "int"])
+    # NOTI 11 每成员 7 字段；**线性序列首位是计数字节**（实现时实测 8 项）
+    expect("noti-fields 11", read_sequence(11), ["byte", "short", "int", "int", "short", "int", "byte", "int"])
 
     # NOTI 86 的 5 号子类型是空操作：处理器体内只有 1/2 两个比较，其余 jmp 0x42740F → 0x42A069
     insns = dnf.dis(handler_of(86), 30)
@@ -96,9 +96,12 @@ def selftest() -> int:
     expect("noti86 type2 compare", any("cmp    byte ptr [ebp - 0x61f8], 2" in i for i in insns), True)
     expect("noti86 default jump", any("jmp    0x42740f" in i for i in insns), True)
 
-    # 全局引用扫描：myUid 全局 0xb75a40 只有一个写入点
+    # 全局引用扫描：myUid 全局 0xb75a40 有**两个**写入点（A3 赋值 + C7 05 重置为 0xFFFF 哨兵）。
+    # 实现时实测更正：只认 A1/A3 会漏掉 C7 05 形式（见台账"更正"）。
     refs = global_refs(0xB75A40)
-    expect("myUid write sites", len([r for r in refs if r[1] == "WRITE"]), 1)
+    expect("myUid write sites",
+           [(s, k, imm) for s, k, _raw, imm in refs if k in ("WRITE", "WRITE-IMM")],
+           [(0x4093AC, "WRITE", None), (0x99300D, "WRITE-IMM", 0xFFFF)])
 
     for f in failures:
         print("FAIL", f)
@@ -134,9 +137,10 @@ Expected: `client_surface selftest: 0 failures`，退出码 0。若 `noti-fields
 
 Run:
 ```
-python client_surface.py cmds --log ../../2026-10-01-party-loot-card-alignment/real-client-run-42-server.log | Select-String -Pattern "^46\b|^48\b|^39\b|^135\b|^169\b"
+python client_surface.py cmds --log ../../2026-10-01-party-loot-card-alignment/real-client-run-42-server.log | Select-String -Pattern "^46\b|^48\b|^40\b|^135\b|^169\b"
 ```
-Expected: `46/48/39` 的 `seen_in_log` 均 > 0；`135` 与 `169` 均 = 0（`135` 客户端从不发是 `STATUS.md:700-702` 的记录；`169` 见 `STATUS.md:784-785`）。把这一行输出贴进台账。
+Expected（**实现时实测修正过**）：`46/48/40` 的 `seen_as_cmd` 均 > 0；`135` 与 `169` 均 = 0（`135` 客户端从不发是 `STATUS.md:700-702` 的记录；`169` 见 `STATUS.md:784-785`）。
+**必须分 type 统计**：`CMD 39 = FISHING` 与 `NOTI 39 = GET_ITEM` 是两套命名空间，混在一起会把通知的条数算到命令头上（第一版就这么错过；见台账更正）。把输出贴进台账。
 
 - [ ] **Step 6: 提交**
 
