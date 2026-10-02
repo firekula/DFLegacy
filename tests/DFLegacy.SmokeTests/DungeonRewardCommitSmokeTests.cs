@@ -74,6 +74,7 @@ internal static class DungeonRewardCommitSmokeTests
             check(Directory.GetFiles(tempRoot).Length == 1,
                 "no second ledger file is created");
             await DungeonRewardStoreSmokeTests.RunAsync(check, tempRoot);
+            await DungeonRewardUnknownSmokeTests.RunAsync(check, tempRoot);
         }
         finally
         {
