@@ -3201,13 +3201,16 @@ public sealed class JsonGameStore(
         {
             var canonical = JsonSerializer.Serialize(new { request.IdempotencyKey, request.UserName, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, request.TargetGold, request.ExpectedGold, expectedInventory, expectedEquipment, plannedInventory, plannedEquipment, mails, request.WarehouseCapacity, request.ExpectedWarehouseCapacity });
             var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+            if (fingerprint.Length == 0 || string.IsNullOrWhiteSpace(request.IdempotencyKey)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-request", null);
             if (!string.IsNullOrEmpty(request.PayloadFingerprint) && !string.Equals(request.PayloadFingerprint, fingerprint, StringComparison.OrdinalIgnoreCase)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "payload-fingerprint-mismatch", null);
             var prior = _dungeonRewardLedger.FirstOrDefault(x => x.IdempotencyKey == request.IdempotencyKey);
             if (prior is not null) { if (prior.PayloadFingerprint != fingerprint) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "idempotency-payload-mismatch", null); var c = _accounts.SelectMany(a => a.Characters).FirstOrDefault(x => x.Id == request.CharacterId); return new(prior.Status, c, prior.RewardItemId, prior.GoldDelta, prior.RejectionCode, prior.UnknownReason); }
             if (request.TargetGold < 0 || request.ExpectedGold < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-gold", null);
             if (plannedInventory.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedEquipment.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedInventory.Any(x => x.ItemId == 0) || plannedEquipment.Any(x => x.ItemId == 0)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
             var account = _accounts.FirstOrDefault(a => string.Equals(a.UserName, request.UserName, StringComparison.OrdinalIgnoreCase)); var index = account?.Characters.FindIndex(x => x.Id == request.CharacterId) ?? -1; if (account is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "account-not-found", null); if (index < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-not-found", null); if (_pendingTradeDeliveries.ContainsKey(request.CharacterId)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "pending-trade-delivery", null);
-            var current = account.Characters[index]; if (current.Gold != request.ExpectedGold || !ItemsEqual(current.Inventory, expectedInventory) || !ItemsEqual(current.Equipment, expectedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-state-conflict", null);
+            var current = account.Characters[index];
+            if (current.Gold != request.ExpectedGold || !ItemsEqual(current.Inventory, expectedInventory) || !ItemsEqual(current.Equipment, expectedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-state-conflict", null);
+            if (!InventoryPlanPreservesBaseline(current.Inventory, plannedInventory) || !ItemsEqual(current.Equipment, plannedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
             if (!TryResolveWarehouseCapacityUpdate(current, request.WarehouseCapacity, request.ExpectedWarehouseCapacity, out var capacity)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "warehouse-capacity-conflict", null);
             if (!TryAppendGeneratedMailsLocked(current, mails, out var mailbox, out _, out var generated)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-mails", null); capacity = Math.Max(capacity, generated);
             var accounts = JsonSerializer.Deserialize<List<AccountRecord>>(JsonSerializer.Serialize(_accounts))!; var updated = current with { Gold = request.TargetGold, Inventory = plannedInventory.OrderBy(x => x.Slot).ToList(), Equipment = plannedEquipment.OrderBy(x => x.Slot).ToList(), Mailbox = mailbox, WarehouseCapacity = capacity }; accounts.First(a => a.Id == account.Id).Characters[index] = updated; var now = DateTimeOffset.UtcNow; var entry = new DungeonRewardLedgerEntry(request.IdempotencyKey, fingerprint, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, DungeonRewardLedgerStatus.Committed, now, now, null, request.TargetGold - current.Gold, null, null); var ledger = new List<DungeonRewardLedgerEntry>(_dungeonRewardLedger) { entry }; await SaveSnapshotLockedAsync(accounts, ledger, cancellationToken); _accounts = accounts; _dungeonRewardLedger = ledger; return new(DungeonRewardLedgerStatus.Committed, updated, null, entry.GoldDelta, null, null);
@@ -3215,6 +3218,18 @@ public sealed class JsonGameStore(
         finally { _gate.Release(); }
     }
     private static bool ItemsEqual(IEnumerable<CharacterItemRecord>? a, IEnumerable<CharacterItemRecord> b) => (a ?? []).OrderBy(x => x.Slot).SequenceEqual(b.OrderBy(x => x.Slot));
+
+    private static bool InventoryPlanPreservesBaseline(IEnumerable<CharacterItemRecord>? baseline, IEnumerable<CharacterItemRecord> planned)
+    {
+        var oldItems = (baseline ?? []).ToDictionary(x => x.Slot);
+        var newItems = planned.ToDictionary(x => x.Slot);
+        foreach (var pair in oldItems)
+        {
+            if (!newItems.TryGetValue(pair.Key, out var next) || next with { CountOrValue = pair.Value.CountOrValue } != pair.Value || next.CountOrValue < pair.Value.CountOrValue)
+                return false;
+        }
+        return true;
+    }
 
     public async Task<CharacterRecord?> SaveCharacterInventoryAsync(
         string userName,

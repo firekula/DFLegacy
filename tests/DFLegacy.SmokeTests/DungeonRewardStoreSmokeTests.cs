@@ -56,6 +56,9 @@ internal static class DungeonRewardStoreSmokeTests
             TargetGold = character.Gold - 10,
             PlannedInventory = (character.Inventory ?? []).Select(item => item with { CountOrValue = item.CountOrValue + 1 }).ToArray()
         };
+        await Reject(paid with { IdempotencyKey = "remove-item", PlannedInventory = [] }, "invalid-planning", "inventory removal");
+        await Reject(paid with { IdempotencyKey = "replace-item", PlannedInventory = [new(1, 2, 1)] }, "invalid-planning", "inventory replacement");
+        await Reject(paid with { IdempotencyKey = "change-equipment", PlannedEquipment = (character.Equipment ?? []).Select(item => item with { ItemId = (ushort)(item.ItemId + 1) }).ToArray() }, "invalid-planning", "equipment replacement");
         // A blocked .tmp proves candidate failure cannot install account or ledger.
         Directory.CreateDirectory(path + ".tmp");
         var beforeFailure = JsonSerializer.Serialize(await store.GetCharacterAsync("test", character.Id));
