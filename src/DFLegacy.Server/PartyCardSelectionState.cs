@@ -77,11 +77,16 @@ internal sealed class PartyCardSelectionState
     private long _generation;
     private bool _active;
     private bool _autoCompleted;
+    // 每一局结算一份全局唯一的 settlement id：代次号是**实例内**的（新实例又从 0 开始），
+    // 幂等键若只用代次号，第二次进同一个副本就会撞上第一次留下的冻结载荷
+    // → `idempotency-payload-mismatch` → 本局奖励永久发不出去。
+    private Guid _settlementId = Guid.NewGuid();
     internal long Generation => _generation;
+    internal Guid SettlementId => _settlementId;
 
     internal long Begin(IReadOnlyList<DungeonInstanceMember> members)
     {
-        _generation++; _active = true; _autoCompleted = false;
+        _generation++; _active = true; _autoCompleted = false; _settlementId = Guid.NewGuid();
         Array.Fill(_freeOwners, Unassigned); Array.Fill(_paidOwners, Unassigned); _slots.Clear();
         foreach (var member in members.Where(m => m.PartySlot < 4).GroupBy(m => m.PartySlot).Where(g => g.Count() == 1).Select(g => g.Single())) _slots.TryAdd(member.CharacterId, member.PartySlot);
         return _generation;

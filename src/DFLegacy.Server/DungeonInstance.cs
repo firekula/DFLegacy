@@ -338,6 +338,20 @@ internal sealed class DungeonInstance(
         _partyCardSettlementOpen = false;
     }
 
+    /// <summary>
+    /// 本局结算的全局唯一 id（幂等键的一部分）：代次号只在实例内有意义，跨局会重复。
+    /// </summary>
+    internal Guid PartyCardSettlementId
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _partyCards.SettlementId;
+            }
+        }
+    }
+
     /// <summary>本会话（这个角色）在指定卡型上的归属列；没有归属 → false（会话据此审计，绝不自己挑列）。</summary>
     internal bool TryGetOwnPartyCardColumn(Guid characterId, PartyCardType type, out byte column)
     {

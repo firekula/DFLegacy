@@ -1550,85 +1550,32 @@ public sealed class EntranceService(
                         return (false, granted);
                     }
 
-                    var plannedInventory = mainInventory.ToDictionary(
-                        pair => pair.Key,
-                        pair => pair.Value);
-                    var plannedWarehouseCapacity = warehouseCapacity;
-                    var overflowMails = new List<CreateCharacterMailRequest>();
-                    for (var index = 0; index < itemIds.Count; index++)
-                    {
-                        if (!itemIds[index].HasValue)
-                        {
-                            continue;
-                        }
-
-                        if (CharacterWarehouseProgression.TryGetItemTargetCapacity(
-                                itemIds[index]!.Value,
-                                out var targetCapacity))
-                        {
-                            plannedWarehouseCapacity = Math.Max(
-                                plannedWarehouseCapacity,
-                                targetCapacity);
-                            granted[index] = true;
-                            continue;
-                        }
-
-                        var rewardItem = CharacterItemIdentity.Ensure(
-                            new CharacterMailAttachmentRecord(
-                            itemIds[index]!.Value,
-                            1,
-                            Durability: itemCatalog.GetInitialDurability(
-                                itemIds[index]!.Value),
-                            SealState: CharacterItemSealing.GetInitialSealState(
-                                itemCatalog,
-                                itemIds[index]!.Value)),
-                            itemCatalog);
-                        if (CharacterInventoryPlanner.TryPlace(
-                                plannedInventory,
-                                rewardItem,
-                                itemCatalog,
-                                GetInventoryWeightLimit(activeCharacter),
-                                out var plan,
-                                out _))
-                        {
-                            plannedInventory = plan.Inventory;
-                            granted[index] = true;
-                            continue;
-                        }
-
-                        if (!itemCatalog.TryGetDefinition(
-                                rewardItem.ItemId,
-                                out _))
-                        {
-                            continue;
-                        }
-
-                        // Card rewards must never become ground drops. Preserve
-                        // the generated instance in the same inventory/mail transaction.
-                        overflowMails.AddRange(CreateOverflowMailRequests(
-                            [rewardItem],
-                            "Dungeon clear reward"));
-
-                        granted[index] = true;
-                    }
-
+                    // 放置语义只有 ClearRewardGrantPlanner 一份（组队翻牌走同一个 Plan；
+                    // 两套"背包放不下怎么办"的实现会漂移，卡牌奖励又会变成地面掉落）。
+                    var plan = ClearRewardGrantPlanner.Plan(
+                        mainInventory,
+                        warehouseCapacity,
+                        targetGold,
+                        itemIds,
+                        GetInventoryWeightLimit(activeCharacter),
+                        itemCatalog);
                     var normalizedGold = Math.Max(0, targetGold);
                     if (normalizedGold == currentGold
-                        && !granted.Any(value => value)
-                        && overflowMails.Count == 0)
+                        && !plan.AnyGranted
+                        && plan.Mails.Count == 0)
                     {
-                        return (true, granted);
+                        return (true, plan.Granted.ToArray());
                     }
 
                     var saved = await store.SaveCharacterInventoryAsync(
                         accountName,
                         activeCharacter.Id,
                         normalizedGold,
-                        plannedInventory.Values,
+                        plan.Inventory.Values,
                         equippedInventory.Values,
                         serverToken,
-                        overflowMails,
-                        warehouseCapacity: plannedWarehouseCapacity,
+                        plan.Mails,
+                        warehouseCapacity: plan.WarehouseCapacity,
                         expectedWarehouseCapacity: warehouseCapacity);
                     if (saved is null)
                     {
@@ -1638,7 +1585,7 @@ public sealed class EntranceService(
                     var warehouseCapacityChanged =
                         AdoptSavedWarehouseUpgradeState(saved);
                     currentGold = normalizedGold;
-                    if (overflowMails.Count > 0)
+                    if (plan.Mails.Count > 0)
                     {
                         characterSessions.NotifyMailReceived(activeCharacter.CharacterNo);
                     }
@@ -1648,7 +1595,7 @@ public sealed class EntranceService(
                         await SendWarehouseStateAsync();
                     }
 
-                    return (true, granted);
+                    return (true, plan.Granted.ToArray());
                 }
 
                 async Task<(bool Saved, bool InventoryChanged, ushort? RewardItemId)>
@@ -15141,7 +15088,7 @@ public sealed class EntranceService(
             ? effect.Amount
             : checked(effect.Amount * 10);
 
-    private static CreateCharacterMailRequest[] CreateOverflowMailRequests(
+    internal static CreateCharacterMailRequest[] CreateOverflowMailRequests(
         IEnumerable<CharacterMailAttachmentRecord> items,
         string source) =>
         items.Select(item => new CreateCharacterMailRequest(
