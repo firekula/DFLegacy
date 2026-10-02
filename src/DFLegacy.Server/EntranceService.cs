@@ -1705,14 +1705,19 @@ public sealed class EntranceService(
                     return selectCardReply;
                 }
 
-                // 选牌快照的全队广播——**手动与自动两条路径共用同一份包、同一口径**
+                // 选牌快照的全队广播（**历史路径**）——手动与自动两条路径共用同一份包、同一口径
                 // （`SendCardSelectionSnapshotAsync` 的返回值，不另造）。
                 // 官服依据：`CParty::SendEachCardInfo` 构造 CMD 74 后调 `send_to_party`
                 // （`this+516+i`/`this+520+i` 四个槽位无条件都写，逐成员 `CUser::Send`）。
                 // 真机依据（2026-09-30）：手动选牌那份会广播（party10 10:05:09 队员会话收到队长
                 // 那一列），**自动选牌（TimerCardSel 4s 兜底）那份从来只回发包者**，另一名成员的
                 // 结算页因此永远少一列（party10/party11/party13 三局都停在"最后一列不来"）。
-                // 单人 / 非组队实例：`IsParty` 为假直接早退，一个包都不多发（零回归）。
+                //
+                // **组队已经不再走这里**（评审 F5）：组队的整表发布改由 `PartyCardSettlementFlow`
+                // 从实例那一份表构图（同一个包对象给自己 + 广播给其他成员），两条入口都在本函数
+                // 之前 `continue`/`return`。本函数现在只在单人路径的既有调用点上被调用，而它对
+                // 非组队实例恒早退（下面第一道门）——也就是说它今天是一个**单人的 no-op**，
+                // 保留原样是为了不动单人调用点的形状（R6 零回归）；新读者不要以为组队还走它。
                 async Task BroadcastCardSelectionSnapshotAsync(
                     GameServerPacket? snapshot,
                     string source)
@@ -1742,7 +1747,6 @@ public sealed class EntranceService(
                 // ③把实例那一份整表 CMD 74 发给自己 + 广播给其他成员（同一个包对象 → 字节一致、自己只收一份）。
                 // 归属、内容、发布门、代次全部在 DungeonInstance 里；单人（IsParty == false）一律不走这里（R6）。
                 SessionPartyCardRewardAgent? sessionPartyCardAgent = null;
-                DungeonInstance? partyCardCommitInstance = null;
                 var partyCardGrantChangedInventory = false;
 
                 IPartyCardRewardAgent EnsurePartyCardRewardAgent(DungeonInstance instance)
@@ -1927,11 +1931,13 @@ public sealed class EntranceService(
                     }
                 }
 
+                // 审计条目自带产生它那一刻的结算标识与代次：绝不拿"当前"值去拼，
+                // 否则换房/停局之后同一行会显示"新结算 id + 旧代次"，运维没法据此对账（评审 F6）。
                 void LogPartyCardAudit(PartyCardAuditEntry entry) =>
                     logger.LogWarning(
                         "Party card audit ({Reason}) settlement={SettlementId} generation={Generation} type={CardType} column={Column} character={CharacterId}.",
                         entry.Reason,
-                        partyCardCommitInstance?.PartyCardSettlementId,
+                        entry.SettlementId,
                         entry.Generation,
                         entry.Type,
                         entry.Column,
@@ -1950,7 +1956,6 @@ public sealed class EntranceService(
                         return;
                     }
 
-                    partyCardCommitInstance = instance;
                     partyCardGrantChangedInventory = false;
                     EnsurePartyCardRewardAgent(instance);
                     var settlement = mode switch

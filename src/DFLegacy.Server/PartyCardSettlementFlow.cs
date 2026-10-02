@@ -56,6 +56,8 @@ internal static class PartyCardSettlementFlow
             if (alreadySettled)
             {
                 // 本会话已经定过自己那一列：只可能还有**别人的**列要发布（没有增长就不发）。
+                // 生产调用点在进来之前就对同一条件早退（TryAutomaticallySelectFreeCardAsync），
+                // 所以这里是**防御性的**（会话守卫若写松了也不会重开一局）+ 测试接缝（评审 F3）。
                 instance.TryGetOwnPartyCardColumn(characterId, PartyCardType.Free, out var settledColumn);
                 return await PublishAsync(instance, generation, settledColumn, accepted: false, sendToSelf, broadcastToOthers);
             }
@@ -64,7 +66,7 @@ internal static class PartyCardSettlementFlow
             if (!instance.TryGetOwnPartyCardColumn(characterId, PartyCardType.Free, out var ownColumn))
             {
                 // 没有归属（例如中途插入、没有槽位）：**绝不自选第 0 列**，只登记审计。
-                audit(new PartyCardAuditEntry(generation, PartyCardType.Free, PartyCardSelectionState.Unassigned, characterId,
+                audit(new PartyCardAuditEntry(instance.PartyCardSettlementId, generation, PartyCardType.Free, PartyCardSelectionState.Unassigned, characterId,
                     $"own-free-column-missing:{source}"));
                 return await PublishAsync(instance, generation, PartyCardSelectionState.Unassigned, accepted: false, sendToSelf, broadcastToOthers);
             }
@@ -104,7 +106,7 @@ internal static class PartyCardSettlementFlow
             var reservation = instance.TryReservePartyCard(characterId, PartyCardType.Free, column, generation);
             if (!reservation.Accepted)
             {
-                audit(new PartyCardAuditEntry(generation, PartyCardType.Free, column, characterId,
+                audit(new PartyCardAuditEntry(instance.PartyCardSettlementId, generation, PartyCardType.Free, column, characterId,
                     $"free-reservation-rejected:{reservation.Status}:{source}"));
                 return new PartyCardSettlementResult(true, generation, column, false, false);
             }
@@ -145,7 +147,7 @@ internal static class PartyCardSettlementFlow
             if (!canAfford())
             {
                 // 买不起：**先拒**，否则会白占一列，别人的整表里就会出现一个永不到账的付费列。
-                audit(new PartyCardAuditEntry(generation, PartyCardType.Paid, column, characterId,
+                audit(new PartyCardAuditEntry(instance.PartyCardSettlementId, generation, PartyCardType.Paid, column, characterId,
                     $"paid-unaffordable:{source}"));
                 return new PartyCardSettlementResult(true, generation, column, false, false);
             }
@@ -153,7 +155,7 @@ internal static class PartyCardSettlementFlow
             var reservation = instance.TryReservePartyCard(characterId, PartyCardType.Paid, column, generation);
             if (!reservation.Accepted)
             {
-                audit(new PartyCardAuditEntry(generation, PartyCardType.Paid, column, characterId,
+                audit(new PartyCardAuditEntry(instance.PartyCardSettlementId, generation, PartyCardType.Paid, column, characterId,
                     $"paid-reservation-rejected:{reservation.Status}:{source}"));
                 return new PartyCardSettlementResult(true, generation, column, false, false);
             }

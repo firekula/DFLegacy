@@ -21,6 +21,11 @@ internal sealed record PartyCardPublishedSnapshot(long Generation, PartyCardSele
     /// 整表 CMD 74 的付费列记录：某列已归属时给出该列归属成员自己掷出的付费物品 id
     /// （没有物品 → null = 只有一条零金币记录）。构包口径见
     /// <c>GameProtocolEngine.CreateSelectCardReply(freeOwners, paidOwners, paidItems)</c>。
+    /// <para>
+    /// 只有**真的发放成功**（<see cref="PartyCardCommitStatus.Committed"/>）的列才写物品 id：
+    /// `Rejected` 是确定性终态、该列可以带归属发布（R5），但存档里没扣钱也没进背包，
+    /// 不能在整表里给客户端看一张不存在的卡（评审 F2）。
+    /// </para>
     /// </summary>
     internal ushort?[] PaidItems()
     {
@@ -37,7 +42,8 @@ internal sealed record PartyCardPublishedSnapshot(long Generation, PartyCardSele
             {
                 if (content.Type == PartyCardType.Paid
                     && content.Column == column
-                    && content.PartySlot == owner)
+                    && content.PartySlot == owner
+                    && content.Status == PartyCardCommitStatus.Committed)
                 {
                     items[column] = content.Roll.GoldItemId;
                     break;
@@ -50,10 +56,15 @@ internal sealed record PartyCardPublishedSnapshot(long Generation, PartyCardSele
 }
 
 /// <summary>
-/// 翻牌接线的一笔审计：代理缺失 / 代理异常 / 代理超时 / 上报被拒 / 提交非 Committed。
-/// 这些路径一律**不重试、不发布**，只留痕（R4）。持锁写入，由会话取出后写日志。
+/// 翻牌接线的一笔审计：代理缺失 / 代理异常 / 代理取消 / 代理超时（含迟到结果）/ 内容串列 /
+/// 上报被拒 / 提交非 Committed。这些路径一律**不重试、不发布**，只留痕（R4）。
+/// <para>
+/// 条目自带**产生它那一刻**的 <see cref="SettlementId"/> 与代次：会话写日志时不能拿"当前"结算 id，
+/// 否则换房/停局之后同一条日志会显示"新结算 id + 旧代次"，运维无法据此对账（评审 F6）。
+/// </para>
 /// </summary>
 internal readonly record struct PartyCardAuditEntry(
+    Guid SettlementId,
     long Generation,
     PartyCardType Type,
     byte Column,

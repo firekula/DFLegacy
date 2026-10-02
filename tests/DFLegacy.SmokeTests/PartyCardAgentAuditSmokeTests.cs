@@ -15,6 +15,7 @@ internal static class PartyCardAgentAuditSmokeTests
         await CheckAgentExceptionAuditedAsync(check);
         await CheckAgentCancellationAuditedAsync(check);
         await CheckAgentTimeoutAuditedAsync(check);
+        await CheckAgentTimeoutLateResultIsReportedAsync(check);
         await CheckContentMismatchAuditedAsync(check);
         await CheckCommitOutcomeAuditedAsync(check);
         await CheckAgentReceivesSettlementIdAsync(check);
@@ -72,6 +73,16 @@ internal static class PartyCardAgentAuditSmokeTests
             && snapshot.Selection.FreeOwners[1] == PartyCardSelectionState.Unassigned,
             "missing-agent column stays 0xFF while the known column publishes");
         check(instance.DrainPartyCardAudit().Count == 0, "audit drain empties the buffer");
+        // 评审 F6：条目自带产生它那一刻的结算标识（会话写日志时不能拿"当前"值）。
+        var (second, c, _, secondGeneration) = CreateSettlement();
+        second.RegisterPartyCardRewardAgent(c, new Agent(0, DungeonRewardLedgerStatus.Committed));
+        await second.SettleOwnPartyCardAsync(Guid.NewGuid(), PartyCardType.Free, 0, secondGeneration, CancellationToken.None);
+        check(second.DrainPartyCardAudit().Count == 0, "a foreign character never produces an audit entry");
+        var (third, d, _, thirdGeneration) = CreateSettlement();
+        await third.SettleOwnPartyCardAsync(d, PartyCardType.Free, 0, thirdGeneration, CancellationToken.None);
+        var entries = third.DrainPartyCardAudit();
+        check(entries.Count > 0 && entries.All(entry => entry.SettlementId == third.PartyCardSettlementId),
+            "each audit entry carries the settlement id of the settlement it was produced in");
     }
 
     /// <summary>代理抛异常：该列屏蔽、不重试（第二次 settle 不再调代理）、审计一次。</summary>
@@ -115,6 +126,63 @@ internal static class PartyCardAgentAuditSmokeTests
         check(agent.Commits == 1, "timed-out agent attempt is not restarted");
         check(!instance.TryTakePartyCardPublication(generation, out _),
             "timed-out column stays masked in the shared table");
+    }
+
+    /// <summary>
+    /// 超时**不等于没落库**：实例有界等待后放弃，但代理那次提交仍会在会话侧跑完并把奖励写进存档。
+    /// 因此迟到完成必须**如实上报**（内容按真实结果进表 → 该列重新可发布）并留一条"迟到结果"审计；
+    /// 否则审计写着"没提交"、存档里却已经发了奖励，运维照审计补发就会发出第二份（评审 F1）。
+    /// </summary>
+    private static async Task CheckAgentTimeoutLateResultIsReportedAsync(Action<bool, string> check)
+    {
+        // 迟到且成功：内容进表，该列重新可发布。
+        var (instance, a, _, generation) = CreateSettlement(TimeSpan.FromMilliseconds(40));
+        var committed = new Agent(0, DungeonRewardLedgerStatus.Committed) { HangOnCommit = true };
+        instance.RegisterPartyCardRewardAgent(a, committed);
+        var settle = instance.SettleOwnPartyCardAsync(a, PartyCardType.Free, 0, generation, CancellationToken.None);
+        check(await Task.WhenAny(settle, Task.Delay(TimeSpan.FromSeconds(5))) == settle,
+            "late-result case still releases the settling session at the timeout");
+        committed.CompleteHanging(DungeonRewardLedgerStatus.Committed);
+        var audit = await WaitForAuditAsync(instance, "agent-timeout-late-committed");
+        check(audit.Any(entry => entry.Reason == "agent-timeout"),
+            "the timeout itself is still audited");
+        check(audit.Any(entry => entry.Reason == "agent-timeout-late-committed"),
+            "a late successful commit is audited as a late result instead of a bare timeout");
+        check(instance.TryTakePartyCardPublication(generation, out var snapshot)
+            && snapshot!.Selection.FreeOwners[0] == 0,
+            "a late committed column becomes publishable for the next publication");
+
+        // 迟到且失败：同样如实上报，该列保持屏蔽。
+        var (second, _, b, secondGeneration) = CreateSettlement(TimeSpan.FromMilliseconds(40));
+        var unknown = new Agent(1, DungeonRewardLedgerStatus.Committed) { HangOnCommit = true };
+        second.RegisterPartyCardRewardAgent(b, unknown);
+        var secondSettle = second.SettleOwnPartyCardAsync(b, PartyCardType.Free, 1, secondGeneration, CancellationToken.None);
+        check(await Task.WhenAny(secondSettle, Task.Delay(TimeSpan.FromSeconds(5))) == secondSettle,
+            "late-failure case releases the settling session at the timeout");
+        unknown.CompleteHanging(DungeonRewardLedgerStatus.Unknown);
+        var secondAudit = await WaitForAuditAsync(second, "agent-timeout-late-unknown");
+        check(secondAudit.Any(entry => entry.Reason == "agent-timeout-late-unknown"),
+            "a late failed commit is audited with its real outcome");
+        check(!second.TryTakePartyCardPublication(secondGeneration, out _),
+            "a late Unknown column stays masked");
+    }
+
+    /// <summary>轮询审计（每次排空并累积），等到出现目标原因或超时。</summary>
+    private static async Task<List<PartyCardAuditEntry>> WaitForAuditAsync(DungeonInstance instance, string reason)
+    {
+        var drained = new List<PartyCardAuditEntry>();
+        for (var attempt = 0; attempt < 200; attempt++)
+        {
+            drained.AddRange(instance.DrainPartyCardAudit());
+            if (drained.Any(entry => entry.Reason == reason))
+            {
+                return drained;
+            }
+
+            await Task.Delay(10);
+        }
+
+        return drained;
     }
 
     /// <summary>代理上报的内容不是它自己的列/槽位：拒收 + 审计，绝不进入共享表。</summary>
@@ -202,12 +270,19 @@ internal static class PartyCardAgentAuditSmokeTests
 
     private sealed class Agent(byte slot, DungeonRewardLedgerStatus status) : IPartyCardRewardAgent
     {
+        private TaskCompletionSource<PartyCardCommitOutcome>? _hangingCommit;
+
         public int Commits { get; private set; }
         public Guid LastSettlementId { get; private set; }
         public bool ThrowOnCommit { get; init; }
         public bool ThrowCancellation { get; init; }
         public bool HangOnCommit { get; init; }
         public byte RollColumnOffset { get; init; }
+
+        /// <summary>让"一直不返回"的那次提交在测试控制的时刻完成（模拟实例超时之后才落库）。</summary>
+        public void CompleteHanging(DungeonRewardLedgerStatus lateStatus) =>
+            (_hangingCommit ?? throw new InvalidOperationException("this agent is not hanging"))
+                .TrySetResult(new PartyCardCommitOutcome(lateStatus, "late"));
 
         public PartyCardContent RollOwnColumn(Guid settlementId, PartyCardType type, byte column, long generation)
         {
@@ -236,7 +311,8 @@ internal static class PartyCardAgentAuditSmokeTests
 
             if (HangOnCommit)
             {
-                return new TaskCompletionSource<PartyCardCommitOutcome>().Task;
+                _hangingCommit = new TaskCompletionSource<PartyCardCommitOutcome>();
+                return _hangingCommit.Task;
             }
 
             return Task.FromResult(new PartyCardCommitOutcome(status, null));

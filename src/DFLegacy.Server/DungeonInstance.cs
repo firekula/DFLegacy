@@ -108,7 +108,7 @@ internal sealed class DungeonInstance(
     }
 
     private void NotePartyCardAudit(long generation, PartyCardType type, byte column, Guid characterId, string reason)
-        => _partyCardAudit.Add(new PartyCardAuditEntry(generation, type, column, characterId, reason));
+        => _partyCardAudit.Add(new PartyCardAuditEntry(_partyCards.SettlementId, generation, type, column, characterId, reason));
 
     internal void RegisterPartyCardRewardAgent(Guid characterId, IPartyCardRewardAgent agent)
     {
@@ -179,7 +179,11 @@ internal sealed class DungeonInstance(
             if (finished != commit)
             {
                 lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-timeout");
-                _ = commit.ContinueWith(static task => _ = task.Exception, TaskScheduler.Default);
+                // 超时**不等于没落库**：会话那一侧仍在等这次提交，它可能已经把奖励写进存档并采用结果。
+                // 放弃等待但**不放弃结果**：迟到完成时照常上报（代次/归属会在上报里再校验一次），
+                // 并留一条带真实结果的审计 —— 否则审计写着"超时未提交"、存档里却已经发了奖励，
+                // 运维照审计去补发就会发出第二份。
+                ObserveLateAgentCommit(commit, characterId, type, column, generation, content);
                 return;
             }
 
@@ -197,6 +201,60 @@ internal sealed class DungeonInstance(
         }
 
         ReportPartyCardCommitFromAgent(characterId, type, column, generation, content, outcome);
+    }
+
+    /// <summary>
+    /// 超时之后接管在飞的那次代理提交：完成后按**真实结果**上报（代次/归属仍会被校验，
+    /// 已失效的结算只会留下 <c>report-rejected</c>），并留一条 <c>agent-timeout-late-*</c> 审计。
+    /// 这条路径不是"重试"：它只观察那一次已经发生的提交。
+    /// </summary>
+    private void ObserveLateAgentCommit(
+        Task<PartyCardCommitOutcome> commit,
+        Guid characterId,
+        PartyCardType type,
+        byte column,
+        long generation,
+        PartyCardContent content)
+    {
+        _ = ObserveAsync();
+
+        async Task ObserveAsync()
+        {
+            PartyCardCommitOutcome lateOutcome;
+            try
+            {
+                lateOutcome = await commit;
+            }
+            catch (OperationCanceledException)
+            {
+                lock (Gate) NotePartyCardAudit(generation, type, column, characterId, "agent-timeout-late-cancelled");
+                return;
+            }
+            catch (Exception exception)
+            {
+                lock (Gate)
+                {
+                    NotePartyCardAudit(
+                        generation,
+                        type,
+                        column,
+                        characterId,
+                        $"agent-timeout-late-failure:{exception.GetType().Name}");
+                }
+                return;
+            }
+
+            lock (Gate)
+            {
+                NotePartyCardAudit(
+                    generation,
+                    type,
+                    column,
+                    characterId,
+                    $"agent-timeout-late-{lateOutcome.Status.ToString().ToLowerInvariant()}");
+            }
+            ReportPartyCardCommitFromAgent(characterId, type, column, generation, content, lateOutcome);
+        }
     }
 
     /// <summary>强制开新代次（模型/测试用；会话侧一律走幂等的 <see cref="EnsurePartyCardSettlement"/>）。</summary>

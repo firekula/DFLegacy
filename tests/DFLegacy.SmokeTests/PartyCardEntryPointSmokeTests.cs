@@ -16,7 +16,40 @@ internal static class PartyCardEntryPointSmokeTests
         CheckSoloStaysInactive(check);
         CheckOwnColumnLookup(check);
         CheckPaidItemsMapping(check);
+        CheckRejectedPaidColumnPublishesWithoutItem(check);
         CheckSoloPacketLayoutUnchanged(check);
+    }
+
+    /// <summary>
+    /// R5 + 评审 F2：`Rejected` 是确定性终态、该列**可以带着归属**发布（玩家看到"这列是他的、他没拿到东西"），
+    /// 但**不能**把没发出去的付费物品 id 写进整表 —— 存档里没扣钱也没进背包，客户端却会看到那张卡的面。
+    /// </summary>
+    private static void CheckRejectedPaidColumnPublishesWithoutItem(Action<bool, string> check)
+    {
+        var (instance, a, _) = CreateParty();
+        var generation = instance.EnsurePartyCardSettlement();
+        var roll = new DungeonClearRewardRoll(37, true, 0, null, null, 5001);
+        check(instance.TryReservePartyCard(a, PartyCardType.Paid, 1, generation).Accepted,
+            "paid column reserved for the rejected-content check");
+        var report = typeof(DungeonInstance).GetMethod(
+            "ReportPartyCardCommitFromAgent",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        check((bool)report.Invoke(instance, [a, PartyCardType.Paid, (byte)1, generation,
+                new PartyCardContent(PartyCardType.Paid, 1, 0, roll, PartyCardCommitStatus.Pending),
+                new PartyCardCommitOutcome(DungeonRewardLedgerStatus.Rejected, "smoke")])!,
+            "rejected paid content is recorded as a deterministic terminal state");
+        check(instance.TryTakePartyCardPublication(generation, out var snapshot),
+            "a rejected paid column still publishes its owner");
+        check(snapshot!.Selection.PaidOwners[1] == 0,
+            "the rejected paid column keeps its owner in the shared table");
+        check(snapshot.PaidItems()[1] is null,
+            "a rejected paid column never advertises an item it did not grant");
+        var packet = DFLegacy.Protocol.GameProtocolEngine.CreateSelectCardReply(
+            snapshot.Selection.FreeOwners,
+            snapshot.Selection.PaidOwners,
+            snapshot.PaidItems());
+        check(packet.Payload[2 + (3 * 1)] == 0 && packet.Payload[3 + (3 * 1)] == 1,
+            "the rejected paid column emits exactly one empty record");
     }
 
     /// <summary>
