@@ -7,6 +7,7 @@ internal static class DungeonRewardUnknownSmokeTests
 {
     public static async Task RunAsync(Action<bool, string> check, string root)
     {
+        await CheckHistoricalReceiptAsync(check, root);
         foreach (var stage in Enum.GetValues<FailureStage>())
         {
             var stageRoot = Path.Combine(root, $"unknown-{stage}");
@@ -58,6 +59,7 @@ internal static class DungeonRewardUnknownSmokeTests
                 "blank operator reason refuses without state changes");
             if (stage == FailureStage.BeforeReplace)
             {
+                writer.ReplaceThenThrowOnce = true;
                 var discardFailed = false;
                 var callsBeforeDiscard = writer.Calls;
                 try { await store.ForceClearRewardQuarantineAsync("operator test"); }
@@ -112,6 +114,27 @@ internal static class DungeonRewardUnknownSmokeTests
         }
     }
 
+    private static async Task CheckHistoricalReceiptAsync(Action<bool, string> check, string root)
+    {
+        var path = Path.Combine(root, "historical-receipt", "store.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var writer = new FailingWriter(FailureStage.BeforeReplace);
+        var store = new JsonGameStore(new ServerOptions { DataPath = path }, NullLogger<JsonGameStore>.Instance, writer);
+        await store.InitializeAsync();
+        var character = (await store.GetCharactersAsync("test"))[0];
+        DungeonRewardCommitRequest Make(string key, int gold) => new DungeonRewardCommitRequest(key, "", "test", character.Id, 1, 0, 0, 0, gold, character.Gold, character.Inventory ?? [], character.Equipment ?? [], character.Inventory ?? [], character.Equipment ?? [], [], null, null);
+        var first = Make("history-a", character.Gold + 10); first = first with { PayloadFingerprint = JsonGameStore.ComputeDungeonRewardFingerprint(first) };
+        writer.Succeed = true; check((await store.CommitDungeonRewardAsync(first)).Status == DungeonRewardLedgerStatus.Committed, "historical committed fixture");
+        var second = Make("pending-b", character.Gold + 20) with { ExpectedGold = character.Gold + 10 }; second = second with { PayloadFingerprint = JsonGameStore.ComputeDungeonRewardFingerprint(second) }; writer.Succeed = false;
+        check((await store.CommitDungeonRewardAsync(second)).Status == DungeonRewardLedgerStatus.Unknown, "pending unknown fixture");
+        writer.Succeed = true;
+        var result = await store.ForceClearRewardQuarantineAsync("operator test");
+        check(result.Decision == StoreRecoveryDecision.Discarded, "historical committed cannot recover pending unknown");
+        check(await store.SaveCharacterInventoryAsync("test", character.Id, character.Gold, character.Inventory ?? [], character.Equipment ?? []) is not null, "historical discard clears quarantine");
+        var disk = await File.ReadAllTextAsync(path);
+        check(disk.Contains("history-a") && disk.Contains("pending-b") && disk.Contains("operator-discarded"), "historical and pending ledger preserved");
+    }
+
     private sealed class CaptureLogger : ILogger<JsonGameStore>
     {
         internal List<string> Messages { get; } = [];
@@ -131,6 +154,13 @@ internal static class DungeonRewardUnknownSmokeTests
         public async Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken)
         {
             Calls++;
+            if (ReplaceThenThrowOnce)
+            {
+                ReplaceThenThrowOnce = false;
+                await File.WriteAllBytesAsync(path + ".tmp", snapshot.ToArray(), cancellationToken);
+                File.Move(path + ".tmp", path, overwrite: true);
+                throw new IOException("injected after discard replacement");
+            }
             if (Succeed)
             {
                 await File.WriteAllBytesAsync(path + ".tmp", snapshot.ToArray(), cancellationToken);
