@@ -84,6 +84,9 @@ internal sealed class DungeonInstance(
     private readonly Dictionary<Guid, IPartyCardRewardAgent> _partyCardAgents = [];
     private readonly HashSet<(long Generation, PartyCardType Type, byte Column, Guid CharacterId)> _partyCardAttempts = [];
     private readonly List<PartyCardAuditEntry> _partyCardAudit = [];
+    // "这一局结算的翻牌代次已经开着"：会话侧 EnsurePartyCardSettlement 的幂等闸门。
+    // 决不能让同一局里第二个到达的会话重开代次（会清掉已发布的归属）。
+    private bool _partyCardSettlementOpen;
     // 代理在一次归属预留里的等待上限：超过即视为 Unknown（不发布、不重试、留审计）。
     // 它只用来**别把发包会话钉死在一个卡住的代理上**；正常本地提交是毫秒级。
     private readonly TimeSpan _partyCardAgentTimeout = partyCardAgentTimeout ?? TimeSpan.FromSeconds(5);
@@ -192,17 +195,13 @@ internal sealed class DungeonInstance(
         ReportPartyCardCommitFromAgent(characterId, type, column, generation, content, outcome);
     }
 
+    /// <summary>强制开新代次（模型/测试用；会话侧一律走幂等的 <see cref="EnsurePartyCardSettlement"/>）。</summary>
     internal long BeginPartyCardSettlement()
     {
         lock (Gate)
         {
             if (!IsParty) return 0;
-            _partyContentGeneration = _partyCards.Begin(_members);
-            _partyCardContent.Clear();
-            _partySettlementSlots.Clear();
-            foreach (var member in _members) _partySettlementSlots[member.CharacterId] = member.PartySlot;
-            _partyPublishedOwners.Clear();
-            return _partyContentGeneration;
+            return OpenPartyCardSettlementLocked();
         }
     }
 
@@ -294,6 +293,76 @@ internal sealed class DungeonInstance(
             foreach (var key in newlyPublished) _partyPublishedOwners.Add(key);
             snapshot = new PartyCardPublishedSnapshot(generation, new PartyCardSelectionSnapshot(generation, owners.AutoCompleted, free, paid, owners.MemberSlots), _partyCardContent.Values.ToArray());
             return true;
+        }
+    }
+
+    /// <summary>
+    /// 会话侧入口：确保"这一局结算"的翻牌代次已经打开，返回该代次（单人 → 0 = 模型不参与）。
+    /// **幂等**：同一局里第二个到达的会话拿到同一代次，绝不重开（重开会清空归属与内容，
+    /// 而客户端的卡位 owner 是首写不覆盖 —— 已发布的列被清掉就永久错位）。
+    /// 生命周期失效（开局/换房/停局）后再调用会开新代次。
+    /// </summary>
+    internal long EnsurePartyCardSettlement()
+    {
+        lock (Gate)
+        {
+            if (!IsParty) return 0;
+            if (_partyCardSettlementOpen) return _partyCards.Generation;
+            return OpenPartyCardSettlementLocked();
+        }
+    }
+
+    /// <summary>
+    /// 开新代次（调用方必须已持 <see cref="Gate"/>）：清空归属/内容/已发布集合/尝试集合与槽位映射。
+    /// 与 <see cref="BeginPartyCardSettlement"/> 同一份语义，只是多了"这一局已经开着"的标志。
+    /// </summary>
+    private long OpenPartyCardSettlementLocked()
+    {
+        _partyContentGeneration = _partyCards.Begin(_members);
+        _partyCardContent.Clear();
+        _partySettlementSlots.Clear();
+        foreach (var member in _members) _partySettlementSlots[member.CharacterId] = member.PartySlot;
+        _partyPublishedOwners.Clear();
+        _partyCardAttempts.Clear();
+        _partyCardSettlementOpen = true;
+        return _partyContentGeneration;
+    }
+
+    /// <summary>
+    /// 开局 / 换房 / 停局的失效点：把"这一局已经开着"的标志一并清掉，
+    /// 否则下一局的 <see cref="EnsurePartyCardSettlement"/> 会拿到一个已经作废的代次。
+    /// </summary>
+    private void InvalidatePartyCardSettlementLocked()
+    {
+        _partyCards.Invalidate();
+        _partyCardSettlementOpen = false;
+    }
+
+    /// <summary>本会话（这个角色）在指定卡型上的归属列；没有归属 → false（会话据此审计，绝不自己挑列）。</summary>
+    internal bool TryGetOwnPartyCardColumn(Guid characterId, PartyCardType type, out byte column)
+    {
+        lock (Gate)
+        {
+            column = PartyCardSelectionState.Unassigned;
+            if (type is not (PartyCardType.Free or PartyCardType.Paid)
+                || !_partySettlementSlots.TryGetValue(characterId, out var slot)
+                || !_members.Any(member => member.CharacterId == characterId))
+            {
+                return false;
+            }
+
+            var owners = _partyCards.Snapshot();
+            var table = type == PartyCardType.Free ? owners.FreeOwners : owners.PaidOwners;
+            for (byte index = 0; index < 4; index++)
+            {
+                if (table[index] == slot)
+                {
+                    column = index;
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 
@@ -720,7 +789,7 @@ internal sealed class DungeonInstance(
             return false;
         }
 
-        _partyCards.Invalidate();
+        InvalidatePartyCardSettlementLocked();
         DungeonOption = dungeonOption;
         Layout = layout;
         ClearEnabled = false;
@@ -740,7 +809,7 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
-            _partyCards.Invalidate();
+            InvalidatePartyCardSettlementLocked();
             _detachedRoom = room;
             Layout = null;
             DungeonOption = 0;
@@ -770,7 +839,7 @@ internal sealed class DungeonInstance(
                 return false;
             }
 
-            _partyCards.Invalidate();
+            InvalidatePartyCardSettlementLocked();
             // 与改造前 CMD 48 的行为一致：换房间清掉"本房间"的临时集合与开放标记。
             ClearEnabled = false;
             LastRoomEntryWasFirstVisit = transition.FirstVisit;
@@ -1022,7 +1091,7 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
-            _partyCards.Invalidate();
+            InvalidatePartyCardSettlementLocked();
             _detachedRoom = null;
             Layout = null;
             DungeonOption = 0;
