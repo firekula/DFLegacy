@@ -3257,7 +3257,7 @@ public sealed class JsonGameStore(
             var accounts = JsonSerializer.Deserialize<List<AccountRecord>>(JsonSerializer.Serialize(_accounts))!; var updated = current with { Gold = request.TargetGold, Inventory = plannedInventory.OrderBy(x => x.Slot).ToList(), Equipment = plannedEquipment.OrderBy(x => x.Slot).ToList(), Mailbox = mailbox, WarehouseCapacity = capacity }; accounts.First(a => a.Id == account.Id).Characters[index] = updated; var now = DateTimeOffset.UtcNow; var entry = new DungeonRewardLedgerEntry(request.IdempotencyKey, fingerprint, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, DungeonRewardLedgerStatus.Committed, now, now, null, request.TargetGold - current.Gold, null, null); var ledger = new List<DungeonRewardLedgerEntry>(_dungeonRewardLedger) { entry }; 
             try
             {
-                await SaveSnapshotLockedAsync(accounts, ledger, cancellationToken);
+                await WriteRewardStatePrivilegedAsync(accounts, ledger, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -3294,9 +3294,19 @@ public sealed class JsonGameStore(
                 }
             }
             var unknown = _dungeonRewardLedger.Where(x => x.Status == DungeonRewardLedgerStatus.Unknown).ToArray();
-            _dungeonRewardLedger = _dungeonRewardLedger.Select(x => x.Status == DungeonRewardLedgerStatus.Unknown ? x with { Status = DungeonRewardLedgerStatus.Rejected, RejectionCode = "operator-discarded", UnknownReason = reason } : x).ToList();
+            var originalLedger = _dungeonRewardLedger;
+            var discardedLedger = _dungeonRewardLedger.Select(x => x.Status == DungeonRewardLedgerStatus.Unknown ? x with { Status = DungeonRewardLedgerStatus.Rejected, RejectionCode = "operator-discarded", UnknownReason = reason } : x).ToList();
+            try
+            {
+                await WriteRewardStatePrivilegedAsync(_accounts, discardedLedger, cancellationToken);
+            }
+            catch
+            {
+                _dungeonRewardLedger = originalLedger;
+                throw;
+            }
+            _dungeonRewardLedger = discardedLedger;
             _rewardQuarantined = false;
-            await SaveLockedAsync(cancellationToken);
             logger.LogWarning("Reward quarantine discarded; reason={Reason}, decision=Discarded, keys={Keys}, count={Count}", reason, unknown.Select(x => x.IdempotencyKey).ToArray(), unknown.Length);
             return new(StoreRecoveryDecision.Discarded, reason, unknown.Length);
         }
@@ -6276,7 +6286,8 @@ public sealed class JsonGameStore(
         return true;
     }
 
-    private async Task SaveSnapshotLockedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger, CancellationToken cancellationToken)
+    // Privileged operator recovery: persists a rejection ledger while quarantine is still held.
+    private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger, CancellationToken cancellationToken)
     {
         var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger }, new JsonSerializerOptions { WriteIndented = true });
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);

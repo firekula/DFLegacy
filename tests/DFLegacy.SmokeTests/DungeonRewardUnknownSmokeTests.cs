@@ -55,6 +55,17 @@ internal static class DungeonRewardUnknownSmokeTests
                 "blank operator reason refuses without state changes");
             if (stage == FailureStage.BeforeReplace)
             {
+                var discardFailed = false;
+                var callsBeforeDiscard = writer.Calls;
+                try { await store.ForceClearRewardQuarantineAsync("operator test"); }
+                catch (IOException) { discardFailed = true; }
+                var saveBlocked = false;
+                try { await store.SaveCharacterInventoryAsync("test", character.Id, character.Gold, character.Inventory ?? [], character.Equipment ?? []); }
+                catch (InvalidOperationException) { saveBlocked = true; }
+                check(discardFailed && saveBlocked && writer.Calls == callsBeforeDiscard + 1
+                    && !logger.Messages.Any(x => x.Contains("decision=Discarded")), "failed privileged discard retains quarantine and no success audit");
+                check((await store.CommitDungeonRewardAsync(request)).Status == DungeonRewardLedgerStatus.Unknown, "failed discard retains Unknown ledger");
+                writer.Succeed = true;
                 var discarded = await store.ForceClearRewardQuarantineAsync("operator test");
                 check(discarded.Decision == StoreRecoveryDecision.Discarded && discarded.DiscardedEntryCount >= 1, "BeforeReplace operator discard");
                 var disk = await File.ReadAllTextAsync(path);
@@ -68,6 +79,12 @@ internal static class DungeonRewardUnknownSmokeTests
             var recovered = await store.RecoverDungeonRewardAsync(request.IdempotencyKey);
             if (stage == FailureStage.AfterReplace)
             {
+                var operatorRecovered = await store.ForceClearRewardQuarantineAsync("operator test");
+                check(operatorRecovered.Decision == StoreRecoveryDecision.Recovered, "AfterReplace operator recovery");
+                check(operatorRecovered.DiscardedEntryCount == 0, "AfterReplace does not discard");
+                var diskAfterRecovery = await File.ReadAllTextAsync(path);
+                check(diskAfterRecovery.Split("unknown-key").Length == 2, "AfterReplace ledger remains single committed entry");
+                check(await store.SaveCharacterInventoryAsync("test", character.Id, request.TargetGold, character.Inventory ?? [], character.Equipment ?? []) is not null, "AfterReplace ordinary write succeeds");
                 check(recovered.Status == DungeonRewardLedgerStatus.Committed
                     && recovered.UpdatedCharacter?.Gold == request.TargetGold,
                     "after replacement recovery installs official committed state");
@@ -96,15 +113,31 @@ internal static class DungeonRewardUnknownSmokeTests
         public void Log<TState>(LogLevel level, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
     }
 
+    private sealed class SuccessWriter : IDungeonRewardSnapshotWriter
+    {
+        public async Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken)
+        {
+            await File.WriteAllBytesAsync(path + ".tmp", snapshot.ToArray(), cancellationToken);
+            File.Move(path + ".tmp", path, overwrite: true);
+        }
+    }
+
     private enum FailureStage { BeforeTemp, BeforeReplace, AfterReplace, CancelDuringWrite }
 
     // Internal snapshot persistence abstraction, not a public production test callback.
     private sealed class FailingWriter(FailureStage stage) : IDungeonRewardSnapshotWriter
     {
         public int Calls { get; private set; }
+        public bool Succeed { get; set; }
         public async Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken)
         {
             Calls++;
+            if (Succeed)
+            {
+                await File.WriteAllBytesAsync(path + ".tmp", snapshot.ToArray(), cancellationToken);
+                File.Move(path + ".tmp", path, overwrite: true);
+                return;
+            }
             if (stage == FailureStage.BeforeTemp) throw new IOException("injected before temp serialization/write");
             await File.WriteAllBytesAsync(path + ".tmp", snapshot.ToArray(), cancellationToken);
             if (stage == FailureStage.BeforeReplace) throw new IOException("injected before replacement");
