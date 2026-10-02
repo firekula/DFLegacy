@@ -13,6 +13,7 @@ if (args.Contains("--party-card"))
 {
     PartyCardSettlementCoordinatorSmokeTests.Run(Check);
     PartyCardSelectionSmokeTests.Run(Check);
+    await PartyCardRewardAgentSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Party card smoke: {failures.Count} failures");
     Environment.Exit(failures.Count > 0 ? 1 : 0);

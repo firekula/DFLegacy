@@ -80,6 +80,39 @@ internal sealed class DungeonInstance(
     private long _partyContentGeneration;
     private readonly HashSet<(PartyCardType Type, byte Column, byte Slot)> _partyPublishedOwners = [];
     private readonly Dictionary<Guid, byte> _partySettlementSlots = [];
+    private readonly Dictionary<Guid, IPartyCardRewardAgent> _partyCardAgents = [];
+    private readonly HashSet<(long Generation, PartyCardType Type, byte Column, Guid CharacterId)> _partyCardAttempts = [];
+
+    internal void RegisterPartyCardRewardAgent(Guid characterId, IPartyCardRewardAgent agent)
+    {
+        lock (Gate)
+        {
+            if (IsParty && _members.Any(x => x.CharacterId == characterId)) _partyCardAgents[characterId] = agent;
+        }
+    }
+
+    internal async Task SettleOwnPartyCardAsync(Guid characterId, PartyCardType type, byte column, long generation, CancellationToken ct)
+    {
+        IPartyCardRewardAgent? agent;
+        lock (Gate)
+        {
+            if (generation != _partyCards.Generation || !_members.Any(x => x.CharacterId == characterId)) return;
+            if (!_partyCardAttempts.Add((generation, type, column, characterId))) return;
+            _partyCardAgents.TryGetValue(characterId, out agent);
+        }
+        if (agent is null) return;
+        try
+        {
+            var content = agent.RollOwnColumn(type, column, generation);
+            if (content.Type != type || content.Column != column || content.PartySlot != _partySettlementSlots.GetValueOrDefault(characterId, byte.MaxValue)) return;
+            var outcome = await agent.CommitOwnColumnAsync(type, column, generation, content, ct);
+            ReportPartyCardCommit(characterId, type, column, generation, content.Roll, outcome.Status);
+        }
+        catch
+        {
+            // A failed agent is deliberately never retried for this reservation.
+        }
+    }
 
     internal long BeginPartyCardSettlement()
     {
@@ -305,6 +338,7 @@ internal sealed class DungeonInstance(
 
             _loadedMembers.Remove(characterId);
             _partyCards.RemoveMember(characterId);
+            _partyCardAgents.Remove(characterId);
             _settlementReturnDeadlines.Remove(characterId);
             _announcedSettlementCountdowns.Remove(characterId);
             Version++;
