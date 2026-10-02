@@ -3,7 +3,8 @@ namespace DFLegacy.Server;
 internal enum PartyCardType : byte { Free = 0, Paid = 1 }
 internal enum PartyCardSelectionStatus : byte { Reserved = 0, AlreadyReserved = 1, Rejected = 2 }
 internal enum PartyCardCommitStatus : byte { Pending, Committed, Rejected, Unknown }
-internal sealed record PartyCardContent(DungeonClearRewardRoll Roll, PartyCardCommitStatus Status);
+internal sealed record PartyCardContent(PartyCardType Type, byte Column, byte PartySlot, DungeonClearRewardRoll Roll, PartyCardCommitStatus Status);
+internal sealed record PartyCardPublishedSnapshot(long Generation, PartyCardSelectionSnapshot Selection, IReadOnlyList<PartyCardContent> Contents);
 
 internal readonly record struct PartyCardSelectionOutcome(
     PartyCardSelectionStatus Status, long Generation, byte Column, byte PartySlot)

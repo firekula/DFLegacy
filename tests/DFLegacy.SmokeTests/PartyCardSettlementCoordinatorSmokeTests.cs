@@ -22,6 +22,8 @@ internal static class PartyCardSettlementCoordinatorSmokeTests
         check(!instance.ReportPartyCardCommit(a, PartyCardType.Free, 0, generation, roll, DungeonRewardLedgerStatus.Committed), "stale content cannot affect next generation");
         check(!instance.TryTakePartyCardPublication(generation, out _), "stale generation cannot publish");
         check(instance.TryReservePartyCard(a, PartyCardType.Free, 3, next).Accepted, "manual reservation retained");
+        check(instance.TryReservePartyCard(a, PartyCardType.Paid, 2, next).Accepted, "paid reservation accepted");
+        check(instance.ReportPartyCardCommit(a, PartyCardType.Paid, 2, next, roll, DungeonRewardLedgerStatus.Committed), "paid content joins shared table");
         instance.CompletePartyCardSelection(next);
         check(instance.ReportPartyCardCommit(a, PartyCardType.Free, 3, next, roll, DungeonRewardLedgerStatus.Committed), "manual owner content committed");
         instance.RemoveMember(a);

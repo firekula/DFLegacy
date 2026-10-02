@@ -102,7 +102,12 @@ internal sealed class DungeonInstance(
             if (generation != _partyContentGeneration || !_members.Any(m => m.CharacterId == characterId)) return false;
             var owners = _partyCards.Snapshot();
             if (!_partySettlementSlots.TryGetValue(characterId, out var memberSlot)) return false;
-            var owner = type == PartyCardType.Free && column < 4 ? owners.FreeOwners[column] : PartyCardSelectionState.Unassigned;
+            var owner = type switch
+            {
+                PartyCardType.Free when column < 4 => owners.FreeOwners[column],
+                PartyCardType.Paid when column < 4 => owners.PaidOwners[column],
+                _ => PartyCardSelectionState.Unassigned
+            };
             if (owner == PartyCardSelectionState.Unassigned || owner != memberSlot) return false;
             var key = (type, column, owner);
             var commitStatus = status switch
@@ -112,12 +117,12 @@ internal sealed class DungeonInstance(
                 _ => PartyCardCommitStatus.Unknown
             };
             if (_partyCardContent.ContainsKey(key)) return false;
-            _partyCardContent[key] = new PartyCardContent(roll, commitStatus);
+            _partyCardContent[key] = new PartyCardContent(type, column, owner, roll, commitStatus);
             return true;
         }
     }
 
-    internal bool TryTakePartyCardPublication(long generation, out PartyCardSelectionSnapshot? snapshot)
+    internal bool TryTakePartyCardPublication(long generation, out PartyCardPublishedSnapshot? snapshot)
     {
         lock (Gate)
         {
@@ -127,7 +132,10 @@ internal sealed class DungeonInstance(
             foreach (var owner in owners.FreeOwners.Where(x => x != PartyCardSelectionState.Unassigned))
                 if (!_partyCardContent.Any(x => x.Key.Type == PartyCardType.Free && x.Key.Slot == owner && x.Value.Status is PartyCardCommitStatus.Committed or PartyCardCommitStatus.Rejected)) return false;
             _partyCardPublished = true;
-            snapshot = owners;
+            snapshot = new PartyCardPublishedSnapshot(
+                generation,
+                owners,
+                _partyCardContent.Values.ToArray());
             return true;
         }
     }
