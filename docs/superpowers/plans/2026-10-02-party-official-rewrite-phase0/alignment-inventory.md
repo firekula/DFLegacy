@@ -63,7 +63,7 @@
 - 客户端可达性: NOTI 26 → case 26 = 0x41F144（非 default）；客户端把 1 字节存进全局并当 `0..7` **槽位号**用（使用点 0x78D2B1，`cmp esi,8; jge skip`）
 - 现状: **已按官服改好**（提交 `99d55e1`）：三处组队路径都发**队长槽位** —— 进选图 `EntranceService.cs:2779-2782`、队员入场 `:2884-2887`、live-join `:13001`；单人路径传 0（`:12379`，= 主机就是自己）。**`[作废]`** Phase 0 初稿在这里写的"队员主入场路径发的是自己的槽位（两条路径不一致）"来自前身设计稿的差距清单 v1（写于 `99d55e1` **之前**），已过时；S1 勘察实测更正（见台账"S1 勘察更正"）
 - 裁决: 对齐
-- 验收判据: 单测：`TryGetLeaderSlot` 对**非队长队员**必须返回队长槽位（`PartySmokeTests.CheckHostSlotIsSharedByEveryMemberAsync`；变异验证：改成"返回自己的槽位" → **仅该用例**变红，既有用例全部存活）；报文规划器侧由 `DungeonPartySmokeTests.cs:690-720` 钉住 hostSlot 会进包序。真机：队员端 UDP 主机指向队长（**待做**，需两个客户端）
+- 验收判据: ① 单测：`TryGetLeaderSlot` 对**非队长队员**必须返回队长槽位（`PartySmokeTests.CheckHostSlotIsSharedByEveryMemberAsync`；变异验证：改成"返回自己的槽位" → **仅该用例**变红，既有用例全部存活）；② 报文规划器侧由 `DungeonPartySmokeTests.cs:690-720` 钉住 hostSlot 会进包序；③ **真机 ✅ 已完成（2026-10-03 run #43）**：组队一轮里两个会话**同一秒**各收一条 `NOTI 26 payload=00`（`346f8a55`=`test` 队长 slot 0、`34765968`=圣骑士 队员 **slot 1**）⇒ 队员收到的不是自己的槽位（那会是 `01`）而是队长槽位；单人对照一轮 `test` 单独进图仍收 `payload=00`。证据：`real-client-run-43-server.log` 的 `01:17:13`（两条）/`01:17:18`（队员入场）/`01:19:58`（单人）
 - 归属切片: S1
 
 ### PD-1002 NOTI 11 每成员 7 字段（客户端只读 7）
