@@ -2724,6 +2724,28 @@ public sealed class EntranceService(
                     return null;
                 }
 
+                // 成功取得一件地面物之后的**官服收尾**（S5/PD-3001 + PD-3005）。顺序照官服：
+                // `CParty::get_item` 先发 NOTI 39（各拾取点上面已发），`DisPatcher_GetItem::process`
+                // 末尾发 NOTI 86(5)，最后派发框架调 `DisPatcher_GetItem::send` 回 ok/error。
+                //   ① `NOTI 86(5)`：官服 `GameWorld::send_all` = **全场（含拾取者，不 omit）**；
+                //      本客户端 86 号处理器只实现子类型 1/2 ⇒ 这条是空操作，照发只为语义对齐。
+                //   ② `CMD 46` 成功包：官服 `CUser::SendCmdOkPacket(46)` = body `[1]`；客户端
+                //      在 resultFlag 非 0 时直接返回 ⇒ 同样是空操作（PD-3005 已记）。
+                async Task CompletePickupAsync(
+                    PacketFrame pickupRequest,
+                    ushort groundId,
+                    uint itemId,
+                    CancellationToken cancellationToken)
+                {
+                    var removed = GameProtocolEngine.CreatePickupRemovedBroadcast(localUserId, itemId);
+                    await BroadcastToInstanceAsync(removed, cancellationToken);
+
+                    var acceptance = GameProtocolEngine.CreateGetItemAcceptance(pickupRequest);
+                    await acceptance.WriteAsync(stream, cancellationToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, acceptance);
+                }
+
                 // 队员侧的"进入选图状态"（设计稿 §3.2 的前置）：只有本会话建得出自己的 USERINFO，
                 // 所以外观必须由这里推给同队其他人（探针的"外观窗口"就是这件事的临时实现）。
                 async Task EnterPartyDungeonSelectionAsync(Guid leaderCharacterId, CancellationToken cancellationToken)
@@ -13790,6 +13812,11 @@ public sealed class EntranceService(
                                     currentDungeonRoomY,
                                     out var groundItem))
                             {
+                                // **静默是官服语义，不是缺口**（S5/PD-3005）：
+                                // `CParty::get_item` 返回 false 时 `DisPatcher_GetItem::process` 把结果置
+                                // **0x7FFFFFFF**（"不回包"哨兵），而 `DisPatcher_GetItem::send` 见到该值
+                                // 直接返回 ⇒ 重复/失效拾取**什么都不发**（连错误包都没有）。
+                                // 真机旁证：run #40/#41/#42/#43 的同类拒绝之后确实一条 `protocol=46` 都没有。
                                 logger.LogWarning(
                                     "Ignored invalid or duplicate pickup of ground item {GroundId} for user {UserId}.",
                                     groundId,
@@ -13852,8 +13879,6 @@ public sealed class EntranceService(
                                 await pickup.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, pickup);
-                                // 掉落拾取广播（设计稿 §7 决策 5）：赢下实体并落库之后，同实例其他人的
-                                // 客户端也要让该掉落实体消失——自己那一份已经发过（上面），广播跳过自己。
 
                                 var refresh = CreateMainInventoryPacket(
                                     currentGold,
@@ -13862,6 +13887,7 @@ public sealed class EntranceService(
                                 await refresh.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, refresh);
+                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
                                 continue;
                             }
 
@@ -13921,6 +13947,7 @@ public sealed class EntranceService(
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, inventoryRefresh);
                                 await SendWarehouseStateAsync();
+                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
                                 continue;
                             }
 
@@ -14062,6 +14089,7 @@ public sealed class EntranceService(
                                     LogPacket("TX", runtimeSession, creatureRefresh);
                                 }
 
+                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
                                 continue;
                             }
 
@@ -14146,6 +14174,7 @@ public sealed class EntranceService(
                                 await avatarRefresh.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, avatarRefresh);
+                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
                                 continue;
                             }
 
@@ -14211,6 +14240,7 @@ public sealed class EntranceService(
                             await itemRefresh.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, itemRefresh);
+                            await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
                             continue;
                         }
 
