@@ -10188,9 +10188,10 @@ public sealed class EntranceService(
                                 if (!mainInventory.TryGetValue(
                                         requestedConsumption.Slot,
                                         out var inventoryItem)
-                                    || requestedConsumption.RequestedCount == 0
-                                    || requestedConsumption.ItemId != inventoryItem.ItemId
-                                    || IsEquipmentItem(inventoryItem.ItemId))
+                                    || !IsDeletableInventoryEntry(
+                                        inventoryItem,
+                                        requestedConsumption.ItemId,
+                                        requestedConsumption.RequestedCount))
                                 {
                                     logger.LogWarning(
                                         "Consume-items transaction has an invalid entry operation={Operation}, slot={Slot}, requestedItem={RequestedItemId}, actualItem={ActualItemId}, requested={RequestedCount}.",
@@ -10289,7 +10290,7 @@ public sealed class EntranceService(
                             foreach (var requestedConsumption in requestedConsumptions)
                             {
                                 logger.LogInformation(
-                                    "Consumed material listType={ListType}, operation={Operation}, slot={Slot}, item={ItemId}, consumed={ConsumedCount}, remaining={RemainingCount}.",
+                                    "DELETE_ITEM removed listType={ListType}, operation={Operation}, slot={Slot}, item={ItemId}, removed={RemovedCount}, remaining={RemainingCount}.",
                                     listType,
                                     requestedConsumption.Operation,
                                     requestedConsumption.Slot,
@@ -16935,6 +16936,27 @@ public sealed class EntranceService(
         listType = body[4];
         return slot is >= 3 and < ushort.MaxValue;
     }
+
+    /// <summary>
+    /// `CMD 18 DELETE_ITEM` 一条条目能不能落地（**纯函数**，会话侧调用点不测、规则在这里钉）。
+    ///
+    /// 历史缺陷（真机 run #50 + 更早的 22:30）：这里曾额外要求 `!IsEquipmentItem(...)`，
+    /// 即**装备一律拒删**；而客户端"丢弃不可交易物品"走的正是这条命令
+    /// （真机包体：`operation=1, slot=11, item=12112(装备), count=1`）⇒
+    /// **所有真机记录里 CMD 18 一次都没成功过**（`Consumed material` 成功日志零条，
+    /// 只有同一条 `invalid entry` 警告），用户看到的就是"点确认无法丢弃"。
+    /// 官服这条命令的名字就是 `DELETE_ITEM`（命令表 18），删除本就是它的用途。
+    ///
+    /// 保留的三个条件：槽位存在、请求的物品 id 与槽内实物一致、请求数量非 0
+    /// （其余校验——交易托管冻结、按槽累计不超堆叠数——在调用点做，需要会话状态）。
+    /// </summary>
+    internal static bool IsDeletableInventoryEntry(
+        CharacterItemRecord? inventoryItem,
+        ushort requestedItemId,
+        uint requestedCount) =>
+        inventoryItem is not null
+        && requestedCount != 0
+        && inventoryItem.ItemId == requestedItemId;
 
     private static bool TryReadConsumeItems(
         byte[] body,

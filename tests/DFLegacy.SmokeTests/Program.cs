@@ -1758,6 +1758,13 @@ Check(parsedConsumeItems
     && (uint)parsedConsumeEntryType.GetProperty("RequestedCount")!
         .GetValue(parsedConsumeEntry!)! == 1,
     "DFLegacy material request parses operation, slot, item id and count without field skew");
+// CMD 18 DELETE_ITEM 的条目准入（纯函数）。放宽"装备不许删"之后，**另外三个拒绝条件不能跟着丢**。
+// 装备那一条用真 PVF 里的真实装备 id 钉（见下面的 pvfItemCatalog 区块），这里钉不依赖目录的三个条件。
+var deleteItemSlot = new CharacterItemRecord(11, 12112, 1, Durability: 1_000);
+Check(!EntranceService.IsDeletableInventoryEntry(null, 12112, 1)
+    && !EntranceService.IsDeletableInventoryEntry(deleteItemSlot, 12113, 1)
+    && !EntranceService.IsDeletableInventoryEntry(deleteItemSlot, 12112, 0),
+    "DELETE_ITEM still refuses a missing slot, a mismatched item id and a zero count");
 var ceraShopBuyReply = GameProtocolEngine.CreateCeraShopBuyReply(
     shopCategory: 0,
     commodityNo: 140032,
@@ -8798,6 +8805,17 @@ Check(generatedClearReward.FreeGoldAmount == 388,
         "DFLegacy passive actions generate both hidden item records and linked monsters");
     var pvfItemCatalog = CreateItems(pvfScripts);
     pvfItemCatalog.Initialize();
+    // CMD 18 DELETE_ITEM **装备也必须能删**：真机上"丢弃不可交易物品"走的就是这条命令，
+    // 而这条路上曾有一条 `IsEquipmentItem(...)` 守卫 ⇒ **所有真机记录里 CMD 18 一次都没成功过**
+    // （22:30 两条 + run #50 两条，全是同一条 `invalid entry` 警告；用户看到的是"点确认无法丢弃"）。
+    // 12112 就是 run #50 日志里那件删不掉的装备；断言里先证"它确实是装备"，
+    // 这样万一哪天这个 id 不再是装备，这条会**变红**而不是静默变成空断言。
+    Check(pvfItemCatalog.IsEquipment(12112)
+            && EntranceService.IsDeletableInventoryEntry(
+                new CharacterItemRecord(11, 12112, 1, Durability: 1_000),
+                12112,
+                1),
+        "DELETE_ITEM accepts equipment: the client's discard-ununtradable path sends equipment and it must be deletable");
     EquipmentReinforcementSmokeTests.CheckRealPvf(
         Check,
         pvfScripts,
