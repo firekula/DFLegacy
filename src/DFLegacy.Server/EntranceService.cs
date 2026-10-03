@@ -1141,7 +1141,13 @@ public sealed class EntranceService(
                                 accountId: 1,
                                 out var peer))
                         {
-                            peers.Add(peer);
+                            // 中继模式（DFLEGACY_UDP_RELAY=1）下把**别人的**端点改写成服务端端点，
+                            // 客户端于是把玩法数据发给我们、由我们转发（官服 relay 的角色）。
+                            // 收件人自己那条必须原样保留：客户端靠它认自己的端点。
+                            peers.Add(GameplayDatagramService.ApplyRelayAdvertisement(
+                                peer,
+                                isSelf: slot.CharacterId == recipientCharacterId,
+                                gameplayDatagram.RelayAdvertisedEndpoint));
                         }
                     }
 

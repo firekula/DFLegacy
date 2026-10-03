@@ -21,8 +21,82 @@ public sealed class GameplayDatagramService(
     private readonly bool _auditEnabled =
         Environment.GetEnvironmentVariable("DFLEGACY_UDP_AUDIT") == "1";
     private readonly ConcurrentDictionary<string, UdpAudit> _audit = new();
+
+    // 玩法 UDP 中继（诊断开关 DFLEGACY_UDP_RELAY=1）：把 NOTI 11 里"对端的端点"改写成服务端自己的
+    // 监听端点，并在收到玩法数据后转发给其它会话 —— 即官方架构里 relay（8101-8300）承担的角色。
+    // 起因（2026-10-04 真机）：run #52 的 UDP 审计显示两个客户端之间**只在直连**
+    // （100 秒内 `mt=0 protocols=-`，只发 NAT 探测与心跳），服务端既看不见内容也管不着；
+    // 而队员端正是在队长放技能后崩在自己代码里（崩点 0x90149F，两轮逐寄存器一致）。
+    private readonly bool _relayEnabled =
+        Environment.GetEnvironmentVariable("DFLEGACY_UDP_RELAY") == "1";
     private UdpClient? _primary;
     private UdpClient? _secondary;
+
+    /// <summary>
+    /// 中继模式下交给客户端的"对端端点"= 本服务的玩法 UDP 主监听端点；
+    /// 非中继模式返回 null（调用方据此原样透传真实端点）。
+    /// </summary>
+    public IPEndPoint? RelayAdvertisedEndpoint =>
+        _relayEnabled
+            ? new IPEndPoint(
+                IPAddress.Parse(options.GameplayDatagram.ResolveAdvertisedHost()),
+                options.GameplayDatagram.PrimaryPort)
+            : null;
+
+    /// <summary>
+    /// 把一条对端记录改写成"服务端端点"。**收件人自己那条不改**（客户端靠它认出自己），
+    /// 且**身份字段（UserId/AccountId/NatType/Mtu）一律原样保留** —— `NOTI 11` 同时决定
+    /// 客户端给哪些 uid 建角色（见 `EntranceService` 城镇入场那段注释），动身份字段会波及角色创建。
+    /// 纯函数：单测直接钉。
+    /// </summary>
+    internal static GamePeerInfo ApplyRelayAdvertisement(
+        GamePeerInfo peer,
+        bool isSelf,
+        IPEndPoint? relayEndpoint)
+    {
+        if (isSelf || relayEndpoint is null)
+        {
+            return peer;
+        }
+
+        return peer with
+        {
+            LocalAddress = relayEndpoint.Address,
+            PublicAddress = relayEndpoint.Address,
+            PublicPort = checked((ushort)relayEndpoint.Port)
+        };
+    }
+
+    /// <summary>
+    /// 中继的转发目标：除发送者以外、所有**已登记端点**的会话，同一端点只发一次。
+    /// 纯函数：单测直接钉"不回发给发送者 / 跳过没有端点的会话 / 同一端点不重发"。
+    /// ⚠️ 当前**不按队伍过滤**（本机双客户端验证够用）；多队伍场景必须接队伍信息，否则串台
+    /// —— 这正是它先做成诊断开关、没直接进 `server.json` 的原因。
+    /// </summary>
+    internal static IReadOnlyList<IPEndPoint> SelectRelayTargets(
+        IEnumerable<(Guid Key, IPEndPoint? Endpoint)> sessions,
+        Guid? senderKey,
+        IPEndPoint sender)
+    {
+        List<IPEndPoint> targets = [];
+        var seen = new HashSet<string>(StringComparer.Ordinal) { EndpointKey(sender) };
+        foreach (var (key, endpoint) in sessions)
+        {
+            if (endpoint is null || (senderKey is { } skip && key == skip))
+            {
+                continue;
+            }
+
+            if (!seen.Add(EndpointKey(endpoint)))
+            {
+                continue;
+            }
+
+            targets.Add(endpoint);
+        }
+
+        return targets;
+    }
 
     public void RegisterChannelSession(RuntimeSession runtimeSession, IPAddress tcpAddress)
     {
@@ -224,6 +298,13 @@ public sealed class GameplayDatagramService(
                 loops.Add(AuditLoopAsync(stoppingToken));
             }
 
+            if (_relayEnabled)
+            {
+                logger.LogInformation(
+                    "Gameplay UDP relay enabled (DFLEGACY_UDP_RELAY=1): advertising {Endpoint} as every peer endpoint and forwarding gameplay datagrams between sessions.",
+                    RelayAdvertisedEndpoint);
+            }
+
             await Task.WhenAll(loops);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -285,7 +366,80 @@ public sealed class GameplayDatagramService(
             TraceDatagram(remote, datagram, "RX-UDP");
             var frames = LogMtUdpBlocks(remote, datagram);
             Audit(remote, datagram, "mt", frames);
+            if (_relayEnabled)
+            {
+                await RelayGameplayDatagramAsync(listener, remote, datagram, cancellationToken);
+            }
         }
+    }
+
+    /// <summary>
+    /// 中继：把某个会话发来的玩法数据转给**其它**已登记端点的会话（诊断/补齐官服 relay 角色用）。
+    /// 客户端已被 `NOTI 11` 告知"对端在服务端端点"，所以它发来的包目标是本服务，转发给对端即可。
+    /// 转发失败只记日志、不打断接收循环（一个对端掉线不该拖垮整条通道）。
+    /// </summary>
+    private async ValueTask RelayGameplayDatagramAsync(
+        UdpClient listener,
+        IPEndPoint sender,
+        byte[] datagram,
+        CancellationToken cancellationToken)
+    {
+        var senderKey = FindSessionKeyByEndpoint(sender);
+        List<(Guid Key, IPEndPoint? Endpoint)> snapshot = [];
+        foreach (var (key, session) in _sessions)
+        {
+            lock (session.Gate)
+            {
+                snapshot.Add((key, session.DatagramEndpoint));
+            }
+        }
+
+        var targets = SelectRelayTargets(snapshot, senderKey, sender);
+        var forwarded = 0;
+        foreach (var target in targets)
+        {
+            try
+            {
+                await listener.SendAsync(datagram, target, cancellationToken);
+                forwarded++;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    exception,
+                    "Gameplay UDP relay could not forward {Bytes} byte(s) from {Sender} to {Target}.",
+                    datagram.Length,
+                    sender,
+                    target);
+            }
+        }
+
+        logger.LogInformation(
+            "Gameplay UDP relay: forwarded {Bytes} byte(s) from {Sender} (session {Session}) to {Forwarded}/{Targets} peer endpoint(s).",
+            datagram.Length,
+            sender,
+            senderKey?.ToString() ?? "unknown",
+            forwarded,
+            targets.Count);
+    }
+
+    /// <summary>按"已登记的玩法端点"反查会话（中继要据此排除发送者自己）。</summary>
+    private Guid? FindSessionKeyByEndpoint(IPEndPoint endpoint)
+    {
+        var key = EndpointKey(endpoint);
+        foreach (var (sessionKey, session) in _sessions)
+        {
+            lock (session.Gate)
+            {
+                if (session.DatagramEndpoint is { } registered
+                    && string.Equals(EndpointKey(registered), key, StringComparison.Ordinal))
+                {
+                    return sessionKey;
+                }
+            }
+        }
+
+        return null;
     }
 
     private void ObserveEndpoint(IPEndPoint remote)

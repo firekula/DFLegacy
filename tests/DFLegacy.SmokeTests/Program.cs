@@ -1765,6 +1765,57 @@ Check(!EntranceService.IsDeletableInventoryEntry(null, 12112, 1)
     && !EntranceService.IsDeletableInventoryEntry(deleteItemSlot, 12113, 1)
     && !EntranceService.IsDeletableInventoryEntry(deleteItemSlot, 12112, 0),
     "DELETE_ITEM still refuses a missing slot, a mismatched item id and a zero count");
+// 玩法 UDP 中继（诊断开关 `DFLEGACY_UDP_RELAY=1`）：把"对端的 UDP 端点"改写成**服务端自己的监听端点**，
+// 客户端于是把玩法数据发给我们而不是直连对端 —— 官服架构里这一段由 relay 承担（本仓未实现）。
+// 真机依据（run #52 审计）：两个客户端 100 秒内 `mt=0 protocols=-` ⇒ 它们只在直连，服务端既看不到
+// 内容也管不着；而队员端正是在队长放技能后崩的（两轮崩溃逐寄存器一致，崩点 0x90149F）。
+// 注意：`NOTI 11` 同时决定"客户端给哪些 uid 建角色"（EntranceService:1054），所以只许改地址/端口，
+// **User/Account/Nat/Mtu 这些身份字段必须原样保留**。
+var relayProbePeer = new GamePeerInfo(
+    7,
+    IPAddress.Loopback,
+    IPAddress.Parse("10.0.0.9"),
+    5555,
+    1,
+    NatType: 2,
+    Mtu: 1472);
+var relayListener = new IPEndPoint(IPAddress.Loopback, 7002);
+Check(GameplayDatagramService.ApplyRelayAdvertisement(relayProbePeer, isSelf: true, relayListener)
+        == relayProbePeer,
+    "the UDP peer table leaves the recipient's own entry untouched (the client recognises itself by it)");
+var relayAdvertised = GameplayDatagramService.ApplyRelayAdvertisement(
+    relayProbePeer,
+    isSelf: false,
+    relayListener);
+Check(relayAdvertised.UserId == relayProbePeer.UserId
+    && relayAdvertised.AccountId == relayProbePeer.AccountId
+    && relayAdvertised.NatType == relayProbePeer.NatType
+    && relayAdvertised.Mtu == relayProbePeer.Mtu
+    && relayAdvertised.PublicAddress.Equals(IPAddress.Loopback)
+    && relayAdvertised.LocalAddress.Equals(IPAddress.Loopback)
+    && relayAdvertised.PublicPort == 7002,
+    "relay mode rewrites only the peer address/port to the server listener and keeps the identity fields");
+Check(GameplayDatagramService.ApplyRelayAdvertisement(relayProbePeer, isSelf: false, relayEndpoint: null)
+        == relayProbePeer,
+    "without relay mode the peer endpoint is advertised unchanged");
+var relaySenderKey = Guid.Parse("11111111-1111-1111-1111-111111111111");
+var relaySenderEndpoint = new IPEndPoint(IPAddress.Loopback, 5063);
+// 发送者的会话**登记在另一个端点**（NAT 重绑定后的常见情形）：这样"排除发送者"必须**按会话**
+// 生效，不能只靠"端点不同"捎带挡掉 —— 否则包会被回送给发送者自己的登记端点，形成回环。
+var relaySenderRegisteredEndpoint = new IPEndPoint(IPAddress.Loopback, 59999);
+var relayCandidates = new (Guid Key, IPEndPoint? Endpoint)[]
+{
+    (relaySenderKey, relaySenderRegisteredEndpoint),
+    (Guid.Parse("22222222-2222-2222-2222-222222222222"), new IPEndPoint(IPAddress.Loopback, 58413)),
+    (Guid.Parse("33333333-3333-3333-3333-333333333333"), null),
+    (Guid.Parse("44444444-4444-4444-4444-444444444444"), relaySenderEndpoint)
+};
+var relayTargets = GameplayDatagramService.SelectRelayTargets(
+    relayCandidates,
+    relaySenderKey,
+    relaySenderEndpoint);
+Check(relayTargets.Count == 1 && relayTargets[0].Port == 58413,
+    "relay forwards to the other registered endpoint only: never back to the sender's own session (even when it is registered on a different endpoint), never to a session without an endpoint, and never twice to the same endpoint");
 var ceraShopBuyReply = GameProtocolEngine.CreateCeraShopBuyReply(
     shopCategory: 0,
     commodityNo: 140032,
