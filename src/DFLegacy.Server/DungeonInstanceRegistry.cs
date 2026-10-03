@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 
 namespace DFLegacy.Server;
 
@@ -24,6 +24,23 @@ internal sealed record DungeonMonsterKillCredit(
     byte MonsterType,
     ushort MonsterIndex,
     bool IsBossCascadeDeath);
+
+/// <summary>
+/// routing 掷骰把归属判给**别的成员**时搬运的那一次拾取（S5/T3b）。
+///
+/// 为什么不直接由拾取者落库：物品必须进**得主**的背包，而得主的背包在本仓是**他自己会话的内存**
+/// （`mainInventory` 等）。别的会话直接改它，得主的下一次落库就会用自己的陈旧快照覆盖 ⇒ **静默丢件**。
+/// 所以这里只搬运"这次拾取"，由**得主自己的会话**在主场循环里取走并亲自收进背包
+/// （与 <c>ItemTradeService</c> 的"待安装"、以及本类既有的待入队/待选图信箱同一套范式）。
+/// 官服没有这个问题——`CParty::get_item` 在同一进程里直接操作得主的 `CInventory` 对象。
+/// </summary>
+internal sealed record DungeonLootPickupAttempt(
+    Guid WinnerCharacterId,
+    ushort GroundId,
+    Guid PickerCharacterId,
+    ushort PickerUserId,
+    byte PickerPartySlot,
+    byte[] RoutingScores);
 
 /// <summary>
 /// 副本实例注册表（设计稿 §3.1）：队伍键 / 角色绑定 / 单人键三张表 + 待选图、待入队两个信箱。
@@ -141,6 +158,34 @@ public sealed class DungeonInstanceRegistry
         _pendingSettlementReturns.TryRemove(characterId, out reason!);
 
     /// <summary>
+    /// routing 拾取信箱（S5/T3b）：拾取者会话投给**得主**，得主会话在主循环里取走并亲自收进背包
+    /// （理由见 <see cref="DungeonLootPickupAttempt"/>）。用**队列**而不是单槽：同一瞬间可能有
+    /// 多个成员各点一件、而掷骰把两件都判给同一个人。
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, ConcurrentQueue<DungeonLootPickupAttempt>>
+        _pendingLootPickups = new();
+
+    internal void PostLootPickupAttempt(DungeonLootPickupAttempt attempt) =>
+        _pendingLootPickups
+            .GetOrAdd(attempt.WinnerCharacterId, _ => new ConcurrentQueue<DungeonLootPickupAttempt>())
+            .Enqueue(attempt);
+
+    internal bool TryTakeLootPickupAttempt(
+        Guid characterId,
+        out DungeonLootPickupAttempt attempt)
+    {
+        attempt = null!;
+        if (!_pendingLootPickups.TryGetValue(characterId, out var queue)
+            || !queue.TryDequeue(out var taken))
+        {
+            return false;
+        }
+
+        attempt = taken;
+        return true;
+    }
+
+    /// <summary>
     /// 有任一待处理邮件（终审 P2 + 真机 2026-09-29）：会话主循环的读等待是"等包或超时"，
     /// 而信箱只在**有包**的路径被取——队员客户端静止时上百秒不发一个包，请求会一直躺着。
     /// </summary>
@@ -149,7 +194,12 @@ public sealed class DungeonInstanceRegistry
         || _pendingSelections.ContainsKey(characterId)
         || _pendingSelectionCancels.ContainsKey(characterId)
         || _pendingKillCredits.ContainsKey(characterId)
-        || _pendingSettlementReturns.ContainsKey(characterId);
+        || _pendingSettlementReturns.ContainsKey(characterId)
+        || HasPendingLootPickup(characterId);
+
+    /// <summary>队列可能空（取完就空），所以按"队列非空"判定，而不是"键存在"。</summary>
+    internal bool HasPendingLootPickup(Guid characterId) =>
+        _pendingLootPickups.TryGetValue(characterId, out var queue) && !queue.IsEmpty;
 
     /// <summary>队长开选图界面时给队员投的"待选图"请求（只记队长角色 id，队员自己把状态发给自己客户端）。</summary>
     internal void PostSelectionRequest(Guid characterId, Guid leaderCharacterId) =>

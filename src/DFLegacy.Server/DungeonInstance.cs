@@ -1490,6 +1490,59 @@ internal sealed class DungeonInstance(
         }
     }
 
+    // —— routing 归属裁决（S5/T3b） ——
+
+    /// <summary>
+    /// routing 的**轮转下标**（官服 `CParty::get_item` 里的 `party+324`）：
+    /// 下一轮谁拿那 +40 的顺位。只在 <see cref="Gate"/> 内读写。
+    /// </summary>
+    private int _routingRoundRobinIndex;
+
+    /// <summary>routing 轮转下标（诊断/测试用；对应官服 `party+324`）。</summary>
+    internal int RoutingRoundRobinIndex
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _routingRoundRobinIndex;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 走一次 routing 归属裁决（官服 `get_item` 的掷骰分支）。纯规则在
+    /// <see cref="LootRouting.Decide"/>，这里只负责"**读旧顺位 → 跑规则 → 写新顺位**在同一把锁里"，
+    /// 否则两个成员同时点拾取可能拿到同一个 +40 顺位（官服是单线程对象引用，没这个问题）。
+    ///
+    /// `routingActive` 恒传 false：官服的 `CParty::SetStartRouting` 由 `StartRouting` 触发、并会先发
+    /// **`NOTI 281`**——那条通知在本客户端**超出跳转表**（>0x97）根本不会被处理，`CMD 301` 真机 0 次
+    /// ⇒ 我们**没有** routing 生命周期（PD-3008/3009 的裁决）。`LootRouting.Decide` 里那条
+    /// `RoutingActive → 0xD8` 分支因此由单测覆盖，生产不可达。
+    /// </summary>
+    public LootRoutingDecision DecidePickupRouting(
+        Guid pickerCharacterId,
+        bool routable,
+        IReadOnlyList<LootRoutingCandidate> candidates,
+        Func<int, int> nextRandom)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(nextRandom);
+
+        lock (Gate)
+        {
+            return LootRouting.Decide(
+                itemAvailable: true,
+                routingActive: false,
+                routable,
+                pickerCharacterId,
+                candidates,
+                _routingRoundRobinIndex,
+                nextRandom,
+                out _routingRoundRobinIndex);
+        }
+    }
+
     /// <summary>回城 / 重开：清空地面掉落（改造前 `groundDungeonItems.ResetDungeon()`，EntranceService.cs:2630/3483/11773/11976）。</summary>
     public void ResetGroundItems()
     {

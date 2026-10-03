@@ -29,6 +29,8 @@ internal static class LootRoutingSmokeTests
         CheckRoutingStateRejectsDirectPickup(check);
         CheckUnavailableItemIsSilent(check);
         CheckOneAwardPerGroundItem(check);
+        CheckInstanceRoutingDecisionKeepsRotation(check);
+        CheckLootPickupMailbox(check);
     }
 
     /// <summary>`check_item_routing = isEpicRoutingItem || rarity > 0`（官服 @0x0850d756）。</summary>
@@ -286,4 +288,82 @@ internal static class LootRoutingSmokeTests
 
     /// <summary>官服 `get_rand_int(bound)` 的确定性替身：永远返回 0（把随机项消掉）。</summary>
     private static int NextRandomAlwaysZero(int bound) => 0;
+
+    /// <summary>
+    /// 实例侧入口：纯规则之外还要**在锁内推进轮转下标**（官服 `party+324`），
+    /// 否则两个成员同时点拾取会拿到同一个 +40 顺位。
+    /// </summary>
+    private static void CheckInstanceRoutingDecisionKeepsRotation(Action<bool, string> check)
+    {
+        var alpha = Guid.NewGuid();
+        var bravo = Guid.NewGuid();
+        var instance = new DungeonInstance(1, Guid.Empty, null!, null!);
+        var candidates = new[]
+        {
+            new LootRoutingCandidate(0, alpha, 1),
+            new LootRoutingCandidate(1, bravo, 2),
+        };
+
+        var first = instance.DecidePickupRouting(
+            alpha, routable: true, candidates, NextRandomAlwaysZero);
+        check(first.Outcome == LootPickupOutcome.Routed
+                && first.WinnerCharacterId == bravo
+                && first.RoutingScores[1] == LootRouting.BaseScore + LootRouting.RoundRobinBonus,
+            "the first routed pickup hands the +40 to the next slot in the rotation");
+        check(instance.RoutingRoundRobinIndex == 1,
+            "the rotation index (official party+324) is stored on the instance");
+
+        var second = instance.DecidePickupRouting(
+            alpha, routable: true, candidates, NextRandomAlwaysZero);
+        check(second.WinnerCharacterId == alpha && instance.RoutingRoundRobinIndex == 0,
+            "the next pickup rotates the +40 back to the first candidate");
+
+        var notRoutable = instance.DecidePickupRouting(
+            alpha, routable: false, candidates, NextRandomAlwaysZero);
+        check(notRoutable.Outcome == LootPickupOutcome.Granted
+                && notRoutable.WinnerCharacterId == alpha
+                && notRoutable.RoutingScores.All(score => score == 0),
+            "a non-routable item skips the dice and stays with the picker");
+
+        var solo = instance.DecidePickupRouting(
+            bravo, routable: true, [new LootRoutingCandidate(3, bravo, 2)], NextRandomAlwaysZero);
+        check(solo.Outcome == LootPickupOutcome.Granted && solo.WinnerCharacterId == bravo,
+            "a single eligible member skips the dice");
+    }
+
+    /// <summary>
+    /// 跨会话拾取信箱（拾取者投、**得主本人**取）。队列语义与"有待处理邮件"的判定都要钉住：
+    /// 后者决定得主会话的读等待会不会被唤醒（客户端静止不发包时请求会一直躺着）。
+    /// </summary>
+    private static void CheckLootPickupMailbox(Action<bool, string> check)
+    {
+        var registry = new DungeonInstanceRegistry();
+        var winner = Guid.NewGuid();
+        var first = new DungeonLootPickupAttempt(
+            winner, GroundId: 1, Guid.NewGuid(), PickerUserId: 1, PickerPartySlot: 0, [0, 0, 3, 41]);
+        var second = new DungeonLootPickupAttempt(
+            winner, GroundId: 2, Guid.NewGuid(), PickerUserId: 2, PickerPartySlot: 1, [0, 0, 0, 42]);
+
+        check(!registry.HasPendingLootPickup(winner) && !registry.HasPendingMail(winner),
+            "an empty pickup mailbox reports nothing pending");
+        check(!registry.TryTakeLootPickupAttempt(winner, out _),
+            "taking from an empty pickup mailbox fails");
+
+        registry.PostLootPickupAttempt(first);
+        registry.PostLootPickupAttempt(second);
+        check(registry.HasPendingLootPickup(winner) && registry.HasPendingMail(winner),
+            "a posted attempt shows up both in the drain tick and in HasPendingMail");
+
+        check(registry.TryTakeLootPickupAttempt(winner, out var takenFirst)
+                && takenFirst.GroundId == 1
+                && takenFirst.RoutingScores.SequenceEqual(new byte[] { 0, 0, 3, 41 }),
+            "pickup attempts are delivered in FIFO order with their dice scores");
+        check(registry.TryTakeLootPickupAttempt(winner, out var takenSecond)
+                && takenSecond.GroundId == 2,
+            "two attempts for the same winner both queue instead of overwriting each other");
+        check(!registry.HasPendingLootPickup(winner)
+                && !registry.HasPendingMail(winner)
+                && !registry.TryTakeLootPickupAttempt(winner, out _),
+            "the mailbox is empty again once drained");
+    }
 }

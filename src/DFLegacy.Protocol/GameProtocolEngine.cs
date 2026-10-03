@@ -739,7 +739,20 @@ public static class GameProtocolEngine
     /// 得主会话只拿得到"这是 `CMD 46` 的失败"这一件事（协议号与错误码都是常量）。
     /// </summary>
     public static GameServerPacket CreateGetItemSilentRejection() =>
-        new(CommandPacketType, GetItemCommand, [0, GetItemSilentRejectionError]);
+        CreateGetItemError(GetItemSilentRejectionError);
+
+    /// <summary>
+    /// `CMD 46` 的**失败**回包（官服 `CUser::SendCmdErrorPacket(46, code)` = body `[0, code]`）。
+    /// 不需要请求帧，供"回包发给请求者会话"的路径使用（得主 ≠ 拾取者时）。
+    /// </summary>
+    public static GameServerPacket CreateGetItemError(byte errorCode) =>
+        new(CommandPacketType, GetItemCommand, [0, errorCode]);
+
+    /// <summary>
+    /// `CMD 46` 的**成功**回包，不需要请求帧（理由同上）。
+    /// </summary>
+    public static GameServerPacket CreateGetItemAcceptance() =>
+        new(CommandPacketType, GetItemCommand, [1]);
 
     public static GameServerPacket CreateEnterDungeonSelectionInsufficientFatigueReply(
         byte partyMemberIndex = 0) =>

@@ -2732,18 +2732,18 @@ public sealed class EntranceService(
                 //   ② `CMD 46` 成功包：官服 `CUser::SendCmdOkPacket(46)` = body `[1]`；客户端
                 //      在 resultFlag 非 0 时直接返回 ⇒ 同样是空操作（PD-3005 已记）。
                 async Task CompletePickupAsync(
-                    PacketFrame pickupRequest,
                     ushort groundId,
                     uint itemId,
+                    ushort pickerUserId,
+                    Func<GameServerPacket, ValueTask> replyToRequester,
                     CancellationToken cancellationToken)
                 {
-                    var removed = GameProtocolEngine.CreatePickupRemovedBroadcast(localUserId, itemId);
+                    // NOTI 86 的 uid 是**请求者**的 uid（官服 `put_short(CUser::get_unique_id(a2))`，
+                    // `a2` 就是发 CMD 46 的那个人）——routing 时请求者可能不是得主。
+                    var removed = GameProtocolEngine.CreatePickupRemovedBroadcast(pickerUserId, itemId);
                     await BroadcastToInstanceAsync(removed, cancellationToken);
 
-                    var acceptance = GameProtocolEngine.CreateGetItemAcceptance(pickupRequest);
-                    await acceptance.WriteAsync(stream, cancellationToken);
-                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                    LogPacket("TX", runtimeSession, acceptance);
+                    await replyToRequester(GameProtocolEngine.CreateGetItemAcceptance());
                 }
 
                 // 拾取回包（`CMD 46` ok / error 0x15 + 文本提示）**我们自己发**时的投递路径：
@@ -3187,6 +3187,86 @@ public sealed class EntranceService(
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, itemRefresh);
                     return GroundItemGrantOutcome.Granted;
+                }
+
+                // 官服 `CItem::check_item_routing` = `isEpicRoutingItem || get_rarity() > 0`。
+                // 我们的物品表有 `rarity`（PVF 的 `[rarity]` 标签），**没有** `CItem+121` 那个
+                // "史诗路由"标志 ⇒ 判据实际退化为 `rarity > 0`（缺口写在 `LootRouting` 类注释里）。
+                // 金币没有物品定义 ⇒ 不可路由（与官服金币分支不掷骰一致）。
+                bool IsRoutableGroundItem(DungeonGroundItem groundItem) =>
+                    itemCatalog.TryGetDefinition(groundItem.ItemId, out var definition)
+                    && LootRouting.IsRoutable(definition.Rarity);
+
+                // 官服按**队伍槽位** 0..3 遍历 `_checkValidUser(k) && *(party+k+896) == 1`；
+                // 我们的等价物 = 这个副本实例当前的成员（含自己）。
+                // `JobMatchesItem` 恒 false：官服那一项还要求
+                // `is_stackable()!=1 && item kind == 10 && check_job_type(item, job)`，
+                // 后两个语义尚未取证（缺口见 `LootRouting` 类注释）。
+                LootRoutingCandidate[] BuildRoutingCandidates() =>
+                    dungeonInstance is null
+                        ? []
+                        : [.. dungeonInstance.Members.Select(member => new LootRoutingCandidate(
+                            member.PartySlot,
+                            member.CharacterId,
+                            member.AreaUserId))];
+
+                // 回包投递目标：请求者是**我**时走本会话 stream；是**别人**时走他的会话句柄
+                // （带他自己的日志与计数）；他已经不在实例里（掉线/换房）就当丢给空气——
+                // 归属已经落库，不需要为此回滚。
+                Func<GameServerPacket, ValueTask> PickupReplyFor(Guid pickerCharacterId)
+                {
+                    if (activeCharacter is { } self && self.Id == pickerCharacterId)
+                    {
+                        return SendPickupReplyToRequesterAsync;
+                    }
+
+                    return dungeonInstance?.FindMember(pickerCharacterId) is { } picker
+                        ? picker.Send
+                        : _ => ValueTask.CompletedTask;
+                }
+
+                // routing **得主侧**的代收（S5/T3b）：拾取者会话把"这件归你了"投进注册表信箱，
+                // 这里由**得主自己**跑与直取完全相同的收尾（同一个 `TryGrantGroundItemAsync`），
+                // 所以背包/落库/`NOTI 39` 全都落在得主会话的上下文里（单一真源，不会被陈旧快照覆盖）。
+                // 回包给**请求者**：他可能不是我。
+                async Task ApplyLootPickupAttemptAsync(DungeonLootPickupAttempt attempt)
+                {
+                    if (dungeonInstance is null
+                        || !dungeonInstance.TryGetGroundItem(
+                            attempt.GroundId,
+                            currentDungeonRoomX,
+                            currentDungeonRoomY,
+                            out var routedGroundItem))
+                    {
+                        // 典型的三种原因：别人先摘走了、我换房了、实例已经重开。
+                        // **什么都不发**（官服 `get_item == false` 的 0x7FFFFFFF 静默语义），只留一行日志。
+                        logger.LogWarning(
+                            "Routed pickup of ground item {GroundId} for {Name} could not be applied; the ground item is gone or the room changed (room {RoomX},{RoomY}).",
+                            attempt.GroundId,
+                            activeCharacter?.Name ?? "?",
+                            currentDungeonRoomX,
+                            currentDungeonRoomY);
+                        return;
+                    }
+
+                    var replyToPicker = PickupReplyFor(attempt.PickerCharacterId);
+                    var grant = await TryGrantGroundItemAsync(
+                        routedGroundItem,
+                        attempt.GroundId,
+                        attempt.RoutingScores,
+                        replyToPicker);
+                    if (grant is not GroundItemGrantOutcome.Granted)
+                    {
+                        // Rejected 已经在内部回过包；NotAvailable / PersistFailed 按静默处理。
+                        return;
+                    }
+
+                    await CompletePickupAsync(
+                        attempt.GroundId,
+                        routedGroundItem.ItemId,
+                        attempt.PickerUserId,
+                        replyToPicker,
+                        serverToken);
                 }
 
                 // 队员侧的"进入选图状态"（设计稿 §3.2 的前置）：只有本会话建得出自己的 USERINFO，
@@ -4392,6 +4472,19 @@ public sealed class EntranceService(
                                 settlementReturnMember.Name,
                                 settlementReturnReason);
                             await ReturnToTownFromDungeonAsync(settlementReturnReason);
+                        }
+
+                        // routing 拾取信箱（S5/T3b）：掷骰把归属判给了我 → **由我自己**把它收进背包
+                        // （官服在同一进程里直接操作得主的 `CInventory`；我们只能跨会话搬这一件）。
+                        // 与交易"待安装"同一条红线：**必须在处理下一条请求之前收掉**，
+                        // 否则玩家一动背包就会用陈旧状态覆盖掉刚收进来的东西。
+                        if (activeCharacter is { } lootWinner)
+                        {
+                            while (dungeonInstanceRegistry.TryTakeLootPickupAttempt(
+                                       lootWinner.Id, out var lootAttempt))
+                            {
+                                await ApplyLootPickupAttemptAsync(lootAttempt);
+                            }
                         }
 
                         // 队长退出选图 → 自己也回城（真机 2026-09-29：队长返回城镇后队员一直卡在选图界面）。
@@ -14245,10 +14338,10 @@ public sealed class EntranceService(
 
                             var groundId = BinaryPrimitives.ReadUInt16LittleEndian(
                                 request.Body.AsSpan(2, sizeof(ushort)));
-                            // 设计稿 §7 决策 5：全队共享、**先到先得**——`OwnerUserId` 只做客户端归属显示，
-                            // **不参与准入**（队友能捡别人的掉落，Task 5 强制推进产生的无主掉落 0 也能捡）。
-                            // 这里只看"当前房间里这个掉落实体还在不在"；真正的并发仲裁是下面的
-                            // TryClaimGroundItem（锁内摘除，返回值唯一）。
+                            // 全队共享仍然成立，但**归属**自 S5/T3b 起按官服 `CParty::get_item` 的
+                            // routing 规则裁决：可路由物品按加权掷骰定归属（`OwnerUserId` 依旧只做
+                            // 客户端归属显示、不参与准入）。真正的并发仲裁仍是 `TryClaimGroundItem`
+                            // （锁内摘除，返回值唯一），由 `TryGrantGroundItemAsync` 在**得主会话**里执行。
                             if (!dungeonInstance!.TryGetGroundItem(
                                     groundId,
                                     currentDungeonRoomX,
@@ -14267,15 +14360,68 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            var decision = dungeonInstance.DecidePickupRouting(
+                                activeCharacter.Id,
+                                IsRoutableGroundItem(groundItem),
+                                BuildRoutingCandidates(),
+                                Random.Shared.Next);
+                            if (decision.Outcome is LootPickupOutcome.RoutingActive)
+                            {
+                                // 官服在调 `get_item` **之前**就回 216（0xD8）。生产不可达
+                                // （我们没有 routing 生命周期），见 `DungeonInstance.DecidePickupRouting`。
+                                await SendPickupReplyToRequesterAsync(
+                                    GameProtocolEngine.CreateGetItemError(decision.ErrorCode));
+                                continue;
+                            }
+
+                            if (decision.Outcome is LootPickupOutcome.Routed
+                                && decision.WinnerCharacterId != activeCharacter.Id)
+                            {
+                                // 归属是**别人**：只把这次拾取搬过去，由**得主会话**自己收进背包
+                                // （理由见 `DungeonLootPickupAttempt`）。本会话不落库、不发 NOTI 39。
+                                var winner = dungeonInstance.FindMember(decision.WinnerCharacterId);
+                                if (winner is null)
+                                {
+                                    // 得主刚好离队：按"这一下没捡到"处理——地面物仍在原地，谁都没拿走。
+                                    logger.LogWarning(
+                                        "Routed pickup of ground item {GroundId} for user {UserId} has no live winner; the ground item stays in room ({RoomX},{RoomY}).",
+                                        groundId,
+                                        localUserId,
+                                        currentDungeonRoomX,
+                                        currentDungeonRoomY);
+                                    continue;
+                                }
+
+                                dungeonInstanceRegistry.PostLootPickupAttempt(
+                                    new DungeonLootPickupAttempt(
+                                        decision.WinnerCharacterId,
+                                        groundId,
+                                        activeCharacter.Id,
+                                        localUserId,
+                                        winner.PartySlot,
+                                        decision.RoutingScores));
+                                logger.LogInformation(
+                                    "Ground item {GroundId} routed to {Winner} (slot {Slot}) by the official dice rule; scores=[{Scores}].",
+                                    groundId,
+                                    winner.CharacterName,
+                                    winner.PartySlot,
+                                    string.Join(',', decision.RoutingScores));
+                                continue;
+                            }
+
                             var grant = await TryGrantGroundItemAsync(
                                 groundItem,
                                 groundId,
-                                // routing 掷骰的 4 个槽位字节（直取路径为 null ⇒ 全 0，与官服 memset 路径一致）
-                                routingScores: null,
-                                replyToRequester: SendPickupReplyToRequesterAsync);
+                                decision.RoutingScores,
+                                SendPickupReplyToRequesterAsync);
                             if (grant is GroundItemGrantOutcome.Granted)
                             {
-                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
+                                await CompletePickupAsync(
+                                    groundId,
+                                    groundItem.ItemId,
+                                    localUserId,
+                                    SendPickupReplyToRequesterAsync,
+                                    serverToken);
                             }
 
                             continue;
