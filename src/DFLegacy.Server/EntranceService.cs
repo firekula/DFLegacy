@@ -2746,7 +2746,7 @@ public sealed class EntranceService(
                     await replyToRequester(GameProtocolEngine.CreateGetItemAcceptance());
                 }
 
-                // 调试命令 `//掉落测试` 的落地（**真机测试专用**）：翻转**本实例**的满掉落开关，
+                // 调试命令 `掉落测试` 的落地（**真机测试专用**）：翻转**本实例**的满掉落开关，
                 // 并回一行系统消息报告状态。不在副本里时**不静默**——明确说"进图后再输入"，
                 // 否则玩家会以为命令没生效。
                 async ValueTask ToggleDropDebugAllAsync()
@@ -2757,7 +2757,8 @@ public sealed class EntranceService(
                             "Debug drop-all command ignored for {Name} (account {Account}): not inside a dungeon instance.",
                             activeCharacter?.Name ?? "?",
                             accountName);
-                        await SendDebugNoticeAsync("调试：需要先进入副本，进图后再输入。");
+                        await SendDebugNoticeAsync(
+                            $"调试：请先进入副本，进图后在聊天框输入「{DebugChatCommands.DropEverythingCommand}」。");
                         return;
                     }
 
@@ -5699,9 +5700,14 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            // 调试聊天命令（**真机测试专用**）：`//掉落测试` 开关本实例的"满掉落"。
+                            // 调试聊天命令（**真机测试专用**）：`掉落测试` 开关本实例的"满掉落"。
                             // 只认 `test` 账号；命中就**不再当聊天发出去**（避免污染频道）。
                             // 正文按客户端代码页（936）解码——与本文件其它地方同一口径。
+                            // **触发词故意不带斜杠**：客户端把任何 `/` 开头的输入当它自己的聊天命令
+                            // 吃掉，一个包都不发（2026-10-03 真机实测，见 DebugChatCommands 注释）。
+                            // 这里**不按 message type 门控**：城镇里普通聊天是 type 3（已实测），
+                            // 副本内默认分页会发哪个 type 还没实测；账号 + 精确文本这道门已经够窄，
+                            // 宁可多种 type 都能触发，也不要"进图后命令没反应"。
                             if (DebugChatCommands.IsDropEverythingCommand(
                                     ClientEncoding.GetString(messageRequest.MessageBytes),
                                     accountName))
@@ -14156,7 +14162,7 @@ public sealed class EntranceService(
                                                  defeatedMonster.Level,
                                                  defeatedMonster.Type,
                                                  currentDungeonDifficulty,
-                                                 // 调试满掉落（`//掉落测试`，只对 test 账号、只影响本实例）
+                                                 // 调试满掉落（`掉落测试`，只对 test 账号、只影响本实例）
                                                  dropEverything: dungeonInstance!.DropDebugAll))
                                     {
                                         var groundItem = dungeonInstance!.AddGroundItem(

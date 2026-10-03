@@ -1493,7 +1493,7 @@ internal sealed class DungeonInstance(
     // —— 调试用"满掉落"（真机测试，S5） ——
 
     /// <summary>
-    /// 本实例是否处于"调试满掉落"（由 `//掉落测试` 聊天命令开关，见
+    /// 本实例是否处于"调试满掉落"（由 `掉落测试` 聊天命令开关，见
     /// <see cref="EntranceService"/> 的 `CMD 17 SEND_MESSAGE` 分支）。
     /// **只为真机测试存在**：开启后本实例内每次怪死都按"金币必掉 + 4 类物品每类每品级各一件 +
     /// 世界掉落必掉"满额掉（封顶 `DungeonDropGenerator.MaxDebugDrops`，候选池里没有的不掉）。

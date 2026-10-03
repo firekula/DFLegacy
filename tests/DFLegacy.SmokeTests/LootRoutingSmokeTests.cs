@@ -36,20 +36,25 @@ internal static class LootRoutingSmokeTests
     }
 
     /// <summary>
-    /// 调试聊天命令 `//掉落测试`（**真机测试专用**）：只认 <c>test</c> 账号、触发词精确匹配
+    /// 调试聊天命令 `掉落测试`（**真机测试专用**）：只认 <c>test</c> 账号、触发词精确匹配
     /// （账号大小写不敏感、正文首尾空白可容忍）。别的账号或别的文本一律不是命令。
+    ///
+    /// 触发词**不带斜杠**是硬约束（2026-10-03 真机实测）：客户端的聊天发送器把**任何**以 `/`
+    /// 开头的输入当它自己的聊天命令吃掉（`/help` 打它自己的命令表，`/zzz` 与 `//掉落测试`
+    /// 静默丢弃），一个包都不发出来 ⇒ 带斜杠的触发词永远到不了服务端。
     /// </summary>
     private static void CheckDebugDropCommand(Action<bool, string> check)
     {
-        check(DebugChatCommands.IsDropEverythingCommand("//掉落测试", "test")
-                && DebugChatCommands.IsDropEverythingCommand("  //掉落测试 ", "TEST"),
+        check(DebugChatCommands.IsDropEverythingCommand("掉落测试", "test")
+                && DebugChatCommands.IsDropEverythingCommand("  掉落测试  ", "TEST"),
             "the drop-all chat command is accepted for the test account (trimmed, account case-insensitive)");
-        check(!DebugChatCommands.IsDropEverythingCommand("//掉落测试", "shizuku"),
+        check(!DebugChatCommands.IsDropEverythingCommand("掉落测试", "shizuku"),
             "the drop-all chat command is rejected for any other account");
-        check(!DebugChatCommands.IsDropEverythingCommand("掉落测试", "test")
-                && !DebugChatCommands.IsDropEverythingCommand("//掉落测试2", "test")
+        check(!DebugChatCommands.IsDropEverythingCommand("//掉落测试", "test"),
+            "the slash form is rejected: the client swallows '/'-prefixed input and never sends it");
+        check(!DebugChatCommands.IsDropEverythingCommand("掉落测试2", "test")
                 && !DebugChatCommands.IsDropEverythingCommand(null, "test")
-                && !DebugChatCommands.IsDropEverythingCommand("//掉落测试", null),
+                && !DebugChatCommands.IsDropEverythingCommand("掉落测试", null),
             "anything but the exact trigger word (or a missing account) is not the command");
     }
 

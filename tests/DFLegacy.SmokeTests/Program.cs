@@ -9703,7 +9703,7 @@ Check(generatedClearReward.FreeGoldAmount == 388,
                 MonsterDropKind.Recipe),
         "gold, equipment, recipe and world-drop branches can coexist while zero-weight pools stay empty");
 
-// 调试满掉落（聊天命令 `//掉落测试`，只对 `test` 账号、只影响触发者所在实例）：
+// 调试满掉落（聊天命令 `掉落测试`——不带斜杠，只对 `test` 账号、只影响触发者所在实例）：
 // 金币必掉 + 4 类物品**每类每品级各一件** + 世界掉落必掉，但"候选池里没有的不掉"、
 // 且总件数封顶 `DungeonDropGenerator.MaxDebugDrops`（不封顶会撑爆 NOTI 38 那一包）。
 // 用 ZeroDropRandomSource 保证确定性；基线用同一关卡的 ForceDrops 结果（它只保证每类一件）。
