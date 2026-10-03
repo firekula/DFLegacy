@@ -3189,13 +3189,14 @@ public sealed class EntranceService(
                     return GroundItemGrantOutcome.Granted;
                 }
 
-                // 官服 `CItem::check_item_routing` = `isEpicRoutingItem || get_rarity() > 0`。
-                // 我们的物品表有 `rarity`（PVF 的 `[rarity]` 标签），**没有** `CItem+121` 那个
-                // "史诗路由"标志 ⇒ 判据实际退化为 `rarity > 0`（缺口写在 `LootRouting` 类注释里）。
-                // 金币没有物品定义 ⇒ 不可路由（与官服金币分支不掷骰一致）。
+                // 官服 `CItem::check_item_routing` = `isEpicRoutingItem || get_rarity() > 0`；
+                // 但**生效门控**收窄到 `rarity > 3`（2026-10-03 用户裁决；理由与放开条件写在
+                // `LootRouting.RoutableRarityFloor` 的注释里）。我们的物品表有 `rarity`（PVF 的
+                // `[rarity]` 标签），**没有** `CItem+121` 那个"史诗路由"标志；金币没有物品定义
+                // ⇒ 不可路由（与官服金币分支不掷骰一致）。
                 bool IsRoutableGroundItem(DungeonGroundItem groundItem) =>
                     itemCatalog.TryGetDefinition(groundItem.ItemId, out var definition)
-                    && LootRouting.IsRoutable(definition.Rarity);
+                    && LootRouting.IsRoutableForThisClient(definition.Rarity);
 
                 // 官服按**队伍槽位** 0..3 遍历 `_checkValidUser(k) && *(party+k+896) == 1`；
                 // 我们的等价物 = 这个副本实例当前的成员（含自己）。

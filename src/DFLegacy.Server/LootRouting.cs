@@ -114,9 +114,29 @@ public static class LootRouting
 
     /// <summary>
     /// 官服 `CItem::check_item_routing`：`isEpicRoutingItem || get_rarity() > 0`。
+    /// **这是语义层证据，不要直接拿它当生效门控**——见 <see cref="RoutableRarityFloor"/>。
     /// </summary>
     public static bool IsRoutable(int? rarity, bool isEpicRoutingItem = false) =>
         isEpicRoutingItem || (rarity ?? 0) > 0;
+
+    /// <summary>
+    /// **本客户端生效的**可路由品级下限（`rarity > 3` 才算可路由）。
+    ///
+    /// 官服的 `check_item_routing` 是 `rarity > 0`（≈任何非最低品级），但本客户端**没有骰子 UI**：
+    /// "掷骰判给别人"在玩家侧等于**点了没反应、东西还留在地上**——真机 run #46 里神枪手
+    /// 唯一一次有效拾取就这么被判给了队友，用户随即报"捡不起东西"。
+    /// 2026-10-03 用户裁决：**先收窄到 `rarity > 3`**（回到 2026-10-01 的"蓝装以上"口径），
+    /// 把普通掉落的体感恢复正常；等有客户端反馈手段（或确认玩家能接受静默转移）再放开。
+    /// ⇒ 这是一处**有意偏离**：规则、单测、跨会话交付都保留，只改这一条门控；
+    /// 台账与 `STATUS.md` 已按"部分对齐"记录，放开时把 3 改成 0 即可。
+    /// </summary>
+    public const int RoutableRarityFloor = 3;
+
+    /// <summary>
+    /// 生产接线用的门控：`isEpicRoutingItem || rarity > `<see cref="RoutableRarityFloor"/>。
+    /// </summary>
+    public static bool IsRoutableForThisClient(int? rarity, bool isEpicRoutingItem = false) =>
+        isEpicRoutingItem || (rarity ?? 0) > RoutableRarityFloor;
 
     /// <summary>
     /// 裁决一次拾取。判定顺序照官服 `DisPatcher_GetItem::process`：

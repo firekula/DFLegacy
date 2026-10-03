@@ -42,6 +42,18 @@ internal static class LootRoutingSmokeTests
             "any item with rarity above zero is routable (official check_item_routing)");
         check(LootRouting.IsRoutable(rarity: 0, isEpicRoutingItem: true),
             "the epic-routing flag routes an item even at rarity zero");
+
+        // 生效门控（2026-10-03 用户裁决）：官服语义是 `rarity > 0`，但本客户端**没有骰子 UI**，
+        // "判给别人"在玩家侧等于"点了没反应、东西还在地上"（真机 run #46 观测）⇒ 先收窄到
+        // `rarity > 3`。放开时把 `RoutableRarityFloor` 改回 0 即可，本组断言要跟着改。
+        check(LootRouting.RoutableRarityFloor == 3,
+            "the effective routing floor is narrowed to rarity > 3 for this client");
+        check(!LootRouting.IsRoutableForThisClient(rarity: 1)
+                && !LootRouting.IsRoutableForThisClient(rarity: 3)
+                && LootRouting.IsRoutableForThisClient(rarity: 4),
+            "only items above the narrowed floor are routed in production");
+        check(LootRouting.IsRoutableForThisClient(rarity: 0, isEpicRoutingItem: true),
+            "the epic-routing flag still routes an item regardless of the narrowed floor");
     }
 
     /// <summary>官服 `get_member_count &lt;= 1 → v150 = a2`：单人/不可路由 = 拾取者本人取得，骰子字节全 0。</summary>
