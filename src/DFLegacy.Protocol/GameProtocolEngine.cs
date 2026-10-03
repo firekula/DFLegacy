@@ -731,8 +731,15 @@ public static class GameProtocolEngine
                 nameof(request));
         }
 
-        return CreateCommandError(request, GetItemSilentRejectionError);
+        return CreateGetItemSilentRejection();
     }
+
+    /// <summary>
+    /// 同上，但不需要请求帧：routing 由**得主会话**代收时，请求帧在**拾取者**那边，
+    /// 得主会话只拿得到"这是 `CMD 46` 的失败"这一件事（协议号与错误码都是常量）。
+    /// </summary>
+    public static GameServerPacket CreateGetItemSilentRejection() =>
+        new(CommandPacketType, GetItemCommand, [0, GetItemSilentRejectionError]);
 
     public static GameServerPacket CreateEnterDungeonSelectionInsufficientFatigueReply(
         byte partyMemberIndex = 0) =>

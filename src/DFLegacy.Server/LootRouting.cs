@@ -46,6 +46,28 @@ public sealed record LootRoutingDecision(
     byte ErrorCode);
 
 /// <summary>
+/// 会话侧"把一件地面物收进**本会话角色**背包"的结果（`EntranceService.TryGrantGroundItemAsync`）。
+/// 与 <see cref="LootPickupOutcome"/> 的分工：那个是**归属裁决**（谁该拿），这个是**交付结果**（拿成功没有）。
+/// </summary>
+public enum GroundItemGrantOutcome
+{
+    /// <summary>已落库，`NOTI 39` 与背包刷新都已发给本会话（= 得主本人）。</summary>
+    Granted,
+
+    /// <summary>
+    /// 业务拒绝（超重 / 宠物栏或时装栏放不下 / 金币溢出）：**按既有口径已经回过包**，
+    /// 调用方不必再补任何东西（超重那条回 `CMD 46` error 0x15 + 负重提示）。
+    /// </summary>
+    Rejected,
+
+    /// <summary>抢输了（别的成员先摘走）或调用时地面物已不在：**什么都不发**。</summary>
+    NotAvailable,
+
+    /// <summary>落库失败：已把实体按原 GroundId 放回原地，**什么都不发**。</summary>
+    PersistFailed,
+}
+
+/// <summary>
 /// 掉落与拾取的**归属规则**（纯函数、无状态；地面物账本仍在 <see cref="DungeonInstance"/>，
 /// 会话层只读包/投递）。官服证据与地址：
 ///

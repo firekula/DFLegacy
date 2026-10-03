@@ -2746,6 +2746,449 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, acceptance);
                 }
 
+                // 拾取回包（`CMD 46` ok / error 0x15 + 文本提示）**我们自己发**时的投递路径：
+                // 写本会话 stream + 计数 + 日志（与其它本会话发包同形）。
+                // routing 把归属判给别的成员时，得主会话会改用**请求者**的发送句柄发同一份包。
+                async ValueTask SendPickupReplyToRequesterAsync(GameServerPacket packet)
+                {
+                    await packet.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, packet);
+                }
+
+                // 「把一件地面物收进**本会话角色**的背包」的 5 条分支（金币 / 仓库升级券 / 宠物 / 时装 /
+                // 普通背包）收敛成的**唯一入口**。两条调用路径共用它：
+                //   ① `CMD 46` 直取：归属就是请求者本人，`replyToRequester` 写本会话 stream；
+                //   ② routing 掷骰把归属判给**别的成员**时，由**得主自己的会话**代收
+                //      （`replyToRequester` 发给请求者会话；见 `LootRouting` 与注册表的拾取信箱）。
+                // 语义与改造前一字不差：先到先得（claim 唯一）、落库失败必须按原 GroundId 放回原地、
+                // 超重回 `CMD 46` error 0x15 再发负重提示（客户端已乐观隐藏，靠这条回滚）。
+                // **本函数只碰本会话的内存状态**——所以得主不是请求者时，必须由得主会话自己跑它，
+                // 不能由别人代改（否则得主下次落库会用陈旧快照覆盖，静默丢件）。
+                async Task<GroundItemGrantOutcome> TryGrantGroundItemAsync(
+                    DungeonGroundItem groundItem,
+                    ushort groundId,
+                    IReadOnlyList<byte>? routingScores,
+                    Func<GameServerPacket, ValueTask> replyToRequester)
+                {
+                    if (activeCharacter is not { } character)
+                    {
+                        return GroundItemGrantOutcome.NotAvailable;
+                    }
+
+                    if (groundItem.IsGold)
+                    {
+                        int updatedGold;
+                        try
+                        {
+                            updatedGold = checked(
+                                currentGold + checked((int)groundItem.CountOrValue));
+                        }
+                        catch (OverflowException)
+                        {
+                            logger.LogWarning(
+                                "Gold pickup {GroundId} would overflow the character balance.",
+                                groundId);
+                            return GroundItemGrantOutcome.Rejected;
+                        }
+
+                        // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                        var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                        if (claimedGroundItem is null)
+                        {
+                            logger.LogWarning(
+                                "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                groundId,
+                                localUserId);
+                            return GroundItemGrantOutcome.NotAvailable;
+                        }
+
+                        var saved = await PersistClaimedPickupAsync(
+                            claimedGroundItem,
+                            groundId,
+                            () => store.SaveCharacterInventoryAsync(
+                                accountName,
+                                character.Id,
+                                updatedGold,
+                                mainInventory.Values,
+                                equippedInventory.Values,
+                                serverToken));
+                        if (saved is null)
+                        {
+                            logger.LogWarning(
+                                "Gold pickup {GroundId} was not persisted; the ground item was retained.",
+                                groundId);
+                            return GroundItemGrantOutcome.PersistFailed;
+                        }
+
+                        activeCharacter = saved;
+                        currentGold = updatedGold;
+                        var pickup = GameProtocolEngine.CreateGoldItemPickup(
+                            groundId,
+                            localUserId,
+                            groundItem.CountOrValue,
+                            pickerPartyIndex: PartySlotIndexOfThisSession());
+                        await pickup.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, pickup);
+
+                        var refresh = CreateMainInventoryPacket(
+                            currentGold,
+                            currentVictoryPoints,
+                            mainInventory.Values);
+                        await refresh.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, refresh);
+                        return GroundItemGrantOutcome.Granted;
+                    }
+
+                    if (CharacterWarehouseProgression.TryGetItemTargetCapacity(
+                            groundItem.ItemId,
+                            out var groundUpgradeTarget))
+                    {
+                        var plannedCapacity = Math.Max(
+                            warehouseCapacity,
+                            groundUpgradeTarget);
+                        // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                        var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                        if (claimedGroundItem is null)
+                        {
+                            logger.LogWarning(
+                                "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                groundId,
+                                localUserId);
+                            return GroundItemGrantOutcome.NotAvailable;
+                        }
+
+                        var savedUpgrade = await PersistClaimedPickupAsync(
+                            claimedGroundItem,
+                            groundId,
+                            () => store.SaveCharacterInventoryAsync(
+                                accountName,
+                                character.Id,
+                                currentGold,
+                                mainInventory.Values,
+                                equippedInventory.Values,
+                                serverToken,
+                                warehouseCapacity: plannedCapacity,
+                                expectedWarehouseCapacity: warehouseCapacity));
+                        if (savedUpgrade is null)
+                        {
+                            logger.LogWarning(
+                                "Warehouse-upgrade pickup {GroundId} was not persisted; the ground item was retained.",
+                                groundId);
+                            return GroundItemGrantOutcome.PersistFailed;
+                        }
+
+                        _ = AdoptSavedWarehouseUpgradeState(savedUpgrade);
+                        var upgradePickup =
+                            GameProtocolEngine.CreateInventoryItemPickup(
+                                groundId,
+                                localUserId,
+                                ushort.MaxValue,
+                                routingScores);
+                        await upgradePickup.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, upgradePickup);
+
+                        var inventoryRefresh = CreateMainInventoryPacket(
+                            currentGold,
+                            currentVictoryPoints,
+                            mainInventory.Values);
+                        await inventoryRefresh.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, inventoryRefresh);
+                        await SendWarehouseStateAsync();
+                        return GroundItemGrantOutcome.Granted;
+                    }
+
+                    if (!CharacterInventoryPlanner.CanCarryAdditionalItem(
+                            mainInventory.Values,
+                            equippedInventory.Values,
+                            creatureInventory.Values,
+                            groundItem.ItemId,
+                            groundItem.CountOrValue,
+                            characterStatCatalog.Get(character).InventoryLimit,
+                            itemCatalog,
+                            out var carriedWeight,
+                            out var pickupWeight,
+                            out var carriedWeightLimit))
+                    {
+                        // Keep the authoritative ground record and its ID. The client has
+                        // already hidden the item for its optimistic pickup animation;
+                        // CMD 46 error 0x15 rolls that state back and drops it visually.
+                        // NOTI 39 would falsely confirm pickup, while NOTI 40 would create
+                        // a second ground object instead of releasing the existing one.
+                        // 提示与回包都给**请求者**：routing 时代收的可能是别人点的拾取。
+                        await replyToRequester(
+                            GameProtocolEngine.CreateGetItemSilentRejection());
+                        var combinedWeight = carriedWeight > ulong.MaxValue - pickupWeight
+                            ? ulong.MaxValue
+                            : carriedWeight + pickupWeight;
+                        var excessWeight = combinedWeight - carriedWeightLimit;
+                        var overweightMessage = FormattableString.Invariant(
+                            $"将超出物品栏负重上限 {excessWeight / 1000d:F3}kg.");
+                        await replyToRequester(GameProtocolEngine.CreateMessageNotification(
+                            GameMessageType.Type16Brown,
+                            // A zero target suppresses the local-character prefix.
+                            0,
+                            ClientEncoding.GetBytes(overweightMessage)));
+                        logger.LogInformation(
+                            "Ground item {GroundId} pickup rejected as overweight; current={CurrentWeight}, incoming={IncomingWeight}, limit={WeightLimit}, excess={ExcessWeight}; authoritative ground state was retained for the client's pickup rollback.",
+                            groundId,
+                            carriedWeight,
+                            pickupWeight,
+                            carriedWeightLimit,
+                            excessWeight);
+                        return GroundItemGrantOutcome.Rejected;
+                    }
+
+                    if (itemCatalog.TryGetDefinition(
+                            groundItem.ItemId,
+                            out var groundDefinition)
+                        && groundDefinition.InventoryCategory
+                            == ItemInventoryCategory.Creature)
+                    {
+                        var creatureGroundItem = groundItem.PreservedItem is
+                            { } preservedCreatureItem
+                            ? preservedCreatureItem with
+                            {
+                                Slot = ushort.MaxValue,
+                                CountOrValue = groundItem.CountOrValue
+                            }
+                            : new CharacterItemRecord(
+                                ushort.MaxValue,
+                                groundItem.ItemId,
+                                groundItem.CountOrValue,
+                                Durability: groundDefinition.IsEquipment
+                                    ? (ushort)1_000
+                                    : (ushort)0,
+                                InstanceId: groundItem.PreservedItem?.InstanceId
+                                    ?? Guid.Empty);
+                        if (!CharacterCreatureInventoryPlanner.TryPlace(
+                                creatureInventory,
+                                creatureGroundItem,
+                                itemCatalog,
+                                preferredEmptySlot: null,
+                                out var creaturePickupPlan,
+                                out var creaturePickupFailure))
+                        {
+                            logger.LogInformation(
+                                "Ground Creature item {GroundId} cannot enter Creature inventory ({Failure}); it remains in the room.",
+                                groundId,
+                                creaturePickupFailure);
+                            return GroundItemGrantOutcome.Rejected;
+                        }
+
+                        // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                        var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                        if (claimedGroundItem is null)
+                        {
+                            logger.LogWarning(
+                                "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                groundId,
+                                localUserId);
+                            return GroundItemGrantOutcome.NotAvailable;
+                        }
+
+                        var savedCreaturePickup =
+                            await PersistClaimedPickupAsync(
+                                claimedGroundItem,
+                                groundId,
+                                () => store.SaveCharacterItemSpacesAsync(
+                                    accountName,
+                                    character.Id,
+                                    currentGold,
+                                    mainInventory.Values,
+                                    equippedInventory.Values,
+                                    warehouseInventory.Values,
+                                    serverToken,
+                                    avatarInventory: avatarInventory.Values,
+                                    creatureInventory:
+                                        creaturePickupPlan.Inventory.Values));
+                        if (savedCreaturePickup is null)
+                        {
+                            logger.LogWarning(
+                                "Creature item pickup {GroundId} was not persisted; the ground item was retained.",
+                                groundId);
+                            return GroundItemGrantOutcome.PersistFailed;
+                        }
+
+                        activeCharacter = savedCreaturePickup;
+                        creatureInventory = creaturePickupPlan.Inventory;
+                        var creaturePickup =
+                            GameProtocolEngine.CreateInventoryItemPickup(
+                                groundId,
+                                localUserId,
+                                creaturePickupPlan.DestinationSlot,
+                                routingScores);
+                        await creaturePickup.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, creaturePickup);
+
+                        foreach (var creatureRefresh in
+                                 CreateCreatureInventoryPackets(
+                                     creatureInventory.Values))
+                        {
+                            await creatureRefresh.WriteAsync(stream, serverToken);
+                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                            LogPacket("TX", runtimeSession, creatureRefresh);
+                        }
+
+                        return GroundItemGrantOutcome.Granted;
+                    }
+
+                    if (itemCatalog.TryGetDefinition(
+                            groundItem.ItemId,
+                            out groundDefinition)
+                        && groundDefinition.InventoryCategory
+                            == ItemInventoryCategory.Avatar)
+                    {
+                        var preservedAvatarItem = groundItem.PreservedItem;
+                        var avatarGroundItem = new CharacterMailAttachmentRecord(
+                            groundItem.ItemId,
+                            groundItem.CountOrValue,
+                            State: preservedAvatarItem?.State ?? 0,
+                            Durability: preservedAvatarItem?.Durability ?? 1_000,
+                            SealState: preservedAvatarItem?.SealState ?? 0,
+                            AvatarRemainingSeconds:
+                                preservedAvatarItem?.AvatarRemainingSeconds,
+                            AvatarAbilityIndex:
+                                preservedAvatarItem?.AvatarAbilityIndex,
+                            InstanceId: preservedAvatarItem?.InstanceId
+                                ?? Guid.Empty);
+                        if (!CharacterAvatarInventoryPlanner.TryPlace(
+                                avatarInventory,
+                                avatarGroundItem,
+                                itemCatalog,
+                                out var avatarPickupPlan,
+                                out var avatarPickupFailure))
+                        {
+                            logger.LogInformation(
+                                "Ground Avatar item {GroundId} cannot enter Avatar inventory ({Failure}); it remains in the room.",
+                                groundId,
+                                avatarPickupFailure);
+                            return GroundItemGrantOutcome.Rejected;
+                        }
+
+                        // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                        var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                        if (claimedGroundItem is null)
+                        {
+                            logger.LogWarning(
+                                "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                                groundId,
+                                localUserId);
+                            return GroundItemGrantOutcome.NotAvailable;
+                        }
+
+                        var savedAvatarPickup =
+                            await PersistClaimedPickupAsync(
+                                claimedGroundItem,
+                                groundId,
+                                () => store.SaveCharacterItemSpacesAsync(
+                                    accountName,
+                                    character.Id,
+                                    currentGold,
+                                    mainInventory.Values,
+                                    equippedInventory.Values,
+                                    warehouseInventory.Values,
+                                    serverToken,
+                                    avatarInventory: avatarPickupPlan.Inventory.Values));
+                        if (savedAvatarPickup is null)
+                        {
+                            logger.LogWarning(
+                                "Avatar item pickup {GroundId} was not persisted; the ground item was retained.",
+                                groundId);
+                            return GroundItemGrantOutcome.PersistFailed;
+                        }
+
+                        activeCharacter = savedAvatarPickup;
+                        avatarInventory = avatarPickupPlan.Inventory;
+                        var avatarPickup =
+                            GameProtocolEngine.CreateInventoryItemPickup(
+                                groundId,
+                                localUserId,
+                                avatarPickupPlan.DestinationSlot,
+                                routingScores);
+                        await avatarPickup.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, avatarPickup);
+
+                        var avatarRefresh = CreateAvatarInventoryPacket(
+                            avatarInventory.Values);
+                        await avatarRefresh.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, avatarRefresh);
+                        return GroundItemGrantOutcome.Granted;
+                    }
+
+                    if (!DungeonPickupPlanner.TryPlanItem(
+                            mainInventory,
+                            groundItem,
+                            itemCatalog,
+                            GetInventoryWeightLimit(character),
+                            out var pickupPlan,
+                            out var pickupFailure))
+                    {
+                        logger.LogInformation(
+                            "Ground item {GroundId} cannot enter the inventory ({Failure}); it remains in the room.",
+                            groundId,
+                            pickupFailure);
+                        return GroundItemGrantOutcome.Rejected;
+                    }
+
+                    // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
+                    var claimedInventoryItem = TryClaimGroundItemForPickup(groundId);
+                    if (claimedInventoryItem is null)
+                    {
+                        logger.LogWarning(
+                            "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
+                            groundId,
+                            localUserId);
+                        return GroundItemGrantOutcome.NotAvailable;
+                    }
+
+                    var savedInventory = await PersistClaimedPickupAsync(
+                        claimedInventoryItem,
+                        groundId,
+                        () => store.SaveCharacterInventoryAsync(
+                            accountName,
+                            character.Id,
+                            currentGold,
+                            pickupPlan.Inventory.Values,
+                            equippedInventory.Values,
+                            serverToken));
+                    if (savedInventory is null)
+                    {
+                        logger.LogWarning(
+                            "Item pickup {GroundId} was not persisted; the ground item was retained.",
+                            groundId);
+                        return GroundItemGrantOutcome.PersistFailed;
+                    }
+
+                    activeCharacter = savedInventory;
+                    mainInventory = pickupPlan.Inventory;
+                    var itemPickup = GameProtocolEngine.CreateInventoryItemPickup(
+                        groundId,
+                        localUserId,
+                        pickupPlan.DestinationSlot,
+                        routingScores);
+                    await itemPickup.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, itemPickup);
+
+                    var itemRefresh = CreateMainInventoryPacket(
+                        currentGold,
+                        currentVictoryPoints,
+                        mainInventory.Values,
+                        pickupPlan.DestinationSlot);
+                    await itemRefresh.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, itemRefresh);
+                    return GroundItemGrantOutcome.Granted;
+                }
+
                 // 队员侧的"进入选图状态"（设计稿 §3.2 的前置）：只有本会话建得出自己的 USERINFO，
                 // 所以外观必须由这里推给同队其他人（探针的"外观窗口"就是这件事的临时实现）。
                 async Task EnterPartyDungeonSelectionAsync(Guid leaderCharacterId, CancellationToken cancellationToken)
@@ -13824,423 +14267,17 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            if (groundItem.IsGold)
-                            {
-                                int updatedGold;
-                                try
-                                {
-                                    updatedGold = checked(
-                                        currentGold + checked((int)groundItem.CountOrValue));
-                                }
-                                catch (OverflowException)
-                                {
-                                    logger.LogWarning(
-                                        "Gold pickup {GroundId} would overflow the character balance.",
-                                        groundId);
-                                    continue;
-                                }
-
-                                // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                                var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
-                                if (claimedGroundItem is null)
-                                {
-                                    logger.LogWarning(
-                                        "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
-                                        groundId,
-                                        localUserId);
-                                    continue;
-                                }
-
-                                var saved = await PersistClaimedPickupAsync(
-                                    claimedGroundItem,
-                                    groundId,
-                                    () => store.SaveCharacterInventoryAsync(
-                                        accountName,
-                                        activeCharacter.Id,
-                                        updatedGold,
-                                        mainInventory.Values,
-                                        equippedInventory.Values,
-                                        serverToken));
-                                if (saved is null)
-                                {
-                                    logger.LogWarning(
-                                        "Gold pickup {GroundId} was not persisted; the ground item was retained.",
-                                        groundId);
-                                    continue;
-                                }
-
-                                activeCharacter = saved;
-                                currentGold = updatedGold;
-                                var pickup = GameProtocolEngine.CreateGoldItemPickup(
-                                    groundId,
-                                    localUserId,
-                                    groundItem.CountOrValue,
-                                    pickerPartyIndex: PartySlotIndexOfThisSession());
-                                await pickup.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, pickup);
-
-                                var refresh = CreateMainInventoryPacket(
-                                    currentGold,
-                                    currentVictoryPoints,
-                                    mainInventory.Values);
-                                await refresh.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, refresh);
-                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
-                                continue;
-                            }
-
-                            if (CharacterWarehouseProgression.TryGetItemTargetCapacity(
-                                    groundItem.ItemId,
-                                    out var groundUpgradeTarget))
-                            {
-                                var plannedCapacity = Math.Max(
-                                    warehouseCapacity,
-                                    groundUpgradeTarget);
-                                // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                                var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
-                                if (claimedGroundItem is null)
-                                {
-                                    logger.LogWarning(
-                                        "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
-                                        groundId,
-                                        localUserId);
-                                    continue;
-                                }
-
-                                var savedUpgrade = await PersistClaimedPickupAsync(
-                                    claimedGroundItem,
-                                    groundId,
-                                    () => store.SaveCharacterInventoryAsync(
-                                        accountName,
-                                        activeCharacter.Id,
-                                        currentGold,
-                                        mainInventory.Values,
-                                        equippedInventory.Values,
-                                        serverToken,
-                                        warehouseCapacity: plannedCapacity,
-                                        expectedWarehouseCapacity: warehouseCapacity));
-                                if (savedUpgrade is null)
-                                {
-                                    logger.LogWarning(
-                                        "Warehouse-upgrade pickup {GroundId} was not persisted; the ground item was retained.",
-                                        groundId);
-                                    continue;
-                                }
-
-                                _ = AdoptSavedWarehouseUpgradeState(savedUpgrade);
-                                var upgradePickup =
-                                    GameProtocolEngine.CreateInventoryItemPickup(
-                                        groundId,
-                                        localUserId,
-                                        ushort.MaxValue);
-                                await upgradePickup.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, upgradePickup);
-
-                                var inventoryRefresh = CreateMainInventoryPacket(
-                                    currentGold,
-                                    currentVictoryPoints,
-                                    mainInventory.Values);
-                                await inventoryRefresh.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, inventoryRefresh);
-                                await SendWarehouseStateAsync();
-                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
-                                continue;
-                            }
-
-                            if (!CharacterInventoryPlanner.CanCarryAdditionalItem(
-                                    mainInventory.Values,
-                                    equippedInventory.Values,
-                                    creatureInventory.Values,
-                                    groundItem.ItemId,
-                                    groundItem.CountOrValue,
-                                    characterStatCatalog.Get(activeCharacter).InventoryLimit,
-                                    itemCatalog,
-                                    out var carriedWeight,
-                                    out var pickupWeight,
-                                    out var carriedWeightLimit))
-                            {
-                                // Keep the authoritative ground record and its ID. The client has
-                                // already hidden the item for its optimistic pickup animation;
-                                // CMD 46 error 0x15 rolls that state back and drops it visually.
-                                // NOTI 39 would falsely confirm pickup, while NOTI 40 would create
-                                // a second ground object instead of releasing the existing one.
-                                var overweightReply =
-                                    GameProtocolEngine.CreateGetItemSilentRejection(request);
-                                await overweightReply.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, overweightReply);
-
-                                var combinedWeight = carriedWeight > ulong.MaxValue - pickupWeight
-                                    ? ulong.MaxValue
-                                    : carriedWeight + pickupWeight;
-                                var excessWeight = combinedWeight - carriedWeightLimit;
-                                var overweightMessage = FormattableString.Invariant(
-                                    $"将超出物品栏负重上限 {excessWeight / 1000d:F3}kg.");
-                                var notice = GameProtocolEngine.CreateMessageNotification(
-                                    GameMessageType.Type16Brown,
-                                    // A zero target suppresses the local-character prefix.
-                                    0,
-                                    ClientEncoding.GetBytes(overweightMessage));
-                                await notice.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, notice);
-                                logger.LogInformation(
-                                    "Ground item {GroundId} pickup rejected as overweight; current={CurrentWeight}, incoming={IncomingWeight}, limit={WeightLimit}, excess={ExcessWeight}; authoritative ground state was retained for the client's pickup rollback.",
-                                    groundId,
-                                    carriedWeight,
-                                    pickupWeight,
-                                    carriedWeightLimit,
-                                    excessWeight);
-                                continue;
-                            }
-
-                            if (itemCatalog.TryGetDefinition(
-                                    groundItem.ItemId,
-                                    out var groundDefinition)
-                                && groundDefinition.InventoryCategory
-                                    == ItemInventoryCategory.Creature)
-                            {
-                                var creatureGroundItem = groundItem.PreservedItem is
-                                    { } preservedCreatureItem
-                                    ? preservedCreatureItem with
-                                    {
-                                        Slot = ushort.MaxValue,
-                                        CountOrValue = groundItem.CountOrValue
-                                    }
-                                    : new CharacterItemRecord(
-                                        ushort.MaxValue,
-                                        groundItem.ItemId,
-                                        groundItem.CountOrValue,
-                                        Durability: groundDefinition.IsEquipment
-                                            ? (ushort)1_000
-                                            : (ushort)0,
-                                        InstanceId: groundItem.PreservedItem?.InstanceId
-                                            ?? Guid.Empty);
-                                if (!CharacterCreatureInventoryPlanner.TryPlace(
-                                        creatureInventory,
-                                        creatureGroundItem,
-                                        itemCatalog,
-                                        preferredEmptySlot: null,
-                                        out var creaturePickupPlan,
-                                        out var creaturePickupFailure))
-                                {
-                                    logger.LogInformation(
-                                        "Ground Creature item {GroundId} cannot enter Creature inventory ({Failure}); it remains in the room.",
-                                        groundId,
-                                        creaturePickupFailure);
-                                    continue;
-                                }
-
-                                // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                                var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
-                                if (claimedGroundItem is null)
-                                {
-                                    logger.LogWarning(
-                                        "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
-                                        groundId,
-                                        localUserId);
-                                    continue;
-                                }
-
-                                var savedCreaturePickup =
-                                    await PersistClaimedPickupAsync(
-                                        claimedGroundItem,
-                                        groundId,
-                                        () => store.SaveCharacterItemSpacesAsync(
-                                            accountName,
-                                            activeCharacter.Id,
-                                            currentGold,
-                                            mainInventory.Values,
-                                            equippedInventory.Values,
-                                            warehouseInventory.Values,
-                                            serverToken,
-                                            avatarInventory: avatarInventory.Values,
-                                            creatureInventory:
-                                                creaturePickupPlan.Inventory.Values));
-                                if (savedCreaturePickup is null)
-                                {
-                                    logger.LogWarning(
-                                        "Creature item pickup {GroundId} was not persisted; the ground item was retained.",
-                                        groundId);
-                                    continue;
-                                }
-
-                                activeCharacter = savedCreaturePickup;
-                                creatureInventory = creaturePickupPlan.Inventory;
-                                var creaturePickup =
-                                    GameProtocolEngine.CreateInventoryItemPickup(
-                                        groundId,
-                                        localUserId,
-                                        creaturePickupPlan.DestinationSlot);
-                                await creaturePickup.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, creaturePickup);
-
-                                foreach (var creatureRefresh in
-                                         CreateCreatureInventoryPackets(
-                                             creatureInventory.Values))
-                                {
-                                    await creatureRefresh.WriteAsync(stream, serverToken);
-                                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                                    LogPacket("TX", runtimeSession, creatureRefresh);
-                                }
-
-                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
-                                continue;
-                            }
-
-                            if (itemCatalog.TryGetDefinition(
-                                    groundItem.ItemId,
-                                    out groundDefinition)
-                                && groundDefinition.InventoryCategory
-                                    == ItemInventoryCategory.Avatar)
-                            {
-                                var preservedAvatarItem = groundItem.PreservedItem;
-                                var avatarGroundItem = new CharacterMailAttachmentRecord(
-                                    groundItem.ItemId,
-                                    groundItem.CountOrValue,
-                                    State: preservedAvatarItem?.State ?? 0,
-                                    Durability: preservedAvatarItem?.Durability ?? 1_000,
-                                    SealState: preservedAvatarItem?.SealState ?? 0,
-                                    AvatarRemainingSeconds:
-                                        preservedAvatarItem?.AvatarRemainingSeconds,
-                                    AvatarAbilityIndex:
-                                        preservedAvatarItem?.AvatarAbilityIndex,
-                                    InstanceId: preservedAvatarItem?.InstanceId
-                                        ?? Guid.Empty);
-                                if (!CharacterAvatarInventoryPlanner.TryPlace(
-                                        avatarInventory,
-                                        avatarGroundItem,
-                                        itemCatalog,
-                                        out var avatarPickupPlan,
-                                        out var avatarPickupFailure))
-                                {
-                                    logger.LogInformation(
-                                        "Ground Avatar item {GroundId} cannot enter Avatar inventory ({Failure}); it remains in the room.",
-                                        groundId,
-                                        avatarPickupFailure);
-                                    continue;
-                                }
-
-                                // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                                var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
-                                if (claimedGroundItem is null)
-                                {
-                                    logger.LogWarning(
-                                        "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
-                                        groundId,
-                                        localUserId);
-                                    continue;
-                                }
-
-                                var savedAvatarPickup =
-                                    await PersistClaimedPickupAsync(
-                                        claimedGroundItem,
-                                        groundId,
-                                        () => store.SaveCharacterItemSpacesAsync(
-                                            accountName,
-                                            activeCharacter.Id,
-                                            currentGold,
-                                            mainInventory.Values,
-                                            equippedInventory.Values,
-                                            warehouseInventory.Values,
-                                            serverToken,
-                                            avatarInventory: avatarPickupPlan.Inventory.Values));
-                                if (savedAvatarPickup is null)
-                                {
-                                    logger.LogWarning(
-                                        "Avatar item pickup {GroundId} was not persisted; the ground item was retained.",
-                                        groundId);
-                                    continue;
-                                }
-
-                                activeCharacter = savedAvatarPickup;
-                                avatarInventory = avatarPickupPlan.Inventory;
-                                var avatarPickup =
-                                    GameProtocolEngine.CreateInventoryItemPickup(
-                                        groundId,
-                                        localUserId,
-                                        avatarPickupPlan.DestinationSlot);
-                                await avatarPickup.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, avatarPickup);
-
-                                var avatarRefresh = CreateAvatarInventoryPacket(
-                                    avatarInventory.Values);
-                                await avatarRefresh.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, avatarRefresh);
-                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
-                                continue;
-                            }
-
-                            if (!DungeonPickupPlanner.TryPlanItem(
-                                    mainInventory,
-                                    groundItem,
-                                    itemCatalog,
-                                    GetInventoryWeightLimit(activeCharacter),
-                                    out var pickupPlan,
-                                    out var pickupFailure))
-                            {
-                                logger.LogInformation(
-                                    "Ground item {GroundId} cannot enter the inventory ({Failure}); it remains in the room.",
-                                    groundId,
-                                    pickupFailure);
-                                continue;
-                            }
-
-                            // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                            var claimedInventoryItem = TryClaimGroundItemForPickup(groundId);
-                            if (claimedInventoryItem is null)
-                            {
-                                logger.LogWarning(
-                                    "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
-                                    groundId,
-                                    localUserId);
-                                continue;
-                            }
-
-                            var savedInventory = await PersistClaimedPickupAsync(
-                                claimedInventoryItem,
+                            var grant = await TryGrantGroundItemAsync(
+                                groundItem,
                                 groundId,
-                                () => store.SaveCharacterInventoryAsync(
-                                    accountName,
-                                    activeCharacter.Id,
-                                    currentGold,
-                                    pickupPlan.Inventory.Values,
-                                    equippedInventory.Values,
-                                    serverToken));
-                            if (savedInventory is null)
+                                // routing 掷骰的 4 个槽位字节（直取路径为 null ⇒ 全 0，与官服 memset 路径一致）
+                                routingScores: null,
+                                replyToRequester: SendPickupReplyToRequesterAsync);
+                            if (grant is GroundItemGrantOutcome.Granted)
                             {
-                                logger.LogWarning(
-                                    "Item pickup {GroundId} was not persisted; the ground item was retained.",
-                                    groundId);
-                                continue;
+                                await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
                             }
 
-                            activeCharacter = savedInventory;
-                            mainInventory = pickupPlan.Inventory;
-                            var itemPickup = GameProtocolEngine.CreateInventoryItemPickup(
-                                groundId,
-                                localUserId,
-                                pickupPlan.DestinationSlot);
-                            await itemPickup.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, itemPickup);
-
-                            var itemRefresh = CreateMainInventoryPacket(
-                                currentGold,
-                                currentVictoryPoints,
-                                mainInventory.Values,
-                                pickupPlan.DestinationSlot);
-                            await itemRefresh.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, itemRefresh);
-                            await CompletePickupAsync(request, groundId, groundItem.ItemId, serverToken);
                             continue;
                         }
 
