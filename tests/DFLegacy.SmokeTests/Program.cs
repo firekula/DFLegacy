@@ -9704,8 +9704,8 @@ Check(generatedClearReward.FreeGoldAmount == 388,
         "gold, equipment, recipe and world-drop branches can coexist while zero-weight pools stay empty");
 
 // 调试满掉落（聊天命令 `掉落测试`——不带斜杠，只对 `test` 账号、只影响触发者所在实例）：
-// 金币必掉 + 4 类物品**每类每品级各一件** + 世界掉落必掉，但"候选池里没有的不掉"、
-// 且总件数封顶 `DungeonDropGenerator.MaxDebugDrops`（不封顶会撑爆 NOTI 38 那一包）。
+// 金币必掉 + 4 类物品**每类只掉该类最稀有的那一件** + 世界掉落必掉，但"候选池里没有的不掉"、
+// 且总件数封顶 `DungeonDropGenerator.MaxDebugDrops`（现在是护栏：理论上限只有 6 件）。
 // 用 ZeroDropRandomSource 保证确定性；基线用同一关卡的 ForceDrops 结果（它只保证每类一件）。
 var debugDropGenerator = new DungeonDropGenerator(
     new ServerOptions(),
@@ -9717,9 +9717,11 @@ var debugLevel42Drops = debugDropGenerator.Generate(
     isBoss: false,
     random: new ZeroDropRandomSource(),
     dropEverything: true);
-// 与 PVF 池**精确对账**：本关卡"每类每品级"里真正非空的池有多少个，满掉落就该出多少件物品
-// （金币另算一件）。这样"把 per-rarity 循环改坏"一定会变红，而不是靠"比 ForceDrops 多"这种弱断言。
-var expectedDebugItems = 0;
+// 与 PVF 池**精确对账**：满掉落是"每类只掉该类**最稀有**的那一件"——
+// 从最高品级档往下找**第一个非空池**，找到就掉那一件、这一类一个池都没有就不掉。
+// 这样两种改坏方式都会变红：① 退化成"每档一件"（件数变多、多出来的 id 不在期望里）；
+// ② 挑错档（最稀有的那件不在掉落里）。不靠"比 ForceDrops 多"这种弱断言。
+var expectedDebugTopItems = new List<ushort>();
 foreach (var kind in new[]
          {
              MonsterDropKind.Consumable,
@@ -9728,31 +9730,35 @@ foreach (var kind in new[]
              MonsterDropKind.Artifact
          })
 {
-    for (var rarity = 0; rarity < pvfMonsterDrops.GetRarityThresholds(kind).Count; rarity++)
+    var rarityBands = pvfMonsterDrops.GetRarityThresholds(kind).Count;
+    for (var rarity = rarityBands - 1; rarity >= 0; rarity--)
     {
         if (pvfMonsterDrops.TryChooseItem(
                 kind,
                 42,
                 checked((byte)rarity),
                 new ZeroDropRandomSource(),
-                out _))
+                out var topItemId))
         {
-            expectedDebugItems++;
+            expectedDebugTopItems.Add(topItemId);
+            break;
         }
     }
 }
 
-// 世界掉落也要算：满掉落对它等价于 `ForceDrops`（必掉），所以期望值 = 池子数 + 1。
+// 世界掉落也要算：满掉落对它等价于 `ForceDrops`（必掉），所以期望值 = 最稀有件数 + 1。
 var expectedDebugWorldDrops = pvfWorldDrops.TryGetLevel(42, out var debugWorldLevel42)
     && debugWorldLevel42.TotalWeight > 0
         ? 1
         : 0;
-Check(expectedDebugItems > 1
-        && debugLevel42Drops.Count(drop => !drop.IsGold)
-            == Math.Min(
-                expectedDebugItems + expectedDebugWorldDrops,
-                DungeonDropGenerator.MaxDebugDrops - 1),
-    "debug drop-all emits exactly one item per (kind, rarity) pool that actually exists, plus the forced world drop");
+var actualDebugItems = debugLevel42Drops
+    .Where(drop => !drop.IsGold)
+    .Select(drop => drop.ItemId)
+    .ToList();
+Check(expectedDebugTopItems.Count > 1
+        && expectedDebugTopItems.All(actualDebugItems.Contains)
+        && actualDebugItems.Count == expectedDebugTopItems.Count + expectedDebugWorldDrops,
+    "debug drop-all emits exactly the rarest available item of each kind (highest rarity band with a non-empty pool), plus the forced world drop");
 Check(debugLevel42Drops.Count(drop => drop.IsGold) == 1
         && debugLevel42Drops.All(drop => drop.IsGold
             || (drop.ItemId != 0 && pvfItemCatalog.TryGetDefinition(drop.ItemId, out _))),

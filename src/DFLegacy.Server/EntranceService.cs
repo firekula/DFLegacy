@@ -2772,7 +2772,7 @@ public sealed class EntranceService(
                         activeCharacter?.Name ?? "?",
                         DungeonDropGenerator.MaxDebugDrops);
                     await SendDebugNoticeAsync(enabled
-                        ? $"调试：本副本已开启满掉落（每只怪最多 {DungeonDropGenerator.MaxDebugDrops} 件；再输入一次关闭）。"
+                        ? "调试：本副本已开启满掉落（每类物品只掉最稀有的那一件；再输入一次关闭）。"
                         : "调试：本副本已关闭满掉落。");
                 }
 

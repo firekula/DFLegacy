@@ -1495,8 +1495,8 @@ internal sealed class DungeonInstance(
     /// <summary>
     /// 本实例是否处于"调试满掉落"（由 `掉落测试` 聊天命令开关，见
     /// <see cref="EntranceService"/> 的 `CMD 17 SEND_MESSAGE` 分支）。
-    /// **只为真机测试存在**：开启后本实例内每次怪死都按"金币必掉 + 4 类物品每类每品级各一件 +
-    /// 世界掉落必掉"满额掉（封顶 `DungeonDropGenerator.MaxDebugDrops`，候选池里没有的不掉）。
+    /// **只为真机测试存在**：开启后本实例内每次怪死都按"金币必掉 + 4 类物品**每类只掉最稀有的
+    /// 那一件** + 世界掉落必掉"满额掉（封顶 `DungeonDropGenerator.MaxDebugDrops`，候选池里没有的不掉）。
     /// **作用域 = 这个实例**（换房/回城/实例销毁即失效），且**只有 `test` 账号**能触发。
     /// 测试做完就删（台账里按"临时测试能力/已知缺口"记着）。
     /// </summary>

@@ -691,6 +691,8 @@ public sealed class DungeonDropGenerator(
     /// 调试用"满掉落"的总件数上限（真机测试用，见 <see cref="GenerateEverything"/>）。
     /// 不封顶会把 `NOTI 38` 那一包撑爆（单包有 `MaximumPacketLength`），
     /// 客户端的地面 actor 集合也会跟着爆。
+    /// **现值 30 是护栏不是期望**：现在的满掉落是"每类只掉最稀有的一件"，
+    /// 理论上限 = 4 类 + 金币 + 世界 = **6 件**，这个上限只在掉落表将来变大时才可能生效。
     /// </summary>
     public const int MaxDebugDrops = 30;
 
@@ -821,10 +823,12 @@ public sealed class DungeonDropGenerator(
     ///
     /// 与正常路径的区别：**不看概率、不看队伍人数/难度乘数**——
     /// ① 金币：该等级有金币档就**必掉**（金额仍按该档 ± spread 掷）；
-    /// ② 4 类物品：**每类、每个品级各挑一件**（品级档数由 PVF 的 `basis of rarity dicision` 决定）；
+    /// ② 4 类物品：**每类只挑一件，且是这一类里最稀有的那件**——从最高品级档往下找
+    ///    第一个非空池（品级档数由 PVF 的 `basis of rarity dicision` 决定），找到即止；
     /// ③ 世界掉落：命中即**必掉**（等价 `ForceDrops`）。
     ///
-    /// **保留的底线**：候选池里没有该（等级段, 品级）的物品就**不掉**——绝不凭空造物品；
+    /// **保留的底线**：候选池里没有该（等级段, 品级）的物品就**不掉**——绝不凭空造物品，
+    /// 也不为了凑"最稀有"去借更高等级的池（低等级副本本来就没有高品级的池）；
     /// 并且总件数封顶 <see cref="MaxDebugDrops"/>（含金币），到顶就停。
     /// </summary>
     private IReadOnlyList<DungeonGeneratedDrop> GenerateEverything(
@@ -847,28 +851,34 @@ public sealed class DungeonDropGenerator(
                 CountOrValue: checked((uint)Math.Max(1, signedAmount))));
         }
 
+        // 每类只掉**最稀有**的那一件：从最高品级档往下找第一个非空池，找到即止。
+        // 该等级没有那个品级的池就继续往下找；这一类一个非空池都没有就**一件都不掉**
+        // （底线不变：绝不凭空造物品，也不放宽等级匹配去借更高等级的池）。
         foreach (var kind in ItemKinds)
         {
-            var rarityBands = monsterDrops.GetRarityThresholds(kind).Count;
-            for (var rarity = 0; rarity < rarityBands; rarity++)
+            if (result.Count >= MaxDebugDrops)
             {
-                if (result.Count >= MaxDebugDrops)
-                {
-                    return result;
-                }
+                return result;
+            }
 
-                if (monsterDrops.TryChooseItem(
+            var rarityBands = monsterDrops.GetRarityThresholds(kind).Count;
+            for (var rarity = rarityBands - 1; rarity >= 0; rarity--)
+            {
+                if (!monsterDrops.TryChooseItem(
                         kind,
                         monsterLevel,
                         checked((byte)rarity),
                         random,
                         out var itemId))
                 {
-                    result.Add(new DungeonGeneratedDrop(
-                        IsGold: false,
-                        itemId,
-                        CountOrValue: 1));
+                    continue;
                 }
+
+                result.Add(new DungeonGeneratedDrop(
+                    IsGold: false,
+                    itemId,
+                    CountOrValue: 1));
+                break;
             }
         }
 
