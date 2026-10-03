@@ -24,6 +24,7 @@ internal static class DungeonPartySmokeTests
         CheckRoomSettlementReset(check);
         CheckRoomFirstVisitFlag(check, fixture);
         CheckDoorAssemblyRules(check);
+        CheckPartyAdvanceIsFirstRequestWins(check, fixture);
         CheckForceAllMonstersDead(check, fixture);
         CheckPlanStartMapSharedPlanner(check, fixture);
         await CheckDoorAssemblySweepAdvancesWholePartyAsync(check, fixture);
@@ -474,6 +475,49 @@ internal static class DungeonPartySmokeTests
         check(blocked is null && blockedOutsiders.Length == 1 && blockedOutsiders[0] == member,
             "one member outside the leader's area aborts the whole party entry");
         _ = fixture;
+    }
+
+    /// <summary>
+    /// S4 核心不变量（官服 `CParty::move_map` @0x085a8f4e(987)，伪码 `official/ida_targeted_out.txt:362-454`）：
+    /// **一次合法请求推进整队，不等第二个人**。官服那个函数里**没有任何"全员到门口"的条件**，
+    /// 推进只看 `CBattle_Field::MoveMap(field, msg[13], msg[14], &out)` 对请求者自己目标的判定。
+    /// 本用例钉三件事：
+    /// ① 两人队里**第一个**请求（房 (0,0) → (1,0)）就推进成功 —— **判别性就在这里**：
+    ///    谁要是重新引入"等其他人到门口"的判定（自研宽限窗口/集结状态机），第一条立刻变红；
+    /// ② 推进后再拿**同一个目标**请求 → 失败 + 错误码 4（陈旧/重复，房间不再变化）；
+    /// ③ 目标不在迷宫内 → 失败 + 错误码 4。
+    /// **变异验证**：把 `TryAdvanceRoom` 改成"成员数 > 1 时先返回 false（等其他人）"→ 第一条变红。
+    /// </summary>
+    private static void CheckPartyAdvanceIsFirstRequestWins(
+        Action<bool, string> check,
+        DungeonFixture fixture)
+    {
+        var instance = fixture.CreatePartyInstance(1800);
+        var captain = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        instance.AddMember(fixture.Member(captain, slot: 0, "队长"));
+        instance.AddMember(fixture.Member(member, slot: 1, "队员"));
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
+            "the fixture party run starts in room (0,0)");
+
+        // ① 第一个请求即推进（队里有两个人，但没有任何"等第二个人"的条件）。
+        check(instance.TryAdvanceRoom(1, 0, out var firstTransition, out var firstError)
+                && firstError == 0
+                && firstTransition is not null
+                && instance.Snapshot().RoomX == 1
+                && instance.Snapshot().RoomY == 0,
+            "the FIRST valid request advances the whole party (official move_map has no all-members-at-door gate)");
+
+        // ② 同一目标再请求（此时已是当前房间）→ 失败 + 4，房间不再变化。
+        check(!instance.TryAdvanceRoom(1, 0, out _, out var duplicateError)
+                && duplicateError == 4
+                && instance.Snapshot().RoomX == 1,
+            "a stale/duplicate request is rejected with error 4 and never moves the room twice");
+
+        // ③ 目标不在迷宫内 → 失败 + 4。
+        check(!instance.TryAdvanceRoom(2, 1, out _, out var invalidError)
+                && invalidError == 4,
+            "a target outside the maze is rejected with error 4");
     }
 
     /// <summary>

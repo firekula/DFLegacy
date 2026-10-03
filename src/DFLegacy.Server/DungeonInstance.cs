@@ -907,6 +907,48 @@ internal sealed class DungeonInstance(
         }
     }
 
+    /// <summary>
+    /// 换房间的**唯一入口**，官服 `CParty::move_map` @0x085a8f4e(987) 的语义（伪码
+    /// `official/ida_targeted_out.txt:362-454`）：**一次合法请求推进整队**——官方那个函数里
+    /// **根本没有"全员到门口"这种条件**，推进与否只看 `CBattle_Field::MoveMap(field, msg[13], msg[14], &out)`
+    /// 对**请求者自己**目标坐标的判定；成功后由会话侧广播 `NOTI 29` 给全队并清零全员 loaded。
+    ///
+    /// 失败返回错误码（沿用改造前 CMD 48 的约定）：目标就是当前房间 / 目标非法 → **4**。
+    ///
+    /// **官服另有两道门，我们没有等价状态（已在清单 PD-2005/PD-2012 记录为已知偏差）**：
+    /// ① `party[106] != 2`（队伍不在副本态）→ 错误 19：本路径只对 `IsParty` 且已开局的实例可达，
+    ///    结构上已保证，不再单独判；
+    /// ② `!CDungeon::IsEnterEachMap(dungeon) && CBattle_Field::IsClearDungeon(field)` → 错误 19：
+    ///    我们没有"副本级已清"状态（打通 boss 房后客户端直接进结算页），**此门未实现**。
+    /// </summary>
+    internal bool TryAdvanceRoom(
+        byte roomX,
+        byte roomY,
+        out DungeonRoomTransition? transition,
+        out byte errorCode)
+    {
+        lock (Gate)
+        {
+            if (roomX == _run.RoomX && roomY == _run.RoomY)
+            {
+                transition = null;
+                errorCode = 4;
+                return false;
+            }
+
+            if (!TryMoveRoom(roomX, roomY, out var moved))
+            {
+                transition = null;
+                errorCode = 4;
+                return false;
+            }
+
+            transition = moved;
+            errorCode = 0;
+            return true;
+        }
+    }
+
     public bool TryMoveRoom(
         byte roomX,
         byte roomY,
