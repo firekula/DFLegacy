@@ -9702,6 +9702,68 @@ Check(generatedClearReward.FreeGoldAmount == 388,
                 generatedRecipe,
                 MonsterDropKind.Recipe),
         "gold, equipment, recipe and world-drop branches can coexist while zero-weight pools stay empty");
+
+// 调试满掉落（聊天命令 `//掉落测试`，只对 `test` 账号、只影响触发者所在实例）：
+// 金币必掉 + 4 类物品**每类每品级各一件** + 世界掉落必掉，但"候选池里没有的不掉"、
+// 且总件数封顶 `DungeonDropGenerator.MaxDebugDrops`（不封顶会撑爆 NOTI 38 那一包）。
+// 用 ZeroDropRandomSource 保证确定性；基线用同一关卡的 ForceDrops 结果（它只保证每类一件）。
+var debugDropGenerator = new DungeonDropGenerator(
+    new ServerOptions(),
+    pvfWorldDrops,
+    pvfGoldDrops,
+    pvfMonsterDrops);
+var debugLevel42Drops = debugDropGenerator.Generate(
+    42,
+    isBoss: false,
+    random: new ZeroDropRandomSource(),
+    dropEverything: true);
+// 与 PVF 池**精确对账**：本关卡"每类每品级"里真正非空的池有多少个，满掉落就该出多少件物品
+// （金币另算一件）。这样"把 per-rarity 循环改坏"一定会变红，而不是靠"比 ForceDrops 多"这种弱断言。
+var expectedDebugItems = 0;
+foreach (var kind in new[]
+         {
+             MonsterDropKind.Consumable,
+             MonsterDropKind.Equipment,
+             MonsterDropKind.Recipe,
+             MonsterDropKind.Artifact
+         })
+{
+    for (var rarity = 0; rarity < pvfMonsterDrops.GetRarityThresholds(kind).Count; rarity++)
+    {
+        if (pvfMonsterDrops.TryChooseItem(
+                kind,
+                42,
+                checked((byte)rarity),
+                new ZeroDropRandomSource(),
+                out _))
+        {
+            expectedDebugItems++;
+        }
+    }
+}
+
+// 世界掉落也要算：满掉落对它等价于 `ForceDrops`（必掉），所以期望值 = 池子数 + 1。
+var expectedDebugWorldDrops = pvfWorldDrops.TryGetLevel(42, out var debugWorldLevel42)
+    && debugWorldLevel42.TotalWeight > 0
+        ? 1
+        : 0;
+Check(expectedDebugItems > 1
+        && debugLevel42Drops.Count(drop => !drop.IsGold)
+            == Math.Min(
+                expectedDebugItems + expectedDebugWorldDrops,
+                DungeonDropGenerator.MaxDebugDrops - 1),
+    "debug drop-all emits exactly one item per (kind, rarity) pool that actually exists, plus the forced world drop");
+Check(debugLevel42Drops.Count(drop => drop.IsGold) == 1
+        && debugLevel42Drops.All(drop => drop.IsGold
+            || (drop.ItemId != 0 && pvfItemCatalog.TryGetDefinition(drop.ItemId, out _))),
+    "debug drop-all emits exactly one gold entry and only items that exist in the item catalog");
+var debugLevel200Drops = debugDropGenerator.Generate(
+    200,
+    isBoss: false,
+    random: new ZeroDropRandomSource(),
+    dropEverything: true);
+Check(debugLevel200Drops.Count <= DungeonDropGenerator.MaxDebugDrops,
+    "debug drop-all is capped so a single NOTI 38 cannot exceed the packet limit");
 }
 
 if (failures.Count > 0)

@@ -1490,6 +1490,40 @@ internal sealed class DungeonInstance(
         }
     }
 
+    // —— 调试用"满掉落"（真机测试，S5） ——
+
+    /// <summary>
+    /// 本实例是否处于"调试满掉落"（由 `//掉落测试` 聊天命令开关，见
+    /// <see cref="EntranceService"/> 的 `CMD 17 SEND_MESSAGE` 分支）。
+    /// **只为真机测试存在**：开启后本实例内每次怪死都按"金币必掉 + 4 类物品每类每品级各一件 +
+    /// 世界掉落必掉"满额掉（封顶 `DungeonDropGenerator.MaxDebugDrops`，候选池里没有的不掉）。
+    /// **作用域 = 这个实例**（换房/回城/实例销毁即失效），且**只有 `test` 账号**能触发。
+    /// 测试做完就删（台账里按"临时测试能力/已知缺口"记着）。
+    /// </summary>
+    private bool _dropDebugAll;
+
+    /// <summary>调试满掉落开关的当前状态（诊断/测试用）。</summary>
+    internal bool DropDebugAll
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _dropDebugAll;
+            }
+        }
+    }
+
+    /// <summary>翻转调试满掉落开关并返回翻转后的状态（同一把锁内，避免并发下"开了又关"）。</summary>
+    internal bool ToggleDropDebugAll()
+    {
+        lock (Gate)
+        {
+            _dropDebugAll = !_dropDebugAll;
+            return _dropDebugAll;
+        }
+    }
+
     // —— routing 归属裁决（S5/T3b） ——
 
     /// <summary>

@@ -687,25 +687,35 @@ public sealed class DungeonDropGenerator(
 
     public bool Enabled => options.Drop.Enabled;
 
+    /// <summary>
+    /// 调试用"满掉落"的总件数上限（真机测试用，见 <see cref="GenerateEverything"/>）。
+    /// 不封顶会把 `NOTI 38` 那一包撑爆（单包有 `MaximumPacketLength`），
+    /// 客户端的地面 actor 集合也会跟着爆。
+    /// </summary>
+    public const int MaxDebugDrops = 30;
+
     public IReadOnlyList<DungeonGeneratedDrop> Generate(
         byte monsterLevel,
         bool isBoss,
         byte dungeonDifficulty = 0,
         int partyMemberCount = 1,
-        IDropRandomSource? random = null) =>
+        IDropRandomSource? random = null,
+        bool dropEverything = false) =>
         Generate(
             monsterLevel,
             isBoss ? GameDungeonMonsterTypes.Boss : GameDungeonMonsterTypes.Normal,
             dungeonDifficulty,
             partyMemberCount,
-            random);
+            random,
+            dropEverything);
 
     public IReadOnlyList<DungeonGeneratedDrop> Generate(
         byte monsterLevel,
         byte monsterType,
         byte dungeonDifficulty = 0,
         int partyMemberCount = 1,
-        IDropRandomSource? random = null)
+        IDropRandomSource? random = null,
+        bool dropEverything = false)
     {
         if (!options.Drop.Enabled)
         {
@@ -713,6 +723,11 @@ public sealed class DungeonDropGenerator(
         }
 
         random ??= GameRandomSource.Shared;
+        if (dropEverything)
+        {
+            return GenerateEverything(monsterLevel, random);
+        }
+
         var result = new List<DungeonGeneratedDrop>(6);
         if (goldDrops.TryGetLevel(monsterLevel, out var gold)
             && ShouldDrop(
@@ -780,6 +795,85 @@ public sealed class DungeonDropGenerator(
                         world.TotalWeight * options.Drop.RatePercent / 100.0),
                     0,
                     100_000)))
+        {
+            var selection = random.Next(world.TotalWeight);
+            var cumulative = 0;
+            foreach (var item in world.Items)
+            {
+                cumulative += item.Weight;
+                if (selection < cumulative)
+                {
+                    result.Add(new DungeonGeneratedDrop(
+                        IsGold: false,
+                        item.ItemId,
+                        CountOrValue: 1));
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 调试用"满掉落"（真机测试：聊天命令 `//掉落测试`，**只对 `test` 账号、只影响触发者所在的那个副本实例**）。
+    ///
+    /// 与正常路径的区别：**不看概率、不看队伍人数/难度乘数**——
+    /// ① 金币：该等级有金币档就**必掉**（金额仍按该档 ± spread 掷）；
+    /// ② 4 类物品：**每类、每个品级各挑一件**（品级档数由 PVF 的 `basis of rarity dicision` 决定）；
+    /// ③ 世界掉落：命中即**必掉**（等价 `ForceDrops`）。
+    ///
+    /// **保留的底线**：候选池里没有该（等级段, 品级）的物品就**不掉**——绝不凭空造物品；
+    /// 并且总件数封顶 <see cref="MaxDebugDrops"/>（含金币），到顶就停。
+    /// </summary>
+    private IReadOnlyList<DungeonGeneratedDrop> GenerateEverything(
+        byte monsterLevel,
+        IDropRandomSource random)
+    {
+        var result = new List<DungeonGeneratedDrop>(MaxDebugDrops);
+
+        if (goldDrops.TryGetLevel(monsterLevel, out var gold))
+        {
+            var spread = gold.SpreadPercent;
+            var spreadRoll = spread == 0
+                ? 0
+                : random.Next(checked(spread * 2 + 1)) - spread;
+            var signedAmount = (long)gold.BaseAmount
+                + (long)gold.BaseAmount * spreadRoll / 100;
+            result.Add(new DungeonGeneratedDrop(
+                IsGold: true,
+                ItemId: 0,
+                CountOrValue: checked((uint)Math.Max(1, signedAmount))));
+        }
+
+        foreach (var kind in ItemKinds)
+        {
+            var rarityBands = monsterDrops.GetRarityThresholds(kind).Count;
+            for (var rarity = 0; rarity < rarityBands; rarity++)
+            {
+                if (result.Count >= MaxDebugDrops)
+                {
+                    return result;
+                }
+
+                if (monsterDrops.TryChooseItem(
+                        kind,
+                        monsterLevel,
+                        checked((byte)rarity),
+                        random,
+                        out var itemId))
+                {
+                    result.Add(new DungeonGeneratedDrop(
+                        IsGold: false,
+                        itemId,
+                        CountOrValue: 1));
+                }
+            }
+        }
+
+        if (result.Count < MaxDebugDrops
+            && worldDrops.TryGetLevel(monsterLevel, out var world)
+            && world.TotalWeight > 0)
         {
             var selection = random.Next(world.TotalWeight);
             var cumulative = 0;

@@ -31,6 +31,41 @@ internal static class LootRoutingSmokeTests
         CheckOneAwardPerGroundItem(check);
         CheckInstanceRoutingDecisionKeepsRotation(check);
         CheckLootPickupMailbox(check);
+        CheckDebugDropCommand(check);
+        CheckDropDebugToggle(check);
+    }
+
+    /// <summary>
+    /// 调试聊天命令 `//掉落测试`（**真机测试专用**）：只认 <c>test</c> 账号、触发词精确匹配
+    /// （账号大小写不敏感、正文首尾空白可容忍）。别的账号或别的文本一律不是命令。
+    /// </summary>
+    private static void CheckDebugDropCommand(Action<bool, string> check)
+    {
+        check(DebugChatCommands.IsDropEverythingCommand("//掉落测试", "test")
+                && DebugChatCommands.IsDropEverythingCommand("  //掉落测试 ", "TEST"),
+            "the drop-all chat command is accepted for the test account (trimmed, account case-insensitive)");
+        check(!DebugChatCommands.IsDropEverythingCommand("//掉落测试", "shizuku"),
+            "the drop-all chat command is rejected for any other account");
+        check(!DebugChatCommands.IsDropEverythingCommand("掉落测试", "test")
+                && !DebugChatCommands.IsDropEverythingCommand("//掉落测试2", "test")
+                && !DebugChatCommands.IsDropEverythingCommand(null, "test")
+                && !DebugChatCommands.IsDropEverythingCommand("//掉落测试", null),
+            "anything but the exact trigger word (or a missing account) is not the command");
+    }
+
+    /// <summary>实例上的满掉落开关：同一把锁内翻转，且**只影响这一个实例**。</summary>
+    private static void CheckDropDebugToggle(Action<bool, string> check)
+    {
+        var instance = new DungeonInstance(1, Guid.Empty, null!, null!);
+        var other = new DungeonInstance(1, Guid.Empty, null!, null!);
+
+        check(!instance.DropDebugAll, "the debug drop-all switch starts off");
+        check(instance.ToggleDropDebugAll() && instance.DropDebugAll,
+            "toggling turns the switch on and reports the new state");
+        check(!instance.ToggleDropDebugAll() && !instance.DropDebugAll,
+            "toggling again turns the switch back off");
+        check(!other.DropDebugAll,
+            "the switch is per instance and does not leak into another instance");
     }
 
     /// <summary>`check_item_routing = isEpicRoutingItem || rarity > 0`（官服 @0x0850d756）。</summary>

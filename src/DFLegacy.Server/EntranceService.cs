@@ -2746,6 +2746,47 @@ public sealed class EntranceService(
                     await replyToRequester(GameProtocolEngine.CreateGetItemAcceptance());
                 }
 
+                // 调试命令 `//掉落测试` 的落地（**真机测试专用**）：翻转**本实例**的满掉落开关，
+                // 并回一行系统消息报告状态。不在副本里时**不静默**——明确说"进图后再输入"，
+                // 否则玩家会以为命令没生效。
+                async ValueTask ToggleDropDebugAllAsync()
+                {
+                    if (dungeonInstance is null)
+                    {
+                        logger.LogWarning(
+                            "Debug drop-all command ignored for {Name} (account {Account}): not inside a dungeon instance.",
+                            activeCharacter?.Name ?? "?",
+                            accountName);
+                        await SendDebugNoticeAsync("调试：需要先进入副本，进图后再输入。");
+                        return;
+                    }
+
+                    var enabled = dungeonInstance.ToggleDropDebugAll();
+                    logger.LogWarning(
+                        "Debug drop-all {State} for dungeon {DungeonId} instance {PartyId} by account {Account} ({Name}); up to {Max} drops per monster.",
+                        enabled ? "enabled" : "disabled",
+                        currentDungeonId,
+                        dungeonInstance.PartyId,
+                        accountName,
+                        activeCharacter?.Name ?? "?",
+                        DungeonDropGenerator.MaxDebugDrops);
+                    await SendDebugNoticeAsync(enabled
+                        ? $"调试：本副本已开启满掉落（每只怪最多 {DungeonDropGenerator.MaxDebugDrops} 件；再输入一次关闭）。"
+                        : "调试：本副本已关闭满掉落。");
+                }
+
+                // 调试提示回给**自己**（与"负重超限"同一种系统消息形态：目标 uid 0 = 不加发言人前缀）。
+                async ValueTask SendDebugNoticeAsync(string text)
+                {
+                    var notice = GameProtocolEngine.CreateMessageNotification(
+                        GameMessageType.Type16Brown,
+                        0,
+                        ClientEncoding.GetBytes(text));
+                    await notice.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, notice);
+                }
+
                 // 拾取回包（`CMD 46` ok / error 0x15 + 文本提示）**我们自己发**时的投递路径：
                 // 写本会话 stream + 计数 + 日志（与其它本会话发包同形）。
                 // routing 把归属判给别的成员时，得主会话会改用**请求者**的发送句柄发同一份包。
@@ -5655,6 +5696,17 @@ public sealed class EntranceService(
                                     "Rejected malformed SEND_MESSAGE request for character {CharacterId}: body={Body}.",
                                     activeCharacter?.Id,
                                     Convert.ToHexString(request.Body));
+                                continue;
+                            }
+
+                            // 调试聊天命令（**真机测试专用**）：`//掉落测试` 开关本实例的"满掉落"。
+                            // 只认 `test` 账号；命中就**不再当聊天发出去**（避免污染频道）。
+                            // 正文按客户端代码页（936）解码——与本文件其它地方同一口径。
+                            if (DebugChatCommands.IsDropEverythingCommand(
+                                    ClientEncoding.GetString(messageRequest.MessageBytes),
+                                    accountName))
+                            {
+                                await ToggleDropDebugAllAsync();
                                 continue;
                             }
 
@@ -14103,7 +14155,9 @@ public sealed class EntranceService(
                                     foreach (var generatedDrop in dropGenerator.Generate(
                                                  defeatedMonster.Level,
                                                  defeatedMonster.Type,
-                                                 currentDungeonDifficulty))
+                                                 currentDungeonDifficulty,
+                                                 // 调试满掉落（`//掉落测试`，只对 test 账号、只影响本实例）
+                                                 dropEverything: dungeonInstance!.DropDebugAll))
                                     {
                                         var groundItem = dungeonInstance!.AddGroundItem(
                                             generatedDrop,
