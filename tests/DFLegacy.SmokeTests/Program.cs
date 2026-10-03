@@ -23,6 +23,14 @@ if (args.Contains("--party-card"))
     Environment.Exit(failures.Count > 0 ? 1 : 0);
 }
 
+if (args.Contains("--loot-routing"))
+{
+    LootRoutingSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Loot routing smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+
 if (args.Contains("--dungeon-reward-unknown") || args.Contains("--store-write-transaction"))
 {
     var root = Path.Combine(Path.GetTempPath(), "dflegacy-unknown-" + Guid.NewGuid().ToString("N"));
@@ -55,6 +63,7 @@ await FriendSmokeTests.RunAsync(Check);
 await TradeSmokeTests.RunAsync(Check);
 await PartySmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
+LootRoutingSmokeTests.Run(Check);
 PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
@@ -1692,6 +1701,20 @@ Check(GameProtocolEngine.CreateGetItemSilentRejection(getItemRequest).Payload.Se
         new byte[] { 0, GameProtocolEngine.GetItemSilentRejectionError })
     && GameProtocolEngine.GetItemSilentRejectionError == 0x15,
     "GET_ITEM overweight rejection uses the client's silent pickup rollback before the formatted weight notice");
+// 官服 DisPatcher_GetItem::send@0x081c3ce8：结果 0 → SendCmdOkPacket(46)（body = put_header(1,46) + put_byte(1)），
+// 结果非 0 → SendCmdErrorPacket(46, (u8)结果)，结果 == 0x7FFFFFFF → 什么都不发。
+// 本客户端 CMD 46 接收处理器 0x414090 在 resultFlag（body[0]）非 0 时直接返回 ⇒ **官方成功包是空操作**，
+// 按项目红线"官服有、客户端无反应 ⇒ 照发并标注"落地。
+var getItemAcceptance = GameProtocolEngine.CreateGetItemAcceptance(getItemRequest);
+Check(getItemAcceptance.ProtocolId == GameProtocolEngine.GetItemCommand
+    && getItemAcceptance.Payload.SequenceEqual(new byte[] { 1 }),
+    "GET_ITEM success answers with the official CMD 46 ok body [1]");
+// 官服 DisPatcher_GetItem::process@0x081c35c0（ida_s5_loot.txt:1261-1275）：
+// class 0 / cmd 86、载荷 put_byte(5) + put_short(拾取者 uid) + put_int(物品 id)，GameWorld::send_all 全场。
+Check(GameProtocolEngine.PickupRemovedNotification == 86
+    && GameProtocolEngine.CreatePickupRemovedBroadcast(pickerUserId: 2, itemId: 0x0000_1234)
+        .Payload.SequenceEqual(new byte[] { 5, 2, 0, 0x34, 0x12, 0, 0 }),
+    "SERVER_BROADCAST 86 subtype 5 carries the picker uid and the picked item id");
 Check(GameProtocolEngine.CreateDungeonItemActionReply(3, 0).Payload.SequenceEqual(
         new byte[] { 1, 3, 0, 0 }),
     "dungeon consumable success returns the slot and list expected by the client");
@@ -6085,6 +6108,12 @@ Check(inventoryPickup.ProtocolId == GameProtocolEngine.GetItemNotification
     && inventoryPickup.Payload.SequenceEqual(
         new byte[] { 7, 0, 1, 0, 0, 0, 0, 0, 1, 0, 9, 0 }),
     "GET_ITEM direct item pickup carries zero routing rolls, recipient and inventory slot");
+// routing 路径：官服把 get_item 里那份按槽位的加权分（v136）原样写进这 4 个字节
+// （ida_s5_loot.txt:977-978）；客户端对非 0 槽位会逐行打印"[槽位成员名][数字]"（PD-3004 已取证）。
+var routedPickup = GameProtocolEngine.CreateInventoryItemPickup(7, 1, 9, routingScores: [0, 0, 3, 41]);
+Check(routedPickup.Payload.SequenceEqual(
+        new byte[] { 7, 0, 1, 0, 0, 0, 3, 41, 1, 0, 9, 0 }),
+    "a routed GET_ITEM carries the per-slot routing scores instead of zeros");
 var groundItems = new DungeonGroundItemState();
 var firstGroundItem = groundItems.Add(
     new DungeonGeneratedDrop(false, 3176, 1),

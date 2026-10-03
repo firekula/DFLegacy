@@ -322,6 +322,12 @@ public static class GameProtocolEngine
     public const sbyte MaximumChampionRewardOrdinal = 11;
     public const byte GetItemNotification = 39;
     public const byte DropItemNotification = 40;
+    /// <summary>
+    /// `NOTI 86 SERVER_BROADCAST`：官服拾取成功后向**全场**广播"地面物已被取走"。
+    /// 本客户端 86 号处理器（`0x427104`）只实现子类型 1/2（文本广播），官服发的 **5 落 default（空操作）**
+    /// ⇒ 照发以对齐语义，但**本客户端画面不会因它变化**（已知用户可见后果，见 PD-3001/3002）。
+    /// </summary>
+    public const byte PickupRemovedNotification = 86;
     // 13338's notification dispatcher case 48 reads five little-endian
     // int32 values followed by two bytes: win, lose, PvP points, current
     // rank point, next rank point, grade and grade-extension.
@@ -3680,27 +3686,97 @@ public static class GameProtocolEngine
     }
 
     /// <summary>
-    /// `NOTI 39 GET_ITEM`：**只发给拾取者本人**（用户 2026-10-01 真机口径：原版里队友不会看到"XX 获得…"）。
-    /// `[静态]` 官服 `DisPatcher_GetItem::process` @0x081c35c0 的广播包只有
-    /// `put_byte + put_short(CUser::get_unique_id) + put_int` 七字节，**不含这里这 12 字节里的入包槽位信息**；
-    /// 客户端正是按这些信息打印"获得…"行 ⇒ 把完整包广播给全队，别人就会打出 `[名字]获得…`。
-    /// **结论：不要广播它**（5 个拾取点原来的 `BroadcastPickupToInstanceAsync` 已于 2026-10-01 删除）。
-    /// **待真机确认**：队友再也收不到"地面物消失"信号 ⇒ 地面那件东西会不会留到换房才消失；
-    /// 若要保留消失语义，应照官服那 7 字节形态**另发**一条不含入包信息的移除包。
+    /// `NOTI 86 SERVER_BROADCAST` 的子类型 5：官服拾取成功后向**全场**（`GameWorld::send_all`，含拾取者）
+    /// 广播"地面物已被取走"。载荷 = `u8 5` + `u16 拾取者 uid` + `u32 物品 id`（7 字节）。
+    ///
+    /// `[静态]` 官服 `DisPatcher_GetItem::process@0x081C35C0(1832)`：`put_header(0, 86)`@`0x081c3a58`、
+    /// `put_byte(5)`、`put_short(CUser::get_unique_id)`、`put_int(v31)`，末尾 `GameWorld::send_all`。
+    /// 其中 `v31` = `CParty::get_item` 的第 5 个出参 = **物品 id**（`[ebp-0x28]`；`get_item` 里是 `v117+2`，
+    /// 即喂给 `CDataManager::find_item` 的那个值），不是地面物 id。
+    ///
+    /// `[静态]` 官服的广播**带条件**：`*(dungeon+2140)` 为真、请求第 3 字段 ∈ {2,3,4}、且物品不可叠加。
+    /// **本客户端那 8 字节 `CMD 46` 里读不出这三个条件对应的字段**（版本差，42 条真机包体已证）
+    /// ⇒ 严格照抄条件等于永不广播。裁决（2026-10-03 用户确认）：**成功直取即广播**，条件差异记在此处与台账。
+    ///
+    /// `[静态]` 客户端可达性：`NOTI 86` → `0x427104`，只实现子类型 1/2；子类型 5 落
+    /// `0x42740F → 0x42A069`（空操作）⇒ **照发但画面不变**（PD-3002）。
+    /// </summary>
+    public static GameServerPacket CreatePickupRemovedBroadcast(ushort pickerUserId, uint itemId)
+    {
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write(PickupRemovedSubtype);
+        writer.Write(pickerUserId);
+        writer.Write(itemId);
+        return new GameServerPacket(
+            NotificationPacketType,
+            PickupRemovedNotification,
+            payload.ToArray());
+    }
+
+    /// <summary>官服 `put_byte(5)`：`NOTI 86` 里"地面物被取走"的子类型。</summary>
+    public const byte PickupRemovedSubtype = 5;
+
+    /// <summary>
+    /// `CMD 46 GET_ITEM` 的**成功**回执。`[静态]` 官服 `DisPatcher_GetItem::send@0x081C3CE8(93)`：
+    /// 结果码为 0 → `CUser::SendCmdOkPacket(user, 46)`，而
+    /// `CUser::SendCmdOkPacket@0x0867BEA0(161)` = `put_header(class 1, cmd)` + `put_byte(1)` ⇒ **body = `[0x01]`**。
+    ///
+    /// `[静态]` 客户端可达性：`CMD 46` 的接收处理器 `0x414090`（remap 表 `0x417638` + 跳转表 `0x417480`）
+    /// 第一条就是 `test al, al; jne 0x417467` —— `body[0]`（帧的 resultFlag）非 0 就**直接返回**。
+    /// 官方成功包的 body[0] 正是 `1` ⇒ **本客户端对成功回执是空操作**。
+    /// 裁决：按红线"官服有、客户端无反应 ⇒ 照发并标注"落地（PD-3005）。
+    /// </summary>
+    public static GameServerPacket CreateGetItemAcceptance(PacketFrame request)
+    {
+        if (request.ProtocolId != GetItemCommand)
+        {
+            throw new ArgumentException(
+                "A GET_ITEM acceptance requires a GET_ITEM request.",
+                nameof(request));
+        }
+
+        return new GameServerPacket(CommandPacketType, GetItemCommand, [1]);
+    }
+
+    /// <summary>
+    /// `NOTI 39 GET_ITEM`（物品形态）：`u16 groundId` + `u16 拾取者 uid` + **4 个槽位字节** +
+    /// `u16 归属者 uid` + `u16 目标背包槽位`。
+    ///
+    /// `[静态]` 客户端 `0x421EA7` 的物品分支（`0x422275`）按 `u16, u16, 4×u8, u16, u16` 读，
+    /// 并对**每个非 0 槽位**打印一行"[该槽成员名][数字]"（`0x422313-0x422420` 的循环 + 打印）——
+    /// 所以这 4 个字节既不能乱写、也不能当成占位符：
+    ///
+    /// * **直取路径**（没有跑骰子）：官服 `CParty::get_item` 里的 `int v136[4]` 被函数入口的
+    ///   `memset(v136, 0, 16)` 清零，且只有 routing 分支才会写它 ⇒ **全 0**
+    ///   （`ida_s5_loot.txt:188` 与 `:973-978`）。这也正是"只有拾取者本人该看到获得行"的实现口径。
+    /// * **routing 路径**：写 `get_item` 算出的**按槽位加权分**（`:817-832`）。
+    ///
+    /// **裁决（2026-10-03 用户确认）**：routing 路径**发真实骰子分**（与官服一致，代价是队友端
+    /// 会出现 `[名字][数字]` 行）；直取路径仍全 0。
     /// </summary>
     public static GameServerPacket CreateInventoryItemPickup(
         ushort groundId,
         ushort pickerUserId,
-        ushort destinationSlot)
+        ushort destinationSlot,
+        IReadOnlyList<byte>? routingScores = null)
     {
+        var scores = routingScores ?? ZeroRoutingScores;
+        if (scores.Count != RoutingScoreSlots)
+        {
+            throw new ArgumentException(
+                $"A GET_ITEM pickup needs exactly {RoutingScoreSlots} routing score slots.",
+                nameof(routingScores));
+        }
+
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write(groundId);
         writer.Write(pickerUserId);
-        // DNF 1.0.1.9 interprets every non-zero byte here as a party-routing
-        // dice result. Direct pickup does not participate in routing, so all
-        // four party result bytes must stay zero.
-        writer.Write(new byte[4]);
+        foreach (var score in scores)
+        {
+            writer.Write(score);
+        }
 
         writer.Write(pickerUserId);
         writer.Write(destinationSlot);
@@ -3709,6 +3785,11 @@ public static class GameProtocolEngine
             GetItemNotification,
             payload.ToArray());
     }
+
+    /// <summary>`NOTI 39` 的槽位字节数（客户端按队伍槽位循环读取）。</summary>
+    public const int RoutingScoreSlots = 4;
+
+    private static readonly byte[] ZeroRoutingScores = new byte[RoutingScoreSlots];
 
     public static GameServerPacket CreateEnableClearDungeon() =>
         new(NotificationPacketType, EnableClearDungeonNotification, []);
