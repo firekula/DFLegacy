@@ -307,17 +307,26 @@
 - 验收判据: 单测（全员齐才广播一次）；**真机 ✅ 已完成（2026-10-03 run #44）**：`10:12:12` 两个会话各发 `CMD 40`（`RX 72c4b04d` / `RX bb470e5f`）并各收自己的回包，**随后**才 `TX bb470e5f protocol=30` 与 `TX 72c4b04d protocol=30` ⇒ `NOTI 30` 确实在全员报完之后广播；重复 CMD 40 幂等（既有单测）。证据：`real-client-run-44-server.log`
 - 归属切片: S4
 
-### PD-2007 换房广播 NOTI 29 的载荷构造
-- 官服行为: 过图广播由 `CBattle_Field::MakePacket` 生成（NOTI 29 START_MAP）
-- 官服证据: CBattle_Field::MakePacket@0x083090a4(4163)
+### PD-2007 换房广播 NOTI 29 的载荷构造（**官服字段序不能照抄**）
+- 官服行为: 过图广播由 `CBattle_Field::MakePacket` 生成（NOTI 29 START_MAP）；官服有两条分支：`*(BYTE*)(mapInfo+1)` 为真走"**缓存地图**"（`put_byte(0)` + 骑乘物件 + `put_byte(255)` 后 `finalize`），否则写地图/怪/物件三段
+- 官服证据: CBattle_Field::MakePacket@0x083090a4(4163)，Hex-Rays 伪码 `work/out/makepacket29.txt:319-360`（`else if (a2 == 29)` 分支）
 - 可重跑命令:
   ```
-  python ../../2026-10-02-party-dungeon-official-rewrite/work/client_surface.py noti 29 | findstr /C:"handler=0x0041F7D3"
+  python ../../2026-10-02-party-dungeon-official-rewrite/work/client_surface.py noti-fields 29 | findstr /C:"byte, byte, int"
+  findstr /C:"a2 == 29" out\makepacket29.txt
   ```
-- 客户端可达性: NOTI 29 → 0x41F7D3（非 default）
-- 现状: `CreateStartMap`；崩溃取证时见过 `TX protocol=29 length=63`
+- 客户端可达性: NOTI 29 → 0x41F7D3（非 default）；**读取序列** = `byte, byte, int, byte, short, byte, byte, short, short, byte, byte, byte, byte, byte, byte, short, short, int, short, byte`
+- 现状: `CreateStartMap`（字段序 `roomX, roomY, seed(u32), roomStateFlag(u8), mapId(u16), 怪数…`）；"缓存地图"走 `CreateCachedStartMap`（只写 `roomX, roomY, seed, state=0` 收尾）
 - 裁决: 对齐
-- 验收判据: S4 用 `packet_layout.py` 展开 `CBattle_Field::MakePacket` 的 29 号分支，与我们的载荷逐字段对照（这是硬崩嫌疑之一，见 STATUS §2.7 第 17 条）
+- 验收判据: **✅ 已完成（2026-10-03，Hex-Rays 只反编译该函数）**。三份并列：
+
+  | 来源 | 前 6 个字段 |
+  | --- | --- |
+  | 官服 `case 29`（qf1031，**更晚构建**） | `b(curX), b(curY), b(bool@mapInfo+232), i32(mapInfo+72), b(this+460), b(this+461), …` |
+  | 本客户端 1.0.1.9 读取 | `b, b, i32, b, u16, b, …` |
+  | 我们 `CreateStartMap` | `roomX, roomY, seed(u32), roomStateFlag(u8), mapId(u16), 怪数…` |
+
+  ⇒ **与 NOTI 27 同型：官服把第 3/4 字段写成 `byte,int`，本客户端按 `int,byte` 读**；我们的顺序与客户端一致 ⇒ **NOTI 29 不得照抄官服字段序**。真机旁证：run #42/#43/#44 换房全部正常（`protocol=29` len=54/103 被接受）。官服的"缓存地图"分支同时**印证了我们 `CreateCachedStartMap` 的形态**。
 - 归属切片: S4
 
 ### PD-2008 空 boss 房可结算（官方侧无函数级证据）
