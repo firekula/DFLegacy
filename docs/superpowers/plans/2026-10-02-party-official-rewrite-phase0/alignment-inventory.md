@@ -265,7 +265,7 @@
 - 客户端可达性: 不适用（服务端判定）；广播用的 `NOTI 29` 在跳转表内，`NOTI 211` **不在**（见 PD-2012/PD-2013）
 - 现状: `DungeonDoorAssembly`（189 行：`Register`/到达登记/`Grace` 2s/`Countdown` 10s/`TryAdvanceOnCountdown`/`PendingTarget`）+ `EntranceService.cs:13095-13160` 的窗口包装 + `ServerOptions.Dungeon.DoorGraceSeconds` 与 `ResolveDoorMemberCount`（`memberCount:1` 退化）+ `DungeonInstance.cs:512` 附近的门状态 —— **全部是自研，官服无对应物**
 - 裁决: 对齐
-- 验收判据: ① 模型层唯一入口 `TryAdvanceRoom`：**第一个合法请求即推进**（不等第二人）、陈旧请求不重复推进、已清房且非逐图进 → 错误 19、非法目标 → 该错误码；② `DungeonDoorAssembly.cs` 与两个选项**从代码里消失**（删除而非绕过）；③ **变异验证**：把"第一个请求即推进"改成"等第二个人"→ 第①条必红；④ 真机：删窗口后门仍能开（2026-10-01 踩过"窗口=0 → 门打不开"）；单人路径零回归
+- 验收判据: ① 模型层唯一入口 `TryAdvanceRoom`：**第一个合法请求即推进**（不等第二人）、陈旧请求不重复推进、已清房且非逐图进 → 错误 19、非法目标 → 该错误码；② `DungeonDoorAssembly.cs` 与两个选项**从代码里消失**（删除而非绕过）；③ **变异验证**：把"第一个请求即推进"改成"等第二个人"→ 第①条必红；④ **真机 ✅ 已完成（2026-10-03 run #44）**：删掉集结机制后门照开 —— 两次换房都由"先到门的队长"一个人上报，服务端**一次请求推进整队**（`10:11:50`/`10:12:10`：`RX bb470e5f protocol=48` → `TX bb470e5f protocol=48 len=7`（回包）→ **`TX bb470e5f` 与 `TX 72c4b04d` 各一条 `protocol=29`**）；`Door assembly`/`arrived=`/`grace` 行数**均为 0**、无 `Rejected party MOVE_MAP`。证据：`real-client-run-44-server.log`。单人路径零回归（既有结构性断言 + 本轮单人未涉及）
 - 归属切片: S4
 
 ### PD-2012 CMD 48 的失败要回错误包（19 = 状态门；MoveMap 返回码 = 目标不合法）
@@ -304,7 +304,7 @@
 - 客户端可达性: 客户端确实会发 CMD 40（run #42 `seen_as_cmd=32`）；NOTI 30 → 0x4200B6
 - 现状: 已实现全员门槛 + `NOTI 30` 广播（本轮之前的修复）
 - 裁决: 对齐
-- 验收判据: 单测（全员齐才广播一次）；真机：`NOTI 30` 出现在两人 CMD 40 **之后**；重复 CMD 40 幂等
+- 验收判据: 单测（全员齐才广播一次）；**真机 ✅ 已完成（2026-10-03 run #44）**：`10:12:12` 两个会话各发 `CMD 40`（`RX 72c4b04d` / `RX bb470e5f`）并各收自己的回包，**随后**才 `TX bb470e5f protocol=30` 与 `TX 72c4b04d protocol=30` ⇒ `NOTI 30` 确实在全员报完之后广播；重复 CMD 40 幂等（既有单测）。证据：`real-client-run-44-server.log`
 - 归属切片: S4
 
 ### PD-2007 换房广播 NOTI 29 的载荷构造

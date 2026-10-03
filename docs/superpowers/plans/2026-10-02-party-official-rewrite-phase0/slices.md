@@ -64,7 +64,27 @@
 
 - **原卡的范围**（保留供追溯）：PD-2001…PD-2003 + PD-2011；"依赖 S1、S2"中 S2 非必需（入场不依赖中继勘察结论）。
 
-## S4 换房与加载（`RoomFlow`）— 🟡 **代码完成，真机待验**（2026-10-03）
+## S4 换房与加载（`RoomFlow`）— ✅ **门口验收通过**（2026-10-03 run #44）
+
+**官服模型（静态取证，决定性）**：`CParty::move_map@0x085a8f4e(987)`（伪码 `official/ida_targeted_out.txt:362-454`）
+**没有任何"全员到门口"的条件** —— 判定只看 `CBattle_Field::MoveMap(field, msg[13], msg[14], &out)`
+对**请求者自己**目标的判定；一次合法请求即广播 `NOTI 29` 给全队并清零全员 loaded。
+两道状态门（`party[106] != 2`、`!IsEnterEachMap && IsClearDungeon`）用错误码 **19**。
+
+- **T1（`5b7bc87`）**：`DungeonInstance.TryAdvanceRoom` 作唯一入口；`CheckPartyAdvanceIsFirstRequestWins`
+  钉住"第一个合法请求即推进 / 陈旧请求不重推 / 越界目标拒绝"；变异验证：改成"等其他人"→ 只有它两条变红。
+- **T2+T3（`d992652`）**：**门口集结整体删除**（+75 / −923）：`DungeonDoorAssembly.cs` 整文件、
+  `DoorGraceSeconds`/`DoorGrace`/`ResolveDoorMemberCount`、`DungeonInstance.Doors`(4 处 Reset)、5 个集结用例；
+  组队 CMD 48 改走 `TryAdvanceRoom` 并补 `CMD 48` 错误包；扫描改名 `SweepInstanceTimersAsync`
+  （只保留结算倒计时 + EPLP 超时）。全量冒烟通过、三条定向 0 failures、构建 0 警告 0 错误。
+- **T4 真机（run #44，`real-client-run-44-server.log`）✅ 通过**：两次换房都由先到门的队长一人上报 →
+  `RX protocol=48` → 给请求者 `TX 48` 回包 → **两个会话各一条 `NOTI 29`**；
+  `Door assembly`/`arrived=`/`grace` **0 行**、无 `Rejected party MOVE_MAP`。
+  **PD-2006 也顺带验过**：两人各发 `CMD 40`（各收自己的回包）之后才各收 `NOTI 30`。
+- **已知偏差（记录在案）**：官服"已清房且非逐图进 → 错误 19"这道门我们没有等价状态；
+  `NOTI 211` 分支在本客户端 out-of-table ⇒ 永不发（PD-2013）。
+- **本片剩一项（静态、不需真机）**：**PD-2007** —— 用 `packet_layout.py` 展开
+  `CBattle_Field::MakePacket` 的 `NOTI 29` 分支，与我们逐字段对照（**硬崩 `0x9019C1` 的嫌疑之一**）。
 
 **官服模型（静态取证，决定性）**：`CParty::move_map@0x085a8f4e(987)`（伪码 `official/ida_targeted_out.txt:362-454`）
 **没有任何"全员到门口"的条件** —— 判定只看 `CBattle_Field::MoveMap(field, msg[13], msg[14], &out)`
