@@ -31,8 +31,48 @@ internal static class LootRoutingSmokeTests
         CheckOneAwardPerGroundItem(check);
         CheckInstanceRoutingDecisionKeepsRotation(check);
         CheckLootPickupMailbox(check);
+        CheckInventoryRejectionReplies(check);
         CheckDebugDropCommand(check);
         CheckDropDebugToggle(check);
+    }
+
+    /// <summary>
+    /// "进不了背包"（planner 返回失败）时**必须有回包**——这是真机 run #49 的根因：
+    /// 唯一一次 `Full` 拒绝之后，客户端**再也没发过拾取请求**（0 条 CMD 46），
+    /// 而前面每次成功拾取都有完整的 `RX 46 → TX 39/13/86/46` 往返。
+    ///
+    /// 机制（官服 `PD-3005`）：`DisPatcher_GetItem::send` 是**三态**——结果 0 → `SendCmdOkPacket(46)`；
+    /// 非 0 → `SendCmdErrorPacket(46,(u8)结果)`；**只有 `0x7FFFFFFF` 才是"什么都不发"**
+    /// （那是 `CParty::get_item` 返回 false 的哨兵，即"这事没得做"，不是"装不下"）。
+    /// 客户端接收面 `0x414090` 的错误分支（`0x15` 与任何非特殊值）会**重拉地面物列表**，
+    /// 也就是把乐观拾取动画回滚掉；服务端沉默 ⇒ 客户端卡在"等应答"里，之后一个请求都不发。
+    /// </summary>
+    private static void CheckInventoryRejectionReplies(Action<bool, string> check)
+    {
+        foreach (var failure in new[]
+                 {
+                     InventoryPlacementFailure.Full,
+                     InventoryPlacementFailure.Overweight,
+                     InventoryPlacementFailure.InvalidItem,
+                     InventoryPlacementFailure.UnsupportedCategory
+                 })
+        {
+            var replies = EntranceService.CreateInventoryRejectionReplies(failure);
+            check(replies.Count >= 1
+                    && replies[0].Type == GameProtocolEngine.CommandPacketType
+                    && replies[0].ProtocolId == GameProtocolEngine.GetItemCommand
+                    && replies[0].Payload.SequenceEqual(
+                        new byte[] { 0, GameProtocolEngine.GetItemSilentRejectionError }),
+                $"a failed pickup placement ({failure}) is answered with the CMD 46 rollback that makes the client re-pull the ground list");
+            check(replies.Skip(1).Any(packet =>
+                    packet.Type == GameProtocolEngine.NotificationPacketType
+                    && packet.ProtocolId == GameProtocolEngine.MessageNotification
+                    && packet.Payload.Length > 0),
+                $"a failed pickup placement ({failure}) also explains itself in the chat window");
+        }
+
+        check(EntranceService.CreateInventoryRejectionReplies(InventoryPlacementFailure.None).Count == 0,
+            "no placement failure means no rejection reply at all");
     }
 
     /// <summary>

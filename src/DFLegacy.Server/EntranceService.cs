@@ -2813,6 +2813,17 @@ public sealed class EntranceService(
                     IReadOnlyList<byte>? routingScores,
                     Func<GameServerPacket, ValueTask> replyToRequester)
                 {
+                    // 进不了背包时的统一回包。**不许静默**：客户端发一个拾取请求就等一个应答，
+                    // 收不到应答它再也不发请求（真机 run #49 的根因）——
+                    // 详见 <see cref="CreateInventoryRejectionReplies"/>。
+                    async ValueTask RejectInventoryPlacementAsync(InventoryPlacementFailure failure)
+                    {
+                        foreach (var reply in CreateInventoryRejectionReplies(failure))
+                        {
+                            await replyToRequester(reply);
+                        }
+                    }
+
                     if (activeCharacter is not { } character)
                     {
                         return GroundItemGrantOutcome.NotAvailable;
@@ -3019,6 +3030,7 @@ public sealed class EntranceService(
                                 "Ground Creature item {GroundId} cannot enter Creature inventory ({Failure}); it remains in the room.",
                                 groundId,
                                 creaturePickupFailure);
+                            await RejectInventoryPlacementAsync(creaturePickupFailure);
                             return GroundItemGrantOutcome.Rejected;
                         }
 
@@ -3110,6 +3122,7 @@ public sealed class EntranceService(
                                 "Ground Avatar item {GroundId} cannot enter Avatar inventory ({Failure}); it remains in the room.",
                                 groundId,
                                 avatarPickupFailure);
+                            await RejectInventoryPlacementAsync(avatarPickupFailure);
                             return GroundItemGrantOutcome.Rejected;
                         }
 
@@ -3177,6 +3190,7 @@ public sealed class EntranceService(
                             "Ground item {GroundId} cannot enter the inventory ({Failure}); it remains in the room.",
                             groundId,
                             pickupFailure);
+                        await RejectInventoryPlacementAsync(pickupFailure);
                         return GroundItemGrantOutcome.Rejected;
                     }
 
@@ -17231,6 +17245,45 @@ public sealed class EntranceService(
         }
 
         return Encoding.ASCII.GetBytes(name.Length == 0 ? "DFLegacy" : name[..Math.Min(name.Length, 20)]);
+    }
+
+    /// <summary>
+    /// "进不了背包"（planner 返回失败）时要回给请求者的包，**按这个顺序发**：
+    /// ① 官服三态里的错误态 `CMD 46 [0, 0x15]`——客户端据此**重拉地面物列表**，
+    ///    也就是把它的乐观拾取动画回滚掉（客户端接收面 `0x414090`：`0x15` 与任何非特殊值 → `0x414198`）；
+    /// ② 一行棕色系统消息说明原因（文案是我们加的、官服未取证；与超重路径同一形态）。
+    ///
+    /// **为什么不能静默**（真机 run #49 根因）：拾取在客户端是"发一个请求等一个应答"。
+    /// 那一次唯一一个 `Full` 拒绝之后，客户端在整个副本里**再没发过一条 CMD 46**
+    /// （此前每次成功拾取都有完整 `RX 46 → TX 39/13/86/46` 往返）⇒ 卡在等应答里。
+    /// 官服 `DisPatcher_GetItem::send@0x081C3CE8` 的三态里，"什么都不发"只留给
+    /// `CParty::get_item` 返回 false（`0x7FFFFFFF` 哨兵，语义是"这事没得做"），**不是"装不下"**。
+    ///
+    /// 纯函数：不碰会话状态，单测直接钉"任何放置失败都必须有回包"。会话侧调用点
+    /// （`TryGrantGroundItemAsync` 的三个失败出口）按本仓惯例不在自动化范围内，靠真机日志核对。
+    /// </summary>
+    internal static IReadOnlyList<GameServerPacket> CreateInventoryRejectionReplies(
+        InventoryPlacementFailure failure)
+    {
+        if (failure == InventoryPlacementFailure.None)
+        {
+            return [];
+        }
+
+        var notice = failure switch
+        {
+            InventoryPlacementFailure.Full => "背包已满，无法拾取。",
+            InventoryPlacementFailure.Overweight => "将超出物品栏负重上限。",
+            _ => "无法拾取该物品。"
+        };
+        return
+        [
+            GameProtocolEngine.CreateGetItemSilentRejection(),
+            GameProtocolEngine.CreateMessageNotification(
+                GameMessageType.Type16Brown,
+                0,
+                ClientEncoding.GetBytes(notice))
+        ];
     }
 
     /// <summary>
