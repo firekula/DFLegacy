@@ -983,6 +983,11 @@
         **&lt;= 0 退化传 1**（复用"门口只有我一个人 → 立即推进"），保住"门一定能打开"这条底线；
         测试锁死该不变量（变异验证：改成恒传真实人数 → 断言变红）。提交 `8c14c83`。
         **结论：`DoorGraceSeconds` 只能"调时长"，不能用来"关功能"；要退回立即推进请设 0 并依赖上述退化路径。**
+        **`[作废]`（2026-10-03，S4）**：本节整条（宽限窗口 / `ResolveDoorMemberCount` / 倒计时 / 强制推进）
+        所描述的机制**已作为自研产物整体删除** —— 官服 `CParty::move_map@0x085a8f4e(987)` 里
+        **没有"全员到门口"这种条件**（一次合法请求即推进整队）。现在是 `DungeonInstance.TryAdvanceRoom`，
+        不再有窗口/倒计时/退化登记，也没有"调时长"这个旋钮了。详见下面
+        "**组队副本官服对齐重写（2026-10-03：S1/S3/S4 完成）**"一节。保留本段仅为追溯当时踩的坑。
     - **✅ 真机复验：宽限窗口已生效，且"等不到第二个人上报"的担心被实验推翻**（2026-10-01 08:42–08:58，同一份
       `server-party30.log`，共 5 轮组队、**15 次**门口集结）：
       - **窗口按设计触发 15/15**：每次都是 `decision=Waiting, arrivedCount=1, partySize=2,
@@ -1000,6 +1005,64 @@
         看 `arrived=2/2`/`decision=Advance` 是否开始出现、以及 3525 弹窗是否仍不出现。
       - **弹窗（3525）在窗口生效后的 5 轮里 0 次**（08:42 之后 `TRACE_ERROR` 计数 = 0，此前 run 1 有 2 次）。
         这与"立刻推进把握不住节奏的一方才是触发条件"这一解释一致，但**样本仍少，不能当结论**。
+
+**组队副本官服对齐重写（2026-10-03：S1/S3/S4 完成）**
+
+用户 2026-10-02 裁决："整个多人副本按官服逆向逻辑证据**重写**"（六块全含、子系统级、旧实现作废）。执行方式为
+**清单驱动 + 分片替换**：设计稿 `docs/superpowers/specs/2026-10-02-party-dungeon-official-rewrite-design.md`、
+Phase 0 计划 `docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0.md`、
+**对齐清单（54 条，8 字段/条）** `docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0/alignment-inventory.md`
+（同目录另有 `client-capability.md` / `slices.md` / `relay-recon.md`；台账与工具在主检出
+`.superpowers/sdd/2026-10-02-party-dungeon-official-rewrite/`，git-ignored）。
+
+**两层证据纪律（本轮的做事方式）**：语义层 = 官服 `df_game_r`（"应该做什么"）；可达层 = 本客户端 1.0.1.9
+（"做了有没有用"）。冲突必须显式裁决（`对齐`/`保留`/`无法实现`/`待真机`），**不能照抄官服**——
+本轮已两次证明"官服是更晚的构建、它的包布局本客户端读不了"（`NOTI 27`、`NOTI 29`，见下）。
+
+- **S1 组队本体 ✅ 真机已验证（run #43）**：`NOTI 26` 的载荷在**两个会话里是同一个字节** = 队长（主机）槽位
+  （`01:17:13` 队长 slot 0 与队员 **slot 1** 各收 `payload=00`；若发"自己的槽位"队员那份会是 `01`）——
+  即提交 `99d55e1` 的改动**真机确认生效**（此前只标"真机未验"）；单人对照一轮仍为 `00`。
+  新增判别性用例 `PartySmokeTests.CheckHostSlotIsSharedByEveryMemberAsync`
+  （**变异验证**：把 `TryGetLeaderSlot` 改成"返回自己的槽位" → 全量冒烟**只有该用例两条**断言变红；
+  既有的 `DungeonPartySmokeTests:1025/1044` 因问的是队长而**存活**）。
+  `NOTI 153`/`CMD 169`（队伍实时信息）经查**超出客户端跳转表（> 0x97）**⇒ 裁决"无法实现"，
+  用户报过的"队长血量显示半血"由此定性为**客户端能力限制**，不是我们的缺陷。
+  证据：`real-client-run-43-server.log`。
+- **S3 进副本 ✅ 取证 + 护栏**：`CParty::game_start@0x0859d718(2489)` 建 **3 个包**
+  （`NOTI 2` mode1 @`0x0859d75e` → `NOTI 3` @`0x0859d7ec` → `NOTI 27` @`0x0859dd4f`），**之后**才
+  `set_host` → `send_host_info`(NOTI 26)；同区域门禁**指令级**：`0x0859d8b9` 取队长 vill、`0x0859d8bd` 比成员
+  vill、`0x0859d8c2/c5` 比 area，不等才看 `is_quick_party`。**新裁决（PD-2011）**：官服 `game_start` 里那份
+  `NOTI 27` body 是 `int` 开头的**更晚客户端布局**，本客户端处理器 `0x41F16C` 读的是 `byte,byte,short`
+  ⇒ **不能照抄官服**（我们 `CreateEnterSelectDungeon` 是对的）。队员入场逐包顺序由 **run #43 真机核对**：
+  `23 → 11 → 9×2 → 2(87B) → 2(203B,mode1) → 9×2 → 26 → 11 → 28 → 29 → 36`，与
+  `DungeonPartyService.PlanMemberEntry` 的硬顺序（外观 → 名册 → 26 → 11 → 28 → 29）逐条吻合。
+- **S4 换房 ✅ 门口真机验收通过（run #44）——自研"门口集结"整体删除（+75 / −923）**：
+  `CParty::move_map@0x085a8f4e(987)`（伪码 `official/ida_targeted_out.txt:362-454`）证明官服
+  **没有任何"全员到门口"的条件**：判定只看 `CBattle_Field::MoveMap(field, msg[13], msg[14], &out)` 对
+  **请求者自己**目标的判定；成功即广播 `NOTI 29` 给全队并清零全员 loaded（`resetFinishLoadingVar`）。
+  ⇒ 删除 `DungeonDoorAssembly.cs`（整文件：到达登记 / 2 秒宽限窗口 / 10 秒倒计时 / 强制推进 / `PendingTarget`）、
+  `ServerOptions.Dungeon` 的 `DoorGraceSeconds`/`DoorGrace`/`ResolveDoorMemberCount`、`DungeonInstance.Doors`（4 处
+  `Reset()`）与 **5 个集结用例**；换房唯一入口改为 `DungeonInstance.TryAdvanceRoom`（**第一个合法请求即推进整队**）；
+  组队 `CMD 48` 失败补发错误包（此前**一个都不发**）；扫描改名 `SweepInstanceTimersAsync`
+  （**只保留结算倒计时 + EPLP 超时**，门逻辑那半删除）。
+  `CBattle_Field::MakePacket` 的 `NOTI 211` 分支**客户端不可达**（> 0x97）⇒ 永不发。
+  **run #44 验收**：两次换房各由"先到门的队长"一人上报 → `RX protocol=48` → 给请求者 `TX 48` 回包 →
+  **两个会话各一条 `NOTI 29`**；`Door assembly`/`arrived=`/`grace` 日志**各 0 行**；无 `Rejected party MOVE_MAP`。
+  顺带验 **PD-2006**：`10:12:12` 两人各发 `CMD 40`（各收回包）**之后**才各收 `NOTI 30` ✓。
+  证据：`real-client-run-44-server.log`。
+- **PD-2007（静态，Hex-Rays）**：官服 `case 29` 前 6 字段 = `b(curX), b(curY), b(bool@mapInfo+232),
+  i32(mapInfo+72), b, b`，而**本客户端按 `b, b, i32, b, u16, b` 读** ⇒ 与 `NOTI 27` 同型：
+  **官服字段序不能照抄，我们现有的 `CreateStartMap` 才是本客户端可解析的那一份**
+  （run #42/#43/#44 换房全部正常）；官服的"缓存地图"分支同时印证了 `CreateCachedStartMap` 的形态。
+  复现：`idat.exe -A -c -S"work/ida_makepacket29.py <out>" official/df_game_r.bin`。
+- **仍未归因**：run #44 **队长端**客户端硬崩（`10:12:30` 收 `NOTI 31` 后 6 秒无包、`10:12:36` `IOException`）；
+  `protocol=118 TRACE_ERROR` 全轮 0 次（与 `error : 3525` 家族不是同一条路径）；**无栈现场**（该轮未挂看门狗）。
+  **必须更正一条旧观察**：此前 party8/10/11/13/15 记的是"死的全是队员会话、与分工有关"——**本轮崩的是队长**
+  ⇒ 那条规律不成立。下次复现**必须挂 `client-stacks`**（协议见
+  `.superpowers/sdd/2026-10-02-party-dungeon-official-rewrite/progress.md`）。
+- **下一步（S5 掉落与拾取）**：补官服 `NOTI 86(5)` 全员广播 + `CMD 46` 的 ok/error 回包；
+  `PD-3006`（官服 reader 9 字段 vs 本客户端实测 8 字节包体）需真机对齐；routing 已裁决"客户端不可达"
+  （`NOTI 281/282` > 0x97），只需决定服务端如何处置 routing 物品。
 
 ## 3. 可复用的验证方法
 
