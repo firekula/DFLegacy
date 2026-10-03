@@ -1060,9 +1060,41 @@ Phase 0 计划 `docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0.
   **必须更正一条旧观察**：此前 party8/10/11/13/15 记的是"死的全是队员会话、与分工有关"——**本轮崩的是队长**
   ⇒ 那条规律不成立。下次复现**必须挂 `client-stacks`**（协议见
   `.superpowers/sdd/2026-10-02-party-dungeon-official-rewrite/progress.md`）。
-- **下一步（S5 掉落与拾取）**：补官服 `NOTI 86(5)` 全员广播 + `CMD 46` 的 ok/error 回包；
-  `PD-3006`（官服 reader 9 字段 vs 本客户端实测 8 字节包体）需真机对齐；routing 已裁决"客户端不可达"
-  （`NOTI 281/282` > 0x97），只需决定服务端如何处置 routing 物品。
+- **S5 掉落与拾取（2026-10-03）：静态取证完成，3 条清单裁决改写；代码落地一半**（分支
+  `feat/s5-loot-routing`，2 个提交；`.worktrees/s5-loot-routing`）。取证方式：两轮 Hex-Rays
+  单函数反编译（`work/ida_s5_loot.py` → 7 个官服函数；`work/ida_s5_routing.py` → `CItem` 判定谓词）
+  + 客户端 class=1 命令接收面（`client_surface.py` **新增 `cmd <id>` 子命令**）
+  + 5 份归档真机日志 **42 条** `CMD 46` 逐条配对（`work/s5_cmd46_bodies.py`，两个工具 `--selftest` 均 0 failures）。
+  - **改写 3 条**：`PD-3006` 待真机→**保留**（本客户端 `CMD 46` **恒 8 字节**、42/42；
+    `+0` = 帧的 records 计数、`+1` = 0、**`+2` = groundId（35/35 与结果行声明的 groundId 相等）**、
+    `+4/+6` 未验证；官服 `read` 读 9 字段 16 字节 = 更晚构建的布局，我们 `Body.AsSpan(2,2)` 的读法被交叉证实）；
+    `PD-3004` 保留→**对齐**（官服 `get_item` 入口 `memset(v136,0,16)`，该数组只在 routing 块内被写
+    ⇒ **直取路径官服也是全 0**）；`PD-3010` 待真机→**对齐**
+    （门控 = `CItem::check_item_routing` = `isEpicRoutingItem || get_rarity() > 0`；
+    **"蓝装以上/阈值 > 3"的口径作废**——`get_rarity > 3` 只是把"是否允许路由"从默认值换成请求方许可）。
+  - **`CMD 46` 是三态**：结果 0 → `SendCmdOkPacket(46)`（body `[1]`）；非 0 → `SendCmdErrorPacket(46,code)`
+    （body `[0,code,paytype]`）；**`0x7FFFFFFF` = 什么都不发**，而 `get_item` 返回 false 恰好走它
+    ⇒ 我们"重复/失效拾取不回包"**与官服一致**（不是缺口）。客户端接收处理器本次首次定位：
+    分派器 `0x40F290`（remap `0x417638` + 表 `0x417480`）⇒ `0x414090`，首条 `test al,al; jne 0x417467`
+    ⇒ **官方成功包在本客户端是空操作**（照发并标注）。
+  - **`NOTI 86(5)` 的 u32 = 物品 id**（不是"索引"）：`CParty::get_item` 的出参 `a6`；官服广播
+    还带 3 个本客户端包体里读不出的条件（用户裁决：成功直取即广播，差异写进注释）。
+  - **已落地**：`CreatePickupRemovedBroadcast` / `CreateGetItemAcceptance` /
+    `CreateInventoryItemPickup(routingScores)` + **5 个拾取成功点全部接上 `NOTI 86(5)` 全场广播
+    （不 omit 拾取者，= 官服 `GameWorld::send_all`）+ `CMD 46` 成功回包**；新增 `LootRouting`
+    （官服掷骰规则：基础 1 / 轮转 +40 / 职业 +30 / `rand(100-v)`、并列取先到、`0xD8` 拒绝；9 组单测）；
+    **删除两条错误注释**（"照官服 7 字节另发一条移除包"、"同实例其他人也要让该掉落实体消失"——后者是幽灵注释）。
+    4 条变异验证实测变红后回滚。
+  - **未落地（不许当成已完成）**：把 `LootRouting.Decide` 接进会话层并**开启掷骰归属**——
+    需要"归属者不是拾取者"的跨会话交付（按 `ItemTradeService` 的"落库 + 待安装 + 盲写守门"范式），
+    且要把 5 个拾取点的落库逻辑从会话闭包提取成可复用入口，是一次大重构。
+    ⇒ **当前归属行为仍是"先到先得"**。
+  - **真机 run #45 未跑**（用户：稍后另约；届时**挂看门狗**，顺带给 run #44 的队长端崩溃留现场）。
+  - **用户 2026-10-03 三条裁决**：`NOTI 86` 成功即广播 / **B1 忠实实现** `isEpicRoutingItem || rarity > 0`
+    的加权掷骰（≈**品级 > 0 的任何物品**，知情后选择）/ `NOTI 39` 槽位字节**发真实骰子分**
+    ⇒ **2026-10-01 的"只有拾取者本人该看到获得行"口径被取代**，队友端会出现 `[名字][数字]` 行。
+  - 台账：`.superpowers/sdd/2026-10-02-party-dungeon-official-rewrite/progress.md`
+    （"S5 掉落与拾取：静态取证完成…"一节，含未做项与两处 `[未验证]` 缺口）。
 
 ## 3. 可复用的验证方法
 

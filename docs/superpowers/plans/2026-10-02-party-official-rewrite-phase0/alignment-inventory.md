@@ -358,6 +358,25 @@
 
 ## ③ 掉落与拾取（S5）
 
+> **S5 收尾（2026-10-03）——本块 3 条裁决被改写、4 条细化。** 取证：`work/ida_s5_loot.py` →
+> `work/out/ida_s5_loot.txt`（官服 7 函数 Hex-Rays）、`work/ida_s5_routing.py` →
+> `work/out/ida_s5_routing.txt`（`CItem` 判定谓词）、`work/client_surface.py cmd <id>`（新增子命令：
+> class=1 命令接收面，分派器 `0x40F290` ⇒ `handler(46)=0x414090`）、`work/s5_cmd46_bodies.py`
+> （5 份真机日志 42 条 `CMD 46` 逐条配对）。两个工具的 `--selftest` 均 **0 failures**。
+>
+> | 条目 | 旧 → 新 | 一句话依据 |
+> | --- | --- | --- |
+> | `PD-3004` | 保留 → **对齐** | 官服 `get_item` 入口 `memset(v136,0,16)`；4 字节在直取路径就是全 0 |
+> | `PD-3006` | 待真机 → **保留** | 42/42 恒 8 字节；`+2` = groundId 被 35/35 交叉证实 |
+> | `PD-3010` | 待真机 → **对齐** | 门控是 `check_item_routing = isEpicRoutingItem \|\| rarity > 0`；"阈值 > 3"的说法作废 |
+>
+> 细化：`PD-3001`（载荷 u32 = **物品 id**，不是"索引"）、`PD-3005`（**三态**：ok / error /
+> `0x7FFFFFFF` 静默；客户端对官方成功包是空操作）、`PD-3007`（三出参逐字段结案）、
+> `PD-3009`（归属规则取证完毕，通知仍不可实现）。用户 2026-10-03 三条裁决见
+> `.superpowers/sdd/2026-10-02-party-dungeon-official-rewrite/S5-brief.md` §6。
+> **已落地**：`NOTI 86(5)` 构包 + 5 个拾取成功点全场广播 + `CMD 46` 成功回包 + `LootRouting`
+> 纯规则与单测；**未落地**：把 `Decide` 接进会话层并开启掷骰归属（需跨会话交付，见台账"本片剩余"）。
+
 ### PD-3001 官服拾取成功后向全场广播 NOTI 86 SERVER_BROADCAST（子类型 5）
 - 官服行为: 非 routing 的拾取成功后，服务端构造 class0/cmd86（= NOTI 86 `SERVER_BROADCAST`）、载荷 u8 子类型 5 + u16 拾取者 uid + u32 索引（7 字节），并 `GameWorld::send_all` 广播给**全场**
 - 官服证据: DisPatcher_GetItem::process@0x081c35c0(1832)；put_header@0x081c3a58（class 0/cmd 0x56）、put_byte(5)@0x081c3a6b、GameWorld::send_all@0x081c3ac1
@@ -408,9 +427,9 @@
   python ../../2026-10-02-party-dungeon-official-rewrite/work/client_surface.py noti 39 --insns 2 | findstr /C:"0x00421EA7"
   ```
 - 客户端可达性: 4 字节里非 0 的槽位会被追加一行"[该槽成员名][数量]"（0x422313–0x422420 的循环 + 打印 @0x42244D）；**全 0 则一行都不打印**
-- 现状: `CreateInventoryItemPickup` 写 4 个 0（GameProtocolEngine.cs:3691-3711）——与"只有拾取者本人该看到获得行"的既有要求一致
-- 裁决: 保留
-- 验收判据: 单测钉住全 0；S5 需补：官服**非 routing** 路径下 `CParty::get_item` 给这 4 字节写什么（若官服写非 0，则与用户口径冲突，须显式裁决并记录后果）
+- 现状: `CreateInventoryItemPickup` 写 4 个 0（GameProtocolEngine.cs:3691-3711）；S5 已按官服给成"直取全 0 / routing 写真实加权分"两形态
+- 裁决: 对齐
+- 验收判据: 单测钉住两种形态（全 0 与按槽位分）；官服**非 routing** 路径**已取证**：`CParty::get_item` 入口 `memset(v136,0,16)`，该数组只在 routing 块内被写 ⇒ 直取路径官服也是全 0（`ida_s5_loot.txt:188/817-856/973-978`）。**本条 2026-10-03 由"保留"改写**（清单顶部 S5 收尾块）
 - 归属切片: S5
 
 ### PD-3005 官服对 CMD 46 回 ok / error（cmd=0x2e），我们重复拾取时不回包
@@ -420,10 +439,10 @@
   ```
   python ../../2026-10-02-party-dungeon-official-rewrite/work/official_surface.py func DisPatcher_GetItem::send | findstr /C:"0x081C3CE8"
   ```
-- 客户端可达性: CMD 46 是客户端上行命令；其回包走 class=1/cmd=46，客户端必然有接收路径（拾取动画要收敛），但处理器地址未取证 → S5 需先补
-- 现状: 只在"超重"时回 `CreateGetItemSilentRejection`（error 0x15；EntranceService.cs:14012 附近，注释记录了既有结论"客户端已乐观隐藏，0x15 会回滚"）；**重复/失效拾取直接 continue、不回包**（EntranceService.cs:13860-13864）
-- 裁决: 待真机
-- 验收判据: 真机对照"回包 vs 不回包"：队友点幽灵物件后物品是否保持可见/是否弹提示/是否要换房才消失；日志关键 `Ignored invalid or duplicate pickup`
+- 客户端可达性: CMD 46 的接收面 **S5 已取证**：分派器 `0x40F290`（remap 表 `0x417638` + 跳转表 `0x417480`，合法 id 1..0x9F）⇒ `handler(46)=0x414090`；其首条 `test al,al; jne 0x417467` ⇒ **body[0]（resultFlag）非 0 直接返回**，即官方成功包（body `[1]`）在本客户端是空操作。错误分支按 code：4/0x16 → 成功回执音效；0x15 与"其它任何值" → `0x414198`（重拉地面物列表）；0x51 / 0x63 → 两种文本（`python client_surface.py cmd 46 --insns 30`）
+- 现状: 只在"超重"时回 `CreateGetItemSilentRejection`（error 0x15；EntranceService.cs:14012 附近，注释记录了既有结论"客户端已乐观隐藏，0x15 会回滚"）；**重复/失效拾取直接 continue、不回包**（EntranceService.cs:13860-13864）——S5 已定性为**官服语义**（见裁决）
+- 裁决: 对齐
+- 验收判据: 单测钉三态载荷（`[1]` / `[0,code]` / 不发）；官服证据：`SendCmdOkPacket@0x0867BEA0` = `put_header(1,cmd)+put_byte(1)`，`SendCmdErrorPacket@0x0867C022` = `put_header(1,cmd)+put_byte(0)+put_byte(code)+put_byte(paytype)`，**`0x7FFFFFFF` 哨兵 = 什么都不发**，而 `get_item` 返回 false 恰好走该哨兵；真机旁证：run #42 七次超重各发一条 `TX protocol=46 payload=0015`。**本条 2026-10-03 由"待真机"改写**（清单顶部 S5 收尾块）
 - 归属切片: S5
 
 ### PD-3006 官服 CMD 46 reader 读 9 个字段，而本客户端实测包体只有 8 字节
@@ -433,10 +452,10 @@
   ```
   python packet_reads.py 0x081c335c+592 | findstr /C:"DisPatcher_GetItem::read"
   ```
-- 客户端可达性: 真机日志 `RX … protocol=46 length=18 … body=2000010000009709`（8 字节包体，首个 u16 = groundId=0x20，与官服首字段一致）
-- 现状: 我们只读 `Body.AsSpan(2, 2)` 当 groundId（EntranceService.cs:13848-13849），其余字节忽略
-- 裁决: 待真机
-- 验收判据: 真机抓 ≥3 条 `protocol=46` 包体做字段对齐（不同拾取场景）；若 8 字节形态稳定，则本条改"保留"并写明与官服 9 字段的差异
+- 客户端可达性: 真机日志 `RX … protocol=46 length=18 … body=2000010000009709`（8 字节包体）。**S5 已用 5 份归档日志 42 条包体逐条配对定案**（`python ../…/work/s5_cmd46_bodies.py --selftest` ⇒ 0 failures）：`+0` = 帧的 records 计数（42/42）、`+1` = 0（42/42）、**`+2` = groundId（35/35 与结果行声明的 groundId 相等）**、`+4/+6` 未知（标 `[未验证]`）。旧注"首个 u16 = groundId"**作废**——groundId 在 `+2`（我们 `Body.AsSpan(2,2)` 读的就是它）
+- 现状: 我们只读 `Body.AsSpan(2, 2)` 当 groundId（EntranceService.cs:13848-13849），其余字节忽略——**读法被 35/35 交叉证实**
+- 裁决: 保留
+- 验收判据: 8 字节形态稳定性以 `work/s5_cmd46_bodies.py --selftest` 为准（42/42，0 failures）；官服 9 字段 = 更晚构建的布局，**不照抄**；`+4/+6` 语义未取证，不得依赖。**本条 2026-10-03 由"待真机"改写**（清单顶部 S5 收尾块）
 - 归属切片: S5
 
 ### PD-3007 CParty::get_item 是归属裁决器，其 int 出参就是 NOTI 86 的 u32 载荷
@@ -486,9 +505,9 @@
   python ../../2026-10-02-party-dungeon-official-rewrite/work/official_surface.py func CItem::IsRoutingItem | findstr /C:"0x08150F18"
   ```
 - 客户端可达性: 不适用（服务端内部）
-- 现状: 未实现
-- 裁决: 待真机
-- 验收判据: S5 前置：定位写 `CItem+0xbd` 的地方并给出取值来源（脚本字段/表）；在此之前**不实现**任何"蓝装以上掷骰"阈值
+- 现状: `LootRouting.IsRoutable(rarity, isEpicRoutingItem)`（纯规则已落地、9 组单测）；**接进会话层并开启掷骰归属尚未落地**（需跨会话交付，见台账"本片剩余"）
+- 裁决: 对齐
+- 验收判据: S5 前置**已闭合**：真正决定掷骰的是 `CItem::check_item_routing@0x0850D756` = `isEpicRoutingItem || get_rarity() > 0`（`get_rarity@0x080F12D6` = `*(int*)(this+56)`、`isEpicRoutingItem@0x0846996A` = `*(u8*)(this+121)`）；`get_item` 里的 `get_rarity(item) > 3` 只是把"是否允许路由"从默认值（入口 `v149 = 1`）换成请求方许可 `a4`。`CItem+0xbd` 在 `get_item` 里**一次都没被读**。用户 2026-10-03 知情后裁决 B1：忠实实现该门控。**本条 2026-10-03 由"待真机"改写，"蓝装以上/阈值 > 3"的口径作废**（清单顶部 S5 收尾块）
 - 归属切片: S5
 
 ### PD-3011 NOTI 40 掉地：客户端处理器与我们的构包字段
