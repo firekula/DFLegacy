@@ -23,14 +23,9 @@ internal static class DungeonPartySmokeTests
         CheckSharedCollectionAccessors(check, fixture);
         CheckRoomSettlementReset(check);
         CheckRoomFirstVisitFlag(check, fixture);
-        CheckDoorAssemblyRules(check);
         CheckPartyAdvanceIsFirstRequestWins(check, fixture);
         CheckForceAllMonstersDead(check, fixture);
         CheckPlanStartMapSharedPlanner(check, fixture);
-        await CheckDoorAssemblySweepAdvancesWholePartyAsync(check, fixture);
-        await CheckDoorAssemblyGraceWindowSweepAsync(check, fixture);
-        await CheckDoorAssemblySweepSurvivesBrokenMemberAsync(check, fixture);
-        await CheckDoorAssemblySweepIgnoresSoloInstancesAsync(check, fixture);
         CheckRegistryEntryRequestMailbox(check, fixture);
         CheckPendingPartyMailLookup(check, fixture);
         CheckKillCountersAreShared(check, fixture);
@@ -666,7 +661,7 @@ internal static class DungeonPartySmokeTests
         registry.BindCharacter(sweepCaptain, sweepInstance);
         sweepInstance.ArmSettlementReturn(sweepMember, now.AddSeconds(5));
 
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
+        await service.SweepInstanceTimersAsync(CancellationToken.None);
 
         var notice = memberInbox.Find(packet => packet.ProtocolId == GameProtocolEngine.MessageNotification);
         check(notice is not null
@@ -805,8 +800,10 @@ internal static class DungeonPartySmokeTests
 
     /// <summary>
     /// 单人零回归的结构性断言（设计稿 §4/§6 第 8 项）：单人进场绑定的是"以自己角色 id 为键"的实例、
-    /// 实例里只有自己一个成员、`IsParty == false`（因此 `CMD 48` 走"立即换房间"、不走门口集结）。
+    /// 实例里只有自己一个成员、`IsParty == false`（因此 `CMD 48` 走"立即换房间"）。
     /// **变异验证**：把 `GetOrCreateForSolo` 换成 `GetOrCreateForParty`、或让 AddMember 加两个人，本用例变红。
+    /// （原先还有一条 `!instance.Doors.IsWaiting` 的断言：**S4 把门口集结机制整体删除后该断言不再有意义**
+    /// —— `DungeonInstance` 里已经没有 `Doors`，结构上不可能进入集结状态。）
     /// </summary>
     private static void CheckSoloRunBindsByCharacterId(Action<bool, string> check, DungeonFixture fixture)
     {
@@ -818,8 +815,6 @@ internal static class DungeonPartySmokeTests
         check(!instance.IsParty && instance.MemberCount == 1
                 && ReferenceEquals(instance, registry.TryGetForCharacter(characterId)),
             "a solo dungeon runs in a single-member instance keyed by the character id");
-        check(!instance.Doors.IsWaiting,
-            "a solo instance never enters the door assembly state (CMD 48 keeps advancing immediately)");
     }
 
     /// <summary>单人换房间：`TryMoveRoom` 立即推进（没有"等其他人"这一步），掉落在实例里跟着走。</summary>
@@ -830,8 +825,8 @@ internal static class DungeonPartySmokeTests
         var started = instance.TryStartRun(fixture.Layout, 0, 0, out _);
         // `out` 一定要单独一句话（放在 && 里编译器会报"未赋值"）：先无条件调一次再断言结论。
         var moved = instance.TryMoveRoom(1, 0, out var transition);
-        check(started && moved && instance.Run.RoomX == 1 && !instance.Doors.IsWaiting,
-            "a solo room change applies immediately and leaves no pending door assembly");
+        check(started && moved && instance.Run.RoomX == 1,
+            "a solo room change applies immediately (no waiting state exists any more)");
         check(instance.CaptureRoomSnapshot(1, 0, transition, ownerUserId: 1).RoomX == 1,
             "the room snapshot follows the solo move");
     }
@@ -1431,161 +1426,6 @@ internal static class DungeonPartySmokeTests
         check(!instance.LastRoomEntryWasFirstVisit,
             "a stopped instance has no current room and no first-visit flag");
     }
-
-    /// <summary>
-    /// 门口集结（设计稿 §3.3）：
-    /// ①第一个请求只登记、不推进；②不同目标的请求忽略；③全员到齐立即推进；
-    /// ④过半开 10 秒倒计时、到点强制推进；⑤推进后状态清空（下一次从零开始）；
-    /// ⑥同一成员重复登记（等待期间重发 CMD 48）仍只算一个到门口者，但回包换成**最新**那一份。
-    /// </summary>
-    private static void CheckDoorAssemblyRules(Action<bool, string> check)
-    {
-        var assembly = new DungeonDoorAssembly();
-        var alpha = Guid.NewGuid();
-        var bravo = Guid.NewGuid();
-        var charlie = Guid.NewGuid();
-        var now = new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero);
-        var target = new DungeonRoomPosition(1, 0);
-        var other = new DungeonRoomPosition(0, 1);
-
-        var first = assembly.Register(target, alpha, memberCount: 4, now, Reply(alpha));
-        check(first.Decision == DungeonDoorDecision.Waiting && assembly.IsWaiting
-                && assembly.PendingTarget == target,
-            "the first door request only registers and waits");
-        var wrongDoor = assembly.Register(other, bravo, memberCount: 4, now, Reply(bravo));
-        check(wrongDoor.Decision == DungeonDoorDecision.Ignored && wrongDoor.Arrivals.Count == 1,
-            "a request for a different door is ignored");
-        var second = assembly.Register(target, bravo, memberCount: 4, now, Reply(bravo));
-        check(second.Decision == DungeonDoorDecision.Waiting,
-            "two of four members is not yet a majority");
-        var third = assembly.Register(target, charlie, memberCount: 4, now, Reply(charlie));
-        check(third.Decision == DungeonDoorDecision.StartedCountdown
-                && third.CountdownDeadline == now + DungeonDoorAssembly.Countdown,
-            "a majority starts the ten second countdown");
-        // 过半成立（3/4）就不该开宽限窗口：那种情形交给 10 秒倒计时，
-        // 否则 2 秒的窗口会把还没到门口的人提前推走。
-        check(assembly.GraceDeadline is null,
-            "a majority at the door never opens a grace window (the ten second countdown is in charge)");
-        check(assembly.TryAdvanceOnCountdown(now + TimeSpan.FromSeconds(9), memberCount: 4) is null,
-            "the countdown does not fire early");
-        var forced = assembly.TryAdvanceOnCountdown(now + TimeSpan.FromSeconds(10), memberCount: 4);
-        check(forced is { Decision: DungeonDoorDecision.Advance, Forced: true }
-                && forced.Arrivals.Count == 3
-                && !assembly.IsWaiting && assembly.CountdownDeadline is null,
-            "the countdown expiry advances the room for everyone and resets the assembly");
-
-        var all = assembly.Register(target, alpha, memberCount: 3, now, Reply(alpha));
-        check(all.Decision == DungeonDoorDecision.Waiting, "a new assembly starts from scratch");
-        assembly.Register(target, bravo, memberCount: 3, now, Reply(bravo));
-        var complete = assembly.Register(target, charlie, memberCount: 3, now, Reply(charlie));
-        check(complete.Decision == DungeonDoorDecision.Advance && !complete.Forced
-                && complete.Arrivals.Count == 3,
-            "every member at the door advances immediately without waiting for the countdown");
-
-        // 单人（memberCount <= 1）：门口请求直接推进，不进等待/倒计时。
-        var solo = assembly.Register(target, alpha, memberCount: 1, now, Reply(alpha));
-        check(solo.Decision == DungeonDoorDecision.Advance && !solo.Forced && !assembly.IsWaiting,
-            "a single-member door request advances immediately");
-
-        // 门口宽限窗口（2026-10-01 真机证据：一次队伍 run 里 7 次换房全部只由**一个**会话上报
-        // CMD 48——`server-party28.log` 的 7 条 `RX fb805b2a… protocol=48` 对 7 条
-        // `party room advanced … (arrived=1/2)`，另一个会话 0 条；party26/27 同形）。
-        // 此前生产代码按 `memberCount: 1` 登记 → 第一个上报者立刻把**还在加载**的队友拽进下一房，
-        // 两边不同步（疑似 `Eip=0x009019C1` 硬崩的诱因）。改成：按**真实人数**登记，
-        // 先给到门口的人开一个短宽限窗口等其他人；窗口内全员到齐 → 立即推进（不必等倒计时），
-        // 窗口到点仍有人没报 → 保持"强制推进"兜底（不能重演"门永远打不开"）。
-        var graceAssembly = new DungeonDoorAssembly();
-        var graceStart = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
-        var reportingAlone = graceAssembly.Register(target, alpha, memberCount: 2, graceStart, Reply(alpha));
-        check(reportingAlone.Decision == DungeonDoorDecision.Waiting
-                && !reportingAlone.Forced
-                && graceAssembly.IsWaiting
-                && graceAssembly.GraceDeadline == graceStart + graceAssembly.Grace,
-            "a party member reporting the door alone opens the grace window instead of yanking the others along");
-        check(graceAssembly.TryAdvanceOnCountdown(
-                graceStart + graceAssembly.Grace - TimeSpan.FromMilliseconds(1), memberCount: 2) is null,
-            "the grace window does not fire early");
-        var stragglerPulled = graceAssembly.TryAdvanceOnCountdown(
-            graceStart + graceAssembly.Grace, memberCount: 2);
-        check(stragglerPulled is { Decision: DungeonDoorDecision.Advance, Forced: true, GraceExpired: true }
-                && stragglerPulled.Arrivals.Count == 1
-                && !graceAssembly.IsWaiting
-                && graceAssembly.GraceDeadline is null,
-            "the expired grace window still forces the party along (the door can never stay shut)");
-
-        var graceAll = new DungeonDoorAssembly();
-        graceAll.Register(target, alpha, memberCount: 2, graceStart, Reply(alpha));
-        var secondInWindow = graceAll.Register(target, bravo, memberCount: 2, graceStart, Reply(bravo));
-        check(secondInWindow.Decision == DungeonDoorDecision.Advance
-                && !secondInWindow.Forced
-                && secondInWindow.Arrivals.Count == 2
-                && graceAll.GraceDeadline is null,
-            "a second member arriving inside the grace window advances the room for everyone at once");
-        check(graceAll.TryAdvanceOnCountdown(graceStart + graceAssembly.Grace, memberCount: 2) is null,
-            "the window leaves nothing behind once everybody reported");
-
-        // 窗口**关闭**（Dungeon.DoorGraceSeconds <= 0）时传真实人数 ⇒ 既没人凑齐、也没有窗口到点：
-        // 门会永远打不开。生产接线必须在这种配置下退化传 1（2026-10-01 真机踩过：把窗口设成 0
-        // 之后"直接过不去门"）。这条断言锁死"0 不许死等"这条底线。
-        var noGrace = new DungeonDoorAssembly(TimeSpan.Zero);
-        var noGraceOutcome = noGrace.Register(target, alpha, memberCount: 1, graceStart, Reply(alpha));
-        check(noGraceOutcome.Decision == DungeonDoorDecision.Advance
-                && !noGraceOutcome.Forced
-                && !noGrace.IsWaiting
-                && noGrace.GraceDeadline is null,
-            "with the window disabled and the degraded head-count, the first reporter still advances immediately");
-        var gracefulTake = new DungeonOptions { DoorGraceSeconds = 0 };
-        check(gracefulTake.ResolveDoorMemberCount(realMemberCount: 4) == 1,
-            "a disabled window degrades the door head-count to one so the door can never deadlock");
-        check(new DungeonOptions().ResolveDoorMemberCount(realMemberCount: 4) == 4
-                && new DungeonOptions().DoorGrace > TimeSpan.Zero,
-            "the default window keeps the real head-count so the assembly waits for stragglers");
-
-        // 人数缩水：4 人时 2 人到门口只是 Waiting；只剩 3 人时 2/3 已过半，扫描循环必须能重新评估，
-        // 否则这批人既拿不到 CMD 48 回包、也永远换不了房间。
-        assembly.Register(target, alpha, memberCount: 4, now, Reply(alpha));
-        assembly.Register(target, bravo, memberCount: 4, now, Reply(bravo));
-        var shrunk = assembly.TryAdvanceOnCountdown(now, memberCount: 3);
-        check(shrunk is { Decision: DungeonDoorDecision.StartedCountdown, Forced: false }
-                && shrunk.CountdownDeadline == now + DungeonDoorAssembly.Countdown,
-            "a shrinking roster re-evaluates the door into a countdown");
-        check(assembly.TryAdvanceOnCountdown(now, memberCount: 3) is null,
-            "re-evaluating again before the deadline changes nothing");
-        var shrunkForced = assembly.TryAdvanceOnCountdown(
-            now + DungeonDoorAssembly.Countdown, memberCount: 3);
-        check(shrunkForced is { Decision: DungeonDoorDecision.Advance, Forced: true }
-                && !assembly.IsWaiting && assembly.CountdownDeadline is null,
-            "the re-evaluated countdown still expires into a forced advance");
-
-        // 人数缩到与到门口人数相等 → 与 Register 的全员到齐走同一条路径（不必等倒计时）。
-        assembly.Register(target, alpha, memberCount: 4, now, Reply(alpha));
-        assembly.Register(target, bravo, memberCount: 4, now, Reply(bravo));
-        var settled = assembly.TryAdvanceOnCountdown(now, memberCount: 2);
-        check(settled is { Decision: DungeonDoorDecision.Advance, Forced: false }
-                && settled.Arrivals.Count == 2 && !assembly.IsWaiting,
-            "a roster shrinking to the arrived headcount advances immediately");
-
-        // 重复登记：客户端在等回包期间重发 CMD 48（真机第一检查点就是"客户端能否接受延迟回包"）。
-        // 同一角色仍只算一个到门口者，但推进时补发的必须是**最新**那份回包（旧序列号客户端对不上号）。
-        var reRegisterAssembly = new DungeonDoorAssembly();
-        var staleAlphaReply = Reply(alpha);
-        var latestAlphaReply = Reply(alpha);
-        var firstRegister = reRegisterAssembly.Register(target, alpha, memberCount: 2, now, staleAlphaReply);
-        var secondRegister = reRegisterAssembly.Register(target, alpha, memberCount: 2, now, latestAlphaReply);
-        check(firstRegister.Decision == DungeonDoorDecision.Waiting
-                && secondRegister.Decision == DungeonDoorDecision.Waiting
-                && secondRegister.Arrivals.Count == 1
-                && ReferenceEquals(secondRegister.Arrivals[0].Reply, latestAlphaReply)
-                && !ReferenceEquals(secondRegister.Arrivals[0].Reply, staleAlphaReply),
-            "re-registering the same member keeps exactly one arrival but swaps in the newest CMD 48 reply");
-        var afterReRegister = reRegisterAssembly.Register(target, bravo, memberCount: 2, now, Reply(bravo));
-        check(afterReRegister.Decision == DungeonDoorDecision.Advance
-                && afterReRegister.Arrivals.Count == 2
-                && afterReRegister.Arrivals[0].CharacterId == alpha
-                && ReferenceEquals(afterReRegister.Arrivals[0].Reply, latestAlphaReply),
-            "the swapped-in reply is the one the advance later delivers to that member");
-    }
-
     /// <summary>
     /// 门口集结里"到过门口的人"各自的那份 `CMD 48` 成功回包（生产代码在 `Register` 时用请求帧就地生成）。
     /// 用例传的是**逐人独立**的实例：推进入口要把它原样投给那个成员的收件箱（不是别的人那份）。
@@ -1633,281 +1473,12 @@ internal static class DungeonPartySmokeTests
                 && cached.Payload.Length == 7
                 && cached.Payload[6] == 0,
             "a revisit plans the cached START_MAP without the map/monster sections");
-    }
-
-    /// <summary>
-    /// 倒计时到点的强制推进（Task 5 Step 4，设计稿 §3.3 第 3/4 条）：扫描循环每实例一轮 ——
-    /// 锁内换房间取快照 → 出锁**先**给"到过门口的人"补各自的 CMD 48 成功回包（只有到门口的人有、
-    /// 各自一份）→ **再**给全员（含没到门口、被强制的人）各发一份 NOTI 29。
-    /// 同时钉住：①没过半不推进；②人数缩水后重新过半 → 扫描里只重开倒计时（`StartedCountdown`：
-    /// 不改房间、不发包）；③没到点不推进；④到点强制推进并清空集结。
-    /// **变异验证**：①把 `SweepDoorAssemblyAsync` 里"判定前捕获 `PendingTarget`"改回任务书的
-    /// "返回后再读"（到点那次 `PendingTarget` 已被 Reset）→ 推进断言变红（房间不换、只剩一条告警日志）；
-    /// ②把 `StartedCountdown` 当成推进处理 → 第二条变红；③把回包改成发给全员 → 归属断言变红。
-    /// </summary>
-    private static async Task CheckDoorAssemblySweepAdvancesWholePartyAsync(
-        Action<bool, string> check,
-        DungeonFixture fixture)
-    {
-        await using var harness = await PartyHarness.CreateAsync();
-        var registry = new DungeonInstanceRegistry();
-        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
-        using var service = new DungeonPartyService(
-            harness.Service, harness.Directory, registry, clock,
-            NullLogger<DungeonPartyService>.Instance);
-        var instance = registry.GetOrCreateForParty(4242, () => fixture.CreatePartyInstance(4242));
-        var alpha = Guid.NewGuid();
-        var bravo = Guid.NewGuid();
-        var charlie = Guid.NewGuid();
-        var delta = Guid.NewGuid();
-        var inbox = new Dictionary<Guid, List<GameServerPacket>>();
-        foreach (var characterId in new[] { alpha, bravo, charlie, delta })
-        {
-            var owner = characterId;
-            inbox[owner] = [];
-            instance.AddMember(new DungeonInstanceMember(
-                owner, 1, 0, "成员", packet => { inbox[owner].Add(packet); return ValueTask.CompletedTask; }));
-        }
-
-        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
-            "the party instance starts a run for the sweep case");
-        var target = new DungeonRoomPosition(1, 0);
-        var alphaReply = Reply(alpha);
-        var bravoReply = Reply(bravo);
-        lock (instance.Gate)
-        {
-            var first = instance.Doors.Register(target, alpha, memberCount: 4, clock.GetUtcNow(), alphaReply);
-            var second = instance.Doors.Register(target, bravo, memberCount: 4, clock.GetUtcNow(), bravoReply);
-            check(first.Decision == DungeonDoorDecision.Waiting
-                    && second.Decision == DungeonDoorDecision.Waiting,
-                "two of four at the door is not yet a majority and starts no countdown");
-            // 2/4 还没过半 ⇒ 宽限窗口照开（口径是严格 > 人数/2）。它会在 2 秒时把 2 秒窗口到点，
-            // 见下一个用例的"窗口先于 10 秒倒计时到点"断言；这里只钉住窗口确实开了。
-            check(instance.Doors.GraceDeadline == clock.GetUtcNow() + instance.Doors.Grace,
-                "below a majority the door opens the grace window so a straggler can still catch up");
-        }
-
-        // 人数缩水（delta 回城）→ 2/3 过半：扫描循环必须重新评估成 `StartedCountdown`，
-        // 只重开倒计时，不改房间、不发包（到点由下一轮扫描推进）。
-        instance.RemoveMember(delta);
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
-        check(instance.Run.RoomX == 0 && instance.Run.RoomY == 0
-                && inbox.Values.All(packets => packets.Count == 0),
-            "a roster shrink re-evaluates the door into a countdown without moving the room or sending anything");
-        check(instance.Doors.CountdownDeadline == clock.GetUtcNow() + DungeonDoorAssembly.Countdown,
-            "the re-evaluated countdown starts at the sweep tick");
-
-        clock.Advance(TimeSpan.FromSeconds(9));
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
-        check(instance.Run.RoomX == 0
-                && inbox.Values.All(packets => packets.Count == 0)
-                && instance.Doors.IsWaiting,
-            "the door assembly does not move the room before its deadline");
-        check(instance.Doors.GraceDeadline is null,
-            "the roster shrink re-evaluated into a countdown, not into a grace window");
-
-        // 3 人里 2 人到门口 = **没过半**（口径是严格 > 人数/2）⇒ 2 秒宽限窗口先到点，
-        // 由它强制推进；如果谁把"没到过半"也当成倒计时，这里会一直等到 10 秒而变红。
-        clock.Advance(TimeSpan.FromSeconds(1));
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
-        check(instance.Run.RoomX == target.X && instance.Run.RoomY == target.Y
-                && !instance.Doors.IsWaiting && instance.Doors.CountdownDeadline is null,
-            "the expired grace window forces the whole party into the next room and clears the assembly");
-        var alphaPackets = inbox[alpha];
-        var bravoPackets = inbox[bravo];
-        var charliePackets = inbox[charlie];
-        var alphaReplySeen = PacketAt(alphaPackets, 0);
-        var alphaStartMap = PacketAt(alphaPackets, 1);
-        var bravoReplySeen = PacketAt(bravoPackets, 0);
-        var bravoStartMap = PacketAt(bravoPackets, 1);
-        var charlieStartMap = PacketAt(charliePackets, 0);
-        check(alphaPackets.Count == 2
-                && ReferenceEquals(alphaReplySeen, alphaReply)
-                && alphaReplySeen is { } alphaReplyPacket
-                && alphaReplyPacket.Payload[0] == 1,
-            "an arrived member gets their own CMD 48 success reply first");
-        check(bravoPackets.Count == 2 && ReferenceEquals(bravoReplySeen, bravoReply),
-            "the second arrived member gets their own reply packet, not the other member's");
-        check(alphaStartMap is { } alphaMap
-                && alphaMap.ProtocolId == GameProtocolEngine.StartMapNotification
-                && bravoStartMap is { } bravoMap
-                && bravoMap.ProtocolId == GameProtocolEngine.StartMapNotification
-                && charliePackets.Count == 1
-                && charlieStartMap is { } charlieMap
-                && charlieMap.ProtocolId == GameProtocolEngine.StartMapNotification,
-            "every member (including the one forced along) receives exactly one NOTI 29 and nobody else a reply");
-        check(alphaStartMap is { } moved
-                && moved.Payload.Length > 3
-                && moved.Payload[0] == target.X
-                && charlieStartMap is { } forced
-                && forced.Payload.Length > 3
-                && forced.Payload[0] == target.X,
-            "the forced NOTI 29 describes the room that was actually advanced to");
-    }
-
-    /// <summary>
-    /// 门口宽限窗口的**扫描闭环**（生产的真实形态，2026-10-01 真机证据见 <c>CheckDoorAssemblyRules</c>）：
-    /// 两人一队、**只有一人**上报 CMD 48。改造前 `memberCount: 1` 让服务端立刻推进，
-    /// 把还在加载的队友拽进下一房（`Eip=0x009019C1` 硬崩的疑似诱因）；
-    /// 现在只有 `Register` 走的那条路会「等一下」，**强制推进的兜底必须原样保留**——
-    /// 宽限窗口到点由扫描循环推进，两人都换房、到过门口的人先拿回包再收 NOTI 29。
-    /// </summary>
-    private static async Task CheckDoorAssemblyGraceWindowSweepAsync(
-        Action<bool, string> check,
-        DungeonFixture fixture)
-    {
-        await using var harness = await PartyHarness.CreateAsync();
-        var registry = new DungeonInstanceRegistry();
-        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
-        using var service = new DungeonPartyService(
-            harness.Service, harness.Directory, registry, clock,
-            NullLogger<DungeonPartyService>.Instance);
-        var instance = registry.GetOrCreateForParty(4244, () => fixture.CreatePartyInstance(4244));
-        var alpha = Guid.NewGuid();
-        var bravo = Guid.NewGuid();
-        var alphaInbox = new List<GameServerPacket>();
-        var bravoInbox = new List<GameServerPacket>();
-        instance.AddMember(new DungeonInstanceMember(
-            alpha, 1, 0, "到门口", packet => { alphaInbox.Add(packet); return ValueTask.CompletedTask; }));
-        instance.AddMember(new DungeonInstanceMember(
-            bravo, 2, 1, "还在加载", packet => { bravoInbox.Add(packet); return ValueTask.CompletedTask; }));
-        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
-            "the party instance starts a run for the grace-window sweep case");
-
-        var target = new DungeonRoomPosition(1, 0);
-        var alphaReply = Reply(alpha);
-        DungeonDoorOutcome registered;
-        lock (instance.Gate)
-        {
-            registered = instance.Doors.Register(
-                target, alpha, memberCount: instance.MemberCount, clock.GetUtcNow(), alphaReply);
-        }
-
-        check(registered.Decision == DungeonDoorDecision.Waiting
-                && fixture.DoorGrace > TimeSpan.Zero
-                && instance.Doors.Grace == fixture.DoorGrace
-                && instance.Doors.GraceDeadline == clock.GetUtcNow() + fixture.DoorGrace,
-            "one reporter in a two member party waits out the configured grace window instead of advancing at once");
-
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
-        check(instance.Run.RoomX == 0 && instance.Run.RoomY == 0
-                && alphaInbox.Count == 0 && bravoInbox.Count == 0,
-            "the sweep leaves the room alone while the grace window is still open");
-
-        clock.Advance(fixture.DoorGrace);
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
-        check(instance.Run.RoomX == target.X && instance.Run.RoomY == target.Y
-                && !instance.Doors.IsWaiting && instance.Doors.GraceDeadline is null,
-            "the expired grace window still forces the whole party into the next room");
-        check(alphaInbox.Count == 2
-                && ReferenceEquals(PacketAt(alphaInbox, 0), alphaReply)
-                && PacketAt(alphaInbox, 1)?.ProtocolId == GameProtocolEngine.StartMapNotification,
-            "the reporter gets their own CMD 48 reply before the NOTI 29 that moves them");
-        check(bravoInbox.Count == 1
-                && PacketAt(bravoInbox, 0)?.ProtocolId == GameProtocolEngine.StartMapNotification,
-            "the member who never reported is carried along with exactly one NOTI 29");
-    }
-
-    /// <summary>
-    /// 扫描的**每实例独立**语义（Task 3 的壳 + Task 5 强化）：一个成员的发送通道坏了
-    /// （IOException）只记告警——房间照推进，**排在它后面**的健康成员仍各收到一份 NOTI 29。
-    /// 坏成员故意排在**第一个**：广播顺序就是成员顺序，去掉护栏时它会把后面的投递一起打断。
-    /// **变异验证**：把 `SendSafelyAsync` 的 try/catch 拆掉（裸 `member.Send`）→ 后续成员少收包，本用例变红。
-    /// </summary>
-    private static async Task CheckDoorAssemblySweepSurvivesBrokenMemberAsync(
-        Action<bool, string> check,
-        DungeonFixture fixture)
-    {
-        await using var harness = await PartyHarness.CreateAsync();
-        var registry = new DungeonInstanceRegistry();
-        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
-        using var service = new DungeonPartyService(
-            harness.Service, harness.Directory, registry, clock,
-            NullLogger<DungeonPartyService>.Instance);
-        var instance = registry.GetOrCreateForParty(4243, () => fixture.CreatePartyInstance(4243));
-        var alpha = Guid.NewGuid();
-        var bravo = Guid.NewGuid();
-        var broken = Guid.NewGuid();
-        var alphaInbox = new List<GameServerPacket>();
-        var bravoInbox = new List<GameServerPacket>();
-        instance.AddMember(new DungeonInstanceMember(
-            broken, 1, 0, "断线", _ => throw new IOException("broken pipe")));
-        instance.AddMember(new DungeonInstanceMember(
-            alpha, 2, 1, "甲", packet => { alphaInbox.Add(packet); return ValueTask.CompletedTask; }));
-        instance.AddMember(new DungeonInstanceMember(
-            bravo, 3, 2, "乙", packet => { bravoInbox.Add(packet); return ValueTask.CompletedTask; }));
-        check(instance.TryStartRun(fixture.Layout, 0, 0, out _),
-            "the party instance starts a run for the broken-member case");
-        var target = new DungeonRoomPosition(1, 0);
-        lock (instance.Gate)
-        {
-            instance.Doors.Register(target, alpha, memberCount: 3, clock.GetUtcNow(), Reply(alpha));
-            instance.Doors.Register(target, bravo, memberCount: 3, clock.GetUtcNow(), Reply(bravo));
-        }
-
-        clock.Advance(DungeonDoorAssembly.Countdown);
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
-        check(instance.Run.RoomX == target.X,
-            "a member with a broken send channel cannot stop the forced room advance");
-        check(alphaInbox.Count == 2 && bravoInbox.Count == 2
-                && PacketAt(alphaInbox, 1)?.ProtocolId == GameProtocolEngine.StartMapNotification
-                && PacketAt(bravoInbox, 1)?.ProtocolId == GameProtocolEngine.StartMapNotification,
-            "the healthy members still receive their reply and the forced NOTI 29");
-    }
-
-    /// <summary>
+    }    /// <summary>    /// <summary>
     /// 收件箱取第 index 份包（越界返回 null）：变异让某个成员少收/收错包时，
     /// 断言给的是一条可读的失败，而不是 <see cref="IndexOutOfRangeException"/> 把整个测试进程打断。
     /// </summary>
     private static GameServerPacket? PacketAt(IReadOnlyList<GameServerPacket> packets, int index) =>
         index < packets.Count ? packets[index] : null;
-
-    /// <summary>
-    /// 扫描只处理**队伍实例**（单人零回归的结构性护栏）：单人的 `CMD 48` 走会话里那条立即推进的分支，
-    /// 永远不会在实例的 `Doors` 里留下集结。这里在单人实例上人为摆一个"已到点的集结"（只有模型能造出
-    /// 这个状态）——扫描必须原样无视它（不改房间、不发包），否则单人会在客户端没发 CMD 48 时被换房间。
-    /// **变异验证**：把 `SweepDoorAssemblyAsync` 开头的 `if (!instance.IsParty) return;` 删掉 → 本用例变红。
-    /// </summary>
-    private static async Task CheckDoorAssemblySweepIgnoresSoloInstancesAsync(
-        Action<bool, string> check,
-        DungeonFixture fixture)
-    {
-        await using var harness = await PartyHarness.CreateAsync();
-        var registry = new DungeonInstanceRegistry();
-        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
-        using var service = new DungeonPartyService(
-            harness.Service, harness.Directory, registry, clock,
-            NullLogger<DungeonPartyService>.Instance);
-        var soloCharacterId = Guid.NewGuid();
-        var solo = registry.GetOrCreateForSolo(
-            soloCharacterId, () => fixture.CreateSoloInstance(soloCharacterId));
-        var alpha = Guid.NewGuid();
-        var bravo = Guid.NewGuid();
-        var charlie = Guid.NewGuid();
-        var inbox = new List<GameServerPacket>();
-        solo.AddMember(new DungeonInstanceMember(
-            alpha, 1, 0, "独行", packet => { inbox.Add(packet); return ValueTask.CompletedTask; }));
-        solo.AddMember(new DungeonInstanceMember(bravo, 2, 0, "陪衬", _ => ValueTask.CompletedTask));
-        solo.AddMember(new DungeonInstanceMember(charlie, 3, 0, "陪衬", _ => ValueTask.CompletedTask));
-        check(solo.TryStartRun(fixture.Layout, 0, 0, out _),
-            "the solo instance starts a run for the sweep-ignore case");
-        var target = new DungeonRoomPosition(1, 0);
-        lock (solo.Gate)
-        {
-            // 过半 + 倒计时已过期：这一套在队伍实例上必推进（见上一个用例），单人必须纹丝不动。
-            solo.Doors.Register(target, alpha, memberCount: 3,
-                clock.GetUtcNow() - DungeonDoorAssembly.Countdown, Reply(alpha));
-            solo.Doors.Register(target, bravo, memberCount: 3,
-                clock.GetUtcNow() - DungeonDoorAssembly.Countdown, Reply(bravo));
-        }
-
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
-        check(!solo.IsParty && solo.Run.RoomX == 0 && solo.Doors.IsWaiting,
-            "the sweep never advances a solo instance (its MOVE_MAP path is the immediate one)");
-        check(inbox.Count == 0,
-            "a solo instance whose assembly state was somehow populated still receives no scan packets");
-    }
-
     /// <summary>待入队信箱：同一角色只留最后一条（重复投递幂等）、取走即清、未投递时为 false。</summary>
     private static void CheckRegistryEntryRequestMailbox(Action<bool, string> check, DungeonFixture fixture)
     {
@@ -2203,8 +1774,9 @@ internal static class DungeonPartySmokeTests
         check(alphaInbox.Count == 1 && bravoInbox.Count == 1,
             "members queued after a canceled channel still receive the instance broadcast");
 
-        // 扫全员的强制推进同一条护栏（先补 CMD 48 回包、再发 NOTI 29，两步都走 SendSafelyAsync）：
-        // 被踢成员排在第一个，去掉 OCE 的话它的异常会把整轮推进打断、健康成员两份都收不到。
+        // 扫描里的跨会话投递同一条护栏（结算倒计时逐秒播报走 SendSafelyAsync）：
+        // 被踢成员也登记了回城截止时间 ⇒ 扫描**一定会**试图给它发一条倒计时消息（抛它自己的 OCE）；
+        // 去掉 OCE 判定的话那个异常会把整轮扫描打断，健康成员一条都收不到。
         var sweepInstance = registry.GetOrCreateForParty(
             1001, () => fixture.CreatePartyInstance(1001));
         var sweepInbox = new List<GameServerPacket>();
@@ -2213,25 +1785,19 @@ internal static class DungeonPartySmokeTests
             canceledMember, 1, 0, "被踢", _ => throw new OperationCanceledException()));
         sweepInstance.AddMember(new DungeonInstanceMember(
             bravo, 2, 1, "乙", packet => { sweepInbox.Add(packet); return ValueTask.CompletedTask; }));
-        sweepInstance.AddMember(new DungeonInstanceMember(stayed, 3, 2, "没到门口", _ => ValueTask.CompletedTask));
+        sweepInstance.AddMember(new DungeonInstanceMember(stayed, 3, 2, "留守", _ => ValueTask.CompletedTask));
         check(sweepInstance.TryStartRun(fixture.Layout, 0, 0, out _),
             "the sweep instance starts a run for the canceled-member case");
-        var target = new DungeonRoomPosition(1, 0);
-        lock (sweepInstance.Gate)
-        {
-            // 3 人里 2 人到门口（过半）→ 开倒计时；Register 的 now 取"倒计时之前"，
-            // 于是扫描一进来就是"倒计时已到点"的强制推进：逐个补回包、再给全员发 NOTI 29。
-            var beforeCountdown = DateTimeOffset.UtcNow - DungeonDoorAssembly.Countdown;
-            sweepInstance.Doors.Register(
-                target, canceledMember, memberCount: 3, beforeCountdown, Reply(canceledMember));
-            sweepInstance.Doors.Register(
-                target, bravo, memberCount: 3, beforeCountdown, Reply(bravo));
-        }
+        var sweepNow = DateTimeOffset.UtcNow;
+        // 三家都登记"还差 5 秒"（< SettlementCountdownSeconds = 10 ⇒ 这一轮扫描就该各播一条）。
+        sweepInstance.ArmSettlementReturn(canceledMember, sweepNow.AddSeconds(5));
+        sweepInstance.ArmSettlementReturn(bravo, sweepNow.AddSeconds(5));
+        sweepInstance.ArmSettlementReturn(stayed, sweepNow.AddSeconds(5));
 
-        await service.SweepDoorAssembliesAsync(CancellationToken.None);
-        check(sweepInbox.Count == 2
-                && sweepInbox.Any(packet => packet.ProtocolId == GameProtocolEngine.StartMapNotification),
-            "a forced advance still delivers the reply and NOTI 29 past a canceled member");
+        await service.SweepInstanceTimersAsync(CancellationToken.None);
+        check(sweepInbox.Count == 1
+                && sweepInbox[0].ProtocolId == GameProtocolEngine.MessageNotification,
+            "a canceled channel in the sweep does not stop the healthy member's countdown message");
 
         // ② PartyService 真通道（队长外观推送走的就是这条）：目标通道抛 OCE → 只告警、返回 0、
         //    不冒泡；不在队伍的角色（单人）走同一条路时零投递（P1 的"单人绝不多发一份包"护栏）。
@@ -2342,12 +1908,6 @@ internal sealed class DungeonFixture : IDisposable
     public ZeroDropRandomSource Random { get; }
     public DungeonLayout Layout { get; }
 
-    /// <summary>
-    /// 门口宽限窗口的**配置默认值**（`ServerOptions.Dungeon.DoorGrace`）：夹具造出的实例都带它，
-    /// 于是"配置改了、实例没跟上"这类接线错误会让本文件的用例直接变红。
-    /// </summary>
-    public TimeSpan DoorGrace { get; } = new ServerOptions().Dungeon.DoorGrace;
-
     /// <summary>地狱副本（id 15，`[hell dungeon] 1`，地狱房 (1,0)）的布局，I3 的被动掉落 detach 用例用。</summary>
     public DungeonLayout HellLayout { get; }
 
@@ -2387,13 +1947,13 @@ internal sealed class DungeonFixture : IDisposable
             PassiveItemSpawns: spawns);
     }
 
-    /// <summary>单人实例工厂（键 = 角色 id）。门口宽限窗口取**配置默认值**（与生产同一条接线）。</summary>
+    /// <summary>单人实例工厂（键 = 角色 id）。</summary>
     public DungeonInstance CreateSoloInstance(Guid characterId) =>
-        new(partyId: 0, soloCharacterId: characterId, Catalog, Items, DoorGrace);
+        new(partyId: 0, soloCharacterId: characterId, Catalog, Items);
 
-    /// <summary>队伍实例工厂（键 = partyId）。门口宽限窗口取**配置默认值**（与生产同一条接线）。</summary>
+    /// <summary>队伍实例工厂（键 = partyId）。</summary>
     public DungeonInstance CreatePartyInstance(ushort partyId) =>
-        new(partyId: partyId, soloCharacterId: Guid.Empty, Catalog, Items, DoorGrace);
+        new(partyId: partyId, soloCharacterId: Guid.Empty, Catalog, Items);
 
     /// <summary>不关心键的独立实例（并发/房间快照用例用）。</summary>
     public DungeonInstance CreateInstance() => CreateSoloInstance(Guid.Empty);

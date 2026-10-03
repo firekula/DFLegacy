@@ -40,7 +40,7 @@ internal static class PartyCardAgentAuditSmokeTests
     private static (DungeonInstance Instance, Guid A, Guid B, long Generation) CreateSettlement(
         TimeSpan? agentTimeout = null)
     {
-        var instance = new DungeonInstance(1, Guid.Empty, null!, null!, null, agentTimeout);
+        var instance = new DungeonInstance(1, Guid.Empty, null!, null!, agentTimeout);
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
         instance.AddMember(new(a, 1, 0, "A", _ => ValueTask.CompletedTask));

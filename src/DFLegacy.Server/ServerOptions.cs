@@ -63,35 +63,16 @@ public sealed class ExperienceOptions
 /// <summary>
 /// 副本（含组队副本）行为开关。默认值就是生产口径，保留可配置是为了真机调参不必重新发版。
 /// </summary>
+/// <remarks>
+/// **2026-10-03（S4）**：这里原来有"门口集结宽限窗口"两个开关（`DoorGraceSeconds` / `DoorGrace` /
+/// `ResolveDoorMemberCount`）——它们服务的 `DungeonDoorAssembly` 是**自研机制**，在官服里没有对应物：
+/// `CParty::move_map` @0x085a8f4e(987)（伪码 `official/ida_targeted_out.txt:362-454`）的判定只看
+/// `CBattle_Field::MoveMap(field, msg[13], msg[14], &out)` 对**请求者自己**目标的判定，
+/// **一次合法请求就推进整队**，函数里不存在任何"全员到门口/等人"的条件。
+/// 因此整套开关随该机制一起删除；换房的唯一入口改为 `DungeonInstance.TryAdvanceRoom`。
+/// </remarks>
 public sealed class DungeonOptions
 {
-    /// <summary>
-    /// 门口集结的**宽限窗口**（秒）。&gt; 0 = 等这么久；<b>&lt;= 0 = 关闭窗口</b>，
-    /// 由 <see cref="ResolveDoorMemberCount"/> 退回"第一个上报者立刻推进"的旧行为
-    /// （**不是**"死等全员到齐"——那样门会永远打不开，2026-10-01 真机踩过）。
-    /// 2026-10-01 真机证据：一次队伍 run 里 7 次换房**全部只由同一个会话**上报 CMD 48
-    /// （`server-party28.log`：7 条 `RX fb805b2a… protocol=48` 对 7 条
-    /// `party room advanced … (arrived=1/2)`；party26/27 同形），所以"全员到齐/过半"这两条
-    /// 自然判据永远不成立——此前按 `memberCount: 1` 登记让第一个上报者**立刻**推进，
-    /// 把还在加载的队友拽进下一房（疑似 `Eip=0x009019C1` 硬崩的诱因）。
-    /// 窗口内全员到齐即推进；到点仍有人没报 → 照旧强制推进（绝不能重演"门永远打不开"）。
-    /// 扫描循环每秒一轮，实际生效时间 = 窗口 + 最多 1 秒。
-    /// </summary>
-    public double DoorGraceSeconds { get; set; } = 2;
-
-    /// <summary>宽限窗口时长；&lt;= 0 表示关闭（调用方须同时用 <see cref="ResolveDoorMemberCount"/>）。</summary>
-    public TimeSpan DoorGrace => DoorGraceSeconds > 0
-        ? TimeSpan.FromSeconds(DoorGraceSeconds)
-        : TimeSpan.Zero;
-
-    /// <summary>
-    /// CMD 48 登记时该传的"到门口人数"。
-    /// 窗口 &gt; 0：传**真实人数**——状态机就会开窗口等其他人，到点才强制推进。
-    /// 窗口 &lt;= 0：退化传 1——复用"门口只有我一个人 → 立即推进"的既有分支，
-    /// **保住"门一定能打开"这条底线**（只传真实人数而不开窗口 = 既没人凑齐、也没窗口到点 ⇒ 门死锁）。
-    /// </summary>
-    public int ResolveDoorMemberCount(int realMemberCount) =>
-        DoorGrace > TimeSpan.Zero ? realMemberCount : 1;
 }
 
 public sealed class ChannelOptions

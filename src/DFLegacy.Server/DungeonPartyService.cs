@@ -366,7 +366,7 @@ public sealed class DungeonPartyService : BackgroundService
                     break;
                 }
 
-                await SweepDoorAssembliesAsync(stoppingToken);
+                await SweepInstanceTimersAsync(stoppingToken);
             }
         }
         finally
@@ -384,13 +384,13 @@ public sealed class DungeonPartyService : BackgroundService
     /// internal 是冒烟测试的接缝（同 <see cref="BroadcastToMembersAsync"/>）：测试要钉住
     /// "到点推进时，先补回包（只给到门口者、各自一份）、再发 NOTI 29（全员各一份）"。
     /// </summary>
-    internal async Task SweepDoorAssembliesAsync(CancellationToken cancellationToken)
+    internal async Task SweepInstanceTimersAsync(CancellationToken cancellationToken)
     {
         foreach (var instance in Registry.Instances)
         {
             try
             {
-                await SweepDoorAssemblyAsync(instance, cancellationToken);
+                await SweepSettlementTimersAsync(instance, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -400,17 +400,16 @@ public sealed class DungeonPartyService : BackgroundService
             {
                 _logger.LogWarning(
                     exception,
-                    "Door assembly sweep failed for instance {PartyId}.",
+                    "Instance timer sweep failed for instance {PartyId}.",
                     instance.PartyId);
             }
         }
     }
 
     /// <summary>单个实例的集结扫描（Task 5 填：倒计时到点 → instance.TryMoveRoom + 广播 NOTI 29）。</summary>
-    private async Task SweepDoorAssemblyAsync(DungeonInstance instance, CancellationToken cancellationToken)
+    private async Task SweepSettlementTimersAsync(DungeonInstance instance, CancellationToken cancellationToken)
     {
-        // 单人实例没有集结（`Register` 单人直接 Advance，`PendingTarget` 恒 null）：
-        // 早退不碰 `Doors`，单人的换房间仍然只走会话里那条立即推进的分支。
+        // 单人实例不参与结算倒计时扫描（保持改造前行为）：单人的换房走会话里那条立即推进的分支。
         if (!instance.IsParty)
         {
             return;
@@ -451,94 +450,6 @@ public sealed class DungeonPartyService : BackgroundService
                 pendingCharacterId);
         }
 
-        DungeonDoorOutcome? outcome;
-        DungeonInstanceMember[] members;
-        DungeonInstanceRoomSnapshot? room = null;
-        ushort dungeonId;
-        lock (instance.Gate)
-        {
-            // 目标房间必须在判定**之前**取：`TryAdvanceOnCountdown` 一返回 Advance 就已经 `Reset()`，
-            // 之后再读 `Doors.PendingTarget` 只会是 null（任务书此处按"返回后读"写，是拿不到房间的）。
-            var pendingTarget = instance.Doors.PendingTarget;
-            // 人数缩水后重新评估（可能返回 StartedCountdown）：必须原样处理，不能当成推进。
-            outcome = instance.Doors.TryAdvanceOnCountdown(now, instance.MemberCount);
-            if (outcome is null)
-            {
-                return;
-            }
-
-            if (outcome.Decision == DungeonDoorDecision.StartedCountdown)
-            {
-                // 人数缩水后重新过半（例如 4 人时 2 人到门口、其中一人离开 → 2/3 过半）：
-                // 只开倒计时，不改房间；到点由下一轮扫描推进。
-                _logger.LogInformation(
-                    "Door assembly for dungeon {DungeonId} re-evaluated to a majority after a member left: {Arrived}/{Total} arriving, countdown restarted.",
-                    instance.Run.DungeonId, outcome.Arrivals.Count, instance.MemberCount);
-                return;
-            }
-
-            dungeonId = instance.Run.DungeonId;
-            if (pendingTarget is { } target
-                && instance.TryMoveRoom(target.X, target.Y, out var transition))
-            {
-                // 物主填 0（无主）：被强制推进的成员没有"谁先到门口"的语义，掉落按先到先得。
-                room = instance.CaptureRoomSnapshot(target.X, target.Y, transition, ownerUserId: 0);
-                // 官方 `CParty::move_map` 的 `resetFinishLoadingVar`：换房即清零全员"已加载"标志，
-                // 等每个人重新上报 CMD 40（同一把锁内做）。
-                instance.ResetMemberLoadingForRoomChange();
-            }
-
-            members = instance.Members;
-        }
-
-        if (room is null)
-        {
-            // 到点了却推进不了（run 被收尾 / 房间定义没了）：Doors 已被 TryAdvanceOnCountdown 清空，
-            // 下一次 CMD 48 会从零重新登记。
-            _logger.LogWarning(
-                "Door assembly countdown expired for dungeon {DungeonId} but the room could not be advanced.",
-                dungeonId);
-            return;
-        }
-
-        // 出锁发：先给"到过门口的人"补各自的 CMD 48 成功回包（他们的客户端还在等），
-        // 再给全员（含被强制者）各发一份 NOTI 29。
-        foreach (var arrival in outcome.Arrivals)
-        {
-            var member = members.FirstOrDefault(candidate => candidate.CharacterId == arrival.CharacterId);
-            if (member is not null)
-            {
-                await SendSafelyAsync(member, arrival.Reply);
-            }
-        }
-
-        var startMap = DungeonEntryPackets.PlanStartMap(room);
-        foreach (var member in members)
-        {
-            await SendSafelyAsync(member, startMap);
-        }
-
-        // 两条兜底路径都带 Forced=true，靠 GraceExpired 分清：宽限窗口到点（客户端不每人都报
-        // CMD 48）还是过半倒计时到点。真机排查"窗口够不够长"就靠这一行与 Door assembly diagnostics 对齐。
-        if (outcome.GraceExpired)
-        {
-            _logger.LogInformation(
-                "Door assembly grace window ({Seconds}s) expired for dungeon {DungeonId} with {Arrived}/{Total} at the door; forced the party into room ({RoomX},{RoomY}).",
-                instance.Doors.Grace.TotalSeconds,
-                dungeonId,
-                outcome.Arrivals.Count,
-                members.Length,
-                room.RoomX,
-                room.RoomY);
-        }
-        else
-        {
-            _logger.LogInformation(
-                "Door assembly countdown expired for dungeon {DungeonId}; forced the party into room ({RoomX},{RoomY}).",
-                dungeonId, room.RoomX, room.RoomY);
-        }
-
-        _ = cancellationToken;
     }
 
     /// <summary>

@@ -2618,7 +2618,8 @@ public sealed class EntranceService(
                     DungeonInstance instance,
                     byte targetX,
                     byte targetY,
-                    DungeonDoorOutcome outcome,
+                    DungeonRoomTransition transition,
+                    GameServerPacket requesterReply,
                     CancellationToken cancellationToken)
                 {
                     DungeonInstanceRoomSnapshot room;
@@ -2626,14 +2627,8 @@ public sealed class EntranceService(
                     ushort dungeonId;
                     lock (instance.Gate)
                     {
-                        if (!instance.TryMoveRoom(targetX, targetY, out var transition))
-                        {
-                            logger.LogWarning(
-                                "Dungeon {DungeonId} door assembly could not move to room ({RoomX},{RoomY}).",
-                                instance.Run.DungeonId, targetX, targetY);
-                            return;
-                        }
-
+                        // 房间推进**已经**在 `TryAdvanceRoom` 里完成（官服语义：一次合法请求即推进），
+                        // 这里只取快照 + 清零全员 loaded，全部在同一把锁内做。
                         dungeonId = instance.Run.DungeonId;
                         // 被动掉落物主用"触发推进的会话"（与改造前 ownerUserId = 本会话等价）。
                         room = instance.CaptureRoomSnapshot(targetX, targetY, transition, localUserId);
@@ -2648,6 +2643,13 @@ public sealed class EntranceService(
                     // （否则下一间房的 SET_PLAY_RESULT 会被上一间房留下的 ResultSent 吞掉）。
                     ResetRoomSettlementState();
 
+                    // 请求者先收 CMD 48 成功回包（客户端还在等门开），再全员收 NOTI 29
+                    // （官服 move_map 里同样是"先 MakePacket、再 send_to_party"）。
+                    // 回包由调用点构造并传入：本函数定义在 `request` 声明之前，捕获不到它。
+                    await requesterReply.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, requesterReply);
+
                     // 跨会话投递的坏通道护栏（与 PartyService.SendToOtherMembersAsync /
                     // DungeonPartyService.BroadcastToMembersAsync 共用 CrossSessionDelivery 的判定，
                     // 含被踢成员自己的 OCE）：一个断线成员不该把"触发推进的会话"打成断线——房间已经
@@ -2660,18 +2662,6 @@ public sealed class EntranceService(
                                 member.CharacterId, member.CharacterName, member.AreaUserId),
                             member.Send);
 
-                    foreach (var arrival in outcome.Arrivals)
-                    {
-                        var member = members.FirstOrDefault(
-                            candidate => candidate.CharacterId == arrival.CharacterId);
-                        if (member is null)
-                        {
-                            continue;
-                        }
-
-                        await SendToMemberAsync(member, arrival.Reply);
-                    }
-
                     var startMap = DungeonEntryPackets.PlanStartMap(room);
                     foreach (var member in members)
                     {
@@ -2679,9 +2669,8 @@ public sealed class EntranceService(
                     }
 
                     logger.LogInformation(
-                        "Dungeon {DungeonId} party room advanced to ({RoomX},{RoomY}) map {MapId} (forced={Forced}, arrived={Arrived}/{Total}).",
-                        dungeonId, targetX, targetY, room.MapId,
-                        outcome.Forced, outcome.Arrivals.Count, members.Length);
+                        "Dungeon {DungeonId} party room advanced to ({RoomX},{RoomY}) map {MapId} by {Name} (official move_map: one valid request advances the whole party).",
+                        dungeonId, targetX, targetY, room.MapId, activeCharacter?.Name ?? "?");
                     _ = cancellationToken;
                 }
 
@@ -12511,7 +12500,7 @@ public sealed class EntranceService(
                                 dungeonInstance = dungeonInstanceRegistry.GetOrCreateForSolo(
                                     activeCharacter!.Id,
                                     () => new DungeonInstance(
-                                        0, activeCharacter.Id, dungeonCatalog, itemCatalog, options.Dungeon.DoorGrace));
+                                        0, activeCharacter.Id, dungeonCatalog, itemCatalog));
                                 dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, dungeonInstance);
                                 // 先摘后挂（幂等）：上一次入场中途失败可能留下带旧 AreaUserId/旧发送句柄的
                                 // 成员记录，直接 AddMember 会被幂等跳过（本任务硬规则，三条任务书路径之外
@@ -12757,12 +12746,11 @@ public sealed class EntranceService(
                                 ? dungeonInstanceRegistry.GetOrCreateForParty(
                                     entrySlots![0].PartyId,
                                     () => new DungeonInstance(
-                                        entrySlots[0].PartyId, Guid.Empty, dungeonCatalog, itemCatalog,
-                                        options.Dungeon.DoorGrace))
+                                        entrySlots[0].PartyId, Guid.Empty, dungeonCatalog, itemCatalog))
                                 : dungeonInstanceRegistry.GetOrCreateForSolo(
                                     activeCharacter!.Id,
                                     () => new DungeonInstance(
-                                        0, activeCharacter.Id, dungeonCatalog, itemCatalog, options.Dungeon.DoorGrace));
+                                        0, activeCharacter.Id, dungeonCatalog, itemCatalog));
                             dungeonInstanceRegistry.BindCharacter(activeCharacter!.Id, dungeonInstance);
                             dungeonInstance.RemoveMember(activeCharacter!.Id);
                             dungeonInstance.AddMember(new DungeonInstanceMember(
@@ -13121,90 +13109,35 @@ public sealed class EntranceService(
                                 }
                                 else if (dungeonInstance is { IsParty: true } partyInstance)
                                 {
-                                    // 门口集结制（设计稿 §3.3，用户拍板）：登记到门口的人，登记后由
-                                    // 状态机决定"立即推进 / 等其他人 / 过半点倒计时"。**真机（2026-09-29
-                                    // server-party2.log、2026-10-01 party26/27/28）证明 2008 客户端不会让
-                                    // 每个队员都上报 CMD 48**：party28 的 7 次换房**全部**由同一个会话上报
-                                    // （7 条 `RX … protocol=48` 对 7 条 `party room advanced … (arrived=1/2)`），
-                                    // 另一会话 0 条，于是"全员到齐"永远不成立。
-                                    // 此前这里写死 `memberCount: 1` → 第一个上报者**立刻**推进，队友还在
-                                    // 加载就被拽进下一房（疑似 `Eip=0x009019C1` 硬崩的诱因）。
-                                    // 现在传**真实人数**：第一个上报者只会开一个短宽限窗口等其他人
-                                    // （`ServerOptions.Dungeon.DoorGraceSeconds`，默认 2 秒），窗口内有人到齐
-                                    // 就正常推进，窗口到点仍没人报 → 照旧强制推进（门绝不会永远打不开）。
-                                    DungeonDoorOutcome assemblyOutcome;
-                                    DungeonRoomPosition? pendingDoor;
-                                    DateTimeOffset? graceDeadline;
-                                    lock (partyInstance.Gate)
+                                    // 官服 `CParty::move_map` @0x085a8f4e(987)（伪码 official/ida_targeted_out.txt:362-454）：
+                                    // **一次合法请求推进整队**——那个函数里没有任何"全员到门口"的条件，推进与否
+                                    // 只看 `CBattle_Field::MoveMap(field, msg[13], msg[14], &out)` 对**请求者自己**
+                                    // 目标的判定；成功后广播 NOTI 29 给全队并清零全员 loaded（resetFinishLoadingVar）。
+                                    // 失败回 CMD 48 错误：官服的两道状态门用 19，我们这边只有"目标非法/重复"这一类，
+                                    // 沿用改造前的错误码 4（见清单 PD-2005/PD-2012）。
+                                    // 自研的门口集结（宽限窗口/倒计时/到达登记/强制推进）已随本改动整体删除。
+                                    if (!partyInstance.TryAdvanceRoom(
+                                            targetX, targetY, out var advanceTransition, out var advanceError)
+                                        || advanceTransition is null)
                                     {
-                                        assemblyOutcome = partyInstance.Doors.Register(
-                                            new DungeonRoomPosition(targetX, targetY),
-                                            activeCharacter!.Id,
-                                            // 窗口开着就传真实人数（状态机开窗口等其他人）；窗口关了就退化传 1
-                                            // （复用"门口只有我一个人 → 立即推进"），否则既凑不齐也没窗口到点 = 门死锁。
-                                            memberCount: options.Dungeon.ResolveDoorMemberCount(partyInstance.MemberCount),
-                                            DateTimeOffset.UtcNow,
-                                            GameProtocolEngine.CreateCommandReply(request, success: true));
-                                        // 锁内取走要记日志的集结状态（Doors 只在实例锁内用，勿在锁外读）。
-                                        pendingDoor = partyInstance.Doors.PendingTarget;
-                                        graceDeadline = partyInstance.Doors.GraceDeadline;
-                                    }
-
-                                    // 门口集结诊断（不改变行为，只落证据）：用户 2026-10-01 推断"服务端以为
-                                    // 两人都到门口、某个客户端其实还在跑"是硬崩诱因——这里把**谁在何时、
-                                    // 从哪个坐标**上报 CMD 48、判定结果、已到人数与队伍人数一并记下；
-                                    // 配合既有的 `party room advanced … (arrived=N/M)` 一行即可对齐时间线。
-                                    // 宽限窗口到点时看 `graceSeconds` 与两端的 CMD 48 时间差就能判断窗口是否够长。
-                                    logger.LogInformation(
-                                        "Door assembly diagnostics: {Name} (uid {Uid}, slot {Slot}) reported MOVE_MAP ({TargetX},{TargetY}) from room ({FromX},{FromY}) at ({X},{Y}); decision={Decision}, arrivedCount={Arrived}, partySize={PartySize}, doorGraceSeconds={GraceSeconds}, graceDeadline={GraceDeadline}.",
-                                        activeCharacter!.Name,
-                                        localUserId,
-                                        PartySlotIndexOfThisSession(),
-                                        targetX,
-                                        targetY,
-                                        currentDungeonRoomX,
-                                        currentDungeonRoomY,
-                                        currentX,
-                                        currentY,
-                                        assemblyOutcome.Decision,
-                                        assemblyOutcome.Arrivals.Count,
-                                        partyInstance.MemberCount,
-                                        partyInstance.Doors.Grace.TotalSeconds,
-                                        graceDeadline is { } deadline
-                                            ? deadline.ToString("HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture)
-                                            : "none");
-
-                                    if (assemblyOutcome.Decision == DungeonDoorDecision.Ignored)
-                                    {
+                                        var partyMoveError = GameProtocolEngine.CreateCommandError(
+                                            request,
+                                            advanceError);
+                                        await partyMoveError.WriteAsync(stream, serverToken);
+                                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                                        LogPacket("TX", runtimeSession, partyMoveError);
                                         logger.LogInformation(
-                                            "Ignored MOVE_MAP for dungeon {DungeonId} room ({RoomX},{RoomY}): another door ({PendingX},{PendingY}) is already gathering.",
-                                            currentDungeonId, targetX, targetY,
-                                            pendingDoor?.X ?? 0,
-                                            pendingDoor?.Y ?? 0);
+                                            "Rejected party MOVE_MAP for dungeon {DungeonId} room ({RoomX},{RoomY}) with error {ErrorCode}.",
+                                            currentDungeonId, targetX, targetY, advanceError);
                                         continue;
                                     }
 
-                                    if (assemblyOutcome.Decision == DungeonDoorDecision.StartedCountdown)
-                                    {
-                                        logger.LogInformation(
-                                            "Dungeon {DungeonId} door assembly for room ({RoomX},{RoomY}): {Arrived}/{Total} arrived, {Seconds} second countdown started.",
-                                            currentDungeonId, targetX, targetY,
-                                            assemblyOutcome.Arrivals.Count, partyInstance.MemberCount,
-                                            DungeonDoorAssembly.Countdown.TotalSeconds);
-                                        continue;
-                                    }
-
-                                    if (assemblyOutcome.Decision == DungeonDoorDecision.Waiting)
-                                    {
-                                        continue;
-                                    }
-
-                                    // Advance（全员到齐，或单人退化的立即推进）：锁外发包。
                                     await AdvancePartyRoomAsync(
                                         partyInstance,
                                         targetX,
                                         targetY,
-                                        assemblyOutcome,
+                                        advanceTransition,
+                                        GameProtocolEngine.CreateCommandReply(request, success: true),
                                         serverToken);
                                     continue;
                                 }

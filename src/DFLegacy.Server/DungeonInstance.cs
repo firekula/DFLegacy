@@ -71,7 +71,6 @@ internal sealed class DungeonInstance(
     Guid soloCharacterId,
     DungeonCatalog catalog,
     ItemCatalog itemCatalog,
-    TimeSpan? doorGrace = null,
     TimeSpan? partyCardAgentTimeout = null)
 {
     private readonly List<DungeonInstanceMember> _members = [];
@@ -508,12 +507,6 @@ internal sealed class DungeonInstance(
     /// <summary>已 destroy 的被动物件 index。**只允许在 <see cref="Gate"/> 内访问**；会话走 <see cref="TryMarkPassiveObjectDestroyed"/>。</summary>
     internal HashSet<byte> DestroyedPassiveObjects { get; } = [];
 
-    /// <summary>
-    /// 门口集结状态机。宽限窗口由 <c>ServerOptions.Dungeon.DoorGraceSeconds</c> 注入
-    /// （不传 = <see cref="DungeonDoorAssembly.DefaultGrace"/>，测试与旧调用点行为不变）。
-    /// </summary>
-    public DungeonDoorAssembly Doors { get; } = new(doorGrace);
-
     public byte DungeonOption { get; private set; }
 
     /// <summary>房间清空 / 空 boss 房可结算（= 改造前的 dungeonClearEnabled，实例级共享）。</summary>
@@ -881,7 +874,6 @@ internal sealed class DungeonInstance(
         _registeredPassiveRooms.Clear();
         ResetRoomCollections(transition.Room.Monsters);
         ResetKillCounters();
-        Doors.Reset();
         Version++;
         return true;
     }
@@ -902,7 +894,6 @@ internal sealed class DungeonInstance(
             _registeredPassiveRooms.Clear();
             ResetRoomCollections(room.Monsters);
             ResetKillCounters();
-            Doors.Reset();
             Version++;
         }
     }
@@ -968,7 +959,6 @@ internal sealed class DungeonInstance(
             // 与改造前 CMD 48 的行为一致：换房间清掉"本房间"的临时集合与开放标记。
             ClearEnabled = false;
             LastRoomEntryWasFirstVisit = transition.FirstVisit;
-            Doors.Reset();
             ResetRoomCollections(transition.Room.Monsters);
             // 地狱房的被动掉落 detach（终审 I3，从单人的 CMD 48 分支集中到这里）：
             // ①退出**未清**的地狱房（`CompletedHellRoomOnExit`，客户端场景要重建为空的地图房）
@@ -1226,7 +1216,6 @@ internal sealed class DungeonInstance(
             _registeredPassiveRooms.Clear();
             ResetRoomCollections([]);
             ResetKillCounters();
-            Doors.Reset();
             Version++;
         }
     }
