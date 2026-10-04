@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Net;
 using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
@@ -115,6 +116,18 @@ public sealed class TownSessionDirectory(
     /// </summary>
     private readonly HashSet<(byte TownId, byte AreaId)> _privateAreas =
         ParsePrivateAreas(options.TownSync.PrivateAreas, logger);
+
+    /// <summary>
+    /// 镇内对端表也要跟着"对端端点改写"（中继/黑洞实验）走：**只在镇内表里写真实端点，
+    /// 客户端就会在城镇阶段拿到并缓存对端地址**，之后队伍表里那份改写过的它不再采用
+    /// —— 2026-10-04 真机实测就是这样：队伍表已改写成服务端，审计里 `mt` 仍然是 0。
+    /// 改写目标与 `GameplayDatagramService` 完全同一套解析（同一批环境变量）。
+    /// </summary>
+    private readonly IPEndPoint? _peerEndpointOverride =
+        GameplayDatagramService.ResolvePeerEndpointOverride(
+            options.GameplayDatagram,
+            Environment.GetEnvironmentVariable("DFLEGACY_UDP_RELAY") == "1",
+            Environment.GetEnvironmentVariable("DFLEGACY_UDP_PEER_SINK"));
 
     // 结构锁把「读旧位置 → 摘除 → 登记 → 空区回收」串成一个原子段：同一角色的并发进入
     // 退化成先后两次迁移，任何时刻只属于一个区域；空区回收也不会与登记交错出孤儿成员。
@@ -737,7 +750,11 @@ public sealed class TownSessionDirectory(
         {
             if (!ReferenceEquals(member, recipient) && member.Peer is not null)
             {
-                peers.Add(member.Peer);
+                // 别人的端点走"对端端点改写"（中继/黑洞实验）；自己的那条在上面已按原样加过。
+                peers.Add(GameplayDatagramService.ApplyPeerEndpointOverride(
+                    member.Peer,
+                    isSelf: false,
+                    _peerEndpointOverride));
             }
         }
 

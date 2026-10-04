@@ -1780,10 +1780,10 @@ var relayProbePeer = new GamePeerInfo(
     NatType: 2,
     Mtu: 1472);
 var relayListener = new IPEndPoint(IPAddress.Loopback, 7002);
-Check(GameplayDatagramService.ApplyRelayAdvertisement(relayProbePeer, isSelf: true, relayListener)
+Check(GameplayDatagramService.ApplyPeerEndpointOverride(relayProbePeer, isSelf: true, relayListener)
         == relayProbePeer,
     "the UDP peer table leaves the recipient's own entry untouched (the client recognises itself by it)");
-var relayAdvertised = GameplayDatagramService.ApplyRelayAdvertisement(
+var relayAdvertised = GameplayDatagramService.ApplyPeerEndpointOverride(
     relayProbePeer,
     isSelf: false,
     relayListener);
@@ -1795,9 +1795,19 @@ Check(relayAdvertised.UserId == relayProbePeer.UserId
     && relayAdvertised.LocalAddress.Equals(IPAddress.Loopback)
     && relayAdvertised.PublicPort == 7002,
     "relay mode rewrites only the peer address/port to the server listener and keeps the identity fields");
-Check(GameplayDatagramService.ApplyRelayAdvertisement(relayProbePeer, isSelf: false, relayEndpoint: null)
+Check(GameplayDatagramService.ApplyPeerEndpointOverride(relayProbePeer, isSelf: false, overrideEndpoint: null)
         == relayProbePeer,
     "without relay mode the peer endpoint is advertised unchanged");
+// 改写目标怎么解析（纯函数）：SINK 优先；**SINK 写错就什么都不改**，绝不悄悄退回中继模式 ——
+// 否则"切断直连"实验会因为一个拼写错误变成中继实验，而且看起来还跑通了。
+var datagramOptions = new GameplayDatagramOptions();
+Check(GameplayDatagramService.ResolvePeerEndpointOverride(datagramOptions, relayEnabled: false, peerSink: null) is null
+    && GameplayDatagramService.ResolvePeerEndpointOverride(datagramOptions, relayEnabled: true, peerSink: "  ") is { Port: 7002 }
+    && GameplayDatagramService.ResolvePeerEndpointOverride(datagramOptions, relayEnabled: true, peerSink: "127.0.0.1:7003") is { Port: 7003 }
+    && GameplayDatagramService.ResolvePeerEndpointOverride(datagramOptions, relayEnabled: true, peerSink: "127.0.0.1") is null
+    && GameplayDatagramService.ResolvePeerEndpointOverride(datagramOptions, relayEnabled: true, peerSink: "127.0.0.1:0") is null
+    && GameplayDatagramService.ResolvePeerEndpointOverride(datagramOptions, relayEnabled: true, peerSink: "nonsense:7003") is null,
+    "the peer endpoint override takes the sink first, falls back to the relay listener, and refuses to guess when the sink is malformed");
 var relaySenderKey = Guid.Parse("11111111-1111-1111-1111-111111111111");
 var relaySenderEndpoint = new IPEndPoint(IPAddress.Loopback, 5063);
 // 发送者的会话**登记在另一个端点**（NAT 重绑定后的常见情形）：这样"排除发送者"必须**按会话**

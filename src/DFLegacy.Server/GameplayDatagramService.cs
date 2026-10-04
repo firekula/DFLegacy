@@ -29,41 +29,87 @@ public sealed class GameplayDatagramService(
     // 而队员端正是在队长放技能后崩在自己代码里（崩点 0x90149F，两轮逐寄存器一致）。
     private readonly bool _relayEnabled =
         Environment.GetEnvironmentVariable("DFLEGACY_UDP_RELAY") == "1";
+
+    // 实验用："把所有对端端点指到 host:port"（优先级高于中继）。指到一个**我们收下就丢**的端口，
+    // 就等于把客户端之间的直连**物理切断**，用来一刀判定"崩溃到底靠不靠对端数据"。
+    private readonly string? _peerSink =
+        Environment.GetEnvironmentVariable("DFLEGACY_UDP_PEER_SINK");
     private UdpClient? _primary;
     private UdpClient? _secondary;
 
     /// <summary>
-    /// 中继模式下交给客户端的"对端端点"= 本服务的玩法 UDP 主监听端点；
-    /// 非中继模式返回 null（调用方据此原样透传真实端点）。
+    /// 交给客户端的"对端端点"改写目标：`DFLEGACY_UDP_PEER_SINK` 优先，否则中继模式下是
+    /// 本服务主监听端点；都没有则 null（调用方原样透传真实端点）。
     /// </summary>
-    public IPEndPoint? RelayAdvertisedEndpoint =>
-        _relayEnabled
-            ? new IPEndPoint(
-                IPAddress.Parse(options.GameplayDatagram.ResolveAdvertisedHost()),
-                options.GameplayDatagram.PrimaryPort)
-            : null;
+    public IPEndPoint? PeerEndpointOverride =>
+        ResolvePeerEndpointOverride(options.GameplayDatagram, _relayEnabled, _peerSink);
 
     /// <summary>
-    /// 把一条对端记录改写成"服务端端点"。**收件人自己那条不改**（客户端靠它认出自己），
+    /// "对端端点改写"的解析（**纯函数**，单测直接钉）：
+    /// * `peerSink` 非空 ⇒ **以它为准**；格式不对就返回 null（不改写），
+    ///   **绝不退回中继模式** —— 否则"切断直连"实验会因为一个拼写错误悄悄变成中继实验，
+    ///   而且看起来还"跑通了"（本仓最忌讳的静默失败）；
+    /// * 否则 `relayEnabled` ⇒ 本服务主监听端点（`AdvertisedHost`/`PrimaryPort`）；
+    /// * 都没有 ⇒ null。
+    /// </summary>
+    internal static IPEndPoint? ResolvePeerEndpointOverride(
+        GameplayDatagramOptions datagramOptions,
+        bool relayEnabled,
+        string? peerSink)
+    {
+        if (!string.IsNullOrWhiteSpace(peerSink))
+        {
+            return TryParseEndpoint(peerSink, out var sink) ? sink : null;
+        }
+
+        return relayEnabled
+            ? new IPEndPoint(
+                IPAddress.Parse(datagramOptions.ResolveAdvertisedHost()),
+                datagramOptions.PrimaryPort)
+            : null;
+    }
+
+    private static bool TryParseEndpoint(string text, out IPEndPoint endpoint)
+    {
+        endpoint = null!;
+        var separator = text.LastIndexOf(':');
+        if (separator <= 0 || separator == text.Length - 1)
+        {
+            return false;
+        }
+
+        if (!IPAddress.TryParse(text[..separator], out var address)
+            || !ushort.TryParse(text[(separator + 1)..], out var port)
+            || port == 0)
+        {
+            return false;
+        }
+
+        endpoint = new IPEndPoint(address, port);
+        return true;
+    }
+
+    /// <summary>
+    /// 把一条对端记录改写成"指定的端点"。**收件人自己那条不改**（客户端靠它认出自己），
     /// 且**身份字段（UserId/AccountId/NatType/Mtu）一律原样保留** —— `NOTI 11` 同时决定
     /// 客户端给哪些 uid 建角色（见 `EntranceService` 城镇入场那段注释），动身份字段会波及角色创建。
     /// 纯函数：单测直接钉。
     /// </summary>
-    internal static GamePeerInfo ApplyRelayAdvertisement(
+    internal static GamePeerInfo ApplyPeerEndpointOverride(
         GamePeerInfo peer,
         bool isSelf,
-        IPEndPoint? relayEndpoint)
+        IPEndPoint? overrideEndpoint)
     {
-        if (isSelf || relayEndpoint is null)
+        if (isSelf || overrideEndpoint is null)
         {
             return peer;
         }
 
         return peer with
         {
-            LocalAddress = relayEndpoint.Address,
-            PublicAddress = relayEndpoint.Address,
-            PublicPort = checked((ushort)relayEndpoint.Port)
+            LocalAddress = overrideEndpoint.Address,
+            PublicAddress = overrideEndpoint.Address,
+            PublicPort = checked((ushort)overrideEndpoint.Port)
         };
     }
 
@@ -302,7 +348,25 @@ public sealed class GameplayDatagramService(
             {
                 logger.LogInformation(
                     "Gameplay UDP relay enabled (DFLEGACY_UDP_RELAY=1): advertising {Endpoint} as every peer endpoint and forwarding gameplay datagrams between sessions.",
-                    RelayAdvertisedEndpoint);
+                    PeerEndpointOverride);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_peerSink))
+            {
+                if (PeerEndpointOverride is { } sinkEndpoint)
+                {
+                    logger.LogWarning(
+                        "Gameplay UDP peer sink enabled (DFLEGACY_UDP_PEER_SINK={Sink}): every peer endpoint is rewritten to {Endpoint}; direct client-to-client traffic is effectively cut off{Relay}.",
+                        _peerSink,
+                        sinkEndpoint,
+                        _relayEnabled ? " (relay forwarding is ALSO on)" : " (datagrams are dropped)");
+                }
+                else
+                {
+                    logger.LogError(
+                        "Gameplay UDP peer sink {Sink} is not a valid host:port; NO peer endpoint will be rewritten (the experiment would silently run unmodified).",
+                        _peerSink);
+                }
             }
 
             await Task.WhenAll(loops);
@@ -615,6 +679,16 @@ public sealed class GameplayDatagramService(
             await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
             foreach (var (key, entry) in _audit)
             {
+                // **只在"自上次播报以来有新数据"时打**：否则早已静默的端点会被每 10 秒重复播报一次。
+                // 2026-10-04 实测：一整夜刷出约 1.1 MB、约 720 行/小时，两个计数器冻在 7 与 18 不动，
+                // 把真正的活动淹掉（排查时先被这堆噪声误导过一次）。
+                var revision = entry.Revision;
+                if (revision == entry.LastReportedRevision)
+                {
+                    continue;
+                }
+
+                entry.LastReportedRevision = revision;
                 logger.LogInformation(
                     "UDP audit {Remote}: natProbe={Probe} keepAlive={KeepAlive} mt={Mt} mtBytes={MtBytes} protocols={Protocols} firstPeek={Peek}",
                     key,
@@ -638,6 +712,12 @@ public sealed class GameplayDatagramService(
         private long _mtBytes;
 
         public string FirstPeek { get; private set; } = string.Empty;
+
+        /// <summary>每次收到数据就 +1：审计循环据此判断"这一轮有没有新东西"。</summary>
+        public long Revision { get; private set; }
+
+        /// <summary>上一次播报时的 <see cref="Revision"/>（由审计循环写）。</summary>
+        public long LastReportedRevision { get; set; }
 
         public long NatProbes { get { lock (_gate) { return _natProbes; } } }
 
@@ -678,6 +758,8 @@ public sealed class GameplayDatagramService(
                     var peek = datagram.Length > 24 ? datagram[..24] : datagram;
                     FirstPeek = $"{kind}:{Convert.ToHexString(peek)}";
                 }
+
+                Revision++;
             }
         }
 
