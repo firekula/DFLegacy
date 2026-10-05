@@ -1,0 +1,41 @@
+== date ==
+2026-10-05T17:01:32.4818206+08:00
+== docker ==
+29.8.0
+== containers ==
+dfl-recon Up 16 hours
+codex-pooler-app-1 Up 30 hours
+dnf Up 5 hours
+codex-pooler-db-1 Up 30 hours (healthy)
+== sidecar c++filt ==
+/usr/bin/c++filt
+== host 7001/2311 owners ==
+7001 <- pid 17428
+2311 <- pid 17428
+== container ports (json) ==
+{"2311/udp":[],"2312/udp":[{"HostIp":"0.0.0.0","HostPort":"2312"},{"HostIp":"::","HostPort":"2312"}],"2313/udp":[{"HostIp":"0.0.0.0","HostPort":"2313"},{"HostIp":"::","HostPort":"2313"}],"30011/tcp":[{"HostIp":"0.0.0.0","HostPort":"30021"},{"HostIp":"::","HostPort":"30021"}],"31011/udp":[{"HostIp":"0.0.0.0","HostPort":"31021"},{"HostIp":"::","HostPort":"31021"}],"3306/tcp":[{"HostIp":"0.0.0.0","HostPort":"13306"},{"HostIp":"::","HostPort":"13306"}],"5505/tcp":[{"HostIp":"0.0.0.0","HostPort":"5505"},{"HostIp":"::","HostPort":"5505"}],"7001/tcp":[],"7001/udp":[{"HostIp":"0.0.0.0","HostPort":"7001"},{"HostIp":"::","HostPort":"7001"}],"7300/tcp":[{"HostIp":"0.0.0.0","HostPort":"7300"},{"HostIp":"::","HostPort":"7300"}],"7300/udp":[{"HostIp":"0.0.0.0","HostPort":"7300"},{"HostIp":"::","HostPort":"7300"}]}
+== assets ==
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\df_game_r.bin
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\df_game_r.bin.idb
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\opcode_cmd.txt
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\opcode_noti.txt
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\game_r.syms.txt
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\packet_senders.txt
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\catalog_dispatchers.txt
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-official-login-channel\work\elfrecon.py
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-official-login-channel\work\pcap-streams.py
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-official-login-channel\work\container-privatekey.pem
+True G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-official-login-channel\work\container-game-publickey.pem
+== ida ==
+True
+
+== 判定（Task 1 Step 3，2026-10-05）==
+PASS: 写 $P 下文件成功（无权限退化）；dfl-recon 有 /usr/bin/c++filt；11 个资产全 True；idat.exe True；docker 29.8.0 可用。
+宿主端口占用者：7001/tcp 与 2311/udp 同为 pid 17428（DFLegacy.Server），与计划预写值一致。
+容器发布端口：30011/tcp->30021、31011/udp->31021、5505/tcp->5505 —— 与计划预写值一致。
+偏差（原样记录，不修判据）：计划预写 7001/tcp 与 2311/udp 为 null，实测为 [] （空数组）。
+  语义差别：null = 只 EXPOSE 未申请发布；[] = 申请了发布但绑不上（宿主端口被占）。
+  结论：两者都是没绑上，但预写字面值有误。Task 8 的确认条件应写作 7001/tcp 不再是 [] 或 null。
+计划未列出的已发布端口：7001/udp->7001（绑上了）、2312/udp->2312、2313/udp->2313、3306/tcp->13306、7300/tcp+udp->7300。
+  => 宿主 7001 只与容器争 TCP，未争 UDP。
+NOTE: 宿主 7001/2311 不为空 => 无需 7001/2311 free at baseline，Task 8 之前不要停 DFLegacy.Server。
