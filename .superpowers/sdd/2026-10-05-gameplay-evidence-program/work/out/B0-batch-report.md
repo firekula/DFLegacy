@@ -219,3 +219,63 @@ VM 的第 3 帧 id=10 载荷是 zlib（7209 → **13312 B** = 104×128，**仍�
 **给 Task 9/11 的直接输入**：§4 的帧模型 + §3 的首帧十六进制 + `streams-vm/` 里的 90 帧成功序列
 （`CMD 1 LOGIN` 的 413 B 请求与 95 B 应答、`NOTI 1 CHANNELINFO` 的 450 B、`CMD 2 SET_UDP_IP_PORT` 的 45 B）
 可以当**已知答案**；失败路径的 5 帧序列（含 `NOTI 199`）可以当**拒绝路径**的已知答案。
+
+---
+
+## 9. 追加实验（2026-10-05 23:1x）：`geo_allow` 假设**否证** + 根因读到代码级
+
+### 9.1 单变量实验与结果
+
+| 项 | 值 |
+|---|---|
+| 假设 | `d_taiwan.geo_allow` 里没有客户端 IP（`172.17.0.1`）⇒ 登录被判异常（`err_code=15`） |
+| 唯一变量 | `INSERT INTO d_taiwan.geo_allow (allow_ip, allow_c_code) VALUES ('172.17.0.1','CN')`（1 行） |
+| 刻意不动 | `member_join_info` 的 m_id=3（与最近两次失败时同状态） |
+| 结果 | **仍然失败**：`USER LOGINED!` → `Inter_LoginInfo::dispatch_sig: Abnormal LoginError: ...ERROR_OK(15)` → `CUser::DisConnSig(.., 14)` |
+| 结论 | **白名单假设被排除**（实验后该行已删除，名单恢复原状） |
+
+客户端表现：**进到"选择角色"界面**并弹出公告框（"请稍等几分钟后再尝试登录 / 详情请联系客服"）——
+那句公告就是服务端在断连前发来的错误包（反汇编显示该路径先 `CUser::Send` 再 `DisConnSig`），
+**不是**一个新的、更晚的失败点。
+
+### 9.2 根因（读代码得出，非推断）
+
+`SIG_LOGIN_DATA` 的字段布局（由断言串与代码共同确认）：`+0xa1` = IP 字符串、`+0xb5` = geo 白名单命中标志、
+**`+0xb8` = `err_code`**。`Inter_LoginInfo::dispatch_sig` @`0x084c5294` 对它的判别：
+
+```asm
+0x084c534a  mov eax, [eax + 0xb8]     ; err_code == 15（实测值）
+0x084c5350  cmp eax, 1   ; je 0x84c5363        ← 有专门分支
+0x084c5355  cmp eax, 8   ; je 0x84c5423        ← 有专门分支
+0x084c535e  jmp 0x84c54a7
+0x084c54b0  cmp eax, 9   ; jle 0x84c55b9       ← 10..12 有专门分支
+0x084c54c2  cmp eax, 0xc ; jg  0x84c55b9
+            ...（其后是一串逐值 if 链，各分支各有断言串：
+                 E_CANTFIND@行6922 / PUNISH_REASON@7015 / E_AUTH@7031 /
+                 E_AUTH_MOUSE@7072 / E_AUTH_MOUSE_DENY@7082 / E_PASSPAD_WRONG_VERSION@7092）...
+0x084c5a02  mov eax,[eax+0xb8] ; test eax,eax ; je 0x84c5add   ← **只有 0 走正常路径**
+0x084c5a6a  mov ebx,[eax+0xb8]                                  ← 15 落到这里
+0x084c5a70  ... cMyTrace("…Abnormal LoginError: SIG_LOGIN_DATA::ERROR_OK(%d)", ebx=15)
+0x084c5ace  call CUser::DisConnSig(.., 0xe=14)
+```
+
+⇒ **`err_code = 15` 在这个 build 里没有任何 handler**，一路落到 fallback（行 7154，晚于所有已知 case）
+⇒ 打 `Abnormal LoginError(15)` 并把客户端断连。
+
+**这不是客户端的问题、不是 IP 白名单、也不是 `member_join_info` 主键（伴生错误）。**
+往游戏服发这份 `SIG_LOGIN_DATA` 的上游是 **gate**——而容器里的 gate 是 **Rust 重写的 llnut**
+（日志：`Starting DNF Login Server...`、`Database: game@127.0.0.1:4000/d_taiwan`），
+它和 2016 年的官服 `df_game_r` 二进制**不共享同一份 `err_code` 枚举**。
+这与本报告 §7"两台栈不是同一配置/版本"是同一件事的两个侧面。
+
+### 9.3 对靶子选择的结论（写进 RESUME）
+
+| 用途 | 靶子 |
+|---|---|
+| Task 9 的 7001 已知答案自检 | **docker 容器**（握手本来就成功；期望值 7465 B / 帧 47-43-7235-140） |
+| Task 11 的游戏面**成功**自检 | **VM 那套**（只有它接受客户端；期望值用它 10013 的 21/90 帧） |
+| **拒绝路径**已知答案 | docker 的 5 帧（末帧 `NOTI 199 DISCONNECT_REASON`） |
+
+**docker 的游戏面要能进，得先修 gate↔game 的 `err_code` 契约**——那属于官服栈自身/重写 gate 的不一致，
+**不在 M0/M1 范围**，记为 `[未验证]`（怎么验：对 gate 二进制查它发送的 `err_code` 取值集合，
+或对 VM 那套能成功的栈抓同样的服务间流量做对照）。
