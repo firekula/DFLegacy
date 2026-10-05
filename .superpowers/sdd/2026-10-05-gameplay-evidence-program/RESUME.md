@@ -256,7 +256,17 @@ python ".superpowers\sdd\2026-10-05-official-login-channel\work\pcap-streams.py"
 | 模型 | 端口 | 头长 | 布局 |
 |---|---|---|---|
 | `CHANNEL` | 7001 | **11** | `[0]cat [1]id [2..5]size(LE,含头) [6..9]reserved [10]ackOk` |
-| `GAME` | 游戏面（docker `30011` / VM `10013`） | **10** | `[0]cat(0x01=CMD/0x00=NOTI) [1]id [2] [3..6]size(LE,含头) [7..9]3 字节**校验和**` |
+| `GAME` | 游戏面（docker `30011` / VM `10013`） | **13** | `[0]classification [1]msg_no [2]garvage [3..6]sLength(LE,含整帧) [7..10]checksum(4) [11..12]sequence(2)` |
+
+> **⚠️ `GAME` 从 10 字节改成 13 字节（2026-10-05 晚，详见 `work/out/frame-structure-nailed.md` §0）**：
+> 字段名与宽度由官方 cfg 逐字给出（`work/vm-files/game-siroco11.cfg.txt` L82–89，
+> `header_mangled_length = 13`），并由**独立实测**证实：C→S 的 `[11..12]` 是
+> **uint16 LE 递增序号**（四条流 20/20、20/20、20/20、5/5 逐帧 +1 起于 0）——
+> 载荷不可能是完美计数器。
+> **10 字节模型切帧仍是对的**（切帧只看 `[3..6]` 的 size），所以 B0 的"恰好铺满"、
+> Task 11 的重放比对**都没被污染**；受影响的只有**载荷起点**（13 而非 10）。
+> `[2]` 的官方字段名就是 **`garvage`**（拼写如此，取值 0/1/2）。
+> `checksum` 算法仍未解（adler32/crc32/sum32 全 0 命中），**不阻塞**。
 
 * **会话密钥（7001）= `id=12` 正文 `[4:20)`**（计划的 `[5:21)` **实测为错**，已否证：
   `[4:20)` 解 `id=10` 的 13312 B 密文可打印率 97.75% 并解出 `[dungeon]`/频道表；`[5:21)`/`[0:16)` 是垃圾）。
