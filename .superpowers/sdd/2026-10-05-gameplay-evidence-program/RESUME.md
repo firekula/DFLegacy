@@ -129,6 +129,23 @@ python "$P\work\driver\selftest-30011.py" --capture-dir "$P\work\captures\stream
   --out-raw "$P\work\out\raw-30011-docker-replay.bin" --out "$P\work\out\raw-30011-docker-replay.txt"
 ```
 
+# 9b) 判据 3 的依据：游戏面 C 流首帧载荷的**可观测性**检查（两个靶子各跑一次）
+python "$P\work\game-first-frame.py" "$P\work\captures\streams-vm\13681-10013.bin" `
+  "$W\container-game-publickey.pem"
+python "$P\work\game-first-frame.py" "$P\work\captures\streams\33018-30011.bin" `
+  "$W\container-game-publickey.pem"
+#    预期：两个靶子都是 可打印率 38.0% / 34.7%，`00 00 00 xx` 0 个，
+#          148 个 256 B 滑窗**无一**落在 type-1 上（随机基线 0.0023）⇒ 令牌不可直接替换
+
+# 9c) 7001 侧的硬门（Task 9）：重放字节 vs 记录抓包
+python "$P\work\driver\selftest-7001.py" --verify `
+  "$P\work\out\replay-s.bin" "$P\work\captures\streams\7001-58840.bin" `
+  "$P\work\out\driver-7001-selftest.txt"
+#    预期：整帧长度 replay [47,43,7240,139] vs capture [47,43,7235,140]（**故意不等**，
+#          会话密钥不同 ⇒ 密文不同 ⇒ zlib 长度差几字节），但判据① 结构性不变 PASS：
+#          (cat,id) 序列一致、id=10 解密明文 13312 B 逐字节相同、id=3 128 B 首 4B=01 00 00 00
+```
+
 **跑 `driver/` 下任何脚本都不用先设 PYTHONPATH**：`driver/dnfdrive.py` 与 `driver/token.py`
 各自带"标准库 `token` 防遮蔽"守卫（原因见 `work/out/driver-30011-selftest.txt` 末节 ——
 我们的 `token.py` 会遮蔽标准库同名模块，**顺序必须是先摘 sys.path 再 import**）。
