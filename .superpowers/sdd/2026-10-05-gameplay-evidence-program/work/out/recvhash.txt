@@ -1,0 +1,132 @@
+0x08274f73  push    ebp
+0x08274f74  mov     ebp, esp
+0x08274f76  push    ebx
+0x08274f77  sub     esp, 0x64
+0x08274f7a  mov     eax, dword ptr [ebp + 8]
+0x08274f7d  movzx   eax, byte ptr [eax]
+0x08274f80  mov     byte ptr [ebp - 0x3d], al
+0x08274f83  mov     eax, dword ptr [ebp + 8]
+0x08274f86  mov     dword ptr [esp], eax
+0x08274f89  call 0x082772a9  _Z25_NS_PI_2ND_GetPacketIndexPc
+0x08274f8e  mov     word ptr [ebp - 0x40], ax
+0x08274f92  mov     eax, dword ptr [ebp + 0xc]
+0x08274f95  mov     dword ptr [esp], eax
+0x08274f98  call 0x0823081c  _ZN5CUser12GetCSHashSetEv
+0x08274f9d  mov     dword ptr [ebp - 0x2c], eax
+0x08274fa0  lea     eax, [ebp - 0x44]
+0x08274fa3  lea     edx, [ebp - 0x40]
+0x08274fa6  mov     dword ptr [esp + 8], edx
+0x08274faa  lea     edx, [ebp - 0x3d]
+0x08274fad  mov     dword ptr [esp + 4], edx
+0x08274fb1  mov     dword ptr [esp], eax
+0x08274fb4  call 0x08277508  _ZSt9make_pairIRhRtESt4pairINSt17__decay_and_stripIT_E6__typeENS3_IT0_E6__typeEEOS4_OS7_
+0x08274fb9  sub     esp, 4
+0x08274fbc  lea     eax, [ebp - 0x3c]
+0x08274fbf  mov     edx, dword ptr [ebp - 0x2c]
+0x08274fc2  mov     dword ptr [esp + 4], edx
+0x08274fc6  mov     dword ptr [esp], eax
+0x08274fc9  call 0x08277584  _ZNKSt3setISt4pairIhtESt4lessIS1_ESaIS1_EE3endEv
+0x08274fce  sub     esp, 4
+0x08274fd1  lea     eax, [ebp - 0x38]
+0x08274fd4  lea     edx, [ebp - 0x44]
+0x08274fd7  mov     dword ptr [esp + 8], edx
+0x08274fdb  mov     edx, dword ptr [ebp - 0x2c]
+0x08274fde  mov     dword ptr [esp + 4], edx
+0x08274fe2  mov     dword ptr [esp], eax
+0x08274fe5  call 0x08277546  _ZNSt3setISt4pairIhtESt4lessIS1_ESaIS1_EE4findERKS1_
+0x08274fea  sub     esp, 4
+0x08274fed  lea     eax, [ebp - 0x3c]
+0x08274ff0  mov     dword ptr [esp + 4], eax
+0x08274ff4  lea     eax, [ebp - 0x38]
+0x08274ff7  mov     dword ptr [esp], eax
+0x08274ffa  call 0x082775aa  _ZNKSt23_Rb_tree_const_iteratorISt4pairIhtEEneERKS2_
+0x08274fff  mov     byte ptr [ebp - 0x25], al
+0x08275002  mov     eax, dword ptr [ebp + 8]
+0x08275005  add     eax, 7
+0x08275008  mov     eax, dword ptr [eax]
+0x0827500a  mov     dword ptr [ebp - 0x24], eax
+0x0827500d  movzx   eax, byte ptr [ebp - 0x3d]
+0x08275011  cmp     al, 1
+0x08275013  jne     0x8275026
+0x08275015  movzx   eax, word ptr [ebp - 0x40]
+0x08275019  cmp     ax, 1
+0x0827501d  jne     0x8275026
+0x0827501f  mov     eax, 1
+0x08275024  jmp     0x827502b
+0x08275026  mov     eax, 0
+0x0827502b  mov     byte ptr [ebp - 0x1d], al
+0x0827502e  mov     eax, dword ptr [ebp - 0x24]
+0x08275031  shr     eax, 8
+0x08275034  mov     dword ptr [ebp - 0x1c], eax
+0x08275037  mov     eax, dword ptr [ebp + 8]
+0x0827503a  add     eax, 0xd
+0x0827503d  mov     dword ptr [ebp - 0x18], eax
+0x08275040  mov     eax, dword ptr [ebp + 0x10]
+0x08275043  sub     eax, 0xd
+0x08275046  mov     dword ptr [ebp - 0x14], eax
+0x08275049  movzx   ebx, byte ptr [ebp - 0x1d]
+0x0827504d  mov     eax, dword ptr [ebp + 0xc]
+0x08275050  mov     dword ptr [esp], eax
+0x08275053  call 0x08275668  _ZN5CUser20GetPIReceiverManagerEv
+0x08275058  mov     dword ptr [esp + 0x10], ebx
+0x0827505c  mov     edx, dword ptr [ebp - 0x1c]
+0x0827505f  mov     dword ptr [esp + 0xc], edx
+0x08275063  mov     edx, dword ptr [ebp - 0x14]
+0x08275066  mov     dword ptr [esp + 8], edx
+0x0827506a  mov     edx, dword ptr [ebp - 0x18]
+0x0827506d  mov     dword ptr [esp + 4], edx
+0x08275071  mov     dword ptr [esp], eax
+0x08275074  call 0x0808bf7e  _ZN17PIReceiverManager17CheckHashReceivedEPhjjb
+0x08275079  mov     byte ptr [ebp - 0xe], al
+0x0827507c  movzx   eax, byte ptr [ebp - 0xe]
+0x08275080  xor     eax, 1
+0x08275083  test    al, al
+0x08275085  je      0x8275099
+0x08275087  movzx   eax, byte ptr [ebp - 0x25]
+0x0827508b  xor     eax, 1
+0x0827508e  test    al, al
+0x08275090  je      0x8275099
+0x08275092  mov     eax, 1
+0x08275097  jmp     0x827509e
+0x08275099  mov     eax, 0
+0x0827509e  mov     byte ptr [ebp - 0xd], al
+0x082750a1  cmp     byte ptr [ebp - 0xd], 0
+0x082750a5  je      0x827513b
+0x082750ab  movzx   eax, word ptr [ebp - 0x40]
+0x082750af  movzx   edx, ax
+0x082750b2  movzx   eax, byte ptr [ebp - 0x3d]
+0x082750b6  movzx   eax, al
+0x082750b9  mov     dword ptr [esp + 8], edx
+0x082750bd  mov     dword ptr [esp + 4], eax
+0x082750c1  mov     dword ptr [esp], 0
+0x082750c8  call 0x08277359  _Z22_NS_PI_2ND_GetHackTypejht
+0x082750cd  mov     dword ptr [ebp - 0xc], eax
+0x082750d0  mov     eax, dword ptr [ebp + 0xc]
+0x082750d3  mov     dword ptr [esp], eax
+0x082750d6  call 0x080f995a  _ZN5CUser15getHackAnalyzerEv
+0x082750db  mov     dword ptr [esp + 0x14], 0
+0x082750e3  mov     dword ptr [esp + 0x10], 0
+0x082750eb  mov     dword ptr [esp + 0xc], 1
+0x082750f3  mov     edx, dword ptr [ebp - 0xc]
+0x082750f6  mov     dword ptr [esp + 8], edx
+0x082750fa  mov     edx, dword ptr [ebp + 0xc]
+0x082750fd  mov     dword ptr [esp + 4], edx
+0x08275101  mov     dword ptr [esp], eax
+0x08275104  call 0x080f8c7e  _ZN8WongWork13CHackAnalyzer16addServerHackCntEP5CUserNS_13ENUM_HACKTYPEEjjj
+0x08275109  mov     eax, dword ptr [ebp + 0xc]
+0x0827510c  mov     dword ptr [esp], eax
+0x0827510f  call 0x0822fdb6  _ZN5CUser4lockEv
+0x08275114  lea     eax, [ebp - 0x34]
+0x08275117  lea     edx, [ebp - 0x44]
+0x0827511a  mov     dword ptr [esp + 8], edx
+0x0827511e  mov     edx, dword ptr [ebp - 0x2c]
+0x08275121  mov     dword ptr [esp + 4], edx
+0x08275125  mov     dword ptr [esp], eax
+0x08275128  call 0x082775be  _ZNSt3setISt4pairIhtESt4lessIS1_ESaIS1_EE6insertERKS1_
+0x0827512d  sub     esp, 4
+0x08275130  mov     eax, dword ptr [ebp + 0xc]
+0x08275133  mov     dword ptr [esp], eax
+0x08275136  call 0x0822fdce  _ZN5CUser6unlockEv
+0x0827513b  mov     ebx, dword ptr [ebp - 4]
+0x0827513e  leave   
+0x0827513f  ret     

@@ -1,0 +1,10 @@
+命中 9 个（关键字 ['get_rand_int', 'srand', 'SelectKeyString']）
+  0x082a002a(   560)  SelectKeyString(int*, int*)
+  0x0808eafc(   245)  server_utility::get_rand_int(int)
+  0x08108b06(   245)  DNFFLib::get_rand_int(int)
+  0x086b1b87(   245)  get_rand_int(int)
+  0x0808ec31(    28)  global constructors keyed to server_utility::get_rand_int(int)
+  0x08514b08(    15)  CStackableItem::IsRandomOptionUnseal() const
+  0x08514e5e(    15)  CEquipItem::IsRandomOption() const
+  0x08514426(    10)  CItem::IsRandomOptionUnseal() const
+  0x08514412(    10)  CItem::IsRandomOption() const

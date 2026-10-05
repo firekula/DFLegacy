@@ -1,0 +1,61 @@
+0x08097196  push    ebp
+0x08097197  mov     ebp, esp
+0x08097199  push    esi
+0x0809719a  push    ebx
+0x0809719b  sub     esp, 0x20
+0x0809719e  mov     eax, dword ptr [ebp + 8]
+0x080971a1  mov     dword ptr [eax], 0
+0x080971a7  mov     eax, dword ptr [ebp + 8]
+0x080971aa  add     eax, 4
+0x080971ad  mov     dword ptr [esp], eax
+0x080971b0  call 0x08097660  _ZNSt6vectorIP12ICryptoGraphSaIS1_EEC2Ev
+0x080971b5  mov     eax, dword ptr [ebp + 8]
+0x080971b8  add     eax, 4
+0x080971bb  mov     dword ptr [esp + 4], 0xe
+0x080971c3  mov     dword ptr [esp], eax
+0x080971c6  call 0x080976d2  _ZNSt6vectorIP12ICryptoGraphSaIS1_EE7reserveEj
+0x080971cb  mov     dword ptr [ebp - 0xc], 0
+0x080971d2  jmp     0x809721a
+0x080971d4  mov     eax, dword ptr [ebp - 0xc]
+0x080971d7  mov     dword ptr [esp], eax
+0x080971da  call 0x0809df90  _Z17CreateCryptoGraph17CRYPTO_GRAPH_TYPE
+0x080971df  mov     dword ptr [ebp - 0x10], eax
+0x080971e2  mov     eax, dword ptr [ebp + 8]
+0x080971e5  lea     edx, [eax + 4]
+0x080971e8  lea     eax, [ebp - 0x10]
+0x080971eb  mov     dword ptr [esp + 4], eax
+0x080971ef  mov     dword ptr [esp], edx
+0x080971f2  call 0x080977f6  _ZNSt6vectorIP12ICryptoGraphSaIS1_EE9push_backERKS1_
+0x080971f7  mov     eax, dword ptr [ebp + 8]
+0x080971fa  mov     ebx, dword ptr [eax]
+0x080971fc  mov     eax, dword ptr [ebp - 0x10]
+0x080971ff  mov     eax, dword ptr [eax]
+0x08097201  add     eax, 0x20
+0x08097204  mov     edx, dword ptr [eax]
+0x08097206  mov     eax, dword ptr [ebp - 0x10]
+0x08097209  mov     dword ptr [esp], eax
+0x0809720c  call edx   (间接)
+0x0809720e  lea     edx, [ebx + eax]
+0x08097211  mov     eax, dword ptr [ebp + 8]
+0x08097214  mov     dword ptr [eax], edx
+0x08097216  add     dword ptr [ebp - 0xc], 1
+0x0809721a  cmp     dword ptr [ebp - 0xc], 0xd
+0x0809721e  setle   al
+0x08097221  test    al, al
+0x08097223  jne     0x80971d4
+0x08097225  jmp     0x8097245
+0x08097227  mov     ebx, edx
+0x08097229  mov     esi, eax
+0x0809722b  mov     eax, dword ptr [ebp + 8]
+0x0809722e  add     eax, 4
+0x08097231  mov     dword ptr [esp], eax
+0x08097234  call 0x08097674  _ZNSt6vectorIP12ICryptoGraphSaIS1_EED2Ev
+0x08097239  mov     eax, esi
+0x0809723b  mov     edx, ebx
+0x0809723d  mov     dword ptr [esp], eax
+0x08097240  call 0x08ae3750  _Unwind_Resume
+0x08097245  add     esp, 0x20
+0x08097248  pop     ebx
+0x08097249  pop     esi
+0x0809724a  pop     ebp
+0x0809724b  ret     

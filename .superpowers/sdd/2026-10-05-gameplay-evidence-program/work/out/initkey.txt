@@ -1,0 +1,139 @@
+0x082a025a  push    ebp
+0x082a025b  mov     ebp, esp
+0x082a025d  push    edi
+0x082a025e  push    esi
+0x082a025f  push    ebx
+0x082a0260  sub     esp, 0x85c
+0x082a0266  mov     dword ptr [esp], 0x941f714
+0x082a026d  call 0x080cbc9e  _ZN11CSystemTime9getCurSecEv
+0x082a0272  mov     dword ptr [ebp - 0x2c], eax
+0x082a0275  mov     dword ptr [ebp - 0x28], 0
+0x082a027c  jmp     0x82a03e1
+0x082a0281  mov     dword ptr [esp], 0x410
+0x082a0288  call 0x08724450  _Znwj
+0x082a028d  mov     ebx, eax
+0x082a028f  mov     eax, ebx
+0x082a0291  mov     dword ptr [esp], eax
+0x082a0294  call 0x08097196  _ZN6CipherC1Ev
+0x082a0299  jmp     0x82a02b3
+0x082a029b  mov     esi, edx
+0x082a029d  mov     edi, eax
+0x082a029f  mov     dword ptr [esp], ebx
+0x082a02a2  call 0x087244f0  _ZdlPv
+0x082a02a7  mov     eax, edi
+0x082a02a9  mov     edx, esi
+0x082a02ab  mov     dword ptr [esp], eax
+0x082a02ae  call 0x08ae3750  _Unwind_Resume
+0x082a02b3  mov     edx, dword ptr [ebp - 0x28]
+0x082a02b6  mov     eax, ebx
+0x082a02b8  shl     edx, 4
+0x082a02bb  mov     dword ptr [edx + 0x940be80], eax
+0x082a02c1  mov     eax, 0x941f858
+0x082a02c6  movzx   eax, byte ptr [eax]
+0x082a02c9  test    al, al
+0x082a02cb  jne     0x82a0327
+0x082a02cd  mov     dword ptr [esp], 0x941f858
+0x082a02d4  call 0x08725330  __cxa_guard_acquire
+0x082a02d9  test    eax, eax
+0x082a02db  setne   al
+0x082a02de  test    al, al
+0x082a02e0  je      0x82a0327
+0x082a02e2  mov     ebx, 0
+0x082a02e7  mov     eax, dword ptr [0x940be80]
+0x082a02ec  mov     dword ptr [esp], eax
+0x082a02ef  call 0x080975d4  _ZNK6Cipher17GetTotalKeyLengthEv
+0x082a02f4  mov     dword ptr [0x941f864], eax
+0x082a02f9  mov     dword ptr [esp], 0x941f858
+0x082a0300  call 0x08725250  __cxa_guard_release
+0x082a0305  jmp     0x82a0327
+0x082a0307  mov     esi, edx
+0x082a0309  mov     edi, eax
+0x082a030b  test    bl, bl
+0x082a030d  jne     0x82a031b
+0x082a030f  mov     dword ptr [esp], 0x941f858
+0x082a0316  call 0x087252c0  __cxa_guard_abort
+0x082a031b  mov     eax, edi
+0x082a031d  mov     edx, esi
+0x082a031f  mov     dword ptr [esp], eax
+0x082a0322  call 0x08ae3750  _Unwind_Resume
+0x082a0327  lea     ebx, [ebp - 0x83c]
+0x082a032d  mov     eax, 0
+0x082a0332  mov     edx, 0x200
+0x082a0337  mov     edi, ebx
+0x082a0339  mov     ecx, edx
+0x082a033b  rep stosd dword ptr es:[edi], eax
+0x082a033d  mov     eax, dword ptr [ebp - 0x28]
+0x082a0340  shl     eax, 4
+0x082a0343  add     eax, 0x940be80
+0x082a0348  lea     edx, [eax + 8]
+0x082a034b  mov     eax, dword ptr [ebp - 0x28]
+0x082a034e  shl     eax, 4
+0x082a0351  add     eax, 0x940be80
+0x082a0356  add     eax, 4
+0x082a0359  mov     dword ptr [esp + 4], edx
+0x082a035d  mov     dword ptr [esp], eax
+0x082a0360  call 0x082a002a  _Z15SelectKeyStringPiS_
+0x082a0365  mov     dword ptr [ebp - 0x24], eax
+0x082a0368  mov     eax, dword ptr [ebp - 0x24]
+0x082a036b  mov     dword ptr [esp], eax
+0x082a036e  call 0x0807e3b0  realloc
+0x082a0373  mov     dword ptr [ebp - 0x20], eax
+0x082a0376  mov     dword ptr [ebp - 0x1c], 0
+0x082a037d  jmp     0x82a03a6
+0x082a037f  mov     edx, dword ptr [ebp - 0x20]
+0x082a0382  mov     ecx, dword ptr [ebp - 0x1c]
+0x082a0385  lea     eax, [ebp - 0x83c]
+0x082a038b  add     eax, ecx
+0x082a038d  mov     dword ptr [esp + 8], edx
+0x082a0391  mov     edx, dword ptr [ebp - 0x24]
+0x082a0394  mov     dword ptr [esp + 4], edx
+0x082a0398  mov     dword ptr [esp], eax
+0x082a039b  call 0x0807d8a0  _init
+0x082a03a0  mov     eax, dword ptr [ebp - 0x20]
+0x082a03a3  add     dword ptr [ebp - 0x1c], eax
+0x082a03a6  mov     eax, dword ptr [0x941f864]
+0x082a03ab  cmp     dword ptr [ebp - 0x1c], eax
+0x082a03ae  setl    al
+0x082a03b1  test    al, al
+0x082a03b3  jne     0x82a037f
+0x082a03b5  mov     edx, dword ptr [0x941f864]
+0x082a03bb  mov     eax, dword ptr [ebp - 0x28]
+0x082a03be  shl     eax, 4
+0x082a03c1  mov     eax, dword ptr [eax + 0x940be80]
+0x082a03c7  mov     dword ptr [esp + 8], edx
+0x082a03cb  lea     edx, [ebp - 0x83c]
+0x082a03d1  mov     dword ptr [esp + 4], edx
+0x082a03d5  mov     dword ptr [esp], eax
+0x082a03d8  call 0x08097306  _ZN6Cipher10InitializeEPKhi
+0x082a03dd  add     dword ptr [ebp - 0x28], 1
+0x082a03e1  cmp     dword ptr [ebp - 0x28], 0x1387
+0x082a03e8  setle   al
+0x082a03eb  test    al, al
+0x082a03ed  jne     0x82a0281
+0x082a03f3  mov     dword ptr [esp], 0x941f714
+0x082a03fa  call 0x080cbc9e  _ZN11CSystemTime9getCurSecEv
+0x082a03ff  mov     ebx, eax
+0x082a0401  sub     ebx, dword ptr [ebp - 0x2c]
+0x082a0404  mov     dword ptr [esp + 0x14], 1
+0x082a040c  mov     dword ptr [esp + 0x10], 1
+0x082a0414  mov     dword ptr [esp + 0xc], 9
+0x082a041c  mov     dword ptr [esp + 8], 0x283e
+0x082a0424  mov     dword ptr [esp + 4], 0x8c1b03d
+0x082a042c  lea     eax, [ebp - 0x3c]
+0x082a042f  mov     dword ptr [esp], eax
+0x082a0432  call 0x0854f746  _ZN8cMyTraceC1EPKciibb
+0x082a0437  mov     dword ptr [esp + 8], ebx
+0x082a043b  mov     dword ptr [esp + 4], 0x8c18704
+0x082a0443  lea     eax, [ebp - 0x3c]
+0x082a0446  mov     dword ptr [esp], eax
+0x082a0449  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x082a044e  add     esp, 0x85c
+0x082a0454  pop     ebx
+0x082a0455  pop     esi
+0x082a0456  pop     edi
+0x082a0457  pop     ebp
+0x082a0458  ret     
+
+=== 引用到的可打印串（2 条）===
+  0x082a0424 -> 0x08c1b03d  'void InitCipherKeyString()'
+  0x082a043b -> 0x08c18704  '[!] Init CipherKeyString TotalTime : %ds'

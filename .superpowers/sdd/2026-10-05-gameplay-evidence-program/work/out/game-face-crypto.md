@@ -116,7 +116,100 @@ getGcaType()  getMobileAuth()  getGoldMemberType()
 4. **密钥按 `CUser` 派生**（`_NS_PI_2ND_RecvHash_CS(char*, CUser*, uint)`）
    ⇒ 这与"2008 客户端方言"是两套东西，别混。
 
-## 六、还没做完的（下一步，仍是纯静态）
+## 六、密钥：从 map 里"随机挑"（**含一处我自己的错误推断，见 §七**）
+
+### （a）算法链是**固定的 14 层全链**
+
+`Cipher::Cipher()` @ `0x08097196`：
+
+```asm
+0x080971c6  call vector<ICryptoGraph*>::reserve(0xe)   ; 预留 14 项
+循环 i = 0 .. 13:
+0x080971da    call CreateCryptoGraph(i)                ; 按枚举顺序造第 i 个算法
+0x080971f2    call vector::push_back(algo)
+0x08097209    call algo->vtable[0x20]()                ; 取该算法的密钥长度
+0x08097214    total_key_len += eax
+```
+
+⇒ **链序 = 枚举序**：`Shift → Rijndael → BlowFish → Rc6 → TwoFish → Tea → Kasumi
+→ XTea → Noekeon → Khazad → Cast5 → Skipjack → Multi2 → Anubis`。
+**密钥总长 = 14 个算法密钥长度之和**（`Cipher::GetTotalKeyLength()`）。
+
+### （b）密钥串的来源
+
+`InitCipherKeyString()` @ `0x082a025a`（511 B）：
+
+```asm
+call CSystemTime::getCurSec()          ; ← 当前时间（秒）
+call Cipher::Cipher()                  ; 构造 14 层链
+call Cipher::GetTotalKeyLength()
+call SelectKeyString(int*, int*)       ; ← 选密钥串
+call realloc(...)
+```
+
+体内还有一处 **2048 字节的缓冲清零**（`rep stosd` 0x200 个 dword）。
+引用到的串：`'void InitCipherKeyString()'`、`'[!] Init CipherKeyString TotalTime : %ds'`
+—— **有计时**，说明这步不便宜。
+
+`SelectKeyString(int*, int*)` @ `0x082a002a`（560 B）**反复**做：
+
+```asm
+call get_rand_int(int)                          ; 随机数
+call std::map<int, std::string>::begin()/end()  ; 遍历 map<int,string>
+（多轮重复）
+```
+
+⇒ **密钥 = 从一个 `std::map<int, std::string>` 里按随机数挑出来的若干串拼成。**
+
+`get_rand_int(int)` @ `0x086b1b87` 是**标准 `rand()` 的 LCG**：
+
+```asm
+imul eax, eax, 0x41c64e6d      ; × 1103515245
+add  eax, 0x3039               ; + 12345
+```
+
+（`1103515245 / 12345` 是 glibc/MSVC `rand()` 的经典常数。）
+
+## 七、⚠️ 修正：`_NS_PI_2ND_RecvHash_CS` **不是**密钥派生
+
+我在 §一 里把 `_NS_PI_2ND_RecvHash_CS(char*, CUser*, unsigned int)` @ `0x08274f73`
+标成了"密钥派生（按 CUser）"—— **那是错的**，依据只是"它在 `Cipher::Decrypt` 前面被调用"，
+**属于凭位置+名字猜**，不是读出来的。反汇编它的实际内容：
+
+```asm
+call _NS_PI_2ND_GetPacketIndex(char*)
+call CUser::GetCSHashSet()                     ; set<pair<u8,u16>>
+call std::set<pair<u8,u16>>::find(...)
+call PIReceiverManager::CheckHashReceived(u8*, u32, u32, bool)
+call _NS_PI_2ND_GetHackType(...)
+call WongWork::CHackAnalyzer::addServerHackCnt(CUser*, ENUM_HACKTYPE, u32, u32, u32)
+call CUser::lock() / unlock()
+```
+
+⇒ 它是**封包完整性校验 / 反外挂**路径（`PI` = Packet Integrity），
+**与密钥无关**。**载入 `set` 去重 + 记外挂计数**是它的作用。
+
+**教训**：调用顺序相邻 ≠ 功能相关。这条已经是我这一轮第二次因为"凭名字/位置推断"
+而写错了（第一次是把 `[7..9]` 凭日志名定性成校验和）。
+
+## 八、**必须钉死的未决问题**：客户端怎么拿到同一把密钥？
+
+现状：密钥在**服务端进程启动时**由 `rand()` 从 map 里选出，且 `InitCipherKeyString`
+开头取了 `CSystemTime::getCurSec()`。若种子是启动时刻，**长跑的服务端与客户端不可能撞上**。
+
+**线索**：7001（频道面）握手下发的"会话密钥"其实是个**时间戳字符串** ——
+VM 那两条 7001 S 流里 `id=12` 正文 `[4:20)` = `32303236313030353132323833300000`
+= `"20261005122830\0\0"`。**两件事可能有关联**：
+服务端把时间戳给客户端 → 客户端用它播 `rand()` → 选出同一把密钥。
+
+**这条不解决，M1 的"自己构造登录"就走不通**（能重放抓包，但换账号不行）。
+验法（按代价排序）：
+1. `[静态]` 读 `SelectKeyString` 的完整循环 + 找 `srand` 的调用点与其参数；
+2. `[静态]` 找 `map<int,string>` 在哪被填充（那个 map 的内容本身就是密钥素材）；
+3. `[回放]` 若能拿到客户端，看它是否用 7001 的时间戳播种。
+
+## 九、还没做完的（下一步，仍是纯静态）
+
 
 | # | 待办 | 入口 |
 |---|---|---|
