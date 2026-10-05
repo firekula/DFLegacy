@@ -46,9 +46,19 @@ import sys
 from pathlib import Path
 
 PATTERNS = [
-    re.compile(r"(?:^|::)(?:DisPatcher|Dispatcher|DIspatcher)_([A-Za-z0-9_]+?)(?:::|\()"),
+    re.compile(r"(?:^|::)(?:DisPatcher|Dispatcher|DIspatcher|Dispatcer|Dispather|Dispatchr)_"
+               r"([A-Za-z0-9_]+?)(?:::|\()"),
     re.compile(r"ARAD::Arad_Dispatcher_([A-Za-z0-9_]+?)_Impl(?:::|\()"),
+    # 兜底（Task 4 实测发现，本任务首版漏了这 3 个家族：见 out/opcode-map-residual.txt）：
+    #   DispatcherResetRandomOption        （前缀后无下划线）  -> ResetRandomOption
+    #   Dispatcer_polic_one_to_one_chat_disable（Dispatcer，少个 h）-> polic_one_to_one_chat_disable
+    #   Dispather_RegenerationRandomOption （Dispather，字母换位）  -> RegenerationRandomOption
+    # 前两个由 PATTERNS[0] 的拼写扩展覆盖；第三条（无下划线）只能靠本兜底。
+    re.compile(r"(?:^|::)(?:Dispatcher|DisPatcher|DIspatcher|Dispatcer|Dispather)"
+               r"([A-Z][A-Za-z0-9_]*)(?:::|\()"),
 ]
+FALLBACK = PATTERNS[2]
+FAMILY_PATTERNS = PATTERNS[:2]     # 正常图案（family_of 先用它们）
 ARAD = PATTERNS[1]
 
 # 派发器入口签名（实测：全目录的派发器入口都用这两个；见 docstring 差异 A2）
@@ -78,11 +88,15 @@ def rows(p):
 
 
 def family_of(name):
-    for rx in PATTERNS:
+    """返回 (family, is_arad, via_fallback)。via_fallback 的条目要在表头单列。"""
+    for rx in FAMILY_PATTERNS:
         m = rx.search(name)
         if m:
-            return m.group(1), rx is ARAD
-    return None, False
+            return m.group(1), rx is ARAD, False
+    m = FALLBACK.search(name)
+    if m:
+        return m.group(1), False, True
+    return None, False, False
 
 
 def member_of(name, typ):
@@ -116,14 +130,16 @@ def main(src, dst):
     by_file = {}
     diag = {"nonfunc_dropped": [], "trailing_dropped": [], "unmatched": []}
     for addr, size, typ, name, cur_file in rows(src):
-        fam, is_arad = family_of(name)
+        fam, is_arad, via_fb = family_of(name)
         if fam is None:
             if HINT.search(name):
                 diag["unmatched"].append(name)
             continue
         rec = fams.setdefault(fam, {"process": None, "dispatch_sig": None, "ncand": {},
-                                    "spellings": set(), "arad_only": True})
+                                    "spellings": set(), "arad_only": True, "via_fallback": False})
         rec["spellings"].add(name.split("(")[0])
+        if via_fb:
+            rec["via_fallback"] = True
         by_file[cur_file] = by_file.get(cur_file, 0) + 1
         if not is_arad:
             rec["arad_only"] = False
@@ -184,6 +200,11 @@ def main(src, dst):
         "global constructors 包装与 Arad_Dispatcher_Manager 本身）: %d" % len(diag["unmatched"]),
         "# 被丢弃的非 FUNC 候选（__PRETTY_FUNCTION__ 字符串对象陷阱）: %d"
         % len(diag["nonfunc_dropped"]),
+        "# 靠兜底 pattern（无下划线变体）才认出的家族: "
+        + (", ".join(sorted(f for f, r in fams.items() if r["via_fallback"])) or "(无)"),
+        "# 首版（commit 819287f）只有 422 个家族，漏了拼写变体 DispatcherResetRandomOption /"
+        " Dispatcer_polic_one_to_one_chat_disable / Dispather_RegenerationRandomOption ——"
+        " 由 Task 4 的注册表解析发现，本版修正为 %d 个。" % len(fams),
     ]
     lines = lines[:4] + stat + lines[4:]
     Path(dst).write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -191,6 +212,8 @@ def main(src, dst):
     print(f"{len(fams)} families, {n_sig} with dispatch_sig, {n_proc} with process -> {dst}")
     print(f"neither process nor dispatch_sig: {len(neither)} -> {sorted(neither)}")
     print(f"arad-only families: {len(arad_only)} -> {sorted(arad_only)}")
+    print(f"fallback-pattern families: "
+          f"{sorted(f for f, r in fams.items() if r['via_fallback'])}")
     print(f"[diag] families with multiple candidates: {len(multi)} -> {multi}")
     print(f"[diag] non-FUNC candidates dropped (the __PRETTY_FUNCTION__/OBJECT trap): "
           f"{len(diag['nonfunc_dropped'])}")

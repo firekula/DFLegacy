@@ -2,15 +2,17 @@
 # 格式: family<TAB>process=0xADDR( SIZE)<TAB>dispatch_sig=0xADDR( SIZE)<TAB>spell=<原始拼写 | ...>
 # 拼写族: DisPatcher_ / Dispatcher_ / DIspatcher_ / ARAD::Arad_Dispatcher_X_Impl
 # process/dispatch_sig 只取 type==FUNC 且参数表后无尾随垃圾者；同候选取派发器签名优先，其次 size 大（docstring 差异 A/A2）
-# 家族数 422；dispatch_sig 241；process 421；两者皆无 1；仅由 Arad 拼写贡献 1
+# 家族数 425；dispatch_sig 242；process 424；两者皆无 1；仅由 Arad 拼写贡献 1
 # 两者皆无的家族（失败形状 ③：无地址的条目不是证据）: BuyItemCheck
 # 仅由 Arad 拼写贡献的家族（本次与同名 DisPatcher_ 家族归并，按计划约定）: BuyItemCheck
 # 有多个 process/dispatch_sig 候选的家族（选取规则见 docstring A2）: BuyItem:{'process': 2, 'dispatch_sig': 1}, SecurityCardAuthCancel:{'dispatch_sig': 1, 'process': 2}, StartGame:{'process': 2}, UseCreatureEvolutionItem:{'process': 2, 'dispatch_sig': 1}
-# file= 列为何缺席（实测证伪，见 docstring）：dispatcher 行 4184 条，按 STT_FILE 顺序归属后
-#   最多的一条窗口是 XorRand.cpp（3668 条，87.7%）—— 该区域没有 FILE 标记，是 catch-all 窗口而不是
-#   编译单元边界；次多 PacketDispatcher_Impl_1.cpp(461)。=> 家族→.cpp 的映射从本 dump 不可得，Task 7 判据 3 按此记录。
+# file= 列为何缺席（实测证伪，见 docstring）：dispatcher 行 4212 条，按 STT_FILE 顺序归属后
+#   最多的一条窗口是 XorRand.cpp（3692 条，87.7%）—— 该区域没有 FILE 标记，是 catch-all 窗口而不是
+#   编译单元边界；次多 PacketDispatcher_Impl_1.cpp(465)。=> 家族→.cpp 的映射从本 dump 不可得，Task 7 判据 3 按此记录。
 # 未匹配但含 dispatcher 字样的行（防静默漏家族；多为 vtable/typeinfo/guard variable/global constructors 包装与 Arad_Dispatcher_Manager 本身）: 1067
-# 被丢弃的非 FUNC 候选（__PRETTY_FUNCTION__ 字符串对象陷阱）: 318
+# 被丢弃的非 FUNC 候选（__PRETTY_FUNCTION__ 字符串对象陷阱）: 319
+# 靠兜底 pattern（无下划线变体）才认出的家族: ResetRandomOption
+# 首版（commit 819287f）只有 422 个家族，漏了拼写变体 DispatcherResetRandomOption / Dispatcer_polic_one_to_one_chat_disable / Dispather_RegenerationRandomOption —— 由 Task 4 的注册表解析发现，本版修正为 425 个。
 AbnormalUseStackable	process=0x082649ae(  129)	dispatch_sig=0x00000000(    0)	spell=Dispatcher_AbnormalUseStackable::Dispatcher_AbnormalUseStackable | Dispatcher_AbnormalUseStackable::check_error
 AchievementTrigger	process=0x081d7f1e(  141)	dispatch_sig=0x00000000(    0)	spell=Dispatcher_AchievementTrigger::Dispatcher_AchievementTrigger | Dispatcher_AchievementTrigger::process
 AddFriend	process=0x081cb2e2(   40)	dispatch_sig=0x00000000(    0)	spell=DisPatcher_AddFriend::DisPatcher_AddFriend | DisPatcher_AddFriend::check_error
@@ -278,6 +280,7 @@ Redeem	process=0x0823421c(   10)	dispatch_sig=0x08226250(   81)	spell=Dispatcher
 RedeemList	process=0x08234208(   10)	dispatch_sig=0x0822621c(   52)	spell=Dispatcher_RedeemList::Dispatcher_RedeemList | Dispatcher_RedeemList::dispatch_sig
 RefreshGuildInfo	process=0x081d4886(  154)	dispatch_sig=0x00000000(    0)	spell=Dispatcher_RefreshGuildInfo::Dispatcher_RefreshGuildInfo | Dispatcher_RefreshGuildInfo::process
 RefundSkill	process=0x081da820( 1275)	dispatch_sig=0x00000000(    0)	spell=Dispatcher_RefundSkill::Dispatcher_RefundSkill | Dispatcher_RefundSkill::check_error
+RegenerationRandomOption	process=0x081d6af4( 1923)	dispatch_sig=0x00000000(    0)	spell=Dispather_RegenerationRandomOption::Dispather_RegenerationRandomOption | Dispather_RegenerationRandomOption::check_state
 RegisterToBlackList	process=0x081cdc9a(  412)	dispatch_sig=0x00000000(    0)	spell=Dispatcher_RegisterToBlackList::Dispatcher_RegisterToBlackList | Dispatcher_RegisterToBlackList::check_error
 Register_Quick_Party	process=0x081de012(  179)	dispatch_sig=0x00000000(    0)	spell=Dispatcher_Register_Quick_Party::Dispatcher_Register_Quick_Party | Dispatcher_Register_Quick_Party::check_error
 RemoveFriend	process=0x081cb618(  287)	dispatch_sig=0x00000000(    0)	spell=DisPatcher_RemoveFriend::DisPatcher_RemoveFriend | DisPatcher_RemoveFriend::check_error
@@ -317,6 +320,7 @@ Request_PvpExpOfWeek	process=0x082334fe(   10)	dispatch_sig=0x081fecaa(  161)	sp
 Request_Seria_Buff	process=0x081dbda0(  103)	dispatch_sig=0x00000000(    0)	spell=Dispatcher_Request_Seria_Buff::Dispatcher_Request_Seria_Buff | Dispatcher_Request_Seria_Buff::check_error
 ResPeer	process=0x08232eac(   10)	dispatch_sig=0x081f088e( 9341)	spell=DisPatcher_ResPeer::DisPatcher_ResPeer | DisPatcher_ResPeer::dispatch_sig
 ResPvpRank	process=0x08232e98(   10)	dispatch_sig=0x081f0282(  283)	spell=DisPatcher_ResPvpRank::DisPatcher_ResPvpRank | DisPatcher_ResPvpRank::ExtractPacket
+ResetRandomOption	process=0x081dd2be( 1323)	dispatch_sig=0x00000000(    0)	spell=DispatcherResetRandomOption::DispatcherResetRandomOption | DispatcherResetRandomOption::process
 ResetStar	process=0x081424de(   10)	dispatch_sig=0x08140f6e(  238)	spell=advancealtar::Dispatcher_ResetStar::Dispatcher_ResetStar | advancealtar::Dispatcher_ResetStar::check_error
 ResponseAddPvPBuddy	process=0x082340f0(   10)	dispatch_sig=0x08224ab4(  426)	spell=Dispatcher_ResponseAddPvPBuddy::Dispatcher_ResponseAddPvPBuddy | Dispatcher_ResponseAddPvPBuddy::dispatch_sig
 ResponseCreature	process=0x0823371a(   10)	dispatch_sig=0x082037fa(  125)	spell=Dispatcher_ResponseCreature::Dispatcher_ResponseCreature | Dispatcher_ResponseCreature::dispatch_sig
@@ -432,4 +436,5 @@ WarRoomWpPerMonster	process=0x081d5ca8(  330)	dispatch_sig=0x00000000(    0)	spe
 WithdrawMoney	process=0x082341f4(   10)	dispatch_sig=0x082250ec(  263)	spell=Dispatcher_WithdrawMoney::Dispatcher_WithdrawMoney | Dispatcher_WithdrawMoney::dispatch_sig
 WriteGuildMemberMemo	process=0x08233eac(   10)	dispatch_sig=0x0821e748(  746)	spell=Dispatcher_WriteGuildMemberMemo::Dispatcher_WriteGuildMemberMemo | Dispatcher_WriteGuildMemberMemo::dispatch_sig
 Write_On_The_GuildBoard	process=0x081d31ee(  306)	dispatch_sig=0x00000000(    0)	spell=Dispatcher_Write_On_The_GuildBoard::Dispatcher_Write_On_The_GuildBoard | Dispatcher_Write_On_The_GuildBoard::process
+polic_one_to_one_chat_disable	process=0x082342a8(   10)	dispatch_sig=0x082272ce(  224)	spell=Dispatcer_polic_one_to_one_chat_disable::Dispatcer_polic_one_to_one_chat_disable | Dispatcer_polic_one_to_one_chat_disable::dispatch_sig
 police_queryCharacName_useMid	process=0x082342bc(   10)	dispatch_sig=0x082273ae(  494)	spell=Dispatcher_police_queryCharacName_useMid::Dispatcher_police_queryCharacName_useMid | Dispatcher_police_queryCharacName_useMid::dispatch_sig
