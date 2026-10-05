@@ -53,8 +53,12 @@ case "${1:-status}" in
     ;;
   status)
     if [ -f "$PIDF" ] && kill -0 "$(cat $PIDF)" 2>/dev/null; then
-      echo "正在抓包 pid=$(cat $PIDF)  大小=$(wc -c < "$PCAP" 2>/dev/null) B"
-      echo "过滤器: $FILTER"
+      PID=$(cat $PIDF)
+      echo "正在抓包 pid=$PID  大小=$(wc -c < "$PCAP" 2>/dev/null) B"
+      # ⚠️ 过滤器要**从真实进程**读，不能重算 —— 启动时可用 $PORTS 覆盖，
+      #    status 时若没设 $PORTS 就会打印默认值，造成"过滤器不对"的假象（踩过）。
+      REAL=$(ps -eo args 2>/dev/null | grep "^/usr/sbin/tcpdump .* -w $PCAP" | head -1)
+      echo "实际过滤器: ${REAL#*$PCAP }"
       echo "包数: $(/usr/sbin/tcpdump -r "$PCAP" 2>/dev/null | wc -l)"
     else
       echo "未在抓包"
