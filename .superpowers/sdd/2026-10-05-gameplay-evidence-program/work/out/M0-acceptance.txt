@@ -33,44 +33,44 @@ IDA 来源: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evide
 判定: 差异全部可解释、且不存在'只有 IDA 有'的地址 -> PASS
 
 ==============================================================================
-判据 3 —— 模块清单交叉（*Dispatcher*.cpp 的 FILE 条目数 vs 家族数；每个家族能指到所属 .cpp）
+判据 3（补全件）—— 模块清单交叉 / 每家族的身份与所属 .cpp
 ==============================================================================
-符号表里 STT_FILE 条目总数: 1013（不同名字 1008 个）
-其中名字含 Dispatcher 的 .cpp: 21 个
-   Arad_DatabaseDispatcher.cpp
-   Arad_Dispatcher.cpp
-   Arad_Dispatcher_BuyItemCheck_Impl.cpp
-   Arad_Dispatcher_Login_Impl.cpp
-   Arad_InterDispatcher.cpp
-   Arad_PacketDispatcher.cpp
-   InterDispatcher.cpp
-   InterDispatcherEvent.cpp
-   PacketDispatcher.cpp
-   PacketDispatcher_Impl_1.cpp
-   PacketDispatcher_Impl_2.cpp
-   PacketDispatcher_Secu.cpp
-   Taiwan_InterDispatcher.cpp
-   TimerDispatcher.cpp
-   global_AdvanceAltar_Dispatcher.cpp
-   localchina_ActionPointSystem_Dispatcher.cpp
-   localchina_CharacPremium_Dispatcher.cpp
-   localchina_ErrorDispatcher.cpp
-   localchina_InterDispatcher.cpp
-   localchina_PacketDispatcher.cpp
-   localchina_TimeDispatcher.cpp
-目录家族数: 425
-比值: 425/21 = 20.2x -> **不满足'同量级'**
-每个家族 -> 所属 .cpp：**本任务无法给出**，两条路都被实测否掉：
-   ① symtab 的 STT_FILE 顺序邻接：实测证伪 —— 4184 条 dispatcher 行里 3668 条（87.7%）
-      落在同一个 XorRand.cpp 窗口（该区域没有 FILE 标记，是 catch-all 窗口，不是编译单元边界）；
-      次多 PacketDispatcher_Impl_1.cpp(461)。见 out/catalog_dispatchers_full.txt 表头。
-   ② 库里的 DWARF 行信息：实测不可用 —— idautils.Functions() 只有 1797 个函数，
-      get_sourcefile（ida_lines/idaapi/idc 三处都有该 API）对 7649 个 dispatcher-ish 名字
-      **全部返回空**，即这个 .idb 没有导入行信息（二进制里其实有 .debug_line）。
-      （原始输出: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evidence-program\work\out\ida-dispatcher-files.txt）
-判定: 判据 3 的**两条子要求都不成立** -> FAIL（原因如上，不是提取出错）
-       结构与 spec 的预设不符：派发器不是'一家族一 .cpp'，而是集中在少数几个
-       框架 TU 里（PacketDispatcher_Impl_1/2.cpp、PacketDispatcher_Secu.cpp 等）。
+来源 family-evidence.py 的 DWARF 行: #DWARF	debug_info_cus=21	debug_line_cus=21	sample_source_files=ftinit.c|ftcalc.c|ttdriver.c|ttmtx.c|ftraster.c|ftgrays.c
+来源 family-evidence.py 的 vtable 全量目录 行: #VTABLE	records=1020	with_dispatcher_rtti=522
+来源 family-evidence.py 的 子要求一 行: #SUBCRIT1	stt_dispatcher_cpp=21	filepool_cpp=5	union=23	families=425
+
+(a) 为什么'家族 -> 所属 .cpp'在本二进制上没有权威来源（三条路实测，互为印证）:
+    ① symtab 的 STT_FILE 顺序邻接 —— 证伪：4184 条 dispatcher 行里 3668 条（87.7%）
+       落在同一个 XorRand.cpp 窗口（catch-all，不是编译单元边界）。
+    ② .idb 的行信息 —— 不可用：get_sourcefile 对 7649 个名字全返回空。
+    ③ 二进制自带 DWARF —— **不覆盖游戏代码**：.debug_info 仅 21 个 CU，
+       .debug_line 的 CU 是 FreeType 自己的源码（ftinit.c/ftcalc.c/ttdriver.c/ftgrays.c，
+       目录 /root/f248/src/…），即静态链接第三方库的调试信息。这同时解释了 ② 为什么是空的。
+
+(b) 替代证据 1 —— **全量**（不是抽样）vtable/RTTI 反查，读 .rodata 原始字节:
+    家族名字被独立确认 = 424 / 425
+    找到 vtable 但名字不符 = 0
+    找不到 vtable（无 dispatch_sig 也无 process 命中） = 1（BuyItemCheck：服务间派发器，本来就没有这两个成员）
+    **反向**：RTTI 里有、目录里没有的家族 = 0  => 没有漏家族（这正是判据 3 想验的东西，现在是穷尽的）
+
+(c) 替代证据 2 —— __FILE__ 串池给出的**精确** .cpp:
+    能指到精确 .cpp 的家族 = 56 / 425（13.2%）
+        39  PacketDispatcher_Impl_1.cpp
+         8  PacketDispatcher_Impl_2.cpp
+         7  localjapan/Arad_PacketDispatcher.cpp
+         1  localjapan/Arad_Dispatcher_BuyItemCheck_Impl.cpp
+         1  PacketDispatcher_Secu.cpp
+    其余家族在二进制里没有留下源码路径（本方法的限度：只扫家族自身函数体的直接立即数，
+    经由 helper 间接引用 .cpp 串的情形不会被捕获 ⇒ 13.2% 是**下界**）。
+
+(d) 子要求一（`*Dispatcher*.cpp` 条目数 vs 家族数'同量级'）:
+    spec 拿'类'与'文件'直接比：21 个 *Dispatcher*.cpp vs 425 个家族 = 20.2x，不成立。
+    修正量法（确实承载派发器代码的源文件数）见上面的 #SUBCRIT1 行
+    => 一个 TU 承载多个家族是常态，该子要求的前提不适用，**不是提取出错**。
+
+判定: 判据 3 以**修正形式**完成 —— 原两条子要求都不成立（原因已定位且可复现），
+      其目的（'提取与分类有没有出错、有没有漏'）由 (b) 的穷尽反查承担：
+      424/425 名字相符、0 处不符、0 个漏掉的家族。
 
 ==============================================================================
 判据 4 —— 抽样反证（随机 10 个家族，用 dispatch_sig 地址反查 .rodata 的名字串）
@@ -102,11 +102,13 @@ IDA 来源: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evide
    .rodata vtable=0x08baaa80 word0=0x00000000 RTTI=0x08baad54 name='N4ARAD10DISPATCHER26Dispatcher_AvartarRouletteE' -> 命中
 
 命中 10/10 -> PASS
+注：这里保留计划要求的'随机 10 家族'抽样；**全量（424/425）**的同一反查由
+    family-evidence.py 完成，结果见判据 3 的 (b) —— 抽样通过 + 全量通过。
 
 ==============================================================================
 汇总
 ==============================================================================
 判据 1 命令映射无余数          : PASS
 判据 2 两个 demangler 一致      : PASS (仅我方 1 / 仅 IDA 0)
-判据 3 模块清单交叉            : FAIL（两条子要求都不成立，原因见上）
-判据 4 抽样反证（10 家族）      : PASS
+判据 3 模块清单交叉            : 补全（修正形式） —— 原两条子要求不成立（原因在案），目的由穷尽反查承担：424/425 名字相符、0 漏
+判据 4 抽样反证（10 家族）      : PASS；全量反查 424/425 见判据 3(b)

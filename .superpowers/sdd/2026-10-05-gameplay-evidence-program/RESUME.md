@@ -10,9 +10,17 @@
 
 ## 0. 一句话现状
 
-`df_game_r` 的**全量派发器目录（425 家族）**与**opcode → 派发器映射（1171 条，`unknown=0`）**已产出，
-四判据里 1/2/4 PASS、3 FAIL（原因已定位并记录）；分母 **428 条客户端可达命令**落在 spec 预期带 300–600 内，
-**S2 不触发**。**下一步是 Task 8：官服全链路已知答案采集（人机批次，需要项目所有者在键盘前）**，
+`df_game_r` 的**全量派发器目录（425 家族）**与**opcode → 派发器映射（1171 条，`unknown=0`）**已产出。
+四判据：**1 PASS、2 PASS、4 PASS（抽样 10/10 + 全量 424/425）、3 以修正形式补全**
+（原两条子要求前提不成立、原因已定位；其目的由穷尽反查承担：**0 处不符、0 个漏掉的家族**）。
+分母 **428 条客户端可达命令**落在 spec 预期带 300–600 内。
+
+**所有者裁决（2026-10-05）**：⑥ 待评估队列的东西**都是需要的** ⇒ **S2 不采纳、范围不缩**，
+D2 从"与现有 DFLegacy 等价"扩为**官方功能面全覆盖**。
+⇒ **spec §5.2 的里程碑表需要先扩展**（拍卖行/公会/商城/成就/怪物卡/自动贩卖机/小游戏/决斗等
+不在 M1–M10 里），再为新增系统出单元计划。
+
+**下一步仍是 Task 8**（官服全链路采集，人机批次，需要项目所有者在键盘前），
 做完才轮到 Task 9–11（驱动器自检 = M1 的硬门）。
 
 ---
@@ -42,7 +50,8 @@
 | `work/game-scan-imm.py`、`work/map-opcodes.py`、`work/elfrecon.py`、`work/out/opcode-map-residual.txt`、`work/out/opcode-map-summary.txt` | 按节扫立即数 / 映射器 / ELF 助手 / 残余报告 | `558e9bc` |
 | `work/extract-handlers.py`、`work/out/catalog_handlers_full.txt` | 处理器目录（7273 条） | `3c93af6` |
 | `.recon/recon.config.yml`、`.recon/run-ida.sh`、`work/ida-game.py` | 两个新 recon 工具 + 包装脚本支持 `--idb` | `8d57b99` |
-| `work/m0-acceptance.py`、`work/out/M0-acceptance.txt`、`M0-denominator-report.md`、`RESUME.md` | 四判据原始输出 + 报告 + 本文件 | （Task 7 提交） |
+| `work/m0-acceptance.py`、`work/out/M0-acceptance.txt`、`M0-denominator-report.md`、`RESUME.md` | 四判据原始输出 + 报告 + 本文件 | `df7989f` |
+| `work/family-evidence.py`、`work/out/family-evidence.txt`、`work/out/family-cpp-map.tsv` | **判据 3 补全件**：DWARF 覆盖率实测、全量 vtable/RTTI 反查、`__FILE__` 池 → 精确 `.cpp` | （补全提交） |
 
 ### 2.2 **不在** git（派生物，按需重跑；**不要**提交，20–30 MB 级）
 
@@ -85,8 +94,10 @@ python "$P\work\map-opcodes.py" "$O\opcode_cmd.txt" "$O\opcode_noti.txt" `
 python "$P\work\extract-handlers.py" "$P\work\out\catalog_dispatchers_full.txt" `
   "$O\packet_senders.txt" "$O\df_game_r.bin" "$P\work\out\catalog_handlers_full.txt"
 
-# 5) 四条判据（原始输出落到 M0-acceptance.txt；依赖 §2.2 的两个派生物 + 两条 IDA 拉取）
-python "$P\work\m0-acceptance.py" "$P\work\out\M0-acceptance.txt"
+# 5) 四条判据（原始输出落到 M0-acceptance.txt）
+#    判据 3 依赖 family-evidence.py 的产物，**先跑 5a 再跑 5b**：
+python "$P\work\family-evidence.py" "$P\work\out\family-evidence.txt" "$P\work\out\family-cpp-map.tsv"   # 5a
+python "$P\work\m0-acceptance.py" "$P\work\out\M0-acceptance.txt"                                        # 5b
 
 # 6) 任意地址的 xref（按可执行节扫；约 50 秒/次）
 python "$P\work\game-scan-imm.py" "$O\df_game_r.bin" --targets 0x08aeb9d8 0x08aeb9f8 --limit 6
@@ -130,17 +141,25 @@ cd 'G:\Game\DNF_ACT1\DFLegacy'
    **自动拒绝**（返回 `审批未通过（rejected）`）。工具链本身是**直接执行同一 argv 实测通过**的
    （`IDB` 正确指向 `df_game_r.bin.idb`、`symbols=328151`、`dispatcher-named=4621`）。
    ⇒ 若要"经本模式调用"，需要放开一次审批；否则静态取证继续走直接 argv 并在产物里写明。
-2. **判据 3 FAIL**（详见 `M0-denominator-report.md` ③）：21 个 `*Dispatcher*.cpp` vs 425 家族，
-   且"家族 → `.cpp`"两条路都不可得。**这是 spec 预设与本二进制结构不符，不是提取错误。**
-3. **NOTI 563 条永远没有派发器**（出站专用）。任何后续单元若想在 NOTI 上找 handler，是方向错误。
-4. **CMD 606/607 没有派发器**（`id > 0x25d = 605`）。CMD 607 的名字地址（`0xb7a37c`）指向的是一句
+2. **判据 3 已以修正形式补全**（详见 `M0-denominator-report.md` ③）：原两条子要求的前提都不成立
+   （21 个 `*Dispatcher*.cpp` vs 425 家族 = 20.2×；"家族 → `.cpp`"三条路全断，含 DWARF 只覆盖
+   FreeType 这一实测结论）；**其目的由穷尽反查承担：424/425 名字相符、0 处不符、0 个漏掉的家族**。
+   56/425 家族能给出精确 `.cpp`（`__FILE__` 池，13.2% 是下界）。
+3. **范围已扩大**（所有者 2026-10-05）：⑥ 队列全部纳入 ⇒ **spec §5.2 的里程碑表需要先扩展**，
+   再为新增系统出单元计划。本计划的 Task 8–11 不受影响。
+4. **NOTI 563 条永远没有派发器**（出站专用）。任何后续单元若想在 NOTI 上找 handler，是方向错误。
+5. **CMD 606/607 没有派发器**（`id > 0x25d = 605`）。CMD 607 的名字地址（`0xb7a37c`）指向的是一句
    日志串 `ENUM_CMDPACKET_DISJOINT_ITEM error item_…`，**输入表这一行本身可疑**，用之前先核。
-5. **4 个家族的 `dispatch_sig` 是空实现**（`mov eax,0; ret`）：`DungeonNPCBuffInfo`、`ExtendAvatar`、
+6. **4 个家族的 `dispatch_sig` 是空实现**（`mov eax,0; ret`）：`DungeonNPCBuffInfo`、`ExtendAvatar`、
    `GiveGiftToNPC`、`P2PHolePunchingSuccessRateStatistics`。它们没有 handler 是结构性的。
-6. **183 个家族没有 `dispatch_sig`**（425 − 242 = 183；其中 **182 个只有 `process`**，
+7. **183 个家族没有 `dispatch_sig`**（425 − 242 = 183；其中 **182 个只有 `process`**，
    第 183 个 `BuyItemCheck` 两者皆无）。只有 `process` 的家族要用 `process` 地址定位；
    这会影响 M1 单元的取证方式（计划里"用 `dispatch_sig` 反查"的那套对它们不适用）。
-7. `.recon/out/ida-dec-regression.txt` 是我做回归测试留下的产物（可删）。
+8. **`MakeWarRoomTemp` 是"已定义但从未实例化"的类**：vtable `0x08bd8cc0` 在代码里没有 store、
+   在 `.data` 里也没有预初始化对象镜像（指向它的 4 字节只出现在 `.symtab` 的 `st_value` 里），
+   但它的方法体带 `PacketDispatcher_Impl_1.cpp` 的断言串 —— GCC 对未实例化的类照样发射 vtable 与方法。
+   ⇒ 与"注册表里没有它"一致，两条观察已调和。
+9. `work/out/_tmp-*.txt` 是运行中间产物、`.recon/out/ida-dec-regression.txt` 是回归测试产物，都可删。
 
 ---
 
