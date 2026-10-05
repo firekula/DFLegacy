@@ -1,6 +1,21 @@
 ==========================================================================
 token.py 离线自检（Task 10）
 ==========================================================================
+来源与证据类别（每条结论都挂着它）：
+  [静态] 密钥：私钥 PEM 的模数 == 公钥 PEM 的模数（下面第 1 行结果即此判据）
+  [抓包] 三条真实令牌：来源链 =
+           $W\captures\e2e-login.pcap
+           -> pcap-streams.py 切出 streams5505\*.bin
+           -> body base64 -> nonce12|ct|tag16 AES-256-GCM
+              （密钥 GATE_AES_KEY，出自容器 14 个进程的 /proc/<pid>/environ）
+           -> 明文 `0|<base64>` -> 公钥模幂 -> 46 B 被签内容
+         重算命令：work\extract-gate-tokens.py（本自检的 §6 会自动调用它）
+         注意：**本模块不硬编码任何令牌**，所以'同形'不是与常量比出来的
+  [回放] §5 的 OpenSSL 校验：另一份独立实现（Git Bash 里 3.5.8）用公钥复算
+  [推断] 那 46 B 里**除 uid 外的 42 字节**（01×32 + 55 91 45 10 01 04 03 03 01 01）
+         语义**仍未解**（像版本/标志位）。本模块只保证与抓到的令牌逐字节可比，
+         **不**声称知道它们是什么意思 —— 别在后续单元里把它们当已知语义用。
+
 私钥        : .superpowers\sdd\2026-10-05-official-login-channel\work\container-privatekey.pem
 公钥        : .superpowers\sdd\2026-10-05-official-login-channel\work\container-game-publickey.pem
 模数 n      : 0xbba4ee404d6d7e2d6d9393046e73d64e…
