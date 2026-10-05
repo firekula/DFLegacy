@@ -205,6 +205,27 @@ cd 'G:\Game\DNF_ACT1\DFLegacy'
    ⇒ 处置：请所有者用启动器登录一次、在 VM 上 `tcpdump` 抓活账号的完整登录、
      再**原样重放**其 C→S 首帧 ⇒ `CMD 1` 长度 **95（成功）**，前 8 帧与抓包逐帧一致。
    判定脚本：`work/verify-vm-success.py`；结果：`work/out/vm-success-verification.txt`（PASS）。
+
+**复现命令**（不需要再打靶，全部读已落盘的字节）：
+
+```powershell
+$B = ".superpowers/sdd/2026-10-05-gameplay-evidence-program"
+python "$B\work\verify-vm-success.py" `
+  "$B\work\captures\streams-live\2343-10013.bin" `
+  "$B\work\captures\streams-live\10013-2343.bin" `
+  "$B\work\out\live-replay-alone.bin" `
+  "$B\work\out\vm-success-verification.txt"      # 预期末行: VERDICT: PASS
+
+# 重新打靶（需要 VM 在跑、且**没有**同账号客户端在线，否则会被 DisConnSig(12) 踢）：
+python "$B\work\driver\replay-30011-live.py" "$B\work\captures\streams-live\2343-10013.bin" `
+  --host 192.168.200.131 --port 10013 --first-frame-bytes 413 `
+  --out-raw "$B\work\out\live-replay-alone.bin"
+
+# 从 pcap 重切单向流（原始抓包在 git 里）：
+python ".superpowers\sdd\2026-10-05-official-login-channel\work\pcap-streams.py" `
+  "$B\work\captures\vm-live-login-10013.pcap" "$B\work\captures\streams-live" --filter-port 10013
+```
+
 3. **判据 3（令牌替换）在本工程的两个靶子上都"未验证"**：游戏面首帧的 403 B 载荷**整体不透明**
    （可打印率 38% / 34.7%，**没有任何** 256 B 窗口的公钥模幂落在 type-1 上，随机基线期望 0.0023 个），
    也**没有** `00 00 00 xx` 这样的 uid 大端模式 ⇒ 首帧里的令牌要么已被会话密钥加密，
