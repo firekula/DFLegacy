@@ -1,0 +1,238 @@
+0x081731f2  push    ebp
+0x081731f3  mov     ebp, esp
+0x081731f5  push    edi
+0x081731f6  push    esi
+0x081731f7  push    ebx
+0x081731f8  sub     esp, 0x8c
+0x081731fe  cmp     dword ptr [ebp + 8], 0
+0x08173202  jne     0x8173244
+0x08173204  mov     dword ptr [esp + 0xc], 5
+0x0817320c  mov     dword ptr [esp + 8], 0x7a
+0x08173214  mov     dword ptr [esp + 4], 0x8b845b0
+0x0817321c  lea     eax, [ebp - 0x48]
+0x0817321f  mov     dword ptr [esp], eax
+0x08173222  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x08173227  mov     dword ptr [esp + 4], 0x8b83f21
+0x0817322f  lea     eax, [ebp - 0x48]
+0x08173232  mov     dword ptr [esp], eax
+0x08173235  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x0817323a  mov     ebx, 0x7b
+0x0817323f  jmp     0x8173562
+0x08173244  mov     eax, dword ptr [ebp + 8]
+0x08173247  mov     dword ptr [ebp - 0x20], eax
+0x0817324a  lea     eax, [ebp - 0x54]
+0x0817324d  mov     dword ptr [esp], eax
+0x08173250  call 0x080e4d12  _ZNSt6vectorIhSaIhEEC2Ev
+0x08173255  lea     eax, [ebp - 0x31]
+0x08173258  mov     dword ptr [esp], eax
+0x0817325b  call 0x086e00d0  _ZNSaIcEC1Ev
+0x08173260  lea     eax, [ebp - 0x31]
+0x08173263  mov     dword ptr [esp + 8], eax
+0x08173267  mov     eax, dword ptr [ebp - 0x20]
+0x0817326a  mov     dword ptr [esp + 4], eax
+0x0817326e  lea     eax, [ebp - 0x38]
+0x08173271  mov     dword ptr [esp], eax
+0x08173274  call 0x08707630  _ZNSsC1EPKcRKSaIcE
+0x08173279  lea     eax, [ebp - 0x54]
+0x0817327c  mov     dword ptr [esp + 4], eax
+0x08173280  lea     eax, [ebp - 0x38]
+0x08173283  mov     dword ptr [esp], eax
+0x08173286  call 0x0807ebf4  _Z13base64_decodeRKSsRSt6vectorIhSaIhEE
+0x0817328b  jmp     0x81732a2
+0x0817328d  mov     ebx, edx
+0x0817328f  mov     esi, eax
+0x08173291  lea     eax, [ebp - 0x38]
+0x08173294  mov     dword ptr [esp], eax
+0x08173297  call 0x08707be0  _ZNSsD1Ev
+0x0817329c  mov     eax, esi
+0x0817329e  mov     edx, ebx
+0x081732a0  jmp     0x81732af
+0x081732a2  lea     eax, [ebp - 0x38]
+0x081732a5  mov     dword ptr [esp], eax
+0x081732a8  call 0x08707be0  _ZNSsD1Ev
+0x081732ad  jmp     0x81732c7
+0x081732af  mov     ebx, edx
+0x081732b1  mov     esi, eax
+0x081732b3  lea     eax, [ebp - 0x31]
+0x081732b6  mov     dword ptr [esp], eax
+0x081732b9  call 0x086e00f0  _ZNSaIcED2Ev
+0x081732be  mov     eax, esi
+0x081732c0  mov     edx, ebx
+0x081732c2  jmp     0x817353c
+0x081732c7  lea     eax, [ebp - 0x31]
+0x081732ca  mov     dword ptr [esp], eax
+0x081732cd  call 0x086e00f0  _ZNSaIcED2Ev
+0x081732d2  lea     eax, [ebp - 0x54]
+0x081732d5  mov     dword ptr [esp], eax
+0x081732d8  call 0x0807f5a0  _ZNKSt6vectorIhSaIhEE4sizeEv
+0x081732dd  test    eax, eax
+0x081732df  sete    al
+0x081732e2  test    al, al
+0x081732e4  je      0x817331c
+0x081732e6  mov     dword ptr [esp + 0x10], 0x8b83f40
+0x081732ee  mov     dword ptr [esp + 0xc], 0x83
+0x081732f6  mov     dword ptr [esp + 8], 0x8b845b0
+0x081732fe  mov     dword ptr [esp + 4], 0x8b83f68
+0x08173306  mov     dword ptr [esp], 1
+0x0817330d  call 0x08ad3c0a  _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x08173312  mov     ebx, 0x84
+0x08173317  jmp     0x8173557
+0x0817331c  lea     eax, [ebp - 0x60]
+0x0817331f  mov     dword ptr [esp], eax
+0x08173322  call 0x080e4d12  _ZNSt6vectorIhSaIhEEC2Ev
+0x08173327  lea     eax, [ebp - 0x54]
+0x0817332a  mov     dword ptr [esp], eax
+0x0817332d  call 0x0807f5a0  _ZNKSt6vectorIhSaIhEE4sizeEv
+0x08173332  mov     ebx, eax
+0x08173334  mov     dword ptr [esp + 4], 0
+0x0817333c  lea     eax, [ebp - 0x54]
+0x0817333f  mov     dword ptr [esp], eax
+0x08173342  call 0x080e4db0  _ZNSt6vectorIhSaIhEEixEj
+0x08173347  lea     edx, [ebp - 0x60]
+0x0817334a  mov     dword ptr [esp + 0xc], edx
+0x0817334e  mov     dword ptr [esp + 8], ebx
+0x08173352  mov     dword ptr [esp + 4], eax
+0x08173356  mov     dword ptr [esp], 0x9404754
+0x0817335d  call 0x0816c532  _ZN11COpensslRSA7DecryptEPKciRSt6vectorIhSaIhEE
+0x08173362  mov     byte ptr [ebp - 0x19], al
+0x08173365  movzx   eax, byte ptr [ebp - 0x19]
+0x08173369  xor     eax, 1
+0x0817336c  test    al, al
+0x0817336e  je      0x81733a6
+0x08173370  mov     dword ptr [esp + 0x10], 0x8b83f8c
+0x08173378  mov     dword ptr [esp + 0xc], 0x8b
+0x08173380  mov     dword ptr [esp + 8], 0x8b845b0
+0x08173388  mov     dword ptr [esp + 4], 0x8b83f68
+0x08173390  mov     dword ptr [esp], 1
+0x08173397  call 0x08ad3c0a  _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x0817339c  mov     ebx, 0x8c
+0x081733a1  jmp     0x817352f
+0x081733a6  lea     eax, [ebp - 0x60]
+0x081733a9  mov     dword ptr [esp], eax
+0x081733ac  call 0x0807f5a0  _ZNKSt6vectorIhSaIhEE4sizeEv
+0x081733b1  cmp     eax, 0x68
+0x081733b4  seta    al
+0x081733b7  test    al, al
+0x081733b9  je      0x8173408
+0x081733bb  lea     eax, [ebp - 0x60]
+0x081733be  mov     dword ptr [esp], eax
+0x081733c1  call 0x0807f5a0  _ZNKSt6vectorIhSaIhEE4sizeEv
+0x081733c6  mov     dword ptr [esp + 0x18], eax
+0x081733ca  mov     dword ptr [esp + 0x14], 0x68
+0x081733d2  mov     dword ptr [esp + 0x10], 0x8b83fb4
+0x081733da  mov     dword ptr [esp + 0xc], 0x92
+0x081733e2  mov     dword ptr [esp + 8], 0x8b845b0
+0x081733ea  mov     dword ptr [esp + 4], 0x8b83f68
+0x081733f2  mov     dword ptr [esp], 1
+0x081733f9  call 0x08ad3c0a  _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x081733fe  mov     ebx, 0x93
+0x08173403  jmp     0x817352f
+0x08173408  mov     dword ptr [esp + 8], 0x68
+0x08173410  mov     dword ptr [esp + 4], 0
+0x08173418  mov     eax, dword ptr [ebp + 0x10]
+0x0817341b  mov     dword ptr [esp], eax
+0x0817341e  call 0x0807dcc0  _init
+0x08173423  lea     eax, [ebp - 0x60]
+0x08173426  mov     dword ptr [esp], eax
+0x08173429  call 0x0807f5a0  _ZNKSt6vectorIhSaIhEE4sizeEv
+0x0817342e  lea     ebx, [eax - 1]
+0x08173431  mov     dword ptr [esp + 4], 0
+0x08173439  lea     eax, [ebp - 0x60]
+0x0817343c  mov     dword ptr [esp], eax
+0x0817343f  call 0x080e4db0  _ZNSt6vectorIhSaIhEEixEj
+0x08173444  mov     dword ptr [esp + 8], ebx
+0x08173448  mov     dword ptr [esp + 4], eax
+0x0817344c  mov     eax, dword ptr [ebp + 0x10]
+0x0817344f  mov     dword ptr [esp], eax
+0x08173452  call 0x0807d8a0  _init
+0x08173457  mov     eax, dword ptr [ebp + 0x10]
+0x0817345a  mov     dword ptr [esp], eax
+0x0817345d  call 0x08173022  _ZN6Taiwan14GarenaAuthData13getMobileAuthEv
+0x08173462  test    al, al
+0x08173464  je      0x817346d
+0x08173466  mov     ebx, 1
+0x0817346b  jmp     0x8173472
+0x0817346d  mov     ebx, 0
+0x08173472  mov     eax, dword ptr [ebp + 0x10]
+0x08173475  mov     dword ptr [esp], eax
+0x08173478  call 0x0817304e  _ZN6Taiwan14GarenaAuthData17getGoldMemberTypeEv
+0x0817347d  movzx   eax, al
+0x08173480  mov     dword ptr [ebp - 0x74], eax
+0x08173483  mov     eax, dword ptr [ebp + 0x10]
+0x08173486  mov     dword ptr [esp], eax
+0x08173489  call 0x08173008  _ZN6Taiwan14GarenaAuthData10getGcaTypeEv
+0x0817348e  movzx   eax, ax
+0x08173491  mov     dword ptr [ebp - 0x70], eax
+0x08173494  mov     eax, dword ptr [ebp + 0x10]
+0x08173497  mov     dword ptr [esp], eax
+0x0817349a  call 0x08172fea  _ZN6Taiwan14GarenaAuthData12getTimeStampEv
+0x0817349f  mov     dword ptr [ebp - 0x6c], eax
+0x081734a2  mov     eax, dword ptr [ebp + 0x10]
+0x081734a5  mov     dword ptr [esp], eax
+0x081734a8  call 0x08172fde  _ZN6Taiwan14GarenaAuthData8getUnameEv
+0x081734ad  mov     edi, eax
+0x081734af  mov     eax, dword ptr [ebp + 0x10]
+0x081734b2  mov     dword ptr [esp], eax
+0x081734b5  call 0x08172fc8  _ZN6Taiwan14GarenaAuthData6getUidEv
+0x081734ba  mov     esi, eax
+0x081734bc  mov     dword ptr [esp + 0xc], 0
+0x081734c4  mov     dword ptr [esp + 8], 0x99
+0x081734cc  mov     dword ptr [esp + 4], 0x8b845b0
+0x081734d4  lea     eax, [ebp - 0x30]
+0x081734d7  mov     dword ptr [esp], eax
+0x081734da  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x081734df  mov     dword ptr [esp + 0x1c], ebx
+0x081734e3  mov     eax, dword ptr [ebp - 0x74]
+0x081734e6  mov     dword ptr [esp + 0x18], eax
+0x081734ea  mov     eax, dword ptr [ebp - 0x70]
+0x081734ed  mov     dword ptr [esp + 0x14], eax
+0x081734f1  mov     eax, dword ptr [ebp - 0x6c]
+0x081734f4  mov     dword ptr [esp + 0x10], eax
+0x081734f8  mov     dword ptr [esp + 0xc], edi
+0x081734fc  mov     dword ptr [esp + 8], esi
+0x08173500  mov     dword ptr [esp + 4], 0x8b84004
+0x08173508  lea     eax, [ebp - 0x30]
+0x0817350b  mov     dword ptr [esp], eax
+0x0817350e  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x08173513  mov     ebx, 0
+0x08173518  jmp     0x817352f
+0x0817351a  mov     ebx, edx
+0x0817351c  mov     esi, eax
+0x0817351e  lea     eax, [ebp - 0x60]
+0x08173521  mov     dword ptr [esp], eax
+0x08173524  call 0x080e4d26  _ZNSt6vectorIhSaIhEED2Ev
+0x08173529  mov     eax, esi
+0x0817352b  mov     edx, ebx
+0x0817352d  jmp     0x817353c
+0x0817352f  lea     eax, [ebp - 0x60]
+0x08173532  mov     dword ptr [esp], eax
+0x08173535  call 0x080e4d26  _ZNSt6vectorIhSaIhEED2Ev
+0x0817353a  jmp     0x8173557
+0x0817353c  mov     ebx, edx
+0x0817353e  mov     esi, eax
+0x08173540  lea     eax, [ebp - 0x54]
+0x08173543  mov     dword ptr [esp], eax
+0x08173546  call 0x080e4d26  _ZNSt6vectorIhSaIhEED2Ev
+0x0817354b  mov     eax, esi
+0x0817354d  mov     edx, ebx
+0x0817354f  mov     dword ptr [esp], eax
+0x08173552  call 0x08ae3750  _Unwind_Resume
+0x08173557  lea     eax, [ebp - 0x54]
+0x0817355a  mov     dword ptr [esp], eax
+0x0817355d  call 0x080e4d26  _ZNSt6vectorIhSaIhEED2Ev
+0x08173562  mov     eax, ebx
+0x08173564  add     esp, 0x8c
+0x0817356a  pop     ebx
+0x0817356b  pop     esi
+0x0817356c  pop     edi
+0x0817356d  pop     ebp
+0x0817356e  ret     
+
+=== 引用到的可打印串（13 条）===
+  0x08173214 -> 0x08b845b0  'decrypt'
+  0x08173227 -> 0x08b83f21  '[Taiwan, Auth] Token is null!'
+  0x081732e6 -> 0x08b83f40  '[Taiwan, Auth] Invalid token format!'
+  0x081732fe -> 0x08b83f68  'localtaiwan/System/TaiwanAuth.cpp'
+  0x08173370 -> 0x08b83f8c  '[Taiwan, Auth] Decrypt token failed!'
+  0x081733d2 -> 0x08b83fb4  '[Taiwan, Auth] Invalid decrypted token length! (buffer_size:%u, token_size:%u)'
+  0x08173500 -> 0x08b84004  '[Taiwan, Auth] Success!! Uid:%u, UserName:%s, Timestamp:%u, GcaType:%u, GoldMemberType:%u,'

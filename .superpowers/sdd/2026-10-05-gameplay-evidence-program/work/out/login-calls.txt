@@ -1,0 +1,230 @@
+0x081e8c89  call 0x080da38c  _ZN5CUser9get_stateEv
+0x081e8ca5  call 0x0858dd4c  _ZN11PacketGuardC1Ev
+0x081e8cc3  call 0x080cb8fc  _ZN18InterfacePacketBuf10put_headerEii
+0x081e8cd9  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e8cef  call 0x080cb958  _ZN18InterfacePacketBuf8finalizeEb
+0x081e8d04  call 0x086485ba  _ZN5CUser4SendER11PacketGuard
+0x081e8d17  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e8d2e  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e8d3a  call 0x08ae3750  _Unwind_Resume
+0x081e8d45  call 0x08230246  _ZN5CUser11OnRecvEventEv
+0x081e8d4a  call 0x080da3a7  _Z11G_GameWorldv
+0x081e8d52  call 0x08116b20  _ZNK9GameWorld14GetChannelTypeEv
+0x081e8d75  call 0x08115998  _ZN13CEventManager14GetRepeatEventEi
+0x081e8d8c  call edx   (间接)
+0x081e8da2  call 0x0858dd4c  _ZN11PacketGuardC1Ev
+0x081e8dc0  call 0x080cb8fc  _ZN18InterfacePacketBuf10put_headerEii
+0x081e8dd6  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e8dec  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e8e02  call 0x080cb958  _ZN18InterfacePacketBuf8finalizeEb
+0x081e8e17  call 0x086485ba  _ZN5CUser4SendER11PacketGuard
+0x081e8e3a  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x081e8e4d  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x081e8e70  call 0x086489f4  _ZN5CUser10DisConnSigE11DISCONN_SIGbi
+0x081e8e83  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e8e9a  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e8ea6  call 0x08ae3750  _Unwind_Resume
+0x081e8ec4  call 0x0807dcc0  _init
+0x081e8ee3  call 0x0858d240  _ZN9PacketBuf7get_intERj
+0x081e8f0e  call 0x085908d7  _Z8LineFunciPKcij
+0x081e8f4b  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x081e8f6a  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x081e8f8e  call 0x085908d7  _Z8LineFunciPKcij
+0x081e8fb4  call 0x0858d240  _ZN9PacketBuf7get_intERj
+0x081e8fdf  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9002  call 0x0807dcc0  _init
+0x081e9027  call 0x0858d2bc  _ZN9PacketBuf7get_strEPcii
+0x081e9052  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9064  call 0x0816ee1e  _ZN5CUser17getGarenaAuthDataEv
+0x081e907e  call 0x081731f2  _ZN6Taiwan15AuthGarenaToken7decryptEPKciRNS_14GarenaAuthDataE
+0x081e90aa  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x081e90c5  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x081e90e9  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9101  call 0x0816ee1e  _ZN5CUser17getGarenaAuthDataEv
+0x081e910d  call 0x08173034  _ZN6Taiwan14GarenaAuthData12setPatchTimeEj
+0x081e9119  call 0x080cbc9e  _ZN11CSystemTime9getCurSecEv
+0x081e9127  call 0x0816ee1e  _ZN5CUser17getGarenaAuthDataEv
+0x081e912f  call 0x08173042  _ZN6Taiwan14GarenaAuthData12getPatchTimeEv
+0x081e913c  call 0x0816ee1e  _ZN5CUser17getGarenaAuthDataEv
+0x081e9144  call 0x08172fea  _ZN6Taiwan14GarenaAuthData12getTimeStampEv
+0x081e9169  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x081e918b  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x081e9190  call 0x081625e6  _ZN4ARAD9SingletonI22ServiceRestrictManagerE3GetEv
+0x081e91af  call 0x0816e6b8  _ZN22ServiceRestrictManager12isRestrictedEP5CUserN16RestrictCategory4EnumEi
+0x081e91ce  call 0x0867bf42  _ZN5CUser18SendCmdErrorPacketE14ENUM_CMDPACKETh
+0x081e91f0  call 0x0858d240  _ZN9PacketBuf7get_intERj
+0x081e921b  call 0x085908d7  _Z8LineFunciPKcij
+0x081e924c  call 0x0858d2bc  _ZN9PacketBuf7get_strEPcii
+0x081e9277  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9296  call 0x0858d240  _ZN9PacketBuf7get_intERj
+0x081e92c1  call 0x085908d7  _Z8LineFunciPKcij
+0x081e92f9  call 0x085908d7  _Z8LineFunciPKcij
+0x081e932a  call 0x0858d2bc  _ZN9PacketBuf7get_strEPcii
+0x081e9355  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9376  call 0x0858cf70  _ZN9PacketBuf8get_byteERh
+0x081e93a1  call 0x085908d7  _Z8LineFunciPKcij
+0x081e93d4  call 0x080da36e  _ZNK5CUser10get_acc_idEv
+0x081e93f4  call 0x085908d7  _Z8LineFunciPKcij
+0x081e941a  call 0x0858d0f0  _ZN9PacketBuf7get_intERi
+0x081e942c  call 0x080da36e  _ZNK5CUser10get_acc_idEv
+0x081e944c  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9469  call 0x080da36e  _ZNK5CUser10get_acc_idEv
+0x081e9489  call 0x085908d7  _Z8LineFunciPKcij
+0x081e94b2  call 0x0858d3b2  _ZN9PacketBuf10get_binaryEPci
+0x081e94dd  call 0x085908d7  _Z8LineFunciPKcij
+0x081e950b  call 0x0826333a  _ZN24Dispatcher_MouseRegister15decryptPasswordEPKcPcj
+0x081e952d  call 0x0867bf42  _ZN5CUser18SendCmdErrorPacketE14ENUM_CMDPACKETh
+0x081e9538  call 0x080da36e  _ZNK5CUser10get_acc_idEv
+0x081e9558  call 0x085908d7  _Z8LineFunciPKcij
+0x081e956d  call 0x082632ca  _ZN24Dispatcher_MouseRegister19checkValiedPasswordEPKc
+0x081e958f  call 0x0867bf42  _ZN5CUser18SendCmdErrorPacketE14ENUM_CMDPACKETh
+0x081e959a  call 0x080da36e  _ZNK5CUser10get_acc_idEv
+0x081e95ba  call 0x085908d7  _Z8LineFunciPKcij
+0x081e95e6  call 0x0807d8a0  _init
+0x081e95fb  call 0x0858d240  _ZN9PacketBuf7get_intERj
+0x081e9626  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9632  call 0x080cc19b  _Z14G_CDataManagerv
+0x081e9659  call 0x0858dd4c  _ZN11PacketGuardC1Ev
+0x081e9677  call 0x080cb8fc  _ZN18InterfacePacketBuf10put_headerEii
+0x081e968d  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e96a3  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e96b9  call 0x080cb958  _ZN18InterfacePacketBuf8finalizeEb
+0x081e96ce  call 0x086485ba  _ZN5CUser4SendER11PacketGuard
+0x081e9706  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x081e971d  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x081e9740  call 0x086489f4  _ZN5CUser10DisConnSigE11DISCONN_SIGbi
+0x081e9753  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e976a  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e9776  call 0x08ae3750  _Unwind_Resume
+0x081e9795  call 0x0858d240  _ZN9PacketBuf7get_intERj
+0x081e97c0  call 0x085908d7  _Z8LineFunciPKcij
+0x081e97e4  call 0x08290262  _ZN13BigStreamPool7AcquireEPKci
+0x081e97fe  call 0x080c8c26  _ZN12CStreamGuardC2EP6Streamb
+0x081e980c  call 0x080c8c46  _ZN12CStreamGuarddeEv
+0x081e981c  call 0x080c8c56  _ZN12CStreamGuardlsEi
+0x081e9827  call 0x080c8c96  _ZNK5CUser6GetUIDEv
+0x081e9837  call 0x080c8c46  _ZN12CStreamGuarddeEv
+0x081e9843  call 0x080c8c56  _ZN12CStreamGuardlsEi
+0x081e9851  call 0x080c8c4e  _ZN12CStreamGuardptEv
+0x081e9859  call 0x08237712  _ZN12CStreamGuard11GetInBufferI14SIG_LOGIN_DATAEEPT_v
+0x081e9877  call 0x0807dcc0  _init
+0x081e988e  call 0x0858cfc0  _ZN9PacketBuf9get_shortERs
+0x081e98b9  call 0x085908d7  _Z8LineFunciPKcij
+0x081e98f0  call 0x080da3a7  _Z11G_GameWorldv
+0x081e98f8  call 0x080f131e  _ZNK9GameWorld26IsIntegratedPvPBaseChannelEv
+0x081e9940  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x081e9964  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x081e99ae  call 0x085908d7  _Z8LineFunciPKcij
+0x081e99cf  call 0x082300ac  _ZN5CUser14SetServerGroupE17ENUM_SERVER_GROUP
+0x081e99ee  call 0x0858d0f0  _ZN9PacketBuf7get_intERi
+0x081e9a19  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9a35  call 0x0822fd00  _ZN5CUser20set_local_ip_addressEi
+0x081e9a51  call 0x0858cf70  _ZN9PacketBuf8get_byteERh
+0x081e9a78  call 0x0822fe22  _ZN5CUser16SetLogInOutStateEh
+0x081e9a83  call 0x0816ee1e  _ZN5CUser17getGarenaAuthDataEv
+0x081e9a8b  call 0x08172fc8  _ZN6Taiwan14GarenaAuthData6getUidEv
+0x081e9a9b  call 0x0810904b  _Z14NumberToStringji
+0x081e9ab2  call 0x0807d8d0  _init
+0x081e9ad0  call 0x0807dcc0  _init
+0x081e9adb  call 0x0816ee1e  _ZN5CUser17getGarenaAuthDataEv
+0x081e9ae3  call 0x08172fea  _ZN6Taiwan14GarenaAuthData12getTimeStampEv
+0x081e9af1  call 0x080da3a7  _Z11G_GameWorldv
+0x081e9af9  call 0x080f131e  _ZNK9GameWorld26IsIntegratedPvPBaseChannelEv
+0x081e9b0f  call 0x080cc181  _Z14G_CEnvironmentv
+0x081e9b1b  call 0x08234524  _ZN12CEnvironment18get_gc_no_hardcodeE17ENUM_SERVER_GROUP
+0x081e9b2b  call 0x080cc181  _Z14G_CEnvironmentv
+0x081e9b5f  call 0x0816282e  _ZN8CNetworkILi4096ELi450000EE10GetPeerIP2EPci
+0x081e9b97  call 0x0807d8d0  _init
+0x081e9ba3  call 0x080cbc9e  _ZN11CSystemTime9getCurSecEv
+0x081e9bb2  call 0x0822fe10  _ZN5CUser12SetLoginTimeEl
+0x081e9bcd  call 0x080cbc9e  _ZN11CSystemTime9getCurSecEv
+0x081e9bfb  call 0x0816282e  _ZN8CNetworkILi4096ELi450000EE10GetPeerIP2EPci
+0x081e9c3a  call 0x0858dd4c  _ZN11PacketGuardC1Ev
+0x081e9c58  call 0x080cb8fc  _ZN18InterfacePacketBuf10put_headerEii
+0x081e9c6e  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e9c7b  call 0x08234f44  _ZN19CAuctionServerProxy9IsRunningEv
+0x081e9c95  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e9cad  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e9cc3  call 0x080cb958  _ZN18InterfacePacketBuf8finalizeEb
+0x081e9cd8  call 0x086485ba  _ZN5CUser4SendER11PacketGuard
+0x081e9ce6  call 0x0858dd4c  _ZN11PacketGuardC1Ev
+0x081e9d04  call 0x080cb8fc  _ZN18InterfacePacketBuf10put_headerEii
+0x081e9d1a  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e9d27  call 0x08234f54  _ZN23CCeraAuctionServerProxy9IsRunningEv
+0x081e9d41  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e9d4d  call 0x0807e570  pthread_cancel
+0x081e9d65  call 0x080cb920  _ZN18InterfacePacketBuf8put_byteEi
+0x081e9d71  call 0x0807e570  pthread_cancel
+0x081e9d87  call 0x080cb958  _ZN18InterfacePacketBuf8finalizeEb
+0x081e9d9c  call 0x086485ba  _ZN5CUser4SendER11PacketGuard
+0x081e9dbf  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x081e9dd2  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x081e9de6  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e9dfa  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e9e19  call 0x08570fde  _ZN11MsgQueueMgr3putENS_9QUEUE_IDXER12CStreamGuard
+0x081e9e2c  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e9e40  call 0x0858de80  _ZN11PacketGuardD2Ev
+0x081e9e58  call 0x0861c8d2  _ZN12CStreamGuardD2Ev
+0x081e9e64  call 0x08ae3750  _Unwind_Resume
+0x081e9e72  call 0x0861c8d2  _ZN12CStreamGuardD2Ev
+
+=== 去重后的被调用者（59 个）===
+    1x  (indirect)
+    4x  _Unwind_Resume
+    3x  _Z11G_GameWorldv
+    1x  _Z14G_CDataManagerv
+    2x  _Z14G_CEnvironmentv
+    1x  _Z14NumberToStringji
+   22x  _Z8LineFunciPKcij
+    3x  _ZN11CSystemTime9getCurSecEv
+    1x  _ZN11MsgQueueMgr3putENS_9QUEUE_IDXER12CStreamGuard
+    5x  _ZN11PacketGuardC1Ev
+   10x  _ZN11PacketGuardD2Ev
+    1x  _ZN12CEnvironment18get_gc_no_hardcodeE17ENUM_SERVER_GROUP
+    1x  _ZN12CStreamGuard11GetInBufferI14SIG_LOGIN_DATAEEPT_v
+    1x  _ZN12CStreamGuardC2EP6Streamb
+    2x  _ZN12CStreamGuardD2Ev
+    2x  _ZN12CStreamGuarddeEv
+    2x  _ZN12CStreamGuardlsEi
+    1x  _ZN12CStreamGuardptEv
+    1x  _ZN13BigStreamPool7AcquireEPKci
+    1x  _ZN13CEventManager14GetRepeatEventEi
+    5x  _ZN18InterfacePacketBuf10put_headerEii
+    5x  _ZN18InterfacePacketBuf8finalizeEb
+   11x  _ZN18InterfacePacketBuf8put_byteEi
+    1x  _ZN19CAuctionServerProxy9IsRunningEv
+    1x  _ZN22ServiceRestrictManager12isRestrictedEP5CUserN16RestrictCategory4EnumEi
+    1x  _ZN23CCeraAuctionServerProxy9IsRunningEv
+    1x  _ZN24Dispatcher_MouseRegister15decryptPasswordEPKcPcj
+    1x  _ZN24Dispatcher_MouseRegister19checkValiedPasswordEPKc
+    1x  _ZN4ARAD9SingletonI22ServiceRestrictManagerE3GetEv
+    2x  _ZN5CUser10DisConnSigE11DISCONN_SIGbi
+    1x  _ZN5CUser11OnRecvEventEv
+    1x  _ZN5CUser12SetLoginTimeEl
+    1x  _ZN5CUser14SetServerGroupE17ENUM_SERVER_GROUP
+    1x  _ZN5CUser16SetLogInOutStateEh
+    6x  _ZN5CUser17getGarenaAuthDataEv
+    3x  _ZN5CUser18SendCmdErrorPacketE14ENUM_CMDPACKETh
+    1x  _ZN5CUser20set_local_ip_addressEi
+    5x  _ZN5CUser4SendER11PacketGuard
+    1x  _ZN5CUser9get_stateEv
+    1x  _ZN6Taiwan14GarenaAuthData12getPatchTimeEv
+    2x  _ZN6Taiwan14GarenaAuthData12getTimeStampEv
+    1x  _ZN6Taiwan14GarenaAuthData12setPatchTimeEj
+    1x  _ZN6Taiwan14GarenaAuthData6getUidEv
+    1x  _ZN6Taiwan15AuthGarenaToken7decryptEPKciRNS_14GarenaAuthDataE
+    2x  _ZN8CNetworkILi4096ELi450000EE10GetPeerIP2EPci
+    7x  _ZN8cMyTraceC1EPKcii
+    7x  _ZN8cMyTraceclEPKcz
+    1x  _ZN9PacketBuf10get_binaryEPci
+    2x  _ZN9PacketBuf7get_intERi
+    6x  _ZN9PacketBuf7get_intERj
+    3x  _ZN9PacketBuf7get_strEPcii
+    2x  _ZN9PacketBuf8get_byteERh
+    1x  _ZN9PacketBuf9get_shortERs
+    5x  _ZNK5CUser10get_acc_idEv
+    1x  _ZNK5CUser6GetUIDEv
+    1x  _ZNK9GameWorld14GetChannelTypeEv
+    2x  _ZNK9GameWorld26IsIntegratedPvPBaseChannelEv
+    7x  _init
+    2x  pthread_cancel
