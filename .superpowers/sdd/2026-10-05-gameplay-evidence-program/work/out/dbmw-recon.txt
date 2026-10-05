@@ -1,0 +1,373 @@
+########## 1. 现在谁连着三个 dbmw 端口 ##########
+=== 端口 20203 ===
+tcp        0      0 0.0.0.0:20203               0.0.0.0:*                   LISTEN      3771/./df_dbmw_r    
+tcp        0      0 127.0.0.1:58776             127.0.0.1:20203             ESTABLISHED 3748/./df_monitor_r 
+tcp        0      0 127.0.0.1:20203             127.0.0.1:58776             ESTABLISHED 3771/./df_dbmw_r    
+=== 端口 20303 ===
+tcp        0      0 0.0.0.0:20303               0.0.0.0:*                   LISTEN      3777/./df_dbmw_r    
+=== 端口 20403 ===
+tcp        0      0 0.0.0.0:20403               0.0.0.0:*                   LISTEN      3766/./df_dbmw_r    
+tcp        0      0 127.0.0.1:58278             127.0.0.1:20403             ESTABLISHED 3863/./df_guild_r   
+tcp        0      0 127.0.0.1:20403             127.0.0.1:58278             ESTABLISHED 3766/./df_dbmw_r    
+
+########## 2. dbmw 二进制 ##########
+=== dbmw_mnt ===
+  size=4041084  Jun 29 2013
+  /home/neople/dbmw_mnt/df_dbmw_r: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), for GNU/Linux 2.6.9, dynamically linked (uses shared libs), not stripped
+  md5 0d70e931f2f17f03e4c80b7d28f03c83  /home/neople/dbmw_mnt/df_dbmw_r
+=== dbmw_guild ===
+  size=4041084  Jun 29 2013
+  /home/neople/dbmw_guild/df_dbmw_r: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), for GNU/Linux 2.6.9, dynamically linked (uses shared libs), not stripped
+  md5 0d70e931f2f17f03e4c80b7d28f03c83  /home/neople/dbmw_guild/df_dbmw_r
+=== dbmw_stat ===
+  size=4041084  Jun 29 2013
+  /home/neople/dbmw_stat/df_dbmw_r: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), for GNU/Linux 2.6.9, dynamically linked (uses shared libs), not stripped
+  md5 0d70e931f2f17f03e4c80b7d28f03c83  /home/neople/dbmw_stat/df_dbmw_r
+
+########## 3. 三个 dbmw 用的是同一个二进制吗（比对 md5）##########
+0d70e931f2f17f03e4c80b7d28f03c83  /home/neople/dbmw_guild/df_dbmw_r
+0d70e931f2f17f03e4c80b7d28f03c83  /home/neople/dbmw_mnt/df_dbmw_r
+0d70e931f2f17f03e4c80b7d28f03c83  /home/neople/dbmw_stat/df_dbmw_r
+
+########## 4. dbmw 的日志（最近在做什么）##########
+=== dbmw_mnt ===
+-rw-rw-rw- 1 root root 1442 Oct  5 15:31 PacketProcess20261005.log
+-rw-rw-rw- 1 root root   82 Oct  5 14:30 process.log20261005.log
+-rw-rw-rw- 1 root root 1052 Oct  5 15:31 QueryCount20261005.log
+-rw-rw-rw- 1 root root  308 Oct  5 15:31 Secu20261005.log
+-rw-rw-rw- 1 root root  176 Oct  5 14:30 TcpServer20261005.log
+-rw-rw-rw- 1 root root  217 Oct  5 14:30 Udp20261005.log
+  --- DBQueryErr20261005.log 末 8 行 ---
+    [15:36:31] selectCollectItems(10631): selectCollectItems (Row_Data Not Exist) Error
+
+    [15:38:31] selectCollectItems(10631): selectCollectItems (Row_Data Not Exist) Error
+
+    [15:40:31] selectCollectItems(10631): selectCollectItems (Row_Data Not Exist) Error
+
+    [15:42:31] selectCollectItems(10631): selectCollectItems (Row_Data Not Exist) Error
+
+    [15:44:31] selectCollectItems(10631): selectCollectItems (Row_Data Not Exist) Error
+
+    [15:46:31] selectCollectItems(10631): selectCollectItems (Row_Data Not Exist) Error
+
+    [15:48:31] selectCollectItems(10631): selectCollectItems (Row_Data Not Exist) Error
+
+    [15:50:31] selectCollectItems(10631): selectCollectItems (Row_Data Not Exist) Error
+
+  --- frame20261005.log 末 8 行 ---
+    [15:47:34] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:48:34] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:49:34] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:50:34] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+  --- Mempool20261005.log 末 8 行 ---
+    [14:30:39] alloc(125): class size(620608) cnt(1000)
+
+    [14:30:40] alloc(125): class size(6148) cnt(1000)
+
+    [14:30:40] alloc(125): class size(6148) cnt(10000)
+
+    [14:30:41] alloc(125): class size(6148) cnt(1000)
+
+  --- MysqlErr.log20261005.log 末 8 行 ---
+    [15:00:34] exec(334): Database query error. The last query('inSert into log_query_stat(occ_time,q_id,total,response_time) values(now(),20036,2,96)') has been lost. iret == R_FAIL
+
+    [15:31:34] exec(334): Database query error. The last query('inSert into log_query_stat(occ_time,q_id,total,response_time) values(now(),20012,5,3)') has been lost. iret == R_FAIL
+
+  --- PacketProcess20261005.log 末 8 行 ---
+    [15:00:34] WritePacketProcessLog(111): id(4202), acc count(163), acc time(0.4911 ms), average time(0.0030 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(6072), acc count(30), acc time(1992.1702 ms), average time(66.4057 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(9024), acc count(1), acc time(147.1590 ms), average time(147.1590 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(10218), acc count(15), acc time(67.8189 ms), average time(4.5213 ms)
+
+    [15:31:34] WritePacketProcessLog(111): id(4152), acc count(2), acc time(14.9712 ms), average time(7.4856 ms)
+
+    [15:31:34] WritePacketProcessLog(111): id(4202), acc count(169), acc time(0.5606 ms), average time(0.0033 ms)
+
+    [15:31:34] WritePacketProcessLog(111): id(6072), acc count(31), acc time(12.2595 ms), average time(0.3955 ms)
+
+    [15:31:34] WritePacketProcessLog(111): id(10218), acc count(15), acc time(62.8289 ms), average time(4.1886 ms)
+
+  --- process.log20261005.log 末 8 行 ---
+    [14:30:33] Load_Table(861): CAppConfig::Load_Table :  _S_MOD_CFG_LOADER_BY_NAME
+    
+
+  --- QueryCount20261005.log 末 8 行 ---
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20244), count(1), time(110), compute(0.00)
+
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20300), count(15), time(63), compute(0.00)
+
+    [15:31:34] WriteDBLog(118): Count DB Insert Fail! id(20012), count(6), time(3)
+
+    [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20036), count(2), time(96), compute(0.00)
+
+    [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20186), count(2), time(3), compute(0.00)
+
+    [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20187), count(2), time(11), compute(0.00)
+
+    [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20204), count(31), time(0), compute(0.00)
+
+    [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20300), count(15), time(4), compute(0.00)
+
+  --- Secu20261005.log 末 8 行 ---
+    [15:01:03] QueryIPCounter(7391): [IP Counter] QueryIPCounter (cnt>5) : 0 
+    
+
+    [15:01:03] QueryIPCounter(7451): [D_IP Counter] QueryIPCounter (cnt>5) : 0 
+    
+
+    [15:31:33] QueryIPCounter(7391): [IP Counter] QueryIPCounter (cnt>5) : 0 
+    
+
+    [15:31:33] QueryIPCounter(7451): [D_IP Counter] QueryIPCounter (cnt>5) : 0 
+    
+
+  --- TcpServer20261005.log 末 8 行 ---
+    [14:30:40] OnInnerPacketLogin(3072): CPacketTranslater::OnInnerPacketLogin (sock:22)
+
+    [14:30:40] OnTcpServerLogin(3163): CPacketTranslater::OnTcpServerLogin(TYPE:10, sock:22)
+
+  --- Udp20261005.log 末 8 行 ---
+    [14:30:33] InitServerSocket(110): Opened port 20203 with fd 5, recv buf size 1000000
+    
+
+    [14:30:33] InitClientSocket(143): Opened port with fd 7
+    
+
+    [14:30:40] OnDBMWConnectionCheck(479): 201 Server Connection Complete!
+
+=== dbmw_guild ===
+-rw-rw-rw- 1 root root 1214 Oct  5 15:31 PacketProcess20261005.log
+-rw-rw-rw- 1 root root   82 Oct  5 14:30 process.log20261005.log
+-rw-rw-rw- 1 root root 1086 Oct  5 15:31 QueryCount20261005.log
+-rw-rw-rw- 1 root root   87 Oct  5 14:30 QueryGuildBooting20261005.log
+-rw-rw-rw- 1 root root  175 Oct  5 14:30 TcpServer20261005.log
+-rw-rw-rw- 1 root root  217 Oct  5 14:30 Udp20261005.log
+  --- frame20261005.log 末 8 行 ---
+    [15:47:34] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:48:34] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:49:34] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:50:34] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+  --- GuildModify20261005.log 末 8 行 ---
+    [14:42:58] SaveGuildMember(698): CDBManager::SaveGuildMember(SAVE_LOGOUT flag(1), grade(1), guildMemPoint(0), g(2), s(3), c(6))
+
+    [14:44:29] SaveGuildMember(698): CDBManager::SaveGuildMember(SAVE_LOGOUT flag(1), grade(1), guildMemPoint(0), g(2), s(3), c(6))
+
+  --- Mempool20261005.log 末 8 行 ---
+    [14:30:39] alloc(125): class size(6148) cnt(10000)
+
+    [14:30:40] alloc(125): class size(620608) cnt(1000)
+
+    [14:30:41] alloc(125): class size(6148) cnt(1000)
+
+  --- PacketProcess20261005.log 末 8 行 ---
+    [15:00:34] WritePacketProcessLog(111): id(1043), acc count(1), acc time(0.0461 ms), average time(0.0461 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(1505), acc count(2), acc time(49.4221 ms), average time(24.7110 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(1655), acc count(1), acc time(117.8471 ms), average time(117.8471 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(4000), acc count(1), acc time(0.2200 ms), average time(0.2200 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(4200), acc count(1), acc time(0.7350 ms), average time(0.7350 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(4202), acc count(358), acc time(1.0451 ms), average time(0.0029 ms)
+
+    [15:00:34] WritePacketProcessLog(111): id(7103), acc count(1), acc time(0.4210 ms), average time(0.4210 ms)
+
+    [15:31:34] WritePacketProcessLog(111): id(4202), acc count(372), acc time(1.0549 ms), average time(0.0028 ms)
+
+  --- process.log20261005.log 末 8 行 ---
+    [14:30:33] Load_Table(861): CAppConfig::Load_Table :  _S_MOD_CFG_LOADER_BY_NAME
+    
+
+  --- QueryCount20261005.log 末 8 行 ---
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20016), count(2), time(41), compute(0.00)
+
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20036), count(2), time(45), compute(0.00)
+
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20054), count(3), time(39), compute(0.00)
+
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20056), count(3), time(98), compute(0.00)
+
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20068), count(3), time(82), compute(0.00)
+
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20096), count(1), time(117), compute(0.00)
+
+    [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20229), count(1), time(0), compute(0.00)
+
+    [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20012), count(8), time(8), compute(0.00)
+
+  --- QueryGuildBooting20261005.log 末 8 行 ---
+    [14:30:42] OnQueryGuildBooting(1669): QueryGuildBooting A_Side(0) B_Side(0) Winner(0)
+
+  --- TcpServer20261005.log 末 8 行 ---
+    [14:30:41] OnInnerPacketLogin(3072): CPacketTranslater::OnInnerPacketLogin (sock:22)
+
+    [14:30:46] OnTcpServerLogin(3163): CPacketTranslater::OnTcpServerLogin(TYPE:9, sock:22)
+
+  --- Udp20261005.log 末 8 行 ---
+    [14:30:33] InitServerSocket(110): Opened port 20403 with fd 5, recv buf size 1000000
+    
+
+    [14:30:33] InitClientSocket(143): Opened port with fd 7
+    
+
+    [14:30:44] OnDBMWConnectionCheck(479): 203 Server Connection Complete!
+
+=== dbmw_stat ===
+-rw-rw-rw- 1 root root   52 Oct  5 14:30 Mempool20261005.log
+-rw-rw-rw- 1 root root 1116 Oct  5 15:31 PacketProcess20261005.log
+-rw-rw-rw- 1 root root   82 Oct  5 14:30 process.log20261005.log
+-rw-rw-rw- 1 root root 1292 Oct  5 15:31 QueryCount20261005.log
+-rw-rw-rw- 1 root root 1298 Oct  5 15:00 Statistic20261005.log
+-rw-rw-rw- 1 root root  145 Oct  5 14:30 Udp20261005.log
+  --- frame20261005.log 末 8 行 ---
+    [15:47:35] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:48:35] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:49:35] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+    [15:50:35] SaveProcess(168): FPS(34) / DFC(30)
+    
+
+  --- Mempool20261005.log 末 8 行 ---
+    [14:30:40] alloc(125): class size(6148) cnt(10000)
+
+  --- PacketProcess20261005.log 末 8 行 ---
+    [15:31:35] WritePacketProcessLog(111): id(2511), acc count(2), acc time(58.1319 ms), average time(29.0660 ms)
+
+    [15:31:35] WritePacketProcessLog(111): id(2513), acc count(1), acc time(21.7379 ms), average time(21.7379 ms)
+
+    [15:31:35] WritePacketProcessLog(111): id(3111), acc count(31), acc time(11.3927 ms), average time(0.3675 ms)
+
+    [15:31:35] WritePacketProcessLog(111): id(3145), acc count(4), acc time(31.0621 ms), average time(7.7655 ms)
+
+    [15:31:35] WritePacketProcessLog(111): id(4010), acc count(2), acc time(48.9621 ms), average time(24.4810 ms)
+
+    [15:31:35] WritePacketProcessLog(111): id(4017), acc count(1), acc time(42.4140 ms), average time(42.4140 ms)
+
+    [15:31:35] WritePacketProcessLog(111): id(6085), acc count(2), acc time(35.8381 ms), average time(17.9190 ms)
+
+    [15:31:35] WritePacketProcessLog(111): id(10209), acc count(31), acc time(12.1489 ms), average time(0.3919 ms)
+
+  --- process.log20261005.log 末 8 行 ---
+    [14:30:34] Load_Table(861): CAppConfig::Load_Table :  _S_MOD_CFG_LOADER_BY_NAME
+    
+
+  --- QueryCount20261005.log 末 8 行 ---
+    [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20090), count(4), time(0), compute(0.00)
+
+    [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20104), count(1), time(21), compute(0.00)
+
+    [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20105), count(31), time(11), compute(0.00)
+
+    [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20114), count(2), time(48), compute(0.00)
+
+    [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20164), count(9), time(41), compute(0.00)
+
+    [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20189), count(4), time(31), compute(0.00)
+
+    [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20210), count(2), time(35), compute(0.00)
+
+    [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20262), count(31), time(11), compute(0.00)
+
+  --- Statistic20261005.log 末 8 行 ---
+    [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 1, 0)
+
+    [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 2, 0)
+
+    [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 3, 0)
+
+    [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 4, 0)
+
+    [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 5, 0)
+
+    [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 6, 0)
+
+    [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 7, 0)
+
+    [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 8, 0)
+
+  --- Udp20261005.log 末 8 行 ---
+    [14:30:34] InitServerSocket(110): Opened port 20303 with fd 5, recv buf size 1000000
+    
+
+    [14:30:34] InitClientSocket(143): Opened port with fd 7
+    
+
+
+########## 5. dbmw 的 table/ 目录（它有表定义！）##########
+=== dbmw_mnt/table ===
+  total 20
+  drwxrwxrwx 2 root root 4096 Dec 19  2020 .
+  drwxrwxrwx 6 root root 4096 Aug 13  2015 ..
+  -rwxrwxrwx 1 root root  260 Dec 19  2020 server_config.tbl
+  --- server_config.tbl（前 30 行）---
+    #-------|-------------|-------|---------------|------------------|
+    #Type   | Server Group| Index |  Server IP    | Server UDP Port  |
+    #-------|-------------|-------|---------------|------------------|
+    3               3        201      127.0.0.1           30303=== dbmw_guild/table ===
+  total 20
+  drwxrwxrwx 2 root root 4096 Dec 19  2020 .
+  drwxrwxrwx 6 root root 4096 Aug 13  2015 ..
+  -rwxrwxrwx 1 root root  261 Dec 19  2020 server_config.tbl
+  --- server_config.tbl（前 30 行）---
+    #-------|-------------|-------|---------------|------------------|
+    #Type   | Server Group| Index |  Server IP    | Server UDP Port  |
+    #-------|-------------|-------|---------------|------------------|
+    5              3         203      127.0.0.1           30403
+=== dbmw_stat/table ===
+  total 20
+  drwxrwxrwx 2 root root 4096 Dec 19  2020 .
+  drwxrwxrwx 6 root root 4096 Aug 13  2015 ..
+  -rwxrwxrwx 1 root root  260 Dec 19  2020 server_config.tbl
+  --- server_config.tbl（前 30 行）---
+    #-------|-------------|-------|---------------|------------------|
+    #Type   | Server Group| Index |  Server IP    | Server UDP Port  |
+    #-------|-------------|-------|---------------|------------------|
+    7              3         205      127.0.0.1           30503
+########## 6. game 有没有直接连 3306（判断直连 vs 走 dbmw）##########
+tcp        0      0 0.0.0.0:3306                0.0.0.0:*                   LISTEN      3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42756             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42757             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42758             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42752             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42753             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42754             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42755             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42772             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:3306              127.0.0.1:42773             ESTABLISHED 3592/mysqld         
+tcp        0      0 127.0.0.1:42689             127.0.0.1:3306              ESTABLISHED 3766/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42690             127.0.0.1:3306              ESTABLISHED 3766/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42691             127.0.0.1:3306              ESTABLISHED 3766/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42692             127.0.0.1:3306              ESTABLISHED 3766/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42693             127.0.0.1:3306              ESTABLISHED 3766/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42694             127.0.0.1:3306              ESTABLISHED 3766/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42695             127.0.0.1:3306              ESTABLISHED 3766/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42696             127.0.0.1:3306              ESTABLISHED 3771/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42697             127.0.0.1:3306              ESTABLISHED 3771/./df_dbmw_r    
+tcp        0      0 127.0.0.1:42698             127.0.0.1:3306              ESTABLISHED 3771/./df_dbmw_r    
+--- exit=0 ---

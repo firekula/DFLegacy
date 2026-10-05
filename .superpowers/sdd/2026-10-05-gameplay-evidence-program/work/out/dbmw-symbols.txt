@@ -1,0 +1,187 @@
+函数符号 8891 个
+
+=== 按类名/命名空间聚类（取前 2 段的出现次数）===
+     50  _Z41__static_initialization_and_destruction_0ii
+     32  __cxa_pure_virtual
+     27  _ZL12comp_by_timeRK15STGuildCargoLogS1_
+      2  _ZN5yaSSL15CreateRSAClientEv
+      2  _ZN8TaoCrypt16PentiumOptimized8SubtractEPjPKjS3_j
+      2  _ZN5yaSSL10CreateDataEv
+      2  _ZN5yaSSL14CreateDHClientEv
+      2  _ZNSt13bad_exceptionD1Ev
+      2  vio_close
+      2  vio_timeout
+      2  _ZN8TaoCrypt16PentiumOptimized3AddEPjPKjS3_j
+      2  vio_errno
+      2  _ZN5yaSSL23CreateCertificateVerifyEv
+      2  vio_ssl_write
+      2  _ZN5yaSSL17CreateCertificateEv
+      2  vio_ssl_blocking
+      2  vio_fastsend
+      2  vio_delete
+      2  _ZN5yaSSL21CreateServerHelloDoneEv
+      2  vio_is_blocking
+      2  _ZN5yaSSL17CreateClientHelloEv
+      2  vio_write
+      2  _ZN5yaSSL18CreateHelloRequestEv
+      2  _ZN5yaSSL24CreateCertificateRequestEv
+      2  vio_read
+      2  vio_peer_addr
+      2  _ZN5yaSSL14CreateFinishedEv
+      2  pthread_equal
+      2  _ZN5yaSSL17CreateDHServerKEAEv
+      2  _ZNSt8bad_castD1Ev
+      2  _ZN9__gnu_cxx20recursive_init_errorD1Ev
+      2  _ZN5yaSSL20CreateFortezzaClientEv
+      2  vio_blocking
+      2  vio_keepalive
+      2  _ZN8TaoCrypt11P4Optimized8SubtractEPjPKjS3_j
+      2  _ZN5yaSSL15CreateHandShakeEv
+      2  zcalloc
+      2  zcfree
+      2  yaSSL_accept
+      2  _ZN9__gnu_cxx26__concurrence_unlock_errorD1Ev
+      2  _ZN5yaSSL23CreateFortezzaServerKEAEv
+      2  _ZN5yaSSL18CreateRSAServerKEAEv
+      2  vio_ssl_read
+      2  _ZNSt9bad_allocD1Ev
+      2  _ZN8TaoCrypt11P4Optimized3AddEPjPKjS3_j
+
+=== 关键词扫描（找协议/查询/派发的承接结构）===
+
+  [Packet] 451 个，前 8：
+     _GLOBAL__I_g_szNotiPacketName
+     _GLOBAL__I__Z22CPacketDecoderInstancev
+     _GLOBAL__I__Z21CPacketTracerInstancev
+     _GLOBAL__I__ZN17CPacketTranslater8m_pclAppE
+     _GLOBAL__I_PacketCounter.cpp
+     _ZN10CDBManager17QueryReloadSpecDbEP38Packet_Frame_Lag_Statistic_Reload_SpecP17CStatisticsServer
+     _ZN13CPacketTracer8ResetLogEv
+     _ZN17CPacketTranslater22OnWriteQueryStatisticsEP12PacketHeader
+
+  [packet] 4 个，前 8：
+     _ZN5CPeer11recv_packetEv
+     _ZN5CPeer11send_packetEPci
+     _ZN5CPeer11send_packetEv
+     opt_flush_ok_packet
+
+  [Query] 97 个，前 8：
+     _GLOBAL__I__Z21CQueryCounterInstancev
+     _ZN10CDBManager17QueryReloadSpecDbEP38Packet_Frame_Lag_Statistic_Reload_SpecP17CStatisticsServer
+     _Z15getList2inQueryjPKjPc
+     _ZN17CPacketTranslater22OnWriteQueryStatisticsEP12PacketHeader
+     _ZN17CPacketTranslater12OnQueryGuildEP12PacketHeader
+     _ZN10CDBManager20QueryFirstLoadSpecDbEP36Packet_Frame_Lag_Statistic_Load_SpecP17CStatisticsServer
+     _ZN17CPacketTranslater16OnQueryBuddyInfoEP12PacketHeader
+     _ZN10CDBManager28OnSaveAssertManagerInfoWriteEP43Packet_DBMW_Assert_Manager_Info_Write_Query
+
+  [query] 9 个，前 8：
+     cli_read_query_result
+     mysql_query
+     _ZN6CMySql9set_queryEjPcz
+     mysql_send_query
+     free_old_query
+     _ZN10CDBManager18queryTowerFullRankEjRSt6vectorI13stTowerRank_tSaIS1_EEj
+     mysql_real_query
+     _ZN6CMySql10exec_queryEv
+
+  [dispatch] 4 个，前 8：
+     _ZN16CTcpAcceptThread8dispatchEPv
+     _ZN16CThreadInterface14dispatch_proxyEPv
+     _ZN14CNetworkThread8dispatchEPv
+     _ZN17CTcpNetworkThread8dispatchEPv
+
+  [Handler] 74 个，前 8：
+     _GLOBAL__I__ZN18CFrameCountHandlerC2Ev
+     _GLOBAL__I__ZN12EpollHandlerC2Ev
+     _GLOBAL__I__ZN11CUdpHandlerC2Ev
+     _GLOBAL__I__ZN18CSystemTimeHandlerC2Ev
+     _GLOBAL__I__ZN14CServerHandlerC2Ev
+     _ZN14CServerHandler22GetStatisticsServerPtrEv
+     _Z26CSystemTimeHandlerInstancev
+     _ZN12EpollHandler12WaitForEventEv
+
+  [handler] 10 个，前 8：
+     my_pipe_sig_handler
+     _Z14signal_handleri
+     my_xml_set_leave_handler
+     my_pipe_sig_handler
+     _ZN17CSignalTranslator12init_handlerEP12CApplication
+     my_xml_set_enter_handler
+     _ZSt15set_new_handlerPFvvE
+     my_xml_set_value_handler
+
+  [Process] 125 个，前 8：
+     SHA1ProcessMessageBlock
+     _ZNSt8_Rb_treeIjSt4pairIKj15stPacketProcessESt10_Select1stIS3_ESt4lessIjESaIS3_EE14_M_lower_boundEPSt13_Rb_tree_nodeIS3_ESC_RS1_
+     _ZN5yaSSL4Data7ProcessERNS_12input_bufferERNS_3SSLE
+     _ZNSt4pairISt17_Rb_tree_iteratorIS_IKj15stPacketProcessEEbEC1IS4_bEEOT_OT0_
+     _ZNSt13_Rb_tree_nodeISt4pairIKj15stPacketProcessEED2Ev
+     _ZNSaISt13_Rb_tree_nodeISt4pairIKj15stPacketProcessEEEC2Ev
+     _ZNSt8_Rb_treeIjSt4pairIKj15stPacketProcessESt10_Select1stIS3_ESt4lessIjESaIS3_EE13_Rb_tree_implIS7_Lb0EE13_M_initializeEv
+     _ZSt7forwardIR15stPacketProcessEOT_ONSt8identityIS2_E4typeE
+
+  [Recv] 270 个，前 8：
+     _GLOBAL__I__ZN14CUdpRecvBuffer20m_RecvBufferMemPool_E
+     _ZN14CTcpRecvBufferdlEPvj
+     _ZN15CAppLoadChecker16checkUdpRecvLoadEi
+     _ZN14CUdpRecvBufferdlEPv
+     _ZSt13copy_backwardIPPP14CUdpRecvBufferS3_ET0_T_S5_S4_
+     _ZN9__gnu_cxx13new_allocatorIPP14CTcpRecvBufferEC2Ev
+     _ZNSt12__miter_baseIPPP14CTcpRecvBufferLb0EE3__bES3_
+     _ZNSt15_Deque_iteratorIP14CUdpRecvBufferRS1_PS1_EC2ERKS4_
+
+  [Send] 151 个，前 8：
+     _ZN11CGameServer12SendToServerEPci
+     _ZN17CPacketTranslater12OnSendHWspecEP12PacketHeader
+     _ZNSt5queueIP14CTcpSendBufferSt5dequeIS1_SaIS1_EEE5frontEv
+     _ZN9__gnu_cxx13new_allocatorIP14CTcpSendBufferE10deallocateEPS2_j
+     _ZSt23__copy_move_backward_a2ILb0EPPP14CTcpSendBufferS3_ET1_T0_S5_S4_
+     _ZNSt11_Deque_baseIP14CTcpSendBufferSaIS1_EEC1EOS3_
+     _ZN13CTcpNetSystem18Get_TcpSendQPacketEv
+     _ZNSt11_Deque_baseIP14CTcpSendBufferSaIS1_EE16_M_destroy_nodesEPPS1_S5_
+
+  [Table] 19 个，前 8：
+     _GLOBAL__I__ZN10CAppConfig11Parse_TableEPci
+     _GLOBAL__I__ZN13CServerConfig11Parse_TableEPci
+     _GLOBAL__I__ZN10CTableBase19Load_Txt_Table_DataEPKci
+     _ZN10CTableBase19Load_Txt_Table_DataEPKci
+     _ZN10CTableBaseD0Ev
+     _ZN14CKillUSRConfig10Load_TableERKSs
+     _ZN10CTableBaseC1Ev
+     _ZN10CTableBaseD2Ev
+
+  [table] 22 个，前 8：
+     _ZN8TaoCrypt8Portable8SubtractEPjPKjS3_j
+     _ZN8TaoCrypt8Portable3AddEPjPKjS3_j
+     init_dwarf_reg_size_table
+     __register_frame_table
+     __register_frame_info_table_bases
+     _ZN8TaoCrypt8Portable9Multiply2EPjPKjS3_
+     _ZN8TaoCrypt8Portable3AddEPjPKjS3_j
+     _ZN8TaoCrypt8Portable8SubtractEPjPKjS3_j
+
+  [Load] 82 个，前 8：
+     _GLOBAL__I__ZN10CTableBase19Load_Txt_Table_DataEPKci
+     _GLOBAL__I__Z23CAppLoadCheckerInstancev
+     _ZN15CAppLoadChecker16checkUdpRecvLoadEi
+     _ZN10CDBManager23OnSaveLoadingTimeReportEP31Packet_DBMW_Loading_Time_Report
+     _ZN29Packet_Guild_Load_Guild_CargoC1Ev
+     _ZN10CDBManager20QueryFirstLoadSpecDbEP36Packet_Frame_Lag_Statistic_Load_SpecP17CStatisticsServer
+     _ZN13np_server_xml10CServerXml9EventLoadEP9TiXmlNode
+     _ZN13np_server_xml10CServerXml11ProcessLoadEP9TiXmlNode
+
+  [QueryId] 3 个，前 8：
+     _ZN10CDBManager20RegisterQueryIdTableEiPKc
+     _ZN13CQueryCounter16LoadQueryIdTableEi
+     _ZN10CDBManager16LoadQueryIdTableEv
+
+  [Config] 118 个，前 8：
+     _GLOBAL__I__ZN10CAppConfig11Parse_TableEPci
+     _GLOBAL__I__ZN14CKillUSRConfigD2Ev
+     _GLOBAL__I__ZN13CServerConfig11Parse_TableEPci
+     _ZN14CKillUSRConfigD0Ev
+     _ZSt8_DestroyIPP16ST_KillUSRConfigS1_EvT_S3_RSaIT0_E
+     _ZNSt12__miter_baseIPP16ST_KillUSRConfigLb0EE3__bES2_
+     _ZNK9__gnu_cxx17__normal_iteratorIPP16ST_KillUSRConfigSt6vectorIS2_SaIS2_EEE4baseEv
+     _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mIP16ST_KillUSRConfigEEPT_PKS5_S8_S6_

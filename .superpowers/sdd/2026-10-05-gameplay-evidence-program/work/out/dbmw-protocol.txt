@@ -1,0 +1,368 @@
+dbmw 符号分析：8891 个函数符号
+
+====================================================================================
+1. 包类型（Packet_*）共 119 种 —— **这就是线协议的词汇表**
+====================================================================================
+
+  --- 域 DB（35 种）---
+    Packet_DB_Create_Guild_Agit                                出现 1
+    Packet_DB_Create_Guild_Agit_Reply                          出现 5
+    Packet_DB_Delete_Guild_Agit                                出现 1
+    Packet_DB_Delete_Guild_Agit_Reply                          出现 5
+    Packet_DB_Guild_Cargo_Upgrade                              出现 1
+    Packet_DB_Insert_Guild_Cargo_History                       出现 1
+    Packet_DB_Load_Guild_Agit                                  出现 1
+    Packet_DB_Load_Reply_Guild_Board_Delete                    出现 4
+    Packet_DB_Load_Reply_Guild_Board_Open                      出现 4
+    Packet_DB_Load_Reply_Guild_Board_Write                     出现 4
+    Packet_DB_Load_Reply_Web_Guild_Board_Write                 出现 4
+    Packet_DB_Load_Request_Guild_Board_Write                   出现 1
+    Packet_DB_Load_Request_Web_Guild_Board_Write               出现 1
+    Packet_DB_Monitor_Change_Unconnected_GuildMember_Grade     出现 4
+    Packet_DB_Query_Reply_On_Guild_Booting                     出现 5
+    Packet_DB_Reply_Guild_All_Members                          出现 4
+    Packet_DB_Reply_Guild_Master_Delegate                      出现 4
+    Packet_DB_Reply_Guild_Secede                               出现 4
+    Packet_DB_Reply_Query_Guild                                出现 8
+    Packet_DB_Reply_Query_Guild_Member                         出现 5
+    Packet_DB_Reply_Query_Member                               出现 5
+    Packet_DB_Reply_Unconn_Guild_Member                        出现 4
+    Packet_DB_Request_Guild_Secede                             出现 1
+    Packet_DB_Response_Approve_Join_Guild                      出现 4
+    Packet_DB_Save_Power_War_Bonus_Point                       出现 1
+    Packet_DB_Save_Power_War_Guild_Rank                        出现 1
+    Packet_DB_Save_Power_War_Point                             出现 1
+    Packet_DB_Save_Power_War_Point_Reward                      出现 1
+    Packet_DB_Save_Power_War_Statue_Ranker                     出现 1
+    Packet_DB_Save_Power_War_User_Rank                         出现 1
+    Packet_DB_Update_Guild_Cargo                               出现 1
+    Packet_DB_Upgrade_Guild_Agit                               出现 1
+    Packet_DB_Upgrade_Guild_Agit_Reply                         出现 5
+    Packet_DB_VillageAttackedRank                              出现 1
+    Packet_DB_Write_Guild_Member_Memo                          出现 1
+
+  --- 域 DBMW（32 种）---
+    Packet_DBMW_Add_Buddy_Reply                                出现 4
+    Packet_DBMW_Assert_Manager_Info_Write_Query                出现 1
+    Packet_DBMW_Change_Char_Name                               出现 2
+    Packet_DBMW_Cube_Statistic                                 出现 1
+    Packet_DBMW_DeathTower_Statistic_Playdata_Job              出现 1
+    Packet_DBMW_DeathTower_Statistic_Playdata_Party            出现 1
+    Packet_DBMW_DeathTower_Statistic_Value                     出现 1
+    Packet_DBMW_Del_Buddy_Reply                                出现 4
+    Packet_DBMW_Dungeon_Statistic_Party                        出现 1
+    Packet_DBMW_Dungeon_Statistic_Party_Charac                 出现 1
+    Packet_DBMW_Dungeon_Statistic_Party_Job                    出现 1
+    Packet_DBMW_Fatigue_Battery_Money_Statistic                出现 1
+    Packet_DBMW_HellParty_Statistic_Item                       出现 1
+    Packet_DBMW_Loading_Time_Report                            出现 1
+    Packet_DBMW_Packet_Overflow_Statistic                      出现 1
+    Packet_DBMW_Powerwar_Lag_Report                            出现 1
+    Packet_DBMW_Powerwar_Loading_Time_Report                   出现 1
+    Packet_DBMW_Query_Buddy_Info_Reply                         出现 4
+    Packet_DBMW_Query_Msg                                      出现 1
+    Packet_DBMW_Query_String                                   出现 1
+    Packet_DBMW_Reason_Crash_Down_Query                        出现 1
+    Packet_DBMW_Reply_Guild_Create                             出现 4
+    Packet_DBMW_Reply_Guild_Mail                               出现 4
+    Packet_DBMW_Reponse_BlackList                              出现 4
+    Packet_DBMW_Request_Guild_Create                           出现 1
+    Packet_DBMW_Save_Client_Spec_Statistic                     出现 1
+    Packet_DBMW_Save_Error_Line_Statistic                      出现 1
+    Packet_DBMW_Save_Guild_Join_Reply                          出现 4
+    Packet_DBMW_Statistic_Login_Logout                         出现 2
+    Packet_DBMW_TechnicalReport_Common_Query                   出现 1
+    Packet_DBMW_Ting_User_TimeCheck_Write_Query                出现 1
+    Packet_DBMW_User_Ting_TimeCheck_Write_Query                出现 1
+
+  --- 域 Frame（10 种）---
+    Packet_Frame_Lag_Collect_Interval_Check                    出现 4
+    Packet_Frame_Lag_Spec_Delete_Notify                        出现 4
+    Packet_Frame_Lag_Statistic_Load_Spec                       出现 1
+    Packet_Frame_Lag_Statistic_Reload_Spec                     出现 1
+    Packet_Frame_Lag_Statistic_Result_Load_Spec                出现 4
+    Packet_Frame_Lag_Statistic_Result_Reload_Spec              出现 4
+    Packet_Frame_Lag_Statistic_Write_Daily_Bad_Spec            出现 1
+    Packet_Frame_Lag_Statistic_Write_Lag_Index                 出现 1
+    Packet_Frame_Lag_Statistic_Write_Query                     出现 1
+    Packet_Frame_Lag_Used_Memory_Write_Query                   出现 1
+
+  --- 域 Result（4 种）---
+    Packet_Result_Loading_Periodic_Message                     出现 5
+    Packet_Result_OnTimeEvent_Idx                              出现 5
+    Packet_Result_Ontime_Event_Idx_Update                      出现 4
+    Packet_Result_Ontime_Event_Item                            出现 5
+
+  --- 域 Guild（3 种）---
+    Packet_Guild_Load_Guild_Agit                               出现 5
+    Packet_Guild_Load_Guild_Cargo                              出现 5
+    Packet_Guild_Load_Guild_Cargo_History                      出现 5
+
+  --- 域 Item（3 种）---
+    Packet_Item_Limit_Edition_Load_Data_Req                    出现 1
+    Packet_Item_Limit_Edition_Load_Data_Rpy                    出现 5
+    Packet_Item_Limit_Edition_Update                           出现 1
+
+  --- 域 Monitor（3 种）---
+    Packet_Monitor_Event_Start                                 出现 4
+    Packet_Monitor_Notify_New_Mail                             出现 4
+    Packet_Monitor_UDP_HeartBeat                               出现 4
+
+  --- 域 Response（2 种）---
+    Packet_Response_D_IPCounterList                            出现 4
+    Packet_Response_IPCounterList                              出现 4
+
+  --- 域 InnerPakcet（2 种）---
+    Packet_InnerPakcet_Login                                   出现 4
+    Packet_InnerPakcet_Logout                                  出现 4
+
+  --- 域 Reply（2 种）---
+    Packet_Reply_Load_Tower_Full_Rank                          出现 4
+    Packet_Reply_Today_Guild_Member                            出现 5
+
+  --- 域 Server（2 种）---
+    Packet_Server_Match_data_DBMW                              出现 1
+    Packet_Server_Queue_Load_Statistic                         出现 4
+
+  --- 域 Emblem（1 种）---
+    Packet_Emblem_Create_Statistic_DB                          出现 1
+
+  --- 域 Notify（1 种）---
+    Packet_Notify_New_Group_Mail                               出现 4
+
+  --- 域 Set（1 种）---
+    Packet_Set_ARS_Info                                        出现 4
+
+  --- 域 CollectItemsResult（1 种）---
+    Packet_CollectItemsResult                                  出现 4
+
+  --- 域 Notice（1 种）---
+    Packet_Notice_Guild_Mail_Arrived                           出现 4
+
+  --- 域 Goldcard（1 种）---
+    Packet_Goldcard_Event_Statistic_STD                        出现 1
+
+  --- 域 Load（1 种）---
+    Packet_Load_Periodic_Message                               出现 1
+
+  --- 域 Avater（1 种）---
+    Packet_Avater_Disjoint_Statistic_DB                        出现 1
+
+  --- 域 Udp（1 种）---
+    Packet_Udp_Characteristic                                  出现 1
+
+  --- 域 P2P（1 种）---
+    Packet_P2P_Statistics                                      出现 1
+
+  --- 域 StartGameEventFromServer（1 种）---
+    Packet_StartGameEventFromServer                            出现 1
+
+  --- 域 GameServer2Statisctics2DBServer（1 种）---
+    Packet_GameServer2Statisctics2DBServer                     出现 1
+
+  --- 域 Manager（1 种）---
+    Packet_Manager_Event_Trigger_Ack                           出现 1
+
+  --- 域 Stat（1 种）---
+    Packet_Stat_Compatibility_Index                            出现 1
+
+  --- 域 Randombox（1 种）---
+    Packet_Randombox_statistic_DB                              出现 1
+
+  --- 域 Req（1 种）---
+    Packet_Req_Ontime_Event_Idx_Update                         出现 1
+
+  --- 域 TowerOfDespair（1 种）---
+    Packet_TowerOfDespair_Statistic_STD                        出现 1
+
+  --- 域 StopGameEventFromServer（1 种）---
+    Packet_StopGameEventFromServer                             出现 1
+
+  --- 域 UnChangable（1 种）---
+    Packet_UnChangable_GuildInfo_Save                          出现 1
+
+  --- 域 Secret（1 种）---
+    Packet_Secret_Shop_Statistic                               出现 1
+
+  --- 域 User（1 种）---
+    Packet_User_Count_Statistic                                出现 1
+
+====================================================================================
+2. 枚举类型（ENUM_*）共 3 种 —— id 命名空间在这里
+====================================================================================
+    ENUM_DB_HANDLE_IDX                               出现 313
+    ENUM_SERVER_GROUP                                出现 1
+    ENUM_DB_KIND                                     出现 1
+
+====================================================================================
+3. CDBManager 方法（去重 151 个）—— **这就是操作清单**
+====================================================================================
+    AddBuddy
+    AwardGuildCoinByMail
+    AwardGuildTitleByMail
+    CDBManager
+    ChangeCharName
+    ChangeGuildMemberGrade
+    ChangeGuildNotifyMessage
+    ChangePvPBuddyName
+    Close
+    DelBuddy
+    DeleteJoinListByInvite
+    DeleteToBlackList
+    DeleteToBlackListOnly
+    FindCharIdInArray
+    FindCharProxyInArray
+    GetCoinEventPerDay
+    GetDBHandle
+    GetDBMWStatistic
+    GetIdentity
+    GetMaxHuntingPointServerGroup
+    GetMinTimeServerGroup
+    GetVillageAttackedRank
+    GuildJoin
+    GuildMasterDelegate
+    GuildSecede
+    Init
+    InsertDailyBadSpecStatistics
+    InsertFrameLagStatistics
+    InsertLetter
+    InsertMail
+    InsertPostal
+    InsertUdpCharacteristic
+    LoadQueryIdTable
+    OnCreateGuildAgit
+    OnDeleteGuildAgit
+    OnDeleteGuildBoard
+    OnGoldcardEventStatistic
+    OnGuildJoinByListApprove
+    OnInsertGuildCargoHistory
+    OnLoadGuildAgit
+    OnLoadGuildBoard
+    OnLoadGuildCargo
+    OnLoadGuildCargoHistory
+    OnLoadPeriodicMessage
+    OnManagerEventTriggerAck
+    OnMemberDeleteAsCharDelete
+    OnReasonCrashDownQueryWrite
+    OnSaveAssertManagerInfoWrite
+    OnSaveFatigueBattery
+    OnSaveLoadingTimeReport
+    OnSavePacketOverflowWrite
+    OnSavePowerWarBonusPoint
+    OnSavePowerWarGuildRank
+    OnSavePowerWarPointReward
+    OnSavePowerWarStatueRanker
+    OnSavePowerWarUserRank
+    OnSavePowerwarLagReport
+    OnSavePowerwarLoadingReport
+    OnSaveTingUserAccount
+    OnSaveUsedMemoryWriteQuery
+    OnSaveUserTingTimeCheckWrite
+    OnSecretShopStatistic
+    OnServerMatchData
+    OnStatisticLoginLogout
+    OnStatisticNumOfOccupations
+    OnTechnicalReportCommonQuery
+    OnUpdateGuildCargo
+    OnUpgradeGuildAgit
+    OnUpgradeGuildCargo
+    OnWriteGuildBoard
+    OnWriteGuildMemberMemo
+    OnWriteWebGuildBoard
+    Open
+    QueryBlackList
+    QueryBuddyInfo
+    QueryCharacNoByName
+    QueryCubeStatisticCreate
+    QueryDeathTowerPlayDataJobStatisticCreate
+    QueryDeathTowerPlayDataPartyStatisticCreate
+    QueryDeathTowerValueStatisticCreate
+    QueryErrorLineStatisticCreate
+    QueryFirstLoadSpecDb
+    QueryGuild
+    QueryGuildAllMembersProxy
+    QueryGuildBooting
+    QueryGuildCreate
+    QueryGuildMember
+    QueryGuildMemberGradeByName
+    QueryGuildMemberProxy
+    QueryGuildNotiMessage
+    QueryGuildPointList
+    QueryGuildSkill
+    QueryGuildWarPointList
+    QueryHWspecCreate
+    QueryHellPartyStatisticItemCreate
+    QueryIPCounter
+    QueryInsertUpdate
+    QueryLoadARSInfo
+    QueryMember
+    QueryMsg
+    QueryOnTimeEventIdx
+    QueryOnTimeEventIdxUpdate
+    QueryOnTimeEventItem
+    QueryP2PStatistics
+    QueryPartyCharacStatisticCreate
+    QueryPartyJobStatisticCreate
+    QueryPartyStatisticCreate
+    QueryReloadSpecDb
+    QuerySubGuildMaster
+    QueryTodayGuildMember
+    QueryTowerOfDespairStatistic
+    QueryUpdateChannelOccNum
+    RegisterQueryIdTable
+    RegisterToBlackList
+    SaveGuildInfo
+    SaveGuildMember
+    SaveGuildSkill
+    SaveGuildWarPointList
+    SaveMemberDelete
+    SaveMemberExp
+    SaveMemberInsert
+    SavePowerWarPoint
+    SaveServerQueueLoadStatistic
+    SaveUnchangableGuildInfo
+    SendGuildCoinByMail
+    SendGuildLetter
+    SunAhWriteQuery
+    UpdateAccumulateGuildPoint
+    UpdateCreateEmblemStatistic
+    UpdateDisjointAvatarStatistic
+    UpdateGuildRank
+    UpdateGuildWarPointList
+    UpdateMemberKeyInCharacInfo
+    UpdatePowerSecedeTime
+    UpdateQueryCount
+    UpdateRandomboxStatistic
+    UpdateResetGuildPoint
+    insertHolePunchingResult
+    insertServerGameEvent
+    loadLimitNpcBuyItemInfo
+    onItemLimitEditionLoadData
+    onItemLimitEditionUpdateData
+    queryTowerFullRank
+    selectCollectItems
+    updateCollectItems
+    updateCollectItemsGm
+    updateCompatibilityIndex
+    updateLimitNpcBuyItemInfo
+    updateNexonPinPcRoomPlayTimeEvent
+    updateServerGameEvent
+    ~CDBManager
+
+====================================================================================
+4. 进程内角色类（C*Server/Manager/Instance/Application）共 14 个
+====================================================================================
+    CAppLoadCheckerInstance
+    CDBManager
+    CFileLogWriterInstance
+    CGameServer
+    CGuildManager
+    CGuildServer
+    CMonitorServer
+    CPacketDecoderInstance
+    CPacketTracerInstance
+    CQueryCounterInstance
+    CSignalTranslatorInstance
+    CStatisticsServer
+    CSystemTimeHandlerInstance
+    CTcpServer
