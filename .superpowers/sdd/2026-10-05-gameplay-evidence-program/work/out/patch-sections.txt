@@ -1,0 +1,100 @@
+节表（有实体内容的）:
+  .interp              off=0x00000154 size=0x13        addr=0x08048154 ALLOC
+  .note.ABI-tag        off=0x00000168 size=0x20        addr=0x08048168 ALLOC
+  .gnu.hash            off=0x00000188 size=0x5760      addr=0x08048188 ALLOC
+  .dynsym              off=0x000058e8 size=0xce90      addr=0x0804d8e8 ALLOC
+  .dynstr              off=0x00012778 size=0x1ff23     addr=0x0805a778 ALLOC
+  .gnu.version         off=0x0003269c size=0x19d2      addr=0x0807a69c ALLOC
+  .gnu.version_r       off=0x00034070 size=0x180       addr=0x0807c070 ALLOC
+  .rel.dyn             off=0x000341f0 size=0xc28       addr=0x0807c1f0 ALLOC
+  .rel.plt             off=0x00034e18 size=0x8f0       addr=0x0807ce18 ALLOC
+  .init                off=0x00035708 size=0x17        addr=0x0807d708 EXEC
+  .plt                 off=0x00035720 size=0x11f0      addr=0x0807d720 EXEC
+  .text                off=0x00036910 size=0xa66f0c    addr=0x0807e910 EXEC
+  .fini                off=0x00a9d81c size=0x1c        addr=0x08ae581c EXEC
+  .rodata              off=0x00a9d840 size=0x35248c    addr=0x08ae5840 ALLOC
+  .eh_frame_hdr        off=0x00defccc size=0x8         addr=0x08e37ccc ALLOC
+  .eh_frame            off=0x00defcd4 size=0x4e3448    addr=0x08e37cd4 ALLOC
+  .gcc_except_table    off=0x012d311c size=0x4dd45     addr=0x0931b11c ALLOC
+  .ctors               off=0x01321000 size=0x7fc       addr=0x09369000 ALLOC
+  .dtors               off=0x013217fc size=0x8         addr=0x093697fc ALLOC
+  .jcr                 off=0x01321804 size=0x4         addr=0x09369804 ALLOC
+  .data.rel.ro         off=0x01321820 size=0x2c70      addr=0x09369820 ALLOC
+  .dynamic             off=0x01324490 size=0x100       addr=0x0936c490 ALLOC
+  .got                 off=0x01324590 size=0x608       addr=0x0936c590 ALLOC
+  .got.plt             off=0x01324b98 size=0x484       addr=0x0936cb98 ALLOC
+  .data                off=0x01325020 size=0x88690     addr=0x0936d020 ALLOC
+  .comment             off=0x013ad6b0 size=0x438b      addr=0x00000000 
+  .debug_aranges       off=0x013b1a3b size=0x1118      addr=0x00000000 
+  .debug_pubnames      off=0x013b2b53 size=0x1240e     addr=0x00000000 
+  .debug_info          off=0x013c4f61 size=0xa11f1     addr=0x00000000 
+  .debug_abbrev        off=0x01466152 size=0x8984      addr=0x00000000 
+  .debug_line          off=0x0146ead6 size=0x11b9b     addr=0x00000000 
+  .debug_frame         off=0x01480674 size=0x5300      addr=0x00000000 
+  .debug_str           off=0x01485974 size=0x3790b     addr=0x00000000 
+  .debug_loc           off=0x014bd27f size=0x40f21     addr=0x00000000 
+  .debug_pubtypes      off=0x014fe1a0 size=0xc979      addr=0x00000000 
+  .debug_ranges        off=0x0150ab19 size=0xa400      addr=0x00000000 
+  .shstrtab            off=0x01514f19 size=0x194       addr=0x00000000 
+  .symtab              off=0x01515740 size=0x554cd0    addr=0x00000000 
+  .strtab              off=0x01a6a410 size=0x842eea    addr=0x00000000 
+
+====================================================================================
+逐段：落在哪个**节**
+====================================================================================
+  0x0001d258..0x0001d25b  .dynstr        .rodata/字符串    ctx=Ej._ZS....Rb_tre
+  0x000c0da6..0x000c0da6  .text          **可执行代码**      ctx=_..D$..F....$
+  0x000fcfde..0x000fcfe2  .text          **可执行代码**      ctx=..@....7....@...$
+  0x00119384..0x00119387  .text          **可执行代码**      ctx=.............E..
+  0x00178260..0x00178260  .text          **可执行代码**      ctx=...@.<....E..
+  0x0017829f..0x0017829f  .text          **可执行代码**      ctx=...@.<.u).D$.
+  0x0018020a..0x0018020c  .text          **可执行代码**      ctx=..@.<........E.
+  0x0018020f..0x0018020f  .text          **可执行代码**      ctx=........E....
+  0x0018863a..0x0018863a  .text          **可执行代码**      ctx=.=N.'........
+  0x0019dad6..0x0019dad6  .text          **可执行代码**      ctx=v...........u
+  0x0019dad8..0x0019dad8  .text          **可执行代码**      ctx=..........u..
+  0x0019dadc..0x0019dadc  .text          **可执行代码**      ctx=......u......
+  0x001a57cd..0x001a57cd  .text          **可执行代码**      ctx=..E....~+.D$.
+  0x001b9139..0x001b913d  .text          **可执行代码**      ctx=....t'.....=.. )t
+  0x001b9151..0x001b9152  .text          **可执行代码**      ctx=.h...=..(...h.
+  0x00318c3b..0x00318c3b  .text          **可执行代码**      ctx=E...}._.....u
+  0x00318c79..0x00318c79  .text          **可执行代码**      ctx=E...}._.....u
+  0x00318cc4..0x00318cc4  .text          **可执行代码**      ctx=.~..}._~.....
+  0x004a7805..0x004a7805  .text          **可执行代码**      ctx=.t..E.U....E.
+  0x0051a837..0x0051a847  .text          **可执行代码**      ctx=...U.......].............U..W
+  0x0055d6d1..0x0055d6d2  .text          **可执行代码**      ctx=.........E...$
+  0x0057d25a..0x0057d26a  .text          **可执行代码**      ctx=......uO.]..C....u9.....u2...
+  0x0057d26c..0x0057d272  .text          **可执行代码**      ctx=9.....u2.......E...
+  0x005bbbbb..0x005bbbbb  .text          **可执行代码**      ctx=.........E...
+  0x005bea5d..0x005bea5d  .text          **可执行代码**      ctx=............u
+  0x005bea5f..0x005bea5f  .text          **可执行代码**      ctx=..........u..
+  0x005bea63..0x005bea63  .text          **可执行代码**      ctx=......u..E$..
+  0x005bf57e..0x005bf57e  .text          **可执行代码**      ctx=.........E...
+  0x005bf994..0x005bf994  .text          **可执行代码**      ctx=.t..........u
+  0x005bf996..0x005bf996  .text          **可执行代码**      ctx=..........u..
+  0x005bf99a..0x005bf99a  .text          **可执行代码**      ctx=......u..E$..
+  0x006125c1..0x006125c1  .text          **可执行代码**      ctx=...t..U......
+  0x00613095..0x00613095  .text          **可执行代码**      ctx=...D$.U.....$
+  0x0061375b..0x0061375b  .text          **可执行代码**      ctx=...D$.U.....$
+  0x0061af55..0x0061af55  .text          **可执行代码**      ctx=es....Uu+.E..
+  0x0061b0f3..0x0061b0f3  .text          **可执行代码**      ctx=.~..}.U......
+  0x0061b8f6..0x0061b8f6  .text          **可执行代码**      ctx=.i....U......
+  0x0061dd28..0x0061dd28  .text          **可执行代码**      ctx=...D$.T....D$
+  0x0061ee9c..0x0061ee9c  .text          **可执行代码**      ctx=.4....T.....t
+  0x006224a8..0x006224a8  .text          **可执行代码**      ctx=......T......
+  0x00622659..0x00622659  .text          **可执行代码**      ctx=a.....U.....t
+  0x00622929..0x00622929  .text          **可执行代码**      ctx=.tF.E.U....E.
+  0x00622941..0x00622941  .text          **可执行代码**      ctx=y.....U.....t
+  0x00641d4b..0x00641d4b  .text          **可执行代码**      ctx=.~ .}.T......
+  0x00647ece..0x00647ece  .text          **可执行代码**      ctx=U...}.U~..E..
+  0x00647eda..0x00647eda  .text          **可执行代码**      ctx=......U....!.
+  0x00a8bc0a..0x00a8bc0a  .text          **可执行代码**      ctx=,[^_]....VS..
+
+====================================================================================
+汇总：按节
+====================================================================================
+  .text            **可执行代码**        46 段
+  .dynstr          .rodata/字符串      1 段
+
+  ⇒ 真正改到**可执行代码**的补丁: 46/47 段
+  ⇒ 其余是字符串表/只读数据/符号表 —— 不影响代码语义
