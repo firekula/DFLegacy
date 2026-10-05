@@ -1,0 +1,60 @@
+# opcode-map.tsv 残余分布（Task 4 Step 5/6）
+# 原始命令: Import-Csv opcode-map.tsv -Delimiter "`t" | Group-Object status | ForEach-Object { "$($_.Name) = $($_.Count)" }
+mapped = 428
+no-dispatcher = 741
+unused = 2
+
+unknown = 0        <-- 该状态没有任何行；按判据要求显式计数为 0（不是"没统计"）
+# 合计 = 428 + 741 + 2 + 0 = 1171 = CMD 608 + NOTI 563   => 无余数（spec §2.2 判据 1 的自检）
+# unknown = 0 远低于 spec §2.3 的 200 改判线 => **不触发**"转运行期观测"分支。
+
+# ================================ 以下为注解（说明数字来源；不是判据） ================================
+no-dispatcher 741 = CMD 178 + NOTI 563
+  CMD 178 = id 0..605 里没有任何注册块的槽位（构造函数先把整表清零，再注册 428 个）。
+    可重跑：map-opcodes.py stdout 的 [mech] "unregistered slots inside 0..605" 行
+    [78, 92, 107, 109, 119, 127, 128, 130, 131, 132, 133, 134, 136, 142, 144, 147, 151, 176, 177, 178, 203, 206, 223, 224, 228, 229, 230, 231, 232, 233, 234, 237, 250, 257, 270, 277, 278, 279, 280, 281, 285, 293, 302, 303, 304, 305, 313, 314, 315, 321, 322, 323, 327, 328, 329, 337, 344, 345, 346, 354, 355, 357, 359, 360, 362, 363, 364, 373, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 402, 403, 409, 410, 418, 419, 420, 421, 422, 423, 428, 430, 434, 452, 455, 461, 462, 463, 464, 466, 467, 468, 472, 474, 475, 481, 482, 491, 497, 498, 500, 501, 502, 517, 518, 520, 521, 522, 523, 524, 525, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570, 571, 581, 582, 583, 584, 592, 593, 594, 595, 596, 598]
+  NOTI 563 = 本二进制**没有** NOTI 派发表（结构性，不是"查不到"）。证据见 map-opcodes.py docstring 机制第 4 条：
+    ① PacketDispatcher::get_dispatcher(int) @0x085948e2 只按 id 取表、**没有 class 参数**
+       ⇒ 一个 id 索引的表不可能同时服务 CMD(0..605) 与 NOTI(0..562) 两套 id 空间；
+    ② ENUM_NOTIPACKET 的消费者全是发送/取名侧（符号表实测）：
+       CUser::SendNotiPacket(CUser::eSendTarget, ENUM_NOTIPACKET, int)
+       ARAD::DISPATCHER::make_noti_packetheader_jpn(PacketGuard&, ENUM_NOTIPACKET, bool)
+       GameWorld::send_chat_msg(..., ENUM_NOTIPACKET) / send_chat_msg_hyper_link(...)
+       GetNotifyPacketName(ENUM_NOTIPACKET)
+       没有任何 dispatch* 函数以 ENUM_NOTIPACKET 为参数。
+
+unused 2 = CMD 606 END、CMD 607 DISJOINT_ITEM：id > 查表上界 0x25d = 605
+  get_dispatcher 的第一条比较就是 cmp dword [ebp+0xc], 0x25d -> 606/607 一律返回 0。
+  CMD 606 的名字是 'END'（哨兵）；CMD 607 的名字地址 0xb7a37c 指向的串是
+  'ENUM_CMDPACKET_DISJOINT_ITEM error item_...'（一条日志串的前缀），不是干净的枚举行。
+  二者都没有派发器可言。
+
+unknown 0：没有一条判不出来。首轮曾出现 3 条 unknown —— 原因是**家族名归一化 pattern 不认拼写变体**，
+  不是机制不明（三条的注册块都明确指向一个具名类）：
+    CMD 330 ONE_TO_ONE_CHAT_STATE        -> Dispatcer_polic_one_to_one_chat_disable  (Dispatcer，少一个 h)
+    CMD 407 REGENERATION_RANDOM_OPTION   -> Dispather_RegenerationRandomOption      (Dispather，字母换位)
+    CMD 456 RESET_RANDOM_OPTION          -> DispatcherResetRandomOption             (前缀后无下划线)
+  三者都有完整的 ctor/dtor/dispatch_sig/read/process 符号 => 补进 pattern 后归零（现为 mapped）。
+  **同一原因让 Task 3 首版目录漏掉这 3 个家族**，已单独提交修正（422 -> 425，见 commit 786bf99）。
+  其中 'DispatcherResetRandomOption'（无下划线）是唯一必须靠兜底 pattern 才能认出的。
+
+inter-server 0：CMD 注册表里没有任何服务间派发器。唯一服务间家族
+  ARAD::Arad_Dispatcher_BuyItemCheck_Impl 只有 db_dispatch/inter_dispatch，**没有** process/dispatch_sig；
+  其 vtable 0x08b98118 在整个可执行节里**没有任何指令引用** ⇒ 不在这张表里，也没有 CMD 号需要标 inter-server。
+  （阳性对照：Dispatcher_BingoQuiz 的 vtable 0x08bea4a8 能在其构造函数内 0x08595888 命中，
+    证明"扫 vtable 立即数"这个方法本身有效。）
+
+# 残余清单（未归属的家族）：**无**。catalog 425 个家族里 423 个出现在 CMD 注册表；
+# 剩下 2 个都已逐条解释：
+#   BuyItemCheck    —— 服务间派发器（见上），无 CMD 号
+#   MakeWarRoomTemp —— 死类：有 vtable(0x08bd8cc0) 与 typeinfo(0x08be126c)，
+#                      但**没有任何指令引用该 vtable** ⇒ 从未被构造 ⇒ 未注册、不可达；
+#                      opcode_cmd.txt 里也没有任何 CMD 名字含 WAR_ROOM。
+# 反向：注册表里有 3 个家族**不在** Task 3 首版目录里（RegenerationRandomOption / ResetRandomOption /
+#   polic_one_to_one_chat_disable）—— 已随上面的修正进目录，现 catalog 是注册表家族的超集。
+
+# 输入表的一个事实（Task 4 实测，影响所有后续任务）：
+#   opcode_cmd.txt / opcode_noti.txt 的第三列是 .rodata **文件偏移**，不是 VA。
+#   转 VA: va = 0x08ae5840 + (off - 0xa9d840)。不做转换就会对 0xaa39d8 扫 xref 得到 0 命中，
+#   被误读成".rodata 地址不被直接引用"（计划 Task 4 Step 3 的预写分支），从而白跑一趟 IDA。
+#   实测：0xaa39d8 处的字节正是 b'ENUM_CMDPACKET_CHECK_CONNECTION'。
