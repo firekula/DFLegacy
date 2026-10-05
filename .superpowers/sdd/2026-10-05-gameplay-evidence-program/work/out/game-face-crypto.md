@@ -116,7 +116,110 @@ getGcaType()  getMobileAuth()  getGoldMemberType()
 4. **密钥按 `CUser` 派生**（`_NS_PI_2ND_RecvHash_CS(char*, CUser*, uint)`）
    ⇒ 这与"2008 客户端方言"是两套东西，别混。
 
-## 六、密钥：从 map 里"随机挑"（**含一处我自己的错误推断，见 §七**）
+## 六、密钥：**已确证的部分**与**我撤回的一个读法**（自查后降级）
+
+### （a）算法链是**固定的 14 层全链**（✅ 已确证）
+
+`Cipher::Cipher()` @ `0x08097196`：
+
+```asm
+0x080971c6  call vector<ICryptoGraph*>::reserve(0xe)   ; 预留 14 项
+循环 i = 0 .. 13:
+0x080971da    call CreateCryptoGraph(i)                ; 按枚举顺序造第 i 个算法
+0x080971f2    call vector::push_back(algo)
+0x08097209    call algo->vtable[0x20]()                ; 取该算法的密钥长度
+0x08097214    total_key_len += eax
+```
+
+⇒ **链序 = 枚举序**：`Shift → Rijndael → BlowFish → Rc6 → TwoFish → Tea → Kasumi
+→ XTea → Noekeon → Khazad → Cast5 → Skipjack → Multi2 → Anubis`；
+**密钥总长 = 14 个算法密钥长度之和**（`Cipher::GetTotalKeyLength()`）。
+
+### （b）`InitCipherKeyString()` 的入口（✅ 已确证）
+
+@ `0x082a025a`（511 B）：
+
+```asm
+call CSystemTime::getCurSec()          ; ← 当前时间（秒）
+call Cipher::Cipher()
+call Cipher::GetTotalKeyLength()
+call SelectKeyString(int*, int*)
+call realloc(...)
+```
+
+体内有 **2048 字节缓冲清零**（`rep stosd` 0x200 个 dword）。
+引用串：`'void InitCipherKeyString()'`、`'[!] Init CipherKeyString TotalTime : %ds'`
+（**有计时** ⇒ 这步不便宜）。
+
+### （c）⚠️ 撤回的读法："密钥 = 从 map 里随机挑"
+
+我先写了这个，**追下去发现站不住**，降级为 `[未验证]`：
+
+**反证**：`SelectKeyString` 里读的两个 map 地址（`0x94fdc00`、`0x94fac00`）
+**同时被这些函数使用**（`work/game-scan-imm.py` 实测）：
+
+```
+CItemList::load_item_files()      InitStackableScript(...)   ImportStackableScript(...)
+InitEquipmentScript(...)          ImportEquipmentScript(...)  __static_initialization_and_destruction_0
+```
+
+那是**道具/脚本**的存储，不像"密钥字符串池"。同一地址被两类代码用 ⇒ 我要么读错了参数位置
+（`map::begin()` 的隐藏返回槽 vs `this`），要么那两个 map 与我以为的不是一回事。
+
+**能确证的只有后半段**（@ `0x082a033d`–`0x082a03b3`）：
+
+```asm
+0x082a0340  shl  eax, 4              ; index * 16
+0x082a0343  add  eax, 0x940be80      ; ← 16 字节结构体数组（BSS，运行时填充）
+0x082a0348  lea  edx, [eax + 8]      ; arg2 = &struct[8]
+0x082a0356  add  eax, 4              ; arg1 = &struct[4]
+0x082a0360  call SelectKeyString(&struct[4], &struct[8])   ; 长度在 eax
+0x082a036e  call realloc(len)
+循环 i < GetTotalKeyLength():
+0x082a039b    call _init(keybuf + i, struct[4], len)   ; 反复把选中的串拷进 2048 B 缓冲
+0x082a03a3    i += len
+```
+
+⇒ **可确证**：① 需要 `GetTotalKeyLength()` 字节密钥；② 密钥由**反复拷贝一个"选中的串"**填满；
+③ 串来自 `0x940be80` 处一组 16 字节结构体（BSS，运行时填充）。
+**未确证**：串的最终来源与 `SelectKeyString` 的选取逻辑。已并入 §八。
+
+我在本节先写了"密钥 = 从一个 `std::map<int,std::string>` 里按随机数挑出来的串拼成"。
+**追下去发现这个读法有问题**，必须降级为 `[未验证]`：
+
+**反证**：`SelectKeyString` 里读的那两个 map 地址（`0x94fdc00`、`0x94fac00`）
+**同时被这些函数使用**（`work/xref-fast.py` / `work/game-scan-imm.py` 实测）：
+
+```
+CItemList::load_item_files()          InitStackableScript(char const*, ...)
+ImportStackableScript(...)            InitEquipmentScript(...)
+ImportEquipmentScript(...)            __static_initialization_and_destruction_0
+```
+
+那是**道具/脚本**的存储，不是"密钥字符串池"。**同一个地址被两类代码用**，
+说明我要么读错了参数位置（`map::begin()` 的隐藏返回槽 vs `this`），
+要么 `SelectKeyString` 里的 map 与我以为的不是同一个东西。
+
+**能确证的只有这些**（`InitCipherKeyString` 后半段，@ `0x082a033d`–`0x082a03b3`）：
+
+```asm
+0x082a0340  shl  eax, 4              ; index * 16
+0x082a0343  add  eax, 0x940be80      ; ← 16 字节结构体数组（BSS）
+0x082a0348  lea  edx, [eax + 8]      ; arg2 = &struct[8]
+0x082a0356  add  eax, 4              ; arg1 = &struct[4]
+0x082a0360  call SelectKeyString(&struct[4], &struct[8])   ; 返回长度在 eax
+0x082a036e  call realloc(len)
+循环 i < GetTotalKeyLength():
+0x082a039b    call _init(keybuf + i, struct[4], len)   ; 反复把选中的串拷进 2048 B 密钥缓冲
+0x082a03a3    i += len
+```
+
+⇒ **可确证**：① 密码链需要 `GetTotalKeyLength()` 字节密钥；② 密钥由**反复拷贝一个"选中的串"**
+填满；③ 那个串来自 `0x940be80` 处一组 16 字节结构体（BSS，运行时填充）。
+**未确证**：串的最终来源（文件？另一处 map？）与 `SelectKeyString` 的选取逻辑。
+
+**这条不解决，"自己构造登录帧"就做不了** —— 已并入 §八 的未决问题。
+
 
 ### （a）算法链是**固定的 14 层全链**
 
