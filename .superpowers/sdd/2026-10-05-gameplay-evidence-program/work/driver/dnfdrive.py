@@ -36,6 +36,29 @@
 """
 from __future__ import annotations
 
+# ---------------------------------------------------------------------------
+# 目录级坑（不是某个脚本的问题）：本目录里有个 `token.py`（计划 Task 10 指定的
+# 文件名），而 Python 标准库也有 `token`。只要本目录在 sys.path 上
+# （以脚本方式跑本目录里的任何文件时必然如此），这条链就会命中我们的 `token.py`：
+#     dataclasses -> inspect -> linecache -> tokenize -> `from token import *`
+# 症状是 `ImportError: cannot import name 'dataclass' from partially initialized
+# module 'dataclasses'`，看上去像循环导入，实际是文件名遮蔽。
+#
+# 修法（**顺序是关键**，反过来不成立）：先把本目录从 sys.path 摘掉，**再**导入 ——
+# 然后就拿到标准库的 `token`，按名字钉进 sys.modules，此后谁再 import 都命中它。
+# 这三步的顺序用三组对照实测过（见 work/out/driver-30011-selftest.txt 的引文）：
+#   不装守卫 -> FAIL；摘路径前的 import -> 守卫自己也被遮蔽 -> FAIL；先摘再导 -> OK。
+# 本模块是 driver/ 下所有使用者的**共同**导入点，所以守卫放在这里，全员受益。
+import os as _os
+import sys as _sys
+
+_HERE = _os.path.dirname(_os.path.abspath(__file__))
+_sys.path[:] = [p for p in _sys.path if p and _os.path.abspath(p) != _HERE]
+import token as _stdlib_token            # noqa: E402
+_sys.modules.setdefault("token", _stdlib_token)
+del _os, _sys, _HERE
+# ---------------------------------------------------------------------------
+
 import socket
 import struct
 import zlib

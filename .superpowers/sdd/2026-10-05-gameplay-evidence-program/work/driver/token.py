@@ -46,20 +46,20 @@ from __future__ import annotations
 # `cryptography -> dataclasses -> inspect -> linecache -> tokenize -> token`
 # 会解析到**本文件**（它此时只在 sys.modules 里叫 `__main__`，不叫 `token`），
 # 报 `ImportError: cannot import name 'EXACT_TOKEN_TYPES' from 'token'`。
-# 这里在**任何第三方 import 之前**先把本目录从 sys.path 摘掉，并把标准库的 `token`
-# 预先放进 sys.modules —— 已加载的模块按名字命中，不会再走文件系统。
-# 效果：`python ...\driver\token.py`（从任何 cwd）都跑得起来，路径不必改。
+#
+# **顺序是关键**：下文先摘掉本目录、再 import，三步顺序由三组对照实测
+# （不装守卫 -> FAIL；摘路径前 import -> 守卫自己被遮蔽 -> FAIL；先摘再导 -> OK）。
+# 同一守卫也放在 `dnfdrive.py` 里（它是 driver/ 下的共同导入点）——
+# 本文件保留一份是为了**不依赖** dnfdrive 也能单独跑。
 import os as _os
 import sys as _sys
 
 _HERE = _os.path.dirname(_os.path.abspath(__file__))
 _sys.path[:] = [p for p in _sys.path
                 if p and _os.path.abspath(p) != _HERE]
-try:                                    # 冷启动时补种标准库 token（顺序上还没有人 import 过它）
-    import token as _stdlib_token       # noqa: F401
-    _sys.modules.setdefault("token", _stdlib_token)
-except ImportError:                     # 已经有人（正确或错误地）解析过了，交给下面的报错去暴露
-    pass
+import token as _stdlib_token           # noqa: E402
+_sys.modules.setdefault("token", _stdlib_token)
+del _os, _sys, _HERE
 # ---------------------------------------------------------------------------
 
 import argparse
