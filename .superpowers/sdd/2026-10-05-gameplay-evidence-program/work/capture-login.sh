@@ -8,6 +8,11 @@
 # 用法: capture-login.sh start | stop | status
 set -u
 PORTS="${PORTS:-10013 7001}"
+# ⚠️ **要不要限定 tcp？** 默认**不限定**（`port N` 同时抓 TCP 与 UDP）。
+# 踩过的坑：dbmw 的 cfg 里 tcp_port 与 udp_port 是**同一个号**，且它真的同时监听两者；
+# 第一次抓 dbmw 时我写了 `tcp port ...`，结果**只看到心跳、业务报文一个没抓到**
+# （那批查询确实在抓包窗口内执行了 —— 日志有记录）。若要只要 TCP，设 PROTO=tcp。
+PROTO="${PROTO:-}"
 PCAP=/tmp/dfl/login-10013.pcap
 LOG=/tmp/dfl/tcpdump.log
 PIDF=/tmp/dfl/tcpdump.pid
@@ -15,7 +20,7 @@ PIDF=/tmp/dfl/tcpdump.pid
 FILTER=""
 for p in $PORTS; do
   [ -n "$FILTER" ] && FILTER="$FILTER or "
-  FILTER="${FILTER}tcp port $p"
+  FILTER="${FILTER}${PROTO:+$PROTO }port $p"
 done
 
 case "${1:-status}" in

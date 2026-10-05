@@ -1,0 +1,249 @@
+########## 1. 各 dbmw 的 QueryCount（本次新增的行）##########
+=== dbmw_mnt ===
+  [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20186), count(2), time(3), compute(0.00)
+
+  [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20187), count(2), time(11), compute(0.00)
+
+  [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20204), count(31), time(0), compute(0.00)
+
+  [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20300), count(15), time(4), compute(0.00)
+
+  [16:01:34] WriteDBLog(122): Count DB Insert Success! id(20012), count(12), time(10), compute(0.00)
+
+  [16:01:34] WriteDBLog(122): Count DB Insert Success! id(20204), count(30), time(0), compute(0.00)
+
+  [16:01:34] WriteDBLog(122): Count DB Insert Success! id(20300), count(15), time(4), compute(0.00)
+
+  [16:32:34] WriteDBLog(118): Count DB Insert Fail! id(20012), count(3), time(0)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20186), count(2), time(0), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20187), count(2), time(0), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20204), count(31), time(0), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20300), count(16), time(4), compute(0.00)
+
+=== dbmw_guild ===
+  [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20056), count(3), time(98), compute(0.00)
+
+  [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20068), count(3), time(82), compute(0.00)
+
+  [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20096), count(1), time(117), compute(0.00)
+
+  [15:00:34] WriteDBLog(122): Count DB Insert Success! id(20229), count(1), time(0), compute(0.00)
+
+  [15:31:34] WriteDBLog(122): Count DB Insert Success! id(20012), count(8), time(8), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20002), count(1), time(1), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20004), count(1), time(1), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20012), count(3), time(0), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20016), count(1), time(0), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20054), count(1), time(1), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20056), count(1), time(2), compute(0.00)
+
+  [16:32:34] WriteDBLog(122): Count DB Insert Success! id(20068), count(1), time(1), compute(0.00)
+
+=== dbmw_stat ===
+  [15:31:35] WriteDBLog(122): Count DB Insert Success! id(20262), count(31), time(11), compute(0.00)
+
+  [16:01:35] WriteDBLog(122): Count DB Insert Success! id(20012), count(11), time(11), compute(0.00)
+
+  [16:01:35] WriteDBLog(122): Count DB Insert Success! id(20105), count(30), time(14), compute(0.00)
+
+  [16:01:35] WriteDBLog(122): Count DB Insert Success! id(20114), count(1), time(0), compute(0.00)
+
+  [16:01:35] WriteDBLog(122): Count DB Insert Success! id(20262), count(30), time(12), compute(0.00)
+
+  [16:32:35] WriteDBLog(122): Count DB Insert Success! id(20012), count(4), time(0), compute(0.00)
+
+  [16:32:35] WriteDBLog(122): Count DB Insert Success! id(20088), count(4), time(0), compute(0.00)
+
+  [16:32:35] WriteDBLog(122): Count DB Insert Success! id(20089), count(4), time(0), compute(0.00)
+
+  [16:32:35] WriteDBLog(122): Count DB Insert Success! id(20105), count(31), time(15), compute(0.00)
+
+  [16:32:35] WriteDBLog(122): Count DB Insert Success! id(20114), count(1), time(0), compute(0.00)
+
+  [16:32:35] WriteDBLog(122): Count DB Insert Success! id(20210), count(2), time(0), compute(0.00)
+
+  [16:32:35] WriteDBLog(122): Count DB Insert Success! id(20262), count(31), time(15), compute(0.00)
+
+
+########## 2. PacketProcess（本次的 packet id 统计）##########
+=== dbmw_mnt ===
+  [15:00:34] WritePacketProcessLog(111): id(6072), acc count(30), acc time(1992.1702 ms), average time(66.4057 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(9024), acc count(1), acc time(147.1590 ms), average time(147.1590 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(10218), acc count(15), acc time(67.8189 ms), average time(4.5213 ms)
+
+  [15:31:34] WritePacketProcessLog(111): id(4152), acc count(2), acc time(14.9712 ms), average time(7.4856 ms)
+
+  [15:31:34] WritePacketProcessLog(111): id(4202), acc count(169), acc time(0.5606 ms), average time(0.0033 ms)
+
+  [15:31:34] WritePacketProcessLog(111): id(6072), acc count(31), acc time(12.2595 ms), average time(0.3955 ms)
+
+  [15:31:34] WritePacketProcessLog(111): id(10218), acc count(15), acc time(62.8289 ms), average time(4.1886 ms)
+
+  [16:01:34] WritePacketProcessLog(111): id(4202), acc count(164), acc time(0.6076 ms), average time(0.0037 ms)
+
+  [16:01:34] WritePacketProcessLog(111): id(6072), acc count(30), acc time(14.9941 ms), average time(0.4998 ms)
+
+  [16:01:34] WritePacketProcessLog(111): id(10218), acc count(15), acc time(14.1707 ms), average time(0.9447 ms)
+
+  [16:32:34] WritePacketProcessLog(111): id(4152), acc count(2), acc time(1.6099 ms), average time(0.8049 ms)
+
+  [16:32:34] WritePacketProcessLog(111): id(4202), acc count(169), acc time(0.6156 ms), average time(0.0036 ms)
+
+  [16:32:34] WritePacketProcessLog(111): id(6072), acc count(31), acc time(13.7436 ms), average time(0.4433 ms)
+
+  [16:32:34] WritePacketProcessLog(111): id(10218), acc count(16), acc time(4.9342 ms), average time(0.3084 ms)
+
+=== dbmw_guild ===
+  [15:00:34] WritePacketProcessLog(111): id(1039), acc count(2), acc time(41.7138 ms), average time(20.8569 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(1043), acc count(1), acc time(0.0461 ms), average time(0.0461 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(1505), acc count(2), acc time(49.4221 ms), average time(24.7110 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(1655), acc count(1), acc time(117.8471 ms), average time(117.8471 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(4000), acc count(1), acc time(0.2200 ms), average time(0.2200 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(4200), acc count(1), acc time(0.7350 ms), average time(0.7350 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(4202), acc count(358), acc time(1.0451 ms), average time(0.0029 ms)
+
+  [15:00:34] WritePacketProcessLog(111): id(7103), acc count(1), acc time(0.4210 ms), average time(0.4210 ms)
+
+  [15:31:34] WritePacketProcessLog(111): id(4202), acc count(372), acc time(1.0549 ms), average time(0.0028 ms)
+
+  [16:01:34] WritePacketProcessLog(111): id(4202), acc count(360), acc time(1.1624 ms), average time(0.0032 ms)
+
+  [16:32:34] WritePacketProcessLog(111): id(1026), acc count(1), acc time(1.2329 ms), average time(1.2329 ms)
+
+  [16:32:34] WritePacketProcessLog(111): id(1028), acc count(1), acc time(6.4690 ms), average time(6.4690 ms)
+
+  [16:32:34] WritePacketProcessLog(111): id(1039), acc count(1), acc time(0.9409 ms), average time(0.9409 ms)
+
+  [16:32:34] WritePacketProcessLog(111): id(4202), acc count(372), acc time(1.2994 ms), average time(0.0035 ms)
+
+=== dbmw_stat ===
+  [15:31:35] WritePacketProcessLog(111): id(3111), acc count(31), acc time(11.3927 ms), average time(0.3675 ms)
+
+  [15:31:35] WritePacketProcessLog(111): id(3145), acc count(4), acc time(31.0621 ms), average time(7.7655 ms)
+
+  [15:31:35] WritePacketProcessLog(111): id(4010), acc count(2), acc time(48.9621 ms), average time(24.4810 ms)
+
+  [15:31:35] WritePacketProcessLog(111): id(4017), acc count(1), acc time(42.4140 ms), average time(42.4140 ms)
+
+  [15:31:35] WritePacketProcessLog(111): id(6085), acc count(2), acc time(35.8381 ms), average time(17.9190 ms)
+
+  [15:31:35] WritePacketProcessLog(111): id(10209), acc count(31), acc time(12.1489 ms), average time(0.3919 ms)
+
+  [16:01:35] WritePacketProcessLog(111): id(3111), acc count(30), acc time(14.5496 ms), average time(0.4850 ms)
+
+  [16:01:35] WritePacketProcessLog(111): id(4010), acc count(1), acc time(0.1529 ms), average time(0.1529 ms)
+
+  [16:01:35] WritePacketProcessLog(111): id(10209), acc count(30), acc time(12.6937 ms), average time(0.4231 ms)
+
+  [16:32:35] WritePacketProcessLog(111): id(2511), acc count(1), acc time(1.4060 ms), average time(1.4060 ms)
+
+  [16:32:35] WritePacketProcessLog(111): id(3111), acc count(31), acc time(16.1897 ms), average time(0.5222 ms)
+
+  [16:32:35] WritePacketProcessLog(111): id(4010), acc count(1), acc time(0.1670 ms), average time(0.1670 ms)
+
+  [16:32:35] WritePacketProcessLog(111): id(6085), acc count(2), acc time(0.2568 ms), average time(0.1284 ms)
+
+  [16:32:35] WritePacketProcessLog(111): id(10209), acc count(31), acc time(15.7406 ms), average time(0.5078 ms)
+
+
+########## 3. 业务类日志（guild 存档 / statics 上报）##########
+--- dbmw_guild/GuildModify ---
+  [14:42:58] SaveGuildMember(698): CDBManager::SaveGuildMember(SAVE_LOGOUT flag(1), grade(1), guildMemPoint(0), g(2), s(3), c(6))
+
+  [14:44:29] SaveGuildMember(698): CDBManager::SaveGuildMember(SAVE_LOGOUT flag(1), grade(1), guildMemPoint(0), g(2), s(3), c(6))
+
+  [16:02:25] SaveGuildMember(698): CDBManager::SaveGuildMember(SAVE_LOGOUT flag(1), grade(1), guildMemPoint(0), g(2), s(3), c(6))
+
+  [16:44:40] SaveGuildMember(698): CDBManager::SaveGuildMember(SAVE_LOGOUT flag(1), grade(1), guildMemPoint(0), g(2), s(3), c(6))
+
+  [16:44:40] OnSaveGuild(202): ::OnSaveGuild s(3) g(2) k(0) g_level(16) g_cnt(1) g_exp(2900000) g_sub_cnt(0) power_side(0) power_war_p(0) agit(0) power_join_cnt(0)
+
+--- dbmw_stat/Statistic ---
+  [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 1, 0)
+
+  [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 2, 0)
+
+  [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 3, 0)
+
+  [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 4, 0)
+
+  [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 5, 0)
+
+  [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 6, 0)
+
+  [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 7, 0)
+
+  [15:00:42] OnSaveLoadingTimeReport(6888): [LoadingTime] inSert into loading_time (occ_time, server_id, type, load_sec) values (now(), 3, 8, 0)
+
+
+########## 4. UDP 日志（业务是否走 UDP）##########
+=== dbmw_mnt ===
+  [14:30:33] InitServerSocket(110): Opened port 20203 with fd 5, recv buf size 1000000
+  
+
+  [14:30:33] InitClientSocket(143): Opened port with fd 7
+  
+
+  [14:30:40] OnDBMWConnectionCheck(479): 201 Server Connection Complete!
+
+=== dbmw_guild ===
+  [14:30:33] InitServerSocket(110): Opened port 20403 with fd 5, recv buf size 1000000
+  
+
+  [14:30:33] InitClientSocket(143): Opened port with fd 7
+  
+
+  [14:30:44] OnDBMWConnectionCheck(479): 203 Server Connection Complete!
+
+=== dbmw_stat ===
+  [14:30:34] InitServerSocket(110): Opened port 20303 with fd 5, recv buf size 1000000
+  
+
+  [14:30:34] InitClientSocket(143): Opened port with fd 7
+  
+
+
+########## 5. 当前连接（TCP 与 UDP）##########
+  tcp        0      0 0.0.0.0:20203               0.0.0.0:*                   LISTEN      3771/./df_dbmw_r    
+  tcp        0      0 0.0.0.0:20303               0.0.0.0:*                   LISTEN      3777/./df_dbmw_r    
+  tcp        0      0 0.0.0.0:20403               0.0.0.0:*                   LISTEN      3766/./df_dbmw_r    
+  tcp        0      0 127.0.0.1:58776             127.0.0.1:20203             ESTABLISHED 3748/./df_monitor_r 
+  tcp        0      0 127.0.0.1:58278             127.0.0.1:20403             ESTABLISHED 3863/./df_guild_r   
+  tcp        0      0 127.0.0.1:20203             127.0.0.1:58776             ESTABLISHED 3771/./df_dbmw_r    
+  tcp        0      0 127.0.0.1:20403             127.0.0.1:58278             ESTABLISHED 3766/./df_dbmw_r    
+  udp        0      0 0.0.0.0:20403               0.0.0.0:*                               3766/./df_dbmw_r    
+  udp        0      0 0.0.0.0:20303               0.0.0.0:*                               3777/./df_dbmw_r    
+  udp        0      0 0.0.0.0:20203               0.0.0.0:*                               3771/./df_dbmw_r    
+
+########## 6. dbmw 的 cfg 里 TCP/UDP 端口怎么写的 ##########
+=== dbmw_mnt ===
+  tcp_port = 20203
+  udp_port = 20203
+  master_db_port = 3306
+=== dbmw_guild ===
+  tcp_port = 20403
+  udp_port = 20403
+  master_db_port = 3306
+=== dbmw_stat ===
+  tcp_port = 20303
+  udp_port = 20303
+  master_db_port = 3306
+--- exit=0 ---
