@@ -11,17 +11,16 @@
 ## 0. 一句话现状
 
 `df_game_r` 的**全量派发器目录（425 家族）**与**opcode → 派发器映射（1171 条，`unknown=0`）**已产出。
-四判据：**1 PASS、2 PASS、4 PASS（抽样 10/10 + 全量 424/425）、3 以修正形式补全**
-（原两条子要求前提不成立、原因已定位；其目的由穷尽反查承担：**0 处不符、0 个漏掉的家族**）。
-分母 **428 条客户端可达命令**落在 spec 预期带 300–600 内。
+四判据：**1 PASS、2 PASS、4 PASS（抽样 10/10 + 全量 424/425）、3 以修正形式补全**。
+**Task 8（B0 批次）已完成**：拿到**成功路径**（VM 里那套官服栈，游戏面 46,193 B / 90 帧）与
+**失败路径**（docker 容器被拒，末帧 `NOTI 199 DISCONNECT_REASON`），并实测出
+**游戏面帧模型 = 10 字节头**（与 7001 的 11 字节头不同）。详见 `work/out/B0-batch-report.md`。
 
 **所有者裁决（2026-10-05）**：⑥ 待评估队列的东西**都是需要的** ⇒ **S2 不采纳、范围不缩**，
-D2 从"与现有 DFLegacy 等价"扩为**官方功能面全覆盖**。
-⇒ **spec §5.2 的里程碑表需要先扩展**（拍卖行/公会/商城/成就/怪物卡/自动贩卖机/小游戏/决斗等
-不在 M1–M10 里），再为新增系统出单元计划。
+D2 从"与现有 DFLegacy 等价"扩为**官方功能面全覆盖** ⇒ **spec §5.2 的里程碑表需要先扩展**。
 
-**下一步仍是 Task 8**（官服全链路采集，人机批次，需要项目所有者在键盘前），
-做完才轮到 Task 9–11（驱动器自检 = M1 的硬门）。
+**下一步 = Task 9–11（驱动器前置）**：帧层/密码层 → 7001 已知答案自检（硬门 S3）→ 30011/10013 方言与令牌。
+不要再跑 Task 8（批次已完成）。
 
 ---
 
@@ -163,28 +162,44 @@ cd 'G:\Game\DNF_ACT1\DFLegacy'
 
 ---
 
-## 6. 下一步：Task 8（**需要项目所有者在键盘前**）
+## 6. 下一步：Task 9–11（驱动器前置，**M1 的硬门**）
 
-**做什么**：官服全链路已知答案采集 —— 从登录走到进游戏，抓下含 `30011`（TCP 登录交换）的包，
-产出 `$P\work\captures\e2e-official-to-game.pcap` + 单向流 + `work\out\B0-batch-report.md`。
+**Task 8 已完成**，其产出是 Task 9/11 的**已知答案**（这份是新的、比计划预写的更准）：
 
-**为什么需要人**：用 llnut 启动器 + 2012 客户端走到"选服 → 进频道 → 选角色 → 进游戏"这几步**要人点**（D3）。
-口令在 `%APPDATA%\llnut-launcher\credentials.dat`（DPAPI，只有当前 Windows 用户能解）。
+* **游戏面帧模型 = 10 字节头**：`[0]cat(0x01=CMD/0x00=NOTI) [1]id [2] [3..6]size(LE,含头) [7..9]3字节`
+  **与 7001 那套 11 字节头不同**（计划 Task 9 只记了 11 字节那套，**必须两套分开实现**）。
+  验证方式：六条流按此切帧，帧长之和 == 流长度（`work/out/B0-batch-report.md` §4）。
+* **成功序列**（`work/captures/streams-vm/`，从 `b0-vm-success.pcap` 可重跑生成）：
+  `13681-10013.bin` 21 帧 / `10013-13681.bin` 90 帧；含 `CMD 1 LOGIN` 413 B 请求与 95 B 应答、
+  `NOTI 1 CHANNELINFO` 450 B、`CMD 2 SET_UDP_IP_PORT` 45 B、`CMD 91 MOVE_TO_GATE`、`CMD 93 ENTER_WARROOM`。
+* **拒绝序列**（`work/captures/streams/`）：`46386-30011.bin`（1 帧 413 B）↔ `30011-46386.bin`
+  （5 帧 432/31/31/31/31），末帧 **`NOTI 199 DISCONNECT_REASON`** —— 失败路径的现成靶子。
+* **7001 已知答案**：C→S 4 帧 `43/27/11/11`（id `11/5/9/1`）；S→C 4 帧 `47/43/7220/139`（id `12/6/10/3`，
+  VM 版）。docker 版是 `47/43/7235/140` —— **两台服务端不是同一份配置，取期望值时要写明取自哪台**。
+* 单向流重跑：`python $W\pcap-streams.py <pcap> <outdir> [--filter-port N]`（`$W` 见 §1）。
 
-**批次要点（逐条照做，细节见计划 Task 8 Step 1–5）**：
-1. 记下 `DFLegacy.Server` 的 pid（现在应是 **17428**）→ `Stop-Process`（**7001/2311 必须让给容器**）；
-2. `docker restart dnf`（**只有重启才会重新绑 7001/tcp、2311/udp**）；
-3. 补宿主 TCP 转发：`netsh interface portproxy add v4tov4 listenport=30011 listenaddress=127.0.0.1 connectport=30021 connectaddress=127.0.0.1`
-   （本批次**不做** UDP `31011`，并在报告里写明这个决定）；
-4. 抓包要重建 sidecar（`docker rm -f dfl-recon` 前先 `docker inspect` 留证据；重建后**必须**验 `eth0`）；
-5. 收尾**必须恢复环境**（坑 14）：`docker stop dnf` → 起 `DFLegacy.Server`（工作目录必须是 `G:\Game\DNF_ACT1\DF\town-test\`）→ `docker start dnf`，
-   并撤销 portproxy。
+**Task 9–11 要做的**：`work/driver/` 下写 `dnfdrive.py`（帧层 + AES/zlib，**两套头都要能说**）、
+`selftest-7001.py`（在已知答案上自检；**不过 ⇒ 触发 S3，冻结所有 L2 结论**）、
+`token.py`（RSA 令牌签发，256 B）、`selftest-30011.py`（游戏面自检）。
+原计划里的端口命名要用**实测值**替换：docker 那份是 `30011`，VM 那份是 **`10013`**。
 
-**核心成功判据**：`python $W\pcap-streams.py <pcap> <streams-dir> --filter-port 30011` 出现**非空** C/S 流。
-仍为 0 ⇒ 在报告里记"失败 + 已排除的原因"，**不要伪造任何"官方游戏面"结论**。
+### 6.1 本轮新增的两条 L2a 前置条件（**每次打官服靶子前都要做**）
 
-**Task 8 之后**：Task 9–11 = 驱动器（`work\driver\`）帧层 + 7001 已知答案自检 + 30011 方言 + 令牌签发。
-**驱动器自检不通过 ⇒ 触发 S3，冻结所有 L2 结论**（spec §4.2 / §6 停止条件 S3）。
+1. 清掉本次账号在 `d_taiwan.member_join_info` 的行（`PRIMARY KEY(m_id)`，登录路径执行裸 `insert`，
+   重复登录必主键冲突 ⇒ 登录异常断连，客户端只说"连接失败"）；
+2. 确认客户端 IP 在 `d_taiwan.geo_allow` 里（容器看到的通常是 `172.17.0.1`；VM 那套看到 `192.168.200.1`，**在名单内**）。
+   完整证据链见 `work/out/B0-batch-report.md` §5/§6。
+
+### 6.2 恢复环境时的现状（2026-10-05 22:5x）
+
+* ✅ `DFLegacy.Server` 已起回（**pid 91588**，占宿主 7001/2311；批次前是 pid 17428 —— pid 变了是正常的）。
+* ✅ `netsh portproxy` 为空（与批次前一致）；用户态中继已杀、宿主 30011 已释放。
+* ⚠️ **Docker 引擎当前是停的**（`npipe` 不存在）⇒ 容器 `dnf` 未恢复；需要所有者启动 Docker Desktop
+  后再按 `pcap` 对照恢复端口（`docker restart dnf` 后 7001/tcp、2311/udp 才会重新绑上）。
+* ⚠️ **VM（192.168.200.131）里 `/root/.ssh/authorized_keys` 有本批次装的两把公钥**（注释 `dfl-b0-batch`，
+  RSA 指纹 `MD5:c2:ed:ee:6c:57:5d:f4:27:9e:0c:17:06:2b:88:ea:f6`）——**建议删除**；
+  本机对应私钥 `<用户>\.ssh\id_rsa_b0`、`id_ed25519_b0`。
+  连 VM 的 ssh 需要老算法：`-o KexAlgorithms=+diffie-hellman-group14-sha1 -o MACs=+hmac-sha1 -o HostKeyAlgorithms=+ssh-rsa`。
 
 ---
 
