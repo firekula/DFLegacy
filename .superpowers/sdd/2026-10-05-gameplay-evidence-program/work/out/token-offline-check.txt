@@ -1,0 +1,36 @@
+==========================================================================
+token.py 离线自检（Task 10）
+==========================================================================
+私钥        : .superpowers\sdd\2026-10-05-official-login-channel\work\container-privatekey.pem
+公钥        : .superpowers\sdd\2026-10-05-official-login-channel\work\container-game-publickey.pem
+模数 n      : 0xbba4ee404d6d7e2d6d9393046e73d64e…
+私钥模数 == 公钥模数 : True
+被签内容模板 : 00 00 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 55 91 45 10 01 04 03 03 01 01   (46 B)
+  = uid(4,BE) | 01×32 | 55 91 45 10 01 04 03 03 01 01
+
+[1] 期望块长度 256 B，前缀 00 01 ff ff，填充 ff×207
+    PASS
+[2] 签发 uid=1: 签名 256 B  head=67 d1 f7 9e 47 f3 dc 6c…
+    签名长度为 256 : PASS
+[3] 公钥模幂后块头: 00 01 ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+    前两字节 00 01            : PASS
+    取回内容 == 构造的 46 B   : PASS
+    取回内容 uid 字段(BE)     : 1
+[4] 反例：verify(sig, uid=1) = True, verify(sig, uid=2) = False  : PASS
+[5] OpenSSL(独立实现) 恢复出的被签内容: 00 00 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 55 91 45 10 01 04 03 03 01 01
+    长度 46 B（实测：verifyrecover 会剥掉填充，只给内容）
+    OpenSSL 取回内容 == 我们的 46 B : PASS
+    反例：翻转签名 1 bit 后 OpenSSL 拒绝（PASS）
+
+[6] 与抓到的令牌回归（重推自 .superpowers\sdd\2026-10-05-official-login-channel\work\captures\streams5505）
+    uid=1  (streams5505/5505-47072.bin resp#1)
+      抓到的签名 256 B; type-1=True; 被签内容 == 我们为该 uid 构造的 46 B: True
+      除 uid 外的 42 字节与模板一致: True
+    uid=2  (streams5505/5505-47062.bin resp#2)
+      抓到的签名 256 B; type-1=True; 被签内容 == 我们为该 uid 构造的 46 B: True
+      除 uid 外的 42 字节与模板一致: True
+    uid=3  (streams5505/5505-47072.bin resp#6)
+      抓到的签名 256 B; type-1=True; 被签内容 == 我们为该 uid 构造的 46 B: True
+      除 uid 外的 42 字节与模板一致: True
+
+VERDICT: PASS
