@@ -109,6 +109,43 @@ CDBManager::InsertFrameLagStatistics(Packet_Frame_Lag_Statistic_Write_Lag_Index*
 ⇒ **"packet id ↔ 包类型 ↔ CDBManager 方法"这三者的对应关系是可以从静态侧建起来的**，
 外加抓包做同源交叉。
 
+## 四之二、**处理器表与头类型**（本轮最有价值的两条）
+
+### （a）`CPacketTranslater` 有 **122 个 `On*(PacketHeader*)`** = 处理器表
+
+```
+CPacketTranslater::OnQueryGuild(PacketHeader*)             0x080936ea
+CPacketTranslater::OnGuildJoin(PacketHeader*)              0x08096dae
+CPacketTranslater::OnGuildSecede(PacketHeader*)            0x08097542
+CPacketTranslater::OnSaveGuild(PacketHeader*)              0x08093c9c
+CPacketTranslater::OnSendGuildLetter(PacketHeader*)        0x080967ee
+CPacketTranslater::OnRequestIPCounterList(PacketHeader*)   0x0809b958
+CPacketTranslater::OnPcRoomPlayTimeReward(PacketHeader*)   0x080a06c0
+CPacketTranslater::onQueryTowerFullRank(PacketHeader*)     0x080970dc
+…（共 122 个，`work/dbmw-survey2.py <elf> CPacketTranslater::` 可列全）
+```
+
+**全部收同一个参数类型 `PacketHeader*`** ⇒ 这就是 dbmw 的**报派发面**，
+与 game 那套的 `DisPatcher_*::dispatch_sig` 等价，但**名字自解释**（`OnGuildJoin` 就是处理入帮）。
+
+### （b）`PacketHeader` 由**两个 `unsigned short`** 构造
+
+```
+PacketHeader::PacketHeader(unsigned short, unsigned short)
+CTcpServer::makePacketHeader(unsigned short, unsigned short)
+CPacketDecoder::MsgDecode(PacketHeader*)          ← 解码/派发入口
+CServerHandler::SendAllTcpServer(PacketHeader*)
+```
+
+⇒ 头的前两个字段各 **2 字节**。日志里的 packet id（4202 / 6072 / 10218 / 1043 / 2511 …）
+**全部 < 65536**，与 `unsigned short` 吻合 ⇒ 其中一个 u16 就是 **packet id**，
+另一个很可能是**长度**（或子类型）。**待抓包确认哪个是哪个**。
+
+**注意**：这条与 game 那套的 13 字节头**未必相同** —— dbmw 是**另一套框架**
+（`CTcpServer`/`CServerHandler`/`CPacketDecoder` vs game 的 `PacketDispatcher`），
+**不要假定两者一致**（这正是 spec §4.2 "不许让一个驱动器同时说两代" 的同类陷阱）。
+
+
 ---
 
 ## 五、还差什么（第 4 部分的取证清单）
