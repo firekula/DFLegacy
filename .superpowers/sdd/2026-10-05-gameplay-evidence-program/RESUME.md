@@ -11,16 +11,21 @@
 ## 0. 一句话现状
 
 M0（Task 1–7）✅、评审门 ✅（待评估队列全部纳入、范围不缩）、B0（Task 8）✅、
-Task 9 ✅（7001 自检 PASS）、**Task 10 ✅（令牌签发/验签，离线 PASS）**、
-**Task 11 ✅（游戏面自检：拒绝路径 PASS，成功路径本机未复现 —— 环境前置缺失，非驱动器缺陷）**。
+Task 9 ✅（7001 自检 PASS）、**Task 10 ✅**（令牌签发/验签，离线 PASS；令牌构造已被**服务端源码**二次确认）、
+**Task 11 ✅✅（拒绝路径 PASS + 成功路径已在 2026-10-05 晚复现 —— 见 §6.1）**。
+
+**2026-10-05 晚的重大进展**：接管了 VM 靶子（SSH + DB 全通），把 Task 11 一直缺的
+**成功路径**补上了（`work/out/vm-success-verification.txt` = PASS）。同时修正了若干既有结论，
+见 §6.1 与 §7 的矛盾留痕。
 
 `df_game_r` 的**全量派发器目录（425 家族）**与**opcode → 派发器映射（1171 条，`unknown=0`）**已产出。
 驱动器 `work/driver/` 已建成：**两套帧模型**（7001=11 字节头 / 游戏面=10 字节头）、AES/zlib 密码层、
-RSA 令牌签发验签，并**在两个真实靶子上跑过**。
+RSA 令牌签发验签，并**在一个真实靶子上跑通了成功与拒绝两条路径**。
 
 **本计划的下一步不在这份文件里** —— 计划只覆盖到"M1 驱动器前置"。
 接下来按 spec §5.2 的里程碑表开 M1 的单元（①UDP `mt` 应用层 ②登录/鉴权 ③角色列表与选角 ④进入城镇），
-每单元一份六件套 + L2 差异表。**开单元前先读 §5 未决项 2（VM 靶子不可用）与 §6.0（已知答案）、§6.0.1（驱动器接口）。**
+每单元一份六件套 + L2 差异表。**开单元前先读 §5（未决项）与 §6.0–§6.1（已知答案与 VM 用法）。**
+
 
 ---
 
@@ -190,17 +195,16 @@ cd 'G:\Game\DNF_ACT1\DFLegacy'
    **自动拒绝**（返回 `审批未通过（rejected）`）。工具链本身是**直接执行同一 argv 实测通过**的
    （`IDB` 正确指向 `df_game_r.bin.idb`、`symbols=328151`、`dispatcher-named=4621`）。
    ⇒ 若要"经本模式调用"，需要放开一次审批；否则静态取证继续走直接 argv 并在产物里写明。
-2. **⚠️ VM 成功路径未能在本机复现（Task 11 的唯一一条 FAIL）**：
-   VM 的 `10013` **TCP 连得上**（socket 级复测两次；`Test-NetConnection` 给过一次假阴性），
-   但发抓到的 413 B 首帧后 **4 秒内零回复**；发整条 C 流（1125 B）同样零回复。
-   按 B0 的两条 L2a 前置（`B0-batch-report.md` §6.1），最可能是
-   ① 本次账号在 `d_taiwan.member_join_info` 的行没清（PK 冲突 ⇒ 登录异常，**且不带错误包**）、
-   ② 客户端 IP 不在 `d_taiwan.geo_allow`。
-   **本机 SSH 进不去 VM**（`Connection closed by 192.168.200.131 port 22`，两把 key 都试过 ——
-   RESUME 旧记的 SELinux/StrictModes 问题**仍未解决**）⇒ 这两条前置**改不了**。
-   **怎么才能验**：让 VM 的所有者代跑（清 `member_join_info` 里该 uid 的行、把发起方 IP 加进
-   `geo_allow`），然后重跑 §3 命令 9。**这不是驱动器缺陷** —— 同一驱动器在 docker 靶子上
-   已复现拒绝路径（首帧 + 末帧逐帧一致）。
+2. ~~**⚠️ VM 成功路径未能在本机复现**~~ → **✅ 已解决（2026-10-05 晚）**。
+   原判断（"两条 L2a 前置改不了"）**是错的**，真正的障碍是三层，逐层解开后成功路径复现：
+   * 拿不到 VM 的 SSH → 已打通（见 §6.2；根因是 `/root` 777 + 私钥有 passphrase + `UseDNS` 延迟，
+     **不是**当初怀疑的 fail2ban/封禁 —— 那两条假设已 [作废]）；
+   * B0 抓的那份令牌属于**另一套库**（uid 1/2/3），VM 上的账号是 `18000001`–`18000008`；
+   * **同账号重复登录会被踢**（`CUser::DisConnSig from (12)`）—— 第一次空场重放前，
+     所有者本人的客户端还连着，所以只走到 5 帧就被断开。
+   ⇒ 处置：请所有者用启动器登录一次、在 VM 上 `tcpdump` 抓活账号的完整登录、
+     再**原样重放**其 C→S 首帧 ⇒ `CMD 1` 长度 **95（成功）**，前 8 帧与抓包逐帧一致。
+   判定脚本：`work/verify-vm-success.py`；结果：`work/out/vm-success-verification.txt`（PASS）。
 3. **判据 3（令牌替换）在本工程的两个靶子上都"未验证"**：游戏面首帧的 403 B 载荷**整体不透明**
    （可打印率 38% / 34.7%，**没有任何** 256 B 窗口的公钥模幂落在 type-1 上，随机基线期望 0.0023 个），
    也**没有** `00 00 00 xx` 这样的 uid 大端模式 ⇒ 首帧里的令牌要么已被会话密钥加密，
@@ -231,7 +235,7 @@ cd 'G:\Game\DNF_ACT1\DFLegacy'
 | 模型 | 端口 | 头长 | 布局 |
 |---|---|---|---|
 | `CHANNEL` | 7001 | **11** | `[0]cat [1]id [2..5]size(LE,含头) [6..9]reserved [10]ackOk` |
-| `GAME` | 游戏面（docker `30011` / VM `10013`） | **10** | `[0]cat(0x01=CMD/0x00=NOTI) [1]id [2] [3..6]size(LE,含头) [7..9]3 字节` |
+| `GAME` | 游戏面（docker `30011` / VM `10013`） | **10** | `[0]cat(0x01=CMD/0x00=NOTI) [1]id [2] [3..6]size(LE,含头) [7..9]3 字节**校验和**` |
 
 * **会话密钥（7001）= `id=12` 正文 `[4:20)`**（计划的 `[5:21)` **实测为错**，已否证：
   `[4:20)` 解 `id=10` 的 13312 B 密文可打印率 97.75% 并解出 `[dungeon]`/频道表；`[5:21)`/`[0:16)` 是垃圾）。
@@ -252,6 +256,16 @@ cd 'G:\Game\DNF_ACT1\DFLegacy'
   （Task 11 判据 3 走退化分支）。
 * **两靶首帧头只差 `[7:10]` 这 3 字节**（VM `11 bc 5f` / docker `a7 5d f3`），
   `[0..6]` 完全相同（`01 01 00 9d 01 00 00`）—— 那 3 字节的语义仍 `[未验证]`。
+
+**2026-10-05 晚更新（`[7..9]` 的语义已定）**：抓包期间在 game 服日志里直接读到
+```
+[14:37:14] bool CUser::Parsing(int)(1850): [CHECK SUM] check_sum error PACKET : ENUM_CMDPACKET_LOGIN
+```
+时间戳正对应我那次"重放 B0 旧帧" ⇒ **`[7..9]` 是校验和**（服务端会验，错了就丢弃该包）。
+实测三个样本：VM 活账号 `11 11 d3`、VM B0 `11 bc 5f`、docker `a7 5d f3`。
+⇒ 之前标 `[未验证]` 的那 3 字节**可以改标 `[静态]+[抓包]`**（日志给出了名称，抓包给出了位置）。
+**但算法仍未解**（不知道它覆盖哪些字节、含不含会话/时间）；且**实测原样重放是能过的**
+（只要连字节一起重放），所以对 M1 不构成阻塞。
 
 ### 6.0.1 驱动器前置已完成，`work/driver/` 可用
 
@@ -290,6 +304,75 @@ cd 'G:\Game\DNF_ACT1\DFLegacy'
 * ⚠️ **VM（192.168.200.131）里 `/root/.ssh/authorized_keys` 有上一批次装的两把公钥**（注释 `dfl-b0-batch`，
   RSA 指纹 `MD5:c2:ed:ee:6c:57:5d:f4:27:9e:0c:17:06:2b:88:ea:f6`）——**建议删除**；
   本机对应私钥 `<用户>\.ssh\id_rsa_b0`、`id_ed25519_b0`。
+
+---
+
+## 6.1 VM 成功路径：已复现（2026-10-05 晚）
+
+**产物**：
+* 抓包：`work/captures/vm-live-login-10013.pcap`（VM 上 `tcpdump` 抓的，LINUX_SLL）
+* 单向流：`work/captures/streams-live/2343-10013.bin`（C→S **1141 B / 21 帧**）
+  ↔ `10013-2343.bin`（S→C **46174 B / 90 帧**）—— 两条都**恰好铺满**
+* 重放原始字节：`work/out/live-replay-alone.bin`（**1395 B / 8 帧**）
+* 判定：`work/out/vm-success-verification.txt` = **PASS**
+
+**成功序列（前 8 帧，重放与抓包逐帧一致）**：
+
+```
+NOTI1(450) NOTI183(31) NOTI183(31) NOTI160(23) NOTI173(703) CMD1(95) NOTI16(23) NOTI53(39) …
+                                                              ↑ LOGIN 成功 = 95 B
+```
+
+**⚠️ 关键判据（踩过坑才写下来）**：**拒绝路径与成功路径的前 4 帧完全相同**，只靠
+`CMD 1` 的**长度**区分：`95` = 成功，`31` = 失败。第一次空场重放拿到 8 帧就以为成了，
+必须核对 `CMD 1` 长度。`verify-vm-success.py` 的判据③就是这条。
+
+**两条靶子的账号体系不是同一套**（这是 Task 11 卡住的真正原因）：
+
+| 靶 | 账号 | 说明 |
+|---|---|---|
+| docker 容器 | `testuser3/4`、`test`（uid 1/2/3） | B0 抓包那份令牌的来源 |
+| **VM** | `100000`–`100006`、`firekula`（UID 18000001–18000008） | 口令是 MD5；`100001`–`100006` 都是 `e10adc…` = MD5("123456") |
+
+**游戏面首帧载荷是会话相关的、不可 patch**：活账号与 B0 两份首帧**同样 403 B**，
+但**有 399 字节不同**（只有 4 字节相同）⇒ 想"把令牌换掉"必须重放整帧，不能改字段。
+这也解释了为什么 Task 11 判据 3（令牌替换）只能走退化分支。
+
+**游戏服公钥 ≠ 容器公钥，且 VM 上没有配对私钥**：
+`/home/neople/game/publickey.pem` 模数 `BEF69F43…`；容器那把是 `BBA4EE40…`；
+登录 PHP（`rsa.php`）里那把私钥是 `E21F97…`（**两者都不是**）。
+⇒ **无法在本机为 VM 自签令牌**；能复现成功路径靠的是"令牌可复用"（日志
+`Success Token reuse login`）。
+
+## 6.2 怎么进 VM（隧道、凭据、坑）
+
+**SSH**：`work/vmssh.py`（paramiko；口令从环境变量 `VM_PASS` 读，不落盘）。
+不能用系统 `ssh` 的原因：VM 是 **OpenSSH 4.3p2 / CentOS 5.8**，只提供
+`diffie-hellman-group14-sha1` / `ssh-rsa` / `hmac-sha1`，而它自带的 ssh 又不认
+`-o KexAlgorithms=`（5.7+ 语法）。配套：`vmrun.py`（推脚本执行，绕开引号）、
+`vmdb.py`（跑 SQL，NUL 分隔传参）、`vmget.py`（取文件 + GB18030 转码）。
+
+**四个坑（全部实测，别重踩）**：
+
+1. **`/root` 权限**：实测是 `drwxrwxrwx` ⇒ sshd StrictModes 拒绝公钥
+   （日志 `Authentication refused: bad ownership or modes for directory /root`）。
+   已改 `700`（**建议保留**）。
+2. **`id_rsa_b0` 有 passphrase**：私钥头解出 `aes256-ctr` + `bcrypt`。
+   用 `BatchMode=yes` 时 ssh 不许提问 ⇒ 直接跳过该 key ⇒ `Permission denied`。
+   **不是** key 不配对（私钥/公钥/authorized_keys 三边指纹都是 `c2:ed:ee:…:ea:f6`）。
+3. **`UseDNS` 默认 yes ⇒ 首连 banner 要 7.21 秒**（随后瞬时，有缓存）。
+   `vmssh.py` 的超时给到 60 秒。根治可把 sshd_config 的 `UseDNS` 设 `no` 再重启 sshd
+   （**没做**：改 sshd 有弄坏唯一靶子的风险，加超时零风险）。
+4. **sshd 停机窗口**：13:20 停机、14:11 重启。停机期间 TCP 仍"接受连接"但**不回 banner**，
+   看上去像封禁 —— 我据此错误地怀疑过 fail2ban/`hosts.deny`（已 [作废]）。
+
+**数据库**：`/opt/lampp/var/mysql/mysql.sock`，账号 `game` / 口令 `uu5!^%jg`
+（来源：`/home/neople/bridge/cfg/bridge.cfg` 的 `db_id`/`db_pwd`，**不是爆破**）。
+`d_taiwan.accounts.UID` = `member_join_info.m_id`。驱动脚本：`work/vmdb.py`。
+
+**栈的启停**：`/root/run`（整套 17 个进程）/ `/root/stop`。二进制大多就位；
+只起游戏面可用 `work/start-game.sh`。**注意 `/root/run` 会清空所有日志**。
+`tcpdump` 在 `/usr/sbin/tcpdump`，抓包脚本 `work/capture-login.sh`。
 
 ---
 
