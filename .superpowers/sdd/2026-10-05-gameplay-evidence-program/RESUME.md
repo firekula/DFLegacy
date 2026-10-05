@@ -440,6 +440,60 @@ M0 的 425 家族 / 1171 条 opcode 映射 / 7273 条 handler 对 VM **直接适
 
 ---
 
+## 6.4 【重大】游戏面封包的密码层（2026-10-05 深夜自主部分）
+
+**全账**：`work/out/game-face-crypto.md`。这一节只列**结论 + 未决项**。
+
+### 已确证
+
+| # | 结论 | 证据 |
+|---|---|---|
+| 1 | **游戏面帧的载荷是加密的**，`CUser::Parsing(int)` @ `0x08647890` 里调 `G_Cipher()` → `Cipher::Decrypt(...)` 解密后才交给派发器 | `[静态]` 反汇编 |
+| 2 | 这解释了先前所有"扫不到令牌"的现象 —— **令牌在密文里**；也解释了"同账号两次登录首帧 402/403 相同、不同账号 4/403" | 与 Task 11 实测吻合 |
+| 3 | **密码链 = 14 种算法按枚举顺序固定串联**：`Shift → Rijndael → BlowFish → Rc6 → TwoFish → Tea → Kasumi → XTea → Noekeon → Khazad → Cast5 → Skipjack → Multi2 → Anubis` | `Cipher::Cipher()` @ `0x08097196`（`reserve(0xe)` + `i=0..13` 循环） |
+| 4 | 枚举映射完整：`0..13` → 上述 14 个 `CNCrypto*` 类 | `work/map-crypto-enum.py`（跳转表 `0x8b13c48`） |
+| 5 | **令牌路径** = `base64_decode` → `COpensslRSA::Decrypt`（密钥在 BSS `0x9404754`，启动时从 `publickey.pem` 初始化）→ **104 字节 `GarenaAuthData`**（含 uid/uname/timeStamp/patchTime/gcaType/mobileAuth/goldMemberType） | `AuthGarenaToken::decrypt` @ `0x081731f2` |
+| 6 | 登录帧里**还有一路鼠标密码**：`Dispatcher_MouseRegister::decryptPassword(char const*, char*, int)` @ `0x0826333a` | `[静态]` |
+
+### 未决（**M1 的关键路径**）
+
+> **客户端怎么拿到同一把封包密钥？**
+> 服务端的密钥在 `InitCipherKeyString()` @ `0x082a025a` 里生成（取 `getCurSec()`、
+> 建 2048 B 密钥缓冲、反复拷贝一个"选中的串"填满 `GetTotalKeyLength()` 字节）。
+> **线索**：7001 握手下发的"会话密钥"是个**时间戳字符串**
+> （`"20261005123000\0\0"` 之类）——两者可能有关联。
+> **不解决 ⇒ 只能重放抓包，不能为任意账号构造登录帧。**
+
+**怎么验**（按代价）：① 读 `SelectKeyString` @ `0x082a002a` 的完整 5 分支逻辑；
+② 找 `0x940be80` 那组 16 字节结构体（BSS）在哪被填充；③ 若能拿客户端，看它是否用 7001 的时间戳播种。
+
+### 我自己撤回的两条（留痕）
+
+* `[作废]` "`_NS_PI_2ND_RecvHash_CS` 是密钥派生" —— 它是**反外挂**（`CheckHashReceived`
+  + `CHackAnalyzer::addServerHackCnt`）。我是**凭它紧挨着 `Cipher::Decrypt` 的位置猜的**。
+* `[作废]` "密钥 = 从 `map<int,string>` 里随机挑" —— 那两个 map 地址**同时被
+  `CItemList::load_item_files` 等道具/脚本代码使用**，读法站不住，已降级 `[未验证]`。
+
+## 6.5 【重大】dbmw 取证：业务走 **UDP**（第 4 部分的入口已打开）
+
+**全账**：`work/out/dbmw-recon-report.md`。
+
+| # | 结论 |
+|---|---|
+| 1 | **三个 dbmw 是同一份二进制**（md5 `0d70e931…`），角色由配置决定 |
+| 2 | **拓扑**：`game` **直连 MySQL**（自己有 `master_db_*`）；**dbmw 服务的是 monitor/guild/statics** |
+| 3 | **线格式 = 4 字节头**：`u16 LE packet_id` + `u16 LE size(含头)`（静态签名 + 抓包铺满 + 日志 id 三重印证） |
+| 4 | **传输分工**：**TCP = 心跳**（id 4202，每 ~5 秒，载荷恒定，含对端 TYPE）；**UDP = 业务** |
+| 5 | 业务 UDP 三实例实测 id：mnt `6072/10218/4152`、stat `10209/3111/6085/2511/4010`、guild `9007/1061/1069` —— **与日志逐个吻合** |
+| 6 | 词汇表：**119 种 `Packet_*`** + **151 个 `CDBManager::*`** + **122 个 `CPacketTranslater::On*(PacketHeader*)`** 处理器 |
+| 7 | 两套 id 命名空间：packet id（<65536，全局）与 query id（全在 `20xxx`，日志会打印 SQL） |
+
+**⇒ 第 4 部分可以开工了**：拿 `work/analyze-udp.py` + `work/dbmw-protocol.py` 就能出六件套。
+**注意**：先前两轮"只看到心跳"是因为我用了 `tcp port ...` 过滤器 —— **抓 dbmw 必须不限协议**。
+
+---
+
+
 ## 7. 纪律提醒（上一轮踩过的坑，别重犯）
 
 * **提交必须带 pathspec**：`git commit -m "..." -- <paths>`；`.superpowers/` 与 `docs/` 被 gitignore，
