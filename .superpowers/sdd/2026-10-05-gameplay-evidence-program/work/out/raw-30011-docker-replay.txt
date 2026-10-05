@@ -1,7 +1,7 @@
 ==============================================================================
 selftest-30011.py —— 游戏面已知答案自检（Task 11）
 ==============================================================================
-帧模型: GAME hdr=10 size_off=3 cat_off=0 id_off=1
+帧模型: GAME hdr=13 size_off=3 cat_off=0 id_off=1
 
 [判据1] PASS —— 期望值来自抓包（不是我编的）
   抓包目录  : .superpowers\sdd\2026-10-05-gameplay-evidence-program\work\captures\streams

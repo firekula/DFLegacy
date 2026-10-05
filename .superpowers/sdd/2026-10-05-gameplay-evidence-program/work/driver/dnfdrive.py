@@ -13,25 +13,35 @@
     证据：[静态] STATIC-FINDINGS.md §4.4 的访问器证据；[抓包] B0 实测 VM 与 docker
           两条 7001 C 流都恰好铺满（帧 43/27/11/11 = 92）、S 流（47/43/7220|7235/139|140）。
 
-  GAME (10 字节) —— 用于游戏面（docker 30011 / VM 10013）
-    [0] category(0x01=CMD / 0x00=NOTI)   [1] id
-    [2] 按帧类型确定的 0/1/2（**不是**恒 0；见下方修正）
-    [3..6] size    uint32 LE **含头**
-    [7..9] 3 字节（`[7]` 恒等于 `payload[1]`；`[8]`/`[9]` 语义未解）
-    证据：[抓包] B0 实测 —— 六条游戏面流按此切帧**全部恰好铺满**（帧长之和 == 流长度）；
-          而用 11 字节模型会把 size 读成 10 万级。详见 work/out/B0-batch-report.md §4。
+  GAME (13 字节) —— 用于游戏面（docker 30011 / VM 10013）
+    [0]    classification(1)   0x01=CMD / 0x00=NOTI
+    [1]    msg_no(1)           opcode 号
+    [2]    garvage(1)          官方字段名就是 garvage（拼写如此）；实测取值 0/1/2
+    [3..6] sLength(4)          uint32 LE **含整帧**
+    [7..10] checksum(4)        4 字节校验（算法仍未解，见下）
+    [11..12] sequence(2)       uint16 LE **递增序号**（C→S 实测从 0 起、逐帧 +1，100%）
 
-    ⚠️ **三条修正（2026-10-05 晚，详见 work/out/frame-structure-nailed.md）**：
-      * `[作废]` "`[2]` 恒 0"。实测取值 `{0,1,2}`，且**两份不同账号的抓包分布逐个相同**
-        （C→S `{0:12,1:6,2:3}`、S→C `{0:30,1:39,2:21}`）⇒ 它是**按帧类型确定**的字段，
-        既不随会话也不随账号变（`work/nail-byte2.py`）。
-      * `[作废]` "`[7..9]` 疑似校验和"。16 个标准校验算法在 90 帧上命中率仅 1–2%
-        （随机水平）⇒ 没有一种是它（`work/nail-checksum.py`）。
-      * **实测关系**：S→C 方向 `hdr[7] == payload[1]` **180/180 成立**（两条独立抓包各 90 帧），
-        C→S 方向 0/42 完全不成立 ⇒ `hdr[7]` 是 `payload[1]` 的**副本**，不是算出来的
-        （`work/nail-frame-structure.py`）。`hdr[8]`/`hdr[9]` 与载荷[2..3]、帧长、
-        帧序号均无关，**语义仍未解**。
-      * **不阻塞**：原样重放整帧可通过（只要连字节一起重放）。
+    ⚠️ **这是从 10 字节改成 13 字节的（2026-10-05 晚），判据有两条，互相独立**：
+      ① **官方 cfg 白纸黑字**：`/home/neople/game/cfg/siroco11.cfg` L82–89
+             header_classification = 0 1     header_msg_no  = 5 1
+             header_sLength        = 1 4     //header_garvage = 6 1
+             header_checksum       = 7 4     header_sequence = 11 2
+             header_load_interval  = 10      header_mangled_length = **13**
+         字段集合与宽度：1+1+1+4+4+2 = **13**，与客户端观测到的布局一致
+         （客户端侧的字段顺序是 class,msg_no,garvage,sLength,checksum,sequence；
+           官方那份 cfg 写的是内部链接的顺序，字段与宽度相同、次序不同）。
+      ② **C→S 的 `[11..12]` 是完美递增序号**：四条 C→S 流实测 20/20、20/20、20/20、5/5
+         逐帧 +1 起于 0。**载荷不可能是完美计数器** ⇒ 这两个字节必是头字段
+         ⇒ 头至少 13 字节（`work/nail-header13.py`、`work/nail-header13-verify.py`）。
+
+    `[作废]` 旧说法"10 字节头"。10 字节模型**切帧仍然正确**（切帧只看 `[3..6]` 的 size，
+    与头长无关 —— 实测两个模型在全部 12 条流上都恰好铺满），所以那个错误**没有污染**
+    任何切帧结论（B0 的"恰好铺满"、Task 11 的重放比对都仍成立）；
+    它污染的只是**载荷起点**：载荷应从 13 起，不是从 10 起。
+
+    `[7..9]` 的语义也已随之定案：它**不是**独立字段，而是 4 字节 `checksum` 的前 3 字节。
+    checksum 的**算法仍未解**（adler32/crc32/sum32 在 90 帧上全 0 命中），
+    但**不阻塞**：原样重放整帧可通过。
 
 密码层（[抓包]+[静态] 既有结论）：
   * 会话密钥 = 服务端 `id=12` 帧正文里 `int32 status` 之后的前 16 字节。
@@ -103,7 +113,7 @@ class FrameModel:
 
 
 CHANNEL = FrameModel("CHANNEL(11B, 7001)", hdr=11, size_off=2, cat_off=0, id_off=1, ack_off=10)
-GAME = FrameModel("GAME(10B, 30011/10013)", hdr=10, size_off=3, cat_off=0, id_off=1, ack_off=None)
+GAME = FrameModel("GAME(13B, 30011/10013)", hdr=13, size_off=3, cat_off=0, id_off=1, ack_off=None)
 
 
 class FrameError(Exception):

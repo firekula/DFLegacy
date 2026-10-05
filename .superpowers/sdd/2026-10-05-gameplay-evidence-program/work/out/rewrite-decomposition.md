@@ -133,22 +133,29 @@ cfg 里没有。已按实测改正。
 **证据现状**：**只到配置层**。三个 cfg 已读全（`master_db_ip/port/acc/pwd/name`），
 但**协议本身一条都没取证** —— 这是本评估里**最大的证据空白**。
 
-**注意**：`dbmw` 是**游戏服写库的唯一通道**，所以它的协议**不可回避**，
-M3/M4 一碰持久化就会需要它。
+**注意**：`dbmw` 是**游戏服业务读写的主要通道**，M3/M4 一碰持久化就会需要它。
 
-**这条判断的证据**（不是推测）：`df_game_r` 的 `game/cfg/db_info_tw.cfg` 里
-**只有服务地址、没有任何 DB 凭据** ——
+**⟂ 修正留痕（我先前写错过一次）**：本文初稿写"`game` 不直连数据库，所有持久化都经 `dbmw`"，
+依据是 `db_info_tw.cfg` 里只有服务地址、没有凭据。**那个依据不足** ——
+`df_game_r` 的**每频道 cfg**（`siroco11.cfg` L68–73）里其实是**有** DB 凭据的：
 
 ```
-game_db_type     = siroco
-udp_ip_of_monitor = 127.0.0.1   udp_port_of_monitor = 30303
-udp_ip_of_guild   = 127.0.0.1   udp_port_of_guild   = 30403
-udp_ip_of_statistic = 127.0.0.1 udp_port_of_statistic = 30503
+db_thread_count = 3
+master_db_ip    = 127.0.0.1
+master_db_port  = 3306
+master_db_acc   = game
+master_db_pwd   = 20e35501e56fcedbe8b10c1f8bc3595be8b10c1f8bc3595b
+master_db_name  = d_taiwan
 ```
 
-（对照：`auction_siroco.cfg` / `point_siroco.cfg` **有** `game_db_acc/pwd/name` ⇒
-拍卖与点券是**直连 MySQL** 的，game 不是。）⇒ **game 不直连数据库**，
-所有持久化都经 `dbmw`。这条已由配置层证据支持。
+（另外 `db_tbl_file = db_info_tw` ⇒ `db_info_tw.cfg` 是**表名清单/表定义**，不是连接信息。）
+⇒ **正确说法**：`game` **有**直连 MySQL 的能力（`db_thread_count = 3` 说明它自己开连接池），
+`dbmw` 是**另一条**通道（`guild`/`monitor`/`statics` 走它）。
+**两者都要重写，但优先级待定** —— 需要先搞清楚"哪些表由 game 直写、哪些经 dbmw"，
+这是第 4 部分开工前必须先取证的一条。
+
+**教训**：我只看了一个 cfg 文件就下了全局结论（"game 没有 DB 凭据"）。
+一个样本不足以支撑"没有"这类全称判断。
 
 ### 第 5 部分 · 辅助进程（`monitor` / `manager` / `relay` / `stun` / `coserver` / `statics` / `community`）
 
