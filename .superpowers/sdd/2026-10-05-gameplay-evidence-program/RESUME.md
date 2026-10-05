@@ -1,7 +1,7 @@
-# RESUME —— 官服玩法面证据链工程 M0（接续块）
+# RESUME —— 官服玩法面证据链工程（接续块）
 
 > **判据（spec §6.1）**：一个没参与过本任务的会话，只读这份文件就能接着干。
-> 最后更新：2026-10-05（M0 结束、评审门之前）。**当前进度：Task 1–7 已完成并提交；Task 8 未开始。**
+> 最后更新：2026-10-05（**Task 1–11 全部完成，本计划已收尾**）。
 > 计划：`docs/superpowers/plans/2026-10-05-gameplay-evidence-program-m0-m1.md`
 > 规格：`docs/superpowers/specs/2026-10-05-gameplay-evidence-program-design.md`
 > 分母报告（评审门要的那一份）：`.superpowers/sdd/2026-10-05-gameplay-evidence-program/M0-denominator-report.md`
@@ -10,17 +10,17 @@
 
 ## 0. 一句话现状
 
+M0（Task 1–7）✅、评审门 ✅（待评估队列全部纳入、范围不缩）、B0（Task 8）✅、
+Task 9 ✅（7001 自检 PASS）、**Task 10 ✅（令牌签发/验签，离线 PASS）**、
+**Task 11 ✅（游戏面自检：拒绝路径 PASS，成功路径本机未复现 —— 环境前置缺失，非驱动器缺陷）**。
+
 `df_game_r` 的**全量派发器目录（425 家族）**与**opcode → 派发器映射（1171 条，`unknown=0`）**已产出。
-四判据：**1 PASS、2 PASS、4 PASS（抽样 10/10 + 全量 424/425）、3 以修正形式补全**。
-**Task 8（B0 批次）已完成**：拿到**成功路径**（VM 里那套官服栈，游戏面 46,193 B / 90 帧）与
-**失败路径**（docker 容器被拒，末帧 `NOTI 199 DISCONNECT_REASON`），并实测出
-**游戏面帧模型 = 10 字节头**（与 7001 的 11 字节头不同）。详见 `work/out/B0-batch-report.md`。
+驱动器 `work/driver/` 已建成：**两套帧模型**（7001=11 字节头 / 游戏面=10 字节头）、AES/zlib 密码层、
+RSA 令牌签发验签，并**在两个真实靶子上跑过**。
 
-**所有者裁决（2026-10-05）**：⑥ 待评估队列的东西**都是需要的** ⇒ **S2 不采纳、范围不缩**，
-D2 从"与现有 DFLegacy 等价"扩为**官方功能面全覆盖** ⇒ **spec §5.2 的里程碑表需要先扩展**。
-
-**下一步 = Task 9–11（驱动器前置）**：帧层/密码层 → 7001 已知答案自检（硬门 S3）→ 30011/10013 方言与令牌。
-不要再跑 Task 8（批次已完成）。
+**本计划的下一步不在这份文件里** —— 计划只覆盖到"M1 驱动器前置"。
+接下来按 spec §5.2 的里程碑表开 M1 的单元（①UDP `mt` 应用层 ②登录/鉴权 ③角色列表与选角 ④进入城镇），
+每单元一份六件套 + L2 差异表。**开单元前先读 §5 未决项 2（VM 靶子不可用）与 §6.0（已知答案）、§6.0.1（驱动器接口）。**
 
 ---
 
@@ -30,10 +30,10 @@ D2 从"与现有 DFLegacy 等价"扩为**官方功能面全覆盖** ⇒ **spec �
 |---|---|
 | `$P` | `G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evidence-program` |
 | `$O` | `G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official`（**只读引用**：`df_game_r.bin` + `.bin.idb` + 各种 `.txt` 转储） |
-| `$W` | `G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-official-login-channel\work`（**只读引用**：登录链那轮的脚本与抓包） |
+| `$W` | `G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-official-login-channel\work`（**只读引用**：登录链那轮的脚本与抓包、两把密钥 PEM） |
 | 工作区 | `G:\Game\DNF_ACT1\DFLegacy`（git 分支 `main`） |
 
-`$P` 结构：`work\`（脚本）、`work\out\`（产物）、`work\captures\`（抓包，空）、`work\driver\`（驱动器，空）。
+`$P` 结构：`work\`（脚本）、`work\out\`（产物）、`work\captures\`（抓包）、`work\driver\`（驱动器）。
 
 ---
 
@@ -51,6 +51,11 @@ D2 从"与现有 DFLegacy 等价"扩为**官方功能面全覆盖** ⇒ **spec �
 | `.recon/recon.config.yml`、`.recon/run-ida.sh`、`work/ida-game.py` | 两个新 recon 工具 + 包装脚本支持 `--idb` | `8d57b99` |
 | `work/m0-acceptance.py`、`work/out/M0-acceptance.txt`、`M0-denominator-report.md`、`RESUME.md` | 四判据原始输出 + 报告 + 本文件 | `df7989f` |
 | `work/family-evidence.py`、`work/out/family-evidence.txt`、`work/out/family-cpp-map.tsv` | **判据 3 补全件**：DWARF 覆盖率实测、全量 vtable/RTTI 反查、`__FILE__` 池 → 精确 `.cpp` | （补全提交） |
+| `work/driver/dnfdrive.py`、`work/driver/selftest-7001.py`、`work/out/driver-7001-selftest.txt` | **Task 9**：两套帧模型 + AES/zlib + 7001 已知答案自检 | 见 §3 命令 7 |
+| `work/driver/token.py`、`work/out/token-offline-check.txt` | **Task 10**：令牌签发/验签（裸 PKCS#1 v1.5 type-1，46 B 被签内容） | `2981f17` |
+| `work/extract-gate-tokens.py`、`work/out/gate-tokens-reference.json` | **Task 10 的回归基准来源**：从 5505 抓包**重新推导**三条令牌（不硬编码） | `2981f17` |
+| `work/driver/selftest-30011.py`、`work/run-30011-selftest.sh`、`work/out/driver-30011-selftest.txt` | **Task 11**：游戏面自检（拒绝路径 PASS / 成功路径未复现） | （Task 11 提交） |
+| `work/out/raw-30011-*.txt`、`work/out/raw-30011-*.bin` | Task 11 的原始输出与**原始字节**（判据 4：字节全部落盘） | （Task 11 提交） |
 
 ### 2.2 **不在** git（派生物，按需重跑；**不要**提交，20–30 MB 级）
 
@@ -100,7 +105,33 @@ python "$P\work\m0-acceptance.py" "$P\work\out\M0-acceptance.txt"               
 
 # 6) 任意地址的 xref（按可执行节扫；约 50 秒/次）
 python "$P\work\game-scan-imm.py" "$O\df_game_r.bin" --targets 0x08aeb9d8 0x08aeb9f8 --limit 6
+
+# 7) 驱动器：帧模型自洽 + 7001 已知答案自检（Task 9）
+python "$P\work\driver\dnfdrive.py"                     # 两套帧模型的自洽检查
+python "$P\work\driver\selftest-7001.py" --verify `
+  "$P\work\out\replay-s.bin" "$W\captures\streams\7001-49202.bin" "$P\work\out\driver-7001-selftest.txt"
+
+# 8) 令牌签发/验签离线自检（Task 10；**不需网络、不需容器**）
+python "$P\work\driver\token.py" --check --sign-uid 1 `
+  --key "$W\container-privatekey.pem" --verify-with "$W\container-game-publickey.pem" `
+  --streams "$W\captures\streams5505" --out "$P\work\out\token-offline-check.txt"
+
+# 8b) 从 5505 抓包重新推导那三条令牌（Task 10 回归基准的来源；不硬编码）
+python "$P\work\extract-gate-tokens.py" "$W\captures\streams5505" `
+  "$W\container-game-publickey.pem" --json "$P\work\out\gate-tokens-reference.json"
+
+# 9) 游戏面自检（Task 11）—— 三个靶子一次跑完，**含失败那次**，拼成一份报告
+bash "$P\work/run-30011-selftest.sh"
+#    单独打某个靶子（例：docker 拒绝路径）：
+python "$P\work\driver\selftest-30011.py" --capture-dir "$P\work\captures\streams" `
+  --server-port 30011 --verify-with "$W\container-game-publickey.pem" `
+  --replay --host 127.0.0.1 --port 30021 `
+  --out-raw "$P\work\out\raw-30011-docker-replay.bin" --out "$P\work\out\raw-30011-docker-replay.txt"
 ```
+
+**跑 `driver/` 下任何脚本都不用先设 PYTHONPATH**：`driver/dnfdrive.py` 与 `driver/token.py`
+各自带"标准库 `token` 防遮蔽"守卫（原因见 `work/out/driver-30011-selftest.txt` 末节 ——
+我们的 `token.py` 会遮蔽标准库同名模块，**顺序必须是先摘 sys.path 再 import**）。
 
 **IDA 侧（`ida-game` 的三条分支；走 `.recon/run-ida.sh --idb`，转成 `DNF_IDB=` 交给权威实现
 `$O\..\run_ida.sh` = `.superpowers/sdd/2026-09-29-dungeon-party/work/run_ida.sh`）**：
@@ -119,87 +150,129 @@ cd 'G:\Game\DNF_ACT1\DFLegacy'
 
 ---
 
-## 4. 环境事实（2026-10-05 17:0x 实测，Task 1 基线 + 后续补充）
+## 4. 环境事实（**2026-10-05 23:4x 复测**，Task 1 基线 + 后续补充）
 
 | 事实 | 值 |
 |---|---|
-| docker | 29.8.0；容器在跑：`dnf`（官服栈）、`dfl-recon`（sidecar，提供 `c++filt`/binutils）、另有 codex-pooler 两个与本工程无关 |
-| **宿主 7001/tcp、2311/udp 占用者** | **pid 17428（`DFLegacy.Server`）** —— 两个端口同一个 pid |
-| 容器发布端口 | `30011/tcp → 宿主 30021`、`31011/udp → 宿主 31021`、`5505/tcp → 5505`、`7001/udp → 7001`、`2312/udp → 2312`、`2313/udp → 2313`、`3306/tcp → 13306`、`7300/tcp+udp → 7300` |
-| 容器 `7001/tcp`、`2311/udp` | `[]`（**空数组**，不是 `null`）—— 申请了发布但宿主被占，所以**没绑上**。Task 8 要重启容器才会重新绑 |
-| sidecar `dfl-recon` | Up；`c++filt` 可用（纯 CPU 任务不受 netns 影响）。**抓包前必须验 `docker exec dfl-recon ip -o addr show` 里有 `eth0`**，没有就是挂到了失效 netns（坑 9） |
+| docker | 29.8.0；容器在跑：`dnf`（官服栈）、`dfl-recon`（sidecar，提供 `c++filt`/`openssl`/binutils）、另有 codex-pooler 两个与本工程无关 |
+| **宿主 7001/tcp、2311/udp 占用者** | **pid 43904（`DFLegacy.Server`）** —— 两个端口同一个 pid（Task 1 时是 17428，pid 变了是正常的） |
+| 容器发布端口 | `30011/tcp → 宿主 30021`、`31011/udp → 宿主 31021`、`5505/tcp → 5505`、`7001/udp → 7001`、`2312/2313/udp`、`3306/tcp → 13306`、`7300/tcp+udp` |
+| 容器 `7001/tcp`、`2311/udp` | `[]`（**空数组**，不是 `null`）—— 申请了发布但宿主被占，所以**没绑上** |
+| **游戏面可达性** | ✅ `127.0.0.1:30021`（容器 30011 的宿主发布）**可达且已复现拒绝路径**；⚠️ VM `192.168.200.131:10013` TCP 可连但**零回复**（见 §5 未决项 2） |
+| sidecar `dfl-recon` | Up；`c++filt`、`openssl`(3.5.8) 可用。**抓包前必须验 `docker exec dfl-recon ip -o addr show` 里有 `eth0`** |
 | `idat.exe` | `D:\Program Files (x86)\IDA_Pro_8.3\idat.exe` 在 |
-| `df_game_r.bin.idb` | 170,048,135 B；**没有行信息**（`get_sourcefile` 全空）；**有** `idautils.Names()` 328,151 个名字 |
-| ACL/权限退化 | 本会话**没有**遇到（`$P` 下写文件全成功）；`G:\Game\DNF_ACT1\DFLegacy._acl-report\` 里是上一轮的修复/回滚脚本 |
+| `df_game_r.bin.idb` | 170,048,135 B；**没有行信息**；**有** `idautils.Names()` 328,151 个名字 |
+| 本机 Python | 3.12.10；有 `cryptography` 45.0.7、`pycryptodome` 3.23.0；**没有** `rsa`、**没有** 本机 `openssl`（只有 Git Bash 里那份） |
+| ACL/权限退化 | 本会话**没有**遇到；`G:\Game\DNF_ACT1\DFLegacy._acl-report\` 里是上一轮的修复/回滚脚本 |
 
 ---
 
 ## 5. 未决项 / 已知缺口（接手前先读）
 
-1. **`ida-game` 没经 `recon_tool` 调通**：本会话审批提示被禁用，`mutate` 工具经 `recon_tool` 调用被
+1. **`ida-game` 没经 `recon_tool` 调通**：审批提示被禁用时 `mutate` 工具经 `recon_tool` 调用会被
    **自动拒绝**（返回 `审批未通过（rejected）`）。工具链本身是**直接执行同一 argv 实测通过**的
    （`IDB` 正确指向 `df_game_r.bin.idb`、`symbols=328151`、`dispatcher-named=4621`）。
    ⇒ 若要"经本模式调用"，需要放开一次审批；否则静态取证继续走直接 argv 并在产物里写明。
-2. **判据 3 已以修正形式补全**（详见 `M0-denominator-report.md` ③）：原两条子要求的前提都不成立
-   （21 个 `*Dispatcher*.cpp` vs 425 家族 = 20.2×；"家族 → `.cpp`"三条路全断，含 DWARF 只覆盖
-   FreeType 这一实测结论）；**其目的由穷尽反查承担：424/425 名字相符、0 处不符、0 个漏掉的家族**。
-   56/425 家族能给出精确 `.cpp`（`__FILE__` 池，13.2% 是下界）。
-3. **范围已扩大**（所有者 2026-10-05）：⑥ 队列全部纳入 ⇒ **spec §5.2 的里程碑表需要先扩展**，
+2. **⚠️ VM 成功路径未能在本机复现（Task 11 的唯一一条 FAIL）**：
+   VM 的 `10013` **TCP 连得上**（socket 级复测两次；`Test-NetConnection` 给过一次假阴性），
+   但发抓到的 413 B 首帧后 **4 秒内零回复**；发整条 C 流（1125 B）同样零回复。
+   按 B0 的两条 L2a 前置（`B0-batch-report.md` §6.1），最可能是
+   ① 本次账号在 `d_taiwan.member_join_info` 的行没清（PK 冲突 ⇒ 登录异常，**且不带错误包**）、
+   ② 客户端 IP 不在 `d_taiwan.geo_allow`。
+   **本机 SSH 进不去 VM**（`Connection closed by 192.168.200.131 port 22`，两把 key 都试过 ——
+   RESUME 旧记的 SELinux/StrictModes 问题**仍未解决**）⇒ 这两条前置**改不了**。
+   **怎么才能验**：让 VM 的所有者代跑（清 `member_join_info` 里该 uid 的行、把发起方 IP 加进
+   `geo_allow`），然后重跑 §3 命令 9。**这不是驱动器缺陷** —— 同一驱动器在 docker 靶子上
+   已复现拒绝路径（首帧 + 末帧逐帧一致）。
+3. **判据 3（令牌替换）在本工程的两个靶子上都"未验证"**：游戏面首帧的 403 B 载荷**整体不透明**
+   （可打印率 38% / 34.7%，**没有任何** 256 B 窗口的公钥模幂落在 type-1 上，随机基线期望 0.0023 个），
+   也**没有** `00 00 00 xx` 这样的 uid 大端模式 ⇒ 首帧里的令牌要么已被会话密钥加密，
+   要么与另一把密钥绑定。⇒ 按计划 Task 11 Step 2 的**退化分支**：逐字节原样重放，
+   并**显式记录"令牌替换未验证"**。这属于 M1 单元②（登录/鉴权）的工作。
+4. **范围已扩大**（所有者 2026-10-05）：⑥ 队列全部纳入 ⇒ **spec §5.2 的里程碑表需要先扩展**，
    再为新增系统出单元计划。本计划的 Task 8–11 不受影响。
-4. **NOTI 563 条永远没有派发器**（出站专用）。任何后续单元若想在 NOTI 上找 handler，是方向错误。
-5. **CMD 606/607 没有派发器**（`id > 0x25d = 605`）。CMD 607 的名字地址（`0xb7a37c`）指向的是一句
+5. **NOTI 563 条永远没有派发器**（出站专用）。任何后续单元若想在 NOTI 上找 handler，是方向错误。
+6. **CMD 606/607 没有派发器**（`id > 0x25d = 605`）。CMD 607 的名字地址（`0xb7a37c`）指向的是一句
    日志串 `ENUM_CMDPACKET_DISJOINT_ITEM error item_…`，**输入表这一行本身可疑**，用之前先核。
-6. **4 个家族的 `dispatch_sig` 是空实现**（`mov eax,0; ret`）：`DungeonNPCBuffInfo`、`ExtendAvatar`、
+7. **4 个家族的 `dispatch_sig` 是空实现**（`mov eax,0; ret`）：`DungeonNPCBuffInfo`、`ExtendAvatar`、
    `GiveGiftToNPC`、`P2PHolePunchingSuccessRateStatistics`。它们没有 handler 是结构性的。
-7. **183 个家族没有 `dispatch_sig`**（425 − 242 = 183；其中 **182 个只有 `process`**，
-   第 183 个 `BuyItemCheck` 两者皆无）。只有 `process` 的家族要用 `process` 地址定位；
-   这会影响 M1 单元的取证方式（计划里"用 `dispatch_sig` 反查"的那套对它们不适用）。
-8. **`MakeWarRoomTemp` 是"已定义但从未实例化"的类**：vtable `0x08bd8cc0` 在代码里没有 store、
-   在 `.data` 里也没有预初始化对象镜像（指向它的 4 字节只出现在 `.symtab` 的 `st_value` 里），
-   但它的方法体带 `PacketDispatcher_Impl_1.cpp` 的断言串 —— GCC 对未实例化的类照样发射 vtable 与方法。
-   ⇒ 与"注册表里没有它"一致，两条观察已调和。
-9. `work/out/_tmp-*.txt` 是运行中间产物、`.recon/out/ida-dec-regression.txt` 是回归测试产物，都可删。
+8. **183 个家族没有 `dispatch_sig`**（425 − 242 = 183；其中 **182 个只有 `process`**，
+   第 183 个 `BuyItemCheck` 两者皆无）。只有 `process` 的家族要用 `process` 地址定位。
+9. **`MakeWarRoomTemp` 是"已定义但从未实例化"的类**：vtable `0x08bd8cc0` 在代码里没有 store，
+   但方法体带 `PacketDispatcher_Impl_1.cpp` 的断言串 ⇒ 与"注册表里没有它"一致。
+10. `work/out/_tmp-*.txt` 是运行中间产物、`.recon/out/ida-dec-regression.txt` 是回归测试产物，都可删
+    （本会话已把 Task 10/11 的探针全部退役）。
 
 ---
 
-## 6. 下一步：Task 9–11（驱动器前置，**M1 的硬门**）
+## 6. 下一步：M1 的单元（**本计划已收尾，下面不在计划范围内**）
 
-**Task 8 已完成**，其产出是 Task 9/11 的**已知答案**（这份是新的、比计划预写的更准）：
+### 6.0 Task 9–11 落定的"已知答案"（接手时直接用，别重新推导）
 
-* **游戏面帧模型 = 10 字节头**：`[0]cat(0x01=CMD/0x00=NOTI) [1]id [2] [3..6]size(LE,含头) [7..9]3字节`
-  **与 7001 那套 11 字节头不同**（计划 Task 9 只记了 11 字节那套，**必须两套分开实现**）。
-  验证方式：六条流按此切帧，帧长之和 == 流长度（`work/out/B0-batch-report.md` §4）。
-* **成功序列**（`work/captures/streams-vm/`，从 `b0-vm-success.pcap` 可重跑生成）：
-  `13681-10013.bin` 21 帧 / `10013-13681.bin` 90 帧；含 `CMD 1 LOGIN` 413 B 请求与 95 B 应答、
-  `NOTI 1 CHANNELINFO` 450 B、`CMD 2 SET_UDP_IP_PORT` 45 B、`CMD 91 MOVE_TO_GATE`、`CMD 93 ENTER_WARROOM`。
-* **拒绝序列**（`work/captures/streams/`）：`46386-30011.bin`（1 帧 413 B）↔ `30011-46386.bin`
-  （5 帧 432/31/31/31/31），末帧 **`NOTI 199 DISCONNECT_REASON`** —— 失败路径的现成靶子。
-* **7001 已知答案**：C→S 4 帧 `43/27/11/11`（id `11/5/9/1`）；S→C 4 帧 `47/43/7220/139`（id `12/6/10/3`，
-  VM 版）。docker 版是 `47/43/7235/140` —— **两台服务端不是同一份配置，取期望值时要写明取自哪台**。
-* 单向流重跑：`python $W\pcap-streams.py <pcap> <outdir> [--filter-port N]`（`$W` 见 §1）。
+**两套帧模型**（`work/driver/dnfdrive.py` 里是 `CHANNEL` / `GAME` 两个**显式**对象，**不自动嗅探**）：
 
-**Task 9–11 要做的**：`work/driver/` 下写 `dnfdrive.py`（帧层 + AES/zlib，**两套头都要能说**）、
-`selftest-7001.py`（在已知答案上自检；**不过 ⇒ 触发 S3，冻结所有 L2 结论**）、
-`token.py`（RSA 令牌签发，256 B）、`selftest-30011.py`（游戏面自检）。
-原计划里的端口命名要用**实测值**替换：docker 那份是 `30011`，VM 那份是 **`10013`**。
+| 模型 | 端口 | 头长 | 布局 |
+|---|---|---|---|
+| `CHANNEL` | 7001 | **11** | `[0]cat [1]id [2..5]size(LE,含头) [6..9]reserved [10]ackOk` |
+| `GAME` | 游戏面（docker `30011` / VM `10013`） | **10** | `[0]cat(0x01=CMD/0x00=NOTI) [1]id [2] [3..6]size(LE,含头) [7..9]3 字节` |
 
-### 6.1 本轮新增的两条 L2a 前置条件（**每次打官服靶子前都要做**）
+* **会话密钥（7001）= `id=12` 正文 `[4:20)`**（计划的 `[5:21)` **实测为错**，已否证：
+  `[4:20)` 解 `id=10` 的 13312 B 密文可打印率 97.75% 并解出 `[dungeon]`/频道表；`[5:21)`/`[0:16)` 是垃圾）。
+* `id=3`/`id=10` 正文 = `zlib(AES(明文))`，**没有** `count(1)` 前缀（跳首字节反而 zlib 失败）。
+* **7001 自检判据不能是"整帧长度恒定"**：会话密钥按登录时刻生成 ⇒ `zlib(密文)` 长度差几字节
+  （VM `47/43/7220/139` vs docker `47/43/7235/140`）。正确判据 = **结构性不变**
+  （帧数 + `(cat,id)` 序列 + 解密后明文长度一致，外加 `id=10` 明文逐字节相同）。
+* **令牌** = 裸 PKCS#1 v1.5 **type-1** 块（256 B），被签内容 **46 B** =
+  `uid(4,BE) | 01×32 | 55 91 45 10 | 01 04 03 03 01 01`。三个账号（uid 1/2/3）只差第 3 字节。
+  **除 uid 外那 42 字节的语义仍未解**（`[推断]`）。
+* **游戏面两种失败/成功形状**（都是原始字节级）：
+  * docker（**拒绝**）：C→S `CMD1(413)`；S→C `NOTI1(432) NOTI183(31)×2 CMD1(31) NOTI199(31)`，
+    末帧 `NOTI 199 = DISCONNECT_REASON`。
+  * VM（**成功**）：C→S 21 帧 1125 B（首帧 `CMD1(413)`）；S→C 90 帧 46193 B
+    （首帧 `NOTI1(450)` = CHANNELINFO）。
+* **游戏面首帧的 403 B 载荷整体不透明**：可打印率 38%（VM）/ 34.7%（docker），无 `00 00 00 xx` 模式，
+  148 个 256 B 窗口无一落在 type-1 上（随机基线期望 0.0023 个）⇒ **令牌不可从首帧直接替换**
+  （Task 11 判据 3 走退化分支）。
+* **两靶首帧头只差 `[7:10]` 这 3 字节**（VM `11 bc 5f` / docker `a7 5d f3`），
+  `[0..6]` 完全相同（`01 01 00 9d 01 00 00`）—— 那 3 字节的语义仍 `[未验证]`。
+
+### 6.0.1 驱动器前置已完成，`work/driver/` 可用
+
+`dnfdrive.py`（`Conn` / `send_frame` / `recv_frames` / `aes_ecb_*` / `zlib_*` / `parse_frames` /
+`FrameModel` 两套 + `session_key_from`）、`token.py`（`Key.sign/verify` + openssl 独立校验）、
+`selftest-7001.py`、`selftest-30011.py`、`work/run-30011-selftest.sh`。
+
+**开 M1 单元前必须先做的一件事**：确认 L2a 靶子到底用哪个 —— **docker 的拒绝路径只能验失败语义**，
+**成功路径要 VM 那套，而它现在本机不可用**（§5 未决项 2）。按 spec §6 的 **S4**
+（官方容器不可用且无替代靶）预写：若 VM 也拿不到，L2a 失效 ⇒ 改判为纯静态 + 自研回放，
+并**显式下调**相关结论的证据等级 —— **不许**拿 docker 的拒绝序列冒充成功序列。
+
+### 6.1 两条 L2a 前置条件（**每次打官服靶子前都要做**）
 
 1. 清掉本次账号在 `d_taiwan.member_join_info` 的行（`PRIMARY KEY(m_id)`，登录路径执行裸 `insert`，
    重复登录必主键冲突 ⇒ 登录异常断连，客户端只说"连接失败"）；
 2. 确认客户端 IP 在 `d_taiwan.geo_allow` 里（容器看到的通常是 `172.17.0.1`；VM 那套看到 `192.168.200.1`，**在名单内**）。
    完整证据链见 `work/out/B0-batch-report.md` §5/§6。
 
-### 6.2 恢复环境时的现状（2026-10-05 22:5x）
+### 6.2 靶子与端口的对应（**易混，写死在这里**）
 
-* ✅ `DFLegacy.Server` 已起回（**pid 91588**，占宿主 7001/2311；批次前是 pid 17428 —— pid 变了是正常的）。
-* ✅ `netsh portproxy` 为空（与批次前一致）；用户态中继已杀、宿主 30011 已释放。
-* ⚠️ **Docker 引擎当前是停的**（`npipe` 不存在）⇒ 容器 `dnf` 未恢复；需要所有者启动 Docker Desktop
-  后再按 `pcap` 对照恢复端口（`docker restart dnf` 后 7001/tcp、2311/udp 才会重新绑上）。
-* ⚠️ **VM（192.168.200.131）里 `/root/.ssh/authorized_keys` 有本批次装的两把公钥**（注释 `dfl-b0-batch`，
+| 靶 | 握手/登录 | 游戏面 | 本机可达 |
+|---|---|---|---|
+| docker 官服栈（**拒绝**） | 容器 `7001`（宿主被 `DFLegacy.Server` 占，= 没绑上） | 容器 `30011` → **宿主 `30021`** | ✅ |
+| VM 官服栈（**成功**） | `192.168.200.131:7001` | `192.168.200.131:10013` | 端口通、但零回复（§5 未决项 2） |
+| 我们的（2008 代，另一套） | 宿主 `2311` 握手 / `7001` 登录+玩法 | —— | `DFLegacy.Server` pid 43904 |
+
+⚠️ 抓包文件里的 `46386`/`33018`/`13681` 都是**抓包侧客户端**端口，**不是**服务端端口。
+
+### 6.3 恢复环境时的现状（2026-10-05 23:4x）
+
+* ✅ `DFLegacy.Server` 在跑（**pid 43904**，占宿主 7001/2311）。
+* ✅ 容器 `dnf`、`dfl-recon` 都在跑；容器 `7001/tcp` 与 `2311/udp` 仍是 `[]`（= 基线形态）。
+* ✅ 本会话**没有**对任何官服栈做写操作（Task 11 的重放只发帧、没建账号、没改 DB）。
+  唯一算"写"的是对 docker 的两次登录尝试（被服务端拒绝），以及 `docker exec` 读 sidecar。
+* ⚠️ **VM（192.168.200.131）里 `/root/.ssh/authorized_keys` 有上一批次装的两把公钥**（注释 `dfl-b0-batch`，
   RSA 指纹 `MD5:c2:ed:ee:6c:57:5d:f4:27:9e:0c:17:06:2b:88:ea:f6`）——**建议删除**；
   本机对应私钥 `<用户>\.ssh\id_rsa_b0`、`id_ed25519_b0`。
-  连 VM 的 ssh 需要老算法：`-o KexAlgorithms=+diffie-hellman-group14-sha1 -o MACs=+hmac-sha1 -o HostKeyAlgorithms=+ssh-rsa`。
 
 ---
 
