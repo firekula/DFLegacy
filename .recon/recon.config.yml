@@ -77,6 +77,62 @@ tools:
       （ARGV[1]=outfile、ARGV[2..]=args），所以 args 是**单个**空格分隔字符串，不能带需要引号的参数；
       脚本要自己写，落盘产物即 outfile。
 
+  # ------------------------------------------------ 静态层（官服 df_game_r）
+  - name: demangle-catalog
+    kind: external
+    summary: 用 sidecar 的 c++filt 把 nm 转储的名字批量解名（纯净、无网依赖）
+    invoke: ["python", "{project_root}/.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/demangle-syms.py", "{src}", "{outfile}"]
+    access: read
+    inputs:
+      src:     { type: string, required: true }
+      outfile: { type: string, required: true }
+    outputs:
+      - { path: "{outfile}", required: true, nonEmpty: true }
+    output: { format: text }
+    timeoutMs: 600000
+    examples:
+      - src: ".superpowers/sdd/2026-09-29-dungeon-party/work/official/game_r.syms.txt"
+        outfile: ".superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/demangled-syms.tsv"
+    caveats: >-
+      依赖容器 sidecar `dfl-recon` 里的 `c++filt`（binutils 2.44，2026-10-05 实测可用）。
+      **本机 python `cxxfilt` 不可用**（`LibraryNotFound: Cannot find any of libraries: ('c',)`，Windows 无 libc），别去试它。
+      sidecar 的 netns 可能在 `docker restart dnf` 后失效 —— 那影响抓包，**不影响本工具**（纯 CPU 任务）。
+      爆炸半径：只读源文件、只写 outfile（默认指向 20+MB 的派生物，**不要提交进 git**）；
+      35 万行一次性喂给容器，实测约 2 秒（`2026-10-05` 实测：352694 rows，31.9MB）。
+
+  - name: ida-game
+    kind: external
+    summary: 在 df_game_r.bin.idb 上跑 IDAPython（对官服游戏服取数）
+    invoke: ["{bash}", "{project_root}/.recon/run-ida.sh", "--idb", "{idb}", "{script}", "{outfile}", "{args}"]
+    access: mutate
+    inputs:
+      bash:    { type: string, required: true }
+      idb:     { type: string, required: true }
+      script:  { type: string, required: true }
+      outfile: { type: string, required: true }
+      args:    { type: string, required: true }
+    outputs:
+      - { path: "{outfile}", required: true, nonEmpty: true }
+    output: { format: text }
+    timeoutMs: 900000
+    examples:
+      - bash: "D:/Program Files/Git/bin/bash.exe"
+        idb: ".superpowers/sdd/2026-09-29-dungeon-party/work/official/df_game_r.bin.idb"
+        script: ".superpowers/sdd/2026-10-05-gameplay-evidence-program/work/ida-game.py"
+        outfile: ".superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/ida-smoke.txt"
+        args: "smoke"
+    caveats: >-
+      **必须**用 Git Bash（PATH 里的 bash 是 WSL 的，会把 /d/... 当不存在）。
+      **关键差异**：本工具的目标库是 `df_game_r.bin.idb`（**170 MB**，官服游戏服），不是客户端 `DNF.exe.idb`。
+      库由 `--idb` 参数给（相对路径按项目根解析），`.recon/run-ida.sh` 把它转成 `DNF_IDB=`
+      交给权威实现 `work/run_ida.sh`（原件本来就是 `${DNF_IDB:-<客户端库>}`，2026-10-05 实测确认）。
+      **不要**另写一份包装 —— 那会制造"同一能力两份"。
+      IDA **单写**：同一时刻只能有一个 IDA 任务（并发会让标注丢失或库损坏），
+      且 170 MB 库**加载分钟级**（timeoutMs 已给到 15 分钟）⇒ 批量取数要**一个脚本一次跑完**，
+      别一条一条跑。爆炸半径：idat.exe 退出时把标注写回 `df_game_r.bin.idb`；
+      分析本身不破坏它，但**并发会**。产物与同名 `.ida.log` 写在 outfile 所在目录，可直接删。
+      另：本机 IDA 的 WPeChatGPT 插件会因缺 openai 模块在输出开头打一行 ModuleNotFoundError，与本工具无关。
+
   # ---------------------------------------------------------------- 抓包层（参考服务端）
   - name: ref-proxy
     kind: external
