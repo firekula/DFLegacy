@@ -148,7 +148,42 @@ CServerHandler::SendAllTcpServer(PacketHeader*)
 
 ---
 
-## 五、还差什么（第 4 部分的取证清单）
+## 四之三、【已定案】dbmw 线格式 = 4 字节头（两个 u16 LE）
+
+**抓包实测**（`work/dbmw-wire.py`，`[抓包]`）：
+
+```
+monitor → dbmw_mnt  : 11 帧, 消费 121/121 **恰好铺满**, id 命中日志已知集合 11/11
+guild   → dbmw_guild: 24 帧, 消费 264/264 **恰好铺满**, id 命中日志已知集合 24/24
+```
+
+字节流是完美重复的 11 字节模式：
+
+```
+6a 10 | 0b 00 | 00 00 10 00 00 00 0a
+ 4202    11      └──── 7 B 载荷 ────┘
+(id, LE) (size 含头)
+```
+
+| 偏移 | 宽 | 字段 | 说明 |
+|---|---|---|---|
+| 0..1 | 2 | **packet_id** | `u16 LE`（4202 = 0x106a） |
+| 2..3 | 2 | **size** | `u16 LE`，**含 4 字节头** |
+| 4.. | n | payload | |
+
+**三重印证**（这是"同源之外还有独立来源"的典型）：
+1. **静态**：`PacketHeader::PacketHeader(unsigned short, unsigned short)`
+   与 `CTcpServer::makePacketHeader(unsigned short, unsigned short)` —— 头由两个 u16 构造；
+2. **抓包**：按 `u16 LE id + u16 LE size(含头)` 切帧，两条流**逐字节恰好铺满**；
+3. **日志**：切出来的 35 个 id **全部**落在 `PacketProcess` 日志记录过的 id 集合里
+   （白名单 = 1043/1505/1655/4000/4200/4202/4152/7103/6072/9024/10218/2511/2513/3111/3145/4010/4017/6085/10209）。
+
+**这是与 game 那套（13 字节头）完全不同的框架** —— 再次印证"不要假定两代/两套一致"。
+
+**本次抓到的都是心跳**（id 4202 占满两条流，正好对应日志里 `id(4202)` 的高频计数）。
+**要拿全协议还需在"有实际操作"时抓**（如一次登录会触发 guild 的 `SaveGuildMember`）。
+抓包命令已就绪：`PORTS="20203 20303 20403" bash work/capture-login.sh start`。
+
 
 | # | 缺的东西 | 怎么补 | 状态 |
 |---|---|---|---|
@@ -161,3 +196,6 @@ CServerHandler::SendAllTcpServer(PacketHeader*)
 
 **下一步**：等抓包攒够数据（monitor↔dbmw 每 2 分钟有轮询、guild↔dbmw 有周期性保存），
 然后做"静态词汇表 × 抓包线格式"的对齐。
+
+## 五、还差什么（第 4 部分的取证清单）
+
