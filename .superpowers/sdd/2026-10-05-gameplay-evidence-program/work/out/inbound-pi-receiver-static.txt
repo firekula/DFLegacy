@@ -1,0 +1,75 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZN17PIReceiverManager17CheckHashReceivedEPhjjb VA=0x0808bf7e SIZE=232
+0x0808bf7e push     ebp
+0x0808bf7f mov      ebp, esp
+0x0808bf81 sub      esp, 0x38
+0x0808bf84 mov      eax, dword ptr [ebp + 0x18]
+0x0808bf87 mov      byte ptr [ebp - 0x1c], al
+0x0808bf8a cmp      byte ptr [ebp - 0x1c], 0
+0x0808bf8e je       0x808bf97
+0x0808bf90 mov      eax, dword ptr [ebp + 8]
+0x0808bf93 mov      byte ptr [eax + 4], 0x27
+0x0808bf97 mov      eax, dword ptr [ebp + 0x14]
+0x0808bf9a shr      eax, 8
+0x0808bf9d mov      word ptr [ebp - 0x10], ax
+0x0808bfa1 mov      eax, dword ptr [ebp + 8]
+0x0808bfa4 movzx    eax, byte ptr [eax + 4]
+0x0808bfa8 mov      byte ptr [ebp - 0xd], al
+0x0808bfab movzx    eax, word ptr [ebp - 0x10]
+0x0808bfaf and      eax, 0x3000
+0x0808bfb4 sar      eax, 0xc
+0x0808bfb7 mov      edx, eax
+0x0808bfb9 movzx    eax, word ptr [ebp - 0x10]
+0x0808bfbd and      eax, 0x30
+0x0808bfc0 sar      eax, 2
+0x0808bfc3 or       edx, eax
+0x0808bfc5 movzx    eax, word ptr [ebp - 0x10]
+0x0808bfc9 and      eax, 0x300
+0x0808bfce sar      eax, 4
+0x0808bfd1 or       edx, eax
+0x0808bfd3 movzx    eax, word ptr [ebp - 0x10]
+0x0808bfd7 shl      eax, 6
+0x0808bfda or       eax, edx
+0x0808bfdc mov      byte ptr [ebp - 0xc], al
+0x0808bfdf mov      eax, dword ptr [ebp + 8]
+0x0808bfe2 movzx    edx, byte ptr [ebp - 0xc]
+0x0808bfe6 mov      byte ptr [eax + 4], dl
+0x0808bfe9 mov      byte ptr [ebp - 0xb], 0
+0x0808bfed mov      byte ptr [ebp - 0xa], 0
+0x0808bff1 movzx    eax, word ptr [ebp - 0x10]
+0x0808bff5 and      eax, 0xc0
+0x0808bffa sar      eax, 6
+0x0808bffd mov      edx, eax
+0x0808bfff movzx    eax, word ptr [ebp - 0x10]
+0x0808c003 and      eax, 0xc000
+0x0808c008 sar      eax, 0xc
+0x0808c00b or       edx, eax
+0x0808c00d movzx    eax, word ptr [ebp - 0x10]
+0x0808c011 and      eax, 0xc
+0x0808c014 shl      eax, 2
+0x0808c017 or       edx, eax
+0x0808c019 movzx    eax, word ptr [ebp - 0x10]
+0x0808c01d and      eax, 0xc00
+0x0808c022 sar      eax, 4
+0x0808c025 or       eax, edx
+0x0808c027 mov      byte ptr [ebp - 9], al
+0x0808c02a cmp      dword ptr [ebp + 0x10], 0
+0x0808c02e jne      0x808c036
+0x0808c030 mov      byte ptr [ebp - 0xb], 1
+0x0808c034 jmp      0x808c060
+0x0808c036 movzx    eax, byte ptr [ebp - 0xd]
+0x0808c03a mov      dword ptr [esp + 8], eax
+0x0808c03e mov      eax, dword ptr [ebp + 0x10]
+0x0808c041 mov      dword ptr [esp + 4], eax
+0x0808c045 mov      eax, dword ptr [ebp + 0xc]
+0x0808c048 mov      dword ptr [esp], eax
+0x0808c04b call     0x808c311 ; _Z8MakeHashPhjh
+0x0808c050 mov      byte ptr [ebp - 0xa], al
+0x0808c053 movzx    eax, byte ptr [ebp - 0xa]
+0x0808c057 cmp      al, byte ptr [ebp - 9]
+0x0808c05a sete     al
+0x0808c05d mov      byte ptr [ebp - 0xb], al
+0x0808c060 movzx    eax, byte ptr [ebp - 0xb]
+0x0808c064 leave
+0x0808c065 ret
