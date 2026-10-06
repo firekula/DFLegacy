@@ -16,8 +16,9 @@
 - [all-verify-login-tail.txt](<all-verify-login-tail.txt>)：400B明文消费388B，余12B全零；尾字段按静态游标解释。
 - [all-emulate-boundaries.txt](<all-emulate-boundaries.txt>)：目标ELF有界执行、SuperFastHash、NOTI1、三条PI流、CTEA 256块往返、mouse边界用例、mobile policy predicate均通过。
 - snapshot：pool[0]快照复算通过，但明确不是singleton。
+- [回放] [all-cipher-algorithm-roundtrip.txt](<all-cipher-algorithm-roundtrip.txt>)：目标ELF工厂创建、Initialize、Encrypt、Decrypt往返14项全部通过；key/block size均输出。限制：同一目标ELF roundtrip，不是独立已知答案。
 
-## [未验证] 不能离线闭合
+## [未验证] 尚未闭合（并非均需真机）
 
 1. 当前运行实例 `G_Cipher` singleton 与历史抓包候选334B key逐字节相等；需要同一运行实例动态内存证据。
 2. 其余13算法的逐算法已知答案与所有opcode明文语义；现有CMD1闭环不能代表全部算法。
