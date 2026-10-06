@@ -1,5 +1,10 @@
 # RESUME —— 官服玩法面证据链工程（接续块）
 
+> **接续优先级更新：先读 [Cipher 审计修正](<work/out/cipher-audit-corrections.md>)。**
+> 本文下方保留的“14层串联”“时间戳播种已闭环”“所有方向13B头”“header[2]=garvage”“池0密钥就是G_Cipher密钥”等断言已被该审计标 `[作废]`，不得用作实现依据。
+> 当前只完成调用路径定位和既有内存快照复算，尚未离线恢复 NOTI1 全局key，也未解出 CMD1 明文；尚不能宣布密码层完成或重写前置全部就绪。
+> 最新已核：单包按 opcode%14 选算法；G_Cipher singleton槽为0x0941f8a4；0x0940be80是另一组5000项池；NOTI1构包写入原始key后走专用 Encryption::Encrypt。可重跑命令和地址见上述审计。
+
 > **判据（spec §6.1）**：一个没参与过本任务的会话，只读这份文件就能接着干。
 > 最后更新：2026-10-05（**Task 1–11 全部完成，本计划已收尾**）。
 > 计划：`docs/superpowers/plans/2026-10-05-gameplay-evidence-program-m0-m1.md`
