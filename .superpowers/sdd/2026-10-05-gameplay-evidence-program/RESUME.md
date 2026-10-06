@@ -1,5 +1,7 @@
 # RESUME —— 官服玩法面证据链工程（接续块）
 
+> **后续执行唯一收尾入口：[有限证据收尾任务表](<../../../docs/superpowers/plans/2026-10-06-gameplay-evidence-closure.md>)（计划提交8438dd4）。** 本文下方是历史记录，不能按“继续”无限追加。先按该表T1纠错，再按T2–T6及H01–H08验收；不创建teammates、不改产品代码。表中任务目前均待验收。CLOSED_WITH_LIMITS只签收客户端密码/封装证据包，不等于全官服协议完成或重写授权。BLOCKED必须保留失败，不得勾成完成。
+
   > 本轮离线进度见 [静态密码闭合](<work/out/static-password-closure.md>)、[离线验证进度](<work/out/offline-verification-progress.md>)、[NOTI1包装探索](<work/out/noti1-wrapper-audit.md>) 与 [锁定证据](<work/out/noti1-evidence-locked.txt>)：已静态固化包装、CRC、发送头、14项key切片、CMD1输入偏移、Rijndael mode/block/key参数、token get_str、base64→RSA路径；11个可配对流对（8个唯一内容对）已通过AES双实现、OpenSSL raw/type1 recover、密文CRC和CMD1往返。尚无singleton逐字节交叉、完整PI/C→S校验重构或账号名归因。没有新登录重放或进程附加。
 
 
