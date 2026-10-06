@@ -1,0 +1,80 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZL19setPolicyApplyValueN16RestrictCategory4EnumER13ServicePolicyRKSs VA=0x0816d490 SIZE=281
+0x0816d490 push     ebp
+0x0816d491 mov      ebp, esp
+0x0816d493 sub      esp, 0x48
+0x0816d496 mov      eax, dword ptr [ebp + 0x10]
+0x0816d499 mov      dword ptr [esp], eax
+0x0816d49c call     0x87066a0 ; _ZNKSs5emptyEv
+0x0816d4a1 test     al, al
+0x0816d4a3 jne      0x816d5a3
+0x0816d4a9 mov      dword ptr [ebp - 0x14], 1
+0x0816d4b0 mov      eax, dword ptr [ebp + 0xc]
+0x0816d4b3 mov      dword ptr [esp], eax
+0x0816d4b6 call     0x816eece ; _ZNKSt6vectorIsSaIsEE4sizeEv
+0x0816d4bb mov      dword ptr [ebp - 0x10], eax
+0x0816d4be lea      eax, [ebp - 0x1c]
+0x0816d4c1 mov      edx, dword ptr [ebp + 0x10]
+0x0816d4c4 mov      dword ptr [esp + 4], edx
+0x0816d4c8 mov      dword ptr [esp], eax
+0x0816d4cb call     0x87065e0 ; _ZNKSs5beginEv
+0x0816d4d0 sub      esp, 4
+0x0816d4d3 jmp      0x816d572
+0x0816d4d8 lea      eax, [ebp - 0x1c]
+0x0816d4db mov      dword ptr [esp], eax
+0x0816d4de call     0x80d5100 ; _ZNK9__gnu_cxx17__normal_iteratorIPKcSsEdeEv
+0x0816d4e3 movzx    eax, byte ptr [eax]
+0x0816d4e6 movsx    eax, al
+0x0816d4e9 sub      eax, 0x30
+0x0816d4ec mov      dword ptr [ebp - 0xc], eax
+0x0816d4ef cmp      dword ptr [ebp - 0xc], 1
+0x0816d4f3 jg       0x816d4fb
+0x0816d4f5 cmp      dword ptr [ebp - 0xc], 0
+0x0816d4f9 jns      0x816d543
+0x0816d4fb mov      eax, dword ptr [ebp + 8]
+0x0816d4fe mov      edx, dword ptr [ebp - 0xc]
+0x0816d501 mov      dword ptr [esp + 0x1c], edx
+0x0816d505 mov      edx, dword ptr [ebp - 0x14]
+0x0816d508 mov      dword ptr [esp + 0x18], edx
+0x0816d50c mov      dword ptr [esp + 0x14], eax
+0x0816d510 mov      dword ptr [esp + 0x10], 0x8b81b5c
+0x0816d518 mov      dword ptr [esp + 0xc], 0x22
+0x0816d520 mov      dword ptr [esp + 8], 0x8b82e00
+0x0816d528 mov      dword ptr [esp + 4], 0x8b81b98
+0x0816d530 mov      dword ptr [esp], 1
+0x0816d537 call     0x8ad3c0a ; _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x0816d53c mov      dword ptr [ebp - 0xc], 0
+0x0816d543 mov      eax, dword ptr [ebp - 0x14]
+0x0816d546 cmp      eax, dword ptr [ebp - 0x10]
+0x0816d549 jae      0x816d5a6
+0x0816d54b mov      eax, dword ptr [ebp + 0xc]
+0x0816d54e mov      edx, dword ptr [ebp - 0x14]
+0x0816d551 mov      dword ptr [esp + 4], edx
+0x0816d555 mov      dword ptr [esp], eax
+0x0816d558 call     0x816eee8 ; _ZNSt6vectorIsSaIsEEixEj
+0x0816d55d mov      edx, dword ptr [ebp - 0xc]
+0x0816d560 mov      word ptr [eax], dx
+0x0816d563 lea      eax, [ebp - 0x1c]
+0x0816d566 mov      dword ptr [esp], eax
+0x0816d569 call     0x80d510a ; _ZN9__gnu_cxx17__normal_iteratorIPKcSsEppEv
+0x0816d56e add      dword ptr [ebp - 0x14], 1
+0x0816d572 lea      eax, [ebp - 0x18]
+0x0816d575 mov      edx, dword ptr [ebp + 0x10]
+0x0816d578 mov      dword ptr [esp + 4], edx
+0x0816d57c mov      dword ptr [esp], eax
+0x0816d57f call     0x8706600 ; _ZNKSs3endEv
+0x0816d584 sub      esp, 4
+0x0816d587 lea      eax, [ebp - 0x18]
+0x0816d58a mov      dword ptr [esp + 4], eax
+0x0816d58e lea      eax, [ebp - 0x1c]
+0x0816d591 mov      dword ptr [esp], eax
+0x0816d594 call     0x80d46f1 ; _ZN9__gnu_cxxneIPKcSsEEbRKNS_17__normal_iteratorIT_T0_EES8_
+0x0816d599 test     al, al
+0x0816d59b jne      0x816d4d8
+0x0816d5a1 jmp      0x816d5a7
+0x0816d5a3 nop
+0x0816d5a4 jmp      0x816d5a7
+0x0816d5a6 nop
+0x0816d5a7 leave
+0x0816d5a8 ret
