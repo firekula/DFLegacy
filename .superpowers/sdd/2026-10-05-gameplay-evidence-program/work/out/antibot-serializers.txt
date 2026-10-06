@@ -1,0 +1,165 @@
+SHA256=8f6263dae6fcd1eb19baece6f7c9408d2161abd1a05bd492d398d5cb7783d2a7 DT_PLTGOT=0x294534
+
+FUNCTION _ZNK9sec_proto15DPAlgorithmData4packEPcjPjj 0x15e950 133
+0015e950 push     ebp
+0015e951 mov      ebp, esp
+0015e953 sub      esp, 0x28
+0015e956 mov      eax, dword ptr [ebp + 0xc]
+0015e959 mov      dword ptr [ebp - 0xc], ebx
+0015e95c call     0x88577 ; __i686.get_pc_thunk.bx
+0015e961 add      ebx, 0x135bd3
+0015e967 mov      dword ptr [ebp - 8], esi
+0015e96a mov      esi, 0xffffffed
+0015e96f test     eax, eax
+0015e971 mov      dword ptr [ebp - 4], edi
+0015e974 mov      edi, dword ptr [ebp + 0x14]
+0015e977 je       0x15e9c6
+0015e979 mov      dword ptr [ebp - 0x1c], eax
+0015e97c mov      eax, dword ptr [ebp + 0x10]
+0015e97f mov      byte ptr [ebp - 0x10], 0
+0015e983 mov      dword ptr [ebp - 0x18], 0
+0015e98a mov      dword ptr [ebp - 0x14], eax
+0015e98d mov      eax, dword ptr [ebp + 0x18]
+0015e990 mov      dword ptr [esp + 8], eax
+0015e994 lea      eax, [ebp - 0x1c]
+0015e997 mov      dword ptr [esp + 4], eax
+0015e99b mov      eax, dword ptr [ebp + 8]
+0015e99e mov      dword ptr [esp], eax
+0015e9a1 call     0x82a44 ; _ZNK9sec_proto15DPAlgorithmData4packERN9tsf4g_tdr11TdrWriteBufEj
+0015e9a6 test     edi, edi
+0015e9a8 mov      esi, eax
+0015e9aa je       0x15e9b1
+0015e9ac mov      eax, dword ptr [ebp - 0x18]
+0015e9af mov      dword ptr [edi], eax
+0015e9b1 cmp      byte ptr [ebp - 0x10], 0
+0015e9b5 je       0x15e9c6
+0015e9b7 mov      eax, dword ptr [ebp - 0x1c]
+0015e9ba test     eax, eax
+0015e9bc je       0x15e9c6
+0015e9be mov      dword ptr [esp], eax
+0015e9c1 call     0x85a64 ; _ZdaPv
+0015e9c6 mov      eax, esi
+0015e9c8 mov      ebx, dword ptr [ebp - 0xc]
+0015e9cb mov      esi, dword ptr [ebp - 8]
+0015e9ce mov      edi, dword ptr [ebp - 4]
+0015e9d1 mov      esp, ebp
+0015e9d3 pop      ebp
+0015e9d4 ret
+
+FUNCTION _ZNK9sec_proto11DPInterData4packEPcjPjj 0x15c8c0 133
+0015c8c0 push     ebp
+0015c8c1 mov      ebp, esp
+0015c8c3 sub      esp, 0x28
+0015c8c6 mov      eax, dword ptr [ebp + 0xc]
+0015c8c9 mov      dword ptr [ebp - 0xc], ebx
+0015c8cc call     0x88577 ; __i686.get_pc_thunk.bx
+0015c8d1 add      ebx, 0x137c63
+0015c8d7 mov      dword ptr [ebp - 8], esi
+0015c8da mov      esi, 0xffffffed
+0015c8df test     eax, eax
+0015c8e1 mov      dword ptr [ebp - 4], edi
+0015c8e4 mov      edi, dword ptr [ebp + 0x14]
+0015c8e7 je       0x15c936
+0015c8e9 mov      dword ptr [ebp - 0x1c], eax
+0015c8ec mov      eax, dword ptr [ebp + 0x10]
+0015c8ef mov      byte ptr [ebp - 0x10], 0
+0015c8f3 mov      dword ptr [ebp - 0x18], 0
+0015c8fa mov      dword ptr [ebp - 0x14], eax
+0015c8fd mov      eax, dword ptr [ebp + 0x18]
+0015c900 mov      dword ptr [esp + 8], eax
+0015c904 lea      eax, [ebp - 0x1c]
+0015c907 mov      dword ptr [esp + 4], eax
+0015c90b mov      eax, dword ptr [ebp + 8]
+0015c90e mov      dword ptr [esp], eax
+0015c911 call     0x84eb4 ; _ZNK9sec_proto11DPInterData4packERN9tsf4g_tdr11TdrWriteBufEj
+0015c916 test     edi, edi
+0015c918 mov      esi, eax
+0015c91a je       0x15c921
+0015c91c mov      eax, dword ptr [ebp - 0x18]
+0015c91f mov      dword ptr [edi], eax
+0015c921 cmp      byte ptr [ebp - 0x10], 0
+0015c925 je       0x15c936
+0015c927 mov      eax, dword ptr [ebp - 0x1c]
+0015c92a test     eax, eax
+0015c92c je       0x15c936
+0015c92e mov      dword ptr [esp], eax
+0015c931 call     0x85a64 ; _ZdaPv
+0015c936 mov      eax, esi
+0015c938 mov      ebx, dword ptr [ebp - 0xc]
+0015c93b mov      esi, dword ptr [ebp - 8]
+0015c93e mov      edi, dword ptr [ebp - 4]
+0015c941 mov      esp, ebp
+0015c943 pop      ebp
+0015c944 ret
+
+FUNCTION _ZNK9sec_proto22DPDynamicAlgorithmHead4packEPcjPjj 0x15e730 133
+0015e730 push     ebp
+0015e731 mov      ebp, esp
+0015e733 sub      esp, 0x28
+0015e736 mov      eax, dword ptr [ebp + 0xc]
+0015e739 mov      dword ptr [ebp - 0xc], ebx
+0015e73c call     0x88577 ; __i686.get_pc_thunk.bx
+0015e741 add      ebx, 0x135df3
+0015e747 mov      dword ptr [ebp - 8], esi
+0015e74a mov      esi, 0xffffffed
+0015e74f test     eax, eax
+0015e751 mov      dword ptr [ebp - 4], edi
+0015e754 mov      edi, dword ptr [ebp + 0x14]
+0015e757 je       0x15e7a6
+0015e759 mov      dword ptr [ebp - 0x1c], eax
+0015e75c mov      eax, dword ptr [ebp + 0x10]
+0015e75f mov      byte ptr [ebp - 0x10], 0
+0015e763 mov      dword ptr [ebp - 0x18], 0
+0015e76a mov      dword ptr [ebp - 0x14], eax
+0015e76d mov      eax, dword ptr [ebp + 0x18]
+0015e770 mov      dword ptr [esp + 8], eax
+0015e774 lea      eax, [ebp - 0x1c]
+0015e777 mov      dword ptr [esp + 4], eax
+0015e77b mov      eax, dword ptr [ebp + 8]
+0015e77e mov      dword ptr [esp], eax
+0015e781 call     0x86944 ; _ZNK9sec_proto22DPDynamicAlgorithmHead4packERN9tsf4g_tdr11TdrWriteBufEj
+0015e786 test     edi, edi
+0015e788 mov      esi, eax
+0015e78a je       0x15e791
+0015e78c mov      eax, dword ptr [ebp - 0x18]
+0015e78f mov      dword ptr [edi], eax
+0015e791 cmp      byte ptr [ebp - 0x10], 0
+0015e795 je       0x15e7a6
+0015e797 mov      eax, dword ptr [ebp - 0x1c]
+0015e79a test     eax, eax
+0015e79c je       0x15e7a6
+0015e79e mov      dword ptr [esp], eax
+0015e7a1 call     0x85a64 ; _ZdaPv
+0015e7a6 mov      eax, esi
+0015e7a8 mov      ebx, dword ptr [ebp - 0xc]
+0015e7ab mov      esi, dword ptr [ebp - 8]
+0015e7ae mov      edi, dword ptr [ebp - 4]
+0015e7b1 mov      esp, ebp
+0015e7b3 pop      ebp
+0015e7b4 ret
+
+FUNCTION _ZN16AB_NS_CODEENGINE9EncodeIntEPPcj 0x198d30 56
+00198d30 push     ebp
+00198d31 mov      ebp, esp
+00198d33 sub      esp, 0x10
+00198d36 mov      ecx, dword ptr [ebp + 8]
+00198d39 mov      eax, dword ptr [ebp + 0xc]
+00198d3c test     ecx, ecx
+00198d3e je       0x198d64
+00198d40 mov      edx, dword ptr [ecx]
+00198d42 test     edx, edx
+00198d44 je       0x198d64
+00198d46 mov      edx, eax
+00198d48 ror      dx, 8
+00198d4c ror      edx, 0x10
+00198d4f ror      dx, 8
+00198d53 mov      dword ptr [ebp - 4], edx
+00198d56 mov      eax, dword ptr [ecx]
+00198d58 mov      dword ptr [eax], edx
+00198d5a mov      eax, 4
+00198d5f add      dword ptr [ecx], 4
+00198d62 leave
+00198d63 ret
+00198d64 leave
+00198d65 xor      eax, eax
+00198d67 ret
