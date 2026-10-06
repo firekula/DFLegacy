@@ -1,6 +1,6 @@
 # 用户提供SO：只读接入与候选ABI核对
 
-来源目录：[game](<G:/Work/Server/dnf/build/dnf_data/home/template/neople/game/>)。源文件未修改、未执行加载；本轮只读字节与ELF元数据。
+来源目录：[game](<G:/Work/Server/dnf/build/dnf_data/home/template/neople/game/>)。所有者明确确认：该目录及 `libantisvrimport.so` 是从对应官方 Docker 容器提取的官方版本。源文件未修改、未执行加载；本轮只读字节与ELF元数据。
 
 ## [静态] 身份
 
