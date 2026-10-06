@@ -1,0 +1,199 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZN4CTEAC2Ev VA=0x080c32f4 SIZE=168
+0x080c32f4 push     ebp
+0x080c32f5 mov      ebp, esp
+0x080c32f7 sub      esp, 0x18
+0x080c32fa mov      eax, dword ptr [ebp + 8]
+0x080c32fd mov      dword ptr [esp], eax
+0x080c3300 call     0x80b4294 ; _ZN7IMethodC2Ev
+0x080c3305 mov      eax, dword ptr [ebp + 8]
+0x080c3308 mov      dword ptr [eax], 0x8b23388
+0x080c330e mov      eax, dword ptr [ebp + 8]
+0x080c3311 mov      dword ptr [eax + 8], 8
+0x080c3318 mov      eax, dword ptr [ebp + 8]
+0x080c331b mov      dword ptr [eax + 0xc], 0x10
+0x080c3322 mov      eax, dword ptr [ebp + 8]
+0x080c3325 add      eax, 0x18
+0x080c3328 mov      dword ptr [esp + 8], 0x10
+0x080c3330 mov      dword ptr [esp + 4], 0
+0x080c3338 mov      dword ptr [esp], eax
+0x080c333b call     0x807dcc0 ; memset
+0x080c3340 mov      eax, dword ptr [ebp + 8]
+0x080c3343 add      eax, 0x38
+0x080c3346 mov      dword ptr [esp + 8], 8
+0x080c334e mov      dword ptr [esp + 4], 0
+0x080c3356 mov      dword ptr [esp], eax
+0x080c3359 call     0x807dcc0 ; memset
+0x080c335e mov      eax, dword ptr [ebp + 8]
+0x080c3361 add      eax, 0x40
+0x080c3364 mov      dword ptr [esp + 8], 8
+0x080c336c mov      dword ptr [esp + 4], 0
+0x080c3374 mov      dword ptr [esp], eax
+0x080c3377 call     0x807dcc0 ; memset
+0x080c337c mov      eax, dword ptr [ebp + 8]
+0x080c337f add      eax, 0x28
+0x080c3382 mov      dword ptr [esp + 8], 0x10
+0x080c338a mov      dword ptr [esp + 4], 0
+0x080c3392 mov      dword ptr [esp], eax
+0x080c3395 call     0x807dcc0 ; memset
+0x080c339a leave
+0x080c339b ret
+
+FUNCTION _ZN4CTEA10InitializeEPKciS1_ii VA=0x080c339c SIZE=524
+0x080c339c push     ebp
+0x080c339d mov      ebp, esp
+0x080c339f sub      esp, 0x38
+0x080c33a2 cmp      dword ptr [ebp + 0xc], 0
+0x080c33a6 jne      0x80c33b2
+0x080c33a8 mov      eax, 0x70000001
+0x080c33ad jmp      0x80c35a6
+0x080c33b2 cmp      dword ptr [ebp + 0x10], 0
+0x080c33b6 jg       0x80c33c2
+0x080c33b8 mov      eax, 0x70000002
+0x080c33bd jmp      0x80c35a6
+0x080c33c2 cmp      dword ptr [ebp + 0x18], 0
+0x080c33c6 js       0x80c33ce
+0x080c33c8 cmp      dword ptr [ebp + 0x18], 2
+0x080c33cc jle      0x80c33d8
+0x080c33ce mov      eax, 0x70000003
+0x080c33d3 jmp      0x80c35a6
+0x080c33d8 cmp      dword ptr [ebp + 0x1c], 0
+0x080c33dc js       0x80c33e4
+0x080c33de cmp      dword ptr [ebp + 0x1c], 2
+0x080c33e2 jle      0x80c33ee
+0x080c33e4 mov      eax, 0x70000004
+0x080c33e9 jmp      0x80c35a6
+0x080c33ee mov      eax, dword ptr [ebp + 8]
+0x080c33f1 mov      edx, dword ptr [ebp + 0x18]
+0x080c33f4 mov      dword ptr [eax + 0x10], edx
+0x080c33f7 mov      eax, dword ptr [ebp + 8]
+0x080c33fa mov      edx, dword ptr [ebp + 0x1c]
+0x080c33fd mov      dword ptr [eax + 0x14], edx
+0x080c3400 mov      dword ptr [ebp - 0x14], 0
+0x080c3407 mov      dword ptr [ebp - 0x10], 0
+0x080c340e jmp      0x80c3435
+0x080c3410 mov      eax, dword ptr [ebp - 0x14]
+0x080c3413 mov      edx, dword ptr [ebp - 0x10]
+0x080c3416 add      edx, dword ptr [ebp + 0xc]
+0x080c3419 movzx    edx, byte ptr [edx]
+0x080c341c mov      byte ptr [ebp + eax - 0x24], dl
+0x080c3420 add      dword ptr [ebp - 0x14], 1
+0x080c3424 mov      eax, dword ptr [ebp - 0x10]
+0x080c3427 add      eax, 1
+0x080c342a mov      edx, eax
+0x080c342c sar      edx, 0x1f
+0x080c342f idiv     dword ptr [ebp + 0x10]
+0x080c3432 mov      dword ptr [ebp - 0x10], edx
+0x080c3435 mov      eax, dword ptr [ebp + 8]
+0x080c3438 mov      eax, dword ptr [eax + 0xc]
+0x080c343b cmp      eax, dword ptr [ebp - 0x14]
+0x080c343e setg     al
+0x080c3441 test     al, al
+0x080c3443 jne      0x80c3410
+0x080c3445 mov      byte ptr [ebp - 0xa], 0
+0x080c3449 mov      byte ptr [ebp - 9], 0
+0x080c344d mov      eax, dword ptr [ebp + 8]
+0x080c3450 movzx    eax, byte ptr [eax + 4]
+0x080c3454 test     al, al
+0x080c3456 je       0x80c34a6
+0x080c3458 mov      eax, dword ptr [ebp + 8]
+0x080c345b mov      eax, dword ptr [eax + 8]
+0x080c345e mov      edx, dword ptr [ebp + 8]
+0x080c3461 add      edx, 0x38
+0x080c3464 mov      dword ptr [esp + 8], eax
+0x080c3468 mov      eax, dword ptr [ebp + 0x14]
+0x080c346b mov      dword ptr [esp + 4], eax
+0x080c346f mov      dword ptr [esp], edx
+0x080c3472 call     0x807dc90 ; memcmp
+0x080c3477 test     eax, eax
+0x080c3479 jne      0x80c347f
+0x080c347b mov      byte ptr [ebp - 9], 1
+0x080c347f mov      eax, dword ptr [ebp + 8]
+0x080c3482 mov      eax, dword ptr [eax + 0xc]
+0x080c3485 mov      edx, dword ptr [ebp + 8]
+0x080c3488 add      edx, 0x18
+0x080c348b mov      dword ptr [esp + 8], eax
+0x080c348f lea      eax, [ebp - 0x24]
+0x080c3492 mov      dword ptr [esp + 4], eax
+0x080c3496 mov      dword ptr [esp], edx
+0x080c3499 call     0x807dc90 ; memcmp
+0x080c349e test     eax, eax
+0x080c34a0 jne      0x80c34a6
+0x080c34a2 mov      byte ptr [ebp - 0xa], 1
+0x080c34a6 cmp      byte ptr [ebp - 9], 0
+0x080c34aa je       0x80c34d0
+0x080c34ac mov      eax, dword ptr [ebp + 8]
+0x080c34af mov      eax, dword ptr [eax + 8]
+0x080c34b2 mov      edx, dword ptr [ebp + 8]
+0x080c34b5 lea      ecx, [edx + 0x38]
+0x080c34b8 mov      edx, dword ptr [ebp + 8]
+0x080c34bb add      edx, 0x40
+0x080c34be mov      dword ptr [esp + 8], eax
+0x080c34c2 mov      dword ptr [esp + 4], ecx
+0x080c34c6 mov      dword ptr [esp], edx
+0x080c34c9 call     0x807d8a0 ; memcpy
+0x080c34ce jmp      0x80c350e
+0x080c34d0 mov      eax, dword ptr [ebp + 8]
+0x080c34d3 mov      eax, dword ptr [eax + 8]
+0x080c34d6 mov      edx, dword ptr [ebp + 8]
+0x080c34d9 add      edx, 0x38
+0x080c34dc mov      dword ptr [esp + 8], eax
+0x080c34e0 mov      eax, dword ptr [ebp + 0x14]
+0x080c34e3 mov      dword ptr [esp + 4], eax
+0x080c34e7 mov      dword ptr [esp], edx
+0x080c34ea call     0x807d8a0 ; memcpy
+0x080c34ef mov      eax, dword ptr [ebp + 8]
+0x080c34f2 mov      eax, dword ptr [eax + 8]
+0x080c34f5 mov      edx, dword ptr [ebp + 8]
+0x080c34f8 add      edx, 0x40
+0x080c34fb mov      dword ptr [esp + 8], eax
+0x080c34ff mov      eax, dword ptr [ebp + 0x14]
+0x080c3502 mov      dword ptr [esp + 4], eax
+0x080c3506 mov      dword ptr [esp], edx
+0x080c3509 call     0x807d8a0 ; memcpy
+0x080c350e cmp      byte ptr [ebp - 0xa], 0
+0x080c3512 je       0x80c351e
+0x080c3514 mov      eax, 0x6fffffff
+0x080c3519 jmp      0x80c35a6
+0x080c351e mov      eax, dword ptr [ebp + 8]
+0x080c3521 mov      eax, dword ptr [eax + 0xc]
+0x080c3524 mov      edx, dword ptr [ebp + 8]
+0x080c3527 add      edx, 0x18
+0x080c352a mov      dword ptr [esp + 8], eax
+0x080c352e lea      eax, [ebp - 0x24]
+0x080c3531 mov      dword ptr [esp + 4], eax
+0x080c3535 mov      dword ptr [esp], edx
+0x080c3538 call     0x807d8a0 ; memcpy
+0x080c353d mov      eax, dword ptr [ebp + 8]
+0x080c3540 lea      edx, [eax + 0x28]
+0x080c3543 lea      eax, [ebp - 0x24]
+0x080c3546 mov      dword ptr [esp + 4], edx
+0x080c354a mov      dword ptr [esp], eax
+0x080c354d call     0x80b459e ; _ZN7IMethod11BytesToWordEPKhRj
+0x080c3552 mov      eax, dword ptr [ebp + 8]
+0x080c3555 lea      edx, [eax + 0x2c]
+0x080c3558 lea      eax, [ebp - 0x24]
+0x080c355b add      eax, 4
+0x080c355e mov      dword ptr [esp + 4], edx
+0x080c3562 mov      dword ptr [esp], eax
+0x080c3565 call     0x80b459e ; _ZN7IMethod11BytesToWordEPKhRj
+0x080c356a mov      eax, dword ptr [ebp + 8]
+0x080c356d lea      edx, [eax + 0x30]
+0x080c3570 lea      eax, [ebp - 0x24]
+0x080c3573 add      eax, 8
+0x080c3576 mov      dword ptr [esp + 4], edx
+0x080c357a mov      dword ptr [esp], eax
+0x080c357d call     0x80b459e ; _ZN7IMethod11BytesToWordEPKhRj
+0x080c3582 mov      eax, dword ptr [ebp + 8]
+0x080c3585 lea      edx, [eax + 0x34]
+0x080c3588 lea      eax, [ebp - 0x24]
+0x080c358b add      eax, 0xc
+0x080c358e mov      dword ptr [esp + 4], edx
+0x080c3592 mov      dword ptr [esp], eax
+0x080c3595 call     0x80b459e ; _ZN7IMethod11BytesToWordEPKhRj
+0x080c359a mov      eax, dword ptr [ebp + 8]
+0x080c359d mov      byte ptr [eax + 4], 1
+0x080c35a1 mov      eax, 0x6fffffff
+0x080c35a6 leave
+0x080c35a7 ret

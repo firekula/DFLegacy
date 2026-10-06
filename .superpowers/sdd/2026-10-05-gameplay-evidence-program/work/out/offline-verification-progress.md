@@ -27,6 +27,7 @@ python "$B/work/static-cipher-details.py" "$env:TEMP/dfl-creds/vm-df_game_r" 0x8
 ## 仍不能宣称“只剩真机”
 
 - [未验证] 当前singleton与抓包key同运行实例的逐字节交叉；历史抓包若跨重启，不能直接与新进程比相等。
+- [静态]+[回放] LOGIN尾字段已逐游标消费：400B明文消费388B，余12B全零；不同部署version/loginout/local-ip字段已列出。mouse 8B CTEA经目标ELF有界回放成功，但输出不命名为密码。
 - [未验证] C→S PI校验/序号完整重构、LOGIN token后续字段及padding/尾hash的完整游标消费，仍可静态与离线推进。
 - [未验证] 其余13算法及全90帧正文语义不是CMD1通过就完成；仍需逐算法已知答案。
 - [未验证] RSA非法输入/base64边界、错误模式/偏移负例强度仍可扩大；当前错误key负例仅断言明文不同，不是完整登录拒绝语义。

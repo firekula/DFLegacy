@@ -1,0 +1,165 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZN22ServiceRestrictManager12isRestrictedEP5CUserN16RestrictCategory4EnumEi VA=0x0816e6b8 SIZE=165
+0x0816e6b8 push     ebp
+0x0816e6b9 mov      ebp, esp
+0x0816e6bb sub      esp, 0x28
+0x0816e6be cmp      dword ptr [ebp + 0xc], 0
+0x0816e6c2 jne      0x816e6ce
+0x0816e6c4 mov      eax, 0
+0x0816e6c9 jmp      0x816e75b
+0x0816e6ce mov      eax, dword ptr [ebp + 0xc]
+0x0816e6d1 mov      dword ptr [esp], eax
+0x0816e6d4 call     0x816ee1e ; _ZN5CUser17getGarenaAuthDataEv
+0x0816e6d9 mov      dword ptr [esp], eax
+0x0816e6dc call     0x8173022 ; _ZN6Taiwan14GarenaAuthData13getMobileAuthEv
+0x0816e6e1 test     al, al
+0x0816e6e3 je       0x816e6ec
+0x0816e6e5 mov      eax, 0
+0x0816e6ea jmp      0x816e75b
+0x0816e6ec mov      edx, dword ptr [ebp + 8]
+0x0816e6ef lea      eax, [ebp - 0x10]
+0x0816e6f2 lea      ecx, [ebp + 0x10]
+0x0816e6f5 mov      dword ptr [esp + 8], ecx
+0x0816e6f9 mov      dword ptr [esp + 4], edx
+0x0816e6fd mov      dword ptr [esp], eax
+0x0816e700 call     0x816f09c ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE4findERS7_
+0x0816e705 sub      esp, 4
+0x0816e708 mov      edx, dword ptr [ebp + 8]
+0x0816e70b lea      eax, [ebp - 0xc]
+0x0816e70e mov      dword ptr [esp + 4], edx
+0x0816e712 mov      dword ptr [esp], eax
+0x0816e715 call     0x816f0c8 ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE3endEv
+0x0816e71a sub      esp, 4
+0x0816e71d lea      eax, [ebp - 0xc]
+0x0816e720 mov      dword ptr [esp + 4], eax
+0x0816e724 lea      eax, [ebp - 0x10]
+0x0816e727 mov      dword ptr [esp], eax
+0x0816e72a call     0x816f0ee ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEneERKS7_
+0x0816e72f test     al, al
+0x0816e731 je       0x816e756
+0x0816e733 lea      eax, [ebp - 0x10]
+0x0816e736 mov      dword ptr [esp], eax
+0x0816e739 call     0x816f102 ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEptEv
+0x0816e73e mov      eax, dword ptr [eax + 4]
+0x0816e741 mov      edx, dword ptr [eax]
+0x0816e743 add      edx, 0x14
+0x0816e746 mov      ecx, dword ptr [edx]
+0x0816e748 mov      edx, dword ptr [ebp + 0x14]
+0x0816e74b mov      dword ptr [esp + 4], edx
+0x0816e74f mov      dword ptr [esp], eax
+0x0816e752 call     ecx
+0x0816e754 jmp      0x816e75b
+0x0816e756 mov      eax, 1
+0x0816e75b leave
+0x0816e75c ret
+
+FUNCTION _ZN22ServiceRestrictManager12isRestrictedEN16RestrictCategory4EnumEi VA=0x0816e75e SIZE=119
+0x0816e75e push     ebp
+0x0816e75f mov      ebp, esp
+0x0816e761 sub      esp, 0x28
+0x0816e764 mov      edx, dword ptr [ebp + 8]
+0x0816e767 lea      eax, [ebp - 0x10]
+0x0816e76a lea      ecx, [ebp + 0xc]
+0x0816e76d mov      dword ptr [esp + 8], ecx
+0x0816e771 mov      dword ptr [esp + 4], edx
+0x0816e775 mov      dword ptr [esp], eax
+0x0816e778 call     0x816f09c ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE4findERS7_
+0x0816e77d sub      esp, 4
+0x0816e780 mov      edx, dword ptr [ebp + 8]
+0x0816e783 lea      eax, [ebp - 0xc]
+0x0816e786 mov      dword ptr [esp + 4], edx
+0x0816e78a mov      dword ptr [esp], eax
+0x0816e78d call     0x816f0c8 ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE3endEv
+0x0816e792 sub      esp, 4
+0x0816e795 lea      eax, [ebp - 0xc]
+0x0816e798 mov      dword ptr [esp + 4], eax
+0x0816e79c lea      eax, [ebp - 0x10]
+0x0816e79f mov      dword ptr [esp], eax
+0x0816e7a2 call     0x816f0ee ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEneERKS7_
+0x0816e7a7 test     al, al
+0x0816e7a9 je       0x816e7ce
+0x0816e7ab lea      eax, [ebp - 0x10]
+0x0816e7ae mov      dword ptr [esp], eax
+0x0816e7b1 call     0x816f102 ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEptEv
+0x0816e7b6 mov      eax, dword ptr [eax + 4]
+0x0816e7b9 mov      edx, dword ptr [eax]
+0x0816e7bb add      edx, 0x14
+0x0816e7be mov      ecx, dword ptr [edx]
+0x0816e7c0 mov      edx, dword ptr [ebp + 0x10]
+0x0816e7c3 mov      dword ptr [esp + 4], edx
+0x0816e7c7 mov      dword ptr [esp], eax
+0x0816e7ca call     ecx
+0x0816e7cc jmp      0x816e7d3
+0x0816e7ce mov      eax, 1
+0x0816e7d3 leave
+0x0816e7d4 ret
+
+FUNCTION _ZN22ServiceRestrictManager7isApplyEN16RestrictCategory4EnumE VA=0x0816e648 SIZE=112
+0x0816e648 push     ebp
+0x0816e649 mov      ebp, esp
+0x0816e64b sub      esp, 0x28
+0x0816e64e mov      edx, dword ptr [ebp + 8]
+0x0816e651 lea      eax, [ebp - 0x10]
+0x0816e654 lea      ecx, [ebp + 0xc]
+0x0816e657 mov      dword ptr [esp + 8], ecx
+0x0816e65b mov      dword ptr [esp + 4], edx
+0x0816e65f mov      dword ptr [esp], eax
+0x0816e662 call     0x816f09c ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE4findERS7_
+0x0816e667 sub      esp, 4
+0x0816e66a mov      edx, dword ptr [ebp + 8]
+0x0816e66d lea      eax, [ebp - 0xc]
+0x0816e670 mov      dword ptr [esp + 4], edx
+0x0816e674 mov      dword ptr [esp], eax
+0x0816e677 call     0x816f0c8 ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE3endEv
+0x0816e67c sub      esp, 4
+0x0816e67f lea      eax, [ebp - 0xc]
+0x0816e682 mov      dword ptr [esp + 4], eax
+0x0816e686 lea      eax, [ebp - 0x10]
+0x0816e689 mov      dword ptr [esp], eax
+0x0816e68c call     0x816f0ee ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEneERKS7_
+0x0816e691 test     al, al
+0x0816e693 je       0x816e6b1
+0x0816e695 lea      eax, [ebp - 0x10]
+0x0816e698 mov      dword ptr [esp], eax
+0x0816e69b call     0x816f102 ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEptEv
+0x0816e6a0 mov      eax, dword ptr [eax + 4]
+0x0816e6a3 mov      edx, dword ptr [eax]
+0x0816e6a5 add      edx, 0x10
+0x0816e6a8 mov      edx, dword ptr [edx]
+0x0816e6aa mov      dword ptr [esp], eax
+0x0816e6ad call     edx
+0x0816e6af jmp      0x816e6b6
+0x0816e6b1 mov      eax, 1
+0x0816e6b6 leave
+0x0816e6b7 ret
+
+FUNCTION _ZN5CUser16SetLogInOutStateEh VA=0x0822fe22 SIZE=27
+0x0822fe22 push     ebp
+0x0822fe23 mov      ebp, esp
+0x0822fe25 sub      esp, 4
+0x0822fe28 mov      eax, dword ptr [ebp + 0xc]
+0x0822fe2b mov      byte ptr [ebp - 4], al
+0x0822fe2e mov      eax, dword ptr [ebp + 8]
+0x0822fe31 movzx    edx, byte ptr [ebp - 4]
+0x0822fe35 mov      byte ptr [eax + 0x71ba8], dl
+0x0822fe3b leave
+0x0822fe3c ret
+
+FUNCTION _ZN5CUser14SetServerGroupE17ENUM_SERVER_GROUP VA=0x082300ac SIZE=17
+0x082300ac push     ebp
+0x082300ad mov      ebp, esp
+0x082300af mov      eax, dword ptr [ebp + 8]
+0x082300b2 mov      edx, dword ptr [ebp + 0xc]
+0x082300b5 mov      dword ptr [eax + 0x79630], edx
+0x082300bb pop      ebp
+0x082300bc ret
+
+FUNCTION _ZN5CUser20set_local_ip_addressEi VA=0x0822fd00 SIZE=17
+0x0822fd00 push     ebp
+0x0822fd01 mov      ebp, esp
+0x0822fd03 mov      eax, dword ptr [ebp + 8]
+0x0822fd06 mov      edx, dword ptr [ebp + 0xc]
+0x0822fd09 mov      dword ptr [eax + 0x8d254], edx
+0x0822fd0f pop      ebp
+0x0822fd10 ret
