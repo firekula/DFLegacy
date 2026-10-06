@@ -1,0 +1,345 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZN25LoadServiceRestrictPolicy8dispatchEiiP6Stream VA=0x0815a8f2 SIZE=845
+0x0815a8f2 push     ebp
+0x0815a8f3 mov      ebp, esp
+0x0815a8f5 push     esi
+0x0815a8f6 push     ebx
+0x0815a8f7 sub      esp, 0x1240
+0x0815a8fd mov      eax, dword ptr [0x940bdac]
+0x0815a902 mov      dword ptr [esp + 8], 0
+0x0815a90a mov      dword ptr [esp + 4], 1
+0x0815a912 mov      dword ptr [esp], eax
+0x0815a915 call     0x83f523e ; _ZN5DBMgr11GetDBHandleE18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUP
+0x0815a91a mov      dword ptr [ebp - 0x18], eax
+0x0815a91d cmp      dword ptr [ebp - 0x18], 0
+0x0815a921 jne      0x815a94f
+0x0815a923 mov      dword ptr [esp], 4
+0x0815a92a call     0x8725800 ; __cxa_allocate_exception
+0x0815a92f mov      edx, eax
+0x0815a931 mov      dword ptr [edx], 0x8b77203
+0x0815a937 mov      dword ptr [esp + 8], 0
+0x0815a93f mov      dword ptr [esp + 4], 0x936b288
+0x0815a947 mov      dword ptr [esp], eax
+0x0815a94a call     0x8724c50 ; __cxa_throw
+0x0815a94f call     0x80cc181 ; _Z14G_CEnvironmentv
+0x0815a954 mov      dword ptr [esp], eax
+0x0815a957 call     0x8106ce0 ; _ZN12CEnvironment16get_server_groupEv
+0x0815a95c mov      dword ptr [ebp - 0x14], eax
+0x0815a95f mov      eax, dword ptr [ebp - 0x14]
+0x0815a962 mov      dword ptr [esp + 8], eax
+0x0815a966 mov      dword ptr [esp + 4], 0x8b77210
+0x0815a96e mov      eax, dword ptr [ebp - 0x18]
+0x0815a971 mov      dword ptr [esp], eax
+0x0815a974 call     0x83f41c0 ; _ZN5MySQL9set_queryEPKcz
+0x0815a979 xor      eax, 1
+0x0815a97c test     al, al
+0x0815a97e je       0x815a9ac
+0x0815a980 mov      dword ptr [esp], 4
+0x0815a987 call     0x8725800 ; __cxa_allocate_exception
+0x0815a98c mov      edx, eax
+0x0815a98e mov      dword ptr [edx], 0x8b7726d
+0x0815a994 mov      dword ptr [esp + 8], 0
+0x0815a99c mov      dword ptr [esp + 4], 0x936b288
+0x0815a9a4 mov      dword ptr [esp], eax
+0x0815a9a7 call     0x8724c50 ; __cxa_throw
+0x0815a9ac mov      dword ptr [esp + 4], 1
+0x0815a9b4 mov      eax, dword ptr [ebp - 0x18]
+0x0815a9b7 mov      dword ptr [esp], eax
+0x0815a9ba call     0x83f4326 ; _ZN5MySQL4execEb
+0x0815a9bf xor      eax, 1
+0x0815a9c2 test     al, al
+0x0815a9c4 je       0x815a9f2
+0x0815a9c6 mov      dword ptr [esp], 4
+0x0815a9cd call     0x8725800 ; __cxa_allocate_exception
+0x0815a9d2 mov      edx, eax
+0x0815a9d4 mov      dword ptr [edx], 0x8b77277
+0x0815a9da mov      dword ptr [esp + 8], 0
+0x0815a9e2 mov      dword ptr [esp + 4], 0x936b288
+0x0815a9ea mov      dword ptr [esp], eax
+0x0815a9ed call     0x8724c50 ; __cxa_throw
+0x0815a9f2 lea      eax, [ebp - 0x1221]
+0x0815a9f8 mov      dword ptr [esp], eax
+0x0815a9fb call     0x815dda8 ; _ZN6Taiwan21SigLoadRestrictPolicy4initEv
+0x0815aa00 jmp      0x815ab98
+0x0815aa05 mov      dword ptr [ebp - 0x10], 0
+0x0815aa0c mov      dword ptr [ebp - 0x1c], 0
+0x0815aa13 mov      dword ptr [ebp - 0x20], 0
+0x0815aa1a mov      byte ptr [ebp - 0x21], 0
+0x0815aa1e mov      eax, dword ptr [ebp - 0x10]
+0x0815aa21 add      dword ptr [ebp - 0x10], 1
+0x0815aa25 lea      edx, [ebp - 0x1c]
+0x0815aa28 mov      dword ptr [esp + 8], edx
+0x0815aa2c mov      dword ptr [esp + 4], eax
+0x0815aa30 mov      eax, dword ptr [ebp - 0x18]
+0x0815aa33 mov      dword ptr [esp], eax
+0x0815aa36 call     0x811692c ; _ZN5MySQL7get_intEiRi
+0x0815aa3b xor      eax, 1
+0x0815aa3e test     al, al
+0x0815aa40 je       0x815aa6e
+0x0815aa42 mov      dword ptr [esp], 4
+0x0815aa49 call     0x8725800 ; __cxa_allocate_exception
+0x0815aa4e mov      edx, eax
+0x0815aa50 mov      dword ptr [edx], 0x8b7727c
+0x0815aa56 mov      dword ptr [esp + 8], 0
+0x0815aa5e mov      dword ptr [esp + 4], 0x936b288
+0x0815aa66 mov      dword ptr [esp], eax
+0x0815aa69 call     0x8724c50 ; __cxa_throw
+0x0815aa6e mov      eax, dword ptr [ebp - 0x10]
+0x0815aa71 add      dword ptr [ebp - 0x10], 1
+0x0815aa75 lea      edx, [ebp - 0x20]
+0x0815aa78 mov      dword ptr [esp + 8], edx
+0x0815aa7c mov      dword ptr [esp + 4], eax
+0x0815aa80 mov      eax, dword ptr [ebp - 0x18]
+0x0815aa83 mov      dword ptr [esp], eax
+0x0815aa86 call     0x811692c ; _ZN5MySQL7get_intEiRi
+0x0815aa8b xor      eax, 1
+0x0815aa8e test     al, al
+0x0815aa90 je       0x815aabe
+0x0815aa92 mov      dword ptr [esp], 4
+0x0815aa99 call     0x8725800 ; __cxa_allocate_exception
+0x0815aa9e mov      edx, eax
+0x0815aaa0 mov      dword ptr [edx], 0x8b77285
+0x0815aaa6 mov      dword ptr [esp + 8], 0
+0x0815aaae mov      dword ptr [esp + 4], 0x936b288
+0x0815aab6 mov      dword ptr [esp], eax
+0x0815aab9 call     0x8724c50 ; __cxa_throw
+0x0815aabe mov      eax, dword ptr [ebp - 0x10]
+0x0815aac1 add      dword ptr [ebp - 0x10], 1
+0x0815aac5 lea      edx, [ebp - 0x21]
+0x0815aac8 mov      dword ptr [esp + 8], edx
+0x0815aacc mov      dword ptr [esp + 4], eax
+0x0815aad0 mov      eax, dword ptr [ebp - 0x18]
+0x0815aad3 mov      dword ptr [esp], eax
+0x0815aad6 call     0x815e6a6 ; _ZN5MySQL8get_charEiRc
+0x0815aadb xor      eax, 1
+0x0815aade test     al, al
+0x0815aae0 je       0x815ab0e
+0x0815aae2 mov      dword ptr [esp], 4
+0x0815aae9 call     0x8725800 ; __cxa_allocate_exception
+0x0815aaee mov      edx, eax
+0x0815aaf0 mov      dword ptr [edx], 0x8b7728e
+0x0815aaf6 mov      dword ptr [esp + 8], 0
+0x0815aafe mov      dword ptr [esp + 4], 0x936b288
+0x0815ab06 mov      dword ptr [esp], eax
+0x0815ab09 call     0x8724c50 ; __cxa_throw
+0x0815ab0e mov      eax, dword ptr [ebp - 0x1221]
+0x0815ab14 test     eax, eax
+0x0815ab16 je       0x815ab25
+0x0815ab18 mov      edx, dword ptr [ebp - 0x1221]
+0x0815ab1e mov      eax, dword ptr [ebp - 0x1c]
+0x0815ab21 cmp      edx, eax
+0x0815ab23 jne      0x815ab4e
+0x0815ab25 movzx    eax, byte ptr [ebp - 0x21]
+0x0815ab29 movsx    ecx, al
+0x0815ab2c mov      edx, dword ptr [ebp - 0x20]
+0x0815ab2f mov      eax, dword ptr [ebp - 0x1c]
+0x0815ab32 mov      dword ptr [esp + 0xc], ecx
+0x0815ab36 mov      dword ptr [esp + 8], edx
+0x0815ab3a mov      dword ptr [esp + 4], eax
+0x0815ab3e lea      eax, [ebp - 0x1221]
+0x0815ab44 mov      dword ptr [esp], eax
+0x0815ab47 call     0x815de02 ; _ZN6Taiwan21SigLoadRestrictPolicy3setEiic
+0x0815ab4c jmp      0x815ab98
+0x0815ab4e lea      eax, [ebp - 0x1221]
+0x0815ab54 mov      dword ptr [esp + 4], eax
+0x0815ab58 mov      eax, dword ptr [ebp + 8]
+0x0815ab5b mov      dword ptr [esp], eax
+0x0815ab5e call     0x815ac40 ; _ZN25LoadServiceRestrictPolicy16sendRestrictDataERN6Taiwan21SigLoadRestrictPolicyE
+0x0815ab63 lea      eax, [ebp - 0x1221]
+0x0815ab69 mov      dword ptr [esp], eax
+0x0815ab6c call     0x815dda8 ; _ZN6Taiwan21SigLoadRestrictPolicy4initEv
+0x0815ab71 movzx    eax, byte ptr [ebp - 0x21]
+0x0815ab75 movsx    ecx, al
+0x0815ab78 mov      edx, dword ptr [ebp - 0x20]
+0x0815ab7b mov      eax, dword ptr [ebp - 0x1c]
+0x0815ab7e mov      dword ptr [esp + 0xc], ecx
+0x0815ab82 mov      dword ptr [esp + 8], edx
+0x0815ab86 mov      dword ptr [esp + 4], eax
+0x0815ab8a lea      eax, [ebp - 0x1221]
+0x0815ab90 mov      dword ptr [esp], eax
+0x0815ab93 call     0x815de02 ; _ZN6Taiwan21SigLoadRestrictPolicy3setEiic
+0x0815ab98 mov      eax, dword ptr [ebp - 0x18]
+0x0815ab9b mov      dword ptr [esp], eax
+0x0815ab9e call     0x83f44bc ; _ZN5MySQL5fetchEv
+0x0815aba3 test     al, al
+0x0815aba5 jne      0x815aa05
+0x0815abab lea      eax, [ebp - 0x1221]
+0x0815abb1 mov      dword ptr [esp + 4], eax
+0x0815abb5 mov      eax, dword ptr [ebp + 8]
+0x0815abb8 mov      dword ptr [esp], eax
+0x0815abbb call     0x815ac40 ; _ZN25LoadServiceRestrictPolicy16sendRestrictDataERN6Taiwan21SigLoadRestrictPolicyE
+0x0815abc0 mov      ebx, 1
+0x0815abc5 jmp      0x815ac33
+0x0815abc7 cmp      edx, 1
+0x0815abca je       0x815abd4
+0x0815abcc mov      dword ptr [esp], eax
+0x0815abcf call     0x8ae3750 ; _Unwind_Resume
+0x0815abd4 mov      dword ptr [esp], eax
+0x0815abd7 call     0x8725ce0 ; __cxa_begin_catch
+0x0815abdc mov      dword ptr [ebp - 0xc], eax
+0x0815abdf mov      eax, dword ptr [ebp - 0xc]
+0x0815abe2 mov      dword ptr [esp + 0x14], eax
+0x0815abe6 mov      dword ptr [esp + 0x10], 0x8b77298
+0x0815abee mov      dword ptr [esp + 0xc], 0xd2
+0x0815abf6 mov      dword ptr [esp + 8], 0x8b792c0
+0x0815abfe mov      dword ptr [esp + 4], 0x8b772d4
+0x0815ac06 mov      dword ptr [esp], 1
+0x0815ac0d call     0x8ad3c0a ; _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x0815ac12 mov      ebx, 0
+0x0815ac17 call     0x8725c30 ; __cxa_end_catch
+0x0815ac1c jmp      0x815ac33
+0x0815ac1e mov      ebx, edx
+0x0815ac20 mov      esi, eax
+0x0815ac22 call     0x8725c30 ; __cxa_end_catch
+0x0815ac27 mov      eax, esi
+0x0815ac29 mov      edx, ebx
+0x0815ac2b mov      dword ptr [esp], eax
+0x0815ac2e call     0x8ae3750 ; _Unwind_Resume
+0x0815ac33 mov      eax, ebx
+0x0815ac35 add      esp, 0x1240
+0x0815ac3b pop      ebx
+0x0815ac3c pop      esi
+0x0815ac3d pop      ebp
+0x0815ac3e ret
+
+FUNCTION _ZN25LoadServiceRestrictPolicy16sendRestrictDataERN6Taiwan21SigLoadRestrictPolicyE VA=0x0815ac40 SIZE=252
+0x0815ac40 push     ebp
+0x0815ac41 mov      ebp, esp
+0x0815ac43 push     esi
+0x0815ac44 push     ebx
+0x0815ac45 sub      esp, 0x20
+0x0815ac48 mov      eax, dword ptr [0x940bd6c]
+0x0815ac4d mov      dword ptr [esp + 8], 0xd9
+0x0815ac55 mov      dword ptr [esp + 4], 0x8b772d4
+0x0815ac5d mov      dword ptr [esp], eax
+0x0815ac60 call     0x828fa86 ; _ZN10StreamPool7AcquireEPKci
+0x0815ac65 mov      dword ptr [esp + 8], 1
+0x0815ac6d mov      dword ptr [esp + 4], eax
+0x0815ac71 lea      eax, [ebp - 0x14]
+0x0815ac74 mov      dword ptr [esp], eax
+0x0815ac77 call     0x80c8c26 ; _ZN12CStreamGuardC1EP6Streamb
+0x0815ac7c mov      dword ptr [esp + 8], 0xffffffff
+0x0815ac84 mov      dword ptr [esp + 4], 1
+0x0815ac8c lea      eax, [ebp - 0x14]
+0x0815ac8f mov      dword ptr [esp], eax
+0x0815ac92 call     0x8163950 ; _ZN6Taiwan15internal_streamER12CStreamGuardN18TaiwanInternalPack1TEi
+0x0815ac97 lea      eax, [ebp - 0x14]
+0x0815ac9a mov      dword ptr [esp], eax
+0x0815ac9d call     0x80c8c4e ; _ZN12CStreamGuardptEv
+0x0815aca2 mov      dword ptr [esp], eax
+0x0815aca5 call     0x815e9a2 ; _ZN12CStreamGuard11GetInBufferIN6Taiwan21SigLoadRestrictPolicyEEEPT_v
+0x0815acaa mov      dword ptr [ebp - 0xc], eax
+0x0815acad cmp      dword ptr [ebp - 0xc], 0
+0x0815acb1 jne      0x815acdf
+0x0815acb3 mov      dword ptr [esp], 4
+0x0815acba call     0x8725800 ; __cxa_allocate_exception
+0x0815acbf mov      edx, eax
+0x0815acc1 mov      dword ptr [edx], 0x8b772ff
+0x0815acc7 mov      dword ptr [esp + 8], 0
+0x0815accf mov      dword ptr [esp + 4], 0x936b288
+0x0815acd7 mov      dword ptr [esp], eax
+0x0815acda call     0x8724c50 ; __cxa_throw
+0x0815acdf mov      eax, dword ptr [ebp + 0xc]
+0x0815ace2 mov      dword ptr [esp + 4], eax
+0x0815ace6 mov      eax, dword ptr [ebp - 0xc]
+0x0815ace9 mov      dword ptr [esp], eax
+0x0815acec call     0x815de38 ; _ZN6Taiwan21SigLoadRestrictPolicy3setERS0_
+0x0815acf1 mov      eax, dword ptr [0x940bd68]
+0x0815acf6 lea      edx, [ebp - 0x14]
+0x0815acf9 mov      dword ptr [esp + 8], edx
+0x0815acfd mov      dword ptr [esp + 4], 1
+0x0815ad05 mov      dword ptr [esp], eax
+0x0815ad08 call     0x8570fde ; _ZN11MsgQueueMgr3putENS_9QUEUE_IDXER12CStreamGuard
+0x0815ad0d jmp      0x815ad2a
+0x0815ad0f mov      ebx, edx
+0x0815ad11 mov      esi, eax
+0x0815ad13 lea      eax, [ebp - 0x14]
+0x0815ad16 mov      dword ptr [esp], eax
+0x0815ad19 call     0x861c8d2 ; _ZN12CStreamGuardD1Ev
+0x0815ad1e mov      eax, esi
+0x0815ad20 mov      edx, ebx
+0x0815ad22 mov      dword ptr [esp], eax
+0x0815ad25 call     0x8ae3750 ; _Unwind_Resume
+0x0815ad2a lea      eax, [ebp - 0x14]
+0x0815ad2d mov      dword ptr [esp], eax
+0x0815ad30 call     0x861c8d2 ; _ZN12CStreamGuardD1Ev
+0x0815ad35 add      esp, 0x20
+0x0815ad38 pop      ebx
+0x0815ad39 pop      esi
+0x0815ad3a pop      ebp
+0x0815ad3b ret
+
+FUNCTION _ZN30InterLoadServiceRestrictPolicy12dispatch_sigEP5CUserPci VA=0x08160796 SIZE=243
+0x08160796 push     ebp
+0x08160797 mov      ebp, esp
+0x08160799 push     esi
+0x0816079a push     ebx
+0x0816079b sub      esp, 0x30
+0x0816079e mov      eax, dword ptr [ebp + 0x10]
+0x081607a1 mov      dword ptr [ebp - 0xc], eax
+0x081607a4 cmp      dword ptr [ebp - 0xc], 0
+0x081607a8 jne      0x81607ea
+0x081607aa mov      dword ptr [esp + 0xc], 5
+0x081607b2 mov      dword ptr [esp + 8], 0x94
+0x081607ba mov      dword ptr [esp + 4], 0x8b7abc0
+0x081607c2 lea      eax, [ebp - 0x24]
+0x081607c5 mov      dword ptr [esp], eax
+0x081607c8 call     0x854f718 ; _ZN8cMyTraceC2EPKcii
+0x081607cd mov      dword ptr [esp + 4], 0x8b79744
+0x081607d5 lea      eax, [ebp - 0x24]
+0x081607d8 mov      dword ptr [esp], eax
+0x081607db call     0x854f788 ; _ZN8cMyTraceclEPKcz
+0x081607e0 mov      eax, 0x95
+0x081607e5 jmp      0x8160882
+0x081607ea lea      eax, [ebp - 0xd]
+0x081607ed mov      dword ptr [esp], eax
+0x081607f0 call     0x86e00d0 ; _ZNSaIcEC2Ev
+0x081607f5 mov      eax, dword ptr [ebp - 0xc]
+0x081607f8 lea      edx, [eax + 0x119d]
+0x081607fe lea      eax, [ebp - 0xd]
+0x08160801 mov      dword ptr [esp + 8], eax
+0x08160805 mov      dword ptr [esp + 4], edx
+0x08160809 lea      eax, [ebp - 0x14]
+0x0816080c mov      dword ptr [esp], eax
+0x0816080f call     0x8707630 ; _ZNSsC1EPKcRKSaIcE
+0x08160814 mov      eax, dword ptr [ebp - 0xc]
+0x08160817 mov      eax, dword ptr [eax]
+0x08160819 mov      ebx, eax
+0x0816081b call     0x81625e6 ; _ZN4ARAD9SingletonI22ServiceRestrictManagerE3GetEv
+0x08160820 lea      edx, [ebp - 0x14]
+0x08160823 mov      dword ptr [esp + 8], edx
+0x08160827 mov      dword ptr [esp + 4], ebx
+0x0816082b mov      dword ptr [esp], eax
+0x0816082e call     0x816e54a ; _ZN22ServiceRestrictManager11beginPolicyEN16RestrictCategory4EnumERKSs
+0x08160833 jmp      0x816084a
+0x08160835 mov      ebx, edx
+0x08160837 mov      esi, eax
+0x08160839 lea      eax, [ebp - 0x14]
+0x0816083c mov      dword ptr [esp], eax
+0x0816083f call     0x8707be0 ; _ZNSsD2Ev
+0x08160844 mov      eax, esi
+0x08160846 mov      edx, ebx
+0x08160848 jmp      0x8160857
+0x0816084a lea      eax, [ebp - 0x14]
+0x0816084d mov      dword ptr [esp], eax
+0x08160850 call     0x8707be0 ; _ZNSsD2Ev
+0x08160855 jmp      0x8160872
+0x08160857 mov      ebx, edx
+0x08160859 mov      esi, eax
+0x0816085b lea      eax, [ebp - 0xd]
+0x0816085e mov      dword ptr [esp], eax
+0x08160861 call     0x86e00f0 ; _ZNSaIcED1Ev
+0x08160866 mov      eax, esi
+0x08160868 mov      edx, ebx
+0x0816086a mov      dword ptr [esp], eax
+0x0816086d call     0x8ae3750 ; _Unwind_Resume
+0x08160872 lea      eax, [ebp - 0xd]
+0x08160875 mov      dword ptr [esp], eax
+0x08160878 call     0x86e00f0 ; _ZNSaIcED1Ev
+0x0816087d mov      eax, 0
+0x08160882 add      esp, 0x30
+0x08160885 pop      ebx
+0x08160886 pop      esi
+0x08160887 pop      ebp
+0x08160888 ret

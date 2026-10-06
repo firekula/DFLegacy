@@ -87,4 +87,13 @@ u.mem_write(BASE+4096,mouse+b'\0');assert call(0x82632ca,BASE+4096)==1
 for text,want in [(b'',1),(b'123456',1),(b'aaaaaa',1),(b'1234567',0),(b'12b',0),(b'/',0),(b':',0)]:
  u.mem_write(BASE+4096,text+b'\0');assert call(0x82632ca,BASE+4096)==want
 print('MOUSE_CAPTURE_VALIDATOR_AND_SEVEN_EDGE_CASES=PASS')
+# Category1 predicate: construct only its vector layout, then execute original predicate.
+policy=BASE+0x20000;vec=BASE+0x21000
+u.mem_write(policy,b'\0'*64);u.mem_write(policy+12,struct.pack('<III',vec,vec+68,vec+68))
+for idx in range(34):
+ for value in [0,1,2,0xffff]:
+  u.mem_write(vec+idx*2,struct.pack('<H',value))
+  assert call(0x816d7f0,policy,idx)&255==int(value==1)
+print('MOBILE_POLICY_34_INDICES_4_VALUES_ELF=PASS')
+print('MOUSE_STATIC_KEY_SHA256='+hashlib.sha256(static_key).hexdigest())
 print('LIMIT: ELF instruction replay is same target binary, not independent official truth or live singleton evidence.')
