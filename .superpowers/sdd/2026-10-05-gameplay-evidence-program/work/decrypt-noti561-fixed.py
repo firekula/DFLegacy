@@ -82,6 +82,12 @@ for rel in ['streams-live/10013-2343.bin','streams-live2/10013-14805.bin','strea
    category=inner[0];opcode=struct.unpack_from('<H',inner,1)[0]
    print('INNER_GAME',original_type,'metadata_random_len='+str(padlen),'len='+str(len(inner)),'category='+str(category),'opcode='+str(opcode),'length_field=PASS','sha256='+hashlib.sha256(inner).hexdigest())
   else:
-   print('INNER_TYPE19', 'metadata_random_len='+str(padlen),'len='+str(len(inner)),'hex='+inner.hex(),'SEMANTICS_UNVERIFIED')
+   assert len(inner)==7 and struct.unpack_from('>HHB',inner)==(7,5,0)
+   # Invoke original SO DPInterData unpacker (head + discriminator 5 => DPBinCount).
+   u.mem_write(BASE,inner);u.mem_write(BASE+0x10000,b'\0'*0x2000)
+   assert call(0x1619e0,BASE+0x10000,BASE,len(inner),BASE+0x20000,0)==0
+   assert rd(BASE+0x20000)==7
+   assert struct.unpack('<HHBH',u.mem_read(BASE+0x10000,7))==(7,5,0,5)
+   print('INNER_TYPE19', 'metadata_random_len='+str(padlen),'len='+str(len(inner)),'DPInterData_kind=5 DPBinCount_u16=5 ORIGINAL_SO_UNPACK=PASS')
   print(rel,'choice='+str(choice),'plain_len='+str(len(plain)),'CRC32_AND_ROUNDTRIP=PASS','plain_sha256='+hashlib.sha256(plain).hexdigest());count+=1
  print(rel,'DECRYPTED_WRAPPERS='+str(count))

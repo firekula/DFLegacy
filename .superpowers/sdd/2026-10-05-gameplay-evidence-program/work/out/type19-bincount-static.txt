@@ -1,0 +1,58 @@
+SHA256=8f6263dae6fcd1eb19baece6f7c9408d2161abd1a05bd492d398d5cb7783d2a7 DT_PLTGOT=0x294534
+
+FUNCTION _ZNK9sec_proto10DPBinCount4packERN9tsf4g_tdr11TdrWriteBufEj 0x158400 78
+00158400 push     ebp
+00158401 mov      edx, 0xffffffff
+00158406 mov      ebp, esp
+00158408 sub      esp, 8
+0015840b mov      dword ptr [esp], esi
+0015840e mov      eax, dword ptr [ebp + 8]
+00158411 mov      esi, dword ptr [ebp + 0xc]
+00158414 mov      dword ptr [esp + 4], edi
+00158418 movzx    ecx, word ptr [eax]
+0015841b mov      edi, dword ptr [esi + 4]
+0015841e mov      eax, dword ptr [esi + 8]
+00158421 sub      eax, edi
+00158423 cmp      eax, 1
+00158426 jbe      0x158441
+00158428 movzx    eax, cx
+0015842b mov      ecx, dword ptr [esi]
+0015842d mov      edx, eax
+0015842f shr      edx, 8
+00158432 shl      eax, 8
+00158435 or       eax, edx
+00158437 xor      edx, edx
+00158439 mov      word ptr [ecx + edi], ax
+0015843d add      dword ptr [esi + 4], 2
+00158441 mov      esi, dword ptr [esp]
+00158444 mov      eax, edx
+00158446 mov      edi, dword ptr [esp + 4]
+0015844a mov      esp, ebp
+0015844c pop      ebp
+0015844d ret
+
+FUNCTION _ZN9sec_proto10DPBinCount6unpackERN9tsf4g_tdr10TdrReadBufEj 0x159f50 58
+00159f50 push     ebp
+00159f51 mov      ebp, esp
+00159f53 mov      ecx, dword ptr [ebp + 0xc]
+00159f56 push     esi
+00159f57 mov      esi, 0xfffffffe
+00159f5c mov      edx, dword ptr [ecx + 4]
+00159f5f mov      eax, dword ptr [ecx + 8]
+00159f62 sub      eax, edx
+00159f64 cmp      eax, 1
+00159f67 jbe      0x159f85
+00159f69 mov      eax, dword ptr [ecx]
+00159f6b xor      esi, esi
+00159f6d movzx    eax, word ptr [eax + edx]
+00159f71 mov      edx, eax
+00159f73 shr      edx, 8
+00159f76 shl      eax, 8
+00159f79 or       eax, edx
+00159f7b mov      edx, dword ptr [ebp + 8]
+00159f7e mov      word ptr [edx], ax
+00159f81 add      dword ptr [ecx + 4], 2
+00159f85 mov      eax, esi
+00159f87 pop      esi
+00159f88 pop      ebp
+00159f89 ret

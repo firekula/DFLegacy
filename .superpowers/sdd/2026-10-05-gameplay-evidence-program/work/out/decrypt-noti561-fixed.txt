@@ -2,7 +2,7 @@ GENKEY input order checked independently: seedLE then choiceLE
 GENKEY_19_CHOICES_ELF_VS_HASHLIB=PASS
 INNER_GAME 17 metadata_random_len=11 len=465 category=0 opcode=2 length_field=PASS sha256=5b01fd2009daace53370aa6d17ff4e772111cd084443804890dcdcd75a4d668b
 streams-live/10013-2343.bin choice=2 plain_len=485 CRC32_AND_ROUNDTRIP=PASS plain_sha256=2686abe78615961c97e2c737d6deed1e775777c0fee70e689b87868e800471a5
-INNER_TYPE19 metadata_random_len=6 len=7 hex=00070005000005 SEMANTICS_UNVERIFIED
+INNER_TYPE19 metadata_random_len=6 len=7 DPInterData_kind=5 DPBinCount_u16=5 ORIGINAL_SO_UNPACK=PASS
 streams-live/10013-2343.bin choice=8 plain_len=22 CRC32_AND_ROUNDTRIP=PASS plain_sha256=b6247c171c326d5604fbe7e6167402ac458405842fedeb5d88a4a19d7c827444
 INNER_GAME 17 metadata_random_len=15 len=28 category=1 opcode=2 length_field=PASS sha256=f6c92f0cffee5cfed3884c386a7eed7da457888aba512b63c4d155b7ff3cf3ca
 streams-live/10013-2343.bin choice=1 plain_len=52 CRC32_AND_ROUNDTRIP=PASS plain_sha256=8dc7954d65d50d289b272fe98d8f881026b66c4de517e7d47db728f9e92af751
@@ -41,7 +41,7 @@ streams-live/10013-2343.bin choice=4 plain_len=483 CRC32_AND_ROUNDTRIP=PASS plai
 streams-live/10013-2343.bin DECRYPTED_WRAPPERS=19
 INNER_GAME 17 metadata_random_len=3 len=465 category=0 opcode=2 length_field=PASS sha256=5b01fd2009daace53370aa6d17ff4e772111cd084443804890dcdcd75a4d668b
 streams-live2/10013-14805.bin choice=5 plain_len=477 CRC32_AND_ROUNDTRIP=PASS plain_sha256=8603b33b6d23e1a7f2bdba0cf8895f71265ff54c098a59d0748d7d616ac0bd9f
-INNER_TYPE19 metadata_random_len=8 len=7 hex=00070005000005 SEMANTICS_UNVERIFIED
+INNER_TYPE19 metadata_random_len=8 len=7 DPInterData_kind=5 DPBinCount_u16=5 ORIGINAL_SO_UNPACK=PASS
 streams-live2/10013-14805.bin choice=5 plain_len=24 CRC32_AND_ROUNDTRIP=PASS plain_sha256=82d459e68859bc42e8ccd39100c059a384873d59602dc7e5a9b298860f25da40
 INNER_GAME 17 metadata_random_len=6 len=28 category=1 opcode=2 length_field=PASS sha256=f6c92f0cffee5cfed3884c386a7eed7da457888aba512b63c4d155b7ff3cf3ca
 streams-live2/10013-14805.bin choice=18 plain_len=43 CRC32_AND_ROUNDTRIP=PASS plain_sha256=9d04c19421f767df7eb89343a4197652a5444a0c671c84de63290c71e2eba14f
@@ -80,7 +80,7 @@ streams-live2/10013-14805.bin choice=7 plain_len=493 CRC32_AND_ROUNDTRIP=PASS pl
 streams-live2/10013-14805.bin DECRYPTED_WRAPPERS=19
 INNER_GAME 17 metadata_random_len=11 len=465 category=0 opcode=2 length_field=PASS sha256=5b01fd2009daace53370aa6d17ff4e772111cd084443804890dcdcd75a4d668b
 streams-vm/10013-13681.bin choice=15 plain_len=485 CRC32_AND_ROUNDTRIP=PASS plain_sha256=2837be27bc2abec34d16d76b726b188d6124cf2ee6c5abf6476ed77385f3e94e
-INNER_TYPE19 metadata_random_len=10 len=7 hex=00070005000005 SEMANTICS_UNVERIFIED
+INNER_TYPE19 metadata_random_len=10 len=7 DPInterData_kind=5 DPBinCount_u16=5 ORIGINAL_SO_UNPACK=PASS
 streams-vm/10013-13681.bin choice=4 plain_len=26 CRC32_AND_ROUNDTRIP=PASS plain_sha256=db3488c540b038ff76af75e44e5c5935d94f8fa6e7394f7676ea19462a103d1d
 INNER_GAME 17 metadata_random_len=3 len=28 category=1 opcode=2 length_field=PASS sha256=f6c92f0cffee5cfed3884c386a7eed7da457888aba512b63c4d155b7ff3cf3ca
 streams-vm/10013-13681.bin choice=1 plain_len=40 CRC32_AND_ROUNDTRIP=PASS plain_sha256=aa6e9187166cfe5ad377836094539eab843edd55be43d1ee89e5dbe6c4c08b60
