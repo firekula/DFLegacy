@@ -61,8 +61,14 @@ for rel in ['streams-live/10013-2343.bin','streams-live2/10013-14805.bin','strea
   n=struct.unpack_from('<I',raw,p+3)[0];f=raw[p:p+n];p+=n
   if f[:3]!=b'\0\x31\x02':continue
   d=f[15:];outer=int.from_bytes(d[:4],'big');typ=int.from_bytes(d[6:8],'big')
-  if typ!=17:
-   print(rel,'TYPE_NOT_17='+str(typ),'BODY_SHA256='+hashlib.sha256(d).hexdigest());continue
+  original_type=typ
+  if typ==19:
+   # Candidate nested framing: BE u32 total, then nested InterData at byte13.
+   nested_len=int.from_bytes(d[9:13],'big');assert nested_len+9==outer
+   assert int.from_bytes(d[13:15],'big')+4==nested_len
+   assert d[15:17]==b'\0\x11'
+   d=d[9:outer];outer=nested_len;typ=17
+  assert typ==17
   seed,choice,crc=struct.unpack_from('>III',d,9);cipher=d[21:outer];assert 1<=choice<=19
   u.mem_write(BASE,cipher);assert call(0x1934c0,choice,BASE,len(cipher),seed,0)==1
   plain=bytes(u.mem_read(BASE,len(cipher)));actual=call(0x19dc80,BASE,len(cipher))
@@ -70,5 +76,12 @@ for rel in ['streams-live/10013-2343.bin','streams-live2/10013-14805.bin','strea
   assert zlib.crc32(plain)==crc
   assert call(0x1934c0,choice,BASE,len(cipher),seed,1)==1
   assert bytes(u.mem_read(BASE,len(cipher)))==cipher
+  padlen=plain[8];inner=plain[9+padlen:];assert padlen<=15
+  if original_type==17:
+   assert len(inner)>=15 and struct.unpack_from('<I',inner,3)[0]==len(inner)
+   category=inner[0];opcode=struct.unpack_from('<H',inner,1)[0]
+   print('INNER_GAME',original_type,'metadata_random_len='+str(padlen),'len='+str(len(inner)),'category='+str(category),'opcode='+str(opcode),'length_field=PASS','sha256='+hashlib.sha256(inner).hexdigest())
+  else:
+   print('INNER_TYPE19', 'metadata_random_len='+str(padlen),'len='+str(len(inner)),'hex='+inner.hex(),'SEMANTICS_UNVERIFIED')
   print(rel,'choice='+str(choice),'plain_len='+str(len(plain)),'CRC32_AND_ROUNDTRIP=PASS','plain_sha256='+hashlib.sha256(plain).hexdigest());count+=1
- print(rel,'DECRYPTED_TYPE17='+str(count))
+ print(rel,'DECRYPTED_WRAPPERS='+str(count))
