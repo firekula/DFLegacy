@@ -40,4 +40,10 @@ python "$B/work/verify-login-tail.py" > "$B/work/out/all-verify-login-tail.txt"
 python "$B/work/emulate-cipher-boundaries.py" $E > "$B/work/out/all-emulate-boundaries.txt"
 ```
 
-结论：当前离线静态/回放路径已集中跑完；剩余第一硬缺口是运行实例singleton交叉，不把它伪装成离线结论。
+## 覆盖限制补充
+
+[回放] 14算法脚本处理三对VM流，共63个C帧与270个S帧。C帧解密明文CRC全部通过，覆盖11种算法；S帧校验密文CRC低字节，普通非空包做加解密往返，覆盖14种算法。**S方向NOTI1及NOTI561被排除于普通算法往返**；NOTI1有专用验证，NOTI561外层仅验CRC，不能宣称其封装正文已解密。空正文不做算法往返。脚本当前输出的90帧是扫描数，不是90帧全部解密数。
+
+[作废] 本报告最初的“当前离线路径已集中跑完；第一硬缺口singleton”若理解为所有可离线工作已完成，是过度结论。准确状态：现有验证器已集中复跑，并新增14算法目标ELF回放；仍有NOTI561封装、独立算法答案、LOGIN零尾生产者、策略消费语义等可离线工作。本轮不请求真机，不以singleton缺口掩盖这些待办。
+
+新增复跑：`python .superpowers/sdd/2026-10-05-gameplay-evidence-program/work/verify-all-cipher-algorithms.py $env:TEMP/dfl-creds/vm-df_game_r`。
