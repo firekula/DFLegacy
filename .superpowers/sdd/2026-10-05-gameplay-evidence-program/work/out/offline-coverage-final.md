@@ -20,7 +20,7 @@ Restriction policy：SQL实际为：
 
 在当前工作区材料范围内，以下已达到“继续无需新证据会重复同一假设”的离线边界：
 
-1. NOTI561：缺少动态加载的`libantisvrimport.so`；只读目标ELF无法继续恢复payload算法。
+1. [作废：材料更新] 原结论“NOTI561缺少libantisvrimport.so”已由用户提供的外部目录解除。已做身份及候选ABI核对，见[SO接入报告](<antibot-so-intake.md>)；现在可继续离线分析，尚未核对与VM加载版本的同一性。
 2. restriction实际值：必须读取DB策略行或运行stream应答；静态只能恢复查询/解析/默认逻辑。
 3. G_Cipher singleton具体值：需要同一运行实例内存或完全确定性初始化重放；历史pool[0]不能代替。
 4. LOGIN最终接受/拒绝：需要服务端状态机/真实会话；离线只能确定输入消费与密码运算。
