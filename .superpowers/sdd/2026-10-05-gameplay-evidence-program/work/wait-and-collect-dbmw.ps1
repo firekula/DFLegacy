@@ -11,7 +11,7 @@ param([int]$WaitSeconds = 1020)
 $ErrorActionPreference = 'Continue'
 $B = ".superpowers/sdd/2026-10-05-gameplay-evidence-program"
 $env:PYTHONIOENCODING = 'utf-8'
-if (-not $env:VM_PASS) { $env:VM_PASS = 'a3395916' }
+if (-not $env:VM_PASS) { throw 'VM_PASS must be supplied securely via environment; no fallback.' }
 
 Write-Output "=== 等待 $WaitSeconds 秒（覆盖下一个 ~17:03 的周期批次）==="
 Start-Sleep -Seconds $WaitSeconds

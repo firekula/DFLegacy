@@ -1,5 +1,8 @@
 # RESUME —— 官服玩法面证据链工程（接续块）
 
+ > 本轮离线进度见 [NOTI1 包装探索](<work/out/noti1-wrapper-audit.md>) 与 [锁定证据](<work/out/noti1-evidence-locked.txt>)：固定旋转/XOR包装的逆变换在两份既有 NOTI1 上恢复 ch.11 等字段及相同的334B候选key；正例、错误旋转负例、前向查表逆解和密文往返均已固化。尚无singleton逐字节交叉验证，CRC覆盖也未闭合；CMD1/base64/RSA仍未完成。没有新登录重放或进程附加。SSH收包脚本的硬编码fallback已去除，其他凭据脱敏仍待继续。
+
+
 > **接续优先级更新：先读 [Cipher 审计修正](<work/out/cipher-audit-corrections.md>)。**
 > 本文下方保留的“14层串联”“时间戳播种已闭环”“所有方向13B头”“header[2]=garvage”“池0密钥就是G_Cipher密钥”等断言已被该审计标 `[作废]`，不得用作实现依据。
 > 当前只完成调用路径定位和既有内存快照复算，尚未离线恢复 NOTI1 全局key，也未解出 CMD1 明文；尚不能宣布密码层完成或重写前置全部就绪。
