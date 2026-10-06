@@ -1,0 +1,4011 @@
+binary_sha256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+binary_size=36360954
+
+[PLT via dynamic relocations]
+0x0807e360 -> localtime_r
+0x0807e3b0 -> strlen
+0x0807d8a0 -> memcpy
+0x0807dcc0 -> memset
+0x0807dca0 -> rand
+
+[Cipher::Decrypt]
+0x0809751e push    ebp
+0x0809751f mov     ebp, esp
+0x08097521 sub     esp, 0x38
+0x08097524 cmp     dword ptr [ebp + 0x14], 0
+0x08097528 jg      0x809753d
+0x0809752a mov     eax, dword ptr [ebp + 0x1c]
+0x0809752d mov     dword ptr [eax], 0
+0x08097533 mov     eax, 1
+0x08097538 jmp     0x80975d2
+0x0809753d mov     eax, dword ptr [ebp + 0xc]
+0x08097540 mov     dword ptr [esp], eax
+0x08097543 call    0x8097160 ; _Z13GetCryptoTypei
+0x08097548 mov     dword ptr [ebp - 0x10], eax
+0x0809754b mov     eax, dword ptr [ebp - 0x10]
+0x0809754e mov     edx, dword ptr [ebp + 8]
+0x08097551 add     edx, 4
+0x08097554 mov     dword ptr [esp + 4], eax
+0x08097558 mov     dword ptr [esp], edx
+0x0809755b call    0x809786a ; _ZNSt6vectorIP12ICryptoGraphSaIS1_EEixEj
+0x08097560 mov     eax, dword ptr [eax]
+0x08097562 mov     edx, dword ptr [eax]
+0x08097564 add     edx, 0x24
+0x08097567 mov     edx, dword ptr [edx]
+0x08097569 mov     dword ptr [esp], eax
+0x0809756c call    edx
+0x0809756e mov     dword ptr [ebp - 0xc], eax
+0x08097571 mov     eax, dword ptr [ebp - 0x10]
+0x08097574 mov     edx, dword ptr [ebp + 8]
+0x08097577 add     edx, 4
+0x0809757a mov     dword ptr [esp + 4], eax
+0x0809757e mov     dword ptr [esp], edx
+0x08097581 call    0x809786a ; _ZNSt6vectorIP12ICryptoGraphSaIS1_EEixEj
+0x08097586 mov     eax, dword ptr [eax]
+0x08097588 mov     edx, dword ptr [eax]
+0x0809758a add     edx, 0x1c
+0x0809758d mov     ecx, dword ptr [edx]
+0x0809758f mov     edx, dword ptr [ebp + 0x1c]
+0x08097592 mov     edx, dword ptr [edx]
+0x08097594 mov     dword ptr [esp + 0x10], edx
+0x08097598 mov     edx, dword ptr [ebp + 0x18]
+0x0809759b mov     dword ptr [esp + 0xc], edx
+0x0809759f mov     edx, dword ptr [ebp + 0x14]
+0x080975a2 mov     dword ptr [esp + 8], edx
+0x080975a6 mov     edx, dword ptr [ebp + 0x10]
+0x080975a9 mov     dword ptr [esp + 4], edx
+0x080975ad mov     dword ptr [esp], eax
+0x080975b0 call    ecx
+0x080975b2 cmp     eax, 0x6fffffff
+0x080975b7 sete    al
+0x080975ba test    al, al
+0x080975bc je      0x80975cd
+0x080975be mov     eax, dword ptr [ebp + 0x1c]
+0x080975c1 mov     edx, dword ptr [ebp + 0x14]
+0x080975c4 mov     dword ptr [eax], edx
+0x080975c6 mov     eax, 1
+0x080975cb jmp     0x80975d2
+0x080975cd mov     eax, 0
+0x080975d2 leave   
+0x080975d3 ret     
+
+[Cipher::Initialize]
+0x08097306 push    ebp
+0x08097307 mov     ebp, esp
+0x08097309 sub     esp, 0x28
+0x0809730c mov     eax, dword ptr [ebp + 0x10]
+0x0809730f mov     edx, dword ptr [ebp + 8]
+0x08097312 add     edx, 0x10
+0x08097315 mov     dword ptr [esp + 8], eax
+0x08097319 mov     eax, dword ptr [ebp + 0xc]
+0x0809731c mov     dword ptr [esp + 4], eax
+0x08097320 mov     dword ptr [esp], edx
+0x08097323 call    0x807d8a0 ; memcpy
+0x08097328 mov     dword ptr [ebp - 0x10], 0
+0x0809732f jmp     0x80973a9
+0x08097331 mov     eax, dword ptr [ebp - 0x10]
+0x08097334 mov     edx, dword ptr [ebp + 8]
+0x08097337 add     edx, 4
+0x0809733a mov     dword ptr [esp + 4], eax
+0x0809733e mov     dword ptr [esp], edx
+0x08097341 call    0x809786a ; _ZNSt6vectorIP12ICryptoGraphSaIS1_EEixEj
+0x08097346 mov     eax, dword ptr [eax]
+0x08097348 mov     edx, dword ptr [eax]
+0x0809734a add     edx, 0x20
+0x0809734d mov     edx, dword ptr [edx]
+0x0809734f mov     dword ptr [esp], eax
+0x08097352 call    edx
+0x08097354 mov     dword ptr [ebp - 0xc], eax
+0x08097357 mov     eax, dword ptr [ebp + 0x10]
+0x0809735a cmp     eax, dword ptr [ebp - 0xc]
+0x0809735d jl      0x80973a2
+0x0809735f mov     eax, dword ptr [ebp - 0x10]
+0x08097362 mov     edx, dword ptr [ebp + 8]
+0x08097365 add     edx, 4
+0x08097368 mov     dword ptr [esp + 4], eax
+0x0809736c mov     dword ptr [esp], edx
+0x0809736f call    0x809786a ; _ZNSt6vectorIP12ICryptoGraphSaIS1_EEixEj
+0x08097374 mov     eax, dword ptr [eax]
+0x08097376 mov     edx, dword ptr [eax]
+0x08097378 add     edx, 0xc
+0x0809737b mov     ecx, dword ptr [edx]
+0x0809737d mov     edx, dword ptr [ebp - 0xc]
+0x08097380 mov     dword ptr [esp + 8], edx
+0x08097384 mov     edx, dword ptr [ebp + 0xc]
+0x08097387 mov     dword ptr [esp + 4], edx
+0x0809738b mov     dword ptr [esp], eax
+0x0809738e call    ecx
+0x08097390 mov     eax, dword ptr [ebp - 0xc]
+0x08097393 add     dword ptr [ebp + 0xc], eax
+0x08097396 mov     eax, dword ptr [ebp - 0xc]
+0x08097399 sub     dword ptr [ebp + 0x10], eax
+0x0809739c add     dword ptr [ebp - 0x10], 1
+0x080973a0 jmp     0x80973a9
+0x080973a2 mov     eax, 0
+0x080973a7 jmp     0x80973bd
+0x080973a9 cmp     dword ptr [ebp - 0x10], 0xd
+0x080973ad setle   al
+0x080973b0 test    al, al
+0x080973b2 jne     0x8097331
+0x080973b8 mov     eax, 1
+0x080973bd leave   
+0x080973be ret     
+
+[G_Cipher]
+0x082a713a push    ebp
+0x082a713b mov     ebp, esp
+0x082a713d sub     esp, 8
+0x082a7140 call    0x82ab9da ; _ZN14GlobalInstanceI6CipherE8inst_ptrEv
+0x082a7145 leave   
+0x082a7146 ret     
+
+[GlobalInstance<Cipher>::inst_ptr]
+0x082ab9da push    ebp
+0x082ab9db mov     ebp, esp
+0x082ab9dd sub     esp, 8
+0x082ab9e0 call    0x82b6577 ; _ZN14GlobalInstanceI6CipherE6createEv
+0x082ab9e5 mov     eax, dword ptr [0x941f8a4]
+0x082ab9ea leave   
+0x082ab9eb ret     
+
+[InitCipherKeyString timer tail]
+0x082a03f3 mov     dword ptr [esp], 0x941f714
+0x082a03fa call    0x80cbc9e ; _ZN11CSystemTime9getCurSecEv
+0x082a03ff mov     ebx, eax
+0x082a0401 sub     ebx, dword ptr [ebp - 0x2c]
+0x082a0404 mov     dword ptr [esp + 0x14], 1
+0x082a040c mov     dword ptr [esp + 0x10], 1
+0x082a0414 mov     dword ptr [esp + 0xc], 9
+0x082a041c mov     dword ptr [esp + 8], 0x283e
+0x082a0424 mov     dword ptr [esp + 4], 0x8c1b03d
+0x082a042c lea     eax, [ebp - 0x3c]
+0x082a042f mov     dword ptr [esp], eax
+0x082a0432 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x082a0437 mov     dword ptr [esp + 8], ebx
+0x082a043b mov     dword ptr [esp + 4], 0x8c18704
+0x082a0443 lea     eax, [ebp - 0x3c]
+0x082a0446 mov     dword ptr [esp], eax
+0x082a0449 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x082a044e add     esp, 0x85c
+0x082a0454 pop     ebx
+0x082a0455 pop     esi
+0x082a0456 pop     edi
+0x082a0457 pop     ebp
+0x082a0458 ret     
+
+[GetCryptoType]
+0x08097160 push    ebp
+0x08097161 mov     ebp, esp
+0x08097163 push    ebx
+0x08097164 mov     ecx, dword ptr [ebp + 8]
+0x08097167 mov     edx, 0x92492493
+0x0809716c mov     eax, ecx
+0x0809716e imul    edx
+0x08097170 lea     eax, [edx + ecx]
+0x08097173 mov     edx, eax
+0x08097175 sar     edx, 3
+0x08097178 mov     eax, ecx
+0x0809717a sar     eax, 0x1f
+0x0809717d mov     ebx, edx
+0x0809717f sub     ebx, eax
+0x08097181 mov     eax, ebx
+0x08097183 add     eax, eax
+0x08097185 lea     edx, [eax*8]
+0x0809718c sub     edx, eax
+0x0809718e mov     eax, ecx
+0x08097190 sub     eax, edx
+0x08097192 pop     ebx
+0x08097193 pop     ebp
+0x08097194 ret     
+
+[GlobalData::Init]
+0x08299fa0 push    ebp
+0x08299fa1 mov     ebp, esp
+0x08299fa3 push    edi
+0x08299fa4 push    esi
+0x08299fa5 push    ebx
+0x08299fa6 sub     esp, 0x79c
+0x08299fac mov     byte ptr [0x940bd64], 0
+0x08299fb3 mov     dword ptr [esp], 0x941f714
+0x08299fba call    0x82a68c8 ; _ZN11CSystemTime6updateEv
+0x08299fbf mov     dword ptr [esp], 0x5e4
+0x08299fc6 call    0x8724450 ; _Znwj
+0x08299fcb mov     ebx, eax
+0x08299fcd mov     eax, ebx
+0x08299fcf mov     dword ptr [esp], eax
+0x08299fd2 call    0x82aa65c ; _ZN14CItemAmplifierC1Ev
+0x08299fd7 jmp     0x8299ff1
+0x08299fd9 mov     esi, edx
+0x08299fdb mov     edi, eax
+0x08299fdd mov     dword ptr [esp], ebx
+0x08299fe0 call    0x87244f0 ; _ZdlPv
+0x08299fe5 mov     eax, edi
+0x08299fe7 mov     edx, esi
+0x08299fe9 mov     dword ptr [esp], eax
+0x08299fec call    0x8ae3750 ; _Unwind_Resume
+0x08299ff1 mov     eax, ebx
+0x08299ff3 mov     dword ptr [0x941f7e8], eax
+0x08299ff8 mov     dword ptr [esp], 0x18
+0x08299fff call    0x8724450 ; _Znwj
+0x0829a004 mov     ebx, eax
+0x0829a006 mov     eax, ebx
+0x0829a008 mov     dword ptr [esp], eax
+0x0829a00b call    0x82a721a ; _ZN20CGlobalEffectManagerC1Ev
+0x0829a010 jmp     0x829a02a
+0x0829a012 mov     esi, edx
+0x0829a014 mov     edi, eax
+0x0829a016 mov     dword ptr [esp], ebx
+0x0829a019 call    0x87244f0 ; _ZdlPv
+0x0829a01e mov     eax, edi
+0x0829a020 mov     edx, esi
+0x0829a022 mov     dword ptr [esp], eax
+0x0829a025 call    0x8ae3750 ; _Unwind_Resume
+0x0829a02a mov     eax, ebx
+0x0829a02c mov     dword ptr [0x941f7ec], eax
+0x0829a031 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a039 mov     dword ptr [esp], 0x1c
+0x0829a040 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829a045 mov     ebx, eax
+0x0829a047 mov     eax, ebx
+0x0829a049 test    eax, eax
+0x0829a04b je      0x829a07d
+0x0829a04d mov     eax, ebx
+0x0829a04f mov     dword ptr [esp], eax
+0x0829a052 call    0x8284512 ; _ZN9CTimeGateC1Ev
+0x0829a057 jmp     0x829a079
+0x0829a059 mov     esi, edx
+0x0829a05b mov     edi, eax
+0x0829a05d mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a065 mov     dword ptr [esp], ebx
+0x0829a068 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829a06d mov     eax, edi
+0x0829a06f mov     edx, esi
+0x0829a071 mov     dword ptr [esp], eax
+0x0829a074 call    0x8ae3750 ; _Unwind_Resume
+0x0829a079 mov     eax, ebx
+0x0829a07b jmp     0x829a07f
+0x0829a07d mov     eax, ebx
+0x0829a07f mov     dword ptr [0x941f7f4], eax
+0x0829a084 mov     eax, dword ptr [0x941f7f4]
+0x0829a089 test    eax, eax
+0x0829a08b jne     0x829a0bb
+0x0829a08d mov     dword ptr [esp + 4], 0x8c17224
+0x0829a095 mov     dword ptr [esp], 0x948b460
+0x0829a09c call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a0a1 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a0a9 mov     dword ptr [esp], eax
+0x0829a0ac call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a0b1 mov     ebx, 0
+0x0829a0b6 jmp     0x829d42b
+0x0829a0bb mov     dword ptr [esp], 0x34
+0x0829a0c2 call    0x8724450 ; _Znwj
+0x0829a0c7 mov     ebx, eax
+0x0829a0c9 mov     eax, ebx
+0x0829a0cb mov     dword ptr [esp], eax
+0x0829a0ce call    0x81a922c ; _ZN4ARAD23Arad_ServerStateManagerC1Ev
+0x0829a0d3 jmp     0x829a0ed
+0x0829a0d5 mov     esi, edx
+0x0829a0d7 mov     edi, eax
+0x0829a0d9 mov     dword ptr [esp], ebx
+0x0829a0dc call    0x87244f0 ; _ZdlPv
+0x0829a0e1 mov     eax, edi
+0x0829a0e3 mov     edx, esi
+0x0829a0e5 mov     dword ptr [esp], eax
+0x0829a0e8 call    0x8ae3750 ; _Unwind_Resume
+0x0829a0ed mov     eax, ebx
+0x0829a0ef mov     dword ptr [0x941f7f0], eax
+0x0829a0f4 mov     dword ptr [esp], 0x180
+0x0829a0fb call    0x8724450 ; _Znwj
+0x0829a100 mov     ebx, eax
+0x0829a102 mov     eax, ebx
+0x0829a104 mov     dword ptr [esp], eax
+0x0829a107 call    0x8570e40 ; _ZN11MsgQueueMgrC1Ev
+0x0829a10c jmp     0x829a126
+0x0829a10e mov     esi, edx
+0x0829a110 mov     edi, eax
+0x0829a112 mov     dword ptr [esp], ebx
+0x0829a115 call    0x87244f0 ; _ZdlPv
+0x0829a11a mov     eax, edi
+0x0829a11c mov     edx, esi
+0x0829a11e mov     dword ptr [esp], eax
+0x0829a121 call    0x8ae3750 ; _Unwind_Resume
+0x0829a126 mov     eax, ebx
+0x0829a128 mov     dword ptr [0x940bd68], eax
+0x0829a12d mov     eax, dword ptr [0x940bd68]
+0x0829a132 test    eax, eax
+0x0829a134 jne     0x829a164
+0x0829a136 mov     dword ptr [esp + 4], 0x8c1725c
+0x0829a13e mov     dword ptr [esp], 0x948b460
+0x0829a145 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a14a mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a152 mov     dword ptr [esp], eax
+0x0829a155 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a15a mov     ebx, 0
+0x0829a15f jmp     0x829d42b
+0x0829a164 mov     dword ptr [esp], 0x1c
+0x0829a16b call    0x8724450 ; _Znwj
+0x0829a170 mov     ebx, eax
+0x0829a172 mov     eax, ebx
+0x0829a174 mov     dword ptr [esp], eax
+0x0829a177 call    0x828f974 ; _ZN10StreamPoolC1Ev
+0x0829a17c jmp     0x829a196
+0x0829a17e mov     esi, edx
+0x0829a180 mov     edi, eax
+0x0829a182 mov     dword ptr [esp], ebx
+0x0829a185 call    0x87244f0 ; _ZdlPv
+0x0829a18a mov     eax, edi
+0x0829a18c mov     edx, esi
+0x0829a18e mov     dword ptr [esp], eax
+0x0829a191 call    0x8ae3750 ; _Unwind_Resume
+0x0829a196 mov     eax, ebx
+0x0829a198 mov     dword ptr [0x940bd6c], eax
+0x0829a19d mov     eax, dword ptr [0x940bd6c]
+0x0829a1a2 test    eax, eax
+0x0829a1a4 jne     0x829a1d4
+0x0829a1a6 mov     dword ptr [esp + 4], 0x8c17290
+0x0829a1ae mov     dword ptr [esp], 0x948b460
+0x0829a1b5 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a1ba mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a1c2 mov     dword ptr [esp], eax
+0x0829a1c5 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a1ca mov     ebx, 0
+0x0829a1cf jmp     0x829d42b
+0x0829a1d4 mov     dword ptr [ebp - 0x24], 0
+0x0829a1db jmp     0x829a25b
+0x0829a1dd mov     dword ptr [esp], 8
+0x0829a1e4 call    0x8724450 ; _Znwj
+0x0829a1e9 mov     ebx, eax
+0x0829a1eb mov     eax, ebx
+0x0829a1ed mov     dword ptr [esp], eax
+0x0829a1f0 call    0x828fc76 ; _ZN10PacketPoolC2Ev
+0x0829a1f5 jmp     0x829a20f
+0x0829a1f7 mov     esi, edx
+0x0829a1f9 mov     edi, eax
+0x0829a1fb mov     dword ptr [esp], ebx
+0x0829a1fe call    0x87244f0 ; _ZdlPv
+0x0829a203 mov     eax, edi
+0x0829a205 mov     edx, esi
+0x0829a207 mov     dword ptr [esp], eax
+0x0829a20a call    0x8ae3750 ; _Unwind_Resume
+0x0829a20f mov     eax, dword ptr [ebp - 0x24]
+0x0829a212 mov     edx, ebx
+0x0829a214 mov     dword ptr [eax*4 + 0x940bd80], edx
+0x0829a21b mov     eax, dword ptr [ebp - 0x24]
+0x0829a21e mov     eax, dword ptr [eax*4 + 0x940bd80]
+0x0829a225 test    eax, eax
+0x0829a227 jne     0x829a257
+0x0829a229 mov     dword ptr [esp + 4], 0x8c172c8
+0x0829a231 mov     dword ptr [esp], 0x948b460
+0x0829a238 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a23d mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a245 mov     dword ptr [esp], eax
+0x0829a248 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a24d mov     ebx, 0
+0x0829a252 jmp     0x829d42b
+0x0829a257 add     dword ptr [ebp - 0x24], 1
+0x0829a25b cmp     dword ptr [ebp - 0x24], 8
+0x0829a25f setle   al
+0x0829a262 test    al, al
+0x0829a264 jne     0x829a1dd
+0x0829a26a call    0x807e740 ; pthread_self
+0x0829a26f mov     dword ptr [esp + 4], eax
+0x0829a273 mov     dword ptr [esp], 4
+0x0829a27a call    0x829e4c4 ; _ZN10GlobalData20setCurrentPacketPoolE11THREAD_TYPEm
+0x0829a27f mov     dword ptr [esp], 0x1c
+0x0829a286 call    0x8724450 ; _Znwj
+0x0829a28b mov     ebx, eax
+0x0829a28d mov     eax, ebx
+0x0829a28f mov     dword ptr [esp], eax
+0x0829a292 call    0x828fe62 ; _ZN15SmallStreamPoolC1Ev
+0x0829a297 jmp     0x829a2b1
+0x0829a299 mov     esi, edx
+0x0829a29b mov     edi, eax
+0x0829a29d mov     dword ptr [esp], ebx
+0x0829a2a0 call    0x87244f0 ; _ZdlPv
+0x0829a2a5 mov     eax, edi
+0x0829a2a7 mov     edx, esi
+0x0829a2a9 mov     dword ptr [esp], eax
+0x0829a2ac call    0x8ae3750 ; _Unwind_Resume
+0x0829a2b1 mov     eax, ebx
+0x0829a2b3 mov     dword ptr [0x940bda8], eax
+0x0829a2b8 mov     eax, dword ptr [0x940bda8]
+0x0829a2bd test    eax, eax
+0x0829a2bf jne     0x829a2ef
+0x0829a2c1 mov     dword ptr [esp + 4], 0x8c17300
+0x0829a2c9 mov     dword ptr [esp], 0x948b460
+0x0829a2d0 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a2d5 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a2dd mov     dword ptr [esp], eax
+0x0829a2e0 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a2e5 mov     ebx, 0
+0x0829a2ea jmp     0x829d42b
+0x0829a2ef mov     dword ptr [esp], 0x1c
+0x0829a2f6 call    0x8724450 ; _Znwj
+0x0829a2fb mov     ebx, eax
+0x0829a2fd mov     eax, ebx
+0x0829a2ff mov     dword ptr [esp], eax
+0x0829a302 call    0x8290150 ; _ZN13BigStreamPoolC1Ev
+0x0829a307 jmp     0x829a321
+0x0829a309 mov     esi, edx
+0x0829a30b mov     edi, eax
+0x0829a30d mov     dword ptr [esp], ebx
+0x0829a310 call    0x87244f0 ; _ZdlPv
+0x0829a315 mov     eax, edi
+0x0829a317 mov     edx, esi
+0x0829a319 mov     dword ptr [esp], eax
+0x0829a31c call    0x8ae3750 ; _Unwind_Resume
+0x0829a321 mov     eax, ebx
+0x0829a323 mov     dword ptr [0x940bda4], eax
+0x0829a328 mov     eax, dword ptr [0x940bda4]
+0x0829a32d test    eax, eax
+0x0829a32f jne     0x829a35f
+0x0829a331 mov     dword ptr [esp + 4], 0x8c1733c
+0x0829a339 mov     dword ptr [esp], 0x948b460
+0x0829a340 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a345 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a34d mov     dword ptr [esp], eax
+0x0829a350 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a355 mov     ebx, 0
+0x0829a35a jmp     0x829d42b
+0x0829a35f mov     dword ptr [esp], 0x38
+0x0829a366 call    0x8724450 ; _Znwj
+0x0829a36b mov     ebx, eax
+0x0829a36d mov     eax, ebx
+0x0829a36f mov     dword ptr [esp], eax
+0x0829a372 call    0x83f48de ; _ZN5DBMgrC1Ev
+0x0829a377 jmp     0x829a391
+0x0829a379 mov     esi, edx
+0x0829a37b mov     edi, eax
+0x0829a37d mov     dword ptr [esp], ebx
+0x0829a380 call    0x87244f0 ; _ZdlPv
+0x0829a385 mov     eax, edi
+0x0829a387 mov     edx, esi
+0x0829a389 mov     dword ptr [esp], eax
+0x0829a38c call    0x8ae3750 ; _Unwind_Resume
+0x0829a391 mov     eax, ebx
+0x0829a393 mov     dword ptr [0x940bdac], eax
+0x0829a398 mov     eax, dword ptr [0x940bdac]
+0x0829a39d test    eax, eax
+0x0829a39f jne     0x829a3cf
+0x0829a3a1 mov     dword ptr [esp + 4], 0x8c17378
+0x0829a3a9 mov     dword ptr [esp], 0x948b460
+0x0829a3b0 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a3b5 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a3bd mov     dword ptr [esp], eax
+0x0829a3c0 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a3c5 mov     ebx, 0
+0x0829a3ca jmp     0x829d42b
+0x0829a3cf mov     dword ptr [esp], 0x4c
+0x0829a3d6 call    0x8724450 ; _Znwj
+0x0829a3db mov     ebx, eax
+0x0829a3dd mov     eax, ebx
+0x0829a3df mov     dword ptr [esp], eax
+0x0829a3e2 call    0x83ff5f2 ; _ZN8DBThreadC2Ev
+0x0829a3e7 jmp     0x829a401
+0x0829a3e9 mov     esi, edx
+0x0829a3eb mov     edi, eax
+0x0829a3ed mov     dword ptr [esp], ebx
+0x0829a3f0 call    0x87244f0 ; _ZdlPv
+0x0829a3f5 mov     eax, edi
+0x0829a3f7 mov     edx, esi
+0x0829a3f9 mov     dword ptr [esp], eax
+0x0829a3fc call    0x8ae3750 ; _Unwind_Resume
+0x0829a401 mov     eax, ebx
+0x0829a403 mov     dword ptr [0x940bdb0], eax
+0x0829a408 mov     eax, dword ptr [0x940bdb0]
+0x0829a40d test    eax, eax
+0x0829a40f jne     0x829a43f
+0x0829a411 mov     dword ptr [esp + 4], 0x8c173ac
+0x0829a419 mov     dword ptr [esp], 0x948b460
+0x0829a420 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a425 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a42d mov     dword ptr [esp], eax
+0x0829a430 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a435 mov     ebx, 0
+0x0829a43a jmp     0x829d42b
+0x0829a43f mov     eax, dword ptr [0x940bdb0]
+0x0829a444 mov     dword ptr [esp + 4], 0
+0x0829a44c mov     dword ptr [esp], eax
+0x0829a44f call    0x83ff6c8 ; _ZN8DBThread8setLogDBEb
+0x0829a454 mov     dword ptr [esp], 0x4c
+0x0829a45b call    0x8724450 ; _Znwj
+0x0829a460 mov     ebx, eax
+0x0829a462 mov     eax, ebx
+0x0829a464 mov     dword ptr [esp], eax
+0x0829a467 call    0x83ff5f2 ; _ZN8DBThreadC2Ev
+0x0829a46c jmp     0x829a486
+0x0829a46e mov     esi, edx
+0x0829a470 mov     edi, eax
+0x0829a472 mov     dword ptr [esp], ebx
+0x0829a475 call    0x87244f0 ; _ZdlPv
+0x0829a47a mov     eax, edi
+0x0829a47c mov     edx, esi
+0x0829a47e mov     dword ptr [esp], eax
+0x0829a481 call    0x8ae3750 ; _Unwind_Resume
+0x0829a486 mov     eax, ebx
+0x0829a488 mov     dword ptr [0x940bdb4], eax
+0x0829a48d mov     eax, dword ptr [0x940bdb4]
+0x0829a492 test    eax, eax
+0x0829a494 jne     0x829a4c4
+0x0829a496 mov     dword ptr [esp + 4], 0x8c173e0
+0x0829a49e mov     dword ptr [esp], 0x948b460
+0x0829a4a5 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a4aa mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a4b2 mov     dword ptr [esp], eax
+0x0829a4b5 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a4ba mov     ebx, 0
+0x0829a4bf jmp     0x829d42b
+0x0829a4c4 mov     eax, dword ptr [0x940bdb4]
+0x0829a4c9 mov     dword ptr [esp + 4], 1
+0x0829a4d1 mov     dword ptr [esp], eax
+0x0829a4d4 call    0x83ff6c8 ; _ZN8DBThread8setLogDBEb
+0x0829a4d9 mov     dword ptr [esp], 0xc
+0x0829a4e0 call    0x8724450 ; _Znwj
+0x0829a4e5 mov     ebx, eax
+0x0829a4e7 mov     eax, ebx
+0x0829a4e9 mov     dword ptr [esp], eax
+0x0829a4ec call    0x847e268 ; _ZN14DispatchThreadC1Ev
+0x0829a4f1 jmp     0x829a50b
+0x0829a4f3 mov     esi, edx
+0x0829a4f5 mov     edi, eax
+0x0829a4f7 mov     dword ptr [esp], ebx
+0x0829a4fa call    0x87244f0 ; _ZdlPv
+0x0829a4ff mov     eax, edi
+0x0829a501 mov     edx, esi
+0x0829a503 mov     dword ptr [esp], eax
+0x0829a506 call    0x8ae3750 ; _Unwind_Resume
+0x0829a50b mov     eax, ebx
+0x0829a50d mov     dword ptr [0x940bdb8], eax
+0x0829a512 mov     eax, dword ptr [0x940bdb8]
+0x0829a517 test    eax, eax
+0x0829a519 jne     0x829a549
+0x0829a51b mov     dword ptr [esp + 4], 0x8c17428
+0x0829a523 mov     dword ptr [esp], 0x948b460
+0x0829a52a call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a52f mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a537 mov     dword ptr [esp], eax
+0x0829a53a call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a53f mov     ebx, 0
+0x0829a544 jmp     0x829d42b
+0x0829a549 mov     dword ptr [esp], 0xc
+0x0829a550 call    0x8724450 ; _Znwj
+0x0829a555 mov     ebx, eax
+0x0829a557 mov     eax, ebx
+0x0829a559 mov     dword ptr [esp], eax
+0x0829a55c call    0x857d554 ; _ZN13NetworkThreadC1Ev
+0x0829a561 jmp     0x829a57b
+0x0829a563 mov     esi, edx
+0x0829a565 mov     edi, eax
+0x0829a567 mov     dword ptr [esp], ebx
+0x0829a56a call    0x87244f0 ; _ZdlPv
+0x0829a56f mov     eax, edi
+0x0829a571 mov     edx, esi
+0x0829a573 mov     dword ptr [esp], eax
+0x0829a576 call    0x8ae3750 ; _Unwind_Resume
+0x0829a57b mov     eax, ebx
+0x0829a57d mov     dword ptr [0x940bdbc], eax
+0x0829a582 mov     eax, dword ptr [0x940bdbc]
+0x0829a587 test    eax, eax
+0x0829a589 jne     0x829a5b9
+0x0829a58b mov     dword ptr [esp + 4], 0x8c17460
+0x0829a593 mov     dword ptr [esp], 0x948b460
+0x0829a59a call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a59f mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a5a7 mov     dword ptr [esp], eax
+0x0829a5aa call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a5af mov     ebx, 0
+0x0829a5b4 jmp     0x829d42b
+0x0829a5b9 mov     dword ptr [esp], 0xc
+0x0829a5c0 call    0x8724450 ; _Znwj
+0x0829a5c5 mov     ebx, eax
+0x0829a5c7 mov     eax, ebx
+0x0829a5c9 mov     dword ptr [esp], eax
+0x0829a5cc call    0x857c354 ; _ZN9UdpThreadC1Ev
+0x0829a5d1 jmp     0x829a5eb
+0x0829a5d3 mov     esi, edx
+0x0829a5d5 mov     edi, eax
+0x0829a5d7 mov     dword ptr [esp], ebx
+0x0829a5da call    0x87244f0 ; _ZdlPv
+0x0829a5df mov     eax, edi
+0x0829a5e1 mov     edx, esi
+0x0829a5e3 mov     dword ptr [esp], eax
+0x0829a5e6 call    0x8ae3750 ; _Unwind_Resume
+0x0829a5eb mov     eax, ebx
+0x0829a5ed mov     dword ptr [0x940bdc0], eax
+0x0829a5f2 mov     eax, dword ptr [0x940bdc0]
+0x0829a5f7 test    eax, eax
+0x0829a5f9 jne     0x829a629
+0x0829a5fb mov     dword ptr [esp + 4], 0x8c17498
+0x0829a603 mov     dword ptr [esp], 0x948b460
+0x0829a60a call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a60f mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a617 mov     dword ptr [esp], eax
+0x0829a61a call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a61f mov     ebx, 0
+0x0829a624 jmp     0x829d42b
+0x0829a629 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a631 mov     dword ptr [esp], 0xc
+0x0829a638 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829a63d mov     ebx, eax
+0x0829a63f mov     eax, ebx
+0x0829a641 test    eax, eax
+0x0829a643 je      0x829a675
+0x0829a645 mov     eax, ebx
+0x0829a647 mov     dword ptr [esp], eax
+0x0829a64a call    0x857d8f0 ; _ZN16MonitorTcpThreadC2Ev
+0x0829a64f jmp     0x829a671
+0x0829a651 mov     esi, edx
+0x0829a653 mov     edi, eax
+0x0829a655 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a65d mov     dword ptr [esp], ebx
+0x0829a660 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829a665 mov     eax, edi
+0x0829a667 mov     edx, esi
+0x0829a669 mov     dword ptr [esp], eax
+0x0829a66c call    0x8ae3750 ; _Unwind_Resume
+0x0829a671 mov     eax, ebx
+0x0829a673 jmp     0x829a677
+0x0829a675 mov     eax, ebx
+0x0829a677 mov     dword ptr [0x940bdc8], eax
+0x0829a67c mov     eax, dword ptr [0x940bdc8]
+0x0829a681 test    eax, eax
+0x0829a683 jne     0x829a6b3
+0x0829a685 mov     dword ptr [esp + 4], 0x8c174cc
+0x0829a68d mov     dword ptr [esp], 0x948b460
+0x0829a694 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a699 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a6a1 mov     dword ptr [esp], eax
+0x0829a6a4 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a6a9 mov     ebx, 0
+0x0829a6ae jmp     0x829d42b
+0x0829a6b3 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a6bb mov     dword ptr [esp], 0x30e1c
+0x0829a6c2 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829a6c7 mov     ebx, eax
+0x0829a6c9 mov     eax, ebx
+0x0829a6cb test    eax, eax
+0x0829a6cd je      0x829a6ff
+0x0829a6cf mov     eax, ebx
+0x0829a6d1 mov     dword ptr [esp], eax
+0x0829a6d4 call    0x82b314e ; _ZN15CServerProxyMgrI19CMonitorServerProxyEC2Ev
+0x0829a6d9 jmp     0x829a6fb
+0x0829a6db mov     esi, edx
+0x0829a6dd mov     edi, eax
+0x0829a6df mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a6e7 mov     dword ptr [esp], ebx
+0x0829a6ea call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829a6ef mov     eax, edi
+0x0829a6f1 mov     edx, esi
+0x0829a6f3 mov     dword ptr [esp], eax
+0x0829a6f6 call    0x8ae3750 ; _Unwind_Resume
+0x0829a6fb mov     eax, ebx
+0x0829a6fd jmp     0x829a701
+0x0829a6ff mov     eax, ebx
+0x0829a701 mov     dword ptr [0x940be28], eax
+0x0829a706 mov     eax, dword ptr [0x940be28]
+0x0829a70b test    eax, eax
+0x0829a70d jne     0x829a73d
+0x0829a70f mov     dword ptr [esp + 4], 0x8c17508
+0x0829a717 mov     dword ptr [esp], 0x948b460
+0x0829a71e call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a723 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a72b mov     dword ptr [esp], eax
+0x0829a72e call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a733 mov     ebx, 0
+0x0829a738 jmp     0x829d42b
+0x0829a73d mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a745 mov     dword ptr [esp], 0x30e34
+0x0829a74c call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829a751 mov     ebx, eax
+0x0829a753 mov     eax, ebx
+0x0829a755 test    eax, eax
+0x0829a757 je      0x829a789
+0x0829a759 mov     eax, ebx
+0x0829a75b mov     dword ptr [esp], eax
+0x0829a75e call    0x82b3212 ; _ZN15CServerProxyMgrI17CGuildServerProxyEC1Ev
+0x0829a763 jmp     0x829a785
+0x0829a765 mov     esi, edx
+0x0829a767 mov     edi, eax
+0x0829a769 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a771 mov     dword ptr [esp], ebx
+0x0829a774 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829a779 mov     eax, edi
+0x0829a77b mov     edx, esi
+0x0829a77d mov     dword ptr [esp], eax
+0x0829a780 call    0x8ae3750 ; _Unwind_Resume
+0x0829a785 mov     eax, ebx
+0x0829a787 jmp     0x829a78b
+0x0829a789 mov     eax, ebx
+0x0829a78b mov     dword ptr [0x940be2c], eax
+0x0829a790 mov     eax, dword ptr [0x940be2c]
+0x0829a795 test    eax, eax
+0x0829a797 jne     0x829a7c7
+0x0829a799 mov     dword ptr [esp + 4], 0x8c17548
+0x0829a7a1 mov     dword ptr [esp], 0x948b460
+0x0829a7a8 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a7ad mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a7b5 mov     dword ptr [esp], eax
+0x0829a7b8 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a7bd mov     ebx, 0
+0x0829a7c2 jmp     0x829d42b
+0x0829a7c7 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a7cf mov     dword ptr [esp], 0x20
+0x0829a7d6 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829a7db mov     ebx, eax
+0x0829a7dd mov     eax, ebx
+0x0829a7df test    eax, eax
+0x0829a7e1 je      0x829a813
+0x0829a7e3 mov     eax, ebx
+0x0829a7e5 mov     dword ptr [esp], eax
+0x0829a7e8 call    0x82b3296 ; _ZN15CServerProxyMgrI21CStatisticServerProxyEC1Ev
+0x0829a7ed jmp     0x829a80f
+0x0829a7ef mov     esi, edx
+0x0829a7f1 mov     edi, eax
+0x0829a7f3 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a7fb mov     dword ptr [esp], ebx
+0x0829a7fe call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829a803 mov     eax, edi
+0x0829a805 mov     edx, esi
+0x0829a807 mov     dword ptr [esp], eax
+0x0829a80a call    0x8ae3750 ; _Unwind_Resume
+0x0829a80f mov     eax, ebx
+0x0829a811 jmp     0x829a815
+0x0829a813 mov     eax, ebx
+0x0829a815 mov     dword ptr [0x940be30], eax
+0x0829a81a mov     eax, dword ptr [0x940be30]
+0x0829a81f test    eax, eax
+0x0829a821 jne     0x829a851
+0x0829a823 mov     dword ptr [esp + 4], 0x8c17584
+0x0829a82b mov     dword ptr [esp], 0x948b460
+0x0829a832 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a837 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a83f mov     dword ptr [esp], eax
+0x0829a842 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a847 mov     ebx, 0
+0x0829a84c jmp     0x829d42b
+0x0829a851 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829a856 mov     dword ptr [esp], eax
+0x0829a859 call    0x82a6e04 ; _ZN12CEnvironment16get_udp_ip_hadesEv
+0x0829a85e mov     esi, eax
+0x0829a860 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829a865 mov     dword ptr [esp], eax
+0x0829a868 call    0x82a6e20 ; _ZN12CEnvironment18get_tcp_port_hadesEv
+0x0829a86d mov     edi, eax
+0x0829a86f call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829a874 mov     dword ptr [esp], eax
+0x0829a877 call    0x82a6e12 ; _ZN12CEnvironment18get_udp_port_hadesEv
+0x0829a87c mov     dword ptr [ebp - 0x77c], eax
+0x0829a882 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a88a mov     dword ptr [esp], 0x30e1c
+0x0829a891 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829a896 mov     ebx, eax
+0x0829a898 mov     eax, ebx
+0x0829a89a test    eax, eax
+0x0829a89c je      0x829a8e0
+0x0829a89e mov     eax, ebx
+0x0829a8a0 mov     edx, dword ptr [ebp - 0x77c]
+0x0829a8a6 mov     dword ptr [esp + 0xc], edx
+0x0829a8aa mov     dword ptr [esp + 8], edi
+0x0829a8ae mov     dword ptr [esp + 4], esi
+0x0829a8b2 mov     dword ptr [esp], eax
+0x0829a8b5 call    0x8470510 ; _ZN17CHadesServerProxyC1EPcii
+0x0829a8ba jmp     0x829a8dc
+0x0829a8bc mov     esi, edx
+0x0829a8be mov     edi, eax
+0x0829a8c0 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a8c8 mov     dword ptr [esp], ebx
+0x0829a8cb call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829a8d0 mov     eax, edi
+0x0829a8d2 mov     edx, esi
+0x0829a8d4 mov     dword ptr [esp], eax
+0x0829a8d7 call    0x8ae3750 ; _Unwind_Resume
+0x0829a8dc mov     eax, ebx
+0x0829a8de jmp     0x829a8e2
+0x0829a8e0 mov     eax, ebx
+0x0829a8e2 mov     dword ptr [0x940be34], eax
+0x0829a8e7 mov     eax, dword ptr [0x940be34]
+0x0829a8ec test    eax, eax
+0x0829a8ee jne     0x829a91e
+0x0829a8f0 mov     dword ptr [esp + 4], 0x8c175c4
+0x0829a8f8 mov     dword ptr [esp], 0x948b460
+0x0829a8ff call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a904 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a90c mov     dword ptr [esp], eax
+0x0829a90f call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a914 mov     ebx, 0
+0x0829a919 jmp     0x829d42b
+0x0829a91e mov     eax, dword ptr [0x940be34]
+0x0829a923 mov     dword ptr [esp], eax
+0x0829a926 call    0x82fd460 ; _ZN15BaseServerProxy4InitEv
+0x0829a92b xor     eax, 1
+0x0829a92e test    al, al
+0x0829a930 je      0x829a960
+0x0829a932 mov     dword ptr [esp + 4], 0x8c17600
+0x0829a93a mov     dword ptr [esp], 0x948b460
+0x0829a941 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829a946 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829a94e mov     dword ptr [esp], eax
+0x0829a951 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829a956 mov     ebx, 0
+0x0829a95b jmp     0x829d42b
+0x0829a960 lea     eax, [ebp - 0x335]
+0x0829a966 mov     dword ptr [esp], eax
+0x0829a969 call    0x86e00d0 ; _ZNSaIcEC2Ev
+0x0829a96e call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829a973 mov     dword ptr [esp], eax
+0x0829a976 call    0x82a6df6 ; _ZN12CEnvironment22get_udp_ip_doublecheckEv
+0x0829a97b lea     edx, [ebp - 0x335]
+0x0829a981 mov     dword ptr [esp + 8], edx
+0x0829a985 mov     dword ptr [esp + 4], eax
+0x0829a989 lea     eax, [ebp - 0x33c]
+0x0829a98f mov     dword ptr [esp], eax
+0x0829a992 call    0x8707630 ; _ZNSsC1EPKcRKSaIcE
+0x0829a997 lea     esi, [ebp - 0x33c]
+0x0829a99d call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829a9a2 mov     dword ptr [esp], eax
+0x0829a9a5 call    0x82a6de8 ; _ZN12CEnvironment24get_udp_port_doublecheckEv
+0x0829a9aa mov     edi, eax
+0x0829a9ac mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a9b4 mov     dword ptr [esp], 0x10
+0x0829a9bb call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829a9c0 mov     ebx, eax
+0x0829a9c2 mov     eax, ebx
+0x0829a9c4 test    eax, eax
+0x0829a9c6 je      0x829a9fa
+0x0829a9c8 mov     eax, ebx
+0x0829a9ca mov     dword ptr [esp + 8], edi
+0x0829a9ce mov     dword ptr [esp + 4], esi
+0x0829a9d2 mov     dword ptr [esp], eax
+0x0829a9d5 call    0x846d300 ; _ZN27CDoubleConnCheckServerProxyC2ESsi
+0x0829a9da jmp     0x829a9f6
+0x0829a9dc mov     esi, edx
+0x0829a9de mov     edi, eax
+0x0829a9e0 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829a9e8 mov     dword ptr [esp], ebx
+0x0829a9eb call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829a9f0 mov     eax, edi
+0x0829a9f2 mov     edx, esi
+0x0829a9f4 jmp     0x829aa11
+0x0829a9f6 mov     eax, ebx
+0x0829a9f8 jmp     0x829a9fc
+0x0829a9fa mov     eax, ebx
+0x0829a9fc mov     dword ptr [0x940be38], eax
+0x0829aa01 lea     eax, [ebp - 0x33c]
+0x0829aa07 mov     dword ptr [esp], eax
+0x0829aa0a call    0x8707be0 ; _ZNSsD2Ev
+0x0829aa0f jmp     0x829aa47
+0x0829aa11 mov     ebx, edx
+0x0829aa13 mov     esi, eax
+0x0829aa15 lea     eax, [ebp - 0x33c]
+0x0829aa1b mov     dword ptr [esp], eax
+0x0829aa1e call    0x8707be0 ; _ZNSsD2Ev
+0x0829aa23 mov     eax, esi
+0x0829aa25 mov     edx, ebx
+0x0829aa27 jmp     0x829aa29
+0x0829aa29 mov     ebx, edx
+0x0829aa2b mov     esi, eax
+0x0829aa2d lea     eax, [ebp - 0x335]
+0x0829aa33 mov     dword ptr [esp], eax
+0x0829aa36 call    0x86e00f0 ; _ZNSaIcED1Ev
+0x0829aa3b mov     eax, esi
+0x0829aa3d mov     edx, ebx
+0x0829aa3f mov     dword ptr [esp], eax
+0x0829aa42 call    0x8ae3750 ; _Unwind_Resume
+0x0829aa47 lea     eax, [ebp - 0x335]
+0x0829aa4d mov     dword ptr [esp], eax
+0x0829aa50 call    0x86e00f0 ; _ZNSaIcED1Ev
+0x0829aa55 mov     eax, dword ptr [0x940be38]
+0x0829aa5a test    eax, eax
+0x0829aa5c jne     0x829aa8c
+0x0829aa5e mov     dword ptr [esp + 4], 0x8c17634
+0x0829aa66 mov     dword ptr [esp], 0x948b460
+0x0829aa6d call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829aa72 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829aa7a mov     dword ptr [esp], eax
+0x0829aa7d call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829aa82 mov     ebx, 0
+0x0829aa87 jmp     0x829d42b
+0x0829aa8c mov     eax, dword ptr [0x940be38]
+0x0829aa91 mov     dword ptr [esp], eax
+0x0829aa94 call    0x846d356 ; _ZN27CDoubleConnCheckServerProxy4InitEv
+0x0829aa99 xor     eax, 1
+0x0829aa9c test    al, al
+0x0829aa9e je      0x829aace
+0x0829aaa0 mov     dword ptr [esp + 4], 0x8c1767c
+0x0829aaa8 mov     dword ptr [esp], 0x948b460
+0x0829aaaf call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829aab4 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829aabc mov     dword ptr [esp], eax
+0x0829aabf call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829aac4 mov     ebx, 0
+0x0829aac9 jmp     0x829d42b
+0x0829aace call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829aad3 mov     dword ptr [esp], eax
+0x0829aad6 call    0x82a6e2e ; _ZN12CEnvironment20get_school_server_ipEv
+0x0829aadb movzx   eax, byte ptr [eax]
+0x0829aade test    al, al
+0x0829aae0 je      0x829aafa
+0x0829aae2 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829aae7 mov     dword ptr [esp], eax
+0x0829aaea call    0x82a6e3c ; _ZN12CEnvironment22get_school_server_portEv
+0x0829aaef test    eax, eax
+0x0829aaf1 jle     0x829aafa
+0x0829aaf3 mov     eax, 1
+0x0829aaf8 jmp     0x829aaff
+0x0829aafa mov     eax, 0
+0x0829aaff test    al, al
+0x0829ab01 je      0x829ac75
+0x0829ab07 lea     eax, [ebp - 0x32d]
+0x0829ab0d mov     dword ptr [esp], eax
+0x0829ab10 call    0x86e00d0 ; _ZNSaIcEC2Ev
+0x0829ab15 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829ab1a mov     dword ptr [esp], eax
+0x0829ab1d call    0x82a6e2e ; _ZN12CEnvironment20get_school_server_ipEv
+0x0829ab22 lea     edx, [ebp - 0x32d]
+0x0829ab28 mov     dword ptr [esp + 8], edx
+0x0829ab2c mov     dword ptr [esp + 4], eax
+0x0829ab30 lea     eax, [ebp - 0x334]
+0x0829ab36 mov     dword ptr [esp], eax
+0x0829ab39 call    0x8707630 ; _ZNSsC1EPKcRKSaIcE
+0x0829ab3e lea     esi, [ebp - 0x334]
+0x0829ab44 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829ab49 mov     dword ptr [esp], eax
+0x0829ab4c call    0x82a6e3c ; _ZN12CEnvironment22get_school_server_portEv
+0x0829ab51 mov     edi, eax
+0x0829ab53 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ab5b mov     dword ptr [esp], 0x10
+0x0829ab62 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829ab67 mov     ebx, eax
+0x0829ab69 mov     eax, ebx
+0x0829ab6b test    eax, eax
+0x0829ab6d je      0x829aba1
+0x0829ab6f mov     eax, ebx
+0x0829ab71 mov     dword ptr [esp + 8], edi
+0x0829ab75 mov     dword ptr [esp + 4], esi
+0x0829ab79 mov     dword ptr [esp], eax
+0x0829ab7c call    0x8471e24 ; _ZN18CSchoolServerProxyC2ESsi
+0x0829ab81 jmp     0x829ab9d
+0x0829ab83 mov     esi, edx
+0x0829ab85 mov     edi, eax
+0x0829ab87 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ab8f mov     dword ptr [esp], ebx
+0x0829ab92 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829ab97 mov     eax, edi
+0x0829ab99 mov     edx, esi
+0x0829ab9b jmp     0x829abb8
+0x0829ab9d mov     eax, ebx
+0x0829ab9f jmp     0x829aba3
+0x0829aba1 mov     eax, ebx
+0x0829aba3 mov     dword ptr [0x940be3c], eax
+0x0829aba8 lea     eax, [ebp - 0x334]
+0x0829abae mov     dword ptr [esp], eax
+0x0829abb1 call    0x8707be0 ; _ZNSsD2Ev
+0x0829abb6 jmp     0x829abee
+0x0829abb8 mov     ebx, edx
+0x0829abba mov     esi, eax
+0x0829abbc lea     eax, [ebp - 0x334]
+0x0829abc2 mov     dword ptr [esp], eax
+0x0829abc5 call    0x8707be0 ; _ZNSsD2Ev
+0x0829abca mov     eax, esi
+0x0829abcc mov     edx, ebx
+0x0829abce jmp     0x829abd0
+0x0829abd0 mov     ebx, edx
+0x0829abd2 mov     esi, eax
+0x0829abd4 lea     eax, [ebp - 0x32d]
+0x0829abda mov     dword ptr [esp], eax
+0x0829abdd call    0x86e00f0 ; _ZNSaIcED1Ev
+0x0829abe2 mov     eax, esi
+0x0829abe4 mov     edx, ebx
+0x0829abe6 mov     dword ptr [esp], eax
+0x0829abe9 call    0x8ae3750 ; _Unwind_Resume
+0x0829abee lea     eax, [ebp - 0x32d]
+0x0829abf4 mov     dword ptr [esp], eax
+0x0829abf7 call    0x86e00f0 ; _ZNSaIcED1Ev
+0x0829abfc mov     eax, dword ptr [0x940be3c]
+0x0829ac01 test    eax, eax
+0x0829ac03 jne     0x829ac33
+0x0829ac05 mov     dword ptr [esp + 4], 0x8c176bc
+0x0829ac0d mov     dword ptr [esp], 0x948b460
+0x0829ac14 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829ac19 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829ac21 mov     dword ptr [esp], eax
+0x0829ac24 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829ac29 mov     ebx, 0
+0x0829ac2e jmp     0x829d42b
+0x0829ac33 mov     eax, dword ptr [0x940be3c]
+0x0829ac38 mov     dword ptr [esp], eax
+0x0829ac3b call    0x8471e7a ; _ZN18CSchoolServerProxy4InitEv
+0x0829ac40 xor     eax, 1
+0x0829ac43 test    al, al
+0x0829ac45 je      0x829ac75
+0x0829ac47 mov     dword ptr [esp + 4], 0x8c176fc
+0x0829ac4f mov     dword ptr [esp], 0x948b460
+0x0829ac56 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829ac5b mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829ac63 mov     dword ptr [esp], eax
+0x0829ac66 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829ac6b mov     ebx, 0
+0x0829ac70 jmp     0x829d42b
+0x0829ac75 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829ac7a mov     dword ptr [esp], eax
+0x0829ac7d call    0x82a6e90 ; _ZN12CEnvironment20get_pcroom_server_ipEv
+0x0829ac82 mov     esi, eax
+0x0829ac84 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829ac89 mov     dword ptr [esp], eax
+0x0829ac8c call    0x82a6e82 ; _ZN12CEnvironment22get_pcroom_server_portEv
+0x0829ac91 mov     edi, eax
+0x0829ac93 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ac9b mov     dword ptr [esp], 0x30e04
+0x0829aca2 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829aca7 mov     ebx, eax
+0x0829aca9 mov     eax, ebx
+0x0829acab test    eax, eax
+0x0829acad je      0x829ace7
+0x0829acaf mov     eax, ebx
+0x0829acb1 mov     dword ptr [esp + 8], edi
+0x0829acb5 mov     dword ptr [esp + 4], esi
+0x0829acb9 mov     dword ptr [esp], eax
+0x0829acbc call    0x84717dc ; _ZN18CPCRoomServerProxyC2EPci
+0x0829acc1 jmp     0x829ace3
+0x0829acc3 mov     esi, edx
+0x0829acc5 mov     edi, eax
+0x0829acc7 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829accf mov     dword ptr [esp], ebx
+0x0829acd2 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829acd7 mov     eax, edi
+0x0829acd9 mov     edx, esi
+0x0829acdb mov     dword ptr [esp], eax
+0x0829acde call    0x8ae3750 ; _Unwind_Resume
+0x0829ace3 mov     eax, ebx
+0x0829ace5 jmp     0x829ace9
+0x0829ace7 mov     eax, ebx
+0x0829ace9 mov     dword ptr [0x940be40], eax
+0x0829acee mov     eax, dword ptr [0x940be40]
+0x0829acf3 test    eax, eax
+0x0829acf5 jne     0x829ad25
+0x0829acf7 mov     dword ptr [esp + 4], 0x8c17730
+0x0829acff mov     dword ptr [esp], 0x948b460
+0x0829ad06 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829ad0b mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829ad13 mov     dword ptr [esp], eax
+0x0829ad16 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829ad1b mov     ebx, 0
+0x0829ad20 jmp     0x829d42b
+0x0829ad25 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829ad2a mov     dword ptr [esp], eax
+0x0829ad2d call    0x82a6eac ; _ZN12CEnvironment23get_community_server_ipEv
+0x0829ad32 mov     esi, eax
+0x0829ad34 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829ad39 mov     dword ptr [esp], eax
+0x0829ad3c call    0x82a6e9e ; _ZN12CEnvironment25get_community_server_portEv
+0x0829ad41 mov     edi, eax
+0x0829ad43 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ad4b mov     dword ptr [esp], 0x30e04
+0x0829ad52 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829ad57 mov     ebx, eax
+0x0829ad59 mov     eax, ebx
+0x0829ad5b test    eax, eax
+0x0829ad5d je      0x829ad97
+0x0829ad5f mov     eax, ebx
+0x0829ad61 mov     dword ptr [esp + 8], edi
+0x0829ad65 mov     dword ptr [esp + 4], esi
+0x0829ad69 mov     dword ptr [esp], eax
+0x0829ad6c call    0x846c5c8 ; _ZN21CCommunityServerProxyC2EPci
+0x0829ad71 jmp     0x829ad93
+0x0829ad73 mov     esi, edx
+0x0829ad75 mov     edi, eax
+0x0829ad77 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ad7f mov     dword ptr [esp], ebx
+0x0829ad82 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829ad87 mov     eax, edi
+0x0829ad89 mov     edx, esi
+0x0829ad8b mov     dword ptr [esp], eax
+0x0829ad8e call    0x8ae3750 ; _Unwind_Resume
+0x0829ad93 mov     eax, ebx
+0x0829ad95 jmp     0x829ad99
+0x0829ad97 mov     eax, ebx
+0x0829ad99 mov     dword ptr [0x940be44], eax
+0x0829ad9e mov     eax, dword ptr [0x940be44]
+0x0829ada3 test    eax, eax
+0x0829ada5 jne     0x829add5
+0x0829ada7 mov     dword ptr [esp + 4], 0x8c17770
+0x0829adaf mov     dword ptr [esp], 0x948b460
+0x0829adb6 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829adbb mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829adc3 mov     dword ptr [esp], eax
+0x0829adc6 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829adcb mov     ebx, 0
+0x0829add0 jmp     0x829d42b
+0x0829add5 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829adda mov     dword ptr [esp], eax
+0x0829addd call    0x82a6ec8 ; _ZN12CEnvironment21get_auction_server_ipEv
+0x0829ade2 mov     esi, eax
+0x0829ade4 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829ade9 mov     dword ptr [esp], eax
+0x0829adec call    0x82a6eba ; _ZN12CEnvironment23get_auction_server_portEv
+0x0829adf1 mov     edi, eax
+0x0829adf3 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829adfb mov     dword ptr [esp], 0x30e10
+0x0829ae02 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829ae07 mov     ebx, eax
+0x0829ae09 mov     eax, ebx
+0x0829ae0b test    eax, eax
+0x0829ae0d je      0x829ae4f
+0x0829ae0f mov     eax, ebx
+0x0829ae11 mov     dword ptr [esp + 0xc], 0x8c177b0
+0x0829ae19 mov     dword ptr [esp + 8], edi
+0x0829ae1d mov     dword ptr [esp + 4], esi
+0x0829ae21 mov     dword ptr [esp], eax
+0x0829ae24 call    0x82f7a90 ; _ZN19CAuctionServerProxyC2EPciS0_
+0x0829ae29 jmp     0x829ae4b
+0x0829ae2b mov     esi, edx
+0x0829ae2d mov     edi, eax
+0x0829ae2f mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ae37 mov     dword ptr [esp], ebx
+0x0829ae3a call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829ae3f mov     eax, edi
+0x0829ae41 mov     edx, esi
+0x0829ae43 mov     dword ptr [esp], eax
+0x0829ae46 call    0x8ae3750 ; _Unwind_Resume
+0x0829ae4b mov     eax, ebx
+0x0829ae4d jmp     0x829ae51
+0x0829ae4f mov     eax, ebx
+0x0829ae51 mov     dword ptr [0x940be48], eax
+0x0829ae56 mov     eax, dword ptr [0x940be48]
+0x0829ae5b test    eax, eax
+0x0829ae5d jne     0x829ae8d
+0x0829ae5f mov     dword ptr [esp + 4], 0x8c177c0
+0x0829ae67 mov     dword ptr [esp], 0x948b460
+0x0829ae6e call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829ae73 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829ae7b mov     dword ptr [esp], eax
+0x0829ae7e call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829ae83 mov     ebx, 0
+0x0829ae88 jmp     0x829d42b
+0x0829ae8d call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829ae92 mov     dword ptr [esp], eax
+0x0829ae95 call    0x82a6ee4 ; _ZN12CEnvironment26get_cera_auction_server_ipEv
+0x0829ae9a mov     esi, eax
+0x0829ae9c call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829aea1 mov     dword ptr [esp], eax
+0x0829aea4 call    0x82a6ed6 ; _ZN12CEnvironment28get_cera_auction_server_portEv
+0x0829aea9 mov     edi, eax
+0x0829aeab mov     dword ptr [esp + 4], 0x8d01a87
+0x0829aeb3 mov     dword ptr [esp], 0x30e10
+0x0829aeba call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829aebf mov     ebx, eax
+0x0829aec1 mov     eax, ebx
+0x0829aec3 test    eax, eax
+0x0829aec5 je      0x829af07
+0x0829aec7 mov     eax, ebx
+0x0829aec9 mov     dword ptr [esp + 0xc], 0x8c177fe
+0x0829aed1 mov     dword ptr [esp + 8], edi
+0x0829aed5 mov     dword ptr [esp + 4], esi
+0x0829aed9 mov     dword ptr [esp], eax
+0x0829aedc call    0x82f7ba0 ; _ZN23CCeraAuctionServerProxyC1EPciS0_
+0x0829aee1 jmp     0x829af03
+0x0829aee3 mov     esi, edx
+0x0829aee5 mov     edi, eax
+0x0829aee7 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829aeef mov     dword ptr [esp], ebx
+0x0829aef2 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829aef7 mov     eax, edi
+0x0829aef9 mov     edx, esi
+0x0829aefb mov     dword ptr [esp], eax
+0x0829aefe call    0x8ae3750 ; _Unwind_Resume
+0x0829af03 mov     eax, ebx
+0x0829af05 jmp     0x829af09
+0x0829af07 mov     eax, ebx
+0x0829af09 mov     dword ptr [0x940be4c], eax
+0x0829af0e mov     eax, dword ptr [0x940be4c]
+0x0829af13 test    eax, eax
+0x0829af15 jne     0x829af45
+0x0829af17 mov     dword ptr [esp + 4], 0x8c17814
+0x0829af1f mov     dword ptr [esp], 0x948b460
+0x0829af26 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829af2b mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829af33 mov     dword ptr [esp], eax
+0x0829af36 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829af3b mov     ebx, 0
+0x0829af40 jmp     0x829d42b
+0x0829af45 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829af4d mov     dword ptr [esp], 0x208
+0x0829af54 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829af59 mov     ebx, eax
+0x0829af5b mov     eax, ebx
+0x0829af5d test    eax, eax
+0x0829af5f je      0x829af91
+0x0829af61 mov     eax, ebx
+0x0829af63 mov     dword ptr [esp], eax
+0x0829af66 call    0x847e998 ; _ZN13CPowerManagerC1Ev
+0x0829af6b jmp     0x829af8d
+0x0829af6d mov     esi, edx
+0x0829af6f mov     edi, eax
+0x0829af71 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829af79 mov     dword ptr [esp], ebx
+0x0829af7c call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829af81 mov     eax, edi
+0x0829af83 mov     edx, esi
+0x0829af85 mov     dword ptr [esp], eax
+0x0829af88 call    0x8ae3750 ; _Unwind_Resume
+0x0829af8d mov     eax, ebx
+0x0829af8f jmp     0x829af93
+0x0829af91 mov     eax, ebx
+0x0829af93 mov     dword ptr [0x940be50], eax
+0x0829af98 mov     eax, dword ptr [0x940be50]
+0x0829af9d test    eax, eax
+0x0829af9f jne     0x829afcf
+0x0829afa1 mov     dword ptr [esp + 4], 0x8c17858
+0x0829afa9 mov     dword ptr [esp], 0x948b460
+0x0829afb0 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829afb5 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829afbd mov     dword ptr [esp], eax
+0x0829afc0 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829afc5 mov     ebx, 0
+0x0829afca jmp     0x829d42b
+0x0829afcf mov     eax, dword ptr [0x940be50]
+0x0829afd4 mov     dword ptr [esp], eax
+0x0829afd7 call    0x847eabc ; _ZN13CPowerManager4InitEv
+0x0829afdc xor     eax, 1
+0x0829afdf test    al, al
+0x0829afe1 je      0x829b011
+0x0829afe3 mov     dword ptr [esp + 4], 0x8c17890
+0x0829afeb mov     dword ptr [esp], 0x948b460
+0x0829aff2 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829aff7 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829afff mov     dword ptr [esp], eax
+0x0829b002 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829b007 mov     ebx, 0
+0x0829b00c jmp     0x829d42b
+0x0829b011 mov     eax, dword ptr [0x940be50]
+0x0829b016 mov     dword ptr [esp], eax
+0x0829b019 call    0x8480d98 ; _ZN13CPowerManager16LoadPowerWarInfoEv
+0x0829b01e mov     eax, dword ptr [0x940be50]
+0x0829b023 mov     dword ptr [esp], eax
+0x0829b026 call    0x847f4fe ; _ZN13CPowerManager14LoadRankerInfoEv
+0x0829b02b mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b033 mov     dword ptr [esp], 1
+0x0829b03a call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829b03f mov     ebx, eax
+0x0829b041 mov     eax, ebx
+0x0829b043 test    eax, eax
+0x0829b045 je      0x829b077
+0x0829b047 mov     eax, ebx
+0x0829b049 mov     dword ptr [esp], eax
+0x0829b04c call    0x84a7ff8 ; _ZN21CFatigueBatteryHandleC2Ev
+0x0829b051 jmp     0x829b073
+0x0829b053 mov     esi, edx
+0x0829b055 mov     edi, eax
+0x0829b057 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b05f mov     dword ptr [esp], ebx
+0x0829b062 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829b067 mov     eax, edi
+0x0829b069 mov     edx, esi
+0x0829b06b mov     dword ptr [esp], eax
+0x0829b06e call    0x8ae3750 ; _Unwind_Resume
+0x0829b073 mov     eax, ebx
+0x0829b075 jmp     0x829b079
+0x0829b077 mov     eax, ebx
+0x0829b079 mov     dword ptr [0x940be58], eax
+0x0829b07e mov     eax, dword ptr [0x940be58]
+0x0829b083 test    eax, eax
+0x0829b085 jne     0x829b0b5
+0x0829b087 mov     dword ptr [esp + 4], 0x8c178c4
+0x0829b08f mov     dword ptr [esp], 0x948b460
+0x0829b096 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829b09b mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829b0a3 mov     dword ptr [esp], eax
+0x0829b0a6 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829b0ab mov     ebx, 0
+0x0829b0b0 jmp     0x829d42b
+0x0829b0b5 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b0bd mov     dword ptr [esp], 0x64
+0x0829b0c4 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829b0c9 mov     ebx, eax
+0x0829b0cb mov     eax, ebx
+0x0829b0cd test    eax, eax
+0x0829b0cf je      0x829b101
+0x0829b0d1 mov     eax, ebx
+0x0829b0d3 mov     dword ptr [esp], eax
+0x0829b0d6 call    0x85fa930 ; _ZN10secretshop11CSecretShopC1Ev
+0x0829b0db jmp     0x829b0fd
+0x0829b0dd mov     esi, edx
+0x0829b0df mov     edi, eax
+0x0829b0e1 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b0e9 mov     dword ptr [esp], ebx
+0x0829b0ec call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829b0f1 mov     eax, edi
+0x0829b0f3 mov     edx, esi
+0x0829b0f5 mov     dword ptr [esp], eax
+0x0829b0f8 call    0x8ae3750 ; _Unwind_Resume
+0x0829b0fd mov     eax, ebx
+0x0829b0ff jmp     0x829b103
+0x0829b101 mov     eax, ebx
+0x0829b103 mov     dword ptr [0x940be54], eax
+0x0829b108 mov     eax, dword ptr [0x940be54]
+0x0829b10d test    eax, eax
+0x0829b10f jne     0x829b13f
+0x0829b111 mov     dword ptr [esp + 4], 0x8c17904
+0x0829b119 mov     dword ptr [esp], 0x948b460
+0x0829b120 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829b125 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829b12d mov     dword ptr [esp], eax
+0x0829b130 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829b135 mov     ebx, 0
+0x0829b13a jmp     0x829d42b
+0x0829b13f lea     eax, [ebp - 0x325]
+0x0829b145 mov     dword ptr [esp], eax
+0x0829b148 call    0x86e00d0 ; _ZNSaIcEC2Ev
+0x0829b14d call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829b152 mov     dword ptr [esp], eax
+0x0829b155 call    0x82a6e58 ; _ZN12CEnvironment18get_udp_ip_channelEv
+0x0829b15a lea     edx, [ebp - 0x325]
+0x0829b160 mov     dword ptr [esp + 8], edx
+0x0829b164 mov     dword ptr [esp + 4], eax
+0x0829b168 lea     eax, [ebp - 0x32c]
+0x0829b16e mov     dword ptr [esp], eax
+0x0829b171 call    0x8707630 ; _ZNSsC1EPKcRKSaIcE
+0x0829b176 lea     esi, [ebp - 0x32c]
+0x0829b17c call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829b181 mov     dword ptr [esp], eax
+0x0829b184 call    0x82a6e4a ; _ZN12CEnvironment20get_udp_port_channelEv
+0x0829b189 mov     edi, eax
+0x0829b18b mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b193 mov     dword ptr [esp], 0x80020
+0x0829b19a call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829b19f mov     ebx, eax
+0x0829b1a1 mov     eax, ebx
+0x0829b1a3 test    eax, eax
+0x0829b1a5 je      0x829b1d9
+0x0829b1a7 mov     eax, ebx
+0x0829b1a9 mov     dword ptr [esp + 8], edi
+0x0829b1ad mov     dword ptr [esp + 4], esi
+0x0829b1b1 mov     dword ptr [esp], eax
+0x0829b1b4 call    0x81060f4 ; _ZN15CmmChannelProxyC1ESsi
+0x0829b1b9 jmp     0x829b1d5
+0x0829b1bb mov     esi, edx
+0x0829b1bd mov     edi, eax
+0x0829b1bf mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b1c7 mov     dword ptr [esp], ebx
+0x0829b1ca call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829b1cf mov     eax, edi
+0x0829b1d1 mov     edx, esi
+0x0829b1d3 jmp     0x829b1f0
+0x0829b1d5 mov     eax, ebx
+0x0829b1d7 jmp     0x829b1db
+0x0829b1d9 mov     eax, ebx
+0x0829b1db mov     dword ptr [0x940be5c], eax
+0x0829b1e0 lea     eax, [ebp - 0x32c]
+0x0829b1e6 mov     dword ptr [esp], eax
+0x0829b1e9 call    0x8707be0 ; _ZNSsD2Ev
+0x0829b1ee jmp     0x829b226
+0x0829b1f0 mov     ebx, edx
+0x0829b1f2 mov     esi, eax
+0x0829b1f4 lea     eax, [ebp - 0x32c]
+0x0829b1fa mov     dword ptr [esp], eax
+0x0829b1fd call    0x8707be0 ; _ZNSsD2Ev
+0x0829b202 mov     eax, esi
+0x0829b204 mov     edx, ebx
+0x0829b206 jmp     0x829b208
+0x0829b208 mov     ebx, edx
+0x0829b20a mov     esi, eax
+0x0829b20c lea     eax, [ebp - 0x325]
+0x0829b212 mov     dword ptr [esp], eax
+0x0829b215 call    0x86e00f0 ; _ZNSaIcED1Ev
+0x0829b21a mov     eax, esi
+0x0829b21c mov     edx, ebx
+0x0829b21e mov     dword ptr [esp], eax
+0x0829b221 call    0x8ae3750 ; _Unwind_Resume
+0x0829b226 lea     eax, [ebp - 0x325]
+0x0829b22c mov     dword ptr [esp], eax
+0x0829b22f call    0x86e00f0 ; _ZNSaIcED1Ev
+0x0829b234 mov     eax, dword ptr [0x940be5c]
+0x0829b239 test    eax, eax
+0x0829b23b jne     0x829b26b
+0x0829b23d mov     dword ptr [esp + 4], 0x8c17940
+0x0829b245 mov     dword ptr [esp], 0x948b460
+0x0829b24c call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829b251 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829b259 mov     dword ptr [esp], eax
+0x0829b25c call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829b261 mov     ebx, 0
+0x0829b266 jmp     0x829d42b
+0x0829b26b mov     eax, dword ptr [0x940be5c]
+0x0829b270 mov     dword ptr [esp], eax
+0x0829b273 call    0x810614a ; _ZN15CmmChannelProxy4InitEv
+0x0829b278 xor     eax, 1
+0x0829b27b test    al, al
+0x0829b27d je      0x829b2ad
+0x0829b27f mov     dword ptr [esp + 4], 0x8c17980
+0x0829b287 mov     dword ptr [esp], 0x948b460
+0x0829b28e call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829b293 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829b29b mov     dword ptr [esp], eax
+0x0829b29e call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829b2a3 mov     ebx, 0
+0x0829b2a8 jmp     0x829d42b
+0x0829b2ad mov     dword ptr [esp], 0x47c
+0x0829b2b4 call    0x8724450 ; _Znwj
+0x0829b2b9 mov     ebx, eax
+0x0829b2bb mov     eax, ebx
+0x0829b2bd mov     dword ptr [esp], eax
+0x0829b2c0 call    0x80b60ac ; _ZN9CRijndaelC2Ev
+0x0829b2c5 jmp     0x829b2df
+0x0829b2c7 mov     esi, edx
+0x0829b2c9 mov     edi, eax
+0x0829b2cb mov     dword ptr [esp], ebx
+0x0829b2ce call    0x87244f0 ; _ZdlPv
+0x0829b2d3 mov     eax, edi
+0x0829b2d5 mov     edx, esi
+0x0829b2d7 mov     dword ptr [esp], eax
+0x0829b2da call    0x8ae3750 ; _Unwind_Resume
+0x0829b2df mov     eax, ebx
+0x0829b2e1 mov     dword ptr [0x940be60], eax
+0x0829b2e6 mov     eax, dword ptr [0x940be60]
+0x0829b2eb mov     dword ptr [esp + 0x1c], 0
+0x0829b2f3 mov     dword ptr [esp + 0x18], 0
+0x0829b2fb mov     dword ptr [esp + 0x14], 0x10
+0x0829b303 mov     dword ptr [esp + 0x10], 0x10
+0x0829b30b mov     dword ptr [esp + 0xc], 0x8b22f20
+0x0829b313 mov     dword ptr [esp + 8], 0x20
+0x0829b31b mov     dword ptr [esp + 4], 0x8c179b4
+0x0829b323 mov     dword ptr [esp], eax
+0x0829b326 call    0x80b6220 ; _ZN9CRijndael10InitializeEPKciS1_iiii
+0x0829b32b mov     dword ptr [esp], 0x47c
+0x0829b332 call    0x8724450 ; _Znwj
+0x0829b337 mov     ebx, eax
+0x0829b339 mov     eax, ebx
+0x0829b33b mov     dword ptr [esp], eax
+0x0829b33e call    0x80b60ac ; _ZN9CRijndaelC2Ev
+0x0829b343 jmp     0x829b35d
+0x0829b345 mov     esi, edx
+0x0829b347 mov     edi, eax
+0x0829b349 mov     dword ptr [esp], ebx
+0x0829b34c call    0x87244f0 ; _ZdlPv
+0x0829b351 mov     eax, edi
+0x0829b353 mov     edx, esi
+0x0829b355 mov     dword ptr [esp], eax
+0x0829b358 call    0x8ae3750 ; _Unwind_Resume
+0x0829b35d mov     eax, ebx
+0x0829b35f mov     dword ptr [0x940be64], eax
+0x0829b364 mov     eax, dword ptr [0x940be64]
+0x0829b369 mov     dword ptr [esp + 0x1c], 0
+0x0829b371 mov     dword ptr [esp + 0x18], 0
+0x0829b379 mov     dword ptr [esp + 0x14], 0x10
+0x0829b381 mov     dword ptr [esp + 0x10], 0x10
+0x0829b389 mov     dword ptr [esp + 0xc], 0x8b22f20
+0x0829b391 mov     dword ptr [esp + 8], 0x20
+0x0829b399 mov     dword ptr [esp + 4], 0x8c179c5
+0x0829b3a1 mov     dword ptr [esp], eax
+0x0829b3a4 call    0x80b6220 ; _ZN9CRijndael10InitializeEPKciS1_iiii
+0x0829b3a9 mov     dword ptr [esp], 0x47c
+0x0829b3b0 call    0x8724450 ; _Znwj
+0x0829b3b5 mov     ebx, eax
+0x0829b3b7 mov     eax, ebx
+0x0829b3b9 mov     dword ptr [esp], eax
+0x0829b3bc call    0x80b60ac ; _ZN9CRijndaelC2Ev
+0x0829b3c1 jmp     0x829b3db
+0x0829b3c3 mov     esi, edx
+0x0829b3c5 mov     edi, eax
+0x0829b3c7 mov     dword ptr [esp], ebx
+0x0829b3ca call    0x87244f0 ; _ZdlPv
+0x0829b3cf mov     eax, edi
+0x0829b3d1 mov     edx, esi
+0x0829b3d3 mov     dword ptr [esp], eax
+0x0829b3d6 call    0x8ae3750 ; _Unwind_Resume
+0x0829b3db mov     eax, ebx
+0x0829b3dd mov     dword ptr [0x940be68], eax
+0x0829b3e2 mov     eax, dword ptr [0x940be68]
+0x0829b3e7 mov     dword ptr [esp + 0x1c], 0
+0x0829b3ef mov     dword ptr [esp + 0x18], 0
+0x0829b3f7 mov     dword ptr [esp + 0x14], 0x10
+0x0829b3ff mov     dword ptr [esp + 0x10], 0x10
+0x0829b407 mov     dword ptr [esp + 0xc], 0x8b22f20
+0x0829b40f mov     dword ptr [esp + 8], 0x20
+0x0829b417 mov     dword ptr [esp + 4], 0x8c179d6
+0x0829b41f mov     dword ptr [esp], eax
+0x0829b422 call    0x80b6220 ; _ZN9CRijndael10InitializeEPKciS1_iiii
+0x0829b427 mov     dword ptr [esp], 0x48
+0x0829b42e call    0x8724450 ; _Znwj
+0x0829b433 mov     ebx, eax
+0x0829b435 mov     eax, ebx
+0x0829b437 mov     dword ptr [esp], eax
+0x0829b43a call    0x80c32f4 ; _ZN4CTEAC2Ev
+0x0829b43f jmp     0x829b459
+0x0829b441 mov     esi, edx
+0x0829b443 mov     edi, eax
+0x0829b445 mov     dword ptr [esp], ebx
+0x0829b448 call    0x87244f0 ; _ZdlPv
+0x0829b44d mov     eax, edi
+0x0829b44f mov     edx, esi
+0x0829b451 mov     dword ptr [esp], eax
+0x0829b454 call    0x8ae3750 ; _Unwind_Resume
+0x0829b459 mov     eax, ebx
+0x0829b45b mov     dword ptr [0x941f700], eax
+0x0829b460 mov     eax, dword ptr [0x941f700]
+0x0829b465 mov     dword ptr [esp + 0x14], 0
+0x0829b46d mov     dword ptr [esp + 0x10], 0
+0x0829b475 mov     dword ptr [esp + 0xc], 0x8b23368
+0x0829b47d mov     dword ptr [esp + 8], 0x10
+0x0829b485 mov     dword ptr [esp + 4], 0x8c179e7
+0x0829b48d mov     dword ptr [esp], eax
+0x0829b490 call    0x80c339c ; _ZN4CTEA10InitializeEPKciS1_ii
+0x0829b495 mov     dword ptr [esp], 0x48
+0x0829b49c call    0x8724450 ; _Znwj
+0x0829b4a1 mov     ebx, eax
+0x0829b4a3 mov     eax, ebx
+0x0829b4a5 mov     dword ptr [esp], eax
+0x0829b4a8 call    0x80c32f4 ; _ZN4CTEAC2Ev
+0x0829b4ad jmp     0x829b4c7
+0x0829b4af mov     esi, edx
+0x0829b4b1 mov     edi, eax
+0x0829b4b3 mov     dword ptr [esp], ebx
+0x0829b4b6 call    0x87244f0 ; _ZdlPv
+0x0829b4bb mov     eax, edi
+0x0829b4bd mov     edx, esi
+0x0829b4bf mov     dword ptr [esp], eax
+0x0829b4c2 call    0x8ae3750 ; _Unwind_Resume
+0x0829b4c7 mov     eax, ebx
+0x0829b4c9 mov     dword ptr [0x941f704], eax
+0x0829b4ce mov     eax, dword ptr [0x941f704]
+0x0829b4d3 mov     dword ptr [esp + 0x14], 0
+0x0829b4db mov     dword ptr [esp + 0x10], 0
+0x0829b4e3 mov     dword ptr [esp + 0xc], 0x8b23368
+0x0829b4eb mov     dword ptr [esp + 8], 0x10
+0x0829b4f3 mov     dword ptr [esp + 4], 0x8c179f8
+0x0829b4fb mov     dword ptr [esp], eax
+0x0829b4fe call    0x80c339c ; _ZN4CTEA10InitializeEPKciS1_ii
+0x0829b503 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b50b mov     dword ptr [esp], 0x10
+0x0829b512 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829b517 mov     ebx, eax
+0x0829b519 mov     eax, ebx
+0x0829b51b test    eax, eax
+0x0829b51d je      0x829b52d
+0x0829b51f mov     eax, ebx
+0x0829b521 mov     dword ptr [esp], eax
+0x0829b524 call    0x82a71c4 ; _ZN8WongWork15CLogGameChannelC1Ev
+0x0829b529 mov     eax, ebx
+0x0829b52b jmp     0x829b52f
+0x0829b52d mov     eax, ebx
+0x0829b52f mov     dword ptr [0x941f740], eax
+0x0829b534 mov     eax, dword ptr [0x941f740]
+0x0829b539 mov     dword ptr [esp], eax
+0x0829b53c call    0x85503ea ; _ZN8WongWork15CLogGameChannel13StartLogTimerEv
+0x0829b541 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b549 mov     dword ptr [esp], 8
+0x0829b550 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829b555 mov     ebx, eax
+0x0829b557 mov     eax, ebx
+0x0829b559 test    eax, eax
+0x0829b55b je      0x829b58d
+0x0829b55d mov     eax, ebx
+0x0829b55f mov     dword ptr [esp], eax
+0x0829b562 call    0x83202b8 ; _ZN8WongWork9CCeraShopC2Ev
+0x0829b567 jmp     0x829b589
+0x0829b569 mov     esi, edx
+0x0829b56b mov     edi, eax
+0x0829b56d mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b575 mov     dword ptr [esp], ebx
+0x0829b578 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829b57d mov     eax, edi
+0x0829b57f mov     edx, esi
+0x0829b581 mov     dword ptr [esp], eax
+0x0829b584 call    0x8ae3750 ; _Unwind_Resume
+0x0829b589 mov     eax, ebx
+0x0829b58b jmp     0x829b58f
+0x0829b58d mov     eax, ebx
+0x0829b58f mov     dword ptr [0x941f744], eax
+0x0829b594 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b59c mov     dword ptr [esp], 0x20
+0x0829b5a3 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829b5a8 mov     ebx, eax
+0x0829b5aa mov     eax, ebx
+0x0829b5ac test    eax, eax
+0x0829b5ae je      0x829b5e0
+0x0829b5b0 mov     eax, ebx
+0x0829b5b2 mov     dword ptr [esp], eax
+0x0829b5b5 call    0x854c3e4 ; _ZN18ItemVendingMachineC2Ev
+0x0829b5ba jmp     0x829b5dc
+0x0829b5bc mov     esi, edx
+0x0829b5be mov     edi, eax
+0x0829b5c0 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b5c8 mov     dword ptr [esp], ebx
+0x0829b5cb call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829b5d0 mov     eax, edi
+0x0829b5d2 mov     edx, esi
+0x0829b5d4 mov     dword ptr [esp], eax
+0x0829b5d7 call    0x8ae3750 ; _Unwind_Resume
+0x0829b5dc mov     eax, ebx
+0x0829b5de jmp     0x829b5e2
+0x0829b5e0 mov     eax, ebx
+0x0829b5e2 mov     dword ptr [0x941f760], eax
+0x0829b5e7 mov     dword ptr [esp], 1
+0x0829b5ee call    0x8724450 ; _Znwj
+0x0829b5f3 mov     ebx, eax
+0x0829b5f5 mov     eax, ebx
+0x0829b5f7 mov     dword ptr [esp], eax
+0x0829b5fa call    0x82aa6ba ; _ZN16Secu_DataControlC1Ev
+0x0829b5ff mov     eax, ebx
+0x0829b601 mov     dword ptr [0x941f7c8], eax
+0x0829b606 mov     dword ptr [esp], 0x18
+0x0829b60d call    0x8724450 ; _Znwj
+0x0829b612 mov     ebx, eax
+0x0829b614 mov     eax, ebx
+0x0829b616 mov     dword ptr [esp], eax
+0x0829b619 call    0x82aa6d4 ; _ZN21CSecu_ProtectionFieldC1Ev
+0x0829b61e jmp     0x829b638
+0x0829b620 mov     esi, edx
+0x0829b622 mov     edi, eax
+0x0829b624 mov     dword ptr [esp], ebx
+0x0829b627 call    0x87244f0 ; _ZdlPv
+0x0829b62c mov     eax, edi
+0x0829b62e mov     edx, esi
+0x0829b630 mov     dword ptr [esp], eax
+0x0829b633 call    0x8ae3750 ; _Unwind_Resume
+0x0829b638 mov     eax, ebx
+0x0829b63a mov     dword ptr [0x941f7cc], eax
+0x0829b63f mov     dword ptr [esp], 0x18
+0x0829b646 call    0x8724450 ; _Znwj
+0x0829b64b mov     ebx, eax
+0x0829b64d mov     eax, ebx
+0x0829b64f mov     dword ptr [esp], eax
+0x0829b652 call    0x82a5a88 ; _ZN8WongWork25CAutoPunishRuleBlackIPMgrC2Ev
+0x0829b657 jmp     0x829b671
+0x0829b659 mov     esi, edx
+0x0829b65b mov     edi, eax
+0x0829b65d mov     dword ptr [esp], ebx
+0x0829b660 call    0x87244f0 ; _ZdlPv
+0x0829b665 mov     eax, edi
+0x0829b667 mov     edx, esi
+0x0829b669 mov     dword ptr [esp], eax
+0x0829b66c call    0x8ae3750 ; _Unwind_Resume
+0x0829b671 mov     eax, ebx
+0x0829b673 mov     dword ptr [0x941f7d0], eax
+0x0829b678 mov     eax, dword ptr [0x941f7d0]
+0x0829b67d mov     dword ptr [esp], eax
+0x0829b680 call    0x82a5a74 ; _ZN8WongWork25CAutoPunishRuleBlackIPMgr5resetEv
+0x0829b685 mov     dword ptr [esp], 0x70
+0x0829b68c call    0x8724450 ; _Znwj
+0x0829b691 mov     ebx, eax
+0x0829b693 mov     eax, ebx
+0x0829b695 mov     dword ptr [esp], eax
+0x0829b698 call    0x82a5b1a ; _ZN8WongWork26CAutoPunishRuleHackTypeMgrC2Ev
+0x0829b69d jmp     0x829b6b7
+0x0829b69f mov     esi, edx
+0x0829b6a1 mov     edi, eax
+0x0829b6a3 mov     dword ptr [esp], ebx
+0x0829b6a6 call    0x87244f0 ; _ZdlPv
+0x0829b6ab mov     eax, edi
+0x0829b6ad mov     edx, esi
+0x0829b6af mov     dword ptr [esp], eax
+0x0829b6b2 call    0x8ae3750 ; _Unwind_Resume
+0x0829b6b7 mov     eax, ebx
+0x0829b6b9 mov     dword ptr [0x941f7d4], eax
+0x0829b6be mov     eax, dword ptr [0x941f7d4]
+0x0829b6c3 mov     dword ptr [esp], eax
+0x0829b6c6 call    0x82a5a9c ; _ZN8WongWork26CAutoPunishRuleHackTypeMgr5resetEv
+0x0829b6cb mov     dword ptr [esp], 0x18
+0x0829b6d2 call    0x8724450 ; _Znwj
+0x0829b6d7 mov     ebx, eax
+0x0829b6d9 mov     eax, ebx
+0x0829b6db mov     dword ptr [esp], eax
+0x0829b6de call    0x82a6526 ; _ZN8WongWork15CBlackIPMonitorC1Ev
+0x0829b6e3 jmp     0x829b6fd
+0x0829b6e5 mov     esi, edx
+0x0829b6e7 mov     edi, eax
+0x0829b6e9 mov     dword ptr [esp], ebx
+0x0829b6ec call    0x87244f0 ; _ZdlPv
+0x0829b6f1 mov     eax, edi
+0x0829b6f3 mov     edx, esi
+0x0829b6f5 mov     dword ptr [esp], eax
+0x0829b6f8 call    0x8ae3750 ; _Unwind_Resume
+0x0829b6fd mov     eax, ebx
+0x0829b6ff mov     dword ptr [0x941f7d8], eax
+0x0829b704 mov     eax, dword ptr [0x941f7d8]
+0x0829b709 mov     dword ptr [esp], eax
+0x0829b70c call    0x82a6512 ; _ZN8WongWork15CBlackIPMonitor5resetEv
+0x0829b711 mov     dword ptr [esp], 0x10
+0x0829b718 call    0x8724450 ; _Znwj
+0x0829b71d mov     ebx, eax
+0x0829b71f mov     eax, ebx
+0x0829b721 mov     dword ptr [esp], eax
+0x0829b724 call    0x857cbe8 ; _ZN12AcceptThreadC1Ev
+0x0829b729 jmp     0x829b743
+0x0829b72b mov     esi, edx
+0x0829b72d mov     edi, eax
+0x0829b72f mov     dword ptr [esp], ebx
+0x0829b732 call    0x87244f0 ; _ZdlPv
+0x0829b737 mov     eax, edi
+0x0829b739 mov     edx, esi
+0x0829b73b mov     dword ptr [esp], eax
+0x0829b73e call    0x8ae3750 ; _Unwind_Resume
+0x0829b743 mov     eax, ebx
+0x0829b745 mov     dword ptr [0x940bdc4], eax
+0x0829b74a mov     eax, dword ptr [0x940bdc4]
+0x0829b74f test    eax, eax
+0x0829b751 jne     0x829b781
+0x0829b753 mov     dword ptr [esp + 4], 0x8c17a0c
+0x0829b75b mov     dword ptr [esp], 0x948b460
+0x0829b762 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829b767 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829b76f mov     dword ptr [esp], eax
+0x0829b772 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829b777 mov     ebx, 0
+0x0829b77c jmp     0x829d42b
+0x0829b781 mov     dword ptr [esp], 0x14c
+0x0829b788 call    0x8724450 ; _Znwj
+0x0829b78d mov     ebx, eax
+0x0829b78f mov     eax, ebx
+0x0829b791 mov     dword ptr [esp], eax
+0x0829b794 call    0x85d46e6 ; _ZN11RefPvpGradeC1Ev
+0x0829b799 jmp     0x829b7b3
+0x0829b79b mov     esi, edx
+0x0829b79d mov     edi, eax
+0x0829b79f mov     dword ptr [esp], ebx
+0x0829b7a2 call    0x87244f0 ; _ZdlPv
+0x0829b7a7 mov     eax, edi
+0x0829b7a9 mov     edx, esi
+0x0829b7ab mov     dword ptr [esp], eax
+0x0829b7ae call    0x8ae3750 ; _Unwind_Resume
+0x0829b7b3 mov     eax, ebx
+0x0829b7b5 mov     dword ptr [0x941f73c], eax
+0x0829b7ba mov     eax, dword ptr [0x941f73c]
+0x0829b7bf test    eax, eax
+0x0829b7c1 jne     0x829b7f1
+0x0829b7c3 mov     dword ptr [esp + 4], 0x8c17a44
+0x0829b7cb mov     dword ptr [esp], 0x948b460
+0x0829b7d2 call    0x86fd300 ; _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+0x0829b7d7 mov     dword ptr [esp + 4], 0x86fd7b0
+0x0829b7df mov     dword ptr [esp], eax
+0x0829b7e2 call    0x86fb860 ; _ZNSolsEPFRSoS_E
+0x0829b7e7 mov     ebx, 0
+0x0829b7ec jmp     0x829d42b
+0x0829b7f1 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b7f9 mov     dword ptr [esp], 0x16c
+0x0829b800 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829b805 mov     ebx, eax
+0x0829b807 mov     eax, ebx
+0x0829b809 test    eax, eax
+0x0829b80b je      0x829b847
+0x0829b80d mov     edx, dword ptr [0x940bdac]
+0x0829b813 mov     eax, ebx
+0x0829b815 mov     dword ptr [esp + 4], edx
+0x0829b819 mov     dword ptr [esp], eax
+0x0829b81c call    0x80ec5fc ; _ZN12CDBConnectorC1EP5DBMgr
+0x0829b821 jmp     0x829b843
+0x0829b823 mov     esi, edx
+0x0829b825 mov     edi, eax
+0x0829b827 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829b82f mov     dword ptr [esp], ebx
+0x0829b832 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829b837 mov     eax, edi
+0x0829b839 mov     edx, esi
+0x0829b83b mov     dword ptr [esp], eax
+0x0829b83e call    0x8ae3750 ; _Unwind_Resume
+0x0829b843 mov     eax, ebx
+0x0829b845 jmp     0x829b849
+0x0829b847 mov     eax, ebx
+0x0829b849 mov     dword ptr [0x941f748], eax
+0x0829b84e mov     eax, dword ptr [0x941f748]
+0x0829b853 test    eax, eax
+0x0829b855 jne     0x829b861
+0x0829b857 mov     ebx, 0
+0x0829b85c jmp     0x829d42b
+0x0829b861 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829b866 add     eax, 0x68
+0x0829b869 mov     dword ptr [ebp - 0x38], eax
+0x0829b86c call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829b871 mov     eax, dword ptr [eax + 0x378]
+0x0829b877 mov     dword ptr [ebp - 0x340], eax
+0x0829b87d lea     eax, [ebp - 0x358]
+0x0829b883 mov     dword ptr [esp], eax
+0x0829b886 call    0x82b3306 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUPSt4lessIS0_ESaISt4pairIKS0_S1_EEEC1Ev
+0x0829b88b mov     dword ptr [ebp - 0x20], 1
+0x0829b892 jmp     0x829b903
+0x0829b894 mov     eax, dword ptr [ebp - 0x20]
+0x0829b897 mov     dword ptr [ebp - 0x30c], eax
+0x0829b89d lea     eax, [ebp - 0x314]
+0x0829b8a3 lea     edx, [ebp - 0x340]
+0x0829b8a9 mov     dword ptr [esp + 8], edx
+0x0829b8ad lea     edx, [ebp - 0x30c]
+0x0829b8b3 mov     dword ptr [esp + 4], edx
+0x0829b8b7 mov     dword ptr [esp], eax
+0x0829b8ba call    0x82b337f ; _ZSt9make_pairI18ENUM_DB_HANDLE_IDXR17ENUM_SERVER_GROUPESt4pairINSt17__decay_and_stripIT_E6__typeENS4_IT0_E6__typeEEOS5_OS8_
+0x0829b8bf sub     esp, 4
+0x0829b8c2 lea     eax, [ebp - 0x314]
+0x0829b8c8 mov     dword ptr [esp + 4], eax
+0x0829b8cc lea     eax, [ebp - 0x31c]
+0x0829b8d2 mov     dword ptr [esp], eax
+0x0829b8d5 call    0x82b33c6 ; _ZNSt4pairIK18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUPEC1IS0_S2_EEOS_IT_T0_E
+0x0829b8da lea     eax, [ebp - 0x324]
+0x0829b8e0 lea     edx, [ebp - 0x31c]
+0x0829b8e6 mov     dword ptr [esp + 8], edx
+0x0829b8ea lea     edx, [ebp - 0x358]
+0x0829b8f0 mov     dword ptr [esp + 4], edx
+0x0829b8f4 mov     dword ptr [esp], eax
+0x0829b8f7 call    0x82b33f6 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUPSt4lessIS0_ESaISt4pairIKS0_S1_EEE6insertERKS6_
+0x0829b8fc sub     esp, 4
+0x0829b8ff add     dword ptr [ebp - 0x20], 1
+0x0829b903 cmp     dword ptr [ebp - 0x20], 0xe
+0x0829b907 setle   al
+0x0829b90a test    al, al
+0x0829b90c jne     0x829b894
+0x0829b90e mov     dword ptr [ebp - 0x308], 0
+0x0829b918 lea     eax, [ebp - 0x308]
+0x0829b91e mov     dword ptr [esp + 4], eax
+0x0829b922 mov     eax, dword ptr [ebp - 0x38]
+0x0829b925 mov     dword ptr [esp], eax
+0x0829b928 call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829b92d add     eax, 0x42
+0x0829b930 mov     dword ptr [ebp - 0x778], eax
+0x0829b936 mov     dword ptr [ebp - 0x304], 0
+0x0829b940 lea     eax, [ebp - 0x304]
+0x0829b946 mov     dword ptr [esp + 4], eax
+0x0829b94a mov     eax, dword ptr [ebp - 0x38]
+0x0829b94d mov     dword ptr [esp], eax
+0x0829b950 call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829b955 add     eax, 0x18
+0x0829b958 mov     edi, eax
+0x0829b95a mov     dword ptr [ebp - 0x300], 0
+0x0829b964 lea     eax, [ebp - 0x300]
+0x0829b96a mov     dword ptr [esp + 4], eax
+0x0829b96e mov     eax, dword ptr [ebp - 0x38]
+0x0829b971 mov     dword ptr [esp], eax
+0x0829b974 call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829b979 mov     esi, dword ptr [eax + 0x14]
+0x0829b97c mov     dword ptr [ebp - 0x2fc], 0
+0x0829b986 lea     eax, [ebp - 0x2fc]
+0x0829b98c mov     dword ptr [esp + 4], eax
+0x0829b990 mov     eax, dword ptr [ebp - 0x38]
+0x0829b993 mov     dword ptr [esp], eax
+0x0829b996 call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829b99b mov     ebx, eax
+0x0829b99d mov     dword ptr [esp + 0x14], 0
+0x0829b9a5 mov     dword ptr [esp + 0x10], 1
+0x0829b9ad mov     dword ptr [esp + 0xc], 9
+0x0829b9b5 mov     dword ptr [esp + 8], 0x1b0c
+0x0829b9bd mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829b9c5 lea     eax, [ebp - 0x2f8]
+0x0829b9cb mov     dword ptr [esp], eax
+0x0829b9ce call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829b9d3 mov     ecx, dword ptr [ebp - 0x778]
+0x0829b9d9 mov     dword ptr [esp + 0x14], ecx
+0x0829b9dd mov     dword ptr [esp + 0x10], edi
+0x0829b9e1 mov     dword ptr [esp + 0xc], esi
+0x0829b9e5 mov     dword ptr [esp + 8], ebx
+0x0829b9e9 mov     dword ptr [esp + 4], 0x8c17a74
+0x0829b9f1 lea     eax, [ebp - 0x2f8]
+0x0829b9f7 mov     dword ptr [esp], eax
+0x0829b9fa call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829b9ff mov     dword ptr [ebp - 0x2e8], 0
+0x0829ba09 lea     eax, [ebp - 0x2e8]
+0x0829ba0f mov     dword ptr [esp + 4], eax
+0x0829ba13 mov     eax, dword ptr [ebp - 0x38]
+0x0829ba16 mov     dword ptr [esp], eax
+0x0829ba19 call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829ba1e mov     edx, dword ptr [0x941f748]
+0x0829ba24 mov     dword ptr [esp + 4], eax
+0x0829ba28 mov     dword ptr [esp], edx
+0x0829ba2b call    0x80ec620 ; _ZN12CDBConnector4InitER12STDBConnInfo
+0x0829ba30 xor     eax, 1
+0x0829ba33 test    al, al
+0x0829ba35 je      0x829ba8d
+0x0829ba37 mov     dword ptr [esp + 0x14], 1
+0x0829ba3f mov     dword ptr [esp + 0x10], 1
+0x0829ba47 mov     dword ptr [esp + 0xc], 9
+0x0829ba4f mov     dword ptr [esp + 8], 0x1b0f
+0x0829ba57 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829ba5f lea     eax, [ebp - 0x2e4]
+0x0829ba65 mov     dword ptr [esp], eax
+0x0829ba68 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829ba6d mov     dword ptr [esp + 4], 0x8c17a9f
+0x0829ba75 lea     eax, [ebp - 0x2e4]
+0x0829ba7b mov     dword ptr [esp], eax
+0x0829ba7e call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829ba83 mov     ebx, 0
+0x0829ba88 jmp     0x829d41d
+0x0829ba8d mov     dword ptr [esp + 0x14], 1
+0x0829ba95 mov     dword ptr [esp + 0x10], 0
+0x0829ba9d mov     dword ptr [esp + 0xc], 9
+0x0829baa5 mov     dword ptr [esp + 8], 0x1b12
+0x0829baad mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bab5 lea     eax, [ebp - 0x2d4]
+0x0829babb mov     dword ptr [esp], eax
+0x0829babe call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bac3 mov     dword ptr [esp + 4], 0x8c17ab8
+0x0829bacb lea     eax, [ebp - 0x2d4]
+0x0829bad1 mov     dword ptr [esp], eax
+0x0829bad4 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bad9 mov     dword ptr [esp + 0x14], 0
+0x0829bae1 mov     dword ptr [esp + 0x10], 1
+0x0829bae9 mov     dword ptr [esp + 0xc], 9
+0x0829baf1 mov     dword ptr [esp + 8], 0x1b14
+0x0829baf9 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bb01 lea     eax, [ebp - 0x2c4]
+0x0829bb07 mov     dword ptr [esp], eax
+0x0829bb0a call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bb0f mov     dword ptr [esp + 4], 0x8c17ac0
+0x0829bb17 lea     eax, [ebp - 0x2c4]
+0x0829bb1d mov     dword ptr [esp], eax
+0x0829bb20 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bb25 mov     eax, dword ptr [0x941f748]
+0x0829bb2a mov     edx, dword ptr [ebp - 0x38]
+0x0829bb2d mov     dword ptr [esp + 8], edx
+0x0829bb31 lea     edx, [ebp - 0x358]
+0x0829bb37 mov     dword ptr [esp + 4], edx
+0x0829bb3b mov     dword ptr [esp], eax
+0x0829bb3e call    0x80ec9ca ; _ZN12CDBConnector11GetConnInfoERSt3mapI18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUPSt4lessIS1_ESaISt4pairIKS1_S2_EEERS0_IS1_12STDBConnInfoS4_SaIS5_IS6_SB_EEE
+0x0829bb43 xor     eax, 1
+0x0829bb46 test    al, al
+0x0829bb48 je      0x829bba0
+0x0829bb4a mov     dword ptr [esp + 0x14], 1
+0x0829bb52 mov     dword ptr [esp + 0x10], 1
+0x0829bb5a mov     dword ptr [esp + 0xc], 9
+0x0829bb62 mov     dword ptr [esp + 8], 0x1b17
+0x0829bb6a mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bb72 lea     eax, [ebp - 0x2b4]
+0x0829bb78 mov     dword ptr [esp], eax
+0x0829bb7b call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bb80 mov     dword ptr [esp + 4], 0x8c17ae4
+0x0829bb88 lea     eax, [ebp - 0x2b4]
+0x0829bb8e mov     dword ptr [esp], eax
+0x0829bb91 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bb96 mov     ebx, 0
+0x0829bb9b jmp     0x829d41d
+0x0829bba0 mov     dword ptr [esp + 0x14], 1
+0x0829bba8 mov     dword ptr [esp + 0x10], 0
+0x0829bbb0 mov     dword ptr [esp + 0xc], 9
+0x0829bbb8 mov     dword ptr [esp + 8], 0x1b1a
+0x0829bbc0 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bbc8 lea     eax, [ebp - 0x2a4]
+0x0829bbce mov     dword ptr [esp], eax
+0x0829bbd1 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bbd6 mov     dword ptr [esp + 4], 0x8c17ab8
+0x0829bbde lea     eax, [ebp - 0x2a4]
+0x0829bbe4 mov     dword ptr [esp], eax
+0x0829bbe7 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bbec mov     dword ptr [esp + 0x14], 1
+0x0829bbf4 mov     dword ptr [esp + 0x10], 1
+0x0829bbfc mov     dword ptr [esp + 0xc], 9
+0x0829bc04 mov     dword ptr [esp + 8], 0x1b1c
+0x0829bc0c mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bc14 lea     eax, [ebp - 0x294]
+0x0829bc1a mov     dword ptr [esp], eax
+0x0829bc1d call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bc22 mov     dword ptr [esp + 4], 0x8c17b0c
+0x0829bc2a lea     eax, [ebp - 0x294]
+0x0829bc30 mov     dword ptr [esp], eax
+0x0829bc33 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bc38 mov     eax, dword ptr [ebp - 0x38]
+0x0829bc3b mov     dword ptr [esp + 4], eax
+0x0829bc3f lea     eax, [ebp - 0x284]
+0x0829bc45 mov     dword ptr [esp], eax
+0x0829bc48 call    0x82b3422 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEC1ERKS8_
+0x0829bc4d mov     eax, dword ptr [0x941f748]
+0x0829bc52 lea     edx, [ebp - 0x284]
+0x0829bc58 mov     dword ptr [esp + 4], edx
+0x0829bc5c mov     dword ptr [esp], eax
+0x0829bc5f call    0x80ec760 ; _ZN12CDBConnector7ConnectESt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS1_ESaISt4pairIKS1_S2_EEE
+0x0829bc64 mov     ebx, eax
+0x0829bc66 xor     ebx, 1
+0x0829bc69 lea     eax, [ebp - 0x284]
+0x0829bc6f mov     dword ptr [esp], eax
+0x0829bc72 call    0x80cbf0e ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEED2Ev
+0x0829bc77 jmp     0x829bc94
+0x0829bc79 mov     ebx, edx
+0x0829bc7b mov     esi, eax
+0x0829bc7d lea     eax, [ebp - 0x284]
+0x0829bc83 mov     dword ptr [esp], eax
+0x0829bc86 call    0x80cbf0e ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEED2Ev
+0x0829bc8b mov     eax, esi
+0x0829bc8d mov     edx, ebx
+0x0829bc8f jmp     0x829d3ff
+0x0829bc94 test    bl, bl
+0x0829bc96 je      0x829bcee
+0x0829bc98 mov     dword ptr [esp + 0x14], 1
+0x0829bca0 mov     dword ptr [esp + 0x10], 1
+0x0829bca8 mov     dword ptr [esp + 0xc], 9
+0x0829bcb0 mov     dword ptr [esp + 8], 0x1b1f
+0x0829bcb8 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bcc0 lea     eax, [ebp - 0x26c]
+0x0829bcc6 mov     dword ptr [esp], eax
+0x0829bcc9 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bcce mov     dword ptr [esp + 4], 0x8c17b1c
+0x0829bcd6 lea     eax, [ebp - 0x26c]
+0x0829bcdc mov     dword ptr [esp], eax
+0x0829bcdf call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bce4 mov     ebx, 0
+0x0829bce9 jmp     0x829d41d
+0x0829bcee mov     dword ptr [esp + 0x14], 1
+0x0829bcf6 mov     dword ptr [esp + 0x10], 1
+0x0829bcfe mov     dword ptr [esp + 0xc], 9
+0x0829bd06 mov     dword ptr [esp + 8], 0x1b22
+0x0829bd0e mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bd16 lea     eax, [ebp - 0x25c]
+0x0829bd1c mov     dword ptr [esp], eax
+0x0829bd1f call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bd24 mov     dword ptr [esp + 4], 0x8c17b3b
+0x0829bd2c lea     eax, [ebp - 0x25c]
+0x0829bd32 mov     dword ptr [esp], eax
+0x0829bd35 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bd3a mov     dword ptr [esp], 0xd0864
+0x0829bd41 call    0x8724450 ; _Znwj
+0x0829bd46 mov     ebx, eax
+0x0829bd48 mov     eax, ebx
+0x0829bd4a mov     dword ptr [esp], eax
+0x0829bd4d call    0x82a7260 ; _ZN8WongWork10CSimpleSSOC1Ev
+0x0829bd52 jmp     0x829bd69
+0x0829bd54 mov     esi, edx
+0x0829bd56 mov     edi, eax
+0x0829bd58 mov     dword ptr [esp], ebx
+0x0829bd5b call    0x87244f0 ; _ZdlPv
+0x0829bd60 mov     eax, edi
+0x0829bd62 mov     edx, esi
+0x0829bd64 jmp     0x829d3ff
+0x0829bd69 mov     eax, ebx
+0x0829bd6b mov     dword ptr [0x941f708], eax
+0x0829bd70 mov     eax, dword ptr [0x940bdac]
+0x0829bd75 mov     dword ptr [esp + 8], 0
+0x0829bd7d mov     dword ptr [esp + 4], 6
+0x0829bd85 mov     dword ptr [esp], eax
+0x0829bd88 call    0x83f523e ; _ZN5DBMgr11GetDBHandleE18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUP
+0x0829bd8d mov     edx, dword ptr [0x941f708]
+0x0829bd93 mov     dword ptr [esp + 4], eax
+0x0829bd97 mov     dword ptr [esp], edx
+0x0829bd9a call    0x86027fc ; _ZN8WongWork10CSimpleSSO4initEP5MySQL
+0x0829bd9f mov     dword ptr [esp], 0x488
+0x0829bda6 call    0x8724450 ; _Znwj
+0x0829bdab mov     ebx, eax
+0x0829bdad mov     eax, ebx
+0x0829bdaf mov     dword ptr [esp], eax
+0x0829bdb2 call    0x82a6654 ; _ZN8WongWork19CSecurityCardCenterC2Ev
+0x0829bdb7 jmp     0x829bdce
+0x0829bdb9 mov     esi, edx
+0x0829bdbb mov     edi, eax
+0x0829bdbd mov     dword ptr [esp], ebx
+0x0829bdc0 call    0x87244f0 ; _ZdlPv
+0x0829bdc5 mov     eax, edi
+0x0829bdc7 mov     edx, esi
+0x0829bdc9 jmp     0x829d3ff
+0x0829bdce mov     eax, ebx
+0x0829bdd0 mov     dword ptr [0x941f70c], eax
+0x0829bdd5 mov     eax, dword ptr [0x941f70c]
+0x0829bdda mov     dword ptr [esp], eax
+0x0829bddd call    0x85fe05e ; _ZN8WongWork19CSecurityCardCenter4initEv
+0x0829bde2 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829bdea mov     dword ptr [esp], 0x54
+0x0829bdf1 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829bdf6 mov     ebx, eax
+0x0829bdf8 mov     eax, ebx
+0x0829bdfa test    eax, eax
+0x0829bdfc je      0x829be0c
+0x0829bdfe mov     eax, ebx
+0x0829be00 mov     dword ptr [esp], eax
+0x0829be03 call    0x82a7190 ; _ZN8WongWork3IPG10CIPGHelperC1Ev
+0x0829be08 mov     eax, ebx
+0x0829be0a jmp     0x829be0e
+0x0829be0c mov     eax, ebx
+0x0829be0e mov     dword ptr [ebp - 0x34], eax
+0x0829be11 mov     dword ptr [esp + 8], 0x1388
+0x0829be19 mov     dword ptr [esp + 4], 1
+0x0829be21 mov     eax, dword ptr [ebp - 0x34]
+0x0829be24 mov     dword ptr [esp], eax
+0x0829be27 call    0x8100b3e ; _ZN8WongWork3IPG10CIPGHelper10InitializeEjj
+0x0829be2c shr     eax, 0x1f
+0x0829be2f test    al, al
+0x0829be31 je      0x829be60
+0x0829be33 mov     dword ptr [esp], 0x8c17b52
+0x0829be3a call    0x807e570 ; puts
+0x0829be3f mov     ebx, dword ptr [ebp - 0x34]
+0x0829be42 test    ebx, ebx
+0x0829be44 je      0x829be56
+0x0829be46 mov     dword ptr [esp], ebx
+0x0829be49 call    0x82a71b6 ; _ZN8WongWork3IPG10CIPGHelperD1Ev
+0x0829be4e mov     dword ptr [esp], ebx
+0x0829be51 call    0x87244f0 ; _ZdlPv
+0x0829be56 mov     ebx, 0
+0x0829be5b jmp     0x829d41d
+0x0829be60 mov     eax, dword ptr [ebp - 0x34]
+0x0829be63 mov     dword ptr [0x941f734], eax
+0x0829be68 call    0x82a73cb ; _ZN15CHumanCertifier4initEv
+0x0829be6d mov     dword ptr [esp], 8
+0x0829be74 call    0x8724450 ; _Znwj
+0x0829be79 mov     ebx, eax
+0x0829be7b mov     eax, ebx
+0x0829be7d mov     dword ptr [esp], eax
+0x0829be80 call    0x82a73a4 ; _ZN8WongWork11CGMAccountsC1Ev
+0x0829be85 jmp     0x829be9c
+0x0829be87 mov     esi, edx
+0x0829be89 mov     edi, eax
+0x0829be8b mov     dword ptr [esp], ebx
+0x0829be8e call    0x87244f0 ; _ZdlPv
+0x0829be93 mov     eax, edi
+0x0829be95 mov     edx, esi
+0x0829be97 jmp     0x829d3ff
+0x0829be9c mov     eax, ebx
+0x0829be9e mov     dword ptr [0x941f710], eax
+0x0829bea3 mov     dword ptr [esp + 0x14], 0
+0x0829beab mov     dword ptr [esp + 0x10], 1
+0x0829beb3 mov     dword ptr [esp + 0xc], 9
+0x0829bebb mov     dword ptr [esp + 8], 0x1d4d
+0x0829bec3 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829becb lea     eax, [ebp - 0x24c]
+0x0829bed1 mov     dword ptr [esp], eax
+0x0829bed4 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bed9 mov     dword ptr [esp + 4], 0x8c17b6a
+0x0829bee1 lea     eax, [ebp - 0x24c]
+0x0829bee7 mov     dword ptr [esp], eax
+0x0829beea call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829beef mov     eax, dword ptr [0x940bdac]
+0x0829bef4 mov     dword ptr [esp + 8], 0
+0x0829befc mov     dword ptr [esp + 4], 2
+0x0829bf04 mov     dword ptr [esp], eax
+0x0829bf07 call    0x83f523e ; _ZN5DBMgr11GetDBHandleE18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUP
+0x0829bf0c mov     dword ptr [esp], eax
+0x0829bf0f call    0x82a4202 ; _ZN5MySQL15GetQueryCounterEv
+0x0829bf14 mov     dword ptr [esp], eax
+0x0829bf17 call    0x85ed18a ; _ZN13CQueryCounter14LoadQueryTableEv
+0x0829bf1c xor     eax, 1
+0x0829bf1f test    al, al
+0x0829bf21 je      0x829bf79
+0x0829bf23 mov     dword ptr [esp + 0x14], 1
+0x0829bf2b mov     dword ptr [esp + 0x10], 1
+0x0829bf33 mov     dword ptr [esp + 0xc], 9
+0x0829bf3b mov     dword ptr [esp + 8], 0x1d50
+0x0829bf43 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bf4b lea     eax, [ebp - 0x23c]
+0x0829bf51 mov     dword ptr [esp], eax
+0x0829bf54 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bf59 mov     dword ptr [esp + 4], 0x8c17b7f
+0x0829bf61 lea     eax, [ebp - 0x23c]
+0x0829bf67 mov     dword ptr [esp], eax
+0x0829bf6a call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bf6f mov     ebx, 0
+0x0829bf74 jmp     0x829d41d
+0x0829bf79 mov     eax, dword ptr [0x940bdac]
+0x0829bf7e mov     dword ptr [esp + 8], 0
+0x0829bf86 mov     dword ptr [esp + 4], 4
+0x0829bf8e mov     dword ptr [esp], eax
+0x0829bf91 call    0x83f523e ; _ZN5DBMgr11GetDBHandleE18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUP
+0x0829bf96 mov     dword ptr [esp], eax
+0x0829bf99 call    0x82a4202 ; _ZN5MySQL15GetQueryCounterEv
+0x0829bf9e mov     dword ptr [esp], eax
+0x0829bfa1 call    0x85ed18a ; _ZN13CQueryCounter14LoadQueryTableEv
+0x0829bfa6 xor     eax, 1
+0x0829bfa9 test    al, al
+0x0829bfab je      0x829c003
+0x0829bfad mov     dword ptr [esp + 0x14], 1
+0x0829bfb5 mov     dword ptr [esp + 0x10], 1
+0x0829bfbd mov     dword ptr [esp + 0xc], 9
+0x0829bfc5 mov     dword ptr [esp + 8], 0x1d55
+0x0829bfcd mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829bfd5 lea     eax, [ebp - 0x22c]
+0x0829bfdb mov     dword ptr [esp], eax
+0x0829bfde call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829bfe3 mov     dword ptr [esp + 4], 0x8c17b7f
+0x0829bfeb lea     eax, [ebp - 0x22c]
+0x0829bff1 mov     dword ptr [esp], eax
+0x0829bff4 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829bff9 mov     ebx, 0
+0x0829bffe jmp     0x829d41d
+0x0829c003 mov     dword ptr [esp + 0x14], 1
+0x0829c00b mov     dword ptr [esp + 0x10], 0
+0x0829c013 mov     dword ptr [esp + 0xc], 9
+0x0829c01b mov     dword ptr [esp + 8], 0x1d58
+0x0829c023 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c02b lea     eax, [ebp - 0x21c]
+0x0829c031 mov     dword ptr [esp], eax
+0x0829c034 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c039 mov     dword ptr [esp + 4], 0x8c17ab8
+0x0829c041 lea     eax, [ebp - 0x21c]
+0x0829c047 mov     dword ptr [esp], eax
+0x0829c04a call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c04f mov     dword ptr [ebp - 0x30], 1
+0x0829c056 mov     byte ptr [ebp - 0x29], 0
+0x0829c05a call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829c05f mov     dword ptr [esp], eax
+0x0829c062 call    0x814aaca ; _ZN12CEnvironment14get_channel_noEv
+0x0829c067 cmp     eax, dword ptr [ebp - 0x30]
+0x0829c06a sete    al
+0x0829c06d test    al, al
+0x0829c06f je      0x829c075
+0x0829c071 mov     byte ptr [ebp - 0x29], 1
+0x0829c075 movzx   ebx, byte ptr [ebp - 0x29]
+0x0829c079 call    0x861cbb4 ; _ZN11sync_script21GetInstanceSyncScriptEv
+0x0829c07e mov     dword ptr [esp + 4], ebx
+0x0829c082 mov     dword ptr [esp], eax
+0x0829c085 call    0x82a71f0 ; _ZN11sync_script11CSyncScript9SetEnableEb
+0x0829c08a call    0x861cbb4 ; _ZN11sync_script21GetInstanceSyncScriptEv
+0x0829c08f mov     dword ptr [esp], eax
+0x0829c092 call    0x82a7208 ; _ZN11sync_script11CSyncScript8IsEnableEv
+0x0829c097 test    al, al
+0x0829c099 je      0x829c24b
+0x0829c09f mov     dword ptr [ebp - 0x20c], 5
+0x0829c0a9 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829c0ae lea     edx, [eax + 0x68]
+0x0829c0b1 lea     eax, [ebp - 0x20c]
+0x0829c0b7 mov     dword ptr [esp + 4], eax
+0x0829c0bb mov     dword ptr [esp], edx
+0x0829c0be call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829c0c3 add     eax, 0x2d
+0x0829c0c6 mov     dword ptr [ebp - 0x774], eax
+0x0829c0cc mov     dword ptr [ebp - 0x208], 5
+0x0829c0d6 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829c0db lea     edx, [eax + 0x68]
+0x0829c0de lea     eax, [ebp - 0x208]
+0x0829c0e4 mov     dword ptr [esp + 4], eax
+0x0829c0e8 mov     dword ptr [esp], edx
+0x0829c0eb call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829c0f0 add     eax, 0x18
+0x0829c0f3 mov     edi, eax
+0x0829c0f5 mov     dword ptr [ebp - 0x204], 5
+0x0829c0ff call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829c104 lea     edx, [eax + 0x68]
+0x0829c107 lea     eax, [ebp - 0x204]
+0x0829c10d mov     dword ptr [esp + 4], eax
+0x0829c111 mov     dword ptr [esp], edx
+0x0829c114 call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829c119 add     eax, 0x42
+0x0829c11c mov     esi, eax
+0x0829c11e mov     dword ptr [ebp - 0x200], 5
+0x0829c128 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829c12d lea     edx, [eax + 0x68]
+0x0829c130 lea     eax, [ebp - 0x200]
+0x0829c136 mov     dword ptr [esp + 4], eax
+0x0829c13a mov     dword ptr [esp], edx
+0x0829c13d call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829c142 mov     ebx, dword ptr [eax + 0x14]
+0x0829c145 mov     dword ptr [ebp - 0x1fc], 5
+0x0829c14f call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829c154 lea     edx, [eax + 0x68]
+0x0829c157 lea     eax, [ebp - 0x1fc]
+0x0829c15d mov     dword ptr [esp + 4], eax
+0x0829c161 mov     dword ptr [esp], edx
+0x0829c164 call    0x80ecf82 ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX12STDBConnInfoSt4lessIS0_ESaISt4pairIKS0_S1_EEEixERS5_
+0x0829c169 mov     edx, eax
+0x0829c16b mov     eax, dword ptr [0x940bdac]
+0x0829c170 mov     dword ptr [esp + 0x1c], 0
+0x0829c178 mov     ecx, dword ptr [ebp - 0x774]
+0x0829c17e mov     dword ptr [esp + 0x18], ecx
+0x0829c182 mov     dword ptr [esp + 0x14], edi
+0x0829c186 mov     dword ptr [esp + 0x10], esi
+0x0829c18a mov     dword ptr [esp + 0xc], ebx
+0x0829c18e mov     dword ptr [esp + 8], edx
+0x0829c192 mov     dword ptr [esp + 4], 5
+0x0829c19a mov     dword ptr [esp], eax
+0x0829c19d call    0x83f4d2e ; _ZN5DBMgr4OpenE18ENUM_DB_HANDLE_IDXPcjS1_S1_S1_17ENUM_SERVER_GROUP
+0x0829c1a2 xor     eax, 1
+0x0829c1a5 test    al, al
+0x0829c1a7 je      0x829c1ff
+0x0829c1a9 mov     dword ptr [esp + 0x14], 1
+0x0829c1b1 mov     dword ptr [esp + 0x10], 1
+0x0829c1b9 mov     dword ptr [esp + 0xc], 9
+0x0829c1c1 mov     dword ptr [esp + 8], 0x1d8d
+0x0829c1c9 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c1d1 lea     eax, [ebp - 0x1f8]
+0x0829c1d7 mov     dword ptr [esp], eax
+0x0829c1da call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c1df mov     dword ptr [esp + 4], 0x8c17b98
+0x0829c1e7 lea     eax, [ebp - 0x1f8]
+0x0829c1ed mov     dword ptr [esp], eax
+0x0829c1f0 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c1f5 mov     ebx, 0
+0x0829c1fa jmp     0x829d41d
+0x0829c1ff mov     dword ptr [esp + 0x14], 1
+0x0829c207 mov     dword ptr [esp + 0x10], 1
+0x0829c20f mov     dword ptr [esp + 0xc], 9
+0x0829c217 mov     dword ptr [esp + 8], 0x1d90
+0x0829c21f mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c227 lea     eax, [ebp - 0x1e8]
+0x0829c22d mov     dword ptr [esp], eax
+0x0829c230 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c235 mov     dword ptr [esp + 4], 0x8c17bb1
+0x0829c23d lea     eax, [ebp - 0x1e8]
+0x0829c243 mov     dword ptr [esp], eax
+0x0829c246 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c24b call    0x8235001 ; _ZN16CSyncSlangFilter11GetInstanceEv
+0x0829c250 mov     dword ptr [esp], eax
+0x0829c253 call    0x862dec6 ; _ZN16CSyncSlangFilter16AddSlangListNameEv
+0x0829c258 xor     eax, 1
+0x0829c25b test    al, al
+0x0829c25d jne     0x829c273
+0x0829c25f call    0x8235001 ; _ZN16CSyncSlangFilter11GetInstanceEv
+0x0829c264 mov     dword ptr [esp], eax
+0x0829c267 call    0x862dccc ; _ZN16CSyncSlangFilter12AddSlangListEv
+0x0829c26c xor     eax, 1
+0x0829c26f test    al, al
+0x0829c271 je      0x829c27a
+0x0829c273 mov     eax, 1
+0x0829c278 jmp     0x829c27f
+0x0829c27a mov     eax, 0
+0x0829c27f test    al, al
+0x0829c281 je      0x829c2d9
+0x0829c283 mov     dword ptr [esp + 0x14], 1
+0x0829c28b mov     dword ptr [esp + 0x10], 1
+0x0829c293 mov     dword ptr [esp + 0xc], 9
+0x0829c29b mov     dword ptr [esp + 8], 0x1d9f
+0x0829c2a3 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c2ab lea     eax, [ebp - 0x1d8]
+0x0829c2b1 mov     dword ptr [esp], eax
+0x0829c2b4 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c2b9 mov     dword ptr [esp + 4], 0x8c17bc8
+0x0829c2c1 lea     eax, [ebp - 0x1d8]
+0x0829c2c7 mov     dword ptr [esp], eax
+0x0829c2ca call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c2cf mov     ebx, 0
+0x0829c2d4 jmp     0x829d41d
+0x0829c2d9 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c2e1 mov     dword ptr [esp], 0x29c
+0x0829c2e8 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c2ed mov     ebx, eax
+0x0829c2ef mov     eax, ebx
+0x0829c2f1 test    eax, eax
+0x0829c2f3 je      0x829c322
+0x0829c2f5 mov     eax, ebx
+0x0829c2f7 mov     dword ptr [esp], eax
+0x0829c2fa call    0x8114ce4 ; _ZN13CEventManagerC1Ev
+0x0829c2ff jmp     0x829c31e
+0x0829c301 mov     esi, edx
+0x0829c303 mov     edi, eax
+0x0829c305 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c30d mov     dword ptr [esp], ebx
+0x0829c310 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c315 mov     eax, edi
+0x0829c317 mov     edx, esi
+0x0829c319 jmp     0x829d3ff
+0x0829c31e mov     eax, ebx
+0x0829c320 jmp     0x829c324
+0x0829c322 mov     eax, ebx
+0x0829c324 mov     dword ptr [0x941f730], eax
+0x0829c329 mov     eax, dword ptr [0x941f730]
+0x0829c32e test    eax, eax
+0x0829c330 jne     0x829c388
+0x0829c332 mov     dword ptr [esp + 0x14], 1
+0x0829c33a mov     dword ptr [esp + 0x10], 1
+0x0829c342 mov     dword ptr [esp + 0xc], 9
+0x0829c34a mov     dword ptr [esp + 8], 0x1da8
+0x0829c352 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c35a lea     eax, [ebp - 0x1c8]
+0x0829c360 mov     dword ptr [esp], eax
+0x0829c363 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c368 mov     dword ptr [esp + 4], 0x8c17be4
+0x0829c370 lea     eax, [ebp - 0x1c8]
+0x0829c376 mov     dword ptr [esp], eax
+0x0829c379 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c37e mov     ebx, 0
+0x0829c383 jmp     0x829d41d
+0x0829c388 mov     dword ptr [esp + 0x14], 1
+0x0829c390 mov     dword ptr [esp + 0x10], 1
+0x0829c398 mov     dword ptr [esp + 0xc], 9
+0x0829c3a0 mov     dword ptr [esp + 8], 0x1dc6
+0x0829c3a8 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c3b0 lea     eax, [ebp - 0x1b8]
+0x0829c3b6 mov     dword ptr [esp], eax
+0x0829c3b9 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c3be mov     dword ptr [esp + 4], 0x8c17c08
+0x0829c3c6 lea     eax, [ebp - 0x1b8]
+0x0829c3cc mov     dword ptr [esp], eax
+0x0829c3cf call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c3d4 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c3dc mov     dword ptr [esp], 4
+0x0829c3e3 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c3e8 mov     ebx, eax
+0x0829c3ea mov     eax, ebx
+0x0829c3ec test    eax, eax
+0x0829c3ee je      0x829c41d
+0x0829c3f0 mov     eax, ebx
+0x0829c3f2 mov     dword ptr [esp], eax
+0x0829c3f5 call    0x8299912 ; _ZN7Gm_ListC1Ev
+0x0829c3fa jmp     0x829c419
+0x0829c3fc mov     esi, edx
+0x0829c3fe mov     edi, eax
+0x0829c400 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c408 mov     dword ptr [esp], ebx
+0x0829c40b call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c410 mov     eax, edi
+0x0829c412 mov     edx, esi
+0x0829c414 jmp     0x829d3ff
+0x0829c419 mov     eax, ebx
+0x0829c41b jmp     0x829c41f
+0x0829c41d mov     eax, ebx
+0x0829c41f mov     dword ptr [0x941f770], eax
+0x0829c424 mov     eax, dword ptr [0x941f770]
+0x0829c429 test    eax, eax
+0x0829c42b jne     0x829c483
+0x0829c42d mov     dword ptr [esp + 0x14], 1
+0x0829c435 mov     dword ptr [esp + 0x10], 1
+0x0829c43d mov     dword ptr [esp + 0xc], 9
+0x0829c445 mov     dword ptr [esp + 8], 0x1dcd
+0x0829c44d mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c455 lea     eax, [ebp - 0x1a8]
+0x0829c45b mov     dword ptr [esp], eax
+0x0829c45e call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c463 mov     dword ptr [esp + 4], 0x8c17c20
+0x0829c46b lea     eax, [ebp - 0x1a8]
+0x0829c471 mov     dword ptr [esp], eax
+0x0829c474 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c479 mov     ebx, 0
+0x0829c47e jmp     0x829d41d
+0x0829c483 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c48b mov     dword ptr [esp], 0x3c
+0x0829c492 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c497 mov     ebx, eax
+0x0829c499 mov     eax, ebx
+0x0829c49b test    eax, eax
+0x0829c49d je      0x829c4cc
+0x0829c49f mov     eax, ebx
+0x0829c4a1 mov     dword ptr [esp], eax
+0x0829c4a4 call    0x82990d0 ; _ZN11CGM_ManagerC2Ev
+0x0829c4a9 jmp     0x829c4c8
+0x0829c4ab mov     esi, edx
+0x0829c4ad mov     edi, eax
+0x0829c4af mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c4b7 mov     dword ptr [esp], ebx
+0x0829c4ba call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c4bf mov     eax, edi
+0x0829c4c1 mov     edx, esi
+0x0829c4c3 jmp     0x829d3ff
+0x0829c4c8 mov     eax, ebx
+0x0829c4ca jmp     0x829c4ce
+0x0829c4cc mov     eax, ebx
+0x0829c4ce mov     dword ptr [0x941f75c], eax
+0x0829c4d3 mov     eax, dword ptr [0x941f75c]
+0x0829c4d8 test    eax, eax
+0x0829c4da jne     0x829c532
+0x0829c4dc mov     dword ptr [esp + 0x14], 1
+0x0829c4e4 mov     dword ptr [esp + 0x10], 1
+0x0829c4ec mov     dword ptr [esp + 0xc], 9
+0x0829c4f4 mov     dword ptr [esp + 8], 0x1dd6
+0x0829c4fc mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c504 lea     eax, [ebp - 0x198]
+0x0829c50a mov     dword ptr [esp], eax
+0x0829c50d call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c512 mov     dword ptr [esp + 4], 0x8c17c48
+0x0829c51a lea     eax, [ebp - 0x198]
+0x0829c520 mov     dword ptr [esp], eax
+0x0829c523 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c528 mov     ebx, 0
+0x0829c52d jmp     0x829d41d
+0x0829c532 call    0x82a713a ; _Z8G_Cipherv
+0x0829c537 mov     dword ptr [esp], eax
+0x0829c53a call    0x80975d4 ; _ZNK6Cipher17GetTotalKeyLengthEv
+0x0829c53f mov     dword ptr [ebp - 0x28], eax
+0x0829c542 mov     dword ptr [ebp - 0x1c], 0
+0x0829c549 jmp     0x829c56f
+0x0829c54b mov     ebx, dword ptr [ebp - 0x1c]
+0x0829c54e call    0x807dca0 ; rand
+0x0829c553 mov     edx, eax
+0x0829c555 sar     edx, 0x1f
+0x0829c558 shr     edx, 0x18
+0x0829c55b add     eax, edx
+0x0829c55d and     eax, 0xff
+0x0829c562 sub     eax, edx
+0x0829c564 mov     byte ptr [ebp + ebx - 0x764], al
+0x0829c56b add     dword ptr [ebp - 0x1c], 1
+0x0829c56f mov     eax, dword ptr [ebp - 0x1c]
+0x0829c572 cmp     eax, dword ptr [ebp - 0x28]
+0x0829c575 setl    al
+0x0829c578 test    al, al
+0x0829c57a jne     0x829c54b
+0x0829c57c call    0x82a713a ; _Z8G_Cipherv
+0x0829c581 mov     edx, dword ptr [ebp - 0x28]
+0x0829c584 mov     dword ptr [esp + 8], edx
+0x0829c588 lea     edx, [ebp - 0x764]
+0x0829c58e mov     dword ptr [esp + 4], edx
+0x0829c592 mov     dword ptr [esp], eax
+0x0829c595 call    0x8097306 ; _ZN6Cipher10InitializeEPKhi
+0x0829c59a mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c5a2 mov     dword ptr [esp], 0x30
+0x0829c5a9 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c5ae mov     ebx, eax
+0x0829c5b0 mov     eax, ebx
+0x0829c5b2 test    eax, eax
+0x0829c5b4 je      0x829c603
+0x0829c5b6 mov     dword ptr [ebp - 0x770], ebx
+0x0829c5bc mov     esi, dword ptr [ebp - 0x770]
+0x0829c5c2 mov     eax, 0
+0x0829c5c7 mov     edx, 0xc
+0x0829c5cc mov     edi, esi
+0x0829c5ce mov     ecx, edx
+0x0829c5d0 rep stosd dword ptr es:[edi], eax
+0x0829c5d2 mov     eax, dword ptr [ebp - 0x770]
+0x0829c5d8 mov     dword ptr [esp], eax
+0x0829c5db call    0x82aa89e ; _ZN13CStatisticMgrC2Ev
+0x0829c5e0 jmp     0x829c5ff
+0x0829c5e2 mov     esi, edx
+0x0829c5e4 mov     edi, eax
+0x0829c5e6 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c5ee mov     dword ptr [esp], ebx
+0x0829c5f1 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c5f6 mov     eax, edi
+0x0829c5f8 mov     edx, esi
+0x0829c5fa jmp     0x829d3ff
+0x0829c5ff mov     eax, ebx
+0x0829c601 jmp     0x829c605
+0x0829c603 mov     eax, ebx
+0x0829c605 mov     dword ptr [0x941f764], eax
+0x0829c60a mov     eax, dword ptr [0x941f764]
+0x0829c60f test    eax, eax
+0x0829c611 jne     0x829c669
+0x0829c613 mov     dword ptr [esp + 0x14], 1
+0x0829c61b mov     dword ptr [esp + 0x10], 1
+0x0829c623 mov     dword ptr [esp + 0xc], 9
+0x0829c62b mov     dword ptr [esp + 8], 0x1df7
+0x0829c633 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c63b lea     eax, [ebp - 0x188]
+0x0829c641 mov     dword ptr [esp], eax
+0x0829c644 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c649 mov     dword ptr [esp + 4], 0x8c17c70
+0x0829c651 lea     eax, [ebp - 0x188]
+0x0829c657 mov     dword ptr [esp], eax
+0x0829c65a call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c65f mov     ebx, 0
+0x0829c664 jmp     0x829d41d
+0x0829c669 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c671 mov     dword ptr [esp], 0x32c
+0x0829c678 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c67d mov     ebx, eax
+0x0829c67f mov     eax, ebx
+0x0829c681 test    eax, eax
+0x0829c683 je      0x829c6b2
+0x0829c685 mov     eax, ebx
+0x0829c687 mov     dword ptr [esp], eax
+0x0829c68a call    0x831c3e0 ; _ZN18break_away_prevent23CBreakAwayPreventSystemC2Ev
+0x0829c68f jmp     0x829c6ae
+0x0829c691 mov     esi, edx
+0x0829c693 mov     edi, eax
+0x0829c695 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c69d mov     dword ptr [esp], ebx
+0x0829c6a0 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c6a5 mov     eax, edi
+0x0829c6a7 mov     edx, esi
+0x0829c6a9 jmp     0x829d3ff
+0x0829c6ae mov     eax, ebx
+0x0829c6b0 jmp     0x829c6b4
+0x0829c6b2 mov     eax, ebx
+0x0829c6b4 mov     dword ptr [0x941f76c], eax
+0x0829c6b9 mov     eax, dword ptr [0x941f76c]
+0x0829c6be test    eax, eax
+0x0829c6c0 jne     0x829c718
+0x0829c6c2 mov     dword ptr [esp + 0x14], 1
+0x0829c6ca mov     dword ptr [esp + 0x10], 1
+0x0829c6d2 mov     dword ptr [esp + 0xc], 9
+0x0829c6da mov     dword ptr [esp + 8], 0x1dfe
+0x0829c6e2 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c6ea lea     eax, [ebp - 0x178]
+0x0829c6f0 mov     dword ptr [esp], eax
+0x0829c6f3 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c6f8 mov     dword ptr [esp + 4], 0x8c17c9c
+0x0829c700 lea     eax, [ebp - 0x178]
+0x0829c706 mov     dword ptr [esp], eax
+0x0829c709 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c70e mov     ebx, 0
+0x0829c713 jmp     0x829d41d
+0x0829c718 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c720 mov     dword ptr [esp], 4
+0x0829c727 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c72c mov     ebx, eax
+0x0829c72e mov     eax, ebx
+0x0829c730 test    eax, eax
+0x0829c732 je      0x829c761
+0x0829c734 mov     eax, ebx
+0x0829c736 mov     dword ptr [esp], eax
+0x0829c739 call    0x849e102 ; _ZN10expert_job13CExpertJobMgrC2Ev
+0x0829c73e jmp     0x829c75d
+0x0829c740 mov     esi, edx
+0x0829c742 mov     edi, eax
+0x0829c744 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c74c mov     dword ptr [esp], ebx
+0x0829c74f call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c754 mov     eax, edi
+0x0829c756 mov     edx, esi
+0x0829c758 jmp     0x829d3ff
+0x0829c75d mov     eax, ebx
+0x0829c75f jmp     0x829c763
+0x0829c761 mov     eax, ebx
+0x0829c763 mov     dword ptr [0x941f768], eax
+0x0829c768 mov     eax, dword ptr [0x941f768]
+0x0829c76d test    eax, eax
+0x0829c76f jne     0x829c7c7
+0x0829c771 mov     dword ptr [esp + 0x14], 1
+0x0829c779 mov     dword ptr [esp + 0x10], 1
+0x0829c781 mov     dword ptr [esp + 0xc], 9
+0x0829c789 mov     dword ptr [esp + 8], 0x1e05
+0x0829c791 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c799 lea     eax, [ebp - 0x168]
+0x0829c79f mov     dword ptr [esp], eax
+0x0829c7a2 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c7a7 mov     dword ptr [esp + 4], 0x8c17cc8
+0x0829c7af lea     eax, [ebp - 0x168]
+0x0829c7b5 mov     dword ptr [esp], eax
+0x0829c7b8 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c7bd mov     ebx, 0
+0x0829c7c2 jmp     0x829d41d
+0x0829c7c7 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c7cf mov     dword ptr [esp], 0x18
+0x0829c7d6 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c7db mov     ebx, eax
+0x0829c7dd mov     eax, ebx
+0x0829c7df test    eax, eax
+0x0829c7e1 je      0x829c810
+0x0829c7e3 mov     eax, ebx
+0x0829c7e5 mov     dword ptr [esp], eax
+0x0829c7e8 call    0x86b6f30 ; _ZN14village_object17CVillageObjectMgrC1Ev
+0x0829c7ed jmp     0x829c80c
+0x0829c7ef mov     esi, edx
+0x0829c7f1 mov     edi, eax
+0x0829c7f3 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c7fb mov     dword ptr [esp], ebx
+0x0829c7fe call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c803 mov     eax, edi
+0x0829c805 mov     edx, esi
+0x0829c807 jmp     0x829d3ff
+0x0829c80c mov     eax, ebx
+0x0829c80e jmp     0x829c812
+0x0829c810 mov     eax, ebx
+0x0829c812 mov     dword ptr [0x941f774], eax
+0x0829c817 mov     eax, dword ptr [0x941f774]
+0x0829c81c test    eax, eax
+0x0829c81e jne     0x829c876
+0x0829c820 mov     dword ptr [esp + 0x14], 1
+0x0829c828 mov     dword ptr [esp + 0x10], 1
+0x0829c830 mov     dword ptr [esp + 0xc], 9
+0x0829c838 mov     dword ptr [esp + 8], 0x1e0c
+0x0829c840 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c848 lea     eax, [ebp - 0x158]
+0x0829c84e mov     dword ptr [esp], eax
+0x0829c851 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c856 mov     dword ptr [esp + 4], 0x8c17cf4
+0x0829c85e lea     eax, [ebp - 0x158]
+0x0829c864 mov     dword ptr [esp], eax
+0x0829c867 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c86c mov     ebx, 0
+0x0829c871 jmp     0x829d41d
+0x0829c876 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c87e mov     dword ptr [esp], 0x24
+0x0829c885 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c88a mov     ebx, eax
+0x0829c88c mov     eax, ebx
+0x0829c88e test    eax, eax
+0x0829c890 je      0x829c8bf
+0x0829c892 mov     eax, ebx
+0x0829c894 mov     dword ptr [esp], eax
+0x0829c897 call    0x86b4a4c ; _ZN16village_attacked18CVillageMonsterMgrC1Ev
+0x0829c89c jmp     0x829c8bb
+0x0829c89e mov     esi, edx
+0x0829c8a0 mov     edi, eax
+0x0829c8a2 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c8aa mov     dword ptr [esp], ebx
+0x0829c8ad call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c8b2 mov     eax, edi
+0x0829c8b4 mov     edx, esi
+0x0829c8b6 jmp     0x829d3ff
+0x0829c8bb mov     eax, ebx
+0x0829c8bd jmp     0x829c8c1
+0x0829c8bf mov     eax, ebx
+0x0829c8c1 mov     dword ptr [0x941f77c], eax
+0x0829c8c6 mov     eax, dword ptr [0x941f77c]
+0x0829c8cb test    eax, eax
+0x0829c8cd jne     0x829c925
+0x0829c8cf mov     dword ptr [esp + 0x14], 1
+0x0829c8d7 mov     dword ptr [esp + 0x10], 1
+0x0829c8df mov     dword ptr [esp + 0xc], 9
+0x0829c8e7 mov     dword ptr [esp + 8], 0x1e13
+0x0829c8ef mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c8f7 lea     eax, [ebp - 0x148]
+0x0829c8fd mov     dword ptr [esp], eax
+0x0829c900 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c905 mov     dword ptr [esp + 4], 0x8c17d24
+0x0829c90d lea     eax, [ebp - 0x148]
+0x0829c913 mov     dword ptr [esp], eax
+0x0829c916 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c91b mov     ebx, 0
+0x0829c920 jmp     0x829d41d
+0x0829c925 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c92d mov     dword ptr [esp], 4
+0x0829c934 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c939 mov     ebx, eax
+0x0829c93b mov     eax, ebx
+0x0829c93d test    eax, eax
+0x0829c93f je      0x829c96e
+0x0829c941 mov     eax, ebx
+0x0829c943 mov     dword ptr [esp], eax
+0x0829c946 call    0x8270014 ; _ZN20InstanceRentalSystemC2Ev
+0x0829c94b jmp     0x829c96a
+0x0829c94d mov     esi, edx
+0x0829c94f mov     edi, eax
+0x0829c951 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c959 mov     dword ptr [esp], ebx
+0x0829c95c call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829c961 mov     eax, edi
+0x0829c963 mov     edx, esi
+0x0829c965 jmp     0x829d3ff
+0x0829c96a mov     eax, ebx
+0x0829c96c jmp     0x829c970
+0x0829c96e mov     eax, ebx
+0x0829c970 mov     dword ptr [0x941f738], eax
+0x0829c975 mov     eax, dword ptr [0x941f738]
+0x0829c97a test    eax, eax
+0x0829c97c jne     0x829c9d4
+0x0829c97e mov     dword ptr [esp + 0x14], 1
+0x0829c986 mov     dword ptr [esp + 0x10], 1
+0x0829c98e mov     dword ptr [esp + 0xc], 9
+0x0829c996 mov     dword ptr [esp + 8], 0x1e1b
+0x0829c99e mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829c9a6 lea     eax, [ebp - 0x138]
+0x0829c9ac mov     dword ptr [esp], eax
+0x0829c9af call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829c9b4 mov     dword ptr [esp + 4], 0x8c17d54
+0x0829c9bc lea     eax, [ebp - 0x138]
+0x0829c9c2 mov     dword ptr [esp], eax
+0x0829c9c5 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829c9ca mov     ebx, 0
+0x0829c9cf jmp     0x829d41d
+0x0829c9d4 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829c9dc mov     dword ptr [esp], 8
+0x0829c9e3 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829c9e8 mov     ebx, eax
+0x0829c9ea mov     eax, ebx
+0x0829c9ec test    eax, eax
+0x0829c9ee je      0x829c9fe
+0x0829c9f0 mov     eax, ebx
+0x0829c9f2 mov     dword ptr [esp], eax
+0x0829c9f5 call    0x82aa6a4 ; _ZN16village_attacked15CRevengeDungeonC2Ev
+0x0829c9fa mov     eax, ebx
+0x0829c9fc jmp     0x829ca00
+0x0829c9fe mov     eax, ebx
+0x0829ca00 mov     dword ptr [0x941f780], eax
+0x0829ca05 mov     eax, dword ptr [0x941f780]
+0x0829ca0a test    eax, eax
+0x0829ca0c jne     0x829ca64
+0x0829ca0e mov     dword ptr [esp + 0x14], 1
+0x0829ca16 mov     dword ptr [esp + 0x10], 1
+0x0829ca1e mov     dword ptr [esp + 0xc], 9
+0x0829ca26 mov     dword ptr [esp + 8], 0x1e24
+0x0829ca2e mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829ca36 lea     eax, [ebp - 0x128]
+0x0829ca3c mov     dword ptr [esp], eax
+0x0829ca3f call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829ca44 mov     dword ptr [esp + 4], 0x8c17d84
+0x0829ca4c lea     eax, [ebp - 0x128]
+0x0829ca52 mov     dword ptr [esp], eax
+0x0829ca55 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829ca5a mov     ebx, 0
+0x0829ca5f jmp     0x829d41d
+0x0829ca64 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ca6c mov     dword ptr [esp], 0xe4
+0x0829ca73 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829ca78 mov     ebx, eax
+0x0829ca7a mov     eax, ebx
+0x0829ca7c test    eax, eax
+0x0829ca7e je      0x829caad
+0x0829ca80 mov     eax, ebx
+0x0829ca82 mov     dword ptr [esp], eax
+0x0829ca85 call    0x8125c0c ; _ZN21CDailyScheduleManagerC2Ev
+0x0829ca8a jmp     0x829caa9
+0x0829ca8c mov     esi, edx
+0x0829ca8e mov     edi, eax
+0x0829ca90 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ca98 mov     dword ptr [esp], ebx
+0x0829ca9b call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829caa0 mov     eax, edi
+0x0829caa2 mov     edx, esi
+0x0829caa4 jmp     0x829d3ff
+0x0829caa9 mov     eax, ebx
+0x0829caab jmp     0x829caaf
+0x0829caad mov     eax, ebx
+0x0829caaf mov     dword ptr [0x941f784], eax
+0x0829cab4 mov     eax, dword ptr [0x941f784]
+0x0829cab9 test    eax, eax
+0x0829cabb jne     0x829cb13
+0x0829cabd mov     dword ptr [esp + 0x14], 1
+0x0829cac5 mov     dword ptr [esp + 0x10], 1
+0x0829cacd mov     dword ptr [esp + 0xc], 9
+0x0829cad5 mov     dword ptr [esp + 8], 0x1e2d
+0x0829cadd mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829cae5 lea     eax, [ebp - 0x118]
+0x0829caeb mov     dword ptr [esp], eax
+0x0829caee call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829caf3 mov     dword ptr [esp + 4], 0x8c17db0
+0x0829cafb lea     eax, [ebp - 0x118]
+0x0829cb01 mov     dword ptr [esp], eax
+0x0829cb04 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829cb09 mov     ebx, 0
+0x0829cb0e jmp     0x829d41d
+0x0829cb13 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829cb1b mov     dword ptr [esp], 0x1c
+0x0829cb22 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829cb27 mov     ebx, eax
+0x0829cb29 mov     eax, ebx
+0x0829cb2b test    eax, eax
+0x0829cb2d je      0x829cb5c
+0x0829cb2f mov     eax, ebx
+0x0829cb31 mov     dword ptr [esp], eax
+0x0829cb34 call    0x858860c ; _ZN18online_preliminary25COnlinePreliminaryTeamMgrC2Ev
+0x0829cb39 jmp     0x829cb58
+0x0829cb3b mov     esi, edx
+0x0829cb3d mov     edi, eax
+0x0829cb3f mov     dword ptr [esp + 4], 0x8d01a87
+0x0829cb47 mov     dword ptr [esp], ebx
+0x0829cb4a call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829cb4f mov     eax, edi
+0x0829cb51 mov     edx, esi
+0x0829cb53 jmp     0x829d3ff
+0x0829cb58 mov     eax, ebx
+0x0829cb5a jmp     0x829cb5e
+0x0829cb5c mov     eax, ebx
+0x0829cb5e mov     dword ptr [0x941f788], eax
+0x0829cb63 mov     eax, dword ptr [0x941f788]
+0x0829cb68 test    eax, eax
+0x0829cb6a jne     0x829cbc2
+0x0829cb6c mov     dword ptr [esp + 0x14], 1
+0x0829cb74 mov     dword ptr [esp + 0x10], 1
+0x0829cb7c mov     dword ptr [esp + 0xc], 9
+0x0829cb84 mov     dword ptr [esp + 8], 0x1e36
+0x0829cb8c mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829cb94 lea     eax, [ebp - 0x108]
+0x0829cb9a mov     dword ptr [esp], eax
+0x0829cb9d call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829cba2 mov     dword ptr [esp + 4], 0x8c17de4
+0x0829cbaa lea     eax, [ebp - 0x108]
+0x0829cbb0 mov     dword ptr [esp], eax
+0x0829cbb3 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829cbb8 mov     ebx, 0
+0x0829cbbd jmp     0x829d41d
+0x0829cbc2 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829cbca mov     dword ptr [esp], 0x40
+0x0829cbd1 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829cbd6 mov     ebx, eax
+0x0829cbd8 mov     eax, ebx
+0x0829cbda test    eax, eax
+0x0829cbdc je      0x829cc0b
+0x0829cbde mov     eax, ebx
+0x0829cbe0 mov     dword ptr [esp], eax
+0x0829cbe3 call    0x82a8a28 ; _ZN11game_master14CGameMasterMgrC2Ev
+0x0829cbe8 jmp     0x829cc07
+0x0829cbea mov     esi, edx
+0x0829cbec mov     edi, eax
+0x0829cbee mov     dword ptr [esp + 4], 0x8d01a87
+0x0829cbf6 mov     dword ptr [esp], ebx
+0x0829cbf9 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829cbfe mov     eax, edi
+0x0829cc00 mov     edx, esi
+0x0829cc02 jmp     0x829d3ff
+0x0829cc07 mov     eax, ebx
+0x0829cc09 jmp     0x829cc0d
+0x0829cc0b mov     eax, ebx
+0x0829cc0d mov     dword ptr [0x941f778], eax
+0x0829cc12 mov     eax, dword ptr [0x941f778]
+0x0829cc17 test    eax, eax
+0x0829cc19 jne     0x829cc71
+0x0829cc1b mov     dword ptr [esp + 0x14], 1
+0x0829cc23 mov     dword ptr [esp + 0x10], 1
+0x0829cc2b mov     dword ptr [esp + 0xc], 9
+0x0829cc33 mov     dword ptr [esp + 8], 0x1e47
+0x0829cc3b mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829cc43 lea     eax, [ebp - 0xf8]
+0x0829cc49 mov     dword ptr [esp], eax
+0x0829cc4c call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829cc51 mov     dword ptr [esp + 4], 0x8c17e1c
+0x0829cc59 lea     eax, [ebp - 0xf8]
+0x0829cc5f mov     dword ptr [esp], eax
+0x0829cc62 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829cc67 mov     ebx, 0
+0x0829cc6c jmp     0x829d41d
+0x0829cc71 mov     dword ptr [esp], 0x941f714
+0x0829cc78 call    0x80cbc9e ; _ZN11CSystemTime9getCurSecEv
+0x0829cc7d mov     dword ptr [esp], eax
+0x0829cc80 call    0x86373f2 ; _ZN19TimerUpdatePvPGrade15registNextTimerEl
+0x0829cc85 call    0x842d0ae ; _ZN29DB_ReloadAutoPunishRuleBackIP11makeRequestEv
+0x0829cc8a call    0x842d610 ; _ZN31DB_ReloadAutoPunishRuleHackType11makeRequestEv
+0x0829cc8f call    0x842efa0 ; _ZN20DB_LoadCleanPadPoint11makeRequestEv
+0x0829cc94 call    0x8432e80 ; _ZN17DB_BlackIPMonitor11makeRequestEv
+0x0829cc99 mov     dword ptr [esp], 4
+0x0829cca0 call    0x8724450 ; _Znwj
+0x0829cca5 mov     ebx, eax
+0x0829cca7 mov     eax, ebx
+0x0829cca9 mov     dword ptr [esp], eax
+0x0829ccac call    0x82a7c32 ; _ZN13CBusinessImplC1Ev
+0x0829ccb1 mov     eax, ebx
+0x0829ccb3 mov     dword ptr [0x941f7e0], eax
+0x0829ccb8 mov     dword ptr [esp], 0x8c17e47
+0x0829ccbf call    0x82a6539 ; _Z19CreateAntiServerObjPKc
+0x0829ccc4 mov     dword ptr [0x941f7e4], eax
+0x0829ccc9 mov     eax, dword ptr [0x941f7e4]
+0x0829ccce test    eax, eax
+0x0829ccd0 jne     0x829cd18
+0x0829ccd2 mov     dword ptr [esp + 0xc], 5
+0x0829ccda mov     dword ptr [esp + 8], 0x1eb0
+0x0829cce2 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829ccea lea     eax, [ebp - 0xe8]
+0x0829ccf0 mov     dword ptr [esp], eax
+0x0829ccf3 call    0x854f718 ; _ZN8cMyTraceC2EPKcii
+0x0829ccf8 mov     dword ptr [esp + 4], 0x8c17e4a
+0x0829cd00 lea     eax, [ebp - 0xe8]
+0x0829cd06 mov     dword ptr [esp], eax
+0x0829cd09 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829cd0e mov     ebx, 0
+0x0829cd13 jmp     0x829d41d
+0x0829cd18 mov     dword ptr [ebp - 0x35c], 0
+0x0829cd22 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0829cd27 mov     dword ptr [esp], eax
+0x0829cd2a call    0x8234516 ; _ZNK12CEnvironment18getProcessSequenceEv
+0x0829cd2f mov     dword ptr [esp + 8], eax
+0x0829cd33 mov     dword ptr [esp + 4], 0x8c17e5e
+0x0829cd3b lea     eax, [ebp - 0x35c]
+0x0829cd41 mov     dword ptr [esp], eax
+0x0829cd44 call    0x807e440 ; sprintf
+0x0829cd49 mov     eax, dword ptr [0x941f7e4]
+0x0829cd4e mov     eax, dword ptr [eax]
+0x0829cd50 mov     ebx, dword ptr [eax]
+0x0829cd52 mov     eax, dword ptr [0x941f7e0]
+0x0829cd57 mov     edx, eax
+0x0829cd59 mov     eax, dword ptr [0x941f7e4]
+0x0829cd5e lea     ecx, [ebp - 0x35c]
+0x0829cd64 mov     dword ptr [esp + 8], ecx
+0x0829cd68 mov     dword ptr [esp + 4], edx
+0x0829cd6c mov     dword ptr [esp], eax
+0x0829cd6f call    ebx
+0x0829cd71 test    eax, eax
+0x0829cd73 setne   al
+0x0829cd76 test    al, al
+0x0829cd78 jmp     0x829cdc0
+0x0829cd7a mov     dword ptr [esp + 0xc], 5
+0x0829cd82 mov     dword ptr [esp + 8], 0x1eb7
+0x0829cd8a mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829cd92 lea     eax, [ebp - 0xd8]
+0x0829cd98 mov     dword ptr [esp], eax
+0x0829cd9b call    0x854f718 ; _ZN8cMyTraceC2EPKcii
+0x0829cda0 mov     dword ptr [esp + 4], 0x8c17e61
+0x0829cda8 lea     eax, [ebp - 0xd8]
+0x0829cdae mov     dword ptr [esp], eax
+0x0829cdb1 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829cdb6 mov     ebx, 0
+0x0829cdbb jmp     0x829d41d
+0x0829cdc0 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829cdc8 mov     dword ptr [esp], 0x30
+0x0829cdcf call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829cdd4 mov     ebx, eax
+0x0829cdd6 mov     eax, ebx
+0x0829cdd8 test    eax, eax
+0x0829cdda je      0x829ce29
+0x0829cddc mov     dword ptr [ebp - 0x76c], ebx
+0x0829cde2 mov     esi, dword ptr [ebp - 0x76c]
+0x0829cde8 mov     eax, 0
+0x0829cded mov     edx, 0xc
+0x0829cdf2 mov     edi, esi
+0x0829cdf4 mov     ecx, edx
+0x0829cdf6 rep stosd dword ptr es:[edi], eax
+0x0829cdf8 mov     eax, dword ptr [ebp - 0x76c]
+0x0829cdfe mov     dword ptr [esp], eax
+0x0829ce01 call    0x82aa89e ; _ZN13CStatisticMgrC2Ev
+0x0829ce06 jmp     0x829ce25
+0x0829ce08 mov     esi, edx
+0x0829ce0a mov     edi, eax
+0x0829ce0c mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ce14 mov     dword ptr [esp], ebx
+0x0829ce17 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829ce1c mov     eax, edi
+0x0829ce1e mov     edx, esi
+0x0829ce20 jmp     0x829d3ff
+0x0829ce25 mov     eax, ebx
+0x0829ce27 jmp     0x829ce2b
+0x0829ce29 mov     eax, ebx
+0x0829ce2b mov     dword ptr [0x941f764], eax
+0x0829ce30 mov     eax, dword ptr [0x941f764]
+0x0829ce35 test    eax, eax
+0x0829ce37 jne     0x829ce8f
+0x0829ce39 mov     dword ptr [esp + 0x14], 1
+0x0829ce41 mov     dword ptr [esp + 0x10], 1
+0x0829ce49 mov     dword ptr [esp + 0xc], 9
+0x0829ce51 mov     dword ptr [esp + 8], 0x1ebf
+0x0829ce59 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829ce61 lea     eax, [ebp - 0xc8]
+0x0829ce67 mov     dword ptr [esp], eax
+0x0829ce6a call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829ce6f mov     dword ptr [esp + 4], 0x8c17c70
+0x0829ce77 lea     eax, [ebp - 0xc8]
+0x0829ce7d mov     dword ptr [esp], eax
+0x0829ce80 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829ce85 mov     ebx, 0
+0x0829ce8a jmp     0x829d41d
+0x0829ce8f mov     dword ptr [esp + 4], 0x8d01a87
+0x0829ce97 mov     dword ptr [esp], 0x30
+0x0829ce9e call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829cea3 mov     ebx, eax
+0x0829cea5 mov     eax, ebx
+0x0829cea7 test    eax, eax
+0x0829cea9 je      0x829ced8
+0x0829ceab mov     eax, ebx
+0x0829cead mov     dword ptr [esp], eax
+0x0829ceb0 call    0x827f6d8 ; _ZN15StackableAction6ActionC2Ev
+0x0829ceb5 jmp     0x829ced4
+0x0829ceb7 mov     esi, edx
+0x0829ceb9 mov     edi, eax
+0x0829cebb mov     dword ptr [esp + 4], 0x8d01a87
+0x0829cec3 mov     dword ptr [esp], ebx
+0x0829cec6 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829cecb mov     eax, edi
+0x0829cecd mov     edx, esi
+0x0829cecf jmp     0x829d3ff
+0x0829ced4 mov     eax, ebx
+0x0829ced6 jmp     0x829ceda
+0x0829ced8 mov     eax, ebx
+0x0829ceda mov     dword ptr [0x941f7fc], eax
+0x0829cedf mov     eax, dword ptr [0x941f7fc]
+0x0829cee4 test    eax, eax
+0x0829cee6 jne     0x829cf3e
+0x0829cee8 mov     dword ptr [esp + 0x14], 1
+0x0829cef0 mov     dword ptr [esp + 0x10], 1
+0x0829cef8 mov     dword ptr [esp + 0xc], 9
+0x0829cf00 mov     dword ptr [esp + 8], 0x1ed9
+0x0829cf08 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829cf10 lea     eax, [ebp - 0xb8]
+0x0829cf16 mov     dword ptr [esp], eax
+0x0829cf19 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829cf1e mov     dword ptr [esp + 4], 0x8c17e74
+0x0829cf26 lea     eax, [ebp - 0xb8]
+0x0829cf2c mov     dword ptr [esp], eax
+0x0829cf2f call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829cf34 mov     ebx, 0
+0x0829cf39 jmp     0x829d41d
+0x0829cf3e mov     eax, dword ptr [0x940bd6c]
+0x0829cf43 mov     dword ptr [esp + 8], 0x1ee0
+0x0829cf4b mov     dword ptr [esp + 4], 0x8c16288
+0x0829cf53 mov     dword ptr [esp], eax
+0x0829cf56 call    0x828fa86 ; _ZN10StreamPool7AcquireEPKci
+0x0829cf5b mov     dword ptr [esp + 8], 1
+0x0829cf63 mov     dword ptr [esp + 4], eax
+0x0829cf67 lea     eax, [ebp - 0x364]
+0x0829cf6d mov     dword ptr [esp], eax
+0x0829cf70 call    0x80c8c26 ; _ZN12CStreamGuardC1EP6Streamb
+0x0829cf75 lea     eax, [ebp - 0x364]
+0x0829cf7b mov     dword ptr [esp], eax
+0x0829cf7e call    0x80c8c46 ; _ZN12CStreamGuarddeEv
+0x0829cf83 mov     dword ptr [esp + 4], 0x277
+0x0829cf8b mov     dword ptr [esp], eax
+0x0829cf8e call    0x80c8c56 ; _ZN12CStreamGuardlsEi
+0x0829cf93 lea     eax, [ebp - 0x364]
+0x0829cf99 mov     dword ptr [esp], eax
+0x0829cf9c call    0x80c8c46 ; _ZN12CStreamGuarddeEv
+0x0829cfa1 mov     dword ptr [esp + 4], 0xffffffff
+0x0829cfa9 mov     dword ptr [esp], eax
+0x0829cfac call    0x80c8c56 ; _ZN12CStreamGuardlsEi
+0x0829cfb1 mov     eax, dword ptr [0x940bd68]
+0x0829cfb6 lea     edx, [ebp - 0x364]
+0x0829cfbc mov     dword ptr [esp + 8], edx
+0x0829cfc0 mov     dword ptr [esp + 4], 2
+0x0829cfc8 mov     dword ptr [esp], eax
+0x0829cfcb call    0x8570fde ; _ZN11MsgQueueMgr3putENS_9QUEUE_IDXER12CStreamGuard
+0x0829cfd0 jmp     0x829cfed
+0x0829cfd2 mov     ebx, edx
+0x0829cfd4 mov     esi, eax
+0x0829cfd6 lea     eax, [ebp - 0x364]
+0x0829cfdc mov     dword ptr [esp], eax
+0x0829cfdf call    0x861c8d2 ; _ZN12CStreamGuardD1Ev
+0x0829cfe4 mov     eax, esi
+0x0829cfe6 mov     edx, ebx
+0x0829cfe8 jmp     0x829d3ff
+0x0829cfed lea     eax, [ebp - 0x364]
+0x0829cff3 mov     dword ptr [esp], eax
+0x0829cff6 call    0x861c8d2 ; _ZN12CStreamGuardD1Ev
+0x0829cffb call    0x829d438 ; _ZN10GlobalData11InitCaptchaEv
+0x0829d000 xor     eax, 1
+0x0829d003 test    al, al
+0x0829d005 je      0x829d05d
+0x0829d007 mov     dword ptr [esp + 0x14], 1
+0x0829d00f mov     dword ptr [esp + 0x10], 1
+0x0829d017 mov     dword ptr [esp + 0xc], 9
+0x0829d01f mov     dword ptr [esp + 8], 0x1eea
+0x0829d027 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829d02f lea     eax, [ebp - 0xa8]
+0x0829d035 mov     dword ptr [esp], eax
+0x0829d038 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829d03d mov     dword ptr [esp + 4], 0x8c17eac
+0x0829d045 lea     eax, [ebp - 0xa8]
+0x0829d04b mov     dword ptr [esp], eax
+0x0829d04e call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829d053 mov     ebx, 0
+0x0829d058 jmp     0x829d41d
+0x0829d05d mov     dword ptr [esp], 3
+0x0829d064 call    0x863b2ba ; _ZN25Timer_GenerateCaptchaData15RegistNextTimerEi
+0x0829d069 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829d071 mov     dword ptr [esp], 0xc
+0x0829d078 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829d07d mov     ebx, eax
+0x0829d07f mov     eax, ebx
+0x0829d081 test    eax, eax
+0x0829d083 je      0x829d0b2
+0x0829d085 mov     eax, ebx
+0x0829d087 mov     dword ptr [esp], eax
+0x0829d08a call    0x84a302e ; _ZN17expert_extraction14CExtractionMgrC1Ev
+0x0829d08f jmp     0x829d0ae
+0x0829d091 mov     esi, edx
+0x0829d093 mov     edi, eax
+0x0829d095 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829d09d mov     dword ptr [esp], ebx
+0x0829d0a0 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829d0a5 mov     eax, edi
+0x0829d0a7 mov     edx, esi
+0x0829d0a9 jmp     0x829d3ff
+0x0829d0ae mov     eax, ebx
+0x0829d0b0 jmp     0x829d0b4
+0x0829d0b2 mov     eax, ebx
+0x0829d0b4 mov     dword ptr [0x941f800], eax
+0x0829d0b9 mov     eax, dword ptr [0x941f800]
+0x0829d0be test    eax, eax
+0x0829d0c0 jne     0x829d118
+0x0829d0c2 mov     dword ptr [esp + 0x14], 1
+0x0829d0ca mov     dword ptr [esp + 0x10], 1
+0x0829d0d2 mov     dword ptr [esp + 0xc], 9
+0x0829d0da mov     dword ptr [esp + 8], 0x1ef5
+0x0829d0e2 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829d0ea lea     eax, [ebp - 0x98]
+0x0829d0f0 mov     dword ptr [esp], eax
+0x0829d0f3 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829d0f8 mov     dword ptr [esp + 4], 0x8c17ed0
+0x0829d100 lea     eax, [ebp - 0x98]
+0x0829d106 mov     dword ptr [esp], eax
+0x0829d109 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829d10e mov     ebx, 0
+0x0829d113 jmp     0x829d41d
+0x0829d118 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829d120 mov     dword ptr [esp], 0x14
+0x0829d127 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829d12c mov     ebx, eax
+0x0829d12e mov     eax, ebx
+0x0829d130 test    eax, eax
+0x0829d132 je      0x829d161
+0x0829d134 mov     eax, ebx
+0x0829d136 mov     dword ptr [esp], eax
+0x0829d139 call    0x82840da ; _ZN12NPC_TeleportC2Ev
+0x0829d13e jmp     0x829d15d
+0x0829d140 mov     esi, edx
+0x0829d142 mov     edi, eax
+0x0829d144 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829d14c mov     dword ptr [esp], ebx
+0x0829d14f call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829d154 mov     eax, edi
+0x0829d156 mov     edx, esi
+0x0829d158 jmp     0x829d3ff
+0x0829d15d mov     eax, ebx
+0x0829d15f jmp     0x829d163
+0x0829d161 mov     eax, ebx
+0x0829d163 mov     dword ptr [0x941f818], eax
+0x0829d168 mov     eax, dword ptr [0x941f818]
+0x0829d16d test    eax, eax
+0x0829d16f jne     0x829d1c7
+0x0829d171 mov     dword ptr [esp + 0x14], 1
+0x0829d179 mov     dword ptr [esp + 0x10], 1
+0x0829d181 mov     dword ptr [esp + 0xc], 9
+0x0829d189 mov     dword ptr [esp + 8], 0x1f02
+0x0829d191 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829d199 lea     eax, [ebp - 0x88]
+0x0829d19f mov     dword ptr [esp], eax
+0x0829d1a2 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829d1a7 mov     dword ptr [esp + 4], 0x8c17efc
+0x0829d1af lea     eax, [ebp - 0x88]
+0x0829d1b5 mov     dword ptr [esp], eax
+0x0829d1b8 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829d1bd mov     ebx, 0
+0x0829d1c2 jmp     0x829d41d
+0x0829d1c7 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829d1cf mov     dword ptr [esp], 0x14
+0x0829d1d6 call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829d1db mov     ebx, eax
+0x0829d1dd mov     eax, ebx
+0x0829d1df test    eax, eax
+0x0829d1e1 je      0x829d210
+0x0829d1e3 mov     eax, ebx
+0x0829d1e5 mov     dword ptr [esp], eax
+0x0829d1e8 call    0x8284142 ; _ZN13User_TeleportC1Ev
+0x0829d1ed jmp     0x829d20c
+0x0829d1ef mov     esi, edx
+0x0829d1f1 mov     edi, eax
+0x0829d1f3 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829d1fb mov     dword ptr [esp], ebx
+0x0829d1fe call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829d203 mov     eax, edi
+0x0829d205 mov     edx, esi
+0x0829d207 jmp     0x829d3ff
+0x0829d20c mov     eax, ebx
+0x0829d20e jmp     0x829d212
+0x0829d210 mov     eax, ebx
+0x0829d212 mov     dword ptr [0x941f81c], eax
+0x0829d217 mov     eax, dword ptr [0x941f81c]
+0x0829d21c test    eax, eax
+0x0829d21e jne     0x829d270
+0x0829d220 mov     dword ptr [esp + 0x14], 1
+0x0829d228 mov     dword ptr [esp + 0x10], 1
+0x0829d230 mov     dword ptr [esp + 0xc], 9
+0x0829d238 mov     dword ptr [esp + 8], 0x1f09
+0x0829d240 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829d248 lea     eax, [ebp - 0x78]
+0x0829d24b mov     dword ptr [esp], eax
+0x0829d24e call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829d253 mov     dword ptr [esp + 4], 0x8c17f28
+0x0829d25b lea     eax, [ebp - 0x78]
+0x0829d25e mov     dword ptr [esp], eax
+0x0829d261 call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829d266 mov     ebx, 0
+0x0829d26b jmp     0x829d41d
+0x0829d270 mov     dword ptr [esp + 4], 0x8d01a87
+0x0829d278 mov     dword ptr [esp], 0x18
+0x0829d27f call    0x8725b50 ; _ZnwjRKSt9nothrow_t
+0x0829d284 mov     ebx, eax
+0x0829d286 mov     eax, ebx
+0x0829d288 test    eax, eax
+0x0829d28a je      0x829d2b9
+0x0829d28c mov     eax, ebx
+0x0829d28e mov     dword ptr [esp], eax
+0x0829d291 call    0x85f0d64 ; _ZN13random_option23CRandomOptionItemHandleC2Ev
+0x0829d296 jmp     0x829d2b5
+0x0829d298 mov     esi, edx
+0x0829d29a mov     edi, eax
+0x0829d29c mov     dword ptr [esp + 4], 0x8d01a87
+0x0829d2a4 mov     dword ptr [esp], ebx
+0x0829d2a7 call    0x87247e0 ; _ZdlPvRKSt9nothrow_t
+0x0829d2ac mov     eax, edi
+0x0829d2ae mov     edx, esi
+0x0829d2b0 jmp     0x829d3ff
+0x0829d2b5 mov     eax, ebx
+0x0829d2b7 jmp     0x829d2bb
+0x0829d2b9 mov     eax, ebx
+0x0829d2bb mov     dword ptr [0x941f820], eax
+0x0829d2c0 mov     eax, dword ptr [0x941f820]
+0x0829d2c5 test    eax, eax
+0x0829d2c7 jne     0x829d319
+0x0829d2c9 mov     dword ptr [esp + 0x14], 1
+0x0829d2d1 mov     dword ptr [esp + 0x10], 1
+0x0829d2d9 mov     dword ptr [esp + 0xc], 9
+0x0829d2e1 mov     dword ptr [esp + 8], 0x1f12
+0x0829d2e9 mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829d2f1 lea     eax, [ebp - 0x68]
+0x0829d2f4 mov     dword ptr [esp], eax
+0x0829d2f7 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829d2fc mov     dword ptr [esp + 4], 0x8c17f54
+0x0829d304 lea     eax, [ebp - 0x68]
+0x0829d307 mov     dword ptr [esp], eax
+0x0829d30a call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829d30f mov     ebx, 0
+0x0829d314 jmp     0x829d41d
+0x0829d319 call    0x81625e6 ; _ZN4ARAD9SingletonI22ServiceRestrictManagerE3GetEv
+0x0829d31e mov     dword ptr [esp], eax
+0x0829d321 call    0x816e2b2 ; _ZN22ServiceRestrictManager10initializeEv
+0x0829d326 xor     eax, 1
+0x0829d329 test    al, al
+0x0829d32b je      0x829d37d
+0x0829d32d mov     dword ptr [esp + 0x14], 1
+0x0829d335 mov     dword ptr [esp + 0x10], 1
+0x0829d33d mov     dword ptr [esp + 0xc], 9
+0x0829d345 mov     dword ptr [esp + 8], 0x1f1f
+0x0829d34d mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829d355 lea     eax, [ebp - 0x58]
+0x0829d358 mov     dword ptr [esp], eax
+0x0829d35b call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829d360 mov     dword ptr [esp + 4], 0x8c17f88
+0x0829d368 lea     eax, [ebp - 0x58]
+0x0829d36b mov     dword ptr [esp], eax
+0x0829d36e call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829d373 mov     ebx, 0
+0x0829d378 jmp     0x829d41d
+0x0829d37d call    0x81625e6 ; _ZN4ARAD9SingletonI22ServiceRestrictManagerE3GetEv
+0x0829d382 mov     dword ptr [esp], eax
+0x0829d385 call    0x816e8ce ; _ZN22ServiceRestrictManager10savePolicyEv
+0x0829d38a call    0x81625e6 ; _ZN4ARAD9SingletonI22ServiceRestrictManagerE3GetEv
+0x0829d38f mov     dword ptr [esp], eax
+0x0829d392 call    0x816e7d6 ; _ZN22ServiceRestrictManager10loadPolicyEv
+0x0829d397 call    0x8162679 ; _ZN4ARAD9SingletonI19RestrictGeolocationE3GetEv
+0x0829d39c mov     dword ptr [esp], eax
+0x0829d39f call    0x8170a46 ; _ZN19RestrictGeolocation15initGeolocationEv
+0x0829d3a4 xor     eax, 1
+0x0829d3a7 test    al, al
+0x0829d3a9 je      0x829d3f8
+0x0829d3ab mov     dword ptr [esp + 0x14], 1
+0x0829d3b3 mov     dword ptr [esp + 0x10], 1
+0x0829d3bb mov     dword ptr [esp + 0xc], 9
+0x0829d3c3 mov     dword ptr [esp + 8], 0x1f2a
+0x0829d3cb mov     dword ptr [esp + 4], 0x8c1b1c0
+0x0829d3d3 lea     eax, [ebp - 0x48]
+0x0829d3d6 mov     dword ptr [esp], eax
+0x0829d3d9 call    0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0829d3de mov     dword ptr [esp + 4], 0x8c17fbb
+0x0829d3e6 lea     eax, [ebp - 0x48]
+0x0829d3e9 mov     dword ptr [esp], eax
+0x0829d3ec call    0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0829d3f1 mov     ebx, 0
+0x0829d3f6 jmp     0x829d41d
+0x0829d3f8 mov     ebx, 1
+0x0829d3fd jmp     0x829d41d
+0x0829d3ff mov     ebx, edx
+0x0829d401 mov     esi, eax
+0x0829d403 lea     eax, [ebp - 0x358]
+0x0829d409 mov     dword ptr [esp], eax
+0x0829d40c call    0x82aa83a ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUPSt4lessIS0_ESaISt4pairIKS0_S1_EEED2Ev
+0x0829d411 mov     eax, esi
+0x0829d413 mov     edx, ebx
+0x0829d415 mov     dword ptr [esp], eax
+0x0829d418 call    0x8ae3750 ; _Unwind_Resume
+0x0829d41d lea     eax, [ebp - 0x358]
+0x0829d423 mov     dword ptr [esp], eax
+0x0829d426 call    0x82aa83a ; _ZNSt3mapI18ENUM_DB_HANDLE_IDX17ENUM_SERVER_GROUPSt4lessIS0_ESaISt4pairIKS0_S1_EEED2Ev
+0x0829d42b mov     eax, ebx
+0x0829d42d lea     esp, [ebp - 0xc]
+0x0829d430 add     esp, 0
+0x0829d433 pop     ebx
+0x0829d434 pop     esi
+0x0829d435 pop     edi
+0x0829d436 pop     ebp
+0x0829d437 ret     
+
+[_ZN5CUser12InitOnAcceptEi]
+0x086493c8 push    ebp
+0x086493c9 mov     ebp, esp
+0x086493cb push    esi
+0x086493cc push    ebx
+0x086493cd sub     esp, 0x430
+0x086493d3 mov     eax, dword ptr [ebp + 8]
+0x086493d6 lea     edx, [eax + 0xe0]
+0x086493dc mov     dword ptr [esp + 8], 0
+0x086493e4 mov     eax, dword ptr [ebp + 0xc]
+0x086493e7 mov     dword ptr [esp + 4], eax
+0x086493eb mov     dword ptr [esp], edx
+0x086493ee call    0x8698976 ; _ZN8CNetworkILi4096ELi450000EE10set_socketEib
+0x086493f3 mov     eax, dword ptr [ebp + 8]
+0x086493f6 mov     dword ptr [eax + 0x8cfc4], 1
+0x08649400 mov     eax, dword ptr [ebp + 8]
+0x08649403 mov     dword ptr [eax + 0x796fc], 0
+0x0864940d mov     eax, dword ptr [ebp + 8]
+0x08649410 add     eax, 0x711f4
+0x08649415 mov     dword ptr [esp], eax
+0x08649418 call    0x8696de4 ; _ZN15CPacketVerifier4InitEv
+0x0864941d mov     eax, dword ptr [ebp + 8]
+0x08649420 add     eax, 0xe0
+0x08649425 mov     dword ptr [esp], eax
+0x08649428 call    0x86989ca ; _ZN8CNetworkILi4096ELi450000EE17initNetworkBufferEv
+0x0864942d mov     eax, dword ptr [ebp + 8]
+0x08649430 mov     dword ptr [eax + 0x8d10c], 0
+0x0864943a mov     eax, dword ptr [ebp + 8]
+0x0864943d mov     dword ptr [eax + 0x703a4], 0
+0x08649447 mov     eax, dword ptr [ebp + 8]
+0x0864944a mov     byte ptr [eax + 0x70390], 0
+0x08649451 mov     eax, dword ptr [ebp + 8]
+0x08649454 mov     byte ptr [eax + 0x703a8], 0
+0x0864945b mov     eax, dword ptr [ebp + 8]
+0x0864945e mov     dword ptr [eax + 0x703ac], 0
+0x08649468 mov     eax, dword ptr [ebp + 8]
+0x0864946b mov     dword ptr [eax + 0x703b0], 0
+0x08649475 mov     eax, dword ptr [ebp + 8]
+0x08649478 mov     dword ptr [eax + 0x703b4], 0
+0x08649482 mov     eax, dword ptr [ebp + 8]
+0x08649485 mov     dword ptr [eax + 0x703b8], 0
+0x0864948f mov     eax, dword ptr [ebp + 8]
+0x08649492 mov     byte ptr [eax + 0x703c0], 0
+0x08649499 mov     eax, dword ptr [ebp + 8]
+0x0864949c mov     byte ptr [eax + 0x703c1], 0
+0x086494a3 mov     eax, dword ptr [ebp + 8]
+0x086494a6 add     eax, 0x703c4
+0x086494ab mov     dword ptr [esp], eax
+0x086494ae call    0x831d454 ; _ZN18STBreakAwayRewards5clearEv
+0x086494b3 mov     eax, dword ptr [ebp + 8]
+0x086494b6 mov     dword ptr [eax + 0x703bc], 0
+0x086494c0 mov     eax, dword ptr [ebp + 8]
+0x086494c3 mov     byte ptr [eax + 0x703d8], 0
+0x086494ca mov     eax, dword ptr [ebp + 8]
+0x086494cd mov     byte ptr [eax + 0x703d9], 0
+0x086494d4 mov     eax, dword ptr [ebp + 8]
+0x086494d7 mov     byte ptr [eax + 0x703da], 0xff
+0x086494de mov     eax, dword ptr [ebp + 8]
+0x086494e1 add     eax, 0x703db
+0x086494e6 mov     dword ptr [esp + 8], 0xc8
+0x086494ee mov     dword ptr [esp + 4], 0
+0x086494f6 mov     dword ptr [esp], eax
+0x086494f9 call    0x807dcc0 ; memset
+0x086494fe mov     eax, dword ptr [ebp + 8]
+0x08649501 mov     dword ptr [eax + 0x71b98], 0
+0x0864950b call    0x8697838 ; _ZN8WongWork14CMailBoxHelper13AssignMailBoxEv
+0x08649510 mov     edx, dword ptr [ebp + 8]
+0x08649513 mov     dword ptr [edx + 0x71b98], eax
+0x08649519 mov     eax, dword ptr [ebp + 8]
+0x0864951c mov     eax, dword ptr [eax + 0x71b98]
+0x08649522 mov     dword ptr [esp], eax
+0x08649525 call    0x8551d98 ; _ZN8WongWork8CMailBox4InitEv
+0x0864952a lea     eax, [ebp - 0x20]
+0x0864952d mov     dword ptr [esp], eax
+0x08649530 call    0x858dd4c ; _ZN11PacketGuardC2Ev
+0x08649535 mov     dword ptr [esp + 8], 1
+0x0864953d mov     dword ptr [esp + 4], 0
+0x08649545 lea     eax, [ebp - 0x20]
+0x08649548 mov     dword ptr [esp], eax
+0x0864954b call    0x80cb8fc ; _ZN18InterfacePacketBuf10put_headerEii
+0x08649550 lea     ebx, [ebp - 0x420]
+0x08649556 call    0x82a713a ; _Z8G_Cipherv
+0x0864955b mov     dword ptr [esp + 4], ebx
+0x0864955f mov     dword ptr [esp], eax
+0x08649562 call    0x80975de ; _ZN6Cipher14GetOriginalKeyEPh
+0x08649567 call    0x82a713a ; _Z8G_Cipherv
+0x0864956c mov     dword ptr [esp], eax
+0x0864956f call    0x80975d4 ; _ZNK6Cipher17GetTotalKeyLengthEv
+0x08649574 mov     dword ptr [ebp - 0x14], eax
+0x08649577 mov     eax, dword ptr [ebp - 0x14]
+0x0864957a mov     dword ptr [esp + 8], eax
+0x0864957e lea     eax, [ebp - 0x420]
+0x08649584 mov     dword ptr [esp + 4], eax
+0x08649588 lea     eax, [ebp - 0x20]
+0x0864958b mov     dword ptr [esp], eax
+0x0864958e call    0x811df08 ; _ZN18InterfacePacketBuf10put_binaryEPci
+0x08649593 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x08649598 mov     dword ptr [esp], eax
+0x0864959b call    0x82a6d5c ; _ZN12CEnvironment16get_channel_nameEv
+0x086495a0 mov     dword ptr [esp], eax
+0x086495a3 call    0x807e3b0 ; strlen
+0x086495a8 mov     dword ptr [esp + 4], eax
+0x086495ac lea     eax, [ebp - 0x20]
+0x086495af mov     dword ptr [esp], eax
+0x086495b2 call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x086495b7 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x086495bc mov     dword ptr [esp], eax
+0x086495bf call    0x82a6d5c ; _ZN12CEnvironment16get_channel_nameEv
+0x086495c4 mov     dword ptr [esp], eax
+0x086495c7 call    0x807e3b0 ; strlen
+0x086495cc mov     ebx, eax
+0x086495ce call    0x80cc181 ; _Z14G_CEnvironmentv
+0x086495d3 mov     dword ptr [esp], eax
+0x086495d6 call    0x82a6d5c ; _ZN12CEnvironment16get_channel_nameEv
+0x086495db mov     dword ptr [esp + 8], ebx
+0x086495df mov     dword ptr [esp + 4], eax
+0x086495e3 lea     eax, [ebp - 0x20]
+0x086495e6 mov     dword ptr [esp], eax
+0x086495e9 call    0x81b73e4 ; _ZN18InterfacePacketBuf7put_strEPci
+0x086495ee call    0x86b1d25 ; _Z18get_seed_from_datev
+0x086495f3 mov     edx, dword ptr [ebp + 8]
+0x086495f6 mov     dword ptr [edx + 0x711e8], eax
+0x086495fc mov     eax, dword ptr [ebp + 8]
+0x086495ff mov     eax, dword ptr [eax + 0x711e8]
+0x08649605 mov     dword ptr [esp + 4], eax
+0x08649609 lea     eax, [ebp - 0x20]
+0x0864960c mov     dword ptr [esp], eax
+0x0864960f call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x08649614 mov     dword ptr [esp], 0
+0x0864961b call    0x86b1b87 ; _Z12get_rand_inti
+0x08649620 mov     edx, eax
+0x08649622 mov     eax, dword ptr [ebp + 8]
+0x08649625 mov     dword ptr [eax + 0x796e0], edx
+0x0864962b mov     eax, dword ptr [ebp + 8]
+0x0864962e mov     eax, dword ptr [eax + 0x796e0]
+0x08649634 mov     dword ptr [esp + 4], eax
+0x08649638 lea     eax, [ebp - 0x20]
+0x0864963b mov     dword ptr [esp], eax
+0x0864963e call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x08649643 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x08649648 mov     eax, dword ptr [eax + 0x378]
+0x0864964e mov     dword ptr [esp + 4], eax
+0x08649652 lea     eax, [ebp - 0x20]
+0x08649655 mov     dword ptr [esp], eax
+0x08649658 call    0x80cb920 ; _ZN18InterfacePacketBuf8put_byteEi
+0x0864965d call    0x80cc181 ; _Z14G_CEnvironmentv
+0x08649662 mov     eax, dword ptr [eax + 0x1b0]
+0x08649668 mov     dword ptr [esp + 4], eax
+0x0864966c lea     eax, [ebp - 0x20]
+0x0864966f mov     dword ptr [esp], eax
+0x08649672 call    0x80cb920 ; _ZN18InterfacePacketBuf8put_byteEi
+0x08649677 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0864967c mov     eax, dword ptr [eax + 0x1a8]
+0x08649682 mov     dword ptr [esp + 4], eax
+0x08649686 lea     eax, [ebp - 0x20]
+0x08649689 mov     dword ptr [esp], eax
+0x0864968c call    0x80cb920 ; _ZN18InterfacePacketBuf8put_byteEi
+0x08649691 mov     dword ptr [esp], 0x941f714
+0x08649698 call    0x80cbc9e ; _ZN11CSystemTime9getCurSecEv
+0x0864969d mov     dword ptr [esp + 4], eax
+0x086496a1 lea     eax, [ebp - 0x20]
+0x086496a4 mov     dword ptr [esp], eax
+0x086496a7 call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x086496ac call    0x80cc181 ; _Z14G_CEnvironmentv
+0x086496b1 add     eax, 0x360
+0x086496b6 mov     dword ptr [esp], eax
+0x086496b9 call    0x82cbdc2 ; _ZNKSt6vectorI5SK_IPSaIS0_EE4sizeEv
+0x086496be mov     dword ptr [ebp - 0x10], eax
+0x086496c1 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x086496c6 add     eax, 0x360
+0x086496cb mov     dword ptr [esp], eax
+0x086496ce call    0x82cbdc2 ; _ZNKSt6vectorI5SK_IPSaIS0_EE4sizeEv
+0x086496d3 mov     dword ptr [esp + 4], eax
+0x086496d7 lea     eax, [ebp - 0x20]
+0x086496da mov     dword ptr [esp], eax
+0x086496dd call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x086496e2 cmp     dword ptr [ebp - 0x10], 0
+0x086496e6 je      0x86497bc
+0x086496ec mov     dword ptr [ebp - 0xc], 0
+0x086496f3 jmp     0x8649759
+0x086496f5 mov     ebx, dword ptr [ebp - 0xc]
+0x086496f8 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x086496fd add     eax, 0x360
+0x08649702 mov     dword ptr [esp + 4], ebx
+0x08649706 mov     dword ptr [esp], eax
+0x08649709 call    0x8698a46 ; _ZNSt6vectorI5SK_IPSaIS0_EEixEj
+0x0864970e mov     dword ptr [esp], eax
+0x08649711 call    0x807e3b0 ; strlen
+0x08649716 mov     dword ptr [esp + 4], eax
+0x0864971a lea     eax, [ebp - 0x20]
+0x0864971d mov     dword ptr [esp], eax
+0x08649720 call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x08649725 mov     ebx, dword ptr [ebp - 0xc]
+0x08649728 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0864972d add     eax, 0x360
+0x08649732 mov     dword ptr [esp + 4], ebx
+0x08649736 mov     dword ptr [esp], eax
+0x08649739 call    0x8698a46 ; _ZNSt6vectorI5SK_IPSaIS0_EEixEj
+0x0864973e mov     dword ptr [esp + 8], 0x10
+0x08649746 mov     dword ptr [esp + 4], eax
+0x0864974a lea     eax, [ebp - 0x20]
+0x0864974d mov     dword ptr [esp], eax
+0x08649750 call    0x81b73e4 ; _ZN18InterfacePacketBuf7put_strEPci
+0x08649755 add     dword ptr [ebp - 0xc], 1
+0x08649759 mov     eax, dword ptr [ebp - 0xc]
+0x0864975c cmp     eax, dword ptr [ebp - 0x10]
+0x0864975f setl    al
+0x08649762 test    al, al
+0x08649764 jne     0x86496f5
+0x08649766 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x0864976b add     eax, 0x36c
+0x08649770 mov     dword ptr [esp + 4], 0
+0x08649778 mov     dword ptr [esp], eax
+0x0864977b call    0x808e1dc ; _ZNSt6vectorIiSaIiEEixEj
+0x08649780 mov     eax, dword ptr [eax]
+0x08649782 mov     dword ptr [esp + 4], eax
+0x08649786 lea     eax, [ebp - 0x20]
+0x08649789 mov     dword ptr [esp], eax
+0x0864978c call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x08649791 call    0x80cc181 ; _Z14G_CEnvironmentv
+0x08649796 add     eax, 0x36c
+0x0864979b mov     dword ptr [esp + 4], 1
+0x086497a3 mov     dword ptr [esp], eax
+0x086497a6 call    0x808e1dc ; _ZNSt6vectorIiSaIiEEixEj
+0x086497ab mov     eax, dword ptr [eax]
+0x086497ad mov     dword ptr [esp + 4], eax
+0x086497b1 lea     eax, [ebp - 0x20]
+0x086497b4 mov     dword ptr [esp], eax
+0x086497b7 call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x086497bc mov     dword ptr [esp + 4], 0x25e
+0x086497c4 lea     eax, [ebp - 0x20]
+0x086497c7 mov     dword ptr [esp], eax
+0x086497ca call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x086497cf mov     dword ptr [esp + 4], 0x232
+0x086497d7 lea     eax, [ebp - 0x20]
+0x086497da mov     dword ptr [esp], eax
+0x086497dd call    0x80cb93c ; _ZN18InterfacePacketBuf7put_intEi
+0x086497e2 mov     dword ptr [esp + 4], 1
+0x086497ea lea     eax, [ebp - 0x20]
+0x086497ed mov     dword ptr [esp], eax
+0x086497f0 call    0x80cb958 ; _ZN18InterfacePacketBuf8finalizeEb
+0x086497f5 lea     eax, [ebp - 0x20]
+0x086497f8 mov     dword ptr [esp + 4], eax
+0x086497fc mov     eax, dword ptr [ebp + 8]
+0x086497ff mov     dword ptr [esp], eax
+0x08649802 call    0x86485ba ; _ZN5CUser4SendER11PacketGuard
+0x08649807 mov     eax, dword ptr [ebp + 8]
+0x0864980a mov     dword ptr [esp], eax
+0x0864980d call    0x867f1fe ; _ZN5CUser21StartRecvEventWaitingEv
+0x08649812 mov     dword ptr [esp + 4], 0x64
+0x0864981a mov     eax, dword ptr [ebp + 8]
+0x0864981d mov     dword ptr [esp], eax
+0x08649820 call    0x828715c ; _ZN5CUser14setStdDropRateEi
+0x08649825 mov     eax, dword ptr [ebp + 8]
+0x08649828 mov     dword ptr [eax + 0x79628], 0
+0x08649832 mov     eax, dword ptr [ebp + 8]
+0x08649835 mov     dword ptr [eax + 0x8e0f8], 0
+0x0864983f mov     eax, dword ptr [ebp + 8]
+0x08649842 mov     dword ptr [eax + 0x8e0fc], 0xffffffff
+0x0864984c mov     eax, dword ptr [ebp + 8]
+0x0864984f mov     byte ptr [eax + 0x8e100], 0
+0x08649856 mov     dword ptr [esp], 4
+0x0864985d call    0x8724450 ; _Znwj
+0x08649862 mov     ebx, eax
+0x08649864 mov     eax, ebx
+0x08649866 mov     dword ptr [esp], eax
+0x08649869 call    0x86978ba ; _ZN15cSecuUserActionC1Ev
+0x0864986e mov     edx, ebx
+0x08649870 mov     eax, dword ptr [ebp + 8]
+0x08649873 mov     dword ptr [eax + 0x8e948], edx
+0x08649879 mov     eax, dword ptr [ebp + 8]
+0x0864987c mov     eax, dword ptr [eax + 0x8e948]
+0x08649882 mov     dword ptr [esp], eax
+0x08649885 call    0x827b3f4 ; _ZN15cSecuUserAction4InitEv
+0x0864988a mov     eax, dword ptr [ebp + 8]
+0x0864988d mov     byte ptr [eax + 0x8e3ec], 0
+0x08649894 mov     eax, dword ptr [ebp + 8]
+0x08649897 mov     byte ptr [eax + 0x8e3ed], 1
+0x0864989e mov     eax, dword ptr [ebp + 8]
+0x086498a1 add     eax, 0x8e101
+0x086498a6 mov     dword ptr [esp + 8], 0x145
+0x086498ae mov     dword ptr [esp + 4], 0
+0x086498b6 mov     dword ptr [esp], eax
+0x086498b9 call    0x807dcc0 ; memset
+0x086498be mov     eax, dword ptr [ebp + 8]
+0x086498c1 add     eax, 0x8e246
+0x086498c6 mov     dword ptr [esp + 8], 0x1a6
+0x086498ce mov     dword ptr [esp + 4], 0
+0x086498d6 mov     dword ptr [esp], eax
+0x086498d9 call    0x807dcc0 ; memset
+0x086498de mov     eax, dword ptr [ebp + 8]
+0x086498e1 add     eax, 0x8e3f0
+0x086498e6 mov     dword ptr [esp], eax
+0x086498e9 call    0x8694fa0 ; _ZN8WongWork12CMCAPManager5resetEv
+0x086498ee mov     eax, dword ptr [ebp + 8]
+0x086498f1 mov     byte ptr [eax + 0x7962d], 0
+0x086498f8 mov     eax, dword ptr [ebp + 8]
+0x086498fb mov     dword ptr [esp], eax
+0x086498fe call    0x822fd20 ; _ZN5CUser15getSecurityCardEv
+0x08649903 mov     dword ptr [esp], eax
+0x08649906 call    0x85fdd68 ; _ZN8WongWork13CSecurityCard4initEv
+0x0864990b mov     eax, dword ptr [ebp + 8]
+0x0864990e mov     dword ptr [esp], eax
+0x08649911 call    0x822fd2e ; _ZN5CUser6getPadEv
+0x08649916 mov     dword ptr [esp], eax
+0x08649919 call    0x859957c ; _ZN8Sanicova4CPad4initEv
+0x0864991e mov     eax, dword ptr [ebp + 8]
+0x08649921 mov     dword ptr [eax + 0x8e40c], 0
+0x0864992b mov     eax, 0x94739a0
+0x08649930 movzx   eax, byte ptr [eax]
+0x08649933 test    al, al
+0x08649935 jne     0x8649964
+0x08649937 mov     dword ptr [esp], 0x94739a0
+0x0864993e call    0x8725330 ; __cxa_guard_acquire
+0x08649943 test    eax, eax
+0x08649945 setne   al
+0x08649948 test    al, al
+0x0864994a je      0x8649964
+0x0864994c mov     dword ptr [esp], 0x94739a8
+0x08649953 call    0x84b4426 ; _ZN20CGameMasterCharacterC2Ev
+0x08649958 mov     dword ptr [esp], 0x94739a0
+0x0864995f call    0x8725250 ; __cxa_guard_release
+0x08649964 mov     eax, dword ptr [ebp + 8]
+0x08649967 mov     dword ptr [eax + 0x7964c], 0x94739a8
+0x08649971 mov     eax, dword ptr [ebp + 8]
+0x08649974 mov     dword ptr [eax + 0x8e94c], 0
+0x0864997e mov     eax, dword ptr [ebp + 8]
+0x08649981 mov     byte ptr [eax + 0x8e934], 0
+0x08649988 mov     eax, dword ptr [ebp + 8]
+0x0864998b mov     byte ptr [eax + 0x8e950], 0
+0x08649992 mov     eax, dword ptr [ebp + 8]
+0x08649995 mov     byte ptr [eax + 0x8e951], 0
+0x0864999c mov     eax, dword ptr [ebp + 8]
+0x0864999f mov     byte ptr [eax + 0x8e97c], 0
+0x086499a6 mov     eax, dword ptr [ebp + 8]
+0x086499a9 mov     byte ptr [eax + 0x8e97d], 0
+0x086499b0 mov     eax, dword ptr [ebp + 8]
+0x086499b3 mov     dword ptr [esp], eax
+0x086499b6 call    0x8230800 ; _ZN5CUser8getHadesEv
+0x086499bb mov     edx, dword ptr [ebp + 8]
+0x086499be mov     dword ptr [esp + 4], edx
+0x086499c2 mov     dword ptr [esp], eax
+0x086499c5 call    0x84b91e8 ; _ZN8XNuclear6CHades4InitEP5CUser
+0x086499ca mov     eax, dword ptr [ebp + 8]
+0x086499cd lea     edx, [eax + 0x8e980]
+0x086499d3 mov     eax, dword ptr [ebp + 8]
+0x086499d6 mov     dword ptr [esp + 4], eax
+0x086499da mov     dword ptr [esp], edx
+0x086499dd call    0x8287230 ; _ZN16Secu_GoldControl4InitEP5CUser
+0x086499e2 mov     eax, dword ptr [ebp + 8]
+0x086499e5 lea     edx, [eax + 0x8ea68]
+0x086499eb mov     eax, dword ptr [ebp + 8]
+0x086499ee mov     dword ptr [esp + 4], eax
+0x086499f2 mov     dword ptr [esp], edx
+0x086499f5 call    0x827a7d0 ; _ZN17Secu_HackLogCheck4InitEP5CUser
+0x086499fa mov     eax, dword ptr [ebp + 8]
+0x086499fd mov     word ptr [eax + 0x8e936], 0
+0x08649a06 mov     eax, dword ptr [ebp + 8]
+0x08649a09 mov     dword ptr [eax + 0x8e938], 0
+0x08649a13 mov     eax, dword ptr [ebp + 8]
+0x08649a16 mov     byte ptr [eax + 0x8e944], 0
+0x08649a1d mov     eax, dword ptr [ebp + 8]
+0x08649a20 mov     byte ptr [eax + 0x8eaf4], 0
+0x08649a27 mov     eax, dword ptr [ebp + 8]
+0x08649a2a mov     dword ptr [eax + 0x8eaf8], 0
+0x08649a34 mov     eax, dword ptr [ebp + 8]
+0x08649a37 mov     dword ptr [eax + 0x8e090], 0
+0x08649a41 mov     eax, dword ptr [ebp + 8]
+0x08649a44 mov     byte ptr [eax + 0x8d24c], 0
+0x08649a4b mov     eax, dword ptr [ebp + 8]
+0x08649a4e lea     edx, [eax + 0x795e8]
+0x08649a54 mov     eax, dword ptr [ebp + 8]
+0x08649a57 mov     dword ptr [esp + 4], eax
+0x08649a5b mov     dword ptr [esp], edx
+0x08649a5e call    0x8278a98 ; _ZN19Secu_AccountHacking4initEP5CUser
+0x08649a63 mov     eax, dword ptr [ebp + 8]
+0x08649a66 mov     byte ptr [eax + 0x70391], 0
+0x08649a6d mov     eax, dword ptr [ebp + 8]
+0x08649a70 add     eax, 0x6ef92
+0x08649a75 mov     dword ptr [esp + 8], 0x68
+0x08649a7d mov     dword ptr [esp + 4], 0
+0x08649a85 mov     dword ptr [esp], eax
+0x08649a88 call    0x807dcc0 ; memset
+0x08649a8d mov     ebx, 1
+0x08649a92 lea     eax, [ebp - 0x20]
+0x08649a95 mov     dword ptr [esp], eax
+0x08649a98 call    0x858de80 ; _ZN11PacketGuardD1Ev
+0x08649a9d mov     eax, ebx
+0x08649a9f add     esp, 0x430
+0x08649aa5 pop     ebx
+0x08649aa6 pop     esi
+0x08649aa7 pop     ebp
+0x08649aa8 ret     
+0x08649aa9 mov     ebx, edx
+0x08649aab mov     esi, eax
+0x08649aad lea     eax, [ebp - 0x20]
+0x08649ab0 mov     dword ptr [esp], eax
+0x08649ab3 call    0x858de80 ; _ZN11PacketGuardD1Ev
+0x08649ab8 mov     eax, esi
+0x08649aba mov     edx, ebx
+0x08649abc mov     dword ptr [esp], eax
+0x08649abf call    0x8ae3750 ; _Unwind_Resume
+
+[_ZN9PacketBuf14encrypt_packetEv]
+0x0858d86a push    ebp
+0x0858d86b mov     ebp, esp
+0x0858d86d push    edi
+0x0858d86e push    esi
+0x0858d86f push    ebx
+0x0858d870 sub     esp, 0x1736c
+0x0858d876 mov     eax, dword ptr [ebp + 8]
+0x0858d879 mov     eax, dword ptr [eax + 0x14]
+0x0858d87c movzx   eax, byte ptr [eax]
+0x0858d87f test    al, al
+0x0858d881 jne     0x858d899
+0x0858d883 mov     eax, dword ptr [ebp + 8]
+0x0858d886 mov     eax, dword ptr [eax + 0x14]
+0x0858d889 add     eax, 1
+0x0858d88c movzx   eax, word ptr [eax]
+0x0858d88f cmp     ax, 1
+0x0858d893 je      0x858d9eb
+0x0858d899 mov     byte ptr [ebp - 0x1d], 0
+0x0858d89d lea     eax, [ebp - 0x17344]
+0x0858d8a3 mov     dword ptr [ebp - 0x1c], eax
+0x0858d8a6 mov     dword ptr [ebp - 0x24], 0x17318
+0x0858d8ad mov     eax, dword ptr [ebp + 8]
+0x0858d8b0 mov     eax, dword ptr [eax + 8]
+0x0858d8b3 sub     eax, 0xf
+0x0858d8b6 mov     dword ptr [ebp - 0x28], eax
+0x0858d8b9 mov     eax, dword ptr [ebp + 8]
+0x0858d8bc mov     eax, dword ptr [eax + 0x14]
+0x0858d8bf add     eax, 1
+0x0858d8c2 movzx   eax, word ptr [eax]
+0x0858d8c5 movzx   ebx, ax
+0x0858d8c8 call    0x82a713a ; _Z8G_Cipherv
+0x0858d8cd lea     edx, [ebp - 0x28]
+0x0858d8d0 mov     dword ptr [esp + 8], edx
+0x0858d8d4 mov     dword ptr [esp + 4], ebx
+0x0858d8d8 mov     dword ptr [esp], eax
+0x0858d8db call    0x80973c0 ; _ZNK6Cipher14AdjustDataSizeEiPi
+0x0858d8e0 mov     eax, dword ptr [ebp - 0x28]
+0x0858d8e3 cmp     eax, 0x17318
+0x0858d8e8 jle     0x858d937
+0x0858d8ea mov     eax, dword ptr [ebp - 0x28]
+0x0858d8ed mov     dword ptr [esp + 0x18], 0x17318
+0x0858d8f5 mov     dword ptr [esp + 0x14], eax
+0x0858d8f9 mov     dword ptr [esp + 0x10], 0x8cad524
+0x0858d901 mov     dword ptr [esp + 0xc], 0x302
+0x0858d909 mov     dword ptr [esp + 8], 0x8cae380
+0x0858d911 mov     dword ptr [esp + 4], 0x8cad482
+0x0858d919 mov     dword ptr [esp], 1
+0x0858d920 call    0x8ad3c0a ; _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x0858d925 mov     eax, dword ptr [ebp - 0x28]
+0x0858d928 mov     dword ptr [esp], eax
+0x0858d92b call    0x8722dc0 ; _Znaj
+0x0858d930 mov     dword ptr [ebp - 0x1c], eax
+0x0858d933 mov     byte ptr [ebp - 0x1d], 1
+0x0858d937 mov     esi, dword ptr [ebp - 0x1c]
+0x0858d93a mov     eax, dword ptr [ebp + 8]
+0x0858d93d mov     eax, dword ptr [eax + 8]
+0x0858d940 sub     eax, 0xf
+0x0858d943 mov     dword ptr [ebp - 0x1734c], eax
+0x0858d949 mov     eax, dword ptr [ebp + 8]
+0x0858d94c mov     eax, dword ptr [eax + 0x14]
+0x0858d94f lea     edi, [eax + 0xf]
+0x0858d952 mov     eax, dword ptr [ebp + 8]
+0x0858d955 mov     eax, dword ptr [eax + 0x14]
+0x0858d958 add     eax, 1
+0x0858d95b movzx   eax, word ptr [eax]
+0x0858d95e movzx   ebx, ax
+0x0858d961 call    0x82a713a ; _Z8G_Cipherv
+0x0858d966 lea     edx, [ebp - 0x24]
+0x0858d969 mov     dword ptr [esp + 0x14], edx
+0x0858d96d mov     dword ptr [esp + 0x10], esi
+0x0858d971 mov     edx, dword ptr [ebp - 0x1734c]
+0x0858d977 mov     dword ptr [esp + 0xc], edx
+0x0858d97b mov     dword ptr [esp + 8], edi
+0x0858d97f mov     dword ptr [esp + 4], ebx
+0x0858d983 mov     dword ptr [esp], eax
+0x0858d986 call    0x8097436 ; _ZN6Cipher7EncryptEiPKhiPhPi
+0x0858d98b mov     eax, dword ptr [ebp + 8]
+0x0858d98e mov     edx, dword ptr [eax + 8]
+0x0858d991 mov     eax, dword ptr [ebp + 8]
+0x0858d994 mov     eax, dword ptr [eax + 8]
+0x0858d997 mov     ecx, 0xf
+0x0858d99c sub     ecx, eax
+0x0858d99e mov     eax, dword ptr [ebp - 0x24]
+0x0858d9a1 lea     eax, [ecx + eax]
+0x0858d9a4 add     edx, eax
+0x0858d9a6 mov     eax, dword ptr [ebp + 8]
+0x0858d9a9 mov     dword ptr [eax + 8], edx
+0x0858d9ac mov     eax, dword ptr [ebp - 0x24]
+0x0858d9af test    eax, eax
+0x0858d9b1 jle     0x858d9d2
+0x0858d9b3 mov     eax, dword ptr [ebp - 0x24]
+0x0858d9b6 mov     edx, dword ptr [ebp + 8]
+0x0858d9b9 mov     edx, dword ptr [edx + 0x14]
+0x0858d9bc add     edx, 0xf
+0x0858d9bf mov     dword ptr [esp + 8], eax
+0x0858d9c3 mov     eax, dword ptr [ebp - 0x1c]
+0x0858d9c6 mov     dword ptr [esp + 4], eax
+0x0858d9ca mov     dword ptr [esp], edx
+0x0858d9cd call    0x807d8a0 ; memcpy
+0x0858d9d2 cmp     byte ptr [ebp - 0x1d], 0
+0x0858d9d6 je      0x858da19
+0x0858d9d8 cmp     dword ptr [ebp - 0x1c], 0
+0x0858d9dc je      0x858da1c
+0x0858d9de mov     eax, dword ptr [ebp - 0x1c]
+0x0858d9e1 mov     dword ptr [esp], eax
+0x0858d9e4 call    0x8724bb0 ; _ZdaPv
+0x0858d9e9 jmp     0x858da1d
+0x0858d9eb mov     dword ptr [ebp - 0x2c], 0
+0x0858d9f2 mov     eax, dword ptr [ebp + 8]
+0x0858d9f5 mov     eax, dword ptr [eax + 8]
+0x0858d9f8 lea     ecx, [eax - 0xf]
+0x0858d9fb mov     eax, dword ptr [ebp + 8]
+0x0858d9fe mov     eax, dword ptr [eax + 0x14]
+0x0858da01 lea     edx, [eax + 0xf]
+0x0858da04 lea     eax, [ebp - 0x2c]
+0x0858da07 mov     dword ptr [esp + 8], eax
+0x0858da0b mov     dword ptr [esp + 4], ecx
+0x0858da0f mov     dword ptr [esp], edx
+0x0858da12 call    0x848da70 ; _ZN10Encryption7EncryptEPviRj
+0x0858da17 jmp     0x858da1d
+0x0858da19 nop     
+0x0858da1a jmp     0x858da1d
+0x0858da1c nop     
+0x0858da1d add     esp, 0x1736c
+0x0858da23 pop     ebx
+0x0858da24 pop     esi
+0x0858da25 pop     edi
+0x0858da26 pop     ebp
+0x0858da27 ret     
+
+[_ZN6Cipher14GetOriginalKeyEPh]
+0x080975de push    ebp
+0x080975df mov     ebp, esp
+0x080975e1 sub     esp, 0x18
+0x080975e4 mov     eax, dword ptr [ebp + 8]
+0x080975e7 mov     eax, dword ptr [eax]
+0x080975e9 mov     edx, dword ptr [ebp + 8]
+0x080975ec add     edx, 0x10
+0x080975ef mov     dword ptr [esp + 8], eax
+0x080975f3 mov     dword ptr [esp + 4], edx
+0x080975f7 mov     eax, dword ptr [ebp + 0xc]
+0x080975fa mov     dword ptr [esp], eax
+0x080975fd call    0x807d8a0 ; memcpy
+0x08097602 leave   
+0x08097603 ret     
+
+[_ZN11COpensslRSA7DecryptEPKciRSt6vectorIhSaIhEE]
+0x0816c532 push    ebp
+0x0816c533 mov     ebp, esp
+0x0816c535 push    edi
+0x0816c536 push    esi
+0x0816c537 push    ebx
+0x0816c538 sub     esp, 0x4c
+0x0816c53b mov     eax, dword ptr [ebp + 8]
+0x0816c53e mov     eax, dword ptr [eax]
+0x0816c540 mov     dword ptr [esp], eax
+0x0816c543 call    0x87eb2e0 ; RSA_size
+0x0816c548 mov     dword ptr [ebp - 0x28], eax
+0x0816c54b mov     dword ptr [ebp - 0x24], 0
+0x0816c552 mov     eax, dword ptr [ebp - 0x24]
+0x0816c555 mov     edx, dword ptr [ebp + 0x10]
+0x0816c558 mov     ecx, edx
+0x0816c55a sub     ecx, eax
+0x0816c55c mov     eax, ecx
+0x0816c55e mov     edx, dword ptr [ebp - 0x28]
+0x0816c561 cmp     eax, edx
+0x0816c563 jle     0x816c567
+0x0816c565 mov     eax, edx
+0x0816c567 mov     dword ptr [ebp - 0x20], eax
+0x0816c56a jmp     0x816c698
+0x0816c56f lea     eax, [ebp - 0x38]
+0x0816c572 mov     dword ptr [esp], eax
+0x0816c575 call    0x80e4d12 ; _ZNSt6vectorIhSaIhEEC1Ev
+0x0816c57a mov     eax, dword ptr [ebp - 0x28]
+0x0816c57d mov     dword ptr [esp + 8], 0
+0x0816c585 mov     dword ptr [esp + 4], eax
+0x0816c589 lea     eax, [ebp - 0x38]
+0x0816c58c mov     dword ptr [esp], eax
+0x0816c58f call    0x816c7d2 ; _ZNSt6vectorIhSaIhEE6resizeEjh
+0x0816c594 mov     eax, dword ptr [ebp + 8]
+0x0816c597 mov     ebx, dword ptr [eax]
+0x0816c599 mov     dword ptr [esp + 4], 0
+0x0816c5a1 lea     eax, [ebp - 0x38]
+0x0816c5a4 mov     dword ptr [esp], eax
+0x0816c5a7 call    0x80e4db0 ; _ZNSt6vectorIhSaIhEEixEj
+0x0816c5ac mov     ecx, dword ptr [ebp + 0xc]
+0x0816c5af mov     edx, dword ptr [ebp - 0x24]
+0x0816c5b2 lea     edx, [ecx + edx]
+0x0816c5b5 mov     dword ptr [esp + 0x10], 1
+0x0816c5bd mov     dword ptr [esp + 0xc], ebx
+0x0816c5c1 mov     dword ptr [esp + 8], eax
+0x0816c5c5 mov     dword ptr [esp + 4], edx
+0x0816c5c9 mov     eax, dword ptr [ebp - 0x20]
+0x0816c5cc mov     dword ptr [esp], eax
+0x0816c5cf call    0x87eaf60 ; RSA_public_decrypt
+0x0816c5d4 mov     dword ptr [ebp - 0x1c], eax
+0x0816c5d7 cmp     dword ptr [ebp - 0x1c], 0
+0x0816c5db jg      0x816c5ec
+0x0816c5dd mov     esi, 0
+0x0816c5e2 mov     ebx, 0
+0x0816c5e7 jmp     0x816c689
+0x0816c5ec mov     dword ptr [esp + 4], 0
+0x0816c5f4 lea     eax, [ebp - 0x38]
+0x0816c5f7 mov     dword ptr [esp], eax
+0x0816c5fa call    0x80e4db0 ; _ZNSt6vectorIhSaIhEEixEj
+0x0816c5ff mov     edx, dword ptr [ebp - 0x1c]
+0x0816c602 lea     edi, [eax + edx]
+0x0816c605 mov     dword ptr [esp + 4], 0
+0x0816c60d lea     eax, [ebp - 0x38]
+0x0816c610 mov     dword ptr [esp], eax
+0x0816c613 call    0x80e4db0 ; _ZNSt6vectorIhSaIhEEixEj
+0x0816c618 mov     ebx, eax
+0x0816c61a lea     eax, [ebp - 0x2c]
+0x0816c61d mov     edx, dword ptr [ebp + 0x14]
+0x0816c620 mov     dword ptr [esp + 4], edx
+0x0816c624 mov     dword ptr [esp], eax
+0x0816c627 call    0x807eff2 ; _ZNSt6vectorIhSaIhEE3endEv
+0x0816c62c sub     esp, 4
+0x0816c62f mov     dword ptr [esp + 0xc], edi
+0x0816c633 mov     dword ptr [esp + 8], ebx
+0x0816c637 mov     eax, dword ptr [ebp - 0x2c]
+0x0816c63a mov     dword ptr [esp + 4], eax
+0x0816c63e mov     eax, dword ptr [ebp + 0x14]
+0x0816c641 mov     dword ptr [esp], eax
+0x0816c644 call    0x816c856 ; _ZNSt6vectorIhSaIhEE6insertIPhEEvN9__gnu_cxx17__normal_iteratorIS3_S1_EET_S7_
+0x0816c649 mov     eax, dword ptr [ebp - 0x20]
+0x0816c64c add     dword ptr [ebp - 0x24], eax
+0x0816c64f mov     eax, dword ptr [ebp - 0x24]
+0x0816c652 mov     edx, dword ptr [ebp + 0x10]
+0x0816c655 mov     ecx, edx
+0x0816c657 sub     ecx, eax
+0x0816c659 mov     eax, ecx
+0x0816c65b mov     edx, dword ptr [ebp - 0x28]
+0x0816c65e cmp     eax, edx
+0x0816c660 jle     0x816c664
+0x0816c662 mov     eax, edx
+0x0816c664 mov     dword ptr [ebp - 0x20], eax
+0x0816c667 mov     ebx, 1
+0x0816c66c jmp     0x816c689
+0x0816c66e mov     ebx, edx
+0x0816c670 mov     esi, eax
+0x0816c672 lea     eax, [ebp - 0x38]
+0x0816c675 mov     dword ptr [esp], eax
+0x0816c678 call    0x80e4d26 ; _ZNSt6vectorIhSaIhEED1Ev
+0x0816c67d mov     eax, esi
+0x0816c67f mov     edx, ebx
+0x0816c681 mov     dword ptr [esp], eax
+0x0816c684 call    0x8ae3750 ; _Unwind_Resume
+0x0816c689 lea     eax, [ebp - 0x38]
+0x0816c68c mov     dword ptr [esp], eax
+0x0816c68f call    0x80e4d26 ; _ZNSt6vectorIhSaIhEED1Ev
+0x0816c694 test    ebx, ebx
+0x0816c696 je      0x816c6ac
+0x0816c698 cmp     dword ptr [ebp - 0x20], 0
+0x0816c69c setg    al
+0x0816c69f test    al, al
+0x0816c6a1 jne     0x816c56f
+0x0816c6a7 mov     esi, 1
+0x0816c6ac mov     eax, esi
+0x0816c6ae lea     esp, [ebp - 0xc]
+0x0816c6b1 add     esp, 0
+0x0816c6b4 pop     ebx
+0x0816c6b5 pop     esi
+0x0816c6b6 pop     edi
+0x0816c6b7 pop     ebp
+0x0816c6b8 ret     

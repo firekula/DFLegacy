@@ -1,0 +1,34 @@
+0x086b1d25  push    ebp
+0x086b1d26  mov     ebp, esp
+0x086b1d28  push    ebx
+0x086b1d29  sub     esp, 0x54
+0x086b1d2c  mov     dword ptr [esp], 0x941f714
+0x086b1d33  call 0x080cbc9e  _ZN11CSystemTime9getCurSecEv
+0x086b1d38  mov     dword ptr [ebp - 0x14], eax
+0x086b1d3b  lea     eax, [ebp - 0x40]
+0x086b1d3e  mov     dword ptr [esp + 4], eax
+0x086b1d42  lea     eax, [ebp - 0x14]
+0x086b1d45  mov     dword ptr [esp], eax
+0x086b1d48  call 0x0807e360  realloc
+0x086b1d4d  mov     dword ptr [ebp - 0x10], eax
+0x086b1d50  mov     eax, dword ptr [ebp - 0x10]
+0x086b1d53  mov     eax, dword ptr [eax + 0x14]
+0x086b1d56  imul    edx, eax, 0x16d
+0x086b1d5c  mov     eax, dword ptr [ebp - 0x10]
+0x086b1d5f  mov     eax, dword ptr [eax + 0x10]
+0x086b1d62  add     eax, eax
+0x086b1d64  mov     ecx, eax
+0x086b1d66  shl     ecx, 4
+0x086b1d69  mov     ebx, ecx
+0x086b1d6b  sub     ebx, eax
+0x086b1d6d  mov     eax, ebx
+0x086b1d6f  add     edx, eax
+0x086b1d71  mov     eax, dword ptr [ebp - 0x10]
+0x086b1d74  mov     eax, dword ptr [eax + 0xc]
+0x086b1d77  lea     eax, [edx + eax]
+0x086b1d7a  mov     dword ptr [ebp - 0xc], eax
+0x086b1d7d  mov     eax, dword ptr [ebp - 0xc]
+0x086b1d80  add     esp, 0x54
+0x086b1d83  pop     ebx
+0x086b1d84  pop     ebp
+0x086b1d85  ret     

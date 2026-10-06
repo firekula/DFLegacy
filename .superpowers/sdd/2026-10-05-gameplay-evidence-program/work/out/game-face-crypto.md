@@ -297,21 +297,81 @@ call CUser::lock() / unlock()
 
 ## 八、**必须钉死的未决问题**：客户端怎么拿到同一把密钥？
 
-现状：密钥在**服务端进程启动时**由 `rand()` 从 map 里选出，且 `InitCipherKeyString`
-开头取了 `CSystemTime::getCurSec()`。若种子是启动时刻，**长跑的服务端与客户端不可能撞上**。
+现状：密钥选择调用了 PLT `rand()`（目标 `0x0807dca0` 已由动态重定位解析为 `rand`），
+但**目前没有找到对应的 `srand`/种子写入点**。`InitCipherKeyString` 的两个 `getCurSec()`
+调用经审计只是**计时**：入口取一次、尾部取一次、相减后传给日志串
+`[!] Init CipherKeyString TotalTime : %ds`；**没有证据表明时间值用于播种**。
 
 **线索**：7001（频道面）握手下发的"会话密钥"其实是个**时间戳字符串** ——
-VM 那两条 7001 S 流里 `id=12` 正文 `[4:20)` = `32303236313030353132323833300000`
-= `"20261005122830\0\0"`。**两件事可能有关联**：
-服务端把时间戳给客户端 → 客户端用它播 `rand()` → 选出同一把密钥。
+VM 的 `id=12` 正文 `[4:20)` 是 `"20261005143035\0\0"`。它与服务器启动时刻相关，
+但**是否参与密码链仍是 `[未验证]`**，不能写成"客户端拿它播种"。
 
 **这条不解决，M1 的"自己构造登录"就走不通**（能重放抓包，但换账号不行）。
 验法（按代价排序）：
-1. `[静态]` 读 `SelectKeyString` 的完整循环 + 找 `srand` 的调用点与其参数；
-2. `[静态]` 找 `map<int,string>` 在哪被填充（那个 map 的内容本身就是密钥素材）；
-3. `[回放]` 若能拿到客户端，看它是否用 7001 的时间戳播种。
+1. `[静态]` 追 `rand()` 的真实播种点（`srand` 可能被内联/封装）；
+2. `[静态]` 找 `0x940be80` 那组 16 字节结构及其字符串来源；
+3. `[静态]` 读客户端 `DNF.exe` 的对应 cipher 初始化；
+4. `[回放]` 采集 7001 时间戳与客户端行为，验证是否有关联。
 
-## 九、还没做完的（下一步，仍是纯静态）
+**审计来源**：`work/out/cipher-callchain-audit.txt` L165–188（两次 `getCurSec` 用于计时），
+L72–132（`Cipher::Initialize` 是 `memcpy` + 14 个图的 key setup）；
+`work/out/selkey.txt`（`SelectKeyString` 的 `rand()` 调用）。
+
+## 九、【决定性闭环】密钥是如何到客户端的（`CUser::InitOnAccept`）
+
+**未决问题**（"客户端如何取得同一把 334 B 密钥？"）已由 `CUser::InitOnAccept` 的反汇编**直接解开**。
+
+`CUser::InitOnAccept(int)` @ `0x086493c8`（本函数是新 game socket 接受后的初始化/首包构造）：
+
+```asm
+0x0864952a  PacketGuard::PacketGuard()
+0x0864954b  InterfacePacketBuf::put_header(0, 1)              ; → NOTI1
+0x08649556  G_Cipher()
+0x08649562  Cipher::GetOriginalKey(buffer)                  ; 取 334 B 原始 key
+0x08649567  G_Cipher()
+0x0864956f  Cipher::GetTotalKeyLength()                      ; → 334
+0x0864958e  InterfacePacketBuf::put_binary(buffer, 334)      ; **把 key 写进 NOTI1**
+0x08649593  G_CEnvironment()->get_channel_name()
+0x086495e9  InterfacePacketBuf::put_str(channel_name)
+0x086495ee  get_seed_from_date() → CUser+0x711e8
+0x0864960f  InterfacePacketBuf::put_int(seed)
+0x0864961b  get_rand_int(0) → CUser+0x796e0
+0x0864963e  InterfacePacketBuf::put_int(random)
+0x08649643  G_CEnvironment() + offset 0x378 → put_byte
+0x0864965d  G_CEnvironment() + offset 0x1b0 → put_byte
+0x08649677  G_CEnvironment() + offset 0x1a8 → put_byte
+0x08649691  CSystemTime::getCurSec() → put_int(current_time)
+... 后续还有环境/服务器列表字段
+```
+
+### 与抓包的独立对齐
+
+```
+NOTI1 整帧 = 450 B
+GAME 13 B 头
+payload = 450 - 13 = 437 B
+
+334 B 原始 cipher key + 其它 103 B 字段 = 437 B
+```
+
+**长度完全相等**。而且 `put_header(0,1)` 与抓包首帧 `NOTI id=1 size=450` 一一对应。
+⇒ **这不是推断，是代码地址 + 字段写入 + 抓包长度的三重闭合证据。**
+
+### 对 M1 的意义
+
+1. 客户端**不需要**从时间戳猜 key；服务端在 `NOTI1` 里直接下发 334 B key。
+2. 14 层密码链的 key 获取路径已闭合：`InitCipherKeyString` 生成 → `GetOriginalKey` →
+   `InitOnAccept` `put_binary` → 客户端收到 → 后续 `Cipher::Encrypt/Decrypt`。
+3. `NOTI1` 是**密钥分发包**，不是普通"频道信息"；它后面的 `channel_name/seed/random/环境字段`
+   也都能由 `InitOnAccept` 的 `put_*` 顺序逐字段重建。
+4. 现在 M1 单元②真正剩下的是：确认**客户端第一次 C→S CMD1 在拿到 NOTI1 之前为什么能发**
+   （可能是接受阶段的默认 cipher/明文初始包），以及把 `Cipher` 的 14 个 `ICryptoGraph`
+   实现按同样 key 接到重写驱动器里。
+
+**来源**：`work/out/cipher-callchain-audit.txt` L3342–3517（逐指令）；
+`work/captures/streams-live2/10013-14805.bin`（NOTI1=450 的真实抓包）。
+
+## 十、还没做完的（下一步，仍是纯静态）
 
 
 | # | 待办 | 入口 |
