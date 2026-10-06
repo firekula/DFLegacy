@@ -61,7 +61,8 @@ for rel in ['streams-live/10013-2343.bin','streams-live2/10013-14805.bin','strea
   n=struct.unpack_from('<I',raw,p+3)[0];f=raw[p:p+n];p+=n
   if f[:3]!=b'\0\x31\x02':continue
   d=f[15:];outer=int.from_bytes(d[:4],'big');typ=int.from_bytes(d[6:8],'big')
-  if typ!=17:print(rel,'TYPE_NOT_17='+str(typ));continue
+  if typ!=17:
+   print(rel,'TYPE_NOT_17='+str(typ),'BODY_SHA256='+hashlib.sha256(d).hexdigest());continue
   seed,choice,crc=struct.unpack_from('>III',d,9);cipher=d[21:outer];assert 1<=choice<=19
   u.mem_write(BASE,cipher);assert call(0x1934c0,choice,BASE,len(cipher),seed,0)==1
   plain=bytes(u.mem_read(BASE,len(cipher)));actual=call(0x19dc80,BASE,len(cipher))

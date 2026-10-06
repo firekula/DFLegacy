@@ -23,7 +23,7 @@ RecvBufferForEncrypt
 `fix_encrypt @0xbd4c0` 首先要求输出容量至少为输入长度+0x11a（不是要求输入>=0x11a）：
 
 - 第一处rand结果按指令取模19再加1，即候选选择号1..19（不是1..10）。用户存在时更新user+0xac为旧值+rand()/256+1；用户为空时用两次rand组合seed；
-- `init_encrypt_data` 生成 `DPAlgorithmData`，从payload偏移 `+0x11` 开始；
+- `init_encrypt_data @0xbd130` 生成 `DPAlgorithmData`：若UserInfo+0x64!=1，则取UserInfo+0x1c为基础值，rand()%16写入object+8，随后rand两次组成每个4B algorithm key word，数量=(object+8 >>2)+1；object+4指向调用者seed/metadata。该方法使运行时rand进入算法数据，固定模式无法仅由抓包头唯一反推。
 - `DPAlgorithmData::pack` 以两个4B大端字段加一个对象+8的1B字段写算法头，随后复制变长正文；`DPInterDataHead::pack @0x158550` 再写两个大端u16（object+0、object+2）和一个u8（object+4）。Body pack按 data type 分支到 DPClientCode/DPDynamicAlgorithmHead/DPBinFile/DPCmdList/DPBinCount 等具体序列化器。
 - `Crc32` 对封装数据计算校验；
 - 调 `Cipheri` 完成实际变换；
