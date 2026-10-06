@@ -117,3 +117,5 @@ streams-vm/10013-13681.bin choice=16 plain_len=381 CRC32_AND_ROUNDTRIP=PASS plai
 INNER_GAME 17 metadata_random_len=4 len=470 category=0 opcode=2 length_field=PASS sha256=96f5df6b502f056c3b95cfc0e95cfdc61ee4a1780f35ad1eccdeea67965bcf47
 streams-vm/10013-13681.bin choice=9 plain_len=483 CRC32_AND_ROUNDTRIP=PASS plain_sha256=9940fd80b1c450f101c857930931dbde755b64c22cb683caf89f6148b252ff7f
 streams-vm/10013-13681.bin DECRYPTED_WRAPPERS=19
+INNER_GAME_DUAL_CRC_AND_DECOMPRESSION=PASS count=54
+CATEGORY_OPCODE_HISTOGRAM={(0, 2): 15, (0, 5): 3, (0, 9): 3, (0, 13): 15, (0, 19): 6, (0, 21): 3, (0, 127): 3, (1, 2): 3, (1, 4): 3}

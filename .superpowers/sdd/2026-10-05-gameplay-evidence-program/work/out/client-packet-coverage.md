@@ -7,8 +7,8 @@
 三条VM S流共57个opcode561 wrapper：
 
 - 类型17：54帧；全部使用wrapper头中的seed/choice/crc，目标SO Cipher解密成功，CRC32闭合，再加密逐字节恢复；
-- 解密明文中随机元数据长度为4..15，随后可读取内层游戏帧；所有类型17 inner frame都满足 `u32@+3 == frame length`；category/opcode/inner SHA256已写入 `decrypt-noti561-fixed.txt`；
-- 类型19：3帧也已沿同一外层嵌套假设成功通过Cipher/CRC/再加密；其解密后内层候选分别为 `00 07 00 05 00 00 05` 等7B结构，当前不能命名其字段语义。
+- 解密明文中随机元数据长度为4..15，随后可读取内层游戏帧；所有54个类型17 inner frame都满足 `u32@+3 == frame length`；内层正文CRC与解压（opcode 2/9/87）已通过；category/opcode/inner与解压正文SHA256及54条分母见 [noti561-inner-coverage.tsv](<noti561-inner-coverage.tsv>)；
+- 类型19：3帧通过Cipher/CRC/再加密，并由原SO DPInterData::unpack完整消费7B，解析为长度7、kind5、flag0、DPBinCount u16=5。结构已确定，BinCount后续业务作用仍未验证。
 
 证据：[decrypt-noti561-fixed.txt](<decrypt-noti561-fixed.txt>)、[verify-noti561-envelope.txt](<verify-noti561-envelope.txt>)。
 

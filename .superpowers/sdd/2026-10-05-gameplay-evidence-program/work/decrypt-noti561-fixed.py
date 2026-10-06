@@ -50,6 +50,14 @@ def call(va,*args):
  assert u.reg_read(UC_X86_REG_EIP)==STOP,'instruction bound'
  return u.reg_read(UC_X86_REG_EAX)
 W=Path(__file__).resolve().parent
+coverage=[]
+def game_crc(data):
+ c=0xffffffff
+ for x in data:
+  c^=x
+  for _ in range(8):c=(c>>1)^(0x4db89129 if c&1 else 0)
+ c^=0xffffffff;q=c.to_bytes(4,'little')
+ return (c&0xffffff00)|(q[0]^q[1]^q[2]^q[3]^24)
 print('GENKEY input order checked independently: seedLE then choiceLE')
 for choice in range(1,20):
  assert call(0x193420,choice,0x12345678,BASE+0x80000)==1
@@ -80,6 +88,11 @@ for rel in ['streams-live/10013-2343.bin','streams-live2/10013-14805.bin','strea
   if original_type==17:
    assert len(inner)>=15 and struct.unpack_from('<I',inner,3)[0]==len(inner)
    category=inner[0];opcode=struct.unpack_from('<H',inner,1)[0]
+   wirebody=inner[15:];expected=struct.unpack_from('<I',inner,11)[0]
+   assert game_crc(wirebody)==expected,(rel,opcode,'inner body crc')
+   uncompressed=zlib.decompress(wirebody) if opcode in (2,9,87) else wirebody
+   assert game_crc(uncompressed)==struct.unpack_from('<I',inner,7)[0],(rel,opcode,'plain crc')
+   coverage.append((rel,original_type,category,opcode,len(inner),len(uncompressed),hashlib.sha256(uncompressed).hexdigest()))
    print('INNER_GAME',original_type,'metadata_random_len='+str(padlen),'len='+str(len(inner)),'category='+str(category),'opcode='+str(opcode),'length_field=PASS','sha256='+hashlib.sha256(inner).hexdigest())
   else:
    assert len(inner)==7 and struct.unpack_from('>HHB',inner)==(7,5,0)
@@ -91,3 +104,8 @@ for rel in ['streams-live/10013-2343.bin','streams-live2/10013-14805.bin','strea
    print('INNER_TYPE19', 'metadata_random_len='+str(padlen),'len='+str(len(inner)),'DPInterData_kind=5 DPBinCount_u16=5 ORIGINAL_SO_UNPACK=PASS')
   print(rel,'choice='+str(choice),'plain_len='+str(len(plain)),'CRC32_AND_ROUNDTRIP=PASS','plain_sha256='+hashlib.sha256(plain).hexdigest());count+=1
  print(rel,'DECRYPTED_WRAPPERS='+str(count))
+import csv,collections
+with (W/'out/noti561-inner-coverage.tsv').open('w',encoding='utf-8',newline='') as out:
+ writer=csv.writer(out,delimiter='\t');writer.writerow(['stream','wrapper_type','category','opcode','frame_bytes','plain_body_bytes','plain_body_sha256']);writer.writerows(coverage)
+print('INNER_GAME_DUAL_CRC_AND_DECOMPRESSION=PASS count='+str(len(coverage)))
+print('CATEGORY_OPCODE_HISTOGRAM='+str(dict(sorted(collections.Counter((r[2],r[3]) for r in coverage).items()))))
