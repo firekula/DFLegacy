@@ -46,6 +46,12 @@ RecvBufferForEncrypt
 
 [作废] 本稿初写“先扣输入4B”“错误计数”“rand选择1..10”“object+2是body长度”均为整理错误；上述精确指令分别证明输出容量扣4、成功路径计数、选择1..19及union discriminator。保留更正，不沿用这些旧说法。
 
+## [回放] 固定路径实际解密
+
+`decrypt-noti561-fixed.py` 在不加载原生SO、只在有界Unicorn执行SO代码和独立CRC验证的条件下，从NOTI561类型17头读取 `seed`（BE u32@body+9）、`choice`（BE u32@body+13）、`crc`（BE u32@body+17），执行 `GenKey(choice,seed)` 后调用SO `Cipher(choice, body_cipher, seed, flag=0)`。三条VM流的54个type17帧全部：`Cipher`成功、SO `Crc32(plaintext)==header crc`、再加密逐字节恢复原cipher。输出：[decrypt-noti561-fixed.txt](<decrypt-noti561-fixed.txt>)。
+
+这一步把NOTI561 type17从“候选封装”提升为 `[回放]` 已解密；每帧choice/明文长度/SHA256已落盘。type19一帧/流走不同body serializer，尚未套固定路径。
+
 ## [未验证]
 
 - 当前SO与VM运行时加载SO的运行实例状态/构建差异；文件来源已由所有者确认，哈希是容器资产哈希；
