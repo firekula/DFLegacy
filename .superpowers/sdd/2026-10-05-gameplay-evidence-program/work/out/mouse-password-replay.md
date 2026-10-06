@@ -14,6 +14,14 @@ LOGIN dispatcher 在解密后读取 mouse_length，要求等于8；然后调用 
 
 来源：[login-tail-static.txt](<login-tail-static.txt>)；[mouse-ctea-static.txt](<mouse-ctea-static.txt>)；[static-cipher-details.txt](<static-cipher-details.txt#L3074-L3127>)。
 
+## 块实现补证
+
+[静态] [ctea-block-static.txt](<ctea-block-static.txt>) 的0x080c3804/0x080c3724显示：每块8B，按大端装载两个u32，key按大端四个u32；32轮，delta=0x9e3779b9，sum索引key分别用sum&3与(sum>>11)&3。这是XTEA形式的轮函数，不是凭CTEA类名认定标准TEA。
+
+[回放] 新增独立Python轮函数与ELF逐块解密对照256个固定输入，并逐块ELF重新加密恢复原输入；抓包8B字段也与Python逐字节一致。直接调用目标checkValiedPassword验证抓包结果，并测试空串、六位数字、六个a、超长、字母b和边界字符共7例。均通过；凭据明文不输出。
+
+复跑：`python .superpowers/sdd/2026-10-05-gameplay-evidence-program/work/emulate-cipher-boundaries.py $env:TEMP/dfl-creds/vm-df_game_r`。
+
 ## [回放]
 
 采用固定目标 ELF 做有界 Unicorn 指令回放，只提供已解析的 memcpy/memset PLT stub，不执行宿主函数、不联网、不访问进程：
