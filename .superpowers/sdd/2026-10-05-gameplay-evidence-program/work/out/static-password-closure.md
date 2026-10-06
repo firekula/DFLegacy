@@ -161,7 +161,7 @@ cipher_input = captured_frame[13:frame_length]
 
 [作废] 之前以明文CRC不匹配头[7:11]认为覆盖尚无解释：这次encFinalize静态路径说明应校验密文，两份抓包均匹配。明文负例本身保留，但不再阻断此字段结论。
 
-本轮是静态补证与两样本离线交叉，尚未穷尽所有可静态分析项：CRijndael密钥调度/块轮函数的逐轮审计、其余13算法实现、SendHash调用者以下的PI头重构、LOGIN中token以后的字段、base64非法输入语义仍可继续静态分析。已有目录/调用链不等于上述行为已全量闭合。
+本轮是静态补证与两样本离线交叉。新增PI静态输出：[pi-boundary-static.txt](<pi-boundary-static.txt>)、[pi-makehash-static.txt](<pi-makehash-static.txt>)、[pi-superfast-static.txt](<pi-superfast-static.txt>)：SendHash使用随机字节、MD5/SuperFastHash及低位重构；位布局全域回放通过，但90帧流中出现一帧空正文，已作为例外记录，不能把简化递推写成完整协议。仍可继续静态审计其余13算法、LOGIN尾字段和base64非法输入语义；已有目录/调用链不等于行为已全量闭合。
 
 [作废] 本稿早期描述crc32NE为“两段正文”：第一调用实参为(0,NULL,0)，只是初始化。另早期描述AuthGarenaToken复制全部恢复字节，实际为size-1。均以本稿B/E的精确调用参数为准。
 
