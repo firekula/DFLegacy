@@ -1,0 +1,563 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZN9PacketBuf11encFinalizeEv VA=0x0858df30 SIZE=699
+0x0858df30 push     ebp
+0x0858df31 mov      ebp, esp
+0x0858df33 sub      esp, 0x38
+0x0858df36 mov      eax, dword ptr [ebp + 8]
+0x0858df39 mov      eax, dword ptr [eax + 8]
+0x0858df3c lea      edx, [eax - 0xf]
+0x0858df3f mov      eax, dword ptr [ebp + 8]
+0x0858df42 mov      eax, dword ptr [eax + 0x14]
+0x0858df45 add      eax, 0xf
+0x0858df48 mov      dword ptr [esp + 4], edx
+0x0858df4c mov      dword ptr [esp], eax
+0x0858df4f call     0x848d4c8 ; _ZN10Encryption6crc32NEPvi
+0x0858df54 mov      dword ptr [ebp - 0x10], eax
+0x0858df57 mov      eax, dword ptr [ebp + 8]
+0x0858df5a mov      eax, dword ptr [eax]
+0x0858df5c test     eax, eax
+0x0858df5e je       0x858df6a
+0x0858df60 cmp      eax, 1
+0x0858df63 je       0x858dfc6
+0x0858df65 jmp      0x858e01f
+0x0858df6a mov      eax, dword ptr [ebp + 8]
+0x0858df6d mov      eax, dword ptr [eax + 0x14]
+0x0858df70 lea      edx, [eax + 3]
+0x0858df73 mov      eax, dword ptr [ebp + 8]
+0x0858df76 mov      eax, dword ptr [eax + 8]
+0x0858df79 mov      byte ptr [edx], al
+0x0858df7b mov      eax, dword ptr [ebp + 8]
+0x0858df7e mov      eax, dword ptr [eax + 0x14]
+0x0858df81 lea      edx, [eax + 4]
+0x0858df84 mov      eax, dword ptr [ebp + 8]
+0x0858df87 mov      eax, dword ptr [eax + 8]
+0x0858df8a and      eax, 0xff00
+0x0858df8f sar      eax, 8
+0x0858df92 mov      byte ptr [edx], al
+0x0858df94 mov      eax, dword ptr [ebp + 8]
+0x0858df97 mov      eax, dword ptr [eax + 0x14]
+0x0858df9a lea      edx, [eax + 5]
+0x0858df9d mov      eax, dword ptr [ebp + 8]
+0x0858dfa0 mov      eax, dword ptr [eax + 8]
+0x0858dfa3 and      eax, 0xff0000
+0x0858dfa8 sar      eax, 0x10
+0x0858dfab mov      byte ptr [edx], al
+0x0858dfad mov      eax, dword ptr [ebp + 8]
+0x0858dfb0 mov      eax, dword ptr [eax + 0x14]
+0x0858dfb3 lea      edx, [eax + 6]
+0x0858dfb6 mov      eax, dword ptr [ebp + 8]
+0x0858dfb9 mov      eax, dword ptr [eax + 8]
+0x0858dfbc shr      eax, 0x18
+0x0858dfbf mov      byte ptr [edx], al
+0x0858dfc1 jmp      0x858e059
+0x0858dfc6 mov      eax, dword ptr [ebp + 8]
+0x0858dfc9 mov      eax, dword ptr [eax + 0x14]
+0x0858dfcc lea      edx, [eax + 3]
+0x0858dfcf mov      eax, dword ptr [ebp + 8]
+0x0858dfd2 mov      eax, dword ptr [eax + 8]
+0x0858dfd5 shr      eax, 0x18
+0x0858dfd8 mov      byte ptr [edx], al
+0x0858dfda mov      eax, dword ptr [ebp + 8]
+0x0858dfdd mov      eax, dword ptr [eax + 0x14]
+0x0858dfe0 lea      edx, [eax + 4]
+0x0858dfe3 mov      eax, dword ptr [ebp + 8]
+0x0858dfe6 mov      eax, dword ptr [eax + 8]
+0x0858dfe9 and      eax, 0xff0000
+0x0858dfee sar      eax, 0x10
+0x0858dff1 mov      byte ptr [edx], al
+0x0858dff3 mov      eax, dword ptr [ebp + 8]
+0x0858dff6 mov      eax, dword ptr [eax + 0x14]
+0x0858dff9 lea      edx, [eax + 5]
+0x0858dffc mov      eax, dword ptr [ebp + 8]
+0x0858dfff mov      eax, dword ptr [eax + 8]
+0x0858e002 and      eax, 0xff00
+0x0858e007 sar      eax, 8
+0x0858e00a mov      byte ptr [edx], al
+0x0858e00c mov      eax, dword ptr [ebp + 8]
+0x0858e00f mov      eax, dword ptr [eax + 0x14]
+0x0858e012 lea      edx, [eax + 6]
+0x0858e015 mov      eax, dword ptr [ebp + 8]
+0x0858e018 mov      eax, dword ptr [eax + 8]
+0x0858e01b mov      byte ptr [edx], al
+0x0858e01d jmp      0x858e059
+0x0858e01f mov      eax, dword ptr [ebp + 8]
+0x0858e022 mov      eax, dword ptr [eax]
+0x0858e024 mov      dword ptr [esp + 0x14], eax
+0x0858e028 mov      dword ptr [esp + 0x10], 0x8cad469
+0x0858e030 mov      dword ptr [esp + 0xc], 0x419
+0x0858e038 mov      dword ptr [esp + 8], 0x8cae2b0
+0x0858e040 mov      dword ptr [esp + 4], 0x8cad482
+0x0858e048 mov      dword ptr [esp], 1
+0x0858e04f call     0x8ad3c0a ; _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x0858e054 jmp      0x858e1e9
+0x0858e059 mov      eax, dword ptr [ebp + 8]
+0x0858e05c mov      eax, dword ptr [eax + 8]
+0x0858e05f lea      edx, [eax - 0xf]
+0x0858e062 mov      eax, dword ptr [ebp + 8]
+0x0858e065 mov      eax, dword ptr [eax + 0x14]
+0x0858e068 add      eax, 0xf
+0x0858e06b mov      dword ptr [esp + 4], edx
+0x0858e06f mov      dword ptr [esp], eax
+0x0858e072 call     0x848d4c8 ; _ZN10Encryption6crc32NEPvi
+0x0858e077 mov      dword ptr [ebp - 0xc], eax
+0x0858e07a mov      eax, dword ptr [ebp + 8]
+0x0858e07d mov      eax, dword ptr [eax]
+0x0858e07f test     eax, eax
+0x0858e081 je       0x858e091
+0x0858e083 cmp      eax, 1
+0x0858e086 je       0x858e12c
+0x0858e08c jmp      0x858e1b3
+0x0858e091 mov      eax, dword ptr [ebp + 8]
+0x0858e094 mov      eax, dword ptr [eax + 0x14]
+0x0858e097 lea      edx, [eax + 7]
+0x0858e09a mov      eax, dword ptr [ebp - 0x10]
+0x0858e09d mov      byte ptr [edx], al
+0x0858e09f mov      eax, dword ptr [ebp + 8]
+0x0858e0a2 mov      eax, dword ptr [eax + 0x14]
+0x0858e0a5 lea      edx, [eax + 8]
+0x0858e0a8 mov      eax, dword ptr [ebp - 0x10]
+0x0858e0ab and      eax, 0xff00
+0x0858e0b0 shr      eax, 8
+0x0858e0b3 mov      byte ptr [edx], al
+0x0858e0b5 mov      eax, dword ptr [ebp + 8]
+0x0858e0b8 mov      eax, dword ptr [eax + 0x14]
+0x0858e0bb lea      edx, [eax + 9]
+0x0858e0be mov      eax, dword ptr [ebp - 0x10]
+0x0858e0c1 and      eax, 0xff0000
+0x0858e0c6 shr      eax, 0x10
+0x0858e0c9 mov      byte ptr [edx], al
+0x0858e0cb mov      eax, dword ptr [ebp + 8]
+0x0858e0ce mov      eax, dword ptr [eax + 0x14]
+0x0858e0d1 lea      edx, [eax + 0xa]
+0x0858e0d4 mov      eax, dword ptr [ebp - 0x10]
+0x0858e0d7 shr      eax, 0x18
+0x0858e0da mov      byte ptr [edx], al
+0x0858e0dc mov      eax, dword ptr [ebp + 8]
+0x0858e0df mov      eax, dword ptr [eax + 0x14]
+0x0858e0e2 lea      edx, [eax + 0xb]
+0x0858e0e5 mov      eax, dword ptr [ebp - 0xc]
+0x0858e0e8 mov      byte ptr [edx], al
+0x0858e0ea mov      eax, dword ptr [ebp + 8]
+0x0858e0ed mov      eax, dword ptr [eax + 0x14]
+0x0858e0f0 lea      edx, [eax + 0xc]
+0x0858e0f3 mov      eax, dword ptr [ebp - 0xc]
+0x0858e0f6 and      eax, 0xff00
+0x0858e0fb shr      eax, 8
+0x0858e0fe mov      byte ptr [edx], al
+0x0858e100 mov      eax, dword ptr [ebp + 8]
+0x0858e103 mov      eax, dword ptr [eax + 0x14]
+0x0858e106 lea      edx, [eax + 0xd]
+0x0858e109 mov      eax, dword ptr [ebp - 0xc]
+0x0858e10c and      eax, 0xff0000
+0x0858e111 shr      eax, 0x10
+0x0858e114 mov      byte ptr [edx], al
+0x0858e116 mov      eax, dword ptr [ebp + 8]
+0x0858e119 mov      eax, dword ptr [eax + 0x14]
+0x0858e11c lea      edx, [eax + 0xe]
+0x0858e11f mov      eax, dword ptr [ebp - 0xc]
+0x0858e122 shr      eax, 0x18
+0x0858e125 mov      byte ptr [edx], al
+0x0858e127 jmp      0x858e1e9
+0x0858e12c mov      eax, dword ptr [ebp + 8]
+0x0858e12f mov      eax, dword ptr [eax + 0x14]
+0x0858e132 lea      edx, [eax + 7]
+0x0858e135 mov      eax, dword ptr [ebp - 0x10]
+0x0858e138 shr      eax, 0x18
+0x0858e13b mov      byte ptr [edx], al
+0x0858e13d mov      eax, dword ptr [ebp + 8]
+0x0858e140 mov      eax, dword ptr [eax + 0x14]
+0x0858e143 lea      edx, [eax + 8]
+0x0858e146 mov      eax, dword ptr [ebp - 0x10]
+0x0858e149 and      eax, 0xff0000
+0x0858e14e shr      eax, 0x10
+0x0858e151 mov      byte ptr [edx], al
+0x0858e153 mov      eax, dword ptr [ebp + 8]
+0x0858e156 mov      eax, dword ptr [eax + 0x14]
+0x0858e159 lea      edx, [eax + 9]
+0x0858e15c mov      eax, dword ptr [ebp - 0x10]
+0x0858e15f and      eax, 0xff00
+0x0858e164 shr      eax, 8
+0x0858e167 mov      byte ptr [edx], al
+0x0858e169 mov      eax, dword ptr [ebp + 8]
+0x0858e16c mov      eax, dword ptr [eax + 0x14]
+0x0858e16f lea      edx, [eax + 0xa]
+0x0858e172 mov      eax, dword ptr [ebp - 0x10]
+0x0858e175 mov      byte ptr [edx], al
+0x0858e177 mov      eax, dword ptr [ebp + 8]
+0x0858e17a mov      eax, dword ptr [eax + 0x14]
+0x0858e17d add      eax, 0xb
+0x0858e180 mov      byte ptr [eax], 0
+0x0858e183 mov      eax, dword ptr [ebp + 8]
+0x0858e186 mov      eax, dword ptr [eax + 0x14]
+0x0858e189 add      eax, 0xc
+0x0858e18c mov      byte ptr [eax], 0
+0x0858e18f mov      eax, dword ptr [ebp + 8]
+0x0858e192 mov      eax, dword ptr [eax + 0x14]
+0x0858e195 lea      edx, [eax + 0xd]
+0x0858e198 mov      eax, dword ptr [ebp - 0xc]
+0x0858e19b and      eax, 0xff0000
+0x0858e1a0 shr      eax, 8
+0x0858e1a3 mov      byte ptr [edx], al
+0x0858e1a5 mov      eax, dword ptr [ebp + 8]
+0x0858e1a8 mov      eax, dword ptr [eax + 0x14]
+0x0858e1ab add      eax, 0xe
+0x0858e1ae mov      byte ptr [eax], 0
+0x0858e1b1 jmp      0x858e1e9
+0x0858e1b3 mov      eax, dword ptr [ebp + 8]
+0x0858e1b6 mov      eax, dword ptr [eax]
+0x0858e1b8 mov      dword ptr [esp + 0x14], eax
+0x0858e1bc mov      dword ptr [esp + 0x10], 0x8cad469
+0x0858e1c4 mov      dword ptr [esp + 0xc], 0x439
+0x0858e1cc mov      dword ptr [esp + 8], 0x8cae2b0
+0x0858e1d4 mov      dword ptr [esp + 4], 0x8cad482
+0x0858e1dc mov      dword ptr [esp], 1
+0x0858e1e3 call     0x8ad3c0a ; _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x0858e1e8 nop
+0x0858e1e9 leave
+0x0858e1ea ret
+
+FUNCTION _Z22_NS_PI_2ND_SendHash_SCPctP5CUser VA=0x082751ee SIZE=162
+0x082751ee push     ebp
+0x082751ef mov      ebp, esp
+0x082751f1 push     ebx
+0x082751f2 sub      esp, 0x44
+0x082751f5 mov      eax, dword ptr [ebp + 0xc]
+0x082751f8 mov      word ptr [ebp - 0x2c], ax
+0x082751fc movzx    eax, word ptr [ebp - 0x2c]
+0x08275200 sub      eax, 0xf
+0x08275203 mov      dword ptr [ebp - 0x20], eax
+0x08275206 mov      eax, dword ptr [ebp + 8]
+0x08275209 add      eax, 0xf
+0x0827520c mov      dword ptr [ebp - 0x1c], eax
+0x0827520f mov      eax, dword ptr [ebp + 8]
+0x08275212 movzx    eax, byte ptr [eax]
+0x08275215 mov      byte ptr [ebp - 0x15], al
+0x08275218 mov      eax, dword ptr [ebp + 8]
+0x0827521b mov      dword ptr [esp], eax
+0x0827521e call     0x82772a9 ; _Z25_NS_PI_2ND_GetPacketIndexPc
+0x08275223 mov      word ptr [ebp - 0x14], ax
+0x08275227 cmp      byte ptr [ebp - 0x15], 0
+0x0827522b jne      0x827523b
+0x0827522d cmp      word ptr [ebp - 0x14], 1
+0x08275232 jne      0x827523b
+0x08275234 mov      eax, 1
+0x08275239 jmp      0x8275240
+0x0827523b mov      eax, 0
+0x08275240 mov      byte ptr [ebp - 0x11], al
+0x08275243 movzx    ebx, byte ptr [ebp - 0x11]
+0x08275247 mov      eax, dword ptr [ebp + 0x10]
+0x0827524a mov      dword ptr [esp], eax
+0x0827524d call     0x8275676 ; _ZN5CUser18GetPISenderManagerEv
+0x08275252 mov      dword ptr [esp + 0xc], ebx
+0x08275256 mov      edx, dword ptr [ebp - 0x20]
+0x08275259 mov      dword ptr [esp + 8], edx
+0x0827525d mov      edx, dword ptr [ebp - 0x1c]
+0x08275260 mov      dword ptr [esp + 4], edx
+0x08275264 mov      dword ptr [esp], eax
+0x08275267 call     0x808be6e ; _ZN15PISenderManager18MakeHashForSendingEPhjb
+0x0827526c mov      dword ptr [ebp - 0x10], eax
+0x0827526f mov      eax, dword ptr [ebp + 8]
+0x08275272 add      eax, 0xb
+0x08275275 mov      dword ptr [ebp - 0xc], eax
+0x08275278 mov      eax, dword ptr [ebp - 0x10]
+0x0827527b mov      dword ptr [esp + 4], eax
+0x0827527f mov      eax, dword ptr [ebp - 0xc]
+0x08275282 mov      dword ptr [esp], eax
+0x08275285 call     0x808ca60 ; _Z39_NS_PI_2ND_ReconstructCheckSumRandomkeyRjj
+0x0827528a add      esp, 0x44
+0x0827528d pop      ebx
+0x0827528e pop      ebp
+0x0827528f ret
+
+FUNCTION _ZN9PacketBuf7get_intERj VA=0x0858d240 SIZE=62
+0x0858d240 push     ebp
+0x0858d241 mov      ebp, esp
+0x0858d243 sub      esp, 0x28
+0x0858d246 mov      dword ptr [ebp - 0xc], 0
+0x0858d24d lea      eax, [ebp - 0xc]
+0x0858d250 mov      dword ptr [esp + 4], eax
+0x0858d254 mov      eax, dword ptr [ebp + 8]
+0x0858d257 mov      dword ptr [esp], eax
+0x0858d25a call     0x858d0f0 ; _ZN9PacketBuf7get_intERi
+0x0858d25f xor      eax, 1
+0x0858d262 test     al, al
+0x0858d264 je       0x858d26d
+0x0858d266 mov      eax, 0
+0x0858d26b jmp      0x858d27c
+0x0858d26d mov      eax, dword ptr [ebp - 0xc]
+0x0858d270 mov      edx, eax
+0x0858d272 mov      eax, dword ptr [ebp + 0xc]
+0x0858d275 mov      dword ptr [eax], edx
+0x0858d277 mov      eax, 1
+0x0858d27c leave
+0x0858d27d ret
+
+FUNCTION _Z20_NS_PI_MakeHash_NOTIP9PacketBuf VA=0x082746f3 SIZE=133
+0x082746f3 push     ebp
+0x082746f4 mov      ebp, esp
+0x082746f6 sub      esp, 0x38
+0x082746f9 cmp      dword ptr [ebp + 8], 0
+0x082746fd je       0x8274772
+0x082746ff mov      dword ptr [esp + 4], 0
+0x08274707 mov      eax, dword ptr [ebp + 8]
+0x0827470a mov      dword ptr [esp], eax
+0x0827470d call     0x822b702 ; _ZN9PacketBuf10get_packetEi
+0x08274712 mov      dword ptr [ebp - 0x18], eax
+0x08274715 mov      eax, dword ptr [ebp - 0x18]
+0x08274718 add      eax, 1
+0x0827471b movzx    eax, word ptr [eax]
+0x0827471e mov      word ptr [ebp - 0x12], ax
+0x08274722 mov      eax, dword ptr [ebp - 0x18]
+0x08274725 add      eax, 0xf
+0x08274728 mov      dword ptr [ebp - 0x10], eax
+0x0827472b mov      eax, dword ptr [ebp + 8]
+0x0827472e mov      dword ptr [esp], eax
+0x08274731 call     0x8110b1c ; _ZN9PacketBuf9get_indexEv
+0x08274736 sub      eax, 0xf
+0x08274739 mov      word ptr [ebp - 0xa], ax
+0x0827473d movsx    eax, word ptr [ebp - 0xa]
+0x08274741 lea      edx, [ebp - 0x1c]
+0x08274744 mov      dword ptr [esp + 8], edx
+0x08274748 mov      dword ptr [esp + 4], eax
+0x0827474c mov      eax, dword ptr [ebp - 0x10]
+0x0827474f mov      dword ptr [esp], eax
+0x08274752 call     0x808c8b5 ; _Z13_NS_MakeHash_PcsRi
+0x08274757 xor      eax, 1
+0x0827475a test     al, al
+0x0827475c jne      0x8274775
+0x0827475e mov      eax, dword ptr [ebp - 0x1c]
+0x08274761 mov      dword ptr [esp + 4], eax
+0x08274765 mov      eax, dword ptr [ebp + 8]
+0x08274768 mov      dword ptr [esp], eax
+0x0827476b call     0x80cb8c2 ; _ZN9PacketBuf7put_intEi
+0x08274770 jmp      0x8274776
+0x08274772 nop
+0x08274773 jmp      0x8274776
+0x08274775 nop
+0x08274776 leave
+0x08274777 ret
+
+FUNCTION _ZNK9PacketBuf18isCompressRequiredEPc VA=0x0858e248 SIZE=62
+0x0858e248 push     ebp
+0x0858e249 mov      ebp, esp
+0x0858e24b sub      esp, 0x10
+0x0858e24e mov      eax, dword ptr [ebp + 0xc]
+0x0858e251 mov      dword ptr [ebp - 4], eax
+0x0858e254 mov      eax, dword ptr [ebp - 4]
+0x0858e257 movzx    eax, word ptr [eax]
+0x0858e25a cmp      ax, 2
+0x0858e25e je       0x858e278
+0x0858e260 mov      eax, dword ptr [ebp - 4]
+0x0858e263 movzx    eax, word ptr [eax]
+0x0858e266 cmp      ax, 9
+0x0858e26a je       0x858e278
+0x0858e26c mov      eax, dword ptr [ebp - 4]
+0x0858e26f movzx    eax, word ptr [eax]
+0x0858e272 cmp      ax, 0x57
+0x0858e276 jne      0x858e27f
+0x0858e278 mov      eax, 1
+0x0858e27d jmp      0x858e284
+0x0858e27f mov      eax, 0
+0x0858e284 leave
+0x0858e285 ret
+
+FUNCTION _ZN8CNetworkILi4096ELi450000EE11send_packetEPci VA=0x08698744 SIZE=562
+0x08698744 push     ebp
+0x08698745 mov      ebp, esp
+0x08698747 sub      esp, 0x38
+0x0869874a mov      eax, dword ptr [ebp + 8]
+0x0869874d mov      eax, dword ptr [eax]
+0x0869874f test     eax, eax
+0x08698751 jns      0x869875d
+0x08698753 mov      eax, 0xffffffff
+0x08698758 jmp      0x8698974
+0x0869875d cmp      dword ptr [ebp + 0x10], 0
+0x08698761 jg       0x86987bd
+0x08698763 mov      eax, dword ptr [ebp + 0xc]
+0x08698766 add      eax, 1
+0x08698769 movzx    eax, byte ptr [eax]
+0x0869876c movsx    edx, al
+0x0869876f mov      eax, dword ptr [ebp + 0xc]
+0x08698772 movzx    eax, byte ptr [eax]
+0x08698775 movsx    eax, al
+0x08698778 mov      ecx, dword ptr [ebp + 0x10]
+0x0869877b mov      dword ptr [esp + 0x1c], ecx
+0x0869877f mov      dword ptr [esp + 0x18], edx
+0x08698783 mov      dword ptr [esp + 0x14], eax
+0x08698787 mov      dword ptr [esp + 0x10], 0x8cf1600
+0x0869878f mov      dword ptr [esp + 0xc], 0x25b
+0x08698797 mov      dword ptr [esp + 8], 0x8cf3664
+0x0869879f mov      dword ptr [esp + 4], 0x8cf1627
+0x086987a7 mov      dword ptr [esp], 1
+0x086987ae call     0x8ad3c0a ; _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x086987b3 mov      eax, 0xffffffff
+0x086987b8 jmp      0x8698974
+0x086987bd mov      dword ptr [ebp - 0xc], 0
+0x086987c4 call     0x807dd70 ; __errno_location
+0x086987c9 mov      dword ptr [eax], 0
+0x086987cf mov      eax, dword ptr [ebp + 8]
+0x086987d2 mov      dword ptr [esp], eax
+0x086987d5 call     0x857fa96 ; _ZN8CNetworkILi4096ELi450000EE9send_lockEv
+0x086987da mov      eax, dword ptr [ebp + 8]
+0x086987dd mov      edx, dword ptr [eax + 0x1030]
+0x086987e3 mov      eax, dword ptr [ebp + 0x10]
+0x086987e6 add      edx, eax
+0x086987e8 mov      eax, dword ptr [ebp + 8]
+0x086987eb mov      dword ptr [eax + 0x1030], edx
+0x086987f1 mov      eax, dword ptr [ebp + 8]
+0x086987f4 mov      eax, dword ptr [eax + 0x1030]
+0x086987fa cmp      eax, 0x6ddd0
+0x086987ff jbe      0x869887d
+0x08698801 mov      eax, dword ptr [ebp + 8]
+0x08698804 mov      edx, dword ptr [eax + 0x1030]
+0x0869880a mov      eax, dword ptr [ebp + 0x10]
+0x0869880d sub      edx, eax
+0x0869880f mov      eax, dword ptr [ebp + 8]
+0x08698812 mov      dword ptr [eax + 0x1030], edx
+0x08698818 mov      eax, dword ptr [ebp + 8]
+0x0869881b mov      edx, dword ptr [eax + 0x1030]
+0x08698821 mov      eax, dword ptr [ebp + 0xc]
+0x08698824 add      eax, 1
+0x08698827 movzx    eax, byte ptr [eax]
+0x0869882a movsx    eax, al
+0x0869882d mov      ecx, dword ptr [ebp + 0x10]
+0x08698830 mov      dword ptr [esp + 0x1c], ecx
+0x08698834 mov      dword ptr [esp + 0x18], edx
+0x08698838 mov      dword ptr [esp + 0x14], eax
+0x0869883c mov      dword ptr [esp + 0x10], 0x8cf1634
+0x08698844 mov      dword ptr [esp + 0xc], 0x26e
+0x0869884c mov      dword ptr [esp + 8], 0x8cf3664
+0x08698854 mov      dword ptr [esp + 4], 0x8cf1627
+0x0869885c mov      dword ptr [esp], 1
+0x08698863 call     0x8ad3c0a ; _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x08698868 mov      eax, dword ptr [ebp + 8]
+0x0869886b mov      dword ptr [esp], eax
+0x0869886e call     0x857faae ; _ZN8CNetworkILi4096ELi450000EE11send_unlockEv
+0x08698873 mov      eax, 0xffffffff
+0x08698878 jmp      0x8698974
+0x0869887d mov      eax, dword ptr [ebp + 8]
+0x08698880 mov      eax, dword ptr [eax + 0x1034]
+0x08698886 mov      edx, dword ptr [ebp + 8]
+0x08698889 add      edx, 0x1038
+0x0869888f cmp      eax, edx
+0x08698891 jb       0x86988af
+0x08698893 mov      eax, dword ptr [ebp + 8]
+0x08698896 mov      eax, dword ptr [eax + 0x1034]
+0x0869889c mov      edx, dword ptr [ebp + 8]
+0x0869889f add      edx, 0x1038
+0x086988a5 add      edx, 0x6ddd0
+0x086988ab cmp      eax, edx
+0x086988ad jb       0x8698928
+0x086988af mov      eax, dword ptr [ebp + 8]
+0x086988b2 mov      edx, dword ptr [eax + 0x1030]
+0x086988b8 mov      eax, dword ptr [ebp + 0x10]
+0x086988bb sub      edx, eax
+0x086988bd mov      eax, dword ptr [ebp + 8]
+0x086988c0 mov      dword ptr [eax + 0x1030], edx
+0x086988c6 mov      eax, dword ptr [ebp + 8]
+0x086988c9 mov      edx, dword ptr [eax + 0x1030]
+0x086988cf mov      eax, dword ptr [ebp + 0xc]
+0x086988d2 add      eax, 1
+0x086988d5 movzx    eax, byte ptr [eax]
+0x086988d8 movsx    eax, al
+0x086988db mov      ecx, dword ptr [ebp + 0x10]
+0x086988de mov      dword ptr [esp + 0x1c], ecx
+0x086988e2 mov      dword ptr [esp + 0x18], edx
+0x086988e6 mov      dword ptr [esp + 0x14], eax
+0x086988ea mov      dword ptr [esp + 0x10], 0x8cf1670
+0x086988f2 mov      dword ptr [esp + 0xc], 0x277
+0x086988fa mov      dword ptr [esp + 8], 0x8cf3664
+0x08698902 mov      dword ptr [esp + 4], 0x8cf1627
+0x0869890a mov      dword ptr [esp], 1
+0x08698911 call     0x8ad3c0a ; _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x08698916 mov      eax, dword ptr [ebp + 8]
+0x08698919 mov      dword ptr [esp], eax
+0x0869891c call     0x857faae ; _ZN8CNetworkILi4096ELi450000EE11send_unlockEv
+0x08698921 mov      eax, 0xffffffff
+0x08698926 jmp      0x8698974
+0x08698928 mov      edx, dword ptr [ebp + 0x10]
+0x0869892b mov      eax, dword ptr [ebp + 8]
+0x0869892e mov      eax, dword ptr [eax + 0x1034]
+0x08698934 mov      dword ptr [esp + 8], edx
+0x08698938 mov      edx, dword ptr [ebp + 0xc]
+0x0869893b mov      dword ptr [esp + 4], edx
+0x0869893f mov      dword ptr [esp], eax
+0x08698942 call     0x807d8a0 ; memcpy
+0x08698947 mov      eax, dword ptr [ebp + 8]
+0x0869894a mov      edx, dword ptr [eax + 0x1034]
+0x08698950 mov      eax, dword ptr [ebp + 0x10]
+0x08698953 add      edx, eax
+0x08698955 mov      eax, dword ptr [ebp + 8]
+0x08698958 mov      dword ptr [eax + 0x1034], edx
+0x0869895e mov      eax, dword ptr [ebp + 8]
+0x08698961 mov      dword ptr [esp], eax
+0x08698964 call     0x857faae ; _ZN8CNetworkILi4096ELi450000EE11send_unlockEv
+0x08698969 mov      eax, dword ptr [ebp + 8]
+0x0869896c mov      dword ptr [esp], eax
+0x0869896f call     0x857f616 ; _ZN8CNetworkILi4096ELi450000EE11send_packetEv
+0x08698974 leave
+0x08698975 ret
+
+FUNCTION _ZN6Taiwan14GarenaAuthData6getUidEv VA=0x08172fc8 SIZE=21
+0x08172fc8 push     ebp
+0x08172fc9 mov      ebp, esp
+0x08172fcb sub      esp, 0x18
+0x08172fce mov      eax, dword ptr [ebp + 8]
+0x08172fd1 mov      eax, dword ptr [eax]
+0x08172fd3 mov      dword ptr [esp], eax
+0x08172fd6 call     0x807db80 ; ntohl
+0x08172fdb leave
+0x08172fdc ret
+
+FUNCTION _ZN6Taiwan14GarenaAuthData8getUnameEv VA=0x08172fde SIZE=11
+0x08172fde push     ebp
+0x08172fdf mov      ebp, esp
+0x08172fe1 mov      eax, dword ptr [ebp + 8]
+0x08172fe4 add      eax, 4
+0x08172fe7 pop      ebp
+0x08172fe8 ret
+
+FUNCTION _ZN6Taiwan14GarenaAuthData12getTimeStampEv VA=0x08172fea SIZE=30
+0x08172fea push     ebp
+0x08172feb mov      ebp, esp
+0x08172fed sub      esp, 0x18
+0x08172ff0 mov      eax, dword ptr [ebp + 8]
+0x08172ff3 mov      eax, dword ptr [eax + 0x24]
+0x08172ff6 mov      dword ptr [esp], eax
+0x08172ff9 call     0x807db80 ; ntohl
+0x08172ffe mov      edx, dword ptr [ebp + 8]
+0x08173001 mov      edx, dword ptr [edx + 0x64]
+0x08173004 add      eax, edx
+0x08173006 leave
+0x08173007 ret
+
+FUNCTION _ZN6Taiwan14GarenaAuthData10getGcaTypeEv VA=0x08173008 SIZE=26
+0x08173008 push     ebp
+0x08173009 mov      ebp, esp
+0x0817300b sub      esp, 0x18
+0x0817300e mov      eax, dword ptr [ebp + 8]
+0x08173011 movzx    eax, word ptr [eax + 0x28]
+0x08173015 movzx    eax, ax
+0x08173018 mov      dword ptr [esp], eax
+0x0817301b call     0x807de90 ; ntohs
+0x08173020 leave
+0x08173021 ret
+
+FUNCTION _ZN6Taiwan14GarenaAuthData13getMobileAuthEv VA=0x08173022 SIZE=17
+0x08173022 push     ebp
+0x08173023 mov      ebp, esp
+0x08173025 mov      eax, dword ptr [ebp + 8]
+0x08173028 movzx    eax, byte ptr [eax + 0x2c]
+0x0817302c cmp      al, 1
+0x0817302e sete     al
+0x08173031 pop      ebp
+0x08173032 ret
+
+FUNCTION _ZN6Taiwan14GarenaAuthData17getGoldMemberTypeEv VA=0x0817304e SIZE=12
+0x0817304e push     ebp
+0x0817304f mov      ebp, esp
+0x08173051 mov      eax, dword ptr [ebp + 8]
+0x08173054 movzx    eax, byte ptr [eax + 0x2a]
+0x08173058 pop      ebp
+0x08173059 ret

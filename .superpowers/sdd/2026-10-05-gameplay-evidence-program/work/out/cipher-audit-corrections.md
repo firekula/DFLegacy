@@ -76,6 +76,10 @@ python "$B/work/verify-cipher-snapshot.py" "$B/work/out/peek-key2.txt"
 [静态] `COpensslRSA::Decrypt @0x0816c532` 的 `0x0816c5cf` 调 RSA_public_decrypt，padding实参=1。与 AuthGarenaToken 中 base64_decode 调用衔接。
 [作废] “GarenaAuthData 104B 容量等于每条 token 的明文长度”。函数里 0x68 是容量上限/清零大小，不能替代实际恢复长度。
 
+## 静态补证更新
+
+见 [静态密码分析](<static-password-closure.md>) 和 [离线交叉输出](<verify-static-password.txt>)。两份现有NOTI1密文CRC已匹配[7:11]；CMD1用key[8:24]经双AES实现ECB解得相同400B，base64长度344，RSA type-1恢复46B。仍无singleton快照逐字节核对。旧“未解出CMD1”描述作为历史状态保留，不再代表最新进度。其他算法和完整PI/LOGIN尾字段仍有静态待办。
+
 ## 接下来按此顺序继续（无需人工登录）
 
 1. 静态读 NOTI1 特殊 `Encryption::Encrypt`，确定可逆包装、输入偏移和校验覆盖；逐指令用完整符号/relocation 核实。
