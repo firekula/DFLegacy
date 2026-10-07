@@ -1,6 +1,6 @@
 # RESUME —— 官服玩法面证据链工程（接续块）
 
-> 2026-10-06 有限证据收尾：状态 **T1 补全中**。已补入环境/解释器/依赖版本、输入哈希、状态枚举及唯一复跑基线；尚未完成 T1 的明确 pathspec 提交，因此不进入 T2。T3 生产者两路径、T4 全硬门逐项核对、T6 复跑/签收仍未完成。不得把 exit=0 批量命令当作 H01–H08 签收，不扩大范围。详见 `work/out/offline-closure-report.md`、`work/out/noti561-closure.md`、`work/out/login-offline-closure.md`、`work/out/client-crypto-closure.md`、`work/out/client-business-backlog.md`。
+> 2026-10-06 有限证据收尾：状态 **CLOSED_WITH_LIMITS**。T1–T5 已按明确 pathspec 提交；T6 签收见 `work/out/evidence-closure-signoff.md`。本签收只覆盖客户端密码/封装证据包，不等于全官服协议完成、singleton验证完成或重写授权。动态项、范围暂缓项与后续玩法单元已冻结，不再以“继续离线”扩展本表。
 
 > **后续执行唯一收尾入口：[有限证据收尾任务表](<../../../docs/superpowers/plans/2026-10-06-gameplay-evidence-closure.md>)（计划提交8438dd4）。** 本文下方是历史记录，不能按“继续”无限追加。先按该表T1纠错，再按T2–T6及H01–H08验收；不创建teammates、不改产品代码。表中任务目前均待验收。CLOSED_WITH_LIMITS只签收客户端密码/封装证据包，不等于全官服协议完成或重写授权。BLOCKED必须保留失败，不得勾成完成。
 
