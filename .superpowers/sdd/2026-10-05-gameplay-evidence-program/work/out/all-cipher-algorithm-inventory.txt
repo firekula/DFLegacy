@@ -1,0 +1,16 @@
+0 Shift entrypoints=2
+1 Rijndael entrypoints=3
+2 BlowFish entrypoints=2
+3 Rc6 entrypoints=2
+4 TwoFish entrypoints=2
+5 Tea entrypoints=4
+6 Kasumi entrypoints=2
+7 XTea entrypoints=2
+8 Noekeon entrypoints=2
+9 Khazad entrypoints=2
+10 Cast5 entrypoints=2
+11 Skipjack entrypoints=2
+12 Multi2 entrypoints=2
+13 Anubis entrypoints=2
+DISPATCH_CONTRACT=PASS
+LIMIT: this is static inventory only; no per-algorithm known plaintext was available, so plaintext compatibility remains unverified.
