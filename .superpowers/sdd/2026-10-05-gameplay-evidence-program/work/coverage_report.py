@@ -29,8 +29,9 @@ VERBATIM_LIMITS = (
     "[静态] 本覆盖率的分母 = opcode-map.tsv 的 1171 条 (CMD 608 / NOTI 563)。",
     '[静态] T3/T4 只表示"能在 handlers 目录里看到字段读/写调用"，不等于"已读出有序字段规格"；\n'
     "       字段布局仍须逐家族反编译读取（不在本计划范围）。",
-    '[静态] catalog_handlers_full.txt 只覆盖 239/425 个 dispatcher 家族 ⇒ T1 的 186 条是\n'
-    '       "没有字段调用数据"，不是"没有字段"。',
+    '[静态] catalog_handlers_full.txt 只覆盖 239/425 个 dispatcher 家族，而"mapped opcode 用到的\n'
+    '       dispatcher"有 423 个 ⇒ 其中 186 个家族没有字段调用数据，落到 T1 的 opcode 是 187 条\n'
+    '       （差 1 因为 StartGame 家族有 2 条 mapped opcode）；这是"没有字段调用数据"，不是"没有字段"。',
     "[未验证] 外部证据档（byte_verified / field_read）首版为空；在它有内容之前，\n"
     '       本覆盖率**不得**被引用为"字段级已完成多少"。',
 )
