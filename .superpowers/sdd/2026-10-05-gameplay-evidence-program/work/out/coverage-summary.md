@@ -67,15 +67,31 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
 
 | ext_mark | 条数 |
 |---|---|
-| byte_verified | 3 |
-| field_read | 0 |
+| byte_verified | 2 |
+| field_read | 1 |
 | name_only | 1168 |
 | **合计** | **1171** |
 
 被标注（出现在 `tiers-external.tsv`）的 opcode = 3 条；其余 1168 条
 `ext_mark=name_only`（即"只有名字"）。
 
-本次运行的 stdout 对账行：`ext_byte_verified=3`、`ext_field_read=0`、`ext_name_only=1168`。
+本次运行的 stdout 对账行：`ext_byte_verified=2`、`ext_field_read=1`、`ext_name_only=1168`。
+
+### `ext_mark` 的分级门槛
+
+- `byte_verified` —— **该 opcode 的线上字节被逐字段钉住、落盘且可复跑**；只有达到这条才配 `byte_verified`。
+- `field_read` —— 只有**静态字段序**（反汇编里的读/写次序）或**未经逐字段核对的抓包观测**。
+- `name_only` —— 没有任何字段级证据，只有名字。
+
+[静态] 本次 `byte_verified` 只覆盖 CMD 1、NOTI 561（2 条）；`field_read` 覆盖 NOTI 1（1 条）。
+
+[作废] `NOTI 1` 曾标 `byte_verified`（原文见 `8334e23` 的 `out/tiers-external.tsv`，**不删**），
+       本次按证据分级降为 `field_read`：它的证据只有 `cipher-callchain-audit.txt` L3342-3517 的
+       **静态字段序**（`CUser::InitOnAccept` 里 `put_binary(334)`/`get_channel_name`/seed/random 的写入次序）
+       与"抓包两样本前 334 B 相同"这条观测，**未**把 334 B 载荷逐字段对上。项目内两处反向记录指向推翻它：
+       `cipher-audit-corrections.md:70` 的 `[作废]`（"334B key+103B 字段已逐字段闭合" —— "没有解开 NOTI1，
+       也没有逐字段比对"）、`dynamic-evidence-progress-2026-10-07.md:368`（"[真机] 未取的：334 B key 本体"）。
+       该行 `evidence` 原文保留 —— 它就是降级的依据。
 
 [静态] 本表 ext_mark=byte_verified 的条目，其 evidence 全部指向本项目已落盘产物；
        未出现在 tiers-external.tsv 的 opcode 一律 ext_mark=name_only（即"只有名字"）。
@@ -88,8 +104,9 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
 | 覆盖 | 1171 条全部 | 只有 3 条有标注 |
 | 能证明什么 | 只到"字段读/写调用的候选" | `byte_verified` 的那几条才有字节级产物支撑 |
 
-两条轴**正交**：`NOTI 1` / `NOTI 561` 在 tier 轴是 T0（没有可达处理器），在 ext_mark 轴是
-`byte_verified` —— "没有 dispatcher"不等于"没有外部证据"。
+两条轴**正交**：ext_mark 不参与 tier 判定 —— 例如 NOTI 561 在 tier 轴是
+`T0_no-evidence`（`status=no-dispatcher`），在 ext_mark 轴却是 `byte_verified`；
+`NOTI 1` 同样是 T0，但按分级门槛只到 `field_read`。"没有 dispatcher"不等于"没有外部证据"。
 
 [作废] §3 第 4 句"[未验证] 外部证据档…首版为空"写于外部证据档为空时；本任务的
        `out/tiers-external.tsv` 已回填 3 行，该句的"首版为空"已被推翻。

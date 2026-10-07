@@ -56,9 +56,30 @@ TAIL_NO_EXTERNAL = """## 4. 外部证据档状态
 """
 
 
-def external_tail(ext_counts: dict, marked: int, total: int, source: str) -> str:
-    """`--external` 跑过时的报告尾部：外部证据档计数 + 两条轴的对照 + 对 §3 第 4 句的 `[作废]`。"""
+def _fmt_keys(keys: list) -> str:
+    """`[("CMD", 1), ("NOTI", 561)]` → `CMD 1、NOTI 561`（空列表 → 明确写"（无）"，不留空）。"""
+    return "、".join(f"{k} {i}" for k, i in keys) if keys else "（无）"
+
+
+# `NOTI 1` 降级的依据（只在它**真的**处于 field_read 时才渲染 ⇒ 标注再变这句话不会变成假话）。
+NOTI1_DOWNGRADE_NOTE = """[作废] `NOTI 1` 曾标 `byte_verified`（原文见 `8334e23` 的 `out/tiers-external.tsv`，**不删**），
+       本次按证据分级降为 `field_read`：它的证据只有 `cipher-callchain-audit.txt` L3342-3517 的
+       **静态字段序**（`CUser::InitOnAccept` 里 `put_binary(334)`/`get_channel_name`/seed/random 的写入次序）
+       与"抓包两样本前 334 B 相同"这条观测，**未**把 334 B 载荷逐字段对上。项目内两处反向记录指向推翻它：
+       `cipher-audit-corrections.md:70` 的 `[作废]`（"334B key+103B 字段已逐字段闭合" —— "没有解开 NOTI1，
+       也没有逐字段比对"）、`dynamic-evidence-progress-2026-10-07.md:368`（"[真机] 未取的：334 B key 本体"）。
+       该行 `evidence` 原文保留 —— 它就是降级的依据。"""
+
+
+def external_tail(ext_counts: dict, marked: int, total: int, source: str,
+                  keys: dict, t0_byte: list) -> str:
+    """`--external` 跑过时的报告尾部：`ext_mark` 分级门槛 + 计数 + 两条轴对照 + 两条 `[作废]`。
+
+    `byte_verified` / `field_read` 覆盖哪几条 opcode **从本次数据算出来**（不写死），
+    这样标注一改，报告不会出现自相矛盾的旧结论。
+    """
     rows = "\n".join(f"| {m} | {ext_counts[m]} |" for m in EXTERNAL_MARKS)
+    noti1 = f"\n\n{NOTI1_DOWNGRADE_NOTE}" if ("NOTI", 1) in keys["field_read"] else ""
     return f"""## 4. 外部证据档状态（**独立轴**，不混进上表六档）
 
 人工标注源：`{source}`（本次运行传入 `--external`）。
@@ -73,6 +94,14 @@ def external_tail(ext_counts: dict, marked: int, total: int, source: str) -> str
 
 本次运行的 stdout 对账行：`ext_byte_verified={ext_counts["byte_verified"]}`、`ext_field_read={ext_counts["field_read"]}`、`ext_name_only={ext_counts["name_only"]}`。
 
+### `ext_mark` 的分级门槛
+
+- `byte_verified` —— **该 opcode 的线上字节被逐字段钉住、落盘且可复跑**；只有达到这条才配 `byte_verified`。
+- `field_read` —— 只有**静态字段序**（反汇编里的读/写次序）或**未经逐字段核对的抓包观测**。
+- `name_only` —— 没有任何字段级证据，只有名字。
+
+[静态] 本次 `byte_verified` 只覆盖 {_fmt_keys(keys["byte_verified"])}（{ext_counts["byte_verified"]} 条）；`field_read` 覆盖 {_fmt_keys(keys["field_read"])}（{ext_counts["field_read"]} 条）。{noti1}
+
 {VERBATIM_EXTERNAL}
 
 ## 5. 锚点回填 vs 纯推导（对照）
@@ -83,8 +112,9 @@ def external_tail(ext_counts: dict, marked: int, total: int, source: str) -> str
 | 覆盖 | 1171 条全部 | 只有 {marked} 条有标注 |
 | 能证明什么 | 只到"字段读/写调用的候选" | `byte_verified` 的那几条才有字节级产物支撑 |
 
-两条轴**正交**：`NOTI 1` / `NOTI 561` 在 tier 轴是 T0（没有可达处理器），在 ext_mark 轴是
-`byte_verified` —— "没有 dispatcher"不等于"没有外部证据"。
+两条轴**正交**：ext_mark 不参与 tier 判定 —— 例如 {_fmt_keys(t0_byte)} 在 tier 轴是
+`T0_no-evidence`（`status=no-dispatcher`），在 ext_mark 轴却是 `byte_verified`；
+`NOTI 1` 同样是 T0，但按分级门槛只到 `field_read`。"没有 dispatcher"不等于"没有外部证据"。
 
 [作废] §3 第 4 句"[未验证] 外部证据档…首版为空"写于外部证据档为空时；本任务的
        `out/tiers-external.tsv` 已回填 {marked} 行，该句的"首版为空"已被推翻。
@@ -148,7 +178,7 @@ def write_summary(path: Path, counts, summary: dict, ext: dict) -> None:
         tail = TAIL_NO_EXTERNAL
     else:
         tail = external_tail(counts_by_mark, ext["ext_marked"], summary["total"],
-                             ext["ext_source"])
+                             ext["ext_source"], ext["ext_keys"], ext["ext_t0_byte"])
     body = f"""# 协议字段级覆盖度盘点（1171 条 opcode）
 
 ## 1. 源对账（只读真产物）
@@ -277,10 +307,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"外部证据档非法: {type(exc).__name__}: {exc}", file=sys.stderr)
             return 2
         ext_counts = {m: 0 for m in EXTERNAL_MARKS}
+        by_mark: dict[str, list] = {m: [] for m in EXTERNAL_MARKS}
         for r in classified:
             ext_counts[r["ext_mark"]] += 1
+            by_mark[r["ext_mark"]].append((r["kind"], r["id"]))
+        for m in EXTERNAL_MARKS:
+            by_mark[m].sort()
         extra["ext_mark_counts"] = ext_counts
         extra["ext_marked"] = len(classified) - ext_counts["name_only"]
+        extra["ext_keys"] = by_mark
+        # "T0 却 byte_verified" 的那几条：报告里用来证明两条轴正交（从数据算，不写死）。
+        extra["ext_t0_byte"] = sorted(
+            (r["kind"], r["id"]) for r in classified
+            if r["ext_mark"] == "byte_verified" and r["tier"] == "T0_no-evidence")
         # 记录**调用时给的**路径（报告里不嵌入本机绝对路径）。
         extra["ext_source"] = args.external
 

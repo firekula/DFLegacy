@@ -608,7 +608,7 @@ CMD	605	DPROTO_CALLBACK	mapped	Antibot_DPCallBack	T3_fields-read-only	2	0	0x08af
 CMD	606	END	unused		T0_no-evidence	0	0	0x08af0ea3	name_only	
 CMD	607	DISJOINT_ITEM	unused		T0_no-evidence	0	0	0x08bc237c	name_only	
 NOTI	0	CHECK_CONNECTION	no-dispatcher		T0_no-evidence	0	0	0x08ae6920	name_only	
-NOTI	1	CHANNELINFO	no-dispatcher		T0_no-evidence	0	0	0x08ae6941	byte_verified	work/out/noti1-evidence-locked.txt；334 B key + channel_name/seed/random 字段序（cipher-callchain-audit.txt L3342-3517）
+NOTI	1	CHANNELINFO	no-dispatcher		T0_no-evidence	0	0	0x08ae6941	field_read	work/out/noti1-evidence-locked.txt；334 B key + channel_name/seed/random 字段序（cipher-callchain-audit.txt L3342-3517）
 NOTI	2	USERINFO	no-dispatcher		T0_no-evidence	0	0	0x08ae695d	name_only	
 NOTI	3	USER_STATE	no-dispatcher		T0_no-evidence	0	0	0x08ae6976	name_only	
 NOTI	4	STAMINA	no-dispatcher		T0_no-evidence	0	0	0x08ae6991	name_only	
