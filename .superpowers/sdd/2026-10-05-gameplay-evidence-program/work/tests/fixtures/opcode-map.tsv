@@ -1,0 +1,9 @@
+kind	id	name	rodata_va	dispatcher	status
+CMD	1	LOGIN	0x08aeb9f8	Login	mapped
+CMD	2	SET_UDP_IP_PORT	0x08aeba10	SetIP	mapped
+CMD	3	EXIT	0x08aeba2f	Exit	mapped
+CMD	4	SELECT_CHARACTER	0x08aeba44	SelectCharac	mapped
+CMD	5	LONELY_NO_HANDLER	0x08aeba60	NoHandlerData	mapped
+CMD	6	LONELY_NO_DISPATCHER	0x08aeba80		no-dispatcher
+NOTI	7	DONT_CARE	0x08aebaa0		no-dispatcher
+CMD	8	UNUSED_ONE	0x08aebac0		mapped

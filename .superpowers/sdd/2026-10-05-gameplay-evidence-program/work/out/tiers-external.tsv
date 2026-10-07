@@ -1,0 +1,6 @@
+# kind	id	mark	evidence
+CMD	1	byte_verified	work/out/login-plain-dump.json：产出时 10 对全部自检 PASS，本仓库可复跑 2 对（captures/streams-live、captures/streams-live2，实跑 2/2 与产出记录逐字段一致）；CURSOR=388/PLAIN_LEN=400（verify-login-tail.txt）
+CMD	1	field_read	login-tail-static.txt：Dispatcher_MouseRegister/decryptPassword/checkValiedPassword/PacketBuf::get_*
+NOTI	1	field_read	work/out/noti1-evidence-locked.txt；334 B key + channel_name/seed/random 字段序（cipher-callchain-audit.txt L3342-3517）
+NOTI	561	field_read	work/out/noti561-closure.md（57 wrapper：54 type17 + 3 type19；同文件自述"54 个内层业务字段语义已降级"）
+CMD	1	byte_verified	work/out/static-analysis-vm-login-2026-10-06.md：频道 id10/id3 明文（zlib(AES)）逐字节一致

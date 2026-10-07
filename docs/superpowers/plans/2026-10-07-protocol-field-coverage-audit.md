@@ -102,7 +102,8 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
   - `load_opcodes(path: Path) -> list[dict]`，每项键固定为 `kind:str, id:int, name:str, rodata_va:str, dispatcher:str, status:str`
   - `load_dispatcher_families(path: Path) -> set[str]`
   - `load_handler_rows(path: Path) -> tuple[dict[str, list[str]], int]`（家族名 → 原始行列表，**保序**；第二个值是"字段数<3 被跳过的行数"，调用方必须断言）
-  - `SourceCounts` dataclass：`opcode_rows:int, cmd:int, noti:int, mapped:int, no_dispatcher:int, unused:int, dispatcher_families:int, handler_families:int, handler_rows:int`
+  - `SourceCounts` dataclass（**字段清单以此为准**）：`opcode_rows:int, cmd:int, noti:int, mapped:int, no_dispatcher:int, unused:int, dispatcher_families:int, handler_families:int, handler_rows:int, handler_skipped:int`
+    —— `handler_skipped` 是"`split("\t")` 后字段数 <3 的行数"，**必须有**，因为调用方要断言它（静默丢弃是本项目最警惕的失败形状）
 
 - [ ] **Step 1: 写夹具（3 个极小文件，覆盖每一档各一例）**
 
@@ -292,8 +293,14 @@ r"""coverage_tier.py —— 协议字段级覆盖度的**纯逻辑**（加载 / 
 ⚠️ 已知边界（必须写进报告，不许藏）：
   * `catalog_handlers_full.txt` 是**处理器体内的调用目标表**，不是字段布局。
     因此 T3/T4 只表示"能看到字段读/写的**候选**"，**不等于**已读出有序字段规格。
-  * `catalog_handlers_full.txt` 只覆盖 239 个家族，而 dispatchers 目录有 425 个
-    ⇒ 有 186 个 dispatcher **没有**字段调用数据（落 T1），这不是"没有字段"，是"没有数据"。
+  * **两个分母不要混**（实测，见下）：handlers 目录只覆盖 **239** 个家族，而
+    `catalog_dispatchers_full.txt` 有 **425** 个家族、"mapped opcode 里出现过的 dispatcher" 只有 **423** 个。
+    ⇒ 论"**mapped opcode 的**覆盖"用 **423** 这个分母（423 − 237 = **186** 个没有字段调用数据）；
+      论"**全部 dispatcher 家族**的覆盖"用 **425** 这个分母（425 − 238 = **187**）。
+      两个数字都对，**但必须各自说清分母**，否则读者会以为是同一个数变了。
+  * 另外 `catalog_handlers_full.txt` 里有一个**合成家族** `(sender)`（**1248** 行，正是 `packet_senders.txt`
+    的 `put_header` 行），它**不在** dispatchers 目录里 ⇒ 家族交集是 238 而非 239。
+    统计时不要把它当成一个真实家族。
 """
 from __future__ import annotations
 
@@ -392,7 +399,8 @@ def count_sources(opcode_path: Path, dispatcher_path: Path, handler_path: Path) 
 - [ ] **Step 6: 跑测试确认通过**
 
 Run: 同 Step 4
-Expected: `OK`（8 个测试全过）
+Expected: `OK`（**5 个**测试全过 —— Task 1 Step 3 的代码栅栏里就是 5 个 `test_*` 方法；
+本行原先误写"8 个"，已按实测与审查裁决更正）
 
 - [ ] **Step 7: 提交**
 
@@ -566,7 +574,7 @@ def write_by_opcode(path: Path, classified: list[dict]) -> None:
 - [ ] **Step 5: 跑测试确认通过**
 
 Run: 同 Step 3
-Expected: `OK`（Task1 的 8 个 + 本任务 10 个 = 18 个全过）
+Expected: `OK`（Task1 的 5 个 + 本任务 10 个 = **15** 个全过；原写"18"是笔误，已按实测更正）
 
 - [ ] **Step 6: 写真库产物并当场对账（**这一步的断言是这份计划的验收核心**）**
 
@@ -594,11 +602,16 @@ tier_total=1171  (各档之和必须等于 1171)
 [静态] 本覆盖率的分母 = opcode-map.tsv 的 1171 条 (CMD 608 / NOTI 563)。
 [静态] T3/T4 只表示"能在 handlers 目录里看到字段读/写调用"，不等于"已读出有序字段规格"；
        字段布局仍须逐家族反编译读取（不在本计划范围）。
-[静态] catalog_handlers_full.txt 只覆盖 239/425 个 dispatcher 家族 ⇒ T1 的 186 条是
-       "没有字段调用数据"，不是"没有字段"。
+[静态] catalog_handlers_full.txt 只覆盖 239/425 个 dispatcher 家族，而"mapped opcode 用到的
+       dispatcher"有 423 个 ⇒ 其中 186 个家族没有字段调用数据，落到 T1 的 opcode 是 187 条
+       （差 1 因为 StartGame 家族有 2 条 mapped opcode）；这是"没有字段调用数据"，不是"没有字段"。
 [未验证] 外部证据档（byte_verified / field_read）首版为空；在它有内容之前，
        本覆盖率**不得**被引用为"字段级已完成多少"。
 ```
+
+> ⚠️ 第三句原稿写的是"T1 的 186 条"，**186 是家族数、187 才是 opcode 条数**，
+> 两个数混用会把读者引到一个偏小的分母上。Task 2 实测校正为上面这版
+> （`StartGame` 家族有 2 条 mapped opcode ⇒ 187 − 186 = 1）。
 
 - [ ] **Step 8: 提交**
 
@@ -694,10 +707,21 @@ CMD	1	byte_verified	work/out/static-analysis-vm-login-2026-10-06.md：频道 id1
 > ⚠️ 同一个 `(kind,id)` **允许多行**（不同证据各自一行）；`load_external_marks` 取**最强**的 `mark`
 > （强度序 `byte_verified > field_read > name_only`）并把 `evidence` 用 `" | "` 合并。
 
+> **`[作废]` 上面这份"首版 5 行"是历史快照，已被两轮裁决改写 —— 原文保留不删：**
+> - `NOTI 1` 的 `byte_verified` → **`field_read`**（依据见下面 Step 5 的裁决段；落地于 `e93a1fe`）；
+> - `NOTI 561` 的 `byte_verified` → **`field_read`**（依据：`out/noti561-closure.md` 自述"54 个内层业务字段语义**已降级**"，
+>   密码/封装闭合不等于字段被逐字段钉住；落地于最终 fix wave）；
+> - `CMD 1` 的 "`login-plain-dump.json` 10/10 自检 PASS" → 收窄为"**产出时 10 对全部自检 PASS，本仓库可复跑 2 对**
+>   （`captures/streams-live`、`captures/streams-live2`）"；其余 8 对引用的 `captures/streams`(2)、
+>   `captures/streams-e2e`(5)、`captures/streams-vm`(1) **目录未落盘**（同样落地于最终 fix wave）。
+>
+> **当前生效值一律以 `work/out/tiers-external.tsv` 为准。**
+
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: 同 Task 2 Step 3
-Expected: `OK`（18 + 4 = 22 个全过）
+Expected: `OK`（**20** 个全过 = Task1 的 5 + Task2 的 10 + Task3 的 4 + 实现者为"多行合并"补的 1；
+原写"18 + 4 = 22"是把 Task 1 的 5 误记成 8，已按实测更正）
 
 - [ ] **Step 5: 重生成产物并核对"锚点确实被标上"**
 
@@ -710,7 +734,30 @@ python coverage_report.py --out-dir out --external out/tiers-external.tsv 2>&1 |
 Select-String -Path out/coverage-by-opcode.tsv -Pattern '^CMD\t1\t' | ForEach-Object { $_.Line }
 ```
 Expected：
-- 汇总里出现 `ext_byte_verified=2`（`CMD 1`、`NOTI 1`+`NOTI 561` 计 3 个不同 opcode ⇒ 按实际输出核对，**不要预设数字**）；
+- 汇总里出现 **`ext_byte_verified=1` / `ext_field_read=2` / `ext_name_only=1168`**
+  （`byte_verified` 只覆盖 **`CMD 1`**；**`NOTI 1` 与 `NOTI 561` 都是 `field_read`** ——
+  见下方裁决与最终 fix wave 的 F-1）；**仍然按实际输出核对，不要预设数字**。
+  > 口径说明（**行 ≠ opcode**）：上表统计的是**逐条产物里的 opcode 条数**（1171 行 = 1171 个 opcode），
+  > 不是 `tiers-external.tsv` 的**标注行数**（5 行）。`CMD 1` 在标注里有 2 行 `byte_verified` +
+  > 1 行 `field_read`，合并后仍是**一个** opcode ⇒ `byte_verified` 记 **1**。本行的期望值曾按
+  > "5 行标注"写成 `2 / 3 / 1166`，与实测不符，已按实测更正为 `1 / 2 / 1168`（三者之和仍是 1171）。
+  > `[作废]` 本节更早的原写是 "`ext_field_read=1` / `ext_name_only=1168`
+  > （`byte_verified` 只覆盖 `CMD 1` 与 `NOTI 561`）"，已被 `NOTI 561` 的降级推翻
+  > （`out/noti561-closure.md` 自述 54 个内层业务字段语义"已降级"）；原数字保留在此行，
+  > 当前生效值以 `work/out/tiers-external.tsv` 与产物为准。
+- **`byte_verified` 的门槛（裁决，写进产物）**：该 opcode 的**线上字节被逐字段钉住并落盘可复跑**。
+  `NOTI 1` 目前只有"静态字段序（`cipher-callchain-audit.txt L3342-3517` 的 `CUser::InitOnAccept` →
+  `put_binary(334)`/`get_channel_name`/seed/random）+ 抓包两样本前 334 B 相同"，
+  **没有**把 334 B 载荷逐字段对上；且项目自己两处反向记录
+  （`cipher-audit-corrections.md:70` 的 `[作废]`、`dynamic-evidence-progress-2026-10-07.md:368` 的
+  "[真机] 未取的：334 B key 本体"）⇒ 它够 `field_read`，不够 `byte_verified`。
+  **代价（若错）**：`NOTI 1` 的证据等级被低估一档，引用时偏保守。
+- **`NOTI 561` 的门槛复核（最终 fix wave 的 F-1，追加裁决）**：同样**不满足** `byte_verified`。
+  `out/noti561-closure.md` 自述："类型17密码/封装 **已闭合**；类型19密码/封装结构 **已闭合**，
+  BinCount=5 的业务作用 **已降级**；**54 个内层业务字段语义已降级**" ⇒ 它闭合的是**密码/封装**，
+  不是"线上字节被逐字段钉住"⇒ 降为 **`field_read`**（`evidence` 保留 `57/54/3` 三个数字并补记该自述限定）。
+  降级后 `byte_verified` **只覆盖 `CMD 1`**；实测 **`ext_byte_verified=1` / `ext_field_read=2` / `ext_name_only=1168`**
+  （按**opcode 条数**计，不是按 `tiers-external.tsv` 的标注行数；三者之和 = 1171）。
 - `CMD 1` 那行 `ext_mark=byte_verified`，且 `evidence` 含两个来源（`|` 合并）。
 
 - [ ] **Step 6: 在 `coverage-summary.md` 追加"锚点回填 vs 纯推导"的对照小节**

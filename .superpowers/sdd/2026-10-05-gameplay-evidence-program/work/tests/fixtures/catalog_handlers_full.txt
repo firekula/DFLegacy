@@ -1,0 +1,8 @@
+# 夹具
+Login	handler=0x08232a74(  10)	source=dispatch_sig	name=PacketBuf::get_int(unsigned long&)
+Login	handler=0x085908d7(  83)	source=dispatch_sig	name=LineFunc(int, char const*, int, unsigned int)
+Login	handler=0x0858d2bc( 100)	source=dispatch_sig	name=InterfacePacketBuf::put_str(char const*, int)
+SetIP	handler=0x081b0100( 200)	source=dispatch_sig	name=PacketBuf::get_byte(unsigned char&)
+Exit	handler=0x081b0300( 200)	source=dispatch_sig	name=InterfacePacketBuf::put_byte(unsigned char)
+SelectCharac	handler=0x081b0500( 200)	source=dispatch_sig	name=PacketBuf::get_str(char*, int, int)
+SelectCharac	handler=0x081b0600( 200)	source=put_header	class=1	cmd=4
