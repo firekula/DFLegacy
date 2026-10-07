@@ -101,6 +101,49 @@ def _noti1_note(field_keys) -> str:
     return ""
 
 
+# `NOTI 561` 降级的依据（同样只在它**真的**处于 field_read 时才渲染）。本轮 fix wave 的 F-1。
+NOTI561_DOWNGRADE_NOTE = """[作废] `NOTI 561` 曾标 `byte_verified`（原文见 `09e2b75` 的 `out/tiers-external.tsv`，**不删**），
+       本轮 fix wave（F-1）按证据分级降为 `field_read`：`out/noti561-closure.md` 自述
+       "类型17密码/封装 **已闭合**；类型19密码/封装结构 **已闭合**，BinCount=5 的业务作用 **已降级**；
+       54 个内层业务字段语义 **已降级**" ⇒ 密码/封装闭合，但**字段语义没有被逐字段钉住**，
+       不满足本表的 `byte_verified` 门槛。该行 `evidence` 保留 `57/54/3` 三个数字，并补记该文件的自述限定；
+       上面那个提交指针指向**本分支**的提交；若历史被改写，以 `out/tiers-external.tsv` 的当前内容为准。"""
+
+
+def _noti561_note(field_keys) -> str:
+    """`NOTI 561` 的降级说明同上：只在对得上数据时才渲染。"""
+    if field_keys and ("NOTI", 561) in field_keys:
+        return "\n\n" + NOTI561_DOWNGRADE_NOTE
+    return ""
+
+
+def _downgrade_notes(field_keys) -> str:
+    return _noti1_note(field_keys) + _noti561_note(field_keys)
+
+
+def repro_block(number: int) -> str:
+    """「可复跑命令」节（计划 File Structure 承诺 `coverage-summary.md` 含可复跑命令）。
+
+    命令里的路径一律**相对 work 目录**（`out` / `tests` / `out/tiers-external.tsv`）；
+    只有 `cd` 那行是相对 **worktree 根**，用来指明 work 目录在哪。
+    `number` 由调用方给：`--external` 时本节是 §6（前面已有 §5 对照），默认时是 §5。
+    """
+    return f"""## {number}. 可复跑命令（路径相对 `work/` 目录）
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+cd .superpowers/sdd/2026-10-05-gameplay-evidence-program/work   # 相对 worktree 根
+python coverage_report.py --out-dir out --external out/tiers-external.tsv   # 生成 out/coverage-by-opcode.tsv（1171 条 + 表头）与本文件
+python coverage_report.py --out-dir out                                     # 同一份分档，但不加 ext_mark 轴（逐条产物与 Task 2 逐字节相同）
+python -m unittest discover -s tests                                        # 20 个单测（含真产物对账，缺失即失败、不跳过）
+```
+
+对账语义：上面第一条命令打印的五条基线（源行数 / status / 目录家族数 / mapped dispatchers /
+各档之和）任一不符 ⇒ 脚本**非零退出**，不静默通过；`--external` 档非法（未知 opcode / 非法 mark /
+列数不对）⇒ `exit 2` 且**不落任何产物**。`$env:PYTHONIOENCODING='utf-8'` 是必须的（产物含中文）。
+"""
+
+
 def default_tail(defn: dict) -> str:
     """**不传** `--external` 时的尾部：给出 `ext_mark` 的定义与当前标注清单。
 
@@ -116,10 +159,29 @@ def default_tail(defn: dict) -> str:
 
 {VERBATIM_EXTERNAL}
 
-（本次未给逐条产物加 `ext_mark` 列 ⇒ 上面句中的"本表"指传 `--external` 时生成的逐条产物。）{_noti1_note(defn["field_keys"])}
+（本次未给逐条产物加 `ext_mark` 列 ⇒ 上面句中的"本表"指传 `--external` 时生成的逐条产物。）{_downgrade_notes(defn["field_keys"])}
 
 {TAIL_NO_EXTERNAL_LEGACY_NOTE}
-"""
+
+{repro_block(5)}"""
+
+
+def _orthogonality_note(t0_byte: list, field_keys) -> str:
+    """「两条轴正交」的例句，**按数据渲染**。
+
+    降级会让某些组合变空（例如 `NOTI 561` 也降为 `field_read` 后，"T0 却 byte_verified"就没有了），
+    写死的例句会退化成"（无）在 ext_mark 轴却是 byte_verified"这种假话 ⇒ 这里按实际组合组装。
+    """
+    bits = []
+    if t0_byte:
+        bits.append(f"{_fmt_keys(t0_byte)} 在 tier 轴是 `T0_no-evidence`（`status=no-dispatcher`），"
+                    f"在 ext_mark 轴却是 `byte_verified`")
+    t0_field = [k for k in (field_keys or []) if k[0] == "NOTI"]
+    if t0_field:
+        bits.append(f"{_fmt_keys(t0_field)} 在 tier 轴同样没有可达处理器，按分级门槛只到 `field_read`")
+    head = "两条轴**正交**：ext_mark 不参与 tier 判定"
+    body = (" —— " + "；".join(bits) + "。") if bits else "。"
+    return head + body + '"没有 dispatcher"不等于"没有外部证据"。'
 
 
 def external_tail(ext_counts: dict, marked: int, total: int, source: str,
@@ -144,7 +206,7 @@ def external_tail(ext_counts: dict, marked: int, total: int, source: str,
 
 本次运行的 stdout 对账行：`ext_byte_verified={ext_counts["byte_verified"]}`、`ext_field_read={ext_counts["field_read"]}`、`ext_name_only={ext_counts["name_only"]}`。
 
-{ext_definition_block(defn["byte_keys"], defn["field_keys"], defn["note"])}{_noti1_note(defn["field_keys"])}
+{ext_definition_block(defn["byte_keys"], defn["field_keys"], defn["note"])}{_downgrade_notes(defn["field_keys"])}
 
 {VERBATIM_EXTERNAL}
 
@@ -156,14 +218,13 @@ def external_tail(ext_counts: dict, marked: int, total: int, source: str,
 | 覆盖 | 1171 条全部 | 只有 {marked} 条有标注 |
 | 能证明什么 | 只到"字段读/写调用的候选" | `byte_verified` 的那几条才有字节级产物支撑 |
 
-两条轴**正交**：ext_mark 不参与 tier 判定 —— 例如 {_fmt_keys(t0_byte)} 在 tier 轴是
-`T0_no-evidence`（`status=no-dispatcher`），在 ext_mark 轴却是 `byte_verified`；
-`NOTI 1` 同样是 T0，但按分级门槛只到 `field_read`。"没有 dispatcher"不等于"没有外部证据"。
+{_orthogonality_note(t0_byte, keys["field_read"])}
 
 [作废] §3 第 4 句"[未验证] 外部证据档…首版为空"写于外部证据档为空时；本任务的
        `out/tiers-external.tsv` 已回填 {marked} 行，该句的"首版为空"已被推翻。
        原文按证据纪律**保留不删**，此处指向推翻它的产物。
-"""
+
+{repro_block(6)}"""
 
 
 def compute_extra(opcodes: list[dict], handler_families: set[str]) -> dict:

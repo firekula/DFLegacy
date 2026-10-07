@@ -54,15 +54,17 @@ class TestLoadAndReconcile(unittest.TestCase):
         self.assertEqual(c.handler_skipped, 0)
 
     def test_counts_on_real_sources_match_documented_baseline(self):
-        """真产物对账（**不**在夹具上做）：静默丢弃只有在这条断言上才抓得到。"""
-        real = Path(
-            r"G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evidence-program\work\out"
-        )
-        if not (real / "opcode-map.tsv").exists():
-            self.skipTest("真产物不在本机（可选断言）")
-        c = count_sources(real / "opcode-map.tsv",
-                          real / "catalog_dispatchers_full.txt",
-                          real / "catalog_handlers_full.txt")
+        """真产物对账（**不**在夹具上做）：静默丢弃只有在这条断言上才抓得到。
+
+        路径沿 `__file__` **相对解析**（本文件在 `<work>/tests/` ⇒ 真产物在 `<work>/out/`），
+        不写死任何工作区绝对路径；三份输入**缺任何一份就显式失败** —— `skipTest` 会让输出里的
+        "跳过"与"通过"不可区分（`OK (skipped=1)`），正是本项目最警惕的失败形状。
+        """
+        real = Path(__file__).resolve().parent.parent / "out"
+        needed = ("opcode-map.tsv", "catalog_dispatchers_full.txt", "catalog_handlers_full.txt")
+        missing = [str(real / n) for n in needed if not (real / n).exists()]
+        self.assertFalse(missing, f"真产物缺失，无法对账（必须补齐，不许跳过）: {missing}")
+        c = count_sources(real / needed[0], real / needed[1], real / needed[2])
         self.assertEqual(c.opcode_rows, 1171)
         self.assertEqual(c.cmd, 608)
         self.assertEqual(c.noti, 563)

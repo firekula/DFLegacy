@@ -707,6 +707,16 @@ CMD	1	byte_verified	work/out/static-analysis-vm-login-2026-10-06.md：频道 id1
 > ⚠️ 同一个 `(kind,id)` **允许多行**（不同证据各自一行）；`load_external_marks` 取**最强**的 `mark`
 > （强度序 `byte_verified > field_read > name_only`）并把 `evidence` 用 `" | "` 合并。
 
+> **`[作废]` 上面这份"首版 5 行"是历史快照，已被两轮裁决改写 —— 原文保留不删：**
+> - `NOTI 1` 的 `byte_verified` → **`field_read`**（依据见下面 Step 5 的裁决段；落地于 `e93a1fe`）；
+> - `NOTI 561` 的 `byte_verified` → **`field_read`**（依据：`out/noti561-closure.md` 自述"54 个内层业务字段语义**已降级**"，
+>   密码/封装闭合不等于字段被逐字段钉住；落地于最终 fix wave）；
+> - `CMD 1` 的 "`login-plain-dump.json` 10/10 自检 PASS" → 收窄为"**产出时 10 对全部自检 PASS，本仓库可复跑 2 对**
+>   （`captures/streams-live`、`captures/streams-live2`）"；其余 8 对引用的 `captures/streams`(2)、
+>   `captures/streams-e2e`(5)、`captures/streams-vm`(1) **目录未落盘**（同样落地于最终 fix wave）。
+>
+> **当前生效值一律以 `work/out/tiers-external.tsv` 为准。**
+
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: 同 Task 2 Step 3
@@ -724,9 +734,17 @@ python coverage_report.py --out-dir out --external out/tiers-external.tsv 2>&1 |
 Select-String -Path out/coverage-by-opcode.tsv -Pattern '^CMD\t1\t' | ForEach-Object { $_.Line }
 ```
 Expected：
-- 汇总里出现 **`ext_byte_verified=2` / `ext_field_read=1` / `ext_name_only=1168`**
-  （`byte_verified` 只覆盖 **`CMD 1`** 与 **`NOTI 561`**；**`NOTI 1` 是 `field_read`** —— 见下方裁决）；
-  **仍然按实际输出核对，不要预设数字**。
+- 汇总里出现 **`ext_byte_verified=1` / `ext_field_read=2` / `ext_name_only=1168`**
+  （`byte_verified` 只覆盖 **`CMD 1`**；**`NOTI 1` 与 `NOTI 561` 都是 `field_read`** ——
+  见下方裁决与最终 fix wave 的 F-1）；**仍然按实际输出核对，不要预设数字**。
+  > 口径说明（**行 ≠ opcode**）：上表统计的是**逐条产物里的 opcode 条数**（1171 行 = 1171 个 opcode），
+  > 不是 `tiers-external.tsv` 的**标注行数**（5 行）。`CMD 1` 在标注里有 2 行 `byte_verified` +
+  > 1 行 `field_read`，合并后仍是**一个** opcode ⇒ `byte_verified` 记 **1**。本行的期望值曾按
+  > "5 行标注"写成 `2 / 3 / 1166`，与实测不符，已按实测更正为 `1 / 2 / 1168`（三者之和仍是 1171）。
+  > `[作废]` 本节更早的原写是 "`ext_field_read=1` / `ext_name_only=1168`
+  > （`byte_verified` 只覆盖 `CMD 1` 与 `NOTI 561`）"，已被 `NOTI 561` 的降级推翻
+  > （`out/noti561-closure.md` 自述 54 个内层业务字段语义"已降级"）；原数字保留在此行，
+  > 当前生效值以 `work/out/tiers-external.tsv` 与产物为准。
 - **`byte_verified` 的门槛（裁决，写进产物）**：该 opcode 的**线上字节被逐字段钉住并落盘可复跑**。
   `NOTI 1` 目前只有"静态字段序（`cipher-callchain-audit.txt L3342-3517` 的 `CUser::InitOnAccept` →
   `put_binary(334)`/`get_channel_name`/seed/random）+ 抓包两样本前 334 B 相同"，
@@ -734,6 +752,12 @@ Expected：
   （`cipher-audit-corrections.md:70` 的 `[作废]`、`dynamic-evidence-progress-2026-10-07.md:368` 的
   "[真机] 未取的：334 B key 本体"）⇒ 它够 `field_read`，不够 `byte_verified`。
   **代价（若错）**：`NOTI 1` 的证据等级被低估一档，引用时偏保守。
+- **`NOTI 561` 的门槛复核（最终 fix wave 的 F-1，追加裁决）**：同样**不满足** `byte_verified`。
+  `out/noti561-closure.md` 自述："类型17密码/封装 **已闭合**；类型19密码/封装结构 **已闭合**，
+  BinCount=5 的业务作用 **已降级**；**54 个内层业务字段语义已降级**" ⇒ 它闭合的是**密码/封装**，
+  不是"线上字节被逐字段钉住"⇒ 降为 **`field_read`**（`evidence` 保留 `57/54/3` 三个数字并补记该自述限定）。
+  降级后 `byte_verified` **只覆盖 `CMD 1`**；实测 **`ext_byte_verified=1` / `ext_field_read=2` / `ext_name_only=1168`**
+  （按**opcode 条数**计，不是按 `tiers-external.tsv` 的标注行数；三者之和 = 1171）。
 - `CMD 1` 那行 `ext_mark=byte_verified`，且 `evidence` 含两个来源（`|` 合并）。
 
 - [ ] **Step 6: 在 `coverage-summary.md` 追加"锚点回填 vs 纯推导"的对照小节**

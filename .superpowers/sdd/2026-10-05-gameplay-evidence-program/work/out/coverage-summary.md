@@ -67,15 +67,15 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
 
 | ext_mark | 条数 |
 |---|---|
-| byte_verified | 2 |
-| field_read | 1 |
+| byte_verified | 1 |
+| field_read | 2 |
 | name_only | 1168 |
 | **合计** | **1171** |
 
 被标注（出现在 `tiers-external.tsv`）的 opcode = 3 条；其余 1168 条
 `ext_mark=name_only`（即"只有名字"）。
 
-本次运行的 stdout 对账行：`ext_byte_verified=2`、`ext_field_read=1`、`ext_name_only=1168`。
+本次运行的 stdout 对账行：`ext_byte_verified=1`、`ext_field_read=2`、`ext_name_only=1168`。
 
 ### `ext_mark` 的分级门槛（定义）
 
@@ -86,7 +86,7 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
 每个非 `name_only` 的判定依据写在**该 opcode 的 `evidence` 列**（`out/tiers-external.tsv`）；
 本报告只做校验与合并，**不自动生成依据**。
 
-[静态] 当前 `byte_verified` 只有 CMD 1、NOTI 561（2 条）；`field_read` 只有 NOTI 1（1 条）。
+[静态] 当前 `byte_verified` 只有 CMD 1（1 条）；`field_read` 只有 NOTI 1、NOTI 561（2 条）。
 
 [作废] `NOTI 1` 曾标 `byte_verified`（原文见 `8334e23` 的 `out/tiers-external.tsv`，**不删**），
        Task 3 的 Fix 1 按证据分级降为 `field_read`：它的证据只有 `cipher-callchain-audit.txt` L3342-3517 的
@@ -95,6 +95,13 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
        `cipher-audit-corrections.md:70` 的 `[作废]`（"334B key+103B 字段已逐字段闭合" —— "没有解开 NOTI1，
        也没有逐字段比对"）、`dynamic-evidence-progress-2026-10-07.md:368`（"[真机] 未取的：334 B key 本体"）。
        该行 `evidence` 原文保留 —— 它就是降级的依据。
+       上面那个提交指针指向**本分支**的提交；若历史被改写，以 `out/tiers-external.tsv` 的当前内容为准。
+
+[作废] `NOTI 561` 曾标 `byte_verified`（原文见 `09e2b75` 的 `out/tiers-external.tsv`，**不删**），
+       本轮 fix wave（F-1）按证据分级降为 `field_read`：`out/noti561-closure.md` 自述
+       "类型17密码/封装 **已闭合**；类型19密码/封装结构 **已闭合**，BinCount=5 的业务作用 **已降级**；
+       54 个内层业务字段语义 **已降级**" ⇒ 密码/封装闭合，但**字段语义没有被逐字段钉住**，
+       不满足本表的 `byte_verified` 门槛。该行 `evidence` 保留 `57/54/3` 三个数字，并补记该文件的自述限定；
        上面那个提交指针指向**本分支**的提交；若历史被改写，以 `out/tiers-external.tsv` 的当前内容为准。
 
 [静态] 本表 ext_mark=byte_verified 的条目，其 evidence 全部指向本项目已落盘产物；
@@ -108,10 +115,22 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
 | 覆盖 | 1171 条全部 | 只有 3 条有标注 |
 | 能证明什么 | 只到"字段读/写调用的候选" | `byte_verified` 的那几条才有字节级产物支撑 |
 
-两条轴**正交**：ext_mark 不参与 tier 判定 —— 例如 NOTI 561 在 tier 轴是
-`T0_no-evidence`（`status=no-dispatcher`），在 ext_mark 轴却是 `byte_verified`；
-`NOTI 1` 同样是 T0，但按分级门槛只到 `field_read`。"没有 dispatcher"不等于"没有外部证据"。
+两条轴**正交**：ext_mark 不参与 tier 判定 —— NOTI 1、NOTI 561 在 tier 轴同样没有可达处理器，按分级门槛只到 `field_read`。"没有 dispatcher"不等于"没有外部证据"。
 
 [作废] §3 第 4 句"[未验证] 外部证据档…首版为空"写于外部证据档为空时；本任务的
        `out/tiers-external.tsv` 已回填 3 行，该句的"首版为空"已被推翻。
        原文按证据纪律**保留不删**，此处指向推翻它的产物。
+
+## 6. 可复跑命令（路径相对 `work/` 目录）
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+cd .superpowers/sdd/2026-10-05-gameplay-evidence-program/work   # 相对 worktree 根
+python coverage_report.py --out-dir out --external out/tiers-external.tsv   # 生成 out/coverage-by-opcode.tsv（1171 条 + 表头）与本文件
+python coverage_report.py --out-dir out                                     # 同一份分档，但不加 ext_mark 轴（逐条产物与 Task 2 逐字节相同）
+python -m unittest discover -s tests                                        # 20 个单测（含真产物对账，缺失即失败、不跳过）
+```
+
+对账语义：上面第一条命令打印的五条基线（源行数 / status / 目录家族数 / mapped dispatchers /
+各档之和）任一不符 ⇒ 脚本**非零退出**，不静默通过；`--external` 档非法（未知 opcode / 非法 mark /
+列数不对）⇒ `exit 2` 且**不落任何产物**。`$env:PYTHONIOENCODING='utf-8'` 是必须的（产物含中文）。

@@ -1,6 +1,6 @@
 kind	id	name	status	dispatcher	tier	read_count	write_count	rodata_va	ext_mark	ext_evidence
 CMD	0	CHECK_CONNECTION	mapped	CheckConn	T3_fields-read-only	2	0	0x08aeb9d8	name_only	
-CMD	1	LOGIN	mapped	Login	T4_fields-read+write	15	16	0x08aeb9f8	byte_verified	work/out/login-plain-dump.json 10/10 自检 PASS；CURSOR=388/PLAIN_LEN=400（verify-login-tail.txt） | login-tail-static.txt：Dispatcher_MouseRegister/decryptPassword/checkValiedPassword/PacketBuf::get_* | work/out/static-analysis-vm-login-2026-10-06.md：频道 id10/id3 明文（zlib(AES)）逐字节一致
+CMD	1	LOGIN	mapped	Login	T4_fields-read+write	15	16	0x08aeb9f8	byte_verified	work/out/login-plain-dump.json：产出时 10 对全部自检 PASS，本仓库可复跑 2 对（captures/streams-live、captures/streams-live2，实跑 2/2 与产出记录逐字段一致）；CURSOR=388/PLAIN_LEN=400（verify-login-tail.txt） | login-tail-static.txt：Dispatcher_MouseRegister/decryptPassword/checkValiedPassword/PacketBuf::get_* | work/out/static-analysis-vm-login-2026-10-06.md：频道 id10/id3 明文（zlib(AES)）逐字节一致
 CMD	2	SET_UDP_IP_PORT	mapped	SetIP	T4_fields-read+write	7	2	0x08aeba10	name_only	
 CMD	3	EXIT	mapped	Exit	T3_fields-read-only	1	0	0x08aeba2f	name_only	
 CMD	4	SELECT_CHARACTER	mapped	SelectCharac	T1_dispatcher-no-handlerdata	0	0	0x08aeba44	name_only	
@@ -1168,5 +1168,5 @@ NOTI	557	EVENT_CREATE_DNF	no-dispatcher		T0_no-evidence	0	0	0x08aeb920	name_only
 NOTI	558	PCROOM_DAYILY_REWARD_STATE	no-dispatcher		T0_no-evidence	0	0	0x08aeb944	name_only	
 NOTI	559	HERO_MISSION_STATE	no-dispatcher		T0_no-evidence	0	0	0x08aeb970	name_only	
 NOTI	560	ANTIBOT	no-dispatcher		T0_no-evidence	0	0	0x08aeb993	name_only	
-NOTI	561	DPROTO	no-dispatcher		T0_no-evidence	0	0	0x08aeb9ab	byte_verified	work/out/noti561-closure.md（57 帧：54 type17 + 3 type19）
+NOTI	561	DPROTO	no-dispatcher		T0_no-evidence	0	0	0x08aeb9ab	field_read	work/out/noti561-closure.md（57 wrapper：54 type17 + 3 type19；同文件自述"54 个内层业务字段语义已降级"）
 NOTI	562	END	no-dispatcher		T0_no-evidence	0	0	0x08aeb9c2	name_only	
