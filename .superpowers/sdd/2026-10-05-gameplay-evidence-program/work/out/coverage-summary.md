@@ -77,21 +77,25 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
 
 本次运行的 stdout 对账行：`ext_byte_verified=2`、`ext_field_read=1`、`ext_name_only=1168`。
 
-### `ext_mark` 的分级门槛
+### `ext_mark` 的分级门槛（定义）
 
 - `byte_verified` —— **该 opcode 的线上字节被逐字段钉住、落盘且可复跑**；只有达到这条才配 `byte_verified`。
 - `field_read` —— 只有**静态字段序**（反汇编里的读/写次序）或**未经逐字段核对的抓包观测**。
 - `name_only` —— 没有任何字段级证据，只有名字。
 
-[静态] 本次 `byte_verified` 只覆盖 CMD 1、NOTI 561（2 条）；`field_read` 覆盖 NOTI 1（1 条）。
+每个非 `name_only` 的判定依据写在**该 opcode 的 `evidence` 列**（`out/tiers-external.tsv`）；
+本报告只做校验与合并，**不自动生成依据**。
+
+[静态] 当前 `byte_verified` 只有 CMD 1、NOTI 561（2 条）；`field_read` 只有 NOTI 1（1 条）。
 
 [作废] `NOTI 1` 曾标 `byte_verified`（原文见 `8334e23` 的 `out/tiers-external.tsv`，**不删**），
-       本次按证据分级降为 `field_read`：它的证据只有 `cipher-callchain-audit.txt` L3342-3517 的
+       Task 3 的 Fix 1 按证据分级降为 `field_read`：它的证据只有 `cipher-callchain-audit.txt` L3342-3517 的
        **静态字段序**（`CUser::InitOnAccept` 里 `put_binary(334)`/`get_channel_name`/seed/random 的写入次序）
        与"抓包两样本前 334 B 相同"这条观测，**未**把 334 B 载荷逐字段对上。项目内两处反向记录指向推翻它：
        `cipher-audit-corrections.md:70` 的 `[作废]`（"334B key+103B 字段已逐字段闭合" —— "没有解开 NOTI1，
        也没有逐字段比对"）、`dynamic-evidence-progress-2026-10-07.md:368`（"[真机] 未取的：334 B key 本体"）。
        该行 `evidence` 原文保留 —— 它就是降级的依据。
+       上面那个提交指针指向**本分支**的提交；若历史被改写，以 `out/tiers-external.tsv` 的当前内容为准。
 
 [静态] 本表 ext_mark=byte_verified 的条目，其 evidence 全部指向本项目已落盘产物；
        未出现在 tiers-external.tsv 的 opcode 一律 ext_mark=name_only（即"只有名字"）。

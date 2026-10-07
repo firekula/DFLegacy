@@ -6,7 +6,9 @@ catalog_handlers_full.txt。输出（写进 `--out-dir`）：coverage-by-opcode.
 coverage-summary.md。对账五条基线，**任一不符即非零退出** —— 不静默通过。
 
 传 `--external <tsv>` 时再叠加**外部证据档**（独立轴 `ext_mark` / `ext_evidence`，由人工
-标注、本脚本只校验与合并）；不传则该轴的列与段落都不出现，分档结果与 Task 2 完全一致。
+标注、本脚本只校验与合并）；不传则**不给任何行加该轴的两列**（`coverage-by-opcode.tsv` 仍与
+Task 2 逐字节相同），但 `ext_mark` 的**定义段**（分级门槛 + 当前清单）照样写进报告 ——
+那一列在逐条产物里出现与否，读者都需要能就地查到它的取值含义。
 """
 from __future__ import annotations
 
@@ -46,14 +48,11 @@ VERBATIM_EXTERNAL = (
     '       未出现在 tiers-external.tsv 的 opcode 一律 ext_mark=name_only（即"只有名字"）。'
 )
 
-# 未跑 `--external` 时的报告尾部：**逐字**保持 Task 2 的 §4 文本。
-# ⇒ 不传 `--external` 时 ext 轴整段不出现，`coverage-by-opcode.tsv` 与 Task 2 逐字节相同；
-# `coverage-summary.md` 另有一处本任务要求的 `write_count` 口径说明（见下方 ⚠️ 两行）。
-TAIL_NO_EXTERNAL = """## 4. 外部证据档状态
-
-外部证据档（`byte_verified` / `field_read`）首版为空（Task 3 才建 `tiers-external.tsv`）；
-在它有内容之前，上表的 T3/T4 只表示"handler 目录里能看到字段调用"，不表示"字段级已完成"。
-"""
+# 不跑 `--external` 时的报告尾部。ext 轴的**定义**（分级门槛）两种模式都要有 ——
+# 默认产物的读者也会看到 `ext_mark` 这一列，必须能就地查到它的取值是怎么定义的；
+# 但默认模式**不**给任何行加 `ext_mark` 列 ⇒ `coverage-by-opcode.tsv` 与 Task 2 逐字节相同（真正的零回归断言）。
+TAIL_NO_EXTERNAL_LEGACY_NOTE = """[作废] 本节旧文案"外部证据档（byte_verified / field_read）首版为空（Task 3 才建
+       `tiers-external.tsv`）"写于外部证据档为空时，已被上面的定义与清单取代（原文见 `8334e23`，**不删**）。"""
 
 
 def _fmt_keys(keys: list) -> str:
@@ -61,25 +60,76 @@ def _fmt_keys(keys: list) -> str:
     return "、".join(f"{k} {i}" for k, i in keys) if keys else "（无）"
 
 
+def ext_definition_block(byte_keys, field_keys, missing_note: str = "") -> str:
+    """`ext_mark` 的分级门槛（**定义**，两种运行模式都渲染）。
+
+    当前清单**从外部证据档算出来**（`byte_keys is None` 表示读不到档，此时把原因写出来，
+    不留空白、也不假装知道）。判定依据一律指回 TSV 的 `evidence` 列 —— 本报告不生成依据。
+    """
+    if byte_keys is None:
+        current = f"[未验证] {missing_note}"
+    else:
+        current = (f"[静态] 当前 `byte_verified` 只有 {_fmt_keys(byte_keys)}（{len(byte_keys)} 条）；"
+                   f"`field_read` 只有 {_fmt_keys(field_keys)}（{len(field_keys)} 条）。")
+    return f"""### `ext_mark` 的分级门槛（定义）
+
+- `byte_verified` —— **该 opcode 的线上字节被逐字段钉住、落盘且可复跑**；只有达到这条才配 `byte_verified`。
+- `field_read` —— 只有**静态字段序**（反汇编里的读/写次序）或**未经逐字段核对的抓包观测**。
+- `name_only` —— 没有任何字段级证据，只有名字。
+
+每个非 `name_only` 的判定依据写在**该 opcode 的 `evidence` 列**（`out/tiers-external.tsv`）；
+本报告只做校验与合并，**不自动生成依据**。
+
+{current}"""
+
+
 # `NOTI 1` 降级的依据（只在它**真的**处于 field_read 时才渲染 ⇒ 标注再变这句话不会变成假话）。
 NOTI1_DOWNGRADE_NOTE = """[作废] `NOTI 1` 曾标 `byte_verified`（原文见 `8334e23` 的 `out/tiers-external.tsv`，**不删**），
-       本次按证据分级降为 `field_read`：它的证据只有 `cipher-callchain-audit.txt` L3342-3517 的
+       Task 3 的 Fix 1 按证据分级降为 `field_read`：它的证据只有 `cipher-callchain-audit.txt` L3342-3517 的
        **静态字段序**（`CUser::InitOnAccept` 里 `put_binary(334)`/`get_channel_name`/seed/random 的写入次序）
        与"抓包两样本前 334 B 相同"这条观测，**未**把 334 B 载荷逐字段对上。项目内两处反向记录指向推翻它：
        `cipher-audit-corrections.md:70` 的 `[作废]`（"334B key+103B 字段已逐字段闭合" —— "没有解开 NOTI1，
        也没有逐字段比对"）、`dynamic-evidence-progress-2026-10-07.md:368`（"[真机] 未取的：334 B key 本体"）。
-       该行 `evidence` 原文保留 —— 它就是降级的依据。"""
+       该行 `evidence` 原文保留 —— 它就是降级的依据。
+       上面那个提交指针指向**本分支**的提交；若历史被改写，以 `out/tiers-external.tsv` 的当前内容为准。"""
+
+
+def _noti1_note(field_keys) -> str:
+    """`NOTI 1` 的降级说明是"对某条数据的裁决"，不是定义 ⇒ 只在它真的是 field_read 时才渲染。"""
+    if field_keys and ("NOTI", 1) in field_keys:
+        return "\n\n" + NOTI1_DOWNGRADE_NOTE
+    return ""
+
+
+def default_tail(defn: dict) -> str:
+    """**不传** `--external` 时的尾部：给出 `ext_mark` 的定义与当前标注清单。
+
+    读数只为**定义说明**服务（本模式不给行加 `ext_mark` 列）⇒ `coverage-by-opcode.tsv` 与 Task 2 逐字节相同。
+    """
+    return f"""## 4. 外部证据档状态（**独立轴**，本次运行未启用该轴）
+
+外部证据档由**人工**标注在 `out/tiers-external.tsv`。本次未传 `--external` ⇒
+`out/coverage-by-opcode.tsv` **不**输出 `ext_mark` / `ext_evidence` 两列，上表的 T3/T4 仍只表示
+"handler 目录里能看到字段调用"，不表示"字段级已完成"。
+
+{ext_definition_block(defn["byte_keys"], defn["field_keys"], defn["note"])}
+
+{VERBATIM_EXTERNAL}
+
+（本次未给逐条产物加 `ext_mark` 列 ⇒ 上面句中的"本表"指传 `--external` 时生成的逐条产物。）{_noti1_note(defn["field_keys"])}
+
+{TAIL_NO_EXTERNAL_LEGACY_NOTE}
+"""
 
 
 def external_tail(ext_counts: dict, marked: int, total: int, source: str,
-                  keys: dict, t0_byte: list) -> str:
-    """`--external` 跑过时的报告尾部：`ext_mark` 分级门槛 + 计数 + 两条轴对照 + 两条 `[作废]`。
+                  keys: dict, t0_byte: list, defn: dict) -> str:
+    """`--external` 跑过时的报告尾部：计数 + 定义（同一份）+ 两条轴对照 + 两条 `[作废]`。
 
     `byte_verified` / `field_read` 覆盖哪几条 opcode **从本次数据算出来**（不写死），
     这样标注一改，报告不会出现自相矛盾的旧结论。
     """
     rows = "\n".join(f"| {m} | {ext_counts[m]} |" for m in EXTERNAL_MARKS)
-    noti1 = f"\n\n{NOTI1_DOWNGRADE_NOTE}" if ("NOTI", 1) in keys["field_read"] else ""
     return f"""## 4. 外部证据档状态（**独立轴**，不混进上表六档）
 
 人工标注源：`{source}`（本次运行传入 `--external`）。
@@ -94,13 +144,7 @@ def external_tail(ext_counts: dict, marked: int, total: int, source: str,
 
 本次运行的 stdout 对账行：`ext_byte_verified={ext_counts["byte_verified"]}`、`ext_field_read={ext_counts["field_read"]}`、`ext_name_only={ext_counts["name_only"]}`。
 
-### `ext_mark` 的分级门槛
-
-- `byte_verified` —— **该 opcode 的线上字节被逐字段钉住、落盘且可复跑**；只有达到这条才配 `byte_verified`。
-- `field_read` —— 只有**静态字段序**（反汇编里的读/写次序）或**未经逐字段核对的抓包观测**。
-- `name_only` —— 没有任何字段级证据，只有名字。
-
-[静态] 本次 `byte_verified` 只覆盖 {_fmt_keys(keys["byte_verified"])}（{ext_counts["byte_verified"]} 条）；`field_read` 覆盖 {_fmt_keys(keys["field_read"])}（{ext_counts["field_read"]} 条）。{noti1}
+{ext_definition_block(defn["byte_keys"], defn["field_keys"], defn["note"])}{_noti1_note(defn["field_keys"])}
 
 {VERBATIM_EXTERNAL}
 
@@ -168,17 +212,19 @@ def reconcile_lines(counts, extra: dict, tier_sum: int) -> list[tuple[str, bool]
 def write_summary(path: Path, counts, summary: dict, ext: dict) -> None:
     """写 `coverage-summary.md`。四项限定语句**逐字**取自计划，不许改写措辞。
 
-    `ext["ext_mark_counts"]` 存在（即跑过 `--external`）时，尾部换成外部证据档计数 +
-    两条轴的对照；否则尾部**逐字**保持 Task 2 的文本。
+    `ext["ext_mark_counts"]` 存在（即跑过 `--external`）时，尾部是外部证据档计数 +
+    两条轴的对照；否则尾部是 `ext_mark` 的**定义段**（分级门槛 + 当前清单）—— 旧文案
+    "外部证据档首版为空"已被本任务推翻，故不再逐字沿用，改由 `default_tail` 生成。
     """
     tier_rows = "\n".join(f"| {t} | {summary[t]} |" for t in TIER_ORDER)
     limits = "\n".join(VERBATIM_LIMITS)
     counts_by_mark = ext.get("ext_mark_counts")
+    defn = ext["ext_def"]
     if counts_by_mark is None:
-        tail = TAIL_NO_EXTERNAL
+        tail = default_tail(defn)
     else:
         tail = external_tail(counts_by_mark, ext["ext_marked"], summary["total"],
-                             ext["ext_source"], ext["ext_keys"], ext["ext_t0_byte"])
+                             ext["ext_source"], ext["ext_keys"], ext["ext_t0_byte"], defn)
     body = f"""# 协议字段级覆盖度盘点（1171 条 opcode）
 
 ## 1. 源对账（只读真产物）
@@ -322,6 +368,27 @@ def main(argv: list[str] | None = None) -> int:
             if r["ext_mark"] == "byte_verified" and r["tier"] == "T0_no-evidence")
         # 记录**调用时给的**路径（报告里不嵌入本机绝对路径）。
         extra["ext_source"] = args.external
+
+    # `ext_mark` 的定义段两种模式都要有 ⇒ 清单也得两种模式都能拿到。不传 `--external` 时**只读一次
+    # `out_dir/tiers-external.tsv` 用于**定义说明**（不给任何行加 ext 列 ⇒ by-opcode 仍逐字节等于 Task 2）；
+    # 读不到就把原因写进报告，不留空白、也不假装知道。
+    defn_note = ""
+    if ext_path is not None:
+        defn_keys = (extra["ext_keys"]["byte_verified"], extra["ext_keys"]["field_read"])
+    else:
+        defn_candidate = out_dir / "tiers-external.tsv"
+        defn_keys = (None, None)
+        if defn_candidate.exists():
+            try:
+                list_marks = load_external_marks(defn_candidate)
+            except ValueError as exc:
+                defn_note = f"外部证据档 `{defn_candidate.name}` 无法解析（{exc}），当前清单缺失"
+            else:
+                defn_keys = (sorted(k for k, v in list_marks.items() if v["mark"] == "byte_verified"),
+                             sorted(k for k, v in list_marks.items() if v["mark"] == "field_read"))
+        else:
+            defn_note = f"外部证据档 `{defn_candidate}` 不存在，当前清单缺失"
+    extra["ext_def"] = {"byte_keys": defn_keys[0], "field_keys": defn_keys[1], "note": defn_note}
 
     write_by_opcode(out_dir / "coverage-by-opcode.tsv", classified)
     write_summary(out_dir / "coverage-summary.md", counts, summary, extra)
