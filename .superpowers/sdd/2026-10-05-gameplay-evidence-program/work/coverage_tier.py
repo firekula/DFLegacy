@@ -124,3 +124,51 @@ def count_sources(opcode_path: Path, dispatcher_path: Path, handler_path: Path) 
         handler_rows=sum(len(v) for v in fams.values()),
         handler_skipped=skipped,
     )
+
+
+def classify(opcodes: list[dict], handler_rows: dict[str, list[str]]) -> list[dict]:
+    """给每条 opcode 追加 tier / read_count / write_count。判定优先级第一个命中即停。"""
+    out: list[dict] = []
+    for r in opcodes:
+        fam = r["dispatcher"]
+        rows = handler_rows.get(fam, []) if fam else []
+        read_n = sum(1 for line in rows if READ.search(line))
+        write_n = sum(1 for line in rows if WRITE.search(line))
+
+        if r["status"] != "mapped" or not fam:
+            tier = "T0_no-evidence"
+        elif not rows:
+            tier = "T1_dispatcher-no-handlerdata"
+        elif read_n and write_n:
+            tier = "T4_fields-read+write"
+        elif read_n:
+            tier = "T3_fields-read-only"
+        elif write_n:
+            tier = "T3b_fields-write-only"
+        else:
+            tier = "T2_handlerdata-no-fields"
+
+        item = dict(r)
+        item["tier"] = tier
+        item["read_count"] = read_n
+        item["write_count"] = write_n
+        out.append(item)
+    return out
+
+
+def summarize(classified: list[dict]) -> dict:
+    s: dict[str, int] = {t: 0 for t in TIER_ORDER}
+    s["total"] = 0
+    for r in classified:
+        s[r["tier"]] += 1
+        s["total"] += 1
+    return s
+
+
+def write_by_opcode(path: Path, classified: list[dict]) -> None:
+    cols = ("kind", "id", "name", "status", "dispatcher", "tier",
+            "read_count", "write_count", "rodata_va")
+    lines = ["\t".join(cols)]
+    for r in sorted(classified, key=lambda x: (x["kind"], x["id"])):
+        lines.append("\t".join(str(r[c]) for c in cols))
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")

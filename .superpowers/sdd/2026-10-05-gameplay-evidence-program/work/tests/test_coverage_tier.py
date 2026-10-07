@@ -3,6 +3,8 @@ from pathlib import Path
 
 from coverage_tier import (SourceCounts, count_sources, load_dispatcher_families,
                            load_handler_rows, load_opcodes)
+from coverage_tier import (TIER_ORDER, classify, load_dispatcher_families,
+                           load_handler_rows, load_opcodes, summarize)
 
 FIX = Path(__file__).resolve().parent / "fixtures"
 
@@ -72,6 +74,57 @@ class TestLoadAndReconcile(unittest.TestCase):
         self.assertEqual(c.handler_families, 239)
         self.assertEqual(c.handler_rows, 7273)
         self.assertEqual(c.handler_skipped, 0)
+
+
+class TestClassify(unittest.TestCase):
+    def setUp(self):
+        self.rows = load_opcodes(FIX / "opcode-map.tsv")
+        self.fams, _skipped = load_handler_rows(FIX / "catalog_handlers_full.txt")
+        self.got = {r["name"]: r for r in classify(self.rows, self.fams)}
+
+    def test_every_opcode_gets_exactly_one_tier_from_the_vocabulary(self):
+        self.assertEqual(len(self.got), len(self.rows))
+        for name, r in self.got.items():
+            self.assertIn(r["tier"], TIER_ORDER, name)
+
+    def test_login_is_read_plus_write(self):
+        r = self.got["LOGIN"]
+        self.assertEqual(r["tier"], "T4_fields-read+write")
+        self.assertGreaterEqual(r["read_count"], 1)
+        self.assertGreaterEqual(r["write_count"], 1)
+
+    def test_setip_is_read_only(self):
+        self.assertEqual(self.got["SET_UDP_IP_PORT"]["tier"], "T3_fields-read-only")
+        self.assertEqual(self.got["SET_UDP_IP_PORT"]["write_count"], 0)
+
+    def test_exit_is_write_only(self):
+        self.assertEqual(self.got["EXIT"]["tier"], "T3b_fields-write-only")
+        self.assertEqual(self.got["EXIT"]["read_count"], 0)
+
+    def test_put_header_alone_is_not_a_field_write(self):
+        # 判据：`source=put_header` 是"构造帧头"，**不是**字段写入；字段写只认
+        # `name=...::put_`（WRITE 正则）。夹具里 SelectCharac 只有 get_str 读 +
+        # 一条无 `name=` 的 put_header ⇒ 落 T3，不是 T4。
+        self.assertEqual(self.got["SELECT_CHARACTER"]["tier"], "T3_fields-read-only")
+        self.assertEqual(self.got["SELECT_CHARACTER"]["write_count"], 0)
+
+    def test_lonely_no_handler_is_t1(self):
+        self.assertEqual(self.got["LONELY_NO_HANDLER"]["tier"],
+                         "T1_dispatcher-no-handlerdata")
+
+    def test_lonely_no_dispatcher_is_t0(self):
+        self.assertEqual(self.got["LONELY_NO_DISPATCHER"]["tier"], "T0_no-evidence")
+
+    def test_noti_with_blank_dispatcher_is_t0(self):
+        self.assertEqual(self.got["DONT_CARE"]["tier"], "T0_no-evidence")
+
+    def test_unused_with_blank_dispatcher_is_t0(self):
+        self.assertEqual(self.got["UNUSED_ONE"]["tier"], "T0_no-evidence")
+
+    def test_summary_total_equals_row_count(self):
+        s = summarize(list(self.got.values()))
+        self.assertEqual(s["total"], len(self.rows))
+        self.assertEqual(sum(v for k, v in s.items() if k != "total"), len(self.rows))
 
 
 if __name__ == "__main__":
