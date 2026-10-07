@@ -135,6 +135,8 @@ $env:PYTHONIOENCODING='utf-8'
 cd .superpowers/sdd/2026-10-05-gameplay-evidence-program/work   # 相对 worktree 根
 python coverage_report.py --out-dir out --external out/tiers-external.tsv   # 生成 out/coverage-by-opcode.tsv（1171 条 + 表头）与本文件
 python coverage_report.py --out-dir out                                     # 同一份分档，但不加 ext_mark 轴（逐条产物与 Task 2 逐字节相同）
+#   ⚠️ 上面这条会用"默认态"重写 out/coverage-by-opcode.tsv（即去掉 ext_mark / ext_evidence 两列）。
+#      要保留带 ext 轴的产物：把它改成 --out-dir <临时目录> 跑，或在它之后再跑一次最上面那条命令。
 python -m unittest discover -s tests                                        # 20 个单测（含真产物对账，缺失即失败、不跳过）
 ```
 
