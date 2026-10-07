@@ -1,0 +1,6 @@
+# 夹具：家族数 5
+Login	process=0x081e8c78(4619)	dispatch_sig=0x08232a74(  10)	spell=DisPatcher_Login
+SetIP	process=0x081b0000( 100)	dispatch_sig=0x081b0100( 200)	spell=DisPatcher_SetIP
+Exit	process=0x081b0200( 100)	dispatch_sig=0x081b0300( 200)	spell=DisPatcher_Exit
+SelectCharac	process=0x081b0400( 100)	dispatch_sig=0x081b0500( 200)	spell=DisPatcher_SelectCharac
+NoHandlerData	process=0x081b0600( 100)	dispatch_sig=0x081b0700( 200)	spell=DisPatcher_NoHandlerData
