@@ -710,7 +710,8 @@ CMD	1	byte_verified	work/out/static-analysis-vm-login-2026-10-06.md：频道 id1
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: 同 Task 2 Step 3
-Expected: `OK`（18 + 4 = 22 个全过）
+Expected: `OK`（**20** 个全过 = Task1 的 5 + Task2 的 10 + Task3 的 4 + 实现者为"多行合并"补的 1；
+原写"18 + 4 = 22"是把 Task 1 的 5 误记成 8，已按实测更正）
 
 - [ ] **Step 5: 重生成产物并核对"锚点确实被标上"**
 
@@ -723,7 +724,16 @@ python coverage_report.py --out-dir out --external out/tiers-external.tsv 2>&1 |
 Select-String -Path out/coverage-by-opcode.tsv -Pattern '^CMD\t1\t' | ForEach-Object { $_.Line }
 ```
 Expected：
-- 汇总里出现 `ext_byte_verified=2`（`CMD 1`、`NOTI 1`+`NOTI 561` 计 3 个不同 opcode ⇒ 按实际输出核对，**不要预设数字**）；
+- 汇总里出现 **`ext_byte_verified=2` / `ext_field_read=1` / `ext_name_only=1168`**
+  （`byte_verified` 只覆盖 **`CMD 1`** 与 **`NOTI 561`**；**`NOTI 1` 是 `field_read`** —— 见下方裁决）；
+  **仍然按实际输出核对，不要预设数字**。
+- **`byte_verified` 的门槛（裁决，写进产物）**：该 opcode 的**线上字节被逐字段钉住并落盘可复跑**。
+  `NOTI 1` 目前只有"静态字段序（`cipher-callchain-audit.txt L3342-3517` 的 `CUser::InitOnAccept` →
+  `put_binary(334)`/`get_channel_name`/seed/random）+ 抓包两样本前 334 B 相同"，
+  **没有**把 334 B 载荷逐字段对上；且项目自己两处反向记录
+  （`cipher-audit-corrections.md:70` 的 `[作废]`、`dynamic-evidence-progress-2026-10-07.md:368` 的
+  "[真机] 未取的：334 B key 本体"）⇒ 它够 `field_read`，不够 `byte_verified`。
+  **代价（若错）**：`NOTI 1` 的证据等级被低估一档，引用时偏保守。
 - `CMD 1` 那行 `ext_mark=byte_verified`，且 `evidence` 含两个来源（`|` 合并）。
 
 - [ ] **Step 6: 在 `coverage-summary.md` 追加"锚点回填 vs 纯推导"的对照小节**
