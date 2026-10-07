@@ -102,7 +102,8 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
   - `load_opcodes(path: Path) -> list[dict]`，每项键固定为 `kind:str, id:int, name:str, rodata_va:str, dispatcher:str, status:str`
   - `load_dispatcher_families(path: Path) -> set[str]`
   - `load_handler_rows(path: Path) -> tuple[dict[str, list[str]], int]`（家族名 → 原始行列表，**保序**；第二个值是"字段数<3 被跳过的行数"，调用方必须断言）
-  - `SourceCounts` dataclass：`opcode_rows:int, cmd:int, noti:int, mapped:int, no_dispatcher:int, unused:int, dispatcher_families:int, handler_families:int, handler_rows:int`
+  - `SourceCounts` dataclass（**字段清单以此为准**）：`opcode_rows:int, cmd:int, noti:int, mapped:int, no_dispatcher:int, unused:int, dispatcher_families:int, handler_families:int, handler_rows:int, handler_skipped:int`
+    —— `handler_skipped` 是"`split("\t")` 后字段数 <3 的行数"，**必须有**，因为调用方要断言它（静默丢弃是本项目最警惕的失败形状）
 
 - [ ] **Step 1: 写夹具（3 个极小文件，覆盖每一档各一例）**
 
@@ -292,8 +293,14 @@ r"""coverage_tier.py —— 协议字段级覆盖度的**纯逻辑**（加载 / 
 ⚠️ 已知边界（必须写进报告，不许藏）：
   * `catalog_handlers_full.txt` 是**处理器体内的调用目标表**，不是字段布局。
     因此 T3/T4 只表示"能看到字段读/写的**候选**"，**不等于**已读出有序字段规格。
-  * `catalog_handlers_full.txt` 只覆盖 239 个家族，而 dispatchers 目录有 425 个
-    ⇒ 有 186 个 dispatcher **没有**字段调用数据（落 T1），这不是"没有字段"，是"没有数据"。
+  * **两个分母不要混**（实测，见下）：handlers 目录只覆盖 **239** 个家族，而
+    `catalog_dispatchers_full.txt` 有 **425** 个家族、"mapped opcode 里出现过的 dispatcher" 只有 **423** 个。
+    ⇒ 论"**mapped opcode 的**覆盖"用 **423** 这个分母（423 − 237 = **186** 个没有字段调用数据）；
+      论"**全部 dispatcher 家族**的覆盖"用 **425** 这个分母（425 − 238 = **187**）。
+      两个数字都对，**但必须各自说清分母**，否则读者会以为是同一个数变了。
+  * 另外 `catalog_handlers_full.txt` 里有一个**合成家族** `(sender)`（**1248** 行，正是 `packet_senders.txt`
+    的 `put_header` 行），它**不在** dispatchers 目录里 ⇒ 家族交集是 238 而非 239。
+    统计时不要把它当成一个真实家族。
 """
 from __future__ import annotations
 
@@ -392,7 +399,8 @@ def count_sources(opcode_path: Path, dispatcher_path: Path, handler_path: Path) 
 - [ ] **Step 6: 跑测试确认通过**
 
 Run: 同 Step 4
-Expected: `OK`（8 个测试全过）
+Expected: `OK`（**5 个**测试全过 —— Task 1 Step 3 的代码栅栏里就是 5 个 `test_*` 方法；
+本行原先误写"8 个"，已按实测与审查裁决更正）
 
 - [ ] **Step 7: 提交**
 
