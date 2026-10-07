@@ -4,6 +4,9 @@ r"""coverage_report.py —— 覆盖度盘点的 **CLI 入口**：读真产物 �
 输入（默认在 `--out-dir` 里，只读）：opcode-map.tsv / catalog_dispatchers_full.txt /
 catalog_handlers_full.txt。输出（写进 `--out-dir`）：coverage-by-opcode.tsv、
 coverage-summary.md。对账五条基线，**任一不符即非零退出** —— 不静默通过。
+
+传 `--external <tsv>` 时再叠加**外部证据档**（独立轴 `ext_mark` / `ext_evidence`，由人工
+标注、本脚本只校验与合并）；不传则该轴的列与段落都不出现，分档结果与 Task 2 完全一致。
 """
 from __future__ import annotations
 
@@ -11,7 +14,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from coverage_tier import (TIER_ORDER, classify, count_sources, load_handler_rows,
+from coverage_tier import (EXTERNAL_MARKS, TIER_ORDER, apply_external_marks, classify,
+                           count_sources, load_external_marks, load_handler_rows,
                            load_opcodes, summarize, write_by_opcode)
 
 WORK = Path(__file__).resolve().parent
@@ -35,6 +39,57 @@ VERBATIM_LIMITS = (
     "[未验证] 外部证据档（byte_verified / field_read）首版为空；在它有内容之前，\n"
     '       本覆盖率**不得**被引用为"字段级已完成多少"。',
 )
+
+# Step 6 的对照句（**逐字**取自计划，不许改写措辞）。
+VERBATIM_EXTERNAL = (
+    "[静态] 本表 ext_mark=byte_verified 的条目，其 evidence 全部指向本项目已落盘产物；\n"
+    '       未出现在 tiers-external.tsv 的 opcode 一律 ext_mark=name_only（即"只有名字"）。'
+)
+
+# 未跑 `--external` 时的报告尾部：**逐字**保持 Task 2 的 §4 文本。
+# ⇒ 不传 `--external` 时 ext 轴整段不出现，`coverage-by-opcode.tsv` 与 Task 2 逐字节相同；
+# `coverage-summary.md` 另有一处本任务要求的 `write_count` 口径说明（见下方 ⚠️ 两行）。
+TAIL_NO_EXTERNAL = """## 4. 外部证据档状态
+
+外部证据档（`byte_verified` / `field_read`）首版为空（Task 3 才建 `tiers-external.tsv`）；
+在它有内容之前，上表的 T3/T4 只表示"handler 目录里能看到字段调用"，不表示"字段级已完成"。
+"""
+
+
+def external_tail(ext_counts: dict, marked: int, total: int, source: str) -> str:
+    """`--external` 跑过时的报告尾部：外部证据档计数 + 两条轴的对照 + 对 §3 第 4 句的 `[作废]`。"""
+    rows = "\n".join(f"| {m} | {ext_counts[m]} |" for m in EXTERNAL_MARKS)
+    return f"""## 4. 外部证据档状态（**独立轴**，不混进上表六档）
+
+人工标注源：`{source}`（本次运行传入 `--external`）。
+
+| ext_mark | 条数 |
+|---|---|
+{rows}
+| **合计** | **{total}** |
+
+被标注（出现在 `tiers-external.tsv`）的 opcode = {marked} 条；其余 {total - marked} 条
+`ext_mark=name_only`（即"只有名字"）。
+
+本次运行的 stdout 对账行：`ext_byte_verified={ext_counts["byte_verified"]}`、`ext_field_read={ext_counts["field_read"]}`、`ext_name_only={ext_counts["name_only"]}`。
+
+{VERBATIM_EXTERNAL}
+
+## 5. 锚点回填 vs 纯推导（对照）
+
+| | 纯推导（tier 轴，§2） | 锚点回填（ext_mark 轴，§4） |
+|---|---|---|
+| 判据来源 | handlers 目录里的 `name=...::get_/put_` 调用 | **人工**标注的已落盘产物（字节级自检 / 抓包 / 静态反汇编） |
+| 覆盖 | 1171 条全部 | 只有 {marked} 条有标注 |
+| 能证明什么 | 只到"字段读/写调用的候选" | `byte_verified` 的那几条才有字节级产物支撑 |
+
+两条轴**正交**：`NOTI 1` / `NOTI 561` 在 tier 轴是 T0（没有可达处理器），在 ext_mark 轴是
+`byte_verified` —— "没有 dispatcher"不等于"没有外部证据"。
+
+[作废] §3 第 4 句"[未验证] 外部证据档…首版为空"写于外部证据档为空时；本任务的
+       `out/tiers-external.tsv` 已回填 {marked} 行，该句的"首版为空"已被推翻。
+       原文按证据纪律**保留不删**，此处指向推翻它的产物。
+"""
 
 
 def compute_extra(opcodes: list[dict], handler_families: set[str]) -> dict:
@@ -81,9 +136,19 @@ def reconcile_lines(counts, extra: dict, tier_sum: int) -> list[tuple[str, bool]
 
 
 def write_summary(path: Path, counts, summary: dict, ext: dict) -> None:
-    """写 `coverage-summary.md`。四项限定语句**逐字**取自计划，不许改写措辞。"""
+    """写 `coverage-summary.md`。四项限定语句**逐字**取自计划，不许改写措辞。
+
+    `ext["ext_mark_counts"]` 存在（即跑过 `--external`）时，尾部换成外部证据档计数 +
+    两条轴的对照；否则尾部**逐字**保持 Task 2 的文本。
+    """
     tier_rows = "\n".join(f"| {t} | {summary[t]} |" for t in TIER_ORDER)
     limits = "\n".join(VERBATIM_LIMITS)
+    counts_by_mark = ext.get("ext_mark_counts")
+    if counts_by_mark is None:
+        tail = TAIL_NO_EXTERNAL
+    else:
+        tail = external_tail(counts_by_mark, ext["ext_marked"], summary["total"],
+                             ext["ext_source"])
     body = f"""# 协议字段级覆盖度盘点（1171 条 opcode）
 
 ## 1. 源对账（只读真产物）
@@ -128,17 +193,32 @@ WRITE = r"name=(?:InterfacePacketBuf|PacketBuf)::put_"
 ```
 
 ⚠️ `source=put_header`（构造帧头）**不**匹配 `WRITE` ⇒ 不计作字段写。
+⚠️ 但是 `name=InterfacePacketBuf::put_header(...)` 这类**带 `name=`** 的行**会**匹配 `WRITE`；
+本表 `write_count` 的口径是"写调用条数（**含**帧头构造 `put_header`）"。
 
 ## 3. 这数字不能证明什么（限定语句）
 
 {limits}
 
-## 4. 外部证据档状态
-
-外部证据档（`byte_verified` / `field_read`）首版为空（Task 3 才建 `tiers-external.tsv`）；
-在它有内容之前，上表的 T3/T4 只表示"handler 目录里能看到字段调用"，不表示"字段级已完成"。
-"""
+{tail}"""
     Path(path).write_text(body, encoding="utf-8")
+
+
+def double_read_problems(handler_rows: dict, skipped: int, counts, opcodes: list[dict]) -> list[str]:
+    """双读一致性：`count_sources` 内部又读了一遍，两次结果必须一致（防静默丢弃）。
+
+    **显式检查，不用 `assert`** —— `python -O` 会把 `assert` 整条剥掉，最想防的
+    "双读不一致"反而会在优化模式下静默通过。本函数返回问题清单，由 `main` 打印诊断并
+    非零退出（`-O` 下同样生效）。
+    """
+    problems: list[str] = []
+    if len(handler_rows) != counts.handler_families:
+        problems.append(f"家族数不一致: {len(handler_rows)} != {counts.handler_families}")
+    if skipped != counts.handler_skipped:
+        problems.append(f"skipped 不一致: {skipped} != {counts.handler_skipped}")
+    if len(opcodes) != counts.opcode_rows:
+        problems.append(f"opcode 行数不一致: {len(opcodes)} != {counts.opcode_rows}")
+    return problems
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -146,12 +226,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out-dir", default=str(WORK / "out"),
                     help="真产物目录（读输入 + 写输出）")
     ap.add_argument("--external", default=None,
-                    help="外部证据档 TSV —— Task 3 才实现；本版本传了会非零退出")
+                    help="外部证据档 TSV（列序 kind/id/mark/evidence；不传则不加 ext_mark 轴）")
     args = ap.parse_args(argv)
-
-    if args.external:
-        print("--external 由 Task 3 实现，本版本不支持", file=sys.stderr)
-        return 2
 
     out_dir = Path(args.out_dir)
     if not out_dir.is_absolute():
@@ -167,21 +243,46 @@ def main(argv: list[str] | None = None) -> int:
         print("缺输入: " + ", ".join(missing), file=sys.stderr)
         return 2
 
+    ext_path = None
+    if args.external:
+        ext_path = Path(args.external)
+        if not ext_path.is_absolute():
+            ext_path = (WORK / ext_path).resolve()
+        if not ext_path.exists():
+            print(f"缺外部证据档: {ext_path}", file=sys.stderr)
+            return 2
+
     opcodes = load_opcodes(opcode_path)
     handler_rows, skipped = load_handler_rows(handler_path)
     counts = count_sources(opcode_path, dispatcher_path, handler_path)
 
-    # 双重核对：count_sources 内部又读了一遍，两次结果必须一致（防静默丢弃）。
-    assert len(handler_rows) == counts.handler_families, (
-        f"家族数不一致: {len(handler_rows)} != {counts.handler_families}")
-    assert skipped == counts.handler_skipped, (
-        f"skipped 不一致: {skipped} != {counts.handler_skipped}")
-    assert len(opcodes) == counts.opcode_rows, "opcode 行数不一致"
+    problems = double_read_problems(handler_rows, skipped, counts, opcodes)
+    if problems:
+        for p in problems:
+            print(f"✗ 双读不一致: {p}", file=sys.stderr)
+        sys.exit(3)
 
     classified = classify(opcodes, handler_rows)
     summary = summarize(classified)
     extra = compute_extra(opcodes, set(handler_rows))
     tier_sum = sum(summary[t] for t in TIER_ORDER)
+
+    if ext_path is not None:
+        try:
+            marks = load_external_marks(ext_path)
+            classified = apply_external_marks(classified, marks)
+        except (ValueError, KeyError) as exc:
+            # 未知 opcode / 非法 mark / 列数不对 —— "带一半标注"的产物是最危险的失败形状，
+            # 所以这里不落任何产物、直接非零退出（库函数本身照旧抛错，见单测）。
+            print(f"外部证据档非法: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 2
+        ext_counts = {m: 0 for m in EXTERNAL_MARKS}
+        for r in classified:
+            ext_counts[r["ext_mark"]] += 1
+        extra["ext_mark_counts"] = ext_counts
+        extra["ext_marked"] = len(classified) - ext_counts["name_only"]
+        # 记录**调用时给的**路径（报告里不嵌入本机绝对路径）。
+        extra["ext_source"] = args.external
 
     write_by_opcode(out_dir / "coverage-by-opcode.tsv", classified)
     write_summary(out_dir / "coverage-summary.md", counts, summary, extra)
@@ -192,6 +293,9 @@ def main(argv: list[str] | None = None) -> int:
         ok = ok and good
     for t in TIER_ORDER:
         print(f"    {t}={summary[t]}")
+    if ext_path is not None:
+        for m in EXTERNAL_MARKS:
+            print(f"    ext_{m}={extra['ext_mark_counts'][m]}")
 
     if not ok:
         print("对账失败：带 ✗ 的行与基线不符", file=sys.stderr)

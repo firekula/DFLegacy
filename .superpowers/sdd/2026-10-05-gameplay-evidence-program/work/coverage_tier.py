@@ -22,6 +22,16 @@ r"""coverage_tier.py —— 协议字段级覆盖度的**纯逻辑**（加载 / 
     因此 T3/T4 只表示"能看到字段读/写的**候选**"，**不等于**已读出有序字段规格。
   * `catalog_handlers_full.txt` 只覆盖 239 个家族，而 dispatchers 目录有 425 个
     ⇒ 有 186 个 dispatcher **没有**字段调用数据（落 T1），这不是"没有字段"，是"没有数据"。
+  * `write_count` 计的是"`name=...::put_*` 写调用条数"，**含**帧头构造
+    `InterfacePacketBuf::put_header`（129 行；实测把它排除后 1171 条换档数 = 0，
+    即档位判据不受影响，但含 `put_header` 的家族 `write_count` 会偏大）。
+
+## 外部证据档（**独立轴**，不混进上面六档）
+
+`ext_mark ∈ EXTERNAL_MARKS`（`byte_verified > field_read > name_only`）由**人工**标注，
+来源是 `tiers-external.tsv`；`load_external_marks` 只做校验与合并，`apply_external_marks`
+追加 `ext_mark` / `ext_evidence`。这一轴与 tier **正交**：`NOTI 1` 是 T0（没有可达处理器）
+却可以是 `byte_verified`（"没有 dispatcher"不等于"没有外部证据"）。
 """
 from __future__ import annotations
 
@@ -43,6 +53,9 @@ TIER_ORDER = (
 )
 
 OPCODE_KEYS = ("kind", "id", "name", "rodata_va", "dispatcher", "status")
+
+# 外部证据档词表，**越靠前越强**（同一 (kind,id) 多行标注时取最靠前的那个）。
+EXTERNAL_MARKS = ("byte_verified", "field_read", "name_only")
 
 
 def load_opcodes(path: Path) -> list[dict]:
@@ -165,10 +178,85 @@ def summarize(classified: list[dict]) -> dict:
     return s
 
 
+def load_external_marks(path: Path) -> dict[tuple[str, int], dict]:
+    """读人工标注的外部证据档 TSV（列序 `kind, id, mark, evidence`；`#` 行与空行跳过）。
+
+    同一个 `(kind, id)` **允许多行**（不同证据各自一行）：取**最强**的 `mark`
+    （强度序见 `EXTERNAL_MARKS`，越靠前越强），`evidence` 按文件序用 `" | "` 合并。
+
+    失败形状**不静默**：`mark not in EXTERNAL_MARKS` ⇒ `raise ValueError(mark)`；
+    列数 != 4 的行（含漏列/多列）⇒ `raise ValueError` 并带 `路径:行号`；
+    `id` 非整数 ⇒ `int()` 抛 `ValueError`。
+    """
+    merged: dict[tuple[str, int], dict] = {}
+    src = Path(path)
+    for lineno, line in enumerate(src.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) != 4:
+            raise ValueError(
+                f"{src}:{lineno} 需要 4 列 kind/id/mark/evidence，实得 {len(parts)} 列")
+        kind, raw_id, mark, evidence = parts
+        mark = mark.strip()
+        if mark not in EXTERNAL_MARKS:
+            raise ValueError(mark)
+        key = (kind.strip(), int(raw_id))
+        cur = merged.get(key)
+        if cur is None:
+            merged[key] = {"mark": mark, "evidence": evidence}
+            continue
+        if evidence:
+            cur["evidence"] = (
+                f"{cur['evidence']} | {evidence}" if cur["evidence"] else evidence)
+        if EXTERNAL_MARKS.index(mark) < EXTERNAL_MARKS.index(cur["mark"]):
+            cur["mark"] = mark
+    return merged
+
+
+def apply_external_marks(classified: list[dict], marks: dict) -> list[dict]:
+    """给每条 opcode 追加外部证据档 `ext_mark` / `ext_evidence`（**独立轴**，不动 tier）。
+
+    未出现在 `marks` 里的行 ⇒ `ext_mark="name_only"`、`ext_evidence=""`。
+    `marks` 的键**必须**能在 `classified` 里找到，否则 `raise KeyError(键)` ——
+    标注一个不存在的 opcode 是"证据指向空气"，绝不能静默吞掉。
+    `mark not in EXTERNAL_MARKS` ⇒ `raise ValueError(mark)`。
+
+    先把全部键与值校验完再改行：半途抛错不留"改了一半"的结果。
+    """
+    index = {(r["kind"], int(r["id"])): r for r in classified}
+    norm: dict[tuple[str, int], dict] = {}
+    for key, m in marks.items():
+        k = (key[0], int(key[1]))
+        if k not in index:
+            raise KeyError(key)
+        if m["mark"] not in EXTERNAL_MARKS:
+            raise ValueError(m["mark"])
+        norm[k] = m
+
+    out: list[dict] = []
+    for r in classified:
+        item = dict(r)
+        m = norm.get((r["kind"], int(r["id"])))
+        if m is None:
+            item["ext_mark"] = "name_only"
+            item["ext_evidence"] = ""
+        else:
+            item["ext_mark"] = m["mark"]
+            item["ext_evidence"] = m["evidence"]
+        out.append(item)
+    return out
+
+
 def write_by_opcode(path: Path, classified: list[dict]) -> None:
-    cols = ("kind", "id", "name", "status", "dispatcher", "tier",
-            "read_count", "write_count", "rodata_va")
+    cols = ["kind", "id", "name", "status", "dispatcher", "tier",
+            "read_count", "write_count", "rodata_va"]
+    # 外部证据档只在**真跑过** apply_external_marks 时才追加两列：
+    # 不跑 ⇒ 列集与 Task 2 逐字节相同（不引入回归）。新列一律**追加在末尾**，
+    # 前 9 列的序号不变（下游按列号取 tier 的命令不受影响）。
+    if any("ext_mark" in r for r in classified):
+        cols += ["ext_mark", "ext_evidence"]
     lines = ["\t".join(cols)]
     for r in sorted(classified, key=lambda x: (x["kind"], x["id"])):
-        lines.append("\t".join(str(r[c]) for c in cols))
+        lines.append("\t".join(str(r.get(c, "")) for c in cols))
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")

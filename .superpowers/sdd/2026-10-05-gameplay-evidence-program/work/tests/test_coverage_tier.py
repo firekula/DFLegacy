@@ -1,9 +1,8 @@
+import tempfile
 import unittest
 from pathlib import Path
 
-from coverage_tier import (SourceCounts, count_sources, load_dispatcher_families,
-                           load_handler_rows, load_opcodes)
-from coverage_tier import (TIER_ORDER, classify, load_dispatcher_families,
+from coverage_tier import (SourceCounts, TIER_ORDER, classify, count_sources,
                            load_handler_rows, load_opcodes, summarize)
 
 FIX = Path(__file__).resolve().parent / "fixtures"
@@ -125,6 +124,52 @@ class TestClassify(unittest.TestCase):
         s = summarize(list(self.got.values()))
         self.assertEqual(s["total"], len(self.rows))
         self.assertEqual(sum(v for k, v in s.items() if k != "total"), len(self.rows))
+
+
+from coverage_tier import EXTERNAL_MARKS, apply_external_marks, load_external_marks
+
+
+class TestExternalMarks(unittest.TestCase):
+    def test_unknown_opcode_raises(self):
+        marks = {("CMD", 99999): {"mark": "field_read", "evidence": "x"}}
+        rows = load_opcodes(FIX / "opcode-map.tsv")
+        with self.assertRaises(KeyError):
+            apply_external_marks(rows, marks)
+
+    def test_bad_mark_value_raises(self):
+        marks = {("CMD", 1): {"mark": "probably", "evidence": "x"}}
+        rows = load_opcodes(FIX / "opcode-map.tsv")
+        with self.assertRaises(ValueError):
+            apply_external_marks(rows, marks)
+
+    def test_known_login_mark_is_applied(self):
+        fams, _ = load_handler_rows(FIX / "catalog_handlers_full.txt")
+        rows = classify(load_opcodes(FIX / "opcode-map.tsv"), fams)
+        out = apply_external_marks(
+            rows, {("CMD", 1): {"mark": "byte_verified", "evidence": "login-plain 10/10"}})
+        login = [r for r in out if r["kind"] == "CMD" and r["id"] == 1][0]
+        self.assertEqual(login["ext_mark"], "byte_verified")
+
+    def test_unmarked_rows_get_name_only(self):
+        rows = load_opcodes(FIX / "opcode-map.tsv")
+        out = apply_external_marks(rows, {})
+        self.assertTrue(all(r["ext_mark"] == "name_only" for r in out))
+
+    def test_strongest_mark_wins_and_evidence_merges(self):
+        """同一 `(kind,id)` 多行：取**最强**的 mark（不是第一行），evidence 用 `" | "` 合并。
+
+        这一条用**弱 mark 在前、强 mark 在后**的顺序，专门区分"取最强"与"先到先得"。
+        """
+        with tempfile.TemporaryDirectory() as d:
+            tsv = Path(d) / "ext.tsv"
+            tsv.write_text(
+                "# kind\tid\tmark\tevidence\n"
+                "CMD\t1\tfield_read\t弱-在前\n"
+                "CMD\t1\tbyte_verified\t强-在后\n",
+                encoding="utf-8")
+            marks = load_external_marks(tsv)
+        self.assertEqual(marks[("CMD", 1)]["mark"], EXTERNAL_MARKS[0])
+        self.assertEqual(marks[("CMD", 1)]["evidence"], "弱-在前 | 强-在后")
 
 
 if __name__ == "__main__":
