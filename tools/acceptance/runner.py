@@ -281,7 +281,8 @@ class Runner:
     def start_actors(self, rp: RunPaths, scenario: Scenario,
                      launcher_cmd: Optional[list[str]] = None,
                      actor_commands: dict[str, list[str]] | None = None,
-                     on_started: Optional[Callable[[ActorSpec, subprocess.Popen], Optional[int]]] = None
+                     on_started: Optional[Callable[[ActorSpec, subprocess.Popen], Optional[int]]] = None,
+                     before_start: Optional[Callable[[ActorSpec], None]] = None
                      ) -> list[dict]:
         """起每个 actor。`launcher_cmd is None` ⇒ 只用占位进程（测试/骨架用，不启动游戏）。
 
@@ -306,6 +307,8 @@ class Runner:
                     cmd = list(launcher_cmd)
                 else:
                     cmd = [sys.executable, "-c", "import time; time.sleep(3600)"]
+                if before_start is not None:
+                    before_start(a)
                 p = subprocess.Popen(cmd, cwd=str(rp.actor_dir(a.name)),
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 self._procs.append(p)
@@ -333,6 +336,12 @@ class Runner:
         mf = Manifest(**raw)
         self._last = mf
         return rp, mf
+
+    def record_run_config(self, rp: RunPaths, entries: list[dict]) -> None:
+        """读回 manifest、设 config_overrides、写回（UTF-8）。"""
+        _, mf = self._load(rp)
+        mf.config_overrides = entries
+        self._write_manifest(rp, mf)
 
     def stop_all(self) -> None:
         """逆序回收（先 actor 后 server），并关闭日志句柄。

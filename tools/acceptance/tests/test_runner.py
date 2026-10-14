@@ -303,3 +303,43 @@ def test_stop_all_cleans_up_even_if_actor_start_fails(tmp_path, monkeypatch):
         })
     assert len(started) == 1, "A 已启动，B 启动失败"
     assert all(p.poll() is not None for p in started), "已启动的进程必须被回收，不得泄漏"
+
+
+def test_start_actors_before_start_called_before_popen_in_order(tmp_path):
+    """before_start 在每个 actor 的 Popen 之前调用，顺序契约：
+    before(A) → Popen(A) → on_started(A) → before(B) → Popen(B) → on_started(B)。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"), ActorSpec("B", "synthetic")),
+                  steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    events: list[tuple[str, str]] = []
+
+    def before(actor_spec):
+        events.append(("before", actor_spec.name))
+
+    def on_started(actor_spec, proc):
+        events.append(("started", actor_spec.name))
+        return None
+
+    cmds = {"A": list(_FAKE_SLEEP), "B": list(_FAKE_SLEEP)}
+    try:
+        recs = r.start_actors(rp, sc, actor_commands=cmds,
+                              before_start=before, on_started=on_started)
+        assert len(recs) == 2
+        assert events == [("before", "A"), ("started", "A"),
+                          ("before", "B"), ("started", "B")]
+    finally:
+        r.stop_all()
+
+
+def test_record_run_config_writes_config_overrides_to_manifest(tmp_path):
+    """record_run_config 读回 manifest、设 config_overrides、写回（UTF-8）。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"),), steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    entries = [{"key": "DFLegacy__DataPath", "old": "C:\\data", "new": "/run/1/data"}]
+    r.record_run_config(rp, entries)
+    mf = json.loads(rp.manifest.read_text(encoding="utf-8"))
+    assert mf["config_overrides"] == entries
