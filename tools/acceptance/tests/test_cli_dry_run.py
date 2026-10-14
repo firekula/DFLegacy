@@ -56,7 +56,15 @@ def test_promote_digest_copies_only_the_normalized_judgement(tmp_path):
     assert all("detail" not in e for e in payload["entries"])
 
 
-def test_main_run_dry_run_does_not_start_any_process(tmp_path):
+def test_main_run_dry_run_does_not_start_any_process(tmp_path, monkeypatch):
+    from acceptance import cli
+
+    monkeypatch.setattr(cli, "_git_sha", lambda _: "abc1234")
+
+    def forbid_process(*args, **kwargs):
+        raise AssertionError("--dry-run 不得启动任何进程")
+
+    monkeypatch.setattr(cli.subprocess, "Popen", forbid_process)
     rc = main(["run", "--scenario", str(SCEN), "--actors", "2",
                "--dry-run", "--runs-dir", str(tmp_path / "runs")])
     assert rc == 0
@@ -127,6 +135,32 @@ def test_run_collect_missing_netdump_is_missing_evidence_not_crash(tmp_path, mon
     assert "pass" in a_results
     offsets = json.loads((rp.run_dir / "offsets.json").read_text(encoding="utf-8"))
     assert offsets["B"] is None  # 缺 t0 ⇒ None，不是 0
+
+
+def test_run_collect_without_run_id_returns_rc2(tmp_path, capsys):
+    runs = tmp_path / "runs"
+    rc = main(["run", "--scenario", str(SCEN), "--collect",
+               "--client-dir", str(tmp_path), "--actor-pid", "A=111,B=222",
+               "--runs-dir", str(runs)])
+    assert rc == 2
+    assert "--run-id" in capsys.readouterr().err
+
+
+def test_run_collect_missing_explicit_server_log_rejects_before_copy(tmp_path, monkeypatch, capsys):
+    from acceptance import cli
+
+    monkeypatch.setattr(cli, "HERE", tmp_path / "acc")
+    rp, runs, client = _prepare_run(tmp_path)
+    (client / "netdump-111.log").write_text("TX c2s:login-ok\n", encoding="utf-8")
+    rc = main(["run", "--scenario", str(SCEN), "--collect",
+               "--run-id", rp.run_dir.name,
+               "--client-dir", str(client), "--actor-pid", "A=111,B=222",
+               "--server-log", str(tmp_path / "does-not-exist.log"),
+               "--runs-dir", str(runs)])
+    assert rc == 2
+    assert "--server-log" in capsys.readouterr().err
+    assert not (rp.actor_dir("A") / "netdump-111.log").exists()
+    assert not rp.verdict.exists()
 
 
 # ===== 真机 netdump 时间格式/时区（bugfix） =====

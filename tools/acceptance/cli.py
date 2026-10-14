@@ -103,20 +103,23 @@ def _cmd_run(args: argparse.Namespace) -> int:
     #   (1) 人工按 RUNBOOK 起服务端与客户端、完成动作、关掉；
     #   (2) 跑本命令的 `--collect` 形态做归集与判定。
     if args.collect:
+        if not args.run_id or not args.client_dir or not args.actor_pid:
+            print("--collect 需要 --run-id、--client-dir 与 --actor-pid（A=1234,B=5678）", file=sys.stderr)
+            return 2
         sc = load_scenario(scen)
-        r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
         rp = RunPaths.for_run(runs_dir, args.run_id)
         if not rp.manifest.exists():
             print(f"没有这个 run：{rp.manifest}", file=sys.stderr)
             return 1
-        if not args.client_dir or not args.actor_pid:
-            print("--collect 需要 --client-dir 与 --actor-pid（A=1234,B=5678）", file=sys.stderr)
-            return 2
         client_dir = Path(args.client_dir)
         try:
             pids = _parse_actor_pids(args.actor_pid, {a.name for a in sc.actors})
         except ValueError as e:
             print(str(e), file=sys.stderr)
+            return 2
+        server_log = Path(args.server_log) if args.server_log else None
+        if server_log is not None and not server_log.is_file():
+            print(f"--server-log 文件不存在或不是文件：{server_log}", file=sys.stderr)
             return 2
         # server_t0 以 manifest.created_utc 近似（= 控制端时钟，见模块 docstring）；
         # netdump 时间戳是本地时间（GetLocalTime）⇒ 换算成 UTC 再算偏移（不许贴 UTC 标签）。
@@ -135,11 +138,11 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 t0 = t0.astimezone(timezone.utc)  # naive 本地时间 → UTC（astimezone 从本机时区换算）
             offsets[a.name] = clock_offset(server_t0, t0)
         record_offsets(rp, offsets)
-        if args.server_log:
-            server_log = Path(args.server_log)
-            if server_log.exists():
+        if server_log is not None:
+            dest = rp.server_dir / server_log.name
+            if server_log.resolve() != dest.resolve():
                 rp.server_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(server_log, rp.server_dir / server_log.name)  # 显式单文件复制
+                shutil.copy2(server_log, dest)  # 显式单文件复制
         dirs = {a.name: rp.actor_dir(a.name) for a in sc.actors}
         v = judge(sc, dirs, rp.server_dir)
         write_verdict(rp, v)
