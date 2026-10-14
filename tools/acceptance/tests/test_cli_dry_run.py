@@ -1,0 +1,128 @@
+"""CLI 干跑：不启动任何游戏进程，验证 run→collect→judge→promote 链路。"""
+import json
+from pathlib import Path
+
+import pytest
+
+from acceptance.cli import dry_run, main, promote_digest
+from acceptance.model import load_scenario
+
+SCEN = Path(__file__).resolve().parents[1] / "scenarios" / "town-two-clients.yaml"
+
+
+def test_all_four_scenarios_parse_and_have_falsifiable_expects():
+    base = Path(__file__).resolve().parents[1] / "scenarios"
+    ids = sorted(p.stem for p in base.glob("*.yaml"))
+    assert ids == ["party-invite", "town-position-sync", "town-two-clients", "trade-open"]
+    for p in sorted(base.glob("*.yaml")):
+        sc = load_scenario(p)
+        assert sc.has_falsifiable_expect(), f"{sc.id} 没有任何能失败的期望 ⇒ 判定会无效"
+
+
+def test_dry_run_produces_missing_evidence_not_a_fake_pass(tmp_path):
+    sc = load_scenario(SCEN)
+    rp, v = dry_run(SCEN, tmp_path / "runs", git_sha="abc1234")
+    assert rp.run_dir.exists() and rp.manifest.exists()
+    c = v.counts()
+    # 干跑没有任何产物 ⇒ 只能出 missing-evidence / needs-human，**不许**出现 pass
+    assert c["pass"] == 0
+    assert c["missing-evidence"] > 0
+    assert v.status() in ("green-with-human",)
+
+
+def test_run_twice_yields_identical_digest(tmp_path):
+    _, v1 = dry_run(SCEN, tmp_path / "runs", git_sha="abc1234")
+    _, v2 = dry_run(SCEN, tmp_path / "runs", git_sha="abc1234")
+    from acceptance.verdict import digest
+    assert digest(v1) == digest(v2), "同一场景两次干跑的归一化判定必须一致"
+
+
+def test_main_replay_is_read_only_and_returns_zero(tmp_path, capsys):
+    rp, _ = dry_run(SCEN, tmp_path / "runs", git_sha="abc1234")
+    rc = main(["replay", "--run-dir", str(rp.run_dir)])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "status" in out
+
+
+def test_promote_digest_copies_only_the_normalized_judgement(tmp_path):
+    rp, _ = dry_run(SCEN, tmp_path / "runs", git_sha="abc1234")
+    acc = tmp_path / "acc"
+    dest = promote_digest(rp, acc)
+    assert dest == acc / "verdicts" / "town-two-clients.json"
+    payload = json.loads(dest.read_text(encoding="utf-8"))
+    assert set(payload) == {"scenario_id", "status", "invalid_reason", "counts", "entries"}
+    assert all("detail" not in e for e in payload["entries"])
+
+
+def test_main_run_dry_run_does_not_start_any_process(tmp_path):
+    rc = main(["run", "--scenario", str(SCEN), "--actors", "2",
+               "--dry-run", "--runs-dir", str(tmp_path / "runs")])
+    assert rc == 0
+
+
+# ===== 授权新增（controller ruling）：--collect 归集链路端到端（超出简报的 6 个测试） =====
+
+def _prepare_run(tmp_path):
+    """建一个带 manifest 的 run，返回 (rp, runs_dir, client_dir)。"""
+    from acceptance.runner import Runner
+    sc = load_scenario(SCEN)
+    runs = tmp_path / "runs"
+    r = Runner(workspace=runs.parent, acceptance_dir=tmp_path / "acc", runs_dir=runs)
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    client = tmp_path / "client"
+    client.mkdir(parents=True, exist_ok=True)
+    return rp, runs, client
+
+
+def test_run_collect_wires_netdumps_offsets_and_verdict(tmp_path, monkeypatch):
+    """--collect 必须真归集：netdump 进 actor 目录、offsets.json、判定产物齐（授权新增）。"""
+    from acceptance import cli
+    monkeypatch.setattr(cli, "HERE", tmp_path / "acc")  # 判定提升写进 tmp，不污染仓库
+    rp, runs, client = _prepare_run(tmp_path)
+    (client / "netdump-111.log").write_text(
+        "[2026-10-07 06:00:00.000] c2s:login-ok\n[2026-10-07 06:00:01.000] s2c:noti1\n",
+        encoding="utf-8")
+    (client / "netdump-222.log").write_text(
+        "[2026-10-07 06:00:02.000] c2s:login-ok\n", encoding="utf-8")
+    rc = main(["run", "--scenario", str(SCEN), "--collect",
+               "--run-id", rp.run_dir.name,
+               "--client-dir", str(client),
+               "--actor-pid", "A=111,B=222",
+               "--runs-dir", str(runs)])
+    assert rc == 0
+    assert (rp.actor_dir("A") / "netdump-111.log").exists()
+    assert (rp.actor_dir("B") / "netdump-222.log").exists()
+    offsets = json.loads((rp.run_dir / "offsets.json").read_text(encoding="utf-8"))
+    assert set(offsets) == {"A", "B"}
+    assert offsets["A"] is not None and offsets["B"] is not None
+    assert rp.verdict.exists() and rp.verdict_digest.exists()
+    v = json.loads(rp.verdict.read_text(encoding="utf-8"))
+    # 收进去的日志必须能被判定搜到 ⇒ 3 个 [存在] 期望 pass（否则归集环节没接上）
+    assert v["counts"]["pass"] == 3
+    assert v["counts"]["missing-evidence"] == 0
+
+
+def test_run_collect_missing_netdump_is_missing_evidence_not_crash(tmp_path, monkeypatch):
+    """授权新增：某 actor 的 netdump 缺失 ⇒ 不崩、该 actor 判 missing-evidence、偏移 None（不许默认 0）。"""
+    from acceptance import cli
+    monkeypatch.setattr(cli, "HERE", tmp_path / "acc")
+    rp, runs, client = _prepare_run(tmp_path)
+    (client / "netdump-111.log").write_text(
+        "[2026-10-07 06:00:00.000] c2s:login-ok\n[2026-10-07 06:00:01.000] s2c:noti1\n",
+        encoding="utf-8")
+    # B 的 netdump-222.log 故意不存在
+    rc = main(["run", "--scenario", str(SCEN), "--collect",
+               "--run-id", rp.run_dir.name,
+               "--client-dir", str(client),
+               "--actor-pid", "A=111,B=222",
+               "--runs-dir", str(runs)])
+    assert rc == 0
+    v = json.loads(rp.verdict.read_text(encoding="utf-8"))
+    b_results = [e["result"] for e in v["entries"] if e["actor"] == "B"]
+    assert b_results and all(x == "missing-evidence" for x in b_results)
+    assert v["counts"]["fail"] == 0
+    a_results = [e["result"] for e in v["entries"] if e["actor"] == "A"]
+    assert "pass" in a_results
+    offsets = json.loads((rp.run_dir / "offsets.json").read_text(encoding="utf-8"))
+    assert offsets["B"] is None  # 缺 t0 ⇒ None，不是 0

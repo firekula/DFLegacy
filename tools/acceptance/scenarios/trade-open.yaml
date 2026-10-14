@@ -1,0 +1,10 @@
+id: trade-open
+goal: A 发起交易，双方交易窗打开
+expect_t0: server-accept
+actors:
+  - {name: A, driver: real-client}
+  - {name: B, driver: real-client}
+steps:
+  - {actor: A, action: 右键 B 选择交易, expect: [{description: "s2c:noti8", level: "[存在]"}]}
+  - {actor: B, action: 接受交易, expect: [{description: "s2c:noti8", level: "[存在]"}]}
+  - {actor: A, action: 放入一件物品, expect: [{description: "s2c:noti15", level: "[存在]"}]}

@@ -1,0 +1,10 @@
+id: party-invite
+goal: A 邀请 B 组队，双方名册一致
+expect_t0: server-accept
+actors:
+  - {name: A, driver: real-client}
+  - {name: B, driver: real-client}
+steps:
+  - {actor: A, action: 邀请 B 组队, expect: [{description: "s2c:noti7", level: "[存在]"}]}
+  - {actor: B, action: 接受邀请, expect: [{description: "s2c:noti9", level: "[存在]"}]}
+  - {actor: A, action: 查看队伍名册, expect: [{description: "A 的名册含 B", level: "[语义]"}]}

@@ -1,0 +1,9 @@
+id: town-position-sync
+goal: A 移动，B 侧同屏位置随动
+expect_t0: server-accept
+actors:
+  - {name: A, driver: real-client}
+  - {name: B, driver: real-client}
+steps:
+  - {actor: A, action: 在城镇里移动一段距离, expect: [{description: "s2c:position", level: "[存在]"}]}
+  - {actor: B, action: 观察 A 的位置, expect: [{description: "B 屏幕上 A 的位置随之变化", level: "[语义]"}]}
