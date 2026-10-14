@@ -90,10 +90,12 @@ def test_run_collect_wires_netdumps_offsets_and_verdict(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "HERE", tmp_path / "acc")  # 判定提升写进 tmp，不污染仓库
     rp, runs, client = _prepare_run(tmp_path)
     (client / "netdump-111.log").write_text(
-        "[2026-10-07 06:00:00.000] c2s:login-ok\n[2026-10-07 06:00:01.000] s2c:noti1\n",
+        "2026-10-05 00:47:29.392 T=75376 TX TCP-CONNECT - -> 127.0.0.1:2311 len=11 hex=000B2B0000000000000001\n"
+        "2026-10-05 00:47:29.392 T=75376 RX TCP-CONNECT - -> 127.0.0.1:2311 len=11 hex=000C2F0000000000000001\n",
         encoding="utf-8")
     (client / "netdump-222.log").write_text(
-        "[2026-10-07 06:00:02.000] c2s:login-ok\n", encoding="utf-8")
+        "2026-10-05 00:47:30.392 T=75377 TX TCP-CONNECT - -> 127.0.0.1:2311 len=11 hex=000B2B0000000000000001\n",
+        encoding="utf-8")
     rc = main(["run", "--scenario", str(SCEN), "--collect",
                "--run-id", rp.run_dir.name,
                "--client-dir", str(client),
@@ -118,7 +120,8 @@ def test_run_collect_missing_netdump_is_missing_evidence_not_crash(tmp_path, mon
     monkeypatch.setattr(cli, "HERE", tmp_path / "acc")
     rp, runs, client = _prepare_run(tmp_path)
     (client / "netdump-111.log").write_text(
-        "[2026-10-07 06:00:00.000] c2s:login-ok\n[2026-10-07 06:00:01.000] s2c:noti1\n",
+        "2026-10-05 00:47:29.392 T=75376 TX TCP-CONNECT - -> 127.0.0.1:2311 len=11 hex=000B2B0000000000000001\n"
+        "2026-10-05 00:47:29.392 T=75376 RX TCP-CONNECT - -> 127.0.0.1:2311 len=11 hex=000C2F0000000000000001\n",
         encoding="utf-8")
     # B 的 netdump-222.log 故意不存在
     rc = main(["run", "--scenario", str(SCEN), "--collect",
