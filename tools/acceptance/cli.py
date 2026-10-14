@@ -23,14 +23,22 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .actor_pid import LauncherFailedError, PIDTimeoutError
 from .collector import (clock_offset, collect_actor, collect_server, find_netdumps,
                         parse_netdump_t0, record_offsets)
 from .model import RunPaths, load_scenario
-from .runner import Runner
+from .orchestrate import (capture_client_pid, launcher_command,
+                          parse_actor_accounts, write_steps)
+from .runner import Runner, isolate_state
 from .verdict import Verdict, digest, judge, write_verdict
 
 HERE = Path(__file__).resolve().parent
 SCENARIOS = HERE / "scenarios"
+
+
+def _confirm(message: str) -> None:
+    """等真人完成一步 UI 动作。测试可 monkeypatch。"""
+    input(message + "（完成后按回车）")
 
 
 def _git_sha(workspace: Path) -> str:
@@ -81,6 +89,142 @@ def promote_digest(rp: RunPaths, acceptance_dir: Path) -> Path:
     dest = dest_dir / f"{sc_id}.json"
     shutil.copy2(rp.verdict_digest, dest)
     return dest
+
+
+def _client_prereqs(client_dir: Path) -> list[str]:
+    """返回前置问题清单（空列表=通过）。不启动任何进程。"""
+    problems: list[str] = []
+    dnf = client_dir / "DNF.exe"
+    ijl = client_dir / "ijl15.dll"
+    cfg = client_dir / "Config.ini"
+    if not dnf.is_file():
+        problems.append(f"缺少客户端可执行：{dnf}")
+    if not ijl.is_file():
+        problems.append(f"缺少 ijl15.dll：{ijl}")
+    if not cfg.is_file():
+        problems.append(f"缺少 Config.ini：{cfg}")
+    else:
+        text = cfg.read_text(encoding="utf-8", errors="replace").replace(" ", "")
+        if "DumpNetwork=1" not in text:
+            problems.append(f"{cfg} 未设置 DumpNetwork=1（netdump 不会产生）")
+    return problems
+
+
+def _orchestration_paths(args: argparse.Namespace) -> dict:
+    client_dir = Path(args.client_dir)
+    launcher_exe = (Path(args.launcher_exe) if args.launcher_exe
+                    else client_dir / "town-test" / "DFLegacy.Launcher.exe")
+    server_exe = (Path(args.server_exe) if args.server_exe
+                  else client_dir / "town-test" / "DFLegacy.Server.exe")
+    launcher_log = (Path(args.launcher_log) if args.launcher_log
+                    else launcher_exe.parent / "launcher.log")
+    return {"client_dir": client_dir, "launcher_exe": launcher_exe,
+            "server_exe": server_exe, "launcher_log": launcher_log}
+
+
+def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
+                actor_accounts: str, paths: dict) -> int:
+    """一条命令：建 run + 隔离存档 + 起服务端与 N 个 actor + 真人 UI + 归集判定。
+
+    存档隔离靠 `DFLegacy__DataPath` 指向 run 私有副本（绝不写活存档）；
+    真实客户端 PID 从 launcher.log **本次新增**行归因，不允许人工抄或猜。
+    """
+    sc = load_scenario(scenario_path)
+    names = {a.name for a in sc.actors}
+    try:
+        accounts = parse_actor_accounts(actor_accounts, names)
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    if set(accounts) != names:
+        print(f"--actor-account 必须覆盖全部 actor：需要 {sorted(names)}，"
+              f"得到 {sorted(accounts)}", file=sys.stderr)
+        return 2
+    client_dir = paths["client_dir"]
+    launcher_exe, server_exe = paths["launcher_exe"], paths["server_exe"]
+    launcher_log = paths["launcher_log"]
+    problems = _client_prereqs(client_dir)
+    for p in (launcher_exe, server_exe, server_exe.parent / "server.json"):
+        if not p.is_file():
+            problems.append(f"缺少文件：{p}")
+    if problems:
+        for p in problems:
+            print(p, file=sys.stderr)
+        return 2
+
+    r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
+    rp, _ = r.prepare(sc, git_sha=git_sha)
+    live_state = server_exe.parent / "data" / "state.json"
+    if not live_state.is_file():
+        print(f"活存档不存在：{live_state}", file=sys.stderr)
+        return 2
+    isolate_state(live_state, rp.server_dir)  # 复制 → run 私有初始存档
+    shutil.copy2(server_exe.parent / "server.json", rp.server_dir / "server.json")
+    run_state = rp.server_dir / "state.json"
+    client_pids: dict[str, int | None] = {}
+    try:
+        r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
+                       server_json=server_exe.parent / "server.json",
+                       env={"DFLegacy__DataPath": str(run_state)},
+                       log_path=rp.server_dir / "server.log")
+        r.record_run_config(rp, [{"key": "DFLegacy__DataPath",
+                                  "old": "data/state.json", "new": str(run_state)}])
+        seen_offsets: dict[str, int] = {}
+
+        def before_start(actor) -> None:
+            seen_offsets[actor.name] = (launcher_log.stat().st_size
+                                        if launcher_log.exists() else 0)
+
+        def on_started(actor, proc):
+            pid, line, _ = capture_client_pid(launcher_log, seen_offsets[actor.name])
+            (rp.actor_dir(actor.name) / "launcher.log").write_text(line + "\n",
+                                                                  encoding="utf-8")
+            return pid
+
+        cmds = {name: launcher_command(launcher_exe, accounts[name]) for name in names}
+        recs = r.start_actors(rp, sc, actor_commands=cmds,
+                              before_start=before_start, on_started=on_started)
+        client_pids = {rec["name"]: rec.get("client_pid") for rec in recs}
+        print(f"run-dir: {rp.run_dir}")
+        print("两个客户端已由 Launcher 无头启动；请按提示完成 UI 动作（选角/进城/靠近）。")
+        entries: list[dict] = []
+        total = len(sc.steps)
+        for index, step in enumerate(sc.steps, start=1):
+            _confirm(f"[{index}/{total}] 客户端 {step.actor}：{step.action}")
+            entries.append({"actor": step.actor, "index": index, "action": step.action,
+                            "at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+        write_steps(rp, entries)
+        _confirm("采集结束：即将关闭客户端与服务端")
+    except (LauncherFailedError, PIDTimeoutError, OSError, ValueError) as e:
+        print(f"编排失败：{e}", file=sys.stderr)
+        return 1
+    finally:
+        r.stop_all()
+
+    server_t0 = datetime.strptime(
+        json.loads(rp.manifest.read_text(encoding="utf-8"))["created_utc"],
+        "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    offsets: dict[str, float | None] = {}
+    for a in sc.actors:
+        pid = client_pids.get(a.name)
+        source = client_dir / f"netdump-{pid}.log" if pid else None
+        if source is not None and not source.exists():
+            print(f"警告：未找到 actor {a.name} 的 netdump：{source}", file=sys.stderr)
+            source = None
+        collect_actor(rp, a.name, source)
+        t0 = parse_netdump_t0(source) if source is not None else None
+        if t0 is not None:
+            t0 = t0.astimezone(timezone.utc)
+        offsets[a.name] = clock_offset(server_t0, t0)
+    record_offsets(rp, offsets)
+    dirs = {a.name: rp.actor_dir(a.name) for a in sc.actors}
+    v = judge(sc, dirs, rp.server_dir)
+    write_verdict(rp, v)
+    promote_digest(rp, HERE)
+    print(f"run-dir: {rp.run_dir}")
+    print(f"status : {v.status()}")
+    print(f"counts : {json.dumps(v.counts(), ensure_ascii=False)}")
+    return 0
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
@@ -151,6 +295,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print(f"status : {v.status()}")
         print(f"counts : {json.dumps(v.counts(), ensure_ascii=False)}")
         return 0
+    if args.actor_account:
+        if not args.client_dir:
+            print("一条命令需要 --client-dir（客户端目录，含 DNF.exe/Config.ini/netdump）",
+                  file=sys.stderr)
+            return 2
+        return orchestrate(scen, runs_dir, sha, actor_accounts=args.actor_account,
+                           paths=_orchestration_paths(args))
     # 只建 run 目录并打印 runId，供人工 run 使用
     sc = load_scenario(scen)
     r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
@@ -203,7 +354,15 @@ def main(argv: list[str] | None = None) -> int:
                        help="归集人工 run 的产物并判定（需配 --run-id）")
     p_run.add_argument("--run-id", default=None)
     p_run.add_argument("--client-dir", default=None,
-                       help="客户端目录（netdump-<pid>.log 所在；--collect 用）")
+                       help="客户端目录（netdump-<pid>.log 所在；--collect 与一条命令共用）")
+    p_run.add_argument("--actor-account", default=None,
+                       help="一条命令用：A=alias1,B=alias2（账号别名；密码只留在 launcher.json）")
+    p_run.add_argument("--launcher-exe", default=None,
+                       help="默认 <client-dir>/town-test/DFLegacy.Launcher.exe")
+    p_run.add_argument("--server-exe", default=None,
+                       help="默认 <client-dir>/town-test/DFLegacy.Server.exe")
+    p_run.add_argument("--launcher-log", default=None,
+                       help="默认 <launcher-exe 同目录>/launcher.log")
     p_run.add_argument("--actor-pid", default=None,
                        help="归集映射 A=1234,B=5678，名字须匹配场景 actor（--collect 用）")
     p_run.add_argument("--server-log", default=None,
