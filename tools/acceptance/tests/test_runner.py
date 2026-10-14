@@ -257,7 +257,18 @@ def test_stop_all_reverse_order_and_log_cleanup(tmp_path):
     r.start_actors(rp, sc)
     assert len(r._procs) == 2
     server_proc, actor_proc = r._procs[0], r._procs[1]
+    # 钉住"先 actor 后 server"的顺序：记录 terminate 调用次序（实现若正序就会失败）
+    order: list[str] = []
+    for label, proc in (("server", server_proc), ("actor", actor_proc)):
+        original_terminate = proc.terminate
+
+        def recording_terminate(label=label, original_terminate=original_terminate):
+            order.append(label)
+            return original_terminate()
+
+        proc.terminate = recording_terminate
     r.stop_all()
+    assert order == ["actor", "server"], f"必须先关 actor 再关 server，实际 {order}"
     assert server_proc.poll() is not None and actor_proc.poll() is not None
     assert len(r._procs) == 0
     # log 句柄已关闭（文件可再次正常打开）

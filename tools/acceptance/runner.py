@@ -260,9 +260,13 @@ class Runner:
             log_path = Path(log_path)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             handle = log_path.open("wb")
+            try:
+                p = subprocess.Popen(cmd, cwd=str(workdir), env=popen_env,
+                                     stdout=handle, stderr=subprocess.STDOUT)
+            except BaseException:
+                handle.close()  # Popen 失败不得泄漏句柄（不登记进 _log_handles）
+                raise
             self._log_handles.append(handle)
-            p = subprocess.Popen(cmd, cwd=str(workdir), env=popen_env,
-                                 stdout=handle, stderr=subprocess.STDOUT)
         else:
             p = subprocess.Popen(cmd, cwd=str(workdir), env=popen_env,
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
