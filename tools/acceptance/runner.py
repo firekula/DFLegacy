@@ -4,7 +4,8 @@
   * run 目录可寻址、runId 全自动；
   * 活存档**每 run 复制**，绝不共用 `DF/town-test/data/state.json`；
   * `server.json` **只做文件复制 + 定向修改**（含 "//" 注释键，不能序列化重写）；
-  * 起进程前**端口预检**，冲突就明确报错（`open-questions.md` 坑 14：静默失败最坑）。
+  * 起进程前**端口预检**，按端点各自声明的协议（TCP / UDP）分别探测，冲突就明确报错
+    （`open-questions.md` 坑 14：静默失败最坑；补缺裁决要求 UDP 2311 必须用 SOCK_DGRAM 检查）。
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ import shutil
 import socket
 import subprocess
 import sys
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -23,32 +24,61 @@ from .model import ActorSpec, Manifest, RunPaths, Scenario, deterministic_view, 
 
 COMMENT_PREFIX = "//"
 
+# server.json 里**以 `Port` 键声明且是 UDP** 的服务。证据：src/DFLegacy.Server/Program.cs:339-340
+# 的启动横幅把 CharacterDatagram 标成 `{Host}:{Port}/udp`（Entrance/GameProbe 没有 `/udp` 后缀），
+# 且 CharacterDatagramService.cs:20 用 UdpClient，EntranceService.cs:171 / ProbeService.cs:23 用
+# TcpListener ⇒ 默认 TCP，只有它是 UDP。
+# 注：GameplayDatagramService.cs:37-38 也是 UDP（Program.cs:345-346 各自带 `/udp`），但它的端口键是
+# `PrimaryPort`/`SecondaryPort`（不是 `Port`）⇒ 本文件的端点解析不会把它当端点，故不在此登记。
+UDP_PORT_SERVICES: frozenset[str] = frozenset({"CharacterDatagram"})
+
 
 class PortBusy(RuntimeError):
     """端口预检失败。消息里必须能看出**哪个条目、哪个端口**。"""
 
 
-def parse_server_endpoints(server_json: Path) -> dict[str, tuple[str, int]]:
-    """抽出"服务名 -> (host, port)"。跳过 `//` 注释键；缺 host 的条目默认 0.0.0.0。"""
+@dataclass(frozen=True)
+class Endpoint:
+    """server.json 里的一个监听端点。
+
+    协议必须随端点声明、并参与预检判断：本机 `DF/town-test/server.json` 里
+    `Entrance{0.0.0.0, 2311}`（TCP）与 `CharacterDatagram{0.0.0.0, 2311}`（UDP）
+    **同为 2311 但协议不同**，只看端口号会互相误报。
+    """
+    host: str
+    port: int
+    protocol: str = "tcp"
+
+
+def parse_server_endpoints(server_json: Path) -> dict[str, Endpoint]:
+    """抽出"服务名 -> Endpoint(host, port, protocol)"。跳过 `//` 注释键；缺 host 的条目默认 0.0.0.0。"""
     raw = json.loads(Path(server_json).read_text(encoding="utf-8"))["DFLegacy"]
-    out: dict[str, tuple[str, int]] = {}
+    out: dict[str, Endpoint] = {}
     for svc, cfg in raw.items():
         if not isinstance(cfg, dict):
             continue
         if "Port" not in cfg:
             continue
         host = cfg.get("Host") or cfg.get("AdvertisedHost") or "0.0.0.0"
-        out[svc] = (str(host), int(cfg["Port"]))
+        protocol = "udp" if svc in UDP_PORT_SERVICES else "tcp"
+        out[svc] = Endpoint(str(host), int(cfg["Port"]), protocol)
     return out
 
 
-def _probe(host: str, port: int) -> bool:
-    """True = 该端口已被占用。`::` 与 `0.0.0.0` 都按 IPv4 通配探测。"""
+def _probe(host: str, port: int, protocol: str = "tcp") -> bool:
+    """True = 该端口已被占用。`::` 与 `0.0.0.0` 都按 IPv4 通配探测。
+
+    UDP 必须用 `SOCK_DGRAM`（TCP 与 UDP 是两个协议名字空间，用 TCP 探 UDP 会把"已占用"
+    误报成空闲 ⇒ 服务端起得来但玩不通，终审 R-3/I-1）。UDP 分支**不开 SO_REUSEADDR**：
+    Windows 上它等价于允许重复绑定（UDP 没有 TIME_WAIT，也不需要它），开了就再也探不出占用。
+    """
     fam = socket.AF_INET6 if host == "::" else socket.AF_INET
     bind_host = "" if host in ("0.0.0.0", "::") else host
-    s = socket.socket(fam, socket.SOCK_STREAM)
+    is_udp = protocol == "udp"
+    s = socket.socket(fam, socket.SOCK_DGRAM if is_udp else socket.SOCK_STREAM)
     try:
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if not is_udp:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((bind_host, port))
         return False
     except OSError:
@@ -57,10 +87,12 @@ def _probe(host: str, port: int) -> bool:
         s.close()
 
 
-def preflight_ports(endpoints: dict[str, tuple[str, int]],
-                    probe: Callable[[str, int], bool] = _probe) -> None:
-    busy = [f"{svc}={host}:{port}" for svc, (host, port) in sorted(endpoints.items())
-            if probe(host, port)]
+def preflight_ports(endpoints: dict[str, Endpoint],
+                    probe: Callable[[str, int, str], bool] = _probe) -> None:
+    """对每个声明端点按其**自己的协议**探测；占用就报 PortBusy（消息含服务名/端口/协议）。"""
+    busy = [f"{svc}={ep.host}:{ep.port}/{ep.protocol}"
+            for svc, ep in sorted(endpoints.items())
+            if probe(ep.host, ep.port, ep.protocol)]
     if busy:
         raise PortBusy("以下端口已被占用，拒绝启动（避免静默失败）：" + "; ".join(busy))
 

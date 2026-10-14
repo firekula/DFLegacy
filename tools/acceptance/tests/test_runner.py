@@ -24,39 +24,105 @@ SERVER_JSON = {
     }
 }
 
+# 真机 `DF/town-test/server.json` 的真实形态：Entrance 与 CharacterDatagram **同为 2311**，
+# 但一个是 TCP 一个是 UDP（Program.cs:335-340 的启动横幅：CharacterDatagram 带 `/udp` 后缀；
+# CharacterDatagramService.cs:20 用 UdpClient，EntranceService.cs:171 用 TcpListener）。
+SERVER_JSON_WITH_UDP = {
+    "DFLegacy": {
+        **SERVER_JSON["DFLegacy"],
+        "CharacterDatagram": {"Enabled": True, "Host": "0.0.0.0", "Port": 2311},
+    }
+}
 
-def _write_server_json(p):
-    p.write_text(json.dumps(SERVER_JSON, ensure_ascii=False), encoding="utf-8")
+
+def _write_server_json(p, payload=None):
+    p.write_text(json.dumps(payload if payload is not None else SERVER_JSON,
+                            ensure_ascii=False), encoding="utf-8")
     return p
+
+
+def _endpoints_for(tmp_path, services):
+    """把一份最小 server.json（服务名 → 配置）落盘再解析成端点：
+    被测的是真实的 parse → preflight 链路，而不是手工拼出来的端点字典。"""
+    return parse_server_endpoints(
+        _write_server_json(tmp_path / "server.json", {"DFLegacy": services}))
 
 
 def test_parse_server_endpoints_skips_comment_keys(tmp_path):
     sj = _write_server_json(tmp_path / "server.json")
     eps = parse_server_endpoints(sj)
-    assert eps["Admin"] == ("::", 8081)
-    assert eps["Entrance"] == ("127.0.0.1", 2311)
+    assert (eps["Admin"].host, eps["Admin"].port) == ("::", 8081)
+    assert (eps["Entrance"].host, eps["Entrance"].port) == ("127.0.0.1", 2311)
     assert not any("//" in k for k in eps)
 
 
-def test_preflight_ports_raises_with_offender_named():
+def test_parse_server_endpoints_carries_protocol_alongside_host_and_port(tmp_path):
+    """端点声明必须带协议：同端口不同协议（Entrance 2311/TCP vs CharacterDatagram 2311/UDP）
+    只按端口号判断就会互相误报，所以协议必须参与预检。"""
+    eps = parse_server_endpoints(_write_server_json(tmp_path / "server.json", SERVER_JSON_WITH_UDP))
+    assert (eps["Entrance"].host, eps["Entrance"].port,
+            eps["Entrance"].protocol) == ("127.0.0.1", 2311, "tcp")
+    assert (eps["CharacterDatagram"].host, eps["CharacterDatagram"].port,
+            eps["CharacterDatagram"].protocol) == ("0.0.0.0", 2311, "udp")
+    assert eps["Admin"].protocol == "tcp" and eps["Channel"].protocol == "tcp"
+
+
+def test_preflight_probes_each_endpoint_with_its_own_protocol(tmp_path):
+    """注入假 probe：声明为 UDP 的端点必须按 udp 探测；占用时 PortBusy 消息要能看出
+    **服务名 + 端口 + 协议**，且同端口的 TCP 条目不跟着误报。"""
+    eps = _endpoints_for(tmp_path, {
+        "Entrance": {"Host": "0.0.0.0", "Port": 2311},
+        "CharacterDatagram": {"Enabled": True, "Host": "0.0.0.0", "Port": 2311},
+    })
+    seen: list[tuple[str, int, str]] = []
+
+    def fake_probe(host: str, port: int, protocol: str) -> bool:
+        seen.append((host, port, protocol))
+        return protocol == "udp"  # 只有 UDP 那条被占
+
+    with pytest.raises(PortBusy) as ei:
+        preflight_ports(eps, probe=fake_probe)
+    message = str(ei.value)
+    assert "CharacterDatagram" in message and "2311" in message and "udp" in message
+    assert "Entrance" not in message, "TCP 2311 空闲就不该被报成占用"
+    assert ("0.0.0.0", 2311, "udp") in seen and ("0.0.0.0", 2311, "tcp") in seen
+
+
+def test_preflight_detects_busy_udp_with_a_real_dgram_socket(tmp_path):
+    """真 socket（不注入 probe）：UDP 端口被占必须报 PortBusy，释放后必须通过。
+    用 SOCK_STREAM 探测查的是另一个协议名字空间 ⇒ 会把"已占用"误报成空闲，故本测试非恒真。"""
+    holder = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    holder.bind(("127.0.0.1", 0))
+    port = holder.getsockname()[1]
+    eps = _endpoints_for(tmp_path, {"CharacterDatagram": {"Host": "127.0.0.1", "Port": port}})
+    try:
+        with pytest.raises(PortBusy) as ei:
+            preflight_ports(eps)
+        assert "CharacterDatagram" in str(ei.value) and str(port) in str(ei.value)
+    finally:
+        holder.close()
+    preflight_ports(eps)  # 释放后空闲 ⇒ 不抛
+
+
+def test_preflight_ports_raises_with_offender_named(tmp_path):
     s = socket.socket()
     s.bind(("127.0.0.1", 0))
     port = s.getsockname()[1]
     s.listen(1)
     try:
         with pytest.raises(PortBusy) as ei:
-            preflight_ports({"Entrance": ("127.0.0.1", port)})
+            preflight_ports(_endpoints_for(tmp_path, {"Entrance": {"Host": "127.0.0.1", "Port": port}}))
         assert "Entrance" in str(ei.value) and str(port) in str(ei.value)
     finally:
         s.close()
 
 
-def test_preflight_ports_passes_when_free():
+def test_preflight_ports_passes_when_free(tmp_path):
     s = socket.socket()
     s.bind(("127.0.0.1", 0))
     port = s.getsockname()[1]
     s.close()
-    preflight_ports({"Entrance": ("127.0.0.1", port)})  # 不抛
+    preflight_ports(_endpoints_for(tmp_path, {"Entrance": {"Host": "127.0.0.1", "Port": port}}))  # 不抛
 
 
 def test_isolate_state_copies_and_never_points_at_the_live_save(tmp_path):

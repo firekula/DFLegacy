@@ -23,7 +23,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .actor_pid import LauncherFailedError, PIDTimeoutError
+from .actor_pid import AmbiguousPIDError, LauncherFailedError, PIDTimeoutError
 from .collector import (clock_offset, collect_actor, collect_server, find_netdumps,
                         parse_netdump_t0, record_offsets)
 from .model import RunPaths, load_scenario
@@ -200,7 +200,8 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
                             "at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
         write_steps(rp, entries)
         _confirm("采集结束：即将关闭客户端与服务端")
-    except (LauncherFailedError, PIDTimeoutError, OSError, ValueError) as e:
+    except (AmbiguousPIDError, LauncherFailedError, PIDTimeoutError, OSError, ValueError) as e:
+        # 多条启动行（AmbiguousPIDError）也走这条路：明确失败 + rc=1，绝不猜 PID（账本 L290）。
         print(f"编排失败：{e}", file=sys.stderr)
         return 1
     finally:

@@ -18,3 +18,5 @@ AGENTS.md
 DNF2008/
 
 .worktrees/
+/runs/
+tools/acceptance/**/__pycache__/

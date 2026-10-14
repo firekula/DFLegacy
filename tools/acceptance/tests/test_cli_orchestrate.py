@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from acceptance import cli
-from acceptance.actor_pid import PIDTimeoutError
+from acceptance.actor_pid import AmbiguousPIDError, PIDTimeoutError
 from acceptance.cli import orchestrate
 from acceptance.model import RunPaths
 from acceptance.verdict import Verdict
@@ -133,6 +133,22 @@ def test_orchestrate_rejects_client_dir_without_dumpnetwork(tmp_path, capsys, mo
     assert "DumpNetwork=1" in capsys.readouterr().err
 
 
+def test_orchestrate_rejects_duplicate_account_aliases_before_starting_anything(tmp_path, capsys,
+                                                                                monkeypatch):
+    """`A=shizuku,B=shizuku` ⇒ 启动任何进程（也不建 run 目录）之前就报错 rc=2：
+    账号名与 actor 必须一一对应且不同（one-command-amendment.md:22）。"""
+    def boom(*args, **kwargs):
+        raise AssertionError("账号重复时不应构造 Runner，更不应启动进程")
+
+    monkeypatch.setattr(cli, "Runner", boom)
+    client = _make_client_dir(tmp_path)
+    rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                     actor_accounts="A=shizuku,B=shizuku", paths=_paths(client))
+    assert rc == 2
+    assert "账号" in capsys.readouterr().err
+    assert not (tmp_path / "runs").exists(), "参数校验失败不应建 run 目录"
+
+
 def test_orchestrate_wires_server_actors_steps_and_collect(tmp_path, monkeypatch, capsys):
     FakeRunner.instances.clear()
     client = _make_client_dir(tmp_path)
@@ -207,3 +223,22 @@ def test_orchestrate_stops_processes_when_pid_capture_fails(tmp_path, monkeypatc
     assert rc == 1
     assert FakeRunner.instances[-1].stopped == 1, "PID 归因失败也要回收进程"
     assert "编排失败" in capsys.readouterr().err
+
+
+def test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback(tmp_path, monkeypatch, capsys):
+    """launcher.log 本次新增**多条**启动行 ⇒ 必须走既有友好失败路径（"编排失败：…" + rc=1），
+    不得让 AmbiguousPIDError 逃逸成 traceback（终审 I-3；账本 L290：拿不到唯一 PID 就明确失败、绝不猜）。"""
+    FakeRunner.instances.clear()
+    client = _make_client_dir(tmp_path)
+    monkeypatch.setattr(cli, "Runner", FakeRunner)
+    monkeypatch.setattr(cli, "_confirm", lambda message: None)
+    monkeypatch.setattr(cli, "capture_client_pid",
+                        lambda log, offset, timeout_s=60.0: (_ for _ in ()).throw(
+                            AmbiguousPIDError("Found 2 start events in launcher.log")))
+    rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                     actor_accounts="A=x,B=y", paths=_paths(client))
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "编排失败" in err, err
+    assert "Found 2 start events" in err, err
+    assert FakeRunner.instances[-1].stopped == 1, "PID 归因失败也要回收进程（finally: stop_all）"

@@ -15,10 +15,13 @@ from .model import RunPaths
 def parse_actor_accounts(spec: str, known: set[str]) -> dict[str, str]:
     """解析 `A=alice,B=bob` 为 {actor_name: account_alias}。
 
-    空段跳过；无 `=`、名字不在场景、同名字重复出现都 ValueError。
+    空段跳过；无 `=`、名字不在场景、同名字重复出现、**同一别名被两个 actor 共用**都 ValueError。
+    账号名与 actor 必须一一对应**且不同**（one-command-amendment.md:22）—— 两个客户端同账号会让
+    "两个客户端"这个验收本体失去意义（判定却是绿的 ⇒ 假绿），所以启动任何进程之前就拒绝。
     返回账号别名（不含密码）。
     """
     result: dict[str, str] = {}
+    by_account: dict[str, str] = {}
     for segment in spec.split(","):
         segment = segment.strip()
         if not segment:
@@ -32,6 +35,11 @@ def parse_actor_accounts(spec: str, known: set[str]) -> dict[str, str]:
             raise ValueError(f"actor {name!r} 不在场景中；已声明 {sorted(known)}")
         if name in result:
             raise ValueError(f"actor {name!r} 重复出现")
+        if account in by_account:
+            raise ValueError(
+                f"账号别名 {account!r} 被两个 actor 共用（{by_account[account]!r} 与 {name!r}）；"
+                f"账号名与 actor 必须一一对应且不同")
+        by_account[account] = name
         result[name] = account
     return result
 

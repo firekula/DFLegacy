@@ -51,8 +51,12 @@ class Scenario:
     expect_t0: str
 
     def has_falsifiable_expect(self) -> bool:
-        """至少一条期望能失败，否则该场景判定无效（防恒真判定）。"""
-        return any(s.expects for s in self.steps)
+        """至少一条期望**能失败**，否则该场景判定无效（防恒真判定，spec §5.4 / 硬约束 7）。
+
+        判据按 `verdict.judge` 的实际语义：`[语义]` 档只出 needs-human、**永远不 fail**
+        （spec §3.2）⇒ 它不算"能失败"的期望；只有 `[语义]` 期望的场景必须判无效。
+        """
+        return any(ex.level != "[语义]" for s in self.steps for ex in s.expects)
 
 
 @dataclass(frozen=True)

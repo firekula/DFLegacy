@@ -72,6 +72,32 @@ def test_run_paths_are_addressed_by_actor_name(tmp_path):
     assert rp.verdict_digest.name == "verdict.digest.json"
 
 
+def test_semantic_only_scenario_has_no_falsifiable_expect():
+    """`[语义]` 档在 verdict.judge 里只出 needs-human、**永远不 fail**（spec §3.2）
+    ⇒ 它不算"能失败的期望"：只有 `[语义]` 期望的场景判定必须无效（spec §5.4 / 硬约束 7 / I-4）。"""
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "real-client"),),
+                  steps=(Step("A", "走到 B 附近", (Expect("A 能看到 B", level="[语义]"),)),))
+    assert sc.has_falsifiable_expect() is False
+
+
+def test_scenario_without_expects_has_no_falsifiable_expect():
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "real-client"),),
+                  steps=(Step("A", "do", ()),))
+    assert sc.has_falsifiable_expect() is False
+
+
+def test_any_non_semantic_expect_makes_the_scenario_falsifiable():
+    """`[存在]`/`[字节]` 都可能 fail ⇒ 有一条就算有效（哪怕同场景还有 `[语义]` 项）。"""
+    for level in ("[存在]", "[字节]"):
+        sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                      actors=(ActorSpec("A", "real-client"),),
+                      steps=(Step("A", "do", (Expect("x", level=level),)),
+                             Step("A", "do2", (Expect("A 能看到 B", level="[语义]"),))))
+        assert sc.has_falsifiable_expect() is True, level
+
+
 def test_deterministic_view_drops_time_and_id_but_keeps_roster():
     m = Manifest(run_id="20261007T060000Z-abc1234-s", git_sha="abc1234",
                  created_utc="2026-10-07T06:00:00Z", scenario_id="s",

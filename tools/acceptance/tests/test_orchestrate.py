@@ -44,6 +44,19 @@ def test_parse_actor_accounts_rejects_duplicate_name():
         parse_actor_accounts("A=alice,A=charlie", {"A"})
 
 
+def test_parse_actor_accounts_rejects_the_same_alias_for_two_actors():
+    """账号名与 actor 必须一一对应**且不同**（one-command-amendment.md:22）：
+    同一别名给两个 actor ⇒ 双客户端同账号，"两个客户端"这个验收本体就失去意义（假绿）。"""
+    with pytest.raises(ValueError) as ei:
+        parse_actor_accounts("A=shizuku,B=shizuku", {"A", "B"})
+    message = str(ei.value)
+    assert "shizuku" in message and "账号" in message, message
+
+
+def test_parse_actor_accounts_accepts_distinct_aliases():
+    assert parse_actor_accounts("A=shizuku,B=test", {"A", "B"}) == {"A": "shizuku", "B": "test"}
+
+
 # ===== launcher_command =====
 
 def test_launcher_command_normal():
