@@ -97,6 +97,19 @@ def _paths(client: Path) -> dict:
             "launcher_log": client / "town-test" / "launcher.log"}
 
 
+def test_orchestrate_rejects_actor_count_mismatch(tmp_path, capsys, monkeypatch):
+    def boom(*args, **kwargs):
+        raise AssertionError("--actors 不符时不应构造 Runner")
+
+    monkeypatch.setattr(cli, "Runner", boom)
+    client = _make_client_dir(tmp_path)
+    rc = orchestrate(SCEN, tmp_path / "runs", "abc1234", actor_accounts="A=x,B=y",
+                     paths=_paths(client), expected_actors=3)
+    assert rc == 2
+    assert "--actors 3" in capsys.readouterr().err
+    assert not (tmp_path / "runs").exists()
+
+
 def test_orchestrate_requires_all_actors(tmp_path, capsys):
     runs = tmp_path / "runs"
     rc = orchestrate(SCEN, runs, "abc1234", actor_accounts="A=only",

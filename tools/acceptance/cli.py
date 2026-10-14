@@ -123,7 +123,7 @@ def _orchestration_paths(args: argparse.Namespace) -> dict:
 
 
 def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
-                actor_accounts: str, paths: dict) -> int:
+                actor_accounts: str, paths: dict, expected_actors: int | None = None) -> int:
     """一条命令：建 run + 隔离存档 + 起服务端与 N 个 actor + 真人 UI + 归集判定。
 
     存档隔离靠 `DFLegacy__DataPath` 指向 run 私有副本（绝不写活存档）；
@@ -131,6 +131,10 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
     """
     sc = load_scenario(scenario_path)
     names = {a.name for a in sc.actors}
+    if expected_actors is not None and expected_actors != len(sc.actors):
+        print(f"--actors {expected_actors} 与场景 {sc.id} 声明的 {len(sc.actors)} 个 actor 不符",
+              file=sys.stderr)
+        return 2
     try:
         accounts = parse_actor_accounts(actor_accounts, names)
     except ValueError as e:
@@ -302,7 +306,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
                   file=sys.stderr)
             return 2
         return orchestrate(scen, runs_dir, sha, actor_accounts=args.actor_account,
-                           paths=_orchestration_paths(args))
+                           paths=_orchestration_paths(args), expected_actors=args.actors)
     # 只建 run 目录并打印 runId，供人工 run 使用
     sc = load_scenario(scen)
     r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
