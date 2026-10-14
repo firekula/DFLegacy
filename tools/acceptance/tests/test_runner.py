@@ -1,7 +1,12 @@
 """runner：建 run / 状态隔离 / 端口预检 / 配置改动计划（全部用假 actor，不启动游戏）。"""
 import json
+import os
 import socket
+import subprocess
+import sys
 import threading
+import time
+from pathlib import Path
 
 import pytest
 
@@ -120,3 +125,170 @@ def test_runner_starts_and_stops_a_fake_actor_and_records_pid(tmp_path):
         procs = list(r._procs)  # 快照：stop_all 会清空 _procs，断言必须对快照做
         r.stop_all()
     assert all(p.poll() is not None for p in procs), "stop_all 必须真的结束子进程"
+
+
+# ===== one-command Runner 接口（controller ruling，供 CLI 后续接线） =====
+
+_FAKE_SLEEP = [sys.executable, "-c", "import time; time.sleep(3600)"]
+_FAKE_SERVER_ARGS = ["-c", "import time; time.sleep(3600)"]
+
+
+def test_start_server_passes_env_and_writes_log(tmp_path):
+    """start_server 的 env 传给子进程环境变量，log_path 接收 stdout/stderr。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"),), steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    sj = _write_server_json(rp.server_dir / "server.json")
+    log_path = rp.server_dir / "server.log"
+    # 假服务端：打印环境变量，然后 sleep
+    script = rp.server_dir / "fake_server.py"
+    script.write_text(
+        'import os, sys, time\n'
+        'print("MY_KEY=" + os.environ.get("MY_KEY", "MISSING"), flush=True)\n'
+        'time.sleep(3600)\n',
+        encoding="utf-8")
+    rec = r.start_server(rp, exe=Path(sys.executable), workdir=rp.server_dir,
+                         server_json=sj, env={"MY_KEY": "hello"}, log_path=log_path,
+                         server_args=[str(script)])
+    try:
+        time.sleep(0.5)
+        assert log_path.exists(), "log_path 文件必须已创建"
+        content = log_path.read_text(encoding="utf-8")
+        assert "MY_KEY=hello" in content, "env 必须传进子进程、写进 log"
+        assert isinstance(rec["pid"], int)
+    finally:
+        r.stop_all()
+
+
+def test_start_server_default_params_keep_existing_behavior(tmp_path):
+    """env=None, log_path=None 时行为与改动前完全一致（stdout=DEVNULL）。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"),), steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    sj = _write_server_json(rp.server_dir / "server.json")
+    rec = r.start_server(rp, exe=Path(sys.executable), workdir=rp.server_dir,
+                         server_json=sj, server_args=_FAKE_SERVER_ARGS)
+    try:
+        assert isinstance(rec["pid"], int)
+    finally:
+        r.stop_all()
+
+
+def test_start_actors_actor_commands_and_on_started_callback(tmp_path):
+    """actor_commands 给每个 actor 独立命令；on_started 返回 client_pid 记入 rec 和 manifest，
+    且按 actor 顺序调用（A 先 B 后）。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"), ActorSpec("B", "synthetic")),
+                  steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    cb_calls: list[str] = []
+    def on_started_cb(actor_spec, proc):
+        cb_calls.append(actor_spec.name)
+        return {"A": 11111, "B": 22222}[actor_spec.name]
+    cmds = {"A": list(_FAKE_SLEEP), "B": list(_FAKE_SLEEP)}
+    recs = r.start_actors(rp, sc, actor_commands=cmds, on_started=on_started_cb)
+    try:
+        assert len(recs) == 2
+        assert recs[0]["name"] == "A" and recs[0]["client_pid"] == 11111
+        assert recs[1]["name"] == "B" and recs[1]["client_pid"] == 22222
+        assert cb_calls == ["A", "B"], "on_started 按 actor 顺序调用"
+        # Manifest 也记了 client_pid
+        mf = json.loads(rp.manifest.read_text(encoding="utf-8"))
+        by_name = {a["name"]: a for a in mf["actors"]}
+        assert by_name["A"]["client_pid"] == 11111
+        assert by_name["B"]["client_pid"] == 22222
+    finally:
+        r.stop_all()
+
+
+def test_start_actors_on_started_returning_none_omits_client_pid(tmp_path):
+    """on_started 返回 None 时 rec 不含 client_pid（仅记录 launcher pid）。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"),), steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    recs = r.start_actors(rp, sc, actor_commands={"A": list(_FAKE_SLEEP)},
+                          on_started=lambda a, p: None)
+    try:
+        assert "client_pid" not in recs[0]
+        assert isinstance(recs[0]["pid"], int)
+    finally:
+        r.stop_all()
+
+
+def test_start_actors_error_on_extra_actor_in_commands(tmp_path):
+    """actor_commands 包含场景里没有的 actor ⇒ ValueError，且不启动任何进程。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"), ActorSpec("B", "synthetic")),
+                  steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    with pytest.raises(ValueError, match="多余|不匹配"):
+        r.start_actors(rp, sc, actor_commands={
+            "A": list(_FAKE_SLEEP), "C": list(_FAKE_SLEEP)})
+    assert len(r._procs) == 0, "校验失败不应启动任何进程"
+
+
+def test_start_actors_error_on_missing_actor_in_commands(tmp_path):
+    """actor_commands 缺少场景里的 actor ⇒ ValueError，不启动进程。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"), ActorSpec("B", "synthetic")),
+                  steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    with pytest.raises(ValueError, match="缺失|不匹配"):
+        r.start_actors(rp, sc, actor_commands={"A": list(_FAKE_SLEEP)})
+    assert len(r._procs) == 0, "校验失败不应启动任何进程"
+
+
+def test_stop_all_reverse_order_and_log_cleanup(tmp_path):
+    """stop_all 逆序终止（先 actor 后 server）并关闭 log 句柄。"""
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"),), steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    sj = _write_server_json(rp.server_dir / "server.json")
+    log_path = rp.server_dir / "server.log"
+    r.start_server(rp, exe=Path(sys.executable), workdir=rp.server_dir,
+                   server_json=sj, log_path=log_path, server_args=_FAKE_SERVER_ARGS)
+    r.start_actors(rp, sc)
+    assert len(r._procs) == 2
+    server_proc, actor_proc = r._procs[0], r._procs[1]
+    r.stop_all()
+    assert server_proc.poll() is not None and actor_proc.poll() is not None
+    assert len(r._procs) == 0
+    # log 句柄已关闭（文件可再次正常打开）
+    with open(log_path, "r", encoding="utf-8") as f:
+        f.read()
+    assert len(r._log_handles) == 0
+
+
+def test_stop_all_cleans_up_even_if_actor_start_fails(tmp_path, monkeypatch):
+    """某个 actor 启动失败后，已启动的进程不得泄漏（必须已退出）。"""
+    import acceptance.runner as runner_mod
+
+    started: list[subprocess.Popen] = []
+    real_popen = runner_mod.subprocess.Popen
+
+    def recording_popen(*args, **kwargs):
+        proc = real_popen(*args, **kwargs)
+        started.append(proc)
+        return proc
+
+    monkeypatch.setattr(runner_mod.subprocess, "Popen", recording_popen)
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
+    sc = Scenario(id="s", goal="g", expect_t0="server-accept",
+                  actors=(ActorSpec("A", "synthetic"), ActorSpec("B", "synthetic")),
+                  steps=())
+    rp, _ = r.prepare(sc, git_sha="abc1234")
+    # A 正常，B 的命令会立即报错（不存在的 exe）。
+    with pytest.raises((FileNotFoundError, OSError)):
+        r.start_actors(rp, sc, actor_commands={
+            "A": list(_FAKE_SLEEP),
+            "B": ["this_exe_does_not_exist_12345"],
+        })
+    assert len(started) == 1, "A 已启动，B 启动失败"
+    assert all(p.poll() is not None for p in started), "已启动的进程必须被回收，不得泄漏"

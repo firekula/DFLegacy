@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -18,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from .model import Manifest, RunPaths, Scenario, deterministic_view, new_run_id
+from .model import ActorSpec, Manifest, RunPaths, Scenario, deterministic_view, new_run_id
 
 COMMENT_PREFIX = "//"
 
@@ -209,6 +210,7 @@ class Runner:
         self.acceptance_dir = Path(acceptance_dir)
         self.runs_dir = Path(runs_dir)
         self._procs: list[subprocess.Popen] = []
+        self._log_handles: list[Any] = []
 
     def prepare(self, scenario: Scenario, git_sha: str,
                 now: Optional[datetime] = None) -> tuple[RunPaths, Manifest]:
@@ -234,8 +236,16 @@ class Runner:
 
     def start_server(self, rp: RunPaths, exe: Path, workdir: Path,
                      server_json: Path | None = None,
-                     overrides: dict[str, str] | None = None) -> dict:
-        """起服务端。工作目录必须是 exe 同目录（它读同目录 server.json）。"""
+                     overrides: dict[str, str] | None = None,
+                     env: dict[str, str] | None = None,
+                     log_path: Path | None = None,
+                     server_args: Optional[list[str]] = None) -> dict:
+        """起服务端。工作目录必须是 exe 同目录（它读同目录 server.json）。
+
+        `env` 显式追加环境变量（如 DFLegacy__DataPath 指向 run 私有存档）；
+        `log_path` 给定时 stdout/stderr 定向到该文件，句柄保留到 `stop_all` 关闭，
+        否则维持原来的 DEVNULL 行为。`server_args` 供测试用假服务端，真机不传。
+        """
         exe, workdir = Path(exe), Path(workdir)
         sj = Path(server_json) if server_json else workdir / "server.json"
         preflight_ports(parse_server_endpoints(sj))
@@ -244,8 +254,18 @@ class Runner:
             apply_config_overrides(sj, plan)
         else:
             plan = []
-        p = subprocess.Popen([str(exe)], cwd=str(workdir),
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cmd = [str(exe)] + [str(a) for a in (server_args or [])]
+        popen_env = {**os.environ, **env} if env else None
+        if log_path is not None:
+            log_path = Path(log_path)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            handle = log_path.open("wb")
+            self._log_handles.append(handle)
+            p = subprocess.Popen(cmd, cwd=str(workdir), env=popen_env,
+                                 stdout=handle, stderr=subprocess.STDOUT)
+        else:
+            p = subprocess.Popen(cmd, cwd=str(workdir), env=popen_env,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._procs.append(p)
         rec = {"exe": exe.name, "pid": p.pid, "workdir": str(workdir)}
         _, mf = self._load(rp)
@@ -255,20 +275,52 @@ class Runner:
         return rec
 
     def start_actors(self, rp: RunPaths, scenario: Scenario,
-                     launcher_cmd: Optional[list[str]] = None) -> list[dict]:
-        """起每个 actor。`launcher_cmd is None` ⇒ 只用占位进程（测试/骨架用，不启动游戏）。"""
+                     launcher_cmd: Optional[list[str]] = None,
+                     actor_commands: dict[str, list[str]] | None = None,
+                     on_started: Optional[Callable[[ActorSpec, subprocess.Popen], Optional[int]]] = None
+                     ) -> list[dict]:
+        """起每个 actor。`launcher_cmd is None` ⇒ 只用占位进程（测试/骨架用，不启动游戏）。
+
+        `actor_commands` 给每个 actor 各自的命令（真机时是每个账号一份 Launcher 调用），
+        必须与场景 actor 一一对应，缺/多都明确报错且不启动任何进程。
+        `on_started(actor, proc)` 在启动下一个 actor 之前调用，返回真实客户端 PID 时
+        记入 rec 与 manifest 的 `client_pid`（供归集 netdump-<pid>.log 用）。
+        """
+        if actor_commands is not None:
+            names = {a.name for a in scenario.actors}
+            extra = sorted(set(actor_commands) - names)
+            missing = sorted(names - set(actor_commands))
+            if extra or missing:
+                raise ValueError(
+                    f"actor_commands 与场景 actor 不匹配：多余 {extra}，缺失 {missing}")
         recs: list[dict] = []
-        for a in scenario.actors:
-            cmd = list(launcher_cmd) if launcher_cmd else [
-                sys.executable, "-c", "import time; time.sleep(3600)"]
-            p = subprocess.Popen(cmd, cwd=str(rp.actor_dir(a.name)),
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            self._procs.append(p)
-            recs.append({"name": a.name, "driver": a.driver, "pid": p.pid})
+        try:
+            for a in scenario.actors:
+                if actor_commands is not None:
+                    cmd = list(actor_commands[a.name])
+                elif launcher_cmd is not None:
+                    cmd = list(launcher_cmd)
+                else:
+                    cmd = [sys.executable, "-c", "import time; time.sleep(3600)"]
+                p = subprocess.Popen(cmd, cwd=str(rp.actor_dir(a.name)),
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                self._procs.append(p)
+                rec = {"name": a.name, "driver": a.driver, "pid": p.pid}
+                if on_started is not None:
+                    client_pid = on_started(a, p)
+                    if client_pid is not None:
+                        rec["client_pid"] = client_pid
+                recs.append(rec)
+        except BaseException:
+            self.stop_all()
+            raise
         _, mf = self._load(rp)
         by_name = {r["name"]: r for r in recs}
         for a in mf.actors:
-            a["pid"] = by_name[a["name"]]["pid"]
+            rec = by_name[a["name"]]
+            a["pid"] = rec["pid"]
+            if "client_pid" in rec:
+                a["client_pid"] = rec["client_pid"]
         self._write_manifest(rp, mf)
         return recs
 
@@ -279,7 +331,12 @@ class Runner:
         return rp, mf
 
     def stop_all(self) -> None:
-        for p in self._procs:
+        """逆序回收（先 actor 后 server），并关闭日志句柄。
+
+        真机顺序要求"先关两个真实客户端，再关服务端"（RUNBOOK），
+        这里用 `_procs` 的入栈顺序反过来停，正好满足。
+        """
+        for p in reversed(self._procs):
             if p.poll() is None:
                 p.terminate()
                 try:
@@ -288,3 +345,9 @@ class Runner:
                     p.kill()
                     p.wait(timeout=10)
         self._procs.clear()
+        for handle in self._log_handles:
+            try:
+                handle.close()
+            except Exception:
+                pass
+        self._log_handles.clear()
