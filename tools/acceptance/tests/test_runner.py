@@ -117,5 +117,6 @@ def test_runner_starts_and_stops_a_fake_actor_and_records_pid(tmp_path):
         assert recs[0]["name"] == "A" and isinstance(recs[0]["pid"], int)
         assert rp.actor_dir("A").exists()
     finally:
+        procs = list(r._procs)  # 快照：stop_all 会清空 _procs，断言必须对快照做
         r.stop_all()
-    assert all(p.poll() is not None for p in r._procs), "stop_all 必须真的结束子进程"
+    assert all(p.poll() is not None for p in procs), "stop_all 必须真的结束子进程"
