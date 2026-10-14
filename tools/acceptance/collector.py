@@ -15,7 +15,9 @@ from typing import Optional
 from .model import RunPaths
 
 NETDUMP_GLOB = "netdump-*.log"
-_TS = re.compile(r"^\[(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})\.(\d{3})\]")
+# 方括号可选：旧样本是 `[YYYY-MM-DD HH:MM:SS.mmm] ...`，真机 net_dump.cpp 输出
+# `YYYY-MM-DD HH:MM:SS.mmm T=... ...`（无方括号）。# 注释行不带 .mmm，天然不匹配。
+_TS = re.compile(r"^\[?(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})\.(\d{3})\]?")
 
 
 def find_netdumps(client_dirs: dict[str, Path]) -> dict[str, Path]:
@@ -35,7 +37,11 @@ def find_netdumps(client_dirs: dict[str, Path]) -> dict[str, Path]:
 
 
 def parse_netdump_t0(path: Path) -> Optional[dt.datetime]:
-    """取第一条带时间戳的行；没有就 None（**不猜**）。"""
+    """取第一条带时间戳的行；没有就 None（**不猜**）。
+
+    返回 naive **本地时间**（net_dump.cpp:232-233 用 GetLocalTime 写日志）；
+    转 UTC 在输出处做（collect_actor.t0_utc / cli offsets），不许在这里贴 Z。
+    """
     with Path(path).open(encoding="utf-8", errors="replace") as fh:
         for line in fh:
             m = _TS.match(line)
@@ -58,7 +64,9 @@ def collect_actor(rp: RunPaths, actor: str, netdump: Optional[Path],
         t0 = parse_netdump_t0(netdump)
         rec.update({
             "netdump": dest.name,
-            "t0_utc": t0.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if t0 else None,
+            # t0 是本地时间 ⇒ astimezone 从本机时区换算成 UTC（禁止 replace(tzinfo=UTC) 误标）
+            "t0_utc": t0.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+                      if t0 else None,
             "bytes": dest.stat().st_size,
         })
     for e in extra:

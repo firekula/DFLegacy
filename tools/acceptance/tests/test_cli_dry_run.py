@@ -1,4 +1,5 @@
 """CLI 干跑：不启动任何游戏进程，验证 run→collect→judge→promote 链路。"""
+import datetime as dt
 import json
 from pathlib import Path
 
@@ -126,3 +127,34 @@ def test_run_collect_missing_netdump_is_missing_evidence_not_crash(tmp_path, mon
     assert "pass" in a_results
     offsets = json.loads((rp.run_dir / "offsets.json").read_text(encoding="utf-8"))
     assert offsets["B"] is None  # 缺 t0 ⇒ None，不是 0
+
+
+# ===== 真机 netdump 时间格式/时区（bugfix） =====
+
+def test_run_collect_offsets_convert_local_time_to_utc(tmp_path, monkeypatch):
+    """真机格式（无方括号）+ 本地时间→UTC：offsets 的 actor t0 须按本机时区换算成 UTC 再与
+    server_t0 相减，**禁止** replace(tzinfo=UTC) 把本地时间冒充 UTC。"""
+    from acceptance import cli
+    monkeypatch.setattr(cli, "HERE", tmp_path / "acc")
+    rp, runs, client = _prepare_run(tmp_path)
+    # 逐字取自真机 netdump-53916.log / netdump-49916.log 的首条数据行（本地时间）
+    (client / "netdump-111.log").write_text(
+        "2026-10-05 00:47:29.392 T=75376 TX TCP-CONNECT - -> 127.0.0.1:2311 len=10 hex=636F6E6E6563743D6F6B\n",
+        encoding="utf-8")
+    (client / "netdump-222.log").write_text(
+        "2026-10-04 19:47:58.873 T=52404 TX TCP-CONNECT - -> 127.0.0.1:2311 len=10 hex=636F6E6E6563743D6F6B\n",
+        encoding="utf-8")
+    rc = main(["run", "--scenario", str(SCEN), "--collect",
+               "--run-id", rp.run_dir.name,
+               "--client-dir", str(client),
+               "--actor-pid", "A=111,B=222",
+               "--runs-dir", str(runs)])
+    assert rc == 0
+    offsets = json.loads((rp.run_dir / "offsets.json").read_text(encoding="utf-8"))
+    server_t0 = dt.datetime.strptime(
+        json.loads(rp.manifest.read_text(encoding="utf-8"))["created_utc"],
+        "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
+    a_t0_utc = dt.datetime(2026, 10, 5, 0, 47, 29, 392000).astimezone(dt.timezone.utc)
+    assert offsets["A"] == pytest.approx((server_t0 - a_t0_utc).total_seconds())
+    b_t0_utc = dt.datetime(2026, 10, 4, 19, 47, 58, 873000).astimezone(dt.timezone.utc)
+    assert offsets["B"] == pytest.approx((server_t0 - b_t0_utc).total_seconds())

@@ -10,7 +10,8 @@
 `netdump-<pid>.log` 取自 `--client-dir`（pid 由 `--actor-pid A=1234,B=5678` 给出，名字必须匹配
 场景 actor）；可选 `--server-log` **显式单文件**复制服务端日志（绝不整目录 glob）；时钟偏移写入
 `offsets.json`，其中 **server_t0 以 manifest.created_utc 近似（= 控制端时钟）**，netdump 时间戳
-按 UTC 解读（与 collector.collect_actor 记录的 t0_utc 一致）。
+是**本地时间**（net_dump.cpp 用 GetLocalTime），按本机时区换算成 UTC 再参与偏移运算
+（与 collector.collect_actor 记录的 t0_utc 一致；不许 replace(tzinfo=UTC) 误标）。
 """
 from __future__ import annotations
 
@@ -118,7 +119,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             print(str(e), file=sys.stderr)
             return 2
         # server_t0 以 manifest.created_utc 近似（= 控制端时钟，见模块 docstring）；
-        # netdump 时间戳按 UTC 解读（与 collector.collect_actor 的 t0_utc 一致）。
+        # netdump 时间戳是本地时间（GetLocalTime）⇒ 换算成 UTC 再算偏移（不许贴 UTC 标签）。
         server_t0 = datetime.strptime(
             json.loads(rp.manifest.read_text(encoding="utf-8"))["created_utc"],
             "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
@@ -131,7 +132,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             collect_actor(rp, a.name, source)
             t0 = parse_netdump_t0(source) if source is not None else None
             if t0 is not None:
-                t0 = t0.replace(tzinfo=timezone.utc)
+                t0 = t0.astimezone(timezone.utc)  # naive 本地时间 → UTC（astimezone 从本机时区换算）
             offsets[a.name] = clock_offset(server_t0, t0)
         record_offsets(rp, offsets)
         if args.server_log:
