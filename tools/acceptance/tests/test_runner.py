@@ -152,10 +152,15 @@ def test_start_server_passes_env_and_writes_log(tmp_path):
                          server_json=sj, env={"MY_KEY": "hello"}, log_path=log_path,
                          server_args=[str(script)])
     try:
-        time.sleep(0.5)
+        # 条件等待：解释器启动快慢不定，固定 sleep 会偶发读到空文件（机器繁忙时更甚）
+        deadline = time.monotonic() + 15.0
+        content = ""
+        while "MY_KEY=hello" not in content and time.monotonic() < deadline:
+            time.sleep(0.05)
+            if log_path.exists():
+                content = log_path.read_text(encoding="utf-8")
         assert log_path.exists(), "log_path 文件必须已创建"
-        content = log_path.read_text(encoding="utf-8")
-        assert "MY_KEY=hello" in content, "env 必须传进子进程、写进 log"
+        assert "MY_KEY=hello" in content, f"env 必须传进子进程、写进 log；实际内容 {content!r}"
         assert isinstance(rec["pid"], int)
     finally:
         r.stop_all()

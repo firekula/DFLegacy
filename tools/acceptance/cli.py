@@ -181,7 +181,8 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
                                                                   encoding="utf-8")
             return pid
 
-        cmds = {name: launcher_command(launcher_exe, accounts[name]) for name in names}
+        cmds = {a.name: launcher_command(launcher_exe, accounts[a.name])
+                for a in sc.actors}  # 按场景声明顺序构造（集合顺序随哈希随机，不得使用）
         recs = r.start_actors(rp, sc, actor_commands=cmds,
                               before_start=before_start, on_started=on_started)
         client_pids = {rec["name"]: rec.get("client_pid") for rec in recs}
