@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import select
 import shutil
 import socket
 import subprocess
@@ -141,19 +142,41 @@ def _pid_alive(pid: int) -> bool:
 
 
 def _can_connect(host: str, port: int, timeout_s: float = 0.3) -> bool:
-    """True = 能成功建立 TCP 连接（= 有人在监听并 accept）。
+    """True = 能建立 TCP 连接（= 有人在监听并 accept）。**总耗时**受 timeout_s 约束。
 
-    为什么**不能**用 `_probe`（bind 探测）来判断"是否就绪"：[真机实测 2026-10-15]
-    `_probe` 开了 `SO_REUSEADDR`，而在 Windows 上对 `127.0.0.1` 的监听者再用
-    `SO_REUSEADDR` bind 同一 4 元组**会成功** ⇒ 明明有服务在监听却报"空闲"
-    （实测：子进程 LISTEN 5486/OwningProcess 80592，bind 探测仍报 FREE）。
-    bind 探测适合"起进程前查占用"，判断"服务是否已开始服务"必须用连接。
+    为什么**不能**用 `_probe`（bind 探测）判断"是否就绪"：[真机实测 2026-10-15]
+    `_probe` 开了 `SO_REUSEADDR`，Windows 上对 `127.0.0.1` 的监听者再用它 bind 同一 4 元组
+    **会成功** ⇒ 明明有服务在监听却报"空闲"（实测：LISTEN 5486/OwningProcess 80592，
+    bind 探测仍报 FREE）。bind 探测适合"起进程前查占用"，判断"是否已开始服务"必须用连接。
+
+    为什么不用 `socket.create_connection`：[真机 2026-10-15] 服务端启动中（正在索引
+    48343 个脚本、约 3 秒）时，连到 127.0.0.1:2311 的 SYN 会**被丢弃**，而
+    `create_connection` 的 timeout 是**每次尝试**的超时、Windows 上会重试 ⇒ 单次调用
+    实际阻塞约 20 秒，直接把就绪门卡死（实测 traceback：socket.py:850 TimeoutError →
+    runner.py 探针）。这里改用非阻塞 connect + `select` 把**总时长**钉在 timeout_s 内。
     """
+    fam = socket.AF_INET6 if ":" in host else socket.AF_INET
+    s = socket.socket(fam, socket.SOCK_STREAM)
+    s.setblocking(False)
     try:
-        with socket.create_connection((host, port), timeout=timeout_s):
-            return True
+        s.connect((host, port))
+        return True
+    except BlockingIOError:
+        pass
     except OSError:
         return False
+    try:
+        _, writable, _ = select.select([], [s], [], timeout_s)
+    except OSError:
+        return False
+    finally:
+        pass
+    if not writable:
+        s.close()
+        return False
+    ok = s.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR) == 0
+    s.close()
+    return ok
 
 
 def wait_for_listen(host: str, port: int, timeout_s: float = 60.0,
@@ -171,7 +194,12 @@ def wait_for_listen(host: str, port: int, timeout_s: float = 60.0,
     check = probe if probe is not None else (lambda h, p, _proto: _can_connect(h, p))
     deadline = time.monotonic() + timeout_s
     while True:
-        if check(target, port, "tcp"):
+        # 探针本身也可能抛（网络栈的瞬时错误）；就绪探测绝不能因此把整条命令崩掉。
+        try:
+            ready = check(target, port, "tcp")
+        except OSError:
+            ready = False
+        if ready:
             return
         if should_stop is not None and should_stop():
             raise ServerStartupError(

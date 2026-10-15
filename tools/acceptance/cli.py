@@ -220,6 +220,11 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
                             "at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
         write_steps(rp, entries)
         _confirm("采集结束：即将关闭客户端与服务端")
+    except KeyboardInterrupt:
+        # Ctrl+C 是操作者中止：明确退出而不是栈崩（真机实测 2026-10-15 会吐 KeyboardInterrupt
+        # traceback）。子进程由下面的 finally 回收。
+        print("已中止（Ctrl+C）：正在回收已启动的进程", file=sys.stderr)
+        return 130
     except (AmbiguousPIDError, LauncherFailedError, PIDTimeoutError,
             ServerStartupError, OSError, ValueError) as e:
         # 多条启动行（AmbiguousPIDError）与服务端没起来（ServerStartupError，消息带日志尾部）
