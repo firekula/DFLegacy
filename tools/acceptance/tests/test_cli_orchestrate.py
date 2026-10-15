@@ -1,5 +1,6 @@
 """一条命令编排接线：用 FakeRunner 验证顺序与参数，不启动任何真实进程。"""
 import json
+import socket
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -7,6 +8,7 @@ from acceptance import cli
 from acceptance.actor_pid import AmbiguousPIDError, PIDTimeoutError
 from acceptance.cli import orchestrate
 from acceptance.model import RunPaths
+from acceptance.runner import ServerStartupError
 from acceptance.verdict import Verdict
 
 SCEN = Path(__file__).resolve().parents[1] / "scenarios" / "town-two-clients.yaml"
@@ -23,6 +25,8 @@ class FakeRunner:
         self.runs_dir = Path(runs_dir)
         self.calls: list[tuple[str, object]] = []
         self.stopped = 0
+        self.raise_on_wait = False
+        self._listener = None
         FakeRunner.instances.append(self)
 
     def prepare(self, scenario, git_sha):
@@ -43,11 +47,36 @@ class FakeRunner:
         self.last_rp = rp
         return rp, SimpleNamespace()
 
-    def start_server(self, rp, exe, workdir, server_json=None, env=None, log_path=None, **kw):
+    def start_server(self, rp, exe, workdir, server_json=None, env=None, log_path=None,
+                     listen_timeout_s=None, **kw):
         self.calls.append(("start_server", {"exe": Path(exe), "workdir": Path(workdir),
                                             "server_json": server_json, "env": env,
-                                            "log_path": Path(log_path) if log_path else None}))
+                                            "log_path": Path(log_path) if log_path else None,
+                                            "listen_timeout_s": listen_timeout_s}))
+        self.listen_timeout_s = listen_timeout_s
         return {"exe": Path(exe).name, "pid": 111, "workdir": str(workdir)}
+
+    def wait_until_listening(self, rp, scenario, server_json=None, timeout_s=None,
+                             fake_server_pid=None, probe=None):
+        """模拟"服务端已开始监听"：记录被等待的端口，并真的占住该端口（可探到）。
+
+        端口从 `server.json` 解析（即真实实现该走的路），并回报给测试断言。
+        `ServerStartupError.raise_on_wait` 置位时改为抛出，用于测"永不监听"的失败路径。
+        """
+        from acceptance.runner import parse_server_endpoints
+        sj = Path(server_json) if server_json else Path.cwd() / "server.json"
+        endpoints = parse_server_endpoints(sj)
+        self.waiting_for = endpoints["Entrance"]
+        port = endpoints["Entrance"].port
+        self.calls.append(("wait_until_listening", port))
+        if self.raise_on_wait:
+            raise ServerStartupError("服务端在 60.0s 内没有在 127.0.0.1:2311 开始监听")
+        if port:
+            self._listener = socket.socket()
+            self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self._listener.bind(("127.0.0.1", port))
+            self._listener.listen(1)
+        return {"skipped": False, "host": "127.0.0.1", "port": port, "waited_ms": 1}
 
     def record_run_config(self, rp, entries):
         self.calls.append(("record_run_config", entries))
@@ -71,6 +100,10 @@ class FakeRunner:
 
     def stop_all(self):
         self.stopped += 1
+        listener = getattr(self, "_listener", None)
+        if listener is not None:
+            listener.close()
+            self._listener = None
         self.calls.append(("stop_all", None))
 
 
@@ -83,7 +116,8 @@ def _make_client_dir(tmp_path: Path, *, dump_network: str = "1") -> Path:
                                        encoding="utf-8")
     (client / "town-test" / "DFLegacy.Launcher.exe").write_bytes(b"stub")
     (client / "town-test" / "DFLegacy.Server.exe").write_bytes(b"stub")
-    (client / "town-test" / "server.json").write_text('{"DFLegacy": {}}', encoding="utf-8")
+    (client / "town-test" / "server.json").write_text(
+        '{"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 2311}}}', encoding="utf-8")
     (client / "town-test" / "data" / "state.json").write_text('{"characters":[]}',
                                                               encoding="utf-8")
     (client / "town-test" / "launcher.log").write_text("", encoding="utf-8")
@@ -207,6 +241,78 @@ def test_orchestrate_wires_server_actors_steps_and_collect(tmp_path, monkeypatch
     assert runner.stopped == 1, "必须停进程（finally）"
     assert (rp.run_dir / "offsets.json").is_file()
     assert "status" in capsys.readouterr().out
+
+
+def test_orchestrate_waits_for_the_server_to_listen_before_starting_actors(tmp_path, monkeypatch,
+                                                                          capsys):
+    """真机 2026-10-15 缺陷回归：一条命令必须**等服务端开始监听**再起 actor。
+
+    实测服务端从启动到监听 2311 约 5.4 秒（索引 48343 个脚本 + 各 catalog），而 launcher 的
+    `EnsureServerReadyAsync` 在 `StartServer=false` 时**只探一次端口就抛错**
+    （src/DFLegacy.Launcher/Program.cs:336-347）⇒ 不等待就必然报
+    "编排失败：Launcher failed ... 入口服务 127.0.0.1:2311 未监听，且 StartServer=false"。
+    """
+    FakeRunner.instances.clear()
+    client = _make_client_dir(tmp_path)
+    monkeypatch.setattr(cli, "Runner", FakeRunner)
+    monkeypatch.setattr(cli, "_confirm", lambda message: None)
+    monkeypatch.setattr(cli, "capture_client_pid",
+                        lambda log, offset, timeout_s=60.0: (7001 + offset % 7, "fake start line", 0))
+    # 绝不能把假判定提升进 git 跟踪的 verdicts/（真机判定才允许落那里）
+    monkeypatch.setattr(cli, "promote_digest",
+                        lambda rp, acc: Path(acc) / "verdicts" / f"{rp.run_dir.name}.json")
+    rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                     actor_accounts="A=x,B=y", paths=_paths(client))
+    assert rc == 0, "等待是成功路径的一部分，不应失败"
+    names = [name for name, _ in FakeRunner.instances[-1].calls]
+    assert names.index("start_server") < names.index("wait_until_listening") < names.index("start_actors"), \
+        f"顺序必须是 起服务端 → 等监听 → 起 actor，实际 {names}"
+    assert "等待服务端在 127.0.0.1:2311 开始监听" in capsys.readouterr().out
+
+
+def test_orchestrate_waits_for_the_entrance_port_declared_in_server_json(tmp_path, monkeypatch):
+    """回归钉子：等待的目标端口必须从 `server.json` 的 `Entrance.Port` 解析得来。
+
+    把端口改成非 2311 的值：等待若写死 2311，这里就抓不到（非恒真）。
+    """
+    FakeRunner.instances.clear()
+    client = _make_client_dir(tmp_path)
+    (client / "town-test" / "server.json").write_text(
+        json.dumps({"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 24011}}}),
+        encoding="utf-8")
+    monkeypatch.setattr(cli, "Runner", FakeRunner)
+    monkeypatch.setattr(cli, "_confirm", lambda message: None)
+    monkeypatch.setattr(cli, "capture_client_pid",
+                        lambda log, offset, timeout_s=60.0: (7101 + offset % 7, "fake start line", 0))
+    monkeypatch.setattr(cli, "promote_digest",
+                        lambda rp, acc: Path(acc) / "verdicts" / f"{rp.run_dir.name}.json")
+    rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                     actor_accounts="A=x,B=y", paths=_paths(client))
+    assert rc == 0
+    port_arg = dict(FakeRunner.instances[-1].calls)["wait_until_listening"]
+    assert port_arg == 24011, f"等待的端口应取自 server.json 的 Entrance.Port，得到 {port_arg}"
+
+
+def test_orchestrate_reports_server_that_never_listens_as_clear_failure(tmp_path, monkeypatch,
+                                                                       capsys):
+    """服务端起得来但永不监听 ⇒ 走友好失败路径（rc=1 + "编排失败"），不是 traceback。"""
+    FakeRunner.instances.clear()
+    client = _make_client_dir(tmp_path)
+    monkeypatch.setattr(cli, "Runner", FakeRunner)
+    monkeypatch.setattr(cli, "_confirm", lambda message: None)
+    original_init = FakeRunner.__init__
+
+    def init_raising(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        self.raise_on_wait = True
+
+    monkeypatch.setattr(FakeRunner, "__init__", init_raising)
+    rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                     actor_accounts="A=x,B=y", paths=_paths(client))
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "编排失败" in err and "没有在 127.0.0.1:2311 开始监听" in err, err
+    assert FakeRunner.instances[-1].stopped == 1, "失败也要回收已启动的服务端"
 
 
 def test_orchestrate_stops_processes_when_pid_capture_fails(tmp_path, monkeypatch, capsys):

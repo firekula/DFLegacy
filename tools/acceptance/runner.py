@@ -15,6 +15,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,6 +36,10 @@ UDP_PORT_SERVICES: frozenset[str] = frozenset({"CharacterDatagram"})
 
 class PortBusy(RuntimeError):
     """端口预检失败。消息里必须能看出**哪个条目、哪个端口**。"""
+
+
+class ServerStartupError(RuntimeError):
+    """服务端起得来但没在超时内开始监听（真机实测启动约 5.4 秒，见 `wait_for_listen`）。"""
 
 
 @dataclass(frozen=True)
@@ -95,6 +100,86 @@ def preflight_ports(endpoints: dict[str, Endpoint],
             if probe(ep.host, ep.port, ep.protocol)]
     if busy:
         raise PortBusy("以下端口已被占用，拒绝启动（避免静默失败）：" + "; ".join(busy))
+
+
+def probe_host(host: str) -> str:
+    """把监听用的通配地址换成可连接的探测地址。
+
+    `0.0.0.0` / `::` 是服务端**绑定**用的通配地址，不是能 connect 的目标；
+    本机真机 launcher 探的就是 `127.0.0.1:<EntrancePort>`（launcher.json 的 EntranceHost）。
+    """
+    return "127.0.0.1" if host in ("0.0.0.0", "::", "") else host
+
+
+def _tail(path: Path, limit: int = 800) -> str:
+    """读日志尾部用于报错。文件可能还没建或正被写入 ⇒ 失败时返回说明而不是抛异常。"""
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return f"(读不到日志 {path}：{exc})"
+    return text[-limit:].strip() or "(日志为空)"
+
+
+def _default_server_json(scenario: Scenario) -> Path:
+    """兜底：取 `server.json` 时优先用场景里声明的路径，否则回落到当前工作目录。
+
+    真机调用总是显式传 `server_json`；这里只是让 `wait_until_listening` 单独调用时不崩。
+    """
+    declared = getattr(scenario, "server_json", None)
+    return Path(declared) if declared else Path.cwd() / "server.json"
+
+
+def _pid_alive(pid: int) -> bool:
+    """该 pid 是否还活着（用于"服务端在监听前就退出"的快速失败）。"""
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    except (ValueError, TypeError, SystemError):
+        return False
+    return True
+
+
+def _can_connect(host: str, port: int, timeout_s: float = 0.3) -> bool:
+    """True = 能成功建立 TCP 连接（= 有人在监听并 accept）。
+
+    为什么**不能**用 `_probe`（bind 探测）来判断"是否就绪"：[真机实测 2026-10-15]
+    `_probe` 开了 `SO_REUSEADDR`，而在 Windows 上对 `127.0.0.1` 的监听者再用
+    `SO_REUSEADDR` bind 同一 4 元组**会成功** ⇒ 明明有服务在监听却报"空闲"
+    （实测：子进程 LISTEN 5486/OwningProcess 80592，bind 探测仍报 FREE）。
+    bind 探测适合"起进程前查占用"，判断"服务是否已开始服务"必须用连接。
+    """
+    try:
+        with socket.create_connection((host, port), timeout=timeout_s):
+            return True
+    except OSError:
+        return False
+
+
+def wait_for_listen(host: str, port: int, timeout_s: float = 60.0,
+                    should_stop: Optional[Callable[[], bool]] = None,
+                    poll_interval_s: float = 0.25,
+                    probe: Optional[Callable[[str, int, str], bool]] = None) -> None:
+    """等到 `host:port` 能建立 TCP 连接为止；超时或进程提前退出就明确失败。
+
+    存在原因 [真机 2026-10-15]：服务端启动要**约 5.4 秒**（索引 48343 个脚本 + 各 catalog），
+    而 launcher 的 `EnsureServerReadyAsync` 在 `StartServer=false` 时**只探一次就抛错**。
+    因此"起完服务端立刻起 actor"必然失败：实测报
+    `入口服务 127.0.0.1:2311 未监听，且 StartServer=false`。
+    """
+    target = probe_host(host)
+    check = probe if probe is not None else (lambda h, p, _proto: _can_connect(h, p))
+    deadline = time.monotonic() + timeout_s
+    while True:
+        if check(target, port, "tcp"):
+            return
+        if should_stop is not None and should_stop():
+            raise ServerStartupError(
+                f"服务端进程在 {target}:{port} 开始监听之前就退出了")
+        if time.monotonic() >= deadline:
+            raise ServerStartupError(
+                f"服务端在 {timeout_s}s 内没有在 {target}:{port} 开始监听")
+        time.sleep(poll_interval_s)
 
 
 def isolate_state(template_state: Path, dest_dir: Path) -> Path:
@@ -277,10 +362,14 @@ class Runner:
         `env` 显式追加环境变量（如 DFLegacy__DataPath 指向 run 私有存档）；
         `log_path` 给定时 stdout/stderr 定向到该文件，句柄保留到 `stop_all` 关闭，
         否则维持原来的 DEVNULL 行为。`server_args` 供测试用假服务端，真机不传。
+
+        **本方法只负责起进程，不等待监听** —— 等监听是独立的
+        `wait_until_listening`（真机必须调它，原因见该方法的 docstring）。
         """
         exe, workdir = Path(exe), Path(workdir)
         sj = Path(server_json) if server_json else workdir / "server.json"
-        preflight_ports(parse_server_endpoints(sj))
+        endpoints = parse_server_endpoints(sj)
+        preflight_ports(endpoints)
         if overrides:
             plan = plan_config_overrides(sj, overrides)
             apply_config_overrides(sj, plan)
@@ -374,6 +463,47 @@ class Runner:
         _, mf = self._load(rp)
         mf.config_overrides = entries
         self._write_manifest(rp, mf)
+
+    def wait_until_listening(self, rp: RunPaths, scenario: Scenario,
+                             server_json: Path | None = None,
+                             timeout_s: float = 60.0,
+                             fake_server_pid: Optional[int] = None,
+                             probe: Optional[Callable[[str, int, str], bool]] = None) -> dict:
+        """等 `server_json` 声明的 Entrance 端点开始监听；返回等待报告（供 manifest/打印）。
+
+        存在原因 [真机 2026-10-15]：真服务端启动约 5.4 秒才监听 2311，而 launcher 的
+        `EnsureServerReadyAsync` 在 `StartServer=false` 时**只探一次**就抛错
+        （src/DFLegacy.Launcher/Program.cs:336-347）⇒ 起完服务端立刻起 actor 必然失败。
+        端口取自 server.json 的 `Entrance`（不写死端口）；`server.json` 缺该端点或不可读时
+        返回 `skipped`（不假装等过）。
+        """
+        sj = Path(server_json) if server_json else _default_server_json(scenario)
+        try:
+            endpoints = parse_server_endpoints(sj)
+        except (OSError, ValueError, KeyError, TypeError):
+            endpoints = {}
+        entrance = endpoints.get("Entrance")
+        if entrance is None:
+            return {"skipped": True, "reason": f"{sj} 未声明 Entrance 端点",
+                    "host": None, "port": None, "waited_ms": 0}
+
+        should_stop = (None if fake_server_pid is None
+                       else (lambda: not _pid_alive(fake_server_pid)))
+        started = time.monotonic()
+        try:
+            kw = {} if probe is None else {"probe": probe}
+            wait_for_listen(entrance.host, entrance.port, timeout_s=timeout_s,
+                            should_stop=should_stop, **kw)
+        except ServerStartupError as exc:
+            try:
+                log = rp.server_dir / "server.log"
+            except (AttributeError, TypeError):
+                log = None
+            raise ServerStartupError(
+                f"{exc}；服务端日志尾部（{log}）：\n{_tail(log) if log else '(未知日志路径)'}"
+            ) from exc
+        return {"skipped": False, "host": probe_host(entrance.host),
+                "port": entrance.port, "waited_ms": int((time.monotonic() - started) * 1000)}
 
     def stop_all(self) -> None:
         """逆序回收（先 actor 后 server），并关闭日志句柄。

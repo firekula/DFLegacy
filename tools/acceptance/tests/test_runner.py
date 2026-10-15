@@ -11,9 +11,10 @@ from pathlib import Path
 import pytest
 
 from acceptance.model import ActorSpec, Scenario, Step, Expect, RunPaths
-from acceptance.runner import (PortBusy, Runner, apply_config_overrides, isolate_state,
-                               parse_server_endpoints, plan_config_overrides,
-                               preflight_ports)
+from acceptance.runner import (PortBusy, Runner, ServerStartupError, _can_connect,
+                               apply_config_overrides, isolate_state, parse_server_endpoints,
+                               plan_config_overrides, preflight_ports, probe_host,
+                               wait_for_listen)
 
 SERVER_JSON = {
     "DFLegacy": {
@@ -123,6 +124,158 @@ def test_preflight_ports_passes_when_free(tmp_path):
     port = s.getsockname()[1]
     s.close()
     preflight_ports(_endpoints_for(tmp_path, {"Entrance": {"Host": "127.0.0.1", "Port": port}}))  # 不抛
+
+
+# ===== 等服务端真的开始监听（真机 2026-10-15 缺陷：起完服务端立刻起 actor 必然失败）=====
+
+def test_probe_host_maps_wildcard_bind_address_to_loopback():
+    """`0.0.0.0`/`::` 是绑定用的通配地址，不能拿来做 connect 目标。"""
+    assert probe_host("0.0.0.0") == "127.0.0.1"
+    assert probe_host("::") == "127.0.0.1"
+    assert probe_host("") == "127.0.0.1"
+    assert probe_host("127.0.0.1") == "127.0.0.1"
+    assert probe_host("192.168.3.7") == "192.168.3.7"
+
+
+def test_wait_for_listen_returns_as_soon_as_the_probe_succeeds():
+    """等待逻辑：注入的探测器一旦成功就返回，且**不重复探测**（不再等下一轮）。"""
+    calls: list[tuple[str, int, str]] = []
+
+    def probe(host, port, protocol):
+        calls.append((host, port, protocol))
+        return True
+
+    t0 = time.monotonic()
+    wait_for_listen("0.0.0.0", 2311, timeout_s=5.0, probe=probe)
+    assert time.monotonic() - t0 < 0.5
+    assert calls == [("127.0.0.1", 2311, "tcp")], f"通配地址要先换成回环再探测：{calls}"
+
+
+def test_wait_for_listen_polls_until_the_probe_succeeds():
+    """非恒真：前两次探测失败、第三次成功 ⇒ 必须继续轮询并在第三次返回。"""
+    seen: list[int] = []
+
+    def probe(host, port, protocol):
+        seen.append(1)
+        return len(seen) >= 3
+
+    wait_for_listen("127.0.0.1", 2311, timeout_s=5.0, probe=probe, poll_interval_s=0.01)
+    assert len(seen) == 3, f"应在第 3 次探测成功后返回，实际探测 {len(seen)} 次"
+
+
+def test_wait_for_listen_raises_within_the_timeout_when_nothing_listens():
+    """非恒真：把超时设小，探测器永远失败必须抛 ServerStartupError 且不超出超时太多。"""
+    t0 = time.monotonic()
+    with pytest.raises(ServerStartupError):
+        wait_for_listen("127.0.0.1", 9, timeout_s=0.4, poll_interval_s=0.05,
+                        probe=lambda host, port, protocol: False)
+    assert time.monotonic() - t0 < 3.0
+
+
+def test_wait_for_listen_reports_early_process_exit_instead_of_waiting():
+    """服务端进程在监听前就退出 ⇒ 立刻明确失败（不空等到超时）。
+
+    依据真机现象：服务端日志停在"Indexed 48343 script files"就被回收，
+    而在它监听之前 launcher 已经只探一次端口并抛错。
+    """
+    t0 = time.monotonic()
+    with pytest.raises(ServerStartupError) as ei:
+        wait_for_listen("127.0.0.1", 9, timeout_s=30.0,
+                        should_stop=lambda: True, poll_interval_s=0.05)
+    assert "退出" in str(ei.value)
+    assert time.monotonic() - t0 < 3.0, "进程已退出就不该继续等"
+
+
+def _scenario():
+    """最小场景对象（`wait_until_listening` 只需要它来兜底解析 server.json 路径）。"""
+    return Scenario(id="s", goal="g", expect_t0="server-accept",
+                    actors=(ActorSpec("A", "real-client"),),
+                    steps=(Step("A", "do", (Expect("x", pattern="AB"),)),))
+
+
+def test_wait_until_listening_parses_the_entrance_port_and_reports_it(tmp_path):
+    """端口的唯一来源是 `server.json` 的 `Entrance`；报告要能看出等了哪个 host:port。"""
+    sj = tmp_path / "server.json"
+    _write_server_json(sj, {"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 2311}}})
+    rp = RunPaths.for_run(tmp_path / "runs", "RID")
+    rp.server_dir.mkdir(parents=True, exist_ok=True)
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path, runs_dir=tmp_path / "runs")
+    seen: list[tuple[str, int, str]] = []
+
+    def fake_probe(host, port, protocol):
+        seen.append((host, port, protocol))
+        return True
+
+    report = r.wait_until_listening(rp, _scenario(), server_json=sj, probe=fake_probe)
+    assert report["skipped"] is False
+    assert (report["host"], report["port"]) == ("127.0.0.1", 2311), "通配地址要换成可探测地址"
+    assert seen == [("127.0.0.1", 2311, "tcp")], f"应按 Entrance 声明探测，实际 {seen}"
+
+
+def test_wait_until_listening_reports_skipped_when_entrance_is_absent(tmp_path):
+    """`server.json` 没声明 Entrance 时明确报 skipped，不假装等过（也不抛）。"""
+    sj = tmp_path / "server.json"
+    _write_server_json(sj, {"DFLegacy": {"Channel": {"Port": 7001}}})
+    rp = RunPaths.for_run(tmp_path / "runs", "RID")
+    rp.server_dir.mkdir(parents=True, exist_ok=True)
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path, runs_dir=tmp_path / "runs")
+    report = r.wait_until_listening(rp, _scenario(), server_json=sj)
+    assert report["skipped"] is True and "Entrance" in report["reason"]
+
+
+def test_wait_until_listening_raises_with_log_tail_when_never_listens(tmp_path):
+    """永不监听 ⇒ ServerStartupError，消息带服务端日志尾部（真机靠它定位）。"""
+    sj = tmp_path / "server.json"
+    _write_server_json(sj, {"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 2311}}})
+    rp = RunPaths.for_run(tmp_path / "runs", "RID")
+    rp.server_dir.mkdir(parents=True, exist_ok=True)
+    (rp.server_dir / "server.log").write_text("fake server: never listening\n",
+                                              encoding="utf-8")
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path, runs_dir=tmp_path / "runs")
+    with pytest.raises(ServerStartupError) as ei:
+        r.wait_until_listening(rp, _scenario(), server_json=sj, timeout_s=0.5,
+                               probe=lambda host, port, protocol: False)
+    message = str(ei.value)
+    assert "没有在 127.0.0.1:2311 开始监听" in message
+    assert "never listening" in message, f"错误消息应带日志尾部：{message}"
+
+
+def test_wait_until_listening_polls_the_entrance_declared_in_server_json(tmp_path):
+    """端到端接线：`wait_until_listening` 从 `server.json` 取 Entrance，
+    把 `host:port` 交给等待器，并如实报告等了多久。
+
+    这里注入探测序列（前两次未就绪、第三次就绪），因此**不依赖**本机对合成监听者的
+    连接行为，只钉住"端口来源 + 报告形状 + 真的在轮询"。
+    """
+    sj = tmp_path / "server.json"
+    _write_server_json(sj, {"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 24011}}})
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path, runs_dir=tmp_path / "runs")
+    rp, _ = r.prepare(_scenario(), git_sha="abc1234")
+    attempts: list[tuple[str, int, str]] = []
+
+    def probe(host, port, protocol):
+        attempts.append((host, port, protocol))
+        return len(attempts) >= 3
+
+    report = r.wait_until_listening(rp, _scenario(), server_json=sj, timeout_s=5.0,
+                                   probe=probe)
+    assert report["skipped"] is False
+    assert (report["host"], report["port"]) == ("127.0.0.1", 24011), report
+    assert len(attempts) == 3 and all(a == ("127.0.0.1", 24011, "tcp") for a in attempts), attempts
+
+
+def test_can_connect_is_false_for_a_port_with_no_listener_and_true_for_the_real_server():
+    """真机关键事实：判断"就绪"用的是连接。
+
+    本机真服务端实测 [真机 2026-10-15]：python 能在 ~0 ms 内连上 127.0.0.1:2311
+    （而 bind 探测因 SO_REUSEADDR 会对监听中的回环地址误报"空闲"，故不能用作就绪判据）。
+    这里只断言"没人监听时 connect 为假"这个必然方向，避免依赖本机是否正跑服务端。
+    """
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()  # 关掉 ⇒ 该端口无人监听
+    assert _can_connect("127.0.0.1", port) is False
 
 
 def test_isolate_state_copies_and_never_points_at_the_live_save(tmp_path):

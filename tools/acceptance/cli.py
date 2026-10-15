@@ -29,7 +29,7 @@ from .collector import (clock_offset, collect_actor, collect_server, find_netdum
 from .model import RunPaths, load_scenario
 from .orchestrate import (capture_client_pid, launcher_command,
                           parse_actor_accounts, write_steps)
-from .runner import Runner, isolate_state
+from .runner import Runner, ServerStartupError, isolate_state
 from .verdict import Verdict, digest, judge, write_verdict
 
 HERE = Path(__file__).resolve().parent
@@ -167,12 +167,23 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
     run_state = rp.server_dir / "state.json"
     client_pids: dict[str, int | None] = {}
     try:
-        r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
-                       server_json=server_exe.parent / "server.json",
-                       env={"DFLegacy__DataPath": str(run_state)},
-                       log_path=rp.server_dir / "server.log")
+        server_rec = r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
+                                    server_json=server_exe.parent / "server.json",
+                                    env={"DFLegacy__DataPath": str(run_state)},
+                                    log_path=rp.server_dir / "server.log")
         r.record_run_config(rp, [{"key": "DFLegacy__DataPath",
                                   "old": "data/state.json", "new": str(run_state)}])
+        # 必须等服务端真的开始监听再起 actor：launcher 在 StartServer=false 时只探一次端口
+        # （src/DFLegacy.Launcher/Program.cs:336-347），而真服务端要约 5.4 秒才监听（2026-10-15 实测）。
+        listen = r.wait_until_listening(rp, sc,
+                                        server_json=server_exe.parent / "server.json",
+                                        timeout_s=60.0,
+                                        fake_server_pid=server_rec.get("pid"))
+        if listen.get("skipped"):
+            print(f"警告：未等待服务端监听（{listen.get('reason')}）", file=sys.stderr)
+        else:
+            print(f"等待服务端在 {listen['host']}:{listen['port']} 开始监听："
+                  f"已就绪（{listen['waited_ms']} ms）")
         seen_offsets: dict[str, int] = {}
 
         def before_start(actor) -> None:
@@ -200,8 +211,10 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
                             "at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
         write_steps(rp, entries)
         _confirm("采集结束：即将关闭客户端与服务端")
-    except (AmbiguousPIDError, LauncherFailedError, PIDTimeoutError, OSError, ValueError) as e:
-        # 多条启动行（AmbiguousPIDError）也走这条路：明确失败 + rc=1，绝不猜 PID（账本 L290）。
+    except (AmbiguousPIDError, LauncherFailedError, PIDTimeoutError,
+            ServerStartupError, OSError, ValueError) as e:
+        # 多条启动行（AmbiguousPIDError）与服务端没起来（ServerStartupError，消息带日志尾部）
+        # 都走这条路：明确失败 + rc=1，绝不猜 PID（账本 L290）。
         print(f"编排失败：{e}", file=sys.stderr)
         return 1
     finally:
