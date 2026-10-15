@@ -156,6 +156,15 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
             print(p, file=sys.stderr)
         return 2
 
+    # run 目录必须**绝对化**：`DFLegacy__DataPath` 会作为字符串交给服务端，而服务端用的是
+    # AppContext.BaseDirectory（exe 目录），**不是**它的工作目录 —— 相对路径会被解析到别处
+    # （实测：`--runs-dir ..\runs` 让服务端把存档写进 `DF\runs\<runId>\server\`，
+    #  run 私有副本原封不动 ⇒ 存档隔离静默失效、活存档反而暴露在错误目录树下）。
+    runs_dir = Path(runs_dir).resolve()
+    client_dir = Path(client_dir).resolve()
+    launcher_exe, server_exe = Path(launcher_exe).resolve(), Path(server_exe).resolve()
+    launcher_log = Path(launcher_log).resolve()
+
     r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
     rp, _ = r.prepare(sc, git_sha=git_sha)
     live_state = server_exe.parent / "data" / "state.json"

@@ -278,6 +278,26 @@ def test_can_connect_is_false_for_a_port_with_no_listener_and_true_for_the_real_
     assert _can_connect("127.0.0.1", port) is False
 
 
+def test_start_server_rejects_relative_data_path(tmp_path):
+    """`DFLegacy__DataPath` 必须是绝对路径，否则**启动前**响亮失败。
+
+    真机 2026-10-15 实测：服务端按 `AppContext.BaseDirectory`（exe 目录）解析该值，
+    相对路径 `..\\runs\\<runId>\\server\\state.json` 被写到了 `DF\\runs\\...`，
+    而 run 私有副本原封不动 ⇒ 存档隔离静默失效。宁可在起进程前报错。
+    """
+    sj = tmp_path / "server.json"
+    _write_server_json(sj)
+    rp = RunPaths.for_run(tmp_path / "runs", "RID")
+    rp.server_dir.mkdir(parents=True, exist_ok=True)
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path, runs_dir=tmp_path / "runs")
+    with pytest.raises(ValueError) as ei:
+        r.start_server(rp, exe=Path(sys.executable), workdir=tmp_path, server_json=sj,
+                       env={"DFLegacy__DataPath": r"..\runs\RID\server\state.json"},
+                       server_args=_FAKE_SERVER_ARGS)
+    assert "绝对路径" in str(ei.value)
+    assert r._procs == [], "校验失败不得启动任何进程"
+
+
 def test_isolate_state_copies_and_never_points_at_the_live_save(tmp_path):
     live = tmp_path / "data" / "state.json"
     live.parent.mkdir(parents=True)

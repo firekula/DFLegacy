@@ -370,6 +370,15 @@ class Runner:
         sj = Path(server_json) if server_json else workdir / "server.json"
         endpoints = parse_server_endpoints(sj)
         preflight_ports(endpoints)
+        # `DFLegacy__DataPath` 必须是绝对路径：服务端按 AppContext.BaseDirectory（exe 目录）
+        # 解析它，相对路径会被写到别处（实测会静默写进 `DF\runs\...`，run 私有副本原封不动
+        # ⇒ 存档隔离失效）。这里宁可启动前响亮失败，也不要静默写错地方。
+        if env:
+            data_path = env.get("DFLegacy__DataPath")
+            if data_path is not None and not Path(data_path).is_absolute():
+                raise ValueError(
+                    f"DFLegacy__DataPath 必须是绝对路径，得到 {data_path!r}："
+                    f"服务端按 exe 目录解析它，相对路径会写到 run 目录之外")
         if overrides:
             plan = plan_config_overrides(sj, overrides)
             apply_config_overrides(sj, plan)
