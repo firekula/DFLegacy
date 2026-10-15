@@ -1,0 +1,41 @@
+{
+  "counts": {
+    "fail": 0,
+    "missing-evidence": 0,
+    "needs-human": 1,
+    "pass": 3
+  },
+  "entries": [
+    {
+      "actor": "A",
+      "description": "c2s:login-ok（首个握手帧）",
+      "level": "[存在]",
+      "result": "pass",
+      "step_action": "登录并进到城镇"
+    },
+    {
+      "actor": "A",
+      "description": "s2c:noti1（服务端首个回包）",
+      "level": "[存在]",
+      "result": "pass",
+      "step_action": "登录并进到城镇"
+    },
+    {
+      "actor": "B",
+      "description": "c2s:login-ok（首个握手帧）",
+      "level": "[存在]",
+      "result": "pass",
+      "step_action": "登录并进到城镇"
+    },
+    {
+      "actor": "A",
+      "description": "A 收到 B 的 USERINFO 且同屏",
+      "level": "[语义]",
+      "result": "needs-human",
+      "step_action": "走到 B 附近"
+    }
+  ],
+  "invalid_reason": null,
+  "scenario_id": "town-two-clients",
+  "status": "green-with-human"
+}
