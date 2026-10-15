@@ -264,18 +264,35 @@ def test_wait_until_listening_polls_the_entrance_declared_in_server_json(tmp_pat
     assert len(attempts) == 3 and all(a == ("127.0.0.1", 24011, "tcp") for a in attempts), attempts
 
 
-def test_can_connect_is_false_for_a_port_with_no_listener_and_true_for_the_real_server():
-    """真机关键事实：判断"就绪"用的是连接。
+def test_can_connect_is_false_for_a_port_with_no_listener_and_is_time_bounded():
+    """真机关键事实：判断"就绪"用连接，且**总耗时**受超时约束。
 
-    本机真服务端实测 [真机 2026-10-15]：python 能在 ~0 ms 内连上 127.0.0.1:2311
-    （而 bind 探测因 SO_REUSEADDR 会对监听中的回环地址误报"空闲"，故不能用作就绪判据）。
-    这里只断言"没人监听时 connect 为假"这个必然方向，避免依赖本机是否正跑服务端。
+    [真机 2026-10-15] 服务端启动中 SYN 被丢弃时，`socket.create_connection` 会因
+    "每次尝试"超时 + Windows 重试而阻塞约 20 秒，把就绪门卡死并抛 TimeoutError
+    （实测 traceback：socket.py:850 → runner.py 探针）。这里钉住"快速返回 False"。
     """
     s = socket.socket()
     s.bind(("127.0.0.1", 0))
     port = s.getsockname()[1]
     s.close()  # 关掉 ⇒ 该端口无人监听
+    t0 = time.monotonic()
     assert _can_connect("127.0.0.1", port) is False
+    elapsed = time.monotonic() - t0
+    assert elapsed < 2.0, f"探针必须在超时内返回，实际 {elapsed:.2f}s"
+
+
+def test_wait_for_listen_survives_a_probe_that_raises():
+    """探针抛 OSError（网络栈瞬时错误）不得崩掉整条等待；应继续轮询直到成功。"""
+    seen: list[int] = []
+
+    def flaky(host, port, protocol):
+        seen.append(1)
+        if len(seen) == 1:
+            raise OSError("transient")
+        return True
+
+    wait_for_listen("127.0.0.1", 2311, timeout_s=5.0, probe=flaky, poll_interval_s=0.01)
+    assert len(seen) == 2, f"第一次抛错后应继续探测，实际 {len(seen)} 次"
 
 
 def test_start_server_rejects_relative_data_path(tmp_path):
