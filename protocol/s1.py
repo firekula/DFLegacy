@@ -1,4 +1,4 @@
-"""S1 CLI：import / ledger。"""
+"""S1 CLI：import / ledger / render。"""
 from __future__ import annotations
 
 import argparse
@@ -7,7 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from . import importer, ledger
+from . import importer, ledger, render
 
 RAW_DEFAULT = Path(".superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out")
 BASE_DEFAULT = Path("protocol")
@@ -73,6 +73,11 @@ def cmd_ledger(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_render(args: argparse.Namespace) -> int:
+    print(render.render_all(Path(args.base)))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="s1")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -91,6 +96,9 @@ def main(argv: list[str] | None = None) -> int:
     p_ledger.add_argument("--verdict-digest", required=True,
                           help="tools/acceptance/verdicts/<scenario>.json")
     p_ledger.set_defaults(func=cmd_ledger)
+    p_render = sub.add_parser("render", help="生成 map/index.md 与确定性 manifest.json")
+    p_render.add_argument("--base", default=str(BASE_DEFAULT))
+    p_render.set_defaults(func=cmd_render)
     args = parser.parse_args(argv)
     return args.func(args)
 
