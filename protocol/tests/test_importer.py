@@ -40,6 +40,15 @@ def test_ext_mark_takes_highest_priority_and_keeps_all_evidence(tmp_path):
     assert cmd1["_ext_evidence"] == "新证据-高; 旧证据-低"
 
 
+def test_load_external_strips_crlf_line_ending(tmp_path):
+    """真产物 `tiers-external.tsv` 实测是 CRLF；证据原文不得带 `\\r`，否则账① 落盘即失败。"""
+    raw = tmp_path / "raw"
+    _write(raw / "tiers-external.tsv",
+           "# kind\tid\tmark\tevidence\r\n"
+           "CMD\t1\tbyte_verified\t证据甲\r\n")
+    assert importer.load_external(raw)[("CMD", 1)] == [("byte_verified", "证据甲")]
+
+
 def test_unmarked_opcode_defaults_to_name_only_with_empty_evidence(tmp_path):
     raw = _fixture_raw(tmp_path)
     rows = importer.merge_rows(importer.load_coverage(raw), importer.load_external(raw))

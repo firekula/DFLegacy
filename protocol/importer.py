@@ -35,7 +35,7 @@ def load_external(raw_dir: Path) -> dict[tuple[str, int], list[tuple[str, str]]]
         for line in fh:
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
-            parts = line.rstrip("\n").split("\t")
+            parts = line.rstrip("\r\n").split("\t")
             if len(parts) < 4:
                 raise ValueError(f"tiers-external.tsv 行格式非法：{line!r}")
             kind, raw_id, mark, evidence = parts[0], parts[1], parts[2], parts[3]

@@ -1,0 +1,2 @@
+run_id	git_sha	created_utc	status	pass	needs_human	missing_evidence	fail	evidence_class	verdict_digest_sha256
+20261018T091951Z-2724238-town-two-clients	2724238	2026-10-18T09:19:51Z	green-with-human	3	1	0	0	[真机]	a6b531295a36d9a38ec8ffa49ed24c216671f898e5fced484aff5c0568bb30bc
