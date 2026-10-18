@@ -123,11 +123,15 @@ def _orchestration_paths(args: argparse.Namespace) -> dict:
 
 
 def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
-                actor_accounts: str, paths: dict, expected_actors: int | None = None) -> int:
+                actor_accounts: str, paths: dict, expected_actors: int | None = None,
+                server_start_timeout: float = 300.0) -> int:
     """一条命令：建 run + 隔离存档 + 起服务端与 N 个 actor + 真人 UI + 归集判定。
 
     存档隔离靠 `DFLegacy__DataPath` 指向 run 私有副本（绝不写活存档）；
     真实客户端 PID 从 launcher.log **本次新增**行归因，不允许人工抄或猜。
+    `server_start_timeout`：等服务端开始监听的上限。默认 300 秒而不是 60：
+    [真机 2026-10-18] 冷缓存下索引 48343 个脚本可能远超 60 秒，而 .NET 输出按块缓冲、
+    不满 4KB 不落盘 ⇒ 日志会显示"0 字节"，60 秒超时会把一次正常的冷启动误判成失败。
     """
     sc = load_scenario(scenario_path)
     names = {a.name for a in sc.actors}
@@ -186,8 +190,12 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
         # （src/DFLegacy.Launcher/Program.cs:336-347），而真服务端要约 5.4 秒才监听（2026-10-15 实测）。
         listen = r.wait_until_listening(rp, sc,
                                         server_json=server_exe.parent / "server.json",
-                                        timeout_s=60.0,
-                                        fake_server_pid=server_rec.get("pid"))
+                                        timeout_s=server_start_timeout,
+                                        fake_server_pid=server_rec.get("pid"),
+                                        on_tick=lambda waited: print(
+                                            f"  仍在等待服务端开始监听… 已等 {waited:.0f}s"
+                                            f"（冷启动时要索引 48343 个脚本，日志未落盘属正常）",
+                                            file=sys.stderr))
         if listen.get("skipped"):
             print(f"警告：未等待服务端监听（{listen.get('reason')}）", file=sys.stderr)
         else:
@@ -334,7 +342,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
                   file=sys.stderr)
             return 2
         return orchestrate(scen, runs_dir, sha, actor_accounts=args.actor_account,
-                           paths=_orchestration_paths(args), expected_actors=args.actors)
+                           paths=_orchestration_paths(args), expected_actors=args.actors,
+                           server_start_timeout=args.server_start_timeout)
     # 只建 run 目录并打印 runId，供人工 run 使用
     sc = load_scenario(scen)
     r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
@@ -401,6 +410,8 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--server-log", default=None,
                        help="单个服务端日志文件，显式复制进 run（可选）")
     p_run.add_argument("--runs-dir", default=str(Path.cwd() / "runs"))
+    p_run.add_argument("--server-start-timeout", type=float, default=300.0,
+                       help="等服务端开始监听的上限秒数（默认 300；冷缓存索引脚本可能很久）")
     p_run.set_defaults(func=_cmd_run)
 
     p_j = sub.add_parser("judge", help="对已有 run 判定")

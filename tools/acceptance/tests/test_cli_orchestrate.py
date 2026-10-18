@@ -57,7 +57,7 @@ class FakeRunner:
         return {"exe": Path(exe).name, "pid": 111, "workdir": str(workdir)}
 
     def wait_until_listening(self, rp, scenario, server_json=None, timeout_s=None,
-                             fake_server_pid=None, probe=None):
+                             fake_server_pid=None, probe=None, on_tick=None):
         """模拟"服务端已开始监听"：记录被等待的端口，并真的占住该端口（可探到）。
 
         端口从 `server.json` 解析（即真实实现该走的路），并回报给测试断言。

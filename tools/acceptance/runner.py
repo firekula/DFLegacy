@@ -182,17 +182,25 @@ def _can_connect(host: str, port: int, timeout_s: float = 0.3) -> bool:
 def wait_for_listen(host: str, port: int, timeout_s: float = 60.0,
                     should_stop: Optional[Callable[[], bool]] = None,
                     poll_interval_s: float = 0.25,
-                    probe: Optional[Callable[[str, int, str], bool]] = None) -> None:
+                    probe: Optional[Callable[[str, int, str], bool]] = None,
+                    on_tick: Optional[Callable[[float], None]] = None,
+                    tick_interval_s: float = 10.0) -> None:
     """等到 `host:port` 能建立 TCP 连接为止；超时或进程提前退出就明确失败。
 
     存在原因 [真机 2026-10-15]：服务端启动要**约 5.4 秒**（索引 48343 个脚本 + 各 catalog），
     而 launcher 的 `EnsureServerReadyAsync` 在 `StartServer=false` 时**只探一次就抛错**。
     因此"起完服务端立刻起 actor"必然失败：实测报
     `入口服务 127.0.0.1:2311 未监听，且 StartServer=false`。
+
+    `on_tick(已等待秒数)` 每 `tick_interval_s` 调用一次，给操作者可见的进展：
+    [真机 2026-10-18] 冷缓存下索引脚本可能远超 60 秒，而 .NET 输出按块缓冲（不满 4KB 不落盘）
+    ⇒ 日志显示"0 字节"，操作者无法分辨它是在加载还是已经死了。
     """
     target = probe_host(host)
     check = probe if probe is not None else (lambda h, p, _proto: _can_connect(h, p))
-    deadline = time.monotonic() + timeout_s
+    started = time.monotonic()
+    deadline = started + timeout_s
+    last_tick = started
     while True:
         # 探针本身也可能抛（网络栈的瞬时错误）；就绪探测绝不能因此把整条命令崩掉。
         try:
@@ -204,9 +212,13 @@ def wait_for_listen(host: str, port: int, timeout_s: float = 60.0,
         if should_stop is not None and should_stop():
             raise ServerStartupError(
                 f"服务端进程在 {target}:{port} 开始监听之前就退出了")
-        if time.monotonic() >= deadline:
+        now = time.monotonic()
+        if now >= deadline:
             raise ServerStartupError(
                 f"服务端在 {timeout_s}s 内没有在 {target}:{port} 开始监听")
+        if on_tick is not None and now - last_tick >= tick_interval_s:
+            last_tick = now
+            on_tick(now - started)
         time.sleep(poll_interval_s)
 
 
@@ -505,7 +517,8 @@ class Runner:
                              server_json: Path | None = None,
                              timeout_s: float = 60.0,
                              fake_server_pid: Optional[int] = None,
-                             probe: Optional[Callable[[str, int, str], bool]] = None) -> dict:
+                             probe: Optional[Callable[[str, int, str], bool]] = None,
+                             on_tick: Optional[Callable[[float], None]] = None) -> dict:
         """等 `server_json` 声明的 Entrance 端点开始监听；返回等待报告（供 manifest/打印）。
 
         存在原因 [真机 2026-10-15]：真服务端启动约 5.4 秒才监听 2311，而 launcher 的
@@ -528,7 +541,9 @@ class Runner:
                        else (lambda: not _pid_alive(fake_server_pid)))
         started = time.monotonic()
         try:
-            kw = {} if probe is None else {"probe": probe}
+            kw: dict = {} if probe is None else {"probe": probe}
+            if on_tick is not None:
+                kw["on_tick"] = on_tick
             wait_for_listen(entrance.host, entrance.port, timeout_s=timeout_s,
                             should_stop=should_stop, **kw)
         except ServerStartupError as exc:

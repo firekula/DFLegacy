@@ -163,6 +163,23 @@ def test_wait_for_listen_polls_until_the_probe_succeeds():
     assert len(seen) == 3, f"应在第 3 次探测成功后返回，实际探测 {len(seen)} 次"
 
 
+def test_wait_for_listen_emits_progress_ticks_while_waiting():
+    """等待期间必须定期回报进展：冷启动时日志是"0 字节"，操作者只能靠这行分辨死活。
+
+    非恒真：若实现不调用 on_tick（例如只设一次 deadline 就 sleep），ticks 为空 ⇒ 失败。
+    """
+    ticks: list[float] = []
+
+    def probe(host, port, protocol):
+        return time.monotonic() - t_start >= 0.35  # 约 0.35s 后就绪
+
+    t_start = time.monotonic()
+    wait_for_listen("127.0.0.1", 2311, timeout_s=5.0, poll_interval_s=0.02,
+                    probe=probe, on_tick=ticks.append, tick_interval_s=0.1)
+    assert ticks, "等待超过 tick_interval_s 却没有回报进度"
+    assert ticks[0] >= 0.1, f"首个 tick 的已等秒数应 >= 0.1，得到 {ticks[0]}"
+
+
 def test_wait_for_listen_raises_within_the_timeout_when_nothing_listens():
     """非恒真：把超时设小，探测器永远失败必须抛 ServerStartupError 且不超出超时太多。"""
     t0 = time.monotonic()
