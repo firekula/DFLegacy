@@ -384,6 +384,15 @@ def test_runtime_evidence_is_written_back_to_the_matching_opcode(tmp_path):
     out = {r["id"]: r for r in ledger.apply_runtime_evidence(map_rows, scenarios)}
     assert out["11"]["runtime_evidence"] == "[真机] RID-1 A:4,B:4"
     assert out["12"]["runtime_evidence"] == ""
+
+
+def test_ext_evidence_comes_from_tiers_external_not_from_map_rows():
+    """账① 的 ext_evidence 必须由调用方从 tiers-external.tsv 传入：地图行没有这一列。"""
+    map_rows = [{"kind": "CMD", "id": "1"}, {"kind": "CMD", "id": "2"}]
+    out = {r["id"]: r for r in ledger.apply_runtime_evidence(
+        map_rows, [], {("CMD", "1"): "证据甲; 证据乙"})}
+    assert out["1"]["ext_evidence"] == "证据甲; 证据乙"
+    assert out["2"]["ext_evidence"] == ""
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
@@ -486,26 +495,29 @@ def build_runs(verdict_path: Path, run_manifest: Path, evidence_class: str,
     }]
 
 
-def apply_runtime_evidence(map_rows: list[dict], scenarios: list[dict]) -> list[dict]:
-    """把"该 opcode 在哪次 run 的哪一行被验证"写回账①。"""
+def apply_runtime_evidence(map_rows: list[dict], scenarios: list[dict],
+                           external: dict[tuple[str, str], str] | None = None) -> list[dict]:
+    """把"该 opcode 在哪次 run 的哪一行被验证"写回账①，并补上人工外部证据原文。
+
+    两处查找键都是**地图行的 `kind:id`**：地图行没有 `mapped_opcodes`/`_ext_evidence` 列，
+    对着它查会把这两列永远查成空（预检发现的缺陷 P1/P2）。`ext_evidence` 由调用方
+    从 `tiers-external.tsv` 读入（`{(kind,id): "证据1; 证据2"}`），不依赖 Task 1 的中间键。
+    """
+    external = external or {}
     buckets: dict[str, list[str]] = {}
     for row in scenarios:
-        if not row.get("mapped_opcodes") or not row.get("verified_run_id"):
-            continue
-        if not row.get("verdict_detail"):
+        opcode = (row.get("mapped_opcodes") or "").strip()
+        if not opcode or not row.get("verified_run_id") or not row.get("verdict_detail"):
             continue
         line = row["verdict_detail"].rsplit(":", 1)[-1].split()[0]
-        opcode = row["mapped_opcodes"]
         buckets.setdefault(opcode, []).append(
             f"[真机] {row['verified_run_id']} {row['actor']}:{line}")
     out: list[dict] = []
     for row in map_rows:
         merged = dict(row)
-        entries: list[str] = []
-        for opcode in filter(None, (row.get("mapped_opcodes") or "").split(",")):
-            entries.extend(buckets.get(opcode.strip(), []))
-        merged["runtime_evidence"] = ",".join(entries)
-        merged.setdefault("ext_evidence", row.get("_ext_evidence", ""))
+        key = f"{row['kind']}:{row['id']}"
+        merged["runtime_evidence"] = ",".join(buckets.get(key, []))
+        merged["ext_evidence"] = external.get((row["kind"], row["id"]), "")
         merged.setdefault("notes", "")
         out.append(merged)
     return out
@@ -524,19 +536,44 @@ def write_ledgers(base: Path, scenarios: list[dict], runs: list[dict],
 
 ```python
 def cmd_ledger(args: argparse.Namespace) -> int:
-    import csv, hashlib
+    import csv, hashlib, json
     from . import ledger as ledger_mod
     base = Path(args.base)
     map_path = base / "map" / "opcode-map.tsv"
     with map_path.open(encoding="utf-8", newline="") as fh:
         map_rows = list(csv.DictReader(fh, delimiter="\t"))
-    res = ledger_mod.build_scenarios(Path(args.scenarios_dir), verified={args.verified_scenario: args.verified_run},
-                                    results={})
+
+    verdict = json.loads(Path(args.verdict).read_text(encoding="utf-8"))
+    # verdict.entries 与场景声明顺序一一对应（judge 按 steps→expects 顺序产出），
+    # 因此按顺序把 detail/result 贴回场景账，再由账生成运行时证据。
+    results: dict[tuple[str, int, int], str] = {}
+    details: list[str] = []
+    ordered: list[tuple[int, int]] = []
+    for s_i, step in enumerate(load_scenario(Path(args.scenarios_dir) / f"{args.verified_scenario}.yaml").steps, start=1):
+        for e_i, _ex in enumerate(step.expects, start=1):
+            ordered.append((s_i, e_i))
+    if len(ordered) != len(verdict["entries"]):
+        raise SystemExit(f"verdict 条目数 {len(verdict['entries'])} 与场景期望数 {len(ordered)} 不符，拒绝臆测对应关系")
+    for (s_i, e_i), entry in zip(ordered, verdict["entries"]):
+        results[(args.verified_scenario, s_i, e_i)] = entry["result"]
+        details.append(entry.get("detail", ""))
+
+    scenarios = ledger_mod.build_scenarios(Path(args.scenarios_dir),
+                                           verified={args.verified_scenario: args.verified_run},
+                                           results=results)
+    for row, detail in zip(scenarios, details):
+        if row["scenario_id"] == args.verified_scenario:
+            row["verdict_detail"] = detail
+
     digest = Path(args.verdict_digest).read_bytes()
     runs = ledger_mod.build_runs(Path(args.verdict), Path(args.run_manifest), "[真机]",
                                  hashlib.sha256(digest).hexdigest())
-    opcode_rows = ledger_mod.apply_runtime_evidence(map_rows, [])
-    stats = ledger_mod.write_ledgers(base, res, runs, opcode_rows)
+    # 人工外部证据原文由 tiers-external.tsv 直接读出（账① 才存它，地图只有 ext_mark）
+    from .importer import load_external
+    external = {f"{kind}:{ident}": "; ".join(e for _, e in pairs if e)
+                for (kind, ident), pairs in load_external(Path(args.raw_dir)).items()}
+    opcode_rows = ledger_mod.apply_runtime_evidence(map_rows, scenarios, external)
+    stats = ledger_mod.write_ledgers(base, scenarios, runs, opcode_rows)
     print(f"ledger: {stats}")
     return 0
 ```
@@ -544,15 +581,41 @@ def cmd_ledger(args: argparse.Namespace) -> int:
 - [ ] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest protocol/tests/test_ledger.py -q`
-Expected: 5 passed
+Expected: 6 passed
+
+`ledger` 子命令的 argparse 注册（写进 `main()`）：
+
+```python
+    p_ledger = sub.add_parser("ledger", help="生成两本账")
+    p_ledger.add_argument("--base", default=str(BASE_DEFAULT))
+    p_ledger.add_argument("--raw-dir", default=str(RAW_DEFAULT))
+    p_ledger.add_argument("--scenarios-dir", default="tools/acceptance/scenarios")
+    p_ledger.add_argument("--verified-run", required=True)
+    p_ledger.add_argument("--verified-scenario", required=True)
+    p_ledger.add_argument("--verdict", required=True, help="runs/<runId>/verdict.json")
+    p_ledger.add_argument("--run-manifest", required=True, help="runs/<runId>/manifest.json")
+    p_ledger.add_argument("--verdict-digest", required=True,
+                          help="tools/acceptance/verdicts/<scenario>.json")
+    p_ledger.set_defaults(func=cmd_ledger)
+```
 
 - [ ] **Step 5: 真跑一次账目生成并核对**
 
 Run:
 ```powershell
-python -m protocol.s1 ledger --verified-run 20261018T091951Z-2724238-town-two-clients --verified-scenario town-two-clients
+$run = "runs\20261018T091951Z-2724238-town-two-clients"
+python -m protocol.s1 ledger --verified-run 20261018T091951Z-2724238-town-two-clients `
+  --verified-scenario town-two-clients `
+  --verdict "$run\verdict.json" --run-manifest "$run\manifest.json" `
+  --verdict-digest "tools\acceptance\verdicts\town-two-clients.json"
 ```
 Expected: `ledger: {'scenarios': 12, 'runs': 1, 'opcodes': 1171}`
+
+再核对运行时证据**真的落到了** opcode 上（预检修复的验收点）：
+```powershell
+python -c "import csv;rows=list(csv.DictReader(open('protocol/ledger/opcodes.tsv',encoding='utf-8'),delimiter='\t'));print({r['id']:r['runtime_evidence'] for r in rows if r['runtime_evidence']})"
+```
+Expected: 非空，形如 `{'11': '[真机] 20261018T091951Z-2724238-town-two-clients A:4,B:4', '12': '[真机] ... A:6'}`
 
 - [ ] **Step 6: 提交**
 
