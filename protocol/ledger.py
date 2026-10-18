@@ -4,11 +4,13 @@
 """
 from __future__ import annotations
 
+import csv
 import json
 import sys
 from pathlib import Path
 
-from .importer import MAP_COLUMNS, write_tsv
+# ``_KIND_ORDER`` 是地图主键顺序的唯一事实源（CMD 先 → id 升序）；共用它，避免两处排序漂移。
+from .importer import _KIND_ORDER, MAP_COLUMNS, write_tsv
 
 #: 仓库根（本文件在 ``<root>/protocol/ledger.py``）。用绝对路径而不是 ``Path("tools")``，
 #: 这样从任何工作目录调用都能找到 S0 的场景解析器。
@@ -44,13 +46,16 @@ def parse_frame(pattern: str) -> tuple[int, int]:
     ``src/DFLegacy.Protocol/PacketFrame.cs:6-9``（``ProtocolId`` 在偏移 1、长度在偏移 2）
     与真机日志互证（``000A6637…`` ⇒ protocol 10 / length 0x3766=14182，与 server.log
     ``protocol=10 length=14182`` 逐字吻合；type=1 的帧首字节确为 ``01``）。
-    非法/过短输入报错，绝不猜。
+
+    长度字段占 4 字节，**必须凑满 10 字节帧头才允许解码**：只给 4–5 字节时高字节缺失，
+    ``int.from_bytes`` 会把它们当 0，于是 ``010B2B00`` 会"猜"成 43（真值 65579）。
+    因此守卫与切片都按 10 字节对齐；不足或任何位置非 hex 一律 ``ValueError``，绝不猜。
     """
     text = (pattern or "").strip().lower()
-    if len(text) < 8:
-        raise ValueError(f"帧头不足 4 字节：{pattern!r}")
+    if len(text) < 20:
+        raise ValueError(f"帧头不足 10 字节：{pattern!r}")
     try:
-        head = bytes.fromhex(text[:12])
+        head = bytes.fromhex(text[:20])
     except ValueError as exc:
         raise ValueError(f"非十六进制帧头：{pattern!r}") from exc
     return head[1], int.from_bytes(head[2:6], "little")
@@ -156,8 +161,96 @@ def apply_runtime_evidence(map_rows: list[dict], scenarios: list[dict],
 
 def write_ledgers(base: Path, scenarios: list[dict], runs: list[dict],
                   opcode_rows: list[dict]) -> dict:
+    """把本次 run 的行**合并**进已有台账再落盘（不是覆写）；返回合并后的行数。
+
+    台账是可累积的历史：跑另一个场景/另一次 run 不能把上一次的 ``verified_run_id``
+    或 ``runtime_evidence`` 静默抹掉（审查 I2）。合并规则见 ``merge_*``。
+    """
     base = Path(base)
-    write_tsv(base / "ledger" / "scenarios.tsv", SCENARIO_COLUMNS, scenarios)
-    write_tsv(base / "ledger" / "runs.tsv", RUN_COLUMNS, runs)
-    write_tsv(base / "ledger" / "opcodes.tsv", OPCODE_COLUMNS, opcode_rows)
-    return {"scenarios": len(scenarios), "runs": len(runs), "opcodes": len(opcode_rows)}
+    ledger_dir = base / "ledger"
+    merged_scenarios = merge_scenarios(
+        _read_tsv(ledger_dir / "scenarios.tsv", SCENARIO_COLUMNS), scenarios)
+    merged_runs = merge_runs(_read_tsv(ledger_dir / "runs.tsv", RUN_COLUMNS), runs)
+    merged_opcodes = merge_opcodes(
+        _read_tsv(ledger_dir / "opcodes.tsv", OPCODE_COLUMNS), opcode_rows)
+    write_tsv(ledger_dir / "scenarios.tsv", SCENARIO_COLUMNS, merged_scenarios)
+    write_tsv(ledger_dir / "runs.tsv", RUN_COLUMNS, merged_runs)
+    write_tsv(ledger_dir / "opcodes.tsv", OPCODE_COLUMNS, merged_opcodes)
+    return {"scenarios": len(merged_scenarios), "runs": len(merged_runs),
+            "opcodes": len(merged_opcodes)}
+
+
+def _read_tsv(path: Path, columns: tuple[str, ...]) -> list[dict]:
+    """读已有台账；文件不存在返回空表。表头与契约不符即报错（不合并进错的形状）。"""
+    path = Path(path)
+    if not path.is_file():
+        return []
+    with path.open(encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        header = tuple(reader.fieldnames or ())
+        if header != columns:
+            raise ValueError(f"{path} 的表头与列契约不符：{header} != {columns}"
+                             "（先按新列重新生成，不要往旧形状里合并）")
+        return [{k: (v or "") for k, v in row.items()} for row in reader]
+
+
+def _scenario_key(row: dict) -> tuple[str, str, str]:
+    return (row["scenario_id"], row["step_index"], row["expect_index"])
+
+
+def merge_scenarios(existing: list[dict], incoming: list[dict]) -> list[dict]:
+    """按 ``(scenario_id, step_index, expect_index)`` 合并：新值为空时不覆盖已有非空值。
+
+    场景账的 ``verified_run_id``/``verdict_result`` 只属于某一次 run；跑另一个场景时
+    这些字段在本次构建里是空的，必须保留磁盘上的旧值，否则会静默丢历史。
+    """
+    merged: dict[tuple[str, str, str], dict] = {_scenario_key(r): dict(r) for r in existing}
+    for row in incoming:
+        key = _scenario_key(row)
+        old = merged.get(key)
+        merged[key] = (dict(row) if old is None else {
+            col: (row.get(col) or old.get(col, "")) for col in SCENARIO_COLUMNS})
+    return sorted(merged.values(),
+                  key=lambda r: (r["scenario_id"], int(r["step_index"]),
+                                 int(r["expect_index"])))
+
+
+def merge_runs(existing: list[dict], incoming: list[dict]) -> list[dict]:
+    """按 ``run_id`` 合并：同 run 以新值更新，异 run 追加；按 ``created_utc`` 升序落盘。"""
+    merged: dict[str, dict] = {r["run_id"]: dict(r) for r in existing}
+    for row in incoming:
+        merged[row["run_id"]] = {col: row.get(col, "") for col in RUN_COLUMNS}
+    return sorted(merged.values(), key=lambda r: (r["created_utc"], r["run_id"]))
+
+
+def _merge_evidence(old: str, new: str) -> str:
+    """把两段以 ``"; "`` 分隔的证据并集化（去重 + 按内容排序；spec §5.2 多条用 "; "）。
+
+    排序不只是好看：runId 以 UTC 时间戳开头，按条目排序 = 按 run 时间排序，且让落盘结果
+    **与摄取顺序无关** —— 无论先并哪个 run、重复跑几次，三份 TSV 都逐字节相同。
+    """
+    items = {item.strip() for chunk in (old or "", new or "")
+             for item in chunk.split(";") if item.strip()}
+    return "; ".join(sorted(items))
+
+
+def merge_opcodes(existing: list[dict], incoming: list[dict]) -> list[dict]:
+    """按 ``(kind, id)`` 合并：地图 10 列以新值为准，证据列"空不覆盖非空"、多 run 累积。"""
+    merged: dict[tuple[str, str], dict] = {
+        (r["kind"], r["id"]): dict(r) for r in existing}
+    for row in incoming:
+        key = (row["kind"], row["id"])
+        old = merged.get(key)
+        if old is None:
+            merged[key] = dict(row)
+            continue
+        updated = dict(old)
+        for col in MAP_COLUMNS:
+            updated[col] = row.get(col, old.get(col, ""))
+        updated["ext_evidence"] = row.get("ext_evidence") or old.get("ext_evidence", "")
+        updated["runtime_evidence"] = _merge_evidence(
+            old.get("runtime_evidence", ""), row.get("runtime_evidence", ""))
+        updated["notes"] = row.get("notes") or old.get("notes", "")
+        merged[key] = updated
+    return sorted(merged.values(),
+                  key=lambda r: (_KIND_ORDER.get(r["kind"], 9), int(r["id"])))

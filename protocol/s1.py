@@ -21,7 +21,11 @@ def cmd_import(args: argparse.Namespace) -> int:
 
 
 def cmd_ledger(args: argparse.Namespace) -> int:
-    """把一份真机 verdict 贴回场景账，并派生 opcode 账（spec §5.2–§5.4）。"""
+    """把一份真机 verdict 贴回场景账，并派生 opcode 账（spec §5.2–§5.4）。
+
+    落盘是**按主键合并**进已有台账（``ledger.write_ledgers``），所以对不同 run 重复执行
+    会累积 run 台账与运行时证据，而不是互相覆写。
+    """
     base = Path(args.base)
     map_path = base / "map" / "opcode-map.tsv"
     with map_path.open(encoding="utf-8", newline="") as fh:
@@ -76,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     p_import.add_argument("--raw-dir", default=str(RAW_DEFAULT))
     p_import.add_argument("--base", default=str(BASE_DEFAULT))
     p_import.set_defaults(func=cmd_import)
-    p_ledger = sub.add_parser("ledger", help="生成两本账")
+    p_ledger = sub.add_parser("ledger", help="生成两本账（按主键合并进已有台账）")
     p_ledger.add_argument("--base", default=str(BASE_DEFAULT))
     p_ledger.add_argument("--raw-dir", default=str(RAW_DEFAULT))
     p_ledger.add_argument("--scenarios-dir", default=str(SCENARIOS_DEFAULT))

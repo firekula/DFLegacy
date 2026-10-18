@@ -10,8 +10,8 @@ CMD	7	RETURN_SELECT_CHARACTER	0x08aebaa4	ReturnToSelectCharacter	mapped	T3b_fiel
 CMD	8	GET_USERINFO	0x08aebacb	GetUserInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only			
 CMD	9	RECOVER_STAMINA	0x08aebae8	RecoverStamina	mapped	T1_dispatcher-no-handlerdata	0	0	name_only			
 CMD	10	REQUEST_PEER	0x08aebb07	ReqPeer	mapped	T4_fields-read+write	4	20	name_only			
-CMD	11	RESPONSE_PEER	0x08aebb23	ResPeer	mapped	T4_fields-read+write	3	127	name_only		[真机] 20261018T091951Z-2724238-town-two-clients A:4,B:4	
-CMD	12	SET_PARTY_INFO	0x08aebb40	SetPartyInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only		[真机] 20261018T091951Z-2724238-town-two-clients A:6	
+CMD	11	RESPONSE_PEER	0x08aebb23	ResPeer	mapped	T4_fields-read+write	3	127	name_only		[真机] 20261015T013525Z-0ae1675-town-two-clients A:4,B:4; [真机] 20261018T091429Z-2724238-town-two-clients A:4,B:4; [真机] 20261018T091611Z-2724238-town-two-clients A:4,B:4; [真机] 20261018T091814Z-2724238-town-two-clients A:4,B:4; [真机] 20261018T091951Z-2724238-town-two-clients A:4,B:4	
+CMD	12	SET_PARTY_INFO	0x08aebb40	SetPartyInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only		[真机] 20261015T013525Z-0ae1675-town-two-clients A:6; [真机] 20261018T091429Z-2724238-town-two-clients A:6; [真机] 20261018T091611Z-2724238-town-two-clients A:6; [真机] 20261018T091814Z-2724238-town-two-clients A:6; [真机] 20261018T091951Z-2724238-town-two-clients A:6	
 CMD	13	LEAVE_PARTY	0x08aebb5e	LeaveParty	mapped	T1_dispatcher-no-handlerdata	0	0	name_only			
 CMD	14	WALKOUT_PARTY_MEMBER	0x08aebb7c	WalkoutParty	mapped	T1_dispatcher-no-handlerdata	0	0	name_only			
 CMD	15	START_GAME	0x08aebba0	StartGame	mapped	T1_dispatcher-no-handlerdata	0	0	name_only			
