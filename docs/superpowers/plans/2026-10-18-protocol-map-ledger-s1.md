@@ -429,15 +429,22 @@ OPCODE_COLUMNS: tuple[str, ...] = MAP_COLUMNS + ("ext_evidence", "runtime_eviden
 
 
 def parse_frame(pattern: str) -> tuple[int, int]:
-    """DNF 帧头 4 字节 = u16 id + u16 size（大端）。非法输入报错，绝不猜。"""
+    """DNF 帧头 10 字节：type(u8)|protocol(u8)|total_length(u32 LE)|crc32(u32 LE)。
+
+    [作废] 本计划初稿写的是 "u16 id + u16 size（大端）"，被以下证据推翻：
+    `src/DFLegacy.Protocol/PacketFrame.cs:5-13`（HeaderLength = 10）+
+    真机首帧 000B2B… 按 10 字节解释得 protocol=11/length=43，与 server.log 一致，
+    而 u16+u16 解释得 size=11008（错）。原文保留，不删。
+    非法输入报错，绝不猜。
+    """
     text = (pattern or "").strip().lower()
-    if len(text) < 8:
-        raise ValueError(f"帧头不足 4 字节：{pattern!r}")
+    if len(text) < 20:
+        raise ValueError(f"帧头不足 10 字节：{pattern!r}")
     try:
-        head = bytes.fromhex(text[:8])
+        head = bytes.fromhex(text[:20])
     except ValueError as exc:
         raise ValueError(f"非十六进制帧头：{pattern!r}") from exc
-    return int.from_bytes(head[0:2], "big"), int.from_bytes(head[2:4], "big")
+    return head[1], int.from_bytes(head[2:6], "little")
 
 
 def build_scenarios(scenarios_dir: Path, verified: dict[str, str],

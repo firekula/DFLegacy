@@ -125,14 +125,27 @@ protocol/
 
 **`pattern → opcode` 的反解机制**（硬事实，不是猜）：
 
-DNF 帧头 4 字节 = `u16 id + u16 size`（大端）。因此：
+DNF 帧头是 **10 字节**：`type(u8) | protocol(u8) | total_length(u32 LE) | crc32(u32 LE)`，
+头后第一字节通常是记录数。因此：
 
-- `000B2B0000000000000001` ⇒ `id = 0x000B = 11`，`size = 0x2B = 43`
-- `000C2F0000000000000001` ⇒ `id = 0x000C = 12`，`size = 0x2F = 47`
+- `000B2B0000000000000001` ⇒ `type=0, protocol=0x0B=11, length=43, crc=0, body=01`
+- `000C2F0000000000000001` ⇒ `type=0, protocol=0x0C=12, length=47, crc=0, body=01`
 
 两条都与 S0 真机 `server.log` 逐字吻合：`RX … protocol=11 length=43`、`TX … protocol=12 length=47`
 （`runs/20261018T091951Z-2724238-town-two-clients/server/server.log`）。这就是
 "`[抓包]` 的 hex → `CMD` opcode"的可复核桥。
+
+> `[作废]` 本节初稿（`c0d2120`）写的是"DNF 帧头 4 字节 = `u16 id + u16 size`（大端）"，
+> 被以下证据推翻，**原文保留在此**：
+> 1. `[静态]` `src/DFLegacy.Protocol/PacketFrame.cs:5-13`：`packed ten-byte transport header:
+>    type(1), protocol id(1), total length(4), CRC32(4)`，`HeaderLength = 10`；
+> 2. `[真机]` 首帧按 10 字节解释得 `protocol=11 length=43`，与同 run 的 `server.log` 一致；
+>    按旧的 `u16+u16` 解释会得到 `size=11008`（错）；
+> 3. `[真机]` 另有两类 hex 行并非帧（例如 `636F6E6E6563743D6F6B` = ASCII `connect=ok`），
+>    反解只对场景里的帧 pattern 使用，遇到非帧行不应猜。
+
+**`verified_run_id` 的语义**：表示"该 run 对它**出过结论**"，不必然是 `pass`；
+`[语义]` 项在同一 run 里的结论就是 `needs-human`，两者同时出现是正确的，不是矛盾。
 
 ### 5.4 `ledger/runs.tsv`（真机 run 台账，主键 `run_id`）
 
