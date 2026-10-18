@@ -148,6 +148,18 @@ def test_merge_scenarios_keeps_existing_non_empty_values():
     assert ledger.merge_scenarios(old, new) == old
 
 
+def test_merge_scenarios_prefers_the_newer_run_regardless_of_ingestion_order():
+    """归属按 runs.created_utc 判新旧：老 run 后摄取也不能把最新 run 顶掉（确定性）。"""
+    newest = _scenario_row(verified_run_id="RID-B", verdict_result="pass")
+    older = _scenario_row(verified_run_id="RID-A", verdict_result="needs-human")
+    created = {"RID-A": "2026-01-01T00:00:00Z", "RID-B": "2026-01-02T00:00:00Z"}
+    forward = ledger.merge_scenarios([older], [newest], created)
+    backward = ledger.merge_scenarios([newest], [older], created)
+    assert forward == backward
+    assert forward[0]["verified_run_id"] == "RID-B"
+    assert forward[0]["verdict_result"] == "pass"       # 结果跟着归属 run 走，不混搭
+
+
 def test_merge_opcodes_unions_runtime_evidence_with_semicolon_space():
     old = [{"kind": "CMD", "id": "11", "ext_evidence": "证据甲", "runtime_evidence": "[真机] R1 A:4"}]
     new = [{"kind": "CMD", "id": "11", "ext_evidence": "证据甲", "runtime_evidence": "[真机] R2 A:5"}]
@@ -313,3 +325,27 @@ def test_cmd_ledger_merges_runs_and_does_not_clear_other_scenarios(tmp_path):
         "[真机] RID-A A:4,B:4; [真机] RID-B A:5,B:5")
     assert opcodes["12"]["runtime_evidence"] == "[真机] RID-A A:8; [真机] RID-B A:9"
     assert opcodes["11"]["ext_evidence"] == "证据甲; 证据乙"  # 后续 run 不丢外部证据
+
+
+def test_ledger_ingestion_order_does_not_change_any_ledger(tmp_path):
+    """正序摄取与逆序摄取必须得到逐字节相同的三份台账（manifest sha256 才稳定）。"""
+    batch = (("RID-A", "2026-01-01T00:00:00Z", ("4", "8", "4")),
+             ("RID-B", "2026-01-02T00:00:00Z", ("5", "9", "5")))
+
+    def ingest(order: str) -> dict[str, bytes]:
+        env = _make_env(tmp_path / order)
+        rows = batch if order == "forward" else tuple(reversed(batch))
+        for run_id, created_utc, lines in rows:
+            _run_ledger(env, run_id=run_id, scenario_id="town-two-clients",
+                        entries=_town_entries(lines), created_utc=created_utc)
+        ledger_dir = env["base"] / "ledger"
+        return {name: (ledger_dir / name).read_bytes()
+                for name in ("scenarios.tsv", "runs.tsv", "opcodes.tsv")}
+
+    forward, backward = ingest("forward"), ingest("backward")
+    assert forward == backward
+    # 两种顺序的最终归属都必须是 created_utc 最新的 RID-B（不是"最后摄取者"）
+    town = [r for r in _read_tsv(tmp_path / "forward" / "base" / "ledger" / "scenarios.tsv")
+            if r["scenario_id"] == "town-two-clients"]
+    assert {r["verified_run_id"] for r in town} == {"RID-B"}
+    assert [r["verdict_result"] for r in town] == ["pass", "pass", "pass", "needs-human"]

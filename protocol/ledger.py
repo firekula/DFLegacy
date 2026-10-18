@@ -168,9 +168,11 @@ def write_ledgers(base: Path, scenarios: list[dict], runs: list[dict],
     """
     base = Path(base)
     ledger_dir = base / "ledger"
-    merged_scenarios = merge_scenarios(
-        _read_tsv(ledger_dir / "scenarios.tsv", SCENARIO_COLUMNS), scenarios)
+    # runs 先合并：scenarios 的归属要用它的 created_utc 判新旧（与摄取顺序无关）。
     merged_runs = merge_runs(_read_tsv(ledger_dir / "runs.tsv", RUN_COLUMNS), runs)
+    run_created = {r["run_id"]: r["created_utc"] for r in merged_runs}
+    merged_scenarios = merge_scenarios(
+        _read_tsv(ledger_dir / "scenarios.tsv", SCENARIO_COLUMNS), scenarios, run_created)
     merged_opcodes = merge_opcodes(
         _read_tsv(ledger_dir / "opcodes.tsv", OPCODE_COLUMNS), opcode_rows)
     write_tsv(ledger_dir / "scenarios.tsv", SCENARIO_COLUMNS, merged_scenarios)
@@ -198,21 +200,48 @@ def _scenario_key(row: dict) -> tuple[str, str, str]:
     return (row["scenario_id"], row["step_index"], row["expect_index"])
 
 
-def merge_scenarios(existing: list[dict], incoming: list[dict]) -> list[dict]:
-    """按 ``(scenario_id, step_index, expect_index)`` 合并：新值为空时不覆盖已有非空值。
+def merge_scenarios(existing: list[dict], incoming: list[dict],
+                    run_created: dict[str, str] | None = None) -> list[dict]:
+    """按 ``(scenario_id, step_index, expect_index)`` 合并，归属取 ``created_utc`` 最新的 run。
 
-    场景账的 ``verified_run_id``/``verdict_result`` 只属于某一次 run；跑另一个场景时
-    这些字段在本次构建里是空的，必须保留磁盘上的旧值，否则会静默丢历史。
+    - 普通列：新值为空时不覆盖已有非空值（跑另一个场景不清空旧归属）；
+    - ``verified_run_id``/``verdict_result``：只有 ``run_created`` 证明新 run **更晚**
+      （或同一个 run、或该行本来没有归属）时才覆盖，否则保留旧值。于是同一批 run
+      无论正序还是逆序摄取，``scenarios.tsv`` 都逐字节相同（manifest 的 sha256 才稳定）；
+    - ``run_created`` 为 None，或两个 runId 有一个在表里查不到时，退化为「新值非空即覆盖」。
     """
     merged: dict[tuple[str, str, str], dict] = {_scenario_key(r): dict(r) for r in existing}
     for row in incoming:
         key = _scenario_key(row)
         old = merged.get(key)
-        merged[key] = (dict(row) if old is None else {
-            col: (row.get(col) or old.get(col, "")) for col in SCENARIO_COLUMNS})
+        if old is None:
+            merged[key] = dict(row)
+            continue
+        updated = {col: (row.get(col) or old.get(col, "")) for col in SCENARIO_COLUMNS}
+        updated["verified_run_id"], updated["verdict_result"] = _pick_attribution(
+            old, row, run_created)
+        merged[key] = updated
     return sorted(merged.values(),
                   key=lambda r: (r["scenario_id"], int(r["step_index"]),
                                  int(r["expect_index"])))
+
+
+def _pick_attribution(old: dict, new: dict,
+                      run_created: dict[str, str] | None) -> tuple[str, str]:
+    """该行归给哪个 run：``created_utc`` 更晚者胜出；同一 run 则采用新结果。"""
+    old_run = old.get("verified_run_id", "")
+    new_run = new.get("verified_run_id", "")
+    if not new_run:
+        return old_run, old.get("verdict_result", "")
+    if not old_run:
+        return new_run, new.get("verdict_result", "")
+    if new_run == old_run:
+        return new_run, new.get("verdict_result") or old.get("verdict_result", "")
+    if run_created:
+        old_at, new_at = run_created.get(old_run), run_created.get(new_run)
+        if old_at is not None and new_at is not None and new_at <= old_at:
+            return old_run, old.get("verdict_result", "")
+    return new_run, new.get("verdict_result", "")
 
 
 def merge_runs(existing: list[dict], incoming: list[dict]) -> list[dict]:
