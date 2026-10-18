@@ -105,7 +105,12 @@ def main(argv: list[str] | None = None) -> int:
     p_render = sub.add_parser("render", help="生成 map/index.md 与确定性 manifest.json")
     p_render.add_argument("--base", default=str(BASE_DEFAULT))
     p_render.set_defaults(func=cmd_render)
-    p_verify = sub.add_parser("verify", help="只读自检（五条断言；0 通过 / 1 不符 / 2 输入缺失）")
+    p_verify = sub.add_parser(
+        "verify",
+        help="只读自检（五条断言；退出码 0 通过 / 1 断言不符 / 2 用法错）",
+        description="只读自检：五条断言逐条输出 OK/FAIL/细节；退出码 0 通过 / "
+                    "1 断言不符（含 manifest.json 缺失或非法）/ 2 用法错。",
+    )
     p_verify.add_argument("--base", default=str(BASE_DEFAULT))
     p_verify.set_defaults(func=cmd_verify)
     args = parser.parse_args(argv)
