@@ -44,7 +44,14 @@ def test_readme_documents_run_ledger_conventions():
                   "换机不需要 `runs/`",
                   "一次一个 run",
                   "控制端时钟",
-                  "[存在]"):
+                  "[存在]",
+                  # 终审 M2：三个交接必读点 + manifest 的 rows 约定
+                  "green-with-human",
+                  "证据行号",
+                  "出过结论",
+                  "rows: 0",
+                  # 终审 M3：README 不进清单是明示取舍
+                  "文档不是规范数据"):
         assert token in md, token
 
 

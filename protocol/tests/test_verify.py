@@ -146,6 +146,46 @@ def test_unlisted_file_fails_completeness(tmp_path, monkeypatch):
     assert "ledger/extra.tsv" in failing["sha256"]
 
 
+def test_unlisted_nested_file_fails_completeness(tmp_path, monkeypatch):
+    """终审 I2：未列文件检查必须递归（嵌套文件也是"绕过清单加文件"）。"""
+    base = _build(tmp_path, monkeypatch)
+    (base / "map" / "sub").mkdir()
+    (base / "map" / "sub" / "extra.tsv").write_bytes(b"x\n")
+    assert verify.verify(base) == 1
+    assert "map/sub/extra.tsv" in _failing(base).get("sha256", "")
+
+
+def _drop_tracked(manifest: dict) -> None:
+    manifest["files"].pop("ledger/runs.tsv")          # 磁盘上还在，只是清单少一项
+
+
+def _add_untracked(manifest: dict) -> None:
+    manifest["files"]["map/forged.md"] = {"rows": 0, "sha256": "0" * 64}
+
+
+@pytest.mark.parametrize("mutate, expect", [
+    (_drop_tracked, "缺受跟踪产物"),
+    (_add_untracked, "非受跟踪产物"),
+])
+def test_manifest_must_list_exactly_the_five_tracked_files(tmp_path, monkeypatch, mutate, expect):
+    """终审 M5 / spec §6「5 文件契约」：清单少了或多了受跟踪产物都必须在 §8.1 失败。"""
+    base = _build(tmp_path, monkeypatch)
+    _rewrite_manifest(base, mutate)
+    assert verify.verify(base) == 1
+    assert expect in _failing(base).get("sha256", "")
+
+
+def test_render_refuses_to_emit_a_manifest_with_missing_tracked_file(tmp_path, monkeypatch, capsys):
+    """render 不再静默略过缺失的受跟踪产物（否则清单可以被整体收窄）。"""
+    base = _build(tmp_path, monkeypatch)
+    (base / "ledger" / "runs.tsv").unlink()
+    with pytest.raises(FileNotFoundError):
+        render.render_all(base)
+    assert s1.main(["render", "--base", str(base)]) == 1
+    out = capsys.readouterr().out
+    assert "受跟踪产物缺失" in out and "ledger/runs.tsv" in out
+
+
 def test_listed_index_md_is_not_treated_as_unlisted(tmp_path, monkeypatch):
     """Task 3 的 map/index.md 已列入清单 —— 合规状态必须 PASS（防误报）。"""
     base = _build(tmp_path, monkeypatch)
@@ -446,3 +486,61 @@ def test_usage_errors_exit_2(argv, capsys):
         s1.main(argv)
     assert excinfo.value.code == 2
     capsys.readouterr()
+
+
+def test_import_missing_raw_artifacts_exits_2(tmp_path, capsys):
+    """spec §7：`import` 输入缺失 = 2（不是 FileNotFoundError traceback）。"""
+    rc = s1.main(["import", "--raw-dir", str(tmp_path / "no-such-raw"),
+                  "--base", str(tmp_path / "out")])
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "FAIL (2)" in out and "缺原始产物" in out
+
+
+# ---------------------------------------------------------------- §10 真实数据策略（终审 M4）
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+TIER_ORDER = ("T0_no-evidence", "T1_dispatcher-no-handlerdata", "T2_handlerdata-no-fields",
+              "T3b_fields-write-only", "T3_fields-read-only", "T4_fields-read+write")
+
+
+def test_repository_assets_pass_verify():
+    """spec §10.1：直接对仓库真实 `protocol/` 跑五条断言（CI 能发现"改数据忘了 render"）。"""
+    results = verify.checks(REPO_ROOT / "protocol")
+    failing = {name: detail for name, ok, detail in results if not ok}
+    assert failing == {}
+    assert [name for name, _, _ in results] == [
+        "sha256", "rows_and_keys", "baselines", "internal", "s0_crosscheck"]
+
+
+def _classify_tier(status: str, dispatcher: str, read: int, write: int) -> str:
+    """`coverage_tier.py:151-162` 判据的本地纯函数版（不 import 它）：优先级第一个命中即停。
+
+    T1 与 T2 的差别是"家族在不在 handlers 目录里"，地图列里没有这个信息 ⇒ 只能返回 ``"T1/T2"``。
+    """
+    if status != "mapped" or not dispatcher:
+        return "T0_no-evidence"
+    if read and write:
+        return "T4_fields-read+write"
+    if read:
+        return "T3_fields-read-only"
+    if write:
+        return "T3b_fields-write-only"
+    return "T1/T2"
+
+
+def test_every_tier_sample_matches_the_read_write_criterion():
+    """spec §10.3：真实地图里六档各取一条，断言 `tier` 与 `read_count`/`write_count` 自洽。"""
+    rows = _read_tsv(REPO_ROOT / "protocol" / "map" / "opcode-map.tsv")
+    samples: dict[str, dict] = {}
+    for row in rows:
+        samples.setdefault(row["tier"], row)
+    assert set(samples) == set(TIER_ORDER), sorted(samples)     # 六档都有样例
+    for tier in TIER_ORDER:
+        sample = samples[tier]
+        got = _classify_tier(sample["status"], sample["dispatcher"],
+                             int(sample["read_count"]), int(sample["write_count"]))
+        if tier in ("T1_dispatcher-no-handlerdata", "T2_handlerdata-no-fields"):
+            assert got == "T1/T2", (tier, sample)
+        else:
+            assert got == tier, (tier, sample)

@@ -85,7 +85,9 @@ def build_manifest(base: Path) -> dict:
     for rel in TRACKED:
         p = base / rel
         if not p.is_file():
-            continue
+            # 绝不生成"少了受跟踪产物"的清单：那会让 verify 的 §6「5 文件契约」无从判断，
+            # 也让"删掉整本台账 + 从清单移除"成为可 PASS 的收窄路径（终审 M5）。
+            raise FileNotFoundError(f"受跟踪产物缺失：{rel}（先补齐再 render）")
         data = p.read_bytes()
         rows = 0
         if rel.endswith(".tsv"):

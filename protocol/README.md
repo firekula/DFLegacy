@@ -27,9 +27,12 @@
 | `ledger/opcodes.tsv` | 账①：地图全部列 + `ext_evidence` / `runtime_evidence` / `notes` |
 | `ledger/scenarios.tsv` | 账②：S0 四场景的 12 条期望 ↔ opcode ↔ 哪次 run 验过 |
 | `ledger/runs.tsv` | 真机 run 台账（当前 5 条，`created_utc` 升序） |
-| `manifest.json` | **生成物**：每份文件的 sha256 + `rows` + `baselines`，无时间戳、键有序、可逐字节复现 |
+| `manifest.json` | **生成物**：每份文件的 sha256 + `rows` + `baselines`，无时间戳、键有序、可逐字节复现；清单**恰好** 5 份受跟踪产物（`map/index.md` 记 `rows: 0`，但仍计 sha256） |
 | `importer.py` / `ledger.py` / `render.py` / `verify.py` / `s1.py` | 导入 / 两本账 / 报告+清单 / 只读自检 / CLI |
 | `tests/` | pytest（`python -m pytest protocol -q`） |
+
+> `README.md` **不在** `manifest.json` 的 5 份受跟踪产物里：文档漂移只由 `tests/test_readme.py` 的
+> token 断言兜底 —— **文档不是规范数据**，这是取舍（若要纳入清单须改 spec §6）。
 
 ## 命令
 
@@ -55,7 +58,8 @@ python -m protocol.s1 ledger --verified-run <runId> --verified-scenario <scenari
 
 ## 五条断言（`verify`）
 
-1. `sha256`：清单里每个文件与磁盘一致；`map/`、`ledger/` 下不得有清单外文件（防止绕过清单加文件）。
+1. `sha256`：清单**恰好** 5 份受跟踪产物（缺一项/多一项都失败）；清单里每个文件与磁盘一致；
+   `map/`、`ledger/` 下（**递归**）不得有清单外文件（防止绕过清单加文件）。
 2. `rows_and_keys`：每份 TSV 的数据行数 = 清单 `rows`；表头与契约列序一致、每行字段数一致；主键唯一。
 3. `baselines`：总数 / `kind` / `status` / 六档 / `ext_mark` 与 `manifest.baselines` 一致，六档之和 = 数据总行数，
    且总数 = **1171**（写死的基线，防"删一行再刷清单"这种整体缩水绕过）。
@@ -91,8 +95,17 @@ python -m protocol.s1 ledger --verified-run <runId> --verified-scenario <scenari
    每次 run 覆盖提升；因此每个场景只把 created_utc 最晚的 `[真机]` 行与它核对 sha256 + 四计数，
    更早的历史行只校验摘要格式。**历史 run 摘要相同是正常的**（tracked 文件内容那几次恰好一致），不是造假。
 3. **换机不需要 `runs/`**：`runs.tsv` 已入库，`verify` 只读入库文件；`runs/` 被 gitignore，
-   也**不是**重建台账的前提（重建只需 `import` + `render`，加历史 run 才需要当次的 `runs/<runId>/`）。
+   也**不是**重建台账的前提（重建只需 `import` + `render`，加历史 run 才需要当次的 `runs/<runId>/`；
+   若某份受跟踪产物**根本不存在**，`render` 会报错而不是生成缺项清单）。
 4. **单 run 摄取**：`ledger` 一次一个 run，幂等、可复跑；要补历史就逐条跑，不要手工拼 TSV。
+5. **run 的 `status` 是四值**：`green`（全部 pass）/ `green-with-human`（有 `needs-human`）/
+   `red`（有 `fail`）/ `invalid`（场景没有能失败的期望）。它与账②的
+   `pass` / `needs-human` / `missing-evidence` / `fail` **不是同一套词表**：前者是"一次 run 的整体结论"，
+   后者是"单条期望的判定"。
+6. **`runtime_evidence` 的 `A:4` 记法**：`[真机] <runId> A:4,B:4` 读作"actor A 的**证据行号** 4、
+   actor B 的**证据行号** 4"（行号取自 `verdict.json` 的 `<证据文件>:<行号>`），**不是**"4 个字段/4 帧"。
+7. **`verified_run_id` 的语义**：表示"该 run 对这条期望**出过结论**"，**不必然 `pass`** ——
+   账②的 `[语义]` 行同时有 `verified_run_id` 与 `verdict_result=needs-human` 是正常的（spec §5.3）。
 
 ## 进度账的两个已知边界
 

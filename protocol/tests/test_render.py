@@ -19,14 +19,17 @@ def _base(tmp_path: Path, map_text: str, runs_text: str = RUNS_HEADER) -> Path:
 
 
 def test_manifest_has_no_timestamp_and_keys_sorted(tmp_path):
-    (tmp_path / "map").mkdir()
-    (tmp_path / "map" / "opcode-map.tsv").write_bytes(b"h\n1\n")
-    manifest = render.build_manifest(tmp_path)
-    text = render.dump_manifest(manifest)
+    """清单 5 项齐全、键有序、无时间戳、单换行结尾（终审 M5 后清单不得缺受跟踪产物）。"""
+    base = _base(tmp_path,
+                 "kind\tid\ttier\text_mark\nCMD\t11\tT4_fields-read+write\tname_only\n")
+    render.render_all(base)
+    text = (base / "manifest.json").read_text(encoding="utf-8")
+    manifest = json.loads(text)
     assert "2026" not in text and "time" not in text.lower()
-    assert list(manifest["files"]) == ["map/opcode-map.tsv"]
+    assert len(manifest["files"]) == 5
+    assert list(manifest["files"]) == sorted(manifest["files"])  # sort_keys
     assert text.endswith("}\n")
-    assert text.index('"baselines"') < text.index('"files"')  # sort_keys
+    assert text.index('"baselines"') < text.index('"files"')     # sort_keys
 
 
 def test_render_is_idempotent(tmp_path):

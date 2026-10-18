@@ -15,7 +15,11 @@ SCENARIOS_DEFAULT = Path("tools/acceptance/scenarios")
 
 
 def cmd_import(args: argparse.Namespace) -> int:
-    stats = importer.import_map(Path(args.raw_dir), Path(args.base))
+    try:
+        stats = importer.import_map(Path(args.raw_dir), Path(args.base))
+    except FileNotFoundError as exc:          # spec §7：import 输入缺失 = 2，不抛 traceback
+        print(f"import: FAIL (2) {exc}")
+        return 2
     print(f"import: {stats['rows']} 行 -> {stats['path']}")
     return 0
 
@@ -74,7 +78,11 @@ def cmd_ledger(args: argparse.Namespace) -> int:
 
 
 def cmd_render(args: argparse.Namespace) -> int:
-    print(render.render_all(Path(args.base)))
+    try:
+        print(render.render_all(Path(args.base)))
+    except FileNotFoundError as exc:           # 缺受跟踪产物：不生成缺项清单，退出码 1
+        print(f"render: FAIL (1) {exc}")
+        return 1
     return 0
 
 

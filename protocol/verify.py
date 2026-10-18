@@ -1,7 +1,8 @@
 """verify 五条断言：**只读**、只依赖入库文件；任一不符即失败（CLI 退出码 1）。
 
 五条断言（spec §8）：
-1. ``sha256``：manifest 里的每个文件与磁盘一致；``map/``、``ledger/`` 下不得有未列入清单的文件。
+1. ``sha256``：清单必须恰含 5 份受跟踪产物且每个文件的 sha256 与磁盘一致；``map/``、``ledger/``
+   下（**递归**）不得有未列入清单的文件。
 2. ``rows_and_keys``：每份 TSV 的数据行数 = 清单 rows；列数与表头一致；主键唯一。
 3. ``baselines``：总数 / kind / status / 六档 / ext_mark 与 ``manifest.baselines`` 一致，六档之和 = 总数。
 4. ``internal``：账①与地图的 opcode 集合相等；``scenarios`` 的 opcode 与 run 引用都存在。
@@ -34,6 +35,16 @@ COUNT_PAIRS = (("pass", "pass"), ("needs_human", "needs-human"),
                ("missing_evidence", "missing-evidence"), ("fail", "fail"))
 BASELINE_OPCODES_TOTAL = 1171
 """spec §8.3 写死的总数基线（六档之和 = 1171）：防"数据与清单一起缩水"绕过基线检查。"""
+
+TRACKED_FILES = (
+    "map/opcode-map.tsv", "ledger/opcodes.tsv", "ledger/scenarios.tsv",
+    "ledger/runs.tsv", "map/index.md",
+)
+"""spec §6 的「5 文件契约」。
+
+这里**不再 import** ``render.TRACKED``：verify 是校验方，清单常量若与生成方共用同一符号，
+"两边一起改"就会同时成立（自证）。两边内容一致由测试钉住（``test_verify.py`` 的 5 文件契约用例）。
+"""
 
 DIGEST_RE = re.compile(r"[0-9a-f]{64}")
 """摘要必须是 64 位小写十六进制。"""
@@ -81,6 +92,14 @@ def _rows(path: Path) -> list[dict]:
 def _check_sha(base: Path, manifest: dict) -> tuple[str, bool, str]:
     problems: list[str] = []
     files = manifest.get("files", {}) or {}
+    # spec §6「5 文件契约」：清单必须**恰好**是这 5 份受跟踪产物。
+    # 少了 ⇒ "删掉整本台账 + 从清单移除"就能过；多了 ⇒ 清单被塞进不受管理的文件。
+    missing = sorted(set(TRACKED_FILES) - set(files))
+    extra = sorted(set(files) - set(TRACKED_FILES))
+    if missing:
+        problems.append(f"清单缺受跟踪产物：{', '.join(missing)}")
+    if extra:
+        problems.append(f"清单含非受跟踪产物：{', '.join(extra)}")
     for rel, meta in sorted(files.items()):
         path = Path(base) / rel
         if not path.is_file():
@@ -89,10 +108,11 @@ def _check_sha(base: Path, manifest: dict) -> tuple[str, bool, str]:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         if digest != meta.get("sha256"):
             problems.append(f"{rel} sha256 {digest[:8]}… != 清单 {str(meta.get('sha256'))[:8]}…")
+    # 未列文件扫描必须**递归**：嵌套文件同样是"绕过清单加文件"（终审 I2）。
     for sub in ("map", "ledger"):
-        for path in sorted((Path(base) / sub).glob("*")):
+        for path in sorted((Path(base) / sub).rglob("*")):
             if path.is_file():
-                rel = f"{sub}/{path.name}"
+                rel = path.relative_to(base).as_posix()
                 if rel not in files:
                     problems.append(f"未列入清单的文件 {rel}")
     return ("sha256", not problems, "; ".join(problems))
