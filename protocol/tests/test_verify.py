@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from protocol import render, verify
+from protocol import render, s1, verify
 
 RUN_ID = "20260101T000000Z-abcdef0-town-two-clients"
 OLD_RUN_ID = "20251231T000000Z-abcdef0-town-two-clients"
@@ -66,6 +66,8 @@ def _build(tmp_path: Path, monkeypatch, runs: list[list[str]] | None = None) -> 
 
     render.render_all(base)
     monkeypatch.setattr(verify, "VERDICTS_DIR", verdicts)
+    # 夹具是 3 行的小树；把 §8.3 的硬编码总数按夹具规模钉住（真实值另有专门的测试）
+    monkeypatch.setattr(verify, "BASELINE_OPCODES_TOTAL", len(MAP_ROWS))
     return base
 
 
@@ -162,6 +164,19 @@ def test_row_count_mismatch_is_detected(tmp_path, monkeypatch):
     assert "rows_and_keys" in _failing(base)
 
 
+def test_manifest_rows_field_is_enforced_without_touching_data(tmp_path, monkeypatch):
+    """§8.2「数据行数 = 清单 rows」：只改清单的 rows、不动数据，也必须 FAIL（I2）。"""
+    base = _build(tmp_path, monkeypatch)
+    manifest = json.loads((base / "manifest.json").read_text(encoding="utf-8"))
+    manifest["files"]["ledger/runs.tsv"]["rows"] = 99
+    (base / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    assert verify.verify(base) == 1
+    failing = _failing(base)
+    assert set(failing) == {"rows_and_keys"}          # 数据没动 ⇒ sha256 仍通过
+    assert "行数 1 != 清单 99" in failing["rows_and_keys"]
+
+
 def test_duplicate_primary_key_is_detected(tmp_path, monkeypatch):
     base = _build(tmp_path, monkeypatch)
     scen = base / "ledger" / "scenarios.tsv"
@@ -221,6 +236,24 @@ def test_baseline_tier_and_kind_mismatch_is_detected(tmp_path, monkeypatch):
     assert verify.verify(base) == 1
     detail = _failing(base)["baselines"]
     assert "T4_fields-read+write" in detail and "cmd" in detail
+
+
+def test_baseline_total_is_pinned_to_1171():
+    """§8.3 的 1171 是写死的基线，不是"数据和清单一起缩水"就能过（M2）。"""
+    assert verify.BASELINE_OPCODES_TOTAL == 1171
+
+
+def test_shrunken_dataset_is_caught_by_pinned_total(tmp_path, monkeypatch):
+    """删一行 + 同步刷清单（数据与清单一起缩水）⇒ 仍必须 FAIL（M2 的绕过路径）。"""
+    base = _build(tmp_path, monkeypatch)
+    map_rows = (base / "map" / "opcode-map.tsv").read_bytes().split(b"\n")
+    (base / "map" / "opcode-map.tsv").write_bytes(b"\n".join(map_rows[:3] + map_rows[4:]))
+    op_rows = (base / "ledger" / "opcodes.tsv").read_bytes().split(b"\n")
+    (base / "ledger" / "opcodes.tsv").write_bytes(b"\n".join(op_rows[:3] + op_rows[4:]))
+    render.render_all(base)                      # 清单跟着缩水，sha/行数/集合都自洽
+    assert verify.verify(base) == 1
+    detail = _failing(base).get("baselines", "")
+    assert "硬编码基线" in detail and "2" in detail
 
 
 # ---------------------------------------------------------------- 第 4 条：内部一致
@@ -358,16 +391,58 @@ def test_evidence_class_is_matched_exactly(tmp_path, monkeypatch):
     assert verify.verify(base) == 0
 
 
-# ---------------------------------------------------------------- 输入缺失
+# ---------------------------------------------------------------- 输入非法 / 用法错
 
-def test_missing_manifest_is_exit_code_2(tmp_path, monkeypatch, capsys):
+def test_missing_manifest_is_exit_code_1(tmp_path, monkeypatch, capsys):
+    """spec §7：manifest.json 缺失 = 数据不可信 ⇒ 1（不是用法错 2），输出走 FAIL 行 + 汇总。"""
     base = _build(tmp_path, monkeypatch)
     (base / "manifest.json").unlink()
-    assert verify.verify(base) == 2
-    assert "manifest.json" in capsys.readouterr().out
+    assert verify.verify(base) == 1
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("FAIL sha256: ") and "manifest.json" in out[0]
+    assert out[-1] == "verify: FAIL (0/1)"
+
+
+@pytest.mark.parametrize("payload", [
+    "{ oops not json",
+    "[1, 2]",
+    '{"files": [1, 2]}',
+    '{"files": 1}',
+    '{"files": {}, "baselines": []}',
+])
+def test_invalid_manifest_fails_with_exit_1_not_traceback(tmp_path, monkeypatch, capsys, payload):
+    """非法 JSON / 非对象 / files 或 baselines 结构非法 ⇒ 干净的 FAIL（不抛 traceback）。"""
+    base = _build(tmp_path, monkeypatch)
+    (base / "manifest.json").write_text(payload, encoding="utf-8")
+    assert verify.verify(base) == 1
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("FAIL sha256: ") and "manifest.json" in out[0]
+    assert out[-1] == "verify: FAIL (0/1)"
+
+
+def test_empty_manifest_files_still_fails_cleanly(tmp_path, monkeypatch, capsys):
+    base = _build(tmp_path, monkeypatch)
+    (base / "manifest.json").write_text('{"files": {}}', encoding="utf-8")
+    assert verify.verify(base) == 1
+    assert "FAIL sha256" in capsys.readouterr().out
+
+
+def test_missing_base_directory_fails_with_exit_1(tmp_path, capsys):
+    assert verify.verify(tmp_path / "nowhere") == 1
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("FAIL sha256: ") and out[-1] == "verify: FAIL (0/1)"
 
 
 def test_checks_never_raise_on_missing_manifest(tmp_path):
     results = verify.checks(tmp_path / "nowhere")
     assert [name for name, _, _ in results] == ["sha256"]
     assert results[0][1] is False
+
+
+@pytest.mark.parametrize("argv", [["verify", "--nope"], ["bogus"], []])
+def test_usage_errors_exit_2(argv, capsys):
+    """子命令/参数本身不合法仍是用法错 2（argparse）。"""
+    with pytest.raises(SystemExit) as excinfo:
+        s1.main(argv)
+    assert excinfo.value.code == 2
+    capsys.readouterr()

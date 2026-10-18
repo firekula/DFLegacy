@@ -32,6 +32,8 @@ MARKS = ("byte_verified", "field_read", "name_only")
 KIND_BASELINES = (("cmd", "CMD"), ("noti", "NOTI"))
 COUNT_PAIRS = (("pass", "pass"), ("needs_human", "needs-human"),
                ("missing_evidence", "missing-evidence"), ("fail", "fail"))
+BASELINE_OPCODES_TOTAL = 1171
+"""spec §8.3 写死的总数基线（六档之和 = 1171）：防"数据与清单一起缩水"绕过基线检查。"""
 
 DIGEST_RE = re.compile(r"[0-9a-f]{64}")
 """摘要必须是 64 位小写十六进制。"""
@@ -144,6 +146,7 @@ def _check_baselines(base: Path, manifest: dict) -> tuple[str, bool, str]:
             problems.append(f"{label} {got} != 基线 {want_int}")
 
     compare("opcodes_total", len(rows), baselines.get("opcodes_total"))
+    compare("opcodes_total（硬编码基线）", len(rows), BASELINE_OPCODES_TOTAL)
     for key, kind in KIND_BASELINES:
         compare(key, sum(1 for r in rows if r.get("kind") == kind), baselines.get(key))
     for tier in TIERS:
@@ -159,6 +162,8 @@ def _check_baselines(base: Path, manifest: dict) -> tuple[str, bool, str]:
     tier_sum = sum(1 for r in rows if r.get("tier") in TIERS)
     if tier_sum != len(rows):
         problems.append(f"六档之和 {tier_sum} != 实际总数 {len(rows)}")
+    if tier_sum != BASELINE_OPCODES_TOTAL:
+        problems.append(f"六档之和 {tier_sum} != 硬编码基线 {BASELINE_OPCODES_TOTAL}")
     return ("baselines", not problems, "; ".join(problems))
 
 
@@ -248,7 +253,11 @@ def _check_s0(base: Path) -> tuple[str, bool, str]:
 # ---------------------------------------------------------------- 入口
 
 def load_manifest(base: Path) -> dict | None:
-    """manifest.json 是 verify 唯一必需的输入；缺或非法返回 None（调用方据此退出 2）。"""
+    """manifest.json 是 verify 唯一必需的输入；缺失/无法解析/结构非法一律返回 None。
+
+    结构要求：顶层对象、``files`` 是对象、``baselines``（若存在）是对象 —— 否则后续断言会
+    以 traceback 崩掉，而 spec §7 要求"非法 manifest"是一次可读的断言不符。
+    """
     path = Path(base) / "manifest.json"
     if not path.is_file():
         return None
@@ -256,7 +265,13 @@ def load_manifest(base: Path) -> dict | None:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         return None
-    return data if isinstance(data, dict) else None
+    if not isinstance(data, dict):
+        return None
+    if not isinstance(data.get("files"), dict):
+        return None
+    if not isinstance(data.get("baselines", {}), dict):
+        return None
+    return data
 
 
 def checks(base: Path) -> list[tuple[str, bool, str]]:
@@ -264,7 +279,8 @@ def checks(base: Path) -> list[tuple[str, bool, str]]:
     base = Path(base)
     manifest = load_manifest(base)
     if manifest is None:
-        return [("sha256", False, "缺或无法解析 manifest.json（verify 的唯一输入清单）")]
+        return [("sha256", False,
+                 "缺或结构非法的 manifest.json（verify 的唯一输入清单；数据不可信）")]
     return [_check_sha(base, manifest), _check_rows(base, manifest),
             _check_baselines(base, manifest), _check_internal(base), _check_s0(base)]
 
@@ -277,11 +293,10 @@ def report(results: list[tuple[str, bool, str]]) -> str:
 
 
 def verify(base: Path) -> int:
-    """0 通过 / 1 不符 / 2 输入缺失（缺或无法解析 manifest.json）。只打印，不写文件。"""
-    base = Path(base)
-    if load_manifest(base) is None:
-        print(f"verify: FAIL (2) 缺输入 {base / 'manifest.json'}")
-        return 2
-    results = checks(base)
+    """0 通过 / 1 任一断言不符（含 manifest.json 缺失或非法）。只打印，不写文件。
+
+    用法错（子命令/参数不合法）由 argparse 返回 2，不经过这里 —— 见 spec §7。
+    """
+    results = checks(Path(base))
     print(report(results))
     return 0 if all(ok for _, ok, _ in results) else 1

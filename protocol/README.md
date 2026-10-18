@@ -57,7 +57,8 @@ python -m protocol.s1 ledger --verified-run <runId> --verified-scenario <scenari
 
 1. `sha256`：清单里每个文件与磁盘一致；`map/`、`ledger/` 下不得有清单外文件（防止绕过清单加文件）。
 2. `rows_and_keys`：每份 TSV 的数据行数 = 清单 `rows`；表头与契约列序一致、每行字段数一致；主键唯一。
-3. `baselines`：总数 / `kind` / `status` / 六档 / `ext_mark` 与 `manifest.baselines` 一致，且六档之和 = 总数。
+3. `baselines`：总数 / `kind` / `status` / 六档 / `ext_mark` 与 `manifest.baselines` 一致，六档之和 = 数据总行数，
+   且总数 = **1171**（写死的基线，防"删一行再刷清单"这种整体缩水绕过）。
 4. `internal`：账①与地图的 `(kind,id)` 集合相等；场景账引用的 opcode、`verified_run_id`、`runtime_evidence` 里的 runId 都存在。
 5. `s0_crosscheck`（§8.5）：每个场景只把 `created_utc` 最晚的 `[真机]` 行与
    `tools/acceptance/verdicts/<scenario_id>.json` 核对 sha256 + 四计数；更早的历史行只校验摘要是 64 位十六进制。
