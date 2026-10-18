@@ -338,7 +338,11 @@ def test_wait_until_listening_fails_fast_when_the_real_server_process_exits(tmp_
     [真机/实测 2026-10-18 终审 Important] 旧实现用 `os.kill(pid,0)` 判活，而 `Runner`
     持有 Popen 句柄时已退出的子进程仍被判活 ⇒ 快速失败分支永不触发，
     默认 300s 下秒退的服务端要等 5 分钟。本测试用**真实 Popen**（不是注入 lambda）
-    覆盖生产装配，故 `_pid_alive` 改回 True 也会红。
+    覆盖生产装配。
+
+    非恒真的变异（已由终审实测）：把 `start_server` 里的 `self._server_proc = p` 删掉，
+    或让 `should_stop` 改回"按 pid 判活"，本测试即红（退化为约 20–60s 的超时文案）。
+    仅把某个辅助函数改成常量**不会**让本测试变红 —— 因为现在只有 `Popen` 这一条判活路径。
     """
     sj = tmp_path / "server.json"
     _write_server_json(sj, {"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 2311}}})

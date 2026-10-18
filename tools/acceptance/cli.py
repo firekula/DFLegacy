@@ -180,10 +180,10 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
     run_state = rp.server_dir / "state.json"
     client_pids: dict[str, int | None] = {}
     try:
-        server_rec = r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
-                                    server_json=server_exe.parent / "server.json",
-                                    env={"DFLegacy__DataPath": str(run_state)},
-                                    log_path=rp.server_dir / "server.log")
+        r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
+                       server_json=server_exe.parent / "server.json",
+                       env={"DFLegacy__DataPath": str(run_state)},
+                       log_path=rp.server_dir / "server.log")
         r.record_run_config(rp, [{"key": "DFLegacy__DataPath",
                                   "old": "data/state.json", "new": str(run_state)}])
         # 必须等服务端真的开始监听再起 actor：launcher 在 StartServer=false 时只探一次端口
@@ -191,7 +191,6 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
         listen = r.wait_until_listening(rp, sc,
                                         server_json=server_exe.parent / "server.json",
                                         timeout_s=server_start_timeout,
-                                        fake_server_pid=server_rec.get("pid"),
                                         on_tick=lambda waited: print(
                                             f"  仍在等待服务端开始监听… 已等 {waited:.0f}s"
                                             f"（冷启动时要索引 48343 个脚本，日志未落盘属正常）",

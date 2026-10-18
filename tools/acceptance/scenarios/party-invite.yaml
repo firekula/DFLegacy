@@ -1,5 +1,6 @@
 # ⚠️ 占位骨架（design §5.2「只需能被解析 + 正确报缺实现」）：期望里没有真实 `pattern`，
-# 判定按 description 当匹配串，**跑起来必然是 red（恒红，不是产品坏了）**。
+# 判定按 description 当匹配串 ⇒ **有真实 netdump 时必然 red（恒红，不是产品坏了）**；
+# dry-run 没有产物，会按 missing-evidence/needs-human 出绿，那不代表这些断言成立。
 # 真要做这个场景，必须像 town-two-clients.yaml 那样换成抓包核验过的 hex pattern。
 id: party-invite
 goal: A 邀请 B 组队，双方名册一致

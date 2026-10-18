@@ -130,17 +130,6 @@ def _default_server_json(scenario: Scenario) -> Path:
     return Path(declared) if declared else Path.cwd() / "server.json"
 
 
-def _pid_alive(pid: int) -> bool:
-    """该 pid 是否还活着（用于"服务端在监听前就退出"的快速失败）。"""
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    except (ValueError, TypeError, SystemError):
-        return False
-    return True
-
-
 def _can_connect(host: str, port: int, timeout_s: float = 0.3) -> bool:
     """True = 能建立 TCP 连接（= 有人在监听并 accept）。**总耗时**受 timeout_s 约束。
 
@@ -519,7 +508,6 @@ class Runner:
     def wait_until_listening(self, rp: RunPaths, scenario: Scenario,
                              server_json: Path | None = None,
                              timeout_s: float = 60.0,
-                             fake_server_pid: Optional[int] = None,
                              probe: Optional[Callable[[str, int, str], bool]] = None,
                              on_tick: Optional[Callable[[float], None]] = None,
                              server_proc: Optional[subprocess.Popen] = None) -> dict:
@@ -535,7 +523,8 @@ class Runner:
         [真机/实测 2026-10-18 终审 Important] 本机对一个已退出（`poll()=3`）的子进程调
         `os.kill(pid,0)` 仍返回成功（Popen 还持有句柄，PID 未回收）⇒ 快速失败分支不触发，
         秒退的服务端要拖满 `--server-start-timeout`（默认 300s）才报"超时"。
-        `fake_server_pid` 仅为兼容只给 pid 的调用方保留。
+        因此这里**只认 `Popen`**：`server_proc` 显式传入，否则用 `start_server` 记下的
+        `self._server_proc`。未起过服务端（都为空）时不启用退出检测。
         """
         sj = Path(server_json) if server_json else _default_server_json(scenario)
         try:
@@ -548,12 +537,7 @@ class Runner:
                     "host": None, "port": None, "waited_ms": 0}
 
         proc = server_proc if server_proc is not None else self._server_proc
-        if proc is not None:
-            should_stop = (lambda: proc.poll() is not None)
-        elif fake_server_pid is not None:
-            should_stop = (lambda: not _pid_alive(fake_server_pid))
-        else:
-            should_stop = None
+        should_stop = (lambda: proc.poll() is not None) if proc is not None else None
         started = time.monotonic()
         try:
             kw: dict = {} if probe is None else {"probe": probe}
