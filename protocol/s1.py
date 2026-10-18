@@ -1,4 +1,4 @@
-"""S1 CLI：import / ledger / render。"""
+"""S1 CLI：import / ledger / render / verify。"""
 from __future__ import annotations
 
 import argparse
@@ -78,6 +78,12 @@ def cmd_render(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify(args: argparse.Namespace) -> int:
+    from . import verify
+
+    return verify.verify(Path(args.base))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="s1")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -99,6 +105,9 @@ def main(argv: list[str] | None = None) -> int:
     p_render = sub.add_parser("render", help="生成 map/index.md 与确定性 manifest.json")
     p_render.add_argument("--base", default=str(BASE_DEFAULT))
     p_render.set_defaults(func=cmd_render)
+    p_verify = sub.add_parser("verify", help="只读自检（五条断言；0 通过 / 1 不符 / 2 输入缺失）")
+    p_verify.add_argument("--base", default=str(BASE_DEFAULT))
+    p_verify.set_defaults(func=cmd_verify)
     args = parser.parse_args(argv)
     return args.func(args)
 
