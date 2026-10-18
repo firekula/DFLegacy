@@ -1,0 +1,4 @@
+# 规范协议资产固定以 LF 检出：仓库全局 core.autocrlf=true，根 .gitattributes 只覆盖
+# 容器相关文件，protocol/** 若按 CRLF 检出会破坏「换机 clone 后逐字节一致」的确定性要求
+# （spec §5）。故在目录内存固定。
+* text eol=lf
