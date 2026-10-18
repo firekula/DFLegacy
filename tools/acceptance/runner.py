@@ -368,6 +368,8 @@ class Runner:
         self.runs_dir = Path(runs_dir)
         self._procs: list[subprocess.Popen] = []
         self._log_handles: list[Any] = []
+        # 服务端进程句柄：`wait_until_listening` 靠 `Popen.poll()` 判断"是否已退出"。
+        self._server_proc: Optional[subprocess.Popen] = None
 
     def prepare(self, scenario: Scenario, git_sha: str,
                 now: Optional[datetime] = None) -> tuple[RunPaths, Manifest]:
@@ -441,6 +443,7 @@ class Runner:
             p = subprocess.Popen(cmd, cwd=str(workdir), env=popen_env,
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._procs.append(p)
+        self._server_proc = p
         rec = {"exe": exe.name, "pid": p.pid, "workdir": str(workdir)}
         _, mf = self._load(rp)
         mf.server = rec
@@ -518,7 +521,8 @@ class Runner:
                              timeout_s: float = 60.0,
                              fake_server_pid: Optional[int] = None,
                              probe: Optional[Callable[[str, int, str], bool]] = None,
-                             on_tick: Optional[Callable[[float], None]] = None) -> dict:
+                             on_tick: Optional[Callable[[float], None]] = None,
+                             server_proc: Optional[subprocess.Popen] = None) -> dict:
         """等 `server_json` 声明的 Entrance 端点开始监听；返回等待报告（供 manifest/打印）。
 
         存在原因 [真机 2026-10-15]：真服务端启动约 5.4 秒才监听 2311，而 launcher 的
@@ -526,6 +530,12 @@ class Runner:
         （src/DFLegacy.Launcher/Program.cs:336-347）⇒ 起完服务端立刻起 actor 必然失败。
         端口取自 server.json 的 `Entrance`（不写死端口）；`server.json` 缺该端点或不可读时
         返回 `skipped`（不假装等过）。
+
+        **"进程提前退出"必须用 `Popen.poll()` 判断**，不能用 `os.kill(pid,0)`：
+        [真机/实测 2026-10-18 终审 Important] 本机对一个已退出（`poll()=3`）的子进程调
+        `os.kill(pid,0)` 仍返回成功（Popen 还持有句柄，PID 未回收）⇒ 快速失败分支不触发，
+        秒退的服务端要拖满 `--server-start-timeout`（默认 300s）才报"超时"。
+        `fake_server_pid` 仅为兼容只给 pid 的调用方保留。
         """
         sj = Path(server_json) if server_json else _default_server_json(scenario)
         try:
@@ -537,8 +547,13 @@ class Runner:
             return {"skipped": True, "reason": f"{sj} 未声明 Entrance 端点",
                     "host": None, "port": None, "waited_ms": 0}
 
-        should_stop = (None if fake_server_pid is None
-                       else (lambda: not _pid_alive(fake_server_pid)))
+        proc = server_proc if server_proc is not None else self._server_proc
+        if proc is not None:
+            should_stop = (lambda: proc.poll() is not None)
+        elif fake_server_pid is not None:
+            should_stop = (lambda: not _pid_alive(fake_server_pid))
+        else:
+            should_stop = None
         started = time.monotonic()
         try:
             kw: dict = {} if probe is None else {"probe": probe}

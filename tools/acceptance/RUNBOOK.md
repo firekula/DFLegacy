@@ -50,6 +50,23 @@ python -m acceptance.cli run --scenario town-two-clients --actors 2 --actor-acco
 
 1. **两次一致**：对同一次 run 再判一次（`python -m acceptance.cli judge --run-dir ..\runs\<runId>`）⇒ 两次 `status` 与 `counts` 必须一致。
 2. **能变红**：把 `town-two-clients.yaml` 里某个 `[存在]` 期望的 `pattern` 改成不存在的串（例如 `c2s:no-such-frame`），再 `judge` ⇒ 必须出现 `fail` 且 `status == "red"`。**改回**后回到非红。
-3. **自解释**：只看 `runs/<runId>/` 能回答"跑的是什么／谁参与／T0 依据／哪几项要人看"。
+3. **自解释**：只看 `runs/<runId>/` 能回答"跑的是什么／谁参与／T0 依据／哪几项要人看"
+   （`manifest.json` = 跑什么+谁参与+`created_utc`；`steps.json` = 每步墙钟；
+   `offsets.json` = 时间对齐辅助；`verdict.json` = 三分结果与命中行号；
+   两项限制见下方"T0 依据"与"词表"）。
 
-> **T0 依据**：参考点是 `manifest.created_utc`（控制端时钟）；服务端 server-accept T0 需从日志/人工时间确认。`offsets.json` 的数值是**时间对齐辅助**，不是已证明的跨机时钟偏移。
+> **T0 依据（如实）**：run 目录里能回答的 T0 依据**只有** `manifest.created_utc`（**控制端时钟**，
+> 即 CLI 建 run 的时刻）。**服务端的 server-accept 时间没有被记录**——`offsets.json` 的数值是
+> "控制端时钟 − 该 actor 首帧时间"，因此含真实经过时间（实测 A −6.985s / B −8.222s，
+> 其中 7–8 秒是"起服务端→客户端首帧"的真实间隔），**不是**已证明的跨机时钟偏移，
+> 更不能当作服务端 accept 时刻。需要 server-accept T0 时，从 `server/server.log` 的
+> `Entrance listener ready` / `connected` 行或人工计时另行确认。
+
+> **判据词表（防止把绿读成"验收完全通过"）**：
+> - `pass`：声明的**字节/帧**在证据里出现了。`[存在]` 档只证明「该帧在场」，
+>   **不等于**登录成功、**更不等于**进城。
+> - `needs-human`：`[语义]` 档，机器不判，必须人看（例如"A 能看到 B 同屏"）。
+> - `missing-evidence`：该类证据**根本没产物**（不是"不符"）。
+> - `fail`：证据在、但不符（这才叫红）。
+> - `green-with-human` 只表示"没有 fail"，**不代表**语义项已通过；`pass:0` 的 run
+>   也可能是 `green-with-human`，务必看 `counts` 而不是只看 `status`。

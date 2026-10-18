@@ -1,3 +1,6 @@
+# ⚠️ 占位骨架（design §5.2「只需能被解析 + 正确报缺实现」）：期望里没有真实 `pattern`，
+# 判定按 description 当匹配串，**跑起来必然是 red（恒红，不是产品坏了）**。
+# 真要做这个场景，必须像 town-two-clients.yaml 那样换成抓包核验过的 hex pattern。
 id: town-position-sync
 goal: A 移动，B 侧同屏位置随动
 expect_t0: server-accept

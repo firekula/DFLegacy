@@ -332,6 +332,33 @@ def test_start_server_rejects_relative_data_path(tmp_path):
     assert r._procs == [], "校验失败不得启动任何进程"
 
 
+def test_wait_until_listening_fails_fast_when_the_real_server_process_exits(tmp_path):
+    """真进程装配：服务端秒退必须**立刻**报"退出"，而不是拖满超时报"超时"。
+
+    [真机/实测 2026-10-18 终审 Important] 旧实现用 `os.kill(pid,0)` 判活，而 `Runner`
+    持有 Popen 句柄时已退出的子进程仍被判活 ⇒ 快速失败分支永不触发，
+    默认 300s 下秒退的服务端要等 5 分钟。本测试用**真实 Popen**（不是注入 lambda）
+    覆盖生产装配，故 `_pid_alive` 改回 True 也会红。
+    """
+    sj = tmp_path / "server.json"
+    _write_server_json(sj, {"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 2311}}})
+    r = Runner(workspace=tmp_path, acceptance_dir=tmp_path, runs_dir=tmp_path / "runs")
+    rp, _ = r.prepare(_scenario(), git_sha="abc1234")
+    try:
+        r.start_server(rp, exe=Path(sys.executable), workdir=tmp_path, server_json=sj,
+                       log_path=rp.server_dir / "server.log",
+                       server_args=["-c", "import sys; sys.exit(3)"])
+        t0 = time.monotonic()
+        with pytest.raises(ServerStartupError) as ei:
+            r.wait_until_listening(rp, _scenario(), server_json=sj, timeout_s=60.0)
+        elapsed = time.monotonic() - t0
+        message = str(ei.value)
+        assert "退出" in message, f"应报'进程提前退出'，实际：{message}"
+        assert elapsed < 10.0, f"秒退的进程必须立刻失败，实际等了 {elapsed:.1f}s"
+    finally:
+        r.stop_all()
+
+
 def test_isolate_state_copies_and_never_points_at_the_live_save(tmp_path):
     live = tmp_path / "data" / "state.json"
     live.parent.mkdir(parents=True)
