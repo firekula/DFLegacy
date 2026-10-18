@@ -189,17 +189,25 @@ DNF 帧头是 **10 字节**：`type(u8) | protocol(u8) | total_length(u32 LE) | 
 
 **确定性要求**：不含时间戳、不含绝对路径、键按字典序、JSON 以 `indent=2, sort_keys=True` 输出并**以单个换行结尾**。理由：`verify` 要能逐字节复现，且换机 clone 后必须一致。
 
+**5 文件契约**：`files` 必须**恰好**包含这 5 份受跟踪产物（`map/opcode-map.tsv`、`ledger/opcodes.tsv`、
+`ledger/scenarios.tsv`、`ledger/runs.tsv`、`map/index.md`）。缺少任一份、或多出别的条目，
+`verify` 都必须在 §8.1 失败——否则"删掉整本台账 + 从清单移除"就能让自检通过（终审 M5）。
+
 > `rows` 对 TSV 指**数据行**（不含表头）；`index.md` 为生成物，记 `rows: 0` 但**仍计入 sha256**。
 
 ## 7. CLI 契约（`protocol/s1.py`）
 
 | 子命令 | 作用 | 依赖 | 退出码 |
 |---|---|---|---|
-| `import` | 从 `.superpowers/.../work/out/` 读原始产物 → 写 `map/` 与 `ledger/opcodes.tsv` → 生成 manifest | 需原始产物 | 0 成功 / 2 输入缺失 |
+| `import` | 从 `.superpowers/.../work/out/` 读原始产物 → 写 `map/opcode-map.tsv`（**只写地图**；账目由 `ledger` 生成） | 需原始产物 | 0 成功 / 2 输入缺失 |
+| `ledger` | 逐 run 摄取：生成/合并 `ledger/{opcodes,scenarios,runs}.tsv`（幂等、可复跑） | 需 `map/`、场景 YAML、该 run 的 `verdict.json`/`manifest.json`、`verdicts/<scenario>.json` | 0 成功 / 2 输入缺失/不符 |
 | `render` | 由规范数据生成 `map/index.md` + 刷新 manifest | 无 | 0 / 1 |
-| `verify` | 只读校验（§8），**不写任何文件** | 无 | 0 通过 / 1 不符 / 2 用法错 |
+| `verify` | 只读校验（§8），**不写任何文件** | 无 | 0 通过 / 1 断言不符（含 `manifest.json` 缺失或非法——数据不可信属"不符"，不是用法错） / 2 用法错（子命令/参数本身不合法） |
 
-约定：`verify` 输出逐条断言结果（`OK`/`FAIL <断言名>: <细节>`），末尾一行 `verify: PASS|FAIL (n/5)`。
+约定：`verify` 输出逐条断言结果（`OK <断言名>` / `FAIL <断言名>: <细节>`），末尾一行
+`verify: PASS|FAIL (<通过数>/<本次实际执行的断言数>)`。
+正常情况执行全部 **5** 条；若 `manifest.json` 缺失或结构非法，则只执行第 1 条（完整性）并输出
+`verify: FAIL (0/1)` —— 分母是**实际执行的条数**，不是硬编码的 5。
 
 ## 8. `verify` 的五条断言（任一不符即非零退出）
 
@@ -207,8 +215,16 @@ DNF 帧头是 **10 字节**：`type(u8) | protocol(u8) | total_length(u32 LE) | 
 2. **形状**：每份 TSV 的数据行数 = manifest 记录；`(kind,id)` 唯一；`scenarios.tsv` 主键唯一；列数一致。
 3. **基线**：六档计数之和 = 1171；各档、`status` 分布、`kind` 分布与 `manifest.baselines` 完全一致。
 4. **内部一致**：`ledger/opcodes.tsv` 的 `(kind,id)` 集合 == `map/opcode-map.tsv` 的集合；`scenarios.tsv` 的 `mapped_opcodes` 全部存在于 map；`runtime_evidence` 里出现的 runId 必须存在于 `runs.tsv`。
-5. **与 S0 交叉核对**：`runs.tsv` 里 `evidence_class=[真机]` 的行，其 `verdict_digest_sha256` 必须等于
-   `tools/acceptance/verdicts/<scenario_id>.json` 的 sha256，且四个计数与该文件 `counts` 一致。
+5. **与 S0 交叉核对**：对**每个场景**，`runs.tsv` 里该场景 `created_utc` **最晚**的 `[真机]` 行，
+   其 `verdict_digest_sha256` 与四个计数必须等于
+   `tools/acceptance/verdicts/<scenario_id>.json` 的 sha256 与 `counts`。
+   其余（更早的）`[真机]` 行是**历史记录**，只要求 `verdict_digest_sha256` 是 64 位十六进制，
+   **不要求**与当前 tracked 文件相符。
+
+   > 为什么不是"每一行都要相符"：`verdicts/<scenario>.json` 是每次 run 时**覆盖提升**的
+   > "该场景当前结论"，只对应最新一次 run。若要求历史行也相符，一旦入账一次非全绿 run，
+   > 交叉核对就会假失败（复审 finding N1）。当前 5 个 run 的摘要恰好相同（都是 `a6b53129…`），
+   > 掩盖了这个矛盾，但规格不能依赖巧合。
 
 ## 9. 边界与已知缺口（写进 README）
 
