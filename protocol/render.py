@@ -79,16 +79,22 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build_manifest(base: Path) -> dict:
+def build_manifest(base: Path, index_bytes: bytes | None = None) -> dict:
+    """构建清单；``index_bytes`` 给出时用它代替磁盘上的 ``map/index.md``（用于"先算后写"）。
+
+    受跟踪产物缺失即 ``FileNotFoundError``：绝不生成"少了受跟踪产物"的清单 —— 那会让
+    ``verify`` 的 §6「5 文件契约」无从判断，也让"删掉整本台账 + 从清单移除"成为可 PASS 的收窄路径。
+    """
     base = Path(base)
     files: dict[str, dict] = {}
     for rel in TRACKED:
-        p = base / rel
-        if not p.is_file():
-            # 绝不生成"少了受跟踪产物"的清单：那会让 verify 的 §6「5 文件契约」无从判断，
-            # 也让"删掉整本台账 + 从清单移除"成为可 PASS 的收窄路径（终审 M5）。
-            raise FileNotFoundError(f"受跟踪产物缺失：{rel}（先补齐再 render）")
-        data = p.read_bytes()
+        if rel == "map/index.md" and index_bytes is not None:
+            data = index_bytes                 # 尚未落盘的新 index（内存里算好的）
+        else:
+            p = base / rel
+            if not p.is_file():
+                raise FileNotFoundError(f"受跟踪产物缺失：{rel}（先补齐再 render）")
+            data = p.read_bytes()
         rows = 0
         if rel.endswith(".tsv"):
             rows = max(0, data.decode("utf-8").count("\n") - 1)
@@ -123,12 +129,20 @@ def write_manifest(base: Path, manifest: dict) -> Path:
 
 
 def render_all(base: Path) -> dict:
-    """先写 index.md，再算 manifest —— 否则 map/index.md 的 sha256 会是旧值。"""
+    """先把 index 与 manifest 都在**内存**里算好，任一步失败都不落盘；然后先写 index、再写 manifest。
+
+    顺序与理由：
+    1. manifest 里要记 `map/index.md` 的 sha256 ⇒ 先算出 index 的字节（内存里），把它交给
+       ``build_manifest(index_bytes=…)``，**不需要**先把 index 写到磁盘上。
+    2. 两者都算成功后，先写 `map/index.md`、再写 `manifest.json`：manifest 是"提交标记"，
+       万一第二次写入失败，只会留下"index 比 manifest 新"的可检出不一致（``verify`` 的 sha256
+       会报红），而不会留下"manifest 指向尚未写出的 index"这种更难排查的状态。
+    """
     base = Path(base)
     map_rows = _rows(base / "map" / "opcode-map.tsv")
     runs = _rows(base / "ledger" / "runs.tsv")
-    index = render_index(map_rows, runs)
-    (base / "map" / "index.md").write_bytes(index.encode("utf-8"))
-    manifest = build_manifest(base)
+    index_bytes = render_index(map_rows, runs).encode("utf-8")
+    manifest = build_manifest(base, index_bytes=index_bytes)
+    (base / "map" / "index.md").write_bytes(index_bytes)
     path = write_manifest(base, manifest)
     return {"manifest": str(path), "manifest_sha256": _sha256(path)}

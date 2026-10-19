@@ -24,12 +24,28 @@ def cmd_import(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ledger_fail(reason: str) -> int:
+    """spec §7：`ledger` 的「输入缺失/不符」是 2，且只输出一行、不吐 traceback。"""
+    print(f"ledger: FAIL (2) {reason}")
+    return 2
+
+
 def cmd_ledger(args: argparse.Namespace) -> int:
     """把一份真机 verdict 贴回场景账，并派生 opcode 账（spec §5.2–§5.4）。
 
     落盘是**按主键合并**进已有台账（``ledger.write_ledgers``），所以对不同 run 重复执行
     会累积 run 台账与运行时证据，而不是互相覆写。
+    输入缺失（缺文件）或输入不符/无法解析（JSON 坏、场景或 run 对不上）一律返回 2。
     """
+    try:
+        return _ingest_run(args)
+    except FileNotFoundError as exc:
+        return _ledger_fail(str(exc))
+    except ValueError as exc:        # 含 json.JSONDecodeError / UnicodeDecodeError
+        return _ledger_fail(f"输入无法解析：{exc}")
+
+
+def _ingest_run(args: argparse.Namespace) -> int:
     base = Path(args.base)
     map_path = base / "map" / "opcode-map.tsv"
     with map_path.open(encoding="utf-8", newline="") as fh:
@@ -39,8 +55,8 @@ def cmd_ledger(args: argparse.Namespace) -> int:
     verdict = json.loads(Path(args.verdict).read_text(encoding="utf-8"))
     scenario_id = args.verified_scenario
     if verdict.get("scenario_id") != scenario_id:
-        raise SystemExit(f"verdict 属于 {verdict.get('scenario_id')!r}，"
-                         f"与 --verified-scenario {scenario_id!r} 不符，拒绝落账")
+        return _ledger_fail(f"verdict 属于 {verdict.get('scenario_id')!r}，"
+                            f"与 --verified-scenario {scenario_id!r} 不符，拒绝落账")
 
     # verdict.entries 与场景声明顺序一一对应（judge 按 steps→expects 顺序产出）。
     # 这里不盲信顺序：条数不符、或 (actor, action, level) 对不上就报错，绝不臆测对应关系。
@@ -49,14 +65,14 @@ def cmd_ledger(args: argparse.Namespace) -> int:
     wired = [row for row in scenarios if row["scenario_id"] == scenario_id]
     entries = verdict["entries"]
     if len(wired) != len(entries):
-        raise SystemExit(f"verdict 条目数 {len(entries)} 与场景期望数 {len(wired)} 不符，"
-                         "拒绝臆测对应关系")
+        return _ledger_fail(f"verdict 条目数 {len(entries)} 与场景期望数 {len(wired)} 不符，"
+                            "拒绝臆测对应关系")
     for row, entry in zip(wired, entries):
         declared = (entry.get("actor"), entry.get("step_action"), entry.get("level"))
         actual = (row["actor"], row["action"], row["level"])
         if declared != actual:
-            raise SystemExit(f"verdict 条目与场景期望不对应：{declared} vs {actual}，"
-                             "拒绝臆测对应关系")
+            return _ledger_fail(f"verdict 条目与场景期望不对应：{declared} vs {actual}，"
+                                "拒绝臆测对应关系")
         row["verdict_result"] = entry["result"]
         row["verdict_detail"] = entry.get("detail", "")
 
@@ -65,8 +81,8 @@ def cmd_ledger(args: argparse.Namespace) -> int:
     runs = ledger.build_runs(Path(args.verdict), Path(args.run_manifest), "[真机]",
                              digest_sha256)
     if runs[0]["run_id"] != args.verified_run:
-        raise SystemExit(f"--verified-run {args.verified_run!r} 与 manifest.run_id "
-                         f"{runs[0]['run_id']!r} 不符，拒绝落账")
+        return _ledger_fail(f"--verified-run {args.verified_run!r} 与 manifest.run_id "
+                            f"{runs[0]['run_id']!r} 不符，拒绝落账")
 
     # 人工外部证据原文由 tiers-external.tsv 直读（账① 才存它；地图行只有 ext_mark）。
     external = {(kind, str(ident)): "; ".join(text for _, text in pairs if text)

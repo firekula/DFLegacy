@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from protocol import render
 
 RUNS_HEADER = ("run_id\tgit_sha\tcreated_utc\tstatus\tpass\tneeds_human\tmissing_evidence\t"
@@ -83,3 +85,25 @@ def test_generated_files_are_lf_without_bom_and_single_trailing_newline(tmp_path
         assert b"\r" not in raw, rel
         assert raw.endswith(b"\n") and not raw.endswith(b"\n\n"), rel
         raw.decode("utf-8")
+
+
+def test_render_failure_does_not_touch_index(tmp_path, monkeypatch):
+    """N3：render 先算后写 —— manifest 构建阶段失败时，`map/index.md` 不得被改写。"""
+    base = _base(tmp_path,
+                 "kind\tid\ttier\text_mark\nCMD\t11\tT4_fields-read+write\tname_only\n",
+                 RUNS_HEADER + "RID\tabc1234\t2026-10-18T09:19:51Z\tgreen\t3\t0\t0\t0\t"
+                               "[真机]\t" + "a" * 64 + "\n")
+    render.render_all(base)
+    before = (base / "map" / "index.md").read_bytes()
+    # 改 runs 让 index 内容"本应变化"，确保"未改写"不是巧合
+    (base / "ledger" / "runs.tsv").write_bytes(
+        (RUNS_HEADER + "RID2\tabc1234\t2026-10-19T00:00:00Z\tgreen\t9\t0\t0\t0\t"
+                       "[真机]\t" + "b" * 64 + "\n").encode("utf-8"))
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("manifest build failed")
+
+    monkeypatch.setattr(render, "build_manifest", boom)
+    with pytest.raises(RuntimeError):
+        render.render_all(base)
+    assert (base / "map" / "index.md").read_bytes() == before

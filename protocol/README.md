@@ -98,7 +98,7 @@ python -m protocol.s1 ledger --verified-run <runId> --verified-scenario <scenari
    也**不是**重建台账的前提（重建只需 `import` + `render`，加历史 run 才需要当次的 `runs/<runId>/`；
    若某份受跟踪产物**根本不存在**，`render` 会报错而不是生成缺项清单）。
 4. **单 run 摄取**：`ledger` 一次一个 run，幂等、可复跑；要补历史就逐条跑，不要手工拼 TSV。
-5. **run 的 `status` 是四值**：`green`（全部 pass）/ `green-with-human`（有 `needs-human`）/
+5. **run 的 `status` 是四值**：`green`（全部 pass）/ `green-with-human`（有 `needs-human` 或 `missing-evidence`）/
    `red`（有 `fail`）/ `invalid`（场景没有能失败的期望）。它与账②的
    `pass` / `needs-human` / `missing-evidence` / `fail` **不是同一套词表**：前者是"一次 run 的整体结论"，
    后者是"单条期望的判定"。

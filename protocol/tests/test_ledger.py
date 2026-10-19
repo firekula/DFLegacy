@@ -239,28 +239,42 @@ def _party_entries() -> list[dict]:
     ]
 
 
-def _run_ledger(env: dict, *, run_id: str, scenario_id: str, entries: list[dict],
-                created_utc: str) -> Path:
-    """走真实 CLI 装配（argparse + cmd_ledger），只用 tmp_path 里的假产物。"""
-    tmp = env["tmp"]
+def _write_run_inputs(tmp_path: Path, *, run_id: str, scenario_id: str,
+                      entries: list[dict], created_utc: str) -> tuple[Path, Path, Path]:
     counts = {"pass": 0, "needs-human": 0, "missing-evidence": 0, "fail": 0}
     for entry in entries:
         counts[entry["result"]] += 1
     verdict = {"scenario_id": scenario_id, "status": "green-with-human",
                "invalid_reason": None, "counts": counts, "entries": entries}
-    verdict_path = tmp / f"verdict-{run_id}.json"
+    verdict_path = tmp_path / f"verdict-{run_id}.json"
     verdict_path.write_text(json.dumps(verdict, ensure_ascii=False), encoding="utf-8")
-    manifest_path = tmp / f"manifest-{run_id}.json"
+    manifest_path = tmp_path / f"manifest-{run_id}.json"
     manifest_path.write_text(json.dumps({"run_id": run_id, "git_sha": "abcdef0",
                                          "created_utc": created_utc,
                                          "scenario_id": scenario_id}),
                              encoding="utf-8")
-    digest_path = tmp / f"digest-{run_id}.json"
+    digest_path = tmp_path / f"digest-{run_id}.json"
     digest_path.write_bytes(b'{"digest": 1}\n')
-    rc = s1.main(["ledger", "--base", str(env["base"]), "--raw-dir", str(env["raw"]),
-                  "--scenarios-dir", str(SPEC_SCENARIOS), "--verified-run", run_id,
-                  "--verified-scenario", scenario_id, "--verdict", str(verdict_path),
-                  "--run-manifest", str(manifest_path), "--verdict-digest", str(digest_path)])
+    return verdict_path, manifest_path, digest_path
+
+
+def _ledger_argv(env: dict, *, run_id: str, scenario_id: str, verdict: Path,
+                 run_manifest: Path, digest: Path) -> list[str]:
+    return ["ledger", "--base", str(env["base"]), "--raw-dir", str(env["raw"]),
+            "--scenarios-dir", str(SPEC_SCENARIOS), "--verified-run", run_id,
+            "--verified-scenario", scenario_id, "--verdict", str(verdict),
+            "--run-manifest", str(run_manifest), "--verdict-digest", str(digest)]
+
+
+def _run_ledger(env: dict, *, run_id: str, scenario_id: str, entries: list[dict],
+                created_utc: str) -> Path:
+    """走真实 CLI 装配（argparse + cmd_ledger），只用 tmp_path 里的假产物。"""
+    verdict_path, manifest_path, digest_path = _write_run_inputs(
+        env["tmp"], run_id=run_id, scenario_id=scenario_id, entries=entries,
+        created_utc=created_utc)
+    rc = s1.main(_ledger_argv(env, run_id=run_id, scenario_id=scenario_id,
+                              verdict=verdict_path, run_manifest=manifest_path,
+                              digest=digest_path))
     assert rc == 0
     return digest_path
 
@@ -349,3 +363,48 @@ def test_ledger_ingestion_order_does_not_change_any_ledger(tmp_path):
             if r["scenario_id"] == "town-two-clients"]
     assert {r["verified_run_id"] for r in town} == {"RID-B"}
     assert [r["verdict_result"] for r in town] == ["pass", "pass", "pass", "needs-human"]
+
+
+# ---------------------------------------------------------------- N1：输入缺失/不符 ⇒ exit 2
+
+def test_cmd_ledger_missing_verdict_file_exits_2(tmp_path, capsys):
+    """spec §7：`ledger` 输入缺失 = 2，且不吐 traceback（N1）。"""
+    env = _make_env(tmp_path)
+    _, manifest_path, digest_path = _write_run_inputs(
+        tmp_path, run_id="RID-TEST-1", scenario_id="town-two-clients",
+        entries=_town_entries(("4", "8", "4")), created_utc="2026-01-01T00:00:00Z")
+    rc = s1.main(_ledger_argv(env, run_id="RID-TEST-1", scenario_id="town-two-clients",
+                              verdict=tmp_path / "nope-verdict.json",
+                              run_manifest=manifest_path, digest=digest_path))
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "ledger: FAIL (2)" in out and "nope-verdict.json" in out
+
+
+def test_cmd_ledger_invalid_run_manifest_json_exits_2(tmp_path, capsys):
+    """run manifest 非法 JSON ⇒ 2（ValueError 路径），不吐 traceback（N1）。"""
+    env = _make_env(tmp_path)
+    verdict_path, manifest_path, digest_path = _write_run_inputs(
+        tmp_path, run_id="RID-TEST-1", scenario_id="town-two-clients",
+        entries=_town_entries(("4", "8", "4")), created_utc="2026-01-01T00:00:00Z")
+    manifest_path.write_text("{ oops not json", encoding="utf-8")
+    rc = s1.main(_ledger_argv(env, run_id="RID-TEST-1", scenario_id="town-two-clients",
+                              verdict=verdict_path, run_manifest=manifest_path,
+                              digest=digest_path))
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "ledger: FAIL (2)" in out
+
+
+def test_cmd_ledger_scenario_mismatch_exits_2(tmp_path, capsys):
+    """spec §7 的「不符」也算 2：verdict 的场景与 --verified-scenario 不一致。"""
+    env = _make_env(tmp_path)
+    verdict_path, manifest_path, digest_path = _write_run_inputs(
+        tmp_path, run_id="RID-TEST-1", scenario_id="town-two-clients",
+        entries=_town_entries(("4", "8", "4")), created_utc="2026-01-01T00:00:00Z")
+    rc = s1.main(_ledger_argv(env, run_id="RID-TEST-1", scenario_id="party-invite",
+                              verdict=verdict_path, run_manifest=manifest_path,
+                              digest=digest_path))
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "ledger: FAIL (2)" in out and "不符" in out

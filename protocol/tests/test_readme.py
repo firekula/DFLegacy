@@ -55,6 +55,12 @@ def test_readme_documents_run_ledger_conventions():
         assert token in md, token
 
 
+def test_readme_defines_green_with_human_including_missing_evidence():
+    """N2：`green-with-human` 的触发条件是 needs-human **或** missing-evidence（`verdict.py` 的 `status()`）。"""
+    line = next(ln for ln in _readme().splitlines() if "green-with-human" in ln)
+    assert "needs-human" in line and "missing-evidence" in line, line
+
+
 def test_cli_verify_help_documents_exit_codes():
     proc = subprocess.run(
         [sys.executable, "-m", "protocol.s1", "verify", "--help"],
