@@ -790,12 +790,20 @@ public static class EntranceDialHost
         return channelHost;
     }
 
-    public static bool IsDialable(string host) =>
-        !string.IsNullOrWhiteSpace(host)
-        && IPAddress.TryParse(host, out var address)
-        && !address.Equals(IPAddress.Any)
-        && !address.Equals(IPAddress.IPv6Any)
-        && !address.Equals(IPAddress.Broadcast);
+    public static bool IsDialable(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        // 逐字镜像 EntranceService.IsDialableHost（EntranceService.cs:17680-17689）：
+        // 不是 IP 的主机名算可拨；只有通配地址 0.0.0.0 / :: 不可拨。
+        // 广播 255.255.255.255 现存实现**不排除**，这里也不排除 —— Task 4 要把调用点
+        // 换成这个方法，语义必须完全一致，否则客户端拨号目标会悄悄变（违反 I1 验收③）。
+        return !IPAddress.TryParse(host, out var address)
+            || (!IPAddress.Any.Equals(address) && !IPAddress.IPv6Any.Equals(address));
+    }
 }
 ```
 
@@ -944,12 +952,15 @@ git commit -m "S2: 握手宿主抽成无 ASP.NET 依赖的 EntranceHandshakeServ
 **Files:**
 - Create: `src/DFLegacy.Server/RuntimeEntranceSink.cs`
 - Create: `src/DFLegacy.Server/EntranceHandshakeService.cs`
-- Modify: `src/DFLegacy.Server/EntranceService.cs`（只绑频道族 + 内容走 `EntranceDialHost`）
+- Create: `src/DFLegacy.Protocol/EntranceContentFactory.cs`
+- Modify: `src/DFLegacy.Server/EntranceService.cs`（只绑频道族）
+- Modify: `src/DFLegacy.Protocol/EntranceHandshakeServer.cs`（会话标签带本地端口；`Stop()` 并发竞态）
 - Modify: `src/DFLegacy.Server/Program.cs`（注册 hosted service）
 
 **Interfaces:**
-- Consumes: Task 1–3 的全部产出；`RuntimeState.Add/CountPacket/Remove/TracePacket`。
+- Consumes: Task 1–3 的全部产出；`RuntimeState.Add/CountPacket/Remove/TracePacket`；已提交的 `EntranceDialHost.Resolve`。
 - Produces: `EntranceHandshakeService : BackgroundService`（在 `options.Processes.Channel.Enabled == false` 时启动握手宿主；否则记一条日志并退出）。
+- **执行期修订（2026-10-21，所有者已批准）**：`RuntimeEntranceSink` 用 `public`（仓库无 `InternalsVisibleTo` 先例，测试需要可见）；`EntranceContentFactory` 只做组装+缓存，缺 `etc/channel_info.etc` 的 warn 留在 Server 侧取数 lambda（它需要 `ScriptFileSystem.SourceDescription`）；启动门用 `Processes.Channel.Enabled` 而不是 `Game.EntranceBinding`，以保留"两个开关都 false"下的今天行为；**不动 `EntranceService.LoadContent`** —— 拆分后入口分支不可达，且本工作区里它已被未提交的 `ResolveChannelDialHost` 改过，动它会与未提交改动冲突。
 
 - [ ] **Step 1: 写失败的端口归属测试**
 
@@ -975,6 +986,22 @@ git commit -m "S2: 握手宿主抽成无 ASP.NET 依赖的 EntranceHandshakeServ
 ```csharp
     EntranceSplitSmokeTests.RunPortOwnership(Check);
 ```
+
+另外追加三组断言（执行期新增，所有者已批准；三组均已变异验证可红）：
+
+- `EntranceSplitSmokeTests.RunRuntimeSinkAccounting`：`RuntimeEntranceSink.Received` 必须让
+  `RuntimeState.TotalPackets` 加 1（换成 `Interlocked.Increment(ref session.ReceivedPackets)` 会让它变红），
+  `Sent` 不得污染全局计数，`Dispose` 后 `Sessions()` 为空，`service` 标签原样保留。
+- `EntranceSplitSmokeTests.RunContentFactory`：`EntranceContentFactory` 组装的 metadata 必须等于
+  **真机录制明文**——652 字节，sha256 `8E059F3A8BEF0DBC34F446007C259A60EE90C4A5DEBCA3981D490B72A0EE3493`，
+  录自 `runs/20261018T091951Z-2724238-town-two-clients/*/netdump-*.log`（该次配置：Name="Local Channel"、
+  Port=7001、Number=1、Max=100、Cur=1、拨号地址=192.168.3.177；5 个 netdump / 4 个不同会话密钥复现同一明文）；
+  脚本原样透传；第二次 `Get()` 返回同一实例且取数 lambda 只被调一次。
+- `EntranceSplitSmokeTests.RunHandshakeReplayAsync`：把录制的客户端请求帧（11 → 5 → 9 → 1）喂给新宿主，
+  用 12 回包里的 key 解密后比对：proto6 明文 = `00000000` + `dfls-local` + 零；proto10 明文 = 注入的脚本；
+  proto3 解密块 656 字节（652 明文 + 4 字节 AES 块填充），sha256 `59FC373C8527F02F3392A88344B93F8EA160B47F309655D1C5B9871317DB08CD`。
+  解密顺序是 `DecryptBlocks(Decompress(x))`（`EncryptCompressed = Compress(EncryptBlocks())`）；
+  该基线可用 `EncryptCompressed(明文, 录制密钥) == 录制密文` 反证。
 
 - [ ] **Step 2: 跑测试确认通过（这是回归护栏，先立住）**
 
@@ -1007,7 +1034,9 @@ internal sealed class RuntimeEntranceSink(
     {
         public void Received(PacketFrame frame)
         {
-            Interlocked.Increment(ref session.ReceivedPackets);
+            // 必须走 runtime.CountPacket：它同时累加会话级与全局计数（RuntimeState.cs:71-75），
+            // 手写 Interlocked.Increment 只会动会话字段，/api/status.TotalPackets 会丢掉全部握手包。
+            runtime.CountPacket(session);
             session.LastProtocolId = frame.ProtocolId;
             if (tracePackets)
             {
@@ -1138,6 +1167,14 @@ public sealed class EntranceContentFactory(
         var ports = channelPorts;
 ```
 
+`src/DFLegacy.Protocol/EntranceHandshakeServer.cs` 的 `HandleClientAsync`：会话标签从硬编码 `"entrance"`
+改为带本地端口（`entrance:{localPort}`，镜像 `EntranceService.cs:221` 的既有口径；不改会让 admin
+`/api/sessions` 的两个入口端口不可区分）。同文件 `Stop()` 改为「取 `_listeners` 快照 → 释放锁 → 逐个 Stop」，
+消除 `RunAsync` 的 `finally` 与宿主 `Stop()` 并发枚举/清空 `List` 的竞态（实测 `--s2-ipc` 会随机红在 `Stop()`）。
+
+**不要**改 `EntranceService.LoadContent`：拆分后入口分支不可达，且本工作区里它已被未提交的
+`ResolveChannelDialHost` 改过，动它会与未提交改动冲突（见上面"执行期修订"）。
+
 `src/DFLegacy.Server/Program.cs` 在 `builder.Services.AddHostedService<EntranceService>();` 之前插入：
 
 ```csharp
@@ -1146,23 +1183,28 @@ builder.Services.AddHostedService<EntranceHandshakeService>();
 
 - [ ] **Step 4: 构建 + 跑全部 smoke，确认零回归**
 
-Run: `dotnet build DFLegacy.Emulator.slnx`
-Expected: `Build succeeded`
+Run: `dotnet build src/DFLegacy.Server/DFLegacy.Server.csproj` 与 `dotnet build tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj`
+Expected: 各 `0 个警告 / 0 个错误`
+
+> 为什么不是 `dotnet build DFLegacy.Emulator.slnx`（执行期实测，2026-10-21）：原生工程在 dotnet CLI 下必失败
+> （`MSB4278: $(VCTargetsPath)\Microsoft.Cpp.Default.props 不存在`，需要 MSBuild.exe），且 slnx 上有
+> **他人未提交**的 `DFLegacy.Ijl15.Tests.vcxproj` 条目 —— 与本任务改动无关。
 
 Run: `dotnet run --project tests/DFLegacy.SmokeTests`
-Expected: 0 failures（与 Step 2 前的基线一致）
+Expected: `All DFLegacy protocol smoke tests passed.`（exit 0）
 
 - [ ] **Step 5: 手工验证端口归属（真绑定）**
 
-Run: `dotnet run --project src/DFLegacy.Server`（另开一个 PowerShell）
+Run: `$env:DFLegacy__ScriptPvfPath='<repo>\DNF2008\Script.pvf'; dotnet src/DFLegacy.Server/bin/Debug/net10.0/DFLegacy.Server.dll`（另开一个 PowerShell）
+（`server.json:58` 的 `ScriptPvfPath` 指向 `D:\DFLegacy\DF2008\Script.pvf`，本机不存在该路径；环境变量覆盖是既有支持的入口，`Program.cs:21-25`。）
 Run: `Get-NetTCPConnection -State Listen | Where-Object LocalPort -in 2311,7001,8080 | Select-Object LocalAddress,LocalPort,OwningProcess`
 Expected: 2311、7001、8080 全部在监听，且属于**同一个** pid（单体模式行为不变）
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add src/DFLegacy.Server/RuntimeEntranceSink.cs src/DFLegacy.Server/EntranceHandshakeService.cs src/DFLegacy.Protocol/EntranceContentFactory.cs src/DFLegacy.Server/EntranceService.cs src/DFLegacy.Server/Program.cs tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
-git commit -m "S2: 握手族改由 EntranceHandshakeService 托管（单体模式行为不变）"
+git add src/DFLegacy.Server/RuntimeEntranceSink.cs src/DFLegacy.Server/EntranceHandshakeService.cs src/DFLegacy.Protocol/EntranceContentFactory.cs src/DFLegacy.Protocol/EntranceHandshakeServer.cs src/DFLegacy.Server/EntranceService.cs src/DFLegacy.Server/Program.cs tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
+git commit -m "S2: 握手族改由 EntranceHandshakeService 托管（单体模式端口归属与握手字节不变）"
 ```
 
 ---
