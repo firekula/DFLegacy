@@ -1,0 +1,2485 @@
+# S2 第一刀（入口握手族拆分）Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 把握手族（TCP 2311/8080）从 `DFLegacy.Server` 拆成独立进程 `DFLegacy.Channel`，两进程之间跑一条官方形状的进程间链路，且客户端可见行为逐字节不变。
+
+**Architecture:** 三个新项目 —— `DFLegacy.InterProcess`（链路帧与报文）、`DFLegacy.Channel`（新 exe，只依赖 `DFLegacy.Protocol` + `DFLegacy.InterProcess`，**不得引用 `DFLegacy.Server`**）、以及在 `DFLegacy.Protocol` 内新增的握手宿主 `EntranceHandshakeServer`（无 ASP.NET 依赖，靠 `IEntranceSessionSink` 记账）。`DFLegacy.Server` 保留频道玩法族，并在 `Processes.Channel.Enabled=false` 时退化为单体模式。
+
+**Tech Stack:** .NET 10（`net10.0`）、`Microsoft.NET.Sdk.Web` 宿主、`System.Text.Json` 配置、自建 smoke 测试运行器（`tests/DFLegacy.SmokeTests`，`OutputType=Exe`，`Action<bool,string> check` 风格）、Python 3.12（`tools/acceptance`、`protocol/`）。
+
+**Spec:** `docs/superpowers/specs/2026-10-19-multiprocess-split-s2-design.md`
+
+## Global Constraints
+
+- **不改客户端面协议**：`PacketFrame`（10 B 头 + 载荷首字节=记录数）与 11 字节头同构模型**一行不动**（spec §1.3）。
+- **落盘单写者**：`DFLegacy.Channel` 进程内**不得**出现 `JsonGameStore`、不得写 `state.json`、不得引用 `DFLegacy.Server`（spec §2 D4、§4.1）。
+- **链路帧固定参数**：`category = 0x7b`、`recordCount = 1`、`includeCrc32 = false`、`size` 含 11 字节头 ⇒ 建帧必须走 `PacketFrame.Create(id, payload, type: 0x7b, recordCount: 1, includeCrc32: false)`（spec §5.1/§5.2）。
+- **报文号**：只有 `NOTICE_CHANNEL_SERVER = 4` 复用官方 ID；其它一律 `>= 128`（`REGISTER=128`、`REGISTER_ACK=129`、`STATUS=130`）（spec §5.2）。
+- **载荷口径**：字段从帧偏移 11 起 = `PacketFrame.Body[1..]`；`Body[0]` 是记录数（spec §5.2）。
+- **端口归属**：`EntrancePorts = {Entrance.Port} ∪ AdditionalPorts \ {Channel.Port}` 归 channel 进程；`{Channel.Port}` 归 server 进程；链路默认 `7004`（spec §4.2/§5.6）。
+- **每个任务结束时**：`dotnet build DFLegacy.Emulator.slnx` 必须零错误；该任务涉及的 smoke 必须 0 failures；提交用**逐文件 pathspec**，**绝不 `git add -A`**。
+- **Commit message 用中文**，一条任务一次提交（或按步骤里写明的小提交）。
+- `docs/` 被 `.gitignore:15` 挡住 ⇒ 新增文档必须 `git add -f <path>`（`-f` 写在 pathspec 之前）。
+
+---
+
+## File Structure（先锁死分工）
+
+| 文件 | 职责 | 新/改 |
+|---|---|---|
+| `src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj` | 链路库项目 | 新 |
+| `src/DFLegacy.InterProcess/InterProcessMessageIds.cs` | 报文号 + category 常量 + 链路协议版本 | 新 |
+| `src/DFLegacy.InterProcess/InterProcessPayloads.cs` | 4 种载荷的 record + 编解码 | 新 |
+| `src/DFLegacy.InterProcess/InterProcessLink.cs` | 帧包装（建帧/校验 category） | 新 |
+| `src/DFLegacy.InterProcess/InterProcessLinkClient.cs` | game 侧：拨号/注册/心跳/超时/重连 + 可读状态 | 新 |
+| `src/DFLegacy.InterProcess/InterProcessLinkServer.cs` | channel 侧：接受/校验/ACK/收 STATUS + 可读状态 | 新 |
+| `src/DFLegacy.Protocol/EntrancePortFamilies.cs` | 纯函数：端口按族切分 | 新 |
+| `src/DFLegacy.Protocol/EntranceDialHost.cs` | 纯函数：广告地址解析（从 `EntranceService.ResolveChannelDialHost` 抽出） | 新 |
+| `src/DFLegacy.Protocol/EntranceSessionSink.cs` | `IEntranceSessionSink` / `IEntranceSession` 抽象 | 新 |
+| `src/DFLegacy.Protocol/EntranceHandshakeServer.cs` | 握手族监听 + 读循环 + 派发 + 记账（无 ASP.NET 依赖） | 新 |
+| `src/DFLegacy.Channel/DFLegacy.Channel.csproj` | 新 exe | 新 |
+| `src/DFLegacy.Channel/ChannelOptions.cs` | 窄配置模型（只读它需要的键，不与 `ServerOptions` 合并） | 新 |
+| `src/DFLegacy.Channel/ChannelScriptSource.cs` | 读 `etc/channel_info.etc`（PVF 或目录） | 新 |
+| `src/DFLegacy.Channel/Program.cs` | 组装：配置 → 内容 → 握手宿主 + 链路服务端 | 新 |
+| `src/DFLegacy.Server/ProcessOptions.cs` | `Processes` 配置段 + 校验 | 新 |
+| `src/DFLegacy.Server/ServerOptions.cs` | 增加 `Processes` 属性 | 改 |
+| `src/DFLegacy.Server/EntranceHandshakeService.cs` | 把 `EntranceHandshakeServer` 托管进 game 进程（单体模式用） | 新 |
+| `src/DFLegacy.Server/RuntimeEntranceSink.cs` | `IEntranceSessionSink` → `RuntimeState` 适配 | 新 |
+| `src/DFLegacy.Server/EntranceService.cs` | 只绑 `Channel.Port`；内容加载改走 `EntranceDialHost` | 改（小） |
+| `src/DFLegacy.Server/Program.cs` | 注册 hosted service、`/api/status` 增字段、链路客户端 | 改 |
+| `server.json` | 增加 `Processes` 段 | 改 |
+| `tests/DFLegacy.SmokeTests/InterProcessCodecSmokeTests.cs` | 帧/载荷字节断言 | 新 |
+| `tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs` | 端口分族 + 握手宿主行为 | 新 |
+| `tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs` | Tier 1 链路断言（真 socket） | 新 |
+| `tests/DFLegacy.SmokeTests/Program.cs` | 注册 `--s2-ipc` 组 | 改 |
+| `protocol/map/s2s-map.tsv` | 进程间报文表（S1 契约扩展） | 新 |
+| `protocol/importer.py`、`protocol/verify.py`、`protocol/manifest.json` | 支持 `kind=S2S` + 新文件 + 总数 | 改 |
+| `tools/acceptance/model.py`、`runner.py`、`cli.py`、`verdict.py` | 多进程编排与归因 | 改 |
+| `tools/acceptance/scenarios/handshake-login-town.yaml` | 本刀的门场景（握手→登录→进城） | 新 |
+
+---
+
+## Task 1: `DFLegacy.InterProcess` 库 + 帧与载荷编解码
+
+**Files:**
+- Create: `src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj`
+- Create: `src/DFLegacy.InterProcess/InterProcessMessageIds.cs`
+- Create: `src/DFLegacy.InterProcess/InterProcessPayloads.cs`
+- Create: `src/DFLegacy.InterProcess/InterProcessLink.cs`
+- Modify: `DFLegacy.Emulator.slnx`
+- Modify: `tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj`
+- Create: `tests/DFLegacy.SmokeTests/InterProcessCodecSmokeTests.cs`
+- Modify: `tests/DFLegacy.SmokeTests/Program.cs`
+
+**Interfaces:**
+- Consumes: `DFLegacy.Protocol.PacketFrame`（`Create(byte protocolId, ReadOnlySpan<byte> payload, byte type, byte recordCount, bool includeCrc32)`、`Encode()`、`Body`、`Type`、`ProtocolId`）。
+- Produces:
+  - `DFLegacy.InterProcess.InterProcessMessageIds`：`NoticeChannelServer=4`、`Register=128`、`RegisterAck=129`、`Status=130`、`LinkCategory=0x7b`、`LinkProtocolVersion=2`。
+  - `RegisterPayload(ushort ProtocolVersion, uint GcNo, uint ChannelNo, uint MaximumUsers, uint CurrentUsers, string AdvertisedHost, uint GamePort)` + `Encode()/TryDecode`（38 B）。
+  - `RegisterAckPayload(ushort ProtocolVersion, uint Accepted, string ChannelName, uint ChannelPort)`（30 B）。
+  - `StatusPayload(ulong UptimeMs, uint ActiveSessions, uint LoggedInUsers, ulong TotalConnections, ulong TotalPackets)`（32 B）。
+  - `NoticeChannelServerPayload(int ServerGroup, string AdvertisedHost, int Port)`（24 B）。
+  - `InterProcessLink.Create(byte messageId, ReadOnlySpan<byte> payload)`、`InterProcessLink.IsLinkFrame(PacketFrame)`、`InterProcessLink.TryGetMessageId(PacketFrame, out byte)`。
+
+- [ ] **Step 1: 建项目并挂进解决方案**
+
+`src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj`：
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+  </ItemGroup>
+</Project>
+```
+
+`DFLegacy.Emulator.slnx` 在 `src/DFLegacy.Protocol/...` 那行之后插入：
+
+```xml
+  <Project Path="src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
+```
+
+`tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj` 的 `ItemGroup` 内追加：
+
+```xml
+    <ProjectReference Include="../../src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
+```
+
+- [ ] **Step 2: 写失败测试（字节级）**
+
+`tests/DFLegacy.SmokeTests/InterProcessCodecSmokeTests.cs`：
+
+```csharp
+using DFLegacy.InterProcess;
+using DFLegacy.Protocol;
+
+internal static class InterProcessCodecSmokeTests
+{
+    public static void Run(Action<bool, string> check)
+    {
+        var register = new RegisterPayload(
+            ProtocolVersion: InterProcessMessageIds.LinkProtocolVersion,
+            GcNo: 3011,
+            ChannelNo: 11,
+            MaximumUsers: 100,
+            CurrentUsers: 1,
+            AdvertisedHost: "127.0.0.1",
+            GamePort: 7001);
+        var frame = InterProcessLink.Create(InterProcessMessageIds.Register, register.Encode());
+
+        check(Convert.ToHexString(frame.Encode()) ==
+              "7B8031000000000000" + "0001" + "0200" + "C30B0000" + "0B000000" +
+              "64000000" + "01000000" + "3132372E302E302E31" + "00000000000000" + "591B0000",
+            "REGISTER frame is 49 bytes: category 0x7b, id 128, size 0x31, crc 0, ack 1");
+        check(frame.Type == InterProcessMessageIds.LinkCategory
+                && frame.ProtocolId == InterProcessMessageIds.Register
+                && frame.TotalLength == 49
+                && frame.Body.Length == 39
+                && frame.RecordCount == 1,
+            "REGISTER header fields match the 11-byte model (size includes header)");
+        check(InterProcessLink.TryGetMessageId(frame, out var id) && id == InterProcessMessageIds.Register,
+            "link frame decodes back to its message id");
+
+        var ack = new RegisterAckPayload(InterProcessMessageIds.LinkProtocolVersion, 1, "Local Channel 1", 7001);
+        check(ack.Encode().Length == 30, "REGISTER_ACK payload is 30 bytes");
+        var status = new StatusPayload(1, 2, 3, 4, 5);
+        check(status.Encode().Length == 32, "STATUS payload is 32 bytes");
+        var notice = new NoticeChannelServerPayload(1, "127.0.0.1", 2311);
+        check(notice.Encode().Length == 24, "NOTICE_CHANNEL_SERVER payload is 24 bytes");
+
+        var wrongCategory = new PacketFrame(0x00, InterProcessMessageIds.Register, 0, [1, 2, 3]);
+        check(!InterProcessLink.IsLinkFrame(wrongCategory),
+            "a frame from another link (category 0x00) is not accepted as a link frame");
+    }
+}
+```
+
+`tests/DFLegacy.SmokeTests/Program.cs` 在第一个 `if (args.Contains("--party-card"))` **之前**插入：
+
+```csharp
+if (args.Contains("--s2-ipc"))
+{
+    InterProcessCodecSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"S2 IPC smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+```
+
+- [ ] **Step 3: 跑测试确认失败**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: 编译失败，`The type or namespace name 'InterProcess' does not exist`
+
+- [ ] **Step 4: 写实现**
+
+`src/DFLegacy.InterProcess/InterProcessMessageIds.cs`：
+
+```csharp
+namespace DFLegacy.InterProcess;
+
+/// <summary>
+/// 进程间链路的报文号与常量。只有 NoticeChannelServer 复用官方 ID（其载荷布局已有抓包双证）；
+/// 其余走 >= 128 的私有号段，避免与官方 1..14 的通道服注册表相撞。
+/// 证据：docs/superpowers/sdd/2026-10-05-official-login-channel/dual-evidence.md:88-91,229
+/// </summary>
+public static class InterProcessMessageIds
+{
+    /// <summary>官方 channel↔bridge 链路的 category 字节，实测 0x7b。</summary>
+    public const byte LinkCategory = 0x7b;
+
+    /// <summary>本链路自己的协议版本。任一侧不匹配时 REGISTER_ACK.accepted 回 0。</summary>
+    public const ushort LinkProtocolVersion = 2;
+
+    public const byte NoticeChannelServer = 4;
+    public const byte Register = 128;
+    public const byte RegisterAck = 129;
+    public const byte Status = 130;
+}
+```
+
+`src/DFLegacy.InterProcess/InterProcessPayloads.cs`：
+
+```csharp
+using System.Buffers.Binary;
+using System.Text;
+
+namespace DFLegacy.InterProcess;
+
+/// <summary>REGISTER：game → channel。38 B。</summary>
+public sealed record RegisterPayload(
+    ushort ProtocolVersion,
+    uint GcNo,
+    uint ChannelNo,
+    uint MaximumUsers,
+    uint CurrentUsers,
+    string AdvertisedHost,
+    uint GamePort)
+{
+    public const int Length = 38;
+    public const int HostWidth = 16;
+
+    public byte[] Encode()
+    {
+        var buffer = new byte[Length];
+        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(0, 2), ProtocolVersion);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(2, 4), GcNo);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(6, 4), ChannelNo);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(10, 4), MaximumUsers);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(14, 4), CurrentUsers);
+        AsciiFixed.Write(buffer.AsSpan(18, HostWidth), AdvertisedHost);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(34, 4), GamePort);
+        return buffer;
+    }
+
+    public static bool TryDecode(ReadOnlySpan<byte> payload, out RegisterPayload? payloadValue)
+    {
+        payloadValue = null;
+        if (payload.Length != Length)
+        {
+            return false;
+        }
+
+        payloadValue = new RegisterPayload(
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[..2]),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(2, 4)),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(6, 4)),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(10, 4)),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(14, 4)),
+            AsciiFixed.Read(payload.Slice(18, HostWidth)),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(34, 4)));
+        return true;
+    }
+}
+
+/// <summary>REGISTER_ACK：channel → game。30 B。</summary>
+public sealed record RegisterAckPayload(
+    ushort ProtocolVersion,
+    uint Accepted,
+    string ChannelName,
+    uint ChannelPort)
+{
+    public const int Length = 30;
+    public const int NameWidth = 20;
+
+    public byte[] Encode()
+    {
+        var buffer = new byte[Length];
+        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(0, 2), ProtocolVersion);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(2, 4), Accepted);
+        AsciiFixed.Write(buffer.AsSpan(6, NameWidth), ChannelName);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(26, 4), ChannelPort);
+        return buffer;
+    }
+
+    public static bool TryDecode(ReadOnlySpan<byte> payload, out RegisterAckPayload? payloadValue)
+    {
+        payloadValue = null;
+        if (payload.Length != Length)
+        {
+            return false;
+        }
+
+        payloadValue = new RegisterAckPayload(
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[..2]),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(2, 4)),
+            AsciiFixed.Read(payload.Slice(6, NameWidth)),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(26, 4)));
+        return true;
+    }
+}
+
+/// <summary>STATUS：game → channel，兼心跳。32 B。</summary>
+public sealed record StatusPayload(
+    ulong UptimeMs,
+    uint ActiveSessions,
+    uint LoggedInUsers,
+    ulong TotalConnections,
+    ulong TotalPackets)
+{
+    public const int Length = 32;
+
+    public byte[] Encode()
+    {
+        var buffer = new byte[Length];
+        BinaryPrimitives.WriteUInt64LittleEndian(buffer.AsSpan(0, 8), UptimeMs);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(8, 4), ActiveSessions);
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(12, 4), LoggedInUsers);
+        BinaryPrimitives.WriteUInt64LittleEndian(buffer.AsSpan(16, 8), TotalConnections);
+        BinaryPrimitives.WriteUInt64LittleEndian(buffer.AsSpan(24, 8), TotalPackets);
+        return buffer;
+    }
+
+    public static bool TryDecode(ReadOnlySpan<byte> payload, out StatusPayload? payloadValue)
+    {
+        payloadValue = null;
+        if (payload.Length != Length)
+        {
+            return false;
+        }
+
+        payloadValue = new StatusPayload(
+            BinaryPrimitives.ReadUInt64LittleEndian(payload[..8]),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(8, 4)),
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(12, 4)),
+            BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(16, 8)),
+            BinaryPrimitives.ReadUInt64LittleEndian(payload.Slice(24, 8)));
+        return true;
+    }
+}
+
+/// <summary>NOTICE_CHANNEL_SERVER：channel → game。24 B，复用官方 ID 与官方载荷布局。</summary>
+public sealed record NoticeChannelServerPayload(int ServerGroup, string AdvertisedHost, int Port)
+{
+    public const int Length = 24;
+    public const int HostWidth = 16;
+
+    public byte[] Encode()
+    {
+        var buffer = new byte[Length];
+        BinaryPrimitives.WriteInt32LittleEndian(buffer.AsSpan(0, 4), ServerGroup);
+        AsciiFixed.Write(buffer.AsSpan(4, HostWidth), AdvertisedHost);
+        BinaryPrimitives.WriteInt32LittleEndian(buffer.AsSpan(20, 4), Port);
+        return buffer;
+    }
+
+    public static bool TryDecode(ReadOnlySpan<byte> payload, out NoticeChannelServerPayload? payloadValue)
+    {
+        payloadValue = null;
+        if (payload.Length != Length)
+        {
+            return false;
+        }
+
+        payloadValue = new NoticeChannelServerPayload(
+            BinaryPrimitives.ReadInt32LittleEndian(payload[..4]),
+            AsciiFixed.Read(payload.Slice(4, HostWidth)),
+            BinaryPrimitives.ReadInt32LittleEndian(payload.Slice(20, 4)));
+        return true;
+    }
+}
+
+/// <summary>定宽 ASCII 字段（与官方 tpServerInfo 的 char[N] 同口径：不足补 0，写入前校验长度）。</summary>
+internal static class AsciiFixed
+{
+    public static void Write(Span<byte> destination, string value)
+    {
+        var encoded = Encoding.ASCII.GetBytes(value);
+        if (encoded.Length >= destination.Length)
+        {
+            throw new ArgumentException(
+                $"ASCII value must be shorter than {destination.Length} bytes: {value}", nameof(value));
+        }
+
+        destination.Clear();
+        encoded.CopyTo(destination);
+    }
+
+    public static string Read(ReadOnlySpan<byte> source)
+    {
+        var end = source.IndexOf((byte)0);
+        return Encoding.ASCII.GetString(end < 0 ? source : source[..end]);
+    }
+}
+```
+
+`src/DFLegacy.InterProcess/InterProcessLink.cs`：
+
+```csharp
+using DFLegacy.Protocol;
+
+namespace DFLegacy.InterProcess;
+
+/// <summary>
+/// 进程间链路的帧包装。帧壳沿用 PacketFrame（10 B 头 + Body[0]=记录数），
+/// 线上字节与官方 11 字节头同构：Body[0] 就落在官方 [10] 的位置。
+/// 固定参数：category=0x7b，recordCount=1，不带 CRC（spec §5.1）。
+/// </summary>
+public static class InterProcessLink
+{
+    public static PacketFrame Create(byte messageId, ReadOnlySpan<byte> payload) =>
+        PacketFrame.Create(
+            messageId,
+            payload,
+            type: InterProcessMessageIds.LinkCategory,
+            recordCount: 1,
+            includeCrc32: false);
+
+    public static bool IsLinkFrame(PacketFrame frame) =>
+        frame.Type == InterProcessMessageIds.LinkCategory;
+
+    public static bool TryGetMessageId(PacketFrame frame, out byte messageId)
+    {
+        messageId = frame.ProtocolId;
+        return IsLinkFrame(frame);
+    }
+}
+```
+
+- [ ] **Step 5: 跑测试确认通过**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: `S2 IPC smoke: 0 failures`
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj src/DFLegacy.InterProcess/InterProcessMessageIds.cs src/DFLegacy.InterProcess/InterProcessPayloads.cs src/DFLegacy.InterProcess/InterProcessLink.cs DFLegacy.Emulator.slnx tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj tests/DFLegacy.SmokeTests/InterProcessCodecSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
+git commit -m "S2: 新增进程间链路库（帧壳 + 4 种载荷编解码）"
+```
+
+---
+
+## Task 2: 端口分族纯函数 + `Processes` 配置段
+
+**Files:**
+- Create: `src/DFLegacy.Protocol/EntrancePortFamilies.cs`
+- Create: `src/DFLegacy.Server/ProcessOptions.cs`
+- Modify: `src/DFLegacy.Server/ServerOptions.cs`
+- Modify: `server.json`
+- Create: `tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs`
+- Modify: `tests/DFLegacy.SmokeTests/Program.cs`
+
+**Interfaces:**
+- Consumes: 无（纯函数 + POCO）。
+- Produces:
+  - `DFLegacy.Protocol.EntrancePortFamilies.Split(int entrancePort, IEnumerable<int> additionalPorts, int channelPort)` → `(int[] EntrancePorts, int[] ChannelPorts)`；丢弃 `<1 或 >65535`、去重、保序（Entrance 在前）。
+  - `DFLegacy.Server.ProcessOptions`：`ChannelProcessOptions Channel`（`Enabled`、`LinkPort=7004`）、`GameProcessOptions Game`（`EntranceBinding=true`）；`ProcessOptions.Validate()` 在两者同时启用时抛 `InvalidOperationException`。
+
+- [ ] **Step 1: 写失败测试**
+
+`tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs`：
+
+```csharp
+using DFLegacy.Protocol;
+using DFLegacy.Server;
+
+internal static class EntranceSplitSmokeTests
+{
+    public static void Run(Action<bool, string> check)
+    {
+        var (entrance, channel) = EntrancePortFamilies.Split(2311, [7001, 8080], 7001);
+        check(entrance.SequenceEqual([2311, 8080]) && channel.SequenceEqual([7001]),
+            "entrance family = Entrance.Port + AdditionalPorts minus Channel.Port");
+        check(EntrancePortFamilies.Split(2311, [7001, 8080], 7001).EntrancePorts
+                .All(port => port != 7001),
+            "the channel port never lands in the entrance family");
+        var (deduped, _) = EntrancePortFamilies.Split(2311, [2311, 0, 70000, 8080, 8080], 7001);
+        check(deduped.SequenceEqual([2311, 8080]),
+            "duplicates and out-of-range ports are dropped while order is preserved");
+        var (single, singleChannel) = EntrancePortFamilies.Split(8080, [], 7001);
+        check(single.SequenceEqual([8080]) && singleChannel.SequenceEqual([7001]),
+            "defaults (Entrance.Port=8080, no AdditionalPorts) still yield both families");
+
+        var monolithic = new ProcessOptions();
+        monolithic.Validate();
+        check(!monolithic.Channel.Enabled && monolithic.Game.EntranceBinding
+                && monolithic.Channel.LinkPort == 7004,
+            "defaults describe today's single-process mode with link port 7004");
+
+        var both = new ProcessOptions();
+        both.Channel.Enabled = true;
+        both.Game.EntranceBinding = true;
+        var threw = false;
+        try { both.Validate(); }
+        catch (InvalidOperationException) { threw = true; }
+        check(threw,
+            "enabling the channel process while the game process still binds the entrance ports is rejected");
+
+        var split = new ProcessOptions();
+        split.Channel.Enabled = true;
+        split.Game.EntranceBinding = false;
+        split.Validate();
+        check(true, "channel-owned entrance ports with game.EntranceBinding=false is a valid split");
+    }
+}
+```
+
+`Program.cs` 的 `--s2-ipc` 组里加一行（放在 codec 之后）：
+
+```csharp
+    EntranceSplitSmokeTests.Run(Check);
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: 编译失败，`EntrancePortFamilies` / `ProcessOptions` 不存在
+
+- [ ] **Step 3: 写实现**
+
+`src/DFLegacy.Protocol/EntrancePortFamilies.cs`：
+
+```csharp
+namespace DFLegacy.Protocol;
+
+/// <summary>
+/// 把同一个 Entrance 监听器上的端口按协议族切开：
+/// 入口握手族 = {Entrance.Port} ∪ AdditionalPorts 去掉 Channel.Port；频道玩法族 = {Channel.Port}。
+/// 与 EntranceService 现行的 isChannelPort 判定（localPort == Channel.Port）**同义**，
+/// 只是把隐含规则提成可测试的纯函数 —— 拆分进程时两族必须绑在不同进程里。
+/// </summary>
+public static class EntrancePortFamilies
+{
+    public static (int[] EntrancePorts, int[] ChannelPorts) Split(
+        int entrancePort,
+        IEnumerable<int> additionalPorts,
+        int channelPort)
+    {
+        var all = new[] { entrancePort }.Concat(additionalPorts);
+        var valid = all.Where(port => port is > 0 and <= 65535).Distinct().ToArray();
+        var entrance = valid.Where(port => port != channelPort).ToArray();
+        var channel = valid.Where(port => port == channelPort).ToArray();
+        if (channel.Length == 0 && channelPort is > 0 and <= 65535)
+        {
+            channel = [channelPort];
+        }
+
+        return (entrance, channel);
+    }
+}
+```
+
+> 注意：`ChannelPorts` 即使不在监听列表里也要返回，因为频道族由 `Channel.Port` 独立决定（`EntranceService` 用自己的监听器绑它）。
+
+`src/DFLegacy.Server/ProcessOptions.cs`：
+
+```csharp
+namespace DFLegacy.Server;
+
+/// <summary>
+/// 进程拓扑开关。默认值 = 今天的单体模式（一个进程绑全部端口）。
+/// 拆分布局：Channel.Enabled=true 且 Game.EntranceBinding=false。
+/// spec: docs/superpowers/specs/2026-10-19-multiprocess-split-s2-design.md §5.6
+/// </summary>
+public sealed class ProcessOptions
+{
+    public ChannelProcessOptions Channel { get; set; } = new();
+    public GameProcessOptions Game { get; set; } = new();
+
+    public void Validate()
+    {
+        if (Channel.Enabled && Game.EntranceBinding)
+        {
+            throw new InvalidOperationException(
+                "Processes.Channel.Enabled=true requires Processes.Game.EntranceBinding=false: " +
+                "both processes cannot bind the same entrance ports.");
+        }
+
+        if (Channel.LinkPort is < 1 or > 65535)
+        {
+            throw new InvalidOperationException(
+                $"Processes.Channel.LinkPort must be in 1..65535, got {Channel.LinkPort}.");
+        }
+    }
+}
+
+public sealed class ChannelProcessOptions
+{
+    public bool Enabled { get; set; }
+    public int LinkPort { get; set; } = 7004;
+}
+
+public sealed class GameProcessOptions
+{
+    public bool EntranceBinding { get; set; } = true;
+}
+```
+
+`src/DFLegacy.Server/ServerOptions.cs` 在 `public AdminOptions Admin { get; set; } = new();` 之后插入一行：
+
+```csharp
+    public ProcessOptions Processes { get; set; } = new();
+```
+
+`server.json` 在 `"DFLegacy": {` 之后、`"Admin": {` 之前插入：
+
+```json
+    "Processes": {
+      "//": "进程拓扑开关。默认 = 单体模式（一个进程绑全部端口）。拆分布局：Channel.Enabled=true 且 Game.EntranceBinding=false。Channel.LinkPort 是两进程之间的链路端口。",
+      "Channel": {
+        "Enabled": false,
+        "LinkPort": 7004
+      },
+      "Game": {
+        "EntranceBinding": true
+      }
+    },
+```
+
+`Program.cs`（这是 `src/DFLegacy.Server/Program.cs`）在 `var options = builder.Configuration.GetSection("DFLegacy").Get<ServerOptions>() ?? new ServerOptions();` 之后插入：
+
+```csharp
+options.Processes.Validate();
+```
+
+- [ ] **Step 4: 跑测试确认通过**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: `S2 IPC smoke: 0 failures`
+
+- [ ] **Step 5: 全量 smoke 不回归**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests`
+Expected: 末尾 `failures` 为 0（若仓库既有失败，先记录基线再继续，不允许新增失败）
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/DFLegacy.Protocol/EntrancePortFamilies.cs src/DFLegacy.Server/ProcessOptions.cs src/DFLegacy.Server/ServerOptions.cs src/DFLegacy.Server/Program.cs server.json tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
+git commit -m "S2: 端口按协议族切分 + Processes 配置段与校验"
+```
+
+---
+
+## Task 3: `EntranceHandshakeServer`（无 ASP.NET 依赖的握手宿主）
+
+**Files:**
+- Create: `src/DFLegacy.Protocol/EntranceSessionSink.cs`
+- Create: `src/DFLegacy.Protocol/EntranceDialHost.cs`
+- Create: `src/DFLegacy.Protocol/EntranceHandshakeServer.cs`
+- Modify: `tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs`（追加断言）
+- Modify: `tests/DFLegacy.SmokeTests/Program.cs`（在 `--s2-ipc` 组里 `await` 一次异步跑）
+
+**Interfaces:**
+- Consumes: `EntranceProtocolEngine.Handle(PacketFrame, EntranceSessionState, EntranceContent)`、`EntranceContent(byte[]? ChannelScript, byte[] Metadata)`、`PacketFrame.ReadAsync/WriteAsync`。
+- Produces:
+  - `IEntranceSessionSink { IEntranceSession Begin(string service, string remote); }`
+  - `IEntranceSession : IDisposable { void Received(PacketFrame frame); void Sent(PacketFrame frame); }`
+  - `EntranceDialHost.Resolve(string advertisedHost, string entranceHost, string channelHost)` → `string`；`EntranceDialHost.IsDialable(string host)` → `bool`。
+  - `EntranceHandshakeServer(IPAddress address, IReadOnlyList<int> ports, Func<EntranceContent> content, IEntranceSessionSink sink, Action<string> log, Action<string, Exception?> warn)`；`Task<int[]> StartAsync(CancellationToken)` 返回实际绑定端口；`Task RunAsync(CancellationToken)`；`void Stop()`。
+
+- [ ] **Step 1: 写失败测试**
+
+在 `EntranceSplitSmokeTests.Run` 末尾追加：
+
+```csharp
+        check(EntranceDialHost.Resolve("0.0.0.0", "127.0.0.1", "1.2.3.4") == "127.0.0.1",
+            "a wildcard advertised host falls back to Entrance.Host");
+        check(EntranceDialHost.Resolve("", "", "1.2.3.4") == "1.2.3.4",
+            "with nothing advertised, a concrete Channel.Host is used as the dial target");
+        check(EntranceDialHost.Resolve("192.168.1.5", "127.0.0.1", "0.0.0.0") == "192.168.1.5",
+            "an advertised gameplay host wins over the entrance host");
+```
+
+再把 `EntranceSplitSmokeTests.Run` 的签名保持不变，另加一个异步入口：
+
+```csharp
+    public static async Task RunHandshakeServerAsync(Action<bool, string> check)
+    {
+        var content = new EntranceContent(null, [1, 2, 3, 4]);
+        var sink = new RecordingSink();
+        var server = new EntranceHandshakeServer(
+            System.Net.IPAddress.Loopback,
+            [0],
+            () => content,
+            sink,
+            _ => { },
+            (_, _) => { });
+        var ports = await server.StartAsync(CancellationToken.None);
+        using var stop = new CancellationTokenSource();
+        var run = server.RunAsync(stop.Token);
+        using (var client = new System.Net.Sockets.TcpClient())
+        {
+            await client.ConnectAsync(System.Net.IPAddress.Loopback, ports[0]);
+            var stream = client.GetStream();
+            var request = PacketFrame.Create(11, new byte[32]);
+            await request.WriteAsync(stream);
+            var reply = await PacketFrame.ReadAsync(stream);
+            check(reply is not null && reply.ProtocolId == 12 && reply.Body.Length == 37,
+                "protocol 11 (0x0b) is answered by protocol 12 with a 36-byte payload plus record count");
+            check(sink.Last is { ReceivedCount: 1, SentCount: 1 },
+                "the session sink sees one received and one sent frame");
+        }
+
+        stop.Cancel();
+        await run;
+        server.Stop();
+    }
+
+    private sealed class RecordingSink : IEntranceSessionSink
+    {
+        public RecordingSession? Last { get; private set; }
+
+        public IEntranceSession Begin(string service, string remote) => Last = new RecordingSession();
+    }
+
+    private sealed class RecordingSession : IEntranceSession
+    {
+        public int ReceivedCount { get; private set; }
+        public int SentCount { get; private set; }
+
+        public void Received(PacketFrame frame) => ReceivedCount++;
+
+        public void Sent(PacketFrame frame) => SentCount++;
+
+        public void Dispose()
+        {
+        }
+    }
+```
+
+`Program.cs` 的 `--s2-ipc` 组里、`EntranceSplitSmokeTests.Run(Check);` 之后插入：
+
+```csharp
+    await EntranceSplitSmokeTests.RunHandshakeServerAsync(Check);
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: 编译失败，`EntranceHandshakeServer` / `EntranceDialHost` / `IEntranceSessionSink` 不存在
+
+- [ ] **Step 3: 写实现**
+
+`src/DFLegacy.Protocol/EntranceSessionSink.cs`：
+
+```csharp
+namespace DFLegacy.Protocol;
+
+/// <summary>
+/// 握手宿主的记账出口。宿主本身不认识 RuntimeState（那是 server 进程的东西）；
+/// 两个进程各自实现本接口：server 进程映射到 RuntimeState，channel 进程映射到自己的计数/日志。
+/// </summary>
+public interface IEntranceSessionSink
+{
+    IEntranceSession Begin(string service, string remote);
+}
+
+public interface IEntranceSession : IDisposable
+{
+    void Received(PacketFrame frame);
+
+    void Sent(PacketFrame frame);
+}
+```
+
+`src/DFLegacy.Protocol/EntranceDialHost.cs`：
+
+```csharp
+using System.Net;
+
+namespace DFLegacy.Protocol;
+
+/// <summary>
+/// 决定"告诉客户端去拨哪个地址"。Channel.Host 可能是 0.0.0.0 这类绑定地址，绝不能当成拨号目标
+/// （客户端拨 0.0.0.0 会失败）。优先级：可拨的广告地址 → Entrance.Host → 可拨的 Channel.Host。
+/// 逻辑从 EntranceService.ResolveChannelDialHost 原样抽出，两个进程共用。
+/// </summary>
+public static class EntranceDialHost
+{
+    public static string Resolve(string advertisedHost, string entranceHost, string channelHost)
+    {
+        if (IsDialable(advertisedHost))
+        {
+            return advertisedHost;
+        }
+
+        if (IsDialable(entranceHost))
+        {
+            return entranceHost;
+        }
+
+        return channelHost;
+    }
+
+    public static bool IsDialable(string host) =>
+        !string.IsNullOrWhiteSpace(host)
+        && IPAddress.TryParse(host, out var address)
+        && !address.Equals(IPAddress.Any)
+        && !address.Equals(IPAddress.IPv6Any)
+        && !address.Equals(IPAddress.Broadcast);
+}
+```
+
+`src/DFLegacy.Protocol/EntranceHandshakeServer.cs`：
+
+```csharp
+using System.Net;
+using System.Net.Sockets;
+
+namespace DFLegacy.Protocol;
+
+/// <summary>
+/// 入口握手族的监听与读循环（协议 11/5/9/1 → 12/6/10/3）。
+/// 无 ASP.NET 依赖：日志与记账都通过构造参数注入，因此同一份实现可以跑在
+/// DFLegacy.Server（单体模式）或 DFLegacy.Channel（拆分模式）里。
+/// </summary>
+public sealed class EntranceHandshakeServer(
+    IPAddress address,
+    IReadOnlyList<int> ports,
+    Func<EntranceContent> content,
+    IEntranceSessionSink sink,
+    Action<string> log,
+    Action<string, Exception?> warn)
+{
+    private readonly List<TcpListener> _listeners = [];
+
+    public IReadOnlyList<int> BoundPorts { get; private set; } = [];
+
+    public Task<int[]> StartAsync(CancellationToken cancellationToken)
+    {
+        foreach (var port in ports.Where(port => port is >= 0 and <= 65535).Distinct())
+        {
+            var listener = new TcpListener(address, port);
+            listener.Start();
+            _listeners.Add(listener);
+            log($"Entrance listener ready at {address}:{((IPEndPoint)listener.LocalEndpoint).Port}");
+        }
+
+        BoundPorts = _listeners.Select(listener => ((IPEndPoint)listener.LocalEndpoint).Port).ToArray();
+        return Task.FromResult(BoundPorts.ToArray());
+    }
+
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.WhenAll(_listeners.Select(listener =>
+                AcceptLoopAsync(listener, cancellationToken)));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            Stop();
+        }
+    }
+
+    public void Stop()
+    {
+        foreach (var listener in _listeners)
+        {
+            listener.Stop();
+        }
+
+        _listeners.Clear();
+    }
+
+    private async Task AcceptLoopAsync(TcpListener listener, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            TcpClient client;
+            try
+            {
+                client = await listener.AcceptTcpClientAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+
+            _ = HandleClientAsync(client, cancellationToken);
+        }
+    }
+
+    private async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
+    {
+        var remote = client.Client.RemoteEndPoint?.ToString() ?? "unknown";
+        using (client)
+        {
+            var session = sink.Begin("entrance", remote);
+            try
+            {
+                using var stream = client.GetStream();
+                var state = new EntranceSessionState();
+                while (await PacketFrame.ReadAsync(stream, cancellationToken: cancellationToken) is { } request)
+                {
+                    session.Received(request);
+                    var reply = EntranceProtocolEngine.Handle(request, state, content());
+                    if (reply is null)
+                    {
+                        warn(
+                            $"No entrance handler for packet type {request.Type}, protocol {request.ProtocolId}; frame retained in logs.",
+                            null);
+                        continue;
+                    }
+
+                    await reply.WriteAsync(stream, cancellationToken);
+                    session.Sent(reply);
+                }
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                warn($"Entrance session {remote} ended.", exception);
+            }
+            finally
+            {
+                session.Dispose();
+            }
+        }
+    }
+}
+```
+
+- [ ] **Step 4: 跑测试确认通过**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: `S2 IPC smoke: 0 failures`
+
+- [ ] **Step 5: 提交**
+
+```bash
+git add src/DFLegacy.Protocol/EntranceSessionSink.cs src/DFLegacy.Protocol/EntranceDialHost.cs src/DFLegacy.Protocol/EntranceHandshakeServer.cs tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
+git commit -m "S2: 握手宿主抽成无 ASP.NET 依赖的 EntranceHandshakeServer"
+```
+
+---
+
+## Task 4: 把 game 进程的握手族切到新宿主（I1 完成）
+
+**Files:**
+- Create: `src/DFLegacy.Server/RuntimeEntranceSink.cs`
+- Create: `src/DFLegacy.Server/EntranceHandshakeService.cs`
+- Modify: `src/DFLegacy.Server/EntranceService.cs`（只绑频道族 + 内容走 `EntranceDialHost`）
+- Modify: `src/DFLegacy.Server/Program.cs`（注册 hosted service）
+
+**Interfaces:**
+- Consumes: Task 1–3 的全部产出；`RuntimeState.Add/CountPacket/Remove/TracePacket`。
+- Produces: `EntranceHandshakeService : BackgroundService`（在 `options.Processes.Channel.Enabled == false` 时启动握手宿主；否则记一条日志并退出）。
+
+- [ ] **Step 1: 写失败的端口归属测试**
+
+在 `EntranceSplitSmokeTests` 追加：
+
+```csharp
+    public static void RunPortOwnership(Action<bool, string> check)
+    {
+        var monolithic = new ServerOptions();
+        var (entrance, channel) = EntrancePortFamilies.Split(
+            monolithic.Entrance.Port,
+            monolithic.Entrance.AdditionalPorts,
+            monolithic.Channel.Port);
+        check(entrance.Contains(monolithic.Entrance.Port) && channel.SequenceEqual([monolithic.Channel.Port]),
+            "monolithic mode: the handshake host owns every entrance port and the server owns the channel port");
+        check(!entrance.Contains(monolithic.Channel.Port),
+            "monolithic mode: the channel port is never double-bound by the handshake host");
+    }
+```
+
+`Program.cs` 的 `--s2-ipc` 组里插入：
+
+```csharp
+    EntranceSplitSmokeTests.RunPortOwnership(Check);
+```
+
+- [ ] **Step 2: 跑测试确认通过（这是回归护栏，先立住）**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: `S2 IPC smoke: 0 failures`（此步只加测试，不需要新实现）
+
+- [ ] **Step 3: 实现适配与托管**
+
+`src/DFLegacy.Server/RuntimeEntranceSink.cs`：
+
+```csharp
+using DFLegacy.Protocol;
+
+namespace DFLegacy.Server;
+
+/// <summary>把握手宿主的记账接到 RuntimeState 上，保留 admin 的 /api/sessions 与 /api/status 口径。</summary>
+internal sealed class RuntimeEntranceSink(
+    RuntimeState runtime,
+    bool tracePackets,
+    int hexDumpLimit) : IEntranceSessionSink
+{
+    public IEntranceSession Begin(string service, string remote) =>
+        new Session(runtime.Add(service, remote), runtime, tracePackets, hexDumpLimit);
+
+    private sealed class Session(
+        RuntimeSession session,
+        RuntimeState runtime,
+        bool tracePackets,
+        int hexDumpLimit) : IEntranceSession
+    {
+        public void Received(PacketFrame frame)
+        {
+            Interlocked.Increment(ref session.ReceivedPackets);
+            session.LastProtocolId = frame.ProtocolId;
+            if (tracePackets)
+            {
+                runtime.TracePacket(session, "RX", frame, hexDumpLimit);
+            }
+        }
+
+        public void Sent(PacketFrame frame)
+        {
+            Interlocked.Increment(ref session.SentPackets);
+            if (tracePackets)
+            {
+                runtime.TracePacket(session, "TX", frame, hexDumpLimit);
+            }
+        }
+
+        public void Dispose() => runtime.Remove(session.Id);
+    }
+}
+```
+
+`src/DFLegacy.Server/EntranceHandshakeService.cs`：
+
+```csharp
+using System.Net;
+using DFLegacy.Protocol;
+
+namespace DFLegacy.Server;
+
+/// <summary>
+/// 单体模式下由本进程托管握手族；拆分模式（Processes.Channel.Enabled=true）不再绑这些端口，
+/// 由 DFLegacy.Channel 进程接管。两种模式共用同一个 EntranceHandshakeServer 实现。
+/// </summary>
+public sealed class EntranceHandshakeService(
+    ServerOptions options,
+    RuntimeState runtime,
+    ScriptFileSystem scripts,
+    ILogger<EntranceHandshakeService> logger) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (options.Processes.Channel.Enabled)
+        {
+            logger.LogInformation(
+                "Entrance handshake ports are owned by the DFLegacy.Channel process; this process will not bind them.");
+            return;
+        }
+
+        if (!options.Entrance.Enabled)
+        {
+            logger.LogWarning("Entrance listener is disabled.");
+            return;
+        }
+
+        var (entrancePorts, _) = EntrancePortFamilies.Split(
+            options.Entrance.Port,
+            options.Entrance.AdditionalPorts,
+            options.Channel.Port);
+        var address = IPAddress.Parse(options.Entrance.Host);
+        // 频道信息里"客户端该拨哪个地址"必须沿用既有口径（EntranceService.ResolveChannelDialHost 的
+        // 优先级），否则拆分前后客户端会被指到不同地址。
+        var channelContent = new EntranceChannel(
+            options.Channel.Name,
+            EntranceDialHost.Resolve(
+                options.GameplayDatagram.ResolveAdvertisedHost(),
+                options.Entrance.Host,
+                options.Channel.Host),
+            options.Channel.Port,
+            options.Channel.ChannelNumber,
+            options.Channel.MaximumUsers,
+            options.Channel.CurrentUsers);
+        var content = new EntranceContentFactory(
+            () => scripts.FileExists("etc/channel_info.etc")
+                ? scripts.ReadAllBytes("etc/channel_info.etc")
+                : null,
+            channelContent);
+        var server = new EntranceHandshakeServer(
+            address,
+            entrancePorts,
+            content.Get,
+            new RuntimeEntranceSink(runtime, options.EnablePacketTracing, options.HexDumpLimit),
+            logger.LogInformation,
+            (message, error) => logger.LogWarning(error, "{Message}", message));
+        await server.StartAsync(stoppingToken);
+        await server.RunAsync(stoppingToken);
+    }
+}
+```
+
+`src/DFLegacy.Protocol/EntranceContentFactory.cs`（新文件，把 `EntranceService.LoadContent` 的内容组装抽出来，两个进程共用）：
+
+```csharp
+using System.Net;
+
+namespace DFLegacy.Protocol;
+
+/// <summary>握手内容（ChannelScript.pvf 与频道信息）的组装。缓存一份，与原 LoadContent 行为一致。</summary>
+public sealed class EntranceContentFactory(
+    Func<byte[]?> readChannelScript,
+    EntranceChannel channel)
+{
+    private readonly object _gate = new();
+    private EntranceContent? _content;
+
+    public EntranceContent Get()
+    {
+        if (_content is not null)
+        {
+            return _content;
+        }
+
+        lock (_gate)
+        {
+            _content ??= new EntranceContent(readChannelScript(), EntranceMetadata.BuildSingleLocalChannel(channel));
+            return _content;
+        }
+    }
+}
+```
+
+`src/DFLegacy.Server/EntranceService.cs` 的 `ExecuteAsync` 端口列表改成只含频道族：
+
+```csharp
+        var (_, channelPorts) = EntrancePortFamilies.Split(
+            options.Entrance.Port,
+            options.Entrance.AdditionalPorts,
+            options.Channel.Port);
+        var ports = channelPorts;
+```
+
+`src/DFLegacy.Server/Program.cs` 在 `builder.Services.AddHostedService<EntranceService>();` 之前插入：
+
+```csharp
+builder.Services.AddHostedService<EntranceHandshakeService>();
+```
+
+- [ ] **Step 4: 构建 + 跑全部 smoke，确认零回归**
+
+Run: `dotnet build DFLegacy.Emulator.slnx`
+Expected: `Build succeeded`
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests`
+Expected: 0 failures（与 Step 2 前的基线一致）
+
+- [ ] **Step 5: 手工验证端口归属（真绑定）**
+
+Run: `dotnet run --project src/DFLegacy.Server`（另开一个 PowerShell）
+Run: `Get-NetTCPConnection -State Listen | Where-Object LocalPort -in 2311,7001,8080 | Select-Object LocalAddress,LocalPort,OwningProcess`
+Expected: 2311、7001、8080 全部在监听，且属于**同一个** pid（单体模式行为不变）
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/DFLegacy.Server/RuntimeEntranceSink.cs src/DFLegacy.Server/EntranceHandshakeService.cs src/DFLegacy.Protocol/EntranceContentFactory.cs src/DFLegacy.Server/EntranceService.cs src/DFLegacy.Server/Program.cs tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
+git commit -m "S2: 握手族改由 EntranceHandshakeService 托管（单体模式行为不变）"
+```
+
+---
+
+## Task 5: `DFLegacy.Channel` 新 exe（I2 完成）
+
+**Files:**
+- Create: `src/DFLegacy.Channel/DFLegacy.Channel.csproj`
+- Create: `src/DFLegacy.Channel/ChannelOptions.cs`
+- Create: `src/DFLegacy.Channel/ChannelScriptSource.cs`
+- Create: `src/DFLegacy.Channel/ChannelSessionSink.cs`
+- Create: `src/DFLegacy.Channel/Program.cs`
+- Modify: `DFLegacy.Emulator.slnx`
+- Create: `tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs`
+- Modify: `tests/DFLegacy.SmokeTests/Program.cs`
+
+**Interfaces:**
+- Consumes: `EntranceHandshakeServer`、`EntranceContentFactory`、`EntranceDialHost`、`IEntranceSessionSink`、`PvfArchiveReader`。
+- Produces: `ChannelOptions.Read(JsonElement)` → `ChannelOptions`（窄模型：`EntranceHost`、`EntrancePort`、`EntranceAdditionalPorts`、`ChannelName/Number/Port/MaximumUsers/CurrentUsers`、`ScriptPvfPath`、`GameplayAdvertisedHost`、`LinkPort`）；`ChannelScriptSource.Read(string pvfPath)` → `byte[]?`。
+
+- [ ] **Step 1: 写失败的窄配置一致性测试**
+
+`tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs`：
+
+```csharp
+using DFLegacy.Channel;
+
+internal static class ChannelProcessSmokeTests
+{
+    public static void Run(Action<bool, string> check)
+    {
+        var root = LocateRepoRoot();
+        var json = File.ReadAllText(Path.Combine(root, "server.json"));
+        var section = System.Text.Json.JsonDocument.Parse(json).RootElement.GetProperty("DFLegacy");
+        var channel = ChannelOptions.Read(section);
+
+        check(channel.EntrancePort == 2311 && channel.EntranceAdditionalPorts.SequenceEqual([7001, 8080]),
+            "the channel process reads the same entrance ports as server.json");
+        check(channel.ChannelPort == 7001 && channel.LinkPort == 7004,
+            "the channel process reads the channel port and the default link port");
+
+        var script = ChannelScriptSource.Read(Path.Combine(root, "does-not-exist.pvf"));
+        check(script is null, "a missing Script.pvf yields no channel script instead of throwing");
+    }
+
+    private static string LocateRepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "server.json")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("server.json not found above the test binary");
+    }
+}
+```
+
+`Program.cs` 的 `--s2-ipc` 组里插入：
+
+```csharp
+    ChannelProcessSmokeTests.Run(Check);
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: 编译失败，`DFLegacy.Channel` 命名空间不存在（项目还没建）
+
+- [ ] **Step 3: 建项目与实现**
+
+`src/DFLegacy.Channel/DFLegacy.Channel.csproj`：
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>DFLegacy.Channel</AssemblyName>
+    <RootNamespace>DFLegacy.Channel</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+    <ProjectReference Include="../DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="../../server.json" Link="server.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>
+```
+
+> **禁止**给这个项目加 `DFLegacy.Server` 引用（Global Constraints）。
+
+`src/DFLegacy.Channel/ChannelOptions.cs`：
+
+```csharp
+using System.Text.Json;
+
+namespace DFLegacy.Channel;
+
+/// <summary>
+/// 只读本进程需要的键（与 DFLegacy.Server 的 ServerOptions 读同一份 server.json）。
+/// 刻意不与 ServerOptions 合并：channel 进程不引用 server 项目。键名一致性由
+/// ChannelProcessSmokeTests 守着。
+/// </summary>
+public sealed record ChannelOptions(
+    string EntranceHost,
+    int EntrancePort,
+    int[] EntranceAdditionalPorts,
+    string ChannelName,
+    string ChannelHost,
+    int ChannelNumber,
+    int ChannelPort,
+    int MaximumUsers,
+    int CurrentUsers,
+    string ScriptPvfPath,
+    string GameplayAdvertisedHost,
+    int LinkPort)
+{
+    public static ChannelOptions Read(JsonElement section)
+    {
+        var entrance = section.GetProperty("Entrance");
+        var channel = section.GetProperty("Channel");
+        var gameplay = section.GetProperty("GameplayDatagram");
+        var processes = section.TryGetProperty("Processes", out var value) ? value : default;
+
+        return new ChannelOptions(
+            entrance.GetProperty("Host").GetString() ?? "127.0.0.1",
+            entrance.GetProperty("Port").GetInt32(),
+            entrance.GetProperty("AdditionalPorts").EnumerateArray().Select(x => x.GetInt32()).ToArray(),
+            channel.GetProperty("Name").GetString() ?? "Local Channel",
+            channel.GetProperty("Host").GetString() ?? "127.0.0.1",
+            channel.GetProperty("ChannelNumber").GetInt32(),
+            channel.GetProperty("Port").GetInt32(),
+            channel.GetProperty("MaximumUsers").GetInt32(),
+            channel.GetProperty("CurrentUsers").GetInt32(),
+            section.GetProperty("ScriptPvfPath").GetString() ?? "",
+            gameplay.TryGetProperty("AdvertisedHost", out var host) ? host.GetString() ?? "" : "",
+            processes.ValueKind == JsonValueKind.Object
+                && processes.TryGetProperty("Channel", out var channelProcess)
+                && channelProcess.TryGetProperty("LinkPort", out var linkPort)
+                    ? linkPort.GetInt32()
+                    : 7004);
+    }
+}
+```
+
+`src/DFLegacy.Channel/ChannelScriptSource.cs`：
+
+```csharp
+using DFLegacy.Protocol;
+
+namespace DFLegacy.Channel;
+
+/// <summary>读 etc/channel_info.etc（PVF 优先，其次目录）。缺失返回 null —— 与原 LoadContent 一致，不抛。</summary>
+public static class ChannelScriptSource
+{
+    public const string VirtualPath = "etc/channel_info.etc";
+
+    public static byte[]? Read(string configuredPath)
+    {
+        if (string.IsNullOrWhiteSpace(configuredPath))
+        {
+            return null;
+        }
+
+        var path = Path.IsPathRooted(configuredPath)
+            ? configuredPath
+            : Path.Combine(AppContext.BaseDirectory, configuredPath);
+        if (File.Exists(path))
+        {
+            var pvf = new PvfArchiveReader(path);
+            return pvf.FileExists(VirtualPath) ? pvf.ReadAllBytes(VirtualPath) : null;
+        }
+
+        var directoryPath = Path.Combine(path, VirtualPath.Replace('/', Path.DirectorySeparatorChar));
+        return File.Exists(directoryPath) ? File.ReadAllBytes(directoryPath) : null;
+    }
+}
+```
+
+`src/DFLegacy.Channel/ChannelSessionSink.cs`：
+
+```csharp
+using DFLegacy.Protocol;
+
+namespace DFLegacy.Channel;
+
+/// <summary>channel 进程的会话记账：只累加计数并打日志，不落盘、不引用 store。</summary>
+public sealed class ChannelSessionSink(ILogger<ChannelSessionSink> logger) : IEntranceSessionSink
+{
+    private readonly object _gate = new();
+    private long _received;
+    private long _sent;
+    private long _total;
+    private int _active;
+
+    public long ReceivedPackets => Interlocked.Read(ref _received);
+    public long SentPackets => Interlocked.Read(ref _sent);
+    public long TotalSessions => Interlocked.Read(ref _total);
+    public int ActiveSessions => Volatile.Read(ref _active);
+
+    public IEntranceSession Begin(string service, string remote)
+    {
+        Interlocked.Increment(ref _active);
+        Interlocked.Increment(ref _total);
+        logger.LogInformation("Entrance session {Service} from {Remote} opened", service, remote);
+        return new Session(this, logger, remote);
+    }
+
+    private sealed class Session(ChannelSessionSink owner, ILogger logger, string remote) : IEntranceSession
+    {
+        public void Received(PacketFrame frame) => Interlocked.Increment(ref owner._received);
+
+        public void Sent(PacketFrame frame) => Interlocked.Increment(ref owner._sent);
+
+        public void Dispose()
+        {
+            Interlocked.Decrement(ref owner._active);
+            logger.LogInformation("Entrance session from {Remote} closed", remote);
+        }
+    }
+}
+```
+
+`src/DFLegacy.Channel/Program.cs`：
+
+```csharp
+using System.Net;
+using System.Text.Json;
+using DFLegacy.Channel;
+using DFLegacy.InterProcess;
+using DFLegacy.Protocol;
+using Microsoft.Extensions.Logging;
+
+// 只建日志工厂，不建 WebApplication：channel 进程没有 HTTP 面，也就不该起 Kestrel。
+// 日志格式与 DFLegacy.Server 保持一致，便于两个进程的日志并排看。
+using var loggerFactory = LoggerFactory.Create(logging =>
+{
+    logging.ClearProviders();
+    logging.AddSimpleConsole(console =>
+    {
+        console.SingleLine = true;
+        console.TimestampFormat = "HH:mm:ss ";
+    });
+});
+
+// 与 server 进程读同一份 server.json。只有两个部署关键键支持环境变量覆盖
+// （DFLegacy__Entrance__Host / DFLegacy__ScriptPvfPath，与容器/NAT 部署口径一致）；
+// 其余键不支持覆盖 —— 这是已知限制，见设计稿 R2。
+using var document = JsonDocument.Parse(File.ReadAllText(
+    Path.Combine(AppContext.BaseDirectory, "server.json")));
+var read = ChannelOptions.Read(document.RootElement.GetProperty("DFLegacy"));
+var options = read with
+{
+    EntranceHost = Environment.GetEnvironmentVariable("DFLegacy__Entrance__Host") is { Length: > 0 } host
+        ? host
+        : read.EntranceHost,
+    ScriptPvfPath = Environment.GetEnvironmentVariable("DFLegacy__ScriptPvfPath") is { Length: > 0 } pvf
+        ? pvf
+        : read.ScriptPvfPath,
+};
+var script = ChannelScriptSource.Read(options.ScriptPvfPath);
+var channel = new EntranceChannel(
+    options.ChannelName,
+    EntranceDialHost.Resolve(options.GameplayAdvertisedHost, options.EntranceHost, options.ChannelHost),
+    options.ChannelPort,
+    options.ChannelNumber,
+    options.MaximumUsers,
+    options.CurrentUsers);
+var content = new EntranceContentFactory(() => script, channel);
+var sink = new ChannelSessionSink(loggerFactory.CreateLogger<ChannelSessionSink>());
+var (entrancePorts, _) = EntrancePortFamilies.Split(
+    options.EntrancePort,
+    options.EntranceAdditionalPorts,
+    options.ChannelPort);
+var server = new EntranceHandshakeServer(
+    IPAddress.Parse(options.EntranceHost),
+    entrancePorts,
+    content.Get,
+    sink,
+    message => Console.WriteLine(message),
+    (message, error) => Console.Error.WriteLine(error is null ? message : $"{message}: {error.Message}"));
+await server.StartAsync(CancellationToken.None);
+await server.RunAsync(CancellationToken.None);
+```
+
+> 用 `Microsoft.NET.Sdk.Web` 只是为了**不再加 PackageReference**（它自带 `Microsoft.Extensions.Logging.Console` 与 `FrameworkReference Microsoft.AspNetCore.App`）；本进程**不起 Kestrel、不建 `WebApplication`**。若评审要求纯 SDK，等价改动是换成 `Microsoft.NET.Sdk` + `Microsoft.Extensions.Logging.Console` 包引用。
+
+- [ ] **Step 4: 构建并跑测试**
+
+Run: `dotnet build DFLegacy.Emulator.slnx`
+Expected: `Build succeeded`
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: `S2 IPC smoke: 0 failures`
+
+- [ ] **Step 5: 手工验证拆分模式真的能绑 2311**
+
+把 `server.json` 的 `Processes.Channel.Enabled` 临时改成 `true`、`Game.EntranceBinding` 改成 `false`：
+
+Run A: `dotnet run --project src/DFLegacy.Channel`
+Run B: `dotnet run --project src/DFLegacy.Server`
+Run C: `Get-NetTCPConnection -State Listen | Where-Object LocalPort -in 2311,7001,8080 | Select-Object LocalPort,OwningProcess`
+Expected: 2311 与 8080 属于**另一个** pid（channel 进程），7001 属于 server 进程；两条进程日志各自打出自己的绑定。
+
+验完**把 `server.json` 改回**（`Enabled=false` / `EntranceBinding=true`）再提交。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/DFLegacy.Channel/DFLegacy.Channel.csproj src/DFLegacy.Channel/ChannelOptions.cs src/DFLegacy.Channel/ChannelScriptSource.cs src/DFLegacy.Channel/ChannelSessionSink.cs src/DFLegacy.Channel/Program.cs DFLegacy.Emulator.slnx tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
+git commit -m "S2: 新增 DFLegacy.Channel 进程（接管入口握手族端口）"
+```
+
+---
+
+## Task 6: 链路客户端（game 侧）+ Tier 1 前半
+
+**Files:**
+- Create: `src/DFLegacy.InterProcess/InterProcessLinkClient.cs`
+- Create: `tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs`
+- Modify: `tests/DFLegacy.SmokeTests/Program.cs`
+
+**Interfaces:**
+- Consumes: Task 1 的载荷与 `InterProcessLink`。
+- Produces:
+  - `InterProcessLinkClientOptions(string Host, int Port, TimeSpan StatusInterval, int MissedStatusLimit, RegisterPayload Register, Func<StatusPayload> Status)`
+  - `InterProcessLinkClient : IAsyncDisposable`：`Task RunAsync(CancellationToken)`、`bool Connected`、`DateTimeOffset? LastStatusAt`、`StatusPayload? LastRemoteStatus`（对端发来的，用于 admin 合并）、`RegisterAckPayload? LastAck`。
+  - 事件：`Action? PeerUp`、`Action<string>? PeerDown`（原因文本）。
+
+- [ ] **Step 1: 写失败测试**
+
+`tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs`：
+
+```csharp
+using System.Net;
+using System.Net.Sockets;
+using DFLegacy.InterProcess;
+using DFLegacy.Protocol;
+
+internal static class InterProcessLinkSmokeTests
+{
+    public static async Task RunAsync(Action<bool, string> check)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var register = new RegisterPayload(
+            InterProcessMessageIds.LinkProtocolVersion, 3011, 11, 100, 1, "127.0.0.1", 7001);
+        await using var client = new InterProcessLinkClient(
+            new InterProcessLinkClientOptions(
+                "127.0.0.1", port, TimeSpan.FromMilliseconds(50), 3, register,
+                () => new StatusPayload(1, 0, 0, 0, 0)));
+        var run = client.RunAsync(CancellationToken.None);
+        await Task.Delay(200);
+        check(client.Connected, "the client connects to a listening link peer and reports Connected");
+
+        var peer = await listener.AcceptTcpClientAsync();
+        var stream = peer.GetStream();
+        var first = await PacketFrame.ReadAsync(stream);
+        check(first is not null
+                && first.Type == InterProcessMessageIds.LinkCategory
+                && first.ProtocolId == InterProcessMessageIds.Register
+                && first.TotalLength == 49,
+            "the first frame on the wire is a 49-byte REGISTER with category 0x7b");
+
+        var ack = new RegisterAckPayload(InterProcessMessageIds.LinkProtocolVersion, 1, "Local Channel 1", 7001);
+        await InterProcessLink.Create(InterProcessMessageIds.RegisterAck, ack.Encode()).WriteAsync(stream);
+        await Task.Delay(200);
+        check(client.LastAck is { Accepted: 1 },
+            "an accepted REGISTER_ACK marks the peer up with accepted=1");
+
+        var status = await PacketFrame.ReadAsync(stream);
+        check(status is not null
+                && status.ProtocolId == InterProcessMessageIds.Status
+                && status.TotalLength == 43,
+            "the steady state sends a 43-byte STATUS (11 + 32) as heartbeat");
+
+        await InterProcessLink.Create(
+                InterProcessMessageIds.Status,
+                new StatusPayload(1, 2, 0, 5, 6).Encode())
+            .WriteAsync(stream);
+        await Task.Delay(100);
+        check(client.LastRemoteStatus is { ActiveSessions: 2 },
+            "the client stores the peer's STATUS, which is what /api/status merges (not the one it sends)");
+
+        var rejectedListener = new TcpListener(IPAddress.Loopback, 0);
+        rejectedListener.Start();
+        var rejectedPort = ((IPEndPoint)rejectedListener.LocalEndpoint).Port;
+        await using var rejected = new InterProcessLinkClient(
+            new InterProcessLinkClientOptions(
+                "127.0.0.1", rejectedPort, TimeSpan.FromMilliseconds(50), 3, register,
+                () => new StatusPayload(1, 0, 0, 0, 0)));
+        var rejectedRun = rejected.RunAsync(CancellationToken.None);
+        var rejectedPeer = await rejectedListener.AcceptTcpClientAsync();
+        var rejectedStream = rejectedPeer.GetStream();
+        await PacketFrame.ReadAsync(rejectedStream);
+        var badAck = new RegisterAckPayload((ushort)(InterProcessMessageIds.LinkProtocolVersion + 1), 0, "x", 7001);
+        await InterProcessLink.Create(InterProcessMessageIds.RegisterAck, badAck.Encode()).WriteAsync(rejectedStream);
+        await Task.Delay(200);
+        check(!rejected.Connected && rejected.LastAck is { Accepted: 0 },
+            "a rejected REGISTER_ACK (version mismatch) leaves the link down without crashing");
+
+        peer.Close();
+        rejectedPeer.Close();
+        listener.Stop();
+        rejectedListener.Stop();
+    }
+}
+```
+
+`Program.cs` 的 `--s2-ipc` 组里插入：
+
+```csharp
+    await InterProcessLinkSmokeTests.RunAsync(Check);
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: 编译失败，`InterProcessLinkClient` 不存在
+
+- [ ] **Step 3: 写实现**
+
+`src/DFLegacy.InterProcess/InterProcessLinkClient.cs`：
+
+```csharp
+using System.Net.Sockets;
+using DFLegacy.Protocol;
+
+namespace DFLegacy.InterProcess;
+
+public sealed record InterProcessLinkClientOptions(
+    string Host,
+    int Port,
+    TimeSpan StatusInterval,
+    int MissedStatusLimit,
+    RegisterPayload Register,
+    Func<StatusPayload> Status);
+
+/// <summary>
+/// game 侧链路客户端：拨号 → REGISTER → 等 REGISTER_ACK → 周期性 STATUS（兼心跳）
+/// → 连续 MissedStatusLimit 次缺失判对端 down 并重连。
+/// 失败一律不抛给调用方：客户端服务不因链路问题中断（spec §5.3）。
+/// </summary>
+public sealed class InterProcessLinkClient(InterProcessLinkClientOptions options) : IAsyncDisposable
+{
+    private CancellationTokenSource? _stop;
+
+    public bool Connected { get; private set; }
+
+    public RegisterAckPayload? LastAck { get; private set; }
+
+    /// <summary>对端最近一次发来的 STATUS（**不是**我们自己发出去的那条）。</summary>
+    public StatusPayload? LastRemoteStatus { get; private set; }
+
+    public DateTimeOffset? LastStatusAt { get; private set; }
+
+    public Action? PeerUp { get; init; }
+
+    public Action<string>? PeerDown { get; init; }
+
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        _stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        while (!_stop.IsCancellationRequested)
+        {
+            try
+            {
+                using var tcp = new TcpClient();
+                await tcp.ConnectAsync(options.Host, options.Port, _stop.Token);
+                using var stream = tcp.GetStream();
+                await InterProcessLink.Create(InterProcessMessageIds.Register, options.Register.Encode())
+                    .WriteAsync(stream, _stop.Token);
+
+                var ackFrame = await PacketFrame.ReadAsync(stream, cancellationToken: _stop.Token);
+                if (ackFrame is null
+                    || !InterProcessLink.TryGetMessageId(ackFrame, out var ackId)
+                    || ackId != InterProcessMessageIds.RegisterAck
+                    || !RegisterAckPayload.TryDecode(ackFrame.Body.AsSpan(1), out var ack)
+                    || ack is null
+                    || ack.Accepted == 0
+                    || ack.ProtocolVersion != InterProcessMessageIds.LinkProtocolVersion)
+                {
+                    LastAck = ack;
+                    PeerDown?.Invoke("REGISTER_ACK rejected or malformed");
+                    await Task.Delay(options.StatusInterval, _stop.Token);
+                    continue;
+                }
+
+                LastAck = ack;
+                Connected = true;
+                PeerUp?.Invoke();
+                await RunSteadyStateAsync(stream);
+            }
+            catch (OperationCanceledException) when (_stop.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception exception)
+            {
+                Connected = false;
+                PeerDown?.Invoke(exception.Message);
+                try
+                {
+                    await Task.Delay(options.StatusInterval, _stop.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
+        Connected = false;
+    }
+
+    /// <summary>
+    /// 稳态：写循环周期性发 STATUS（兼心跳），读循环等对端的帧。
+    /// 判定"对端 down"只看**收**：连续 MissedStatusLimit 个间隔没收到任何帧才算 down ——
+    /// 单向心跳没有回包可等，会把健康链路误判成 down（spec §5.3）。
+    /// </summary>
+    private async Task RunSteadyStateAsync(NetworkStream stream)
+    {
+        using var loop = CancellationTokenSource.CreateLinkedTokenSource(_stop!.Token);
+        var writer = WriteLoopAsync(stream, loop.Token);
+        var reader = ReadLoopAsync(stream, loop.Token);
+        var finished = await Task.WhenAny(writer, reader);
+        loop.Cancel();
+        try
+        {
+            await Task.WhenAll(writer, reader);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        await finished;
+    }
+
+    private async Task WriteLoopAsync(NetworkStream stream, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            await InterProcessLink.Create(InterProcessMessageIds.Status, options.Status().Encode())
+                .WriteAsync(stream, token);
+            await Task.Delay(options.StatusInterval, token);
+        }
+    }
+
+    private async Task ReadLoopAsync(NetworkStream stream, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(options.StatusInterval * options.MissedStatusLimit);
+            PacketFrame? frame;
+            try
+            {
+                frame = await PacketFrame.ReadAsync(stream, cancellationToken: timeout.Token);
+            }
+            catch (OperationCanceledException) when (!token.IsCancellationRequested)
+            {
+                throw new IOException(
+                    $"peer sent nothing for {options.MissedStatusLimit} status intervals");
+            }
+
+            if (frame is null)
+            {
+                throw new IOException("link peer closed the connection");
+            }
+
+            if (InterProcessLink.TryGetMessageId(frame, out var messageId)
+                && messageId == InterProcessMessageIds.Status
+                && StatusPayload.TryDecode(frame.Body.AsSpan(1), out var status)
+                && status is not null)
+            {
+                LastRemoteStatus = status;
+                LastStatusAt = DateTimeOffset.UtcNow;
+            }
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _stop?.Cancel();
+        _stop?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}
+```
+
+- [ ] **Step 4: 跑测试确认通过**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: `S2 IPC smoke: 0 failures`
+
+- [ ] **Step 5: 提交**
+
+```bash
+git add src/DFLegacy.InterProcess/InterProcessLinkClient.cs tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
+git commit -m "S2: 链路客户端（注册/心跳/超时/重连）+ Tier 1 前半断言"
+```
+
+---
+
+## Task 7: 链路服务端（channel 侧）+ 端到端连通
+
+**Files:**
+- Create: `src/DFLegacy.InterProcess/InterProcessLinkServer.cs`
+- Modify: `tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs`（追加端到端断言）
+- Modify: `src/DFLegacy.Channel/Program.cs`（启动链路服务端）
+
+**Interfaces:**
+- Consumes: `InterProcessLink`、三种载荷的 `TryDecode`。
+- Produces: `InterProcessLinkServer(IPAddress address, int port, RegisterAckPayload ack, Func<StatusPayload> status, TimeSpan statusInterval, Action<string> log)`：`Task<int> StartAsync(CancellationToken)`（返回实际端口，支持 0）、`Task RunAsync(CancellationToken)`、`bool PeerUp`、`RegisterPayload? LastRegister`、`StatusPayload? LastStatus`（**game 发来的**，与客户端的 `LastRemoteStatus` 对称）、`void Stop()`。
+
+- [ ] **Step 1: 写失败测试**
+
+在 `InterProcessLinkSmokeTests.RunAsync` 末尾（两个 listener 停掉之前）追加：
+
+```csharp
+        var linkServer = new InterProcessLinkServer(
+            IPAddress.Loopback,
+            0,
+            new RegisterAckPayload(InterProcessMessageIds.LinkProtocolVersion, 1, "Local Channel 1", 7001),
+            () => new StatusPayload(1, 0, 0, 7, 8),
+            TimeSpan.FromMilliseconds(50),
+            _ => { });
+        var linkPort = await linkServer.StartAsync(CancellationToken.None);
+        using var linkStop = new CancellationTokenSource();
+        var linkRun = linkServer.RunAsync(linkStop.Token);
+        await using var gameSide = new InterProcessLinkClient(
+            new InterProcessLinkClientOptions("127.0.0.1", linkPort, TimeSpan.FromMilliseconds(50), 3, register));
+        var gameRun = gameSide.RunAsync(CancellationToken.None);
+        await Task.Delay(300);
+        check(gameSide.Connected && linkServer.PeerUp,
+            "client and server agree the link is up after REGISTER/ACK");
+        check(linkServer.LastRegister is { GcNo: 3011, ChannelNo: 11, GamePort: 7001 },
+            "the server decodes gc_no/channel_no/game port from REGISTER");
+        check(linkServer.LastStatus is not null,
+            "the server stores the last STATUS payload it received");
+        linkStop.Cancel();
+        await linkRun;
+        linkServer.Stop();
+        await gameSide.DisposeAsync();
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: 编译失败，`InterProcessLinkServer` 不存在
+
+- [ ] **Step 3: 写实现**
+
+`src/DFLegacy.InterProcess/InterProcessLinkServer.cs`：
+
+```csharp
+using System.Net;
+using System.Net.Sockets;
+using DFLegacy.Protocol;
+
+namespace DFLegacy.InterProcess;
+
+/// <summary>
+/// channel 侧链路服务端：接受 game 的 REGISTER，回 REGISTER_ACK，之后持续接收 STATUS。
+/// 只做校验与记账，不碰任何存档（spec §5.4：本刀链路不承载落盘变更）。
+/// </summary>
+public sealed class InterProcessLinkServer(
+    IPAddress address,
+    int port,
+    RegisterAckPayload ack,
+    Func<StatusPayload> status,
+    TimeSpan statusInterval,
+    Action<string> log)
+{
+    private readonly List<TcpListener> _listeners = [];
+
+    public bool PeerUp { get; private set; }
+
+    public RegisterPayload? LastRegister { get; private set; }
+
+    public StatusPayload? LastStatus { get; private set; }
+
+    public DateTimeOffset? LastStatusAt { get; private set; }
+
+    public Task<int> StartAsync(CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(address, port);
+        listener.Start();
+        _listeners.Add(listener);
+        var bound = ((IPEndPoint)listener.LocalEndpoint).Port;
+        log($"Inter-process link listening at {address}:{bound}");
+        return Task.FromResult(bound);
+    }
+
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.WhenAll(_listeners.Select(listener => AcceptLoopAsync(listener, cancellationToken)));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            Stop();
+        }
+    }
+
+    public void Stop()
+    {
+        PeerUp = false;
+        foreach (var listener in _listeners)
+        {
+            listener.Stop();
+        }
+
+        _listeners.Clear();
+    }
+
+    private async Task AcceptLoopAsync(TcpListener listener, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            TcpClient client;
+            try
+            {
+                client = await listener.AcceptTcpClientAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+
+            _ = HandleClientAsync(client, cancellationToken);
+        }
+    }
+
+    private async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
+    {
+        var remote = client.Client.RemoteEndPoint?.ToString() ?? "unknown";
+        using (client)
+        {
+            PeerUp = false;
+            try
+            {
+                using var stream = client.GetStream();
+                while (await PacketFrame.ReadAsync(stream, cancellationToken: cancellationToken) is { } frame)
+                {
+                    if (!InterProcessLink.TryGetMessageId(frame, out var messageId))
+                    {
+                        continue;
+                    }
+
+                    switch (messageId)
+                    {
+                        case InterProcessMessageIds.Register:
+                            if (!RegisterPayload.TryDecode(frame.Body.AsSpan(1), out var register)
+                                || register is null)
+                            {
+                                continue;
+                            }
+
+                            LastRegister = register;
+                            var accepted = register.ProtocolVersion == InterProcessMessageIds.LinkProtocolVersion;
+                            var reply = accepted
+                                ? ack
+                                : ack with { ProtocolVersion = InterProcessMessageIds.LinkProtocolVersion, Accepted = 0 };
+                            await InterProcessLink.Create(InterProcessMessageIds.RegisterAck, reply.Encode())
+                                .WriteAsync(stream, cancellationToken);
+                            PeerUp = accepted;
+                            log(accepted
+                                ? $"Game process registered from {remote} (gc_no={register.GcNo}, channel_no={register.ChannelNo})"
+                                : $"Game process from {remote} rejected: link protocol {register.ProtocolVersion} != {InterProcessMessageIds.LinkProtocolVersion}");
+                            if (accepted)
+                            {
+                                _ = StatusLoopAsync(stream, cancellationToken);
+                            }
+
+                            break;
+                        case InterProcessMessageIds.Status:
+                            if (StatusPayload.TryDecode(frame.Body.AsSpan(1), out var status) && status is not null)
+                            {
+                                LastStatus = status;
+                                LastStatusAt = DateTimeOffset.UtcNow;
+                            }
+
+                            break;
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                log($"Link peer {remote} dropped: {exception.Message}");
+            }
+            finally
+            {
+                PeerUp = false;
+            }
+        }
+    }
+
+    /// <summary>对端注册成功后，本侧也周期性发 STATUS：对方靠"收得到"判活（spec §5.3 双向心跳）。</summary>
+    private async Task StatusLoopAsync(NetworkStream stream, CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                await InterProcessLink.Create(InterProcessMessageIds.Status, status().Encode())
+                    .WriteAsync(stream, token);
+                await Task.Delay(statusInterval, token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            log($"Link status writer stopped: {exception.Message}");
+        }
+    }
+}
+```
+
+`src/DFLegacy.Channel/Program.cs` 在 `await server.StartAsync(...)` 之前插入：
+
+```csharp
+var link = new InterProcessLinkServer(
+    IPAddress.Parse(options.EntranceHost),
+    options.LinkPort,
+    new RegisterAckPayload(InterProcessMessageIds.LinkProtocolVersion, 1, options.ChannelName, options.ChannelPort),
+    () => new StatusPayload(
+        (ulong)Environment.TickCount64,
+        (uint)sink.ActiveSessions,
+        0,
+        (ulong)sink.TotalSessions,
+        (ulong)(sink.ReceivedPackets + sink.SentPackets)),
+    TimeSpan.FromSeconds(1),
+    message => Console.WriteLine(message));
+await link.StartAsync(CancellationToken.None);
+_ = link.RunAsync(CancellationToken.None);
+```
+
+- [ ] **Step 4: 跑测试确认通过**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: `S2 IPC smoke: 0 failures`（含 4 条 Tier 1 断言：REGISTER hex、长度自洽、`accepted=0` 不建链、3 次心跳缺失判 down）
+
+- [ ] **Step 5: 提交**
+
+```bash
+git add src/DFLegacy.InterProcess/InterProcessLinkServer.cs src/DFLegacy.Channel/Program.cs tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs
+git commit -m "S2: 链路服务端（注册/ACK/STATUS 记账）+ 端到端连通断言"
+```
+
+---
+
+## Task 8: game 进程接入链路 + admin 计数与存活（I4 完成）
+
+**Files:**
+- Create: `src/DFLegacy.Server/ChannelLinkService.cs`
+- Create: `src/DFLegacy.Server/StatusProjection.cs`
+- Modify: `src/DFLegacy.Server/Program.cs`（`/api/status` 增字段、注册 hosted service）
+- Create: `tests/DFLegacy.SmokeTests/StatusProjectionSmokeTests.cs`
+- Modify: `tests/DFLegacy.SmokeTests/Program.cs`
+
+**Interfaces:**
+- Consumes: `InterProcessLinkClient`；`RuntimeState.TotalConnections/TotalPackets/Sessions()`。
+- Produces: `StatusProjection.ChannelLink(bool connected, DateTimeOffset? lastStatusAt, StatusPayload? status, long localConnections, long localPackets, int localSessions)` → `ChannelLinkStatus` record（字段 `Connected`、`LastStatusAt`、`RemoteSessions`、`RemotePackets`、`TotalConnections`、`TotalPackets`、`ActiveSessions`）。
+
+- [ ] **Step 1: 写失败测试**
+
+`tests/DFLegacy.SmokeTests/StatusProjectionSmokeTests.cs`：
+
+```csharp
+using DFLegacy.InterProcess;
+using DFLegacy.Server;
+
+internal static class StatusProjectionSmokeTests
+{
+    public static void Run(Action<bool, string> check)
+    {
+        var down = StatusProjection.ChannelLink(
+            connected: false, lastStatusAt: null, status: null,
+            localConnections: 3, localPackets: 7, localSessions: 1);
+        check(down is { Connected: false, RemoteSessions: 0 }
+                && down.TotalConnections == 3 && down.TotalPackets == 7 && down.ActiveSessions == 1,
+            "with the link down the projection equals the local counters (no invented values)");
+
+        var status = new StatusPayload(10, 4, 2, 100, 200);
+        var up = StatusProjection.ChannelLink(
+            connected: true, lastStatusAt: DateTimeOffset.UnixEpoch, status: status,
+            localConnections: 3, localPackets: 7, localSessions: 1);
+        check(up is { Connected: true, RemoteSessions: 4 }
+                && up.TotalConnections == 103 && up.TotalPackets == 207 && up.ActiveSessions == 5,
+            "with the link up the handshake-side counters are added back into the admin totals");
+    }
+}
+```
+
+`Program.cs` 的 `--s2-ipc` 组里插入：
+
+```csharp
+    StatusProjectionSmokeTests.Run(Check);
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: 编译失败，`StatusProjection` 不存在
+
+- [ ] **Step 3: 写实现**
+
+`src/DFLegacy.Server/StatusProjection.cs`：
+
+```csharp
+using DFLegacy.InterProcess;
+
+namespace DFLegacy.Server;
+
+public sealed record ChannelLinkStatus(
+    bool Connected,
+    DateTimeOffset? LastStatusAt,
+    int RemoteSessions,
+    long TotalConnections,
+    long TotalPackets,
+    int ActiveSessions);
+
+/// <summary>
+/// 把 game 侧的本地计数与 channel 侧上报的计数合并成 /api/status 的对外口径。
+/// 链路断开时**只报本地值**（不发明数字）—— 这是 R1 的处置：让"谁挂了"能被看见。
+/// </summary>
+public static class StatusProjection
+{
+    public static ChannelLinkStatus ChannelLink(
+        bool connected,
+        DateTimeOffset? lastStatusAt,
+        StatusPayload? status,
+        long localConnections,
+        long localPackets,
+        int localSessions)
+    {
+        var remoteSessions = connected && status is not null ? (int)status.ActiveSessions : 0;
+        return new ChannelLinkStatus(
+            connected,
+            lastStatusAt,
+            remoteSessions,
+            localConnections + (connected && status is not null ? (long)status.TotalConnections : 0),
+            localPackets + (connected && status is not null ? (long)status.TotalPackets : 0),
+            localSessions + remoteSessions);
+    }
+}
+```
+
+`src/DFLegacy.Server/ChannelLinkService.cs`：
+
+```csharp
+using System.Net;
+using DFLegacy.InterProcess;
+
+namespace DFLegacy.Server;
+
+/// <summary>game 侧的链路客户端托管。仅在拆分模式（Processes.Channel.Enabled=true）下拨号。</summary>
+public sealed class ChannelLinkService(
+    ServerOptions options,
+    ILogger<ChannelLinkService> logger) : BackgroundService
+{
+    public InterProcessLinkClient? Client { get; private set; }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (!options.Processes.Channel.Enabled)
+        {
+            return;
+        }
+
+        var register = new RegisterPayload(
+            InterProcessMessageIds.LinkProtocolVersion,
+            GcNo: (uint)(options.Channel.ServerNumber * 1000 + options.Channel.ChannelNumber),
+            ChannelNo: (uint)options.Channel.ChannelNumber,
+            MaximumUsers: (uint)options.Channel.MaximumUsers,
+            CurrentUsers: (uint)options.Channel.CurrentUsers,
+            AdvertisedHost: options.GameplayDatagram.ResolveAdvertisedHost(),
+            GamePort: (uint)options.Channel.Port);
+        var client = new InterProcessLinkClient(new InterProcessLinkClientOptions(
+            options.Entrance.Host,
+            options.Processes.Channel.LinkPort,
+            TimeSpan.FromSeconds(1),
+            MissedStatusLimit: 3,
+            register,
+            () => new StatusPayload(
+                (ulong)Environment.TickCount64,
+                (uint)runtime.Sessions().Length,
+                (uint)runtime.Sessions().Length,
+                (ulong)runtime.TotalConnections,
+                (ulong)runtime.TotalPackets)))
+        {
+            PeerUp = () => logger.LogInformation("Inter-process link to the channel process is up"),
+            PeerDown = reason => logger.LogWarning("Inter-process link to the channel process is down: {Reason}", reason),
+        };
+        Client = client;
+        await client.RunAsync(stoppingToken);
+    }
+}
+```
+
+`src/DFLegacy.Server/Program.cs`：
+
+1. 在 `builder.Services.AddHostedService<EntranceHandshakeService>();` 之后插入：
+
+```csharp
+builder.Services.AddSingleton<ChannelLinkService>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<ChannelLinkService>());
+```
+
+2. `/api/status` 的 lambda 形参里加上 `ChannelLinkService channelLink`，并在返回对象里加字段：
+
+```csharp
+        ChannelLink = StatusProjection.ChannelLink(
+            channelLink.Client?.Connected ?? false,
+            channelLink.Client?.LastStatusAt,
+            channelLink.Client?.LastRemoteStatus,
+            runtime.TotalConnections,
+            runtime.TotalPackets,
+            runtime.Sessions().Length),
+```
+
+> `TotalConnections`/`TotalPackets` 仍是本地值；合并口径以 `ChannelLink.TotalConnections` 暴露，避免改动既有字段语义（既有字段不回归是 I4 的门槛）。
+
+- [ ] **Step 4: 跑测试确认通过 + 既有字段不回归**
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
+Expected: `S2 IPC smoke: 0 failures`
+
+Run: `dotnet run --project tests/DFLegacy.SmokeTests`
+Expected: 0 failures
+
+- [ ] **Step 5: 手工验证 admin 新字段**
+
+单体模式下启动 server，访问 `http://127.0.0.1:8081/api/status`：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8081/api/status | ConvertTo-Json -Depth 4
+```
+
+Expected: 既有字段（`activeSessions`/`totalConnections`/`totalPackets`）仍在，新增 `channelLink.connected=false`（单体模式不拨号）。
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add src/DFLegacy.Server/StatusProjection.cs src/DFLegacy.Server/ChannelLinkService.cs src/DFLegacy.Server/Program.cs tests/DFLegacy.SmokeTests/StatusProjectionSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
+git commit -m "S2: game 进程接入链路并把 channel 侧计数合并进 /api/status"
+```
+
+---
+
+## Task 9: `protocol/` 新增 S2S 报文表 + 契约扩展（I5 前半）
+
+**Files:**
+- Create: `protocol/map/s2s-map.tsv`
+- Modify: `protocol/importer.py`、`protocol/verify.py`、`protocol/manifest.json`
+- Modify: `protocol/README.md`（登记新 kind）
+
+**Interfaces:**
+- Consumes: 现有 `protocol` 流水线（`python -m protocol.s1 verify` 今天 5/5 PASS）。
+- Produces: `kind=S2S` 的报文表；`verify` 的契约从「kind ∈ {CMD,NOTI}、总数 1171、5 文件」扩展为「kind ∈ {CMD,NOTI,S2S}、总数 1171+4、6 文件」，且 5 项检查仍全绿。
+
+- [ ] **Step 1: 先跑基线**
+
+Run: `python -m protocol.s1 verify`
+Expected: 5/5 PASS, exit 0。把输出原文贴进提交说明。
+
+- [ ] **Step 2: 写表**
+
+`protocol/map/s2s-map.tsv`（列与 `opcode-map.tsv` 严格同构；`status`/`tier` 必须取自 `protocol/verify.py:29-32` 的 `TIERS`/`STATUSES` 枚举，**不能自造标签**）：
+
+```
+kind	id	name	rodata_va	dispatcher	status	tier	read_count	write_count	ext_mark
+S2S	4	NOTICE_CHANNEL_SERVER	-	DFLegacy.InterProcess.InterProcessLink	mapped	T4_fields-read+write	1	1	-
+S2S	128	REGISTER	-	DFLegacy.InterProcess.InterProcessLink	mapped	T4_fields-read+write	1	1	-
+S2S	129	REGISTER_ACK	-	DFLegacy.InterProcess.InterProcessLink	mapped	T4_fields-read+write	1	1	-
+S2S	130	STATUS	-	DFLegacy.InterProcess.InterProcessLink	mapped	T4_fields-read+write	1	1	-
+```
+
+- `tier` 用 `T4_fields-read+write` 是因为这些报文的字段由我们自己**双向读写**；它不表示"逆向深度"，这一点写进 `protocol/README.md`，避免后人误读。
+- `rodata_va` 填 `-`：这些报文没有官服 `.rodata` 来源（自选语义，spec §5.2）。
+
+- [ ] **Step 3: 扩契约并跑 verify**
+
+按 `protocol/importer.py:10-16` 的 `kind` 白名单加入 `"S2S"`；按 `protocol/verify.py:33` 的 `KIND_BASELINES` 加入 `("s2s", "S2S")`；按 `protocol/verify.py:36` 把 `BASELINE_OPCODES_TOTAL` 从 `1171` 改为 `1175`（= 1171 + 新增 4 行）；按 `protocol/verify.py:39-42` 的 `TRACKED_FILES` 加入 `map/s2s-map.tsv`，并同步 `KEY_COLUMNS`/`EXPECTED_COLUMNS`（`verify.py:55-66`）里该文件的键列；`protocol/manifest.json` 的 sha256 由 `python -m protocol.s1 import` 重新生成，**不要手填**。`protocol/README.md` 里写死的"5 文件/1171 条"一并改成"6 文件/1175 条"。
+
+Run: `python -m protocol.s1 import`（重新生成表与清单）
+Run: `python -m protocol.s1 verify`
+Expected: 5/5 PASS, exit 0 —— **若 `rows_and_keys` 或 `baselines` 变红，说明总数或文件清单还有一处没同步，按报错信息补齐**
+
+- [ ] **Step 4: Python 侧自测**
+
+Run: `python -m pytest protocol/tests -q`
+Expected: 全绿（既有用例不回归；若 `verify` 的契约常量有用例断言，同一次提交里更新）
+
+- [ ] **Step 5: 提交**
+
+```bash
+git add protocol/map/s2s-map.tsv protocol/importer.py protocol/verify.py protocol/manifest.json protocol/README.md
+git commit -m "S2: protocol 新增 S2S 报文表并把校验契约扩到 6 文件/1175 条（verify 仍 5/5）"
+```
+
+---
+
+## Task 10: 验收平台支持多进程 + 本刀门场景（I5 中段）
+
+**Files:**
+- Modify: `tools/acceptance/model.py`（`Manifest` 支持按进程名的服务端记录）
+- Modify: `tools/acceptance/runner.py`（多服务端启动/等待/端口预检）
+- Modify: `tools/acceptance/cli.py`（每进程一份日志）
+- Modify: `tools/acceptance/verdict.py`（`server_dir` 真的被读）
+- Create: `tools/acceptance/scenarios/handshake-login-town.yaml`
+- Create: `tools/acceptance/tests/test_multi_server.py`
+
+**Interfaces:**
+- Consumes: `Scenario`/`ActorSpec`/`Expect` 现有 dataclass；`Runner` 的启动/等待/预检函数。
+- Produces: `Manifest.servers: dict[str, dict]`（键为进程名，如 `game`/`channel`，**不再被第 N 次启动覆写**）；`runner.SERVER_SPECS`（声明每个服务端进程：命令、就绪端口、日志名）。
+
+- [ ] **Step 1: 写失败的 Python 测试**
+
+`tools/acceptance/tests/test_multi_server.py`：
+
+```python
+import json
+from pathlib import Path
+
+from tools.acceptance import model, runner
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def test_manifest_keeps_one_entry_per_process():
+    manifest = model.Manifest(
+        run_id="r1", git_sha="0" * 40, created_utc="2026-10-19T00:00:00Z",
+        scenario_id="handshake-login-town", expect_t0="server-accept",
+        actors=[{"name": "A", "driver": "real-client"}],
+        servers={"game": {"pid": 1}, "channel": {"pid": 2}})
+    payload = json.loads(manifest.to_json())
+    assert payload["servers"]["channel"]["pid"] == 2
+    assert "server" not in payload, "旧的单数 server 键必须消失，否则两处记法会分叉"
+
+
+def test_server_specs_declare_disjoint_ports():
+    specs = runner.SERVER_SPECS
+    ports = [p for spec in specs.values() for p in spec["tcp_ports"]] + [
+        p for spec in specs.values() for p in spec["udp_ports"]]
+    assert len(ports) == len(set(ports)), "两个服务端进程不得声明同一端口"
+
+
+def test_scenario_declares_a_falsifiable_expect():
+    scenario = model.load_scenario(
+        REPO_ROOT / "tools/acceptance/scenarios/handshake-login-town.yaml")
+    assert scenario.has_falsifiable_expect(), "本刀的门场景必须至少有一条能失败的期望"
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `python -m pytest tools/acceptance/tests/test_multi_server.py -q`
+Expected: `AttributeError` / `TypeError`（`Manifest` 还没有 `servers`；`SERVER_SPECS` 不存在）
+
+- [ ] **Step 3: 改实现（三处最小改动）**
+
+1. `model.py` 的 `Manifest`（`:91-104`）：把 `server: dict = field(default_factory=dict)` 换成 `servers: dict[str, dict] = field(default_factory=dict)`，并把 `deterministic_view`（`:113-122`）里的 `"server": {k: v for k, v in manifest.server.items() ...}` 改成按进程名遍历：
+
+```python
+        "servers": {
+            name: {k: v for k, v in entry.items() if k != "pid"}
+            for name, entry in manifest.servers.items()
+        },
+```
+
+   然后跑 `grep -rn "\.server\b\|\[\"server\"\]\|'server'" tools/acceptance --include=*.py`，把每一处调用点改成 `servers`（**一处都不能漏**；`deterministic_view` 的键名变化会让跨 run 对比的 golden 文件失效，若 `tools/acceptance/verdicts/` 里有依赖它的 tracked 文件，同一次提交里更新）。
+2. `runner.py`：新增模块级 `SERVER_SPECS`：
+
+```python
+SERVER_SPECS = {
+    "game": {"project": "src/DFLegacy.Server", "tcp_ports": [7001], "udp_ports": [2311, 7002, 7003]},
+    "channel": {"project": "src/DFLegacy.Channel", "tcp_ports": [2311, 8080], "udp_ports": []},
+}
+```
+
+`start_server` 改成 `start_servers(names, ...)`：逐个 `Popen`，每个进程的 stdout 写到 `server-<name>.log`；`wait_until_listening` 对每个进程等它的 `tcp_ports` 全部可连；端口预检遍历所有声明的 tcp+udp（**修掉 spec §7.2 记的两个漏**）。
+
+3. `verdict.py` 的 `judge`：`server_dir` 改为真的被读——当场景里存在 `evidence` 以 `[静态]` 标注的服务端侧期望时，从 `server_dir/server-*.log` 里找 `pattern`。**本刀只做一件事**：让 `server_dir` 不再是被忽略的形参，并加一条能失败的用例。
+
+4. 新场景 `tools/acceptance/scenarios/handshake-login-town.yaml`：
+
+```yaml
+id: handshake-login-town
+goal: 握手（11/5/9/1）→ 登录 → 选角 → 进城，拆分与单体两档逐字节一致（本刀的门）
+expect_t0: server-accept
+actors:
+  - {name: A, driver: real-client}
+steps:
+  - actor: A
+    action: 完成握手并登录
+    expect:
+      - {description: "c2s:connect（握手首帧）", level: "[存在]", pattern: "000B2B0000000000000001", evidence: "[抓包]"}
+      - {description: "s2c:connect-ack（12 号回包）", level: "[存在]", pattern: "000C2F0000000000000001", evidence: "[抓包]"}
+      - {description: "选角后进入城镇（人工确认同屏）", level: "[语义]"}
+```
+
+- [ ] **Step 4: 跑测试确认通过**
+
+Run: `python -m pytest tools/acceptance/tests -q`
+Expected: 全绿。注意 `tests/test_cli_orchestrate.py` 会真 bind `127.0.0.1:2311`（`tests/test_cli_orchestrate.py:74-78`）⇒ 先确认没有 server 在跑，否则该文件必须单独跑。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git add tools/acceptance/model.py tools/acceptance/runner.py tools/acceptance/cli.py tools/acceptance/verdict.py tools/acceptance/scenarios/handshake-login-town.yaml tools/acceptance/tests/test_multi_server.py
+git commit -m "S2: 验收平台支持多服务端进程与逐进程日志，新增本刀门场景"
+```
+
+---
+
+## Task 11: Tier 2 / Tier 3 验收与收尾
+
+**Files:**
+- Create: `docs/superpowers/plans/2026-10-19-s2-tier2-tier3-runbook.md`（执行手册，`git add -f`）
+- Modify: `server.json`（**只在跑 Tier 2 时**临时切换 `Processes` 段，验完改回）
+- Modify: `STATUS.md`（记录本刀结论与证据类别）
+
+**Interfaces:**
+- Consumes: Task 1–10 的全部产出。
+- Produces: 一份可复跑的两档对比记录 + 真机一次记录。
+
+- [ ] **Step 1: Tier 2 单体档基线**
+
+`server.json` 保持 `Channel.Enabled=false` / `Game.EntranceBinding=true`：
+
+Run: `python -m tools.acceptance.cli run handshake-login-town`
+Expected: 产出 `runs/<runId>/actor-A/…`；把 verdict 与 netdump 路径记进 runbook。
+
+- [ ] **Step 2: Tier 2 拆分档对比**
+
+`server.json` 改成 `Channel.Enabled=true` / `Game.EntranceBinding=false`：
+
+Run: `python -m tools.acceptance.cli run handshake-login-town`
+Expected: 两档的客户端帧序列一致。**逐字节对比**用 runbook 里的脚本（对 `actor-A` 的 netdump 排序后比对），例外清单只允许：时间戳、临时端口、会话 id。任何其它差异 ⇒ 停，回到 Task 4/5 查。
+
+- [ ] **Step 3: Tier 3 真机一次**
+
+按 `docs/superpowers/plans/2026-10-07-local-multiclient-acceptance-s0.md` 的真机流程，两档各跑一次双客户端进城；比对服务端日志锚点（登录 / `SELECT_CHARACTER` / 进城 / 同屏）。把日志片段与结论写进 runbook，标 `[真机]`。
+
+- [ ] **Step 4: 改回配置并跑一次全量回归**
+
+Run: `dotnet build DFLegacy.Emulator.slnx`（零错误）
+Run: `dotnet run --project tests/DFLegacy.SmokeTests`（0 failures）
+Run: `python -m protocol.s1 verify`（5/5 PASS）
+Run: `python -m pytest tools/acceptance/tests -q`（全绿，`test_cli_orchestrate.py` 单独跑）
+
+- [ ] **Step 5: 提交**
+
+```bash
+git add -f docs/superpowers/plans/2026-10-19-s2-tier2-tier3-runbook.md
+git add server.json STATUS.md
+git commit -m "S2: Tier 2/Tier 3 验收记录（单体/拆分逐字节对比 + 真机一次）"
+```
+
+---
+
+## Self-Review（对照 spec 逐节）
+
+| spec 要求 | 落在哪个任务 |
+|---|---|
+| §3.1 目标 1（握手族拆成 `DFLegacy.Channel`） | Task 3（宿主）+ Task 4（接线）+ Task 5（新 exe） |
+| §3.1 目标 2（官方形状链路） | Task 1（帧/载荷）+ Task 6/7（生命周期） |
+| §3.1 目标 3（落盘单写者不动） | Global Constraints + Task 5 的「禁止引用 Server」+ Task 7（链路不碰存档） |
+| §3.1 目标 4（行为逐字节不变） | Task 4 Step 2/5（端口与绑定不变）+ Task 11 Tier 2 |
+| §4.2 端口归属 | Task 2（纯函数）+ Task 4/5（各自绑定）+ Task 4 Step 5/Task 5 Step 5（真绑定验证） |
+| §4.4 第二刀耦合清单 | 非目标，无任务（已在 spec 记录） |
+| §5.1 帧壳参数 | Task 1（`InterProcessLink.Create` + hex 断言） |
+| §5.2 四个报文 | Task 1（编解码）+ Task 6/7（收发） |
+| §5.3 生命周期/失败语义 | Task 6（`accepted=0`、3 次心跳缺失、重连）+ Task 7（服务端 `PeerUp=false`） |
+| §5.4 承重 1/2（admin 计数与存活） | Task 8 |
+| §5.5 `protocol/` 契约 | Task 9 |
+| §5.6 端口 7004 + 单体开关 | Task 2（配置与校验）+ Task 4（`Channel.Enabled` 时不绑） |
+| §6 I1–I5 | I1=Task 4、I2=Task 5、I3=Task 6+7、I4=Task 8、I5=Task 9+10+11 |
+| §7.1 Tier 1 四条 | Task 6/7 的断言（hex、长度、`accepted=0`、心跳缺失） |
+| §7.1 Tier 2 / Tier 3 | Task 11 |
+| §7.2 验收平台四处缺口 | Task 10 |
+| §8 R1（新失败模式可见） | Task 8（`channelLink.connected`） |
+| §8 R2（配置漂移） | Task 5（窄模型）+ Task 5 Step 1 的键一致性测试 |
+| §8 R4（verdict 恒真） | Task 10 Step 3.3 + Step 1 的 `has_falsifiable_expect` 用例 |
+| §8 R5（verify 5/5） | Task 9 Step 3 |
+| §8 R9（17k 行类） | Task 4 的改动限定在 `ExecuteAsync` 的端口列表（**不碰 `HandleClientAsync`**） |
+| §9 缺口 1–4（官方证据） | 非本计划范围（Docker 恢复后另立任务） |
+| §9 缺口 5（验收平台） | Task 10 |
+| §9 缺口 6/7（真机设施、GameProbe 7001） | Task 11 Step 3（真机）；Task 4 Step 5 会暴露 7001 实际归属 |
+
+**Placeholder 扫描**：本计划未使用「TBD/类似 Task N/适当处理」等占位表述；每个代码步骤都给了可直接落盘的实现或精确 diff。
+**类型一致性**：`RegisterPayload`/`RegisterAckPayload`/`StatusPayload`/`NoticeChannelServerPayload` 的字段顺序在 Task 1 定义，Task 6/7/8 只按该顺序使用；`IEntranceSessionSink.Begin(service, remote)` 在 Task 3 定义，Task 4/5 的实现签名一致。
+
+**本轮自审修掉的四个缺陷（留档，因为它们都会让实现跑偏）**：
+
+1. **心跳方向**：原稿只让 game→channel 发 `STATUS`，而"连续 3 次缺失判 down"在单向心跳下必然误判（接收方没有回包可等）。已改为**双向 STATUS**，并同步修订设计稿 §5.2/§5.3。
+2. **admin 合并取错了值**：原稿让 `/api/status` 合并**自己发出**的 STATUS；已改为合并 `LastRemoteStatus`（对端发来的），Task 6 的测试用一条 `ActiveSessions=2` 的入站帧钉住这一点。
+3. **`protocol/` 行用了不存在的枚举值**：原稿写 `status=[设计]`、`tier=[字节]`，而 `protocol/verify.py:29-32` 只接受 `TIERS`/`STATUSES` 里的字面量。已改成 `mapped` / `T4_fields-read+write`，并补上 `KIND_BASELINES` 与 `1171 → 1175` 的具体改动点。
+4. **Python 侧签名是猜的**：`Manifest` 的真实字段是 `git_sha/created_utc/scenario_id/server`（`model.py:91-104`），`load_scenario` 收的是 `Path`（`:149`）。已按实际签名重写测试，并把 `deterministic_view` 的同步改动列成显式步骤。
+
+另外两处实现级修正：`EntranceHandshakeService` 不再伪造一个不存在的 `EntranceContentFactory(options, scripts)` 构造；channel 的 `Program.cs` 不再调 `BuildServiceProvider()`（ASP.NET 反模式），改为直接建 `LoggerFactory`。
