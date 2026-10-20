@@ -77,12 +77,16 @@ public sealed class EntranceHandshakeServer(
             {
                 return;
             }
-            catch (SocketException)
+            catch (SocketException exception) when (exception.SocketErrorCode == SocketError.OperationAborted)
             {
-                // Measured on .NET 10: TcpListener.Stop() interrupts a pending accept
-                // with SocketException(OperationAborted), not ObjectDisposedException.
-                // Without this catch RunAsync faults on a normal shutdown.
-                return;
+                return;   // 只吞 Stop() 造成的那一种
+            }
+            catch (SocketException exception)
+            {
+                // 真实的 accept 错误不能静默停掉监听：打 warn 后继续 accept
+                // （与 src/DFLegacy.Relay.Core/RelayHost.cs:48-52 同形）。
+                warn($"Accept failed: {exception.SocketErrorCode}", exception);
+                continue;
             }
 
             _ = HandleClientAsync(client, cancellationToken);
