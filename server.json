@@ -1,5 +1,15 @@
 {
   "DFLegacy": {
+    "Processes": {
+      "//": "进程拓扑开关。默认 = 单体模式（一个进程绑全部端口）。拆分布局：Channel.Enabled=true 且 Game.EntranceBinding=false。Channel.LinkPort 是两进程之间的链路端口。",
+      "Channel": {
+        "Enabled": false,
+        "LinkPort": 7004
+      },
+      "Game": {
+        "EntranceBinding": true
+      }
+    },
     "Admin": {
       "//": "管理接口（含后台页面与 API）。:: 为双栈（IPv4+IPv6 都通）；服务端玩法面是 IPv6，绑 0.0.0.0 会让 IPv6 侧访问不到。只本机访问填 127.0.0.1。",
       "Host": "::",

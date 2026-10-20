@@ -3,6 +3,7 @@ namespace DFLegacy.Server;
 public sealed class ServerOptions
 {
     public AdminOptions Admin { get; set; } = new();
+    public ProcessOptions Processes { get; set; } = new();
     public ListenerOptions Entrance { get; set; } = new() { Port = 8080 };
     public ListenerOptions CharacterDatagram { get; set; } = new() { Host = "127.0.0.1", Port = 2311 };
     public GameplayDatagramOptions GameplayDatagram { get; set; } = new();

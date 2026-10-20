@@ -25,6 +25,7 @@ builder.Configuration.AddJsonFile(
 builder.Configuration.AddEnvironmentVariables();
 
 var options = builder.Configuration.GetSection("DFLegacy").Get<ServerOptions>() ?? new ServerOptions();
+options.Processes.Validate();
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var clientTextEncoding = Encoding.GetEncoding(
     936,
