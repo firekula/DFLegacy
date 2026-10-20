@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--s2-ipc"))
+{
+    InterProcessCodecSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"S2 IPC smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+
 if (args.Contains("--party-card"))
 {
     PartyCardSettlementCoordinatorSmokeTests.Run(Check);

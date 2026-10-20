@@ -7,6 +7,7 @@
   </Project>
   <Project Path="src/DFLegacy.Launcher/DFLegacy.Launcher.csproj" />
   <Project Path="src/DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+  <Project Path="src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
   <Project Path="src/DFLegacy.Relay/DFLegacy.Relay.csproj" />
   <Project Path="src/DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
   <Project Path="src/DFLegacy.Server/DFLegacy.Server.csproj" />
