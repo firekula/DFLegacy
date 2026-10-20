@@ -104,7 +104,8 @@ internal static class EntranceSplitSmokeTests
             monolithic.Channel.Port);
         check(defaults.EntrancePorts.SequenceEqual([monolithic.Entrance.Port])
                 && defaults.ChannelPorts.SequenceEqual([monolithic.Channel.Port]),
-            "ServerOptions defaults: the handshake host still gets Entrance.Port and the game listener still gets Channel.Port");
+            "ServerOptions defaults: the families are Entrance.Port and Channel.Port "
+            + "(before the split the shared listener bound only Entrance.Port under these defaults)");
     }
 
     /// <summary>
@@ -275,6 +276,75 @@ internal static class EntranceSplitSmokeTests
         }
     }
 
+    /// <summary>
+    /// The old shared read loop honoured <c>options.RejectBadCrc32</c> (HEAD EntranceService.cs:4432)
+    /// before dispatching to either protocol family, and read frames with <c>options.MaximumPacketLength</c>.
+    /// The new host has to keep that: with the flag on, a frame whose declared CRC32 is wrong must end
+    /// the session without a reply; with the flag off (the shipped value) the same frame is still answered.
+    /// </summary>
+    public static async Task RunCrcRejectionAsync(Action<bool, string> check)
+    {
+        var content = new EntranceContent(null, [1, 2, 3, 4]);
+        // A protocol 11 request that carries a deliberately wrong CRC32.
+        var correct = PacketFrame.Create(11, new byte[32], includeCrc32: true);
+        var badCrc = new PacketFrame(
+            correct.Type,
+            correct.ProtocolId,
+            correct.DeclaredCrc32 ^ 0xFFFFFFFFu,
+            correct.Body);
+
+        var rejecting = await ProbeAsync(rejectBadCrc32: true);
+        check(rejecting is { Reply: null, Warned: true },
+            "with RejectBadCrc32 on, a wrong-CRC32 frame gets no reply and is warned about "
+            + "(the old shared read loop rejected it at EntranceService.cs:4432)");
+
+        var accepting = await ProbeAsync(rejectBadCrc32: false);
+        check(accepting.Reply is { ProtocolId: 12 },
+            "with RejectBadCrc32 off (the shipped value) the same frame is still answered, "
+            + "so the flag is wired in both directions");
+
+        // The read cap must be wired too: a cap smaller than the frame makes ReadAsync throw and the
+        // session end, so the frame is never answered (the old loop passed options.MaximumPacketLength).
+        var capped = await ProbeAsync(rejectBadCrc32: false, maximumPacketLength: 20);
+        check(capped.Reply is null,
+            "a frame larger than the configured maximum packet length is not answered");
+
+        async Task<(PacketFrame? Reply, bool Warned)> ProbeAsync(
+            bool rejectBadCrc32,
+            int maximumPacketLength = PacketFrame.DefaultMaximumLength)
+        {
+            var warned = 0;
+            var server = new EntranceHandshakeServer(
+                System.Net.IPAddress.Loopback,
+                [0],
+                () => content,
+                new RecordingSink(),
+                _ => { },
+                (_, _) => Interlocked.Increment(ref warned),
+                maximumPacketLength,
+                rejectBadCrc32);
+            var ports = await server.StartAsync(CancellationToken.None);
+            using var stop = new CancellationTokenSource();
+            var run = server.RunAsync(stop.Token);
+            try
+            {
+                using var client = new System.Net.Sockets.TcpClient();
+                await client.ConnectAsync(System.Net.IPAddress.Loopback, ports[0]);
+                var stream = client.GetStream();
+                await badCrc.WriteAsync(stream);
+                var reply = await TryReadFrameAsync(stream, TimeSpan.FromSeconds(5));
+                return (reply, Volatile.Read(ref warned) > 0);
+            }
+            finally
+            {
+                server.Stop();
+                await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(2)));
+                stop.Cancel();
+                await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(2)));
+            }
+        }
+    }
+
     public static async Task RunHandshakeServerAsync(Action<bool, string> check)
     {
         var content = new EntranceContent(null, [1, 2, 3, 4]);
@@ -397,9 +467,15 @@ internal static class EntranceSplitSmokeTests
         {
             return await PacketFrame.ReadAsync(stream, cancellationToken: timeoutSource.Token);
         }
-        catch (Exception exception) when (timeoutSource.IsCancellationRequested
-                                          && exception is OperationCanceledException or IOException)
+        catch (OperationCanceledException) when (timeoutSource.IsCancellationRequested)
         {
+            return null;
+        }
+        catch (Exception exception) when (exception is IOException or System.Net.Sockets.SocketException)
+        {
+            // The peer closed (FIN) or reset (RST) the connection. A reset happens when the host
+            // abandons a session with unread bytes still buffered — e.g. the oversized-frame case.
+            // That is "no reply" and must fail the check by name, not crash the whole suite.
             return null;
         }
     }

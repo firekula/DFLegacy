@@ -14,7 +14,10 @@ public sealed class EntranceHandshakeServer(
     Func<EntranceContent> content,
     IEntranceSessionSink sink,
     Action<string> log,
-    Action<string, Exception?> warn)
+    Action<string, Exception?> warn,
+    int maximumPacketLength = PacketFrame.DefaultMaximumLength,
+    bool rejectBadCrc32 = false,
+    bool noDelay = true)
 {
     private readonly List<TcpListener> _listeners = [];
     private readonly object _listenersGate = new();
@@ -123,9 +126,13 @@ public sealed class EntranceHandshakeServer(
         var remote = client.Client.RemoteEndPoint?.ToString() ?? "unknown";
         using (client)
         {
+            // 这三个 socket/读参数必须与旧共用读循环一致（HEAD：client.NoDelay 在 EntranceService.cs:207、
+            // 读长度 options.MaximumPacketLength 在 :4201、坏 CRC 拒绝在 :4432），否则拆分后入口族的
+            // 收包语义会悄悄变：NoDelay 影响时延，读长度影响可接受的最大帧，RejectBadCrc32 影响是否断会话。
+            client.NoDelay = noDelay;
             // 会话标签带本地端口（entrance:2311 / entrance:8080），与既有 EntranceService 的
-            // 标签口径一致（EntranceService.cs:221）。admin 的 /api/sessions 直接显示它，
-            // 只写 "entrance" 会让两个入口端口在管理面上不可区分。
+            // 标签口径一致（HEAD EntranceService.cs:221；工作区因未提交改动在 :224）。admin 的
+            // /api/sessions 直接显示它，只写 "entrance" 会让两个入口端口在管理面上不可区分。
             var localPort = (client.Client.LocalEndPoint as IPEndPoint)?.Port;
             var service = localPort is { } port ? $"entrance:{port}" : "entrance";
             var session = sink.Begin(service, remote);
@@ -133,9 +140,16 @@ public sealed class EntranceHandshakeServer(
             {
                 using var stream = client.GetStream();
                 var state = new EntranceSessionState();
-                while (await PacketFrame.ReadAsync(stream, cancellationToken: cancellationToken) is { } request)
+                while (await PacketFrame.ReadAsync(stream, maximumPacketLength, cancellationToken) is { } request)
                 {
                     session.Received(request);
+                    if (rejectBadCrc32 && !request.HasValidCrc32)
+                    {
+                        // 与旧共用读循环同位置、同语义：计数与 LastProtocolId 已经记过，然后断会话。
+                        warn($"Rejected frame with bad CRC32 from {remote}", null);
+                        break;
+                    }
+
                     var reply = EntranceProtocolEngine.Handle(request, state, content());
                     if (reply is null)
                     {

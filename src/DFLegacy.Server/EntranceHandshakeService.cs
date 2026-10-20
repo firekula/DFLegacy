@@ -20,10 +20,16 @@ public sealed class EntranceHandshakeService(
         // 拆分模式的判据跟着 ProcessOptions.Validate 走：Channel.Enabled=true ⇒ 入口端口归
         // channel 进程。用 Channel.Enabled 而不是 Game.EntranceBinding，是为了在「两个开关都为
         // false」这种既有配置下保持今天的行为（入口端口仍由本进程绑），不在 I1 里引入新语义。
+        var (entrancePorts, _) = EntrancePortFamilies.Split(
+            options.Entrance.Port,
+            options.Entrance.AdditionalPorts,
+            options.Channel.Port);
         if (options.Processes.Channel.Enabled)
         {
-            logger.LogInformation(
-                "Entrance handshake ports are owned by the DFLegacy.Channel process; this process will not bind them.");
+            // 设计稿 §8 R2：启动日志必须说清「绑了什么、忽略了什么」，否则配置漂移只能靠猜。
+            logger.LogWarning(
+                "Entrance handshake ports {Ports} are owned by the DFLegacy.Channel process; this process will not bind them.",
+                string.Join(", ", entrancePorts));
             return;
         }
 
@@ -33,10 +39,6 @@ public sealed class EntranceHandshakeService(
             return;
         }
 
-        var (entrancePorts, _) = EntrancePortFamilies.Split(
-            options.Entrance.Port,
-            options.Entrance.AdditionalPorts,
-            options.Channel.Port);
         if (entrancePorts.Length == 0)
         {
             logger.LogWarning(
@@ -65,7 +67,9 @@ public sealed class EntranceHandshakeService(
             content.Get,
             new RuntimeEntranceSink(runtime, options.EnablePacketTracing, options.HexDumpLimit),
             message => logger.LogInformation("{Message}", message),
-            (message, error) => logger.LogWarning(error, "{Message}", message));
+            (message, error) => logger.LogWarning(error, "{Message}", message),
+            options.MaximumPacketLength,
+            options.RejectBadCrc32);
         await server.StartAsync(stoppingToken);
         await server.RunAsync(stoppingToken);
     }
@@ -78,7 +82,8 @@ public sealed class EntranceHandshakeService(
             return scripts.ReadAllBytes(virtualPath);
         }
 
-        // 与 EntranceService.cs:17634-17638 同一条 warn：缺文件时协议 9 下载关闭，只 warn 不阻止启动。
+        // 与 EntranceService.LoadContent 同一条 warn（HEAD :17631-17635；工作区受未提交改动影响在 :17634-17638）：
+        // 缺文件时协议 9 下载关闭，只 warn 不阻止启动。
         logger.LogWarning(
             "{VirtualPath} is missing from {Source}; protocol 9 download is disabled.",
             virtualPath,
