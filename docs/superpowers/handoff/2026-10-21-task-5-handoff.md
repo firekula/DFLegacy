@@ -10,8 +10,8 @@
 | 项 | 值 |
 |---|---|
 | BASE（Task 4 开工） | `d9a8986` |
-| Task 4 提交 | `0e38cf2`（8 文件 +417/−13） |
-| 计划修订提交 | `57d8a05`（计划文件 +57/−15） |
+| Task 4 提交 | `0e38cf2`（8 文件 +417/−13）+ 修复轮 `dfbf02e`（4 文件 +111/−15） |
+| 计划修订提交 | `57d8a05`（首版，+57/−15）、`ce43078`（二次，补读循环三参数） |
 | 分支 | `main`（不建 worktree，理由见 ledger 的开工 Ruling） |
 | 断点 | **Task 5 未开始**。计划 Task 5 从 **第 1212 行**起（`Select-String -Path <plan> -Pattern '^## Task 5'` 现场取，别照抄本文件） |
 
@@ -22,14 +22,14 @@
 | Task 1 `DFLegacy.InterProcess` 帧壳 | ✅ | `68f2949` → `6a72a48` |
 | Task 2 端口分族 + `Processes` 配置 | ✅ | `2aee1d9` → `82c491c` |
 | Task 3 `EntranceHandshakeServer` | ✅ | `5a50b9b` → `c6189a6` |
-| **Task 4 接入 server，I1 收口** | ✅ | `d9a8986` → `0e38cf2`（+ 计划 `57d8a05`） |
+| **Task 4 接入 server，I1 收口** | ✅（复审 SPEC ✅ / Important 已修） | `d9a8986` → `0e38cf2` → `dfbf02e`（+ 计划 `57d8a05`,`ce43078`） |
 | Task 5–11 | ⬜ 未开始 | — |
 
 ## 3. I1 的三条验收：实测结果（可重跑）
 
 | # | 验收 | 实测 | 命令 |
 |---|---|---|---|
-| ① | 现有 smoke 全绿零回归 | `All DFLegacy protocol smoke tests passed.` exit 0 / 81s；`--s2-ipc` 0 failures（11s，不挂起）×5 | `dotnet run --project tests/DFLegacy.SmokeTests -c Release`（申报工具 `smoke-tests`）、`dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc` |
+| ① | 现有 smoke 全绿零回归 | `All DFLegacy protocol smoke tests passed.` exit 0 / 82s（修复轮后复跑）；`--s2-ipc` 0 failures（含 6 组新断言，不挂起） | `dotnet run --project tests/DFLegacy.SmokeTests -c Release`（申报工具 `smoke-tests`）、`dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc` |
 | ② | 2311/7001/8080 全监听且同 pid | 三端口同属 pid 83272；日志：`EntranceHandshakeService` 绑 2311+8080、`EntranceService` 绑 7001 | 起 `DFLegacy.Server` 后 `Get-NetTCPConnection -State Listen \| ? LocalPort -in 2311,7001,8080` |
 | ③ | 客户端握手字节不变 | **[抓包]+[回放]**：真机录制明文与新代码产出逐字节相同（见 §4） | `EntranceSplitSmokeTests.RunContentFactory` / `RunHandshakeReplayAsync`（随 `--s2-ipc` 跑） |
 
@@ -47,7 +47,10 @@
 2. **`RuntimeEntranceSink` 用 `public`**（计划写 `internal`）：仓库无 `InternalsVisibleTo` 先例，测试要可见。代价：公开面略增，无行为影响。
 3. **新增三组断言**（sink 记账 / 内容组装镜像 / 录制字节回放）+ 改 Task 3 文件让会话标签带本地端口。代价：测试面与复审面变大（已用变异验证钉死归因）。
 4. **全解 build gate 降级**为「managed 工程 0/0 + 全量 smoke 绿」：原生 vcxproj 在 dotnet CLI 下必失败（`MSB4278` 缺 VCTargetsPath），且 slnx 上有他人未提交的 `Ijl15.Tests` 条目。代价：原生工程编译问题不在本 gate 暴露（与本任务无关）。
-5. **`EntranceHandshakeServer.Stop()` 加锁**（取快照 → 释放锁 → 逐个 Stop，`Stop()` 幂等）：修掉 `RunAsync.finally` 与宿主 `Stop()` 并发枚举/清空的竞态（实测 `--s2-ipc` 随机红）。代价：该竞态**无确定性测试覆盖**，只能靠 review + 反复运行兜。
+5. **入口读循环三参数补回**：宿主构造带上 `maximumPacketLength` / `rejectBadCrc32` / `noDelay`，与旧共用读循环
+   （HEAD `EntranceService.cs:207,4201,4432`）逐项对齐 —— 复审 Important：开 `RejectBadCrc32` 的部署下入口族必须仍然断会话。
+   代价：宿主多三个参数；`RejectBadCrc32` 的拒绝路径现在有测试（开/关双向 + 超长帧，均已变异验证可红）。
+6. **`EntranceHandshakeServer.Stop()` 加锁**（取快照 → 释放锁 → 逐个 Stop，`Stop()` 幂等）：修掉 `RunAsync.finally` 与宿主 `Stop()` 并发枚举/清空的竞态（实测 `--s2-ipc` 随机红）。代价：该竞态**无确定性测试覆盖**，只能靠 review + 反复运行兜。
 
 ## 5. Task 5 可直接复用的三个接口事实（Task 4 实测）
 
@@ -67,6 +70,11 @@
 - `IsDialableHost` 仍是"仅工作区"事实：`git grep -n 'IsDialableHost' HEAD -- src tests` 为空。
   若那份未提交改动被丢弃，`EntranceDialHost.IsDialable` 的镜像对象在 HEAD 里不存在，需重评。
 - `EntranceService` 的入口分支（`:15375`）与 `LoadContent()` 拆分后不可达，属死代码，留待后续清理。
+- 入口读循环三参数虽已补回，但**没有真机对照**（坏 CRC / 超长帧在真实客户端下的表现未验）。
+- `StartAsync` 残留窗口：先 `listener.Start()` 再入锁 Add，若此刻有 Stop 插入会漏掉一个监听 socket（当前两个调用点不可达）。
+- `EntranceHandshakeService` 的托管接线**没有自动化覆盖**：`RunPortOwnership` 只测纯函数，两个服务的端口列表若被对调，
+  验收②仍会通过（三口一 pid，只是引擎错位）。目前只靠真绑定 pid 检查 + code review 兜。
+- 新增断言只在 `--s2-ipc` 分组，全量 `smoke-tests` 不会跑它们 ⇒ gate 必须两条命令都跑。
 - 延续 Task 3 deferred：`NoDelay/MaximumPacketLength/RejectBadCrc32` 未镜像；取消期 OCE 未吞；
   `SentCount` 断言 happens-before；`StartAsync` token 未用且多端口失败不回滚；真实 accept 错误被静默吞掉这条回归无牙。
 
@@ -93,4 +101,5 @@
 
 ## 9. 权威计划状态
 
-**已提交**：`57d8a05`。Task 4 的执行期修订（Files 头、三组断言、build gate、PVF 覆盖、不动 `LoadContent`）都在里面。
+**已提交**：`57d8a05` + `ce43078`。Task 4 的执行期修订（Files 头、六组断言、build gate、PVF 覆盖、不动 `LoadContent`、
+宿主读循环三参数）都在里面。ledger（`.superpowers/.../progress.md`）按仓库惯例不入库（`.gitignore:16 /.superpowers/`），只在磁盘上。
