@@ -960,7 +960,7 @@ git commit -m "S2: 握手宿主抽成无 ASP.NET 依赖的 EntranceHandshakeServ
 **Interfaces:**
 - Consumes: Task 1–3 的全部产出；`RuntimeState.Add/CountPacket/Remove/TracePacket`；已提交的 `EntranceDialHost.Resolve`。
 - Produces: `EntranceHandshakeService : BackgroundService`（在 `options.Processes.Channel.Enabled == false` 时启动握手宿主；否则记一条日志并退出）。
-- **执行期修订（2026-10-21，所有者已批准）**：`RuntimeEntranceSink` 用 `public`（仓库无 `InternalsVisibleTo` 先例，测试需要可见）；`EntranceContentFactory` 只做组装+缓存，缺 `etc/channel_info.etc` 的 warn 留在 Server 侧取数 lambda（它需要 `ScriptFileSystem.SourceDescription`）；启动门用 `Processes.Channel.Enabled` 而不是 `Game.EntranceBinding`，以保留"两个开关都 false"下的今天行为；**不动 `EntranceService.LoadContent`** —— 拆分后入口分支不可达，且本工作区里它已被未提交的 `ResolveChannelDialHost` 改过，动它会与未提交改动冲突。
+- **执行期修订（2026-10-21，所有者已批准）**：`RuntimeEntranceSink` 用 `public`（仓库无 `InternalsVisibleTo` 先例，测试需要可见）；`EntranceContentFactory` 只做组装+缓存，缺 `etc/channel_info.etc` 的 warn 留在 Server 侧取数 lambda（它需要 `ScriptFileSystem.SourceDescription`）；启动门用 `Processes.Channel.Enabled` 而不是 `Game.EntranceBinding`，以保留"两个开关都 false"下的今天行为；**不动 `EntranceService.LoadContent`** —— 拆分后入口分支不可达，且本工作区里它已被未提交的 `ResolveChannelDialHost` 改过，动它会与未提交改动冲突；宿主构造参数带上 `MaximumPacketLength` / `RejectBadCrc32` / `NoDelay`，与旧共用读循环（HEAD `EntranceService.cs:207,4201,4432`）逐项对齐 —— 复审 Important 要求（开 `RejectBadCrc32` 的部署下入口族必须仍然断会话）。
 
 - [ ] **Step 1: 写失败的端口归属测试**
 
