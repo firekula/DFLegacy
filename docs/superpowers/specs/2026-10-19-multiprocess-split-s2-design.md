@@ -176,7 +176,7 @@ S0 路线图对 S2 的通信层描述是「接口先用**已实证**的通信层
 | **4** | channel→game | `NOTICE_CHANNEL_SERVER` | `int32 serverGroup` + `char[16]` ASCII IP + `int32 port` = 24 B | **复用官方 ID 与官方载荷**：官方帧 35 B = 11+24，且三个字段值在官服日志里逐字对上（`…/dual-evidence.md:88-91`） | 记录 |
 | **128** | game→channel | `REGISTER` | `u16 protoVer` + `u32 gcNo` + `u32 channelNo` + `u32 maxUsers` + `u32 curUsers` + `char[16]` IP + `u32 gamePort` = 38 B | 自选（D2）。字段集部分对应官方 `UPDATE_CHANNEL_INFO`(2)，但**不复用 ID 2**：官方载荷只解出 4 个字段且有缺口（`…/STATIC-FINDINGS.md:323-330`），复用 ID 会让人误以为字节一致 | 是 |
 | **129** | channel→game | `REGISTER_ACK` | `u16 protoVer` + `u32 accepted` + `char[20]` channelName + `u32 channelPort` = 30 B | 自选 | 是 |
-| **130** | game→channel | `STATUS` | `u64 uptimeMs` + `u32 activeSessions` + `u32 loggedInUsers` + `u64 totalConnections` + `u64 totalPackets` = 32 B | 自选；兼心跳。`activeSessions` 是**握手侧**当前连接数，用来让 `/api/status.ActiveSessions` 不因拆分而变小（§5.4） | 是 |
+| **130** | **双向** | `STATUS` | `u64 uptimeMs` + `u32 activeSessions` + `u32 loggedInUsers` + `u64 totalConnections` + `u64 totalPackets` = 32 B | 自选；兼心跳。**两侧各发自己的计数**（单向心跳无法判定"对端还活着"：接收方没有回包可等，会把健康链路误判成 down）。game 侧上报"握手侧在线数"，让 `/api/status.ActiveSessions` 不因拆分而变小（§5.4） | 是 |
 
 **载荷的口径（实现时必须照此，否则偏移会错一格）**：上表"载荷"= **官方模型的载荷** = 帧偏移 **11** 起 = `PacketFrame.Body[1..]`。
 `PacketFrame.Body[0]` 是记录数（`PacketFrame.cs:16,34-36` 自证：`RecordCount => Body[0]`，`Create` 会把它前置），它**就是**官方模型的 `[10]`。
@@ -193,7 +193,7 @@ S0 路线图对 S2 的通信层描述是「接口先用**已实证**的通信层
 
 - **谁拨谁**：game 拨 channel（生产者向聚合者注册；官方是 game→bridge 注册、channel→bridge，我们把 channel+bridge 合成一个进程）。
 - **建链**：`REGISTER` → `REGISTER_ACK`。`accepted=0` ⇒ game 记错误日志并退避重试，**不崩、不影响客户端服务**。
-- **稳态**：`STATUS` 每 1 s 一次，兼心跳；连续 3 次缺失 ⇒ 对端标记 down，打 warn，**继续服务客户端**。
+- **稳态**：**双方各自**每 1 s 发一次 `STATUS`（兼心跳，方向双向）；连续 3 个间隔收不到对端任何帧 ⇒ 对端标记 down，打 warn，**继续服务客户端**。
 - **重启**：channel 重启 ⇒ game 自动重连重注册；game 重启同理。**任一方单独启动都不失败**。
 - **版本不匹配**：`accepted=0` + 版本回带；不降级、不猜测。
 - **失败语义红线**：第一刀**没有任何落盘 RPC**，所以不存在重复发放/丢写的分布式风险；唯一失败语义是"对端不可达/不兼容 ⇒ 观测降级 + 重试"。
