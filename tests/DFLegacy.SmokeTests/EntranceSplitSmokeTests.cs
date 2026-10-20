@@ -68,6 +68,18 @@ internal static class EntranceSplitSmokeTests
             "with nothing advertised, a concrete Channel.Host is used as the dial target");
         check(EntranceDialHost.Resolve("192.168.1.5", "127.0.0.1", "0.0.0.0") == "192.168.1.5",
             "an advertised gameplay host wins over the entrance host");
+        check(EntranceDialHost.IsDialable("example.local"),
+            "a non-IP hostname is dialable, mirroring EntranceService.IsDialableHost");
+        check(EntranceDialHost.IsDialable("255.255.255.255"),
+            "the broadcast address is dialable, matching the existing helper that never excluded it");
+        check(!EntranceDialHost.IsDialable("0.0.0.0"),
+            "the IPv4 wildcard 0.0.0.0 is not dialable");
+        check(!EntranceDialHost.IsDialable("::"),
+            "the IPv6 wildcard :: is not dialable");
+        check(!EntranceDialHost.IsDialable("  "),
+            "a whitespace host is not dialable");
+        check(EntranceDialHost.Resolve("example.local", "127.0.0.1", "0.0.0.0") == "example.local",
+            "a hostname advertised host wins over a loopback entrance host");
     }
 
     public static async Task RunHandshakeServerAsync(Action<bool, string> check)

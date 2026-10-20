@@ -24,10 +24,18 @@ public static class EntranceDialHost
         return channelHost;
     }
 
-    public static bool IsDialable(string host) =>
-        !string.IsNullOrWhiteSpace(host)
-        && IPAddress.TryParse(host, out var address)
-        && !address.Equals(IPAddress.Any)
-        && !address.Equals(IPAddress.IPv6Any)
-        && !address.Equals(IPAddress.Broadcast);
+    public static bool IsDialable(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        // 逐字镜像 EntranceService.IsDialableHost（EntranceService.cs:17680-17689）：
+        // 不是 IP 的主机名算可拨；只有通配地址 0.0.0.0 / :: 不可拨。
+        // 广播 255.255.255.255 现存实现**不排除**，这里也不排除 —— Task 4 要把调用点
+        // 换成这个方法，语义必须完全一致，否则客户端拨号目标会悄悄变（违反 I1 验收③）。
+        return !IPAddress.TryParse(host, out var address)
+            || (!IPAddress.Any.Equals(address) && !IPAddress.IPv6Any.Equals(address));
+    }
 }
