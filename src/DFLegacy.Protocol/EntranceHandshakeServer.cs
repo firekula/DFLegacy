@@ -77,6 +77,13 @@ public sealed class EntranceHandshakeServer(
             {
                 return;
             }
+            catch (SocketException)
+            {
+                // Measured on .NET 10: TcpListener.Stop() interrupts a pending accept
+                // with SocketException(OperationAborted), not ObjectDisposedException.
+                // Without this catch RunAsync faults on a normal shutdown.
+                return;
+            }
 
             _ = HandleClientAsync(client, cancellationToken);
         }

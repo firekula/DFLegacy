@@ -169,14 +169,25 @@ internal static class EntranceSplitSmokeTests
 
         stop.Cancel();
         await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(2)));
-        if (run.IsFaulted)
+        Exception? runFault = null;
+        if (run.IsCompleted)
         {
-            // Measured on .NET 10: Stop() aborts a pending accept with
-            // SocketException(OperationAborted), which AcceptLoopAsync does not catch,
-            // so RunAsync faults after Stop(). Recorded in task-3-report.md §7; the
-            // plan promises completion here, which is what the check above pins.
-            _ = run.Exception;
+            try
+            {
+                await run;
+            }
+            catch (Exception exception)
+            {
+                runFault = exception;
+            }
         }
+        else
+        {
+            runFault = new TimeoutException("RunAsync neither completed nor faulted after Stop()");
+        }
+
+        check(runFault is null,
+            "RunAsync completes without faulting after Stop(): a pending accept is interrupted as SocketException");
     }
 
     /// <summary>
