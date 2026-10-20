@@ -56,8 +56,10 @@ internal static class EntranceSplitSmokeTests
         var split = new ProcessOptions();
         split.Channel.Enabled = true;
         split.Game.EntranceBinding = false;
-        split.Validate();
-        check(split.Channel.Enabled && !split.Game.EntranceBinding,
-            "channel-owned entrance ports with game.EntranceBinding=false is a valid split");
+        var splitAccepted = true;
+        try { split.Validate(); }
+        catch (InvalidOperationException) { splitAccepted = false; }
+        check(splitAccepted,
+            "a valid split layout (Channel.Enabled=true, Game.EntranceBinding=false) is accepted by Validate()");
     }
 }
