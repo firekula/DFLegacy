@@ -17,6 +17,7 @@ public sealed class EntranceHandshakeServer(
     Action<string, Exception?> warn)
 {
     private readonly List<TcpListener> _listeners = [];
+    private readonly object _listenersGate = new();
 
     public IReadOnlyList<int> BoundPorts { get; private set; } = [];
 
@@ -26,19 +27,35 @@ public sealed class EntranceHandshakeServer(
         {
             var listener = new TcpListener(address, port);
             listener.Start();
-            _listeners.Add(listener);
+            lock (_listenersGate)
+            {
+                _listeners.Add(listener);
+            }
+
             log($"Entrance listener ready at {address}:{((IPEndPoint)listener.LocalEndpoint).Port}");
         }
 
-        BoundPorts = _listeners.Select(listener => ((IPEndPoint)listener.LocalEndpoint).Port).ToArray();
-        return Task.FromResult(BoundPorts.ToArray());
+        int[] bound;
+        lock (_listenersGate)
+        {
+            bound = _listeners.Select(listener => ((IPEndPoint)listener.LocalEndpoint).Port).ToArray();
+        }
+
+        BoundPorts = bound;
+        return Task.FromResult(bound.ToArray());
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
+        TcpListener[] listeners;
+        lock (_listenersGate)
+        {
+            listeners = [.. _listeners];
+        }
+
         try
         {
-            await Task.WhenAll(_listeners.Select(listener =>
+            await Task.WhenAll(listeners.Select(listener =>
                 AcceptLoopAsync(listener, cancellationToken)));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -52,12 +69,20 @@ public sealed class EntranceHandshakeServer(
 
     public void Stop()
     {
-        foreach (var listener in _listeners)
+        // Stop() 会被两方并发调用：宿主显式 Stop()，以及 RunAsync 的 finally。两者都枚举并清空
+        // 同一个 List，不设门就会抛 "Collection was modified"（实测：--s2-ipc 随机红在 Stop 里）。
+        // 取快照后释放锁再 Stop，避免持锁调用阻塞的 socket 操作；重复 Stop 现在是幂等的。
+        TcpListener[] listeners;
+        lock (_listenersGate)
+        {
+            listeners = [.. _listeners];
+            _listeners.Clear();
+        }
+
+        foreach (var listener in listeners)
         {
             listener.Stop();
         }
-
-        _listeners.Clear();
     }
 
     private async Task AcceptLoopAsync(TcpListener listener, CancellationToken cancellationToken)
@@ -98,7 +123,12 @@ public sealed class EntranceHandshakeServer(
         var remote = client.Client.RemoteEndPoint?.ToString() ?? "unknown";
         using (client)
         {
-            var session = sink.Begin("entrance", remote);
+            // 会话标签带本地端口（entrance:2311 / entrance:8080），与既有 EntranceService 的
+            // 标签口径一致（EntranceService.cs:221）。admin 的 /api/sessions 直接显示它，
+            // 只写 "entrance" 会让两个入口端口在管理面上不可区分。
+            var localPort = (client.Client.LocalEndPoint as IPEndPoint)?.Port;
+            var service = localPort is { } port ? $"entrance:{port}" : "entrance";
+            var session = sink.Begin(service, remote);
             try
             {
                 using var stream = client.GetStream();

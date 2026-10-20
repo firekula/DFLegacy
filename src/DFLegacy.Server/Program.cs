@@ -107,6 +107,7 @@ builder.Services.AddSingleton<ObjectDropGenerator>();
 builder.Services.AddSingleton<ClearRewardCatalog>();
 builder.Services.AddSingleton<ClearRewardGenerator>();
 builder.Services.AddSingleton<GameplayDatagramService>();
+builder.Services.AddHostedService<EntranceHandshakeService>();
 builder.Services.AddHostedService<EntranceService>();
 builder.Services.AddHostedService<CharacterDatagramService>();
 builder.Services.AddHostedService<FatigueResetService>();

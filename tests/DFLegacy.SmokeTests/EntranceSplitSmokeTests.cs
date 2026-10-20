@@ -82,6 +82,199 @@ internal static class EntranceSplitSmokeTests
             "a hostname advertised host wins over a loopback entrance host");
     }
 
+    public static void RunPortOwnership(Action<bool, string> check)
+    {
+        // The shipped server.json: Entrance.Port=2311, AdditionalPorts=[7001,8080], Channel.Port=7001.
+        // I1 acceptance ② is "2311/7001/8080 are all still listening in one pid", so the two
+        // hosted services must partition exactly those three ports between them.
+        var monolithic = new ServerOptions();
+        var shipped = EntrancePortFamilies.Split(2311, [7001, 8080], 7001);
+        check(shipped.EntrancePorts.SequenceEqual([2311, 8080]) && shipped.ChannelPorts.SequenceEqual([7001]),
+            "shipped config: the handshake host owns 2311+8080 and the game listener owns 7001");
+        check(!shipped.EntrancePorts.Contains(7001),
+            "shipped config: the channel port is never bound by the handshake host (that would fail the bind)");
+        check(shipped.EntrancePorts.Intersect(shipped.ChannelPorts).Count() == 0
+                && shipped.EntrancePorts.Union(shipped.ChannelPorts).OrderBy(port => port)
+                    .SequenceEqual([2311, 7001, 8080]),
+            "shipped config: the two families are disjoint and together own every configured port exactly once");
+
+        var defaults = EntrancePortFamilies.Split(
+            monolithic.Entrance.Port,
+            monolithic.Entrance.AdditionalPorts,
+            monolithic.Channel.Port);
+        check(defaults.EntrancePorts.SequenceEqual([monolithic.Entrance.Port])
+                && defaults.ChannelPorts.SequenceEqual([monolithic.Channel.Port]),
+            "ServerOptions defaults: the handshake host still gets Entrance.Port and the game listener still gets Channel.Port");
+    }
+
+    /// <summary>
+    /// The sink is what makes the split invisible to admin: /api/sessions must keep showing
+    /// <c>entrance:2311</c> and /api/status.TotalPackets must keep counting handshake packets.
+    /// </summary>
+    public static void RunRuntimeSinkAccounting(Action<bool, string> check)
+    {
+        var runtime = new RuntimeState();
+        var sink = new RuntimeEntranceSink(runtime, tracePackets: false, hexDumpLimit: 0);
+        var session = sink.Begin("entrance:2311", "127.0.0.1:50000");
+        try
+        {
+            session.Received(PacketFrame.Create(11, new byte[32]));
+            var snapshot = runtime.Sessions().Single();
+            check(snapshot.Service == "entrance:2311",
+                "the sink keeps the host's per-port label so /api/sessions can tell entrance:2311 from entrance:8080");
+            check(snapshot.ReceivedPackets == 1 && snapshot.LastProtocolId == 11,
+                "Received increments the session counter and records the protocol id");
+            check(runtime.TotalPackets == 1,
+                "Received goes through RuntimeState.CountPacket: /api/status.TotalPackets counts handshake packets "
+                + "(a bare Interlocked.Increment on the session field would leave this at 0)");
+
+            session.Sent(PacketFrame.Create(12, new byte[36]));
+            snapshot = runtime.Sessions().Single();
+            check(snapshot.SentPackets == 1 && runtime.TotalPackets == 1,
+                "Sent increments the session's sent counter without inflating the received total");
+        }
+        finally
+        {
+            session.Dispose();
+        }
+
+        check(runtime.Sessions().Length == 0,
+            "Dispose removes the session, so /api/sessions does not leak closed handshakes");
+    }
+
+    /// <summary>
+    /// EntranceContentFactory has to reproduce what EntranceService.LoadContent (EntranceService.cs:17612-17660)
+    /// assembles. The oracle is not our own builder: it is the metadata a real client actually received,
+    /// captured in runs/20261018T091951Z-2724238-town-two-clients/*/netdump-*.log. That capture used
+    /// Channel.Name="Local Channel", Port=7001, Number=1, MaximumUsers=100, CurrentUsers=1 and told the
+    /// client to dial 192.168.3.177; decrypting the recorded protocol 3 reply yields 652 bytes
+    /// (the last 4 bytes of the decrypted block are AES padding), re-encrypting reproduces the recorded
+    /// ciphertext exactly. Reproduced on 5 netdump files with 4 different session keys.
+    /// </summary>
+    public static void RunContentFactory(Action<bool, string> check)
+    {
+        var channel = new EntranceChannel("Local Channel", "192.168.3.177", 7001, 1, 100, 1);
+        const string recordedMetadataSha256 = "8E059F3A8BEF0DBC34F446007C259A60EE90C4A5DEBCA3981D490B72A0EE3493";
+        var script = Enumerable.Range(0, 4096).Select(index => (byte)(index * 31 % 251)).ToArray();
+        var reads = 0;
+        var factory = new EntranceContentFactory(
+            () =>
+            {
+                reads++;
+                return script;
+            },
+            channel);
+
+        var first = factory.Get();
+        check(first.Metadata.Length == 652,
+            "the factory assembles all nine server groups plus one channel record (652 bytes)");
+        check(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(first.Metadata))
+                == recordedMetadataSha256,
+            "the metadata bytes are byte-identical to what a real client received before the split "
+            + "(recorded netdump protocol 3 plaintext)");
+        check(first.ChannelScript is not null && first.ChannelScript.SequenceEqual(script),
+            "the channel script is passed through unchanged, so protocol 9 stays byte-identical");
+
+        var second = factory.Get();
+        check(ReferenceEquals(first, second) && reads == 1,
+            "the content is assembled once and cached afterwards, like EntranceService.LoadContent");
+    }
+
+    /// <summary>
+    /// End-to-end replay of the recorded client handshake against the host that now serves it:
+    /// the four request frames the client actually sent (11, 5, 9, 1) go in, and the replies are
+    /// decrypted with the key the host handed out, then compared with the recorded plaintext.
+    /// </summary>
+    public static async Task RunHandshakeReplayAsync(Action<bool, string> check)
+    {
+        var channel = new EntranceChannel("Local Channel", "192.168.3.177", 7001, 1, 100, 1);
+        const string recordedMetadataBlockSha256 =
+            "59FC373C8527F02F3392A88344B93F8EA160B47F309655D1C5B9871317DB08CD";
+        const string recordedCachePlaintext =
+            "0000000064666C732D6C6F63616C000000000000000000000000000000000000";
+        var script = Enumerable.Range(0, 4096).Select(index => (byte)(index * 31 % 251)).ToArray();
+        var content = new EntranceContentFactory(() => script, channel);
+        var sink = new RecordingSink();
+        var server = new EntranceHandshakeServer(
+            System.Net.IPAddress.Loopback,
+            [0],
+            content.Get,
+            sink,
+            _ => { },
+            (_, _) => { });
+        var ports = await server.StartAsync(CancellationToken.None);
+        using var stop = new CancellationTokenSource();
+        var run = server.RunAsync(stop.Token);
+        try
+        {
+            using var client = new System.Net.Sockets.TcpClient();
+            await client.ConnectAsync(System.Net.IPAddress.Loopback, ports[0]);
+            var stream = client.GetStream();
+
+            // Recorded client request order and payload sizes: 11 with 32 bytes, 5 with 16, 9 empty, 1 empty.
+            await PacketFrame.Create(11, new byte[32]).WriteAsync(stream);
+            var keyReply = await TryReadFrameAsync(stream, TimeSpan.FromSeconds(5));
+            check(keyReply is { ProtocolId: 12 } && keyReply.Body.Length == 37,
+                "replay: protocol 11 is answered by 12 with a 36-byte payload (record count included)");
+            if (keyReply is null || keyReply.ProtocolId != 12 || keyReply.Body.Length != 37)
+            {
+                return;
+            }
+
+            check(sink.LastService == $"entrance:{ports[0]}",
+                "replay: the host labels the session with its local port, so /api/sessions keeps entrance:<port>");
+
+            // Body[0] is the record count; the 36-byte payload is int32(0) followed by the 32-byte key material.
+            var key = keyReply.Body[5..37];
+
+            await PacketFrame.Create(5, new byte[16]).WriteAsync(stream);
+            var cacheReply = await TryReadFrameAsync(stream, TimeSpan.FromSeconds(5));
+            check(cacheReply is { ProtocolId: 6 },
+                "replay: protocol 5 is answered by 6");
+            if (cacheReply is not null)
+            {
+                var plain = EntranceCrypto.DecryptBlocks(cacheReply.Body[1..], key);
+                check(Convert.ToHexString(plain) == recordedCachePlaintext,
+                    "replay: protocol 6 carries the same cache decision and session token the client saw before the split");
+            }
+
+            await PacketFrame.Create(9, []).WriteAsync(stream);
+            var scriptReply = await TryReadFrameAsync(stream, TimeSpan.FromSeconds(5));
+            check(scriptReply is { ProtocolId: 10 },
+                "replay: protocol 9 is answered by 10");
+            if (scriptReply is not null)
+            {
+                // EncryptCompressed == Compress(EncryptBlocks(...)), so the inverse decompresses first.
+                var plain = EntranceCrypto.DecryptBlocks(EntranceCrypto.Decompress(scriptReply.Body[1..]), key);
+                check(plain.SequenceEqual(script),
+                    "replay: protocol 10 carries the channel script unchanged");
+            }
+
+            await PacketFrame.Create(1, []).WriteAsync(stream);
+            var metadataReply = await TryReadFrameAsync(stream, TimeSpan.FromSeconds(5));
+            check(metadataReply is { ProtocolId: 3 },
+                "replay: protocol 1 is answered by 3");
+            if (metadataReply is not null)
+            {
+                // The decrypted block is 656 bytes = 652 metadata + 4 zero bytes of AES block padding,
+                // which is exactly what the recorded client received (recorded block sha256 59FC37...).
+                var plain = EntranceCrypto.DecryptBlocks(EntranceCrypto.Decompress(metadataReply.Body[1..]), key);
+                check(plain.Length == 656
+                        && Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(plain))
+                            == recordedMetadataBlockSha256
+                        && plain.AsSpan(0, 652).SequenceEqual(content.Get().Metadata),
+                    "replay: the metadata the host sends is byte-identical to the recorded real-client plaintext");
+            }
+        }
+        finally
+        {
+            server.Stop();
+            await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(2)));
+            stop.Cancel();
+            await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(2)));
+        }
+    }
+
     public static async Task RunHandshakeServerAsync(Action<bool, string> check)
     {
         var content = new EntranceContent(null, [1, 2, 3, 4]);
@@ -217,6 +410,8 @@ internal static class EntranceSplitSmokeTests
 
         public RecordingSession? Last { get; private set; }
 
+        public string? LastService { get; private set; }
+
         public RecordingSession[] Sessions
         {
             get
@@ -231,6 +426,7 @@ internal static class EntranceSplitSmokeTests
         public IEntranceSession Begin(string service, string remote)
         {
             var session = new RecordingSession();
+            LastService = service;
             lock (_sessions)
             {
                 _sessions.Add(session);

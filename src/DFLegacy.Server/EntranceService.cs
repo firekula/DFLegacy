@@ -160,11 +160,14 @@ public sealed class EntranceService(
         }
 
         var address = IPAddress.Parse(options.Entrance.Host);
-        var ports = new[] { options.Entrance.Port }
-            .Concat(options.Entrance.AdditionalPorts)
-            .Where(port => port is > 0 and <= 65535)
-            .Distinct()
-            .ToArray();
+        // 入口握手族（装机配置里的 2311/8080）已由 EntranceHandshakeService 托管；本监听器只保留
+        // 频道玩法族（Channel.Port=7001）。与既有的 isChannelPort 判定（localPort == Channel.Port，
+        // EntranceService.cs:220）同义，只是把端口归属显式化 —— 两族端口不能在同一进程里重复 bind。
+        var (_, channelPorts) = EntrancePortFamilies.Split(
+            options.Entrance.Port,
+            options.Entrance.AdditionalPorts,
+            options.Channel.Port);
+        var ports = channelPorts;
 
         foreach (var port in ports)
         {
