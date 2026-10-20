@@ -14,6 +14,10 @@ internal static class EntranceSplitSmokeTests
         var (deduped, _) = EntrancePortFamilies.Split(2311, [2311, 0, 70000, 8080, 8080], 7001);
         check(deduped.SequenceEqual([2311, 8080]),
             "duplicates and out-of-range ports are dropped while order is preserved");
+        // 配置里 AdditionalPorts 不保证升序；声明序必须原样保留（排序实现会在这里变红）。
+        var (ordered, _) = EntrancePortFamilies.Split(2311, [1000, 8080], 7001);
+        check(ordered.SequenceEqual([2311, 1000, 8080]),
+            "entrance ports keep declaration order (2311, 1000, 8080) instead of being sorted");
         var (single, singleChannel) = EntrancePortFamilies.Split(8080, [], 7001);
         check(single.SequenceEqual([8080]) && singleChannel.SequenceEqual([7001]),
             "defaults (Entrance.Port=8080, no AdditionalPorts) still yield both families");
@@ -33,10 +37,27 @@ internal static class EntranceSplitSmokeTests
         check(threw,
             "enabling the channel process while the game process still binds the entrance ports is rejected");
 
+        var zeroLinkPort = new ProcessOptions();
+        zeroLinkPort.Channel.LinkPort = 0;
+        var zeroLinkPortThrew = false;
+        try { zeroLinkPort.Validate(); }
+        catch (InvalidOperationException) { zeroLinkPortThrew = true; }
+        check(zeroLinkPortThrew,
+            "LinkPort=0 is rejected: the link port must be within 1..65535");
+
+        var oversizedLinkPort = new ProcessOptions();
+        oversizedLinkPort.Channel.LinkPort = 70000;
+        var oversizedLinkPortThrew = false;
+        try { oversizedLinkPort.Validate(); }
+        catch (InvalidOperationException) { oversizedLinkPortThrew = true; }
+        check(oversizedLinkPortThrew,
+            "LinkPort=70000 is rejected: the link port must be within 1..65535");
+
         var split = new ProcessOptions();
         split.Channel.Enabled = true;
         split.Game.EntranceBinding = false;
         split.Validate();
-        check(true, "channel-owned entrance ports with game.EntranceBinding=false is a valid split");
+        check(split.Channel.Enabled && !split.Game.EntranceBinding,
+            "channel-owned entrance ports with game.EntranceBinding=false is a valid split");
     }
 }
