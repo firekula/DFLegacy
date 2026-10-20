@@ -61,5 +61,65 @@ internal static class EntranceSplitSmokeTests
         catch (InvalidOperationException) { splitAccepted = false; }
         check(splitAccepted,
             "a valid split layout (Channel.Enabled=true, Game.EntranceBinding=false) is accepted by Validate()");
+
+        check(EntranceDialHost.Resolve("0.0.0.0", "127.0.0.1", "1.2.3.4") == "127.0.0.1",
+            "a wildcard advertised host falls back to Entrance.Host");
+        check(EntranceDialHost.Resolve("", "", "1.2.3.4") == "1.2.3.4",
+            "with nothing advertised, a concrete Channel.Host is used as the dial target");
+        check(EntranceDialHost.Resolve("192.168.1.5", "127.0.0.1", "0.0.0.0") == "192.168.1.5",
+            "an advertised gameplay host wins over the entrance host");
+    }
+
+    public static async Task RunHandshakeServerAsync(Action<bool, string> check)
+    {
+        var content = new EntranceContent(null, [1, 2, 3, 4]);
+        var sink = new RecordingSink();
+        var server = new EntranceHandshakeServer(
+            System.Net.IPAddress.Loopback,
+            [0],
+            () => content,
+            sink,
+            _ => { },
+            (_, _) => { });
+        var ports = await server.StartAsync(CancellationToken.None);
+        using var stop = new CancellationTokenSource();
+        var run = server.RunAsync(stop.Token);
+        using (var client = new System.Net.Sockets.TcpClient())
+        {
+            await client.ConnectAsync(System.Net.IPAddress.Loopback, ports[0]);
+            var stream = client.GetStream();
+            var request = PacketFrame.Create(11, new byte[32]);
+            await request.WriteAsync(stream);
+            var reply = await PacketFrame.ReadAsync(stream);
+            check(reply is not null && reply.ProtocolId == 12 && reply.Body.Length == 37,
+                "protocol 11 (0x0b) is answered by protocol 12 with a 36-byte payload plus record count");
+            check(sink.Last is { ReceivedCount: 1, SentCount: 1 },
+                "the session sink sees one received and one sent frame");
+        }
+
+        stop.Cancel();
+        await run;
+        server.Stop();
+    }
+
+    private sealed class RecordingSink : IEntranceSessionSink
+    {
+        public RecordingSession? Last { get; private set; }
+
+        public IEntranceSession Begin(string service, string remote) => Last = new RecordingSession();
+    }
+
+    private sealed class RecordingSession : IEntranceSession
+    {
+        public int ReceivedCount { get; private set; }
+        public int SentCount { get; private set; }
+
+        public void Received(PacketFrame frame) => ReceivedCount++;
+
+        public void Sent(PacketFrame frame) => SentCount++;
+
+        public void Dispose()
+        {
+        }
     }
 }

@@ -13,6 +13,7 @@ if (args.Contains("--s2-ipc"))
 {
     InterProcessCodecSmokeTests.Run(Check);
     EntranceSplitSmokeTests.Run(Check);
+    await EntranceSplitSmokeTests.RunHandshakeServerAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"S2 IPC smoke: {failures.Count} failures");
     Environment.Exit(failures.Count > 0 ? 1 : 0);
