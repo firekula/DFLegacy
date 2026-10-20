@@ -135,7 +135,7 @@ internal static class InterProcessCodecSmokeTests
         var frame = InterProcessLink.Create(InterProcessMessageIds.Register, register.Encode());
 
         check(Convert.ToHexString(frame.Encode()) ==
-              "7B8031000000000000" + "01" + "0200" + "C30B0000" + "0B000000" +
+              "7B803100000000000000" + "01" + "0200" + "C30B0000" + "0B000000" +
               "64000000" + "01000000" + "3132372E302E302E31" + "00000000000000" + "591B0000",
             "REGISTER frame is 49 bytes: category 0x7b, id 128, size 0x31, crc 0, ack 1");
         check(frame.Type == InterProcessMessageIds.LinkCategory
