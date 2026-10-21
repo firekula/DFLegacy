@@ -1614,16 +1614,52 @@ git commit -m "S2: 链路客户端（注册/心跳/超时/重连）+ Tier 1 前�
 
 ## Task 7: 链路服务端（channel 侧）+ 端到端连通
 
-> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+> **2026-10-21 刷新（Task 6 完成后进入本波）：下面 Step 1/Step 3/接线的草案代码有 8 处与现场源码不符或会复现
+> 已知缺陷，已被本节「刷新裁定」取代；草案代码块保留作历史。**
+>
+> 刷新裁定（每条带代价，依据：`src/DFLegacy.Channel/Program.cs:131-186`、`ChannelOptions.cs`、
+> `InterProcessLinkClient.cs`（Task 6）、`EntranceHandshakeServer.cs:73-89`（Task 4 已修的 List 竞态）、
+> ledger「Task 5（I2）」段与「Task 6（I3 前半）」段）：
+> 1. **草案接线用的是不存在的符号**：`options.EntranceHost` / `options.ChannelName` / `options.ChannelPort` /
+>    `options.LinkPort`。实际是 `options.Entrance.Host`、`options.Channel.Name`、`options.Channel.Port`、
+>    `options.Processes.Channel.LinkPort`（`ChannelOptions.cs`）。**代价**：接线要按现场符号写。
+> 2. **草案用 `CancellationToken.None` 起 `RunAsync` 并丢弃返回的 Task**，违反 C5-LIFE/2 与本波自己的门槛要求
+>    （Task 5 交接 §3 Ruling 2：不要沿用永久运行示例）。改为：链路服务的 Start/Run 与握手宿主同处一个 try，
+>    共用 `lifetime`，`finally` 里 `Cancel()` + 两个 `Stop()`。
+> 3. **草案 `StatusPayload.TotalPackets = ReceivedPackets + SentPackets`**，直接违反 ledger 已记录的口径
+>    （「不要把 Received+Sent 当 server 的 TotalPackets」）。改为 `TotalPackets = ReceivedPackets`（收包口径）并在
+>    代码里写明；`TotalConnections = TotalSessions`、`LoggedInUsers = 0`（channel 进程不做登录）。
+> 4. **草案 `PeerUp` 是单个 bool，并在每个会话的进入/退出都置位**：客户端重连时，旧会话的 finally 会把新会话刚
+>    置上的 up 打回 down。改为**已注册会话计数**（`PeerUp => 计数 > 0`），并发下只由 `Interlocked` 维护。
+> 5. **草案 `Stop()` 无锁 `Clear()` `_listeners`，而 `RunAsync` 正在枚举它** —— 这正是 Task 4 在
+>    `EntranceHandshakeServer.cs:73-89` 修过的 "Collection was modified"。必须镜像那份修法：门内取快照 + 清空，
+>    门外 Stop，且幂等。**代价**：多一个门对象。
+> 6. **草案 `Stop()` 不关闭已建立的会话**，服务端停了但 handler 还挂着。改为跟踪已接受连接，`Stop()` 一并关闭。
+> 7. **草案的端到端断言只覆盖 game→channel 方向**（`LastStatus`），且用固定 `Task.Delay(300)`。改为有界轮询，
+>    并补 channel→game 方向（客户端 `LastRemoteStatus` 非空）——「端到端连通」必须双向。
+> 8. **草案把端到端用例塞进 `InterProcessLinkSmokeTests.RunAsync`「两个 listener 停掉之前」**：Task 6 已把该文件
+>    改成三个独立场景方法，没有那个插入点。改为：in-process 服务端场景新增一个方法；**真实两进程连通**放进
+>    `ChannelProcessSmokeTests`（它已有进程夹具、端口分配与 env 构造，复用而不是复制一份）。**代价**：Task 7 的
+>    测试落在两个文件里。
+> 9. 草案 `PacketFrame.ReadAsync` 未设长度上限：链路帧最大 49 B，改为按 4 KiB 上限读，避免对端一个头就把 4 MiB
+>    缓冲拉起来。**代价**：多一个常量。
+> 10. 本波**不发** `NOTICE_CHANNEL_SERVER`（草案也没发）：第 4 种载荷到 Task 9/10 的 S2S 报文表才接，
+>     记为遗留项 D7-NOTICE，别当成已连通。
 
 **Files:**
 - Create: `src/DFLegacy.InterProcess/InterProcessLinkServer.cs`
-- Modify: `tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs`（追加端到端断言）
-- Modify: `src/DFLegacy.Channel/Program.cs`（启动链路服务端）
+- Modify: `src/DFLegacy.Channel/Program.cs`（把链路服务端纳入同一个 try/finally）
+- Modify: `tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs`（in-process 服务端场景）
+- Modify: `tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs`（真实两进程连通）
 
 **Interfaces:**
-- Consumes: `InterProcessLink`、三种载荷的 `TryDecode`。
-- Produces: `InterProcessLinkServer(IPAddress address, int port, RegisterAckPayload ack, Func<StatusPayload> status, TimeSpan statusInterval, Action<string> log)`：`Task<int> StartAsync(CancellationToken)`（返回实际端口，支持 0）、`Task RunAsync(CancellationToken)`、`bool PeerUp`、`RegisterPayload? LastRegister`、`StatusPayload? LastStatus`（**game 发来的**，与客户端的 `LastRemoteStatus` 对称）、`void Stop()`。
+- Consumes: `InterProcessLink`、四种载荷的 `TryDecode`、`InterProcessLinkClient`（Task 6）。
+- Produces: `InterProcessLinkServer(IPAddress address, int port, RegisterAckPayload ack, Func<StatusPayload> status, TimeSpan statusInterval, Action<string> log)`：
+  `Task<int> StartAsync(CancellationToken)`（返回实际端口，支持 0）、`Task RunAsync(CancellationToken)`、`void Stop()`、
+  `bool PeerUp`（= 已注册会话数 > 0）、`RegisterPayload? LastRegister`、`StatusPayload? LastStatus`（game 发来的）、`DateTimeOffset? LastStatusAt`。
+
+> 草案 Step 1/Step 3 的代码块以下不再有效；第 1–10 条裁定 + 上面 Files/Interfaces 是现行契约。
+> Step 2/Step 4 的命令按仓库门槛改为：构建 smoke 工程 → `--s2-ipc` → 全量；Step 5 的提交必须逐文件 pathspec。
 
 - [ ] **Step 1: 写失败测试**
 

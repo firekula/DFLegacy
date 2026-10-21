@@ -44,6 +44,173 @@ internal static class InterProcessLinkSmokeTests
         await RunHappyPathAsync(check);
         await RunRejectedAckAsync(check);
         await RunSilentPeerAsync(check);
+        await RunServerEndToEndAsync(check);
+        await RunServerRejectsVersionAsync(check);
+    }
+
+    /// <summary>
+    /// Task 7：真实服务端 + 真实客户端（同一进程、两个 socket）的端到端连通，双向都验。
+    /// </summary>
+    private static async Task RunServerEndToEndAsync(Action<bool, string> check)
+    {
+        // 两个方向刻意给不同的值：把「对端发来的」和「自己发的」写反时必红。
+        var gameStatus = new StatusPayload(UptimeMs: 5, ActiveSessions: 1, LoggedInUsers: 0, TotalConnections: 2, TotalPackets: 4);
+        var channelStatus = new StatusPayload(UptimeMs: 77, ActiveSessions: 3, LoggedInUsers: 1, TotalConnections: 9, TotalPackets: 11);
+        var ack = new RegisterAckPayload(InterProcessMessageIds.LinkProtocolVersion, 1, "Local Channel 1", 7001);
+        var logs = new List<string>();
+        var server = new InterProcessLinkServer(
+            IPAddress.Loopback,
+            0,
+            ack,
+            () => channelStatus,
+            StatusInterval,
+            message =>
+            {
+                lock (logs)
+                {
+                    logs.Add(message);
+                }
+            });
+
+        var linkPort = await server.StartAsync(CancellationToken.None);
+        check(linkPort > 0, "the link server binds an ephemeral port when asked for port 0");
+        using var serverStop = new CancellationTokenSource();
+        var serverRun = server.RunAsync(serverStop.Token);
+        using var clientStop = new CancellationTokenSource();
+        InterProcessLinkClient? client = null;
+        Task? clientRun = null;
+        try
+        {
+            client = CreateClient(linkPort, gameStatus, null, _ => { });
+            clientRun = client.RunAsync(clientStop.Token);
+
+            var up = await PollAsync(() => client.Connected && server.PeerUp, WaitTimeout);
+            check(up, "client and server agree the link is up after REGISTER / REGISTER_ACK");
+            check(server.LastRegister is { GcNo: 3011, ChannelNo: 11, GamePort: 7001 },
+                "the server decodes gc_no / channel_no / game_port out of REGISTER");
+            check(client.LastAck is { Accepted: 1, ChannelPort: 7001, ChannelName: "Local Channel 1" },
+                "the client decodes the channel identity out of REGISTER_ACK");
+
+            check(await PollAsync(() => server.LastStatus == gameStatus, WaitTimeout),
+                "game→channel STATUS is decoded and stored by the server");
+            check(server.LastStatusAt is not null,
+                "the server stamps LastStatusAt, so a silent game process is observable");
+            check(await PollAsync(() => client.LastRemoteStatus == channelStatus, WaitTimeout),
+                "channel→game STATUS reaches the client, so end-to-end is bidirectional");
+
+            // game 侧断开后，服务端必须自己降下来（不是等 Stop）。
+            clientStop.Cancel();
+            var clientStopped = await AwaitQuietlyAsync(clientRun, WaitTimeout);
+            check(clientStopped.Completed && clientStopped.Fault is null,
+                $"the link client stops cleanly{Describe(clientStopped.Fault)}");
+            check(await PollAsync(() => !server.PeerUp, WaitTimeout),
+                "when the game side disconnects the server reports PeerUp=false on its own");
+        }
+        finally
+        {
+            clientStop.Cancel();
+            if (clientRun is not null)
+            {
+                await AwaitQuietlyAsync(clientRun, WaitTimeout);
+            }
+
+            if (client is not null)
+            {
+                await client.DisposeAsync();
+            }
+
+            serverStop.Cancel();
+            await AwaitQuietlyAsync(serverRun, WaitTimeout);
+            server.Stop();
+        }
+
+        check(CanBind(linkPort), "the link server releases its port after RunAsync completes and Stop() runs");
+        lock (logs)
+        {
+            check(logs.Any(line => line.Contains("Game process registered from", StringComparison.Ordinal)),
+                "the server logs the registration together with the decoded ids");
+        }
+    }
+
+    /// <summary>Task 7：版本不匹配的 REGISTER 必须回 accepted=0，双方都不建链。</summary>
+    private static async Task RunServerRejectsVersionAsync(Action<bool, string> check)
+    {
+        var ack = new RegisterAckPayload(InterProcessMessageIds.LinkProtocolVersion, 1, "Local Channel 1", 7001);
+        var logs = new List<string>();
+        var server = new InterProcessLinkServer(
+            IPAddress.Loopback,
+            0,
+            ack,
+            () => new StatusPayload(1, 0, 0, 0, 0),
+            StatusInterval,
+            message =>
+            {
+                lock (logs)
+                {
+                    logs.Add(message);
+                }
+            });
+
+        var linkPort = await server.StartAsync(CancellationToken.None);
+        using var serverStop = new CancellationTokenSource();
+        var serverRun = server.RunAsync(serverStop.Token);
+        using var clientStop = new CancellationTokenSource();
+        InterProcessLinkClient? client = null;
+        Task? clientRun = null;
+        try
+        {
+            var newerRegister = Register with
+            {
+                ProtocolVersion = (ushort)(InterProcessMessageIds.LinkProtocolVersion + 1),
+            };
+            client = CreateClient(linkPort, new StatusPayload(1, 0, 0, 0, 0), null, _ => { }, newerRegister);
+            clientRun = client.RunAsync(clientStop.Token);
+
+            var rejected = await PollAsync(
+                () => client.LastAck is { Accepted: 0 } && !client.Connected && !server.PeerUp,
+                WaitTimeout);
+            check(rejected,
+                "a REGISTER with a newer link protocol version is answered with accepted=0 and neither side links up");
+            check(server.LastRegister is { ProtocolVersion: InterProcessMessageIds.LinkProtocolVersion + 1 },
+                "the server still records the attempted version from the rejected REGISTER (config-drift evidence)");
+            lock (logs)
+            {
+                check(logs.Any(line => line.Contains("rejected", StringComparison.OrdinalIgnoreCase)),
+                    "the rejection is logged with the reason");
+            }
+        }
+        finally
+        {
+            clientStop.Cancel();
+            if (clientRun is not null)
+            {
+                await AwaitQuietlyAsync(clientRun, WaitTimeout);
+            }
+
+            if (client is not null)
+            {
+                await client.DisposeAsync();
+            }
+
+            serverStop.Cancel();
+            await AwaitQuietlyAsync(serverRun, WaitTimeout);
+            server.Stop();
+        }
+    }
+
+    private static bool CanBind(int port)
+    {
+        try
+        {
+            var listener = new TcpListener(IPAddress.Loopback, port);
+            listener.Start();
+            listener.Stop();
+            return true;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -313,9 +480,10 @@ internal static class InterProcessLinkSmokeTests
         int port,
         StatusPayload ownStatus,
         Action? onUp,
-        Action<string> onDown) =>
+        Action<string> onDown,
+        RegisterPayload? register = null) =>
         new(new InterProcessLinkClientOptions(
-            "127.0.0.1", port, StatusInterval, MissedStatusLimit, Register, () => ownStatus))
+            "127.0.0.1", port, StatusInterval, MissedStatusLimit, register ?? Register, () => ownStatus))
         {
             PeerUp = onUp,
             PeerDown = onDown,

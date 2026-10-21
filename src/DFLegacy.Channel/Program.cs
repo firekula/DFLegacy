@@ -1,5 +1,6 @@
 using System.Net;
 using DFLegacy.Channel;
+using DFLegacy.InterProcess;
 using DFLegacy.Protocol;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -156,13 +157,37 @@ logger.LogInformation(
     string.Join(", ", entrancePorts),
     string.Join(", ", channelPorts));
 
+// 链路服务端（Task 7 / I3 后半）：让 game 进程把「我在这儿、我多大」注册上来，双方按同一间隔互发 STATUS。
+// 只做校验与记账，不碰存档（spec §5.4）。
+var startedAt = DateTimeOffset.UtcNow;
+var link = new InterProcessLinkServer(
+    address,
+    options.Processes.Channel.LinkPort,
+    new RegisterAckPayload(
+        InterProcessMessageIds.LinkProtocolVersion,
+        Accepted: 1,
+        options.Channel.Name,
+        (uint)options.Channel.Port),
+    () => new StatusPayload(
+        UptimeMs: (ulong)(DateTimeOffset.UtcNow - startedAt).TotalMilliseconds,
+        ActiveSessions: (uint)sink.ActiveSessions,
+        LoggedInUsers: 0,                      // channel 进程不做账号登录，这个字段恒 0
+        TotalConnections: (ulong)sink.TotalSessions,
+        // 收包口径：**不要**写成 Received+Sent —— server 的 TotalPackets 就是收包数
+        // （RuntimeEntranceSink.cs:23-33），合并口径留给 Task 8 复核。
+        TotalPackets: (ulong)sink.ReceivedPackets),
+    TimeSpan.FromSeconds(1),
+    message => logger.LogInformation("{Message}", message));
+
 try
 {
-    // 串行管理生命周期（C5-LIFE/2）：Start 与 Run 在同一个 try 里，清理只在 finally 一处。
-    // 这样第二个/第三个端口绑定失败时，先前已经建好的监听也会被 Stop 释放（D5-START 的调用方一半；
+    // 串行管理生命周期（C5-LIFE/2）：握手宿主与链路服务端的 Start/Run 全在一个 try 里，清理只在 finally 一处。
+    // 这样任一方端口绑定失败时，先前已经建好的监听也会被 Stop 释放（D5-START 的调用方一半；
     // 共享宿主忽略 Start token、Start/Stop 窗口仍是 open，不能据此声称完整并发安全）。
+    await link.StartAsync(lifetime.Token);
     await server.StartAsync(lifetime.Token);
-    await server.RunAsync(lifetime.Token);
+    var runs = new[] { server.RunAsync(lifetime.Token), link.RunAsync(lifetime.Token) };
+    await Task.WhenAll(runs);
     return 0;
 }
 catch (OperationCanceledException)
@@ -176,11 +201,15 @@ catch (Exception exception)
 }
 finally
 {
+    // 先取消再 Stop：否则任一方故障退出后，另一方的循环还会继续跑（Task 7 刷新裁定第 2 条）。
+    lifetime.Cancel();
     server.Stop();
+    link.Stop();
     logger.LogInformation(
-        "Channel process stopped: received={Received} sent={Sent} sessions={Sessions} active={Active}.",
+        "Channel process stopped: received={Received} sent={Sent} sessions={Sessions} active={Active} peerUp={PeerUp}.",
         sink.ReceivedPackets,
         sink.SentPackets,
         sink.TotalSessions,
-        sink.ActiveSessions);
+        sink.ActiveSessions,
+        link.PeerUp);
 }

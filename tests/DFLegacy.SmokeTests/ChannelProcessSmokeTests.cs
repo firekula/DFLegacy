@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using DFLegacy.Channel;
+using DFLegacy.InterProcess;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
 using Microsoft.Extensions.Configuration;
@@ -50,12 +51,16 @@ internal static class ChannelProcessSmokeTests
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan ExitTimeout = TimeSpan.FromSeconds(20);
 
+    /// <summary>「等到某个可观察状态出现」的上限（链路注册、日志行等）。</summary>
+    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(15);
+
     public static async Task RunAsync(Action<bool, string> check)
     {
         RunConfigurationMapping(check);
         RunConfigurationValidation(check);
         await RunScriptSourceResolutionAsync(check);
         await RunTopologiesAsync(check);
+        await RunLinkEndToEndAsync(check);
         await RunReadParametersAsync(check);
         await RunTopologyGuardsAsync(check);
     }
@@ -530,6 +535,136 @@ internal static class ChannelProcessSmokeTests
     }
 
     /// <summary>
+    /// Task 7 / I3 后半：**真实两进程**的链路连通 —— 真正的 <c>DFLegacy.Channel</c> exe 起链路服务端，
+    /// 测试进程里的真 <see cref="InterProcessLinkClient"/> 注册上去，两个方向都验。
+    /// </summary>
+    /// <remarks>
+    /// 与 <c>InterProcessLinkSmokeTests</c> 的分工：那边在同一个进程里验服务端自己的行为（含拒绝路径），
+    /// 这边验「装配起来的 channel 进程真的能接链路」，配置走的是同一份 server.json + 环境覆盖。
+    /// </remarks>
+    private static async Task RunLinkEndToEndAsync(Action<bool, string> check)
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        if (repositoryRoot is null)
+        {
+            check(false, "the repository root is reachable for the link end-to-end fixture");
+            return;
+        }
+
+        var channelExe = Path.Combine(repositoryRoot, "src", "DFLegacy.Channel", "bin",
+            DetectBuildConfiguration(), "net10.0", "DFLegacy.Channel.exe");
+        var pvfPath = Path.Combine(repositoryRoot, "DNF2008", "Script.pvf");
+        if (!File.Exists(channelExe) || !File.Exists(pvfPath))
+        {
+            check(false, $"the link end-to-end fixture needs {channelExe} and {pvfPath}");
+            return;
+        }
+
+        var ports = FixturePorts.Allocate();
+        var scratch = Path.Combine(Path.GetTempPath(), "dflegacy-channel-link-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            var environment = WithTopology(
+                BuildEnvironment(pvfPath, scratch, ports),
+                channelEnabled: true,
+                gameBindsEntrance: false);
+            using var channel = ChildProcess.Start(channelExe, Path.GetDirectoryName(channelExe)!, environment);
+            var linkReady = await channel.WaitForOutputAsync(
+                $"Inter-process link listening at 127.0.0.1:{ports.LinkPort}", ReadinessTimeout);
+            ReportUnready(check, "channel link role", linkReady, channel);
+            if (!linkReady)
+            {
+                return;
+            }
+
+            // 就像 game 进程会做的那样：把自己的身份注册上去，然后按间隔报 STATUS。
+            var register = new RegisterPayload(
+                ProtocolVersion: InterProcessMessageIds.LinkProtocolVersion,
+                GcNo: 3011,
+                ChannelNo: (uint)ChannelNumber,
+                MaximumUsers: (uint)ChannelMaximumUsers,
+                CurrentUsers: (uint)ChannelCurrentUsers,
+                AdvertisedHost: "127.0.0.1",
+                GamePort: (uint)ports.ChannelPort);
+            var reportedStatus = new StatusPayload(
+                UptimeMs: 5, ActiveSessions: 1, LoggedInUsers: 0, TotalConnections: 2, TotalPackets: 4);
+            await using var client = new InterProcessLinkClient(new InterProcessLinkClientOptions(
+                "127.0.0.1", ports.LinkPort, TimeSpan.FromMilliseconds(200), 3, register, () => reportedStatus));
+            using var clientStop = new CancellationTokenSource();
+            var clientRun = client.RunAsync(clientStop.Token);
+            try
+            {
+                check(await PollAsync(() => client.Connected, WaitTimeout),
+                    "a real DFLegacy.Channel process accepts a real link client's REGISTER (registration survives the process boundary)");
+                check(client.LastAck is { Accepted: 1 } ack
+                        && ack.ChannelPort == (uint)ports.ChannelPort
+                        && ack.ChannelName == ChannelName,
+                    "the ACK carries the channel identity straight out of the channel process's own config (name and port match the fixture)");
+                check(await PollAsync(() => client.LastRemoteStatus is not null, WaitTimeout),
+                    "the channel process sends its own STATUS back, so channel→game works across the process boundary too");
+                check(await PollAsync(
+                        () => channel.Output.Contains("Game process registered from", StringComparison.Ordinal),
+                        WaitTimeout),
+                    "the channel process logs the registration with the decoded ids");
+                check(await PollAsync(
+                        () => channel.Output.Contains("game_port=", StringComparison.Ordinal),
+                        WaitTimeout),
+                    "the logged registration includes the game port the client asked to advertise");
+            }
+            finally
+            {
+                clientStop.Cancel();
+                check((await AwaitQuietlyAsync(clientRun, WaitTimeout)).Fault is null,
+                    "the link client against the real channel process stops cleanly");
+                await channel.StopAndWaitAsync(ExitTimeout);
+            }
+
+            check(CanBind(ports.LinkPort),
+                "the channel process releases the link port when it stops (no listener left behind)");
+        }
+        finally
+        {
+            TryDeleteDirectory(scratch);
+        }
+    }
+
+    private static async Task<bool> PollAsync(Func<bool> predicate, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (predicate())
+            {
+                return true;
+            }
+
+            await Task.Delay(20);
+        }
+
+        return predicate();
+    }
+
+    private static async Task<(bool Completed, Exception? Fault)> AwaitQuietlyAsync(Task task, TimeSpan timeout)
+    {
+        var finished = await Task.WhenAny(task, Task.Delay(timeout));
+        if (!ReferenceEquals(finished, task))
+        {
+            return (false, null);
+        }
+
+        try
+        {
+            await task;
+            return (true, null);
+        }
+        catch (Exception exception)
+        {
+            return (true, exception);
+        }
+    }
+
+    /// <summary>
     /// C5-READ/2：宿主必须拿到配置里的 MaximumPacketLength / RejectBadCrc32（noDelay 是常量）。
     /// 用一个非默认值的 channel 进程验证它们在真实装配路径上生效 —— 只直接 new 宿主证明不了这一层。
     /// </summary>
@@ -961,6 +1096,7 @@ internal static class ChannelProcessSmokeTests
         int EntrancePort,
         int AdditionalPort,
         int ChannelPort,
+        int LinkPort,
         int AdminPort,
         int CharacterDatagramPort,
         int UdpPrimaryPort,
@@ -969,16 +1105,16 @@ internal static class ChannelProcessSmokeTests
     {
         public static FixturePorts Allocate()
         {
-            // bind(0) 只保证「那一刻空闲」；八个端口之间也可能撞车（撞车会以难读的绑定/路由错误变红）。
+            // bind(0) 只保证「那一刻空闲」；端口之间也可能撞车（撞车会以难读的绑定/路由错误变红）。
             // 所以分配后去重，最多重试若干轮，并在耗尽时抛清楚的话。
             for (var attempt = 0; attempt < 16; attempt++)
             {
                 var candidate = new FixturePorts(
-                    GetFreePort(), GetFreePort(), GetFreePort(), GetFreePort(),
+                    GetFreePort(), GetFreePort(), GetFreePort(), GetFreePort(), GetFreePort(),
                     GetFreePort(), GetFreePort(), GetFreePort(), GetFreePort());
                 var values = new[]
                 {
-                    candidate.EntrancePort, candidate.AdditionalPort, candidate.ChannelPort,
+                    candidate.EntrancePort, candidate.AdditionalPort, candidate.ChannelPort, candidate.LinkPort,
                     candidate.AdminPort, candidate.CharacterDatagramPort,
                     candidate.UdpPrimaryPort, candidate.UdpSecondaryPort, candidate.ProbePort,
                 };
@@ -988,7 +1124,7 @@ internal static class ChannelProcessSmokeTests
                 }
             }
 
-            throw new InvalidOperationException("Could not allocate eight distinct fixture ports.");
+            throw new InvalidOperationException("Could not allocate nine distinct fixture ports.");
         }
     }
 
@@ -1010,6 +1146,7 @@ internal static class ChannelProcessSmokeTests
             ["DFLegacy__Channel__ChannelNumber"] = ChannelNumber.ToString(),
             ["DFLegacy__Channel__MaximumUsers"] = ChannelMaximumUsers.ToString(),
             ["DFLegacy__Channel__CurrentUsers"] = ChannelCurrentUsers.ToString(),
+            ["DFLegacy__Processes__Channel__LinkPort"] = ports.LinkPort.ToString(),
             // AdvertisedHost 故意不设：缺省空串 ⇒ 必须回退到 Host（C5-HOST/2 的第一步）。
             ["DFLegacy__GameplayDatagram__Host"] = GameplayProbeHost,
             ["DFLegacy__GameplayDatagram__PrimaryPort"] = ports.UdpPrimaryPort.ToString(),
