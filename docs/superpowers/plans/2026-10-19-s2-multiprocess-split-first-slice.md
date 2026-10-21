@@ -1302,7 +1302,27 @@ I2 的接线与内容对比、非默认读参数透传必须有实际记录才�
 
 ## Task 6: 链路客户端（game 侧）+ Tier 1 前半
 
-> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+> **2026-10-21 刷新（Task 5 完成后进入本波）：下面 Step 1/Step 3 的草案代码有 4 处会直接变红或掩盖缺陷，
+> 已被本节「刷新裁定」取代；以裁定 + 仓库里的实现/测试为准，草案代码块保留作历史。**
+>
+> 刷新裁定（每条带代价，依据：`InterProcessLink.cs:12-27`、`InterProcessMessageIds.cs:10-19`、
+> `InterProcessPayloads.cs:6-157`、`PacketFrame.cs:31-70`、`InterProcessCodecSmokeTests.cs:20-57`、spec §5.1/§5.3/§7.1）：
+> 1. **`Connected` 的语义是「已注册成功」**（spec §5.3：`accepted=0` ⇒ 不建链），所以草案 Step 1 在服务端发
+>    ACK **之前**断言 `client.Connected` 必红。改为 ACK 之后断言，并补一条 ACK 之前 `Connected == false`。
+>    **代价**：多一条时序断言。
+> 2. **草案所有读包都没有超时**（`PacketFrame.ReadAsync(stream)` 无 token）。按本仓库既有规则
+>    （Task 5 交接 §7、`EntranceSplitSmokeTests.cs:461-481`）给每次读与每次等退出加超时，超时必须是具名 FAIL
+>    而不是挂住整套 smoke。**代价**：测试代码变长。
+> 3. **草案测试起 `RunAsync` 后从不 await，`DisposeAsync` 又立即 `Cancel`+`Dispose` CTS** —— 跑动中的读/写循环
+>    会碰到已释放的 CTS（`ObjectDisposedException`）且异常无人观察。改为：`RunAsync` 内部 `using` 持有 CTS 并
+>    只在退出时释放；`DisposeAsync` 只请求停止；测试先 Cancel 再 await run 任务。**代价**：`DisposeAsync` 不再
+>    自带「等待退出」语义，调用方必须 await 自己的 run 任务。
+> 4. **Tier 1 前半没覆盖完**：草案只验了 id/长度，没验 spec §7.1 第 1 项的**固定线上字节**（`[0]=0x7b`、
+>    `[1]=0x80`、`[2..5]=49 LE`、`[6..9]=0`、`[10]=1`），也完全没测第 4 项**对端静默 3 个心跳周期 ⇒ 标记 down
+>    并重连**。这两项补进本波测试（编解码的精确 hex 已由 `InterProcessCodecSmokeTests.cs:20-29` 覆盖，本波只补
+>    **客户端真的把这些字节写到 socket 上**与**静默判死**）。**代价**：本波测试组多两个场景。
+> 5. 提交命令改为逐文件 pathspec（仓库规则，禁止 `git add -A`），共享文件 `tests/DFLegacy.SmokeTests/Program.cs`
+>    只暂存本任务那一行。
 
 **Files:**
 - Create: `src/DFLegacy.InterProcess/InterProcessLinkClient.cs`
