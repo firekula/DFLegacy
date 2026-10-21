@@ -108,6 +108,10 @@ builder.Services.AddSingleton<ClearRewardCatalog>();
 builder.Services.AddSingleton<ClearRewardGenerator>();
 builder.Services.AddSingleton<GameplayDatagramService>();
 builder.Services.AddHostedService<EntranceHandshakeService>();
+// I4：game 侧链路客户端（拆分模式拨号 channel 进程；单体模式 ExecuteAsync 直接返回）。
+// 单例 + 托管：/api/status 要读同一个 Client 实例。
+builder.Services.AddSingleton<ChannelLinkService>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ChannelLinkService>());
 builder.Services.AddHostedService<EntranceService>();
 builder.Services.AddHostedService<CharacterDatagramService>();
 builder.Services.AddHostedService<FatigueResetService>();
@@ -298,7 +302,7 @@ app.MapGet("/admin", () => Results.Redirect("/admin/index.html"));
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "dflegacy-emulator" }));
 
-app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items) => Results.Ok(new
+app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items, ChannelLinkService channelLink) => Results.Ok(new
 {
     runtime.StartedAt,
     runtime.TotalConnections,
@@ -321,7 +325,16 @@ app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemC
     GameProbe = options.GameProbe.Enabled ? $"{options.GameProbe.Host}:{options.GameProbe.Port}" : "disabled",
     Random = GameRandomSource.Shared.GetStatus(),
     ChannelScriptConfigured = scripts.FileExists("etc/channel_info.etc"),
-    CachedItems = items.Count
+    CachedItems = items.Count,
+    // I4：既有字段不动；新增 channelLink 让双侧存活与计数对 admin 可见。
+    // 本地值（runtime.*）仍是原来的口径；合并值通过 ChannelLink 暴露（StatusProjection 收包口径）。
+    ChannelLink = StatusProjection.ChannelLink(
+        channelLink.Client?.Connected ?? false,
+        channelLink.Client?.LastStatusAt,
+        channelLink.Client?.LastRemoteStatus,
+        runtime.TotalConnections,
+        runtime.TotalPackets,
+        runtime.Sessions().Length)
 }));
 
 app.MapGet("/api/sessions", (RuntimeState runtime) => Results.Ok(runtime.Sessions()));

@@ -1910,18 +1910,32 @@ git commit -m "S2: 链路服务端（注册/ACK/STATUS 记账）+ 端到端连�
 
 ## Task 8: game 进程接入链路 + admin 计数与存活（I4 完成）
 
-> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+> **2026-10-21 刷新（Task 7 完成后进入本波）：草案 Step 3/Step 5 有 4 处与现场不符或不可作证，
+> 已被本节「刷新裁定」取代；草案代码块保留作历史。**
+>
+> 刷新裁定（每条带代价，依据：`InterProcessLinkClient.cs`（Task 6）、`RuntimeState.cs:46-153`、
+> `AdminAccessPolicy.cs:92-95`、`AdminAuthService.cs:14-25`、`Program.cs:182,331-355,735-778`）：
+> 1. **`ChannelLinkService` 构造少了 `RuntimeState`**：草案 `ExecuteAsync` 用了 `runtime.*` 但构造参数没有它。改为
+>    `(ServerOptions options, RuntimeState runtime, ILogger<ChannelLinkService> logger)`。
+> 2. **`Status()` 把 `Sessions().Length` 同时塞给 `ActiveSessions` 和 `LoggedInUsers`**：game 不在 RuntimeState 记
+>    「已登录角色数」。`LoggedInUsers` 改 0，`ActiveSessions` 用 `Sessions().Length`。
+> 3. **`/api/status` 是 Admin 鉴权**（`AdminAccessPolicy.cs:92-95` 兜底 fail-closed）：草案「手工访问」会拿 401。
+>    改为自动化：`JsonGameStore` 同进程预种账号 → 起真实 Server（`Admin.Users=[admin]` + 同 `DataPath`，
+>    `ApplyBootstrapAdminsAsync` @Program.cs:182 启动提权）→ POST login → Bearer GET status。
+> 4. **Step 5 手工验证不算证据**：改为真实两进程（Server split + Channel）端到端，同时覆盖接入链路、双侧存活、
+>    `/api/status` 既有字段不回归 + 新增 `channelLink`。用例落在 `ChannelProcessSmokeTests`。
 
 **Files:**
-- Create: `src/DFLegacy.Server/ChannelLinkService.cs`
 - Create: `src/DFLegacy.Server/StatusProjection.cs`
-- Modify: `src/DFLegacy.Server/Program.cs`（`/api/status` 增字段、注册 hosted service）
-- Create: `tests/DFLegacy.SmokeTests/StatusProjectionSmokeTests.cs`
-- Modify: `tests/DFLegacy.SmokeTests/Program.cs`
+- Create: `src/DFLegacy.Server/ChannelLinkService.cs`
+- Modify: `src/DFLegacy.Server/Program.cs`（注册 hosted service + `/api/status` 加 `channelLink` 字段）
+- Create: `tests/DFLegacy.SmokeTests/StatusProjectionSmokeTests.cs`（纯投影）
+- Modify: `tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs`（真实两进程：接入链路 + admin 登录 + `/api/status`）
+- Modify: `tests/DFLegacy.SmokeTests/Program.cs`（`--s2-ipc` 加 `StatusProjectionSmokeTests.Run`）
 
 **Interfaces:**
-- Consumes: `InterProcessLinkClient`；`RuntimeState.TotalConnections/TotalPackets/Sessions()`。
-- Produces: `StatusProjection.ChannelLink(bool connected, DateTimeOffset? lastStatusAt, StatusPayload? status, long localConnections, long localPackets, int localSessions)` → `ChannelLinkStatus` record（字段 `Connected`、`LastStatusAt`、`RemoteSessions`、`RemotePackets`、`TotalConnections`、`TotalPackets`、`ActiveSessions`）。
+- Consumes: `InterProcessLinkClient`（Task 6）；`RuntimeState.TotalConnections/TotalPackets/Sessions()/StartedAt`。
+- Produces: `StatusProjection.ChannelLink(...)` → `ChannelLinkStatus` record；`ChannelLinkService : BackgroundService`（构造三参）。
 
 - [ ] **Step 1: 写失败测试**
 

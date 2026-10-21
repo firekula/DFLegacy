@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using DFLegacy.Channel;
 using DFLegacy.InterProcess;
 using DFLegacy.Protocol;
@@ -61,6 +62,7 @@ internal static class ChannelProcessSmokeTests
         await RunScriptSourceResolutionAsync(check);
         await RunTopologiesAsync(check);
         await RunLinkEndToEndAsync(check);
+        await RunLinkAdminEndToEndAsync(check);
         await RunReadParametersAsync(check);
         await RunTopologyGuardsAsync(check);
     }
@@ -629,6 +631,164 @@ internal static class ChannelProcessSmokeTests
         }
     }
 
+    /// <summary>
+    /// Task 8 / I4：**真实两进程** —— Server(split) 的 ChannelLinkService 拨号 Channel 的链路服务端，
+    /// 然后 admin 登录后 GET /api/status，既有字段不回归 + 新增 channelLink.connected=true。
+    /// </summary>
+    private static async Task RunLinkAdminEndToEndAsync(Action<bool, string> check)
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        if (repositoryRoot is null)
+        {
+            check(false, "the repository root is reachable for the link-admin e2e fixture");
+            return;
+        }
+
+        var serverExe = Path.Combine(repositoryRoot, "src", "DFLegacy.Server", "bin",
+            DetectBuildConfiguration(), "net10.0", "DFLegacy.Server.exe");
+        var channelExe = Path.Combine(repositoryRoot, "src", "DFLegacy.Channel", "bin",
+            DetectBuildConfiguration(), "net10.0", "DFLegacy.Channel.exe");
+        var pvfPath = Path.Combine(repositoryRoot, "DNF2008", "Script.pvf");
+        if (!File.Exists(serverExe) || !File.Exists(channelExe) || !File.Exists(pvfPath))
+        {
+            check(false, $"the link-admin e2e fixture needs {serverExe}, {channelExe} and {pvfPath}");
+            return;
+        }
+
+        var ports = FixturePorts.Allocate();
+        var seedDir = Path.Combine(Path.GetTempPath(), "dflegacy-channel-admin-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(seedDir);
+        var statePath = Path.Combine(seedDir, "state.json");
+
+        // 用同进程 JsonGameStore 预种一个账号：真实 Server 启动时 ApplyBootstrapAdminsAsync（Program.cs:182）
+        // 会把它提权为管理员。这样 admin 登录才不 403。
+        var seedStore = new JsonGameStore(
+            new ServerOptions { DataPath = statePath },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<JsonGameStore>.Instance);
+        await seedStore.CreateAccountAsync(new CreateAccountRequest("admin", "bosspass", OicqCode: "10001"));
+
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        var environment = WithTopology(
+            BuildEnvironment(pvfPath, seedDir, ports),
+            channelEnabled: true,
+            gameBindsEntrance: false);
+        environment["DFLegacy__Admin__Users__0"] = "admin";
+
+        using var channel = ChildProcess.Start(channelExe, Path.GetDirectoryName(channelExe)!, environment);
+        using var server = ChildProcess.Start(serverExe, Path.GetDirectoryName(serverExe)!, environment);
+        try
+        {
+            var channelLinkReady = await channel.WaitForOutputAsync(
+                $"Inter-process link listening at 127.0.0.1:{ports.LinkPort}", ReadinessTimeout);
+            ReportUnready(check, "channel link role", channelLinkReady, channel);
+            if (!channelLinkReady)
+            {
+                return;
+            }
+
+            var serverUp = await server.WaitForOutputAsync("Application started", ReadinessTimeout);
+            ReportUnready(check, "server admin role", serverUp, server);
+            if (!serverUp)
+            {
+                return;
+            }
+
+            // 双侧存活可见：Server 拨 Channel → 两边日志各证一侧（I4 的核心）。
+            var linkUp = await server.WaitForOutputAsync(
+                "Inter-process link to the channel process is up", WaitTimeout);
+            check(linkUp,
+                "split mode: the game process's ChannelLinkService dials the channel process's link server and the link comes up");
+            check(await channel.WaitForOutputAsync("Game process registered from", WaitTimeout),
+                "split mode: the channel process logs the game's registration with the decoded ids");
+
+            // /api/status 既有字段不回归 + 新增 channelLink（I4 门槛）。
+            var loginResponse = await http.PostAsync(
+                $"http://127.0.0.1:{ports.AdminPort}/api/auth/login",
+                new StringContent(
+                    """{"userName":"admin","password":"bosspass"}""",
+                    Encoding.UTF8,
+                    "application/json"));
+            check(loginResponse.IsSuccessStatusCode,
+                "admin login succeeds against the real server (bootstrap promotion at startup worked)");
+            if (!loginResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            using var loginDoc = JsonDocument.Parse(await loginResponse.Content.ReadAsStringAsync());
+            var token = loginDoc.RootElement.GetProperty("token").GetString();
+            check(!string.IsNullOrEmpty(token), "the login response carries a non-empty bearer token");
+
+            // 用一次真实的入口连接，把 channel 侧的会话计数推到 >= 1：这样 channelLink.totalConnections
+            // 的合并才不是「两边都 0 的巧合」，而是一条真的跨进程观测（客户端连 Channel 入口 → channel 记
+            // TotalSessions → STATUS 报给 game → 投影合进 /api/status）。
+            await TouchTcpAsync(ports.EntrancePort);
+
+            var merged = await PollAsync(async () =>
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{ports.AdminPort}/api/status");
+                request.Headers.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                var response = await http.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return false;
+                }
+
+                using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                var root = doc.RootElement;
+                return root.TryGetProperty("channelLink", out var link)
+                    && link.GetProperty("connected").GetBoolean()
+                    && link.GetProperty("totalConnections").GetInt64() >= 1;
+            }, WaitTimeout);
+            check(merged,
+                "/api/status: after a real entrance connection, channelLink.connected is true and "
+                + "channelLink.totalConnections >= 1 (the channel-side counter crossed the process boundary into admin)");
+
+            var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{ports.AdminPort}/api/status");
+            statusRequest.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            var statusResponse = await http.SendAsync(statusRequest);
+            check(statusResponse.IsSuccessStatusCode,
+                "/api/status accepts the bearer token (no 401/403)");
+            if (!statusResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            using var statusDoc = JsonDocument.Parse(await statusResponse.Content.ReadAsStringAsync());
+            var statusRoot = statusDoc.RootElement;
+            check(statusRoot.TryGetProperty("totalConnections", out _) && statusRoot.TryGetProperty("totalPackets", out _),
+                "/api/status: existing numeric fields (totalConnections, totalPackets) are still present — no regression");
+            check(statusRoot.TryGetProperty("activeSessions", out _) && statusRoot.TryGetProperty("entrance", out _),
+                "/api/status: existing 'activeSessions' and 'entrance' fields are still present — no regression");
+        }
+        finally
+        {
+            await server.StopAndWaitAsync(ExitTimeout);
+            await channel.StopAndWaitAsync(ExitTimeout);
+            TryDeleteDirectory(seedDir);
+        }
+
+        check(CanBind(ports.AdminPort) && CanBind(ports.LinkPort),
+            "the link-admin e2e leaves no listeners behind on the admin or link port");
+    }
+
+    /// <summary>对 loopback 端口做一次「连上就关」，让对端的会话计数 +1（不读不写任何帧）。</summary>
+    private static async Task TouchTcpAsync(int port)
+    {
+        try
+        {
+            using var client = new TcpClient();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await client.ConnectAsync(IPAddress.Loopback, port, timeout.Token);
+        }
+        catch (Exception exception) when (exception is IOException or SocketException or OperationCanceledException)
+        {
+            // 连不上就静默：断言不靠这一下成功，靠后面的轮询。
+        }
+    }
+
     private static async Task<bool> PollAsync(Func<bool> predicate, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
@@ -643,6 +803,22 @@ internal static class ChannelProcessSmokeTests
         }
 
         return predicate();
+    }
+
+    private static async Task<bool> PollAsync(Func<Task<bool>> predicate, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await predicate())
+            {
+                return true;
+            }
+
+            await Task.Delay(50);
+        }
+
+        return await predicate();
     }
 
     private static async Task<(bool Completed, Exception? Fault)> AwaitQuietlyAsync(Task task, TimeSpan timeout)

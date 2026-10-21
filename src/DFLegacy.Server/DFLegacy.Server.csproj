@@ -14,6 +14,7 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+    <ProjectReference Include="../DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
     <ProjectReference Include="../DFLegacy.RandomNative/DFLegacy.RandomNative.vcxproj"
                       ReferenceOutputAssembly="false"
                       Condition="'$(BuildRandomNativeReference)' == 'true'" />

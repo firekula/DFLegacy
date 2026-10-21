@@ -1,5 +1,8 @@
 # Task 7 完成交接 · 链路服务端 + 端到端连通（2026-10-21）
 
+> **[历史]** I3 后半的结论仍有效，但**当前视图**已移到 `2026-10-21-task-8-complete-handoff.md`
+> （Task 8 起 BASE 为本次提交；遗留项当前表以那份 §6 为准）。
+
 > 当前视图。前两版 `2026-10-21-task-5-complete-handoff.md`（I2）与 `2026-10-21-task-6-complete-handoff.md`（I3 前半）
 > 记录历史，结论仍有效。
 > 本波只做 Task 7。Task 8–11 一行未动，全部仍 `needs-refresh`。
