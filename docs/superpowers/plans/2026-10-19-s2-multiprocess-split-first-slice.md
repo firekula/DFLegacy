@@ -1213,7 +1213,8 @@ git commit -m "S2: 握手族改由 EntranceHandshakeService 托管（单体模�
 
 ## Task 5: `DFLegacy.Channel` 新 exe（I2，待实现与验收）
 
-> 2026-10-21 按 Recon 0.2.1 恢复核验修订。此段取代旧的可直接照抄示例；Task 5 仍未开始。
+> 2026-10-21 按 Recon 0.2.1 恢复核验修订。此段取代旧的可直接照抄示例。
+> 同日实施并验收：实现与两档进程证据见 `docs/superpowers/handoff/2026-10-21-task-5-complete-handoff.md`；Step 1 的三处收窄见下方「本波 Ruling」。
 > 代码基线 `fdde655`，相关工作区快照见交接 §1；下列引用均在该基线/快照核验。
 > 只实施这一波。Task 6–11 的代码草案为 `needs-refresh`，不能直接照抄。
 
@@ -1246,6 +1247,13 @@ git commit -m "S2: 握手族改由 EntranceHandshakeService 托管（单体模�
 **窄配置至少覆盖：** Entrance.Enabled/Host/Port/AdditionalPorts；Channel.Name/Host/Port/ChannelNumber/MaximumUsers/CurrentUsers；GameplayDatagram.Host/AdvertisedHost；ScriptPvfPath/SkillScriptPath；MaximumPacketLength/RejectBadCrc32；Processes.Channel.Enabled/LinkPort 与 Game.EntranceBinding。
 缺省值逐项对照 `ServerOptions` / `ProcessOptions`，不能只验证装机 JSON 的常量。环境覆盖包括上述被消费键，尤其 CRC、长度、广告地址、PVF/目录与拓扑开关；数组沿用同一 Configuration 提供器合并语义。
 拓扑校验镜像 `ProcessOptions.Validate()`：同时 Enabled 与 EntranceBinding 为 true、LinkPort 越界均在绑定前失败。Channel.Enabled=false 或 Entrance.Enabled=false 时 Channel 不绑入口口并说明原因；两拓扑开关都 false 时 Server 的既有单体行为保留。
+注意「同一份 `server.json`」的准确含义：**同一份来源**，构建时仓库根的 `server.json` 被 `Content` 复制到**各自工程的输出目录**（`DFLegacy.Server.csproj:20-22` 与本工程同形）。运行时两个进程读的是两份副本；因此**相对**的 `ScriptPvfPath` / `SkillScriptPath` 会按各自的 `AppContext.BaseDirectory` 解析（`ScriptFileSystem.cs:304-307`、`ChannelScriptSource.cs`），拆分部署必须用绝对路径或把两个 exe 放同一目录。该部署约束不在本波修改 `BUILDING.md` 的范围内，记入遗留项 D5-CONFIG-PATH。
+
+### 本波 Ruling（2026-10-21 实施后，带代价）
+
+1. **频道口「走频道路由」收窄为可观察的部分**：本波验证「该口由 game 角色监听 + 接得上 + 握手引擎不在该口服务」。完整玩法协议路由需要构造合法玩法帧或走 admin 记账，超出 Task 5 授权（且伪造正向断言比诚实留 open 更坏）。**代价**：D5-WIRING 的「玩法路由」一半仍然 open，须在 Task 8/11 用真实玩法帧或真机补；不能据此宣称该口玩法接线已验证。
+2. **「正常停止退出」收窄为「停止后在超时内退出且端口释放」**：进程级信号驱动的优雅退出（Ctrl+C / stdin EOF）需要额外控制台信号管线或新增 production seam，本波不加。测试里的停止是 `Kill(entireProcessTree)` 后等退出，断言文案已按此改写，不再写成 "when asked to stop"。**代价**：`Program.cs` 的 `Console.CancelKeyPress` → `Cancel()` 分支与 OCE 返回 0 分支在本波零覆盖，记入 D5-START 的 open 范围。
+3. **「启动失败也 Stop 已建监听」只由 code review 兜**：进程一退出操作系统就释放监听，进程外无法区分「finally 里 Stop 过」与「进程死了」。测试只断言可观察子集（非零退出、首口确实曾经绑上、退出后端口可用）。**代价**：该 finally 的行为没有任何自动化覆盖，生命周期调整时必须重读 `Program.cs` 的 try/finally。
 
 ### Step 0：恢复与隔离（先读，不开始写实现）
 
@@ -1258,7 +1266,7 @@ git commit -m "S2: 握手族改由 EntranceHandshakeService 托管（单体模�
 | 测试组 | 最少覆盖 | 不应扩大到 |
 |---|---|---|
 | 配置/内容（表驱动） | JSON 与环境覆盖、缺省；CRC 开/关、非默认长度；广告地址缺省回退到 GameplayDatagram.Host；PVF/目录/缺失脚本；非法拓扑不绑定 | 穷举无关配置、生产状态写入 |
-| 接线/生命周期（真实进程或真实托管入口） | 单体三口同 Server；拆分 2311/8080 属 Channel、7001 属 Server；每个入口口实际发 11 收 12，频道口走频道路由；二次绑定失败后首口释放、正常停止退出 | 只测 Split 或 pid 列表冒充托管接线 |
+| 接线/生命周期（真实进程或真实托管入口） | 单体三口同 Server；拆分 2311/8080 属 Channel、7001 属 Server；每个入口口实际发 11 收 12；频道口**接得上但握手引擎不在该口服务**（正向玩法路由不在本波，见下方 Ruling）；二次绑定失败后进程非零退出且不留监听、停止后在超时内退出并释放端口 | 只测 Split 或 pid 列表冒充托管接线 |
 | I2 内容对比（同一个测试客户端） | 两模式相同输入与脚本资产：11/5/9/1 → 12/6/10/3；用各会话密钥解密/解压后逐字节比较协议 10 脚本及协议 3 元数据；配置透传在真实装配路径生效 | 仅直接 new 宿主，或沿用 Task 4 的合成脚本测试宣布新进程通过 |
 
 `EntranceProtocolEngine.cs:10` 的 KeyMaterial 每会话随机：记录协议 12 的结构与本会话解码关系；原始密钥/密文自然差异不能误报。上述是 spec §6 I2 的握手脚本内容门槛；spec §7 最终 Tier 2 原始帧对比的例外/归一化仍待 Task 11 明确定义，不能据此宣布 Tier 2 已通过。
@@ -1270,7 +1278,7 @@ git commit -m "S2: 握手族改由 EntranceHandshakeService 托管（单体模�
 - [ ] 按 C5-CONFIG/HOST/SCRIPT 读配置和内容；缺失文件日志说明实际来源；按 C5-READ/LIFE/SINK 组装共享宿主、角色日志与计数。
 - [ ] 接入 `--s2-ipc`。只实现 Task 5，不提前接链路、admin 合并、protocol 表或 acceptance 平台。
 
-### Step 3：统一完成门槛（本轮整理尚未执行）
+### Step 3：统一完成门槛（已执行；命令与结果见交接 §5）
 
 ```powershell
 dotnet build tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj -c Release
