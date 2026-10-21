@@ -4,7 +4,7 @@
 
 **Goal:** 把握手族（TCP 2311/8080）从 `DFLegacy.Server` 拆成独立进程 `DFLegacy.Channel`，两进程之间跑一条官方形状的进程间链路，且客户端可见行为逐字节不变。
 
-**Architecture:** 三个新项目 —— `DFLegacy.InterProcess`（链路帧与报文）、`DFLegacy.Channel`（新 exe，只依赖 `DFLegacy.Protocol` + `DFLegacy.InterProcess`，**不得引用 `DFLegacy.Server`**）、以及在 `DFLegacy.Protocol` 内新增的握手宿主 `EntranceHandshakeServer`（无 ASP.NET 依赖，靠 `IEntranceSessionSink` 记账）。`DFLegacy.Server` 保留频道玩法族，并在 `Processes.Channel.Enabled=false` 时退化为单体模式。
+**Architecture:** 两个新项目 —— `DFLegacy.InterProcess`（链路帧与报文）、`DFLegacy.Channel`（新 exe，只依赖 `DFLegacy.Protocol` + `DFLegacy.InterProcess`，**不得引用 `DFLegacy.Server`**）、以及在既有 `DFLegacy.Protocol` 内新增的握手宿主 `EntranceHandshakeServer`（无 ASP.NET 依赖，靠 `IEntranceSessionSink` 记账）。`DFLegacy.Server` 保留频道玩法族，并在 `Processes.Channel.Enabled=false` 时退化为单体模式。
 
 **Tech Stack:** .NET 10（`net10.0`）、`Microsoft.NET.Sdk.Web` 宿主、`System.Text.Json` 配置、自建 smoke 测试运行器（`tests/DFLegacy.SmokeTests`，`OutputType=Exe`，`Action<bool,string> check` 风格）、Python 3.12（`tools/acceptance`、`protocol/`）。
 
@@ -18,11 +18,13 @@
 - **报文号**：只有 `NOTICE_CHANNEL_SERVER = 4` 复用官方 ID；其它一律 `>= 128`（`REGISTER=128`、`REGISTER_ACK=129`、`STATUS=130`）（spec §5.2）。
 - **载荷口径**：字段从帧偏移 11 起 = `PacketFrame.Body[1..]`；`Body[0]` 是记录数（spec §5.2）。
 - **端口归属**：`EntrancePorts = {Entrance.Port} ∪ AdditionalPorts \ {Channel.Port}` 归 channel 进程；`{Channel.Port}` 归 server 进程；链路默认 `7004`（spec §4.2/§5.6）。
-- **每个任务结束时**：`dotnet build DFLegacy.Emulator.slnx` 必须零错误；该任务涉及的 smoke 必须 0 failures；提交用**逐文件 pathspec**，**绝不 `git add -A`**。
+- **每个任务结束时**：沿用 Task 4 已批准的 managed build gate（原生 vcxproj 不由 dotnet CLI 验证），构建受影响的 managed 工程零警告零错误；全量 smoke 与 `--s2-ipc` 分别通过（单组不包含另一组）；提交用**逐文件 pathspec**，**绝不 `git add -A`**。
 - **Commit message 用中文**，一条任务一次提交（或按步骤里写明的小提交）。
-- `docs/` 被 `.gitignore:15` 挡住 ⇒ 新增文档必须 `git add -f <path>`（`-f` 写在 pathspec 之前）。
+- `docs/` 被 `.gitignore:15` 挡住 ⇒ 文档使用 `git add -f -- <明确文件路径>`；本轮普通 add 已跟踪文档虽入 index，仍因忽略父目录返回 1，不能据此猜测暂存结果，须检查 index。
 
 ---
+
+> 恢复阅读：Task 1–4 的示例属于执行前历史，实际接口以当前源码和最新 handoff 为准；Task 5 使用本次修订契约，Task 6–11 草案需进入对应波时刷新。
 
 ## File Structure（先锁死分工）
 
@@ -35,7 +37,7 @@
 | `src/DFLegacy.InterProcess/InterProcessLinkClient.cs` | game 侧：拨号/注册/心跳/超时/重连 + 可读状态 | 新 |
 | `src/DFLegacy.InterProcess/InterProcessLinkServer.cs` | channel 侧：接受/校验/ACK/收 STATUS + 可读状态 | 新 |
 | `src/DFLegacy.Protocol/EntrancePortFamilies.cs` | 纯函数：端口按族切分 | 新 |
-| `src/DFLegacy.Protocol/EntranceDialHost.cs` | 纯函数：广告地址解析（从 `EntranceService.ResolveChannelDialHost` 抽出） | 新 |
+| `src/DFLegacy.Protocol/EntranceDialHost.cs` | 已提交的拨号策略；历史镜像来源含未提交补丁，见 Task 5 恢复交接 | 新 |
 | `src/DFLegacy.Protocol/EntranceSessionSink.cs` | `IEntranceSessionSink` / `IEntranceSession` 抽象 | 新 |
 | `src/DFLegacy.Protocol/EntranceHandshakeServer.cs` | 握手族监听 + 读循环 + 派发 + 记账（无 ASP.NET 依赖） | 新 |
 | `src/DFLegacy.Channel/DFLegacy.Channel.csproj` | 新 exe | 新 |
@@ -46,7 +48,7 @@
 | `src/DFLegacy.Server/ServerOptions.cs` | 增加 `Processes` 属性 | 改 |
 | `src/DFLegacy.Server/EntranceHandshakeService.cs` | 把 `EntranceHandshakeServer` 托管进 game 进程（单体模式用） | 新 |
 | `src/DFLegacy.Server/RuntimeEntranceSink.cs` | `IEntranceSessionSink` → `RuntimeState` 适配 | 新 |
-| `src/DFLegacy.Server/EntranceService.cs` | 只绑 `Channel.Port`；内容加载改走 `EntranceDialHost` | 改（小） |
+| `src/DFLegacy.Server/EntranceService.cs` | Task 4 已改为只绑 `Channel.Port`；其旧 LoadContent 留存，不在 Task 5 改 | 改（小） |
 | `src/DFLegacy.Server/Program.cs` | 注册 hosted service、`/api/status` 增字段、链路客户端 | 改 |
 | `server.json` | 增加 `Processes` 段 | 改 |
 | `tests/DFLegacy.SmokeTests/InterProcessCodecSmokeTests.cs` | 帧/载荷字节断言 | 新 |
@@ -1209,325 +1211,90 @@ git commit -m "S2: 握手族改由 EntranceHandshakeService 托管（单体模�
 
 ---
 
-## Task 5: `DFLegacy.Channel` 新 exe（I2 完成）
+## Task 5: `DFLegacy.Channel` 新 exe（I2，待实现与验收）
+
+> 2026-10-21 按 Recon 0.2.1 恢复核验修订。此段取代旧的可直接照抄示例；Task 5 仍未开始。
+> 代码基线 `fdde655`，相关工作区快照见交接 §1；下列引用均在该基线/快照核验。
+> 只实施这一波。Task 6–11 的代码草案为 `needs-refresh`，不能直接照抄。
 
 **Files:**
+
 - Create: `src/DFLegacy.Channel/DFLegacy.Channel.csproj`
 - Create: `src/DFLegacy.Channel/ChannelOptions.cs`
 - Create: `src/DFLegacy.Channel/ChannelScriptSource.cs`
 - Create: `src/DFLegacy.Channel/ChannelSessionSink.cs`
 - Create: `src/DFLegacy.Channel/Program.cs`
-- Modify: `DFLegacy.Emulator.slnx`
+- Modify: `DFLegacy.Emulator.slnx`（只加 Channel 工程，保留现有原生工程条目）
+- Modify: `tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj`（补 Channel ProjectReference）
 - Create: `tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs`
-- Modify: `tests/DFLegacy.SmokeTests/Program.cs`
+- Modify: `tests/DFLegacy.SmokeTests/Program.cs`（只向 `--s2-ipc` 插入本组调用）
+- Test-only, if needed: `tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs`（提取复用的握手客户端逻辑，保留既有断言）
 
-**Interfaces:**
-- Consumes: `EntranceHandshakeServer`、`EntranceContentFactory`、`EntranceDialHost`、`IEntranceSessionSink`、`PvfArchiveReader`。
-- Produces: `ChannelOptions.Read(JsonElement)` → `ChannelOptions`（窄模型：`EntranceHost`、`EntrancePort`、`EntranceAdditionalPorts`、`ChannelName/Number/Port/MaximumUsers/CurrentUsers`、`ScriptPvfPath`、`GameplayAdvertisedHost`、`LinkPort`）；`ChannelScriptSource.Read(string pvfPath)` → `byte[]?`。
+### 消费契约（派发前以现场符号和摘要复核）
 
-- [ ] **Step 1: 写失败的窄配置一致性测试**
+| ID / 版本 | Task 5 必须遵守 | 来源 |
+|---|---|---|
+| C5-DEP / 2 | Channel 只引用 Protocol + InterProcess；可直接用 `EntranceHandshakeServer`、`EntranceContentFactory`、`EntranceDialHost`、`EntrancePortFamilies`、`IEntranceSessionSink`、`PvfArchiveReader`。Server 的 `EntranceHandshakeService` / `RuntimeEntranceSink` / `ScriptFileSystem` 仅参考，不能直接引用 | Global Constraints；`EntranceSessionSink.cs:3`；Task 4 的 Server 适配器 |
+| C5-READ / 2 | 显式传入 `maximumPacketLength=options.MaximumPacketLength`、`rejectBadCrc32=options.RejectBadCrc32`、`noDelay=true`。NoDelay 是旧行为常量，不发明新配置键；先记收包再拒坏 CRC | `EntranceHandshakeServer.cs:11,132,145`；`EntranceHandshakeService.cs:64`；`ServerOptions.cs:21` |
+| C5-CONFIG / 2 | 从同一份 `server.json` 的 DFLegacy section 读角色所需配置，环境变量在 JSON 后覆盖；窄模型不引用 Server。`ChannelOptions.Read(IConfigurationSection)` 可作为映射入口，替代旧 `Read(JsonElement)` 和仅覆盖两个键的示例 | `Program.cs:17-28`；`ServerOptions.cs:3,120` |
+| C5-HOST / 2 | 先按 `string.IsNullOrWhiteSpace(AdvertisedHost) ? GameplayDatagram.Host : AdvertisedHost` 取得广告地址，再调 `EntranceDialHost.Resolve(advertised, EntranceHost, ChannelHost)`；不能把缺省广告地址直接当空串跳过 GameplayDatagram.Host | `ServerOptions.cs:42`；`EntranceHandshakeService.cs:54`；已提交 `EntranceDialHost.cs:12` |
+| C5-SCRIPT / 2 | `ChannelScriptSource.Read(string pvfPath, string unpackedScriptPath)`：有效 PVF 优先，缺 PVF 才看 `SkillScriptPath` 目录；相对路径按 `AppContext.BaseDirectory`。缺 `etc/channel_info.etc` 返回 null，由调用方 warn；已存在但损坏的 PVF 按既有异常语义处理 | `ScriptFileSystem.cs:29-57,304`；`PvfArchiveReader.cs:22,32`；`EntranceHandshakeService.cs:77` |
+| C5-LIFE / 2 | 支持取消与 finally 清理：Start 和 Run 都放在清理范围内，多端口启动失败也 Stop 已建监听；当前共享宿主忽略 Start token 且存在 Start/Stop 窗口，调用方串行管理生命周期，不在启动中并发 Stop | `EntranceHandshakeServer.cs:27,73,120,166`；遗留 D5-START / D5-CANCEL |
+| C5-SINK / 2 | 自建 ChannelSessionSink，保留 `ReceivedPackets / SentPackets / TotalSessions / ActiveSessions`；Begin 保留宿主的 `entrance:{port}` 标签，关闭后 active 归零。将来合并 TotalPackets 的口径以收包计数为准，Task 7/8 需刷新 | `EntranceSessionSink.cs:8`；`RuntimeEntranceSink.cs:24`；`EntranceHandshakeServer.cs:136` |
+| C5-GATE / 2 | 配置/纯函数测试 + 真实宿主端口与请求路由 + 单体/拆分握手脚本内容对比；两组 smoke 都跑。端口存在或同 pid 本身不证明引擎接线 | spec §6 I2；`EntranceSplitSmokeTests.cs:85,189`；`tests/.../Program.cs:12` |
 
-`tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs`：
+**窄配置至少覆盖：** Entrance.Enabled/Host/Port/AdditionalPorts；Channel.Name/Host/Port/ChannelNumber/MaximumUsers/CurrentUsers；GameplayDatagram.Host/AdvertisedHost；ScriptPvfPath/SkillScriptPath；MaximumPacketLength/RejectBadCrc32；Processes.Channel.Enabled/LinkPort 与 Game.EntranceBinding。
+缺省值逐项对照 `ServerOptions` / `ProcessOptions`，不能只验证装机 JSON 的常量。环境覆盖包括上述被消费键，尤其 CRC、长度、广告地址、PVF/目录与拓扑开关；数组沿用同一 Configuration 提供器合并语义。
+拓扑校验镜像 `ProcessOptions.Validate()`：同时 Enabled 与 EntranceBinding 为 true、LinkPort 越界均在绑定前失败。Channel.Enabled=false 或 Entrance.Enabled=false 时 Channel 不绑入口口并说明原因；两拓扑开关都 false 时 Server 的既有单体行为保留。
 
-```csharp
-using DFLegacy.Channel;
+### Step 0：恢复与隔离（先读，不开始写实现）
 
-internal static class ChannelProcessSmokeTests
-{
-    public static void Run(Action<bool, string> check)
-    {
-        var root = LocateRepoRoot();
-        var json = File.ReadAllText(Path.Combine(root, "server.json"));
-        var section = System.Text.Json.JsonDocument.Parse(json).RootElement.GetProperty("DFLegacy");
-        var channel = ChannelOptions.Read(section);
+- [ ] 读 Global Constraints、本段、handoff 当前视图及 ledger 的最新 Recon 0.2.1 段；现场 `git status` / HEAD 与快照核对，仅刷新变化涉及的 C5 契约。
+- [ ] 复核三份共享文件：slnx、smoke csproj、smoke Program；源码入口文件另有他人改动。保留快照，采用与任务相称的隔离；历史不建 worktree 的裁定是已有上下文，不能用 blanket stash 扰动别人的改动。
+- [ ] 明确证伪假设：同一客户端输入、角色配置与脚本资产下，入口换宿主不会改变下载脚本、频道元数据、CRC/长度拒绝或端口路由。先确认进程测试能提供隔离配置和资产，缺口作为本任务首个验证步骤。
 
-        check(channel.EntrancePort == 2311 && channel.EntranceAdditionalPorts.SequenceEqual([7001, 8080]),
-            "the channel process reads the same entrance ports as server.json");
-        check(channel.ChannelPort == 7001 && channel.LinkPort == 7004,
-            "the channel process reads the channel port and the default link port");
+### Step 1：写精简且有判别力的失败测试
 
-        var script = ChannelScriptSource.Read(Path.Combine(root, "does-not-exist.pvf"));
-        check(script is null, "a missing Script.pvf yields no channel script instead of throwing");
-    }
+| 测试组 | 最少覆盖 | 不应扩大到 |
+|---|---|---|
+| 配置/内容（表驱动） | JSON 与环境覆盖、缺省；CRC 开/关、非默认长度；广告地址缺省回退到 GameplayDatagram.Host；PVF/目录/缺失脚本；非法拓扑不绑定 | 穷举无关配置、生产状态写入 |
+| 接线/生命周期（真实进程或真实托管入口） | 单体三口同 Server；拆分 2311/8080 属 Channel、7001 属 Server；每个入口口实际发 11 收 12，频道口走频道路由；二次绑定失败后首口释放、正常停止退出 | 只测 Split 或 pid 列表冒充托管接线 |
+| I2 内容对比（同一个测试客户端） | 两模式相同输入与脚本资产：11/5/9/1 → 12/6/10/3；用各会话密钥解密/解压后逐字节比较协议 10 脚本及协议 3 元数据；配置透传在真实装配路径生效 | 仅直接 new 宿主，或沿用 Task 4 的合成脚本测试宣布新进程通过 |
 
-    private static string LocateRepoRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "server.json")))
-        {
-            directory = directory.Parent;
-        }
+`EntranceProtocolEngine.cs:10` 的 KeyMaterial 每会话随机：记录协议 12 的结构与本会话解码关系；原始密钥/密文自然差异不能误报。上述是 spec §6 I2 的握手脚本内容门槛；spec §7 最终 Tier 2 原始帧对比的例外/归一化仍待 Task 11 明确定义，不能据此宣布 Tier 2 已通过。
+每次读回复和等退出都设超时；共用一个进程夹具，避免逐断言重复启动和全量重跑。Task 4 已覆盖的组件测试继续沿用。
 
-        return directory?.FullName ?? throw new InvalidOperationException("server.json not found above the test binary");
-    }
-}
+### Step 2：实施本波
+
+- [ ] 建 Channel 工程（net10.0、可执行；可沿原计划用 Web SDK 提供日志/配置依赖，但不建 Kestrel/WebApplication），补测试引用。
+- [ ] 按 C5-CONFIG/HOST/SCRIPT 读配置和内容；缺失文件日志说明实际来源；按 C5-READ/LIFE/SINK 组装共享宿主、角色日志与计数。
+- [ ] 接入 `--s2-ipc`。只实现 Task 5，不提前接链路、admin 合并、protocol 表或 acceptance 平台。
+
+### Step 3：统一完成门槛（本轮整理尚未执行）
+
+```powershell
+dotnet build tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj -c Release
+dotnet run --project tests/DFLegacy.SmokeTests -c Release --no-build -- --s2-ipc
+dotnet run --project tests/DFLegacy.SmokeTests -c Release --no-build
 ```
 
-`Program.cs` 的 `--s2-ipc` 组里插入：
+构建通过 smoke 工程的项目引用覆盖受影响的 managed 依赖，要求零警告零错误；不再把原生 slnx 的 dotnet CLI 失败当成该门槛。
+全量可走已申报 `smoke-tests`（固定 Release，工具自身不带 `--no-build`）；该工具不能传 IPC 分组，后者需单独命令并记结果。一次有意义的修订跑受影响组，收尾再跑全量。
+进程测试使用临时配置/数据目录和受控端口；若需要真 PVF，当前资产为 `<repo>/DNF2008/Script.pvf`，两进程使用相同 `DFLegacy__ScriptPvfPath`。不直接修改或占用已有客户端/服务端实例；结束后清理自己的进程和覆盖。
+I2 的接线与内容对比、非默认读参数透传必须有实际记录才能标完成；设施或基线不足就记录 open 与取数步骤，保持 I2 未验。
 
-```csharp
-    ChannelProcessSmokeTests.Run(Check);
-```
+### Step 4：审查、下游传播与交接
 
-- [ ] **Step 2: 跑测试确认失败**
-
-Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
-Expected: 编译失败，`DFLegacy.Channel` 命名空间不存在（项目还没建）
-
-- [ ] **Step 3: 建项目与实现**
-
-`src/DFLegacy.Channel/DFLegacy.Channel.csproj`：
-
-```xml
-<Project Sdk="Microsoft.NET.Sdk.Web">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <InvariantGlobalization>true</InvariantGlobalization>
-    <AssemblyName>DFLegacy.Channel</AssemblyName>
-    <RootNamespace>DFLegacy.Channel</RootNamespace>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
-    <ProjectReference Include="../DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="../../server.json" Link="server.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-</Project>
-```
-
-> **禁止**给这个项目加 `DFLegacy.Server` 引用（Global Constraints）。
-
-`src/DFLegacy.Channel/ChannelOptions.cs`：
-
-```csharp
-using System.Text.Json;
-
-namespace DFLegacy.Channel;
-
-/// <summary>
-/// 只读本进程需要的键（与 DFLegacy.Server 的 ServerOptions 读同一份 server.json）。
-/// 刻意不与 ServerOptions 合并：channel 进程不引用 server 项目。键名一致性由
-/// ChannelProcessSmokeTests 守着。
-/// </summary>
-public sealed record ChannelOptions(
-    string EntranceHost,
-    int EntrancePort,
-    int[] EntranceAdditionalPorts,
-    string ChannelName,
-    string ChannelHost,
-    int ChannelNumber,
-    int ChannelPort,
-    int MaximumUsers,
-    int CurrentUsers,
-    string ScriptPvfPath,
-    string GameplayAdvertisedHost,
-    int LinkPort)
-{
-    public static ChannelOptions Read(JsonElement section)
-    {
-        var entrance = section.GetProperty("Entrance");
-        var channel = section.GetProperty("Channel");
-        var gameplay = section.GetProperty("GameplayDatagram");
-        var processes = section.TryGetProperty("Processes", out var value) ? value : default;
-
-        return new ChannelOptions(
-            entrance.GetProperty("Host").GetString() ?? "127.0.0.1",
-            entrance.GetProperty("Port").GetInt32(),
-            entrance.GetProperty("AdditionalPorts").EnumerateArray().Select(x => x.GetInt32()).ToArray(),
-            channel.GetProperty("Name").GetString() ?? "Local Channel",
-            channel.GetProperty("Host").GetString() ?? "127.0.0.1",
-            channel.GetProperty("ChannelNumber").GetInt32(),
-            channel.GetProperty("Port").GetInt32(),
-            channel.GetProperty("MaximumUsers").GetInt32(),
-            channel.GetProperty("CurrentUsers").GetInt32(),
-            section.GetProperty("ScriptPvfPath").GetString() ?? "",
-            gameplay.TryGetProperty("AdvertisedHost", out var host) ? host.GetString() ?? "" : "",
-            processes.ValueKind == JsonValueKind.Object
-                && processes.TryGetProperty("Channel", out var channelProcess)
-                && channelProcess.TryGetProperty("LinkPort", out var linkPort)
-                    ? linkPort.GetInt32()
-                    : 7004);
-    }
-}
-```
-
-`src/DFLegacy.Channel/ChannelScriptSource.cs`：
-
-```csharp
-using DFLegacy.Protocol;
-
-namespace DFLegacy.Channel;
-
-/// <summary>读 etc/channel_info.etc（PVF 优先，其次目录）。缺失返回 null —— 与原 LoadContent 一致，不抛。</summary>
-public static class ChannelScriptSource
-{
-    public const string VirtualPath = "etc/channel_info.etc";
-
-    public static byte[]? Read(string configuredPath)
-    {
-        if (string.IsNullOrWhiteSpace(configuredPath))
-        {
-            return null;
-        }
-
-        var path = Path.IsPathRooted(configuredPath)
-            ? configuredPath
-            : Path.Combine(AppContext.BaseDirectory, configuredPath);
-        if (File.Exists(path))
-        {
-            var pvf = new PvfArchiveReader(path);
-            return pvf.FileExists(VirtualPath) ? pvf.ReadAllBytes(VirtualPath) : null;
-        }
-
-        var directoryPath = Path.Combine(path, VirtualPath.Replace('/', Path.DirectorySeparatorChar));
-        return File.Exists(directoryPath) ? File.ReadAllBytes(directoryPath) : null;
-    }
-}
-```
-
-`src/DFLegacy.Channel/ChannelSessionSink.cs`：
-
-```csharp
-using DFLegacy.Protocol;
-
-namespace DFLegacy.Channel;
-
-/// <summary>channel 进程的会话记账：只累加计数并打日志，不落盘、不引用 store。</summary>
-public sealed class ChannelSessionSink(ILogger<ChannelSessionSink> logger) : IEntranceSessionSink
-{
-    private readonly object _gate = new();
-    private long _received;
-    private long _sent;
-    private long _total;
-    private int _active;
-
-    public long ReceivedPackets => Interlocked.Read(ref _received);
-    public long SentPackets => Interlocked.Read(ref _sent);
-    public long TotalSessions => Interlocked.Read(ref _total);
-    public int ActiveSessions => Volatile.Read(ref _active);
-
-    public IEntranceSession Begin(string service, string remote)
-    {
-        Interlocked.Increment(ref _active);
-        Interlocked.Increment(ref _total);
-        logger.LogInformation("Entrance session {Service} from {Remote} opened", service, remote);
-        return new Session(this, logger, remote);
-    }
-
-    private sealed class Session(ChannelSessionSink owner, ILogger logger, string remote) : IEntranceSession
-    {
-        public void Received(PacketFrame frame) => Interlocked.Increment(ref owner._received);
-
-        public void Sent(PacketFrame frame) => Interlocked.Increment(ref owner._sent);
-
-        public void Dispose()
-        {
-            Interlocked.Decrement(ref owner._active);
-            logger.LogInformation("Entrance session from {Remote} closed", remote);
-        }
-    }
-}
-```
-
-`src/DFLegacy.Channel/Program.cs`：
-
-```csharp
-using System.Net;
-using System.Text.Json;
-using DFLegacy.Channel;
-using DFLegacy.InterProcess;
-using DFLegacy.Protocol;
-using Microsoft.Extensions.Logging;
-
-// 只建日志工厂，不建 WebApplication：channel 进程没有 HTTP 面，也就不该起 Kestrel。
-// 日志格式与 DFLegacy.Server 保持一致，便于两个进程的日志并排看。
-using var loggerFactory = LoggerFactory.Create(logging =>
-{
-    logging.ClearProviders();
-    logging.AddSimpleConsole(console =>
-    {
-        console.SingleLine = true;
-        console.TimestampFormat = "HH:mm:ss ";
-    });
-});
-
-// 与 server 进程读同一份 server.json。只有两个部署关键键支持环境变量覆盖
-// （DFLegacy__Entrance__Host / DFLegacy__ScriptPvfPath，与容器/NAT 部署口径一致）；
-// 其余键不支持覆盖 —— 这是已知限制，见设计稿 R2。
-using var document = JsonDocument.Parse(File.ReadAllText(
-    Path.Combine(AppContext.BaseDirectory, "server.json")));
-var read = ChannelOptions.Read(document.RootElement.GetProperty("DFLegacy"));
-var options = read with
-{
-    EntranceHost = Environment.GetEnvironmentVariable("DFLegacy__Entrance__Host") is { Length: > 0 } host
-        ? host
-        : read.EntranceHost,
-    ScriptPvfPath = Environment.GetEnvironmentVariable("DFLegacy__ScriptPvfPath") is { Length: > 0 } pvf
-        ? pvf
-        : read.ScriptPvfPath,
-};
-var script = ChannelScriptSource.Read(options.ScriptPvfPath);
-var channel = new EntranceChannel(
-    options.ChannelName,
-    EntranceDialHost.Resolve(options.GameplayAdvertisedHost, options.EntranceHost, options.ChannelHost),
-    options.ChannelPort,
-    options.ChannelNumber,
-    options.MaximumUsers,
-    options.CurrentUsers);
-var content = new EntranceContentFactory(() => script, channel);
-var sink = new ChannelSessionSink(loggerFactory.CreateLogger<ChannelSessionSink>());
-var (entrancePorts, _) = EntrancePortFamilies.Split(
-    options.EntrancePort,
-    options.EntranceAdditionalPorts,
-    options.ChannelPort);
-var server = new EntranceHandshakeServer(
-    IPAddress.Parse(options.EntranceHost),
-    entrancePorts,
-    content.Get,
-    sink,
-    message => Console.WriteLine(message),
-    (message, error) => Console.Error.WriteLine(error is null ? message : $"{message}: {error.Message}"));
-await server.StartAsync(CancellationToken.None);
-await server.RunAsync(CancellationToken.None);
-```
-
-> 用 `Microsoft.NET.Sdk.Web` 只是为了**不再加 PackageReference**（它自带 `Microsoft.Extensions.Logging.Console` 与 `FrameworkReference Microsoft.AspNetCore.App`）；本进程**不起 Kestrel、不建 `WebApplication`**。若评审要求纯 SDK，等价改动是换成 `Microsoft.NET.Sdk` + `Microsoft.Extensions.Logging.Console` 包引用。
-
-- [ ] **Step 4: 构建并跑测试**
-
-Run: `dotnet build DFLegacy.Emulator.slnx`
-Expected: `Build succeeded`
-
-Run: `dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc`
-Expected: `S2 IPC smoke: 0 failures`
-
-- [ ] **Step 5: 手工验证拆分模式真的能绑 2311**
-
-把 `server.json` 的 `Processes.Channel.Enabled` 临时改成 `true`、`Game.EntranceBinding` 改成 `false`：
-
-Run A: `dotnet run --project src/DFLegacy.Channel`
-Run B: `dotnet run --project src/DFLegacy.Server`
-Run C: `Get-NetTCPConnection -State Listen | Where-Object LocalPort -in 2311,7001,8080 | Select-Object LocalPort,OwningProcess`
-Expected: 2311 与 8080 属于**另一个** pid（channel 进程），7001 属于 server 进程；两条进程日志各自打出自己的绑定。
-
-验完**把 `server.json` 改回**（`Enabled=false` / `EntranceBinding=true`）再提交。
-
-- [ ] **Step 6: 提交**
-
-```bash
-git add src/DFLegacy.Channel/DFLegacy.Channel.csproj src/DFLegacy.Channel/ChannelOptions.cs src/DFLegacy.Channel/ChannelScriptSource.cs src/DFLegacy.Channel/ChannelSessionSink.cs src/DFLegacy.Channel/Program.cs DFLegacy.Emulator.slnx tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs tests/DFLegacy.SmokeTests/Program.cs
-git commit -m "S2: 新增 DFLegacy.Channel 进程（接管入口握手族端口）"
-```
+- [ ] finding 先分 plan-origin/code-origin，修计划后才按新契约修实现；独立复审覆盖生产方和真实消费者接线。
+- [ ] Task 7 的启动/取消接入和统计投影、Task 8 的合并口径、Task 11 的对比方法仍为 `needs-refresh`；等各波开始核验，不照抄旧 `CancellationToken.None` 和 Received+Sent 合计。
+- [ ] 更新 ledger 中稳定 ID 的当前状态，记录基线/配置/命令/结果位置/证明范围；失败或只覆盖组件不能写成 I2 通过。
+- [ ] 逐文件 pathspec 提交本任务文件与计划修订，中文提交信息；共享文件只提交本任务 hunk，核对他人的补丁和未跟踪输入仍在。不要 `git add -A`，不要自动推送。
 
 ---
 
 ## Task 6: 链路客户端（game 侧）+ Tier 1 前半
+
+> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
 
 **Files:**
 - Create: `src/DFLegacy.InterProcess/InterProcessLinkClient.cs`
@@ -1819,6 +1586,8 @@ git commit -m "S2: 链路客户端（注册/心跳/超时/重连）+ Tier 1 前�
 
 ## Task 7: 链路服务端（channel 侧）+ 端到端连通
 
+> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+
 **Files:**
 - Create: `src/DFLegacy.InterProcess/InterProcessLinkServer.cs`
 - Modify: `tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs`（追加端到端断言）
@@ -2077,6 +1846,8 @@ git commit -m "S2: 链路服务端（注册/ACK/STATUS 记账）+ 端到端连�
 
 ## Task 8: game 进程接入链路 + admin 计数与存活（I4 完成）
 
+> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+
 **Files:**
 - Create: `src/DFLegacy.Server/ChannelLinkService.cs`
 - Create: `src/DFLegacy.Server/StatusProjection.cs`
@@ -2276,6 +2047,8 @@ git commit -m "S2: game 进程接入链路并把 channel 侧计数合并进 /api
 
 ## Task 9: `protocol/` 新增 S2S 报文表 + 契约扩展（I5 前半）
 
+> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+
 **Files:**
 - Create: `protocol/map/s2s-map.tsv`
 - Modify: `protocol/importer.py`、`protocol/verify.py`、`protocol/manifest.json`
@@ -2328,6 +2101,8 @@ git commit -m "S2: protocol 新增 S2S 报文表并把校验契约扩到 6 文�
 ---
 
 ## Task 10: 验收平台支持多进程 + 本刀门场景（I5 中段）
+
+> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
 
 **Files:**
 - Modify: `tools/acceptance/model.py`（`Manifest` 支持按进程名的服务端记录）
@@ -2441,6 +2216,8 @@ git commit -m "S2: 验收平台支持多服务端进程与逐进程日志，新�
 
 ## Task 11: Tier 2 / Tier 3 验收与收尾
 
+> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+
 **Files:**
 - Create: `docs/superpowers/plans/2026-10-19-s2-tier2-tier3-runbook.md`（执行手册，`git add -f`）
 - Modify: `server.json`（**只在跑 Tier 2 时**临时切换 `Processes` 段，验完改回）
@@ -2485,7 +2262,7 @@ git commit -m "S2: Tier 2/Tier 3 验收记录（单体/拆分逐字节对比 + �
 
 ---
 
-## Self-Review（对照 spec 逐节）
+## Self-Review（原计划历史自审，不覆盖 Recon 0.2.1 修订）
 
 | spec 要求 | 落在哪个任务 |
 |---|---|
@@ -2514,7 +2291,7 @@ git commit -m "S2: Tier 2/Tier 3 验收记录（单体/拆分逐字节对比 + �
 | §9 缺口 5（验收平台） | Task 10 |
 | §9 缺口 6/7（真机设施、GameProbe 7001） | Task 11 Step 3（真机）；Task 4 Step 5 会暴露 7001 实际归属 |
 
-**Placeholder 扫描**：本计划未使用「TBD/类似 Task N/适当处理」等占位表述；每个代码步骤都给了可直接落盘的实现或精确 diff。
+**历史 Placeholder 扫描（后续 Task 5 已改为契约与验收步骤，远期草案待刷新）**：原计划未使用「TBD/类似 Task N/适当处理」等占位表述；每个代码步骤都给了可直接落盘的实现或精确 diff。
 **类型一致性**：`RegisterPayload`/`RegisterAckPayload`/`StatusPayload`/`NoticeChannelServerPayload` 的字段顺序在 Task 1 定义，Task 6/7/8 只按该顺序使用；`IEntranceSessionSink.Begin(service, remote)` 在 Task 3 定义，Task 4/5 的实现签名一致。
 
 **本轮自审修掉的四个缺陷（留档，因为它们都会让实现跑偏）**：

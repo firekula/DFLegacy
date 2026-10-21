@@ -1,105 +1,73 @@
-# Task 5 Handoff · `DFLegacy.Channel` 新 exe（I2）
+# Task 5 Handoff · Recon 0.2.1 恢复核验版
 
-> 写作时间 2026-10-21。上一段：Task 4（I1 收口）已提交并过独立复审流程。
-> **本文件只交接，不含设计结论**——设计与计划在下面列的权威文件里。
+> 更新：2026-10-21。Task 5 **未开始**；本轮只修改计划、交接和 ledger。
+> 下一次经用户授权执行时，使用同目录 `2026-10-21-task-5-continue-prompt.md`。按标题/符号定位，不沿用旧行号。
 
----
+## 1. 基线与证据版本
 
-## 1. 坐标
+- 仓库：`G:/Game/DNF_ACT1/DFLegacy`；分支 `main`；代码基线 `fdde65582a94f8a2011e4097257734ceb39af599`。
+- Task 4：`0e38cf2` + `dfbf02e`；历史计划修订 `57d8a05` / `ce43078`；旧交接提交 `fdde655`。
+- 当前工作区仍有他人的修改。本轮前快照：`.superpowers/sdd/2026-10-19-s2-multiprocess-split-first-slice/task-5-resume-review/baseline.json`、同目录 `worktree.patch` 和 `untracked/`；补丁 SHA256 `bb27c539369b476738b89960bd31ec24748e52316930a85593748b35bca95eb4`。包含 22 个保护文件指纹；快照供核验，不要直接覆盖当前工作区。
+- `server.json`、核心接口、spec、测试源码指纹及 PVF 指纹均在 baseline.json；PVF 为 `<repo>/DNF2008/Script.pvf`，SHA256 `bc397d1463f1f0f749bbd169400b640d0c8a5d1f6e6e97cfda797099f995ac27`。
+- 本轮文档修订将单独提交；用 `git log -1 -- docs/superpowers/handoff/2026-10-21-task-5-handoff.md` 查文档提交。后续 HEAD 变化先看是否仅文档变化，按受影响来源决定复核范围。
+- 历史 Task 4 全量 smoke / IPC / managed build / pid 83272 结果只归属于当时的混合树；完整工作区指纹未留存，**不是本轮新通过**。本轮核心接口与当前 HEAD 无差异，可沿用其源码契约，不扩大历史运行证据范围。
 
-| 项 | 值 |
-|---|---|
-| BASE（Task 4 开工） | `d9a8986` |
-| Task 4 提交 | `0e38cf2`（8 文件 +417/−13）+ 修复轮 `dfbf02e`（4 文件 +111/−15） |
-| 计划修订提交 | `57d8a05`（首版，+57/−15）、`ce43078`（二次，补读循环三参数） |
-| 分支 | `main`（不建 worktree，理由见 ledger 的开工 Ruling） |
-| 断点 | **Task 5 未开始**。计划 Task 5 从 **第 1212 行**起（`Select-String -Path <plan> -Pattern '^## Task 5'` 现场取，别照抄本文件） |
+## 2. 当前产物和结论
 
-## 2. 已完成任务
-
-| 任务 | 状态 | 提交 |
+| 项 | 当前状态 | 证明范围 |
 |---|---|---|
-| Task 1 `DFLegacy.InterProcess` 帧壳 | ✅ | `68f2949` → `6a72a48` |
-| Task 2 端口分族 + `Processes` 配置 | ✅ | `2aee1d9` → `82c491c` |
-| Task 3 `EntranceHandshakeServer` | ✅ | `5a50b9b` → `c6189a6` |
-| **Task 4 接入 server，I1 收口** | ✅（复审 SPEC ✅ / Important 已修） | `d9a8986` → `0e38cf2` → `dfbf02e`（+ 计划 `57d8a05`,`ce43078`） |
-| Task 5–11 | ⬜ 未开始 | — |
+| Task 1–4 实现 | 已提交，历史审查/修复见 ledger | 本轮未重做独立审查或运行验收 |
+| 入口 CRC/长度/NoDelay | 宿主实现已补回；Server 已传 CRC/长度，NoDelay=true | `EntranceHandshakeServer.cs:11,132-150`；Task 5 仍需验证自身透传 |
+| Stop 的集合竞态 | 已修该竞态，无确定性覆盖 | 不代表 Start/Stop 整体并发安全，也不代表已等待所有会话任务 |
+| Task 4 回放 | 录制协议 6/3 的部分内容期望 + 生成请求，协议 10 使用 4096B 合成脚本 | 直接 new 宿主；未覆盖服务接线、原脚本重新下载或全部原始线上字节 |
+| Task 5 / I2 | 尚未实现与验收 | 本轮修正了文档契约，不将文档更新记为实现完成 |
+| 完整 Tier 2 / Tier 3 | 未验证 | 留给 Task 11/I5；I2 的脚本对比也必须在本波实际完成 |
 
-## 3. I1 的三条验收：实测结果（可重跑）
+## 3. 下一波必须使用的契约
 
-| # | 验收 | 实测 | 命令 |
+权威文件：`docs/superpowers/plans/2026-10-19-s2-multiprocess-split-first-slice.md` 的 Global Constraints + Task 5；C5 契约版本均为 2。
+
+1. **可直接引用**：Protocol 内宿主、内容工厂、端口分族、拨号策略、sink 接口、PVF reader；InterProcess 库。**仅参考**：Server 内 `EntranceHandshakeService` / `RuntimeEntranceSink` / `ScriptFileSystem`。Channel 禁止引用 Server、store 或写 state.json。
+2. 透传 `MaximumPacketLength`、`RejectBadCrc32`；`noDelay:true` 是既有常量。新窄配置读取同源 JSON，并在其后应用环境覆盖；撤下旧仅覆盖两键和 `Read(JsonElement)` 示例。
+3. 广告地址先沿用 GameplayDatagram 的 Host 回退，再用已提交的 `EntranceDialHost.Resolve`；旧 IsDialableHost 仅工作区来源已归档，当前权威不依赖它仍存在。
+4. 脚本来源镜像 Server：PVF 优先，缺 PVF 回退 SkillScriptPath 目录，相对路径以 AppContext.BaseDirectory 解析；缺虚拟文件由调用方 warn。旧把 ScriptPvfPath 当目录的单参数示例已撤下。
+5. 启动/取消串行管理，Start/Run 都纳入 finally 清理。不要把共享宿主 Start token 当成已生效，或沿用旧 CancellationToken.None 永久运行示例。
+6. Files 已补 `tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj` 的 Channel 引用。接线测试须触达真实服务/进程，单测 Split 或检查三个端口同 pid 不足。
+7. I2 对比同一测试客户端在两模式下载的脚本和频道元数据；每会话随机密钥按本会话解码，保留帧结构检查。该证据不等于最终 Tier 2 原始帧全同，随机差异方法见 D5-RAW-COMPARE。
+8. Task 6–11 都标 `needs-refresh`；Task 7/8 尤其复核生命周期和收包统计，不能把 Received+Sent 直接当 Server 的 TotalPackets。
+
+## 4. 遗留项当前视图
+
+单一来源：`.superpowers/sdd/2026-10-19-s2-multiprocess-split-first-slice/progress.md` 最末“Recon 0.2.1 恢复核验 / 当前状态”。本表从该段提取；更新状态时同步提取视图，历史过程留在 ledger。
+已解决、移出 deferred：D5-READ, D5-LABEL, D5-STOP, D5-DIAL, D5-GROUP。它们分别对应宿主读参数、会话标签、Stop 集合竞态、拨号来源归属和双测试组 gate 的文档遗漏；后续实现/更广范围仍按本表验收。
+
+| ID（均 open） | 负责人 | 当前范围 | 触发条件 |
 |---|---|---|---|
-| ① | 现有 smoke 全绿零回归 | `All DFLegacy protocol smoke tests passed.` exit 0 / 82s（修复轮后复跑）；`--s2-ipc` 0 failures（含 6 组新断言，不挂起） | `dotnet run --project tests/DFLegacy.SmokeTests -c Release`（申报工具 `smoke-tests`）、`dotnet run --project tests/DFLegacy.SmokeTests -- --s2-ipc` |
-| ② | 2311/7001/8080 全监听且同 pid | 三端口同属 pid 83272；日志：`EntranceHandshakeService` 绑 2311+8080、`EntranceService` 绑 7001 | 起 `DFLegacy.Server` 后 `Get-NetTCPConnection -State Listen \| ? LocalPort -in 2311,7001,8080` |
-| ③ | 客户端握手字节不变 | **[抓包]+[回放]**：真机录制明文与新代码产出逐字节相同（见 §4） | `EntranceSplitSmokeTests.RunContentFactory` / `RunHandshakeReplayAsync`（随 `--s2-ipc` 跑） |
+| D5-STOP-TEST | 后续生命周期维护 | 上述 Stop 修复无确定性竞态测试；历史多次绿不能替代确定性覆盖 | 生命周期调整或再次观测竞态时补同步/故障注入验证 |
+| D5-START | Task 5 | Start token 未用、Start/Add 与 Stop 有窗口、多端口失败不回滚；Task 5 需串行宿主生命周期并用 finally 收尾 | Task 5 启动失败/取消验收前；共享 API 更广并发保证另行处理 |
+| D5-CANCEL | Task 5 / 后续共享宿主维护 | 会话任务未跟踪，取消期 OCE 不在会话 catch 内；Run 退出不证明所有会话任务均已观察并回收 | Task 5 取消用例若出现故障先处理；全会话等待在扩展生命周期时复核 |
+| D5-SENT-ORDER | 测试维护 | 已有约 1 秒轮询及 volatile 计数读取；仍无显式完成同步，不能写成确定性 happens-before 覆盖 | 复现 flake 或变更该断言时采用显式同步 |
+| D5-ACCEPT-TEST | 共享宿主测试维护 | 真实 accept 错误已 warn+continue；该路径缺确定性错误注入测试，旧无牙指覆盖缺口 | 修改 accept 异常路径或出现线上失败时补注入 seam |
+| D5-WIRING | Task 5 | 已有 Split/直接宿主测试与历史 pid 检查，未覆盖两模式真实服务接线 | Task 5 / I2 完成前必须实际验证每个角色端口及协议路由 |
+| D5-DEAD | 后续清理 | 旧入口分支与 LoadContent 在现行绑定下不可达；本波不顺带清理 | 专门清理波或重新引入调用前复核 |
+| D5-REAL | Task 11 / I5 | 改造后原客户端双档 town-two-clients 与全链路真机未跑；netdump 来源未提交且本轮未验证二进制 | I5 前固定构建/输入版本后取数；可用固化工作区构建，不把必须提交他人改动当先决条件 |
+| D5-RAW-COMPARE | Task 11 / I5 | 随机会话密钥导致原始密文不同；最终 Tier 2 的例外或归一化尚未固化，不把 I2 解码内容对比扩大为 Tier 2 通过 | 最终 Tier 2 前对照批准规范明确方法，需改门槛时记录已有授权或取得决定 |
 
-> ② 的运行需要 PVF 覆盖：`server.json:58` 的 `ScriptPvfPath` 指向本机不存在的
-> `D:\DFLegacy\DF2008\Script.pvf`；资产实际在 `<repo>\DNF2008\Script.pvf`，
-> 用 `$env:DFLegacy__ScriptPvfPath='<repo>\DNF2008\Script.pvf'` 再起
-> `dotnet src/DFLegacy.Server/bin/Debug/net10.0/DFLegacy.Server.dll`（`Program.cs:21-25` 支持该覆盖）。
+这些项没有被本轮风险接受。允许开始已明确的实现，I2 完成前必须取得接线、脚本对比、非默认参数透传与必要启动清理的实际证据。
 
-## 4. 本 wave 的 Rulings（每条带"错了的代价"）
+## 5. 续跑读集与验证
 
-1. **不动 `EntranceService.LoadContent`，频道信息走已提交的 `EntranceDialHost.Resolve`。**
-   理由：拆分后入口分支不可达；工作区里 `LoadContent` 已被**未提交**的 `ResolveChannelDialHost` 改过，
-   动它会与未提交 hunk 冲突；Task 4 的提交必须能在 HEAD-only 状态下编译。
-   代价若错：若那份未提交改动被丢弃，本进程仍用"修正后"的拨号目标（好于 HEAD 行为），与树内其余部分短暂不一致，但不会静默变坏。
-2. **`RuntimeEntranceSink` 用 `public`**（计划写 `internal`）：仓库无 `InternalsVisibleTo` 先例，测试要可见。代价：公开面略增，无行为影响。
-3. **新增三组断言**（sink 记账 / 内容组装镜像 / 录制字节回放）+ 改 Task 3 文件让会话标签带本地端口。代价：测试面与复审面变大（已用变异验证钉死归因）。
-4. **全解 build gate 降级**为「managed 工程 0/0 + 全量 smoke 绿」：原生 vcxproj 在 dotnet CLI 下必失败（`MSB4278` 缺 VCTargetsPath），且 slnx 上有他人未提交的 `Ijl15.Tests` 条目。代价：原生工程编译问题不在本 gate 暴露（与本任务无关）。
-5. **入口读循环三参数补回**：宿主构造带上 `maximumPacketLength` / `rejectBadCrc32` / `noDelay`，与旧共用读循环
-   （HEAD `EntranceService.cs:207,4201,4432`）逐项对齐 —— 复审 Important：开 `RejectBadCrc32` 的部署下入口族必须仍然断会话。
-   代价：宿主多三个参数；`RejectBadCrc32` 的拒绝路径现在有测试（开/关双向 + 超长帧，均已变异验证可红）。
-6. **`EntranceHandshakeServer.Stop()` 加锁**（取快照 → 释放锁 → 逐个 Stop，`Stop()` 幂等）：修掉 `RunAsync.finally` 与宿主 `Stop()` 并发枚举/清空的竞态（实测 `--s2-ipc` 随机红）。代价：该竞态**无确定性测试覆盖**，只能靠 review + 反复运行兜。
+1. 本文件与同目录 continue-prompt；计划 Global Constraints、Task 5（按 `^## Task 5:` 定位）。
+2. `src/DFLegacy.Protocol/EntranceHandshakeServer.cs`、`EntranceContentFactory.cs`、`EntranceDialHost.cs`、`EntrancePortFamilies.cs`、`EntranceSessionSink.cs`、`PvfArchiveReader.cs`。
+3. Server 的 `EntranceHandshakeService.cs`、`ServerOptions.cs`、`ProcessOptions.cs`、`ScriptFileSystem` 路径/来源段、`Program.cs` 配置段；两份 smoke csproj/Program 与 `EntranceSplitSmokeTests` 对应测试。
+4. spec §6 I2、§7 的验收边界，以及 ledger 最末当前表。只有契约涉及的差异才扩读；不通读远期完整代码。
 
-## 5. Task 5 可直接复用的三个接口事实（Task 4 实测）
+实施后必跑：受影响 managed build、Release `--s2-ipc`、Release 全量 smoke；命令与最少测试矩阵见 Task 5 Step 1/3。全量申报工具 `smoke-tests` 不含 IPC；两份结果都要记录。
+本轮宿主没有 DSH 原生 Recon 工具入口，复用本机 Recon 包的 loadConfig/validateConfig 校验项目配置：8 个申报工具，零问题；它们覆盖实验/游戏回归，本轮源码与文档核验不需要调用。另执行源码/差异、文档一致性与交接摘要检查；没有启动游戏进程或跑游戏测试。原生全解 build 不作本波 gate。
 
-1. `EntranceHandshakeService` / `RuntimeEntranceSink` / `EntranceContentFactory` 都已就位，channel 进程可直接复用；
-   `EntranceContentFactory` 只负责组装+缓存，缺 `etc/channel_info.etc` 的 warn 留在调用方（需要 `ScriptFileSystem.SourceDescription`）。
-2. 会话标签由宿主拼成 `entrance:{localPort}`（`EntranceHandshakeServer.cs` 的 `HandleClientAsync`）——
-   channel 侧的 sink 实现要接受同样形状，否则 admin 标签在拆分模式下会不一致。
-3. `EntranceHandshakeServer.Stop()` 现在幂等且并发安全，可直接放进 channel 宿主的 shutdown 路径。
+## 6. 保护工作区与提交状态
 
-## 6. 未验证 / deferred（Task 5 不要假装它们已解决）
-
-- **真机重跑 `town-two-clients` 未做**：netdump 依赖**未提交**的 `src/DFLegacy.Ijl15/src/net_dump.cpp`；
-  I1③ 的端到端证据止于"录制真机输入 + 回放"，没有"改造后再录一次"的对照。
-  取数计划：先解决 netdump 的提交/构建（属他人工作），再跑 `tools/acceptance` 的 `town-two-clients`，
-  用 `decode` 同样的方法比对 proto3/proto6/proto10 明文。
-- `EntranceHandshakeServer.Stop()` 并发安全无确定性测试覆盖（时序相关）。
-- `IsDialableHost` 仍是"仅工作区"事实：`git grep -n 'IsDialableHost' HEAD -- src tests` 为空。
-  若那份未提交改动被丢弃，`EntranceDialHost.IsDialable` 的镜像对象在 HEAD 里不存在，需重评。
-- `EntranceService` 的入口分支（`:15375`）与 `LoadContent()` 拆分后不可达，属死代码，留待后续清理。
-- 入口读循环三参数虽已补回，但**没有真机对照**（坏 CRC / 超长帧在真实客户端下的表现未验）。
-- `StartAsync` 残留窗口：先 `listener.Start()` 再入锁 Add，若此刻有 Stop 插入会漏掉一个监听 socket（当前两个调用点不可达）。
-- `EntranceHandshakeService` 的托管接线**没有自动化覆盖**：`RunPortOwnership` 只测纯函数，两个服务的端口列表若被对调，
-  验收②仍会通过（三口一 pid，只是引擎错位）。目前只靠真绑定 pid 检查 + code review 兜。
-- 新增断言只在 `--s2-ipc` 分组，全量 `smoke-tests` 不会跑它们 ⇒ gate 必须两条命令都跑。
-- 延续 Task 3 deferred：`NoDelay/MaximumPacketLength/RejectBadCrc32` 未镜像；取消期 OCE 未吞；
-  `SentCount` 断言 happens-before；`StartAsync` token 未用且多端口失败不回滚；真实 accept 错误被静默吞掉这条回归无牙。
-
-## 7. 工作区现状（最容易踩的坑）
-
-- **其他人的未提交改动仍在**（Task 4 只 stash 了三个共享文件，已 `git stash pop` 还原，`git stash list` 为空）：
-  `src/DFLegacy.Protocol/GameProtocolEngine.cs`、`src/DFLegacy.Protocol/GameDatagramProtocol.cs`、
-  `src/DFLegacy.Server/EntranceService.cs`（`ResolveChannelDialHost`/`IsDialableHost`）、
-  `src/DFLegacy.Server/Program.cs`（`WarnAboutChannelDialHost`）、
-  `tests/DFLegacy.SmokeTests/Program.cs`（NOTI 11 字节序）、`tests/DFLegacy.SmokeTests/TownSyncSmokeTests.cs`、
-  `DFLegacy.Emulator.slnx`、`src/DFLegacy.Ijl15/**`、`BUILDING.md`、`STATUS.md`、`.recon/onboarding.md`。
-- 复现 Task 4 的隔离手法：`git stash push -m <name> -- <共享文件>` → 编辑 → 逐文件 pathspec 提交 → `git stash pop`；
-  **收尾三查**：`git stash list` 空、被保护文件重新 ` M`、`git show --stat HEAD` 只含本任务文件。
-- `docs/` 被 `.gitignore` 挡住：**新增**文档要 `git add -f <path>`（已跟踪的文档普通 `git add` 即可）。
-
-## 8. 下一波只读这些（不要通读整份计划）
-
-1. 计划的 **Task 5 段**（当前从第 1212 行起，现场取行号）。
-2. Task 4 产出的接口：`src/DFLegacy.Server/EntranceHandshakeService.cs`、`src/DFLegacy.Server/RuntimeEntranceSink.cs`、
-   `src/DFLegacy.Protocol/EntranceContentFactory.cs`、`src/DFLegacy.Protocol/EntranceHandshakeServer.cs`、
-   `src/DFLegacy.Protocol/EntranceSessionSink.cs`、`src/DFLegacy.Protocol/EntrancePortFamilies.cs`。
-3. ledger：`.superpowers/sdd/2026-10-19-s2-multiprocess-split-first-slice/progress.md`（Task 4 段 + deferred）。
-4. spec §5（通信层）与 §6 的 I2 行。
-
-## 9. 权威计划状态
-
-**已提交**：`57d8a05` + `ce43078`。Task 4 的执行期修订（Files 头、六组断言、build gate、PVF 覆盖、不动 `LoadContent`、
-宿主读循环三参数）都在里面。ledger（`.superpowers/.../progress.md`）按仓库惯例不入库（`.gitignore:16 /.superpowers/`），只在磁盘上。
+- 快照记录了本轮前全部可见 dirty/untracked 文件。重点共享 slnx、smoke Program，另有 Server/Protocol/netdump 修改；执行前重新比较，不能恢复整份旧文件覆盖后来的工作。
+- 历史允许就地执行的裁定见 ledger；新波自行核验隔离可行性及已有授权，避免整仓 stash。共享文件只纳入本任务 hunk，逐文件提交。
+- `docs/` 被 ignore：文档使用 `git add -f -- <明确文件路径>`。本轮普通 add 已跟踪路径虽入 index，仍因忽略父目录返回 1，故须核对暂存结果。ledger、快照和摘要属于忽略的本机工件。
+- 本轮文档提交只纳入计划、handoff、continue-prompt。未提交源码的归属与指纹继续保留；本轮没有实施 Task 5。
