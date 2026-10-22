@@ -70,6 +70,8 @@ add_custom_command(TARGET ijl15 POST_BUILD
 include(CTest)
 if(BUILD_TESTING)
     add_executable(ijl15_tests
+        src/auto_input.cpp
+        src/auto_input.h
         src/external_string_table.cpp
         src/external_string_table.h
         src/memory_patch.cpp

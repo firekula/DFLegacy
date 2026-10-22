@@ -10,6 +10,7 @@
 #include <vector>
 
 #define IJL15_EXPORTS
+#include "auto_input.h"
 #include "dnf_patches.h"
 #include "external_string_table.h"
 #include "ijl15.h"
@@ -339,6 +340,217 @@ bool TestRelativeOutputPathPolicy()
         output,
         sizeof(output));
 }
+
+// ---------------------------------------------------------------------------
+// Synthetic input core (src/auto_input.cpp).
+//
+// What this proves: the auto-input.json subset parser accepts exactly the
+// spec 3.1 shape and nothing else, and the timeline state machine fires key
+// edges, click primitives and text expansion at the pinned times. ArmPlan's
+// explicit origin pins every timeline to synthetic ticks, so none of these
+// tests touch the file system.
+// ---------------------------------------------------------------------------
+
+bool TestParsePlanHappyPath()
+{
+    using namespace dfl::auto_input;
+    Step steps[kMaxSteps];
+    int count = 0;
+    int version = 0;
+    const char* json =
+        "{\"version\":1,\"steps\":[{\"t\":100,\"op\":\"click\",\"x\":320,\"y\":240},"
+        "{\"t\":300,\"op\":\"key\",\"vk\":13,\"dur\":60},"
+        "{\"t\":500,\"op\":\"text\",\"chars\":\"test\"}]}";
+    if (!ParsePlan(json, steps, kMaxSteps, &count, &version))
+    {
+        return false;
+    }
+    return version == 1
+        && count == 3
+        && steps[0].t == 100
+        && steps[0].op == kClick
+        && steps[0].x == 320
+        && steps[0].y == 240
+        && steps[0].dur == 80  // omitted in the JSON: the struct default survives
+        && steps[1].op == kKey
+        && steps[1].vk == 13
+        && steps[1].dur == 60
+        && steps[2].op == kText
+        && steps[2].t == 500
+        && steps[2].text[0] == 't'
+        && steps[2].text[1] == 'e'
+        && steps[2].text[2] == 's'
+        && steps[2].text[3] == 't'
+        && steps[2].text[4] == '\0';
+}
+
+bool TestParsePlanRejectsGarbage()
+{
+    using namespace dfl::auto_input;
+    Step steps[8];
+    int count = 0;
+    int version = 0;
+    const char* bad[] = {
+        "",
+        "{",
+        "{\"version\":2,\"steps\":[]}",                        // wrong plan version
+        "{\"version\":1}",                                     // steps missing
+        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"fly\"}]}",
+        "{\"version\":1,\"steps\":[]} tail",                   // trailing garbage
+        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"vk\":13},\"x\"]}",
+        "{\"version\":1,\"steps\":[{\"t\":-1,\"op\":\"key\"}]}",
+        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"dur\":-5}]}",
+        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"text\",\"chars\":\"a\\nb\"}]}",
+        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"vk\":13,\"vk\":14}]}",
+        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"who\":3}]}",
+        "{\"version\":1,\"steps\":["
+        "{\"t\":1,\"op\":\"move\"},{\"t\":2,\"op\":\"move\"},{\"t\":3,\"op\":\"move\"},"
+        "{\"t\":4,\"op\":\"move\"},{\"t\":5,\"op\":\"move\"},{\"t\":6,\"op\":\"move\"},"
+        "{\"t\":7,\"op\":\"move\"},{\"t\":8,\"op\":\"move\"},{\"t\":9,\"op\":\"move\"}]}"};
+    for (const char* sample : bad)
+    {
+        if (ParsePlan(sample, steps, 8, &count, &version))
+        {
+            return false;
+        }
+        if (count != 0)
+        {
+            return false;  // a rejected plan must not touch the caller's buffer
+        }
+    }
+    return true;
+}
+
+bool TestAdvanceKeyEdgeAndFinish()
+{
+    using namespace dfl::auto_input;
+    ClearInjectionLog();
+    Step steps[kMaxSteps];
+    int count = 0;
+    int version = 0;
+
+    // The brief's key-edge assertions and the injection-log assertions on one
+    // timeline: a key press at t=100 held for 60 ms, then a click at t=200.
+    const char* json =
+        "{\"version\":1,\"steps\":["
+        "{\"t\":100,\"op\":\"key\",\"vk\":13,\"dur\":60},"
+        "{\"t\":200,\"op\":\"click\",\"x\":320,\"y\":240,\"dur\":80}]}";
+    if (!ParsePlan(json, steps, kMaxSteps, &count, &version) || count != 2)
+    {
+        return false;
+    }
+    if (!ArmPlan(steps, count, version, 0) || IsFinished())
+    {
+        return false;
+    }
+
+    // t<100: nothing fires and the key forwards untouched.
+    if (Advance(50) != 0 || QueryKey(13, 0x00AB) != 0x00AB)
+    {
+        return false;
+    }
+    // t=100: the down edge; the synth table reports the press.
+    if (Advance(100) != 1 || QueryKey(13, 0x00AB) != static_cast<short>(0x8000))
+    {
+        return false;
+    }
+    // 100<t<160: still held, no further edges.
+    if (Advance(130) != 0 || QueryKey(13, 0x00AB) != static_cast<short>(0x8000))
+    {
+        return false;
+    }
+    // t=160: the up edge; the key forwards again.
+    if (Advance(160) != 1 || QueryKey(13, 0x00AB) != 0x00AB)
+    {
+        return false;
+    }
+    // t=200: the click's move and down land in the injection log; the up is
+    // due only at t+dur. Mouse primitives are not keyboard edges.
+    if (Advance(200) != 0)
+    {
+        return false;
+    }
+    InjectionRecord records[64] = {};
+    if (GetInjectionLog(records, 64) != 2)
+    {
+        return false;
+    }
+    if (records[0].op != kMouseMove || records[0].x != 320 || records[0].y != 240
+        || records[1].op != kMouseDown || records[1].x != 320 || records[1].y != 240)
+    {
+        return false;
+    }
+    // t=280: the click's up completes the plan -> Finished.
+    if (Advance(280) != 0)
+    {
+        return false;
+    }
+    if (GetInjectionLog(records, 64) != 3)
+    {
+        return false;
+    }
+    if (records[2].op != kMouseUp || records[2].x != 320 || records[2].y != 240)
+    {
+        return false;
+    }
+    if (!IsFinished() || QueryKey(13, 0x00AB) != 0x00AB || Advance(400) != 0)
+    {
+        return false;
+    }
+
+    // The brief's key-only timeline: t<100 no key, 100<=t<160 down, t>=160
+    // released and Finished.
+    const char* keyOnly =
+        "{\"version\":1,\"steps\":[{\"t\":100,\"op\":\"key\",\"vk\":13,\"dur\":60}]}";
+    if (!ParsePlan(keyOnly, steps, kMaxSteps, &count, &version) || count != 1)
+    {
+        return false;
+    }
+    if (!ArmPlan(steps, count, version, 0))
+    {
+        return false;
+    }
+    if (Advance(99) != 0 || Advance(100) != 1 || Advance(159) != 0
+        || QueryKey(13, 0x00AB) != static_cast<short>(0x8000))
+    {
+        return false;
+    }
+    if (Advance(160) != 1 || !IsFinished() || QueryKey(13, 0x00AB) != 0x00AB)
+    {
+        return false;
+    }
+
+    // Text expands serially: downs 40 ms apart, each char held until the
+    // next char's down ('a' -> VK 'A', 'b' -> VK 'B').
+    const char* textPlan =
+        "{\"version\":1,\"steps\":[{\"t\":100,\"op\":\"text\",\"chars\":\"ab\"}]}";
+    if (!ParsePlan(textPlan, steps, kMaxSteps, &count, &version) || count != 1)
+    {
+        return false;
+    }
+    if (!ArmPlan(steps, count, version, 0))
+    {
+        return false;
+    }
+    if (Advance(99) != 0 || Advance(100) != 1
+        || QueryKey('A', 0x00AB) != static_cast<short>(0x8000)
+        || QueryKey('B', 0x00AB) != 0x00AB)
+    {
+        return false;
+    }
+    // t=140: 'A' releases and 'B' presses inside the same pump (ups first).
+    if (Advance(140) != 2
+        || QueryKey('A', 0x00AB) != 0x00AB
+        || QueryKey('B', 0x00AB) != static_cast<short>(0x8000))
+    {
+        return false;
+    }
+    if (Advance(180) != 1 || !IsFinished())
+    {
+        return false;
+    }
+    return true;
+}
 }
 
 int main()
@@ -375,6 +587,19 @@ int main()
     if (!TestRelativeOutputPathPolicy())
     {
         return Fail("relative Logs/ScreenShot output path policy failed");
+    }
+
+    if (!TestParsePlanHappyPath())
+    {
+        return Fail("auto-input JSON subset happy path failed");
+    }
+    if (!TestParsePlanRejectsGarbage())
+    {
+        return Fail("auto-input JSON subset parser accepted invalid input");
+    }
+    if (!TestAdvanceKeyEdgeAndFinish())
+    {
+        return Fail("auto-input timeline advance or key-edge query failed");
     }
 
     IjlApi api{};
