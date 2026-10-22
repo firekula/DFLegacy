@@ -19,6 +19,207 @@
 | 交易系统：城镇内双向交易（24 物品格 + 金币、锁定/最终确认/原子结算、取消/超时/掉线/换区整笔回退）；协议要点与真机结论见 §2.5 | `ItemTradeService`、`ItemTradePlanner`、`JsonGameStore.CommitItemTradeAsync`、`EntranceService`（CMD 10/11/19/26） |
 | 组队系统：城镇内组队（邀请/申请加入、成员名单与队长、退出/踢人/掉线、队伍信息列表与推荐伙伴的数据前提）；协议要点与真机验收清单见 §2.6 | `PartyService`、`PartyRoster`、`EntranceService`（CMD 10/11/12/13/14） |
 | 同队进副本：每队共享副本实例（队员由自己会话入场、门口集结制换房、共享广播/掉落先到先得/各自结算）；实现摘要与真机验收清单见 §2.7 | `DungeonInstance`、`DungeonInstanceRegistry`、`DungeonPartyService`、`DungeonDoorAssembly`、`EntranceService` |
+| 客户端 TCP/UDP 全量打印（`Config.ini` 的 `DumpNetwork`）：钩客户端自己的 ws2_32，绕开"抓包看不到 loopback"；用法与真机判定标准见 §3.4 | `DFLegacy.Ijl15/src/net_dump.cpp`、`DFLegacy.Ijl15/tests/ijl15_tests.cpp` |
+| 客户端合成输入（B′）：ijl15 内 IAT 钩 `GetAsyncKeyState` + 直调 `NativeMouseInput`，`auto-input.json` 时间线驱动真机客户端完成 选频道/选角/进城，**全程无人工 UI**（真机验收见 §12，操作手册 `docs/superpowers/plans/2026-10-22-b3-real-machine-runbook.md`） | `DFLegacy.Ijl15/src/auto_input.cpp`、`tools/acceptance/auto_input.py`、`tools/acceptance/tests/test_auto_input.py` |
+
+### 1.1 官服「登录 → 选服 → 进频道」链路分析（2026-10-05，**纯分析，未改任何代码**）
+
+任务书 `docs/superpowers/plans/2026-10-05-official-login-channel-analysis.md`，交付物在
+`docs/superpowers/sdd/2026-10-05-official-login-channel/`（6 份：`topology.md` / `STATIC-FINDINGS.md` /
+`packet-timeline.md` / `dual-evidence.md` / `SPEC-login-to-channel.md` / `open-questions.md`）。
+
+**结论摘要（每条都有证据，细节看交付物）**：
+
+- **计划书里"`coserver`/`manager`/`channel` 被 strip"这条前提是错的** `[作废]`：
+  三者都有 `.symtab`（3,450 / 6,963 / 1,731 个 FUNC），`df_channel_r` 与 `df_bridge_r` 还有完整 DWARF。
+  误判根源是**容器内没有 `readelf`/`nm`/`objdump`/`strings`**（`command not found` 被读成 `FUNC=0`）。
+- **客户端第一站是 TCP 7001 = `df_channel_r`**，实测序列 `CONNECT(11) → CHECK_SCRIPT_VERSION(5) → GET_SCRIPT(9) → ASK_CHANNEL_INFO(1)`，
+  应答 `12 / 6 / 10 / 3`；7/8 与官服注册表逐条吻合。
+- **频道列表由频道服下发**（应答 3，载荷 = `zlib(80 字节密文)`），而它的地址表**是 `df_bridge_r` 每 3 秒推给它的**（抓到了原始帧）。
+- **进游戏是"新开一条 TCP"**（7001 会话关闭 → 4 秒后连游戏服端口），**不是复用**。
+- **第二站是 `df_game_r`，`CMD 1 = LOGIN`**（`DisPatcher_Login`）。账号口令由网关校验，
+  游戏服**验签**：网关持 `/data/privatekey.pem`、游戏服持 `publickey.pem`，
+  **两侧 RSA 模数实测相同**（容器与参考包两个独立部署都是）。
+- **`df_manager_r` / `df_coserver_r` 完全不参与玩家登录**：四个进程对客户端命令词表 **0 命中**；
+  coserver 的 UDP 30703 在游戏服 cfg 里的名字就是 `udp_ip_of_doublecheck`（重复登录检查）。
+- **打断计划书 §5"不要扩大范围"的地方只有一处**：为了拿到"客户端视角的逐包"，用了项目既有的
+  `ref-proxy` 抓包（`.superpowers/sdd/2026-09-29-dungeon-party/work/captured-run1/`），没有新开范围。
+
+**动手前必须先做三个实验**（否则会返工）：`Q-CLIENT-7001`（2008 客户端在 7001 上用哪几个 opcode，未测）、
+`Q-HDR`（帧头 10 vs 14 字节）、`Q-TOKEN32`（`CONNECT` 的 32 字节凭据怎么算）。见 `open-questions.md`。
+
+### 1.2 官服登录链的**端到端实测**（2026-10-05 下午，真客户端 × 真官服）
+
+**世代落差先说清楚**（项目所有者指出，已在产物上核实）：官服容器是**第四季外传·缔造者**
+（区域表含 `[timedoor]` 时空之门；容器与参考包的 `server_str.xml` **md5 逐字节相同**），
+而我们的客户端是第一季第一章 ⇒ **2008 客户端测不了这个后端**。
+能测的是参考包里那个 **41.9 MB、2012-09-04 台湾分支**的客户端
+（它自己的调试串写着 `E:\DNF\Src\Taiwan\120904_sub\…`）。
+
+**怎么接起来的**（关键三点，缺一不可）：
+1. 停 `DFLegacy.Server`（它占宿主 `TCP 7001` + `TCP/UDP 2311`）→ `docker restart dnf`
+   ⇒ 容器的 `7001/tcp`、`2311/udp`、`7300/tcp` **这才绑上**（**证明**此前为空纯粹是被本项目占用，不是设计）；
+2. 用**容器自己的**网关（宿主 `127.0.0.1:5505`），**不要**用参考包里的网关 ——
+   两套 RSA 私钥模数不同，包里的令牌会被容器的 `df_game_r` 拒（`SPEC` §2.3）；
+3. 启动器账号来自 `%APPDATA%\llnut-launcher\credentials.dat`（DPAPI 加密），
+   `testuser4` 正好在容器 `d_taiwan.accounts` 里。
+
+**结果（`[抓包]`+`[真机]`，产物 `docs/superpowers/sdd/2026-10-05-official-login-channel/work/captures/`）**：
+
+- 客户端三条连接，每条**恰好 92 字节**，序列恒为
+  `11 CONNECT(32B 凭据) → 5 CHECK_SCRIPT_VERSION(16B) → 9 GET_SCRIPT → 1 ASK_CHANNEL_INFO`，
+  应答 `12（时间戳）/ 6（32B 摘要）/ 10（zlib 7239B）/ 3（zlib 139B）`，服务端流 7468B 精确链到 EOF；
+- 容器 `channel/log/Info_channel.log` 同一秒打出 `In onCS_CONNECT → onCS_CHECK_SCRIPT_VERSION → onCS_GET_SCRIPT → onCS_ASK_CHANNEL_INFO → onClose`，**三仪器同秒对齐**；
+- **与"参考客户端 × 参考实现"逐条同构**，只有随内容变的项变（脚本 7236→7239、频道表 102→139、脚本摘要 16B），
+  协议常量不变（opcode、10 字节头、凭据前 16 字节）——框架对、内容别对，自洽性很强；
+- **新结论①**：`CONNECT` 的 32 字节 = **16 字节跨世代常量**（8 条连接 / 2 个部署恒定）+ 16 字节每会话量
+  ⇒ 已排除"网关签发的 token"与"账号相关"；
+- **新结论②**：`GET_SCRIPT` 明文 **13312 B**，而两份 `channel_info.etc` 是 13311 / 13306，**都补到 13312**
+  ⇒ 是 **16 字节分组的 `channel_info.etc`**（`df_channel_r` 源码模块里正好有 `Rijndael.cpp`）；
+- **自我更正**：`id=12` 那条"官服注册表里没有"**不是矛盾** —— `registerProtocols()` 是**入站**表，
+  发出去的报文本来不用登记；另外 `ASK_CHANNEL_INFO`(1) 的应答是 **3** 不是 2，我原先的"应答=N+1"推广有误（已改）。
+- **没走完的部分**：客户端在 7001 链之后**没有**连游戏服（实测 30011/30021 连接数 = 0），
+  原因是容器把 `30011` 发布成宿主 `30021`、而客户端被告诉的是 `30011` ⇒ 要进游戏需先补宿主侧转发。
+
+### 1.3 【关键结论】2008 客户端的 7001 号表 **＝ 官服那一代**（2026-10-05 定案）
+
+**问题**：本项目客户端停在第一季第一章，官服容器已到第四季外传 —— 两代的 opcode 是否相同？
+
+**答案：相同。** 四方一致，其中**最强的一条是 2008 客户端自己的帧**（就在本项目自己的服务端日志里）：
+
+```
+DF\town-test\server-party44.log（EnablePacketTracing 打开）
+10:10:50 RX type=0 protocol=11 length=43 records=1 crc=00000000 body=01 F2F7F142F7DEA0499F6BF6129FE6184F …
+10:10:50 RX type=0 protocol=5  length=27 records=1 crc=00000000 body=01 1271F1F9D2D4D9A22F41B73FC78C34BF
+10:10:50 RX type=0 protocol=9  length=11 records=1 crc=00000000 body=01
+10:10:50 RX type=0 protocol=1  length=11 records=1 crc=00000000 body=01
+```
+
+与官服那次抓包（`11/5/9/1`、长度 `43/27/11/11`、`type=0`、`crc=0`、`records=1`）
+**逐项相同**，连 11 号帧的前 16 字节 `F2F7F142F7DEA0499F6BF6129FE6184F` 都一致
+（2008 客户端 / 2012 客户端 / 参考客户端**三方都相同** ⇒ 它是真正的协议常量）。
+
+**另外三方**：`src/DFLegacy.Protocol/EntranceProtocolEngine.cs:31` 自述
+`11/12 (key), 5/6 (cache decision), 9/10 (ChannelScript.pvf), 1/3 (entrance metadata)`
+且注明 **recovered from DNF.exe 1.0.1.9**；官服 `df_channel_r` 的 `registerProtocols()`；
+2012 客户端 × 真官服的抓包。
+
+**三条随之落地的语义（原先全错或未知）**：
+
+| 对 | 真实语义 | 出处 |
+|---|---|---|
+| 11/12 | **密钥交换**（不是"准入凭据"）：服务端在 12 里下发 32 B `KeyMaterial`，密钥 = 其前 16 B；**客户端发的 32 B 可以完全不看** | `EntranceProtocolEngine.cs:43,51-57` |
+| 5/6 | **缓存判定**：6 的明文 = `int32 flag` + 16 B `SessionToken`；`flag=0` ⇒ 用协议 9 下载脚本，`flag=1` ⇒ 命中缓存 | 同上 `:44,60-67` |
+| 9/10、1/3 | 脚本（`channel_info.etc`）与**频道表**（652 B，9 组固定布局） | `:45-46,70-74`、`EntranceMetadata.cs` |
+
+**密码学（同样从 1.0.1.9 反推，已实现可用）**：**AES-128 / ECB / `PaddingMode.None`**，
+密钥 = `KeyMaterial` 前 16 B，**补零到 16 的倍数**（不是 PKCS#7、也不是定长缓冲），
+顺序 **先加密后 zlib**（`EntranceCrypto.cs`）。这一条同时解释了我观测到的
+`13311→13312` 与 `13306→13312`。
+
+**登录**：`CMD 1`，正文 = 计数 + `len32`+账号名 + `len32`+口令 + `len32`+8 B，
+**账号口令是明文**（日志里直接可读 ASCII `test`/`test`；`EntranceService.cs:4652`）。
+这与 2006 日服那代（下表）一脉相承，与第四季那代"网关签 RSA 令牌"**不是同一套**。
+
+**第三个独立确认（项目所有者指引的日服 40 级那份）**：`G:\Game\Arad40-v1.31\Arad40\data\launcher.log`
+是一次完整解析过的 2006 年真实会话（服务端自己打出 opcode 名与字段）：
+`opcode=1 login{login,password}`、`opcode=2 character_list`、`opcode=4 enter_game`、
+`opcode=5 character_create`、`opcode=8 character_list_request`、`13/19/21` 通知 ——
+**与 2008/官服的号表逐条吻合** ⇒ **命令号在整个血脉里高度稳定**。
+⚠️ 但它是**单连接单体架构**（全走 `127.0.0.1:31100`），进程划分**不要照搬**。
+
+### 1.4 【帧头定案】11 字节，且 `header_*` 是死配置（2026-10-05）
+
+**帧头是 11 字节**（`STATIC-FINDINGS.md` §4.4），字段：
+`[0] category` / `[1] packet id` / `[2..5] size(LE，含头)` / `[6..9] 校验` / `[10] ackOk`，
+**载荷 = `header+11`、长度 = `size-11`**。证据是三处独立常量 + 四个访问器：
+
+- `tagPacketHeader::setCategory`(0x08051676) = `mov BYTE PTR [eax],dl`；
+  `setPacketID`(0x0805164c) = `mov BYTE PTR [eax+1],dl`；
+  `getSize`/`setSize`(0x0805165c/0x08051668) 读写 `[eax+2]`；
+  **`setAckOk`(0x08051640) = `mov BYTE PTR [eax+0xa],1`** ⇒ 偏移 10 是**头字段**，不是"记录数"。
+- `onCS_CONNECT` 里 `call getSize; sub eax,0xb` + `add edx,0xb`；
+  `onSC_GET_GC_INFO` 里 `mov eax,[eax+0xb]` —— 两处都指向 **11**。
+
+⚠️ **同构陷阱（别去"修"）**：本项目 `PacketFrame` 是"10 字节头 + 载荷首字节=记录数(1)"，
+与官方模型**线上字节完全相同**（`43 = 10+1+32 = 11+32`，`47 = 10+1+4+32 = 11+36`），互通无碍。
+
+**`header_*` 那组键（`header_msg_no = 5 1` 等）是死配置**：逐键在容器所有可执行文件里搜过，
+**一个都不存在**（对照组 `scriptpacks` 命中 `df_game_r`）。⇒ 原先"官方用配置控制头布局"的说法作废，
+布局是**硬编码**的。这也解释了为什么 Windows 参考包里那组键与容器**逐字相同**——没人读，就没人改。
+
+### 1.5 【处理器函数体已读】拒绝路径与本地文件依赖（2026-10-05）
+
+`work/handler-report.py`（call 目标 + 精确归因的字符串引用）：
+
+| 处理器 | 拿到的东西 |
+|---|---|
+| `onCS_UPDATE_CHANNEL_INFO` | 两条拒绝路径：`"Incomming invalid gc_no="`、`"Invalid ServerGroupIndex"` |
+| `onSC_CHECK_SCRIPT_VERSION` | 读本地 **`channel_info/version`**；错误串 `"[ERROR] : cannt open channel_script_version file"` |
+| `onSC_GET_SCRIPT` | 读本地 **`channel_info/channel_info.etc`** ⇒ **实证 `id=10` 的明文就是它** |
+| `onSC_GET_GC_INFO` | 读 `header+0xb` 的 4 字节，打 `Server Group Count = '%d'` |
+| `onSC_ASK_CHANNEL_INFO` | **空桩**（10 字节 `mov eax,1; ret`） |
+| `onCS_CONNECT` | **会用会话密钥解密客户端那 32 字节并用**（`"dnf_game"` / `"Key "`）⇒ 官方不是"忽略"它；本项目不看它也真机可用 |
+
+**`/data/frida.js` 的真相（推翻我先前的猜测）**：它是 **2433 行的玩法修改脚本**
+（绝望之塔金币、门票修复、镶嵌、怪物攻城…），用硬编码地址直接调 `df_game_r` 内部函数，**不是调试打点**。
+且 **frida 只注入 `df_game_r`**（`start_game.sh` 有、`start_channel.sh` 没有）⇒
+想给频道服动态打点**没有现成设施**。可用的一点：`frida.config` 是 `on_change: reload`，
+往 `/data/frida.js` 追加 hook 会热重载进游戏服 —— 但**那是生产路径上的文件**，属探针，用完要退役。
+
+### 1.6 【账号与计费定案】不存在"两套账号的映射"（2026-10-05）
+
+**全栈只有一个账号 id —— `d_taiwan.accounts.UID`（int）**，没有任何映射表：
+
+| 环节 | 键 | 实测 |
+|---|---|---|
+| 账号本表 | `accounts.UID int(11) PRI auto_increment` | 3 行：`1=testuser3, 2=testuser4, 3=test` |
+| **计费** | `taiwan_billing.cash_cera.account varchar(30) PRI` = **UID 的十进制字符串** | 行值 `'1'/'2'/'3'`；UID 3 的账号行与计费行**同一秒**创建、`cera=1000` = 网关 `INITIAL_CERA` |
+| 登录态 | `taiwan_login.member_login.m_id`（+ 分片的 `login_account_1..3`） | `m_id = 1,2,3` 与 UID 对齐 |
+| `accounts.billing`（int，全 0） | — | **计费表不用它** ⇒ 独立槽位，实现计费不需要 |
+| 上游身份（现代官服） | `m_id` | `WongWork::CSimpleSSO`：`_checkValiedPassword` 走 `CRijndael` + `DNFFLib::Binary2Hex` 比十六进制串；`checkValidPassword_Jpn` **只对 GM 强制校验口令**（`CGM_Manager::IsGm`） |
+
+**对 2008 目标无需实现任何"映射"**：登录帧里没有计费/平台字段。
+顺带钉住：那 8 字节尾随数据是**每机器常量**——`server-party*.log` 里 **42 条登录帧（9/28 → 10/3，多次会话）整个 body 逐字节相同**。
+
+### 1.7 【UDP/NAT 定案】官服 `df_stun_r` 与本项目的 NAT 探针是**同一个协议**（2026-10-05）
+
+`df_stun_r`（64 位、未 strip、~11 KB）三个线程 = 三种角色：
+**2311 `RealIP` / 2312 `NAT` / 2313 `MTU_CHECKER`**（线程名就在它的 `.rodata` 里）。
+协议本体只有 240 字节（`msgProcess` @ 0x401584）：
+
+```
+01 → 7 字节 02 | addr(u32 小端) | port(u16 小端)，从**同一**端口回
+05 → 同样 7 字节，但从**另一个端口**回（PortRestrict socket）
+00 开头 10 字节 → 不回（保活）；其它 → 不回（**不是 RFC 5389**）
+MTU_CHECKER 端口收到任意报文 → 回 2 字节 = u16 小端(收到的长度)
+```
+
+**两侧实测一致**：
+- 实探官服：`01` → `02 01 00 00 7f f4 8e`（`0x7f000001` = 127.0.0.1、`0x8ef4` = 源端口）；`05` → **从 2313 回**；RFC-5389 请求无回包；2313 → `0100`/`1400` = 长度回打。
+- 2008 客户端自己的 socket 打印（`DF\netdump-53916.log`）：`TX 01 → RX 02 B103A8C0 C713`（`0xC0A803B1` = 192.168.3.177、`0x13C7` = 5063 = 客户端源端口）。
+
+⇒ **本项目"反转地址字节 + 小端端口"的写法是对的**（我上一轮怀疑写反，被实探否掉）。
+⇒ **端口号是部署配置**：官方 `2311-2313`，那次 2008 运行里客户端探的是 `7002/7003`。
+
+**一处要补的保真缺口**：本项目把三种角色压在一个 socket 上，
+**`05` 的应答也从同一端口回**（官方是从另一个端口回）⇒ 客户端据此判 NAT 类型会与官方不同；
+MTU 探查角色（长度回打）也未实现。详见 `SPEC` §5.4 与 `open-questions.md` Q-STUN2311。
+
+**新开的一个小问题**：~~2008 客户端的"游戏阶段"走哪条连接~~ —— **已定案（纯静态）**：
+
+**2008 客户端开两条连接，且与官服那一代整体错开一格端口**：
+
+| 角色 | 2008 客户端（本项目） | 官服第四季 / 2012 客户端 |
+|---|---|---|
+| 入口握手 `11/5/9/1 → 12/6/10/3` | **TCP 2311** | TCP **7001** |
+| 登录 `CMD 1`（账号口令）+ 全部玩法 | **TCP 7001** | TCP **30011** |
+
+**证据**（不重跑客户端，纯离线 join）：日志的会话建立行 `Entrance client <id> connected … on local port <N>` 带端口，
+帧行 `RX <id> … protocol=<p>` 带会话 id —— 用
+`.superpowers/sdd/2026-10-05-official-login-channel/work/join-session-port.py` join 起来，
+**`server-party*.log` 30+ 份（9/28 → 10/3，单人与多人）里 2311 上恒定只有 `[1,3,5,6,9,10,11,12]` 这 8 个协议，7001 上有 34–63 个。**
+⇒ **"先握手、再新开一条做游戏"两代相同，只有端口号错开一格。别把官服 7001 抄成我们的 7001。**
 
 ## 2. 验证状态
 
@@ -1156,6 +1357,253 @@ Phase 0 计划 `docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0.
 
 在沙盒目录里造一个会存活若干秒的替身 exe 作为 `ClientPath`、放一个桩 `Script.pvf`，写一份 `Relay.Enabled=true` 的 `launcher.json`，运行 `DFLegacy.Launcher.exe --no-dialog`，然后看日志是否依次出现：`relay ready` → `Started DFLegacy client process …; entrance=127.0.0.1:…`；客户端退出后应出现 `relay stopped` 与 `launcher stopping`。
 
+### 3.4 客户端自身的 TCP/UDP 全量打印（`net_dump`，2026-10-04）
+
+**为什么需要它**：同机双客户端的组队/副本流量走的是 **Windows loopback**，而抓包看不到 loopback ——
+2026-10-04 实测 pktmon 抓了 184 MB、里面**零个 loopback UDP 包**，而两个客户端之间的玩法数据正好就是 loopback UDP。
+所以改成**钩客户端自己的 ws2_32 调用**：没有这个盲区、不需要管理员权限、拿到的是任何抓包都要再还原的**原始载荷**。
+
+**怎么开**：`ijl15.dll` 旁边（客户端目录）的 `Config.ini`：
+
+```ini
+[Features]
+DumpNetwork=1
+DumpNetworkPayloadBytes=0   ; 0 = 整包；>0 只打印前 N 字节（用于压缩大包）
+DumpNetworkMaxMegabytes=256 ; 打满就停并在日志里写一行提示
+```
+
+**产物**：`DNF.exe` 同目录的 `netdump-<pid>.log`，**每包一行、立即落盘**（正在查的那个客户端会崩，
+缓冲日志会刚好丢掉最关键的那几包）。下面是自测跑出来的两行原文（`DumpNetworkPayloadBytes=6`，
+所以 7 字节的载荷被截断并标了 `(truncated)`；默认 `0` 时是整包、不带这个标记）：
+
+```
+2026-10-04 12:14:33.002 T=67076 TX UDP 127.0.0.1:53558 -> 127.0.0.1:53557 len=7 (truncated) hex=11220033FE7A
+2026-10-04 12:14:33.002 T=67076 RX UDP 127.0.0.1:53557 -> 127.0.0.1:53558 len=7 (truncated) hex=11220033FE7A
+# 时间戳 线程 方向 协议 本地 -> 对端 len 十六进制载荷
+```
+
+注意 `len` 是**收到的真实长度**（7），而 `hex` 只是被限制打印的前 6 字节——两者不一致就是"被截断"的信号。
+
+- 方向：`TX` = 客户端发出，`RX` = 客户端收到。
+- TCP 的对端来自 `getpeername`（`accept` 返回的新 socket 仍然走 IAT，所以拿得到），UDP 的对端来自 `sendto`/`recvfrom` 自己的参数。
+- `hex` 一律是载荷的十六进制，**不做任何重组**：收到什么就是什么。
+
+**钩了哪六个**：`send`/`sendto`/`recv`/`recvfrom`/`connect`/`WSARecvFrom`。
+`send`/`sendto`/`recv`/`recvfrom`/`WSARecvFrom` **正是** `DNF.exe` 静态导入的收发包函数
+（2026-10-04 用 pefile 核对过完整导入表：另有 `WSAAsyncSelect`、`WSAEventSelect`、`accept`、`select` 等，
+但**没有** `WSASend`/`WSARecv`/`mswsock`），所以这个客户端上没有漏口。
+**`WSARecvFrom` 只在"已经完成"时记录**：投递到重叠 I/O 的接收会在别的线程完成，不假装已经收到。
+
+**`connect` 是 2026-10-04 定位"选了频道点开始就闪退"时补上的**：这是唯一能回答"客户端到底拨了哪个地址"的调用。
+`send`/`recv` 只能看到**已经建立**的连接，而"拨错地址"这种故障**一个字节都不会发**，
+所以在补 `connect` 之前，日志里"没有任何别的 socket"既可能是没连成、也可能是根本没连，**无法区分**。
+它记录在调用**之前**，因此**失败的拨号也会落盘**，行里带上结果：
+
+```
+2026-10-04 14:04:46.492 T=58576 TX TCP-CONNECT - -> 127.0.0.1:7114 len=22 (truncated) hex=636F6E6E6563
+# 协议栏固定为 TCP-CONNECT；远端=试图拨的地址；载荷是 "connect=ok" 或 "connect=fail wsa=<错误码>"
+```
+
+读法：**会话建立后如果没有 `connect=` 行，就说明客户端没再拨任何地方**（而不是"拨了但没通"）。
+自测里有一条反向验证过的用例：往一个刚被关闭的端口拨号，必须出现 `connect=fail wsa=10061` 那一行。
+
+**自动化实证**（不跑游戏也能证明钩子与日志格式正确）：`src/DFLegacy.Ijl15/tests/` 里的原生自测会用**真实 loopback socket**
+走一遍钩子，断言发出/收到的两行内容、长度与十六进制，并断言**超过 `DumpNetworkPayloadBytes` 的字节不出现在日志里**：
+
+```powershell
+MSBuild.exe .\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj -p:Configuration=Release -p:Platform=Win32
+# 然后在 artifacts 的 ijl15-tests/<Configuration>/ 下运行 ijl15_tests.exe（它需要旁边的 ijl15.dll 与 Config.ini）
+```
+
+**它证明不了什么**：自测证明的是"钩子生效且日志格式正确"，**不代表真实客户端已经把包打出来**——
+那必须真机跑一次（下面是判定标准）。
+
+**真机验收步骤**：
+
+1. 确认 `DF/town-test/Config.ini`（或客户端目录）里 `DumpNetwork=1`；`ijl15.dll` 要带 netdump（见下"部署"）。
+2. 启动服务端 + 两个客户端，**让两个角色在同一个城镇同屏、并进同一个副本**，做一次当前在查的操作。
+3. 看每个客户端目录是否出现 `netdump-<pid>.log`（**每个客户端一个文件，pid 在文件名里**）。
+4. 判定标准：**同一次操作里，一个客户端 `TX UDP` 的那几行，应该在对端客户端的日志里以 `RX UDP` 出现、且 `hex` 一致**
+   （端口按 NAT/顺序可能对调，`len` 与 `hex` 必须相同）。对得上 ⇒ 这份数据就是"服务端中转/客户端直连"的原始往来。
+5. **对不上就是发现**：说明这段数据没走客户端自己的 socket（例如经中继/服务端转发），这正是要区分的结论。
+
+**部署（容易漏的一步）**：启动器只把 `ijl15.dll` 拷进客户端目录，而且**`Config.ini` 已存在就不覆盖**（用户手改的优先）。
+所以改了 `ijl15.dll` 的代码后要**同时**更新客户端目录的 dll；改了 `DumpNetwork` 要**手改客户端目录的 `Config.ini`**，
+改仓库里的那份不会自动生效。启动器目录里也放一份新 dll 以免下次启动时被回退：
+
+```powershell
+Copy-Item .\artifacts\native\ijl15\Release\ijl15.dll .\DF\town-test\ -Force   # 冒烟/验收目录
+Copy-Item .\artifacts\native\ijl15\Release\ijl15.dll .\DF\ -Force            # 客户端目录
+```
+
+**排查**：日志文件建出来了但一行都没有 ⇒ 钩子没挂上（`Config.ini` 的 `DumpNetwork` 没读到，
+或 dll 是旧的）；`OutputDebugString` 里会打印 `net dump installed (send=… sendto=… recv=… recvfrom=… connect=… wsarecvfrom=…)`，
+用 DebugView 之类看。**装了 `DumpNetwork=1` 记得查完关掉**：一个会话会打出很多行。
+
+### 3.5 频道元数据把绑定地址当成拨号地址（2026-10-04 已修，附完整取证链）
+
+**症状**：客户端能登录、能进频道选择，**点「开始」弹「连接失败」然后闪退**。本机与局域网都一样。
+
+**根因**：`EntranceMetadata.BuildSingleLocalChannel` 写进元数据的 `Host` 字段是**客户端要去拨的地址**，
+而 `EntranceService` 喂给它的是 `options.Channel.Host` —— **一个绑定地址**。shipped 配置里 `Channel.Host="0.0.0.0"`，
+于是客户端被明确告知去连 `0.0.0.0:7001`：`0.0.0.0` 是"未指定地址"，Windows 上必失败
+（`connect` 返回 `WSAEWOULDBLOCK`，随后超时/失败）。
+
+**证据（netdump 的 `connect` 行，一次定位）**：
+```
+19:37:45 TX TCP-CONNECT - -> 127.0.0.1:2311  len=10 hex=636F6E6E6563743D6F6B      connect=ok
+19:37:56 TX TCP-CONNECT - -> 0.0.0.0:7001    len=22 hex=... connect=fail wsa=10035
+```
+`Channel.Host` + `Channel.Port` = `0.0.0.0` + `7001` —— 与客户端实际拨的地址**逐字节吻合**，
+且 `protocol=10` 那 14180 字节载荷正是 `BuildSingleLocalChannel` 输出经 zlib+`GamePayloadCipher` 的结果。
+
+**为什么长期没被发现（两个盲区）**：
+1. **测试只测函数、不测接线**：冒烟测试直接调用 `BuildSingleLocalChannel(..., "127.0.0.1", 7001)`
+   （`Program.cs:598`），验证了"喂对值能出对结果"，**但从没验证服务端实际喂的是什么**。
+2. **有告警，但只覆盖了一半**：`Program.cs` 早就有 `GameplayDatagram.Host` 的"绑通配地址却告诉客户端拨它"告警，
+   **`Channel.Host` 没有同样的检查**。而 `RelayOptions.cs:44` 的注释其实早就写明
+   "服务端需要把 `Channel.Host` 与 `GameplayDatagram.AdvertisedHost` 设为 `127.0.0.1`" —— 说明设计上知道要设，
+   但没人**强制**它，也没人**告警**它。
+
+**修法**（`EntranceService.ResolveChannelDialHost`）：拨号地址按优先级解析——
+`GameplayDatagram.ResolveAdvertisedHost()` → `Entrance.Host` → `Channel.Host`，
+并跳过 `0.0.0.0`/`::`/空值；`Channel.Host` 保持它文档里的语义（绑定地址）。
+同时新增 `WarnAboutChannelDialHost` 启动检查，把"客户端将被要求拨的地址"显式打出来：
+```
+Channel.Host=0.0.0.0 is a bind address, so the channel metadata tells clients to dial '192.168.3.177' instead.
+```
+若解析结果只在本机可达（loopback）还会额外告警。
+
+**验证方法（可复现）**：让客户端走一次到「点开始」，然后看 netdump：
+```powershell
+Get-ChildItem <DNF.exe目录>\netdump-*.log | Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1 | ForEach-Object { Select-String -Path $_.FullName -Pattern 'TCP-CONNECT' }
+```
+修复后第二条应为 `-> 192.168.3.177:7001  connect=ok`（而不是 `0.0.0.0:7001 fail`）。
+
+**方法论教训**：这一条是靠**给 netdump 补上 `connect` 钩子**才定位的。
+`send`/`recv` 只能看见**已建立**的连接，而"拨错地址"**一个字节都不会发**——
+在此之前所有基于 `send/recv` 的推断（包括"客户端从没连过 7001"）都是**不可判定**的，不是"没连"，是"看不见"。
+
+### 3.6 组队卡「连接中」＝客户端↔客户端通道没通，用 `DFLEGACY_UDP_RELAY=1` 补上（2026-10-04）
+
+**症状**：两台客户端都能登录、能进游戏、**组队请求与接受都成功**（服务端日志 `Party request …` /
+`accepted … party 1 now has 2 member(s) (created)`），但客户端界面一直显示**「连接中」**。
+
+**根因**：组队后的成员互动走的是**客户端↔客户端的 P2P/中继通道**（官服架构里的 relay/P2P），
+不经过我们的服务端。我们这套原本没实现它 ⇒ 客户端拿不到可用的对端端点，退化成占位地址反复重试。
+这就是 §2.7 第 9 条那个未结案项（`:737` 列为"待用户拍板"的两条路）。
+
+**证据（netdump 的 `connect` 行，同一个探针第二次立功）**：
+```
+19:53:45 TX TCP-CONNECT - -> 192.168.3.177:7001      connect=ok          ← 入口/频道正常
+19:54:15 TX TCP-CONNECT - -> 255.255.255.255:12336   connect=fail wsa=10035   ← 之后每 5 秒重试
+19:54:20/25/30/35/40 … 同上
+```
+`255.255.255.255` **全仓 grep 无命中**（我们代码里不存在这个字面量），
+`12336 = 0x3030` 就是 ASCII 的 `"00"` —— 客户端拿不到有效对端时自己构造的占位地址。
+所以这是"**没拿到端点**"，不是"端点写错了"。
+
+**处置**：开启已有的诊断开关重启服务端（**环境变量**）：
+```powershell
+$env:DFLEGACY_UDP_RELAY = '1'   # 启动 DFLegacy.Server.exe 的进程必须带上
+```
+生效时启动日志会打印：
+```
+Gameplay UDP relay enabled (DFLEGACY_UDP_RELAY=1): advertising 192.168.3.177:7002
+  as every peer endpoint and forwarding gameplay datagrams between sessions.
+```
+作用（`GameplayDatagramService.cs:25-31`）：把 `NOTI 11` 里"对端的端点"**改写成服务端自己的端点**
+（`AdvertisedHost:PrimaryPort`），并在会话之间转发玩法数据报 —— 由服务端扮演官服的 relay 角色。
+配套的 `DFLEGACY_UDP_PEER_SINK` 是"黑洞"对照模式（把对端端点改写成不可达地址，用来确认某段流量确实走 P2P）。
+
+⚠️ **它是环境变量，不是 `server.json` 的字段**，默认关闭。所以"配置看着没问题却卡连接中"是预期现象——
+别去 `server.json` 里找。要长期生效必须写进启动脚本/服务定义。提交 `bb3016f` 把它定性为**诊断开关**，
+验收时要按"诊断"对待，不能当成已完成的正式功能。
+
+**验证**：开中继后重新组队，看服务端日志有没有转发记录、客户端是否还卡「连接中」；
+配合 netdump 确认玩法 UDP 只发往服务端端点，且**不再出现 `255.255.255.255:12336`**。
+
+### 3.7 对端端点表的端口/MTU 写成了小端（2026-10-04 已修，客户端实拨地址为证）
+
+**症状**：开了 `DFLEGACY_UDP_RELAY=1` 之后组队**仍然卡「连接中」**，服务端中继**一条都没转发**
+（`RX-UDP` 命中 0）——即客户端**从未把玩法数据发给服务端**。
+
+**根因**：`NOTI 11`（对端表）里端口与 MTU 用 `BinaryWriter.Write(ushort/uint)` 写 = **小端**，
+而这一族字段是**网络序**。客户端按大端读，于是把 7002 读成 23067 去拨。
+
+**证据（两条互相独立、指向同一结论）**：
+1. **客户端自己的 `CMD 2` NAT 报表**（明文，服务端未解密所以能直接看字节）：
+   `04 00 02 | A9FE2BED | C0A803B1 | 13C7 | C0050000` —— IP 是**大端**（`A9FE2BED`=169.254.43.237），
+   端口 `13C7` 也是**大端**（=5063，与 netdump 里客户端 UDP 源端口 5063 一致）。
+   服务端读它用的正是 `BinaryPrimitives.ReadUInt16BigEndian`（`GameDatagramProtocol.cs:63`），两处一致 ⇒ **客户端这一族全是大端**。
+2. **客户端实际去拨的地址**：`TCP-CONNECT -> 192.168.3.177:23067`。
+   而我们写进对端表的字节是 `5A 1B`；`23067 = 0x5A1B` **正是它的大端读法**（7002 应为 `1B 5A`）。
+
+**修法**（`GameProtocolEngine.CreateUdpPeerInfo`）：`PublicPort` 用 `WriteUInt16BigEndian`、
+`Mtu` 用 `WriteUInt32BigEndian`；IPv4 地址本来就是逐字节写的，不受影响。
+
+**测试为什么没拦住（关键教训）**：三处断言用 `ReadUInt16/32LittleEndian` 去**反解**对端表，
+它们钉的是"**实现当时的字节序**"，而不是客户端的要求 —— 于是一个错误的字节序被测试**固化成"正确"**。
+更早还有一处（`Program.cs:5870`）期望值写的是 `0xC7, 0x13`（5063 的**大端**），
+说明**当初是对的**，是后来实现与断言一起滑向小端而没人发现。
+**修法**：`TownSyncSmokeTests.ReadPeerTable` 与那条断言一并改为大端，并反向验证：
+改回小端 ⇒ **4 条断言同时变红**；改回大端 ⇒ 全绿。
+
+**注意**：`ReadUInt16LittleEndian` 在这份文件里对**别的**字段是对的（`UserId`、`AccountId`），
+不要无差别替换 —— 只有"端口/MTU"这两处是网络序。
+
+### 3.8 组队后一个客户端卡死：NAT 探针判定不看长度 ⇒ MTU 保活被回包 ⇒ 无限回环（2026-10-05 已修）
+
+**症状**：两个客户端组队后，**一个卡死（`Responding=False`）、另一个一直「连接中」**。
+
+**根因**：`GameDatagramProtocol.TryCreateNatProbeResponse` 只判 `request.Length == 0 || request[0] is not (1 or 5)` ——
+**只看首字节、不看长度**。而客户端的 **MTU 保活包**是 9 字节、**首字节也是 `01`**：
+`01 | sequence(4) | party | flag | applicationLength=0`。于是服务端把它当 NAT 探针**逐条回 7 字节**，
+客户端收到后又发一条 → **无限回环**，把客户端 CPU 打满 ⇒ 卡死。
+
+**证据（netdump 长度直方图，2 分钟窗口）**：
+```
+TX 9 字节  1,315,632 条      RX 7 字节  1,315,576 条
+日志 268,435,593 字节 = 256 MB（正好是 DumpNetworkMaxMegabytes 上限）
+内容恒定：TX hex=010000000000000100   RX hex=02B103A8C0C713
+进程状态：Responding = False（无响应）
+```
+服务端**自己也几乎不写日志**（总共 589 行）——所以这不是"服务端刷屏"，而是**客户端被回包驱动成紧凑循环**。
+
+**修法**：加 `NatProbeLength = 1`，判定改为 `request.Length != NatProbeLength || request[0] is not (1 or 5)`。
+真正的探针就是 1 字节（原测试写的就是 `new byte[] { 1 }`），原先的 `Length == 0` 等于**放行一切以 0x01/0x05 开头的包**。
+
+**测试盲区**：原测试只覆盖了 1 字节探针，没有任何"更长但同首字节"的用例，
+所以这个"过于宽松的判定"一直没被拦住。已补 3 条回归（9 字节保活 / 10 字节保活 / 空包都**不得**被回包），
+并反向验证：改回 `Length == 0` ⇒ **2 条断言变红**；还原 ⇒ 全绿。
+
+⚠️ **配套事实**：8 字节/9 字节保活属于 **MTU 帧**（`MtUdpHeaderLength = 9`），
+和 NAT 探针是**两种东西**，别再按首字节混判。
+
+### 3.9 中继已打通，但玩法数据 CRC/密码校验失败（2026-10-05 未解，待查）
+
+同一次真机的**好消息**：中继通道**真的通了** —— 客户端开始把玩法数据发给服务端，服务端也转给了对端：
+```
+Gameplay UDP relay: forwarded 19 byte(s) from 192.168.3.14:5063 (session 87fb5a46-…) to 1/1 peer endpoint(s).
+```
+这解决了 §3.6 里"`mt=0`、客户端从不把玩法数据发给服务端"那条长期堵点（前提是 §3.7 的字节序修复 + `DFLEGACY_UDP_RELAY=1`）。
+
+**但每个包都校验失败**：
+```
+warn: Gameplay UDP application from 192.168.3.14:5063 failed CRC or cipher validation.
+```
+即服务端**能转发、但解不开**客户端的玩法应用层载荷。下一步要判的是：
+这份 19 字节的 `mt` 应用层用的是哪一套 CRC/密码（我们按 `ApplicationCipherKey = 0x002F1214` 解的那套对不上），
+以及**对端客户端收到转发包后是否接受**（若两端都解不开，说明是同一处口径问题）。
+
+### 3.10 `recon_probe` 对带必填输入的工具会失败（2026-10-04）
+
+`.recon/recon.config.yml` 的 `smoke-tests` 声明了必填输入 `csproj`。`recon_probe smoke-tests` 会报
+`UNDECLARED_PLACEHOLDER: {csproj}`（它按"无参数"渲染），但 `recon_tool smoke-tests` 显式传
+`{"csproj": "tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj"}` 是**正常**的（实测 exit 0）。
+结论：**带必填输入的工具用 `recon_tool` 调用，别用 `recon_probe` 判断它坏没坏。**
+
 ## 4. 待办 / 已知事项
 
 - 用真实客户端做一次完整试玩（这是目前唯一缺失的端到端环节）。**交易已做过双客户端完整试玩**（见 §2.5），城镇同屏/好友的遗留项仍在 §2.3/§2.4 各自的"待验证"里。
@@ -1177,6 +1625,9 @@ Phase 0 计划 `docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0.
   `dotnet build` 处理 `.slnx` 会因 `.vcxproj` 报 `MSB4278`（见 BUILDING §8）。发布启动器用 MSBuild 的 Publish 目标：`-t:Publish -p:PublishDir=<绝对路径>\`，它会一并输出启动器、`DFLegacy.Relay.Core.dll` 与 `ijl15.dll`。
 - **Git Bash 下 MSBuild 开关要用 `-` 前缀**（`-m`、`-restore`、`-p:Configuration=Release`）。写 `/m` `/restore` 会被 MSYS 当成路径转换成 `M:/`、`D:/Program Files/Git/restore`，报 `MSB1008: 只能指定一个项目`。
 - 本机**没有安装 cmake**，因此 `build-native.ps1` 不可用；原生模块改由 `.vcxproj` 构建，产物落在 `artifacts/native/{ijl15,random}/<Configuration>/`，服务端发布时会自动带上随机桥 DLL。
+  （2026-10-04 复核：PATH 与 VS 安装目录下都搜不到 `cmake.exe`，MSBuild 与 x86 工具集则在。
+  因此原生自测也补了 `src/DFLegacy.Ijl15/tests/DFLegacy.Ijl15.Tests.vcxproj` 并挂进 `DFLegacy.Emulator.slnx` ——
+  原先自测只在 `CMakeLists.txt` 里定义，没有 cmake 就**跑不到**，等于长期没在跑。两份源文件列表要同步改。）
 - **构建被"访问被拒绝 / 无法获取锁文件"挡住时先清孤儿进程**（2026-10-01 实际踩过）：
   `dotnet build` 报 `MSB3491: Could not write lines to file "…obj\Release\net10.0\…AssemblyInfoInputs.cache". Access to the path … is denied`，
   或 restore 报 `Unable to obtain lock file access on …\NuGetScratch\lock\…` 时，先怀疑**残留的 MSBuild 工作进程**而不是权限本身：
@@ -1345,3 +1796,33 @@ Phase 0 计划 `docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0.
   ① 死亡包**先广播后摘除**；② 清完**重新判定**清房；③ 判定成立要发 **`NOTI 31`** 并触发 `CompleteClearQuestTriggersAsync`。
 - **排查入口**：`insns.txt` 里 `0x78C9F6` 所在函数的反汇编（尚未看过），
   以及客户端目录各自的 `LagLog.txt`（两个客户端目录分开后才有独立归因价值）。
+
+## 12. 2026-10-22 真机：客户端合成输入（B′）T2 单键门 + T3 无人工 UI 验收门 **通过**
+
+**结论先行**：`handshake-login-town` 场景在真机上**全程无人工 UI** 跑通两轮
+（launcher 自动登录 → 合成输入选频道 → 关公告 → 选角 → 进城），
+verdict 两轮一致：`green-with-human`（pass 3 / needs-human 1 / **fail 0** / missing-evidence 0）。
+证据类别：`[抓包]`（netdump 握手/进频道/7001 游戏会话/7003 心跳帧）+ `[真机]`
+（城镇截图、驱动时序日志、`DF\auto-input-diag.log` 诊断线）+ `[静态]`（服务端 `Entrance listener ready`）。
+操作手册与判据：`docs/superpowers/plans/2026-10-22-b3-real-machine-runbook.md`（含 7 条实测坑位）。
+
+**真机阶段发现并修复的三个实现缺口**（T0/T1 门测不出、只有真机能暴露，提交 `c8e015a`）：
+
+1. **指令文件只装一次**：原实现只在 `Install()` 时调一次 `LoadPlanFile()`，而平台在客户端
+   起来**之后**才写计划 ⇒ 永远不被拾取。spec §3.2 本就要求"启动指令文件轮询"（计划文本欠规格）。
+   修法：`Pump()` 内非 Armed 态按 50ms 节流轮询；装载新计划时删除旧 `.done` 标记
+   （`wait_ready`"标记消失 = 已取走"的语义由此成立）。
+2. **帧泵挂点在部分界面不执行**：0x83F996 性能调用点在频道选择界面**不执行**（实测诊断线
+   8 秒不出现），纹理状态代理又被 `ScaleFilter=native` 整体跳过 ⇒ 泵死。修法：**泵锚迁到
+   `HookedGetAsyncKeyState` 本体**——游戏每帧轮询键盘、全界面有效、合成键态对当次查询
+   立即可见（注入时序最优）；纹理代理与性能调用点保留为次级锚。T0 自测补验证各锚的幂等。
+3. **launcher 覆盖客户端 dll**：launcher 每次启动从**自己的目录**安装 ijl15 替换模块 ⇒ 只部署
+   `DF\ijl15.dll` 会被旧版覆盖（实测三处哈希比对定位）。部署必须同时覆盖 `DF\town-test\ijl15.dll`。
+
+**验证门全绿**：T0 原生自测（零警告零错误 + 全量 exit 0）→ T2 单键门（netdump +2610 字节 +
+选角界面跳转截图 + 无崩溃）→ T3 两轮一致 → 回归四件套（pytest 126 / smoke-tests 全过 /
+protocol.s1 verify 5/5 / MSBuild 原生）。
+
+**边界**（如实）：[语义]"人工确认同屏"按设计留 needs-human（机器证据 = 进城帧 + 城镇截图 +
+HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 launcher 免掉，spec §6.5）；
+帧泵锚依赖键盘轮询活跃（spec §6.1 同款升级风险）。
