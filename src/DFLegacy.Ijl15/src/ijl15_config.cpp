@@ -22,6 +22,7 @@ namespace
         DefaultWindowHeight,
         true,
         true,
+        false,
         dfl::ijl15_config::ScaleFilterMode::Native};
 
     dfl::ijl15_config::Settings CurrentSettings = DefaultSettings;
@@ -208,6 +209,11 @@ namespace dfl::ijl15_config
                 "Features",
                 "EnableMouseWheel",
                 DefaultSettings.EnableMouseWheel);
+            CurrentSettings.EnableAutoInput = ReadBoolean(
+                path,
+                "Features",
+                "EnableAutoInput",
+                DefaultSettings.EnableAutoInput);
             CurrentSettings.ScaleFilter = ReadScaleFilter(
                 path,
                 DefaultSettings.ScaleFilter);

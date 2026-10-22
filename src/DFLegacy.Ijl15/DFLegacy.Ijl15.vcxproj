@@ -98,6 +98,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\ijl15.h" />
+    <ClInclude Include="src\auto_input.h" />
     <ClInclude Include="src\d3d8_scaler.h" />
     <ClInclude Include="src\dnf_patches.h" />
     <ClInclude Include="src\external_string_table.h" />
@@ -110,6 +111,7 @@
     <ClInclude Include="src\window_scaling.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\auto_input.cpp" />
     <ClCompile Include="src\d3d8_scaler.cpp" />
     <ClCompile Include="src\dnf_patches.cpp" />
     <ClCompile Include="src\external_string_table.cpp" />

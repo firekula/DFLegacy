@@ -7,6 +7,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include "auto_input.h"
+#include "ijl15_config.h"
 #include "memory_patch.h"
 #include "performance_overlay.h"
 
@@ -84,6 +86,9 @@ namespace
 
     int __fastcall DrawFpsAndMemory(void* performanceObject, void*) noexcept
     {
+        if (dfl::auto_input::IsEnabled()) { dfl::auto_input::Pump(); }
+        if (!dfl::ijl15_config::Get().EnablePerformanceOverlay) { return 0; }
+
         // The original call site checks [this + 0x2F0] before entering
         // sub_836990. The outer gate is bypassed so IJL15 always runs, but
         // the native renderer is still selected by its original flag here.

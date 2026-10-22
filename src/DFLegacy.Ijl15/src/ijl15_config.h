@@ -16,6 +16,7 @@ namespace dfl::ijl15_config
         int WindowHeight;
         bool EnablePerformanceOverlay;
         bool EnableMouseWheel;
+        bool EnableAutoInput;
         ScaleFilterMode ScaleFilter;
     };
 

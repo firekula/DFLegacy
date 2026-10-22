@@ -17,6 +17,8 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_library(ijl15 SHARED
     include/ijl15.h
+    src/auto_input.cpp
+    src/auto_input.h
     src/d3d8_scaler.cpp
     src/d3d8_scaler.h
     src/dnf_patches.cpp

@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cwchar>
 
+#include "auto_input.h"
 #include "dnf_patches.h"
 #include "d3d8_scaler.h"
 #include "external_string_table.h"
@@ -453,7 +454,8 @@ namespace
     {
         if (patch.Address == PerformanceOverlayGate)
         {
-            return dfl::ijl15_config::Get().EnablePerformanceOverlay;
+            return dfl::ijl15_config::Get().EnablePerformanceOverlay
+                || dfl::ijl15_config::Get().EnableAutoInput;
         }
         return patch.Enabled;
     }
@@ -1024,7 +1026,8 @@ namespace dfl::dnf_patches
             stringTableHookChanged = true;
         }
 
-        if (dfl::ijl15_config::Get().EnablePerformanceOverlay
+        if ((dfl::ijl15_config::Get().EnablePerformanceOverlay
+                || dfl::ijl15_config::Get().EnableAutoInput)
             && !dfl::performance_overlay::InstallCallHook())
         {
             for (std::size_t rollback = 0; rollback < Patches.size(); ++rollback)
@@ -1115,6 +1118,13 @@ namespace dfl::dnf_patches
         {
             OutputDebugStringA(
                 "DFLegacy.Ijl15: mouse-wheel scroll hook was not installed.\n");
+        }
+
+        if (dfl::ijl15_config::Get().EnableAutoInput
+            && !dfl::auto_input::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: auto-input was not installed.\n");
         }
 
         if (appliedCount != 0

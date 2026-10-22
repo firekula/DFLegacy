@@ -13,6 +13,7 @@
 #include "dnf_patches.h"
 #include "external_string_table.h"
 #include "ijl15.h"
+#include "ijl15_config.h"
 #include "memory_patch.h"
 #include "output_paths.h"
 
@@ -225,6 +226,12 @@ bool TestCeraPurchaseGatePolicy()
         && !ShouldBypassCeraPurchaseGate(Gate::GiftEligibility);
 }
 
+bool TestAutoInputConfigDefaults()
+{
+    // Default off: must be false when Config.ini does not provide the key.
+    return dfl::ijl15_config::Settings{}.EnableAutoInput == false;
+}
+
 bool TestExternalStringTableConfiguration()
 {
     using Validation = dfl::external_string_table::EncodingValidation;
@@ -356,6 +363,10 @@ int main()
     if (!TestCeraPurchaseGatePolicy())
     {
         return Fail("Cera purchase-gate policy is invalid");
+    }
+    if (!TestAutoInputConfigDefaults())
+    {
+        return Fail("auto-input config default is not disabled");
     }
     if (!TestExternalStringTableConfiguration())
     {
