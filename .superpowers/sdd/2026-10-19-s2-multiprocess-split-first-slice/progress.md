@@ -652,3 +652,40 @@ Task 11 仍 `needs-refresh`（进入前先刷新 Tier 2 例外/归一化 + D5-RE
 - 登记解决方式：重启释放 Windows 动态排除段；winnat 服务仍在 Running（Manual），但 2311 不再被排除。
 
 Task 11 实施中：`impl-task-11-wiring`（orchestrate 双进程接线）进行中。
+
+## Task 11 前置（裁定 2）：orchestrate 双进程接线 —— 2026-10-22 实施与验收
+
+基线 `94f4a49`（D10-ENV-2311 解决）；本波提交 `7096458`（3 文件，+239/−11，全部在 `tools/acceptance/` 内）。
+计划 Task 11 段「刷新裁定 2」：Task 10 只给了原语、`orchestrate` 仍单进程，本步把拆分模式双进程接上。
+
+### 实现要点（后续真机 run 不要改错）
+
+- `orchestrate` 判 `_is_split_server(server.json)`：拆分模式先 `start_server(name="channel", exe=channel_exe)`
+  再 `start_server(name="game", exe=server_exe)`；两进程共读同一份 `server.json` 副本，逐进程日志
+  `server-channel.log` / `server-game.log`。单体模式不变（只起 game）。
+- channel exe 默认 `server_exe.parent/"DFLegacy.Channel.exe"`，`--channel-exe` 覆盖（进 `_orchestration_paths`）；
+  拆分模式 channel exe 缺失时 rc=2 明确报错。
+- 等就绪复用 `wait_until_listening`（其 `_wait_split_processes` 已按 channel→Entrance、game→Channel 各自判活）。
+- 新测试用 `bind 0` 分空闲端口 + 占位进程，**绝不 bind 2311**。
+
+### 实施回填（1 处，非越界）
+
+`test_cli_orchestrate.py` 的 `_paths` 补 `channel_exe` 键（1 行）：orchestrate 现在读 `paths["channel_exe"]`，
+旧 `_paths` 缺该键会让 4 个既有用例 KeyError 新增红；补键消除。
+
+### 门槛结果（Lead 独立复跑，非转述）
+
+| 命令 | 结果 |
+|---|---|
+| `python -m pytest acceptance/tests/test_multi_server.py -q` | `6 passed`（TDD：实现前 2 新用例红） |
+| `python -m pytest acceptance/tests -q` | **`123 passed`，exit 0**（= 121 环境恢复 + 2 新用例；D10-ENV-2311 已解决故 3 个 2311 用例全绿） |
+
+### 真机部署缺口（runbook 前置，非本步代码问题）
+
+- `DFLegacy.Channel.exe` **未部署到 `DF/town-test/`**（只在 `src/.../bin/Release/net10.0/` 与 `tests/.../bin/Release/net10.0/`）⇒ 真机拆分档要么拷进 town-test、要么 `--channel-exe` 指向 bin 路径。
+- 真机在跑的 `DF/town-test/server.json` 是**旧单体配置**（无 `Processes` 段），跑拆分档需先加 `Processes` 段并切 `Game.EntranceBinding=false`。
+
+### 当前遗留项（稳定 ID）
+
+`D5-REAL`、`D5-RAW-COMPARE`（Tier 2/3 本体验证，仍 open）；`D7-NOTICE`（真发仍 open）；其余 D 项状态不变。
+`D10-ENV-2311` 已 resolved（上文）。
