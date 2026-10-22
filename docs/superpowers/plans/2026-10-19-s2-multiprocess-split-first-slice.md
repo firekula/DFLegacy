@@ -2125,7 +2125,33 @@ git commit -m "S2: game 进程接入链路并把 channel 侧计数合并进 /api
 
 ## Task 9: `protocol/` 新增 S2S 报文表 + 契约扩展（I5 前半）
 
-> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+> **2026-10-22 刷新（Task 8 完成后进入本波）：草案的「总数 1171→1175、KIND_BASELINES += s2s、6 文件」
+> 与现场实现不符，被本节「刷新裁定」取代；下面 Step 2/Step 3 的草案代码块保留作历史，不再照抄。**
+>
+> 刷新裁定（每条带代价，依据：`verify.py:39-66,154-187,190-214`、`render.py:10,102-118`、
+> `importer.py:16,93-97`、`test_verify.py:48-71,166-176,281-296`）：
+> 1. **S2S 独立成 `map/s2s-map.tsv`，不并入 `opcode-map.tsv`，`opcodes_total` 保持 1171**。草案说
+>    「1171+4=1175、KIND_BASELINES += s2s」，但 `_check_baselines`（`verify.py:156`）与 `build_manifest`
+>    （`render.py:102`）都**只从 `opcode-map.tsv` 计数**。把 S2S 混进去会：①污染官方六档/status/ext_mark
+>    统计（S2S 的 `ext_mark="-"` 不在 `MARKS` 枚举、`tier=T4` 不是逆向深度）；②`importer.import_map`
+>    （`importer.py:93`，从 `.superpowers` 原始产物重建 opcode-map）下次会把无原始来源的 S2S **静默删掉**；
+>    ③`_check_internal`（`verify.py:198`）要求 opcode-map==ledger 对称，S2S 无官方 opcode 账。
+>    **代价**：`verify`/`render` 各加一段「读 s2s-map.tsv 单独计数」，manifest 多一个 `s2s` 基线键。
+> 2. **加第 6 个受跟踪文件的完整下游清单**（漏一处 verify 就红）：`render.TRACKED`（`render.py:10`）与
+>    `verify.TRACKED_FILES`（`verify.py:39`）各 += `map/s2s-map.tsv`；`verify.KEY_COLUMNS`（`:55`）加
+>    `"map/s2s-map.tsv": ("kind","id")`、`EXPECTED_COLUMNS`（`:61`）加 `"map/s2s-map.tsv": MAP_COLUMNS`；
+>    `_check_baselines` 加**独立** `s2s` 计数（读 s2s-map.tsv，**不**混进六档/status/mark 那个 `rows` 循环）；
+>    `render.build_manifest` 加 `s2s` 基线；`test_verify.py` 的 `_build` 夹具（`:48`）补 s2s-map.tsv、
+>    `test_manifest_must_list_exactly_the_five_tracked_files`（`:170`）语义改为「6 文件」、
+>    `test_baseline_total_is_pinned_to_1171`（`:281`）**不变**（1171 仍是官方硬编码基线）。
+> 3. **S2S 不进 importer 流水线**：s2s-map.tsv 是人工维护台账（自选语义、无官方 `.rodata`），
+>    `import_map` 不碰它、`_KIND_ORDER` 不加 S2S（它只管 opcode-map 排序）。
+> 4. **NOTICE_CHANNEL_SERVER（D7-NOTICE）本波只登记、不接线**：4 条 S2S 报文（4/128/129/130）进台账，
+>    服务端是否真发 NOTICE 归 D7-NOTICE（Task 11 真机时定）。`(kind,id)` 主键下 S2S id=4 与 CMD/NOTI 4 号不冲突。
+>
+> 门槛（沿用仓库 gate）：`python -m protocol.s1 render` 再 `python -m protocol.s1 verify`（仍 **5/5 PASS**，但含 s2s 基线）；
+> `python -m pytest protocol -q` 全绿（含上述 2 个改过的夹具）。`protocol/README.md` 的「5 文件/1171 条」改成
+> 「6 文件 / 1171 官方 + 4 S2S」。
 
 **Files:**
 - Create: `protocol/map/s2s-map.tsv`
@@ -2180,7 +2206,30 @@ git commit -m "S2: protocol 新增 S2S 报文表并把校验契约扩到 6 文�
 
 ## Task 10: 验收平台支持多进程 + 本刀门场景（I5 中段）
 
-> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+> **2026-10-22 刷新（Task 8 完成后进入本波）：草案的 `SERVER_SPECS` 端口是猜的、`server_dir` 只读未实现、
+> 多进程就绪只等 Entrance，被本节「刷新裁定」取代；下面 Step 1/Step 3 的草案代码块保留作历史。**
+>
+> 刷新裁定（每条带代价，依据：`model.py:91-104,113-122`、`runner.py:59-71,385-441,508-557`、
+> `verdict.py:99-140`、`cli.py:172-199`）：
+> 1. **`server` → `servers` 重命名三处触碰点**：`model.py:99`（`Manifest.server` 字段）、`model.py:120`
+>    （`deterministic_view` 的 `"server"` 键遍历）、`runner.py:438`（`start_server` 写 `mf.server = rec`）。
+>    `runner._load`（`:496`）用 `Manifest(**raw)` 反序列化，字段改名后无跨 run 兼容问题（run 目录每 run 新建）；
+>    `deterministic_view` 键名变化要 `grep -rn '\.server\b\|\["server"\]\|\x27server\x27' tools/acceptance --include=*.py`
+>    把每处调用点改成 `servers`（一处都不能漏）。
+> 2. **`SERVER_SPECS` 端口不能硬编码、disjoint 判据必须按 (host,port,protocol)**：草案的
+>    `game tcp[7001] udp[2311,7002,7003] / channel tcp[2311,8080]` 是猜的，且 `test_server_specs_declare_disjoint_ports`
+>    把 tcp+udp 端口混在一起查重——2311 在 game 是 UDP、channel 是 TCP，本是合法共存却被误判冲突。
+>    端口应从 `server.json` 的 `DFLegacy` 段派生：channel 绑 `Entrance.Port + AdditionalPorts + Processes.Channel.LinkPort`，
+>    game 绑 `Channel.Port + GameplayDatagram/CharacterDatagram` 的 UDP。`parse_server_endpoints`（`runner.py:59`）
+>    目前不解析 `GameplayDatagram`（PrimaryPort/SecondaryPort，见 `:33-34` 注释）与 `Processes.Channel.LinkPort`，需补。
+> 3. **多进程就绪不能只等 Entrance**：`wait_until_listening`（`runner.py:534`）只取 `endpoints["Entrance"]`；
+>    拆分模式下 channel 等 Entrance、game 等 Channel.Port，须按进程分别等各自的就绪端点。
+> 4. **`judge` 的 `server_dir` 现在完全没被读**（`verdict.py:99` 形参，正文 `:105-140` 无引用）：草案「让 server_dir
+>    真的被读」正确。落法：场景里 `evidence=[静态]` 的服务端侧期望，从 `server-*.log`（逐进程日志）搜 `pattern`；
+>    `_evidence_files`（`:43`）目前只看 actor 目录 netdump，需为服务端侧期望加 `server-*.log` 搜索域。
+>
+> 门槛：`(cd tools) python -m pytest acceptance/tests -q` 全绿；`tools/acceptance/tests/test_multi_server.py`
+> 新用例（逐进程 manifest 不覆写、disjoint 按 (host,port,protocol)、门场景有可失败期望）先写红再实现。
 
 **Files:**
 - Modify: `tools/acceptance/model.py`（`Manifest` 支持按进程名的服务端记录）
