@@ -96,7 +96,7 @@ class Manifest:
     scenario_id: str
     expect_t0: str
     actors: list[dict] = field(default_factory=list)
-    server: dict = field(default_factory=dict)
+    servers: dict[str, dict] = field(default_factory=dict)
     config_overrides: list[dict] = field(default_factory=list)
 
     def to_json(self) -> str:
@@ -117,7 +117,10 @@ def deterministic_view(manifest: Manifest) -> dict:
         "scenario_id": manifest.scenario_id,
         "expect_t0": manifest.expect_t0,
         "actors": [{"name": a["name"], "driver": a["driver"]} for a in manifest.actors],
-        "server": {k: v for k, v in manifest.server.items() if k not in ("pid",)},
+        "servers": {
+            name: {k: v for k, v in entry.items() if k != "pid"}
+            for name, entry in manifest.servers.items()
+        },
         "config_overrides": manifest.config_overrides,
     }
 

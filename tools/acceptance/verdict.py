@@ -21,13 +21,18 @@ __all__ = ["RESULT_LEVELS", "GREP_SOURCES", "EVIDENCE_SOURCES", "PLATFORM_METADA
 # 证据来源种类 → 搜索域 glob。这是**产物形态**的名字，**不是**六类证据记号
 # （[静态]/[抓包]/[真机]/[回放]/[推断]/[未验证]），也不是判定档（[存在]/[字节]/[语义]）。
 # `judge` 真的用它选搜索域（终审 I-2：它曾经是"声明了全仓没人用"的死常量）。
-GREP_SOURCES: dict[str, str] = {"netdump": "netdump-*.log", "all": "*.log"}
+GREP_SOURCES: dict[str, str] = {"netdump": "netdump-*.log", "all": "*.log", "server": "server-*.log"}
 
 # 六类证据记号 → 来源种类。只给**产物形态确定**的类别登记：`[抓包]` 就是 net_dump.cpp 写的
-# netdump（STATUS.md L1424：每客户端一个文件）。其余类别（[静态]/[真机]/[回放]/[推断]/[未验证]）
-# 的产物形态未定 ⇒ 按 all 处理，不假装知道它们长什么样（硬约束 8：不编证据）。
-EVIDENCE_SOURCES: dict[str, str] = {"[抓包]": "netdump"}
+# netdump（STATUS.md L1424：每客户端一个文件）；`[静态]` 是服务端侧期望（逐进程日志 server-*.log）。
+# 其余类别（[真机]/[回放]/[推断]/[未验证]）的产物形态未定 ⇒ 按 all 处理，不假装知道它们长什么样（硬约束 8：不编证据）。
+EVIDENCE_SOURCES: dict[str, str] = {"[抓包]": "netdump", "[静态]": "server"}
 DEFAULT_SOURCE = "all"
+
+
+def is_server_expect(expect: Expect) -> bool:
+    """`[静态]` 标注的服务端侧期望：pattern 在 server_dir 的 `server-*.log` 里找。"""
+    return expect.evidence == "[静态]"
 
 # 本平台自己写的元数据，**永不算证据**：cli.py 的 on_started 往每个 actor 目录写 launcher.log
 # （PID 归因的中间产物）。把它当证据会两头出错（终审 I-2 实测 P1/P4）：
@@ -111,6 +116,9 @@ def judge(scenario: Scenario, artifact_dirs: dict[str, Path], server_dir: Path) 
                     step.actor, step.action, ex.description, ex.level, "needs-human",
                     detail="语义断言：需人看；升级为自动需先有 golden bytes（spec §3.2）"))
                 continue
+            if is_server_expect(ex):
+                entries.append(_judge_server_expect(step, ex, server_dir))
+                continue
             if d is None or not Path(d).exists():
                 entries.append(VerdictEntry(
                     step.actor, step.action, ex.description, ex.level, "missing-evidence",
@@ -138,6 +146,30 @@ def judge(scenario: Scenario, artifact_dirs: dict[str, Path], server_dir: Path) 
                     step.actor, step.action, ex.description, ex.level, "pass",
                     detail=f"{f.name}:{i} {line[:80]}"))
     return Verdict(scenario_id=scenario.id, entries=entries)
+
+
+def _judge_server_expect(step, ex: Expect, server_dir: Path) -> VerdictEntry:
+    """服务端侧期望：从 `server_dir` 的 `server-*.log` 搜 pattern（`server_dir` 真正被读）。"""
+    sdir = Path(server_dir) if server_dir is not None else None
+    if sdir is None or not sdir.exists():
+        return VerdictEntry(
+            step.actor, step.action, ex.description, ex.level, "missing-evidence",
+            detail=f"服务端产物目录不存在：{server_dir}")
+    files = _evidence_files(sdir, ex)
+    if not files:
+        return VerdictEntry(
+            step.actor, step.action, ex.description, ex.level, "missing-evidence",
+            detail=(f"服务端产物目录 {sdir} 下没有可作证据的文件（来源 glob {evidence_glob(ex)!r}）"))
+    pattern = ex.pattern if ex.pattern is not None else ex.description
+    hit = _search(files, pattern)
+    if hit is None:
+        return VerdictEntry(
+            step.actor, step.action, ex.description, ex.level, "fail",
+            detail=(f"在 {sdir} 的证据文件（{evidence_glob(ex)!r}）里找不到 {pattern!r}"))
+    f, i, line = hit
+    return VerdictEntry(
+        step.actor, step.action, ex.description, ex.level, "pass",
+        detail=f"{f.name}:{i} {line[:80]}")
 
 
 def digest(v: Verdict) -> dict:

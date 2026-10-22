@@ -181,9 +181,10 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
     client_pids: dict[str, int | None] = {}
     try:
         r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
+                       name="game",
                        server_json=server_exe.parent / "server.json",
                        env={"DFLegacy__DataPath": str(run_state)},
-                       log_path=rp.server_dir / "server.log")
+                       log_path=rp.server_dir / "server-game.log")
         r.record_run_config(rp, [{"key": "DFLegacy__DataPath",
                                   "old": "data/state.json", "new": str(run_state)}])
         # 必须等服务端真的开始监听再起 actor：launcher 在 StartServer=false 时只探一次端口

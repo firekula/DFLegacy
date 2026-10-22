@@ -11,10 +11,10 @@ from acceptance.model import load_scenario
 SCEN = Path(__file__).resolve().parents[1] / "scenarios" / "town-two-clients.yaml"
 
 
-def test_all_four_scenarios_parse_and_have_falsifiable_expects():
+def test_all_five_scenarios_parse_and_have_falsifiable_expects():
     base = Path(__file__).resolve().parents[1] / "scenarios"
     ids = sorted(p.stem for p in base.glob("*.yaml"))
-    assert ids == ["party-invite", "town-position-sync", "town-two-clients", "trade-open"]
+    assert ids == ["handshake-login-town", "party-invite", "town-position-sync", "town-two-clients", "trade-open"]
     for p in sorted(base.glob("*.yaml")):
         sc = load_scenario(p)
         assert sc.has_falsifiable_expect(), f"{sc.id} 没有任何能失败的期望 ⇒ 判定会无效"

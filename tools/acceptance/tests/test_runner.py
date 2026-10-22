@@ -246,8 +246,8 @@ def test_wait_until_listening_raises_with_log_tail_when_never_listens(tmp_path):
     _write_server_json(sj, {"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 2311}}})
     rp = RunPaths.for_run(tmp_path / "runs", "RID")
     rp.server_dir.mkdir(parents=True, exist_ok=True)
-    (rp.server_dir / "server.log").write_text("fake server: never listening\n",
-                                              encoding="utf-8")
+    (rp.server_dir / "server-game.log").write_text("fake server: never listening\n",
+                                                   encoding="utf-8")
     r = Runner(workspace=tmp_path, acceptance_dir=tmp_path, runs_dir=tmp_path / "runs")
     with pytest.raises(ServerStartupError) as ei:
         r.wait_until_listening(rp, _scenario(), server_json=sj, timeout_s=0.5,

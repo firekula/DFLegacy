@@ -103,10 +103,10 @@ def test_deterministic_view_drops_time_and_id_but_keeps_roster():
                  created_utc="2026-10-07T06:00:00Z", scenario_id="s",
                  expect_t0="server-accept",
                  actors=[{"name": "A", "driver": "real-client", "pid": 123}],
-                 server={"exe": "DFLegacy.Server.exe", "pid": 456},
+                 servers={"game": {"exe": "DFLegacy.Server.exe", "pid": 456}},
                  config_overrides=[{"key": "GameplayDatagram.AdvertisedHost", "old": "x", "new": "127.0.0.1"}])
     v = deterministic_view(m)
     assert "created_utc" not in v and "run_id" not in v
     assert v["actors"] == [{"name": "A", "driver": "real-client"}]
-    assert v["server"]["exe"] == "DFLegacy.Server.exe" and "pid" not in v["server"]
+    assert v["servers"]["game"]["exe"] == "DFLegacy.Server.exe" and "pid" not in v["servers"]["game"]
     assert v["config_overrides"] == [{"key": "GameplayDatagram.AdvertisedHost", "old": "x", "new": "127.0.0.1"}]

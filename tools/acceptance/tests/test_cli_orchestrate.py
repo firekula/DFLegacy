@@ -40,7 +40,7 @@ class FakeRunner:
             "scenario_id": scenario.id, "expect_t0": scenario.expect_t0,
             "actors": [{"name": a.name, "driver": a.driver, "workdir": None}
                        for a in scenario.actors],
-            "server": {}, "config_overrides": [],
+            "servers": {}, "config_overrides": [],
         }
         rp.manifest.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
         self.calls.append(("prepare", run_id))
@@ -217,7 +217,7 @@ def test_orchestrate_wires_server_actors_steps_and_collect(tmp_path, monkeypatch
     # 服务端：env 指向 run 私有存档、日志落 run 目录
     server = calls["start_server"]
     assert server["env"]["DFLegacy__DataPath"] == str(rp.server_dir / "state.json")
-    assert server["log_path"] == rp.server_dir / "server.log"
+    assert server["log_path"] == rp.server_dir / "server-game.log"
     assert (rp.server_dir / "state.json").is_file(), "必须复制出 run 私有存档"
     assert (rp.server_dir / "server.json").is_file(), "必须留 server.json provenance 副本"
     assert json.loads(rp.manifest.read_text(encoding="utf-8"))["config_overrides"] == [

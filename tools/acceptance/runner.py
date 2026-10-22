@@ -30,9 +30,9 @@ COMMENT_PREFIX = "//"
 # 的启动横幅把 CharacterDatagram 标成 `{Host}:{Port}/udp`（Entrance/GameProbe 没有 `/udp` 后缀），
 # 且 CharacterDatagramService.cs:20 用 UdpClient，EntranceService.cs:171 / ProbeService.cs:23 用
 # TcpListener ⇒ 默认 TCP，只有它是 UDP。
-# 注：GameplayDatagramService.cs:37-38 也是 UDP（Program.cs:345-346 各自带 `/udp`），但它的端口键是
-# `PrimaryPort`/`SecondaryPort`（不是 `Port`）⇒ 本文件的端点解析不会把它当端点，故不在此登记。
-UDP_PORT_SERVICES: frozenset[str] = frozenset({"CharacterDatagram"})
+# 注：GameplayDatagramService.cs:37-38 也是 UDP（Program.cs:345-346 各自带 `/udp`），端口键是
+# `PrimaryPort`/`SecondaryPort`（不是 `Port`），由 parse_server_endpoints 单独解析。
+UDP_PORT_SERVICES: frozenset[str] = frozenset({"CharacterDatagram", "GameplayDatagram"})
 
 
 class PortBusy(RuntimeError):
@@ -57,18 +57,81 @@ class Endpoint:
 
 
 def parse_server_endpoints(server_json: Path) -> dict[str, Endpoint]:
-    """抽出"服务名 -> Endpoint(host, port, protocol)"。跳过 `//` 注释键；缺 host 的条目默认 0.0.0.0。"""
+    """抽出"服务名 -> Endpoint(host, port, protocol)"。跳过 `//` 注释键；缺 host 的条目默认 0.0.0.0。
+
+    除单端口服务外，还解析：
+      * `GameplayDatagram.PrimaryPort` / `SecondaryPort`（都是 UDP，键 `GameplayDatagramPrimary`/`GameplayDatagramSecondary`）；
+      * `Entrance.AdditionalPorts`（TCP，键 `EntranceAdditional<i>`）；
+      * `Processes.Channel.LinkPort`（TCP，键 `ChannelLink`）。
+    """
     raw = json.loads(Path(server_json).read_text(encoding="utf-8"))["DFLegacy"]
     out: dict[str, Endpoint] = {}
+
+    def host_of(cfg: dict) -> str:
+        return str(cfg.get("Host") or cfg.get("AdvertisedHost") or "0.0.0.0")
+
     for svc, cfg in raw.items():
         if not isinstance(cfg, dict):
             continue
-        if "Port" not in cfg:
-            continue
-        host = cfg.get("Host") or cfg.get("AdvertisedHost") or "0.0.0.0"
-        protocol = "udp" if svc in UDP_PORT_SERVICES else "tcp"
-        out[svc] = Endpoint(str(host), int(cfg["Port"]), protocol)
+        if "Port" in cfg:
+            protocol = "udp" if svc in UDP_PORT_SERVICES else "tcp"
+            out[svc] = Endpoint(host_of(cfg), int(cfg["Port"]), protocol)
+        if svc == "GameplayDatagram":
+            for key in ("Primary", "Secondary"):
+                port_key = key + "Port"
+                if port_key in cfg:
+                    out[f"GameplayDatagram{key}"] = Endpoint(host_of(cfg), int(cfg[port_key]), "udp")
+        if svc == "Entrance" and isinstance(cfg.get("AdditionalPorts"), list):
+            for i, port in enumerate(cfg["AdditionalPorts"]):
+                out[f"EntranceAdditional{i}"] = Endpoint(host_of(cfg), int(port), "tcp")
+
+    processes = raw.get("Processes")
+    if isinstance(processes, dict) and isinstance(processes.get("Channel"), dict):
+        link = processes["Channel"]
+        if "LinkPort" in link:
+            out["ChannelLink"] = Endpoint("0.0.0.0", int(link["LinkPort"]), "tcp")
     return out
+
+
+# 每个服务端进程的静态声明：就绪端点键（parse_server_endpoints 的键名）与日志文件名。
+# 端口值**不硬编码**——由 server.json 派生（见 server_process_specs）。
+SERVER_SPECS: dict[str, dict[str, str]] = {
+    "game": {"ready": "Channel", "log": "server-game.log"},
+    "channel": {"ready": "Entrance", "log": "server-channel.log"},
+}
+
+
+def server_process_specs(server_json: Path) -> dict[str, list[Endpoint]]:
+    """从 server.json 派生每个服务端进程绑定的端点（键 = SERVER_SPECS 的进程名）。
+
+    channel 绑 `Entrance.Port` + `Entrance.AdditionalPorts`（去掉 `Channel.Port`）+ `Processes.Channel.LinkPort`；
+    game 绑 `Channel.Port` + `GameplayDatagram`/`CharacterDatagram` 的 UDP。
+    端口预检与 disjoint 校验都按 (host, port, protocol)，不是端口号。
+    """
+    eps = parse_server_endpoints(server_json)
+    channel_port = eps["Channel"].port if "Channel" in eps else None
+    channel: list[Endpoint] = []
+    game: list[Endpoint] = []
+    for key, ep in eps.items():
+        if key in ("Entrance", "ChannelLink"):
+            channel.append(ep)
+        elif key.startswith("EntranceAdditional") and (channel_port is None or ep.port != channel_port):
+            channel.append(ep)
+        elif key == "Channel" or key == "CharacterDatagram" or key.startswith("GameplayDatagram"):
+            game.append(ep)
+    return {"game": game, "channel": channel}
+
+
+def _is_split_server(server_json: Path) -> bool:
+    """拆分布局 = `Processes.Channel.Enabled=true`（channel 进程接管入口族，game 只绑 Channel.Port）。"""
+    try:
+        raw = json.loads(Path(server_json).read_text(encoding="utf-8"))["DFLegacy"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+    processes = raw.get("Processes")
+    return (isinstance(processes, dict)
+            and isinstance(processes.get("Channel"), dict)
+            and processes["Channel"].get("Enabled") is True)
 
 
 def _probe(host: str, port: int, protocol: str = "tcp") -> bool:
@@ -359,6 +422,8 @@ class Runner:
         self._log_handles: list[Any] = []
         # 服务端进程句柄：`wait_until_listening` 靠 `Popen.poll()` 判断"是否已退出"。
         self._server_proc: Optional[subprocess.Popen] = None
+        # 逐进程句柄（拆分布局下 channel/game 各自判活）。
+        self._server_procs: dict[str, Optional[subprocess.Popen]] = {}
 
     def prepare(self, scenario: Scenario, git_sha: str,
                 now: Optional[datetime] = None) -> tuple[RunPaths, Manifest]:
@@ -383,12 +448,17 @@ class Runner:
         rp.manifest.write_text(mf.to_json(), encoding="utf-8")
 
     def start_server(self, rp: RunPaths, exe: Path, workdir: Path,
+                     name: str = "game",
                      server_json: Path | None = None,
                      overrides: dict[str, str] | None = None,
                      env: dict[str, str] | None = None,
                      log_path: Path | None = None,
                      server_args: Optional[list[str]] = None) -> dict:
-        """起服务端。工作目录必须是 exe 同目录（它读同目录 server.json）。
+        """起服务端进程。工作目录必须是 exe 同目录（它读同目录 server.json）。
+
+        `name` 是进程名（`game`/`channel`），写进 `manifest.servers[name]`——逐进程各记一条、
+        互不覆写；端口预检也只探测**本进程**声明的端点（否则第二个进程会把第一个进程已监听的
+        端口误报成占用）。
 
         `env` 显式追加环境变量（如 DFLegacy__DataPath 指向 run 私有存档）；
         `log_path` 给定时 stdout/stderr 定向到该文件，句柄保留到 `stop_all` 关闭，
@@ -399,8 +469,9 @@ class Runner:
         """
         exe, workdir = Path(exe), Path(workdir)
         sj = Path(server_json) if server_json else workdir / "server.json"
-        endpoints = parse_server_endpoints(sj)
-        preflight_ports(endpoints)
+        my_endpoints = {f"{name}[{i}]": ep
+                        for i, ep in enumerate(server_process_specs(sj).get(name, []))}
+        preflight_ports(my_endpoints)
         # `DFLegacy__DataPath` 必须是绝对路径：服务端按 AppContext.BaseDirectory（exe 目录）
         # 解析它，相对路径会被写到别处（实测会静默写进 `DF\runs\...`，run 私有副本原封不动
         # ⇒ 存档隔离失效）。这里宁可启动前响亮失败，也不要静默写错地方。
@@ -433,9 +504,10 @@ class Runner:
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._procs.append(p)
         self._server_proc = p
+        self._server_procs[name] = p
         rec = {"exe": exe.name, "pid": p.pid, "workdir": str(workdir)}
         _, mf = self._load(rp)
-        mf.server = rec
+        mf.servers[name] = rec
         mf.config_overrides = plan
         self._write_manifest(rp, mf)
         return rec
@@ -511,7 +583,8 @@ class Runner:
                              probe: Optional[Callable[[str, int, str], bool]] = None,
                              on_tick: Optional[Callable[[float], None]] = None,
                              server_proc: Optional[subprocess.Popen] = None) -> dict:
-        """等 `server_json` 声明的 Entrance 端点开始监听；返回等待报告（供 manifest/打印）。
+        """等服务端进程的**各自就绪端点**开始监听；返回等待报告（供 manifest/打印）。
+        （拆分布局：channel 等 Entrance、game 等 Channel.Port；单体模式只等 Entrance。）
 
         存在原因 [真机 2026-10-15]：真服务端启动约 5.4 秒才监听 2311，而 launcher 的
         `EnsureServerReadyAsync` 在 `StartServer=false` 时**只探一次**就抛错
@@ -531,6 +604,9 @@ class Runner:
             endpoints = parse_server_endpoints(sj)
         except (OSError, ValueError, KeyError, TypeError):
             endpoints = {}
+        if _is_split_server(sj):
+            return self._wait_split_processes(rp, sj, endpoints, timeout_s, probe, on_tick)
+
         entrance = endpoints.get("Entrance")
         if entrance is None:
             return {"skipped": True, "reason": f"{sj} 未声明 Entrance 端点",
@@ -546,15 +622,47 @@ class Runner:
             wait_for_listen(entrance.host, entrance.port, timeout_s=timeout_s,
                             should_stop=should_stop, **kw)
         except ServerStartupError as exc:
-            try:
-                log = rp.server_dir / "server.log"
-            except (AttributeError, TypeError):
-                log = None
+            log = rp.server_dir / SERVER_SPECS["game"]["log"]
             raise ServerStartupError(
-                f"{exc}；服务端日志尾部（{log}）：\n{_tail(log) if log else '(未知日志路径)'}"
+                f"{exc}；服务端日志尾部（{log}）：\n{_tail(log)}"
             ) from exc
         return {"skipped": False, "host": probe_host(entrance.host),
                 "port": entrance.port, "waited_ms": int((time.monotonic() - started) * 1000)}
+
+    def _wait_split_processes(self, rp: RunPaths, sj: Path, endpoints: dict,
+                              timeout_s: float,
+                              probe: Optional[Callable[[str, int, str], bool]],
+                              on_tick: Optional[Callable[[float], None]]) -> dict:
+        """拆分布局：channel 等 Entrance、game 等 Channel.Port，各自判活、各自报日志尾部。"""
+        processes: list[dict] = []
+        for name in ("channel", "game"):
+            ready_key = SERVER_SPECS[name]["ready"]
+            ep = endpoints.get(ready_key)
+            if ep is None:
+                continue
+            proc = self._server_procs.get(name)
+            should_stop = (lambda p=proc: p.poll() is not None) if proc is not None else None
+            started = time.monotonic()
+            try:
+                kw: dict = {} if probe is None else {"probe": probe}
+                if on_tick is not None:
+                    kw["on_tick"] = on_tick
+                wait_for_listen(ep.host, ep.port, timeout_s=timeout_s,
+                                should_stop=should_stop, **kw)
+            except ServerStartupError as exc:
+                log = rp.server_dir / SERVER_SPECS[name]["log"]
+                raise ServerStartupError(
+                    f"{name} 进程：{exc}；日志尾部（{log}）：\n{_tail(log)}"
+                ) from exc
+            processes.append({"name": name, "host": probe_host(ep.host),
+                              "port": ep.port,
+                              "waited_ms": int((time.monotonic() - started) * 1000)})
+        if not processes:
+            return {"skipped": True, "reason": f"{sj} 未声明任何服务端就绪端点",
+                    "host": None, "port": None, "waited_ms": 0, "processes": []}
+        first = processes[0]
+        return {"skipped": False, "host": first["host"], "port": first["port"],
+                "waited_ms": first["waited_ms"], "processes": processes}
 
     def stop_all(self) -> None:
         """逆序回收（先 actor 后 server），并关闭日志句柄。
