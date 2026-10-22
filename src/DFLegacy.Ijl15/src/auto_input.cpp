@@ -130,8 +130,15 @@ namespace dfl::auto_input
         // edge sequence while the plan runs. Finishing, re-arming or
         // restoring hands the keys back to the real keyboard. Everything
         // else forwards.
+        //
+        // This hook is also the reliable per-frame pump anchor: the game
+        // polls GetAsyncKeyState from its input path every frame on every
+        // screen (the performance call site only executes on some), the hook
+        // provably installed (IAT-verified), and pumping here makes edges
+        // armed this instant visible to this very poll.
         SHORT WINAPI HookedGetAsyncKeyState(int vk) noexcept
         {
+            Pump();
             const unsigned code = static_cast<unsigned>(vk);
             if (SynthTableHas(code))
             {
@@ -517,6 +524,52 @@ namespace dfl::auto_input
             std::memcpy(out + dirLen, fileName, static_cast<size_t>(nameLen) + 1);
             return true;
         }
+
+        // Real-machine diagnostic: OutputDebugStringA is invisible without a
+        // debugger-style listener, so the runbook evidence lives in a file
+        // beside DNF.exe instead. One short line per call, append mode.
+        void DiagLine(const char* text) noexcept
+        {
+            char path[MAX_PATH] = {};
+            if (!BuildExeRelativePath("auto-input-diag.log", path, MAX_PATH))
+            {
+                return;
+            }
+            const HANDLE handle = CreateFileA(
+                path,
+                FILE_APPEND_DATA,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                nullptr,
+                OPEN_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL,
+                nullptr);
+            if (handle == INVALID_HANDLE_VALUE)
+            {
+                return;
+            }
+            SYSTEMTIME st{};
+            GetLocalTime(&st);
+            char line[160] = {};
+            const int n = _snprintf_s(
+                line,
+                sizeof(line),
+                _TRUNCATE,
+                "%04u-%02u-%02u %02u:%02u:%02u.%03u %s\r\n",
+                st.wYear,
+                st.wMonth,
+                st.wDay,
+                st.wHour,
+                st.wMinute,
+                st.wSecond,
+                st.wMilliseconds,
+                text);
+            if (n > 0)
+            {
+                DWORD written = 0;
+                WriteFile(handle, line, static_cast<DWORD>(n), &written, nullptr);
+            }
+            CloseHandle(handle);
+        }
     }
 
     bool Install() noexcept
@@ -583,6 +636,8 @@ namespace dfl::auto_input
         // A missing or invalid plan file is not an install failure: the
         // client simply runs without a scripted timeline.
         LoadPlanFile();
+        OutputDebugStringA("auto_input: keyboard hook installed\n");
+        DiagLine("keyboard hook installed");
         return true;
     }
 
@@ -609,6 +664,32 @@ namespace dfl::auto_input
 
     void Pump() noexcept
     {
+        // One-shot liveness marker: the real-machine runbook uses it to prove
+        // this frame path executes (file diagnostic; see DiagLine).
+        static bool announced = false;
+        if (!announced)
+        {
+            announced = true;
+            OutputDebugStringA("auto_input: pump first call\n");
+            DiagLine("pump first call");
+        }
+
+        // The platform writes the instruction file after the client is
+        // already up, so an idle (or finished) module polls for it every
+        // frame -- spec 3.2 mandates the per-frame instruction-file polling.
+        // This Pump can be called many times per frame (it rides the texture
+        // state proxy as well as the performance call site), so the file
+        // probe is throttled to one attempt every 50 ms.
+        if (g_phase != Phase::Armed)
+        {
+            static unsigned lastPollMs = 0;
+            const unsigned now = GetTickCount();
+            if (now - lastPollMs >= 50)
+            {
+                lastPollMs = now;
+                LoadPlanFile();
+            }
+        }
         // The call site in performance_overlay.cpp gates on IsEnabled(); a
         // disarmed module returns from Advance immediately.
         Advance(GetTickCount());
@@ -967,6 +1048,19 @@ namespace dfl::auto_input
         g_fromFile = true;  // ArmPlan cleared it; this plan came from the file
         std::memcpy(g_planPath, planPath, sizeof(g_planPath));
         std::memcpy(g_donePath, donePath, sizeof(g_donePath));
+        // Taking a new plan consumes the previous plan's completion marker:
+        // the platform's wait_ready() (marker gone = taken) is defined on
+        // this clear, and the marker of a finished previous plan is stale
+        // evidence at this point.
+        DeleteFileA(donePath);
+        OutputDebugStringA("auto_input: plan armed\n");
+        {
+            char note[32] = {};
+            if (_snprintf_s(note, sizeof(note), _TRUNCATE, "plan armed (%d steps)", count) > 0)
+            {
+                DiagLine(note);
+            }
+        }
         return true;
     }
 

@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include "d3d8_scaler.h"
+#include "auto_input.h"
 #include "ijl15_config.h"
 #include "memory_patch.h"
 
@@ -143,6 +144,15 @@ namespace
         DWORD type,
         DWORD value)
     {
+        // Every rendered frame sets texture stage states, on every screen
+        // (the 0x83F996 performance call site only executes on some). This
+        // proxy is therefore the reliable per-frame pump for the synthetic
+        // input timeline; Pump is idempotent within a frame.
+        if (dfl::auto_input::IsEnabled())
+        {
+            dfl::auto_input::Pump();
+        }
+
         if (OriginalSetTextureStageState == nullptr)
         {
             return E_FAIL;
