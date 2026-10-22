@@ -29,7 +29,7 @@ from .collector import (clock_offset, collect_actor, collect_server, find_netdum
 from .model import RunPaths, load_scenario
 from .orchestrate import (capture_client_pid, launcher_command,
                           parse_actor_accounts, write_steps)
-from .runner import Runner, ServerStartupError, isolate_state
+from .runner import Runner, ServerStartupError, _is_split_server, isolate_state
 from .verdict import Verdict, digest, judge, write_verdict
 
 HERE = Path(__file__).resolve().parent
@@ -116,10 +116,13 @@ def _orchestration_paths(args: argparse.Namespace) -> dict:
                     else client_dir / "town-test" / "DFLegacy.Launcher.exe")
     server_exe = (Path(args.server_exe) if args.server_exe
                   else client_dir / "town-test" / "DFLegacy.Server.exe")
+    channel_exe = (Path(args.channel_exe) if args.channel_exe
+                   else server_exe.parent / "DFLegacy.Channel.exe")
     launcher_log = (Path(args.launcher_log) if args.launcher_log
                     else launcher_exe.parent / "launcher.log")
     return {"client_dir": client_dir, "launcher_exe": launcher_exe,
-            "server_exe": server_exe, "launcher_log": launcher_log}
+            "server_exe": server_exe, "channel_exe": channel_exe,
+            "launcher_log": launcher_log}
 
 
 def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
@@ -150,6 +153,7 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
         return 2
     client_dir = paths["client_dir"]
     launcher_exe, server_exe = paths["launcher_exe"], paths["server_exe"]
+    channel_exe = paths["channel_exe"]
     launcher_log = paths["launcher_log"]
     problems = _client_prereqs(client_dir)
     for p in (launcher_exe, server_exe, server_exe.parent / "server.json"):
@@ -167,7 +171,14 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
     runs_dir = Path(runs_dir).resolve()
     client_dir = Path(client_dir).resolve()
     launcher_exe, server_exe = Path(launcher_exe).resolve(), Path(server_exe).resolve()
+    channel_exe = Path(channel_exe).resolve()
     launcher_log = Path(launcher_log).resolve()
+
+    server_json = server_exe.parent / "server.json"
+    split = _is_split_server(server_json)
+    if split and not channel_exe.is_file():
+        print(f"拆分模式缺少 channel 可执行：{channel_exe}", file=sys.stderr)
+        return 2
 
     r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
     rp, _ = r.prepare(sc, git_sha=git_sha)
@@ -176,21 +187,35 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
         print(f"活存档不存在：{live_state}", file=sys.stderr)
         return 2
     isolate_state(live_state, rp.server_dir)  # 复制 → run 私有初始存档
-    shutil.copy2(server_exe.parent / "server.json", rp.server_dir / "server.json")
+    shutil.copy2(server_json, rp.server_dir / "server.json")
     run_state = rp.server_dir / "state.json"
     client_pids: dict[str, int | None] = {}
     try:
-        r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
-                       name="game",
-                       server_json=server_exe.parent / "server.json",
-                       env={"DFLegacy__DataPath": str(run_state)},
-                       log_path=rp.server_dir / "server-game.log")
+        if split:
+            # 拆分模式：channel 先起（它接管 Entrance，客户端从入口端口进），再起 game；
+            # 两进程共读同一份 server.json，就绪由 wait_until_listening 按进程各自判活。
+            r.start_server(rp, exe=channel_exe, workdir=server_exe.parent,
+                           name="channel",
+                           server_json=server_json,
+                           env={"DFLegacy__DataPath": str(run_state)},
+                           log_path=rp.server_dir / "server-channel.log")
+            r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
+                           name="game",
+                           server_json=server_json,
+                           env={"DFLegacy__DataPath": str(run_state)},
+                           log_path=rp.server_dir / "server-game.log")
+        else:
+            r.start_server(rp, exe=server_exe, workdir=server_exe.parent,
+                           name="game",
+                           server_json=server_json,
+                           env={"DFLegacy__DataPath": str(run_state)},
+                           log_path=rp.server_dir / "server-game.log")
         r.record_run_config(rp, [{"key": "DFLegacy__DataPath",
                                   "old": "data/state.json", "new": str(run_state)}])
         # 必须等服务端真的开始监听再起 actor：launcher 在 StartServer=false 时只探一次端口
         # （src/DFLegacy.Launcher/Program.cs:336-347），而真服务端要约 5.4 秒才监听（2026-10-15 实测）。
         listen = r.wait_until_listening(rp, sc,
-                                        server_json=server_exe.parent / "server.json",
+                                        server_json=server_json,
                                         timeout_s=server_start_timeout,
                                         on_tick=lambda waited: print(
                                             f"  仍在等待服务端开始监听… 已等 {waited:.0f}s"
@@ -198,6 +223,10 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
                                             file=sys.stderr))
         if listen.get("skipped"):
             print(f"警告：未等待服务端监听（{listen.get('reason')}）", file=sys.stderr)
+        elif "processes" in listen:
+            for proc in listen["processes"]:
+                print(f"等待 {proc['name']} 服务端在 {proc['host']}:{proc['port']} 开始监听："
+                      f"已就绪（{proc['waited_ms']} ms）")
         else:
             print(f"等待服务端在 {listen['host']}:{listen['port']} 开始监听："
                   f"已就绪（{listen['waited_ms']} ms）")
@@ -403,6 +432,8 @@ def main(argv: list[str] | None = None) -> int:
                        help="默认 <client-dir>/town-test/DFLegacy.Launcher.exe")
     p_run.add_argument("--server-exe", default=None,
                        help="默认 <client-dir>/town-test/DFLegacy.Server.exe")
+    p_run.add_argument("--channel-exe", default=None,
+                       help="默认 <server-exe 同目录>/DFLegacy.Channel.exe（拆分模式用）")
     p_run.add_argument("--launcher-log", default=None,
                        help="默认 <launcher-exe 同目录>/launcher.log")
     p_run.add_argument("--actor-pid", default=None,

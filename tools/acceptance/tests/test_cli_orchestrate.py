@@ -128,6 +128,7 @@ def _paths(client: Path) -> dict:
     return {"client_dir": client,
             "launcher_exe": client / "town-test" / "DFLegacy.Launcher.exe",
             "server_exe": client / "town-test" / "DFLegacy.Server.exe",
+            "channel_exe": client / "town-test" / "DFLegacy.Channel.exe",
             "launcher_log": client / "town-test" / "launcher.log"}
 
 
