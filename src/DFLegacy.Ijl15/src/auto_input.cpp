@@ -7,27 +7,13 @@
 
 #include "auto_input.h"
 #include "ijl15_config.h"
+#include "memory_patch.h"
 
 namespace dfl::auto_input
 {
     bool IsEnabled() noexcept
     {
         return dfl::ijl15_config::Get().EnableAutoInput;
-    }
-
-    void Pump() noexcept
-    {
-        // Task 3 wires this to Advance(GetTickCount()) behind the frame hook.
-    }
-
-    bool Install() noexcept
-    {
-        // Task 3 replaces this with the address checks and real hooks.
-        return true;
-    }
-
-    void Restore() noexcept
-    {
     }
 
     // ------------------------------------------------------------------
@@ -64,6 +50,7 @@ namespace dfl::auto_input
         unsigned char g_textVk[kMaxSteps][64] = {};  // per-char VK codes; 0 = no key
 
         bool g_synthDown[256] = {};
+        bool g_synthEver[256] = {};  // keys this module synthesized at least once
 
         InjectionRecord g_log[kLogCapacity] = {};
         int g_logHead = 0;
@@ -103,6 +90,145 @@ namespace dfl::auto_input
                 return VK_RETURN;
             }
             return 0;
+        }
+
+        // ------------------------------------------------------------------
+        // Injection layer (Task 3). The addresses are 2008DF-specific; every
+        // install-time access is readability-checked first, so a client
+        // without the expected layout keeps running untouched.
+        // ------------------------------------------------------------------
+
+        using GetAsyncKeyStateFn = SHORT(WINAPI*)(int);
+        constexpr std::uintptr_t kGetAsyncKeyStateIat = 0x009983DC;
+        constexpr std::uintptr_t kNativeMouseInput = 0x008FCAA0;
+
+        GetAsyncKeyStateFn g_originalGetAsyncKeyState = nullptr;
+        bool g_keyboardHooked = false;
+        bool g_mouseInjectEnabled = false;
+
+        bool SynthTableHas(unsigned vk) noexcept
+        {
+            return vk < 256 && g_synthEver[vk];
+        }
+
+        short SynthTableState(unsigned vk) noexcept
+        {
+            return g_synthDown[vk] ? static_cast<short>(0x8000) : static_cast<short>(0);
+        }
+
+        void SynthClear() noexcept
+        {
+            for (int i = 0; i < 256; ++i)
+            {
+                g_synthDown[i] = false;
+                g_synthEver[i] = false;
+            }
+        }
+
+        // A key this module synthesized is answered from the synth tables
+        // (pressed or released), so the real keyboard cannot pollute the
+        // edge sequence while a plan owns the key. Everything else forwards.
+        SHORT WINAPI HookedGetAsyncKeyState(int vk) noexcept
+        {
+            const unsigned code = static_cast<unsigned>(vk);
+            if (SynthTableHas(code))
+            {
+                return SynthTableState(code);
+            }
+            return g_originalGetAsyncKeyState != nullptr
+                ? g_originalGetAsyncKeyState(vk)
+                : static_cast<SHORT>(0);
+        }
+
+        bool IsReadable(const void* address, std::size_t size) noexcept
+        {
+            if (address == nullptr || size == 0)
+            {
+                return false;
+            }
+
+            MEMORY_BASIC_INFORMATION information{};
+            if (VirtualQuery(
+                    address,
+                    &information,
+                    sizeof(information)) != sizeof(information))
+            {
+                return false;
+            }
+
+            if (information.State != MEM_COMMIT
+                || (information.Protect & PAGE_GUARD) != 0
+                || (information.Protect & PAGE_NOACCESS) != 0)
+            {
+                return false;
+            }
+
+            const auto regionStart =
+                reinterpret_cast<std::uintptr_t>(information.BaseAddress);
+            const auto regionEnd = regionStart + information.RegionSize;
+            const auto addressValue = reinterpret_cast<std::uintptr_t>(address);
+            return addressValue >= regionStart
+                && addressValue <= regionEnd
+                && size <= regionEnd - addressValue;
+        }
+
+        bool ReadIatPointer(std::uintptr_t address, void*& value) noexcept
+        {
+            if (!IsReadable(reinterpret_cast<const void*>(address), sizeof(void*)))
+            {
+                return false;
+            }
+            value = *reinterpret_cast<void**>(address);
+            return true;
+        }
+
+        using NativeMouseInputFn = char(__cdecl*)(int, int, int);
+
+        // lParam packs the client-area coordinates: low word x, high word y
+        // (the game adds its own viewport offsets internally). Unsigned math
+        // keeps the packing defined for any int the JSON could carry; for
+        // in-range client coordinates the bytes match the plan's layout.
+        int PackMouseLParam(int x, int y) noexcept
+        {
+            const auto ux = static_cast<unsigned>(static_cast<short>(x)) & 0xFFFFu;
+            const auto uy = static_cast<unsigned>(static_cast<short>(y)) & 0xFFFFu;
+            return static_cast<int>(ux | (uy << 16));
+        }
+
+        void InjectMouse(int msg, int x, int y) noexcept
+        {
+            const auto fn = reinterpret_cast<NativeMouseInputFn>(kNativeMouseInput);
+            fn(msg, msg == 513 ? 1 : 0, PackMouseLParam(x, y));  // wParam: MK_LBUTTON only for down
+        }
+
+        // Real calls replace the injection log only when Install verified the
+        // NativeMouseInput address; otherwise (tests, unexpected layouts) the
+        // primitives stay observable in the log.
+        void EmitMouse(int kind, int x, int y) noexcept
+        {
+            if (!g_mouseInjectEnabled)
+            {
+                LogPrimitive(kind, 0, x, y);
+                return;
+            }
+            int msg = 0;
+            if (kind == kMouseMove)
+            {
+                msg = 0x200;  // WM_MOUSEMOVE
+            }
+            else if (kind == kMouseDown)
+            {
+                msg = 513;    // WM_LBUTTONDOWN
+            }
+            else if (kind == kMouseUp)
+            {
+                msg = 514;    // WM_LBUTTONUP
+            }
+            else
+            {
+                return;
+            }
+            InjectMouse(msg, x, y);
         }
 
         // ------------------------------------------------------------------
@@ -391,6 +517,81 @@ namespace dfl::auto_input
         }
     }
 
+    bool Install() noexcept
+    {
+        // dnf_patches gates this call on EnableAutoInput; the check here
+        // keeps the module inert even if that gate ever changes.
+        if (!IsEnabled())
+        {
+            return true;
+        }
+
+        void* current = nullptr;
+        if (!ReadIatPointer(kGetAsyncKeyStateIat, current) || current == nullptr)
+        {
+            OutputDebugStringA(
+                "auto_input: GetAsyncKeyState IAT slot is not readable or null; "
+                "keyboard hook not installed\n");
+            return false;
+        }
+        g_originalGetAsyncKeyState = reinterpret_cast<GetAsyncKeyStateFn>(current);
+
+        const auto hook = reinterpret_cast<void*>(&HookedGetAsyncKeyState);
+        if (!dfl::memory_patch::WriteBytes(
+                kGetAsyncKeyStateIat,
+                &hook,
+                sizeof(hook)))
+        {
+            g_originalGetAsyncKeyState = nullptr;
+            return false;
+        }
+        g_keyboardHooked = true;
+
+        // Mouse injection is best-effort: an unreadable NativeMouseInput only
+        // switches the click primitives back to the injection log.
+        g_mouseInjectEnabled =
+            IsReadable(reinterpret_cast<const void*>(kNativeMouseInput), 1);
+        if (!g_mouseInjectEnabled)
+        {
+            OutputDebugStringA(
+                "auto_input: NativeMouseInput is not readable; click primitives "
+                "stay in the injection log\n");
+        }
+
+        // A missing or invalid plan file is not an install failure: the
+        // client simply runs without a scripted timeline.
+        LoadPlanFile();
+        return true;
+    }
+
+    void Restore() noexcept
+    {
+        if (g_keyboardHooked)
+        {
+            const auto original =
+                reinterpret_cast<void*>(g_originalGetAsyncKeyState);
+            if (!dfl::memory_patch::WriteBytes(
+                    kGetAsyncKeyStateIat,
+                    &original,
+                    sizeof(original)))
+            {
+                OutputDebugStringA(
+                    "auto_input: restoring the GetAsyncKeyState IAT failed\n");
+            }
+            g_keyboardHooked = false;
+        }
+        g_originalGetAsyncKeyState = nullptr;
+        g_mouseInjectEnabled = false;
+        SynthClear();
+    }
+
+    void Pump() noexcept
+    {
+        // The call site in performance_overlay.cpp gates on IsEnabled(); a
+        // disarmed module returns from Advance immediately.
+        Advance(GetTickCount());
+    }
+
     bool ParsePlan(const char* text, Step* steps, int maxSteps, int* count, int* version)
     {
         if (text == nullptr || steps == nullptr || maxSteps <= 0
@@ -568,7 +769,7 @@ namespace dfl::auto_input
                     && elapsed >= static_cast<unsigned>(step.t) + static_cast<unsigned>(step.dur))
                 {
                     g_upDone[i] = true;
-                    LogPrimitive(kMouseUp, 0, step.x, step.y);
+                    EmitMouse(kMouseUp, step.x, step.y);
                 }
             }
             else  // kMove: the move is this step's single primitive
@@ -576,7 +777,7 @@ namespace dfl::auto_input
                 if (!g_upDone[i] && elapsed >= static_cast<unsigned>(step.t))
                 {
                     g_upDone[i] = true;
-                    LogPrimitive(kMouseMove, 0, step.x, step.y);
+                    EmitMouse(kMouseMove, step.x, step.y);
                 }
             }
         }
@@ -595,6 +796,7 @@ namespace dfl::auto_input
                     if (step.vk < 256)
                     {
                         g_synthDown[step.vk] = true;
+                        g_synthEver[step.vk] = true;
                     }
                     ++edges;
                 }
@@ -618,6 +820,7 @@ namespace dfl::auto_input
                     if (vk != 0)
                     {
                         g_synthDown[vk] = true;
+                        g_synthEver[vk] = true;
                         ++edges;
                     }
                     ++g_textDowns[i];
@@ -628,8 +831,8 @@ namespace dfl::auto_input
                 if (!g_downDone[i] && elapsed >= static_cast<unsigned>(step.t))
                 {
                     g_downDone[i] = true;
-                    LogPrimitive(kMouseMove, 0, step.x, step.y);
-                    LogPrimitive(kMouseDown, 0, step.x, step.y);
+                    EmitMouse(kMouseMove, step.x, step.y);
+                    EmitMouse(kMouseDown, step.x, step.y);
                 }
             }
             // kMove was handled in pass 1.
@@ -784,6 +987,7 @@ namespace dfl::auto_input
         for (int i = 0; i < 256; ++i)
         {
             g_synthDown[i] = false;  // a fresh plan starts with a clear table
+            g_synthEver[i] = false;
         }
 
         g_count = count;

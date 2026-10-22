@@ -2,12 +2,16 @@
 
 namespace dfl::auto_input
 {
-    // Task 3 wires the real hooks; this task only ships the install gate.
+    // Installs the GetAsyncKeyState IAT hook, verifies the mouse entry
+    // point, and loads auto-input.json. Returns false when the keyboard hook
+    // could not be installed; the client keeps running either way.
     bool Install() noexcept;
+    // Undoes Install: restores the IAT entry and clears the synth tables.
     void Restore() noexcept;
     // Mirrors dfl::ijl15_config::Get().EnableAutoInput.
     bool IsEnabled() noexcept;
-    // Task 2/3 fill this in; it stays empty in this task.
+    // Frame pump: advances the timeline with the current tick. The call site
+    // in performance_overlay.cpp gates this on IsEnabled().
     void Pump() noexcept;
 
     // ------------------------------------------------------------------

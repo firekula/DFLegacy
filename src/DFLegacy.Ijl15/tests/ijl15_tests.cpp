@@ -585,6 +585,15 @@ bool TestAdvanceKeyEdgeAndFinish()
     }
     return true;
 }
+
+bool TestQueryKeyForwardsOriginal()
+{
+    // With an empty synth table every query must forward the original value
+    // untouched: the hook may never swallow the real keyboard.
+    using namespace dfl::auto_input;
+    return QueryKey(0x41, 0x0001) == 0x0001
+        && QueryKey(0x41, static_cast<short>(0x8000)) == static_cast<short>(0x8000);
+}
 }
 
 int main()
@@ -634,6 +643,13 @@ int main()
     if (!TestAdvanceKeyEdgeAndFinish())
     {
         return Fail("auto-input timeline advance or key-edge query failed");
+    }
+    // Plan Task 3 step 1: this guard is expected green already (Task 2
+    // forwards untouched); its value is catching a regression once the real
+    // hook lands.
+    if (!TestQueryKeyForwardsOriginal())
+    {
+        return Fail("auto-input QueryKey did not forward the original value");
     }
 
     IjlApi api{};
