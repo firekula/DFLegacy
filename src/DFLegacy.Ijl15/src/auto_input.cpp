@@ -40,6 +40,7 @@ namespace dfl::auto_input
         unsigned g_origin = 0;
         bool g_fromFile = false;
         bool g_doneMarked = false;
+        bool g_renamedCleanly = true;  // a failed .done rename stops the poll
         char g_planPath[MAX_PATH] = {};
         char g_donePath[MAX_PATH] = {};
 
@@ -680,6 +681,16 @@ namespace dfl::auto_input
         // This Pump can be called many times per frame (it rides the texture
         // state proxy as well as the performance call site), so the file
         // probe is throttled to one attempt every 50 ms.
+        //
+        // A finished plan whose .done rename failed would otherwise be
+        // re-loaded and re-executed every 50 ms (the file is still at
+        // auto-input.json) -- spec 3.1 forbids repeating a plan, so a
+        // latched failure stops the polling until Restore or a successful
+        // later rename.
+        if (g_phase == Phase::Finished && g_doneMarked && !g_renamedCleanly)
+        {
+            return;
+        }
         if (g_phase != Phase::Armed)
         {
             static unsigned lastPollMs = 0;
@@ -969,9 +980,11 @@ namespace dfl::auto_input
                 {
                     DeleteFileA(g_donePath);
                 }
-                if (!MoveFileA(g_planPath, g_donePath))
+                g_renamedCleanly = MoveFileA(g_planPath, g_donePath) != FALSE;
+                if (!g_renamedCleanly)
                 {
                     OutputDebugStringA("auto_input: renaming auto-input.json to .done failed");
+                    DiagLine("plan finished but the .done rename FAILED; polling suppressed");
                 }
             }
         }
@@ -1114,6 +1127,7 @@ namespace dfl::auto_input
         g_origin = t0Ms;
         g_fromFile = false;
         g_doneMarked = false;
+        g_renamedCleanly = true;
         g_phase = Phase::Armed;
         return true;
     }
