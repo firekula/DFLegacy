@@ -579,3 +579,66 @@ Task 9–11 仍全部 `needs-refresh`。
 
 Task 5–8 的 open 项全部继续有效，本波不改变任何 D 项状态。
 Task 10 实施中（impl-task-10）；Task 11 仍 `needs-refresh`。
+
+## Task 10（I5 中段）：验收平台多进程编排 —— 2026-10-22 实施与验收
+
+本节取代「Task 9（I5 前半）」段作为**当前视图**；Task 9 结论仍有效，历史保留。
+基线 `893383f`（Task 9 收尾提交）；本波提交 `98499e9`（10 文件，+291/−34，全部在 `tools/acceptance/` 内）。
+进入本波时计划 Task 10 标 `needs-refresh`；刷新查出草案 4 处与现场不符，先修计划再实施
+（计划 Task 10 段「2026-10-22 刷新裁定」，草案代码保留作历史）。
+
+### 刷新查出的草案缺陷（plan-origin，已在本波修掉）
+
+| # | 草案问题 | 后果（若不修） |
+|---|---|---|
+| 1 | `SERVER_SPECS` 端口硬编码（game tcp[7001] udp[2311,7002,7003] / channel tcp[2311,8080]） | 端口来自 server.json，硬编码漂移；disjoint 测试把「2311 game=UDP / channel=TCP」合法共存误判冲突 |
+| 2 | disjoint 判据只按端口号 | 同上 |
+| 3 | 多进程就绪只等 Entrance（`wait_until_listening` runner.py:534） | game 进程的 Channel.Port 未就绪就起 actor |
+| 4 | `judge` 的 `server_dir` 形参从未被读 | 服务端侧期望（`evidence=[静态]`）永远 missing-evidence 或被跳过 |
+
+### 实施回填（Lead 裁定 Files 清单漏 4 个既有测试）
+
+`servers` 重命名 + 门场景加入后，4 个既有测试不交则提交即红，已同波提交：
+`test_model.py`（`server=`→`servers=`）、`test_cli_dry_run.py`（场景数 4→5）、
+`test_cli_orchestrate.py`（manifest 键 + 日志名 `server-game.log`）、`test_runner.py`（日志名）。
+
+### 实现要点（后续波不要改错）
+
+- `Manifest.servers` 按进程名记（`game`/`channel`），不再被后启动的进程覆写；`deterministic_view` 键同步。
+- `SERVER_SPECS`/`server_process_specs` 从 `server.json` 派生：channel = `Entrance.Port + AdditionalPorts +
+  Processes.Channel.LinkPort`；game = `Channel.Port + GameplayDatagram(Primary/SecondaryPort) + CharacterDatagram`。
+  disjoint 判据按 **(host,port,protocol)**。
+- `wait_until_listening` 拆分布局分别等 channel(Entrance) 与 game(Channel.Port)。
+- `judge` 真读 `server_dir`：`evidence=[静态]` 的期望从 `server-*.log` 搜 pattern。
+- 逐进程日志：`server-game.log`（orchestrate 单服务端路径用 `name="game"`）。
+
+### 门槛结果（Lead 独立复跑，非转述）
+
+| 命令 | 结果 |
+|---|---|
+| `python -m pytest acceptance/tests -q` | **`3 failed, 118 passed`**，exit 1 —— 3 红见下，**非本次引入** |
+| `test_multi_server.py` 单独跑 | `4 passed`（先写红：首跑 4 failed，均为预期缺失） |
+| `grep -rn '\.server\b\|\["server"\]\|\x27server\x27' tools/acceptance --include=*.py` | 0 命中（`model.py:77` 的 `"server"` 是 `server_dir` 目录名，非 manifest 字段） |
+
+**3 红的归因（Lead 独立证实，两级证据）**：`test_cli_orchestrate.py` 的 wires/waits/ambiguous_pid 三用例，
+根因是 **Windows 排除端口段 2280–2379 覆盖 TCP 2311**，`bind 127.0.0.1:2311` 报 `WinError 10013`
+（本机实测 bind 2311→10013、24011→OK；`netsh interface ipv4 show excludedportrange protocol=tcp` 证实）。
+**在 base 提交 `893383f` 的独立 worktree 复跑同文件：同样 3 failed** ⇒ 预先存在的环境问题，非 Task 10 回归。
+（实现者用 `git stash` 得出同一结论；Lead 因改动已提交无法 stash 复现，改用 worktree 复核。）
+
+### 当前遗留项（稳定 ID）
+
+**本波新增 open**：
+
+| ID | 负责人 | 当前范围 | 触发条件 |
+|---|---|---|---|
+| D10-ENV-2311 | Task 11 / 环境维护 | Windows 排除端口段 2280–2379 覆盖 TCP 2311（本机动态保留，与是否在跑服务端无关）：`test_cli_orchestrate.py` 三用例恒红；**Task 11 真机服务端绑 2311 同样会 10013** | **Task 11 真机开跑前必须解决**（重启观察换段 / `netsh int ipv4 set dynamic tcp start=49152 num=16384` 收窄动态段 / 管理员保留），解决后复跑 `pytest acceptance/tests -q` 预期 121 passed |
+
+**状态不变**：D5-REAL、D5-RAW-COMPARE（Task 11 真机 + Tier 2）；D7-NOTICE（台账已登记，真发仍 open）；
+其余 D5-*/D6-*/D7-*/D8-* 全部保持。
+
+**门槛修订（Ruling，带代价）**：本波「全绿」按 D10-ENV-2311 改读作「118 passed + 3 个已归因环境红」。
+代价：若该环境问题被误判为回归，会掩盖真实缺陷——归因证据已两级钉死（worktree 复跑 + netsh），且解决
+D10-ENV-2311 后必须复跑到 121 passed 才算恢复全绿。
+
+Task 11 仍 `needs-refresh`（进入前先刷新 Tier 2 例外/归一化 + D5-REAL 取数 + 解决 D10-ENV-2311）。

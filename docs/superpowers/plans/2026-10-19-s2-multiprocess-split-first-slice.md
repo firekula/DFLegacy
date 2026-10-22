@@ -2234,6 +2234,16 @@ git commit -m "S2: protocol 新增 S2S 报文表并把校验契约扩到 6 文�
 >
 > 门槛：`(cd tools) python -m pytest acceptance/tests -q` 全绿；`tools/acceptance/tests/test_multi_server.py`
 > 新用例（逐进程 manifest 不覆写、disjoint 按 (host,port,protocol)、门场景有可失败期望）先写红再实现。
+>
+> **2026-10-22 实施回填（两处）**：①裁定 Files 清单漏 4 个既有测试，`servers` 重命名与门场景加入后
+> **不交则提交即红**，必须同波提交：`test_model.py`（`server=`→`servers=`）、`test_cli_dry_run.py`
+> （场景数 4→5）、`test_cli_orchestrate.py`（manifest 键 `server`→`servers`、日志名 `server.log`→`server-game.log`）、
+> `test_runner.py`（日志名同上）。②「全绿」门槛在本机有**预先存在**的 3 红（`test_cli_orchestrate.py` 的
+> wires/waits/ambiguous_pid 三用例）：根因是 Windows 排除端口段 **2280–2379 覆盖 TCP 2311**，`bind 127.0.0.1:2311`
+> 报 `WinError 10013`，与是否在跑服务端无关（Lead 在 base 提交 `893383f` 的 worktree 复跑同样 3 红；
+> `netsh interface ipv4 show excludedportrange protocol=tcp` 证实排除段）。非 Task 10 回归，记 open 项
+> **D10-ENV-2311**；**Task 11 真机同样要绑 2311，开跑前必须先解决**（重启换段 / 调整 Hyper-V 动态端口范围 /
+> 管理员保留），并把「全绿」门槛按该遗留项改读作「118 passed + 3 个已归因的环境红」。
 
 **Files:**
 - Modify: `tools/acceptance/model.py`（`Manifest` 支持按进程名的服务端记录）
