@@ -2144,6 +2144,10 @@ git commit -m "S2: game 进程接入链路并把 channel 侧计数合并进 /api
 >    `render.build_manifest` 加 `s2s` 基线；`test_verify.py` 的 `_build` 夹具（`:48`）补 s2s-map.tsv、
 >    `test_manifest_must_list_exactly_the_five_tracked_files`（`:170`）语义改为「6 文件」、
 >    `test_baseline_total_is_pinned_to_1171`（`:281`）**不变**（1171 仍是官方硬编码基线）。
+>    **2026-10-22 实施回填（裁定初稿漏项）**：下游清单还需 `protocol/tests/test_render.py` —— 其 `_base`
+>    夹具（`:12`）调 `render.render_all`，`TRACKED` 扩到 6 文件后 `build_manifest` 对缺失产物抛
+>    `FileNotFoundError`，且 `test_manifest_has_no_timestamp_and_keys_sorted`（`:35`）断言 `len(files)==5`；
+>    不修它 pytest 首跑 6 红（实测）。已随 `6aeec02` 修复（夹具补 s2s-map.tsv + 断言 5→6）。
 > 3. **S2S 不进 importer 流水线**：s2s-map.tsv 是人工维护台账（自选语义、无官方 `.rodata`），
 >    `import_map` 不碰它、`_KIND_ORDER` 不加 S2S（它只管 opcode-map 排序）。
 > 4. **NOTICE_CHANNEL_SERVER（D7-NOTICE）本波只登记、不接线**：4 条 S2S 报文（4/128/129/130）进台账，

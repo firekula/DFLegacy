@@ -26,7 +26,8 @@
   且 `import_map` 下次会把无原始来源的 S2S 静默删掉、`_check_internal` 的 opcode-map==ledger 对称被打破。
 - **第 6 个受跟踪文件的下游清单**：`render.TRACKED`、`verify.TRACKED_FILES`、`verify.KEY_COLUMNS`、
   `verify.EXPECTED_COLUMNS`、`_check_baselines`（独立 s2s 计数）、`render.build_manifest`（s2s 基线）、
-  `test_verify.py` 的 `_build` 夹具 + `test_manifest_must_list_exactly_the_five_tracked_files`（改 6 文件）。
+  `test_verify.py` 的 `_build` 夹具 + `test_manifest_must_list_exactly_the_five_tracked_files`（改 6 文件）、
+  **`test_render.py` 的 `_base` 夹具 + `len(files)==5→6`**（2026-10-22 实施回填：初稿漏列，不修则 pytest 6 红）。
   `test_baseline_total_is_pinned_to_1171` **不变**。
 - **S2S 不进 importer 流水线**（人工维护台账，无官方 `.rodata`）；**NOTICE_CHANNEL_SERVER 只登记不接线**（D7-NOTICE）。
 
