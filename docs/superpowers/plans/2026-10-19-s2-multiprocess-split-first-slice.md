@@ -2357,7 +2357,33 @@ git commit -m "S2: 验收平台支持多服务端进程与逐进程日志，新�
 
 ## Task 11: Tier 2 / Tier 3 验收与收尾
 
-> `needs-refresh`（Recon 0.2.1）：远期草案；进入该波前核验 Task 5 的实际接口、生命周期、配置和验收契约，再更新本段。
+> **2026-10-22 刷新（Task 9/10 完成后进入本波）：草案 Step 2 的「逐字节对比 + 例外清单」与现场证据不符，
+> 且验收平台对拆分模式的编排还有半截缺口，被本节「刷新裁定」取代；下面 Step 1–5 草案保留作历史。**
+>
+> 刷新裁定（每条带代价，依据：`progress.md` Task 4/5 段、`tools/acceptance/cli.py:184`、
+> `runner.py:98-135`、Task 10 门槛「118 passed + 3 环境红」）：
+> 1. **Tier 2 = 按会话密钥解密后比明文，不是逐字节比密文（D5-RAW-COMPARE 收口）**。草案 Step 2 说「逐字节对比、
+>    例外只允许时间戳/临时端口/会话 id」，但握手帧用**随机会话密钥**加密（Task 4 实录：4 个不同会话密钥解出同一明文，
+>    解密顺序 `DecryptBlocks(Decompress(x))`），原始密文两档必然不同、且差异不是「例外清单」能枚举的。
+>    落法：复用 Task 5 I2 口径 —— `11/5/9/1 → 12/6/10/3`，各会话密钥解密/解压后对协议 10 脚本、协议 3 元数据、
+>    协议 6 缓存决定**逐字节比明文**；原始帧只比「结构一致性」（帧型/长度/顺序），不比密文字节。
+>    **代价**：Tier 2 的「客户端字节不变」证据落在解密后内容，不能宣称「原始帧字节不变」（会话密钥加密的固有限制，与官方行为一致）。
+> 2. **拆分模式编排缺半截：`orchestrate` 只起 `name="game"`，不起 channel（本波第一个实现步骤）**。Task 10 给了原语
+>    （`start_server(name=…)`、`server_process_specs`、`_is_split_server`、`wait_until_listening` 拆分就绪），
+>    但 `cli.py:184` 的 orchestrate 仍单进程。Tier 2 拆分档必须补「拆分模式同时起 `DFLegacy.Channel.exe`（channel）+
+>    `DFLegacy.Server.exe`（game）、分别等就绪」；二选一：接入 orchestrate（推荐，配 `test_multi_server.py` 扩展用例）
+>    或 runbook 明示手工两进程（须在 runbook 写明，不得悄悄手工）。
+>    **代价**：不补则 Tier 2 拆分档跑不起来（只有 game、没有 channel 接管入口族）。
+> 3. **D10-ENV-2311 必须先解决**：本机 Windows 排除端口段 2280–2379 覆盖 TCP 2311，`bind` 恒 `WinError 10013`；
+>    Entrance 与 CharacterDatagram 都绑 2311 ⇒ 真机服务端起不来。开跑前用户侧解决（重启 / 管理员
+>    `netsh int ipv4 set dynamic tcp start=49152 num=16384` 后重启 / 管理员保留），解决后
+>    `python -m pytest acceptance/tests -q` 应 **121 passed**（`test_cli_orchestrate.py` 3 用例恢复绿）。
+> 4. **D5-REAL 取数版本**：`net_dump.cpp` 仍未提交（他人工作区改动）；真机取样前固定构建/输入版本，
+>    不把「必须提交他人改动」当先决条件（沿用 Task 5 交接 D5-REAL 口径）。
+
+**现行 Step 0（进波先做，再跑 Step 1–5）**：①实现裁定 2 的 orchestrate 双进程接线（含扩展用例）；
+②用户侧解决 D10-ENV-2311 并复跑 acceptance 到 121 passed；③按裁定 1 把 runbook 的对比脚本写成「解密后明文对比」；
+④固定 net_dump 构建/输入版本并记录。
 
 **Files:**
 - Create: `docs/superpowers/plans/2026-10-19-s2-tier2-tier3-runbook.md`（执行手册，`git add -f`）
