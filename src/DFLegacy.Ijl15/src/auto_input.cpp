@@ -127,7 +127,9 @@ namespace dfl::auto_input
 
         // A key this module synthesized is answered from the synth tables
         // (pressed or released), so the real keyboard cannot pollute the
-        // edge sequence while a plan owns the key. Everything else forwards.
+        // edge sequence while the plan runs. Finishing, re-arming or
+        // restoring hands the keys back to the real keyboard. Everything
+        // else forwards.
         SHORT WINAPI HookedGetAsyncKeyState(int vk) noexcept
         {
             const unsigned code = static_cast<unsigned>(vk);
@@ -525,6 +527,12 @@ namespace dfl::auto_input
         {
             return true;
         }
+        // A second pass would capture the hook itself as the "original" and
+        // make a later Restore permanentize the hook.
+        if (g_keyboardHooked)
+        {
+            return true;
+        }
 
         void* current = nullptr;
         if (!ReadIatPointer(kGetAsyncKeyStateIat, current) || current == nullptr)
@@ -542,8 +550,22 @@ namespace dfl::auto_input
                 &hook,
                 sizeof(hook)))
         {
-            g_originalGetAsyncKeyState = nullptr;
-            return false;
+            // memory_patch can report failure after the bytes actually
+            // landed (its protection-restore step can fail). Re-read the
+            // slot: a live hook must never be left behind unowned, because
+            // it answers 0 for everything the synth tables do not own and
+            // Restore would then skip the write-back.
+            void* after = nullptr;
+            if (!(ReadIatPointer(kGetAsyncKeyStateIat, after) && after == hook))
+            {
+                g_originalGetAsyncKeyState = nullptr;
+                OutputDebugStringA(
+                    "auto_input: swapping the GetAsyncKeyState IAT entry failed\n");
+                return false;
+            }
+            OutputDebugStringA(
+                "auto_input: IAT write reported failure but the hook is in "
+                "place; treating the install as done\n");
         }
         g_keyboardHooked = true;
 
@@ -856,6 +878,9 @@ namespace dfl::auto_input
         if (complete)
         {
             g_phase = Phase::Finished;
+            // The plan no longer owns any key: release the ever-set so the
+            // hook forwards the real keyboard again until the next arm.
+            SynthClear();
             if (g_fromFile && !g_doneMarked)
             {
                 g_doneMarked = true;  // fire once, whatever the rename does
