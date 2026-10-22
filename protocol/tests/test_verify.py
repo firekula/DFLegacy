@@ -17,6 +17,16 @@ MAP_ROWS = [
     ["CMD", "12", "B", "0x02", "DoB", "mapped", "T3_fields-read-only", "1", "0", "name_only"],
     ["NOTI", "1", "C", "0x03", "", "no-dispatcher", "T0_no-evidence", "0", "0", "name_only"],
 ]
+S2S_ROWS = [
+    ["S2S", "4", "NOTICE_CHANNEL_SERVER", "-", "DFLegacy.InterProcess.InterProcessLink",
+     "mapped", "T4_fields-read+write", "1", "1", "-"],
+    ["S2S", "128", "REGISTER", "-", "DFLegacy.InterProcess.InterProcessLink",
+     "mapped", "T4_fields-read+write", "1", "1", "-"],
+    ["S2S", "129", "REGISTER_ACK", "-", "DFLegacy.InterProcess.InterProcessLink",
+     "mapped", "T4_fields-read+write", "1", "1", "-"],
+    ["S2S", "130", "STATUS", "-", "DFLegacy.InterProcess.InterProcessLink",
+     "mapped", "T4_fields-read+write", "1", "1", "-"],
+]
 OPCODE_HEADER = MAP_HEADER + ["ext_evidence", "runtime_evidence", "notes"]
 SCENARIO_HEADER = ["scenario_id", "step_index", "expect_index", "actor", "action", "level",
                    "pattern", "evidence_class", "mapped_opcodes", "verified_run_id",
@@ -51,6 +61,7 @@ def _build(tmp_path: Path, monkeypatch, runs: list[list[str]] | None = None) -> 
     for sub in ("map", "ledger"):
         (base / sub).mkdir(parents=True)
     (base / "map" / "opcode-map.tsv").write_bytes(_tsv(MAP_HEADER, MAP_ROWS))
+    (base / "map" / "s2s-map.tsv").write_bytes(_tsv(MAP_HEADER, S2S_ROWS))
     (base / "ledger" / "opcodes.tsv").write_bytes(
         _tsv(OPCODE_HEADER, [r + ["", "", ""] for r in MAP_ROWS]))
     (base / "ledger" / "scenarios.tsv").write_bytes(_tsv(SCENARIO_HEADER, [[
@@ -167,8 +178,8 @@ def _add_untracked(manifest: dict) -> None:
     (_drop_tracked, "缺受跟踪产物"),
     (_add_untracked, "非受跟踪产物"),
 ])
-def test_manifest_must_list_exactly_the_five_tracked_files(tmp_path, monkeypatch, mutate, expect):
-    """终审 M5 / spec §6「5 文件契约」：清单少了或多了受跟踪产物都必须在 §8.1 失败。"""
+def test_manifest_must_list_exactly_the_six_tracked_files(tmp_path, monkeypatch, mutate, expect):
+    """终审 M5 / spec §6「6 文件契约」：清单少了或多了受跟踪产物都必须在 §8.1 失败。"""
     base = _build(tmp_path, monkeypatch)
     _rewrite_manifest(base, mutate)
     assert verify.verify(base) == 1

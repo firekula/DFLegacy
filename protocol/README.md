@@ -23,15 +23,16 @@
 | 路径 | 内容 |
 |---|---|
 | `map/opcode-map.tsv` | 规范数据：1171 条 opcode（`kind`+`id` 主键，CMD 先、id 升序） |
+| `map/s2s-map.tsv` | 进程间（S2S）报文表：4 条（`kind`+`id` 主键），人工维护、不进 import 流水线（无官方 `.rodata`） |
 | `map/index.md` | **生成物**：六档 / kind / status / ext_mark 分布 + 七条边界（由 `render` 生成，不手改） |
 | `ledger/opcodes.tsv` | 账①：地图全部列 + `ext_evidence` / `runtime_evidence` / `notes` |
 | `ledger/scenarios.tsv` | 账②：S0 四场景的 12 条期望 ↔ opcode ↔ 哪次 run 验过 |
 | `ledger/runs.tsv` | 真机 run 台账（当前 5 条，`created_utc` 升序） |
-| `manifest.json` | **生成物**：每份文件的 sha256 + `rows` + `baselines`，无时间戳、键有序、可逐字节复现；清单**恰好** 5 份受跟踪产物（`map/index.md` 记 `rows: 0`，但仍计 sha256） |
+| `manifest.json` | **生成物**：每份文件的 sha256 + `rows` + `baselines`，无时间戳、键有序、可逐字节复现；清单**恰好** 6 份受跟踪产物（`map/index.md` 记 `rows: 0`，但仍计 sha256） |
 | `importer.py` / `ledger.py` / `render.py` / `verify.py` / `s1.py` | 导入 / 两本账 / 报告+清单 / 只读自检 / CLI |
 | `tests/` | pytest（`python -m pytest protocol -q`） |
 
-> `README.md` **不在** `manifest.json` 的 5 份受跟踪产物里：文档漂移只由 `tests/test_readme.py` 的
+> `README.md` **不在** `manifest.json` 的 6 份受跟踪产物里：文档漂移只由 `tests/test_readme.py` 的
 > token 断言兜底 —— **文档不是规范数据**，这是取舍（若要纳入清单须改 spec §6）。
 
 ## 命令
@@ -58,11 +59,12 @@ python -m protocol.s1 ledger --verified-run <runId> --verified-scenario <scenari
 
 ## 五条断言（`verify`）
 
-1. `sha256`：清单**恰好** 5 份受跟踪产物（缺一项/多一项都失败）；清单里每个文件与磁盘一致；
+1. `sha256`：清单**恰好** 6 份受跟踪产物（缺一项/多一项都失败）；清单里每个文件与磁盘一致；
    `map/`、`ledger/` 下（**递归**）不得有清单外文件（防止绕过清单加文件）。
 2. `rows_and_keys`：每份 TSV 的数据行数 = 清单 `rows`；表头与契约列序一致、每行字段数一致；主键唯一。
-3. `baselines`：总数 / `kind` / `status` / 六档 / `ext_mark` 与 `manifest.baselines` 一致，六档之和 = 数据总行数，
-   且总数 = **1171**（写死的基线，防"删一行再刷清单"这种整体缩水绕过）。
+3. `baselines`：总数 / `kind` / `status` / 六档 / `ext_mark` / `s2s` 与 `manifest.baselines` 一致，六档之和 = 数据总行数，
+   且官方 opcode 总数 = **1171**（写死的基线，防"删一行再刷清单"这种整体缩水绕过）；S2S 独立基线 = **4**
+   （读 `s2s-map.tsv`，不并入官方六档/status/mark）。
 4. `internal`：账①与地图的 `(kind,id)` 集合相等；场景账引用的 opcode、`verified_run_id`、`runtime_evidence` 里的 runId 都存在。
 5. `s0_crosscheck`（§8.5）：每个场景只把 `created_utc` 最晚的 `[真机]` 行与
    `tools/acceptance/verdicts/<scenario_id>.json` 核对 sha256 + 四计数；更早的历史行只校验摘要是 64 位十六进制。

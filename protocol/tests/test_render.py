@@ -14,6 +14,10 @@ def _base(tmp_path: Path, map_text: str, runs_text: str = RUNS_HEADER) -> Path:
     for sub in ("map", "ledger"):
         (base / sub).mkdir(parents=True)
     (base / "map" / "opcode-map.tsv").write_bytes(map_text.encode("utf-8"))
+    (base / "map" / "s2s-map.tsv").write_bytes(
+        "kind\tid\tname\trodata_va\tdispatcher\tstatus\ttier\tread_count\twrite_count\text_mark\n"
+        "S2S\t4\tNOTICE_CHANNEL_SERVER\t-\tDFLegacy.InterProcess.InterProcessLink\t"
+        "mapped\tT4_fields-read+write\t1\t1\t-\n".encode("utf-8"))
     (base / "ledger" / "runs.tsv").write_bytes(runs_text.encode("utf-8"))
     (base / "ledger" / "scenarios.tsv").write_bytes(b"scenario_id\n")
     (base / "ledger" / "opcodes.tsv").write_bytes(b"kind\tid\n")
@@ -21,14 +25,14 @@ def _base(tmp_path: Path, map_text: str, runs_text: str = RUNS_HEADER) -> Path:
 
 
 def test_manifest_has_no_timestamp_and_keys_sorted(tmp_path):
-    """清单 5 项齐全、键有序、无时间戳、单换行结尾（终审 M5 后清单不得缺受跟踪产物）。"""
+    """清单 6 项齐全、键有序、无时间戳、单换行结尾（终审 M5 后清单不得缺受跟踪产物）。"""
     base = _base(tmp_path,
                  "kind\tid\ttier\text_mark\nCMD\t11\tT4_fields-read+write\tname_only\n")
     render.render_all(base)
     text = (base / "manifest.json").read_text(encoding="utf-8")
     manifest = json.loads(text)
     assert "2026" not in text and "time" not in text.lower()
-    assert len(manifest["files"]) == 5
+    assert len(manifest["files"]) == 6
     assert list(manifest["files"]) == sorted(manifest["files"])  # sort_keys
     assert text.endswith("}\n")
     assert text.index('"baselines"') < text.index('"files"')     # sort_keys

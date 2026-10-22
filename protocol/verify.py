@@ -1,7 +1,7 @@
 """verify 五条断言：**只读**、只依赖入库文件；任一不符即失败（CLI 退出码 1）。
 
 五条断言（spec §8）：
-1. ``sha256``：清单必须恰含 5 份受跟踪产物且每个文件的 sha256 与磁盘一致；``map/``、``ledger/``
+1. ``sha256``：清单必须恰含 6 份受跟踪产物且每个文件的 sha256 与磁盘一致；``map/``、``ledger/``
    下（**递归**）不得有未列入清单的文件。
 2. ``rows_and_keys``：每份 TSV 的数据行数 = 清单 rows；列数与表头一致；主键唯一。
 3. ``baselines``：总数 / kind / status / 六档 / ext_mark 与 ``manifest.baselines`` 一致，六档之和 = 总数。
@@ -37,13 +37,13 @@ BASELINE_OPCODES_TOTAL = 1171
 """spec §8.3 写死的总数基线（六档之和 = 1171）：防"数据与清单一起缩水"绕过基线检查。"""
 
 TRACKED_FILES = (
-    "map/opcode-map.tsv", "ledger/opcodes.tsv", "ledger/scenarios.tsv",
-    "ledger/runs.tsv", "map/index.md",
+    "map/opcode-map.tsv", "map/s2s-map.tsv", "ledger/opcodes.tsv",
+    "ledger/scenarios.tsv", "ledger/runs.tsv", "map/index.md",
 )
-"""spec §6 的「5 文件契约」。
+"""spec §6 的「6 文件契约」。
 
 这里**不再 import** ``render.TRACKED``：verify 是校验方，清单常量若与生成方共用同一符号，
-"两边一起改"就会同时成立（自证）。两边内容一致由测试钉住（``test_verify.py`` 的 5 文件契约用例）。
+"两边一起改"就会同时成立（自证）。两边内容一致由测试钉住（``test_verify.py`` 的 6 文件契约用例）。
 """
 
 DIGEST_RE = re.compile(r"[0-9a-f]{64}")
@@ -54,12 +54,14 @@ RUN_IN_EVIDENCE_RE = re.compile(r"\[(?:真机|回放)\]\s+(\S+)")
 
 KEY_COLUMNS = {
     "map/opcode-map.tsv": ("kind", "id"),
+    "map/s2s-map.tsv": ("kind", "id"),
     "ledger/opcodes.tsv": ("kind", "id"),
     "ledger/scenarios.tsv": ("scenario_id", "step_index", "expect_index"),
     "ledger/runs.tsv": ("run_id",),
 }
 EXPECTED_COLUMNS = {
     "map/opcode-map.tsv": MAP_COLUMNS,
+    "map/s2s-map.tsv": MAP_COLUMNS,
     "ledger/opcodes.tsv": OPCODE_COLUMNS,
     "ledger/scenarios.tsv": SCENARIO_COLUMNS,
     "ledger/runs.tsv": RUN_COLUMNS,
@@ -92,7 +94,7 @@ def _rows(path: Path) -> list[dict]:
 def _check_sha(base: Path, manifest: dict) -> tuple[str, bool, str]:
     problems: list[str] = []
     files = manifest.get("files", {}) or {}
-    # spec §6「5 文件契约」：清单必须**恰好**是这 5 份受跟踪产物。
+    # spec §6「6 文件契约」：清单必须**恰好**是这 6 份受跟踪产物。
     # 少了 ⇒ "删掉整本台账 + 从清单移除"就能过；多了 ⇒ 清单被塞进不受管理的文件。
     missing = sorted(set(TRACKED_FILES) - set(files))
     extra = sorted(set(files) - set(TRACKED_FILES))
@@ -169,6 +171,8 @@ def _check_baselines(base: Path, manifest: dict) -> tuple[str, bool, str]:
     compare("opcodes_total（硬编码基线）", len(rows), BASELINE_OPCODES_TOTAL)
     for key, kind in KIND_BASELINES:
         compare(key, sum(1 for r in rows if r.get("kind") == kind), baselines.get(key))
+    # S2S 是独立基线：读 s2s-map.tsv 单独计数，绝不混进上面 opcode-map 的六档/status/mark 循环。
+    compare("s2s", len(_rows(Path(base) / "map" / "s2s-map.tsv")), baselines.get("s2s"))
     for tier in TIERS:
         compare(tier, sum(1 for r in rows if r.get("tier") == tier),
                 (baselines.get("tiers") or {}).get(tier))

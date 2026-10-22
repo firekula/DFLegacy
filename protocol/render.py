@@ -7,7 +7,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-TRACKED = ("map/opcode-map.tsv", "ledger/opcodes.tsv",
+TRACKED = ("map/opcode-map.tsv", "map/s2s-map.tsv", "ledger/opcodes.tsv",
            "ledger/scenarios.tsv", "ledger/runs.tsv", "map/index.md")
 
 TIERS = ("T0_no-evidence", "T1_dispatcher-no-handlerdata", "T2_handlerdata-no-fields",
@@ -100,6 +100,7 @@ def build_manifest(base: Path, index_bytes: bytes | None = None) -> dict:
             rows = max(0, data.decode("utf-8").count("\n") - 1)
         files[rel] = {"sha256": hashlib.sha256(data).hexdigest(), "rows": rows}
     map_rows = _rows(base / "map" / "opcode-map.tsv")
+    s2s_rows = _rows(base / "map" / "s2s-map.tsv")
     tiers = Counter(r.get("tier", "") for r in map_rows)
     marks = Counter(r.get("ext_mark", "") for r in map_rows)
     kinds = Counter(r.get("kind", "") for r in map_rows)
@@ -111,6 +112,7 @@ def build_manifest(base: Path, index_bytes: bytes | None = None) -> dict:
             "opcodes_total": len(map_rows),
             "cmd": kinds.get("CMD", 0),
             "noti": kinds.get("NOTI", 0),
+            "s2s": len(s2s_rows),
             "status": {k: status.get(k, 0) for k in STATUSES},
             "tiers": {k: tiers.get(k, 0) for k in TIERS},
             "ext_marks": {k: marks.get(k, 0) for k in MARKS},

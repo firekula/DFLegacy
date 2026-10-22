@@ -8,6 +8,7 @@
     },
     "noti": 563,
     "opcodes_total": 1171,
+    "s2s": 4,
     "status": {
       "mapped": 428,
       "no-dispatcher": 741,
@@ -42,6 +43,10 @@
     "map/opcode-map.tsv": {
       "rows": 1171,
       "sha256": "f4e9a76415a4557f9e9f9bfd3d0206d631bfa0738d6f0a351d6fe80e5c1a7406"
+    },
+    "map/s2s-map.tsv": {
+      "rows": 4,
+      "sha256": "09433db8bc9beb927f1a1662e8cb8c5e707fc1761968d415ee5fb6bdfc8082ea"
     }
   },
   "schema": 1
