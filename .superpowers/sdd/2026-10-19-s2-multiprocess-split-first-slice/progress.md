@@ -642,3 +642,13 @@ Task 10 实施中（impl-task-10）；Task 11 仍 `needs-refresh`。
 D10-ENV-2311 后必须复跑到 121 passed 才算恢复全绿。
 
 Task 11 仍 `needs-refresh`（进入前先刷新 Tier 2 例外/归一化 + D5-REAL 取数 + 解决 D10-ENV-2311）。
+
+## Task 11 前置：D10-ENV-2311 解决 + 环境恢复验证（2026-10-22）
+
+- **D10-ENV-2311 → resolved**：用户重启后（winnat 相关排除段释放），`bind 127.0.0.1:2311` 由 10013 恢复 **OK**；
+  `netsh interface ipv4 show excludedportrange protocol=tcp` 中 2280–2479 三条排除段已消失（无命中）。
+- **环境恢复验证（Lead 独立复跑）**：`python -m pytest acceptance/tests -q` → **121 passed, exit 0**
+  （`test_cli_orchestrate.py` 3 用例随端口恢复转绿），与 Task 10 段的「解决后应 121 passed」门槛一致。
+- 登记解决方式：重启释放 Windows 动态排除段；winnat 服务仍在 Running（Manual），但 2311 不再被排除。
+
+Task 11 实施中：`impl-task-11-wiring`（orchestrate 双进程接线）进行中。
