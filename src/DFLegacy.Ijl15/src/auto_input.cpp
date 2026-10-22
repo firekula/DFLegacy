@@ -547,8 +547,12 @@ namespace dfl::auto_input
                 {
                     due = chars;
                 }
-                while (g_textUps[i] < due)
+                while (g_textUps[i] < due && g_textUps[i] < g_textDowns[i])
                 {
+                    // The down bound keeps a catch-up pump (a loading screen
+                    // can stall the frame hook for seconds) from releasing a
+                    // character that was never pressed; the release lands on
+                    // the next pump instead.
                     const unsigned char vk = g_textVk[i][g_textUps[i]];
                     if (vk != 0)
                     {

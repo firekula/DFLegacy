@@ -549,6 +549,40 @@ bool TestAdvanceKeyEdgeAndFinish()
     {
         return false;
     }
+
+    // Catch-up regression: a pump gap that skips whole 40 ms slots (loading
+    // screens stall the frame hook) must never release a char before its own
+    // down fired, and must never end with a key stuck down.
+    const char* catchUpPlan =
+        "{\"version\":1,\"steps\":[{\"t\":100,\"op\":\"text\",\"chars\":\"ab\"}]}";
+    if (!ParsePlan(catchUpPlan, steps, kMaxSteps, &count, &version) || count != 1)
+    {
+        return false;
+    }
+    if (!ArmPlan(steps, count, version, 0))
+    {
+        return false;
+    }
+    if (Advance(139) != 1 || QueryKey('A', 0x00AB) != static_cast<short>(0x8000))
+    {
+        return false;
+    }
+    // One pump 80 ms after the previous one skips 'B's down slot entirely.
+    if (Advance(220) != 2
+        || QueryKey('A', 0x00AB) != 0x00AB
+        || QueryKey('B', 0x00AB) != static_cast<short>(0x8000))
+    {
+        return false;
+    }
+    // The next pump releases what was already pressed ('B') and finishes
+    // with an all-clear table.
+    if (Advance(260) != 1
+        || QueryKey('A', 0x00AB) != 0x00AB
+        || QueryKey('B', 0x00AB) != 0x00AB
+        || !IsFinished())
+    {
+        return false;
+    }
     return true;
 }
 }
