@@ -60,7 +60,7 @@ python .superpowers\sdd\2026-10-19-s2-multiprocess-split-first-slice\work\tier3_
 
 **焦点机制（本波的关键发明，全自动）**：
 - 客户端帧泵（`HookedGetAsyncKeyState` 锚）只在「本进程拥有前台窗口」时运行（`Pump` 顶部
-  焦点门，commit f4819bf）——游戏只在获得焦点时轮询键盘，失焦客户端既不消费共享计划文件
+  焦点门，commit 506749f）——游戏只在获得焦点时轮询键盘，失焦客户端既不消费共享计划文件
   也不发沿，双客户端共享一个 exe 目录因此是安全的；
 - 切焦点用 **真实鼠标点击**（focus.ps1：目标窗口置顶不激活 → SetCursorPos 到窗口中心 →
   mouse_event down/up）：DNF 的 DirectInput 只在收到**真实输入事件**后才恢复轮询，纯
@@ -87,7 +87,7 @@ python .superpowers\sdd\2026-10-19-s2-multiprocess-split-first-slice\work\tier3_
   `CheckPrivateAreasAsync` 相应显式声明 `["1:1"]`。
 - **帧泵焦点门 + `.done` 改名良性竞态**（506749f）：见 §2 焦点机制；双客户端同目录下先完成者
   改名成功、后完成者发现源文件已被取走 → 视为干净（否则终审闩会误抑制第二个客户端）。
-- **提交卫生（复审 Critical 修复记录）**：初审提交（d3bc82e）曾把另一工作流的未提交
+- **提交卫生（复审 Critical 修复记录）**：初审提交（d3bc82e，已重做、现为死哈希，仅历史记录）曾把另一工作流的未提交
   ReadPeerTable 大端读法 hunk 一起 pathspec 提交（该文件的既有 ` M` 状态未走 stash-guard），
   造成提交树冒烟红。已软重置拆解重做：a183f88 / 506749f 只含本波改动；该端序 hunk 以
   patch 形式存于 `work/their-readpeertable.patch.txt` 并还原回工作区（属于其所属工作流，

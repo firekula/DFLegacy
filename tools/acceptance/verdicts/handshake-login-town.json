@@ -1,0 +1,41 @@
+{
+  "counts": {
+    "fail": 0,
+    "missing-evidence": 0,
+    "needs-human": 1,
+    "pass": 3
+  },
+  "entries": [
+    {
+      "actor": "A",
+      "description": "c2s:connect（握手首帧）",
+      "level": "[存在]",
+      "result": "pass",
+      "step_action": "完成握手并登录"
+    },
+    {
+      "actor": "A",
+      "description": "s2c:connect-ack（12 号回包）",
+      "level": "[存在]",
+      "result": "pass",
+      "step_action": "完成握手并登录"
+    },
+    {
+      "actor": "A",
+      "description": "服务端入口监听就绪（逐进程日志）",
+      "level": "[存在]",
+      "result": "pass",
+      "step_action": "完成握手并登录"
+    },
+    {
+      "actor": "A",
+      "description": "选角后进入城镇（人工确认同屏）",
+      "level": "[语义]",
+      "result": "needs-human",
+      "step_action": "选角并进入城镇"
+    }
+  ],
+  "invalid_reason": null,
+  "scenario_id": "handshake-login-town",
+  "status": "green-with-human"
+}
