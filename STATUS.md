@@ -2158,9 +2158,11 @@ HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 la
   （`_observedByAddress[AddressKey(remote.Address)]`），并把**同一 IP 的所有会话**都设成同一个端点；
   而 NAT 探测/keepalive 包只有 **1 字节**（`GameDatagramProtocol.cs:40` `NatProbeLength=1`，值 0/1/5），
   **不含任何会话身份** ⇒ 两个客户端**同机不同端口**时端点反复互相覆盖。
-- 症状（两轮都在，业主 20:01 那轮 78 行、本轮 86 行）：`failed CRC or cipher validation` +
-  `(session unknown)` + `to 0/0 peer endpoint(s)` 交替出现 ⇒ 客户端玩法通道看门狗约 **33 s** 后弹
-  「与服务器的连接失败，请解除防火墙或改善您的网络环境」，并**自己发 `CMD 13` 退出队伍**
+- 症状（两轮都在；计数口径＝`failed CRC` ∨ `session unknown` ∨ `to 0/0 peer` 三类行合计）：
+  业主 20:01 那轮 **78 行**（该日志共 790 行）、本轮 **202 行**（日志 991 行）；若只数 `failed CRC`
+  则分别是 39 / 101 行。三种行交替出现，例如 `(session unknown)` + `to 0/0 peer endpoint(s)` ⇒
+  客户端玩法通道看门狗约 **33 s** 后弹「与服务器的连接失败，请解除防火墙或改善您的网络环境」，
+  并**自己发 `CMD 13` 退出队伍**
   （`21:40:05 RX 86173fc6 … protocol=13 body=3A00` → `Character 9bbab2be… left party 2; 1 member(s) remain.`）。
 - 后果：队伍活不过 ~33 s；队长走到门口区要 >60 s ⇒ 组队进本的编排（`DungeonPartySelectionPush` 见
   `the gathering party has no other member (slots=1)`）永远看到 1 人队；本轮真 START_MAP 只有 1 次且是
