@@ -1917,3 +1917,25 @@ HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 la
 - `[真机]` **战斗键未验证**：`X` 3.04%、`Z` 1.51%/2.72%，而同轮待机对照 **3.15%** ⇒ 同量级，不能判定生效；
   新手区是否允许攻击/技能未定，最终判据需进副本。
 - 方法教训：**像素差必须带同轮待机对照**；按键后**先 sleep 再截**（t8 因截太早把"菜单没弹出"误读成"点击无效"）。
+
+**三轮修正（同日，`[真机]` A/B 实证）：根因不是宿主，是我们替换了对象 vptr**
+- A/B（同一对象、同一参数、一次运行内）：走我们的克隆 vtable 时 `CreateDevice(kbd)=0x80070057`、
+  且"重试"同样失败；**把 vptr 换回原版后同一个调用返回 `0x0` 并给出真设备 `out=0x16B728D4`**
+  （`auto-input-diag.log` 2026-10-23 14:01:27）⇒ **宿主能建键盘设备**，是"给 dinput8 的对象换 vptr"
+  让它拒绝服务。上一版 STATUS 里"宿主建不出键盘设备"的表述**作废**（合成设备仍保留为兜底，但不再是主路径）。
+- 修法：`PatchVtableEntry()` 直接改宿主镜像里**共享 vtable 的槽位**，对象 vptr 保持原样——
+  · `IDirectInput8` 槽 3 = `CreateDevice`；· `IDirectInputDevice8` 槽 9 = `GetDeviceState`；
+  `Restore()` 把两个槽写回原函数。
+- 设备侧同样踩过这个坑：第一版把设备 vptr 换成克隆后，`Acquire`/`Poll` 被拒、代理**一次都没被调用**
+  （14:03 那轮 `GetDeviceState calls` 零条）。同法改成原地补丁后立刻恢复。
+- **最终形态真机证据（构建 211456 B，PID 612）**：`CreateDevice(kbd) result=0x0` →
+  `GetDeviceState` 代理 **~260 次/秒、`res=0x0`** → LEFT 行走 **74.26%** vs 同轮待机 **6.13%** →
+  热键 `0x2C` 截图文件 **7→8** → 原生自测 exit 0。
+- `[未验证]` **宿主探针仍不可用**：`ProbeHostKeyboard` 用自己的 DirectInput8Create 调用，
+  即使移出 DllMain（首帧 Pump）仍返回 `E_NOINTERFACE`，而游戏自己的同一调用（同 IID/版本/hinst）
+  成功 —— 两者的差别没查明，故**不得**用该探针推断宿主能力（已把它降级为纯诊断行）。
+- 复审（独立复审人 `reviewer-kbd`，报告 `work/../review-kbd-device.md`）：**Critical 1 / Important 4 / Minor 10**，
+  已修 C1（`EnumObjects` 少弹 4 字节 → 栈错位）、I1（探针 IID 字节序）、I2（合成路径无计数）、
+  I3（`Restore` 清物理键指针）、I4（caps/instance 不按调用者 `dwSize` 零初始化），
+  以及 M1/M3/M4/M5/M6/M7/M8；M2/M9/M10 记为文档级（`acquired` 仅记录语义、IAT 钩为进程级、
+  4 条测试依赖 US 布局）。
