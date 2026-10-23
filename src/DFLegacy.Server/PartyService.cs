@@ -84,11 +84,23 @@ public sealed class PartyService : BackgroundService
     public const int MinimumRequestIntervalMilliseconds = 3_000;
 
     /// <summary>
-    /// 待决请求的存活窗口（设计稿 §5.2）。客户端点【否】**会**发包（11 字节带 `64 00`，G 卷 §2.2），
-    /// 走 <see cref="HandleResponseAsync"/> 的拒绝分支；超时收尾针对的是"客户端什么都不发"的三种情形：
-    /// 决斗邀请（peerType 2/3）点否只关窗、发起者下线/守卫失败静默关窗、窗口自身计时器到点静默关窗。
+    /// 待决请求的存活窗口：**等于客户端应答窗自己的存活时长（10 秒）**，不是设计稿原来写的 30 秒。
+    /// 客户端点【否】**会**发包（11 字节带 `64 00`，G 卷 §2.2），走 <see cref="HandleResponseAsync"/> 的
+    /// 拒绝分支；超时收尾针对的是"客户端什么都不发"的情形：决斗邀请（peerType 2/3）点否只关窗、
+    /// 发起者下线/守卫失败静默关窗、**窗口自身计时器到点静默关窗**。
+    /// <para>
+    /// **为什么从 30 s 改成 10 s（真机实测，2026-10-23）**：那扇「是否接受组队」窗**不会**活到 30 秒。
+    /// 实测（`measure-invite-window/`，两个独立方法结论一致）：
+    /// ① 功能探针——邀请后 **+8 s** 点【是】服务端立刻广播 `Party roster … 2 member(s)`（窗口还活着）；
+    /// **+12 s** 点【是】零名册、零 `protocol=11`（客户端窗口已消失，点了什么包都不发）。
+    /// ② 1 Hz 桌面序列——第 8 帧（≈+10.0 s）窗还在、第 9 帧（≈+11.0 s）窗没了。
+    /// 窗口比客户端活得久的那 20 秒里，待决项会**替一扇已经不存在的窗占位**：真机 20:01 那轮
+    /// （`work/server-demo.log` 522/529/530/536）业主在 +15 s 重邀，就被 `_pending` 直接回绝
+    /// （`TX protocol=11 payload=006400`），而他屏幕上的窗口早没了。
+    /// 取值 10 s 而不是更小：窗口还开着时服务端不能先忘（否则目标点【是】会被静默丢掉）。
+    /// </para>
     /// </summary>
-    public static readonly TimeSpan RequestWindow = TimeSpan.FromSeconds(30);
+    public static readonly TimeSpan RequestWindow = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// 名册补播的第一次延迟（相对发布时刻），第二次见 <see cref="SecondResettleDelay"/>。
@@ -181,7 +193,7 @@ public sealed class PartyService : BackgroundService
 
     /// <summary>
     /// 测试用：把待决请求与"拉黑静默项"立刻推到过期，好让 <see cref="SweepExpiredAsync"/> 能覆盖到
-    /// 30 秒窗口的收尾路径（真机路径不会调用；生产代码靠真实时钟）。
+    /// 待决窗口的收尾路径（真机路径不会调用；生产代码靠真实时钟）。
     /// </summary>
     internal void ExpirePendingForTests()
     {
@@ -272,9 +284,11 @@ public sealed class PartyService : BackgroundService
     /// <summary>
     /// CMD 10（peerType=0）：邀请 / 申请加入。校验顺序与失败形状见设计稿 §5.1：
     /// 目标解析不到 → `CMD 11 [0,100,0]`；双方都有队伍 / 目标不是队长 / 限流 → 静默；
-    /// **目标已有待决请求 → 先到者优先**：占位用一次 `TryAdd` 原子完成，后来者立刻收同形的
-    /// `CMD 11 [0,100,0]`（不用等 30 秒），目标正在看的那个窗口也不会被换掉；
-    /// 被目标拉黑 → 只登记发起方（目标无感知，**不写** `_pending`），30 秒后照常给发起方失败提示。
+    /// **目标已有待决请求 → 先到者优先**：占位用一次比较交换原子完成，后来者立刻收同形的
+    /// `CMD 11 [0,100,0]`（不用等窗口过期），目标正在看的那个窗口也不会被换掉；
+    /// **但只有"还活着"的待决项有权拒绝**——已过期的（目标客户端的应答窗早已消失，见
+    /// <see cref="RequestWindow"/>）必须被新请求顶掉，否则真机上会表现成"再次邀请直接被拒绝"；
+    /// 被目标拉黑 → 只登记发起方（目标无感知，**不写** `_pending`），窗口过期后照常给发起方失败提示。
     /// </summary>
     public async Task HandleRequestAsync(
         Guid requesterCharacterId,
@@ -289,7 +303,7 @@ public sealed class PartyService : BackgroundService
 
         // uid **只取一次**：换区会改 PartyChannel.AreaUserId，而下面的拉黑判定要 await——
         // 两次读之间换区会让存下的 RequesterUid 与 NOTI 7 里发出去的 uid 不一致，
-        // 接受方的 CMD 11 就永远对不上，请求方白等 30 秒。
+        // 接受方的 CMD 11 就永远对不上，请求方白等一整个窗口。
         var requesterUid = requester.AreaUserId;
 
         var now = _timeProvider.GetUtcNow();
@@ -351,7 +365,7 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        // 被拉黑：目标完全无感知；但登记一个只属于发起方的到期项，让 30 秒后照常收到
+        // 被拉黑：目标完全无感知；但登记一个只属于发起方的到期项，让窗口过期后照常收到
         // 与"对方没理"完全同形的失败提示（否则"立刻能重发"会成为拉黑的旁证）。
         // 这条分支**不写** _pending（只登记 _blockedRequests）。
         var blocked = await IsBlacklistedAsync(
@@ -375,13 +389,32 @@ public sealed class PartyService : BackgroundService
             ExpiresAt = now + RequestWindow
         };
 
-        // 原子占位："目标已有待决请求"的判定与写入必须是**一个操作**：先 ContainsKey 后赋值的写法在
-        // 中间隔着一个 await（拉黑查询）时会放两个并发请求都通过判定。TryAdd 失败 = 目标已被更早的
-        // 请求占住 → 后来者立刻收同形失败（先到者优先，设计稿 §5.1），目标正在看的窗口也不会被换掉。
-        if (!_pending.TryAdd(target.CharacterId, pending))
+        // 原子占位（比较交换）：**只有还活着的待决项才有权拒绝后来者**。
+        // 先 TryGetValue 后 TryAdd 的写法在中间隔着 await（拉黑查询）时会放两个并发请求都通过判定；
+        // 而"过期但还没被 1 Hz 扫描摘掉"的项必须被顶掉——真机 2026-10-23 20:01
+        // （work/server-demo.log 522/529/530/536）就是这条缺口：被邀请者客户端的应答窗早就消失了
+        // （它超时**不发包**，那轮零条 RX protocol=11），服务端待决项还在，第二次邀请撞上 TryAdd 失败
+        // → 请求方立刻收 CMD 11 [0,100,0]、被邀请者一包都收不到（业主动报告："再尝试就直接返回拒绝了"）。
+        if (!TryReservePending(target.CharacterId, pending, now, out var superseded, out var holder))
         {
+            _logger.LogInformation(
+                "Refused a party request from {Requester} to {Target}: {Holder} already has a live request open for another {Remaining} ms.",
+                requester.CharacterName,
+                target.CharacterName,
+                DescribeCharacter(holder!.RequesterCharacterId),
+                (holder.ExpiresAt - now).TotalMilliseconds);
             await SendRequestFailureAsync(requesterCharacterId, cancellationToken);
             return;
+        }
+
+        if (superseded is not null)
+        {
+            _logger.LogInformation(
+                "Took over the invite slot of {Target}: the request from {StaleRequester} expired {Elapsed} ms ago, so the new request from {Requester} is pending.",
+                target.CharacterName,
+                DescribeCharacter(superseded.RequesterCharacterId),
+                (now - superseded.ExpiresAt).TotalMilliseconds,
+                requester.CharacterName);
         }
 
         await SendAsync(
@@ -436,7 +469,7 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
-        // 小窗【否】：待决项已经在上面被原子摘除（30 秒超时不会再补一条失败）。只给请求方一条与超时
+        // 小窗【否】：待决项已经在上面被原子摘除（超时收尾不会再补一条失败）。只给请求方一条与超时
         // 完全同形的 `CMD 11 [0,100,0]`，接受方零包，**绝不**往下走建队/并队。
         if (!accepted)
         {
@@ -1351,6 +1384,13 @@ public sealed class PartyService : BackgroundService
 
             if (_pending.TryRemove(new KeyValuePair<Guid, PartyPendingRequest>(targetCharacterId, request)))
             {
+                // 这条日志是**必须**的：真机 2026-10-23 20:01 那轮里，超时收尾只留下一条
+                // `TX protocol=11 payload=006400`，没有任何业务行，业主因此以为"服务端没有处理"。
+                _logger.LogInformation(
+                    "The party request from {Requester} to {Target} timed out with no answer after {Seconds:F0} s; the requester was told it failed.",
+                    DescribeCharacter(request.RequesterCharacterId),
+                    DescribeCharacter(targetCharacterId),
+                    RequestWindow.TotalSeconds);
                 await SendRequestFailureAsync(request.RequesterCharacterId, cancellationToken);
             }
         }
@@ -1420,6 +1460,55 @@ public sealed class PartyService : BackgroundService
         return _partyByCharacter.TryGetValue(characterId, out var partyId)
             && _parties.TryGetValue(partyId, out roster);
     }
+
+    /// <summary>
+    /// 占住目标的待决槽位（一个原子操作）。**只有还活着的待决项有权拒绝后来者**：已过期但还没被
+    /// 1 Hz 扫描摘掉的项必须被新请求顶掉（见 <see cref="HandleRequestAsync"/> 的注释与
+    /// <see cref="RequestWindow"/> 的真机依据）。用比较交换（<c>TryUpdate</c>）而不是"先删后加"：
+    /// 两个并发请求不会双双通过，也不会互相删掉对方刚写进去的项。
+    /// </summary>
+    /// <param name="superseded">被顶掉的那条**已过期**请求（没有则为 null），只用于日志。</param>
+    /// <param name="holder">占着槽位的那条**还活着**的请求（拒绝时用于日志）。</param>
+    /// <returns>true = 本次请求已占位（可能顶掉了一条过期项）；false = 有活着的前者，调用方回失败。</returns>
+    private bool TryReservePending(
+        Guid targetCharacterId,
+        PartyPendingRequest pending,
+        DateTimeOffset now,
+        out PartyPendingRequest? superseded,
+        out PartyPendingRequest? holder)
+    {
+        superseded = null;
+        holder = null;
+        while (true)
+        {
+            if (!_pending.TryGetValue(targetCharacterId, out var existing))
+            {
+                if (_pending.TryAdd(targetCharacterId, pending))
+                {
+                    return true;
+                }
+
+                // 竞态：另一条请求刚好插进来 → 回到开头重新判定（它可能也已过期）。
+                continue;
+            }
+
+            if (now < existing.ExpiresAt)
+            {
+                holder = existing;
+                return false;
+            }
+
+            if (_pending.TryUpdate(targetCharacterId, pending, existing))
+            {
+                superseded = existing;
+                return true;
+            }
+        }
+    }
+
+    /// <summary>日志用：优先给角色名，通道已摘除时退回角色 id（掉线/换角色后日志仍可追）。</summary>
+    private string DescribeCharacter(Guid characterId) =>
+        _channels.TryGetValue(characterId, out var channel) ? channel.CharacterName : characterId.ToString();
 
     /// <summary>
     /// 目标解析：uid 只在**请求者所在区域**内有意义（客户端就是这么取的），

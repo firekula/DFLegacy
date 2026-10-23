@@ -2088,3 +2088,40 @@ HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 la
   5/1 里那些点会走动；5/0 里打到角色身上就不会动。
 - **下一步**：点「邀请组队」→ B 侧接受应答窗 → 服务端应出现 `Party roster … 2 member(s)`；
   随后队长进本，`protocol=16` 应出现 **2 次**；两人都在本里即跑 `combat_gate`。
+
+**组队邀请「超时后再邀直接被拒」定论 + 修复（2026-10-23，业主报告）**
+
+业主原话：「客户端收到组队邀请，超时会自动拒绝，但是服务端好像没有处理，后续再尝试要求就直接返回拒绝了」。
+
+- **现场（既有真机日志 `work/server-demo.log`，业主 20:01 那轮，本轮未重跑）**：
+  `522` 20:01:15 邀请（`protocol=10`）→ `523` NOTI 7 送达 → `529` **20:01:30（+15.0 s）重邀** →
+  `530` **立刻** `TX protocol=11 payload=006400`，且**没有**新的 `Party request from` 行 →
+  `536` 20:01:45（+30.0 s）才补一条同样的 006400，**日志里没有任何业务行**。
+  全会话 `RX … protocol=11` **零条** ⇒ **客户端应答窗超时不发任何包**，服务端只能靠自己的计时器收尾。
+- **根因两条**：① `if (!_pending.TryAdd(...)) → 立刻回 006400`——**连已过期的待决项也照拒绝**；
+  ② `RequestWindow = 30 s` **远长于客户端应答窗**，多出来的时间全是"替一扇已经不存在的窗占位"。
+- **实测客户端应答窗 ≈ 10 s（两法互证，`work/measure-invite-window/report.md`）**：
+  邀请后 **+8 s** 点【是】→ 服务端立刻 `Party roster … 2 member(s)`（窗口还活着）；
+  **+12 s** 点【是】→ 零名册、零 `protocol=11`（窗口已消失）；
+  1 Hz 桌面序列（`series/f000..f019`）按 **t0=20:47:01**（`server-demo.log:653`）算，窗口在
+  **(10.2 s, 11.2 s]** 之间消失（`f008` 有窗、亮度 47.4；`f009` 无窗、38.33）。
+  ⚠️ **错误口径**：从序列帧 0（20:47:03.2）算会得 9.04 s（差 2.2 s）——由 `prober-invite` 交叉核对抓出。
+- **修法（`src/DFLegacy.Server/PartyService.cs`）**：
+  ① `RequestWindow` **30 s → 10 s**（取 10 不取更小：窗口还开着时服务端不能先忘，否则目标点【是】被静默丢掉）；
+  ② `TryReservePending`（比较交换）——**只有还活着的待决项有权拒绝**，过期项被新请求顶掉；
+  ③ 三条路径各补一行 info 业务日志：`timed out with no answer` / `Took over the invite slot` /
+  `Refused a party request … already has a live request open`（业主"感觉服务端没处理"直接来自超时路径零日志）。
+- **门（全绿）**：新增 5 条冒烟契约（RED 实跑 4 红 → 绿）、`ijl15_tests.exe` 绿、
+  `combat_gate --self-check` + `party_dungeon --self-check` 绿、**pytest 149 passed**。
+- **真机复验（新构建，`work/measure-invite-window/server-fixverify.log`）**：
+  邀请 20:56:31 → **20:56:42 `timed out with no answer after 10 s`**（+10 s 收尾且**有日志**）→
+  **+20 s 重邀 20:56:51 产生新的 `Party request from`**，目标客户端弹出**新窗**
+  （`vf-A-at-14s-new-window.png`；同轮 `vf-A-at-11s.png` 证明旧窗在 +11 s 已消失）。
+  旧构建同场景（业主那轮 +15 s）是立刻 006400、目标零包；本轮 `Refused a party request` **零条**。
+- **部署**：`DF\town-test\DFLegacy.Server.dll` 已换新构建（旧版备份 `DFLegacy.Server.dll.pre-invitefix-20261023`）。
+- **边界（如实）**：`[未验证-真机]`「过期项被顶掉」只在单测覆盖——它只在「过期时刻 → 下一次 1 Hz 扫描」
+  ≤1 s 的缝里生效，两次卡点尝试都因点击时序抖动没撞上（`verify-takeover.json`）；这段由冒烟用例
+  ②（同一个人重邀）与④（别人留下的过期项）覆盖。
+- **设计稿勘误**：`docs/superpowers/specs/2026-09-28-party-system-design.md` §5.1/§5.2 的 **30 秒**已标作废
+  （以实现为准），并写明"先到者优先只对活着的待决项成立"。
+

@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Text;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 /// <summary>
@@ -436,6 +437,9 @@ internal static class PartySmokeTests
         await CheckResponseRefusalShapeAsync(check);
         await CheckDuplicateAcceptIsInertAsync(check);
         await CheckTimeoutAndBlacklistAsync(check);
+        await CheckExpiredPendingIsTakenOverAsync(check);
+        await CheckInviteTimeoutIsLoggedAsync(check);
+        CheckPendingWindowMatchesClientDialog(check);
         await CheckLeaveAndKickAsync(check);
         await CheckLeaderLeaveKeepsMemberSlotsAsync(check);
         await CheckKickFromNonZeroLeaderSlotAsync(check);
@@ -616,7 +620,7 @@ internal static class PartySmokeTests
     /// ★ 回归（真机「点【否】也等于接受」）：小窗【否】发的 11 字节拒绝包（与【是】同前缀、尾部多
     /// `64 00`，G 卷 §2.2）经协议层判成 `accepted: false` 之后，服务端必须**只**给请求方回一条与
     /// 超时/拉黑同形的 `CMD 11 [0,100,0]`、接受方零包，且**不建队、不加人**；待决项已被原子摘除，
-    /// 30 秒超时不会再补一条失败，随后再邀请一次也必须能成功（"先到者优先"不会误挡）。
+    /// 超时收尾不会再补一条失败，随后再邀请一次也必须能成功（"先到者优先"不会误挡）。
     /// **变异验证**：把 `PartyService.HandleResponseAsync` 里的 `if (!accepted)` 分支摘掉（或让
     /// `IsPeerResponseAccepted` 恒为 true），"no NOTI 9" 与 "zero packet for the refuser" 两条断言变红
     ///（会建出队伍并向双方+旁观者广播名册、给接受方回 NOTI 8）。
@@ -650,7 +654,7 @@ internal static class PartySmokeTests
         check(harness.Of("布拉沃").Count == 0,
             "the refuser gets no packet at all (the client closes its own window on 【否】)");
 
-        // 待决项必须在拒绝时就被摘掉：否则 30 秒的收尾会再补一条失败，而且第二次邀请会被"先到者优先"回绝。
+        // 待决项必须在拒绝时就被摘掉：否则超时收尾会再补一条失败，而且第二次邀请会被"先到者优先"回绝。
         await harness.Service.SweepExpiredAsync(CancellationToken.None);
         check(harness.Of("阿尔法").Count == 1 && harness.Of("布拉沃").Count == 0,
             "the refused request is already gone from the pending table: the 30-second sweep adds nothing");
@@ -1288,6 +1292,105 @@ internal static class PartySmokeTests
             "the blacklisted requester sees exactly the same failure as a plain unanswered request");
     }
 
+    /// <summary>
+    /// ★ 回归（真机 2026-10-23 20:01 现场，`.superpowers/sdd/2026-10-22-client-auto-input/work/server-demo.log`
+    /// 522/529/530/536）：被邀请者客户端的应答窗超时后**一个包都不发**（那轮全会话零条 `RX … protocol=11`），
+    /// 而服务端把待决项留满 `RequestWindow`（当时 30 秒；真机实测客户端窗口只有 ~10 秒）。于是 20:01:30 的第二次邀请撞上一条
+    /// **已经过期、只是还没被 1 Hz 扫描摘掉**的待决项：`_pending.TryAdd` 失败 →
+    /// 请求方立刻收 `CMD 11 [0,100,0]`、被邀请者一包都收不到（业主原话"后续再尝试要求就直接返回拒绝了"）。
+    /// 契约：**只有还活着的待决项有权拒绝后来者**（"先到者优先"保护的是目标**此刻正在看**的那扇窗）；
+    /// 已过期的待决项必须被新请求顶掉，顶掉后照常发 NOTI 7，且随后的接受仍然成队。
+    /// 变异验证：把接管退回"`_pending.TryAdd` 失败即拒绝"，②④ 两条立刻变红（请求方收到 006400、目标收不到 NOTI 7）。
+    /// </summary>
+    private static async Task CheckExpiredPendingIsTakenOverAsync(Action<bool, string> check)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        harness.ClearAll();
+
+        // ① 活着（未到期）的待决项照旧拒绝后来者：这是设计稿 §5.1 的"先到者优先"，本轮**不许**修掉。
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.FirstOf("布拉沃", GameProtocolEngine.RequestPeerNotification) is not null,
+            "setup: the first invitation reaches 布拉沃 as a NOTI 7");
+        harness.ClearAll();
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].Payload.SequenceEqual(new byte[] { 0, 100, 0 })
+                && harness.FirstOf("布拉沃", GameProtocolEngine.RequestPeerNotification) is null,
+            "a still-live pending keeps first-come-first-served: the late invitation is refused at once and no second window opens");
+
+        // ② 同一个人重邀：待决项已过期（真机上"应答窗已消失"就是这个状态）→ 新请求必须顶掉它，
+        //    而不是像 20:01:30 那轮一样立刻回一条 006400。
+        harness.ClearAll();
+        harness.Service.ExpirePendingForTests();
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 0
+                && harness.FirstOf("布拉沃", GameProtocolEngine.RequestPeerNotification) is { Payload.Length: 11 },
+            "an expired pending is taken over: the re-invite reaches 布拉沃 and the requester hears nothing (no instant 'refused')");
+
+        // ③ 顶掉之后一切照旧：被邀请者这次点【是】，队伍正常成形（接管不是把请求"吃掉"）。
+        harness.ClearAll();
+        await harness.Service.HandleResponseAsync(
+            harness.IdOf("布拉沃"), harness.UidOf("阿尔法"), accepted: true, CancellationToken.None);
+        check(harness.FirstOf("阿尔法", GameProtocolEngine.PartyInfoNotification) is not null
+                && harness.FirstOf("布拉沃", GameProtocolEngine.PartyInfoNotification) is not null,
+            "the taken-over request can then be accepted normally: both sides get the roster");
+
+        // ④ 顶掉与"谁发的"无关：目标身上那条过期待决项来自别人（查理），阿尔法的邀请同样能顶掉它。
+        harness.ClearAll();
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("查理"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("查理"), harness.UidOf("德尔塔"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.FirstOf("德尔塔", GameProtocolEngine.RequestPeerNotification) is not null,
+            "setup: 查理's invitation reaches 德尔塔");
+        harness.ClearAll();
+        harness.Service.ExpirePendingForTests();
+        harness.Service.ResetRequestThrottleForTests(harness.IdOf("阿尔法"));
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("德尔塔"), PartyHarness.DefaultInfo, CancellationToken.None);
+        check(harness.Of("阿尔法").Count == 0
+                && harness.FirstOf("德尔塔", GameProtocolEngine.RequestPeerNotification) is not null,
+            "a stale pending left by someone else never locks the target: the new requester reaches 德尔塔 directly");
+    }
+
+    /// <summary>
+    /// 业主原话"服务端好像没有处理"有一半是**看不见**：`SweepExpiredAsync` 的超时收尾原来一条日志都不打，
+    /// 日志里只有一条 `TX protocol=11 payload=006400`，没有任何业务行说明这是"邀请过期"。
+    /// 契约：超时收尾必须留一条带**双方名字**的 info 行（排查时能一眼看出谁向谁发的邀请过期了）。
+    /// </summary>
+    private static async Task CheckInviteTimeoutIsLoggedAsync(Action<bool, string> check)
+    {
+        var log = new RecordingLogger<PartyService>();
+        await using var harness = await PartyHarness.CreateAsync(log);
+        harness.ClearAll();
+        await harness.Service.HandleRequestAsync(
+            harness.IdOf("阿尔法"), harness.UidOf("布拉沃"), PartyHarness.DefaultInfo, CancellationToken.None);
+        harness.ClearAll();
+        harness.Service.ExpirePendingForTests();
+        await harness.Service.SweepExpiredAsync(CancellationToken.None);
+        check(log.Entries.Any(entry => entry.Level == LogLevel.Information
+                && entry.Message.Contains("timed out", StringComparison.Ordinal)
+                && entry.Message.Contains("阿尔法", StringComparison.Ordinal)
+                && entry.Message.Contains("布拉沃", StringComparison.Ordinal)),
+            "the timeout sweep logs one business line naming both the requester and the target");
+        check(harness.Of("阿尔法").Count == 1
+                && harness.Of("阿尔法")[0].ProtocolId == GameProtocolEngine.ResponsePeerCommand,
+            "the logged timeout still sends the requester its CMD 11 [0,100,0] (logging must not replace the packet)");
+    }
+
+    /// <summary>
+    /// ⑤ 窗口长度本身是契约：真机实测客户端应答窗 ≈10 s（+8 s 点【是】成队、+12 s 点【是】零反应；
+    /// 1 Hz 序列 +10.0 s 有窗、+11.0 s 无窗，见 `measure-invite-window/`）。服务端窗口**不得**比它长——
+    /// 长出来的每一秒都是"替一扇已经不存在的窗占位"，正是业主 20:01:30 被直接拒绝的原因。
+    /// </summary>
+    private static void CheckPendingWindowMatchesClientDialog(Action<bool, string> check) =>
+        check(PartyService.RequestWindow <= TimeSpan.FromSeconds(10),
+            "the pending window never outlives the client's accept dialog (measured ~10 s on 2026-10-23)");
+
     private static async Task CheckSetPartyInfoAsync(Action<bool, string> check)
     {
         await using var harness = await PartyHarness.CreateAsync();
@@ -1459,6 +1562,44 @@ internal static class PartySmokeTests
 /// 只把发包换成写进 List（沿用 TradeHarness 的做法）；阿尔法/布拉沃/查理/德尔塔在 1/0 号共享区域，
 /// 艾琳在 1/1（赛利亚房间，私密区域，每个成员一个实例）——用来验证区域广播不跨区、进区要补发。
 /// </summary>
+/// <remarks>
+/// 只收集日志级别与文本的假 logger：用来断言"邀请超时收尾必须留一条业务日志"
+/// （业主 2026-10-23 的现场里，超时路径一条日志都没有，看起来像"服务端没有处理"）。
+/// </remarks>
+internal sealed class RecordingLogger<T> : ILogger<T>
+{
+    private readonly List<(LogLevel Level, string Message)> _entries = [];
+
+    public IReadOnlyList<(LogLevel Level, string Message)> Entries
+    {
+        get
+        {
+            lock (_entries)
+            {
+                return [.. _entries];
+            }
+        }
+    }
+
+    public IDisposable? BeginScope<TState>(TState state)
+        where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        lock (_entries)
+        {
+            _entries.Add((logLevel, formatter(state, exception)));
+        }
+    }
+}
+
 internal sealed class PartyHarness : IAsyncDisposable
 {
     /// <summary>
@@ -1521,7 +1662,7 @@ internal sealed class PartyHarness : IAsyncDisposable
         }
     }
 
-    public static async Task<PartyHarness> CreateAsync()
+    public static async Task<PartyHarness> CreateAsync(ILogger<PartyService>? logger = null)
     {
         var root = Path.Combine(Path.GetTempPath(), $"dflegacy-party-harness-{Guid.NewGuid():N}");
         System.IO.Directory.CreateDirectory(root);
@@ -1564,7 +1705,7 @@ internal sealed class PartyHarness : IAsyncDisposable
             store,
             directory,
             TimeProvider.System,
-            NullLogger<PartyService>.Instance);
+            logger ?? NullLogger<PartyService>.Instance);
         ushort uid = 1;
         foreach (var (account, name, areaId) in fixtures)
         {
