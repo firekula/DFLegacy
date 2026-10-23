@@ -1856,3 +1856,51 @@ HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 la
 - **遗留（如实）**：拆分档 channel 链路在 run 尾段偶发 down（不影响验收结论，观察项）；
   走路键注入未带动角色（共享出生房夹具绕开，走路正确性留给需要它的场景）；
   双客户端焦点切换依赖驱动端点击聚焦（Windows 焦点限制 + DNF 输入恢复语义的联合约束）。
+
+## 14. 2026-10-23 真机：客户端**键盘控制打通**（B′ 补齐波：移动/热键可用，文本路径待解）
+
+**结论先行**：合成键盘**已能驱动角色移动**（上下左右四向均实测），热键路径（`GetAsyncKeyState`）
+也已用"截图键真的产生截图"证明；**文本（`WM_CHAR`）路径未打通**，且**业户手动键盘在本客户端同样不可用**
+（原因见下，已向业户回报）。证据类别：`[静态]` + `[真机]`，逐条给产物。
+
+**根因（静态+真机一致，两条独立证据）**
+1. `[真机]` 客户端自己的 `CreateDevice(GUID_SysKeyboard)` 返回 **`0x80070057`、`*ppDevice = NULL`**
+   （两次独立运行：`DF\auto-input-diag.log` 2026-10-23 13:24:43、13:28:38）。
+2. `[静态]` 客户端对设备指针**不做空值检查**：`sub_8E9540` = `mov eax,[ecx+0D14h]; mov edx,[eax]`，
+   `sub_8E9730` 同款（`0x8E985F`/`0x8E9865`）；键态缓冲在 **`[输入对象+0x10D]`、256 字节、DIK 索引**
+   （`+0x100` 那条旧口径作废）。
+3. `[真机]` 于是**任何**键投递都必崩：第一次投 `VK_LEFT` 计划 → `VEH code=0xC0000005 at=0x8E9865
+   modrel=0x4E9865`，正是 `sub_8E9730` 里那次空设备解引用。⇒ "真实键盘能走"在当前客户端不成立。
+
+**修法（提交 `179e486`、`15e2f5e`）**
+- `CreateDeviceProxy`：键盘 GUID + 原调用失败 + 输出为空 ⇒ 换成本模块静态**合成键盘设备**
+  （32 槽 `IDirectInputDevice8` vtable，每槽按真实 arity 的 `__stdcall` 桩），
+  `GetDeviceState` 用 `GetAsyncKeyState` **合并物理键 + 计划合成键**（业主自己的键盘照旧可用）。
+- `DikFromVk`：显式枚举 E0 扩展键（`MapVirtualKeyA` 在本机拿不到 E0 前缀，实测 `MAPVK_VK_TO_VSC_EX`
+  对 `VK_LEFT` 只给 `0x004B`）；旧实现把 LEFT 写到 `keys[0x4B]`，游戏读的是 `DIK_LEFT=0xCB`。
+- 发送期重入：`SendMessage` 同步回调会经 `GetAsyncKeyState` 锚重入泵，而 text 的 down/up 计数器
+  在投递**之后**才自增 ⇒ 无限递归。修法：两个 text 循环改为先自增再投递 + `Pump` 增 `g_inTimeline` 闸。
+
+**验收（真机，`work/t4_move_drive.py` / `t5_scope_drive.py` / `t7_ui_keys.py`；像素差口径见 runbook）**
+| 项 | 观测 | 结果 |
+|---|---|---|
+| 静止对照（无输入 2s） | 像素差 6.76% / 4.94% | 待机动画噪声基线 |
+| LEFT 按住 1.5s | 像素差 **74.07%** / 73.72%（两轮） | 角色由画面右侧走到左侧、呈行走姿态，客户端存活 |
+| UP / RIGHT / DOWN | 像素差 97.85% / 80.46% / 99.25% | 四向均带动角色（RIGHT 在 `sub_8E9730` 的 VK 表里缺失，DI 路径不受影响） |
+| 热键 `0x2C`（游戏只轮询它） | `ScreenShot\` 文件 **6 → 7** + 聊天框系统行"ScreenShot File … saved." | `GetAsyncKeyState` 钩子对游戏真实生效 |
+| UI 动作 `VK_ESCAPE` | 系统菜单（关闭菜单/设置/键盘设置/…/结束游戏）弹出 | 键盘→UI 动作可用 |
+| 文本 `WM_CHAR`（Enter→"abc"→Enter） | 聊天输入行**未弹出**、无消息；进程存活 | **未打通**：同一投递机制下 ESC 可用，故非投递失效；疑为新手区/该界面不响应 Enter 聊天 |
+
+**新增工具（`.superpowers/sdd/2026-10-22-client-auto-input/work/`，均未入仓因 `.superpowers/` 被忽略）**
+`kbd_input_map.py`（IDAPython 线性扫：8E9540/8E9430 反汇编 + 全 text 段扫 0x10D/0xD14）、
+`t4_move_drive.py`（启动→进城→静止对照→按键，含像素差判据）、`t5_scope_drive.py`（热键/文本/四向）、
+`t7_ui_keys.py`（ESC/Enter）、`capture_screen.ps1`（**桌面截取**：`PrintWindow(PW_RENDERFULLCONTENT)`
+对本 D3D8 窗口会周期性返回全黑图，实测同一哈希重复出现，故弃用）、`focus.ps1`（`AttachThreadInput` 前台化：
+裸 `SetForegroundWindow` 在非前台进程里被拒，实测 `match=False`，而泵对失焦客户端直接早退）、
+`di_probe.ps1`/`di_probe_bits.ps1`（独立进程 DirectInput 探针）。
+
+**遗留（如实）**
+- 文本路径未通；聊天键是否 Enter、是否受区域限制未定，需在非新手区/设置里确认绑定（菜单含"键盘设置"）。
+- 合成设备 vtable 的 arity 正确性目前只有"没崩 + 各路径都跑过"这一层证据；`GetDeviceState` 合并逻辑无单元测试
+  （`DikFromVk` 已有表驱动特征化测试 16 条，见 `b7b2391`）。
+- 泵仍以键盘轮询为锚（失焦客户端不推进），与 §12 的升级风险同源。
