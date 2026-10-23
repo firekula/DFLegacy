@@ -70,3 +70,43 @@ python -m acceptance.cli run --scenario town-two-clients --actors 2 --actor-acco
 > - `fail`：证据在、但不符（这才叫红）。
 > - `green-with-human` 只表示"没有 fail"，**不代表**语义项已通过；`pass:0` 的 run
 >   也可能是 `green-with-human`，务必看 `counts` 而不是只看 `status`。
+## 副本内战斗键验收（B′ 键盘控制，业主裁定：战斗只能在副本里验）
+
+**为什么单独一条**：城镇不接受攻击/技能动作（`[真机]` t11：`X` 3.04%、`Z` 1.51~2.72%，
+而同轮待机对照 3.15%，同量级）。所以战斗是否生效只能在副本里判，且必须带**同轮待机对照**。
+
+**前置**：两个客户端已组队，队长已进入副本（截图确认加载完成）；
+relay+stun 容器必须已起（组队副本必需，`docker ps` 应能看到 `dnf`）。
+
+**一条命令**（工作目录 `G:\Game\DNF_ACT1\DFLegacy\tools`）：
+
+```powershell
+$env:PYTHONIOENCODING='utf-8'
+cd G:\Game\DNF_ACT1\DFLegacy\tools
+python -m acceptance.combat_gate `
+    --client-dir G:\Game\DNF_ACT1\DF `
+    --server-log <run_dir>\server\server-A.log `
+    --netdump G:\Game\DNF_ACT1\DF\netdump-<PID>.log `
+    --out-dir <run_dir>
+```
+
+它按客户端自带「键盘设置」的绑定注入 `X`（普通攻击）/`Z`（技能）/`C`（跳跃，对照项），
+采三类证据：① 服务端伤害/HP 事件；② netdump 里**待机窗口没有的上行帧类**；
+③ 动作帧像素差 vs 同轮待机对照。产出 `<run_dir>\combat-gate.json`，退出码 0 = pass。
+
+**自检（不需要游戏，CI/提交前跑）**：
+
+```powershell
+cd G:\Game\DNF_ACT1\DFLegacy\tools
+python -m acceptance.combat_gate --self-check   # 10 条判定向量
+python -m pytest acceptance\tests\test_combat_gate.py -q
+```
+
+**判据**（`acceptance/combat_gate.py` 的 `Thresholds`/`judge`，纯函数）：
+- 服务端伤害事件 > 0 ⇒ pass（最强证据，像素无关）；
+- netdump 新增上行帧类 > 0 ⇒ pass；
+- 否则像素差必须 ≥ `max(8.0%, 3.0×待机, 待机+4.0%)`，否则 **fail**；
+- 计划未被客户端取走 ⇒ `missing-evidence`（基础设施问题，不算产品失败）；
+- 缺服务端日志/netdump ⇒ `missing-evidence`；
+- 对照项（跳跃）**永不**单独构成 pass。
+- 红线回归用例：`test_t11_reverse_case_must_fail`（3.04% vs 3.15% 必须 fail）。

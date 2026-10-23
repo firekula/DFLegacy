@@ -1,0 +1,46 @@
+# 组队进副本 + 副本内战斗键验收（B′ 键盘控制）。
+#
+# 分工写死在这里，避免"场景红了但其实没有断言"这种事：
+#   · 本场景负责**把两个客户端送进副本**：登录/进城的帧断言沿用已校准的
+#     town-two-clients 的 hex pattern（抓到过、可复验）；组队与进本用 [语义] 档
+#     （按平台约定只出 needs-human，永不 fail）。
+#   · **战斗是否生效**不由本场景判，由 `acceptance.combat_gate` 判：它注入
+#     X/Z/C（绑定取自客户端自带「键盘设置」），采服务端伤害/HP 事件、
+#     netdump 上行帧增量、以及**同轮待机对照**下的像素差，产出 combat-gate.json。
+#     理由见 STATUS §14：城镇不接受战斗动作（X 3.04% vs 待机 3.15%），
+#     所以战斗判据只能在这个场景里取，而且必须带对照。
+#
+# 一条命令（人/上层脚本把两个客户端带进副本之后）：
+#   cd tools
+#   python -m acceptance.combat_gate --client-dir G:\Game\DNF_ACT1\DF \
+#       --server-log <run_dir>\server\server-A.log \
+#       --netdump G:\Game\DNF_ACT1\DF\netdump-<pid>.log \
+#       --out-dir <run_dir>
+#
+# 前置：relay+stun 容器（组队副本必需）——`docker ps` 必须能看到它。
+id: party-dungeon
+goal: 两客户端组队进入副本，并在副本内验证攻击/技能键真的生效（判据见 combat_gate）
+expect_t0: server-accept
+actors:
+  - {name: A, driver: real-client}
+  - {name: B, driver: real-client}
+steps:
+  - actor: A
+    action: 登录并进到城镇
+    expect:
+      - {description: "c2s:login-ok（首个握手帧）", level: "[存在]", pattern: "000B2B0000000000000001", evidence: "[抓包]"}
+      - {description: "s2c:noti1（服务端首个回包）", level: "[存在]", pattern: "000C2F0000000000000001", evidence: "[抓包]"}
+  - actor: B
+    action: 登录并进到城镇
+    expect:
+      - {description: "c2s:login-ok（首个握手帧）", level: "[存在]", pattern: "000B2B0000000000000001", evidence: "[抓包]"}
+  - {actor: A, action: 邀请 B 组队, expect: [{description: "A 的名册出现 B", level: "[语义]"}]}
+  - {actor: B, action: 接受邀请, expect: [{description: "B 的名册出现 A", level: "[语义]"}]}
+  - actor: A
+    action: 走到副本入口并进入副本
+    expect:
+      - {description: "两个客户端都进入同一个副本（截图确认加载完成）", level: "[语义]"}
+  - actor: A
+    action: 在副本内注入普通攻击 X / 技能 Z / 跳跃 C（对照）
+    expect:
+      - {description: "攻击/技能产生服务端伤害事件或 netdump 新上行帧（机器判定见 combat-gate.json）", level: "[语义]"}

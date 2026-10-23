@@ -11,10 +11,15 @@ from acceptance.model import load_scenario
 SCEN = Path(__file__).resolve().parents[1] / "scenarios" / "town-two-clients.yaml"
 
 
-def test_all_five_scenarios_parse_and_have_falsifiable_expects():
+def test_all_scenarios_parse_and_have_falsifiable_expects():
+    """每个场景都必须能被解析，且至少有一条**能失败**的期望（否则判定恒真）。
+
+    新增场景要同步这份清单 —— 这是有意的：场景集变了，必须有人看一眼。
+    """
     base = Path(__file__).resolve().parents[1] / "scenarios"
     ids = sorted(p.stem for p in base.glob("*.yaml"))
-    assert ids == ["handshake-login-town", "party-invite", "town-position-sync", "town-two-clients", "trade-open"]
+    assert ids == ["handshake-login-town", "party-dungeon", "party-invite",
+                   "town-position-sync", "town-two-clients", "trade-open"]
     for p in sorted(base.glob("*.yaml")):
         sc = load_scenario(p)
         assert sc.has_falsifiable_expect(), f"{sc.id} 没有任何能失败的期望 ⇒ 判定会无效"
