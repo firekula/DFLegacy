@@ -38,6 +38,15 @@ namespace dfl::auto_input
         // message handling calls back into GetAsyncKeyState, our pump anchor)
         // must not advance the same timeline from inside its own delivery.
         bool g_inTimeline = false;
+
+        // Scope guard, not two assignments: a throw or a swallowed structured
+        // exception inside Advance() must not leave the pump latched off for
+        // the rest of the session.
+        struct TimelineGuard
+        {
+            TimelineGuard() noexcept { g_inTimeline = true; }
+            ~TimelineGuard() noexcept { g_inTimeline = false; }
+        };
         Step g_plan[kMaxSteps];
         int g_count = 0;
         int g_version = 0;
@@ -399,9 +408,9 @@ namespace dfl::auto_input
         using GetDeviceStateFn = long(WINAPI*)(void*, unsigned, void*);
 
         constexpr std::uintptr_t kDirectInput8CreateIat = 0x00998048;
-        constexpr std::size_t kDirectInput8VtableEntries = 16;
+        constexpr std::size_t kDirectInput8VtableEntries = 8;  // IUnknown + CreateDevice..Initialize
         constexpr std::size_t kCreateDeviceIndex = 3;
-        constexpr std::size_t kKeyboardVtableEntries = 40;
+        constexpr std::size_t kKeyboardVtableEntries = 32;  // full IDirectInputDevice8
         constexpr std::size_t kGetDeviceStateIndex = 9;
         constexpr unsigned kKeyboardStateBytes = 256;
 
@@ -410,11 +419,14 @@ namespace dfl::auto_input
             0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00};
 
         DirectInput8CreateFn g_originalDirectInput8Create = nullptr;
+        // Address of the patched CreateDevice slot inside the host's vtable,
+        // so Restore can put the original entry back.
+        void** g_di8CreateSlot = nullptr;
         CreateDeviceFn g_originalCreateDevice = nullptr;
-        bool g_di8Hooked = false;
         GetDeviceStateFn g_originalGetDeviceState = nullptr;
-        void** g_keyboardClone = nullptr;
-        void** g_keyboardOriginalVtable = nullptr;
+        // Address of the patched GetDeviceState slot in the host's device
+        // table (shared by all keyboard devices of this process).
+        void** g_keyboardStateSlot = nullptr;
 
         void** CloneVtable(void* object, std::size_t entryCount) noexcept
         {
@@ -438,6 +450,33 @@ namespace dfl::auto_input
             }
             std::memcpy(copy, original, byteCount);
             return copy;
+        }
+
+        // Patch a single entry of a vtable that belongs to the HOST's image
+        // (dinput8.dll .rdata), leaving every object's vptr alone.
+        //
+        // Replacing the object's vptr with a heap clone -- the previous
+        // approach -- made IDirectInput8::CreateDevice answer 0x80070057 for
+        // the keyboard GUID, while the very same call through the original
+        // vtable returned a real device (A/B in auto-input-diag.log,
+        // 2026-10-23 14:01:27: result=0x0 out=0x16B728D4). The host evidently
+        // does not accept its objects wearing a foreign vptr, so the hook has
+        // to redirect the shared table instead.
+        bool PatchVtableEntry(void** slot, void* replacement) noexcept
+        {
+            if (slot == nullptr || replacement == nullptr)
+            {
+                return false;
+            }
+            DWORD oldProtection = 0;
+            if (!VirtualProtect(slot, sizeof(void*), PAGE_READWRITE, &oldProtection))
+            {
+                return false;
+            }
+            *slot = replacement;
+            DWORD ignoredProtection = 0;
+            VirtualProtect(slot, sizeof(void*), oldProtection, &ignoredProtection);
+            return true;
         }
 
         bool ReplaceVtable(void* object, void** replacement) noexcept
@@ -496,7 +535,6 @@ namespace dfl::auto_input
             case VK_RWIN:
             case VK_APPS:
             case VK_DIVIDE:
-            case VK_NUMLOCK:
                 scan = MapVirtualKeyA(vk, 0) & 0x7Fu;
                 return static_cast<unsigned char>(scan | 0x80u);
             default:
@@ -603,7 +641,7 @@ namespace dfl::auto_input
         // ------------------------------------------------------------------
         constexpr long kDiOk = 0;
         constexpr long kDiErrInvalidParam = static_cast<long>(0x80070057u);
-        constexpr long kDiErrUnsupported = static_cast<long>(0x80070032u);
+        constexpr long kDiErrUnsupported = static_cast<long>(0x80004001u);  // DIERR_UNSUPPORTED == E_NOTIMPL (dinput.h)
 
         struct FakeKeyboard
         {
@@ -614,10 +652,29 @@ namespace dfl::auto_input
 
         FakeKeyboard g_fakeKeyboard = {nullptr, 1, 0};
         void** g_fakeKeyboardVtable = nullptr;
+        // The game's input object holds our device from then on, so Restore
+        // must keep the physical-keyboard plumbing alive (see Restore).
+        bool g_fakeKeyboardInUse = false;
+        // The host probe must not run inside DllMain: DirectInput8Create from
+        // under the loader lock answers E_NOINTERFACE (three runs), which says
+        // nothing about whether this host can create a keyboard device.
+        bool g_probePending = false;
+
+        int CountSyntheticKeys() noexcept
+        {
+            int count = 0;
+            for (int vk = 0; vk < 256; ++vk)
+            {
+                if (g_synthDown[vk])
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
 
         void MergeKeyboardState(unsigned char* keys) noexcept
-        {
-            std::memset(keys, 0, kKeyboardStateBytes);
+        {            std::memset(keys, 0, kKeyboardStateBytes);
             for (unsigned vk = 0; vk < 256; ++vk)
             {
                 bool down = g_synthDown[vk];
@@ -679,21 +736,26 @@ namespace dfl::auto_input
 
         long WINAPI FakeGetCapabilities(FakeKeyboard*, void* caps) noexcept
         {
-            // DIDEVCAPS: fill only dwSize/dwFlags/dwDevType. The A/W (and DX3)
-            // variants differ in size and the client reads none of the rest.
+            // DIDEVCAPS is a versioned COM struct: the caller states its own
+            // size in dwSize, and DX3 callers pass a shorter one than DX9
+            // callers. Zero only what the caller declared, then write the three
+            // fields every version has -- never past their buffer.
             if (caps != nullptr)
             {
                 auto* const fields = static_cast<unsigned*>(caps);
-                fields[0] = 44;                    // sizeof(DIDEVCAPS)
+                const unsigned declared = fields[0];
+                const unsigned limit = declared >= sizeof(unsigned) * 8u
+                    ? sizeof(unsigned) * 8u
+                    : declared;
+                for (unsigned i = 0; i < limit; ++i)
+                {
+                    reinterpret_cast<unsigned char*>(caps)[i] = 0;
+                }
+                fields[0] = declared != 0 ? declared : sizeof(unsigned) * 8u;
                 fields[1] = 0x1u | 0x4u;           // DIDC_ATTACHED | DIDC_EMULATED
                 fields[2] = (3u << 8) | 3u;        // keyboard / PC enhanced
             }
             return kDiOk;
-        }
-
-        long WINAPI FakeEnumObjects(FakeKeyboard*, void*, void*) noexcept
-        {
-            return 1;  // DIENUM_CONTINUE, nothing to enumerate
         }
 
         long WINAPI FakeSetProperty(FakeKeyboard*, const void*, const void*) noexcept
@@ -720,6 +782,25 @@ namespace dfl::auto_input
                 return kDiErrInvalidParam;
             }
             MergeKeyboardState(static_cast<unsigned char*>(data));
+            // The real-device proxy logs a rate-limited counter; without the
+            // same line here the synthetic path -- the only path this host can
+            // reach -- stayed invisible in auto-input-diag.log, and "did the
+            // client read the keyboard this run" was unanswerable.
+            ++g_gdsCalls;
+            const unsigned now = GetTickCount();
+            if (g_gdsLastLogTick == 0 || now - g_gdsLastLogTick >= 2000u)
+            {
+                g_gdsLastLogTick = now;
+                char note[144] = {};
+                _snprintf_s(
+                    note,
+                    sizeof(note),
+                    _TRUNCATE,
+                    "GetDeviceState(synthetic) calls=%u synthKeys=%d",
+                    g_gdsCalls,
+                    CountSyntheticKeys());
+                DiagLine(note);
+            }
             return kDiOk;
         }
 
@@ -745,11 +826,19 @@ namespace dfl::auto_input
 
         long WINAPI FakeGetDeviceInfo(FakeKeyboard*, void* info) noexcept
         {
-            // DIDEVICEINSTANCE: only dwSize/dwDevType, same reasoning as caps.
+            // DIDEVICEINSTANCE is versioned like DIDEVCAPS, and its dwSize is an
+            // input too. Zero only what the caller declared and fill the two
+            // leading fields; the name buffers stay empty rather than garbage.
             if (info != nullptr)
             {
                 auto* const fields = static_cast<unsigned*>(info);
-                fields[0] = 0;                     // size is variant specific
+                const unsigned declared = fields[0];
+                const unsigned limit = declared <= 4096u ? declared : 4096u;
+                for (unsigned i = 0; i < limit; ++i)
+                {
+                    reinterpret_cast<unsigned char*>(info)[i] = 0;
+                }
+                fields[0] = declared;
                 fields[1] = (3u << 8) | 3u;
             }
             return kDiOk;
@@ -772,7 +861,7 @@ namespace dfl::auto_input
             entries[1] = reinterpret_cast<void*>(&FakeAddRef);
             entries[2] = reinterpret_cast<void*>(&FakeRelease);
             entries[3] = reinterpret_cast<void*>(&FakeGetCapabilities);
-            entries[4] = reinterpret_cast<void*>(&FakeEnumObjects);
+            entries[4] = reinterpret_cast<void*>(&FakeStub3);  // EnumObjects: 3 args
             entries[5] = reinterpret_cast<void*>(&FakeStub2);  // GetProperty
             entries[6] = reinterpret_cast<void*>(&FakeSetProperty);
             entries[7] = reinterpret_cast<void*>(&FakeAcquire);
@@ -801,6 +890,7 @@ namespace dfl::auto_input
             entries[30] = reinterpret_cast<void*>(&FakeStub3);  // SetActionMap
             entries[31] = reinterpret_cast<void*>(&FakeStub1);  // GetImageInfo
             g_fakeKeyboard.vtable = entries;
+            g_fakeKeyboardVtable = entries;
             return entries;
         }
 
@@ -824,7 +914,7 @@ namespace dfl::auto_input
                     g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7]);
                 DiagLine(note);
             }
-            const long result = g_originalCreateDevice != nullptr
+            long result = g_originalCreateDevice != nullptr
                 ? g_originalCreateDevice(di8, guid, device, outer)
                 : 0x8007000E;
             if (guid != nullptr
@@ -844,35 +934,65 @@ namespace dfl::auto_input
                             device != nullptr ? *device : nullptr)));
                 DiagLine(note);
             }
+            // Retry the same call on the same object exactly once, before the
+            // synthetic substitute is considered. If the first attempt failed
+            // for a start-up ordering reason, a real device is strictly better
+            // than our imitation (real DirectInput semantics for the player's
+            // own keyboard). Fail again and the substitute below takes over.
+            if (result < 0
+                && device != nullptr
+                && *device == nullptr
+                && guid != nullptr
+                && std::memcmp(guid, kGuidSysKeyboard, 16) == 0
+                && g_originalCreateDevice != nullptr)
+            {
+                result = g_originalCreateDevice(di8, guid, device, outer);
+                char note[144] = {};
+                _snprintf_s(
+                    note,
+                    sizeof(note),
+                    _TRUNCATE,
+                    "CreateDevice(kbd) retry result=0x%X out=0x%X",
+                    static_cast<unsigned>(result),
+                    static_cast<unsigned>(
+                        reinterpret_cast<std::uintptr_t>(
+                            device != nullptr ? *device : nullptr)));
+                DiagLine(note);
+            }
             if (result >= 0
                 && device != nullptr
                 && *device != nullptr
                 && guid != nullptr
                 && std::memcmp(guid, kGuidSysKeyboard, 16) == 0
-                && g_keyboardClone == nullptr)
+                && g_keyboardStateSlot == nullptr)
             {
                 void** const originalVtable = *reinterpret_cast<void***>(*device);
-                if (originalVtable != nullptr)
+                if (originalVtable != nullptr
+                    && originalVtable[kGetDeviceStateIndex]
+                        != reinterpret_cast<void*>(&GetDeviceStateProxy))
                 {
-                    void** const clone = CloneVtable(*device, kKeyboardVtableEntries);
-                    if (clone != nullptr)
+                    // Same rule as the DirectInput8 table above: patch the
+                    // slot inside the host's table instead of giving the device
+                    // a foreign vptr. Replacing the device's vptr made the
+                    // host refuse Acquire/Poll on the real device, so the
+                    // client never reached GetDeviceState at all (diag
+                    // 2026-10-23 14:03, zero "GetDeviceState calls" lines while
+                    // the synthetic device logged thousands).
+                    g_originalGetDeviceState =
+                        reinterpret_cast<GetDeviceStateFn>(
+                            originalVtable[kGetDeviceStateIndex]);
+                    void** const slot = &originalVtable[kGetDeviceStateIndex];
+                    if (PatchVtableEntry(
+                            slot,
+                            reinterpret_cast<void*>(&GetDeviceStateProxy)))
                     {
-                        g_originalGetDeviceState =
-                            reinterpret_cast<GetDeviceStateFn>(
-                                clone[kGetDeviceStateIndex]);
-                        clone[kGetDeviceStateIndex] =
-                            reinterpret_cast<void*>(&GetDeviceStateProxy);
-                        if (ReplaceVtable(*device, clone))
-                        {
-                            g_keyboardClone = clone;
-                            g_keyboardOriginalVtable = originalVtable;
-                            DiagLine("keyboard device hooked (GetDeviceState proxy)");
-                        }
-                        else
-                        {
-                            HeapFree(GetProcessHeap(), 0, clone);
-                            g_originalGetDeviceState = nullptr;
-                        }
+                        g_keyboardStateSlot = slot;
+                        DiagLine("keyboard device hooked (GetDeviceState proxy in place)");
+                    }
+                    else
+                    {
+                        g_originalGetDeviceState = nullptr;
+                        DiagLine("keyboard GetDeviceState slot patch FAILED");
                     }
                 }
             }
@@ -880,8 +1000,11 @@ namespace dfl::auto_input
             // device note above): substitute ours so the client's input object
             // has a non-null device, its initialisation succeeds, and the
             // per-frame read gets a keyboard state instead of faulting.
-            if (result < 0
-                && device != nullptr
+            //
+            // The condition is "no device came back", not "the call failed":
+            // a success HRESULT with a null out-pointer would leave the same
+            // null-device crash path in place.
+            if (device != nullptr
                 && *device == nullptr
                 && guid != nullptr
                 && std::memcmp(guid, kGuidSysKeyboard, 16) == 0)
@@ -890,13 +1013,14 @@ namespace dfl::auto_input
                 {
                     BuildFakeKeyboardVtable();
                 }
+                g_fakeKeyboardInUse = true;
                 *device = &g_fakeKeyboard;
                 char note[144] = {};
                 _snprintf_s(
                     note,
                     sizeof(note),
                     _TRUNCATE,
-                    "CreateDevice(kbd) failed (0x%X); synthetic keyboard substituted",
+                    "CreateDevice(kbd) result=0x%X with a null device; synthetic keyboard substituted",
                     static_cast<unsigned>(result));
                 DiagLine(note);
                 return kDiOk;
@@ -944,10 +1068,13 @@ namespace dfl::auto_input
                     DiagLine(note);
                 }
             }
-            // Wrap EVERY DirectInput8 object the game creates: it instantiates
-            // more than one (mouse and keyboard devices come from separate
-            // objects). The idempotency guard is the vtable entry itself, not
-            // a one-shot flag.
+            // Redirect CreateDevice inside the HOST's own vtable, not inside a
+            // per-object copy: replacing the object's vptr made the keyboard
+            // CreateDevice fail with 0x80070057 while the identical call through
+            // the original table returned a real device (diag 2026-10-23
+            // 14:01:27: result=0x0 out=0x16B728D4). The slot is shared by every
+            // DirectInput8 object in the process, which is what this hook
+            // wants: mouse and keyboard devices come from separate objects.
             if (hr >= 0 && out != nullptr && *out != nullptr)
             {
                 void** const current = *reinterpret_cast<void***>(*out);
@@ -955,23 +1082,20 @@ namespace dfl::auto_input
                     && current[kCreateDeviceIndex]
                         != reinterpret_cast<void*>(&CreateDeviceProxy))
                 {
-                    void** const clone = CloneVtable(*out, kDirectInput8VtableEntries);
-                    if (clone != nullptr)
+                    g_originalCreateDevice = reinterpret_cast<CreateDeviceFn>(
+                        current[kCreateDeviceIndex]);
+                    void** const slot = &current[kCreateDeviceIndex];
+                    if (PatchVtableEntry(
+                            slot,
+                            reinterpret_cast<void*>(&CreateDeviceProxy)))
                     {
-                        g_originalCreateDevice = reinterpret_cast<CreateDeviceFn>(
-                            clone[kCreateDeviceIndex]);
-                        clone[kCreateDeviceIndex] =
-                            reinterpret_cast<void*>(&CreateDeviceProxy);
-                        if (ReplaceVtable(*out, clone))
-                        {
-                            g_di8Hooked = true;
-                            DiagLine("DirectInput8Create proxied (CreateDevice wrapped)");
-                        }
-                        else
-                        {
-                            g_originalCreateDevice = nullptr;
-                            HeapFree(GetProcessHeap(), 0, clone);
-                        }
+                        g_di8CreateSlot = slot;
+                        DiagLine("DirectInput8Create proxied (CreateDevice wrapped in place)");
+                    }
+                    else
+                    {
+                        g_originalCreateDevice = nullptr;
+                        DiagLine("CreateDevice slot patch FAILED: no DI proxy");
                     }
                 }
             }
@@ -989,7 +1113,9 @@ namespace dfl::auto_input
                 info != nullptr && info->ExceptionRecord != nullptr
                 ? info->ExceptionRecord->ExceptionCode
                 : 0u;
-            if (code >= 0xC0000000u)
+            // 0xE06D7363 is a C++ throw (MSVC), routine during startup and not
+            // a crash: logging it buried the fatal records.
+            if (code >= 0xC0000000u && code != 0xE06D7363u)
             {
                 const std::uintptr_t where =
                     info != nullptr && info->ExceptionRecord != nullptr
@@ -1025,8 +1151,12 @@ namespace dfl::auto_input
                 DiagLine("host probe: no DirectInput8Create to probe with");
                 return;
             }
+            // IID_IDirectInput8A = {BF798030-483A-4DA2-99BD-480587061268},
+            // laid out in memory (little-endian Data1..Data3). The first
+            // version of this probe had Data1/Data2 swapped, so it answered
+            // E_NOINTERFACE everywhere and proved nothing.
             const unsigned char iidDirectInput8A[16] = {
-                0x30, 0x80, 0x3A, 0x48, 0x3A, 0x4D, 0xA2, 0x4D,
+                0x30, 0x80, 0x79, 0xBF, 0x3A, 0x48, 0xA2, 0x4D,
                 0x99, 0xBD, 0x48, 0x05, 0x87, 0x06, 0x12, 0x68};
             void* probeObject = nullptr;
             const long createHr = static_cast<long>(reinterpret_cast<std::intptr_t>(
@@ -1557,7 +1687,7 @@ namespace dfl::auto_input
         // A missing or invalid plan file is not an install failure: the
         // client simply runs without a scripted timeline.
         LoadPlanFile();
-        ProbeHostKeyboard();
+        g_probePending = true;  // deferred to the first Pump, outside DllMain
         {
             static bool crashProbeInstalled = false;
             if (!crashProbeInstalled)
@@ -1587,7 +1717,15 @@ namespace dfl::auto_input
             }
             g_keyboardHooked = false;
         }
-        g_originalGetAsyncKeyState = nullptr;
+        if (!g_fakeKeyboardInUse)
+        {
+            // Only drop the physical-keyboard entry point when nothing else
+            // still needs it. Once the synthetic device has been handed to the
+            // game it keeps calling GetAsyncKeyState through this pointer for
+            // the rest of the session, so nulling it here would silently turn
+            // the player's own keyboard into "no keys down".
+            g_originalGetAsyncKeyState = nullptr;
+        }
         g_mouseInjectEnabled = false;
         if (g_originalDirectInput8Create != nullptr)
         {
@@ -1603,17 +1741,34 @@ namespace dfl::auto_input
             }
             g_originalDirectInput8Create = nullptr;
         }
-        g_di8Hooked = false;
-        if (g_keyboardClone != nullptr && g_originalGetDeviceState != nullptr)
+        if (g_di8CreateSlot != nullptr && g_originalCreateDevice != nullptr)
         {
-            // The clone IS the live device vtable; putting the original entry
-            // back makes the proxy unreachable. The clone itself stays with
-            // the device for its lifetime (the game releases it at exit).
-            g_keyboardClone[kGetDeviceStateIndex] =
-                reinterpret_cast<void*>(g_originalGetDeviceState);
+            // Put the host's own CreateDevice entry back: the slot lives in
+            // dinput8's image and is shared by every DirectInput8 object, so a
+            // leftover redirect would outlive Restore for the whole process.
+            if (!PatchVtableEntry(
+                    g_di8CreateSlot,
+                    reinterpret_cast<void*>(g_originalCreateDevice)))
+            {
+                OutputDebugStringA(
+                    "auto_input: restoring the CreateDevice vtable slot failed\n");
+            }
+            g_di8CreateSlot = nullptr;
+            g_originalCreateDevice = nullptr;
         }
-        g_keyboardClone = nullptr;
-        g_keyboardOriginalVtable = nullptr;
+        if (g_keyboardStateSlot != nullptr && g_originalGetDeviceState != nullptr)
+        {
+            // Put the host's own entry back: the slot lives in dinput8's image
+            // and is shared, so a leftover redirect would outlive Restore.
+            if (!PatchVtableEntry(
+                    g_keyboardStateSlot,
+                    reinterpret_cast<void*>(g_originalGetDeviceState)))
+            {
+                OutputDebugStringA(
+                    "auto_input: restoring the GetDeviceState vtable slot failed\n");
+            }
+        }
+        g_keyboardStateSlot = nullptr;
         g_originalGetDeviceState = nullptr;
         SynthClear();
     }
@@ -1647,6 +1802,12 @@ namespace dfl::auto_input
         if (g_keyboardTarget == nullptr)
         {
             g_keyboardTarget = foreground;
+        }
+
+        if (g_probePending)
+        {
+            g_probePending = false;
+            ProbeHostKeyboard();
         }
 
         // One-shot liveness marker: the real-machine runbook uses it to prove
@@ -1687,9 +1848,8 @@ namespace dfl::auto_input
         }
         // The call site in performance_overlay.cpp gates on IsEnabled(); a
         // disarmed module returns from Advance immediately.
-        g_inTimeline = true;
+        const TimelineGuard guard;
         Advance(GetTickCount());
-        g_inTimeline = false;
     }
 
     bool ParsePlan(const char* text, Step* steps, int maxSteps, int* count, int* version)
