@@ -2124,4 +2124,19 @@ HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 la
   ②（同一个人重邀）与④（别人留下的过期项）覆盖。
 - **设计稿勘误**：`docs/superpowers/specs/2026-09-28-party-system-design.md` §5.1/§5.2 的 **30 秒**已标作废
   （以实现为准），并写明"先到者优先只对活着的待决项成立"。
+- **产物位置**（`.superpowers/` 与 `docs/` 都不入仓）：
+  `work/measure-invite-window/report.md`（量测报告，T_client 与全部行号）、`report.md` 同目录 `lead/`
+  下有本轮全部脚本与证据（`probe_accept.py` / `verify_fix.py` / `verify-fix.json` /
+  `vf-A-at-11s.png` / `vf-A-at-14s-new-window.png` / `frames.csv` / `series/` / `server-fixverify.log`）；
+  现场契约清单 `work/party-invite-timeout/inventory.md`。
+- ⚠️ **日志编码**：`DFLegacy.Server` 的 stdout 日志是 **GBK/cp936**。用 `-Encoding utf8` 或 UTF-8 grep
+  会把「召唤师」等中文读成乱码、`Select-String '召唤师'` 会**假装日志里没有**（ASCII 部分如
+  `protocol=11 … payload=006400` 不受影响）。要搜中文先 `[System.Text.Encoding]::GetEncoding(936)`。
+- **沙箱/工具坑**（本轮踩到，别重犯）：本会话的 shell 曾跑在低完整性级别——`Get-Process`/`tasklist`
+  对其它进程 `Access denied` 或静默返回空，我据此误判"机器上没有 DNF 在跑"（实际业主那组一直活着，
+  靠 `netstat -ano` + 日志还在长才纠正）⇒ **判断"有没有在跑"必须用 netstat/日志**；`dotnet` 的
+  MSBuild 节点复用会静默失败（`生成失败 / 0 个错误`）⇒ `-m:1 -nodeReuse:false` +
+  `$env:MSBUILDDISABLENODEREUSE='1'`；受限时构建用 `--artifacts-path .tmp\artifacts`，
+  冒烟测试的 `$env:TEMP` 要指到工作区内（否则 `AdminAuthSmokeTests` 在 `CreateDirectory` 上红）。
+
 
