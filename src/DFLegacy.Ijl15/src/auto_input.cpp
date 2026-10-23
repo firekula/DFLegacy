@@ -464,11 +464,58 @@ namespace dfl::auto_input
             return true;
         }
 
+        // DirectInput hands the keyboard state back as a 256-byte array indexed
+        // by DIK codes: the Set-1 scan code, plus bit 7 for the E0-prefixed
+        // (extended) keys. MapVirtualKeyA only ever reports the raw scan code --
+        // measured on this host 2026-10-23: MAPVK_VK_TO_VSC_EX returns 0x004B
+        // for VK_LEFT, not 0xE04B -- so the extended set has to be enumerated
+        // here. Without it the arrow keys land on 0x4B/0x48/0x4D/0x50 while the
+        // game reads DIK_LEFT (0xCB) and nothing ever moves.
+        unsigned char DikFromVk(unsigned vk) noexcept
+        {
+            UINT scan = 0;
+            switch (vk)
+            {
+            case VK_LEFT:
+            case VK_UP:
+            case VK_RIGHT:
+            case VK_DOWN:
+            case VK_INSERT:
+            case VK_DELETE:
+            case VK_HOME:
+            case VK_END:
+            case VK_PRIOR:
+            case VK_NEXT:
+            case VK_RCONTROL:
+            case VK_RMENU:
+            case VK_LWIN:
+            case VK_RWIN:
+            case VK_APPS:
+            case VK_DIVIDE:
+            case VK_NUMLOCK:
+                scan = MapVirtualKeyA(vk, 0) & 0x7Fu;
+                return static_cast<unsigned char>(scan | 0x80u);
+            default:
+                scan = MapVirtualKeyA(vk, 0) & 0x7Fu;
+                return static_cast<unsigned char>(scan);
+            }
+        }
+
+        // Rate-limited proof that the proxy is live. Without it "the device was
+        // never created" and "the device works but no synthetic key was held"
+        // look identical in auto-input-diag.log -- which is exactly how the
+        // previous session talked itself into bypassing GetDeviceState.
+        unsigned g_gdsCalls = 0;
+        unsigned g_gdsNonZeroPeak = 0;
+        unsigned g_gdsLastLogTick = 0;
+        long g_gdsLastResult = 0;
+
         long WINAPI GetDeviceStateProxy(void* device, unsigned size, void* data) noexcept
         {
             const long result = g_originalGetDeviceState != nullptr
                 ? g_originalGetDeviceState(device, size, data)
                 : 0x8007000E;  // DIERR_OUTOFMEMORY-ish failure sentinel
+            int synthKeys = 0;
             if (result >= 0 && data != nullptr && size >= kKeyboardStateBytes)
             {
                 auto* const keys = static_cast<unsigned char*>(data);
@@ -476,15 +523,281 @@ namespace dfl::auto_input
                 {
                     if (g_synthDown[vk])
                     {
-                        const UINT dik = MapVirtualKeyA(static_cast<UINT>(vk), 0);
+                        const unsigned char dik = DikFromVk(static_cast<unsigned>(vk));
                         if (dik < kKeyboardStateBytes)
                         {
                             keys[dik] |= 0x80;
+                            ++synthKeys;
                         }
                     }
                 }
             }
+            ++g_gdsCalls;
+            g_gdsLastResult = result;
+            if (data != nullptr)
+            {
+                const unsigned char* const bytes =
+                    static_cast<const unsigned char*>(data);
+                unsigned nonzero = 0;
+                const unsigned limit = size < kKeyboardStateBytes
+                    ? size
+                    : static_cast<unsigned>(kKeyboardStateBytes);
+                for (unsigned i = 0; i < limit; ++i)
+                {
+                    if (bytes[i] != 0)
+                    {
+                        ++nonzero;
+                    }
+                }
+                if (nonzero > g_gdsNonZeroPeak)
+                {
+                    g_gdsNonZeroPeak = nonzero;
+                }
+            }
+            const unsigned now = GetTickCount();
+            if (g_gdsLastLogTick == 0 || now - g_gdsLastLogTick >= 2000u)
+            {
+                g_gdsLastLogTick = now;
+                char note[144] = {};
+                _snprintf_s(
+                    note,
+                    sizeof(note),
+                    _TRUNCATE,
+                    "GetDeviceState calls=%u res=0x%X nonzeroPeak=%u synthKeys=%d",
+                    g_gdsCalls,
+                    static_cast<unsigned>(g_gdsLastResult),
+                    g_gdsNonZeroPeak,
+                    synthKeys);
+                DiagLine(note);
+                g_gdsNonZeroPeak = 0;
+            }
             return result;
+        }
+
+        // ------------------------------------------------------------------
+        // Synthetic keyboard device.
+        //
+        // This host refuses CreateDevice(GUID_SysKeyboard) with 0x80070057 and
+        // a NULL device -- observed in two independent runs
+        // (auto-input-diag.log 2026-10-23 13:24:43 and 13:28:38) -- while the
+        // client dereferences the device pointer with no null check
+        // (sub_8E9730 at 0x8E985F: mov eax,[esi+0D14h]; mov ecx,[eax]). With a
+        // NULL device the client has no keyboard at all: a physical key faults
+        // in that same path, and every plan key takes the process down.
+        //
+        // So CreateDeviceProxy substitutes this object when the real creation
+        // fails. It answers exactly the calls the client makes -- SetDataFormat
+        // (0x8E9483), SetCooperativeLevel (0x8E94AA), Acquire (0x8E951C),
+        // Poll (0x8E9530), GetDeviceState (0x8E9555), Unacquire (0x8E94D0),
+        // Release (0x8E94E0) -- and GetDeviceState merges the physical keyboard
+        // (GetAsyncKeyState, so a real keyboard keeps working through the
+        // substitute) with the running plan's synthetic keys.
+        //
+        // Every entry is a __stdcall member: it must pop exactly the arguments
+        // the caller pushed, so the stubs exist per arity and the unused slots
+        // keep their own (measured from the IDirectInputDevice8 layout).
+        // ------------------------------------------------------------------
+        constexpr long kDiOk = 0;
+        constexpr long kDiErrInvalidParam = static_cast<long>(0x80070057u);
+        constexpr long kDiErrUnsupported = static_cast<long>(0x80070032u);
+
+        struct FakeKeyboard
+        {
+            void** vtable;
+            unsigned refCount;
+            unsigned acquired;
+        };
+
+        FakeKeyboard g_fakeKeyboard = {nullptr, 1, 0};
+        void** g_fakeKeyboardVtable = nullptr;
+
+        void MergeKeyboardState(unsigned char* keys) noexcept
+        {
+            std::memset(keys, 0, kKeyboardStateBytes);
+            for (unsigned vk = 0; vk < 256; ++vk)
+            {
+                bool down = g_synthDown[vk];
+                if (!down && g_originalGetAsyncKeyState != nullptr)
+                {
+                    down = (g_originalGetAsyncKeyState(static_cast<int>(vk)) & 0x8000) != 0;
+                }
+                if (down)
+                {
+                    const unsigned char dik = DikFromVk(vk);
+                    if (dik < kKeyboardStateBytes)
+                    {
+                        keys[dik] |= 0x80;
+                    }
+                }
+            }
+        }
+
+        long WINAPI FakeStub0(FakeKeyboard*) noexcept { return kDiErrUnsupported; }
+        long WINAPI FakeStub1(FakeKeyboard*, void*) noexcept { return kDiErrUnsupported; }
+        long WINAPI FakeStub2(FakeKeyboard*, void*, void*) noexcept { return kDiErrUnsupported; }
+        long WINAPI FakeStub3(FakeKeyboard*, void*, void*, void*) noexcept { return kDiErrUnsupported; }
+        long WINAPI FakeStub4(FakeKeyboard*, void*, void*, void*, void*) noexcept { return kDiErrUnsupported; }
+
+        long WINAPI FakeQueryInterface(FakeKeyboard* self, void*, void** out) noexcept
+        {
+            // Answer every interface request: the client only asks this object
+            // for what it already holds, and refusing an IID would turn a
+            // working substitute into an init failure.
+            if (out != nullptr)
+            {
+                *out = self;
+            }
+            ++self->refCount;
+            return kDiOk;
+        }
+
+        long WINAPI FakeAddRef(FakeKeyboard* self) noexcept
+        {
+            ++self->refCount;
+            return static_cast<long>(self->refCount);
+        }
+
+        long WINAPI FakeRelease(FakeKeyboard* self) noexcept
+        {
+            if (self->refCount > 0)
+            {
+                --self->refCount;
+            }
+            if (self->refCount == 0)
+            {
+                // Static object: never free, and keep reporting a live
+                // reference so a caller checking for zero does not conclude the
+                // device vanished under it.
+                self->refCount = 1;
+            }
+            return static_cast<long>(self->refCount);
+        }
+
+        long WINAPI FakeGetCapabilities(FakeKeyboard*, void* caps) noexcept
+        {
+            // DIDEVCAPS: fill only dwSize/dwFlags/dwDevType. The A/W (and DX3)
+            // variants differ in size and the client reads none of the rest.
+            if (caps != nullptr)
+            {
+                auto* const fields = static_cast<unsigned*>(caps);
+                fields[0] = 44;                    // sizeof(DIDEVCAPS)
+                fields[1] = 0x1u | 0x4u;           // DIDC_ATTACHED | DIDC_EMULATED
+                fields[2] = (3u << 8) | 3u;        // keyboard / PC enhanced
+            }
+            return kDiOk;
+        }
+
+        long WINAPI FakeEnumObjects(FakeKeyboard*, void*, void*) noexcept
+        {
+            return 1;  // DIENUM_CONTINUE, nothing to enumerate
+        }
+
+        long WINAPI FakeSetProperty(FakeKeyboard*, const void*, const void*) noexcept
+        {
+            return kDiOk;
+        }
+
+        long WINAPI FakeAcquire(FakeKeyboard* self) noexcept
+        {
+            self->acquired = 1;
+            return kDiOk;
+        }
+
+        long WINAPI FakeUnacquire(FakeKeyboard* self) noexcept
+        {
+            self->acquired = 0;
+            return kDiOk;
+        }
+
+        long WINAPI FakeGetDeviceState(FakeKeyboard*, unsigned size, void* data) noexcept
+        {
+            if (data == nullptr || size < kKeyboardStateBytes)
+            {
+                return kDiErrInvalidParam;
+            }
+            MergeKeyboardState(static_cast<unsigned char*>(data));
+            return kDiOk;
+        }
+
+        long WINAPI FakeGetDeviceData(
+            FakeKeyboard*, unsigned, void*, unsigned* count, unsigned) noexcept
+        {
+            if (count != nullptr)
+            {
+                *count = 0;  // nothing buffered: the client polls the state
+            }
+            return kDiOk;
+        }
+
+        long WINAPI FakeSetDataFormat(FakeKeyboard*, const void*) noexcept
+        {
+            return kDiOk;
+        }
+
+        long WINAPI FakeSetCooperativeLevel(FakeKeyboard*, void*, unsigned) noexcept
+        {
+            return kDiOk;
+        }
+
+        long WINAPI FakeGetDeviceInfo(FakeKeyboard*, void* info) noexcept
+        {
+            // DIDEVICEINSTANCE: only dwSize/dwDevType, same reasoning as caps.
+            if (info != nullptr)
+            {
+                auto* const fields = static_cast<unsigned*>(info);
+                fields[0] = 0;                     // size is variant specific
+                fields[1] = (3u << 8) | 3u;
+            }
+            return kDiOk;
+        }
+
+        long WINAPI FakePoll(FakeKeyboard*) noexcept
+        {
+            return kDiOk;
+        }
+
+        void** BuildFakeKeyboardVtable() noexcept
+        {
+            static void* entries[32] = {};
+            auto* const fn = reinterpret_cast<void*>(&FakeStub1);
+            for (int i = 0; i < 32; ++i)
+            {
+                entries[i] = fn;
+            }
+            entries[0] = reinterpret_cast<void*>(&FakeQueryInterface);
+            entries[1] = reinterpret_cast<void*>(&FakeAddRef);
+            entries[2] = reinterpret_cast<void*>(&FakeRelease);
+            entries[3] = reinterpret_cast<void*>(&FakeGetCapabilities);
+            entries[4] = reinterpret_cast<void*>(&FakeEnumObjects);
+            entries[5] = reinterpret_cast<void*>(&FakeStub2);  // GetProperty
+            entries[6] = reinterpret_cast<void*>(&FakeSetProperty);
+            entries[7] = reinterpret_cast<void*>(&FakeAcquire);
+            entries[8] = reinterpret_cast<void*>(&FakeUnacquire);
+            entries[9] = reinterpret_cast<void*>(&FakeGetDeviceState);
+            entries[10] = reinterpret_cast<void*>(&FakeGetDeviceData);
+            entries[11] = reinterpret_cast<void*>(&FakeSetDataFormat);
+            entries[12] = reinterpret_cast<void*>(&FakeStub1);  // SetEventNotification
+            entries[13] = reinterpret_cast<void*>(&FakeSetCooperativeLevel);
+            entries[14] = reinterpret_cast<void*>(&FakeStub3);  // GetObjectInfo
+            entries[15] = reinterpret_cast<void*>(&FakeGetDeviceInfo);
+            entries[16] = reinterpret_cast<void*>(&FakeStub2);  // RunControlPanel
+            entries[17] = reinterpret_cast<void*>(&FakeStub3);  // Initialize
+            entries[18] = reinterpret_cast<void*>(&FakeStub4);  // CreateEffect
+            entries[19] = reinterpret_cast<void*>(&FakeStub3);  // EnumEffects
+            entries[20] = reinterpret_cast<void*>(&FakeStub2);  // GetEffectInfo
+            entries[21] = reinterpret_cast<void*>(&FakeStub1);  // GetForceFeedbackState
+            entries[22] = reinterpret_cast<void*>(&FakeStub1);  // SendForceFeedbackCommand
+            entries[23] = reinterpret_cast<void*>(&FakeStub3);  // EnumCreatedEffectObjects
+            entries[24] = reinterpret_cast<void*>(&FakeStub1);  // Escape
+            entries[25] = reinterpret_cast<void*>(&FakePoll);
+            entries[26] = reinterpret_cast<void*>(&FakeStub4);  // SendDeviceData
+            entries[27] = reinterpret_cast<void*>(&FakeStub4);  // EnumEffectsInFile
+            entries[28] = reinterpret_cast<void*>(&FakeStub4);  // WriteEffectToFile
+            entries[29] = reinterpret_cast<void*>(&FakeStub3);  // BuildActionMap
+            entries[30] = reinterpret_cast<void*>(&FakeStub3);  // SetActionMap
+            entries[31] = reinterpret_cast<void*>(&FakeStub1);  // GetImageInfo
+            g_fakeKeyboard.vtable = entries;
+            return entries;
         }
 
         long WINAPI CreateDeviceProxy(
@@ -559,6 +872,31 @@ namespace dfl::auto_input
                     }
                 }
             }
+            // The host has no keyboard device to give (see the synthetic
+            // device note above): substitute ours so the client's input object
+            // has a non-null device, its initialisation succeeds, and the
+            // per-frame read gets a keyboard state instead of faulting.
+            if (result < 0
+                && device != nullptr
+                && *device == nullptr
+                && guid != nullptr
+                && std::memcmp(guid, kGuidSysKeyboard, 16) == 0)
+            {
+                if (g_fakeKeyboardVtable == nullptr)
+                {
+                    BuildFakeKeyboardVtable();
+                }
+                *device = &g_fakeKeyboard;
+                char note[144] = {};
+                _snprintf_s(
+                    note,
+                    sizeof(note),
+                    _TRUNCATE,
+                    "CreateDevice(kbd) failed (0x%X); synthetic keyboard substituted",
+                    static_cast<unsigned>(result));
+                DiagLine(note);
+                return kDiOk;
+            }
             return result;
         }
 
@@ -576,6 +914,32 @@ namespace dfl::auto_input
                 ? static_cast<long>(reinterpret_cast<std::intptr_t>(
                     g_originalDirectInput8Create(instance, version, riid, out, outer)))
                 : 0x8007000E;
+            {
+                // The version and the requested interface decide whether the
+                // object can create a keyboard device at all: log them once.
+                static bool paramsLogged = false;
+                if (!paramsLogged)
+                {
+                    paramsLogged = true;
+                    const auto* const id =
+                        static_cast<const unsigned char*>(riid);
+                    char note[144] = {};
+                    _snprintf_s(
+                        note,
+                        sizeof(note),
+                        _TRUNCATE,
+                        "DirectInput8Create hr=0x%X version=0x%X iid=%02X%02X%02X%02X hinst=0x%X",
+                        static_cast<unsigned>(hr),
+                        version,
+                        id != nullptr ? id[0] : 0u,
+                        id != nullptr ? id[1] : 0u,
+                        id != nullptr ? id[2] : 0u,
+                        id != nullptr ? id[3] : 0u,
+                        static_cast<unsigned>(
+                            reinterpret_cast<std::uintptr_t>(instance)));
+                    DiagLine(note);
+                }
+            }
             // Wrap EVERY DirectInput8 object the game creates: it instantiates
             // more than one (mouse and keyboard devices come from separate
             // objects). The idempotency guard is the vtable entry itself, not
@@ -608,6 +972,115 @@ namespace dfl::auto_input
                 }
             }
             return reinterpret_cast<void*>(static_cast<std::intptr_t>(hr));
+        }
+
+        // The client died within 300 ms of the first delivered key on the run
+        // above and left no WER record behind, so an unhandled exception has to
+        // name itself: the module-relative fault address is what tells a null
+        // device dereference (DNF.exe+0x4E9730, sub_8E9730) apart from an
+        // exception inside this DLL. Log only fatal codes; never swallow.
+        LONG WINAPI CrashProbe(EXCEPTION_POINTERS* info) noexcept
+        {
+            const unsigned code =
+                info != nullptr && info->ExceptionRecord != nullptr
+                ? info->ExceptionRecord->ExceptionCode
+                : 0u;
+            if (code >= 0xC0000000u)
+            {
+                const std::uintptr_t where =
+                    info != nullptr && info->ExceptionRecord != nullptr
+                    ? reinterpret_cast<std::uintptr_t>(
+                        info->ExceptionRecord->ExceptionAddress)
+                    : 0u;
+                char note[160] = {};
+                _snprintf_s(
+                    note,
+                    sizeof(note),
+                    _TRUNCATE,
+                    "VEH code=0x%X at=0x%X modrel=0x%X",
+                    code,
+                    static_cast<unsigned>(where),
+                    static_cast<unsigned>(where >= 0x400000u ? where - 0x400000u : 0u));
+                DiagLine(note);
+            }
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+
+        // The game's own CreateDevice(GUID_SysKeyboard) answered 0x80070057
+        // (E_INVALIDARG) with a NULL device on the first run that actually
+        // carried this hook (auto-input-diag.log, 2026-10-23 13:24:43). That
+        // result has two very different causes -- this hook is in the way, or
+        // the host cannot create a DirectInput keyboard at all -- and they call
+        // for opposite fixes. So probe the host from inside the game process
+        // through the ORIGINAL entry points: our own DirectInput8 object, none
+        // of our vtables, and log what the host answers.
+        void ProbeHostKeyboard() noexcept
+        {
+            if (g_originalDirectInput8Create == nullptr)
+            {
+                DiagLine("host probe: no DirectInput8Create to probe with");
+                return;
+            }
+            const unsigned char iidDirectInput8A[16] = {
+                0x30, 0x80, 0x3A, 0x48, 0x3A, 0x4D, 0xA2, 0x4D,
+                0x99, 0xBD, 0x48, 0x05, 0x87, 0x06, 0x12, 0x68};
+            void* probeObject = nullptr;
+            const long createHr = static_cast<long>(reinterpret_cast<std::intptr_t>(
+                g_originalDirectInput8Create(
+                    GetModuleHandleA(nullptr),
+                    0x0800,
+                    iidDirectInput8A,
+                    &probeObject,
+                    nullptr)));
+            char note[160] = {};
+            _snprintf_s(
+                note,
+                sizeof(note),
+                _TRUNCATE,
+                "host probe: DirectInput8Create hr=0x%X object=0x%X",
+                static_cast<unsigned>(createHr),
+                static_cast<unsigned>(
+                    reinterpret_cast<std::uintptr_t>(probeObject)));
+            DiagLine(note);
+            if (createHr < 0 || probeObject == nullptr)
+            {
+                return;
+            }
+            void** const vtable = *reinterpret_cast<void***>(probeObject);
+            void* device = nullptr;
+            long deviceHr = static_cast<long>(0x80004005u);  // E_FAIL, no vtable
+            void* const createSlot =
+                vtable != nullptr ? vtable[kCreateDeviceIndex] : nullptr;
+            if (createSlot != nullptr)
+            {
+                const auto create = reinterpret_cast<CreateDeviceFn>(createSlot);
+                deviceHr = create(probeObject, kGuidSysKeyboard, &device, nullptr);
+            }
+            _snprintf_s(
+                note,
+                sizeof(note),
+                _TRUNCATE,
+                "host probe: CreateDevice(kbd) hr=0x%X device=0x%X",
+                static_cast<unsigned>(deviceHr),
+                static_cast<unsigned>(
+                    reinterpret_cast<std::uintptr_t>(device)));
+            DiagLine(note);
+            // Release what came back (index 2 is IUnknown::Release on both
+            // interfaces): a leaked probe device would hold a non-exclusive
+            // keyboard handle for the rest of the session.
+            using ReleaseFn = unsigned long(WINAPI*)(void*);
+            if (device != nullptr)
+            {
+                void** const deviceVtable = *reinterpret_cast<void***>(device);
+                if (deviceVtable != nullptr && deviceVtable[2] != nullptr)
+                {
+                    reinterpret_cast<ReleaseFn>(deviceVtable[2])(device);
+                }
+            }
+            if (vtable != nullptr && vtable[2] != nullptr)
+            {
+                reinterpret_cast<ReleaseFn>(vtable[2])(probeObject);
+            }
         }
 
         // Real calls replace the injection log only when Install verified the
@@ -1055,13 +1528,40 @@ namespace dfl::auto_input
             }
             else
             {
-                g_originalDirectInput8Create = nullptr;
+                // Same failure semantics as the GetAsyncKeyState slot: re-read
+                // before giving up, because a live hook must never be left
+                // behind unowned (Restore would then skip the write-back and
+                // the proxy would answer for the rest of the session).
+                void* after = nullptr;
+                if (ReadIatPointer(kDirectInput8CreateIat, after)
+                    && after == di8Hook)
+                {
+                    DiagLine("DirectInput8Create IAT hooked (write reported failure)");
+                }
+                else
+                {
+                    g_originalDirectInput8Create = nullptr;
+                    DiagLine("DirectInput8Create IAT write FAILED: no DI proxy");
+                }
             }
+        }
+        else
+        {
+            DiagLine("DirectInput8Create IAT unreadable: no DI proxy");
         }
 
         // A missing or invalid plan file is not an install failure: the
         // client simply runs without a scripted timeline.
         LoadPlanFile();
+        ProbeHostKeyboard();
+        {
+            static bool crashProbeInstalled = false;
+            if (!crashProbeInstalled)
+            {
+                crashProbeInstalled = true;
+                AddVectoredExceptionHandler(1, &CrashProbe);
+            }
+        }
         OutputDebugStringA("auto_input: keyboard hook installed\n");
         DiagLine("keyboard hook installed");
         return true;
