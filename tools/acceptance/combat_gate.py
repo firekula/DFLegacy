@@ -31,6 +31,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Iterable, Optional, Sequence
 
@@ -94,6 +95,9 @@ class ActionEvidence:
     server_events: int = 0
     netdump_new_frames: int = 0
     is_control: bool = False
+    # 本动作注入前就地测的静止对照。副本里怪物会自己走，全局那一次对照不够用，
+    # 所以每个动作各带一个局部对照，判据取两者较大值。
+    local_control_pct: float = 0.0
 
 
 @dataclasses.dataclass(frozen=True)
@@ -115,12 +119,13 @@ def _judge_action(action: ActionEvidence, control_pct: float,
         return PASS, [f"服务端出现 {action.server_events} 条伤害/HP 事件"]
     if action.netdump_new_frames > 0:
         return PASS, [f"netdump 出现 {action.netdump_new_frames} 类待机窗口没有的上行帧"]
-    required = thresholds.required_pct(control_pct)
+    effective_control = max(control_pct, action.local_control_pct)
+    required = thresholds.required_pct(effective_control)
     if action.action_pct >= required:
         return PASS, [f"像素差 {action.action_pct:.2f}% ≥ 门槛 {required:.2f}%"
-                      f"（同轮待机 {control_pct:.2f}%）"]
+                      f"（同轮待机 {effective_control:.2f}%）"]
     return FAIL, [f"像素差 {action.action_pct:.2f}% < 门槛 {required:.2f}%"
-                  f"（同轮待机 {control_pct:.2f}%），且服务端/netdump 均无新事件"]
+                  f"（同轮待机 {effective_control:.2f}%），且服务端/netdump 均无新事件"]
 
 
 def judge(evidence: GateEvidence, thresholds: Thresholds = DEFAULT_THRESHOLDS) -> dict:
@@ -289,22 +294,52 @@ Write-Host "saved=$OutPath foreground=$([CGWin]::GetForegroundWindow() -eq $hwnd
 """
 
 
-def _ps(script: str, args: Iterable[str], timeout: int = 120) -> str:
-    command = ["powershell", "-NoProfile", "-Command", script, "--"] + list(args)
+def _powershell_command(script_text: str, args: Iterable[str],
+                        script_path: Optional[os.PathLike] = None) -> list[str]:
+    """构造 powershell 命令行。**纯函数**，因为它被真机咬过一次。
+
+    事故（2026-10-23）：早先的实现拼成 `powershell -Command <script> -- <args>`，
+    Windows PowerShell 5.1 会把 `--` 当成脚本的一部分，于是带参数的辅助脚本
+    （`capture_screen`）直接失败、`dnf_pid()` 恒返 0 —— 战斗门在真机上必然报
+    "没有正在运行的 DNF 客户端"（假阴性），而 `--self-check` 与单测都发现不了。
+    规则：**有参数就走 `-File`（脚本落盘 + 参数走 param 绑定），无参数才用 `-Command`，
+    且永远不把 `--` 拼进命令行。**
+    """
+    if args:
+        if not script_path:
+            raise ValueError("带参数的调用必须先给出脚本文件路径（-File 语义）")
+        return ["powershell", "-NoProfile", "-File", str(script_path)] + list(args)
+    return ["powershell", "-NoProfile", "-Command", script_text]
+
+
+def _write_script(text: str, name: str) -> pathlib.Path:
+    """把辅助脚本落到 temp；BOM 是必需的 —— PS 5.1 没有 BOM 会按本地代码页读文件。"""
+    target = pathlib.Path(tempfile.gettempdir()) / name
+    target.write_text(text, encoding="utf-8-sig")
+    return target
+
+
+def _run(command: list[str], timeout: int) -> str:
     proc = subprocess.run(command, capture_output=True, text=True, timeout=timeout,
                           creationflags=0x08000000 if os.name == "nt" else 0)
     return (proc.stdout + proc.stderr).strip()
 
 
+def _ps(command: str, args: Iterable[str] = (), timeout: int = 120) -> str:
+    return _run(_powershell_command(command, list(args)), timeout)
+
+
 def capture_screen(pid: int, out_path: os.PathLike) -> str:
     """抓客户端客户区（桌面截取；PrintWindow 对本 D3D8 窗口会周期性返回全黑图）。"""
-    return _ps(_CAPTURE_PS, ["-Pid2", str(pid), "-OutPath", str(out_path)])
+    script = _write_script(_CAPTURE_PS, "dfl-combat-capture.ps1")
+    return _run(_powershell_command(_CAPTURE_PS, ["-Pid2", str(pid), "-OutPath",
+                                                  str(out_path)], script), 120)
 
 
 def dnf_pid() -> int:
     out = _ps("(Get-Process DNF -ErrorAction SilentlyContinue | "
               "Where-Object { $_.MainWindowHandle -ne 0 } | "
-              "Select-Object -First 1).Id", [])
+              "Select-Object -First 1).Id")
     return int(out) if out.strip().isdigit() else 0
 
 
@@ -367,6 +402,14 @@ def run_live(client_dir: pathlib.Path, out_dir: pathlib.Path,
     actions: list[ActionEvidence] = []
     for probe in probes:
         action_shot = out_dir / f"combat-action-{probe.vk:02X}.png"
+        # 局部静止对照：副本里的怪物会自己走动，一次全局对照不够用。
+        local_a = out_dir / f"combat-local-{probe.vk:02X}-a.png"
+        local_b = out_dir / f"combat-local-{probe.vk:02X}-b.png"
+        capture_screen(pid, local_a)
+        time.sleep(0.6)
+        capture_screen(pid, local_b)
+        local_control_pct = image_diff_pct(local_a, local_b)
+        capture_screen(pid, action_shot)  # 注入前的基准帧
         log_offset = _size(server_log)
         dump_offset = _size(netdump)
         auto_input.write_plan(client_dir, [
@@ -388,7 +431,8 @@ def run_live(client_dir: pathlib.Path, out_dir: pathlib.Path,
         actions.append(ActionEvidence(
             name=probe.name, vk=probe.vk, action_pct=action_pct,
             server_events=count_server_events(server_slice or ""),
-            netdump_new_frames=new_frames, is_control=probe.control))
+            netdump_new_frames=new_frames, is_control=probe.control,
+            local_control_pct=local_control_pct))
         if not (taken and done):
             missing.append(f"{probe.name} 的计划未被取走/未完成"
                            f"（taken={taken}, done={done}, "

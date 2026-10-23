@@ -123,3 +123,25 @@ def test_image_diff_pct_identical_and_opposite(tmp_path):
 
     assert cg.image_diff_pct(black, black) == 0.0
     assert cg.image_diff_pct(black, white) == 100.0
+
+
+# 命令行构造的回归钉（真机咬过：`-Command <script> -- <args>` 在 PS 5.1 下把 `--`
+# 吃进脚本，`dnf_pid()` 恒返 0 ⇒ 战斗门在真机上必然假阴性）。
+def test_powershell_command_never_passes_double_dash():
+    cmd = cg._powershell_command("script", ["-Pid2", "1"], script_path="probe.ps1")
+    assert "--" not in cmd
+    assert "-File" in cmd
+    assert cmd[-2:] == ["-Pid2", "1"]
+
+
+def test_powershell_command_rejects_args_without_a_script_file():
+    """带参数却没有脚本文件 = 只能退化成旧的 `-Command ... --` 形态，必须直接报错。"""
+    import pytest
+
+    with pytest.raises(ValueError):
+        cg._powershell_command("script", ["-Pid2", "1"])
+
+
+def test_powershell_command_without_args_uses_command_switch():
+    cmd = cg._powershell_command("Get-Process", [])
+    assert "-Command" in cmd and "-File" not in cmd
