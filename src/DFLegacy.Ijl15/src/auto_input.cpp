@@ -555,7 +555,7 @@ namespace dfl::auto_input
                 line,
                 sizeof(line),
                 _TRUNCATE,
-                "%04u-%02u-%02u %02u:%02u:%02u.%03u %s\r\n",
+                "%04u-%02u-%02u %02u:%02u:%02u.%03u [%lu] %s\r\n",
                 st.wYear,
                 st.wMonth,
                 st.wDay,
@@ -563,6 +563,7 @@ namespace dfl::auto_input
                 st.wMinute,
                 st.wSecond,
                 st.wMilliseconds,
+                static_cast<unsigned long>(GetCurrentProcessId()),
                 text);
             if (n > 0)
             {
@@ -665,6 +666,19 @@ namespace dfl::auto_input
 
     void Pump() noexcept
     {
+        // The game polls GetAsyncKeyState only while its window is
+        // foreground, so the module mirrors that: an unfocused client must
+        // neither consume a shared plan file (dual-client acceptance runs
+        // share one exe directory) nor fire timeline edges. This also keeps
+        // the texture-proxy anchor from pumping a background client.
+        HWND foreground = GetForegroundWindow();
+        DWORD foregroundPid = 0;
+        GetWindowThreadProcessId(foreground, &foregroundPid);
+        if (foregroundPid != GetCurrentProcessId())
+        {
+            return;
+        }
+
         // One-shot liveness marker: the real-machine runbook uses it to prove
         // this frame path executes (file diagnostic; see DiagLine).
         static bool announced = false;
@@ -983,8 +997,22 @@ namespace dfl::auto_input
                 g_renamedCleanly = MoveFileA(g_planPath, g_donePath) != FALSE;
                 if (!g_renamedCleanly)
                 {
-                    OutputDebugStringA("auto_input: renaming auto-input.json to .done failed");
-                    DiagLine("plan finished but the .done rename FAILED; polling suppressed");
+                    // Two clients can share one exe directory (Tier 2/3 dual
+                    // client runs): whoever finishes first wins the rename and
+                    // the loser finds its source file already gone. That is a
+                    // benign race -- this client executed the very same plan --
+                    // so only a failure with the source still present means a
+                    // stuck plan worth suppressing the poll for.
+                    if (GetFileAttributesA(g_planPath) == INVALID_FILE_ATTRIBUTES)
+                    {
+                        g_renamedCleanly = true;
+                        OutputDebugStringA("auto_input: another client consumed the shared plan file");
+                    }
+                    else
+                    {
+                        OutputDebugStringA("auto_input: renaming auto-input.json to .done failed");
+                        DiagLine("plan finished but the .done rename FAILED; polling suppressed");
+                    }
                 }
             }
         }
