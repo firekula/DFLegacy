@@ -104,4 +104,12 @@ namespace dfl::auto_input
     // and returns how many were copied.
     int GetInjectionLog(InjectionRecord* out, int maxRecords);
     void ClearInjectionLog();
+
+    // Translates a virtual-key code to the DirectInput keyboard-state index
+    // (a DIK code: the Set-1 scan code, with bit 7 set for the E0-prefixed
+    // extended keys). Exposed for the characterisation tests: MapVirtualKeyA
+    // never reports the E0 prefix on this host (measured 2026-10-23), and
+    // getting this wrong writes the arrows to 0x48/0x4B/0x4D/0x50 where the
+    // game never looks.
+    unsigned char MapVkToDik(unsigned vk) noexcept;
 }

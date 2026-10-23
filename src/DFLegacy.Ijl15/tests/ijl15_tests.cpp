@@ -594,6 +594,49 @@ bool TestQueryKeyForwardsOriginal()
     return QueryKey(0x41, 0x0001) == 0x0001
         && QueryKey(0x41, static_cast<short>(0x8000)) == static_cast<short>(0x8000);
 }
+
+bool TestKeyboardDikTranslation()
+{
+    // DirectInput hands the keyboard state back as 256 bytes indexed by DIK
+    // code: the Set-1 scan code, with bit 7 set for the E0-prefixed keys.
+    // MapVirtualKeyA reports only the raw scan code on this host (measured
+    // 2026-10-23: MAPVK_VK_TO_VSC_EX answers 0x004B for VK_LEFT), so the
+    // extended set is enumerated in auto_input.cpp. A regression here writes
+    // the arrows to 0x48/0x4B/0x4D/0x50 -- slots the client never reads --
+    // which is exactly the bug that kept the character standing still.
+    using namespace dfl::auto_input;
+    struct Case
+    {
+        unsigned vk;
+        unsigned char dik;
+    };
+    const Case cases[] = {
+        {0x25, 0xCB},  // VK_LEFT     -> DIK_LEFT (extended)
+        {0x26, 0xC8},  // VK_UP
+        {0x27, 0xCD},  // VK_RIGHT
+        {0x28, 0xD0},  // VK_DOWN
+        {0x2D, 0xD2},  // VK_INSERT
+        {0x2E, 0xD3},  // VK_DELETE
+        {0x24, 0xC7},  // VK_HOME
+        {0x23, 0xCF},  // VK_END
+        {0x21, 0xC9},  // VK_PRIOR (PageUp)
+        {0x22, 0xD1},  // VK_NEXT  (PageDown)
+        {0xA3, 0x9D},  // VK_RCONTROL
+        {0xA5, 0xB8},  // VK_RMENU
+        {0x41, 0x1E},  // 'A' -- plain scan code, bit 7 clear
+        {0x20, 0x39},  // VK_SPACE
+        {0x1B, 0x01},  // VK_ESCAPE
+        {0x0D, 0x1C},  // VK_RETURN
+    };
+    for (const Case& entry : cases)
+    {
+        if (MapVkToDik(entry.vk) != entry.dik)
+        {
+            return false;
+        }
+    }
+    return true;
+}
 }
 
 int main()
@@ -650,6 +693,10 @@ int main()
     if (!TestQueryKeyForwardsOriginal())
     {
         return Fail("auto-input QueryKey did not forward the original value");
+    }
+    if (!TestKeyboardDikTranslation())
+    {
+        return Fail("keyboard DIK translation lost the extended-key bit");
     }
 
     IjlApi api{};

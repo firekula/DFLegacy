@@ -2184,4 +2184,11 @@ namespace dfl::auto_input
         g_logHead = 0;
         g_logTotal = 0;
     }
+
+    unsigned char MapVkToDik(unsigned vk) noexcept
+    {
+        // Thin public face on the translation the injection path uses, so the
+        // DIK rule is pinned by tests instead of by "the character moved".
+        return DikFromVk(vk);
+    }
 }
