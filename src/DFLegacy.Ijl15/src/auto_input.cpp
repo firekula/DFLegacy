@@ -299,7 +299,17 @@ namespace dfl::auto_input
         void InjectMouse(int msg, int x, int y) noexcept
         {
             const auto fn = reinterpret_cast<NativeMouseInputFn>(kNativeMouseInput);
-            fn(msg, msg == 513 ? 1 : 0, PackMouseLParam(x, y));  // wParam: MK_LBUTTON only for down
+            // wParam carries the button mask only while that button is down.
+            int buttons = 0;
+            if (msg == 0x201)      // WM_LBUTTONDOWN
+            {
+                buttons = 1;       // MK_LBUTTON
+            }
+            else if (msg == 0x204) // WM_RBUTTONDOWN
+            {
+                buttons = 2;       // MK_RBUTTON
+            }
+            fn(msg, buttons, PackMouseLParam(x, y));
         }
 
         // Movement and text keys reach the game through its window message
@@ -1240,6 +1250,14 @@ namespace dfl::auto_input
             {
                 msg = 514;    // WM_LBUTTONUP
             }
+            else if (kind == kMouseRightDown)
+            {
+                msg = 0x204;  // WM_RBUTTONDOWN
+            }
+            else if (kind == kMouseRightUp)
+            {
+                msg = 0x205;  // WM_RBUTTONUP
+            }
             else
             {
                 return;
@@ -1399,13 +1417,14 @@ namespace dfl::auto_input
                         return false;
                     }
                     ++p;
-                    char word[8];  // "click" is the longest word
+                    char word[8];  // "rclick" is the longest word
                     if (!ParseString(p, word, 8))
                     {
                         return false;
                     }
                     if (std::strcmp(word, "key") == 0) step.op = kKey;
                     else if (std::strcmp(word, "click") == 0) step.op = kClick;
+            else if (std::strcmp(word, "rclick") == 0) step.op = kRClick;
                     else if (std::strcmp(word, "move") == 0) step.op = kMove;
                     else if (std::strcmp(word, "text") == 0) step.op = kText;
                     else return false;
@@ -2033,13 +2052,13 @@ namespace dfl::auto_input
                     }
                 }
             }
-            else if (step.op == kClick)
+            else if (step.op == kClick || step.op == kRClick)
             {
                 if (!g_upDone[i] && g_downDone[i]
                     && elapsed >= static_cast<unsigned>(step.t) + static_cast<unsigned>(step.dur))
                 {
                     g_upDone[i] = true;
-                    EmitMouse(kMouseUp, step.x, step.y);
+                    EmitMouse(step.op == kRClick ? kMouseRightUp : kMouseUp, step.x, step.y);
                 }
             }
             else  // kMove: the move is this step's single primitive
@@ -2102,13 +2121,13 @@ namespace dfl::auto_input
                     }
                 }
             }
-            else if (step.op == kClick)
+            else if (step.op == kClick || step.op == kRClick)
             {
                 if (!g_downDone[i] && elapsed >= static_cast<unsigned>(step.t))
                 {
                     g_downDone[i] = true;
                     EmitMouse(kMouseMove, step.x, step.y);
-                    EmitMouse(kMouseDown, step.x, step.y);
+                    EmitMouse(step.op == kRClick ? kMouseRightDown : kMouseDown, step.x, step.y);
                 }
             }
             // kMove was handled in pass 1.

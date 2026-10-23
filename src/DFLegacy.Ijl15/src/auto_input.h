@@ -26,6 +26,10 @@ namespace dfl::auto_input
         kClick = 1,
         kMove = 2,
         kText = 3,
+        // Right click. DNF invites to a party (and offers trade/friend) from a
+        // right click on the other player's character, so this primitive is
+        // what makes two-client party formation scriptable at all.
+        kRClick = 4,
     };
 
     struct Step
@@ -90,6 +94,8 @@ namespace dfl::auto_input
         kMouseMove = 2,
         kMouseDown = 3,
         kMouseUp = 4,
+        kMouseRightDown = 5,
+        kMouseRightUp = 6,
     };
 
     struct InjectionRecord

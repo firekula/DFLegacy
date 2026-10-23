@@ -595,6 +595,66 @@ bool TestQueryKeyForwardsOriginal()
         && QueryKey(0x41, static_cast<short>(0x8000)) == static_cast<short>(0x8000);
 }
 
+bool TestRightClickPrimitive()
+{
+    // DNF forms a party from a right click on the other player's character, so
+    // the timeline needs an rclick op whose edges reach the game as right-button
+    // mouse messages (WM_RBUTTONDOWN/UP), never as left ones.
+    using namespace dfl::auto_input;
+
+    const char* plan =
+        "{\"version\":1,\"steps\":[{\"t\":0,\"op\":\"rclick\",\"x\":40,\"y\":50,\"dur\":40}]}";
+    Step steps[4] = {};
+    int count = 0;
+    int version = 0;
+    if (!ParsePlan(plan, steps, 4, &count, &version) || count != 1)
+    {
+        return false;
+    }
+    if (steps[0].op != kRClick || steps[0].x != 40 || steps[0].y != 50)
+    {
+        return false;
+    }
+
+    ClearInjectionLog();
+    if (!ArmPlan(steps, 1, version, 0))
+    {
+        return false;
+    }
+    Advance(10);   // the down edge is due at t=0
+    InjectionRecord records[8] = {};
+    const int downCount = GetInjectionLog(records, 8);
+    bool sawRightDown = false;
+    for (int i = 0; i < downCount; ++i)
+    {
+        if (records[i].op == kMouseRightDown && records[i].x == 40 && records[i].y == 50)
+        {
+            sawRightDown = true;
+        }
+        if (records[i].op == kMouseDown)
+        {
+            return false;
+        }
+    }
+
+    ClearInjectionLog();
+    Advance(400);  // past t+dur: the up edge
+    const int upCount = GetInjectionLog(records, 8);
+    bool sawRightUp = false;
+    for (int i = 0; i < upCount; ++i)
+    {
+        if (records[i].op == kMouseRightUp)
+        {
+            sawRightUp = true;
+        }
+        if (records[i].op == kMouseUp)
+        {
+            return false;
+        }
+    }
+    return sawRightDown && sawRightUp;
+}
+
 bool TestKeyboardDikTranslation()
 {
     // DirectInput hands the keyboard state back as 256 bytes indexed by DIK
@@ -737,6 +797,10 @@ int main()
     if (!TestQueryKeyForwardsOriginal())
     {
         return Fail("auto-input QueryKey did not forward the original value");
+    }
+    if (!TestRightClickPrimitive())
+    {
+        return Fail("auto-input right-click primitive did not reach the injection log");
     }
     if (!TestKeyboardDikTranslation())
     {
