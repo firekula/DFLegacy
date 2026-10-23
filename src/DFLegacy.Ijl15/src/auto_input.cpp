@@ -34,6 +34,10 @@ namespace dfl::auto_input
         };
 
         Phase g_phase = Phase::Idle;
+        // True while Advance() is delivering edges: a nested pump (the game's
+        // message handling calls back into GetAsyncKeyState, our pump anchor)
+        // must not advance the same timeline from inside its own delivery.
+        bool g_inTimeline = false;
         Step g_plan[kMaxSteps];
         int g_count = 0;
         int g_version = 0;
@@ -1616,6 +1620,16 @@ namespace dfl::auto_input
 
     void Pump() noexcept
     {
+        // Delivering a key is a synchronous SendMessage, so the game's own
+        // message handling runs inside Advance() -- and that handling can call
+        // GetAsyncKeyState, which is this module's pump anchor. Without this
+        // latch the nested pump would advance the same timeline from inside its
+        // own edge delivery (observed as an unbounded recursion and a stack
+        // overflow, 2026-10-23 13:34:34).
+        if (g_inTimeline)
+        {
+            return;
+        }
         // The game polls GetAsyncKeyState only while its window is
         // foreground, so the module mirrors that: an unfocused client must
         // neither consume a shared plan file (dual-client acceptance runs
@@ -1673,7 +1687,9 @@ namespace dfl::auto_input
         }
         // The call site in performance_overlay.cpp gates on IsEnabled(); a
         // disarmed module returns from Advance immediately.
+        g_inTimeline = true;
         Advance(GetTickCount());
+        g_inTimeline = false;
     }
 
     bool ParsePlan(const char* text, Step* steps, int maxSteps, int* count, int* version)
@@ -1839,14 +1855,22 @@ namespace dfl::auto_input
                     // can stall the frame hook for seconds) from releasing a
                     // character that was never pressed; the release lands on
                     // the next pump instead.
-                    const unsigned char vk = g_textVk[i][g_textUps[i]];
+                    //
+                    // The index advances BEFORE the emit: delivering a message
+                    // is a synchronous call back into the game, and the game's
+                    // key path can call GetAsyncKeyState -- which is this
+                    // module's pump anchor. With the counter still pointing at
+                    // this character, that re-entry re-emitted it and recursed
+                    // until the stack ran out (VEH 0xC00000FD at the game's
+                    // 512-byte frame, 2026-10-23 13:34:34).
+                    const int index = g_textUps[i]++;
+                    const unsigned char vk = g_textVk[i][index];
                     if (vk != 0)
                     {
                         g_synthDown[vk] = false;
                         EmitKey(WM_KEYUP, vk);
                         ++edges;
                     }
-                    ++g_textUps[i];
                 }
             }
             else if (step.op == kClick)
@@ -1903,16 +1927,19 @@ namespace dfl::auto_input
                 }
                 while (g_textDowns[i] < due)
                 {
-                    const unsigned char vk = g_textVk[i][g_textDowns[i]];
+                    // Same rule as the release loop above: advance the index
+                    // before the synchronous send, or a re-entrant pump repeats
+                    // this character forever.
+                    const int index = g_textDowns[i]++;
+                    const unsigned char vk = g_textVk[i][index];
                     if (vk != 0)
                     {
                         g_synthDown[vk] = true;
                         g_synthEver[vk] = true;
                         EmitKey(WM_KEYDOWN, vk);
-                        EmitKey(WM_CHAR, g_textChar[i][g_textDowns[i]]);
+                        EmitKey(WM_CHAR, g_textChar[i][index]);
                         ++edges;
                     }
-                    ++g_textDowns[i];
                 }
             }
             else if (step.op == kClick)
