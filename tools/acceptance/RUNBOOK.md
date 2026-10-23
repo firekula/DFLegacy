@@ -110,3 +110,19 @@ python -m pytest acceptance\tests\test_combat_gate.py -q
 - 缺服务端日志/netdump ⇒ `missing-evidence`；
 - 对照项（跳跃）**永不**单独构成 pass。
 - 红线回归用例：`test_t11_reverse_case_must_fail`（3.04% vs 3.15% 必须 fail）。
+
+### 双人组队进本的前置（2026-10-23 实测补充）
+
+1. **服务端必须带中继开关**：`$env:DFLEGACY_UDP_RELAY='1'`，再起 `town-test\DFLegacy.Server.exe`
+   （启动日志应出现 `Gameplay UDP relay enabled (DFLEGACY_UDP_RELAY=1)`）。
+   不带这个开关时组队会卡在「连接中」、队员互动走不通（STATUS §3.6 已定因：
+   组队互动走客户端↔客户端通道，由服务端扮演 relay）。
+2. **两个账号**：`test` 与 `shizuku`（`launcher.json` 的 `Accounts` 里现成两个）。
+   两次 `DFLegacy.Launcher.exe --headless --no-dialog --account <账号>`，间隔 ≥5 秒。
+3. **共用客户端目录靠"前台闸"隔离**：同一份 `auto-input.json` 只有**拥有前台窗口**的客户端会推进。
+   所以驱动两个客户端时必须用**真实点击聚焦**（`.superpowers/sdd/2026-10-19-s2-multiprocess-split-first-slice/work/focus.ps1`，
+   `tier3_dual_drive.py` 的 `drive_plan_for` 就是这套：写计划 → 每 10 s 重新聚焦直到 `.done`）；
+   仅 `SetForegroundWindow`/`AttachThreadInput` 不够——**真实点击才能唤醒 DNF 的 DirectInput 轮询**。
+4. **进本门与站位**：`[dungeon gate]` 区的 `dest=-1` 门（不是 `type 1`）；必须走进**门矩形**
+   （`D_StormPass2`：`x 14..33, y 354..479`）。弹出选图界面（`state=2`）后才点「前往地下城」(447,395)；
+   城镇里点同一坐标会打开赛丽亚 NPC 菜单，误点「进入商城」会让客户端**干净退出**。
