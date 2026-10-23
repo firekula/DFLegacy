@@ -325,38 +325,51 @@ namespace dfl::auto_input
             // SendMessageA calls the window proc synchronously on our (the
             // game's) own thread -- a queued PostMessageA may never be
             // dispatched if the game's loop filters or starves its queue,
-            // while SendMessage reaches the proc regardless.
+            // while SendMessage reaches the proc regardless. The lParam
+            // carries a realistic scan code and key-state flag bits: some
+            // handlers check them before latching a key.
+            const UINT scan = MapVirtualKeyA(static_cast<UINT>(wParam), 0);
+            LPARAM keyLParam = static_cast<LPARAM>(1u | ((scan & 0xFFu) << 16));
+            if (msg == WM_KEYUP)
+            {
+                keyLParam |= static_cast<LPARAM>(0xC0000000u);  // prev down, transition
+            }
             if (g_keyboardTarget != nullptr)
             {
-                SendMessageA(g_keyboardTarget, msg, wParam, 0);
+                SendMessageA(g_keyboardTarget, msg, wParam, keyLParam);
             }
             if (g_gameWindow != nullptr && g_gameWindow != g_keyboardTarget)
             {
-                SendMessageA(g_gameWindow, msg, wParam, 0);
+                SendMessageA(g_gameWindow, msg, wParam, keyLParam);
             }
             for (int i = 0; i < g_allWindowCount; ++i)
             {
                 if (g_allWindows[i] != g_keyboardTarget
                     && g_allWindows[i] != g_gameWindow)
                 {
-                    SendMessageA(g_allWindows[i], msg, wParam, 0);
+                    SendMessageA(g_allWindows[i], msg, wParam, keyLParam);
                 }
             }
             static bool announced = false;
             if (!announced)
             {
                 announced = true;
-                char note[128] = {};
+                void* const wndProc = reinterpret_cast<void*>(
+                    GetWindowLongPtrA(
+                        g_keyboardTarget != nullptr ? g_keyboardTarget : g_gameWindow,
+                        GWLP_WNDPROC));
+                char note[160] = {};
                 _snprintf_s(
                     note,
                     sizeof(note),
                     _TRUNCATE,
-                    "key sent msg=0x%X vk=0x%X target=0x%X top=0x%X windows=%d",
+                    "key sent msg=0x%X vk=0x%X target=0x%X top=0x%X windows=%d wndproc=0x%X",
                     msg,
                     static_cast<unsigned>(wParam),
                     static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(g_keyboardTarget)),
                     static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(g_gameWindow)),
-                    g_allWindowCount);
+                    g_allWindowCount,
+                    static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(wndProc)));
                 DiagLine(note);
             }
         }
