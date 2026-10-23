@@ -1948,3 +1948,18 @@ HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 la
   ③ 副本内动作像素差**显著高于同轮待机对照**（t11 口径：3.04% vs 待机 3.15% 不算通过）。"没崩"不算通过。
 - **当前阻塞（实测）**：`tools/acceptance/scenarios/` 无 dungeon 场景；`docker ps` 报 Docker Desktop
   未运行 ⇒ 组队副本所需 relay+stun 容器不可用。故本轮只落判据，不谎称已验证。
+
+**战斗键验收已做成一条命令（提交见 `git log`，`tools/acceptance/combat_gate.py`）**
+- 判据是纯函数 `Thresholds`/`judge`：服务端伤害/HP 事件 > netdump 新增上行帧类 >
+  像素差（必须 ≥ `max(8%, 3×同轮待机, 待机+4%)`）；计划未被取走判 `missing-evidence`（基础设施问题，
+  不是产品失败）；对照组（跳跃）**永不**单独构成 pass。
+- 一条命令：`cd tools; python -m acceptance.combat_gate --client-dir G:\Game\DNF_ACT1\DF
+  --server-log <run>/server/server-A.log --netdump G:\Game\DNF_ACT1\DF\netdump-<pid>.log --out-dir <run>`
+  （前置：两客户端已组队进本；relay+stun 容器必须已起）。
+- 自检两条：`python -m acceptance.combat_gate --self-check`（10 条向量）+ `pytest acceptance\tests\test_combat_gate.py`
+  （14 条单测）。红线用例 `test_t11_reverse_case_must_fail`：动作 3.04% vs 待机 3.15% **必须 fail**。
+- 场景 `scenarios/party-dungeon.yaml`：登录/进城沿用已校准 hex pattern，组队/进本/战斗用 `[语义]`，
+  头注释写明"战斗判定由 combat_gate 出"，避免"场景红了但其实没有断言"。
+- 全量 pytest **140 passed**（原 126 + 新 14）。RUNBOOK 已加"副本内战斗键验收（一条命令）"一节。
+⚠️ 本轮为跑测试停掉了我先前起的 `DFLegacy.Server`（占 7001 使 runner 用例报 PortBusy）；
+组队进副本那波请用它自己的 orchestrate 起服务端。
