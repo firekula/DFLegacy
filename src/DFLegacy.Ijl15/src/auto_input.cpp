@@ -49,6 +49,7 @@ namespace dfl::auto_input
         int g_textDowns[kMaxSteps] = {};
         int g_textUps[kMaxSteps] = {};
         unsigned char g_textVk[kMaxSteps][64] = {};  // per-char VK codes; 0 = no key
+        unsigned char g_textChar[kMaxSteps][64] = {};  // raw chars for WM_CHAR delivery
 
         bool g_synthDown[256] = {};
         bool g_synthEver[256] = {};  // keys this module synthesized at least once
@@ -103,9 +104,40 @@ namespace dfl::auto_input
         constexpr std::uintptr_t kGetAsyncKeyStateIat = 0x009983DC;
         constexpr std::uintptr_t kNativeMouseInput = 0x008FCAA0;
 
+        // DiagLine is defined further down (beside BuildExeRelativePath);
+        // the hook below uses it for the one-shot VK-polling sample dump.
+        void DiagLine(const char* text) noexcept;
+
         GetAsyncKeyStateFn g_originalGetAsyncKeyState = nullptr;
         bool g_keyboardHooked = false;
         bool g_mouseInjectEnabled = false;
+        // The game's own window, cached from the focus gate: plans only
+        // advance while this process owns the foreground window, and the
+        // foreground window then IS the game window.
+        HWND g_gameWindow = nullptr;
+        // The keyboard-focus window of the game thread (GetFocus from the
+        // game's own thread). Real key input lands here -- which may be a
+        // CHILD window, while GetForegroundWindow only ever returns the
+        // top-level one.
+        HWND g_keyboardTarget = nullptr;
+        // Every top-level window of this process (the game may own several,
+        // e.g. a hidden input window next to the visible one). Keys are
+        // posted to all of them; the one whose window proc handles input
+        // acts, the rest ignore the message.
+        HWND g_allWindows[8] = {};
+        int g_allWindowCount = 0;
+        bool g_windowsEnumerated = false;
+
+        BOOL CALLBACK CollectTopWindow(HWND hwnd, LPARAM) noexcept
+        {
+            DWORD pid = 0;
+            GetWindowThreadProcessId(hwnd, &pid);
+            if (pid == GetCurrentProcessId() && g_allWindowCount < 8)
+            {
+                g_allWindows[g_allWindowCount++] = hwnd;
+            }
+            return TRUE;
+        }
 
         bool SynthTableHas(unsigned vk) noexcept
         {
@@ -126,6 +158,15 @@ namespace dfl::auto_input
             }
         }
 
+        // Continuous sampling of what the game actually polls: every ~600
+        // hook queries the VK histogram for that window lands in the diag
+        // file and the counters reset, so event-driven keys (arrows are only
+        // polled while held) show up in the dump that covers their hold
+        // window.
+        unsigned g_vkSample[256] = {};
+        unsigned g_vkSampleTotal = 0;
+        bool g_vkSampleDumped = false;
+
         // A key this module synthesized is answered from the synth tables
         // (pressed or released), so the real keyboard cannot pollute the
         // edge sequence while the plan runs. Finishing, re-arming or
@@ -141,6 +182,43 @@ namespace dfl::auto_input
         {
             Pump();
             const unsigned code = static_cast<unsigned>(vk);
+            if (!g_vkSampleDumped)
+            {
+                if (code < 256)
+                {
+                    ++g_vkSample[code];
+                }
+                if (++g_vkSampleTotal >= 600)
+                {
+                    char note[256] = {};
+                    int used = 0;
+                    for (unsigned v = 0; v < 256 && used < 240; ++v)
+                    {
+                        if (g_vkSample[v] != 0)
+                        {
+                            const int n = _snprintf_s(
+                                note + used,
+                                sizeof(note) - static_cast<size_t>(used),
+                                _TRUNCATE,
+                                "%s0x%02Xx%u",
+                                used == 0 ? "vk polled: " : " ",
+                                v,
+                                g_vkSample[v]);
+                            if (n <= 0)
+                            {
+                                break;
+                            }
+                            used += n;
+                        }
+                    }
+                    DiagLine(note);
+                    for (int i = 0; i < 256; ++i)
+                    {
+                        g_vkSample[i] = 0;
+                    }
+                    g_vkSampleTotal = 0;
+                }
+            }
             if (SynthTableHas(code))
             {
                 return SynthTableState(code);
@@ -209,6 +287,314 @@ namespace dfl::auto_input
         {
             const auto fn = reinterpret_cast<NativeMouseInputFn>(kNativeMouseInput);
             fn(msg, msg == 513 ? 1 : 0, PackMouseLParam(x, y));  // wParam: MK_LBUTTON only for down
+        }
+
+        // Movement and text keys reach the game through its window message
+        // queue, NOT through GetAsyncKeyState: the game's WM_KEYDOWN handler
+        // latches the arrow range 0x23..0x28 into its movement state, WM_CHAR
+        // feeds text boxes, WM_KEYUP clears the latch (IDA: sub_8FACE0). The
+        // IAT hook only serves the keys the game actually polls (Ctrl
+        // modifiers 162/163, the screenshot hotkey 0x2C -- VK sampling).
+        // Posting to our own thread's queue is asynchronous and safe from
+        // the game thread; the tests never cache a window, so they see no
+        // messages and the synth-table contract stays the unit-tested seam.
+        void EmitKey(unsigned msg, WPARAM wParam) noexcept
+        {
+            if (!g_windowsEnumerated)
+            {
+                g_windowsEnumerated = true;
+                g_allWindowCount = 0;
+                EnumWindows(CollectTopWindow, 0);
+                for (int i = 0; i < g_allWindowCount; ++i)
+                {
+                    char cls[64] = {};
+                    GetClassNameA(g_allWindows[i], cls, sizeof(cls) - 1);
+                    char note[128] = {};
+                    _snprintf_s(
+                        note,
+                        sizeof(note),
+                        _TRUNCATE,
+                        "game window[%d]=0x%X class=%s",
+                        i,
+                        static_cast<unsigned>(
+                            reinterpret_cast<std::uintptr_t>(g_allWindows[i])),
+                        cls);
+                    DiagLine(note);
+                }
+            }
+            // SendMessageA calls the window proc synchronously on our (the
+            // game's) own thread -- a queued PostMessageA may never be
+            // dispatched if the game's loop filters or starves its queue,
+            // while SendMessage reaches the proc regardless.
+            if (g_keyboardTarget != nullptr)
+            {
+                SendMessageA(g_keyboardTarget, msg, wParam, 0);
+            }
+            if (g_gameWindow != nullptr && g_gameWindow != g_keyboardTarget)
+            {
+                SendMessageA(g_gameWindow, msg, wParam, 0);
+            }
+            for (int i = 0; i < g_allWindowCount; ++i)
+            {
+                if (g_allWindows[i] != g_keyboardTarget
+                    && g_allWindows[i] != g_gameWindow)
+                {
+                    SendMessageA(g_allWindows[i], msg, wParam, 0);
+                }
+            }
+            static bool announced = false;
+            if (!announced)
+            {
+                announced = true;
+                char note[128] = {};
+                _snprintf_s(
+                    note,
+                    sizeof(note),
+                    _TRUNCATE,
+                    "key sent msg=0x%X vk=0x%X target=0x%X top=0x%X windows=%d",
+                    msg,
+                    static_cast<unsigned>(wParam),
+                    static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(g_keyboardTarget)),
+                    static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(g_gameWindow)),
+                    g_allWindowCount);
+                DiagLine(note);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // DirectInput keyboard state injection (movement keys). The game
+        // reads its keyboard through the DirectInput keyboard device:
+        // GetDeviceState(device, 256, buffer) at the device vtable index 9
+        // (IDA: the input object at offset 0xD14 holds the device pointer and
+        // the state buffer sits at object offset 0x10D; the game creates the
+        // device with GUID_SysKeyboard through DirectInput8Create's IAT slot
+        // 0x998048, CreateDevice = vtable index 3, 0x0C offset). The IAT hook
+        // on GetAsyncKeyState only serves the keys the game polls there (the
+        // screenshot hotkey 0x2C), and posted WM_KEYDOWN never moves the
+        // character -- so this proxy is the real keyboard path: after the
+        // original GetDeviceState fills the buffer, the synthetic key states
+        // are OR-ed in. DirectInput key codes (DIK) are scan-code based, not
+        // VK values: MapVirtualKeyA(vk, 0) translates.
+        // ------------------------------------------------------------------
+
+        using DirectInput8CreateFn = void*(WINAPI*)(void*, unsigned, const void*, void**, void*);
+        using CreateDeviceFn = long(WINAPI*)(void*, const void*, void**, void*);
+        using GetDeviceStateFn = long(WINAPI*)(void*, unsigned, void*);
+
+        constexpr std::uintptr_t kDirectInput8CreateIat = 0x00998048;
+        constexpr std::size_t kDirectInput8VtableEntries = 16;
+        constexpr std::size_t kCreateDeviceIndex = 3;
+        constexpr std::size_t kKeyboardVtableEntries = 40;
+        constexpr std::size_t kGetDeviceStateIndex = 9;
+        constexpr unsigned kKeyboardStateBytes = 256;
+
+        const unsigned char kGuidSysKeyboard[16] = {
+            0x61, 0x2B, 0x1D, 0x6F, 0xA0, 0xD5, 0xCF, 0x11,
+            0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00};
+
+        DirectInput8CreateFn g_originalDirectInput8Create = nullptr;
+        CreateDeviceFn g_originalCreateDevice = nullptr;
+        bool g_di8Hooked = false;
+        GetDeviceStateFn g_originalGetDeviceState = nullptr;
+        void** g_keyboardClone = nullptr;
+        void** g_keyboardOriginalVtable = nullptr;
+
+        void** CloneVtable(void* object, std::size_t entryCount) noexcept
+        {
+            if (object == nullptr || entryCount == 0)
+            {
+                return nullptr;
+            }
+            void** const original = *reinterpret_cast<void***>(object);
+            if (original == nullptr)
+            {
+                return nullptr;
+            }
+            const std::size_t byteCount = entryCount * sizeof(void*);
+            void** const copy = static_cast<void**>(HeapAlloc(
+                GetProcessHeap(),
+                HEAP_ZERO_MEMORY,
+                byteCount));
+            if (copy == nullptr)
+            {
+                return nullptr;
+            }
+            std::memcpy(copy, original, byteCount);
+            return copy;
+        }
+
+        bool ReplaceVtable(void* object, void** replacement) noexcept
+        {
+            if (object == nullptr || replacement == nullptr)
+            {
+                return false;
+            }
+            void** const vtableStorage = reinterpret_cast<void**>(object);
+            DWORD oldProtection = 0;
+            if (!VirtualProtect(
+                    vtableStorage,
+                    sizeof(void*),
+                    PAGE_READWRITE,
+                    &oldProtection))
+            {
+                return false;
+            }
+            *vtableStorage = replacement;
+            DWORD ignoredProtection = 0;
+            VirtualProtect(
+                vtableStorage,
+                sizeof(void*),
+                oldProtection,
+                &ignoredProtection);
+            // The pointer was already replaced: never report failure after a
+            // successful write (the caller would free the live clone).
+            return true;
+        }
+
+        long WINAPI GetDeviceStateProxy(void* device, unsigned size, void* data) noexcept
+        {
+            const long result = g_originalGetDeviceState != nullptr
+                ? g_originalGetDeviceState(device, size, data)
+                : 0x8007000E;  // DIERR_OUTOFMEMORY-ish failure sentinel
+            if (result >= 0 && data != nullptr && size >= kKeyboardStateBytes)
+            {
+                auto* const keys = static_cast<unsigned char*>(data);
+                for (int vk = 0; vk < 256; ++vk)
+                {
+                    if (g_synthDown[vk])
+                    {
+                        const UINT dik = MapVirtualKeyA(static_cast<UINT>(vk), 0);
+                        if (dik < kKeyboardStateBytes)
+                        {
+                            keys[dik] |= 0x80;
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        long WINAPI CreateDeviceProxy(
+            void* di8,
+            const void* guid,
+            void** device,
+            void* outer) noexcept
+        {
+            static bool guidLogged = false;
+            if (!guidLogged && guid != nullptr)
+            {
+                guidLogged = true;
+                const auto* g = static_cast<const unsigned char*>(guid);
+                char note[96] = {};
+                _snprintf_s(
+                    note,
+                    sizeof(note),
+                    _TRUNCATE,
+                    "CreateDevice guid=%02X%02X%02X%02X-%02X%02X-%02X%02X",
+                    g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7]);
+                DiagLine(note);
+            }
+            const long result = g_originalCreateDevice != nullptr
+                ? g_originalCreateDevice(di8, guid, device, outer)
+                : 0x8007000E;
+            if (guid != nullptr
+                && std::memcmp(guid, kGuidSysKeyboard, 16) == 0)
+            {
+                char note[128] = {};
+                _snprintf_s(
+                    note,
+                    sizeof(note),
+                    _TRUNCATE,
+                    "CreateDevice(kbd) result=0x%X device=0x%X out=0x%X",
+                    static_cast<unsigned>(result),
+                    static_cast<unsigned>(
+                        reinterpret_cast<std::uintptr_t>(device)),
+                    static_cast<unsigned>(
+                        reinterpret_cast<std::uintptr_t>(
+                            device != nullptr ? *device : nullptr)));
+                DiagLine(note);
+            }
+            if (result >= 0
+                && device != nullptr
+                && *device != nullptr
+                && guid != nullptr
+                && std::memcmp(guid, kGuidSysKeyboard, 16) == 0
+                && g_keyboardClone == nullptr)
+            {
+                void** const originalVtable = *reinterpret_cast<void***>(*device);
+                if (originalVtable != nullptr)
+                {
+                    void** const clone = CloneVtable(*device, kKeyboardVtableEntries);
+                    if (clone != nullptr)
+                    {
+                        g_originalGetDeviceState =
+                            reinterpret_cast<GetDeviceStateFn>(
+                                clone[kGetDeviceStateIndex]);
+                        clone[kGetDeviceStateIndex] =
+                            reinterpret_cast<void*>(&GetDeviceStateProxy);
+                        if (ReplaceVtable(*device, clone))
+                        {
+                            g_keyboardClone = clone;
+                            g_keyboardOriginalVtable = originalVtable;
+                            DiagLine("keyboard device hooked (GetDeviceState proxy)");
+                        }
+                        else
+                        {
+                            HeapFree(GetProcessHeap(), 0, clone);
+                            g_originalGetDeviceState = nullptr;
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        void* WINAPI DirectInput8CreateProxy(
+            void* instance,
+            unsigned version,
+            const void* riid,
+            void** out,
+            void* outer) noexcept
+        {
+            // DirectInput8Create returns an HRESULT; the created object comes
+            // back through ppvOut. Return the HRESULT as the pointer-sized
+            // value (the caller tests its sign bit).
+            const long hr = g_originalDirectInput8Create != nullptr
+                ? static_cast<long>(reinterpret_cast<std::intptr_t>(
+                    g_originalDirectInput8Create(instance, version, riid, out, outer)))
+                : 0x8007000E;
+            // Wrap EVERY DirectInput8 object the game creates: it instantiates
+            // more than one (mouse and keyboard devices come from separate
+            // objects). The idempotency guard is the vtable entry itself, not
+            // a one-shot flag.
+            if (hr >= 0 && out != nullptr && *out != nullptr)
+            {
+                void** const current = *reinterpret_cast<void***>(*out);
+                if (current != nullptr
+                    && current[kCreateDeviceIndex]
+                        != reinterpret_cast<void*>(&CreateDeviceProxy))
+                {
+                    void** const clone = CloneVtable(*out, kDirectInput8VtableEntries);
+                    if (clone != nullptr)
+                    {
+                        g_originalCreateDevice = reinterpret_cast<CreateDeviceFn>(
+                            clone[kCreateDeviceIndex]);
+                        clone[kCreateDeviceIndex] =
+                            reinterpret_cast<void*>(&CreateDeviceProxy);
+                        if (ReplaceVtable(*out, clone))
+                        {
+                            g_di8Hooked = true;
+                            DiagLine("DirectInput8Create proxied (CreateDevice wrapped)");
+                        }
+                        else
+                        {
+                            g_originalCreateDevice = nullptr;
+                            HeapFree(GetProcessHeap(), 0, clone);
+                        }
+                    }
+                }
+            }
+            return reinterpret_cast<void*>(static_cast<std::intptr_t>(hr));
         }
 
         // Real calls replace the injection log only when Install verified the
@@ -635,6 +1021,31 @@ namespace dfl::auto_input
                 "stay in the injection log\n");
         }
 
+        // DirectInput keyboard: the game reads key state via the keyboard
+        // device's GetDeviceState. Hook the DirectInput8Create IAT so device
+        // creation is wrapped; failure degrades (movement keys stay unmapped,
+        // everything else keeps working).
+        void* di8Current = nullptr;
+        if (ReadIatPointer(kDirectInput8CreateIat, di8Current)
+            && di8Current != nullptr)
+        {
+            g_originalDirectInput8Create =
+                reinterpret_cast<DirectInput8CreateFn>(di8Current);
+            const auto di8Hook =
+                reinterpret_cast<void*>(&DirectInput8CreateProxy);
+            if (dfl::memory_patch::WriteBytes(
+                    kDirectInput8CreateIat,
+                    &di8Hook,
+                    sizeof(di8Hook)))
+            {
+                DiagLine("DirectInput8Create IAT hooked");
+            }
+            else
+            {
+                g_originalDirectInput8Create = nullptr;
+            }
+        }
+
         // A missing or invalid plan file is not an install failure: the
         // client simply runs without a scripted timeline.
         LoadPlanFile();
@@ -661,6 +1072,32 @@ namespace dfl::auto_input
         }
         g_originalGetAsyncKeyState = nullptr;
         g_mouseInjectEnabled = false;
+        if (g_originalDirectInput8Create != nullptr)
+        {
+            const auto original =
+                reinterpret_cast<void*>(g_originalDirectInput8Create);
+            if (!dfl::memory_patch::WriteBytes(
+                    kDirectInput8CreateIat,
+                    &original,
+                    sizeof(original)))
+            {
+                OutputDebugStringA(
+                    "auto_input: restoring the DirectInput8Create IAT failed\n");
+            }
+            g_originalDirectInput8Create = nullptr;
+        }
+        g_di8Hooked = false;
+        if (g_keyboardClone != nullptr && g_originalGetDeviceState != nullptr)
+        {
+            // The clone IS the live device vtable; putting the original entry
+            // back makes the proxy unreachable. The clone itself stays with
+            // the device for its lifetime (the game releases it at exit).
+            g_keyboardClone[kGetDeviceStateIndex] =
+                reinterpret_cast<void*>(g_originalGetDeviceState);
+        }
+        g_keyboardClone = nullptr;
+        g_keyboardOriginalVtable = nullptr;
+        g_originalGetDeviceState = nullptr;
         SynthClear();
     }
 
@@ -677,6 +1114,12 @@ namespace dfl::auto_input
         if (foregroundPid != GetCurrentProcessId())
         {
             return;
+        }
+        g_gameWindow = foreground;
+        g_keyboardTarget = GetFocus();
+        if (g_keyboardTarget == nullptr)
+        {
+            g_keyboardTarget = foreground;
         }
 
         // One-shot liveness marker: the real-machine runbook uses it to prove
@@ -859,6 +1302,7 @@ namespace dfl::auto_input
                     {
                         g_synthDown[step.vk] = false;
                     }
+                    EmitKey(WM_KEYUP, step.vk);
                     ++edges;
                 }
             }
@@ -886,6 +1330,7 @@ namespace dfl::auto_input
                     if (vk != 0)
                     {
                         g_synthDown[vk] = false;
+                        EmitKey(WM_KEYUP, vk);
                         ++edges;
                     }
                     ++g_textUps[i];
@@ -926,6 +1371,7 @@ namespace dfl::auto_input
                         g_synthDown[step.vk] = true;
                         g_synthEver[step.vk] = true;
                     }
+                    EmitKey(WM_KEYDOWN, step.vk);
                     ++edges;
                 }
             }
@@ -949,6 +1395,8 @@ namespace dfl::auto_input
                     {
                         g_synthDown[vk] = true;
                         g_synthEver[vk] = true;
+                        EmitKey(WM_KEYDOWN, vk);
+                        EmitKey(WM_CHAR, g_textChar[i][g_textDowns[i]]);
                         ++edges;
                     }
                     ++g_textDowns[i];
@@ -987,6 +1435,14 @@ namespace dfl::auto_input
             // The plan no longer owns any key: release the ever-set so the
             // hook forwards the real keyboard again until the next arm.
             SynthClear();
+            // Restart the VK-polling sample so the next dump reflects the
+            // post-plan screen (town idle polling, movement keys included).
+            for (int i = 0; i < 256; ++i)
+            {
+                g_vkSample[i] = 0;
+            }
+            g_vkSampleTotal = 0;
+            g_vkSampleDumped = false;
             if (g_fromFile && !g_doneMarked)
             {
                 g_doneMarked = true;  // fire once, whatever the rename does
@@ -1122,6 +1578,7 @@ namespace dfl::auto_input
             for (int j = 0; j < 64; ++j)
             {
                 g_textVk[i][j] = 0;
+                g_textChar[i][j] = 0;
             }
             if (g_plan[i].op == kText)
             {
@@ -1134,6 +1591,7 @@ namespace dfl::auto_input
                         break;
                     }
                     g_textVk[i][j] = VkFromChar(c);
+                    g_textChar[i][j] = static_cast<unsigned char>(c);
                 }
             }
         }
