@@ -65,7 +65,14 @@ ACCEPT_YES = (505, 383)          # 对方侧「是否接受组队」应答窗的
 # 判据（纯函数，跑在服务端日志文本上）
 # ----------------------------------------------------------------------------
 _ROSTER = re.compile(r"Party roster\b.*?(\d+)\s*member\(s\)")
-_START_MAP = re.compile(r"protocol=16\b")
+# 真 START_MAP 只认**客户端上行**那一帧：`RX … protocol=16 length=16`。
+# 三条排除（2026-10-23 真机踩到，写死在这里）：
+#   ① `protocol=16\b` 会连 `protocol=161`（反外挂心跳，同轮 80+ 条）一起数 —— 必须用 `\b` 之外的
+#      显式边界（`(?!\d)`），且要求 ` length=16`；
+#   ② 服务端成对发出的 `TX … protocol=16 length=8 payload=0000` 是**交易/选图 UI 取消**的回执，
+#      与进本无关（同一轮里每点一次「交易」就出现两条，曾把"单人进本"判成 pass）；
+#   ③ 方向必须是 RX（`RX … type=1`）。
+_START_MAP = re.compile(r"\bRX\b[^\n]*?\bprotocol=16(?!\d)\b[^\n]*?\blength=16\b")
 
 
 def max_party_members(server_text: str) -> int:
@@ -74,7 +81,7 @@ def max_party_members(server_text: str) -> int:
 
 
 def start_map_count(server_text: str) -> int:
-    """`protocol=16`（START_MAP）出现次数：双人进本应为 2。"""
+    """真 START_MAP（`RX … protocol=16 length=16`）出现次数：双人进本应为 2。"""
     return len(_START_MAP.findall(server_text))
 
 
@@ -294,6 +301,20 @@ _SAMPLE_PARTY_ONLY = """
 Party roster 1 published: nameSel 6->6, 2 member(s).
 """
 _SAMPLE_EMPTY = "Entrance listener ready at 0.0.0.0:7001\n"
+# 真机 2026-10-23 的假通过现场：点「交易」时服务端成对发 `TX protocol=16 length=8 payload=0000`，
+# 而这一轮真正的 START_MAP 只有 1 次（单人进本）。旧判据（任何 protocol=16 都数）会得 3 → pass。
+_SAMPLE_TRADE_TX_ONLY = """
+Party roster 1 published: nameSel 0->1, 2 member(s).
+TX 522ae4e1 game-server type=1 protocol=16 length=8 payload=0000
+TX fce11ca1 game-server type=1 protocol=16 length=8 payload=0000
+RX 522ae4e1 type=1 protocol=16 length=16 records=30 crc=AA valid=True
+Dungeon 40 selected maze 0, start (0,3), boss (0,0), start map 5601, monsters=4, partyMode=0
+"""
+# `protocol=161`（反外挂心跳）不能被当成 `protocol=16`。
+_SAMPLE_HEARTBEAT_ONLY = """
+Party roster 1 published: nameSel 0->1, 2 member(s).
+RX 522ae4e1 type=1 protocol=161 length=28 records=80 crc=BB valid=True
+"""
 
 
 def self_check() -> int:
@@ -308,17 +329,23 @@ def self_check() -> int:
     expect("只有一个 16（单人进本）", _SAMPLE_ONE_PLAYER, "fail")
     expect("成队没进本", _SAMPLE_PARTY_ONLY, "fail")
     expect("什么都没有", _SAMPLE_EMPTY, "missing-evidence")
+    expect("TX protocol=16（交易回执）不算 START_MAP", _SAMPLE_TRADE_TX_ONLY, "needs-human")
+    expect("protocol=161 心跳不算 START_MAP", _SAMPLE_HEARTBEAT_ONLY, "fail")
 
     if max_party_members(_SAMPLE_PASS) != 2:
         failures.append("名册成员数解析错")
     if start_map_count(_SAMPLE_PASS) != 2:
         failures.append("protocol=16 计数错")
+    if start_map_count(_SAMPLE_TRADE_TX_ONLY) != 1:
+        failures.append(f"TX protocol=16 被误计为 START_MAP（得 {start_map_count(_SAMPLE_TRADE_TX_ONLY)}，应为 1）")
+    if start_map_count(_SAMPLE_HEARTBEAT_ONLY) != 0:
+        failures.append("protocol=161 被误计为 START_MAP")
 
     for line in failures:
         print("SELF-CHECK FAIL: " + line)
     if failures:
         return 1
-    print("party_dungeon self-check: 4 verdicts + 2 parsers passed")
+    print("party_dungeon self-check: 6 verdicts + 4 parsers passed")
     return 0
 
 

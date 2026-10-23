@@ -2139,4 +2139,51 @@ HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 la
   `$env:MSBUILDDISABLENODEREUSE='1'`；受限时构建用 `--artifacts-path .tmp\artifacts`，
   冒烟测试的 `$env:TEMP` 要指到工作区内（否则 `AdminAuthSmokeTests` 在 `CreateDirectory` 上红）。
 
+**双人进本 2026-10-23 夜：`Party roster … 2 member(s)` 首次达成；② 卡在 relay（新缺陷）**
+
+**已达成（两轮，均可指认日志）**：`Party roster … 2 member(s)` **第一次真的出现了**（此前 STATUS §14 收口里写的
+"从未出现"作废）。
+- 第 1 次：`21:39:32 Party roster 2 published … 2 member(s)` + `召唤师 accepted … party 2 now has 2 member(s) (created)`
+  （邀请 21:39:31，A 点【是】+2.3 s；画面侧 A/B 双方左上出现「组队中」与对方血条）。
+- 第 2 次：`21:48:56 Party roster 1 published … 2 member(s)`（这次是 **A 邀请 B**，队长 = A）——
+  为绕开下面的 relay 缺陷，改成**两人先各自走到斯顿雪域副本门口区 5/2、再在门口区成队**。
+- 可复放路线（每步用 `creature+0x24C/+0x250` 读坐标闭环，`work/party-dungeon-run/check_progress.py` 判日志）：
+  5/1 → `DOWN 800` → 5/0 → `LEFT 6000` → `UP 500`（进 y 354..444 走廊）→ `LEFT 1400` → **5/2**(落点 ~(789,417))
+  → `LEFT` 若干到 x≈200。
+- 门坐标（`.map` 权威值，`work/scout/stormpass.map.txt` 与 `type1-doors.txt`）：
+  5/0 的门矩形 `31 353 19 92 → 5/2`、`31 801 20 112 → 5/3`、`1224 472 95 19 → 5/1`；5/2/5/3 的进图门 `14 354 19 125 dest=-1`。
+
+**② 双人进本未达成，拦路石是 gameplay relay（新发现的真缺陷，不是操作问题）**
+- `GameplayDatagramService.ObserveEndpoint`（`:509-530`）把 UDP 端点记在 **IP 级**
+  （`_observedByAddress[AddressKey(remote.Address)]`），并把**同一 IP 的所有会话**都设成同一个端点；
+  而 NAT 探测/keepalive 包只有 **1 字节**（`GameDatagramProtocol.cs:40` `NatProbeLength=1`，值 0/1/5），
+  **不含任何会话身份** ⇒ 两个客户端**同机不同端口**时端点反复互相覆盖。
+- 症状（两轮都在，业主 20:01 那轮 78 行、本轮 86 行）：`failed CRC or cipher validation` +
+  `(session unknown)` + `to 0/0 peer endpoint(s)` 交替出现 ⇒ 客户端玩法通道看门狗约 **33 s** 后弹
+  「与服务器的连接失败，请解除防火墙或改善您的网络环境」，并**自己发 `CMD 13` 退出队伍**
+  （`21:40:05 RX 86173fc6 … protocol=13 body=3A00` → `Character 9bbab2be… left party 2; 1 member(s) remain.`）。
+- 后果：队伍活不过 ~33 s；队长走到门口区要 >60 s ⇒ 组队进本的编排（`DungeonPartySelectionPush` 见
+  `the gathering party has no other member (slots=1)`）永远看到 1 人队；本轮真 START_MAP 只有 1 次且是
+  **单人本**（`Dungeon 40 … partyMode=0, start map 5601`）。
+- **可能的修法**（下一波，未实现）：官方架构里 relay 是 8101-8300 一段端口 —— 即"**每会话一个中继端口**"，
+  按**目的端口**归属会话即可精确映射；或利用已有按会话的解密/校验（`failed CRC or cipher validation` 说明
+  服务端有每会话密钥）按"能解出谁的包"来归属端点。二者都不需要客户端配合。
+
+**判据修正（工具假通过，已修 + 加红线自检）**：`tools/acceptance/party_dungeon.py` 的
+`start_map_count` 原来用 `protocol=16\b`，会把 ①`protocol=161`（心跳，同轮 80+ 条）与
+②服务端成对发出的 `TX protocol=16 length=8 payload=0000`（**点「交易」/取消选图**的回执）都数成 START_MAP
+——本轮实测：两次误点「交易」后判据给出 `two_player_dungeon=True` 的**假通过**。现在只认
+`RX … protocol=16 length=16`（正则 `\bRX\b…protocol=16(?!\d)…length=16`），自检从 4 向量 + 2 parser
+扩到 **6 向量 + 4 parser**（新增 TX 回执、心跳两条红线）。
+
+**其它现场记录（都标了未验证）**
+- 玩家菜单第一项的位置**必须按当帧截图量**：同一晚 5/0 里是 `(330,302)` 区域、5/2 里是 `(272,302)`，
+  而 `(258,331)` 会点到第二项「交易」（本轮踩了两次，`Trade … requested` 两行）。
+- `state=2(MAP-SELECT)` 的触发：B 在 x=32 时翻到 2，而 A 走进同一矩形到 (22,372) 后 `state` 一直是 1
+  —— 差异**未查明**（`[未验证]`；可能是玩家菜单/交易窗残留挡住了门触发）。
+- 本轮所有客户端/服务端都是 Lead 起停：服务端 pid 10680（relay 开，`measure-invite-window\server-fixed-live.log`），
+  客户端 40512(test/召唤师)、55448(shizuku/mageco) 在 5/2。旧 dll 备份仍在
+  `DF\town-test\DFLegacy.Server.dll.pre-invitefix-20261023`。
+
+
 
