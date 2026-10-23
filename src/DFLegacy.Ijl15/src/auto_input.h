@@ -112,4 +112,11 @@ namespace dfl::auto_input
     // getting this wrong writes the arrows to 0x48/0x4B/0x4D/0x50 where the
     // game never looks.
     unsigned char MapVkToDik(unsigned vk) noexcept;
+
+    // Fills a 256-byte DirectInput keyboard buffer exactly the way the
+    // synthetic keyboard device's GetDeviceState does: the physical keyboard
+    // (GetAsyncKeyState) merged with the keys this module is synthesizing.
+    // The device calls the same code path; the tests call it directly so the
+    // plan -> synth table -> state buffer wiring is covered without a game.
+    void BuildKeyboardState(unsigned char* keys) noexcept;
 }

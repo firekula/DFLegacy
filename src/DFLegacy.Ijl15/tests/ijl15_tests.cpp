@@ -637,6 +637,50 @@ bool TestKeyboardDikTranslation()
     }
     return true;
 }
+
+bool TestSyntheticKeyboardStateMerge()
+{
+    // The synthetic device's GetDeviceState (auto_input.cpp) is what the game
+    // reads every frame; its wiring -- plan edge -> synth table -> DIK slot in
+    // the 256-byte buffer -- is what actually moved the character on
+    // 2026-10-23, and it had no automated coverage until here.
+    //
+    // VK_F13 is used as the probe key because no physical keyboard held during
+    // a test run carries it: the merge also ORs in the real keyboard state, so
+    // a common key would make the "released" assertion depend on the machine.
+    using namespace dfl::auto_input;
+
+    constexpr unsigned kProbeVk = 0x7C;  // VK_F13
+    Step steps[1] = {};
+    steps[0].t = 0;
+    steps[0].op = kKey;
+    steps[0].vk = kProbeVk;
+    steps[0].dur = 100;
+    if (!ArmPlan(steps, 1, 1, 0))
+    {
+        return false;
+    }
+
+    const unsigned char dik = MapVkToDik(kProbeVk);
+    unsigned char keys[256] = {};
+
+    // The down edge is due at t=0: the buffer must carry that DIK slot.
+    Advance(10);
+    BuildKeyboardState(keys);
+    if ((keys[dik] & 0x80) == 0)
+    {
+        return false;
+    }
+
+    // Past t+dur the up edge fires and the buffer must be clean again.
+    Advance(200);
+    for (int i = 0; i < 256; ++i)
+    {
+        keys[i] = 0;
+    }
+    BuildKeyboardState(keys);
+    return (keys[dik] & 0x80) == 0;
+}
 }
 
 int main()
@@ -697,6 +741,10 @@ int main()
     if (!TestKeyboardDikTranslation())
     {
         return Fail("keyboard DIK translation lost the extended-key bit");
+    }
+    if (!TestSyntheticKeyboardStateMerge())
+    {
+        return Fail("synthetic keyboard state did not follow the plan edges");
     }
 
     IjlApi api{};

@@ -2191,4 +2191,13 @@ namespace dfl::auto_input
         // DIK rule is pinned by tests instead of by "the character moved".
         return DikFromVk(vk);
     }
+
+    void BuildKeyboardState(unsigned char* keys) noexcept
+    {
+        if (keys == nullptr)
+        {
+            return;
+        }
+        MergeKeyboardState(keys);
+    }
 }
