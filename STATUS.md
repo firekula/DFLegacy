@@ -1827,3 +1827,32 @@ protocol.s1 verify 5/5 / MSBuild 原生）。
 **边界**（如实）：[语义]"人工确认同屏"按设计留 needs-human（机器证据 = 进城帧 + 城镇截图 +
 HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 launcher 免掉，spec §6.5）；
 帧泵锚依赖键盘轮询活跃（spec §6.1 同款升级风险）。
+
+## 13. 2026-10-23 真机：S2 Task 11 Tier 2/Tier 3 验收与收尾 **完成**
+
+**结论**：S2 计划 Task 11（Tier 2/Tier 3 验收与收尾）全部完成。
+- **Tier 2 PASS**（D5-RAW-COMPARE 收口）：单体 vs 拆分两档同一构建、同一测试客户端，
+  服务端解密明文帧序列 **42 帧逐字节一致**（唯一例外 = protocol 1 频道列表的帧内时间戳
+  4 字节，裁定允许；结构级协议集 = 161 会话密钥密文 / 131/132 存档态聊天回放；探测会话
+  剔除）。客户端原始帧聚合结构等价。
+- **Tier 3 PASS（两档）**：双客户端**全程无人工 UI** 进城（B′ 合成输入 + 焦点交接），
+  服务端同屏锚两档一致达成：`entered 1/1 (instance 0); instanceMembers=2,
+  foreignAppearances=1`（同实例 + 外来外观投递）。verdict 两档 green-with-human、
+  fail 0。[语义]"人工确认同屏"按场景设计留 needs-human。
+- **本波真机修复（3 处，均有提交）**：
+  1. `ServerOptions.PrivateAreas` 默认改空数组（**ConfigurationBinder 对数组是追加非
+     替换**——非空默认使配置永远无法清空私密列表，bindtest 复现 `[1:1, 99:99]`）；
+     冒烟夹具显式声明 1:1。提交 a183f88（初审提交曾误带他人未提交端序 hunk，已拆解重做）。
+  2. 帧泵焦点门：失焦客户端不消费共享计划文件、不发沿（游戏只在焦点下轮询键盘）；
+     配套驱动端**真实点击聚焦**（DNF 的 DirectInput 只在收到真实输入事件后才恢复轮询，
+     纯 SetForegroundWindow 无效——实测确认）。提交 506749f。
+  3. 双客户端共享 exe 目录的 `.done` 改名良性竞态（源被先完成者取走 = 视为干净）。
+- **回归**：MSBuild 原生门零警告零错误 / smoke-tests 干净 worktree 复跑全过 / protocol.s1 5/5 /
+  pytest 126 passed。`dotnet build` 的 slnx 有 4 个预存环境错误（C++ targets 缺失 ×3 +
+  launcher post-build ×1，非本波引入，记录在 runbook §4.2）。
+- **证据与手册**：`docs/superpowers/plans/2026-10-19-s2-tier2-tier3-runbook.md`
+  （口径/步骤/判据/坑位）；runs 四份：单体/拆分握手对比 2 份 + 单体/拆分双客户端 2 份；
+  工具链在 `.superpowers/sdd/2026-10-19-s2-multiprocess-split-first-slice/work/`。
+- **遗留（如实）**：拆分档 channel 链路在 run 尾段偶发 down（不影响验收结论，观察项）；
+  走路键注入未带动角色（共享出生房夹具绕开，走路正确性留给需要它的场景）；
+  双客户端焦点切换依赖驱动端点击聚焦（Windows 焦点限制 + DNF 输入恢复语义的联合约束）。
