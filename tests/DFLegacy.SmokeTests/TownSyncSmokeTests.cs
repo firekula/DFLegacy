@@ -34,8 +34,9 @@ internal static class TownSyncSmokeTests
             "the default departure signal is the USER_AREA region-mismatch destroy signal");
         check(defaults.TownSync.MaxPositionForwardsPerSecond == 10,
             "position forwarding is capped per member and second");
-        check(defaults.TownSync.PrivateAreas.Length == 1 && defaults.TownSync.PrivateAreas[0] == "1:1",
-            "the default private-area list is exactly 1:1 (Seria's room)");
+        check(defaults.TownSync.PrivateAreas.Length == 0,
+            "the default private-area list is empty; Seria's room privacy is declared by server.json "
+            + "(explicit config, because ConfigurationBinder appends arrays to non-empty defaults)");
         check(defaults.TownSync.SendAreaPeerTable,
             "the area UDP peer table is sent on membership changes by default");
         check(!defaults.Debug.TownGhost.Enabled
@@ -73,6 +74,10 @@ internal static class TownSyncSmokeTests
     private static async Task CheckPrivateAreasAsync(Action<bool, string> check)
     {
         var options = new ServerOptions();
+        // Seria's room privacy is declared by server.json, not by the code
+        // default (ConfigurationBinder appends arrays to non-empty defaults,
+        // which would make an explicit empty list impossible).
+        options.TownSync.PrivateAreas = ["1:1"];
         var directory = new TownSessionDirectory(
             options,
             TimeProvider.System,
