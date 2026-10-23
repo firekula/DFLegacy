@@ -1979,3 +1979,20 @@ HUD/FPS overlay 可见）；`text` 步骤真机未单独验证（登录已被 la
      站 y=330 顶多久都不过场，`UP 0.3s` 进矩形立刻过场（上一轮"卡住"的真因）。
 - **下一步（已派同一探路员续做）**：按它自己给的线索查 `.map` 里 `type 1`（真进图门）在哪几张图、
   以及从当前城镇集合是否存在 door 链；可达就真机走进 type 1 门，判定用 `START_MAP/LeaveTownArea` 日志行。
+
+**副本内战斗键：**真机 PASS**（2026-10-23，`work/scout/scout-report3.md` + `work/combat-run2/combat-gate.json`）**
+- 进本链路：`protocol=16`（START_MAP）日志原文 `15:44:41 RX … type=1 protocol=16 length=16 records=30 crc=ED984599`；
+  同秒 `Dungeon 40 … start map 5601, monsters=4`（「山脊」，疲劳 1→2）；内存 `state=3(DUNGEON)`。
+  进本门是 `[dungeon gate]` 区的 **`dest=-1` 门**（不是 `type 1`）；站位必须进**门矩形**
+  （`D_StormPass2` 为 `x 14..33, y 354..479`），差几像素就不触发 —— 上一轮"卡住"的真因。
+- **combat-gate 判定 `result=pass`**：`control_pct=2.39`；**X** `action_pct=6.81` + **1 类**待机窗口没有的上行帧；
+  **Z** `action_pct=9.11` + **1 类**新上行帧；**C**（跳跃，对照）`64.44` 像素差但 0 新帧、按设计不参与判定。
+- **边界（如实）**：三项 `server_events=0` —— 本服日志没有"怪物扣血/伤害数值"这类事件行，
+  所以"伤害真的结算了"仍是 `[未验证]`；已验证的是**副本内按 X/Z 会产生待机窗口没有的上行帧 +
+  画面显著变化**，且城镇里做不到（城镇同样按键只有 3.0%/3.1%，与对照 2.5% 同量级）。
+- ⚠️ **本波修掉一个真机缺陷（`59fa2e9`）**：`combat_gate._ps()` 原先把命令行拼成
+  `powershell -Command <script> -- <args>`，PS 5.1 把 `--` 吃进脚本 ⇒ `dnf_pid()` 恒返 0、
+  截图失败，按 RUNBOOK 原样跑**必然假阴性**（"没有正在运行的 DNF 客户端"），而 `--self-check`
+  与 14 条单测都发现不了（纯逻辑不碰进程）。修法：有参数走 `-File`（脚本落 temp、带 BOM），
+  无参数用 `-Command`，永不拼 `--`；补 3 条回归钉；真机复验 `pid=61556` 非 0、12 张截图、
+  判据给出可解释的 fail。全量 pytest **143 passed**。
