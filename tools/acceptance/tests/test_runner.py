@@ -49,6 +49,16 @@ def _endpoints_for(tmp_path, services):
         _write_server_json(tmp_path / "server.json", {"DFLegacy": services}))
 
 
+@pytest.fixture
+def synthetic_server_ports(monkeypatch):
+    """Python sleeper lifecycle tests do not bind the declared game ports.
+
+    Keep them independent of a running manual game session. Real port
+    preflight remains covered separately by its socket/probe tests.
+    """
+    monkeypatch.setattr("acceptance.runner.preflight_ports", lambda endpoints: None)
+
+
 def test_parse_server_endpoints_skips_comment_keys(tmp_path):
     sj = _write_server_json(tmp_path / "server.json")
     eps = parse_server_endpoints(sj)
@@ -312,6 +322,7 @@ def test_wait_for_listen_survives_a_probe_that_raises():
     assert len(seen) == 2, f"第一次抛错后应继续探测，实际 {len(seen)} 次"
 
 
+@pytest.mark.usefixtures("synthetic_server_ports")
 def test_start_server_rejects_relative_data_path(tmp_path):
     """`DFLegacy__DataPath` 必须是绝对路径，否则**启动前**响亮失败。
 
@@ -332,6 +343,7 @@ def test_start_server_rejects_relative_data_path(tmp_path):
     assert r._procs == [], "校验失败不得启动任何进程"
 
 
+@pytest.mark.usefixtures("synthetic_server_ports")
 def test_wait_until_listening_fails_fast_when_the_real_server_process_exits(tmp_path):
     """真进程装配：服务端秒退必须**立刻**报"退出"，而不是拖满超时报"超时"。
 
@@ -354,7 +366,8 @@ def test_wait_until_listening_fails_fast_when_the_real_server_process_exits(tmp_
                        server_args=["-c", "import sys; sys.exit(3)"])
         t0 = time.monotonic()
         with pytest.raises(ServerStartupError) as ei:
-            r.wait_until_listening(rp, _scenario(), server_json=sj, timeout_s=60.0)
+            r.wait_until_listening(rp, _scenario(), server_json=sj, timeout_s=60.0,
+                                   probe=lambda host, port, protocol: False)
         elapsed = time.monotonic() - t0
         message = str(ei.value)
         assert "退出" in message, f"应报'进程提前退出'，实际：{message}"
@@ -437,6 +450,7 @@ _FAKE_SLEEP = [sys.executable, "-c", "import time; time.sleep(3600)"]
 _FAKE_SERVER_ARGS = ["-c", "import time; time.sleep(3600)"]
 
 
+@pytest.mark.usefixtures("synthetic_server_ports")
 def test_start_server_passes_env_and_writes_log(tmp_path):
     """start_server 的 env 传给子进程环境变量，log_path 接收 stdout/stderr。"""
     r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
@@ -470,6 +484,7 @@ def test_start_server_passes_env_and_writes_log(tmp_path):
         r.stop_all()
 
 
+@pytest.mark.usefixtures("synthetic_server_ports")
 def test_start_server_default_params_keep_existing_behavior(tmp_path):
     """env=None, log_path=None 时行为与改动前完全一致（stdout=DEVNULL）。"""
     r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")
@@ -553,6 +568,7 @@ def test_start_actors_error_on_missing_actor_in_commands(tmp_path):
     assert len(r._procs) == 0, "校验失败不应启动任何进程"
 
 
+@pytest.mark.usefixtures("synthetic_server_ports")
 def test_stop_all_reverse_order_and_log_cleanup(tmp_path):
     """stop_all 逆序终止（先 actor 后 server）并关闭 log 句柄。"""
     r = Runner(workspace=tmp_path, acceptance_dir=tmp_path / "acc", runs_dir=tmp_path / "runs")

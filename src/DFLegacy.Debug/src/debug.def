@@ -1,0 +1,5 @@
+LIBRARY "debug"
+EXPORTS
+    DebugInitialize=_DebugInitialize@8
+    DebugRender=_DebugRender@4
+    DebugShutdown=_DebugShutdown@0

@@ -39,6 +39,11 @@ internal static class DungeonPartySmokeTests
         CheckSettlementReturnTimeout(check, fixture);
         CheckSettlementReturnPullsWholeParty(check, fixture);
         await CheckSettlementCountdownAsync(check, fixture);
+        CheckPartyDeathCountdown(check, fixture);
+        CheckPartyRevivalArbitration(check, fixture);
+        CheckPartyEntryAdmissionAfterWipe(check, fixture);
+        await CheckPartyDeathBroadcastAndReturnsAsync(check, fixture);
+        await EntranceSessionReadWaitSmokeTests.RunAsync(check, fixture);
         CheckSoloLookupNeverReusesPartyBinding(check, fixture);
         CheckStoppedInstanceCannotBeJoined(check, fixture);
         await CheckGatheringValidationAsync(check, fixture);
@@ -49,8 +54,352 @@ internal static class DungeonPartySmokeTests
         await CheckClearRewardAndFinishLoadingPartyDispatchAsync(check, fixture);
         CheckGroundItemClaimIsFirstComeFirstServed(check, fixture);
         await CheckMemberDeparturePacketAsync(check, fixture);
+        await DungeonDepartureSmokeTests.RunAsync(check, fixture);
         await CheckGiveUpLeavesPartyAsync(check, fixture);
         await CheckCrossSessionDeliverySurvivesCanceledMembersAsync(check, fixture);
+    }
+
+    /// <summary>
+    /// 回归真机 2026-10-23：队员先死不应独自回城；官服 die_user 只在全灭后
+    /// send_dungeon_fail_msg（10 秒），party_dungeon_fail 到点再次检查全灭。
+    /// </summary>
+    private static void CheckPartyDeathCountdown(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var now = new DateTimeOffset(2026, 10, 23, 14, 0, 0, TimeSpan.Zero);
+        var leader = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        var instance = fixture.CreatePartyInstance(1700);
+        instance.AddMember(fixture.Member(leader, 0, "队长"));
+        instance.AddMember(fixture.Member(member, 1, "队员"));
+
+        check(instance.TrySetPartyMemberAlive(member, false, now)
+                && instance.PartyWipeDeadline is null
+                && instance.TakeExpiredPartyWipeReturns(now.AddMinutes(1)).Length == 0,
+            "a dead member stays in the dungeon while a teammate lives, even beyond the old ten-second timeout");
+        check(!instance.TrySetPartyMemberAlive(Guid.NewGuid(), false, now)
+                && instance.PartyWipeDeadline is null,
+            "an unknown character cannot change the instance's party death state");
+
+        var lastDeath = now.AddMinutes(1);
+        check(instance.TrySetPartyMemberAlive(leader, false, lastDeath)
+                && instance.PartyWipeDeadline == lastDeath.AddSeconds(10)
+                && instance.TakeExpiredPartyWipeReturns(lastDeath.AddSeconds(9)).Length == 0,
+            "the party wipe countdown begins at the LAST death and waits ten full seconds");
+        instance.TrySetPartyMemberAlive(leader, false, lastDeath.AddSeconds(2));
+        check(instance.PartyWipeDeadline == lastDeath.AddSeconds(10),
+            "a duplicate death report does not extend the wipe countdown");
+        instance.TrySetPartyMemberAlive(member, true, lastDeath.AddSeconds(9));
+        check(instance.PartyWipeDeadline is null
+                && instance.TakeExpiredPartyWipeReturns(lastDeath.AddSeconds(10)).Length == 0,
+            "reviving before expiry cancels the whole party's return");
+
+        var secondDeath = lastDeath.AddSeconds(20);
+        instance.TrySetPartyMemberAlive(member, false, secondDeath);
+        var expired = instance.TakeExpiredPartyWipeReturns(secondDeath.AddSeconds(10));
+        check(expired.Length == 2 && expired.Contains(leader) && expired.Contains(member)
+                && instance.ShouldReturnForPartyWipe(leader, secondDeath.AddSeconds(10))
+                && instance.ShouldReturnForPartyWipe(member, secondDeath.AddSeconds(10))
+                && instance.TakeExpiredPartyWipeReturns(secondDeath.AddSeconds(11)).Length == 0,
+            "a wipe returns every member exactly once when its shared deadline expires");
+        instance.TrySetPartyMemberAlive(leader, true, secondDeath.AddSeconds(11));
+        check(!instance.ShouldReturnForPartyWipe(leader, secondDeath.AddSeconds(11))
+                && !instance.ShouldReturnForPartyWipe(member, secondDeath.AddSeconds(11)),
+            "reviving after the sweep invalidates already queued return mail for BOTH members");
+
+        // 最后一个活人离开后只剩死者，应开始新的失败倒计时；已有全灭成员依次回城不重开。
+        var departure = secondDeath.AddSeconds(30);
+        instance.RemoveMember(leader, departure);
+        check(instance.PartyWipeDeadline == departure.AddSeconds(10)
+                && instance.TakeExpiredPartyWipeReturns(departure.AddSeconds(9)).Length == 0,
+            "the last living teammate leaving starts the remaining dead member's ten-second wipe countdown");
+        var remaining = instance.TakeExpiredPartyWipeReturns(departure.AddSeconds(10));
+        check(remaining.Length == 1 && remaining[0] == member,
+            "a departed teammate is excluded from the party wipe return");
+        instance.RemoveMember(member, departure.AddSeconds(10));
+        check(instance.PartyWipeDeadline is null
+                && !instance.ShouldReturnForPartyWipe(member, departure.AddSeconds(20)),
+            "the last member leaving cancels all wipe state");
+
+        var sequential = fixture.CreatePartyInstance(1701);
+        sequential.AddMember(fixture.Member(leader, 0, "队长"));
+        sequential.AddMember(fixture.Member(member, 1, "队员"));
+        sequential.TrySetPartyMemberAlive(leader, false, now);
+        sequential.TrySetPartyMemberAlive(member, false, now);
+        sequential.TakeExpiredPartyWipeReturns(now.AddSeconds(10));
+        sequential.RemoveMember(leader, now.AddSeconds(10));
+        check(sequential.PartyWipeDeadline == now.AddSeconds(10)
+                && sequential.ShouldReturnForPartyWipe(member, now.AddSeconds(10)),
+            "the first dead member returning does not restart the survivor's already expired wipe deadline");
+        sequential.AddMember(fixture.Member(leader, 0, "返回的队长"));
+        check(sequential.PartyWipeDeadline is null
+                && !sequential.ShouldReturnForPartyWipe(member, now.AddSeconds(11)),
+            "an alive member joining invalidates an earlier wipe return instead of inheriting a stale death flag");
+
+        var reset = fixture.CreatePartyInstance(1702);
+        reset.AddMember(fixture.Member(leader, 0, "队长"));
+        reset.AddMember(fixture.Member(member, 1, "队员"));
+        check(reset.TryStartRun(fixture.Layout, 0, 0, out _), "the party death reset fixture starts");
+        reset.TrySetPartyMemberAlive(leader, false, now);
+        reset.TrySetPartyMemberAlive(member, false, now);
+        reset.TakeExpiredPartyWipeReturns(now.AddSeconds(10));
+        reset.StopRun();
+        check(reset.PartyWipeDeadline is null
+                && !reset.ShouldReturnForPartyWipe(member, now.AddSeconds(20))
+                && reset.TryStartRun(fixture.Layout, 0, 0, out _),
+            "stopping and restarting a run discards an earlier run's queued wipe");
+        reset.TrySetPartyMemberAlive(member, false, now.AddSeconds(21));
+        check(reset.PartyWipeDeadline is null,
+            "all members start the next run alive, so one new death is not a wipe");
+
+        var concurrent = fixture.CreatePartyInstance(1703);
+        concurrent.AddMember(fixture.Member(leader, 0, "队长"));
+        concurrent.AddMember(fixture.Member(member, 1, "队员"));
+        Parallel.Invoke(
+            () => concurrent.TrySetPartyMemberAlive(leader, false, now),
+            () => concurrent.TrySetPartyMemberAlive(member, false, now));
+        var taken = new int[2];
+        Parallel.Invoke(
+            () => taken[0] = concurrent.TakeExpiredPartyWipeReturns(now.AddSeconds(10)).Length,
+            () => taken[1] = concurrent.TakeExpiredPartyWipeReturns(now.AddSeconds(10)).Length);
+        check(taken.Sum() == 2 && taken.Count(count => count == 2) == 1,
+            "simultaneous deaths and timer sweeps still issue one complete party return");
+
+        var solo = fixture.CreateSoloInstance(leader);
+        solo.AddMember(fixture.Member(leader, 0, "单人"));
+        check(!solo.TrySetPartyMemberAlive(leader, false, now)
+                && solo.PartyWipeDeadline is null
+                && solo.TakeExpiredPartyWipeReturns(now.AddSeconds(20)).Length == 0,
+            "solo instances never use the party wipe state machine (their existing session timer remains in charge)");
+    }
+
+    private static void CheckPartyRevivalArbitration(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var now = new DateTimeOffset(2026, 10, 23, 14, 0, 0, TimeSpan.Zero);
+        var leader = Guid.NewGuid();
+        var member = Guid.NewGuid();
+
+        DungeonInstance WipedParty(ushort partyId)
+        {
+            var result = fixture.CreatePartyInstance(partyId);
+            result.AddMember(fixture.Member(leader, 0, "队长"));
+            result.AddMember(fixture.Member(member, 1, "队员"));
+            check(result.TryStartRun(fixture.Layout, 0, 0, out _), "the revival arbitration fixture starts");
+            result.TrySetPartyMemberAlive(leader, false, now);
+            result.TrySetPartyMemberAlive(member, false, now);
+            result.TakeExpiredPartyWipeReturns(now.AddSeconds(10));
+            return result;
+        }
+
+        // 回城先拿到锁：之后不能花币，也不能用晚到的成功通知重新打开实例。
+        var returning = WipedParty(1710);
+        check(returning.TryBeginPartyWipeReturn(leader, now.AddSeconds(10)),
+            "the first expired return atomically claims the entire party wipe");
+        var coins = 1;
+        if (returning.TryBeginPartyRevival(member, now.AddSeconds(10)))
+        {
+            coins--;
+        }
+        check(coins == 1 && !returning.TrySetPartyMemberAlive(member, true, now.AddSeconds(10))
+                && !returning.CanAcceptJoin
+                && !returning.AddMember(fixture.Member(Guid.NewGuid(), 2, "迟到者")),
+            "once town return starts, late revival is rejected before spending coins and late joins cannot reopen the wipe");
+        returning.RemoveMember(leader, now.AddSeconds(11));
+        check(returning.PartyWipeDeadline == now.AddSeconds(10)
+                && returning.TryBeginPartyWipeReturn(member, now.AddSeconds(11)),
+            "the sealed party's remaining member still returns after the first member leaves, without a new countdown");
+
+        // 复活先拿到锁：异步保存期间全灭回城必须停住，失败后恢复原期限而不是续十秒。
+        var saving = WipedParty(1711);
+        check(saving.TryBeginPartyRevival(member, now.AddSeconds(10))
+                && !saving.TryBeginPartyRevival(member, now.AddSeconds(10))
+                && !saving.TryBeginPartyWipeReturn(leader, now.AddSeconds(11)),
+            "a revival reservation wins over the timer while inventory save awaits and cannot be duplicated");
+        saving.CancelPartyRevival(member, now.AddSeconds(13));
+        check(saving.PartyWipeDeadline == now.AddSeconds(10)
+                && saving.TakeExpiredPartyWipeReturns(now.AddSeconds(13)).Length == 2
+                && saving.TryBeginPartyWipeReturn(leader, now.AddSeconds(13)),
+            "failed coin persistence restores the original expired wipe and requeues mail that was discarded during the save");
+        saving.RemoveMember(leader, now.AddSeconds(13));
+        check(saving.TryBeginPartyWipeReturn(member, now.AddSeconds(13)),
+            "a failed revival cannot split the all-dead party into town and dungeon");
+
+        // 两人都在等待保存，任一成功都让旧全灭作废；都失败则只恢复一次原期限。
+        var bothFail = WipedParty(1712);
+        check(bothFail.TryBeginPartyRevival(leader, now.AddSeconds(10))
+                && bothFail.TryBeginPartyRevival(member, now.AddSeconds(10)),
+            "both dead members can reserve their own revival concurrently");
+        bothFail.CancelPartyRevival(leader, now.AddSeconds(11));
+        check(bothFail.PartyWipeDeadline is null,
+            "one failed save cannot return the party while another revival is still in flight");
+        bothFail.CancelPartyRevival(member, now.AddSeconds(12));
+        check(bothFail.PartyWipeDeadline == now.AddSeconds(10)
+                && bothFail.TakeExpiredPartyWipeReturns(now.AddSeconds(12)).Length == 2,
+            "when both saves fail, their shared original deadline is restored instead of two new timers");
+
+        var oneSucceeds = WipedParty(1713);
+        oneSucceeds.TryBeginPartyRevival(leader, now.AddSeconds(10));
+        oneSucceeds.TryBeginPartyRevival(member, now.AddSeconds(10));
+        check(oneSucceeds.TrySetPartyMemberAlive(leader, true, now.AddSeconds(11)),
+            "successful persistence commits a reserved revival");
+        oneSucceeds.CancelPartyRevival(leader, now.AddSeconds(11));
+        oneSucceeds.CancelPartyRevival(member, now.AddSeconds(12));
+        check(oneSucceeds.PartyWipeDeadline is null
+                && !oneSucceeds.TryBeginPartyWipeReturn(member, now.AddSeconds(12)),
+            "cleanup after committed revival is harmless and another failed save cannot resurrect the old wipe");
+        oneSucceeds.TrySetPartyMemberAlive(leader, false, now.AddSeconds(13));
+        check(oneSucceeds.PartyWipeDeadline == now.AddSeconds(23),
+            "a genuinely new wipe after successful revival gets its own full ten seconds");
+
+        var concurrent = WipedParty(1714);
+        var revivalWon = false;
+        var returnWon = false;
+        Parallel.Invoke(
+            () => revivalWon = concurrent.TryBeginPartyRevival(member, now.AddSeconds(10)),
+            () => returnWon = concurrent.TryBeginPartyWipeReturn(leader, now.AddSeconds(10)));
+        check(revivalWon != returnWon,
+            "simultaneous coin and town-return requests have exactly one winner under the instance lock");
+
+        var solo = fixture.CreateSoloInstance(leader);
+        solo.AddMember(fixture.Member(leader, 0, "单人"));
+        check(!solo.TryBeginPartyRevival(leader, now)
+                && !solo.TryBeginPartyWipeReturn(leader, now),
+            "party revival arbitration never handles a solo instance");
+    }
+
+    private static void CheckPartyEntryAdmissionAfterWipe(Action<bool, string> check, DungeonFixture fixture)
+    {
+        var now = new DateTimeOffset(2026, 10, 23, 14, 0, 0, TimeSpan.Zero);
+        var leader = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        var late = Guid.NewGuid();
+        DungeonInstance AwaitingWipe(ushort partyId)
+        {
+            var result = fixture.CreatePartyInstance(partyId);
+            result.AddMember(fixture.Member(leader, 0, "队长"));
+            result.AddMember(fixture.Member(member, 1, "队员"));
+            check(result.TryStartRun(fixture.Layout, 0, 0, out _), "the late-entry admission fixture starts");
+            result.TrySetPartyMemberAlive(leader, false, now);
+            result.TrySetPartyMemberAlive(member, false, now);
+            result.TakeExpiredPartyWipeReturns(now.AddSeconds(10));
+            return result;
+        }
+
+        var sealedParty = AwaitingWipe(1715);
+        check(sealedParty.TryStartRunForEntry(fixture.Layout, 0, 0, out _)
+                == DungeonRunEntryDecision.AlreadyActive,
+            "before wipe return begins an active run still directs entry through live-join admission");
+        sealedParty.TryBeginPartyWipeReturn(leader, now.AddSeconds(10));
+        var originalMember = sealedParty.FindMember(member);
+        var version = sealedParty.Version;
+        check(!sealedParty.TryRegisterMemberForEntry(fixture.Member(member, 1, "旧会话替代者"))
+                && ReferenceEquals(sealedParty.FindMember(member), originalMember)
+                && sealedParty.Version == version
+                && sealedParty.ShouldReturnForPartyWipe(member, now.AddSeconds(10)),
+            "sealed entry rejection preserves the original member handle and dead state instead of removing it first");
+        check(!sealedParty.TryJoinRunForEntry(fixture.Member(late, 2, "迟到者"), out _)
+                && !sealedParty.ContainsMember(late)
+                && sealedParty.MemberCount == 2
+                && sealedParty.TryStartRunForEntry(fixture.Layout, 0, 0, out _)
+                    == DungeonRunEntryDecision.StartFailed,
+            "a delayed entry cannot obtain a usable live-join snapshot or bypass the sealed wipe via AlreadyActive");
+        sealedParty.RemoveMember(leader, now.AddSeconds(11));
+        check(!sealedParty.TryJoinRunForEntry(fixture.Member(leader, 0, "返回的队长"), out _)
+                && sealedParty.TryBeginPartyWipeReturn(member, now.AddSeconds(11)),
+            "the first member returning cannot rejoin the old sealed run while a teammate still awaits return");
+
+        var joinWins = AwaitingWipe(1716);
+        check(joinWins.TryJoinRunForEntry(fixture.Member(late, 2, "及时到场者"), out var room)
+                && room.MapId != 0 && joinWins.ContainsMember(late)
+                && !joinWins.TryBeginPartyWipeReturn(leader, now.AddSeconds(10)),
+            "a successfully admitted living member cancels the queued wipe before the caller changes scenes");
+
+        var concurrent = AwaitingWipe(1717);
+        var admitted = false;
+        var returnStarted = false;
+        Parallel.Invoke(
+            () => admitted = concurrent.TryJoinRunForEntry(fixture.Member(late, 2, "并发到场者"), out _),
+            () => returnStarted = concurrent.TryBeginPartyWipeReturn(leader, now.AddSeconds(10)));
+        check(admitted != returnStarted && concurrent.ContainsMember(late) == admitted,
+            "live-entry snapshot plus registration and wipe sealing have exactly one winner under the same instance lock");
+    }
+
+    private static async Task CheckPartyDeathBroadcastAndReturnsAsync(
+        Action<bool, string> check, DungeonFixture fixture)
+    {
+        await using var harness = await PartyHarness.CreateAsync();
+        await harness.InviteAndAcceptAsync("阿尔法", "布拉沃");
+        var leader = harness.IdOf("阿尔法");
+        var member = harness.IdOf("布拉沃");
+        var now = new DateTimeOffset(2026, 10, 23, 14, 0, 0, TimeSpan.Zero);
+        var clock = new ManualTimeProvider(now);
+        var registry = new DungeonInstanceRegistry();
+        using var service = new DungeonPartyService(
+            harness.Service, harness.Directory, registry, clock, NullLogger<DungeonPartyService>.Instance);
+        var instance = fixture.CreatePartyInstance(1704);
+        var leaderInbox = new List<GameServerPacket>();
+        var memberInbox = new List<GameServerPacket>();
+        instance.AddMember(new DungeonInstanceMember(leader, 21, 0, "队长",
+            packet => { leaderInbox.Add(packet); return ValueTask.CompletedTask; }));
+        instance.AddMember(new DungeonInstanceMember(member, 22, 1, "队员",
+            packet => { memberInbox.Add(packet); return ValueTask.CompletedTask; }));
+        registry.BindCharacter(leader, instance);
+        registry.BindCharacter(member, instance);
+        harness.ClearAll();
+
+        check(await service.SetMemberAliveAsync(instance, member, false)
+                && leaderInbox.Count == 1 && memberInbox.Count == 1
+                && leaderInbox[0].ProtocolId == GameProtocolEngine.DieStateNotification
+                && leaderInbox[0].Payload.SequenceEqual(new byte[] { 22, 0, 0 })
+                && memberInbox[0].Payload.SequenceEqual(leaderInbox[0].Payload),
+            "a party member's authoritative death is broadcast to both clients with the actual uid");
+        clock.Advance(TimeSpan.FromMinutes(1));
+        await service.SweepInstanceTimersAsync(CancellationToken.None);
+        check(!registry.HasPendingMail(leader) && !registry.HasPendingMail(member)
+                && instance.ContainsMember(member),
+            "the sweep never sends the first dead member back to town while the leader lives");
+
+        await service.SetMemberAliveAsync(instance, leader, false);
+        clock.Advance(TimeSpan.FromSeconds(9));
+        await service.SweepInstanceTimersAsync(CancellationToken.None);
+        check(!registry.HasPendingMail(leader) && !registry.HasPendingMail(member),
+            "the party wipe sweep does not return anyone early");
+        await service.SetMemberAliveAsync(instance, member, true);
+        check(leaderInbox.Last().Payload.SequenceEqual(new byte[] { 22, 0, 1 })
+                && memberInbox.Last().Payload.SequenceEqual(new byte[] { 22, 0, 1 }),
+            "revival is broadcast to both clients before the caller closes the coin UI");
+        clock.Advance(TimeSpan.FromSeconds(2));
+        await service.SweepInstanceTimersAsync(CancellationToken.None);
+        check(!registry.HasPendingMail(leader) && !registry.HasPendingMail(member),
+            "revival cancels both members' automatic return in the service sweep");
+
+        await service.SetMemberAliveAsync(instance, member, false);
+        instance.ArmSettlementReturn(leader, clock.GetUtcNow().AddSeconds(10));
+        instance.ArmSettlementReturn(member, clock.GetUtcNow().AddSeconds(10));
+        clock.Advance(TimeSpan.FromSeconds(10));
+        await service.SweepInstanceTimersAsync(CancellationToken.None);
+        check(registry.HasPendingMail(leader) && registry.HasPendingMail(member)
+                && registry.TryTakeSettlementReturn(leader, out var leaderReason)
+                && leaderReason == DungeonPartyService.PartyWipeReturnReason
+                && registry.TryTakeSettlementReturn(member, out var memberReason)
+                && memberReason == DungeonPartyService.PartyWipeReturnReason,
+            "all-dead expiry queues one wakeable return for EVERY member; stale settlement deadlines cannot overwrite the wipe reason");
+        await service.SweepInstanceTimersAsync(CancellationToken.None);
+        check(!registry.HasPendingMail(leader) && !registry.HasPendingMail(member),
+            "later sweeps do not reissue consumed party wipe returns");
+        check(harness.Service.GetPartySlots(leader) is { Length: 2 }
+                && harness.Service.GetPartySlots(member) is { Length: 2 }
+                && harness.Of("阿尔法").Count == 0 && harness.Of("布拉沃").Count == 0,
+            "party wipe returns preserve party membership and never issue kick or disconnect notices");
+        await service.SetMemberAliveAsync(instance, leader, true);
+        check(!instance.ShouldReturnForPartyWipe(member, clock.GetUtcNow()),
+            "a revival after return mail is posted prevents another member from consuming a stale return");
+
+        var solo = fixture.CreateSoloInstance(leader);
+        var soloPackets = 0;
+        solo.AddMember(new DungeonInstanceMember(leader, 21, 0, "单人",
+            _ => { soloPackets++; return ValueTask.CompletedTask; }));
+        check(!await service.SetMemberAliveAsync(solo, leader, false) && soloPackets == 0,
+            "the party death service emits no new packet or timer for a solo dungeon");
     }
 
     /// <summary>

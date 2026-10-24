@@ -8,6 +8,7 @@
 #include <cstring>
 
 #include "auto_input.h"
+#include "debug_module.h"
 #include "ijl15_config.h"
 #include "memory_patch.h"
 #include "performance_overlay.h"
@@ -87,12 +88,11 @@ namespace
     int __fastcall DrawFpsAndMemory(void* performanceObject, void*) noexcept
     {
         if (dfl::auto_input::IsEnabled()) { dfl::auto_input::Pump(); }
-        if (!dfl::ijl15_config::Get().EnablePerformanceOverlay) { return 0; }
 
         // The original call site checks [this + 0x2F0] before entering
         // sub_836990. The outer gate is bypassed so IJL15 always runs, but
         // the native renderer is still selected by its original flag here.
-        if (performanceObject != nullptr
+        if (dfl::ijl15_config::Get().EnablePerformanceOverlay && performanceObject != nullptr
             && *reinterpret_cast<const std::uint8_t*>(
                 reinterpret_cast<const std::uint8_t*>(performanceObject)
                 + NativeMonitoringFlagOffset) == 1)
@@ -132,6 +132,10 @@ namespace
         state.mode = 1;
         state.font = *reinterpret_cast<const std::uint32_t*>(0x00B5B384);
         beginText(renderer, &state);
+        // Share the original frame's initialized text state with the plugin.
+        // Do not begin/reset a native text batch separately for every line.
+        dfl::debug_module::Render();
+        if (!dfl::ijl15_config::Get().EnablePerformanceOverlay) return 0;
 
         char fpsText[64]{};
         _snprintf_s(
@@ -194,6 +198,17 @@ namespace
 
 namespace dfl::performance_overlay
 {
+    void DrawOverlayText(int x, int y, std::uint32_t color, const char* text) noexcept
+    {
+        void* renderer = *reinterpret_cast<void**>(0x00BF1648);
+        if (renderer == nullptr || text == nullptr) return;
+        auto** table = *reinterpret_cast<void***>(renderer);
+        if (table == nullptr) return;
+        const auto draw = reinterpret_cast<DrawTextFunction>(table[0x54 / sizeof(void*)]);
+        if (draw == nullptr) return;
+        draw(renderer, x, y, static_cast<int>(color), const_cast<char*>(text));
+    }
+
     bool InstallCallHook() noexcept
     {
         std::uintptr_t currentDestination = 0;

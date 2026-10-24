@@ -1,4 +1,4 @@
-"""组队 + 进本的驱动与判据（B′ 键盘控制，2026-10-23 真机命中后固化）。
+"""组队 + 进本的驱动与判据（B′ 键盘控制，判据按当前服务端协议核对）。
 
 ## 这些坐标是怎么来的（全部真机实测，客户区 640×480）
 | 步骤 | 动作 |
@@ -64,44 +64,111 @@ ACCEPT_YES = (505, 383)          # 对方侧「是否接受组队」应答窗的
 # ----------------------------------------------------------------------------
 # 判据（纯函数，跑在服务端日志文本上）
 # ----------------------------------------------------------------------------
-_ROSTER = re.compile(r"Party roster\b.*?(\d+)\s*member\(s\)")
-# 真 START_MAP 只认**客户端上行**那一帧：`RX … protocol=16 length=16`。
-# 三条排除（2026-10-23 真机踩到，写死在这里）：
-#   ① `protocol=16\b` 会连 `protocol=161`（反外挂心跳，同轮 80+ 条）一起数 —— 必须用 `\b` 之外的
-#      显式边界（`(?!\d)`），且要求 ` length=16`；
-#   ② 服务端成对发出的 `TX … protocol=16 length=8 payload=0000` 是**交易/选图 UI 取消**的回执，
-#      与进本无关（同一轮里每点一次「交易」就出现两条，曾把"单人进本"判成 pass）；
-#   ③ 方向必须是 RX（`RX … type=1`）。
-_START_MAP = re.compile(r"\bRX\b[^\n]*?\bprotocol=16(?!\d)\b[^\n]*?\blength=16\b")
+_ROSTER = re.compile(r"Party roster (?P<party>\d+) published:[^\n]*?(?P<count>\d+)\s*member\(s\)")
+# GameProtocolEngine: CMD 16 = SELECT_DUNGEON, NOTI 29 = START_MAP, CMD 40 = FINISH_LOADING.
+# 队长只发一条 CMD 16；队员由服务端 PostEntryRequests 信箱直接入场，不必再上行 CMD 16。
+# `partyMode` 是 CurrentHellPartyMode（普通副本为 0），不能据此判断是否组队。
+# 严格匹配方向、type、完整 protocol 数字，排除交易回执 16 和反外挂心跳 161。
+_SESSION = r"[0-9a-fA-F-]+"
+_SELECT_DUNGEON = re.compile(
+    rf"\bRX\s+(?P<session>{_SESSION})\s+type=1\s+protocol=16\s+length=16\b")
+_START_MAP = re.compile(
+    rf"\bTX\s+(?P<session>{_SESSION})\s+game-server\s+type=0\s+protocol=29\s+"
+    r"length=\d+\b[^\n]*?\bpayload=(?P<payload>[0-9a-fA-F]+)")
+_FINISH_LOADING = re.compile(
+    rf"\bRX\s+(?P<session>{_SESSION})\s+type=1\s+protocol=40\s+length=\d+\b")
+_INSTANCE_READY = re.compile(
+    r"Dungeon (?P<dungeon>\d+) party instance (?P<party>\d+) ready; "
+    r"entry requests posted to (?P<count>\d+) member\(s\)\.")
+_MEMBER_ENTERED = re.compile(
+    r"Party member [^\n]+? \(uid (?P<uid>\d+), slot (?P<slot>\d+)\) entered dungeon "
+    r"(?P<dungeon>\d+) instance (?P<party>\d+) room "
+    r"\((?P<x>\d+),(?P<y>\d+)\) map (?P<map>\d+)\.")
+_ALL_LOADED = re.compile(
+    r"Dungeon (?P<dungeon>\d+) party instance (?P<party>\d+): "
+    r"all (?P<count>\d+) member\(s\) finished loading;[^\n]*?"
+    r"then NOTI 30 broadcast to the whole party\.")
 
 
 def max_party_members(server_text: str) -> int:
     """服务端广播过名册，取其中最大的成员数。"""
-    return max((int(m.group(1)) for m in _ROSTER.finditer(server_text)), default=0)
+    return max((int(m["count"]) for m in _ROSTER.finditer(server_text)), default=0)
 
 
 def start_map_count(server_text: str) -> int:
-    """真 START_MAP（`RX … protocol=16 length=16`）出现次数：双人进本应为 2。"""
+    """实际下行 START_MAP（TX type=0 protocol=29）的数量；数量本身不构成双人通过。"""
     return len(_START_MAP.findall(server_text))
+
+
+def _completed_party_entry(server_text: str, want_members: int) -> dict:
+    """关联最近一轮选图、共享实例、同房间 START_MAP 和各会话的加载完成，防止跨轮拼证。"""
+    selections = list(_SELECT_DUNGEON.finditer(server_text))
+    if not selections:
+        return {}
+    selection = selections[-1]
+    round_start = selection.start()
+    ready_events = list(_INSTANCE_READY.finditer(server_text, round_start))
+    if not ready_events:
+        return {}
+    ready = ready_events[-1]
+    party, dungeon = ready["party"], ready["dungeon"]
+    if int(ready["count"]) != want_members - 1:
+        return {}
+    for loaded in _ALL_LOADED.finditer(server_text, ready.end()):
+        if (loaded["party"], loaded["dungeon"], int(loaded["count"])) != (
+                party, dungeon, want_members):
+            continue
+        rosters = [m for m in _ROSTER.finditer(server_text, 0, loaded.start()) if m["party"] == party]
+        if not rosters or int(rosters[-1]["count"]) < want_members:
+            continue
+        entries = [m for m in _MEMBER_ENTERED.finditer(server_text, round_start, loaded.start())
+                   if (m["party"], m["dungeon"]) == (party, dungeon)]
+        if len({m["uid"] for m in entries}) < want_members - 1:
+            continue
+        # START_MAP 前九字节 = x/y/随机种子/state/map id；两端必须得到同一房间快照。
+        # 使用每会话本轮最后一条，重复发给同一个人不能凑成两人，换房也不能沿用旧加载证据。
+        starts = {m["session"].lower(): m
+                  for m in _START_MAP.finditer(server_text, round_start, loaded.start())}
+        groups: dict[str, dict] = {}
+        for session, start in starts.items():
+            payload = start["payload"]
+            if len(payload) >= 18 and payload[12:14] != "00":
+                groups.setdefault(payload[:18].upper(), {})[session] = start
+        for snapshot, sessions in groups.items():
+            if len(sessions) != want_members or selection["session"].lower() not in sessions:
+                continue
+            header = bytes.fromhex(snapshot)
+            room = (header[0], header[1], int.from_bytes(header[7:9], "little"))
+            if any((int(m["x"]), int(m["y"]), int(m["map"])) != room for m in entries):
+                continue
+            finished = {m["session"].lower()
+                        for m in _FINISH_LOADING.finditer(server_text, round_start, loaded.start())
+                        if m["session"].lower() in sessions
+                        and m.start() > sessions[m["session"].lower()].start()}
+            if finished == set(sessions):
+                return {"instance_id": int(party), "dungeon_id": int(dungeon),
+                        "start_map_sessions": sorted(sessions), "loaded_sessions": sorted(finished)}
+    return {}
 
 
 def judge(server_text: str, want_members: int = 2) -> dict:
     members = max_party_members(server_text)
     starts = start_map_count(server_text)
     party_ok = members >= want_members
-    dungeon_ok = starts >= 2
+    completed = _completed_party_entry(server_text, want_members)
+    dungeon_ok = bool(completed)
     if party_ok and dungeon_ok:
         result = "pass"
     elif starts > 0 and not party_ok:
         result = "fail"      # 单人进了本 = 组队没生效
-    elif party_ok and starts == 0:
-        result = "fail"      # 成队但没进本
+    elif party_ok:
+        result = "fail"      # 成队但缺少本轮双人共享实例与全员加载证据
     elif members == 0 and starts == 0:
         result = "missing-evidence"
     else:
         result = "needs-human"
     return {"result": result, "max_members": members, "start_map_count": starts,
-            "party_ok": party_ok, "two_player_dungeon": dungeon_ok}
+            "party_ok": party_ok, "two_player_dungeon": dungeon_ok, **completed}
 
 
 # ----------------------------------------------------------------------------
@@ -287,22 +354,33 @@ def run_live(a_pid: int, b_pid: int, server_log: pathlib.Path,
 # ----------------------------------------------------------------------------
 # 自检
 # ----------------------------------------------------------------------------
+# 合成正例，不代表真机已经通过：包格式见 EntranceService.LogPacket，29/40 的实际示例
+# 来自 work/scout/server3.log:144/149；共享实例业务行逐字对应当前 EntranceService。
 _SAMPLE_PASS = """
 Party roster 1 published: nameSel 6->6, 1 member(s).
 Party roster 1 published: nameSel 6->6, 2 member(s).
-RX 6879107d type=1 protocol=16 length=16 records=30 crc=ED984599 valid=True
-RX 7a8b type=1 protocol=16 length=16 records=31 crc=11 valid=True
+RX 6879107d-24d5-4086-adb3-a2a74c7256a7 type=1 protocol=16 length=16 records=30 crc=ED984599 valid=True body=1E0028000000
+TX 6879107d-24d5-4086-adb3-a2a74c7256a7 game-server type=0 protocol=29 length=54 payload=00033FC5B5E901E11504000000F4032D000000010100F4032D000000020200F4032D000000030300F4032D0000000000
+Dungeon 40 party instance 1 ready; entry requests posted to 1 member(s).
+Dungeon 40 selected maze 0, start (0,3), boss (0,0), start map 5601, monsters=4, hellMode=False, partyMode=0, ticket=0.
+TX 9f6f7c0c-8865-4b70-882b-a191a59c5c95 game-server type=0 protocol=29 length=54 payload=00033FC5B5E901E11504000000F4032D000000010100F4032D000000020200F4032D000000030300F4032D0000000000
+Party member mageco (uid 2, slot 1) entered dungeon 40 instance 1 room (0,3) map 5601.
+RX 6879107d-24d5-4086-adb3-a2a74c7256a7 type=1 protocol=40 length=20 records=31 crc=A2D6EACF valid=True body=1F006330343329040533
+Dungeon 40 party instance 1: Summoner finished loading; waiting for the remaining member(s).
+RX 9f6f7c0c-8865-4b70-882b-a191a59c5c95 type=1 protocol=40 length=20 records=32 crc=FCA7C9CB valid=True body=2000000038F85C3409F8
+Dungeon 40 party instance 1: all 2 member(s) finished loading; roster replayed for 1 other member(s), then NOTI 30 broadcast to the whole party.
 """
 _SAMPLE_ONE_PLAYER = """
 Party roster 1 published: nameSel 6->6, 1 member(s).
-RX 6879107d type=1 protocol=16 length=16 records=30 crc=ED984599 valid=True
+RX 6879107d-24d5-4086-adb3-a2a74c7256a7 type=1 protocol=16 length=16 records=30 crc=ED984599 valid=True
+TX 6879107d-24d5-4086-adb3-a2a74c7256a7 game-server type=0 protocol=29 length=54 payload=00033FC5B5E901E11504000000F4032D000000010100F4032D000000020200F4032D000000030300F4032D0000000000
+RX 6879107d-24d5-4086-adb3-a2a74c7256a7 type=1 protocol=40 length=20 records=31 crc=A2D6EACF valid=True body=1F006330343329040533
 """
 _SAMPLE_PARTY_ONLY = """
 Party roster 1 published: nameSel 6->6, 2 member(s).
 """
 _SAMPLE_EMPTY = "Entrance listener ready at 0.0.0.0:7001\n"
-# 真机 2026-10-23 的假通过现场：点「交易」时服务端成对发 `TX protocol=16 length=8 payload=0000`，
-# 而这一轮真正的 START_MAP 只有 1 次（单人进本）。旧判据（任何 protocol=16 都数）会得 3 → pass。
+# 真机 2026-10-23 的假信号：交易回执、SELECT_DUNGEON 和 partyMode 都不能证明双人加载完成。
 _SAMPLE_TRADE_TX_ONLY = """
 Party roster 1 published: nameSel 0->1, 2 member(s).
 TX 522ae4e1 game-server type=1 protocol=16 length=8 payload=0000
@@ -325,19 +403,23 @@ def self_check() -> int:
         if got != want:
             failures.append(f"{name}: 期望 {want} 实得 {got}")
 
-    expect("双人成队+两次 START_MAP", _SAMPLE_PASS, "pass")
-    expect("只有一个 16（单人进本）", _SAMPLE_ONE_PLAYER, "fail")
+    expect("共享实例两会话 START_MAP 与全员加载完成", _SAMPLE_PASS, "pass")
+    expect("单人 START_MAP 与加载完成", _SAMPLE_ONE_PLAYER, "fail")
     expect("成队没进本", _SAMPLE_PARTY_ONLY, "fail")
     expect("什么都没有", _SAMPLE_EMPTY, "missing-evidence")
-    expect("TX protocol=16（交易回执）不算 START_MAP", _SAMPLE_TRADE_TX_ONLY, "needs-human")
+    expect("TX protocol=16（交易回执）不算 START_MAP", _SAMPLE_TRADE_TX_ONLY, "fail")
     expect("protocol=161 心跳不算 START_MAP", _SAMPLE_HEARTBEAT_ONLY, "fail")
+    expect("重复给同会话发 START_MAP 不算双人", _SAMPLE_PASS.replace(
+        "TX 9f6f7c0c-8865-4b70-882b-a191a59c5c95", "TX 6879107d-24d5-4086-adb3-a2a74c7256a7"), "fail")
+    expect("一端加载证据缺失", "\n".join(line for line in _SAMPLE_PASS.splitlines()
+        if not line.startswith("RX 9f6f7c0c-8865-4b70-882b-a191a59c5c95 type=1 protocol=40")), "fail")
 
     if max_party_members(_SAMPLE_PASS) != 2:
         failures.append("名册成员数解析错")
     if start_map_count(_SAMPLE_PASS) != 2:
-        failures.append("protocol=16 计数错")
-    if start_map_count(_SAMPLE_TRADE_TX_ONLY) != 1:
-        failures.append(f"TX protocol=16 被误计为 START_MAP（得 {start_map_count(_SAMPLE_TRADE_TX_ONLY)}，应为 1）")
+        failures.append("TX NOTI 29 计数错")
+    if start_map_count(_SAMPLE_TRADE_TX_ONLY) != 0:
+        failures.append("TX protocol=16 被误计为 START_MAP")
     if start_map_count(_SAMPLE_HEARTBEAT_ONLY) != 0:
         failures.append("protocol=161 被误计为 START_MAP")
 
@@ -345,7 +427,7 @@ def self_check() -> int:
         print("SELF-CHECK FAIL: " + line)
     if failures:
         return 1
-    print("party_dungeon self-check: 6 verdicts + 4 parsers passed")
+    print("party_dungeon self-check: 8 verdicts + 4 parsers passed")
     return 0
 
 

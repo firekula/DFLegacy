@@ -11,6 +11,35 @@
 
 namespace dfl::auto_input
 {
+    bool IsFocusRequestForProcess(
+        const char* text, unsigned size, unsigned long processId) noexcept
+    {
+        if (text == nullptr || size == 0 || size > 32 || processId == 0)
+        {
+            return false;
+        }
+        const auto whitespace = [](char c) noexcept
+        {
+            return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+        };
+        unsigned begin = 0;
+        while (begin < size && whitespace(text[begin])) ++begin;
+        while (size > begin && whitespace(text[size - 1])) --size;
+        if (begin == size || text[begin] == '0')
+        {
+            return false;
+        }
+        unsigned long parsed = 0;
+        for (unsigned i = begin; i < size; ++i)
+        {
+            if (text[i] < '0' || text[i] > '9') return false;
+            const unsigned long digit = static_cast<unsigned long>(text[i] - '0');
+            if (parsed > (0xFFFFFFFFUL - digit) / 10UL) return false;
+            parsed = parsed * 10UL + digit;
+        }
+        return parsed == processId;
+    }
+
     bool IsEnabled() noexcept
     {
         return dfl::ijl15_config::Get().EnableAutoInput;
@@ -124,6 +153,7 @@ namespace dfl::auto_input
         GetAsyncKeyStateFn g_originalGetAsyncKeyState = nullptr;
         bool g_keyboardHooked = false;
         bool g_mouseInjectEnabled = false;
+        UINT_PTR g_focusMailboxTimer = 0;
         // The game's own window, cached from the focus gate: plans only
         // advance while this process owns the foreground window, and the
         // foreground window then IS the game window.
@@ -1112,6 +1142,55 @@ namespace dfl::auto_input
             return reinterpret_cast<void*>(static_cast<std::intptr_t>(hr));
         }
 
+        // Never dereference a suspect game pointer in the exception handler:
+        // the diagnostic itself must not cause the next access violation.
+        bool ReadCrashDword(const char* label, std::uintptr_t address, DWORD& value) noexcept
+        {
+            value = 0;
+            SIZE_T received = 0;
+            const bool readable = address != 0
+                && ReadProcessMemory(
+                    GetCurrentProcess(),
+                    reinterpret_cast<const void*>(address),
+                    &value,
+                    sizeof(value),
+                    &received) != FALSE
+                && received == sizeof(value);
+            char note[120] = {};
+            _snprintf_s(note, sizeof(note), _TRUNCATE,
+                "VEH mem tid=%lu %s addr=0x%08X ok=%u value=0x%08lX",
+                GetCurrentThreadId(), label, static_cast<unsigned>(address),
+                readable ? 1u : 0u, value);
+            DiagLine(note);
+            return readable;
+        }
+
+        void DumpCrashBytes(const char* label, std::uintptr_t address, unsigned length) noexcept
+        {
+            constexpr char digits[] = "0123456789ABCDEF";
+            for (unsigned offset = 0; offset < length && offset <= 0xFFFFFFFFu - address; offset += 16)
+            {
+                unsigned char bytes[16] = {};
+                SIZE_T received = 0;
+                const bool readable = address != 0 && ReadProcessMemory(
+                    GetCurrentProcess(), reinterpret_cast<const void*>(address + offset),
+                    bytes, sizeof(bytes), &received) != FALSE;
+                if (received > sizeof(bytes)) received = sizeof(bytes);
+                char hex[33] = {};
+                for (SIZE_T index = 0; index < received; ++index)
+                {
+                    hex[index * 2] = digits[bytes[index] >> 4];
+                    hex[index * 2 + 1] = digits[bytes[index] & 15];
+                }
+                char note[120] = {};
+                _snprintf_s(note, sizeof(note), _TRUNCATE,
+                    "VEH bytes tid=%lu %s addr=%08X ok=%u n=%u hex=%s",
+                    GetCurrentThreadId(), label, static_cast<unsigned>(address + offset),
+                    readable ? 1u : 0u, static_cast<unsigned>(received), hex);
+                DiagLine(note);
+            }
+        }
+
         // The client died within 300 ms of the first delivered key on the run
         // above and left no WER record behind, so an unhandled exception has to
         // name itself: the module-relative fault address is what tells a null
@@ -1127,6 +1206,15 @@ namespace dfl::auto_input
             // a crash: logging it buried the fatal records.
             if (code >= 0xC0000000u && code != 0xE06D7363u)
             {
+                // A logging failure must not recursively enter diagnostics. Preserve
+                // LastError and leave both the exception and its CONTEXT untouched.
+                static thread_local bool capturing = false;
+                if (capturing)
+                {
+                    return EXCEPTION_CONTINUE_SEARCH;
+                }
+                capturing = true;
+                const DWORD savedError = GetLastError();
                 const std::uintptr_t where =
                     info != nullptr && info->ExceptionRecord != nullptr
                     ? reinterpret_cast<std::uintptr_t>(
@@ -1142,6 +1230,142 @@ namespace dfl::auto_input
                     static_cast<unsigned>(where),
                     static_cast<unsigned>(where >= 0x400000u ? where - 0x400000u : 0u));
                 DiagLine(note);
+
+                const auto* const record = info->ExceptionRecord;
+                _snprintf_s(note, sizeof(note), _TRUNCATE,
+                    "VEH record tid=%lu flags=0x%08lX params=%lu",
+                    GetCurrentThreadId(), record->ExceptionFlags, record->NumberParameters);
+                DiagLine(note);
+                for (DWORD index = 0;
+                     index < record->NumberParameters && index < EXCEPTION_MAXIMUM_PARAMETERS;
+                     ++index)
+                {
+                    _snprintf_s(note, sizeof(note), _TRUNCATE,
+                        "VEH info tid=%lu index=%lu value=0x%08X",
+                        GetCurrentThreadId(), index,
+                        static_cast<unsigned>(record->ExceptionInformation[index]));
+                    DiagLine(note);
+                }
+
+#if defined(_M_IX86)
+                if (const auto* const context = info->ContextRecord)
+                {
+                    _snprintf_s(note, sizeof(note), _TRUNCATE,
+                        "VEH regs tid=%lu eip=%08lX esp=%08lX ebp=%08lX eflags=%08lX",
+                        GetCurrentThreadId(), context->Eip, context->Esp,
+                        context->Ebp, context->EFlags);
+                    DiagLine(note);
+                    _snprintf_s(note, sizeof(note), _TRUNCATE,
+                        "VEH regs tid=%lu eax=%08lX ebx=%08lX ecx=%08lX edx=%08lX",
+                        GetCurrentThreadId(), context->Eax, context->Ebx,
+                        context->Ecx, context->Edx);
+                    DiagLine(note);
+                    _snprintf_s(note, sizeof(note), _TRUNCATE,
+                        "VEH regs tid=%lu esi=%08lX edi=%08lX contextFlags=%08lX",
+                        GetCurrentThreadId(), context->Esi, context->Edi, context->ContextFlags);
+                    DiagLine(note);
+
+                    DWORD scratch = 0;
+                    DWORD objectSignature = 0;
+                    DWORD objectIndex = 0;
+                    const bool haveSignature = ReadCrashDword(
+                        "ESI.signature", context->Esi, objectSignature);
+                    const bool haveObjectIndex = ReadCrashDword(
+                        "ESI.index", static_cast<std::uintptr_t>(context->Esi) + 4, objectIndex);
+                    ReadCrashDword("ESI+8", static_cast<std::uintptr_t>(context->Esi) + 8, scratch);
+                    ReadCrashDword("ESI+12", static_cast<std::uintptr_t>(context->Esi) + 12, scratch);
+                    ReadCrashDword("EDX.target", context->Edx, scratch);
+
+                    DWORD manager = 0;
+                    DWORD secureKey = 0;
+                    const bool haveKey = ReadCrashDword("secure.key", 0xCFD45Cu, secureKey);
+                    if (haveSignature && haveKey)
+                    {
+                        _snprintf_s(note, sizeof(note), _TRUNCATE,
+                            "VEH derived tid=%lu cookieIndex=%08lX sweepSlot=%08lX",
+                            GetCurrentThreadId(), (objectSignature ^ secureKey) - context->Esi, context->Ebx);
+                        DiagLine(note);
+                    }
+                    if (ReadCrashDword("secure.manager", 0xCFD458u, manager) && manager != 0)
+                    {
+                        DWORD committed = 0;
+                        ReadCrashDword("secure.reserved", manager, scratch);
+                        const bool haveCommitted = ReadCrashDword(
+                            "secure.committed", static_cast<std::uintptr_t>(manager) + 4, committed);
+                        ReadCrashDword("secure.liveCount", static_cast<std::uintptr_t>(manager) + 8, scratch);
+                        ReadCrashDword("secure.cursorXor", static_cast<std::uintptr_t>(manager) + 0x10, scratch);
+                        ReadCrashDword("secure.cursorKey", 0xB55578u, scratch);
+                        if (haveCommitted && haveObjectIndex && objectIndex >= committed)
+                        {
+                            _snprintf_s(note, sizeof(note), _TRUNCATE,
+                                "VEH invalid-index tid=%lu index=%08lX committed=%08lX",
+                                GetCurrentThreadId(), objectIndex, committed);
+                            DiagLine(note);
+                        }
+                        const unsigned offsets[] = { 0x44u, 0x48u, 0x4Cu, 0x50u };
+                        const char* const labels[] = { "secure.values1", "secure.values2", "secure.types", "secure.owners" };
+                        for (unsigned index = 0; index < 4; ++index)
+                        {
+                            DWORD table = 0;
+                            if (!ReadCrashDword(labels[index],
+                                    static_cast<std::uintptr_t>(manager) + offsets[index], table)
+                                || table == 0)
+                            {
+                                continue;
+                            }
+                            // 0x901980 enumerates secure.owners by EBX, then
+                            // indexes the value/type arrays with [ESI+4]. Log
+                            // both identities; reject arithmetic wrapping on x86.
+                            const unsigned scale = offsets[index] == 0x4Cu ? 2u : 4u;
+                            if (haveCommitted && context->Ebx < committed
+                                && context->Ebx <= (0xFFFFFFFFu - table) / scale)
+                            {
+                                _snprintf_s(note, sizeof(note), _TRUNCATE, "table%02X[EBX]", offsets[index]);
+                                const DWORD address = table + context->Ebx * scale;
+                                if (ReadCrashDword(note, address, scratch)
+                                    && haveKey && (offsets[index] == 0x44u || offsets[index] == 0x48u))
+                                {
+                                    _snprintf_s(note, sizeof(note), _TRUNCATE,
+                                        "VEH decoded tid=%lu table=%02X slot=%08lX value=%08lX",
+                                        GetCurrentThreadId(), offsets[index], context->Ebx,
+                                        scratch ^ secureKey ^ address);
+                                    DiagLine(note);
+                                }
+                            }
+                            if (haveCommitted && haveObjectIndex && objectIndex < committed
+                                && objectIndex <= (0xFFFFFFFFu - table) / scale)
+                            {
+                                _snprintf_s(note, sizeof(note), _TRUNCATE, "table%02X[ESI.index]", offsets[index]);
+                                const DWORD address = table + objectIndex * scale;
+                                if (ReadCrashDword(note, address, scratch)
+                                    && haveKey && (offsets[index] == 0x44u || offsets[index] == 0x48u))
+                                {
+                                    _snprintf_s(note, sizeof(note), _TRUNCATE,
+                                        "VEH decoded tid=%lu table=%02X index=%08lX value=%08lX",
+                                        GetCurrentThreadId(), offsets[index], objectIndex,
+                                        scratch ^ secureKey ^ address);
+                                    DiagLine(note);
+                                }
+                            }
+                        }
+                    }
+                    for (unsigned index = 0; index < 8; ++index)
+                    {
+                        _snprintf_s(note, sizeof(note), _TRUNCATE, "stack+%02X", index * 4);
+                        ReadCrashDword(note,
+                            static_cast<std::uintptr_t>(context->Esp) + index * 4, scratch);
+                    }
+                    ReadCrashDword("EBP.parent", context->Ebp, scratch);
+                    ReadCrashDword("EBP.return", static_cast<std::uintptr_t>(context->Ebp) + 4, scratch);
+                    if (context->Esi >= 0x100u)
+                    {
+                        DumpCrashBytes("wrapper", context->Esi - 0x100u, 512);
+                    }
+                    DumpCrashBytes("stack", context->Esp, 256);
+                }
+#endif
+                SetLastError(savedError);
+                capturing = false;
             }
             return EXCEPTION_CONTINUE_SEARCH;
         }
@@ -1597,6 +1821,114 @@ namespace dfl::auto_input
             }
             CloseHandle(handle);
         }
+
+        struct FocusWindowCandidate
+        {
+            HWND window = nullptr;
+            ULONGLONG area = 0;
+        };
+
+        BOOL CALLBACK FindOwnVisibleWindow(HWND window, LPARAM context) noexcept
+        {
+            DWORD ownerPid = 0;
+            GetWindowThreadProcessId(window, &ownerPid);
+            if (ownerPid != GetCurrentProcessId() || !IsWindowVisible(window)
+                || GetWindow(window, GW_OWNER) != nullptr)
+            {
+                return TRUE;
+            }
+            RECT rect{};
+            if (!GetClientRect(window, &rect) || rect.right <= rect.left
+                || rect.bottom <= rect.top)
+            {
+                return TRUE;
+            }
+            auto& candidate = *reinterpret_cast<FocusWindowCandidate*>(context);
+            const auto area = static_cast<ULONGLONG>(rect.right - rect.left)
+                * static_cast<ULONGLONG>(rect.bottom - rect.top);
+            if (candidate.window == nullptr || area > candidate.area)
+            {
+                candidate.window = window;
+                candidate.area = area;
+            }
+            return TRUE;
+        }
+
+        bool OwnsForegroundWindow() noexcept
+        {
+            DWORD ownerPid = 0;
+            GetWindowThreadProcessId(GetForegroundWindow(), &ownerPid);
+            return ownerPid == GetCurrentProcessId();
+        }
+
+        // Activation belongs to the built-in input interface. The driver only
+        // writes a PID request; it never synthesizes OS mouse/keyboard input.
+        void PollFocusRequest() noexcept
+        {
+            static unsigned lastPollMs = 0;
+            const unsigned now = GetTickCount();
+            if (now - lastPollMs < 100) return;
+            lastPollMs = now;
+
+            char path[MAX_PATH]{};
+            char donePath[MAX_PATH]{};
+            if (!BuildExeRelativePath("auto-input.focus", path, MAX_PATH)
+                || !BuildExeRelativePath("auto-input.focus.done", donePath, MAX_PATH))
+            {
+                return;
+            }
+            const HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ,
+                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (file == INVALID_HANDLE_VALUE) return;
+            LARGE_INTEGER size{};
+            char text[32]{};
+            DWORD read = 0;
+            const bool valid = GetFileSizeEx(file, &size) != FALSE
+                && size.QuadPart > 0 && size.QuadPart <= sizeof(text)
+                && ReadFile(file, text, static_cast<DWORD>(size.QuadPart), &read, nullptr) != FALSE
+                && read == static_cast<DWORD>(size.QuadPart)
+                && IsFocusRequestForProcess(text, read, GetCurrentProcessId());
+            CloseHandle(file);
+            if (!valid) return;
+
+            if (!OwnsForegroundWindow())
+            {
+                FocusWindowCandidate candidate;
+                EnumWindows(FindOwnVisibleWindow, reinterpret_cast<LPARAM>(&candidate));
+                if (candidate.window == nullptr) return;
+                ShowWindow(candidate.window, SW_RESTORE);
+                SetForegroundWindow(candidate.window);
+                if (!OwnsForegroundWindow())
+                {
+                    const DWORD currentThread = GetCurrentThreadId();
+                    const DWORD foregroundThread = GetWindowThreadProcessId(
+                        GetForegroundWindow(), nullptr);
+                    const bool attached = foregroundThread != 0
+                        && foregroundThread != currentThread
+                        && AttachThreadInput(currentThread, foregroundThread, TRUE) != FALSE;
+                    BringWindowToTop(candidate.window);
+                    SetActiveWindow(candidate.window);
+                    SetForegroundWindow(candidate.window);
+                    if (attached) AttachThreadInput(currentThread, foregroundThread, FALSE);
+                }
+            }
+            if (OwnsForegroundWindow()
+                && MoveFileExA(path, donePath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            {
+                DiagLine("focus request completed");
+            }
+        }
+
+        // The game stops polling/rendering while unfocused. Its UI message
+        // loop still dispatches timers, so activation cannot depend on Pump.
+        // This callback runs on the installing game thread and never advances
+        // a timeline or reads a plan file.
+        void CALLBACK FocusMailboxTimerProc(HWND, UINT, UINT_PTR, DWORD) noexcept
+        {
+            if (g_inTimeline) return;
+            const TimelineGuard guard;
+            PollFocusRequest();
+        }
     }
 
     bool Install() noexcept
@@ -1717,11 +2049,20 @@ namespace dfl::auto_input
         }
         OutputDebugStringA("auto_input: keyboard hook installed\n");
         DiagLine("keyboard hook installed");
+        g_focusMailboxTimer = SetTimer(nullptr, 0, 100, &FocusMailboxTimerProc);
+        DiagLine(g_focusMailboxTimer != 0
+            ? "focus mailbox timer installed"
+            : "focus mailbox timer install FAILED");
         return true;
     }
 
     void Restore() noexcept
     {
+        if (g_focusMailboxTimer != 0)
+        {
+            KillTimer(nullptr, g_focusMailboxTimer);
+            g_focusMailboxTimer = 0;
+        }
         if (g_keyboardHooked)
         {
             const auto original =
@@ -1803,6 +2144,12 @@ namespace dfl::auto_input
         if (g_inTimeline)
         {
             return;
+        }
+        // This mailbox is checked even by an unfocused process. Keep the
+        // re-entry latch while window activation dispatches game messages.
+        {
+            const TimelineGuard guard;
+            PollFocusRequest();
         }
         // The game polls GetAsyncKeyState only while its window is
         // foreground, so the module mirrors that: an unfocused client must

@@ -18,6 +18,12 @@
     <ClInclude Include="src\d3d8_scaler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\boss_room_death.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ground_item_removal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\ijl15.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -42,6 +48,21 @@
     <ClInclude Include="src\performance_overlay.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\party_combat_detail.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mage_skill_contact.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\priest_heal_target.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\stage_follow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\summon_owner_death.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\mouse_wheel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -51,6 +72,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\d3d8_scaler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\boss_room_death.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ground_item_removal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\dnf_patches.cpp">
@@ -75,6 +102,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\performance_overlay.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\party_combat_detail.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mage_skill_contact.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\priest_heal_target.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\stage_follow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\summon_owner_death.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\mouse_wheel.cpp">

@@ -55,7 +55,7 @@ class Thresholds:
     """
 
     min_action_pct: float = 8.0
-    control_scale: float = 2.5
+    control_scale: float = 3.0
     control_margin_pct: float = 4.0
 
     def required_pct(self, control_pct: float) -> float:
@@ -157,7 +157,8 @@ def judge(evidence: GateEvidence, thresholds: Thresholds = DEFAULT_THRESHOLDS) -
             "name": action.name,
             "vk": action.vk,
             "action_pct": round(action.action_pct, 2),
-            "required_pct": round(thresholds.required_pct(evidence.control_pct), 2),
+            "required_pct": round(thresholds.required_pct(
+                max(evidence.control_pct, action.local_control_pct)), 2),
             "server_events": action.server_events,
             "netdump_new_frames": action.netdump_new_frames,
             "result": verdict,
@@ -377,11 +378,12 @@ def run_live(client_dir: pathlib.Path, out_dir: pathlib.Path,
              server_log: Optional[pathlib.Path], netdump: Optional[pathlib.Path],
              probes: Sequence[ActionProbe] = DEFAULT_PROBES,
              control_seconds: float = 2.0,
-             thresholds: Thresholds = DEFAULT_THRESHOLDS) -> dict:
+             thresholds: Thresholds = DEFAULT_THRESHOLDS,
+             pid: Optional[int] = None) -> dict:
     """注入动作键并采集证据。前置：客户端已在副本里（由上层驱动保证）。"""
     from acceptance import auto_input  # 本包内的契约实现，原子写计划/等完成标记
 
-    pid = dnf_pid()
+    pid = dnf_pid() if pid is None else pid
     if not pid:
         raise RuntimeError("没有正在运行的 DNF 客户端；请先由上层脚本把客户端带进副本")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -389,27 +391,24 @@ def run_live(client_dir: pathlib.Path, out_dir: pathlib.Path,
     shots = {
         "control-a": out_dir / "combat-control-a.png",
         "control-b": out_dir / "combat-control-b.png",
-        "before": out_dir / "combat-before.png",
     }
     if capture_screen(pid, shots["control-a"]).find("saved=") < 0:
         raise RuntimeError("截取失败（控制组 A）")
     time.sleep(control_seconds)
     capture_screen(pid, shots["control-b"])
     control_pct = image_diff_pct(shots["control-a"], shots["control-b"])
-    capture_screen(pid, shots["before"])
 
     missing: list[str] = []
     actions: list[ActionEvidence] = []
+    captures: list[dict] = []
     for probe in probes:
+        before_shot = out_dir / f"combat-before-{probe.vk:02X}.png"
         action_shot = out_dir / f"combat-action-{probe.vk:02X}.png"
-        # 局部静止对照：副本里的怪物会自己走动，一次全局对照不够用。
         local_a = out_dir / f"combat-local-{probe.vk:02X}-a.png"
         local_b = out_dir / f"combat-local-{probe.vk:02X}-b.png"
-        capture_screen(pid, local_a)
-        time.sleep(0.6)
-        capture_screen(pid, local_b)
-        local_control_pct = image_diff_pct(local_a, local_b)
-        capture_screen(pid, action_shot)  # 注入前的基准帧
+        # 每个键保留自己的基准，不能把上一个动作或怪物位移累加给下一个键。
+        before_started = time.monotonic()
+        capture_screen(pid, before_shot)
         log_offset = _size(server_log)
         dump_offset = _size(netdump)
         auto_input.write_plan(client_dir, [
@@ -419,20 +418,38 @@ def run_live(client_dir: pathlib.Path, out_dir: pathlib.Path,
         taken = auto_input.wait_ready(client_dir, timeout_s=15)
         done = auto_input.await_done(client_dir, timeout_s=30)
         time.sleep(0.3)
+        action_started = time.monotonic()
         capture_screen(pid, action_shot)
 
-        action_pct = image_diff_pct(shots["before"], action_shot)
+        action_window = action_started - before_started
+        # 动作结束后先等动画收尾，再采同长局部待机窗口。用两次捕获的调用
+        # 起点配平，把截图调用本身的耗时也计入；若一次捕获就超过目标时长，
+        # 对照窗口只会更长，并把实际时长留在结果里供复核。
+        time.sleep(0.6)
+        local_started = time.monotonic()
+        capture_screen(pid, local_a)
+        time.sleep(max(0.0, action_window - (time.monotonic() - local_started)))
+        local_finished = time.monotonic()
+        capture_screen(pid, local_b)
+        local_control_pct = image_diff_pct(local_a, local_b)
+        action_pct = image_diff_pct(before_shot, action_shot)
         server_slice = _tail_from(server_log, log_offset)
         dump_slice = _tail_from(netdump, dump_offset)
-        new_frames = 0
-        if dump_slice is not None:
-            new_frames = len(parse_netdump_classes(dump_slice)
-                             - parse_netdump_classes(""))
+        # 现有帧类包含 sequence，日志 HP/damage 行也没有攻击者/实例归属。
+        # 它们只能供人工追查，不能作为本动作的自动通过证据。纯 judge 仍接受
+        # 调用者已核实的 server_events/netdump_new_frames。
         actions.append(ActionEvidence(
             name=probe.name, vk=probe.vk, action_pct=action_pct,
-            server_events=count_server_events(server_slice or ""),
-            netdump_new_frames=new_frames, is_control=probe.control,
+            server_events=0, netdump_new_frames=0, is_control=probe.control,
             local_control_pct=local_control_pct))
+        captures.append({
+            "vk": probe.vk,
+            "before": str(before_shot), "after": str(action_shot),
+            "local_control_a": str(local_a), "local_control_b": str(local_b),
+            "action_window_seconds": round(action_window, 4),
+            "local_control_window_seconds": round(local_finished - local_started, 4),
+            "local_control_pct": round(local_control_pct, 2),
+        })
         if not (taken and done):
             missing.append(f"{probe.name} 的计划未被取走/未完成"
                            f"（taken={taken}, done={done}, "
@@ -451,6 +468,13 @@ def run_live(client_dir: pathlib.Path, out_dir: pathlib.Path,
     verdict["control_pct"] = round(control_pct, 2)
     verdict["pid"] = pid
     verdict["client_dir"] = str(client_dir)
+    verdict["captures"] = captures
+    verdict["live_evidence_limits"] = [
+        "本次 live 仅按每键独立基准和同长待机对照判定画面动作。",
+        "netdump 帧类含 sequence，未核实攻击/技能语义，不自动计为新动作帧。",
+        "服务端 HP/damage 日志未核实攻击者及实例归属，不自动计为伤害证据。",
+        "伤害结算仍为未验证；捕获窗口按截图调用起点配平，实际图像时刻受捕获延迟影响。",
+    ]
     (out_dir / "combat-gate.json").write_text(
         json.dumps(verdict, ensure_ascii=False, indent=2), encoding="utf-8")
     return verdict
@@ -557,6 +581,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--server-log", default=None)
     parser.add_argument("--netdump", default=None)
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--pid", type=int, default=None, help="指定本次注入和截图的 DNF 进程")
     parser.add_argument("--control-seconds", type=float, default=2.0)
     args = parser.parse_args(argv)
 
@@ -571,6 +596,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         server_log=pathlib.Path(args.server_log) if args.server_log else None,
         netdump=pathlib.Path(args.netdump) if args.netdump else None,
         control_seconds=args.control_seconds,
+        pid=args.pid,
     )
     print(json.dumps(verdict, ensure_ascii=False, indent=2))
     return 0 if verdict["result"] == PASS else 1

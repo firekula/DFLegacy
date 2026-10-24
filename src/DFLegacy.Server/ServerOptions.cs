@@ -218,4 +218,11 @@ public sealed class TownGhostOptions
 public sealed class DebugOptions
 {
     public TownGhostOptions TownGhost { get; set; } = new();
+    public ClientOverlayOptions ClientOverlay { get; set; } = new();
+}
+
+public sealed class ClientOverlayOptions
+{
+    public bool Enabled { get; set; }
+    public string SnapshotDirectory { get; set; } = "debug-overlay";
 }

@@ -145,3 +145,91 @@ def test_powershell_command_rejects_args_without_a_script_file():
 def test_powershell_command_without_args_uses_command_switch():
     cmd = cg._powershell_command("Get-Process", [])
     assert "-Command" in cmd and "-File" not in cmd
+
+
+def _fake_live(monkeypatch, tmp_path, *, probes, diff_pct=1.0):
+    """运行真实 live 编排，只替换时钟、截图和客户端文件契约。"""
+    from types import SimpleNamespace
+    from acceptance import auto_input
+
+    clock = SimpleNamespace(now=0.0)
+    captures = []
+    comparisons = []
+
+    def sleep(seconds):
+        clock.now += seconds
+
+    def capture(pid, path):
+        captures.append((pid, path.name))
+        clock.now += 0.05
+        return f"saved={path} foreground=True"
+
+    def image_diff(before, after):
+        comparisons.append((before.name, after.name))
+        return diff_pct
+
+    monkeypatch.setattr(cg, "time", SimpleNamespace(
+        monotonic=lambda: clock.now, sleep=sleep))
+    monkeypatch.setattr(cg, "capture_screen", capture)
+    monkeypatch.setattr(cg, "image_diff_pct", image_diff)
+    monkeypatch.setattr(cg, "dnf_pid", lambda: 999)
+    monkeypatch.setattr(auto_input, "write_plan", lambda *args, **kwargs: None)
+    monkeypatch.setattr(auto_input, "wait_ready", lambda *args, **kwargs: True)
+
+    def done(*args, **kwargs):
+        sleep(0.5)
+        return True
+
+    monkeypatch.setattr(auto_input, "await_done", done)
+    standby = (
+        "2026-10-23 21:48:56.191 T=1 TX UDP 0.0.0.0:5063 -> 127.0.0.1:7002 "
+        "len=19 hex=02010000000A000000000000D18A6CD42BAA2B\n")
+    hp_log = ("UDP protocol 12 sent to 127.0.0.1:5063: sequence=1 sender=0 "
+              "object=529:1 hp=100 secondary=0\n")
+    server = tmp_path / "server.log"
+    dump = tmp_path / "netdump-123.log"
+    # 保证旧的两条自动通过路径确实会被这些普通候选事件触发。
+    assert cg.parse_netdump_classes(standby)
+    assert cg.count_server_events(hp_log) == 1
+    monkeypatch.setattr(cg, "_tail_from", lambda path, offset:
+                        hp_log if path == server else standby)
+    result = cg.run_live(tmp_path, tmp_path / "out", server, dump,
+                         probes=probes, pid=123)
+    return result, captures, comparisons
+
+
+def test_live_standby_tx_and_unscoped_hp_cannot_pass(monkeypatch, tmp_path):
+    result, captures, _ = _fake_live(
+        monkeypatch, tmp_path, probes=(cg.ActionProbe("X", 0x58),))
+    assert result["result"] == cg.FAIL
+    assert result["actions"][0]["server_events"] == 0
+    assert result["actions"][0]["netdump_new_frames"] == 0
+    assert result["live_evidence_limits"]
+    assert result["pid"] == 123
+    assert all(pid == 123 for pid, _ in captures)
+
+
+def test_live_preserves_each_keys_own_before_and_equal_idle_window(monkeypatch, tmp_path):
+    result, captures, comparisons = _fake_live(
+        monkeypatch, tmp_path, probes=(cg.ActionProbe("X", 0x58),
+                                      cg.ActionProbe("Z", 0x5A)))
+    for vk in ("58", "5A"):
+        assert (f"combat-before-{vk}.png", f"combat-action-{vk}.png") in comparisons
+        assert sum(name == f"combat-before-{vk}.png" for _, name in captures) == 1
+        assert (f"combat-local-{vk}-a.png", f"combat-local-{vk}-b.png") in comparisons
+    assert not any(before == "combat-before.png" for before, _ in comparisons)
+    for capture in result["captures"]:
+        assert capture["action_window_seconds"] == capture["local_control_window_seconds"]
+        assert capture["action_window_seconds"] > 0.8
+
+
+def test_pixel_threshold_uses_three_times_larger_control_in_report():
+    """STATUS 的 3× 门槛也应覆盖局部对照，结果字段不能报全局较低门槛。"""
+    assert cg.DEFAULT_THRESHOLDS.control_scale == 3.0
+    verdict = cg.judge(cg.GateEvidence(
+        control_pct=1.0,
+        actions=(cg.ActionEvidence("X", 0x58, action_pct=14.99,
+                                   local_control_pct=5.0),),
+        plan_done=True))
+    assert verdict["result"] == cg.FAIL
+    assert verdict["actions"][0]["required_pct"] == 15.0

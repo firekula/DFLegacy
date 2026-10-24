@@ -53,6 +53,7 @@ builder.Services.AddSingleton<PartyService>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<PartyService>());
 // 副本实例表跨连接共享（设计稿 §3.1）：单人 = 以角色 id 为键的实例，组队 = 以队伍 id 为键。
 builder.Services.AddSingleton<DungeonInstanceRegistry>();
+builder.Services.AddHostedService<DungeonDebugOverlayService>();
 // 组队副本的编排跨连接共享（设计稿 §3.2）：同区域校验、选图/入场请求、跨会话广播、门口集结扫描。
 builder.Services.AddSingleton<DungeonPartyService>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<DungeonPartyService>());
@@ -146,6 +147,36 @@ if (options.GameplayDatagram.Enabled
         "GameplayDatagram.Host is {BindHost} but clients would be told '{AdvertisedHost}', which they cannot dial. Set DFLegacy:GameplayDatagram:AdvertisedHost (DFLegacy__GameplayDatagram__AdvertisedHost) to the address or host name clients reach this server on.",
         options.GameplayDatagram.Host,
         advertisedGameplayHost);
+}
+
+// The entrance metadata tells the client which host to DIAL for the channel, and
+// that field used to be fed straight from Channel.Host -- a bind address. With
+// the shipped Channel.Host=0.0.0.0 the client dialled "0.0.0.0:7001", which fails
+// with WSAEWOULDBLOCK and surfaces as a "connection failed" popup plus a crash
+// (measured 2026-10-04 from the client net dump). The value is now resolved
+// instead, so this reports what the client will actually be told and flags the
+// case where that address is only reachable from this machine.
+static void WarnAboutChannelDialHost(WebApplication app, ServerOptions options)
+{
+    var dialHost = EntranceService.ResolveChannelDialHost(options);
+    var wildcardBind = options.Channel.Host is "0.0.0.0" or "::" or "[::]" or "*" or "+";
+    if (wildcardBind)
+    {
+        app.Logger.LogInformation(
+            "Channel.Host={BindHost} is a bind address, so the channel metadata tells clients to dial '{DialHost}' instead.",
+            options.Channel.Host,
+            dialHost);
+    }
+
+    var loopback = dialHost is "127.0.0.1" or "::1" or "localhost"
+        || (System.Net.IPAddress.TryParse(dialHost, out var parsed)
+            && System.Net.IPAddress.IsLoopback(parsed));
+    if (loopback)
+    {
+        app.Logger.LogWarning(
+            "Clients will be told to dial '{DialHost}' for the channel, which only works on this machine. Set DFLegacy:GameplayDatagram:AdvertisedHost to the address clients reach this server on.",
+            dialHost);
+    }
 }
 
 var itemCatalog = app.Services.GetRequiredService<ItemCatalog>();
@@ -1064,6 +1095,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
         options.Admin.TokenHours,
         options.Admin.MaxTokenLifetimeHours);
     WarnAboutBootstrapAndExposure(app, options);
+    WarnAboutChannelDialHost(app, options);
     var scripts = app.Services.GetRequiredService<ScriptFileSystem>();
     if (!scripts.FileExists("etc/channel_info.etc"))
     {

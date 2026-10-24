@@ -14,6 +14,15 @@ namespace dfl::auto_input
     // in performance_overlay.cpp gates this on IsEnabled().
     void Pump() noexcept;
 
+    // Built-in activation mailbox: <exe dir>\auto-input.focus contains this
+    // process's decimal PID (optional surrounding ASCII whitespace). A game UI
+    // timer checks it even when rendering is paused in the background; Pump
+    // also checks it before its foreground gate. Only an owned visible window
+    // can be activated. Verified activation renames it to .focus.done.
+    // Pure validation is exposed so tests never have to activate a window.
+    bool IsFocusRequestForProcess(
+        const char* text, unsigned size, unsigned long processId) noexcept;
+
     // ------------------------------------------------------------------
     // Task 2: pure-logic core -- JSON subset parser, timeline state
     // machine, key-edge table. No hooks, no threads; everything below runs
@@ -26,9 +35,8 @@ namespace dfl::auto_input
         kClick = 1,
         kMove = 2,
         kText = 3,
-        // Right click. DNF invites to a party (and offers trade/friend) from a
-        // right click on the other player's character, so this primitive is
-        // what makes two-client party formation scriptable at all.
+        // Native right mouse input. This is separate from the ordinary left
+        // click used to open the player interaction menu on this client.
         kRClick = 4,
     };
 

@@ -65,7 +65,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>src\ijl15.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -89,7 +89,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>src\ijl15.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX86</TargetMachine>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
@@ -99,19 +99,32 @@
   <ItemGroup>
     <ClInclude Include="include\ijl15.h" />
     <ClInclude Include="src\auto_input.h" />
+    <ClInclude Include="src\debug_module.h" />
+    <ClInclude Include="src\client_debug_state.h" />
+    <ClInclude Include="src\boss_room_death.h" />
+    <ClInclude Include="src\ground_item_removal.h" />
     <ClInclude Include="src\d3d8_scaler.h" />
     <ClInclude Include="src\dnf_patches.h" />
     <ClInclude Include="src\external_string_table.h" />
     <ClInclude Include="src\ijl15_config.h" />
     <ClInclude Include="src\memory_patch.h" />
     <ClInclude Include="src\message_audio.h" />
+    <ClInclude Include="src\net_dump.h" />
     <ClInclude Include="src\mouse_wheel.h" />
     <ClInclude Include="src\output_paths.h" />
     <ClInclude Include="src\performance_overlay.h" />
+    <ClInclude Include="src\party_combat_detail.h" />
+    <ClInclude Include="src\mage_skill_contact.h" />
+    <ClInclude Include="src\priest_heal_target.h" />
+    <ClInclude Include="src\stage_follow.h" />
+    <ClInclude Include="src\summon_owner_death.h" />
     <ClInclude Include="src\window_scaling.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\auto_input.cpp" />
+    <ClCompile Include="src\debug_module.cpp" />
+    <ClCompile Include="src\boss_room_death.cpp" />
+    <ClCompile Include="src\ground_item_removal.cpp" />
     <ClCompile Include="src\d3d8_scaler.cpp" />
     <ClCompile Include="src\dnf_patches.cpp" />
     <ClCompile Include="src\external_string_table.cpp" />
@@ -119,9 +132,15 @@
     <ClCompile Include="src\ijl15.cpp" />
     <ClCompile Include="src\memory_patch.cpp" />
     <ClCompile Include="src\message_audio.cpp" />
+    <ClCompile Include="src\net_dump.cpp" />
     <ClCompile Include="src\mouse_wheel.cpp" />
     <ClCompile Include="src\output_paths.cpp" />
     <ClCompile Include="src\performance_overlay.cpp" />
+    <ClCompile Include="src\party_combat_detail.cpp" />
+    <ClCompile Include="src\mage_skill_contact.cpp" />
+    <ClCompile Include="src\priest_heal_target.cpp" />
+    <ClCompile Include="src\stage_follow.cpp" />
+    <ClCompile Include="src\summon_owner_death.cpp" />
     <ClCompile Include="src\window_scaling.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -131,7 +150,6 @@
     <None Include="Config.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="tests\ijl15_tests.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

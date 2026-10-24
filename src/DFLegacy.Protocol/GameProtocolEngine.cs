@@ -3296,14 +3296,27 @@ public static class GameProtocolEngine
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)peers.Count);
+        Span<byte> networkOrder = stackalloc byte[4];
         foreach (var peer in peers)
         {
             writer.Write(peer.UserId);
             WriteIpv4Address(writer, peer.LocalAddress);
             WriteIpv4Address(writer, peer.PublicAddress);
-            writer.Write(peer.PublicPort);
+            // The port is network order (big endian). Measured
+            // 2026-10-04: the client dialled "192.168.3.177:23067" for a peer we
+            // had written as 7002, and 23067 is exactly 0x1B5A byte-swapped, so
+            // it was reading these two bytes big endian. The client's CMD 2
+            // report is the corroborating evidence: it writes its own port 5063
+            // as 0x13 0xC7, which is big endian, and our reader already agrees
+            // (GameDatagramProtocol.TryParseNatReport reads it BigEndian).
+            BinaryPrimitives.WriteUInt16BigEndian(networkOrder, peer.PublicPort);
+            writer.Write(networkOrder[..2]);
             writer.Write(peer.AccountId);
             writer.Write(peer.NatType);
+            // NOTI 11 reads this DWORD directly at 0x8F5160, stores it in
+            // CNUser+0xC (0x417A90), then takes its unsigned minimum with the
+            // local MTU for the reliable-buffer capacity (0x78E090). It is
+            // little endian, as in CMD 2; the adjacent port uses network order.
             writer.Write(peer.Mtu);
         }
 
@@ -3732,6 +3745,21 @@ public static class GameProtocolEngine
             NotificationPacketType,
             PickupRemovedNotification,
             payload.ToArray());
+    }
+
+    /// <summary>
+    /// DFLegacy's client patch extends the unchanged official seven-byte prefix
+    /// with the exact ground entity id. The stock subtype-5 handler is a no-op;
+    /// the patch removes only that entity without replaying inventory rewards.
+    /// </summary>
+    public static GameServerPacket CreatePickupRemovedBroadcast(
+        ushort pickerUserId, uint itemId, ushort groundId)
+    {
+        var original = CreatePickupRemovedBroadcast(pickerUserId, itemId);
+        var payload = new byte[9];
+        original.Payload.CopyTo(payload, 0);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(7), groundId);
+        return original with { Payload = payload };
     }
 
     /// <summary>官服 `put_byte(5)`：`NOTI 86` 里"地面物被取走"的子类型。</summary>
@@ -4372,7 +4400,7 @@ public static class GameProtocolEngine
     /// 回包记录的精确布局（勘察逐条 `call 0x8F5120/40/60` 得到，全部是硬证据）：
     /// [u8 mode][u16 count=1] 后接每条记录
     /// [u16 uid][u32 经验][u32 blobLen + blob][u8 nEq + n×10 字节装备]
-    /// [u8 nPairs][u8 creature][28 字节 mode-3 专用尾]。
+    /// [u8 nPairs + n*(u8 skillId,u8 level)][u8 creature][28 字节 mode-3 专用尾]。
     /// uid 之后的 u32 是**累计总经验**（0x41A828 ReadU32 → 0x41A85A 调
     /// `actor->vtbl[0x490](值, 本地记录等级)`，即 0x4974E0 的经验 setter：本级已得 =
     /// 值−本级起始等级经验）；它**不是**名字槽位参数（旧注释按 “flag” 写 0，卡片经验才显示 0）。
@@ -4398,7 +4426,8 @@ public static class GameProtocolEngine
         byte equippedCreatureLevel = 0,
         byte staminaRecoveryPercentage = 100,
         uint experience = 0,
-        byte mode = 3)
+        byte mode = 3,
+        IReadOnlyList<GameSkillEntry>? learnedSkills = null)
     {
         if (userId == 0)
         {
@@ -4414,6 +4443,12 @@ public static class GameProtocolEngine
         if (staminaRecoveryPercentage > 100)
         {
             throw new ArgumentOutOfRangeException(nameof(staminaRecoveryPercentage));
+        }
+
+        learnedSkills ??= [];
+        if (learnedSkills.Count > byte.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(learnedSkills));
         }
 
         var statBytes = CreateCombatStatBlock(combatStats, staminaRecoveryPercentage);
@@ -4446,10 +4481,16 @@ public static class GameProtocolEngine
             writer.Write(item.Durability);
         }
 
-        // nPairs 必须为 0：mode-3 解析器按**每条 2 字节**（u8,u8）读成对表，而 mode-1
-        // 构建器写的是 u16 技能 id + u8 等级 = 3 字节；条数 ≥2 时整个 28 字节尾都会
-        // 错位（读越界/窗口参数是垃圾）。详情卡不展示技能，直接发 0 条。
-        writer.Write((byte)0);
+        // The shared mode-1/3 parser reads exactly u8/u8 pairs. Foreign
+        // actors clear and rebuild their skill levels from this list before
+        // simulating peer actions; an empty list is not a usable peer snapshot.
+        // GameSkillEntry.SkillId is a byte, matching current-character mode 1.
+        writer.Write((byte)learnedSkills.Count);
+        foreach (var skill in learnedSkills)
+        {
+            writer.Write(skill.SkillId);
+            writer.Write(skill.Level);
+        }
         writer.Write(equippedCreatureLevel);
 
         if (mode == 3)

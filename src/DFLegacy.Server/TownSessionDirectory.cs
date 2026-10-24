@@ -23,7 +23,8 @@ public sealed record TownEntryRequest(
     short X,
     short Y,
     byte Direction,
-    Func<GameServerPacket, CancellationToken, ValueTask> SendAsync);
+    Func<GameServerPacket, CancellationToken, ValueTask> SendAsync,
+    Func<bool>? IsInTown = null);
 
 /// <summary>目录成员的只读快照（日志与后台页用）。</summary>
 public sealed record TownMemberSnapshot(
@@ -50,6 +51,8 @@ public sealed class TownMemberTicket
     public byte AreaId => Member.AreaId;
 }
 
+internal sealed record TownAppearanceSnapshot(GameServerPacket Basic, GameServerPacket? Detail);
+
 internal sealed class TownMember
 {
     public required ushort AreaUserId { get; init; }
@@ -59,7 +62,11 @@ internal sealed class TownMember
     public required string DisplayName { get; init; }
     public required Func<GameServerPacket, CancellationToken, ValueTask> SendAsync { get; init; }
     public GamePeerInfo? Peer { get; init; }
-    public GameServerPacket? Appearance { get; set; }
+    public Func<bool>? IsInTown { get; init; }
+    public TownAppearanceSnapshot? Appearance { get; set; }
+    // Recovery notifications and entry snapshots can run on different sessions.
+    // Keep each subject's basic/detail pair and later recovery updates ordered.
+    public SemaphoreSlim AppearanceDeliveryGate { get; } = new(1, 1);
     public short X { get; set; }
     public short Y { get; set; }
     public byte Direction { get; set; }
@@ -82,6 +89,17 @@ internal sealed class TownMember
     /// 迁移后的新同区成员因此仍能拿到一次「外观 → 加入」。
     /// </summary>
     public bool JoinAnnounced { get; set; }
+
+    // NOTI 11 silently ignores a uid until its USERINFO has created a CNUser.
+    // Keep recipient-specific delivery knowledge: another entry may register
+    // while this recipient is still receiving its initial appearance snapshot.
+    // The member reference also distinguishes re-entry / reuse of the same uid.
+    public ConcurrentDictionary<ushort, TownMember> KnownAppearances { get; } = new();
+    public ConcurrentDictionary<ushort, GameServerPacket> KnownCombatDetails { get; } = new();
+    // This records server AREA_USERS/USER_AREA delivery order only. It does
+    // not establish the native scene: returning clients fade asynchronously.
+    // Native pending-detail handling completes initialization at actual Town1.
+    public volatile bool CombatDetailsReady;
 
     public GameTownUser ToTownUser() => new(AreaUserId, X, Y, Direction);
 }
@@ -181,6 +199,7 @@ public sealed class TownSessionDirectory(
             CharacterNameBytes = request.CharacterNameBytes,
             DisplayName = request.DisplayName,
             SendAsync = request.SendAsync,
+            IsInTown = request.IsInTown,
             Peer = request.Peer,
             X = request.X,
             Y = request.Y,
@@ -281,11 +300,7 @@ public sealed class TownSessionDirectory(
             request.TownId,
             request.AreaId,
             [member.ToTownUser(), .. existing.Select(other => other.ToTownUser())]);
-        var foreignAppearances = existing
-            .Select(other => other.Appearance)
-            .Where(appearance => appearance is not null)
-            .Select(appearance => appearance!)
-            .ToArray();
+        var foreignAppearances = existing.Where(other => other.Appearance is not null).ToArray();
 
         // 客户端可能只有在「名单里有该 uid」且「收到该 uid 的 USER_AREA」时才建立同镇角色：
         // 新人此前只拿到名单与外观，缺了这一半。开关打开时逐人补发 USER_AREA(active=1)。
@@ -301,9 +316,9 @@ public sealed class TownSessionDirectory(
         {
             // 默认顺序。客户端对 AREA_USERS/USER_AREA 里没有 USERINFO 记录的 uid 会静默
             // 跳过该条目，旧顺序（名单在前）下老人永远建不出同镇角色。
-            foreach (var appearance in foreignAppearances)
+            foreach (var other in foreignAppearances)
             {
-                await SendAsync(member, appearance, cancellationToken);
+                await SendCachedAppearanceAsync(member, other, cancellationToken, includeDetail: false);
             }
 
             await SendAsync(member, rosterPacket, cancellationToken);
@@ -324,17 +339,31 @@ public sealed class TownSessionDirectory(
                 await SendAsync(member, areaPacket, cancellationToken);
             }
 
-            foreach (var appearance in foreignAppearances)
+            foreach (var other in foreignAppearances)
             {
-                await SendAsync(member, appearance, cancellationToken);
+                await SendCachedAppearanceAsync(member, other, cancellationToken, includeDetail: false);
+            }
+        }
+
+        // Keep mode 0 before the roster so native CNUser lookup works, and
+        // deliver foreign detail after the server's roster/area writes. The
+        // client may still be fading from dungeon; native pending-detail
+        // handling waits for actual Town1 before initializing those actors.
+        member.CombatDetailsReady = true;
+        foreach (var other in SnapshotMembers(member.TownId, member.AreaId, member.Instance))
+        {
+            if (!ReferenceEquals(other, member))
+            {
+                await SendCachedAppearanceDetailAsync(member, other, cancellationToken);
             }
         }
 
         // 对端表在名单/外观之后：客户端只为表内的 uid 建立同镇角色，名单与外观本身
         // 不带 NAT 端点，缺了这张表第二个角色不会出现在地图上。每人拿到的表都把自己
-        // 排在最前（与名单里新人排第一一致），老人拿到的是含新人的刷新表。
-        // 这是新增通知，上述既有报文的顺序与内容都不变。
-        await SendAreaPeerTableAsync([member, .. existing], cancellationToken);
+        // 排在最前（与名单里新人排第一一致）。老人此时尚未收到新人的 USERINFO，
+        // 不能抢先给他们发新人条目：客户端会静默丢弃，随后组队把 MTU=0 写进可靠
+        // 缓冲容量而无限发送空帧。老人的刷新由首次外观广播在介绍之后发送一次。
+        await SendAreaPeerTableAsync([member], cancellationToken);
 
         // 私密区域里「members」聚合数会让两个各自成区的成员看起来在同一区：实例号、
         // 本实例人数与区域实例数都打出来，运维一眼能分辨。
@@ -397,7 +426,8 @@ public sealed class TownSessionDirectory(
     public async Task RefreshAppearanceAsync(
         TownMemberTicket? ticket,
         GameServerPacket appearance,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        GameServerPacket? detail = null)
     {
         // 与位置更新同理：陈旧 ticket 不能把自己的外观重播给旧区域。
         if (!TryGetActiveMember(ticket, out var member))
@@ -405,39 +435,104 @@ public sealed class TownSessionDirectory(
             return;
         }
 
-        member.Appearance = appearance;
-
-        // 收件人只算一次：加入增量必须发给刚拿到这份外观的同一批人，投递路上新进来的
-        // 成员不能先收到「加入」却没收到外观（顺序反了客户端同样会丢掉这条增量）。
-        var others = SnapshotMembers(member.TownId, member.AreaId, member.Instance)
-            .Where(other => other.CharacterId != member.CharacterId)
-            .ToArray();
-
-        foreach (var other in others)
+        await member.AppearanceDeliveryGate.WaitAsync(cancellationToken);
+        try
         {
-            await SendAsync(other, appearance, cancellationToken);
-        }
+            // The ticket can expire while waiting for another delivery.
+            if (!IsRegistered(member)) return;
+            var snapshot = new TownAppearanceSnapshot(appearance, detail);
+            member.Appearance = snapshot;
 
-        // 新人进入时不同步发加入增量（见 EnterAsync）：客户端只为已有 USERINFO 记录的 uid
-        // 建立同镇角色，所以这条 USER_AREA 必须紧跟本成员的外观之后，每个成员只介绍一次；
-        // 后续换装/宠物变化重播外观时不再重复。当时没有同区观众（单人区域）不算介绍过：
-        // 下一次广播仍是「外观 → 加入」，第一个到场的人也拿得到完整顺序。
-        if (member.JoinAnnounced || others.Length == 0)
+            // 收件人只算一次：加入增量必须发给刚拿到这份外观的同一批人，投递路上新进来的
+            // 成员不能先收到「加入」却没收到外观（顺序反了客户端同样会丢掉这条增量）。
+            var others = SnapshotMembers(member.TownId, member.AreaId, member.Instance)
+                .Where(other => other.CharacterId != member.CharacterId)
+                .ToArray();
+
+            foreach (var other in others)
+            {
+                await SendAppearanceAsync(other, member, snapshot, cancellationToken);
+            }
+
+            // 新人进入时不同步发加入增量（见 EnterAsync）：客户端只为已有 USERINFO 记录的 uid
+            // 建立同镇角色，所以这条 USER_AREA 必须紧跟本成员的外观之后，每个成员只介绍一次；
+            // 后续换装/宠物变化重播外观时不再重复。当时没有同区观众（单人区域）不算介绍过：
+            // 下一次广播仍是「外观 → 加入」，第一个到场的人也拿得到完整顺序。
+            if (member.JoinAnnounced || others.Length == 0)
+            {
+                return;
+            }
+
+            var joinArea = GameProtocolEngine.CreateUserArea(
+                member.TownId,
+                member.AreaId,
+                member.ToTownUser(),
+                active: true);
+            foreach (var other in others)
+            {
+                await SendAsync(other, joinArea, cancellationToken);
+            }
+
+            member.JoinAnnounced = true;
+
+            if (member.Peer is not null)
+            {
+                await SendAreaPeerTableAsync(others, cancellationToken);
+            }
+        }
+        finally
         {
-            return;
+            member.AppearanceDeliveryGate.Release();
         }
+    }
 
-        var joinArea = GameProtocolEngine.CreateUserArea(
-            member.TownId,
-            member.AreaId,
-            member.ToTownUser(),
-            active: true);
-        foreach (var other in others)
+    /// <summary>
+    /// Refresh a town actor's cached combat detail after weakness recovery.
+    /// NOTI 4/33 only update the owner; foreign actors need their own mode-1
+    /// projection. Never initialize an unknown or already-in-dungeon actor here.
+    /// </summary>
+    public Task RefreshAppearanceDetailAsync(
+        TownMemberTicket? ticket,
+        GameServerPacket detail,
+        CancellationToken cancellationToken) =>
+        RefreshAppearanceDetailAsync(ticket, _ => detail, cancellationToken);
+
+    public Task RefreshAppearanceRecoveryAsync(
+        TownMemberTicket? ticket,
+        byte recovery,
+        CancellationToken cancellationToken) =>
+        RefreshAppearanceDetailAsync(ticket,
+            appearance => appearance.Detail is { } detail
+                ? PartyMemberDetailProjection.WithStaminaRecovery(detail, recovery)
+                : null,
+            cancellationToken);
+
+    private async Task RefreshAppearanceDetailAsync(
+        TownMemberTicket? ticket,
+        Func<TownAppearanceSnapshot, GameServerPacket?> createDetail,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetActiveMember(ticket, out var member)) return;
+        await member.AppearanceDeliveryGate.WaitAsync(cancellationToken);
+        try
         {
-            await SendAsync(other, joinArea, cancellationToken);
-        }
+            if (!IsRegistered(member) || !IsInTown(member) || member.Appearance is not { } appearance)
+            {
+                return;
+            }
 
-        member.JoinAnnounced = true;
+            var detail = createDetail(appearance);
+            if (detail is null) return;
+            member.Appearance = appearance with { Detail = detail };
+            foreach (var other in SnapshotMembers(member.TownId, member.AreaId, member.Instance))
+            {
+                await SendAppearanceDetailAsync(other, member, detail, cancellationToken);
+            }
+        }
+        finally
+        {
+            member.AppearanceDeliveryGate.Release();
+        }
     }
 
     public async Task<int> BroadcastToAreaAsync(
@@ -578,6 +673,16 @@ public sealed class TownSessionDirectory(
             }
 
             remaining = [.. roster.Members];
+            member.KnownAppearances.Clear();
+            member.KnownCombatDetails.Clear();
+            foreach (var recipient in remaining)
+            {
+                if (recipient.KnownAppearances.TryRemove(
+                        new KeyValuePair<ushort, TownMember>(member.AreaUserId, member)))
+                {
+                    recipient.KnownCombatDetails.TryRemove(member.AreaUserId, out _);
+                }
+            }
             if (remaining.Length == 0)
             {
                 // 回收与「名单已空」的判断必须在同一把区域 Gate 内完成，
@@ -748,7 +853,9 @@ public sealed class TownSessionDirectory(
 
         foreach (var member in members)
         {
-            if (!ReferenceEquals(member, recipient) && member.Peer is not null)
+            if (!ReferenceEquals(member, recipient) && member.Peer is not null
+                && recipient.KnownAppearances.TryGetValue(member.AreaUserId, out var known)
+                && ReferenceEquals(known, member))
             {
                 // 别人的端点走"对端端点改写"（中继/黑洞实验）；自己的那条在上面已按原样加过。
                 peers.Add(GameplayDatagramService.ApplyPeerEndpointOverride(
@@ -760,6 +867,164 @@ public sealed class TownSessionDirectory(
 
         return [.. peers];
     }
+
+    internal async Task ReplayPartyCombatDetailsAsync(
+        IReadOnlyCollection<Guid> characterIds,
+        CancellationToken cancellationToken,
+        Func<Guid, bool>? isCurrentMember = null)
+    {
+        // A party-roster recipient is not necessarily a member (leavers also
+        // receive cleanup rosters). The caller snapshots real member GUIDs.
+        var members = characterIds.Distinct()
+            .Select(characterId => _membersByCharacter.GetValueOrDefault(characterId))
+            .Where(member => member is not null)
+            .Cast<TownMember>()
+            .ToArray();
+        foreach (var subject in members)
+        {
+            await subject.AppearanceDeliveryGate.WaitAsync(cancellationToken);
+            try
+            {
+                if (isCurrentMember?.Invoke(subject.CharacterId) == false) continue;
+                if (subject.Appearance?.Detail is not { } detail) continue;
+                foreach (var recipient in members)
+                {
+                    // Party membership can change while waiting for this
+                    // subject's gate without changing either town ticket.
+                    if (isCurrentMember?.Invoke(subject.CharacterId) == false
+                        || isCurrentMember?.Invoke(recipient.CharacterId) == false) continue;
+                    // Existing exact registration, known-basic, private-area
+                    // and town-state guards apply to both ends. The client may
+                    // have deleted its model, so packet identity cannot dedupe.
+                    await SendAppearanceDetailAsync(recipient, subject, detail,
+                        cancellationToken, force: true);
+                }
+            }
+            finally
+            {
+                subject.AppearanceDeliveryGate.Release();
+            }
+        }
+    }
+
+    private async ValueTask SendCachedAppearanceAsync(
+        TownMember recipient,
+        TownMember subject,
+        CancellationToken cancellationToken,
+        bool includeDetail = true)
+    {
+        await subject.AppearanceDeliveryGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (subject.Appearance is { } appearance && IsRegistered(subject) && IsRegistered(recipient))
+            {
+                await SendAppearanceAsync(recipient, subject, appearance, cancellationToken, includeDetail);
+            }
+        }
+        finally
+        {
+            subject.AppearanceDeliveryGate.Release();
+        }
+    }
+
+    private async ValueTask SendCachedAppearanceDetailAsync(
+        TownMember recipient,
+        TownMember subject,
+        CancellationToken cancellationToken)
+    {
+        await subject.AppearanceDeliveryGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (subject.Appearance?.Detail is { } detail)
+            {
+                await SendAppearanceDetailAsync(recipient, subject, detail, cancellationToken);
+            }
+        }
+        finally
+        {
+            subject.AppearanceDeliveryGate.Release();
+        }
+    }
+
+    private async ValueTask SendAppearanceAsync(
+        TownMember recipient,
+        TownMember subject,
+        TownAppearanceSnapshot appearance,
+        CancellationToken cancellationToken,
+        bool includeDetail = true)
+    {
+        if (await SendAsync(recipient, appearance.Basic, cancellationToken))
+        {
+            // Pair registration with departure cleanup under the structural gate;
+            // an in-flight appearance must not retain a member after it has left.
+            await _structuralGate.WaitAsync(CancellationToken.None);
+            try
+            {
+                if (_membersByCharacter.TryGetValue(subject.CharacterId, out var liveSubject)
+                    && ReferenceEquals(liveSubject, subject)
+                    && _membersByCharacter.TryGetValue(recipient.CharacterId, out var liveRecipient)
+                    && ReferenceEquals(liveRecipient, recipient))
+                {
+                    recipient.KnownAppearances[subject.AreaUserId] = subject;
+                }
+            }
+            finally
+            {
+                _structuralGate.Release();
+            }
+
+            if (includeDetail && appearance.Detail is { } detail)
+            {
+                await SendAppearanceDetailAsync(recipient, subject, detail, cancellationToken);
+            }
+        }
+    }
+
+    // All detail callers hold the subject's delivery gate. Track successful
+    // packet identity so a racing recovery update and entry replay cannot send
+    // the same initialization twice, or overwrite a newer cached projection.
+    private async ValueTask SendAppearanceDetailAsync(
+        TownMember recipient,
+        TownMember subject,
+        GameServerPacket detail,
+        CancellationToken cancellationToken,
+        bool force = false)
+    {
+        if (!CanSendAppearanceDetail(recipient, subject)
+            || !force && recipient.KnownCombatDetails.TryGetValue(subject.AreaUserId, out var known)
+                && ReferenceEquals(known, detail))
+        {
+            return;
+        }
+        if (!await SendAsync(recipient, detail, cancellationToken)) return;
+        await _structuralGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            if (CanSendAppearanceDetail(recipient, subject))
+            {
+                recipient.KnownCombatDetails[subject.AreaUserId] = detail;
+            }
+        }
+        finally
+        {
+            _structuralGate.Release();
+        }
+    }
+
+    private bool CanSendAppearanceDetail(TownMember recipient, TownMember subject) =>
+        !ReferenceEquals(recipient, subject)
+        && recipient.CombatDetailsReady
+        && KeyOf(recipient) == KeyOf(subject)
+        && IsRegistered(subject) && IsRegistered(recipient)
+        && IsInTown(subject) && IsInTown(recipient)
+        && recipient.KnownAppearances.TryGetValue(subject.AreaUserId, out var known)
+        && ReferenceEquals(known, subject);
+
+    private static bool IsInTown(TownMember member) => member.IsInTown?.Invoke() ?? true;
+
+    private bool IsRegistered(TownMember member) =>
+        _membersByCharacter.TryGetValue(member.CharacterId, out var registered)
+        && ReferenceEquals(registered, member);
 
     private async ValueTask<bool> SendAsync(
         TownMember member,

@@ -16,7 +16,8 @@ internal sealed record DungeonEntryRequest(
     Guid LeaderCharacterId);
 
 /// <summary>
-/// 一只怪的死（给队友算经验用）：等级/类型/索引 + 是否 boss 级联死亡（级联不算经验）。
+/// 一只怪的死（给队友算经验用）：等级/类型/索引及旧级联标记。
+/// BOSS 清场现在与普通死亡共用奖励流程，投递的经验信用不设置旧级联排除标记。
 /// 难度与副本定义由收件人从实例现取（每人的等级不同，所以经验必须各算各的）。
 /// </summary>
 internal sealed record DungeonMonsterKillCredit(

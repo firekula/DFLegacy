@@ -182,3 +182,19 @@ dotnet run --project .\tests\DFLegacy.SmokeTests\DFLegacy.SmokeTests.csproj -c R
 这些检查针对特定 PVF 版本编写：PVF 版本不一致时，涉及文件清单、商城价格、宠物进化等条目可能失败，属数据差异而非构建问题；判定时要结合失败项的具体名称。
 
 原生模块自带测试，通过构建脚本的 `-RunTests` 开关运行（见 §6.2）。
+该脚本需要 CMake，而 CMake 并非每台机器都装（2026-10-04 实测本机 PATH 与 VS 安装目录下都没有 `cmake.exe`，
+脚本会在第一项检查就退出，MSBuild 与 x86 工具集则齐备），因此同一份测试源也可以直接用 MSBuild 构建：
+
+```powershell
+MSBuild.exe .\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj -p:Configuration=Release -p:Platform=Win32
+# 运行（需要旁边的 ijl15.dll 与 Config.ini，两者由该工程的生成后事件拷入）
+Push-Location .\src\DFLegacy.Ijl15\artifacts\native\ijl15-tests\Release
+try { .\ijl15_tests.exe } finally { Pop-Location }
+```
+
+该工程已挂进 `DFLegacy.Emulator.slnx`，所以"构建整个解决方案"就会一起构建它。
+`CMakeLists.txt` 里仍定义同名目标；**两份源文件列表要同步改**（新加源文件时两边都加）。
+
+## 副本游戏内调试覆盖层
+
+独立 `debug.dll`、IJL15 加载开关、服务端 BOSS 房提前确定/缓存、只读监听脚本及构建验证说明见 [tools/debug/README.md](tools/debug/README.md)。普通发行配置默认关闭，实际本机调试部署需要同时开启客户端与服务端开关。

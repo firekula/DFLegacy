@@ -1,0 +1,49 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+
+namespace dfl::ground_item_removal
+{
+    bool Install() noexcept;
+
+    namespace detail
+    {
+        constexpr std::uint16_t GroundItemObjectType = 0x0121;
+
+        struct PickupRemoval
+        {
+            std::uint16_t PickerUserId = 0;
+            std::uint32_t ItemId = 0;
+            std::uint16_t GroundId = 0;
+        };
+
+        // Private NOTI86 extension: retain the official seven-byte subtype-5
+        // prefix, then append the actual ground id. The seven-byte packet and
+        // every other subtype must continue through the original client code.
+        bool ReadExtension(const unsigned char* payload, std::size_t size,
+            PickupRemoval& removal) noexcept;
+
+        struct GroundItem
+        {
+            void* Actor = nullptr;
+            void* Map = nullptr;
+            std::uint16_t ObjectType = 0;
+            std::uint16_t GroundId = 0;
+            bool Active = false;
+        };
+
+        struct ClientFunctions
+        {
+            GroundItem (__cdecl* Find)(void* map, std::uint16_t objectType,
+                std::uint16_t groundId);
+            void (__cdecl* Deactivate)(void* actor);
+        };
+
+        // This only marks the matched ground actor inactive, as NOTI39 does.
+        // The existing map frame then removes it and destroys its descriptor.
+        // There is no inventory grant or descriptor detachment on this path.
+        bool ApplyRemoval(void* map, const PickupRemoval& removal,
+            const ClientFunctions& functions) noexcept;
+    }
+}

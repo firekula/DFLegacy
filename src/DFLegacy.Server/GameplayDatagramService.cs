@@ -11,8 +11,6 @@ public sealed class GameplayDatagramService(
     ILogger<GameplayDatagramService> logger) : BackgroundService
 {
     private readonly ConcurrentDictionary<Guid, GameplaySession> _sessions = new();
-    private readonly ConcurrentDictionary<string, IPEndPoint> _observedByAddress = new();
-    private readonly ConcurrentDictionary<string, Guid> _sessionsByEndpoint = new();
 
     // 临时审计（DFLEGACY_UDP_AUDIT=1）：只加日志、不发包、不改协议。
     // 目的：判定客户端把游戏 UDP 发到哪里去了——是发给对端（NOTI 11 的地址）还是发给服务端
@@ -114,10 +112,7 @@ public sealed class GameplayDatagramService(
     }
 
     /// <summary>
-    /// 中继的转发目标：除发送者以外、所有**已登记端点**的会话，同一端点只发一次。
-    /// 纯函数：单测直接钉"不回发给发送者 / 跳过没有端点的会话 / 同一端点不重发"。
-    /// ⚠️ 当前**不按队伍过滤**（本机双客户端验证够用）；多队伍场景必须接队伍信息，否则串台
-    /// —— 这正是它先做成诊断开关、没直接进 `server.json` 的原因。
+    /// 已通过场景筛选后的端点去重：排除发送者、未登记端点和重复端点。
     /// </summary>
     internal static IReadOnlyList<IPEndPoint> SelectRelayTargets(
         IEnumerable<(Guid Key, IPEndPoint? Endpoint)> sessions,
@@ -144,31 +139,89 @@ public sealed class GameplayDatagramService(
         return targets;
     }
 
-    public void RegisterChannelSession(RuntimeSession runtimeSession, IPAddress tcpAddress)
+    /// <summary>
+    /// 玩法中继只连接同队、同场景的会话。城镇/选图使用空实例以便成队握手；
+    /// 副本必须使用同一个实例对象（不能只比较可复用的 party id）。回城清实例后，
+    /// 即使队伍关系仍保留，也不再收发留在副本中的成员的玩法包。
+    /// 未登记队伍的会话默认隔离，NAT 探测和服务端直发不受影响。
+    /// </summary>
+    internal static IReadOnlyList<IPEndPoint> SelectRelayTargets(
+        IEnumerable<(Guid Key, IPEndPoint? Endpoint, ushort? PartyId, object? DungeonInstance)> sessions,
+        Guid? senderKey,
+        IPEndPoint sender)
     {
-        ArgumentNullException.ThrowIfNull(runtimeSession);
-        ArgumentNullException.ThrowIfNull(tcpAddress);
-        _sessions[runtimeSession.Id] = new GameplaySession(
-            runtimeSession,
-            NormalizeAddress(tcpAddress));
+        var snapshot = sessions.ToArray();
+        var origin = snapshot.FirstOrDefault(session => session.Key == senderKey);
+        if (senderKey is null || origin.PartyId is null)
+        {
+            return [];
+        }
+
+        return SelectRelayTargets(
+            snapshot.Where(session => session.PartyId == origin.PartyId
+                    && ReferenceEquals(session.DungeonInstance, origin.DungeonInstance))
+                .Select(session => (session.Key, session.Endpoint)),
+            senderKey,
+            sender);
     }
 
-    public void UnregisterChannelSession(Guid sessionId)
+    public void SetRelayContext(Guid sessionId, ushort? partyId, object? dungeonInstance = null)
     {
-        if (!_sessions.TryRemove(sessionId, out var session))
+        UpdateRelayContext(sessionId, partyId, dungeonInstance, updateParty: true, updateDungeon: true);
+    }
+
+    /// <summary>组队名册变化时更新队伍，不覆盖会话正在使用的副本实例。</summary>
+    public void SetRelayParty(Guid sessionId, ushort? partyId)
+    {
+        UpdateRelayContext(sessionId, partyId, null, updateParty: true, updateDungeon: false);
+    }
+
+    /// <summary>进入/离开副本时更新实例，不覆盖名册维护的队伍；回城在下发城镇状态前传 null。</summary>
+    public void SetRelayDungeonInstance(Guid sessionId, object? dungeonInstance)
+    {
+        UpdateRelayContext(sessionId, null, dungeonInstance, updateParty: false, updateDungeon: true);
+    }
+
+    private void UpdateRelayContext(
+        Guid sessionId, ushort? partyId, object? dungeonInstance, bool updateParty, bool updateDungeon)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session))
         {
             return;
         }
 
+        ushort? currentParty;
+        bool inDungeon;
         lock (session.Gate)
         {
-            if (session.DatagramEndpoint is not null)
+            var changed = (updateParty && session.RelayPartyId != partyId)
+                || (updateDungeon && !ReferenceEquals(session.RelayDungeonInstance, dungeonInstance));
+            if (!changed)
             {
-                _sessionsByEndpoint.TryRemove(
-                    EndpointKey(session.DatagramEndpoint),
-                    out _);
+                return;
             }
+
+            if (updateParty) session.RelayPartyId = partyId;
+            if (updateDungeon) session.RelayDungeonInstance = dungeonInstance;
+            currentParty = session.RelayPartyId;
+            inDungeon = session.RelayDungeonInstance is not null;
         }
+
+        logger.LogInformation(
+            "Gameplay UDP relay context updated for channel session {SessionId}: party={PartyId} dungeon={InDungeon}.",
+            sessionId, currentParty, inDungeon);
+    }
+
+    public void RegisterChannelSession(RuntimeSession runtimeSession, IPAddress tcpAddress)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeSession);
+        ArgumentNullException.ThrowIfNull(tcpAddress);
+        _sessions[runtimeSession.Id] = new GameplaySession(runtimeSession);
+    }
+
+    public void UnregisterChannelSession(Guid sessionId)
+    {
+        _sessions.TryRemove(sessionId, out _);
     }
 
     public void SetNatReport(Guid sessionId, GameNatReport report)
@@ -182,8 +235,7 @@ public sealed class GameplayDatagramService(
         lock (session.Gate)
         {
             session.NatReport = report;
-            var endpoint = SelectDatagramEndpoint(session, report);
-            SetDatagramEndpoint(session, endpoint);
+            session.DatagramEndpoint = SelectDatagramEndpoint(report);
         }
 
         logger.LogInformation(
@@ -380,8 +432,6 @@ public sealed class GameplayDatagramService(
             _secondary.Dispose();
             _primary = null;
             _secondary = null;
-            _sessionsByEndpoint.Clear();
-            _observedByAddress.Clear();
             _sessions.Clear();
         }
     }
@@ -402,7 +452,6 @@ public sealed class GameplayDatagramService(
                     remote,
                     out var response))
             {
-                ObserveEndpoint(remote);
                 await listener.SendAsync(response, remote, cancellationToken);
                 TraceDatagram(remote, datagram, "RX-UDP-NAT");
                 TraceDatagram(remote, response, "TX-UDP-NAT", countReceived: false);
@@ -415,9 +464,13 @@ public sealed class GameplayDatagramService(
                 continue;
             }
 
-            if (GameDatagramProtocol.IsNatKeepAlive(datagram))
+            // The secondary reflector receives NAT keepalives. The primary
+            // endpoint is advertised for gameplay: its ten-byte type-zero
+            // selective ACKs must reach the peer, even when their remaining
+            // bytes happen to match the reflector's keepalive signature.
+            if (ReferenceEquals(listener, _secondary)
+                && GameDatagramProtocol.IsNatKeepAlive(datagram))
             {
-                ObserveEndpoint(remote);
                 TraceDatagram(remote, datagram, "RX-UDP-NAT-KEEPALIVE");
                 Audit(remote, datagram, "nat-keepalive");
                 logger.LogDebug(
@@ -449,12 +502,19 @@ public sealed class GameplayDatagramService(
         CancellationToken cancellationToken)
     {
         var senderKey = FindSessionKeyByEndpoint(sender);
-        List<(Guid Key, IPEndPoint? Endpoint)> snapshot = [];
+        if (senderKey is null)
+        {
+            logger.LogDebug(
+                "Ignored gameplay UDP relay datagram from unregistered or ambiguous endpoint {Sender}.",
+                sender);
+            return;
+        }
+        List<(Guid Key, IPEndPoint? Endpoint, ushort? PartyId, object? DungeonInstance)> snapshot = [];
         foreach (var (key, session) in _sessions)
         {
             lock (session.Gate)
             {
-                snapshot.Add((key, session.DatagramEndpoint));
+                snapshot.Add((key, session.DatagramEndpoint, session.RelayPartyId, session.RelayDungeonInstance));
             }
         }
 
@@ -491,6 +551,7 @@ public sealed class GameplayDatagramService(
     private Guid? FindSessionKeyByEndpoint(IPEndPoint endpoint)
     {
         var key = EndpointKey(endpoint);
+        Guid? match = null;
         foreach (var (sessionKey, session) in _sessions)
         {
             lock (session.Gate)
@@ -498,48 +559,27 @@ public sealed class GameplayDatagramService(
                 if (session.DatagramEndpoint is { } registered
                     && string.Equals(EndpointKey(registered), key, StringComparison.Ordinal))
                 {
-                    return sessionKey;
+                    // A shared or stale report must not attribute a packet to an arbitrary
+                    // session. Only a unique complete IP:port identifies the sender.
+                    if (match is not null)
+                    {
+                        return null;
+                    }
+
+                    match = sessionKey;
                 }
             }
         }
 
-        return null;
+        return match;
     }
 
-    private void ObserveEndpoint(IPEndPoint remote)
+    // CMD 2 arrives on the owning TCP session and supplies the complete reflected
+    // endpoint. Anonymous UDP probes/keepalives cannot identify a session: learning
+    // by IP makes two clients behind the same address overwrite each other.
+    // A NAT rebind therefore requires another CMD 2, never an IP-only guess.
+    private static IPEndPoint? SelectDatagramEndpoint(GameNatReport report)
     {
-        var addressKey = AddressKey(remote.Address);
-        var observed = new IPEndPoint(NormalizeAddress(remote.Address), remote.Port);
-        _observedByAddress[addressKey] = observed;
-
-        foreach (var session in _sessions.Values)
-        {
-            lock (session.Gate)
-            {
-                if (!string.Equals(
-                        AddressKey(session.TcpAddress),
-                        addressKey,
-                        StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                SetDatagramEndpoint(session, observed);
-            }
-        }
-    }
-
-    private IPEndPoint? SelectDatagramEndpoint(
-        GameplaySession session,
-        GameNatReport report)
-    {
-        if (_observedByAddress.TryGetValue(
-                AddressKey(session.TcpAddress),
-                out var observed))
-        {
-            return observed;
-        }
-
         if (report.PublicPort == 0
             || report.PublicAddress.Equals(IPAddress.Any)
             || report.PublicAddress.Equals(IPAddress.None))
@@ -552,33 +592,13 @@ public sealed class GameplayDatagramService(
             report.PublicPort);
     }
 
-    private void SetDatagramEndpoint(
-        GameplaySession session,
-        IPEndPoint? endpoint)
-    {
-        if (session.DatagramEndpoint is not null)
-        {
-            _sessionsByEndpoint.TryRemove(
-                EndpointKey(session.DatagramEndpoint),
-                out _);
-        }
-
-        session.DatagramEndpoint = endpoint;
-        if (endpoint is not null)
-        {
-            _sessionsByEndpoint[EndpointKey(endpoint)] = session.Runtime.Id;
-        }
-    }
-
     private void TraceDatagram(
         IPEndPoint remote,
         ReadOnlySpan<byte> datagram,
         string direction,
         bool countReceived = true)
     {
-        if (!_sessionsByEndpoint.TryGetValue(
-                EndpointKey(remote),
-                out var sessionId)
+        if (FindSessionKeyByEndpoint(remote) is not { } sessionId
             || !_sessions.TryGetValue(sessionId, out var session))
         {
             return;
@@ -792,15 +812,14 @@ public sealed class GameplayDatagramService(
     private static IPAddress NormalizeAddress(IPAddress address) =>
         address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
 
-    private sealed class GameplaySession(
-        RuntimeSession runtimeSession,
-        IPAddress tcpAddress)
+    private sealed class GameplaySession(RuntimeSession runtimeSession)
     {
         public object Gate { get; } = new();
         public RuntimeSession Runtime { get; } = runtimeSession;
-        public IPAddress TcpAddress { get; } = tcpAddress;
         public GameNatReport? NatReport { get; set; }
         public IPEndPoint? DatagramEndpoint { get; set; }
+        public ushort? RelayPartyId { get; set; }
+        public object? RelayDungeonInstance { get; set; }
         public uint NextSequence { get; set; }
     }
 }

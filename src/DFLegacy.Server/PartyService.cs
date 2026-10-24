@@ -1060,6 +1060,7 @@ public sealed class PartyService : BackgroundService
         var now = _timeProvider.GetUtcNow();
         List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
         List<(byte TownId, byte AreaId, GameServerPacket Packet)> areas = [];
+        Guid[] combatMembers;
         int memberCount;
         byte storedNameSelection;
         byte outboundNameSelection;
@@ -1085,6 +1086,9 @@ public sealed class PartyService : BackgroundService
             // 锁外读 `NameSelection` 再归一化会打印**并非真正发出去的值**，而这行日志正是真机核对
             // nameSel 用的（`NormalizeNameSelection` 与 BuildRosterPacket 里的出站取值同源）。
             memberCount = roster.Count;
+            // Recipients can include a departing player. Combat rebuilding is
+            // restricted to this publication's actual, still-live members.
+            combatMembers = live ? [.. roster.Members.Select(member => member.CharacterId)] : [];
             storedNameSelection = roster.NameSelection;
             outboundNameSelection = NormalizeNameSelection(roster.NameSelection);
 
@@ -1122,6 +1126,30 @@ public sealed class PartyService : BackgroundService
         {
             await _directory.BroadcastPartyPacketAsync(townId, areaId, packet, cancellationToken);
         }
+
+        // NOTI 9 can delete foreign combat actors even while their town user
+        // records survive. Rebuild after all direct/area rosters, using only
+        // immutable cached details and current members, never observers.
+        lock (_gate)
+        {
+            combatMembers = _parties.TryGetValue(roster.PartyId, out var current)
+                && ReferenceEquals(current, roster)
+                ? [.. combatMembers.Where(characterId =>
+                    _partyByCharacter.TryGetValue(characterId, out var partyId)
+                    && partyId == roster.PartyId)]
+                : [];
+        }
+        bool IsCurrentMember(Guid characterId)
+        {
+            lock (_gate)
+            {
+                return _parties.TryGetValue(roster.PartyId, out var current)
+                    && ReferenceEquals(current, roster)
+                    && _partyByCharacter.TryGetValue(characterId, out var partyId)
+                    && partyId == roster.PartyId;
+            }
+        }
+        await _directory.ReplayPartyCombatDetailsAsync(combatMembers, cancellationToken, IsCurrentMember);
     }
 
     /// <summary>

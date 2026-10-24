@@ -1,4 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 
 #include <algorithm>
@@ -7,6 +10,9 @@
 #include <cstdio>
 #include <cstring>
 #include <cwchar>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #define IJL15_EXPORTS
@@ -16,7 +22,16 @@
 #include "ijl15.h"
 #include "ijl15_config.h"
 #include "memory_patch.h"
+#include "net_dump.h"
 #include "output_paths.h"
+
+bool TestStageFollowRepair();
+bool TestSummonOwnerLossOrdering();
+bool TestPartyCombatDetailInitialization();
+bool TestMageSkillContactPrerequisite();
+bool TestBossRoomLateSpawnDeath();
+bool TestPriestHealTargetReplay();
+bool TestGroundItemRemovalNotification();
 
 namespace
 {
@@ -41,6 +56,546 @@ bool IsClose(unsigned char actual, unsigned char expected, int tolerance)
 {
     return std::abs(
         static_cast<int>(actual) - static_cast<int>(expected)) <= tolerance;
+}
+
+// ---------------------------------------------------------------------------
+// Net dump (src/net_dump.cpp)
+//
+// What this proves: the IAT hook really intercepts this module's own ws2_32
+// calls, the original call still happens, and the datagram that lands in the
+// log carries the right direction, addresses and bytes. That is the client-side
+// equivalent of "the packet capture shows it", which is not available for the
+// loopback traffic this dump exists to see.
+// ---------------------------------------------------------------------------
+
+std::string ReadAllText(const std::string& path)
+{
+    std::ifstream stream(path.c_str(), std::ios::binary);
+    std::ostringstream buffer;
+    buffer << stream.rdbuf();
+    return buffer.str();
+}
+
+enum class Match
+{
+    Exact,
+    Contains,
+    Absent,
+};
+
+void Check(
+    std::vector<std::string>* failures,
+    const std::string& text,
+    const std::string& needle,
+    Match mode,
+    const std::string& what)
+{
+    const bool found = text.find(needle) != std::string::npos;
+    const bool satisfied = mode == Match::Absent ? !found : found;
+    if (satisfied)
+    {
+        return;
+    }
+
+    const char* wanted = mode == Match::Exact
+        ? "containing"
+        : (mode == Match::Contains ? "containing" : "not containing");
+    failures->push_back(
+        what + ": no line " + wanted + " [" + needle + "]");
+}
+
+// The sockets used by this test all bind to an ephemeral loopback port, so the
+// only moving part in an expected line is the port number.
+void FillLoopbackAddress(struct sockaddr_in* address, unsigned short port)
+{
+    std::memset(address, 0, sizeof(*address));
+    address->sin_family = AF_INET;
+    address->sin_port = htons(port);
+    address->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+}
+
+// The dump renders payloads as upper-case hex, so expectations built from text
+// have to go through the same encoding.
+std::string ToHex(const std::string& text)
+{
+    static constexpr char Digits[] = "0123456789ABCDEF";
+    std::string result;
+    result.reserve(text.size() * 2);
+    for (const unsigned char value : text)
+    {
+        result.push_back(Digits[value >> 4]);
+        result.push_back(Digits[value & 0x0F]);
+    }
+    return result;
+}
+
+bool TestNetDump()
+{
+    WSADATA wsaData{};
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        return Fail("WSAStartup failed for the net dump test");
+    }
+
+    std::array<char, MAX_PATH> temporaryDirectory{};
+    if (GetTempPathA(
+            static_cast<DWORD>(temporaryDirectory.size()),
+            temporaryDirectory.data()) == 0)
+    {
+        WSACleanup();
+        return Fail("could not resolve the temporary directory");
+    }
+
+    const std::string logPath =
+        std::string(temporaryDirectory.data()) + "dflegacy-netdump-test.log";
+    DeleteFileA(logPath.c_str());
+
+    // Hook this executable: it imports sendto/recvfrom from ws2_32 exactly the
+    // way DNF.exe does, so the same import-table walk is under test.
+    constexpr int PayloadLimit = 6;
+    dfl::net_dump::InstallOptions options{};
+    options.PayloadBytes = PayloadLimit;
+    options.MaxMegabytes = 0;
+    options.ExplicitLogPath = logPath.c_str();
+    if (!dfl::net_dump::InstallForModule(GetModuleHandleA(nullptr), options))
+    {
+        const dfl::net_dump::InstallReport report = dfl::net_dump::LastInstallReport();
+        std::fprintf(
+            stderr,
+            "net dump install failed: %s (send=%d sendto=%d recv=%d recvfrom=%d wsarecvfrom=%d)\n",
+            report.Failure != nullptr ? report.Failure : "(no reason recorded)",
+            report.Send ? 1 : 0,
+            report.SendTo ? 1 : 0,
+            report.Recv ? 1 : 0,
+            report.RecvFrom ? 1 : 0,
+            report.WSARecvFrom ? 1 : 0);
+        WSACleanup();
+        return Fail("net dump did not install on the test executable");
+    }
+
+    const dfl::net_dump::InstallReport installReport = dfl::net_dump::LastInstallReport();
+    if (!installReport.SendTo || !installReport.RecvFrom)
+    {
+        std::fprintf(
+            stderr,
+            "net dump hooked sendto=%d recvfrom=%d, so the UDP path is not fully covered\n",
+            installReport.SendTo ? 1 : 0,
+            installReport.RecvFrom ? 1 : 0);
+    }
+    std::vector<std::string> failures;
+
+    const SOCKET sender = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    const SOCKET receiver = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sender == INVALID_SOCKET || receiver == INVALID_SOCKET)
+    {
+        dfl::net_dump::UninstallForTest();
+        WSACleanup();
+        return Fail("could not create the UDP sockets for the net dump test");
+    }
+
+    struct sockaddr_in receiverAddress{};
+    FillLoopbackAddress(&receiverAddress, 0);
+    if (bind(
+            receiver,
+            reinterpret_cast<const struct sockaddr*>(&receiverAddress),
+            sizeof(receiverAddress)) == SOCKET_ERROR)
+    {
+        closesocket(sender);
+        closesocket(receiver);
+        dfl::net_dump::UninstallForTest();
+        WSACleanup();
+        return Fail("could not bind the receiving UDP socket");
+    }
+
+    int addressLength = sizeof(receiverAddress);
+    if (getsockname(
+            receiver,
+            reinterpret_cast<struct sockaddr*>(&receiverAddress),
+            &addressLength) == SOCKET_ERROR
+        || receiverAddress.sin_port == 0)
+    {
+        closesocket(sender);
+        closesocket(receiver);
+        dfl::net_dump::UninstallForTest();
+        WSACleanup();
+        return Fail("could not resolve the receiving UDP port");
+    }
+    const unsigned short receiverPort = ntohs(receiverAddress.sin_port);
+
+    struct sockaddr_in senderAddress{};
+    FillLoopbackAddress(&senderAddress, 0);
+    if (bind(
+            sender,
+            reinterpret_cast<const struct sockaddr*>(&senderAddress),
+            sizeof(senderAddress)) == SOCKET_ERROR)
+    {
+        closesocket(sender);
+        closesocket(receiver);
+        dfl::net_dump::UninstallForTest();
+        WSACleanup();
+        return Fail("could not bind the sending UDP socket");
+    }
+
+    addressLength = sizeof(senderAddress);
+    if (getsockname(
+            sender,
+            reinterpret_cast<struct sockaddr*>(&senderAddress),
+            &addressLength) == SOCKET_ERROR
+        || senderAddress.sin_port == 0)
+    {
+        closesocket(sender);
+        closesocket(receiver);
+        dfl::net_dump::UninstallForTest();
+        WSACleanup();
+        return Fail("could not resolve the sending UDP port");
+    }
+    const unsigned short senderPort = ntohs(senderAddress.sin_port);
+
+    // Bytes with a NUL and high values, so the dump has to be hex rather than a
+    // string that happens to survive a round trip.
+    const char payload[] = {'\x11', '\x22', '\x00', '\x33', '\xFE', '\x7A', '\x0D'};
+    const int payloadLength = static_cast<int>(sizeof(payload));
+
+    const int sent = sendto(
+        sender,
+        payload,
+        payloadLength,
+        0,
+        reinterpret_cast<const struct sockaddr*>(&receiverAddress),
+        sizeof(receiverAddress));
+
+    char received[64]{};
+    struct sockaddr_in fromAddress{};
+    int fromLength = sizeof(fromAddress);
+    const int got = recvfrom(
+        receiver,
+        received,
+        sizeof(received),
+        0,
+        reinterpret_cast<struct sockaddr*>(&fromAddress),
+        &fromLength);
+
+    closesocket(sender);
+    closesocket(receiver);
+
+    // Read the report before uninstalling: it carries how many times a wrapper
+    // reached the writer and how many lines it emitted, which is what tells a
+    // missing packet apart from an unhooked call. The hooks stay installed a
+    // little longer, because the connect test below needs them.
+    const dfl::net_dump::InstallReport afterTraffic = dfl::net_dump::LastInstallReport();
+
+    if (sent != payloadLength)
+    {
+        failures.push_back("the hooked sendto did not report the full length");
+    }
+    if (got != payloadLength || std::memcmp(received, payload, payloadLength) != 0)
+    {
+        failures.push_back("the wrapped sendto/recvfrom did not carry the datagram");
+    }
+
+    std::string text = ReadAllText(logPath);
+    if (text.empty())
+    {
+        WSACleanup();
+        return Fail("the net dump log was not written");
+    }
+
+    const std::string senderText =
+        "127.0.0.1:" + std::to_string(senderPort);
+    const std::string receiverText =
+        "127.0.0.1:" + std::to_string(receiverPort);
+
+    // TX: the wrapper saw the datagram that really left, with the destination
+    // from the call and the source from the socket.
+    Check(
+        &failures,
+        text,
+        " TX UDP " + senderText + " -> " + receiverText + " len="
+            + std::to_string(payloadLength) + " (truncated) hex=11220033FE7A",
+        Match::Exact,
+        "the transmitted datagram");
+
+    // RX: the wrapper saw the datagram that really arrived, with the peer from
+    // recvfrom's own out-parameter.
+    Check(
+        &failures,
+        text,
+        " RX UDP " + receiverText + " -> " + senderText + " len="
+            + std::to_string(payloadLength) + " (truncated) hex=11220033FE7A",
+        Match::Exact,
+        "the received datagram");
+
+    // The bytes past the configured payload limit must not be in the dump.
+    Check(
+        &failures,
+        text,
+        "11220033FE7A0D",
+        Match::Absent,
+        "the payload limit");
+
+    // A normal reception is not a truncation, so it must not be labelled one.
+    Check(
+        &failures,
+        text,
+        " RX TCP",
+        Match::Absent,
+        "the protocol label");
+
+    // A dial to a closed port must still be recorded: that is the only evidence
+    // left when a client picks a wrong endpoint and never sends a byte. Reserve
+    // a port that nothing can be listening on by binding it and closing it.
+    unsigned short closedPort = 0;
+    {
+        const SOCKET probe = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (probe != INVALID_SOCKET)
+        {
+            struct sockaddr_in probeAddress{};
+            FillLoopbackAddress(&probeAddress, 0);
+            if (bind(
+                    probe,
+                    reinterpret_cast<const struct sockaddr*>(&probeAddress),
+                    sizeof(probeAddress)) != SOCKET_ERROR)
+            {
+                int probeLength = sizeof(probeAddress);
+                if (getsockname(
+                        probe,
+                        reinterpret_cast<struct sockaddr*>(&probeAddress),
+                        &probeLength) != SOCKET_ERROR)
+                {
+                    closedPort = ntohs(probeAddress.sin_port);
+                }
+            }
+            closesocket(probe);
+        }
+    }
+
+    int connectError = 0;
+    SOCKET dialer = INVALID_SOCKET;
+    if (closedPort == 0)
+    {
+        failures.push_back("could not reserve a closed TCP port for the connect test");
+    }
+    else
+    {
+        dialer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (dialer == INVALID_SOCKET)
+        {
+            failures.push_back("could not create the TCP socket for the connect test");
+        }
+        else
+        {
+            struct sockaddr_in closedAddress{};
+            FillLoopbackAddress(&closedAddress, closedPort);
+            const int connected = connect(
+                dialer,
+                reinterpret_cast<const struct sockaddr*>(&closedAddress),
+                sizeof(closedAddress));
+            connectError = connected == SOCKET_ERROR ? WSAGetLastError() : 0;
+        }
+    }
+
+    if (!installReport.Connect)
+    {
+        failures.push_back("the connect import was not hooked");
+    }
+
+    // The connect line is written after the UDP exchange, so the log has to be
+    // re-read before anything can assert on it.
+    dfl::net_dump::UninstallForTest();
+    text = ReadAllText(logPath);
+
+    if (installReport.Connect && closedPort != 0 && dialer != INVALID_SOCKET)
+    {
+        const std::string connectLine = "connect=fail wsa="
+            + std::to_string(connectError);
+        // The socket is never bound, so there is no local address to report and
+        // the fallback "-" must appear rather than a made-up endpoint.
+        Check(
+            &failures,
+            text,
+            " TX TCP-CONNECT - -> 127.0.0.1:" + std::to_string(closedPort) + " ",
+            Match::Contains,
+            "the dialled address");
+
+        // The outcome text is longer than the 6-byte payload limit in force for
+        // this test, so the line must carry the limit marker and the first six
+        // bytes of "connect=fail wsa=..." -- which is "connec".
+        const std::string prefix = connectLine.substr(0, PayloadLimit);
+        Check(
+            &failures,
+            text,
+            "-> 127.0.0.1:" + std::to_string(closedPort) + " len="
+                + std::to_string(connectLine.size()) + " (truncated) hex="
+                + ToHex(prefix),
+            Match::Contains,
+            "the closed port and its failure code");
+    }
+    if (dialer != INVALID_SOCKET)
+    {
+        closesocket(dialer);
+    }
+
+    // The dial above must not have been mistaken for a data packet.
+    Check(
+        &failures,
+        text,
+        " RX TCP-CONNECT",
+        Match::Absent,
+        "the connect direction label");
+
+    WSACleanup();
+
+    if (!failures.empty())
+    {
+        std::fprintf(stderr, "net dump log (%s):\n", logPath.c_str());
+        std::fputs(text.c_str(), stderr);
+        std::fprintf(
+            stderr,
+            "net dump: hooked sendto=%d recvfrom=%d connect=%d; wrapper reached writer %d time(s), "
+            "wrote %d line(s)\n",
+            installReport.SendTo ? 1 : 0,
+            installReport.RecvFrom ? 1 : 0,
+            installReport.Connect ? 1 : 0,
+            afterTraffic.WritePacketCalls,
+            afterTraffic.WrittenLines);
+        for (const std::string& failure : failures)
+        {
+            std::fprintf(stderr, "FAIL: net dump %s\n", failure.c_str());
+        }
+        return false;
+    }
+
+    return true;
+}
+
+// The path the client actually takes: Config.ini switches the dump on, Load()
+// reads it, and Install() resolves the module and the log location itself. The
+// test runs with its own Config.ini beside it (copied from the module's), so
+// this exercises the real wiring rather than InstallForModule's seams.
+bool TestNetDumpFromConfiguration()
+{
+    constexpr char ConfigName[] = "Config.ini";
+    constexpr char DisabledConfigName[] = "Config.netdump-test-off.ini";
+    constexpr char EnabledConfigName[] = "Config.netdump-test-on.ini";
+
+    const auto writeFile = [](const char* path, const char* text) -> bool
+    {
+        std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+        stream << text;
+        return stream.good();
+    };
+
+    // Keep whatever the build placed beside the tests, so a failure here does
+    // not leave the test directory in a state that breaks the next run.
+    const std::string original = ReadAllText(ConfigName);
+    if (original.empty())
+    {
+        return Fail("the test directory has no Config.ini to work with");
+    }
+
+    constexpr char DisabledConfig[] =
+        "[Features]\r\n"
+        "DumpNetwork=0\r\n";
+    constexpr char EnabledConfig[] =
+        "[Features]\r\n"
+        "DumpNetwork=1\r\n"
+        "DumpNetworkPayloadBytes=4\r\n"
+        "DumpNetworkMaxMegabytes=1\r\n";
+
+    if (!writeFile(DisabledConfigName, DisabledConfig)
+        || !writeFile(EnabledConfigName, EnabledConfig))
+    {
+        return Fail("could not write the net dump test configurations");
+    }
+
+    bool ok = true;
+
+    if (!CopyFileA(DisabledConfigName, ConfigName, FALSE))
+    {
+        return Fail("could not install the disabled test configuration");
+    }
+
+    // Load() caches the first read, which is why each case needs its own
+    // process. The test therefore only asserts the enabled case here and the
+    // disabled default is covered by DumpNetwork being off in the shipped file.
+    if (!CopyFileA(EnabledConfigName, ConfigName, FALSE))
+    {
+        return Fail("could not install the enabled test configuration");
+    }
+
+    if (!dfl::ijl15_config::Load())
+    {
+        ok = false;
+    }
+
+    const dfl::ijl15_config::Settings& settings = dfl::ijl15_config::Get();
+    if (!settings.DumpNetwork)
+    {
+        std::fprintf(stderr, "net dump: Config.ini DumpNetwork=1 was not read\n");
+        ok = false;
+    }
+    if (settings.DumpNetworkPayloadBytes != 4)
+    {
+        std::fprintf(
+            stderr,
+            "net dump: DumpNetworkPayloadBytes was read as %d, expected 4\n",
+            settings.DumpNetworkPayloadBytes);
+        ok = false;
+    }
+    if (settings.DumpNetworkMaxMegabytes != 1)
+    {
+        std::fprintf(
+            stderr,
+            "net dump: DumpNetworkMaxMegabytes was read as %d, expected 1\n",
+            settings.DumpNetworkMaxMegabytes);
+        ok = false;
+    }
+
+    // Install() with no explicit path puts the log beside the executable, which
+    // is what the client does, and returns false only if nothing could be
+    // hooked. No packets are sent here: this checks the wiring, not the wire.
+    if (ok && !dfl::net_dump::Install())
+    {
+        const dfl::net_dump::InstallReport report = dfl::net_dump::LastInstallReport();
+        std::fprintf(
+            stderr,
+            "net dump: Install() from Config.ini failed: %s\n",
+            report.Failure != nullptr ? report.Failure : "(no reason recorded)");
+        ok = false;
+    }
+    if (ok)
+    {
+        const dfl::net_dump::InstallReport report = dfl::net_dump::LastInstallReport();
+        if (!report.SendTo || !report.RecvFrom)
+        {
+            std::fprintf(
+                stderr,
+                "net dump: Install() hooked sendto=%d recvfrom=%d\n",
+                report.SendTo ? 1 : 0,
+                report.RecvFrom ? 1 : 0);
+            ok = false;
+        }
+    }
+    dfl::net_dump::UninstallForTest();
+
+    // The log Install() created sits beside the executable, named after the pid.
+    char logName[64]{};
+    std::snprintf(
+        logName,
+        sizeof(logName),
+        "netdump-%lu.log",
+        static_cast<unsigned long>(GetCurrentProcessId()));
+    if (ok && !std::ifstream(logName, std::ios::binary).good())
+    {
+        std::fprintf(stderr, "net dump: %s was not created beside the executable\n", logName);
+        ok = false;
+    }
+    DeleteFileA(logName);
+
+    writeFile(ConfigName, original.c_str());
+    DeleteFileA(DisabledConfigName);
+    DeleteFileA(EnabledConfigName);
+    return ok;
 }
 
 template<typename T>
@@ -351,6 +906,29 @@ bool TestRelativeOutputPathPolicy()
 // tests touch the file system.
 // ---------------------------------------------------------------------------
 
+bool TestFocusRequestIsolation()
+{
+    using dfl::auto_input::IsFocusRequestForProcess;
+    constexpr char EmbeddedNull[] = {'1', '2', '3', '\0', '4'};
+    const char* invalid[] = {"", "0", "0123", "-123", "+123", "123x", "12 3",
+        "4294967296", "99999999999999999999999999999999", " \r\n"};
+    for (const auto* text : invalid)
+    {
+        if (IsFocusRequestForProcess(text, static_cast<unsigned>(std::strlen(text)), 123))
+        {
+            return false;
+        }
+    }
+    return IsFocusRequestForProcess("123", 3, 123)
+        && IsFocusRequestForProcess(" \t123\r\n", 7, 123)
+        && IsFocusRequestForProcess("4294967295", 10, 0xFFFFFFFFUL)
+        && !IsFocusRequestForProcess("123", 3, 456)
+        && !IsFocusRequestForProcess("123", 3, 0)
+        && !IsFocusRequestForProcess(nullptr, 3, 123)
+        && !IsFocusRequestForProcess(EmbeddedNull, sizeof(EmbeddedNull), 123)
+        && !IsFocusRequestForProcess("123", 33, 123);
+}
+
 bool TestParsePlanHappyPath()
 {
     using namespace dfl::auto_input;
@@ -599,7 +1177,8 @@ bool TestRightClickPrimitive()
 {
     // DNF forms a party from a right click on the other player's character, so
     // the timeline needs an rclick op whose edges reach the game as right-button
-    // mouse messages (WM_RBUTTONDOWN/UP), never as left ones.
+    // mouse messages (WM_RBUTTONDOWN/UP), not left ones. Pins both halves:
+    // the parser word and the primitive the up/down passes emit.
     using namespace dfl::auto_input;
 
     const char* plan =
@@ -633,7 +1212,7 @@ bool TestRightClickPrimitive()
         }
         if (records[i].op == kMouseDown)
         {
-            return false;
+            return false;  // a right click must never emit a left button edge
         }
     }
 
@@ -745,9 +1324,48 @@ bool TestSyntheticKeyboardStateMerge()
 
 int main()
 {
+    // First: it hooks this executable's own import table and puts it back, so
+    // later tests get the imports they expect.
+    if (!TestNetDump())
+    {
+        return Fail("net dump hook failed");
+    }
+    if (!TestNetDumpFromConfiguration())
+    {
+        return Fail("net dump Config.ini wiring failed");
+    }
+
     if (!TestMemoryPatchHelpers())
     {
         return Fail("memory patch helpers failed");
+    }
+    if (!TestStageFollowRepair())
+    {
+        return Fail("removed actor stage follow repair failed");
+    }
+    if (!TestSummonOwnerLossOrdering())
+    {
+        return Fail("summon owner-loss ordering failed");
+    }
+    if (!TestPartyCombatDetailInitialization())
+    {
+        return Fail("party combat detail initialization failed");
+    }
+    if (!TestMageSkillContactPrerequisite())
+    {
+        return Fail("Mage contact skill prerequisite failed");
+    }
+    if (!TestBossRoomLateSpawnDeath())
+    {
+        return Fail("boss room late-spawn death failed");
+    }
+    if (!TestPriestHealTargetReplay())
+    {
+        return Fail("Priest healing target replay failed");
+    }
+    if (!TestGroundItemRemovalNotification())
+    {
+        return Fail("ground item removal notification failed");
     }
     if (!TestCustomStackableUseModePolicy())
     {
@@ -779,6 +1397,10 @@ int main()
         return Fail("relative Logs/ScreenShot output path policy failed");
     }
 
+    if (!TestFocusRequestIsolation())
+    {
+        return Fail("auto-input focus request accepted invalid or foreign process identity");
+    }
     if (!TestParsePlanHappyPath())
     {
         return Fail("auto-input JSON subset happy path failed");

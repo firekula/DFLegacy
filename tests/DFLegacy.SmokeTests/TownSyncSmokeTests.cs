@@ -18,6 +18,7 @@ internal static class TownSyncSmokeTests
         await CheckGhostBroadcastAsync(check);
         await CheckDirectoryAsync(check);
         await CheckAreaPeerTableAsync(check);
+        await CheckPeerTableIntroductionOrderAsync(check);
         await CheckSymmetricIntroductionAsync(check);
         await CheckPositionRateLimitAsync(check);
         await CheckDirectoryMigrationAsync(check);
@@ -317,7 +318,7 @@ internal static class TownSyncSmokeTests
         await service.StartAsync(stopping.Token);
         try
         {
-            var appearance = await WaitForAppearanceAsync(witness, expectedGhostId);
+            var appearance = await WaitForGhostIntroductionAsync(witness, expectedGhostId);
             check(appearance is not null,
                 "a running ghost publishes its appearance to the area it joins");
             check(appearance is not null
@@ -355,7 +356,7 @@ internal static class TownSyncSmokeTests
             "stopping the ghost releases the area user id it allocated");
     }
 
-    private static async Task<GameServerPacket?> WaitForAppearanceAsync(
+    private static async Task<GameServerPacket?> WaitForGhostIntroductionAsync(
         FakeChannel channel,
         ushort expectedUserId)
     {
@@ -367,7 +368,13 @@ internal static class TownSyncSmokeTests
                     packet.Payload.Length > 4
                     && BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(3, 2))
                         == expectedUserId);
-            if (match is not null)
+            // The peer table follows USERINFO. Observing only the first packet
+            // can race the ghost's asynchronous introduction and falsely fail
+            // the endpoint assertions immediately after this wait.
+            if (match is not null
+                && channel.Of(GameProtocolEngine.UdpPeerInfoNotification)
+                    .Any(packet => ReadPeerTable(packet)
+                        .Any(peer => peer.UserId == expectedUserId)))
             {
                 return match;
             }
@@ -608,8 +615,10 @@ internal static class TownSyncSmokeTests
             && soloTable[0].NatType == 1
             && soloTable[0].Mtu == 1400,
             "the entry carries uid, local/public address, port, account, nat type and mtu in the writer's layout");
+        await directory.RefreshAppearanceAsync(
+            aliceTicket, CreateAppearance(1, "Alice"), CancellationToken.None);
 
-        // Bob 进入：新人拿到「自己第一、老人随后」的表，老人拿到含新人的刷新表。
+        // Bob 进入：新人拿到「自己第一、老人随后」的表；老人的表要等 Bob 外观介绍之后。
         var bob = new FakeChannel();
         var bobTicket = await directory.EnterAsync(
             CreateEntry(1, 1, 2, "Bob", bob, bobPeer),
@@ -632,6 +641,10 @@ internal static class TownSyncSmokeTests
             && bobTable[1].NatType == 1
             && bobTable[1].Mtu == 1400,
             "both entries decode field-for-field in the CreateUdpPeerInfo writer layout");
+        aliceTables = alice.Of(GameProtocolEngine.UdpPeerInfoNotification);
+        check(aliceTables.Count == 1, "the resident's peer refresh waits for the newcomer's appearance");
+        await directory.RefreshAppearanceAsync(
+            bobTicket, CreateAppearance(2, "Bob"), CancellationToken.None);
         aliceTables = alice.Of(GameProtocolEngine.UdpPeerInfoNotification);
         check(aliceTables.Count == 2, "the existing member receives one refreshed table");
         check(ReadPeerTable(aliceTables[1]).Length == 2
@@ -659,8 +672,8 @@ internal static class TownSyncSmokeTests
         await directory.LeaveAsync(bobTicket, CancellationToken.None);
         aliceTables = alice.Of(GameProtocolEngine.UdpPeerInfoNotification);
         var aliceAfterDeparture = ReadPeerTable(aliceTables[^1]);
-        // Alice 的表依次来自：自己进入、Bob 进入、Carol 进入、Bob 离开。
-        check(aliceTables.Count == 4
+        // Alice 的表依次来自：自己进入、Bob 外观介绍、Bob 离开；无端点 Carol 不触发重播。
+        check(aliceTables.Count == 3
             && aliceAfterDeparture.Length == 1
             && aliceAfterDeparture[0].UserId == 1,
             "a departure refreshes the remaining member's table without the departed member");
@@ -668,7 +681,7 @@ internal static class TownSyncSmokeTests
             carol.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1]);
         check(carolAfterDeparture.Length == 1 && carolAfterDeparture[0].UserId == 1,
             "every remaining member sees the departure in its refreshed table");
-        check(bob.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 2,
+        check(bob.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 1,
             "the departed member receives no peer table after leaving");
 
         // 强制移除路径：Carol 的通道在下一次投递时抛异常，她会被目录摘除；
@@ -676,9 +689,11 @@ internal static class TownSyncSmokeTests
         var davePeer = CreatePeer(4, "10.0.0.4", "203.0.113.4", 40004, accountId: 9, natType: 1, mtu: 1400);
         var dave = new FakeChannel();
         carol.FailNextSend = true;
-        await directory.EnterAsync(
+        var daveTicket = await directory.EnterAsync(
             CreateEntry(1, 1, 4, "Dave", dave, davePeer),
             CancellationToken.None);
+        await directory.RefreshAppearanceAsync(
+            daveTicket, CreateAppearance(4, "Dave"), CancellationToken.None);
         check(directory.GetMemberCount(1, 1) == 2,
             "a peer-table send to a broken channel removes that member");
         var aliceAfterForcedRemoval = ReadPeerTable(
@@ -737,6 +752,128 @@ internal static class TownSyncSmokeTests
             && secondAreas[0].Payload[3] == 0xFF
             && secondAreas[0].Payload[9] == 0,
             "disabling the peer table keeps the region-mismatch USER_AREA departure signal");
+    }
+
+    private static async Task CheckPeerTableIntroductionOrderAsync(Action<bool, string> check)
+    {
+        var options = new ServerOptions();
+        options.TownSync.PrivateAreas = [];
+        var directory = new TownSessionDirectory(
+            options, TimeProvider.System, NullLogger<TownSessionDirectory>.Instance);
+        var alicePeer = CreatePeer(1, "10.0.0.1", "203.0.113.1", 40001, 7, 1, 1400);
+        var bobPeer = CreatePeer(2, "10.0.0.2", "203.0.113.2", 40002, 8, 2, 1472);
+        var alice = new FakeChannel();
+        var aliceTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 1, "Alice", alice, alicePeer), CancellationToken.None);
+        await directory.RefreshAppearanceAsync(
+            aliceTicket, CreateAppearance(1, "Alice"), CancellationToken.None);
+        var bob = new FakeChannel();
+        var bobTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 2, "Bob", bob, bobPeer), CancellationToken.None);
+
+        check(alice.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 1,
+            "the resident does not receive the newcomer's peer entry before its USERINFO exists");
+        var bobClient = ReplayClientPeers(bob, ownUserId: 2);
+        check(bobClient.Ignored == 0 && bobClient.Mtus.GetValueOrDefault((ushort)1) == 1400,
+            "the newcomer accepts the resident's MTU after receiving its USERINFO");
+
+        await directory.RefreshAppearanceAsync(
+            bobTicket, CreateAppearance(2, "Bob"), CancellationToken.None);
+        var aliceClient = ReplayClientPeers(alice, ownUserId: 1);
+        check(aliceClient.Ignored == 0 && aliceClient.Mtus.GetValueOrDefault((ushort)2) == 1472,
+            "the resident accepts the newcomer's real MTU instead of silently retaining zero");
+        check(alice.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 2
+            && bob.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 1,
+            "the first introduction sends exactly one deferred peer table to the resident");
+        await directory.RefreshAppearanceAsync(
+            bobTicket, CreateAppearance(2, "Bob"), CancellationToken.None);
+        check(alice.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 2
+            && bob.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 1,
+            "equipment appearance refreshes do not replay unchanged peer tables");
+
+        // Two entries can overlap before either caller publishes its own appearance.
+        // A live directory entry alone must not make that uid eligible for a peer table.
+        var carolPeer = CreatePeer(3, "10.0.0.3", "203.0.113.3", 40003, 9, 1, 1280);
+        var davePeer = CreatePeer(4, "10.0.0.4", "203.0.113.4", 40004, 10, 1, 1024);
+        var carol = new FakeChannel();
+        var carolTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 3, "Carol", carol, carolPeer), CancellationToken.None);
+        var dave = new FakeChannel();
+        var daveTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 4, "Dave", dave, davePeer), CancellationToken.None);
+        check(ReadPeerTable(dave.Of(GameProtocolEngine.UdpPeerInfoNotification)[0])
+                .All(peer => peer.UserId != 3),
+            "an overlapping newcomer does not receive a peer entry for a still-unannounced resident");
+        await directory.RefreshAppearanceAsync(
+            carolTicket, CreateAppearance(3, "Carol"), CancellationToken.None);
+        check(ReadPeerTable(alice.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1])
+                .All(peer => peer.UserId != 4),
+            "one introduction cannot publish another pending newcomer's peer entry early");
+        await directory.RefreshAppearanceAsync(
+            daveTicket, CreateAppearance(4, "Dave"), CancellationToken.None);
+        foreach (var (channel, ownId) in new[] { (alice, (ushort)1), (bob, (ushort)2), (carol, (ushort)3), (dave, (ushort)4) })
+        {
+            var client = ReplayClientPeers(channel, ownId);
+            check(client.Ignored == 0 && client.Mtus.Count == 4
+                && client.Mtus[1] == 1400 && client.Mtus[2] == 1472
+                && client.Mtus[3] == 1280 && client.Mtus[4] == 1024,
+                $"recipient {ownId} accepts every peer MTU across overlapping introductions");
+        }
+
+        await directory.LeaveAsync(bobTicket, CancellationToken.None);
+        check(!aliceTicket!.Member.KnownAppearances.ContainsKey(2)
+            && !carolTicket!.Member.KnownAppearances.ContainsKey(2)
+            && bobTicket!.Member.KnownAppearances.IsEmpty,
+            "departure releases introduced-member references in survivors and the departing member");
+        var reusedPeer = CreatePeer(2, "10.0.0.8", "203.0.113.8", 40008, 18, 2, 1280);
+        var reused = new FakeChannel();
+        var reusedTicket = await directory.EnterAsync(
+            CreateEntry(1, 1, 2, "New Bob", reused, reusedPeer), CancellationToken.None);
+        check(ReadPeerTable(alice.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1])
+                .All(peer => peer.UserId != 2),
+            "reusing a departed uid does not reuse the old member's appearance knowledge");
+        await directory.RefreshAppearanceAsync(
+            reusedTicket, CreateAppearance(2, "New Bob"), CancellationToken.None);
+        await directory.LeaveAsync(bobTicket, CancellationToken.None);
+        check(aliceTicket.Member.KnownAppearances.TryGetValue(2, out var knownReplacement)
+            && ReferenceEquals(knownReplacement, reusedTicket!.Member)
+            && ReplayClientPeers(alice, 1).Mtus.GetValueOrDefault((ushort)2) == 1280,
+            "a stale departure cannot remove the replacement uid's new identity or MTU");
+
+        dave.FailNextSend = true;
+        await directory.RefreshAppearanceAsync(
+            reusedTicket, CreateAppearance(2, "New Bob"), CancellationToken.None);
+        check(!aliceTicket.Member.KnownAppearances.ContainsKey(4)
+            && daveTicket!.Member.KnownAppearances.IsEmpty,
+            "a broken-channel eviction releases the same appearance references as an ordinary departure");
+    }
+
+    // DNF.exe NOTI 11 handler 0x41C8D9/0x41C8EB drops entries whose CNUser
+    // does not exist; it does not cache them for a later USERINFO. The CNUser
+    // constructor initializes MTU to zero (0x4FD2D0), so emission alone is not success.
+    private static (Dictionary<ushort, uint> Mtus, int Ignored) ReplayClientPeers(
+        FakeChannel channel, ushort ownUserId)
+    {
+        var users = new HashSet<ushort> { ownUserId };
+        var mtus = new Dictionary<ushort, uint>();
+        var ignored = 0;
+        foreach (var packet in channel.Packets)
+        {
+            if (packet.ProtocolId == GameProtocolEngine.UserInfoNotification)
+            {
+                users.Add(BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(3, 2)));
+            }
+            else if (packet.ProtocolId == GameProtocolEngine.UdpPeerInfoNotification)
+            {
+                foreach (var peer in ReadPeerTable(packet))
+                {
+                    if (users.Contains(peer.UserId)) mtus[peer.UserId] = peer.Mtu;
+                    else ignored++;
+                }
+            }
+        }
+
+        return (mtus, ignored);
     }
 
     /// <summary>
@@ -802,16 +939,16 @@ internal static class TownSyncSmokeTests
             CancellationToken.None);
         await defaultDirectory.LeaveAsync(bobTicket, CancellationToken.None);
 
-        // Alice 的默认序列：单人名单 → 单人对端表 → 含 Bob 的对端表 → Bob 的外观 →
-        // 一次加入 USER_AREA → 两次重播外观（没有第二次加入）→ Bob 离开的 USER_AREA
+        // Alice 的默认序列：单人名单 → 单人对端表 → Bob 的外观 →
+        // 一次加入 USER_AREA → 含 Bob 的对端表 → 两次重播外观（没有第二次加入）→ Bob 离开的 USER_AREA
         // → 只剩自己的对端表。
         check(PacketsMatch(alice,
             [
                 GameProtocolEngine.CreateAreaUsers(1, 1, [aliceTownUser]),
                 GameProtocolEngine.CreateUdpPeerInfo([alicePeer]),
-                GameProtocolEngine.CreateUdpPeerInfo([alicePeer, bobPeer]),
                 CreateAppearance(2, "Bob"),
                 GameProtocolEngine.CreateUserArea(1, 1, bobTownUser),
+                GameProtocolEngine.CreateUdpPeerInfo([alicePeer, bobPeer]),
                 CreateAppearance(2, "Bob"),
                 CreateAppearance(2, "Bob"),
                 GameProtocolEngine.CreateUserAreaDeparture(bobTownUser),
@@ -1400,7 +1537,9 @@ internal static class TownSyncSmokeTests
                 BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(offset, 2)),
                 payload.AsSpan(offset + 2, 4).ToArray(),
                 payload.AsSpan(offset + 6, 4).ToArray(),
-                BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(offset + 10, 2)),
+                // The port is network order; the MTU is a raw little-endian u32
+                // in the client's NOTI 11 handler (0x41C8C3 / 0x417A90).
+                BinaryPrimitives.ReadUInt16BigEndian(payload.AsSpan(offset + 10, 2)),
                 BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(offset + 12, 4)),
                 payload[offset + 16],
                 BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(offset + 17, 4)));

@@ -8,6 +8,18 @@ public static class DungeonWeaknessPolicy
     public const byte RecoveryPerMinute = 9;
     public const byte FullStamina = 100;
 
+    public static byte ProjectStaminaRecovery(
+        CharacterRecord? character,
+        bool hasBlackDiamond)
+    {
+        if (character is null || !character.IsWeakened || hasBlackDiamond)
+        {
+            return FullStamina;
+        }
+
+        return (byte)Math.Clamp(character.WeaknessRecovery, MinimumRecovery, FullStamina);
+    }
+
     public static bool ShouldApply(
         int characterLevel,
         bool forcedDungeonExit,

@@ -117,8 +117,29 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
 
     public bool HasClearedMap(ushort mapId) => mapId != 0
         && _rooms.Values.Any(room => room.EncounterRoom.MapId == mapId
-            && room.EncounterRoom.Monsters.All(monster =>
-                room.DefeatedMonsterIds.Contains(monster.UniqueId)));
+            && (room.ClearCompleted || IsRoomCleared(
+                room.EncounterRoom, room.DefeatedMonsterIds, room.DestroyedPassiveObjectIds)));
+
+    internal void MarkCurrentRoomCleared()
+    {
+        if (_current is not null)
+        {
+            _current.ClearCompleted = true;
+        }
+    }
+
+    internal static bool IsRoomCleared(
+        DungeonRoomDefinition room,
+        IReadOnlySet<ushort> defeated,
+        IReadOnlySet<byte> destroyedPassiveObjects)
+    {
+        var bosses = room.Monsters.Where(monster => monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
+        var allBossesDead = room.MapType == DungeonMapType.Boss && bosses.Length > 0
+            && bosses.All(monster => defeated.Contains(monster.UniqueId));
+        return room.Monsters.All(monster => defeated.Contains(monster.UniqueId)
+            || allBossesDead && monster.IsBoxMonster != 0
+                && !destroyedPassiveObjects.Contains(monster.BoxIndex));
+    }
 
     public bool MarkPassiveObjectDestroyed(byte objectIndex)
     {
@@ -197,23 +218,27 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
         HellPartyMode = 0;
     }
 
-    private bool TryEnterRoom(
-        byte roomX,
-        byte roomY,
-        out DungeonRoomTransition transition,
-        IDropRandomSource? random,
-        bool validateAdjacent)
+    // Debug-only eager generation reuses the exact encounter on first entry.
+    // Preparing a room does not mark it visited, cleared, or change current room.
+    internal DungeonRoomDefinition? PrepareBossRoomForDebug(
+        out ushort[] defeated, out byte[] destroyed,
+        IDropRandomSource? random = null)
     {
-        transition = null!;
-        if (_layout is null
-            || validateAdjacent && !RoomsConnect(_layout, RoomX, RoomY, roomX, roomY))
-        {
-            return false;
-        }
+        defeated = [];
+        destroyed = [];
+        if (_layout is null || !TryPrepareRoom(_layout.BossX, _layout.BossY, random, out var state))
+            return null;
+        defeated = state!.DefeatedMonsterIds.ToArray();
+        destroyed = state.DestroyedPassiveObjectIds.ToArray();
+        return state.EncounterRoom;
+    }
 
+    private bool TryPrepareRoom(byte roomX, byte roomY, IDropRandomSource? random, out RoomState? state)
+    {
+        state = null;
+        if (_layout is null) return false;
         var position = new DungeonRoomPosition(roomX, roomY);
-        var firstVisit = !_rooms.TryGetValue(position, out var state);
-        if (firstVisit)
+        if (!_rooms.TryGetValue(position, out state))
         {
             random ??= GameRandomSource.Shared;
             if (!catalog.TryCreateRoom(
@@ -272,6 +297,25 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
             state = new RoomState(baseRoom, encounterRoom);
             _rooms.Add(position, state);
         }
+
+        return true;
+    }
+
+    private bool TryEnterRoom(
+        byte roomX,
+        byte roomY,
+        out DungeonRoomTransition transition,
+        IDropRandomSource? random,
+        bool validateAdjacent)
+    {
+        transition = null!;
+        if (_layout is null
+            || validateAdjacent && !RoomsConnect(_layout, RoomX, RoomY, roomX, roomY))
+        {
+            return false;
+        }
+
+        if (!TryPrepareRoom(roomX, roomY, random, out var state)) return false;
 
         var completedHellRoomOnExit = CompleteCurrentHellRoomOnExit();
         RoomX = roomX;
@@ -385,6 +429,7 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
         DungeonRoomDefinition baseRoom,
         DungeonRoomDefinition encounterRoom)
     {
+        public bool ClearCompleted { get; set; }
         public DungeonRoomDefinition BaseRoom { get; } = baseRoom;
 
         public DungeonRoomDefinition EncounterRoom { get; } = encounterRoom;

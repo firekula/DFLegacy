@@ -66,12 +66,6 @@ public sealed class EntranceService(
         Paid
     }
 
-    /// <summary>
-    /// `ALLDIE_MONSTER` 之后留给"客户端自己上报这些小怪的死亡"的时间窗。
-    /// 窗口内客户端上报的死亡会走正常路径（有掉落/经验/击杀统计，并触发清房判定）；
-    /// 窗口到点仍未上报的怪才由服务端补摘，保证房间一定能开（真机 2026-10-01 §10/§11 两次事故的教训）。
-    /// </summary>
-    private static readonly TimeSpan AllDieReconcileDelay = TimeSpan.FromSeconds(5);
     // 临时诊断开关（判定完即删）：外观包"最小化"级别——0 = 正常，1 = 去掉称号与宠物，
     // 2 = 再去掉全部装备。用于判定结算期队员客户端立绘崩溃是否由外观包的这两类额外精灵引起。
     private static readonly int AppearanceMinimalLevel = int.TryParse(
@@ -82,13 +76,6 @@ public sealed class EntranceService(
     private const int CompoundReplayCapacity = 256;
     private static readonly TimeSpan ClearRewardCardSelectionTimeout =
         TimeSpan.FromSeconds(4);
-    // 组队信箱的读等待 tick（终审 P2 + 真机修正）：队员客户端静止时可能上百秒不发包
-    // （真机测量 108 秒），而待选图/待入队/退出选图/队友击杀经验都是**别的会话**投的——
-    // 只按"已有货"缩短等待没有用，会话早已阻塞在无限读里。所以"在队伍里"就按这个间隔轮询信箱
-    // （副本内也要，否则队友击杀的经验信用取不回来）。
-    // 单人（不在队伍）永不进入该分支，等待时长与改造前逐字一致。
-    private static readonly TimeSpan PendingPartyMailCheckInterval =
-        TimeSpan.FromMilliseconds(250);
     private const string FatigueRecoveryRejectedMessage =
         "疲劳值低于126点时才可以使用";
     private const string LevelUpCouponSuccessMessage = "Lv上升";
@@ -320,6 +307,8 @@ public sealed class EntranceService(
             // 它们的主人都是这个实例，会话只经实例的锁内方法读写。
             DungeonInstance? dungeonInstance = null;
             long dungeonInstanceVersion = -1;
+            // 入队或分钟恢复可能由另一个线程完成；唤醒已挂起的读等待。
+            var partyMembershipWake = new EntranceSessionWakeSignal();
 
             // 本会话读"当前实例运行态"的只读直通：只用于只读取值（房间/地狱模式标记）或
             // "本会话自己刚改过"的读。共享集合一律走实例的锁内方法，不从这里拿裸句柄。
@@ -357,7 +346,8 @@ public sealed class EntranceService(
             var premiumExpiryUnix = new ConcurrentDictionary<byte, long>();
             var pendingCeraValue = -1;
             var pendingFatigueReset = 0;
-            var pendingWeaknessRecovery = -1;
+            var weaknessRecovery = new EntranceWeaknessRecovery(partyMembershipWake);
+            Func<GameServerPacket, ValueTask>? dungeonMemberSend = null;
             var knownMailboxIds = new HashSet<uint>();
             var compoundReplay = new Dictionary<ushort, CompoundItemReplayEntry>();
             var compoundReplayOrder = new Queue<ushort>();
@@ -438,10 +428,8 @@ public sealed class EntranceService(
                     }
                 }
 
-                GameSkillEntry[] GetCurrentGameSkills() => currentSkills
-                    .OrderBy(skill => skill.Slot)
-                    .Select(skill => new GameSkillEntry(skill.SkillId, skill.Level, skill.Slot))
-                    .ToArray();
+                GameSkillEntry[] GetCurrentGameSkills() =>
+                    PartyMemberDetailProjection.ProjectLearnedSkills(currentSkills);
 
                 int ApplyLevelUpSkillPoints(CharacterExperienceGrant progression)
                 {
@@ -627,11 +615,34 @@ public sealed class EntranceService(
                         targetAreaUserId,
                         messageBytes);
 
+                async Task ApplyPendingWeaknessRecoveryAsync()
+                {
+                    var latest = await weaknessRecovery.TakeLatestAsync(
+                        activeCharacter?.Id,
+                        isDungeonActive: currentDungeonId != 0,
+                        async (characterId, cancellationToken) =>
+                            (await store.GetCharactersAsync(accountUid, cancellationToken))
+                                .FirstOrDefault(character => character.Id == characterId),
+                        serverToken);
+                    if (latest is null || activeCharacter is not { } current
+                        || current.Id != latest.Id)
+                    {
+                        return;
+                    }
+
+                    // Preserve equipment, progression and other session-owned
+                    // changes; only the persisted recovery fields are refreshed.
+                    activeCharacter = EntranceWeaknessRecovery.WithRecoveryFrom(current, latest);
+                    await SendWeaknessRecoveryNotificationAsync(GetProjectedStaminaRecovery());
+                }
+
                 async Task SendWeaknessRecoveryNotificationAsync(byte recovery)
                 {
                     try
                     {
-                        if (activeCharacter is null)
+                        var recoveringCharacter = activeCharacter;
+                        var recoveryTownTicket = townTicket;
+                        if (recoveringCharacter is null)
                         {
                             return;
                         }
@@ -640,6 +651,23 @@ public sealed class EntranceService(
                         await stamina.WriteAsync(stream, serverToken);
                         Interlocked.Increment(ref runtimeSession.SentPackets);
                         LogPacket("TX", runtimeSession, stamina);
+
+                        // NOTI 4 only changes this client's own actor. Town
+                        // peers must receive the same recovery in their cached
+                        // model projection, without reading mutable equipment
+                        // dictionaries from outside the owning session loop.
+                        if (currentDungeonId == 0 && !inDungeonSelection)
+                        {
+                            var projectedRecovery = DungeonWeaknessPolicy.ProjectStaminaRecovery(
+                                recoveringCharacter with
+                                {
+                                    WeaknessRecovery = recovery,
+                                    LegacyIsWeakened = null
+                                },
+                                HasActivePremiumService(GameProtocolEngine.BlackDiamondServiceType));
+                            await townDirectory.RefreshAppearanceRecoveryAsync(
+                                recoveryTownTicket, projectedRecovery, serverToken);
+                        }
                     }
                     catch (OperationCanceledException) when (serverToken.IsCancellationRequested)
                     {
@@ -666,21 +694,10 @@ public sealed class EntranceService(
                         .ToArray();
                 }
 
-                byte GetProjectedStaminaRecovery()
-                {
-                    if (activeCharacter is null
-                        || !activeCharacter.IsWeakened
-                        || HasActivePremiumService(
-                            GameProtocolEngine.BlackDiamondServiceType))
-                    {
-                        return DungeonWeaknessPolicy.FullStamina;
-                    }
-
-                    return (byte)Math.Clamp(
-                        activeCharacter.WeaknessRecovery,
-                        DungeonWeaknessPolicy.MinimumRecovery,
-                        DungeonWeaknessPolicy.FullStamina);
-                }
+                byte GetProjectedStaminaRecovery() =>
+                    DungeonWeaknessPolicy.ProjectStaminaRecovery(
+                        activeCharacter,
+                        HasActivePremiumService(GameProtocolEngine.BlackDiamondServiceType));
 
                 /// <summary>本会话口径的疲劳上限（基础 + 黑钻加成）：与疲劳条同一算法，只此一处。</summary>
                 ushort GetMaximumFatigue() =>
@@ -759,12 +776,13 @@ public sealed class EntranceService(
                             staminaRecoveryPercentage: GetProjectedStaminaRecovery(),
                             // uid 后那个 u32 是累计总经验（卡片经验条的来源），
                             // 与 mode-1 本地玩家用的是同一个存档字段。
-                            experience: activeCharacter.Experience);
+                            experience: activeCharacter.Experience,
+                            learnedSkills: GetCurrentGameSkills());
                     }
 
                     // 别人：卡片渲染的是目标的 actor，装备列表未覆盖的槽会被客户端删掉，
                     // 所以必须从存档记录取目标当前穿的装备（与 mode-1 的装备投影同源）。
-                    var storedCharacter = await FindStoredCharacterAsync(
+                    var (storedCharacter, targetBlackDiamond) = await FindStoredCharacterAsync(
                         requestedUserId,
                         requestedCharacterName,
                         serverToken);
@@ -790,13 +808,19 @@ public sealed class EntranceService(
                         combatStats: characterStatCatalog.Get(storedCharacter),
                         equippedCreatureLevel: GetEquippedCreatureLevel(
                             storedCreatureInventory),
+                        staminaRecoveryPercentage: DungeonWeaknessPolicy.ProjectStaminaRecovery(
+                            storedCharacter, targetBlackDiamond),
                         // 卡片经验条读 uid 后那个 u32：他人在线与否都用存档的累计经验。
-                        experience: storedCharacter.Experience);
+                        experience: storedCharacter.Experience,
+                        learnedSkills: PartyMemberDetailProjection.ProjectLearnedSkills(
+                            storedCharacter.Skills
+                            ?? skillCatalog.CreateInitialLayout(
+                                storedCharacter.Job, GetInitialSkills(storedCharacter))));
                 }
 
                 // CMD 8 mode 3 的 uid → 存档角色：区用户 id 先在好友通道表里反查到在线
                 // 角色与账号（与分派用的是同一张表），再从该账号的存档里取同名角色。
-                async Task<CharacterRecord?> FindStoredCharacterAsync(
+                async Task<(CharacterRecord? Character, bool HasBlackDiamond)> FindStoredCharacterAsync(
                     ushort areaUserId,
                     string requestedCharacterName,
                     CancellationToken cancellationToken)
@@ -810,16 +834,19 @@ public sealed class EntranceService(
                             requestedCharacterName,
                             StringComparison.OrdinalIgnoreCase))
                     {
-                        return null;
+                        return (null, false);
                     }
 
                     var characters = await store.GetCharactersAsync(
                         accountName,
                         cancellationToken);
-                    return characters.FirstOrDefault(character => string.Equals(
+                    var character = characters.FirstOrDefault(character => string.Equals(
                         character.Name,
                         requestedCharacterName,
                         StringComparison.OrdinalIgnoreCase));
+                    if (character is null) return (null, false);
+                    var premium = await store.GetPremiumServiceAsync(accountName, cancellationToken);
+                    return (character, premium.Active);
                 }
 
                 // CMD 8 mode 3 的 uid 反查：好友通道表按区用户 id 找当前持有它的在线角色。
@@ -981,14 +1008,13 @@ public sealed class EntranceService(
                 // 结算选牌成功（party19 队员端 33MB 采样 EXCEPTION_RECORD = 0）。
                 // mode-3（资料卡）那条路径继续传真实经验——两处用途不同，不要合并。
                 GameServerPacket SendTownAppearanceDetailPacket() =>
-                    GameProtocolEngine.CreateRequestedUserInfoDetail(
+                    PartyMemberDetailProjection.CreatePacket(
                         localUserId,
-                        CreateWornEquipmentSnapshot(equippedInventory.Values, creatureInventory),
+                        activeCharacter!,
                         characterStatCatalog.Get(activeCharacter!),
-                        // 宠物外观由 mode-0 包负责；这里只补模型对象，宠物字段留 0。
-                        equippedCreatureLevel: 0,
-                        experience: 0,
-                        mode: 1);
+                        CreateWornEquipmentSnapshot(equippedInventory.Values, creatureInventory),
+                        HasActivePremiumService(GameProtocolEngine.BlackDiamondServiceType),
+                        GetCurrentGameSkills());
 
                 async Task SendTownAppearanceAsync(bool waitForTownActor = false)
                 {
@@ -1022,7 +1048,8 @@ public sealed class EntranceService(
                     await townDirectory.RefreshAppearanceAsync(
                         townTicket,
                         appearance,
-                        serverToken);
+                        serverToken,
+                        detail: SendTownAppearanceDetailPacket());
 
                     // Mode zero is the compact town-actor appearance
                     // projection: Avatar slots 0..8, weapon slot 9, plus the
@@ -1040,9 +1067,28 @@ public sealed class EntranceService(
                     GameServerPacket packet,
                     CancellationToken cancellationToken)
                 {
+                    if (packet.Type == GameProtocolEngine.NotificationPacketType
+                        && packet.ProtocolId == GameProtocolEngine.PartyInfoNotification)
+                    {
+                        var relayParty = activeCharacter is null
+                            ? null
+                            : partyService.GetPartySlots(activeCharacter.Id);
+                        gameplayDatagram.SetRelayParty(
+                            runtimeSession.Id,
+                            relayParty?.FirstOrDefault()?.PartyId);
+                        partyMembershipWake.Pulse();
+                    }
+
                     await packet.WriteAsync(stream, cancellationToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, packet);
+                }
+
+                Func<GameServerPacket, ValueTask> CreateDungeonPacketDelivery()
+                {
+                    dungeonMemberSend = weaknessRecovery.BeginDungeonDelivery(
+                        packet => SendTownPacketAsync(packet, serverToken));
+                    return dungeonMemberSend;
                 }
 
                 async Task EnterTownAreaAsync(CancellationToken cancellationToken)
@@ -1081,7 +1127,8 @@ public sealed class EntranceService(
                             currentX,
                             currentY,
                             currentDirection,
-                            SendTownPacketAsync),
+                            SendTownPacketAsync,
+                            IsInTown: () => currentDungeonId == 0 && !inDungeonSelection),
                         cancellationToken);
 
                     // 组队名册**不在这里**发：必须等本成员的外观（USERINFO）广播出去之后，否则同区
@@ -2458,36 +2505,296 @@ public sealed class EntranceService(
                         dungeonInstance, packet, cancellationToken: cancellationToken);
                 }
 
-                // 房间清空判定 + 开结算（`NOTI 31`）。**两条路径共用**：
-                //   ① 普通 `MONSTER_DIE`（客户端逐只上报死亡）；
-                //   ② `ALLDIE_MONSTER`（客户端要求全场小怪一起死，见 HandleAllDieMonsterAsync）。
-                // 只让 ① 跑是 2026-10-01 17:32 真机事故的根因：boss 死后服务端把 5 只小怪清掉了，
-                // 却**没有任何代码重新判定清房** ⇒ `TryEnableClear`/`NOTI 31` 永不发出
-                // ⇒ 小怪"瞬间消失而不是死亡"、房间无法通关。
-                // `ForcedMonsterIds` 非空 = 还有小怪没死（`ShouldEnableClear` 为 false），只记一行告警等级联。
-                async Task TryEnableRoomClearAsync(GameDungeonMonster defeatedMonster)
+                var bossDeathSweep = new DungeonBossDeathSweep();
+
+                // Client confirmations and the bounded boss-death fallback share the full
+                // death pipeline: claim once, generate drops, credit kills, then clear.
+                async Task<bool> HandleMonsterDeathAsync(
+                    ushort monsterUniqueId,
+                    DungeonInstance? expectedInstance = null,
+                    long? expectedRoomGeneration = null)
+                {
+                    if (expectedInstance is not null && !ReferenceEquals(expectedInstance, dungeonInstance))
+                    {
+                        return false;
+                    }
+                    var wasHellFiend = dungeonInstance?.IsHellFiend(monsterUniqueId) ?? false;
+                    var hellPartyMode = dungeonInstance?.Run.CurrentHellPartyMode ?? 0;
+                    // Claim the room generation, full monster definition and shared
+                    // kill counter under one lock before any awaited reward work.
+                    var deathInstance = dungeonInstance;
+                    var deathGeneration = expectedRoomGeneration ?? deathInstance?.RoomGeneration;
+                    if (deathInstance is null || !deathInstance.TryBeginMonsterDeath(
+                        monsterUniqueId, deathGeneration, out var defeatedMonster, out var championRewardOrdinal))
+                    {
+                        return false;
+                    }
+
+                    var stillSameRoom = false;
+                    try
+                    {
+                        var protocolDrops = new List<GameDungeonDrop>(6);
+                        foreach (var generatedDrop in dropGenerator.Generate(
+                                     defeatedMonster.Level,
+                                     defeatedMonster.Type,
+                                     currentDungeonDifficulty,
+                                     // 调试满掉落（`掉落测试`，只对 test 账号、只影响本实例）
+                                     dropEverything: dungeonInstance!.DropDebugAll))
+                        {
+                            var groundItem = dungeonInstance!.AddGroundItem(
+                                generatedDrop,
+                                localUserId,
+                                monsterUniqueId,
+                                currentDungeonRoomX,
+                                currentDungeonRoomY,
+                                x: unchecked((short)defeatedMonster.X),
+                                y: unchecked((short)defeatedMonster.Y));
+                            protocolDrops.Add(new GameDungeonDrop(
+                                groundItem.GroundId,
+                                groundItem.ItemId,
+                                groundItem.GetClientAddInfo(itemCatalog),
+                                groundItem.GetClientDurability(itemCatalog),
+                                groundItem.OwnerUserId));
+                        }
+
+                        foreach (var generatedDrop in monsterChampionDrops.Roll(
+                                     defeatedMonster.MonsterIndex,
+                                     defeatedMonster.Type))
+                        {
+                            var groundItem = dungeonInstance!.AddGroundItem(
+                                generatedDrop,
+                                localUserId,
+                                monsterUniqueId,
+                                currentDungeonRoomX,
+                                currentDungeonRoomY,
+                                x: unchecked((short)defeatedMonster.X),
+                                y: unchecked((short)defeatedMonster.Y));
+                            protocolDrops.Add(new GameDungeonDrop(
+                                groundItem.GroundId,
+                                groundItem.ItemId,
+                                groundItem.GetClientAddInfo(itemCatalog),
+                                groundItem.GetClientDurability(itemCatalog),
+                                groundItem.OwnerUserId));
+                        }
+
+                        if (wasHellFiend && dropGenerator.Enabled)
+                        {
+                            var hellLevel = dungeonCatalog.TryGetDefinition(currentDungeonId, out var hellDefinition)
+                                ? hellDefinition.BasisLevel : defeatedMonster.Level;
+                            var hellHit = hellDropCatalog.TryRollEquipment(
+                                hellLevel,
+                                currentDungeonDifficulty,
+                                hellPartyMode,
+                                GameRandomSource.Shared,
+                                out var hellItemId,
+                                options.Drop.RatePercent / 100.0 * options.Drop.EconomicRate,
+                                options.Drop.ForceDrops);
+                            logger.LogInformation(
+                                "Hell drop result for character {CharacterId}, dungeon {DungeonId}, monster {MonsterIndex}/{UniqueId}: hit={Hit}, item={ItemId}.",
+                                activeCharacter?.Id, currentDungeonId, defeatedMonster.MonsterIndex,
+                                monsterUniqueId, hellHit, hellItemId);
+                            if (hellHit)
+                            {
+                                var hellGroundItem = dungeonInstance!.AddGroundItem(
+                                    new DungeonGeneratedDrop(
+                                        IsGold: false,
+                                        hellItemId,
+                                        CountOrValue: 1),
+                                    localUserId,
+                                    monsterUniqueId,
+                                    currentDungeonRoomX,
+                                    currentDungeonRoomY,
+                                    x: unchecked((short)defeatedMonster.X),
+                                    y: unchecked((short)defeatedMonster.Y));
+                                protocolDrops.Add(new GameDungeonDrop(
+                                    hellGroundItem.GroundId,
+                                    hellGroundItem.ItemId,
+                                    hellGroundItem.GetClientAddInfo(itemCatalog),
+                                    hellGroundItem.GetClientDurability(itemCatalog),
+                                    hellGroundItem.OwnerUserId));
+                            }
+                        }
+
+                        var monsterDie =
+                            GameProtocolEngine.CreateMonsterDie(
+                                monsterUniqueId,
+                                protocolDrops,
+                                championRewardOrdinal);
+                        // 击杀判定只有一次（TryTakeMonsterDeath 的返回值），但成立的那一次
+                        // 要发给同实例的**每个人**（设计稿 §3.3）；单人仍走本会话路径。
+                        await BroadcastToInstanceAsync(monsterDie, serverToken);
+
+                        if (!tutorialDungeonActive)
+                        {
+                            await GrantMonsterQuestItemsAsync(
+                                defeatedMonster.MonsterIndex);
+                        }
+
+                        if (activeCharacter is not null)
+                        {
+                            // 队友也要拿这只怪的经验（真机 2026-09-29：只有击杀者有经验）。
+                            // 击杀判定只有一次，所以由这里给同实例其他成员各投一条"经验信用"，
+                            // 收件人在自己的会话里按**自己的等级**结算（等级不同，必须各算各的）。
+                            if (dungeonInstance is { IsParty: true } creditInstance)
+                            {
+                                var credit = new DungeonMonsterKillCredit(
+                                    defeatedMonster.Level,
+                                    defeatedMonster.Type,
+                                    defeatedMonster.MonsterIndex,
+                                    IsBossCascadeDeath: false);
+                                foreach (var member in creditInstance.Members)
+                                {
+                                    if (member.CharacterId != activeCharacter.Id)
+                                    {
+                                        dungeonInstanceRegistry.PostKillCredit(member.CharacterId, credit);
+                                    }
+                                }
+                            }
+
+                            var gainedExperience =
+                                dungeonCatalog.TryGetDefinition(
+                                    currentDungeonId,
+                                    out var experienceDungeon)
+                                    ? dungeonExperienceCatalog.CalculateMonsterExperience(
+                                        activeCharacter.Level,
+                                        defeatedMonster.Level,
+                                        defeatedMonster.Type,
+                                        defeatedMonster.MonsterIndex,
+                                        experienceDungeon,
+                                        currentDungeonDifficulty,
+                                        partyMemberCount: dungeonInstance!.MemberCount)
+                                    : 0;
+                            var progression = experienceCatalog.Grant(
+                                activeCharacter,
+                                gainedExperience);
+                            if (progression.GrantedExperience > 0)
+                            {
+                                var grantedSkillPoints = ApplyLevelUpSkillPoints(progression);
+                                activeCharacter = activeCharacter with
+                                {
+                                    Level = progression.Level,
+                                    Experience = progression.Experience,
+                                    Sp = currentSp
+                                };
+                                var savedProgression =
+                                    await store.SaveCharacterProgressionAsync(
+                                        accountName,
+                                        activeCharacter.Id,
+                                        activeCharacter.Level,
+                                        activeCharacter.Experience,
+                                        currentSp,
+                                        serverToken);
+                                if (savedProgression is null)
+                                {
+                                    throw new InvalidOperationException(
+                                        $"Could not persist monster experience for character {activeCharacter.Id}.");
+                                }
+
+                                activeCharacter = savedProgression;
+                                dungeonMonsterExperienceGained = (uint)Math.Min(
+                                    uint.MaxValue,
+                                    (ulong)dungeonMonsterExperienceGained
+                                    + progression.GrantedExperience);
+                                dungeonLeveledUp |= progression.LeveledUp;
+
+                                var experienceGained =
+                                    GameProtocolEngine.CreateExperienceGained(
+                                        checked((byte)Math.Clamp(
+                                            activeCharacter.Level,
+                                            1,
+                                            byte.MaxValue)),
+                                        activeCharacter.Experience,
+                                        extraExperienceA: 0,
+                                        extraExperienceB: 0,
+                                        skillPoints: checked((ushort)Math.Min(
+                                            currentSp,
+                                            ushort.MaxValue)));
+                                await experienceGained.WriteAsync(
+                                    stream,
+                                    serverToken);
+                                Interlocked.Increment(
+                                    ref runtimeSession.SentPackets);
+                                LogPacket(
+                                    "TX",
+                                    runtimeSession,
+                                    experienceGained);
+                                logger.LogInformation(
+                                    "Monster {MonsterId} (index {MonsterIndex}, level {MonsterLevel}, type {MonsterType}) granted character {CharacterId} {GrantedExperience} EXP; cumulative EXP is {Experience} at level {Level}.",
+                                    monsterUniqueId,
+                                    defeatedMonster.MonsterIndex,
+                                    defeatedMonster.Level,
+                                    defeatedMonster.Type,
+                                    activeCharacter.Id,
+                                    progression.GrantedExperience,
+                                    activeCharacter.Experience,
+                                    activeCharacter.Level);
+                                if (grantedSkillPoints > 0)
+                                {
+                                    logger.LogInformation(
+                                        "Monster {MonsterId} advanced character level {OldLevel}->{Level} and granted {SkillPoints} SP.",
+                                        monsterUniqueId,
+                                        progression.PreviousLevel,
+                                        progression.Level,
+                                        grantedSkillPoints);
+                                }
+
+                                if (progression.LeveledUp)
+                                {
+                                    await SendCurrentSkillInfoAsync();
+                                    await ValidateAndCorrectCharacterStatsAsync(
+                                        "monster experience level-up");
+                                }
+                            }
+                        }
+
+                        if (protocolDrops.Count > 0)
+                        {
+                            logger.LogInformation(
+                                "Monster {MonsterId} generated {DropCount} ground drops in room ({RoomX},{RoomY}).",
+                                monsterUniqueId,
+                                protocolDrops.Count,
+                                currentDungeonRoomX,
+                                currentDungeonRoomY);
+                        }
+
+                    }
+                    finally
+                    {
+                        stillSameRoom = deathInstance.CompleteMonsterDeath(deathGeneration!.Value);
+                    }
+
+                    if (stillSameRoom && ReferenceEquals(deathInstance, dungeonInstance))
+                    {
+                        await TryEnableRoomClearAsync(defeatedMonster, deathGeneration);
+                    }
+                    return true;
+                }
+
+                // Normal confirmations and the bounded fallback share this clear
+                // decision. Unreleased box actors stay alive for later spawns;
+                // every monster already present must complete normal settlement.
+                async Task TryEnableRoomClearAsync(GameDungeonMonster defeatedMonster, long? expectedRoomGeneration = null)
                 {
                     if (currentDungeonRoom is null || dungeonInstance is null)
                     {
                         return;
                     }
 
-                    var clearDecision = DungeonRoomClearRules.Evaluate(
-                        currentDungeonRoom,
-                        defeatedMonster,
-                        dungeonInstance.SnapshotAliveMonsters());
-                    if (clearDecision.ForcedMonsterIds.Length > 0)
+                    if (dungeonInstance.TryStartBossDeathCascade(out _, expectedRoomGeneration))
                     {
-                        logger.LogWarning(
-                            "Dungeon {DungeonId} received the final boss MONSTER_DIE with {MonsterCount} monsters still alive in room ({RoomX},{RoomY}); waiting for the native BOSS_DIE_CHECK/ALLDIE_MONSTER cascade instead of injecting a solo UDP peer packet.",
-                            currentDungeonId,
-                            clearDecision.ForcedMonsterIds.Length,
-                            currentDungeonRoomX,
-                            currentDungeonRoomY);
+                        bossDeathSweep.Schedule(dungeonInstance, DateTimeOffset.UtcNow);
+                        if (dungeonInstance.TryAnnounceBossDeathCascade())
+                        {
+                            await BroadcastToInstanceAsync(GameProtocolEngine.CreateBossDieCheck(
+                                success: true, allBossesReported: true,
+                                dungeonInstance.BossDeathCascadeBossId ?? defeatedMonster.UniqueId), serverToken);
+                        }
                     }
 
+                    var clearDecision = dungeonInstance.EvaluateRoomClear(defeatedMonster, expectedRoomGeneration);
+
                     // TryEnableClear 的返回值就是"从关到开"（避免改造前"先看标记再置位"的竞态）。
-                    if (!clearDecision.ShouldEnableClear || !dungeonInstance.TryEnableClear())
+                    if (!clearDecision.ShouldEnableClear || !dungeonInstance.TryEnableClear(expectedRoomGeneration))
                     {
                         return;
                     }
@@ -2514,82 +2821,17 @@ public sealed class EntranceService(
                     }
                 }
 
-                // 客户端要求"全场小怪一起死"（`ALLDIE_MONSTER`，boss 死后的连锁）。
-                // **分工**：我们只**广播死亡包**，把"结算这次死亡"留给客户端自己上报走正常路径
-                // （有掉落/经验/击杀统计、并且会触发清房判定）；**不立刻替它摘除**。
-                // 真机教训（2026-10-01，连续两版都栽在这里）：
-                //   §10 先摘后广播 ⇒ 客户端上报被判"陈旧"、小怪被删且不结算；
-                //   §11 先广播后摘 ⇒ 客户端上报仍被判"陈旧"（服务端已经把这些怪移出存活集合了），
-                //        而且清完没人重判清房 ⇒ 房间不开。**"我们代杀"这个动作本身就是错的。**
-                // 兜底：客户端若在 `AllDieReconcileDelay` 内没有全部上报（它理应会报），
-                // 由延迟任务补摘剩余的怪并重判清房 —— 保证"门一定能开"这条底线不被破坏。
-                // 死亡包参数必须是哨兵 `NoChampionRewardOrdinal(-1)`：传 0 会被 `CreateMonsterDie` 拒绝，
-                // 异常冒泡会直接打断会话（真机 16:29 踩过，见 STATUS §8）。
-                // 返回本次广播出去的死亡包数量（= 服务端认为"还活着"的怪）。
-                async Task<int> HandleAllDieMonsterAsync(CancellationToken cancellationToken)
+                // NOTI127 runs the client's native death path. Sending an empty
+                // NOTI38 here deletes a live actor and discards its possible drops.
+                // Only a normal MONSTER_DIE or this loop's bounded fallback settles it.
+                Task<int> HandleAllDieMonsterAsync(CancellationToken cancellationToken)
                 {
-                    if (dungeonInstance is null)
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (dungeonInstance is null || !dungeonInstance.TryStartBossDeathCascade(out _))
                     {
-                        return 0;
+                        return Task.FromResult(0);
                     }
-
-                    var allDieMonsters = dungeonInstance.SnapshotAliveMonsters();
-                    foreach (var uniqueId in allDieMonsters)
-                    {
-                        var cascadeDie = GameProtocolEngine.CreateMonsterDie(uniqueId);
-                        await BroadcastToInstanceAsync(cascadeDie, cancellationToken);
-                    }
-
-                    if (allDieMonsters.Count > 0)
-                    {
-                        // 延迟补刀：客户端上报完的怪会在 `TryTakeMonsterDeath` 里被正常结算（拿到掉落/经验），
-                        // 这里只会摘掉"客户端始终没报"的漏网之鱼。
-                        _ = ReconcileAllDieAsync(dungeonInstance, allDieMonsters);
-                    }
-
-                    return allDieMonsters.Count;
-                }
-
-                // 延迟补刀 + 重判清房。放在独立任务里是为了**给客户端的 `MONSTER_DIE` 上报留出时间窗**：
-                // 那些上报会走正常路径（`TryTakeMonsterDeath` → 掉落/经验 → 清房判定），
-                // 提前摘除就等于把它们变成"陈旧死亡"（2026-10-01 17:18/17:32 两次真机事故）。
-                async Task ReconcileAllDieAsync(
-                    DungeonInstance instance,
-                    HashSet<ushort> announcedMonsters)
-                {
-                    try
-                    {
-                        await Task.Delay(AllDieReconcileDelay);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        return;
-                    }
-
-                    var aliveAfterGrace = instance.SnapshotAliveMonsters();
-                    var stillAlive = announcedMonsters
-                        .Where(aliveAfterGrace.Contains)
-                        .ToArray();
-                    if (stillAlive.Length > 0)
-                    {
-                        instance.ForceAllMonstersDead(stillAlive);
-                        logger.LogWarning(
-                            "Dungeon {DungeonId} ALLDIE reconcile: {Count} monster(s) were never confirmed dead by the client; removed them server-side and re-checked the room.",
-                            instance.Run.DungeonId,
-                            stillAlive.Length);
-                    }
-
-                    // 清完（或客户端已报完）才重判清房：否则 `NOTI 31`（房间开放/可结算）永不发出，
-                    // 表现就是"小怪消失但无法通关"（2026-10-01 17:32 真机）。
-                    if (currentDungeonRoom is { MapType: DungeonMapType.Boss } bossRoom)
-                    {
-                        var bossActor = bossRoom.Monsters.FirstOrDefault(monster =>
-                            monster.Type == GameDungeonMonsterTypes.Boss);
-                        if (bossActor is not null)
-                        {
-                            await TryEnableRoomClearAsync(bossActor);
-                        }
-                    }
+                    return Task.FromResult(bossDeathSweep.Schedule(dungeonInstance, DateTimeOffset.UtcNow));
                 }
 
                 // 本会话在队伍里的槽位下标（单人 / 不在队伍 → 0）。槽位稳定不搬动（第一轮硬约束）。
@@ -2736,8 +2978,8 @@ public sealed class EntranceService(
                 // 成功取得一件地面物之后的**官服收尾**（S5/PD-3001 + PD-3005）。顺序照官服：
                 // `CParty::get_item` 先发 NOTI 39（各拾取点上面已发），`DisPatcher_GetItem::process`
                 // 末尾发 NOTI 86(5)，最后派发框架调 `DisPatcher_GetItem::send` 回 ok/error。
-                //   ① `NOTI 86(5)`：官服 `GameWorld::send_all` = **全场（含拾取者，不 omit）**；
-                //      本客户端 86 号处理器只实现子类型 1/2 ⇒ 这条是空操作，照发只为语义对齐。
+                //   ① `NOTI 86(5)`：全场（含拾取者、不 omit）；追加精确 groundId，
+                //      由本客户端补丁清除队友端的已拾取物，保留官方的七字节前缀。
                 //   ② `CMD 46` 成功包：官服 `CUser::SendCmdOkPacket(46)` = body `[1]`；客户端
                 //      在 resultFlag 非 0 时直接返回 ⇒ 同样是空操作（PD-3005 已记）。
                 async Task CompletePickupAsync(
@@ -2749,8 +2991,12 @@ public sealed class EntranceService(
                 {
                     // NOTI 86 的 uid 是**请求者**的 uid（官服 `put_short(CUser::get_unique_id(a2))`，
                     // `a2` 就是发 CMD 46 的那个人）——routing 时请求者可能不是得主。
-                    var removed = GameProtocolEngine.CreatePickupRemovedBroadcast(pickerUserId, itemId);
-                    await BroadcastToInstanceAsync(removed, cancellationToken);
+                    if (dungeonInstance is { } pickupInstance)
+                    {
+                        await dungeonPartyService.BroadcastPickupRemovalAsync(
+                            pickupInstance, groundId, pickerUserId, itemId,
+                            SendPickupReplyToRequesterAsync, cancellationToken);
+                    }
 
                     await replyToRequester(GameProtocolEngine.CreateGetItemAcceptance());
                 }
@@ -3436,10 +3682,19 @@ public sealed class EntranceService(
 
                     // 竞态兜底：实例的 run 可能已被收尾（队长回城/换局）。取不到当前房间就中止——
                     // 此刻还没离城、没绑定（不入场、不绑定）。
-                    if (!instance.TryCaptureCurrentRoomSnapshot(localUserId, out var room))
+                    var slotIndex = slots
+                        .FirstOrDefault(slot => slot.CharacterId == activeCharacter.Id)?.SlotIndex ?? 0;
+                    if (!instance.TryJoinRunForEntry(
+                            new DungeonInstanceMember(
+                                activeCharacter.Id,
+                                localUserId,
+                                checked((byte)slotIndex),
+                                activeCharacter.Name,
+                                CreateDungeonPacketDelivery()),
+                            out var room))
                     {
                         logger.LogWarning(
-                            "Party dungeon entry aborted for {Name}: instance {PartyId} has no current room (run stopped).",
+                            "Party dungeon entry aborted for {Name}: instance {PartyId} is stopped or its town return has started.",
                             activeCharacter.Name, request.PartyId);
                         return;
                     }
@@ -3451,19 +3706,11 @@ public sealed class EntranceService(
                     dungeonReturnX = currentX;
                     dungeonReturnY = currentY;
                     dungeonReturnDirection = currentDirection;
-                    await LeaveTownAreaAsync(serverToken);
                     dungeonInstance = instance;
                     dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, instance);
-                    var slotIndex = slots
-                        .FirstOrDefault(slot => slot.CharacterId == activeCharacter.Id)?.SlotIndex ?? 0;
-                    // 先摘后挂（幂等）：上一次入场失败可能留下带旧 AreaUserId/旧发送句柄的成员记录。
-                    instance.RemoveMember(activeCharacter.Id);
-                    instance.AddMember(new DungeonInstanceMember(
-                        activeCharacter.Id,
-                        localUserId,
-                        checked((byte)slotIndex),
-                        activeCharacter.Name,
-                        packet => SendTownPacketAsync(packet, serverToken)));
+                    gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, instance);
+                    // 登记成功后先绑定再 await：离城发包失败时 finally 仍能解绑本次入场。
+                    await LeaveTownAreaAsync(serverToken);
                     ApplyDungeonInstanceSnapshot(instance.Snapshot());
 
                     // ④ 外观先行（对同一个收包者的顺序：外观 → 名册 → 副本报文）。
@@ -3707,6 +3954,9 @@ public sealed class EntranceService(
                         return;
                     }
 
+                    // Stop peer battle traffic before any scene teardown or persistence awaits.
+                    gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, null);
+
                     if (currentDungeonId != 0 && !tutorialDungeonActive)
                     {
                         await SettleDungeonCreatureHungerAsync(
@@ -3803,9 +4053,10 @@ public sealed class EntranceService(
                     // `DisPatcher_DieCharacInDungeon`（调 `CParty::die_user`）在官服里都**不**调用 `leave_user`。
                     // 必须在 `LeaveDungeonInstanceAsync` **之前**：那个函数会把本角色从实例里解绑，
                     // 之后"我是否在一个队伍实例里"就无从判断了（前置判断会落空）。
+                    var partyRosterRemovedActor = false;
                     if (abandonsParty && activeCharacter is not null)
                     {
-                        await dungeonPartyService.AbandonPartyForDungeonGiveUpAsync(
+                        partyRosterRemovedActor = await dungeonPartyService.AbandonPartyForDungeonGiveUpAsync(
                             activeCharacter.Id,
                             serverToken);
                     }
@@ -3821,7 +4072,9 @@ public sealed class EntranceService(
                             localUserId,
                             currentX,
                             currentY,
-                            currentDirection);
+                            currentDirection,
+                            runtimeSession.Id,
+                            partyRosterAlreadyRemovesActor: partyRosterRemovedActor);
                     }
 
                     dungeonInstance = null;
@@ -4194,6 +4447,13 @@ public sealed class EntranceService(
                 var idlePartyMailTick = false;
                 while (!serverToken.IsCancellationRequested)
                 {
+                    var sweepInstance = dungeonInstance;
+                    var sweepGeneration = sweepInstance?.RoomGeneration;
+                    foreach (var monsterId in bossDeathSweep.TakeDue(sweepInstance, DateTimeOffset.UtcNow))
+                    {
+                        await HandleMonsterDeathAsync(monsterId, sweepInstance, sweepGeneration);
+                    }
+
                     var request = queuedRequest;
                     queuedRequest = null;
                     idlePartyMailTick = false;
@@ -4207,22 +4467,35 @@ public sealed class EntranceService(
                         // 待选图/待入队请求是**别的会话**投的，本会话一旦阻塞在无限读等待里，
                         // 除客户端自己发包没有任何东西能唤醒它。真机（server-party1.log 18:28:49）：
                         // 队员静止时客户端整整 108 秒不发一个包，请求就一直躺在信箱里，队员比队长晚 48 秒才进图。
-                        // 所以"在队伍里（≥2 人）"就要按短 tick 轮询；城镇外收不到这类请求
-                        // （投递侧要求同区域目录快照），故只在 currentDungeonId == 0 时轮询，避免副本内空转。
+                        // 组队实例即使只剩一人也必须轮询：队友掉线后死者的全灭回城是扫描
+                        // 稍后投递的；此刻信箱为空不代表下一次客户端发包前不会有邮件。
+                        // 场景/会员期限的等待同样受 tick 上限约束，避免其它计时分支饿死邮箱。
                         // 单人（不在队伍）→ 与改造前完全一致的无限等待（零回归红线）。
-                        var partyMailboxTick = isChannelPort
-                            && activeCharacter is not null
-                            && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id)
-                                || partyService.GetPartySlots(activeCharacter.Id) is { Length: > 1 });
+                        // 必须先捕获唤醒代次，再查成员状态：这两步之间入队也不会漏掉通知。
+                        var partyMembershipChanged = partyMembershipWake.Capture();
+                        var partyMailboxTick = EntranceSessionReadWait.ShouldPollPartyMailbox(
+                            isChannelPort,
+                            activeCharacter is not null,
+                            dungeonInstance is { IsParty: true },
+                            (activeCharacter is not null && dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id))
+                                || weaknessRecovery.CanProcessPending(currentDungeonId != 0)
+                                || bossDeathSweep.HasPending,
+                            activeCharacter is null ? 0 : partyService.GetPartySlots(activeCharacter.Id)?.Length ?? 0);
                         if (isChannelPort && inDungeonSelection
                             && dungeonSelectionDeadline is { } selectionDeadline)
                         {
                             var remaining = selectionDeadline - DateTimeOffset.UtcNow;
                             if (remaining > TimeSpan.Zero)
                             {
-                                var completed = await Task.WhenAny(
-                                    pendingPacketRead, Task.Delay(remaining, serverToken));
-                                if (completed == pendingPacketRead)
+                                var wake = await EntranceSessionReadWait.WaitAsync(
+                                    pendingPacketRead, remaining, partyMailboxTick, serverToken,
+                                    wakeTask: partyMembershipChanged);
+                                if (wake == EntranceReadWakeReason.PartyMailTick)
+                                {
+                                    await HandlePendingPartyMailAsync();
+                                    continue;
+                                }
+                                if (wake == EntranceReadWakeReason.Packet)
                                 {
                                     request = await pendingPacketRead;
                                     pendingPacketRead = null;
@@ -4248,10 +4521,15 @@ public sealed class EntranceService(
                             var remaining = deathTimeout.Deadline - DateTimeOffset.UtcNow;
                             if (remaining > TimeSpan.Zero)
                             {
-                                var completed = await Task.WhenAny(
-                                    pendingPacketRead,
-                                    Task.Delay(remaining, serverToken));
-                                if (completed == pendingPacketRead)
+                                var wake = await EntranceSessionReadWait.WaitAsync(
+                                    pendingPacketRead, remaining, partyMailboxTick, serverToken,
+                                    wakeTask: partyMembershipChanged);
+                                if (wake == EntranceReadWakeReason.PartyMailTick)
+                                {
+                                    await HandlePendingPartyMailAsync();
+                                    continue;
+                                }
+                                if (wake == EntranceReadWakeReason.Packet)
                                 {
                                     request = await pendingPacketRead;
                                     pendingPacketRead = null;
@@ -4288,10 +4566,15 @@ public sealed class EntranceService(
                             var remaining = cardSelectionDeadline - DateTimeOffset.UtcNow;
                             if (remaining > TimeSpan.Zero)
                             {
-                                var completed = await Task.WhenAny(
-                                    pendingPacketRead,
-                                    Task.Delay(remaining, serverToken));
-                                if (completed == pendingPacketRead)
+                                var wake = await EntranceSessionReadWait.WaitAsync(
+                                    pendingPacketRead, remaining, partyMailboxTick, serverToken,
+                                    wakeTask: partyMembershipChanged);
+                                if (wake == EntranceReadWakeReason.PartyMailTick)
+                                {
+                                    await HandlePendingPartyMailAsync();
+                                    continue;
+                                }
+                                if (wake == EntranceReadWakeReason.Packet)
                                 {
                                     request = await pendingPacketRead;
                                     pendingPacketRead = null;
@@ -4335,10 +4618,15 @@ public sealed class EntranceService(
                                 : remaining;
                             if (waitTime > TimeSpan.Zero)
                             {
-                                var completed = await Task.WhenAny(
-                                    pendingPacketRead,
-                                    Task.Delay(waitTime, serverToken));
-                                if (completed == pendingPacketRead)
+                                var wake = await EntranceSessionReadWait.WaitAsync(
+                                    pendingPacketRead, waitTime, partyMailboxTick, serverToken,
+                                    wakeTask: partyMembershipChanged);
+                                if (wake == EntranceReadWakeReason.PartyMailTick)
+                                {
+                                    await HandlePendingPartyMailAsync();
+                                    continue;
+                                }
+                                if (wake == EntranceReadWakeReason.Packet)
                                 {
                                     request = await pendingPacketRead;
                                     pendingPacketRead = null;
@@ -4375,10 +4663,10 @@ public sealed class EntranceService(
                             // 队员停在城镇/选图界面时客户端可能上百秒不发包，无限等待会让
                             // 待选图/待入队请求一直取不走。到点且无包 → idlePartyMailTick，
                             // 下面只取信箱、不解码、不发任何包。
-                            var completed = await Task.WhenAny(
-                                pendingPacketRead,
-                                Task.Delay(PendingPartyMailCheckInterval, serverToken));
-                            if (completed == pendingPacketRead)
+                            var wake = await EntranceSessionReadWait.WaitAsync(
+                                pendingPacketRead, Timeout.InfiniteTimeSpan, pollPartyMailbox: true, serverToken,
+                                wakeTask: partyMembershipChanged);
+                            if (wake == EntranceReadWakeReason.Packet)
                             {
                                 request = await pendingPacketRead;
                                 pendingPacketRead = null;
@@ -4394,6 +4682,14 @@ public sealed class EntranceService(
                         }
                         else
                         {
+                            var wake = await EntranceSessionReadWait.WaitAsync(
+                                pendingPacketRead, Timeout.InfiniteTimeSpan, pollPartyMailbox: false, serverToken,
+                                wakeTask: partyMembershipChanged);
+                            if (wake == EntranceReadWakeReason.PartyMailTick)
+                            {
+                                await HandlePendingPartyMailAsync();
+                                continue;
+                            }
                             request = await pendingPacketRead;
                             pendingPacketRead = null;
                         }
@@ -4500,6 +4796,10 @@ public sealed class EntranceService(
                     // 与报文一字未改。
                     async Task HandlePendingPartyMailAsync()
                     {
+                        // Both real packets and idle mailbox wake-ups pass here.
+                        // Install minute recovery before a passive entry builds
+                        // its foreign mode-1 actor from activeCharacter.
+                        await ApplyPendingWeaknessRecoveryAsync();
                         if (activeCharacter is null)
                         {
                             return;
@@ -4532,12 +4832,20 @@ public sealed class EntranceService(
                             && dungeonInstanceRegistry.TryTakeSettlementReturn(
                                 settlementReturnMember.Id, out var settlementReturnReason))
                         {
-                            logger.LogInformation(
-                                "Dungeon {DungeonId} forced town return for {Name} ({Reason}).",
-                                currentDungeonId,
-                                settlementReturnMember.Name,
-                                settlementReturnReason);
-                            await ReturnToTownFromDungeonAsync(settlementReturnReason);
+                            var isPartyWipe = settlementReturnReason == DungeonPartyService.PartyWipeReturnReason;
+                            if (!isPartyWipe
+                                || dungeonInstance?.TryBeginPartyWipeReturn(
+                                    settlementReturnMember.Id, DateTimeOffset.UtcNow) == true)
+                            {
+                                logger.LogInformation(
+                                    "Dungeon {DungeonId} forced town return for {Name} ({Reason}).",
+                                    currentDungeonId,
+                                    settlementReturnMember.Name,
+                                    settlementReturnReason);
+                                await ReturnToTownFromDungeonAsync(
+                                    settlementReturnReason,
+                                    forcedDungeonExit: isPartyWipe);
+                            }
                         }
 
                         // routing 拾取信箱（S5/T3b）：掷骰把归属判给了我 → **由我自己**把它收进背包
@@ -4577,7 +4885,11 @@ public sealed class EntranceService(
                             activeCharacter.Id,
                             out var tradeInstall))
                     {
-                        activeCharacter = tradeInstall.State;
+                        // The trade was committed before this delivery. Its
+                        // snapshot must not undo a newer recovery notification
+                        // already installed before processing the party mailbox.
+                        activeCharacter = EntranceWeaknessRecovery.WithRecoveryFrom(
+                            tradeInstall.State, activeCharacter);
                         currentGold = Math.Max(0, tradeInstall.State.Gold);
                         mainInventory = (tradeInstall.State.Inventory ?? [])
                             .ToDictionary(item => item.Slot);
@@ -4633,18 +4945,6 @@ public sealed class EntranceService(
                         {
                             await SendTownFatigueStateAsync();
                         }
-                    }
-
-                    var queuedWeaknessRecovery = Interlocked.Exchange(
-                        ref pendingWeaknessRecovery,
-                        -1);
-                    if (queuedWeaknessRecovery >= 0 && activeCharacter is not null)
-                    {
-                        activeCharacter = activeCharacter with
-                        {
-                            WeaknessRecovery = (byte)queuedWeaknessRecovery,
-                            LegacyIsWeakened = null
-                        };
                     }
 
                     if (isChannelPort)
@@ -4811,6 +5111,7 @@ public sealed class EntranceService(
                                     serverToken);
                                 // 组队通道同理：返回选人即会话结束，留到断线 finally 就晚了
                                 // （finally 里 activeCharacter 已为 null），该角色会一直留在队伍里。
+                                gameplayDatagram.SetRelayContext(runtimeSession.Id, null);
                                 await partyService.DetachChannelAsync(
                                     activeCharacter.Id,
                                     runtimeSession.Id,
@@ -4853,7 +5154,8 @@ public sealed class EntranceService(
                                     localUserId,
                                     currentX,
                                     currentY,
-                                    currentDirection);
+                                    currentDirection,
+                                    runtimeSession.Id);
                             }
 
                             dungeonInstance = null;
@@ -4969,6 +5271,7 @@ public sealed class EntranceService(
                                         serverToken);
                                     // 换角色不摘组队通道的话，旧角色会留在队伍里、小队还会
                                     // 试图往这个已被替换的会话发包（设计稿 §5.5 的自动退队来源）。
+                                    gameplayDatagram.SetRelayContext(runtimeSession.Id, null);
                                     await partyService.DetachChannelAsync(
                                         activeCharacter.Id,
                                         runtimeSession.Id,
@@ -4995,13 +5298,15 @@ public sealed class EntranceService(
                                         localUserId,
                                         currentX,
                                         currentY,
-                                        currentDirection);
+                                        currentDirection,
+                                        runtimeSession.Id);
                                 }
 
                                 dungeonInstance = null;
                                 dungeonInstanceVersion = -1;
                             }
 
+                            var recoveryCharacterId = character.Id;
                             activeCharacterLease = await characterSessions.ClaimAsync(
                                 character.CharacterNo,
                                 character.Id,
@@ -5040,13 +5345,7 @@ public sealed class EntranceService(
                                         messageBytes),
                                 messageBytes =>
                                     _ = SendPopupNotificationAsync(messageBytes),
-                                recovery =>
-                                {
-                                    Interlocked.Exchange(
-                                        ref pendingWeaknessRecovery,
-                                        recovery);
-                                    _ = SendWeaknessRecoveryNotificationAsync(recovery);
-                                },
+                                _ => weaknessRecovery.Notify(recoveryCharacterId),
                                 (dungeonId, maximumDifficulty) =>
                                 {
                                     if (activeCharacter is null)
@@ -5340,6 +5639,7 @@ public sealed class EntranceService(
                                             serverToken);
                                         // 组队通道同样必须在丢弃 activeCharacter 之前摘除，
                                         // 否则旧角色会以"在线且在队"的状态滞留。
+                                        gameplayDatagram.SetRelayContext(runtimeSession.Id, null);
                                         await partyService.DetachChannelAsync(
                                             activeCharacter.Id,
                                             runtimeSession.Id,
@@ -13143,6 +13443,7 @@ public sealed class EntranceService(
                                     () => new DungeonInstance(
                                         0, activeCharacter.Id, dungeonCatalog, itemCatalog));
                                 dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, dungeonInstance);
+                                gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, dungeonInstance);
                                 // 先摘后挂（幂等）：上一次入场中途失败可能留下带旧 AreaUserId/旧发送句柄的
                                 // 成员记录，直接 AddMember 会被幂等跳过（本任务硬规则，三条任务书路径之外
                                 // 的教学路径同样适用）。
@@ -13152,7 +13453,7 @@ public sealed class EntranceService(
                                     localUserId,
                                     PartySlot: 0,
                                     activeCharacter.Name,
-                                    packet => SendTownPacketAsync(packet, serverToken)));
+                                    CreateDungeonPacketDelivery()));
                                 dungeonInstance.EnterDetachedRoom(new DungeonRoomDefinition(
                                     GameProtocolEngine.TutorialMapId,
                                     DungeonMapType.Boss,
@@ -13317,10 +13618,17 @@ public sealed class EntranceService(
                             // （异常逃到外层 catch 会打断会话）。
                             async Task<bool> TryJoinLivePartyInstanceAsync(DungeonInstance liveInstance)
                             {
-                                if (!liveInstance.TryCaptureCurrentRoomSnapshot(localUserId, out var liveRoom))
+                                if (!liveInstance.TryJoinRunForEntry(
+                                        new DungeonInstanceMember(
+                                            activeCharacter!.Id,
+                                            localUserId,
+                                            checked((byte)leaderSlotIndex),
+                                            activeCharacter.Name,
+                                            CreateDungeonPacketDelivery()),
+                                        out var liveRoom))
                                 {
                                     logger.LogWarning(
-                                        "Party leader {Name} could not join instance {PartyId}: its run stopped before entry.",
+                                        "Party leader {Name} could not join instance {PartyId}: its run stopped or its town return started before entry.",
                                         activeCharacter!.Name, liveInstance.PartyId);
                                     return false;
                                 }
@@ -13332,19 +13640,10 @@ public sealed class EntranceService(
                                 // selectionWorldMap 与正常入场路径一致：不在这里清（下次 CMD 15 会重写）。
                                 inDungeonSelection = false;
                                 dungeonSelectionDeadline = null;
-                                await LeaveTownAreaAsync(serverToken);
-
                                 dungeonInstance = liveInstance;
                                 dungeonInstanceRegistry.BindCharacter(activeCharacter!.Id, dungeonInstance);
-                                // 先摘后挂（幂等）：上一次入场中途失败可能留下"旧 AreaUserId + 旧发送句柄"
-                                // 的成员记录，直接 AddMember 会被幂等跳过 → 本会话的广播发到上个会话的句柄。
-                                dungeonInstance.RemoveMember(activeCharacter.Id);
-                                dungeonInstance.AddMember(new DungeonInstanceMember(
-                                    activeCharacter.Id,
-                                    localUserId,
-                                    checked((byte)leaderSlotIndex),
-                                    activeCharacter.Name,
-                                    packet => SendTownPacketAsync(packet, serverToken)));
+                                gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, dungeonInstance);
+                                await LeaveTownAreaAsync(serverToken);
                                 foreach (var packet in DungeonEntryPackets.PlanMemberEntry(
                                              dungeonInstance,
                                              liveRoom,
@@ -13392,14 +13691,23 @@ public sealed class EntranceService(
                                     activeCharacter!.Id,
                                     () => new DungeonInstance(
                                         0, activeCharacter.Id, dungeonCatalog, itemCatalog));
-                            dungeonInstanceRegistry.BindCharacter(activeCharacter!.Id, dungeonInstance);
-                            dungeonInstance.RemoveMember(activeCharacter!.Id);
-                            dungeonInstance.AddMember(new DungeonInstanceMember(
-                                activeCharacter.Id,
-                                localUserId,
-                                checked((byte)leaderSlotIndex),
-                                activeCharacter.Name,
-                                packet => SendTownPacketAsync(packet, serverToken)));
+                            if (!dungeonInstance.TryRegisterMemberForEntry(new DungeonInstanceMember(
+                                    activeCharacter!.Id,
+                                    localUserId,
+                                    checked((byte)leaderSlotIndex),
+                                    activeCharacter.Name,
+                                    CreateDungeonPacketDelivery())))
+                            {
+                                logger.LogWarning(
+                                    "Party dungeon entry aborted for {Name}: instance {PartyId} has already started town return.",
+                                    activeCharacter.Name, dungeonInstance.PartyId);
+                                dungeonInstance = null;
+                                dungeonInstanceVersion = -1;
+                                continue;
+                            }
+
+                            dungeonInstanceRegistry.BindCharacter(activeCharacter.Id, dungeonInstance);
+                            gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, dungeonInstance);
 
                             // 开局仲裁（终审 P5）：两个成员会话可能都通过了上面的 CanAcceptJoin 门槛
                             // （或都发现实例还不存在而一起 GetOrCreateForParty），`TryStartRun` 会先
@@ -13447,6 +13755,8 @@ public sealed class EntranceService(
                                 // 中止即解绑：不解绑会在注册表里留下"有成员、run 已停"的实例，
                                 // 重试时按成员数命中 → 取当前房间失败/拿到没有房间的实例。
                                 dungeonInstanceRegistry.UnbindCharacter(activeCharacter.Id);
+
+                                gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, null);
                                 dungeonInstance = null;
                                 dungeonInstanceVersion = -1;
                                 continue;
@@ -13465,6 +13775,8 @@ public sealed class EntranceService(
                                     // 中止即解绑（同 TryStartRun 失败路径）：不让"有成员、run 已停"的
                                     // 实例留在注册表里被下一次入场按成员数命中。
                                     dungeonInstanceRegistry.UnbindCharacter(activeCharacter.Id);
+
+                                    gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, null);
                                     dungeonInstance = null;
                                     dungeonInstanceVersion = -1;
                                     var ticketError = GameProtocolEngine.CreateCommandError(
@@ -13500,6 +13812,8 @@ public sealed class EntranceService(
                                     dungeonInstance!.StopRun();
                                     // 中止即解绑（同前两条中止路径）。
                                     dungeonInstanceRegistry.UnbindCharacter(activeCharacter.Id);
+
+                                    gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, null);
                                     dungeonInstance = null;
                                     dungeonInstanceVersion = -1;
                                     var ticketSaveError = GameProtocolEngine.CreateCommandError(
@@ -13897,13 +14211,7 @@ public sealed class EntranceService(
                             var parsed = GameProtocolEngine.TryParseBossDieCheckCommand(
                                 request.Body,
                                 out var bossDieCheck);
-                            var bossIds = currentDungeonRoom is not null
-                                ? currentDungeonRoom.Monsters
-                                    .Where(monster => monster.Type
-                                        == GameDungeonMonsterTypes.Boss)
-                                    .Select(monster => monster.UniqueId)
-                                    .ToHashSet()
-                                : [];
+                            var bossIds = dungeonInstance?.SnapshotRoomBossIds() ?? [];
                             var validBoss = parsed
                                 && currentDungeonRoom is not null
                                 && currentDungeonRoom.MapType == DungeonMapType.Boss
@@ -13911,6 +14219,7 @@ public sealed class EntranceService(
                                 && bossIds.Contains(bossDieCheck.BossId);
 
                             GameServerPacket bossDieReply;
+                            var broadcastBossDieReply = false;
                             if (validBoss)
                             {
                                 // 上报 + "全部 boss 到齐后级联"三句由实例在锁内一次完成（幂等）。
@@ -13922,6 +14231,11 @@ public sealed class EntranceService(
                                     success: true,
                                     allBossesReported,
                                     bossDieCheck.BossId);
+                                if (allBossesReported)
+                                {
+                                    broadcastBossDieReply = dungeonInstance.TryAnnounceBossDeathCascade();
+                                    await HandleAllDieMonsterAsync(serverToken);
+                                }
                                 logger.LogInformation(
                                     "Dungeon {DungeonId} accepted BOSS_DIE_CHECK from participant {ParticipantId} for boss {BossId}; reported={ReportedCount}/{BossCount}, native-all-die={AllBossesReported}, checksum={SkillChecksum:X8}.",
                                     currentDungeonId,
@@ -13950,21 +14264,29 @@ public sealed class EntranceService(
                                     currentDungeonRoom?.MapType);
                             }
 
-                            await bossDieReply.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, bossDieReply);
+                            if (broadcastBossDieReply)
+                            {
+                                // Every client needs the native Stage boss-dead flag,
+                                // including the future authority of a box-spawned monster.
+                                await BroadcastToInstanceAsync(bossDieReply, serverToken);
+                            }
+                            else
+                            {
+                                await bossDieReply.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, bossDieReply);
+                            }
                             continue;
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.AllDieMonsterCommand)
                         {
-                            // 客户端要求"全场小怪一起死"（boss 死后的连锁）。见 HandleAllDieMonsterAsync：
-                            // **必须先广播死亡包、再清服务端存活集合**。顺序反了会出真机故障
-                            // （2026-10-01 17:18：小怪被"直接删掉"而不是正常死亡、之后不结算、两人卡住）。
+                            // Preserve the native HP-zero death animation and wait for
+                            // normal confirmations; the bounded fallback also grants drops.
                             var killedByAllDie = await HandleAllDieMonsterAsync(serverToken);
                             logger.LogInformation(
-                                "Handled ALLDIE_MONSTER for dungeon {DungeonId}, room ({RoomX},{RoomY}): killed {Count} remaining monster(s) server-side.",
+                                "Handled ALLDIE_MONSTER for dungeon {DungeonId}, room ({RoomX},{RoomY}): waiting for {Count} normal monster death(s).",
                                 currentDungeonId,
                                 currentDungeonRoomX,
                                 currentDungeonRoomY,
@@ -13996,15 +14318,32 @@ public sealed class EntranceService(
 
                             dungeonCharacterAlive = false;
                             dungeonDeathGeneration++;
-                            dungeonDeathTimeout = (
-                                dungeonDeathGeneration,
-                                DateTimeOffset.UtcNow.AddSeconds(10));
-                            var dieState = GameProtocolEngine.CreateDieState(
-                                localUserId,
-                                isAlive: false);
-                            await dieState.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, dieState);
+                            dungeonDeathTimeout = null;
+                            var isPartyDeath = dungeonInstance is { IsParty: true };
+                            var partyDeathHandled = isPartyDeath
+                                && await dungeonPartyService.SetMemberAliveAsync(
+                                    dungeonInstance!, activeCharacter.Id, isAlive: false, serverToken);
+                            if (!partyDeathHandled)
+                            {
+                                // 组队成员表失效时也不能退回个人计时：只有实例的全灭判定
+                                // 可以让组队死者自动回城。单人仍沿用原来的十秒期限。
+                                if (!isPartyDeath)
+                                {
+                                    dungeonDeathTimeout = (
+                                        dungeonDeathGeneration,
+                                        DateTimeOffset.UtcNow.AddSeconds(10));
+                                }
+                                else
+                                {
+                                    logger.LogWarning(
+                                        "Party death state could not be registered for user {UserId} in instance {PartyId}; no individual return timer was started.",
+                                        localUserId, dungeonInstance!.PartyId);
+                                }
+                                var dieState = GameProtocolEngine.CreateDieState(localUserId, isAlive: false);
+                                await dieState.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, dieState);
+                            }
                             logger.LogInformation(
                                 "User {UserId} entered authoritative dungeon death state in dungeon {DungeonId} room ({RoomX},{RoomY}).",
                                 localUserId,
@@ -14019,6 +14358,7 @@ public sealed class EntranceService(
                         {
                             byte? errorCode = null;
                             GameUseCoinCommand useCoinCommand = default;
+                            var revivalInstance = dungeonInstance is { IsParty: true } ? dungeonInstance : null;
                             if (!GameProtocolEngine.TryParseUseCoinCommand(
                                     request.Body,
                                     out useCoinCommand)
@@ -14041,17 +14381,32 @@ public sealed class EntranceService(
                             {
                                 errorCode = 17;
                             }
+                            else if (revivalInstance is not null
+                                && !revivalInstance.TryBeginPartyRevival(activeCharacter.Id, DateTimeOffset.UtcNow))
+                            {
+                                errorCode = 19;
+                            }
                             else
                             {
-                                var saved = await store.SaveCharacterInventoryAsync(
-                                    accountName,
-                                    activeCharacter.Id,
-                                    currentGold,
-                                    plannedInventory.Values,
-                                    equippedInventory.Values,
-                                    serverToken);
+                                CharacterRecord? saved;
+                                try
+                                {
+                                    saved = await store.SaveCharacterInventoryAsync(
+                                        accountName,
+                                        activeCharacter.Id,
+                                        currentGold,
+                                        plannedInventory.Values,
+                                        equippedInventory.Values,
+                                        serverToken);
+                                }
+                                catch
+                                {
+                                    revivalInstance?.CancelPartyRevival(activeCharacter.Id, DateTimeOffset.UtcNow);
+                                    throw;
+                                }
                                 if (saved is null)
                                 {
+                                    revivalInstance?.CancelPartyRevival(activeCharacter.Id, DateTimeOffset.UtcNow);
                                     errorCode = 19;
                                 }
                                 else
@@ -14066,12 +14421,17 @@ public sealed class EntranceService(
                                     // before its USE_COIN reply closes the revive UI.
                                     // The reply also decrements the client's local
                                     // virtual-coin object, so no NOTI 14 is sent.
-                                    var reviveState = GameProtocolEngine.CreateDieState(
-                                        useCoinCommand.TargetUserId,
-                                        isAlive: true);
-                                    await reviveState.WriteAsync(stream, serverToken);
-                                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                                    LogPacket("TX", runtimeSession, reviveState);
+                                    if (dungeonInstance is null
+                                        || !await dungeonPartyService.SetMemberAliveAsync(
+                                            dungeonInstance, activeCharacter.Id, isAlive: true, serverToken))
+                                    {
+                                        var reviveState = GameProtocolEngine.CreateDieState(
+                                            useCoinCommand.TargetUserId,
+                                            isAlive: true);
+                                        await reviveState.WriteAsync(stream, serverToken);
+                                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                                        LogPacket("TX", runtimeSession, reviveState);
+                                    }
 
                                     var useCoinReply =
                                         GameProtocolEngine.CreateUseCoinReply(
@@ -14132,6 +14492,7 @@ public sealed class EntranceService(
                                             currentDungeonRoomX,
                                             currentDungeonRoomY,
                                             activatedItemCount);
+                                        await HandleAllDieMonsterAsync(serverToken);
                                     }
                                     else
                                     {
@@ -14145,268 +14506,7 @@ public sealed class EntranceService(
                                     continue;
                                 }
 
-                                var monsterUniqueId = dieCommand.EntityId;
-                                var wasHellFiend = dungeonInstance?.IsHellFiend(monsterUniqueId) ?? false;
-                                var hellPartyMode = dungeonInstance?.Run.CurrentHellPartyMode ?? 0;
-                                var isBossCascadeDeath = false;
-                                // 存活判定的唯一所有者 = 实例：并发上报只有一次能进来（Task 1 的单测钉住了）。
-                                // 不在副本里（没有实例）时与改造前同口径：没有存活的怪 → 下面的"陈旧死亡"分支。
-                                var wasAlive = false;
-                                if (dungeonInstance is not null)
-                                {
-                                    wasAlive = dungeonInstance.TryTakeMonsterDeath(
-                                        monsterUniqueId,
-                                        out isBossCascadeDeath);
-                                }
-
-                                var defeatedMonster = wasAlive
-                                    && currentDungeonRoom is not null
-                                    ? currentDungeonRoom.Monsters.FirstOrDefault(monster =>
-                                        monster.UniqueId == monsterUniqueId)
-                                    : null;
-                                if (!wasAlive || defeatedMonster is null)
-                                {
-                                    logger.LogWarning(
-                                        "Ignored stale or unknown monster death {MonsterId} in room ({RoomX},{RoomY}).",
-                                        monsterUniqueId,
-                                        currentDungeonRoomX,
-                                        currentDungeonRoomY);
-                                    continue;
-                                }
-
-                                // 击杀计数与奖励动画序号都在**实例**里累计（真机 2026-09-29：
-                                // 计数在会话里时同队两人各算各的 → 通关评分/奖励完全不同）。
-                                var championRewardOrdinal =
-                                    dungeonInstance!.RegisterMonsterKill(defeatedMonster.Type);
-
-                                var protocolDrops = new List<GameDungeonDrop>(6);
-                                if (!isBossCascadeDeath)
-                                {
-                                    foreach (var generatedDrop in dropGenerator.Generate(
-                                                 defeatedMonster.Level,
-                                                 defeatedMonster.Type,
-                                                 currentDungeonDifficulty,
-                                                 // 调试满掉落（`掉落测试`，只对 test 账号、只影响本实例）
-                                                 dropEverything: dungeonInstance!.DropDebugAll))
-                                    {
-                                        var groundItem = dungeonInstance!.AddGroundItem(
-                                            generatedDrop,
-                                            localUserId,
-                                            monsterUniqueId,
-                                            currentDungeonRoomX,
-                                            currentDungeonRoomY,
-                                            x: unchecked((short)defeatedMonster.X),
-                                            y: unchecked((short)defeatedMonster.Y));
-                                        protocolDrops.Add(new GameDungeonDrop(
-                                            groundItem.GroundId,
-                                            groundItem.ItemId,
-                                            groundItem.GetClientAddInfo(itemCatalog),
-                                            groundItem.GetClientDurability(itemCatalog),
-                                            groundItem.OwnerUserId));
-                                    }
-
-                                    foreach (var generatedDrop in monsterChampionDrops.Roll(
-                                                 defeatedMonster.MonsterIndex,
-                                                 defeatedMonster.Type))
-                                    {
-                                        var groundItem = dungeonInstance!.AddGroundItem(
-                                            generatedDrop,
-                                            localUserId,
-                                            monsterUniqueId,
-                                            currentDungeonRoomX,
-                                            currentDungeonRoomY,
-                                            x: unchecked((short)defeatedMonster.X),
-                                            y: unchecked((short)defeatedMonster.Y));
-                                        protocolDrops.Add(new GameDungeonDrop(
-                                            groundItem.GroundId,
-                                            groundItem.ItemId,
-                                            groundItem.GetClientAddInfo(itemCatalog),
-                                            groundItem.GetClientDurability(itemCatalog),
-                                            groundItem.OwnerUserId));
-                                    }
-
-                                    if (wasHellFiend && dropGenerator.Enabled)
-                                    {
-                                        var hellLevel = dungeonCatalog.TryGetDefinition(currentDungeonId, out var hellDefinition)
-                                            ? hellDefinition.BasisLevel : defeatedMonster.Level;
-                                        var hellHit = hellDropCatalog.TryRollEquipment(
-                                            hellLevel,
-                                            currentDungeonDifficulty,
-                                            hellPartyMode,
-                                            GameRandomSource.Shared,
-                                            out var hellItemId,
-                                            options.Drop.RatePercent / 100.0 * options.Drop.EconomicRate,
-                                            options.Drop.ForceDrops);
-                                        logger.LogInformation(
-                                            "Hell drop result for character {CharacterId}, dungeon {DungeonId}, monster {MonsterIndex}/{UniqueId}: hit={Hit}, item={ItemId}.",
-                                            activeCharacter?.Id, currentDungeonId, defeatedMonster.MonsterIndex,
-                                            monsterUniqueId, hellHit, hellItemId);
-                                        if (hellHit)
-                                        {
-                                            var hellGroundItem = dungeonInstance!.AddGroundItem(
-                                                new DungeonGeneratedDrop(
-                                                    IsGold: false,
-                                                    hellItemId,
-                                                    CountOrValue: 1),
-                                                localUserId,
-                                                monsterUniqueId,
-                                                currentDungeonRoomX,
-                                                currentDungeonRoomY,
-                                                x: unchecked((short)defeatedMonster.X),
-                                                y: unchecked((short)defeatedMonster.Y));
-                                            protocolDrops.Add(new GameDungeonDrop(
-                                                hellGroundItem.GroundId,
-                                                hellGroundItem.ItemId,
-                                                hellGroundItem.GetClientAddInfo(itemCatalog),
-                                                hellGroundItem.GetClientDurability(itemCatalog),
-                                                hellGroundItem.OwnerUserId));
-                                        }
-                                    }
-                                }
-
-                                var monsterDie =
-                                    GameProtocolEngine.CreateMonsterDie(
-                                        monsterUniqueId,
-                                        protocolDrops,
-                                        championRewardOrdinal);
-                                // 击杀判定只有一次（TryTakeMonsterDeath 的返回值），但成立的那一次
-                                // 要发给同实例的**每个人**（设计稿 §3.3）；单人仍走本会话路径。
-                                await BroadcastToInstanceAsync(monsterDie, serverToken);
-
-                                if (!isBossCascadeDeath && !tutorialDungeonActive)
-                                {
-                                    await GrantMonsterQuestItemsAsync(
-                                        defeatedMonster.MonsterIndex);
-                                }
-
-                                if (!isBossCascadeDeath && activeCharacter is not null)
-                                {
-                                    // 队友也要拿这只怪的经验（真机 2026-09-29：只有击杀者有经验）。
-                                    // 击杀判定只有一次，所以由这里给同实例其他成员各投一条"经验信用"，
-                                    // 收件人在自己的会话里按**自己的等级**结算（等级不同，必须各算各的）。
-                                    if (dungeonInstance is { IsParty: true } creditInstance)
-                                    {
-                                        var credit = new DungeonMonsterKillCredit(
-                                            defeatedMonster.Level,
-                                            defeatedMonster.Type,
-                                            defeatedMonster.MonsterIndex,
-                                            IsBossCascadeDeath: false);
-                                        foreach (var member in creditInstance.Members)
-                                        {
-                                            if (member.CharacterId != activeCharacter.Id)
-                                            {
-                                                dungeonInstanceRegistry.PostKillCredit(member.CharacterId, credit);
-                                            }
-                                        }
-                                    }
-
-                                    var gainedExperience =
-                                        dungeonCatalog.TryGetDefinition(
-                                            currentDungeonId,
-                                            out var experienceDungeon)
-                                            ? dungeonExperienceCatalog.CalculateMonsterExperience(
-                                                activeCharacter.Level,
-                                                defeatedMonster.Level,
-                                                defeatedMonster.Type,
-                                                defeatedMonster.MonsterIndex,
-                                                experienceDungeon,
-                                                currentDungeonDifficulty,
-                                                partyMemberCount: dungeonInstance!.MemberCount)
-                                            : 0;
-                                    var progression = experienceCatalog.Grant(
-                                        activeCharacter,
-                                        gainedExperience);
-                                    if (progression.GrantedExperience > 0)
-                                    {
-                                        var grantedSkillPoints = ApplyLevelUpSkillPoints(progression);
-                                        activeCharacter = activeCharacter with
-                                        {
-                                            Level = progression.Level,
-                                            Experience = progression.Experience,
-                                            Sp = currentSp
-                                        };
-                                        var savedProgression =
-                                            await store.SaveCharacterProgressionAsync(
-                                                accountName,
-                                                activeCharacter.Id,
-                                                activeCharacter.Level,
-                                                activeCharacter.Experience,
-                                                currentSp,
-                                                serverToken);
-                                        if (savedProgression is null)
-                                        {
-                                            throw new InvalidOperationException(
-                                                $"Could not persist monster experience for character {activeCharacter.Id}.");
-                                        }
-
-                                        activeCharacter = savedProgression;
-                                        dungeonMonsterExperienceGained = (uint)Math.Min(
-                                            uint.MaxValue,
-                                            (ulong)dungeonMonsterExperienceGained
-                                            + progression.GrantedExperience);
-                                        dungeonLeveledUp |= progression.LeveledUp;
-
-                                        var experienceGained =
-                                            GameProtocolEngine.CreateExperienceGained(
-                                                checked((byte)Math.Clamp(
-                                                    activeCharacter.Level,
-                                                    1,
-                                                    byte.MaxValue)),
-                                                activeCharacter.Experience,
-                                                extraExperienceA: 0,
-                                                extraExperienceB: 0,
-                                                skillPoints: checked((ushort)Math.Min(
-                                                    currentSp,
-                                                    ushort.MaxValue)));
-                                        await experienceGained.WriteAsync(
-                                            stream,
-                                            serverToken);
-                                        Interlocked.Increment(
-                                            ref runtimeSession.SentPackets);
-                                        LogPacket(
-                                            "TX",
-                                            runtimeSession,
-                                            experienceGained);
-                                        logger.LogInformation(
-                                            "Monster {MonsterId} (index {MonsterIndex}, level {MonsterLevel}, type {MonsterType}) granted character {CharacterId} {GrantedExperience} EXP; cumulative EXP is {Experience} at level {Level}.",
-                                            monsterUniqueId,
-                                            defeatedMonster.MonsterIndex,
-                                            defeatedMonster.Level,
-                                            defeatedMonster.Type,
-                                            activeCharacter.Id,
-                                            progression.GrantedExperience,
-                                            activeCharacter.Experience,
-                                            activeCharacter.Level);
-                                        if (grantedSkillPoints > 0)
-                                        {
-                                            logger.LogInformation(
-                                                "Monster {MonsterId} advanced character level {OldLevel}->{Level} and granted {SkillPoints} SP.",
-                                                monsterUniqueId,
-                                                progression.PreviousLevel,
-                                                progression.Level,
-                                                grantedSkillPoints);
-                                        }
-
-                                        if (progression.LeveledUp)
-                                        {
-                                            await SendCurrentSkillInfoAsync();
-                                            await ValidateAndCorrectCharacterStatsAsync(
-                                                "monster experience level-up");
-                                        }
-                                    }
-                                }
-
-                                if (protocolDrops.Count > 0)
-                                {
-                                    logger.LogInformation(
-                                        "Monster {MonsterId} generated {DropCount} ground drops in room ({RoomX},{RoomY}).",
-                                        monsterUniqueId,
-                                        protocolDrops.Count,
-                                        currentDungeonRoomX,
-                                        currentDungeonRoomY);
-                                }
-
-                                await TryEnableRoomClearAsync(defeatedMonster);
+                                await HandleMonsterDeathAsync(dieCommand.EntityId);
                             }
                             continue;
                         }
@@ -15174,9 +15274,14 @@ public sealed class EntranceService(
                             if (partyFinishInstance is null)
                             {
                                 var loadingNotification = GameProtocolEngine.CreateFinishLoading();
-                                await loadingNotification.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, loadingNotification);
+                                if (currentDungeonId != 0 && dungeonMemberSend is not null)
+                                {
+                                    await dungeonMemberSend(loadingNotification);
+                                }
+                                else
+                                {
+                                    await SendTownPacketAsync(loadingNotification, serverToken);
+                                }
                             }
                             // FinishLoading reconstructs the local map actor.
                             // Replay a persisted zero-stomach death marker for
@@ -15473,6 +15578,13 @@ public sealed class EntranceService(
 
                 if (activeCharacter is not null)
                 {
+                    // 先以名册结束成员资格；副本内 NOTI9 已移除 actor，不能再发 NOTI23
+                    // 重复拆除死亡观战镜头的跟随目标。通道先摘除，不向已关闭的流投递。
+                    gameplayDatagram.SetRelayContext(runtimeSession.Id, null);
+                    await partyService.DetachChannelAsync(
+                        activeCharacter.Id,
+                        runtimeSession.Id,
+                        CancellationToken.None);
                     // 掉线/被踢：把角色从副本实例里摘掉（最后一个成员离开即销毁，设计稿 §3.4），
                     // 并让其余成员收到"角色离场"信号。必须在下面把 localUserId 还回池子**之前**：
                     // 离场信号里的 uid 就是它还活着时的值（还回去之后可能被别的会话复用）。
@@ -15481,7 +15593,8 @@ public sealed class EntranceService(
                         localUserId,
                         currentX,
                         currentY,
-                        currentDirection);
+                        currentDirection,
+                        runtimeSession.Id);
                 }
 
                 if (localUserId != 0)
@@ -15500,12 +15613,6 @@ public sealed class EntranceService(
                     // 断线：流已经释放，走 CancellationToken.None 的旁路结束在途交易
                     // （DetachChannelAsync 会把发起者当成已离场，只通知还活着的对手）。
                     await itemTradeService.DetachChannelAsync(
-                        activeCharacter.Id,
-                        runtimeSession.Id,
-                        CancellationToken.None);
-                    // 断线是「自动退队」的最后一个来源（设计稿 §5.5）；目录已在上面
-                    // 退出，所以这里的名册广播不会再往本会话这条已死的流发送。
-                    await partyService.DetachChannelAsync(
                         activeCharacter.Id,
                         runtimeSession.Id,
                         CancellationToken.None);
@@ -15557,8 +15664,8 @@ public sealed class EntranceService(
     /// <summary>
     /// 离开副本实例的收尾（三条路径共用：回城 CMD 45/142/结算、掉线、换角色/回选人，设计稿 §3.4）：
     /// 解绑这个角色 → 最后一个成员离开时 <see cref="DungeonInstanceRegistry.UnbindCharacter"/> 就地
-    /// 销毁实例；还剩成员的**组队**实例补发既有的"角色离场"信号（USER_AREA 带 0xFF/0xFF 哨兵 →
-    /// 其余成员客户端销毁该 actor，见 TownSyncSmokeTests 的离场断言）。单人实例没有"其余成员"，
+    /// 销毁实例；保留队伍而只离开副本场景时，补发 USER_AREA 的 0xFF/0xFF 离场信号。
+    /// 已退出队伍的角色由 NOTI9 名册移除 actor，不再补发第二次拆除通知。单人实例没有"其余成员"，
     /// 一个包都不发（单人零回归）。
     /// (uid, 坐标) 由调用方在解绑**之前**从会话局部量传入：解绑之后实例里已经没有这个人了。
     /// 放在类方法而不是会话里的局部函数：掉线路径的调用点在 <c>finally</c> 里，而 <c>try</c> 的
@@ -15570,12 +15677,20 @@ public sealed class EntranceService(
         ushort areaUserId,
         short x,
         short y,
-        byte direction)
+        byte direction,
+        Guid sessionId,
+        bool partyRosterAlreadyRemovesActor = false)
     {
+        gameplayDatagram.SetRelayDungeonInstance(sessionId, null);
+
+        // 回选人/换角色/断线可能已先摘掉组队通道；giveup 则显式传回已发布名册的结果。
+        // 普通结算和全灭回城保留成员资格，仍须使用场景离场包。
+        partyRosterAlreadyRemovesActor |= partyService.GetPartySlots(characterId) is null;
+
         // 真机验收要看的日志用角色名，别只打 GUID（成员句柄登记了名字）；解绑之后实例里
         // 已经没有这个人，所以必须在 UnbindCharacter 之前从注册表的绑定里取。
-        var leavingName = dungeonInstanceRegistry.TryGetForCharacter(characterId)?
-            .FindMember(characterId)?.CharacterName;
+        var boundInstance = dungeonInstanceRegistry.TryGetForCharacter(characterId);
+        var leavingName = boundInstance?.FindMember(characterId)?.CharacterName;
         var leavingInstance = dungeonInstanceRegistry.UnbindCharacter(characterId);
         if (leavingInstance is not { IsParty: true }
             || areaUserId == 0
@@ -15594,7 +15709,8 @@ public sealed class EntranceService(
                 x,
                 y,
                 direction,
-                CancellationToken.None);
+                CancellationToken.None,
+                partyRosterAlreadyRemovesActor: partyRosterAlreadyRemovesActor);
         }
         catch (Exception exception)
         {
@@ -17641,9 +17757,18 @@ public sealed class EntranceService(
             }
 
             var channel = options.Channel;
+            // EntranceChannel.Host is what the client is told to DIAL, so it must
+            // never be a bind address. Channel.Host is a bind address: the config
+            // ships it as 0.0.0.0, and a client that dials 0.0.0.0 fails with
+            // WSAEWOULDBLOCK and then "connection failed" (measured 2026-10-04 on
+            // the net dump: the client dialled exactly "0.0.0.0:7001"). The dial
+            // target therefore comes from the same advertised host the channel
+            // info notification already uses, and Channel.Host stays the bind
+            // address it is documented to be.
+            var dialHost = ResolveChannelDialHost(options);
             var metadata = EntranceMetadata.BuildSingleLocalChannel(new EntranceChannel(
                 channel.Name,
-                channel.Host,
+                dialHost,
                 channel.Port,
                 channel.ChannelNumber,
                 channel.MaximumUsers,
@@ -17651,6 +17776,35 @@ public sealed class EntranceService(
             _content = new EntranceContent(channelScript, metadata);
             return _content;
         }
+    }
+
+    // A wildcard or absent Channel.Host says nothing a client can dial. Prefer
+    // the advertised gameplay host (the address the operator declared reachable),
+    // then Entrance.Host, and only fall back to Channel.Host when it is already
+    // a concrete address.
+    internal static string ResolveChannelDialHost(ServerOptions options)
+    {
+        var advertised = options.GameplayDatagram.ResolveAdvertisedHost();
+        if (IsDialableHost(advertised))
+        {
+            return advertised;
+        }
+        if (IsDialableHost(options.Entrance.Host))
+        {
+            return options.Entrance.Host;
+        }
+        return options.Channel.Host;
+    }
+
+    private static bool IsDialableHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        return !IPAddress.TryParse(host, out var address)
+            || (!IPAddress.Any.Equals(address) && !IPAddress.IPv6Any.Equals(address));
     }
 
     private sealed record CompoundItemReplayEntry(

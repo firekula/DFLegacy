@@ -1634,6 +1634,10 @@ internal sealed class PartyHarness : IAsyncDisposable
     public ushort UidOf(string characterName) => _uids[characterName];
     public Guid SessionIdOf(string characterName) => _sessionIds[characterName];
 
+    public Task SetTownAppearanceAsync(string characterName, GameServerPacket basic,
+        GameServerPacket detail) => Directory.RefreshAppearanceAsync(
+            _tickets[characterName], basic, CancellationToken.None, detail);
+
     /// <summary>返回 List（而不是 IReadOnlyList）以便用例用 FindIndex 断言包的先后顺序。</summary>
     public List<GameServerPacket> Of(string characterName)
     {

@@ -75,6 +75,30 @@ internal sealed class DungeonInstance(
 {
     private readonly List<DungeonInstanceMember> _members = [];
     private readonly DungeonRunState _run = new(catalog);
+    private long _debugRunId;
+
+    internal DungeonDebugOverlaySnapshot? CaptureDebugOverlay()
+    {
+        lock (Gate)
+        {
+            if (!_run.IsActive || Layout is null) return null;
+            var room = _run.PrepareBossRoomForDebug(out var defeated, out var destroyed);
+            if (room is null) return null;
+            var atBoss = _run.RoomX == Layout.BossX && _run.RoomY == Layout.BossY;
+            var hidden = room.Monsters.Where(monster => monster.IsBoxMonster != 0).Select(monster =>
+            {
+                var container = room.PassiveObjects.FirstOrDefault(value => value.ObjectIndex == monster.BoxIndex);
+                byte state = defeated.Contains(monster.UniqueId) ? (byte)3
+                    : destroyed.Contains(monster.BoxIndex) ? (byte)2
+                    : atBoss ? (byte)1 : (byte)0;
+                return new DungeonDebugHiddenMonster(monster.UniqueId, monster.MonsterIndex, monster.Level,
+                    monster.BoxIndex, state, container?.X ?? 0, container?.Y ?? 0);
+            }).ToArray();
+            return new(_debugRunId, _members.Select(member => member.AreaUserId).ToArray(),
+                _run.DungeonId, _run.CurrentRoom?.MapId ?? 0, room.MapId,
+                _run.RoomX, _run.RoomY, Layout.BossX, Layout.BossY, ClearEnabled, atBoss, hidden);
+        }
+    }
     private readonly PartyCardSelectionState _partyCards = new();
     private readonly Dictionary<(PartyCardType Type, byte Column, byte Slot), PartyCardContent> _partyCardContent = [];
     private long _partyContentGeneration;
@@ -469,6 +493,16 @@ internal sealed class DungeonInstance(
     // 只在 `lock (Gate)` 内读写。
     private readonly HashSet<Guid> _loadedMembers = [];
 
+    // 官服 CParty::die_user 先广播生死，再检查全灭；send_dungeon_fail_msg 只在全灭后
+    // 开 10 秒计时（0x085A7A10 / 0x085B35FC）。不能给每个死者各开单人回城计时。
+    private readonly HashSet<Guid> _deadMembers = [];
+    private DateTimeOffset? _partyWipeDeadline;
+    private bool _partyWipeReturnIssued;
+    private bool _partyWipeReturnStarted;
+    private readonly HashSet<Guid> _partyRevivalReservations = [];
+    private DateTimeOffset? _partyRevivalInterruptedWipeDeadline;
+    internal static readonly TimeSpan PartyWipeReturnDelay = TimeSpan.FromSeconds(10);
+
     // 被动掉落"登记过"的房间。判据必须是这个集合，而不是"现在还剩几条掉落"：
     // 捡走（Remove）/detach 会让后者归零，而房间定义里的 PassiveItemSpawns 是静态的。
     private readonly HashSet<DungeonRoomPosition> _registeredPassiveRooms = [];
@@ -506,6 +540,127 @@ internal sealed class DungeonInstance(
 
     /// <summary>已 destroy 的被动物件 index。**只允许在 <see cref="Gate"/> 内访问**；会话走 <see cref="TryMarkPassiveObjectDestroyed"/>。</summary>
     internal HashSet<byte> DestroyedPassiveObjects { get; } = [];
+
+    private GameDungeonMonster[] _roomMonsters = [];
+    private long _roomGeneration;
+    private bool _bossDeathCascadeStarted;
+    private bool _bossDeathCascadeAnnounced;
+    private int _monsterDeathSettlementsPending;
+
+    internal long RoomGeneration { get { lock (Gate) { return _roomGeneration; } } }
+
+    internal ushort? BossDeathCascadeBossId
+    {
+        get { lock (Gate) { return _roomMonsters.FirstOrDefault(monster => monster.Type == GameDungeonMonsterTypes.Boss)?.UniqueId; } }
+    }
+
+    internal HashSet<ushort> SnapshotRoomBossIds()
+    {
+        lock (Gate)
+        {
+            return _roomMonsters.Where(monster => monster.Type == GameDungeonMonsterTypes.Boss)
+                .Select(monster => monster.UniqueId).ToHashSet();
+        }
+    }
+
+    internal bool TryBeginMonsterDeath(
+        ushort uniqueId, long? expectedRoomGeneration,
+        out GameDungeonMonster defeatedMonster, out sbyte championRewardOrdinal)
+    {
+        lock (Gate)
+        {
+            defeatedMonster = _roomMonsters.FirstOrDefault(monster => monster.UniqueId == uniqueId)!;
+            championRewardOrdinal = GameProtocolEngine.NoChampionRewardOrdinal;
+            if (defeatedMonster is null || !TryTakeMonsterDeath(uniqueId, out _, expectedRoomGeneration))
+            {
+                return false;
+            }
+            championRewardOrdinal = RegisterMonsterKill(defeatedMonster.Type);
+            _monsterDeathSettlementsPending++;
+            return true;
+        }
+    }
+
+    internal bool CompleteMonsterDeath(long roomGeneration)
+    {
+        lock (Gate)
+        {
+            if (roomGeneration != _roomGeneration)
+            {
+                return false;
+            }
+            if (_monsterDeathSettlementsPending > 0)
+            {
+                _monsterDeathSettlementsPending--;
+            }
+            return true;
+        }
+    }
+
+    internal bool TryAnnounceBossDeathCascade()
+    {
+        lock (Gate)
+        {
+            if (_bossDeathCascadeAnnounced)
+            {
+                return false;
+            }
+            _bossDeathCascadeAnnounced = true;
+            return true;
+        }
+    }
+
+    internal bool TryStartBossDeathCascade(out bool firstStart, long? expectedRoomGeneration = null)
+    {
+        lock (Gate)
+        {
+            firstStart = false;
+            if (expectedRoomGeneration is { } expected && expected != _roomGeneration
+                || CurrentRoomLocked()?.MapType != DungeonMapType.Boss)
+            {
+                return false;
+            }
+
+            var bosses = _roomMonsters.Where(monster => monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
+            if (bosses.Length == 0 || bosses.Any(monster => AliveMonsters.Contains(monster.UniqueId))
+                && !bosses.All(monster => ReportedBossDeaths.Contains(monster.UniqueId)))
+            {
+                return false;
+            }
+
+            firstStart = !_bossDeathCascadeStarted;
+            _bossDeathCascadeStarted = true;
+            return true;
+        }
+    }
+
+    internal ushort[] SnapshotBossDeathCascadeTargets()
+    {
+        lock (Gate)
+        {
+            return !_bossDeathCascadeStarted ? [] : _roomMonsters
+                .Where(monster => monster.Type != GameDungeonMonsterTypes.Boss
+                    && AliveMonsters.Contains(monster.UniqueId)
+                    && (monster.IsBoxMonster == 0 || DestroyedPassiveObjects.Contains(monster.BoxIndex)))
+                .Select(monster => monster.UniqueId).Order().ToArray();
+        }
+    }
+
+    internal DungeonRoomClearDecision EvaluateRoomClear(
+        GameDungeonMonster defeatedMonster, long? expectedRoomGeneration = null)
+    {
+        lock (Gate)
+        {
+            if (_monsterDeathSettlementsPending != 0
+                || expectedRoomGeneration is { } expected && expected != _roomGeneration)
+            {
+                return DungeonRoomClearDecision.None;
+            }
+            var room = CurrentRoomLocked();
+            return room is null ? DungeonRoomClearDecision.None : DungeonRoomClearRules.Evaluate(
+                room with { Monsters = _roomMonsters }, defeatedMonster, AliveMonsters, DestroyedPassiveObjects);
+        }
+    }
 
     public byte DungeonOption { get; private set; }
 
@@ -569,7 +724,8 @@ internal sealed class DungeonInstance(
     {
         lock (Gate)
         {
-            if (_members.Any(existing => existing.CharacterId == member.CharacterId))
+            if (_partyWipeReturnStarted
+                || _members.Any(existing => existing.CharacterId == member.CharacterId))
             {
                 return false;
             }
@@ -577,12 +733,44 @@ internal sealed class DungeonInstance(
             _members.Add(member);
             // 新成员默认"未加载"：要等他自己发 CMD 40（FINISH_LOADING）才算这一房间加载完成。
             _loadedMembers.Remove(member.CharacterId);
+            _deadMembers.Remove(member.CharacterId);
+            _partyRevivalInterruptedWipeDeadline = null;
+            UpdatePartyWipeDeadlineLocked(DateTimeOffset.UtcNow);
             Version++;
             return true;
         }
     }
 
-    public bool RemoveMember(Guid characterId)
+    /// <summary>入场的幂等登记：全灭回城封口后不许先摘掉原成员再尝试重挂。</summary>
+    internal bool TryRegisterMemberForEntry(DungeonInstanceMember member)
+    {
+        lock (Gate)
+        {
+            if (_partyWipeReturnStarted)
+            {
+                return false;
+            }
+
+            RemoveMember(member.CharacterId);
+            return AddMember(member);
+        }
+    }
+
+    /// <summary>加入运行中的房间：取快照和登记同锁，拒绝时不改变成员或场景。</summary>
+    internal bool TryJoinRunForEntry(
+        DungeonInstanceMember member,
+        out DungeonInstanceRoomSnapshot room)
+    {
+        lock (Gate)
+        {
+            room = null!;
+            return CanAcceptJoin
+                && TryCaptureCurrentRoomSnapshot(member.AreaUserId, out room)
+                && TryRegisterMemberForEntry(member);
+        }
+    }
+
+    public bool RemoveMember(Guid characterId, DateTimeOffset? now = null)
     {
         lock (Gate)
         {
@@ -592,6 +780,11 @@ internal sealed class DungeonInstance(
             }
 
             _loadedMembers.Remove(characterId);
+            _deadMembers.Remove(characterId);
+            _partyRevivalReservations.Remove(characterId);
+            // 最后一个活人离开后，留下的死者也要能结束这一局；已在计时/回城的全灭
+            // 不因某个成员先解绑而重开期限，否则全队不能按同一个到点时刻回城。
+            RestorePartyWipeAfterReservationLocked(now ?? DateTimeOffset.UtcNow);
             _partyCards.RemoveMember(characterId);
             _partyCardAgents.Remove(characterId);
             _settlementReturnDeadlines.Remove(characterId);
@@ -630,6 +823,184 @@ internal sealed class DungeonInstance(
                 return _members.Count;
             }
         }
+    }
+
+    /// <summary>只受理本实例的组队成员；单人继续由会话使用原来的死亡计时。</summary>
+    internal bool TrySetPartyMemberAlive(Guid characterId, bool isAlive, DateTimeOffset now)
+    {
+        lock (Gate)
+        {
+            if (!IsParty || !_members.Any(member => member.CharacterId == characterId)
+                || isAlive && _partyWipeReturnStarted)
+            {
+                return false;
+            }
+
+            if (isAlive)
+            {
+                // 成功落库后的提交。任何一次真正复活都让之前的全灭期限作废；
+                // 其它并发预留若失败，不能把已经被成功复活打断的旧期限恢复回来。
+                _partyRevivalReservations.Remove(characterId);
+                _partyRevivalInterruptedWipeDeadline = null;
+            }
+
+            var changed = isAlive ? _deadMembers.Remove(characterId) : _deadMembers.Add(characterId);
+            UpdatePartyWipeDeadlineLocked(now);
+            if (changed)
+            {
+                Version++;
+            }
+
+            return true;
+        }
+    }
+
+    internal DateTimeOffset? PartyWipeDeadline
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _partyWipeDeadline;
+            }
+        }
+    }
+
+    /// <summary>全灭到期重新检查存活状态，一次取出全队；重复扫描不重复投递。</summary>
+    internal Guid[] TakeExpiredPartyWipeReturns(DateTimeOffset now)
+    {
+        lock (Gate)
+        {
+            if (_partyWipeReturnIssued || _partyWipeDeadline is not { } deadline
+                || now < deadline || !AllPartyMembersDeadLocked())
+            {
+                return [];
+            }
+
+            _partyWipeReturnIssued = true;
+            return _members.Select(member => member.CharacterId).ToArray();
+        }
+    }
+
+    /// <summary>
+    /// 只读资格快照；实际回城必须使用 TryBeginPartyWipeReturn 原子认领。
+    /// 扫描投递后有人用币复活，尚未取走的旧邮件不能把他或队友送回城。
+    /// 首个成员回城解绑后，其余成员仍在这轮已到期的全灭中，不重新计时。
+    /// </summary>
+    internal bool ShouldReturnForPartyWipe(Guid characterId, DateTimeOffset now)
+    {
+        lock (Gate)
+        {
+            return _partyWipeReturnIssued
+                && _partyWipeDeadline is { } deadline && now >= deadline
+                && _members.Any(member => member.CharacterId == characterId)
+                && AllPartyMembersDeadLocked();
+        }
+    }
+
+    /// <summary>
+    /// 首个会话在开始异步回城之前认领整队失败。与花币前的复活预留同锁仲裁，
+    /// 避免一个会话已回城、另一个会话在落库等待中复活而留本。
+    /// </summary>
+    internal bool TryBeginPartyWipeReturn(Guid characterId, DateTimeOffset now)
+    {
+        lock (Gate)
+        {
+            if (!ShouldReturnForPartyWipe(characterId, now))
+            {
+                return false;
+            }
+
+            _partyWipeReturnStarted = true;
+            return true;
+        }
+    }
+
+    /// <summary>USE_COIN 验证通过后、花币落库之前预留；失败不应消费复活币。</summary>
+    internal bool TryBeginPartyRevival(Guid characterId, DateTimeOffset now)
+    {
+        lock (Gate)
+        {
+            if (!IsParty || _partyWipeReturnStarted
+                || !_members.Any(member => member.CharacterId == characterId)
+                || !_deadMembers.Contains(characterId)
+                || !_partyRevivalReservations.Add(characterId))
+            {
+                return false;
+            }
+
+            _partyRevivalInterruptedWipeDeadline ??= _partyWipeDeadline;
+            _deadMembers.Remove(characterId);
+            UpdatePartyWipeDeadlineLocked(now);
+            Version++;
+            return true;
+        }
+    }
+
+    /// <summary>复活落库失败/异常时撤销预留，恢复原死亡期限；不要再多等十秒。</summary>
+    internal void CancelPartyRevival(Guid characterId, DateTimeOffset now)
+    {
+        lock (Gate)
+        {
+            if (!_partyRevivalReservations.Remove(characterId))
+            {
+                return;
+            }
+
+            if (_members.Any(member => member.CharacterId == characterId))
+            {
+                _deadMembers.Add(characterId);
+            }
+
+            RestorePartyWipeAfterReservationLocked(now);
+            Version++;
+        }
+    }
+
+    private void RestorePartyWipeAfterReservationLocked(DateTimeOffset now)
+    {
+        UpdatePartyWipeDeadlineLocked(now);
+        if (AllPartyMembersDeadLocked() && _partyRevivalInterruptedWipeDeadline is { } interrupted)
+        {
+            _partyWipeDeadline = interrupted;
+            // 已投的旧邮件可能在复活落库等待期间被会话丢弃，因此恢复后允许再投递。
+            _partyWipeReturnIssued = false;
+        }
+
+        if (_partyRevivalReservations.Count == 0)
+        {
+            _partyRevivalInterruptedWipeDeadline = null;
+        }
+    }
+
+    private bool AllPartyMembersDeadLocked() =>
+        IsParty && _members.Count > 0 && _members.All(member => _deadMembers.Contains(member.CharacterId));
+
+    private void UpdatePartyWipeDeadlineLocked(DateTimeOffset now)
+    {
+        if (AllPartyMembersDeadLocked())
+        {
+            _partyWipeDeadline ??= now.Add(PartyWipeReturnDelay);
+        }
+        else
+        {
+            _partyWipeDeadline = null;
+            _partyWipeReturnIssued = false;
+            if (_members.Count == 0)
+            {
+                _partyWipeReturnStarted = false;
+            }
+        }
+    }
+
+    private void ResetPartyMemberLivesLocked()
+    {
+        _deadMembers.Clear();
+        _partyWipeDeadline = null;
+        _partyWipeReturnIssued = false;
+        _partyWipeReturnStarted = false;
+        _partyRevivalReservations.Clear();
+        _partyRevivalInterruptedWipeDeadline = null;
     }
 
     // —— 全员加载门槛（官方 `CParty::resetFinishLoadingVar` / `CParty::check_allmember_loading`）——
@@ -797,7 +1168,7 @@ internal sealed class DungeonInstance(
         {
             lock (Gate)
             {
-                return _members.Count > 0 && _run.IsActive;
+                return _members.Count > 0 && _run.IsActive && !_partyWipeReturnStarted;
             }
         }
     }
@@ -841,6 +1212,12 @@ internal sealed class DungeonInstance(
     {
         lock (Gate)
         {
+            if (_partyWipeReturnStarted)
+            {
+                transition = null!;
+                return DungeonRunEntryDecision.StartFailed;
+            }
+
             if (_run.IsActive)
             {
                 transition = null!;
@@ -866,8 +1243,10 @@ internal sealed class DungeonInstance(
         }
 
         InvalidatePartyCardSettlementLocked();
+        ResetPartyMemberLivesLocked();
         DungeonOption = dungeonOption;
         Layout = layout;
+        _debugRunId = DateTime.UtcNow.Ticks;
         ClearEnabled = false;
         LastRoomEntryWasFirstVisit = transition.FirstVisit;
         _detachedRoom = null;
@@ -885,6 +1264,7 @@ internal sealed class DungeonInstance(
         {
             _run.Stop();
             InvalidatePartyCardSettlementLocked();
+            ResetPartyMemberLivesLocked();
             _detachedRoom = room;
             Layout = null;
             DungeonOption = 0;
@@ -985,10 +1365,16 @@ internal sealed class DungeonInstance(
     /// 怪物死亡：**唯一判定 = 从存活集合里摘掉它**（与改造前 `aliveDungeonMonsters.Remove` 同口径），
     /// 并发上报只会有一次返回 true。返回 false 表示这条死亡是陈旧的（不发 NOTI 38）。
     /// </summary>
-    public bool TryTakeMonsterDeath(ushort uniqueId, out bool isBossCascadeDeath)
+    public bool TryTakeMonsterDeath(
+        ushort uniqueId, out bool isBossCascadeDeath, long? expectedRoomGeneration = null)
     {
         lock (Gate)
         {
+            if (expectedRoomGeneration is { } expected && expected != _roomGeneration)
+            {
+                isBossCascadeDeath = false;
+                return false;
+            }
             isBossCascadeDeath = BossCascadeMonsterDeaths.Remove(uniqueId);
             if (!AliveMonsters.Remove(uniqueId))
             {
@@ -1002,13 +1388,9 @@ internal sealed class DungeonInstance(
     }
 
     /// <summary>
-    /// 客户端要求"全场小怪一起死"（ALLDIE_MONSTER / BOSS_DIE_CHECK 的 native-all-die）时，
-    /// 由**服务端**把剩下的活怪一次性摘掉并返回它们的 uniqueId（调用方逐只广播 NOTI 38）。
-    /// 已摘掉的怪也一并返回：客户端可能只是它的本地标记丢了，死亡包是幂等的，
-    /// **不回包就等于小怪永远站着**（真机 2026-10-01 15:47：boss 死后 6 只小怪不自动死，
-    /// 服务端只记了"waiting for ... cascade"却什么都没做）。
-    /// 名单由调用方在进入本方法**之前**用 <see cref="SnapshotAliveMonsters"/> 取（本方法只做摘除），
-    /// 保证"名单里有、集合里没有"的怪也能被通知到，同时避免在锁内做 IO。
+    /// 直接移除存活记录的状态工具，不执行掉落、经验或死亡通知。
+    /// BOSS 清场必须走 TryBeginMonsterDeath / CompleteMonsterDeath 的正常结算流程，
+    /// 不能用本方法提前移除怪物，否则正常死亡上报会失去掉落资格。
     /// </summary>
     public void ForceAllMonstersDead(IReadOnlyCollection<ushort>? knownAliveIds = null)
     {
@@ -1170,16 +1552,18 @@ internal sealed class DungeonInstance(
     }
 
     /// <summary>房间清空 → 开启结算。返回 true 表示"这次真的从关到开"（该给全员发一次 NOTI 31）。</summary>
-    public bool TryEnableClear()
+    public bool TryEnableClear(long? expectedRoomGeneration = null)
     {
         lock (Gate)
         {
-            if (ClearEnabled)
+            if (ClearEnabled || _monsterDeathSettlementsPending != 0
+                || expectedRoomGeneration is { } expected && expected != _roomGeneration)
             {
                 return false;
             }
 
             ClearEnabled = true;
+            _run.MarkCurrentRoomCleared();
             Version++;
             return true;
         }
@@ -1207,6 +1591,7 @@ internal sealed class DungeonInstance(
         {
             _run.Stop();
             InvalidatePartyCardSettlementLocked();
+            ResetPartyMemberLivesLocked();
             _detachedRoom = null;
             Layout = null;
             DungeonOption = 0;
@@ -1621,6 +2006,11 @@ internal sealed class DungeonInstance(
 
     private void ResetRoomCollections(IReadOnlyList<GameDungeonMonster> monsters)
     {
+        _roomGeneration++;
+        _roomMonsters = [.. monsters];
+        _bossDeathCascadeStarted = false;
+        _bossDeathCascadeAnnounced = false;
+        _monsterDeathSettlementsPending = 0;
         AliveMonsters.Clear();
         AliveMonsters.UnionWith(monsters.Select(monster => monster.UniqueId));
         ReportedBossDeaths.Clear();

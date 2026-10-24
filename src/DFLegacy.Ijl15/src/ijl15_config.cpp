@@ -17,13 +17,24 @@ namespace
     constexpr int MaximumWindowDimension = 8192;
     constexpr char ConfigFileName[] = "Config.ini";
 
+    // net_dump: 0 payload bytes means "dump the whole packet"; the size cap keeps
+    // an unattended client from filling the disk.
+    constexpr int DefaultDumpNetworkPayloadBytes = 0;
+    constexpr int DefaultDumpNetworkMaxMegabytes = 256;
+    constexpr int MaximumDumpNetworkPayloadBytes = 65536;
+    constexpr int MaximumDumpNetworkMaxMegabytes = 4096;
+
     const dfl::ijl15_config::Settings DefaultSettings{
         DefaultWindowWidth,
         DefaultWindowHeight,
         true,
         true,
         false,
-        dfl::ijl15_config::ScaleFilterMode::Native};
+        dfl::ijl15_config::ScaleFilterMode::Native,
+        false,
+        DefaultDumpNetworkPayloadBytes,
+        DefaultDumpNetworkMaxMegabytes,
+        false};
 
     dfl::ijl15_config::Settings CurrentSettings = DefaultSettings;
     bool ConfigLoaded = false;
@@ -214,9 +225,32 @@ namespace dfl::ijl15_config
                 "Features",
                 "EnableAutoInput",
                 DefaultSettings.EnableAutoInput);
+            CurrentSettings.EnableDebugOverlay = ReadBoolean(
+                path, "Features", "EnableDebugOverlay", false);
             CurrentSettings.ScaleFilter = ReadScaleFilter(
                 path,
                 DefaultSettings.ScaleFilter);
+            CurrentSettings.DumpNetwork = ReadBoolean(
+                path,
+                "Features",
+                "DumpNetwork",
+                DefaultSettings.DumpNetwork);
+            CurrentSettings.DumpNetworkPayloadBytes = std::clamp(
+                static_cast<int>(GetPrivateProfileIntA(
+                    "Features",
+                    "DumpNetworkPayloadBytes",
+                    DefaultSettings.DumpNetworkPayloadBytes,
+                    path)),
+                0,
+                MaximumDumpNetworkPayloadBytes);
+            CurrentSettings.DumpNetworkMaxMegabytes = std::clamp(
+                static_cast<int>(GetPrivateProfileIntA(
+                    "Features",
+                    "DumpNetworkMaxMegabytes",
+                    DefaultSettings.DumpNetworkMaxMegabytes,
+                    path)),
+                1,
+                MaximumDumpNetworkMaxMegabytes);
         }
 
         // This module only stretches the 640x480 client surface. Do not

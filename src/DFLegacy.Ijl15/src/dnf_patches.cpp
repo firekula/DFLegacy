@@ -9,13 +9,22 @@
 #include <cwchar>
 
 #include "auto_input.h"
+#include "debug_module.h"
+#include "boss_room_death.h"
+#include "ground_item_removal.h"
 #include "dnf_patches.h"
 #include "d3d8_scaler.h"
 #include "external_string_table.h"
 #include "ijl15_config.h"
 #include "message_audio.h"
+#include "mage_skill_contact.h"
 #include "memory_patch.h"
+#include "net_dump.h"
 #include "performance_overlay.h"
+#include "party_combat_detail.h"
+#include "priest_heal_target.h"
+#include "stage_follow.h"
+#include "summon_owner_death.h"
 #include "mouse_wheel.h"
 #include "window_scaling.h"
 
@@ -455,6 +464,7 @@ namespace
         if (patch.Address == PerformanceOverlayGate)
         {
             return dfl::ijl15_config::Get().EnablePerformanceOverlay
+                || dfl::ijl15_config::Get().EnableDebugOverlay
                 || dfl::ijl15_config::Get().EnableAutoInput;
         }
         return patch.Enabled;
@@ -1027,6 +1037,7 @@ namespace dfl::dnf_patches
         }
 
         if ((dfl::ijl15_config::Get().EnablePerformanceOverlay
+                || dfl::ijl15_config::Get().EnableDebugOverlay
                 || dfl::ijl15_config::Get().EnableAutoInput)
             && !dfl::performance_overlay::InstallCallHook())
         {
@@ -1109,6 +1120,21 @@ namespace dfl::dnf_patches
                 "DFLegacy.Ijl15: relative output path hook was not installed.\n");
         }
 
+        // Network dump (Config.ini [Features] DumpNetwork=1): hook the client's
+        // own ws2_32 imports so every TCP segment and UDP datagram is written to
+        // netdump-<pid>.log. Off by default; non-fatal when the imports do not
+        // match, because an unmatched client must still run normally.
+        //
+        // Why here and not in a capture: the party/dungeon traffic between two
+        // clients on one machine is Windows loopback, which packet capture does
+        // not see (2026-10-04: 184 MB pktmon capture, zero loopback UDP).
+        if (dfl::ijl15_config::Get().DumpNetwork
+            && !dfl::net_dump::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: network dump was not installed.\n");
+        }
+
         // Install the wheel path only after all fatal patch checks above have
         // succeeded. A failure is non-fatal: the original mouse input and
         // all other IJL15 hooks remain available when this optional UI hook
@@ -1118,6 +1144,57 @@ namespace dfl::dnf_patches
         {
             OutputDebugStringA(
                 "DFLegacy.Ijl15: mouse-wheel scroll hook was not installed.\n");
+        }
+
+        // A roster removal can render before a following life notification.
+        // Repair its follow target synchronously before actor detachment.
+        if (!dfl::stage_follow::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: stage follow repair was not installed.\n");
+        }
+
+        // Apply the native summon owner-loss policy while authority still
+        // exists, including the last living member's map-removal skip path.
+        if (!dfl::summon_owner_death::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: summon owner-loss repair was not installed.\n");
+        }
+
+        if (!dfl::party_combat_detail::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: party combat detail repair was not installed.\n");
+        }
+
+        if (!dfl::mage_skill_contact::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: Mage contact skill prerequisite repair was not installed.\n");
+        }
+
+        if (!dfl::boss_room_death::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: boss room late-spawn death repair was not installed.\n");
+        }
+
+        if (!dfl::priest_heal_target::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: Priest healing target repair was not installed.\n");
+        }
+
+        if (!dfl::ground_item_removal::Install())
+        {
+            OutputDebugStringA(
+                "DFLegacy.Ijl15: ground item removal repair was not installed.\n");
+        }
+
+        if (!dfl::debug_module::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: debug overlay unavailable; gameplay continues.\n");
         }
 
         if (dfl::ijl15_config::Get().EnableAutoInput

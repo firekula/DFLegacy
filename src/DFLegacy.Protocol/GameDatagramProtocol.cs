@@ -36,6 +36,8 @@ public static class GameDatagramProtocol
     public const int NatReportLength = 17;
     public const byte NatResponseType = 2;
     public const int NatKeepAliveLength = 10;
+    /// <summary>Primary/secondary reflector probes are exactly this many bytes.</summary>
+    public const int NatProbeLength = 1;
     public const byte ReliableBlockType = 1;
     public const byte UnreliableBlockType = 2;
     public const ushort SetActiveObjectHpProtocol = 12;
@@ -65,13 +67,23 @@ public static class GameDatagramProtocol
         return true;
     }
 
+    /// <summary>
+    /// A NAT probe is a single byte (1 = primary reflector, 5 = secondary).
+    /// The length check is load bearing: an MTU framing block also begins with
+    /// those values -- a nine-byte keepalive is
+    /// <c>01 | sequence(4) | party | flag | applicationLength=0</c> -- and
+    /// answering one of those with a NAT response makes the client send another,
+    /// which is an endless echo. Measured 2026-10-05: two clients on one machine
+    /// produced 1,315,632 nine-byte sends and 1,315,576 seven-byte replies in
+    /// about two minutes, a 256 MB net dump, and an unresponsive client.
+    /// </summary>
     public static bool TryCreateNatProbeResponse(
         ReadOnlySpan<byte> request,
         IPEndPoint remote,
         out byte[] response)
     {
         response = [];
-        if (request.Length == 0 || request[0] is not (1 or 5))
+        if (request.Length != NatProbeLength || request[0] is not (1 or 5))
         {
             return false;
         }
@@ -90,8 +102,19 @@ public static class GameDatagramProtocol
         return true;
     }
 
+    /// <summary>
+    /// Secondary-reflector keepalive: zero, the seven-byte NAT response
+    /// (type 2, reflected IPv4/port), then two reserved zero bytes. A type-zero
+    /// MT UDP selective ACK can also be ten bytes, so length/type alone loses
+    /// reliable ACKs. The wire formats can overlap; callers must additionally
+    /// restrict this classification to the secondary reflector, never gameplay.
+    /// </summary>
     public static bool IsNatKeepAlive(ReadOnlySpan<byte> request) =>
-        request.Length == NatKeepAliveLength && request[0] == 0;
+        request.Length == NatKeepAliveLength
+        && request[0] == 0
+        && request[1] == NatResponseType
+        && request[8] == 0
+        && request[9] == 0;
 
     public static byte[] CreateSetActiveObjectHpApplication(
         ushort objectType,

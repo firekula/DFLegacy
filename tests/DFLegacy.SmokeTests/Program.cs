@@ -9,6 +9,47 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--debug-overlay"))
+{
+    DungeonDebugOverlaySmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Debug overlay smoke: {failures.Count} failures");
+    Environment.Exit(failures.Count > 0 ? 1 : 0);
+}
+
+if (args.Contains("--pickup-removal"))
+{
+    await PickupRemovalSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Pickup removal smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--boss-room-death"))
+{
+    DungeonBossDeathSmokeTests.Run(Check);
+    DungeonDebugOverlaySmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Boss room death smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--party-member-details"))
+{
+    await PartyMemberDetailSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Party member detail smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--gameplay-datagram"))
+{
+    await GameplayDatagramSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Gameplay datagram smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--s2-ipc"))
 {
     InterProcessCodecSmokeTests.Run(Check);
@@ -80,8 +121,13 @@ await TownSyncSmokeTests.RunAsync(Check);
 await FriendSmokeTests.RunAsync(Check);
 await TradeSmokeTests.RunAsync(Check);
 await PartySmokeTests.RunAsync(Check);
+await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
+DungeonBossDeathSmokeTests.Run(Check);
+DungeonDebugOverlaySmokeTests.Run(Check);
+await GameplayDatagramSmokeTests.RunAsync(Check);
 LootRoutingSmokeTests.Run(Check);
+await PickupRemovalSmokeTests.RunAsync(Check);
 PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
@@ -5862,8 +5908,26 @@ Check(GameDatagramProtocol.TryCreateNatProbeResponse(
         out var natResponse)
         && natResponse.SequenceEqual(new byte[] { 2, 1, 0, 0, 127, 0xC7, 0x13 }),
     "NAT probe response uses reversed IPv4 and little-endian reflected port");
+// A nine-byte MTU keepalive starts with the same byte as a probe. Answering it
+// produced an endless echo (measured 2026-10-05: 1.3M packets, 256 MB net dump,
+// unresponsive client), so anything but the exact probe length must be ignored.
+Check(!GameDatagramProtocol.TryCreateNatProbeResponse(
+        new byte[] { 1, 0, 0, 0, 0, 0, 0, 1, 0 },
+        new IPEndPoint(IPAddress.Loopback, 5063),
+        out _),
+    "a nine-byte MTU keepalive is not answered as a NAT probe");
+Check(!GameDatagramProtocol.TryCreateNatProbeResponse(
+        new byte[] { 5, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        new IPEndPoint(IPAddress.Loopback, 5063),
+        out _),
+    "a ten-byte keepalive is not answered as a NAT probe");
+Check(!GameDatagramProtocol.TryCreateNatProbeResponse(
+        [],
+        new IPEndPoint(IPAddress.Loopback, 5063),
+        out _),
+    "an empty datagram is not answered as a NAT probe");
 Check(GameDatagramProtocol.IsNatKeepAlive(
-        new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 })
+        new byte[] { 0, 2, 0xB1, 3, 0xA8, 0xC0, 0xC7, 0x13, 0, 0 })
         && !GameDatagramProtocol.IsNatKeepAlive(new byte[] { 0 }),
     "NAT keepalive is the exact ten-byte DFLegacy secondary-reflector packet");
 var udpPeerInfo = GameProtocolEngine.CreateUdpPeerInfo(
@@ -5885,12 +5949,16 @@ Check(udpPeerInfo.ProtocolId == GameProtocolEngine.UdpPeerInfoNotification
                 1, 0,
                 192, 168, 1, 10,
                 1, 2, 3, 4,
-                0xC7, 0x13,
+                // Port uses network order; the client's raw DWORD MTU read
+                // uses little endian, like its own CMD 2 report.
+                0x13, 0xC7,
                 1, 0, 0, 0,
                 3,
-                0xC0, 0x05, 0, 0
+                0xC0, 0x05, 0x00, 0x00
             }),
-    "NOTI 11 serializes the DFLegacy peer endpoint layout");
+    "NOTI 11 serializes a network-order port followed by a little-endian MTU");
+Check(BinaryPrimitives.ReadInt32LittleEndian(udpPeerInfo.Payload.AsSpan(18, 4)) == 1472,
+    "the client's raw NOTI 11 DWORD read yields a positive 1472-byte reliable capacity");
 var bossDieCheckBody = new byte[]
 {
     0x42, 0x00,

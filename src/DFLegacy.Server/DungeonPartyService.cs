@@ -77,6 +77,8 @@ public sealed class DungeonPartyService : BackgroundService
     /// <summary>结算期自动返回前，用聊天框系统消息逐秒播报的秒数（用户 2026-09-30 反馈的原版行为）。</summary>
     public const int SettlementCountdownSeconds = 10;
 
+    internal const string PartyWipeReturnReason = "party-death-countdown-expired";
+
     private readonly PartyService _partyService;
     private readonly TownSessionDirectory _directory;
     private readonly TimeProvider _timeProvider;
@@ -97,6 +99,34 @@ public sealed class DungeonPartyService : BackgroundService
     }
 
     public DungeonInstanceRegistry Registry { get; }
+
+    /// <summary>
+    /// 官服 set_charac_live（0x085B29BC）：生死状态发给全队。有人仍活着时死者留本；
+    /// 全灭才由实例开 10 秒回城期限，复活立即取消。单人返回 false，沿用会话的单人路径。
+    /// </summary>
+    internal async Task<bool> SetMemberAliveAsync(
+        DungeonInstance instance,
+        Guid characterId,
+        bool isAlive,
+        CancellationToken cancellationToken = default)
+    {
+        var member = instance.FindMember(characterId);
+        if (member is null
+            || !instance.TrySetPartyMemberAlive(characterId, isAlive, _timeProvider.GetUtcNow()))
+        {
+            return false;
+        }
+
+        await BroadcastToMembersAsync(
+            instance,
+            GameProtocolEngine.CreateDieState(member.AreaUserId, isAlive),
+            cancellationToken: cancellationToken);
+        _logger.LogInformation(
+            "Party member {CharacterName} (uid {AreaUserId}) is {LifeState} in dungeon instance {PartyId}; all-dead return deadline={Deadline}.",
+            member.CharacterName, member.AreaUserId, isAlive ? "alive" : "dead",
+            instance.PartyId, instance.PartyWipeDeadline);
+        return true;
+    }
 
     /// <summary>
     /// 官服：**篝火页上任何一个成员选"返回城镇"，全队一起回城**（不是各自等各自的超时）。
@@ -316,9 +346,31 @@ public sealed class DungeonPartyService : BackgroundService
         }
     }
 
+    // This client ignores the official SERVER_BROADCAST subtype 5. The
+    // compatible extension carries the exact ground id for the native patch;
+    // it must reach every member, including the picker and a routed winner.
+    internal async Task BroadcastPickupRemovalAsync(
+        DungeonInstance instance,
+        ushort groundId,
+        ushort pickerUserId,
+        uint itemId,
+        Func<GameServerPacket, ValueTask> sendToSolo,
+        CancellationToken cancellationToken = default)
+    {
+        var removed = GameProtocolEngine.CreatePickupRemovedBroadcast(pickerUserId, itemId, groundId);
+        if (!instance.IsParty)
+        {
+            await sendToSolo(removed);
+            return;
+        }
+        await BroadcastToMembersAsync(instance, removed, cancellationToken: cancellationToken);
+    }
+
     /// <summary>
-    /// 有成员离开副本（回城/掉线/换角色）：给其余成员的客户端发既有的"角色离场"信号
-    /// （USER_AREA 带 0xFF/0xFF 哨兵 → 客户端按区域不匹配销毁该 actor，见 TownSyncSmokeTests 的离场断言）。
+    /// 有成员离开副本但仍在队伍中时，给其余成员发 USER_AREA 的区域离场信号。
+    /// 如果退队名册已经移除此 actor，则不再发送第二条移除通知：NOTI9 在副本状态
+    /// 会调用客户端 4C6700；该调用即使对象不在地图向量中也仍执行虚函数回调，不能重复。
+    /// 结算/全灭回城保留队伍，名册不会移除成员，因此仍需要 USER_AREA 的 FF/FF 离场信号。
     /// **必须在 <see cref="DungeonInstanceRegistry.UnbindCharacter"/> 之前捕获 (uid, 坐标)**——
     /// 解绑之后实例里已经没有这个人了。单人实例没有"其余成员"，调用方跳过（自己也要走了）。
     /// 令牌一律用 <c>CancellationToken.None</c>：这是给别人的收尾包，离开者的会话令牌在掉线路径上
@@ -327,6 +379,9 @@ public sealed class DungeonPartyService : BackgroundService
     /// internal（不是任务书写的 public）：<see cref="DungeonInstance"/> 是 internal，public 方法收不了它
     /// （CS0051）；与 <see cref="BroadcastToMembersAsync"/> 同一可见性，也是冒烟测试的接缝。
     /// </summary>
+    /// <param name="partyRosterAlreadyRemovesActor">
+    /// 只有已完成退队名册发布时才为 true；单纯离开副本而保留队伍必须为 false。
+    /// </param>
     internal async Task NotifyMemberLeftAsync(
         DungeonInstance instance,
         Guid characterId,
@@ -335,8 +390,17 @@ public sealed class DungeonPartyService : BackgroundService
         short x,
         short y,
         byte direction,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool partyRosterAlreadyRemovesActor = false)
     {
+        if (partyRosterAlreadyRemovesActor)
+        {
+            _logger.LogInformation(
+                "Party member {CharacterName} (uid {AreaUserId}, {CharacterId}) left dungeon instance {PartyId}; party roster already removes the actor, so no additional USER_AREA departure was sent.",
+                characterName, areaUserId, characterId, instance.PartyId);
+            return;
+        }
+
         var departure = GameProtocolEngine.CreateUserAreaDeparture(
             new GameTownUser(areaUserId, x, y, direction));
         await BroadcastToMembersAsync(instance, departure, characterId, cancellationToken);
@@ -416,6 +480,24 @@ public sealed class DungeonPartyService : BackgroundService
         }
 
         var now = _timeProvider.GetUtcNow();
+
+        // 死亡回城是整队全灭计时，不能套用每个会话的单人死亡倒计时。
+        // 使用既有强制回城信箱唤醒空闲会话；会话取信时必须再调用
+        // TryBeginPartyWipeReturn，拦住陈旧邮件并与花币前的复活预留原子仲裁。
+        foreach (var deadCharacterId in instance.TakeExpiredPartyWipeReturns(now))
+        {
+            Registry.PostSettlementReturn(deadCharacterId, PartyWipeReturnReason);
+            _logger.LogInformation(
+                "Dungeon {DungeonId} party wipe countdown expired: forced town return queued for {CharacterId} in instance {PartyId}.",
+                instance.Run.DungeonId, deadCharacterId, instance.PartyId);
+        }
+
+        if (instance.PartyWipeDeadline is not null)
+        {
+            // 全灭期间只走死亡回城；同一个信箱里的旧结算期限不能覆盖死亡原因，
+            // 否则会绕过会话取信时对“全队仍死着”的复核。
+            return;
+        }
 
         // 结算期最后 10 秒的聊天框系统消息（用户 2026-09-30 报的原版行为）：逐秒播报"还剩几秒"，
         // 到点才由下面的 EPLP 超时真正送回城。**只发给本人**（别人的聊天框不该出现这行），

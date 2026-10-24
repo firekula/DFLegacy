@@ -27,7 +27,8 @@ public static class DungeonRoomClearRules
     public static DungeonRoomClearDecision Evaluate(
         DungeonRoomDefinition room,
         GameDungeonMonster defeatedMonster,
-        IReadOnlySet<ushort> aliveMonsterIds)
+        IReadOnlySet<ushort> aliveMonsterIds,
+        IReadOnlySet<byte>? destroyedPassiveObjects = null)
     {
         if (room.MapType != DungeonMapType.Boss)
         {
@@ -52,10 +53,10 @@ public static class DungeonRoomClearRules
         {
             return new DungeonRoomClearDecision(
                 DungeonRoomClearReason.LastBossDefeated,
-                aliveMonsterIds.OrderBy(id => id).ToArray());
+                RemainingActiveMonsters());
         }
 
-        if (aliveMonsterIds.Count == 0)
+        if (!bossIds.Any(aliveMonsterIds.Contains) && RemainingActiveMonsters().Length == 0)
         {
             return new DungeonRoomClearDecision(
                 DungeonRoomClearReason.AllMonstersDefeated,
@@ -63,5 +64,11 @@ public static class DungeonRoomClearRules
         }
 
         return DungeonRoomClearDecision.None;
+
+        ushort[] RemainingActiveMonsters() => room.Monsters
+            .Where(monster => aliveMonsterIds.Contains(monster.UniqueId)
+                && (destroyedPassiveObjects is null || monster.IsBoxMonster == 0
+                    || destroyedPassiveObjects.Contains(monster.BoxIndex)))
+            .Select(monster => monster.UniqueId).Order().ToArray();
     }
 }

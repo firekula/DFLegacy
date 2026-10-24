@@ -20,3 +20,4 @@ DNF2008/
 .worktrees/
 /runs/
 tools/acceptance/**/__pycache__/
+tools/debug/**/__pycache__/
