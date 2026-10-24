@@ -1,4 +1,5 @@
 using DFLegacy.Server;
+using DFLegacy.Protocol;
 
 /// <summary>
 /// 会话接线的模型契约（C2）：幂等开局 <see cref="DungeonInstance.EnsurePartyCardSettlement"/>、
@@ -18,6 +19,35 @@ internal static class PartyCardEntryPointSmokeTests
         CheckPaidItemsMapping(check);
         CheckRejectedPaidColumnPublishesWithoutItem(check);
         CheckSoloPacketLayoutUnchanged(check);
+        CheckFreeCardDisplayEncoding(check);
+    }
+
+    private static void CheckFreeCardDisplayEncoding(Action<bool, string> check)
+    {
+        var packet = GameProtocolEngine.CreateSelectCardReply(
+            new byte[] { 2, 255, 255, 0 },
+            new byte[] { 255, 255, 1, 255 },
+            new ushort?[] { null, null, 5001, null },
+            new GameClearCardReward?[] { new(111, null), null, null, new(222, 32200) });
+        byte[] expected = [
+            1, 2,255,0, 255,255,0, 255,1,2, 0,0,0,0,0,0, 0x89,0x13,0,0,0,0, 0,255,0,
+            68,70,67,82,1,4,
+            1,111,0,0,0,0,0, 0,0,0,0,0,0,0, 0,0,0,0,0,0,0,
+            1,222,0,0,0,0xC8,0x7D];
+        check(packet.Payload.SequenceEqual(expected),
+            "party display trailer preserves native paid records and carries each free column's own gold/item");
+        var fixturePath = Environment.GetEnvironmentVariable("DFLEGACY_CARD_DISPLAY_FIXTURE");
+        if (!string.IsNullOrEmpty(fixturePath)) File.WriteAllBytes(fixturePath, packet.Payload);
+        var committed = new DungeonClearRewardRoll(0, false, 222, 32200, 5001, null);
+        var snapshot = new PartyCardPublishedSnapshot(1,
+            new(1, true, [2, 255, 255, 0], [255, 255, 255, 255], [0, 2]),
+            [new(PartyCardType.Free, 0, 2, committed, PartyCardCommitStatus.Rejected),
+             new(PartyCardType.Free, 1, 0, committed, PartyCardCommitStatus.Committed),
+             new(PartyCardType.Free, 3, 0, committed, PartyCardCommitStatus.Committed)]);
+        var rewards = snapshot.FreeRewards();
+        check(rewards[0] is null && rewards[1] is null && rewards[2] is null
+            && rewards[3] == new GameClearCardReward(222, 32200),
+            "free display only exposes committed matching owners and excludes premium equipment");
     }
 
     /// <summary>

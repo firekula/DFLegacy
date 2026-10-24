@@ -1,3 +1,5 @@
+using DFLegacy.Protocol;
+
 namespace DFLegacy.Server;
 
 internal enum PartyCardType : byte { Free = 0, Paid = 1 }
@@ -17,6 +19,22 @@ internal interface IPartyCardRewardAgent
 internal sealed record PartyCardContent(PartyCardType Type, byte Column, byte PartySlot, DungeonClearRewardRoll Roll, PartyCardCommitStatus Status);
 internal sealed record PartyCardPublishedSnapshot(long Generation, PartyCardSelectionSnapshot Selection, IReadOnlyList<PartyCardContent> Contents)
 {
+    internal GameClearCardReward?[] FreeRewards()
+    {
+        var rewards = new GameClearCardReward?[4];
+        foreach (var content in Contents)
+        {
+            if (content.Type == PartyCardType.Free
+                && content.Column < rewards.Length
+                && Selection.FreeOwners[content.Column] == content.PartySlot
+                && content.Status == PartyCardCommitStatus.Committed)
+            {
+                rewards[content.Column] = new(content.Roll.FreeGoldAmount, content.Roll.FreeItemId);
+            }
+        }
+        return rewards;
+    }
+
     /// <summary>
     /// 整表 CMD 74 的付费列记录：某列已归属时给出该列归属成员自己掷出的付费物品 id
     /// （没有物品 → null = 只有一条零金币记录）。构包口径见

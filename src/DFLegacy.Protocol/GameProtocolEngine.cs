@@ -3984,10 +3984,13 @@ public static class GameProtocolEngine
     public static GameServerPacket CreateSelectCardReply(
         IReadOnlyList<byte> freeOwners,
         IReadOnlyList<byte> paidOwners,
-        IReadOnlyList<ushort?> paidItems)
+        IReadOnlyList<ushort?> paidItems,
+        IReadOnlyList<GameClearCardReward?>? freeRewards = null)
     {
         if (freeOwners.Count != ClearRewardCardColumnCount || paidOwners.Count != ClearRewardCardColumnCount || paidItems.Count != ClearRewardCardColumnCount)
             throw new ArgumentException("Party card snapshot must contain four columns.");
+        if (freeRewards is not null && freeRewards.Count != ClearRewardCardColumnCount)
+            throw new ArgumentException("Free card display must contain four columns.", nameof(freeRewards));
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)1);
@@ -4006,6 +4009,23 @@ public static class GameProtocolEngine
                     writer.Write(paidItems[i]!.Value);
                     writer.Write(0u);
                 }
+            }
+        }
+        if (freeRewards is not null)
+        {
+            // ACT1's native CMD74 only updates owners and paid contents. The
+            // IJL15 receiver refreshes group-0 previews from this versioned
+            // trailer before the original owner handler opens the cards.
+            writer.Write("DFCR"u8);
+            writer.Write((byte)1);
+            writer.Write((byte)ClearRewardCardColumnCount);
+            for (var i = 0; i < ClearRewardCardColumnCount; i++)
+            {
+                var assigned = freeOwners[i] != byte.MaxValue;
+                var reward = assigned ? freeRewards[i] : null;
+                writer.Write((byte)(assigned ? 1 : 0));
+                writer.Write(reward?.GoldAmount ?? 0u);
+                writer.Write(reward?.ItemId ?? (ushort)0);
             }
         }
         return new GameServerPacket(CommandPacketType, SelectCardCommand, payload.ToArray());

@@ -14,6 +14,7 @@ internal static class TownSyncSmokeTests
         CheckAreaUserIdPool(check);
         CheckOptionsAndPackets(check);
         await CheckPrivateAreasAsync(check);
+        await CheckAllSeriaRoomsAsync(check);
         CheckGhostAppearance(check);
         await CheckGhostBroadcastAsync(check);
         await CheckDirectoryAsync(check);
@@ -36,8 +37,7 @@ internal static class TownSyncSmokeTests
         check(defaults.TownSync.MaxPositionForwardsPerSecond == 10,
             "position forwarding is capped per member and second");
         check(defaults.TownSync.PrivateAreas.Length == 0,
-            "the default private-area list is empty; Seria's room privacy is declared by server.json "
-            + "(explicit config, because ConfigurationBinder appends arrays to non-empty defaults)");
+            "the additional private-area list is empty; all five Seria rooms are always isolated");
         check(defaults.TownSync.SendAreaPeerTable,
             "the area UDP peer table is sent on membership changes by default");
         check(!defaults.Debug.TownGhost.Enabled
@@ -227,7 +227,7 @@ internal static class TownSyncSmokeTests
 
         // ---- 配置解析：合法条目生效，非法条目告警跳过，绝不抛异常 ----
         var parsedOptions = new ServerOptions();
-        parsedOptions.TownSync.PrivateAreas = ["2:5", "0:1", "1:abc", "abc", "256:1", "1:256", ""];
+        parsedOptions.TownSync.PrivateAreas = ["2:7", "0:1", "1:abc", "abc", "256:1", "1:256", ""];
         var parseLogger = new RecordingLogger<TownSessionDirectory>();
         TownSessionDirectory parsed;
         try
@@ -245,26 +245,60 @@ internal static class TownSyncSmokeTests
             "each invalid private-area entry is logged once and skipped");
 
         var privateOne = new FakeChannel();
-        await parsed.EnterAsync(CreateEntry(2, 5, 1, "P1", privateOne), CancellationToken.None);
+        await parsed.EnterAsync(CreateEntry(2, 7, 1, "P1", privateOne), CancellationToken.None);
         var privateTwo = new FakeChannel();
-        await parsed.EnterAsync(CreateEntry(2, 5, 2, "P2", privateTwo), CancellationToken.None);
-        check(parsed.GetMemberCount(2, 5) == 2
+        await parsed.EnterAsync(CreateEntry(2, 7, 2, "P2", privateTwo), CancellationToken.None);
+        check(parsed.GetMemberCount(2, 7) == 2
             && ReadRoster(privateTwo.Of(GameProtocolEngine.AreaUsersNotification)[0]).Length == 1,
             "a valid private-area entry is honoured");
 
-        // 被跳过的非法条目不得把任何区域变成私密：1/1 与 0/1 仍按共享处理。
+        // 被跳过的非法条目不得把普通区域变成私密。
         var sharedOne = new FakeChannel();
-        await parsed.EnterAsync(CreateEntry(1, 1, 1, "S1", sharedOne), CancellationToken.None);
+        await parsed.EnterAsync(CreateEntry(2, 1, 1, "S1", sharedOne), CancellationToken.None);
         var sharedTwo = new FakeChannel();
-        await parsed.EnterAsync(CreateEntry(1, 1, 2, "S2", sharedTwo), CancellationToken.None);
+        await parsed.EnterAsync(CreateEntry(2, 1, 2, "S2", sharedTwo), CancellationToken.None);
         check(ReadRoster(sharedTwo.Of(GameProtocolEngine.AreaUsersNotification)[0]).Length == 2,
-            "the invalid 1:abc and abc entries never make 1:1 private");
+            "invalid entries never make the shared HendonMyre street private");
         var zeroAreaOne = new FakeChannel();
         await parsed.EnterAsync(CreateEntry(0, 1, 1, "Z1", zeroAreaOne), CancellationToken.None);
         var zeroAreaTwo = new FakeChannel();
         await parsed.EnterAsync(CreateEntry(0, 1, 2, "Z2", zeroAreaTwo), CancellationToken.None);
         check(ReadRoster(zeroAreaTwo.Of(GameProtocolEngine.AreaUsersNotification)[0]).Length == 2,
             "the invalid 0:1 entry never makes an area private");
+    }
+
+    private static async Task CheckAllSeriaRoomsAsync(Action<bool, string> check)
+    {
+        var directory = new TownSessionDirectory(new ServerOptions(), TimeProvider.System,
+            NullLogger<TownSessionDirectory>.Instance);
+        foreach (var (town, area) in new (byte, byte)[] { (1, 1), (2, 5), (3, 2), (4, 1), (5, 1) })
+        {
+            var alice = new FakeChannel();
+            var bob = new FakeChannel();
+            var first = await directory.EnterAsync(CreateEntry(town, area, 1, "Alice", alice), CancellationToken.None);
+            await directory.RefreshAppearanceAsync(first, CreateAppearance(1, "Alice"), CancellationToken.None);
+            var second = await directory.EnterAsync(CreateEntry(town, area, 2, "Bob", bob), CancellationToken.None);
+            await directory.RefreshAppearanceAsync(second, CreateAppearance(2, "Bob"), CancellationToken.None);
+            await directory.UpdatePositionAsync(second, 500, 300, 7, 120, CancellationToken.None);
+            check(ReadRoster(bob.Of(GameProtocolEngine.AreaUsersNotification)[0]).Select(u => u.UserId)
+                    .SequenceEqual(new ushort[] { 2 })
+                && alice.Of(GameProtocolEngine.UserInfoNotification).Count == 0
+                && bob.Of(GameProtocolEngine.UserInfoNotification).Count == 0
+                && alice.Of(GameProtocolEngine.UserPositionNotification).Count == 0,
+                $"Seria room {town}/{area} isolates roster, appearance and movement with no configuration");
+            await directory.LeaveAsync(first, CancellationToken.None);
+            await directory.LeaveAsync(second, CancellationToken.None);
+        }
+        foreach (byte town in new byte[] { 2, 3 })
+        {
+            var first = await directory.EnterAsync(CreateEntry(town, 1, 1, "Alice", new FakeChannel()), CancellationToken.None);
+            var bob = new FakeChannel();
+            var second = await directory.EnterAsync(CreateEntry(town, 1, 2, "Bob", bob), CancellationToken.None);
+            check(ReadRoster(bob.Of(GameProtocolEngine.AreaUsersNotification)[0]).Length == 2,
+                $"ordinary street {town}/1 remains shared");
+            await directory.LeaveAsync(first, CancellationToken.None);
+            await directory.LeaveAsync(second, CancellationToken.None);
+        }
     }
 
     private static void CheckGhostAppearance(Action<bool, string> check)
@@ -425,10 +459,10 @@ internal static class TownSyncSmokeTests
 
         var alice = new FakeChannel();
         var aliceTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 1, "Alice", alice),
+            CreateEntry(1, 0, 1, "Alice", alice),
             CancellationToken.None);
         check(aliceTicket is not null, "the first member enters the town area");
-        check(directory.GetMemberCount(1, 1) == 1, "the area reports one member");
+        check(directory.GetMemberCount(1, 0) == 1, "the area reports one member");
         check(alice.Of(GameProtocolEngine.AreaUsersNotification).Count == 1,
             "the newcomer receives exactly one AREA_USERS roster");
         var soloRoster = ReadRoster(alice.Of(GameProtocolEngine.AreaUsersNotification)[0]);
@@ -439,9 +473,9 @@ internal static class TownSyncSmokeTests
 
         var bob = new FakeChannel();
         var bobTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 2, "Bob", bob),
+            CreateEntry(1, 0, 2, "Bob", bob),
             CancellationToken.None);
-        check(bobTicket is not null && directory.GetMemberCount(1, 1) == 2,
+        check(bobTicket is not null && directory.GetMemberCount(1, 0) == 2,
             "the second member joins the same area");
         var sharedRoster = ReadRoster(bob.Of(GameProtocolEngine.AreaUsersNotification)[0]);
         check(sharedRoster.Length == 2 && sharedRoster[0].UserId == 2 && sharedRoster[1].UserId == 1,
@@ -506,7 +540,7 @@ internal static class TownSyncSmokeTests
             "a different area never receives another area's broadcast");
 
         await directory.LeaveAsync(bobTicket, CancellationToken.None);
-        check(directory.GetMemberCount(1, 1) == 1, "a departing member leaves the area");
+        check(directory.GetMemberCount(1, 0) == 1, "a departing member leaves the area");
         // Alice 的 USER_AREA 列表此时是 [Bob 加入, Bob 离开]，离开信号是第二条。
         var departure = alice.Of(GameProtocolEngine.UserAreaNotification);
         check(departure.Count == 2
@@ -519,7 +553,7 @@ internal static class TownSyncSmokeTests
             "a departed member is no longer reported by character id");
 
         await directory.LeaveAsync(aliceTicket, CancellationToken.None);
-        check(directory.GetMemberCount(1, 1) == 0, "an empty area is released");
+        check(directory.GetMemberCount(1, 0) == 0, "an empty area is released");
 
         var resendOptions = new ServerOptions();
         resendOptions.TownSync.DepartureSignal = TownDepartureSignal.RosterResend;
@@ -568,7 +602,7 @@ internal static class TownSyncSmokeTests
             NullLogger<TownSessionDirectory>.Instance);
         var ignored = new FakeChannel();
         check(await disabledDirectory.EnterAsync(
-                CreateEntry(1, 1, 1, "Zoe", ignored),
+                CreateEntry(1, 0, 1, "Zoe", ignored),
                 CancellationToken.None) is null
             && ignored.Packets.Count == 0,
             "a disabled town directory does nothing at all");
@@ -595,7 +629,7 @@ internal static class TownSyncSmokeTests
         // Alice 独自进区：表里只有她自己（这是本任务指定的新增包）。
         var alice = new FakeChannel();
         var aliceTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 1, "Alice", alice, alicePeer),
+            CreateEntry(1, 0, 1, "Alice", alice, alicePeer),
             CancellationToken.None);
         check(aliceTicket is not null, "the peer-table member enters the area");
         var aliceTables = alice.Of(GameProtocolEngine.UdpPeerInfoNotification);
@@ -621,7 +655,7 @@ internal static class TownSyncSmokeTests
         // Bob 进入：新人拿到「自己第一、老人随后」的表；老人的表要等 Bob 外观介绍之后。
         var bob = new FakeChannel();
         var bobTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 2, "Bob", bob, bobPeer),
+            CreateEntry(1, 0, 2, "Bob", bob, bobPeer),
             CancellationToken.None);
         check(bobTicket is not null, "the second peer-table member enters the area");
         var bobTables = bob.Of(GameProtocolEngine.UdpPeerInfoNotification);
@@ -655,7 +689,7 @@ internal static class TownSyncSmokeTests
         // Carol 没有对端信息（例如没上报 NAT）：必须被跳过，而不是带着空端点进表。
         var carol = new FakeChannel();
         var carolTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 3, "Carol", carol),
+            CreateEntry(1, 0, 3, "Carol", carol),
             CancellationToken.None);
         var carolTables = carol.Of(GameProtocolEngine.UdpPeerInfoNotification);
         check(carolTables.Count == 1, "a peer-less newcomer still gets the table of endpoints around it");
@@ -690,11 +724,11 @@ internal static class TownSyncSmokeTests
         var dave = new FakeChannel();
         carol.FailNextSend = true;
         var daveTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 4, "Dave", dave, davePeer),
+            CreateEntry(1, 0, 4, "Dave", dave, davePeer),
             CancellationToken.None);
         await directory.RefreshAppearanceAsync(
             daveTicket, CreateAppearance(4, "Dave"), CancellationToken.None);
-        check(directory.GetMemberCount(1, 1) == 2,
+        check(directory.GetMemberCount(1, 0) == 2,
             "a peer-table send to a broken channel removes that member");
         var aliceAfterForcedRemoval = ReadPeerTable(
             alice.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1]);
@@ -764,12 +798,12 @@ internal static class TownSyncSmokeTests
         var bobPeer = CreatePeer(2, "10.0.0.2", "203.0.113.2", 40002, 8, 2, 1472);
         var alice = new FakeChannel();
         var aliceTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 1, "Alice", alice, alicePeer), CancellationToken.None);
+            CreateEntry(1, 0, 1, "Alice", alice, alicePeer), CancellationToken.None);
         await directory.RefreshAppearanceAsync(
             aliceTicket, CreateAppearance(1, "Alice"), CancellationToken.None);
         var bob = new FakeChannel();
         var bobTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 2, "Bob", bob, bobPeer), CancellationToken.None);
+            CreateEntry(1, 0, 2, "Bob", bob, bobPeer), CancellationToken.None);
 
         check(alice.Of(GameProtocolEngine.UdpPeerInfoNotification).Count == 1,
             "the resident does not receive the newcomer's peer entry before its USERINFO exists");
@@ -797,10 +831,10 @@ internal static class TownSyncSmokeTests
         var davePeer = CreatePeer(4, "10.0.0.4", "203.0.113.4", 40004, 10, 1, 1024);
         var carol = new FakeChannel();
         var carolTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 3, "Carol", carol, carolPeer), CancellationToken.None);
+            CreateEntry(1, 0, 3, "Carol", carol, carolPeer), CancellationToken.None);
         var dave = new FakeChannel();
         var daveTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 4, "Dave", dave, davePeer), CancellationToken.None);
+            CreateEntry(1, 0, 4, "Dave", dave, davePeer), CancellationToken.None);
         check(ReadPeerTable(dave.Of(GameProtocolEngine.UdpPeerInfoNotification)[0])
                 .All(peer => peer.UserId != 3),
             "an overlapping newcomer does not receive a peer entry for a still-unannounced resident");
@@ -828,7 +862,7 @@ internal static class TownSyncSmokeTests
         var reusedPeer = CreatePeer(2, "10.0.0.8", "203.0.113.8", 40008, 18, 2, 1280);
         var reused = new FakeChannel();
         var reusedTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 2, "New Bob", reused, reusedPeer), CancellationToken.None);
+            CreateEntry(1, 0, 2, "New Bob", reused, reusedPeer), CancellationToken.None);
         check(ReadPeerTable(alice.Of(GameProtocolEngine.UdpPeerInfoNotification)[^1])
                 .All(peer => peer.UserId != 2),
             "reusing a departed uid does not reuse the old member's appearance knowledge");
@@ -885,7 +919,7 @@ internal static class TownSyncSmokeTests
     {
         // ---- 默认配置：外观先于名单，加入增量跟在外观之后（逐个报文逐字节钉死） ----
         var defaultOptions = new ServerOptions();
-        // 本测试钉共享区域的报文序列：清空私密区域（1/1 的默认私密性由 CheckPrivateAreasAsync 覆盖）。
+        // 本测试钉共享区域的报文序列：使用共享广场（私人房间由 CheckAllSeriaRoomsAsync 覆盖）。
         defaultOptions.TownSync.PrivateAreas = [];
         check(!defaultOptions.TownSync.SendUserAreaForExistingMembers
             && !defaultOptions.TownSync.RefreshRosterOnMembershipChange,
@@ -902,7 +936,7 @@ internal static class TownSyncSmokeTests
 
         var alice = new FakeChannel();
         var aliceTicket = await defaultDirectory.EnterAsync(
-            CreateEntry(1, 1, 1, "Alice", alice, alicePeer),
+            CreateEntry(1, 0, 1, "Alice", alice, alicePeer),
             CancellationToken.None);
         // Alice 先广播外观：新人进区时拿到的就是这份已存档的外观快照。
         await defaultDirectory.RefreshAppearanceAsync(
@@ -912,14 +946,14 @@ internal static class TownSyncSmokeTests
 
         var bob = new FakeChannel();
         var bobTicket = await defaultDirectory.EnterAsync(
-            CreateEntry(1, 1, 2, "Bob", bob, bobPeer),
+            CreateEntry(1, 0, 2, "Bob", bob, bobPeer),
             CancellationToken.None);
         // 新人默认顺序：老人外观（先建 USERINFO 记录）→ 名单 → 对端表。
         // 客户端对名单里没有记录的 uid 会静默跳过，所以外观必须排在名单前面。
         check(PacketsMatch(bob,
             [
                 CreateAppearance(1, "Alice"),
-                GameProtocolEngine.CreateAreaUsers(1, 1, [bobTownUser, aliceTownUser]),
+                GameProtocolEngine.CreateAreaUsers(1, 0, [bobTownUser, aliceTownUser]),
                 GameProtocolEngine.CreateUdpPeerInfo([bobPeer, alicePeer])
             ]),
             "by default the newcomer receives the existing member's appearance before its roster");
@@ -944,10 +978,10 @@ internal static class TownSyncSmokeTests
         // → 只剩自己的对端表。
         check(PacketsMatch(alice,
             [
-                GameProtocolEngine.CreateAreaUsers(1, 1, [aliceTownUser]),
+                GameProtocolEngine.CreateAreaUsers(1, 0, [aliceTownUser]),
                 GameProtocolEngine.CreateUdpPeerInfo([alicePeer]),
                 CreateAppearance(2, "Bob"),
-                GameProtocolEngine.CreateUserArea(1, 1, bobTownUser),
+                GameProtocolEngine.CreateUserArea(1, 0, bobTownUser),
                 GameProtocolEngine.CreateUdpPeerInfo([alicePeer, bobPeer]),
                 CreateAppearance(2, "Bob"),
                 CreateAppearance(2, "Bob"),
@@ -1147,7 +1181,7 @@ internal static class TownSyncSmokeTests
 
         var witnessOld = new FakeChannel();
         await migrationDirectory.EnterAsync(
-            CreateEntry(4, 1, 9, "WitnessOld", witnessOld),
+            CreateEntry(4, 0, 9, "WitnessOld", witnessOld),
             CancellationToken.None);
         var witnessNew = new FakeChannel();
         await migrationDirectory.EnterAsync(
@@ -1155,7 +1189,7 @@ internal static class TownSyncSmokeTests
             CancellationToken.None);
         var moverId = Guid.NewGuid();
         var oldMoverTicket = await migrationDirectory.EnterAsync(
-            CreateEntry(4, 1, 1, "Mover", new FakeChannel(), moverId),
+            CreateEntry(4, 0, 1, "Mover", new FakeChannel(), moverId),
             CancellationToken.None);
         // 迁移前已在旧区广播过外观：旧成员对象上的 JoinAnnounced 已经是 true。
         await migrationDirectory.RefreshAppearanceAsync(
@@ -1288,7 +1322,7 @@ internal static class TownSyncSmokeTests
     private static async Task CheckDirectoryMigrationAsync(Action<bool, string> check)
     {
         var options = new ServerOptions();
-        // 迁移测试用 1/1 当通用的共享区域：显式清空私密区域（默认私密性由 CheckPrivateAreasAsync 覆盖）。
+        // 迁移测试用 1/0 广场作为共享区域（默认私密性由 CheckPrivateAreasAsync 覆盖）。
         options.TownSync.PrivateAreas = [];
         var directory = new TownSessionDirectory(
             options,
@@ -1298,19 +1332,19 @@ internal static class TownSyncSmokeTests
         // 旧区里先放一个旁观者：迁移时它应该收到离开信号。
         var witness = new FakeChannel();
         var witnessTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 9, "Witness", witness),
+            CreateEntry(1, 0, 9, "Witness", witness),
             CancellationToken.None);
 
         var moverId = Guid.NewGuid();
         var oldChannel = new FakeChannel();
         var oldTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 1, "Mover", oldChannel, moverId),
+            CreateEntry(1, 0, 1, "Mover", oldChannel, moverId),
             CancellationToken.None);
         check(oldTicket is not null
             && oldTicket.CharacterId == moverId
             && oldTicket.AreaUserId == 1
-            && oldTicket.AreaId == 1
-            && directory.GetMemberCount(1, 1) == 2,
+            && oldTicket.AreaId == 0
+            && directory.GetMemberCount(1, 0) == 2,
             "the migrating member first joins the old area");
 
         var newChannel = new FakeChannel();
@@ -1322,7 +1356,7 @@ internal static class TownSyncSmokeTests
             && newTicket.AreaUserId == 5
             && newTicket.AreaId == 2,
             "re-entering with the same character id migrates the member to the new area");
-        check(directory.GetMemberCount(1, 1) == 1 && directory.GetMemberCount(1, 2) == 1,
+        check(directory.GetMemberCount(1, 0) == 1 && directory.GetMemberCount(1, 2) == 1,
             "a migrated member is counted only in its new area");
         check(directory.TryGetSnapshot(moverId, out var moverSnapshot)
             && moverSnapshot.AreaId == 2
@@ -1383,18 +1417,18 @@ internal static class TownSyncSmokeTests
 
         // 旧区清空后会被回收，同一 (城镇, 区域) 可以重新进入且名单只含新成员。
         await directory.LeaveAsync(witnessTicket, CancellationToken.None);
-        check(directory.GetMemberCount(1, 1) == 0,
+        check(directory.GetMemberCount(1, 0) == 0,
             "the old area is released once its last member leaves");
         check(directory.GetMemberCount(1, 2) == 1,
             "releasing the old area leaves the migrated member in the new area");
 
         var reuser = new FakeChannel();
         var reuserTicket = await directory.EnterAsync(
-            CreateEntry(1, 1, 7, "Reuser", reuser),
+            CreateEntry(1, 0, 7, "Reuser", reuser),
             CancellationToken.None);
         check(reuserTicket is not null
-            && reuserTicket.AreaId == 1
-            && directory.GetMemberCount(1, 1) == 1,
+            && reuserTicket.AreaId == 0
+            && directory.GetMemberCount(1, 0) == 1,
             "a released area can be entered again");
         var reusedRoster = ReadRoster(reuser.Of(GameProtocolEngine.AreaUsersNotification)[0]);
         check(reusedRoster.Length == 1 && reusedRoster[0].UserId == 7,

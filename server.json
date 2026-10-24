@@ -66,8 +66,8 @@
       "DepartureSignal": "UserAreaInactive",
       "//MaxPositionForwardsPerSecond": "每个成员每秒最多转发的位置包数；<=0 不限制。",
       "MaxPositionForwardsPerSecond": 10,
-      "//PrivateAreas": "私密（单人实例）区域：条目为 \"城镇:区域\"，两侧取值 1..255。代码默认是空数组（见 ServerOptions.TownSyncOptions.PrivateAreas——配置绑定器对数组是追加非替换，非空默认会使配置无法清空列表）；本文件显式声明 [\"1:1\"] = 赛利亚房间（原作里玩家各自的私人起始房间，同一区域的玩家也互不可见、聊天不互通），其余区域是共享区域。非法条目启动时告警并跳过，不影响启动。",
-      "PrivateAreas": [ "1:1" ]
+      "//PrivateAreas": "额外的私密（单人实例）区域，格式为 城镇:区域（两侧 1..255）。五处赛丽亚房间 1:1、2:5、3:2、4:1、5:1 由代码始终隔离，无需配置。列表默认空；非法条目启动时告警跳过。",
+      "PrivateAreas": []
     },
     "Debug": {
       "//": "调试用：往指定区域投一个会走动的合成角色，用于单人复现同屏。生产环境请保持 Enabled=false。",

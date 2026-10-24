@@ -103,6 +103,7 @@
     <ClInclude Include="src\client_debug_state.h" />
     <ClInclude Include="src\boss_room_death.h" />
     <ClInclude Include="src\ground_item_removal.h" />
+    <ClInclude Include="src\party_card_display.h" />
     <ClInclude Include="src\d3d8_scaler.h" />
     <ClInclude Include="src\dnf_patches.h" />
     <ClInclude Include="src\external_string_table.h" />
@@ -125,6 +126,7 @@
     <ClCompile Include="src\debug_module.cpp" />
     <ClCompile Include="src\boss_room_death.cpp" />
     <ClCompile Include="src\ground_item_removal.cpp" />
+    <ClCompile Include="src\party_card_display.cpp" />
     <ClCompile Include="src\d3d8_scaler.cpp" />
     <ClCompile Include="src\dnf_patches.cpp" />
     <ClCompile Include="src\external_string_table.cpp" />

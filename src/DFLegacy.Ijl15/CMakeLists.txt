@@ -26,6 +26,8 @@ add_library(ijl15 SHARED
     src/boss_room_death.h
     src/ground_item_removal.cpp
     src/ground_item_removal.h
+    src/party_card_display.cpp
+    src/party_card_display.h
     src/d3d8_scaler.cpp
     src/d3d8_scaler.h
     src/dnf_patches.cpp
@@ -129,6 +131,9 @@ if(BUILD_TESTING)
         src/ground_item_removal.cpp
         src/ground_item_removal.h
         tests/ground_item_removal_tests.cpp
+        src/party_card_display.cpp
+        src/party_card_display.h
+        tests/party_card_display_tests.cpp
         tests/ijl15_tests.cpp)
     target_compile_options(ijl15_tests PRIVATE /W4 /WX /permissive- /EHsc)
     target_include_directories(ijl15_tests PRIVATE include src)

@@ -183,11 +183,11 @@ public sealed class TownSyncOptions
     public int MaxPositionForwardsPerSecond { get; set; } = 10;
 
     /// <summary>
-    /// 单人实例区域列表，条目为 <c>"城镇:区域"</c>（两侧均为 1..255）。默认 <c>[]</c>（无私密区）：
-    /// 城镇 1 / 区域 1（赛利亚房间）要私密必须在配置里显式声明 <c>"1:1"</c>——所有部署的
-    /// server.json 都已显式声明，行为不变。**不要改回非空默认**：ConfigurationBinder.Get&lt;T&gt;
+    /// 额外的单人实例区域，条目为 <c>"城镇:区域"</c>（两侧均为 1..255）。默认 <c>[]</c>。
+    /// 五处赛丽亚房间（1:1、2:5、3:2、4:1、5:1）由目录固定隔离，无需配置。
+    /// **不要改回非空默认**：ConfigurationBinder.Get&lt;T&gt;
     /// 对已初始化的数组属性是「追加」而不是「替换」，默认值带项会让配置无法清空列表
-    /// （真机实测：默认 ["1:1"] + 配置 [] 仍然按 1/1 私密处理）。非法条目（如 "0:1"、"1:abc"）
+    /// （默认非空会让配置无法清空额外列表）。非法条目（如 "0:1"、"1:abc"）
     /// 在启动时告警并跳过，不阻止服务启动。
     /// </summary>
     public string[] PrivateAreas { get; set; } = [];

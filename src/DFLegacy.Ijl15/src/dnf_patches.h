@@ -9,6 +9,7 @@ namespace dfl::dnf_patches
 	inline constexpr bool DisableDebuggerDetection = true;
 	inline constexpr bool AllowMultipleClientInstances = true;
 	inline constexpr bool DisableStartupMinimize = true;
+	inline constexpr bool DisableBackgroundThrottling = true;
 	inline constexpr bool SinglePermanentAvatarPeriodOption = true;
 	inline constexpr bool EnableCustomStackableUseMode1 = true;
 	inline constexpr bool RemoveCustomPopupAnnouncementTitle = true;

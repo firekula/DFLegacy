@@ -192,7 +192,8 @@ internal static class PartyCardSettlementFlow
         var packet = GameProtocolEngine.CreateSelectCardReply(
             snapshot.Selection.FreeOwners,
             snapshot.Selection.PaidOwners,
-            snapshot.PaidItems());
+            snapshot.PaidItems(),
+            snapshot.FreeRewards());
         await sendToSelf(packet);
         await broadcastToOthers(packet);
         return new PartyCardSettlementResult(true, generation, column, accepted, true);

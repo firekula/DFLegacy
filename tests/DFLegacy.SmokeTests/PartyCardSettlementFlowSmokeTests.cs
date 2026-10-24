@@ -102,6 +102,11 @@ internal static class PartyCardSettlementFlowSmokeTests
             "the final table carries both owners in their own columns");
         check(memberA.Received[^1].Payload.SequenceEqual(finalTable),
             "the final owner table reaches the other member byte-identically");
+        var display = finalTable.AsSpan(finalTable.Length - 34);
+        check(display[..6].SequenceEqual("DFCR\u0001\u0004"u8)
+            && System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(display.Slice(7 + 7 * resultA.Column, 4)) == 111
+            && System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(display.Slice(7 + 7 * resultB.Column, 4)) == 222,
+            "the real shared publication displays both owners' actual distinct committed gold amounts");
         check(!instance.TryTakePartyCardPublication(resultB.Generation, out _),
             "no further publication after the owner set stops growing");
 

@@ -32,6 +32,7 @@ bool TestMageSkillContactPrerequisite();
 bool TestBossRoomLateSpawnDeath();
 bool TestPriestHealTargetReplay();
 bool TestGroundItemRemovalNotification();
+bool TestPartyCardDisplay();
 
 namespace
 {
@@ -1366,6 +1367,10 @@ int main()
     if (!TestGroundItemRemovalNotification())
     {
         return Fail("ground item removal notification failed");
+    }
+    if (!TestPartyCardDisplay())
+    {
+        return Fail("party free-card display failed");
     }
     if (!TestCustomStackableUseModePolicy())
     {

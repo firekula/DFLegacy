@@ -107,7 +107,7 @@ internal sealed class TownMember
 /// <summary>
 /// 城镇区域在线表：按 (城镇, 区域, 实例) 维护成员，负责名单、外观、位置与消息的区域投递。
 /// 共享区域的实例恒为 0（与改造前的 (城镇, 区域) 分桶逐字节一致）；配置为私密区域
-/// （默认只有赛利亚房间 1/1）时每个成员各占一个实例，彼此看不到也听不到。公开的
+/// 时每个成员各占一个实例，彼此看不到也听不到。五个城镇的赛丽亚房间始终私密。公开的
 /// <see cref="GetMemberCount"/> / <see cref="Snapshot"/> 按区域聚合全部实例。
 /// 客户端按 uid 认人，成员 id 必须由 AreaUserIdPool 分配且唯一（见 EntranceService）。
 /// </summary>
@@ -1164,7 +1164,15 @@ public sealed class TownSessionDirectory(
         string[] entries,
         ILogger<TownSessionDirectory> logger)
     {
-        var areas = new HashSet<(byte TownId, byte AreaId)>();
+        // ACT1 Script.pvf: town/*.twn marks these rooms as [gate]. They are
+        // personal rooms, including StormPass 5/1; area 1 alone is not enough
+        // (HendonMyre 2/1 and WestCoast 3/1 are shared streets).
+        // PrivateAreas adds custom rooms; an omitted/empty config must not
+        // expose another player's personal room.
+        var areas = new HashSet<(byte TownId, byte AreaId)>
+        {
+            (1, 1), (2, 5), (3, 2), (4, 1), (5, 1)
+        };
         foreach (var entry in entries ?? [])
         {
             var parts = (entry ?? string.Empty).Split(':');

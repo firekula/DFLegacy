@@ -137,6 +137,8 @@
     <ClCompile Include="priest_heal_target_tests.cpp" />
     <ClCompile Include="..\src\ground_item_removal.cpp" />
     <ClCompile Include="ground_item_removal_tests.cpp" />
+    <ClCompile Include="..\src\party_card_display.cpp" />
+    <ClCompile Include="party_card_display_tests.cpp" />
     <ClCompile Include="ijl15_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -153,6 +155,7 @@
     <ClInclude Include="..\src\boss_room_death.h" />
     <ClInclude Include="..\src\priest_heal_target.h" />
     <ClInclude Include="..\src\ground_item_removal.h" />
+    <ClInclude Include="..\src\party_card_display.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DFLegacy.Ijl15.vcxproj">

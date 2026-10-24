@@ -22,6 +22,7 @@
 #include "net_dump.h"
 #include "performance_overlay.h"
 #include "party_combat_detail.h"
+#include "party_card_display.h"
 #include "priest_heal_target.h"
 #include "stage_follow.h"
 #include "summon_owner_death.h"
@@ -180,7 +181,7 @@ namespace
         std::array<unsigned char, 6> Replacement;
     };
 
-    constexpr std::array<CodePatch, 37> Patches = { {
+    constexpr std::array<CodePatch, 39> Patches = { {
         {
             dfl::dnf_patches::DisableDebuggerDetection,
             0x0040AEE0,
@@ -200,6 +201,22 @@ namespace
             0x008A859C,
             {0x75, 0x23, 0x39, 0x7D, 0xEC, 0x72},
             {0xEB, 0x23, 0x39, 0x7D, 0xEC, 0x72}
+        },
+        {
+            dfl::dnf_patches::DisableBackgroundThrottling,
+            // Always skip the inactive-window Sleep before the frame update.
+            // Keep the real activation flag for native input/focus handling.
+            0x008F727D,
+            {0x77, 0x0A, 0x8B, 0x57, 0x0C, 0x52},
+            {0xEB, 0x0A, 0x8B, 0x57, 0x0C, 0x52}
+        },
+        {
+            dfl::dnf_patches::DisableBackgroundThrottling,
+            // WM_ACTIVATE retains its actual flag, then always uses the
+            // Normal-priority/zero-sleep path instead of BelowNormal/15ms.
+            0x008F772E,
+            {0x76, 0x1B, 0x6A, 0x20, 0xFF, 0x15},
+            {0x90, 0x90, 0x6A, 0x20, 0xFF, 0x15}
         },
         {
             dfl::dnf_patches::DisableStartupMinimize,
@@ -1184,6 +1201,11 @@ namespace dfl::dnf_patches
         {
             OutputDebugStringA(
                 "DFLegacy.Ijl15: Priest healing target repair was not installed.\n");
+        }
+
+        if (!dfl::party_card_display::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: party free-card display repair was not installed.\n");
         }
 
         if (!dfl::ground_item_removal::Install())
