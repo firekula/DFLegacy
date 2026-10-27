@@ -343,6 +343,7 @@ public sealed class EntranceService(
             var areaRosterInitialized = false;
             var staminaStateInitialized = false;
             var pendingMailAlarm = 0;
+            var avatarLifetimeRefresh = new AvatarLifetimeSessionRefresh();
             var pendingPremiumUpdates =
                 new ConcurrentQueue<(byte ServiceType, uint RemainingSeconds)>();
             // Connection-local snapshot of account-owned Premium services.
@@ -753,6 +754,7 @@ public sealed class EntranceService(
                 };
 
                 TimeSpan? GetAvatarExpiryWait() => activeCharacter is null ? null
+                    : avatarLifetimeRefresh.HasPending(activeCharacter) ? TimeSpan.Zero
                     : AvatarLifetimePolicy.GetExpiryWait(AvatarActorSnapshot(), DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
                 async Task SettleCurrentAvatarLifetimesAsync(bool force = false)
@@ -768,20 +770,16 @@ public sealed class EntranceService(
                         if (result.Status != DungeonRewardLedgerStatus.Committed || result.Character is null)
                             throw new IOException("Cannot safely install avatar expiration state.");
                         var installed = AvatarLifetimePolicy.MergeForActor(before, result.Character, itemCatalog);
-                        var bagChanged = !(before.AvatarInventory ?? []).SequenceEqual(installed.AvatarInventory ?? []);
-                        var equipmentChanged = !(before.Equipment ?? []).SequenceEqual(installed.Equipment ?? []);
-                        var mailChanged = !(before.Mailbox ?? []).SequenceEqual(installed.Mailbox ?? []);
                         activeCharacter = installed;
                         avatarInventory = (installed.AvatarInventory ?? []).ToDictionary(i => i.Slot);
                         equippedInventory = (installed.Equipment ?? []).ToDictionary(i => i.Slot);
-                        if (bagChanged)
+                        var published = await avatarLifetimeRefresh.PublishAsync(before, installed, async () =>
                         {
                             var packet = CreateAvatarInventoryPacket(avatarInventory.Values);
                             await packet.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, packet);
-                        }
-                        if (equipmentChanged)
+                        }, async () =>
                         {
                             if (currentDungeonId == 0) await SendTownAppearanceAsync();
                             else
@@ -791,9 +789,8 @@ public sealed class EntranceService(
                                     await dungeonPartyService.BroadcastToMembersAsync(instance, SendTownAppearanceDetailPacket(),
                                         installed.Id, serverToken);
                             }
-                        }
-                        if (mailChanged && result.Changed) await SendMailboxStateAsync(notifyNewMail: false);
-                        if (result.Changed)
+                        }, async () => { await SendMailboxStateAsync(notifyNewMail: false); });
+                        if (result.Changed || published)
                             logger.LogInformation("Settled avatar lifetime for {CharacterId}: bag={BagBefore}->{BagAfter}, equipment={EquipmentBefore}->{EquipmentAfter}.",
                                 installed.Id, before.AvatarInventory?.Count ?? 0, avatarInventory.Count,
                                 before.Equipment?.Count ?? 0, equippedInventory.Count);
@@ -5579,6 +5576,7 @@ public sealed class EntranceService(
                             if (lifetimeAtSelection.Status != DungeonRewardLedgerStatus.Committed || lifetimeAtSelection.Character is null)
                                 throw new IOException("Cannot safely select a character with unsettled avatar lifetimes.");
                             character = lifetimeAtSelection.Character;
+                            avatarLifetimeRefresh.Reset(character);
                             var persistedWarehouseCapacity = character.WarehouseCapacity;
                             warehouseCapacity = CharacterWarehouseProgression.Normalize(
                                 persistedWarehouseCapacity);

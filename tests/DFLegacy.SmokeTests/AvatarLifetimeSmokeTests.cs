@@ -44,13 +44,12 @@ internal static class AvatarLifetimeSmokeTests
         var staleWire = CharacterItemWireProjection.Project(limited with { AvatarExpiresAtUnixSeconds = before - 1 }, fixture.Items);
         check(staleWire.AddInfo == 1, "a packet racing expiration cleanup cannot encode expired limited gear as permanent");
 
-        var create = typeof(AvatarLifetimePolicy).GetMethod("CreatePurchaseAttachment");
         fixture.Items.TryGetDefinition(1000, out var definition);
         foreach (var (commodity, duration, deadline) in new[] {
             (1001u, 604800u, (long?)(now + 604800)), (1002u, 2592000u, now + 2592000), (1003u, 0u, null) })
         {
             fixture.Shop.TryGetProduct(commodity, out var product);
-            var purchased = create?.Invoke(null, [product, definition, now]) as CharacterMailAttachmentRecord;
+            var purchased = AvatarLifetimePolicy.CreatePurchaseAttachment(product, definition, now);
             check(purchased is not null && purchased.AvatarRemainingSeconds == duration
                 && purchased.AvatarExpiresAtUnixSeconds == deadline && purchased.InstanceId != Guid.Empty,
                 $"native avatar purchase {commodity} grants the selected lifetime and stable instance before overflow mail placement");
@@ -70,6 +69,7 @@ internal static class AvatarLifetimeSmokeTests
         await CheckSnapshotFaultsAsync(check);
         await CheckLegacyStartupAsync(check);
         await CheckSessionBoundariesAsync(check);
+        await CheckPublicationRaceAsync(check);
     }
 
     private static async Task CheckSessionBoundariesAsync(Action<bool, string> check)
@@ -82,45 +82,60 @@ internal static class AvatarLifetimeSmokeTests
             Inventory: [new(41, 8, 1)], Equipment: [timed with { Slot = 3 }, new(9, 33300, 1)],
             AvatarInventory: [timed], Mailbox: [new(1, "System", "Mail", 99,
                 new(1000, 1, AvatarRemainingSeconds: 10, AvatarExpiresAtUnixSeconds: now + 10), 0, uint.MaxValue)]);
-        var wait = typeof(AvatarLifetimePolicy).GetMethod("GetExpiryWait");
-        var delay = wait?.Invoke(null, [actor, now]) as TimeSpan?;
+        var delay = AvatarLifetimePolicy.GetExpiryWait(actor, now);
         check(delay == TimeSpan.FromSeconds(11),
             "the earliest worn, bag or mail avatar expiry bounds read waiting at the strict boundary");
-        var merge = typeof(AvatarLifetimePolicy).GetMethod("MergeForActor");
         var canonical = actor with { Gold = 9999, Cash = 9999, Inventory = [], Equipment = [], AvatarInventory = [], Mailbox = [] };
-        var installed = merge?.Invoke(null, [actor, canonical, f.Items]) as CharacterRecord;
+        var installed = AvatarLifetimePolicy.MergeForActor(actor, canonical, f.Items);
         check(installed is not null && installed.Gold == 555 && installed.Cash == 444 && installed.Inventory!.Count == 1
             && installed.Equipment!.Single().ItemId == 33300 && installed.AvatarInventory!.Count == 0,
             "expiry installs only avatar-owned fields and retains the live actor's currency and ordinary equipment");
-        var readWait = typeof(EntranceSessionReadWait).GetMethods(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-            .SingleOrDefault(m => m.Name == "WaitAsync" && m.GetParameters().Length == 6);
-        if (readWait is null) { check(false, "an avatar deadline can wake a completely idle entrance read"); return; }
         var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var waiting = (Task<EntranceReadWakeReason>)readWait.Invoke(null,
-            [pending.Task, TimeSpan.FromHours(1), false, CancellationToken.None, null, TimeSpan.FromMilliseconds(1)])!;
+        var waiting = EntranceSessionReadWait.WaitAsync(pending.Task, TimeSpan.FromHours(1), false,
+            CancellationToken.None, additionalWakeDelay: TimeSpan.FromMilliseconds(1));
         var finished = await Task.WhenAny(waiting, Task.Delay(1000));
         check(finished == waiting && await waiting == EntranceReadWakeReason.PartyMailTick && !pending.Task.IsCompleted,
             "the avatar deadline wakes internally without consuming or cancelling the pending network read");
-        var packetFirst = (Task<EntranceReadWakeReason>)readWait.Invoke(null,
-            [Task.CompletedTask, TimeSpan.FromHours(1), false, CancellationToken.None, null, TimeSpan.Zero])!;
+        var packetFirst = EntranceSessionReadWait.WaitAsync(Task.CompletedTask, TimeSpan.FromHours(1), false,
+            CancellationToken.None, additionalWakeDelay: TimeSpan.Zero);
         check(await packetFirst == EntranceReadWakeReason.Packet,
             "a simultaneously ready packet remains the only consumed read while expiry is handled before its business action");
+    }
+
+    private static async Task CheckPublicationRaceAsync(Action<bool, string> check)
+    {
+        await using var f = new Fixture();
+        var clock = new Clock(1_800_000_000);
+        var store = new JsonGameStore(f.Options, NullLogger<JsonGameStore>.Instance, itemCatalog: f.Items, avatarTimeProvider: clock);
+        await store.CreateAccountAsync(new("publish", "password", OicqCode: "123456"));
+        var c = (await store.CreateCharacterAsync("publish", new("Publisher"))).Character!;
+        var worn = new CharacterItemRecord(3, 1000, 1, AvatarRemainingSeconds: 1,
+            AvatarExpiresAtUnixSeconds: clock.Now + 1, InstanceId: Guid.NewGuid());
+        var before = (await store.SaveCharacterItemSpacesAsync("publish", c.Id, 600, [], [worn], [], avatarInventory: []))!;
+        var tracker = new AvatarLifetimeSessionRefresh();
+        tracker.Reset(before);
+        clock.Now += 2; // The request began valid and its normal save crosses expiry.
+        var saved = (await store.SaveCharacterItemSpacesAsync("publish", c.Id, 600, [], before.Equipment!, [], avatarInventory: []))!;
+        check(saved.Equipment!.Count == 0 && AvatarLifetimePolicy.GetExpiryWait(saved, clock.Now) is null,
+            "the ordinary save reproduces the review race after deleting the last finite worn item");
+        check(tracker.HasPending(saved),
+            "unpublished expiry UUIDs remain a wake reason after all finite inventory entries are gone");
+        var events = new List<string>();
+        Task Bag() { events.Add("bag"); return Task.CompletedTask; }
+        Task Appearance() { events.Add("self equipment + peer appearance"); return Task.CompletedTask; }
+        Task Mail() { events.Add("mail"); return Task.CompletedTask; }
+        await tracker.PublishAsync(saved, saved, Bag, Appearance, Mail);
+        await tracker.PublishAsync(saved, saved, Bag, Appearance, Mail);
+        check(events.SequenceEqual(new[] { "bag", "self equipment + peer appearance", "mail" })
+            && !tracker.HasPending(saved),
+            "expiry publication rebuilds both equipment views exactly once even when the caller already adopted the clean save");
     }
 
     private static async Task CheckPersistenceAsync(Action<bool, string> check)
     {
         await using var f = new Fixture();
         var clock = new Clock(1_800_000_000);
-        var ctor = typeof(JsonGameStore).GetConstructors().SingleOrDefault(c =>
-            c.GetParameters().Last().ParameterType == typeof(TimeProvider));
-        var settle = typeof(JsonGameStore).GetMethod("SettleAvatarExpirationsAsync");
-        if (ctor is null || settle is null)
-        {
-            check(false, "the store settles lifetime under an injectable clock before installing authoritative expiry state");
-            return;
-        }
-        JsonGameStore CreateStore() => (JsonGameStore)ctor.Invoke(
-            [f.Options, NullLogger<JsonGameStore>.Instance, null, f.Items, null, null, clock]);
+        JsonGameStore CreateStore() => new(f.Options, NullLogger<JsonGameStore>.Instance, itemCatalog: f.Items, avatarTimeProvider: clock);
         var store = CreateStore();
         await store.CreateAccountAsync(new("lifetime", "password", OicqCode: "123456"));
         await store.CreateAccountAsync(new("other", "password", OicqCode: "123456"));
@@ -145,7 +160,7 @@ internal static class AvatarLifetimeSmokeTests
         clock.Now += 10;
         async Task<CharacterRecord> Settle()
         {
-            await (Task)settle.Invoke(store, ["lifetime", character.Id, CancellationToken.None])!;
+            await store.SettleAvatarExpirationsAsync("lifetime", character.Id);
             return (await store.GetCharactersAsync("lifetime"))[0];
         }
         var atBoundary = await Settle();
@@ -202,12 +217,8 @@ internal static class AvatarLifetimeSmokeTests
             await using var f = new Fixture();
             var clock = new Clock(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             var writer = new FailingWriter(after);
-            // A writer and a clock are independent production dependencies. Until
-            // their joint constructor exists, fail this behavior as a contract.
-            var ctor = typeof(JsonGameStore).GetConstructors(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                .SingleOrDefault(c => c.GetParameters().Length == 7 && c.GetParameters()[2].ParameterType == typeof(IDungeonRewardSnapshotWriter));
-            if (ctor is null) { check(false, "expiry fault tests can control both snapshot replacement and time"); continue; }
-            var store = (JsonGameStore)ctor.Invoke([f.Options, NullLogger<JsonGameStore>.Instance, writer, null, f.Items, null, clock]);
+            var store = new JsonGameStore(f.Options, NullLogger<JsonGameStore>.Instance, writer,
+                itemCatalog: f.Items, avatarTimeProvider: clock);
             await store.CreateAccountAsync(new("fault", "password", OicqCode: "123456"));
             var c = (await store.CreateCharacterAsync("fault", new("Fault"))).Character!;
             var id = Guid.NewGuid();
