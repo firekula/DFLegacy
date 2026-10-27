@@ -11,6 +11,7 @@
 #include "auto_input.h"
 #include "debug_module.h"
 #include "boss_room_death.h"
+#include "channel_reentry.h"
 #include "ground_item_removal.h"
 #include "dnf_patches.h"
 #include "d3d8_scaler.h"
@@ -1191,6 +1192,10 @@ namespace dfl::dnf_patches
                 "DFLegacy.Ijl15: Mage contact skill prerequisite repair was not installed.\n");
         }
 
+        if (!dfl::channel_reentry::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: channel reentry MTU reuse was not installed.\n");
+        }
         if (!dfl::boss_room_death::Install())
         {
             OutputDebugStringA(

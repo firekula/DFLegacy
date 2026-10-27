@@ -33,6 +33,7 @@ bool TestBossRoomLateSpawnDeath();
 bool TestPriestHealTargetReplay();
 bool TestGroundItemRemovalNotification();
 bool TestPartyCardDisplay();
+bool TestChannelReentryMtu();
 
 namespace
 {
@@ -1367,6 +1368,10 @@ int main()
     if (!TestGroundItemRemovalNotification())
     {
         return Fail("ground item removal notification failed");
+    }
+    if (!TestChannelReentryMtu())
+    {
+        return Fail("channel reentry MTU reuse failed");
     }
     if (!TestPartyCardDisplay())
     {

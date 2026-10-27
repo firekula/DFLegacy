@@ -133,6 +133,8 @@
     <ClCompile Include="mage_skill_contact_tests.cpp" />
     <ClCompile Include="..\src\boss_room_death.cpp" />
     <ClCompile Include="boss_room_death_tests.cpp" />
+    <ClCompile Include="..\src\channel_reentry.cpp" />
+    <ClCompile Include="channel_reentry_tests.cpp" />
     <ClCompile Include="..\src\priest_heal_target.cpp" />
     <ClCompile Include="priest_heal_target_tests.cpp" />
     <ClCompile Include="..\src\ground_item_removal.cpp" />
