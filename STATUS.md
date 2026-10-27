@@ -5,6 +5,8 @@
 
 ## 1. 近期改动的功能
 
+2026-10-27 普通摆摊：ACT1 CMD85–90 与 NOTI78–85 已接通，普通店按官服开放7格、手续费为毛额4%向下取整，商品持久托管、售款信用及直接交易共享商业占位已实现。服务8为商人许可，ACT1城镇W入口依赖mode0许可标志；原生商城100022/物品16为380点券、30天，管理API可授予任意正整数天数。完整协议冒烟与Release发布在 `e494483` 通过。真实双客户端已完成材料10个分4+6购买、第一轮撤摊返还6个，以及24金币装备（强化+3/品质种子37/耐久19）转移，161项验收断言通过。服务端售罄保留营业，ACT1原生客户端会自动发送CMD89收摊；旧文案14格/1%与本轮7格/4%也存在版本差异，详见[验收说明](knowledge/decisions/2026-10-27-private-store-verification.md)。同一实测构建已部署，原配置和原存档路径已恢复，原档哈希不变，部署后25项核对通过。
+
 2026-10-27 师徒基础关系：CMD79/80/81/82 与 NOTI72/73/74/75/77 已按 ACT1 接通，官服等级、容量、黑名单、06:00登记/解除日界和空关系重置已实现。关系原子保存，删角清理，按会话有序投递。完整冒烟和 Release 发布通过，真实双客户端完成拒绝、接受、列表、上下线、重登、在线/离线解除及再次结成，37项证据断言通过，原配置和原存档已恢复并部署。关系经验、COF和经验/疲劳奖励仍未恢复；详见[验收说明](knowledge/decisions/2026-10-27-mentor-verification.md)。
 
 2026-10-27 后续：恢复队伍聊天与普通金币均分。使用 ACT1 NOTI12 与四槽 24 字节 NOTI39；金币资格独立于活人物品投骰，支持同房尸体、死亡换房排除与复活恢复。持久信用与永久收据防止重复拾取及会话陈旧余额覆盖，交易交付和翻牌回调已处理。完整冒烟与 Release 发布通过，双客户端证据见[本次验收](knowledge/decisions/2026-10-27-party-chat-gold-verification.md)。后期公会税、幸运点、1199 与装备/宠物加成仍未移植。
@@ -23,6 +25,7 @@
 | 启动器账号 UI：WPF + HandyControl 交互式登录壳（注册/登录/改密/找回/账号管理/设置），headless 路径保留 | `DFLegacy.Launcher`（`MainWindow`、`Views/*`、`App.xaml.cs`）、`DFLegacy.AccountClient` |
 | 城镇同屏与附近聊天：同镇同区的成员目录、外观/位置转发与区域聊天接线完成（真机可见性待 Task 11）；位置走 TCP（默认限速 10 条/秒）；调试幽灵支持单人复现 | `TownSessionDirectory`、`AreaUserIdPool`、`TownGhostService`、`EntranceService` |
 | 交易系统：城镇内双向交易（24 物品格 + 金币、锁定/最终确认/原子结算、取消/超时/掉线/换区整笔回退）；协议要点与真机结论见 §2.5 | `ItemTradeService`、`ItemTradePlanner`、`JsonGameStore.CommitItemTradeAsync`、`EntranceService`（CMD 10/11/19/26） |
+| 普通摆摊：7格商品、4%手续费、持久托管/售款信用、会话代际与离场回收；双客户端材料和装备交易已验收，见[验收说明](knowledge/decisions/2026-10-27-private-store-verification.md) | `PrivateStoreService`、`CommerceActivityRegistry`、`JsonGameStore.PrivateStore`、`GameProtocolEngine.PrivateStore`（CMD85–90/NOTI78–85） |
 | 组队系统：城镇内组队（邀请/申请加入、成员名单与队长、退出/踢人/掉线、队伍信息列表与推荐伙伴的数据前提）；协议要点与真机验收清单见 §2.6 | `PartyService`、`PartyRoster`、`EntranceService`（CMD 10/11/12/13/14） |
 | 同队进副本：每队共享副本实例（队员由自己会话入场、门口集结制换房、共享广播/掉落先到先得/各自结算）；实现摘要与真机验收清单见 §2.7 | `DungeonInstance`、`DungeonInstanceRegistry`、`DungeonPartyService`、`DungeonDoorAssembly`、`EntranceService` |
 | 客户端 TCP/UDP 全量打印（`Config.ini` 的 `DumpNetwork`）：钩客户端自己的 ws2_32，绕开"抓包看不到 loopback"；用法与真机判定标准见 §3.4 | `DFLegacy.Ijl15/src/net_dump.cpp`、`DFLegacy.Ijl15/tests/ijl15_tests.cpp` |
