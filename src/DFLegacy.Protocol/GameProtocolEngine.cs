@@ -3717,13 +3717,23 @@ public static class GameProtocolEngine
             throw new ArgumentOutOfRangeException(nameof(pickerPartyIndex));
         }
 
+        var amounts = new uint[4];
+        amounts[pickerPartyIndex] = goldAmount;
+        return CreateGoldItemPickup(groundId, pickerUserId, amounts);
+    }
+
+    public static GameServerPacket CreateGoldItemPickup(
+        ushort groundId, ushort pickerUserId, IReadOnlyList<uint> amounts)
+    {
+        ArgumentNullException.ThrowIfNull(amounts);
+        if (amounts.Count != 4) throw new ArgumentException("Gold pickup requires four party slots.", nameof(amounts));
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write(groundId);
         writer.Write(pickerUserId);
         for (var partyIndex = 0; partyIndex < 4; partyIndex++)
         {
-            writer.Write(partyIndex == pickerPartyIndex ? goldAmount : 0u);
+            writer.Write(amounts[partyIndex]);
             writer.Write((byte)0); // no economic-control adjustment entries
         }
 

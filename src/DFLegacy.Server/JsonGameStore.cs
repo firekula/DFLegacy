@@ -330,6 +330,9 @@ public sealed record CharacterRecord(
     Guid? MentorCharacterId = null,
     byte MentorExperienceBonusPercent = 0)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<DungeonGoldCredit>? PendingDungeonGoldCredits { get; init; }
+
     [JsonIgnore]
     public bool IsWeakened => WeaknessRecovery < DungeonWeaknessPolicy.FullStamina;
 }
@@ -477,7 +480,7 @@ internal sealed class DungeonRewardSnapshotWriter : IDungeonRewardSnapshotWriter
     }
 }
 
-public sealed class JsonGameStore(
+public sealed partial class JsonGameStore(
     ServerOptions options,
     ILogger<JsonGameStore> logger,
     CharacterExperienceCatalog? experienceCatalog = null,
@@ -621,6 +624,7 @@ public sealed class JsonGameStore(
         public uint NextTestAccountUid { get; set; } = 1;
         public int FatigueDayKey { get; set; }
         public List<DungeonRewardLedgerEntry> DungeonRewardLedger { get; set; } = [];
+        public List<DungeonGoldLedgerEntry> DungeonGoldLedger { get; set; } = [];
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
@@ -686,6 +690,7 @@ public sealed class JsonGameStore(
                         : state.NextTestAccountUid;
                     _fatigueDayKey = state.FatigueDayKey;
                     _dungeonRewardLedger = state.DungeonRewardLedger ?? [];
+                    _dungeonGoldLedger = state.DungeonGoldLedger ?? [];
                     _rewardQuarantined = _dungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown);
                 }
 
@@ -2849,6 +2854,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[characterIndex];
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
                     warehouseCapacity,
@@ -3250,6 +3256,7 @@ public sealed class JsonGameStore(
             if (plannedInventory.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedEquipment.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedInventory.Any(x => x.ItemId == 0) || plannedEquipment.Any(x => x.ItemId == 0)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
             var account = _accounts.FirstOrDefault(a => string.Equals(a.UserName, request.UserName, StringComparison.OrdinalIgnoreCase)); var index = account?.Characters.FindIndex(x => x.Id == request.CharacterId) ?? -1; if (account is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "account-not-found", null); if (index < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-not-found", null); if (_pendingTradeDeliveries.ContainsKey(request.CharacterId)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "pending-trade-delivery", null);
             var current = account.Characters[index];
+            if (!HasDungeonGoldCapacity(current, request.TargetGold)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "gold-capacity-reserved", null);
             if (current.Gold != request.ExpectedGold || !ItemsEqual(current.Inventory, expectedInventory) || !ItemsEqual(current.Equipment, expectedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-state-conflict", null);
             if (!InventoryPlanPreservesBaseline(current.Inventory, plannedInventory) || !ItemsEqual(current.Equipment, plannedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
             if (!TryResolveWarehouseCapacityUpdate(current, request.WarehouseCapacity, request.ExpectedWarehouseCapacity, out var capacity)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "warehouse-capacity-conflict", null);
@@ -3337,7 +3344,7 @@ public sealed class JsonGameStore(
         _nextTestAccountUid = state.NextTestAccountUid;
         _fatigueDayKey = state.FatigueDayKey;
         _accounts = state.Accounts;
-        _dungeonRewardLedger = state.DungeonRewardLedger;
+        _dungeonRewardLedger = state.DungeonRewardLedger; _dungeonGoldLedger = state.DungeonGoldLedger;
         _rewardQuarantined = false;
     }
 
@@ -3421,6 +3428,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
                     warehouseCapacity,
@@ -3539,6 +3547,9 @@ public sealed class JsonGameStore(
             }
 
             var tradeId = Guid.NewGuid();
+            if (!HasDungeonGoldCapacity(initiator, checked(initiator.Gold + plan.Initiator.GoldDelta))
+                || !HasDungeonGoldCapacity(partner, checked(partner.Gold + plan.Partner.GoldDelta)))
+                return new(false, ItemTradeCommitFailure.GoldOverflow, Guid.Empty, null, null, null);
             var previousInitiator = initiator;
             var previousPartner = partner;
             var updatedInitiator = ApplyTradePlan(initiator, plan.Initiator);
@@ -3689,6 +3700,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[characterIndex];
+            if (!HasDungeonGoldCapacity(character, remainingGold)) return null;
             var persistedItems = (character.Inventory ?? [])
                 .OrderBy(item => item.Slot)
                 .ToArray();
@@ -3862,6 +3874,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
                     warehouseCapacity,
@@ -3974,6 +3987,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
                     warehouseCapacity,
@@ -5875,6 +5889,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (character.Quests?.Any(quest => quest.QuestId == questId) != true)
             {
                 return null;
@@ -6016,6 +6031,11 @@ public sealed class JsonGameStore(
                                 questId,
                                 character.Id,
                                 rewardPlan.Error);
+                            continue;
+                        }
+
+                        if (!HasDungeonGoldCapacity(character, rewardPlan.Gold))
+                        {
                             continue;
                         }
 
@@ -6309,9 +6329,10 @@ public sealed class JsonGameStore(
     }
 
     // Privileged operator recovery: persists a rejection ledger while quarantine is still held.
-    private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger, CancellationToken cancellationToken)
+    private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger,
+        CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null)
     {
-        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger }, new JsonSerializerOptions { WriteIndented = true });
+        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger }, new JsonSerializerOptions { WriteIndented = true });
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
     }
 
@@ -6332,7 +6353,8 @@ public sealed class JsonGameStore(
                     NextNormalAccountUid = _nextNormalAccountUid,
                     NextTestAccountUid = _nextTestAccountUid,
                     FatigueDayKey = _fatigueDayKey,
-                    DungeonRewardLedger = _dungeonRewardLedger
+                    DungeonRewardLedger = _dungeonRewardLedger,
+                    DungeonGoldLedger = _dungeonGoldLedger
                 },
                 new JsonSerializerOptions { WriteIndented = true },
                 cancellationToken);

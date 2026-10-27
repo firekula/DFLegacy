@@ -73,6 +73,16 @@ public sealed class DungeonInstanceRegistry
 
     /// <summary>队友击杀的经验信用队列（每成员一条队列，一次连杀会堆多条）。</summary>
     private readonly ConcurrentDictionary<Guid, ConcurrentQueue<DungeonMonsterKillCredit>> _pendingKillCredits = new();
+    private readonly ConcurrentDictionary<Guid, ConcurrentQueue<Guid>> _pendingGoldCredits = new();
+
+    internal void PostGoldCreditUpdate(Guid characterId, Guid pickupId) =>
+        _pendingGoldCredits.GetOrAdd(characterId, _ => new()).Enqueue(pickupId);
+
+    internal bool TryTakeGoldCreditUpdate(Guid characterId, out Guid pickupId)
+    {
+        pickupId = default;
+        return _pendingGoldCredits.TryGetValue(characterId, out var queue) && queue.TryDequeue(out pickupId);
+    }
 
     internal DungeonInstance GetOrCreateForParty(ushort partyId, Func<DungeonInstance> create) =>
         _byParty.GetOrAdd(partyId, _ => create());
@@ -199,6 +209,7 @@ public sealed class DungeonInstanceRegistry
         || _pendingSelectionCancels.ContainsKey(characterId)
         || _pendingKillCredits.ContainsKey(characterId)
         || _pendingSettlementReturns.ContainsKey(characterId)
+        || (_pendingGoldCredits.TryGetValue(characterId, out var goldCredits) && !goldCredits.IsEmpty)
         || HasPendingLootPickup(characterId)
         || (_byCharacter.TryGetValue(characterId, out var instance) && instance.HasCancelledLootPickup(characterId));
 
@@ -257,6 +268,7 @@ public sealed class DungeonInstanceRegistry
         }
 
         _byParty.Clear();
+        _pendingGoldCredits.Clear();
         _byCharacter.Clear();
         _soloByCharacter.Clear();
         _pendingEntries.Clear();

@@ -998,10 +998,38 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
-    /// 把包发给该角色所在队伍的**其他**成员（不含自己）；不在队伍时返回 0
-    /// （单人路径因此一份包都不会多发——队长的外观推送靠这条护栏）。
-    /// 坏通道（含被踢/掉线成员自己的 OCE）走 <see cref="CrossSessionDelivery"/>：只告警、
-    /// 不影响其他收件人，也不把异常顺着发送者的会话冒泡（终审 I1）。
+    /// ACT1 队伍聊天发给当前全部队员（含自己），不按城镇区域或副本筛选。
+    /// </summary>
+    internal async Task<int> SendPartyChatAsync(
+        Guid characterId,
+        byte[] messageBytes,
+        CancellationToken cancellationToken)
+    {
+        var slots = GetPartySlots(characterId);
+        var sender = slots?.FirstOrDefault(slot => slot.CharacterId == characterId);
+        if (sender is null) return 0;
+        var packet = GameProtocolEngine.CreateMessageNotification(
+            GameMessageType.Type02LightCyan, sender.AreaUserId, messageBytes);
+        var sent = 0;
+        foreach (var slot in slots!)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await slot.Send(packet);
+                sent++;
+            }
+            catch (Exception exception) when (CrossSessionDelivery.IsBrokenChannel(exception))
+            {
+                _logger.LogWarning(exception, "Could not deliver party chat from {Sender} to {Recipient}.",
+                    characterId, slot.CharacterId);
+            }
+        }
+        return sent;
+    }
+
+    /// <summary>
+    /// 把包发给队伍其他成员；单人时返回 0。坏通道不影响其他收件人。
     /// </summary>
     internal async Task<int> SendToOtherMembersAsync(
         Guid omitCharacterId,

@@ -284,6 +284,8 @@ public sealed class EntranceService(
             var completedQuestIds = new HashSet<ushort>();
             var currentSp = 0;
             var currentGold = 50_000;
+            // 翻牌可由队友会话触发；与本会话金币信箱串行，防止较旧的翻牌余额覆盖已入账金币。
+            var dungeonCurrencyGate = new SemaphoreSlim(1, 1);
             var currentCash = 0;
             uint currentVictoryPoints = 0;
             byte currentTownId = 1;
@@ -1851,6 +1853,23 @@ public sealed class EntranceService(
                     PartyCardContent content,
                     CancellationToken cancellationToken)
                 {
+                    await dungeonCurrencyGate.WaitAsync(cancellationToken);
+                    try
+                    {
+                        return await CommitOwnPartyCardColumnCoreAsync(
+                            settlementId, cardType, column, generation, content, cancellationToken);
+                    }
+                    finally { dungeonCurrencyGate.Release(); }
+                }
+
+                async Task<PartyCardCommitOutcome> CommitOwnPartyCardColumnCoreAsync(
+                    Guid settlementId,
+                    PartyCardType cardType,
+                    byte column,
+                    long generation,
+                    PartyCardContent content,
+                    CancellationToken cancellationToken)
+                {
                     if (activeCharacter is not { } cardOwner
                         || roomSettlement.ClearReward is not { } ownRoll)
                     {
@@ -3055,6 +3074,49 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, packet);
                 }
 
+                async Task InstallPendingTradeAsync()
+                {
+                    if (activeCharacter is null
+                        || !itemTradeService.TryTakePendingInstall(activeCharacter.Id, out var install)) return;
+                    activeCharacter = EntranceWeaknessRecovery.WithRecoveryFrom(install.State, activeCharacter);
+                    currentGold = Math.Max(0, install.State.Gold);
+                    mainInventory = (install.State.Inventory ?? []).ToDictionary(item => item.Slot);
+                    await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(
+                        currentGold, currentVictoryPoints, mainInventory.Values));
+                    store.AcknowledgeTradeDelivery(activeCharacter.Id, install.TradeId);
+                    logger.LogInformation("Installed settled trade {TradeId} into character {CharacterId}.",
+                        install.TradeId, activeCharacter.Id);
+                }
+
+                async Task InstallDungeonGoldCreditAsync(Guid pickupId)
+                {
+                    await dungeonCurrencyGate.WaitAsync(CancellationToken.None);
+                    try { await InstallDungeonGoldCreditCoreAsync(pickupId); }
+                    finally { dungeonCurrencyGate.Release(); }
+                }
+
+                async Task InstallDungeonGoldCreditCoreAsync(Guid pickupId)
+                {
+                    if (activeCharacter is null) return;
+                    await InstallPendingTradeAsync();
+                    var saved = await store.ConsumeDungeonGoldCreditsAsync(
+                        activeCharacter.Id, CancellationToken.None, pickupId);
+                    if (saved is not null)
+                    {
+                        currentGold = saved.Gold;
+                        activeCharacter = activeCharacter with { Gold = saved.Gold };
+                    }
+                    await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(
+                        currentGold, currentVictoryPoints, mainInventory.Values));
+                }
+
+                async Task InstallPendingDungeonGoldAsync()
+                {
+                    while (activeCharacter is not null
+                        && dungeonInstanceRegistry.TryTakeGoldCreditUpdate(activeCharacter.Id, out var pickupId))
+                        await InstallDungeonGoldCreditAsync(pickupId);
+                }
+
                 // 「把一件地面物收进**本会话角色**的背包」的 5 条分支（金币 / 仓库升级券 / 宠物 / 时装 /
                 // 普通背包）收敛成的**唯一入口**。两条调用路径共用它：
                 //   ① `CMD 46` 直取：归属就是请求者本人，`replyToRequester` 写本会话 stream；
@@ -3092,6 +3154,36 @@ public sealed class EntranceService(
 
                     if (groundItem.IsGold)
                     {
+                        if (dungeonInstance is { IsParty: true } goldInstance)
+                        {
+                            if (!goldInstance.TryClaimGoldPickup(character.Id, groundItem, pickupId, out var recipients))
+                            {
+                                if (recipients.Length == 0)
+                                    await replyToRequester(GameProtocolEngine.CreateGetItemError(21));
+                                return GroundItemGrantOutcome.NotAvailable;
+                            }
+                            var result = await store.CommitDungeonGoldDistributionAsync(
+                                pickupId, recipients, PartySlotIndexOfThisSession(), groundItem.CountOrValue,
+                                CancellationToken.None);
+                            if (result.Status != DungeonRewardLedgerStatus.Committed)
+                            {
+                                if (result.Status == DungeonRewardLedgerStatus.Rejected)
+                                    goldInstance.TryReAddGroundItem(groundItem);
+                                logger.LogError("Gold pickup {PickupId} was {Status}: {Reason}.",
+                                    pickupId, result.Status, result.Reason);
+                                await replyToRequester(GameProtocolEngine.CreateGetItemError(4));
+                                return GroundItemGrantOutcome.Rejected;
+                            }
+                            await dungeonPartyService.BroadcastToMembersAsync(goldInstance,
+                                GameProtocolEngine.CreateGoldItemPickup(groundId, pickerUserId, result.Amounts));
+                            foreach (var recipient in recipients)
+                                if (result.Amounts[recipient.PartySlot] != 0)
+                                    dungeonInstanceRegistry.PostGoldCreditUpdate(recipient.CharacterId, pickupId);
+                            logger.LogInformation("Party gold pickup {PickupId} ground {GroundId}, picker {Picker}, shares=[{Amounts}].",
+                                pickupId, groundId, pickerUserId, string.Join(',', result.Amounts));
+                            return GroundItemGrantOutcome.Granted;
+                        }
+
                         int updatedGold;
                         try
                         {
@@ -4794,6 +4886,7 @@ public sealed class EntranceService(
                     // 与报文一字未改。
                     async Task HandlePendingPartyMailAsync()
                     {
+                        await InstallPendingDungeonGoldAsync();
                         // Both real packets and idle mailbox wake-ups pass here.
                         // Install minute recovery before a passive entry builds
                         // its foreign mode-1 actor from activeCharacter.
@@ -4880,32 +4973,8 @@ public sealed class EntranceService(
 
                     // 被动方的交易交付：服务端已经落库，但本会话的内存背包还是旧的。
                     // 必须在处理下一条请求之前安装，否则玩家一动背包就会用陈旧状态覆盖交易结果。
-                    if (activeCharacter is not null
-                        && itemTradeService.TryTakePendingInstall(
-                            activeCharacter.Id,
-                            out var tradeInstall))
-                    {
-                        // The trade was committed before this delivery. Its
-                        // snapshot must not undo a newer recovery notification
-                        // already installed before processing the party mailbox.
-                        activeCharacter = EntranceWeaknessRecovery.WithRecoveryFrom(
-                            tradeInstall.State, activeCharacter);
-                        currentGold = Math.Max(0, tradeInstall.State.Gold);
-                        mainInventory = (tradeInstall.State.Inventory ?? [])
-                            .ToDictionary(item => item.Slot);
-                        var tradeRefresh = CreateMainInventoryPacket(
-                            currentGold,
-                            currentVictoryPoints,
-                            mainInventory.Values);
-                        await tradeRefresh.WriteAsync(stream, serverToken);
-                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                        LogPacket("TX", runtimeSession, tradeRefresh);
-                        store.AcknowledgeTradeDelivery(activeCharacter.Id, tradeInstall.TradeId);
-                        logger.LogInformation(
-                            "Installed settled trade {TradeId} into the live session of character {CharacterId}.",
-                            tradeInstall.TradeId,
-                            activeCharacter.Id);
-                    }
+                    await InstallPendingTradeAsync();
+                    await InstallPendingDungeonGoldAsync();
 
                     if (Interlocked.Exchange(ref pendingMailAlarm, 0) != 0
                         && activeCharacter is not null)
@@ -5407,6 +5476,7 @@ public sealed class EntranceService(
                             {
                                 WarehouseCapacity = warehouseCapacity
                             };
+                            character = await store.ConsumeDungeonGoldCreditsAsync(character.Id, CancellationToken.None) ?? character;
                             activeCharacter = character;
                             lastProjectedCombatStats = null;
                             staminaStateInitialized = false;
@@ -6096,6 +6166,15 @@ public sealed class EntranceService(
                                     messageRequest.MessageType,
                                     messageRequest.MessageBytes,
                                     serverToken);
+                                continue;
+                            }
+
+                            if (messageRequest.MessageType == (byte)GameMessageType.Type02LightCyan)
+                            {
+                                var recipients = await partyService.SendPartyChatAsync(
+                                    activeCharacter.Id, messageRequest.MessageBytes, serverToken);
+                                logger.LogInformation("Party chat from {CharacterName} delivered to {Recipients}: {Message}",
+                                    activeCharacter.Name, recipients, ClientEncoding.GetString(messageRequest.MessageBytes));
                                 continue;
                             }
 
