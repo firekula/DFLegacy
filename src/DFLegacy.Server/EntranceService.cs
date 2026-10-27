@@ -16,6 +16,7 @@ public sealed class EntranceService(
     TownSessionDirectory townDirectory,
     FriendService friendService,
     MentorService mentorService,
+    PvpService pvpService,
     PrivateStoreService privateStoreService,
     ItemTradeService itemTradeService,
     PartyService partyService,
@@ -155,7 +156,7 @@ public sealed class EntranceService(
         var (_, channelPorts) = EntrancePortFamilies.Split(
             options.Entrance.Port,
             options.Entrance.AdditionalPorts,
-            options.Channel.Port);
+            PvpChannelConfiguration.Ports(options));
         var ports = channelPorts;
 
         foreach (var port in ports)
@@ -209,7 +210,8 @@ public sealed class EntranceService(
 
             var remoteEndpoint = client.Client.RemoteEndPoint as IPEndPoint;
             var remote = remoteEndpoint?.ToString() ?? "unknown";
-            var isChannelPort = localPort == options.Channel.Port;
+            var isPvpChannel = options.Pvp.Enabled && localPort == options.Pvp.Port;
+            var isChannelPort = localPort == options.Channel.Port || isPvpChannel;
             var runtimeSession = runtime.Add($"{(isChannelPort ? "channel" : "entrance")}:{localPort}", remote);
             if (isChannelPort && remoteEndpoint is not null)
             {
@@ -226,6 +228,9 @@ public sealed class EntranceService(
             ushort localUserId = 0;
             TownMemberTicket? townTicket = null;
             CharacterRecord? activeCharacter = null;
+            Guid? pvpAttachment = null;
+            long pvpRevision = 0;
+            bool pvpReturnPending = false;
             GameCharacterCombatStats? lastProjectedCombatStats = null;
             CharacterSessionLease? activeCharacterLease = null;
             var mainInventory = new Dictionary<ushort, CharacterItemRecord>();
@@ -4630,6 +4635,37 @@ public sealed class EntranceService(
                 var idlePartyMailTick = false;
                 while (!serverToken.IsCancellationRequested)
                 {
+                    if (activeCharacter is not null)
+                    {
+                        var canonicalPvpRevision = pvpService.Revision(activeCharacter.Id);
+                        if (pvpRevision != canonicalPvpRevision)
+                        {
+                            await dungeonCurrencyGate.WaitAsync(serverToken);
+                            try
+                            {
+                                var canonical = await store.GetCharacterAsync(accountName, activeCharacter.Id, serverToken);
+                                if (canonical is not null)
+                                {
+                                    currentVictoryPoints = canonical.VictoryPoints;
+                                    activeCharacter = activeCharacter with { VictoryPoints = canonical.VictoryPoints,
+                                        PvpPoints = canonical.PvpPoints, PvpGrade = canonical.PvpGrade,
+                                        PvpWins = canonical.PvpWins, PvpLosses = canonical.PvpLosses,
+                                        PvpPlayCount = canonical.PvpPlayCount, PvpCount = canonical.PvpCount, PvpGradeExtension = canonical.PvpGradeExtension };
+                                    pvpRevision = canonicalPvpRevision;
+                                }
+                            }
+                            finally { dungeonCurrencyGate.Release(); }
+                        }
+                        if (pvpReturnPending && !pvpService.IsBusy(activeCharacter.Id))
+                        {
+                            pvpReturnPending = false;
+                            await EnterTownAreaAsync(serverToken);
+                            await SendTownAppearanceAsync(waitForTownActor: true);
+                            await partyService.OnAreaChangedAsync(activeCharacter.Id, currentTownId, currentAreaId, localUserId, serverToken);
+                        }
+                    }
+
+
                     await SettleCurrentAvatarLifetimesAsync(force: Volatile.Read(ref pendingMailAlarm) != 0);
                     var sweepInstance = dungeonInstance;
                     var sweepGeneration = sweepInstance?.RoomGeneration;
@@ -4661,7 +4697,7 @@ public sealed class EntranceService(
                             isChannelPort,
                             activeCharacter is not null,
                             dungeonInstance is { IsParty: true },
-                            (activeCharacter is not null && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id) || privateStoreService.HasPendingGold(activeCharacter.Id)))
+                            (activeCharacter is not null && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id) || privateStoreService.HasPendingGold(activeCharacter.Id) || pvpService.IsBusy(activeCharacter.Id)))
                                 || weaknessRecovery.CanProcessPending(currentDungeonId != 0)
                                 || bossDeathSweep.HasPending,
                             activeCharacter is null ? 0 : partyService.GetPartySlots(activeCharacter.Id)?.Length ?? 0);
@@ -4676,7 +4712,7 @@ public sealed class EntranceService(
                                     wakeTask: partyMembershipChanged, additionalWakeDelay: GetAvatarExpiryWait());
                                 if (wake == EntranceReadWakeReason.PartyMailTick)
                                 {
-                                    await HandlePendingPartyMailAsync();
+                    await HandlePendingPartyMailAsync();
                                     continue;
                                 }
                                 if (wake == EntranceReadWakeReason.Packet)
@@ -4916,6 +4952,19 @@ public sealed class EntranceService(
                     {
                         logger.LogWarning("Rejected frame with bad CRC32 from {SessionId}", runtimeSession.Id);
                         break;
+                    }
+
+                    if (isPvpChannel && request.Type == GameProtocolEngine.CommandPacketType
+                        && activeCharacter is not null && pvpAttachment is { } sequenceAttachment
+                        && !PvpService.IsPvpCommand(request.ProtocolId))
+                        pvpService.ObserveCommand(activeCharacter.Id, sequenceAttachment, request.ProtocolId, request.Body);
+
+                    if (isChannelPort && request.Type == GameProtocolEngine.CommandPacketType
+                        && activeCharacter is not null && pvpService.IsBusy(activeCharacter.Id)
+                        && !PvpService.AllowedWhileBusy(request.ProtocolId))
+                    {
+                        await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 2), serverToken);
+                        continue;
                     }
 
                     // 副本实例的权威状态可能被别的成员（击杀/换房间）或倒计时扫描推进：
@@ -5177,6 +5226,8 @@ public sealed class EntranceService(
                                 gameplayDatagram.SetNatReport(
                                     runtimeSession.Id,
                                     natReport);
+                                if (activeCharacter is not null && pvpAttachment is { } peerAttachment)
+                                    await pvpService.RefreshPeersAsync(activeCharacter.Id, peerAttachment, serverToken);
                             }
 
                             var endpointReply = parsed
@@ -5185,6 +5236,19 @@ public sealed class EntranceService(
                             await endpointReply.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, endpointReply);
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && (request.ProtocolId is >= 53 and <= 62 or 100 or 101 or 120))
+                        {
+                            if (isPvpChannel && activeCharacter is not null && pvpAttachment is { } pvpToken)
+                            {
+                                await pvpService.HandleAsync(activeCharacter.Id, pvpToken, request.ProtocolId, request.Body, serverToken);
+                                if (request.ProtocolId == 55 && townTicket is null) pvpReturnPending = true;
+                                partyMembershipWake.Pulse();
+                            }
+                            else await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 2), serverToken);
                             continue;
                         }
 
@@ -5292,6 +5356,8 @@ public sealed class EntranceService(
                                     activeCharacter.Id,
                                     runtimeSession.Id,
                                     serverToken);
+                                if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, serverToken);
+                                pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
                                 await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                 await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                             }
@@ -5454,6 +5520,8 @@ public sealed class EntranceService(
                                         activeCharacter.Id,
                                         runtimeSession.Id,
                                         serverToken);
+                                    if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, serverToken);
+                                    pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
                                     await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                     await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                 }
@@ -5827,6 +5895,8 @@ public sealed class EntranceService(
                                             activeCharacter.Id,
                                             runtimeSession.Id,
                                             serverToken);
+                                        if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, serverToken);
+                                        pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
                                         await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                         await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                     }
@@ -6198,6 +6268,39 @@ public sealed class EntranceService(
                             await privateStoreService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,
                                 runtimeSession.Id, packet => SendTownPacketAsync(packet, serverToken), serverToken,
                                 KickConnection, partyMembershipWake.Pulse);
+                            if (isPvpChannel)
+                            {
+                                var attachedCharacter = activeCharacter.Id;
+                                var incarnation = Guid.NewGuid();
+                                pvpAttachment = incarnation;
+                                await pvpService.AttachAsync(new PvpAttachment(incarnation, runtimeSession.Id, accountName,
+                                    attachedCharacter, localUserId, accountUid,
+                                    async () =>
+                                    {
+                                        await dungeonCurrencyGate.WaitAsync(serverToken);
+                                        try
+                                        {
+                                            if (pvpAttachment != incarnation || activeCharacter?.Id != attachedCharacter) return null;
+                                            return new PvpModelSnapshot(SendTownAppearancePacket(), SendTownAppearanceDetailPacket());
+                                        }
+                                        finally { dungeonCurrencyGate.Release(); }
+                                    },
+                                    packet => SendTownPacketAsync(packet, serverToken),
+                                    () => activeCharacter?.Id == attachedCharacter && currentDungeonId == 0 && !inDungeonSelection && currentTownId != 0 && townTicket is not null,
+                                    async () =>
+                                    {
+                                        await partyService.PrepareForPvpAsync(attachedCharacter, serverToken);
+                                        await LeaveTownAreaAsync(serverToken);
+                                        pvpReturnPending = true;
+                                    }, partyMembershipWake.Pulse, KickConnection,
+                                    async () =>
+                                    {
+                                        if (pvpAttachment != incarnation || activeCharacter?.Id != attachedCharacter) return;
+                                        if (townTicket is null) await EnterTownAreaAsync(serverToken);
+                                        await SendTownAppearanceAsync(waitForTownActor: true);
+                                        pvpReturnPending = false;
+                                    }), serverToken);
+                            }
                             continue;
                         }
 
@@ -7765,6 +7868,7 @@ public sealed class EntranceService(
                                 growType: growthAdvanced ? nextGrowType : null,
                                 awakeningType: growthAdvanced ? nextAwakeningType : null,
                                 victoryPoints: nextVictoryPoints,
+                                expectedVictoryPoints: currentVictoryPoints,
                                 warehouseCapacity: rewardPlan.WarehouseCapacity,
                                 expectedWarehouseCapacity: warehouseCapacity,
                                 unlockedDungeonIds: HiddenDungeonUnlockCatalog.ResolveQuestDungeonUnlockIds(
@@ -12092,6 +12196,7 @@ public sealed class EntranceService(
                                     plannedCreatureInventory.Values,
                                     premiumServiceGrants,
                                     victoryPoints: plannedVictoryPoints,
+                                    expectedVictoryPoints: currentVictoryPoints,
                                     expectedCash: currentCash,
                                     warehouseCapacity: plannedWarehouseCapacity,
                                     expectedWarehouseCapacity: warehouseCapacity);
@@ -15813,16 +15918,18 @@ public sealed class EntranceService(
                         var gameReply = request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.CheckConnectionCommand
                             ? GameProtocolEngine.CreateChannelInfo(
-                                ClientEncoding.GetBytes($"{options.Channel.Name} {options.Channel.ChannelNumber}"),
+                                ClientEncoding.GetBytes(isPvpChannel ? $"{options.Pvp.Name} {options.Pvp.ChannelNumber}" : $"{options.Channel.Name} {options.Channel.ChannelNumber}"),
                                 channelType: 1,
                                 result: 1,
                                 serverId: 1,
-                                channelNumber: checked((byte)options.Channel.ChannelNumber),
+                                channelNumber: checked((byte)(isPvpChannel ? options.Pvp.ChannelNumber : options.Channel.ChannelNumber)),
                                 seed: checked((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
                                 [Encoding.ASCII.GetBytes(options.GameplayDatagram.ResolveAdvertisedHost())],
                                 port1: checked((uint)options.GameplayDatagram.PrimaryPort),
                                 port2: checked((uint)options.GameplayDatagram.SecondaryPort))
-                            : GameProtocolEngine.Handle(request, protocolSession.SessionToken);
+                            : isPvpChannel && request.Type == GameProtocolEngine.CommandPacketType && request.ProtocolId == GameProtocolEngine.LoginCommand
+                                ? GameProtocolEngine.CreatePvpLoginSuccess(accountUid, options.Pvp.RelayHost, options.Pvp.RelayTcpPort, options.Pvp.RelayUdpPort)
+                                : GameProtocolEngine.Handle(request, protocolSession.SessionToken);
                         if (gameReply is null)
                         {
                             // 160..162（SDC_DAMAGE_CHECK / ANTIBOT / DPROTO）是 TerSafe.dll 的
@@ -15960,6 +16067,8 @@ public sealed class EntranceService(
                         activeCharacter.Id,
                         runtimeSession.Id,
                         CancellationToken.None);
+                    if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, CancellationToken.None);
+                    pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
                     await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, CancellationToken.None);
                     // 掉线/被踢：把角色从副本实例里摘掉（最后一个成员离开即销毁，设计稿 §3.4），
                     // 并让其余成员收到"角色离场"信号。必须在下面把 localUserId 还回池子**之前**：
@@ -18073,13 +18182,7 @@ public sealed class EntranceService(
             // info notification already uses, and Channel.Host stays the bind
             // address it is documented to be.
             var dialHost = ResolveChannelDialHost(options);
-            var metadata = EntranceMetadata.BuildSingleLocalChannel(new EntranceChannel(
-                channel.Name,
-                dialHost,
-                channel.Port,
-                channel.ChannelNumber,
-                channel.MaximumUsers,
-                channel.CurrentUsers));
+            var metadata = EntranceMetadata.BuildLocalChannels(PvpChannelConfiguration.Channels(options));
             _content = new EntranceContent(channelScript, metadata);
             return _content;
         }

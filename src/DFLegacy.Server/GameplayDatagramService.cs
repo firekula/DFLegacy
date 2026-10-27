@@ -165,6 +165,51 @@ public sealed class GameplayDatagramService(
             sender);
     }
 
+    internal sealed record PvpRelayContext(Guid Attachment, Guid Room, Guid? Match);
+
+    internal bool SetPvpContext(Guid sessionId, Guid attachment, Guid room, Guid? match)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session)) return false;
+        lock (session.Gate)
+        {
+            if (session.PvpContext is { } existing && existing.Attachment != attachment) return false;
+            session.PvpContext = new(attachment, room, match);
+            session.RelayPartyId = null; session.RelayDungeonInstance = null;
+            return true;
+        }
+    }
+
+    internal void ClearPvpContext(Guid sessionId, Guid attachment, Guid room)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session)) return;
+        lock (session.Gate)
+            if (session.PvpContext is { } context && context.Attachment == attachment && context.Room == room)
+                session.PvpContext = null;
+    }
+
+    internal bool HasUniqueEndpoint(Guid sessionId)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session)) return false;
+        IPEndPoint? endpoint;
+        lock (session.Gate) endpoint = session.DatagramEndpoint;
+        return endpoint is not null && FindSessionKeyByEndpoint(endpoint) == sessionId;
+    }
+
+    internal IReadOnlyList<IPEndPoint> PvpRelayTargets(Guid sessionId)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var origin)) return [];
+        PvpRelayContext? context; IPEndPoint? endpoint;
+        lock (origin.Gate) { context = origin.PvpContext; endpoint = origin.DatagramEndpoint; }
+        if (context is null || endpoint is null || FindSessionKeyByEndpoint(endpoint) != sessionId) return [];
+        var candidates = new List<(Guid Key, IPEndPoint? Endpoint)>();
+        foreach (var (key, session) in _sessions)
+            lock (session.Gate)
+                if (session.PvpContext is { } other && other.Room == context.Room && other.Match == context.Match
+                    && session.DatagramEndpoint is { } target)
+                    candidates.Add((key, target));
+        return SelectRelayTargets(candidates.Where(c => c.Endpoint is { } target && FindSessionKeyByEndpoint(target) == c.Key), sessionId, endpoint);
+    }
+
     public void SetRelayContext(Guid sessionId, ushort? partyId, object? dungeonInstance = null)
     {
         UpdateRelayContext(sessionId, partyId, dungeonInstance, updateParty: true, updateDungeon: true);
@@ -194,6 +239,7 @@ public sealed class GameplayDatagramService(
         bool inDungeon;
         lock (session.Gate)
         {
+            if (session.PvpContext is not null) return;
             var changed = (updateParty && session.RelayPartyId != partyId)
                 || (updateDungeon && !ReferenceEquals(session.RelayDungeonInstance, dungeonInstance));
             if (!changed)
@@ -305,7 +351,7 @@ public sealed class GameplayDatagramService(
         uint sequence;
         lock (session.Gate)
         {
-            if (session.DatagramEndpoint is null)
+            if (session.DatagramEndpoint is null || session.PvpContext is not null)
             {
                 return false;
             }
@@ -514,11 +560,12 @@ public sealed class GameplayDatagramService(
         {
             lock (session.Gate)
             {
-                snapshot.Add((key, session.DatagramEndpoint, session.RelayPartyId, session.RelayDungeonInstance));
+                if (session.PvpContext is null) snapshot.Add((key, session.DatagramEndpoint, session.RelayPartyId, session.RelayDungeonInstance));
             }
         }
 
-        var targets = SelectRelayTargets(snapshot, senderKey, sender);
+        var targets = PvpRelayTargets(senderKey.Value);
+        if (targets.Count == 0) targets = SelectRelayTargets(snapshot, senderKey, sender);
         var forwarded = 0;
         foreach (var target in targets)
         {
@@ -818,6 +865,7 @@ public sealed class GameplayDatagramService(
         public RuntimeSession Runtime { get; } = runtimeSession;
         public GameNatReport? NatReport { get; set; }
         public IPEndPoint? DatagramEndpoint { get; set; }
+        public PvpRelayContext? PvpContext { get; set; }
         public ushort? RelayPartyId { get; set; }
         public object? RelayDungeonInstance { get; set; }
         public uint NextSequence { get; set; }

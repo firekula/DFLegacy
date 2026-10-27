@@ -652,6 +652,7 @@ public sealed partial class JsonGameStore(
         public int FatigueDayKey { get; set; }
         public List<DungeonRewardLedgerEntry> DungeonRewardLedger { get; set; } = [];
         public List<DungeonGoldLedgerEntry> DungeonGoldLedger { get; set; } = [];
+        public List<PvpSettlementReceipt> PvpLedger { get; set; } = [];
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
@@ -718,6 +719,7 @@ public sealed partial class JsonGameStore(
                     _fatigueDayKey = state.FatigueDayKey;
                     _dungeonRewardLedger = state.DungeonRewardLedger ?? [];
                     _dungeonGoldLedger = state.DungeonGoldLedger ?? [];
+                    _pvpLedger = state.PvpLedger ?? [];
                     _rewardQuarantined = _dungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown);
                 }
 
@@ -3397,7 +3399,7 @@ public sealed partial class JsonGameStore(
         _nextTestAccountUid = state.NextTestAccountUid;
         _fatigueDayKey = state.FatigueDayKey;
         _accounts = state.Accounts;
-        _dungeonRewardLedger = state.DungeonRewardLedger; _dungeonGoldLedger = state.DungeonGoldLedger;
+        _dungeonRewardLedger = state.DungeonRewardLedger; _dungeonGoldLedger = state.DungeonGoldLedger; _pvpLedger = state.PvpLedger ?? [];
         _rewardQuarantined = false;
     }
 
@@ -3993,7 +3995,8 @@ public sealed partial class JsonGameStore(
         uint? victoryPoints = null,
         int? expectedCash = null,
         ushort? warehouseCapacity = null,
-        ushort? expectedWarehouseCapacity = null)
+        ushort? expectedWarehouseCapacity = null,
+        uint? expectedVictoryPoints = null)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -4042,6 +4045,7 @@ public sealed partial class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!IsVictoryPointUpdateCurrent(character, victoryPoints, expectedVictoryPoints)) return null;
             if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
@@ -5920,7 +5924,8 @@ public sealed partial class JsonGameStore(
         ushort? warehouseCapacity = null,
         ushort? expectedWarehouseCapacity = null,
         int? growType = null,
-        IEnumerable<ushort>? unlockedDungeonIds = null)
+        IEnumerable<ushort>? unlockedDungeonIds = null,
+        uint? expectedVictoryPoints = null)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -5946,6 +5951,7 @@ public sealed partial class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!IsVictoryPointUpdateCurrent(character, victoryPoints, expectedVictoryPoints)) return null;
             if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (character.Quests?.Any(quest => quest.QuestId == questId) != true)
             {
@@ -6387,9 +6393,9 @@ public sealed partial class JsonGameStore(
 
     // Privileged operator recovery: persists a rejection ledger while quarantine is still held.
     private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger,
-        CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null)
+        CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null, List<PvpSettlementReceipt>? pvpLedger = null)
     {
-        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger }, new JsonSerializerOptions { WriteIndented = true });
+        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger, PvpLedger = pvpLedger ?? _pvpLedger }, new JsonSerializerOptions { WriteIndented = true });
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
     }
 
@@ -6411,7 +6417,8 @@ public sealed partial class JsonGameStore(
                     NextTestAccountUid = _nextTestAccountUid,
                     FatigueDayKey = _fatigueDayKey,
                     DungeonRewardLedger = _dungeonRewardLedger,
-                    DungeonGoldLedger = _dungeonGoldLedger
+                    DungeonGoldLedger = _dungeonGoldLedger,
+                    PvpLedger = _pvpLedger
                 },
                 new JsonSerializerOptions { WriteIndented = true },
                 cancellationToken);

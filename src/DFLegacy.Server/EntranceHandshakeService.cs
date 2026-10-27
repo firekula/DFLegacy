@@ -23,7 +23,7 @@ public sealed class EntranceHandshakeService(
         var (entrancePorts, _) = EntrancePortFamilies.Split(
             options.Entrance.Port,
             options.Entrance.AdditionalPorts,
-            options.Channel.Port);
+            PvpChannelConfiguration.Ports(options));
         if (options.Processes.Channel.Enabled)
         {
             // 设计稿 §8 R2：启动日志必须说清「绑了什么、忽略了什么」，否则配置漂移只能靠猜。
@@ -50,17 +50,7 @@ public sealed class EntranceHandshakeService(
         var address = IPAddress.Parse(options.Entrance.Host);
         // 频道信息里「客户端该拨哪个地址」沿用既有口径（EntranceDialHost.Resolve，与
         // EntranceService.ResolveChannelDialHost 同优先级），否则拆分前后客户端会被指到不同地址。
-        var channelContent = new EntranceChannel(
-            options.Channel.Name,
-            EntranceDialHost.Resolve(
-                options.GameplayDatagram.ResolveAdvertisedHost(),
-                options.Entrance.Host,
-                options.Channel.Host),
-            options.Channel.Port,
-            options.Channel.ChannelNumber,
-            options.Channel.MaximumUsers,
-            options.Channel.CurrentUsers);
-        var content = new EntranceContentFactory(ReadChannelScript, channelContent);
+        var content = new EntranceContentFactory(ReadChannelScript, PvpChannelConfiguration.Channels(options));
         var server = new EntranceHandshakeServer(
             address,
             entrancePorts,

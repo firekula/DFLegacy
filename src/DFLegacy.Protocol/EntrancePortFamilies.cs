@@ -13,15 +13,13 @@ public static class EntrancePortFamilies
         IEnumerable<int> additionalPorts,
         int channelPort)
     {
-        var all = new[] { entrancePort }.Concat(additionalPorts);
-        var valid = all.Where(port => port is > 0 and <= 65535).Distinct().ToArray();
-        var entrance = valid.Where(port => port != channelPort).ToArray();
-        var channel = valid.Where(port => port == channelPort).ToArray();
-        if (channel.Length == 0 && channelPort is > 0 and <= 65535)
-        {
-            channel = [channelPort];
-        }
+        return Split(entrancePort, additionalPorts, new[] { channelPort });
+    }
 
+    public static (int[] EntrancePorts, int[] ChannelPorts) Split(int entrancePort, IEnumerable<int> additionalPorts, IEnumerable<int> channelPorts)
+    {
+        var channel = channelPorts.Where(p => p is > 0 and <= 65535).Distinct().ToArray();
+        var entrance = new[] { entrancePort }.Concat(additionalPorts).Where(p => p is > 0 and <= 65535 && !channel.Contains(p)).Distinct().ToArray();
         return (entrance, channel);
     }
 }

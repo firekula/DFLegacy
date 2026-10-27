@@ -9,7 +9,7 @@ public sealed partial class JsonGameStore
     private PrivateStoreCatalog? _storeCatalog;
     private PrivateStoreCatalog StoreCatalog => privateStoreCatalog ?? (_storeCatalog ??= new(new ScriptFileSystem(options,
         Microsoft.Extensions.Logging.Abstractions.NullLogger<ScriptFileSystem>.Instance)));
-    private bool IsEconomicWriteBlocked(Guid id) => _pendingTradeDeliveries.ContainsKey(id) || Commerce.Is(id, CommerceActivity.Store) || Commerce.Is(id, CommerceActivity.StoreRevoked)
+    private bool IsEconomicWriteBlocked(Guid id) => Commerce.Is(id, CommerceActivity.Pvp) || _pendingTradeDeliveries.ContainsKey(id) || Commerce.Is(id, CommerceActivity.Store) || Commerce.Is(id, CommerceActivity.StoreRevoked)
         || StoreCharacter(_accounts, id)?.PrivateStoreStock is not null;
     private static long PendingStoreGold(CharacterRecord c) => c.PendingPrivateStoreGoldCredits?.Sum(x => (long)x.Amount) ?? 0;
     private List<AccountRecord> CopyStoreAccountsLocked() => JsonSerializer.Deserialize<List<AccountRecord>>(JsonSerializer.Serialize(_accounts))!;
@@ -82,7 +82,7 @@ public sealed partial class JsonGameStore
             var buyer = StoreCharacter(_accounts, buyerId); var seller = StoreCharacter(_accounts, sellerId);
             if (seller is null || buyer is null || itemCatalog is null || statCatalog is null) return Reject(58);
             if (buyerId == sellerId || Commerce.Is(buyerId, CommerceActivity.Store)) return Reject(60);
-            if (Commerce.Is(buyerId, CommerceActivity.Trade) || _pendingTradeDeliveries.ContainsKey(buyerId)) return Reject(1);
+            if (Commerce.Is(buyerId, CommerceActivity.Pvp) || Commerce.Is(buyerId, CommerceActivity.Trade) || _pendingTradeDeliveries.ContainsKey(buyerId)) return Reject(1);
             if (seller.PrivateStoreStock?.StoreId != token || !Commerce.Owns(sellerId, CommerceActivity.Store, token)) return Reject(21);
             var listing = seller.PrivateStoreStock.Listings.FirstOrDefault(l => l.Slot == slot);
             if (listing is null || !itemCatalog.TryGetDefinition(listing.Item.ItemId, out var def)) return Reject(17);

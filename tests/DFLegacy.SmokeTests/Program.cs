@@ -9,6 +9,22 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--pvp-individual-only"))
+{
+    await PvpIndividualSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"PvP individual smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--pvp-protocol-rating") || args.Contains("--pvp-protocol-only"))
+{
+    await PvpProtocolRatingSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"PvP protocol/rating smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--mentor-growth"))
 {
     await MentorGrowthSmokeTests.RunAsync(Check);
@@ -190,6 +206,8 @@ await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await MentorSmokeTests.RunAsync(Check);
 await MentorGrowthSmokeTests.RunAsync(Check);
+await PvpIndividualSmokeTests.RunAsync(Check);
+await PvpProtocolRatingSmokeTests.RunAsync(Check);
 await AvatarLifetimeSmokeTests.RunAsync(Check);
 await CeraGiftSmokeTests.RunAsync(Check);
 await PrivateStoreSmokeTests.RunAsync(Check);
@@ -5160,7 +5178,8 @@ try
         [1016],
         growType: 3,
         awakeningType: 1,
-        victoryPoints: 321);
+        victoryPoints: 321,
+        expectedVictoryPoints: storedCharacter.VictoryPoints);
     if (completedCharacter is not null)
     {
         completedCharacter = await questStore.SaveCharacterCeraShopPurchaseAsync(
@@ -5177,6 +5196,7 @@ try
                     15)
             ],
             victoryPoints: 421,
+            expectedVictoryPoints: completedCharacter.VictoryPoints,
             warehouseCapacity: 40,
             expectedWarehouseCapacity: 24)
             ?? completedCharacter;

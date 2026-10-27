@@ -25,7 +25,13 @@ public static class EntranceMetadata
     ];
 
     public static byte[] BuildSingleLocalChannel(EntranceChannel channel)
+        => BuildLocalChannels([channel]);
+
+    public static byte[] BuildLocalChannels(IReadOnlyList<EntranceChannel> channels)
     {
+        if (channels.Count == 0) throw new ArgumentException("At least one channel is required.", nameof(channels));
+        foreach (var channel in channels)
+        {
         ArgumentOutOfRangeException.ThrowIfLessThan(channel.Port, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(channel.Port, 65535);
         ArgumentOutOfRangeException.ThrowIfLessThan(channel.ChannelNumber, 1);
@@ -36,6 +42,7 @@ public static class EntranceMetadata
             throw new ArgumentException("The display-name prefix must not contain digits.", nameof(channel));
         }
 
+        }
         using var stream = new MemoryStream();
         Span<byte> integer = stackalloc byte[4];
         WriteInt32(stream, ServerGroups.Length, integer);
@@ -43,7 +50,9 @@ public static class EntranceMetadata
         for (var index = 0; index < ServerGroups.Length; index++)
         {
             WriteFixedAscii(stream, ServerGroups[index], 20);
-            WriteInt32(stream, 1, integer);
+            WriteInt32(stream, channels.Count, integer);
+            foreach (var channel in channels)
+            {
 
             var displayName = $"{channel.Name} {channel.ChannelNumber}";
             WriteFixedAscii(stream, displayName, 20);
@@ -51,6 +60,7 @@ public static class EntranceMetadata
             WriteInt32(stream, channel.CurrentUsers, integer);
             WriteFixedAscii(stream, channel.Host, 16);
             WriteInt32(stream, channel.Port, integer);
+            }
         }
 
         return stream.ToArray();

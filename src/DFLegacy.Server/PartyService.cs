@@ -382,6 +382,20 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
+        // Blacklist lookup above yields to other sessions. Reserve both participants only after
+        // it completes, and retain the lease through the actual invitation send. PvP acquisition
+        // uses the same registry gate, so an entrant cannot miss a concurrently created invite.
+        using var admission = _store.Commerce.TryBeginPartyAdmission(requesterCharacterId, target.CharacterId);
+        if (admission is null
+            || !_channels.TryGetValue(requesterCharacterId, out var currentRequester) || currentRequester != requester
+            || !_channels.TryGetValue(target.CharacterId, out var currentTarget) || currentTarget != target
+            || !_directory.TryGetSnapshot(requesterCharacterId, out _)
+            || !_directory.TryGetSnapshot(target.CharacterId, out _))
+        {
+            await SendRequestFailureAsync(requesterCharacterId, cancellationToken);
+            return;
+        }
+
         var pending = new PartyPendingRequest
         {
             RequesterCharacterId = requesterCharacterId,
@@ -491,6 +505,18 @@ public sealed class PartyService : BackgroundService
             || !_channels.TryGetValue(pending.RequesterCharacterId, out var requester))
         {
             // 一侧已离线：窗口不再有意义，静默收场（请求方由超时路径兜底）。
+            return;
+        }
+
+        // The pending request has already been consumed. Cancellation alone cannot protect this
+        // interval: admission of BOTH players and the complete accepted/roster publication must
+        // exclude the PvP ownership transition atomically, including asynchronous socket writes.
+        using var admission = _store.Commerce.TryBeginPartyAdmission(pending.RequesterCharacterId, accepterCharacterId);
+        if (admission is null
+            || !_directory.TryGetSnapshot(pending.RequesterCharacterId, out _)
+            || !_directory.TryGetSnapshot(accepterCharacterId, out _))
+        {
+            await SendRequestFailureAsync(accepterCharacterId, cancellationToken);
             return;
         }
 
@@ -604,6 +630,24 @@ public sealed class PartyService : BackgroundService
 
         await RemoveMemberFromPartyAsync(characterId, PartyLeaveNotice.Silent, cancellationToken);
         return true;
+    }
+
+    /// <summary>Called after the entrant owns Commerce.Pvp and before publishing PvP membership.
+    /// Removes both invitation directions, then drains the ordinary party departure. The shared
+    /// admission lease prevents an already-consumed response from crossing this transition.</summary>
+    internal async Task PrepareForPvpAsync(Guid characterId, CancellationToken cancellationToken = default)
+    {
+        if (!_store.Commerce.Is(characterId, CommerceActivity.Pvp))
+            throw new InvalidOperationException("PvP must reserve the entrant before cancelling party admission.");
+        lock (_gate)
+        {
+            _pending.TryRemove(characterId, out _);
+            _blockedRequests.TryRemove(characterId, out _);
+            foreach (var (target, request) in _pending)
+                if (request.RequesterCharacterId == characterId)
+                    _pending.TryRemove(new KeyValuePair<Guid, PartyPendingRequest>(target, request));
+        }
+        await TryLeavePartySilentlyAsync(characterId, cancellationToken);
     }
 
     /// <summary>
@@ -756,6 +800,10 @@ public sealed class PartyService : BackgroundService
         {
             return;
         }
+
+        // CMD12 can create a one-person party even without an invitation.
+        using var admission = _store.Commerce.TryBeginPartyAdmission(characterId);
+        if (admission is null) return;
 
         PartyRoster? roster = null;
         lock (_gate)

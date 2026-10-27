@@ -26,6 +26,7 @@ builder.Configuration.AddEnvironmentVariables();
 
 var options = builder.Configuration.GetSection("DFLegacy").Get<ServerOptions>() ?? new ServerOptions();
 options.Processes.Validate();
+options.Pvp.Validate(options);
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var clientTextEncoding = Encoding.GetEncoding(
     936,
@@ -46,6 +47,9 @@ builder.Services.AddSingleton<CharacterSessionRegistry>();
 // 好友在线索引按角色名跨连接共享，必须单例：EntranceService 的所有会话共用它。
 builder.Services.AddSingleton<FriendService>();
 builder.Services.AddSingleton<MentorService>();
+builder.Services.AddSingleton<PvpMapCatalog>();
+builder.Services.AddSingleton<PvpService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<PvpService>());
 builder.Services.AddSingleton<PrivateStoreCatalog>();
 builder.Services.AddSingleton<PrivateStoreService>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<PrivateStoreService>());
@@ -204,6 +208,7 @@ var characterSpCatalog = app.Services.GetRequiredService<CharacterSpCatalog>();
 characterSpCatalog.Initialize();
 var pvpExperienceCatalog = app.Services.GetRequiredService<PvpExperienceCatalog>();
 pvpExperienceCatalog.Initialize();
+if (options.Pvp.Enabled) _ = app.Services.GetRequiredService<PvpMapCatalog>().Entries;
 var normalizedPvpGrades = await gameStore.NormalizePvpGradesAsync(
     pvpExperienceCatalog);
 if (normalizedPvpGrades != 0)
