@@ -14,4 +14,5 @@ compose.yaml text eol=lf
 /knowledge/decisions/assets/2026-10-28-client-diagnostics/** -text whitespace=cr-at-eol
 # 时装能力测试保留从 PVF 提取的 CP936 脚本原始字节。
 /tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/equipment/**/*.equ -text whitespace=cr-at-eol
-/tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/**/*.equ -text whitespace=cr-at-eol
+# 原始 PVF 条目包含尾部空行，按原字节保留，不将其作为新增源码空白错误。
+/tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/**/*.equ -text whitespace=-blank-at-eof,cr-at-eol
