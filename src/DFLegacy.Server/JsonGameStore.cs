@@ -333,6 +333,9 @@ public sealed record CharacterRecord(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<DungeonGoldCredit>? PendingDungeonGoldCredits { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MentorRegistrationState? MentorRegistration { get; init; }
+
     [JsonIgnore]
     public bool IsWeakened => WeaknessRecovery < DungeonWeaknessPolicy.FullStamina;
 }
@@ -1991,7 +1994,9 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var account = FindAccountLocked(userName);
+            ThrowIfRewardQuarantinedLocked();
+            var accounts = CopyMentorAccountsLocked();
+            var account = accounts.FirstOrDefault(a => string.Equals(a.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
             {
                 return (false, null, "Account does not exist.");
@@ -2005,7 +2010,10 @@ public sealed partial class JsonGameStore(
             var character = account.Characters[slot];
             account.Characters.RemoveAt(slot);
             ReindexCharacterSlotsLocked(account);
-            await SaveLockedAsync(cancellationToken);
+            var notices = PrepareRemovedMentorEdgesLocked(accounts);
+            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+                return (false, null, "Character deletion outcome is uncertain; store quarantined.");
+            PublishMentorRemovalNotices(notices);
             logger.LogInformation(
                 "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
                 character.Name,
@@ -2034,7 +2042,9 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var account = _accounts.FirstOrDefault(candidate =>
+            ThrowIfRewardQuarantinedLocked();
+            var accounts = CopyMentorAccountsLocked();
+            var account = accounts.FirstOrDefault(candidate =>
                 candidate.AccountUid == accountUid);
             if (account is null)
             {
@@ -2049,7 +2059,10 @@ public sealed partial class JsonGameStore(
             var character = account.Characters[slot];
             account.Characters.RemoveAt(slot);
             ReindexCharacterSlotsLocked(account);
-            await SaveLockedAsync(cancellationToken);
+            var notices = PrepareRemovedMentorEdgesLocked(accounts);
+            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+                return (false, null, "Character deletion outcome is uncertain; store quarantined.");
+            PublishMentorRemovalNotices(notices);
             logger.LogInformation(
                 "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
                 character.Name,
@@ -2086,7 +2099,9 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var targetAccount = _accounts.FirstOrDefault(account =>
+            ThrowIfRewardQuarantinedLocked();
+            var accounts = CopyMentorAccountsLocked();
+            var targetAccount = accounts.FirstOrDefault(account =>
                 string.Equals(account.UserName, targetUserName, StringComparison.OrdinalIgnoreCase));
             if (targetAccount is null)
             {
@@ -2098,7 +2113,7 @@ public sealed partial class JsonGameStore(
                 .Select(character => character.CharacterNo)
                 .Where(characterNo => characterNo != 0)
                 .ToHashSet();
-            foreach (var account in _accounts)
+            foreach (var account in accounts)
             {
                 account.Characters.Clear();
             }
@@ -2133,7 +2148,10 @@ public sealed partial class JsonGameStore(
                 });
             }
 
-            await SaveLockedAsync(cancellationToken);
+            var notices = PrepareRemovedMentorEdgesLocked(accounts);
+            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+                return (false, 0, "Roster replacement outcome is uncertain; store quarantined.");
+            PublishMentorRemovalNotices(notices);
             logger.LogInformation(
                 "Replaced all emulator characters with {Count} maximum-level transfers on account {Account}.",
                 replacements.Length,

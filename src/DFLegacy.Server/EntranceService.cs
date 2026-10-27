@@ -15,6 +15,7 @@ public sealed class EntranceService(
     AreaUserIdPool areaUserIds,
     TownSessionDirectory townDirectory,
     FriendService friendService,
+    MentorService mentorService,
     ItemTradeService itemTradeService,
     PartyService partyService,
     DungeonInstanceRegistry dungeonInstanceRegistry,
@@ -4887,6 +4888,16 @@ public sealed class EntranceService(
                     async Task HandlePendingPartyMailAsync()
                     {
                         await InstallPendingDungeonGoldAsync();
+                        if (activeCharacter is { } mentorOwner && mentorService.TryTakeRefresh(mentorOwner.Id))
+                        {
+                            var canonical = await store.GetCharacterAsync(accountName, mentorOwner.Id, serverToken);
+                            if (canonical is not null)
+                                activeCharacter = activeCharacter with
+                                {
+                                    MentorCharacterId = canonical.MentorCharacterId,
+                                    MentorExperienceBonusPercent = canonical.MentorExperienceBonusPercent
+                                };
+                        }
                         // Both real packets and idle mailbox wake-ups pass here.
                         // Install minute recovery before a passive entry builds
                         // its foreign mode-1 actor from activeCharacter.
@@ -5185,6 +5196,7 @@ public sealed class EntranceService(
                                     activeCharacter.Id,
                                     runtimeSession.Id,
                                     serverToken);
+                                await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                             }
 
                             characterSessions.Release(activeCharacterLease);
@@ -5345,6 +5357,7 @@ public sealed class EntranceService(
                                         activeCharacter.Id,
                                         runtimeSession.Id,
                                         serverToken);
+                                    await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                 }
 
                                 // 换角色 = 旧角色离开副本实例（照上面 CMD 7 回选人的收尾同序，终审 I2）：
@@ -5714,6 +5727,7 @@ public sealed class EntranceService(
                                             activeCharacter.Id,
                                             runtimeSession.Id,
                                             serverToken);
+                                        await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                     }
 
                                     characterSessions.Release(activeCharacterLease);
@@ -6077,6 +6091,28 @@ public sealed class EntranceService(
                                 runtimeSession.Id,
                                 packet => SendTownPacketAsync(packet, serverToken),
                                 serverToken);
+                            await mentorService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,
+                                runtimeSession.Id, packet => SendTownPacketAsync(packet, serverToken), serverToken);
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId is >= GameProtocolEngine.RequestMentorCommand and <= GameProtocolEngine.MentorListCommand)
+                        {
+                            if (activeCharacter is null) continue;
+                            if (request.ProtocolId == GameProtocolEngine.MentorListCommand && request.Body.Length == 2)
+                                await mentorService.SendListAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
+                            else if (request.ProtocolId == GameProtocolEngine.ReplyMentorCommand
+                                && GameProtocolEngine.TryReadMentorReply(request.Body, out var mentorReply))
+                                await mentorService.ReplyAsync(activeCharacter.Id, runtimeSession.Id, mentorReply, serverToken);
+                            else if (request.ProtocolId is GameProtocolEngine.RequestMentorCommand or GameProtocolEngine.RemoveMentorCommand
+                                && GameProtocolEngine.TryReadMentorName(request.Body, out var mentorName))
+                            {
+                                var peerName = ClientEncoding.GetString(mentorName);
+                                if (request.ProtocolId == GameProtocolEngine.RequestMentorCommand)
+                                    await mentorService.RequestAsync(activeCharacter.Id, runtimeSession.Id, peerName, serverToken);
+                                else await mentorService.RemoveAsync(activeCharacter.Id, runtimeSession.Id, peerName, serverToken);
+                            }
                             continue;
                         }
 
@@ -15686,6 +15722,7 @@ public sealed class EntranceService(
                         activeCharacter.Id,
                         runtimeSession.Id,
                         CancellationToken.None);
+                    await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, CancellationToken.None);
                     // 掉线/被踢：把角色从副本实例里摘掉（最后一个成员离开即销毁，设计稿 §3.4），
                     // 并让其余成员收到"角色离场"信号。必须在下面把 localUserId 还回池子**之前**：
                     // 离场信号里的 uid 就是它还活着时的值（还回去之后可能被别的会话复用）。

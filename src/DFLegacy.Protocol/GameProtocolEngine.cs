@@ -283,7 +283,7 @@ public readonly record struct GameItemTradeDeliveryEntry(
 /// but the body begins with a two-byte command sequence number. Command payload
 /// serialization starts after that sequence number.
 /// </summary>
-public static class GameProtocolEngine
+public static partial class GameProtocolEngine
 {
     private const byte GrowthSkillClassCount = 5;
 
@@ -501,7 +501,8 @@ public static class GameProtocolEngine
     public const byte CardSelectRightStateCommand = 73;
     public const byte SelectCardCommand = 74;
     public const byte EplpCommand = 75;
-    public const byte PrivateStorePollCommand = 82;
+    // Historical public alias; ACT1 command 82 is the mentorship list.
+    public const byte PrivateStorePollCommand = MentorListCommand;
     public const byte UpgradeItemCommand = 83;
     public const byte ResetItemAttributeCommand = 84;
     public const byte MailboxSendCommand = 97;
@@ -626,18 +627,7 @@ public static class GameProtocolEngine
             [1]);
 
     public static GameServerPacket CreatePrivateStorePollReply() =>
-        new(
-            CommandPacketType,
-            PrivateStorePollCommand,
-            [
-                1,             // result
-                0, 0,          // local store state
-                0, 0, 0, 0,   // empty store name
-                0, 0,          // store flags
-                0, 0, 0, 0,   // first store value
-                0, 0, 0, 0,   // second store value
-                0              // additional store count
-            ]);
+        CreateMentorListReply(null, []);
 
     public static GameServerPacket CreateExchangeServerCharacterInfoReply() =>
         new(

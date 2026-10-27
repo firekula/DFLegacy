@@ -45,6 +45,8 @@ builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
 // 好友在线索引按角色名跨连接共享，必须单例：EntranceService 的所有会话共用它。
 builder.Services.AddSingleton<FriendService>();
+builder.Services.AddSingleton<MentorService>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<MentorService>());
 // 通道表/会话表同样跨连接共享；托管后台扫描，单例与托管服务必须是同一个实例。
 builder.Services.AddSingleton<ItemTradeService>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ItemTradeService>());
