@@ -45,13 +45,15 @@ namespace
                     associated=true;
             if(!associated||Read<unsigned>(r+4)!=3||Read<unsigned>(r+8)!=0
                 ||r[16]!=0xFF||Read<unsigned>(r+20)!=1||r[24]==99
-                ||Read<unsigned short>(r+26)!=0||Read<unsigned>(r+36)!=0
-                ||Read<unsigned>(r+40)!=0||r[76]!=0)return false;
+                ||Read<unsigned short>(r+26)!=0||Read<unsigned>(r+32)!=0
+                ||Read<unsigned>(r+36)!=0||r[76]!=0)return false;
             const auto* item=Read<const volatile unsigned char*>(r+80);
             if(!item)return false;
             // Only prove a readable materialized object; its subtype/lifetime
             // layout is not established. Server catalog validation is authoritative.
             const auto readable=*item;(void)readable;
+            // Parser72E6F0 and price consumer729F30 place cash at+40;
+            // +32/+36 are the other price columns and must remain zero.
             constexpr unsigned tuples[][3]={
                 {105008,63006,9900},{105009,63007,6600},{105010,63013,9900},
                 {105011,63014,9900},{105012,63015,9900},{105013,63016,9900},
@@ -59,7 +61,7 @@ namespace
                 {105017,63024,6600},{105018,63028,9900},{105019,63031,9900},
                 {105020,63035,13200},{105028,63134,9900},{105030,63136,13200}};
             for(const auto& t:tuples)
-                if(Read<unsigned>(r)==t[0]&&Read<unsigned>(r+12)==t[1]&&Read<unsigned>(r+32)==t[2])return true;
+                if(Read<unsigned>(r)==t[0]&&Read<unsigned>(r+12)==t[1]&&Read<unsigned>(r+40)==t[2])return true;
             return false;
         }
         __except(EXCEPTION_EXECUTE_HANDLER){return false;}
