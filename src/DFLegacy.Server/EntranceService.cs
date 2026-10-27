@@ -15502,33 +15502,10 @@ public sealed class EntranceService(
                             continue;
                         }
 
-                        if (request.Type == GameProtocolEngine.CommandPacketType
-                            && request.ProtocolId == GameProtocolEngine.TraceErrorCommand)
+                        if (ClientDiagnosticHandler.TryHandle(
+                                request, logger, activeCharacter?.Id, activeCharacter?.Name))
                         {
-                            // 官服 `118 TRACE_ERROR`（`Dispatcher_TraceError::dispatch_sig` @0x08204b0c 只
-                            // `get_byte` ×2 + `cMyTrace`，不回包、不改状态）：客户端把"我这边出错了"报上来。
-                            // 真机两轮（party26 23:29:33 队长、party27 00:09:14 队员）都是**弹
-                            // `error : 3525:100` / 崩溃前的最后一个上行包**，我们此前直接忽略。
-                            // 照官服口径**只记录**：以后每份崩溃现场都自带客户端的错误码。
-                            if (TryReadTraceError(request.Body, out var traceCode, out var traceFlag))
-                            {
-                                logger.LogWarning(
-                                    "Client TRACE_ERROR (CMD 118) from {CharacterId} ({Name}): code={Code}, flag={Flag}, body={Body}.",
-                                    activeCharacter?.Id,
-                                    activeCharacter?.Name,
-                                    traceCode,
-                                    traceFlag,
-                                    Convert.ToHexString(request.Body));
-                            }
-                            else
-                            {
-                                logger.LogWarning(
-                                    "Client TRACE_ERROR (CMD 118) with a short body from {CharacterId} ({Name}): {Body}.",
-                                    activeCharacter?.Id,
-                                    activeCharacter?.Name,
-                                    Convert.ToHexString(request.Body));
-                            }
-
+                            // Both ACT1 CMD125 and historical CMD118 are diagnostic-only, even when malformed.
                             continue;
                         }
 
@@ -16035,8 +16012,8 @@ public sealed class EntranceService(
         or GameProtocolEngine.RegisterToBlacklistCommand or GameProtocolEngine.DeleteToBlacklistCommand or GameProtocolEngine.ExchangeServerCharacterInfoCommand
         or GameProtocolEngine.RequestMentorCommand or GameProtocolEngine.ReplyMentorCommand or GameProtocolEngine.RemoveMentorCommand or GameProtocolEngine.MentorListCommand
         or GameProtocolEngine.CreatureSendMessageCommand or GameProtocolEngine.CreatureScriptMessageCommand
-        or GameProtocolEngine.TraceErrorCommand or GameProtocolEngine.SdcDamageCheckCommand or GameProtocolEngine.AntibotCommand or GameProtocolEngine.DprotoCommand
-        or 125 or 141; // ACT1 legacy diagnostics and clock synchronization.
+        or GameProtocolEngine.LegacyClientReportCommand or GameProtocolEngine.SdcDamageCheckCommand or GameProtocolEngine.AntibotCommand or GameProtocolEngine.DprotoCommand
+        or GameProtocolEngine.Act1TraceErrorCommand or 141; // ACT1 diagnostics and clock synchronization.
 
     internal static async Task<bool> TryHandleTradeResponseAsync(
         ItemTradeService itemTradeService,
@@ -17775,10 +17752,9 @@ public sealed class EntranceService(
             DungeonWeaknessPolicy.FullStamina);
 
     /// <summary>
-    /// `CMD 118 TRACE_ERROR` 的载荷解析（官服 `Dispatcher_TraceError::dispatch_sig` @0x08204b0c 就是
-    /// `PacketBuf::get_byte` ×2 + `cMyTrace`，**不回包、不改状态**）：u16 序列之后是
-    /// `code`（1 字节）+ `flag`（1 字节）。真机抓到的两轮都是 `…08 01 00 00 00`（party26 队长 / party27 队员），
-    /// 也就是客户端在"出错→断线"之前告诉我们的唯一信息。长度不足就返回 false（不抛）。
+    /// 历史 CMD118 报告的兼容解析：u16 序列之后读取 code/flag 两字节；
+    /// party26 队长 / party27 队员样本均为 `…08 01 00 00 00`。不据此推断完整命令语义，
+    /// 也不用于 ACT1 CMD125 的 type/error 解析。长度不足返回 false（不抛）。
     /// </summary>
     internal static bool TryReadTraceError(byte[] body, out byte code, out byte flag)
     {

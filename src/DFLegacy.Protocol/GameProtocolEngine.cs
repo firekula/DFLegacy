@@ -376,13 +376,14 @@ public static partial class GameProtocolEngine
     public const byte CreatureScriptMessageCommand = 132;
 
     /// <summary>
-    /// `CMD 118 TRACE_ERROR`（官服命令表逐字；`Dispatcher_TraceError::dispatch_sig` @0x08204b0c 只做
-    /// `PacketBuf::get_byte` ×2 + `cMyTrace`，**不回包、不改任何状态**）：客户端把"我这边出错了"
-    /// 上报给服务端。真机证据：客户端弹 `error : 3525:100` 或崩溃之前**最后一个上行包**就是它
-    /// （party26 `23:29:33` 队长端 body=`3B000801000000`、party27 `00:09:14` 队员端 body=`1F000801000000`，
-    /// 两轮 code/flag 逐字段相同），而我们此前完全忽略 ⇒ 现场只剩"客户端断线"这一个信号。
+    /// ACT1 CMD125：客户端错误诊断。004AF42B/004AF4A6 发送 type2/error；对应官服
+    /// Dispatcher_TraceError::dispatch_sig@08204B0C 的诊断语义，不回包、不改业务状态。
     /// </summary>
-    public const byte TraceErrorCommand = 118;
+    public const byte Act1TraceErrorCommand = 125;
+    /// <summary>ACT1 CMD118 的历史客户端报告；保留 code/flag 样本，完整语义尚未证明。</summary>
+    public const byte LegacyClientReportCommand = 118;
+    /// <summary>历史公开名称兼容；仍为118，不代表ACT1已证实的TRACE_ERROR命令。</summary>
+    public const byte TraceErrorCommand = LegacyClientReportCommand;
     public const byte DeleteItemCommand = 18;
     public const byte MoveItemSpaceCommand = 19;
     public const byte SortItemCommand = 20;

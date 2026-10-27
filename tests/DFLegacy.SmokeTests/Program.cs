@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--client-diagnostics"))
+{
+    ClientDiagnosticsSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Client diagnostics smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--cera-gift"))
 {
     await CeraGiftSmokeTests.RunAsync(Check);
@@ -164,6 +172,7 @@ static ItemCatalog CreateItems(ScriptFileSystem scripts) =>
     new(scripts, NullLogger<ItemCatalog>.Instance);
 
 AccountClientSmokeTests.Run(Check);
+ClientDiagnosticsSmokeTests.Run(Check);
 await AdminAuthSmokeTests.RunAsync(Check);
 await TownSyncSmokeTests.RunAsync(Check);
 await FriendSmokeTests.RunAsync(Check);
@@ -454,27 +463,27 @@ Check(EntranceService.TryReadSendMessage(
     && Encoding.GetEncoding(936).GetString(
         capturedCreatureScriptType02.MessageBytes) == "啧啧",
     "captured 2008 CMD 132 also preserves the Creature type-2 script channel");
-// CMD 118 TRACE_ERROR：客户端在弹 `error : 3525:100` / 崩溃之前发出的**最后一个上行包**
+// CMD118 历史诊断报告：客户端在弹 `error : 3525:100` / 崩溃之前发出的**最后一个上行包**
 // （真机两轮逐字段相同：party26 23:29:33 队长端 body=`3B000801000000`、party27 00:09:14 队员端
-// body=`1F000801000000`）。官服 `Dispatcher_TraceError::dispatch_sig` @0x08204b0c 只 `get_byte` ×2 +
-// `cMyTrace`（不回包、不改状态），所以这里只需要把 code/flag 解析对 + 长度不足不抛。
+// body=`1F000801000000`）。这些样本只保留既有 code/flag 兼容读取，完整语义未证明；
+// ACT1 已证实的 TRACE_ERROR 路径是 CMD125，不能借官服118命令号为此处推断语义。
 Check(EntranceService.TryReadTraceError(
         Convert.FromHexString("3B000801000000"),
         out var traceCodeCaptain,
         out var traceFlagCaptain)
     && traceCodeCaptain == 8
     && traceFlagCaptain == 1,
-    "the captured TRACE_ERROR from the captain (party26) parses as code 8 / flag 1");
+    "the captured historical CMD118 diagnostic from the captain (party26) parses as code 8 / flag 1");
 Check(EntranceService.TryReadTraceError(
         Convert.FromHexString("1F000801000000"),
         out var traceCodeMember,
         out var traceFlagMember)
     && traceCodeMember == 8
     && traceFlagMember == 1,
-    "the captured TRACE_ERROR from the member (party27) parses to the same code / flag");
+    "the captured historical CMD118 diagnostic from the member (party27) parses to the same code / flag");
 Check(!EntranceService.TryReadTraceError([0x1F, 0x00], out _, out _)
     && !EntranceService.TryReadTraceError([], out _, out _),
-    "a TRACE_ERROR body without the two fields is rejected instead of throwing");
+    "a historical CMD118 diagnostic body without the two fields is rejected instead of throwing");
 
 var notificationText = Encoding.GetEncoding(936).GetBytes("系统通知");var messageNotification = GameProtocolEngine.CreateMessageNotification(
     messageType: GameMessageType.Type00DualRouteBrown,
