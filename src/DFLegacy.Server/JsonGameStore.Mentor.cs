@@ -87,6 +87,7 @@ public sealed partial class JsonGameStore
             return false;
         }
         _accounts = accounts;
+        ReconcileMentorGoldEdgesLocked();
         return true;
     }
 

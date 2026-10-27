@@ -5,7 +5,8 @@ using DFLegacy.Protocol;
 namespace DFLegacy.Server;
 
 /// <summary>ACT1 mentorship, canonical edge growth, and attachment-owned online reward caches.</summary>
-public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogger<MentorService> logger) : BackgroundService
+public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogger<MentorService> logger,
+    Func<int>? mentorGoldRand31 = null) : BackgroundService
 {
     private sealed record Channel(string Account, Guid CharacterId, string Name, Guid SessionId,
         Func<GameServerPacket, ValueTask> Send)
@@ -15,6 +16,9 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
         internal bool Retired;
         internal readonly Guid Incarnation = Guid.NewGuid();
         internal long LastGrowthTimestamp;
+        internal long LastGoldTimestamp;
+        internal int GoldDelay;
+        internal Action? GoldReady;
         internal Guid? RewardMaster;
         internal byte RewardLevel;
     }
@@ -23,6 +27,7 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
     private readonly Dictionary<Guid, Channel> _channels = [];
     private readonly Dictionary<Guid, Pending> _pending = [];
     private readonly ConcurrentDictionary<Guid, byte> _refresh = new();
+    private readonly ConcurrentDictionary<Guid, Guid> _goldRefresh = new();
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _lifecycles = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
     private static readonly Encoding TextEncoding = CreateEncoding();
@@ -36,6 +41,19 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
     private Channel? Current(Guid id, Guid session) =>
         _channels.TryGetValue(id, out var channel) && channel.SessionId == session ? channel : null;
     public bool TryTakeRefresh(Guid characterId) => _refresh.TryRemove(characterId, out _);
+    public bool HasPendingGold(Guid id, Guid incarnation) => _goldRefresh.GetValueOrDefault(id) == incarnation && incarnation != Guid.Empty;
+    public bool TryTakeGoldNotice(Guid id, Guid incarnation) =>
+        ((ICollection<KeyValuePair<Guid, Guid>>)_goldRefresh).Remove(new(id, incarnation));
+    internal void DeferGoldNotice(Guid id, Guid incarnation) => _goldRefresh.TryAdd(id, incarnation);
+    private int GoldDelay() => MentorGoldTimerPolicy.DelaySeconds(MentorGoldTimerPolicy.NextJitter(mentorGoldRand31
+        ?? (() => (GameRandomSource.Shared.Next(65536) << 15) | (GameRandomSource.Shared.Next(65536) & 0x7FFF))));
+    private void NotifyGold(MentorGoldFlushResult result)
+    {
+        if (!result.NewlyCommitted || result.Receipt is not { CreditedGold: > 0 }
+            || !_channels.TryGetValue(result.MasterId, out var master) || master.Incarnation != result.MasterIncarnation) return;
+        _goldRefresh[master.CharacterId] = master.Incarnation;
+        master.GoldReady?.Invoke();
+    }
 
     private async Task RunAsync(Func<List<Delivery>, Task> action, CancellationToken ct)
     {
@@ -112,30 +130,41 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
             _pending.Remove(pair.Key);
     }
 
-    public Task AttachChannelAsync(string account, Guid characterId, ushort areaUserId, Guid sessionId,
-        Func<GameServerPacket, ValueTask> send, CancellationToken ct = default) => LifecycleAsync(characterId, async () =>
+    public async Task<Guid?> AttachChannelAsync(string account, Guid characterId, ushort areaUserId, Guid sessionId,
+        Func<GameServerPacket, ValueTask> send, CancellationToken ct = default, Action? goldReady = null)
+    {
+        Guid? attached = null;
+        await LifecycleAsync(characterId, async () =>
     {
         var character = await store.GetCharacterAsync(account, characterId, ct);
         if (character is null) return;
         Channel? retired = null;
-        await RunAsync(_ =>
+        await RunAsync(async unused =>
         {
             if (_channels.Remove(characterId, out retired))
-            { retired.Retired = true; retired.Outbox.Clear(); ClearDependentCaches(characterId); }
+            {
+                retired.Retired = true; retired.Outbox.Clear(); ClearDependentCaches(characterId);
+                await store.SetMentorGoldEndpointAsync(characterId, retired.Incarnation, false, ct);
+                _goldRefresh.TryRemove(characterId, out _);
+            }
             CancelRequests(characterId);
-            return Task.CompletedTask;
         }, ct);
         if (retired is not null) await DrainAsync(retired);
         await RunAsync(async deliveries =>
         {
             var channel = new Channel(account, characterId, character.Name, sessionId, send)
-            { LastGrowthTimestamp = clock.GetTimestamp() };
+            { LastGrowthTimestamp = clock.GetTimestamp(), LastGoldTimestamp = clock.GetTimestamp(),
+                GoldDelay = GoldDelay(), GoldReady = goldReady };
             _channels[characterId] = channel;
+            await store.SetMentorGoldEndpointAsync(characterId, channel.Incarnation, true, ct);
+            attached = channel.Incarnation;
             await ReconcileCachesAsync(ct);
             await AddListAsync(deliveries, channel, ct);
             await AddPresenceAsync(deliveries, characterId, online: true, ct);
         }, ct);
-    }, ct);
+        }, ct);
+        return attached;
+    }
 
     private async Task AddPresenceAsync(List<Delivery> deliveries, Guid id, bool online, CancellationToken ct)
     {
@@ -148,19 +177,29 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
                     online ? (byte)1 : (byte)255, Level(roster.Owner), Name(roster.Owner.Name))));
     }
 
-    public Task DetachChannelAsync(Guid id, Guid sessionId, CancellationToken ct = default) => LifecycleAsync(id, async () =>
+    public Task DetachChannelAsync(Guid id, Guid sessionId, CancellationToken ct = default) =>
+        DetachChannelCoreAsync(id, sessionId, null, () => MentorGoldRetirementReason.NormalLeave, ct);
+
+    public Task DetachChannelAsync(Guid id, Guid sessionId, Guid incarnation,
+        Func<MentorGoldRetirementReason> retirementReason, CancellationToken ct = default) =>
+        DetachChannelCoreAsync(id, sessionId, incarnation, retirementReason, ct);
+
+    private Task DetachChannelCoreAsync(Guid id, Guid sessionId, Guid? incarnation,
+        Func<MentorGoldRetirementReason> reason, CancellationToken ct) => LifecycleAsync(id, async () =>
     {
         Channel? retired = null;
         await RunAsync(async deliveries =>
         {
             retired = Current(id, sessionId);
-            if (retired is null) return;
+            if (retired is null || incarnation is { } token && retired.Incarnation != token) return;
+            NotifyGold(await store.RetireMentorGoldEndpointAsync(id, retired.Incarnation, reason, ct));
             retired.Retired = true; retired.Outbox.Clear();
             _channels.Remove(id);
             ClearDependentCaches(id);
             await ReconcileCachesAsync(ct);
             CancelRequests(id);
             _refresh.TryRemove(id, out _);
+            _goldRefresh.TryRemove(id, out _);
             await AddPresenceAsync(deliveries, id, online: false, ct);
         }, ct);
         if (retired is not null) await DrainAsync(retired);
@@ -243,6 +282,7 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
     {
         await ReconcileCachesAsync(ct);
         await GrowDueEndpointsAsync(deliveries, ct);
+        await FlushDueGoldAsync(ct);
         while (store.TryTakeMentorRemovalNotice(out var notice))
         {
             _refresh[notice!.CharacterId] = 1;
@@ -316,6 +356,18 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
                 _refresh[id] = 1;
                 if (_channels.TryGetValue(id, out var recipient)) await AddListAsync(deliveries, recipient, ct);
             }
+        }
+    }
+
+    private async Task FlushDueGoldAsync(CancellationToken ct)
+    {
+        var now = clock.GetTimestamp();
+        foreach (var channel in _channels.Values)
+        {
+            if (clock.GetElapsedTime(channel.LastGoldTimestamp, now) < TimeSpan.FromSeconds(channel.GoldDelay)) continue;
+            channel.LastGoldTimestamp = now;
+            channel.GoldDelay = GoldDelay();
+            NotifyGold(await store.FlushMentorGoldAsync(channel.CharacterId, channel.Incarnation, Guid.NewGuid(), ct));
         }
     }
 

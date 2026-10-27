@@ -18,7 +18,8 @@ internal static class DungeonGoldSharing
 public sealed record DungeonGoldCredit(Guid PickupId, uint Amount);
 
 internal sealed record DungeonGoldLedgerEntry(
-    Guid PickupId, Guid[] CharacterIds, byte[] PartySlots, uint[] RequestedAmounts, uint[] GrantedAmounts);
+    Guid PickupId, Guid[] CharacterIds, byte[] PartySlots, uint[] RequestedAmounts, uint[] GrantedAmounts,
+    byte RoutingSource = 1, Guid[]? MentorGoldIncarnations = null);
 
 internal sealed record DungeonGoldCommitResult(
     DungeonRewardLedgerStatus Status, uint[] Amounts, string? Reason = null);

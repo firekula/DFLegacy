@@ -92,7 +92,7 @@ public sealed partial class JsonGameStore
             var gross64 = (long)listing.UnitPrice * quantity;
             if (gross64 is <= 0 or > int.MaxValue) return Reject(1);
             var gross = (uint)gross64; var fee = (uint)(gross64 * 4 / 100);
-            var pending = PendingDungeonGold(seller) + PendingStoreGold(seller);
+            var pending = PendingDungeonGold(seller) + PendingStoreGold(seller) + PendingMentorGold(seller);
             if (!StoreCatalog.TryGetGoldLimit(seller.Level, out var sellerLimit) || seller.Gold + pending + gross64 > sellerLimit) return Reject(22);
             if (buyer.Gold < gross64) return Reject(10);
             var moved = def.IsStackable ? listing.Item with { CountOrValue = quantity, InstanceId = quantity < listing.Quantity ? Guid.NewGuid() : listing.Item.InstanceId } : listing.Item;

@@ -233,6 +233,19 @@ public sealed class EntranceService(
             bool pvpReturnPending = false;
             GameCharacterCombatStats? lastProjectedCombatStats = null;
             CharacterSessionLease? activeCharacterLease = null;
+            Guid? mentorGoldIncarnation = null;
+            OwnerCurrencyDeliveryQueue? ownerCurrencyDeliveries = null;
+            async Task RetireMentorAsync(CancellationToken ct)
+            {
+                ownerCurrencyDeliveries?.Retire();
+                ownerCurrencyDeliveries = null;
+                var retiringLease = activeCharacterLease;
+                var retiringToken = mentorGoldIncarnation;
+                if (activeCharacter is { } owner && retiringToken is { } token)
+                    await mentorService.DetachChannelAsync(owner.Id, runtimeSession.Id, token,
+                        MentorGoldSessionRefresh.CaptureRetirement(retiringLease), ct);
+                if (mentorGoldIncarnation == retiringToken) mentorGoldIncarnation = null;
+            }
             var mainInventory = new Dictionary<ushort, CharacterItemRecord>();
             var avatarInventory = new Dictionary<ushort, CharacterItemRecord>();
             var equippedInventory = new Dictionary<ushort, CharacterItemRecord>();
@@ -1740,15 +1753,20 @@ public sealed class EntranceService(
                     }
 
                     var goldBeforeGrant = currentGold;
-                    var settledGold = (int)Math.Min(
-                        int.MaxValue,
-                        (long)currentGold + roomSettlement.ClearReward.FreeGoldAmount);
-                    var freeGrant = await SaveClearRewardEquipmentAsync(
-                        settledGold,
-                        [
-                            roomSettlement.ClearReward.FreeItemId,
-                            roomSettlement.ClearReward.PremiumItemId
-                        ]);
+                    var committed = await PartyCardOwnColumnCommitter.CommitAsync(store, accountName, activeCharacter!,
+                        0, PartyCardType.Free, selectedCardIndex, 1, roomSettlement.SettlementId,
+                        roomSettlement.ClearReward, currentGold, mainInventory, equippedInventory.Values.ToArray(),
+                        warehouseCapacity, GetInventoryWeightLimit(activeCharacter!), itemCatalog, serverToken,
+                        dungeonInstance?.Members.FirstOrDefault(m => m.CharacterId == activeCharacter!.Id)?.MentorGoldIncarnation ?? Guid.Empty);
+                    var freeGrant = (Saved: committed.Outcome.Status == DungeonRewardLedgerStatus.Committed,
+                        Granted: committed.Plan.Granted.ToArray());
+                    if (freeGrant.Saved && committed.InstalledCharacter is { } saved)
+                    {
+                        var warehouseChanged = AdoptSavedWarehouseUpgradeState(saved);
+                        currentGold = saved.Gold;
+                        if (committed.Plan.Mails.Count > 0) characterSessions.NotifyMailReceived(saved.CharacterNo);
+                        if (warehouseChanged) await SendWarehouseStateAsync();
+                    }
                     if (!freeGrant.Saved)
                     {
                         return (false, false, null);
@@ -1859,14 +1877,22 @@ public sealed class EntranceService(
                 // ③把实例那一份整表 CMD 74 发给自己 + 广播给其他成员（同一个包对象 → 字节一致、自己只收一份）。
                 // 归属、内容、发布门、代次全部在 DungeonInstance 里；单人（IsParty == false）一律不走这里（R6）。
                 SessionPartyCardRewardAgent? sessionPartyCardAgent = null;
+                Guid sessionPartyCardIncarnation = Guid.Empty;
+                DungeonInstance? sessionPartyCardInstance = null;
                 var partyCardGrantChangedInventory = false;
 
                 IPartyCardRewardAgent EnsurePartyCardRewardAgent(DungeonInstance instance)
                 {
-                    sessionPartyCardAgent ??= new SessionPartyCardRewardAgent(
-                        activeCharacter!.Id,
-                        RollOwnPartyCardColumn,
-                        CommitOwnPartyCardColumnAsync);
+                    var owner = activeCharacter!.Id;
+                    var incarnation = instance.Members.FirstOrDefault(m => m.CharacterId == owner)?.MentorGoldIncarnation ?? Guid.Empty;
+                    if (sessionPartyCardAgent is null || sessionPartyCardAgent.CharacterId != owner
+                        || sessionPartyCardIncarnation != incarnation || sessionPartyCardInstance != instance)
+                    {
+                        sessionPartyCardIncarnation = incarnation; sessionPartyCardInstance = instance;
+                        sessionPartyCardAgent = new SessionPartyCardRewardAgent(owner, RollOwnPartyCardColumn,
+                            (settlement, type, column, generation, content, ct) =>
+                                CommitOwnPartyCardColumnAsync(settlement, type, column, generation, content, ct, owner, incarnation));
+                    }
                     instance.RegisterPartyCardRewardAgent(activeCharacter!.Id, sessionPartyCardAgent);
                     return sessionPartyCardAgent;
                 }
@@ -1905,13 +1931,15 @@ public sealed class EntranceService(
                     byte column,
                     long generation,
                     PartyCardContent content,
-                    CancellationToken cancellationToken)
+                    CancellationToken cancellationToken, Guid owner, Guid sourceIncarnation)
                 {
                     await dungeonCurrencyGate.WaitAsync(cancellationToken);
                     try
                     {
+                        if (activeCharacter?.Id != owner || mentorGoldIncarnation != sourceIncarnation)
+                            return new(DungeonRewardLedgerStatus.Rejected, "retired-card-attachment");
                         return await CommitOwnPartyCardColumnCoreAsync(
-                            settlementId, cardType, column, generation, content, cancellationToken);
+                            settlementId, cardType, column, generation, content, cancellationToken, sourceIncarnation);
                     }
                     finally { dungeonCurrencyGate.Release(); }
                 }
@@ -1922,7 +1950,7 @@ public sealed class EntranceService(
                     byte column,
                     long generation,
                     PartyCardContent content,
-                    CancellationToken cancellationToken)
+                    CancellationToken cancellationToken, Guid sourceIncarnation)
                 {
                     if (activeCharacter is not { } cardOwner
                         || roomSettlement.ClearReward is not { } ownRoll)
@@ -1952,7 +1980,8 @@ public sealed class EntranceService(
                         warehouseCapacity,
                         GetInventoryWeightLimit(cardOwner),
                         itemCatalog,
-                        cancellationToken);
+                        cancellationToken,
+                        sourceIncarnation);
                     var grantPlan = commit.Plan;
                     if (commit.Outcome.Status != DungeonRewardLedgerStatus.Committed)
                     {
@@ -3209,6 +3238,31 @@ public sealed class EntranceService(
                         await InstallDungeonGoldCreditAsync(pickupId);
                 }
 
+                async Task InstallMentorGoldAsync()
+                {
+                    if (activeCharacter is not { } owner || mentorGoldIncarnation is not { } token) return;
+                    await MentorGoldSessionRefresh.ApplyNoticeAsync(mentorService, store, owner.Id, token, dungeonCurrencyGate,
+                        InstallPendingTradeAsync,
+                        saved =>
+                        {
+                            currentGold = saved.Gold;
+                            activeCharacter = activeCharacter with { Gold = saved.Gold, MentorGoldAwards = saved.MentorGoldAwards };
+                        }, SendPickupReplyToRequesterAsync,
+                        () => CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values), CancellationToken.None);
+                }
+
+                async Task DeliverExternalCurrencyAsync()
+                {
+                    if (activeCharacter is not { } owner || ownerCurrencyDeliveries is not { } deliveries) return;
+                    await deliveries.DrainAsync(store, accountName, owner.Id, dungeonCurrencyGate, InstallPendingTradeAsync,
+                        saved =>
+                        {
+                            currentGold = saved.Gold;
+                            activeCharacter = activeCharacter with { Gold = saved.Gold,
+                                PendingPrivateStoreGoldCredits = saved.PendingPrivateStoreGoldCredits };
+                        }, SendPickupReplyToRequesterAsync, CancellationToken.None);
+                }
+
                 // 「把一件地面物收进**本会话角色**的背包」的 5 条分支（金币 / 仓库升级券 / 宠物 / 时装 /
                 // 普通背包）收敛成的**唯一入口**。两条调用路径共用它：
                 //   ① `CMD 46` 直取：归属就是请求者本人，`replyToRequester` 写本会话 stream；
@@ -3246,7 +3300,7 @@ public sealed class EntranceService(
 
                     if (groundItem.IsGold)
                     {
-                        if (dungeonInstance is { IsParty: true } goldInstance)
+                        if (dungeonInstance is { } goldInstance)
                         {
                             if (!goldInstance.TryClaimGoldPickup(character.Id, groundItem, pickupId, out var recipients))
                             {
@@ -3256,7 +3310,7 @@ public sealed class EntranceService(
                             }
                             var result = await store.CommitDungeonGoldDistributionAsync(
                                 pickupId, recipients, PartySlotIndexOfThisSession(), groundItem.CountOrValue,
-                                CancellationToken.None);
+                                CancellationToken.None, routingSource: groundItem.RoutingSource);
                             if (result.Status != DungeonRewardLedgerStatus.Committed)
                             {
                                 if (result.Status == DungeonRewardLedgerStatus.Rejected)
@@ -3268,7 +3322,8 @@ public sealed class EntranceService(
                             }
                             await dungeonPartyService.BroadcastToMembersAsync(goldInstance,
                                 GameProtocolEngine.CreateGoldItemPickup(groundId, pickerUserId, result.Amounts));
-                            foreach (var recipient in recipients)
+                            if (!goldInstance.IsParty) await InstallDungeonGoldCreditAsync(pickupId);
+                            else foreach (var recipient in recipients)
                                 if (result.Amounts[recipient.PartySlot] != 0)
                                     dungeonInstanceRegistry.PostGoldCreditUpdate(recipient.CharacterId, pickupId);
                             logger.LogInformation("Party gold pickup {PickupId} ground {GroundId}, picker {Picker}, shares=[{Amounts}].",
@@ -3276,68 +3331,7 @@ public sealed class EntranceService(
                             return GroundItemGrantOutcome.Granted;
                         }
 
-                        int updatedGold;
-                        try
-                        {
-                            updatedGold = checked(
-                                currentGold + checked((int)groundItem.CountOrValue));
-                        }
-                        catch (OverflowException)
-                        {
-                            logger.LogWarning(
-                                "Gold pickup {GroundId} would overflow the character balance.",
-                                groundId);
-                            return GroundItemGrantOutcome.Rejected;
-                        }
-
-                        // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                        var claimedGroundItem = TryClaimGroundItemForPickup(groundItem, pickupId);
-                        if (claimedGroundItem is null)
-                        {
-                            logger.LogWarning(
-                                "Lost the pickup race for ground item {GroundId} (user {UserId}); another member claimed it first.",
-                                groundId,
-                                localUserId);
-                            return GroundItemGrantOutcome.NotAvailable;
-                        }
-
-                        var saved = await PersistClaimedPickupAsync(
-                            claimedGroundItem,
-                            groundId,
-                            () => store.SaveCharacterInventoryAsync(
-                                accountName,
-                                character.Id,
-                                updatedGold,
-                                mainInventory.Values,
-                                equippedInventory.Values,
-                                serverToken));
-                        if (saved is null)
-                        {
-                            logger.LogWarning(
-                                "Gold pickup {GroundId} was not persisted; the ground item was retained.",
-                                groundId);
-                            return GroundItemGrantOutcome.PersistFailed;
-                        }
-
-                        activeCharacter = saved;
-                        currentGold = updatedGold;
-                        var pickup = GameProtocolEngine.CreateGoldItemPickup(
-                            groundId,
-                            localUserId,
-                            groundItem.CountOrValue,
-                            pickerPartyIndex: PartySlotIndexOfThisSession());
-                        await pickup.WriteAsync(stream, serverToken);
-                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                        LogPacket("TX", runtimeSession, pickup);
-
-                        var refresh = CreateMainInventoryPacket(
-                            currentGold,
-                            currentVictoryPoints,
-                            mainInventory.Values);
-                        await refresh.WriteAsync(stream, serverToken);
-                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                        LogPacket("TX", runtimeSession, refresh);
-                        return GroundItemGrantOutcome.Granted;
+                        return GroundItemGrantOutcome.NotAvailable;
                     }
 
                     if (CharacterWarehouseProgression.TryGetItemTargetCapacity(
@@ -3874,7 +3868,7 @@ public sealed class EntranceService(
                                 localUserId,
                                 checked((byte)slotIndex),
                                 activeCharacter.Name,
-                                CreateDungeonPacketDelivery(), accountName),
+                                CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty),
                             out var room))
                     {
                         logger.LogWarning(
@@ -4697,7 +4691,7 @@ public sealed class EntranceService(
                             isChannelPort,
                             activeCharacter is not null,
                             dungeonInstance is { IsParty: true },
-                            (activeCharacter is not null && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id) || privateStoreService.HasPendingGold(activeCharacter.Id) || pvpService.IsBusy(activeCharacter.Id)))
+                            (activeCharacter is not null && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id) || privateStoreService.HasPendingGold(activeCharacter.Id) || mentorService.HasPendingGold(activeCharacter.Id, mentorGoldIncarnation ?? Guid.Empty) || ownerCurrencyDeliveries?.HasPending == true || pvpService.IsBusy(activeCharacter.Id)))
                                 || weaknessRecovery.CanProcessPending(currentDungeonId != 0)
                                 || bossDeathSweep.HasPending,
                             activeCharacter is null ? 0 : partyService.GetPartySlots(activeCharacter.Id)?.Length ?? 0);
@@ -5032,6 +5026,8 @@ public sealed class EntranceService(
                     {
                         await InstallPrivateStoreGoldAsync();
                         await InstallPendingDungeonGoldAsync();
+                        await InstallMentorGoldAsync();
+                        await DeliverExternalCurrencyAsync();
                         if (activeCharacter is { } mentorOwner && mentorService.TryTakeRefresh(mentorOwner.Id))
                         {
                             var canonical = await store.GetCharacterAsync(accountName, mentorOwner.Id, serverToken);
@@ -5358,7 +5354,7 @@ public sealed class EntranceService(
                                     serverToken);
                                 if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, serverToken);
                                 pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
-                                await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
+                                await RetireMentorAsync(serverToken);
                                 await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                             }
 
@@ -5522,7 +5518,7 @@ public sealed class EntranceService(
                                         serverToken);
                                     if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, serverToken);
                                     pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
-                                    await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
+                                    await RetireMentorAsync(serverToken);
                                     await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                 }
 
@@ -5658,6 +5654,10 @@ public sealed class EntranceService(
                             };
                             character = await store.ConsumePrivateStoreGoldCreditsAsync(character.Id, CancellationToken.None) ?? character;
                             character = await store.ConsumeDungeonGoldCreditsAsync(character.Id, CancellationToken.None) ?? character;
+                            var mentorLogin = await store.ConsumeMentorGoldCreditsAsync(character.Id, ct: CancellationToken.None);
+                            if (mentorLogin.Status == DungeonRewardLedgerStatus.Unknown)
+                                throw new IOException("Cannot safely select a character with uncertain mentor credit.");
+                            character = mentorLogin.Character ?? character;
                             activeCharacter = character;
                             lastProjectedCombatStats = null;
                             staminaStateInitialized = false;
@@ -5897,7 +5897,7 @@ public sealed class EntranceService(
                                             serverToken);
                                         if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, serverToken);
                                         pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
-                                        await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
+                                        await RetireMentorAsync(serverToken);
                                         await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                     }
 
@@ -6243,15 +6243,17 @@ public sealed class EntranceService(
                                 packet => SendTownPacketAsync(packet, serverToken),
                                 serverToken);
 
-                            // 交易通道与好友通道同生命周期：同一个 SendTownPacketAsync 入口
-                            // （SerializedWriteStream 保证跨线程写入串行，不会交错）。
+                            // External absolute Gold notices are sampled again on this owner's safe point.
+                            // Capture this attachment's queue; retired callbacks cannot enqueue into a new actor.
+                            var currencyDeliveries = new OwnerCurrencyDeliveryQueue(partyMembershipWake.Pulse);
+                            ownerCurrencyDeliveries = currencyDeliveries;
                             await itemTradeService.AttachChannelAsync(
                                 accountName,
                                 activeCharacter.Name,
                                 activeCharacter.Id,
                                 localUserId,
                                 runtimeSession.Id,
-                                packet => SendTownPacketAsync(packet, serverToken),
+                                packet => currencyDeliveries.SendTradeAsync(packet, p => SendTownPacketAsync(p, serverToken)),
                                 serverToken);
 
                             // 组队通道与好友/交易通道同生命周期：同一个 SendTownPacketAsync 入口。
@@ -6263,10 +6265,10 @@ public sealed class EntranceService(
                                 runtimeSession.Id,
                                 packet => SendTownPacketAsync(packet, serverToken),
                                 serverToken);
-                            await mentorService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,
-                                runtimeSession.Id, packet => SendTownPacketAsync(packet, serverToken), serverToken);
+                            mentorGoldIncarnation = await mentorService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,
+                                runtimeSession.Id, packet => SendTownPacketAsync(packet, serverToken), serverToken, partyMembershipWake.Pulse);
                             await privateStoreService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,
-                                runtimeSession.Id, packet => SendTownPacketAsync(packet, serverToken), serverToken,
+                                runtimeSession.Id, packet => currencyDeliveries.SendPrivateStoreAsync(packet, p => SendTownPacketAsync(p, serverToken)), serverToken,
                                 KickConnection, partyMembershipWake.Pulse);
                             if (isPvpChannel)
                             {
@@ -13931,7 +13933,7 @@ public sealed class EntranceService(
                                     localUserId,
                                     PartySlot: 0,
                                     activeCharacter.Name,
-                                    CreateDungeonPacketDelivery(), accountName));
+                                    CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty));
                                 dungeonInstance.EnterDetachedRoom(new DungeonRoomDefinition(
                                     GameProtocolEngine.TutorialMapId,
                                     DungeonMapType.Boss,
@@ -14102,7 +14104,7 @@ public sealed class EntranceService(
                                             localUserId,
                                             checked((byte)leaderSlotIndex),
                                             activeCharacter.Name,
-                                            CreateDungeonPacketDelivery(), accountName),
+                                            CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty),
                                         out var liveRoom))
                                 {
                                     logger.LogWarning(
@@ -14174,7 +14176,7 @@ public sealed class EntranceService(
                                     localUserId,
                                     checked((byte)leaderSlotIndex),
                                     activeCharacter.Name,
-                                    CreateDungeonPacketDelivery(), accountName)))
+                                    CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty)))
                             {
                                 logger.LogWarning(
                                     "Party dungeon entry aborted for {Name}: instance {PartyId} has already started town return.",
@@ -16070,7 +16072,7 @@ public sealed class EntranceService(
                         CancellationToken.None);
                     if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, CancellationToken.None);
                     pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
-                    await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, CancellationToken.None);
+                    await RetireMentorAsync(CancellationToken.None);
                     // 掉线/被踢：把角色从副本实例里摘掉（最后一个成员离开即销毁，设计稿 §3.4），
                     // 并让其余成员收到"角色离场"信号。必须在下面把 localUserId 还回池子**之前**：
                     // 离场信号里的 uid 就是它还活着时的值（还回去之后可能被别的会话复用）。

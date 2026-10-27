@@ -12,7 +12,12 @@ compose.yaml text eol=lf
 # 此原始 MSBuild 诊断包含行尾空格，保留原件而不改写构建证据。
 /knowledge/decisions/assets/2026-10-27-cera-gift/task-1-release-build.log whitespace=-blank-at-eol,cr-at-eol
 /knowledge/decisions/assets/2026-10-28-client-diagnostics/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-mentor-growth/** -text whitespace=cr-at-eol
 # 时装能力测试保留从 PVF 提取的 CP936 脚本原始字节。
 /tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/equipment/**/*.equ -text whitespace=cr-at-eol
 # 原始 PVF 条目包含尾部空行，按原字节保留，不将其作为新增源码空白错误。
 /tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/**/*.equ -text whitespace=-blank-at-eof,cr-at-eol
+# 师徒金币规则直接验证 PVF 原始表，不转换编码或换行。
+/tests/DFLegacy.SmokeTests/Fixtures/MentorGold/** -text whitespace=-blank-at-eof,cr-at-eol
+# 原始人数表的韩文注释带行尾空格，保留原始提取字节。
+/tests/DFLegacy.SmokeTests/Fixtures/MentorGold/member_cnt_config.tbl whitespace=-blank-at-eof,-blank-at-eol,cr-at-eol

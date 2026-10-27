@@ -52,6 +52,18 @@ public static partial class GameProtocolEngine
 
     public static GameServerPacket CreateMentorReset() => new(NotificationPacketType, 75, []);
 
+    public static GameServerPacket CreateMentorGoldAward(uint actualGold, byte[] sourceName)
+    {
+        ArgumentNullException.ThrowIfNull(sourceName);
+        if (sourceName.Length is < 1 or >= 50) throw new ArgumentOutOfRangeException(nameof(sourceName));
+        return MentorPacket(NotificationPacketType, 76, writer =>
+        {
+            writer.Write(actualGold);
+            writer.Write((short)0);
+            WriteMentorName(writer, sourceName);
+        });
+    }
+
     public static GameServerPacket CreateMentorPresence(bool online, byte channel, byte level, byte[] name) =>
         MentorPacket(NotificationPacketType, 72, writer =>
         { writer.Write(online ? (byte)1 : (byte)0); writer.Write(channel); writer.Write(level); WriteMentorName(writer, name); });

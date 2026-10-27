@@ -33,6 +33,14 @@ if (args.Contains("--mentor-growth"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--mentor-gold"))
+{
+    await MentorMasterGoldSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Mentor master gold smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--client-diagnostics"))
 {
     ClientDiagnosticsSmokeTests.Run(Check);
@@ -207,6 +215,7 @@ await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await MentorSmokeTests.RunAsync(Check);
 await MentorGrowthSmokeTests.RunAsync(Check);
+await MentorMasterGoldSmokeTests.RunAsync(Check);
 await PvpIndividualSmokeTests.RunAsync(Check);
 await PvpProtocolRatingSmokeTests.RunAsync(Check);
 await AvatarLifetimeSmokeTests.RunAsync(Check);

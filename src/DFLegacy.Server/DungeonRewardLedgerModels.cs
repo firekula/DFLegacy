@@ -42,7 +42,9 @@ public sealed record DungeonRewardCommitRequest(
     IReadOnlyList<CharacterItemRecord> PlannedEquipment,
     IReadOnlyList<CreateCharacterMailRequest> GeneratedMails,
     ushort? WarehouseCapacity,
-    ushort? ExpectedWarehouseCapacity);
+    ushort? ExpectedWarehouseCapacity,
+    uint RequestedGoldReward = 0,
+    Guid MentorGoldIncarnation = default);
 
 public readonly record struct DungeonRewardCommitResult(
     DungeonRewardLedgerStatus Status,

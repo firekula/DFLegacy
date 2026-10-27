@@ -10,11 +10,11 @@ public sealed partial class JsonGameStore
         character.PendingDungeonGoldCredits?.Sum(credit => (long)credit.Amount) ?? 0;
 
     private static bool HasDungeonGoldCapacity(CharacterRecord character, int targetGold) =>
-        (long)Math.Max(0, targetGold) + PendingDungeonGold(character) + PendingStoreGold(character) <= int.MaxValue;
+        (long)Math.Max(0, targetGold) + PendingDungeonGold(character) + PendingStoreGold(character) + PendingMentorGold(character) <= int.MaxValue;
 
     internal async Task<DungeonGoldCommitResult> CommitDungeonGoldDistributionAsync(
         Guid pickupId, IReadOnlyList<DungeonInstanceMember> members, byte pickerSlot, uint total,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, byte routingSource = 1)
     {
         var recipients = members.OrderBy(member => member.PartySlot).ToArray();
         if (pickupId == Guid.Empty || recipients.Length is < 1 or > 4 || pickerSlot >= 4
@@ -26,6 +26,7 @@ public sealed partial class JsonGameStore
             recipients.Select(member => member.PartySlot).ToArray());
         var ids = recipients.Select(member => member.CharacterId).ToArray();
         var slots = recipients.Select(member => member.PartySlot).ToArray();
+        var incarnations = recipients.Select(member => member.MentorGoldIncarnation).ToArray();
         await _gate.WaitAsync(cancellationToken);
         try
         {
@@ -35,6 +36,8 @@ public sealed partial class JsonGameStore
             if (prior is not null)
                 return prior.CharacterIds.SequenceEqual(ids) && prior.PartySlots.SequenceEqual(slots)
                         && prior.RequestedAmounts.SequenceEqual(requested)
+                        && prior.RoutingSource == routingSource
+                        && (prior.MentorGoldIncarnations ?? new Guid[recipients.Length]).SequenceEqual(incarnations)
                     ? new(DungeonRewardLedgerStatus.Committed, prior.GrantedAmounts.ToArray())
                     : new(DungeonRewardLedgerStatus.Rejected, new uint[4], "pickup-payload-mismatch");
 
@@ -47,7 +50,7 @@ public sealed partial class JsonGameStore
                 if (account is null || index < 0)
                     return new(DungeonRewardLedgerStatus.Rejected, new uint[4], "character-not-found");
                 var character = account.Characters[index];
-                var capacity = Math.Max(0L, int.MaxValue - (long)character.Gold - PendingDungeonGold(character) - PendingStoreGold(character));
+                var capacity = Math.Max(0L, int.MaxValue - (long)character.Gold - PendingDungeonGold(character) - PendingStoreGold(character) - PendingMentorGold(character));
                 var amount = (uint)Math.Min(requested[member.PartySlot], capacity);
                 granted[member.PartySlot] = amount;
                 if (amount == 0) continue;
@@ -56,7 +59,7 @@ public sealed partial class JsonGameStore
                     PendingDungeonGoldCredits = [.. character.PendingDungeonGoldCredits ?? [], new(pickupId, amount)]
                 };
             }
-            var receipt = new DungeonGoldLedgerEntry(pickupId, ids, slots, requested, granted);
+            var receipt = new DungeonGoldLedgerEntry(pickupId, ids, slots, requested, granted, routingSource, incarnations);
             var ledger = new List<DungeonGoldLedgerEntry>(_dungeonGoldLedger) { receipt };
             try
             {
@@ -69,6 +72,9 @@ public sealed partial class JsonGameStore
             }
             _accounts = accounts;
             _dungeonGoldLedger = ledger;
+            if (routingSource != 0)
+                foreach (var member in recipients)
+                    AccrueMentorGoldLocked(member.CharacterId, member.MentorGoldIncarnation, requested[member.PartySlot]);
             return new(DungeonRewardLedgerStatus.Committed, granted.ToArray());
         }
         finally { _gate.Release(); }

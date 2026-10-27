@@ -13,6 +13,7 @@ namespace DFLegacy.Server;
 /// </summary>
 internal sealed class DungeonRoomSettlementState
 {
+    public Guid SettlementId { get; private set; } = Guid.NewGuid();
     /// <summary>本房间的结算（<c>SET_PLAY_RESULT</c> → 结果屏）是否已经发出。</summary>
     public bool ResultSent { get; set; }
 
@@ -40,6 +41,7 @@ internal sealed class DungeonRoomSettlementState
     /// </summary>
     public void Reset()
     {
+        SettlementId = Guid.NewGuid();
         CardLayoutSent = false;
         ResultSent = false;
         CardRightsSent = false;
