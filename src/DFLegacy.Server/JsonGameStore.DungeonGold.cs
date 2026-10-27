@@ -10,7 +10,7 @@ public sealed partial class JsonGameStore
         character.PendingDungeonGoldCredits?.Sum(credit => (long)credit.Amount) ?? 0;
 
     private static bool HasDungeonGoldCapacity(CharacterRecord character, int targetGold) =>
-        (long)Math.Max(0, targetGold) + PendingDungeonGold(character) <= int.MaxValue;
+        (long)Math.Max(0, targetGold) + PendingDungeonGold(character) + PendingStoreGold(character) <= int.MaxValue;
 
     internal async Task<DungeonGoldCommitResult> CommitDungeonGoldDistributionAsync(
         Guid pickupId, IReadOnlyList<DungeonInstanceMember> members, byte pickerSlot, uint total,
@@ -47,7 +47,7 @@ public sealed partial class JsonGameStore
                 if (account is null || index < 0)
                     return new(DungeonRewardLedgerStatus.Rejected, new uint[4], "character-not-found");
                 var character = account.Characters[index];
-                var capacity = Math.Max(0L, int.MaxValue - (long)character.Gold - PendingDungeonGold(character));
+                var capacity = Math.Max(0L, int.MaxValue - (long)character.Gold - PendingDungeonGold(character) - PendingStoreGold(character));
                 var amount = (uint)Math.Min(requested[member.PartySlot], capacity);
                 granted[member.PartySlot] = amount;
                 if (amount == 0) continue;

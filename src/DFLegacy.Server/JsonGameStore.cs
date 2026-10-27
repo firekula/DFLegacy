@@ -336,6 +336,11 @@ public sealed record CharacterRecord(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MentorRegistrationState? MentorRegistration { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PrivateStoreStock? PrivateStoreStock { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<PrivateStoreGoldCredit>? PendingPrivateStoreGoldCredits { get; init; }
+
     [JsonIgnore]
     public bool IsWeakened => WeaknessRecovery < DungeonWeaknessPolicy.FullStamina;
 }
@@ -488,7 +493,8 @@ public sealed partial class JsonGameStore(
     ILogger<JsonGameStore> logger,
     CharacterExperienceCatalog? experienceCatalog = null,
     ItemCatalog? itemCatalog = null,
-    CharacterStatCatalog? statCatalog = null)
+    CharacterStatCatalog? statCatalog = null,
+    PrivateStoreCatalog? privateStoreCatalog = null)
 {
     private const byte LegacyOverlordContractServiceType = 17;
     private const int DefaultAccountCash = 50_000;
@@ -697,6 +703,7 @@ public sealed partial class JsonGameStore(
                     _rewardQuarantined = _dungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown);
                 }
 
+                await RecoverPrivateStoresAtStartupLockedAsync(cancellationToken);
                 stateChanged |= MigrateIdentityLocked();
                 stateChanged |= MigratePremiumServicesLocked();
                 stateChanged |= MigrateWeaknessRecoveryLocked();
@@ -2510,7 +2517,8 @@ public sealed partial class JsonGameStore(
     }
 
     private static bool IsSupportedPremiumServiceType(byte serviceType) => serviceType is
-        GameProtocolEngine.BlackDiamondServiceType
+        GameProtocolEngine.PrivateStoreServiceType
+        or GameProtocolEngine.BlackDiamondServiceType
         or GameProtocolEngine.OverlordContractServiceType
         or GameProtocolEngine.MasterContractServiceType;
 
@@ -2655,7 +2663,7 @@ public sealed partial class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(senderCharacterId))
+            if (IsEconomicWriteBlocked(senderCharacterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -2850,7 +2858,7 @@ public sealed partial class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3272,7 +3280,7 @@ public sealed partial class JsonGameStore(
                 return new(DungeonRewardLedgerStatus.Unknown, null, null, 0, null, "store-quarantined");
             if (request.TargetGold < 0 || request.ExpectedGold < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-gold", null);
             if (plannedInventory.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedEquipment.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedInventory.Any(x => x.ItemId == 0) || plannedEquipment.Any(x => x.ItemId == 0)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
-            var account = _accounts.FirstOrDefault(a => string.Equals(a.UserName, request.UserName, StringComparison.OrdinalIgnoreCase)); var index = account?.Characters.FindIndex(x => x.Id == request.CharacterId) ?? -1; if (account is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "account-not-found", null); if (index < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-not-found", null); if (_pendingTradeDeliveries.ContainsKey(request.CharacterId)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "pending-trade-delivery", null);
+            var account = _accounts.FirstOrDefault(a => string.Equals(a.UserName, request.UserName, StringComparison.OrdinalIgnoreCase)); var index = account?.Characters.FindIndex(x => x.Id == request.CharacterId) ?? -1; if (account is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "account-not-found", null); if (index < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-not-found", null); if (IsEconomicWriteBlocked(request.CharacterId)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "pending-trade-delivery", null);
             var current = account.Characters[index];
             if (!HasDungeonGoldCapacity(current, request.TargetGold)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "gold-capacity-reserved", null);
             if (current.Gold != request.ExpectedGold || !ItemsEqual(current.Inventory, expectedInventory) || !ItemsEqual(current.Equipment, expectedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-state-conflict", null);
@@ -3425,7 +3433,7 @@ public sealed partial class JsonGameStore(
         {
             if (_rewardQuarantined)
                 throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3693,7 +3701,7 @@ public sealed partial class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3789,7 +3797,7 @@ public sealed partial class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3871,7 +3879,7 @@ public sealed partial class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3962,7 +3970,7 @@ public sealed partial class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4171,7 +4179,7 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4280,7 +4288,7 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4406,7 +4414,7 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4576,7 +4584,7 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4716,7 +4724,7 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4862,7 +4870,7 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -5214,7 +5222,7 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -5886,7 +5894,7 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
