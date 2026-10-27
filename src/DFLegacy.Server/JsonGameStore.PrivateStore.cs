@@ -167,7 +167,7 @@ public sealed partial class JsonGameStore
                 if (!force) return false;
                 var i = listing.Item;
                 mails.Add(new("个人商店", "离场收摊时返还的物品。", Attachment: new(i.ItemId, i.CountOrValue, i.State, i.Durability, i.SealState,
-                    i.AvatarRemainingSeconds, i.AvatarAbilityIndex, i.EquipmentQualitySeed, i.InstanceId)));
+                    i.AvatarRemainingSeconds, i.AvatarAbilityIndex, i.EquipmentQualitySeed, i.InstanceId, i.AvatarExpiresAtUnixSeconds)));
             }
         }
         if (!TryAppendGeneratedMailsLocked(c, mails, out var mailbox, out _, out _)) return false;

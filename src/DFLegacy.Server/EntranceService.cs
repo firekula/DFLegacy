@@ -746,6 +746,61 @@ public sealed class EntranceService(
                     lastProjectedCombatStats = projectedStats;
                 }
 
+                CharacterRecord AvatarActorSnapshot() => activeCharacter! with
+                {
+                    Equipment = equippedInventory.Values.OrderBy(i => i.Slot).ToList(),
+                    AvatarInventory = avatarInventory.Values.OrderBy(i => i.Slot).ToList()
+                };
+
+                TimeSpan? GetAvatarExpiryWait() => activeCharacter is null ? null
+                    : AvatarLifetimePolicy.GetExpiryWait(AvatarActorSnapshot(), DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+                async Task SettleCurrentAvatarLifetimesAsync(bool force = false)
+                {
+                    if (activeCharacter is null) return;
+                    var wait = GetAvatarExpiryWait();
+                    if (!force && (wait is null || wait > TimeSpan.Zero)) return;
+                    await dungeonCurrencyGate.WaitAsync(serverToken);
+                    try
+                    {
+                        var before = AvatarActorSnapshot();
+                        var result = await store.SettleAvatarExpirationsAsync(accountName, before.Id, serverToken);
+                        if (result.Status != DungeonRewardLedgerStatus.Committed || result.Character is null)
+                            throw new IOException("Cannot safely install avatar expiration state.");
+                        var installed = AvatarLifetimePolicy.MergeForActor(before, result.Character, itemCatalog);
+                        var bagChanged = !(before.AvatarInventory ?? []).SequenceEqual(installed.AvatarInventory ?? []);
+                        var equipmentChanged = !(before.Equipment ?? []).SequenceEqual(installed.Equipment ?? []);
+                        var mailChanged = !(before.Mailbox ?? []).SequenceEqual(installed.Mailbox ?? []);
+                        activeCharacter = installed;
+                        avatarInventory = (installed.AvatarInventory ?? []).ToDictionary(i => i.Slot);
+                        equippedInventory = (installed.Equipment ?? []).ToDictionary(i => i.Slot);
+                        if (bagChanged)
+                        {
+                            var packet = CreateAvatarInventoryPacket(avatarInventory.Values);
+                            await packet.WriteAsync(stream, serverToken);
+                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                            LogPacket("TX", runtimeSession, packet);
+                        }
+                        if (equipmentChanged)
+                        {
+                            if (currentDungeonId == 0) await SendTownAppearanceAsync();
+                            else
+                            {
+                                await SendCurrentEquipmentStateAsync();
+                                if (dungeonInstance is { IsParty: true } instance)
+                                    await dungeonPartyService.BroadcastToMembersAsync(instance, SendTownAppearanceDetailPacket(),
+                                        installed.Id, serverToken);
+                            }
+                        }
+                        if (mailChanged && result.Changed) await SendMailboxStateAsync(notifyNewMail: false);
+                        if (result.Changed)
+                            logger.LogInformation("Settled avatar lifetime for {CharacterId}: bag={BagBefore}->{BagAfter}, equipment={EquipmentBefore}->{EquipmentAfter}.",
+                                installed.Id, before.AvatarInventory?.Count ?? 0, avatarInventory.Count,
+                                before.Equipment?.Count ?? 0, equippedInventory.Count);
+                    }
+                    finally { dungeonCurrencyGate.Release(); }
+                }
+
                 async Task<GameServerPacket> CreateRequestedCharacterDetailAsync(
                     ushort requestedUserId,
                     string requestedCharacterName)
@@ -3484,7 +3539,8 @@ public sealed class EntranceService(
                             AvatarAbilityIndex:
                                 preservedAvatarItem?.AvatarAbilityIndex,
                             InstanceId: preservedAvatarItem?.InstanceId
-                                ?? Guid.Empty);
+                                ?? Guid.Empty,
+                            AvatarExpiresAtUnixSeconds: preservedAvatarItem?.AvatarExpiresAtUnixSeconds);
                         if (!CharacterAvatarInventoryPlanner.TryPlace(
                                 avatarInventory,
                                 avatarGroundItem,
@@ -4570,6 +4626,7 @@ public sealed class EntranceService(
                 var idlePartyMailTick = false;
                 while (!serverToken.IsCancellationRequested)
                 {
+                    await SettleCurrentAvatarLifetimesAsync(force: Volatile.Read(ref pendingMailAlarm) != 0);
                     var sweepInstance = dungeonInstance;
                     var sweepGeneration = sweepInstance?.RoomGeneration;
                     foreach (var monsterId in bossDeathSweep.TakeDue(sweepInstance, DateTimeOffset.UtcNow))
@@ -4612,7 +4669,7 @@ public sealed class EntranceService(
                             {
                                 var wake = await EntranceSessionReadWait.WaitAsync(
                                     pendingPacketRead, remaining, partyMailboxTick, serverToken,
-                                    wakeTask: partyMembershipChanged);
+                                    wakeTask: partyMembershipChanged, additionalWakeDelay: GetAvatarExpiryWait());
                                 if (wake == EntranceReadWakeReason.PartyMailTick)
                                 {
                                     await HandlePendingPartyMailAsync();
@@ -4646,7 +4703,7 @@ public sealed class EntranceService(
                             {
                                 var wake = await EntranceSessionReadWait.WaitAsync(
                                     pendingPacketRead, remaining, partyMailboxTick, serverToken,
-                                    wakeTask: partyMembershipChanged);
+                                    wakeTask: partyMembershipChanged, additionalWakeDelay: GetAvatarExpiryWait());
                                 if (wake == EntranceReadWakeReason.PartyMailTick)
                                 {
                                     await HandlePendingPartyMailAsync();
@@ -4691,7 +4748,7 @@ public sealed class EntranceService(
                             {
                                 var wake = await EntranceSessionReadWait.WaitAsync(
                                     pendingPacketRead, remaining, partyMailboxTick, serverToken,
-                                    wakeTask: partyMembershipChanged);
+                                    wakeTask: partyMembershipChanged, additionalWakeDelay: GetAvatarExpiryWait());
                                 if (wake == EntranceReadWakeReason.PartyMailTick)
                                 {
                                     await HandlePendingPartyMailAsync();
@@ -4743,7 +4800,7 @@ public sealed class EntranceService(
                             {
                                 var wake = await EntranceSessionReadWait.WaitAsync(
                                     pendingPacketRead, waitTime, partyMailboxTick, serverToken,
-                                    wakeTask: partyMembershipChanged);
+                                    wakeTask: partyMembershipChanged, additionalWakeDelay: GetAvatarExpiryWait());
                                 if (wake == EntranceReadWakeReason.PartyMailTick)
                                 {
                                     await HandlePendingPartyMailAsync();
@@ -4788,7 +4845,7 @@ public sealed class EntranceService(
                             // 下面只取信箱、不解码、不发任何包。
                             var wake = await EntranceSessionReadWait.WaitAsync(
                                 pendingPacketRead, Timeout.InfiniteTimeSpan, pollPartyMailbox: true, serverToken,
-                                wakeTask: partyMembershipChanged);
+                                wakeTask: partyMembershipChanged, additionalWakeDelay: GetAvatarExpiryWait());
                             if (wake == EntranceReadWakeReason.Packet)
                             {
                                 request = await pendingPacketRead;
@@ -4807,7 +4864,7 @@ public sealed class EntranceService(
                         {
                             var wake = await EntranceSessionReadWait.WaitAsync(
                                 pendingPacketRead, Timeout.InfiniteTimeSpan, pollPartyMailbox: false, serverToken,
-                                wakeTask: partyMembershipChanged);
+                                wakeTask: partyMembershipChanged, additionalWakeDelay: GetAvatarExpiryWait());
                             if (wake == EntranceReadWakeReason.PartyMailTick)
                             {
                                 await HandlePendingPartyMailAsync();
@@ -4858,6 +4915,7 @@ public sealed class EntranceService(
                     }
 
                     // 副本实例的权威状态可能被别的成员（击杀/换房间）或倒计时扫描推进：
+                    await SettleCurrentAvatarLifetimesAsync(force: Volatile.Read(ref pendingMailAlarm) != 0);
                     // 会话在自己的主循环顶部按版本号决定要不要刷新镜像（设计稿 §3.1）。
                     // 只有"本会话不在实例当前房间里"才抄房间本身：currentDungeonRoom 的既有语义是
                     // "进入本房间时的房间定义快照"——BOSS_DIE_CHECK 的 bossIds 与 START_MAP 的怪物表
@@ -5430,7 +5488,7 @@ public sealed class EntranceService(
                                 runtimeSession.Id,
                                 KickConnection,
                                 serverToken,
-                                () => Interlocked.Exchange(ref pendingMailAlarm, 1),
+                                () => { Interlocked.Exchange(ref pendingMailAlarm, 1); partyMembershipWake.Pulse(); },
                                 (serviceType, remainSeconds) =>
                                 {
                                     var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -5517,6 +5575,10 @@ public sealed class EntranceService(
                                     character.Id);
                             }
 
+                            var lifetimeAtSelection = await store.SettleAvatarExpirationsAsync(accountName, character.Id, serverToken);
+                            if (lifetimeAtSelection.Status != DungeonRewardLedgerStatus.Committed || lifetimeAtSelection.Character is null)
+                                throw new IOException("Cannot safely select a character with unsettled avatar lifetimes.");
+                            character = lifetimeAtSelection.Character;
                             var persistedWarehouseCapacity = character.WarehouseCapacity;
                             warehouseCapacity = CharacterWarehouseProgression.Normalize(
                                 persistedWarehouseCapacity);
@@ -6841,6 +6903,16 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            if (sendRequest.ListType == 1 && avatarInventory.TryGetValue(sendRequest.Slot, out var timedMailSource)
+                                && timedMailSource.ItemId == sendRequest.ItemId && AvatarLifetimePolicy.IsLimited(timedMailSource))
+                            {
+                                var error = GameProtocolEngine.CreateCommandError(request, errorCode: 0x11);
+                                await error.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, error);
+                                continue;
+                            }
+
                             var plannedInventory = mainInventory.ToDictionary(
                                 pair => pair.Key,
                                 pair => pair.Value);
@@ -7749,7 +7821,8 @@ public sealed class EntranceService(
                                         rewardItem.AvatarRemainingSeconds,
                                         rewardItem.AvatarAbilityIndex,
                                         EquipmentQualitySeed: rewardItem.EquipmentQualitySeed,
-                                        InstanceId: rewardItem.InstanceId),
+                                        InstanceId: rewardItem.InstanceId,
+                                        AvatarExpiresAtUnixSeconds: rewardItem.AvatarExpiresAtUnixSeconds),
                                     routingSource: 0);
                                 var dropNotification = GameProtocolEngine.CreateDropItem(
                                     localUserId,
@@ -11813,7 +11886,9 @@ public sealed class EntranceService(
                                     continue;
                                 }
 
-                                var purchasedItem = CharacterItemIdentity.Ensure(
+                                var purchasedItem = itemDefinition.InventoryCategory == ItemInventoryCategory.Avatar
+                                    ? AvatarLifetimePolicy.CreatePurchaseAttachment(product, itemDefinition, DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+                                    : CharacterItemIdentity.Ensure(
                                     new CharacterMailAttachmentRecord(
                                     product.ItemId,
                                     product.Quantity,
@@ -12910,7 +12985,12 @@ public sealed class EntranceService(
                                     out var compoundFailure))
                             {
                                 var error =
-                                    GameProtocolEngine.CreateCompoundAvatarFailure();
+                                    GameProtocolEngine.CreateCompoundAvatarFailure(compoundFailure switch
+                                    {
+                                        AvatarCompoundFailure.LifetimeMismatch => 0x13,
+                                        AvatarCompoundFailure.LifetimeTooShort => 0x18,
+                                        _ => 4
+                                    });
                                 await error.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, error);
@@ -12980,7 +13060,8 @@ public sealed class EntranceService(
                                     ],
                                     compoundPlan.ResolvedFirstSlot,
                                     compoundPlan.ResultItemId,
-                                    remainingSeconds: 0,
+                                    remainingSeconds: AvatarLifetimePolicy.GetRemainingSeconds(
+                                        compoundPlan.AvatarInventory[compoundPlan.ResolvedFirstSlot], DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
                                     selectedOption: compoundPlan.SelectedOption);
                             await compoundReply.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);

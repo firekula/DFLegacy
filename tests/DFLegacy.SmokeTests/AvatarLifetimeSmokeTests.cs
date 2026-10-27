@@ -69,6 +69,42 @@ internal static class AvatarLifetimeSmokeTests
         await CheckPersistenceAsync(check);
         await CheckSnapshotFaultsAsync(check);
         await CheckLegacyStartupAsync(check);
+        await CheckSessionBoundariesAsync(check);
+    }
+
+    private static async Task CheckSessionBoundariesAsync(Action<bool, string> check)
+    {
+        await using var f = new Fixture();
+        const long now = 1_800_000_000;
+        var timed = new CharacterItemRecord(9, 1000, 1, AvatarRemainingSeconds: 20,
+            AvatarExpiresAtUnixSeconds: now + 20, InstanceId: Guid.NewGuid());
+        var actor = new CharacterRecord(Guid.NewGuid(), "Actor", 1, 0, 10, 0, 444, Gold: 555,
+            Inventory: [new(41, 8, 1)], Equipment: [timed with { Slot = 3 }, new(9, 33300, 1)],
+            AvatarInventory: [timed], Mailbox: [new(1, "System", "Mail", 99,
+                new(1000, 1, AvatarRemainingSeconds: 10, AvatarExpiresAtUnixSeconds: now + 10), 0, uint.MaxValue)]);
+        var wait = typeof(AvatarLifetimePolicy).GetMethod("GetExpiryWait");
+        var delay = wait?.Invoke(null, [actor, now]) as TimeSpan?;
+        check(delay == TimeSpan.FromSeconds(11),
+            "the earliest worn, bag or mail avatar expiry bounds read waiting at the strict boundary");
+        var merge = typeof(AvatarLifetimePolicy).GetMethod("MergeForActor");
+        var canonical = actor with { Gold = 9999, Cash = 9999, Inventory = [], Equipment = [], AvatarInventory = [], Mailbox = [] };
+        var installed = merge?.Invoke(null, [actor, canonical, f.Items]) as CharacterRecord;
+        check(installed is not null && installed.Gold == 555 && installed.Cash == 444 && installed.Inventory!.Count == 1
+            && installed.Equipment!.Single().ItemId == 33300 && installed.AvatarInventory!.Count == 0,
+            "expiry installs only avatar-owned fields and retains the live actor's currency and ordinary equipment");
+        var readWait = typeof(EntranceSessionReadWait).GetMethods(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+            .SingleOrDefault(m => m.Name == "WaitAsync" && m.GetParameters().Length == 6);
+        if (readWait is null) { check(false, "an avatar deadline can wake a completely idle entrance read"); return; }
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waiting = (Task<EntranceReadWakeReason>)readWait.Invoke(null,
+            [pending.Task, TimeSpan.FromHours(1), false, CancellationToken.None, null, TimeSpan.FromMilliseconds(1)])!;
+        var finished = await Task.WhenAny(waiting, Task.Delay(1000));
+        check(finished == waiting && await waiting == EntranceReadWakeReason.PartyMailTick && !pending.Task.IsCompleted,
+            "the avatar deadline wakes internally without consuming or cancelling the pending network read");
+        var packetFirst = (Task<EntranceReadWakeReason>)readWait.Invoke(null,
+            [Task.CompletedTask, TimeSpan.FromHours(1), false, CancellationToken.None, null, TimeSpan.Zero])!;
+        check(await packetFirst == EntranceReadWakeReason.Packet,
+            "a simultaneously ready packet remains the only consumed read while expiry is handled before its business action");
     }
 
     private static async Task CheckPersistenceAsync(Action<bool, string> check)

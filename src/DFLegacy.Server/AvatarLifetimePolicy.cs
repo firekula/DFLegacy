@@ -98,4 +98,30 @@ public static class AvatarLifetimePolicy
         new(ushort.MaxValue, item.ItemId, item.CountOrValue, item.State, item.Durability, item.SealState,
             item.AvatarRemainingSeconds, item.AvatarAbilityIndex, EquipmentQualitySeed: item.EquipmentQualitySeed,
             InstanceId: item.InstanceId, AvatarExpiresAtUnixSeconds: item.AvatarExpiresAtUnixSeconds);
+
+    public static TimeSpan? GetExpiryWait(CharacterRecord character, long nowUnixSeconds)
+    {
+        var items = (character.Inventory ?? []).Concat(character.Equipment ?? [])
+            .Concat(character.AvatarInventory ?? []).Concat(character.Warehouse ?? [])
+            .Concat(character.CreatureInventory ?? [])
+            .Concat((character.Mailbox ?? []).Where(m => m.Attachment is not null).Select(m => FromAttachment(m.Attachment!)))
+            .Where(IsLimited).ToArray();
+        if (items.Length == 0) return null;
+        if (items.Any(i => i.AvatarExpiresAtUnixSeconds is null)) return TimeSpan.Zero;
+        var deadline = items.Min(i => i.AvatarExpiresAtUnixSeconds!.Value);
+        // Task.Delay has a bounded duration; a long combined lease can wake and
+        // recalculate without either overflowing or expiring early.
+        var seconds = Math.Clamp((double)deadline - nowUnixSeconds + 1, 0, int.MaxValue / 1000d);
+        return TimeSpan.FromSeconds(seconds);
+    }
+
+    public static CharacterRecord MergeForActor(CharacterRecord actor, CharacterRecord canonical, ItemCatalog catalog)
+    {
+        bool IsAvatar(CharacterItemRecord i) => catalog.TryGetDefinition(i.ItemId, out var d)
+            && d.InventoryCategory == ItemInventoryCategory.Avatar;
+        var equipment = (actor.Equipment ?? []).Where(i => !IsAvatar(i))
+            .Concat((canonical.Equipment ?? []).Where(IsAvatar)).OrderBy(i => i.Slot).ToList();
+        return actor with { Equipment = equipment, AvatarInventory = canonical.AvatarInventory,
+            Mailbox = canonical.Mailbox, ExpiredAvatarInstanceIds = canonical.ExpiredAvatarInstanceIds };
+    }
 }
