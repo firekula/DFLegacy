@@ -1,0 +1,13 @@
+{
+  "AtUnixSeconds": 1793119022,
+  "Scope": "isolated state only",
+  "Reason": "A separate clean-baseline offline-receiver case; the completed online case has already consumed ACT1 monthly quota1.",
+  "PreviousPhase": "gift-online-restart",
+  "BeforeSha256": "562CAF1CF686C9E7E9EFCE79977CC3DA791B81B6A472E9DC6186A9655BCE10E2",
+  "TemplateSha256": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+  "AfterSha256": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+  "OriginalSaveSha256": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+  "PreviousEvidencePreserved": "state-final-party-regression-paused.json",
+  "ClockChanged": false,
+  "CashTopUp": false
+}

@@ -5,3 +5,9 @@
 Dockerfile text eol=lf
 .dockerignore text eol=lf
 compose.yaml text eol=lf
+
+# 本组验收原件按字节校验，检入/检出时保留 JSON、日志和图片的原始字节。
+/knowledge/decisions/assets/2026-10-27-channel-return/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-27-cera-gift/** -text whitespace=cr-at-eol
+# 此原始 MSBuild 诊断包含行尾空格，保留原件而不改写构建证据。
+/knowledge/decisions/assets/2026-10-27-cera-gift/task-1-release-build.log whitespace=-blank-at-eol,cr-at-eol
