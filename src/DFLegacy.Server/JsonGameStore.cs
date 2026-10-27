@@ -377,7 +377,13 @@ public sealed record AccountRecord(
     List<AccountFriendRecord>? Friends = null,
     // 账号级黑名单。旧 state.json 里没有这个字段，反序列化后是 null（等同空名单）；
     // 与 Friends 一样按可空成员处理，上限见 JsonGameStore.MaximumBlacklist。
-    List<AccountBlacklistRecord>? Blacklist = null);
+    List<AccountBlacklistRecord>? Blacklist = null)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int GiftReceiveYearMonth { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int GiftReceiveCount { get; init; }
+}
 
 public sealed record ClientCeraTopUpRequest(string Account, int Amount);
 public sealed record ClientDiamondGrantRequest(string Account, int Days);

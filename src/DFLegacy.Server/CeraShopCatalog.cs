@@ -11,7 +11,9 @@ public sealed record CeraShopProduct(
     string Section,
     PremiumContractDefinition? PremiumContract = null,
     ushort? WarehouseUpgradeCapacity = null,
-    CeraShopDirectCurrencyGrant? DirectCurrencyGrant = null)
+    CeraShopDirectCurrencyGrant? DirectCurrencyGrant = null,
+    bool GiftDisallowed = false,
+    int Sticker = 0)
 {
     public bool UsesMainInventory =>
         !string.Equals(Section, "avatar", StringComparison.OrdinalIgnoreCase);
@@ -68,6 +70,7 @@ public sealed class CeraShopCatalog
     private readonly ItemCatalog _items;
     private readonly ILogger<CeraShopCatalog> _logger;
     private readonly Lazy<IReadOnlyDictionary<uint, CeraShopProduct>> _products;
+    private int _maxGiftCount = 1; // ACT1 B539D4 default when PVF has no override.
 
     public CeraShopCatalog(
         ScriptFileSystem scripts,
@@ -84,6 +87,7 @@ public sealed class CeraShopCatalog
 
     public int Count => _products.Value.Count;
     public IEnumerable<CeraShopProduct> Products => _products.Value.Values;
+    public int MaxGiftCount { get { _ = _products.Value; return _maxGiftCount; } }
 
     public bool TryGetProduct(uint commodityNo, out CeraShopProduct product) =>
         _products.Value.TryGetValue(commodityNo, out product!);
@@ -109,6 +113,7 @@ public sealed class CeraShopCatalog
     private IReadOnlyDictionary<uint, CeraShopProduct> LoadProducts()
     {
         var products = new Dictionary<uint, CeraShopProduct>();
+        var giftDisallowance = new HashSet<uint>();
         const string path = "etc/newcashshop.etc";
         if (!_scripts.FileExists(path))
         {
@@ -138,6 +143,17 @@ public sealed class CeraShopCatalog
                 continue;
             }
 
+            if (section == "gift disallowance")
+            {
+                foreach (var token in line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries))
+                    if (uint.TryParse(token, out var forbidden)) giftDisallowance.Add(forbidden);
+                continue;
+            }
+            if (section == "max gift count")
+            {
+                if (int.TryParse(line, out var max) && max is >= 0 and <= byte.MaxValue) _maxGiftCount = max;
+                continue;
+            }
             if (!TryParseProductLine(section, line, out var product))
             {
                 continue;
@@ -145,6 +161,10 @@ public sealed class CeraShopCatalog
 
             products[product.CommodityNo] = product;
         }
+
+        foreach (var commodity in giftDisallowance)
+            if (products.TryGetValue(commodity, out var product))
+                products[commodity] = product with { GiftDisallowed = true };
 
         _logger.LogInformation(
             "Loaded {Count} DFLegacy Cera-shop products from {Path}.",
@@ -164,6 +184,12 @@ public sealed class CeraShopCatalog
         var fields = numericPrefix.Split(
             [' ', '\t'],
             StringSplitOptions.RemoveEmptyEntries);
+        var descriptionEnd = descriptionStart < 0 ? -1 : line.IndexOf('`', descriptionStart + 1);
+        var stickerFields = descriptionEnd >= 0
+            ? line[(descriptionEnd + 1)..].Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)
+            : fields.Skip(section == "avatar" ? 3 : section == "package" ? 5 : 6).ToArray();
+        var sticker = stickerFields.Length > 0 && int.TryParse(stickerFields[0], out var parsedSticker)
+            ? parsedSticker : 0;
 
         if (string.Equals(section, "avatar", StringComparison.OrdinalIgnoreCase))
         {
@@ -267,7 +293,8 @@ public sealed class CeraShopCatalog
             section,
             premiumContract,
             warehouseUpgradeCapacity,
-            directCurrencyGrant);
+            directCurrencyGrant,
+            Sticker: sticker);
         return true;
     }
 

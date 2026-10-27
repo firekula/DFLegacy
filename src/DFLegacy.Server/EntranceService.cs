@@ -349,7 +349,7 @@ public sealed class EntranceService(
             // Connection-local snapshot of account-owned Premium services.
             // CharacterRecord deliberately contains no Premium persistence.
             var premiumExpiryUnix = new ConcurrentDictionary<byte, long>();
-            var pendingCeraValue = -1;
+            var ceraCashInvalidation = new CeraCashInvalidation();
             var pendingFatigueReset = 0;
             var weaknessRecovery = new EntranceWeaknessRecovery(partyMembershipWake);
             Func<GameServerPacket, ValueTask>? dungeonMemberSend = null;
@@ -5091,12 +5091,12 @@ public sealed class EntranceService(
                         }
                     }
 
-                    var queuedCeraValue = Interlocked.Exchange(
-                        ref pendingCeraValue,
-                        -1);
-                    if (queuedCeraValue >= 0 && activeCharacter is not null)
+                    var canonicalCera = activeCharacter is null ? null
+                        : await ceraCashInvalidation.ConsumeAsync(store, accountName, serverToken);
+                    if (canonicalCera is { } queuedCeraValue && activeCharacter is not null)
                     {
                         currentCash = queuedCeraValue;
+                        activeCharacter = activeCharacter with { Cash = currentCash };
                         var ceraNotification = GameProtocolEngine.CreateCeraUpdate(
                             success: true,
                             value: (uint)queuedCeraValue);
@@ -5502,11 +5502,7 @@ public sealed class EntranceService(
                                     }
                                     pendingPremiumUpdates.Enqueue((serviceType, remainSeconds));
                                 },
-                                value => Interlocked.Exchange(
-                                    ref pendingCeraValue,
-                                    value > int.MaxValue
-                                        ? int.MaxValue
-                                        : (int)value),
+                                value => { ceraCashInvalidation.Invalidate(value); partyMembershipWake.Pulse(); },
                                 () => Interlocked.Exchange(
                                     ref pendingFatigueReset,
                                     1),
@@ -11605,6 +11601,31 @@ public sealed class EntranceService(
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.QueryCeraGiftRecipientCommand)
+                        {
+                            var query = activeCharacter is not null
+                                && GameProtocolEngine.TryReadCeraGiftRecipient(request.Body, out var recipientName)
+                                    ? await store.QueryCeraGiftRecipientAsync(activeCharacter.Id, recipientName, serverToken)
+                                    : new CeraGiftQueryResult(2);
+                            GameServerPacket giftWireReply;
+                            if (query.Error == 0 && query.Character is { } target)
+                            {
+                                var growth = (byte)((target.GrowType & 0x0F)
+                                    | ((Math.Max(target.AwakeningType, target.GrowType >> 4) & 7) << 4));
+                                // This ACT1 roster has no persisted sex selector; preserve the
+                                // native byte with compatibility value0, independent of job.
+                                giftWireReply = GameProtocolEngine.CreateCeraGiftRecipientReply(target.Name,
+                                    (ushort)Math.Clamp(target.Level, 0, ushort.MaxValue),
+                                    (byte)Math.Clamp(target.Job, 0, byte.MaxValue), growth, 0, query.ReceivedCount);
+                            }
+                            else giftWireReply = GameProtocolEngine.CreateCeraGiftRecipientError(query.Error);
+                            await giftWireReply.WriteAsync(stream, serverToken);
+                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                            LogPacket("TX", runtimeSession, giftWireReply);
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.CeraShopBuyCommand)
                         {
                             if (!options.EnablePacketTracing)
@@ -11622,11 +11643,7 @@ public sealed class EntranceService(
                             }
 
                             if (activeCharacter is null
-                                || !TryReadCeraShopPurchase(
-                                    request.Body,
-                                    out var requestedProducts,
-                                    out var isGift)
-                                || isGift)
+                                || !GameProtocolEngine.TryReadCeraShopPurchase(request.Body, out var purchaseRequest))
                             {
                                 var error = GameProtocolEngine.CreateCeraShopBuyError(
                                     errorCode: 4);
@@ -11637,6 +11654,46 @@ public sealed class EntranceService(
                                     "Rejected malformed Cera-shop request activeCharacter={HasCharacter}, body={Body}.",
                                     activeCharacter is not null,
                                     Convert.ToHexString(request.Body));
+                                continue;
+                            }
+
+                            var requestedProducts = purchaseRequest.Products;
+                            if (purchaseRequest.IsGift)
+                            {
+                                var gift = await store.GiftCeraShopAsync(accountName, activeCharacter.Id,
+                                    purchaseRequest.RecipientName, requestedProducts, ceraShopCatalog, serverToken);
+                                if (gift.Status != DungeonRewardLedgerStatus.Committed)
+                                {
+                                    var rejection = GameProtocolEngine.CreateCeraShopBuyError(gift.Error,
+                                        gift.ErrorCategory, gift.ErrorCommodity);
+                                    await rejection.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, rejection);
+                                    continue;
+                                }
+                                // Gift affects account cash only; never install an entire canonical
+                                // actor over this session's current dungeon/inventory state.
+                                currentCash = gift.SenderCash;
+                                activeCharacter = activeCharacter with { Cash = currentCash };
+                                await CeraGiftSessionEffects.NotifyCommittedAsync(gift, accountName,
+                                    store, characterSessions, serverToken);
+                                foreach (var product in gift.Products!)
+                                {
+                                    var giftWireReply = GameProtocolEngine.CreateCeraShopBuyReply(product.ClientCategory,
+                                        product.CommodityNo, isGift: true);
+                                    await giftWireReply.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, giftWireReply);
+                                }
+                                // Even an older top-up notice queued after the debit is only an
+                                // invalidation: read canonical balance before sending NOTI166.
+                                currentCash = await ceraCashInvalidation.ConsumeAsync(store, accountName, serverToken)
+                                    ?? currentCash;
+                                activeCharacter = activeCharacter with { Cash = currentCash };
+                                var cashReply = GameProtocolEngine.CreateCeraUpdate(true, (uint)currentCash);
+                                await cashReply.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, cashReply);
                                 continue;
                             }
 
@@ -17474,86 +17531,6 @@ public sealed class EntranceService(
         return true;
     }
 
-    private static bool TryReadCeraShopPurchase(
-        byte[] body,
-        out CeraShopPurchaseRequestItem[] products,
-        out bool isGift)
-    {
-        products = [];
-        isGift = false;
-        if (body.Length < 4)
-        {
-            return false;
-        }
-
-        var offset = 2;
-        var giftMode = body[offset++];
-        if (giftMode > 1)
-        {
-            return false;
-        }
-
-        if (giftMode == 1)
-        {
-            isGift = true;
-            if (body.Length < offset + sizeof(uint))
-            {
-                return false;
-            }
-
-            var recipientLength = BinaryPrimitives.ReadUInt32LittleEndian(
-                body.AsSpan(offset, sizeof(uint)));
-            offset += sizeof(uint);
-            if (recipientLength is 0 or > 30
-                || recipientLength > (uint)(body.Length - offset))
-            {
-                return false;
-            }
-
-            offset += checked((int)recipientLength);
-        }
-
-        if (offset >= body.Length)
-        {
-            return false;
-        }
-
-        var count = body[offset++];
-        if (count == 0 || count > 32)
-        {
-            return false;
-        }
-
-        var requiredLength = offset + count * 7;
-        if (body.Length != requiredLength)
-        {
-            return false;
-        }
-
-        var parsed = new CeraShopPurchaseRequestItem[count];
-        for (var index = 0; index < count; index++)
-        {
-            var productType = body[offset];
-            var attributeValue = BinaryPrimitives.ReadUInt16LittleEndian(
-                body.AsSpan(offset + 1, sizeof(ushort)));
-            var commodityNo = BinaryPrimitives.ReadUInt32LittleEndian(
-                body.AsSpan(offset + 3, sizeof(uint)));
-            if (commodityNo == 0)
-            {
-                return false;
-            }
-
-            parsed[index] = new CeraShopPurchaseRequestItem(
-                productType,
-                attributeValue,
-                commodityNo);
-            offset += 7;
-        }
-
-        products = parsed;
-        return true;
-    }
-
     private static bool TryReadRepairEquipment(
         byte[] body,
         out byte itemSpace,
@@ -17638,10 +17615,6 @@ public sealed class EntranceService(
 
     private bool IsEquipmentItem(ushort itemId) => itemCatalog.IsEquipment(itemId);
 
-    private readonly record struct CeraShopPurchaseRequestItem(
-        byte ProductType,
-        ushort AttributeValue,
-        uint CommodityNo);
     private readonly record struct ConsumeItemsRequestEntry(
         ushort Operation,
         ushort Slot,

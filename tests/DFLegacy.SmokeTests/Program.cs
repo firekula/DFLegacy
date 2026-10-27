@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--cera-gift"))
+{
+    await CeraGiftSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Cera gift smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--avatar-lifetime"))
 {
     await AvatarLifetimeSmokeTests.RunAsync(Check);
@@ -165,6 +173,7 @@ await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await MentorSmokeTests.RunAsync(Check);
 await AvatarLifetimeSmokeTests.RunAsync(Check);
+await CeraGiftSmokeTests.RunAsync(Check);
 await PrivateStoreSmokeTests.RunAsync(Check);
 await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
@@ -1974,13 +1983,14 @@ var ceraShopBuyError = GameProtocolEngine.CreateCeraShopBuyError(
     errorCode: 4,
     shopCategory: -1,
     commodityNo: 100001);
-Check(ceraShopBuyError.Payload.Length == 20
+Check(ceraShopBuyError.Payload.Length == 21
     && ceraShopBuyError.Payload[0] == 0
-    && ceraShopBuyError.Payload[1] == 4
+    && ceraShopBuyError.Payload[1] == 0
+    && ceraShopBuyError.Payload[2] == 4
     && BinaryPrimitives.ReadInt32LittleEndian(
-        ceraShopBuyError.Payload.AsSpan(2, 4)) == 0
+        ceraShopBuyError.Payload.AsSpan(3, 4)) == 0
     && BinaryPrimitives.ReadUInt32LittleEndian(
-        ceraShopBuyError.Payload.AsSpan(6, 4)) == 100001,
+        ceraShopBuyError.Payload.AsSpan(7, 4)) == 100001,
     "DFLegacy Cera-shop error reply keeps the client catalog index in range");
 var ceraTicket = GameProtocolEngine.CreateCeraTicketReply("DFLegacy", 7);
 Check(ceraTicket.ProtocolId == GameProtocolEngine.GenerateCeraTicketCommand
@@ -1994,40 +2004,11 @@ Check(ceraTicket.ProtocolId == GameProtocolEngine.GenerateCeraTicketCommand
             7, 0, 0, 0
         }),
     "DFLegacy command 68 returns the length-prefixed Cera web ticket");
-var ceraShopParser = typeof(EntranceService).GetMethod(
-    "TryReadCeraShopPurchase",
-    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-object?[] ceraShopParserArguments =
-[
-    new byte[]
-    {
-        0x0B, 0x00,
-        0x00,
-        0x01,
-        0x0F, 0x03, 0x00, 0x00, 0x23, 0x02, 0x00
-    },
-    null,
-    false
-];
-var parsedCeraShopRequest = ceraShopParser is not null
-    && (bool)ceraShopParser.Invoke(null, ceraShopParserArguments)!;
-var parsedCeraShopProducts = parsedCeraShopRequest
-    ? (Array)ceraShopParserArguments[1]!
-    : Array.Empty<object>();
-var parsedCeraShopProduct = parsedCeraShopProducts.Length == 1
-    ? parsedCeraShopProducts.GetValue(0)
-    : null;
-var parsedCeraShopProductType = parsedCeraShopProduct?.GetType();
-Check(parsedCeraShopRequest
-    && !(bool)ceraShopParserArguments[2]!
-    && parsedCeraShopProducts.Length == 1
-    && (byte)parsedCeraShopProductType!.GetProperty("ProductType")!
-        .GetValue(parsedCeraShopProduct!)! == 0x0F
-    && (ushort)parsedCeraShopProductType.GetProperty("AttributeValue")!
-        .GetValue(parsedCeraShopProduct!)! == 3
-    && (uint)parsedCeraShopProductType.GetProperty("CommodityNo")!
-        .GetValue(parsedCeraShopProduct!)! == 140032,
-    "DFLegacy command 67 parses gift mode, product count and seven-byte product rows");
+Check(GameProtocolEngine.TryReadCeraShopPurchase(
+        [0x0B, 0x00, 0x00, 0x01, 0x0F, 0x03, 0x00, 0x00, 0x23, 0x02, 0x00], out var parsedCeraPurchase)
+    && !parsedCeraPurchase.IsGift && parsedCeraPurchase.RecipientName == ""
+    && parsedCeraPurchase.Products.SequenceEqual(new[] { new GameCeraShopPurchaseItem(0x0F, 3, 140032) }),
+    "DFLegacy command67 parses gift mode, product count and seven-byte product rows");
 var ceraUpdate = GameProtocolEngine.CreateCeraUpdate(true, 1_000_000);
 Check(ceraUpdate.ProtocolId == GameProtocolEngine.CeraUpdateNotification
     && ceraUpdate.Payload.SequenceEqual(

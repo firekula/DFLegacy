@@ -1872,7 +1872,8 @@ public static partial class GameProtocolEngine
     public static GameServerPacket CreateCeraShopBuyReply(
         int shopCategory,
         uint commodityNo,
-        IReadOnlyList<GameCeraShopReward>? rewards = null)
+        IReadOnlyList<GameCeraShopReward>? rewards = null,
+        bool isGift = false)
     {
         rewards ??= [];
         if (rewards.Count > ushort.MaxValue)
@@ -1885,7 +1886,7 @@ public static partial class GameProtocolEngine
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)1);
-        writer.Write((byte)0);
+        writer.Write((byte)(isGift ? 1 : 0));
         writer.Write(Math.Clamp(shopCategory, 0, 3));
         writer.Write(commodityNo);
         // The DF2008 client keys its Cera result-item map by these values.
@@ -1916,6 +1917,7 @@ public static partial class GameProtocolEngine
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)0);
+        writer.Write((byte)0); // ACT1 reads this unused byte before the byte error.
         writer.Write(errorCode);
         writer.Write(Math.Clamp(shopCategory, 0, 3));
         writer.Write(commodityNo);
