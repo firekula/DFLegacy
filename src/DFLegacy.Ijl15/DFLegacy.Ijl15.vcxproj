@@ -97,6 +97,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\channel_switch.h" />
     <ClInclude Include="include\ijl15.h" />
     <ClInclude Include="src\auto_input.h" />
     <ClInclude Include="src\debug_module.h" />
@@ -127,6 +128,7 @@
     <ClCompile Include="src\debug_module.cpp" />
     <ClCompile Include="src\boss_room_death.cpp" />
     <ClCompile Include="src\channel_reentry.cpp" />
+    <ClCompile Include="src\channel_switch.cpp" />
     <ClCompile Include="src\ground_item_removal.cpp" />
     <ClCompile Include="src\party_card_display.cpp" />
     <ClCompile Include="src\d3d8_scaler.cpp" />

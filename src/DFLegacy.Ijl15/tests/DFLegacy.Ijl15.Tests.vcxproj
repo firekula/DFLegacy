@@ -134,7 +134,9 @@
     <ClCompile Include="..\src\boss_room_death.cpp" />
     <ClCompile Include="boss_room_death_tests.cpp" />
     <ClCompile Include="..\src\channel_reentry.cpp" />
+    <ClCompile Include="..\src\channel_switch.cpp" />
     <ClCompile Include="channel_reentry_tests.cpp" />
+    <ClCompile Include="channel_switch_tests.cpp" />
     <ClCompile Include="..\src\priest_heal_target.cpp" />
     <ClCompile Include="priest_heal_target_tests.cpp" />
     <ClCompile Include="..\src\ground_item_removal.cpp" />
@@ -144,6 +146,7 @@
     <ClCompile Include="ijl15_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\channel_switch.h" />
     <ClInclude Include="..\src\auto_input.h" />
     <ClInclude Include="..\src\external_string_table.h" />
     <ClInclude Include="..\src\ijl15_config.h" />

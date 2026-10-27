@@ -34,6 +34,7 @@ bool TestPriestHealTargetReplay();
 bool TestGroundItemRemovalNotification();
 bool TestPartyCardDisplay();
 bool TestChannelReentryMtu();
+bool TestChannelSwitch();
 
 namespace
 {
@@ -1324,8 +1325,14 @@ bool TestSyntheticKeyboardStateMerge()
 }
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    if (argc == 2 && std::strcmp(argv[1], "--channel-switch-only") == 0)
+    {
+        if (!TestChannelSwitch()) return 1;
+        std::puts("channel switch transition tests passed");
+        return 0;
+    }
     // First: it hooks this executable's own import table and puts it back, so
     // later tests get the imports they expect.
     if (!TestNetDump())
@@ -1369,6 +1376,7 @@ int main()
     {
         return Fail("ground item removal notification failed");
     }
+    if (!TestChannelSwitch()) return Fail("channel switch transition failed");
     if (!TestChannelReentryMtu())
     {
         return Fail("channel reentry MTU reuse failed");
