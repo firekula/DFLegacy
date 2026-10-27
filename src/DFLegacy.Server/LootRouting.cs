@@ -24,6 +24,10 @@ public enum LootPickupOutcome
     /// （"不回包"哨兵）⇒ 调用方**什么都不发**。
     /// </summary>
     NotAvailable,
+    /// <summary>官服没有活着且能容纳物品的候选：error 22，保留地面物。</summary>
+    NoEligibleRecipient,
+    /// <summary>异步得主尚在收件；实体仍在，第二请求须回滚本地拾取等待。</summary>
+    PickupInProgress,
 }
 
 /// <summary>
@@ -33,7 +37,8 @@ public readonly record struct LootRoutingCandidate(
     byte PartySlot,
     Guid CharacterId,
     ushort UserId,
-    bool JobMatchesItem = false);
+    bool JobMatchesItem = false,
+    bool CanReceiveItem = true);
 
 /// <summary>
 /// 拾取裁决：归属（<see cref="WinnerCharacterId"/>）+ `NOTI 39` 要写的 4 个槽位字节
@@ -43,7 +48,8 @@ public sealed record LootRoutingDecision(
     LootPickupOutcome Outcome,
     Guid WinnerCharacterId,
     byte[] RoutingScores,
-    byte ErrorCode);
+    byte ErrorCode,
+    Guid PickupId = default);
 
 /// <summary>
 /// 会话侧"把一件地面物收进**本会话角色**背包"的结果（`EntranceService.TryGrantGroundItemAsync`）。
@@ -63,7 +69,7 @@ public enum GroundItemGrantOutcome
     /// <summary>抢输了（别的成员先摘走）或调用时地面物已不在：**什么都不发**。</summary>
     NotAvailable,
 
-    /// <summary>落库失败：已把实体按原 GroundId 放回原地，**什么都不发**。</summary>
+    /// <summary>落库失败：按原 GroundId 放回；调用方回 error4 完成原拾取请求。</summary>
     PersistFailed,
 }
 
@@ -85,12 +91,8 @@ public enum GroundItemGrantOutcome
 /// * `CParty::IsRoutingState@0x08145840(40)` = `*(int*)party != 0`；为真时
 ///   `DisPatcher_GetItem::process` 在调 `get_item` **之前**就置 216 返回（`:1209-1213`）。
 ///
-/// 已知缺口（`[未验证]`，见 S5-brief §1.7）：官服的第 3 项加成条件还带
-/// `is_stackable() != 1 &amp;&amp; item_kind == 10 &amp;&amp; check_job_type(item, job)`，
-/// `check_job_type` 与 "item kind == 10" 的语义尚未取证 ⇒ 这里由调用方经
-/// <see cref="LootRoutingCandidate.JobMatchesItem"/> 传入，当前生产接线传 false。
-/// 同样地 `isEpicRoutingItem`（`CItem+121`）在我们的物品表里**没有对应字段**，
-/// 只能由调用方给（当前恒 false）⇒ 我们的可路由判据实际退化为 `rarity > 0`。
+/// 完整取证已闭合 kind10 是武器、usable-job 缺省位图0；生产已接独立容量预筛及武器职业加成。
+/// 完整门控还受掉落来源与ACT1原生确认字节影响；不使用后期官服库存槽号与特殊确认协议编号。
 /// </summary>
 public static class LootRouting
 {
@@ -114,29 +116,40 @@ public static class LootRouting
 
     /// <summary>
     /// 官服 `CItem::check_item_routing`：`isEpicRoutingItem || get_rarity() > 0`。
-    /// **这是语义层证据，不要直接拿它当生效门控**——见 <see cref="RoutableRarityFloor"/>。
+    /// 普通分配与特殊确认分配是不同路径；此谓词不代表启动特殊确认。
     /// </summary>
     public static bool IsRoutable(int? rarity, bool isEpicRoutingItem = false) =>
         isEpicRoutingItem || (rarity ?? 0) > 0;
 
     /// <summary>
-    /// **本客户端生效的**可路由品级下限（`rarity > 3` 才算可路由）。
-    ///
-    /// 官服的 `check_item_routing` 是 `rarity > 0`（≈任何非最低品级），但本客户端**没有骰子 UI**：
-    /// "掷骰判给别人"在玩家侧等于**点了没反应、东西还留在地上**——真机 run #46 里神枪手
-    /// 唯一一次有效拾取就这么被判给了队友，用户随即报"捡不起东西"。
-    /// 2026-10-03 用户裁决：**先收窄到 `rarity > 3`**（回到 2026-10-01 的"蓝装以上"口径），
-    /// 把普通掉落的体感恢复正常；等有客户端反馈手段（或确认玩家能接受静默转移）再放开。
-    /// ⇒ 这是一处**有意偏离**：规则、单测、跨会话交付都保留，只改这一条门控；
-    /// 台账与 `STATUS.md` 已按"部分对齐"记录，放开时把 3 改成 0 即可。
+    /// 普通骰子的稀有度下限。2026-10-26 恢复官方 rarity>0，
+    /// 同时将原生 NOTI39 骰子结果发送给全队，替代旧的临时 rarity>3 限制。
     /// </summary>
-    public const int RoutableRarityFloor = 3;
+    public const int RoutableRarityFloor = 0;
 
     /// <summary>
-    /// 生产接线用的门控：`isEpicRoutingItem || rarity > `<see cref="RoutableRarityFloor"/>。
+    /// 物品基础谓词；完整生产门控还需掉落来源和原生确认字节。
     /// </summary>
     public static bool IsRoutableForThisClient(int? rarity, bool isEpicRoutingItem = false) =>
         isEpicRoutingItem || (rarity ?? 0) > RoutableRarityFloor;
+
+    /// <summary>
+    /// 官服次序：来源1先启用；rarity>3用请求bool覆盖；非0来源epic再用请求bool覆盖。
+    /// 最后检查rarity/epic或avatar。客户端报来的rarity不参与权威判定。
+    /// </summary>
+    public static bool IsRoutableGroundItem(DungeonGroundItem groundItem, ItemDefinition definition,
+        bool routeRequested = false)
+    {
+        if (groundItem.IsGold) return false;
+        var enabled = groundItem.RoutingSource == 1;
+        if (definition.Rarity > 3) enabled = routeRequested;
+        if (groundItem.RoutingSource != 0 && definition.IsEpicRoutingItem) enabled = routeRequested;
+        return enabled && (IsRoutable(definition.Rarity, definition.IsEpicRoutingItem)
+            || definition.InventoryCategory == ItemInventoryCategory.Avatar);
+    }
+
+    public static bool HasJobBonus(ItemDefinition definition, int job) =>
+        definition.IsEquipment && definition.TypeTag == "weapon" && definition.IsUsableByJob(job);
 
     /// <summary>
     /// 裁决一次拾取。判定顺序照官服 `DisPatcher_GetItem::process`：
@@ -154,7 +167,9 @@ public static class LootRouting
         IReadOnlyList<LootRoutingCandidate> candidates,
         int roundRobinIndex,
         Func<int, int> nextRandom,
-        out int nextRoundRobinIndex)
+        out int nextRoundRobinIndex,
+        int? partyMemberCount = null,
+        Guid forcedOwnerCharacterId = default)
     {
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(nextRandom);
@@ -177,20 +192,25 @@ public static class LootRouting
                 LootPickupOutcome.NotAvailable, Guid.Empty, scores, 0);
         }
 
-        // 官服 get_member_count <= 1 → v150 = a2；v149 为假（不可路由）也走直取。
-        if (!routable || candidates.Count <= 1)
+        var totalMembers = partyMemberCount ?? candidates.Count;
+        if (!routable || totalMembers <= 1)
         {
             nextRoundRobinIndex = roundRobinIndex;
             return new LootRoutingDecision(
                 LootPickupOutcome.Granted, pickerCharacterId, scores, 0);
         }
 
-        var bonusOrdinal = (roundRobinIndex + 1) % candidates.Count;
-        nextRoundRobinIndex = bonusOrdinal;
+        var eligible = candidates.Where(candidate => candidate.CanReceiveItem).OrderBy(candidate => candidate.PartySlot).ToArray();
+        nextRoundRobinIndex = roundRobinIndex;
+        if (eligible.Length == 0)
+            return new LootRoutingDecision(LootPickupOutcome.NoEligibleRecipient, Guid.Empty, scores, 22);
+        var bonusOrdinal = roundRobinIndex + 1;
+        if (bonusOrdinal >= totalMembers) bonusOrdinal = 0;
+        var ownerScore = forcedOwnerCharacterId == Guid.Empty ? 0 : 89 + nextRandom(11);
 
-        for (var ordinal = 0; ordinal < candidates.Count; ordinal++)
+        for (var ordinal = 0; ordinal < eligible.Length; ordinal++)
         {
-            var candidate = candidates[ordinal];
+            var candidate = eligible[ordinal];
             if (candidate.PartySlot >= RoutingScoreSlotCount)
             {
                 throw new ArgumentOutOfRangeException(
@@ -203,6 +223,7 @@ public static class LootRouting
             if (ordinal == bonusOrdinal)
             {
                 score += RoundRobinBonus;
+                nextRoundRobinIndex = ordinal;
             }
 
             if (candidate.JobMatchesItem)
@@ -216,13 +237,15 @@ public static class LootRouting
                 score += nextRandom(remaining);
             }
 
-            scores[candidate.PartySlot] = (byte)Math.Min(score, byte.MaxValue);
+            if (ownerScore != 0)
+                score = candidate.CharacterId == forcedOwnerCharacterId ? ownerScore : Math.Min(score, ownerScore - 1);
+            scores[candidate.PartySlot] = (byte)score;
         }
 
         // 官服按槽位 0..3 遍历取最大分；并列时后来者自减 1（先到者保住最大分）。
         var best = 0;
         var winnerSlot = -1;
-        foreach (var candidate in candidates.OrderBy(candidate => candidate.PartySlot))
+        foreach (var candidate in eligible)
         {
             var score = scores[candidate.PartySlot];
             if (score <= best)
@@ -246,7 +269,7 @@ public static class LootRouting
                 LootPickupOutcome.Granted, pickerCharacterId, scores, 0);
         }
 
-        var winner = candidates.First(candidate => candidate.PartySlot == winnerSlot);
+        var winner = eligible.First(candidate => candidate.PartySlot == winnerSlot);
         return new LootRoutingDecision(LootPickupOutcome.Routed, winner.CharacterId, scores, 0);
     }
 }

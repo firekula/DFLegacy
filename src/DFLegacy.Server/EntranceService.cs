@@ -2928,12 +2928,14 @@ public sealed class EntranceService(
                 // 拾取仲裁（设计稿 §7 决策 5：全队共享、先到先得）：赢下这个掉落实体才允许落库。
                 // 返回 null = 输掉竞态（队友先拿走/房间重置/重开）——调用方必须直接 continue：
                 // 不落库、不发自己那份包、不广播。归属（OwnerUserId）只做客户端显示，不参与准入。
-                DungeonGroundItem? TryClaimGroundItemForPickup(ushort groundId) =>
+                DungeonGroundItem? TryClaimGroundItemForPickup(DungeonGroundItem expectedItem, Guid pickupId) =>
                     dungeonInstance!.TryClaimGroundItem(
-                        groundId,
+                        expectedItem.GroundId,
                         currentDungeonRoomX,
                         currentDungeonRoomY,
-                        out var claimed)
+                        out var claimed,
+                        expectedItem,
+                        pickupId)
                         ? claimed
                         : null;
 
@@ -3058,7 +3060,7 @@ public sealed class EntranceService(
                 //   ① `CMD 46` 直取：归属就是请求者本人，`replyToRequester` 写本会话 stream；
                 //   ② routing 掷骰把归属判给**别的成员**时，由**得主自己的会话**代收
                 //      （`replyToRequester` 发给请求者会话；见 `LootRouting` 与注册表的拾取信箱）。
-                // 语义与改造前一字不差：先到先得（claim 唯一）、落库失败必须按原 GroundId 放回原地、
+                // claim 唯一、落库失败必须按原 GroundId 放回原地、
                 // 超重回 `CMD 46` error 0x15 再发负重提示（客户端已乐观隐藏，靠这条回滚）。
                 // **本函数只碰本会话的内存状态**——所以得主不是请求者时，必须由得主会话自己跑它，
                 // 不能由别人代改（否则得主下次落库会用陈旧快照覆盖，静默丢件）。
@@ -3066,7 +3068,9 @@ public sealed class EntranceService(
                     DungeonGroundItem groundItem,
                     ushort groundId,
                     IReadOnlyList<byte>? routingScores,
-                    Func<GameServerPacket, ValueTask> replyToRequester)
+                    Func<GameServerPacket, ValueTask> replyToRequester,
+                    ushort pickerUserId,
+                    Guid pickupId)
                 {
                     // 进不了背包时的统一回包。**不许静默**：客户端发一个拾取请求就等一个应答，
                     // 收不到应答它再也不发请求（真机 run #49 的根因）——
@@ -3075,7 +3079,9 @@ public sealed class EntranceService(
                     {
                         foreach (var reply in CreateInventoryRejectionReplies(failure))
                         {
-                            await replyToRequester(reply);
+                            await replyToRequester(reply.Type == GameProtocolEngine.CommandPacketType
+                                && reply.ProtocolId == GameProtocolEngine.GetItemCommand
+                                    ? GameProtocolEngine.CreateGetItemError(4) : reply);
                         }
                     }
 
@@ -3101,7 +3107,7 @@ public sealed class EntranceService(
                         }
 
                         // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                        var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                        var claimedGroundItem = TryClaimGroundItemForPickup(groundItem, pickupId);
                         if (claimedGroundItem is null)
                         {
                             logger.LogWarning(
@@ -3158,7 +3164,7 @@ public sealed class EntranceService(
                             warehouseCapacity,
                             groundUpgradeTarget);
                         // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                        var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                        var claimedGroundItem = TryClaimGroundItemForPickup(groundItem, pickupId);
                         if (claimedGroundItem is null)
                         {
                             logger.LogWarning(
@@ -3189,15 +3195,10 @@ public sealed class EntranceService(
                         }
 
                         _ = AdoptSavedWarehouseUpgradeState(savedUpgrade);
-                        var upgradePickup =
-                            GameProtocolEngine.CreateInventoryItemPickup(
-                                groundId,
-                                localUserId,
-                                ushort.MaxValue,
-                                routingScores);
-                        await upgradePickup.WriteAsync(stream, serverToken);
-                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                        LogPacket("TX", runtimeSession, upgradePickup);
+                        await dungeonPartyService.BroadcastInventoryItemPickupAsync(
+                            dungeonInstance!, groundId, pickerUserId, localUserId,
+                            ushort.MaxValue, routingScores,
+                            SendPickupReplyToRequesterAsync);
 
                         var inventoryRefresh = CreateMainInventoryPacket(
                             currentGold,
@@ -3290,7 +3291,7 @@ public sealed class EntranceService(
                         }
 
                         // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                        var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                        var claimedGroundItem = TryClaimGroundItemForPickup(groundItem, pickupId);
                         if (claimedGroundItem is null)
                         {
                             logger.LogWarning(
@@ -3325,15 +3326,10 @@ public sealed class EntranceService(
 
                         activeCharacter = savedCreaturePickup;
                         creatureInventory = creaturePickupPlan.Inventory;
-                        var creaturePickup =
-                            GameProtocolEngine.CreateInventoryItemPickup(
-                                groundId,
-                                localUserId,
-                                creaturePickupPlan.DestinationSlot,
-                                routingScores);
-                        await creaturePickup.WriteAsync(stream, serverToken);
-                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                        LogPacket("TX", runtimeSession, creaturePickup);
+                        await dungeonPartyService.BroadcastInventoryItemPickupAsync(
+                            dungeonInstance!, groundId, pickerUserId, localUserId,
+                            creaturePickupPlan.DestinationSlot, routingScores,
+                            SendPickupReplyToRequesterAsync);
 
                         foreach (var creatureRefresh in
                                  CreateCreatureInventoryPackets(
@@ -3382,7 +3378,7 @@ public sealed class EntranceService(
                         }
 
                         // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                        var claimedGroundItem = TryClaimGroundItemForPickup(groundId);
+                        var claimedGroundItem = TryClaimGroundItemForPickup(groundItem, pickupId);
                         if (claimedGroundItem is null)
                         {
                             logger.LogWarning(
@@ -3415,15 +3411,10 @@ public sealed class EntranceService(
 
                         activeCharacter = savedAvatarPickup;
                         avatarInventory = avatarPickupPlan.Inventory;
-                        var avatarPickup =
-                            GameProtocolEngine.CreateInventoryItemPickup(
-                                groundId,
-                                localUserId,
-                                avatarPickupPlan.DestinationSlot,
-                                routingScores);
-                        await avatarPickup.WriteAsync(stream, serverToken);
-                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                        LogPacket("TX", runtimeSession, avatarPickup);
+                        await dungeonPartyService.BroadcastInventoryItemPickupAsync(
+                            dungeonInstance!, groundId, pickerUserId, localUserId,
+                            avatarPickupPlan.DestinationSlot, routingScores,
+                            SendPickupReplyToRequesterAsync);
 
                         var avatarRefresh = CreateAvatarInventoryPacket(
                             avatarInventory.Values);
@@ -3450,7 +3441,7 @@ public sealed class EntranceService(
                     }
 
                     // 先到先得：落库之前先赢下这个掉落实体；输掉竞态就什么都不做。
-                    var claimedInventoryItem = TryClaimGroundItemForPickup(groundId);
+                    var claimedInventoryItem = TryClaimGroundItemForPickup(groundItem, pickupId);
                     if (claimedInventoryItem is null)
                     {
                         logger.LogWarning(
@@ -3480,14 +3471,10 @@ public sealed class EntranceService(
 
                     activeCharacter = savedInventory;
                     mainInventory = pickupPlan.Inventory;
-                    var itemPickup = GameProtocolEngine.CreateInventoryItemPickup(
-                        groundId,
-                        localUserId,
-                        pickupPlan.DestinationSlot,
-                        routingScores);
-                    await itemPickup.WriteAsync(stream, serverToken);
-                    Interlocked.Increment(ref runtimeSession.SentPackets);
-                    LogPacket("TX", runtimeSession, itemPickup);
+                    await dungeonPartyService.BroadcastInventoryItemPickupAsync(
+                        dungeonInstance!, groundId, pickerUserId, localUserId,
+                        pickupPlan.DestinationSlot, routingScores,
+                        SendPickupReplyToRequesterAsync);
 
                     var itemRefresh = CreateMainInventoryPacket(
                         currentGold,
@@ -3500,27 +3487,28 @@ public sealed class EntranceService(
                     return GroundItemGrantOutcome.Granted;
                 }
 
-                // 官服 `CItem::check_item_routing` = `isEpicRoutingItem || get_rarity() > 0`；
-                // 但**生效门控**收窄到 `rarity > 3`（2026-10-03 用户裁决；理由与放开条件写在
-                // `LootRouting.RoutableRarityFloor` 的注释里）。我们的物品表有 `rarity`（PVF 的
-                // `[rarity]` 标签），**没有** `CItem+121` 那个"史诗路由"标志；金币没有物品定义
-                // ⇒ 不可路由（与官服金币分支不掷骰一致）。
-                bool IsRoutableGroundItem(DungeonGroundItem groundItem) =>
+                bool IsRoutableGroundItem(DungeonGroundItem groundItem, bool routeRequested) =>
                     itemCatalog.TryGetDefinition(groundItem.ItemId, out var definition)
-                    && LootRouting.IsRoutableForThisClient(definition.Rarity);
+                    && LootRouting.IsRoutableGroundItem(groundItem, definition, routeRequested);
 
-                // 官服按**队伍槽位** 0..3 遍历 `_checkValidUser(k) && *(party+k+896) == 1`；
-                // 我们的等价物 = 这个副本实例当前的成员（含自己）。
-                // `JobMatchesItem` 恒 false：官服那一项还要求
-                // `is_stackable()!=1 && item kind == 10 && check_job_type(item, job)`，
-                // 后两个语义尚未取证（缺口见 `LootRouting` 类注释）。
-                LootRoutingCandidate[] BuildRoutingCandidates() =>
-                    dungeonInstance is null
-                        ? []
-                        : [.. dungeonInstance.Members.Select(member => new LootRoutingCandidate(
-                            member.PartySlot,
-                            member.CharacterId,
-                            member.AreaUserId))];
+                async Task<LootRoutingCandidate[]> BuildRoutingCandidatesAsync(DungeonGroundItem groundItem)
+                {
+                    if (dungeonInstance is null || !itemCatalog.TryGetDefinition(groundItem.ItemId, out var definition)) return [];
+                    var candidates = new List<LootRoutingCandidate>(4);
+                    foreach (var member in dungeonInstance.Members.OrderBy(member => member.PartySlot))
+                    {
+                        // Only read another session's committed snapshot; never enumerate its mutable inventory.
+                        var character = member.CharacterId == activeCharacter?.Id
+                            ? activeCharacter with { Inventory = mainInventory.Values.ToList(),
+                                AvatarInventory = avatarInventory.Values.ToList(), CreatureInventory = creatureInventory.Values.ToList() }
+                            : await store.GetCharacterAsync(member.AccountName, member.CharacterId, serverToken);
+                        if (character is null) continue;
+                        candidates.Add(new LootRoutingCandidate(member.PartySlot, member.CharacterId, member.AreaUserId,
+                            LootRouting.HasJobBonus(definition, character.Job),
+                            NativeLootInventory.CanReceive(character, groundItem, definition)));
+                    }
+                    return [.. candidates];
+                }
 
                 // 回包投递目标：请求者是**我**时走本会话 stream；是**别人**时走他的会话句柄
                 // （带他自己的日志与计数）；他已经不在实例里（掉线/换房）就当丢给空气——
@@ -3532,9 +3520,12 @@ public sealed class EntranceService(
                         return SendPickupReplyToRequesterAsync;
                     }
 
-                    return dungeonInstance?.FindMember(pickerCharacterId) is { } picker
-                        ? picker.Send
-                        : _ => ValueTask.CompletedTask;
+                    if (dungeonInstance?.FindMember(pickerCharacterId) is not { } picker)
+                        return _ => ValueTask.CompletedTask;
+                    return packet => new ValueTask(CrossSessionDelivery.SendSafelyAsync(
+                        logger, packet,
+                        CrossSessionDelivery.Describe(picker.CharacterId, picker.CharacterName, picker.AreaUserId),
+                        picker.Send));
                 }
 
                 // routing **得主侧**的代收（S5/T3b）：拾取者会话把"这件归你了"投进注册表信箱，
@@ -3544,12 +3535,14 @@ public sealed class EntranceService(
                 async Task ApplyLootPickupAttemptAsync(DungeonLootPickupAttempt attempt)
                 {
                     if (dungeonInstance is null
-                        || !dungeonInstance.TryGetGroundItem(
-                            attempt.GroundId,
+                        || !dungeonInstance.TryGetGroundItemForLootAttempt(
+                            attempt,
                             currentDungeonRoomX,
                             currentDungeonRoomY,
                             out var routedGroundItem))
                     {
+                        if (attempt.Instance is { } oldInstance && attempt.GroundItem is { } oldItem)
+                            oldInstance.ReleaseLootPickup(oldItem, attempt.PickupId, notifyPicker: true);
                         // 典型的三种原因：别人先摘走了、我换房了、实例已经重开。
                         // **什么都不发**（官服 `get_item == false` 的 0x7FFFFFFF 静默语义），只留一行日志。
                         logger.LogWarning(
@@ -3566,9 +3559,14 @@ public sealed class EntranceService(
                         routedGroundItem,
                         attempt.GroundId,
                         attempt.RoutingScores,
-                        replyToPicker);
+                        replyToPicker,
+                        attempt.PickerUserId,
+                        attempt.PickupId);
                     if (grant is not GroundItemGrantOutcome.Granted)
                     {
+                        dungeonInstance.ReleaseLootPickup(routedGroundItem, attempt.PickupId);
+                        if (grant == GroundItemGrantOutcome.PersistFailed)
+                            await replyToPicker(GameProtocolEngine.CreateGetItemError(4));
                         // Rejected 已经在内部回过包；NotAvailable / PersistFailed 按静默处理。
                         return;
                     }
@@ -3690,7 +3688,7 @@ public sealed class EntranceService(
                                 localUserId,
                                 checked((byte)slotIndex),
                                 activeCharacter.Name,
-                                CreateDungeonPacketDelivery()),
+                                CreateDungeonPacketDelivery(), accountName),
                             out var room))
                     {
                         logger.LogWarning(
@@ -4854,6 +4852,8 @@ public sealed class EntranceService(
                         // 否则玩家一动背包就会用陈旧状态覆盖掉刚收进来的东西。
                         if (activeCharacter is { } lootWinner)
                         {
+                            while (dungeonInstance?.TryTakeCancelledLootPickup(lootWinner.Id, out var cancelledPickup) == true)
+                                await SendPickupReplyToRequesterAsync(cancelledPickup);
                             while (dungeonInstanceRegistry.TryTakeLootPickupAttempt(
                                        lootWinner.Id, out var lootAttempt))
                             {
@@ -7525,7 +7525,8 @@ public sealed class EntranceService(
                                         rewardItem.AvatarRemainingSeconds,
                                         rewardItem.AvatarAbilityIndex,
                                         EquipmentQualitySeed: rewardItem.EquipmentQualitySeed,
-                                        InstanceId: rewardItem.InstanceId));
+                                        InstanceId: rewardItem.InstanceId),
+                                    routingSource: 0);
                                 var dropNotification = GameProtocolEngine.CreateDropItem(
                                     localUserId,
                                     currentX,
@@ -13453,7 +13454,7 @@ public sealed class EntranceService(
                                     localUserId,
                                     PartySlot: 0,
                                     activeCharacter.Name,
-                                    CreateDungeonPacketDelivery()));
+                                    CreateDungeonPacketDelivery(), accountName));
                                 dungeonInstance.EnterDetachedRoom(new DungeonRoomDefinition(
                                     GameProtocolEngine.TutorialMapId,
                                     DungeonMapType.Boss,
@@ -13624,7 +13625,7 @@ public sealed class EntranceService(
                                             localUserId,
                                             checked((byte)leaderSlotIndex),
                                             activeCharacter.Name,
-                                            CreateDungeonPacketDelivery()),
+                                            CreateDungeonPacketDelivery(), accountName),
                                         out var liveRoom))
                                 {
                                     logger.LogWarning(
@@ -13696,7 +13697,7 @@ public sealed class EntranceService(
                                     localUserId,
                                     checked((byte)leaderSlotIndex),
                                     activeCharacter.Name,
-                                    CreateDungeonPacketDelivery())))
+                                    CreateDungeonPacketDelivery(), accountName)))
                             {
                                 logger.LogWarning(
                                     "Party dungeon entry aborted for {Name}: instance {PartyId} has already started town return.",
@@ -14514,19 +14515,18 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.GetItemCommand)
                         {
-                            if (request.Body.Length < 4
+                            if (!GameProtocolEngine.TryParseGetItemCommand(request.Body, out var pickupCommand)
                                 || currentDungeonId == 0
                                 || activeCharacter is null)
                             {
                                 continue;
                             }
 
-                            var groundId = BinaryPrimitives.ReadUInt16LittleEndian(
-                                request.Body.AsSpan(2, sizeof(ushort)));
+                            var groundId = pickupCommand.GroundId;
                             // 全队共享仍然成立，但**归属**自 S5/T3b 起按官服 `CParty::get_item` 的
                             // routing 规则裁决：可路由物品按加权掷骰定归属（`OwnerUserId` 依旧只做
-                            // 客户端归属显示、不参与准入）。真正的并发仲裁仍是 `TryClaimGroundItem`
-                            // （锁内摘除，返回值唯一），由 `TryGrantGroundItemAsync` 在**得主会话**里执行。
+                            // 客户端归属显示、不参与准入）。实例先预留以保证一次骰子，最后claim
+                            // 核对同一对象/token并唯一摘除，由得主会话完成发奖。
                             if (!dungeonInstance!.TryGetGroundItem(
                                     groundId,
                                     currentDungeonRoomX,
@@ -14545,11 +14545,21 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            var decision = dungeonInstance.DecidePickupRouting(
-                                activeCharacter.Id,
-                                IsRoutableGroundItem(groundItem),
-                                BuildRoutingCandidates(),
-                                Random.Shared.Next);
+                            var routable = IsRoutableGroundItem(groundItem, pickupCommand.RouteRequested);
+                            var candidates = routable ? await BuildRoutingCandidatesAsync(groundItem) : [];
+                            if (!dungeonInstance.TryBeginLootPickup(activeCharacter.Id, groundItem, routable,
+                                    candidates, GameRandomSource.Shared.Next, out var decision))
+                            {
+                                if (decision is { Outcome: LootPickupOutcome.PickupInProgress })
+                                    await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateGetItemError(21));
+                                continue;
+                            }
+                            if (decision.Outcome == LootPickupOutcome.NoEligibleRecipient)
+                            {
+                                await dungeonPartyService.BroadcastToMembersAsync(dungeonInstance,
+                                    GameProtocolEngine.CreateGetItemError(22));
+                                continue;
+                            }
                             if (decision.Outcome is LootPickupOutcome.RoutingActive)
                             {
                                 // 官服在调 `get_item` **之前**就回 216（0xD8）。生产不可达
@@ -14567,6 +14577,7 @@ public sealed class EntranceService(
                                 var winner = dungeonInstance.FindMember(decision.WinnerCharacterId);
                                 if (winner is null)
                                 {
+                                    dungeonInstance.ReleaseLootPickup(groundItem, decision.PickupId, notifyPicker: true);
                                     // 得主刚好离队：按"这一下没捡到"处理——地面物仍在原地，谁都没拿走。
                                     logger.LogWarning(
                                         "Routed pickup of ground item {GroundId} for user {UserId} has no live winner; the ground item stays in room ({RoomX},{RoomY}).",
@@ -14584,7 +14595,10 @@ public sealed class EntranceService(
                                         activeCharacter.Id,
                                         localUserId,
                                         winner.PartySlot,
-                                        decision.RoutingScores));
+                                        decision.RoutingScores,
+                                        Instance: dungeonInstance,
+                                        GroundItem: groundItem,
+                                        PickupId: decision.PickupId));
                                 logger.LogInformation(
                                     "Ground item {GroundId} routed to {Winner} (slot {Slot}) by the official dice rule; scores=[{Scores}].",
                                     groundId,
@@ -14598,7 +14612,15 @@ public sealed class EntranceService(
                                 groundItem,
                                 groundId,
                                 decision.RoutingScores,
-                                SendPickupReplyToRequesterAsync);
+                                SendPickupReplyToRequesterAsync,
+                                localUserId,
+                                decision.PickupId);
+                            if (grant != GroundItemGrantOutcome.Granted)
+                            {
+                                dungeonInstance.ReleaseLootPickup(groundItem, decision.PickupId);
+                                if (grant == GroundItemGrantOutcome.PersistFailed)
+                                    await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateGetItemError(4));
+                            }
                             if (grant is GroundItemGrantOutcome.Granted)
                             {
                                 await CompletePickupAsync(

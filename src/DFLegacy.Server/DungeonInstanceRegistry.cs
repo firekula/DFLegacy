@@ -41,7 +41,10 @@ internal sealed record DungeonLootPickupAttempt(
     Guid PickerCharacterId,
     ushort PickerUserId,
     byte PickerPartySlot,
-    byte[] RoutingScores);
+    byte[] RoutingScores,
+    DungeonInstance? Instance = null,
+    DungeonGroundItem? GroundItem = null,
+    Guid PickupId = default);
 
 /// <summary>
 /// 副本实例注册表（设计稿 §3.1）：队伍键 / 角色绑定 / 单人键三张表 + 待选图、待入队两个信箱。
@@ -196,7 +199,8 @@ public sealed class DungeonInstanceRegistry
         || _pendingSelectionCancels.ContainsKey(characterId)
         || _pendingKillCredits.ContainsKey(characterId)
         || _pendingSettlementReturns.ContainsKey(characterId)
-        || HasPendingLootPickup(characterId);
+        || HasPendingLootPickup(characterId)
+        || (_byCharacter.TryGetValue(characterId, out var instance) && instance.HasCancelledLootPickup(characterId));
 
     /// <summary>队列可能空（取完就空），所以按"队列非空"判定，而不是"键存在"。</summary>
     internal bool HasPendingLootPickup(Guid characterId) =>

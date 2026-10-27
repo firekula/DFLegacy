@@ -190,7 +190,9 @@ public sealed record ItemDefinition(
     decimal? CreatureExperienceAmountRate = null,
     CeraBoosterDefinition? CeraBooster = null,
     CeraPackageDefinition? CeraPackage = null,
-    int? InventoryLimit = null)
+    int? InventoryLimit = null,
+    bool IsEpicRoutingItem = false,
+    int UsableJobMask = 0)
 {
     public bool IsEquipment => ScriptKind == ItemScriptKind.Equipment;
 
@@ -198,6 +200,7 @@ public sealed record ItemDefinition(
         IsEquipment && TypeTag is "title name" or "title";
 
     public bool IsStackable => ScriptKind == ItemScriptKind.Stackable;
+    public bool IsUsableByJob(int job) => job is >= 0 and <= 10 && (UsableJobMask & (1 << job)) != 0;
 
     public bool CanDropOnGround => AttachType is
         ItemAttachType.Free or ItemAttachType.Sealing;
@@ -221,6 +224,10 @@ public sealed class ItemCatalog
     private static readonly Regex StackableTypePattern = CreateTokenTagPattern("stackable type");
     private static readonly Regex GradePattern = CreateIntegerTagPattern("grade");
     private static readonly Regex RarityPattern = CreateIntegerTagPattern("rarity");
+    private static readonly Regex EpicRoutingPattern = CreateIntegerTagPattern("epic routing");
+    private static readonly Regex UsableJobPattern = new(
+        @"\[usable job\](?<value>.*?)\[/usable job\]",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline | RegexOptions.IgnoreCase);
     private static readonly Regex WeightPattern = CreateIntegerTagPattern("weight");
     private static readonly Regex MinimumLevelPattern = CreateIntegerTagPattern("minimum level");
     private static readonly Regex MaximumLevelPattern = CreateIntegerTagPattern("maximum level");
@@ -668,7 +675,9 @@ public sealed class ItemCatalog
                      ReadDecimal(CreatureExperienceAmountRatePattern, text),
                      ReadCeraBooster(typeTag, text, scriptPath),
                      ReadCeraPackage(typeTag, text, scriptPath),
-                     ReadInteger(InventoryLimitPattern, text)));
+                     ReadInteger(InventoryLimitPattern, text),
+                     IsEpicRoutingItem: ReadInteger(EpicRoutingPattern, text) == 1,
+                     UsableJobMask: ReadUsableJobs(text)));
         }
     }
 
@@ -1072,6 +1081,20 @@ public sealed class ItemCatalog
     {
         var match = pattern.Match(text);
         return match.Success ? match.Groups["value"].Value.Trim() : string.Empty;
+    }
+
+    private static int ReadUsableJobs(string text)
+    {
+        string[] jobs = ["swordman", "fighter", "gunner", "mage", "priest", "at gunner",
+            "thief", "at fighter", "at mage", "demonic swordman", "creator mage"];
+        var mask = 0;
+        foreach (Match token in Regex.Matches(UsableJobPattern.Match(text).Groups["value"].Value, @"`(?<job>[^`]+)`"))
+        {
+            var index = Array.IndexOf(jobs, token.Groups["job"].Value.Trim().Trim('[', ']').ToLowerInvariant());
+            // The native loader maps all/unrecognized tokens to all eleven jobs; omission stays zero.
+            mask |= index < 0 ? 0x7FF : 1 << index;
+        }
+        return mask;
     }
 
     private static string ReadToken(Regex pattern, string text)

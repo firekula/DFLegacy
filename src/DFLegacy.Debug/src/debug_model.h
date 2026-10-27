@@ -23,24 +23,40 @@ namespace dfl::debug_model
         std::uint8_t level, box, state, reserved;
         std::uint16_t x, y;
     };
+    struct DropState
+    {
+        std::uint8_t enabled, allowed, result, reserved;
+        std::int64_t requestId;
+    };
+    struct DropRequest
+    {
+        std::uint32_t magic = 0x31504444, version = 1;
+        std::int64_t requestId = 0, runId = 0;
+        std::uint16_t userId = 0;
+        std::uint32_t reserved = 0;
+        std::uint8_t enabled = 0, reserved2 = 0;
+    };
 #pragma pack(pop)
     static_assert(sizeof(Header) == 40 && sizeof(Monster) == 12);
+    static_assert(sizeof(DropState) == 12 && sizeof(DropRequest) == 32);
     struct Snapshot
     {
         Header header{};
         std::array<Monster, MaximumHidden> monsters{};
+        DropState drop{};
     };
-    constexpr std::size_t MaximumBytes = sizeof(Header) + MaximumHidden * sizeof(Monster);
+    constexpr std::size_t MaximumBytes = sizeof(Header) + MaximumHidden * sizeof(Monster) + sizeof(DropState);
     inline bool Decode(const void* bytes, std::size_t size, Snapshot& output) noexcept
     {
         if (bytes == nullptr || size < sizeof(Header)) return false;
         Snapshot candidate{};
         std::memcpy(&candidate.header, bytes, sizeof(Header));
         const auto& header = candidate.header;
-        if (header.magic != Magic || header.version != 1 || header.userId == 0
+        if (header.magic != Magic || (header.version != 1 && header.version != 2) || header.userId == 0
             || header.runId == 0 || header.count > MaximumHidden
             || header.atBoss > 1 || header.clearEnabled > 1
-            || size != sizeof(Header) + header.count * sizeof(Monster)) return false;
+            || size != sizeof(Header) + header.count * sizeof(Monster)
+                + (header.version == 2 ? sizeof(DropState) : 0)) return false;
         if (header.count != 0) std::memcpy(candidate.monsters.data(),
             static_cast<const unsigned char*>(bytes) + sizeof(Header), header.count * sizeof(Monster));
         for (std::size_t i = 0; i < header.count; ++i)
@@ -48,6 +64,13 @@ namespace dfl::debug_model
             if (candidate.monsters[i].state > 3 || candidate.monsters[i].reserved != 0) return false;
             for (std::size_t j = 0; j < i; ++j)
                 if (candidate.monsters[i].uid == candidate.monsters[j].uid) return false;
+        }
+        if (header.version == 2)
+        {
+            std::memcpy(&candidate.drop, static_cast<const unsigned char*>(bytes)
+                + sizeof(Header) + header.count * sizeof(Monster), sizeof(DropState));
+            if (candidate.drop.enabled > 1 || candidate.drop.allowed > 1 || candidate.drop.result > 3
+                || candidate.drop.reserved != 0 || candidate.drop.requestId < 0) return false;
         }
         output = candidate;
         return true;

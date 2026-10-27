@@ -346,6 +346,27 @@ public sealed class DungeonPartyService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// 原生 NOTI39 消费四槽骰子分，并仅在 winner uid 等于本地 uid 时入背包。
+    /// 骰子结果必须先到全队，再由调用方广播地面移除；直取仍只通知得主会话。
+    /// </summary>
+    internal async Task BroadcastInventoryItemPickupAsync(
+        DungeonInstance instance,
+        ushort groundId,
+        ushort pickerUserId,
+        ushort winnerUserId,
+        ushort destinationSlot,
+        IReadOnlyList<byte>? routingScores,
+        Func<GameServerPacket, ValueTask> sendToWinner)
+    {
+        var packet = GameProtocolEngine.CreateInventoryItemPickup(
+            groundId, pickerUserId, destinationSlot, routingScores, winnerUserId);
+        if (instance.IsParty && routingScores?.Any(score => score != 0) == true)
+            await BroadcastToMembersAsync(instance, packet);
+        else
+            await sendToWinner(packet);
+    }
+
     // This client ignores the official SERVER_BROADCAST subtype 5. The
     // compatible extension carries the exact ground id for the native patch;
     // it must reach every member, including the picker and a routed winner.

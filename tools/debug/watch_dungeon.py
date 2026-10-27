@@ -8,6 +8,7 @@ import time
 
 HEADER = struct.Struct('<IIQQHHHHBBBBBBH')
 MONSTER = struct.Struct('<HHBBBBHH')
+CONTROL = struct.Struct('<BBBBq')
 STATES = ['待进房', '未释放', '已释放', '已死亡']
 
 
@@ -15,18 +16,28 @@ def decode(data):
     if len(data) < HEADER.size:
         raise ValueError('short header')
     magic, version, file_time, run, uid, dungeon, current_map, boss_map, x, y, bx, by, clear, at_boss, count = HEADER.unpack_from(data)
-    if magic != 0x31474244 or version != 1 or count > 255 or len(data) != HEADER.size + MONSTER.size * count:
+    if magic != 0x31474244 or version not in (1, 2) or not run or not uid or count > 255 \
+            or clear > 1 or at_boss > 1 \
+            or len(data) != HEADER.size + MONSTER.size * count + (CONTROL.size if version == 2 else 0):
         raise ValueError('unsupported or partial snapshot')
     hidden = []
+    seen = set()
     for i in range(count):
         monster_uid, monster, level, box, state, reserved, px, py = MONSTER.unpack_from(data, HEADER.size + i * MONSTER.size)
-        if state > 3 or reserved:
+        if state > 3 or reserved or monster_uid in seen:
             raise ValueError('bad monster state')
+        seen.add(monster_uid)
         hidden.append(dict(uid=monster_uid, monster=monster, level=level, box=box,
                            state=STATES[state], x=px, y=py))
+    control = dict(supported=False, enabled=False, allowed=False, result=0, request_id=0)
+    if version == 2:
+        enabled, allowed, result, reserved, request_id = CONTROL.unpack_from(data, len(data) - CONTROL.size)
+        if enabled > 1 or allowed > 1 or result > 3 or reserved or request_id < 0:
+            raise ValueError('bad control state')
+        control = dict(supported=True, enabled=bool(enabled), allowed=bool(allowed), result=result, request_id=request_id)
     return dict(run=run, user_id=uid, dungeon=dungeon, current_map=current_map,
                 boss_map=boss_map, room=[x, y], boss_room=[bx, by], clear=bool(clear),
-                at_boss=bool(at_boss), hidden=hidden), file_time
+                at_boss=bool(at_boss), hidden=hidden, drop_test=control), file_time
 
 
 def main():

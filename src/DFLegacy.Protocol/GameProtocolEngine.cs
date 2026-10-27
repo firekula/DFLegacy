@@ -171,6 +171,8 @@ public readonly record struct GameDieMonsterCommand(
     bool IsPassiveObject);
 
 public readonly record struct GameUseCoinCommand(ushort TargetUserId);
+public readonly record struct GameGetItemCommand(
+    ushort GroundId, bool RouteRequested, byte ClientRarity, ushort CheckToken);
 public readonly record struct GameDropItemCommand(
     short X,
     short Y,
@@ -3529,6 +3531,19 @@ public static class GameProtocolEngine
         return true;
     }
 
+    public static bool TryParseGetItemCommand(ReadOnlySpan<byte> body, out GameGetItemCommand command)
+    {
+        command = default;
+        // ACT1: sequence:u16, ground:u16, route:u8, client-rarity:u8, token:u16.
+        // The later server reader's extra seed/position fields are not present.
+        if (body.Length != 8) return false;
+        command = new GameGetItemCommand(
+            BinaryPrimitives.ReadUInt16LittleEndian(body.Slice(2, 2)),
+            body[4] == 1, body[5],
+            BinaryPrimitives.ReadUInt16LittleEndian(body.Slice(6, 2)));
+        return true;
+    }
+
     public static bool TryParseUseCoinCommand(
         ReadOnlySpan<byte> body,
         out GameUseCoinCommand command)
@@ -3789,7 +3804,8 @@ public static class GameProtocolEngine
 
     /// <summary>
     /// `NOTI 39 GET_ITEM`（物品形态）：`u16 groundId` + `u16 拾取者 uid` + **4 个槽位字节** +
-    /// `u16 归属者 uid` + `u16 目标背包槽位`。
+    /// `u16 归属者 uid` + `u16 目标背包槽位`。归属者可与拾取者不同；
+    /// 客户端仅在归属者 uid 等于自己时执行本地入包，其他成员只显示骰子/获奖信息。
     ///
     /// `[静态]` 客户端 `0x421EA7` 的物品分支（`0x422275`）按 `u16, u16, 4×u8, u16, u16` 读，
     /// 并对**每个非 0 槽位**打印一行"[该槽成员名][数字]"（`0x422313-0x422420` 的循环 + 打印）——
@@ -3800,14 +3816,14 @@ public static class GameProtocolEngine
     ///   （`ida_s5_loot.txt:188` 与 `:973-978`）。这也正是"只有拾取者本人该看到获得行"的实现口径。
     /// * **routing 路径**：写 `get_item` 算出的**按槽位加权分**（`:817-832`）。
     ///
-    /// **裁决（2026-10-03 用户确认）**：routing 路径**发真实骰子分**（与官服一致，代价是队友端
-    /// 会出现 `[名字][数字]` 行）；直取路径仍全 0。
+    /// routing 路径发送真实骰子分，并向全队发送同一结果；直取路径仍全 0。
     /// </summary>
     public static GameServerPacket CreateInventoryItemPickup(
         ushort groundId,
         ushort pickerUserId,
         ushort destinationSlot,
-        IReadOnlyList<byte>? routingScores = null)
+        IReadOnlyList<byte>? routingScores = null,
+        ushort? winnerUserId = null)
     {
         var scores = routingScores ?? ZeroRoutingScores;
         if (scores.Count != RoutingScoreSlots)
@@ -3826,7 +3842,7 @@ public static class GameProtocolEngine
             writer.Write(score);
         }
 
-        writer.Write(pickerUserId);
+        writer.Write(winnerUserId ?? pickerUserId);
         writer.Write(destinationSlot);
         return new GameServerPacket(
             NotificationPacketType,

@@ -10,7 +10,8 @@ internal sealed record DungeonDebugHiddenMonster(
 internal sealed record DungeonDebugOverlaySnapshot(
     long RunId, ushort[] UserIds, ushort DungeonId, ushort CurrentMapId,
     ushort BossMapId, byte RoomX, byte RoomY, byte BossX, byte BossY,
-    bool ClearEnabled, bool AtBoss, DungeonDebugHiddenMonster[] Hidden);
+    bool ClearEnabled, bool AtBoss, DungeonDebugHiddenMonster[] Hidden,
+    bool DropTestEnabled = false, Dictionary<ushort, DungeonDebugDropState>? DropTestStates = null);
 
 internal static class DungeonDebugOverlayWire
 {
@@ -21,7 +22,7 @@ internal static class DungeonDebugOverlayWire
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream, Encoding.UTF8);
         writer.Write(Magic);
-        writer.Write(1u);
+        writer.Write(2u);
         writer.Write(fileTime);
         writer.Write(snapshot.RunId);
         writer.Write(userId);
@@ -46,6 +47,12 @@ internal static class DungeonDebugOverlayWire
             writer.Write(monster.X);
             writer.Write(monster.Y);
         }
+        var state = snapshot.DropTestStates?.GetValueOrDefault(userId);
+        writer.Write(snapshot.DropTestEnabled);
+        writer.Write(state?.Allowed ?? false);
+        writer.Write((byte)(state?.Result ?? DungeonDebugDropResult.None));
+        writer.Write((byte)0);
+        writer.Write(state?.RequestId ?? 0);
         return stream.ToArray();
     }
 }
@@ -70,6 +77,10 @@ public sealed class DungeonDebugOverlayService(
                 foreach (var instance in instances.Instances)
                 {
                     var snapshot = instance.CaptureDebugOverlay();
+                    if (snapshot is null) continue;
+                    foreach (var userId in snapshot.UserIds)
+                        await ConsumeDropControlAsync(directory, userId, instance, stoppingToken);
+                    snapshot = instance.CaptureDebugOverlay();
                     if (snapshot is null) continue;
                     foreach (var userId in snapshot.UserIds)
                     {
@@ -109,6 +120,43 @@ public sealed class DungeonDebugOverlayService(
             {
                 try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             }
+        }
+    }
+
+    private async Task ConsumeDropControlAsync(string directory, ushort userId, DungeonInstance instance, CancellationToken ct)
+    {
+        var path = Path.Combine(directory, $"dfdebug-drop-{userId}.bin");
+        var claimed = path + ".processing";
+        try
+        {
+            // Claim before reading: cleanup must not delete a newer request atomically published at path.
+            if (!File.Exists(path)) return;
+            File.Move(path, claimed, overwrite: true);
+            var bytes = new byte[DungeonDebugDropRequest.Size + 1];
+            int count;
+            using (var file = new FileStream(claimed, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+            {
+                count = 0;
+                while (count < bytes.Length)
+                {
+                    var read = await file.ReadAsync(bytes.AsMemory(count), ct);
+                    if (read == 0) break;
+                    count += read;
+                }
+            }
+            if (!DungeonDebugDropRequest.TryDecode(bytes.AsSpan(0, count), out var command) || command.UserId != userId) return;
+            var result = instance.ApplyDebugDropRequest(command, DateTime.UtcNow.ToFileTimeUtc());
+            logger.LogInformation("Debug drop-test {Enabled} requested by user {UserId} for run {RunId}: {Result} ({RequestId}).",
+                command.Enabled, userId, command.RunId, result, command.RequestId);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            logger.LogDebug(error, "Debug drop-test control temporarily busy: {Path}", path);
+        }
+        finally
+        {
+            try { File.Delete(claimed); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         }
     }
 }

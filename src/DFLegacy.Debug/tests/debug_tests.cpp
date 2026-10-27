@@ -1,6 +1,10 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <wct.h>
+#include <dbghelp.h>
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "dbghelp.lib")
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -43,7 +47,7 @@ namespace
 int main(int argc, char** argv)
 {
     using namespace dfl;
-    if (argc != 2) return 2;
+    if (argc < 2 || argc > 3) return 2;
     std::uint32_t manager[32]{}, valuesA[4]{}, valuesB[4]{}, wrapper[2]{};
     constexpr std::uint32_t key = 0x12345678;
     manager[1] = 4;
@@ -68,6 +72,14 @@ int main(int argc, char** argv)
     Check(snapshot.header.userId == 77 && snapshot.header.count == 2
         && snapshot.monsters[0].box == 2 && snapshot.monsters[0].x == 353
         && snapshot.monsters[0].y == 264 && snapshot.monsters[1].state == 3, "cross-language roster and coordinates match");
+    Check(snapshot.drop.enabled == 1 && snapshot.drop.allowed == 1 && snapshot.drop.result == 1
+        && snapshot.drop.requestId == 123, "server control trailer exposes actual state, permission and acknowledgment");
+    auto legacy = bytes; legacy.resize(legacy.size() - 12); legacy[4] = 1;
+    debug_model::Snapshot old{};
+    Check(debug_model::Decode(legacy.data(), legacy.size(), old) && old.drop.allowed == 0,
+        "v1 snapshots remain readable with drop control unavailable");
+    auto invalidControl = bytes; invalidControl[invalidControl.size() - 12] = 2;
+    Check(!debug_model::Decode(invalidControl.data(), invalidControl.size(), old), "invalid control flags rejected");
     auto bad = bytes;
     bad[38] = static_cast<char>(255);
     Check(!debug_model::Decode(bad.data(), bad.size(), snapshot), "truncated advertised roster rejected");
@@ -107,7 +119,7 @@ int main(int argc, char** argv)
     const auto shutdown = reinterpret_cast<debug_api::Shutdown>(GetProcAddress(module, "DebugShutdown"));
     Check(initialize && render && shutdown, "versioned undecorated entry points exist");
     if (!initialize || !render || !shutdown) return 1;
-    debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &Draw};
+    debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &Draw, nullptr, nullptr};
     Check(initialize(&host, directory) == 1, "DLL initializes outside loader lock");
     debug_api::Frame frame{sizeof(debug_api::Frame), 3, 77, 0, 0};
     for (int i = 0; i < 15; ++i)
@@ -126,6 +138,218 @@ int main(int argc, char** argv)
     Lines.clear(); frame.scene = 1; render(&frame);
     Check(Lines.empty(), "overlay does not render outside dungeon scene");
     Check(shutdown() == 1, "diagnostic worker stops before DLL unload");
+
+    const HWND owner = CreateWindowExW(0, L"STATIC", L"DFLegacy Debug Overlay Preview", WS_OVERLAPPEDWINDOW,
+        160, 120, 680, 540, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+    ShowWindow(owner, SW_SHOW); SetForegroundWindow(owner);
+    host.gameWindow = owner;
+    Check(initialize(&host, directory) == 1, "floating window initializes without deadlocking the owner thread");
+    frame.scene = 3; frame.userId = 77;
+    auto pump = [&](unsigned milliseconds)
+    {
+        const auto deadline = GetTickCount64() + milliseconds;
+        do
+        {
+            render(&frame);
+            MSG message{};
+            while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
+            Sleep(10);
+        } while (GetTickCount64() < deadline);
+    };
+    const bool interactiveCursor = argc == 3 && std::strcmp(argv[2], "--interactive-cursor") == 0;
+    if (interactiveCursor)
+    {
+        std::printf("Interactive cursor fixture ready; activate its preview window.\n"); std::fflush(stdout);
+        const auto deadline = GetTickCount64() + 120000;
+        while (GetForegroundWindow() != owner && GetTickCount64() < deadline) pump(25);
+        Check(GetForegroundWindow() == owner, "interactive cursor fixture owns the foreground before testing real cursor visibility");
+        const auto fresh = Now(); std::memcpy(bytes.data() + 8, &fresh, sizeof(fresh));
+        const HANDLE refreshed = CreateFileW(file, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE,
+            nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (refreshed != INVALID_HANDLE_VALUE)
+        {
+            WriteFile(refreshed, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr);
+            CloseHandle(refreshed);
+        }
+    }
+    pump(400); // allow one full 250 ms snapshot poll after the first render supplies the UID
+    HWND panel = nullptr;
+    do { panel = FindWindowExW(nullptr, panel, L"DFLegacy.DebugOverlay.v2", nullptr); }
+    while (panel != nullptr && GetWindow(panel, GW_OWNER) != owner);
+    Check(panel != nullptr && GetWindow(panel, GW_OWNER) == owner, "floating panel belongs to the game window");
+    Check((GetWindowLongPtrW(panel, GWL_EXSTYLE) & WS_EX_NOACTIVATE) != 0,
+        "floating panel never takes keyboard focus from gameplay");
+    if (interactiveCursor || GetForegroundWindow() == owner)
+    {
+    // Reproduce the game hiding the OS cursor beneath an opaque owned panel.
+    // Move only our fixture window beneath the existing pointer; do not inject input.
+    POINT pointer{}; GetCursorPos(&pointer);
+    RECT panelBefore{}, ownerBefore{};
+    GetWindowRect(panel, &panelBefore); GetWindowRect(owner, &ownerBefore);
+    int hiddenCount = 0, hideCalls = 0;
+    do { hiddenCount = ShowCursor(FALSE); ++hideCalls; } while (hiddenCount >= 0 && hideCalls < 32);
+    SetWindowPos(owner, nullptr,
+        ownerBefore.left + pointer.x - panelBefore.left - 20,
+        ownerBefore.top + pointer.y - panelBefore.top - 48,
+        0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    pump(100);
+    CURSORINFO cursorInfo{sizeof(cursorInfo)}; GetCursorInfo(&cursorInfo);
+    if ((cursorInfo.flags & CURSOR_SHOWING) == 0)
+    {
+        POINT observed{}; GetCursorPos(&observed);
+        RECT observedRect{}; GetWindowRect(panel, &observedRect);
+        std::fprintf(stderr, "pointer diag fg=%p owner=%p panel=%p visible=%d hit=%p pointer=%ld,%ld rect=%ld,%ld,%ld,%ld counter=%d calls=%d\n",
+            GetForegroundWindow(), owner, panel, IsWindowVisible(panel), WindowFromPoint(observed), observed.x, observed.y,
+            observedRect.left, observedRect.top, observedRect.right, observedRect.bottom, hiddenCount, hideCalls);
+    }
+    Check((cursorInfo.flags & CURSOR_SHOWING) != 0,
+        "OS cursor becomes visible over the panel even when the game hides it");
+    SendMessageW(panel, WM_CLOSE, 0, 0); pump(75);
+    const int restoredCounter = ShowCursor(TRUE);
+    Check(restoredCounter == hiddenCount + 1,
+        "hiding the panel exactly restores the game's cursor display counter");
+    for (int i = 1; i < hideCalls; ++i) ShowCursor(TRUE);
+    frame.scene = 1; pump(150); frame.scene = 3; pump(150);
+    SetWindowPos(owner, nullptr, ownerBefore.left, ownerBefore.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    pump(100);
+    }
+    else std::printf("Real cursor check requires --interactive-cursor; message/decoder tests continue.\n");
+    auto refreshFixture = [&]()
+    {
+        const auto currentTime = Now(); std::memcpy(bytes.data() + 8, &currentTime, 8);
+        const HANDLE refresh = CreateFileW(file, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (refresh != INVALID_HANDLE_VALUE) { WriteFile(refresh, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr); CloseHandle(refresh); }
+        pump(350);
+    };
+    refreshFixture();
+    wchar_t requestPath[MAX_PATH]{};
+    swprintf_s(requestPath, L"%s\\dfdebug-drop-77.bin", directory);
+    SendMessageW(panel, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(25, 48));
+    SendMessageW(panel, WM_LBUTTONUP, 0, MAKELPARAM(25, 48));
+    pump(40);
+    std::ifstream command(requestPath, std::ios::binary);
+    std::vector<char> requestBytes((std::istreambuf_iterator<char>(command)), {}); command.close();
+    Check(requestBytes.size() == 32, "panel switch publishes the bounded local control request");
+    debug_model::DropRequest control{};
+    if (requestBytes.size() == sizeof(control)) std::memcpy(&control, requestBytes.data(), sizeof(control));
+    Check(control.magic == 0x31504444 && control.version == 1 && control.userId == 77
+        && control.runId == 123 && control.enabled == 0 && control.requestId > 0,
+        "checked switch requests explicit off for the current player/run");
+    DeleteFileW(requestPath);
+    SendMessageW(panel, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(25, 48)); pump(20);
+    Check(GetFileAttributesW(requestPath) == INVALID_FILE_ATTRIBUTES,
+        "pending switch cannot emit a second conflicting request");
+    DeleteFileW(file); pump(350);
+    SendMessageW(panel, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(25, 48)); pump(20);
+    Check(GetFileAttributesW(requestPath) == INVALID_FILE_ATTRIBUTES,
+        "missing snapshot disables control while the outstanding request is preserved");
+    refreshFixture();
+    SendMessageW(panel, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(25, 48)); pump(20);
+    Check(GetFileAttributesW(requestPath) == INVALID_FILE_ATTRIBUTES,
+        "restoring an unacknowledged snapshot keeps the original request pending");
+    DeleteFileW(requestPath);
+    // Acknowledge off through the same server snapshot format, then click on.
+    bytes[bytes.size() - 12] = 0;
+    std::memcpy(bytes.data() + bytes.size() - 8, &control.requestId, 8);
+    refreshFixture();
+    SendMessageW(panel, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(25, 48)); pump(20);
+    Check(GetFileAttributesW(requestPath) != INVALID_FILE_ATTRIBUTES, "acknowledgment enables the switch for the next request");
+    DeleteFileW(requestPath);
+    frame.userId = 78; pump(50);
+    SendMessageW(panel, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(25, 48)); pump(20);
+    Check(GetFileAttributesW(requestPath) == INVALID_FILE_ATTRIBUTES, "different user disables the old snapshot's switch");
+    frame.userId = 77; refreshFixture();
+    RECT full{}; GetWindowRect(panel, &full);
+    const LPARAM titlePoint = MAKELPARAM(full.left + 20, full.top + 15);
+    Check(SendMessageW(panel, WM_NCHITTEST, 0, titlePoint) == HTCAPTION
+        && SendMessageW(panel, WM_NCHITTEST, 0, MAKELPARAM(full.right - 2, full.bottom - 2)) == HTBOTTOMRIGHT,
+        "title dragging and corner resizing have native hit targets");
+    const HWND focusedBefore = GetForegroundWindow();
+    SendMessageW(panel, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(full.right - full.left - 45, 15));
+    pump(50);
+    RECT dot{}; GetWindowRect(panel, &dot);
+    const HRGN region = CreateRectRgn(0, 0, 0, 0);
+    Check(dot.right - dot.left == 30 && dot.bottom - dot.top == 30 && GetWindowRgn(panel, region) == COMPLEXREGION,
+        "minimize produces a circular 30-pixel button");
+    if (dot.right - dot.left != 30 || dot.bottom - dot.top != 30)
+        std::fprintf(stderr, "dot dimensions=%ldx%ld\n", dot.right - dot.left, dot.bottom - dot.top);
+    DeleteObject(region);
+    SendMessageW(panel, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(15, 15));
+    SendMessageW(panel, WM_LBUTTONUP, 0, MAKELPARAM(15, 15));
+    pump(50);
+    RECT restored{}; GetWindowRect(panel, &restored);
+    Check(restored.right - restored.left == full.right - full.left,
+        "clicking the dot restores the panel size");
+    Check(GetForegroundWindow() == focusedBefore, "panel controls preserve the foreground window");
+    SetWindowPos(panel, nullptr, 0, 0, 320, 180, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    SendMessageW(panel, WM_EXITSIZEMOVE, 0, 0); pump(50);
+    RECT resized{}; GetWindowRect(panel, &resized);
+    Check(resized.right - resized.left == 320 && resized.bottom - resized.top == 180,
+        "user resizing survives subsequent render updates");
+    SendMessageW(panel, WM_CLOSE, 0, 0); pump(50);
+    Check(!IsWindowVisible(panel), "close hides without destroying the restorable panel");
+    frame.scene = 1; pump(150); frame.scene = 3; pump(150);
+    Check(GetForegroundWindow() != owner || IsWindowVisible(panel), "a new dungeon reveals the panel when its game is foreground");
+    if (argc == 3 && std::strcmp(argv[2], "--preview") == 0)
+    {
+        SetWindowPos(panel, nullptr, 0, 0, 500, 260, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        SendMessageW(panel, WM_EXITSIZEMOVE, 0, 0);
+        const auto deadline = GetTickCount64() + 300000;
+        while (IsWindow(owner) && GetTickCount64() < deadline)
+        {
+            const auto currentTime = Now(); std::memcpy(bytes.data() + 8, &currentTime, sizeof(currentTime));
+            const HANDLE refresh = CreateFileW(file, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (refresh != INVALID_HANDLE_VALUE) { WriteFile(refresh, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr); CloseHandle(refresh); }
+            pump(100);
+        }
+    }
+    if (interactiveCursor)
+        for (unsigned i = 0; i < 256; ++i) PostMessageW(panel, WM_PAINT, 0, 0);
+    const bool stopped = shutdown() == 1;
+    Check(stopped, "floating window and worker stop safely before unloading");
+    if (!stopped)
+    {
+        const auto waitingThread = GetWindowThreadProcessId(panel, nullptr);
+        const HANDLE threadHandle = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, waitingThread);
+        if (threadHandle)
+        {
+            SymInitialize(GetCurrentProcess(), nullptr, TRUE);
+            SuspendThread(threadHandle);
+            CONTEXT context{}; context.ContextFlags = CONTEXT_FULL;
+            if (GetThreadContext(threadHandle, &context))
+            {
+                STACKFRAME64 stack{};
+                stack.AddrPC = {context.Eip, 0, AddrModeFlat};
+                stack.AddrStack = {context.Esp, 0, AddrModeFlat};
+                stack.AddrFrame = {context.Ebp, 0, AddrModeFlat};
+                for (unsigned i = 0; i < 24 && StackWalk64(IMAGE_FILE_MACHINE_I386, GetCurrentProcess(), threadHandle,
+                    &stack, &context, nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr); ++i)
+                {
+                    char storage[sizeof(SYMBOL_INFO) + 256]{};
+                    auto* symbol = reinterpret_cast<SYMBOL_INFO*>(storage); symbol->SizeOfStruct = sizeof(SYMBOL_INFO); symbol->MaxNameLen = 255;
+                    DWORD64 displacement = 0;
+                    SymFromAddr(GetCurrentProcess(), stack.AddrPC.Offset, &displacement, symbol);
+                    std::fprintf(stderr, "worker frame %llX %s + %llu\n", stack.AddrPC.Offset, symbol->Name, displacement);
+                }
+            }
+            ResumeThread(threadHandle); CloseHandle(threadHandle); SymCleanup(GetCurrentProcess());
+        }
+        const auto session = OpenThreadWaitChainSession(0, nullptr);
+        if (session)
+        {
+            WAITCHAIN_NODE_INFO nodes[WCT_MAX_NODE_COUNT]{};
+            DWORD count = WCT_MAX_NODE_COUNT; BOOL cycle = FALSE;
+            const auto thread = GetWindowThreadProcessId(panel, nullptr);
+            if (GetThreadWaitChain(session, 0, WCTP_GETINFO_ALL_FLAGS, thread, &count, nodes, &cycle))
+                for (DWORD i = 0; i < count; ++i)
+                    std::fprintf(stderr, "worker wait type=%u status=%u pid=%lu tid=%lu cycle=%d\n",
+                        nodes[i].ObjectType, nodes[i].ObjectStatus, nodes[i].ThreadObject.ProcessId, nodes[i].ThreadObject.ThreadId, cycle);
+            CloseThreadWaitChainSession(session);
+        }
+        return 1; // never unload code still executing on the diagnostic worker
+    }
+    Check(!IsWindow(panel), "shutdown destroys the owned panel");
+    if (IsWindow(owner)) DestroyWindow(owner);
     FreeLibrary(module);
     DeleteFileW(file); RemoveDirectoryW(directory);
     std::printf("Debug overlay tests: %d failures\n", Failures);

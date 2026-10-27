@@ -72,5 +72,34 @@ internal static class PickupRemovalSmokeTests
                 && BinaryPrimitives.ReadUInt16LittleEndian(soloInbox[0].Payload.AsSpan(7, 2)) == 403
                 && BinaryPrimitives.ReadUInt32LittleEndian(soloInbox[0].Payload.AsSpan(3, 4)) == 0,
             "a solo gold pickup retains its normal session send path and exact ground identity");
+
+        foreach (var inbox in inboxes.Values) inbox.Clear();
+        await service.BroadcastInventoryItemPickupAsync(instance, 410, 7, 9, 12,
+            new byte[] { 13, 81, 42, 0 }, SendToSolo);
+        check(soloCalls == 0 && inboxes.Values.All(inbox => inbox.Count == 1),
+            "all members receive the native dice results when a teammate wins the pickup");
+        foreach (var inbox in inboxes.Values)
+        {
+            check(inbox[0].ProtocolId == 39 && inbox[0].Payload.SequenceEqual(
+                    new byte[] { 0x9A, 1, 7, 0, 13, 81, 42, 0, 9, 0, 12, 0 }),
+                "the dice result preserves the actual picker and distinct winner uid without changing the inventory slot");
+        }
+        await service.BroadcastPickupRemovalAsync(instance, 410, 7, 3171, SendToSolo);
+        check(inboxes.Values.All(inbox => inbox.Select(packet => packet.ProtocolId).SequenceEqual(new byte[] { 39, 86 })),
+            "every client receives its dice result while the ground object still exists, before the removal");
+        foreach (var inbox in inboxes.Values) inbox.Clear();
+        await service.BroadcastInventoryItemPickupAsync(instance, 411, 7, 7, 12,
+            new byte[] { 0, 0, 0, 0 }, SendToSolo);
+        check(soloCalls == 1 && inboxes.Values.All(inbox => inbox.Count == 0),
+            "a direct pickup keeps its existing session notification without showing peer dice results");
+        soloInbox.Clear();
+        await service.BroadcastInventoryItemPickupAsync(solo, 412, 19, 19, 13, null, packet =>
+        {
+            soloInbox.Add(packet);
+            return ValueTask.CompletedTask;
+        });
+        check(soloInbox.Count == 1 && soloInbox[0].Payload.SequenceEqual(
+                new byte[] { 0x9C, 1, 19, 0, 0, 0, 0, 0, 19, 0, 13, 0 }),
+            "a solo item pickup remains byte compatible");
     }
 }

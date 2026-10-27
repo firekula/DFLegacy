@@ -22,6 +22,19 @@ namespace
     HANDLE Diagnostic = INVALID_HANDLE_VALUE;
     bool Disabled = false;
 
+    BOOL CALLBACK FindGameWindow(HWND window, LPARAM result) noexcept
+    {
+        DWORD process = 0;
+        GetWindowThreadProcessId(window, &process);
+        if (process == GetCurrentProcessId() && IsWindowVisible(window)
+            && GetWindow(window, GW_OWNER) == nullptr)
+        {
+            *reinterpret_cast<HWND*>(result) = window;
+            return FALSE;
+        }
+        return TRUE;
+    }
+
     void Note(const char* text) noexcept
     {
         if (Diagnostic == INVALID_HANDLE_VALUE) return;
@@ -124,7 +137,10 @@ namespace dfl::debug_module
         if (candidate == nullptr) return false;
         const auto initialize = reinterpret_cast<debug_api::Initialize>(GetProcAddress(candidate, "DebugInitialize"));
         const auto render = reinterpret_cast<debug_api::Render>(GetProcAddress(candidate, "DebugRender"));
-        const debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &DrawText};
+        HWND gameWindow = nullptr;
+        EnumWindows(&FindGameWindow, reinterpret_cast<LPARAM>(&gameWindow));
+        if (gameWindow == nullptr) { FreeLibrary(candidate); return false; }
+        const debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &DrawText, gameWindow, config};
         if (initialize == nullptr || render == nullptr || !initialize(&host, directory))
         {
             FreeLibrary(candidate);
@@ -132,7 +148,7 @@ namespace dfl::debug_module
         }
         Module = candidate;
         Draw = render;
-        Note("debug.dll loaded; ABI version=1\r\n");
+        Note("debug.dll loaded; ABI version=2; owned floating window\r\n");
         char bases[120]{};
         _snprintf_s(bases, _TRUNCATE, "module bases debug=%p ijl15=%p\r\n",
             reinterpret_cast<void*>(Module), reinterpret_cast<void*>(GetModuleHandleW(L"ijl15.dll")));

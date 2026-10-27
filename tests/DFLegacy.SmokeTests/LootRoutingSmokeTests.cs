@@ -20,7 +20,10 @@ internal static class LootRoutingSmokeTests
 {
     public static void Run(Action<bool, string> check)
     {
+        OfficialLootContractSmokeTests.Run(check);
         CheckRoutingGate(check);
+        CheckEpicRoutingScript(check);
+        CheckCorpseEligibility(check);
         CheckSingleMemberAndNonRoutableStayWithThePicker(check);
         CheckRoundRobinBonusDecidesTheWinner(check);
         CheckRoundRobinIndexAdvances(check);
@@ -31,6 +34,7 @@ internal static class LootRoutingSmokeTests
         CheckOneAwardPerGroundItem(check);
         CheckInstanceRoutingDecisionKeepsRotation(check);
         CheckLootPickupMailbox(check);
+        CheckStaleLootPickupAttempt(check);
         CheckInventoryRejectionReplies(check);
         CheckDebugDropCommand(check);
         CheckDropDebugToggle(check);
@@ -123,17 +127,110 @@ internal static class LootRoutingSmokeTests
         check(LootRouting.IsRoutable(rarity: 0, isEpicRoutingItem: true),
             "the epic-routing flag routes an item even at rarity zero");
 
-        // 生效门控（2026-10-03 用户裁决）：官服语义是 `rarity > 0`，但本客户端**没有骰子 UI**，
-        // "判给别人"在玩家侧等于"点了没反应、东西还在地上"（真机 run #46 观测）⇒ 先收窄到
-        // `rarity > 3`。放开时把 `RoutableRarityFloor` 改回 0 即可，本组断言要跟着改。
-        check(LootRouting.RoutableRarityFloor == 3,
-            "the effective routing floor is narrowed to rarity > 3 for this client");
-        check(!LootRouting.IsRoutableForThisClient(rarity: 1)
-                && !LootRouting.IsRoutableForThisClient(rarity: 3)
+        check(LootRouting.IsRoutableForThisClient(rarity: 1)
+                && LootRouting.IsRoutableForThisClient(rarity: 3)
                 && LootRouting.IsRoutableForThisClient(rarity: 4),
-            "only items above the narrowed floor are routed in production");
+            "ordinary nonwhite drops reach the dice path in production, including rarity 1");
         check(LootRouting.IsRoutableForThisClient(rarity: 0, isEpicRoutingItem: true),
-            "the epic-routing flag still routes an item regardless of the narrowed floor");
+            "the independent epic-routing flag also routes a white item");
+    }
+
+    private static void CheckCorpseEligibility(Action<bool, string> check)
+    {
+        using var fixture = new DungeonFixture();
+        var instance = fixture.CreatePartyInstance(2600);
+        var alive = Guid.NewGuid();
+        var dead = Guid.NewGuid();
+        instance.AddMember(fixture.Member(alive, 0, "活人"));
+        instance.AddMember(fixture.Member(dead, 1, "尸体"));
+        check(instance.TryStartRun(fixture.Layout, 0, 0, out _), "the corpse routing fixture starts");
+        var candidates = new[] { new LootRoutingCandidate(0, alive, 1), new LootRoutingCandidate(1, dead, 2) };
+        instance.TrySetPartyMemberAlive(dead, false, DateTimeOffset.UtcNow);
+        var sameRoom = instance.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero);
+        check(sameRoom.Outcome == LootPickupOutcome.Routed && sameRoom.RoutingScores[1] == 0,
+            "official ordinary item dice exclude even a current-room corpse");
+        check(instance.TryMoveRoom(1, 0, out _, fixture.Random), "the party advances away from the corpse");
+        var nextRoom = instance.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero);
+        check(nextRoom.Outcome == LootPickupOutcome.Routed && nextRoom.RoutingScores[1] == 0,
+            "a dead spectator whose corpse was left in the previous room cannot win new drops");
+        instance.TrySetPartyMemberAlive(dead, false, DateTimeOffset.UtcNow);
+        var duplicateDeath = instance.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero);
+        check(duplicateDeath.RoutingScores[1] == 0,
+            "a duplicate death report cannot create a corpse in the new room");
+        check(instance.TryMoveRoom(0, 0, out _, fixture.Random), "the party revisits the death room");
+        check(instance.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero).RoutingScores[1] == 0,
+            "revisiting a map does not recreate a removed corpse's dice eligibility");
+        instance.TrySetPartyMemberAlive(dead, true, DateTimeOffset.UtcNow);
+        check(instance.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero).RoutingScores[1] != 0,
+            "a revived member participates again");
+        instance.RemoveMember(dead);
+        check(instance.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero).Outcome == LootPickupOutcome.Granted,
+            "a stale candidate snapshot cannot award an item to a member who has left");
+
+        var reviving = fixture.CreatePartyInstance(2601);
+        reviving.AddMember(fixture.Member(alive, 0, "活人"));
+        reviving.AddMember(fixture.Member(dead, 1, "复活中"));
+        reviving.TryStartRun(fixture.Layout, 0, 0, out _);
+        reviving.TrySetPartyMemberAlive(dead, false, DateTimeOffset.UtcNow);
+        check(reviving.TryBeginPartyRevival(dead, DateTimeOffset.UtcNow), "the member reserves a revival before inventory persistence");
+        check(reviving.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero).RoutingScores[1] == 0,
+            "a pending revival does not restore a dead member's dice eligibility before persistence");
+        reviving.TryMoveRoom(1, 0, out _, fixture.Random);
+        check(reviving.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero).RoutingScores[1] == 0,
+            "an unfinished revival cannot make a previous-room corpse eligible in the next room");
+        reviving.CancelPartyRevival(dead, DateTimeOffset.UtcNow);
+        check(reviving.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero).RoutingScores[1] == 0,
+            "a failed revival does not move the old corpse into the new room");
+        reviving.TryBeginPartyRevival(dead, DateTimeOffset.UtcNow);
+        reviving.TrySetPartyMemberAlive(dead, true, DateTimeOffset.UtcNow);
+        check(reviving.DecidePickupRouting(alive, true, candidates, NextRandomAlwaysZero).RoutingScores[1] != 0,
+            "successful revival persistence restores dice eligibility in the current room");
+    }
+
+    private static void CheckEpicRoutingScript(Action<bool, string> check)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"dflegacy-routing-tags-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(root, "equipment"));
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "equipment/equipment.lst"),
+                "1000 `plain.equ`\n1001 `epic.equ`\n1002 `off.equ`\n");
+            File.WriteAllText(Path.Combine(root, "equipment/plain.equ"), "[rarity] 0\n");
+            File.WriteAllText(Path.Combine(root, "equipment/epic.equ"), "[rarity] 0\n[epic routing] 1\n[equipment type] `[weapon]`\n[usable job]\n`[priest]`\n[/usable job]\n");
+            File.WriteAllText(Path.Combine(root, "equipment/off.equ"), "[rarity] 0\n[epic routing] 2\n[usable job]\n`[all]`\n[/usable job]\n");
+            var scripts = new ScriptFileSystem(new ServerOptions { ScriptPvfPath = "", SkillScriptPath = root },
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ScriptFileSystem>.Instance);
+            var items = new ItemCatalog(scripts, Microsoft.Extensions.Logging.Abstractions.NullLogger<ItemCatalog>.Instance);
+            items.Initialize();
+            foreach (var (id, expected) in new[] { ((ushort)1000, false), ((ushort)1001, true), ((ushort)1002, false) })
+            {
+                check(items.TryGetDefinition(id, out var item)
+                        && LootRouting.IsRoutableForThisClient(item.Rarity, item.IsEpicRoutingItem) == expected,
+                    $"the production routing gate respects the independently parsed epic-routing tag for item {id}");
+            }
+            items.TryGetDefinition(1001, out var routableItem);
+            items.TryGetDefinition(1000, out var unspecifiedJob);
+            items.TryGetDefinition(1002, out var allJobs);
+            check(LootRouting.HasJobBonus(routableItem, 4) && !LootRouting.HasJobBonus(routableItem, 0)
+                    && unspecifiedJob.UsableJobMask == 0 && allJobs.UsableJobMask == 0x7FF,
+                "PVF usable-job blocks preserve native specified, absent and all-job semantics");
+            var ground = new DungeonGroundItemState();
+            var generated = ground.Add(new DungeonGeneratedDrop(false, 1001, 1), 7, 10, 0, 0);
+            var playerDropped = ground.AddPlayerDropped(new CharacterItemRecord(10, 1001, 1), 7, 0, 0);
+            var passive = ground.AddPassive(new DungeonGeneratedDrop(false, 1001, 1), 7, 1, 0, 0, 0);
+            check(LootRouting.IsRoutableGroundItem(generated, routableItem, true)
+                    && LootRouting.IsRoutableGroundItem(passive, routableItem, true),
+                "monster and passive drops retain their routing source flag");
+            check(!LootRouting.IsRoutableGroundItem(playerDropped, routableItem),
+                "player-discarded items cannot be rolled away to another member");
+            var rewardOverflow = ground.Add(new DungeonGeneratedDrop(false, 1001, 1), 7, ushort.MaxValue, 0, 0, routingSource: 0);
+            check(!LootRouting.IsRoutableGroundItem(rewardOverflow, routableItem),
+                "an overflowed personal reward retains direct pickup instead of entering the dice");
+            check(!LootRouting.IsRoutableGroundItem(generated, routableItem with { InventoryCategory = ItemInventoryCategory.Quest, IsEpicRoutingItem = false })
+                    && !LootRouting.IsRoutableGroundItem(generated with { IsGold = true }, routableItem),
+                "a white quest item without a routing flag and gold bypass ordinary item dice");
+        }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     /// <summary>官服 `get_member_count &lt;= 1 → v150 = a2`：单人/不可路由 = 拾取者本人取得，骰子字节全 0。</summary>
@@ -395,6 +492,8 @@ internal static class LootRoutingSmokeTests
             new LootRoutingCandidate(0, alpha, 1),
             new LootRoutingCandidate(1, bravo, 2),
         };
+        instance.AddMember(new DungeonInstanceMember(alpha, 1, 0, "A", _ => ValueTask.CompletedTask));
+        instance.AddMember(new DungeonInstanceMember(bravo, 2, 1, "B", _ => ValueTask.CompletedTask));
 
         var first = instance.DecidePickupRouting(
             alpha, routable: true, candidates, NextRandomAlwaysZero);
@@ -418,9 +517,9 @@ internal static class LootRoutingSmokeTests
             "a non-routable item skips the dice and stays with the picker");
 
         var solo = instance.DecidePickupRouting(
-            bravo, routable: true, [new LootRoutingCandidate(3, bravo, 2)], NextRandomAlwaysZero);
-        check(solo.Outcome == LootPickupOutcome.Granted && solo.WinnerCharacterId == bravo,
-            "a single eligible member skips the dice");
+            bravo, routable: true, [new LootRoutingCandidate(1, bravo, 2)], NextRandomAlwaysZero);
+        check(solo.Outcome == LootPickupOutcome.Routed && solo.WinnerCharacterId == bravo,
+            "a single eligible member still rolls when another party member is present");
     }
 
     /// <summary>
@@ -457,5 +556,35 @@ internal static class LootRoutingSmokeTests
                 && !registry.HasPendingMail(winner)
                 && !registry.TryTakeLootPickupAttempt(winner, out _),
             "the mailbox is empty again once drained");
+    }
+
+    private static void CheckStaleLootPickupAttempt(Action<bool, string> check)
+    {
+        var picker = Guid.NewGuid();
+        var winner = Guid.NewGuid();
+        var instance = new DungeonInstance(1, Guid.Empty, null!, null!);
+        instance.AddMember(new DungeonInstanceMember(picker, 7, 0, "picker", _ => ValueTask.CompletedTask));
+        instance.AddMember(new DungeonInstanceMember(winner, 9, 1, "winner", _ => ValueTask.CompletedTask));
+        var original = instance.AddGroundItem(new DungeonGeneratedDrop(false, 3176, 1), 7, 2, 0, 0, 0, 0);
+        instance.TryBeginLootPickup(picker, original, true,
+            [new LootRoutingCandidate(0, picker, 7), new LootRoutingCandidate(1, winner, 9)], _ => 0, out var reservation);
+        var attempt = new DungeonLootPickupAttempt(winner, original.GroundId, picker, 7, 0,
+            [13, 81, 0, 0], Instance: instance, GroundItem: original, PickupId: reservation.PickupId);
+        check(instance.TryGetGroundItemForLootAttempt(attempt, 0, 0, out var item) && ReferenceEquals(item, original),
+            "a routed pickup mailbox entry can only read its original ground object in its original instance");
+        check(!instance.TryGetGroundItemForLootAttempt(attempt, 1, 0, out _),
+            "a routed pickup cannot follow its winner into another room");
+        instance.ResetGroundItems();
+        var replacement = instance.AddGroundItem(new DungeonGeneratedDrop(false, 3171, 1), 7, 3, 0, 0, 0, 0);
+        check(replacement.GroundId == original.GroundId
+                && !instance.TryGetGroundItemForLootAttempt(attempt, 0, 0, out _)
+                && !instance.TryClaimGroundItem(replacement.GroundId, 0, 0, out _, expectedItem: original)
+                && instance.TryGetGroundItem(replacement.GroundId, 0, 0, out _),
+            "a delayed old-run award cannot claim a new drop that reuses the same ground id");
+        var other = new DungeonInstance(1, Guid.Empty, null!, null!);
+        other.AddMember(new DungeonInstanceMember(winner, 9, 1, "winner", _ => ValueTask.CompletedTask));
+        other.AddGroundItem(new DungeonGeneratedDrop(false, 3176, 1), 7, 2, 0, 0, 0, 0);
+        check(!other.TryGetGroundItemForLootAttempt(attempt, 0, 0, out _),
+            "leaving and joining another instance cannot redirect a queued award");
     }
 }

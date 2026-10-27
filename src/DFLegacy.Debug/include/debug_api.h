@@ -3,13 +3,15 @@
 
 namespace dfl::debug_api
 {
-    constexpr std::uint32_t Version = 1;
+    constexpr std::uint32_t Version = 2;
     using DrawText = void (__stdcall*)(int x, int y, std::uint32_t color, const char* text);
     struct Host
     {
         std::uint32_t size;
         std::uint32_t version;
         DrawText drawText;
+        void* gameWindow;
+        const wchar_t* settingsPath;
     };
     struct Frame
     {

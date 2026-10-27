@@ -6,6 +6,7 @@
 #include <cwchar>
 #include "../include/debug_api.h"
 #include "debug_model.h"
+#include "debug_window.h"
 
 namespace
 {
@@ -13,6 +14,8 @@ namespace
     wchar_t Directory[MAX_PATH]{};
     HANDLE StopEvent = nullptr;
     HANDLE Worker = nullptr;
+    HANDLE ReadyEvent = nullptr;
+    bool WindowReady = false;
     SRWLOCK SnapshotLock = SRWLOCK_INIT;
     dfl::debug_model::Snapshot Snapshot{};
     bool HaveSnapshot = false;
@@ -21,6 +24,11 @@ namespace
     bool F9Down = false, F10Down = false;
     std::array<std::array<char, 512>, 16> TextBuffers{};
     std::size_t TextCount = 0;
+    SRWLOCK ContentLock = SRWLOCK_INIT;
+    dfl::debug_window::Content Published{}, Building{};
+    wchar_t Settings[MAX_PATH]{};
+
+    std::int64_t SubmitDropTest(const dfl::debug_window::Content& content, bool enabled) noexcept;
 
     std::uint64_t Now() noexcept
     {
@@ -31,8 +39,27 @@ namespace
 
     DWORD WINAPI ReadSnapshots(void*) noexcept
     {
+        WindowReady = dfl::debug_window::Create(static_cast<HWND>(Host.gameWindow), Settings[0] ? Settings : nullptr, &SubmitDropTest);
+        SetEvent(ReadyEvent);
+        if (!WindowReady) return 1;
+        ULONGLONG lastRead = 0;
         do
         {
+            MSG message{};
+            for (unsigned count = 0; count < 64
+                && WaitForSingleObject(StopEvent, 0) != WAIT_OBJECT_0
+                && PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE); ++count)
+            {
+                TranslateMessage(&message); DispatchMessageW(&message);
+            }
+            // A busy paint/input queue must not postpone shutdown indefinitely.
+            if (WaitForSingleObject(StopEvent, 0) == WAIT_OBJECT_0) break;
+            dfl::debug_window::Content content{};
+            AcquireSRWLockShared(&ContentLock); content = Published; ReleaseSRWLockShared(&ContentLock);
+            dfl::debug_window::Update(content);
+            const auto tick = GetTickCount64();
+            if (tick - lastRead < 250) continue;
+            lastRead = tick;
             const LONG userId = InterlockedCompareExchange(&UserId, 0, 0);
             dfl::debug_model::Snapshot next{};
             bool valid = false;
@@ -58,12 +85,44 @@ namespace
             Snapshot = next;
             HaveSnapshot = valid;
             ReleaseSRWLockExclusive(&SnapshotLock);
-        } while (WaitForSingleObject(StopEvent, 250) == WAIT_TIMEOUT);
+        } while (MsgWaitForMultipleObjects(1, &StopEvent, FALSE, 33, QS_ALLINPUT) != WAIT_OBJECT_0);
+        dfl::debug_window::Destroy();
         return 0;
+    }
+
+    std::int64_t SubmitDropTest(const dfl::debug_window::Content& content, bool enabled) noexcept
+    {
+        const auto now = Now();
+        if (!content.visible || !content.dropReady || !content.dropAllowed
+            || content.userId != InterlockedCompareExchange(&UserId, 0, 0)
+            || content.fileTime > now || now - content.fileTime > 15000000ULL) return 0;
+        dfl::debug_model::DropRequest request{};
+        request.requestId = static_cast<std::int64_t>(now);
+        request.runId = content.runId; request.userId = content.userId; request.enabled = enabled ? 1 : 0;
+        wchar_t path[MAX_PATH]{}, temporary[MAX_PATH]{};
+        if (swprintf_s(path, L"%s\\dfdebug-drop-%u.bin", Directory, content.userId) <= 0
+            || swprintf_s(temporary, L"%s.tmp-%lu", path, GetCurrentProcessId()) <= 0) return 0;
+        const HANDLE file = CreateFileW(temporary, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE) return 0;
+        DWORD written = 0;
+        const bool saved = WriteFile(file, &request, sizeof(request), &written, nullptr) && written == sizeof(request);
+        CloseHandle(file);
+        if (!saved || !MoveFileExW(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        {
+            DeleteFileW(temporary); return 0;
+        }
+        return request.requestId;
     }
 
     void Text(int y, std::uint32_t color, const wchar_t* text) noexcept
     {
+        if (Building.count < Building.lines.size())
+        {
+            const auto index = Building.count++;
+            wcsncpy_s(Building.lines[index].data(), Building.lines[index].size(), text, _TRUNCATE);
+            Building.colors[index] = color;
+        }
+        if (Host.gameWindow != nullptr || Host.drawText == nullptr) return;
         if (TextCount >= TextBuffers.size()) return;
         auto& gbk = TextBuffers[TextCount++];
         if (WideCharToMultiByte(936, 0, text, -1, gbk.data(), static_cast<int>(gbk.size()), nullptr, nullptr) == 0) return;
@@ -91,28 +150,58 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
 {
     if (Worker != nullptr) return 0;
     if (host == nullptr || host->size != sizeof(*host) || host->version != dfl::debug_api::Version
-        || host->drawText == nullptr || directory == nullptr
+        || (host->drawText == nullptr && host->gameWindow == nullptr) || directory == nullptr
         || wcsnlen_s(directory, MAX_PATH) >= MAX_PATH - 32) return 0;
     Host = *host;
     wcscpy_s(Directory, directory);
+    if (host->settingsPath != nullptr) wcsncpy_s(Settings, host->settingsPath, _TRUNCATE);
     StopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (StopEvent == nullptr) return 0;
+    ReadyEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    if (ReadyEvent == nullptr) { CloseHandle(StopEvent); StopEvent = nullptr; return 0; }
     Worker = CreateThread(nullptr, 0, &ReadSnapshots, nullptr, 0, nullptr);
-    if (Worker == nullptr) { CloseHandle(StopEvent); StopEvent = nullptr; return 0; }
+    if (Worker == nullptr)
+    {
+        CloseHandle(StopEvent); CloseHandle(ReadyEvent); StopEvent = ReadyEvent = nullptr; return 0;
+    }
+    // Initialize is called outside DllMain. Cross-thread owned windows can
+    // send synchronous messages to the owner while being created, so pump
+    // sent messages instead of blocking the game's window thread.
+    while (MsgWaitForMultipleObjects(1, &ReadyEvent, FALSE, INFINITE, QS_SENDMESSAGE) == WAIT_OBJECT_0 + 1)
+    {
+        MSG message{}; PeekMessageW(&message, nullptr, 0, 0, PM_NOREMOVE);
+    }
+    CloseHandle(ReadyEvent); ReadyEvent = nullptr;
+    if (!WindowReady)
+    {
+        WaitForSingleObject(Worker, INFINITE);
+        CloseHandle(Worker); CloseHandle(StopEvent); Worker = StopEvent = nullptr;
+        return 0;
+    }
     return 1;
 }
 
 extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexcept
 {
     if (Worker == nullptr || frame == nullptr || frame->size != sizeof(*frame)) return;
+    Building = {};
+    struct Publish
+    {
+        ~Publish() noexcept
+        {
+            AcquireSRWLockExclusive(&ContentLock); Published = Building; ReleaseSRWLockExclusive(&ContentLock);
+        }
+    } publish;
     InterlockedExchange(&UserId, frame->scene == 3 ? static_cast<LONG>(frame->userId) : 0);
     if (frame->scene != 3) { InDungeon = false; return; }
     if (!InDungeon) { Visible = true; InDungeon = true; }
-    PollKeys();
+    if (Host.gameWindow == nullptr) PollKeys();
     if (!Visible) return;
+    Building.visible = true;
+    Building.userId = static_cast<std::uint16_t>(frame->userId);
     TextCount = 0;
     constexpr std::uint32_t White = 0xFFF0F0F0, Cyan = 0xFFFFFF80;
-    Text(65, Cyan, L"[DF DEBUG]  F9 详情  /  F10 隐藏");
+    Text(65, Cyan, L"BOSS 房调试信息");
     dfl::debug_model::Snapshot snapshot{};
     bool current = false;
     if (TryAcquireSRWLockShared(&SnapshotLock))
@@ -127,6 +216,13 @@ extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexce
         return;
     }
     const auto& header = snapshot.header;
+    Building.dropReady = header.version == 2;
+    Building.dropAllowed = snapshot.drop.allowed != 0;
+    Building.dropEnabled = snapshot.drop.enabled != 0;
+    Building.dropResult = snapshot.drop.result;
+    Building.dropRequestId = snapshot.drop.requestId;
+    Building.userId = header.userId; Building.runId = static_cast<std::int64_t>(header.runId);
+    Building.fileTime = header.fileTime;
     wchar_t line[180]{};
     swprintf_s(line, L"副本%u  当前(%u,%u)/%u  BOSS(%u,%u)/%u",
         header.dungeonId, header.roomX, header.roomY, header.currentMapId,
@@ -148,7 +244,8 @@ extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexce
         header.atBoss ? L"  [当前BOSS房]" : L"  [已确定的出怪表]");
     Text(112, White, line);
     if (!Details) return;
-    for (std::size_t i = 0; i < header.count && i < 7; ++i)
+    const std::size_t limit = Host.gameWindow == nullptr ? 7 : header.count;
+    for (std::size_t i = 0; i < header.count && i < limit; ++i)
     {
         const auto& monster = snapshot.monsters[i];
         static const wchar_t* States[] = {L"待进房", L"藏在容器内", L"已释放", L"已死亡"};
@@ -156,16 +253,25 @@ extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexce
             monster.box, monster.x, monster.y, monster.monster, monster.level, monster.uid, States[monster.state]);
         Text(130 + static_cast<int>(i) * 15, White, line);
     }
-    if (header.count > 7) Text(235, White, L"更多记录请查看监听脚本输出。");
+    if (header.count > 7 && Host.gameWindow == nullptr) Text(235, White, L"更多记录请查看监听脚本输出。");
 }
 
 extern "C" int __stdcall DebugShutdown() noexcept
 {
     if (Worker == nullptr) return 1;
     SetEvent(StopEvent);
-    if (WaitForSingleObject(Worker, 2000) != WAIT_OBJECT_0) return 0;
+    const auto deadline = GetTickCount64() + 2000;
+    while (WaitForSingleObject(Worker, 0) != WAIT_OBJECT_0)
+    {
+        if (GetTickCount64() >= deadline) return 0;
+        MSG message{}; PeekMessageW(&message, nullptr, 0, 0, PM_NOREMOVE);
+        MsgWaitForMultipleObjects(1, &Worker, FALSE, 10, QS_SENDMESSAGE);
+    }
     CloseHandle(Worker); CloseHandle(StopEvent);
     Worker = nullptr; StopEvent = nullptr;
     Host = {};
+    Published = {}; Building = {}; Settings[0] = 0;
+    Visible = Details = true; InDungeon = F9Down = F10Down = false;
+    InterlockedExchange(&UserId, 0);
     return 1;
 }

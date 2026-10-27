@@ -14,7 +14,9 @@ public sealed record DungeonGroundItem(
     bool Activated = true,
     CharacterItemRecord? PreservedItem = null,
     short X = 0,
-    short Y = 0)
+    short Y = 0,
+    byte RoutingSource = 1,
+    Guid ForcedOwnerCharacterId = default)
 {
     public uint GetClientAddInfo(ItemCatalog catalog)
     {
@@ -63,7 +65,8 @@ public sealed class DungeonGroundItemState
         CharacterItemRecord? preservedItem = null,
         short x = 0,
         short y = 0,
-        ItemCatalog? catalog = null)
+        ItemCatalog? catalog = null,
+        byte routingSource = 1)
     {
         var groundId = AllocateGroundId();
         preservedItem ??= CreateGeneratedItem(drop, catalog);
@@ -78,7 +81,8 @@ public sealed class DungeonGroundItemState
             roomY,
             PreservedItem: preservedItem,
             X: x,
-            Y: y);
+            Y: y,
+            RoutingSource: routingSource);
         _items.Add(groundId, item);
         return item;
     }
@@ -140,7 +144,8 @@ public sealed class DungeonGroundItemState
             roomY,
             PreservedItem: droppedItem with { Slot = ushort.MaxValue },
             X: x,
-            Y: y);
+            Y: y,
+            RoutingSource: 0);
         _items.Add(groundId, item);
         return item;
     }

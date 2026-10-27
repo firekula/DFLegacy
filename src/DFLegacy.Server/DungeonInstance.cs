@@ -11,7 +11,8 @@ internal sealed record DungeonInstanceMember(
     ushort AreaUserId,
     byte PartySlot,
     string CharacterName,
-    Func<GameServerPacket, ValueTask> Send);
+    Func<GameServerPacket, ValueTask> Send,
+    string AccountName = "");
 
 /// <summary>
 /// 会话镜像快照：会话在主循环顶部按 <see cref="DungeonInstance.Version"/> 决定要不要刷新自己的
@@ -66,7 +67,7 @@ internal sealed record DungeonInstanceRoomSnapshot(
 /// 一律 internal：**只允许在 `lock (Gate)` 内访问**（本类内部，或后续 Task 在实例锁内拿它们写实现）；
 /// 会话代码不许持裸句柄跨线程读写，只走本类的锁内方法（`SnapshotAliveMonsters`/`GetRoomGroundItems`/…）。
 /// </summary>
-internal sealed class DungeonInstance(
+internal sealed partial class DungeonInstance(
     ushort partyId,
     Guid soloCharacterId,
     DungeonCatalog catalog,
@@ -96,7 +97,8 @@ internal sealed class DungeonInstance(
             }).ToArray();
             return new(_debugRunId, _members.Select(member => member.AreaUserId).ToArray(),
                 _run.DungeonId, _run.CurrentRoom?.MapId ?? 0, room.MapId,
-                _run.RoomX, _run.RoomY, Layout.BossX, Layout.BossY, ClearEnabled, atBoss, hidden);
+                _run.RoomX, _run.RoomY, Layout.BossX, Layout.BossY, ClearEnabled, atBoss, hidden,
+                _dropDebugAll, CaptureDropTestStatesLocked());
         }
     }
     private readonly PartyCardSelectionState _partyCards = new();
@@ -781,6 +783,12 @@ internal sealed class DungeonInstance(
 
             _loadedMembers.Remove(characterId);
             _deadMembers.Remove(characterId);
+            _cancelledLoot.Remove(characterId);
+            foreach (var pair in _pendingLoot.Where(pair => pair.Value.Winner == characterId).ToArray())
+            {
+                QueueLootCancellationLocked(pair.Value.Picker);
+                _pendingLoot.Remove(pair.Key);
+            }
             _partyRevivalReservations.Remove(characterId);
             // 最后一个活人离开后，留下的死者也要能结束这一局；已在计时/回城的全灭
             // 不因某个成员先解绑而重开期限，否则全队不能按同一个到点时刻回城。
@@ -1247,6 +1255,9 @@ internal sealed class DungeonInstance(
         DungeonOption = dungeonOption;
         Layout = layout;
         _debugRunId = DateTime.UtcNow.Ticks;
+        _dropDebugAll = false;
+        _debugDropReplies.Clear();
+        _debugDropApplied.Clear();
         ClearEnabled = false;
         LastRoomEntryWasFirstVisit = transition.FirstVisit;
         _detachedRoom = null;
@@ -1263,6 +1274,9 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
+            _dropDebugAll = false;
+            _debugDropReplies.Clear();
+            _debugDropApplied.Clear();
             InvalidatePartyCardSettlementLocked();
             ResetPartyMemberLivesLocked();
             _detachedRoom = room;
@@ -1762,7 +1776,8 @@ internal sealed class DungeonInstance(
         byte roomY,
         short x,
         short y,
-        CharacterItemRecord? preservedItem = null)
+        CharacterItemRecord? preservedItem = null,
+        byte routingSource = 1)
     {
         lock (Gate)
         {
@@ -1775,7 +1790,8 @@ internal sealed class DungeonInstance(
                 preservedItem,
                 x: x,
                 y: y,
-                catalog: itemCatalog);
+                catalog: itemCatalog,
+                routingSource: routingSource);
             Version++;
             return item;
         }
@@ -1824,8 +1840,30 @@ internal sealed class DungeonInstance(
                 return false;
             }
 
+            _pendingLoot.Remove(groundId);
             Version++;
             return true;
+        }
+    }
+
+    /// <summary>获奖信箱绑定原实例与原地面对象；旧局复用 GroundId 时不许领取新物品。</summary>
+    internal bool TryGetGroundItemForLootAttempt(
+        DungeonLootPickupAttempt attempt,
+        byte roomX,
+        byte roomY,
+        out DungeonGroundItem item)
+    {
+        lock (Gate)
+        {
+            if (ReferenceEquals(attempt.Instance, this)
+                && _members.Any(member => member.CharacterId == attempt.WinnerCharacterId)
+                && _pendingLoot.TryGetValue(attempt.GroundId, out var pending)
+                && pending.PickupId == attempt.PickupId && pending.Winner == attempt.WinnerCharacterId
+                && GroundItems.TryGet(attempt.GroundId, roomX, roomY, out item)
+                && ReferenceEquals(attempt.GroundItem, item))
+                return true;
+            item = null!;
+            return false;
         }
     }
 
@@ -1840,17 +1878,23 @@ internal sealed class DungeonInstance(
         ushort groundId,
         byte roomX,
         byte roomY,
-        out DungeonGroundItem item)
+        out DungeonGroundItem item,
+        DungeonGroundItem? expectedItem = null,
+        Guid pickupId = default)
     {
         lock (Gate)
         {
-            if (!GroundItems.TryGet(groundId, roomX, roomY, out item)
+            if ((_run.IsActive && (_run.RoomX != roomX || _run.RoomY != roomY))
+                || !GroundItems.TryGet(groundId, roomX, roomY, out item)
+                || (expectedItem is not null && !ReferenceEquals(expectedItem, item))
+                || (pickupId != Guid.Empty && (!_pendingLoot.TryGetValue(groundId, out var pending) || pending.PickupId != pickupId))
                 || !GroundItems.Remove(groundId))
             {
                 item = null!;
                 return false;
             }
 
+            _pendingLoot.Remove(groundId);
             Version++;
             return true;
         }
@@ -1878,11 +1922,11 @@ internal sealed class DungeonInstance(
     // —— 调试用"满掉落"（真机测试，S5） ——
 
     /// <summary>
-    /// 本实例是否处于"调试满掉落"（由 `掉落测试` 聊天命令开关，见
+    /// 本实例是否处于"调试满掉落"（由 debug 面板或 `掉落测试` 聊天命令开关，见
     /// <see cref="EntranceService"/> 的 `CMD 17 SEND_MESSAGE` 分支）。
     /// **只为真机测试存在**：开启后本实例内每次怪死都按"金币必掉 + 4 类物品**每类只掉最稀有的
     /// 那一件** + 世界掉落必掉"满额掉（封顶 `DungeonDropGenerator.MaxDebugDrops`，候选池里没有的不掉）。
-    /// **作用域 = 这个实例**（换房/回城/实例销毁即失效），且**只有 `test` 账号**能触发。
+    /// **作用域 = 这个实例的本局副本**（换房保留；回城/新一局失效），且**只有 `test` 账号**能触发。
     /// 测试做完就删（台账里按"临时测试能力/已知缺口"记着）。
     /// </summary>
     private bool _dropDebugAll;
@@ -1916,6 +1960,9 @@ internal sealed class DungeonInstance(
     /// 下一轮谁拿那 +40 的顺位。只在 <see cref="Gate"/> 内读写。
     /// </summary>
     private int _routingRoundRobinIndex;
+    private bool _routingRotationInitialized;
+    private readonly Dictionary<ushort, (DungeonGroundItem Item, Guid Winner, Guid PickupId, Guid Picker)> _pendingLoot = [];
+    private readonly Dictionary<Guid, Queue<GameServerPacket>> _cancelledLoot = [];
 
     /// <summary>routing 轮转下标（诊断/测试用；对应官服 `party+324`）。</summary>
     internal int RoutingRoundRobinIndex
@@ -1943,22 +1990,99 @@ internal sealed class DungeonInstance(
         Guid pickerCharacterId,
         bool routable,
         IReadOnlyList<LootRoutingCandidate> candidates,
-        Func<int, int> nextRandom)
+        Func<int, int> nextRandom,
+        Guid forcedOwnerCharacterId = default)
     {
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(nextRandom);
 
         lock (Gate)
         {
+            var eligible = candidates.Where(candidate =>
+                _members.Any(member => member.CharacterId == candidate.CharacterId
+                    && member.PartySlot == candidate.PartySlot)
+                && !_deadMembers.Contains(candidate.CharacterId)
+                && !_partyRevivalReservations.Contains(candidate.CharacterId))
+                .OrderBy(candidate => candidate.PartySlot).ToArray();
+            // 初始化延至成员入场完成后的首次分配，避免开局时仅队长已登记。
+            if (!_routingRotationInitialized && routable && _members.Count > 1)
+            {
+                _routingRoundRobinIndex = nextRandom(_members.Count);
+                _routingRotationInitialized = true;
+            }
             return LootRouting.Decide(
                 itemAvailable: true,
                 routingActive: false,
                 routable,
                 pickerCharacterId,
-                candidates,
+                eligible,
                 _routingRoundRobinIndex,
                 nextRandom,
-                out _routingRoundRobinIndex);
+                out _routingRoundRobinIndex,
+                partyMemberCount: _members.Count,
+                forcedOwnerCharacterId: forcedOwnerCharacterId);
+        }
+    }
+
+    internal bool TryBeginLootPickup(Guid pickerId, DungeonGroundItem expectedItem, bool routable,
+        IReadOnlyList<LootRoutingCandidate> candidates, Func<int, int> nextRandom, out LootRoutingDecision decision)
+    {
+        lock (Gate)
+        {
+            decision = null!;
+            if (!_members.Any(member => member.CharacterId == pickerId)
+                || (_run.IsActive && (_run.RoomX != expectedItem.RoomX || _run.RoomY != expectedItem.RoomY))
+                || !GroundItems.TryGet(expectedItem.GroundId, expectedItem.RoomX, expectedItem.RoomY, out var item)
+                || !ReferenceEquals(item, expectedItem)) return false;
+            if (_pendingLoot.ContainsKey(expectedItem.GroundId))
+            {
+                decision = new LootRoutingDecision(LootPickupOutcome.PickupInProgress, Guid.Empty, new byte[4], 21);
+                return false;
+            }
+            decision = DecidePickupRouting(pickerId, routable, candidates, nextRandom, expectedItem.ForcedOwnerCharacterId);
+            if (decision.Outcome is LootPickupOutcome.Routed or LootPickupOutcome.Granted)
+            {
+                decision = decision with { PickupId = Guid.NewGuid() };
+                _pendingLoot.Add(item.GroundId, (item, decision.WinnerCharacterId, decision.PickupId, pickerId));
+            }
+            return true;
+        }
+    }
+
+    internal void ReleaseLootPickup(DungeonGroundItem item, Guid pickupId = default, bool notifyPicker = false)
+    {
+        lock (Gate)
+            if (_pendingLoot.TryGetValue(item.GroundId, out var pending) && ReferenceEquals(pending.Item, item)
+                && (pickupId == Guid.Empty || pickupId == pending.PickupId))
+            {
+                if (notifyPicker) QueueLootCancellationLocked(pending.Picker);
+                _pendingLoot.Remove(item.GroundId);
+            }
+    }
+
+    private void QueueLootCancellationLocked(Guid picker)
+    {
+        if (!_members.Any(member => member.CharacterId == picker)) return;
+        if (!_cancelledLoot.TryGetValue(picker, out var queue)) _cancelledLoot[picker] = queue = new();
+        queue.Enqueue(GameProtocolEngine.CreateGetItemError(21));
+    }
+
+    internal bool HasCancelledLootPickup(Guid picker)
+    {
+        lock (Gate) return _cancelledLoot.TryGetValue(picker, out var queue) && queue.Count != 0;
+    }
+
+    internal bool TryTakeCancelledLootPickup(Guid picker, out GameServerPacket packet)
+    {
+        lock (Gate)
+        {
+            if (_cancelledLoot.TryGetValue(picker, out var queue) && queue.TryDequeue(out packet!))
+            {
+                if (queue.Count == 0) _cancelledLoot.Remove(picker);
+                return true;
+            }
+            packet = null!;
+            return false;
         }
     }
 
@@ -1968,6 +2092,8 @@ internal sealed class DungeonInstance(
         lock (Gate)
         {
             GroundItems.ResetDungeon();
+            _pendingLoot.Clear();
+            _cancelledLoot.Clear();
             Version++;
         }
     }
@@ -2006,6 +2132,8 @@ internal sealed class DungeonInstance(
 
     private void ResetRoomCollections(IReadOnlyList<GameDungeonMonster> monsters)
     {
+        _pendingLoot.Clear();
+        _cancelledLoot.Clear();
         _roomGeneration++;
         _roomMonsters = [.. monsters];
         _bossDeathCascadeStarted = false;
@@ -2021,6 +2149,8 @@ internal sealed class DungeonInstance(
     /// <summary>开新局/教学局时清掉本局的击杀统计（每局一份，全队共享）。</summary>
     private void ResetKillCounters()
     {
+        _routingRoundRobinIndex = 0;
+        _routingRotationInitialized = false;
         NormalMonsterKills = 0;
         ChampionMonsterKills = 0;
         BossMonsterKills = 0;
