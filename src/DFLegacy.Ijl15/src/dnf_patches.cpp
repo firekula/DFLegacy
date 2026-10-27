@@ -182,7 +182,7 @@ namespace
         std::array<unsigned char, 6> Replacement;
     };
 
-    constexpr std::array<CodePatch, 39> Patches = { {
+    constexpr std::array<CodePatch, 40> Patches = { {
         {
             dfl::dnf_patches::DisableDebuggerDetection,
             0x0040AEE0,
@@ -253,6 +253,16 @@ namespace
             {0xC6, 0x40, 0x10, 0x00, 0xE8, 0x41},
             // Keep the Creature tab visible while the main inventory is selected.
             {0xC6, 0x40, 0x10, 0x01, 0xE8, 0x41}
+        },
+        {
+            true,
+            // The released ACT1 client forces cart gifting off even after its
+            // original scan found no [gift disallowance] item. Restore the
+            // already-computed nonempty flag (BL); the disallowed-item exit at
+            // 0x85E03C still disables gifting, and empty carts remain disabled.
+            0x0085E02F,
+            {0xC6, 0x41, 0x11, 0x00, 0x5B, 0xC3},
+            {0x88, 0x59, 0x11, 0x90, 0x5B, 0xC3}
         },
         {
             dfl::dnf_patches::SinglePermanentAvatarPeriodOption,
