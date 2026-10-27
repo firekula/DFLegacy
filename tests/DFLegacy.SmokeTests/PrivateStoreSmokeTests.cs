@@ -51,6 +51,7 @@ internal static class PrivateStoreSmokeTests
         await CheckRejectionsAsync(check);
         await CheckServiceAsync(check);
         await CheckLifecycleAsync(check);
+        await CheckReviewRegressionsAsync(check);
         await using (var badCatalog = await StoreFixture.CreateAsync())
         {
             File.WriteAllText(Path.Combine(badCatalog.Root, "etc/goldlimitbylevel.etc"), "[gold limit from level]\n60 9999999999999999999999\n");
@@ -138,6 +139,85 @@ internal static class PrivateStoreSmokeTests
         await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [new(0, 101, 0, 73, 1)]);
         await f.Store.ReplaceAllCharactersAsync("alice", [await f.ReadA()]);
         check(f.Store.Commerce.Is(f.A.Id, CommerceActivity.StoreRevoked), "global roster replacement revokes an owner even when its saved stock token survives");
+    }
+    private static async Task CheckReviewRegressionsAsync(Action<bool, string> check)
+    {
+        check(!EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.DeleteItemCommand), "preparing/open store dispatch blocks CMD18 before any actor inventory mutation");
+        foreach (var social in new byte[] { 63, 64, 128, 129, 130 })
+            check(EntranceService.PrivateStoreOwnerCommandAllowed(social), $"preparing/open store dispatch preserves social command{social}");
+        foreach (var secondStack in new[] { false, true })
+        {
+            await using var f = await StoreFixture.CreateAsync();
+            var buyerItems = new List<CharacterItemRecord> { new(3, TradeFixtures.PotionItemId, 100, InstanceId: Guid.NewGuid()) };
+            if (secondStack) buyerItems.Add(new(73, TradeFixtures.PotionItemId, 90, InstanceId: Guid.NewGuid()));
+            await f.Store.SaveCharacterInventoryAsync("bobby", f.B.Id, 1000, buyerItems, []);
+            var token = Guid.NewGuid(); f.Store.Commerce.TryAcquire(CommerceActivity.Store, token, f.A.Id);
+            await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [new(0, 101, 0, 73, 5)]);
+            var bought = await f.Store.BuyPrivateStoreAsync(f.B.Id, f.A.Id, token, 0, 4);
+            check(bought.Status == DungeonRewardLedgerStatus.Committed && bought.DestinationSlot == 73
+                && bought.Buyer!.Inventory!.Single(i => i.Slot == 73).CountOrValue == (secondStack ? 94u : 4u),
+                $"a full first stack does not hide a valid {(secondStack ? "later stack" : "empty category slot")}");
+        }
+        await using (var f = await StoreFixture.CreateAsync())
+        {
+            Directory.CreateDirectory(Path.Combine(f.Root, "stackable/cash"));
+            File.AppendAllText(Path.Combine(f.Root, "stackable/stackable.lst"), "16 `cash/shop_private.stk`\n");
+            File.WriteAllText(Path.Combine(f.Root, "stackable/cash/shop_private.stk"), "[name] `Permit`\n[stackable type] `[private store]`\n[cash] 380\n");
+            File.WriteAllText(Path.Combine(f.Root, "etc/newcashshop.etc"), "[item]\n100022 16 1 0 0 380 `Permit` 0 50002\n[/item]\n");
+            var script = new ScriptFileSystem(f.Options, NullLogger<ScriptFileSystem>.Instance);
+            var products = new CeraShopCatalog(script, TradeFixtures.CreateItems(f.Root), NullLogger<CeraShopCatalog>.Instance);
+            var permission = products.TryGetProduct(100022, out var product) ? product.PremiumContract : null;
+            check(permission is { ServiceType: 8, Days: 30 } && product!.CashPrice == 380, "original commodity100022 activates the30day private-store permit");
+            if (permission is not null)
+            {
+                var purchased = await f.Store.SaveCharacterCeraShopPurchaseAsync("bobby", f.B.Id, 49620, 1000, [], [],
+                    premiumServiceGrants: [new(permission.ServiceType, permission.Days)], expectedCash: 50000);
+                check(purchased is not null && (await f.Store.GetPremiumServicesAsync("bobby")).Any(s => s.ServiceType == 8 && s.Active && s.RemainingSeconds > 29 * 86400),
+                    "the standard cash purchase persists the permit without a dead inventory item");
+            }
+        }
+        await using (var f = await StoreFixture.CreateAsync())
+        {
+            var town = new TownSessionDirectory(f.Options, TimeProvider.System, NullLogger<TownSessionDirectory>.Instance);
+            var party = new PartyService(f.Store, town, TimeProvider.System, NullLogger<PartyService>.Instance);
+            using var service = new PrivateStoreService(f.Store, f.Items, f.Catalog, town, party, NullLogger<PrivateStoreService>.Instance, TimeSpan.FromSeconds(2));
+            await f.Store.GrantPremiumServiceToAccountAsync("alice", 8, 1);
+            await f.Store.CreateAccountAsync(new("carol", "password", OicqCode: "123456"));
+            var observer = (await f.Store.CreateCharacterAsync("carol", new("Observer"))).Character!;
+            var sa = Guid.NewGuid(); var sb = Guid.NewGuid(); var sc = Guid.NewGuid();
+            var blocked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var kicked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var cancel = new CancellationTokenSource();
+            async ValueTask SendObserver(GameServerPacket p) { if (p.ProtocolId == 83) { blocked.TrySetResult(); await Task.Delay(Timeout.Infinite, cancel.Token); } }
+            foreach (var c in new[] { (f.A, (ushort)1), (f.B, (ushort)2), (observer, (ushort)3) })
+                await town.EnterAsync(new(1, 0, c.Item2, c.Item1.Id, c.Item1.CharacterNo, [65], c.Item1.Name, null, 1000, 250, 0, (_, _) => ValueTask.CompletedTask), default);
+            await service.AttachChannelAsync("alice", f.A.Id, 1, sa, _ => ValueTask.CompletedTask);
+            await service.AttachChannelAsync("bobby", f.B.Id, 2, sb, _ => ValueTask.CompletedTask);
+            await service.AttachChannelAsync("carol", observer.Id, 3, sc, SendObserver, kick: () => { kicked.TrySetResult(); cancel.Cancel(); });
+            await service.CreateAsync(f.A.Id, sa, new(1, 0, 1000, 250));
+            await service.DisplayAsync(f.A.Id, sa, [65], [new(0, 101, 0, 73, 5)]);
+            await service.EnterAsync(observer.Id, sc, 1); await service.EnterAsync(f.B.Id, sb, 1);
+            var buy = service.BuyAsync(f.B.Id, sb, 0, 1); await blocked.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.WhenAny(buy, Task.Delay(500));
+            check(buy.IsCompletedSuccessfully, "a stalled third observer cannot hold the buyer's authoritative installation");
+            var close = service.CloseAsync(f.A.Id, sa); await Task.WhenAny(close, Task.Delay(500));
+            check(close.IsCompletedSuccessfully, "a stalled third observer cannot hold seller close or area cleanup");
+            var detach = service.DetachChannelAsync(f.B.Id, sb); await Task.WhenAny(detach, Task.Delay(500));
+            check(detach.IsCompletedSuccessfully, "buyer disconnect does not wait for unrelated observer transport");
+            var bounded = false;
+            if (buy.IsCompletedSuccessfully && close.IsCompletedSuccessfully)
+            { try { await kicked.Task.WaitAsync(TimeSpan.FromSeconds(3)); bounded = true; } catch (TimeoutException) { } }
+            check(bounded, "a stalled transport is retired and kicked by its delivery deadline");
+            cancel.Cancel(); await Task.WhenAll(buy, close, detach);
+            await service.DetachChannelAsync(f.A.Id, sa); await service.DetachChannelAsync(observer.Id, sc);
+            using var ownerCancel = new CancellationTokenSource();
+            var newSession = Guid.NewGuid();
+            async ValueTask SlowOwner(GameServerPacket p) { if (p.ProtocolId == 88) await Task.Delay(Timeout.Infinite, ownerCancel.Token); }
+            await service.AttachChannelAsync("alice", f.A.Id, 1, newSession, SlowOwner, kick: ownerCancel.Cancel);
+            await service.CreateAsync(f.A.Id, newSession, new(1, 0, 1000, 250));
+            await service.DetachChannelAsync(f.A.Id, newSession);
+            check(!service.IsOwner(f.A.Id), "a transport-retired owner still releases its store on actual disconnect");
+        }
     }
 
     private sealed class StoreFailingWriter(bool afterReplace) : IDungeonRewardSnapshotWriter

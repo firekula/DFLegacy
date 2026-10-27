@@ -336,6 +336,8 @@ public sealed class CeraShopCatalog
         var path = definition.ScriptPath.Replace('\\', '/').ToLowerInvariant();
         contract = path switch
         {
+            "stackable/cash/shop_private.stk" =>
+                new(GameProtocolEngine.PrivateStoreServiceType, 30),
             "stackable/cash/contract_monarch1.stk" =>
                 new(GameProtocolEngine.OverlordContractServiceType, 1),
             "stackable/cash/contract_monarch3.stk" =>

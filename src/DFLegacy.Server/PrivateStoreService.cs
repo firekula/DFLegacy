@@ -6,7 +6,8 @@ namespace DFLegacy.Server;
 
 /// <summary>Ordinary ACT1 shops. Only the calling actor installs inventory; seller income uses durable credits.</summary>
 public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, PrivateStoreCatalog catalog,
-    TownSessionDirectory town, PartyService parties, ILogger<PrivateStoreService> logger) : BackgroundService
+    TownSessionDirectory town, PartyService parties, ILogger<PrivateStoreService> logger,
+    TimeSpan? deliveryTimeout = null) : BackgroundService
 {
     private sealed record Channel(string Account, Guid Id, string Name, ushort Uid, Guid Session,
         Func<GameServerPacket, ValueTask> Send, Action? Kick, Action? Wake)
@@ -33,14 +34,15 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _lifecycles = new();
     private readonly ConcurrentQueue<Action> _kicks = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly TimeSpan _deliveryTimeout = deliveryTimeout ?? TimeSpan.FromSeconds(5);
     private static readonly Encoding TextEncoding = StoreEncoding();
     private static Encoding StoreEncoding()
     { Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); return Encoding.GetEncoding(936, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback); }
-    private Channel? Current(Guid id, Guid session) => _channels.GetValueOrDefault(id) is { } c && c.Session == session ? c : null;
+    private Channel? Current(Guid id, Guid session) => _channels.GetValueOrDefault(id) is { Retired: false } c && c.Session == session ? c : null;
     public bool IsOwner(Guid id) => store.Commerce.Is(id, CommerceActivity.Store) || store.Commerce.Is(id, CommerceActivity.StoreRevoked);
     public bool HasPendingGold(Guid id) => _goldUpdates.ContainsKey(id);
     public bool TryTakeGoldUpdate(Guid id) => _goldUpdates.TryRemove(id, out _);
-    private async Task RunAsync(Func<List<Delivery>, Task> action, CancellationToken ct)
+    private async Task RunAsync(Func<List<Delivery>, Task> action, CancellationToken ct, Guid? caller = null)
     {
         var deliveries = new List<Delivery>(); Channel[] drains;
         await _gate.WaitAsync(ct);
@@ -51,8 +53,11 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             drains = deliveries.Select(d => d.Channel).Distinct().ToArray();
         }
         finally { _gate.Release(); }
-        while (_kicks.TryDequeue(out var kick)) kick();
-        await Task.WhenAll(drains.Select(DrainAsync));
+        while (_kicks.TryDequeue(out var kick)) InvokeKick(kick);
+        // Other recipients drain independently. The caller's own FIFO must finish
+        // before its actor emits a newer inventory snapshot on the same stream.
+        var pending = drains.Select(c => (Channel: c, Task: DrainAsync(c))).ToArray();
+        if (caller is { } id) await Task.WhenAll(pending.Where(p => p.Channel.Id == id).Select(p => p.Task));
     }
     private async Task DrainAsync(Channel channel)
     {
@@ -71,13 +76,29 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
                 finally { _gate.Release(); }
                 if (packet is null) break;
                 if (Volatile.Read(ref channel.Retired)) continue;
-                try { await channel.Send(packet); }
-                catch (Exception e) when (CrossSessionDelivery.IsBrokenChannel(e))
-                { logger.LogWarning(e, "Store packet {Packet} could not reach {Character}.", packet.ProtocolId, channel.Id); }
+                Task? sending = null;
+                try
+                {
+                    sending = channel.Send(packet).AsTask();
+                    await sending.WaitAsync(_deliveryTimeout);
+                }
+                catch (Exception e)
+                {
+                    await _gate.WaitAsync();
+                    try { channel.Retired = true; channel.Outbox.Clear(); }
+                    finally { _gate.Release(); }
+                    if (sending is not null) _ = ObserveSendAsync(sending);
+                    logger.LogWarning(e, "Retired stalled/broken store transport {Character}, packet {Packet}.", channel.Id, packet.ProtocolId);
+                    if (channel.Kick is { } kick) InvokeKick(kick);
+                    break;
+                }
             }
         }
         finally { channel.Delivery.Release(); }
     }
+    private static async Task ObserveSendAsync(Task task) { try { await task; } catch { } }
+    private void InvokeKick(Action kick)
+    { try { kick(); } catch (ObjectDisposedException) { } }
     private async Task LifecycleAsync(Guid id, Func<Task> action, CancellationToken ct)
     {
         var gate = _lifecycles.GetOrAdd(id, _ => new(1, 1));
@@ -137,7 +158,8 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
         Channel? old = null;
         await RunAsync(async d =>
         {
-            old = Current(id, session); if (old is null) return;
+            old = _channels.GetValueOrDefault(id);
+            if (old?.Session != session) { old = null; return; }
             old.Retired = true; old.Outbox.Clear();
             await CloseCoreAsync(d, old, true, false, ct);
             if (store.Commerce.Owns(id, CommerceActivity.StoreRevoked, old.StoreToken))
@@ -168,7 +190,7 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(88)));
             Area(d, shop, GameProtocolEngine.CreatePrivateStoreCreated(c.Uid, position));
             logger.LogInformation("Private store {Store} created by {Owner} at {Town}/{Area} {X},{Y}.", shop.Token, c.Name, position.Town, position.Area, position.X, position.Y);
-        }, ct);
+        }, ct, id);
         if (created) await parties.TryLeavePartySilentlyAsync(id, ct);
         return created;
     }
@@ -191,7 +213,7 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             Area(d, shop, GameProtocolEngine.CreatePrivateStoreDisplayed(c.Uid, shop.Title));
             d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90)));
             logger.LogInformation("Private store {Store} opened with {Count} listings.", shop.Token, goods.Count);
-        }, ct); return installed;
+        }, ct, id); return installed;
     }
     public Task EnterAsync(Guid id, Guid session, uint ownerUid, CancellationToken ct = default) => RunAsync(async d =>
     {
@@ -204,9 +226,9 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
         if (owner?.PrivateStoreStock?.StoreId != shop.Token) { d.Add(new(c, GameProtocolEngine.CreatePrivateStoreEnterFailure())); return; }
         ExitViewer(id); _viewing[id] = shop; shop.Viewers.Add(id);
         d.Add(new(c, GameProtocolEngine.CreatePrivateStoreEnterReply(shop.Owner.Uid, Rows(owner))));
-    }, ct);
+    }, ct, id);
     public Task ExitAsync(Guid id, Guid session, CancellationToken ct = default) => RunAsync(d =>
-    { if (Current(id, session) is { } c) { ExitViewer(id); d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(87))); } return Task.CompletedTask; }, ct);
+    { if (Current(id, session) is { } c) { ExitViewer(id); d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(87))); } return Task.CompletedTask; }, ct, id);
     public async Task<CharacterRecord?> BuyAsync(Guid id, Guid session, ushort slot, uint addInfo, CancellationToken ct = default)
     {
         CharacterRecord? installed = null;
@@ -238,7 +260,7 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             d.Add(new(c, GameProtocolEngine.CreatePrivateStoreBuyReply((uint)installed.Gold, installed.VictoryPoints, result.Cash,
                 result.DestinationSlot, result.Item!.ItemId, wire.AddInfo, wire.ItemAttr, wire.Durability)));
             logger.LogInformation("Private store {Store} sold slot {Slot} count {Count}: {Buyer}, gross {Gross}, fee {Fee}.", shop.Token, slot, result.SoldQuantity, c.Name, result.Gross, result.Fee);
-        }, ct); return installed;
+        }, ct, id); return installed;
     }
     private async Task<CharacterRecord?> CloseCoreAsync(List<Delivery> d, Channel c, bool force, bool reply, CancellationToken ct)
     {
@@ -265,7 +287,7 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
     public async Task<CharacterRecord?> CloseAsync(Guid id, Guid session, bool force = false, bool reply = true, CancellationToken ct = default)
     {
         CharacterRecord? installed = null;
-        await RunAsync(async d => { if (Current(id, session) is { } c) installed = await CloseCoreAsync(d, c, force, reply, ct); }, ct);
+        await RunAsync(async d => { if (Current(id, session) is { } c) installed = await CloseCoreAsync(d, c, force, reply, ct); }, ct, id);
         return installed;
     }
     public Task SendAreaStoresAsync(Guid id, Guid session, CancellationToken ct = default) => RunAsync(d =>
@@ -275,7 +297,7 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             .Select(s => new PrivateStoreSummary(s.Owner.Uid, s.Title, s.Open, s.Position)).ToArray();
         foreach (var batch in summaries.Chunk(255)) d.Add(new(c, GameProtocolEngine.CreatePrivateStoreList(batch)));
         return Task.CompletedTask;
-    }, ct);
+    }, ct, id);
     internal Task SweepAsync(CancellationToken ct = default) => RunAsync(async d =>
     {
         foreach (var shop in _shops.Values.ToArray())

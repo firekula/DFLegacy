@@ -128,7 +128,7 @@ public sealed partial class JsonGameStore
             foreach (var s in quick.Concat(category))
             {
                 if (!inventory.TryGetValue(s, out var old) || !CanStackStoreItems(old, moved)) continue;
-                if ((long)old.CountOrValue + moved.CountOrValue > CharacterInventoryPlanner.GetStackLimit(def)) return false;
+                if ((long)old.CountOrValue + moved.CountOrValue > CharacterInventoryPlanner.GetStackLimit(def)) continue;
                 destination = s; break;
             }
         }

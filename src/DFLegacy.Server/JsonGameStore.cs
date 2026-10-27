@@ -4091,7 +4091,7 @@ public sealed partial class JsonGameStore(
         var now = checked((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         foreach (var grantGroup in grants.GroupBy(grant => grant.ServiceType))
         {
-            if (grantGroup.Key is not (GameProtocolEngine.OverlordContractServiceType
+            if (grantGroup.Key is not (GameProtocolEngine.PrivateStoreServiceType or GameProtocolEngine.OverlordContractServiceType
                     or GameProtocolEngine.MasterContractServiceType)
                 || grantGroup.Any(grant => grant.Days <= 0))
             {

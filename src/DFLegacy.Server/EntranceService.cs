@@ -6198,8 +6198,16 @@ public sealed class EntranceService(
                         {
                             // Native shop owners cannot mutate inventory through unrelated economic commands.
                             if (request.ProtocolId is 15 or 16) await LeavePrivateStoreAreaAsync(serverToken);
-                            else if (!(request.ProtocolId <= 18 || request.ProtocolId is 38 or >= 79 and <= 82 or 118 or 125 or 141 or >= 160 and <= 162))
+                            else if (!PrivateStoreOwnerCommandAllowed(request.ProtocolId))
+                            {
+                                if (request.ProtocolId == GameProtocolEngine.DeleteItemCommand)
+                                {
+                                    await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateDeleteItemError(
+                                        request.Body.Length > 2 ? request.Body[2] : (byte)0, 0x13));
+                                    await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values));
+                                }
                                 continue;
+                            }
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
@@ -15885,6 +15893,20 @@ public sealed class EntranceService(
     /// 这条回归（与 <see cref="ClassifyUserInfoRequest"/> 同一套做法）；判据本身一个字未动。
     /// </summary>
     /// <returns>true = 这是一笔交易应答（已交给服务处理）；false = peerType != 1，调用方继续判组队应答。</returns>
+    internal static bool PrivateStoreOwnerCommandAllowed(byte command) => command is
+        GameProtocolEngine.CheckConnectionCommand or GameProtocolEngine.LoginCommand or GameProtocolEngine.SetUdpEndpointCommand
+        or GameProtocolEngine.ExitCommand or GameProtocolEngine.SelectCharacterCommand or GameProtocolEngine.CreateCharacterCommand
+        or GameProtocolEngine.DeleteCharacterCommand or GameProtocolEngine.ReturnSelectCharacterCommand or GameProtocolEngine.GetUserInfoCommand
+        or GameProtocolEngine.RequestPeerCommand or GameProtocolEngine.ResponsePeerCommand or GameProtocolEngine.SetPartyInfoCommand
+        or GameProtocolEngine.LeavePartyCommand or GameProtocolEngine.WalkoutPartyMemberCommand or GameProtocolEngine.ChangeHostCommand
+        or GameProtocolEngine.StartGameCommand or GameProtocolEngine.SelectDungeonCommand or GameProtocolEngine.SendMessageCommand
+        or GameProtocolEngine.SetUserAreaCommand or GameProtocolEngine.AddFriendCommand or GameProtocolEngine.RemoveFriendCommand
+        or GameProtocolEngine.RegisterToBlacklistCommand or GameProtocolEngine.DeleteToBlacklistCommand or GameProtocolEngine.ExchangeServerCharacterInfoCommand
+        or GameProtocolEngine.RequestMentorCommand or GameProtocolEngine.ReplyMentorCommand or GameProtocolEngine.RemoveMentorCommand or GameProtocolEngine.MentorListCommand
+        or GameProtocolEngine.CreatureSendMessageCommand or GameProtocolEngine.CreatureScriptMessageCommand
+        or GameProtocolEngine.TraceErrorCommand or GameProtocolEngine.SdcDamageCheckCommand or GameProtocolEngine.AntibotCommand or GameProtocolEngine.DprotoCommand
+        or 125 or 141; // ACT1 legacy diagnostics and clock synchronization.
+
     internal static async Task<bool> TryHandleTradeResponseAsync(
         ItemTradeService itemTradeService,
         Guid characterId,
