@@ -372,10 +372,16 @@ public sealed class CeraShopCatalog
             return false;
         }
 
-        // TODO: Restore the client's 1.0x/2.2x/6.6x period pricing after
-        // avatar expiration timestamps and expiry enforcement are implemented.
-        // All avatar purchases are currently permanent, so charge 6.6x.
-        var calculatedPrice = ((long)basePrice * 22 / 10) * 3;
+        // ACT1 0x867AD0 uses the float32 constant 2.2 on the x87 stack,
+        // truncates the 30-day price, then multiplies that integer by three
+        // for unlimited. E.g. base107 is107/235/705, not107/235/706.
+        var monthlyPrice = (long)((double)basePrice * 2.2f);
+        var calculatedPrice = attributeValue switch
+        {
+            1 => basePrice,
+            2 => monthlyPrice,
+            _ => monthlyPrice * 3
+        };
         if (calculatedPrice is < 0 or > int.MaxValue)
         {
             cashPrice = 0;

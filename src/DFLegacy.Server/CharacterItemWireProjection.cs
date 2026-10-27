@@ -24,7 +24,8 @@ public static class CharacterItemWireProjection
                 item.AvatarRemainingSeconds,
                 item.AvatarAbilityIndex,
                 EquipmentQualitySeed: item.EquipmentQualitySeed,
-                InstanceId: item.InstanceId),
+                InstanceId: item.InstanceId,
+                AvatarExpiresAtUnixSeconds: item.AvatarExpiresAtUnixSeconds),
             catalog);
     }
 
@@ -35,7 +36,9 @@ public static class CharacterItemWireProjection
         ArgumentNullException.ThrowIfNull(item);
         ArgumentNullException.ThrowIfNull(catalog);
 
-        var addInfo = item.AvatarRemainingSeconds ?? item.CountOrValue;
+        var addInfo = item.AvatarExpiresAtUnixSeconds is not null
+            ? AvatarLifetimePolicy.GetRemainingSeconds(item, DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            : item.AvatarRemainingSeconds ?? item.CountOrValue;
         var itemAttr = item.State;
         if (catalog.TryGetDefinition(item.ItemId, out var definition)
             && definition.IsEquipment

@@ -40,6 +40,7 @@ internal static class AvatarCompoundSmokeTests
 
             CheckCatalog(check, catalog);
             CheckPlans(check, catalog);
+            CheckLimitedPlans(check, catalog);
         }
         finally
         {
@@ -229,6 +230,26 @@ internal static class AvatarCompoundSmokeTests
                 && catalog.TryGetAvatarMetadata(1_100, out var metadata)
                 && metadata == new AvatarCompoundItemMetadata(1, 3, 2, 4),
             "avatar compound uses separate base and upper rare rates and reads result option rows");
+    }
+
+    private static void CheckLimitedPlans(Action<bool, string> check, AvatarCompoundCatalog catalog)
+    {
+        var main = new Dictionary<ushort, CharacterItemRecord> { [3] = new(3, 21, 2) };
+        var first = CreateAvatar(0, 1000) with { AvatarRemainingSeconds = 600 };
+        var second = CreateAvatar(1, 1001) with { AvatarRemainingSeconds = 1200 };
+        var avatars = new Dictionary<ushort, CharacterItemRecord> { [0] = first, [1] = second };
+        bool Plan(out AvatarCompoundPlan plan, out AvatarCompoundFailure failure) =>
+            AvatarCompoundPlanner.TryCreate(main, avatars, 1, 3, 1000, 1001, 0, 0, 1,
+                catalog, new SequenceDropRandomSource(0, 0), out plan, out failure);
+        var before = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        check(Plan(out var finite, out _) && finite.AvatarInventory[0].AvatarRemainingSeconds == 1800
+            && finite.AvatarInventory[0].AvatarExpiresAtUnixSeconds is { } deadline && deadline >= before + 1800 && deadline <= before + 1801,
+            "combining two finite avatars preserves the sum of their remaining lifetimes instead of granting permanent gear");
+        avatars[1] = second with { AvatarRemainingSeconds = 0 };
+        check(!Plan(out _, out _) && main[3].CountOrValue == 2 && avatars.Count == 2,
+            "mixed finite and permanent avatars cannot be compounded or consume inputs");
+        avatars[1] = second with { AvatarRemainingSeconds = 5 };
+        check(!Plan(out _, out _), "a finite avatar with only five seconds cannot enter the compound transaction");
     }
 
     private static void CheckPlans(

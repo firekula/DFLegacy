@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--avatar-lifetime"))
+{
+    await AvatarLifetimeSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Avatar lifetime smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--private-store"))
 {
     await PrivateStoreSmokeTests.RunAsync(Check);
@@ -156,6 +164,7 @@ await PartySmokeTests.RunAsync(Check);
 await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await MentorSmokeTests.RunAsync(Check);
+await AvatarLifetimeSmokeTests.RunAsync(Check);
 await PrivateStoreSmokeTests.RunAsync(Check);
 await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
@@ -2260,7 +2269,8 @@ try
         && boosterOpenPlan.AvatarInventory.Values.Single() is
         {
             ItemId: 39000,
-            AvatarRemainingSeconds: 0,
+            AvatarRemainingSeconds: 2_592_000,
+            AvatarExpiresAtUnixSeconds: > 0,
             AvatarAbilityIndex: 4
         }
         && boosterOpenPlan.OverflowItems.Count == 0,
@@ -2284,7 +2294,8 @@ try
         && boosterPurchasePlan.AvatarInventory.Values.Single() is
         {
             ItemId: 39000,
-            AvatarRemainingSeconds: 0,
+            AvatarRemainingSeconds: 2_592_000,
+            AvatarExpiresAtUnixSeconds: > 0,
             AvatarAbilityIndex: 4
         }
         && boosterPurchasePlan.MainInventory.Values.All(item => item.ItemId != 71),
@@ -2383,17 +2394,17 @@ try
     Check(ceraCatalog.TryGetProduct(120000, out var avatarProduct)
         && avatarProduct.ItemId == 39000
         && avatarProduct.AttributeValue == 1
-        && avatarProduct.CashPrice == 2_970
+        && avatarProduct.CashPrice == 450
         && avatarProduct.ClientCategory == 0
         && !avatarProduct.UsesMainInventory,
-        "DFLegacy Cera catalog charges the permanent price while expiration is unsupported");
+        "DFLegacy Cera catalog charges the native7-day price for period code1");
     Check(ceraCatalog.TryGetProduct(120001, out var avatar30DayProduct)
             && avatar30DayProduct.AttributeValue == 2
-            && avatar30DayProduct.CashPrice == 2_970
+            && avatar30DayProduct.CashPrice == 990
             && ceraCatalog.TryGetProduct(120002, out var avatarPermanentProduct)
             && avatarPermanentProduct.AttributeValue == 3
             && avatarPermanentProduct.CashPrice == 2_970,
-        "DFLegacy avatar period codes all charge 6.6x until expiration is implemented");
+        "DFLegacy avatar period codes distinguish30-day and permanent native prices");
     var premiumBenefits = new PremiumBenefitCatalog(
         ceraScripts,
         NullLogger<PremiumBenefitCatalog>.Instance);

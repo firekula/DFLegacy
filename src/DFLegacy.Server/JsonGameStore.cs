@@ -34,7 +34,10 @@ public sealed record CharacterItemRecord(
     uint? EquipmentQualitySeed = null,
     // Server-only identity. DF2008's item wire format has no GUID field.
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    Guid InstanceId = default);
+    Guid InstanceId = default,
+    // Server UTC deadline; the legacy AvatarExpireAt key above remains seconds.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    long? AvatarExpiresAtUnixSeconds = null);
 
 public sealed record CharacterSkillRecord(
     byte Slot,
@@ -56,7 +59,9 @@ public sealed record CharacterMailAttachmentRecord(
     ushort? AvatarAbilityIndex = null,
     uint? EquipmentQualitySeed = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    Guid InstanceId = default);
+    Guid InstanceId = default,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    long? AvatarExpiresAtUnixSeconds = null);
 
 public sealed record CharacterMailRecord(
     uint Id,
@@ -342,6 +347,9 @@ public sealed record CharacterRecord(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<PrivateStoreGoldCredit>? PendingPrivateStoreGoldCredits { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<Guid>? ExpiredAvatarInstanceIds { get; init; }
+
     [JsonIgnore]
     public bool IsWeakened => WeaknessRecovery < DungeonWeaknessPolicy.FullStamina;
 }
@@ -495,7 +503,8 @@ public sealed partial class JsonGameStore(
     CharacterExperienceCatalog? experienceCatalog = null,
     ItemCatalog? itemCatalog = null,
     CharacterStatCatalog? statCatalog = null,
-    PrivateStoreCatalog? privateStoreCatalog = null)
+    PrivateStoreCatalog? privateStoreCatalog = null,
+    TimeProvider? avatarTimeProvider = null)
 {
     private const byte LegacyOverlordContractServiceType = 17;
     private const int DefaultAccountCash = 50_000;
@@ -611,8 +620,9 @@ public sealed partial class JsonGameStore(
     private bool _rewardQuarantined;
 
     internal JsonGameStore(ServerOptions options, ILogger<JsonGameStore> logger, IDungeonRewardSnapshotWriter writer,
-        CharacterExperienceCatalog? experienceCatalog = null, ItemCatalog? itemCatalog = null, CharacterStatCatalog? statCatalog = null)
-        : this(options, logger, experienceCatalog, itemCatalog, statCatalog) => _rewardWriter = writer;
+        CharacterExperienceCatalog? experienceCatalog = null, ItemCatalog? itemCatalog = null, CharacterStatCatalog? statCatalog = null,
+        TimeProvider? avatarTimeProvider = null)
+        : this(options, logger, experienceCatalog, itemCatalog, statCatalog, avatarTimeProvider: avatarTimeProvider) => _rewardWriter = writer;
 
     // 交易交付守门：一笔交易落库后，两个角色在各自会话安装新状态之前，
     // 拒绝任何"把调用方内存里的背包整份写回"的盲写保存——否则被动方会话会
@@ -714,6 +724,7 @@ public sealed partial class JsonGameStore(
                 stateChanged |= NormalizeCharacterExperienceLocked();
                 stateChanged |= SettleWarehouseUpgradeItemsLocked();
                 stateChanged |= MigrateItemInstanceIdsLocked();
+                await SettleAvatarLifetimesAtStartupLockedAsync(cancellationToken);
                 if (ResetFatigueForNewDayLocked(
                         DateTimeOffset.Now,
                         out var startupResetCharacterIds))
@@ -2621,7 +2632,9 @@ public sealed partial class JsonGameStore(
                 now,
                 checked(now + (uint)TimeSpan.FromDays(30).TotalSeconds));
             mailbox.Add(mail);
-            owner.Characters[characterIndex] = character with { Mailbox = mailbox };
+            var updated = ReconcileAvatarLifetimes(character with { Mailbox = mailbox }, character);
+            owner.Characters[characterIndex] = updated;
+            mail = updated.Mailbox!.Single(m => m.Id == mailId);
             await SaveLockedAsync(cancellationToken);
             logger.LogInformation(
                 "Created mail {MailId} for character {CharacterId}: gold={Gold}, item={ItemId}.",
@@ -2648,6 +2661,9 @@ public sealed partial class JsonGameStore(
         CancellationToken cancellationToken = default)
     {
         request = EnsureMailAttachmentInstanceId(request);
+        if (request.Attachment is { } limited
+            && (limited.AvatarExpiresAtUnixSeconds is not null || limited.AvatarRemainingSeconds is > 0))
+            return new(false, null, Guid.Empty, null, CharacterMailSendFailure.InvalidRequest);
         if (ValidateMailRequest(request) is not null
             || string.IsNullOrWhiteSpace(recipientName)
             || recipientName.Length > 20
@@ -2925,7 +2941,7 @@ public sealed partial class JsonGameStore(
                 WarehouseCapacity = nextWarehouseCapacity,
                 Mailbox = mailbox
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[characterIndex] = updated;
             await SaveLockedAsync(cancellationToken);
             return new CharacterMailClaimResult(updated, mail);
@@ -3489,7 +3505,7 @@ public sealed partial class JsonGameStore(
                 WarehouseCapacity = nextWarehouseCapacity,
                 Mailbox = mailbox
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             await SaveLockedAsync(cancellationToken);
             LogGeneratedMails(characterId, createdMailCount);
@@ -3753,7 +3769,7 @@ public sealed partial class JsonGameStore(
                 Gold = remainingGold,
                 Inventory = plannedItems.ToList()
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[characterIndex] = updated;
             await SaveLockedAsync(cancellationToken);
             return updated;
@@ -3851,7 +3867,7 @@ public sealed partial class JsonGameStore(
                 Inventory = plannedMainItems.ToList(),
                 Equipment = plannedEquippedItems.ToList()
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[characterIndex] = updated;
             await SaveLockedAsync(cancellationToken);
             return updated;
@@ -3942,7 +3958,7 @@ public sealed partial class JsonGameStore(
                 WarehouseCapacity = nextWarehouseCapacity,
                 Mailbox = mailbox
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             await SaveLockedAsync(cancellationToken);
             LogGeneratedMails(characterId, createdMailCount);
@@ -4062,7 +4078,7 @@ public sealed partial class JsonGameStore(
                 WarehouseCapacity = nextWarehouseCapacity,
                 Mailbox = mailbox
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             account = SetAccountCash(account, updated.Cash);
             updated = account.Characters[index];
@@ -5275,7 +5291,7 @@ public sealed partial class JsonGameStore(
             {
                 updated = HiddenDungeonUnlockCatalog.ApplyUnlocks(updated, unlockedDungeonIds);
             }
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             await SaveLockedAsync(cancellationToken);
             return updated;
@@ -5992,7 +6008,7 @@ public sealed partial class JsonGameStore(
             {
                 updated = HiddenDungeonUnlockCatalog.ApplyUnlocks(updated, unlockedDungeonIds);
             }
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             await SaveLockedAsync(cancellationToken);
             LogGeneratedMails(characterId, createdMailCount);
