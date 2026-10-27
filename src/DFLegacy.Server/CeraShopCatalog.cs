@@ -1,4 +1,6 @@
 using DFLegacy.Protocol;
+using System.Collections.Concurrent;
+using System.Text;
 
 namespace DFLegacy.Server;
 
@@ -70,6 +72,8 @@ public sealed class CeraShopCatalog
     private readonly ItemCatalog _items;
     private readonly ILogger<CeraShopCatalog> _logger;
     private readonly Lazy<IReadOnlyDictionary<uint, CeraShopProduct>> _products;
+    private readonly ConcurrentDictionary<ushort, int> _avatarOptionCounts = new();
+    private static readonly Encoding AvatarScriptEncoding = CreateAvatarScriptEncoding();
     private int _maxGiftCount = 1; // ACT1 B539D4 default when PVF has no override.
 
     public CeraShopCatalog(
@@ -91,6 +95,42 @@ public sealed class CeraShopCatalog
 
     public bool TryGetProduct(uint commodityNo, out CeraShopProduct product) =>
         _products.Value.TryGetValue(commodityNo, out product!);
+
+    public bool TryGetAvatarAbilityOptionCount(ushort itemId, out int optionCount)
+    {
+        optionCount = _avatarOptionCounts.GetOrAdd(itemId, LoadAvatarOptionCount);
+        return optionCount > 0;
+    }
+
+    public bool TryResolveAvatarPurchase(GameCeraShopPurchaseItem request,
+        out CeraShopProduct product, out ItemDefinition definition)
+    {
+        product = null!;
+        definition = null!;
+        return TryGetProduct(request.CommodityNo, out product)
+            && string.Equals(product.Section, "avatar", StringComparison.OrdinalIgnoreCase)
+            && product.Quantity == 1
+            && request.AttributeValue is >= 1 and <= 3
+            && request.AttributeValue == product.AttributeValue
+            && _items.TryGetDefinition(product.ItemId, out definition)
+            && definition.InventoryCategory == ItemInventoryCategory.Avatar
+            && request.AvatarAbilityIndex != byte.MaxValue
+            && TryGetAvatarAbilityOptionCount(product.ItemId, out var optionCount)
+            && request.AvatarAbilityIndex < optionCount;
+    }
+
+    private int LoadAvatarOptionCount(ushort itemId) =>
+        _items.TryGetDefinition(itemId, out var definition)
+            && definition.InventoryCategory == ItemInventoryCategory.Avatar
+            && _scripts.FileExists(definition.ScriptPath)
+                ? AvatarAbilityOptions.ReadOptionCount(_scripts.ReadAllText(definition.ScriptPath, AvatarScriptEncoding))
+                : 0;
+
+    private static Encoding CreateAvatarScriptEncoding()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(936, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+    }
 
     public bool TryGetPremiumContract(
         ushort itemId,
@@ -216,7 +256,8 @@ public sealed class CeraShopCatalog
                 1,
                 avatarAttributeValue,
                 avatarCashPrice,
-                section);
+                section,
+                Sticker: sticker);
             return true;
         }
 

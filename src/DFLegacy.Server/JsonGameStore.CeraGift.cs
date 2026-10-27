@@ -74,18 +74,31 @@ public sealed partial class JsonGameStore
 
             var products = new List<CeraShopProduct>();
             var mailRequests = new List<CreateCharacterMailRequest>();
+            var transactionNow = AvatarNow;
             long total = 0;
             foreach (var request in requests)
             {
                 errorCommodity = request.CommodityNo;
                 if (!catalog.TryGetProduct(request.CommodityNo, out var product)) return Reject(21);
                 errorCategory = product.ClientCategory;
-                if (!CanGiftPhysicalProduct(product, request.AttributeValue, out var definition)) return Reject(8);
+                CharacterMailAttachmentRecord attachment;
+                ItemDefinition definition;
+                if (!product.UsesMainInventory)
+                {
+                    if (product.GiftDisallowed || product.Sticker == 99
+                        || !catalog.TryResolveAvatarPurchase(request, out product, out definition)) return Reject(8);
+                    attachment = AvatarLifetimePolicy.CreatePurchaseAttachment(
+                        product, definition, transactionNow, request.AvatarAbilityIndex);
+                }
+                else
+                {
+                    if (!CanGiftPhysicalProduct(product, request.AttributeValue, out definition)) return Reject(8);
+                    attachment = CharacterItemIdentity.Ensure(new CharacterMailAttachmentRecord(product.ItemId, product.Quantity,
+                        Durability: definition.IsEquipment ? itemCatalog.GetInitialDurability(product.ItemId) : (ushort)0,
+                        SealState: CharacterItemSealing.GetInitialSealState(definition)), definition);
+                }
                 total += product.CashPrice;
                 if (total > int.MaxValue) return Reject(11);
-                var attachment = CharacterItemIdentity.Ensure(new CharacterMailAttachmentRecord(product.ItemId, product.Quantity,
-                    Durability: definition.IsEquipment ? itemCatalog.GetInitialDurability(product.ItemId) : (ushort)0,
-                    SealState: CharacterItemSealing.GetInitialSealState(definition)), definition);
                 // Bound splitting before allocating, even for a malformed local catalog.
                 var stackLimit = definition.IsStackable ? Math.Max(1u, (uint)Math.Max(1, definition.StackLimit ?? 1)) : 1u;
                 if (((ulong)product.Quantity + stackLimit - 1) / stackLimit > byte.MaxValue) return Reject(4);

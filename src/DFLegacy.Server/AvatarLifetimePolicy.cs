@@ -7,6 +7,10 @@ public static class AvatarLifetimePolicy
 
     public static CharacterMailAttachmentRecord CreatePurchaseAttachment(
         CeraShopProduct product, ItemDefinition definition, long nowUnixSeconds)
+        => CreatePurchaseAttachment(product, definition, nowUnixSeconds, 0);
+
+    public static CharacterMailAttachmentRecord CreatePurchaseAttachment(
+        CeraShopProduct product, ItemDefinition definition, long nowUnixSeconds, byte avatarAbilityIndex)
     {
         if (definition.InventoryCategory != ItemInventoryCategory.Avatar
             || product.ItemId != definition.Id || product.Quantity == 0)
@@ -20,7 +24,7 @@ public static class AvatarLifetimePolicy
         };
         return new(product.ItemId, product.Quantity,
             SealState: CharacterItemSealing.GetInitialSealState(definition),
-            AvatarRemainingSeconds: seconds, AvatarAbilityIndex: 0,
+            AvatarRemainingSeconds: seconds, AvatarAbilityIndex: avatarAbilityIndex,
             InstanceId: CharacterItemIdentity.CreateInstanceId(),
             AvatarExpiresAtUnixSeconds: seconds == 0 ? null : checked(nowUnixSeconds + seconds));
     }

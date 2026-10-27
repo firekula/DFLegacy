@@ -3,7 +3,12 @@ using System.Text;
 
 namespace DFLegacy.Protocol;
 
-public readonly record struct GameCeraShopPurchaseItem(byte ProductType, ushort AttributeValue, uint CommodityNo);
+public readonly record struct GameCeraShopPurchaseItem(byte ProductType, ushort AttributeValue, uint CommodityNo)
+{
+    // ACT1 record+16 is the selected zero-based avatar ability, not category.
+    // Retain ProductType construction for existing physical-product callers.
+    public byte AvatarAbilityIndex => ProductType;
+}
 public sealed record GameCeraShopPurchaseRequest(bool IsGift, string RecipientName, GameCeraShopPurchaseItem[] Products);
 
 public static partial class GameProtocolEngine

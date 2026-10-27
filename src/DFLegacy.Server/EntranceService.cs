@@ -11852,8 +11852,8 @@ public sealed class EntranceService(
                                 }
 
                                 if (!product.UsesMainInventory
-                                    && requestedProduct.AttributeValue
-                                        != product.AttributeValue)
+                                    && !ceraShopCatalog.TryResolveAvatarPurchase(
+                                        requestedProduct, out _, out _))
                                 {
                                     purchaseValid = false;
                                     errorProduct = requestedProduct;
@@ -12054,7 +12054,8 @@ public sealed class EntranceService(
                                 }
 
                                 var purchasedItem = itemDefinition.InventoryCategory == ItemInventoryCategory.Avatar
-                                    ? AvatarLifetimePolicy.CreatePurchaseAttachment(product, itemDefinition, DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+                                    ? AvatarLifetimePolicy.CreatePurchaseAttachment(product, itemDefinition,
+                                        DateTimeOffset.UtcNow.ToUnixTimeSeconds(), requestedProduct.AvatarAbilityIndex)
                                     : CharacterItemIdentity.Ensure(
                                     new CharacterMailAttachmentRecord(
                                     product.ItemId,

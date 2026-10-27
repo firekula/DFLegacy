@@ -44,6 +44,7 @@ if (args.Contains("--client-diagnostics"))
 if (args.Contains("--cera-gift"))
 {
     await CeraGiftSmokeTests.RunAsync(Check);
+    await AvatarPurchaseSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Cera gift smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
@@ -210,6 +211,7 @@ await PvpIndividualSmokeTests.RunAsync(Check);
 await PvpProtocolRatingSmokeTests.RunAsync(Check);
 await AvatarLifetimeSmokeTests.RunAsync(Check);
 await CeraGiftSmokeTests.RunAsync(Check);
+await AvatarPurchaseSmokeTests.RunAsync(Check);
 await PrivateStoreSmokeTests.RunAsync(Check);
 await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);

@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 
-internal static class CeraGiftSmokeTests
+internal static partial class CeraGiftSmokeTests
 {
     internal static async Task RunAsync(Action<bool, string> check)
     {
@@ -20,6 +20,13 @@ internal static class CeraGiftSmokeTests
         await Faults(check);
         await Sessions(check);
         await PreserveEconomicState(check);
+        await AvatarTransactions(check);
+        await AvatarRejections(check);
+        await AvatarSelfPurchase(check);
+        await AvatarExpiryRaces(check);
+        await AvatarAtomicLimits(check);
+        await AvatarConcurrentAndFaults(check);
+        await AvatarSessionsAndEconomicState(check);
     }
 
     private static void Wire(Action<bool, string> check)
