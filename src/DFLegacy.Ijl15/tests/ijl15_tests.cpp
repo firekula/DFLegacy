@@ -35,6 +35,7 @@ bool TestGroundItemRemovalNotification();
 bool TestPartyCardDisplay();
 bool TestChannelReentryMtu();
 bool TestChannelSwitch();
+bool TestCreatureGiftRow();
 
 namespace
 {
@@ -1327,6 +1328,12 @@ bool TestSyntheticKeyboardStateMerge()
 
 int main(int argc, char** argv)
 {
+    if (argc == 2 && std::strcmp(argv[1], "--creature-gift-row-only") == 0)
+    {
+        if (!TestCreatureGiftRow()) return 1;
+        std::puts("creature gift row tests passed");
+        return 0;
+    }
     if (argc == 2 && std::strcmp(argv[1], "--channel-switch-only") == 0)
     {
         if (!TestChannelSwitch()) return 1;
@@ -1376,6 +1383,7 @@ int main(int argc, char** argv)
     {
         return Fail("ground item removal notification failed");
     }
+    if (!TestCreatureGiftRow()) return Fail("creature gift row failed");
     if (!TestChannelSwitch()) return Fail("channel switch transition failed");
     if (!TestChannelReentryMtu())
     {

@@ -135,8 +135,10 @@
     <ClCompile Include="boss_room_death_tests.cpp" />
     <ClCompile Include="..\src\channel_reentry.cpp" />
     <ClCompile Include="..\src\channel_switch.cpp" />
+    <ClCompile Include="..\src\creature_gift_row.cpp" />
     <ClCompile Include="channel_reentry_tests.cpp" />
     <ClCompile Include="channel_switch_tests.cpp" />
+    <ClCompile Include="creature_gift_row_tests.cpp" />
     <ClCompile Include="..\src\priest_heal_target.cpp" />
     <ClCompile Include="priest_heal_target_tests.cpp" />
     <ClCompile Include="..\src\ground_item_removal.cpp" />
@@ -147,6 +149,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\channel_switch.h" />
+    <ClInclude Include="..\src\creature_gift_row.h" />
     <ClInclude Include="..\src\auto_input.h" />
     <ClInclude Include="..\src\external_string_table.h" />
     <ClInclude Include="..\src\ijl15_config.h" />
@@ -163,9 +166,10 @@
     <ClInclude Include="..\src\party_card_display.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DFLegacy.Ijl15.vcxproj">
+    <ProjectReference Include="..\DFLegacy.Ijl15.vcxproj" Condition="'$(BuildProjectReferences)' != 'false'">
       <Project>{b5e9130b-04a6-46a2-8a4e-fe5b77f307be}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

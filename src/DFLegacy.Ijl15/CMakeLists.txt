@@ -24,6 +24,8 @@ add_library(ijl15 SHARED
     src/client_debug_state.h
     src/boss_room_death.cpp
     src/boss_room_death.h
+    src/creature_gift_row.cpp
+    src/creature_gift_row.h
     src/channel_switch.cpp
     src/channel_switch.h
     src/channel_reentry.cpp
@@ -129,12 +131,15 @@ if(BUILD_TESTING)
         src/boss_room_death.cpp
         src/boss_room_death.h
         tests/boss_room_death_tests.cpp
+        src/creature_gift_row.cpp
+        src/creature_gift_row.h
         src/channel_switch.cpp
         src/channel_switch.h
         src/channel_reentry.cpp
         src/channel_reentry.h
         tests/channel_reentry_tests.cpp
         tests/channel_switch_tests.cpp
+        tests/creature_gift_row_tests.cpp
         src/priest_heal_target.cpp
         src/priest_heal_target.h
         tests/priest_heal_target_tests.cpp

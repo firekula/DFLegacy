@@ -13,6 +13,7 @@
 #include "boss_room_death.h"
 #include "channel_reentry.h"
 #include "channel_switch.h"
+#include "creature_gift_row.h"
 #include "ground_item_removal.h"
 #include "dnf_patches.h"
 #include "d3d8_scaler.h"
@@ -1203,6 +1204,10 @@ namespace dfl::dnf_patches
                 "DFLegacy.Ijl15: Mage contact skill prerequisite repair was not installed.\n");
         }
 
+        if (!dfl::creature_gift_row::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: verified creature egg gift row was not installed.\n");
+        }
         if (!dfl::channel_switch::Install())
         {
             OutputDebugStringA("DFLegacy.Ijl15: selected channel reconnect repair was not installed.\n");
