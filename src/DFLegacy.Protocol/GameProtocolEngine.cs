@@ -4251,7 +4251,8 @@ public static partial class GameProtocolEngine
         ushort userId,
         IReadOnlyCollection<GameInventoryEntry>? equippedItems = null,
         GameCreatureAppearanceEntry? equippedCreature = null,
-        bool hasBlackDiamond = false)
+        bool hasBlackDiamond = false,
+        bool hasPrivateStorePermission = false)
     {
         if (userId == 0)
         {
@@ -4319,7 +4320,9 @@ public static partial class GameProtocolEngine
 
         writer.Write((byte)0); // town-entity extension state
         writer.Write(0u);      // guild id
-        writer.Write((byte)0); // guild/member flag
+        // 419F17 -> record+A0 -> 47B9B0 allocates the actor's shop component.
+        // This is the private-store entitlement, independent of guild state.
+        writer.Write(hasPrivateStorePermission ? (byte)1 : (byte)0);
 
         // DFLegacy mode zero keeps the legacy guild/title placeholders even
         // when they are empty. Omitting either length prefix shifts every

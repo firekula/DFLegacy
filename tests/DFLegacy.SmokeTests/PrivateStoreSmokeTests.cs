@@ -52,6 +52,11 @@ internal static class PrivateStoreSmokeTests
         await CheckServiceAsync(check);
         await CheckLifecycleAsync(check);
         await CheckReviewRegressionsAsync(check);
+        var licensedAppearance = GameProtocolEngine.CreateCurrentCharacterInfo(new(0, [65], 3, 2, 45), 1,
+            hasBlackDiamond: true, hasPrivateStorePermission: true);
+        var ordinaryAppearance = GameProtocolEngine.CreateCurrentCharacterInfo(new(0, [65], 3, 2, 45), 1);
+        check(licensedAppearance.Payload[22] == 1 && licensedAppearance.Payload[31] == 1 && ordinaryAppearance.Payload[22] == 0,
+            "a licensed ACT1 town appearance enables the actor store component after guildId");
         await using (var badCatalog = await StoreFixture.CreateAsync())
         {
             File.WriteAllText(Path.Combine(badCatalog.Root, "etc/goldlimitbylevel.etc"), "[gold limit from level]\n60 9999999999999999999999\n");

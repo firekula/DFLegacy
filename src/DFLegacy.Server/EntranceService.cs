@@ -593,20 +593,13 @@ public sealed class EntranceService(
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, premiumNotification);
 
-                    if (serviceType == GameProtocolEngine.BlackDiamondServiceType
+                    if (serviceType == GameProtocolEngine.PrivateStoreServiceType && remainSeconds == 0)
+                        await LeavePrivateStoreAreaAsync(serverToken);
+                    if (serviceType is GameProtocolEngine.BlackDiamondServiceType or GameProtocolEngine.PrivateStoreServiceType
                         && activeCharacter is not null
                         && currentDungeonId == 0)
                     {
-                        var appearance = CreateTownAppearancePacket(
-                            activeCharacter,
-                            localUserId,
-                            equippedInventory.Values,
-                            creatureInventory.Values,
-                            HasActivePremiumService(
-                                GameProtocolEngine.BlackDiamondServiceType));
-                        await appearance.WriteAsync(stream, serverToken);
-                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                        LogPacket("TX", runtimeSession, appearance);
+                        await SendTownAppearanceAsync();
                         await SendTownFatigueStateAsync();
                     }
                 }
@@ -993,7 +986,8 @@ public sealed class EntranceService(
                         equippedInventory.Values,
                         creatureInventory.Values,
                         HasActivePremiumService(
-                            GameProtocolEngine.BlackDiamondServiceType));
+                            GameProtocolEngine.BlackDiamondServiceType),
+                        HasActivePremiumService(GameProtocolEngine.PrivateStoreServiceType));
 
                 // 与上面那条**成对**的"补模型"包（NOTI 2 mode 1）：客户端只有 mode 1/3 的详情
                 // 解析器（0x41A764）会建 `CNUser+0x110` 模型对象（0x417AB0 取不到 →
@@ -6052,7 +6046,8 @@ public sealed class EntranceService(
                                 localUserId,
                                 equippedInventory.Values,
                                 creatureInventory.Values,
-                                blackDiamondActive);
+                                blackDiamondActive,
+                                HasActivePremiumService(GameProtocolEngine.PrivateStoreServiceType));
                             await currentCharacter.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, currentCharacter);
@@ -16522,7 +16517,8 @@ public sealed class EntranceService(
         ushort userId,
         IEnumerable<CharacterItemRecord> equipment,
         IEnumerable<CharacterItemRecord> creatureInventory,
-        bool hasBlackDiamond)
+        bool hasBlackDiamond,
+        bool hasPrivateStorePermission)
     {
         var equipmentSnapshot = equipment.ToArray();
 
@@ -16562,7 +16558,8 @@ public sealed class EntranceService(
                 .Select(ToGameInventoryEntry)
                 .ToArray(),
             CreateEquippedCreatureAppearance(creatureInventory),
-            hasBlackDiamond);
+            hasBlackDiamond,
+            hasPrivateStorePermission);
     }
 
     private GameCreatureAppearanceEntry? CreateEquippedCreatureAppearance(
