@@ -9,7 +9,7 @@ public sealed partial class JsonGameStore
     private PrivateStoreCatalog? _storeCatalog;
     private PrivateStoreCatalog StoreCatalog => privateStoreCatalog ?? (_storeCatalog ??= new(new ScriptFileSystem(options,
         Microsoft.Extensions.Logging.Abstractions.NullLogger<ScriptFileSystem>.Instance)));
-    private bool IsEconomicWriteBlocked(Guid id) => _pendingTradeDeliveries.ContainsKey(id) || Commerce.Is(id, CommerceActivity.Store)
+    private bool IsEconomicWriteBlocked(Guid id) => _pendingTradeDeliveries.ContainsKey(id) || Commerce.Is(id, CommerceActivity.Store) || Commerce.Is(id, CommerceActivity.StoreRevoked)
         || StoreCharacter(_accounts, id)?.PrivateStoreStock is not null;
     private static long PendingStoreGold(CharacterRecord c) => c.PendingPrivateStoreGoldCredits?.Sum(x => (long)x.Amount) ?? 0;
     private List<AccountRecord> CopyStoreAccountsLocked() => JsonSerializer.Deserialize<List<AccountRecord>>(JsonSerializer.Serialize(_accounts))!;
@@ -183,7 +183,8 @@ public sealed partial class JsonGameStore
             if (_rewardQuarantined) return new(DungeonRewardLedgerStatus.Unknown);
             var c = StoreCharacter(_accounts, owner);
             if (c is null) return new(DungeonRewardLedgerStatus.Rejected, 58);
-            if (!Commerce.Owns(owner, CommerceActivity.Store, token) || c.PrivateStoreStock is { } s && s.StoreId != token)
+            var revoked = force && Commerce.Owns(owner, CommerceActivity.StoreRevoked, token);
+            if (!revoked && (!Commerce.Owns(owner, CommerceActivity.Store, token) || c.PrivateStoreStock is { } s && s.StoreId != token))
                 return new(DungeonRewardLedgerStatus.Rejected, 59);
             if (!TryRestoreStoreStockLocked(c, force, out var updated)) return new(DungeonRewardLedgerStatus.Rejected, 22);
             var accounts = CopyStoreAccountsLocked(); SetStoreCharacter(accounts, updated);

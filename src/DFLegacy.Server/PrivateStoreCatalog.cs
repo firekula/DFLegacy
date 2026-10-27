@@ -26,7 +26,13 @@ public sealed class PrivateStoreCatalog(ScriptFileSystem scripts)
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         string Read(string path) => scripts.FileExists(path)
             ? Regex.Replace(scripts.ReadAllText(path, Encoding.GetEncoding(949)), @"//[^\r\n]*", "") : "";
-        static int[] Numbers(string text) => Regex.Matches(text, @"-?\d+").Select(m => int.Parse(m.Value)).ToArray();
+        static int[] Numbers(string text)
+        {
+            var values = new List<int>();
+            foreach (Match m in Regex.Matches(text, @"-?\d+"))
+            { if (!int.TryParse(m.Value, out var n)) return []; values.Add(n); }
+            return values.ToArray();
+        }
         static string Block(string text, string name) => Regex.Match(text,
             $@"\[{Regex.Escape(name)}\](.*?)\[/{Regex.Escape(name)}\]", RegexOptions.Singleline | RegexOptions.IgnoreCase).Groups[1].Value;
         var areas = new Dictionary<(byte, byte), Area>();

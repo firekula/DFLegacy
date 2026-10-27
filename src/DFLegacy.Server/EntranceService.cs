@@ -16,6 +16,7 @@ public sealed class EntranceService(
     TownSessionDirectory townDirectory,
     FriendService friendService,
     MentorService mentorService,
+    PrivateStoreService privateStoreService,
     ItemTradeService itemTradeService,
     PartyService partyService,
     DungeonInstanceRegistry dungeonInstanceRegistry,
@@ -1156,6 +1157,7 @@ public sealed class EntranceService(
                     if (activeCharacter is not null)
                     {
                         // 交易要求双方同镇同区：进副本 / 换区 / 回城离开该区域即取消并退回。
+                        await LeavePrivateStoreAreaAsync(cancellationToken);
                         await itemTradeService.CancelForAreaChangeAsync(
                             activeCharacter.Id,
                             cancellationToken);
@@ -3089,6 +3091,40 @@ public sealed class EntranceService(
                         install.TradeId, activeCharacter.Id);
                 }
 
+                async Task InstallPrivateStoreStateAsync(CharacterRecord state, bool refresh = true)
+                {
+                    if (activeCharacter is null || activeCharacter.Id != state.Id) return;
+                    currentGold = state.Gold;
+                    mainInventory = (state.Inventory ?? []).ToDictionary(i => i.Slot);
+                    activeCharacter = activeCharacter with
+                    {
+                        Gold = state.Gold, Inventory = state.Inventory, PrivateStoreStock = state.PrivateStoreStock,
+                        PendingPrivateStoreGoldCredits = state.PendingPrivateStoreGoldCredits
+                    };
+                    if (refresh) await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values));
+                }
+                async Task InstallPrivateStoreGoldAsync()
+                {
+                    if (activeCharacter is null || !privateStoreService.TryTakeGoldUpdate(activeCharacter.Id)) return;
+                    await dungeonCurrencyGate.WaitAsync(CancellationToken.None);
+                    try
+                    {
+                        await InstallPendingTradeAsync();
+                        var state = await store.ConsumePrivateStoreGoldCreditsAsync(activeCharacter.Id, CancellationToken.None);
+                        if (state is null) return;
+                        currentGold = state.Gold;
+                        activeCharacter = activeCharacter with { Gold = state.Gold, PendingPrivateStoreGoldCredits = state.PendingPrivateStoreGoldCredits };
+                        await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values));
+                    }
+                    finally { dungeonCurrencyGate.Release(); }
+                }
+                async Task LeavePrivateStoreAreaAsync(CancellationToken ct)
+                {
+                    if (activeCharacter is null) return;
+                    var state = await privateStoreService.CloseAsync(activeCharacter.Id, runtimeSession.Id, force: true, reply: false, ct);
+                    if (state is not null) await InstallPrivateStoreStateAsync(state);
+                }
+
                 async Task InstallDungeonGoldCreditAsync(Guid pickupId)
                 {
                     await dungeonCurrencyGate.WaitAsync(CancellationToken.None);
@@ -3689,6 +3725,7 @@ public sealed class EntranceService(
                         return;
                     }
 
+                    await LeavePrivateStoreAreaAsync(cancellationToken);
                     inDungeonSelection = true;
                     dungeonReturnTownId = currentTownId;
                     dungeonReturnAreaId = currentAreaId;
@@ -4224,6 +4261,7 @@ public sealed class EntranceService(
                             currentAreaId,
                             localUserId,
                             serverToken);
+                        await privateStoreService.SendAreaStoresAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                     }
 
                     await SendSilentTownStaminaStateAsync();
@@ -4568,7 +4606,7 @@ public sealed class EntranceService(
                             isChannelPort,
                             activeCharacter is not null,
                             dungeonInstance is { IsParty: true },
-                            (activeCharacter is not null && dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id))
+                            (activeCharacter is not null && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id) || privateStoreService.HasPendingGold(activeCharacter.Id)))
                                 || weaknessRecovery.CanProcessPending(currentDungeonId != 0)
                                 || bossDeathSweep.HasPending,
                             activeCharacter is null ? 0 : partyService.GetPartySlots(activeCharacter.Id)?.Length ?? 0);
@@ -4887,6 +4925,7 @@ public sealed class EntranceService(
                     // 与报文一字未改。
                     async Task HandlePendingPartyMailAsync()
                     {
+                        await InstallPrivateStoreGoldAsync();
                         await InstallPendingDungeonGoldAsync();
                         if (activeCharacter is { } mentorOwner && mentorService.TryTakeRefresh(mentorOwner.Id))
                         {
@@ -5197,6 +5236,7 @@ public sealed class EntranceService(
                                     runtimeSession.Id,
                                     serverToken);
                                 await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
+                                await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                             }
 
                             characterSessions.Release(activeCharacterLease);
@@ -5358,6 +5398,7 @@ public sealed class EntranceService(
                                         runtimeSession.Id,
                                         serverToken);
                                     await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
+                                    await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                 }
 
                                 // 换角色 = 旧角色离开副本实例（照上面 CMD 7 回选人的收尾同序，终审 I2）：
@@ -5489,6 +5530,7 @@ public sealed class EntranceService(
                             {
                                 WarehouseCapacity = warehouseCapacity
                             };
+                            character = await store.ConsumePrivateStoreGoldCreditsAsync(character.Id, CancellationToken.None) ?? character;
                             character = await store.ConsumeDungeonGoldCreditsAsync(character.Id, CancellationToken.None) ?? character;
                             activeCharacter = character;
                             lastProjectedCombatStats = null;
@@ -5728,6 +5770,7 @@ public sealed class EntranceService(
                                             runtimeSession.Id,
                                             serverToken);
                                         await mentorService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
+                                        await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                     }
 
                                     characterSessions.Release(activeCharacterLease);
@@ -6093,7 +6136,70 @@ public sealed class EntranceService(
                                 serverToken);
                             await mentorService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,
                                 runtimeSession.Id, packet => SendTownPacketAsync(packet, serverToken), serverToken);
+                            await privateStoreService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,
+                                runtimeSession.Id, packet => SendTownPacketAsync(packet, serverToken), serverToken,
+                                KickConnection, partyMembershipWake.Pulse);
                             continue;
+                        }
+
+                        if (activeCharacter is not null && request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId is >= GameProtocolEngine.BuyPrivateStoreCommand and <= GameProtocolEngine.DisplayPrivateStoreCommand)
+                        {
+                            await dungeonCurrencyGate.WaitAsync(serverToken);
+                            try
+                            {
+                                CharacterRecord? privateStoreState = null;
+                                switch (request.ProtocolId)
+                                {
+                                    case GameProtocolEngine.CreatePrivateStoreCommand:
+                                        if (GameProtocolEngine.TryReadPrivateStoreCreate(request.Body, out var storePosition))
+                                        {
+                                            if (await privateStoreService.CreateAsync(activeCharacter.Id, runtimeSession.Id, storePosition, serverToken))
+                                            {
+                                                currentX = storePosition.X; currentY = storePosition.Y;
+                                                await SaveCurrentLocationAsync(serverToken);
+                                                await townDirectory.UpdatePositionAsync(townTicket, currentX, currentY, currentDirection, 0, serverToken);
+                                            }
+                                        }
+                                        else await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreatePrivateStoreReply(88, 62));
+                                        break;
+                                    case GameProtocolEngine.DisplayPrivateStoreCommand:
+                                        if (GameProtocolEngine.TryReadPrivateStoreDisplay(request.Body, out var storeTitle, out var storeGoods))
+                                            privateStoreState = await privateStoreService.DisplayAsync(activeCharacter.Id, runtimeSession.Id, storeTitle, storeGoods, serverToken);
+                                        else await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreatePrivateStoreReply(90, 17));
+                                        if (privateStoreState is null)
+                                            await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values));
+                                        break;
+                                    case GameProtocolEngine.EnterPrivateStoreCommand:
+                                        if (GameProtocolEngine.TryReadPrivateStoreEnter(request.Body, out var storeOwner))
+                                            await privateStoreService.EnterAsync(activeCharacter.Id, runtimeSession.Id, storeOwner, serverToken);
+                                        else await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreatePrivateStoreEnterFailure());
+                                        break;
+                                    case GameProtocolEngine.ExitPrivateStoreCommand:
+                                        if (request.Body.Length == 2) await privateStoreService.ExitAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
+                                        break;
+                                    case GameProtocolEngine.BuyPrivateStoreCommand:
+                                        if (GameProtocolEngine.TryReadPrivateStoreBuy(request.Body, out var storeSlot, out var storeCount))
+                                            privateStoreState = await privateStoreService.BuyAsync(activeCharacter.Id, runtimeSession.Id, storeSlot, storeCount, serverToken);
+                                        else await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreatePrivateStoreReply(85, 1));
+                                        break;
+                                    case GameProtocolEngine.RemovePrivateStoreCommand:
+                                        if (request.Body.Length == 2) privateStoreState = await privateStoreService.CloseAsync(activeCharacter.Id, runtimeSession.Id, ct: serverToken);
+                                        break;
+                                }
+                                if (privateStoreState is not null)
+                                    await InstallPrivateStoreStateAsync(privateStoreState, request.ProtocolId != GameProtocolEngine.DisplayPrivateStoreCommand);
+                            }
+                            finally { dungeonCurrencyGate.Release(); }
+                            continue;
+                        }
+                        if (activeCharacter is not null && privateStoreService.IsOwner(activeCharacter.Id)
+                            && request.Type == GameProtocolEngine.CommandPacketType)
+                        {
+                            // Native shop owners cannot mutate inventory through unrelated economic commands.
+                            if (request.ProtocolId is 15 or 16) await LeavePrivateStoreAreaAsync(serverToken);
+                            else if (!(request.ProtocolId <= 18 || request.ProtocolId is 38 or >= 79 and <= 82 or 118 or 125 or 141 or >= 160 and <= 162))
+                                continue;
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
@@ -13240,6 +13346,7 @@ public sealed class EntranceService(
                                         currentAreaId,
                                         localUserId,
                                         serverToken);
+                                    await privateStoreService.SendAreaStoresAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                 }
 
                                 await SendEnterGameWorldCompleteAsync();
@@ -13257,6 +13364,7 @@ public sealed class EntranceService(
                                 {
                                     // 交易要求双方同镇同区：换区即取消并退回（此刻人还在线，
                                     // 双方都要拿到 NOTI 16），必须在改区域之前。
+                                    await LeavePrivateStoreAreaAsync(serverToken);
                                     await itemTradeService.CancelForAreaChangeAsync(
                                         activeCharacter.Id,
                                         serverToken);
@@ -13305,6 +13413,7 @@ public sealed class EntranceService(
                                     currentAreaId,
                                     localUserId,
                                     serverToken);
+                                await privateStoreService.SendAreaStoresAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                             }
 
                             await SendSilentTownStaminaStateAsync();
@@ -15703,6 +15812,9 @@ public sealed class EntranceService(
                             activeCharacter.Id);
                     }
                 }
+
+                if (activeCharacter is not null)
+                    await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, CancellationToken.None);
 
                 if (townTicket is not null)
                 {

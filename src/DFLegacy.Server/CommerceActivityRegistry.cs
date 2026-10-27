@@ -1,6 +1,6 @@
 namespace DFLegacy.Server;
 
-internal enum CommerceActivity { Trade, Store, Purchase }
+internal enum CommerceActivity { Trade, Store, StoreRevoked, Purchase }
 
 /// <summary>Atomic admission across the two economic state machines; tokens protect displaced sessions.</summary>
 internal sealed class CommerceActivityRegistry
@@ -26,4 +26,9 @@ internal sealed class CommerceActivityRegistry
     { lock (_gate) return _owners.TryGetValue(id, out var owner) && owner.Kind == kind; }
     internal bool Owns(Guid id, CommerceActivity kind, Guid token)
     { lock (_gate) return _owners.TryGetValue(id, out var owner) && owner == (kind, token); }
+    internal void RevokeStores()
+    {
+        lock (_gate) foreach (var (id, owner) in _owners.ToArray())
+            if (owner.Kind == CommerceActivity.Store) _owners[id] = (CommerceActivity.StoreRevoked, owner.Token);
+    }
 }

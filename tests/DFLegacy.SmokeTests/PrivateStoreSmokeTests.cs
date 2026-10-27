@@ -49,6 +49,16 @@ internal static class PrivateStoreSmokeTests
         await CheckRecoveryAsync(check);
         await CheckRacesAndCapacityAsync(check);
         await CheckRejectionsAsync(check);
+        await CheckServiceAsync(check);
+        await CheckLifecycleAsync(check);
+        await using (var badCatalog = await StoreFixture.CreateAsync())
+        {
+            File.WriteAllText(Path.Combine(badCatalog.Root, "etc/goldlimitbylevel.etc"), "[gold limit from level]\n60 9999999999999999999999\n");
+            var rejected = false;
+            try { rejected = !new PrivateStoreCatalog(new ScriptFileSystem(badCatalog.Options, NullLogger<ScriptFileSystem>.Instance)).TryGetGoldLimit(60, out _); }
+            catch (OverflowException) { }
+            check(rejected, "invalid oversized gold data disables stores without crashing the requesting session");
+        }
     }
 
     private static async Task CheckDomainAsync(Action<bool, string> check)
@@ -58,11 +68,14 @@ internal static class PrivateStoreSmokeTests
             && f.Catalog.TryGetGoldLimit(1, out cap) && cap == 100_000, "store gold caps come from explicit level rows");
         check(f.Catalog.CheckPosition(new(1, 0, 1000, 250)) == 0
             && f.Catalog.CheckPosition(new(1, 1, 1000, 250)) == 62
+            && f.Catalog.CheckPosition(new(1, 2, 1000, 250)) == 0
+            && f.Catalog.CheckPosition(new(1, 3, 1000, 250)) == 62
             && f.Catalog.CheckPosition(new(1, 0, 10, 10)) == 62, "store positions require enabled non-gate area and walkable coordinates");
         check(f.Catalog.CheckPosition(new(1, 0, 445, 250)) == 82
             && f.Catalog.CheckPosition(new(1, 0, 525, 250)) == 0, "NPC exclusion uses strict80 horizontal boundary");
         check(PrivateStoreCatalog.Collides(new(1, 0, 1000, 250), new(1, 0, 1160, 350))
             && !PrivateStoreCatalog.Collides(new(1, 0, 1000, 250), new(1, 0, 1161, 350)), "store rectangles reject touching inclusive boundaries");
+        await f.Store.SetCharacterWeaknessRecoveryAsync(f.A.Id, 70);
         var token = Guid.NewGuid();
         check(f.Store.Commerce.TryAcquire(CommerceActivity.Store, token, f.A.Id), "store owner acquires exclusive commerce activity");
         var bad = await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [new(0, 101, 0, 73, 3), new(1, 101, 0, 73, 3)]);
@@ -74,6 +87,8 @@ internal static class PrivateStoreSmokeTests
             && opened.Character.Inventory!.All(i => i.Slot != 9), "display atomically withdraws partial stock and whole equipment");
         var stale = await f.Store.SaveCharacterInventoryAsync("alice", f.A.Id, f.A.Gold, f.A.Inventory!, []);
         check(stale is null, "an owner blind inventory save cannot resurrect escrowed items");
+        check(!(await f.Store.RecoverCharacterWeaknessAsync(f.A.Id, 10)).Success && (await f.ReadA()).Gold == 1000,
+            "out-of-actor stamina spending is refused while a store owns the economic state");
         var sale = await f.Store.BuyPrivateStoreAsync(f.B.Id, f.A.Id, token, 0, 1);
         check(sale.Status == DungeonRewardLedgerStatus.Committed && sale.Gross == 101 && sale.Fee == 4
             && sale.Buyer!.Gold == 899 && sale.ProjectedSellerGold == 1097
@@ -94,6 +109,35 @@ internal static class PrivateStoreSmokeTests
         var loaded = f.Reload(); await loaded.InitializeAsync();
         check((await loaded.GetCharactersAsync("alice"))[0].Gold == 1121
             && (await loaded.GetCharactersAsync("bobby"))[0].Gold == 875, "completed store balances survive restart");
+    }
+    private static async Task CheckLifecycleAsync(Action<bool, string> check)
+    {
+        await using var f = await StoreFixture.CreateAsync();
+        var town = new TownSessionDirectory(f.Options, TimeProvider.System, NullLogger<TownSessionDirectory>.Instance);
+        var party = new PartyService(f.Store, town, TimeProvider.System, NullLogger<PartyService>.Instance);
+        using var service = new PrivateStoreService(f.Store, f.Items, f.Catalog, town, party, NullLogger<PrivateStoreService>.Instance);
+        await f.Store.GrantPremiumServiceToAccountAsync("alice", 8, 1);
+        var session = Guid.NewGuid(); var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await town.EnterAsync(new(1, 0, 1, f.A.Id, f.A.CharacterNo, [65], "Seller", null, 1000, 250, 0, (_, _) => ValueTask.CompletedTask), default);
+        async ValueTask Blocked(GameServerPacket p) { if (p.ProtocolId == 90) { entered.TrySetResult(); await release.Task; } }
+        await service.AttachChannelAsync("alice", f.A.Id, 1, session, Blocked);
+        await service.CreateAsync(f.A.Id, session, new(1, 0, 1000, 250));
+        var display = service.DisplayAsync(f.A.Id, session, [65], [new(0, 101, 0, 73, 1)]);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var detach = service.DetachChannelAsync(f.A.Id, session);
+        var fresh = new List<GameServerPacket>();
+        var attach = service.AttachChannelAsync("alice", f.A.Id, 1, Guid.NewGuid(), p => { fresh.Add(p); return ValueTask.CompletedTask; });
+        check(!detach.IsCompleted && !attach.IsCompleted, "retiring a blocked store delivery prevents replacement attachment until it drains");
+        release.TrySetResult(); await Task.WhenAll(display, detach, attach);
+        check(fresh.Count == 0 && (await f.ReadA()).PrivateStoreStock is null
+            && (await f.ReadA()).Inventory!.Single(i => i.Slot == 73).CountOrValue == 10,
+            "old queued store packets cannot reach a new character attachment and escrow returns once");
+        // Batch replacement may keep the exact same stock token; runtime leases still must be revoked.
+        var token = Guid.NewGuid(); f.Store.Commerce.TryAcquire(CommerceActivity.Store, token, f.A.Id);
+        await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [new(0, 101, 0, 73, 1)]);
+        await f.Store.ReplaceAllCharactersAsync("alice", [await f.ReadA()]);
+        check(f.Store.Commerce.Is(f.A.Id, CommerceActivity.StoreRevoked), "global roster replacement revokes an owner even when its saved stock token survives");
     }
 
     private sealed class StoreFailingWriter(bool afterReplace) : IDungeonRewardSnapshotWriter
@@ -226,6 +270,71 @@ internal static class PrivateStoreSmokeTests
                 "startup preserves a conflicting restored inventory and returns unsold stock in durable mail");
         }
     }
+    private static async Task CheckServiceAsync(Action<bool, string> check)
+    {
+        await using var f = await StoreFixture.CreateAsync();
+        var directory = new TownSessionDirectory(f.Options, TimeProvider.System, NullLogger<TownSessionDirectory>.Instance);
+        var party = new PartyService(f.Store, directory, TimeProvider.System, NullLogger<PartyService>.Instance);
+        var service = new PrivateStoreService(f.Store, f.Items, f.Catalog, directory, party, NullLogger<PrivateStoreService>.Instance);
+        using (service)
+        {
+            var pa = new List<GameServerPacket>(); var pb = new List<GameServerPacket>(); var sessionA = Guid.NewGuid(); var sessionB = Guid.NewGuid(); var kicked = false;
+            ValueTask SendA(GameServerPacket p) { lock (pa) pa.Add(p); return ValueTask.CompletedTask; }
+            ValueTask SendB(GameServerPacket p) { lock (pb) pb.Add(p); return ValueTask.CompletedTask; }
+            await directory.EnterAsync(new(1, 0, 1, f.A.Id, f.A.CharacterNo, [65], "Seller", null, 1000, 250, 0, (p, _) => SendA(p)), default);
+            await directory.EnterAsync(new(1, 0, 2, f.B.Id, f.B.CharacterNo, [66], "Buyer", null, 1200, 250, 0, (p, _) => SendB(p)), default);
+            await service.AttachChannelAsync("alice", f.A.Id, 1, sessionA, SendA, kick: () => kicked = true);
+            await service.AttachChannelAsync("bobby", f.B.Id, 2, sessionB, SendB);
+            check(!await service.CreateAsync(f.A.Id, sessionA, new(1, 0, 1000, 250))
+                && pa.Last().Payload.SequenceEqual(new byte[] { 0, 63 }), "unlicensed native create receives error63");
+            var grant = await f.Store.GrantPremiumServiceToAccountAsync("alice", 8, 1);
+            check(grant.Success && await service.CreateAsync(f.A.Id, sessionA, new(1, 0, 1000, 250))
+                && pb.Any(p => p.ProtocolId == 78 && p.Type == 0), "licensed create broadcasts a preparing store to same public area");
+            await service.EnterAsync(f.B.Id, sessionB, 1);
+            check(pb.Last().ProtocolId == 86 && pb.Last().Payload.SequenceEqual(new byte[] { 0 }), "a preparing store cannot be entered");
+            await service.DisplayAsync(f.A.Id, sessionA, [83, 72, 79, 80], [new(0, 101, 0, 73, 5)]);
+            var trade = new ItemTradeService(f.Store, f.Items, f.Stats, directory, TimeProvider.System, NullLogger<ItemTradeService>.Instance);
+            using (trade)
+            {
+                await trade.AttachChannelAsync("alice", f.A.Name, f.A.Id, 1, sessionA, SendA);
+                await trade.AttachChannelAsync("bobby", f.B.Name, f.B.Id, 2, sessionB, SendB);
+                await trade.HandleRequestAsync(f.B.Id, 1, 0);
+                check(!pa.Any(p => p.Type == 0 && p.ProtocolId == 7), "direct trade admission cannot overlap an open store owner");
+                await trade.CancelForAreaChangeAsync(f.B.Id);
+            }
+            await service.SendAreaStoresAsync(f.B.Id, sessionB);
+            check(pb.Any(p => p.ProtocolId == 84 && p.Payload[0] == 1), "a later area snapshot contains title, position and completed state");
+            await service.EnterAsync(f.B.Id, sessionB, 1);
+            check(pb.Last().ProtocolId == 86 && pb.Last().Payload[0] == 1, "a visitor receives complete current stock");
+            var bought = await service.BuyAsync(f.B.Id, sessionB, 0, 1);
+            var boughtAgain = await service.BuyAsync(f.B.Id, sessionB, 0, 1);
+            check(bought?.Gold == 899 && boughtAgain?.Gold == 798 && (await f.ReadA()).Gold == 1000
+                && service.TryTakeGoldUpdate(f.A.Id), "two idle-seller purchases append credits without whole-record actor overwrites");
+            var packets = pb.Where(p => p.ProtocolId is 83 or 85).ToArray();
+            check(packets.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 83, 85, 83, 85 }), "each visitor depletion precedes its own purchase ACK");
+            check((await f.Store.ConsumePrivateStoreGoldCreditsAsync(f.A.Id))?.Gold == 1194
+                && pa.Count(p => p.Type == 0 && p.ProtocolId == 82) == 2, "seller installs both sales once and receives both native sale notices");
+            await service.DetachChannelAsync(f.A.Id, Guid.NewGuid());
+            check(service.IsOwner(f.A.Id), "old-session detach cannot close a current store");
+            var closed = await service.CloseAsync(f.A.Id, sessionA);
+            check(closed?.Inventory!.Single(i => i.Slot == 73).CountOrValue == 8 && !service.IsOwner(f.A.Id)
+                && pb.Any(p => p.Type == 0 && p.ProtocolId == 80) && pb.Any(p => p.Type == 0 && p.ProtocolId == 79),
+                "close returns remaining stock and explicitly closes/removes visitor store state");
+            check((await service.BuyAsync(f.B.Id, sessionB, 0, 1)) is null && pb.Last().Payload.SequenceEqual(new byte[] { 0, 21 }),
+                "a visitor cannot keep buying after close");
+            await service.CreateAsync(f.A.Id, sessionA, new(1, 0, 1000, 250));
+            await service.DisplayAsync(f.A.Id, sessionA, [65], [new(0, 101, 0, 73, 1)]);
+            await service.EnterAsync(f.B.Id, sessionB, 1);
+            await f.Store.ForceClearRewardQuarantineAsync("private-store live-root replacement test");
+            check(await service.BuyAsync(f.B.Id, sessionB, 0, 1) is null,
+                "forced root recovery invalidates even a matching persisted store token immediately");
+            await service.SweepAsync();
+            check(kicked && service.IsOwner(f.A.Id), "revoked owner is disconnected while its stale economic writes remain frozen");
+            await service.DetachChannelAsync(f.A.Id, sessionA); await service.DetachChannelAsync(f.B.Id, sessionB);
+            check((await f.ReadA()).PrivateStoreStock is null && (await f.ReadA()).Inventory!.Single(i => i.Slot == 73).CountOrValue == 8,
+                "recovery invalidation returns the actual restored escrow before releasing the old actor");
+        }
+    }
 
     private sealed class StoreFixture : IAsyncDisposable
     {
@@ -243,7 +352,7 @@ internal static class PrivateStoreSmokeTests
             Directory.CreateDirectory(Path.Combine(root, "etc")); Directory.CreateDirectory(Path.Combine(root, "town")); Directory.CreateDirectory(Path.Combine(root, "map"));
             File.WriteAllText(Path.Combine(root, "etc/goldlimitbylevel.etc"), "[gold limit from level]\n1 100000\n60 300000000\n");
             File.WriteAllText(Path.Combine(root, "town/town.lst"), "1 `test.twn`\n");
-            File.WriteAllText(Path.Combine(root, "town/test.twn"), "[area]\n0\n`test.map`\n`[normal]`\n[/area]\n[area]\n1\n`test.map`\n`[gate]`\n[/area]\n");
+            File.WriteAllText(Path.Combine(root, "town/test.twn"), "[area]\n0\n`test.map`\n`[normal]`\n[/area]\n[area]\n1\n`test.map`\n`[gate]`\n[/area]\n[area]\n2\n`test.map`\n`[pub]`\n[/area]\n[area]\n3\n`test.map`\n`[normal]`\n`[use private store]` 0\n[/area]\n");
             File.WriteAllText(Path.Combine(root, "map/test.map"), "[virtual movable area]\n0 190 1600 200\n[/virtual movable area]\n[NPC]\n1 `[left]` 445 186 0\n[/NPC]\n");
             var options = new ServerOptions { DataPath = Path.Combine(root, "state.json"), ScriptPvfPath = "", SkillScriptPath = root };
             var scripts = new ScriptFileSystem(options, NullLogger<ScriptFileSystem>.Instance);

@@ -182,6 +182,12 @@ public sealed class TownSessionDirectory(
         return true;
     }
 
+    public bool IsPublicTownMember(Guid id) => _membersByCharacter.TryGetValue(id, out var m)
+        && m.Instance == 0 && m.IsInTown?.Invoke() != false;
+    public bool SharesPublicArea(Guid a, Guid b) => IsPublicTownMember(a) && IsPublicTownMember(b)
+        && _membersByCharacter.TryGetValue(a, out var x) && _membersByCharacter.TryGetValue(b, out var y)
+        && x.TownId == y.TownId && x.AreaId == y.AreaId;
+
     public async Task<TownMemberTicket?> EnterAsync(
         TownEntryRequest request,
         CancellationToken cancellationToken)

@@ -251,7 +251,8 @@ public enum WeaknessRecoveryFailure
     None,
     CharacterNotFound,
     NotWeakened,
-    InsufficientGold
+    InsufficientGold,
+    Busy
 }
 
 public sealed record WeaknessRecoveryResult(
@@ -2158,6 +2159,7 @@ public sealed partial class JsonGameStore(
             var notices = PrepareRemovedMentorEdgesLocked(accounts);
             if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
                 return (false, 0, "Roster replacement outcome is uncertain; store quarantined.");
+            Commerce.RevokeStores();
             PublishMentorRemovalNotices(notices);
             logger.LogInformation(
                 "Replaced all emulator characters with {Count} maximum-level transfers on account {Account}.",
@@ -3365,6 +3367,7 @@ public sealed partial class JsonGameStore(
 
     private void InstallRewardRootLocked(JsonGameStoreState state)
     {
+        Commerce.RevokeStores();
         _nextCharacterNo = state.NextCharacterNo;
         _nextNormalAccountUid = state.NextNormalAccountUid;
         _nextTestAccountUid = state.NextTestAccountUid;
@@ -3537,6 +3540,8 @@ public sealed partial class JsonGameStore(
                     false, ItemTradeCommitFailure.CharacterMissing, Guid.Empty, null, null, null);
             }
 
+            if (IsEconomicWriteBlocked(request.InitiatorCharacterId) || IsEconomicWriteBlocked(request.PartnerCharacterId))
+                return new(false, ItemTradeCommitFailure.EscrowMissing, Guid.Empty, null, null, null);
             var settlementRequest = new ItemTradeSettlementRequest(
                 initiator,
                 partner,
@@ -5681,6 +5686,8 @@ public sealed partial class JsonGameStore(
                 }
 
                 var character = account.Characters[characterIndex];
+                if (IsEconomicWriteBlocked(characterId))
+                    return new(false, character, recoveryCost, WeaknessRecoveryFailure.Busy);
                 if (!character.IsWeakened)
                 {
                     return new(
