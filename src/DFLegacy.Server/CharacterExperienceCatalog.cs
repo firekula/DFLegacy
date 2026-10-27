@@ -91,7 +91,7 @@ public sealed class CharacterExperienceCatalog
             previousExperience,
             level,
             experience,
-            amount);
+            experience - previousExperience);
     }
 
     public uint GetExperienceForLevel(int level)

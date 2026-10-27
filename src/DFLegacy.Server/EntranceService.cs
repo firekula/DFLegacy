@@ -2732,9 +2732,13 @@ public sealed class EntranceService(
                                         currentDungeonDifficulty,
                                         partyMemberCount: dungeonInstance!.MemberCount)
                                     : 0;
+                            var mentorBonus = MentorGrowthPolicy.Bonus(gainedExperience,
+                                await mentorService.GetExperienceBonusRateAsync(activeCharacter.Id, runtimeSession.Id, serverToken));
                             var progression = experienceCatalog.Grant(
                                 activeCharacter,
-                                gainedExperience);
+                                MentorGrowthPolicy.Request(gainedExperience, mentorBonus));
+                            var creditedMentorBonus = MentorGrowthPolicy.CreditedBonus(
+                                gainedExperience, mentorBonus, progression.GrantedExperience);
                             if (progression.GrantedExperience > 0)
                             {
                                 var grantedSkillPoints = ApplyLevelUpSkillPoints(progression);
@@ -2773,7 +2777,7 @@ public sealed class EntranceService(
                                             byte.MaxValue)),
                                         activeCharacter.Experience,
                                         extraExperienceA: 0,
-                                        extraExperienceB: 0,
+                                        extraExperienceB: creditedMentorBonus,
                                         skillPoints: checked((ushort)Math.Min(
                                             currentSp,
                                             ushort.MaxValue)));
@@ -4069,7 +4073,10 @@ public sealed class EntranceService(
                             creditDungeon,
                             currentDungeonDifficulty,
                             partyMemberCount: dungeonInstance?.MemberCount ?? 1);
-                        var progression = experienceCatalog.Grant(activeCharacter, gained);
+                        var mentorBonus = MentorGrowthPolicy.Bonus(gained,
+                            await mentorService.GetExperienceBonusRateAsync(activeCharacter.Id, runtimeSession.Id, serverToken));
+                        var progression = experienceCatalog.Grant(activeCharacter, MentorGrowthPolicy.Request(gained, mentorBonus));
+                        var creditedMentorBonus = MentorGrowthPolicy.CreditedBonus(gained, mentorBonus, progression.GrantedExperience);
                         if (progression.GrantedExperience <= 0)
                         {
                             continue;
@@ -4100,7 +4107,7 @@ public sealed class EntranceService(
                             checked((byte)Math.Clamp(activeCharacter.Level, 1, byte.MaxValue)),
                             activeCharacter.Experience,
                             extraExperienceA: 0,
-                            extraExperienceB: 0,
+                            extraExperienceB: creditedMentorBonus,
                             skillPoints: checked((ushort)Math.Min(currentSp, ushort.MaxValue)));
                         await experienceGained.WriteAsync(stream, serverToken);
                         Interlocked.Increment(ref runtimeSession.SentPackets);
@@ -4983,7 +4990,8 @@ public sealed class EntranceService(
                                 activeCharacter = activeCharacter with
                                 {
                                     MentorCharacterId = canonical.MentorCharacterId,
-                                    MentorExperienceBonusPercent = canonical.MentorExperienceBonusPercent
+                                    MentorExperienceBonusPercent = canonical.MentorExperienceBonusPercent,
+                                    MentorRelationshipExperience = canonical.MentorRelationshipExperience
                                 };
                         }
                         // Both real packets and idle mailbox wake-ups pass here.
@@ -15069,8 +15077,8 @@ public sealed class EntranceService(
                                                         CharacterCreatureInventoryLayout.EquippedCreatureSlot,
                                                         out var clearCreature) && clearCreature.CountOrValue != 0,
                                                     HasBlackDiamond: HasActivePremiumService(GameProtocolEngine.BlackDiamondServiceType),
-                                                    MentorBonusRate: DungeonClearBonusContext.GetMentorBonusRate(
-                                                        activeCharacter, characterSessions.IsOnline),
+                                                    MentorBonusRate: await mentorService.GetExperienceBonusRateAsync(
+                                                        activeCharacter.Id, runtimeSession.Id, serverToken),
                                                     EventBonusRate: dungeonExperienceCatalog.GetEventBonusRate(DateTimeOffset.UtcNow),
                                                     ChannelBonusRate: dungeonExperienceCatalog.GetChannelBonusRate(currentDungeonId)))
                                             : GameDungeonClearExperienceBreakdown.Empty;
@@ -15082,6 +15090,8 @@ public sealed class EntranceService(
                                         var clearProgression = experienceCatalog.Grant(
                                             activeCharacter,
                                             calculatedClearExperience.TotalExperience);
+                                        calculatedClearExperience = MentorGrowthPolicy.ClipClear(
+                                            calculatedClearExperience, clearProgression.GrantedExperience);
                                         clearGrantedSkillPoints =
                                             spCatalog.CalculateProgressiveSpGrant(
                                                 clearProgression,

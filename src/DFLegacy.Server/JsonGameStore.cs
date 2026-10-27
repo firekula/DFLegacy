@@ -334,7 +334,8 @@ public sealed record CharacterRecord(
     int PvpCount = 0,
     byte PvpGradeExtension = 0,
     Guid? MentorCharacterId = null,
-    byte MentorExperienceBonusPercent = 0)
+    byte MentorExperienceBonusPercent = 0,
+    uint MentorRelationshipExperience = 0)
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<DungeonGoldCredit>? PendingDungeonGoldCredits { get; init; }
@@ -728,6 +729,7 @@ public sealed partial class JsonGameStore(
                 stateChanged |= RefreshPresetCharactersLocked();
                 stateChanged |= MigrateAccountCashLocked();
                 stateChanged |= NormalizeCharacterExperienceLocked();
+                stateChanged |= NormalizeMentorGrowthLocked();
                 stateChanged |= SettleWarehouseUpgradeItemsLocked();
                 stateChanged |= MigrateItemInstanceIdsLocked();
                 await SettleAvatarLifetimesAtStartupLockedAsync(cancellationToken);

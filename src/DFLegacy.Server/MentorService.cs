@@ -4,7 +4,7 @@ using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
 
-/// <summary>ACT1 师徒基础关系；会话请求与持久化规范关系分别管理。</summary>
+/// <summary>ACT1 mentorship, canonical edge growth, and attachment-owned online reward caches.</summary>
 public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogger<MentorService> logger) : BackgroundService
 {
     private sealed record Channel(string Account, Guid CharacterId, string Name, Guid SessionId,
@@ -13,6 +13,10 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
         internal readonly Queue<GameServerPacket> Outbox = new();
         internal readonly SemaphoreSlim DeliveryGate = new(1, 1);
         internal bool Retired;
+        internal readonly Guid Incarnation = Guid.NewGuid();
+        internal long LastGrowthTimestamp;
+        internal Guid? RewardMaster;
+        internal byte RewardLevel;
     }
     private sealed record Pending(Guid Requester, Guid RequesterSession, Guid TargetSession);
     private sealed record Delivery(Channel Channel, GameServerPacket Packet);
@@ -90,12 +94,16 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
     private async Task AddListAsync(List<Delivery> deliveries, Channel channel, CancellationToken ct)
     {
         var roster = await store.GetMentorRosterAsync(channel.CharacterId, ct);
-        MentorListEntry Entry(MentorListMember member) => new(
-            _channels.ContainsKey(member.Character.Id) ? (byte)1 : (byte)255,
-            Level(member.Character), Name(member.Character.Name), member.BlocksViewer ? (byte)1 : (byte)0);
+        MentorListEntry Entry(MentorListMember member, uint experience)
+        {
+            var growth = MentorGrowthPolicy.Project(experience);
+            return new(_channels.ContainsKey(member.Character.Id) ? (byte)1 : (byte)255,
+                Level(member.Character), Name(member.Character.Name), member.BlocksViewer ? (byte)1 : (byte)0,
+                growth.Level, growth.Experience, growth.NextExperience);
+        }
         deliveries.Add(new(channel, GameProtocolEngine.CreateMentorListReply(
-            roster?.Master is { } master ? Entry(master) : null,
-            roster?.Apprentices.Select(Entry).ToArray() ?? [])));
+            roster?.Master is { } master ? Entry(master, roster!.Owner.MentorRelationshipExperience) : null,
+            roster?.Apprentices.Select(c => Entry(c, c.Character.MentorRelationshipExperience)).ToArray() ?? [])));
     }
 
     private void CancelRequests(Guid id)
@@ -113,15 +121,17 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
         await RunAsync(_ =>
         {
             if (_channels.Remove(characterId, out retired))
-            { retired.Retired = true; retired.Outbox.Clear(); }
+            { retired.Retired = true; retired.Outbox.Clear(); ClearDependentCaches(characterId); }
             CancelRequests(characterId);
             return Task.CompletedTask;
         }, ct);
         if (retired is not null) await DrainAsync(retired);
         await RunAsync(async deliveries =>
         {
-            var channel = new Channel(account, characterId, character.Name, sessionId, send);
+            var channel = new Channel(account, characterId, character.Name, sessionId, send)
+            { LastGrowthTimestamp = clock.GetTimestamp() };
             _channels[characterId] = channel;
+            await ReconcileCachesAsync(ct);
             await AddListAsync(deliveries, channel, ct);
             await AddPresenceAsync(deliveries, characterId, online: true, ct);
         }, ct);
@@ -147,6 +157,8 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
             if (retired is null) return;
             retired.Retired = true; retired.Outbox.Clear();
             _channels.Remove(id);
+            ClearDependentCaches(id);
+            await ReconcileCachesAsync(ct);
             CancelRequests(id);
             _refresh.TryRemove(id, out _);
             await AddPresenceAsync(deliveries, id, online: false, ct);
@@ -192,6 +204,7 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
                 : new GameServerPacket(GameProtocolEngine.CommandPacketType, 80, [0])));
             return;
         }
+        await ReconcileCachesAsync(ct);
         var requesterCharacter = result.Requester!; var responderCharacter = result.Target!;
         var requesterRole = requesterCharacter.Level < responderCharacter.Level ? (byte)1 : (byte)2;
         deliveries.Add(new(requester, GameProtocolEngine.CreateMentorEstablished(1, requesterRole,
@@ -214,6 +227,7 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
         var result = await store.RemoveMentorAsync(id, targetName, clock.GetLocalNow(), ct);
         if (result.Status != DungeonRewardLedgerStatus.Committed)
         { deliveries.Add(new(requester, GameProtocolEngine.CreateMentorRemoved([], false))); return; }
+        await ReconcileCachesAsync(ct);
         if (result.RequesterEmpty) deliveries.Add(new(requester, GameProtocolEngine.CreateMentorReset()));
         deliveries.Add(new(requester, GameProtocolEngine.CreateMentorRemoved(Name(result.Target!.Name))));
         if (_channels.TryGetValue(result.Target.Id, out var peer))
@@ -227,6 +241,8 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
 
     internal Task SweepChangesAsync(CancellationToken ct = default) => RunAsync(async deliveries =>
     {
+        await ReconcileCachesAsync(ct);
+        await GrowDueEndpointsAsync(deliveries, ct);
         while (store.TryTakeMentorRemovalNotice(out var notice))
         {
             _refresh[notice!.CharacterId] = 1;
@@ -239,9 +255,73 @@ public sealed class MentorService(JsonGameStore store, TimeProvider clock, ILogg
         }
     }, ct);
 
+    private void ClearDependentCaches(Guid master)
+    {
+        foreach (var channel in _channels.Values.Where(c => c.RewardMaster == master))
+        { channel.RewardMaster = null; channel.RewardLevel = 0; }
+    }
+
+    private void ReconcileCache(Channel channel, MentorRoster? roster)
+    {
+        var master = roster?.Master is { } parent && _channels.ContainsKey(parent.Character.Id)
+            ? parent.Character.Id : (Guid?)null;
+        if (channel.RewardMaster == master) return;
+        channel.RewardMaster = master;
+        channel.RewardLevel = master is null ? (byte)0 : MentorGrowthPolicy.Project(roster!.Owner.MentorRelationshipExperience).Level;
+    }
+
+    private async Task ReconcileCachesAsync(CancellationToken ct)
+    {
+        foreach (var channel in _channels.Values)
+            ReconcileCache(channel, await store.GetMentorRosterAsync(channel.CharacterId, ct));
+    }
+
+    /// <summary>The canonical read under service→store locks is reward eligibility's linearization point.</summary>
+    public async Task<double> GetExperienceBonusRateAsync(Guid characterId, Guid sessionId, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var channel = Current(characterId, sessionId);
+            if (channel is null) return 0;
+            ReconcileCache(channel, await store.GetMentorRosterAsync(characterId, ct));
+            return MentorGrowthPolicy.Rate(channel.RewardLevel);
+        }
+        finally { _gate.Release(); }
+    }
+
+    private async Task GrowDueEndpointsAsync(List<Delivery> deliveries, CancellationToken ct)
+    {
+        var now = clock.GetTimestamp();
+        foreach (var channel in _channels.Values.ToArray())
+        {
+            if (clock.GetElapsedTime(channel.LastGrowthTimestamp, now) < TimeSpan.FromSeconds(600)) continue;
+            // Claim this incarnation's event before awaiting persistence; late or uncertain periods are never retried.
+            channel.LastGrowthTimestamp = now;
+            var result = await store.GrowMentorEndpointAsync(channel.CharacterId, _channels.Keys.ToHashSet(), ct);
+            logger.LogInformation("Mentor 600-second endpoint {Character} attachment {Attachment} status {Status}: {Edges}",
+                channel.CharacterId, channel.Incarnation, result.Status,
+                string.Join(",", result.Edges.Select(e => $"{e.ChildId}->{e.MasterId}={e.Experience}")));
+            if (result.Status != DungeonRewardLedgerStatus.Committed || result.Edges.Count == 0) continue;
+            foreach (var edge in result.Edges.Where(e => MentorGrowthPolicy.IsLevelUp(e.Experience)))
+            {
+                var master = await store.GetMentorRosterAsync(edge.MasterId, ct);
+                var level = MentorGrowthPolicy.Project(edge.Experience).Level;
+                foreach (var child in master?.Apprentices ?? [])
+                    if (_channels.TryGetValue(child.Character.Id, out var recipient))
+                        recipient.RewardLevel = Math.Max(recipient.RewardLevel, level);
+            }
+            foreach (var id in result.Edges.SelectMany(e => new[] { e.ChildId, e.MasterId }).Distinct())
+            {
+                _refresh[id] = 1;
+                if (_channels.TryGetValue(id, out var recipient)) await AddListAsync(deliveries, recipient, ct);
+            }
+        }
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500), clock);
         while (await timer.WaitForNextTickAsync(stoppingToken)) await SweepChangesAsync(stoppingToken);
     }
 }

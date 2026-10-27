@@ -31,7 +31,16 @@ public sealed partial class JsonGameStore
         var survivors = after.SelectMany(a => a.Characters).ToDictionary(c => c.Id);
         foreach (var character in survivors.Values.ToArray())
         {
-            if (character.MentorCharacterId is not { } parent) continue;
+            if (character.MentorCharacterId is not { } parent)
+            {
+                if (character.MentorRelationshipExperience != 0 || character.MentorExperienceBonusPercent != 0)
+                {
+                    var orphanClean = character with { MentorRelationshipExperience = 0, MentorExperienceBonusPercent = 0 };
+                    SetMentorCharacter(after, orphanClean);
+                    survivors[character.Id] = orphanClean;
+                }
+                continue;
+            }
             var seen = new HashSet<Guid> { character.Id };
             var cursor = parent;
             while (survivors.TryGetValue(cursor, out var ancestor) && seen.Add(cursor))
@@ -43,7 +52,7 @@ public sealed partial class JsonGameStore
             // A retained valid chain ends at a root already visited above.
             var rootValid = survivors.TryGetValue(cursor, out var root) && root.MentorCharacterId is null;
             if (rootValid && parent != character.Id) continue;
-            var clean = character with { MentorCharacterId = null, MentorExperienceBonusPercent = 0 };
+            var clean = character with { MentorCharacterId = null, MentorExperienceBonusPercent = 0, MentorRelationshipExperience = 0 };
             SetMentorCharacter(after, clean);
             survivors[character.Id] = clean;
         }
@@ -157,7 +166,7 @@ public sealed partial class JsonGameStore
             var requesterIsMaster = requester.Level > target.Level;
             var master = requesterIsMaster ? requester : target;
             var child = requesterIsMaster ? target : requester;
-            child = child with { MentorCharacterId = master.Id, MentorExperienceBonusPercent = 0 };
+            child = child with { MentorCharacterId = master.Id, MentorExperienceBonusPercent = 0, MentorRelationshipExperience = 0 };
             master = master with { MentorRegistration = (master.MentorRegistration ?? new()) with { RegisteredAtUnix = now.ToUnixTimeSeconds() } };
             child = child with { MentorRegistration = (child.MentorRegistration ?? new()) with { RegisteredAtUnix = now.ToUnixTimeSeconds() } };
             SetMentorCharacter(accounts, master);
@@ -184,7 +193,7 @@ public sealed partial class JsonGameStore
                 return new(DungeonRewardLedgerStatus.Rejected, 49);
             var accounts = CopyMentorAccountsLocked();
             var child = requester.MentorCharacterId == target.Id ? requester : target;
-            SetMentorCharacter(accounts, child with { MentorCharacterId = null, MentorExperienceBonusPercent = 0 });
+            SetMentorCharacter(accounts, child with { MentorCharacterId = null, MentorExperienceBonusPercent = 0, MentorRelationshipExperience = 0 });
             requester = MentorCharacter(accounts, requesterId)!;
             SetMentorCharacter(accounts, requester with
             {
