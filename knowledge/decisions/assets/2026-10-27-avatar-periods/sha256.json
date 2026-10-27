@@ -1,0 +1,92 @@
+[
+  {
+    "File": "15-cap-period-menu-before-fix.jpg",
+    "Sha256": "BE994D198BC84B9A4E8F8742F7A3E2DCE3DFFE71DF7954EFD9D3BA5A6D0ECAF4",
+    "OriginalEqual": true
+  },
+  {
+    "File": "27-native-cap-periods-restored.jpg",
+    "Sha256": "C1FF9AD5E6CDA4F31F01E548140E63828B0ED2C0812B7340B9580BAA6462FAC2",
+    "OriginalEqual": true
+  },
+  {
+    "File": "38-cap-month-select.jpg",
+    "Sha256": "3F6E4DBFA73E0FF56B1EDF7634CEC6E315C9F4EB88097DA0D1DA09C526E9CCE8",
+    "OriginalEqual": true
+  },
+  {
+    "File": "59-coat-seven-period-menu.jpg",
+    "Sha256": "CAFF11616E8AB34B046E88063FD643DF374FDA42AF6D5095F26E7D94D49BB218",
+    "OriginalEqual": true
+  },
+  {
+    "File": "68-coat-permanent-confirm.jpg",
+    "Sha256": "3C03C4C34D339A110355FC75598575B708EC1F5C03EE6719597D421E3B7F477A",
+    "OriginalEqual": true
+  },
+  {
+    "File": "73-cap-seven-tooltip.jpg",
+    "Sha256": "0050985245120709C6F917192C9DA62E5052AAE3898AA12E8E12B77FC1E945E4",
+    "OriginalEqual": true
+  },
+  {
+    "File": "74-cap-month-tooltip.jpg",
+    "Sha256": "11226F02AC0ED99D998F3D11D18415489B7B8CE16DF201D4567B60127C0B7BC7",
+    "OriginalEqual": true
+  },
+  {
+    "File": "75-cap-permanent-tooltip.jpg",
+    "Sha256": "BCBC57F5498872F1378686B43FBD072AFA93DA656FB8A39CCBFA721DCBF45C5A",
+    "OriginalEqual": true
+  },
+  {
+    "File": "86-B-sees-purchased-avatars.jpg",
+    "Sha256": "9191C1856DCABFFE3700EF1789EEED9D3D2D3C7831A52E74412FA6A059551F59",
+    "OriginalEqual": true
+  },
+  {
+    "File": "104-pair-B-before-expiry.jpg",
+    "Sha256": "A5E1AEB76F0DFBE27E382092EEA7AC954974FD467202900989BAD85DE6345E2B",
+    "OriginalEqual": true
+  },
+  {
+    "File": "111-pair-B-after-worn.jpg",
+    "Sha256": "2934ADE9EFD3082B0AFE01EB008D78C8DC14C535783292D65EA6ECA0E33B3833",
+    "OriginalEqual": true
+  },
+  {
+    "File": "109-pair-worn-clean.jpg",
+    "Sha256": "8A214582637703685D894D9EC4AF892E7EC923AE7E6276E1B993D2148DC5B5B7",
+    "OriginalEqual": true
+  },
+  {
+    "File": "112-pair-A-after-worn.jpg",
+    "Sha256": "26D75BA9930266AF21E24D69BEBB9A614FA4E2FD731B3CD7E23D54367E0E2F3A",
+    "OriginalEqual": true
+  },
+  {
+    "File": "93-expiry-A-bag-before.jpg",
+    "Sha256": "2C16BCFB9BE1A5CEDAC226C0969E74B1BE0DC1606181E12CF01A70530C8EE9B5",
+    "OriginalEqual": true
+  },
+  {
+    "File": "95-expiry-bag-after.jpg",
+    "Sha256": "C99CDAA6EF6701A548EB9213D62A3461D98C56F710B836421887CBC95579BE01",
+    "OriginalEqual": true
+  },
+  {
+    "File": "120-offline-A-clean.jpg",
+    "Sha256": "ADAF591222D2A6B97E361692A047A6730B22F585CCFCB59F48D1024F8925934B",
+    "OriginalEqual": true
+  },
+  {
+    "File": "121-normal-A-channel.jpg",
+    "Sha256": "2CF1D0C152D21779E4253127410DDAC570C904D4F538F9C6CEB8D8B4BB4EFF4E",
+    "OriginalEqual": true
+  },
+  {
+    "File": "122-normal-B-channel.jpg",
+    "Sha256": "8D17D63324D2C0E313095C11CE607A1D25865D1582919FC2AAF2EB4C46643630",
+    "OriginalEqual": true
+  }
+]
