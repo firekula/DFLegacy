@@ -20,6 +20,10 @@ internal static partial class CeraGiftSmokeTests
         await Faults(check);
         await Sessions(check);
         await PreserveEconomicState(check);
+        await CreatureCatalogAndWire(check);
+        await CreatureGiftTransactions(check);
+        await CreatureGiftLifecycle(check);
+        await CreatureGiftAtomicRegression(check);
         await AvatarTransactions(check);
         await AvatarRejections(check);
         await AvatarSelfPurchase(check);

@@ -90,6 +90,14 @@ public sealed partial class JsonGameStore
                     attachment = AvatarLifetimePolicy.CreatePurchaseAttachment(
                         product, definition, transactionNow, request.AvatarAbilityIndex);
                 }
+                else if (string.Equals(product.Section, "creature", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!catalog.TryResolveCreatureEggGift(request, out product, out definition)) return Reject(8);
+                    // Fresh permanent sealed eggs only. Mail count is quantity, not the
+                    // creature wire UID, which the existing claim planner allocates.
+                    attachment = CharacterItemIdentity.Ensure(new CharacterMailAttachmentRecord(
+                        product.ItemId, 1, State: 0, Durability: 0, SealState: 1), definition);
+                }
                 else
                 {
                     if (!CanGiftPhysicalProduct(product, request.AttributeValue, out definition)) return Reject(8);

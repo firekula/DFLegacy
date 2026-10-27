@@ -1,0 +1,27 @@
+[name] `³èÎïµ° (²¨µÌË¹)`
+[name2] `An Egg of Botis`
+[attach type] `[sealing]`
+[rarity] 1
+[usable job]
+`[all]`
+[/usable job]
+[minimum level] 1
+
+[icon] `item/creature/creature_egg.img` 14
+[field image] `item/fieldimage.img` 30
+
+[equipment type] `[creature]` 0
+
+[sub type] 1
+[creature species] 15
+[output index] 63008
+
+[cool time] 10000
+
+[MP MAX rate] 5.00
+[move speed] +40
+
+[move wav] `CREATURE_EGG_TOUCH`
+
+[set item master] -1
+

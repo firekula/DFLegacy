@@ -73,6 +73,8 @@ public sealed class CeraShopCatalog
     private readonly ILogger<CeraShopCatalog> _logger;
     private readonly Lazy<IReadOnlyDictionary<uint, CeraShopProduct>> _products;
     private readonly ConcurrentDictionary<ushort, int> _avatarOptionCounts = new();
+    private readonly Dictionary<uint, bool> _creatureGiftQuantityIsOne = new();
+    private readonly ConcurrentDictionary<ushort, bool> _creatureGiftPermanent = new();
     private static readonly Encoding AvatarScriptEncoding = CreateAvatarScriptEncoding();
     private int _maxGiftCount = 1; // ACT1 B539D4 default when PVF has no override.
 
@@ -117,6 +119,44 @@ public sealed class CeraShopCatalog
             && request.AvatarAbilityIndex != byte.MaxValue
             && TryGetAvatarAbilityOptionCount(product.ItemId, out var optionCount)
             && request.AvatarAbilityIndex < optionCount;
+    }
+
+    public bool TryResolveCreatureEggGift(GameCeraShopPurchaseItem request,
+        out CeraShopProduct product, out ItemDefinition definition)
+    {
+        product = null!;
+        definition = null!;
+        return TryGetProduct(request.CommodityNo, out product)
+            && string.Equals(product.Section, "creature", StringComparison.OrdinalIgnoreCase)
+            && request.ProductType == byte.MaxValue && request.AttributeValue == 0
+            && product.AttributeValue == 0 && product.Quantity == 1
+            && _creatureGiftQuantityIsOne.TryGetValue(product.CommodityNo, out var rawOne) && rawOne
+            && !product.GiftDisallowed && product.Sticker != 99
+            && product.PremiumContract is null && product.WarehouseUpgradeCapacity is null && product.DirectCurrencyGrant is null
+            && _items.TryGetDefinition(product.ItemId, out definition)
+            && definition.InventoryCategory == ItemInventoryCategory.Creature
+            && CharacterCreatureInventoryLayout.IsCreature(definition)
+            && definition.CreatureSubType == 1 && definition.AttachType == ItemAttachType.Sealing
+            && definition.CeraBooster is null && definition.CeraPackage is null && definition.Lottery is null
+            && definition.CreatureOutputIndex is > 0 and <= ushort.MaxValue
+            && _items.TryGetDefinition((ushort)definition.CreatureOutputIndex.Value, out var output)
+            && CharacterCreatureInventoryLayout.IsCreature(output) && output.CreatureSubType != 1
+            && _creatureGiftPermanent.GetOrAdd(product.ItemId, LoadCreatureGiftPermanent);
+    }
+
+    private bool LoadCreatureGiftPermanent(ushort itemId)
+    {
+        try
+        {
+            return _items.TryGetDefinition(itemId, out var definition)
+                && _scripts.FileExists(definition.ScriptPath)
+                && CreatureEggGiftLifetime.IsPermanent(_scripts.ReadAllText(definition.ScriptPath, AvatarScriptEncoding));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(exception, "Cannot read creature egg lifetime for item {ItemId}; gift denied.", itemId);
+            return false;
+        }
     }
 
     private int LoadAvatarOptionCount(ushort itemId) =>
@@ -200,6 +240,11 @@ public sealed class CeraShopCatalog
             }
 
             products[product.CommodityNo] = product;
+            // Keep the final successfully loaded row's raw quantity eligibility.
+            // Standard parsing intentionally normalizes zero/malformed quantities for self-buy.
+            var rawFields = line.Split('`')[0].Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+            _creatureGiftQuantityIsOne[product.CommodityNo] = section == "creature"
+                && rawFields.Length > 2 && uint.TryParse(rawFields[2], out var rawQuantity) && rawQuantity == 1;
         }
 
         foreach (var commodity in giftDisallowance)
