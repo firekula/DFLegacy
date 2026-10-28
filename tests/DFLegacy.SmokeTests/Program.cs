@@ -9,6 +9,22 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--dungeon-map-selection") || args.Contains("--lorien-boss-map"))
+{
+    DungeonMapSelectionSmokeTests.Run(Check);
+    if (args.Contains("--lorien-boss-map"))
+    {
+        var pvf = Environment.GetEnvironmentVariable("DF2008_REAL_PVF_PATH");
+        Check(!string.IsNullOrWhiteSpace(pvf) && File.Exists(pvf),
+            "the actual Lorien regression requires an explicit DF2008_REAL_PVF_PATH");
+        if (!string.IsNullOrWhiteSpace(pvf) && File.Exists(pvf))
+            DungeonMapSelectionSmokeTests.RunActualLorienConfiguration(Check, pvf);
+    }
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Dungeon map selection smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--fallback-relay"))
 {
     await FallbackRelaySmokeTests.RunAsync(Check);
@@ -251,6 +267,7 @@ PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 QuestMapSmokeTests.Run(Check);
+DungeonMapSelectionSmokeTests.Run(Check);
 QuestPvpRankSmokeTests.Run(Check);
 AvatarCompoundSmokeTests.Run(Check);
 WorldMapSmokeTests.Run(Check);
