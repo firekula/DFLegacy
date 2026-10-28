@@ -1,0 +1,61 @@
+{
+  "Schema": "boss-map-public-assets/v1",
+  "Files": [
+    {
+      "File": "A-continue.jpg",
+      "Bytes": 318618,
+      "Sha256": "65CB5C66193722AEA4757A39FC68AEB6B6890A03104DB280D1060A4048F6A234"
+    },
+    {
+      "File": "A-piper-before.jpg",
+      "Bytes": 397487,
+      "Sha256": "DDB2752D3E424D1D7B25A7BBF80E6EC658079D3B5544F5C7E9F587339E876A53"
+    },
+    {
+      "File": "A-piper-cleared.jpg",
+      "Bytes": 368564,
+      "Sha256": "82A1F3808FBAD2795477D151A2ADAB74B8B4E126D76F6E69075F78BFBCA26A22"
+    },
+    {
+      "File": "A-return-town.jpg",
+      "Bytes": 437511,
+      "Sha256": "450785BA551EC16DB02FDA6CA824B5C2394AED1EABB41D2F2896B626BEB34EAA"
+    },
+    {
+      "File": "B-continue.jpg",
+      "Bytes": 315203,
+      "Sha256": "C7E2C7C966653E2D3F2F824FA1092CE9D481200513F376557D36FCC2D37EA8DF"
+    },
+    {
+      "File": "B-piper-before.jpg",
+      "Bytes": 370985,
+      "Sha256": "76FF184943DDF5516727FAE26B793F1C193E8D8AEF5B7A3A34DB58C233686A13"
+    },
+    {
+      "File": "B-piper-cleared.jpg",
+      "Bytes": 368112,
+      "Sha256": "455D49E69EC1C321471C14891EFAFC397D650D3820ACDD87522BD93CCD42AB63"
+    },
+    {
+      "File": "B-return-town.jpg",
+      "Bytes": 435188,
+      "Sha256": "46A0D90A590C44BC41077F7A90FAFCA3B31C2A31D9AF8C004D5B74A371D4638E"
+    },
+    {
+      "File": "build-tests-summary.json",
+      "Bytes": 3335,
+      "Sha256": "3EF7B2661D4F1505F1BEA0EF3F114F0B0EFAB6187E0741F5FCB63EC71ADADE42"
+    },
+    {
+      "File": "delivery-summary.json",
+      "Bytes": 1607,
+      "Sha256": "E27979BE723AA1EA0E9030210F942B9F9FAE6C6DC2EF67CF88C21687703DB511"
+    },
+    {
+      "File": "native-summary.json",
+      "Bytes": 5263,
+      "Sha256": "3B8E9BEAD8DCEA137F23DAD6F076836C5E620C8983F3335E6288905D7F0D22F3"
+    }
+  ],
+  "Scope": "Eight byte-identical original game screenshots and three sanitized summaries; transient Score overlay was not captured. B death is explicit."
+}

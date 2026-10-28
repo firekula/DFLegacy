@@ -71,6 +71,10 @@
 
 ## 当前实现
 
+### 2026-10-28：洛兰 3×3 Boss 专用选图
+
+- 补读每套迷宫的 `[boss map specification]`，所选Boss坐标优先采用有效专用候选；洛兰(2,2)现选择MAP6416与魔笛使者1077。保持起点、任务替换、缓存及无有效配置时的原有规则。完整冒烟、真实PVF回归和严格Release通过；双客户端实际进入、自然击杀、双方结算回城及正常目录交付完成，见[8张原图及验收范围](knowledge/decisions/2026-10-28-boss-map-specification-verification.md)。怪物位置同步仍在排查。
+
 ### 2026-10-28：组队 TCP 回退
 
 - 补全 ACT1 登录回退入口与真实 peer 账号，按原生 12 字节中继协议转发；修复持续 TCP 流量暴露的原生发送队列与生命周期竞争。正常 UDP、受控 UDP 失败后的双向 TCP、自然通关回城及双端频道重入已验，见含 12 张原图的[验收记录](knowledge/decisions/2026-10-28-party-tcp-fallback-verification.md)。实测构建已交付，原配置和存档保持；怪物位置差异仍单独排查。
