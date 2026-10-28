@@ -54,7 +54,8 @@ namespace
     {
         va_list values; va_start(values, format); LastPrice=va_arg(values,int); va_end(values);
         CallbackArguments &= renderer==ExpectedRenderer && color==-1 && FontDepth==1;
-        const char expected[]="\xBC\xDB\xB8\xF1 %d \xC8\xFB\xC0\xAD";
+        // The unmodified death-window background already says "coin price".
+        const char expected[]="%d \xC8\xFB\xC0\xAD";
         CallbackArguments &= std::strcmp(format,expected)==0;
         LastX=x; LastY=y; ++DrawCalls;
         if(FailText)RaiseException(EXCEPTION_ACCESS_VIOLATION,0,0,nullptr);

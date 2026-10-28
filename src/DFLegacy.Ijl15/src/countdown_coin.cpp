@@ -115,7 +115,7 @@ namespace dfl::countdown_coin::detail
             __try
             {
                 // CP936, matching the original ACT1 font/string table.
-                operations.Text(renderer,draw->X,draw->Y,-1,"\xBC\xDB\xB8\xF1 %d \xC8\xFB\xC0\xAD",effectivePrice);
+                operations.Text(renderer,draw->X,draw->Y,-1,"%d \xC8\xFB\xC0\xAD",effectivePrice);
             }
             __finally { operations.RestoreFont(renderer); }
             return true;
