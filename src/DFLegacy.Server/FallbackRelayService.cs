@@ -23,6 +23,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
     private UdpClient? _udp;
     private volatile bool _listening;
     private long _tcpForwarded, _udpForwarded, _dropped;
+    private int _disposed;
 
     public FallbackRelayStatus Snapshot()
     {
@@ -41,10 +42,11 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
         options.FallbackRelay.Validate(options);
         if (options.FallbackRelay.Enabled)
         {
-            var ip = IPAddress.Parse(options.FallbackRelay.Host);
+            var ip = IPAddress.Parse(options.FallbackRelay.ResolveBindHost(options));
             try
             {
                 _tcp = new TcpListener(ip, options.FallbackRelay.TcpPort);
+                if (ip.AddressFamily == AddressFamily.InterNetworkV6) _tcp.Server.DualMode = true;
                 _tcp.Start();
                 _udp = DualStackUdp.Bind(new IPEndPoint(ip, options.FallbackRelay.UdpPort));
                 _listening = true;
@@ -238,6 +240,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
 
     public override void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _shutdown.Cancel();
         CloseListeners();
         foreach (var connection in _connections.Values) connection.Close();

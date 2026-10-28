@@ -54,6 +54,14 @@
       "Host": "127.0.0.1",
       "Port": 7001
     },
+    "FallbackRelay": {
+      "//": "ACT1 组队 UDP 握手失败后的原生 TCP 回退；与启动器 IPv4/IPv6 端口代理是不同服务。Host 留空继承游戏 TCP 绑定地址，AdvertisedHost 留空沿用频道下发地址。",
+      "Enabled": true,
+      "Host": "",
+      "AdvertisedHost": "",
+      "TcpPort": 7005,
+      "UdpPort": 7005
+    },
     "DataPath": "data/state.json",
     "ScriptPvfPath": "D:\\DFLegacy\\DF2008\\Script.pvf",
     "SkillScriptPath": "",

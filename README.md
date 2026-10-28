@@ -225,6 +225,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | `Admin` | 后台监听地址与端口，默认 `::`（双栈）+ `8081`。**全部管理接口需要登录**（Bearer token），并分「玩家 / 管理员」两档：玩家只能看自己的角色，管理员可发邮件、广播、充值、改角色档位。`Admin.Users` 为引导管理员名单（**只在启动时提升**，防抢注提权）；`TokenHours` / `MaxTokenLifetimeHours` 控制 token 滑动有效期与绝对上限；`LoginSourceMaxAttempts` / `LoginAccountLockSources` / `LoginLockoutMinutes` 控制两级登录限流（单来源尝试额度 + 多来源才锁账号）。详见 [ADMIN_API.md §1.2](ADMIN_API.md#12-鉴权与权限) 与 [DEPLOYING.md](DEPLOYING.md) 的安全边界。 |
 | `Entrance` / `Channel` | 登录入口和频道连接配置。 |
 | `CharacterDatagram` / `GameplayDatagram` | 客户端 UDP 监听配置。 |
+| `FallbackRelay` | ACT1 组队原生回退中继，默认 TCP/UDP 7005；可关闭，绑定及下发 IPv4 地址分别配置。与启动器端口代理独立。 |
 | `GameplayDatagram.AdvertisedHost` | 下发给客户端的玩法地址，留空时回退为 `GameplayDatagram.Host`；容器与 NAT 部署必填，详见 [DEPLOYING.md](DEPLOYING.md#61-监听与下发地址)。 |
 | `TownSync.PrivateAreas` | 额外私密区域列表，格式为 `城镇:区域`，默认 `[]`。五城赛丽亚房间 `1:1`、`2:5`、`3:2`、`4:1`、`5:1` 始终隔离，无需填写。 |
 | `Drop.Enabled` | 服务端掉落总开关。 |
@@ -235,7 +236,9 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | `Experience.ClearMultiplier` | 通关基础经验及评分奖励倍率，默认 `1.0`。 |
 | `EnablePacketTracing` | 协议包跟踪开关，用于排查客户端交互问题。 |
 
-默认 TCP 端口为 `2311`、`7001`、`8080`，管理 HTTP 为 `8081`；默认 UDP 端口为 `2311`、`7002`、`7003`。更改网络配置时，应同步检查启动器与频道地址。监听地址与下发地址的区别、IP 地址族（IPv6）支持现状见 [DEPLOYING.md](DEPLOYING.md#6-网络配置)。
+默认 TCP 端口为 `2311`、`7001`、`8080`、`7005`，管理 HTTP 为 `8081`；默认 UDP 端口为 `2311`、`7002`、`7003`、`7005`。更改网络配置时，应同步检查启动器与频道地址。监听地址与下发地址的区别、IP 地址族（IPv6）支持现状见 [DEPLOYING.md](DEPLOYING.md#6-网络配置)。
+
+`FallbackRelay` 在游戏进程内托管 ACT1 原生 12 字节中继协议，仅向密码验证成功的频道会话下发已启动入口；用户名兼容登录不获得中继权限。转发保留原生 MT 数据，要求双方处于同队同副本实例，或同一角斗场房间及场次。`Host` 留空继承实际游戏 TCP 绑定地址，`AdvertisedHost` 留空沿用频道下发地址；局域网部署也可明确设置 `Host=0.0.0.0` 和客户端可达的 IPv4 地址。同一主机开多个游戏进程时，应为每个进程配置独立中继端口。原生双客户端故障回退验收仍在进行。
 
 ### 启动器
 

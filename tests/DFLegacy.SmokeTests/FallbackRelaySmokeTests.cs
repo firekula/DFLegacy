@@ -9,6 +9,8 @@ internal static class FallbackRelaySmokeTests
         AdmissionAndContext(check);
         FallbackRelaySocketSmokeTests.Options(check);
         await FallbackRelaySocketSmokeTests.RunAsync(check);
+        await FallbackRelayLoginSmokeTests.RunAsync(check);
+        await FallbackRelayLifecycleSmokeTests.RunAsync(check);
     }
 
     private static void AdmissionAndContext(Action<bool, string> check)

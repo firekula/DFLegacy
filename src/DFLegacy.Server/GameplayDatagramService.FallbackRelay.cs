@@ -8,6 +8,15 @@ internal sealed record FallbackRelayRoute(RelayAccountAdmission Sender, RelayAcc
 
 public sealed partial class GameplayDatagramService
 {
+    internal async Task RetireChannelSessionAsync(Guid sessionId, Func<Task> cleanup)
+    {
+        RevokeRelayAccount(sessionId);
+        try { await cleanup(); }
+        finally { UnregisterChannelSession(sessionId); }
+    }
+
+    internal bool HasFallbackRelayContext(Guid sessionId) => SnapshotFallbackRelayScope(sessionId) is { } scope
+        && (scope.PartyId.HasValue || scope.Instance is not null || scope.Pvp is not null);
     private readonly object _relayAdmissionGate = new();
     private readonly Dictionary<uint, RelayAccountAdmission> _relayAdmissionsByAccount = [];
     private readonly Dictionary<Guid, RelayAccountAdmission> _relayAdmissionsBySession = [];

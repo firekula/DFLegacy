@@ -346,7 +346,7 @@ app.MapGet("/admin", () => Results.Redirect("/admin/index.html"));
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "dflegacy-emulator" }));
 
-app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items, ChannelLinkService channelLink) => Results.Ok(new
+app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items, ChannelLinkService channelLink, FallbackRelayService fallbackRelay) => Results.Ok(new
 {
     runtime.StartedAt,
     runtime.TotalConnections,
@@ -367,6 +367,7 @@ app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemC
         }
         : [],
     GameProbe = options.GameProbe.Enabled ? $"{options.GameProbe.Host}:{options.GameProbe.Port}" : "disabled",
+    FallbackRelay = fallbackRelay.Snapshot(),
     Random = GameRandomSource.Shared.GetStatus(),
     ChannelScriptConfigured = scripts.FileExists("etc/channel_info.etc"),
     CachedItems = items.Count,

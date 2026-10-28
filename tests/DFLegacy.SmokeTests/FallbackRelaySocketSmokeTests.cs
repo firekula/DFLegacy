@@ -28,6 +28,8 @@ internal static class FallbackRelaySocketSmokeTests
             o => o.FallbackRelay.AdvertisedHost = "::1",
             o => o.FallbackRelay.AdvertisedHost = "0.0.0.0",
             o => o.FallbackRelay.Host = "bad-host",
+            o => o.FallbackRelay.Host = "::1",
+            o => { o.FallbackRelay.Host = "127.0.0.1"; o.FallbackRelay.AdvertisedHost = "192.168.3.177"; },
             o => o.FallbackRelay.TcpPort = 0,
             o => o.FallbackRelay.UdpPort = 65536
         })
@@ -130,6 +132,15 @@ internal static class FallbackRelaySocketSmokeTests
             await recovered.GetStream().WriteAsync(Frame(1, Alice, Bob, [0xC2]), timeout.Token);
             await EqualAsync(bob, Frame(3, Alice, Bob, [0xC2]),
                 "missing target is dropped without corrupting subsequent delivery", check, timeout.Token);
+            var unfinished = new TcpClient(); clients.Add(unfinished);
+            await unfinished.ConnectAsync(IPAddress.Loopback, options.FallbackRelay.TcpPort, timeout.Token);
+            var registrationClock = System.Diagnostics.Stopwatch.StartNew();
+            await unfinished.GetStream().WriteAsync(new byte[] { 0, 0, 12 }, timeout.Token);
+            check(await EofAsync(unfinished, timeout.Token) && registrationClock.Elapsed.TotalSeconds >= 4.5,
+                "unfinished native registration expires at the real five-second deadline");
+            await bob.GetStream().WriteAsync(Frame(1, Bob, Alice, [0xC3]), timeout.Token);
+            await EqualAsync(recovered, Frame(3, Bob, Alice, [0xC3]),
+                "registered idle sockets remain usable beyond the registration timeout", check, timeout.Token);
             contexts.UnregisterChannelSession(a.Id);
             check(await EofAsync(recovered, timeout.Token), "game-session retirement closes its owned relay socket");
         }
@@ -142,7 +153,7 @@ internal static class FallbackRelaySocketSmokeTests
             reboundTcp.Bind(new IPEndPoint(IPAddress.Loopback, options.FallbackRelay.TcpPort));
         using (var reboundUdp = new UdpClient(new IPEndPoint(IPAddress.Loopback, options.FallbackRelay.UdpPort)))
             check(true, "host stop releases its owned TCP and UDP listeners");
-        await SlowReceiverAsync(check);
+        foreach (var mode in new[] { "stop", "context", "owner" }) await SlowReceiverAsync(mode, check);
 
         async Task<TcpClient> ConnectAsync(uint account)
         {
@@ -153,7 +164,7 @@ internal static class FallbackRelaySocketSmokeTests
         }
     }
 
-    private static async Task SlowReceiverAsync(Action<bool, string> check)
+    private static async Task SlowReceiverAsync(string mode, Action<bool, string> check)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var options = new ServerOptions();
@@ -163,28 +174,70 @@ internal static class FallbackRelaySocketSmokeTests
             options.FallbackRelay.UdpPort = ((IPEndPoint)udpPort.Client.LocalEndPoint!).Port;
         var runtime = new RuntimeState();
         using var contexts = new GameplayDatagramService(options, runtime, NullLogger<GameplayDatagramService>.Instance);
-        foreach (var account in new[] { Alice, Bob })
+        Guid senderSession = default;
+        foreach (var account in new[] { Alice, Bob, Outsider })
         {
             var session = runtime.Add("channel:test", "127.0.0.1:41000");
             contexts.RegisterChannelSession(session, IPAddress.Loopback);
             contexts.AuthenticateRelayAccount(session.Id, account); contexts.SetRelayContext(session.Id, 7);
+            if (account == Alice) senderSession = session.Id;
         }
         using var service = new FallbackRelayService(options, contexts, NullLogger<FallbackRelayService>.Instance);
         await service.StartAsync(timeout.Token);
         using var sender = new TcpClient();
         using var blocked = new TcpClient { ReceiveBufferSize = 1024 };
+        using var other = new TcpClient();
+        using var replacement = new TcpClient();
         Task flood = Task.CompletedTask;
+        bool finishFlood = false;
         try
         {
             await sender.ConnectAsync(IPAddress.Loopback, options.FallbackRelay.TcpPort, timeout.Token);
             await blocked.ConnectAsync(IPAddress.Loopback, options.FallbackRelay.TcpPort, timeout.Token);
+            await other.ConnectAsync(IPAddress.Loopback, options.FallbackRelay.TcpPort, timeout.Token);
             await sender.GetStream().WriteAsync(Frame(0, Alice, Alice, []), timeout.Token);
             await blocked.GetStream().WriteAsync(Frame(0, Bob, Bob, []), timeout.Token);
-            await WaitUntilAsync(() => service.Snapshot().RegisteredConnections == 2, timeout.Token);
+            await other.GetStream().WriteAsync(Frame(0, Outsider, Outsider, []), timeout.Token);
+            await WaitUntilAsync(() => service.Snapshot().RegisteredConnections == 3, timeout.Token);
             flood = FloodAsync();
             await WaitUntilAsync(() => service.Snapshot().PendingFrames == 32, timeout.Token);
             check(service.Snapshot().PendingFrames == 32 && !flood.IsCompleted,
                 "a real non-reading recipient fills only its bounded queue and backpressures the TCP sender");
+            using var udp = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+            var target = new IPEndPoint(IPAddress.Loopback, options.FallbackRelay.UdpPort);
+            await udp.SendAsync(Frame(0, Alice, Bob, [0xD1]), target, timeout.Token);
+            await udp.SendAsync(Frame(0, Alice, Outsider, [0xD2]), target, timeout.Token);
+            await EqualAsync(other, Frame(3, Alice, Outsider, [0xD2]),
+                "a full recipient queue cannot stall UDP delivery to another registered peer", check, timeout.Token);
+            if (mode != "stop")
+            {
+                var droppedBefore = service.Snapshot().DroppedFrames;
+                Volatile.Write(ref finishFlood, true);
+                TcpClient markerSender = sender;
+                if (mode == "context")
+                {
+                    contexts.SetRelayContext(senderSession, null);
+                    contexts.SetRelayContext(senderSession, 7);
+                }
+                else
+                {
+                    var next = runtime.Add("channel:replacement", "127.0.0.1:41001");
+                    contexts.RegisterChannelSession(next, IPAddress.Loopback);
+                    contexts.AuthenticateRelayAccount(next.Id, Alice); contexts.SetRelayContext(next.Id, 7);
+                    await replacement.ConnectAsync(IPAddress.Loopback, options.FallbackRelay.TcpPort, timeout.Token);
+                    await replacement.GetStream().WriteAsync(Frame(0, Alice, Alice, []), timeout.Token);
+                    await WaitUntilAsync(() => service.Snapshot().RegisteredConnections == 3
+                        && service.Snapshot().Connections == 3, timeout.Token);
+                    markerSender = replacement;
+                }
+                var drain = DrainToMarkerAsync();
+                await flood;
+                await markerSender.GetStream().WriteAsync(Frame(1, Alice, Bob, [0x5A]), timeout.Token);
+                await drain;
+                check(service.Snapshot().DroppedFrames - droppedBefore >= 32,
+                    mode == "context" ? "actual queued frames cannot survive party leave/rejoin to the same id"
+                        : "actual queued frames from the old game admission cannot reach a replacement incarnation");
+            }
         }
         finally
         {
@@ -198,8 +251,21 @@ internal static class FallbackRelaySocketSmokeTests
         async Task FloodAsync()
         {
             var frame = Frame(1, Alice, Bob, new byte[8192 - 12]);
-            try { for (var i = 0; i < 4096; i++) await sender.GetStream().WriteAsync(frame, timeout.Token); }
+            try { for (var i = 0; i < 4096 && !Volatile.Read(ref finishFlood); i++) await sender.GetStream().WriteAsync(frame, timeout.Token); }
             catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException or OperationCanceledException) { }
+        }
+
+        async Task DrainToMarkerAsync()
+        {
+            while (true)
+            {
+                var prefix = new byte[4]; await blocked.GetStream().ReadExactlyAsync(prefix, timeout.Token);
+                var length = BinaryPrimitives.ReadUInt16LittleEndian(prefix.AsSpan(2));
+                if (BinaryPrimitives.ReadUInt16LittleEndian(prefix) != 3 || length < 12 || length > 8192)
+                    throw new InvalidDataException("Corrupted real relay output during queue retirement");
+                var rest = new byte[length - 4]; await blocked.GetStream().ReadExactlyAsync(rest, timeout.Token);
+                if (length == 13 && rest[^1] == 0x5A) return;
+            }
         }
     }
 

@@ -47,7 +47,8 @@ public sealed class EntranceService(
     ClearRewardGenerator clearRewardGenerator,
     GameplayDatagramService gameplayDatagram,
     ScriptFileSystem scripts,
-    ILogger<EntranceService> logger) : BackgroundService
+    ILogger<EntranceService> logger,
+    FallbackRelayService? fallbackRelay = null) : BackgroundService
 {
     private const ushort RiverLetheItemId = 3;
     private const ushort RiverLetheBellItemId = 28;
@@ -223,6 +224,7 @@ public sealed class EntranceService(
             var gameClientCipher = isChannelPort ? new GameClientCipherState() : null;
             var accountName = string.Empty;
             var accountUid = AccountUidRules.InvalidUid;
+            ChannelLoginIdentity? channelLoginIdentity = null;
             // 区用户 id 由 AreaUserIdPool 在 SELECT_CHARACTER 时分配；第一个玩家仍是 1，
             // 单人路径的报文与改造前逐字节一致。客户端靠它认定「哪个 actor 是我」。
             ushort localUserId = 0;
@@ -5190,12 +5192,9 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            var authenticated = loginPassword is not null
-                                ? await store.AuthenticateAsync(
-                                    loginName,
-                                    loginPassword,
-                                    serverToken)
-                                : await store.FindAccountAsync(loginName, serverToken);
+                            var authenticated = await ChannelLoginAuthentication.AuthenticateAsync(
+                                store, gameplayDatagram, runtimeSession.Id, loginName, loginPassword, serverToken,
+                                characterAttached: activeCharacter is not null);
                             if (authenticated is null)
                             {
                                 var loginError = GameProtocolEngine.CreateCommandError(
@@ -5207,8 +5206,9 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            accountName = authenticated.UserName;
-                            accountUid = authenticated.AccountUid;
+                            channelLoginIdentity = authenticated;
+                            accountName = authenticated.Account.UserName;
+                            accountUid = authenticated.Account.AccountUid;
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
@@ -15930,8 +15930,9 @@ public sealed class EntranceService(
                                 [Encoding.ASCII.GetBytes(options.GameplayDatagram.ResolveAdvertisedHost())],
                                 port1: checked((uint)options.GameplayDatagram.PrimaryPort),
                                 port2: checked((uint)options.GameplayDatagram.SecondaryPort))
-                            : isPvpChannel && request.Type == GameProtocolEngine.CommandPacketType && request.ProtocolId == GameProtocolEngine.LoginCommand
-                                ? GameProtocolEngine.CreatePvpLoginSuccess(accountUid, options.Pvp.RelayHost, options.Pvp.RelayTcpPort, options.Pvp.RelayUdpPort)
+                            : request.Type == GameProtocolEngine.CommandPacketType && request.ProtocolId == GameProtocolEngine.LoginCommand
+                                && channelLoginIdentity is not null
+                                ? ChannelLoginAuthentication.CreateReply(options, gameplayDatagram, channelLoginIdentity, isPvpChannel, fallbackRelay)
                                 : GameProtocolEngine.Handle(request, protocolSession.SessionToken);
                         if (gameReply is null)
                         {
@@ -15985,132 +15986,140 @@ public sealed class EntranceService(
             }
             finally
             {
-                if (activeCharacter is not null)
+                try
                 {
-                    try
+                    await gameplayDatagram.RetireChannelSessionAsync(runtimeSession.Id, async () =>
                     {
-                        if (currentDungeonId != 0
-                            && dungeonCreatureStomachCheckpointSeconds
-                                is long finalCheckpoint)
+                        if (activeCharacter is not null)
                         {
-                            var finalNow = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                            var finalElapsedSeconds = checked((uint)Math.Min(
-                                uint.MaxValue,
-                                Math.Max(0L, finalNow - finalCheckpoint)));
-                            if (finalElapsedSeconds != 0
-                                && CreatureHungerPlanner.TrySettle(
-                                    creatureInventory,
-                                    finalElapsedSeconds,
-                                    itemCatalog,
-                                    out var finalHungerPlan)
-                                && finalHungerPlan.Changed)
+                            try
                             {
-                                await store.SaveCharacterItemSpacesAsync(
+                                if (currentDungeonId != 0
+                                    && dungeonCreatureStomachCheckpointSeconds
+                                        is long finalCheckpoint)
+                                {
+                                    var finalNow = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                                    var finalElapsedSeconds = checked((uint)Math.Min(
+                                        uint.MaxValue,
+                                        Math.Max(0L, finalNow - finalCheckpoint)));
+                                    if (finalElapsedSeconds != 0
+                                        && CreatureHungerPlanner.TrySettle(
+                                            creatureInventory,
+                                            finalElapsedSeconds,
+                                            itemCatalog,
+                                            out var finalHungerPlan)
+                                        && finalHungerPlan.Changed)
+                                    {
+                                        await store.SaveCharacterItemSpacesAsync(
+                                            accountName,
+                                            activeCharacter.Id,
+                                            currentGold,
+                                            mainInventory.Values,
+                                            equippedInventory.Values,
+                                            warehouseInventory.Values,
+                                            CancellationToken.None,
+                                            avatarInventory: avatarInventory.Values,
+                                            creatureInventory:
+                                                finalHungerPlan.Inventory.Values);
+                                    }
+                                }
+
+                                var saveTownId = currentDungeonId == 0
+                                    ? currentTownId
+                                    : dungeonReturnTownId;
+                                var saveAreaId = currentDungeonId == 0
+                                    ? currentAreaId
+                                    : dungeonReturnAreaId;
+                                var saveX = currentDungeonId == 0 ? currentX : dungeonReturnX;
+                                var saveY = currentDungeonId == 0 ? currentY : dungeonReturnY;
+                                var saveDirection = currentDungeonId == 0
+                                    ? currentDirection
+                                    : dungeonReturnDirection;
+                                await store.SaveCharacterLocationAsync(
                                     accountName,
                                     activeCharacter.Id,
-                                    currentGold,
-                                    mainInventory.Values,
-                                    equippedInventory.Values,
-                                    warehouseInventory.Values,
-                                    CancellationToken.None,
-                                    avatarInventory: avatarInventory.Values,
-                                    creatureInventory:
-                                        finalHungerPlan.Inventory.Values);
+                                    saveTownId,
+                                    saveAreaId,
+                                    saveX,
+                                    saveY,
+                                    saveDirection,
+                                    CancellationToken.None);
+                            }
+                            catch (Exception exception)
+                            {
+                                logger.LogWarning(
+                                    exception,
+                                    "Failed to persist the final location for character {CharacterId}.",
+                                    activeCharacter.Id);
                             }
                         }
 
-                        var saveTownId = currentDungeonId == 0
-                            ? currentTownId
-                            : dungeonReturnTownId;
-                        var saveAreaId = currentDungeonId == 0
-                            ? currentAreaId
-                            : dungeonReturnAreaId;
-                        var saveX = currentDungeonId == 0 ? currentX : dungeonReturnX;
-                        var saveY = currentDungeonId == 0 ? currentY : dungeonReturnY;
-                        var saveDirection = currentDungeonId == 0
-                            ? currentDirection
-                            : dungeonReturnDirection;
-                        await store.SaveCharacterLocationAsync(
-                            accountName,
-                            activeCharacter.Id,
-                            saveTownId,
-                            saveAreaId,
-                            saveX,
-                            saveY,
-                            saveDirection,
-                            CancellationToken.None);
-                    }
-                    catch (Exception exception)
-                    {
-                        logger.LogWarning(
-                            exception,
-                            "Failed to persist the final location for character {CharacterId}.",
-                            activeCharacter.Id);
-                    }
+                        if (activeCharacter is not null)
+                            await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, CancellationToken.None);
+
+                        if (townTicket is not null)
+                        {
+                            var leavingTicket = townTicket;
+                            townTicket = null;
+                            // 这里的广播发给同区其他人（他们自己的连接仍活着），
+                            // 本会话的流已随 try 块结束而释放，所以不能用会话内的局部函数。
+                            await townDirectory.LeaveAsync(leavingTicket, CancellationToken.None);
+                        }
+
+                        if (activeCharacter is not null)
+                        {
+                            // 先以名册结束成员资格；副本内 NOTI9 已移除 actor，不能再发 NOTI23
+                            // 重复拆除死亡观战镜头的跟随目标。通道先摘除，不向已关闭的流投递。
+                            gameplayDatagram.SetRelayContext(runtimeSession.Id, null);
+                            await partyService.DetachChannelAsync(
+                                activeCharacter.Id,
+                                runtimeSession.Id,
+                                CancellationToken.None);
+                            if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, CancellationToken.None);
+                            pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
+                            await RetireMentorAsync(CancellationToken.None);
+                            // 掉线/被踢：把角色从副本实例里摘掉（最后一个成员离开即销毁，设计稿 §3.4），
+                            // 并让其余成员收到"角色离场"信号。必须在下面把 localUserId 还回池子**之前**：
+                            // 离场信号里的 uid 就是它还活着时的值（还回去之后可能被别的会话复用）。
+                            await LeaveDungeonInstanceAsync(
+                                activeCharacter.Id,
+                                localUserId,
+                                currentX,
+                                currentY,
+                                currentDirection,
+                                runtimeSession.Id);
+                        }
+
+                        if (localUserId != 0)
+                        {
+                            areaUserIds.Release(localUserId);
+                            localUserId = 0;
+                        }
+
+                        if (activeCharacter is not null)
+                        {
+                            // sessionId 用同一个连接会话 id：旧会话的延迟清理不会误删新会话的通道。
+                            await friendService.DetachChannelAsync(
+                                activeCharacter.Name,
+                                runtimeSession.Id,
+                                CancellationToken.None);
+                            // 断线：流已经释放，走 CancellationToken.None 的旁路结束在途交易
+                            // （DetachChannelAsync 会把发起者当成已离场，只通知还活着的对手）。
+                            await itemTradeService.DetachChannelAsync(
+                                activeCharacter.Id,
+                                runtimeSession.Id,
+                                CancellationToken.None);
+                        }
+
+                        characterSessions.Release(activeCharacterLease);
+                        activeCharacterLease = null;
+                    });
                 }
-
-                if (activeCharacter is not null)
-                    await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, CancellationToken.None);
-
-                if (townTicket is not null)
+                finally
                 {
-                    var leavingTicket = townTicket;
-                    townTicket = null;
-                    // 这里的广播发给同区其他人（他们自己的连接仍活着），
-                    // 本会话的流已随 try 块结束而释放，所以不能用会话内的局部函数。
-                    await townDirectory.LeaveAsync(leavingTicket, CancellationToken.None);
+                    runtime.Remove(runtimeSession.Id);
+                    logger.LogInformation("Entrance client {SessionId} disconnected.", runtimeSession.Id);
                 }
-
-                if (activeCharacter is not null)
-                {
-                    // 先以名册结束成员资格；副本内 NOTI9 已移除 actor，不能再发 NOTI23
-                    // 重复拆除死亡观战镜头的跟随目标。通道先摘除，不向已关闭的流投递。
-                    gameplayDatagram.SetRelayContext(runtimeSession.Id, null);
-                    await partyService.DetachChannelAsync(
-                        activeCharacter.Id,
-                        runtimeSession.Id,
-                        CancellationToken.None);
-                    if (pvpAttachment is { } detachedPvp) await pvpService.DetachAsync(activeCharacter.Id, detachedPvp, CancellationToken.None);
-                    pvpAttachment = null; pvpReturnPending = false; pvpRevision = 0;
-                    await RetireMentorAsync(CancellationToken.None);
-                    // 掉线/被踢：把角色从副本实例里摘掉（最后一个成员离开即销毁，设计稿 §3.4），
-                    // 并让其余成员收到"角色离场"信号。必须在下面把 localUserId 还回池子**之前**：
-                    // 离场信号里的 uid 就是它还活着时的值（还回去之后可能被别的会话复用）。
-                    await LeaveDungeonInstanceAsync(
-                        activeCharacter.Id,
-                        localUserId,
-                        currentX,
-                        currentY,
-                        currentDirection,
-                        runtimeSession.Id);
-                }
-
-                if (localUserId != 0)
-                {
-                    areaUserIds.Release(localUserId);
-                    localUserId = 0;
-                }
-
-                if (activeCharacter is not null)
-                {
-                    // sessionId 用同一个连接会话 id：旧会话的延迟清理不会误删新会话的通道。
-                    await friendService.DetachChannelAsync(
-                        activeCharacter.Name,
-                        runtimeSession.Id,
-                        CancellationToken.None);
-                    // 断线：流已经释放，走 CancellationToken.None 的旁路结束在途交易
-                    // （DetachChannelAsync 会把发起者当成已离场，只通知还活着的对手）。
-                    await itemTradeService.DetachChannelAsync(
-                        activeCharacter.Id,
-                        runtimeSession.Id,
-                        CancellationToken.None);
-                }
-
-                characterSessions.Release(activeCharacterLease);
-                activeCharacterLease = null;
-                gameplayDatagram.UnregisterChannelSession(runtimeSession.Id);
-                runtime.Remove(runtimeSession.Id);
-                logger.LogInformation("Entrance client {SessionId} disconnected.", runtimeSession.Id);
             }
         }
     }
