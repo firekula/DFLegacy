@@ -234,13 +234,21 @@ int RunClientStateTests()
     History skillsHistory; Snapshot fullSkills; Capture(allSkills.Make(), skillsHistory, fullSkills);
     Check(fullSkills.skillCount == MaximumSkills && fullSkills.skills.back().id == 215 && !fullSkills.truncated,
           "all 216 verified skill slots remain bounded and complete");
-    Memory enemies; enemies.MonsterAt(0x06200000, 101); enemies.MonsterAt(0x06210000, 102);
+    Memory enemies; enemies.MonsterAt(0x06200000, 0); enemies.MonsterAt(0x06210000, 1);
+    enemies.MonsterAt(0x06220000, 2); enemies.MonsterAt(0x06230000, 3);
     enemies.U32(0x06100000, 0x06200000); enemies.U32(0x06100004, 0x06210000);
-    enemies.U32(Memory::Map + 0x14, 0x06100008);
+    enemies.U32(0x06100008, 0x06220000); enemies.U32(0x0610000C, 0x06230000);
+    enemies.U32(Memory::Map + 0x14, 0x06100010);
     History enemyHistory; Snapshot es; Capture(enemies.Make(), enemyHistory, es);
-    Check(es.enemyCount == 2 && es.enemies[0].uid.value == 101 && es.enemies[1].monsterId.value == 1234
+    Check(es.enemyCount == 4 && es.enemies[0].uid.known && es.enemies[0].uid.value == 0
+          && es.enemies[1].uid.value == 1 && es.enemies[2].uid.value == 2 && es.enemies[3].uid.value == 3
+          && es.enemies[1].monsterId.value == 1234
           && es.enemies[0].authorityToken.value == 0x1234 && !es.truncated,
-          "native enemy identity HP action authority are captured without owner inference");
+          "native enemy UID zero is included in complete four-monster enumeration");
+    const auto enemyJson = ToJson(es, enemies.utc + 100);
+    Check(es.errorCount == 0 && enemyJson.find("\"enemies\":[{\"uid\":0,") != std::string::npos
+          && enemyJson.find("\"truncated\":false") != std::string::npos,
+          "enemy UID zero is serialized as known zero without invalid UID or truncation");
     wchar_t fixturePath[MAX_PATH]{};
     if (GetEnvironmentVariableW(L"DFLEGACY_CLIENT_STATE_FIXTURE", fixturePath, MAX_PATH))
     {
@@ -254,8 +262,30 @@ int RunClientStateTests()
         if (fixture != INVALID_HANDLE_VALUE) CloseHandle(fixture);
         Check(wrote, "unique C++ capture serializer fixture is created without overwriting evidence");
     }
-    enemies.U32(0x06100004, 0x06200000); Snapshot repeatedEnemy; Capture(enemies.Make(), enemyHistory, repeatedEnemy);
-    Check(repeatedEnemy.truncated && repeatedEnemy.enemyCount == 1, "duplicate enemies cannot imply complete clear");
+    enemies.U32(0x06100004, 0x06200000); enemies.U32(Memory::Map + 0x14, 0x06100008);
+    Snapshot repeatedEnemy; Capture(enemies.Make(), enemyHistory, repeatedEnemy);
+    Check(repeatedEnemy.truncated && repeatedEnemy.enemyCount == 1 && repeatedEnemy.enemies[0].uid.value == 0,
+          "duplicate zero enemy UID still prevents complete clear");
+    Memory highEnemy; highEnemy.MonsterAt(0x06200000, 65535); highEnemy.U32(0x06100000, 0x06200000);
+    highEnemy.U32(Memory::Map + 0x14, 0x06100004); History highEnemyHistory; Snapshot highEnemySnapshot;
+    Capture(highEnemy.Make(), highEnemyHistory, highEnemySnapshot);
+    Check(highEnemySnapshot.enemyCount == 1 && highEnemySnapshot.enemies[0].uid.value == 65535 && !highEnemySnapshot.truncated,
+          "enemy UID upper u16 boundary remains accepted");
+    highEnemy.Secure(0x062000D4, 65536); Capture(highEnemy.Make(), highEnemyHistory, highEnemySnapshot);
+    Check(highEnemySnapshot.truncated && highEnemySnapshot.enemyCount == 0,
+          "out-of-u16 enemy UID still prevents complete enumeration");
+    Memory corruptEnemy; corruptEnemy.MonsterAt(0x06200000, 0); corruptEnemy.U32(0x06100000, 0x06200000);
+    corruptEnemy.U32(Memory::Map + 0x14, 0x06100004); const auto uidIndex = corruptEnemy.index;
+    corruptEnemy.Secure(0x062000D4, 0);
+    corruptEnemy.U32(0x02100000 + uidIndex * 4, 0); History corruptEnemyHistory; Snapshot corruptEnemySnapshot;
+    Capture(corruptEnemy.Make(), corruptEnemyHistory, corruptEnemySnapshot);
+    Check(corruptEnemySnapshot.truncated && corruptEnemySnapshot.enemyCount == 0,
+          "broken zero enemy UID secure mirror still prevents complete enumeration");
+    Memory zeroPlayer; zeroPlayer.Put<std::uint16_t>(Memory::User + 4, 0);
+    zeroPlayer.Secure(Memory::Actor + 0xD4, 0); History zeroPlayerHistory; Snapshot zeroPlayerSnapshot;
+    Capture(zeroPlayer.Make(), zeroPlayerHistory, zeroPlayerSnapshot);
+    Check(!zeroPlayerSnapshot.valid && !zeroPlayerSnapshot.haveMe,
+          "player UID zero remains invalid independently of enemy UID zero");
     enemies.U32(Memory::Map + 0x14, 0x06100000 + 257 * 4);
     Snapshot limited; Capture(enemies.Make(), enemyHistory, limited);
     Check(limited.truncated && limited.enemyCount <= MaximumEnemies, "map object traversal has a visible hard cap");

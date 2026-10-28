@@ -238,7 +238,7 @@ namespace dfl::client_state
                 if (!r.Getter(object, 0x34, 0x4073D0) || !r.Getter(object, 0x330, 0x652A20))
                 { s.truncated = true; Error(s, "unsupported_enemy_layout"); continue; }
                 Enemy enemy; std::uint32_t uid = 0, value = 0; std::int32_t signedValue = 0;
-                if (!r.SecureAt(object, 0xD4, uid) || !uid || uid > 65535)
+                if (!r.SecureAt(object, 0xD4, uid) || uid > 65535)
                 { s.truncated = true; Error(s, "invalid_enemy_uid"); continue; }
                 bool duplicate = false;
                 for (std::size_t n = 0; n < s.enemyCount; ++n) duplicate = duplicate || s.enemies[n].uid.value == uid;
