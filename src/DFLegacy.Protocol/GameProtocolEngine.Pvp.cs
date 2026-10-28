@@ -43,28 +43,8 @@ public static partial class GameProtocolEngine
     /// <summary>ACT1's complete type4 login tail. Empty relay means unavailable locally,
     /// not a proven native disable flag; this endpoint is distinct from gameplay UDP.</summary>
     public static GameServerPacket CreatePvpLoginSuccess(uint accountUid, string relayIPv4,
-        uint relayTcpPort, uint relayUdpPort)
-    {
-        ArgumentNullException.ThrowIfNull(relayIPv4);
-        if (relayIPv4.Length == 0)
-        {
-            if (relayTcpPort != 0 || relayUdpPort != 0) throw new ArgumentException("Unavailable fallback relay must have zero ports.");
-        }
-        else if (relayIPv4.Length > 15 || relayIPv4.Any(c => c > 127)
-            || !IPAddress.TryParse(relayIPv4, out var address) || address.AddressFamily != AddressFamily.InterNetwork
-            || relayTcpPort is 0 or > ushort.MaxValue || relayUdpPort is 0 or > ushort.MaxValue)
-            throw new ArgumentException("Fallback relay requires an ASCII IPv4 address and valid TCP and UDP ports.");
-        return PvpPacket(CommandPacketType, 1, writer =>
-        {
-            writer.Write(new byte[] { 1, 0, 0, 4, 0 });
-            writer.Write(accountUid);
-            var ip = Encoding.ASCII.GetBytes(relayIPv4);
-            writer.Write((uint)ip.Length); writer.Write(ip);
-            writer.Write(relayTcpPort); writer.Write(relayUdpPort);
-            writer.Write((byte)1); // Native unknown account sex fallback.
-            writer.Write((byte)0); // Local model has no reliable-person profile.
-        });
-    }
+        uint relayTcpPort, uint relayUdpPort) =>
+        CreateLoginSuccessCore(accountUid, 4, relayIPv4, relayTcpPort, relayUdpPort);
 
     public static GameServerPacket CreatePvpRoomList(IReadOnlyList<PvpRoomInfo> rooms)
     {

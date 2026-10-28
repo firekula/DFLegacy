@@ -27,7 +27,7 @@
 4. Party reuse, dungeon instance changes and PvP room/match changes: capture immutable generation tickets and recheck at output (Task2).
 5. Real ACT1 selects the TCP path only under actual UDP failure, with account/header/payload fidelity: controlled peer-sink positive plus normal UDP regression and original screenshots (Task4).
 
-### Task1: Complete native login and framing contracts
+### Task 1: Complete native login and framing contracts
 
 **Files:** Create src/DFLegacy.Protocol/GameProtocolEngine.Login.cs, src/DFLegacy.Protocol/NativeFallbackRelayProtocol.cs, tests/DFLegacy.SmokeTests/FallbackRelayProtocolSmokeTests.cs. Modify GameProtocolEngine.cs, GameProtocolEngine.Pvp.cs, tests/DFLegacy.SmokeTests/Program.cs.
 
@@ -38,7 +38,7 @@
 - [ ] Add literal frame fixtures for header(0,12,A,A), TCP data(1,17,A,B), UDP data(0,17,A,B), expected delivery(3,17,A,B) and untouched input. Exercise invalid lengths<12/>8192, unknown opcodes, wrong declared UDP size, EOF and fragmentation/coalescing through a real Stream/socket.
 - [ ] Implement serializers/framing minimally, update the old incorrect five-byte expectation, then run focused and full suite under task-local TEMP/TMP. Record expected RED/GREEN and commit Task1.
 
-### Task2: Canonical admission, context tickets and real relay service
+### Task 2: Canonical admission, context tickets and real relay service
 
 **Files:** Create src/DFLegacy.Server/FallbackRelayOptions.cs, src/DFLegacy.Server/GameplayDatagramService.FallbackRelay.cs, src/DFLegacy.Server/FallbackRelayService.cs, tests/DFLegacy.SmokeTests/FallbackRelaySmokeTests.cs. Modify GameplayDatagramService.cs, ServerOptions.cs, Program.cs, tests/DFLegacy.SmokeTests/Program.cs.
 
@@ -49,7 +49,7 @@
 - [ ] Add FallbackRelayOptions enabled/default7005 endpoints, IPv4 advertisement and protocol-specific collision checks. Maintain bounded registration time, connection count and per-target delivery queues. UDP cannot stall all users behind one slow receiver; output checks the captured ticket immediately before write.
 - [ ] Implement authority and hosted service, preserving existing UDP path, party host and object controller. Run focused and complete smoke; Release builds0warnings/0errors; commit Task2.
 
-### Task3: Real authenticated channel integration and readiness
+### Task 3: Real authenticated channel integration and readiness
 
 **Files:** Modify EntranceService.cs, Program.cs, source server.json and README.md; extend tests/DFLegacy.SmokeTests/FallbackRelaySmokeTests.cs. Do not change original runtime config JSON.
 
@@ -59,7 +59,7 @@
 - [ ] Implement hooks/config validation and endpoint selection with minimal Entrance edits. Add structured bounded register/route/drop readiness logging, never passwords or raw payloads. Full smoke and Release build; independent whole-feature code review before native use.
 - [ ] Publish into a NEW frozen private package, hash all source and binaries and preserve earlier package/native30AD. Resolve Important/Critical review findings by new RED/GREEN and whole-suite verification; commit Task3.
 
-### Task4: Dual native acceptance, screenshot report and normal delivery
+### Task 4: Dual native acceptance, screenshot report and normal delivery
 
 **Files:** New tools/acceptance/party_fallback_evidence.py and its meaningful decoder negatives if needed; knowledge/decisions/2026-10-28-party-tcp-fallback-verification.md and assets/2026-10-28-party-tcp-fallback; update current coverage/index/README/STATUS without changing old frozen artifacts. Private fixture/controllers/closed evidence live in G:/Game/DNF_ACT1/DFLegacy/.tmp/party-relay-sync-20261028 and current plan workspace.
 

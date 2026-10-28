@@ -564,13 +564,10 @@ public static partial class GameProtocolEngine
                 ["127.0.0.1"u8.ToArray()],
                 port1: 2311,
                 port2: 2311),
-            // A successful login response contains the general success byte,
-            // three account flags and one trailing client-state flag. Zeroes
-            // select the normal character-list path in this client build.
-            LoginCommand => new GameServerPacket(
-                CommandPacketType,
-                LoginCommand,
-                [1, 0, 0, 0, 0]),
+            // ACT1 also reads UID, relay address/ports and two profile bytes.
+            // This stateless serializer has no identity or relay availability;
+            // the live authenticated channel supplies its complete context.
+            LoginCommand => CreateChannelLoginSuccess(0, string.Empty, 0, 0),
             // The 1.0.1.9 client clears a possible old game session before it
             // begins the selected-channel login flow. A one-byte true result is
             // the complete successful response consumed by its EXIT handler.

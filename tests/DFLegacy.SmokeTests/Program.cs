@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--fallback-protocol"))
+{
+    await FallbackRelayProtocolSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Fallback protocol smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--pvp-individual-only"))
 {
     await PvpIndividualSmokeTests.RunAsync(Check);
@@ -206,6 +214,7 @@ static ItemCatalog CreateItems(ScriptFileSystem scripts) =>
 
 AccountClientSmokeTests.Run(Check);
 ClientDiagnosticsSmokeTests.Run(Check);
+await FallbackRelayProtocolSmokeTests.RunAsync(Check);
 await AdminAuthSmokeTests.RunAsync(Check);
 await TownSyncSmokeTests.RunAsync(Check);
 await FriendSmokeTests.RunAsync(Check);
@@ -7749,8 +7758,9 @@ Check(capturedClientCipherState.TryDecode(capturedProtocol8, out var decodedProt
 
 var loginReply = GameProtocolEngine.Handle(decodedLogin);
 Check(loginReply?.ProtocolId == GameProtocolEngine.LoginCommand, "login command receives a reply");
-Check(loginReply?.Payload.SequenceEqual(new byte[] { 1, 0, 0, 0, 0 }) == true,
-    "login reply selects the normal character-list path");
+Check(loginReply?.Payload.SequenceEqual(new byte[]
+    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }) == true,
+    "login reply selects normal characters with a complete unavailable relay tail");
 
 var userInfoRequest = new PacketFrame(
     GameProtocolEngine.CommandPacketType,
