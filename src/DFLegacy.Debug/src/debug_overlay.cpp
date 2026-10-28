@@ -7,6 +7,7 @@
 #include "../include/debug_api.h"
 #include "debug_model.h"
 #include "debug_window.h"
+#include "client_state.h"
 
 namespace
 {
@@ -54,6 +55,7 @@ namespace
             }
             // A busy paint/input queue must not postpone shutdown indefinitely.
             if (WaitForSingleObject(StopEvent, 0) == WAIT_OBJECT_0) break;
+            dfl::client_state::ExportLatest();
             dfl::debug_window::Content content{};
             AcquireSRWLockShared(&ContentLock); content = Published; ReleaseSRWLockShared(&ContentLock);
             dfl::debug_window::Update(content);
@@ -159,9 +161,11 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (StopEvent == nullptr) return 0;
     ReadyEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (ReadyEvent == nullptr) { CloseHandle(StopEvent); StopEvent = nullptr; return 0; }
+    dfl::client_state::Initialize(host->settingsPath, directory);
     Worker = CreateThread(nullptr, 0, &ReadSnapshots, nullptr, 0, nullptr);
     if (Worker == nullptr)
     {
+        dfl::client_state::Shutdown();
         CloseHandle(StopEvent); CloseHandle(ReadyEvent); StopEvent = ReadyEvent = nullptr; return 0;
     }
     // Initialize is called outside DllMain. Cross-thread owned windows can
@@ -175,6 +179,7 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (!WindowReady)
     {
         WaitForSingleObject(Worker, INFINITE);
+        dfl::client_state::Shutdown();
         CloseHandle(Worker); CloseHandle(StopEvent); Worker = StopEvent = nullptr;
         return 0;
     }
@@ -184,6 +189,8 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
 extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexcept
 {
     if (Worker == nullptr || frame == nullptr || frame->size != sizeof(*frame)) return;
+    // Independent native capture precedes all old Frame.scene / visibility gates.
+    dfl::client_state::CaptureFrame();
     Building = {};
     struct Publish
     {
@@ -268,6 +275,7 @@ extern "C" int __stdcall DebugShutdown() noexcept
         MsgWaitForMultipleObjects(1, &Worker, FALSE, 10, QS_SENDMESSAGE);
     }
     CloseHandle(Worker); CloseHandle(StopEvent);
+    dfl::client_state::Shutdown();
     Worker = nullptr; StopEvent = nullptr;
     Host = {};
     Published = {}; Building = {}; Settings[0] = 0;

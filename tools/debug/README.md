@@ -69,6 +69,61 @@ python tools/debug/watch_dungeon.py --directory G:/Game/DNF_ACT1/DF/town-test/de
 
 脚本不操纵客户端，不写存档或内存，只将房间、箱怪状态与结算状态的变化写入 JSONL，玩家负责操作。Ctrl+C 停止。
 
+## 原生客户端状态
+
+新导出使用独立的 `dfl-client-state/v1` JSON，不改变 ABI v2 或服务端箱怪协议。客户端先以 `EnableDebugOverlay=1` 加载 DLL，再显式开启默认关闭的导出：
+
+```ini
+[DebugOverlay]
+ExportState=1
+```
+
+文件位于现有 `SnapshotDirectory`，每个进程独立为 `dfdebug-client-<pid>.json`。原生采集目标间隔200ms；收起或隐藏面板不关闭导出。错误客户端布局、未采集、过期或截断数据不能用于操作条件。新接口的实际刷新、开销和双端表现仍需对应实机验收。
+
+从仓库根目录读取一次紧凑摘要，或有界等待一个条件：
+
+```powershell
+python tools/debug/client_state.py --directory G:/Game/DNF_ACT1/DF/town-test/debug-overlay --pid 12345
+python tools/debug/client_state.py --directory G:/Game/DNF_ACT1/DF/town-test/debug-overlay --pid 12345 --uid 1 --wait scene=3 --timeout-seconds 10
+python tools/debug/client_state.py --directory G:/Game/DNF_ACT1/DF/town-test/debug-overlay --pid 12345 --wait me.dead=true --timeout-seconds 5
+```
+
+替换为本轮真实PID及可选区域UID。`scene`保留原生数字，1为Town、3为Dungeon；其他值未知。CLI不读游戏内存、不发输入；省略 `--process-started-filetime` 时仅以 `QUERY_LIMITED_INFORMATION` 查询一次进程创建时间。也可显式传入十进制整数FILETIME，避免重复查询。PID、创建时间、序号和时钟均保留整数精度。
+
+等待只打印最终匹配或timeout，不逐帧输出。退出码0表示一次有效读取或已知条件匹配，1表示超时，2表示无效数据/身份变化；timeout范围0到300秒。默认最大采样年龄750ms，使用同机Win32 `GetTickCount64`，不使用UTC差值判断新鲜度。重写旧JSON或UTC跳变不会续期；同序号内容变化、序号/代次倒退也不能完成等待。
+
+路径只遍历数据，可使用 `room.map_token`、`me.hp`、`players.0.dead` 等，不执行表达式。未知null永不匹配，连 `=null` 也不会完成；布尔false不等于数字0。完整性不足、未证MP/职业/冷却/可用性、未绑定实体/地图的位置以及独立 `server_context` 均不能当作已知动作条件。技能等级不等于技能已可用，authority token不推断为owner。有效Town允许 `me`、`room` 为null，不因此伪造HP0或死亡状态。
+
+摘要的 `doors.enabled_directions` 只表示原生mask中存在的拓扑方向，不等于门已开放或可通过。`room.map_clear_state` 保留原生保护整数的signed raw值（或null）；不把0/1改名为clear布尔，也不据此单独推断过门许可。
+
+连续的本地控制循环应导入同一模块，不反复启动CLI或PowerShell：
+
+```python
+from tools.debug.client_state import (
+    SnapshotError, UnknownFieldError, get_known_field,
+    get_process_started_filetime, load_snapshot, now_tick_ms,
+)
+
+pid = 12345
+started = get_process_started_filetime(pid)  # 一次元数据查询，无VM_READ
+snapshot = load_snapshot(
+    directory / f'dfdebug-client-{pid}.json',
+    pid=pid, process_started_filetime=started, now_tick_ms=now_tick_ms(),
+)
+try:
+    dead = get_known_field(snapshot, 'me.dead')
+except UnknownFieldError:
+    dead = None
+```
+
+`load_snapshot` 返回结构，坏JSON、错误身份、unsupported、未来/过期采样或截断抛 `SnapshotError`（`code`为有界原因）；有效结构中的未知/不支持字段由 `get_known_field` 抛 `UnknownFieldError`。必须先成功加载，再分别验证实际动作所需字段；仅 `scene=3` 不能证明门、位置或技能可用。长循环需维持UID/序号/代次约束，并在真正发出既有原生输入前重新核对进程创建身份和新鲜数据。本模块自身不发送任何输入。
+
+消费端标准库测试：
+
+```powershell
+python -m unittest discover -s tools/debug -p 'test*.py' -v
+```
+
 ## 构建和验证
 
 使用 VS MSBuild，`Configuration=Release`、`Platform=Win32`：

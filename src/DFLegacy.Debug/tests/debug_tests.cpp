@@ -44,8 +44,11 @@ namespace
     }
 }
 
+int RunClientStateTests();
+
 int main(int argc, char** argv)
 {
+    if (argc == 2 && std::strcmp(argv[1], "--client-state") == 0) return RunClientStateTests();
     using namespace dfl;
     if (argc < 2 || argc > 3) return 2;
     std::uint32_t manager[32]{}, valuesA[4]{}, valuesB[4]{}, wrapper[2]{};
@@ -119,7 +122,11 @@ int main(int argc, char** argv)
     const auto shutdown = reinterpret_cast<debug_api::Shutdown>(GetProcAddress(module, "DebugShutdown"));
     Check(initialize && render && shutdown, "versioned undecorated entry points exist");
     if (!initialize || !render || !shutdown) return 1;
-    debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &Draw, nullptr, nullptr};
+    wchar_t stateSettings[MAX_PATH]{}, clientStateFile[MAX_PATH]{};
+    swprintf_s(stateSettings, L"%s\\state-settings.ini", directory);
+    swprintf_s(clientStateFile, L"%s\\dfdebug-client-%lu.json", directory, GetCurrentProcessId());
+    WritePrivateProfileStringW(L"DebugOverlay", L"ExportState", L"1", stateSettings);
+    debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &Draw, nullptr, stateSettings};
     Check(initialize(&host, directory) == 1, "DLL initializes outside loader lock");
     debug_api::Frame frame{sizeof(debug_api::Frame), 3, 77, 0, 0};
     for (int i = 0; i < 15; ++i)
@@ -135,8 +142,25 @@ int main(int argc, char** argv)
     Check(stable, "every queued native text pointer remains valid after the render callback returns");
     Lines.clear(); frame.userId = 78; render(&frame);
     Check(!Contains(L"BOSS房箱怪：有"), "another player's snapshot is never shown");
+    auto clientStateSequence = [&]() -> std::uint64_t
+    {
+        std::ifstream state(clientStateFile, std::ios::binary);
+        const std::string value((std::istreambuf_iterator<char>(state)), {});
+        const auto at = value.find("\"sequence\":");
+        if (at == std::string::npos) return 0;
+        return std::strtoull(value.c_str() + at + 11, nullptr, 10);
+    };
+    const auto priorClientStateSequence = clientStateSequence();
     Lines.clear(); frame.scene = 1; render(&frame);
     Check(Lines.empty(), "overlay does not render outside dungeon scene");
+    Sleep(225); render(&frame); Sleep(100);
+    {
+        std::ifstream state(clientStateFile, std::ios::binary);
+        const std::string exported((std::istreambuf_iterator<char>(state)), {});
+        Check(exported.find("\"layout_supported\":false") != std::string::npos
+            && clientStateSequence() > priorClientStateSequence,
+            "real DLL captures and worker exports even when old Frame scene hides overlay");
+    }
     Check(shutdown() == 1, "diagnostic worker stops before DLL unload");
 
     const HWND owner = CreateWindowExW(0, L"STATIC", L"DFLegacy Debug Overlay Preview", WS_OVERLAPPEDWINDOW,
@@ -351,6 +375,7 @@ int main(int argc, char** argv)
     Check(!IsWindow(panel), "shutdown destroys the owned panel");
     if (IsWindow(owner)) DestroyWindow(owner);
     FreeLibrary(module);
+    DeleteFileW(clientStateFile); DeleteFileW(stateSettings);
     DeleteFileW(file); RemoveDirectoryW(directory);
     std::printf("Debug overlay tests: %d failures\n", Failures);
     return Failures ? 1 : 0;
