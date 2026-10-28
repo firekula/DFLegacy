@@ -1,0 +1,81 @@
+{
+  "Schema": "countdown-coin-public-assets/v1",
+  "ImageCount": 9,
+  "Files": [
+    {
+      "File": "01-baseline-unknown.jpg",
+      "Size": 419212,
+      "Sha256": "CA4918B457D39DA5C9C7928A103ED3CC244113C2E83CE014149720A47B5F14B0",
+      "SourceId": "baseline-independent-7001-purchase-error",
+      "OriginalSha256": "CA4918B457D39DA5C9C7928A103ED3CC244113C2E83CE014149720A47B5F14B0"
+    },
+    {
+      "File": "02-final-price100.jpg",
+      "Size": 322228,
+      "Sha256": "AC0F85414585F390E2C5268A73458C16D05EC72D25D4060B4D130001E58FD796",
+      "SourceId": "final-native-price100-single-label",
+      "OriginalSha256": "AC0F85414585F390E2C5268A73458C16D05EC72D25D4060B4D130001E58FD796"
+    },
+    {
+      "File": "03-existing-coin-revive-beam.jpg",
+      "Size": 391894,
+      "Sha256": "E49B0F0918ABFFF30C078D4857AE570758A1C6BBF4453094FA8242A5FB652349",
+      "SourceId": "member-existing-coin-revival-beam-chat",
+      "OriginalSha256": "E49B0F0918ABFFF30C078D4857AE570758A1C6BBF4453094FA8242A5FB652349"
+    },
+    {
+      "File": "04-purchased-coin-x1.jpg",
+      "Size": 380426,
+      "Sha256": "D1558FF12756ADBBD8B7B5AAF67EAE44A9DC754129ED67AFBE6599377314D5E0",
+      "SourceId": "member-purchased-coin-x1-intermediate-frame",
+      "OriginalSha256": "D1558FF12756ADBBD8B7B5AAF67EAE44A9DC754129ED67AFBE6599377314D5E0"
+    },
+    {
+      "File": "05-leader-revive.jpg",
+      "Size": 440598,
+      "Sha256": "FDCA3844048408AA48909AE04E6D486C6547EEA4374BED744BCC84C580896753",
+      "SourceId": "peer-leader-standing-crown-revived-chat",
+      "OriginalSha256": "FDCA3844048408AA48909AE04E6D486C6547EEA4374BED744BCC84C580896753"
+    },
+    {
+      "File": "06-normal-coin-before.jpg",
+      "Size": 323425,
+      "Sha256": "A1988908FDD596CCABB2C169816701B0439B94FC7525D6FA6086A8E756E49B63",
+      "SourceId": "ordinary-ten-coin-pack-before",
+      "OriginalSha256": "A1988908FDD596CCABB2C169816701B0439B94FC7525D6FA6086A8E756E49B63"
+    },
+    {
+      "File": "07-normal-coin-after.jpg",
+      "Size": 304717,
+      "Sha256": "C1336C5648ED2D4008523887845AEC7FC543EC49BC9D39DA885AE2A4EC286709",
+      "SourceId": "ordinary-ten-coin-pack-result-window",
+      "OriginalSha256": "C1336C5648ED2D4008523887845AEC7FC543EC49BC9D39DA885AE2A4EC286709"
+    },
+    {
+      "File": "08-final-town-A.jpg",
+      "Size": 421498,
+      "Sha256": "0B374F329AD92C56B936BF81989BDD0EB5107C6D54910A5BAD1AA3F75557E1E1",
+      "SourceId": "final-town-A-menu-visible-original",
+      "OriginalSha256": "0B374F329AD92C56B936BF81989BDD0EB5107C6D54910A5BAD1AA3F75557E1E1"
+    },
+    {
+      "File": "09-final-town-B.jpg",
+      "Size": 438825,
+      "Sha256": "2AEF44983A55FF1F07572AA430A8A83E6D2B8C9CF4BEB6382E21FD4446285421",
+      "SourceId": "final-town-B-retry-original",
+      "OriginalSha256": "2AEF44983A55FF1F07572AA430A8A83E6D2B8C9CF4BEB6382E21FD4446285421"
+    },
+    {
+      "File": "coin-native-summary.json",
+      "Size": 5962,
+      "Sha256": "9D88A5C6F57843E5DDC7244C7C02BB9DEA480920D602F57BA2695797C080D0B4",
+      "SourceId": "generated-bounded-native-summary"
+    }
+  ],
+  "FinalAudit": {
+    "SourceId": "final-audit-receipt",
+    "Sha256": "1FA510D6EB5FC5938DBF90BAE8E0968F0C0061281CD51E0EF435F408256EE6E9",
+    "Verdict": "PASS_AS_SCOPED"
+  },
+  "Scope": "Nine exact original images and one selected bounded summary; this manifest excludes itself."
+}

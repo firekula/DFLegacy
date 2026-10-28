@@ -1,0 +1,160 @@
+{
+  "Schema": "countdown-coin-native-summary/v1",
+  "GeneratedAtUtc": "2026-10-28T15:31:35.489406+00:00",
+  "Build": {
+    "NativeSourceCommit": "09429ccffffecc220d98366e8965495518261d3d",
+    "ManagedSourceCommit": "59666d9b543abc5119012cd98ad1fe8e57d7858c",
+    "NativeSha256": "19C0CC26185D959882F7DEF3BCD15B28248D34553E31E4F66C266798646A62D4",
+    "BuildManifestSha256": "327B9A0A5E05D3034A3DAA2251E1836AE7879202B1161376CE234B7E27B5045F"
+  },
+  "OfficialAndAct1": "Official purchase grants coins and does not revive directly. ACT1 adaptation only consumes the exact hidden-coin success presentation and replaces the normal price sprite with native effective-price text; original purchase and CMD44 remain.",
+  "Cases": [
+    {
+      "Id": "member-existing-coin",
+      "Role": "A member",
+      "Character": "heal1024",
+      "RequestTimesChina": {
+        "CMD44": "2026-10-28 22:38:58"
+      },
+      "CMD67Count": 0,
+      "SuccessfulCMD44Count": 1,
+      "BeforeHP": 0,
+      "FirstResultHP": {
+        "A": 464,
+        "BPeerA": 464
+      },
+      "TruePostHP": {
+        "A": 436,
+        "BPeerA": 436
+      },
+      "OriginalHelperVerdict": "UNCONFIRMED_HP_AND_LOG_BOUNDARY_ONLY",
+      "OriginalStrictPredicate": false,
+      "IndependentVerdict": "CONFIRMED_CASE_SPECIFIC_NATIVE_EXISTING_COIN_REVIVAL"
+    },
+    {
+      "Id": "member-purchase-revive",
+      "Role": "A member",
+      "Character": "heal1024",
+      "RequestTimesChina": {
+        "CMD67": "2026-10-28 22:40:42",
+        "CMD44": "2026-10-28 22:40:43"
+      },
+      "SuccessfulCMD67Count": 1,
+      "SuccessfulCMD44Count": 1,
+      "Commodity": 100004,
+      "Quantity": 1,
+      "CashPrice": 100,
+      "BeforeHP": 0,
+      "FirstResultHP": {
+        "A": 470,
+        "BPeerA": 470
+      },
+      "TruePostHP": {
+        "A": 448,
+        "BPeerA": 443
+      },
+      "OriginalHelperVerdict": "UNCONFIRMED_HP_AND_LOG_BOUNDARY_ONLY",
+      "OriginalStrictPredicate": false,
+      "IndependentVerdict": "CONFIRMED_CASE_SPECIFIC_NATIVE_PURCHASE_THEN_REVIVAL",
+      "ImageScope": "purchased coin x1 intermediate frame; final living state uses result/post snapshots"
+    },
+    {
+      "Id": "leader-purchase-revive",
+      "Role": "A leader",
+      "Character": "heal1024",
+      "RequestTimesChina": {
+        "CMD67": "2026-10-28 23:03:59",
+        "CMD44": "2026-10-28 23:04:00"
+      },
+      "SuccessfulCMD67Count": 1,
+      "SuccessfulCMD44Count": 1,
+      "Commodity": 100004,
+      "Quantity": 1,
+      "CashPrice": 100,
+      "BeforeHP": 0,
+      "FirstResultHP": {
+        "A": 470,
+        "BPeerA": 470
+      },
+      "TruePostHP": {
+        "A": 450,
+        "BPeerA": 450
+      },
+      "OriginalHelperVerdict": "UNCONFIRMED_HP_AND_LOG_BOUNDARY_ONLY",
+      "OriginalStrictPredicate": false,
+      "IndependentVerdict": "CONFIRMED_CASE_SPECIFIC_NATIVE_LEADER_PURCHASE_THEN_REVIVAL",
+      "LeaderIdentity": "valid RX131 targeting slot1 plus actual crown pixels; no TX131 claimed",
+      "ImageScope": "peer standing leader, crown and revived/coin-use chat"
+    }
+  ],
+  "Wallet": {
+    "CutoffChina": "2026-10-28 23:05:59.140703+08:00",
+    "TargetCount": 2,
+    "A": {
+      "PaidCoinEquation": "0 + 3 - 3 = 0",
+      "PaidCoin": 0,
+      "CashEquation": "997790 - 300 = 997490",
+      "Cash": 997490
+    },
+    "B": {
+      "PaidCoinEquation": "6 + 10 - 0 = 16",
+      "PaidCoin": 16,
+      "CashEquation": "26600 - 880 = 25720",
+      "Cash": 25720
+    },
+    "SuccessfulPurchases": 4,
+    "SuccessfulPaidCoinConsumptions": 3
+  },
+  "OrdinaryPack": {
+    "Role": "B",
+    "RequestTimeChina": "2026-10-28 22:50:42",
+    "Commodity": 100000,
+    "Quantity": 10,
+    "CashPrice": 880,
+    "CashBefore": 26600,
+    "CashAfter": 25720,
+    "PaidCoinBefore": 6,
+    "PaidCoinAfter": 16,
+    "OriginalResultWindow": "normal"
+  },
+  "Wire": {
+    "Mode": "normal UDP",
+    "MatchedAtoB": 49894,
+    "MatchedBtoA": 68940,
+    "WireContract": "PASS",
+    "DecoderNativeAcceptance": "NOT_ASSESSED"
+  },
+  "WindowResponsiveness": {
+    "DurationSeconds": 25,
+    "Samples": 422,
+    "NotResponding": 0,
+    "Scope": "only this sampled window; not frame-rate or world-state correctness"
+  },
+  "FinalTown": {
+    "AState": 1,
+    "BState": 1,
+    "HPRecoveryIsRevivalEvidence": false
+  },
+  "Participation": "User prepared the route and both clients to the boss entrance; root took over both clients for these input cycles, not the entire route independently.",
+  "Limits": [
+    "Original map0 helper UNCONFIRMED results remain unchanged; three case-specific reviews do not replace the general safety predicate.",
+    "Result00 is the first paired result; true post HP is later and combat can lower it.",
+    "No claim for monster-position synchronization, all accounts, free coins, all shop/revival paths, Town/restart persistence, Internet/NAT, loss-free delivery or global multiplayer correctness.",
+    "The old transport-v2 remains failed; baseline image supports only its independent 7001 purchase error.",
+    "No source review JSON, full state, authentication, raw capture, saves or PVF is exported."
+  ],
+  "SourceReceiptHashes": {
+    "member-case-review": "2B28FD46053006D2C7E4081B190508B2053E8DAE954B5BB97936B3CF0FCEC581",
+    "leader-case-review": "242B74B2434CDDDFB119C9A501BD7918795F9D44574B972FCD1EE20A51E7C7EE",
+    "two-target-wallet": "5AF78A4445154FAFED27372D71DC8DF672E7037AA7607542E0FB96F08DA23E08",
+    "normal-udp-wire": "05316A99BDCF2593A39C71A1C8C35F54362E56E63649A95CA3EC549E92DD3F65",
+    "final-town-state": "DF745E2FF5CCA57EDE3048ABCA0576B26E8758ADF0168C2A43127B7863A60289",
+    "final-loaded-modules": "361CC346D691DF1AED4643EDB1079E2A3FAA2D33D6EFF7A55E6F748E2CF2B7B8",
+    "final-loaded-hooks": "68A4FDC3765083245F31FF1929FB7F2D94BF6B57CC08632F1ABDE6E58628D374"
+  },
+  "FinalAudit": {
+    "SourceId": "final-audit-receipt",
+    "Sha256": "1FA510D6EB5FC5938DBF90BAE8E0968F0C0061281CD51E0EF435F408256EE6E9",
+    "Verdict": "PASS_AS_SCOPED"
+  }
+}

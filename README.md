@@ -71,6 +71,10 @@
 
 ## 当前实现
 
+### 2026-10-28：倒计时复活币与后续列表
+
+- 修复ACT1隐藏单币购买成功后的“未知错误”展示及价格标签，保持官方购币发放与CMD44消费复活分开。最终19C双端完成队员已有币复活、队员购币复活、队长购币复活及普通10币礼包回归；正式目录与原始配置核验完成，见[9张原图与验收范围](knowledge/decisions/2026-10-28-countdown-coin-purchase-verification.md)。新增[后续列表](knowledge/decisions/2026-10-28-restoration-backlog.md)：副本介绍残留、四人掉落/史诗选择、主动丢弃可见性及debug.dll状态接口。heal1024为6级，符合官服17级及以下退出免虚弱规则，无需修改。
+
 ### 2026-10-28：洛兰 3×3 Boss 专用选图
 
 - 补读每套迷宫的 `[boss map specification]`，所选Boss坐标优先采用有效专用候选；洛兰(2,2)现选择MAP6416与魔笛使者1077。保持起点、任务替换、缓存及无有效配置时的原有规则。完整冒烟、真实PVF回归和严格Release通过；双客户端实际进入、自然击杀、双方结算回城及正常目录交付完成，见[8张原图及验收范围](knowledge/decisions/2026-10-28-boss-map-specification-verification.md)。怪物位置同步仍在排查。
