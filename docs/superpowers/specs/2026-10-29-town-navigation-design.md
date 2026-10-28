@@ -10,11 +10,11 @@
 
 ## 结构
 
-- `client_state` 升为 `dfl-client-state/v2`，保留既有 Dungeon 字段语义；Town 的 me/players 使用 user+10C 绑定，生命与死亡未知值保持 null。新增 town 当前区、坐标、原生目标及 UI 状态。UI 包含原生倒计时状态、选图、玩家菜单和 M 可见状态；未知不猜测。
+- `client_state` 升为 `dfl-client-state/v2`，保留既有 Dungeon 字段语义；Town 的 me/players 使用 user+10C 绑定，生命与死亡未知值保持 null。新增 town 当前区、坐标、原生目标及 UI 状态。UI 包含原生倒计时状态、选图、玩家菜单和 城镇地图 可见状态；未知不猜测。
 - 状态采样完全只读，固定容量、游戏线程有界读取，后台 JSON IO。旧 v1 Python 输入继续接受。
 - 独立 `client_navigation` 模块处理请求、M hook 与原生调用；不把写操作混入状态 sampler。请求绑定 PID、精确进程开始时间、UID、actor/map、Town/Area、捕获 generation 和新鲜时间；拒绝重复、过期、跨身份请求。
 - worker 从每进程命令文件读入有界请求，游戏线程重新验证后调用 native；worker 写回结果。不得在游戏线程等待磁盘或锁。模块设置默认关闭。
-- M 仅替换唯一 CALL 79D242，先运行原 880E20；要求 release edge、实际根控件 capture ID、可见启用、当前区域唯一投影矩形、排除全部已显示标记。动态读取原生 hash 缓存中的 real/project Rect，不固定 PVF 表。新逆投影定义整数舍入并验证边界。
+- 城镇地图 仅替换唯一 CALL 79D242，先运行原 880E20；要求 release edge、实际根控件 capture ID、可见启用、当前区域唯一投影矩形、排除全部已显示标记。动态读取原生 hash 缓存中的 real/project Rect，不固定 PVF 表。新逆投影定义整数舍入并验证边界。
 
 ## 依据与验收
 

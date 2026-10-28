@@ -5,6 +5,8 @@
 
 ## 1. 近期改动的功能
 
+2026-10-29 debug 状态与城镇移动：新增 client-state/v2 的 Town/UI、房间／敌人／玩家／已学技能只读数据；同区 debug 目的地与 N 城镇地图点击共用原生 setter 和一次持续移动激活，保留方向键停止。源码02de7053/debug5449，双端实际到达、控件保护和四类拒绝通过，71项Python及原生状态／导航／运行状态机／完整overlay测试通过。最终构建单人副本完成原生字段对照与无截图的数据驱动移动、攻击；未宣称同组完整流程、MP/冷却、跨区规划或怪物同步已修复。详见[带原图验收](knowledge/decisions/2026-10-29-debug-town-navigation-verification.md)和[继续修复列表](knowledge/decisions/2026-10-28-restoration-backlog.md)。
+
 2026-10-28 倒计时复活币：native09429cc/19C修复隐藏100004单币购买结果误入普通商城的未知错误，价格显示100且标签一次，官服发币与ACT1 CMD44复活分开。双客户端完成队员已有币复活、队员购买后复活、转队长购买后复活，普通10币/880礼包保持原结果窗口。三轮消费与四笔购买钱包守恒；最终445文件证据、严格UDP、422次响应采样、四处native及49运行文件交付/原配置和原档核验完成，见[9张原图及精确边界](knowledge/decisions/2026-10-28-countdown-coin-purchase-verification.md)。managed仍保留59666d9。新增[用户待办](knowledge/decisions/2026-10-28-restoration-backlog.md)，优先debug.dll结构化状态以减少截图；6级heal1024符合官服≤17级退出豁免，无需修复虚弱。怪物位置同步继续排查。
 
 2026-10-28 洛兰3×3：补读每套maze的Boss专用候选，选中Boss角色坐标时优先应用；修正(2,2)回退洛兰MAP13的问题，实际选择MAP6416与Boss1077。真实PVF、旧布局/无效候选/任务替换/缓存及起点重合回归、完整冒烟、严格Release通过。59666d9托管/native8AB双客户端走完实际3×3路线，两端加载同一Boss房；B死亡、A自然清场，双方Continue及队长带队回城完成。正常目录49文件交付与PS5.1克隆档启动已验，原配置/存档与历史证据保持。见[8张原始截图及精确范围](knowledge/decisions/2026-10-28-boss-map-specification-verification.md)。接续怪物位置同步S02；本次不计为位置同步或复活币UI修复。

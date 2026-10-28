@@ -33,6 +33,7 @@
 | [STATUS.md](STATUS.md) | 项目状态与接续说明：已验证/未验证内容、可复用的验证方法、待办与环境注意事项。 |
 | [CHANGELOG.md](CHANGELOG.md) | 里程碑、功能变更和验证范围。 |
 | [副本调试面板](tools/debug/README.md) | 独立 debug.dll 的配置、构建、浮动面板、掉落测试开关与自动控制。 |
+| [城镇地图与状态接口验收](knowledge/decisions/2026-10-29-debug-town-navigation-verification.md) | N 地图同区点击移动、debug 目的地、结构化状态与双端原图。 |
 | [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
 
 容器部署使用仓库根目录的 `Dockerfile`、`.dockerignore` 与 `compose.yaml`，说明见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)。
