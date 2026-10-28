@@ -136,6 +136,8 @@
     <ClCompile Include="..\src\channel_reentry.cpp" />
     <ClCompile Include="..\src\channel_switch.cpp" />
     <ClCompile Include="..\src\creature_gift_row.cpp" />
+    <ClCompile Include="..\src\countdown_coin.cpp" />
+    <ClCompile Include="countdown_coin_tests.cpp" />
     <ClCompile Include="channel_reentry_tests.cpp" />
     <ClCompile Include="channel_switch_tests.cpp" />
     <ClCompile Include="creature_gift_row_tests.cpp" />
@@ -152,6 +154,7 @@
   <ItemGroup>
     <ClInclude Include="..\src\channel_switch.h" />
     <ClInclude Include="..\src\creature_gift_row.h" />
+    <ClInclude Include="..\src\countdown_coin.h" />
     <ClInclude Include="..\src\auto_input.h" />
     <ClInclude Include="..\src\external_string_table.h" />
     <ClInclude Include="..\src\ijl15_config.h" />

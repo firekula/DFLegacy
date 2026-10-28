@@ -15,6 +15,7 @@
 #include "relay_send_queue.h"
 #include "channel_switch.h"
 #include "creature_gift_row.h"
+#include "countdown_coin.h"
 #include "ground_item_removal.h"
 #include "dnf_patches.h"
 #include "d3d8_scaler.h"
@@ -1208,6 +1209,10 @@ namespace dfl::dnf_patches
         if (!dfl::creature_gift_row::Install())
         {
             OutputDebugStringA("DFLegacy.Ijl15: verified creature egg gift row was not installed.\n");
+        }
+        if (!dfl::countdown_coin::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: ACT1 countdown coin presentation was not installed.\n");
         }
         if (!dfl::channel_switch::Install())
         {

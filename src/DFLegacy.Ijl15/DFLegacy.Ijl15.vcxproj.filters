@@ -30,6 +30,9 @@
     <ClInclude Include="src\dnf_patches.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\countdown_coin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\external_string_table.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -123,6 +126,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\window_scaling.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\countdown_coin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

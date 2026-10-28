@@ -26,6 +26,8 @@ add_library(ijl15 SHARED
     src/boss_room_death.h
     src/creature_gift_row.cpp
     src/creature_gift_row.h
+    src/countdown_coin.cpp
+    src/countdown_coin.h
     src/channel_switch.cpp
     src/channel_switch.h
     src/channel_reentry.cpp
@@ -145,6 +147,9 @@ if(BUILD_TESTING)
         tests/relay_send_queue_tests.cpp
         tests/channel_switch_tests.cpp
         tests/creature_gift_row_tests.cpp
+        src/countdown_coin.cpp
+        src/countdown_coin.h
+        tests/countdown_coin_tests.cpp
         src/priest_heal_target.cpp
         src/priest_heal_target.h
         tests/priest_heal_target_tests.cpp

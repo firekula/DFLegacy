@@ -36,6 +36,7 @@ bool TestPartyCardDisplay();
 bool TestChannelReentryMtu();
 bool TestChannelSwitch();
 bool TestCreatureGiftRow();
+bool TestCountdownCoin();
 bool TestRelaySendQueue();
 
 namespace
@@ -1329,6 +1330,12 @@ bool TestSyntheticKeyboardStateMerge()
 
 int main(int argc, char** argv)
 {
+    if (argc == 2 && std::strcmp(argv[1], "--countdown-coin-only") == 0)
+    {
+        if (!TestCountdownCoin()) return 1;
+        std::puts("countdown coin tests passed");
+        return 0;
+    }
     if (argc == 2 && std::strcmp(argv[1], "--relay-send-queue-only") == 0)
     {
         if (!TestRelaySendQueue()) return 1;
@@ -1392,6 +1399,7 @@ int main(int argc, char** argv)
     }
     if (!TestRelaySendQueue()) return Fail("relay send queue serialization failed");
     if (!TestCreatureGiftRow()) return Fail("creature gift row failed");
+    if (!TestCountdownCoin()) return Fail("countdown coin presentation failed");
     if (!TestChannelSwitch()) return Fail("channel switch transition failed");
     if (!TestChannelReentryMtu())
     {
