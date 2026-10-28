@@ -1,0 +1,13 @@
+{
+  "private_raw_checks": "PASS",
+  "TX_crc_valid": {
+    "A": 107,
+    "B": 242
+  },
+  "unique_dual_receipts": 3,
+  "all_non_pvp_fields_equal": true,
+  "responsiveness_PID_start_samples": 44,
+  "closed_manifest_sha256": "589EE286101B1A732ADD8A69D613750B82771A70E004D1C97C3FC7BA10849201",
+  "checker_sha256": "9ADEF946EFE88F76FFE93E367F9C873CF900446484EFA06F2DA1F77FAAE99D1C",
+  "native_final_delivery": "PENDING"
+}

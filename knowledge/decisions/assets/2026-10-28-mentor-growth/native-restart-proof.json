@@ -1,0 +1,229 @@
+{
+  "schema": "mentor-growth-server-restart-proof/v1",
+  "status": "PASS_SERVER_RESTART_DURABILITY",
+  "overall_status": "NOT_READY",
+  "remaining": [
+    "final_delivery_behavior_overlap_binding"
+  ],
+  "native_actions_owner": "/root",
+  "evidence_reviewer": "/root/mentor_growth_evidence",
+  "historical_award_phase": {
+    "phase": "mentor-growth-695232c",
+    "source_commit": "695232c7c6ba7191d79f074c6e7e6dab103a39a7",
+    "managed_server_dll_sha256": "01D664C4465769E3A617D40215C0FF471EFA74E6D707F0ED63D20A31E8E933AF"
+  },
+  "restart_phase": {
+    "phase": "pvp-creature-cacab2e",
+    "source_commit": "cacab2e8e6bf8370f630b5aec52f63ab485fdf5e",
+    "product_commit": "feade88bc3180e581bb7d7a719d0d93888cfde6b",
+    "server": {
+      "pid": 48776,
+      "start_time_utc": "2026-10-27T20:32:27.1415357Z"
+    },
+    "managed_server_dll_sha256": "48244DCEC0EC9AC556D6C14CA3DC3CA6701CA6208A12E4D1FD679A0FB24E2B9A",
+    "build_manifest_sha256": "294E98012754DE0960A41CF01D0B307B3BED9CD0D3858EDE7F20FA6FAB96B911",
+    "published_files_matched": 47,
+    "published_files_declared": 48,
+    "configuration_binding": {
+      "file": "server.json",
+      "actual_runtime_sha256": "D604F6F0F9F351745B306EAEEEC8DAD028BF0330D4071090BCE80176CCB8F47C",
+      "published_build_sha256": "5218BEFFEAFA85C3D3B3E1640C2EAD1160A5A1C6465B3E2A8A1DA91590C4CD25",
+      "copied_from_backup_verified": true,
+      "reason": "common.ps1 Initialize-TaskRuntime lines41-42 excludes published server.json and preserves backup/server.json. Only hashes exported."
+    },
+    "capture_export_sha256": "11D9435E48DA1EF06995485D43267E0D8525D4C41AB63BAD31CCF6B9C31D00D9",
+    "deployment_sha256": "9940399EA0E988EA185F12C6999DBE65DAE11738EB882418F81D293853C98EF8"
+  },
+  "closed_capture_integrity": [
+    {
+      "role": "A",
+      "pid": 28824,
+      "start_time_utc": "2026-10-27T20:32:30.1676862Z",
+      "raw_sha256": "E80B419592EB52716FA264DB184306C3DE5331A27C7271EE25382ECD915D0668",
+      "counts": {
+        "TX_frames": 23,
+        "RX_frames": 63,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "mentor_list_request": 2,
+        "mentor_list_reply": 4,
+        "mentor_presence": 1,
+        "incomplete_bytes": 0,
+        "disabled_flows": 0
+      },
+      "status": "decoded"
+    },
+    {
+      "role": "B",
+      "pid": 66396,
+      "start_time_utc": "2026-10-27T20:32:30.9612405Z",
+      "raw_sha256": "F2B7D2E77619E2CF6BD2050249A909CA3FBCF21B64575DF191DE41CDF89A3992",
+      "counts": {
+        "TX_frames": 43,
+        "RX_frames": 67,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "mentor_list_request": 3,
+        "mentor_list_reply": 5,
+        "mentor_presence": 3,
+        "incomplete_bytes": 0,
+        "disabled_flows": 0
+      },
+      "status": "decoded"
+    }
+  ],
+  "private_source_anchors": [
+    {
+      "id": "private:restart-28824",
+      "sha256": "E80B419592EB52716FA264DB184306C3DE5331A27C7271EE25382ECD915D0668",
+      "bytes": 124761,
+      "raw_file_published": false
+    },
+    {
+      "id": "private:restart-66396",
+      "sha256": "F2B7D2E77619E2CF6BD2050249A909CA3FBCF21B64575DF191DE41CDF89A3992",
+      "bytes": 109120,
+      "raw_file_published": false
+    },
+    {
+      "id": "private:restart-server",
+      "sha256": "037EA54B9E00E64D429DC81D49821844407F777C00ABD7E326FD773877B076D7",
+      "bytes": 88074,
+      "raw_file_published": false
+    }
+  ],
+  "initial_restart_canonical": {
+    "at": "2026-10-28T04:33:18.524785+08:00",
+    "source_json_sha256": "CB8EE59C8204E220830FDB540451007A57B051B6CBBFD60C07848939085AB684",
+    "loaded_state_sha256": "AB528D5275B7F42EFD395765AD760ECB0FF12E7DE816A42FC107EFA3CE0C5EEB",
+    "matches_prior_private_freeze_exactly": true,
+    "characters": [
+      {
+        "role": "A",
+        "name": "mageco",
+        "character_level": 45,
+        "character_exp": 38402107,
+        "relationship_cumulative_exp": 0,
+        "relationship_projection": null
+      },
+      {
+        "role": "B",
+        "name": "heal1024",
+        "character_level": 6,
+        "character_exp": 17743,
+        "relationship_cumulative_exp": 10,
+        "relationship_projection": {
+          "level": 3,
+          "current": 4,
+          "next": 5
+        }
+      }
+    ]
+  },
+  "later_paused_state_sha256": "B9831C157CB9A6A77DE3BFF7C07B591860E34D8A294BF1B18B0AEE9EBFAAB9FB",
+  "initial_world_headers": [
+    {
+      "role": "A",
+      "pid": 28824,
+      "at": "2026-10-28 04:32:50.598",
+      "line": 93,
+      "direction": "TX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 13,
+      "stream_offset": 231
+    },
+    {
+      "role": "A",
+      "pid": 28824,
+      "at": "2026-10-28 04:32:51.020",
+      "line": 94,
+      "direction": "RX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 85,
+      "stream_offset": 189
+    },
+    {
+      "role": "A",
+      "pid": 28824,
+      "at": "2026-10-28 04:32:51.245",
+      "line": 102,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 1838
+    },
+    {
+      "role": "B",
+      "pid": 66396,
+      "at": "2026-10-28 04:33:08.569",
+      "line": 93,
+      "direction": "TX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 13,
+      "stream_offset": 225
+    },
+    {
+      "role": "B",
+      "pid": 66396,
+      "at": "2026-10-28 04:33:08.577",
+      "line": 94,
+      "direction": "RX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 85,
+      "stream_offset": 244
+    },
+    {
+      "role": "B",
+      "pid": 66396,
+      "at": "2026-10-28 04:33:08.764",
+      "line": 97,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 1941
+    }
+  ],
+  "selected_rosters": [
+    {
+      "role": "A",
+      "pid": 28824,
+      "event_index": 5,
+      "at": "2026-10-28 04:34:39.377",
+      "source_line": 118,
+      "entry": {
+        "channel": 1,
+        "character_level": 6,
+        "name": "heal1024",
+        "blocked": 0,
+        "relationship_level": 3,
+        "current_exp": 4,
+        "next_exp": 5
+      }
+    },
+    {
+      "role": "B",
+      "pid": 66396,
+      "event_index": 4,
+      "at": "2026-10-28 04:34:41.669",
+      "source_line": 111,
+      "entry": {
+        "channel": 1,
+        "character_level": 45,
+        "name": "mageco",
+        "blocked": 0,
+        "relationship_level": 3,
+        "current_exp": 4,
+        "next_exp": 5
+      }
+    }
+  ],
+  "source_window": "Initial normal mentor characters through04:34:41. Later ordinary B52 selection/failedPvP attempts are outside this mentor restart claim. Later paused state hash is not used as the initial restart baseline.",
+  "scope": "Persistence/normal world+roster only on CACA managed build. Historical award cases remain695 managed01D664; final managed/native build and behavior-overlap binding pending.",
+  "natural_sweep_native_proven": false
+}

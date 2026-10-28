@@ -1,0 +1,159 @@
+{
+  "source_sha256": "690EDFDFCD4207DADE31C13528B871A2143370652E1275373C17D1C35C044E80",
+  "scope": "readonly native HP/positions plus real built-in input; no packets/memory writes",
+  "outcome": "native_zero_hp_observed",
+  "samples": [
+    {
+      "attacker_hp": 15042,
+      "target_hp": 12742,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 12264,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 11986,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 11986,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 11533,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 11247,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 11247,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 10325,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 9423,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 8462,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 7296,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 6357,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 5429,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 4488,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 3548,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 2629,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 1708,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 754,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "attacker_hp": 15042,
+      "target_hp": 0,
+      "states": [
+        4,
+        4
+      ]
+    }
+  ]
+}

@@ -1,0 +1,320 @@
+{
+  "schema": "act1-creature-gift-final-publication/v1",
+  "scope": "Component PASS_AS_SCOPED; final normal runtime /30AD PvP/restoration remain PENDING_ROOT",
+  "document_at_publication": {
+    "path": "../../2026-10-28-creature-gift-verification.md",
+    "sha256": "9E94A585F5F404F4E7A0839BD4698FAC8018C9EA1B92DB6FAD270780E1711518",
+    "preserved_snapshot": "../../2026-10-28-creature-gift-final-at-publication.md",
+    "snapshot_sha256": "9E94A585F5F404F4E7A0839BD4698FAC8018C9EA1B92DB6FAD270780E1711518"
+  },
+  "prior_publication": {
+    "manifest": "30AD-unclaimed-publication-manifest.json",
+    "sha256": "B83BD13B44D7A236854E96D12D7723BDF6B00DE56EE82E954F35E056448568EF",
+    "document_snapshot": "../../2026-10-28-creature-gift-unclaimed-at-publication.md",
+    "document_sha256": "C404070EE614E0A5AA91505BD7B6AA26686FCF57DF88D8DA9E0347DF3BBBF760",
+    "old23_assets_unchanged": true
+  },
+  "files": [
+    {
+      "file": "30AD-A-avatar-original-gift-entry.jpg",
+      "sha256": "F0153C4D32CCCC7381EBBEEEAB976503FE3E1CCDDB376B1176E111AAA6894755",
+      "bytes": 306798
+    },
+    {
+      "file": "30AD-A-final-egg-checkout.jpg",
+      "sha256": "49CDAE9341F371136830C6CC0839F8C8F2FF4476E4EE83D4A0F49686B5B39D7D",
+      "bytes": 251355
+    },
+    {
+      "file": "30AD-A-final-egg-gift-committed.jpg",
+      "sha256": "29A82DD3E1A8E2C98AB8F81E620A0F6D3B01C01538C83C98A53941E063DFF22B",
+      "bytes": 292061
+    },
+    {
+      "file": "30AD-A-final-pet-page3.jpg",
+      "sha256": "738CA6DC435E7078D204F5DF15F9AB7AA2434C193CD8663A7507CB56DECA5F14",
+      "bytes": 306989
+    },
+    {
+      "file": "30AD-A-final-recipient-query.jpg",
+      "sha256": "525AE0370C4FC4A13E1E05D08B805930EDB41E7A104CC8675C5C28F580F935DF",
+      "bytes": 304339
+    },
+    {
+      "file": "30AD-A-final-row-opens-recipient.jpg",
+      "sha256": "C17FA8EE732BCE2F67C2F1041956ED516AFD80A6F930B8658B78788908C54D3F",
+      "bytes": 296833
+    },
+    {
+      "file": "30AD-A-food-gift-remains-disabled.jpg",
+      "sha256": "6F27B9B6E39451F114EA74EFAC64C9D55F9DF059907B22000BA1AB732B8A7C6C",
+      "bytes": 339318
+    },
+    {
+      "file": "30AD-A-pet-gift-after-shop-reopen.jpg",
+      "sha256": "7044AAF56BC5B5FFD444E89252B3D87FF456A0CFB21C30264286EE353801E2C6",
+      "bytes": 306802
+    },
+    {
+      "file": "30AD-attempt-B-claim-egg-attachment.jpg",
+      "sha256": "178173A4978E9753BB6880223AB873E0BFBD2DE4BB80F97238CEFCF8E918F77A",
+      "bytes": 393084
+    },
+    {
+      "file": "30AD-attempt-B-native-hatch-dialog.jpg",
+      "sha256": "E5B5A20B9251BA8C9BA2A0F9E13FBFD062B21BC5AC565FDF59045EA1267EE703",
+      "bytes": 388865
+    },
+    {
+      "file": "30AD-attempt-B-restart-read-same-egg.jpg",
+      "sha256": "6C14A5A26D2CC15EABB2CC9C1746DAE822F5188C6906080100D8441685E4246D",
+      "bytes": 377446
+    },
+    {
+      "file": "30AD-authoritative-final-v3.json",
+      "sha256": "9AB4FAE454A297691ECCADB4C44EBF1E48B14A582CF03EED9724B00BB09377F0",
+      "bytes": 54697
+    },
+    {
+      "file": "30AD-authoritative-through-hatched-v3.json",
+      "sha256": "BE83D28B4F81B310A4B8CA00FAB25F98C7E8B93196C340F1CEB158AD7D1EE937",
+      "bytes": 43421
+    },
+    {
+      "file": "30AD-authoritative-unclaimed-v3.json",
+      "sha256": "4D2FA5E1D8A9E6713566CE6E48C00D183EA57D7B378EA8186D4B93A48BDE2C51",
+      "bytes": 22123
+    },
+    {
+      "file": "30AD-B-confirm-native-egg-hatch.jpg",
+      "sha256": "8311C91E2560DE525C32C1AFC7D238487E39333D6C60A0E65CEFD958AE0851D0",
+      "bytes": 386812
+    },
+    {
+      "file": "30AD-B-egg-hatch-native-rightclick.jpg",
+      "sha256": "C7D7FC859E84150E775C94CA03021EFD23977C422C5E3252A00E64148AEC12CA",
+      "bytes": 386914
+    },
+    {
+      "file": "30AD-B-hatched-pet-tooltip.jpg",
+      "sha256": "B66107CBCA6EF0A2E2AC30B6EB25B218729628CD4EDDA04BCB0B069E7F449F37",
+      "bytes": 396263
+    },
+    {
+      "file": "30AD-B-open-egg-inbox.jpg",
+      "sha256": "6A38CCEC8DAA16440AA03B5F257D30446265DCC07761DBD819BEB0675CDF3584",
+      "bytes": 393383
+    },
+    {
+      "file": "30AD-B-read-egg-unclaimed.jpg",
+      "sha256": "32CABF7CDDF9276A5E7DF8EDE1DC877353759208CEFAC6B9FE6ABD02C252EBA3",
+      "bytes": 385348
+    },
+    {
+      "file": "30AD-B-real-egg-claim.jpg",
+      "sha256": "3F71A22C7BCDFA83811334FD778D8C84E1EAD00FF8A19B3A6BB53A5FD47C0E81",
+      "bytes": 386645
+    },
+    {
+      "file": "30AD-B-relogin-pet-tooltip.jpg",
+      "sha256": "0A2B3A7C4DC8640EAA6C110F4235E23ADFF0EA7F5D355EA31FC2190E07B529EA",
+      "bytes": 380807
+    },
+    {
+      "file": "30AD-B-restart-read-egg-confirmed.jpg",
+      "sha256": "CF91E62B2B0E8A46E95555A95728FAB2C24BB5BB8471CDA18F56112FF3658308",
+      "bytes": 386430
+    },
+    {
+      "file": "30AD-B-sealed-egg-tooltip.jpg",
+      "sha256": "68303F43C8535308B313757F549294B89A47D1AE120766FE11738E1051D3F0B5",
+      "bytes": 396861
+    },
+    {
+      "file": "30AD-check-final-v3-before-correction.json",
+      "sha256": "C3109E4C07389258A18C01963F53D2A4E4BECA4399D49EDC459B9C012F47BB18",
+      "bytes": 6675
+    },
+    {
+      "file": "30AD-check-final-v3-corrected.json",
+      "sha256": "CF7E9F3695BEBBF1B61C398304FE84CF3640F4E045F00C23A8843176802C8744",
+      "bytes": 6674
+    },
+    {
+      "file": "30AD-check-unclaimed-v3.json",
+      "sha256": "AAB79E2D9C3722137312E5E3D85D2A85DD0DDB08F65D3AF370958F42FCE486C4",
+      "bytes": 3542
+    },
+    {
+      "file": "30AD-checker-final-green.json",
+      "sha256": "E6F61580B4CE714460ABDE21FFD97ADBBD355E92E2B4A0DB0B12022C3B27211A",
+      "bytes": 993
+    },
+    {
+      "file": "30AD-checker-read-before-restart-red.txt",
+      "sha256": "4E6EC34A1BB29D54B175C7889A219F171EF406B29E0C0340870C9B36A6A0A4B9",
+      "bytes": 1041
+    },
+    {
+      "file": "30AD-entry-images-and-fix1-sha256.json",
+      "sha256": "9352E2207CF32D91A571C629167C9E133014E4ACFFA77F7438BA18EE4C86B926",
+      "bytes": 5189
+    },
+    {
+      "file": "30AD-final-history-checker-replay-fail.json",
+      "sha256": "C3109E4C07389258A18C01963F53D2A4E4BECA4399D49EDC459B9C012F47BB18",
+      "bytes": 6675
+    },
+    {
+      "file": "30AD-final-new-assets-sha256.json",
+      "sha256": "3EB5661CE483FA3A92DA1563F3738EF72CEEB1676150DA943A390043AFA58482",
+      "bytes": 8774
+    },
+    {
+      "file": "30AD-final-public-recheck.json",
+      "sha256": "CF7E9F3695BEBBF1B61C398304FE84CF3640F4E045F00C23A8843176802C8744",
+      "bytes": 6674
+    },
+    {
+      "file": "30AD-native-final-supplement.json",
+      "sha256": "E23F7417FEBF3AE1ACEC364FF8DB53309C0FD815D3E88817FA3E64D9CF45AD34",
+      "bytes": 2663
+    },
+    {
+      "file": "30AD-partial-check-before-correction.json",
+      "sha256": "9DAE36408C9B8FF429927A51DE1DB6D1E3027D75FF5946331E674B0A67CF5469",
+      "bytes": 2199
+    },
+    {
+      "file": "30AD-partial-check-corrected.json",
+      "sha256": "6DC3309B4B4B76E4F351195A89F92523DBA4B74DFB903A6ACE12D5B80DDD661F",
+      "bytes": 2611
+    },
+    {
+      "file": "30AD-unclaimed-history-checker-replay.json",
+      "sha256": "AAB79E2D9C3722137312E5E3D85D2A85DD0DDB08F65D3AF370958F42FCE486C4",
+      "bytes": 3542
+    },
+    {
+      "file": "30AD-unclaimed-publication-manifest.json",
+      "sha256": "B83BD13B44D7A236854E96D12D7723BDF6B00DE56EE82E954F35E056448568EF",
+      "bytes": 3947
+    },
+    {
+      "file": "30AD-unclaimed-recheck.json",
+      "sha256": "AAB79E2D9C3722137312E5E3D85D2A85DD0DDB08F65D3AF370958F42FCE486C4",
+      "bytes": 3542
+    },
+    {
+      "file": "A-Chax-egg-selected.jpg",
+      "sha256": "EBC007B8760B3EE8AD7A9CCE93206F81963E1BA606282163B0E0257C548E37CF",
+      "bytes": 313141
+    },
+    {
+      "file": "A-Chax-gift-disabled-click.jpg",
+      "sha256": "BEDF9F32DD0A554ABB06DD9CB2D858C3041F71E74D2ACEADD016D253C36FF1BC",
+      "bytes": 312949
+    },
+    {
+      "file": "C79-A-egg-row-gift-click.jpg",
+      "sha256": "BEDF9F32DD0A554ABB06DD9CB2D858C3041F71E74D2ACEADD016D253C36FF1BC",
+      "bytes": 312949
+    },
+    {
+      "file": "C79-A-pet-mall-green.jpg",
+      "sha256": "1D73D31F9114263820A02BEDFA71451B3AB2002A91FA1ADAFA53AFB120E70288",
+      "bytes": 305991
+    },
+    {
+      "file": "C79-entry-red-summary.json",
+      "sha256": "E5A32825494B0993B5868F7B8FF22128FD4A7EEC49167A285BDD22CD1B51AE9C",
+      "bytes": 2304
+    },
+    {
+      "file": "C79-native-guard-comparison.json",
+      "sha256": "B175E7F5C6A0D9377D8FFED2DD4EA1CBE8FBC8AF752F3BE43140ECE4BDDCC792",
+      "bytes": 1575
+    },
+    {
+      "file": "entry-red-sha256.json",
+      "sha256": "F4BA1FCF44C27E1BB44A694F089490B1C872DD6FDCB2F1F51DF08A422220F142",
+      "bytes": 523
+    },
+    {
+      "file": "native-entry-red-check.json",
+      "sha256": "96C9B9823D35B121D24C60A3C2D6101BA769FBE8092A6D96A409B418EFFFB86D",
+      "bytes": 2490
+    },
+    {
+      "file": "native-entry-red.json",
+      "sha256": "37727DA1A01258BB67F645D2EDFE875C6BC4FBE12108D1A38D7B46D72A7CA528",
+      "bytes": 17799
+    },
+    {
+      "file": "native-row-fix1-focused.txt",
+      "sha256": "C67903E6A85AB2619D4AD07ABA10DEC644C54C67650CD5FD839398C7EB2EA34C",
+      "bytes": 32
+    },
+    {
+      "file": "native-row-fix1-full.txt",
+      "sha256": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547",
+      "bytes": 34
+    },
+    {
+      "file": "native-row-fix1-green-build.txt",
+      "sha256": "A6F25DFE9B2405656151F7C62718566E7616B4F3CC802F04BCA278A4AB78652A",
+      "bytes": 7397
+    },
+    {
+      "file": "native-row-fix1-red-build.txt",
+      "sha256": "1986E61990C092B68D07B567F986238AC363893D76F19F3673B35797AB347D7A",
+      "bytes": 9382
+    },
+    {
+      "file": "native-row-fix1-red.txt",
+      "sha256": "BA6C07A73EC25528CA7EC3CE682C5C6717A93A62A4083A352471943EE798FBA1",
+      "bytes": 382
+    },
+    {
+      "file": "native-row-fix1-release-build.txt",
+      "sha256": "6A27EF31D0B7762B96AF7C1916EBB13A2E42C0BE0993E8300A694769FDC0F2B5",
+      "bytes": 8795
+    },
+    {
+      "file": "native-row-fix1-review.md",
+      "sha256": "6A992B88FDBDB22BA94ECB5D1474497C2D7B380C49C039A569E2164C1A45A976",
+      "bytes": 6862
+    },
+    {
+      "file": "native-row-fix1-source-proof.json",
+      "sha256": "09B6EAABB326F7B3C43ECFB0B4231AE562A0912C3D4E7CCDB731950EB4E4B662",
+      "bytes": 2661
+    },
+    {
+      "file": "verify-native-evidence-v3-before-read-chain-13AA.py",
+      "sha256": "13AA07A20C9AA911436481E0AD512C4A2328114DDD9084F36F15BA1211D991F0",
+      "bytes": 22736
+    },
+    {
+      "file": "verify-native-evidence.py",
+      "sha256": "697767E48F186807EB183DFF7B8F983990FAE19C9F1BC71866253594D06D97AF",
+      "bytes": 24455
+    }
+  ],
+  "file_count": 57,
+  "inventory_rule": "All existing files under this asset directory at publication, except this self manifest. Future additions require a new publication manifest. No existing asset was omitted.",
+  "verification": {
+    "final_checker_passed": 57,
+    "total": 57,
+    "total_game_tx": 103,
+    "all_tx_crc_valid": true,
+    "final_proof_sha256": "9AB4FAE454A297691ECCADB4C44EBF1E48B14A582CF03EED9724B00BB09377F0",
+    "corrected_checker_sha256": "697767E48F186807EB183DFF7B8F983990FAE19C9F1BC71866253594D06D97AF",
+    "old_checker_sha256": "13AA07A20C9AA911436481E0AD512C4A2328114DDD9084F36F15BA1211D991F0",
+    "old_unclaimed_replay": "27/27 PASS",
+    "old_final_replay": "56/57 FAIL (expected historical defect)",
+    "root_original_ui_review": true,
+    "read_screenshot_supplement_freeze_sha256": "803A115299873F643BA4CA9D39083EA16803C38430F024985E9E1657AB4B90CB"
+  },
+  "private_raw_inputs_exported": false
+}

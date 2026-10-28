@@ -20,6 +20,9 @@ compose.yaml text eol=lf
 /knowledge/decisions/assets/2026-10-28-creature-gift/** -text whitespace=cr-at-eol
 /knowledge/decisions/assets/2026-10-28-mentor-master-gold/** -text whitespace=cr-at-eol
 /knowledge/decisions/assets/2026-10-28-overnight-delivery/** -text whitespace=cr-at-eol
+# 两份发布时快照被历史清单按字节引用，保留其原始换行。
+/knowledge/decisions/2026-10-28-creature-gift-unclaimed-at-publication.md -text whitespace=cr-at-eol
+/knowledge/decisions/2026-10-28-creature-gift-final-at-publication.md -text whitespace=cr-at-eol
 # 发布的启动脚本按已验证字节复制到运行目录，保留两种 PowerShell 的原始编码/换行。
 /tools/runtime/Start-NormalServer.ps1 -text whitespace=cr-at-eol
 /tools/runtime/Start-NormalServer.cmd -text whitespace=cr-at-eol

@@ -1,0 +1,99 @@
+{
+  "schema": "act1-creature-final-native-supplement/v1",
+  "status": "PASS_AS_SCOPED",
+  "checks": [
+    {
+      "name": "first full restart uses exact31B4 state",
+      "passed": true
+    },
+    {
+      "name": "second full restart and final state exactA461",
+      "passed": true
+    },
+    {
+      "name": "all three phases contain exactly one gift and one lookup",
+      "passed": true
+    },
+    {
+      "name": "restart and mall regression have no new146 or67",
+      "passed": true
+    },
+    {
+      "name": "all postgift stages cash and quota unchanged",
+      "passed": true
+    },
+    {
+      "name": "claimed hatched relogin UUID and UID stable",
+      "passed": true
+    },
+    {
+      "name": "all103 TX valid",
+      "passed": true
+    }
+  ],
+  "captures": [
+    {
+      "phase": "gift-entry-final",
+      "role": "A",
+      "pid": 47508,
+      "tx": 17,
+      "valid": 17,
+      "errors": 0
+    },
+    {
+      "phase": "gift-entry-final",
+      "role": "B",
+      "pid": 51716,
+      "tx": 17,
+      "valid": 17,
+      "errors": 0
+    },
+    {
+      "phase": "unclaimed-restart",
+      "role": "A",
+      "pid": 72984,
+      "tx": 17,
+      "valid": 17,
+      "errors": 0
+    },
+    {
+      "phase": "unclaimed-restart",
+      "role": "B",
+      "pid": 47016,
+      "tx": 20,
+      "valid": 20,
+      "errors": 0
+    },
+    {
+      "phase": "hatched-relogin",
+      "role": "A",
+      "pid": 5372,
+      "tx": 16,
+      "valid": 16,
+      "errors": 0
+    },
+    {
+      "phase": "hatched-relogin",
+      "role": "B",
+      "pid": 77584,
+      "tx": 16,
+      "valid": 16,
+      "errors": 0
+    }
+  ],
+  "read_before_restart": {
+    "phase": "gift-entry-final",
+    "mail_id": 1675276505,
+    "request_at": "2026-10-28 07:44:21.856",
+    "reply_at": "2026-10-28 07:44:21.870",
+    "claim_phase": "unclaimed-restart",
+    "claim_at": "2026-10-28 07:52:48.914",
+    "exact_restart_sha256": "31B4B586EA244BA8C989A2F8434C3231D6EBC7D1930A244C893BFF71210D4435"
+  },
+  "limitations": [
+    "Original read succeeded before exact state restart; native client did not resend CMD144 for already-read mail. Failed checker result retained privately; corrected checker requires full read/success/mail/state/time chain.",
+    "Native food row Gift gray; generic All Gift still present. No claim that all unsupported gift entry points are disabled.",
+    "Root viewed original native screenshots; automated checker proves closed packets and selected state only.",
+    "Component scope only; final runtime delivery and restoration remain separate root work."
+  ]
+}

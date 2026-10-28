@@ -1,0 +1,1078 @@
+{
+  "schema": "avatar-derived-short-expiry-proof/v1",
+  "namespace": "native-expiry-short",
+  "phase": "short-expiry",
+  "checked_at": "2026-10-28T06:27:54.379098+08:00",
+  "native_acceptance": "AVATAR_TASK4_PASSED_DELIVERY_PENDING",
+  "status": "derived_short_expiry_passed_delivery_pending",
+  "passed": 82,
+  "total": 82,
+  "checks": [
+    {
+      "name": "closed derived namespace phase",
+      "passed": true,
+      "actual": [
+        "native-expiry-short",
+        "short-expiry"
+      ],
+      "expected": [
+        "native-expiry-short",
+        "short-expiry"
+      ]
+    },
+    {
+      "name": "frozen input hash netdump-30652.log",
+      "passed": true,
+      "actual": "46DFDF0795125A6B037D517A6D932A1C9F58DC0087C81A3160599CB23258C5BB",
+      "expected": "46DFDF0795125A6B037D517A6D932A1C9F58DC0087C81A3160599CB23258C5BB"
+    },
+    {
+      "name": "frozen input hash netdump-59352.log",
+      "passed": true,
+      "actual": "085B4336EB9B49A851732D6A8D4C5479AF9B2601BED0466D7A134BC8132D3B5B",
+      "expected": "085B4336EB9B49A851732D6A8D4C5479AF9B2601BED0466D7A134BC8132D3B5B"
+    },
+    {
+      "name": "frozen input hash server-short-expiry.log",
+      "passed": true,
+      "actual": "DB5FB9DD7A6713E8F185A3915BF2446DFA27C97BBA453E28762E12D0A99BA4BC",
+      "expected": "DB5FB9DD7A6713E8F185A3915BF2446DFA27C97BBA453E28762E12D0A99BA4BC"
+    },
+    {
+      "name": "frozen input hash server-short-expiry.err.log",
+      "passed": true,
+      "actual": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "expected": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "frozen input hash deployment-expired-final-paused.json",
+      "passed": true,
+      "actual": "CD57DCEB3B424E17F114FE4370D3604CD440BF04251798BD762A5B19FD461CEB",
+      "expected": "CD57DCEB3B424E17F114FE4370D3604CD440BF04251798BD762A5B19FD461CEB"
+    },
+    {
+      "name": "frozen input hash state-expired-final-paused.json",
+      "passed": true,
+      "actual": "62B0C1BE17AE6E34C75CC1F174E8EC747747BD4DBDCAB174417A66F9B51BBBC2",
+      "expected": "62B0C1BE17AE6E34C75CC1F174E8EC747747BD4DBDCAB174417A66F9B51BBBC2"
+    },
+    {
+      "name": "frozen input hash derivation.json",
+      "passed": true,
+      "actual": "05A8C377B44BE8A3AE8490706A04231BBACCA7F2CE55D7B82DEEB336641F64DD",
+      "expected": "05A8C377B44BE8A3AE8490706A04231BBACCA7F2CE55D7B82DEEB336641F64DD"
+    },
+    {
+      "name": "frozen input hash source-before.json",
+      "passed": true,
+      "actual": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B",
+      "expected": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B"
+    },
+    {
+      "name": "frozen input hash derived-before-start.json",
+      "passed": true,
+      "actual": "4AE16CAC0EAF952AD822B2105BA0DA8159D7E07A74429812C17F69B8409642E1",
+      "expected": "4AE16CAC0EAF952AD822B2105BA0DA8159D7E07A74429812C17F69B8409642E1"
+    },
+    {
+      "name": "frozen input hash expiry-manifest.json",
+      "passed": true,
+      "actual": "8E5863CDD8D1A766CCCFA80898CC81E176AC3887BDEBFDB517986293D2A198DF",
+      "expected": "8E5863CDD8D1A766CCCFA80898CC81E176AC3887BDEBFDB517986293D2A198DF"
+    },
+    {
+      "name": "frozen input hash B-before-short-expiry.jpg",
+      "passed": true,
+      "actual": "445E59B765B67FAE8C2DEF42FA4DA69713A1671C3C4592923E9C1CD512AF914A",
+      "expected": "445E59B765B67FAE8C2DEF42FA4DA69713A1671C3C4592923E9C1CD512AF914A"
+    },
+    {
+      "name": "frozen input hash B-after-short-expiry.jpg",
+      "passed": true,
+      "actual": "3D45A80F9F1793F20B8E04D1546F2AE5B6CAF5057F33E77C51DD2C8D5E14F8DA",
+      "expected": "3D45A80F9F1793F20B8E04D1546F2AE5B6CAF5057F33E77C51DD2C8D5E14F8DA"
+    },
+    {
+      "name": "frozen input hash B-before-short-expiry.json",
+      "passed": true,
+      "actual": "4333C955B9FEF082A8F63CD522C4BA2A913EB3D960B904A019E5E3684DE3F2A0",
+      "expected": "4333C955B9FEF082A8F63CD522C4BA2A913EB3D960B904A019E5E3684DE3F2A0"
+    },
+    {
+      "name": "frozen input hash B-after-short-expiry.json",
+      "passed": true,
+      "actual": "667AA38332C66CE02D8ED9117D55F89C43B77AF1D515FDE54CFFF0B5EA2E1AC3",
+      "expected": "667AA38332C66CE02D8ED9117D55F89C43B77AF1D515FDE54CFFF0B5EA2E1AC3"
+    },
+    {
+      "name": "frozen input hash controller-B-before-short-expiry.json",
+      "passed": true,
+      "actual": "DF8434D937573884020CAA4A9B6DABF844EBFA3FB153FCBEC7A3F6C6CE4A08AB",
+      "expected": "DF8434D937573884020CAA4A9B6DABF844EBFA3FB153FCBEC7A3F6C6CE4A08AB"
+    },
+    {
+      "name": "frozen input hash controller-B-after-short-expiry.json",
+      "passed": true,
+      "actual": "2EE6C5FB2FA8AAF2FF79B8E78F35BA83FE4FBF73B2662E5ECE372FE6A6EBB465",
+      "expected": "2EE6C5FB2FA8AAF2FF79B8E78F35BA83FE4FBF73B2662E5ECE372FE6A6EBB465"
+    },
+    {
+      "name": "frozen input hash driver-B-before-short-expiry.log",
+      "passed": true,
+      "actual": "4613A618DD6B4867F4B2532480CD1001DB034F5AEB1FF8C67789085C5F62A746",
+      "expected": "4613A618DD6B4867F4B2532480CD1001DB034F5AEB1FF8C67789085C5F62A746"
+    },
+    {
+      "name": "frozen input hash driver-B-after-short-expiry.log",
+      "passed": true,
+      "actual": "0559BACB6E6425D95130A925FA451F3C609F81EEA92198E0425C8A4F28773F05",
+      "expected": "0559BACB6E6425D95130A925FA451F3C609F81EEA92198E0425C8A4F28773F05"
+    },
+    {
+      "name": "frozen input hash near-deadline-observation.json",
+      "passed": true,
+      "actual": "B0E50D9103C7158FECAB762FF41AA7AE757C30857742C501D2093B3754AFA7E5",
+      "expected": "B0E50D9103C7158FECAB762FF41AA7AE757C30857742C501D2093B3754AFA7E5"
+    },
+    {
+      "name": "frozen input hash build-hashes-short-expiry.json",
+      "passed": true,
+      "actual": "336412CF56EC777B46A2FFFBFC4E7E933F2FC30A475DE552A36D7631C0E4FAAE",
+      "expected": "336412CF56EC777B46A2FFFBFC4E7E933F2FC30A475DE552A36D7631C0E4FAAE"
+    },
+    {
+      "name": "source real claimed gift snapshot",
+      "passed": true,
+      "actual": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B",
+      "expected": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B"
+    },
+    {
+      "name": "derived initial snapshot",
+      "passed": true,
+      "actual": "4AE16CAC0EAF952AD822B2105BA0DA8159D7E07A74429812C17F69B8409642E1",
+      "expected": "4AE16CAC0EAF952AD822B2105BA0DA8159D7E07A74429812C17F69B8409642E1"
+    },
+    {
+      "name": "expired snapshot",
+      "passed": true,
+      "actual": "62B0C1BE17AE6E34C75CC1F174E8EC747747BD4DBDCAB174417A66F9B51BBBC2",
+      "expected": "62B0C1BE17AE6E34C75CC1F174E8EC747747BD4DBDCAB174417A66F9B51BBBC2"
+    },
+    {
+      "name": "actual derivation changes exactly one field",
+      "passed": true,
+      "actual": [
+        "/Accounts/0/Characters/2/AvatarInventory/0/AvatarExpiresAtUnixSeconds"
+      ],
+      "expected": [
+        "/Accounts/0/Characters/2/AvatarInventory/0/AvatarExpiresAtUnixSeconds"
+      ]
+    },
+    {
+      "name": "recorded one-field derivation",
+      "passed": true,
+      "actual": [
+        "/Accounts/0/Characters/2/AvatarInventory/0/AvatarExpiresAtUnixSeconds"
+      ],
+      "expected": [
+        "/Accounts/0/Characters/2/AvatarInventory/0/AvatarExpiresAtUnixSeconds"
+      ]
+    },
+    {
+      "name": "derived duration120s",
+      "passed": true,
+      "actual": [
+        1793139570,
+        120,
+        1793139690
+      ],
+      "expected": [
+        1793139570,
+        120,
+        1793139690
+      ]
+    },
+    {
+      "name": "no OS clock mutation recorded",
+      "passed": true,
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "original deadline and chosen instance",
+      "passed": true,
+      "actual": [
+        1793741733,
+        "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+      ],
+      "expected": [
+        1793741733,
+        "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+      ]
+    },
+    {
+      "name": "only item deadline value changes",
+      "passed": true,
+      "actual": {
+        "Slot": 0,
+        "ItemId": 51020,
+        "CountOrValue": 1,
+        "State": 0,
+        "Durability": 0,
+        "SealState": 0,
+        "AvatarExpireAt": 604800,
+        "AvatarAbilityIndex": 4,
+        "CreatureStomach": null,
+        "CreatureExperience": null,
+        "CreatureLevel": null,
+        "CreatureName": null,
+        "CreatureNoCharge": null,
+        "CreatureStomachRemainderSeconds": null,
+        "EquipmentQualitySeed": null,
+        "InstanceId": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14",
+        "AvatarExpiresAtUnixSeconds": 1793741733
+      },
+      "expected": {
+        "Slot": 0,
+        "ItemId": 51020,
+        "CountOrValue": 1,
+        "State": 0,
+        "Durability": 0,
+        "SealState": 0,
+        "AvatarExpireAt": 604800,
+        "AvatarAbilityIndex": 4,
+        "CreatureStomach": null,
+        "CreatureExperience": null,
+        "CreatureLevel": null,
+        "CreatureName": null,
+        "CreatureNoCharge": null,
+        "CreatureStomachRemainderSeconds": null,
+        "EquipmentQualitySeed": null,
+        "InstanceId": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14",
+        "AvatarExpiresAtUnixSeconds": 1793741733
+      }
+    },
+    {
+      "name": "duration ability UUID preserved",
+      "passed": true,
+      "actual": [
+        604800,
+        4,
+        "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+      ],
+      "expected": [
+        604800,
+        4,
+        "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+      ]
+    },
+    {
+      "name": "explicit derived deadline",
+      "passed": true,
+      "actual": 1793139690,
+      "expected": 1793139690
+    },
+    {
+      "name": "approved historical build manifest",
+      "passed": true,
+      "actual": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266",
+      "expected": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266"
+    },
+    {
+      "name": "recorded historical artifact DFLegacy.Server.dll",
+      "passed": true,
+      "actual": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+      "expected": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134"
+    },
+    {
+      "name": "retained historical runtime DFLegacy.Server.dll",
+      "passed": true,
+      "actual": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+      "expected": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134"
+    },
+    {
+      "name": "recorded historical artifact DFLegacy.Protocol.dll",
+      "passed": true,
+      "actual": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+      "expected": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E"
+    },
+    {
+      "name": "retained historical runtime DFLegacy.Protocol.dll",
+      "passed": true,
+      "actual": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+      "expected": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E"
+    },
+    {
+      "name": "recorded historical artifact ijl15.dll",
+      "passed": true,
+      "actual": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC",
+      "expected": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC"
+    },
+    {
+      "name": "retained historical runtime ijl15.dll",
+      "passed": true,
+      "actual": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC",
+      "expected": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC"
+    },
+    {
+      "name": "A unchanged scoped cash and inventory",
+      "passed": true,
+      "actual": {
+        "Cash": 26300,
+        "Gold": 50604,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": 0,
+        "GiftReceiveKeysAbsent": true,
+        "Mails": [],
+        "Inventory": [],
+        "AvatarInventory": [],
+        "CreatureInventory": []
+      },
+      "expected": {
+        "Cash": 26300,
+        "Gold": 50604,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": 0,
+        "GiftReceiveKeysAbsent": true,
+        "Mails": [],
+        "Inventory": [],
+        "AvatarInventory": [],
+        "CreatureInventory": []
+      }
+    },
+    {
+      "name": "B only selected avatar removed",
+      "passed": true,
+      "actual": {
+        "Cash": 997790,
+        "Gold": 50176,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1,
+        "GiftReceiveKeysAbsent": false,
+        "Mails": [
+          {
+            "Id": 1159876143,
+            "SentAt": 1793136933,
+            "ExpiresAt": 1795728933,
+            "Attachment": null
+          }
+        ],
+        "Inventory": [],
+        "AvatarInventory": [],
+        "CreatureInventory": []
+      },
+      "expected": {
+        "Cash": 997790,
+        "Gold": 50176,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1,
+        "GiftReceiveKeysAbsent": false,
+        "Mails": [
+          {
+            "Id": 1159876143,
+            "SentAt": 1793136933,
+            "ExpiresAt": 1795728933,
+            "Attachment": null
+          }
+        ],
+        "Inventory": [],
+        "AvatarInventory": [],
+        "CreatureInventory": []
+      }
+    },
+    {
+      "name": "cash and monthly quota unchanged",
+      "passed": true,
+      "actual": [
+        26300,
+        997790,
+        202610,
+        1
+      ],
+      "expected": [
+        26300,
+        997790,
+        202610,
+        1
+      ]
+    },
+    {
+      "name": "expired target UUID absent from avatar bag",
+      "passed": true,
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "target UUID tombstoned exactly once",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "expired tombstones otherwise preserved",
+      "passed": true,
+      "actual": [
+        "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+      ],
+      "expected": [
+        "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+      ]
+    },
+    {
+      "name": "original mail text record retains null attachment",
+      "passed": true,
+      "actual": [
+        {
+          "Id": 1159876143,
+          "SentAt": 1793136933,
+          "ExpiresAt": 1795728933,
+          "Attachment": null
+        }
+      ],
+      "expected": [
+        {
+          "Id": 1159876143,
+          "SentAt": 1793136933,
+          "ExpiresAt": 1795728933,
+          "Attachment": null
+        }
+      ]
+    },
+    {
+      "name": "runtime changes confined to expiry and normal6am fatigue reset",
+      "passed": true,
+      "actual": [
+        "/Accounts/0/Characters/0/UsedFatigue",
+        "/Accounts/0/Characters/2/AvatarInventory",
+        "/Accounts/0/Characters/2/ExpiredAvatarInstanceIds",
+        "/Accounts/0/Characters/2/UsedFatigue",
+        "/Accounts/1/Characters/0/UsedFatigue",
+        "/Accounts/1/Characters/1/UsedFatigue",
+        "/FatigueDayKey"
+      ],
+      "expected": [
+        "/Accounts/0/Characters/0/UsedFatigue",
+        "/Accounts/0/Characters/2/AvatarInventory",
+        "/Accounts/0/Characters/2/ExpiredAvatarInstanceIds",
+        "/Accounts/0/Characters/2/UsedFatigue",
+        "/Accounts/1/Characters/0/UsedFatigue",
+        "/Accounts/1/Characters/1/UsedFatigue",
+        "/FatigueDayKey"
+      ]
+    },
+    {
+      "name": "normal fatigue day rollover",
+      "passed": true,
+      "actual": [
+        20261027,
+        20261028
+      ],
+      "expected": [
+        20261027,
+        20261028
+      ]
+    },
+    {
+      "name": "normal fatigue reset (0, 0)",
+      "passed": true,
+      "actual": [
+        2,
+        0
+      ],
+      "expected": [
+        2,
+        0
+      ]
+    },
+    {
+      "name": "normal fatigue reset (0, 2)",
+      "passed": true,
+      "actual": [
+        3,
+        0
+      ],
+      "expected": [
+        3,
+        0
+      ]
+    },
+    {
+      "name": "normal fatigue reset (1, 0)",
+      "passed": true,
+      "actual": [
+        1,
+        0
+      ],
+      "expected": [
+        1,
+        0
+      ]
+    },
+    {
+      "name": "normal fatigue reset (1, 1)",
+      "passed": true,
+      "actual": [
+        3,
+        0
+      ],
+      "expected": [
+        3,
+        0
+      ]
+    },
+    {
+      "name": "misnamed near observation is actually15s after deadline",
+      "passed": true,
+      "actual": [
+        1793139705,
+        true
+      ],
+      "expected": [
+        1793139705,
+        true
+      ]
+    },
+    {
+      "name": "after observation no UUID and tombstone",
+      "passed": true,
+      "actual": [
+        [],
+        true,
+        false
+      ],
+      "expected": [
+        [],
+        true,
+        false
+      ]
+    },
+    {
+      "name": "same native B process in both screenshots",
+      "passed": true,
+      "actual": [
+        59352,
+        59352
+      ],
+      "expected": [
+        59352,
+        59352
+      ]
+    },
+    {
+      "name": "both built-in screenshot plans completed",
+      "passed": true,
+      "actual": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "expected": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "name": "before screenshot plan before actual deadline",
+      "passed": true,
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "after screenshot is capture-only input",
+      "passed": true,
+      "actual": [
+        {
+          "t": 500,
+          "op": "key",
+          "vk": 44,
+          "dur": 200
+        }
+      ],
+      "expected": [
+        {
+          "t": 500,
+          "op": "key",
+          "vk": 44,
+          "dur": 200
+        }
+      ]
+    },
+    {
+      "name": "short expiry authoritative stopped journal",
+      "passed": true,
+      "actual": "stopped",
+      "expected": "stopped"
+    },
+    {
+      "name": "A TX_crc_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A selected_layout_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A incomplete_tcp_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A disabled_flows",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A omitted_selected_events",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A every gameplay TX CRC checked",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A immutable complete log",
+      "passed": true,
+      "actual": [
+        0,
+        0
+      ],
+      "expected": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "B TX_crc_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B selected_layout_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B incomplete_tcp_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B disabled_flows",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B omitted_selected_events",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B every gameplay TX CRC checked",
+      "passed": true,
+      "actual": 11,
+      "expected": 11
+    },
+    {
+      "name": "B immutable complete log",
+      "passed": true,
+      "actual": [
+        0,
+        0
+      ],
+      "expected": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "A channel-only no gameplay evidence",
+      "passed": true,
+      "actual": [
+        "not_ready",
+        0,
+        0
+      ],
+      "expected": [
+        "not_ready",
+        0,
+        0
+      ]
+    },
+    {
+      "name": "B actual native gameplay",
+      "passed": true,
+      "actual": "observed",
+      "expected": "observed"
+    },
+    {
+      "name": "B actual CRC count",
+      "passed": true,
+      "actual": [
+        11,
+        11
+      ],
+      "expected": [
+        11,
+        11
+      ]
+    },
+    {
+      "name": "B login then expired avatar list",
+      "passed": true,
+      "actual": [
+        1,
+        0
+      ],
+      "expected": [
+        1,
+        0
+      ]
+    },
+    {
+      "name": "login original ability and projected short remaining",
+      "passed": true,
+      "actual": [
+        [
+          [
+            0,
+            51020,
+            81,
+            4
+          ]
+        ],
+        []
+      ],
+      "expected": [
+        [
+          [
+            0,
+            51020,
+            81,
+            4
+          ]
+        ],
+        []
+      ]
+    },
+    {
+      "name": "login remaining from derived deadline",
+      "passed": true,
+      "actual": 81,
+      "expected": 81
+    },
+    {
+      "name": "cleanup native packet strict next second",
+      "passed": true,
+      "actual": 1793139691,
+      "expected": 1793139691
+    },
+    {
+      "name": "no fresh native request near cleanup",
+      "passed": true,
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "no shop or claim in expiry phase",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    }
+  ],
+  "journals": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-expiry-short\\frozen-native-short-expiry\\deployment-expired-final-paused.json",
+      "sha256": "CD57DCEB3B424E17F114FE4370D3604CD440BF04251798BD762A5B19FD461CEB",
+      "phase": "short-expiry",
+      "status": "stopped",
+      "server_pid": 64724,
+      "server_start_time_utc": "2026-10-27T22:19:30.445527Z"
+    }
+  ],
+  "captures": [
+    {
+      "phase": "short-expiry",
+      "role": "A",
+      "pid": 30652,
+      "start_time_utc": "2026-10-27T22:19:34.216382Z",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-expiry-short\\frozen-native-short-expiry\\netdump-30652.log",
+      "journal_refs": [
+        0
+      ],
+      "original_capture_path": "G:\\Game\\DNF_ACT1\\DF\\netdump-30652.log",
+      "sha256": "46DFDF0795125A6B037D517A6D932A1C9F58DC0087C81A3160599CB23258C5BB",
+      "snapshot_bytes": 35875,
+      "events": [],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "46DFDF0795125A6B037D517A6D932A1C9F58DC0087C81A3160599CB23258C5BB",
+      "capture_start_local": "2026-10-28 06:19:34",
+      "appended_after_snapshot_bytes": 0,
+      "counts": {
+        "TX_frames": 0,
+        "RX_frames": 0,
+        "TX_crc_valid": 0,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {},
+      "status": "not_ready"
+    },
+    {
+      "phase": "short-expiry",
+      "role": "B",
+      "pid": 59352,
+      "start_time_utc": "2026-10-27T22:19:35.303465Z",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-expiry-short\\frozen-native-short-expiry\\netdump-59352.log",
+      "journal_refs": [
+        0
+      ],
+      "original_capture_path": "G:\\Game\\DNF_ACT1\\Client_test2\\netdump-59352.log",
+      "sha256": "085B4336EB9B49A851732D6A8D4C5479AF9B2601BED0466D7A134BC8132D3B5B",
+      "snapshot_bytes": 44908,
+      "events": [
+        {
+          "at": "2026-10-28 06:20:09.231",
+          "completed_at": "2026-10-28 06:20:09.231",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 369,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 30,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 06:20:09.231",
+          "completed_at": "2026-10-28 06:20:09.231",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 21,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 1,
+          "target_items": [
+            {
+              "slot": 0,
+              "item_id": 51020,
+              "count_or_value": 81,
+              "state": 0,
+              "durability": 4,
+              "seal": 0
+            }
+          ],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 06:20:09.231",
+          "completed_at": "2026-10-28 06:20:09.231",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 06:20:09.231",
+          "completed_at": "2026-10-28 06:20:09.231",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 06:20:09.231",
+          "completed_at": "2026-10-28 06:20:09.231",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 60,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        },
+        {
+          "at": "2026-10-28 06:21:31.124",
+          "completed_at": "2026-10-28 06:21:31.124",
+          "line": 111,
+          "last_line": 111,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 06:21:31.124",
+          "completed_at": "2026-10-28 06:21:31.124",
+          "line": 111,
+          "last_line": 111,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 60,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "085B4336EB9B49A851732D6A8D4C5479AF9B2601BED0466D7A134BC8132D3B5B",
+      "capture_start_local": "2026-10-28 06:19:35",
+      "appended_after_snapshot_bytes": 0,
+      "counts": {
+        "TX_frames": 11,
+        "RX_frames": 35,
+        "TX_crc_valid": 11,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 7,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 5,
+        "RX_NOTI97": 2
+      },
+      "status": "observed"
+    }
+  ],
+  "game_tx_timeline_B": [
+    {
+      "at": "2026-10-28 06:20:05.057",
+      "op": 0
+    },
+    {
+      "at": "2026-10-28 06:20:05.091",
+      "op": 1
+    },
+    {
+      "at": "2026-10-28 06:20:05.097",
+      "op": 161
+    },
+    {
+      "at": "2026-10-28 06:20:05.103",
+      "op": 8
+    },
+    {
+      "at": "2026-10-28 06:20:05.188",
+      "op": 2
+    },
+    {
+      "at": "2026-10-28 06:20:08.678",
+      "op": 4
+    },
+    {
+      "at": "2026-10-28 06:20:09.056",
+      "op": 82
+    },
+    {
+      "at": "2026-10-28 06:20:09.077",
+      "op": 37
+    },
+    {
+      "at": "2026-10-28 06:20:09.325",
+      "op": 130
+    },
+    {
+      "at": "2026-10-28 06:21:05.103",
+      "op": 161
+    },
+    {
+      "at": "2026-10-28 06:22:05.100",
+      "op": 161
+    }
+  ],
+  "checker_sha256": "C420E5BFD37AE0CA232D36E9FDA381F20D2B61C4F49444A1AE9DDA34B8601B6C",
+  "helper_sha256": "C0E8AB45084B8C09309E6319ADD7112ADF0D43FAE981B1AC1D8589126F50A39C",
+  "frozen_manifest_sha256": "29ED8D3CEEE2DAB1ADEE149220ED512428CE1158FAE2EF7E91CD417A098CD03C",
+  "metadata_manifest_sha256": "FD3DDD63B24CE1A5D20A04141BE28B631DF2F98B4E68119825B815C74FB7D783",
+  "protected_file_scope_at_pause": {
+    "manifest_sha256": "8E5863CDD8D1A766CCCFA80898CC81E176AC3887BDEBFDB517986293D2A198DF",
+    "listed_files": 651,
+    "basis": "Root executed PauseExpiry protected-file guards at close; no future root state/journal reread is performed by this checker."
+  },
+  "pending": [
+    "final integrated source-diff/build binding",
+    "final delivery and original environment restoration"
+  ],
+  "disclosures": [
+    "Exactly one absolute deadline derived to120s; original UUID/ability/duration preserved. Not natural seven-day expiry.",
+    "Native tooltip rounds to1hour; it does not display120s.",
+    "near-deadline-observation is at+15s; no native equality-boundary test claimed.",
+    "No permanent avatar inserted into this namespace; permanent control is a prior independent gift case.",
+    "Source to derived changes one field. Runtime normal6am fatigue rollover is separately accounted for.",
+    "A channel-only; B same process before/after. All avatar captures use historical743 native and approvedA0EE managed artifacts.",
+    "Raw auth/full state remain private. Later final native changes require separate reviewed integration binding, not false byte identity."
+  ]
+}

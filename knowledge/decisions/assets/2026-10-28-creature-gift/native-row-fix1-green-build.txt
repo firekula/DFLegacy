@@ -1,0 +1,59 @@
+适用于 .NET Framework MSBuild 版本 18.11.1-1.26513.3+940033be3
+生成启动时间为 2026/10/28 7:15:45。
+
+     1>节点 1 上的项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj”(默认目标)。
+     1>PrepareForBuild:
+         已启用结构化输出。编译器诊断的格式设置将反映错误层次结构。有关详细信息，请参阅 https://aka.ms/cpp/structured-output。
+       InitializeBuildStatus:
+         正在创建“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/DFLegacy.7C1A6F42.tlog\unsuccessfulbuild”，因为已指定“AlwaysCreate”。
+         正在对“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/DFLegacy.7C1A6F42.tlog\unsuccessfulbuild”执行 Touch 任务。
+       ClCompile:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\CL.exe /c /I..\include /I..\src /Zi /nologo /W4 /WX /diagnostics:column /sdl /O2 /Oi /Oy- /GL /D UNICODE /D _UNICODE /D NDEBUG /D _UNICODE /D UNICODE /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /permissive- /Fo"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/" /Fd"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/vc145.pdb" /external:W4 /Gd /TP /analyze- /FC /errorReport:queue ..\src\creature_gift_row.cpp creature_gift_row_tests.cpp
+         creature_gift_row.cpp
+         creature_gift_row_tests.cpp
+       Link:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\link.exe /ERRORREPORT:QUEUE /OUT:"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/tests/ijl15_tests.exe" /NOLOGO shlwapi.lib ws2_32.lib user32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/tests/ijl15_tests.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG:incremental /LTCGOUT:"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/ijl15_tests.iobj" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/tests/ijl15_tests.lib" /MACHINE:X86 /SAFESEH "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/auto_input.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/external_string_table.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/ijl15_config.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/memory_patch.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/net_dump.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/output_paths.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/stage_follow.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/stage_follow_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/summon_owner_death.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/summon_owner_death_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/party_combat_detail.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/party_combat_detail_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/mage_skill_contact.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/mage_skill_contact_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/boss_room_death.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/boss_room_death_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/channel_reentry.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/channel_switch.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/creature_gift_row.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/channel_reentry_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/channel_switch_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/creature_gift_row_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/priest_heal_target.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/priest_heal_target_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/ground_item_removal.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/ground_item_removal_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/party_card_display.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/party_card_display_tests.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/ijl15_tests.obj"
+         正在生成代码
+         4 of 1326 functions ( 0.3%) were compiled, the rest were copied from previous compilation.
+           0 functions were new in current compilation
+           3 functions had inline decision re-evaluated but remain unchanged
+         已完成代码的生成
+         DFLegacy.Ijl15.Tests.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\creature-gift-row-fix1\tests\ijl15_tests.exe
+       FinalizeBuildStatus:
+         正在删除文件“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/DFLegacy.7C1A6F42.tlog\unsuccessfulbuild”。
+         正在对“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-tests/DFLegacy.7C1A6F42.tlog\DFLegacy.Ijl15.Tests.lastbuildstate”执行 Touch 任务。
+     1>已完成生成项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj”(默认目标)的操作。
+
+已成功生成。
+    0 个警告
+    0 个错误
+
+已用时间 00:00:02.28

@@ -1,0 +1,1450 @@
+{
+  "schema": "avatar-gift-thirty-day-proof/v1",
+  "case": "avatar30d",
+  "phase": "initial",
+  "native_acceptance": "PARTIAL",
+  "checked_at": "2026-10-28T05:46:26.610009+08:00",
+  "status": "thirty_day_gift_claim_passed_remaining_pending",
+  "passed": 82,
+  "total": 82,
+  "checks": [
+    {
+      "name": "closed case/phase",
+      "passed": true,
+      "actual": [
+        "avatar30d",
+        "initial"
+      ],
+      "expected": [
+        "avatar30d",
+        "initial"
+      ]
+    },
+    {
+      "name": "frozen SHA256 netdump-71404.log",
+      "passed": true,
+      "actual": "EDF218A811EAA8908F1E70918FAE01BE6338A1F888F65B5A53452197AA66BBD9",
+      "expected": "EDF218A811EAA8908F1E70918FAE01BE6338A1F888F65B5A53452197AA66BBD9"
+    },
+    {
+      "name": "frozen SHA256 netdump-59396.log",
+      "passed": true,
+      "actual": "2E3C42960881C527FFED745629F568FD06D4E5F499E882C87A4A06B44CA1B028",
+      "expected": "2E3C42960881C527FFED745629F568FD06D4E5F499E882C87A4A06B44CA1B028"
+    },
+    {
+      "name": "frozen SHA256 server-initial.log",
+      "passed": true,
+      "actual": "62B0403E015C8F77620B31DFC111086AEE91B1D06ED7676F0A78B6F3CE112D78",
+      "expected": "62B0403E015C8F77620B31DFC111086AEE91B1D06ED7676F0A78B6F3CE112D78"
+    },
+    {
+      "name": "frozen SHA256 server-initial.err.log",
+      "passed": true,
+      "actual": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "expected": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "frozen SHA256 deployment-claimed-final-paused.json",
+      "passed": true,
+      "actual": "3F6E1CE50A4D63C1C10F2AE6967E6DD537E257C8B4EFC93D733A359C989A1E40",
+      "expected": "3F6E1CE50A4D63C1C10F2AE6967E6DD537E257C8B4EFC93D733A359C989A1E40"
+    },
+    {
+      "name": "frozen SHA256 state-claimed-final-paused.json",
+      "passed": true,
+      "actual": "BD009DFD70B72085D8B81AC8541BFE39618E3782EAE98CD064A512BE439FDDCF",
+      "expected": "BD009DFD70B72085D8B81AC8541BFE39618E3782EAE98CD064A512BE439FDDCF"
+    },
+    {
+      "name": "final paused state",
+      "passed": true,
+      "actual": "BD009DFD70B72085D8B81AC8541BFE39618E3782EAE98CD064A512BE439FDDCF",
+      "expected": "BD009DFD70B72085D8B81AC8541BFE39618E3782EAE98CD064A512BE439FDDCF"
+    },
+    {
+      "name": "independent original baseline",
+      "passed": true,
+      "actual": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+      "expected": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52"
+    },
+    {
+      "name": "actual prebusiness observer original hash",
+      "passed": true,
+      "actual": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+      "expected": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52"
+    },
+    {
+      "name": "prebusiness A/B cash",
+      "passed": true,
+      "actual": [
+        26600,
+        997790
+      ],
+      "expected": [
+        26600,
+        997790
+      ]
+    },
+    {
+      "name": "prebusiness recipient month count absent and zero",
+      "passed": true,
+      "actual": [
+        true,
+        0
+      ],
+      "expected": [
+        true,
+        0
+      ]
+    },
+    {
+      "name": "approved manifest bound",
+      "passed": true,
+      "actual": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266",
+      "expected": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266"
+    },
+    {
+      "name": "approved manifest retained",
+      "passed": true,
+      "actual": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266",
+      "expected": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266"
+    },
+    {
+      "name": "source commit",
+      "passed": true,
+      "actual": "5078da27a4807695f002ceea61333c43e1932ce4",
+      "expected": "5078da27a4807695f002ceea61333c43e1932ce4"
+    },
+    {
+      "name": "recorded loaded artifact DFLegacy.Server.dll",
+      "passed": true,
+      "actual": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+      "expected": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134"
+    },
+    {
+      "name": "retained runtime artifact DFLegacy.Server.dll",
+      "passed": true,
+      "actual": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+      "expected": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134"
+    },
+    {
+      "name": "recorded loaded artifact DFLegacy.Protocol.dll",
+      "passed": true,
+      "actual": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+      "expected": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E"
+    },
+    {
+      "name": "retained runtime artifact DFLegacy.Protocol.dll",
+      "passed": true,
+      "actual": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+      "expected": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E"
+    },
+    {
+      "name": "recorded loaded artifact ijl15.dll",
+      "passed": true,
+      "actual": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC",
+      "expected": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC"
+    },
+    {
+      "name": "retained runtime artifact ijl15.dll",
+      "passed": true,
+      "actual": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC",
+      "expected": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC"
+    },
+    {
+      "name": "explicit journal stopped",
+      "passed": true,
+      "actual": "stopped",
+      "expected": "stopped"
+    },
+    {
+      "name": "A actual selected native capture",
+      "passed": true,
+      "actual": "observed",
+      "expected": "observed"
+    },
+    {
+      "name": "A TX_crc_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A selected_layout_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A incomplete_tcp_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A disabled_flows",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A omitted_selected_events",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A pending_log_line_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A appended_after_snapshot_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A all actual game TX CRCs",
+      "passed": true,
+      "actual": 14,
+      "expected": 14
+    },
+    {
+      "name": "B actual selected native capture",
+      "passed": true,
+      "actual": "observed",
+      "expected": "observed"
+    },
+    {
+      "name": "B TX_crc_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B selected_layout_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B incomplete_tcp_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B disabled_flows",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B omitted_selected_events",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B pending_log_line_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B appended_after_snapshot_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B all actual game TX CRCs",
+      "passed": true,
+      "actual": 14,
+      "expected": 14
+    },
+    {
+      "name": "native target reply",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          6,
+          4,
+          0
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          6,
+          4,
+          0
+        ]
+      ]
+    },
+    {
+      "name": "strict CMD67 ability4 term2 commodity270001 gift1",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          7,
+          1,
+          [
+            {
+              "ability_index": 4,
+              "term": 2,
+              "commodity": 270001
+            }
+          ]
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          7,
+          1,
+          [
+            {
+              "ability_index": 4,
+              "term": 2,
+              "commodity": 270001
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "gift success category0 empty buyer reward",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          true,
+          0,
+          270001,
+          0,
+          [],
+          true
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          true,
+          0,
+          270001,
+          0,
+          [],
+          true
+        ]
+      ]
+    },
+    {
+      "name": "actual sender cash wire",
+      "passed": true,
+      "actual": [
+        25940
+      ],
+      "expected": [
+        25940
+      ]
+    },
+    {
+      "name": "observers bind same case",
+      "passed": true,
+      "actual": [
+        "avatar30d",
+        "initial",
+        "avatar30d",
+        "initial"
+      ],
+      "expected": [
+        "avatar30d",
+        "initial",
+        "avatar30d",
+        "initial"
+      ]
+    },
+    {
+      "name": "A cash after 660 charge",
+      "passed": true,
+      "actual": [
+        25940,
+        25940
+      ],
+      "expected": [
+        25940,
+        25940
+      ]
+    },
+    {
+      "name": "committed A unchanged ordinary gold",
+      "passed": true,
+      "actual": 50604,
+      "expected": 50604
+    },
+    {
+      "name": "committed A receives no gift item",
+      "passed": true,
+      "actual": [
+        [],
+        [],
+        [],
+        []
+      ],
+      "expected": [
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "name": "committed B unchanged cash gold and one monthly charge",
+      "passed": true,
+      "actual": [
+        997790,
+        50176,
+        202610,
+        1
+      ],
+      "expected": [
+        997790,
+        50176,
+        202610,
+        1
+      ]
+    },
+    {
+      "name": "claimed A unchanged ordinary gold",
+      "passed": true,
+      "actual": 50604,
+      "expected": 50604
+    },
+    {
+      "name": "claimed A receives no gift item",
+      "passed": true,
+      "actual": [
+        [],
+        [],
+        [],
+        []
+      ],
+      "expected": [
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "name": "claimed B unchanged cash gold and one monthly charge",
+      "passed": true,
+      "actual": [
+        997790,
+        50176,
+        202610,
+        1
+      ],
+      "expected": [
+        997790,
+        50176,
+        202610,
+        1
+      ]
+    },
+    {
+      "name": "initial B still unclaimed bag",
+      "passed": true,
+      "actual": [],
+      "expected": []
+    },
+    {
+      "name": "one target gift mail",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "target mail id and sentAt",
+      "passed": true,
+      "actual": [
+        1185057729,
+        1793137447
+      ],
+      "expected": [
+        1185057729,
+        1793137447
+      ]
+    },
+    {
+      "name": "gift payload identity",
+      "passed": true,
+      "actual": [
+        51020,
+        1,
+        "01a17f52-1206-786d-8bbb-56cb96e570f1",
+        4,
+        2592000,
+        1795729447
+      ],
+      "expected": [
+        51020,
+        1,
+        "01a17f52-1206-786d-8bbb-56cb96e570f1",
+        4,
+        2592000,
+        1795729447
+      ]
+    },
+    {
+      "name": "grant deadline is thirty days",
+      "passed": true,
+      "actual": 2592000,
+      "expected": 2592000
+    },
+    {
+      "name": "one claimed avatar",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "claim retains InstanceId",
+      "passed": true,
+      "actual": "01a17f52-1206-786d-8bbb-56cb96e570f1",
+      "expected": "01a17f52-1206-786d-8bbb-56cb96e570f1"
+    },
+    {
+      "name": "claim retains ItemId",
+      "passed": true,
+      "actual": 51020,
+      "expected": 51020
+    },
+    {
+      "name": "claim retains CountOrValue",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "claim retains AvatarAbilityIndex",
+      "passed": true,
+      "actual": 4,
+      "expected": 4
+    },
+    {
+      "name": "claim retains AvatarExpireAt",
+      "passed": true,
+      "actual": 2592000,
+      "expected": 2592000
+    },
+    {
+      "name": "claim retains AvatarExpiresAtUnixSeconds",
+      "passed": true,
+      "actual": 1795729447,
+      "expected": 1795729447
+    },
+    {
+      "name": "claim slot",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "mail entry remains with null attachment",
+      "passed": true,
+      "actual": [
+        {
+          "Id": 1185057729,
+          "SentAt": 1793137447,
+          "ExpiresAt": 1795729447,
+          "Attachment": null
+        }
+      ],
+      "expected": [
+        {
+          "Id": 1185057729,
+          "SentAt": 1793137447,
+          "ExpiresAt": 1795729447,
+          "Attachment": null
+        }
+      ]
+    },
+    {
+      "name": "paused canonical fields equal claim observation",
+      "passed": true,
+      "actual": {
+        "A": {
+          "Cash": 25940,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1185057729,
+              "SentAt": 1793137447,
+              "ExpiresAt": 1795729447,
+              "Attachment": null
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [
+            {
+              "Slot": 0,
+              "ItemId": 51020,
+              "CountOrValue": 1,
+              "State": 0,
+              "Durability": 0,
+              "SealState": 0,
+              "InstanceId": "01a17f52-1206-786d-8bbb-56cb96e570f1",
+              "AvatarExpireAt": 2592000,
+              "AvatarAbilityIndex": 4,
+              "AvatarExpiresAtUnixSeconds": 1795729447,
+              "CreatureStomach": null,
+              "CreatureStomachRemainderSeconds": null,
+              "CreatureExperience": null,
+              "CreatureLevel": null,
+              "CreatureName": null,
+              "CreatureNoCharge": null
+            }
+          ],
+          "CreatureInventory": []
+        }
+      },
+      "expected": {
+        "A": {
+          "Cash": 25940,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1185057729,
+              "SentAt": 1793137447,
+              "ExpiresAt": 1795729447,
+              "Attachment": null
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [
+            {
+              "Slot": 0,
+              "ItemId": 51020,
+              "CountOrValue": 1,
+              "State": 0,
+              "Durability": 0,
+              "SealState": 0,
+              "InstanceId": "01a17f52-1206-786d-8bbb-56cb96e570f1",
+              "AvatarExpireAt": 2592000,
+              "AvatarAbilityIndex": 4,
+              "AvatarExpiresAtUnixSeconds": 1795729447,
+              "CreatureStomach": null,
+              "CreatureStomachRemainderSeconds": null,
+              "CreatureExperience": null,
+              "CreatureLevel": null,
+              "CreatureName": null,
+              "CreatureNoCharge": null
+            }
+          ],
+          "CreatureInventory": []
+        }
+      }
+    },
+    {
+      "name": "native mailbox opened",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "native mailbox open success",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          0
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          0
+        ]
+      ]
+    },
+    {
+      "name": "native target read",
+      "passed": true,
+      "actual": [
+        [
+          1185057729,
+          2
+        ]
+      ],
+      "expected": [
+        [
+          1185057729,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "native target read success",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          1185057729,
+          2
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          1185057729,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "native target claim",
+      "passed": true,
+      "actual": [
+        1185057729
+      ],
+      "expected": [
+        1185057729
+      ]
+    },
+    {
+      "name": "native target claim success",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          1185057729
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          1185057729
+        ]
+      ]
+    },
+    {
+      "name": "gift and opened-mail attachment observed",
+      "passed": true,
+      "actual": 2,
+      "expected": 2
+    },
+    {
+      "name": "mail wire identity 0",
+      "passed": true,
+      "actual": [
+        1185057729,
+        51020,
+        4,
+        1793137447
+      ],
+      "expected": [
+        1185057729,
+        51020,
+        4,
+        1793137447
+      ]
+    },
+    {
+      "name": "mail remaining from grant deadline 0",
+      "passed": true,
+      "actual": 2592000,
+      "expected": 2592000
+    },
+    {
+      "name": "mail wire identity 1",
+      "passed": true,
+      "actual": [
+        1185057729,
+        51020,
+        4,
+        1793137447
+      ],
+      "expected": [
+        1185057729,
+        51020,
+        4,
+        1793137447
+      ]
+    },
+    {
+      "name": "mail remaining from grant deadline 1",
+      "passed": true,
+      "actual": 2591970,
+      "expected": 2591970
+    },
+    {
+      "name": "one native claimed avatar row",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "native bag item and selected ability",
+      "passed": true,
+      "actual": [
+        0,
+        51020,
+        4
+      ],
+      "expected": [
+        0,
+        51020,
+        4
+      ]
+    },
+    {
+      "name": "native claim does not renew deadline",
+      "passed": true,
+      "actual": 2591951,
+      "expected": 2591951
+    },
+    {
+      "name": "native claim remaining decreased",
+      "passed": true,
+      "actual": true,
+      "expected": true
+    }
+  ],
+  "journals": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar30d\\frozen-native-initial\\deployment-claimed-final-paused.json",
+      "sha256": "3F6E1CE50A4D63C1C10F2AE6967E6DD537E257C8B4EFC93D733A359C989A1E40",
+      "phase": "initial",
+      "status": "stopped",
+      "server_pid": 14816,
+      "server_start_time_utc": "2026-10-27T21:41:21.1707473Z"
+    }
+  ],
+  "captures": [
+    {
+      "phase": "initial",
+      "role": "A",
+      "pid": 71404,
+      "start_time_utc": "2026-10-27T21:41:24.2348829Z",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar30d\\frozen-native-initial\\netdump-71404.log",
+      "journal_refs": [
+        0
+      ],
+      "original_capture_path": "G:\\Game\\DNF_ACT1\\DF\\netdump-71404.log",
+      "sha256": "EDF218A811EAA8908F1E70918FAE01BE6338A1F888F65B5A53452197AA66BBD9",
+      "snapshot_bytes": 45536,
+      "events": [
+        {
+          "at": "2026-10-28 05:42:09.159",
+          "completed_at": "2026-10-28 05:42:09.159",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 225,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 18,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:42:09.159",
+          "completed_at": "2026-10-28 05:42:09.159",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:42:09.159",
+          "completed_at": "2026-10-28 05:42:09.159",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:42:09.159",
+          "completed_at": "2026-10-28 05:42:09.159",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:42:09.159",
+          "completed_at": "2026-10-28 05:42:09.159",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 99,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        },
+        {
+          "at": "2026-10-28 05:43:37.053",
+          "completed_at": "2026-10-28 05:43:37.053",
+          "line": 111,
+          "last_line": 111,
+          "direction": "TX",
+          "type": 1,
+          "op": 146,
+          "wire_length": 24,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "recipient_query",
+          "sequence": 10,
+          "recipient_name_bytes_redacted": 8
+        },
+        {
+          "at": "2026-10-28 05:43:37.066",
+          "completed_at": "2026-10-28 05:43:37.066",
+          "line": 112,
+          "last_line": 112,
+          "direction": "RX",
+          "type": 1,
+          "op": 146,
+          "wire_length": 25,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "recipient_reply",
+          "success": true,
+          "recipient_name_bytes_redacted": 8,
+          "level": 6,
+          "job": 4,
+          "growth": 0,
+          "gender": 0,
+          "received_count": 0
+        },
+        {
+          "at": "2026-10-28 05:44:07.401",
+          "completed_at": "2026-10-28 05:44:07.401",
+          "line": 117,
+          "last_line": 117,
+          "direction": "TX",
+          "type": 1,
+          "op": 67,
+          "wire_length": 33,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "shop_request",
+          "sequence": 12,
+          "gift": true,
+          "recipient_name_bytes_redacted": 8,
+          "product_count": 1,
+          "products": [
+            {
+              "ability_index": 4,
+              "term": 2,
+              "commodity": 270001
+            }
+          ],
+          "row_bytes": 7
+        },
+        {
+          "at": "2026-10-28 05:44:07.484",
+          "completed_at": "2026-10-28 05:44:07.484",
+          "line": 118,
+          "last_line": 118,
+          "direction": "RX",
+          "type": 1,
+          "op": 67,
+          "wire_length": 34,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "shop_reply",
+          "success": true,
+          "gift": true,
+          "category": 0,
+          "commodity": 270001,
+          "progress_key": 270001,
+          "last_key": 270001,
+          "reserved": 65535,
+          "reward_count": 0,
+          "target_rewards": [],
+          "tail_sentinel": 65535,
+          "tail_value": 0,
+          "result_keys_match": true
+        },
+        {
+          "at": "2026-10-28 05:44:07.484",
+          "completed_at": "2026-10-28 05:44:07.484",
+          "line": 118,
+          "last_line": 118,
+          "direction": "RX",
+          "type": 0,
+          "op": 53,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "cash_update",
+          "success": true,
+          "cash": 25940
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "EDF218A811EAA8908F1E70918FAE01BE6338A1F888F65B5A53452197AA66BBD9",
+      "capture_start_local": "2026-10-28 05:41:24",
+      "appended_after_snapshot_bytes": 0,
+      "counts": {
+        "TX_frames": 14,
+        "RX_frames": 34,
+        "TX_crc_valid": 14,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 10,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 4,
+        "RX_NOTI97": 1,
+        "TX_CMD146": 1,
+        "RX_CMD146": 1,
+        "TX_CMD67": 1,
+        "RX_CMD67": 1,
+        "RX_NOTI53": 1
+      },
+      "status": "observed"
+    },
+    {
+      "phase": "initial",
+      "role": "B",
+      "pid": 59396,
+      "start_time_utc": "2026-10-27T21:41:24.9874575Z",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar30d\\frozen-native-initial\\netdump-59396.log",
+      "journal_refs": [
+        0
+      ],
+      "original_capture_path": "G:\\Game\\DNF_ACT1\\Client_test2\\netdump-59396.log",
+      "sha256": "2E3C42960881C527FFED745629F568FD06D4E5F499E882C87A4A06B44CA1B028",
+      "snapshot_bytes": 45302,
+      "events": [
+        {
+          "at": "2026-10-28 05:42:40.854",
+          "completed_at": "2026-10-28 05:42:40.854",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 369,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 30,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:42:40.854",
+          "completed_at": "2026-10-28 05:42:40.854",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:42:40.854",
+          "completed_at": "2026-10-28 05:42:40.854",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:42:40.854",
+          "completed_at": "2026-10-28 05:42:40.854",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:42:40.854",
+          "completed_at": "2026-10-28 05:42:40.854",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 12,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 0,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        },
+        {
+          "at": "2026-10-28 05:44:07.483",
+          "completed_at": "2026-10-28 05:44:07.483",
+          "line": 110,
+          "last_line": 110,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1185057729,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 51020,
+              "seal": 0,
+              "count_or_value": 2592000,
+              "durability": 4,
+              "state": 0,
+              "sent_at": 1793137447,
+              "body_join_id": 1185057729
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1185057729,
+              "expires_at": 1795729447,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793137447,
+              "state": 1
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 05:44:36.668",
+          "completed_at": "2026-10-28 05:44:36.668",
+          "line": 114,
+          "last_line": 114,
+          "direction": "RX",
+          "type": 0,
+          "op": 99,
+          "wire_length": 8,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_alarm",
+          "new_mail_count": 1
+        },
+        {
+          "at": "2026-10-28 05:44:37.245",
+          "completed_at": "2026-10-28 05:44:37.245",
+          "line": 115,
+          "last_line": 115,
+          "direction": "TX",
+          "type": 1,
+          "op": 99,
+          "wire_length": 12,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_open_request",
+          "sequence": 11
+        },
+        {
+          "at": "2026-10-28 05:44:37.250",
+          "completed_at": "2026-10-28 05:44:37.250",
+          "line": 116,
+          "last_line": 116,
+          "direction": "RX",
+          "type": 1,
+          "op": 99,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_open_reply",
+          "success": true,
+          "not_loaded_count": 0
+        },
+        {
+          "at": "2026-10-28 05:44:37.250",
+          "completed_at": "2026-10-28 05:44:37.250",
+          "line": 116,
+          "last_line": 116,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1185057729,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 51020,
+              "seal": 0,
+              "count_or_value": 2591970,
+              "durability": 4,
+              "state": 0,
+              "sent_at": 1793137447,
+              "body_join_id": 1185057729
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1185057729,
+              "expires_at": 1795729447,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793137447,
+              "state": 1
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 05:44:38.152",
+          "completed_at": "2026-10-28 05:44:38.152",
+          "line": 118,
+          "last_line": 118,
+          "direction": "TX",
+          "type": 1,
+          "op": 144,
+          "wire_length": 18,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_state_request",
+          "sequence": 12,
+          "mail_id": 1185057729,
+          "state": 2
+        },
+        {
+          "at": "2026-10-28 05:44:38.165",
+          "completed_at": "2026-10-28 05:44:38.165",
+          "line": 119,
+          "last_line": 119,
+          "direction": "RX",
+          "type": 1,
+          "op": 144,
+          "wire_length": 13,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_state_reply",
+          "success": true,
+          "mail_id": 1185057729,
+          "state": 2
+        },
+        {
+          "at": "2026-10-28 05:44:56.266",
+          "completed_at": "2026-10-28 05:44:56.266",
+          "line": 121,
+          "last_line": 121,
+          "direction": "TX",
+          "type": 1,
+          "op": 98,
+          "wire_length": 16,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_claim_request",
+          "sequence": 13,
+          "mail_id": 1185057729
+        },
+        {
+          "at": "2026-10-28 05:44:56.279",
+          "completed_at": "2026-10-28 05:44:56.279",
+          "line": 122,
+          "last_line": 122,
+          "direction": "RX",
+          "type": 1,
+          "op": 98,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_claim_reply",
+          "success": true,
+          "mail_id": 1185057729
+        },
+        {
+          "at": "2026-10-28 05:44:56.279",
+          "completed_at": "2026-10-28 05:44:56.279",
+          "line": 122,
+          "last_line": 122,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 21,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 1,
+          "target_items": [
+            {
+              "slot": 0,
+              "item_id": 51020,
+              "count_or_value": 2591951,
+              "state": 0,
+              "durability": 4,
+              "seal": 0
+            }
+          ],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "2E3C42960881C527FFED745629F568FD06D4E5F499E882C87A4A06B44CA1B028",
+      "capture_start_local": "2026-10-28 05:41:25",
+      "appended_after_snapshot_bytes": 0,
+      "counts": {
+        "TX_frames": 14,
+        "RX_frames": 38,
+        "TX_crc_valid": 14,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 15,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 5,
+        "RX_NOTI97": 3,
+        "RX_NOTI99": 1,
+        "TX_CMD99": 1,
+        "RX_CMD99": 1,
+        "TX_CMD144": 1,
+        "RX_CMD144": 1,
+        "TX_CMD98": 1,
+        "RX_CMD98": 1
+      },
+      "status": "observed"
+    }
+  ],
+  "checker_sha256": "4E48DD653508FEC12BE5E6016B94C841D55F964B4D9B1B5799D8EB1218881C67",
+  "helper_sha256": "C0E8AB45084B8C09309E6319ADD7112ADF0D43FAE981B1AC1D8589126F50A39C",
+  "frozen_manifest_sha256": "67C77FA7D4A4C369739854A7D67BC8F094031CBAFC9B8B2069F2380DF7712166",
+  "observers": {
+    "baseline.json": "FBE12C6CCD590834811565FCD932B0EF387AB3AAE1B25B71EB4FF6B8D1C013B4",
+    "gift-committed-unclaimed.json": "30F0FD3A299FB609393A56CD254E2B8612E0AFD18A053BAF3A98D7B8E8BAD7A6",
+    "after-native-claim.json": "DCA8B5A5A56A767B6F7A5409CA98F6E548447A0FBD9061E161D10E128CC1E557"
+  },
+  "pending": [
+    "independent permanent gift",
+    "gift0 selected ability",
+    "explicit expiry scenario",
+    "final deployment and restore"
+  ],
+  "caveats": [
+    "No restart was performed for avatar30d; restart claim belongs to the separate avatar7d case.",
+    "Final actor retirement can change whole-state hash; selected canonical fields are compared, not unequal whole snapshots.",
+    "No raw authentication payload or full state exported; UI semantics are supplied by separately reviewed screenshots."
+  ]
+}

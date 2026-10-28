@@ -1,0 +1,58 @@
+{
+  "checks": "PASS",
+  "historical_native_scope": "two seats / three matches / same-process channel round trip",
+  "final_delivery_binding": "PENDING",
+  "clients": [
+    {
+      "role": "A",
+      "TX_crc_valid": 107,
+      "login_modes": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "match_count": 3,
+      "udp_diagnostic_counts": {
+        "TX_nat_probe": 3,
+        "TX_unreliable_blocks": 2821,
+        "TX_application_crc_invalid": 5874,
+        "TX_ack_shape_blocks": 6183,
+        "TX_reliable_blocks": 3053,
+        "RX_nat_response_shape": 3,
+        "RX_unreliable_blocks": 6551,
+        "RX_application_crc_invalid": 9681,
+        "RX_reliable_blocks": 3130,
+        "RX_ack_shape_blocks": 6182,
+        "TX_unparsed_datagrams": 104
+      }
+    },
+    {
+      "role": "B",
+      "TX_crc_valid": 242,
+      "login_modes": [
+        0,
+        4,
+        0,
+        4
+      ],
+      "match_count": 3,
+      "udp_diagnostic_counts": {
+        "TX_nat_probe": 3,
+        "TX_unreliable_blocks": 6551,
+        "TX_application_crc_invalid": 9681,
+        "TX_reliable_blocks": 3130,
+        "TX_ack_shape_blocks": 6182,
+        "RX_nat_response_shape": 3,
+        "RX_unreliable_blocks": 2821,
+        "RX_application_crc_invalid": 5874,
+        "RX_ack_shape_blocks": 6183,
+        "RX_reliable_blocks": 3053,
+        "TX_unparsed_datagrams": 100
+      }
+    }
+  ],
+  "canonical_receipts": 3,
+  "non_pvp_state_equal": true,
+  "udp_application_crc": "NOT_VALIDATED: generic application parser does not cover these native block forms"
+}

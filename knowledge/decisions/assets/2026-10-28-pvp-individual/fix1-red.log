@@ -1,0 +1,8 @@
+PvP individual smoke: 7 failures
+FAIL: old distinct-sequence death/rank bytes cannot settle a second match on the same attachment
+FAIL: old result ACK bytes cannot reset the next match's result phase
+FAIL: recipient 0 receives actual updated weapon/skills with mode1 EXP0 before room membership
+FAIL: recipient 1 receives actual updated weapon/skills with mode1 EXP0 before room membership
+FAIL: delayed party acceptance cannot re-add the PvP requester or send its accepted/roster transition
+FAIL: delayed party acceptance cannot re-add the PvP accepter or send its accepted/roster transition
+FAIL: PvP cannot acquire an actor while its consumed party acceptance is still publishing a real roster

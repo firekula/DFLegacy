@@ -1,0 +1,47 @@
+{
+  "schema": "act1-final-channel-reentry-publication/v1",
+  "status": "PASS_AS_SCOPED",
+  "files": [
+    {
+      "name": "reentry30ad-A-channel-chooser.jpg",
+      "sha256": "F0F31DDD6D87318CE24C3AAF3436535C893C42BD95B66594F378FDAD60F813B5",
+      "bytes": 209521
+    },
+    {
+      "name": "reentry30ad-A-normal-world-complete.jpg",
+      "sha256": "47886E9521ECE46FC1C9CB1249BF9B4AC33CAFF71AF701E06492CB6C43198E39",
+      "bytes": 387659
+    },
+    {
+      "name": "reentry30ad-B-channel-chooser.jpg",
+      "sha256": "E4D48B2B7322C9CD9CFF53B2705AA24468433C89B967123779DEBF2CB9FCB1D9",
+      "bytes": 209560
+    },
+    {
+      "name": "reentry30ad-B-normal-world-complete.jpg",
+      "sha256": "30F31083BBE73912C97331B941E872FD2F251DDA9BAC80A83BD40830ED861565",
+      "bytes": 394703
+    },
+    {
+      "name": "reentry30ad-check.json",
+      "sha256": "A9806D3525A727F4B6B99FEC9DAAF624062C6AC3081ADA90732C4D08DF4F46AC",
+      "bytes": 6204
+    },
+    {
+      "name": "reentry30ad-private-check.json",
+      "sha256": "9BCB23AEFE53CDBDEB634CCC4421B0BBFBE9493A8FF5094296D921E4AABF3B00",
+      "bytes": 927
+    },
+    {
+      "name": "reentry30ad-proof.json",
+      "sha256": "DC9DE2AF2CFEDDF01DFDF938CB843E491A47C01D76D469C8350F51EA513AB9BB",
+      "bytes": 87233
+    },
+    {
+      "name": "verify-reentry30ad-evidence.py",
+      "sha256": "72B9A2BE04F036BB679506D3538AB27FEA71059233C510C8DC204F48D485DC5A",
+      "bytes": 8705
+    }
+  ],
+  "previous_final_pvp_manifest_sha256": "D4A56307E5FD69F936C74AC28F87E985EACEE8C5F5D588F9C67D0D1945D8E456"
+}

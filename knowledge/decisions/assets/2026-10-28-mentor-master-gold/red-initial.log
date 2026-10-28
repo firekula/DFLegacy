@@ -1,0 +1,10 @@
+Mentor master gold smoke: 9 failures
+FAIL: mentor independent oracle provenance: math-oracle.json
+FAIL: mentor gold math policy exists for native float-store and exact truncation behavior
+FAIL: mentor gold timer policy exists for both native random branches
+FAIL: mentor gold packet builder exists for the full named NOTI76 payload
+FAIL: real ClaimAsync publishes replacement reason before closing old owner and awaits its final-save release
+FAIL: a committed generated pickup replay accrues once; normal departure awards 14 canonical credit without changing actor Gold
+FAIL: a real stale actor item/skill save succeeds between award and installation and retains both its new item and awarded credit
+FAIL: mail claim and Cera purchase complete while awarded gold waits for its owner, preserving money, item and receipt
+FAIL: duplicate ordinary departure cannot award the same runtime batch twice

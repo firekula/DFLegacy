@@ -1,0 +1,224 @@
+{
+  "schema": "act1-final-channel-reentry-check/v1",
+  "status": "PASS_AS_SCOPED",
+  "passed": 43,
+  "total": 43,
+  "checks": [
+    {
+      "name": "explicit separate closed phase and new server",
+      "passed": true
+    },
+    {
+      "name": "approved managed/native build binding",
+      "passed": true
+    },
+    {
+      "name": "restart and normal reentry full-state bytes unchanged",
+      "passed": true
+    },
+    {
+      "name": "four receipts persist without extra award",
+      "passed": true
+    },
+    {
+      "name": "both immutable prefixes independently redecoded",
+      "passed": true
+    },
+    {
+      "name": "exactly both selected roles",
+      "passed": true
+    },
+    {
+      "name": "fourth receipt remains atomic dual award",
+      "passed": true
+    },
+    {
+      "name": "468 successful responses and no sampler failure",
+      "passed": true
+    },
+    {
+      "name": "exactly four input windows and two full transitions",
+      "passed": true
+    },
+    {
+      "name": "A exact PID and20 valid TX",
+      "passed": true
+    },
+    {
+      "name": "A complete layouts and capture tail",
+      "passed": true
+    },
+    {
+      "name": "A two native normal logins",
+      "passed": true
+    },
+    {
+      "name": "A one successful exit between normal logins",
+      "passed": true
+    },
+    {
+      "name": "A two successful native character entries",
+      "passed": true
+    },
+    {
+      "name": "A no PvP start death ranking or result",
+      "passed": true
+    },
+    {
+      "name": "A receipt4 exact prior award survives",
+      "passed": true
+    },
+    {
+      "name": "A both restarted native record replies retain receipt4",
+      "passed": true
+    },
+    {
+      "name": "A canonical counters equal persisted receipt",
+      "passed": true
+    },
+    {
+      "name": "A234 monotonic samples at bounded cadence",
+      "passed": true
+    },
+    {
+      "name": "A chooser and world plans present",
+      "passed": true
+    },
+    {
+      "name": "A/channel-chooser full control interval sampled",
+      "passed": true
+    },
+    {
+      "name": "A/normal-world-complete full control interval sampled",
+      "passed": true
+    },
+    {
+      "name": "A one combined transition",
+      "passed": true
+    },
+    {
+      "name": "A entire chooser to world interval covered",
+      "passed": true
+    },
+    {
+      "name": "A planned enter click offsets honest",
+      "passed": true
+    },
+    {
+      "name": "A actual normal login and character reply inside sampled plan",
+      "passed": true
+    },
+    {
+      "name": "B exact PID and20 valid TX",
+      "passed": true
+    },
+    {
+      "name": "B complete layouts and capture tail",
+      "passed": true
+    },
+    {
+      "name": "B two native normal logins",
+      "passed": true
+    },
+    {
+      "name": "B one successful exit between normal logins",
+      "passed": true
+    },
+    {
+      "name": "B two successful native character entries",
+      "passed": true
+    },
+    {
+      "name": "B no PvP start death ranking or result",
+      "passed": true
+    },
+    {
+      "name": "B receipt4 exact prior award survives",
+      "passed": true
+    },
+    {
+      "name": "B both restarted native record replies retain receipt4",
+      "passed": true
+    },
+    {
+      "name": "B canonical counters equal persisted receipt",
+      "passed": true
+    },
+    {
+      "name": "B234 monotonic samples at bounded cadence",
+      "passed": true
+    },
+    {
+      "name": "B chooser and world plans present",
+      "passed": true
+    },
+    {
+      "name": "B/channel-chooser full control interval sampled",
+      "passed": true
+    },
+    {
+      "name": "B/normal-world-complete full control interval sampled",
+      "passed": true
+    },
+    {
+      "name": "B one combined transition",
+      "passed": true
+    },
+    {
+      "name": "B entire chooser to world interval covered",
+      "passed": true
+    },
+    {
+      "name": "B planned enter click offsets honest",
+      "passed": true
+    },
+    {
+      "name": "B actual normal login and character reply inside sampled plan",
+      "passed": true
+    }
+  ],
+  "roles": [
+    {
+      "role": "A",
+      "tx_crc_valid": 20,
+      "login_modes": [
+        0,
+        0
+      ],
+      "sample_count": 234,
+      "sample_first": "2026-10-28T00:28:11.623879+00:00",
+      "sample_last": "2026-10-28T00:30:11.570961+00:00",
+      "max_sample_gap_seconds": 0.532206,
+      "chooser_started": "2026-10-28T08:28:33.823000+08:00",
+      "scheduled_channel_enter_click": "2026-10-28T08:28:51.213000+08:00",
+      "scheduled_world_enter_click": "2026-10-28T08:28:56.013000+08:00",
+      "native_normal_login": "2026-10-28T08:28:52.072000+08:00",
+      "native_character_reply": "2026-10-28T08:28:52.077000+08:00",
+      "world_finished": "2026-10-28T08:29:05.052000+08:00"
+    },
+    {
+      "role": "B",
+      "tx_crc_valid": 20,
+      "login_modes": [
+        0,
+        0
+      ],
+      "sample_count": 234,
+      "sample_first": "2026-10-28T00:28:11.637291+00:00",
+      "sample_last": "2026-10-28T00:30:11.576219+00:00",
+      "max_sample_gap_seconds": 0.529556,
+      "chooser_started": "2026-10-28T08:29:14.777000+08:00",
+      "scheduled_channel_enter_click": "2026-10-28T08:29:31.244000+08:00",
+      "scheduled_world_enter_click": "2026-10-28T08:29:36.044000+08:00",
+      "native_normal_login": "2026-10-28T08:29:32.098000+08:00",
+      "native_character_reply": "2026-10-28T08:29:32.102000+08:00",
+      "world_finished": "2026-10-28T08:29:45.053000+08:00"
+    }
+  ],
+  "limits": [
+    "468 Process.Responding samples at roughly half-second cadence; no claim that all possible sub-sample stalls are excluded.",
+    "Scheduled click timestamps derive from native plan-armed plus offset; native callback timestamps are not fabricated.",
+    "Independent normal-channel round trip supplements but does not rewrite prior390-sample scope.",
+    "Normal-runtime publication/configuration restoration remains separate."
+  ]
+}

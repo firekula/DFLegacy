@@ -1,0 +1,64 @@
+{
+  "schema": "act1-startup-history-selected/v1",
+  "failures": [
+    {
+      "id": "03",
+      "status": "FAILED_BIND",
+      "receipt_sha256": "D08DFDD106C3831C85B7C7979D6EE7FD9344C24FA3F79C194A107204512C3612",
+      "closed_stdout_sha256": "CCFD26F2751E2AA9EF728DBED03445736B697E36926914829F7B615A458C0EE8",
+      "observed": [
+        "bind10013",
+        "BackgroundService failed",
+        "StopHost"
+      ],
+      "interpretation": "Startup convention/configuration conflict, not evidence of a gameplay binary defect. Excluded2280-2379 range root-observed; independent frozen OS diagnostics must be separately attributed."
+    },
+    {
+      "id": "04",
+      "status": "FAILED_PRECHECK_BEFORE_CLAIM",
+      "receipt_sha256": "1C89257EF490E865E5C6BCE66D8B80C48CFD53606D00F47EDC46BE531858659A",
+      "server_started": false,
+      "interpretation": "WindowsPowerShell5.1 ANSI decoding of UTF8 config failed before Claim. Production helper uses explicitUTF8 and was not reached."
+    },
+    {
+      "id": "05",
+      "status": "FAILED_ACTIVE_LOG_SHARING",
+      "receipt_sha256": "CECA330387E352970DC93687EA6B3E05494CB7FE16F190A0E7A46B3E107CEB20",
+      "attempt_sha256": "C5C7C2DA3445EC980C8E4D2136D0058E2C6616AD59C08522FBBB07F2390E863F",
+      "server_started": true,
+      "pid": 75236,
+      "ready_observed": false,
+      "interpretation": "Actual WindowsPowerShell5.1 redirected stdout writer conflicted with production helper ReadAllText. Startup helper defect confirmed; no successful readiness. Earlier APPROVE is historical scope, superseded on this issue.",
+      "independent_review": {
+        "sha256": "5E9C391CC68C5C1F2C245122AFC481BB8F3B976B943641351FAE1DB9E00FEFA2",
+        "severity": "Important",
+        "confirmed_helper_defect": true
+      },
+      "environment_observation": {
+        "source_sha256": "FAD21E58851EFECABA0BBCDF9A95907C249320E04C66B3A9E51660A23E72FB8C",
+        "matched": true,
+        "entrypoint_completed": false,
+        "values_exported": false,
+        "before_count": 0,
+        "after_count": 0,
+        "before_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+        "after_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+      },
+      "old_helper_archive_manifest_sha256": "DE968D4EB04C312D14404F08202CE18E0314D33148EBC3D8844AAE9F86132F64"
+    }
+  ],
+  "historical_helper": {
+    "source_commit": "22f2f0a4f03c9d79e6fe5ee2df09568f3fc996f7",
+    "ps1_sha256": "4A38F3BDB07C6EBC93B2804D8880505E40E3CF14DFAC4BA3487986511BE940E2",
+    "cmd_sha256": "74220A29F6A5750848E48D2BE68F7142982B4D42F38B32DC71E7C5B98D0D3B4E",
+    "deployment_sha256": "8C5BE1A634D9BB66F04BAC64246BF9AEE169A6ED39D3F0F584174EF177AC4D6B"
+  },
+  "final_helper": {
+    "source_commit": "adc990941e860e7d199faa2e4acb7d1cdc48c868",
+    "ps1_sha256": "8FCE652F0EF4ACD7FE2AFD95599944DF2E2854EEC0FBC2E4803FFE9F19D4914A",
+    "cmd_sha256": "74220A29F6A5750848E48D2BE68F7142982B4D42F38B32DC71E7C5B98D0D3B4E",
+    "deployment_sha256": "1D42D13953A0CC530D3D4DA422871C8C8ACD0D9001E5018F41B9DFAADE7AA517"
+  },
+  "recovery06_status": "completed",
+  "old_approval_scope": "Old22f approval preceded the confirmed05 Important sharing defect; final source review and actual06 close that issue without relabelling05."
+}

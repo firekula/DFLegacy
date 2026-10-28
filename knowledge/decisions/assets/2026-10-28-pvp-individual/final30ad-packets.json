@@ -1,0 +1,2781 @@
+{
+  "schema": "act1-final-pvp-30ad-packets/v1",
+  "phase": "final-pvp-30AD",
+  "captures": [
+    {
+      "phase": "final-pvp-30AD",
+      "role": "A",
+      "pid": 52320,
+      "start_time_utc": "2026-10-28T00:09:36.8780127Z",
+      "sha256": "0ADF8B17E554C12479B841821367E55CAF10B95EF859AFB7404DD90B86D31D2E",
+      "snapshot_bytes": 1583416,
+      "events": [
+        {
+          "at": "2026-10-28 08:09:46.020",
+          "line": 3,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:10:16.057",
+          "line": 75,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:10:17.257",
+          "line": 79,
+          "direction": "TX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 51,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:10:17.264",
+          "line": 80,
+          "direction": "RX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 11,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 0
+        },
+        {
+          "at": "2026-10-28 08:10:20.850",
+          "line": 93,
+          "direction": "TX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 5,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:10:21.321",
+          "line": 94,
+          "direction": "RX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 85,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 1,
+          "town_id": 1
+        },
+        {
+          "at": "2026-10-28 08:10:21.478",
+          "line": 98,
+          "direction": "RX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 0,
+          "losses": 3,
+          "total_pvp_exp": 0,
+          "current_threshold": 0,
+          "next_threshold": 2000,
+          "grade": 0,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:12:36.996",
+          "line": 117,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:12:58.352",
+          "line": 192,
+          "direction": "TX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 11,
+          "uninterpreted_exit_bytes": 0
+        },
+        {
+          "at": "2026-10-28 08:12:58.370",
+          "line": 193,
+          "direction": "RX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 7,
+          "event": "command_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 08:12:58.858",
+          "line": 195,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:12:59.612",
+          "line": 199,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 1,
+          "wire_length": 51,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:12:59.614",
+          "line": 200,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 1,
+          "wire_length": 29,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 4,
+          "relay_configured": false
+        },
+        {
+          "at": "2026-10-28 08:12:59.615",
+          "line": 203,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 4,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:12:59.616",
+          "line": 205,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 4,
+          "wire_length": 85,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 1,
+          "town_id": 1
+        },
+        {
+          "at": "2026-10-28 08:12:59.634",
+          "line": 207,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 0,
+          "losses": 3,
+          "total_pvp_exp": 0,
+          "current_threshold": 0,
+          "next_threshold": 2000,
+          "grade": 0,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:12:59.634",
+          "line": 207,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 41,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "rooms": []
+        },
+        {
+          "at": "2026-10-28 08:14:12.312",
+          "line": 217,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 53,
+          "wire_length": 16,
+          "event": "command_request",
+          "sequence": 7,
+          "name_selection": 16,
+          "requested_map": 0,
+          "password_present": false
+        },
+        {
+          "at": "2026-10-28 08:14:12.340",
+          "line": 218,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 41,
+          "wire_length": 41,
+          "event": "pvp_notification",
+          "rooms": [
+            {
+              "room_id": 1,
+              "name_selection": 16,
+              "state": 1,
+              "host_seat": 0,
+              "requested_map": 0,
+              "mode": 0,
+              "seats": [
+                {
+                  "seat": 0,
+                  "state": 0,
+                  "uid": 1
+                },
+                {
+                  "seat": 1,
+                  "state": 255,
+                  "uid": 65535
+                },
+                {
+                  "seat": 2,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 3,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 4,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 5,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 6,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 7,
+                  "state": 254,
+                  "uid": 65535
+                }
+              ],
+              "password_present": false
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 08:15:08.168",
+          "line": 226,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 43,
+          "wire_length": 42,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "mode": 0,
+          "seats": [
+            {
+              "seat": 0,
+              "state": 0,
+              "uid": 1
+            },
+            {
+              "seat": 1,
+              "state": 0,
+              "uid": 2
+            },
+            {
+              "seat": 2,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 3,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 4,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 5,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 6,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 7,
+              "state": 254,
+              "uid": 65535
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 08:15:39.119",
+          "line": 1293,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 62,
+          "wire_length": 14,
+          "event": "command_request",
+          "sequence": 9,
+          "requested_map": 3
+        },
+        {
+          "at": "2026-10-28 08:15:39.126",
+          "line": 1294,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 1,
+          "host_seat": 0,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:15:59.860",
+          "line": 2017,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 44,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "seat": 1,
+          "ready": true
+        },
+        {
+          "at": "2026-10-28 08:16:23.743",
+          "line": 2843,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 56,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 11,
+          "ready": true
+        },
+        {
+          "at": "2026-10-28 08:16:23.749",
+          "line": 2844,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 44,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "seat": 0,
+          "ready": true
+        },
+        {
+          "at": "2026-10-28 08:16:23.749",
+          "line": 2844,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 2,
+          "host_seat": 0,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:16:23.749",
+          "line": 2844,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 45,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "selected_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:16:23.754",
+          "line": 2846,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 12
+        },
+        {
+          "at": "2026-10-28 08:16:33.770",
+          "line": 3203,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 13
+        },
+        {
+          "at": "2026-10-28 08:16:43.778",
+          "line": 3548,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 14
+        },
+        {
+          "at": "2026-10-28 08:16:53.789",
+          "line": 3925,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 15
+        },
+        {
+          "at": "2026-10-28 08:17:03.800",
+          "line": 4296,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 17
+        },
+        {
+          "at": "2026-10-28 08:17:13.806",
+          "line": 4646,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 18
+        },
+        {
+          "at": "2026-10-28 08:17:23.812",
+          "line": 4996,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 19
+        },
+        {
+          "at": "2026-10-28 08:17:33.818",
+          "line": 5345,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 20
+        },
+        {
+          "at": "2026-10-28 08:17:39.651",
+          "line": 5554,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 58,
+          "wire_length": 14,
+          "event": "command_request",
+          "sequence": 21,
+          "killer_uid": 2
+        },
+        {
+          "at": "2026-10-28 08:17:39.655",
+          "line": 5556,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 46,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "dead_seat": 0,
+          "killer_seat": 1
+        },
+        {
+          "at": "2026-10-28 08:17:39.655",
+          "line": 5556,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 49,
+          "wire_length": 6,
+          "event": "pvp_notification"
+        },
+        {
+          "at": "2026-10-28 08:17:39.660",
+          "line": 5557,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 61,
+          "wire_length": 66,
+          "event": "command_request",
+          "sequence": 22,
+          "stats": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            65495
+          ],
+          "scores": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "total_score": 0,
+          "representable_total": true
+        },
+        {
+          "at": "2026-10-28 08:17:39.716",
+          "line": 5558,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 0,
+          "losses": 4,
+          "total_pvp_exp": 0,
+          "current_threshold": 0,
+          "next_threshold": 2000,
+          "grade": 0,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:17:39.716",
+          "line": 5558,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 47,
+          "wire_length": 80,
+          "event": "pvp_notification",
+          "winning_seat": 1,
+          "victory_points": 4,
+          "grade": 0,
+          "experience_delta": 0,
+          "ranks": [
+            {
+              "uid": 2,
+              "total_score": 14842,
+              "grade": 2,
+              "total_pvp_exp": 4000,
+              "current_threshold": 2000,
+              "next_threshold": 8000,
+              "deathmatch_kills": 0,
+              "deathmatch_deaths": 0
+            },
+            {
+              "uid": 1,
+              "total_score": 0,
+              "grade": 0,
+              "total_pvp_exp": 0,
+              "current_threshold": 0,
+              "next_threshold": 2000,
+              "deathmatch_kills": 0,
+              "deathmatch_deaths": 0
+            }
+          ],
+          "ace_uid": 2,
+          "all_kill_uid": 65535,
+          "character_exp": 0,
+          "draw": false
+        },
+        {
+          "at": "2026-10-28 08:17:55.490",
+          "line": 6031,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 60,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 23
+        },
+        {
+          "at": "2026-10-28 08:17:55.499",
+          "line": 6034,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 1,
+          "host_seat": 1,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:20:00.150",
+          "line": 10367,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 55,
+          "wire_length": 14,
+          "event": "command_request",
+          "sequence": 27,
+          "seat": 0,
+          "state": 254
+        },
+        {
+          "at": "2026-10-28 08:20:00.155",
+          "line": 10368,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 43,
+          "wire_length": 42,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "mode": 0,
+          "seats": [
+            {
+              "seat": 0,
+              "state": 255,
+              "uid": 65535
+            },
+            {
+              "seat": 1,
+              "state": 0,
+              "uid": 2
+            },
+            {
+              "seat": 2,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 3,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 4,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 5,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 6,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 7,
+              "state": 254,
+              "uid": 65535
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 08:20:00.155",
+          "line": 10368,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 1,
+          "host_seat": 1,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:20:01.876",
+          "line": 10371,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:20:01.876",
+          "line": 10374,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 3,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 28,
+          "uninterpreted_exit_bytes": 0
+        },
+        {
+          "at": "2026-10-28 08:20:01.877",
+          "line": 10375,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 3,
+          "wire_length": 7,
+          "event": "command_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 08:20:18.305",
+          "line": 10446,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:20:19.062",
+          "line": 10450,
+          "direction": "TX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 51,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:20:19.065",
+          "line": 10451,
+          "direction": "RX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 11,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 0
+        },
+        {
+          "at": "2026-10-28 08:20:19.066",
+          "line": 10454,
+          "direction": "TX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 4,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:20:19.070",
+          "line": 10457,
+          "direction": "RX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 85,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 1,
+          "town_id": 1
+        },
+        {
+          "at": "2026-10-28 08:20:19.070",
+          "line": 10457,
+          "direction": "RX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 0,
+          "losses": 4,
+          "total_pvp_exp": 0,
+          "current_threshold": 0,
+          "next_threshold": 2000,
+          "grade": 0,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:21:51.202",
+          "line": 10471,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:21:52.210",
+          "line": 10543,
+          "direction": "TX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 7,
+          "uninterpreted_exit_bytes": 0
+        },
+        {
+          "at": "2026-10-28 08:21:52.211",
+          "line": 10544,
+          "direction": "RX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 7,
+          "event": "command_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 08:21:52.700",
+          "line": 10546,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:21:53.456",
+          "line": 10550,
+          "direction": "TX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 1,
+          "wire_length": 51,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:21:53.457",
+          "line": 10551,
+          "direction": "RX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 1,
+          "wire_length": 29,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 4,
+          "relay_configured": false
+        },
+        {
+          "at": "2026-10-28 08:21:53.458",
+          "line": 10554,
+          "direction": "TX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 4,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:21:53.459",
+          "line": 10556,
+          "direction": "RX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 4,
+          "wire_length": 85,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 1,
+          "town_id": 1
+        },
+        {
+          "at": "2026-10-28 08:21:53.503",
+          "line": 10558,
+          "direction": "RX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 0,
+          "losses": 4,
+          "total_pvp_exp": 0,
+          "current_threshold": 0,
+          "next_threshold": 2000,
+          "grade": 0,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:21:53.503",
+          "line": 10558,
+          "direction": "RX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 41,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "rooms": []
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "0ADF8B17E554C12479B841821367E55CAF10B95EF859AFB7404DD90B86D31D2E",
+      "capture_start_local": "2026-10-28 08:09:37",
+      "counts": {
+        "selected_events": 65,
+        "RX_frames": 148,
+        "TX_frames": 59,
+        "TX_crc_valid": 59,
+        "incomplete_tcp_bytes": 0
+      },
+      "observed_packet_counts": {
+        "TX_CMD1": 4,
+        "RX_CMD1": 4,
+        "login_mode_0": 2,
+        "TX_CMD4": 4,
+        "RX_CMD4": 4,
+        "RX_NOTI48": 5,
+        "TX_CMD3": 3,
+        "RX_CMD3": 3,
+        "login_mode_4": 2,
+        "pvp_login_seen": 1,
+        "RX_NOTI41": 3,
+        "TX_CMD53": 1,
+        "RX_NOTI43": 2,
+        "TX_CMD62": 1,
+        "RX_NOTI42": 4,
+        "RX_NOTI44": 2,
+        "TX_CMD56": 1,
+        "RX_NOTI45": 1,
+        "TX_CMD120": 8,
+        "TX_CMD58": 1,
+        "RX_NOTI46": 1,
+        "RX_NOTI49": 1,
+        "TX_CMD61": 1,
+        "RX_NOTI47": 1,
+        "TX_CMD60": 1,
+        "TX_CMD55": 1,
+        "normal_login_after_pvp": 1
+      },
+      "udp_flows": [
+        {
+          "at": "2026-10-28 08:10:17.288",
+          "line": 83,
+          "direction": "TX",
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "remote_port": 7002,
+          "last_at": "2026-10-28 08:20:00.119",
+          "last_line": 10364,
+          "datagrams": 4208,
+          "bytes": 104557,
+          "headers": {
+            "nat_probe": 2,
+            "unreliable_blocks": 1299,
+            "application_crc_invalid": 2757,
+            "ack_shape_blocks": 2907,
+            "reliable_blocks": 1458
+          }
+        },
+        {
+          "at": "2026-10-28 08:10:17.346",
+          "line": 85,
+          "direction": "RX",
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "remote_port": 7002,
+          "last_at": "2026-10-28 08:20:00.142",
+          "last_line": 10366,
+          "datagrams": 5883,
+          "bytes": 152223,
+          "headers": {
+            "nat_response_shape": 2,
+            "unreliable_blocks": 2974,
+            "application_crc_invalid": 4423,
+            "reliable_blocks": 1449,
+            "ack_shape_blocks": 2906
+          }
+        },
+        {
+          "at": "2026-10-28 08:10:17.346",
+          "line": 86,
+          "direction": "TX",
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-3",
+          "remote_port": 7003,
+          "last_at": "2026-10-28 08:23:29.215",
+          "last_line": 10570,
+          "datagrams": 80,
+          "bytes": 791,
+          "headers": {
+            "nat_probe": 1,
+            "unparsed_datagrams": 79
+          }
+        },
+        {
+          "at": "2026-10-28 08:10:17.353",
+          "line": 87,
+          "direction": "RX",
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-3",
+          "remote_port": 7003,
+          "last_at": "2026-10-28 08:10:17.353",
+          "last_line": 87,
+          "datagrams": 1,
+          "bytes": 7,
+          "headers": {
+            "nat_response_shape": 1
+          }
+        }
+      ],
+      "status": "observed"
+    },
+    {
+      "phase": "final-pvp-30AD",
+      "role": "B",
+      "pid": 60896,
+      "start_time_utc": "2026-10-28T00:09:37.8866956Z",
+      "sha256": "E6EEE7D8E480C2B75DE29449955C14E455B20204CFAF767D9A90EDCB1B1981B1",
+      "snapshot_bytes": 1589450,
+      "events": [
+        {
+          "at": "2026-10-28 08:09:45.466",
+          "line": 3,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:11:29.134",
+          "line": 75,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:11:29.901",
+          "line": 79,
+          "direction": "TX",
+          "local_endpoint": "endpoint-13",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 45,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:11:29.905",
+          "line": 80,
+          "direction": "RX",
+          "local_endpoint": "endpoint-13",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 11,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 0
+        },
+        {
+          "at": "2026-10-28 08:11:33.929",
+          "line": 93,
+          "direction": "TX",
+          "local_endpoint": "endpoint-13",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 5,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:11:33.937",
+          "line": 94,
+          "direction": "RX",
+          "local_endpoint": "endpoint-13",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 196,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 2,
+          "town_id": 2
+        },
+        {
+          "at": "2026-10-28 08:11:34.112",
+          "line": 97,
+          "direction": "RX",
+          "local_endpoint": "endpoint-13",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 3,
+          "losses": 0,
+          "total_pvp_exp": 3000,
+          "current_threshold": 2000,
+          "next_threshold": 8000,
+          "grade": 2,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:13:28.123",
+          "line": 114,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:13:29.128",
+          "line": 186,
+          "direction": "TX",
+          "local_endpoint": "endpoint-13",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 11,
+          "uninterpreted_exit_bytes": 0
+        },
+        {
+          "at": "2026-10-28 08:13:29.129",
+          "line": 187,
+          "direction": "RX",
+          "local_endpoint": "endpoint-13",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 7,
+          "event": "command_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 08:13:29.617",
+          "line": 189,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:13:30.372",
+          "line": 193,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 1,
+          "wire_length": 45,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:13:30.373",
+          "line": 194,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 1,
+          "wire_length": 29,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 4,
+          "relay_configured": false
+        },
+        {
+          "at": "2026-10-28 08:13:30.374",
+          "line": 197,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 4,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:13:30.376",
+          "line": 199,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 4,
+          "wire_length": 196,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 2,
+          "town_id": 2
+        },
+        {
+          "at": "2026-10-28 08:13:30.409",
+          "line": 201,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 3,
+          "losses": 0,
+          "total_pvp_exp": 3000,
+          "current_threshold": 2000,
+          "next_threshold": 8000,
+          "grade": 2,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:13:30.409",
+          "line": 201,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 41,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "rooms": []
+        },
+        {
+          "at": "2026-10-28 08:14:12.340",
+          "line": 208,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 41,
+          "wire_length": 41,
+          "event": "pvp_notification",
+          "rooms": [
+            {
+              "room_id": 1,
+              "name_selection": 16,
+              "state": 1,
+              "host_seat": 0,
+              "requested_map": 0,
+              "mode": 0,
+              "seats": [
+                {
+                  "seat": 0,
+                  "state": 0,
+                  "uid": 1
+                },
+                {
+                  "seat": 1,
+                  "state": 255,
+                  "uid": 65535
+                },
+                {
+                  "seat": 2,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 3,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 4,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 5,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 6,
+                  "state": 254,
+                  "uid": 65535
+                },
+                {
+                  "seat": 7,
+                  "state": 254,
+                  "uid": 65535
+                }
+              ],
+              "password_present": false
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 08:15:08.159",
+          "line": 215,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 54,
+          "wire_length": 15,
+          "event": "command_request",
+          "sequence": 7,
+          "room_id": 1,
+          "password_present": false
+        },
+        {
+          "at": "2026-10-28 08:15:08.174",
+          "line": 216,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 43,
+          "wire_length": 42,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "mode": 0,
+          "seats": [
+            {
+              "seat": 0,
+              "state": 0,
+              "uid": 1
+            },
+            {
+              "seat": 1,
+              "state": 0,
+              "uid": 2
+            },
+            {
+              "seat": 2,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 3,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 4,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 5,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 6,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 7,
+              "state": 254,
+              "uid": 65535
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 08:15:08.174",
+          "line": 216,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 54,
+          "wire_length": 15,
+          "event": "command_reply",
+          "success": true,
+          "ready": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "at": "2026-10-28 08:15:39.126",
+          "line": 1284,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 1,
+          "host_seat": 0,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:15:59.855",
+          "line": 2005,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 56,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 9,
+          "ready": true
+        },
+        {
+          "at": "2026-10-28 08:15:59.861",
+          "line": 2007,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 44,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "seat": 1,
+          "ready": true
+        },
+        {
+          "at": "2026-10-28 08:16:23.749",
+          "line": 2834,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 44,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "seat": 0,
+          "ready": true
+        },
+        {
+          "at": "2026-10-28 08:16:23.749",
+          "line": 2834,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 2,
+          "host_seat": 0,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:16:23.749",
+          "line": 2834,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 45,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "selected_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:16:23.754",
+          "line": 2835,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 10
+        },
+        {
+          "at": "2026-10-28 08:16:33.759",
+          "line": 3194,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 12
+        },
+        {
+          "at": "2026-10-28 08:16:43.767",
+          "line": 3540,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 13
+        },
+        {
+          "at": "2026-10-28 08:16:53.776",
+          "line": 3920,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 16
+        },
+        {
+          "at": "2026-10-28 08:17:03.780",
+          "line": 4294,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 19
+        },
+        {
+          "at": "2026-10-28 08:17:13.788",
+          "line": 4650,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 23
+        },
+        {
+          "at": "2026-10-28 08:17:23.794",
+          "line": 5005,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 27
+        },
+        {
+          "at": "2026-10-28 08:17:33.801",
+          "line": 5362,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 120,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 32
+        },
+        {
+          "at": "2026-10-28 08:17:39.655",
+          "line": 5574,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 46,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "dead_seat": 0,
+          "killer_seat": 1
+        },
+        {
+          "at": "2026-10-28 08:17:39.655",
+          "line": 5574,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 49,
+          "wire_length": 6,
+          "event": "pvp_notification"
+        },
+        {
+          "at": "2026-10-28 08:17:39.655",
+          "line": 5575,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 61,
+          "wire_length": 66,
+          "event": "command_request",
+          "sequence": 35,
+          "stats": [
+            0,
+            0,
+            0,
+            0,
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "scores": [
+            12742,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2100,
+            0
+          ],
+          "total_score": 14842,
+          "representable_total": true
+        },
+        {
+          "at": "2026-10-28 08:17:39.715",
+          "line": 5577,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 4,
+          "losses": 0,
+          "total_pvp_exp": 4000,
+          "current_threshold": 2000,
+          "next_threshold": 8000,
+          "grade": 2,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:17:39.715",
+          "line": 5577,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 47,
+          "wire_length": 80,
+          "event": "pvp_notification",
+          "winning_seat": 1,
+          "victory_points": 16,
+          "grade": 2,
+          "experience_delta": 1000,
+          "ranks": [
+            {
+              "uid": 2,
+              "total_score": 14842,
+              "grade": 2,
+              "total_pvp_exp": 4000,
+              "current_threshold": 2000,
+              "next_threshold": 8000,
+              "deathmatch_kills": 0,
+              "deathmatch_deaths": 0
+            },
+            {
+              "uid": 1,
+              "total_score": 0,
+              "grade": 0,
+              "total_pvp_exp": 0,
+              "current_threshold": 0,
+              "next_threshold": 2000,
+              "deathmatch_kills": 0,
+              "deathmatch_deaths": 0
+            }
+          ],
+          "ace_uid": 2,
+          "all_kill_uid": 65535,
+          "character_exp": 0,
+          "draw": false
+        },
+        {
+          "at": "2026-10-28 08:17:55.494",
+          "line": 6052,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 60,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 36
+        },
+        {
+          "at": "2026-10-28 08:17:55.498",
+          "line": 6054,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 1,
+          "host_seat": 1,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:20:00.152",
+          "line": 10385,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 43,
+          "wire_length": 42,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "mode": 0,
+          "seats": [
+            {
+              "seat": 0,
+              "state": 255,
+              "uid": 65535
+            },
+            {
+              "seat": 1,
+              "state": 0,
+              "uid": 2
+            },
+            {
+              "seat": 2,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 3,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 4,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 5,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 6,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 7,
+              "state": 254,
+              "uid": 65535
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 08:20:00.152",
+          "line": 10385,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 1,
+          "host_seat": 1,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:20:51.039",
+          "line": 10393,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 55,
+          "wire_length": 14,
+          "event": "command_request",
+          "sequence": 40,
+          "seat": 1,
+          "state": 254
+        },
+        {
+          "at": "2026-10-28 08:20:51.044",
+          "line": 10394,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 43,
+          "wire_length": 42,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "mode": 0,
+          "seats": [
+            {
+              "seat": 0,
+              "state": 255,
+              "uid": 65535
+            },
+            {
+              "seat": 1,
+              "state": 255,
+              "uid": 65535
+            },
+            {
+              "seat": 2,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 3,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 4,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 5,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 6,
+              "state": 254,
+              "uid": 65535
+            },
+            {
+              "seat": 7,
+              "state": 254,
+              "uid": 65535
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 08:20:51.044",
+          "line": 10394,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 42,
+          "wire_length": 13,
+          "event": "pvp_notification",
+          "room_id": 1,
+          "state": 0,
+          "host_seat": 0,
+          "requested_map": 3,
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:20:52.762",
+          "line": 10396,
+          "direction": "TX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 3,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 41,
+          "uninterpreted_exit_bytes": 0
+        },
+        {
+          "at": "2026-10-28 08:20:52.762",
+          "line": 10397,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:20:52.763",
+          "line": 10408,
+          "direction": "RX",
+          "local_endpoint": "endpoint-14",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 3,
+          "wire_length": 7,
+          "event": "command_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 08:21:16.759",
+          "line": 10471,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:21:17.515",
+          "line": 10475,
+          "direction": "TX",
+          "local_endpoint": "endpoint-15",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 45,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:21:17.519",
+          "line": 10476,
+          "direction": "RX",
+          "local_endpoint": "endpoint-15",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 11,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 0
+        },
+        {
+          "at": "2026-10-28 08:21:17.520",
+          "line": 10479,
+          "direction": "TX",
+          "local_endpoint": "endpoint-15",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 4,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:21:17.524",
+          "line": 10482,
+          "direction": "RX",
+          "local_endpoint": "endpoint-15",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 196,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 2,
+          "town_id": 2
+        },
+        {
+          "at": "2026-10-28 08:21:17.524",
+          "line": 10482,
+          "direction": "RX",
+          "local_endpoint": "endpoint-15",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 4,
+          "losses": 0,
+          "total_pvp_exp": 4000,
+          "current_threshold": 2000,
+          "next_threshold": 8000,
+          "grade": 2,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:22:43.422",
+          "line": 10495,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:22:44.429",
+          "line": 10567,
+          "direction": "TX",
+          "local_endpoint": "endpoint-15",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 7,
+          "uninterpreted_exit_bytes": 0
+        },
+        {
+          "at": "2026-10-28 08:22:44.430",
+          "line": 10568,
+          "direction": "RX",
+          "local_endpoint": "endpoint-15",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 7,
+          "event": "command_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 08:22:44.917",
+          "line": 10570,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:22:45.677",
+          "line": 10574,
+          "direction": "TX",
+          "local_endpoint": "endpoint-16",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 1,
+          "wire_length": 45,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:22:45.677",
+          "line": 10575,
+          "direction": "RX",
+          "local_endpoint": "endpoint-16",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 1,
+          "wire_length": 29,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 4,
+          "relay_configured": false
+        },
+        {
+          "at": "2026-10-28 08:22:45.679",
+          "line": 10578,
+          "direction": "TX",
+          "local_endpoint": "endpoint-16",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 4,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:22:45.680",
+          "line": 10580,
+          "direction": "RX",
+          "local_endpoint": "endpoint-16",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 1,
+          "op": 4,
+          "wire_length": 196,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 2,
+          "town_id": 2
+        },
+        {
+          "at": "2026-10-28 08:22:45.718",
+          "line": 10582,
+          "direction": "RX",
+          "local_endpoint": "endpoint-16",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 4,
+          "losses": 0,
+          "total_pvp_exp": 4000,
+          "current_threshold": 2000,
+          "next_threshold": 8000,
+          "grade": 2,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:22:45.718",
+          "line": 10582,
+          "direction": "RX",
+          "local_endpoint": "endpoint-16",
+          "remote_endpoint": "endpoint-8",
+          "remote_port": 7004,
+          "type": 0,
+          "op": 41,
+          "wire_length": 8,
+          "event": "pvp_notification",
+          "rooms": []
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "E6EEE7D8E480C2B75DE29449955C14E455B20204CFAF767D9A90EDCB1B1981B1",
+      "capture_start_local": "2026-10-28 08:09:38",
+      "counts": {
+        "selected_events": 66,
+        "RX_frames": 176,
+        "TX_frames": 71,
+        "TX_crc_valid": 71,
+        "incomplete_tcp_bytes": 0
+      },
+      "observed_packet_counts": {
+        "TX_CMD1": 4,
+        "RX_CMD1": 4,
+        "login_mode_0": 2,
+        "TX_CMD4": 4,
+        "RX_CMD4": 4,
+        "RX_NOTI48": 5,
+        "TX_CMD3": 3,
+        "RX_CMD3": 3,
+        "login_mode_4": 2,
+        "pvp_login_seen": 1,
+        "RX_NOTI41": 3,
+        "TX_CMD54": 1,
+        "RX_NOTI43": 3,
+        "RX_CMD54": 1,
+        "RX_NOTI42": 5,
+        "TX_CMD56": 1,
+        "RX_NOTI44": 2,
+        "RX_NOTI45": 1,
+        "TX_CMD120": 8,
+        "RX_NOTI46": 1,
+        "RX_NOTI49": 1,
+        "TX_CMD61": 1,
+        "RX_NOTI47": 1,
+        "TX_CMD60": 1,
+        "TX_CMD55": 1,
+        "normal_login_after_pvp": 1
+      },
+      "udp_flows": [
+        {
+          "at": "2026-10-28 08:11:29.919",
+          "line": 83,
+          "direction": "TX",
+          "local_endpoint": "endpoint-12",
+          "remote_endpoint": "endpoint-2",
+          "remote_port": 7002,
+          "last_at": "2026-10-28 08:20:00.134",
+          "last_line": 10384,
+          "datagrams": 5883,
+          "bytes": 152211,
+          "headers": {
+            "nat_probe": 2,
+            "unreliable_blocks": 2974,
+            "application_crc_invalid": 4423,
+            "reliable_blocks": 1449,
+            "ack_shape_blocks": 2906
+          }
+        },
+        {
+          "at": "2026-10-28 08:11:29.993",
+          "line": 85,
+          "direction": "RX",
+          "local_endpoint": "endpoint-12",
+          "remote_endpoint": "endpoint-2",
+          "remote_port": 7002,
+          "last_at": "2026-10-28 08:20:00.126",
+          "last_line": 10382,
+          "datagrams": 4208,
+          "bytes": 104569,
+          "headers": {
+            "nat_response_shape": 2,
+            "unreliable_blocks": 1299,
+            "application_crc_invalid": 2757,
+            "ack_shape_blocks": 2907,
+            "reliable_blocks": 1458
+          }
+        },
+        {
+          "at": "2026-10-28 08:11:29.994",
+          "line": 86,
+          "direction": "TX",
+          "local_endpoint": "endpoint-12",
+          "remote_endpoint": "endpoint-3",
+          "remote_port": 7003,
+          "last_at": "2026-10-28 08:23:37.656",
+          "last_line": 10589,
+          "datagrams": 73,
+          "bytes": 721,
+          "headers": {
+            "nat_probe": 1,
+            "unparsed_datagrams": 72
+          }
+        },
+        {
+          "at": "2026-10-28 08:11:29.999",
+          "line": 87,
+          "direction": "RX",
+          "local_endpoint": "endpoint-12",
+          "remote_endpoint": "endpoint-3",
+          "remote_port": 7003,
+          "last_at": "2026-10-28 08:11:29.999",
+          "last_line": 87,
+          "datagrams": 1,
+          "bytes": 7,
+          "headers": {
+            "nat_response_shape": 1
+          }
+        }
+      ],
+      "status": "observed"
+    }
+  ],
+  "economy_before": {
+    "sha256": "BDDD24C287F3FF1DF2D2C1C12155B967F727B0EA0833FC8FBE9639677DB6A7D3",
+    "bytes": 225579,
+    "characters": [
+      {
+        "role": "B",
+        "VictoryPoints": 12,
+        "PvpPoints": 3000,
+        "PvpGrade": 2,
+        "PvpWins": 3,
+        "PvpLosses": 0,
+        "PvpPlayCount": 3,
+        "PvpCount": 3,
+        "PvpGradeExtension": 0
+      },
+      {
+        "role": "A",
+        "VictoryPoints": 3,
+        "PvpPoints": 0,
+        "PvpGrade": 0,
+        "PvpWins": 0,
+        "PvpLosses": 3,
+        "PvpPlayCount": 3,
+        "PvpCount": 3,
+        "PvpGradeExtension": 0
+      }
+    ],
+    "receipts": [
+      {
+        "receipt_ordinal": 0,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 1,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 1,
+            "PlayCount": 1,
+            "Count": 1,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 4,
+            "Points": 1000,
+            "Grade": 1,
+            "Wins": 1,
+            "Losses": 0,
+            "PlayCount": 1,
+            "Count": 1,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      },
+      {
+        "receipt_ordinal": 1,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 2,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 2,
+            "PlayCount": 2,
+            "Count": 2,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 8,
+            "Points": 2000,
+            "Grade": 2,
+            "Wins": 2,
+            "Losses": 0,
+            "PlayCount": 2,
+            "Count": 2,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      },
+      {
+        "receipt_ordinal": 2,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 3,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 3,
+            "PlayCount": 3,
+            "Count": 3,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 12,
+            "Points": 3000,
+            "Grade": 2,
+            "Wins": 3,
+            "Losses": 0,
+            "PlayCount": 3,
+            "Count": 3,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      }
+    ],
+    "note": "Read-only canonical snapshot. No names, account IDs, character GUIDs or unrelated account/economy fields exported."
+  },
+  "economy_after": {
+    "sha256": "14D4526DC7BA4A847FC5F1C1128C79F21F14FCF40F985F86132A5F76D76298B4",
+    "bytes": 226430,
+    "characters": [
+      {
+        "role": "B",
+        "VictoryPoints": 16,
+        "PvpPoints": 4000,
+        "PvpGrade": 2,
+        "PvpWins": 4,
+        "PvpLosses": 0,
+        "PvpPlayCount": 4,
+        "PvpCount": 4,
+        "PvpGradeExtension": 0
+      },
+      {
+        "role": "A",
+        "VictoryPoints": 4,
+        "PvpPoints": 0,
+        "PvpGrade": 0,
+        "PvpWins": 0,
+        "PvpLosses": 4,
+        "PvpPlayCount": 4,
+        "PvpCount": 4,
+        "PvpGradeExtension": 0
+      }
+    ],
+    "receipts": [
+      {
+        "receipt_ordinal": 0,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 1,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 1,
+            "PlayCount": 1,
+            "Count": 1,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 4,
+            "Points": 1000,
+            "Grade": 1,
+            "Wins": 1,
+            "Losses": 0,
+            "PlayCount": 1,
+            "Count": 1,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      },
+      {
+        "receipt_ordinal": 1,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 2,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 2,
+            "PlayCount": 2,
+            "Count": 2,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 8,
+            "Points": 2000,
+            "Grade": 2,
+            "Wins": 2,
+            "Losses": 0,
+            "PlayCount": 2,
+            "Count": 2,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      },
+      {
+        "receipt_ordinal": 2,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 3,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 3,
+            "PlayCount": 3,
+            "Count": 3,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 12,
+            "Points": 3000,
+            "Grade": 2,
+            "Wins": 3,
+            "Losses": 0,
+            "PlayCount": 3,
+            "Count": 3,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      },
+      {
+        "receipt_ordinal": 3,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 4,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 4,
+            "PlayCount": 4,
+            "Count": 4,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 16,
+            "Points": 4000,
+            "Grade": 2,
+            "Wins": 4,
+            "Losses": 0,
+            "PlayCount": 4,
+            "Count": 4,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      }
+    ],
+    "note": "Read-only canonical snapshot. No names, account IDs, character GUIDs or unrelated account/economy fields exported."
+  },
+  "prefix_comparisons": [
+    {
+      "role": "A",
+      "pid": 52320,
+      "prefix_sha256": "5BE30E1E5AAF9078DB0361545546A61F9FDF716DEDEF5ED4E5A1AE0A754B47CB",
+      "prefix_bytes": 1583200,
+      "equal": true
+    },
+    {
+      "role": "B",
+      "pid": 60896,
+      "prefix_sha256": "6070ADC85A75C60E724513B475A1622D268125EB8FDFBA6AC346D8D8D9D3CC13",
+      "prefix_bytes": 1589236,
+      "equal": true
+    }
+  ],
+  "helper_sha256": "C9AC8F4301040356D8CF2ACE2E434A5E8806AB67FDF9E3AC27918855D1390088",
+  "native_acceptance": "ROOT_UI_REVIEW_REQUIRED"
+}

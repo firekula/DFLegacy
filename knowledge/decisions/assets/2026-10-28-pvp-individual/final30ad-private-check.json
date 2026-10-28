@@ -1,0 +1,29 @@
+{
+  "schema": "act1-final-pvp-private-check/v1",
+  "frozen_files": 145,
+  "combat_probe_files": 20,
+  "all_frozen_hashes_rechecked": true,
+  "old_capture_prefixes_semantically_equal": true,
+  "full_state_only_selected_pvp_fields_and_one_receipt_changed": true,
+  "baseline_sha256": "BDDD24C287F3FF1DF2D2C1C12155B967F727B0EA0833FC8FBE9639677DB6A7D3",
+  "final_sha256": "14D4526DC7BA4A847FC5F1C1128C79F21F14FCF40F985F86132A5F76D76298B4",
+  "collector_sha256": "E03CAB750080F3F9E3808EDB883159E02CD4E00C8883E52D006339201B932D6F",
+  "freeze_script_sha256": "DEBB298E67165071E0B89C4DF6F8829A15E5C7DFA76CBFD0CC326830F38EE664",
+  "checker_sha256": "7D1CC37447053AC621428083015840AAEDBBD9EF7021E4EF207CDAFF81DEFDF4",
+  "checks": 62,
+  "total": 62,
+  "red_then_green": true,
+  "negative_cases": [
+    "invalid CRC",
+    "missing native death",
+    "missing second PvP login",
+    "wrong awarded VP",
+    "mutated historical receipt",
+    "nonPvP difference",
+    "HP never zero",
+    "nonresponding sample",
+    "claimed full sampling coverage beyond actual interval"
+  ],
+  "root_reviewed_native_images": true,
+  "whole_runtime_delivery": "PENDING_ROOT"
+}

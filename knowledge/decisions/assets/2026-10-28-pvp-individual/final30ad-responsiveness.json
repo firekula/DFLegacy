@@ -1,0 +1,2007 @@
+{
+  "raw_sha256": "028CF14A17FA548BAD0FDEE0FA7168A0934C44EA2CCD58AFC928916639EEE597",
+  "samples": [
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:13.7825642Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:13.7962998Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:14.3137672Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:14.3174325Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:14.8261432Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:14.8287298Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:15.3367123Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:15.3418870Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:15.8588716Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:15.8622353Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:16.3810596Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:16.3868270Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:16.9080522Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:16.9138111Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:17.4229676Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:17.4264212Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:17.9435123Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:17.9456681Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:18.4568166Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:18.4626989Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:18.9810052Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:18.9860617Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:19.4911319Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:19.4951888Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:20.0024626Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:20.0057345Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:20.5120265Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:20.5145373Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:21.0347141Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:21.0362450Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:21.5483273Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:21.5514249Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:22.0711084Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:22.0743985Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:22.5831184Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:22.5887426Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:23.1079282Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:23.1115408Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:23.6195332Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:23.6222757Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:24.1275088Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:24.1309384Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:24.6382628Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:24.6407524Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:25.1596040Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:25.1646952Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:25.6822136Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:25.6854229Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:26.1927614Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:26.1944413Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:26.7038383Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:26.7088728Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:27.2154425Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:27.2178325Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:27.7268281Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:27.7286346Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:28.2374361Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:28.2429534Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:28.7614635Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:28.7651244Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:29.2713872Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:29.2771651Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:29.7933547Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:29.7961952Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:30.3174663Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:30.3199005Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:30.8306210Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:30.8324770Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:31.3431223Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:31.3448961Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:31.8555751Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:31.8575596Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:32.3689953Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:32.3715098Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:32.8786133Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:32.8812445Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:33.3999467Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:33.4032062Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:33.9156536Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:33.9207572Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:34.4333954Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:34.4398721Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:34.9590868Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:34.9627485Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:35.4733547Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:35.4768353Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:35.9822804Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:35.9856633Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:36.5074307Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:36.5099143Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:37.0148919Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:37.0169323Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:37.5256596Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:37.5299613Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:38.0357540Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:38.0378410Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:38.5484099Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:38.5546481Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:39.0715553Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:39.0739526Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:39.5794673Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:39.5810423Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:40.0887667Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:40.0905025Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:40.6015959Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:40.6052339Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:41.1136150Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:41.1197726Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:41.6248884Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:41.6286281Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:42.1355428Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:42.1393108Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:42.6429809Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:42.6481027Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:43.1559538Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:43.1588130Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:43.6657111Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:43.6675224Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:44.1775633Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:44.1796042Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:44.6870730Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:44.7031653Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:45.2155216Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:45.2186008Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:45.7296797Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:45.7352211Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:46.2402261Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:46.2456940Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:46.7674141Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:46.7726737Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:47.2904794Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:47.2959340Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:47.8041376Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:47.8059650Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:48.3137013Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:48.3153366Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:48.8248502Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:48.8264048Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:49.3356106Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:49.3401464Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:49.8460034Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:49.8476746Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:50.3589624Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:50.3623279Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:50.8673847Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:50.8716738Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:51.3920891Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:51.3941899Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:51.9153386Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:51.9206254Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:52.4370690Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:52.4392065Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:52.9478525Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:52.9501958Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:53.4563362Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:53.4616928Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:53.9694144Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:53.9716391Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:54.4799958Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:54.4851699Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:54.9931129Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:54.9982423Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:55.5011035Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:55.5062554Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:56.0171699Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:56.0198870Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:56.5248899Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:56.5269281Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:57.0343235Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:57.0359044Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:57.5469423Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:57.5491232Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:58.0526912Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:58.0547491Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:58.5621340Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:58.5672920Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:59.0841253Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:59.0868770Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:19:59.6069699Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:19:59.6133244Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:00.1279731Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:00.1317179Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:00.6387453Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:00.6446304Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:01.1515928Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:01.1590930Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:01.6746202Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:01.6787722Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:02.1884967Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:02.1909144Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:02.6988468Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:02.7010057Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:03.2079550Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:03.2106215Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:03.7305448Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:03.7323279Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:04.2414558Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:04.2435352Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:04.7531629Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:04.7555796Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:05.2629330Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:05.2648898Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:05.7722739Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:05.7742947Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:06.2836289Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:06.2853896Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:06.7957330Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:06.7975882Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:07.3072298Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:07.3102677Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:07.8205163Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:07.8228584Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:08.3297118Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:08.3319217Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:08.8387117Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:08.8414743Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:09.3521918Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:09.3543223Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:09.8648442Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:09.8666999Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:10.3773942Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:10.3794970Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:10.8898194Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:10.8915127Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:11.4038377Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:11.4063332Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:11.9245957Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:11.9266306Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:12.4320275Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:12.4342227Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:12.9451878Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:12.9470940Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:13.4673170Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:13.4701369Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:13.9748999Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:13.9772383Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:14.4848307Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:14.4869558Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:14.9966873Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:14.9984337Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:15.5022967Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:15.5048278Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:16.0105729Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:16.0123628Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:16.5197328Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:16.5244122Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:17.0289146Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:17.0314108Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:17.5400712Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:17.5463581Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:18.0525794Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:18.0544737Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:18.5613304Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:18.5650830Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:19.0749660Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:19.1102785Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:19.6166977Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:19.6219691Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:20.1378514Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:20.1429693Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:20.6471117Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:20.6502692Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:21.1531161Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:21.1571462Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:21.6659376Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:21.6682477Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:22.1747356Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:22.1789171Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:22.6847518Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:22.6902372Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:23.1980287Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:23.2032357Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:23.7116581Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:23.7158679Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:24.2216034Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:24.2243998Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:24.7310034Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:24.7352200Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:25.2394734Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:25.2443837Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:25.7499742Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:25.7562501Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:26.2705413Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:26.2744566Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:26.7820942Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:26.7891610Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:27.3077711Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:27.3108708Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:27.8300139Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:27.8347043Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:28.3528582Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:28.3598903Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:28.8790538Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:28.8811823Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:29.3882390Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:29.3903081Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:29.8997316Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:29.9020901Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:30.4084460Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:30.4151968Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:30.9191014Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:30.9243112Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:31.4340215Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:31.4371856Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:31.9522293Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:31.9554935Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:32.4636654Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:32.4683561Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:32.9868683Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:32.9907517Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:33.5095889Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:33.5126917Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:34.0153154Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:34.0248448Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:34.5411532Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:34.5465755Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:35.0646653Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:35.0688277Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:35.5866586Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:35.5925530Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:36.1121020Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:36.1146231Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:36.6225564Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:36.6289984Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:37.1491437Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:37.1538350Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:37.6558414Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:37.6600222Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:38.1654884Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:38.1674377Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:38.6773030Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:38.6819892Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:39.1867074Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:39.1914231Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:39.6988956Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:39.7010142Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:40.2069374Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:40.2115465Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:40.7166463Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:40.7232699Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:41.2394023Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:41.2412644Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:41.7465462Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:41.7539811Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:42.2719410Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:42.2774113Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:42.7839765Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:42.7882305Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:43.2950211Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:43.3027832Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:43.8199727Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:43.8228732Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:44.3276208Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:44.3308795Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:44.8359313Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:44.8407364Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:45.3461773Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:45.3525177Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:45.8686726Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:45.8719305Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:46.3766588Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:46.3816011Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:46.8869548Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:46.8922164Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:47.3980910Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:47.4017643Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:47.9108468Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:47.9146364Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:48.4252704Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:48.4300176Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:48.9443942Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:48.9485889Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:49.4534363Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:49.4568354Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:49.9617224Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:49.9668948Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:50.4739223Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:50.4816139Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:50.9867238Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:50.9932398Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:51.5122587Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:51.5186591Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:52.0224251Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:52.0268826Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:52.5477834Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:52.5543778Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:53.0606559Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:53.0624441Z",
+      "responding": true
+    },
+    {
+      "role": "A",
+      "at_utc": "2026-10-28T00:20:53.5704442Z",
+      "responding": true
+    },
+    {
+      "role": "B",
+      "at_utc": "2026-10-28T00:20:53.5763947Z",
+      "responding": true
+    }
+  ],
+  "control_windows": [
+    {
+      "role": "A",
+      "action": "return-channel-chooser",
+      "started": "2026-10-28T08:19:59.817+08:00",
+      "finished": "2026-10-28T08:20:04.006+08:00",
+      "coverage": "complete",
+      "overlap_seconds": 4.189
+    },
+    {
+      "role": "A",
+      "action": "return-normal-world",
+      "started": "2026-10-28T08:20:16.974+08:00",
+      "finished": "2026-10-28T08:20:33.021+08:00",
+      "coverage": "complete",
+      "overlap_seconds": 16.047
+    },
+    {
+      "role": "A",
+      "action": "second-entry",
+      "started": "2026-10-28T08:21:50.758+08:00",
+      "finished": "2026-10-28T08:22:00.401+08:00",
+      "coverage": "none",
+      "overlap_seconds": 0
+    },
+    {
+      "role": "B",
+      "action": "return-channel-chooser",
+      "started": "2026-10-28T08:20:50.667+08:00",
+      "finished": "2026-10-28T08:20:54.782+08:00",
+      "coverage": "partial",
+      "overlap_seconds": 2.909394
+    },
+    {
+      "role": "B",
+      "action": "return-normal-world",
+      "started": "2026-10-28T08:21:15.315+08:00",
+      "finished": "2026-10-28T08:21:31.462+08:00",
+      "coverage": "none",
+      "overlap_seconds": 0
+    },
+    {
+      "role": "B",
+      "action": "second-entry",
+      "started": "2026-10-28T08:22:43.032+08:00",
+      "finished": "2026-10-28T08:22:52.551+08:00",
+      "coverage": "none",
+      "overlap_seconds": 0
+    }
+  ],
+  "failure": null,
+  "limitation": "390 successful samples cover A return to normal and only the beginning of B channel chooser; B normal-world entry and both second PvP entries are outside the sampling interval. Native screenshots/protocol independently attest those later transitions."
+}

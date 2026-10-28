@@ -1,0 +1,289 @@
+{
+  "outcome": "native_zero_hp_observed",
+  "samples": [
+    {
+      "at": "2026-10-28T08:16:46.133+08:00",
+      "A_hp": 12742,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:16:49.590+08:00",
+      "A_hp": 12280,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:16:50.819+08:00",
+      "A_hp": 12000,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:16:51.956+08:00",
+      "A_hp": 12000,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:16:55.223+08:00",
+      "A_hp": 11534,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:16:56.456+08:00",
+      "A_hp": 11258,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:16:57.481+08:00",
+      "A_hp": 11258,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:00.789+08:00",
+      "A_hp": 10545,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:04.157+08:00",
+      "A_hp": 9523,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:07.489+08:00",
+      "A_hp": 8626,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:10.741+08:00",
+      "A_hp": 7409,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:14.047+08:00",
+      "A_hp": 6504,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:17.362+08:00",
+      "A_hp": 5591,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:20.705+08:00",
+      "A_hp": 4652,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:24.061+08:00",
+      "A_hp": 3713,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:27.398+08:00",
+      "A_hp": 2793,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:30.655+08:00",
+      "A_hp": 1883,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:33.951+08:00",
+      "A_hp": 930,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:37.204+08:00",
+      "A_hp": 7,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    },
+    {
+      "at": "2026-10-28T08:17:40.504+08:00",
+      "A_hp": 0,
+      "B_hp": 15042,
+      "states": [
+        4,
+        4
+      ]
+    }
+  ],
+  "raw_summary_sha256": "6B299F844F065F4EE2864B35A9524BC380D0C2FAE3F842DC8CBB602AEAD9E787",
+  "probe_hashes": [
+    {
+      "file": "native-snapshot-081646152454.json",
+      "sha256": "FDDE620FD30C60E1DE2E2134DBC673D142BB76A5660B4850A4C47469ABA7EFA4",
+      "bytes": 26016
+    },
+    {
+      "file": "native-snapshot-081649610655.json",
+      "sha256": "A68CFE743C63C862663722AAC2AF252B377A234437DAEB884D0F295D256B0896",
+      "bytes": 26132
+    },
+    {
+      "file": "native-snapshot-081650841559.json",
+      "sha256": "25E95E006622E8215CB008B9A157890C329A30D5C5DA7209E897B9344FC1324E",
+      "bytes": 26118
+    },
+    {
+      "file": "native-snapshot-081651976556.json",
+      "sha256": "ADFAC777220F2BDF3EF2496F831E0C93338BB98F51B1BED5E5879FFA91B2C7ED",
+      "bytes": 26113
+    },
+    {
+      "file": "native-snapshot-081655247959.json",
+      "sha256": "5F5011974669AE61384DAF37D445DB19D3454D13C1BDADC76A0F9B43D6AEF82B",
+      "bytes": 26131
+    },
+    {
+      "file": "native-snapshot-081656481247.json",
+      "sha256": "3695C134EA046F6711A534C470E22C2B8BF4344C84A951ED788D6398E25DA3DE",
+      "bytes": 26119
+    },
+    {
+      "file": "native-snapshot-081657508213.json",
+      "sha256": "8757C64C6EF815E090F668F778C6919EE9B3927B3FAD5AC924E971E2F020D5A4",
+      "bytes": 26118
+    },
+    {
+      "file": "native-snapshot-081700808758.json",
+      "sha256": "6488312C4B15D64FC9082B3D516B2829A84B4ED6257935DB338AE0933663337C",
+      "bytes": 26128
+    },
+    {
+      "file": "native-snapshot-081704177590.json",
+      "sha256": "ACA588D276389361A2C36A77437A941FC36136978DE4F670E674124CE21A233A",
+      "bytes": 26118
+    },
+    {
+      "file": "native-snapshot-081707511417.json",
+      "sha256": "01E14C9EF42CED7AACB2EFB55DD7ED5913CC98FD383419164C249731F4BCE2F1",
+      "bytes": 26116
+    },
+    {
+      "file": "native-snapshot-081710761964.json",
+      "sha256": "31A4D30A92F83BA7EB8F2962426C02857CF6665BE33E1FF3CB3E58FEDD56748A",
+      "bytes": 26135
+    },
+    {
+      "file": "native-snapshot-081714067811.json",
+      "sha256": "78B5B95A49B083AA3A074B9F641289663E400A2F0BE37101076A489892642E43",
+      "bytes": 26105
+    },
+    {
+      "file": "native-snapshot-081717389663.json",
+      "sha256": "B899242708725DB34BE5B65B53EFC03C228112A9F2448EA1ED75C3217B2FF500",
+      "bytes": 26111
+    },
+    {
+      "file": "native-snapshot-081720728133.json",
+      "sha256": "2993196C0F1379A47CC4390083F4CA71457BCC489C08B8D1A9B16EC105D54CB9",
+      "bytes": 26138
+    },
+    {
+      "file": "native-snapshot-081724083540.json",
+      "sha256": "41BD49D6A71A98909F58E65E7BF0CEF5178A891C9D3B9CB530634B77C5AB937E",
+      "bytes": 26123
+    },
+    {
+      "file": "native-snapshot-081727424958.json",
+      "sha256": "BBA7D1DA4FC354199FD07FE99FA4BDA6A8D85372A5EA65EC7E396AD9650B4424",
+      "bytes": 26113
+    },
+    {
+      "file": "native-snapshot-081730675054.json",
+      "sha256": "4A2F11577ABDF4EDFEF6A85EDBB1454C62198D26496D427207BE0EF518EF2275",
+      "bytes": 26110
+    },
+    {
+      "file": "native-snapshot-081733973247.json",
+      "sha256": "89F20E067E4AE0A11119E459314F701751C3C6D755E9FB302C8C6F4ED7ED36C1",
+      "bytes": 26110
+    },
+    {
+      "file": "native-snapshot-081737225105.json",
+      "sha256": "A63FC7AC54EA99BA7EDD1CAD6910098B72826DBEC9A7552ACC300C9D991918CF",
+      "bytes": 26112
+    },
+    {
+      "file": "native-snapshot-081740533320.json",
+      "sha256": "0CD2F181A73AAFCFF1A6F9E976AD9CD9E50D5D1BBAD30D80027DAC483D5133EF",
+      "bytes": 26004
+    }
+  ],
+  "native_interface": "Root-operated native built-in input; HP read with VM_READ only"
+}

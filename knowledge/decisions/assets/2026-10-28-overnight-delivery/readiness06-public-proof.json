@@ -1,0 +1,65 @@
+{
+  "schema": "act1-readiness06-selected/v1",
+  "status": "PASS_AS_SCOPED",
+  "readiness": {
+    "status": "completed",
+    "phase": "06",
+    "receipt_sha256": "769CC11657058C0597BF2F32A946AB11F467EE5F747561D21413DA10A8226BC1",
+    "ready_sha256": "4C90C00DECA5A5C33126CA98CF716AFC946C3DC4F1F621BCF428F94F55BADB92",
+    "pid": 50700,
+    "start_time_utc": "2026-10-28T01:08:31.9154318Z",
+    "ports": [
+      27001,
+      7001
+    ],
+    "both_owned_same_pid": true,
+    "owned_process_identity_checked": true,
+    "normal_runtime_executable": true,
+    "hidden_child": true,
+    "server_arguments": [],
+    "unique_isolated_datapath": true,
+    "isolated_initial_sha256": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+    "isolated_final_sha256": "7E4407F4B183A975C4B3D2E59D50F52B77CE3FD07CCEFFC8F92FB88760EDD091",
+    "readonly_original_guards": 6,
+    "guard_share_mode": "Read",
+    "child_scoped_environment": true,
+    "environment_restored": true,
+    "stable_seconds": 2,
+    "no_startup_failure": true,
+    "stopped": true,
+    "final_absent": true,
+    "automatic_retry": false,
+    "automatic_rollback": false,
+    "recovery_review_sha256": "9B6D1C9B03C4A3C18B5485FFE1D8D3367B5598566BA9811F681DA5D5CDFD38CC",
+    "execution_review_sha256": "D5A4891B6AA03022BB02B3C9F90D7C2B5EF78D9D91BD814749157990BB9FDD60",
+    "environment_observation": {
+      "sha256": "A444A2A71A764D3FB2BA666FF1C9E7D994657E1225D6C95C762EADEFB3A171B5",
+      "host_version": "5.1.26100.9711",
+      "execute": true,
+      "entrypoint_completed": true,
+      "matched": true,
+      "before_count": 0,
+      "after_count": 0,
+      "before_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "after_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "values_exported": false,
+      "nonempty_environment_native_tested": false
+    },
+    "control_flow_basis": "Hash-bound source plus actual completed06 receipt: Hidden launch/noCLI, six FileShare.Read guards, child environment restoration, two-second owned dual-port gate and PID/path/start-checked cleanup. Not a separate visual or kernel trace of these controls."
+  },
+  "source_helper": {
+    "source_commit": "adc990941e860e7d199faa2e4acb7d1cdc48c868",
+    "ps1_sha256": "8FCE652F0EF4ACD7FE2AFD95599944DF2E2854EEC0FBC2E4803FFE9F19D4914A",
+    "cmd_sha256": "74220A29F6A5750848E48D2BE68F7142982B4D42F38B32DC71E7C5B98D0D3B4E",
+    "deployment_sha256": "1D42D13953A0CC530D3D4DA422871C8C8ACD0D9001E5018F41B9DFAADE7AA517"
+  },
+  "source_review_sha256": "1931F7BE8BBA279C7C7DC5173E06D78CE53F83EA2CFCF562BC011EE300AFC579",
+  "recovery_script_sha256": "66A919A542090748E5ECEFC0DE9261E5C623621B7973743FECA436B1C19309D9",
+  "wrapper_sha256": "F8D4218F42C68A069B946F5A1844524251FFAA5DE4762DCA0F3B1EE7515B15B6",
+  "freeze_sha256": "87E8D55804BDF23FDEA6E81F1A2C1D534052A9050BAAE6EE67B24E0CCFA3965D",
+  "limitations": [
+    "Relevant environment prefix set was empty before and after; no native nonempty restoration claim.",
+    "Isolated copy changed naturally on boot; original FB save stayed unchanged.",
+    "Runtime was stopped after readiness; this is not a claim that the server is running now."
+  ]
+}

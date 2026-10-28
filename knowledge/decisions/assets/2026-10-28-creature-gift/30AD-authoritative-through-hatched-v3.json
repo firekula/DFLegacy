@@ -1,0 +1,1361 @@
+{
+  "schema": "act1-creature-gift-authoritative/v3",
+  "case": "creatureegg",
+  "closed_at_utc": "2026-10-27T23:57:37.595623+00:00",
+  "runtime": {
+    "managed_source_commit": "5078da27a4807695f002ceea61333c43e1932ce4",
+    "native_source_commit": "ab1e6b685021f6cd6f8d125fc04dc0c5c50e931f",
+    "managed_manifest_sha256": "09EFFBE39AB99B377AAFB540933EA75919E9E04642FCE79F4D6AF0CB1CC05204",
+    "native_approval_sha256": "832A30A725206FE2A789EFAD4EE7A3194E03B49CCF781E3D931D4C3C99BB8CD8",
+    "server_sha256": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+    "protocol_sha256": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+    "native_sha256": "30AD9A4A3CD565DE845F74AB3D6C6D60EED1F3429EC7D53929D912F158246584",
+    "source_clone_sha256": "3E5A68F8F8322D1B726D1AF117CCB49433DE8B5F344DF307ADD3A33549B38665",
+    "manifest_sha256": "6DFF7938E91146D6A1B2D318ABC6ABF42368CB3DE808B2B199066E96A590035F",
+    "manifest_schema": "act1-creature-row-final/v3",
+    "initial_clone_diff": "none: exact bytes"
+  },
+  "inputs": [
+    {
+      "label": "manifest",
+      "kind": "case_manifest",
+      "sha256": "6DFF7938E91146D6A1B2D318ABC6ABF42368CB3DE808B2B199066E96A590035F",
+      "bytes": 239540
+    },
+    {
+      "label": "journal",
+      "kind": "journal",
+      "sha256": "A4DAB5FA6A5D3A86F8296DA57DE6FE5049F4C6E96B040090C61DBB5079A28FBD",
+      "bytes": 1636
+    },
+    {
+      "label": "raw-baseline",
+      "kind": "raw_state",
+      "sha256": "3E5A68F8F8322D1B726D1AF117CCB49433DE8B5F344DF307ADD3A33549B38665",
+      "bytes": 210038
+    },
+    {
+      "label": "observer-baseline",
+      "kind": "observer",
+      "sha256": "34B1C8A271803928C76C71E623EF404BB260A6F0241957E5C5F763337AA9C430",
+      "bytes": 1137
+    },
+    {
+      "label": "raw-gift-committed",
+      "kind": "raw_state",
+      "sha256": "98DFD0E1EE217AA02529E4B3A57BA04E235C93083402BD75D83D0320FAFEEBFB",
+      "bytes": 210867
+    },
+    {
+      "label": "observer-gift-committed",
+      "kind": "observer",
+      "sha256": "566430565B0240BE6B2010D567495E4D313AE8E24D50633ED2B4FCDFD086E94A",
+      "bytes": 1582
+    },
+    {
+      "label": "raw-unclaimed-final",
+      "kind": "raw_state",
+      "sha256": "31B4B586EA244BA8C989A2F8434C3231D6EBC7D1930A244C893BFF71210D4435",
+      "bytes": 210868
+    },
+    {
+      "label": "observer-unclaimed-final",
+      "kind": "observer",
+      "sha256": "F17F68C3A3F6F8BE884E3A23DBDEB6D4CBFC210895FB8860780C0AF492A7A0C4",
+      "bytes": 1582
+    },
+    {
+      "label": "previous",
+      "kind": "capture_report",
+      "sha256": "AD9D9C4EBB901354F6A008B4B1694D4ABE8A6E0A110C5A202BCBB3EF527E79E9",
+      "bytes": 18672
+    },
+    {
+      "label": "log-a",
+      "kind": "raw_log",
+      "sha256": "5A266E4EEC3A5CA1EF838816D29579426AA9D4B163B3C2BCE187F6402E0D8981",
+      "bytes": 48658
+    },
+    {
+      "label": "log-b",
+      "kind": "raw_log",
+      "sha256": "2058184A82894917775CDAFDFDA180D9E5DC86166C5E9BEEEBC3D99291CF47B1",
+      "bytes": 48023
+    },
+    {
+      "label": "journal-hatched",
+      "kind": "journal",
+      "sha256": "946F56BB00A1FBFF505D86005EB40FD1E8C6989D04EA26FAFD31B8DEDBEBCF26",
+      "bytes": 1635
+    },
+    {
+      "label": "raw-restart-unclaimed",
+      "kind": "raw_state",
+      "sha256": "31B4B586EA244BA8C989A2F8434C3231D6EBC7D1930A244C893BFF71210D4435",
+      "bytes": 210868
+    },
+    {
+      "label": "observer-restart-unclaimed",
+      "kind": "observer",
+      "sha256": "8F1D7EE909822CE825AE213B61D1083681BB09625039833B022211C59C713D95",
+      "bytes": 1583
+    },
+    {
+      "label": "raw-claimed",
+      "kind": "raw_state",
+      "sha256": "2DEEDD91E1EE01C59E553B39874F8276634DC618CA073F28308FBBD822789CC2",
+      "bytes": 211187
+    },
+    {
+      "label": "observer-claimed",
+      "kind": "observer",
+      "sha256": "7DF5DF3B8EBA88FAE97F72EB4496074545C944FBD002A188BDD1A2862966E277",
+      "bytes": 1690
+    },
+    {
+      "label": "raw-hatched",
+      "kind": "raw_state",
+      "sha256": "A461808BC1242F0EEE58EBC5FD57B1B28AC0B0A633044A40497405FBBAB1CA2D",
+      "bytes": 211166
+    },
+    {
+      "label": "observer-hatched",
+      "kind": "observer",
+      "sha256": "75EDF8B995E31EB7750AE14441A190EC05083B7DC8ED705FF073DC593161602C",
+      "bytes": 1678
+    },
+    {
+      "label": "previous-hatched",
+      "kind": "capture_report",
+      "sha256": "2CC69CDA0EFD9D92E9C7F8A53D90E91449E64934741E210AEDB5A149570CF117",
+      "bytes": 17036
+    },
+    {
+      "label": "hatched-log-a",
+      "kind": "raw_log",
+      "sha256": "0DA6DA2BD9EEA86378E3C98CE642409DEE0EBECEFFAB177602F33BAF333DD950",
+      "bytes": 49117
+    },
+    {
+      "label": "hatched-log-b",
+      "kind": "raw_log",
+      "sha256": "E9EF896E1415DCA3028B7B66279FAD68A97194BD5B8BA9B3C6011B840064C475",
+      "bytes": 49723
+    }
+  ],
+  "stages": {
+    "baseline": {
+      "phase": "gift-entry-final",
+      "state_sha256": "3E5A68F8F8322D1B726D1AF117CCB49433DE8B5F344DF307ADD3A33549B38665",
+      "observer_recomputed_equal": true,
+      "roles": {
+        "A": {
+          "Cash": 26600,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        }
+      }
+    },
+    "unclaimed": {
+      "phase": "gift-entry-final",
+      "state_sha256": "31B4B586EA244BA8C989A2F8434C3231D6EBC7D1930A244C893BFF71210D4435",
+      "observer_recomputed_equal": true,
+      "roles": {
+        "A": {
+          "Cash": 20000,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1675276505,
+              "SentAt": 1793144578,
+              "ExpiresAt": 1795736578,
+              "Attachment": {
+                "ItemId": 63007,
+                "CountOrValue": 1,
+                "State": 0,
+                "Durability": 0,
+                "SealState": 1,
+                "InstanceId": "01a17fbe-dffc-7f27-9c6e-6ba5711fb38f",
+                "AvatarExpireAt": null,
+                "AvatarAbilityIndex": null
+              }
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        }
+      }
+    },
+    "restart_unclaimed": {
+      "phase": "unclaimed-restart",
+      "state_sha256": "31B4B586EA244BA8C989A2F8434C3231D6EBC7D1930A244C893BFF71210D4435",
+      "observer_recomputed_equal": true,
+      "roles": {
+        "A": {
+          "Cash": 20000,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1675276505,
+              "SentAt": 1793144578,
+              "ExpiresAt": 1795736578,
+              "Attachment": {
+                "ItemId": 63007,
+                "CountOrValue": 1,
+                "State": 0,
+                "Durability": 0,
+                "SealState": 1,
+                "InstanceId": "01a17fbe-dffc-7f27-9c6e-6ba5711fb38f",
+                "AvatarExpireAt": null,
+                "AvatarAbilityIndex": null
+              }
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        }
+      }
+    },
+    "claimed": {
+      "phase": "unclaimed-restart",
+      "state_sha256": "2DEEDD91E1EE01C59E553B39874F8276634DC618CA073F28308FBBD822789CC2",
+      "observer_recomputed_equal": true,
+      "roles": {
+        "A": {
+          "Cash": 20000,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1675276505,
+              "SentAt": 1793144578,
+              "ExpiresAt": 1795736578,
+              "Attachment": null
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": [
+            {
+              "Slot": 0,
+              "ItemId": 63007,
+              "CountOrValue": 1,
+              "State": 0,
+              "Durability": 0,
+              "SealState": 1,
+              "InstanceId": "01a17fbe-dffc-7f27-9c6e-6ba5711fb38f",
+              "AvatarExpireAt": null,
+              "AvatarAbilityIndex": null,
+              "CreatureStomach": 100,
+              "CreatureStomachRemainderSeconds": 0,
+              "CreatureExperience": 0,
+              "CreatureLevel": 1,
+              "CreatureName": "宠物蛋 (恰克斯)",
+              "CreatureNoCharge": false
+            }
+          ]
+        }
+      }
+    },
+    "hatched": {
+      "phase": "unclaimed-restart",
+      "state_sha256": "A461808BC1242F0EEE58EBC5FD57B1B28AC0B0A633044A40497405FBBAB1CA2D",
+      "observer_recomputed_equal": true,
+      "roles": {
+        "A": {
+          "Cash": 20000,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1675276505,
+              "SentAt": 1793144578,
+              "ExpiresAt": 1795736578,
+              "Attachment": null
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": [
+            {
+              "Slot": 0,
+              "ItemId": 63003,
+              "CountOrValue": 1,
+              "State": 0,
+              "Durability": 0,
+              "SealState": 0,
+              "InstanceId": "01a17fbe-dffc-7f27-9c6e-6ba5711fb38f",
+              "AvatarExpireAt": null,
+              "AvatarAbilityIndex": null,
+              "CreatureStomach": 100,
+              "CreatureStomachRemainderSeconds": 0,
+              "CreatureExperience": 0,
+              "CreatureLevel": 1,
+              "CreatureName": "恰克斯",
+              "CreatureNoCharge": false
+            }
+          ]
+        }
+      }
+    }
+  },
+  "captures": [
+    {
+      "phase": "gift-entry-final",
+      "role": "A",
+      "pid": 47508,
+      "start_time_utc": "2026-10-27T23:39:21.265255+00:00",
+      "sha256": "5A266E4EEC3A5CA1EF838816D29579426AA9D4B163B3C2BCE187F6402E0D8981",
+      "snapshot_bytes": 48658,
+      "parsed_prefix_sha256": "5A266E4EEC3A5CA1EF838816D29579426AA9D4B163B3C2BCE187F6402E0D8981",
+      "pending_log_line_bytes": 0,
+      "capture_start_local": "2026-10-28 07:39:21",
+      "counts": {
+        "TX_frames": 17,
+        "RX_frames": 34,
+        "TX_crc_valid": 17,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 10,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 4,
+        "RX_NOTI97": 1,
+        "TX_CMD146": 1,
+        "RX_CMD146": 1,
+        "TX_CMD67": 1,
+        "RX_CMD67": 1,
+        "RX_NOTI53": 1
+      },
+      "events": [
+        {
+          "at": "2026-10-28 07:39:58.161",
+          "completed_at": "2026-10-28 07:39:58.161",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 225,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 18,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:39:58.161",
+          "completed_at": "2026-10-28 07:39:58.161",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:39:58.161",
+          "completed_at": "2026-10-28 07:39:58.161",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:39:58.161",
+          "completed_at": "2026-10-28 07:39:58.161",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:39:58.161",
+          "completed_at": "2026-10-28 07:39:58.161",
+          "line": 99,
+          "last_line": 99,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 99,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        },
+        {
+          "at": "2026-10-28 07:41:49.766",
+          "completed_at": "2026-10-28 07:41:49.766",
+          "line": 116,
+          "last_line": 116,
+          "direction": "TX",
+          "type": 1,
+          "op": 146,
+          "wire_length": 24,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "recipient_query",
+          "sequence": 10,
+          "recipient_name_bytes_redacted": 8
+        },
+        {
+          "at": "2026-10-28 07:41:49.783",
+          "completed_at": "2026-10-28 07:41:49.783",
+          "line": 117,
+          "last_line": 117,
+          "direction": "RX",
+          "type": 1,
+          "op": 146,
+          "wire_length": 25,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "recipient_reply",
+          "success": true,
+          "recipient_name_bytes_redacted": 8,
+          "level": 6,
+          "job": 4,
+          "growth": 0,
+          "gender": 0,
+          "received_count": 0
+        },
+        {
+          "at": "2026-10-28 07:42:58.005",
+          "completed_at": "2026-10-28 07:42:58.005",
+          "line": 127,
+          "last_line": 127,
+          "direction": "TX",
+          "type": 1,
+          "op": 67,
+          "wire_length": 33,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "shop_request",
+          "sequence": 13,
+          "gift": true,
+          "recipient_name_bytes_redacted": 8,
+          "product_count": 1,
+          "products": [
+            {
+              "ability_index": 255,
+              "term": 0,
+              "commodity": 105009
+            }
+          ],
+          "row_bytes": 7
+        },
+        {
+          "at": "2026-10-28 07:42:58.103",
+          "completed_at": "2026-10-28 07:42:58.103",
+          "line": 128,
+          "last_line": 128,
+          "direction": "RX",
+          "type": 1,
+          "op": 67,
+          "wire_length": 34,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "shop_reply",
+          "success": true,
+          "gift": true,
+          "category": 3,
+          "commodity": 105009,
+          "progress_key": 105009,
+          "last_key": 105009,
+          "reserved": 65535,
+          "reward_count": 0,
+          "target_rewards": [],
+          "tail_sentinel": 65535,
+          "tail_value": 0,
+          "result_keys_match": true
+        },
+        {
+          "at": "2026-10-28 07:42:58.103",
+          "completed_at": "2026-10-28 07:42:58.103",
+          "line": 128,
+          "last_line": 128,
+          "direction": "RX",
+          "type": 0,
+          "op": 53,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "cash_update",
+          "success": true,
+          "cash": 20000
+        }
+      ],
+      "errors": [],
+      "status": "observed"
+    },
+    {
+      "phase": "gift-entry-final",
+      "role": "B",
+      "pid": 51716,
+      "start_time_utc": "2026-10-27T23:39:22.324977+00:00",
+      "sha256": "2058184A82894917775CDAFDFDA180D9E5DC86166C5E9BEEEBC3D99291CF47B1",
+      "snapshot_bytes": 48023,
+      "parsed_prefix_sha256": "2058184A82894917775CDAFDFDA180D9E5DC86166C5E9BEEEBC3D99291CF47B1",
+      "pending_log_line_bytes": 0,
+      "capture_start_local": "2026-10-28 07:39:22",
+      "counts": {
+        "TX_frames": 17,
+        "RX_frames": 36,
+        "TX_crc_valid": 17,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 12,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 4,
+        "RX_NOTI97": 3,
+        "RX_NOTI99": 1,
+        "TX_CMD99": 1,
+        "RX_CMD99": 1,
+        "TX_CMD144": 1,
+        "RX_CMD144": 1
+      },
+      "events": [
+        {
+          "at": "2026-10-28 07:40:26.836",
+          "completed_at": "2026-10-28 07:40:26.836",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 369,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 30,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:40:26.836",
+          "completed_at": "2026-10-28 07:40:26.836",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:40:26.836",
+          "completed_at": "2026-10-28 07:40:26.836",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:40:26.836",
+          "completed_at": "2026-10-28 07:40:26.836",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:40:26.836",
+          "completed_at": "2026-10-28 07:40:26.836",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 12,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 0,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        },
+        {
+          "at": "2026-10-28 07:42:58.102",
+          "completed_at": "2026-10-28 07:42:58.102",
+          "line": 117,
+          "last_line": 117,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1675276505,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 63007,
+              "seal": 1,
+              "count_or_value": 1,
+              "durability": 0,
+              "state": 0,
+              "sent_at": 1793144578,
+              "body_join_id": 1675276505
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1675276505,
+              "expires_at": 1795736578,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793144578,
+              "state": 1
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 07:43:22.650",
+          "completed_at": "2026-10-28 07:43:22.650",
+          "line": 121,
+          "last_line": 121,
+          "direction": "RX",
+          "type": 0,
+          "op": 99,
+          "wire_length": 8,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_alarm",
+          "new_mail_count": 1
+        },
+        {
+          "at": "2026-10-28 07:43:48.247",
+          "completed_at": "2026-10-28 07:43:48.247",
+          "line": 125,
+          "last_line": 125,
+          "direction": "TX",
+          "type": 1,
+          "op": 99,
+          "wire_length": 12,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_open_request",
+          "sequence": 12
+        },
+        {
+          "at": "2026-10-28 07:43:48.254",
+          "completed_at": "2026-10-28 07:43:48.254",
+          "line": 126,
+          "last_line": 126,
+          "direction": "RX",
+          "type": 1,
+          "op": 99,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_open_reply",
+          "success": true,
+          "not_loaded_count": 0
+        },
+        {
+          "at": "2026-10-28 07:43:48.254",
+          "completed_at": "2026-10-28 07:43:48.254",
+          "line": 126,
+          "last_line": 126,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1675276505,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 63007,
+              "seal": 1,
+              "count_or_value": 1,
+              "durability": 0,
+              "state": 0,
+              "sent_at": 1793144578,
+              "body_join_id": 1675276505
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1675276505,
+              "expires_at": 1795736578,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793144578,
+              "state": 1
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 07:44:21.856",
+          "completed_at": "2026-10-28 07:44:21.856",
+          "line": 130,
+          "last_line": 130,
+          "direction": "TX",
+          "type": 1,
+          "op": 144,
+          "wire_length": 18,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_state_request",
+          "sequence": 13,
+          "mail_id": 1675276505,
+          "state": 2
+        },
+        {
+          "at": "2026-10-28 07:44:21.870",
+          "completed_at": "2026-10-28 07:44:21.870",
+          "line": 131,
+          "last_line": 131,
+          "direction": "RX",
+          "type": 1,
+          "op": 144,
+          "wire_length": 13,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_state_reply",
+          "success": true,
+          "mail_id": 1675276505,
+          "state": 2
+        }
+      ],
+      "errors": [],
+      "status": "observed"
+    },
+    {
+      "phase": "unclaimed-restart",
+      "role": "A",
+      "pid": 72984,
+      "start_time_utc": "2026-10-27T23:48:37.501082+00:00",
+      "sha256": "0DA6DA2BD9EEA86378E3C98CE642409DEE0EBECEFFAB177602F33BAF333DD950",
+      "snapshot_bytes": 49117,
+      "parsed_prefix_sha256": "0DA6DA2BD9EEA86378E3C98CE642409DEE0EBECEFFAB177602F33BAF333DD950",
+      "pending_log_line_bytes": 0,
+      "capture_start_local": "2026-10-28 07:48:37",
+      "counts": {
+        "TX_frames": 17,
+        "RX_frames": 31,
+        "TX_crc_valid": 17,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 5,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 4,
+        "RX_NOTI97": 1
+      },
+      "events": [
+        {
+          "at": "2026-10-28 07:49:12.686",
+          "completed_at": "2026-10-28 07:49:12.686",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 225,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 18,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:49:12.686",
+          "completed_at": "2026-10-28 07:49:12.686",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:49:12.686",
+          "completed_at": "2026-10-28 07:49:12.686",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:49:12.686",
+          "completed_at": "2026-10-28 07:49:12.686",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:49:12.686",
+          "completed_at": "2026-10-28 07:49:12.686",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 99,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        }
+      ],
+      "errors": [],
+      "status": "observed"
+    },
+    {
+      "phase": "unclaimed-restart",
+      "role": "B",
+      "pid": 47016,
+      "start_time_utc": "2026-10-27T23:48:38.587681+00:00",
+      "sha256": "E9EF896E1415DCA3028B7B66279FAD68A97194BD5B8BA9B3C6011B840064C475",
+      "snapshot_bytes": 49723,
+      "parsed_prefix_sha256": "E9EF896E1415DCA3028B7B66279FAD68A97194BD5B8BA9B3C6011B840064C475",
+      "pending_log_line_bytes": 0,
+      "capture_start_local": "2026-10-28 07:48:38",
+      "counts": {
+        "TX_frames": 20,
+        "RX_frames": 39,
+        "TX_crc_valid": 20,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 14,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 6,
+        "RX_NOTI97": 2,
+        "TX_CMD99": 1,
+        "RX_CMD99": 1,
+        "TX_CMD98": 1,
+        "RX_CMD98": 1,
+        "TX_CMD105": 1,
+        "RX_CMD105": 1
+      },
+      "events": [
+        {
+          "at": "2026-10-28 07:49:33.124",
+          "completed_at": "2026-10-28 07:49:33.124",
+          "line": 94,
+          "last_line": 94,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 369,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 30,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:49:33.124",
+          "completed_at": "2026-10-28 07:49:33.124",
+          "line": 94,
+          "last_line": 94,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:49:33.124",
+          "completed_at": "2026-10-28 07:49:33.124",
+          "line": 94,
+          "last_line": 94,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:49:33.303",
+          "completed_at": "2026-10-28 07:49:33.303",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:49:33.303",
+          "completed_at": "2026-10-28 07:49:33.303",
+          "line": 97,
+          "last_line": 97,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1675276505,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 63007,
+              "seal": 1,
+              "count_or_value": 1,
+              "durability": 0,
+              "state": 0,
+              "sent_at": 1793144578,
+              "body_join_id": 1675276505
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1675276505,
+              "expires_at": 1795736578,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793144578,
+              "state": 2
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 07:51:38.696",
+          "completed_at": "2026-10-28 07:51:38.696",
+          "line": 114,
+          "last_line": 114,
+          "direction": "TX",
+          "type": 1,
+          "op": 99,
+          "wire_length": 12,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_open_request",
+          "sequence": 11
+        },
+        {
+          "at": "2026-10-28 07:51:38.702",
+          "completed_at": "2026-10-28 07:51:38.702",
+          "line": 115,
+          "last_line": 115,
+          "direction": "RX",
+          "type": 1,
+          "op": 99,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_open_reply",
+          "success": true,
+          "not_loaded_count": 0
+        },
+        {
+          "at": "2026-10-28 07:51:38.702",
+          "completed_at": "2026-10-28 07:51:38.702",
+          "line": 115,
+          "last_line": 115,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1675276505,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 63007,
+              "seal": 1,
+              "count_or_value": 1,
+              "durability": 0,
+              "state": 0,
+              "sent_at": 1793144578,
+              "body_join_id": 1675276505
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1675276505,
+              "expires_at": 1795736578,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793144578,
+              "state": 2
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 07:52:48.914",
+          "completed_at": "2026-10-28 07:52:48.914",
+          "line": 124,
+          "last_line": 124,
+          "direction": "TX",
+          "type": 1,
+          "op": 98,
+          "wire_length": 16,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_claim_request",
+          "sequence": 13,
+          "mail_id": 1675276505
+        },
+        {
+          "at": "2026-10-28 07:52:48.983",
+          "completed_at": "2026-10-28 07:52:48.983",
+          "line": 125,
+          "last_line": 125,
+          "direction": "RX",
+          "type": 1,
+          "op": 98,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_claim_reply",
+          "success": true,
+          "mail_id": 1675276505
+        },
+        {
+          "at": "2026-10-28 07:52:48.983",
+          "completed_at": "2026-10-28 07:52:48.983",
+          "line": 125,
+          "last_line": 125,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 21,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 1,
+          "target_items": [
+            {
+              "slot": 0,
+              "item_id": 63007,
+              "count_or_value": 1,
+              "state": 0,
+              "durability": 0,
+              "seal": 1
+            }
+          ],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 07:56:08.538",
+          "completed_at": "2026-10-28 07:56:08.538",
+          "line": 149,
+          "last_line": 149,
+          "direction": "TX",
+          "type": 1,
+          "op": 105,
+          "wire_length": 15,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "hatch_request",
+          "sequence": 17,
+          "item_space": 7,
+          "slot": 0
+        },
+        {
+          "at": "2026-10-28 07:56:08.565",
+          "completed_at": "2026-10-28 07:56:08.565",
+          "line": 150,
+          "last_line": 150,
+          "direction": "RX",
+          "type": 1,
+          "op": 105,
+          "wire_length": 7,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "hatch_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 07:56:08.565",
+          "completed_at": "2026-10-28 07:56:08.565",
+          "line": 150,
+          "last_line": 150,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 21,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 1,
+          "target_items": [
+            {
+              "slot": 0,
+              "item_id": 63003,
+              "count_or_value": 1,
+              "state": 0,
+              "durability": 0,
+              "seal": 0
+            }
+          ],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        }
+      ],
+      "errors": [],
+      "status": "observed"
+    }
+  ],
+  "capture_report_comparisons": [
+    {
+      "report_label": "previous",
+      "phase": "gift-entry-final",
+      "role": "A",
+      "pid": 47508,
+      "snapshot_sha256": "C81F78E81861D284006EA79C75505925CCD6B17C2726BBAE898A280D00C7E33B",
+      "equal": true
+    },
+    {
+      "report_label": "previous",
+      "phase": "gift-entry-final",
+      "role": "B",
+      "pid": 51716,
+      "snapshot_sha256": "A5F11957C3927F8C72829372BD28C655565F943E1B7599EECC883244C3E8D7C1",
+      "equal": true
+    },
+    {
+      "report_label": "previous-hatched",
+      "phase": "unclaimed-restart",
+      "role": "A",
+      "pid": 72984,
+      "snapshot_sha256": "B4829E5F22EF439657F21C522C0B394A890F9B2E8509E04BB0B4259143D32444",
+      "equal": true
+    },
+    {
+      "report_label": "previous-hatched",
+      "phase": "unclaimed-restart",
+      "role": "B",
+      "pid": 47016,
+      "snapshot_sha256": "44EF9FB8C78D8DA715168185C96560D9F9DEDBCDE8639436D953663F06E4AF11",
+      "equal": true
+    }
+  ],
+  "collector_sha256": "BBB5B43FE699270E3F4F4A927414B850C9C3828CA0D826ED4357D0824FF7F9F2",
+  "capture_helper_sha256": "C0E8AB45084B8C09309E6319ADD7112ADF0D43FAE981B1AC1D8589126F50A39C",
+  "private_raw_inputs_exported": false,
+  "native_acceptance": "ROOT_UI_REVIEW_REQUIRED",
+  "private_inputs_manifest_sha256": "36CC973EA7B81DB3582BCC529929200D884DCD763858E8A10FF94358E60E4FFE"
+}

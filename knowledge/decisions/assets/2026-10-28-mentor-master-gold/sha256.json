@@ -1,0 +1,194 @@
+{
+  "schema": "mentor-master-gold-public-assets/v1",
+  "native_acceptance": "COMPONENT_PASS_AS_SCOPED",
+  "copy_policy": "Original bounded managed logs, sanitized generated packet/state proof and viewed native screenshots copied byte-for-byte. No raw traffic, credentials, full server logs or full states in public assets.",
+  "files": [
+    {
+      "file": "red-initial.log",
+      "source": "reviewed managed test/review evidence: red-initial.log",
+      "bytes": 906,
+      "sha256": "832131A3FF1A6AEF6F6456E54EC794915A840DC73F7A85CC889D0889A892D7C4"
+    },
+    {
+      "file": "red-card.log",
+      "source": "reviewed managed test/review evidence: red-card.log",
+      "bytes": 146,
+      "sha256": "730337AD732F9471F7B82D91AEA8B88A98D5315B09B2EDF857017C7E8CA7E717"
+    },
+    {
+      "file": "red-delivery.log",
+      "source": "reviewed managed test/review evidence: red-delivery.log",
+      "bytes": 157,
+      "sha256": "B661338B99F6842AD6C0862DB4526B63AD8BE94FD71287DC1BC1860668A7E3FC"
+    },
+    {
+      "file": "red-card-reservation.log",
+      "source": "reviewed managed test/review evidence: red-card-reservation.log",
+      "bytes": 150,
+      "sha256": "1751BF468D796B118D0ADB5F30E483119ACD076712F9C0E4A50607BEE6CEBF73"
+    },
+    {
+      "file": "red-trade-notice.log",
+      "source": "reviewed managed test/review evidence: red-trade-notice.log",
+      "bytes": 142,
+      "sha256": "2A40787D6DE0EB2948611A6F02D7D1A66739093A45ADAB0FEEDD9C307B97F459"
+    },
+    {
+      "file": "fix1-red-external.log",
+      "source": "reviewed managed test/review evidence: fix1-red-external.log",
+      "bytes": 478,
+      "sha256": "6DC498A3973881BEA8EB973EF4C8E304F734C26AC3D7C39C6F1F0B745A5A36C7"
+    },
+    {
+      "file": "fix1-red-new-sale.log",
+      "source": "reviewed managed test/review evidence: fix1-red-new-sale.log",
+      "bytes": 151,
+      "sha256": "A9C16A9228174BAFB13DA565D1B6FA83AA2E39B7705887143A0DCE96D626526F"
+    },
+    {
+      "file": "fix1-green-final-focused.log",
+      "source": "reviewed managed test/review evidence: fix1-green-final-focused.log",
+      "bytes": 38,
+      "sha256": "30963DA3484B7D158B63FCD9CF9B9F03E39572C0F0C8147CEB6534764493D43B"
+    },
+    {
+      "file": "fix1-full-smoke.log",
+      "source": "reviewed managed test/review evidence: fix1-full-smoke.log",
+      "bytes": 43,
+      "sha256": "BB0F6179836CFC0576A58C8B803A1FE8D679543721490F4F720CE06950218ACC"
+    },
+    {
+      "file": "fix1-build-server-release.log",
+      "source": "reviewed managed test/review evidence: fix1-build-server-release.log",
+      "bytes": 569,
+      "sha256": "B0D9DC8AC0E5D0218098D11A2F0D7D70E4218396930CE4A5E5EB29B427D78BFC"
+    },
+    {
+      "file": "fix1-build-smoke-release.log",
+      "source": "reviewed managed test/review evidence: fix1-build-smoke-release.log",
+      "bytes": 982,
+      "sha256": "930DDFDBF74D64F015BDBE987EB099A260BB6C65D7F19833C79F5F206D191D41"
+    },
+    {
+      "file": "final-review.md",
+      "source": "reviewed managed test/review evidence: final-review.md",
+      "bytes": 8838,
+      "sha256": "35A8A5F0A6C25B3B902F908959C3670882FFF640147E92732231D8FC775FAEF8"
+    },
+    {
+      "file": "fix1-review.md",
+      "source": "reviewed managed test/review evidence: fix1-review.md",
+      "bytes": 5193,
+      "sha256": "3D70D267A7CEAA7084AA3B076D9627C4737B38463204A94D4D86E289A134B1FE"
+    },
+    {
+      "file": "capture-helper-selftest.log",
+      "source": "synthetic observer self-test only; no native input",
+      "bytes": 153,
+      "sha256": "E191D2B632EDD06CD76E517C42B477FA6C5DEE076AB5126C20D4BC1809ECACE7"
+    },
+    {
+      "file": "native-public-proof.json",
+      "source": "private bounded sanitized proof/selftest exact copy",
+      "bytes": 22302,
+      "sha256": "01707E7BE9FA5CD791675B571A1291B65C07152D06373B3261BF48ACDB9D66DD"
+    },
+    {
+      "file": "frozen-checker-selftest.log",
+      "source": "private bounded sanitized proof/selftest exact copy",
+      "bytes": 310,
+      "sha256": "F41CE8C90014C984688F7CAB4D56FFF1770E3B2FF8AAB747F368C80BC76C2CFE"
+    },
+    {
+      "file": "gold-A-native-mentor-award.jpg",
+      "source": "frozen native reviewed original",
+      "bytes": 434543,
+      "sha256": "C197CBEAB8B022AC1CF91F7A0CF235A90B7AA7E96D0E5C68257EC68CB12027F5"
+    },
+    {
+      "file": "gold-B-native-free-card.jpg",
+      "source": "frozen native reviewed original",
+      "bytes": 375886,
+      "sha256": "254C2FB556259F941B1C5998FE206948FCEB588784F9C6FC1D925336D011621E"
+    },
+    {
+      "file": "gold-B-native-relogin.jpg",
+      "source": "frozen native reviewed original",
+      "bytes": 379053,
+      "sha256": "71F3477E0E75B6CF0EFE5AAEB8079E3AD5697FAC8989FF7773D3B55EC3FB027D"
+    },
+    {
+      "file": "gold-persist-A-login.jpg",
+      "source": "frozen native reviewed original",
+      "bytes": 369804,
+      "sha256": "EA94C0FE1AF3C6193F8BC5AF815FB7998A00F14FBAA9040C558696C1FC143748"
+    },
+    {
+      "file": "gold-persist-B-login.jpg",
+      "source": "frozen native reviewed original",
+      "bytes": 369287,
+      "sha256": "ADC081B6D0623C62D0311AE17768F0915005A9C4DD44EFC28C20C7096170E18E"
+    },
+    {
+      "file": "native-C79-timer-offline-proof.json",
+      "source": "bounded sanitized frozen proof/selftest exact copy",
+      "bytes": 35594,
+      "sha256": "9C0F9F56D78F2D596B8109B69BE07ADD15AB22977817AB2304B103A9006575CD"
+    },
+    {
+      "file": "native-final30AD-relogin-proof.json",
+      "source": "bounded sanitized frozen proof/selftest exact copy",
+      "bytes": 8803,
+      "sha256": "A3B7E23E5B75C07451CA3918B19C3F13B6B75CCF836BD9DF2D182F29ED1B01A8"
+    },
+    {
+      "file": "native-component-acceptance.json",
+      "source": "bounded sanitized frozen proof/selftest exact copy",
+      "bytes": 2542,
+      "sha256": "997A0F5F4A2361DA3E7135EC2F1406EC78953C6FBAD64CEB55EA472F1294B341"
+    },
+    {
+      "file": "lifecycle-checker-selftest.log",
+      "source": "bounded sanitized frozen proof/selftest exact copy",
+      "bytes": 184,
+      "sha256": "81D8432FCC4FF45164AA3B946D95ED63E6DEB532482CF9B7EF87038A88DE917F"
+    },
+    {
+      "file": "timer-A-natural-award.jpg",
+      "source": "viewed frozen native original exact copy",
+      "bytes": 382296,
+      "sha256": "26B810431788255DB86668E6AE895664C0FCD11F3658D0538475AA2FCC8D66F7"
+    },
+    {
+      "file": "timer-A-post-award-roster.jpg",
+      "source": "viewed frozen native original exact copy",
+      "bytes": 377026,
+      "sha256": "3EF8122D5000E0B15A306F0AF133784D5D9F75160490E89283848ADAB2D8F947"
+    },
+    {
+      "file": "offline-B-native-pickup25.jpg",
+      "source": "viewed frozen native original exact copy",
+      "bytes": 373792,
+      "sha256": "1CB8EAED34873F1ED9FB1B51B451FA024350F7146A037122F49C91DE87BFE97F"
+    },
+    {
+      "file": "offline-B-return-and-roster.jpg",
+      "source": "viewed frozen native original exact copy",
+      "bytes": 414384,
+      "sha256": "BD2B646055EF9B21CBE36E7D141C26AA2CA11184D7BE986C3198F90726D84BA5"
+    },
+    {
+      "file": "offline-final-A-world.jpg",
+      "source": "viewed frozen native original exact copy",
+      "bytes": 370259,
+      "sha256": "B2DB008AC9E26F154E785D54FD615BC89C8576C5CDF672744DC7D323553993A4"
+    },
+    {
+      "file": "offline-final-B-world.jpg",
+      "source": "viewed frozen native original exact copy",
+      "bytes": 369173,
+      "sha256": "5242354BD4424E152E35B620FC6140BE23F752B8A8C0CAAE700DCD1DFF7D2ABD"
+    }
+  ],
+  "overall_delivery": "PENDING_ROOT_RESTORE_AND_INTEGRATION"
+}

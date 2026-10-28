@@ -1,0 +1,3378 @@
+{
+  "schema": "act1-final-channel-reentry-proof/v1",
+  "phase": "final-channel-reentry-30AD",
+  "server": {
+    "pid": 24096,
+    "start_time_utc": "2026-10-28T00:26:24.5709138Z"
+  },
+  "approved": {
+    "managed_source_commit": "5078da27a4807695f002ceea61333c43e1932ce4",
+    "native_source_commit": "ab1e6b685021f6cd6f8d125fc04dc0c5c50e931f",
+    "build_manifest_sha256": "09EFFBE39AB99B377AAFB540933EA75919E9E04642FCE79F4D6AF0CB1CC05204",
+    "native_approval_sha256": "832A30A725206FE2A789EFAD4EE7A3194E03B49CCF781E3D931D4C3C99BB8CD8",
+    "server_sha256": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+    "protocol_sha256": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+    "native_sha256": "30AD9A4A3CD565DE845F74AB3D6C6D60EED1F3429EC7D53929D912F158246584"
+  },
+  "captures": [
+    {
+      "phase": "final-channel-reentry-30AD",
+      "role": "A",
+      "pid": 61536,
+      "start_time_utc": "2026-10-28T00:26:27.7625807Z",
+      "sha256": "7A4EBC85A52996BA2D1D59085D9F8AF5E1F710B9691369DEB352B5DA9C13DABF",
+      "snapshot_bytes": 87340,
+      "events": [
+        {
+          "at": "2026-10-28 08:26:37.821",
+          "line": 3,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:26:45.542",
+          "line": 75,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:26:46.803",
+          "line": 79,
+          "direction": "TX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 51,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:26:46.814",
+          "line": 80,
+          "direction": "RX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 11,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 0
+        },
+        {
+          "at": "2026-10-28 08:26:50.336",
+          "line": 93,
+          "direction": "TX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 5,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:26:50.732",
+          "line": 94,
+          "direction": "RX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 85,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 1,
+          "town_id": 1
+        },
+        {
+          "at": "2026-10-28 08:26:50.891",
+          "line": 99,
+          "direction": "RX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 0,
+          "losses": 4,
+          "total_pvp_exp": 0,
+          "current_threshold": 0,
+          "next_threshold": 2000,
+          "grade": 0,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:28:35.052",
+          "line": 113,
+          "direction": "TX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 10,
+          "uninterpreted_exit_bytes": 0
+        },
+        {
+          "at": "2026-10-28 08:28:35.052",
+          "line": 114,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:28:35.092",
+          "line": 186,
+          "direction": "RX",
+          "local_endpoint": "endpoint-7",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 7,
+          "event": "command_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 08:28:51.306",
+          "line": 188,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:28:52.069",
+          "line": 192,
+          "direction": "TX",
+          "local_endpoint": "endpoint-8",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 51,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:28:52.072",
+          "line": 193,
+          "direction": "RX",
+          "local_endpoint": "endpoint-8",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 11,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 0
+        },
+        {
+          "at": "2026-10-28 08:28:52.072",
+          "line": 196,
+          "direction": "TX",
+          "local_endpoint": "endpoint-8",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 4,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:28:52.077",
+          "line": 199,
+          "direction": "RX",
+          "local_endpoint": "endpoint-8",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 85,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 1,
+          "town_id": 1
+        },
+        {
+          "at": "2026-10-28 08:28:52.077",
+          "line": 199,
+          "direction": "RX",
+          "local_endpoint": "endpoint-8",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 0,
+          "losses": 4,
+          "total_pvp_exp": 0,
+          "current_threshold": 0,
+          "next_threshold": 2000,
+          "grade": 0,
+          "grade_extension": 0
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "7A4EBC85A52996BA2D1D59085D9F8AF5E1F710B9691369DEB352B5DA9C13DABF",
+      "capture_start_local": "2026-10-28 08:26:28",
+      "counts": {
+        "selected_events": 16,
+        "RX_frames": 60,
+        "TX_frames": 20,
+        "TX_crc_valid": 20,
+        "incomplete_tcp_bytes": 0
+      },
+      "observed_packet_counts": {
+        "TX_CMD1": 2,
+        "RX_CMD1": 2,
+        "login_mode_0": 2,
+        "TX_CMD4": 2,
+        "RX_CMD4": 2,
+        "RX_NOTI48": 2,
+        "TX_CMD3": 1,
+        "RX_CMD3": 1
+      },
+      "udp_flows": [
+        {
+          "at": "2026-10-28 08:26:46.830",
+          "line": 83,
+          "direction": "TX",
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "remote_port": 7002,
+          "last_at": "2026-10-28 08:26:46.895",
+          "last_line": 88,
+          "datagrams": 2,
+          "bytes": 2,
+          "headers": {
+            "nat_probe": 2
+          }
+        },
+        {
+          "at": "2026-10-28 08:26:46.890",
+          "line": 85,
+          "direction": "RX",
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "remote_port": 7002,
+          "last_at": "2026-10-28 08:26:46.899",
+          "last_line": 89,
+          "datagrams": 2,
+          "bytes": 14,
+          "headers": {
+            "nat_response_shape": 2
+          }
+        },
+        {
+          "at": "2026-10-28 08:26:46.890",
+          "line": 86,
+          "direction": "TX",
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-3",
+          "remote_port": 7003,
+          "last_at": "2026-10-28 08:30:52.159",
+          "last_line": 216,
+          "datagrams": 25,
+          "bytes": 241,
+          "headers": {
+            "nat_probe": 1,
+            "unparsed_datagrams": 24
+          }
+        },
+        {
+          "at": "2026-10-28 08:26:46.895",
+          "line": 87,
+          "direction": "RX",
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-3",
+          "remote_port": 7003,
+          "last_at": "2026-10-28 08:26:46.895",
+          "last_line": 87,
+          "datagrams": 1,
+          "bytes": 7,
+          "headers": {
+            "nat_response_shape": 1
+          }
+        }
+      ],
+      "status": "observed"
+    },
+    {
+      "phase": "final-channel-reentry-30AD",
+      "role": "B",
+      "pid": 45620,
+      "start_time_utc": "2026-10-28T00:26:28.6826758Z",
+      "sha256": "741106CD69CECB67A93775A0B927839A83398E13E8998FF5EBA714701E39DE57",
+      "snapshot_bytes": 93668,
+      "events": [
+        {
+          "at": "2026-10-28 08:26:37.507",
+          "line": 3,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:27:19.715",
+          "line": 75,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:27:20.485",
+          "line": 79,
+          "direction": "TX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 45,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:27:20.499",
+          "line": 80,
+          "direction": "RX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 11,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 0
+        },
+        {
+          "at": "2026-10-28 08:27:24.507",
+          "line": 93,
+          "direction": "TX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 5,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:27:24.520",
+          "line": 94,
+          "direction": "RX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 196,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 2,
+          "town_id": 2
+        },
+        {
+          "at": "2026-10-28 08:27:24.722",
+          "line": 97,
+          "direction": "RX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 4,
+          "losses": 0,
+          "total_pvp_exp": 4000,
+          "current_threshold": 2000,
+          "next_threshold": 8000,
+          "grade": 2,
+          "grade_extension": 0
+        },
+        {
+          "at": "2026-10-28 08:29:16.031",
+          "line": 114,
+          "direction": "TX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 12,
+          "event": "command_request",
+          "sequence": 11,
+          "uninterpreted_exit_bytes": 0
+        },
+        {
+          "at": "2026-10-28 08:29:16.031",
+          "line": 115,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-5",
+          "remote_port": 27001,
+          "event": "connect",
+          "result": "connect=ok"
+        },
+        {
+          "at": "2026-10-28 08:29:16.045",
+          "line": 187,
+          "direction": "RX",
+          "local_endpoint": "endpoint-10",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 3,
+          "wire_length": 7,
+          "event": "command_reply",
+          "success": true
+        },
+        {
+          "at": "2026-10-28 08:29:31.336",
+          "line": 189,
+          "direction": "TX",
+          "local_endpoint": "endpoint-4",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "event": "connect",
+          "result": "connect=fail wsa=10035"
+        },
+        {
+          "at": "2026-10-28 08:29:32.094",
+          "line": 193,
+          "direction": "TX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 45,
+          "event": "login_request_redacted",
+          "sequence": 1
+        },
+        {
+          "at": "2026-10-28 08:29:32.098",
+          "line": 194,
+          "direction": "RX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 1,
+          "wire_length": 11,
+          "event": "login_reply",
+          "success": true,
+          "channel_mode": 0
+        },
+        {
+          "at": "2026-10-28 08:29:32.098",
+          "line": 197,
+          "direction": "TX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 13,
+          "event": "command_request",
+          "sequence": 4,
+          "character_slot": 0
+        },
+        {
+          "at": "2026-10-28 08:29:32.102",
+          "line": 200,
+          "direction": "RX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 1,
+          "op": 4,
+          "wire_length": 196,
+          "event": "command_reply",
+          "success": true,
+          "server_id": 2,
+          "town_id": 2
+        },
+        {
+          "at": "2026-10-28 08:29:32.102",
+          "line": 200,
+          "direction": "RX",
+          "local_endpoint": "endpoint-11",
+          "remote_endpoint": "endpoint-6",
+          "remote_port": 7001,
+          "type": 0,
+          "op": 48,
+          "wire_length": 28,
+          "event": "pvp_notification",
+          "wins": 4,
+          "losses": 0,
+          "total_pvp_exp": 4000,
+          "current_threshold": 2000,
+          "next_threshold": 8000,
+          "grade": 2,
+          "grade_extension": 0
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "741106CD69CECB67A93775A0B927839A83398E13E8998FF5EBA714701E39DE57",
+      "capture_start_local": "2026-10-28 08:26:28",
+      "counts": {
+        "selected_events": 16,
+        "RX_frames": 65,
+        "TX_frames": 20,
+        "TX_crc_valid": 20,
+        "incomplete_tcp_bytes": 0
+      },
+      "observed_packet_counts": {
+        "TX_CMD1": 2,
+        "RX_CMD1": 2,
+        "login_mode_0": 2,
+        "TX_CMD4": 2,
+        "RX_CMD4": 2,
+        "RX_NOTI48": 2,
+        "TX_CMD3": 1,
+        "RX_CMD3": 1
+      },
+      "udp_flows": [
+        {
+          "at": "2026-10-28 08:27:20.517",
+          "line": 83,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-2",
+          "remote_port": 7002,
+          "last_at": "2026-10-28 08:27:20.623",
+          "last_line": 88,
+          "datagrams": 2,
+          "bytes": 2,
+          "headers": {
+            "nat_probe": 2
+          }
+        },
+        {
+          "at": "2026-10-28 08:27:20.615",
+          "line": 85,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-2",
+          "remote_port": 7002,
+          "last_at": "2026-10-28 08:27:20.629",
+          "last_line": 89,
+          "datagrams": 2,
+          "bytes": 14,
+          "headers": {
+            "nat_response_shape": 2
+          }
+        },
+        {
+          "at": "2026-10-28 08:27:20.615",
+          "line": 86,
+          "direction": "TX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-3",
+          "remote_port": 7003,
+          "last_at": "2026-10-28 08:30:52.174",
+          "last_line": 212,
+          "datagrams": 22,
+          "bytes": 211,
+          "headers": {
+            "nat_probe": 1,
+            "unparsed_datagrams": 21
+          }
+        },
+        {
+          "at": "2026-10-28 08:27:20.623",
+          "line": 87,
+          "direction": "RX",
+          "local_endpoint": "endpoint-9",
+          "remote_endpoint": "endpoint-3",
+          "remote_port": 7003,
+          "last_at": "2026-10-28 08:27:20.623",
+          "last_line": 87,
+          "datagrams": 1,
+          "bytes": 7,
+          "headers": {
+            "nat_response_shape": 1
+          }
+        }
+      ],
+      "status": "observed"
+    }
+  ],
+  "prefix_comparisons": [
+    {
+      "role": "A",
+      "sha256": "7A4EBC85A52996BA2D1D59085D9F8AF5E1F710B9691369DEB352B5DA9C13DABF",
+      "bytes": 87340,
+      "equal": true
+    },
+    {
+      "role": "B",
+      "sha256": "741106CD69CECB67A93775A0B927839A83398E13E8998FF5EBA714701E39DE57",
+      "bytes": 93668,
+      "equal": true
+    }
+  ],
+  "economy": {
+    "sha256": "14D4526DC7BA4A847FC5F1C1128C79F21F14FCF40F985F86132A5F76D76298B4",
+    "bytes": 226430,
+    "characters": [
+      {
+        "role": "B",
+        "VictoryPoints": 16,
+        "PvpPoints": 4000,
+        "PvpGrade": 2,
+        "PvpWins": 4,
+        "PvpLosses": 0,
+        "PvpPlayCount": 4,
+        "PvpCount": 4,
+        "PvpGradeExtension": 0
+      },
+      {
+        "role": "A",
+        "VictoryPoints": 4,
+        "PvpPoints": 0,
+        "PvpGrade": 0,
+        "PvpWins": 0,
+        "PvpLosses": 4,
+        "PvpPlayCount": 4,
+        "PvpCount": 4,
+        "PvpGradeExtension": 0
+      }
+    ],
+    "receipts": [
+      {
+        "receipt_ordinal": 0,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 1,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 1,
+            "PlayCount": 1,
+            "Count": 1,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 4,
+            "Points": 1000,
+            "Grade": 1,
+            "Wins": 1,
+            "Losses": 0,
+            "PlayCount": 1,
+            "Count": 1,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      },
+      {
+        "receipt_ordinal": 1,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 2,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 2,
+            "PlayCount": 2,
+            "Count": 2,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 8,
+            "Points": 2000,
+            "Grade": 2,
+            "Wins": 2,
+            "Losses": 0,
+            "PlayCount": 2,
+            "Count": 2,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      },
+      {
+        "receipt_ordinal": 2,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 3,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 3,
+            "PlayCount": 3,
+            "Count": 3,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 12,
+            "Points": 3000,
+            "Grade": 2,
+            "Wins": 3,
+            "Losses": 0,
+            "PlayCount": 3,
+            "Count": 3,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      },
+      {
+        "receipt_ordinal": 3,
+        "selected_awards": [
+          {
+            "role": "A",
+            "VictoryPoints": 4,
+            "Points": 0,
+            "Grade": 0,
+            "Wins": 0,
+            "Losses": 4,
+            "PlayCount": 4,
+            "Count": 4,
+            "ExperienceDelta": 0,
+            "GradeExtension": 0
+          },
+          {
+            "role": "B",
+            "VictoryPoints": 16,
+            "Points": 4000,
+            "Grade": 2,
+            "Wins": 4,
+            "Losses": 0,
+            "PlayCount": 4,
+            "Count": 4,
+            "ExperienceDelta": 1000,
+            "GradeExtension": 0
+          }
+        ]
+      }
+    ],
+    "note": "Read-only canonical snapshot. No names, account IDs, character GUIDs or unrelated account/economy fields exported."
+  },
+  "before_sha256": "14D4526DC7BA4A847FC5F1C1128C79F21F14FCF40F985F86132A5F76D76298B4",
+  "after_sha256": "14D4526DC7BA4A847FC5F1C1128C79F21F14FCF40F985F86132A5F76D76298B4",
+  "full_state_bytes_equal": true,
+  "receipts_before": 4,
+  "receipts_after": 4,
+  "sampling": {
+    "raw_sha256": "6C43970D001BA4D8A35199621AD7F2047859D0E0B4A5EF80943D5FA1EDBF6D53",
+    "failure": null,
+    "samples": [
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:11.6238791Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:11.6372918Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:12.1560859Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:12.1616889Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:12.6700797Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:12.6760475Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:13.1923929Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:13.1996143Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:13.7032877Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:13.7084278Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:14.2133621Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:14.2178150Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:14.7244975Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:14.7277745Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:15.2336780Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:15.2400751Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:15.7565035Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:15.7624163Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:16.2668513Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:16.2701912Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:16.7782143Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:16.7816753Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:17.2899983Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:17.2963012Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:17.8014493Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:17.8056633Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:18.3129794Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:18.3172690Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:18.8257615Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:18.8296887Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:19.3503959Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:19.3557622Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:19.8747089Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:19.8803480Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:20.3887518Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:20.3947706Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:20.9023529Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:20.9058082Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:21.4136149Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:21.4180453Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:21.9388043Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:21.9426529Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:22.4471462Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:22.4508777Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:22.9633616Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:22.9679260Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:23.4818249Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:23.4875978Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:24.0052525Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:24.0106658Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:24.5182438Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:24.5232925Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:25.0390402Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:25.0408894Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:25.5512595Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:25.5543636Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:26.0632882Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:26.0677733Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:26.5740786Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:26.5773951Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:27.0870466Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:27.0901250Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:27.6020693Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:27.6079495Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:28.1130439Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:28.1146326Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:28.6244005Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:28.6257029Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:29.1335181Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:29.1390691Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:29.6440542Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:29.6470036Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:30.1543250Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:30.1600218Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:30.6632454Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:30.6682052Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:31.1736658Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:31.1769969Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:31.6933206Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:31.6965169Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:32.2029890Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:32.2044874Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:32.7238108Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:32.7269835Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:33.2456253Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:33.2481838Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:33.7562346Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:33.7609058Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:34.2797613Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:34.2900725Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:34.8065054Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:34.8111450Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:35.3187594Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:35.3206774Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:35.8289914Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:35.8306249Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:36.3400198Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:36.3419602Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:36.8494655Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:36.8515633Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:37.3544221Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:37.3562247Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:37.8671525Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:37.8688798Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:38.3747922Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:38.3771520Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:38.8950102Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:38.8967404Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:39.4036211Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:39.4051064Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:39.9132444Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:39.9150416Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:40.4257441Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:40.4277582Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:40.9369491Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:40.9496031Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:41.4651912Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:41.4671834Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:41.9796701Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:41.9816567Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:42.4946371Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:42.4959602Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:43.0040975Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:43.0064048Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:43.5140330Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:43.5155599Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:44.0218983Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:44.0235015Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:44.5439943Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:44.5460994Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:45.0551609Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:45.0569759Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:45.5719927Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:45.5750955Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:46.0786106Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:46.0806990Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:46.5895901Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:46.5915873Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:47.0983159Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:47.1004181Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:47.6179651Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:47.6204580Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:48.1360198Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:48.1378424Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:48.6545219Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:48.6560015Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:49.1623514Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:49.1646175Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:49.6875827Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:49.6933475Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:50.2082093Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:50.2101865Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:50.7192843Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:50.7209668Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:51.2277350Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:51.2303791Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:51.7392138Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:51.7407978Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:52.2458497Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:52.2509309Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:52.7685454Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:52.7698953Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:53.2749862Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:53.2783070Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:53.7904197Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:53.7952011Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:54.3139928Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:54.3181688Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:54.8243141Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:54.8258093Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:55.3326405Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:55.3352912Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:55.8428384Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:55.8463467Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:56.3539225Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:56.3596337Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:56.8663354Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:56.8693303Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:57.3766005Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:57.3789782Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:57.8851026Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:57.8888738Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:58.4091535Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:58.4155159Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:58.9298458Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:58.9353772Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:59.4381793Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:59.4418928Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:28:59.9483925Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:28:59.9516415Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:00.4682522Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:00.4697719Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:00.9719932Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:00.9763626Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:01.4939748Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:01.4968758Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:02.0038866Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:02.0088159Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:02.5263711Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:02.5326033Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:03.0408195Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:03.0421902Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:03.5489871Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:03.5528620Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:04.0602226Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:04.0674623Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:04.5773677Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:04.5808083Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:05.0982648Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:05.1045648Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:05.6212283Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:05.6276981Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:06.1447397Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:06.1469718Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:06.6550544Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:06.6571421Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:07.1630299Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:07.1652450Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:07.6721398Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:07.6780675Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:08.1859401Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:08.1925624Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:08.6986024Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:08.7019371Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:09.2197042Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:09.2218006Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:09.7252797Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:09.7277022Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:10.2348228Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:10.2417748Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:10.7464029Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:10.7479133Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:11.2573259Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:11.2605455Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:11.7656017Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:11.7675694Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:12.2750695Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:12.2771761Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:12.7859752Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:12.7911645Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:13.2989891Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:13.3037672Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:13.8101184Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:13.8125129Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:14.3180764Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:14.3214726Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:14.8277905Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:14.8339012Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:15.3383927Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:15.3421556Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:15.8513055Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:15.8586710Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:16.3763286Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:16.3813821Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:16.8880895Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:16.8937729Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:17.3977201Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:17.4045035Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:17.9066322Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:17.9116866Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:18.4156612Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:18.4173058Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:18.9229861Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:18.9303616Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:19.4456302Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:19.4532336Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:19.9701327Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:19.9749374Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:20.4777342Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:20.4836679Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:20.9876452Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:20.9951586Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:21.5110786Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:21.5147098Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:22.0224250Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:22.0272308Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:22.5349250Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:22.5400386Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:23.0479182Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:23.0556099Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:23.5629435Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:23.5721343Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:24.0753144Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:24.0828087Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:24.5997299Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:24.6074080Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:25.1125042Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:25.1181040Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:25.6219000Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:25.6255369Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:26.1349188Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:26.1379838Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:26.6455687Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:26.6478622Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:27.1524712Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:27.1549085Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:27.6601731Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:27.6672571Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:28.1832497Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:28.1909453Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:28.7051948Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:28.7099233Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:29.2137724Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:29.2202149Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:29.7349896Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:29.7410388Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:30.2570280Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:30.2605720Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:30.7700267Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:30.7718814Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:31.2789986Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:31.2870268Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:31.7999457Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:31.8020101Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:32.3063294Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:32.3120715Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:32.8287391Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:32.8314204Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:33.3357320Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:33.3385863Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:33.8463919Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:33.8529945Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:34.3578231Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:34.3657294Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:34.8701120Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:34.8740872Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:35.3816162Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:35.3865445Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:35.9058720Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:35.9102273Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:36.4185586Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:36.4249857Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:36.9313753Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:36.9348850Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:37.4400921Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:37.4424331Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:37.9623095Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:37.9651701Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:38.4848236Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:38.4894990Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:38.9962753Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:39.0000049Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:39.5064572Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:39.5100638Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:40.0158819Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:40.0213538Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:40.5383655Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:40.5412573Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:41.0455466Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:41.0487051Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:41.5700402Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:41.5749581Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:42.0916738Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:42.0936863Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:42.6016547Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:42.6086752Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:43.1140901Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:43.1205080Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:43.6360279Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:43.6431217Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:44.1461470Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:44.1524395Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:44.6692959Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:44.6757156Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:45.1810810Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:45.1868324Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:45.7086672Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:45.7157962Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:46.2230492Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:46.2272142Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:46.7329931Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:46.7393192Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:47.2444713Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:47.2516841Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:47.7678784Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:47.7755379Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:48.2921813Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:48.2996577Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:48.8145898Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:48.8201503Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:49.3342465Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:49.3363489Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:49.8445345Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:49.8476279Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:50.3533654Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:50.3582150Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:50.8634384Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:50.8664165Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:51.3717481Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:51.3777730Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:51.8961269Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:51.9008085Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:52.4192192Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:52.4219529Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:52.9405560Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:52.9430506Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:53.4468968Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:53.4521576Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:53.9595628Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:53.9640485Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:54.4848172Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:54.4909204Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:54.9966440Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:55.0026452Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:55.5212644Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:55.5231720Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:56.0352808Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:56.0384327Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:56.5518080Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:56.5543626Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:57.0584122Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:57.0615114Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:57.5711757Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:57.5749696Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:58.0960823Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:58.1025832Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:58.6252642Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:58.6298403Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:59.1469627Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:59.1522800Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:29:59.6738841Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:29:59.6765482Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:00.1828387Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:00.1887464Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:00.7068551Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:00.7140242Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:01.2177794Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:01.2231873Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:01.7302823Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:01.7378098Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:02.2541564Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:02.2569556Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:02.7611567Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:02.7667592Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:03.2842420Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:03.2871574Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:03.7966986Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:03.8013390Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:04.3098271Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:04.3152962Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:04.8191302Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:04.8213191Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:05.3312337Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:05.3367733Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:05.8563432Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:05.8626626Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:06.3857299Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:06.3922187Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:06.8977465Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:06.9026887Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:07.4083574Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:07.4129945Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:07.9211022Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:07.9268262Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:08.4460189Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:08.4477099Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:08.9548895Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:08.9580015Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:09.4786186Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:09.4849935Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:10.0013289Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:10.0078179Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:10.5248405Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:10.5284557Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:11.0483383Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:11.0512063Z",
+        "responding": true
+      },
+      {
+        "role": "A",
+        "at_utc": "2026-10-28T00:30:11.5709616Z",
+        "responding": true
+      },
+      {
+        "role": "B",
+        "at_utc": "2026-10-28T00:30:11.5762193Z",
+        "responding": true
+      }
+    ],
+    "control_windows": [
+      {
+        "role": "A",
+        "action": "channel-chooser",
+        "started": "2026-10-28T08:28:33.823+08:00",
+        "finished": "2026-10-28T08:28:36.940+08:00",
+        "plan_written": "2026-10-28T08:28:34.030+08:00",
+        "plan_completed": "2026-10-28T08:28:36.758+08:00",
+        "steps": [
+          {
+            "t": 100,
+            "op": "key",
+            "vk": 27,
+            "dur": 100
+          },
+          {
+            "t": 900,
+            "op": "click",
+            "x": 315,
+            "y": 293
+          },
+          {
+            "t": 2000,
+            "op": "move",
+            "x": 50,
+            "y": 350
+          },
+          {
+            "t": 2500,
+            "op": "key",
+            "vk": 44,
+            "dur": 200
+          }
+        ],
+        "sample_first": "2026-10-28T00:28:11.623879+00:00",
+        "sample_last": "2026-10-28T00:30:11.570961+00:00",
+        "entire_input_window_covered": true,
+        "raw_input_sha256": "77FE22AB2FA1897FFE4A317A88771CD393E4093310BF13F1532072C2AFBD8DD3",
+        "image_sha256": "F0F31DDD6D87318CE24C3AAF3436535C893C42BD95B66594F378FDAD60F813B5"
+      },
+      {
+        "role": "A",
+        "action": "normal-world-complete",
+        "started": "2026-10-28T08:28:49.952+08:00",
+        "finished": "2026-10-28T08:29:05.052+08:00",
+        "plan_written": "2026-10-28T08:28:50.062+08:00",
+        "plan_completed": "2026-10-28T08:29:04.856+08:00",
+        "steps": [
+          {
+            "t": 300,
+            "op": "click",
+            "x": 160,
+            "y": 98
+          },
+          {
+            "t": 1100,
+            "op": "click",
+            "x": 320,
+            "y": 448
+          },
+          {
+            "t": 4500,
+            "op": "click",
+            "x": 319,
+            "y": 267
+          },
+          {
+            "t": 5300,
+            "op": "click",
+            "x": 120,
+            "y": 140
+          },
+          {
+            "t": 5900,
+            "op": "click",
+            "x": 320,
+            "y": 448
+          },
+          {
+            "t": 14000,
+            "op": "move",
+            "x": 600,
+            "y": 350
+          },
+          {
+            "t": 14500,
+            "op": "key",
+            "vk": 44,
+            "dur": 200
+          }
+        ],
+        "sample_first": "2026-10-28T00:28:11.623879+00:00",
+        "sample_last": "2026-10-28T00:30:11.570961+00:00",
+        "entire_input_window_covered": true,
+        "raw_input_sha256": "27120FA0AD3159FA08DECA27D68DFADABDEE7BA7A34987AB115B08AAFF7696AE",
+        "image_sha256": "47886E9521ECE46FC1C9CB1249BF9B4AC33CAFF71AF701E06492CB6C43198E39"
+      },
+      {
+        "role": "B",
+        "action": "channel-chooser",
+        "started": "2026-10-28T08:29:14.777+08:00",
+        "finished": "2026-10-28T08:29:17.941+08:00",
+        "plan_written": "2026-10-28T08:29:14.977+08:00",
+        "plan_completed": "2026-10-28T08:29:17.753+08:00",
+        "steps": [
+          {
+            "t": 100,
+            "op": "key",
+            "vk": 27,
+            "dur": 100
+          },
+          {
+            "t": 900,
+            "op": "click",
+            "x": 315,
+            "y": 293
+          },
+          {
+            "t": 2000,
+            "op": "move",
+            "x": 50,
+            "y": 350
+          },
+          {
+            "t": 2500,
+            "op": "key",
+            "vk": 44,
+            "dur": 200
+          }
+        ],
+        "sample_first": "2026-10-28T00:28:11.637291+00:00",
+        "sample_last": "2026-10-28T00:30:11.576219+00:00",
+        "entire_input_window_covered": true,
+        "raw_input_sha256": "AEB16C668F9537B2C4E96F2D58EBB300CC1AE1565A49D8BCE5E74097813C7952",
+        "image_sha256": "E4D48B2B7322C9CD9CFF53B2705AA24468433C89B967123779DEBF2CB9FCB1D9"
+      },
+      {
+        "role": "B",
+        "action": "normal-world-complete",
+        "started": "2026-10-28T08:29:30.036+08:00",
+        "finished": "2026-10-28T08:29:45.053+08:00",
+        "plan_written": "2026-10-28T08:29:30.140+08:00",
+        "plan_completed": "2026-10-28T08:29:44.879+08:00",
+        "steps": [
+          {
+            "t": 300,
+            "op": "click",
+            "x": 160,
+            "y": 98
+          },
+          {
+            "t": 1100,
+            "op": "click",
+            "x": 320,
+            "y": 448
+          },
+          {
+            "t": 4500,
+            "op": "click",
+            "x": 319,
+            "y": 267
+          },
+          {
+            "t": 5300,
+            "op": "click",
+            "x": 120,
+            "y": 140
+          },
+          {
+            "t": 5900,
+            "op": "click",
+            "x": 320,
+            "y": 448
+          },
+          {
+            "t": 14000,
+            "op": "move",
+            "x": 600,
+            "y": 350
+          },
+          {
+            "t": 14500,
+            "op": "key",
+            "vk": 44,
+            "dur": 200
+          }
+        ],
+        "sample_first": "2026-10-28T00:28:11.637291+00:00",
+        "sample_last": "2026-10-28T00:30:11.576219+00:00",
+        "entire_input_window_covered": true,
+        "raw_input_sha256": "A28B2453E1C7D3742732D6106CC806F9010FAB713BAE7B7BCC9B19F13BA10910",
+        "image_sha256": "30F31083BBE73912C97331B941E872FD2F251DDA9BAC80A83BD40830ED861565"
+      }
+    ],
+    "transitions": [
+      {
+        "role": "A",
+        "chooser_started": "2026-10-28T08:28:33.823000+08:00",
+        "native_plan_armed": "2026-10-28T08:28:50.113000+08:00",
+        "scheduled_channel_enter_click": "2026-10-28T08:28:51.213000+08:00",
+        "scheduled_world_enter_click": "2026-10-28T08:28:56.013000+08:00",
+        "world_finished": "2026-10-28T08:29:05.052000+08:00",
+        "entire_chooser_to_world_covered": true,
+        "click_time_basis": "Native diagnostic plan-armed timestamp plus declared step offset; scheduled click, not an independently timestamped button callback. Entire enclosing input windows and native login are separately checked."
+      },
+      {
+        "role": "B",
+        "chooser_started": "2026-10-28T08:29:14.777000+08:00",
+        "native_plan_armed": "2026-10-28T08:29:30.144000+08:00",
+        "scheduled_channel_enter_click": "2026-10-28T08:29:31.244000+08:00",
+        "scheduled_world_enter_click": "2026-10-28T08:29:36.044000+08:00",
+        "world_finished": "2026-10-28T08:29:45.053000+08:00",
+        "entire_chooser_to_world_covered": true,
+        "click_time_basis": "Native diagnostic plan-armed timestamp plus declared step offset; scheduled click, not an independently timestamped button callback. Entire enclosing input windows and native login are separately checked."
+      }
+    ]
+  },
+  "private_freeze_manifest_sha256": "994C7872778F357079C593CC6A4AB92094E850728795AA1B3F0C2CD12E72AEB2",
+  "collector_sha256": "2E271B8CE04360223ABE43FBA7A59132B37CFDD0A532213179F40F0F4FB60CE2",
+  "limitations": [
+    "One bounded normal-channel reentry per client; no claim of indefinite stability or coverage of all hang causes.",
+    "This is a distinct closed phase; previous390-sample coverage remains unchanged.",
+    "Final normal runtime publication and configuration restoration are separate root work."
+  ]
+}

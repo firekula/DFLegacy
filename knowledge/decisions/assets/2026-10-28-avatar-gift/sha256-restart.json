@@ -1,0 +1,32 @@
+[
+  {
+    "File": "B-open-inbox-after-restart.jpg",
+    "Sha256": "B011A3C2136B1CCAB36EAF30772BBEBB52BA6B9610CD4B64F64E6FBD220BA599",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-read-7d-gift.jpg",
+    "Sha256": "3E1E652B0583819CB74D038C52B7D9520E13FF354786FA4216851F3CF7EB706E",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-claim-7d-gift.jpg",
+    "Sha256": "89947307B1B0821CAA0A6884473F3974ADEC5C18C72EE0352971DB56B56462B0",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-avatar-bag-after-claim.jpg",
+    "Sha256": "5AC301703D5106C719A7CEED05D8C75D39123DD5FF16F0A6D330F5B7C6EB6C12",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-7d-tooltip.jpg",
+    "Sha256": "62C0EC30A460BA8ECB2F0346E17D527EDD07C99D16CA06A527631B6E9F6E1660",
+    "OriginalEqual": true
+  },
+  {
+    "File": "restart-claim-frozen-proof.json",
+    "Sha256": "5A6DA8C608C4B25A269AA6E51F4708E5952C411E934F247A2D34D257EEB648BB",
+    "OriginalEqual": true
+  }
+]
