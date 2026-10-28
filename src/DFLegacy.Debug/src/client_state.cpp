@@ -266,6 +266,8 @@ namespace dfl::client_state
             if (!s.haveMe) return false;
             auto& town = s.town; town.present = true; town.townId = townId; town.areaId = areaId;
             town.contextToken = context; town.mapToken = map; town.position = s.me.position;
+            unsigned char autoMove = 0;
+            if (r.Read(0xB5F0A0, autoMove) && autoMove <= 1) town.autoMoveActive = {true, autoMove != 0};
             std::int32_t x = 0, y = 0;
             if (r.ReadAt(actor, 0x23C, x) && r.ReadAt(actor, 0x240, y)) { town.destinationX = {true, x}; town.destinationY = {true, y}; }
             if (r.ReadAt(actor, 0x234, x) && r.ReadAt(actor, 0x238, y)) { town.directionX = {true, x}; town.directionY = {true, y}; }

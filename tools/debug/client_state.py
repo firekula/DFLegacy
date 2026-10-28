@@ -39,7 +39,7 @@ _POINT = {"x": "i32", "y": "i32"}
 _TOWN = {
     "town_id": "i32", "area_id": "i32", "context_token": "token",
     "map_token": "token", "position": _POSITION,
-    "destination": _POINT, "direction_raw": _POINT,
+    "destination": _POINT, "direction_raw": _POINT, "auto_move_active": "bool",
 }
 _UI = {
     "selection_mode_raw": "i32",
@@ -114,6 +114,8 @@ def _shape(value, shape, *, nullable=True):
     if isinstance(shape, dict):
         _require(isinstance(value, dict), "bad_object")
         for key, child in shape.items():
+            if shape is _TOWN and key == "auto_move_active" and key not in value:
+                continue  # Additive v2 field; absence remains unknown to get_known_field.
             _require(key in value, "missing_field")
             _shape(value[key], child, nullable=shape not in (_POSITION, _RECT, _POINT))
         return
@@ -383,6 +385,8 @@ def summarize(snapshot):
         town = snapshot["town"]
         result["town"] = None if town is None else {
             key: town[key] for key in ("town_id", "area_id", "position", "destination", "direction_raw")}
+        if town is not None:
+            result["town"]["auto_move_active"] = town.get("auto_move_active")
         result["ui"] = snapshot["ui"]
     return result
 

@@ -233,6 +233,24 @@ class ClientStateTests(unittest.TestCase):
         self.write(value)
         with self.assertRaises(self.api.SnapshotError):self.load()
 
+    def test_v2_native_auto_move_flag_is_optional_boolean_and_never_an_integer(self):
+        value = town_fixture()
+        for flag in (True, False, None):
+            value["town"]["auto_move_active"] = flag
+            self.write(value)
+            result = self.load()
+            if flag is None:
+                self.assertFalse(self.api.match_condition(result,"town.auto_move_active",False))
+            else:
+                self.assertIs(self.api.get_known_field(result,"town.auto_move_active"),flag)
+        value["town"]["auto_move_active"] = 1
+        self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+        del value["town"]["auto_move_active"]
+        self.write(value)
+        with self.assertRaises(self.api.UnknownFieldError):
+            self.api.get_known_field(self.load(),"town.auto_move_active")
+
     def test_town_with_null_me_and_room_is_valid_but_fields_are_unknown(self):
         self.value.update(scene=1, room=None, me=None, players=[], enemies=[], skills=[])
         self.write(self.value)

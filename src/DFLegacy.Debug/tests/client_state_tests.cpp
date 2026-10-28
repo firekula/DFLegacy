@@ -59,6 +59,7 @@ namespace
         void Town()
         {
             SetScene(1); U32(0xB75A18, Actor); U32(Actor, 0x9988DC);
+            Put<unsigned char>(0xB5F0A0, 1);
             U32(0x9988DC + 0x80, 0x471610); U32(User + 0x10C, Actor);
             U32(0x0100001C, 0x01030000); Put<std::int32_t>(0x01030088, 1);
             U32(0x0103008C, 0x01040000); Put<std::int32_t>(0x01040000, 2);
@@ -153,8 +154,17 @@ static void RunTownStateTests()
     const auto townJson = ToJson(ts, town.utc);
     Check(townJson.find("\"town\":{\"town_id\":1,\"area_id\":2") != std::string::npos
           && townJson.find("\"destination\":{\"x\":300,\"y\":240}") != std::string::npos
-          && townJson.find("\"direction_raw\":{\"x\":1,\"y\":4}") != std::string::npos,
+          && townJson.find("\"direction_raw\":{\"x\":1,\"y\":4}") != std::string::npos
+          && townJson.find("\"auto_move_active\":true") != std::string::npos,
           "Town region and original destination serialize without interpretation");
+    town.Put<unsigned char>(0xB5F0A0, 2); Snapshot unknownAutoMove;
+    Capture(town.Make(), thistory, unknownAutoMove);
+    Check(ToJson(unknownAutoMove, 0).find("\"auto_move_active\":null") != std::string::npos,
+          "out-of-domain native auto-move flag is unknown rather than active");
+    town.Put<unsigned char>(0xB5F0A0, 0); Snapshot inactiveAutoMove;
+    Capture(town.Make(), thistory, inactiveAutoMove);
+    Check(ToJson(inactiveAutoMove, 0).find("\"auto_move_active\":false") != std::string::npos,
+          "native auto-move flag zero is explicit inactive");
     Check(townJson.find("\"town_minimap\":{\"visible\":true,\"enabled\":true}") != std::string::npos
           && townJson.find("\"dungeon_selector\":{\"visible\":null,\"active_raw\":1,\"selected\":3,\"hover\":4}") != std::string::npos
           && townJson.find("\"countdown\":{\"state_raw\":2}") != std::string::npos,

@@ -16,6 +16,13 @@ namespace
     unsigned PatchCount=0;
     bool FakePatch(const unsigned char* expected,const unsigned char* replacement) noexcept
     { ++PatchCount;return PatchOkay && expected[0]==0xE8 && replacement[1]==0xD9; }
+    struct Actions
+    {
+        unsigned sets=0,activations=0;bool accept=true,ordered=true;
+        static bool Set(void* context,const Request&) noexcept { auto& a=*static_cast<Actions*>(context);++a.sets;return a.accept; }
+        static bool Activate(void* context,const Request&) noexcept
+        { auto& a=*static_cast<Actions*>(context);a.ordered=a.sets==1&&a.activations==0;++a.activations;return true; }
+    };
     void Check(bool okay, const char* label) { if (!okay) { ++Failures; std::fprintf(stderr,"FAIL navigation: %s\n",label); } }
     struct Memory
     {
@@ -108,6 +115,10 @@ int RunClientNavigationTests()
     Check(!RestoreInstalledHook(installed,patch,&FakePatch)&&installed&&PatchCount==1,"restore failure preserves hook ownership and blocks unload");
     PatchOkay=true;Check(RestoreInstalledHook(installed,patch,&FakePatch)&&!installed&&PatchCount==2,"restore retry clears ownership only on success");
     Check(RestoreInstalledHook(installed,patch,&FakePatch)&&PatchCount==2,"inactive restore is idempotent");
+    Actions actions;DestinationOperations operations{&actions,&Actions::Set,&Actions::Activate};
+    Check(SetAndActivate(r,operations)&&actions.sets==1&&actions.activations==1&&actions.ordered,"verified setter then native auto mode activated exactly once");
+    actions={};actions.accept=false;
+    Check(!SetAndActivate(r,operations)&&actions.sets==1&&actions.activations==0,"failed setter never activates auto mode");
     char fixture[MAX_PATH]{};
     if (GetEnvironmentVariableA("DFL_NAVIGATION_REQUEST_FIXTURE",fixture,MAX_PATH)>0)
     {

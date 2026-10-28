@@ -80,6 +80,7 @@ namespace dfl::client_state
             if (t.directionX.known && t.directionY.known)
                 out << "{\"x\":" << t.directionX.value << ",\"y\":" << t.directionY.value << '}';
             else out << "null";
+            out << ",\"auto_move_active\":"; Nullable(out, t.autoMoveActive);
             out << '}';
         }
         out << ",\"ui\":{\"selection_mode_raw\":"; Nullable(out, s.ui.selectionMode);

@@ -94,7 +94,7 @@ python tools/debug/client_state.py --directory G:/Game/DNF_ACT1/DF/town-test/deb
 
 路径只遍历数据，可使用 `room.map_token`、`me.hp`、`players.0.dead` 等，不执行表达式。未知null永不匹配，连 `=null` 也不会完成；布尔false不等于数字0。完整性不足、未证MP/职业/冷却/可用性、未绑定实体/地图的位置以及独立 `server_context` 均不能当作已知动作条件。技能等级不等于技能已可用，authority token不推断为owner。v1 的有效Town保留 `me`、`room` 为null；v2 读取 Town 原生角色绑定，HP、MP和死亡状态仍保持null，不伪造HP0或死亡。
 
-v2 新增 `town` 与 `ui`：Town包含当前 `town_id/area_id`、位置、原生 `destination.x/y` 和 `direction_raw.x/y`；Dungeon的 `town` 必须为null。Town位置须与本地角色及地图绑定一致。UI包含玩家菜单、M地图、选图及复活倒计时的只读状态。`ui.dungeon_selector.active_raw` 是原始字节，不代表可见性；该选择器的 `visible` 仍为null。`ui.countdown.state_raw` 保留原生数值，未知不变成0。隐藏玩家菜单的目标UID和动作列表不能完成操作条件。
+v2 新增 `town` 与 `ui`：Town包含当前 `town_id/area_id`、位置、原生 `destination.x/y` 和 `direction_raw.x/y`；`auto_move_active` 是原生连续移动开关的只读bool，缺失或未证原值时未知。Dungeon的 `town` 必须为null。Town位置须与本地角色及地图绑定一致。UI包含玩家菜单、M地图、选图及复活倒计时的只读状态。`ui.dungeon_selector.active_raw` 是原始字节，不代表可见性；该选择器的 `visible` 仍为null。`ui.countdown.state_raw` 保留原生数值，未知不变成0。隐藏玩家菜单的目标UID和动作列表不能完成操作条件。
 
 摘要的 `doors.enabled_directions` 只表示原生mask中存在的拓扑方向，不等于门已开放或可通过。`room.map_clear_state` 保留原生保护整数的signed raw值（或null）；不把0/1改名为clear布尔，也不据此单独推断过门许可。
 
@@ -142,6 +142,8 @@ python tools/debug/client_navigation.py --directory G:/Game/DNF_ACT1/DF/town-tes
 默认等待 `arrived`（最长35秒）：必须收到原生到达结果，并独立观察到新鲜、同身份状态中目标一致、XY各轴相差不超过3且原生方向停止值为4/4。`--wait accepted` 只等待 `requested`，表示原生 setter 已受理并核对目标；输出 `accepted:true,arrived:false` 不表示角色已到达。等待只打印一条最终JSON；退出码0表示所选条件达到，1为等待超时，2为拒绝、中断或无效身份/数据。CLI超时不会取消游戏内已受理的移动。
 
 请求写入 `dfdebug-navigation-<pid>.bin`，DLL结果写入同名前缀 `.json`。脚本校验进程精确创建时间、fresh v2 Town采样和UID，并绑定 actor/user/map/context、Town/Area、generation、sequence及采样时钟；等待期间继续检查身份与采样。单进程 `.lock` 避免两个脚本并发覆盖，原子替换保证DLL只看到完整请求。脚本不会清理其他控制器的锁；异常退出残留锁应在确认该控制器已经退出后移走。默认 request ID使用正的单调递增整数；`--request-id` 可用于重放拒绝测试，但不能覆盖更大的已有ID。脚本不发送OS输入、不读写游戏内存。
+
+Windows原子替换期间的瞬时快照/结果读取失败最多重试6次、总预算250ms，每次重新校验进程身份；过期、无效或身份变化不重试。受理后，只有捕获时钟严格晚于原生受理时钟的样本才用于判断目标是否改变；新目标会返回 `interrupted/destination_changed`，不会发送取消命令，也不会用受理前的200ms旧样本误判。
 
 请求wire为96字节、小端，Python `struct` 格式 `<4sHHIIQQQQQQIIIIiiii`：`DLNV`、u16版本1、u16长度96、u32 PID/UID、u64进程FILETIME/requestId/issuedTick/snapshotTick/generation/sequence、u32 actor/map/user/context token、i32 town/area/x/y。请求时效1000ms，引用采样时效750ms，未来时间与重放被拒绝。结果schema为 `dfl-client-navigation/v1`，`source` 区分 debug/minimap，`status` 为 requested/arrived/rejected/interrupted；结果携带身份、目标、位置、时钟与原因，不把写文件成功当作受理。
 

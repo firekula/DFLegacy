@@ -214,5 +214,131 @@ class ClientNavigationTests(unittest.TestCase):
             path.unlink();path.write_bytes(b"replacement-owner")
         self.assertEqual(path.read_bytes(),b"replacement-owner")
 
+    def accepted_then(self, *, destination_changed=False, minimap_result=False, ack_tick=NOW-10):
+        def writer():
+            command=self.directory/f"dfdebug-navigation-{PID}.bin"
+            deadline=time.monotonic()+1
+            while not command.exists() and time.monotonic()<deadline:time.sleep(.005)
+            if not command.exists():return
+            request=self.api.parse_request(command.read_bytes())
+            result=self.directory/f"dfdebug-navigation-{PID}.json"
+            value=response(request)
+            value["tick_ms"]=ack_tick
+            self.write_json(result,value)
+            time.sleep(.075) # Allow the consumer to observe the setter acknowledgement.
+            snapshot=deepcopy(self.snapshot);snapshot.update(sequence=2,captured_tick_ms=NOW)
+            if destination_changed:
+                snapshot["town"]["destination"]=dict(x=150,y=200)
+            else:
+                snapshot["me"]["position"].update(x=100,y=200)
+                snapshot["town"].update(position=deepcopy(snapshot["me"]["position"]),
+                                         destination=dict(x=100,y=200),direction_raw=dict(x=4,y=4))
+            self.write_json(self.snapshot_path,snapshot)
+            if minimap_result:
+                value=response(request);value.update(source="minimap",request_id=1)
+                value["target"]=dict(x=150,y=200)
+                self.write_json(result,value)
+            elif not destination_changed:
+                self.write_json(result,response(request,"arrived"))
+        thread=threading.Thread(target=writer);thread.start();self.addCleanup(thread.join)
+
+    def test_post_ack_destination_change_interrupts_without_sending_cancel(self):
+        self.accepted_then(destination_changed=True)
+        code,result=self.invoke()
+        self.assertEqual(code,2);self.assertEqual(result["status"],"interrupted")
+        self.assertEqual(result["reason"],"destination_changed")
+        self.assertTrue(result["accepted"]);self.assertFalse(result["arrived"])
+        request=self.api.parse_request((self.directory/f"dfdebug-navigation-{PID}.bin").read_bytes())
+        self.assertEqual((request["x"],request["y"]),(100,200))
+
+    def test_before_ack_snapshot_with_old_destination_cannot_falsely_interrupt(self):
+        self.snapshot["town"]["destination"]=dict(x=999,y=999)
+        self.write_json(self.snapshot_path,self.snapshot)
+        self.accepted_then(ack_tick=self.snapshot["captured_tick_ms"])
+        code,result=self.invoke()
+        self.assertEqual(code,0);self.assertEqual(result["status"],"arrived")
+
+    def test_minimap_result_overwrite_and_post_ack_target_change_interrupts(self):
+        self.accepted_then(destination_changed=True,minimap_result=True)
+        code,result=self.invoke()
+        self.assertEqual(code,2);self.assertEqual(result["status"],"interrupted")
+        self.assertEqual(result["reason"],"destination_changed")
+
+    def test_transient_snapshot_read_failure_retries_with_fresh_identity(self):
+        original=self.api.state.load_snapshot
+        attempts=[0]
+        def read(*args,**kwargs):
+            attempts[0]+=1
+            if attempts[0]<=2:raise self.api.state.SnapshotError("unreadable_json")
+            return original(*args,**kwargs)
+        self.native_reply()
+        with patch.object(self.api.state,"load_snapshot",side_effect=read):
+            code,result=self.invoke("--wait","accepted")
+        self.assertEqual(code,0);self.assertTrue(result["accepted"])
+        self.assertGreaterEqual(attempts[0],3)
+
+    def test_persistent_snapshot_read_failure_is_bounded_and_does_not_publish(self):
+        with patch.object(self.api.state,"load_snapshot",side_effect=self.api.state.SnapshotError("unreadable_json")) as read:
+            code,result=self.invoke()
+        self.assertEqual(code,2);self.assertEqual(result["error"],"unreadable_json")
+        self.assertGreater(read.call_count,1);self.assertLessEqual(read.call_count,6)
+        self.assertFalse((self.directory/f"dfdebug-navigation-{PID}.bin").exists())
+
+    def test_read_replace_race_after_command_publish_recovers_without_reissuing(self):
+        original=self.api.state.load_snapshot
+        attempts=[0]
+        def read(*args,**kwargs):
+            attempts[0]+=1
+            if attempts[0] in (3,4):raise self.api.state.SnapshotError("unreadable_json")
+            return original(*args,**kwargs)
+        self.native_reply()
+        with patch.object(self.api.state,"load_snapshot",side_effect=read):
+            code,result=self.invoke("--wait","accepted")
+        self.assertEqual(code,0);self.assertTrue(result["accepted"])
+        request=self.api.parse_request((self.directory/f"dfdebug-navigation-{PID}.bin").read_bytes())
+        self.assertEqual(request["request_id"],result["request_id"])
+
+    def test_non_read_snapshot_failure_is_never_retried(self):
+        with patch.object(self.api.state,"load_snapshot",side_effect=self.api.state.SnapshotError("stale")) as read:
+            code,result=self.invoke()
+        self.assertEqual(code,2);self.assertEqual(result["error"],"stale")
+        self.assertEqual(read.call_count,1)
+
+    def test_identity_change_during_read_retry_stops_before_a_second_read(self):
+        with patch.object(self.api.state,"now_tick_ms",return_value=NOW), \
+             patch.object(self.api.state,"get_process_started_filetime",side_effect=[START,START+1]), \
+             patch.object(self.api.state,"load_snapshot",side_effect=self.api.state.SnapshotError("unreadable_json")) as read:
+            with self.assertRaises(self.api.NavigationError) as error:
+                self.api.execute(self.directory,pid=PID,uid=1,started=START,x=100,y=200,timeout_seconds=0)
+        self.assertEqual(error.exception.code,"process_start_mismatch")
+        self.assertEqual(read.call_count,1)
+
+    def test_transient_result_replace_failure_retries_without_reissuing_command(self):
+        original=self.api._read_json;attempts=[0]
+        def read(path):
+            attempts[0]+=1
+            if attempts[0]<=2:raise self.api.NavigationError("unreadable_response")
+            return original(path)
+        self.native_reply()
+        with patch.object(self.api,"_read_json",side_effect=read):
+            code,result=self.invoke("--wait","accepted")
+        self.assertEqual(code,0);self.assertTrue(result["accepted"])
+        self.assertGreaterEqual(attempts[0],3)
+
+    def test_persistent_result_read_failure_is_bounded_and_does_not_reissue(self):
+        self.native_reply()
+        with patch.object(self.api,"_read_json",side_effect=self.api.NavigationError("unreadable_response")) as read:
+            code,result=self.invoke()
+        self.assertEqual(code,2);self.assertEqual(result["error"],"unreadable_response")
+        self.assertGreater(read.call_count,1);self.assertLessEqual(read.call_count,6)
+        self.assertEqual(len((self.directory/f"dfdebug-navigation-{PID}.bin").read_bytes()),96)
+
+    def test_non_read_result_failure_is_not_retried(self):
+        self.native_reply()
+        with patch.object(self.api,"_read_json",side_effect=self.api.NavigationError("bad_response")) as read:
+            code,result=self.invoke()
+        self.assertEqual(code,2);self.assertEqual(result["error"],"bad_response")
+        self.assertEqual(read.call_count,1)
+
 
 if __name__=="__main__":unittest.main()

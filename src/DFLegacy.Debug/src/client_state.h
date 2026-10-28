@@ -44,6 +44,7 @@ namespace dfl::client_state
         std::int32_t townId = -1, areaId = -1;
         std::uint32_t contextToken = 0, mapToken = 0;
         Position position{};
+        Value<bool> autoMoveActive{};
         Value<std::int32_t> destinationX{}, destinationY{}, directionX{}, directionY{};
     };
     struct Ui

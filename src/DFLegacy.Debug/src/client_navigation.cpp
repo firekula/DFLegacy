@@ -152,4 +152,9 @@ namespace dfl::client_navigation
         if (!replace || !replace(patched.data(),original)) return false;
         installed=false;return true;
     }
+    bool SetAndActivate(const Request& request,const DestinationOperations& operations) noexcept
+    {
+        return operations.setAndVerify && operations.activate
+            && operations.setAndVerify(operations.context,request) && operations.activate(operations.context,request);
+    }
 }

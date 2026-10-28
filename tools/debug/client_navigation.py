@@ -175,7 +175,7 @@ def _atomic_write(path, data):
             pass
 
 
-def _existing_request_id(command, result, pid):
+def _existing_request_id(command, result, pid, read_result=None):
     highest = 0
     if command.exists():
         try:
@@ -186,7 +186,7 @@ def _existing_request_id(command, result, pid):
         _require(request["pid"] == pid, "existing_request_pid_mismatch")
         highest = request["request_id"]
     if result.exists():
-        value = _read_json(result)
+        value = (read_result or _read_json)(result)
         _require(value.get("schema") == RESPONSE_SCHEMA and type(value.get("pid")) is int
                  and value["pid"] == pid and state._integer(value.get("request_id")), "bad_existing_response")
         highest = max(highest, value["request_id"])
@@ -213,20 +213,41 @@ def execute(directory, *, pid, uid, started, x, y, wait="arrived", timeout_secon
         _require(actual == started, "process_start_mismatch")
 
     def capture():
-        identity()
-        try:
-            snapshot = state.load_snapshot(snapshot_path, pid=pid, process_started_filetime=started,
-                                           now_tick_ms=state.now_tick_ms())
-        except state.SnapshotError as error:
-            raise NavigationError(error.code) from error
-        _checked_snapshot(snapshot)
-        _require(snapshot["me"]["uid"] == uid, "uid_mismatch")
-        return snapshot
+        read_deadline = time.monotonic() + .25
+        for attempt in range(6):
+            identity()
+            try:
+                snapshot = state.load_snapshot(snapshot_path, pid=pid, process_started_filetime=started,
+                                               now_tick_ms=state.now_tick_ms())
+            except state.SnapshotError as error:
+                remaining = read_deadline - time.monotonic()
+                if error.code != "unreadable_json" or attempt == 5 or remaining <= 0:
+                    raise NavigationError(error.code) from error
+                # Windows may briefly deny reads during the producer's atomic replacement.
+                time.sleep(min(.04, remaining))
+                continue
+            _checked_snapshot(snapshot)
+            _require(snapshot["me"]["uid"] == uid, "uid_mismatch")
+            return snapshot
+        raise NavigationError("unreadable_json")
+
+    def read_result(path):
+        read_deadline = time.monotonic() + .25
+        for attempt in range(6):
+            identity()
+            try:
+                return _read_json(path)
+            except NavigationError as error:
+                remaining = read_deadline - time.monotonic()
+                if error.code != "unreadable_response" or attempt == 5 or remaining <= 0:
+                    raise
+                time.sleep(min(.04, remaining))
+        raise NavigationError("unreadable_response")
 
     with _controller_lock(directory / f"dfdebug-navigation-{pid}.lock"):
         first = capture()
         bound = _context(first)
-        highest = _existing_request_id(command, result, pid)
+        highest = _existing_request_id(command, result, pid, read_result)
         if request_id is None:
             request_id = max(time.time_ns(), highest + 1)
         _require(state._integer(request_id, 1) and request_id > highest, "request_id_not_increasing")
@@ -240,6 +261,17 @@ def execute(directory, *, pid, uid, started, x, y, wait="arrived", timeout_secon
         observer.observe(current)
         deadline = time.monotonic() + timeout_seconds
         accepted = False
+        accepted_tick = None
+
+        def destination_changed(snapshot):
+            destination = snapshot["town"]["destination"]
+            return (accepted_tick is not None and snapshot["captured_tick_ms"] > accepted_tick
+                    and destination is not None and destination != dict(x=request["x"], y=request["y"]))
+
+        def interrupted():
+            return dict(ok=False, status="interrupted", reason="destination_changed", request_id=request_id,
+                        accepted=True, arrived=False)
+
         while True:
             current = capture()
             _require(_context(current) == bound, "context_changed")
@@ -247,20 +279,25 @@ def execute(directory, *, pid, uid, started, x, y, wait="arrived", timeout_secon
                 observer.observe(current)
             except state.SnapshotError as error:
                 raise NavigationError(error.code) from error
+            if destination_changed(current):
+                return interrupted()
             try:
                 with command.open("rb") as stream:
                     _require(stream.read(WIRE.size + 1) == raw, "superseded")
             except OSError as error:
                 raise NavigationError("request_disappeared") from error
             if result.exists():
-                value = _read_json(result)
+                value = read_result(result)
                 result_id = value.get("request_id")
                 _require(state._integer(result_id), "bad_response")
                 if value.get("source") == "debug" and result_id > request_id:
                     raise NavigationError("superseded")
                 if result_id == request_id and value.get("source") == "debug":
                     try:
-                        value = validate_response(value, request, state.now_tick_ms())
+                        now = state.now_tick_ms()
+                        value = validate_response(value, request, now)
+                        _require(current["captured_tick_ms"] <= now
+                                 and now - current["captured_tick_ms"] <= 750, "stale")
                     except NavigationError as error:
                         if error.code != "stale_response":
                             raise
@@ -270,6 +307,10 @@ def execute(directory, *, pid, uid, started, x, y, wait="arrived", timeout_secon
                             return dict(ok=False, status=status, reason=value["reason"], request_id=request_id,
                                         accepted=accepted, arrived=False)
                         accepted = True
+                        if accepted_tick is None:
+                            accepted_tick = value["tick_ms"]
+                        if destination_changed(current):
+                            return interrupted()
                         arrived = status == "arrived" and _arrived(current, request)
                         if wait == "accepted" or arrived:
                             return dict(ok=True, status="arrived" if arrived else "requested",

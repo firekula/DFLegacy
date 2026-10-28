@@ -70,9 +70,13 @@ namespace dfl::client_navigation
         {
             constexpr unsigned char setter[]={0x55,0x8B,0xEC,0x8B,0x81,0xC8,0x03,0,0,0x85,0xC0,0x74,0x0A,0x8A,0x90,0xA0};
             constexpr unsigned char point[]={0x55,0x8B,0xEC,0x8B,0x45,0x10,0x85,0xC0,0x74,0x06,0xC7,0,0,0,0,0};
-            Reads r;std::array<unsigned char,16> a{},b{};
+            constexpr unsigned char activate[]={0xC6,0x05,0xA0,0xF0,0xB5,0x00,0x01};
+            constexpr unsigned char update[]={0xA0,0xA0,0xF0,0xB5,0x00,0x84,0xC0,0x0F,0x84,0xB1,0,0,0};
+            Reads r;std::array<unsigned char,16> a{},b{};std::array<unsigned char,7> c{};std::array<unsigned char,13> d{};
             return r.At(0x478F70,0,a) && r.At(0x479EF0,0,b)
-                && std::memcmp(a.data(),setter,sizeof(setter))==0 && std::memcmp(b.data(),point,sizeof(point))==0;
+                && r.At(0x79CD07,0,c) && r.At(0x47B24C,0,d)
+                && std::memcmp(a.data(),setter,sizeof(setter))==0 && std::memcmp(b.data(),point,sizeof(point))==0
+                && std::memcmp(c.data(),activate,sizeof(activate))==0 && std::memcmp(d.data(),update,sizeof(update))==0;
         }
         bool IsEnabled() noexcept { return InterlockedCompareExchange(&Enabled,0,0)!=0; }
         void FlushResult() noexcept
@@ -91,7 +95,7 @@ namespace dfl::client_navigation
         {
             if (!Layout() || !CallSignatures() || request.pid!=Native.pid || request.processStartedFileTime!=Native.processStartedFileTime) return false;
             Reads r;std::uint32_t main=0,scene=0,context=0,areaObject=0,actor=0,table=0,uid=0,map=0,binding=0,transport=0;
-            std::int32_t town=-1,area=-1,userState=5;std::uint16_t userUid=0;unsigned char busy=0;
+            std::int32_t town=-1,area=-1,userState=5;std::uint16_t userUid=0;unsigned char busy=0,autoMode=0;
             std::uint32_t f=0,im=0,selectionMode=0;
             if (!r.At(0xB5D6F0,0,main) || main>UINT32_MAX-0x10 || !r.Secure(main+0x10,scene) || scene!=1
                 || !r.At(main,0x1C,context) || context!=request.contextToken || !r.At(context,0x88,town) || town!=request.townId
@@ -102,8 +106,9 @@ namespace dfl::client_navigation
                 || !r.At(request.userToken,0x10C,binding) || binding!=actor || !r.At(request.userToken,4,userUid) || userUid!=uid
                 || !r.At(request.userToken,0x2C,userState) || userState==5
                 || !r.At(0xB5DCE8,0,im) || !r.At(im,0xFC4,selectionMode) || selectionMode!=0
+                || !r.At(0xB5F0A0,0,autoMode) || autoMode>1
                 || !r.At(table,0x54,f) || f!=0x407400 || !r.At(table,0x94,f) || f!=0x479EF0
-                || !r.At(table,0x178,f) || f!=0x478F70 || !r.At(table,0x1A4,f) || f!=0x4795F0
+                || !r.At(table,0x154,f) || f!=0x47A8E0 || !r.At(table,0x178,f) || f!=0x478F70 || !r.At(table,0x1A4,f) || f!=0x4795F0
                 || !r.At(actor,0x3C8,transport) || (transport && (!r.At(transport,0x1A0,busy) || busy))) return false;
             // Original point checker returns true with missing map data. Prove its entire input vector first.
             std::uint32_t mapArea=0,definition=0,begin=0,end=0;
@@ -119,7 +124,7 @@ namespace dfl::client_navigation
             return r.At(0xB75A18,0,finalActor) && finalActor==actor && r.At(actor,0xE4,finalMap) && finalMap==map
                 && r.At(main,0x1C,finalContext) && finalContext==context;
         }
-        bool NativePointAndDestination(const Request& request) noexcept
+        bool NativePointAndDestination(void*,const Request& request) noexcept
         {
             // Only this leaf invokes game code. ABIs verified against original PE; bool is AL, setter returns void.
             __try
@@ -134,14 +139,35 @@ namespace dfl::client_navigation
             }
             __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
         }
+        bool NativeActivate(void*,const Request& request) noexcept
+        {
+            // The natural ground consumer writes this once at 79CD07. Town v+154 then
+            // invokes v+1A4 every update; original keyboard/menu paths can clear it.
+            __try
+            {
+                if (!Live(request)) return false;
+                Reads reads;std::int32_t x=0,y=0;
+                if (!reads.At(request.actorToken,0x23C,x) || !reads.At(request.actorToken,0x240,y)
+                    || x!=request.x || y!=request.y) return false;
+                auto* flag=reinterpret_cast<volatile unsigned char*>(0xB5F0A0);
+                *flag=1;
+                return *flag==1;
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
+        }
         const char* ActiveSource="debug";
         void Dispatch(const Request& request,const char* source) noexcept
         {
+            // The mailbox exposes the latest decision. An older request must never replace
+            // this request's terminal rejection with a late arrival/context result.
+            // This ends observation only; it does not invoke an unproven movement cancel.
+            Tracking=false;
             const auto now=Now();const auto reason=ValidateRequest(request,Current,now,source[0]=='d'?ConsumedId:0);
             if (source[0]=='d' && request.requestId>ConsumedId) ConsumedId=request.requestId;
             if (reason) { Publish(request,source,"rejected",reason);return; }
             if (!Live(request)) { Publish(request,source,"rejected","live_context_unavailable");return; }
-            if (!NativePointAndDestination(request)) { Publish(request,source,"rejected","point_invalid_or_native_rejected");return; }
+            const DestinationOperations operations{nullptr,&NativePointAndDestination,&NativeActivate};
+            if (!SetAndActivate(request,operations)) { Publish(request,source,"rejected","point_invalid_or_native_rejected");return; }
             Active=request;ActiveTick=now;ActiveSequence=Current.sequence;ActiveSource=source;Tracking=true;
             Publish(request,source,"requested","native_destination_set",Current.town.position);
         }
@@ -276,16 +302,19 @@ namespace dfl::client_navigation
                 && snapshot.haveMe && snapshot.me.uid.known && snapshot.me.uid.value==Active.uid && snapshot.generation==Active.generation
                 && snapshot.me.actorToken==Active.actorToken && snapshot.me.mapToken==Active.mapToken && snapshot.town.present
                 && snapshot.town.townId==Active.townId && snapshot.town.areaId==Active.areaId;
-            Reads reads;std::int32_t dx=0,dy=0;
+            Reads reads;std::int32_t dx=0,dy=0;unsigned char autoMode=0;
+            const bool arrived=snapshot.sequence>ActiveSequence && snapshot.town.position.known
+                && std::fabs(snapshot.town.position.x-Active.x)<=3 && std::fabs(snapshot.town.position.y-Active.y)<=3
+                && snapshot.town.directionX.known && snapshot.town.directionY.known && snapshot.town.directionX.value==4 && snapshot.town.directionY.value==4;
             const char* interruption=nullptr;
             if (!context || !Live(Active)) interruption="context_changed";
             else if (!reads.At(Active.actorToken,0x23C,dx) || !reads.At(Active.actorToken,0x240,dy) || dx!=Active.x || dy!=Active.y) interruption="destination_changed";
             else if (now<snapshot.capturedTickMs || now-snapshot.capturedTickMs>750) interruption="capture_stale";
-            else if (now-ActiveTick>30000) interruption="tracking_timeout";
+            else if (!reads.At(0xB5F0A0,0,autoMode) || autoMode>1) interruption="native_auto_move_unknown";
+            else if (!arrived && autoMode==0) interruption="native_auto_move_stopped";
+            else if (!arrived && now-ActiveTick>30000) interruption="tracking_timeout";
             if (interruption) { Tracking=false;Publish(Active,ActiveSource,"interrupted",interruption,snapshot.town.position); }
-            else if (snapshot.sequence>ActiveSequence && snapshot.town.position.known
-                && std::fabs(snapshot.town.position.x-Active.x)<=3 && std::fabs(snapshot.town.position.y-Active.y)<=3
-                && snapshot.town.directionX.known && snapshot.town.directionY.known && snapshot.town.directionX.value==4 && snapshot.town.directionY.value==4)
+            else if (arrived)
             { Tracking=false;Publish(Active,ActiveSource,"arrived","position_observed",snapshot.town.position); }
         }
         Request pending;bool have=false;

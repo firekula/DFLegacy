@@ -33,6 +33,13 @@ namespace dfl::client_navigation
                           std::uint32_t minimap, std::int32_t& x, std::int32_t& y) noexcept;
     using PatchOperation = bool (*)(const unsigned char* expected, const unsigned char* replacement) noexcept;
     bool RestoreInstalledHook(bool& installed, const std::array<unsigned char,5>& patched, PatchOperation) noexcept;
+    struct DestinationOperations
+    {
+        void* context=nullptr;
+        bool (*setAndVerify)(void*,const Request&) noexcept=nullptr;
+        bool (*activate)(void*,const Request&) noexcept=nullptr;
+    };
+    bool SetAndActivate(const Request&,const DestinationOperations&) noexcept;
     void Initialize(const wchar_t* settingsPath, const wchar_t* directory, client_state::Reader) noexcept;
     void OnFrame() noexcept;
     void OnFrame(const client_state::Snapshot&) noexcept;
