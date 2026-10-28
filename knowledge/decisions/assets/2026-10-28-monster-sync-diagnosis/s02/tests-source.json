@@ -1,0 +1,38 @@
+{
+  "Schema": "monster-s02-public-tests/v1",
+  "OfflineSourceCommit": "b7a3b56845f1e91505b39e7a7e02f4614fa74540",
+  "TimingSourceSha256": "9B3123ACAD5D8DBAA5CCFE148AC7F4110BD859AB8656DE4412DADA1BD47731E4",
+  "TimingTestsSha256": "45CFBABE031BF55C07198FE1DE5E3F32C855CA79FE91E7DCF029DA0343953DFC",
+  "RedPrototype": "Completion-only timing prototype: three contributing-chunk assertions failed; not a gameplay defect claim.",
+  "Tests": {
+    "NewTiming": 9,
+    "ExistingGameplay": 16,
+    "ExistingRelay": 8,
+    "Total": 33,
+    "AllPassed": true
+  },
+  "Logs": [
+    {
+      "EvidenceId": "stream-timing-red.log",
+      "Sha256": "4E312A3FE021F03751EE3D6B71694F2325911DE83CA865F61392CE6DF646A41F"
+    },
+    {
+      "EvidenceId": "stream-timing-green.log",
+      "Sha256": "5029184B9305EDA6E46FD30209E121414CB53C2B1A11AF37481BC251A1876A29"
+    },
+    {
+      "EvidenceId": "stream-plus-gameplay-green.log",
+      "Sha256": "D77421D5AE0901DAD571076BC1BED00CC8CBCDFD1DDCB43B7C1A12CDD168288C"
+    },
+    {
+      "EvidenceId": "stream-relay-regression-green.log",
+      "Sha256": "A6B936C389FA33C6A4B56A1A55C9FA7EE003F7E93EB5A59C6B3C68A53D5C748A"
+    }
+  ],
+  "AnalysisFiles": 21,
+  "AnalysisManifestSha256": "FBDFDA4FD0385EA39D235906434EB08C123E2B801A3FF63128508A53712066CA",
+  "IndependentReview": "No remaining Critical/Important for timed decoder/tests/private socket join;33tests rerun by reviewer.",
+  "GameplayChange": false,
+  "CurrentDeliveredManagedSource": "59666d9b543abc5119012cd98ad1fe8e57d7858c",
+  "Scope": "b7a3b56 is an offline evidence commit. It is not a new server/native build or position fix."
+}

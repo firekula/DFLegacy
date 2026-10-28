@@ -1,0 +1,94 @@
+{
+  "Schema": "monster-s02-public-native-phase/v1",
+  "Phase": "fallback-monster-v1",
+  "ManagedSourceCommit": "20d996f66775ba21f0b52995e00dc2ae40de99f0",
+  "NativeSourceCommit": "b4fe25f0c82c0cf8ab87813ec7670f1d6b2bf662",
+  "BuildManifestSha256": "28C9B6A1199CEF82AA75D6FF9E558B15FC599E01EF3435589FBF0489E116FFFB",
+  "LoadedBindingSha256": "2BB9B767DC36EA7862AA020E643970FE911FA950BF39DCC99E2BC81037CC2AB5",
+  "NativeOriginalFunctionChecks": 30,
+  "NativeOriginalFunctionsAllEqual": true,
+  "OriginalExeSha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5",
+  "Gp42ProviderFileSha256": "AC4AC828C93D4624968EB03AECCCF16D38DB3B3852FC1BE62C451A620D428C81",
+  "ProviderEvidenceSha256": "1DD45C1387B39DAA12042575BA52EF080131A1AFB2D029EDC957589AE163D71E",
+  "Transport": {
+    "AtoB": 15659,
+    "BtoA": 14599,
+    "MatchedPeerUdp": {
+      "A->B": 0,
+      "B->A": 0
+    },
+    "WireProofSha256": "86A4E839CAA4B750EE0B4DB4CB63F36A4555F65B6E409F353C8ECDA98EC42AAD"
+  },
+  "NativeRoute": {
+    "Maze": 0,
+    "Start": [
+      0,
+      1
+    ],
+    "Boss": [
+      2,
+      1
+    ],
+    "Maps": [
+      1,
+      7,
+      13
+    ]
+  },
+  "Clear": "Natural clear17:58:04, settlement result0/code0 for both, automatic free-card timers.",
+  "ReturnTown": "EPLP timeout18:00:26/27 returned both to Town. A ReturnTown input18:01:01 occurred afterwards; NOT a manual-return test.",
+  "Photos": [
+    {
+      "File": "A-boss-before.jpg",
+      "OriginalLabel": "m1-A-boss-before",
+      "OriginalScreenshotName": "ScreenShot00954.JPG",
+      "ReceiptSha256": "8ADCC95ABFCD1DF9C42DCD40D7AA327F0ED89EC85266BBE019889C0848F5C7FF",
+      "Sha256": "9D172AE7ADDEE417AFCEE760A6969809E4CE6C228F0C14E06A135BCD3F62C952",
+      "Unmodified": true
+    },
+    {
+      "File": "B-boss-before.jpg",
+      "OriginalLabel": "m1-B-boss-before",
+      "OriginalScreenshotName": "ScreenShot00884.JPG",
+      "ReceiptSha256": "C56EA5A47A2C5B109C7D255A7253C63553D78865DC6F3752390BDFFF1929D7EE",
+      "Sha256": "1EDB6E427CFF6FF6338589AB702748EDD1F14198EC427E6FC705A296DDDB5C39",
+      "Unmodified": true
+    },
+    {
+      "File": "A-clear.jpg",
+      "OriginalLabel": "m1-A-settlement",
+      "OriginalScreenshotName": "ScreenShot00955.JPG",
+      "ReceiptSha256": "BD9F67BE4CA3630C66BD050C127F2FB0C02DCB2975C91CD7CEE526CE7B6A41DA",
+      "Sha256": "99FD2567B1E8B3314DF56BC93CFB5CB3343C040B3D4084FB24B36FE26C172A14",
+      "Unmodified": true
+    },
+    {
+      "File": "B-clear.jpg",
+      "OriginalLabel": "m1-B-settlement",
+      "OriginalScreenshotName": "ScreenShot00885.JPG",
+      "ReceiptSha256": "4B0723B6D2C71E3831903767DD47C227946D652F75ADC0E9F2A8203D659F1A7D",
+      "Sha256": "DCDB2325972272DBD986C7EC0AD597F2499AD968FE0B5128DBE81AA879BA354C",
+      "Unmodified": true
+    },
+    {
+      "File": "A-auto-return-town.jpg",
+      "OriginalLabel": "m1-A-return-town",
+      "OriginalScreenshotName": "ScreenShot00957.JPG",
+      "ReceiptSha256": "F42A4638A423DC2A5F956EF34FE0D527D2C127A25C2EBAD670223CB1E01C4ABC",
+      "Sha256": "183EB8337ECE4338CC8F81E245775B67409B0D89634E6F58F2D03A0CA9916973",
+      "Unmodified": true
+    },
+    {
+      "File": "B-auto-return-town.jpg",
+      "OriginalLabel": "m1-B-return-town",
+      "OriginalScreenshotName": "ScreenShot00886.JPG",
+      "ReceiptSha256": "57A1C0023C71D97DCBEB1035B6EC47601FF6BABC6342CB7D51AB84DBAC5F1550",
+      "Sha256": "A5875EE84691AB2EFA9F4D05E8C7D717869A013261F93649DBB07259DAD6E9E6",
+      "Unmodified": true
+    }
+  ],
+  "OriginalM1Files": 344,
+  "OriginalM1Bytes": 35225425,
+  "OriginalM1ManifestSha256": "D34BAF0260CCB300E14262BAE3693DC0E9E9D28E2723F3DDA2CCF6C150499C03",
+  "Scope": "Six sequential original pictures establish route/clear/automatic Town return, not simultaneous position equality or a position repair. Historical20d/native8AB, before Boss6416 restoration."
+}

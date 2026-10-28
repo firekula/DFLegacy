@@ -46,12 +46,12 @@
 - [ ] Join object kind/UID, room and declared player to paired state; compare native movement flags and selected object. Test room reuse/late frames and duplicate identity cases.
 
   Partial/boundary: freshM1 has285paired samples with actualStage(2,1), stable per-role map and selected object pointers, engine flag1, same associatedUID2 and identical targets at the largest121.37 gap. Actual original15function RAM bytes match PE on both clients. The oldv3 window lacks actualStage fields; a general native generation/application join has not been implemented or claimed. Specific receiver-gate execution, GP42 inner action stream and typed motion-state effects remain unresolved; no guessed owner/coordinate repair.
-- [ ] If needed, run one short fresh matched two-client capture with original screenshots and extra readonly fields. Freeze and independently review the diagnosis; record a concrete cause or a bounded unresolved contract.
+- [x] If needed, run one short fresh matched two-client capture with original screenshots and extra readonly fields. M1 supplies Stage/current/target/association,30RAM/PE checks and344frozen files. Independent final reviewer verified all source sampling/differences,21analysis files, six original pictures and corrected automatic EPLP return. Scoped result: unresolved native application contract; position not fixed.
 
 ### Task 3: Proven repair or documented boundary, then next ready group
 
 **Files:** Exact repair files and one regression are chosen by an explicit root-cause amendment after Task2; no speculative source edit.
 
 - [ ] For a proven defect, add the failing regression, implement minimally, verify meaningful full suites, independently review, freeze a new package and repeat matched normal/fault dual-client acceptance with screenshots. Deploy with the same original-input protection.
-- [ ] For an unresolved/original behavior, preserve the exact gap and stop changing that subsystem; do not mark position fixed. Carry forward the user-authorized revival-purchase contract investigation, then other confirmed ready functions.
-- [ ] Update coverage/report/ledger with actual build/phase identities and scoped verdicts; local commits only.
+- [x] For the current unresolved boundary, preserve the exact gap and stop speculative gameplay changes; do not mark position fixed. Specific receiver-gate execution/GP42 inner/motion semantics and general native generation/application join remain pending. Carry forward the user-authorized revival-purchase contract investigation, then other confirmed ready functions.
+- [x] Update coverage/report/ledger with actual build/phase identities and scoped verdicts; local commits only. Offline sourceb7a3b56, M1managed20d/native8AB, current deliveredBossmanaged596/native8AB stay distinct. Evidence/report commit follows this checklist update; the unproven-repair/general-native-join boxes remain open rather than manufacturing success.
