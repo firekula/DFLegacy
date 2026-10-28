@@ -5,6 +5,8 @@
 
 ## 1. 近期改动的功能
 
+2026-10-28 组队 TCP 回退：ACT1 完整登录尾、真实 peer 账号及原生 12 字节中继已恢复；原生发送队列竞争另经九处受保护入口修复。完整 .NET 冒烟、Release、Win32 兼容及独立严格抓包检查通过。同一 20d/8AB 构建完成正常 UDP、两轮受控 UDP 故障的自然战斗/通关/回城，以及双端频道重入；含 12 张原图的[验收记录](knowledge/decisions/2026-10-28-party-tcp-fallback-verification.md)区分失败 v2、v3 截图缺项与 v4 补证。正常目录 49 文件交付及 Windows PowerShell5.1 克隆存档启动通过；五份原配置、两原档、EXE/PVF、历史包及备份复算一致，测试进程退出。怪物位置同步尚未修复：新快速观察有一只普通怪持续约653–736平面差异，继续对照原始接收链；不强制怪物归队长、不写坐标。
+
 2026-10-28 频道重入：用户补图的“未响应后能进入”由原生同步MTU探测造成，基线三次阻塞10.814–10.974秒。同一manager/主机/本地IP/端口复用真实MTU并刷新主机引用；最终合并构建双端登录应答至继续请求为0/1毫秒，首次和身份变化仍走原探测。双端组队、副本战斗和换房17项回归通过；UDP应用审计仍有既有CRC/cipher警告，未宣称全部解码通过。图文、计时口径与边界见[频道验收](knowledge/decisions/2026-10-27-channel-return-verification.md)。
 
 2026-10-28 普通商城赠送：恢复ACT1 CMD146查询及CMD67 gift1，官服普通实物、黑名单和账号月次数规则，默认额度1；扣点券、邮件、计数同快照原子提交，账号在线会话重读规范余额。原生全部赠送门控恢复，空篮和禁赠商品仍禁用。在线及离线原生赠送、收信领取、额度、重登/重启守恒102项检查通过，附18张原图和官服/ACT1差异的[验收记录](knowledge/decisions/2026-10-27-cera-gift-verification.md)。完整.NET冒烟、Win32兼容、各自Release构建和服务端发布通过；整份slnx的dotnet构建仍受C++ VCTargetsPath工具链限制，未计为成功。同一实测构建已部署，5份原配置与原存档哈希不变，正常环境26项核对通过，两端停在频道选择。时装/宠物/礼包/直接效果赠送和物理删角的官服24错误码尚不对等，详见记录。
@@ -21,6 +23,7 @@
 
 | 功能 | 关键位置 |
 | --- | --- |
+| ACT1 组队 TCP 回退：完整登录/peer账号、规范会话路由、原生发送串行化及严格证据解码 | `FallbackRelayService`、`GameplayDatagramService.FallbackRelay`、`NativeFallbackRelayProtocol`、`relay_send_queue`、`party_fallback_evidence.py` |
 | 普通商城赠送：ACT1查询/结算、原子扣款/邮件/账号月次数、会话现金失效；在线/离线双端验收 | `GameProtocolEngine.CeraGift`、`JsonGameStore.CeraGift`、`CeraGiftSessionEffects`、`CeraShopCatalog` |
 | 返回频道重入：刷新owned host引用、按连接身份复用原生实际MTU，保留首次/变化探测 | `DFLegacy.Ijl15/src/channel_reentry.cpp`、`dnf_patches.cpp` |
 | SP 按经验进度渐进发放；PVF 缺少 `etc/sptable.etc` 时用内置回退表（取值与原版一致） | `CharacterSpCatalog`，8 处给经验调用点 |
