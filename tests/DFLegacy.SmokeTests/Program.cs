@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--fallback-relay"))
+{
+    await FallbackRelaySmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Fallback relay smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--fallback-protocol"))
 {
     await FallbackRelayProtocolSmokeTests.RunAsync(Check);
@@ -215,6 +223,7 @@ static ItemCatalog CreateItems(ScriptFileSystem scripts) =>
 AccountClientSmokeTests.Run(Check);
 ClientDiagnosticsSmokeTests.Run(Check);
 await FallbackRelayProtocolSmokeTests.RunAsync(Check);
+await FallbackRelaySmokeTests.RunAsync(Check);
 await AdminAuthSmokeTests.RunAsync(Check);
 await TownSyncSmokeTests.RunAsync(Check);
 await FriendSmokeTests.RunAsync(Check);

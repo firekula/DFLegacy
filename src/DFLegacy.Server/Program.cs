@@ -27,6 +27,7 @@ builder.Configuration.AddEnvironmentVariables();
 var options = builder.Configuration.GetSection("DFLegacy").Get<ServerOptions>() ?? new ServerOptions();
 options.Processes.Validate();
 options.Pvp.Validate(options);
+options.FallbackRelay.Validate(options);
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var clientTextEncoding = Encoding.GetEncoding(
     936,
@@ -117,6 +118,8 @@ builder.Services.AddSingleton<ObjectDropGenerator>();
 builder.Services.AddSingleton<ClearRewardCatalog>();
 builder.Services.AddSingleton<ClearRewardGenerator>();
 builder.Services.AddSingleton<GameplayDatagramService>();
+builder.Services.AddSingleton<FallbackRelayService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<FallbackRelayService>());
 builder.Services.AddHostedService<EntranceHandshakeService>();
 // I4：game 侧链路客户端（拆分模式拨号 channel 进程；单体模式 ExecuteAsync 直接返回）。
 // 单例 + 托管：/api/status 要读同一个 Client 实例。

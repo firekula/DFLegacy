@@ -5,7 +5,7 @@ using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
 
-public sealed class GameplayDatagramService(
+public sealed partial class GameplayDatagramService(
     ServerOptions options,
     RuntimeState runtime,
     ILogger<GameplayDatagramService> logger) : BackgroundService
@@ -173,7 +173,10 @@ public sealed class GameplayDatagramService(
         lock (session.Gate)
         {
             if (session.PvpContext is { } existing && existing.Attachment != attachment) return false;
-            session.PvpContext = new(attachment, room, match);
+            var next = new PvpRelayContext(attachment, room, match);
+            if (session.PvpContext != next || session.RelayPartyId is not null
+                || session.RelayDungeonInstance is not null) session.RelayContextRevision++;
+            session.PvpContext = next;
             session.RelayPartyId = null; session.RelayDungeonInstance = null;
             return true;
         }
@@ -183,8 +186,13 @@ public sealed class GameplayDatagramService(
     {
         if (!_sessions.TryGetValue(sessionId, out var session)) return;
         lock (session.Gate)
+        {
             if (session.PvpContext is { } context && context.Attachment == attachment && context.Room == room)
+            {
                 session.PvpContext = null;
+                session.RelayContextRevision++;
+            }
+        }
     }
 
     internal bool HasUniqueEndpoint(Guid sessionId)
@@ -249,6 +257,7 @@ public sealed class GameplayDatagramService(
 
             if (updateParty) session.RelayPartyId = partyId;
             if (updateDungeon) session.RelayDungeonInstance = dungeonInstance;
+            session.RelayContextRevision++;
             currentParty = session.RelayPartyId;
             inDungeon = session.RelayDungeonInstance is not null;
         }
@@ -262,12 +271,14 @@ public sealed class GameplayDatagramService(
     {
         ArgumentNullException.ThrowIfNull(runtimeSession);
         ArgumentNullException.ThrowIfNull(tcpAddress);
-        _sessions[runtimeSession.Id] = new GameplaySession(runtimeSession);
+        RevokeRelayAccount(runtimeSession.Id);
+        _sessions[runtimeSession.Id] = new GameplaySession(runtimeSession, tcpAddress);
     }
 
     public void UnregisterChannelSession(Guid sessionId)
     {
         _sessions.TryRemove(sessionId, out _);
+        RevokeRelayAccount(sessionId);
     }
 
     public void SetNatReport(Guid sessionId, GameNatReport report)
@@ -859,15 +870,17 @@ public sealed class GameplayDatagramService(
     private static IPAddress NormalizeAddress(IPAddress address) =>
         address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
 
-    private sealed class GameplaySession(RuntimeSession runtimeSession)
+    private sealed class GameplaySession(RuntimeSession runtimeSession, IPAddress tcpAddress)
     {
         public object Gate { get; } = new();
         public RuntimeSession Runtime { get; } = runtimeSession;
+        public IPAddress TcpAddress { get; } = NormalizeAddress(tcpAddress);
         public GameNatReport? NatReport { get; set; }
         public IPEndPoint? DatagramEndpoint { get; set; }
         public PvpRelayContext? PvpContext { get; set; }
         public ushort? RelayPartyId { get; set; }
         public object? RelayDungeonInstance { get; set; }
+        public long RelayContextRevision { get; set; }
         public uint NextSequence { get; set; }
     }
 }

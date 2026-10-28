@@ -16,6 +16,7 @@ public sealed class ServerOptions
     public DebugOptions Debug { get; set; } = new();
     public ChannelOptions Channel { get; set; } = new();
     public PvpOptions Pvp { get; set; } = new();
+    public FallbackRelayOptions FallbackRelay { get; set; } = new();
     public DropOptions Drop { get; set; } = new();
     public ExperienceOptions Experience { get; set; } = new();
     public DungeonOptions Dungeon { get; set; } = new();
