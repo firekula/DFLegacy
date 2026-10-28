@@ -25,17 +25,17 @@
 4. Duplicate/fragmented wrapper records: follow original sequence/reassembly limits before inferring delivery or GP6 absence.
 5. A received packet rejected by native state: correlate actual GP4 room/declared-player checks and GP6 dispatch, not packet counts alone.
 
-### Task1: Original receive contract and deterministic offline decoder
+### Task 1: Original receive contract and deterministic offline decoder
 
 **Files:** Create tools/acceptance/act1_gameplay_evidence.py, tests/test_act1_gameplay_evidence.py. Retain private raw output in a new monster-sync namespace. Public vectors must contain gameplay only, never authentication.
 
 **Interfaces:** DecodedApplication(mode,protocol,payload,codec); MtApplicationRecord(block_type,sequence,sender_slot,record_index,application). decode_application(raw) validates exact header/CRC and known encoding; decode_mt_blocks(raw) consumes every byte of ACK/reliable/unreliable forms. Nested GP42 has a separate bounded interface only after verifying original framing.
 
-- [ ] Cross-check GP4/GP6/GP42 and cipher/reader original functions, relevant vtables and local-object test against original PE bytes. Record exact field/length semantics and unresolved items.
-- [ ] Add independent literal/native gameplay vectors and tests for plaintext, observed cipher, multiple reliable records, ACK length, fragmentation/truncation, ambiguous/unsupported forms and hard bounds. Watch missing implementation fail.
-- [ ] Implement minimal strict offline decoding; run focused tests and frozen-phase analysis without modifying any capture. Commit tested decoder and contract notes.
+- [x] Cross-check GP4/GP6/GP42 and cipher/reader original functions, relevant vtables and local-object test against original PE bytes. Record exact field/length semantics and unresolved items.
+- [x] Add independent literal/native gameplay vectors and tests for plaintext, observed cipher, multiple reliable records, ACK length, fragmentation/truncation, ambiguous/unsupported forms and hard bounds. Watch missing implementation fail.
+- [x] Implement minimal strict offline decoding; run focused tests and frozen-phase analysis without modifying any capture. Commit tested decoder and contract notes.
 
-### Task2: Join the sustained divergence to application/native state
+### Task 2: Join the sustained divergence to application/native state
 
 **Files:** Add bounded analysis CLI/functions in tools/acceptance/act1_gameplay_evidence.py; tests/test_act1_gameplay_evidence.py; new knowledge/decisions/2026-10-28-monster-sync-diagnosis.md and sanitized assets.
 
@@ -44,7 +44,7 @@
 - [ ] Join object kind/UID, room and declared player to paired state; compare native movement flags and selected object. Test room reuse/late frames and duplicate identity cases.
 - [ ] If needed, run one short fresh matched two-client capture with original screenshots and extra readonly fields. Freeze and independently review the diagnosis; record a concrete cause or a bounded unresolved contract.
 
-### Task3: Proven repair or documented boundary, then next ready group
+### Task 3: Proven repair or documented boundary, then next ready group
 
 **Files:** Exact repair files and one regression are chosen by an explicit root-cause amendment after Task2; no speculative source edit.
 

@@ -1,0 +1,39 @@
+{
+  "Schema": "monster-sync-stage1-evidence/v1",
+  "Stage": "S01",
+  "NativeGameplayChanged": false,
+  "Checks": [
+    {
+      "File": "decoder-native-cipher-red.log",
+      "Sha256": "ED7EC53A3F172174328D5AC93274231358E260EDF01D98C7519AAAA2544F1873"
+    },
+    {
+      "File": "decoder-native-cipher-green.log",
+      "Sha256": "81D4262F2E15CBDAFF9BA41CCAE9681F472AE287E002B200FC81A8EB12317A7E"
+    },
+    {
+      "File": "decoder-all-evidence-green.log",
+      "Sha256": "EA06D8955AC264DD672EF2EFFD92EF28AE7D626E136C2D075956EE53BE594EC1"
+    },
+    {
+      "File": "decoder-memoryview-red.log",
+      "Sha256": "7DFC96018D49696C7E1B382F2E8687BE8F9BF6CCFE19C58BC201B8CBF94B3DA2"
+    },
+    {
+      "File": "decoder-review-all-green.log",
+      "Sha256": "96999918C6241594F3A8FA88258D004CA42CAC44B205FEBACD7048FE7F977887"
+    }
+  ],
+  "Scope": "Stage1 offline decoding and original-byte contracts only; source code reviewed, gameplay unchanged",
+  "SourceFiles": [
+    {
+      "File": "tools/acceptance/act1_gameplay_evidence.py",
+      "Sha256": "52E5D2B869DAC4D201FCC589B93A1CB7939F33486A82FA261526207E3E3A69FC"
+    },
+    {
+      "File": "tests/test_act1_gameplay_evidence.py",
+      "Sha256": "52B9BC96C2EFDDF54202DDAF2E839E9BD875188A30BE8F98E32892819FF4158D"
+    }
+  ],
+  "IndependentReview": "No remaining Critical/Important after memoryview-byte-limit RED4/GREEN and null-association contract correction; reviewer actually ran24 tests"
+}
