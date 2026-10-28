@@ -13,6 +13,17 @@ compose.yaml text eol=lf
 /knowledge/decisions/assets/2026-10-27-cera-gift/task-1-release-build.log whitespace=-blank-at-eol,cr-at-eol
 /knowledge/decisions/assets/2026-10-28-client-diagnostics/** -text whitespace=cr-at-eol
 /knowledge/decisions/assets/2026-10-28-mentor-growth/** -text whitespace=cr-at-eol
+# 此筛选日志保留服务器原始空进度行的尾空格。
+/knowledge/decisions/assets/2026-10-28-mentor-growth/native-selected-server.log whitespace=-blank-at-eol,cr-at-eol
+/knowledge/decisions/assets/2026-10-28-pvp-individual/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-avatar-gift/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-creature-gift/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-mentor-master-gold/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-overnight-delivery/** -text whitespace=cr-at-eol
+# 发布的启动脚本按已验证字节复制到运行目录，保留两种 PowerShell 的原始编码/换行。
+/tools/runtime/Start-NormalServer.ps1 -text whitespace=cr-at-eol
+/tools/runtime/Start-NormalServer.cmd -text whitespace=cr-at-eol
+/tools/acceptance/Test-NormalServerStartup.ps1 -text whitespace=cr-at-eol
 # 时装能力测试保留从 PVF 提取的 CP936 脚本原始字节。
 /tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/equipment/**/*.equ -text whitespace=cr-at-eol
 # 原始 PVF 条目包含尾部空行，按原字节保留，不将其作为新增源码空白错误。
