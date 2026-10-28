@@ -51,6 +51,23 @@ def fixture(pid=PID, start=START):
     )
 
 
+def town_fixture(pid=PID, start=START):
+    value = fixture(pid, start)
+    value.update(schema="dfl-client-state/v2", scene=1, room=None, enemies=[], skills=[])
+    value["capabilities"]["skill_levels"] = False
+    value["me"].update(hp=None, max_hp=None, dead=None)
+    value["players"] = [deepcopy(value["me"])]
+    value["town"] = dict(town_id=1, area_id=0, context_token="0x18001000",
+                         map_token=value["me"]["map_token"], position=deepcopy(value["me"]["position"]),
+                         destination=dict(x=100, y=200), direction_raw=dict(x=1, y=4))
+    value["ui"] = dict(selection_mode_raw=0,
+                       player_menu=dict(visible=False, target_uid=None, action_ids=None),
+                       town_minimap=dict(visible=True, enabled=True),
+                       dungeon_selector=dict(visible=None, active_raw=0, selected=None, hover=None),
+                       countdown=dict(state_raw=0))
+    return value
+
+
 class ClientStateTests(unittest.TestCase):
     def setUp(self):
         try:
@@ -108,6 +125,113 @@ class ClientStateTests(unittest.TestCase):
         self.write(self.value)
         self.assertTrue(self.api.match_condition(self.load(), "room.map_clear_state", 1))
         self.assertFalse(self.api.match_condition(self.load(), "room.map_clear_state", True))
+
+    def test_v2_town_preserves_unknown_combat_and_exposes_bound_navigation(self):
+        self.write(town_fixture())
+        result = self.load()
+        self.assertEqual(self.api.get_known_field(result, "town.town_id"), 1)
+        self.assertEqual(self.api.get_known_field(result, "town.position.x"), 10.5)
+        self.assertEqual(self.api.get_known_field(result, "town.destination.x"), 100)
+        self.assertEqual(self.api.get_known_field(result, "town.direction_raw.y"), 4)
+        self.assertEqual(self.api.get_known_field(result, "ui.countdown.state_raw"), 0)
+        self.assertTrue(self.api.match_condition(result, "ui.town_minimap.visible", True))
+        for path in ("me.hp", "me.dead", "me.mp", "ui.player_menu.target_uid"):
+            with self.subTest(path=path), self.assertRaises(self.api.UnknownFieldError):
+                self.api.get_known_field(result, path)
+
+    def test_v2_town_rejects_stale_combat_and_mismatched_native_binding(self):
+        for change in (
+                lambda v: v["me"].update(hp=0),
+                lambda v: v["players"][0].update(dead=False),
+                lambda v: v["town"].update(map_token="0x00001000"),
+                lambda v: v["me"].update(uid=None),
+                lambda v: v["me"].update(same_map=False),
+                lambda v: v["me"].update(detached=True),
+                lambda v: v["town"]["position"].update(x=999),
+                lambda v: v.update(room=fixture()["room"]),
+                lambda v: v.update(enemies=fixture()["enemies"]),
+                lambda v: v.update(skills=fixture()["skills"])):
+            value = town_fixture()
+            change(value)
+            self.write(value)
+            with self.subTest(change=change), self.assertRaises(self.api.SnapshotError):
+                self.load()
+
+    def test_v2_dungeon_keeps_dungeon_semantics_and_rejects_stale_town(self):
+        value = fixture()
+        value.update(schema="dfl-client-state/v2", town=None, ui=town_fixture()["ui"])
+        self.write(value)
+        self.assertEqual(self.api.get_known_field(self.load(), "me.hp"), 470)
+        value["town"] = town_fixture()["town"]
+        self.write(value)
+        with self.assertRaises(self.api.SnapshotError):
+            self.load()
+
+    def test_v2_ui_unknown_stays_unknown_and_selector_flag_is_not_visibility(self):
+        value = town_fixture()
+        value["ui"]["countdown"]["state_raw"] = None
+        value["ui"]["dungeon_selector"].update(active_raw=1, selected=1)
+        self.write(value)
+        result = self.load()
+        self.assertEqual(self.api.get_known_field(result, "ui.dungeon_selector.active_raw"), 1)
+        self.assertFalse(self.api.match_condition(result, "ui.dungeon_selector.visible", True))
+        self.assertFalse(self.api.match_condition(result, "ui.countdown.state_raw", 0))
+
+    def test_v2_rejects_malformed_or_unbounded_ui_and_town_data(self):
+        for change in (
+                lambda v: v.pop("ui"),
+                lambda v: v.update(ui=None),
+                lambda v: v["town"]["destination"].update(x=True),
+                lambda v: v["town"]["position"].update(y=None),
+                lambda v: v["ui"]["player_menu"].update(target_uid=0),
+                lambda v: v["ui"]["player_menu"].update(action_ids=list(range(257))),
+                lambda v: v["ui"]["dungeon_selector"].update(visible=True)):
+            value = town_fixture()
+            change(value)
+            self.write(value)
+            with self.subTest(change=change), self.assertRaises(self.api.SnapshotError):
+                self.load()
+
+    def test_v1_town_contract_remains_empty_and_unsupported_schema_stays_rejected(self):
+        value = town_fixture()
+        value["schema"] = "dfl-client-state/v1"
+        self.write(value)
+        with self.assertRaises(self.api.SnapshotError):
+            self.load()
+        value["schema"] = "dfl-client-state/v3"
+        self.write(value)
+        with self.assertRaises(self.api.SnapshotError):
+            self.load()
+
+    def test_v2_town_summary_includes_compact_destination_and_ui(self):
+        self.write(town_fixture())
+        summary = self.api.summarize(self.load())
+        self.assertEqual(summary["town"]["destination"], dict(x=100, y=200))
+        self.assertEqual(summary["ui"]["town_minimap"]["visible"], True)
+        self.assertIsNone(summary["me"]["hp"])
+        self.assertLess(len(json.dumps(summary)), 1600)
+
+    def test_v2_hidden_player_menu_does_not_make_target_or_actions_operable(self):
+        value = town_fixture()
+        value["ui"]["player_menu"].update(visible=False, target_uid=2, action_ids=[1])
+        self.write(value)
+        result = self.load()
+        self.assertFalse(self.api.match_condition(result, "ui.player_menu.target_uid", 2))
+        self.assertFalse(self.api.match_condition(result, "ui.player_menu.action_ids.0", 1))
+        value["ui"]["player_menu"]["visible"] = True
+        self.write(value)
+        self.assertTrue(self.api.match_condition(self.load(), "ui.player_menu.target_uid", 2))
+
+    def test_v2_town_null_position_is_unknown_and_ui_byte_limits_are_checked(self):
+        value = town_fixture()
+        value["town"]["position"] = None
+        value["me"]["position"] = None
+        value["players"][0]["position"] = None
+        self.write(value)
+        self.assertFalse(self.api.match_condition(self.load(), "town.position.x", 0))
+        value["ui"]["dungeon_selector"]["active_raw"] = 256
+        self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
 
     def test_town_with_null_me_and_room_is_valid_but_fields_are_unknown(self):
         self.value.update(scene=1, room=None, me=None, players=[], enemies=[], skills=[])

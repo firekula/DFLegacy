@@ -36,7 +36,7 @@ namespace dfl::client_state
     std::string ToJson(const Snapshot& s, std::uint64_t exportedFileTime)
     {
         std::ostringstream out; out.imbue(std::locale::classic()); out << std::boolalpha << std::setprecision(9);
-        out << "{\"schema\":\"dfl-client-state/v1\",\"pid\":" << s.pid
+        out << "{\"schema\":\"dfl-client-state/v2\",\"pid\":" << s.pid
             << ",\"process_started_filetime\":" << s.processStartedFileTime << ",\"sequence\":" << s.sequence
             << ",\"captured_filetime\":" << s.capturedFileTime << ",\"captured_tick_ms\":" << s.capturedTickMs
             << ",\"exported_filetime\":" << exportedFileTime << ",\"layout_supported\":" << s.layoutSupported
@@ -65,6 +65,38 @@ namespace dfl::client_state
             }
             out << "}}";
         }
+        out << ",\"town\":";
+        if (!s.town.present) out << "null";
+        else
+        {
+            const auto& t = s.town;
+            out << "{\"town_id\":" << t.townId << ",\"area_id\":" << t.areaId << ",\"context_token\":";
+            Token(out, t.contextToken); out << ",\"map_token\":"; Token(out, t.mapToken);
+            out << ",\"position\":"; Point(out, t.position); out << ",\"destination\":";
+            if (t.destinationX.known && t.destinationY.known)
+                out << "{\"x\":" << t.destinationX.value << ",\"y\":" << t.destinationY.value << '}';
+            else out << "null";
+            out << ",\"direction_raw\":";
+            if (t.directionX.known && t.directionY.known)
+                out << "{\"x\":" << t.directionX.value << ",\"y\":" << t.directionY.value << '}';
+            else out << "null";
+            out << '}';
+        }
+        out << ",\"ui\":{\"selection_mode_raw\":"; Nullable(out, s.ui.selectionMode);
+        out << ",\"player_menu\":{\"visible\":"; Nullable(out, s.ui.menuVisible);
+        out << ",\"target_uid\":"; Nullable(out, s.ui.menuTargetUid); out << ",\"action_ids\":";
+        if (!s.ui.menuActionsKnown) out << "null";
+        else
+        {
+            out << '[';
+            for (std::size_t i = 0; i < s.ui.menuActionCount; ++i) { if (i) out << ','; out << s.ui.menuActions[i]; }
+            out << ']';
+        }
+        out << "},\"town_minimap\":{\"visible\":"; Nullable(out, s.ui.minimapVisible);
+        out << ",\"enabled\":"; Nullable(out, s.ui.minimapEnabled);
+        out << "},\"dungeon_selector\":{\"visible\":null,\"active_raw\":"; Nullable(out, s.ui.selectorActive);
+        out << ",\"selected\":"; Nullable(out, s.ui.selectorSelected); out << ",\"hover\":"; Nullable(out, s.ui.selectorHover);
+        out << "},\"countdown\":{\"state_raw\":"; Nullable(out, s.ui.countdownState); out << "}}";
         out << ",\"me\":"; if (s.haveMe) Person(out, s.me); else out << "null";
         out << ",\"players\":[";
         for (std::size_t i = 0; i < s.playerCount; ++i) { if (i) out << ','; Person(out, s.players[i]); }

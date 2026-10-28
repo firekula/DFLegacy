@@ -38,6 +38,23 @@ namespace dfl::client_state
         Value<std::uint32_t> assemblyPhase{}, directionMask{}, livingCount{}, majorityRequired{};
         std::array<Door, 4> doors{}; // left, right, up, down
     };
+    struct Town
+    {
+        bool present = false;
+        std::int32_t townId = -1, areaId = -1;
+        std::uint32_t contextToken = 0, mapToken = 0;
+        Position position{};
+        Value<std::int32_t> destinationX{}, destinationY{}, directionX{}, directionY{};
+    };
+    struct Ui
+    {
+        Value<std::int32_t> selectionMode{}, selectorSelected{}, selectorHover{}, countdownState{};
+        Value<std::uint32_t> selectorActive{}, menuTargetUid{};
+        Value<bool> menuVisible{}, minimapVisible{}, minimapEnabled{};
+        bool menuActionsKnown = false;
+        std::array<std::uint32_t, 32> menuActions{};
+        std::size_t menuActionCount = 0;
+    };
     struct Snapshot
     {
         std::uint32_t pid = 0;
@@ -48,6 +65,8 @@ namespace dfl::client_state
         bool skillLevelsSupported = false;
         Value<std::uint32_t> scene{};
         Room room{};
+        Town town{};
+        Ui ui{};
         Player me{};
         std::array<Player, MaximumPlayers> players{};
         std::array<Enemy, MaximumEnemies> enemies{};
@@ -69,7 +88,8 @@ namespace dfl::client_state
     struct History
     {
         std::uint64_t sequence = 0, generation = 0;
-        std::uint32_t scene = 0, stage = 0, map = 0, uid = 0;
+        std::uint32_t scene = 0, stage = 0, map = 0, uid = 0, actor = 0, context = 0;
+        std::int32_t town = -1, area = -1;
         bool haveIdentity = false;
     };
     // Fixed-size mailbox; IO and serialization must happen after releasing lock.
@@ -86,5 +106,9 @@ namespace dfl::client_state
     void Initialize(const wchar_t* settingsPath, const wchar_t* directory) noexcept;
     void CaptureFrame() noexcept;
     void ExportLatest() noexcept;
+    // Read-only callbacks reuse the worker's original-image gate. Capture itself
+    // belongs on the game thread; copying a published snapshot never blocks it.
+    Reader NativeReader() noexcept;
+    bool CopyLatest(Snapshot&) noexcept;
     void Shutdown() noexcept;
 }

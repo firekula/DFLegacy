@@ -8,6 +8,7 @@
 #include "debug_model.h"
 #include "debug_window.h"
 #include "client_state.h"
+#include "client_navigation.h"
 
 namespace
 {
@@ -56,6 +57,7 @@ namespace
             // A busy paint/input queue must not postpone shutdown indefinitely.
             if (WaitForSingleObject(StopEvent, 0) == WAIT_OBJECT_0) break;
             dfl::client_state::ExportLatest();
+            dfl::client_navigation::PumpWorker();
             dfl::debug_window::Content content{};
             AcquireSRWLockShared(&ContentLock); content = Published; ReleaseSRWLockShared(&ContentLock);
             dfl::debug_window::Update(content);
@@ -162,9 +164,11 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     ReadyEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (ReadyEvent == nullptr) { CloseHandle(StopEvent); StopEvent = nullptr; return 0; }
     dfl::client_state::Initialize(host->settingsPath, directory);
+    dfl::client_navigation::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     Worker = CreateThread(nullptr, 0, &ReadSnapshots, nullptr, 0, nullptr);
     if (Worker == nullptr)
     {
+        dfl::client_navigation::Shutdown();
         dfl::client_state::Shutdown();
         CloseHandle(StopEvent); CloseHandle(ReadyEvent); StopEvent = ReadyEvent = nullptr; return 0;
     }
@@ -179,6 +183,7 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (!WindowReady)
     {
         WaitForSingleObject(Worker, INFINITE);
+        dfl::client_navigation::Shutdown();
         dfl::client_state::Shutdown();
         CloseHandle(Worker); CloseHandle(StopEvent); Worker = StopEvent = nullptr;
         return 0;
@@ -191,6 +196,7 @@ extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexce
     if (Worker == nullptr || frame == nullptr || frame->size != sizeof(*frame)) return;
     // Independent native capture precedes all old Frame.scene / visibility gates.
     dfl::client_state::CaptureFrame();
+    dfl::client_navigation::OnFrame();
     Building = {};
     struct Publish
     {
@@ -274,6 +280,8 @@ extern "C" int __stdcall DebugShutdown() noexcept
         MSG message{}; PeekMessageW(&message, nullptr, 0, 0, PM_NOREMOVE);
         MsgWaitForMultipleObjects(1, &Worker, FALSE, 10, QS_SENDMESSAGE);
     }
+    // A retained native CALL must keep this DLL loaded if restoration fails.
+    if (!dfl::client_navigation::Shutdown()) return 0;
     CloseHandle(Worker); CloseHandle(StopEvent);
     dfl::client_state::Shutdown();
     Worker = nullptr; StopEvent = nullptr;

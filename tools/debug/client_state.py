@@ -13,6 +13,7 @@ import time
 
 
 SCHEMA = "dfl-client-state/v1"
+SCHEMA_V2 = "dfl-client-state/v2"
 MAX_BYTES = 1_048_576
 UINT64_MAX = (1 << 64) - 1
 _TOKEN = re.compile(r"0x[0-9a-fA-F]{8}\Z")
@@ -34,6 +35,19 @@ _RECT = {
     "left": "i32", "top": "i32", "width": "u32", "height": "u32",
 }
 _DOOR = {"enabled": "bool", "rect": _RECT}
+_POINT = {"x": "i32", "y": "i32"}
+_TOWN = {
+    "town_id": "i32", "area_id": "i32", "context_token": "token",
+    "map_token": "token", "position": _POSITION,
+    "destination": _POINT, "direction_raw": _POINT,
+}
+_UI = {
+    "selection_mode_raw": "i32",
+    "player_menu": {"visible": "bool", "target_uid": "uid", "action_ids": ["u32", 32]},
+    "town_minimap": {"visible": "bool", "enabled": "bool"},
+    "dungeon_selector": {"visible": "bool", "active_raw": "u8", "selected": "i32", "hover": "i32"},
+    "countdown": {"state_raw": "i32"},
+}
 _ROOM = {
     "stage_token": "token", "map_token": "token", "boss_dead": "bool",
     "map_clear_state": "i32",
@@ -50,7 +64,7 @@ _BODY = {
     "capabilities": _CAPABILITIES,
 }
 _KNOWN = {
-    **_BODY, "pid": "u32", "process_started_filetime": "uint",
+    **_BODY, "town": _TOWN, "ui": _UI, "pid": "u32", "process_started_filetime": "uint",
     "sequence": "uint", "captured_filetime": "uint", "captured_tick_ms": "uint",
     "exported_filetime": "uint", "scene": "u32", "generation": "uint",
     "layout_supported": "bool", "valid": "bool", "truncated": "bool",
@@ -101,7 +115,7 @@ def _shape(value, shape, *, nullable=True):
         _require(isinstance(value, dict), "bad_object")
         for key, child in shape.items():
             _require(key in value, "missing_field")
-            _shape(value[key], child, nullable=shape is not _POSITION and shape is not _RECT)
+            _shape(value[key], child, nullable=shape not in (_POSITION, _RECT, _POINT))
         return
     if isinstance(shape, list):
         _require(isinstance(value, list) and len(value) <= shape[1], "bad_array")
@@ -112,6 +126,7 @@ def _shape(value, shape, *, nullable=True):
         "bool": lambda: type(value) is bool,
         "uint": lambda: _integer(value),
         "u32": lambda: _integer(value, 0, (1 << 32) - 1),
+        "u8": lambda: _integer(value, 0, 255),
         "i32": lambda: _integer(value, -(1 << 31), (1 << 31) - 1),
         "uid": lambda: _integer(value, 1, 65535),
         "hp": lambda: _integer(value, 0, (1 << 31) - 1),
@@ -129,7 +144,8 @@ def _unique(rows, key):
 
 def _validate(snapshot):
     _require(isinstance(snapshot, dict), "bad_root")
-    _require(snapshot.get("schema") == SCHEMA, "unsupported_schema")
+    _require(snapshot.get("schema") in (SCHEMA, SCHEMA_V2), "unsupported_schema")
+    version2 = snapshot["schema"] == SCHEMA_V2
     for key in ("pid", "process_started_filetime", "sequence", "captured_filetime",
                 "captured_tick_ms", "exported_filetime", "generation"):
         _require(key in snapshot and _integer(snapshot[key]), "bad_header")
@@ -167,7 +183,32 @@ def _validate(snapshot):
     _unique(snapshot["players"], "actor_token")
     _unique(snapshot["enemies"], "uid")
     _unique(snapshot["skills"], "id")
-    if snapshot["scene"] == 1:
+    if version2:
+        _require("town" in snapshot and "ui" in snapshot, "missing_field")
+        _shape(snapshot["town"], _TOWN)
+        _shape(snapshot["ui"], _UI, nullable=False)
+        for key in ("player_menu", "town_minimap", "dungeon_selector", "countdown"):
+            _require(isinstance(snapshot["ui"][key], dict), "bad_ui")
+        _require(snapshot["ui"]["dungeon_selector"]["visible"] is None, "unproven_ui_visibility")
+        if snapshot["scene"] == 3:
+            _require(snapshot["town"] is None, "stale_dungeon_town")
+        else:
+            town, me = snapshot["town"], snapshot["me"]
+            _require(town is not None and me is not None, "town_unbound")
+            _require(_integer(town["town_id"], 0, (1 << 31) - 1)
+                     and _integer(town["area_id"], 0, (1 << 31) - 1)
+                     and town["context_token"] is not None and town["map_token"] is not None,
+                     "town_unbound")
+            _require(all(me[key] is not None for key in ("uid", "user_token", "actor_token", "map_token"))
+                     and me["map_token"] == town["map_token"]
+                     and me["same_map"] is True and me["detached"] is False
+                     and me["position"] == town["position"], "town_binding_mismatch")
+            _require(snapshot["room"] is None and not snapshot["enemies"] and not snapshot["skills"]
+                     and caps["skill_levels"] is False, "stale_town_payload")
+            for player in snapshot["players"] + [me]:
+                _require(all(player[key] is None for key in ("hp", "max_hp", "mp", "max_mp", "dead")),
+                         "unproven_town_combat")
+    elif snapshot["scene"] == 1:
         _require(snapshot["room"] is None and snapshot["me"] is None
                  and not snapshot["players"] and not snapshot["enemies"]
                  and not snapshot["skills"], "stale_town_payload")
@@ -234,6 +275,12 @@ def get_known_field(snapshot, dotted_path):
         caps = snapshot.get("capabilities", {})
         if not caps.get("skill_levels") or any(part in ("cooldown_ms", "usable") for part in parts):
             raise UnknownFieldError(dotted_path, "unsupported")
+    if parts[0] in ("town", "ui") and snapshot.get("schema") != SCHEMA_V2:
+        raise UnknownFieldError(dotted_path, "unsupported")
+    if parts[:2] == ["ui", "player_menu"] and len(parts) > 2 \
+            and parts[2] in ("target_uid", "action_ids") \
+            and snapshot.get("ui", {}).get("player_menu", {}).get("visible") is not True:
+        raise UnknownFieldError(dotted_path, "menu_hidden")
     value, shape = snapshot, _KNOWN
     try:
         for part in parts:
@@ -265,6 +312,13 @@ def get_known_field(snapshot, dotted_path):
             raise UnknownFieldError(dotted_path, "entity_unbound")
     if parts[0] == "enemies" and snapshot["enemies"][int(parts[1])]["uid"] is None:
         raise UnknownFieldError(dotted_path, "entity_unbound")
+    if parts[0] == "town":
+        town, me = snapshot.get("town"), snapshot.get("me")
+        if snapshot["scene"] != 1 or town is None or me is None \
+                or any(me.get(key) is None for key in ("uid", "user_token", "actor_token", "map_token")) \
+                or town.get("context_token") is None or town.get("map_token") != me["map_token"] \
+                or me.get("same_map") is not True or me.get("detached") is not False:
+            raise UnknownFieldError(dotted_path, "town_unbound")
     if parts[0] in ("me", "players") and "position" in parts:
         entity = snapshot["me"] if parts[0] == "me" else snapshot["players"][int(parts[1])]
         if entity["same_map"] is not True or entity["detached"] is not False:
@@ -307,7 +361,7 @@ def summarize(snapshot):
     me = snapshot["me"]
     room = snapshot["room"]
     doors = room["doors"] if room is not None else {}
-    return {
+    result = {
         "pid": snapshot["pid"], "sequence": snapshot["sequence"],
         "generation": snapshot["generation"], "scene": snapshot["scene"],
         "room": None if room is None else {
@@ -325,6 +379,12 @@ def summarize(snapshot):
         "skills": {"levels": snapshot["capabilities"]["skill_levels"],
                    "cooldown": False, "usable": False},
     }
+    if snapshot.get("schema") == SCHEMA_V2:
+        town = snapshot["town"]
+        result["town"] = None if town is None else {
+            key: town[key] for key in ("town_id", "area_id", "position", "destination", "direction_raw")}
+        result["ui"] = snapshot["ui"]
+    return result
 
 
 def _kernel32():

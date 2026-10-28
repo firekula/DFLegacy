@@ -140,24 +140,169 @@ namespace dfl::client_state
                 }
                 return p;
             }
+            Player TownActor(std::uint32_t user, std::uint32_t actor, std::uint32_t map) noexcept
+            {
+                Player p; std::uint16_t uid = 0; std::uint32_t table = 0, secureUid = 0, binding = 0, actorMap = 0;
+                if (!user || !actor || !ReadAt(user, 4, uid) || !uid
+                    || !ReadAt(user, 0x10C, binding) || binding != actor
+                    || !Read(actor, table) || table != 0x9988DC
+                    || !SecureAt(actor, 0xD4, secureUid) || secureUid != uid
+                    || !ReadAt(actor, 0xE4, actorMap))
+                { Error(snapshot, "invalid_town_player_identity"); return p; }
+                p.uid = {true, uid}; p.userToken = user; p.actorToken = actor; p.mapToken = actorMap;
+                p.sameMap = {true, actorMap != 0 && actorMap == map}; p.detached = {true, actorMap == 0};
+                if (p.sameMap.value)
+                {
+                    if (Getter(actor, 0x80, 0x471610)) p.position = Coordinates(actor);
+                    if (!p.position.known) Error(snapshot, "town_position_unknown");
+                }
+                // Town's virtual character is not the Dungeon combat actor.
+                // HP, max HP and death remain unknown even if stale offsets are readable.
+                return p;
+            }
         };
 
-        std::uint32_t FindUser(Reads& r, std::uint32_t actor, std::uint32_t uid) noexcept
+        std::uint32_t FindUser(Reads& r, std::uint32_t actor, std::uint32_t uid,
+                               std::uint32_t bindingOffset = 0x110) noexcept
         {
             std::uint32_t manager = 0, head = 0, node = 0;
             if (!r.Read(0xB5DCB8, manager) || !manager || !r.ReadAt(manager, 12, head)
                 || !head || !r.Read(head, node)) return 0;
-            std::array<std::uint32_t, 32> visited{}; std::size_t count = 0;
+            std::array<std::uint32_t, 256> visited{}; std::size_t count = 0;
             while (node && node != head && count < visited.size())
             {
                 if (std::find(visited.begin(), visited.begin() + count, node) != visited.begin() + count) break;
                 visited[count++] = node;
                 std::uint32_t user = 0, binding = 0; std::uint16_t candidate = 0;
                 if (!r.ReadAt(node, 12, user) || !user) return 0;
-                if (r.ReadAt(user, 4, candidate) && candidate == uid && r.ReadAt(user, 0x110, binding) && binding == actor) return user;
+                if (r.ReadAt(user, 4, candidate) && candidate == uid && r.ReadAt(user, bindingOffset, binding) && binding == actor) return user;
                 if (!r.Read(node, node)) return 0;
             }
             return 0;
+        }
+        void UiState(Reads& r, Snapshot& s, std::uint32_t game) noexcept
+        {
+            std::uint32_t ui = 0, object = 0, table = 0, panel = 0, repeated = 0;
+            if (r.ReadAt(game, 0x20, object) && object && r.Read(object, table) && table == 0x99A5B8)
+            {
+                unsigned char active = 0; std::int32_t selected = 0, hover = 0;
+                if (r.ReadAt(object, 4, active) && r.ReadAt(object, 0x200, selected) && r.ReadAt(object, 0x204, hover)
+                    && r.ReadAt(game, 0x20, repeated) && repeated == object)
+                {
+                    s.ui.selectorActive = {true, active}; s.ui.selectorSelected = {true, selected}; s.ui.selectorHover = {true, hover};
+                }
+            }
+            if (!r.Read(0xB5DCE8, ui) || !ui) return;
+            Ui candidate = s.ui; std::int32_t mode = 0;
+            if (r.ReadAt(ui, 0xFC4, mode)) candidate.selectionMode = {true, mode};
+            if (r.ReadAt(ui, 0xF08, object) && object && r.Read(object, table) && table == 0xA7CF2C)
+            {
+                std::int32_t state = 0;
+                if (r.ReadAt(object, 96, state) && r.ReadAt(ui, 0xF08, repeated) && repeated == object)
+                    candidate.countdownState = {true, state};
+            }
+            if (r.ReadAt(ui, 0xFF0, object) && object && r.Read(object, table) && table == 0xA7CF3C
+                && r.ReadAt(object, 4, panel) && panel)
+            {
+                unsigned char visible = 0, enabled = 0;
+                if (r.ReadAt(panel, 0x10, visible) && visible <= 1 && r.ReadAt(panel, 0x11, enabled) && enabled <= 1
+                    && r.ReadAt(object, 4, repeated) && repeated == panel
+                    && r.ReadAt(ui, 0xFF0, repeated) && repeated == object)
+                { candidate.minimapVisible = {true, visible != 0}; candidate.minimapEnabled = {true, enabled != 0}; }
+            }
+            std::uint32_t menu = 0;
+            if (r.ReadAt(ui, 0x78, menu) && menu && r.ReadAt(menu, 0x58, panel) && panel)
+            {
+                unsigned char visible = 0;
+                if (r.ReadAt(panel, 0x10, visible) && visible <= 1 && r.ReadAt(menu, 0x58, repeated) && repeated == panel)
+                {
+                    candidate.menuVisible = {true, visible != 0};
+                    if (visible)
+                    {
+                        std::uint32_t actor = 0, uid = 0, targetUser = 0;
+                        if (r.ReadAt(menu, 8, actor) && actor && r.Read(actor, table) && table == 0x9988DC
+                            && r.SecureAt(actor, 0xD4, uid) && uid && uid <= 65535)
+                        {
+                            targetUser = FindUser(r, actor, uid, 0x10C);
+                            if (targetUser) candidate.menuTargetUid = {true, uid};
+                        }
+                        std::uint32_t begin = 0, end = 0;
+                        if (r.ReadAt(menu, 0xFC, begin) && r.ReadAt(menu, 0x100, end) && end >= begin
+                            && (end - begin) % 4 == 0 && (end - begin) / 4 <= candidate.menuActions.size())
+                        {
+                            candidate.menuActionCount = (end - begin) / 4; candidate.menuActionsKnown = true;
+                            for (std::size_t i = 0; i < candidate.menuActionCount; ++i)
+                                if (!r.ReadAt(begin, static_cast<std::uint32_t>(i * 4), candidate.menuActions[i])) candidate.menuActionsKnown = false;
+                            std::uint32_t finalBegin = 0, finalEnd = 0;
+                            candidate.menuActionsKnown = candidate.menuActionsKnown
+                                && r.ReadAt(menu, 0xFC, finalBegin) && finalBegin == begin
+                                && r.ReadAt(menu, 0x100, finalEnd) && finalEnd == end;
+                        }
+                        unsigned char finalVisible = 0; std::uint32_t finalActor = 0, finalUid = 0, finalBinding = 0;
+                        if (!r.ReadAt(panel, 0x10, finalVisible) || finalVisible != visible
+                            || !r.ReadAt(menu, 8, finalActor) || finalActor != actor
+                            || (candidate.menuTargetUid.known && (!r.SecureAt(actor, 0xD4, finalUid) || finalUid != uid
+                                || !r.ReadAt(targetUser, 0x10C, finalBinding) || finalBinding != actor)))
+                        { candidate.menuVisible = {}; candidate.menuTargetUid = {}; candidate.menuActionsKnown = false; }
+                    }
+                }
+                if (!r.ReadAt(ui, 0x78, repeated) || repeated != menu
+                    || !r.ReadAt(menu, 0x58, repeated) || repeated != panel)
+                { candidate.menuVisible = {}; candidate.menuTargetUid = {}; candidate.menuActionsKnown = false; }
+            }
+            if (r.Read(0xB5DCE8, repeated) && repeated == ui) s.ui = candidate;
+        }
+        bool TownState(Reads& r, Snapshot& s, std::uint32_t game) noexcept
+        {
+            std::uint32_t context = 0, area = 0, actor = 0, uid = 0, map = 0;
+            std::int32_t townId = -1, areaId = -1;
+            if (!r.ReadAt(game, 0x1C, context) || !context || !r.ReadAt(context, 0x88, townId) || townId < 0
+                || !r.ReadAt(context, 0x8C, area) || !area || !r.Read(area, areaId) || areaId < 0
+                || !r.Read(0xB75A18, actor) || !actor || !r.ReadAt(actor, 0xE4, map) || !map
+                || !r.SecureAt(actor, 0xD4, uid) || !uid || uid > 65535)
+            { Error(s, "town_identity_unreadable"); return false; }
+            const auto user = FindUser(r, actor, uid, 0x10C);
+            s.me = r.TownActor(user, actor, map); s.haveMe = s.me.uid.known;
+            if (!s.haveMe) return false;
+            auto& town = s.town; town.present = true; town.townId = townId; town.areaId = areaId;
+            town.contextToken = context; town.mapToken = map; town.position = s.me.position;
+            std::int32_t x = 0, y = 0;
+            if (r.ReadAt(actor, 0x23C, x) && r.ReadAt(actor, 0x240, y)) { town.destinationX = {true, x}; town.destinationY = {true, y}; }
+            if (r.ReadAt(actor, 0x234, x) && r.ReadAt(actor, 0x238, y)) { town.directionX = {true, x}; town.directionY = {true, y}; }
+            std::uint32_t party = 0;
+            if (!r.Read(0xB5DCC8, party) || !party) { Error(s, "party_unavailable"); s.truncated = true; }
+            else for (std::uint32_t slot = 0; slot < MaximumPlayers; ++slot)
+            {
+                std::uint32_t memberUser = 0, memberActor = 0;
+                if (!r.ReadAt(party, 0x10 + slot * 4, memberUser)) { s.truncated = true; Error(s, "party_slot_unreadable"); continue; }
+                if (!memberUser) continue;
+                if (!r.ReadAt(memberUser, 0x10C, memberActor) || !memberActor) { s.truncated = true; Error(s, "town_party_actor_unreadable"); continue; }
+                const auto member = r.TownActor(memberUser, memberActor, map);
+                if (!member.uid.known) { s.truncated = true; continue; }
+                bool duplicate = false;
+                for (std::size_t i = 0; i < s.playerCount; ++i) duplicate = duplicate || s.players[i].uid.value == member.uid.value;
+                if (duplicate) { s.truncated = true; Error(s, "duplicate_player_uid"); continue; }
+                s.players[s.playerCount++] = member;
+            }
+            bool haveMe = false;
+            for (std::size_t i = 0; i < s.playerCount; ++i) haveMe = haveMe || s.players[i].actorToken == actor;
+            if (!haveMe)
+            {
+                s.truncated = true; Error(s, "self_missing_from_party");
+                if (s.playerCount < MaximumPlayers) s.players[s.playerCount++] = s.me;
+            }
+            std::uint32_t final = 0, finalUid = 0; std::int32_t finalId = -1;
+            const bool stable = r.Read(0xB5D6F0, final) && final == game
+                && r.SecureAt(game, 0x10, final) && final == 1
+                && r.ReadAt(game, 0x1C, final) && final == context
+                && r.ReadAt(context, 0x88, finalId) && finalId == townId
+                && r.ReadAt(context, 0x8C, final) && final == area && r.Read(area, finalId) && finalId == areaId
+                && r.Read(0xB75A18, final) && final == actor
+                && r.ReadAt(user, 0x10C, final) && final == actor
+                && r.ReadAt(actor, 0xE4, final) && final == map && r.SecureAt(actor, 0xD4, finalUid) && finalUid == uid
+                && r.Read(0xCFD458, final) && final == r.manager && r.Read(0xCFD45C, final) && final == r.key;
+            if (!stable) Error(s, "identity_changed_during_capture");
+            return stable;
         }
         void Players(Reads& r, Snapshot& s) noexcept
         {
@@ -290,10 +435,16 @@ namespace dfl::client_state
             output.captureDurationUs = ended >= began ? ended - began : 0;
             const auto scene = output.scene.known ? output.scene.value : 0;
             const auto uid = output.haveMe ? output.me.uid.value : 0;
+            const auto map = output.town.present ? output.town.mapToken : output.room.mapToken;
+            const auto context = output.town.present ? output.town.contextToken : 0;
+            const auto town = output.town.present ? output.town.townId : -1;
+            const auto area = output.town.present ? output.town.areaId : -1;
             if (!history.haveIdentity || history.scene != scene || history.stage != output.room.stageToken
-                || history.map != output.room.mapToken || history.uid != uid) ++history.generation;
+                || history.map != map || history.uid != uid || history.actor != output.me.actorToken
+                || history.context != context || history.town != town || history.area != area) ++history.generation;
             history.haveIdentity = true; history.scene = scene; history.stage = output.room.stageToken;
-            history.map = output.room.mapToken; history.uid = uid; output.generation = history.generation;
+            history.map = map; history.uid = uid; history.actor = output.me.actorToken;
+            history.context = context; history.town = town; history.area = area; output.generation = history.generation;
             return output.valid;
         };
         if (!output.layoutSupported || !reader.read || !reader.pid || !reader.processStartedFileTime)
@@ -303,6 +454,8 @@ namespace dfl::client_state
             || !r.Read(0xB5D6F0, game) || !game || !r.SecureAt(game, 0x10, scene))
         { Error(output, "scene_unreadable"); return finish(); }
         output.scene = {true, scene};
+        UiState(r, output, game);
+        if (scene == 1) { output.valid = TownState(r, output, game); return finish(); }
         if (scene != 3) { output.valid = true; return finish(); }
         std::uint32_t stage = 0, map = 0, actor = 0, uid = 0;
         if (!r.Read(0xB5DCE0, ui) || !ui || !r.ReadAt(ui, 0x200010, stage) || !stage
@@ -428,10 +581,15 @@ namespace dfl::client_state
         const auto now = GetTickCount64();
         if (HaveCapture && now - LastCapture < 200) return;
         HaveCapture = true; LastCapture = now;
-        const Reader reader{nullptr, &ReadNative, &Supported, &FileTime, &Tick, &Counter, GetCurrentProcessId(), Started};
+        const auto reader = NativeReader();
         Snapshot snapshot; Capture(reader, CaptureHistory, snapshot); snapshot.skippedPublications = Skipped;
         if (!TryPublish(Published, snapshot)) ++Skipped;
     }
+    Reader NativeReader() noexcept
+    {
+        return Reader{nullptr, &ReadNative, &Supported, &FileTime, &Tick, &Counter, GetCurrentProcessId(), Started};
+    }
+    bool CopyLatest(Snapshot& snapshot) noexcept { return TryCopy(Published, snapshot); }
     void ExportLatest() noexcept
     {
         if (!Enabled) return;

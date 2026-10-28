@@ -22,10 +22,10 @@ namespace
     struct Memory
     {
         std::unordered_map<std::uint32_t, unsigned char> bytes;
-        bool layout = true, changeActorAtEnd = false;
+        bool layout = true, changeActorAtEnd = false, changeTownAreaAtEnd = false, changeMenuTargetAtEnd = false, changeMenuAtEnd = false;
         bool readWrappedAddress = false, readNullMirrorAddress = false;
         std::uint64_t utc = 123456789000ULL, tick = 1000, counter = 5;
-        std::uint32_t index = 0, readCount = 0;
+        std::uint32_t index = 0, readCount = 0, townAreaReads = 0, menuTargetReads = 0, menuReads = 0;
         static constexpr std::uint32_t Key = 0x12345678, Manager = 0x01002000;
         static constexpr std::uint32_t Actor = 0x04000000, Stage = 0x05000000, Map = 0x06000000;
         static constexpr std::uint32_t User = 0x07000000, Party = 0x08000000, Vtable = 0x03000000;
@@ -55,6 +55,21 @@ namespace
             SecureFloat(actor + 0xE40, 1.0f); Secure(actor + 0x142C, 0);
             Put<unsigned char>(actor + 0x20A2, 0);
             for (std::uint32_t id = 0; id < MaximumSkills; ++id) U32(actor + 0x1AEC + id * 4, 0);
+        }
+        void Town()
+        {
+            SetScene(1); U32(0xB75A18, Actor); U32(Actor, 0x9988DC);
+            U32(0x9988DC + 0x80, 0x471610); U32(User + 0x10C, Actor);
+            U32(0x0100001C, 0x01030000); Put<std::int32_t>(0x01030088, 1);
+            U32(0x0103008C, 0x01040000); Put<std::int32_t>(0x01040000, 2);
+            Put<std::int32_t>(Actor + 0x23C, 300); Put<std::int32_t>(Actor + 0x240, 240);
+            Put<std::int32_t>(Actor + 0x234, 1); Put<std::int32_t>(Actor + 0x238, 4);
+            U32(0xB5DCE8, 0x01050000); Put<std::int32_t>(0x01050FC4, 0);
+            U32(0x01050FF0, 0x01060000); U32(0x01060000, 0xA7CF3C); U32(0x01060004, 0x01070000);
+            Put<unsigned char>(0x01070010, 1); Put<unsigned char>(0x01070011, 1);
+            U32(0x01050F08, 0x01080000); U32(0x01080000, 0xA7CF2C); Put<std::int32_t>(0x01080060, 2);
+            U32(0x01000020, 0x01090000); U32(0x01090000, 0x99A5B8);
+            Put<unsigned char>(0x01090004, 1); Put<std::int32_t>(0x01090200, 3); Put<std::int32_t>(0x01090204, 4);
         }
         Memory()
         {
@@ -92,6 +107,11 @@ namespace
             if (address == 0x00010010) self.readWrappedAddress = true;
             if (address == 0x00010004) self.readNullMirrorAddress = true;
             if (self.changeActorAtEnd && self.readCount > 200 && address == 0xB75A14) self.U32(address, Actor + 0x1000);
+            if (self.changeTownAreaAtEnd && address == 0x01040000 && ++self.townAreaReads == 2)
+                self.Put<std::int32_t>(address, 3);
+            if (self.changeMenuTargetAtEnd && address == 0x010C0008 && ++self.menuTargetReads == 2)
+                self.U32(address, Actor + 0x1000);
+            if (self.changeMenuAtEnd && address == 0x01050078 && ++self.menuReads == 2) self.U32(address, 0);
             auto* out = static_cast<unsigned char*>(output);
             for (std::size_t i = 0; i < size; ++i)
             {
@@ -120,7 +140,95 @@ namespace
     };
 }
 
-int RunClientStateTests()
+static void RunTownStateTests()
+{
+    using namespace dfl::client_state;
+    Memory town; town.Town(); History thistory; Snapshot ts;
+    Check(Capture(town.Make(), thistory, ts) && ts.valid && ts.scene.value == 1
+          && !ts.room.present && ts.haveMe && ts.playerCount == 1 && ts.me.uid.value == 1,
+          "Town uses independent user+10C identity and does not reuse Dungeon actor data");
+    Check(!ts.me.hp.known && !ts.me.maxHp.known && !ts.me.dead.known && ts.me.position.known
+          && ts.me.position.x == 120.5f && ts.me.sameMap.value && !ts.me.detached.value,
+          "Town position is captured while unverified combat values remain unknown");
+    const auto townJson = ToJson(ts, town.utc);
+    Check(townJson.find("\"town\":{\"town_id\":1,\"area_id\":2") != std::string::npos
+          && townJson.find("\"destination\":{\"x\":300,\"y\":240}") != std::string::npos
+          && townJson.find("\"direction_raw\":{\"x\":1,\"y\":4}") != std::string::npos,
+          "Town region and original destination serialize without interpretation");
+    Check(townJson.find("\"town_minimap\":{\"visible\":true,\"enabled\":true}") != std::string::npos
+          && townJson.find("\"dungeon_selector\":{\"visible\":null,\"active_raw\":1,\"selected\":3,\"hover\":4}") != std::string::npos
+          && townJson.find("\"countdown\":{\"state_raw\":2}") != std::string::npos,
+          "UI distinguishes raw selector/countdown state from proven visibility");
+    wchar_t townFixturePath[MAX_PATH]{};
+    if (GetEnvironmentVariableW(L"DFLEGACY_CLIENT_STATE_TOWN_FIXTURE", townFixturePath, MAX_PATH))
+    {
+        const HANDLE fixture = CreateFileW(townFixturePath, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+        DWORD fixtureBytes = 0;
+        const bool wrote = fixture != INVALID_HANDLE_VALUE
+            && WriteFile(fixture, townJson.data(), static_cast<DWORD>(townJson.size()), &fixtureBytes, nullptr)
+            && fixtureBytes == townJson.size();
+        if (fixture != INVALID_HANDLE_VALUE) CloseHandle(fixture);
+        Check(wrote, "unique Town C++ capture serializer fixture is preserved");
+    }
+    const auto oldTownGeneration = ts.generation;
+    town.Put<std::int32_t>(0x01040000, 3); Capture(town.Make(), thistory, ts);
+    Check(ts.generation > oldTownGeneration, "Town area change invalidates prior destination generation");
+    Memory badTown; badTown.Town(); badTown.U32(Memory::User + 0x10C, Memory::Actor + 0x1000);
+    History badTownHistory; Snapshot badTownSnapshot;
+    Check(!Capture(badTown.Make(), badTownHistory, badTownSnapshot) && !badTownSnapshot.haveMe,
+          "Town rejects stale user binding instead of falling back to Dungeon binding");
+    Memory nullTownMap; nullTownMap.Town(); nullTownMap.U32(Memory::Actor + 0xE4, 0);
+    History nullTownHistory; Snapshot nullTownSnapshot;
+    Check(!Capture(nullTownMap.Make(), nullTownHistory, nullTownSnapshot), "Town map zero is not an actionable context");
+    Memory townTransition; townTransition.Town(); townTransition.changeTownAreaAtEnd = true;
+    History townTransitionHistory; Snapshot townTransitionSnapshot;
+    Check(!Capture(townTransition.Make(), townTransitionHistory, townTransitionSnapshot),
+          "Town area changing during capture invalidates the full snapshot");
+    Memory badTownLayout; badTownLayout.Town(); badTownLayout.U32(Memory::Actor, Memory::Vtable);
+    History badTownLayoutHistory; Snapshot badTownLayoutSnapshot;
+    Check(!Capture(badTownLayout.Make(), badTownLayoutHistory, badTownLayoutSnapshot) && !badTownLayoutSnapshot.haveMe,
+          "Town cannot interpret a Dungeon actor vtable as virtual Town character");
+    Memory unknownUi; unknownUi.Town(); unknownUi.U32(0x01060000, 0xA7CF3D); unknownUi.U32(0x01080000, 0xA7CF2D);
+    History unknownUiHistory; Snapshot unknownUiSnapshot; Capture(unknownUi.Make(), unknownUiHistory, unknownUiSnapshot);
+    const auto unknownUiJson = ToJson(unknownUiSnapshot, 0);
+    Check(unknownUiSnapshot.valid && unknownUiJson.find("\"town_minimap\":{\"visible\":null,\"enabled\":null}") != std::string::npos
+          && unknownUiJson.find("\"countdown\":{\"state_raw\":null}") != std::string::npos,
+          "unknown UI layouts do not manufacture closed state or erase known Town identity");
+    Memory menu; menu.Town();
+    // Original 79B5CB is mov ecx,[esi+78], not lea: the menu is a pointer.
+    menu.U32(0x01050078, 0x010C0000);
+    menu.U32(0x010C0058, 0x010A0000); menu.Put<unsigned char>(0x010A0010, 1); menu.U32(0x010C0008, Memory::Actor);
+    menu.U32(0x010C00FC, 0x010B0000); menu.U32(0x010C0100, 0x010B0008);
+    menu.U32(0x010B0000, 1); menu.U32(0x010B0004, 6);
+    History menuHistory; Snapshot menuSnapshot; Capture(menu.Make(), menuHistory, menuSnapshot);
+    Check(menuSnapshot.ui.menuVisible.known && menuSnapshot.ui.menuVisible.value
+          && menuSnapshot.ui.menuTargetUid.known && menuSnapshot.ui.menuTargetUid.value == 1
+          && menuSnapshot.ui.menuActionsKnown && menuSnapshot.ui.menuActionCount == 2 && menuSnapshot.ui.menuActions[0] == 1,
+          "visible native menu exports bound target UID and bounded action IDs");
+    menu.changeMenuTargetAtEnd = true; menu.menuTargetReads = 0; Capture(menu.Make(), menuHistory, menuSnapshot);
+    Check(!menuSnapshot.ui.menuTargetUid.known && !menuSnapshot.ui.menuActionsKnown,
+          "menu target change during capture cannot authorize an old invitation row");
+    menu.changeMenuTargetAtEnd = false; menu.U32(0x010C0008, Memory::Actor); menu.changeMenuAtEnd = true;
+    Capture(menu.Make(), menuHistory, menuSnapshot);
+    Check(!menuSnapshot.ui.menuVisible.known && !menuSnapshot.ui.menuTargetUid.known && !menuSnapshot.ui.menuActionsKnown,
+          "menu controller pointer changing during capture invalidates all menu fields");
+    Memory townParty; townParty.Town();
+    for (std::uint32_t slot = 1; slot < 4; ++slot)
+    {
+        const auto memberActor = Memory::Actor + slot * 0x10000, memberUser = Memory::User + slot * 0x1000;
+        townParty.PlayerAt(memberActor, slot + 1); townParty.U32(memberActor, 0x9988DC);
+        townParty.Put<std::uint16_t>(memberUser + 4, static_cast<std::uint16_t>(slot + 1));
+        townParty.U32(memberUser + 0x10C, memberActor); townParty.U32(Memory::Party + 0x10 + slot * 4, memberUser);
+    }
+    townParty.U32(Memory::Actor + 0x30000 + 0xE4, 0);
+    History townPartyHistory; Snapshot townPartySnapshot; Capture(townParty.Make(), townPartyHistory, townPartySnapshot);
+    Check(townPartySnapshot.valid && townPartySnapshot.playerCount == 4 && !townPartySnapshot.truncated
+          && townPartySnapshot.players[3].detached.value && !townPartySnapshot.players[3].position.known
+          && !townPartySnapshot.players[3].dead.known,
+          "Town four-member roster retains detached peer identity without inventing combat death");
+}
+
+static int RunDungeonAndExportTests()
 {
     using namespace dfl::client_state;
     Memory memory; History history; Snapshot first;
@@ -136,7 +244,7 @@ int RunClientStateTests()
     Check(first.skillCount == 1 && first.skills[0].id == 20 && first.skills[0].level == 5,
           "learned skill levels are captured without game getter calls");
     const auto json = ToJson(first, memory.utc + 500);
-    Check(json.find("\"schema\":\"dfl-client-state/v1\"") != std::string::npos
+    Check(json.find("\"schema\":\"dfl-client-state/v2\"") != std::string::npos
           && json.find("\"cooldown_ms\":null,\"usable\":null") != std::string::npos
           && json.find("\"server_context\":null") != std::string::npos,
           "JSON schema and unsupported cooldown/context remain explicit");
@@ -183,9 +291,6 @@ int RunClientStateTests()
     Capture(nullMirror.Make(), nullMirrorHistory, nullMirrorSnapshot);
     Check(!nullMirror.readNullMirrorAddress && !nullMirrorSnapshot.valid,
           "null secure mirror base is rejected before adding a large valid index");
-    Memory town; town.SetScene(1); History thistory; Snapshot ts;
-    Check(Capture(town.Make(), thistory, ts) && ts.valid && ts.scene.value == 1
-          && !ts.room.present && !ts.haveMe && ts.playerCount == 0, "Town does not reuse stale Dungeon actor data");
     Memory provider; provider.U32(0x04100078, 0x04110000); provider.Put<unsigned char>(0x0410007C, 1);
     History phistory; Snapshot ps; Capture(provider.Make(), phistory, ps);
     Check(!ps.me.position.known, "unknown active coordinate provider is not guessed");
@@ -298,9 +403,12 @@ int RunClientStateTests()
           "contention does not replace prior capture with stale or partial data");
 
     wchar_t temporary[MAX_PATH]{}, directory[MAX_PATH]{}, settings[MAX_PATH]{}, stateFile[MAX_PATH]{};
-    GetTempPathW(MAX_PATH, temporary);
+    const auto temporaryLength = GetTempPathW(MAX_PATH, temporary);
     swprintf_s(directory, L"%sdfstate-tests-%lu", temporary, GetCurrentProcessId());
-    CreateDirectoryW(directory, nullptr);
+    const bool directoryCreated = CreateDirectoryW(directory, nullptr) != 0;
+    const auto directoryError = directoryCreated ? ERROR_SUCCESS : GetLastError();
+    Check(temporaryLength > 0 && temporaryLength < MAX_PATH
+          && (directoryCreated || directoryError == ERROR_ALREADY_EXISTS), "state export test has a writable private temporary directory");
     swprintf_s(settings, L"%s\\settings.ini", directory);
     swprintf_s(stateFile, L"%s\\dfdebug-client-%lu.json", directory, GetCurrentProcessId());
     DeleteFileW(stateFile);
@@ -315,6 +423,17 @@ int RunClientStateTests()
         return std::string((std::istreambuf_iterator<char>(input)), {});
     };
     const auto originalFile = contents();
+    if (originalFile.empty())
+    {
+        Snapshot diagnostic;
+        const auto have = CopyLatest(diagnostic);
+        std::fprintf(stderr, "state export diagnostic: configured=%u have=%u sequence=%llu started=%llu error=%lu\n",
+            GetPrivateProfileIntW(L"DebugOverlay", L"ExportState", 0, settings), have ? 1U : 0U,
+            static_cast<unsigned long long>(diagnostic.sequence),
+            static_cast<unsigned long long>(NativeReader().processStartedFileTime), GetLastError());
+        std::fwprintf(stderr, L"state export paths: temp_length=%lu created=%u dir_error=%lu temp=%ls dir=%ls settings=%ls\n",
+            temporaryLength, directoryCreated ? 1U : 0U, directoryError, temporary, directory, settings);
+    }
     Check(originalFile.find("\"layout_supported\":false") != std::string::npos
           && originalFile.find("\"valid\":false") != std::string::npos,
           "wrong EXE exports unsupported without touching client addresses");
@@ -334,4 +453,10 @@ int RunClientStateTests()
     DeleteFileW(stateFile); DeleteFileW(settings); RemoveDirectoryW(directory);
     std::printf("Client state tests: %d failures\n", Failures);
     return Failures ? 1 : 0;
+}
+
+int RunClientStateTests()
+{
+    RunTownStateTests();
+    return RunDungeonAndExportTests();
 }

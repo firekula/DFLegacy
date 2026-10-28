@@ -71,7 +71,7 @@ python tools/debug/watch_dungeon.py --directory G:/Game/DNF_ACT1/DF/town-test/de
 
 ## 原生客户端状态
 
-新导出使用独立的 `dfl-client-state/v1` JSON，不改变 ABI v2 或服务端箱怪协议。客户端先以 `EnableDebugOverlay=1` 加载 DLL，再显式开启默认关闭的导出：
+新导出使用独立的 `dfl-client-state/v2` JSON，消费脚本同时兼容已有 v1；不改变 DLL ABI v2 或服务端箱怪协议。客户端先以 `EnableDebugOverlay=1` 加载 DLL，再显式开启默认关闭的导出：
 
 ```ini
 [DebugOverlay]
@@ -92,7 +92,9 @@ python tools/debug/client_state.py --directory G:/Game/DNF_ACT1/DF/town-test/deb
 
 等待只打印最终匹配或timeout，不逐帧输出。退出码0表示一次有效读取或已知条件匹配，1表示超时，2表示无效数据/身份变化；timeout范围0到300秒。默认最大采样年龄750ms，使用同机Win32 `GetTickCount64`，不使用UTC差值判断新鲜度。重写旧JSON或UTC跳变不会续期；同序号内容变化、序号/代次倒退也不能完成等待。
 
-路径只遍历数据，可使用 `room.map_token`、`me.hp`、`players.0.dead` 等，不执行表达式。未知null永不匹配，连 `=null` 也不会完成；布尔false不等于数字0。完整性不足、未证MP/职业/冷却/可用性、未绑定实体/地图的位置以及独立 `server_context` 均不能当作已知动作条件。技能等级不等于技能已可用，authority token不推断为owner。有效Town允许 `me`、`room` 为null，不因此伪造HP0或死亡状态。
+路径只遍历数据，可使用 `room.map_token`、`me.hp`、`players.0.dead` 等，不执行表达式。未知null永不匹配，连 `=null` 也不会完成；布尔false不等于数字0。完整性不足、未证MP/职业/冷却/可用性、未绑定实体/地图的位置以及独立 `server_context` 均不能当作已知动作条件。技能等级不等于技能已可用，authority token不推断为owner。v1 的有效Town保留 `me`、`room` 为null；v2 读取 Town 原生角色绑定，HP、MP和死亡状态仍保持null，不伪造HP0或死亡。
+
+v2 新增 `town` 与 `ui`：Town包含当前 `town_id/area_id`、位置、原生 `destination.x/y` 和 `direction_raw.x/y`；Dungeon的 `town` 必须为null。Town位置须与本地角色及地图绑定一致。UI包含玩家菜单、M地图、选图及复活倒计时的只读状态。`ui.dungeon_selector.active_raw` 是原始字节，不代表可见性；该选择器的 `visible` 仍为null。`ui.countdown.state_raw` 保留原生数值，未知不变成0。隐藏玩家菜单的目标UID和动作列表不能完成操作条件。
 
 摘要的 `doors.enabled_directions` 只表示原生mask中存在的拓扑方向，不等于门已开放或可通过。`room.map_clear_state` 保留原生保护整数的signed raw值（或null）；不把0/1改名为clear布尔，也不据此单独推断过门许可。
 
@@ -117,6 +119,31 @@ except UnknownFieldError:
 ```
 
 `load_snapshot` 返回结构，坏JSON、错误身份、unsupported、未来/过期采样或截断抛 `SnapshotError`（`code`为有界原因）；有效结构中的未知/不支持字段由 `get_known_field` 抛 `UnknownFieldError`。必须先成功加载，再分别验证实际动作所需字段；仅 `scene=3` 不能证明门、位置或技能可用。长循环需维持UID/序号/代次约束，并在真正发出既有原生输入前重新核对进程创建身份和新鲜数据。本模块自身不发送任何输入。
+
+## 城镇目的地接口
+
+`client_navigation.py` 使用 debug.dll 独立的本地命令接口，调用客户端普通城镇目的地 setter。它只处理当前区域，不保证绕障或跨区路线；未知地图、运输模式、阻挡点及切区后的旧身份会被拒绝。采样器保持只读。M地图空白处点击与此接口共用原生目的地处理器，NPC、其他标记及面板按钮保留原操作。
+
+先按上文加载debug.dll，再开启默认关闭的导航开关并重启客户端：
+
+```ini
+[DebugOverlay]
+ExportState=1
+EnableTownNavigation=1
+```
+
+目录须和本轮 `SnapshotDirectory` 一致。将以下PID、UID、目标坐标替换为本次 v2 状态中的真实值：
+
+```powershell
+python tools/debug/client_navigation.py --directory G:/Game/DNF_ACT1/DF/town-test/debug-overlay --pid 12345 --uid 1 --x 500 --y 240
+python tools/debug/client_navigation.py --directory G:/Game/DNF_ACT1/DF/town-test/debug-overlay --pid 12345 --uid 1 --x 500 --y 240 --wait accepted --timeout-seconds 5
+```
+
+默认等待 `arrived`（最长35秒）：必须收到原生到达结果，并独立观察到新鲜、同身份状态中目标一致、XY各轴相差不超过3且原生方向停止值为4/4。`--wait accepted` 只等待 `requested`，表示原生 setter 已受理并核对目标；输出 `accepted:true,arrived:false` 不表示角色已到达。等待只打印一条最终JSON；退出码0表示所选条件达到，1为等待超时，2为拒绝、中断或无效身份/数据。CLI超时不会取消游戏内已受理的移动。
+
+请求写入 `dfdebug-navigation-<pid>.bin`，DLL结果写入同名前缀 `.json`。脚本校验进程精确创建时间、fresh v2 Town采样和UID，并绑定 actor/user/map/context、Town/Area、generation、sequence及采样时钟；等待期间继续检查身份与采样。单进程 `.lock` 避免两个脚本并发覆盖，原子替换保证DLL只看到完整请求。脚本不会清理其他控制器的锁；异常退出残留锁应在确认该控制器已经退出后移走。默认 request ID使用正的单调递增整数；`--request-id` 可用于重放拒绝测试，但不能覆盖更大的已有ID。脚本不发送OS输入、不读写游戏内存。
+
+请求wire为96字节、小端，Python `struct` 格式 `<4sHHIIQQQQQQIIIIiiii`：`DLNV`、u16版本1、u16长度96、u32 PID/UID、u64进程FILETIME/requestId/issuedTick/snapshotTick/generation/sequence、u32 actor/map/user/context token、i32 town/area/x/y。请求时效1000ms，引用采样时效750ms，未来时间与重放被拒绝。结果schema为 `dfl-client-navigation/v1`，`source` 区分 debug/minimap，`status` 为 requested/arrived/rejected/interrupted；结果携带身份、目标、位置、时钟与原因，不把写文件成功当作受理。
 
 消费端标准库测试：
 
