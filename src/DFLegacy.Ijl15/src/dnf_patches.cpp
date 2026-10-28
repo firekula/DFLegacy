@@ -12,6 +12,7 @@
 #include "debug_module.h"
 #include "boss_room_death.h"
 #include "channel_reentry.h"
+#include "relay_send_queue.h"
 #include "channel_switch.h"
 #include "creature_gift_row.h"
 #include "ground_item_removal.h"
@@ -1211,6 +1212,10 @@ namespace dfl::dnf_patches
         if (!dfl::channel_switch::Install())
         {
             OutputDebugStringA("DFLegacy.Ijl15: selected channel reconnect repair was not installed.\n");
+        }
+        if (!dfl::relay_send_queue::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: ACT1 relay send/retirement serialization was not installed.\n");
         }
         if (!dfl::channel_reentry::Install())
         {

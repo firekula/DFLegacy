@@ -30,6 +30,8 @@ add_library(ijl15 SHARED
     src/channel_switch.h
     src/channel_reentry.cpp
     src/channel_reentry.h
+    src/relay_send_queue.cpp
+    src/relay_send_queue.h
     src/ground_item_removal.cpp
     src/ground_item_removal.h
     src/party_card_display.cpp
@@ -138,6 +140,9 @@ if(BUILD_TESTING)
         src/channel_reentry.cpp
         src/channel_reentry.h
         tests/channel_reentry_tests.cpp
+        src/relay_send_queue.cpp
+        src/relay_send_queue.h
+        tests/relay_send_queue_tests.cpp
         tests/channel_switch_tests.cpp
         tests/creature_gift_row_tests.cpp
         src/priest_heal_target.cpp

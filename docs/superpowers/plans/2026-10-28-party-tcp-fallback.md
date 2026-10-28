@@ -72,4 +72,21 @@
 
 ## Execution and evidence notes
 
+### Task 4 amendment: native output queue race exposed by strict verification
+
+Do not mark Task4 complete or deploy `20d996f/30AD` as an accepted TCP package.
+Follow [the bounded native repair design](../specs/2026-10-28-party-relay-send-queue.md):
+
+1. Pin newly exported append/flush/buffer/owner original machine bytes and a
+   deterministic two-thread interleaving RED; preserve failed fallback-v2.
+2. Implement relay-only append/flush serialization with guarded transactional
+   x86 installation and retained trampolines. Add meaningful concurrency,
+   recursion, bypass, return-value and patch rollback tests.
+3. Run focused and full native compatibility, strict new Release builds,
+   independent review, and freeze a new source/native package without replacing
+   any historical build or evidence. Fix review findings with RED/GREEN.
+4. Repeat fresh normal/fault original-client acceptance, complete strict stream
+   proofs and verify absence of malformed relay headers. Then finish original
+   Task4 delivery, preservation, screenshots and queue update.
+
 Baseline full smoke passed from worktree-local isolated artifacts with task-local TEMP/TMP. Earlier attempts failed first on Windows default TEMP permissions and then on fixture discovery for artifacts outside the repo; all original logs are preserved and no product code was changed to hide either failure. The builder check identified the passwordless lookup distinction and this document includes its explicit negative cases. User's current request and earlier continuous-work authorization cover implementing this concrete existing-project repair without a repeated approval menu.

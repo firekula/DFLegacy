@@ -145,6 +145,8 @@
     <ClCompile Include="ground_item_removal_tests.cpp" />
     <ClCompile Include="..\src\party_card_display.cpp" />
     <ClCompile Include="party_card_display_tests.cpp" />
+    <ClCompile Include="..\src\relay_send_queue.cpp" />
+    <ClCompile Include="relay_send_queue_tests.cpp" />
     <ClCompile Include="ijl15_tests.cpp" />
   </ItemGroup>
   <ItemGroup>

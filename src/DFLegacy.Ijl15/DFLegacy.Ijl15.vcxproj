@@ -105,6 +105,7 @@
     <ClInclude Include="src\client_debug_state.h" />
     <ClInclude Include="src\boss_room_death.h" />
     <ClInclude Include="src\channel_reentry.h" />
+    <ClInclude Include="src\relay_send_queue.h" />
     <ClInclude Include="src\ground_item_removal.h" />
     <ClInclude Include="src\party_card_display.h" />
     <ClInclude Include="src\d3d8_scaler.h" />
@@ -129,6 +130,7 @@
     <ClCompile Include="src\debug_module.cpp" />
     <ClCompile Include="src\boss_room_death.cpp" />
     <ClCompile Include="src\channel_reentry.cpp" />
+    <ClCompile Include="src\relay_send_queue.cpp" />
     <ClCompile Include="src\channel_switch.cpp" />
     <ClCompile Include="src\creature_gift_row.cpp" />
     <ClCompile Include="src\ground_item_removal.cpp" />
