@@ -44,7 +44,15 @@ class ClientNavigationTests(unittest.TestCase):
     def write_json(self, path, value):
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(value), encoding="utf-8")
-        temporary.replace(path)
+        # Windows readers can briefly hold a handle without FILE_SHARE_DELETE.
+        # Match the native exporter's bounded retry instead of losing the writer thread.
+        for attempt in range(6):
+            try:
+                temporary.replace(path)
+                return
+            except PermissionError:
+                if attempt == 5: raise
+                time.sleep(.002)
 
     def request(self, **kwargs):
         return self.api.make_request(self.snapshot, x=kwargs.pop("x", 100), y=kwargs.pop("y", 200),

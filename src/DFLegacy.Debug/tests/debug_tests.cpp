@@ -47,9 +47,12 @@ namespace
 int RunClientStateTests();
 int RunClientNavigationTests();
 int RunClientNavigationRuntimeTests();
+int RunClientPartyTests();
+int RunClientPartyRuntimeTests();
 
 int main(int argc, char** argv)
 {
+    if (argc == 2 && std::strcmp(argv[1], "--client-party") == 0) return RunClientPartyTests()+RunClientPartyRuntimeTests();
     if (argc == 2 && std::strcmp(argv[1], "--client-state") == 0) return RunClientStateTests();
     if (argc == 2 && std::strcmp(argv[1], "--client-navigation") == 0)
         return RunClientNavigationTests() + RunClientNavigationRuntimeTests();

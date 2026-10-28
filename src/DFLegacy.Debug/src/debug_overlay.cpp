@@ -9,6 +9,7 @@
 #include "debug_window.h"
 #include "client_state.h"
 #include "client_navigation.h"
+#include "client_party.h"
 
 namespace
 {
@@ -58,6 +59,7 @@ namespace
             if (WaitForSingleObject(StopEvent, 0) == WAIT_OBJECT_0) break;
             dfl::client_state::ExportLatest();
             dfl::client_navigation::PumpWorker();
+            dfl::client_party::PumpWorker();
             dfl::debug_window::Content content{};
             AcquireSRWLockShared(&ContentLock); content = Published; ReleaseSRWLockShared(&ContentLock);
             dfl::debug_window::Update(content);
@@ -165,9 +167,11 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (ReadyEvent == nullptr) { CloseHandle(StopEvent); StopEvent = nullptr; return 0; }
     dfl::client_state::Initialize(host->settingsPath, directory);
     dfl::client_navigation::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
+    dfl::client_party::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     Worker = CreateThread(nullptr, 0, &ReadSnapshots, nullptr, 0, nullptr);
     if (Worker == nullptr)
     {
+        dfl::client_party::Shutdown();
         dfl::client_navigation::Shutdown();
         dfl::client_state::Shutdown();
         CloseHandle(StopEvent); CloseHandle(ReadyEvent); StopEvent = ReadyEvent = nullptr; return 0;
@@ -183,6 +187,7 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (!WindowReady)
     {
         WaitForSingleObject(Worker, INFINITE);
+        dfl::client_party::Shutdown();
         dfl::client_navigation::Shutdown();
         dfl::client_state::Shutdown();
         CloseHandle(Worker); CloseHandle(StopEvent); Worker = StopEvent = nullptr;
@@ -197,6 +202,7 @@ extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexce
     // Independent native capture precedes all old Frame.scene / visibility gates.
     dfl::client_state::CaptureFrame();
     dfl::client_navigation::OnFrame();
+    dfl::client_party::OnFrame();
     Building = {};
     struct Publish
     {
@@ -281,6 +287,7 @@ extern "C" int __stdcall DebugShutdown() noexcept
         MsgWaitForMultipleObjects(1, &Worker, FALSE, 10, QS_SENDMESSAGE);
     }
     // A retained native CALL must keep this DLL loaded if restoration fails.
+    dfl::client_party::Shutdown();
     if (!dfl::client_navigation::Shutdown()) return 0;
     CloseHandle(Worker); CloseHandle(StopEvent);
     dfl::client_state::Shutdown();

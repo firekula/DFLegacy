@@ -124,6 +124,25 @@ except UnknownFieldError:
 
 `client_navigation.py` 使用 debug.dll 独立的本地命令接口，调用客户端普通城镇目的地 setter。它只处理当前区域，不保证绕障或跨区路线；未知地图、运输模式、阻挡点及切区后的旧身份会被拒绝。采样器保持只读。城镇地图（本客户端按 N 打开）空白处点击与此接口共用原生目的地处理器，NPC、其他标记及面板按钮保留原操作。
 
+组队 UI 也可以使用数据接口。`client_party.py` 提供 `state`、`request`、`accept`、`reject`；命令在游戏主线程调用原版 ACT1 逻辑，文件读写在 debug 工作线程进行。开启两项设置后重启客户端：
+
+```ini
+[DebugOverlay]
+ExportState=1
+EnablePartyCommands=1
+```
+
+```powershell
+python tools/debug/client_party.py state --directory <SnapshotDirectory> --pid <进程号> --uid <本角色UID>
+python tools/debug/client_party.py request --directory <SnapshotDirectory> --pid <进程号> --uid <本角色UID> --target-uid <对方UID>
+python tools/debug/client_party.py accept --directory <SnapshotDirectory> --pid <进程号> --uid <本角色UID>
+python tools/debug/client_party.py reject --directory <SnapshotDirectory> --pid <进程号> --uid <本角色UID>
+```
+
+`state` 导出邀请来源 UID、剩余毫秒和邀请序号。`accept` / `reject` 默认针对当前已读取的邀请，也可传 `--target-uid` 限定来源；没有邀请时不会盲目回复。自动化建议同时传 `--process-started-filetime` 固定进程创建时间。命令绑定 PID、创建时间、UID、场景代次、角色/地图/区域及邀请指纹，750 毫秒以上的旧状态、旧角色、重复请求和过期邀请会拒绝。`dispatched` 只表示客户端已调用原生处理，实际组队成功必须再检查双方 `client_state` 队伍名单。当前只支持同一城镇区域、一个待处理的组队邀请；多个同时出现的同类邀请或交易等其他邀请不会代答。发送缓冲区忙时返回不可用，调用方应重新读取状态后再决定是否重试。
+
+状态文件为 `dfdebug-party-<pid>.json`，命令为固定 108 字节的 `dfdebug-party-<pid>.bin`，结果为 `.result.json`。接口默认关闭；不修改只读状态采样器，不发送外部网络包，不伪造 UI 按钮捕获状态。
+
 先按上文加载debug.dll，再开启默认关闭的导航开关并重启客户端：
 
 ```ini
