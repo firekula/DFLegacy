@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 $tokens = $null; $parseErrors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($HelperPath, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw 'Helper parse errors' }
-foreach ($name in @('Get-NormalPort', 'New-NormalServerStartPlan', 'Test-NormalServerReadiness')) {
+foreach ($name in @('Get-NormalPort', 'New-NormalServerStartPlan', 'Test-NormalServerReadiness', 'Read-NormalServerLog')) {
     $function = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] }, $false) | Where-Object Name -EQ $name)
     if ($function.Count -eq 1) { . ([scriptblock]::Create($function[0].Extent.Text)) }
 }
@@ -61,5 +61,29 @@ foreach ($bad in @('{"EntryPort":27001,"StartServer":false}', '{"EntrancePort":0
     Rejects { New-NormalServerStartPlan -RuntimeDirectory $runtime } ('invalid launcher rejected: ' + $bad)
 }
 [IO.File]::WriteAllText($launcher, '{"EntrancePort":27001,"StartServer":false}')
+foreach ($channel in @('stdout', 'stderr')) {
+    $logPath = Join-Path $FixtureDirectory ($channel + '-active-writer.log')
+    # Model the real Windows redirect writer: write access remains open while
+    # readers are permitted. A reader must also share the existing write access.
+    $writer = [IO.FileStream]::new($logPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+    try {
+        $initial = [Text.Encoding]::UTF8.GetBytes($channel + '-first')
+        $writer.Write($initial, 0, $initial.Length); $writer.Flush($true)
+        $legacyRejected = $false
+        try { [IO.File]::ReadAllText($logPath) | Out-Null } catch [IO.IOException] { $legacyRejected = $true }
+        Check $legacyRejected ($channel + ': original ReadAllText rejects real open writer')
+        $read = $null
+        try { $read = Read-NormalServerLog $logPath } catch [IO.IOException] { }
+        Check ($read -eq ($channel + '-first')) ($channel + ': production reader reads while writer stays open')
+        $append = [Text.Encoding]::UTF8.GetBytes('-second')
+        $writer.Write($append, 0, $append.Length); $writer.Flush($true)
+        $read = $null
+        try { $read = Read-NormalServerLog $logPath } catch [IO.IOException] { }
+        Check ($read -eq ($channel + '-first-second')) ($channel + ': subsequent production read observes flushed append')
+    } finally { $writer.Dispose() }
+    $exclusive = [IO.FileStream]::new($logPath, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    $exclusive.Dispose()
+    Check $true ($channel + ': no reader handle leaked after writer closes')
+}
 Write-Output ('normal server startup pure tests: {0} checks, {1} failures; no helper entrypoint/process action' -f $script:Checks, $script:Failures)
 if ($script:Failures) { exit 1 }

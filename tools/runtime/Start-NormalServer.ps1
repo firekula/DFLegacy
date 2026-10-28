@@ -56,6 +56,16 @@ function Test-NormalServerReadiness {
     }
     return $true
 }
+function Read-NormalServerLog {
+    param([Parameter(Mandatory)][string]$Path)
+    # Windows PowerShell's redirect writer remains open with write access.
+    # The reader must permit that existing writer as well as request read access.
+    $stream = [IO.FileStream]::new($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    try {
+        $reader = [IO.StreamReader]::new($stream, [Text.Encoding]::UTF8, $true)
+        try { return $reader.ReadToEnd() } finally { $reader.Dispose() }
+    } finally { $stream.Dispose() }
+}
 function Save-NormalStartJson($Value, [string]$Path) {
     $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($Value | ConvertTo-Json -Depth 8))
     $stream = [IO.FileStream]::new($Path, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
@@ -101,7 +111,7 @@ try {
     do {
         Start-Sleep -Milliseconds 250
         if (-not (Get-NormalOwnedProcess $record)) { throw 'Server exited before readiness' }
-        $logText = [IO.File]::ReadAllText($stdout); $errorText = [IO.File]::ReadAllText($stderr)
+        $logText = Read-NormalServerLog $stdout; $errorText = Read-NormalServerLog $stderr
         $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue)
         if (Test-NormalServerReadiness $plan $logText $errorText $listeners $record.Id) {
             if (-not $stableSince) { $stableSince = [DateTime]::UtcNow }
