@@ -18,6 +18,7 @@ internal static class ChannelLoginAuthentication
         // A successful legacy name lookup may switch this channel's account,
         // but it cannot authenticate or displace another channel's relay owner.
         contexts.RevokeRelayAccount(sessionId);
+        contexts.BindChannelAccountIdentity(sessionId, account.AccountUid);
         var admission = password is not null ? contexts.AuthenticateRelayAccount(sessionId, account.AccountUid) : null;
         return new(account, admission);
     }

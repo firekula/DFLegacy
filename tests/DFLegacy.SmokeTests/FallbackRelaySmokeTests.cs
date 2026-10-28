@@ -7,6 +7,7 @@ internal static class FallbackRelaySmokeTests
     internal static async Task RunAsync(Action<bool, string> check)
     {
         AdmissionAndContext(check);
+        FallbackRelayPeerIdentitySmokeTests.Run(check);
         FallbackRelaySocketSmokeTests.Options(check);
         await FallbackRelaySocketSmokeTests.RunAsync(check);
         await FallbackRelayLoginSmokeTests.RunAsync(check);

@@ -8,6 +8,22 @@ internal sealed record FallbackRelayRoute(RelayAccountAdmission Sender, RelayAcc
 
 public sealed partial class GameplayDatagramService
 {
+    internal bool TryGetChannelPeerInfo(Guid sessionId, ushort userId, out DFLegacy.Protocol.GamePeerInfo peer)
+    {
+        peer = null!;
+        if (!_sessions.TryGetValue(sessionId, out var session)) return false;
+        lock (session.Gate)
+            return session.AccountUid != AccountUidRules.InvalidUid
+                && TryGetPeerInfo(session, userId, session.AccountUid, out peer);
+    }
+
+    // Identity used in NOTI11 is also needed for ordinary username-only UDP
+    // compatibility. Binding it grants no authenticated TCP-relay admission.
+    internal void BindChannelAccountIdentity(Guid sessionId, uint accountUid)
+    {
+        if (_sessions.TryGetValue(sessionId, out var session))
+            lock (session.Gate) session.AccountUid = accountUid;
+    }
     internal async Task RetireChannelSessionAsync(Guid sessionId, Func<Task> cleanup)
     {
         RevokeRelayAccount(sessionId);
@@ -29,6 +45,7 @@ public sealed partial class GameplayDatagramService
         lock (_relayAdmissionGate)
         {
             if (!_sessions.TryGetValue(sessionId, out var session)) return null;
+            lock (session.Gate) session.AccountUid = accountUid;
             RevokeRelayAccountUnderLock(sessionId);
             if (_relayAdmissionsByAccount.TryGetValue(accountUid, out var previous))
                 _relayAdmissionsBySession.Remove(previous.SessionId);

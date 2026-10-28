@@ -1173,13 +1173,12 @@ public sealed class EntranceService(
                     // The client only creates town actors for user ids listed in the
                     // UDP peer table, so each member has to publish the endpoint it
                     // registered with CMD 2 after login. This is the same lookup and
-                    // the same fixed account id the dungeon-selection path uses;
+                    // the same bound account identity the dungeon-selection path uses;
                     // without a NAT report (for example a lobby-only session) the
                     // member is passed as null and stays out of everybody's table.
-                    var localPeer = gameplayDatagram.TryGetPeerInfo(
+                    var localPeer = gameplayDatagram.TryGetChannelPeerInfo(
                         runtimeSession.Id,
                         localUserId,
-                        accountId: 1,
                         out var peer)
                             ? peer
                             : null;
@@ -1256,10 +1255,9 @@ public sealed class EntranceService(
                     List<GamePeerInfo> peers = [];
                     foreach (var slot in slots.OrderBy(slot => slot.CharacterId == recipientCharacterId ? 0 : 1))
                     {
-                        if (gameplayDatagram.TryGetPeerInfo(
+                        if (gameplayDatagram.TryGetChannelPeerInfo(
                                 slot.SessionId,
                                 slot.AreaUserId,
-                                accountId: 1,
                                 out var peer))
                         {
                             // 中继/黑洞模式（DFLEGACY_UDP_RELAY / DFLEGACY_UDP_PEER_SINK）下把**别人的**
@@ -2529,8 +2527,8 @@ public sealed class EntranceService(
                     await dungeonState.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, dungeonState);
-                    var peerInfo = gameplayDatagram.TryGetPeerInfo(
-                        runtimeSession.Id, localUserId, accountId: 1, out var localPeer)
+                    var peerInfo = gameplayDatagram.TryGetChannelPeerInfo(
+                        runtimeSession.Id, localUserId, out var localPeer)
                             ? new[] { localPeer }
                             : [];
                     var udpPeers = GameProtocolEngine.CreateUdpPeerInfo(peerInfo);

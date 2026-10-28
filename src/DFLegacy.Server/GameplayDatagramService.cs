@@ -318,6 +318,12 @@ public sealed partial class GameplayDatagramService(
             return false;
         }
 
+        return TryGetPeerInfo(session, userId, accountId, out peer);
+    }
+
+    private static bool TryGetPeerInfo(GameplaySession session, ushort userId, uint accountId, out GamePeerInfo peer)
+    {
+        peer = null!;
         lock (session.Gate)
         {
             if (session.NatReport is not { } report)
@@ -875,6 +881,7 @@ public sealed partial class GameplayDatagramService(
         public object Gate { get; } = new();
         public RuntimeSession Runtime { get; } = runtimeSession;
         public IPAddress TcpAddress { get; } = NormalizeAddress(tcpAddress);
+        public uint AccountUid { get; set; }
         public GameNatReport? NatReport { get; set; }
         public IPEndPoint? DatagramEndpoint { get; set; }
         public PvpRelayContext? PvpContext { get; set; }
