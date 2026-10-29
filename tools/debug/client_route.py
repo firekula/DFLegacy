@@ -25,6 +25,12 @@ def _require(condition, code):
         raise nav.NavigationError(code)
 
 
+class _ExpiredBeforeDispatch(nav.NavigationError):
+    def __init__(self, request, source):
+        super().__init__("expired_request")
+        self.request, self.source = request, source
+
+
 def _area(snapshot):
     town = snapshot["town"]
     return town["town_id"], town["area_id"]
@@ -224,12 +230,11 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
     operation. No direction-key or packet fallback exists here.
     """
     goal = dict(town_id=town_id, area_id=area_id, x=x, y=y)
-    current, history, requests = None, [], []
+    current, history, requests, renewals = None, [], [], []
     deadline = clock() + timeout_seconds if state._finite(timeout_seconds) else clock()
     latest_sequence, latest_generation = 0, 0
     bound = None
     previous_request, previous_snapshot = None, None
-    transition_grace_ends = None
 
     def capture():
         nonlocal latest_sequence, latest_generation
@@ -248,13 +253,15 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
         _require(value["ui"]["selection_mode_raw"] == 0, "ui_busy")
         return value
 
-    def leg(source, target, next_area=None, require_transition=False):
-        nonlocal current, previous_request, previous_snapshot, transition_grace_ends
+    def leg(source, target, next_area=None, require_transition=False, renewing=None):
+        nonlocal current, previous_request, previous_snapshot
         _require(clock() < deadline, "route_timeout")
         current = source
         _require(len(requests) < 1024, "route_step_limit")
         request = transport.send(current, *target)
         requests.append(request["request_id"])
+        if renewing is not None:
+            renewals.append(renewing)
         source = current
         accepted, accepted_tick = False, None
         native_status, context_interruption = None, False
@@ -266,6 +273,8 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
             if receipt is not None:
                 native_status = receipt["status"]
                 if native_status == "rejected":
+                    if receipt["reason"] == "expired_request" and not accepted:
+                        raise _ExpiredBeforeDispatch(request, source)
                     raise nav.NavigationError(receipt["reason"] or "native_rejected")
                 if native_status == "interrupted":
                     _require(next_area is not None and receipt["reason"] == "context_changed",
@@ -309,8 +318,6 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
                         if portal_wait_began is None: portal_wait_began = clock()
                         _require(clock()-portal_wait_began < 5, "portal_not_crossed")
             if reached:
-                if changed_area:
-                    transition_grace_ends = clock() + 5
                 history.append(dict(request_id=request["request_id"], target=dict(zip(("x", "y"), target)),
                                     source_area=_area(source), observed_area=_area(current),
                                     source_generation=source["generation"], observed_generation=current["generation"],
@@ -325,38 +332,57 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
 
     def reach(source, target, next_area=None, selected_portal=None, leaving=()):
         """Replan the next native leg from its fresh actual start, never a prior waypoint."""
-        nonlocal current, transition_grace_ends
+        nonlocal current, previous_request, previous_snapshot
         repeats, last_target, last_position = 0, None, None
+        renewable_id, expiry_count = None, 0
+        fresh_wait_ends = min(deadline, clock()+5)
+
+        def validate_continuation(value):
+            _require(_area(value) == _area(source) and value["generation"] == source["generation"]
+                     and value["town"]["map_token"] == source["town"]["map_token"], "unexpected_context")
+            if previous_snapshot is not None:
+                prior, town = previous_snapshot["town"], value["town"]
+                _require(town["destination"] == prior["destination"], "destination_changed")
+                _require(town["direction_raw"] == dict(x=4, y=4), "manual_movement")
+                _require(not (prior.get("auto_move_active") is True
+                              and town.get("auto_move_active") is False), "native_auto_move_stopped")
+                if renewable_id is not None:
+                    _require(town.get("auto_move_active") == prior.get("auto_move_active"), "manual_movement")
+                    _require(all(abs(town["position"][axis]-prior["position"][axis]) <= .5
+                                 for axis in ("x", "y")), "manual_movement")
+
         while clock() < deadline:
             while True:
                 if previous_request is not None:
                     transport.check(previous_request)
                     last_receipt = transport.receipt(previous_request)
+                    if renewable_id is not None and last_receipt is not None:
+                        _require(last_receipt["status"] == "rejected"
+                                 and last_receipt["reason"] == "expired_request", "receipt_changed")
                     if last_receipt is not None and last_receipt["status"] == "rejected":
-                        raise nav.NavigationError(last_receipt["reason"] or "native_rejected")
+                        _require(previous_request["request_id"] == renewable_id
+                                 and last_receipt["reason"] == "expired_request",
+                                 last_receipt["reason"] or "native_rejected")
                     if last_receipt is not None and last_receipt["status"] == "interrupted":
                         _require(last_receipt["reason"] == "context_changed", last_receipt["reason"])
                 try:
                     current = capture()
-                    transition_grace_ends = None
+                    # All valid <=750ms observations can cancel a route. The
+                    # stricter200ms budget only grants permission to send.
+                    validate_continuation(current)
+                    if transport.now_tick_ms()-current["captured_tick_ms"] > 200:
+                        _require(clock() < fresh_wait_ends, "fresh_sample_unavailable")
+                        sleep(.04)
+                        continue
                     break
                 except (nav.NavigationError, state.SnapshotError) as error:
-                    # Some ACT1 loads expose one fresh new-map sample before
-                    # pausing export. Only a proven physical transition grants
-                    # this grace; no stale sample can authorize another send.
+                    # Wait only for a fresh sample; no missing/stale sample
+                    # authorizes a send. Ownership and replies are rechecked
+                    # every iteration, and fresh identity/context must match.
                     if (error.code not in ("invalid_capture", "stale", "unreadable_json")
-                            or transition_grace_ends is None
-                            or clock() >= min(deadline, transition_grace_ends)):
+                            or clock() >= fresh_wait_ends):
                         raise
                     sleep(.04)
-            _require(_area(current) == _area(source) and current["generation"] == source["generation"]
-                     and current["town"]["map_token"] == source["town"]["map_token"], "unexpected_context")
-            if previous_snapshot is not None:
-                prior, town = previous_snapshot["town"], current["town"]
-                _require(town["destination"] == prior["destination"], "destination_changed")
-                _require(town["direction_raw"] == dict(x=4, y=4), "manual_movement")
-                _require(not (prior.get("auto_move_active") is True
-                              and town.get("auto_move_active") is False), "native_auto_move_stopped")
             actual = tuple(current["town"]["position"][axis] for axis in ("x", "y"))
             # A gate is permitted only while approaching the selected exit,
             # or while monotonically leaving the birth gate that contains us.
@@ -374,7 +400,22 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
                 _require(repeats < 3, "native_no_progress")
             else: repeats = 0
             last_target, last_position = point, actual
-            current = leg(current, point, next_area, require_transition=next_area is not None and point == target)
+            try:
+                current = leg(current, point, next_area, require_transition=next_area is not None and point == target,
+                              renewing=renewable_id)
+            except _ExpiredBeforeDispatch as error:
+                # Native ValidateRequest rejects this before SetAndActivate.
+                # Never renew a request that was accepted or merely timed out.
+                _require(expiry_count < 3 and error.source["town"]["direction_raw"] == dict(x=4,y=4),
+                         "expired_request")
+                expiry_count += 1
+                previous_request, previous_snapshot = error.request, error.source
+                renewable_id = error.request["request_id"]
+                fresh_wait_ends = min(deadline, clock()+5)
+                repeats, last_target, last_position = 0, None, None
+                continue
+            renewable_id = None
+            fresh_wait_ends = min(deadline, clock()+5)
             if _area(current) != _area(source) or point == target: return current
             source = current
         raise nav.NavigationError("route_timeout")
@@ -413,12 +454,13 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
         current = leave_birth_portal(current)
         current = reach(current, (x, y))
         return dict(ok=True, status="arrived", reason="final_position_observed", goal=goal,
-                    observed=deepcopy(current["town"]), request_ids=requests, history=history)
+                    observed=deepcopy(current["town"]), request_ids=requests, history=history,
+                    expired_request_renewals=renewals)
     except (nav.NavigationError, state.SnapshotError, ValueError) as error:
         return dict(ok=False, status="interrupted" if requests else "rejected",
                     reason=getattr(error, "code", str(error)), goal=goal,
                     observed=deepcopy(current["town"]) if current is not None else None,
-                    request_ids=requests, history=history)
+                    request_ids=requests, history=history, expired_request_renewals=renewals)
 
 
 def execute_route(directory, *, pid, uid, started, town_id, area_id, x, y,

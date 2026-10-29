@@ -133,6 +133,89 @@ class ClientRouteTests(unittest.TestCase):
         self.assertEqual(result["reason"], "live_context_unavailable")
         self.assertEqual(len(transport.sent), 1)
 
+    def test_explicit_pre_dispatch_expiry_renews_from_unchanged_fresh_state(self):
+        expired = dict(status="rejected", reason="expired_request", tick_ms=NOW)
+        transport = Transport(snapshot(), [[snapshot()], [snapshot(x=120, y=35)]], [expired, "requested"])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(transport.sent, [(0, 120, 35), (0, 120, 35)])
+        self.assertEqual(result["expired_request_renewals"], [1])
+
+    def test_expiry_cannot_renew_after_native_acceptance(self):
+        expired = dict(status="rejected", reason="expired_request", tick_ms=NOW)
+        response = lambda polls: "requested" if polls == 1 else expired
+        transport = Transport(snapshot(), [[snapshot(x=30, destination=(120,35), moving=True)]], [response])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertEqual(result["reason"], "expired_request")
+        self.assertEqual(len(transport.sent), 1)
+
+    def test_expiry_renewal_stops_if_the_old_receipt_later_reports_acceptance(self):
+        expired = dict(status="rejected", reason="expired_request", tick_ms=NOW)
+        response = lambda polls: expired if polls == 1 else "requested"
+        transport = Transport(snapshot(), [[snapshot()], [snapshot(x=120,y=35)]], [response])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertFalse(result["ok"], result)
+        self.assertEqual(result["reason"], "receipt_changed")
+        self.assertEqual(len(transport.sent), 1)
+        self.assertEqual(result["expired_request_renewals"], [])
+
+    def test_expiry_renewal_cannot_override_a_changed_manual_destination(self):
+        expired = dict(status="rejected", reason="expired_request", tick_ms=NOW)
+        transport = Transport(snapshot(), [[snapshot(destination=(88,88))]], [expired])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertEqual(result["reason"], "destination_changed")
+        self.assertEqual(len(transport.sent), 1)
+
+    def test_expiry_renewal_budget_is_bounded(self):
+        expired = dict(status="rejected", reason="expired_request", tick_ms=NOW)
+        transport = Transport(snapshot(), [[snapshot()]] * 4, [expired] * 4)
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertEqual(result["reason"], "expired_request")
+        self.assertEqual(len(transport.sent), 4)
+
+    def test_send_waits_for_a_fresher_sample_to_leave_native_queueing_budget(self):
+        class SlowExport(Transport):
+            def capture(inner):
+                value = super().capture()
+                if not inner.sent and inner.counter < 3:
+                    value["captured_tick_ms"] -= 300
+                return value
+            def send(inner, current, x, y):
+                self.assertLessEqual(inner.now_tick_ms()-current["captured_tick_ms"], 200)
+                return super().send(current, x, y)
+        transport = SlowExport(snapshot(), [[snapshot(x=120, y=35)]])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertTrue(result["ok"], result)
+        self.assertGreaterEqual(self.clock(), .04)
+        self.assertEqual(len(transport.sent), 1)
+
+    def test_valid_sample_above_send_budget_still_cancels_expiry_renewal(self):
+        class ManualWhileWaiting(Transport):
+            def capture(inner):
+                manual = len(inner.sent) == 1 and not getattr(inner, "seen_manual", False)
+                if manual: inner.counter += 400
+                value = super().capture()
+                if manual:
+                    value["captured_tick_ms"] -= 300
+                    inner.seen_manual = True
+                    self.assertGreater(value["captured_tick_ms"], NOW+2)
+                return value
+        expired = dict(status="rejected", reason="expired_request", tick_ms=NOW)
+        manual = snapshot(destination=(88,88), moving=True)
+        transport = ManualWhileWaiting(snapshot(), [[manual, snapshot()], [snapshot(x=120,y=35)]],
+                                       [expired, "requested"])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertEqual(result["reason"], "destination_changed")
+        self.assertEqual(len(transport.sent), 1)
+        self.assertEqual(result["expired_request_renewals"], [])
+
     def test_loading_snapshot_waits_without_sending_a_second_leg(self):
         from tools.debug.client_navigation import NavigationError
         transport = Transport(snapshot(), [[NavigationError("invalid_capture"), snapshot(1, 2, 15, 20)],
