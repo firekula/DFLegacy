@@ -46,4 +46,6 @@ TDD 中，规则回归先捕获4项旧行为失败；金币规划捕获7项失�
 
 两项审查修复后的第三轮完整默认 smoke 仍在无关 FriendSmokeTests.CheckFriendStorageAsync→CreateAccountAsync 的 File.Move 遇到同一 UnauthorizedAccessException，退出-532462766，保留 `review-fixes-full-smoke.log`。最终五项聚焦门仍全部0 failures，托管 Server Release仍0 warnings/0 errors；完整套件未取得 GREEN。
 
+主任务随后集成为托管源码 `65e53d4`，独立构建0警告／0错误，五项聚焦门再次全绿。主工作区的完整套件成功跑至结尾，发现一项旧夹具冲突：`test-3176.stk` 为 `[sealing]`，原测试却期望实例 SealState=3 可以丢弃。现保留该实例且断言拒绝、源数量和封印状态不变，再将允许路径的夹具设为官服要求的状态1，继续验证分拆数量及State／Durability／SealState保留；没有放宽产品策略。再次构建后完整默认套件退出0，输出 `All DFLegacy protocol smoke tests passed.`。主任务原始RED与GREEN分别保存在 `G:/Game/DNF_ACT1/DFLegacy/.tmp/active-drop-acceptance-20261029/verification-managed/root-full-smoke.log`、`root-full-fixture-smoke.log`，独立工作区前述三次文件访问失败的历史记录仍保留。
+
 待主任务集成后的双客户端验收：同房 A 丢金币1/1000、白装、蓝装、自由堆叠物；两端恰有同 GroundId 的一个 actor，只有 A 收 CMD50 ACK；B 拾取，仅一份物品入账，两端地面消失；金币核对双方余额与余数。反向 A/B、自己拾取、跨实例隔离、失败余额、1001拒绝、封印/title/rarity3拒绝也需实测。没有把这些静态/离线证据称为新实机 GREEN。

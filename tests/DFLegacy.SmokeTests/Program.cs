@@ -7285,6 +7285,20 @@ var droppableInventory = new Dictionary<ushort, CharacterItemRecord>
         Durability: 7,
         SealState: 3)
 };
+Check(!DungeonItemDropPlanner.TryPlan(
+        droppableInventory,
+        itemSpace: 0,
+        CharacterInventoryLayout.MaterialSlotStart,
+        count: 2,
+        smokeItemCatalog!,
+        out _,
+        out var nonSealedDropFailure)
+    && nonSealedDropFailure == DungeonItemDropFailure.NotTradeable
+    && droppableInventory[CharacterInventoryLayout.MaterialSlotStart].CountOrValue == 3
+    && droppableInventory[CharacterInventoryLayout.MaterialSlotStart].SealState == 3,
+    "dungeon drops reject sealing instances outside exact state1 without changing the source");
+droppableInventory[CharacterInventoryLayout.MaterialSlotStart] =
+    droppableInventory[CharacterInventoryLayout.MaterialSlotStart] with { SealState = 1 };
 Check(DungeonItemDropPlanner.TryPlan(
         droppableInventory,
         itemSpace: 0,
@@ -7299,7 +7313,7 @@ Check(DungeonItemDropPlanner.TryPlan(
     && dungeonDropPlan.DroppedItem.CountOrValue == 2
     && dungeonDropPlan.DroppedItem.State == 5
     && dungeonDropPlan.DroppedItem.Durability == 7
-    && dungeonDropPlan.DroppedItem.SealState == 3
+    && dungeonDropPlan.DroppedItem.SealState == 1
     && droppableInventory[
         CharacterInventoryLayout.MaterialSlotStart].CountOrValue == 3,
     "dungeon drops remove only the requested stack count without mutating source data");
@@ -7321,7 +7335,7 @@ Check(!DungeonItemDropPlanner.TryPlan(
     && rejectedDungeonDropFailure == DungeonItemDropFailure.NotTradeable
     && rejectedDropInventory.ContainsKey(
         CharacterInventoryLayout.ConsumableSlotStart),
-    "dungeon drops reject attach types other than free and sealing");
+    "dungeon drops reject trade-bound consumables");
 
 var playerDropGroundState = new DungeonGroundItemState();
 var generatedEquipmentGroundItem = playerDropGroundState.Add(
