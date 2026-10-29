@@ -1,0 +1,557 @@
+{
+  "schema": "town-six-window-match/v1",
+  "socket_timezone": "+08:00",
+  "comparison": "CMD37 body[2:9] equals NOTI22 body[2:9], UID from native trial identity; do not compare sequence against UID",
+  "trials": [
+    {
+      "trial": "A-destination.json",
+      "role": "A",
+      "uid": 1,
+      "utc_start": "2026-10-29T10:54:11.782810+00:00",
+      "utc_end": "2026-10-29T10:54:22.747076+00:00",
+      "action_begin_t": 2.014267199963797,
+      "action_end_t": 2.781282099953387,
+      "tx_count": 1,
+      "peer_rx_count": 1,
+      "matches": [
+        {
+          "tx": {
+            "client": "A",
+            "direction": "TX",
+            "protocol": "CMD37",
+            "uid": "1",
+            "sequence": 42,
+            "x": 1083,
+            "y": 372,
+            "direction_raw": 5,
+            "movement_value": 100,
+            "socket_first_time": "2026-10-29T18:54:14.676",
+            "socket_last_time": "2026-10-29T18:54:14.676",
+            "first_line": 3896,
+            "last_line": 3896,
+            "stream_byte_start": 1013,
+            "stream_byte_end_exclusive": 1032,
+            "body9_hex": "2A003B047401056400",
+            "body9_sha256": "1E04BFA68BB0A14B93E2449EC242C2A0E5785853D77FCC7F2998D157FD8871E0",
+            "wire_frame_sha256": "3DAA0811E05C0F68F7C3D6F74DCB1EB4BDB3235001198DC09E19F1800DEE8C58",
+            "decode": "GameClientCipherState+CRC32"
+          },
+          "rx_candidates": [
+            {
+              "client": "B",
+              "direction": "RX",
+              "protocol": "NOTI22",
+              "uid": "1",
+              "sequence": null,
+              "x": 1083,
+              "y": 372,
+              "direction_raw": 5,
+              "movement_value": 100,
+              "socket_first_time": "2026-10-29T18:54:14.681",
+              "socket_last_time": "2026-10-29T18:54:14.681",
+              "first_line": 3904,
+              "last_line": 3904,
+              "stream_byte_start": 6563,
+              "stream_byte_end_exclusive": 6578,
+              "body9_hex": "01003B047401056400",
+              "body9_sha256": "E2A7F64C8A8B2F4EB756B18ACEE16EF3CFF27C0F2889032CEA3AE24AB47095DB",
+              "wire_frame_sha256": "1FD8491E5B9B3430B67436E63C306C38D15298D9ABEACC7A53AE690E70B3A174",
+              "decode": "GamePayloadCipher.DecryptServerPayload"
+            }
+          ],
+          "unique": true,
+          "socket_log_delta_ms": 5.0
+        }
+      ],
+      "tail_8_to_end": {
+        "samples": 37,
+        "min_dx": 0.291259765625,
+        "max_dx": 0.291259765625,
+        "min_dy": 0.0,
+        "max_dy": 0.0
+      },
+      "last_native": {
+        "t": 10.964266299968585,
+        "own": {
+          "position": {
+            "x": 1083.0,
+            "y": 372.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1083,
+            "y": 372
+          },
+          "start_qpc_ns": 384493211015600,
+          "end_qpc_ns": 384493211349300
+        },
+        "peer": {
+          "position": {
+            "x": 1082.708740234375,
+            "y": 372.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1083,
+            "y": 372
+          },
+          "start_qpc_ns": 384493211355500,
+          "end_qpc_ns": 384493211514600
+        },
+        "dx": 0.291259765625,
+        "dy": 0.0
+      },
+      "trial_sha256": "054b7d20128b7378aa59b250202b2e96b92b2f997699a5e2bb3ae173650bd744"
+    },
+    {
+      "trial": "A-direction.json",
+      "role": "A",
+      "uid": 1,
+      "utc_start": "2026-10-29T10:54:00.705273+00:00",
+      "utc_end": "2026-10-29T10:54:11.670561+00:00",
+      "action_begin_t": 2.016402899986133,
+      "action_end_t": 2.8365832999697886,
+      "tx_count": 1,
+      "peer_rx_count": 1,
+      "matches": [
+        {
+          "tx": {
+            "client": "A",
+            "direction": "TX",
+            "protocol": "CMD37",
+            "uid": "1",
+            "sequence": 41,
+            "x": 973,
+            "y": 372,
+            "direction_raw": 5,
+            "movement_value": 100,
+            "socket_first_time": "2026-10-29T18:54:03.635",
+            "socket_last_time": "2026-10-29T18:54:03.635",
+            "first_line": 3674,
+            "last_line": 3674,
+            "stream_byte_start": 994,
+            "stream_byte_end_exclusive": 1013,
+            "body9_hex": "2900CD037401056400",
+            "body9_sha256": "0E64713014CB6CE4CB0F5164784043AA698BCDBB79916712D6D3970CDA59ED96",
+            "wire_frame_sha256": "F6E2486CF4F2E6452046EA89A526781C07471978298AAEE3555AF6DB37105420",
+            "decode": "GameClientCipherState+CRC32"
+          },
+          "rx_candidates": [
+            {
+              "client": "B",
+              "direction": "RX",
+              "protocol": "NOTI22",
+              "uid": "1",
+              "sequence": null,
+              "x": 973,
+              "y": 372,
+              "direction_raw": 5,
+              "movement_value": 100,
+              "socket_first_time": "2026-10-29T18:54:03.639",
+              "socket_last_time": "2026-10-29T18:54:03.639",
+              "first_line": 3683,
+              "last_line": 3683,
+              "stream_byte_start": 6548,
+              "stream_byte_end_exclusive": 6563,
+              "body9_hex": "0100CD037401056400",
+              "body9_sha256": "A60D5D30D9D0432557F0C0350F16C25B459499851B18CBF4253439DD97B53105",
+              "wire_frame_sha256": "C20A67122E5C548812AE41CB1EF111A3E0A6FF99F86A87E78F70B2471A982EDD",
+              "decode": "GamePayloadCipher.DecryptServerPayload"
+            }
+          ],
+          "unique": true,
+          "socket_log_delta_ms": 4.0
+        }
+      ],
+      "tail_8_to_end": {
+        "samples": 37,
+        "min_dx": -25.42236328125,
+        "max_dx": -25.42236328125,
+        "min_dy": 0.0,
+        "max_dy": 0.0
+      },
+      "last_native": {
+        "t": 10.965288200008217,
+        "own": {
+          "position": {
+            "x": 972.5457763671875,
+            "y": 372.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1039,
+            "y": 372
+          },
+          "start_qpc_ns": 384482134475400,
+          "end_qpc_ns": 384482134637900
+        },
+        "peer": {
+          "position": {
+            "x": 997.9681396484375,
+            "y": 372.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 998,
+            "y": 372
+          },
+          "start_qpc_ns": 384482134641500,
+          "end_qpc_ns": 384482134754100
+        },
+        "dx": -25.42236328125,
+        "dy": 0.0
+      },
+      "trial_sha256": "de2b7709621730e95b3035602f8a9803b553926b78b2d461997dd7a9a0ecf291"
+    },
+    {
+      "trial": "A-ground.json",
+      "role": "A",
+      "uid": 1,
+      "utc_start": "2026-10-29T10:53:49.630588+00:00",
+      "utc_end": "2026-10-29T10:54:00.593820+00:00",
+      "action_begin_t": 2.013615200005006,
+      "action_end_t": 2.798859899980016,
+      "tx_count": 0,
+      "peer_rx_count": 0,
+      "matches": [],
+      "tail_8_to_end": {
+        "samples": 37,
+        "min_dx": 41.0318603515625,
+        "max_dx": 41.0318603515625,
+        "min_dy": 0.0,
+        "max_dy": 0.0
+      },
+      "last_native": {
+        "t": 10.963232100009918,
+        "own": {
+          "position": {
+            "x": 1039.0,
+            "y": 372.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1039,
+            "y": 372
+          },
+          "start_qpc_ns": 384471057561600,
+          "end_qpc_ns": 384471057812900
+        },
+        "peer": {
+          "position": {
+            "x": 997.9681396484375,
+            "y": 372.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 998,
+            "y": 372
+          },
+          "start_qpc_ns": 384471057817300,
+          "end_qpc_ns": 384471057942500
+        },
+        "dx": 41.0318603515625,
+        "dy": 0.0
+      },
+      "trial_sha256": "60ede7d7b01c5049459326a5948539c8b62ff03c5bd41f56b0a4f2cb146287f5"
+    },
+    {
+      "trial": "B-destination.json",
+      "role": "B",
+      "uid": 2,
+      "utc_start": "2026-10-29T10:54:45.025716+00:00",
+      "utc_end": "2026-10-29T10:54:55.995112+00:00",
+      "action_begin_t": 2.017844600020908,
+      "action_end_t": 2.727904499974102,
+      "tx_count": 1,
+      "peer_rx_count": 1,
+      "matches": [
+        {
+          "tx": {
+            "client": "B",
+            "direction": "TX",
+            "protocol": "CMD37",
+            "uid": "2",
+            "sequence": 47,
+            "x": 1301,
+            "y": 372,
+            "direction_raw": 5,
+            "movement_value": 100,
+            "socket_first_time": "2026-10-29T18:54:47.978",
+            "socket_last_time": "2026-10-29T18:54:47.978",
+            "first_line": 4566,
+            "last_line": 4566,
+            "stream_byte_start": 1201,
+            "stream_byte_end_exclusive": 1220,
+            "body9_hex": "2F0015057401056400",
+            "body9_sha256": "EF256C81162C1EE2E1129A79A132AE320B899E496B1C0CAAF677B790C69BA556",
+            "wire_frame_sha256": "92CC2AD894BD8B3CBD6C02A8AFDEA95D45A136527722873978780111BAA48581",
+            "decode": "GameClientCipherState+CRC32"
+          },
+          "rx_candidates": [
+            {
+              "client": "A",
+              "direction": "RX",
+              "protocol": "NOTI22",
+              "uid": "2",
+              "sequence": null,
+              "x": 1301,
+              "y": 372,
+              "direction_raw": 5,
+              "movement_value": 100,
+              "socket_first_time": "2026-10-29T18:54:47.981",
+              "socket_last_time": "2026-10-29T18:54:47.981",
+              "first_line": 4557,
+              "last_line": 4557,
+              "stream_byte_start": 4419,
+              "stream_byte_end_exclusive": 4434,
+              "body9_hex": "020015057401056400",
+              "body9_sha256": "2C450E09605C61C74E6A661C0D2241B6D3BA84AAC7EF8918574FBF94EBC971BA",
+              "wire_frame_sha256": "2BCFFDFB1E740375FC74592FE97A31689F10F044C72506AB0F8860325CDDAE00",
+              "decode": "GamePayloadCipher.DecryptServerPayload"
+            }
+          ],
+          "unique": true,
+          "socket_log_delta_ms": 3.0
+        }
+      ],
+      "tail_8_to_end": {
+        "samples": 37,
+        "min_dx": 0.7186279296875,
+        "max_dx": 0.7186279296875,
+        "min_dy": -6.596405029296875,
+        "max_dy": -6.596405029296875
+      },
+      "last_native": {
+        "t": 10.969396299973596,
+        "own": {
+          "position": {
+            "x": 1301.44482421875,
+            "y": 372.4035949707031,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1301,
+            "y": 372
+          },
+          "start_qpc_ns": 384526458769100,
+          "end_qpc_ns": 384526458918100
+        },
+        "peer": {
+          "position": {
+            "x": 1300.7261962890625,
+            "y": 379.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1301,
+            "y": 379
+          },
+          "start_qpc_ns": 384526458920900,
+          "end_qpc_ns": 384526459040200
+        },
+        "dx": 0.7186279296875,
+        "dy": -6.596405029296875
+      },
+      "trial_sha256": "d592caa6b4e1bf7afab32aec251cedb3c637df6d9b367c375955d81d109f42f3"
+    },
+    {
+      "trial": "B-direction.json",
+      "role": "B",
+      "uid": 2,
+      "utc_start": "2026-10-29T10:54:33.938254+00:00",
+      "utc_end": "2026-10-29T10:54:44.902991+00:00",
+      "action_begin_t": 2.0141328999889083,
+      "action_end_t": 2.850732699967921,
+      "tx_count": 1,
+      "peer_rx_count": 1,
+      "matches": [
+        {
+          "tx": {
+            "client": "B",
+            "direction": "TX",
+            "protocol": "CMD37",
+            "uid": "2",
+            "sequence": 46,
+            "x": 1191,
+            "y": 372,
+            "direction_raw": 5,
+            "movement_value": 100,
+            "socket_first_time": "2026-10-29T18:54:36.939",
+            "socket_last_time": "2026-10-29T18:54:36.939",
+            "first_line": 4348,
+            "last_line": 4348,
+            "stream_byte_start": 1182,
+            "stream_byte_end_exclusive": 1201,
+            "body9_hex": "2E00A7047401056400",
+            "body9_sha256": "800BFB9D79244C4984AB2B14A889520F426683B02E78AF52E7E7E02B8932C92F",
+            "wire_frame_sha256": "720314B62F4E84D1CDA3EA65EF42709D17933956DCA1FC030285F16AD78E0DA5",
+            "decode": "GameClientCipherState+CRC32"
+          },
+          "rx_candidates": [
+            {
+              "client": "A",
+              "direction": "RX",
+              "protocol": "NOTI22",
+              "uid": "2",
+              "sequence": null,
+              "x": 1191,
+              "y": 372,
+              "direction_raw": 5,
+              "movement_value": 100,
+              "socket_first_time": "2026-10-29T18:54:36.944",
+              "socket_last_time": "2026-10-29T18:54:36.944",
+              "first_line": 4339,
+              "last_line": 4339,
+              "stream_byte_start": 4404,
+              "stream_byte_end_exclusive": 4419,
+              "body9_hex": "0200A7047401056400",
+              "body9_sha256": "77584B1825357390CD8A253DFF7C35ACCE98F074C6C325D71DCDF2FCCAB8FF3B",
+              "wire_frame_sha256": "B4DCB15A88D096EC1B06D7022811F6C047558E2F63A9590BDB7EA7EA3FF08D80",
+              "decode": "GamePayloadCipher.DecryptServerPayload"
+            }
+          ],
+          "unique": true,
+          "socket_log_delta_ms": 5.0
+        }
+      ],
+      "tail_8_to_end": {
+        "samples": 37,
+        "min_dx": -0.619384765625,
+        "max_dx": -0.619384765625,
+        "min_dy": -6.596405029296875,
+        "max_dy": -6.596405029296875
+      },
+      "last_native": {
+        "t": 10.964736599999014,
+        "own": {
+          "position": {
+            "x": 1190.6124267578125,
+            "y": 372.4035949707031,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1125,
+            "y": 372
+          },
+          "start_qpc_ns": 384515367421200,
+          "end_qpc_ns": 384515367628200
+        },
+        "peer": {
+          "position": {
+            "x": 1191.2318115234375,
+            "y": 379.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1191,
+            "y": 379
+          },
+          "start_qpc_ns": 384515367633100,
+          "end_qpc_ns": 384515367793400
+        },
+        "dx": -0.619384765625,
+        "dy": -6.596405029296875
+      },
+      "trial_sha256": "d3144801a5c0ecf4e34aaa59e95224b45e59755aac17092e834f55c35acce080"
+    },
+    {
+      "trial": "B-ground.json",
+      "role": "B",
+      "uid": 2,
+      "utc_start": "2026-10-29T10:54:22.859305+00:00",
+      "utc_end": "2026-10-29T10:54:33.826838+00:00",
+      "action_begin_t": 2.0168257000041194,
+      "action_end_t": 2.760944300040137,
+      "tx_count": 0,
+      "peer_rx_count": 0,
+      "matches": [],
+      "tail_8_to_end": {
+        "samples": 37,
+        "min_dx": -0.396484375,
+        "max_dx": -0.396484375,
+        "min_dy": -6.596405029296875,
+        "max_dy": -6.596405029296875
+      },
+      "last_native": {
+        "t": 10.967533299990464,
+        "own": {
+          "position": {
+            "x": 1124.603515625,
+            "y": 372.4035949707031,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1125,
+            "y": 372
+          },
+          "start_qpc_ns": 384504290284600,
+          "end_qpc_ns": 384504290443500
+        },
+        "peer": {
+          "position": {
+            "x": 1125.0,
+            "y": 379.0,
+            "z": 0.0
+          },
+          "direction": {
+            "x": 4,
+            "y": 4
+          },
+          "destination": {
+            "x": 1125,
+            "y": 379
+          },
+          "start_qpc_ns": 384504290446900,
+          "end_qpc_ns": 384504290559900
+        },
+        "dx": -0.396484375,
+        "dy": -6.596405029296875
+      },
+      "trial_sha256": "ab8e0c3954afd38b4dfcf5a539b337d65015cf22929cfb9cd8c32d595a451dc3"
+    }
+  ]
+}

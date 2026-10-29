@@ -1,0 +1,3 @@
+FAIL map feedback runtime: SourceSpecificBinding: hook targets original minimap draw call and exact bytes
+FAIL map feedback runtime: SourceSpecificBinding: minimap self reaches protected render path after original
+FAIL map feedback runtime: SourceSpecificBinding: generic UI root is not accepted as minimap self

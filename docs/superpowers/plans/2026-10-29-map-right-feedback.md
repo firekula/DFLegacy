@@ -23,14 +23,14 @@
 - [x] Core timeline/pixel tests RED24→GREEN0; data source1936pixels exact.
 
 ### Task2: Native renderer and integration
-- [ ] Private texture/descriptor draw and original-state restoration with tests.
-- [ ] Register projects/test runner; integrate source-goal metadata, lifecycle and worker diagnostics.
-- [ ] Strict build, focused and complete relevant tests, independent review.
+- [x] Private texture/descriptor draw and original-state restoration with tests.
+- [x] Register projects/test runner; integrate source-goal metadata, lifecycle and worker diagnostics.
+- [x] Strict build, focused and complete relevant tests, independent review.
 
 ### Task3: Real acceptance / delivery
-- [ ] Preserve manual session state; load candidate without touching original assets/saves directly.
-- [ ] Both clients right route/pulses, left inert, close/restart/new-goal and source blue ring check; key original screenshots/data.
-- [ ] Restore/stage appropriate normal runtime, source/evidence commits and active-session receipt.
+- [x] Preserve manual session state; load candidate without touching original assets/saves directly.
+- [x] Both clients right route/pulses, left inert, close/restart/new-goal and source blue ring check; key original screenshots/data.
+- [x] Restore/stage appropriate normal runtime, source/evidence commits and stopped-session receipt.
 
 ### Task4: Continue list
-- [ ] Act on independently prepared U07 candidate after map acceptance; do not conflate with monster position root cause.
+- [x] Act on independently prepared U07 candidate after map acceptance: actual four position messages arrived unchanged; native stop tolerance matches observed small differences. Keep the synthetic budget-tail candidate separate from this live result and monster synchronization.

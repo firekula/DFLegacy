@@ -1,0 +1,110 @@
+{
+  "schema": "map-feedback-source-review/v1",
+  "date": "2026-10-29",
+  "base": "4825b825",
+  "workingTree": "D:\\codex_worktree\\party-chat-gold\\DFLegacy",
+  "verdict": "P1 none; P2 one shutdown ActiveCalls/ownership TOCTOU",
+  "livePass": false,
+  "deviceChangeLiveTested": false,
+  "sourcePixelCount": 1936,
+  "sourcePixelContractExactMatch": true,
+  "functionManifestBinaryMatches": 27,
+  "functionManifestBinaryMismatches": 0,
+  "builtDllSHA256": "b202e22fc01720587c73d80f3899a7882daec4983bd65187951b51535e51ef2f",
+  "sources": [
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation.h",
+      "sha256": "42cebbee322b6df5f5073fa3a339dd80756a13d8a73e02fbeae40a5214a7b370"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation.cpp",
+      "sha256": "eed41c186ad07b96ebce221a7213bca89625e877c5a1925351cd97905207eedc"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation_runtime.cpp",
+      "sha256": "3a125a296467f0344124e2cbbf0038ca66047536f6ab4b81995cf199e18e1f5b"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_navigation_tests.cpp",
+      "sha256": "64e1e0ab39d8eba7a89f2e9b04be8c7518fff51ae26b906d556dbb7241835262"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp",
+      "sha256": "4fd2a31e56bf8c00be3694f65e1326d359ce8f0d4c3750fc1f268276a0ed3e45"
+    },
+    {
+      "path": "src/DFLegacy.Debug/DFLegacy.Debug.vcxproj",
+      "sha256": "484e325827dd5d1f336d720d259a4520fb2887759990a4bb9733226534097b1c"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/DFLegacy.Debug.Tests.vcxproj",
+      "sha256": "095973d16b82ad1c92986f41e49e3f7cfaf464962044cf452c87d69fe8042330"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/debug_tests.cpp",
+      "sha256": "0fbc50219a7f6f31defd4c44735ef1ec7c616a9a6b374d65c8297f36a09cea19"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/map_click_feedback.h",
+      "sha256": "3cdb4c2d636d7b5b156548e036a94e7997ee1a62be81db45ef0192946bf05ae3"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/map_click_feedback.cpp",
+      "sha256": "4baac43a65bcc06fca8bd619d93e40d442d590b40444a734d1084a277a446b7a"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/map_click_ring_pixels.inc",
+      "sha256": "448dde39298ab30a54948b456216e817b181ae415eb29b1cc50cfa2fa5e9d817"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/map_click_feedback_tests.cpp",
+      "sha256": "c8aa24cd4a465bd9c39667d73af3e8444c4a1691abf23162a1053245f14a286c"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_map_feedback_runtime.h",
+      "sha256": "a3ec136aaa04315f84020c4cfedc330294b403d4e27ed58d6c5e03755598b026"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_map_feedback_runtime.cpp",
+      "sha256": "326c3ff966e73494ecca4ac6924566687615a4d7f2c183571590ac18e5b891cf"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/map_click_feedback_runtime_tests.cpp",
+      "sha256": "1f22a7da26f0ff54568ba7fcd22cf0b986a8df35a6fb5064d5b27503b27368a5"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-29-map-right-feedback.md",
+      "sha256": "4a10753dc5dd2282d992a99051c1ff8d55721e10aa1c33e0814dc235a698572f"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-29-map-right-feedback.md",
+      "sha256": "dc13362de0ff6cd8e3c84f434b9745f07387911c58e8e21272fadf45914e393b"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "native-contract/contract.md",
+      "sha256": "0510e72786031ef67fc008da345c8f50bad0ea18afed97bff258378554090cff"
+    },
+    {
+      "path": "native-contract/functions-manifest.json",
+      "sha256": "312b91fc74512d01bb4c69b2a9f3f08270553fe90b4d7af8a7ce508bb32cf349"
+    },
+    {
+      "path": "native-contract/native-player-ring-index7.argb1555",
+      "sha256": "c1da5f256eace3c660bd2d7abd9f7cde79664144c829ea2b29f3023d6e412484"
+    },
+    {
+      "path": "live-before-texture.json",
+      "sha256": "cf0803150e579fbc3fe83c943fffa5d5866d3f2de26ce24845c73733272df160"
+    },
+    {
+      "path": "integrated-map-feedback-v2.log",
+      "sha256": "51469ce9f4f856fbcd9a1648031d635848cf03dfcca18a8d85b45c3e1a067e12"
+    },
+    {
+      "path": "integrated-navigation-v2.log",
+      "sha256": "b4faecbe6b668ddb73ffdeb9808df62c21849f76607f19584cc0a645d9f061b5"
+    }
+  ]
+}

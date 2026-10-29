@@ -1,0 +1,2 @@
+FAIL map feedback runtime: P2: observer entering after preliminary zero and restoring hook still blocks terminal shutdown
+FAIL map feedback runtime: P2: resource ownership changing before lock is rechecked at terminal shutdown

@@ -1,0 +1,78 @@
+生成启动时间为 2026/10/29 18:38:12。
+
+     1>节点 1 上的项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj”(默认目标)。
+     1>项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj”(1)正在节点 1 上生成“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\DFLegacy.Debug.vcxproj”(2) (默认目标)。
+     2>PrepareForBuild:
+         已启用结构化输出。编译器诊断的格式设置将反映错误层次结构。有关详细信息，请参阅 https://aka.ms/cpp/structured-output。
+       InitializeBuildStatus:
+         正在创建“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\DFLegacy.Debug.tlog\unsuccessfulbuild”，因为已指定“AlwaysCreate”。
+         正在对“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\DFLegacy.Debug.tlog\unsuccessfulbuild”执行 Touch 任务。
+       ClCompile:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\CL.exe /c /Zi /nologo /W4 /WX /diagnostics:column /O2 /Oy- /D UNICODE /D _UNICODE /D _WINDLL /D _UNICODE /D UNICODE /Gm- /EHsc /MT /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /permissive- /Fo"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\\" /Fd"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\vc145.pdb" /external:W4 /Gd /TP /analyze- /FC /errorReport:queue /utf-8 src\client_map_feedback_runtime.cpp src\client_navigation_runtime.cpp
+         client_map_feedback_runtime.cpp
+         client_navigation_runtime.cpp
+         正在生成代码...
+       Link:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\link.exe /ERRORREPORT:QUEUE /OUT:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug\Release\debug.dll" /NOLOGO user32.lib bcrypt.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /DEF:"src\debug.def" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug\Release\debug.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug\Release\debug.lib" /MACHINE:X86 /SAFESEH /DLL "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\debug_overlay.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_state.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_party.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_party_runtime.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_state_json.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_navigation.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\map_click_feedback.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_map_feedback_runtime.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_navigation_runtime.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\town_route_catalog.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\town_route_controller.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_town_route_contract.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\client_town_route_runtime.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\debug_window.obj"
+         DFLegacy.Debug.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\debug\Release\debug.dll
+       FinalizeBuildStatus:
+         正在删除文件“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\DFLegacy.Debug.tlog\unsuccessfulbuild”。
+         正在对“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\..\..\artifacts\native\debug-obj\Release\DFLegacy.Debug.tlog\DFLegacy.Debug.lastbuildstate”执行 Touch 任务。
+     2>已完成生成项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\DFLegacy.Debug.vcxproj”(默认目标)的操作。
+     1>PrepareForBuild:
+         已启用结构化输出。编译器诊断的格式设置将反映错误层次结构。有关详细信息，请参阅 https://aka.ms/cpp/structured-output。
+       InitializeBuildStatus:
+         正在创建“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\DFLegacy.33673938.tlog\unsuccessfulbuild”，因为已指定“AlwaysCreate”。
+         正在对“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\DFLegacy.33673938.tlog\unsuccessfulbuild”执行 Touch 任务。
+       ClCompile:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\CL.exe /c /Zi /nologo /W4 /WX /diagnostics:column /O2 /Oy- /D UNICODE /D _UNICODE /D _UNICODE /D UNICODE /Gm- /EHsc /MT /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /permissive- /Fo"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\\" /Fd"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\vc145.pdb" /external:W4 /Gd /TP /analyze- /FC /errorReport:queue /utf-8 client_navigation_runtime_tests.cpp map_click_feedback_runtime_tests.cpp
+         client_navigation_runtime_tests.cpp
+         map_click_feedback_runtime_tests.cpp
+         正在生成代码...
+       Link:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\link.exe /ERRORREPORT:QUEUE /OUT:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests\Release\debug_tests.exe" /NOLOGO user32.lib bcrypt.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests\Release\debug_tests.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests\Release\debug_tests.lib" /MACHINE:X86 /SAFESEH "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\debug_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_state_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_party_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_party_runtime_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_party.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_navigation_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\map_click_feedback_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\map_click_feedback_runtime_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\map_click_feedback.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_navigation_runtime_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_navigation.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\town_route_catalog.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\town_route_controller.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_town_route_contract.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\town_route_io_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\town_route_catalog_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\town_route_controller_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\town_route_runtime_tests.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_state.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\client_state_json.obj"
+         DFLegacy.Debug.Tests.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\debug-tests\Release\debug_tests.exe
+       FinalizeBuildStatus:
+         正在删除文件“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\DFLegacy.33673938.tlog\unsuccessfulbuild”。
+         正在对“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\..\..\..\artifacts\native\debug-tests-obj\Release\DFLegacy.33673938.tlog\DFLegacy.Debug.Tests.lastbuildstate”执行 Touch 任务。
+       CopyDebugModule:
+         正在将文件从“D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\debug\Release\debug.dll”复制到“D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\debug-tests\Release\debug.dll”。
+     1>已完成生成项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj”(默认目标)的操作。
+
+已成功生成。
+    0 个警告
+    0 个错误
+
+已用时间 00:00:05.55

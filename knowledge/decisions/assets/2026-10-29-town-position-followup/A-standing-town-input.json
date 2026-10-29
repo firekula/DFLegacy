@@ -1,0 +1,32 @@
+{
+  "started": "2026-10-29T18:52:07.945+08:00",
+  "pid": 8820,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "U07-A-standing-town-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T18:52:08.119+08:00",
+  "steps": [
+    {
+      "t": 100,
+      "op": "move",
+      "x": 600,
+      "y": 420
+    },
+    {
+      "t": 600,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "e2220186bc91b7b92f73aacfaf514078e73a8cf9bfd83302559a1e7d04444e94",
+  "plan_written": "2026-10-29T18:52:08.119+08:00",
+  "focus_reassertions": 0,
+  "plan_completed": "2026-10-29T18:52:09.027+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01138.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\evidence-right-pulse-v2\\U07-A-standing-town-input.jpg",
+  "own_pid_diag_lines": 3,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T18:52:09.229+08:00"
+}
