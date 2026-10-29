@@ -1,9 +1,11 @@
+using System.Buffers.Binary;
+using DFLegacy.Protocol;
 using DFLegacy.Server;
 using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class ActiveDropSmokeTests
 {
-    public static Task RunAsync(Action<bool, string> check)
+    public static async Task RunAsync(Action<bool, string> check)
     {
         using var fixture = new ActiveDropItemFixture();
         foreach (var (id, seal, allowed) in new (ushort, byte, bool)[]
@@ -29,6 +31,12 @@ internal static class ActiveDropSmokeTests
         check(fixture.Catalog.TryGetDefinition(50015, out var sealingTrade)
                 && !CharacterItemSealing.CanTrade(new CharacterItemRecord(9, 50015, 1), sealingTrade),
             "discard eligibility does not relax the existing trade/mail policy");
+        var stack = new CharacterItemRecord(73, 3176, 5, State: 4, Durability: 7);
+        check(DungeonItemDropPlanner.TryPlan(new Dictionary<ushort, CharacterItemRecord> { [73] = stack },
+                0, 73, 2, fixture.Catalog, out var stackPlan, out _, currentGold: 321)
+                && stackPlan.DroppedItem.CountOrValue == 2 && stackPlan.Inventory[73].CountOrValue == 3
+                && stackPlan.Gold == 321 && stackPlan.DroppedItem.State == 4,
+            "an ordinary free stack discards only the requested count while preserving gold and metadata");
         check(DungeonItemDropPlanner.GetErrorCode(DungeonItemDropFailure.RarityRestricted) == 13
                 && DungeonItemDropPlanner.GetErrorCode(DungeonItemDropFailure.NotTradeable) == 23,
             "discard rejects excessive rarity with native error13 and attachment with error23");
@@ -51,7 +59,208 @@ internal static class ActiveDropSmokeTests
                 check(DungeonItemDropPlanner.GetErrorCode(failure) == error,
                     $"gold drop {amount} returns native error{error}");
         }
-        return Task.CompletedTask;
+        await CheckTransactionAsync(check, fixture.Catalog);
+        await CheckGoldConservationAsync(check, fixture.Catalog);
+    }
+
+    private static async Task CheckTransactionAsync(Action<bool, string> check, ItemCatalog catalog)
+    {
+        using var fixture = new DungeonFixture();
+        await using var harness = await PartyHarness.CreateAsync(tempParent: Path.GetFullPath("../../../../../.tmp/active-drop-tests", AppContext.BaseDirectory));
+        using var service = new DungeonPartyService(harness.Service, harness.Directory,
+            new DungeonInstanceRegistry(), TimeProvider.System, NullLogger<DungeonPartyService>.Instance);
+        var sender = Guid.NewGuid();
+        var peer = Guid.NewGuid();
+        var mine = new List<GameServerPacket>();
+        var theirs = new List<GameServerPacket>();
+        ValueTask SendMine(GameServerPacket packet) { mine.Add(packet); return ValueTask.CompletedTask; }
+        ValueTask SendPeer(GameServerPacket packet) { theirs.Add(packet); return ValueTask.CompletedTask; }
+        var instance = fixture.CreatePartyInstance(4100);
+        instance.AddMember(new(sender, 7, 0, "dropper", SendMine));
+        instance.AddMember(new(peer, 9, 1, "picker", SendPeer));
+        instance.TryStartRun(fixture.Layout, 0, 0, out _);
+        var source = new CharacterItemRecord(9, 50011, 1, State: 7, Durability: 23, EquipmentQualitySeed: 123456);
+        DungeonItemDropPlanner.TryPlan(new Dictionary<ushort, CharacterItemRecord> { [9] = source },
+            0, 9, 1, catalog, out var plan, out _, currentGold: 123);
+        var saves = 0;
+        var ground = await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
+            7, 0, 0, 100, 120, token =>
+            {
+                saves++;
+                check(instance.GetRoomGroundItems(0, 0).Length == 0
+                        && !instance.TryGetGroundItem(1, 0, 0, out _),
+                    "an active discard cannot be seen or picked while its inventory save is pending");
+                return Task.FromResult(true);
+            }, SendMine);
+        check(saves == 1 && ground is not null, "a successful active discard persists exactly once");
+        check(mine.Select(p => (p.Type, p.ProtocolId)).SequenceEqual(new[] { ((byte)0, (byte)40), ((byte)1, (byte)50) })
+                && theirs.Count == 1 && theirs[0].ProtocolId == 40,
+            "sender and peer receive one ground actor, then only sender receives CMD50 inventory ACK");
+        if (ground is not null)
+        {
+            check(theirs.Count == 1 && mine[0].Payload.SequenceEqual(theirs[0].Payload) && mine[0].Payload.Length == 17
+                    && BinaryPrimitives.ReadUInt16LittleEndian(mine[0].Payload) == 7
+                    && BinaryPrimitives.ReadUInt16LittleEndian(mine[0].Payload.AsSpan(6)) == ground.GroundId,
+                "all recipients see the same ACT1 ground identity and original wire dropper UID");
+            check(ground.RoutingSource == 0 && ground.PreservedItem?.EquipmentQualitySeed == 123456,
+                "active discard retains source0 and preserved equipment metadata");
+            check(instance.TryBeginLootPickup(peer, ground, false, [], _ => 0, out var decision)
+                    && decision.WinnerCharacterId == peer,
+                "a teammate directly receives the active drop without dropper ownership or dice");
+            check(instance.TryClaimGroundItem(ground.GroundId, 0, 0, out _, ground, decision.PickupId)
+                    && !instance.TryClaimGroundItem(ground.GroundId, 0, 0, out _),
+                "an actively discarded item can be claimed exactly once");
+            await service.BroadcastPickupRemovalAsync(instance, ground.GroundId, 9, 50011, SendPeer);
+            check(mine.Count(p => p.ProtocolId == 86) == 1 && theirs.Count(p => p.ProtocolId == 86) == 1,
+                "the existing shared pickup removal removes the active actor on both clients");
+        }
+        mine.Clear(); theirs.Clear();
+        var rejected = await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
+            7, 0, 0, 100, 120, _ => Task.FromResult(false), SendMine);
+        check(rejected is null && instance.GetRoomGroundItems(0, 0).Length == 0
+                && mine.Count == 0 && theirs.Count == 0,
+            "failed persistence rolls back the reserved ground entity without notification or success ACK");
+        try
+        {
+            await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
+                7, 0, 0, 100, 120, _ => throw new IOException("synthetic save failure"), SendMine);
+            check(false, "persistence exceptions remain visible to the session failure handler");
+        }
+        catch (IOException)
+        {
+            check(instance.GetRoomGroundItems(0, 0).Length == 0 && mine.Count == 0 && theirs.Count == 0,
+                "exceptional persistence also rolls back its unpublished ground reservation");
+        }
+        var poison = Guid.NewGuid();
+        instance.AddMember(new(poison, 10, 2, "closed", async _ =>
+        {
+            await Task.Yield();
+            throw new OperationCanceledException("closed peer's token");
+        }));
+        ground = await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
+            7, 0, 0, 100, 120, _ => Task.FromResult(true), SendMine);
+        check(ground is not null && mine.Count == 2 && theirs.Count == 1,
+            "an asynchronously canceled peer cannot prevent healthy delivery or the dropper ACK");
+        if (ground is not null) instance.RemoveGroundItem(ground.GroundId);
+        mine.Clear(); theirs.Clear();
+        var resetInstance = fixture.CreatePartyInstance(4102);
+        resetInstance.AddMember(new(sender, 7, 0, "reset dropper", SendMine));
+        resetInstance.TryStartRun(fixture.Layout, 0, 0, out _);
+        DungeonGroundItem? replacement = null;
+        rejected = await DungeonActiveDropTransaction.CommitAsync(resetInstance, plan, catalog, service,
+            7, 0, 0, 100, 120, token =>
+            {
+                resetInstance.ResetGroundItems();
+                replacement = resetInstance.AddGroundItem(new(true, 0, 9), 7, 0, 0, 0, 100, 120);
+                return Task.FromResult(false);
+            }, SendMine);
+        check(rejected is null && replacement is not null
+                && resetInstance.TryGetGroundItem(replacement.GroundId, 0, 0, out var stillThere)
+                && ReferenceEquals(stillThere, replacement) && mine.Count == 0,
+            "rollback of an old reservation cannot remove a new run's reused ground id");
+        ground = await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
+            7, 0, 0, 100, 120, token =>
+            {
+                instance.TryMoveRoom(1, 0, out _, fixture.Random);
+                return Task.FromResult(true);
+            }, SendMine);
+        check(ground is not null && mine.Count == 1 && mine[0].ProtocolId == 50 && theirs.Count == 0,
+            "a room change during saving does not spawn an old-room actor in the new room");
+        var solo = fixture.CreateSoloInstance(sender);
+        solo.TryStartRun(fixture.Layout, 0, 0, out _);
+        mine.Clear();
+        ground = await DungeonActiveDropTransaction.CommitAsync(solo, plan, catalog, service,
+            7, 0, 0, 100, 120, _ => Task.FromResult(true), SendMine);
+        check(ground is not null && mine.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 40, 50 }) && theirs.Count == 0,
+            "a solo active drop sends one actor and one ACK without notifying another instance");
+        var tutorial = fixture.CreateSoloInstance(sender);
+        tutorial.EnterDetachedRoom(DungeonFixture.Room([]));
+        mine.Clear();
+        ground = await DungeonActiveDropTransaction.CommitAsync(tutorial, plan, catalog, service,
+            7, 1, 0, 100, 120, _ => Task.FromResult(true), SendMine);
+        check(ground is not null && mine.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 50 }),
+            "a detached tutorial room at0,0 does not receive an old-room1,0 ground actor");
+    }
+
+    private static async Task CheckGoldConservationAsync(Action<bool, string> check, ItemCatalog catalog)
+    {
+        using var fixture = new DungeonFixture();
+        await using var harness = await PartyHarness.CreateAsync(tempParent: Path.GetFullPath("../../../../../.tmp/active-drop-tests", AppContext.BaseDirectory));
+        var alice = (await harness.Store.GetCharactersAsync("alice"))[0];
+        var bob = (await harness.Store.GetCharactersAsync("bobby"))[0];
+        alice = (await harness.Store.SaveCharacterInventoryAsync("alice", alice.Id, 1000,
+            alice.Inventory ?? [], alice.Equipment ?? []))!;
+        using var service = new DungeonPartyService(harness.Service, harness.Directory,
+            new DungeonInstanceRegistry(), TimeProvider.System, NullLogger<DungeonPartyService>.Instance);
+        var instance = fixture.CreatePartyInstance(4101);
+        var mine = new List<GameServerPacket>();
+        var theirs = new List<GameServerPacket>();
+        ValueTask SendMine(GameServerPacket p) { mine.Add(p); return ValueTask.CompletedTask; }
+        instance.AddMember(new(alice.Id, 7, 0, "gold dropper", SendMine));
+        instance.AddMember(new(bob.Id, 9, 1, "gold picker", p => { theirs.Add(p); return ValueTask.CompletedTask; }));
+        instance.TryStartRun(fixture.Layout, 0, 0, out _);
+        DungeonItemDropPlanner.TryPlan((alice.Inventory ?? []).ToDictionary(i => i.Slot), 0, 0, 101,
+            catalog, out var plan, out _, currentGold: 1000);
+        var ground = await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
+            7, 0, 0, 100, 120, async _ =>
+            {
+                alice = (await harness.Store.SaveCharacterInventoryAsync("alice", alice.Id,
+                    checked((int)plan.Gold), plan.Inventory.Values, alice.Equipment ?? []))!;
+                return alice is not null;
+            }, SendMine);
+        check(ground is { IsGold: true, ItemId: 0, CountOrValue: 101, RoutingSource: 0 }
+                && alice.Gold == 899 && mine.Count == 2 && theirs.Count == 1,
+            "gold discard durably debits currency and broadcasts one source0 currency entity");
+        if (ground is null) return;
+        check(mine[0].Payload.Length == 17 && BinaryPrimitives.ReadUInt16LittleEndian(mine[0].Payload.AsSpan(8)) == 0
+                && BinaryPrimitives.ReadUInt32LittleEndian(mine[0].Payload.AsSpan(11)) == 101,
+            "ACT1 gold NOTI40 uses itemId0 and the amount in addInfo");
+        check(instance.TryBeginLootPickup(bob.Id, ground, false, [], _ => 0, out var decision)
+                && instance.TryClaimGoldPickup(bob.Id, ground, decision.PickupId, out _),
+            "a teammate can reserve and claim the active gold distribution");
+        var committed = await harness.Store.CommitDungeonGoldDistributionAsync(decision.PickupId,
+            instance.CaptureGoldEligibleMembers(), 1, 101, routingSource: ground.RoutingSource);
+        var paidAlice = await harness.Store.ConsumeDungeonGoldCreditsAsync(alice.Id);
+        var paidBob = await harness.Store.ConsumeDungeonGoldCreditsAsync(bob.Id);
+        check(committed.Amounts.SequenceEqual(new uint[] { 50, 51, 0, 0 })
+                && paidAlice?.Gold == 949 && paidBob?.Gold == bob.Gold + 51
+                && paidAlice.Gold + paidBob.Gold == 1000 + bob.Gold,
+            "existing gold sharing preserves total balances and gives the picker the remainder");
+        check(!instance.TryClaimGoldPickup(bob.Id, ground, decision.PickupId, out _)
+                && await harness.Store.ConsumeDungeonGoldCreditsAsync(alice.Id) is null
+                && await harness.Store.ConsumeDungeonGoldCreditsAsync(bob.Id) is null,
+            "active gold pickup cannot grant or consume currency a second time");
+        mine.Clear(); theirs.Clear();
+        var original = (await harness.Store.GetCharactersAsync("alice"))[0];
+        DungeonItemDropPlanner.TryPlan((original.Inventory ?? []).ToDictionary(i => i.Slot), 0, 0, 100,
+            catalog, out var failingPlan, out _, currentGold: checked((uint)original.Gold));
+        using (var blocked = new FileStream(Path.GetFullPath(harness.Options.DataPath) + ".tmp",
+                   FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+        {
+            try
+            {
+                await DungeonActiveDropTransaction.CommitAsync(instance, failingPlan, catalog, service,
+                    7, 0, 0, 100, 120, async token =>
+                        await harness.Store.SaveCharacterItemSpacesAsync("alice", original.Id,
+                            checked((int)failingPlan.Gold), failingPlan.Inventory.Values,
+                            original.Equipment ?? [], original.Warehouse ?? [], token,
+                            avatarInventory: original.AvatarInventory, creatureInventory: original.CreatureInventory) is not null,
+                    SendMine);
+                check(false, "the synthetic file lock actually rejects the active-drop save");
+            }
+            catch (IOException)
+            {
+                var afterFailure = (await harness.Store.GetCharactersAsync("alice"))[0];
+                check(afterFailure.Gold == original.Gold
+                        && (afterFailure.Inventory ?? []).SequenceEqual(original.Inventory ?? [])
+                        && instance.GetRoomGroundItems(0, 0).Length == 0 && mine.Count == 0 && theirs.Count == 0,
+                    "a real inventory snapshot write failure preserves currency/inventory and publishes no active gold");
+            }
+        }
+        var reopened = new JsonGameStore(harness.Options, NullLogger<JsonGameStore>.Instance);
+        await reopened.InitializeAsync();
+        check((await reopened.GetCharactersAsync("alice"))[0].Gold == original.Gold,
+            "a failed temporary snapshot leaves the previously committed gold balance on disk");
     }
 }
 
@@ -63,6 +272,10 @@ internal sealed class ActiveDropItemFixture : IDisposable
     public ActiveDropItemFixture()
     {
         Directory.CreateDirectory(Path.Combine(root, "equipment"));
+        Directory.CreateDirectory(Path.Combine(root, "stackable"));
+        File.WriteAllText(Path.Combine(root, "stackable/stackable.lst"), "3176 `free.stk`\n");
+        File.WriteAllText(Path.Combine(root, "stackable/free.stk"),
+            "[name] `Free stack`\n[stackable type] `[material]`\n[attach type] `[free]`\n[rarity] 0\n[stack limit] 99\n[weight] 1\n");
         var rows = new List<string>();
         foreach (var (id, rarity, attach, type) in new[]
         {

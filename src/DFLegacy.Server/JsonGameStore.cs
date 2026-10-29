@@ -3979,7 +3979,19 @@ public sealed partial class JsonGameStore(
             };
             updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
-            await SaveLockedAsync(cancellationToken);
+            var snapshotCommitted = false;
+            try
+            {
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true);
+            }
+            catch
+            {
+                // Only File.Move commits the atomic replacement. A failed
+                // temporary write must not leave an uncommitted inventory/gold
+                // debit in memory. Never undo memory after replacement succeeded.
+                if (!snapshotCommitted) account.Characters[index] = character;
+                throw;
+            }
             LogGeneratedMails(characterId, createdMailCount);
             return updated;
         }
@@ -6408,7 +6420,7 @@ public sealed partial class JsonGameStore(
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
     }
 
-    private async Task SaveLockedAsync(CancellationToken cancellationToken)
+    private async Task SaveLockedAsync(CancellationToken cancellationToken, Action? snapshotCommitted = null)
     {
         ThrowIfRewardQuarantinedLocked();
         _ = SettleWarehouseUpgradeItemsLocked();
@@ -6434,6 +6446,7 @@ public sealed partial class JsonGameStore(
         }
 
         File.Move(temporary, StorePath, overwrite: true);
+        snapshotCommitted?.Invoke();
         logger.LogInformation("Saved emulator state to {Path}", StorePath);
     }
 

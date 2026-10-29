@@ -13318,14 +13318,10 @@ public sealed class EntranceService(
                                     dropCommand.Count,
                                     itemCatalog,
                                     out var dropPlan,
-                                    out var dropFailure))
+                                    out var dropFailure,
+                                    currentGold: checked((uint)Math.Max(0, currentGold))))
                             {
-                                var errorCode = dropFailure is
-                                    DungeonItemDropFailure.NotTradeable
-                                        or DungeonItemDropFailure.InvalidItem
-                                        or DungeonItemDropFailure.UnsupportedItemSpace
-                                    ? (byte)23
-                                    : (byte)17;
+                                var errorCode = DungeonItemDropPlanner.GetErrorCode(dropFailure);
                                 var error =
                                     GameProtocolEngine.CreateDropItemErrorReply(
                                         errorCode,
@@ -13368,52 +13364,43 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            DungeonGroundItem groundItem;
-                            try
-                            {
-                                groundItem = dungeonInstance!.AddPlayerDroppedGroundItem(
-                                    dropPlan.DroppedItem,
-                                    localUserId,
-                                    currentDungeonRoomX,
-                                    currentDungeonRoomY,
-                                    dropCommand.X,
-                                    dropCommand.Y);
-                            }
-                            catch (InvalidOperationException exception)
-                            {
-                                logger.LogWarning(
-                                    exception,
-                                    "Could not allocate a ground id for item {ItemId}.",
-                                    dropPlan.DroppedItem.ItemId);
-                                var error =
-                                    GameProtocolEngine.CreateDropItemErrorReply(
-                                        19,
-                                        replyItemSpace);
-                                await error.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, error);
-                                continue;
-                            }
-
                             var plannedMainInventory = dropPlan.ItemSpace == 0
                                 ? dropPlan.Inventory
                                 : mainInventory;
                             var plannedCreatureInventory = dropPlan.ItemSpace == 7
                                 ? dropPlan.Inventory
                                 : creatureInventory;
-                            var savedDrop = await store.SaveCharacterItemSpacesAsync(
-                                accountName,
-                                activeCharacter.Id,
-                                currentGold,
-                                plannedMainInventory.Values,
-                                equippedInventory.Values,
-                                warehouseInventory.Values,
-                                serverToken,
-                                avatarInventory: avatarInventory.Values,
-                                creatureInventory: plannedCreatureInventory.Values);
-                            if (savedDrop is null)
+                            var groundItem = await DungeonActiveDropTransaction.CommitAsync(
+                                dungeonInstance!, dropPlan, itemCatalog, dungeonPartyService,
+                                localUserId, currentDungeonRoomX, currentDungeonRoomY,
+                                dropCommand.X, dropCommand.Y,
+                                async token =>
+                                {
+                                    var savedDrop = await store.SaveCharacterItemSpacesAsync(
+                                        accountName,
+                                        activeCharacter.Id,
+                                        checked((int)dropPlan.Gold),
+                                        plannedMainInventory.Values,
+                                        equippedInventory.Values,
+                                        warehouseInventory.Values,
+                                        token,
+                                        avatarInventory: avatarInventory.Values,
+                                        creatureInventory: plannedCreatureInventory.Values);
+                                    if (savedDrop is null) return false;
+                                    activeCharacter = savedDrop;
+                                    currentGold = savedDrop.Gold;
+                                    mainInventory = plannedMainInventory;
+                                    creatureInventory = plannedCreatureInventory;
+                                    return true;
+                                },
+                                async packet =>
+                                {
+                                    await packet.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, packet);
+                                }, serverToken);
+                            if (groundItem is null)
                             {
-                                dungeonInstance!.RemoveGroundItem(groundItem.GroundId);
                                 var error =
                                     GameProtocolEngine.CreateDropItemErrorReply(
                                         19,
@@ -13423,33 +13410,6 @@ public sealed class EntranceService(
                                 LogPacket("TX", runtimeSession, error);
                                 continue;
                             }
-
-                            activeCharacter = savedDrop;
-                            mainInventory = plannedMainInventory;
-                            creatureInventory = plannedCreatureInventory;
-
-                            var dropNotification = GameProtocolEngine.CreateDropItem(
-                                localUserId,
-                                dropCommand.X,
-                                dropCommand.Y,
-                                new GameDungeonDrop(
-                                    groundItem.GroundId,
-                                    groundItem.ItemId,
-                                    groundItem.GetClientAddInfo(itemCatalog),
-                                    groundItem.GetClientDurability(itemCatalog),
-                                    groundItem.OwnerUserId,
-                                    groundItem.GetClientItemAttr(itemCatalog)));
-                            await dropNotification.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, dropNotification);
-
-                            var dropReply = GameProtocolEngine.CreateDropItemReply(
-                                dropCommand.ItemSpace,
-                                dropCommand.Slot,
-                                dropCommand.Count);
-                            await dropReply.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, dropReply);
                             logger.LogInformation(
                                 "Dropped item {ItemId} x{Count} from {ItemSpace}:{Slot} as ground item {GroundId} in dungeon {DungeonId} room ({RoomX},{RoomY}).",
                                 groundItem.ItemId,

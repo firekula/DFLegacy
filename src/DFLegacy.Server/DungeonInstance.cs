@@ -1811,11 +1811,13 @@ internal sealed partial class DungeonInstance(
         byte roomX,
         byte roomY,
         short x,
-        short y)
+        short y,
+        bool isGold = false,
+        bool activated = true)
     {
         lock (Gate)
         {
-            var item = GroundItems.AddPlayerDropped(droppedItem, ownerUserId, roomX, roomY, x, y);
+            var item = GroundItems.AddPlayerDropped(droppedItem, ownerUserId, roomX, roomY, x, y, isGold, activated);
             Version++;
             return item;
         }
@@ -1834,15 +1836,15 @@ internal sealed partial class DungeonInstance(
     {
         lock (Gate)
         {
-            return [.. GroundItems.GetRoomItems(roomX, roomY)];
+            return [.. GroundItems.GetRoomItems(roomX, roomY).Where(item => item.Activated)];
         }
     }
 
-    public bool RemoveGroundItem(ushort groundId)
+    public bool RemoveGroundItem(ushort groundId, DungeonGroundItem? expectedItem = null)
     {
         lock (Gate)
         {
-            if (!GroundItems.Remove(groundId))
+            if (!GroundItems.Remove(groundId, expectedItem))
             {
                 return false;
             }
@@ -1850,6 +1852,29 @@ internal sealed partial class DungeonInstance(
             _pendingLoot.Remove(groundId);
             Version++;
             return true;
+        }
+    }
+
+    internal DungeonGroundItem? ActivatePlayerDroppedGroundItem(DungeonGroundItem expected)
+    {
+        lock (Gate)
+        {
+            var active = GroundItems.Activate(expected);
+            if (active is not null) Version++;
+            return active;
+        }
+    }
+
+    internal bool IsGroundItemInCurrentRoom(DungeonGroundItem expected)
+    {
+        lock (Gate)
+        {
+            return CurrentRoomLocked() is not null
+                && (_run.IsActive
+                    ? _run.RoomX == expected.RoomX && _run.RoomY == expected.RoomY
+                    : expected.RoomX == 0 && expected.RoomY == 0)
+                && GroundItems.TryGet(expected.GroundId, expected.RoomX, expected.RoomY, out var current)
+                && ReferenceEquals(current, expected);
         }
     }
 

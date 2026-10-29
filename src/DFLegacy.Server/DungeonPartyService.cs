@@ -346,6 +346,21 @@ public sealed class DungeonPartyService : BackgroundService
         }
     }
 
+    internal async Task BroadcastActiveDropAsync(
+        DungeonInstance instance, DungeonGroundItem groundItem, GameServerPacket packet)
+    {
+        foreach (var member in instance.Members)
+        {
+            // All instance members share one room. Recheck after each await:
+            // a saved old-room object must not be spawned after NOTI29 advances it.
+            if (!instance.IsGroundItemInCurrentRoom(groundItem)) break;
+            if (!ReferenceEquals(instance.FindMember(member.CharacterId), member)) continue;
+            await CrossSessionDelivery.SendSafelyAsync(_logger, packet,
+                CrossSessionDelivery.Describe(member.CharacterId, member.CharacterName, member.AreaUserId),
+                member.Send);
+        }
+    }
+
     /// <summary>
     /// 原生 NOTI39 消费四槽骰子分，并仅在 winner uid 等于本地 uid 时入背包。
     /// 骰子结果必须先到全队，再由调用方广播地面移除；直取仍只通知得主会话。
