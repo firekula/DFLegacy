@@ -26,7 +26,16 @@ _MAX_ENTRY = 8 * 1024 * 1024
 _MAX_AREAS = 4096
 _MAX_RECTS = 256
 _MAX_PORTALS = 256
+_MAX_PLAN_RECTS = 4096
 _COORD_LIMIT = 1_000_000
+# The native idle getter rounds to the nearest integer (raw +/-0.5).
+# These larger margins are a conservative planning policy covering the SDK's
+# separate3px observation tolerance; they are not native steering constants.
+_STOP_MARGIN = 3
+_WAYPOINT_MARGIN = 4
+# Public so the controller can choose birth-portal exit candidates against
+# exactly the same half-open expansion. Left/top boundary itself is blocked.
+PORTAL_BLOCK_MARGIN = 4
 AreaKey = tuple[int, int]
 Point = tuple[int, int]
 
@@ -96,15 +105,26 @@ def _bridge(a: Rect, b: Rect) -> tuple[Point, ...] | None:
     shared = _intersection(a, b)
     if shared is None:
         return None
+    margin = _WAYPOINT_MARGIN
+    ax, ay, ar, ab = a.x + margin, a.y + margin, a.right - margin, a.bottom - margin
+    bx, by, br, bb = b.x + margin, b.y + margin, b.right - margin, b.bottom - margin
+    if ax > ar or ay > ab or bx > br or by > bb:
+        return None  # no supported stopping clearance in a thin fragment
     x, y = _middle(shared)
-    if shared.width > 0 and shared.height > 0:
-        return ((x, y),)
-    # With half-open membership a shared edge belongs to only one side.
-    # Keep integer points on both sides so the preceding/following native
-    # legs remain in their own rectangle; only the one-pixel bridge crosses.
-    if shared.width == 0:
-        return ((x - 1, y), (x, y)) if a.right == b.x else ((x, y), (x - 1, y))
-    return ((x, y - 1), (x, y)) if a.bottom == b.y else ((x, y), (x, y - 1))
+    clamp = lambda value, low, high: max(low, min(value, high))
+    candidates = []
+    if max(ax, bx) <= min(ar, br):
+        x_mid = clamp(x, max(ax, bx), min(ar, br))
+        candidates.append(((x_mid, clamp(y, ay, ab)), (x_mid, clamp(y, by, bb))))
+    if max(ay, by) <= min(ab, bb):
+        y_mid = clamp(y, max(ay, by), min(ab, bb))
+        candidates.append(((clamp(x, ax, ar), y_mid), (clamp(x, bx, br), y_mid)))
+    for first, second in candidates:
+        # Target well inside the next rectangle, not at the one-pixel shared
+        # strip where a rounded-idle raw position can remain on the old side.
+        if _leg_covered((a, b), first, second, _STOP_MARGIN, _STOP_MARGIN):
+            return (first,) if first == second else (first, second)
+    return None
 
 
 def _box_covered(rectangles: tuple[Rect, ...], start, end) -> bool:
@@ -136,6 +156,48 @@ def _box_covered(rectangles: tuple[Rect, ...], start, end) -> bool:
         else:
             return False
     return True
+
+
+def _leg_covered(rectangles, start, end, start_margin=0, end_margin=0) -> bool:
+    low = (min(start[0] - start_margin, end[0] - end_margin),
+           min(start[1] - start_margin, end[1] - end_margin))
+    high = (max(start[0] + start_margin, end[0] + end_margin),
+            max(start[1] + start_margin, end[1] + end_margin))
+    return _box_covered(rectangles, low, high)
+
+
+def _without_portals(rectangles: tuple[Rect, ...], key: AreaKey, blocked) -> tuple[Rect, ...]:
+    if not isinstance(blocked, (tuple, list)) or len(blocked) > _MAX_PORTALS:
+        raise NavigationCatalogError("invalid_catalog", "blocked_portals must be a bounded sequence")
+    for item in blocked:
+        if isinstance(item, Portal):
+            if item.source != key:
+                raise NavigationCatalogError("invalid_catalog", "blocked portal belongs to another area")
+            item = item.rect
+        if (not isinstance(item, Rect) or any(type(v) is not int for v in
+                (item.x, item.y, item.width, item.height))):
+            raise NavigationCatalogError("invalid_catalog", "blocked_portals requires Portal or Rect values")
+        _rect((item.x, item.y, item.width, item.height))
+        margin = PORTAL_BLOCK_MARGIN
+        obstacle = Rect(item.x - margin, item.y - margin,
+                        item.width + margin * 2, item.height + margin * 2)
+        remaining = []
+        for ground in rectangles:
+            shared = _intersection(ground, obstacle)
+            if shared is None or shared.width == 0 or shared.height == 0:
+                remaining.append(ground)
+                continue
+            # Four disjoint half-open pieces exactly subtract the expanded
+            # door, preserving the geometry outside it without rasterization.
+            pieces = ((ground.x, ground.y, ground.width, shared.y - ground.y),
+                      (ground.x, shared.bottom, ground.width, ground.bottom - shared.bottom),
+                      (ground.x, shared.y, shared.x - ground.x, shared.height),
+                      (shared.right, shared.y, ground.right - shared.right, shared.height))
+            remaining.extend(Rect(*values) for values in pieces if values[2] > 0 and values[3] > 0)
+            if len(remaining) > _MAX_PLAN_RECTS:
+                raise NavigationCatalogError("no_path", "blocked portal geometry exceeds planning bound")
+        rectangles = tuple(dict.fromkeys(remaining))
+    return rectangles
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,8 +235,16 @@ class Catalog:
         raise NavigationCatalogError("no_route", f"no ordinary town route {start_key} -> {goal_key}")
 
     def waypoints(self, key: AreaKey, start_xy: tuple[float, float],
-                  target_xy: Point) -> tuple[Point, ...]:
-        rectangles = self.area(key).walkable
+                  target_xy: Point, *, blocked_portals=()) -> tuple[Point, ...]:
+        """Plan native-safe legs; the last point is the unchanged user goal.
+
+        blocked_portals accepts up to256 Portal/Rect values. Each half-open
+        door is expanded4px on every side and subtracted from walkable before
+        planning. Internal bridge points have4px inward stopping clearance;
+        complete leg AABBs also include the possible3px internal stop region.
+        The caller alone decides which birth/selected portals to exempt.
+        """
+        rectangles = _without_portals(self.area(key).walkable, key, blocked_portals)
         if (not isinstance(start_xy, tuple) or len(start_xy) != 2
                 or any(type(v) not in (int, float) or abs(v) > _COORD_LIMIT
                        or not math.isfinite(v) for v in start_xy)
@@ -215,7 +285,9 @@ class Catalog:
         result, index = [], 0
         while index < len(path) - 1:
             for next_index in range(len(path) - 1, index, -1):
-                if _box_covered(rectangles, path[index], path[next_index]):
+                if _leg_covered(rectangles, path[index], path[next_index],
+                                _STOP_MARGIN if index > 0 else 0,
+                                _STOP_MARGIN if next_index < len(path) - 1 else 0):
                     result.append(path[next_index])
                     index = next_index
                     break

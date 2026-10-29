@@ -2,6 +2,7 @@
 from dataclasses import FrozenInstanceError
 import hashlib
 import importlib
+import inspect
 from pathlib import Path
 import struct
 import tempfile
@@ -82,6 +83,33 @@ def native_steering_model(rectangles, start, goal):
                     break
                 x, y = position
     return x, y
+
+
+def native_idle_model(rectangles, start, goal, blocked=()):
+    """Fractional axis model: 433940 rounds +/-0.5 before the idle test.
+
+    The SDK's 3px acceptance is separate from this native half-pixel band.
+    No snapping to the integer target is performed.
+    """
+    position = list(start)
+    rounded = lambda value: int(value + (0.5 if value >= 0 else -0.5))
+    for _ in range(200_000):
+        if tuple(map(rounded, position)) == goal:
+            return tuple(position)
+        moved = False
+        for axis, speed in ((0, 186), (1, 122)):
+            if rounded(position[axis]) == goal[axis]:
+                continue
+            candidate = position.copy()
+            candidate[axis] += speed / 1000 * (1 if goal[axis] > rounded(position[axis]) else -1)
+            x, y = candidate
+            if (any(a <= x < a + w and b <= y < b + h for a, b, w, h in rectangles)
+                    and not any(a <= x < a + w and b <= y < b + h for a, b, w, h in blocked)):
+                position = candidate
+                moved = True
+        if not moved:
+            return tuple(position)
+    raise AssertionError("native idle model exceeded its bounded step count")
 
 
 class TownNavigationTests(unittest.TestCase):
@@ -281,6 +309,113 @@ class TownNavigationTests(unittest.TestCase):
             self.assertEqual(native_steering_model(rectangles, previous, point), point)
             previous = point
         self.assertEqual(previous, goal)
+
+    def test_thin_overlap_bridge_tolerates_real_float_stop_in_both_directions(self):
+        rectangles = [(9, 196, 1548, 142), (729, 157, 109, 40), (1048, 322, 89, 33)]
+        catalog = self.load_areas({(1, 0): (rectangles, [], "normal")})
+        observed = (782.58197, 195.941757)
+        self.assertEqual(native_idle_model(rectangles, observed, (783, 196)), observed)
+        for start, goal in [((785.0, 174.0), (16, 264)), (observed, (16, 264)),
+                            ((16.0, 264.0), (785, 174))]:
+            with self.subTest(start=start, goal=goal):
+                position = start
+                for _ in range(12):
+                    points = catalog.waypoints((1, 0), position, goal)
+                    self.assertEqual(points[-1], goal, "the final user goal is preserved")
+                    waypoint = points[0]
+                    stopped = native_idle_model(rectangles, position, waypoint)
+                    self.assertTrue(all(abs(stopped[i] - waypoint[i]) < 0.5 for i in (0, 1)))
+                    if waypoint == goal:
+                        break
+                    # A later SDK sample can be up to3px off; bridge targets
+                    # must still leave all such positions inside walkable.
+                    for dx in (-3, 3):
+                        for dy in (-3, 3):
+                            self.assertTrue(any(a <= waypoint[0] + dx < a + w
+                                                and b <= waypoint[1] + dy < b + h
+                                                for a, b, w, h in rectangles))
+                    following = catalog.waypoints((1, 0), stopped, goal)
+                    self.assertNotEqual(following[0], waypoint,
+                                        "fresh planning must not repeat a rounded-idle bridge forever")
+                    position = stopped
+                else:
+                    self.fail("thin-overlap route made no bounded tolerant progress")
+
+    def test_blocked_foreign_portal_is_avoided_by_every_native_leg(self):
+        self.assertIn("blocked_portals", inspect.signature(self.api.Catalog.waypoints).parameters,
+                      "waypoints needs the backward-compatible blocked_portals keyword")
+        rectangles = [(0, 0, 100, 100)]
+        catalog = self.load_areas({(1, 0): (rectangles, [], "normal")})
+        foreign = self.api.Rect(40, 40, 20, 20)
+        portal = self.api.Portal((1, 0), (9, 9), foreign, (50, 50))
+        original = catalog.area((1, 0))
+        for blocked in [(foreign,), (portal,)]:
+            position, goal = (10.0, 50.0), (90, 50)
+            points = catalog.waypoints((1, 0), position, goal, blocked_portals=blocked)
+            self.assertGreater(len(points), 1)
+            self.assertEqual(points[-1], goal)
+            for index, point in enumerate(points):
+                end_margin = 3 if index < len(points) - 1 else 0
+                for x in range(int(min(position[0], point[0] - end_margin)),
+                               int(max(position[0], point[0] + end_margin)) + 1):
+                    for y in range(int(min(position[1], point[1] - end_margin)),
+                                   int(max(position[1], point[1] + end_margin)) + 1):
+                        self.assertFalse(36 <= x < 64 and 36 <= y < 64,
+                                         "full native leg and internal stopping region avoid the expanded door")
+                position = native_idle_model(rectangles, position, point, [(40, 40, 20, 20)])
+                self.assertTrue(all(abs(position[i] - point[i]) < 0.5 for i in (0, 1)))
+            self.assertEqual(catalog.area((1, 0)), original, "blocking a route does not mutate catalog geometry")
+
+    def test_birth_portal_escape_does_not_cut_through_foreign_portal(self):
+        self.assertIn("blocked_portals", inspect.signature(self.api.Catalog.waypoints).parameters)
+        catalog = self.load_areas({(1, 0): ([(0, 0, 100, 100)], [], "normal")})
+        foreign = self.api.Rect(40, 80, 20, 5)
+        self.assertEqual(self.api.PORTAL_BLOCK_MARGIN, 4)
+        points = catalog.waypoints((1, 0), (50.0, 90.0), (25, 90), blocked_portals=(foreign,))
+        self.assertEqual(points, ((25, 90),))
+        # Selected birth portal30,80,40,20 is deliberately allowed by the
+        # caller. The foreign door inside it still blocks a straight escape.
+        self.expect_code("outside_walkable", lambda: catalog.waypoints(
+            (1, 0), (50.0, 90.0), (50, 76), blocked_portals=(foreign,)))
+
+    def test_blocked_portal_parameters_and_half_open_expansion_bounds(self):
+        catalog = self.load_areas({(1, 0): ([(0, 0, 100, 100)], [], "normal")})
+        foreign = self.api.Rect(40, 40, 20, 20)
+        self.expect_code("outside_walkable", lambda: catalog.waypoints(
+            (1, 0), (10, 50), (36, 50), blocked_portals=(foreign,)))
+        self.assertEqual(catalog.waypoints((1, 0), (64, 50), (90, 50),
+                                          blocked_portals=(foreign,)), ((90, 50),))
+        for invalid in [None, [None], [self.api.Rect(0, 0, -1, 4)], [foreign] * 257,
+                        [self.api.Portal((9, 0), (1, 0), foreign, (50, 50))]]:
+            self.expect_code("invalid_catalog", lambda: catalog.waypoints(
+                (1, 0), (10, 10), (90, 90), blocked_portals=invalid))
+
+    @unittest.skipUnless(ACTUAL_PVF.is_file(), "original ACT1 PVF is not installed")
+    def test_actual_pvf_tolerant_replanning_avoids_unselected_doors(self):
+        catalog = self.api.load_catalog(ACTUAL_PVF)
+        self.assertEqual(catalog.pvf_sha256, ACTUAL_SHA)
+        area = catalog.area((1, 0))
+        rectangles = [(r.x, r.y, r.width, r.height) for r in area.walkable]
+        for start, target in [((785.0, 174.0), (2, 1)),
+                              ((782.58197, 195.941757), (2, 1)),
+                              ((200.0, 264.0), (1, 1))]:
+            selected = next(p for p in area.portals if p.target == target)
+            blocked = tuple(p for p in area.portals if p != selected)
+            obstacles = [(p.rect.x, p.rect.y, p.rect.width, p.rect.height) for p in blocked]
+            position = start
+            for _ in range(12):
+                points = catalog.waypoints((1, 0), position, selected.point, blocked_portals=blocked)
+                self.assertEqual(points[-1], selected.point)
+                point = points[0]
+                stopped = native_idle_model(rectangles, position, point, obstacles)
+                self.assertTrue(all(abs(stopped[i] - point[i]) < 0.5 for i in (0, 1)))
+                if point == selected.point:
+                    break
+                self.assertNotEqual(catalog.waypoints((1, 0), stopped, selected.point,
+                                                     blocked_portals=blocked)[0], point)
+                position = stopped
+            else:
+                self.fail("actual PVF tolerant replanning failed to make bounded progress")
 
     @unittest.skipUnless(ACTUAL_PVF.is_file(), "original ACT1 PVF is not installed")
     def test_actual_pvf_sha_portal_points_and_multitown_forward_reverse_regression(self):
