@@ -148,11 +148,9 @@ namespace dfl::client_navigation
     bool ReadRouteCanvasTarget(const client_state::Reader& reader, const client_state::Snapshot& s,
                                std::uint32_t minimap, CanvasGoal& output, std::uint32_t eventBefore) noexcept
     {
-        if ((eventBefore!=8 && eventBefore!=16) || !s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
+        if (eventBefore!=16 || !s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
             || !s.scene.known || s.scene.value!=1) return false;
-        const std::uint32_t captureAddress=eventBefore==8?0xB55184:0xB55188;
-        const std::uint32_t eventAddress=eventBefore==8?0xCFD1F4:0xCFD1F8;
-        const std::uint32_t buttonAddress=eventBefore==8?0xCFD200:0xCFD202;
+        constexpr std::uint32_t captureAddress=0xB55188,eventAddress=0xCFD1F8,buttonAddress=0xCFD202;
         Reads r{reader};
         std::uint32_t im=0,owner=0,table=0,panel=0,id=0,capture=0,plane=0,regionsMenu=0,npcsMenu=0,event=0;
         unsigned char visible=0,enabled=0,now=0,mode=0,regionsOpen=0,npcsOpen=0;
@@ -186,6 +184,7 @@ namespace dfl::client_navigation
         if (!real || !BlankMarkers(reader,plane,px,py)
             || !InverseProject(project->rect,real->rect,px,py,goal.x,goal.y)) return false;
         goal.town=project->town;goal.area=project->area;
+        goal.mapX=px;goal.mapY=py;goal.minimapToken=minimap;goal.planeToken=plane;
         // A reader can fail or observe a replaced/closed map. Publish only a complete,
         // still-owned gesture; never call native input, UI or destination routines here.
         std::uint32_t finalIm=0,finalOwner=0,finalTable=0,finalPanel=0,finalId=0,finalCapture=0,finalPlane=0,finalRegions=0,finalNpcs=0,finalEvent=0;
@@ -239,7 +238,7 @@ namespace dfl::client_navigation
     {
         if (!original) return 0;
         const auto result=original(context);
-        if ((eventBefore==8 || eventBefore==16) && after) after(context,eventBefore);
+        if (eventBefore==16 && after) after(context,eventBefore);
         return result;
     }
     bool SetLiveAndActivate(const Request& request,const DestinationOperations& operations,LiveCheck live,std::uint64_t now) noexcept

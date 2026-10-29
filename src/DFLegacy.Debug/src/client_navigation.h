@@ -31,8 +31,13 @@ namespace dfl::client_navigation
     bool BlankMarkers(const client_state::Reader&, std::uint32_t plane, std::int32_t px, std::int32_t py) noexcept;
     bool ReadCanvasTarget(const client_state::Reader&, const client_state::Snapshot&,
                           std::uint32_t minimap, std::int32_t& x, std::int32_t& y) noexcept;
-    struct CanvasGoal { std::int32_t town = -1, area = -1, x = 0, y = 0; };
-    // eventBefore must be this traversal's native8 left or16 right release;
+    struct CanvasGoal
+    {
+        std::int32_t town = -1, area = -1, x = 0, y = 0;
+        std::int32_t mapX = 0, mapY = 0;
+        std::uint32_t minimapToken = 0, planeToken = 0;
+    };
+    // eventBefore must be this traversal's native16 right release;
     // read only after original8F6C30 consumed it. An absent token never replays.
     bool ReadRouteCanvasTarget(const client_state::Reader&, const client_state::Snapshot&,
                                std::uint32_t minimap, CanvasGoal&, std::uint32_t eventBefore = 0) noexcept;

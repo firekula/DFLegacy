@@ -129,7 +129,7 @@ int RunClientNavigationRuntimeTests()
         if(mode==5)memory.bytes.erase(eventAddress+1);
         const auto result=HitPollWithOriginal(&memory,&SafeOriginalHit);
         check(result==-7654321&&HitOriginalCalls==1&&HitOriginalRan,"production hit wrapper always preserves the original full EAX exactly once");
-        check(!HitReadTooSoon&&HitAfterRead==(mode==4),"either button business reads occur only after original traversal with its supported release event");
+        check(!HitReadTooSoon&&HitAfterRead==(release==16&&mode==4),"only supported right release attempts business reads after original traversal");
     }
     Native={&memory,&TrackingMemory::Read,&SupportedFixture,nullptr,&NavigationTestTick,nullptr,7,999};
     GameThread=GetCurrentThreadId();InterlockedExchange(&Enabled,1);
@@ -151,8 +151,8 @@ int RunClientNavigationRuntimeTests()
         HitOriginalRan=HitAfterRead=HitReadTooSoon=false;HitOriginalCalls=HitLeftCaptureReads=HitRightCaptureReads=0;
         const auto result=HitPollWithOriginal(&memory,&SafeOriginalHit);
         check(result==-7654321&&HitOriginalCalls==1&&!HitReadTooSoon,"mixed or missing other-button fields still preserve original-first and full EAX");
-        check(HitLeftCaptureReads==(HitRelease==8?1U:0U)&&HitRightCaptureReads==(HitRelease==16?1U:0U),
-            "production traversal selects left-first or the readable right token without cross-button capture reads");
+        check(HitLeftCaptureReads==0&&HitRightCaptureReads==(mode==2?0U:1U),
+            "production right trigger ignores left state and never reads left capture");
     }
     WatchNativeHit=false;
     // Ownership flags model retained CALLs, but the reader refuses all bytes:

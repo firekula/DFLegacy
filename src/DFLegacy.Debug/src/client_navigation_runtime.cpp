@@ -3,6 +3,7 @@
 #include <windows.h>
 #include "client_navigation.h"
 #include "client_town_route_runtime.h"
+#include "client_map_feedback_runtime.h"
 #include <array>
 #include <cmath>
 #include <cstdio>
@@ -209,7 +210,9 @@ namespace dfl::client_navigation
             Reads reads;std::uint32_t im=0,minimap=0;CanvasGoal goal;
             if(reads.At(0xB5DCE8,0,im)&&reads.At(im,0xFF0,minimap)
                 &&ReadRouteCanvasTarget(Native,Current,minimap,goal,eventBefore))
-                client_town_route::BeginCanvasGoal(Current,goal);
+            {
+                if(client_town_route::BeginCanvasGoal(Current,goal))client_map_feedback::AcceptGoal(Current,goal);
+            }
         }
         std::int32_t HitPollWithOriginal(void* self,CanvasHitOriginal original) noexcept
         {
@@ -218,11 +221,8 @@ namespace dfl::client_navigation
             std::uint32_t eventBefore=0;
             if(IsEnabled()&&GetCurrentThreadId()==GameThread&&Layout())
             {
-                Reads reads;std::uint32_t left=0,right=0;
-                // Native hit traversal handles left release before right.
-                // Missing or unrelated state of the other button grants nothing.
-                if (reads.At(0xCFD1F4,0,left) && left==8) eventBefore=8;
-                else if (reads.At(0xCFD1F8,0,right) && right==16) eventBefore=16;
+                Reads reads;std::uint32_t right=0;
+                if (reads.At(0xCFD1F8,0,right) && right==16) eventBefore=16;
             }
             return PollCanvasRelease(self,eventBefore,original,&AfterCanvasHit);
         }
@@ -335,7 +335,11 @@ namespace dfl::client_navigation
         InterlockedExchange(&HookPublished,0);
         Inbox={};Active={};Outbox={};GameResult={};Current={};ConsumedId=ActiveTick=ActiveSequence=NextSerial=ExportedSerial=LastPoll=0;
         InterlockedExchange(&Enabled,Native.read && Native.pid && Native.processStartedFileTime?1:0);
-        if(IsEnabled())client_town_route::Initialize(settingsPath,directory,reader,&ApplyRouteStep,&SupersedeForRoute);
+        if(IsEnabled())
+        {
+            client_town_route::Initialize(settingsPath,directory,reader,&ApplyRouteStep,&SupersedeForRoute);
+            client_map_feedback::Initialize(reader,directory);
+        }
     }
     void OnFrame() noexcept
     {
@@ -376,6 +380,7 @@ namespace dfl::client_navigation
         { if (HaveInbox) {pending=Inbox;HaveInbox=false;have=true;}ReleaseSRWLockExclusive(&InboxLock); }
         if (have) Dispatch(pending,"debug");
         client_town_route::OnFrame(Current);
+        client_map_feedback::ObserveFrame(Current,Installed&&HitInstalled);
     }
     void PumpWorker() noexcept
     {
@@ -386,11 +391,13 @@ namespace dfl::client_navigation
             if (now-LastPoll>=50) {LastPoll=now;ReadCommand();}
             ExportResult();
             client_town_route::PumpWorker();
+            client_map_feedback::PumpWorker();
         }
         catch (...) { /* IO failure never escapes into the host worker. */ }
     }
     bool Shutdown() noexcept
     {
+        if(!client_map_feedback::Shutdown())return false;
         InterlockedExchange(&Enabled,0);
         if (!RestoreInstalledHitHook(HitInstalled,PatchedHitCall,&PatchHit)) return false;
         if (!RestoreInstalledHook(Installed,PatchedCall,&Patch)) return false;

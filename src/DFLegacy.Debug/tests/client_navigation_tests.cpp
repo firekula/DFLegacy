@@ -120,6 +120,8 @@ namespace
         Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,0x10),"right reader is independent of all left button fields");
         m.Row(0x530020,0x540000,{10,20,100,50},2,3);m.Row(0xBEF024,0x550000,{-100,100,1000,500},2,3);
         Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,0x10)&&goal.town==2&&goal.area==3&&goal.x==400&&goal.y==350,"right release selects another displayed town and area");
+        Check(goal.mapX==60&&goal.mapY==45&&goal.minimapToken==0x510000&&goal.planeToken==0x530000,
+            "feedback carries only the verified map-local point and exact owner plane");
         auto denied=[&](const char* label,std::uint32_t eventBefore=0x10)
         {
             goal={9,8,7,6};const bool accepted=ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,eventBefore);
@@ -169,7 +171,8 @@ namespace
         HitOrder order;
         for (std::uint32_t event:{8U,16U})
         {order={};Check(PollCanvasRelease(&order,event,&HitOrder::Original,&HitOrder::After)==-1234567
-            &&order.ordered&&order.calls==1&&order.after==1&&order.event==event,"either release invokes original once before after-callback and preserves full EAX");}
+            &&order.calls==1&&order.after==(event==16?1U:0U)
+            &&(event!=16||(order.ordered&&order.event==16)),"only right release invokes after-callback; both preserve original full EAX");}
         for(std::uint32_t event:{0U,2U})
         {order={};Check(PollCanvasRelease(&order,event,&HitOrder::Original,&HitOrder::After)==-1234567
             &&order.calls==1&&order.after==0,"original hit traversal always runs without a right release");}
@@ -189,48 +192,17 @@ namespace
     }
     void LeftRouteCanvasTests()
     {
-        const auto s=Sample();Memory m;CanvasGoal goal;
-        m.Canvas();m.Put<unsigned char>(0x500FD8,0);
-        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8) && goal.town==1 && goal.area==0 && goal.x==400 && goal.y==350,
-            "post-update FD8 zero still accepts this traversal's consumed left root release");
-        m.Put<unsigned char>(0xCFD202,1);m.U(0xB55188,778);m.U(0xCFD1F8,16);
-        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8),
-            "consumed left release is independent of held right button event and capture");
-        m.Row(0x530020,0x540000,{10,20,100,50},2,3);m.Row(0xBEF024,0x550000,{-100,100,1000,500},2,3);
-        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8) && goal.town==2 && goal.area==3,
-            "consumed left blank map release can choose another displayed region");
-        m.Canvas();goal={9,8,7,6};
-        Check(!ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal) && goal.town==9 && goal.area==8 && goal.x==7 && goal.y==6,
-            "default absent token cannot replay a cached left capture");
-        for (unsigned defect=0;defect<19;++defect)
-        {
-            m=Memory{};m.Canvas();m.Put<unsigned char>(0x500FD8,0);goal={9,8,7,6};
-            switch (defect)
-            {
-                case 0:m.Put<unsigned char>(0xCFD200,1);break;
-                case 1:m.U(0xCFD1F4,8);break;
-                case 2:m.U(0xB55184,778);break;
-                case 3:m.Put<unsigned char>(0x520010,0);break;
-                case 4:m.Put<unsigned char>(0x520011,0);break;
-                case 5:m.Put<unsigned char>(0x560010,1);break;
-                case 6:m.Put<unsigned char>(0x570010,1);break;
-                case 7:m.Marker();m.U(0x530014,0x210000);m.U(0x530018,0x210004);m.Put<std::int32_t>(0x220008,60);m.Put<std::int32_t>(0x22000C,45);break;
-                case 8:m.U(0x500FF0,0x510100);break;
-                case 9:m.Put<std::int32_t>(0x530008,0);break;
-                case 10:m.mutateAt=0xB55184;m.mutateTo=778;m.mutateOnRead=2;break;
-                case 11:m.mutateAt=0xCFD1F4;m.mutateTo=8;m.mutateOnRead=2;break;
-                case 12:m.mutateAt=0xCFD200;m.mutateTo=1;m.mutateOnRead=2;break;
-                case 13:m.mutateAt=0x560010;m.mutateTo=1;m.mutateOnRead=2;break;
-                case 14:m.mutateAt=0x51000C;m.mutateTo=0x530100;m.mutateOnRead=2;break;
-                case 15:m.data.erase(0xCFD1F5);break;
-                case 16:m.data.erase(0x570010);break;
-                case 17:m.Put<unsigned char>(0xCFD20A,1);break;
-                default:m.SecondProject(1,1);break;
-            }
-            Check(!ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8) && goal.town==9 && goal.area==8 && goal.x==7 && goal.y==6,
-                "left release preserves consumed-event capture marker dropdown ownership and recheck guards");
-        }
+        const auto s=Sample();Memory m;m.Canvas();CanvasGoal goal{9,8,7,6};
+        Check(!ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8)
+            &&goal.town==9&&goal.area==8&&goal.x==7&&goal.y==6,
+            "consumed left canvas release never submits a route or changes the goal");
+        m.Put<unsigned char>(0xCFD202,1);m.U(0xCFD1F8,16);
+        Check(!ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8),
+            "left release remains inert even with right state present");
+        Check(!ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal),
+            "missing release token cannot replay a cached capture");
     }
+
 }
 int RunClientNavigationTests()
 {
