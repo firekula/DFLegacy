@@ -1,0 +1,76 @@
+{
+  "scope": "two Python consumer files only, uncommitted, no Native build or deployment",
+  "head_at_verification": "76db1cb807303853b4c48bf67e8272540b4c4ba2",
+  "independent_probe": {
+    "original_red": 3,
+    "exit_code": 0,
+    "methods": 4,
+    "failures": 0,
+    "errors": 0
+  },
+  "test_command": "python -m unittest tools.debug.test_client_native_route -v",
+  "policy": "terminal age exemption only; issued<=tick<=now; exact binding and independent SDK arrival proof retained",
+  "suite": {
+    "exit_code": 0,
+    "methods": 13,
+    "failures": 0,
+    "errors": 0
+  },
+  "files": [
+    {
+      "sha256": "F751F989413412C8974F94B69D43F12D60A70E38FEA8328C9978835948DAA543",
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\tools\\debug\\client_native_route.py",
+      "size": 7626
+    },
+    {
+      "sha256": "318EF90A806574DFECFD01E3704F5A813EB9CB6BC88CF95D42928B75ABC1D1F7",
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\tools\\debug\\test_client_native_route.py",
+      "size": 11083
+    },
+    {
+      "sha256": "0CA3D1F4B5A31C92A2CAFA41BBA080DA5C71D007876A8C4CABF3299225AE930D",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\probe_delayed_terminal.py",
+      "size": 5422
+    },
+    {
+      "sha256": "92199F27EE418D4225940DE119172CD2F3B12C42C5D7FF8EB41497DD5808A413",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\delayed-terminal-red.log",
+      "size": 7838
+    },
+    {
+      "sha256": "B6B751B4DFCA7E05B5625861D3CAA96BE799A6D2C1716ECF168B97639A5D3985",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\consumer-red-source.py",
+      "size": 7331
+    },
+    {
+      "sha256": "927C54C5EB77BA4870A1B38FC8FB309BE066DA778BA23CE5320F9825EBC1209D",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\consumer-red-tests.py",
+      "size": 10281
+    },
+    {
+      "sha256": "2927EC2B207E5DDF487A9629A0398A761F8208E3816CA05C14456B3557D67DBD",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\consumer-red-tests.log",
+      "size": 12299
+    },
+    {
+      "sha256": "5BEBA92D9E6680C726165D3B3B40313F69ADEEC6BC7AE59F704FDC391425E34C",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\consumer-final-tests.log",
+      "size": 2526
+    },
+    {
+      "sha256": "08CED4482F0A0BC4A9E3900BC6BEC276B0D591B0EDA3C862B83AEECC05C5C5E7",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\delayed-terminal-final.log",
+      "size": 9302
+    },
+    {
+      "sha256": "663B223EE7176A537F5A6BCCCE9FF07ECB54DAD1D821E7A5DCBEBEA8721D60F6",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\findings.md",
+      "size": 4154
+    },
+    {
+      "sha256": "DE5553F4CEB0C29F550D3B9DE3280E6BE41047337F7B878BAA5F755D465236C0",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\implementation.md",
+      "size": 2408
+    }
+  ]
+}

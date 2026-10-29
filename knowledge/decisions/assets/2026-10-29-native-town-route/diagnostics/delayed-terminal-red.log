@@ -1,0 +1,272 @@
+test_delayed_arrival_should_not_become_timeout (__main__.DelayedTerminalTests.test_delayed_arrival_should_not_become_timeout) ... FAIL
+test_delayed_interruption_should_preserve_reason (__main__.DelayedTerminalTests.test_delayed_interruption_should_preserve_reason) ... FAIL
+test_delayed_rejection_should_preserve_reason (__main__.DelayedTerminalTests.test_delayed_rejection_should_preserve_reason) ... FAIL
+test_quick_arrival_control_is_accepted (__main__.DelayedTerminalTests.test_quick_arrival_control_is_accepted) ... ok
+
+======================================================================
+FAIL: test_delayed_arrival_should_not_become_timeout (__main__.DelayedTerminalTests.test_delayed_arrival_should_not_become_timeout)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "G:\Game\DNF_ACT1\DFLegacy\.tmp\native-town-route-20261029\controller\native-consumer\probe_delayed_terminal.py", line 97, in test_delayed_arrival_should_not_become_timeout
+    self.assertEqual(execute_probe('arrived')['result']['status'],'arrived')
+AssertionError: 'timeout' != 'arrived'
+- timeout
++ arrived
+
+
+======================================================================
+FAIL: test_delayed_interruption_should_preserve_reason (__main__.DelayedTerminalTests.test_delayed_interruption_should_preserve_reason)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "G:\Game\DNF_ACT1\DFLegacy\.tmp\native-town-route-20261029\controller\native-consumer\probe_delayed_terminal.py", line 103, in test_delayed_interruption_should_preserve_reason
+    self.assertEqual(execute_probe('interrupted')['result']['status'],'interrupted')
+AssertionError: 'timeout' != 'interrupted'
+- timeout
++ interrupted
+
+
+======================================================================
+FAIL: test_delayed_rejection_should_preserve_reason (__main__.DelayedTerminalTests.test_delayed_rejection_should_preserve_reason)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "G:\Game\DNF_ACT1\DFLegacy\.tmp\native-town-route-20261029\controller\native-consumer\probe_delayed_terminal.py", line 100, in test_delayed_rejection_should_preserve_reason
+    self.assertEqual(execute_probe('rejected')['result']['status'],'rejected')
+AssertionError: 'timeout' != 'rejected'
+- timeout
++ rejected
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.003s
+
+FAILED (failures=3)
+{
+  "direct": [
+    {
+      "status": "arrived",
+      "age_ms": 0,
+      "outcome": "accepted"
+    },
+    {
+      "status": "arrived",
+      "age_ms": 1000,
+      "outcome": "accepted"
+    },
+    {
+      "status": "arrived",
+      "age_ms": 1001,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "arrived",
+      "age_ms": 1240,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "arrived",
+      "age_ms": 3000,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "rejected",
+      "age_ms": 0,
+      "outcome": "accepted"
+    },
+    {
+      "status": "rejected",
+      "age_ms": 1000,
+      "outcome": "accepted"
+    },
+    {
+      "status": "rejected",
+      "age_ms": 1001,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "rejected",
+      "age_ms": 1240,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "rejected",
+      "age_ms": 3000,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "interrupted",
+      "age_ms": 0,
+      "outcome": "accepted"
+    },
+    {
+      "status": "interrupted",
+      "age_ms": 1000,
+      "outcome": "accepted"
+    },
+    {
+      "status": "interrupted",
+      "age_ms": 1001,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "interrupted",
+      "age_ms": 1240,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "interrupted",
+      "age_ms": 3000,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "moving",
+      "age_ms": 0,
+      "outcome": "accepted"
+    },
+    {
+      "status": "moving",
+      "age_ms": 1000,
+      "outcome": "accepted"
+    },
+    {
+      "status": "moving",
+      "age_ms": 1001,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "moving",
+      "age_ms": 1240,
+      "outcome": "stale_response"
+    },
+    {
+      "status": "moving",
+      "age_ms": 3000,
+      "outcome": "stale_response"
+    }
+  ],
+  "execute": [
+    {
+      "terminal_status": "arrived",
+      "publication_delay_ms": 1240,
+      "terminal_tick_ms": 4294971432,
+      "first_publication_age_ms": 1200,
+      "result": {
+        "ok": false,
+        "status": "timeout",
+        "reason": "native_route_timeout",
+        "request_id": 50
+      },
+      "response_reads": 19,
+      "snapshot_reads": 1,
+      "sleeps": 50,
+      "elapsed_ms": 2000,
+      "actual_process_or_mailbox_io": false
+    },
+    {
+      "terminal_status": "rejected",
+      "publication_delay_ms": 1240,
+      "terminal_tick_ms": 4294971432,
+      "first_publication_age_ms": 1200,
+      "result": {
+        "ok": false,
+        "status": "timeout",
+        "reason": "native_route_timeout",
+        "request_id": 50
+      },
+      "response_reads": 19,
+      "snapshot_reads": 1,
+      "sleeps": 50,
+      "elapsed_ms": 2000,
+      "actual_process_or_mailbox_io": false
+    },
+    {
+      "terminal_status": "interrupted",
+      "publication_delay_ms": 1240,
+      "terminal_tick_ms": 4294971432,
+      "first_publication_age_ms": 1200,
+      "result": {
+        "ok": false,
+        "status": "timeout",
+        "reason": "native_route_timeout",
+        "request_id": 50
+      },
+      "response_reads": 19,
+      "snapshot_reads": 1,
+      "sleeps": 50,
+      "elapsed_ms": 2000,
+      "actual_process_or_mailbox_io": false
+    }
+  ],
+  "quick_control": {
+    "terminal_status": "arrived",
+    "publication_delay_ms": 80,
+    "terminal_tick_ms": 4294971432,
+    "first_publication_age_ms": 40,
+    "result": {
+      "ok": true,
+      "status": "arrived",
+      "reason": "native_and_sdk_final_position",
+      "request_id": 50,
+      "native": {
+        "schema": "dfl-client-route/v1",
+        "pid": 4567,
+        "process_started_filetime": 134060000000000123,
+        "request_id": 50,
+        "uid": 1,
+        "source": "debug",
+        "status": "arrived",
+        "reason": "final_position_observed",
+        "tick_ms": 4294971432,
+        "goal": {
+          "town_id": 2,
+          "area_id": 2,
+          "x": 575,
+          "y": 247
+        },
+        "origin": {
+          "generation": 1,
+          "actor_token": "0x1812E468",
+          "map_token": "0x184AFED8",
+          "user_token": "0x180A1AA8",
+          "context_token": "0x18001000"
+        },
+        "observed": {
+          "town_id": 2,
+          "area_id": 2,
+          "position": {
+            "x": 575,
+            "y": 247
+          },
+          "direction_raw": {
+            "x": 4,
+            "y": 4
+          }
+        }
+      },
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "context_token": "0x18001000",
+        "map_token": "0x184AFED8",
+        "position": {
+          "x": 575,
+          "y": 247,
+          "z": 0
+        },
+        "destination": {
+          "x": 10,
+          "y": 20
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    "response_reads": 1,
+    "snapshot_reads": 2,
+    "sleeps": 2,
+    "elapsed_ms": 80,
+    "actual_process_or_mailbox_io": false
+  }
+}

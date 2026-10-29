@@ -1,0 +1,25 @@
+{
+  "started": "2026-10-29T13:03:58.378+08:00",
+  "pid": 58960,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "A-takeover-old-goal-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T13:03:58.623+08:00",
+  "steps": [
+    {
+      "t": 500,
+      "op": "rclick",
+      "x": 410,
+      "y": 263,
+      "dur": 180
+    }
+  ],
+  "plan_sha256": "23300275ab2827c8a742cd500a97619d69aef72fabeb09806336d5c63238c32e",
+  "plan_written": "2026-10-29T13:03:58.624+08:00",
+  "focus_reassertions": 0,
+  "plan_completed": "2026-10-29T13:03:59.331+08:00",
+  "own_pid_diag_lines": 4,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T13:03:59.332+08:00"
+}

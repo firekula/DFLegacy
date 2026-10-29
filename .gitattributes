@@ -43,3 +43,8 @@ compose.yaml text eol=lf
 /tests/DFLegacy.SmokeTests/Fixtures/MentorGold/** -text whitespace=-blank-at-eof,cr-at-eol
 # 原始人数表的韩文注释带行尾空格，保留原始提取字节。
 /tests/DFLegacy.SmokeTests/Fixtures/MentorGold/member_cnt_config.tbl whitespace=-blank-at-eof,-blank-at-eol,cr-at-eol
+
+# 原始客户端截图、协议和验收数据按字节保留。
+/knowledge/decisions/assets/2026-10-29-native-town-route/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-29-native-town-route/**/*.log whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-29-native-town-route/review/acceptance-review.md whitespace=-blank-at-eof,cr-at-eol

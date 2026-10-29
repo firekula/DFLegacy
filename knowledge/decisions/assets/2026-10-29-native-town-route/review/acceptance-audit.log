@@ -1,0 +1,155 @@
+{
+  "checks": 2375,
+  "failures": 0,
+  "cases": [
+    {
+      "case": "A-full-forward",
+      "path": [
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "native_steps": 14,
+      "elapsed_ms": 30672,
+      "sdk_after_terminal_ms": 157
+    },
+    {
+      "case": "A-full-reverse",
+      "path": [
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "native_steps": 14,
+      "elapsed_ms": 30625,
+      "sdk_after_terminal_ms": 125
+    },
+    {
+      "case": "B-full-forward",
+      "path": [
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "native_steps": 14,
+      "elapsed_ms": 32454,
+      "sdk_after_terminal_ms": 359
+    },
+    {
+      "case": "B-full-reverse",
+      "path": [
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "native_steps": 14,
+      "elapsed_ms": 30422,
+      "sdk_after_terminal_ms": 282
+    },
+    {
+      "case": "A-same-area",
+      "path": [
+        [
+          1,
+          1
+        ]
+      ],
+      "native_steps": 1,
+      "elapsed_ms": 2922,
+      "sdk_after_terminal_ms": 187
+    },
+    {
+      "case": "B-same-area",
+      "path": [
+        [
+          1,
+          1
+        ]
+      ],
+      "native_steps": 1,
+      "elapsed_ms": 2531,
+      "sdk_after_terminal_ms": 390
+    }
+  ],
+  "api": {
+    "request_id": 1793250289134858600,
+    "steps": 14,
+    "elapsed_ms": 26843,
+    "goal": {
+      "town_id": 2,
+      "area_id": 2,
+      "x": 1200,
+      "y": 280
+    },
+    "sdk_after_terminal_ms": 31,
+    "raw_sha256": "33B4C6EB341B3C645DBA5519A54FE0C0B8ACDCD3A7D5E7A85E1B8E149963AF18"
+  }
+}

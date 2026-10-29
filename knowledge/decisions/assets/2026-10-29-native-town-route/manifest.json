@@ -1,0 +1,636 @@
+{
+  "Schema": "native-town-route-public-evidence/v1",
+  "SourceCommit": "f6a9eb93cfff8678d3b99ad0fe7a5a92871b551f",
+  "Files": [
+    {
+      "File": "cases/A-full-forward.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-full-forward.json",
+      "Bytes": 168190,
+      "Sha256": "1E3B1BF38D197C01C46D2A19BBD5E3B8D6843F10D26F0439E59FAC3FDEF15532"
+    },
+    {
+      "File": "cases/A-full-forward-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-full-forward-input.json",
+      "Bytes": 714,
+      "Sha256": "C25ECABEFBD4381EC2DADB705E67A8A236566881A339198242E9AF9E8809593A"
+    },
+    {
+      "File": "cases/A-full-forward-route-updates.jsonl",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-full-forward-route-updates.jsonl",
+      "Bytes": 90115,
+      "Sha256": "0EE36F59A4028C6E776B6C0BD918B5EF1B7DA4D48EDDFD1206BF1A751298AD8B"
+    },
+    {
+      "File": "cases/A-full-reverse.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-full-reverse.json",
+      "Bytes": 163342,
+      "Sha256": "25176114B8309309EC6A05E07735C0D0D23A405C55905D80CC2014E3E1A0FC23"
+    },
+    {
+      "File": "cases/A-full-reverse-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-full-reverse-input.json",
+      "Bytes": 714,
+      "Sha256": "AF66ECF6BB746D4A553E153EBBB87EDBEB9A561DA8778BC42918BE256265E335"
+    },
+    {
+      "File": "cases/A-full-reverse-route-updates.jsonl",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-full-reverse-route-updates.jsonl",
+      "Bytes": 87099,
+      "Sha256": "1FEDC2D6CE020E5C52606BB3BA4DCEBDBB963F7F5DBF2F97B78DCD4294B19648"
+    },
+    {
+      "File": "cases/B-full-forward.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-full-forward.json",
+      "Bytes": 165800,
+      "Sha256": "4E6C21D3A557F050CFE34F790538D1ED18F55D9711486F10A1C78B01D4CFFD00"
+    },
+    {
+      "File": "cases/B-full-forward-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-full-forward-input.json",
+      "Bytes": 724,
+      "Sha256": "F0F30FE3AF2DD6D3B6D9FC9ABE7DBD057A11CCC1D513C7B5E637823260A1DDAA"
+    },
+    {
+      "File": "cases/B-full-forward-route-updates.jsonl",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-full-forward-route-updates.jsonl",
+      "Bytes": 88652,
+      "Sha256": "0DB47426DDB00133CC424C4303541CC1573B499A874C41DB209BBEE8DEBB0D6F"
+    },
+    {
+      "File": "cases/B-full-reverse.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-full-reverse.json",
+      "Bytes": 165746,
+      "Sha256": "38D33D740E544A1E02452827BD0DD772FB3AB7B6A8C9B079E4E3F7BBFD08AD63"
+    },
+    {
+      "File": "cases/B-full-reverse-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-full-reverse-input.json",
+      "Bytes": 724,
+      "Sha256": "97D5DC88CA9F9C146DFED20F2735B22296F5CD64CD5CFCA37823E8BCC3A6427D"
+    },
+    {
+      "File": "cases/B-full-reverse-route-updates.jsonl",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-full-reverse-route-updates.jsonl",
+      "Bytes": 88501,
+      "Sha256": "77ED07850B503435679EE23CC14BCEF3B66BC81A2B0F300F8A93624747F8AC04"
+    },
+    {
+      "File": "cases/A-same-area.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-same-area.json",
+      "Bytes": 15803,
+      "Sha256": "FA90A674E46CCB090ED015FF2EC2068ED3F06D88CC81C7635CAEFFA47191EA0E"
+    },
+    {
+      "File": "cases/A-same-area-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-same-area-input.json",
+      "Bytes": 711,
+      "Sha256": "A90AEF4427F6A99BD1805ED9EBF29EDD5428FC5880E1DA9702E453B8EE915E0D"
+    },
+    {
+      "File": "cases/B-same-area.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-same-area.json",
+      "Bytes": 14530,
+      "Sha256": "885BCD7CEDB9E50D27E89E9480CF7CEC4067CBE616FE6368ABD1E425CD089260"
+    },
+    {
+      "File": "cases/B-same-area-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-same-area-input.json",
+      "Bytes": 721,
+      "Sha256": "44DCAD81EC68AA489A2F94001A076BED3B5C30EE1A7181D526B699AD764C19C7"
+    },
+    {
+      "File": "cases/A-native-manual-interruption.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-native-manual-interruption.json",
+      "Bytes": 9391,
+      "Sha256": "8BB18DA2483FFCE0B7C14724B001925E6BE432728CC8ACC7785A0FE18D6045D6"
+    },
+    {
+      "File": "cases/A-valid-target-takeover.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-valid-target-takeover.json",
+      "Bytes": 8305,
+      "Sha256": "7A4614988DD889BB626E100955FFC4B02C2C6B2618E4791643310080DC1EF5C0"
+    },
+    {
+      "File": "cases/A-control-right-no-goal.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-control-right-no-goal.json",
+      "Bytes": 7216,
+      "Sha256": "E1E096E394A70DFB3294E875D44A56A6B4AB89E519FCDAA48C46F344DA0691E5"
+    },
+    {
+      "File": "cases/A-outside-projection-no-goal.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-outside-projection-no-goal.json",
+      "Bytes": 7216,
+      "Sha256": "C3822749BFB3D349D72642D3D59BF8F2C71256228CACD9485C6FC1F3D65D04EF"
+    },
+    {
+      "File": "cases/A-region-menu-right-no-goal.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-region-menu-right-no-goal.json",
+      "Bytes": 7216,
+      "Sha256": "6F7C3D3ABB86EE0174738BDC6E132020CAEFDEB7C9BF6C30C26E224E47A8F6A0"
+    },
+    {
+      "File": "cases/A-npc-menu-right-no-goal.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-npc-menu-right-no-goal.json",
+      "Bytes": 7216,
+      "Sha256": "1570D78C6DA837A40CCD58355883D09C66A8E0778ECA5DB857B684E3B5F66A54"
+    },
+    {
+      "File": "cases/A-hidden-map-right-no-route.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-hidden-map-right-no-route.json",
+      "Bytes": 7218,
+      "Sha256": "746F596FE69339315CC765AF438C43A477F17CEB4E223B9A722F1A6059853F15"
+    },
+    {
+      "File": "cases/A-reopened-map-no-replay.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-reopened-map-no-replay.json",
+      "Bytes": 3715,
+      "Sha256": "6F136D8960E62C58AFC7C5A2EDD14BEF037228807C79F1509E1171DCF85202FC"
+    },
+    {
+      "File": "cases/A-region-menu-open-state.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-region-menu-open-state.json",
+      "Bytes": 11325,
+      "Sha256": "5238F3EF8F5EA4F917D396363A024047D1D8E53C5E0E2C60A1EFE4DB7BA5FCFB"
+    },
+    {
+      "File": "cases/A-npc-menu-open-state.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-npc-menu-open-state.json",
+      "Bytes": 11330,
+      "Sha256": "362907BEA4A4069494A0290ED15ED9F99CFD008BA5A6EEC72C31D804CE370241"
+    },
+    {
+      "File": "cases/A-close-map-no-replay.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-close-map-no-replay.json",
+      "Bytes": 4775,
+      "Sha256": "2C16E952AEEBF83714C33366C4763944E29DDBD849B5FCD358DCD1417DED974B"
+    },
+    {
+      "File": "cases/B-v2-native-api-cross.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-v2-native-api-cross.json",
+      "Bytes": 6803,
+      "Sha256": "3992292E9EFAC30DEBA5A62D79EE24B7FF18F5F854AD684887B7E20CF360BEC3"
+    },
+    {
+      "File": "cases/final-native-observations.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\final-native-observations.json",
+      "Bytes": 5438,
+      "Sha256": "8F5302DE187D80D0B5CDB9AB4E41B09032E90024133EF3BFD67F63C1F35CD21F"
+    },
+    {
+      "File": "cases/A-manual-route-start.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-route-start.json",
+      "Bytes": 5095,
+      "Sha256": "E1BAD2E841E008A052170FF5E1FF4052E4C62474A373A9916B9C81B2E667C272"
+    },
+    {
+      "File": "cases/A-manual-route-start-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-route-start-input.json",
+      "Bytes": 720,
+      "Sha256": "D3315980AA9AD93C81D866A64DF35C136967EF97E3C69068FFF21FBD8DBAFA16"
+    },
+    {
+      "File": "cases/A-manual-NPC-right.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-NPC-right.json",
+      "Bytes": 5131,
+      "Sha256": "245C4A53D4D7075490F9A108DE2994561DB3D810C5D58BF81E79BF156830D441"
+    },
+    {
+      "File": "cases/A-manual-NPC-right-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-NPC-right-input.json",
+      "Bytes": 718,
+      "Sha256": "3BAB7F264D669E730122FF5FD0770F046910661858B55CF5D86641E80C2692F4"
+    },
+    {
+      "File": "cases/A-manual-close-map.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-close-map.json",
+      "Bytes": 5132,
+      "Sha256": "0AF395AC1A9E79850E7C2B363F3D2723BF5772875BE29AC1832F066D73E798EB"
+    },
+    {
+      "File": "cases/A-manual-close-map-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-close-map-input.json",
+      "Bytes": 698,
+      "Sha256": "FA00B0B5B0865475FF308B3344D8CE7A66DBC3459E2A77205F391BE8560B6FEA"
+    },
+    {
+      "File": "cases/A-manual-left-key.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-left-key.json",
+      "Bytes": 5133,
+      "Sha256": "2811176C1E63F7A30A036DB0E64D0587E6091FAB52D3816E2353AEBFF7B6E785"
+    },
+    {
+      "File": "cases/A-manual-left-key-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-left-key-input.json",
+      "Bytes": 697,
+      "Sha256": "CA504E8B76A046F77B80E65C351F46485E48C8004FD90334CC7AA710582C2C83"
+    },
+    {
+      "File": "cases/A-takeover-old-goal.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-takeover-old-goal.json",
+      "Bytes": 5133,
+      "Sha256": "C75CDE0B6CC5FD6CA3B127DAC20D032DCB2A55E972268A898F32027D1DE63375"
+    },
+    {
+      "File": "cases/A-takeover-old-goal-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-takeover-old-goal-input.json",
+      "Bytes": 719,
+      "Sha256": "04CAEA86C102C32C0C0E8746CDE14FD97E6B44A14D129B5A59D675AE7E303C0A"
+    },
+    {
+      "File": "cases/A-takeover-new-goal.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-takeover-new-goal.json",
+      "Bytes": 5133,
+      "Sha256": "CFAAB5AF07965798DC53EAEF782FBDAEDFE701910A5C84A1EC92CB1F65326996"
+    },
+    {
+      "File": "cases/A-takeover-new-goal-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-takeover-new-goal-input.json",
+      "Bytes": 719,
+      "Sha256": "A4A36F2AF3C7C8678EEAD78F783AF108AF782411885E6E0154819FE6D3CC460C"
+    },
+    {
+      "File": "cases/A-region-menu-open.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-region-menu-open.json",
+      "Bytes": 5133,
+      "Sha256": "A2F5222F97E35AD62FFC6FF12B97FB2EDFD43500C1D1A8847B7555D16CD60AE1"
+    },
+    {
+      "File": "cases/A-region-menu-open-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-region-menu-open-input.json",
+      "Bytes": 716,
+      "Sha256": "83B80241C75F568DB1C09D7655999D9A2A0E585D4F0ABE162D9E5E98EF34ED1F"
+    },
+    {
+      "File": "cases/A-npc-menu-open.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-npc-menu-open.json",
+      "Bytes": 5130,
+      "Sha256": "A4825724C12B78ED205F116BBD4561F27EBF02ACD573CCF83106F02B6CC91A17"
+    },
+    {
+      "File": "cases/A-npc-menu-open-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-npc-menu-open-input.json",
+      "Bytes": 713,
+      "Sha256": "C336CFF522B8DAFC674A8BBF727B0628FCE0545CE4ADCCEC3462687B4EAA2B36"
+    },
+    {
+      "File": "cases/B-v2-api-dfdebug-route-76432-1793250289134858600.result.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-v2-api-dfdebug-route-76432-1793250289134858600.result.json",
+      "Bytes": 717,
+      "Sha256": "64AF566748F0F6A9599AA9D5631447E7D6BDD2D9E0F77439E06C20C021D94880"
+    },
+    {
+      "File": "cases/B-v2-api-dfdebug-route-76432.bin",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-v2-api-dfdebug-route-76432.bin",
+      "Bytes": 96,
+      "Sha256": "33B4C6EB341B3C645DBA5519A54FE0C0B8ACDCD3A7D5E7A85E1B8E149963AF18"
+    },
+    {
+      "File": "Town-map.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-map-open-retry-input.jpg",
+      "Bytes": 321078,
+      "Sha256": "0B6FFCCC383D2FF76A118808C19AB3C1046D754824000CD8A703B20F3E5C8B38"
+    },
+    {
+      "File": "photos/A-map-open-retry-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-map-open-retry-input.json",
+      "Bytes": 1089,
+      "Sha256": "09093F9D633717FF07B7BA7EA1B7A0F89E192CEBF436973B5F40185276BDBE89"
+    },
+    {
+      "File": "A-hendon.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-hendon-key-screenshot-input.jpg",
+      "Bytes": 304726,
+      "Sha256": "1BF47B1D5966C89CC53A0AC40D52B1C814A86F676FD896EA7413856AB07383E8"
+    },
+    {
+      "File": "photos/A-hendon-key-screenshot-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-hendon-key-screenshot-input.json",
+      "Bytes": 1103,
+      "Sha256": "5C78292C2BFBF60B8550B98E932FB249A3E9CFDFB6050AF0B106CE799EFBFD87"
+    },
+    {
+      "File": "A-room.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-room-key-screenshot-input.jpg",
+      "Bytes": 379352,
+      "Sha256": "374458762B535872A8E03C6EFDD1AF38ADB2ABE76AA2E68BA16BC2A47E70A4BF"
+    },
+    {
+      "File": "photos/A-room-key-screenshot-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-room-key-screenshot-input.json",
+      "Bytes": 1099,
+      "Sha256": "605868AB36400EFB245EE42585C08054DF9EBB4C71FB627D22F9A30F85C06EE3"
+    },
+    {
+      "File": "B-hendon.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-hendon-key-screenshot-input.jpg",
+      "Bytes": 312588,
+      "Sha256": "284417E42AF24C2EBCF41E39DF2D02E9AA46C39A5199D224382B2B610E1F2E3A"
+    },
+    {
+      "File": "photos/B-hendon-key-screenshot-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-hendon-key-screenshot-input.json",
+      "Bytes": 1123,
+      "Sha256": "0CD0BFEED45547E8A000C4AFF79A8FABC443F03B8BAB832D7AFF4F1337F11C6D"
+    },
+    {
+      "File": "B-room.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-room-key-screenshot-input.jpg",
+      "Bytes": 385722,
+      "Sha256": "10A67F4583957348A8D773E5DCFA38E88C2AD428BAA2B02EB9CC5A23E4804B41"
+    },
+    {
+      "File": "photos/B-room-key-screenshot-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-room-key-screenshot-input.json",
+      "Bytes": 1119,
+      "Sha256": "EA74D15D5F82DF7B5503D25D2CB275F0EA6E77AEAFB5CD08C0A8B7CC0669FAF0"
+    },
+    {
+      "File": "A-manual-stop.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-stop-key-screenshot-input.jpg",
+      "Bytes": 372849,
+      "Sha256": "7BB5FF41DBD499FF72242B60E511A3E767C32BD56B5FDBBD9BF1DD96FBAC896E"
+    },
+    {
+      "File": "photos/A-manual-stop-key-screenshot-input.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-stop-key-screenshot-input.json",
+      "Bytes": 1025,
+      "Sha256": "4DEDE0DDD42C3046984774224BB40AC2895A684820072F02C5BC9CF96EFD1E65"
+    },
+    {
+      "File": "build-manifest-native-ui-v2.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\build-manifest-native-ui-v2.json",
+      "Bytes": 102430,
+      "Sha256": "A34115D8AE0812ACD82AD57C2A4133AD4BEE570E956C837B84C66A3688D1F5D5"
+    },
+    {
+      "File": "debug-v2-deployment.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\debug-v2-deployment.json",
+      "Bytes": 1342,
+      "Sha256": "3F3976D9FFBAB149D000719667F3C0FFB81ED0CDD7F985F4C7F16EC0C0A058A4"
+    },
+    {
+      "File": "loaded-v2-modules.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\loaded-v2-modules.json",
+      "Bytes": 673,
+      "Sha256": "889E6E1E22FACDD3F0761EC1998A6F72A9417B38DF4602B98597A1557BF235A8"
+    },
+    {
+      "File": "running-v2-deployment.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\running-v2-deployment.json",
+      "Bytes": 2030,
+      "Sha256": "59C95948675A1AD0752D4CEB5BD3F7DAC14B15F3A6419D936DE031067D410017"
+    },
+    {
+      "File": "closeout-restoration.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\closeout-restoration.json",
+      "Bytes": 12027,
+      "Sha256": "3E519B7EB803084F69840E920F2B1251C5303EC003FD0C1C5EFCD94D5CAAFC8C"
+    },
+    {
+      "File": "native-fixture.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\native-fixture.json",
+      "Bytes": 1923,
+      "Sha256": "441B26722A62F4600669F5C2186D1E19C38638DE61111373A972B39634CDF350"
+    },
+    {
+      "File": "harness/goaltest_v3.py",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\goaltest_v3.py",
+      "Bytes": 2558,
+      "Sha256": "72756995C6B095118D878FB36874DFBBABC11E26A47FFE0B432F86CF35DA322F"
+    },
+    {
+      "File": "harness/manual_native.py",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\manual_native.py",
+      "Bytes": 2773,
+      "Sha256": "386AFE95BDB57FA80E3AB1A8D2BC116B954F99F5DBCE8A902053C0C05385EEAD"
+    },
+    {
+      "File": "harness/protection_native.py",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\protection_native.py",
+      "Bytes": 2650,
+      "Sha256": "C53FF028B9FDDB7F1584E312E3060E46134F17E1DEFEB5E175D03F5859993CFC"
+    },
+    {
+      "File": "harness/control.py",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\control.py",
+      "Bytes": 1797,
+      "Sha256": "762D704E7DA4EE0ECDEF0F3E07238C08EAD0FD697CF9386D81F89E4D13FC72A6"
+    },
+    {
+      "File": "harness/h.py",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\h.py",
+      "Bytes": 5406,
+      "Sha256": "2EC67A6158C6EE636976E8B8379334118EEC2ED4CFB48382449EE76170EBD7A7"
+    },
+    {
+      "File": "harness/builtin_driver.py",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\builtin_driver.py",
+      "Bytes": 10781,
+      "Sha256": "BFEC410E346404E1C0B540FEA78A6CC8F012D14440B564BDE3A17881D070AFC3"
+    },
+    {
+      "File": "tests/python-debug-final.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\python-debug-final.log",
+      "Bytes": 265,
+      "Sha256": "4008307D7F2643448F2A693025E5EBB56E9617C6DAB52F9E16396348B8BED4FF"
+    },
+    {
+      "File": "tests/full-repository-python.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\full-repository-python.log",
+      "Bytes": 12762,
+      "Sha256": "28C1E2D77259C1863011B62DE78C48CEC2573EBBAD5F91CCA8C3BEF22E3C9766"
+    },
+    {
+      "File": "tests/right-hit-integrated-build.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\right-hit-integrated-build.log",
+      "Bytes": 739,
+      "Sha256": "2E1D6285F469F9E86A3166196D4D092864DB6640C20BC73EDA87DF475EA97C8B"
+    },
+    {
+      "File": "tests/right-hit-final-navigation-tests.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\right-hit-final-navigation-tests.log",
+      "Bytes": 72,
+      "Sha256": "B4FAECBE6B668DDB73FFDEB9808DF62C21849F76607F19584CC0A645D9F061B5"
+    },
+    {
+      "File": "tests/right-hit-town-route-tests.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\right-hit-town-route-tests.log",
+      "Bytes": 161,
+      "Sha256": "E0F856C29AC31E8097D21F329503531B263333A87A0D4C2C06C701EA18E2AE34"
+    },
+    {
+      "File": "tests/async-export-test-build.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\async-export-test-build.log",
+      "Bytes": 390,
+      "Sha256": "2017920D139C109611552A27E492D1059447906B20B4BC8DF6676E781B9DFF3C"
+    },
+    {
+      "File": "tests/async-export-full-native-green.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\async-export-full-native-green.log",
+      "Bytes": 33,
+      "Sha256": "3E27D1409907E9F53E859446DF018085011C0B20F3086E274903032375C66BB6"
+    },
+    {
+      "File": "tests/debug-overlay-fixture-build.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\debug-overlay-fixture-build.log",
+      "Bytes": 33,
+      "Sha256": "1AA0AE1F5BD8612937387D5544A55347D1570FBFAF8212389C5EAD65621ECFE1"
+    },
+    {
+      "File": "frozen-v2-source.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\frozen-v2-source.json",
+      "Bytes": 4616,
+      "Sha256": "3730793B3A6B7359C94E0C829CCA1CD57B083076B9E8F361EC6CFD83FC4E7FCD"
+    },
+    {
+      "File": "review/consumer-review.md",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\consumer-review.md",
+      "Bytes": 3739,
+      "Sha256": "B3A07ABA0C256D47528195B5860956F1C1E4AD88148EF2A564A932591E25F244"
+    },
+    {
+      "File": "review/hit-review.md",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\hit-review.md",
+      "Bytes": 3161,
+      "Sha256": "CEBB43F59D9AB3393E875028A96C161A8276805FE371DA44657B2BDD06D0501A"
+    },
+    {
+      "File": "review/consumer-provenance.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\consumer-provenance.json",
+      "Bytes": 3142,
+      "Sha256": "06FDC84C7D66A5F0C6A098D1EC0C7755F39D4326DEB3E9C6F6F5D2F4F347014F"
+    },
+    {
+      "File": "review/hit-reviewed-manifest.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\hit-reviewed-manifest.json",
+      "Bytes": 1430,
+      "Sha256": "584F0BCB554BBE5DA8A268480EF9F492A501598478DB40988217D0628B68468F"
+    },
+    {
+      "File": "review/hit-original-pe.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\hit-original-pe.json",
+      "Bytes": 1404,
+      "Sha256": "64AD8F136A5789D2F9EF91E6BEDE159622F411BC1976F67117B1CD50480FED7D"
+    },
+    {
+      "File": "review/right-hit-author-manifest.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\ui\\right-hit\\final-source-manifest.json",
+      "Bytes": 1578,
+      "Sha256": "E39CA0F09C8E468895B269D586D3ED23A303ABCD41F5595D157F43ADF959C1B9"
+    },
+    {
+      "File": "review/right-hit-order-correction.md",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\recon\\right-hit-order\\order-correction.md",
+      "Bytes": 2319,
+      "Sha256": "B1965B31969F31E6439FE8AC754DEA1CFCCD7C4F76126A063251931CDFB16D5A"
+    },
+    {
+      "File": "review/consumer-fix-verification.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\fix-verification.json",
+      "Bytes": 3348,
+      "Sha256": "67184D76C0B65D78D4912B52FFA42B240CB784B66FDD083E8379C5664109F96C"
+    },
+    {
+      "File": "review/catalog-unicode-closeout.md",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\catalog\\review\\unicode\\independent-closeout.md",
+      "Bytes": 2006,
+      "Sha256": "C1913E26664BB8D384AF355BE3AD00896F22221B3E46CC9124A4D9CEA9CAC32D"
+    },
+    {
+      "File": "review/controller-io-final-review.md",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\fixed\\queue-final\\independent-final-review.md",
+      "Bytes": 3740,
+      "Sha256": "53D24D576E7C88AC09C08F235186BBE230D6A37B84152FA621F3D80C2B01174D"
+    },
+    {
+      "File": "diagnostics/first-right-edge-trace.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui\\A-right-edge-trace.json",
+      "Bytes": 1640,
+      "Sha256": "B2FDFBEE51F88D73CD918AE9B4B46C3512227DD4121EA4E05B100D82B61C038D"
+    },
+    {
+      "File": "diagnostics/first-right-no-route.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui\\A-right-cross-forward.json",
+      "Bytes": 7764,
+      "Sha256": "CFF78654C994D5C9176510E029B79B26952D1D2A823E43FF88633E1D692EB7C2"
+    },
+    {
+      "File": "diagnostics/v2-map-not-open-no-route.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-cross-forward.json",
+      "Bytes": 7769,
+      "Sha256": "82BBDFBC474F7795A090587FCDBD2CC011A860066EF3B62BE3CCF7C00E3C7604"
+    },
+    {
+      "File": "diagnostics/v2-first-route-observer-read-denied.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-first-right-route-diagnostic.json",
+      "Bytes": 3894,
+      "Sha256": "A5902B2387E0BAFC4C565E5717DFDF1952C53467D7FFF0C7F8106943ED6F52C6"
+    },
+    {
+      "File": "diagnostics/native-short-wait-red.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\right-hit-full-native-tests.log",
+      "Bytes": 117,
+      "Sha256": "806DCE317A86BE665DDC80F1B3E75DF752AD5518DF629B7267EF0C62BCF8502F"
+    },
+    {
+      "File": "diagnostics/native-baseline-control.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\right-hit-full-baseline-control.log",
+      "Bytes": 33,
+      "Sha256": "3E27D1409907E9F53E859446DF018085011C0B20F3086E274903032375C66BB6"
+    },
+    {
+      "File": "diagnostics/right-hit-unit-red.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\ui\\right-hit\\red-tests.log",
+      "Bytes": 1046,
+      "Sha256": "6DA7369342044CD9A9D581F73D9A8C41404D9B98F7027F3A5452EAC0B915386D"
+    },
+    {
+      "File": "diagnostics/delayed-terminal-red.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\delayed-terminal-red.log",
+      "Bytes": 7838,
+      "Sha256": "92199F27EE418D4225940DE119172CD2F3B12C42C5D7FF8EB41497DD5808A413"
+    },
+    {
+      "File": "tests/catalog-python-corpus.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\catalog\\unicode-freeze-tests.log",
+      "Bytes": 85,
+      "Sha256": "B0305DFE8F692D25C28A1609B385C877E76496C8DA7F871D6A5EDD9DF66ABFE8"
+    },
+    {
+      "File": "tests/consumer-delayed-terminal-tests.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\controller\\native-consumer\\consumer-final-tests.log",
+      "Bytes": 2526,
+      "Sha256": "5BEBA92D9E6680C726165D3B3B40313F69ADEEC6BC7AE59F704FDC391425E34C"
+    },
+    {
+      "File": "review/consumer-independent-results.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\consumer-independent-results.json",
+      "Bytes": 10144,
+      "Sha256": "7573F06A208DFB7FAF4CF127144006BCA5CB0BD09A2795D2EED32FEA5BF6F8C5"
+    },
+    {
+      "File": "review/acceptance-audit-results.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\acceptance-audit-results.json",
+      "Bytes": 16816,
+      "Sha256": "D04E00FA23096F37776DCE67044DBE0BF60A964CFEB8F24780CFC3210CD7A2A2"
+    },
+    {
+      "File": "review/acceptance-audit.py",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\acceptance-audit.py",
+      "Bytes": 15625,
+      "Sha256": "8E1ADF8FA4F6BA8DE2D9F21A1A83BF7A97EB2013A13CDF1EF4CDF10A0AB21A46"
+    },
+    {
+      "File": "review/acceptance-review.md",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\acceptance-review.md",
+      "Bytes": 9022,
+      "Sha256": "B1D0E971AF24E4658295D79D022DD53185B05CAC00FBAC3F2CBEE365CD31EAEE"
+    },
+    {
+      "File": "review/acceptance-audit.log",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime\\review\\native-ui-v2\\acceptance-audit.log",
+      "Bytes": 2462,
+      "Sha256": "E930BE94F7A26ACB2C4D313861ECE6A34C2710C66B8F5A8415F59318CFDE33F5"
+    }
+  ]
+}

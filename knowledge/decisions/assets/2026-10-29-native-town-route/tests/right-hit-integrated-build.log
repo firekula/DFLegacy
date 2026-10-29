@@ -1,0 +1,19 @@
+适用于 .NET Framework MSBuild 版本 18.11.1-1.26513.3+940033be3
+
+  client_navigation.cpp
+  client_navigation_runtime.cpp
+  client_party.cpp
+  client_town_route_contract.cpp
+  client_town_route_runtime.cpp
+  debug_overlay.cpp
+  正在生成代码...
+  DFLegacy.Debug.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\debug\Release\debug.dll
+  client_navigation.cpp
+  client_party.cpp
+  client_town_route_contract.cpp
+  client_navigation_runtime_tests.cpp
+  client_navigation_tests.cpp
+  town_route_io_tests.cpp
+  town_route_runtime_tests.cpp
+  正在生成代码...
+  DFLegacy.Debug.Tests.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\debug-tests\Release\debug_tests.exe
