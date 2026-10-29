@@ -97,7 +97,26 @@ namespace dfl::client_state
         out << ",\"enabled\":"; Nullable(out, s.ui.minimapEnabled);
         out << "},\"dungeon_selector\":{\"visible\":null,\"active_raw\":"; Nullable(out, s.ui.selectorActive);
         out << ",\"selected\":"; Nullable(out, s.ui.selectorSelected); out << ",\"hover\":"; Nullable(out, s.ui.selectorHover);
-        out << "},\"countdown\":{\"state_raw\":"; Nullable(out, s.ui.countdownState); out << "}}";
+        const auto& selector = s.ui.selector;
+        out << ",\"instance_token\":"; Token(out, selector.instanceToken);
+        out << ",\"transition_pending\":"; Nullable(out, selector.transitionPending);
+        out << ",\"phase_raw\":"; Nullable(out, selector.phase);
+        out << ",\"stage_token\":"; Token(out, selector.stageToken);
+        out << ",\"input_suppression_raw\":"; Nullable(out, selector.inputSuppression);
+        out << ",\"record_count\":"; Nullable(out, selector.recordCount);
+        out << ",\"selected_dungeon_id\":"; Nullable(out, selector.dungeonId);
+        out << ",\"difficulty_raw\":"; Nullable(out, selector.difficulty);
+        out << ",\"maximum_difficulty_raw\":"; Nullable(out, selector.maximumDifficulty);
+        out << "},\"countdown\":{\"state_raw\":"; Nullable(out, s.ui.countdownState);
+        out << "},\"dialogs\":{\"valid\":" << s.ui.dialogs.valid << ",\"truncated\":" << s.ui.dialogs.truncated << ",\"items\":[";
+        for (std::size_t i = 0; i < s.ui.dialogs.count; ++i)
+        {
+            const auto& d = s.ui.dialogs.items[i]; if (i) out << ',';
+            out << "{\"class_id\":" << d.classId << ",\"instance_token\":"; Token(out, d.instanceToken);
+            out << ",\"root_token\":"; Token(out, d.rootToken);
+            out << ",\"shown_raw\":" << d.shownRaw << ",\"input_enabled_raw\":" << d.inputEnabledRaw << '}';
+        }
+        out << "]},\"input_blocked\":null}";
         out << ",\"me\":"; if (s.haveMe) Person(out, s.me); else out << "null";
         out << ",\"players\":[";
         for (std::size_t i = 0; i < s.playerCount; ++i) { if (i) out << ','; Person(out, s.players[i]); }

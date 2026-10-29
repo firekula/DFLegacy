@@ -68,6 +68,13 @@ def town_fixture(pid=PID, start=START):
     return value
 
 
+def selector_fixture():
+    value=fixture();value.update(schema='dfl-client-state/v2',scene=2,town=None,room=None,me=None,players=[],enemies=[],skills=[],ui=town_fixture()['ui'])
+    value['capabilities']={key:False for key in value['capabilities']}
+    value['ui']['dungeon_selector'].update(active_raw=1,selected=3,hover=4)
+    return value
+
+
 class ClientStateTests(unittest.TestCase):
     def setUp(self):
         try:
@@ -116,6 +123,7 @@ class ClientStateTests(unittest.TestCase):
     def test_loads_fresh_complete_snapshot_without_identity_precision_loss(self):
         result = self.load()
         self.assertEqual(result["process_started_filetime"], 134_060_000_000_000_123)
+
         self.assertIs(type(result["process_started_filetime"]), int)
         self.assertEqual(self.api.get_known_field(result, "scene"), 3)
         self.assertEqual(self.api.get_known_field(result, "me.hp"), 470)
@@ -125,6 +133,46 @@ class ClientStateTests(unittest.TestCase):
         self.write(self.value)
         self.assertTrue(self.api.match_condition(self.load(), "room.map_clear_state", 1))
         self.assertFalse(self.api.match_condition(self.load(), "room.map_clear_state", True))
+
+    def test_optional_native_dialog_scope_and_unknown_inventory(self):
+        value = town_fixture()
+        value['ui']['dialogs'] = dict(valid=True, truncated=False, items=[dict(
+            class_id=89, instance_token='0x09A00000', root_token='0x09B00000',
+            shown_raw=True, input_enabled_raw=False)])
+        value['ui']['input_blocked'] = None
+        self.write(value)
+        result = self.load()
+        self.assertEqual(self.api.get_known_field(result, 'ui.dialogs.items.0.class_id'), 89)
+        self.assertFalse(self.api.get_known_field(result, 'ui.dialogs.items.0.input_enabled_raw'))
+        for valid, truncated in ((False, False), (True, True)):
+            result['ui']['dialogs'].update(valid=valid, truncated=truncated)
+            with self.assertRaises(self.api.UnknownFieldError):
+                self.api.get_known_field(result, 'ui.dialogs.items.0.class_id')
+        for change in ('unknown_class', 'duplicate', 'unbound', 'claim_global_block'):
+            bad = deepcopy(value)
+            if change == 'unknown_class': bad['ui']['dialogs']['items'][0]['class_id'] = 1
+            if change == 'duplicate': bad['ui']['dialogs']['items'] *= 2
+            if change == 'unbound': bad['ui']['dialogs']['items'][0]['root_token'] = None
+            if change == 'claim_global_block': bad['ui']['input_blocked'] = False
+            self.write(bad)
+            with self.subTest(change=change), self.assertRaises(self.api.SnapshotError): self.load()
+
+    def test_selector_projection_is_bound_to_scene2_instance_and_index(self):
+        value = selector_fixture()
+        value['ui']['dungeon_selector'].update(instance_token='0x01090000', transition_pending=False,
+            phase_raw=1, stage_token=None, input_suppression_raw=0, record_count=4,
+            selected_dungeon_id=31, difficulty_raw=2, maximum_difficulty_raw=3)
+        self.write(value)
+        self.assertEqual(self.api.get_known_field(self.load(), 'ui.dungeon_selector.selected_dungeon_id'), 31)
+        for change in ('scene1', 'unbound', 'index', 'phase'):
+            bad = deepcopy(value)
+            if change == 'scene1':
+                bad = town_fixture(); bad['ui']['dungeon_selector'] = deepcopy(value['ui']['dungeon_selector'])
+            if change == 'unbound': bad['ui']['dungeon_selector']['instance_token'] = None
+            if change == 'index': bad['ui']['dungeon_selector']['selected'] = -1
+            if change == 'phase': bad['ui']['dungeon_selector']['phase_raw'] = 5
+            self.write(bad)
+            with self.subTest(change=change), self.assertRaises(self.api.SnapshotError): self.load()
 
     def test_v2_town_preserves_unknown_combat_and_exposes_bound_navigation(self):
         self.write(town_fixture())
@@ -166,6 +214,22 @@ class ClientStateTests(unittest.TestCase):
         self.write(value)
         with self.assertRaises(self.api.SnapshotError):
             self.load()
+
+    def test_v2_selector_scene_is_observation_only_with_empty_world_payload(self):
+        value=selector_fixture();self.write(value);result=self.load()
+        self.assertEqual(self.api.get_known_field(result,'scene'),2)
+        self.assertEqual(self.api.get_known_field(result,'ui.dungeon_selector.selected'),3)
+        self.assertIsNone(self.api.summarize(result)['me'])
+        for change in [dict(me=fixture()['me']),dict(room=fixture()['room']),dict(town=town_fixture()['town']),dict(players=fixture()['players']),dict(skills=fixture()['skills'])]:
+            with self.subTest(change=list(change)):
+                bad=deepcopy(value);bad.update(change);self.write(bad)
+                with self.assertRaises(self.api.SnapshotError):self.load()
+        value['capabilities']['skill_levels']=True;self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_v2_selector_scene_wait_succeeds_without_claiming_player_identity(self):
+        self.write(selector_fixture());status,result=self.invoke('--wait','scene=2','--timeout-seconds','0')
+        self.assertEqual(status,0);self.assertEqual(result['status'],'matched')
 
     def test_v2_ui_unknown_stays_unknown_and_selector_flag_is_not_visibility(self):
         value = town_fixture()

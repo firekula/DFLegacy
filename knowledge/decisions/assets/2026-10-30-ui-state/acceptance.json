@@ -1,0 +1,99 @@
+{
+  "schema": "dfl-ui-state-acceptance/v1",
+  "native_sha256": "CC767308702EF2A881A2BE1432FEF1B2ACC141A29318DB2058369A230F2FFC64",
+  "server_sha256": "E058182878E8176981C3D9649515F744035385E812525DBE14B4D2C8059193C0",
+  "server_unchanged": true,
+  "entry": {
+    "A": {
+      "unique_sequences": 25,
+      "transition_sequences": 12,
+      "maximum_capture_us": 7
+    },
+    "B": {
+      "unique_sequences": 25,
+      "transition_sequences": 12,
+      "maximum_capture_us": 10
+    },
+    "C": {
+      "unique_sequences": 25,
+      "transition_sequences": 12,
+      "maximum_capture_us": 9
+    },
+    "D": {
+      "unique_sequences": 25,
+      "transition_sequences": 12,
+      "maximum_capture_us": 12
+    }
+  },
+  "entry_poll_samples": 175,
+  "transition_poll_samples": 86,
+  "party_dialog": {
+    "valid": true,
+    "truncated": false,
+    "items": [
+      {
+        "class_id": 37,
+        "instance_token": "0x08645010",
+        "root_token": "0x071EE338",
+        "shown_raw": true,
+        "input_enabled_raw": true
+      }
+    ]
+  },
+  "closed_dialog": {
+    "valid": true,
+    "truncated": false,
+    "items": []
+  },
+  "popup": {
+    "valid": true,
+    "truncated": false,
+    "items": [
+      {
+        "class_id": 35,
+        "instance_token": "0x087ADAF8",
+        "root_token": "0x073901C0",
+        "shown_raw": true,
+        "input_enabled_raw": true
+      }
+    ]
+  },
+  "selector": {
+    "visible": null,
+    "active_raw": 1,
+    "selected": 0,
+    "hover": 0,
+    "instance_token": "0x07343808",
+    "transition_pending": false,
+    "phase_raw": 0,
+    "stage_token": "0x0881FF28",
+    "input_suppression_raw": 0,
+    "record_count": 2,
+    "selected_dungeon_id": 1,
+    "difficulty_raw": 0,
+    "maximum_difficulty_raw": 1
+  },
+  "selector_world_empty": true,
+  "final_scenes": {
+    "B": 1,
+    "C": 1,
+    "D": 3
+  },
+  "capture_maximum_us": {
+    "B": 20,
+    "C": 21,
+    "D": 88
+  },
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "protected_files_verified": 16,
+  "test_INIs_restored": 4,
+  "limits": [
+    "Dialogs inventory scope is five exact native classes, not arbitrary UI or all input routing.",
+    "Live window classes37 and35 only; classes48/89/106 covered by static contract and bounded fixtures, not live claimed.",
+    "Selector active_raw is initialized, visible/global input_blocked remain null.",
+    "First cancel attempts used Escape (menu toggle); one return was observed before fade completed and one timed out. Only final original cancel button is counted.",
+    "A return-to-town and exit were immediate; no confirmation window observed. A owned client exited normally during exploratory menu input; no crash claim.",
+    "No managed business changes or managed suite rerun.",
+    "Six existing full-Python failures remain."
+  ]
+}

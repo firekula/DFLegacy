@@ -51,6 +51,25 @@ namespace dfl::client_state
         Value<bool> autoMoveActive{};
         Value<std::int32_t> destinationX{}, destinationY{}, directionX{}, directionY{};
     };
+    struct Dialog
+    {
+        std::uint32_t classId = 0, instanceToken = 0, rootToken = 0;
+        bool shownRaw = false, inputEnabledRaw = false;
+    };
+    struct Dialogs
+    {
+        bool valid = false, truncated = false;
+        std::array<Dialog, 64> items{};
+        std::size_t count = 0;
+    };
+    struct Selector
+    {
+        std::uint32_t instanceToken = 0, stageToken = 0;
+        std::int32_t selectedIndex = -1;
+        Value<bool> transitionPending{};
+        Value<std::uint32_t> phase{}, recordCount{};
+        Value<std::int32_t> inputSuppression{}, dungeonId{}, difficulty{}, maximumDifficulty{};
+    };
     struct Ui
     {
         Value<std::int32_t> selectionMode{}, selectorSelected{}, selectorHover{}, countdownState{};
@@ -59,6 +78,8 @@ namespace dfl::client_state
         bool menuActionsKnown = false;
         std::array<std::uint32_t, 32> menuActions{};
         std::size_t menuActionCount = 0;
+        Selector selector{};
+        Dialogs dialogs{};
     };
     struct Snapshot
     {

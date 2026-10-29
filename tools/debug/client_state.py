@@ -41,12 +41,22 @@ _TOWN = {
     "map_token": "token", "position": _POSITION,
     "destination": _POINT, "direction_raw": _POINT, "auto_move_active": "bool",
 }
+_SELECTOR_EXTRA = {
+    'instance_token': 'token', 'transition_pending': 'bool', 'phase_raw': 'u32',
+    'stage_token': 'token', 'input_suppression_raw': 'i32', 'record_count': 'u32',
+    'selected_dungeon_id': 'i32', 'difficulty_raw': 'i32', 'maximum_difficulty_raw': 'i32',
+}
+_SELECTOR = {"visible": "bool", "active_raw": "u8", "selected": "i32", "hover": "i32", **_SELECTOR_EXTRA}
+_DIALOG = {'class_id': 'u32', 'instance_token': 'token', 'root_token': 'token',
+           'shown_raw': 'bool', 'input_enabled_raw': 'bool'}
+_DIALOGS = {'valid': 'bool', 'truncated': 'bool', 'items': [_DIALOG, 64]}
 _UI = {
     "selection_mode_raw": "i32",
     "player_menu": {"visible": "bool", "target_uid": "uid", "action_ids": ["u32", 32]},
     "town_minimap": {"visible": "bool", "enabled": "bool"},
-    "dungeon_selector": {"visible": "bool", "active_raw": "u8", "selected": "i32", "hover": "i32"},
+    "dungeon_selector": _SELECTOR,
     "countdown": {"state_raw": "i32"},
+    'dialogs': _DIALOGS, 'input_blocked': 'bool',
 }
 _ROOM = {
     "stage_token": "token", "map_token": "token", "boss_dead": "bool",
@@ -114,6 +124,9 @@ def _shape(value, shape, *, nullable=True):
     if isinstance(shape, dict):
         _require(isinstance(value, dict), "bad_object")
         for key, child in shape.items():
+            if key not in value and ((shape is _UI and key in ('dialogs', 'input_blocked'))
+                                    or (shape is _SELECTOR and key in _SELECTOR_EXTRA)):
+                continue  # Additive observation fields remain unknown on older v2 producers.
             if shape is _SKILL and key == "cooldown_blocked" and key not in value:
                 continue  # Additive v2 diagnostic; old snapshots remain unknown.
             if shape is _TOWN and key == "auto_move_active" and key not in value:
@@ -172,7 +185,7 @@ def _validate(snapshot):
     _require(snapshot.get("valid") is True, "invalid_capture")
     _require(type(snapshot.get("truncated")) is bool, "bad_truncated")
     _require(snapshot["truncated"] is False, "truncated")
-    _require(type(snapshot.get("scene")) is int and snapshot["scene"] in (1, 3),
+    _require(type(snapshot.get("scene")) is int and (snapshot["scene"] in (1, 3) or version2 and snapshot["scene"] == 2),
              "unknown_scene")
     for key, shape in _BODY.items():
         _require(key in snapshot, "missing_field")
@@ -215,9 +228,28 @@ def _validate(snapshot):
         for key in ("player_menu", "town_minimap", "dungeon_selector", "countdown"):
             _require(isinstance(snapshot["ui"][key], dict), "bad_ui")
         _require(snapshot["ui"]["dungeon_selector"]["visible"] is None, "unproven_ui_visibility")
+        _require(snapshot['ui'].get('input_blocked') is None, 'unproven_global_input_block')
+        selector = snapshot['ui']['dungeon_selector']
+        if any(selector.get(key) is not None for key in _SELECTOR_EXTRA):
+            _require(snapshot['scene'] == 2 and selector.get('instance_token') is not None
+                     and type(selector.get('transition_pending')) is bool
+                     and _integer(selector.get('phase_raw'), 0, 4)
+                     and _integer(selector.get('record_count'), 0, 64), 'selector_unbound')
+            projected = [selector.get(key) for key in ('selected_dungeon_id', 'difficulty_raw', 'maximum_difficulty_raw')]
+            _require(all(item is None for item in projected) or (all(item is not None for item in projected)
+                     and _integer(selector.get('selected'), 0, selector['record_count'] - 1)), 'selector_projection_unbound')
+        dialogs = snapshot['ui'].get('dialogs')
+        if dialogs is not None:
+            _require(type(dialogs['valid']) is bool and type(dialogs['truncated']) is bool
+                     and isinstance(dialogs['items'], list), 'bad_dialog_inventory')
+            for dialog in dialogs['items']:
+                _require(dialog['class_id'] in (0x23, 0x25, 0x30, 0x59, 0x6A)
+                         and all(dialog[key] is not None for key in _DIALOG), 'dialog_unbound')
+            _unique(dialogs['items'], 'instance_token')
+            _unique(dialogs['items'], 'root_token')
         if snapshot["scene"] == 3:
             _require(snapshot["town"] is None, "stale_dungeon_town")
-        else:
+        elif snapshot["scene"] == 1:
             town, me = snapshot["town"], snapshot["me"]
             _require(town is not None and me is not None, "town_unbound")
             _require(_integer(town["town_id"], 0, (1 << 31) - 1)
@@ -233,6 +265,10 @@ def _validate(snapshot):
             for player in snapshot["players"] + [me]:
                 _require(all(player[key] is None for key in ("hp", "max_hp", "mp", "max_mp", "dead")),
                          "unproven_town_combat")
+        else:
+            _require(snapshot["town"] is None and snapshot["room"] is None and snapshot["me"] is None
+                     and not snapshot["players"] and not snapshot["enemies"] and not snapshot["skills"]
+                     and not any(caps.values()), "stale_selector_world_payload")
     elif snapshot["scene"] == 1:
         _require(snapshot["room"] is None and snapshot["me"] is None
                  and not snapshot["players"] and not snapshot["enemies"]
@@ -290,7 +326,8 @@ def get_known_field(snapshot, dotted_path):
     _require(isinstance(snapshot, dict), "bad_root")
     _require(snapshot.get("layout_supported") is True and snapshot.get("valid") is True
              and snapshot.get("truncated") is False
-             and type(snapshot.get("scene")) is int and snapshot["scene"] in (1, 3),
+             and type(snapshot.get("scene")) is int and (snapshot["scene"] in (1, 3)
+                  or snapshot.get("schema") == SCHEMA_V2 and snapshot["scene"] == 2),
              "incomplete_snapshot")
     if not isinstance(dotted_path, str) or _PATH.fullmatch(dotted_path) is None \
             or any(part.startswith("__") for part in dotted_path.split(".")):
@@ -307,6 +344,14 @@ def get_known_field(snapshot, dotted_path):
             raise UnknownFieldError(dotted_path, "skill_actor_unbound")
     if parts[0] in ("town", "ui") and snapshot.get("schema") != SCHEMA_V2:
         raise UnknownFieldError(dotted_path, "unsupported")
+    if parts[:3] == ['ui', 'dialogs', 'items']:
+        inventory = snapshot.get('ui', {}).get('dialogs') or {}
+        if inventory.get('valid') is not True or inventory.get('truncated') is not False:
+            raise UnknownFieldError(dotted_path, 'incomplete_dialog_inventory')
+    if parts[:2] == ['ui', 'dungeon_selector'] and len(parts) > 2 and parts[2] in _SELECTOR_EXTRA:
+        selector = snapshot.get('ui', {}).get('dungeon_selector') or {}
+        if snapshot.get('scene') != 2 or selector.get('instance_token') is None:
+            raise UnknownFieldError(dotted_path, 'selector_unbound')
     if parts[:2] == ["ui", "player_menu"] and len(parts) > 2 \
             and parts[2] in ("target_uid", "action_ids") \
             and snapshot.get("ui", {}).get("player_menu", {}).get("visible") is not True:

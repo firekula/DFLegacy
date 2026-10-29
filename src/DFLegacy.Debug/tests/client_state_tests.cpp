@@ -25,6 +25,8 @@ namespace
         bool layout = true, changeActorAtEnd = false, changeTownAreaAtEnd = false, changeMenuTargetAtEnd = false, changeMenuAtEnd = false;
         bool readWrappedAddress = false, readNullMirrorAddress = false;
         bool changeSkillAtEnd = false;unsigned skillSlotReads = 0;
+        bool changeSelectorAtEnd = false;unsigned selectorReads = 0;
+        bool changeSelectorIndex = false;unsigned selectorIndexReads = 0;
         std::uint64_t utc = 123456789000ULL, tick = 1000, counter = 5;
         std::uint32_t index = 0, readCount = 0, townAreaReads = 0, menuTargetReads = 0, menuReads = 0;
         static constexpr std::uint32_t Key = 0x12345678, Manager = 0x01002000;
@@ -62,6 +64,25 @@ namespace
             U32(0x044001BC,0);U32(0x044001C0,0);U32(0x044001CC,0);U32(0x044001D0,0);
             U32(Actor+0x1E7C,0x09110000);U32(Actor+0x1E80,0);U32(0x09110000,0x09110000);U32(0x09110004,0x09110000);
             for(unsigned i=0;i<23;++i){U32(Actor+0x13C4+i*4,0);U32(Actor+0x1FCC+i*4,0);}
+        }
+        void Selector()
+        {
+            Town();SetScene(2);U32(0x99A5BC,0x8A2A20);U32(0x99A5C0,0x8A0EB0);
+            Put<unsigned char>(0x01090100,0);U32(0x010901A0,1);U32(0x01090068,0);Secure(0x01090144,0);
+            U32(0x010901F4,0x09C00000);U32(0x010901F8,0x09C00020);U32(0x010901FC,0x09C00020);
+            U32(0x09C00000,1);U32(0x09C00004,0);U32(0x09C00008,3);U32(0x09C00010,31);U32(0x09C00014,2);U32(0x09C00018,3);
+            Put<std::int32_t>(0x01090200,1);Put<std::int32_t>(0x01090204,0);
+        }
+        void Dialog()
+        {
+            constexpr std::uint32_t ui=0x01050000,window=0x09A00000,root=0x09B00000;
+            U32(0xB5DCE8,ui);
+            for(auto type:{0x23U,0x25U,0x30U,0x59U,0x6AU}){U32(ui+0xD8+type*16,0);U32(ui+0xDC+type*16,0);U32(ui+0xE0+type*16,0);}
+            U32(ui+0xEF8,0);U32(ui+0xEFC,0);U32(ui+0xF00,0);
+            U32(ui+0xD8+0x59*16,0x09A10000);U32(ui+0xDC+0x59*16,0x09A10004);U32(ui+0xE0+0x59*16,0x09A10004);U32(0x09A10000,window);
+            U32(window,0xA7EA5C);U32(0xA7EA88,0x7BF640);U32(0xA7EA8C,0x7BF650);
+            U32(window+4,0x59);U32(window+8,root);U32(window+0x10,ui);U32(root,0xA7E09C);U32(root+0x44,window);
+            Put<unsigned char>(root+0x10,1);Put<unsigned char>(root+0x11,1);
         }
         void PlayerAt(std::uint32_t actor, std::uint32_t uid)
         {
@@ -123,6 +144,8 @@ namespace
         static bool Read(void* context, std::uint32_t address, void* output, std::size_t size) noexcept
         {
             auto& self = *static_cast<Memory*>(context); ++self.readCount;
+            if(self.changeSelectorAtEnd&&address==0x01000020&&++self.selectorReads==3)self.U32(address,0x010A0000);
+            if(self.changeSelectorIndex&&address==0x01090200&&++self.selectorIndexReads==3)self.U32(address,0);
             if(self.changeSkillAtEnd&&address==Actor+0x1AEC+20*4&&++self.skillSlotReads==2)self.U32(address,0x04410000);
             if (address == 0x00010010) self.readWrappedAddress = true;
             if (address == 0x00010004) self.readNullMirrorAddress = true;
@@ -185,7 +208,7 @@ static void RunTownStateTests()
     Check(ToJson(inactiveAutoMove, 0).find("\"auto_move_active\":false") != std::string::npos,
           "native auto-move flag zero is explicit inactive");
     Check(townJson.find("\"town_minimap\":{\"visible\":true,\"enabled\":true}") != std::string::npos
-          && townJson.find("\"dungeon_selector\":{\"visible\":null,\"active_raw\":1,\"selected\":3,\"hover\":4}") != std::string::npos
+          && townJson.find("\"dungeon_selector\":{\"visible\":null,\"active_raw\":1,\"selected\":3,\"hover\":4,") != std::string::npos
           && townJson.find("\"countdown\":{\"state_raw\":2}") != std::string::npos,
           "UI distinguishes raw selector/countdown state from proven visibility");
     wchar_t townFixturePath[MAX_PATH]{};
@@ -486,6 +509,73 @@ static int RunDungeonAndExportTests()
 
 int RunClientStateTests()
 {
+    {
+        Memory m;m.Selector();History h;Snapshot s;Capture(m.Make(),h,s);
+        Check(s.valid&&s.scene.value==2&&!s.haveMe&&!s.room.present&&!s.town.present&&s.playerCount==0,"selector observation never exposes stale town or combat actors");
+        auto text=ToJson(s,0);Check(text.find("\"selected_dungeon_id\":31,\"difficulty_raw\":2")!=std::string::npos,"selector record index maps to actual dungeon ID and difficulty");
+        m.Put<unsigned char>(0x01090100,1);m.U32(0x010901A0,3);m.U32(0x01090068,Memory::Stage);Capture(m.Make(),h,s);text=ToJson(s,0);
+        Check(s.valid&&!s.room.present&&text.find("\"transition_pending\":true")!=std::string::npos&&text.find("\"phase_raw\":3")!=std::string::npos,"scene2 can retain loading-stage metadata without claiming dungeon capture");
+        m.Put<std::int32_t>(0x01090200,-1);Capture(m.Make(),h,s);Check(ToJson(s,0).find("\"selected_dungeon_id\":null")!=std::string::npos,"unselected state does not silently choose the first dungeon");
+        m.Put<std::int32_t>(0x01090200,5);Capture(m.Make(),h,s);Check(ToJson(s,0).find("\"selected_dungeon_id\":null")!=std::string::npos,"out-of-range selection cannot project another row");
+        m.changeSelectorAtEnd=true;m.selectorReads=0;Capture(m.Make(),h,s);Check(!s.valid,"selector replacement during capture invalidates scene2 identity");
+    }
+    {
+        Memory m;m.Dialog();History h;Snapshot s;Capture(m.Make(),h,s);auto text=ToJson(s,0);
+        Check(text.find("\"dialogs\":{\"valid\":true,\"truncated\":false,\"items\":[{\"class_id\":89")!=std::string::npos,"recognized registered native dialog is observed through active bank only");
+        m.Put<unsigned char>(0x09B00010,0);Capture(m.Make(),h,s);Check(ToJson(s,0).find("\"shown_raw\":false")!=std::string::npos,"native hidden flag is not mistaken for rendered visibility");
+        m.U32(0x01050EF8,0x09D00000);m.U32(0x01050EFC,0x09D00004);m.U32(0x01050F00,0x09D00004);m.U32(0x09D00000,0x09A00000);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"dialogs\":{\"valid\":true,\"truncated\":false,\"items\":[]}")!=std::string::npos,"queued-close objects are excluded before active-bank removal");
+        m.U32(0x01050EF8,0);m.U32(0x01050EFC,0);m.U32(0x01050F00,0);m.U32(0x09B00044,0);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"dialogs\":{\"valid\":false")!=std::string::npos,"broken root ownership means unknown dialogs rather than known empty");
+    }
+    {
+        Memory m;m.Dialog();History h;Snapshot s;
+        m.U32(0x09A00004,0x30);Capture(m.Make(),h,s);
+        Check(!s.ui.dialogs.valid&&s.ui.dialogs.count==0,"dialog class must match registered bucket");
+        m.U32(0x09A00004,0x59);m.U32(0x09A00000,0xA7E044);Capture(m.Make(),h,s);
+        Check(!s.ui.dialogs.valid,"unrecognized dialog derivative remains unknown");
+        m.U32(0x09A00000,0xA7EA5C);m.Put<unsigned char>(0x09B00011,0);Capture(m.Make(),h,s);
+        Check(s.ui.dialogs.valid&&s.ui.dialogs.count==1&&!s.ui.dialogs.items[0].inputEnabledRaw,"disabled root is explicit raw false");
+        const auto header=0x01050000+0xD8+0x59*16;
+        m.U32(header+4,0x09A10008);m.U32(header+8,0x09A10008);m.U32(0x09A10004,0x09A00000);Capture(m.Make(),h,s);
+        Check(!s.ui.dialogs.valid&&s.ui.dialogs.count==0,"duplicate registration does not publish a partial inventory");
+        m.U32(header+4,0x09A10104);m.U32(header+8,0x09A10104);Capture(m.Make(),h,s);
+        Check(!s.ui.dialogs.valid&&s.ui.dialogs.truncated,"oversize active bank is explicitly incomplete");
+        m.U32(header,0);m.U32(header+4,0);m.U32(header+8,0);
+        const auto pool=0x01050000+0x7E8+0x59*16;
+        m.U32(pool,0x09A10000);m.U32(pool+4,0x09A10004);m.U32(pool+8,0x09A10004);Capture(m.Make(),h,s);
+        Check(s.ui.dialogs.valid&&s.ui.dialogs.count==0,"pooled windows are never registered active dialogs");
+        m.U32(header,0x09A10000);m.U32(header+4,0x09A10002);m.U32(header+8,0x09A10004);Capture(m.Make(),h,s);
+        Check(!s.ui.dialogs.valid,"unaligned vector length is unknown");
+    }
+    {
+        constexpr std::uint32_t classes[]={0x23,0x25,0x30,0x59,0x6A};
+        constexpr std::uint32_t tables[]={0xA7E254,0xA7E2F4,0xA7E434,0xA7EA5C,0xA7F4C4};
+        for(std::size_t i=0;i<5;++i)
+        {
+            Memory m;m.Dialog();History h;Snapshot s;
+            const auto old=0x01050000+0xD8+0x59*16;
+            m.U32(old,0);m.U32(old+4,0);m.U32(old+8,0);
+            const auto header=0x01050000+0xD8+classes[i]*16;
+            m.U32(header,0x09A10000);m.U32(header+4,0x09A10004);m.U32(header+8,0x09A10004);
+            m.U32(0x09A00000,tables[i]);m.U32(0x09A00004,classes[i]);
+            m.U32(tables[i]+0x2C,0x7BF640);m.U32(tables[i]+0x30,0x7BF650);
+            Capture(m.Make(),h,s);
+            Check(s.ui.dialogs.valid&&s.ui.dialogs.count==1&&s.ui.dialogs.items[0].classId==classes[i],"each exact allowlisted native window class is observed");
+        }
+    }
+    {
+        Memory m;m.Selector();History h;Snapshot s;
+        m.changeSelectorIndex=true;Capture(m.Make(),h,s);
+        Check(!s.valid,"selector projection and legacy index cannot describe different selections");
+    }
+    {
+        Memory m;m.Selector();History h;Snapshot s;
+        m.U32(0x010901F8,0x09C00021);Capture(m.Make(),h,s);
+        Check(!s.valid&&!s.ui.selector.dungeonId.known,"malformed selector vector cannot expose a projection");
+        m.U32(0x010901F8,0x09C00020);m.U32(0x010901FC,0x09C00010);Capture(m.Make(),h,s);
+        Check(!s.valid,"selector capacity before end fails closed");
+    }
     {
         Memory m;m.SkillTimer(9000);m.SkillResources();History h;Snapshot s;
         m.U32(Memory::Vtable+0x54C,0x498D90);m.U32(Memory::Vtable+0x4DC,0x494410);

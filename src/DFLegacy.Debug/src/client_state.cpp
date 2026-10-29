@@ -10,6 +10,7 @@
 #include <limits>
 #include "client_state.h"
 #include "client_skill_state.h"
+#include "client_ui_state.h"
 
 namespace dfl::client_state
 {
@@ -202,6 +203,7 @@ namespace dfl::client_state
         }
         void UiState(Reads& r, Snapshot& s, std::uint32_t game) noexcept
         {
+            if (s.scene.known && s.scene.value == 2) ui_detail::Selection(r, s.ui, game);
             std::uint32_t ui = 0, object = 0, table = 0, panel = 0, repeated = 0;
             if (r.ReadAt(game, 0x20, object) && object && r.Read(object, table) && table == 0x99A5B8)
             {
@@ -214,6 +216,7 @@ namespace dfl::client_state
             }
             if (!r.Read(0xB5DCE8, ui) || !ui) return;
             Ui candidate = s.ui; std::int32_t mode = 0;
+            candidate.dialogs = ui_detail::Inventory(r, ui);
             if (r.ReadAt(ui, 0xFC4, mode)) candidate.selectionMode = {true, mode};
             if (r.ReadAt(ui, 0xF08, object) && object && r.Read(object, table) && table == 0xA7CF2C)
             {
@@ -495,6 +498,19 @@ namespace dfl::client_state
         output.scene = {true, scene};
         UiState(r, output, game);
         if (scene == 1) { output.valid = TownState(r, output, game); return finish(); }
+        if (scene == 2)
+        {
+            std::uint32_t final = 0;
+            output.valid = ui_detail::StableSelection(r, output.ui, game)
+                && r.Read(0xB5D6F0, final) && final == game
+                && r.SecureAt(game, 0x10, final) && final == scene
+                && r.ReadAt(game, 0x20, final) && final == output.ui.selector.instanceToken
+                && r.Read(final, final) && final == 0x99A5B8
+                && r.Read(0xCFD458, final) && final == r.manager
+                && r.Read(0xCFD45C, final) && final == r.key;
+            if (!output.valid) Error(output, "identity_changed_during_capture");
+            return finish();
+        }
         if (scene != 3) { output.valid = true; return finish(); }
         std::uint32_t stage = 0, map = 0, actor = 0, uid = 0;
         if (!r.Read(0xB5DCE0, ui) || !ui || !r.ReadAt(ui, 0x200010, stage) || !stage
