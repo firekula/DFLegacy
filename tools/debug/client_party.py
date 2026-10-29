@@ -112,8 +112,14 @@ def parse_request(raw):
 
 
 def _read(path):
-    try: return nav._read_json(path)
-    except nav.NavigationError as error: raise PartyError(error.code) from error
+    for attempt in range(6):
+        try: return nav._read_json(path)
+        except nav.NavigationError as error:
+            if error.code != "unreadable_response" or attempt == 5:
+                raise PartyError(error.code) from error
+            # Native replacement can briefly deny a Windows read. Retry observation
+            # only: the command may already have been sent and must not be replayed.
+            time.sleep(.01)
 
 
 def read_status(directory, *, pid, uid=None, process_started_filetime=None, now_tick_ms=None):

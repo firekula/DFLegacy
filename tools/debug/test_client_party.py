@@ -125,5 +125,29 @@ class PartyTests(unittest.TestCase):
             self.assertFalse((root / "dfdebug-party-7.bin").exists())
             self.assertFalse(lock.exists())
 
+    def test_result_sharing_conflict_retries_read_without_resending(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "dfdebug-party-7.json").write_text(json.dumps(status()), encoding="utf-8")
+            attempts, writes = [], []
+            original_read = party.nav._read_json
+            def read(path):
+                if path.name.endswith(".result.json"):
+                    attempts.append(path.name)
+                    if len(attempts) == 1: raise party.nav.NavigationError("unreadable_response")
+                return original_read(path)
+            def native_reply(path, raw):
+                writes.append(path.name); path.write_bytes(raw)
+                request = party.parse_request(raw)
+                result = {key: request[key] for key in party.MATCH}
+                for key in party.TOKENS: result[key] = f"0x{result[key]:08X}"
+                result.update(schema=party.RESULT_SCHEMA, status="dispatched", reason="native_request_sent", tick_ms=1110)
+                (root / "dfdebug-party-7.result.json").write_text(json.dumps(result), encoding="utf-8")
+            with patch.object(party.state, "now_tick_ms", return_value=1110), patch.object(party.nav, "_read_json", read), patch.object(party.nav, "_atomic_write", native_reply):
+                value = party.execute(directory, pid=7, operation="request", target_uid=1)
+            self.assertEqual(value["status"], "dispatched")
+            self.assertEqual(len(attempts), 2)
+            self.assertEqual(len(writes), 1)
+
 
 if __name__ == "__main__": unittest.main()
