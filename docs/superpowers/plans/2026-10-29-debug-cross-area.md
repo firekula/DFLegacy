@@ -42,11 +42,11 @@
 
 - [x] Tests first with transport snapshots/receipts: accepted-before-arrived, expected generation transition, transient loading, wrong area/identity, manual destination override, controller lock and timeout.
 - [x] Implement a file session holding the same native navigation lock for the entire route, plus a pure route runner and CLI accepting final town/area/x/y and actual PVF.
-- [x] Keep old navigation API unchanged; 140 pytest debug tests/134 subtests GREEN; independent source review B3DE0E76 no remaining P1/P2. Full-repository pytest also attempted: existing ledger12-vs23 assertions and live-port binding failures retained separately, not reported as GREEN. Scoped consumer frozen before native acceptance.
+- [x] Keep old navigation API unchanged; final152 pytest debug tests/134 subtests GREEN; independent source review CFE6B98B no remaining P1/P2. Fresh-send200ms budget and explicit pre-dispatch expiry renewal added from native evidence; accepted/unknown requests never renewed. Full-repository pytest:450 passed,182 subtests,6 known baseline failures (three ledger12-vs23 assertions; three Windows excluded-port2311 bindings), retained separately. Scoped consumer commit8ba4b88 frozen before final native acceptance.
 
 ### Task 3: Native acceptance and handoff
 
 - [x] Single existing native destination automatically crossed1/0→1/1; old consumer returnedcontext_changed (RED).
-- [ ] One final goal command per run: A/B multi-area forward and reverse, final position/direction, receipt/context history and request count. Include a concave passage and natural interruption, no manual travel inputs in positive runs.
-- [ ] Preserve key native screenshots and public summary; update U06 only to evidence scope.
-- [ ] Stop only owned processes, restore configurations/input files, verify protected inputs; then resume U04 from preserved stage.
+- [x] One final goal command per run: A/B multi-area forward and reverse, final position/direction, receipt/context history and request count. Four final natural runs cross4 portals each,13 internal native requests, zero manual travel inputs. Direction-key interruption stops continuation; controlled consumer write delay produces a real expired rejection, one fresh-ID renewal and final arrival.
+- [x] Preserve five original native screenshots and public summary; U06 scoped to two towns/five areas. See knowledge/decisions/2026-10-29-debug-cross-area-verification.md.
+- [x] Stop only exact journal-owned processes; archive V phase, restore2 normal configs/8 input files, verify15 protected inputs,50 normal entry files with approved native lineage,4+4 DLLs and6 frozen consumer files. U04 remains the next restoration/acceptance task, not marked complete by this delivery.

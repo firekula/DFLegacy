@@ -24,6 +24,10 @@ compose.yaml text eol=lf
 /knowledge/decisions/assets/2026-10-29-debug-town-navigation/** -text whitespace=cr-at-eol
 /knowledge/decisions/assets/2026-10-29-debug-party-commands/** -text whitespace=cr-at-eol
 /knowledge/decisions/assets/2026-10-29-dungeon-tooltip/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-29-debug-cross-area/** -text whitespace=cr-at-eol
+# 原始 pytest/netsh 输出含尾部空格，保留验收原字节。
+/knowledge/decisions/assets/2026-10-29-debug-cross-area/tests/*.log whitespace=-blank-at-eol,cr-at-eol
+/knowledge/decisions/assets/2026-10-29-debug-cross-area/tests/excluded-tcp-ports.txt whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 # 两份发布时快照被历史清单按字节引用，保留其原始换行。
 /knowledge/decisions/2026-10-28-creature-gift-unclaimed-at-publication.md -text whitespace=cr-at-eol
 /knowledge/decisions/2026-10-28-creature-gift-final-at-publication.md -text whitespace=cr-at-eol
