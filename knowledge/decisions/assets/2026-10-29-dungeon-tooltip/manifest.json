@@ -1,0 +1,46 @@
+{
+  "Schema": "original-evidence-files/v1",
+  "Files": [
+    {
+      "File": "01-red-hover.jpg",
+      "Bytes": 319347,
+      "Sha256": "789B6322FA53332216BC2690DE3676E171C1182B96D8DD600850632587E726E8",
+      "Original": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-red\\u01-red-leader-continuous-open-hover.jpg"
+    },
+    {
+      "File": "02-red-timeout.jpg",
+      "Bytes": 448507,
+      "Sha256": "1CF93A650B33971B678EF6BFD57ABF423101D71062E9F94E97CE69371F448481",
+      "Original": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-red\\u01-red-leader-continuous-after-timeout.jpg"
+    },
+    {
+      "File": "03-A-hover.jpg",
+      "Bytes": 318580,
+      "Sha256": "71AB0F3DCE47CCF77FF1D51E904F9B458EE59A44BB71BBE2222678C3075667F8",
+      "Original": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-green-A\\u01-green-A-leader-timeout-valid-open-hover.jpg"
+    },
+    {
+      "File": "04-A-timeout.jpg",
+      "Bytes": 438812,
+      "Sha256": "28116CE6926F48393AC1402DFD1759C3F9BC86131B367678FC7F9AB8516A044F",
+      "Original": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-green-A\\u01-green-A-leader-timeout-valid-after-timeout.jpg"
+    },
+    {
+      "File": "05-B-hover.jpg",
+      "Bytes": 315181,
+      "Sha256": "16FDA94420A453ABE1AFE5BB5A177D74A48E25EF7915DD3E8E75526CD04EC37C",
+      "Original": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-green-B\\u01-green-B-leader-timeout-open-hover.jpg"
+    },
+    {
+      "File": "06-B-timeout.jpg",
+      "Bytes": 438520,
+      "Sha256": "483A1204DD82C446DF77A127F7A6706535427796C07598432D49389B98AB6CDE",
+      "Original": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-green-B\\u01-green-B-leader-timeout-after-timeout.jpg"
+    },
+    {
+      "File": "summary.json",
+      "Bytes": 5711,
+      "Sha256": "E628A54F3BE2D494C5F0DCD010BE9AD79AB92E8E5392B74EFFB42CB1B4E0D142"
+    }
+  ]
+}
