@@ -277,11 +277,12 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
                 if accepted_tick is None: accepted_tick = receipt["tick_ms"]
             try:
                 current = capture()
+                loading_began = None
             except (nav.NavigationError, state.SnapshotError) as error:
                 if error.code not in ("invalid_capture", "stale", "unreadable_json"):
                     raise
                 if loading_began is None: loading_began = clock()
-                _require(next_area is not None and clock()-loading_began <= 5, error.code)
+                _require(clock()-loading_began <= 5, error.code)
                 sleep(.04)
                 continue
             changed_area = _area(current) != _area(source)

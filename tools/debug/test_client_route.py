@@ -158,6 +158,36 @@ class ClientRouteTests(unittest.TestCase):
         self.assertGreaterEqual(self.clock(), 5)
         self.assertLess(self.clock(), 6)
 
+    def test_owned_same_area_leg_waits_for_transient_stale_without_resending(self):
+        from tools.debug.client_navigation import NavigationError
+        transport = Transport(snapshot(), [[NavigationError("stale"), snapshot(x=120, y=35)]])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(transport.sent, [(0, 120, 35)])
+        self.assertGreaterEqual(self.clock(), .04)
+
+    def test_owned_same_area_leg_snapshot_gap_still_expires(self):
+        from tools.debug.client_navigation import NavigationError
+        transport = Transport(snapshot(), [[NavigationError("stale")] * 200])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=10)
+        self.assertEqual(result["reason"], "stale")
+        self.assertEqual(transport.sent, [(0, 120, 35)])
+        self.assertGreaterEqual(self.clock(), 5)
+        self.assertLess(self.clock(), 6)
+
+    def test_character_replacement_after_a_short_gap_cannot_continue(self):
+        from tools.debug.client_navigation import NavigationError
+        changed = snapshot(x=120, y=35)
+        changed["me"]["actor_token"] = "0x19999990"
+        changed["players"] = [deepcopy(changed["me"])]
+        transport = Transport(snapshot(), [[NavigationError("stale"), changed]])
+        result = self.api.run_route(Catalog(), transport, town_id=1, area_id=0, x=120, y=35,
+                                    clock=self.clock, sleep=self.clock.sleep, timeout_seconds=2)
+        self.assertEqual(result["reason"], "identity_changed")
+        self.assertEqual(transport.sent, [(0, 120, 35)])
+
     def test_same_uid_with_replaced_character_binding_cannot_inherit_route(self):
         for field in ("user_token", "actor_token"):
             bad = snapshot(1, 2, 15, 20)
