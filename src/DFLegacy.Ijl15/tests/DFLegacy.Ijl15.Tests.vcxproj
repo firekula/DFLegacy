@@ -118,6 +118,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\auto_input.cpp" />
+    <ClCompile Include="auto_input_drag_tests.cpp" />
     <ClCompile Include="..\src\external_string_table.cpp" />
     <ClCompile Include="..\src\ijl15_config.cpp" />
     <ClCompile Include="..\src\memory_patch.cpp" />

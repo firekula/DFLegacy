@@ -164,6 +164,7 @@ if(BUILD_TESTING)
         src/party_card_display.cpp
         src/party_card_display.h
         tests/party_card_display_tests.cpp
+        tests/auto_input_drag_tests.cpp
         tests/ijl15_tests.cpp)
     target_compile_options(ijl15_tests PRIVATE /W4 /WX /permissive- /EHsc)
     target_include_directories(ijl15_tests PRIVATE include src)

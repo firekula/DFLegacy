@@ -53,6 +53,7 @@ namespace dfl::auto_input
     {
         constexpr int kLogCapacity = 64;
         constexpr unsigned kTextSpacingMs = 40;  // brief: text downs >= 40 ms apart
+        constexpr unsigned kDragStageSpacingMs = 16;
         constexpr long long kMaxPlanBytes = 1024 * 1024;
 
         enum class Phase
@@ -73,8 +74,9 @@ namespace dfl::auto_input
         // the rest of the session.
         struct TimelineGuard
         {
-            TimelineGuard() noexcept { g_inTimeline = true; }
-            ~TimelineGuard() noexcept { g_inTimeline = false; }
+            bool previous;
+            TimelineGuard() noexcept : previous(g_inTimeline) { g_inTimeline = true; }
+            ~TimelineGuard() noexcept { g_inTimeline = previous; }
         };
         Step g_plan[kMaxSteps];
         int g_count = 0;
@@ -88,6 +90,12 @@ namespace dfl::auto_input
 
         bool g_downDone[kMaxSteps] = {};
         bool g_upDone[kMaxSteps] = {};   // key/click: up fired; move: the move fired
+        bool g_dragMoveDone[kMaxSteps] = {};
+        unsigned g_dragStageTick[kMaxSteps] = {};
+        bool g_mouseLeftDown = false;
+        bool g_mouseRightDown = false;
+        int g_mouseX = 0;
+        int g_mouseY = 0;
         int g_textDowns[kMaxSteps] = {};
         int g_textUps[kMaxSteps] = {};
         unsigned char g_textVk[kMaxSteps][64] = {};  // per-char VK codes; 0 = no key
@@ -100,12 +108,18 @@ namespace dfl::auto_input
         int g_logHead = 0;
         int g_logTotal = 0;
 
-        void LogPrimitive(int kind, unsigned vk, int x, int y)
+        unsigned NativeMouseButtons() noexcept
+        {
+            return (g_mouseLeftDown ? 1u : 0u) | (g_mouseRightDown ? 2u : 0u);
+        }
+
+        void LogPrimitive(int kind, unsigned vk, int x, int y, unsigned buttons)
         {
             g_log[g_logHead].op = kind;
             g_log[g_logHead].vk = vk;
             g_log[g_logHead].x = x;
             g_log[g_logHead].y = y;
+            g_log[g_logHead].buttons = buttons;
             g_logHead = (g_logHead + 1) % kLogCapacity;
             ++g_logTotal;
         }
@@ -329,17 +343,9 @@ namespace dfl::auto_input
         void InjectMouse(int msg, int x, int y) noexcept
         {
             const auto fn = reinterpret_cast<NativeMouseInputFn>(kNativeMouseInput);
-            // wParam carries the button mask only while that button is down.
-            int buttons = 0;
-            if (msg == 0x201)      // WM_LBUTTONDOWN
-            {
-                buttons = 1;       // MK_LBUTTON
-            }
-            else if (msg == 0x204) // WM_RBUTTONDOWN
-            {
-                buttons = 2;       // MK_RBUTTON
-            }
-            fn(msg, buttons, PackMouseLParam(x, y));
+            // WM_MOUSEMOVE must retain MK_LBUTTON during a drag. EmitMouse
+            // updates the synthetic button state before entering this native path.
+            fn(msg, static_cast<int>(NativeMouseButtons()), PackMouseLParam(x, y));
         }
 
         // Movement and text keys reach the game through its window message
@@ -1456,9 +1462,15 @@ namespace dfl::auto_input
         // primitives stay observable in the log.
         void EmitMouse(int kind, int x, int y) noexcept
         {
+            g_mouseX = x;
+            g_mouseY = y;
+            if (kind == kMouseDown) g_mouseLeftDown = true;
+            else if (kind == kMouseUp) g_mouseLeftDown = false;
+            else if (kind == kMouseRightDown) g_mouseRightDown = true;
+            else if (kind == kMouseRightUp) g_mouseRightDown = false;
             if (!g_mouseInjectEnabled)
             {
-                LogPrimitive(kind, 0, x, y);
+                LogPrimitive(kind, 0, x, y, NativeMouseButtons());
                 return;
             }
             int msg = 0;
@@ -1487,6 +1499,25 @@ namespace dfl::auto_input
                 return;
             }
             InjectMouse(msg, x, y);
+        }
+
+        void CancelPlan() noexcept
+        {
+            const TimelineGuard guard;
+            g_phase = Phase::Idle;
+            g_count = 0;
+            g_fromFile = false;
+            if (g_mouseLeftDown) EmitMouse(kMouseUp, g_mouseX, g_mouseY);
+            if (g_mouseRightDown) EmitMouse(kMouseRightUp, g_mouseX, g_mouseY);
+            for (unsigned vk = 0; vk < 256; ++vk)
+            {
+                if (g_synthDown[vk])
+                {
+                    g_synthDown[vk] = false;
+                    EmitKey(WM_KEYUP, vk);
+                }
+            }
+            SynthClear();
         }
 
         // ------------------------------------------------------------------
@@ -1594,7 +1625,7 @@ namespace dfl::auto_input
         {
             // The opening '{' is already consumed. t and op are mandatory;
             // every key is allowed once; unknown keys are rejected.
-            bool seen[7] = {};  // t, op, vk, x, y, dur, chars
+            bool seen[9] = {};  // t, op, vk, x, y, dur, chars, x2, y2
             SkipWs(p);
             if (*p == '}')
             {
@@ -1626,6 +1657,8 @@ namespace dfl::auto_input
                 else if (std::strcmp(key, "y") == 0) slot = 4;
                 else if (std::strcmp(key, "dur") == 0) slot = 5;
                 else if (std::strcmp(key, "chars") == 0) slot = 6;
+                else if (std::strcmp(key, "x2") == 0) slot = 7;
+                else if (std::strcmp(key, "y2") == 0) slot = 8;
                 else return false;  // unknown step key
                 if (seen[slot])
                 {
@@ -1648,7 +1681,8 @@ namespace dfl::auto_input
                     }
                     if (std::strcmp(word, "key") == 0) step.op = kKey;
                     else if (std::strcmp(word, "click") == 0) step.op = kClick;
-            else if (std::strcmp(word, "rclick") == 0) step.op = kRClick;
+                    else if (std::strcmp(word, "rclick") == 0) step.op = kRClick;
+                    else if (std::strcmp(word, "drag") == 0) step.op = kDrag;
                     else if (std::strcmp(word, "move") == 0) step.op = kMove;
                     else if (std::strcmp(word, "text") == 0) step.op = kText;
                     else return false;
@@ -1680,7 +1714,9 @@ namespace dfl::auto_input
                     else if (slot == 2) step.vk = static_cast<unsigned>(value);
                     else if (slot == 3) step.x = static_cast<int>(value);
                     else if (slot == 4) step.y = static_cast<int>(value);
-                    else step.dur = static_cast<int>(value);
+                    else if (slot == 5) step.dur = static_cast<int>(value);
+                    else if (slot == 7) step.x2 = static_cast<int>(value);
+                    else if (slot == 8) step.y2 = static_cast<int>(value);
                 }
 
                 SkipWs(p);
@@ -1697,7 +1733,10 @@ namespace dfl::auto_input
                 }
                 return false;
             }
-            return seen[0] && seen[1];  // t and op are mandatory
+            if (!seen[0] || !seen[1]) return false;
+            if (step.op == kDrag)
+                return seen[3] && seen[4] && seen[7] && seen[8] && !seen[2] && !seen[6];
+            return !seen[7] && !seen[8];
         }
 
         bool ParseStepsArray(const char*& p, Step* out, int cap, int& count)
@@ -2058,6 +2097,9 @@ namespace dfl::auto_input
 
     void Restore() noexcept
     {
+        // Release through NativeMouseInput while it is still enabled, before
+        // unhooking/disabling the input bridge. Stop the old timeline first.
+        CancelPlan();
         if (g_focusMailboxTimer != 0)
         {
             KillTimer(nullptr, g_focusMailboxTimer);
@@ -2408,6 +2450,24 @@ namespace dfl::auto_input
                     EmitMouse(step.op == kRClick ? kMouseRightUp : kMouseUp, step.x, step.y);
                 }
             }
+            else if (step.op == kDrag)
+            {
+                if (!g_downDone[i] || g_upDone[i]
+                    || nowMs - g_dragStageTick[i] < kDragStageSpacingMs) continue;
+                if (!g_dragMoveDone[i]
+                    && elapsed >= static_cast<unsigned>(step.t) + static_cast<unsigned>(step.dur) / 2u)
+                {
+                    g_dragMoveDone[i] = true;
+                    g_dragStageTick[i] = nowMs;
+                    EmitMouse(kMouseMove, step.x2, step.y2);
+                }
+                else if (g_dragMoveDone[i]
+                    && elapsed >= static_cast<unsigned>(step.t) + static_cast<unsigned>(step.dur))
+                {
+                    g_upDone[i] = true;
+                    EmitMouse(kMouseUp, step.x2, step.y2);
+                }
+            }
             else  // kMove: the move is this step's single primitive
             {
                 if (!g_upDone[i] && elapsed >= static_cast<unsigned>(step.t))
@@ -2468,11 +2528,12 @@ namespace dfl::auto_input
                     }
                 }
             }
-            else if (step.op == kClick || step.op == kRClick)
+            else if (step.op == kClick || step.op == kRClick || step.op == kDrag)
             {
                 if (!g_downDone[i] && elapsed >= static_cast<unsigned>(step.t))
                 {
                     g_downDone[i] = true;
+                    if (step.op == kDrag) g_dragStageTick[i] = nowMs;
                     EmitMouse(kMouseMove, step.x, step.y);
                     EmitMouse(step.op == kRClick ? kMouseRightDown : kMouseDown, step.x, step.y);
                 }
@@ -2593,6 +2654,7 @@ namespace dfl::auto_input
         CloseHandle(handle);
         if (!ok)
         {
+            CancelPlan();
             return false;
         }
         text[static_cast<size_t>(size.QuadPart)] = '\0';
@@ -2602,6 +2664,7 @@ namespace dfl::auto_input
         int version = 0;
         if (!ParsePlan(text.data(), local, kMaxSteps, &count, &version))
         {
+            CancelPlan();
             return false;  // only a valid plan reaches the armed state
         }
         if (!ArmPlan(local, count, version, GetTickCount()))
@@ -2631,14 +2694,28 @@ namespace dfl::auto_input
     {
         if (steps == nullptr || count < 0 || count > kMaxSteps || version != 1)
         {
+            CancelPlan();
             return false;
         }
+
+        for (int i = 0; i < count; ++i)
+        {
+            if (steps[i].op < kKey || steps[i].op > kDrag || steps[i].t < 0 || steps[i].dur < 0
+                || (steps[i].op == kKey && steps[i].vk > 0xFFFFu))
+            {
+                CancelPlan();
+                return false;
+            }
+        }
+        CancelPlan();
 
         for (int i = 0; i < count; ++i)
         {
             g_plan[i] = steps[i];
             g_downDone[i] = false;
             g_upDone[i] = false;
+            g_dragMoveDone[i] = false;
+            g_dragStageTick[i] = 0;
             g_textDowns[i] = 0;
             g_textUps[i] = 0;
             for (int j = 0; j < 64; ++j)
@@ -2665,6 +2742,8 @@ namespace dfl::auto_input
         {
             g_downDone[i] = false;
             g_upDone[i] = false;
+            g_dragMoveDone[i] = false;
+            g_dragStageTick[i] = 0;
             g_textDowns[i] = 0;
             g_textUps[i] = 0;
         }
