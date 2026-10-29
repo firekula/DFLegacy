@@ -229,6 +229,7 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
     latest_sequence, latest_generation = 0, 0
     bound = None
     previous_request, previous_snapshot = None, None
+    transition_grace_ends = None
 
     def capture():
         nonlocal latest_sequence, latest_generation
@@ -248,7 +249,7 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
         return value
 
     def leg(source, target, next_area=None, require_transition=False):
-        nonlocal current, previous_request, previous_snapshot
+        nonlocal current, previous_request, previous_snapshot, transition_grace_ends
         _require(clock() < deadline, "route_timeout")
         current = source
         _require(len(requests) < 1024, "route_step_limit")
@@ -307,6 +308,8 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
                         if portal_wait_began is None: portal_wait_began = clock()
                         _require(clock()-portal_wait_began < 5, "portal_not_crossed")
             if reached:
+                if changed_area:
+                    transition_grace_ends = clock() + 5
                 history.append(dict(request_id=request["request_id"], target=dict(zip(("x", "y"), target)),
                                     source_area=_area(source), observed_area=_area(current),
                                     source_generation=source["generation"], observed_generation=current["generation"],
@@ -321,17 +324,30 @@ def run_route(catalog, transport, *, town_id, area_id, x, y, timeout_seconds=120
 
     def reach(source, target, next_area=None, selected_portal=None, leaving=()):
         """Replan the next native leg from its fresh actual start, never a prior waypoint."""
-        nonlocal current
+        nonlocal current, transition_grace_ends
         repeats, last_target, last_position = 0, None, None
         while clock() < deadline:
-            if previous_request is not None:
-                transport.check(previous_request)
-                last_receipt = transport.receipt(previous_request)
-                if last_receipt is not None and last_receipt["status"] == "rejected":
-                    raise nav.NavigationError(last_receipt["reason"] or "native_rejected")
-                if last_receipt is not None and last_receipt["status"] == "interrupted":
-                    _require(last_receipt["reason"] == "context_changed", last_receipt["reason"])
-            current = capture()
+            while True:
+                if previous_request is not None:
+                    transport.check(previous_request)
+                    last_receipt = transport.receipt(previous_request)
+                    if last_receipt is not None and last_receipt["status"] == "rejected":
+                        raise nav.NavigationError(last_receipt["reason"] or "native_rejected")
+                    if last_receipt is not None and last_receipt["status"] == "interrupted":
+                        _require(last_receipt["reason"] == "context_changed", last_receipt["reason"])
+                try:
+                    current = capture()
+                    transition_grace_ends = None
+                    break
+                except (nav.NavigationError, state.SnapshotError) as error:
+                    # Some ACT1 loads expose one fresh new-map sample before
+                    # pausing export. Only a proven physical transition grants
+                    # this grace; no stale sample can authorize another send.
+                    if (error.code not in ("invalid_capture", "stale", "unreadable_json")
+                            or transition_grace_ends is None
+                            or clock() >= min(deadline, transition_grace_ends)):
+                        raise
+                    sleep(.04)
             _require(_area(current) == _area(source) and current["generation"] == source["generation"]
                      and current["town"]["map_token"] == source["town"]["map_token"], "unexpected_context")
             if previous_snapshot is not None:

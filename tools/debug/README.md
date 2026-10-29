@@ -174,7 +174,7 @@ Python 中可调用 `client_route.execute_route(directory, pid=pid, uid=uid, sta
 
 路径依据原生地面矩形规划，每段完整包围盒须可通行，并绕开未选中的入口；内部转弯点留出原生坐标取整的停靠余量。出生在返回门内会自动离开再续行。最终目的地不能位于入口或其四像素保守范围。普通城镇路线不以副本入口作为中转，也不绕过任务、等级或其他运输限制。
 
-每段从新鲜实际位置重新规划，绑定 PID/创建时间/UID/user/actor/context，只接纳预期区域、递增代次及新地图。人工方向输入、目的地覆盖、其他控制器接管、身份/地图异常和超时会中断，不会自动重发后续路段。中断或超时不会强制取消已受理的原生移动；本轮支持范围为当前 ACT1 普通城镇地面，动态障碍仍可能导致有界失败。
+每段从新鲜实际位置重新规划，绑定 PID/创建时间/UID/user/actor/context，只接纳预期区域、递增代次及新地图。已确认过图后，下一段若遇到短暂无效或过期采样，最多等待五秒恢复新鲜数据，等待期间不下发移动。观察到人工方向输入、目的地覆盖、其他控制器接管、身份/地图异常和超时会中断，不会自动重发后续路段。中断或超时不会强制取消已受理的原生移动；本轮支持范围为当前 ACT1 普通城镇地面，动态障碍仍可能导致有界失败。
 
 请求wire为96字节、小端，Python `struct` 格式 `<4sHHIIQQQQQQIIIIiiii`：`DLNV`、u16版本1、u16长度96、u32 PID/UID、u64进程FILETIME/requestId/issuedTick/snapshotTick/generation/sequence、u32 actor/map/user/context token、i32 town/area/x/y。请求时效1000ms，引用采样时效750ms，未来时间与重放被拒绝。结果schema为 `dfl-client-navigation/v1`，`source` 区分 debug/minimap，`status` 为 requested/arrived/rejected/interrupted；结果携带身份、目标、位置、时钟与原因，不把写文件成功当作受理。
 

@@ -140,6 +140,24 @@ class ClientRouteTests(unittest.TestCase):
         self.assertEqual(self.run_route(transport)["status"], "arrived")
         self.assertEqual(len(transport.sent), 2)
 
+    def test_proven_transition_can_pause_before_the_first_continuation_capture(self):
+        from tools.debug.client_navigation import NavigationError
+        transport = Transport(snapshot(), [[snapshot(1, 2, 15, 20), NavigationError("stale"),
+                                            snapshot(1, 2, 15, 20)], [snapshot(1, 2, 120, 35)]])
+        result = self.run_route(transport)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(len(transport.sent), 2)
+        self.assertGreaterEqual(self.clock(), .04)
+
+    def test_post_transition_capture_wait_is_bounded_without_sending_again(self):
+        from tools.debug.client_navigation import NavigationError
+        transport = Transport(snapshot(), [[snapshot(1, 2, 15, 20)] + [NavigationError("stale")] * 200])
+        result = self.run_route(transport, timeout_seconds=10)
+        self.assertEqual(result["reason"], "stale")
+        self.assertEqual(len(transport.sent), 1)
+        self.assertGreaterEqual(self.clock(), 5)
+        self.assertLess(self.clock(), 6)
+
     def test_same_uid_with_replaced_character_binding_cannot_inherit_route(self):
         for field in ("user_token", "actor_token"):
             bad = snapshot(1, 2, 15, 20)
