@@ -4,6 +4,7 @@ import importlib
 import io
 import json
 from pathlib import Path
+import os
 import struct
 import tempfile
 import unittest
@@ -352,6 +353,46 @@ class InventoryDropTests(unittest.TestCase):
     setUp=TestControlTests.setUp
     lease=TestControlTests.lease
     request=TestControlTests.request
+    def test_native_exported_dead_observer_fixture_roundtrip(self):
+        fixture_path=os.environ.get('DFLEGACY_TEST_CONTROL_OBSERVER_FIXTURE')
+        if not fixture_path:self.skipTest('Native export roundtrip requires an explicitly generated fixture')
+        value=json.loads(Path(fixture_path).read_bytes())
+        sdk=client();sdk.update(pid=value['pid'],process_started_filetime=value['process_started_filetime'],
+            sequence=value['snapshot_sequence'],generation=value['generation'])
+        sdk['room'].update(map_token=value['map_token'],stage_token=value['observer']['stage_token'])
+        sdk['me'].update(uid=value['uid'],actor_token=value['observer']['actor_token'],
+            user_token=value['observer']['user_token'],dead=True,hp=0,position=None,map_token=None,same_map=False,detached=True)
+        self.assertIsNone(value['observer']['actor_map_token'])
+        self.assertIs(self.api.validate_ground_snapshot(value,sdk,now_tick_ms=value['captured_tick_ms']),value)
+        self.assertIs(self.api.validate_inventory_snapshot(value,sdk,now_tick_ms=value['captured_tick_ms'],
+            session_nonce=value['session_nonce'],run_id=value['run_id']),value)
+    def test_dead_observer_binding_uses_current_stage_without_authorizing_input(self):
+        sdk=client();sdk['me'].update(dead=True,hp=0,position=None,map_token=None,same_map=False,detached=True)
+        value=self.native_inventory();value.update(valid=True,truncated=False,ground_items=[],
+            map_token=sdk['room']['map_token'],snapshot_sequence=sdk['sequence'],observer=dict(
+                actor_token=sdk['me']['actor_token'],user_token=sdk['me']['user_token'],
+                actor_map_token=None,stage_token=sdk['room']['stage_token'],dead=True))
+        self.assertIs(self.api.validate_ground_snapshot(value,sdk,now_tick_ms=NOW),value)
+        self.assertIs(self.api.validate_inventory_snapshot(value,sdk,now_tick_ms=NOW,session_nonce=NONCE,run_id=RUN),value)
+        retained=deepcopy(sdk);retained['me'].update(map_token='0x00020000',detached=False)
+        retained_value=deepcopy(value);retained_value['observer']['actor_map_token']='0x00020000'
+        self.assertEqual(self.api.validate_ground_snapshot(retained_value,retained,now_tick_ms=NOW)['map_token'],sdk['room']['map_token'])
+        lease=self.api.parse_lease(self.lease(),uid=1,now_filetime=FT)
+        with self.assertRaises(self.api.TestControlError):
+            self.api.make_request(sdk,lease,operation=1,target_id=1,x=300,y=240,request_id=START,issued_tick_ms=NOW)
+        for change in ('old_without_binding','actor','user','stage','map','missing_actor_map','death','sequence'):
+            bad=deepcopy(value)
+            if change=='old_without_binding':bad.pop('observer')
+            if change in ('actor','user','stage'):bad['observer'][change+'_token']='0x00010000'
+            if change=='map':bad['observer']['actor_map_token']='0x00010000'
+            if change=='missing_actor_map':bad['observer'].pop('actor_map_token')
+            if change=='death':bad['observer']['dead']=False
+            if change=='sequence':bad['snapshot_sequence']=sdk['sequence']+6
+            with self.subTest(change=change),self.assertRaises(self.api.TestControlError):
+                self.api.validate_ground_snapshot(bad,sdk,now_tick_ms=NOW)
+            with self.subTest(inventory_change=change),self.assertRaises(self.api.TestControlError):
+                self.api.validate_inventory_snapshot(bad,sdk,now_tick_ms=NOW,session_nonce=NONCE,run_id=RUN)
+
     def native_inventory(self, sdk=None):
         sdk=sdk or client()
         return dict(schema='dfl-client-test-state/v1',pid=sdk['pid'],uid=sdk['me']['uid'],

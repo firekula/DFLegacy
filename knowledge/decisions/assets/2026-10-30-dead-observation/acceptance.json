@@ -1,0 +1,90 @@
+{
+  "schema": "dfl-dead-observation-acceptance/v1",
+  "native_sha256": "8B344D54A7350316929E3D8E50073BC54F8AE3A716F055F9CCF404229DBD9EE8",
+  "server_sha256": "E058182878E8176981C3D9649515F744035385E812525DBE14B4D2C8059193C0",
+  "server_unchanged": true,
+  "poll_samples": 144,
+  "observers": [
+    {
+      "uid": 3,
+      "unique_sequences": 35,
+      "first_tick": 411299812,
+      "last_tick": 411306718,
+      "detached_samples": 144,
+      "ground_id": 3,
+      "ground_active_all_samples": true,
+      "inventory_rows": 12,
+      "mutation_refusal": {
+        "error": "live_player_required",
+        "command_unchanged": true,
+        "command_sha256": "af8dd0a811a24bab875f1a13f77359f1cce48af13c0ae435854698e3c7b31b7e",
+        "phase": "dead-observation-v2",
+        "build_manifest_sha256": "89E6B9EDACC615499CE55EE03D815B6BE70F9FDDA704A9488B8B4948D37ED077",
+        "journal_sha256": "69642B9C09F1097636E6025848FF2AFF7A5A18D58F1A8436C5B1C6AA24562BEB"
+      }
+    },
+    {
+      "uid": 4,
+      "unique_sequences": 34,
+      "first_tick": 411299812,
+      "last_tick": 411306718,
+      "detached_samples": 144,
+      "ground_id": 3,
+      "ground_active_all_samples": true,
+      "inventory_rows": 19,
+      "mutation_refusal": {
+        "error": "live_player_required",
+        "command_unchanged": true,
+        "command_sha256": "13a3c088b9e5c8a3d5d3d4cbb3a5f4825b794eb1607cdc872912d17f135dfff6",
+        "phase": "dead-observation-v2",
+        "build_manifest_sha256": "89E6B9EDACC615499CE55EE03D815B6BE70F9FDDA704A9488B8B4948D37ED077",
+        "journal_sha256": "69642B9C09F1097636E6025848FF2AFF7A5A18D58F1A8436C5B1C6AA24562BEB"
+      }
+    }
+  ],
+  "inventory_server_match": [
+    {
+      "uid": 3,
+      "gold": 50029,
+      "items": 11,
+      "native_inventory_equals_server": true,
+      "observer": {
+        "actor_token": "0x087FF8A0",
+        "user_token": "0x08719F50",
+        "actor_map_token": null,
+        "stage_token": "0x08664988",
+        "dead": true
+      }
+    },
+    {
+      "uid": 4,
+      "gold": 50036,
+      "items": 18,
+      "native_inventory_equals_server": true,
+      "observer": {
+        "actor_token": "0x087FB6E0",
+        "user_token": "0x08777DB8",
+        "actor_map_token": null,
+        "stage_token": "0x07338660",
+        "dead": true
+      }
+    }
+  ],
+  "ground_preparation": "synchronized",
+  "player_deaths": {
+    "C": "synchronized",
+    "D": "synchronized"
+  },
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "protected_files_verified": 16,
+  "test_INIs_restored": 4,
+  "active_sessions_at_stop": 0,
+  "limits": [
+    "No U11 ground removal fix or changed-rooms/dead-drop-removal acceptance in this group.",
+    "Dead retained-old-map case is an offline fixture; detached/null actor map is observed live.",
+    "Ground and inventory are read-only; all mutation guards still require alive player.",
+    "First phase startup refused previous owned A exit plan; closed it, archived stale mailboxes and used fresh phase2.",
+    "No managed business changes or managed suite rerun.",
+    "Six existing full-Python failures retained."
+  ]
+}

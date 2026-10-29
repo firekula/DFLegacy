@@ -71,6 +71,8 @@ python tools/debug/watch_dungeon.py --directory G:/Game/DNF_ACT1/DF/town-test/de
 
 ## 原生客户端状态
 
+仅测试地面／库存观测现可在角色死亡后继续更新，独立于修改校验；新增`observer`绑定当前本机角色、stage、死亡状态及原生actor-map，后者脱离时为null。地面采用当前stage地图，消费者拒绝旧的未绑定死亡数据；修改接口仍要求存活。见[四端死亡观测、库存核对和原图](../../knowledge/decisions/2026-10-30-dead-observation-verification.md)。
+
 v2支持只读scene2：选择界面没有town／room／me／players／enemies／skills，不授权移动和战斗操作。`ui.dungeon_selector.selected`是索引，新增`selected_dungeon_id`／`difficulty_raw`为经重复校验的选中行投影；`transition_pending`／`phase_raw`／`stage_token`保留原生加载状态。`active_raw`是初始化标志，visible仍null。
 
 `ui.dialogs`仅列出已验证的五类常用原生窗，含`valid`／`truncated`／`items`；行内`class_id`、实例／根token及`shown_raw`／`input_enabled_raw`可通过`get_known_field(snapshot, "ui.dialogs.items.0.class_id")`查询，也可用既有`--wait`等待标量条件。活动池与待关闭队列分开，列表不完整时行查询拒绝；不把原生根标志当全局输入阻断，`ui.input_blocked`保持null。scene2及两类实际弹窗的[原图与范围](../../knowledge/decisions/2026-10-30-ui-state-verification.md)。

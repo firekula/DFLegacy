@@ -1,5 +1,7 @@
 # 项目状态与接续说明
 
+2026-10-30死亡观测增量：[U05测试地面／库存](knowledge/decisions/2026-10-30-dead-observation-verification.md)已分离观测与修改，C／D死亡脱离后35／34个新序列及库存核对通过，死者修改零发布。完整Python547／392subtests、6项既有失败；继续U07／U08／U10／U09，U11最后。
+
 2026-10-30界面增量：[U05选择副本／常用弹窗](knowledge/decisions/2026-10-30-ui-state-verification.md)已补v2 scene2消费、稳定索引投影和五类活动窗原生标志。四端加载、实际class37／35开关、返回按钮通过；完整Python545／376subtests及6项既有失败。死亡测试地面观测继续，U11仍最后。
 
 2026-10-30最新：[U05技能冷却与可用性](knowledge/decisions/2026-10-30-skill-state-verification.md)限定完成。native6431518F仅隔离部署，四端验证C上挑／D枪手CD循环、跳跃上下文和死亡阻止；复杂道具／装备／次数／精度分支保持未知，不等同实际命中。原生相关和Python235/315通过，完整541/363仍6既有失败；托管E058未改未重跑。进程已关闭、四份INI恢复、正常存档E0E2FB4B…保持。接U05 UI／scene2等剩余，用户已授权整夜完成列表，阻断记录跳过，U11最后。

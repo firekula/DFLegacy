@@ -1,5 +1,7 @@
 # DFLegacy
 
+2026-10-30死亡观测增量：仅测试地面／库存可在死者脱离地图后继续更新，按当前stage及观察者身份核对；修改仍要求存活。见[四端新鲜采样及两张原图](knowledge/decisions/2026-10-30-dead-observation-verification.md)。
+
 2026-10-30界面增量：debug v2可只读消费选择副本scene2，投影实际副本ID／难度及原生过渡状态，并读取五类常用弹窗的原生根标志。保留未知与操作场景限制，见[四端加载、组队窗／消息窗及3张原图](knowledge/decisions/2026-10-30-ui-state-verification.md)。
 
 <a href="#运行环境"><img src="https://img.shields.io/badge/Windows-0078D4" alt="Windows" /></a>

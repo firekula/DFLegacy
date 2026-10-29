@@ -267,11 +267,35 @@ def position_sync(snapshots,*,members,target_uid,x,y,tolerance=3):
     return dict(complete=bool(members) and all(v['matched'] for v in observed.values()),clients=observed)
 
 
+def observation_map(value,sdk):
+    """Bind optional observer metadata; this never grants a mutation context."""
+    me=sdk.get('me');require(isinstance(me,dict),'observer_identity_missing')
+    observer=value.get('observer')
+    if observer is None:
+        require(me.get('dead') is False,'dead_observer_binding_required')
+        return me.get('map_token')  # Compatibility with older living-only producers.
+    room=sdk.get('room')
+    require(isinstance(observer,dict) and isinstance(room,dict) and sdk.get('scene')==3
+        and 'actor_map_token' in observer and type(me.get('same_map')) is bool and type(me.get('detached')) is bool
+        and room.get('map_token') is not None and room.get('stage_token') is not None
+        and type(me.get('dead')) is bool and type(observer.get('dead')) is bool
+        and observer['dead']==me['dead']
+        and all(observer.get(key)==me.get(source) and me.get(source) is not None
+            for key,source in (('actor_token','actor_token'),('user_token','user_token')))
+        and observer.get('actor_map_token')==me.get('map_token')
+        and observer.get('stage_token')==room['stage_token'],'observer_identity_mismatch')
+    require(me['dead'] or (me.get('same_map') is True and me.get('detached') is False
+        and me.get('map_token')==room['map_token']),'observer_living_map_mismatch')
+    require(integer(value.get('snapshot_sequence'),1) and integer(sdk.get('sequence'),1)
+        and abs(value['snapshot_sequence']-sdk['sequence'])<=5,'observer_sequence_mismatch')
+    return room['map_token']
+
+
 def validate_ground_snapshot(value,sdk,*,now_tick_ms):
     require(value.get('schema')=='dfl-client-test-state/v1','bad_ground_snapshot_schema')
     require(value.get('valid') is True and value.get('truncated') is False,'incomplete_ground_snapshot')
     require(all(value.get(k)==sdk[k] for k in ('pid','process_started_filetime','generation'))
-        and value.get('uid')==sdk['me']['uid'] and value.get('map_token')==sdk['me']['map_token'],
+        and value.get('uid')==sdk['me']['uid'] and value.get('map_token')==observation_map(value,sdk),
         'ground_snapshot_identity_mismatch')
     tick=value.get('captured_tick_ms')
     require(integer(tick) and tick<=now_tick_ms and now_tick_ms-tick<=750,'stale_ground_snapshot')
@@ -325,7 +349,7 @@ def validate_inventory_snapshot(value,sdk,*,now_tick_ms,session_nonce,run_id):
     require(value.get('schema')=='dfl-client-test-state/v1','bad_inventory_snapshot_schema')
     require(all(type(value.get(k)) is int and value[k]==sdk[k] for k in
         ('pid','process_started_filetime','generation')) and type(value.get('uid')) is int
-        and value['uid']==sdk['me']['uid'] and value.get('map_token')==sdk['me']['map_token'],
+        and value['uid']==sdk['me']['uid'] and value.get('map_token')==observation_map(value,sdk),
         'inventory_snapshot_identity_mismatch')
     require(type(value.get('session_nonce')) is int and value['session_nonce']==session_nonce
         and type(value.get('run_id')) is int and value['run_id']==run_id,'inventory_snapshot_epoch_mismatch')

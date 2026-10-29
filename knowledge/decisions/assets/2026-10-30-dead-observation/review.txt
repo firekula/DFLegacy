@@ -1,0 +1,1 @@
+Independent read-only reviewer /root/dead_observation_review: P2 detached map serialization mismatch and copied-lease revocation gap. Native RED2 then GREEN0; real ExportState fixture roundtrips both consumers. Current lease recopy, null zero-map, explicit metadata and known SDK attachment flags rechecked; no new P1/P2. No reviewer edits/build/live.

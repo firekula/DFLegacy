@@ -13,13 +13,13 @@ namespace
     struct ControlMemory
     {
         std::unordered_map<std::uint32_t,unsigned char> bytes;
-        std::uint32_t swapAfterRead=0,replacement=0;
+        std::uint32_t swapAfterRead=0,replacement=0,leaseRevokeAfterRead=0;
         template<class T> void Put(std::uint32_t at,T v){const auto* p=reinterpret_cast<const unsigned char*>(&v);for(std::size_t i=0;i<sizeof(T);++i)bytes[at+static_cast<std::uint32_t>(i)]=p[i];}
         void Hex(std::uint32_t at,const char* hex){for(std::uint32_t i=0;hex[i*2];++i){unsigned value=0;sscanf_s(hex+i*2,"%2x",&value);Put(at+i,static_cast<unsigned char>(value));}}
         void Secure(std::uint32_t at,std::uint32_t value,std::uint32_t index)
         {constexpr std::uint32_t key=0x12345678;Put(0xCFD458U,0x80000U);Put(0xCFD45CU,key);Put(0x80004U,100U);Put(0x80044U,0x90000U);Put(0x80048U,0xA0000U);Put(at,(at+index)^key);Put(at+4,index);Put(0x90000+index*4,value^(0x90000+index*4)^key);Put(0xA0000+index*4,value^(0xA0000+index*4)^key);}
         static bool Read(void* ctx,std::uint32_t at,void* out,std::size_t n) noexcept
-        {auto& m=*static_cast<ControlMemory*>(ctx);auto* p=static_cast<unsigned char*>(out);for(std::size_t i=0;i<n;++i){auto found=m.bytes.find(at+static_cast<std::uint32_t>(i));if(found==m.bytes.end())return false;p[i]=found->second;}if(m.swapAfterRead==at){m.swapAfterRead=0;m.Put(at,m.replacement);}return true;}
+        {auto& m=*static_cast<ControlMemory*>(ctx);auto* p=static_cast<unsigned char*>(out);for(std::size_t i=0;i<n;++i){auto found=m.bytes.find(at+static_cast<std::uint32_t>(i));if(found==m.bytes.end())return false;p[i]=found->second;}if(m.swapAfterRead==at){m.swapAfterRead=0;m.Put(at,m.replacement);}if(m.leaseRevokeAfterRead==at){m.leaseRevokeAfterRead=0;dfl::client_test_control::LiveLease.flags=0;}return true;}
     };
 }
 int RunClientTestControlRuntimeTests()
@@ -96,7 +96,8 @@ int RunClientTestControlRuntimeTests()
         q.actorToken=0x10000;q.mapToken=0x20000;q.userToken=0x30000;q.operation=1;q.targetId=77;q.sessionNonce=999;q.runId=888;
         c.lease.nonce=999;c.lease.runId=888;c.lease.uid=77;c.lease.issuedFileTime=100000000;
         dfl::client_state::Snapshot s{};s.valid=s.layoutSupported=s.haveMe=true;s.scene={true,3};s.pid=42;s.processStartedFileTime=123;s.capturedTickMs=10000;s.sequence=20;s.generation=7;
-        s.me.uid={true,77};s.me.actorToken=0x10000;s.me.mapToken=0x20000;s.me.userToken=0x30000;s.me.dead={true,false};s.me.sameMap={true,true};s.me.position={true,100,200,0};s.room.stageToken=0xB0000;
+        s.me.uid={true,77};s.me.actorToken=0x10000;s.me.mapToken=0x20000;s.me.userToken=0x30000;s.me.dead={true,false};s.me.sameMap={true,true};s.me.position={true,100,200,0};s.room.stageToken=0xB0000;s.room.mapToken=0x20000;s.room.present=true;
+        Native.pid=42;Native.processStartedFileTime=123;
         m.Put(0xB5D6F0U,0xD0000U);m.Secure(0xD0010,3,1);m.Put(0xB75A14U,0x10000U);m.Put(0x100D0U,0x111U);m.Secure(0x100D4,77,2);m.Put(0x100E4U,0x20000U);
         m.Put(0x30110U,0x10000U);m.Put(0x30004U,static_cast<std::uint16_t>(77));m.Put(0xB5DCE0U,0xE0000U);m.Put(0x2E0010U,0xB0000U);m.Put(0xB00B0U,0x20000U);
         m.Put(0x10000U,0xC0000U);m.Put(0xC0318U,0x652A00U);m.Secure(0x1142C,0,3);
@@ -108,6 +109,36 @@ int RunClientTestControlRuntimeTests()
         c.lease.issuedFileTime=100000000;LiveLease=c.lease;s.truncated=true;PublishedState={};LastStateCapture=0;
         CaptureTestState(s);check(PublishedState.serial&&!PublishedState.valid&&PublishedState.truncated,"fresh truncated SDK publishes explicit unusable ground state");
         check(!LiveContext(c,s),"observation of truncation never authorizes a mutation");
+        s.truncated=false;s.me.dead={true,true};s.me.position={};m.Secure(0x1142C,1,3);
+        m.Put(0x20010U,0U);m.Put(0x20014U,0U);PublishedState={};LastStateCapture=0;
+        CaptureTestState(s);
+        check(PublishedState.serial&&PublishedState.valid&&!PublishedState.truncated,"dead local actor publishes fresh bounded ground observation");
+        check(!LiveContext(c,s),"dead observation never authorizes existing mutations");
+        s.me.mapToken=0;s.me.sameMap={true,false};s.me.detached={true,true};m.Put(0x100E4U,0U);PublishedState={};LastStateCapture=0;
+        CaptureTestState(s);
+        check(PublishedState.serial&&PublishedState.valid&&PublishedState.identity.mapToken==0x20000,"detached dead observer reads stage map rather than missing actor map");
+        s.me.mapToken=0x21000;m.Put(0x100E4U,0x21000U);PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(PublishedState.serial&&PublishedState.valid&&PublishedState.identity.mapToken==0x20000,"dead old-map actor cannot redirect observation away from current stage");
+        m.Secure(0x1142C,0,3);PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(!PublishedState.serial,"changed live death flag invalidates old dead observation");
+        m.Secure(0x1142C,1,3);
+        m.swapAfterRead=0xB00B0;m.replacement=0x21000;PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(!PublishedState.serial,"stage-map change during reads cannot publish mixed observation");m.Put(0xB00B0U,0x20000U);
+        LiveLease.flags=0;PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(!PublishedState.serial,"disabled lease stops dead observation");LiveLease.flags=1;
+        LiveLease.issuedFileTime=1;PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(!PublishedState.serial,"expired lease stops dead observation");LiveLease.issuedFileTime=100000000;
+        m.leaseRevokeAfterRead=0x20010;PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(!PublishedState.serial,"lease revoked during capture cannot publish old-epoch observation");LiveLease.flags=1;
+        Native.pid=43;PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(!PublishedState.serial,"observation cannot adopt another process snapshot");Native.pid=42;
+        s.me.dead.known=false;PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(!PublishedState.serial,"unknown death never grants observer identity");s.me.dead.known=true;
+        s.truncated=true;PublishedState={};LastStateCapture=0;CaptureTestState(s);
+        check(PublishedState.serial&&!PublishedState.valid&&PublishedState.truncated,"dead truncated SDK publishes explicit unusable ground rather than stale valid state");
+        check(PublishedState.identity.operation==0,"observation identity cannot be reused as a mutation request");
+        for(std::uint32_t operation=1;operation<=6;++operation)
+        {c.request.operation=operation;check(!LiveContext(c,s),"every operation retains living actor mutation guard");}
         Native={};
     }
     {
@@ -173,6 +204,13 @@ int RunClientTestControlRuntimeTests()
     {std::ifstream file(stateFile,std::ios::binary);const std::string json(std::istreambuf_iterator<char>(file),{});
      check(json.find("\"valid\":false")!=std::string::npos&&json.find("\"inventory\":{\"valid\":true")!=std::string::npos,"inventory export validity is independent of ground observation");
      check(json.find("\"supported_operations\":[1,2,3,4,5,6]")!=std::string::npos&&json.find("\"item_token\":\"0x000D0000\",\"item_id\":0,\"count\":50000")!=std::string::npos,"inventory export includes exact original gold object and quantity");}
+    PublishedState.serial=++StateSerial;PublishedState.valid=true;PublishedState.truncated=false;
+    PublishedState.stage=0xB0000;PublishedState.observerMap=0;PublishedState.observerDead=true;ExportState();
+    {std::ifstream file(stateFile,std::ios::binary);const std::string json(std::istreambuf_iterator<char>(file),{});
+     check(json.find("\"actor_map_token\":null")!=std::string::npos,"detached observer serializes null actor-map consistently with SDK");
+     wchar_t fixturePath[MAX_PATH]{};
+     if(GetEnvironmentVariableW(L"DFLEGACY_TEST_CONTROL_OBSERVER_FIXTURE",fixturePath,MAX_PATH))
+         check(CopyFileW(stateFile,fixturePath,TRUE)!=0,"native observer fixture is preserved without overwriting prior evidence");}
     Shutdown();DeleteFileW(cmd);DeleteFileW(leaseFile);DeleteFileW(result);DeleteFileW(stateFile);DeleteFileW(ini);RemoveDirectoryW(dir);
     std::printf("Client test control IO tests: %d failures\n",failures);return failures;
 }

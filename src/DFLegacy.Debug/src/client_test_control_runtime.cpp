@@ -40,6 +40,7 @@ namespace dfl::client_test_control
         struct TestState
         {
             Request identity{};std::uint64_t tick=0,serial=0;
+            std::uint32_t observerMap=0,stage=0;bool observerDead=false;
             bool valid=false,truncated=false;const char* reason="ground_state_unavailable";
             std::array<GroundRow,256> ground{};std::size_t count=0;
             InventoryState inventory{};
@@ -96,6 +97,36 @@ namespace dfl::client_test_control
         {
             return Native.supported&&Native.supported(Native.context)
                 &&!ValidateRequest(c.request,s,c.lease,Now(),FileTime(),0)&&LivePointers(c.request,s);
+        }
+        bool ObservationContext(const Request& q,const Lease& lease,const client_state::Snapshot& s) noexcept
+        {
+            const auto now=Now(),ft=FileTime();
+            if(!Native.supported||!Native.supported(Native.context)||!s.valid||!s.layoutSupported||!s.haveMe
+                ||!s.scene.known||s.scene.value!=3||!s.me.uid.known||!s.me.dead.known||!s.me.sameMap.known
+                ||!s.room.present||!s.room.stageToken||!s.room.mapToken||!q.actorToken||!q.userToken
+                ||q.pid!=Native.pid||q.processStartedFileTime!=Native.processStartedFileTime
+                ||q.pid!=s.pid||q.processStartedFileTime!=s.processStartedFileTime||q.uid!=s.me.uid.value||!q.uid||q.uid>65535
+                ||q.actorToken!=s.me.actorToken||q.userToken!=s.me.userToken||q.mapToken!=s.room.mapToken
+                ||q.generation!=s.generation||q.snapshotSequence!=s.sequence||q.snapshotTickMs!=s.capturedTickMs
+                ||!s.capturedTickMs||s.capturedTickMs>now||now-s.capturedTickMs>750
+                ||lease.magic!=0x4C545444||lease.version!=1||lease.flags!=1||lease.uid!=q.uid||!lease.nonce||!lease.runId
+                ||q.sessionNonce!=lease.nonce||q.runId!=lease.runId||!lease.issuedFileTime||lease.issuedFileTime>ft
+                ||ft-lease.issuedFileTime>15000000)return false;
+            if(!s.me.dead.value&&(!s.me.sameMap.value||s.me.mapToken!=q.mapToken))return false;
+            // A dead actor can be detached or retained on the old map. Observe only
+            // the current stage's map; never turn this context into an action lease.
+            Reads r;std::uint32_t game=0,scene=0,actor=0,uid=0,map=0,binding=0,ui=0,stage=0,kind=0,dead=0;
+            std::uint32_t manager=0,key=0,final=0;std::uint16_t userUid=0;
+            return r.At(0xCFD458,0,manager)&&manager&&r.At(0xCFD45C,0,key)
+                &&r.At(0xB5D6F0,0,game)&&r.Secure(game,0x10,scene)&&scene==3
+                &&r.At(0xB75A14,0,actor)&&actor==q.actorToken&&r.At(actor,0xD0,kind)&&kind==0x111
+                &&r.Secure(actor,0xD4,uid)&&uid==q.uid&&r.At(actor,0xE4,map)&&map==s.me.mapToken
+                &&r.At(q.userToken,0x110,binding)&&binding==actor&&r.At(q.userToken,4,userUid)&&userUid==uid
+                &&r.At(0xB5DCE0,0,ui)&&r.At(ui,0x200010,stage)&&stage==s.room.stageToken
+                &&r.At(stage,0xB0,map)&&map==q.mapToken
+                &&r.Getter(actor,0x318,0x652A00)&&r.Secure(actor,0x142C,dead)&&(dead!=0)==s.me.dead.value
+                &&r.At(0xB5D6F0,0,final)&&final==game&&r.Secure(game,0x10,final)&&final==3
+                &&r.At(0xCFD458,0,final)&&final==manager&&r.At(0xCFD45C,0,final)&&final==key;
         }
         bool PositionReady(std::uint32_t actor) noexcept
         {
@@ -229,26 +260,17 @@ namespace dfl::client_test_control
             Lease lease;if(!TryAcquireSRWLockShared(&LeaseLock))return;lease=LiveLease;ReleaseSRWLockShared(&LeaseLock);
             Request q{};q.pid=snapshot.pid;q.uid=snapshot.me.uid.value;q.processStartedFileTime=snapshot.processStartedFileTime;
             q.requestId=1;q.issuedTickMs=now;q.snapshotTickMs=snapshot.capturedTickMs;q.generation=snapshot.generation;q.snapshotSequence=snapshot.sequence;
-            q.actorToken=snapshot.me.actorToken;q.mapToken=snapshot.me.mapToken;q.userToken=snapshot.me.userToken;q.operation=1;q.targetId=static_cast<std::int32_t>(q.uid);
-            q.sessionNonce=lease.nonce;q.runId=lease.runId;const Command command{q,lease};
-            bool allowed=LiveContext(command,snapshot);
-            if(!allowed&&snapshot.truncated)
-            {
-                // Observation may explicitly report an unusable SDK sample. This branch
-                // never reaches mutation and never reads a truncated actor collection.
-                const auto ft=FileTime();
-                allowed=Native.supported&&Native.supported(Native.context)&&snapshot.valid&&snapshot.layoutSupported&&snapshot.haveMe
-                    &&snapshot.scene.known&&snapshot.scene.value==3&&snapshot.me.uid.known&&q.uid>0&&q.uid<=65535
-                    &&snapshot.me.dead.known&&!snapshot.me.dead.value&&snapshot.me.sameMap.known&&snapshot.me.sameMap.value
-                    &&snapshot.capturedTickMs<=now&&now-snapshot.capturedTickMs<=750&&lease.magic==0x4C545444&&lease.version==1
-                    &&lease.flags==1&&lease.uid==q.uid&&lease.nonce&&lease.runId&&lease.issuedFileTime&&lease.issuedFileTime<=ft
-                    &&ft-lease.issuedFileTime<=15000000&&LivePointers(q,snapshot);
-            }
-            if(!allowed)return;LastStateCapture=now;
-            TestState state;state.identity=q;state.tick=now;
+            q.actorToken=snapshot.me.actorToken;q.mapToken=snapshot.room.mapToken;q.userToken=snapshot.me.userToken;
+            q.sessionNonce=lease.nonce;q.runId=lease.runId;
+            if(!ObservationContext(q,lease,snapshot))return;LastStateCapture=now;
+            TestState state;state.identity=q;state.tick=now;state.stage=snapshot.room.stageToken;
+            state.observerMap=snapshot.me.mapToken;state.observerDead=snapshot.me.dead.value;
             if(snapshot.truncated){state.truncated=true;state.reason="client_snapshot_truncated";}
-            else {ReadGroundState(q.mapToken,state);if(!LiveContext(command,snapshot))return;}
+            else ReadGroundState(q.mapToken,state);
             ReadInventoryState(state.inventory);
+            Lease finalLease;if(!TryAcquireSRWLockShared(&LeaseLock))return;
+            finalLease=LiveLease;ReleaseSRWLockShared(&LeaseLock);
+            if(!ObservationContext(q,finalLease,snapshot))return;
             state.serial=++StateSerial;GameState=state;
             if(!TryAcquireSRWLockExclusive(&StateLock))return;PublishedState=GameState;ReleaseSRWLockExclusive(&StateLock);
         }
@@ -513,6 +535,10 @@ namespace dfl::client_test_control
             out<<"{\"schema\":\"dfl-client-test-state/v1\",\"pid\":"<<Native.pid<<",\"uid\":"<<q.uid<<",\"process_started_filetime\":"<<Native.processStartedFileTime
                 <<",\"generation\":"<<q.generation<<",\"map_token\":";Token(out,q.mapToken);
             out<<",\"captured_tick_ms\":"<<state.tick<<",\"snapshot_sequence\":"<<q.snapshotSequence<<",\"session_nonce\":"<<q.sessionNonce<<",\"run_id\":"<<q.runId
+                <<",\"observer\":{\"actor_token\":";Token(out,q.actorToken);out<<",\"user_token\":";Token(out,q.userToken);
+            out<<",\"actor_map_token\":";if(state.observerMap)Token(out,state.observerMap);else out<<"null";
+            out<<",\"stage_token\":";Token(out,state.stage);
+            out<<",\"dead\":"<<(state.observerDead?"true":"false")<<'}'
                 <<",\"valid\":"<<(state.valid?"true":"false")<<",\"truncated\":"<<(state.truncated?"true":"false")<<",\"reason\":\""<<state.reason<<"\",\"ground_items\":[";
             for(std::size_t i=0;i<state.count;++i)
             {
