@@ -14,6 +14,8 @@ namespace
     int Failures = 0;
     bool PatchOkay=false;
     unsigned PatchCount=0;
+    bool RejectLive(const dfl::client_navigation::Request&) noexcept {return false;}
+    bool AcceptLive(const dfl::client_navigation::Request&) noexcept {return true;}
     bool FakePatch(const unsigned char* expected,const unsigned char* replacement) noexcept
     { ++PatchCount;return PatchOkay && expected[0]==0xE8 && replacement[1]==0xD9; }
     struct Actions
@@ -172,6 +174,13 @@ int RunClientNavigationTests()
     PatchOkay=true;Check(RestoreInstalledHook(installed,patch,&FakePatch)&&!installed&&PatchCount==2,"restore retry clears ownership only on success");
     Check(RestoreInstalledHook(installed,patch,&FakePatch)&&PatchCount==2,"inactive restore is idempotent");
     Actions actions;DestinationOperations operations{&actions,&Actions::Set,&Actions::Activate};
+    Check(!SetLiveAndActivate(r,operations,&RejectLive,1100)&&actions.sets==0&&actions.activations==0,
+          "invalid live context invokes zero destination callbacks");
+    Check(SetLiveAndActivate(r,operations,&AcceptLive,1100)&&actions.sets==1&&actions.activations==1,
+          "live guard precedes ordered destination operations");
+    actions={};
+    Check(!SetLiveAndActivate(r,operations,&AcceptLive,2200)&&actions.sets==0&&actions.activations==0,
+          "stale source invokes zero destination callbacks");
     Check(SetAndActivate(r,operations)&&actions.sets==1&&actions.activations==1&&actions.ordered,"verified setter then native auto mode activated exactly once");
     actions={};actions.accept=false;
     Check(!SetAndActivate(r,operations)&&actions.sets==1&&actions.activations==0,"failed setter never activates auto mode");

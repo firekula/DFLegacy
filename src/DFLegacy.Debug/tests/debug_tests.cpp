@@ -45,6 +45,10 @@ namespace
 }
 
 int RunClientStateTests();
+int RunTownRouteCatalogTests();
+int RunTownRouteControllerTests();
+int RunTownRouteRuntimeTests();
+int RunTownRouteIoTests();
 int RunClientNavigationTests();
 int RunClientNavigationRuntimeTests();
 int RunClientPartyTests();
@@ -56,6 +60,7 @@ int main(int argc, char** argv)
     if (argc == 2 && std::strcmp(argv[1], "--client-state") == 0) return RunClientStateTests();
     if (argc == 2 && std::strcmp(argv[1], "--client-navigation") == 0)
         return RunClientNavigationTests() + RunClientNavigationRuntimeTests();
+    if (argc == 2 && std::strcmp(argv[1], "--town-route") == 0) return RunTownRouteCatalogTests()+RunTownRouteControllerTests()+RunTownRouteRuntimeTests()+RunTownRouteIoTests();
     using namespace dfl;
     if (argc < 2 || argc > 3) return 2;
     std::uint32_t manager[32]{}, valuesA[4]{}, valuesB[4]{}, wrapper[2]{};

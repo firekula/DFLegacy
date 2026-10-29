@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include "client_navigation.h"
+#include "client_town_route_runtime.h"
 #include <array>
 #include <cmath>
 #include <cstdio>
@@ -129,6 +130,7 @@ namespace dfl::client_navigation
             // Only this leaf invokes game code. ABIs verified against original PE; bool is AL, setter returns void.
             __try
             {
+                if(!Live(request))return false;
                 using Point=bool (__thiscall*)(void*,std::int32_t,std::int32_t,std::int32_t*);
                 using Set=void (__thiscall*)(void*,std::int32_t,std::int32_t);
                 auto* actor=reinterpret_cast<void*>(request.actorToken);
@@ -156,6 +158,16 @@ namespace dfl::client_navigation
             __except(EXCEPTION_EXECUTE_HANDLER) { return false; }
         }
         const char* ActiveSource="debug";
+        bool ApplyRouteStep(const Request& request) noexcept
+        {
+            const DestinationOperations operations{nullptr,&NativePointAndDestination,&NativeActivate};
+            return SetLiveAndActivate(request,operations,&Live,Now());
+        }
+        void SupersedeForRoute() noexcept
+        {
+            if(Tracking)Publish(Active,ActiveSource,"interrupted","superseded",Current.town.position);
+            Tracking=false;
+        }
         void Dispatch(const Request& request,const char* source) noexcept
         {
             // The mailbox exposes the latest decision. An older request must never replace
@@ -168,6 +180,7 @@ namespace dfl::client_navigation
             if (!Live(request)) { Publish(request,source,"rejected","live_context_unavailable");return; }
             const DestinationOperations operations{nullptr,&NativePointAndDestination,&NativeActivate};
             if (!SetAndActivate(request,operations)) { Publish(request,source,"rejected","point_invalid_or_native_rejected");return; }
+            client_town_route::LegacyTakeover();
             Active=request;ActiveTick=now;ActiveSequence=Current.sequence;ActiveSource=source;Tracking=true;
             Publish(request,source,"requested","native_destination_set",Current.town.position);
         }
@@ -183,6 +196,9 @@ namespace dfl::client_navigation
             using Original=void (__thiscall*)(void*);
             reinterpret_cast<Original>(0x880E20)(self);
             if (!IsEnabled() || GetCurrentThreadId()!=GameThread || !Layout()) return;
+            CanvasGoal goal{};
+            if(ReadRouteCanvasTarget(Native,Current,static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(self)),goal))
+                client_town_route::BeginCanvasGoal(Current,goal);
             std::int32_t x=0,y=0;
             if (ReadCanvasTarget(Native,Current,static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(self)),x,y))
                 Dispatch(FromCurrent(x,y),"minimap");
@@ -282,6 +298,7 @@ namespace dfl::client_navigation
         InterlockedExchange(&HookPublished,0);
         Inbox={};Active={};Outbox={};GameResult={};Current={};ConsumedId=ActiveTick=ActiveSequence=MiniId=NextSerial=ExportedSerial=LastPoll=0;
         InterlockedExchange(&Enabled,Native.read && Native.pid && Native.processStartedFileTime?1:0);
+        if(IsEnabled())client_town_route::Initialize(settingsPath,directory,reader,&ApplyRouteStep,&SupersedeForRoute);
     }
     void OnFrame() noexcept
     {
@@ -321,6 +338,7 @@ namespace dfl::client_navigation
         if (TryAcquireSRWLockExclusive(&InboxLock))
         { if (HaveInbox) {pending=Inbox;HaveInbox=false;have=true;}ReleaseSRWLockExclusive(&InboxLock); }
         if (have) Dispatch(pending,"debug");
+        client_town_route::OnFrame(Current);
     }
     void PumpWorker() noexcept
     {
@@ -330,6 +348,7 @@ namespace dfl::client_navigation
             const auto now=Now();
             if (now-LastPoll>=50) {LastPoll=now;ReadCommand();}
             ExportResult();
+            client_town_route::PumpWorker();
         }
         catch (...) { /* IO failure never escapes into the host worker. */ }
     }
@@ -339,6 +358,7 @@ namespace dfl::client_navigation
         if (!RestoreInstalledHook(Installed,PatchedCall,&Patch)) return false;
         InterlockedExchange(&HookPublished,0);
         Tracking=false;
+        client_town_route::Shutdown();
         return true;
     }
 }

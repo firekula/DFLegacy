@@ -215,4 +215,10 @@ namespace dfl::client_navigation
         return operations.setAndVerify && operations.activate
             && operations.setAndVerify(operations.context,request) && operations.activate(operations.context,request);
     }
+    bool SetLiveAndActivate(const Request& request,const DestinationOperations& operations,LiveCheck live,std::uint64_t now) noexcept
+    {
+        return request.issuedTickMs&&request.issuedTickMs<=now&&now-request.issuedTickMs<=1000
+            &&request.snapshotTickMs&&request.snapshotTickMs<=now&&now-request.snapshotTickMs<=750
+            &&live&&live(request)&&SetAndActivate(request,operations);
+    }
 }

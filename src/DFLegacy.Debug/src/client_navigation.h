@@ -43,6 +43,8 @@ namespace dfl::client_navigation
         bool (*activate)(void*,const Request&) noexcept=nullptr;
     };
     bool SetAndActivate(const Request&,const DestinationOperations&) noexcept;
+    using LiveCheck = bool (*)(const Request&) noexcept;
+    bool SetLiveAndActivate(const Request&,const DestinationOperations&,LiveCheck,std::uint64_t now) noexcept;
     void Initialize(const wchar_t* settingsPath, const wchar_t* directory, client_state::Reader) noexcept;
     void OnFrame() noexcept;
     void OnFrame(const client_state::Snapshot&) noexcept;
