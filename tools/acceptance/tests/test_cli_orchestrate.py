@@ -58,7 +58,10 @@ class FakeRunner:
 
     def wait_until_listening(self, rp, scenario, server_json=None, timeout_s=None,
                              fake_server_pid=None, probe=None, on_tick=None):
-        """模拟"服务端已开始监听"：记录被等待的端口，并真的占住该端口（可探到）。
+        """模拟"服务端已开始监听"：记录请求端口，生命周期只占临时端口。
+
+        固定游戏端口可能被Windows保留；这里验证参数接线，不要求占用真实游戏端口。
+        真实监听／就绪探测由test_runner的回环测试覆盖。
 
         端口从 `server.json` 解析（即真实实现该走的路），并回报给测试断言。
         `ServerStartupError.raise_on_wait` 置位时改为抛出，用于测"永不监听"的失败路径。
@@ -74,7 +77,7 @@ class FakeRunner:
         if port:
             self._listener = socket.socket()
             self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self._listener.bind(("127.0.0.1", port))
+            self._listener.bind(("127.0.0.1", 0))
             self._listener.listen(1)
         return {"skipped": False, "host": "127.0.0.1", "port": port, "waited_ms": 1}
 
