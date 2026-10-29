@@ -1,5 +1,7 @@
 # 项目状态与接续说明
 
+2026-10-30最终状态：[夜间报告](knowledge/decisions/2026-10-30-overnight-restoration-report.md)和[日常交付验收](knowledge/decisions/2026-10-30-normal-delivery-verification.md)。服务端AA11／IJL8B06／debug1AFD现已更新到日常目录，33文件核对、8保护项保持、四端启动与跨区组队通过，测试已全部关闭。最新完整Python574通过、2跳过、413子断言、0失败，之前6项测试耦合已收尾；完整托管及IJL通过。U11已作为最后业务项完成；U07历史同步、U08剩余卡顿及U05回城第四人再邀请保留阻断。以下是各阶段历史，未部署／6项失败并非当前状态。
+
 2026-10-30 队列最后U11：[死亡队员接收端修复](knowledge/decisions/2026-10-30-dead-ground-removal-verification.md)完成旧版复现和新8B06模块四端同房／真门往返／金币验收；目标actor最终不存在，关闭后装备唯一。32项及完整IJL通过，debug修改仍要求存活。U07历史同步、U08剩余卡顿和回城第四人邀请仍阻断，不写成全游戏完成。
 
 2026-10-30 U09：[技能栏持久化](knowledge/decisions/2026-10-30-skillbar-persistence-verification.md)完成同档基线及修复版两轮实机，逐包处理／null及替换失败回滚、CLI明确种子来源已补。完整托管通过，Python567／413subtests、2跳过及6既有失败。正常存档保持，接U11最后。

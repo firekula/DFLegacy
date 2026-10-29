@@ -1,5 +1,7 @@
 # Changelog
 
+2026-10-30夜间交付：已验证AA11服务端、8B06 IJL及1AFD debug更新至日常目录，启动器补丁包同步；六份INI仅统一调试输出路径，角色存档及8项保护哈希保持。正常入口四端跨区／组队检查通过并关闭。收尾台账及模拟端口测试夹具，完整Python574通过／2跳过／413子断言／0失败。见[最终报告](knowledge/decisions/2026-10-30-overnight-restoration-report.md)及[交付原图](knowledge/decisions/2026-10-30-normal-delivery-verification.md)。
+
 2026-10-30：修复NOTI86拾取移除在本地死亡角色地图为null／旧图时提前拒绝；仅验证死亡后采用匹配的当前dispatcher/UI stage地图，保留对象及存活者校验，增加只读保护值和分支诊断。补32项接收上下文回归、四端两活两死同房／换房验收及5张原图。
 
 2026-10-30：CMD30移除相邻包预读，逐包保存后安装／ACK，null及替换失败保留旧技能排布；验收CLI按有效DataPath或--seed-state复制私有档并记录哈希，清理环境别名。补实际入口／存储回归、同档重登／重启验收及3张原图。

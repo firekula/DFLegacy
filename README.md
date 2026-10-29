@@ -1,5 +1,7 @@
 # DFLegacy
 
+2026-10-30夜间收尾：[最终报告](knowledge/decisions/2026-10-30-overnight-restoration-report.md)。已验证模块已[更新到日常目录](knowledge/decisions/2026-10-30-normal-delivery-verification.md)，四端启动／跨区／组队通过，原角色存档保持；完整Python574通过、2跳过、413子断言、0失败。U07／U08及回城第四人再邀请仍阻断保留。
+
 2026-10-30：[U11死亡队员地面清除](knowledge/decisions/2026-10-30-dead-ground-removal-verification.md)已修复并四端验证，同房白装／真实换房返回蓝装／金币通过，5张原图；U07／U08及再邀请的原生生命周期阻断仍明确保留。
 
 2026-10-30：[技能栏同档持久化](knowledge/decisions/2026-10-30-skillbar-persistence-verification.md)两轮实际编辑／重登／服务端重启通过，补逐包保存和测试种子来源／延续。U11最后接续。

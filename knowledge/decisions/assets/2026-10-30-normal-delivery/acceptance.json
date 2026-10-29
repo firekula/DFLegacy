@@ -1,0 +1,329 @@
+{
+  "schema": "dfl-public-delivery/v1",
+  "result": {
+    "schema": "dfl-local-delivery-final/v1",
+    "status": "verified-and-closed",
+    "at_utc": "2026-10-29T20:34:16.875670+00:00",
+    "entrypoint": "G:/Game/DNF_ACT1/DF/town-test/Start-NormalServer.cmd",
+    "all_entries_verified": 33,
+    "files_changed": 26,
+    "protected_verified": 8,
+    "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+    "private_smoke_state": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-delivery-20261030\\smoke-state.json",
+    "server_sha256": "AA11B5DB22B5C674E2041F3F72D44ADAE8009ACDB7A7AC3B9E73CDAC51081907",
+    "ijl_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+    "debug_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+    "snapshot_directory": "G:\\Game\\DNF_ACT1\\DF\\town-test\\debug-overlay",
+    "private_smoke_complete": true,
+    "all_four_native_routes_and_party": true,
+    "normal_server_started_with_documented_helper": true,
+    "handshake_port": 27001,
+    "channel_port": 7001,
+    "game_clients_closed": 4,
+    "active_sessions_at_stop": 0,
+    "rollback_dry_run": true,
+    "rollback_executed": false,
+    "normal_character_data_promoted": false,
+    "owned_input_plans_archived": true
+  },
+  "entries": [
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.InterProcess.dll",
+      "old_sha256": "57F8DB1AE80AFA53B4E9DF9F435FDCD5A5F274A785EA88F6E34D09C1C66E4116",
+      "new_sha256": "20A89CE08458FB04AD065A28A6FD903EC93CB43C53A3A1EC0C80483611E8FADF",
+      "bytes": 42496,
+      "reason": "tested-AA11-server-runtime",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.InterProcess.pdb",
+      "old_sha256": "0FE588B8335E24E27425CA3F2F38404841D5956D9A41CB5530861A16528FD039",
+      "new_sha256": "38349216CE3AB53B77693FC4DEB30DD6F4CDA5595C19172AA0C5745C7C7F8D6E",
+      "bytes": 18468,
+      "reason": "tested-AA11-server-runtime",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Protocol.dll",
+      "old_sha256": "8D1E4462498F9C07254D23A06E664BC0456FA6E3D817DC2B5D8C2FF5BBF6C226",
+      "new_sha256": "DE4970010061935B668E7CAAD6DE05D6716DAE221177897B23F06BB9F69A2501",
+      "bytes": 248320,
+      "reason": "tested-AA11-server-runtime",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Protocol.pdb",
+      "old_sha256": "191B7A9759289C64631E6BEF146866EEE0CE4DAF30B79AB25770F373217A4E38",
+      "new_sha256": "E08BF3CE40CE05CF7B4A5A5B87603ABB7F75F4DE5488C2AFC5218BBC5B05DB49",
+      "bytes": 65696,
+      "reason": "tested-AA11-server-runtime",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Server.deps.json",
+      "old_sha256": "2DAEB1832EDF969061314A541B26ED75C9A558A5B4A267812E8E90D4B2A37959",
+      "new_sha256": "2DAEB1832EDF969061314A541B26ED75C9A558A5B4A267812E8E90D4B2A37959",
+      "bytes": 1310,
+      "reason": "tested-AA11-server-runtime",
+      "changed": false
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Server.dll",
+      "old_sha256": "FCCA7D5CD83110F641DFDFA0F7404D940F0FF5A93114CA92C53A644DDA11FE64",
+      "new_sha256": "AA11B5DB22B5C674E2041F3F72D44ADAE8009ACDB7A7AC3B9E73CDAC51081907",
+      "bytes": 2832896,
+      "reason": "tested-AA11-server-runtime",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Server.exe",
+      "old_sha256": "5D212CC12698512EB59031EB9BC4B09266131312BF6CED7E3E1032735C54E91A",
+      "new_sha256": "FC1A8675F47209FAC198F8D67C7D68FD0E0C6DBC0062C4801ADD51DA0AB52C54",
+      "bytes": 268288,
+      "reason": "tested-AA11-server-runtime",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Server.pdb",
+      "old_sha256": "80112A0E50E2E925A0A28C367D8C5E76BB1B5F8C7EB106A342EF59D02600E234",
+      "new_sha256": "CEC085E5A5FD28BB8F7D7681010AAE55085CCCD2DFFD32A4570A03A0AFEFFBCF",
+      "bytes": 536920,
+      "reason": "tested-AA11-server-runtime",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Server.runtimeconfig.json",
+      "old_sha256": "9FD781CDA327A8010D236D8B004D3A47D523C4AB220FBDC4D4636314896FC88D",
+      "new_sha256": "9FD781CDA327A8010D236D8B004D3A47D523C4AB220FBDC4D4636314896FC88D",
+      "bytes": 539,
+      "reason": "tested-AA11-server-runtime",
+      "changed": false
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Server.staticwebassets.endpoints.json",
+      "old_sha256": "BD639124033477255219E94FAF3E18D1C3020F3A27DB5E9DA6DC6194E88FC8BA",
+      "new_sha256": "BD639124033477255219E94FAF3E18D1C3020F3A27DB5E9DA6DC6194E88FC8BA",
+      "bytes": 47573,
+      "reason": "tested-AA11-server-runtime",
+      "changed": false
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Server.staticwebassets.runtime.json",
+      "old_sha256": "2691B7FB8E396A17E885A986CDF54C678F84A1358CFF793B0C78FA3A2182D462",
+      "new_sha256": "4C013E1B86EAE7D203A61DB4A32E42D0FEDDF4F62DA3749644992C527EE42651",
+      "bytes": 3631,
+      "reason": "tested-AA11-server-runtime",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+      "old_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+      "new_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+      "bytes": 304640,
+      "reason": "tested-8B-dead-observer-removal",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\debug.dll",
+      "old_sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+      "new_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "bytes": 1892352,
+      "reason": "tested-1AFD-debug-observations-and-interfaces",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\Config.ini",
+      "old_sha256": "10B505A3C03872778BE1DDF58E6F0C8D6185E46626635EF1CED744DB84526A08",
+      "new_sha256": "3C5520081B37C5128ED8078ED44E6490A0D6F96CB7E4F5752FCBAF3030187D56",
+      "bytes": 1317,
+      "reason": "shared-readonly-debug-output-only",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+      "old_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+      "new_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+      "bytes": 304640,
+      "reason": "tested-8B-dead-observer-removal",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Client_test2\\debug.dll",
+      "old_sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+      "new_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "bytes": 1892352,
+      "reason": "tested-1AFD-debug-observations-and-interfaces",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Client_test2\\Config.ini",
+      "old_sha256": "319F31069F00630115F671FB0365CC2F450F707B5F82F5D0DE9B59D40696441B",
+      "new_sha256": "03B3E54F4026182E9D4AA9D853189E59D8263C4500C805FAABC0D820D5FD3920",
+      "bytes": 810,
+      "reason": "shared-readonly-debug-output-only",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_A\\ijl15.dll",
+      "old_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+      "new_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+      "bytes": 304640,
+      "reason": "tested-8B-dead-observer-removal",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_A\\debug.dll",
+      "old_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "new_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "bytes": 1892352,
+      "reason": "tested-1AFD-debug-observations-and-interfaces",
+      "changed": false
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_A\\Config.ini",
+      "old_sha256": "1C90602B180C7A6684675A32D69940139E6BFBEE2DB5859EC3DB4F7B25309D7D",
+      "new_sha256": "3C5520081B37C5128ED8078ED44E6490A0D6F96CB7E4F5752FCBAF3030187D56",
+      "bytes": 1317,
+      "reason": "shared-readonly-debug-output-only",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_B\\ijl15.dll",
+      "old_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+      "new_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+      "bytes": 304640,
+      "reason": "tested-8B-dead-observer-removal",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_B\\debug.dll",
+      "old_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "new_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "bytes": 1892352,
+      "reason": "tested-1AFD-debug-observations-and-interfaces",
+      "changed": false
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_B\\Config.ini",
+      "old_sha256": "1C90602B180C7A6684675A32D69940139E6BFBEE2DB5859EC3DB4F7B25309D7D",
+      "new_sha256": "3C5520081B37C5128ED8078ED44E6490A0D6F96CB7E4F5752FCBAF3030187D56",
+      "bytes": 1317,
+      "reason": "shared-readonly-debug-output-only",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_C\\ijl15.dll",
+      "old_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+      "new_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+      "bytes": 304640,
+      "reason": "tested-8B-dead-observer-removal",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_C\\debug.dll",
+      "old_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "new_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "bytes": 1892352,
+      "reason": "tested-1AFD-debug-observations-and-interfaces",
+      "changed": false
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_C\\Config.ini",
+      "old_sha256": "1C90602B180C7A6684675A32D69940139E6BFBEE2DB5859EC3DB4F7B25309D7D",
+      "new_sha256": "3C5520081B37C5128ED8078ED44E6490A0D6F96CB7E4F5752FCBAF3030187D56",
+      "bytes": 1317,
+      "reason": "shared-readonly-debug-output-only",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_D\\ijl15.dll",
+      "old_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+      "new_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+      "bytes": 304640,
+      "reason": "tested-8B-dead-observer-removal",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_D\\debug.dll",
+      "old_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "new_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "bytes": 1892352,
+      "reason": "tested-1AFD-debug-observations-and-interfaces",
+      "changed": false
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Loot4_D\\Config.ini",
+      "old_sha256": "1C90602B180C7A6684675A32D69940139E6BFBEE2DB5859EC3DB4F7B25309D7D",
+      "new_sha256": "3C5520081B37C5128ED8078ED44E6490A0D6F96CB7E4F5752FCBAF3030187D56",
+      "bytes": 1317,
+      "reason": "shared-readonly-debug-output-only",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\ijl15.dll",
+      "old_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+      "new_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+      "bytes": 304640,
+      "reason": "launcher-installer-must-preserve-tested-module",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\DF\\town-test\\debug.dll",
+      "old_sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+      "new_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "bytes": 1892352,
+      "reason": "matching-debug-bundle",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\ijl15.dll",
+      "old_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+      "new_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+      "bytes": 304640,
+      "reason": "launcher-installer-must-preserve-tested-module",
+      "changed": true
+    },
+    {
+      "target": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\debug.dll",
+      "old_sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+      "new_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+      "bytes": 1892352,
+      "reason": "matching-debug-bundle",
+      "changed": true
+    }
+  ],
+  "protected": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\data\\state.json",
+      "sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\server.json",
+      "sha256": "D604F6F0F9F351745B306EAEEEC8DAD028BF0330D4071090BCE80176CCB8F47C"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\launcher.json",
+      "sha256": "E1217E2FD1202E81FE34D1E6DE01B2A63E54820EEDD6AB90D4E3A7BDC9142E4E"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\launcher.json",
+      "sha256": "88FE0C76A3B3F614244282EF032BB8B28F227083C815FCD767A5CDC7DBB95609"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\Script.pvf",
+      "sha256": "288D58AACE8ED4724A0A94AAA4CD0957B1D52C633771132EDE2F96363C1B506F"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\Script.pvf",
+      "sha256": "288D58AACE8ED4724A0A94AAA4CD0957B1D52C633771132EDE2F96363C1B506F"
+    }
+  ]
+}
