@@ -16,6 +16,7 @@
 #include "channel_switch.h"
 #include "creature_gift_row.h"
 #include "countdown_coin.h"
+#include "dungeon_tooltip.h"
 #include "ground_item_removal.h"
 #include "dnf_patches.h"
 #include "d3d8_scaler.h"
@@ -1213,6 +1214,10 @@ namespace dfl::dnf_patches
         if (!dfl::countdown_coin::Install())
         {
             OutputDebugStringA("DFLegacy.Ijl15: ACT1 countdown coin presentation was not installed.\n");
+        }
+        if (!dfl::dungeon_tooltip::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: dungeon tooltip scene cleanup was not installed.\n");
         }
         if (!dfl::channel_switch::Install())
         {

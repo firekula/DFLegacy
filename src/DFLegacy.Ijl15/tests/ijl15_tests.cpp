@@ -38,6 +38,7 @@ bool TestChannelSwitch();
 bool TestCreatureGiftRow();
 bool TestCountdownCoin();
 bool TestRelaySendQueue();
+bool TestDungeonTooltipCleanup();
 
 namespace
 {
@@ -1330,6 +1331,8 @@ bool TestSyntheticKeyboardStateMerge()
 
 int main(int argc, char** argv)
 {
+    if (argc == 2 && std::strcmp(argv[1], "--dungeon-tooltip-only") == 0) return TestDungeonTooltipCleanup()?0:1;
+    if (!TestDungeonTooltipCleanup()) return Fail("dungeon tooltip cleanup failed");
     if (argc == 2 && std::strcmp(argv[1], "--countdown-coin-only") == 0)
     {
         if (!TestCountdownCoin()) return 1;

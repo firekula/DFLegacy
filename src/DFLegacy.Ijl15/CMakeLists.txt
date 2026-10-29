@@ -28,6 +28,8 @@ add_library(ijl15 SHARED
     src/creature_gift_row.h
     src/countdown_coin.cpp
     src/countdown_coin.h
+    src/dungeon_tooltip.cpp
+    src/dungeon_tooltip.h
     src/channel_switch.cpp
     src/channel_switch.h
     src/channel_reentry.cpp
@@ -150,6 +152,9 @@ if(BUILD_TESTING)
         src/countdown_coin.cpp
         src/countdown_coin.h
         tests/countdown_coin_tests.cpp
+        src/dungeon_tooltip.cpp
+        src/dungeon_tooltip.h
+        tests/dungeon_tooltip_tests.cpp
         src/priest_heal_target.cpp
         src/priest_heal_target.h
         tests/priest_heal_target_tests.cpp
