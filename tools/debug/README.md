@@ -71,6 +71,15 @@ python tools/debug/watch_dungeon.py --directory G:/Game/DNF_ACT1/DF/town-test/de
 
 ## 原生客户端状态
 
+默认关闭的回调计时可独立开启（修改INI后重启客户端）：
+
+```ini
+[DebugOverlay]
+ExportFrameProfile=1
+```
+
+在相同`SnapshotDirectory`导出`dfdebug-frame-profile-PID.json`。查询：`python -m tools.debug.frame_profile --directory <目录> --pid <PID>`；Python可用`load_profile`读取完整8桶／32事件。CLI汇总是本进程启用后的累计值，分阶段比较使用`completed_windows`及明确时间范围。只测`DebugRender`原有工作至内容发布及相邻调用间隔，排除计时器自身汇总／导出；不是GPU呈现计时或连续前台证明。未知保持null，时钟错误、覆盖缺口明确报告，不能以低SDK读取耗时推断无整帧停顿。见[实机计时、两次未归因间隔及原图](../../knowledge/decisions/2026-10-30-frame-profile-verification.md)。
+
 仅测试地面／库存观测现可在角色死亡后继续更新，独立于修改校验；新增`observer`绑定当前本机角色、stage、死亡状态及原生actor-map，后者脱离时为null。地面采用当前stage地图，消费者拒绝旧的未绑定死亡数据；修改接口仍要求存活。见[四端死亡观测、库存核对和原图](../../knowledge/decisions/2026-10-30-dead-observation-verification.md)。
 
 v2支持只读scene2：选择界面没有town／room／me／players／enemies／skills，不授权移动和战斗操作。`ui.dungeon_selector.selected`是索引，新增`selected_dungeon_id`／`difficulty_raw`为经重复校验的选中行投影；`transition_pending`／`phase_raw`／`stage_token`保留原生加载状态。`active_raw`是初始化标志，visible仍null。

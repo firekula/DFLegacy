@@ -1,0 +1,112 @@
+[
+  {
+    "file": "01-A-town-after-measurement.jpg",
+    "bytes": 442248,
+    "sha256": "562C8E3221B43BD24A93B37D90A0D138D39FE6050C0FF778A831D1BFBB078310"
+  },
+  {
+    "file": "02-A-dungeon-after-measurement.jpg",
+    "bytes": 434547,
+    "sha256": "9B56682DBC334D5A3565C5E77EC593355D5A00E69DAE87630D4EF48D08022AC5"
+  },
+  {
+    "file": "acceptance.json",
+    "bytes": 7984,
+    "sha256": "4580FD5C55479190BEDB570A01A5063B639418121412FB19C4BFD783DECDF8BD"
+  },
+  {
+    "file": "closeout--client-navigation.txt",
+    "bytes": 72,
+    "sha256": "B4FAECBE6B668DDB73FFDEB9808DF62C21849F76607F19584CC0A645D9F061B5"
+  },
+  {
+    "file": "closeout--client-party.txt",
+    "bytes": 100,
+    "sha256": "2F2578F7968DCD8C7C0E43511C36960F46464CAB92336BA6CC6706C583D50B2E"
+  },
+  {
+    "file": "closeout--client-state.txt",
+    "bytes": 32,
+    "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+  },
+  {
+    "file": "closeout--client-test-control.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "file": "closeout--frame-profile.txt",
+    "bytes": 69,
+    "sha256": "CCAC6BC40EEA4BC54B1E20B30A1445F21266F00CB04B0B609694ABB59C53D2D9"
+  },
+  {
+    "file": "closeout--town-route.txt",
+    "bytes": 221,
+    "sha256": "B19F4A5F20645D053AC9B2D5898E39B567CA94F39EE79A4A880900AD88FA11A0"
+  },
+  {
+    "file": "closeout-verification.json",
+    "bytes": 4929,
+    "sha256": "40FA4D97FAE2F080831D0C7AC1C66BA4F6D7B2CF20821979923758595EA055FF"
+  },
+  {
+    "file": "code-review.txt",
+    "bytes": 430,
+    "sha256": "3E2539E07874874BFDA89A3CF92E361761F91739093023BF874B0979EC3D7B9D"
+  },
+  {
+    "file": "live-review.json",
+    "bytes": 64543,
+    "sha256": "5CA896D5324018216A891CBC540955862392C8829DE8B2DFBD26CBACCC939329"
+  },
+  {
+    "file": "live-review.txt",
+    "bytes": 4955,
+    "sha256": "18EB4CC068535676007A9D9E3D9B7EAE671297631B7A5570C9A059A651470BF5"
+  },
+  {
+    "file": "model-red.txt",
+    "bytes": 832,
+    "sha256": "F13B94C1C5A3A276877032B57209AF4562D2CAEA76BD92B57C5B7A1A6B1ADB80"
+  },
+  {
+    "file": "native-fixture.json",
+    "bytes": 1694,
+    "sha256": "161FB3B75A13AD1B4DC3AD2EEE085A64396166E49A27A673C6FD508626548E44"
+  },
+  {
+    "file": "python-full.txt",
+    "bytes": 1071,
+    "sha256": "F64E7111EE8560E7AC7B1CEC0A6C88CA28AD7A89CBF70BDFCF0BA373B1CE4672"
+  },
+  {
+    "file": "python-related.txt",
+    "bytes": 394,
+    "sha256": "3BBF42CBBAC3A037602D0CA13340BC93E0D905C4E9B324830091CF8C9891D8B5"
+  },
+  {
+    "file": "review-red.txt",
+    "bytes": 417,
+    "sha256": "E844F28F545996AA7E668390757AEAF2CEA2A25A5356042BBE0E56EA2AD52CFC"
+  },
+  {
+    "file": "review2-consumer-green.txt",
+    "bytes": 99,
+    "sha256": "406B0299E2E6905F6630F27025B8D3E4EA92F571693B9952E046AD8F5BCC8996"
+  },
+  {
+    "file": "review2-consumer-red.txt",
+    "bytes": 1056,
+    "sha256": "BDA6985680025BA5FE461DBC4056AD1AFC23007B83F36D24C8AFD5F851B0F5BA"
+  },
+  {
+    "file": "review2-native-red.txt",
+    "bytes": 167,
+    "sha256": "6B0115FA40D3096447601BCB4491D1DDD08A572D1054968D6F5C64FBA0C9ECD4"
+  },
+  {
+    "file": "verified-native.txt",
+    "bytes": 69,
+    "sha256": "CCAC6BC40EEA4BC54B1E20B30A1445F21266F00CB04B0B609694ABB59C53D2D9"
+  }
+]

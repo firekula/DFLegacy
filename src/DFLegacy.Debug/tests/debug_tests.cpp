@@ -45,6 +45,8 @@ namespace
 }
 
 int RunClientStateTests();
+int RunFrameProfileTests();
+int RunFrameProfileRuntimeTests();
 int RunTownRouteCatalogTests();
 int RunTownRouteControllerTests();
 int RunTownRouteRuntimeTests();
@@ -60,6 +62,7 @@ int RunClientTestControlRuntimeTests();
 
 int main(int argc, char** argv)
 {
+    if(argc==2&&std::strcmp(argv[1],"--frame-profile")==0)return RunFrameProfileTests()+RunFrameProfileRuntimeTests();
     if(argc==2&&std::strcmp(argv[1],"--client-test-control")==0)return RunClientTestControlTests()+RunClientTestControlRuntimeTests();
     if (argc == 2 && std::strcmp(argv[1], "--map-feedback") == 0) return RunMapClickFeedbackTests()+RunMapClickFeedbackRuntimeTests();
     if (argc == 2 && std::strcmp(argv[1], "--client-party") == 0) return RunClientPartyTests()+RunClientPartyRuntimeTests();
