@@ -164,6 +164,18 @@ python tools/debug/client_navigation.py --directory G:/Game/DNF_ACT1/DF/town-tes
 
 Windows原子替换期间的瞬时快照/结果读取失败最多重试6次、总预算250ms，每次重新校验进程身份；过期、无效或身份变化不重试。受理后，只有捕获时钟严格晚于原生受理时钟的样本才用于判断目标是否改变；新目标会返回 `interrupted/destination_changed`，不会发送取消命令，也不会用受理前的200ms旧样本误判。
 
+跨区域移动使用 `client_route.py`，一次只给最终城镇、区域和坐标。接口读取该 PID 实际客户端旁的 `Script.pvf`，自动规划区域入口及内部转弯，沿途仍调用同一个原生目的地 setter：
+
+```powershell
+python tools/debug/client_route.py --directory <SnapshotDirectory> --pid <进程号> --uid <本角色UID> --town 2 --area 2 --x 575 --y 247
+```
+
+Python 中可调用 `client_route.execute_route(directory, pid=pid, uid=uid, started=started, town_id=2, area_id=2, x=575, y=247)`。`started` 是本轮进程的 FILETIME。默认120秒，`--timeout-seconds` 最长300秒；`--pvf` 可指定与实际客户端 PVF 字节完全一致的副本，不能替换为不同地图。操作在整条路线持有原有 PID 导航锁，返回每段 request ID、观察到的区域/代次及最终位置。`ok:true/status:arrived` 要求原生接受并观察到最终坐标和停止方向，单次过门不代表完成。
+
+路径依据原生地面矩形规划，每段完整包围盒须可通行，并绕开未选中的入口；内部转弯点留出原生坐标取整的停靠余量。出生在返回门内会自动离开再续行。最终目的地不能位于入口或其四像素保守范围。普通城镇路线不以副本入口作为中转，也不绕过任务、等级或其他运输限制。
+
+每段从新鲜实际位置重新规划，绑定 PID/创建时间/UID/user/actor/context，只接纳预期区域、递增代次及新地图。人工方向输入、目的地覆盖、其他控制器接管、身份/地图异常和超时会中断，不会自动重发后续路段。中断或超时不会强制取消已受理的原生移动；本轮支持范围为当前 ACT1 普通城镇地面，动态障碍仍可能导致有界失败。
+
 请求wire为96字节、小端，Python `struct` 格式 `<4sHHIIQQQQQQIIIIiiii`：`DLNV`、u16版本1、u16长度96、u32 PID/UID、u64进程FILETIME/requestId/issuedTick/snapshotTick/generation/sequence、u32 actor/map/user/context token、i32 town/area/x/y。请求时效1000ms，引用采样时效750ms，未来时间与重放被拒绝。结果schema为 `dfl-client-navigation/v1`，`source` 区分 debug/minimap，`status` 为 requested/arrived/rejected/interrupted；结果携带身份、目标、位置、时钟与原因，不把写文件成功当作受理。
 
 消费端标准库测试：
