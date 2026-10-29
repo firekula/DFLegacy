@@ -43,3 +43,16 @@ python -m pytest tools/acceptance/tests -q
 现有 `party_dungeon.run_live` 和部分历史辅助脚本包含外部聚焦/系统鼠标点击，
 不适用于用户要求“只能使用内置输入”的测试。本轮此类实测及驱动见
 `.tmp/party-live-20261024/report.md`、`builtin_driver.py`。
+
+
+## 常规操作默认不截图
+
+自2026-10-29起，绑定运行目录的内置输入使用统一控制器：
+
+```powershell
+python tools/acceptance/native_control.py <run-dir> A <fresh-label> '<steps-json>'
+```
+
+运行目录须有当前running部署记录和既有 `builtin_driver.py`。控制器验证PID、路径、启动时间及证据标签；普通调用默认不附加PrintScreen，只有关键验收追加 `--screenshot`。旧 `--no-shot` 仍兼容。历史冻结的 `control.py` 有“默认截图”行为，仅保留为旧证据，不作为新运行的默认控制器。
+
+原生截图本身可造成约57～70ms的短停顿；[操作停顿对照与原图](../../knowledge/decisions/2026-10-29-operation-stutter-verification.md)记录了本轮有限路径，未据此排除其他卡顿来源。

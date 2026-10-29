@@ -1,0 +1,69 @@
+{
+  "Verified": true,
+  "NoNativeProcesses": true,
+  "ProtectedInputCount": 15,
+  "Protected": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\Config.ini",
+      "Sha256": "0D9A612813DE316D9342A211BA2C87DB545342EC2E5D0CDBF0AA146C727582DB"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\Config.ini",
+      "Sha256": "319F31069F00630115F671FB0365CC2F450F707B5F82F5D0DE9B59D40696441B"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\launcher.json",
+      "Sha256": "E1217E2FD1202E81FE34D1E6DE01B2A63E54820EEDD6AB90D4E3A7BDC9142E4E"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\launcher.json",
+      "Sha256": "88FE0C76A3B3F614244282EF032BB8B28F227083C815FCD767A5CDC7DBB95609"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\server.json",
+      "Sha256": "D604F6F0F9F351745B306EAEEEC8DAD028BF0330D4071090BCE80176CCB8F47C"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\lorien-loot-20261027\\state.json",
+      "Sha256": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+      "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\ijl15.dll",
+      "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+      "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\ijl15.dll",
+      "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\data\\state.json",
+      "Sha256": "1BEA8F1CFAF46FA74B5DFE0AECE98ECEC0C7D848DD9093B11A7E4896E4B55F6C"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "Sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "Sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\Script.pvf",
+      "Sha256": "288D58AACE8ED4724A0A94AAA4CD0957B1D52C633771132EDE2F96363C1B506F"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\Script.pvf",
+      "Sha256": "288D58AACE8ED4724A0A94AAA4CD0957B1D52C633771132EDE2F96363C1B506F"
+    }
+  ],
+  "SourceCommit": "e6dac3f99ec9afbf59bc9515d5ae09c3f607ed14",
+  "RestorationSha256": "412F12CD1525FB72AF5852C3D2A82952817F6B85404D5E73F40B3306A5F2A148"
+}

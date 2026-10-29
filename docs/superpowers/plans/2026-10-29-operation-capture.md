@@ -27,5 +27,7 @@
 - [x] Full Python471passed/221subtests with6known baseline failures; source and evidence review requested.
 
 ### Task3: Evidence and closeout
-- [ ] Publish timing definitions/corrections, original key image and review; preserve scope of unresolved stutter.
-- [ ] Stop exact owned run, restore configs/interfaces and protected hashes; audit and commit.
+- [x] Publish timing definitions/corrections, original key image and review; preserve scope of unresolved stutter.
+- [x] Stop exact owned run, restore configs/interfaces and protected hashes; audit and commit.
+
+Source e6dac3f. Qualified observed pause reduction is limited to implicit captures; all other stutter remains unclosed. See knowledge/decisions/2026-10-29-operation-stutter-verification.md for original evidence, corrections and baseline test failures.

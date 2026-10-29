@@ -1,0 +1,31 @@
+{
+  "rule": "B5DD20/B5DD34 pair, constant lower bound with successive reads <=10ms apart and each read <=5ms. Observer scheduling gaps excluded, not GPU Present.",
+  "input": "default-no-shot-v5-C3ED.json",
+  "phases": [
+    {
+      "phase": "continuous",
+      "polls": 5762,
+      "foreground_fraction": 1.0,
+      "max_read_ms": 0.8533999789506197,
+      "max_contiguous_constant_ms": 7.421499991323799,
+      "long_constant_runs": [],
+      "observer_gaps": []
+    },
+    {
+      "phase": "short",
+      "polls": 5746,
+      "foreground_fraction": 1.0,
+      "max_read_ms": 0.19759999122470617,
+      "max_contiguous_constant_ms": 7.55770003888756,
+      "long_constant_runs": [],
+      "observer_gaps": [
+        {
+          "t": 33.288008100003935,
+          "between_reads_ms": 62.22050002543256,
+          "read_ms": 0.04799995804205537
+        }
+      ]
+    }
+  ],
+  "native_screenshot_directory_unchanged": true
+}

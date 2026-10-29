@@ -1,0 +1,181 @@
+...................F............FF...................................... [ 15%]
+................................................. [ 25%]
+...............................FF...F.......... [ 35%]
+........................................................................ [ 50%]
+........................................................................ [ 65%]
+......................................................... [ 77%]
+................................................. [ 87%]
+.................................... [ 95%]
+.......................                       [100%]
+================================== FAILURES ===================================
+______ test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects _______
+
+    def test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects():
+        rows = ledger.build_scenarios(SPEC_SCENARIOS, verified={})
+>       assert len(rows) == 12
+E       AssertionError: assert 23 == 12
+E        +  where 23 = len([{'scenario_id': 'handshake-login-town', 'step_index': '1', 'expect_index': '1', 'actor': 'A', ...}, {'scenario_id': '..., 'actor': 'A', ...}, {'scenario_id': 'party-dungeon', 'step_index': '1', 'expect_index': '2', 'actor': 'A', ...}, ...])
+
+protocol\tests\test_ledger.py:52: AssertionError
+_______________ test_cmd_ledger_end_to_end_writes_three_ledgers _______________
+
+tmp_path = WindowsPath('C:/Users/Firekula/AppData/Local/Temp/pytest-of-Firekula/pytest-270/test_cmd_ledger_end_to_end_wri0')
+
+    def test_cmd_ledger_end_to_end_writes_three_ledgers(tmp_path):
+        env = _make_env(tmp_path)
+        digest = _run_ledger(env, run_id="RID-TEST-1", scenario_id="town-two-clients",
+                             entries=_town_entries(("4", "8", "4")),
+                             created_utc="2026-01-01T00:00:00Z")
+        base = env["base"]
+        scenarios = _read_tsv(base / "ledger" / "scenarios.tsv")
+        runs = _read_tsv(base / "ledger" / "runs.tsv")
+        opcodes = {r["id"]: r for r in _read_tsv(base / "ledger" / "opcodes.tsv")
+                   if r["kind"] == "CMD"}
+    
+        town = [r for r in scenarios if r["scenario_id"] == "town-two-clients"]
+        assert [r["verdict_result"] for r in town] == ["pass", "pass", "pass", "needs-human"]
+        assert {r["verified_run_id"] for r in town} == {"RID-TEST-1"}
+>       assert len(scenarios) == 12
+E       AssertionError: assert 23 == 12
+E        +  where 23 = len([{'scenario_id': 'handshake-login-town', 'step_index': '1', 'expect_index': '1', 'actor': 'A', ...}, {'scenario_id': '..., 'actor': 'A', ...}, {'scenario_id': 'party-dungeon', 'step_index': '1', 'expect_index': '2', 'actor': 'A', ...}, ...])
+
+protocol\tests\test_ledger.py:296: AssertionError
+---------------------------- Captured stdout call -----------------------------
+ledger: {'scenarios': 23, 'runs': 1, 'opcodes': 3}
+_______ test_cmd_ledger_merges_runs_and_does_not_clear_other_scenarios ________
+
+tmp_path = WindowsPath('C:/Users/Firekula/AppData/Local/Temp/pytest-of-Firekula/pytest-270/test_cmd_ledger_merges_runs_an0')
+
+    def test_cmd_ledger_merges_runs_and_does_not_clear_other_scenarios(tmp_path):
+        """���� town run ׷�Ӷ����Ǹ�д������ party-invite ������� town �Ĺ�����"""
+        env = _make_env(tmp_path)
+        _run_ledger(env, run_id="RID-A", scenario_id="town-two-clients",
+                    entries=_town_entries(("4", "8", "4")), created_utc="2026-01-01T00:00:00Z")
+        _run_ledger(env, run_id="RID-B", scenario_id="town-two-clients",
+                    entries=_town_entries(("5", "9", "5")), created_utc="2026-01-02T00:00:00Z")
+        _run_ledger(env, run_id="RID-C", scenario_id="party-invite",
+                    entries=_party_entries(), created_utc="2026-01-03T00:00:00Z")
+        base = env["base"]
+    
+        runs = _read_tsv(base / "ledger" / "runs.tsv")
+        assert [r["run_id"] for r in runs] == ["RID-A", "RID-B", "RID-C"]  # created_utc ����
+        assert {r["verdict_digest_sha256"] for r in runs} == {
+            hashlib.sha256((env["tmp"] / f"digest-{rid}.json").read_bytes()).hexdigest()
+            for rid in ("RID-A", "RID-B", "RID-C")}
+    
+        scenarios = _read_tsv(base / "ledger" / "scenarios.tsv")
+>       assert len(scenarios) == 12
+E       AssertionError: assert 23 == 12
+E        +  where 23 = len([{'scenario_id': 'handshake-login-town', 'step_index': '1', 'expect_index': '1', 'actor': 'A', ...}, {'scenario_id': '..., 'actor': 'A', ...}, {'scenario_id': 'party-dungeon', 'step_index': '1', 'expect_index': '2', 'actor': 'A', ...}, ...])
+
+protocol\tests\test_ledger.py:328: AssertionError
+---------------------------- Captured stdout call -----------------------------
+ledger: {'scenarios': 23, 'runs': 1, 'opcodes': 3}
+ledger: {'scenarios': 23, 'runs': 2, 'opcodes': 3}
+ledger: {'scenarios': 23, 'runs': 3, 'opcodes': 3}
+___________ test_orchestrate_wires_server_actors_steps_and_collect ____________
+
+tmp_path = WindowsPath('D:/codex_worktree/party-chat-gold/DFLegacy/.tmp/pytest-tp/test_orchestrate_wires_server_actors_steps_and_collect_32588_22')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001B254D59040>
+capsys = <_pytest.capture.CaptureFixture object at 0x000001B254D59CA0>
+
+    def test_orchestrate_wires_server_actors_steps_and_collect(tmp_path, monkeypatch, capsys):
+        FakeRunner.instances.clear()
+        client = _make_client_dir(tmp_path)
+        pids = iter([7001, 7002])
+        monkeypatch.setattr(cli, "Runner", FakeRunner)
+        monkeypatch.setattr(cli, "capture_client_pid",
+                            lambda log, offset, timeout_s=60.0: (next(pids), "started-line", offset))
+        monkeypatch.setattr(cli, "_confirm", lambda message: None)
+        collected: list[tuple[str, Path | None]] = []
+        monkeypatch.setattr(cli, "collect_actor",
+                            lambda rp, name, source: collected.append((name, source)))
+        monkeypatch.setattr(cli, "judge",
+                            lambda sc, dirs, server_dir: Verdict(scenario_id=sc.id, entries=[]))
+        monkeypatch.setattr(cli, "write_verdict", lambda rp, v: (rp.verdict, rp.verdict_digest))
+        monkeypatch.setattr(cli, "promote_digest",
+                            lambda rp, acc: Path(acc) / "verdicts" / f"{rp.run_dir.name}.json")
+    
+        (client / "netdump-7001.log").write_text(
+            "2026-10-15 00:00:01.000 T=1 TX TCP 127.0.0.1:1 -> 127.0.0.1:2311 len=1 hex=00\n",
+            encoding="utf-8")
+        (client / "netdump-7002.log").write_text(
+            "2026-10-15 00:00:02.000 T=2 TX TCP 127.0.0.1:1 -> 127.0.0.1:2311 len=1 hex=00\n",
+            encoding="utf-8")
+    
+        rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                         actor_accounts="A=alias-one,B=alias-two", paths=_paths(client))
+>       assert rc == 0
+E       assert 1 == 0
+
+tools\acceptance\tests\test_cli_orchestrate.py:213: AssertionError
+---------------------------- Captured stderr call -----------------------------
+����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�
+___ test_orchestrate_waits_for_the_server_to_listen_before_starting_actors ____
+
+tmp_path = WindowsPath('D:/codex_worktree/party-chat-gold/DFLegacy/.tmp/pytest-tp/test_orchestrate_waits_for_the_server_to_listen_before_starting_actors_32588_23')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001B254DDA180>
+capsys = <_pytest.capture.CaptureFixture object at 0x000001B254DDBEF0>
+
+    def test_orchestrate_waits_for_the_server_to_listen_before_starting_actors(tmp_path, monkeypatch,
+                                                                              capsys):
+        """��� 2026-10-15 ȱ�ݻع飺һ���������**�ȷ���˿�ʼ����**���� actor��
+    
+        ʵ�����˴����������� 2311 Լ 5.4 �루���� 48343 ���ű� + �� catalog������ launcher ��
+        `EnsureServerReadyAsync` �� `StartServer=false` ʱ**ֻ̽һ�ζ˿ھ��״�**
+        \uff08src/DFLegacy.Launcher/Program.cs:336-347\uff09\u21d2 \u4e0d\u7b49\u5f85\u5c31\u5fc5\u7136\u62a5
+        "����ʧ�ܣ�Launcher failed ... ��ڷ��� 127.0.0.1:2311 δ�������� StartServer=false"��
+        """
+        FakeRunner.instances.clear()
+        client = _make_client_dir(tmp_path)
+        monkeypatch.setattr(cli, "Runner", FakeRunner)
+        monkeypatch.setattr(cli, "_confirm", lambda message: None)
+        monkeypatch.setattr(cli, "capture_client_pid",
+                            lambda log, offset, timeout_s=60.0: (7001 + offset % 7, "fake start line", 0))
+        # �����ܰѼ��ж������� git ���ٵ� verdicts/������ж������������
+        monkeypatch.setattr(cli, "promote_digest",
+                            lambda rp, acc: Path(acc) / "verdicts" / f"{rp.run_dir.name}.json")
+        rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                         actor_accounts="A=x,B=y", paths=_paths(client))
+>       assert rc == 0, "�ȴ��ǳɹ�·����һ���֣���Ӧʧ��"
+E       AssertionError: �ȴ��ǳɹ�·����һ���֣���Ӧʧ��
+E       assert 1 == 0
+
+tools\acceptance\tests\test_cli_orchestrate.py:267: AssertionError
+---------------------------- Captured stderr call -----------------------------
+����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�
+____ test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback ____
+
+tmp_path = WindowsPath('D:/codex_worktree/party-chat-gold/DFLegacy/.tmp/pytest-tp/test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback_32588_27')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001B254DD8B30>
+capsys = <_pytest.capture.CaptureFixture object at 0x000001B254DDA360>
+
+    def test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback(tmp_path, monkeypatch, capsys):
+        """launcher.log \u672c\u6b21\u65b0\u589e**\u591a\u6761**\u542f\u52a8\u884c \u21d2 \u5fc5\u987b\u8d70\u65e2\u6709\u53cb\u597d\u5931\u8d25\u8def\u5f84\uff08"\u7f16\u6392\u5931\u8d25\uff1a\u2026" + rc=1\uff09\uff0c
+        ������ AmbiguousPIDError ���ݳ� traceback������ I-3���˱� L290���ò���Ψһ PID ����ȷʧ�ܡ������£���"""
+        FakeRunner.instances.clear()
+        client = _make_client_dir(tmp_path)
+        monkeypatch.setattr(cli, "Runner", FakeRunner)
+        monkeypatch.setattr(cli, "_confirm", lambda message: None)
+        monkeypatch.setattr(cli, "capture_client_pid",
+                            lambda log, offset, timeout_s=60.0: (_ for _ in ()).throw(
+                                AmbiguousPIDError("Found 2 start events in launcher.log")))
+        rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                         actor_accounts="A=x,B=y", paths=_paths(client))
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "����ʧ��" in err, err
+>       assert "Found 2 start events" in err, err
+E       AssertionError: ����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�
+E         
+E       assert 'Found 2 start events' in '����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�\n'
+
+tools\acceptance\tests\test_cli_orchestrate.py:350: AssertionError
+=========================== short test summary info ===========================
+FAILED protocol/tests/test_ledger.py::test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects
+FAILED protocol/tests/test_ledger.py::test_cmd_ledger_end_to_end_writes_three_ledgers
+FAILED protocol/tests/test_ledger.py::test_cmd_ledger_merges_runs_and_does_not_clear_other_scenarios
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_wires_server_actors_steps_and_collect
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_waits_for_the_server_to_listen_before_starting_actors
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback
+6 failed, 471 passed, 221 subtests passed in 15.13s

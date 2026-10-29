@@ -69,3 +69,5 @@ Win32 Release 严格构建、完整 Native 测试，以及导航、实际 PVF �
 已将新 debug DLL 更新到两端及两个启动目录，并把经 U04 人工验收的托管服务端构建更新到正常 `DF/town-test` 运行目录；保留 `server.json`、原版 EXE/PVF 和原始存档。双端实测使用上一轮关闭后存档的逐字节副本，保留人工测试进度；本轮未将私有测试存档覆盖回原始存档。测试进程已按 PID、路径和启动时间停止，原配置及八个输入接口文件已恢复；旧冻结证据 W 的146文件、X的1221文件哈希复核通过。见[停止后运行记录](assets/2026-10-29-town-return-perf/deployment.json)、[恢复记录](assets/2026-10-29-town-return-perf/closeout-restoration.json)及[最后保护文件检查](assets/2026-10-29-town-return-perf/final-verification.json)。
 
 独立审查覆盖[源码与测试](assets/2026-10-29-town-return-perf/review/final/source-review.md)及[实机记录的离线一致性](assets/2026-10-29-town-return-perf/review/live-evidence-review.md)，后者不是独立实机认证。原图、数据和日志的完整哈希见[发布清单](assets/2026-10-29-town-return-perf/manifest.json)。实机记录属于本轮有限地图路径，未外推到所有城镇、运输、动态障碍或副本小地图。U03 四端史诗与稀有度矩阵、U04 蓝装及边界、U05 其他接口、U07 同步问题继续保留；偶发卡顿仍待捕获。
+
+后续用户确认操作时全画面一起停顿，已进一步捕获隐式原生截屏引起的短停顿并修复操作工具默认值，见[操作期对照](2026-10-29-operation-stutter-verification.md)。本页旧样本的“0个超过50ms的单次更新区间”只适用于其筛选条件；原始计数窗口重置会遗漏截图对应的区间，不能作为全面排除卡顿的证据。旧冻结数据原字节保留。

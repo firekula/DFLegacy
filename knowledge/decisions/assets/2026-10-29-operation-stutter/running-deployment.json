@@ -1,0 +1,55 @@
+{
+  "Schema": "party-native-phase/v1",
+  "Phase": "operation-baseline",
+  "Status": "running",
+  "StartedAtUtc": "2026-10-29T07:30:22.7827830Z",
+  "StoppedAtUtc": null,
+  "BuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\build-manifest-return-green.json",
+  "BuildManifestSha256": "76F9EF9A2750BCC39B0D4E4E124A983640E85F59391EE9D2EF8D19E65F626FAA",
+  "Runtime": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-operation-stutter-20261029\\runtime-operation-baseline",
+  "State": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-operation-stutter-20261029\\state-operation-baseline.json",
+  "InitialFixtureSha256": "FADA3856BB9540D7D516A6790816E2443F7B5FC38F47532C2B477D211F185651",
+  "Server": {
+    "Role": "server",
+    "Id": 34512,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-operation-stutter-20261029\\runtime-operation-baseline\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-29T07:30:22.9396536Z"
+  },
+  "Clients": [
+    {
+      "Role": "A",
+      "Id": 77704,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T07:30:25.6428300Z"
+    },
+    {
+      "Role": "B",
+      "Id": 33412,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T07:30:26.5764342Z"
+    }
+  ],
+  "Launchers": [
+    {
+      "Role": "launcher-A",
+      "Id": 52300,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T07:30:25.2182748Z"
+    },
+    {
+      "Role": "launcher-B",
+      "Id": 47564,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T07:30:25.9694382Z"
+    }
+  ],
+  "Sink": null,
+  "SinkLog": null,
+  "Stdout": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-operation-stutter-20261029\\server-operation-baseline.log",
+  "Stderr": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-operation-stutter-20261029\\server-operation-baseline.err.log",
+  "PeerSink": false,
+  "RoleAccounts": {
+    "A": "shizuku",
+    "B": "test"
+  }
+}

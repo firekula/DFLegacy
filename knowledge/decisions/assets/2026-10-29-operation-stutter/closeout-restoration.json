@@ -1,0 +1,64 @@
+{
+  "verified": true,
+  "restored_configs": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\Config.ini",
+      "sha256": "0D9A612813DE316D9342A211BA2C87DB545342EC2E5D0CDBF0AA146C727582DB"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\Config.ini",
+      "sha256": "319F31069F00630115F671FB0365CC2F450F707B5F82F5D0DE9B59D40696441B"
+    }
+  ],
+  "restored_interfaces": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.done.json",
+      "exists": true,
+      "sha256": "2C59460763EB611FABB30A4B481D0C0C55EBCA4EC3EAD4EED2342AE45AE52952"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.focus",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.focus.done",
+      "exists": true,
+      "sha256": "E078FAF4056E7B95F3F83AE13CB506850789182B532DE320B54552664532B6E2"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.cancel",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.done.json",
+      "exists": true,
+      "sha256": "2C59460763EB611FABB30A4B481D0C0C55EBCA4EC3EAD4EED2342AE45AE52952"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.focus",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.focus.done",
+      "exists": true,
+      "sha256": "B422361DB5C139FA3D88255707DDC858F72C718673BB8D4C335B321FC1A0F1CD"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.cancel",
+      "exists": false,
+      "sha256": null
+    }
+  ],
+  "normal_runtime_file_count": 50,
+  "normal_runtime_sha_unchanged": true,
+  "debug_sha256": "C3ED35E1008D74536D96307A9478C636AAD092186DEF3C9EE99CF8F3652D14AD",
+  "native_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+  "prior_frozen_namespace": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029",
+  "prior_frozen_files": 539,
+  "prior_manifest_sha256": "03E96277E8BA5040DD6BD54272CEE8976406FFD593C25E51A567AA552D47BF64",
+  "original_saves_copied": false,
+  "closed_manifest_sha256": "CEEDC03A7ABADB5983C4F454421F35BC4C0D45F83D22FC4B9D6FC3814DA8EC9D"
+}
