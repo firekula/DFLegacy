@@ -48,3 +48,6 @@ compose.yaml text eol=lf
 /knowledge/decisions/assets/2026-10-29-native-town-route/** -text whitespace=cr-at-eol
 /knowledge/decisions/assets/2026-10-29-native-town-route/**/*.log whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 /knowledge/decisions/assets/2026-10-29-native-town-route/review/acceptance-review.md whitespace=-blank-at-eof,cr-at-eol
+
+# 原始实机截图、观测 JSON 和测试日志保留已验证字节。
+/knowledge/decisions/assets/2026-10-29-town-return-perf/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

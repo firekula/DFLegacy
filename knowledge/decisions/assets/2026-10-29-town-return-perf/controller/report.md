@@ -1,0 +1,11 @@
+# Dungeon-gate departure controller fix
+
+Result: ready for root integration/review, uncommitted; no catalog/runtime changes and no client control/deployment. Only the three assigned controller files differ. Source hashes, test binary and original PVF hash are pinned in verification.json; source.diff is the scoped patch.
+
+The initial current area may now be dungeon_gate, while the final area and every portal target still require normal/gate/pub. The exception is recorded only after validating the initial observation and used only when current area/map/generation exactly match that original binding. After the first expected transition it cannot apply. The existing Initial/Tick busy/scene/identity guards, source confirmation, full-leg/foreign portal geometry, destination/auto/manual cancellation, one-leg monotonic birth escape and transition proof remain unchanged.
+
+Tests first: the original code produced4 genuine failures in red-corrected-tests.log: initial ordinary exit, birth-portal rearm, dangerous final-point validation after permitting source, and actual original-PVF route start. One prior test incorrectly assumed2 doors and was corrected from a read-only native Catalog graph probe; the preliminary red-tests.log is retained unchanged. Actual original-PVF chain is1/2[dungeon_gate] ->1/0[normal] ->2/1[normal] ->2/0[normal], three doors, not two.
+
+Final strict isolated Win32 Release Rebuild (/W4 /WX, toolset v145) exited0 with no compiler warnings/errors. Full pure controller suite including existing lifecycle/geometry safety tests and original-PVF Start/Tick tests reports0failure. New original-PVF test executes the pure controller across all internal destinations and three expected map/generation transitions to final2/0. It feeds physical observations and native leaf confirmations in a test model; this is not live client proof. Additional tests retain refusal of dungeon-gate final/current-final/transit, dangerous ordinary portal final points, busy selection/transport states, nonTown scenes, changed actor/map/generation, and source birth single-leg rearm.
+
+No broad suite was run because catalog/runtime/product wiring are unchanged and the focused group covers the modified unit. Root owns UI hit testing, integrated DLL build and live acceptance. No commit/index/HEAD changes were made by this task.

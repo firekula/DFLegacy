@@ -19,26 +19,28 @@
 - Perf claims need stage/frame/IO evidence; whole-plugin OFF is a combined control only.
 
 ### Task1: Preserve acceptance and current reproduction
-- [ ] Record human U04 acceptance separately; copy live netdump/route/SDK and exact running journal.
-- [ ] Save initial unsupported_area proof and scope known baseline failures.
+- [x] Record human U04 acceptance separately; copy live netdump/route/SDK and exact running journal.
+- [x] Save initial unsupported_area proof and scope known baseline failures.
 
 ### Task2: Controller egress (scoped agent)
 Files: town_route_controller.h/.cpp; town_route_controller_tests.cpp.
-- [ ] RED initial1/2 source, true3portal PVF chain to2/0, initial birth gate, no unsafe target/transit.
-- [ ] Minimal source-only exception; GREEN and independent review.
+- [x] RED initial1/2 source, true3portal PVF chain to2/0, initial birth gate, no unsafe target/transit.
+- [x] Minimal source-only exception; GREEN and independent review.
 
 ### Task3: Map ingress (root)
 Files: client_navigation.h/.cpp/runtime.cpp and corresponding navigation tests.
-- [ ] RED consumed left event8 after native hit with FD8 cleared; independent left capture/current/rechecks; root/marker/menu negatives.
-- [ ] Shared after-original ingress for both buttons; preserve ABI/original UI and native request guards; GREEN.
+- [x] RED consumed left event8 after native hit with FD8 cleared; independent left capture/current/rechecks; root/marker/menu negatives.
+- [x] Shared after-original ingress for both buttons; preserve ABI/original UI and native request guards; GREEN.
 
 ### Task4: Perf isolation and bounded optimization
 Files determined by measurements, expected client_party_runtime.cpp/client_state.cpp only if justified.
-- [ ] Record capture-duration and disk/publication counters; compare narrow controls without mislabeling plugin-OFF.
-- [ ] RED redundant IO/coalescing/freshness behavior before changing it; preserve bounded requests/terminal results.
-- [ ] Relevant and full suites, source review and frozen artifact.
+- [x] Record capture-duration and disk/publication counters; compare narrow controls without mislabeling plugin-OFF.
+- [x] RED redundant IO/coalescing/freshness behavior before changing it; preserve bounded requests/terminal results.
+- [x] Relevant and full suites, source review and frozen artifact.
 
 ### Task5: Native return validation and delivery
-- [ ] Stop/archive only owned old phase after preserving manual state; new private phase from exact closed state.
-- [ ] Both actual return-gate starts, both buttons, same/cross-area, manual and UI protection; key native screenshots.
-- [ ] Matched perf observations and honest limits; restore configs/inputs/protected files, audit and commit.
+- [x] Stop/archive only owned old phase after preserving manual state; new private phase from exact closed state.
+- [x] Both actual return-gate starts, both buttons, same/cross-area, manual and UI protection; key native screenshots.
+- [x] Matched perf observations and honest limits; restore configs/inputs/protected files, audit and commit.
+
+Outcome: source 5f101c9; live four-button checks, gate egress, manual interruption and guard checks passed. Performance sample supports duplicate-result elimination and fresher SDK export only; intermittent hitches remain unassigned. Full Python retains 6 known baseline failures. See knowledge/decisions/2026-10-29-town-return-perf-verification.md.

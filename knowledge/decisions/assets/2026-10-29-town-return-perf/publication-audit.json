@@ -1,0 +1,18 @@
+{
+  "verified": true,
+  "source_commit": "5f101c9e54314cb5643c7afee2a09455380fa18f",
+  "same_process_return_and_arrival_checks": [
+    "return-town-select",
+    "B-return-town",
+    "A-post-return-left",
+    "A-post-return-right",
+    "B-post-return-left",
+    "B-post-return-right"
+  ],
+  "manual_interrupt": true,
+  "guards": true,
+  "perf_summary_recomputed": true,
+  "original_jpg_count": 9,
+  "document_links_resolve": true,
+  "product_source_unchanged_since_build_commit": true
+}

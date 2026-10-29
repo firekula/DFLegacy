@@ -1,0 +1,32 @@
+{
+  "started": "2026-10-29T14:23:51.331+08:00",
+  "pid": 64280,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "dungeon-menu-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T14:23:51.450+08:00",
+  "steps": [
+    {
+      "t": 100,
+      "op": "key",
+      "vk": 27,
+      "dur": 120
+    },
+    {
+      "t": 720,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "ea0c4f863319a0a44c3c952c5b6fbc163c855df3b8ed1f59ce7aca74fc1b40d2",
+  "plan_written": "2026-10-29T14:23:51.451+08:00",
+  "focus_reassertions": 0,
+  "plan_completed": "2026-10-29T14:23:52.409+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01112.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\evidence-return-green\\dungeon-menu-input.jpg",
+  "own_pid_diag_lines": 3,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T14:23:52.600+08:00"
+}

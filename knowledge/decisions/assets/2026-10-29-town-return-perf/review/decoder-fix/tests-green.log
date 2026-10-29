@@ -1,0 +1,24 @@
+test_ambiguous_crc_rejected_even_same_plaintext (test_decode_netdump.DecodeTests.test_ambiguous_crc_rejected_even_same_plaintext) ... ok
+test_bad_command_size_is_rejected_before_cipher (test_decode_netdump.DecodeTests.test_bad_command_size_is_rejected_before_cipher) ... ok
+test_bad_crc_never_emits_fields (test_decode_netdump.DecodeTests.test_bad_crc_never_emits_fields) ... ok
+test_coalesced_server_drop_and_private_ack (test_decode_netdump.DecodeTests.test_coalesced_server_drop_and_private_ack) ... ok
+test_complete_frame_plus_growing_partial_tail (test_decode_netdump.DecodeTests.test_complete_frame_plus_growing_partial_tail) ... ok
+test_expected_pid_mismatch_fail_closed (test_decode_netdump.DecodeTests.test_expected_pid_mismatch_fail_closed) ... ok
+test_frozen_official_client_vectors_crc_unique (test_decode_netdump.DecodeTests.test_frozen_official_client_vectors_crc_unique) ... ok
+test_ignored_udp_does_not_hide_damaged_target_tcp_or_resync (test_decode_netdump.DecodeTests.test_ignored_udp_does_not_hide_damaged_target_tcp_or_resync) ... ok
+test_interleaved_distinct_sockets_never_merge (test_decode_netdump.DecodeTests.test_interleaved_distinct_sockets_never_merge) ... ok
+test_invalid_length_no_scanning_for_fake_frames (test_decode_netdump.DecodeTests.test_invalid_length_no_scanning_for_fake_frames) ... ok
+test_nonbusiness_frame_keeps_frame_index_but_no_body (test_decode_netdump.DecodeTests.test_nonbusiness_frame_keeps_frame_index_but_no_body) ... ok
+test_other_server_broadcast_subtypes_are_not_pickup (test_decode_netdump.DecodeTests.test_other_server_broadcast_subtypes_are_not_pickup) ... ok
+test_partial_raw_line_pending_without_consumption (test_decode_netdump.DecodeTests.test_partial_raw_line_pending_without_consumption) ... ok
+test_pickup_item_gold_removal_and_failures (test_decode_netdump.DecodeTests.test_pickup_item_gold_removal_and_failures) ... ok
+test_same_endpoint_new_process_header_separates (test_decode_netdump.DecodeTests.test_same_endpoint_new_process_header_separates) ... ok
+test_split_header_and_body_keep_rawline_span (test_decode_netdump.DecodeTests.test_split_header_and_body_keep_rawline_span) ... ok
+test_truncated_record_fail_closed_no_resync (test_decode_netdump.DecodeTests.test_truncated_record_fail_closed_no_resync) ... ok
+test_udp_and_other_remote_tcp_do_not_damage_split_business_frame (test_decode_netdump.DecodeTests.test_udp_and_other_remote_tcp_do_not_damage_split_business_frame) ... ok
+test_unrelated_remote_and_auth_not_exposed (test_decode_netdump.DecodeTests.test_unrelated_remote_and_auth_not_exposed) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.042s
+
+OK
