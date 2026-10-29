@@ -146,21 +146,21 @@ namespace dfl::client_navigation
             && r.At(panel,0x10,finalVisible) && finalVisible==1;
     }
     bool ReadRouteCanvasTarget(const client_state::Reader& reader, const client_state::Snapshot& s,
-                               std::uint32_t minimap, CanvasGoal& output) noexcept
+                               std::uint32_t minimap, CanvasGoal& output, std::uint32_t eventBefore) noexcept
     {
-        if (!s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
+        if (eventBefore!=0x10 || !s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
             || !s.scene.known || s.scene.value!=1) return false;
         Reads r{reader};
-        std::uint32_t im=0,owner=0,table=0,panel=0,id=0,capture=0,plane=0,regionsMenu=0,npcsMenu=0;
-        unsigned char visible=0,enabled=0,prior=0,now=0,mode=0,regionsOpen=0,npcsOpen=0;
+        std::uint32_t im=0,owner=0,table=0,panel=0,id=0,capture=0,plane=0,regionsMenu=0,npcsMenu=0,event=0;
+        unsigned char visible=0,enabled=0,now=0,mode=0,regionsOpen=0,npcsOpen=0;
         std::int32_t dx=0,dy=0,mx=0,my=0,cx=0,cy=0;
-        // 79D242 runs before the native right-button previous-state update (79D4DC).
-        // B55188 is the right-release hit CNWindow ID, not a generic hover slot.
+        // Read after native8F6C30 consumes this call's right-release event and
+        // writes B55188. The earlier update phase may already have cleared FD9.
         if (!r.At(0xB5DCE8,0,im) || !r.At(im,0xFF0,owner) || owner!=minimap
             || !r.At(minimap,0,table) || table!=0xA7CF3C || !r.At(minimap,4,panel)
             || !r.At(panel,0x10,visible) || visible!=1 || !r.At(panel,0x11,enabled) || enabled!=1
             || !r.At(panel,12,id) || !r.At(0xB55188,0,capture) || capture!=id
-            || !r.At(im,0xFD9,prior) || prior!=1 || !r.At(0xCFD202,0,now) || now!=0
+            || !r.At(0xCFD1F8,0,event) || event!=0 || !r.At(0xCFD202,0,now) || now!=0
             || !r.At(0xCFD20A,0,mode) || mode!=0
             || !r.At(minimap,0x1C,regionsMenu) || !r.At(regionsMenu,0x10,regionsOpen) || regionsOpen!=0
             || !r.At(minimap,0x64,npcsMenu) || !r.At(npcsMenu,0x10,npcsOpen) || npcsOpen!=0
@@ -185,14 +185,14 @@ namespace dfl::client_navigation
         goal.town=project->town;goal.area=project->area;
         // A reader can fail or observe a replaced/closed map. Publish only a complete,
         // still-owned gesture; never call native input, UI or destination routines here.
-        std::uint32_t finalIm=0,finalOwner=0,finalTable=0,finalPanel=0,finalId=0,finalCapture=0,finalPlane=0,finalRegions=0,finalNpcs=0;
-        unsigned char finalVisible=0,finalEnabled=0,finalPrior=0,finalNow=0,finalMode=0,finalRegionsOpen=0,finalNpcsOpen=0;
+        std::uint32_t finalIm=0,finalOwner=0,finalTable=0,finalPanel=0,finalId=0,finalCapture=0,finalPlane=0,finalRegions=0,finalNpcs=0,finalEvent=0;
+        unsigned char finalVisible=0,finalEnabled=0,finalNow=0,finalMode=0,finalRegionsOpen=0,finalNpcsOpen=0;
         std::int32_t finalDx=0,finalDy=0,finalMx=0,finalMy=0,finalCx=0,finalCy=0;
         if (!r.At(0xB5DCE8,0,finalIm) || finalIm!=im || !r.At(im,0xFF0,finalOwner) || finalOwner!=minimap
             || !r.At(minimap,0,finalTable) || finalTable!=table || !r.At(minimap,4,finalPanel) || finalPanel!=panel
             || !r.At(panel,12,finalId) || finalId!=id || !r.At(0xB55188,0,finalCapture) || finalCapture!=id
             || !r.At(panel,0x10,finalVisible) || finalVisible!=1 || !r.At(panel,0x11,finalEnabled) || finalEnabled!=1
-            || !r.At(im,0xFD9,finalPrior) || finalPrior!=1 || !r.At(0xCFD202,0,finalNow) || finalNow!=0
+            || !r.At(0xCFD1F8,0,finalEvent) || finalEvent!=0 || !r.At(0xCFD202,0,finalNow) || finalNow!=0
             || !r.At(0xCFD20A,0,finalMode) || finalMode!=0
             || !r.At(minimap,0x1C,finalRegions) || finalRegions!=regionsMenu
             || !r.At(regionsMenu,0x10,finalRegionsOpen) || finalRegionsOpen!=0
@@ -214,6 +214,30 @@ namespace dfl::client_navigation
     {
         return operations.setAndVerify && operations.activate
             && operations.setAndVerify(operations.context,request) && operations.activate(operations.context,request);
+    }
+    bool RestoreInstalledHitHook(bool& installed,const std::array<unsigned char,5>& patched,PatchOperation replace) noexcept
+    {
+        constexpr unsigned char original[]={0xE8,0x7C,0xFC,0xFF,0xFF};
+        if (!installed) return true;
+        if (!replace || !replace(patched.data(),original)) return false;
+        installed=false;return true;
+    }
+    bool InstallCanvasHooks(bool& pollInstalled,bool& hitInstalled,const std::array<unsigned char,5>& pollPatch,
+                            const std::array<unsigned char,5>& hitPatch,PatchOperation poll,PatchOperation hit) noexcept
+    {
+        constexpr unsigned char originalPoll[]={0xE8,0xD9,0x3B,0x0E,0x00},originalHit[]={0xE8,0x7C,0xFC,0xFF,0xFF};
+        if (pollInstalled || hitInstalled || !poll || !hit || !poll(originalPoll,pollPatch.data())) return false;
+        pollInstalled=true;
+        if (hit(originalHit,hitPatch.data())) {hitInstalled=true;return true;}
+        // A failed rollback deliberately leaves ownership set, blocking unload.
+        RestoreInstalledHook(pollInstalled,pollPatch,poll);return false;
+    }
+    std::int32_t PollRightRelease(void* context,std::uint32_t eventBefore,RightHitOriginal original,RightHitAfter after) noexcept
+    {
+        if (!original) return 0;
+        const auto result=original(context);
+        if (eventBefore==0x10 && after) after(context,eventBefore);
+        return result;
     }
     bool SetLiveAndActivate(const Request& request,const DestinationOperations& operations,LiveCheck live,std::uint64_t now) noexcept
     {

@@ -165,14 +165,20 @@ int main(int argc, char** argv)
     const auto priorClientStateSequence = clientStateSequence();
     Lines.clear(); frame.scene = 1; render(&frame);
     Check(Lines.empty(), "overlay does not render outside dungeon scene");
-    Sleep(225); render(&frame); Sleep(100);
+    // Publication is deliberately nonblocking and may skip a contended frame.
+    // Drive later frames until the asynchronous worker publishes, with a bound.
+    bool exportedHiddenScene = false;
+    const auto exportDeadline = GetTickCount64() + 2000;
+    do
     {
+        render(&frame); Sleep(25);
         std::ifstream state(clientStateFile, std::ios::binary);
         const std::string exported((std::istreambuf_iterator<char>(state)), {});
-        Check(exported.find("\"layout_supported\":false") != std::string::npos
-            && clientStateSequence() > priorClientStateSequence,
-            "real DLL captures and worker exports even when old Frame scene hides overlay");
-    }
+        exportedHiddenScene = exported.find("\"layout_supported\":false") != std::string::npos
+            && clientStateSequence() > priorClientStateSequence;
+    } while (!exportedHiddenScene && GetTickCount64() < exportDeadline);
+    Check(exportedHiddenScene,
+        "real DLL captures and worker exports even when old Frame scene hides overlay");
     Check(shutdown() == 1, "diagnostic worker stops before DLL unload");
 
     const HWND owner = CreateWindowExW(0, L"STATIC", L"DFLegacy Debug Overlay Preview", WS_OVERLAPPEDWINDOW,

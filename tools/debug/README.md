@@ -180,6 +180,18 @@ Python 中可调用 `client_route.execute_route(directory, pid=pid, uid=uid, sta
 
 请求wire为96字节、小端，Python `struct` 格式 `<4sHHIIQQQQQQIIIIiiii`：`DLNV`、u16版本1、u16长度96、u32 PID/UID、u64进程FILETIME/requestId/issuedTick/snapshotTick/generation/sequence、u32 actor/map/user/context token、i32 town/area/x/y。请求时效1000ms，引用采样时效750ms，未来时间与重放被拒绝。结果schema为 `dfl-client-navigation/v1`，`source` 区分 debug/minimap，`status` 为 requested/arrived/rejected/interrupted；结果携带身份、目标、位置、时钟与原因，不把写文件成功当作受理。
 
+新增客户端内跨区模式：开启同一个 `EnableTownNavigation=1` 开关并加载新版 debug.dll 后，按 **N** 打开城镇地图，**右键目标区域的空白处**设置最终目的地。DLL 自行读取本客户端 PVF、规划转弯并在过门后续行，无需运行 Python 路段控制器。NPC／玩家／副本标记、下拉菜单和其他控件不作为目的地；地图投影的像素会量化最终坐标。这里扩展的是 N 键城镇地图，副本右上角小地图保持原行为。
+
+数据操作优先使用客户端内控制器的单目标接口：
+
+```powershell
+python tools/debug/client_native_route.py --directory <SnapshotDirectory> --pid <进程号> --uid <本角色UID> --town 2 --area 2 --x 1200 --y 280
+```
+
+Python 可调用 `client_native_route.execute(directory, pid=pid, uid=uid, started=started, town_id=2, area_id=2, x=1200, y=280)`。脚本仅写一次最终目标请求并观察结果；受理后不逐段下发或重发。独立请求 `dfdebug-route-<pid>.bin` 使用 `DLRT/v1`，布局同上96字节，身份字段绑定起点而 town/area/x/y 为终点。状态为 `dfl-client-route/v1`，最新状态在 `dfdebug-route-<pid>.json`，debug请求另保留按 request ID 的结果文件，含 source、goal、origin、steps、PVF哈希及实时观察。
+
+控制器在普通城镇、赛丽亚房间和酒馆的已解析地面/门之间规划，拒绝副本/未支持运输中转及门边危险终点。方向键、原生目标改变、新有效目标和已确认停止会接管路线；无效替换请求不打断旧有效路线。途中短暂缺数据只等待，连续五秒或整条120秒等预算到期终止续行。`arrived` 必须观察最终区域和坐标，Python另取新鲜SDK停稳证明；仅收到 `requested` 不代表到达。CLI超时和数据中断不会强制取消已经交给原版客户端的当前移动段。
+
 消费端标准库测试：
 
 ```powershell

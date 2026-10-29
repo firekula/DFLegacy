@@ -32,10 +32,19 @@ namespace dfl::client_navigation
     bool ReadCanvasTarget(const client_state::Reader&, const client_state::Snapshot&,
                           std::uint32_t minimap, std::int32_t& x, std::int32_t& y) noexcept;
     struct CanvasGoal { std::int32_t town = -1, area = -1, x = 0, y = 0; };
+    // eventBefore must be this traversal's native0x10 right-release event;
+    // read only after original8F6C30 consumed it. An absent token never replays.
     bool ReadRouteCanvasTarget(const client_state::Reader&, const client_state::Snapshot&,
-                               std::uint32_t minimap, CanvasGoal&) noexcept;
+                               std::uint32_t minimap, CanvasGoal&, std::uint32_t eventBefore = 0) noexcept;
     using PatchOperation = bool (*)(const unsigned char* expected, const unsigned char* replacement) noexcept;
     bool RestoreInstalledHook(bool& installed, const std::array<unsigned char,5>& patched, PatchOperation) noexcept;
+    bool RestoreInstalledHitHook(bool& installed, const std::array<unsigned char,5>& patched, PatchOperation) noexcept;
+    bool InstallCanvasHooks(bool& pollInstalled, bool& hitInstalled,
+        const std::array<unsigned char,5>& pollPatch, const std::array<unsigned char,5>& hitPatch,
+        PatchOperation poll, PatchOperation hit) noexcept;
+    using RightHitOriginal = std::int32_t (*)(void*) noexcept;
+    using RightHitAfter = void (*)(void*,std::uint32_t eventBefore) noexcept;
+    std::int32_t PollRightRelease(void*,std::uint32_t eventBefore,RightHitOriginal,RightHitAfter) noexcept;
     struct DestinationOperations
     {
         void* context=nullptr;

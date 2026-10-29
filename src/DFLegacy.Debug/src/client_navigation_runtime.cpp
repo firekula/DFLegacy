@@ -19,7 +19,7 @@ namespace dfl::client_navigation
         client_state::Reader Native{};
         volatile LONG Enabled=0;
         volatile LONG HookPublished=0;
-        bool Installed=false, HookAttempted=false;
+        bool Installed=false, HitInstalled=false, HookAttempted=false;
         DWORD GameThread=0;
         wchar_t Directory[MAX_PATH]{};
         SRWLOCK InboxLock=SRWLOCK_INIT, OutboxLock=SRWLOCK_INIT;
@@ -45,6 +45,8 @@ namespace dfl::client_navigation
         constexpr unsigned char OriginalCall[]={0xE8,0xD9,0x3B,0x0E,0x00};
         std::array<unsigned char,5> PatchedCall{};
         constexpr std::uint32_t CallAddress=0x79D242;
+        constexpr std::uint32_t HitCallAddress=0x8F6FAF;
+        std::array<unsigned char,5> PatchedHitCall{};
         struct Reads
         {
             template<class T> bool At(std::uint32_t base, std::uint32_t offset, T& value) const noexcept
@@ -196,19 +198,40 @@ namespace dfl::client_navigation
             using Original=void (__thiscall*)(void*);
             reinterpret_cast<Original>(0x880E20)(self);
             if (!IsEnabled() || GetCurrentThreadId()!=GameThread || !Layout()) return;
-            CanvasGoal goal{};
-            if(ReadRouteCanvasTarget(Native,Current,static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(self)),goal))
-                client_town_route::BeginCanvasGoal(Current,goal);
             std::int32_t x=0,y=0;
             if (ReadCanvasTarget(Native,Current,static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(self)),x,y))
                 Dispatch(FromCurrent(x,y),"minimap");
         }
-        bool Patch(const unsigned char* expected,const unsigned char* replacement) noexcept
+        std::int32_t OriginalHit(void* self) noexcept
+        {
+            using Original=std::int32_t (__thiscall*)(void*);
+            return reinterpret_cast<Original>(0x8F6C30)(self);
+        }
+        void AfterRightHit(void*,std::uint32_t eventBefore) noexcept
+        {
+            if (!IsEnabled() || GetCurrentThreadId()!=GameThread || !Layout()) return;
+            Reads reads;std::uint32_t im=0,minimap=0;CanvasGoal goal;
+            if(reads.At(0xB5DCE8,0,im)&&reads.At(im,0xFF0,minimap)
+                &&ReadRouteCanvasTarget(Native,Current,minimap,goal,eventBefore))
+                client_town_route::BeginCanvasGoal(Current,goal);
+        }
+        std::int32_t HitPollWithOriginal(void* self,RightHitOriginal original) noexcept
+        {
+            // Reading the pre-event has no UI side effects. Native traversal
+            // always runs first; only its consumed release can select a goal.
+            std::uint32_t eventBefore=0;
+            if(IsEnabled()&&GetCurrentThreadId()==GameThread&&Layout())
+            {Reads reads;if(!reads.At(0xCFD1F8,0,eventBefore))eventBefore=0;}
+            return PollRightRelease(self,eventBefore,original,&AfterRightHit);
+        }
+        std::int32_t __fastcall RightHitPoll(void* self,void*) noexcept
+        {return HitPollWithOriginal(self,&OriginalHit);}
+        bool PatchAt(std::uint32_t address,const unsigned char* expected,const unsigned char* replacement) noexcept
         {
             Reads r;std::array<unsigned char,5> current{};
-            if (!r.At(CallAddress,0,current) || std::memcmp(current.data(),expected,5)!=0) return false;
+            if (!r.At(address,0,current) || std::memcmp(current.data(),expected,5)!=0) return false;
             DWORD old=0;
-            auto* target=reinterpret_cast<void*>(CallAddress);
+            auto* target=reinterpret_cast<void*>(address);
             if (!VirtualProtect(target,5,PAGE_EXECUTE_READWRITE,&old)) return false;
             std::memcpy(target,replacement,5);FlushInstructionCache(GetCurrentProcess(),target,5);
             DWORD ignored=0;
@@ -219,19 +242,31 @@ namespace dfl::client_navigation
             }
             return true;
         }
+        bool Patch(const unsigned char* expected,const unsigned char* replacement) noexcept
+        {return PatchAt(CallAddress,expected,replacement);}
+        bool PatchHit(const unsigned char* expected,const unsigned char* replacement) noexcept
+        {return PatchAt(HitCallAddress,expected,replacement);}
         void Install() noexcept
         {
             if (HookAttempted || !Layout()) return;
             HookAttempted=true;
             constexpr unsigned char caller[]={0x8B,0x8E,0xF0,0x0F,0,0};
             constexpr unsigned char poll[]={0x53,0x8B,0xD9,0x8B,0x43,0x1C,0x8A,0x48,0x10,0x56,0x57,0x8D,0x7B,0x1C,0x84,0xC9};
-            Reads reads;std::array<unsigned char,6> callerBytes{};std::array<unsigned char,16> pollBytes{};
+            constexpr unsigned char hitCaller[]={0x8B,0xCE,0xE8,0x7C,0xFC,0xFF,0xFF,0x8B,0xCE,0xE8,0xC5,0xFA,0xFF,0xFF};
+            constexpr unsigned char hitEntry[]={0x55,0x8B,0xEC,0x83,0xEC,0x08,0x57,0x8B,0xF9,0x8A,0x47,0x10,0x84,0xC0,0x74,0x07};
+            Reads reads;std::array<unsigned char,6> callerBytes{};std::array<unsigned char,16> pollBytes{},hitEntryBytes{};
+            std::array<unsigned char,14> hitCallerBytes{};
             if (!reads.At(CallAddress-6,0,callerBytes) || std::memcmp(callerBytes.data(),caller,sizeof(caller))!=0
-                || !reads.At(0x880E20,0,pollBytes) || std::memcmp(pollBytes.data(),poll,sizeof(poll))!=0 || !CallSignatures()) return;
+                || !reads.At(0x880E20,0,pollBytes) || std::memcmp(pollBytes.data(),poll,sizeof(poll))!=0
+                || !reads.At(HitCallAddress-2,0,hitCallerBytes) || std::memcmp(hitCallerBytes.data(),hitCaller,sizeof(hitCaller))!=0
+                || !reads.At(0x8F6C30,0,hitEntryBytes) || std::memcmp(hitEntryBytes.data(),hitEntry,sizeof(hitEntry))!=0 || !CallSignatures()) return;
             const auto target=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&MinimapPoll));
             const std::uint32_t relative=target-(CallAddress+5);
             PatchedCall[0]=0xE8;std::memcpy(PatchedCall.data()+1,&relative,4);
-            Installed=Patch(OriginalCall,PatchedCall.data());
+            const auto hitTarget=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&RightHitPoll));
+            const std::uint32_t hitRelative=hitTarget-(HitCallAddress+5);
+            PatchedHitCall[0]=0xE8;std::memcpy(PatchedHitCall.data()+1,&hitRelative,4);
+            InstallCanvasHooks(Installed,HitInstalled,PatchedCall,PatchedHitCall,&Patch,&PatchHit);
             InterlockedExchange(&HookPublished,Installed?1:0);
         }
         bool SameFile(const BY_HANDLE_FILE_INFORMATION& a,const BY_HANDLE_FILE_INFORMATION& b) noexcept
@@ -294,7 +329,7 @@ namespace dfl::client_navigation
         if (!settingsPath || !directory || wcsnlen_s(directory,MAX_PATH)>=MAX_PATH-64
             || GetPrivateProfileIntW(L"DebugOverlay",L"EnableTownNavigation",0,settingsPath)!=1) return;
         Native=reader;wcscpy_s(Directory,directory);
-        GameThread=0;Installed=HookAttempted=HaveInbox=HaveFile=Tracking=false;
+        GameThread=0;Installed=HitInstalled=HookAttempted=HaveInbox=HaveFile=Tracking=false;
         InterlockedExchange(&HookPublished,0);
         Inbox={};Active={};Outbox={};GameResult={};Current={};ConsumedId=ActiveTick=ActiveSequence=MiniId=NextSerial=ExportedSerial=LastPoll=0;
         InterlockedExchange(&Enabled,Native.read && Native.pid && Native.processStartedFileTime?1:0);
@@ -355,6 +390,7 @@ namespace dfl::client_navigation
     bool Shutdown() noexcept
     {
         InterlockedExchange(&Enabled,0);
+        if (!RestoreInstalledHitHook(HitInstalled,PatchedHitCall,&PatchHit)) return false;
         if (!RestoreInstalledHook(Installed,PatchedCall,&Patch)) return false;
         InterlockedExchange(&HookPublished,0);
         Tracking=false;

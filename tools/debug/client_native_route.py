@@ -35,9 +35,13 @@ def validate_response(value, request, now_tick_ms):
         require(state._integer(value.get(key),1) and value[key]==request[key],'response_binding_mismatch')
     require(value.get('source')=='debug','superseded')
     require(state._integer(value.get('tick_ms')) and value['tick_ms']<=now_tick_ms,'future_response')
-    require(value['tick_ms']>=request['issued_tick_ms'] and now_tick_ms-value['tick_ms']<=1000,'stale_response')
     require(value.get('status') in ('requested','queued','awaiting_confirmation','moving','waiting_data',
                                   'waiting_fresh_sample','waiting_transition','arrived','rejected','interrupted'),'bad_response')
+    # Terminal event ticks remain fixed while native IO publication retries.
+    # Their exact per-request binding is durable during execute's bounded wait;
+    # arrival still needs the independent fresh SDK proof below.
+    require(value['tick_ms']>=request['issued_tick_ms'] and
+            (value['status'] in ('arrived','rejected','interrupted') or now_tick_ms-value['tick_ms']<=1000),'stale_response')
     require(isinstance(value.get('reason'),str),'bad_response')
     origin=value.get('origin');goal=value.get('goal')
     require(isinstance(origin,dict) and origin.get('generation')==request['generation'],'response_binding_mismatch')

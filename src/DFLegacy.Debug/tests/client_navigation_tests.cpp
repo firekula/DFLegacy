@@ -18,6 +18,32 @@ namespace
     bool AcceptLive(const dfl::client_navigation::Request&) noexcept {return true;}
     bool FakePatch(const unsigned char* expected,const unsigned char* replacement) noexcept
     { ++PatchCount;return PatchOkay && expected[0]==0xE8 && replacement[1]==0xD9; }
+    struct HookPatches
+    {
+        bool failPoll=false,failHit=false,failPollRestore=false,failHitRestore=false;
+        char order[8]{};unsigned count=0;
+    } Hooks;
+    bool PollPatch(const unsigned char* expected,const unsigned char* replacement) noexcept
+    {
+        const bool installing=expected[1]==0xD9;
+        Hooks.order[Hooks.count++]=installing?'L':'l';
+        return installing?!Hooks.failPoll:!Hooks.failPollRestore&&replacement[1]==0xD9;
+    }
+    bool HitPatch(const unsigned char* expected,const unsigned char* replacement) noexcept
+    {
+        const bool installing=expected[1]==0x7C;
+        Hooks.order[Hooks.count++]=installing?'R':'r';
+        constexpr unsigned char original[]={0xE8,0x7C,0xFC,0xFF,0xFF};
+        return installing?!Hooks.failHit:!Hooks.failHitRestore&&std::memcmp(replacement,original,5)==0;
+    }
+    struct HitOrder
+    {
+        unsigned calls=0,after=0;bool ordered=true;std::uint32_t event=0;
+        static std::int32_t Original(void* context) noexcept
+        {auto& s=*static_cast<HitOrder*>(context);s.ordered&=s.calls==0&&s.after==0;++s.calls;return -1234567;}
+        static void After(void* context,std::uint32_t event) noexcept
+        {auto& s=*static_cast<HitOrder*>(context);s.ordered&=s.calls==1&&s.after==0;++s.after;s.event=event;}
+    };
     struct Actions
     {
         unsigned sets=0,activations=0;bool accept=true,ordered=true;
@@ -66,7 +92,7 @@ namespace
             U(0xB5DCE8,0x500000);U(0x500FF0,0x510000);U(0x510000,0xA7CF3C);U(0x510004,0x520000);U(0x51000C,0x530000);
             Put<unsigned char>(0x520010,1);Put<unsigned char>(0x520011,1);U(0x52000C,777);U(0xB55184,777);
             Put<unsigned char>(0x500FD8,1);Put<unsigned char>(0xCFD200,0);Put<unsigned char>(0xCFD20A,0);
-            Put<unsigned char>(0x500FD9,1);Put<unsigned char>(0xCFD202,0);U(0xB55188,777);
+            Put<unsigned char>(0x500FD9,0);Put<unsigned char>(0xCFD202,0);U(0xB55188,777);U(0xCFD1F8,0);
             U(0x51001C,0x560000);Put<unsigned char>(0x560010,0);U(0x510064,0x570000);Put<unsigned char>(0x570010,0);
             Put<std::int32_t>(0xBEEFC4,0);Put<std::int32_t>(0xB53C28,26);Put<std::int32_t>(0x530004,0);Put<std::int32_t>(0x530008,-26);
             Put<std::int32_t>(0xCFD1EC,60);Put<std::int32_t>(0xCFD1F0,71);U(0x530014,0);U(0x530018,0);
@@ -88,19 +114,25 @@ namespace
     void RouteCanvasTests()
     {
         const auto s=Sample();Memory m;m.Canvas();CanvasGoal goal;
-        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal)&&goal.town==1&&goal.area==0&&goal.x==400&&goal.y==350,"right canvas release selects current region");
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,0x10)&&goal.town==1&&goal.area==0&&goal.x==400&&goal.y==350,"consumed right canvas release selects current region with FD9 already zero");
         m.Put<unsigned char>(0x500FD8,0);m.Put<unsigned char>(0xCFD200,1);m.U(0xB55184,778);
-        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal),"right reader is independent of all left button fields");
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,0x10),"right reader is independent of all left button fields");
         m.Row(0x530020,0x540000,{10,20,100,50},2,3);m.Row(0xBEF024,0x550000,{-100,100,1000,500},2,3);
-        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal)&&goal.town==2&&goal.area==3&&goal.x==400&&goal.y==350,"right release selects another displayed town and area");
-        auto denied=[&](const char* label)
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,0x10)&&goal.town==2&&goal.area==3&&goal.x==400&&goal.y==350,"right release selects another displayed town and area");
+        auto denied=[&](const char* label,std::uint32_t eventBefore=0x10)
         {
-            goal={9,8,7,6};const bool accepted=ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal);
+            goal={9,8,7,6};const bool accepted=ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,eventBefore);
             Check(!accepted&&goal.town==9&&goal.area==8&&goal.x==7&&goal.y==6,label);
         };
-        m.Canvas();m.Put<unsigned char>(0x500FD9,0);denied("left release alone never selects route");
+        m.Canvas();denied("left release or stale capture alone never selects route",0);
+        Check(!ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal),"default absent native event never replays cached right hit");
         m.Canvas();m.Put<unsigned char>(0xCFD202,1);denied("held right button never selects route");
-        m.Canvas();m.Put<unsigned char>(0x500FD9,2);denied("invalid prior right state rejected");
+        m.Canvas();denied("non-release native event rejected",2);
+        m.Canvas();m.U(0xCFD1F8,0x10);m.Put<unsigned char>(0x500FD9,1);m.U(0xB55188,UINT32_MAX);
+        denied("update-phase edge before native hit traversal is not a target");
+        m.Put<unsigned char>(0x500FD9,0);m.U(0xCFD1F8,0);m.U(0xB55188,777);
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,0x10),"draw-phase native consumed event and root hit complete the two-stage release");
+        m.U(0xCFD1F8,0x10);denied("unconsumed right event rejects even a previously cached root hit");
         m.Canvas();m.Put<unsigned char>(0xCFD20A,1);denied("unsupported input mode rejected");
         m.Canvas();m.U(0xB55188,778);denied("right child dropdown button close or foreign capture rejected");
         m.Canvas();m.Put<unsigned char>(0x520010,0);denied("hidden cached map rejected");
@@ -123,18 +155,42 @@ namespace
         m.Canvas();m.mutateAt=0x51000C;m.mutateTo=0x530100;m.mutateOnRead=2;m.matchingReads=0;denied("plane replacement during read rejected");
         m.mutateAt=0;m.Canvas();m.mutateAt=0xB55188;m.mutateTo=778;m.mutateOnRead=2;m.matchingReads=0;denied("right capture replacement during read rejected");
         m.mutateAt=0;m.Canvas();m.mutateAt=0x520010;m.mutateTo=0;m.mutateOnRead=2;m.matchingReads=0;denied("map closes during read without publishing partial goal");
+        m.mutateAt=0;m.Canvas();m.mutateAt=0xCFD1F8;m.mutateTo=0x10;m.mutateOnRead=2;m.matchingReads=0;denied("a replacement event during read cannot publish a goal");
         m.mutateAt=0;m.Canvas();auto unavailable=s;unavailable.layoutSupported=false;
-        Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal),"unsupported snapshot rejects right goal");
-        unavailable=s;unavailable.truncated=true;Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal),"truncated snapshot rejects right goal");
-        unavailable=s;unavailable.scene.value=3;Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal),"non Town scene rejects right goal");
+        Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal,0x10),"unsupported snapshot rejects right goal");
+        unavailable=s;unavailable.truncated=true;Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal,0x10),"truncated snapshot rejects right goal");
+        unavailable=s;unavailable.scene.value=3;Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal,0x10),"non Town scene rejects right goal");
         m.Canvas();m.Put<unsigned char>(0x500FD9,0);std::int32_t x=0,y=0;
         Check(ReadCanvasTarget(m.Reader(),s,0x510000,x,y)&&x==400&&y==350,"legacy left reader still operates with no right edge");
+    }
+    void RightHitHookTests()
+    {
+        HitOrder order;
+        Check(PollRightRelease(&order,0x10,&HitOrder::Original,&HitOrder::After)==-1234567
+            &&order.ordered&&order.calls==1&&order.after==1&&order.event==0x10,"hit wrapper invokes original once before after-callback and preserves EAX");
+        for(std::uint32_t event:{0U,2U})
+        {order={};Check(PollRightRelease(&order,event,&HitOrder::Original,&HitOrder::After)==-1234567
+            &&order.calls==1&&order.after==0,"original hit traversal always runs without a right release");}
+        order={};Check(PollRightRelease(&order,0x10,nullptr,&HitOrder::After)==0&&order.after==0,"missing original never dispatches a canvas action");
+        const std::array<unsigned char,5> left={0xE8,0x11,2,3,4},right={0xE8,0x22,2,3,4};bool poll=false,hit=false;
+        Hooks={};Check(InstallCanvasHooks(poll,hit,left,right,&PollPatch,&HitPatch)&&poll&&hit&&std::strcmp(Hooks.order,"LR")==0,"both original CALL sites install in order");
+        Hooks.failHitRestore=true;Check(!RestoreInstalledHitHook(hit,right,&HitPatch)&&hit,"right restore failure retains ownership and blocks unload");
+        Hooks.failHitRestore=false;Check(RestoreInstalledHitHook(hit,right,&HitPatch)&&!hit,"right restore retries exact original hit CALL bytes");
+        Check(RestoreInstalledHook(poll,left,&PollPatch)&&!poll,"old poll restore follows right restore");
+        poll=hit=false;Hooks={};Hooks.failHit=true;
+        Check(!InstallCanvasHooks(poll,hit,left,right,&PollPatch,&HitPatch)&&!poll&&!hit&&std::strcmp(Hooks.order,"LRl")==0,"failed second hook rolls back the first");
+        Hooks={};Hooks.failHit=Hooks.failPollRestore=true;
+        Check(!InstallCanvasHooks(poll,hit,left,right,&PollPatch,&HitPatch)&&poll&&!hit,"failed rollback preserves retained poll ownership");
+        Hooks.failPollRestore=false;Check(RestoreInstalledHook(poll,left,&PollPatch)&&!poll,"retained rollback hook can later restore before unload");
+        Hooks={};Hooks.failPoll=true;
+        Check(!InstallCanvasHooks(poll,hit,left,right,&PollPatch,&HitPatch)&&!poll&&!hit&&Hooks.count==1,"first hook refusal never patches second site");
     }
 }
 int RunClientNavigationTests()
 {
     Failures=0;auto s=Sample();auto r=Command(s);
     RouteCanvasTests();
+    RightHitHookTests();
     Check(ValidateRequest(r,s,1100,49)==nullptr,"fresh matching Town request accepted");
     Check(ValidateRequest(r,s,1100,50)!=nullptr,"replayed request rejected");
     Check(ValidateRequest(r,s,2200,49)!=nullptr,"expired request rejected");

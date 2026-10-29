@@ -29,7 +29,7 @@ Interface namespace dfl::town_route: Key{int town,area}; Point{double x,y}; Wayp
 
 ### Task 2: Map right-button target reader (independent)
 
-Files: client_navigation.h/.cpp and client_navigation_tests.cpp. Preserve ReadCanvasTarget left-release API. Add CanvasGoal{int town,area,x,y}; ReadRouteCanvasTarget(reader,snapshot,minimap,CanvasGoal&) noexcept. Right release usesFD9/CFD202/B55188, not left fields; goal may be any unique displayed region. Native static bytes/provenance go into new evidence namespace.
+Files: client_navigation.h/.cpp and client_navigation_tests.cpp. Preserve ReadCanvasTarget left-release API. Add CanvasGoal{int town,area,x,y}; ReadRouteCanvasTarget(reader,snapshot,minimap,CanvasGoal&) noexcept. Right release is captured after original8F6C30 at8F6FAF (event0x10→0, CFD202=0, B55188 exactroot); initialFD9-at79D242 assumption was disproved by native RED; not left fields; goal may be any unique displayed region. Native static bytes/provenance go into new evidence namespace.
 
 - [ ] Prove original fields/ABIs and ground/background exclusion from original PE.
 - [ ] RED tests right versus left release, other displayed region, root/child/NPC/overlap/hidden/plane shift protection; GREEN and scoped review.

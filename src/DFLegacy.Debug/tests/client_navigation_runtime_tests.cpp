@@ -8,6 +8,8 @@ namespace
     bool UnsupportedNavigationImage(void*) noexcept { return false; }
     std::uint64_t NavigationTestTick(void*) noexcept { return 1100; }
     bool SupportedFixture(void*) noexcept { return true; }
+    bool WatchNativeHit=false,HitOriginalRan=false,HitAfterRead=false,HitReadTooSoon=false;
+    unsigned HitOriginalCalls=0;
     struct TrackingMemory
     {
         std::unordered_map<std::uint32_t,unsigned char> bytes;
@@ -23,7 +25,7 @@ namespace
             const auto a=0x2000000+i*4,b=0x2100000+i*4;U(a,value^a^key);U(b,value^b^key);
         }
         static bool Read(void* context,std::uint32_t at,void* output,std::size_t size) noexcept
-        { auto& m=*static_cast<TrackingMemory*>(context);auto* p=static_cast<unsigned char*>(output);for(std::size_t i=0;i<size;++i){auto it=m.bytes.find(at+static_cast<std::uint32_t>(i));if(it==m.bytes.end())return false;p[i]=it->second;}return true; }
+        { if(WatchNativeHit&&at==0xB5DCE8){HitAfterRead=true;if(!HitOriginalRan)HitReadTooSoon=true;}auto& m=*static_cast<TrackingMemory*>(context);auto* p=static_cast<unsigned char*>(output);for(std::size_t i=0;i<size;++i){auto it=m.bytes.find(at+static_cast<std::uint32_t>(i));if(it==m.bytes.end())return false;p[i]=it->second;}return true; }
         explicit TrackingMemory(const dfl::client_navigation::Request& r)
         {
             U(0xCFD458,0x1000000);U(0xCFD45C,0x12345678);U(0x1000004,1024);U(0x1000044,0x2000000);U(0x1000048,0x2100000);
@@ -43,6 +45,13 @@ namespace
             Bytes(0x478F70,setter);Bytes(0x479EF0,point);Bytes(0x79CD07,activate);Bytes(0x47B24C,update);
         }
     };
+    std::int32_t SafeOriginalHit(void* self) noexcept
+    {
+        ++HitOriginalCalls;HitOriginalRan=true;
+        auto& memory=*static_cast<TrackingMemory*>(self);
+        memory.U(0xCFD1F8,0);memory.U(0xB55188,777);
+        return -7654321;
+    }
 }
 int RunClientNavigationRuntimeTests()
 {
@@ -55,7 +64,7 @@ int RunClientNavigationRuntimeTests()
         // supported=false is unconditional: this process cannot install the hook or call game code.
         Native={nullptr,nullptr,&UnsupportedNavigationImage,nullptr,&NavigationTestTick,nullptr,7,999};
         InterlockedExchange(&Enabled,1);InterlockedExchange(&HookPublished,0);
-        Installed=HookAttempted=HaveInbox=HaveFile=Tracking=false;GameThread=0;
+        Installed=HitInstalled=HookAttempted=HaveInbox=HaveFile=Tracking=false;GameThread=0;
         Outbox={};GameResult={};NextSerial=0;ExportedSerial=0;ConsumedId=0;
         Current={};Current.pid=7;Current.processStartedFileTime=999;Current.sequence=20;Current.generation=3;Current.capturedTickMs=1000;
         Current.valid=Current.layoutSupported=Current.haveMe=true;Current.scene={true,1};Current.me.uid={true,2};
@@ -97,6 +106,30 @@ int RunClientNavigationRuntimeTests()
     Active=request;ActiveSequence=20;Tracking=true;Current.town.position={true,static_cast<float>(request.x),static_cast<float>(request.y),0};
     OnFrame(Current);
     check(!Tracking && std::strcmp(Outbox.status,"arrived")==0,"observed arrival takes priority over cleared native auto flag");
+    // Exercise the production hit wrapper using an injected original. These
+    // fixtures can never enter8F6C30 or any other absolute game function.
+    for(unsigned mode=0;mode<7;++mode)
+    {
+        Native={&memory,&TrackingMemory::Read,mode==0?&UnsupportedNavigationImage:&SupportedFixture,
+            nullptr,&NavigationTestTick,nullptr,7,999};
+        GameThread=GetCurrentThreadId();if(mode==2)++GameThread;
+        InterlockedExchange(&Enabled,mode==1?0:1);
+        WatchNativeHit=true;HitOriginalRan=HitAfterRead=HitReadTooSoon=false;HitOriginalCalls=0;
+        memory.U(0xCFD1F8,mode==3?2:mode==6?0:0x10);
+        if(mode==5)memory.bytes.erase(0xCFD1F9);
+        const auto result=HitPollWithOriginal(&memory,&SafeOriginalHit);
+        check(result==-7654321&&HitOriginalCalls==1&&HitOriginalRan,"production hit wrapper always preserves the original full EAX exactly once");
+        check(!HitReadTooSoon&&HitAfterRead==(mode==4),"right business reads occur only after original traversal with a supported release event");
+    }
+    WatchNativeHit=false;
+    // Ownership flags model retained CALLs, but the reader refuses all bytes:
+    // both failure paths stop before VirtualProtect or any native instruction.
+    Native={nullptr,nullptr,&UnsupportedNavigationImage,nullptr,&NavigationTestTick,nullptr,7,999};
+    Installed=HitInstalled=true;
+    check(!Shutdown()&&HitInstalled&&Installed,"failed right-hook restore keeps both ownership flags and refuses unload");
+    HitInstalled=false;
+    check(!Shutdown()&&Installed,"failed old-hook restore also refuses unload after the right hook is gone");
+    Installed=false;
     InterlockedExchange(&Enabled,0);Native={};
     std::printf("navigation runtime tests: %d failure(s)\n",failures);return failures;
 }
