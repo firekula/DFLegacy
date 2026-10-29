@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from .state_seed import is_data_path_key
 from .model import ActorSpec, Manifest, RunPaths, Scenario, deterministic_view, new_run_id
 
 COMMENT_PREFIX = "//"
@@ -475,12 +476,14 @@ class Runner:
         # `DFLegacy__DataPath` 必须是绝对路径：服务端按 AppContext.BaseDirectory（exe 目录）
         # 解析它，相对路径会被写到别处（实测会静默写进 `DF\runs\...`，run 私有副本原封不动
         # ⇒ 存档隔离失效）。这里宁可启动前响亮失败，也不要静默写错地方。
-        if env:
-            data_path = env.get("DFLegacy__DataPath")
-            if data_path is not None and not Path(data_path).is_absolute():
-                raise ValueError(
-                    f"DFLegacy__DataPath 必须是绝对路径，得到 {data_path!r}："
-                    f"服务端按 exe 目录解析它，相对路径会写到 run 目录之外")
+        data_paths = {value for key, value in (env or {}).items() if is_data_path_key(key)}
+        if len(data_paths) > 1:
+            raise ValueError("Conflicting explicit DataPath aliases")
+        data_path = next(iter(data_paths)) if data_paths else None
+        if data_path is not None and not Path(data_path).is_absolute():
+            raise ValueError(
+                f"DFLegacy__DataPath 必须是绝对路径，得到 {data_path!r}："
+                f"服务端按 exe 目录解析它，相对路径会写到 run 目录之外")
         if overrides:
             plan = plan_config_overrides(sj, overrides)
             apply_config_overrides(sj, plan)
@@ -488,6 +491,12 @@ class Runner:
             plan = []
         cmd = [str(exe)] + [str(a) for a in (server_args or [])]
         popen_env = {**os.environ, **env} if env else None
+        if data_path is not None:
+            # .NET accepts both colon and double-underscore aliases. Retaining
+            # an inherited alias makes provider enumeration order choose a save.
+            popen_env = {key: value for key, value in popen_env.items()
+                         if not is_data_path_key(key)}
+            popen_env["DFLegacy__DataPath"] = data_path
         if log_path is not None:
             log_path = Path(log_path)
             log_path.parent.mkdir(parents=True, exist_ok=True)

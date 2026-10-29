@@ -1,0 +1,269 @@
+{
+  "schema": "skillbar-only/v1",
+  "client": "A",
+  "input": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\skillbar-verification-20261030\\retired-A-fixed\\A-netdump.log",
+  "input_captured_length": 43924,
+  "input_captured_sha256": "50EC248F1339D5EB75ACF271BB9298D85605AF37CCADEED6637CE879DEF65CBB",
+  "complete_line_bytes": 43924,
+  "partial_final_line_bytes": 0,
+  "port": "7001",
+  "from": null,
+  "to": null,
+  "endpoint_inventory": {
+    "TX 127.0.0.1:12278 -\u003E 127.0.0.1:27001": 6,
+    "RX 127.0.0.1:12278 -\u003E 127.0.0.1:27001": 65,
+    "RX 192.168.3.177:12329 -\u003E 192.168.3.177:7001": 11,
+    "TX 192.168.3.177:12329 -\u003E 192.168.3.177:7001": 11
+  },
+  "rows": [
+    {
+      "client": "A",
+      "direction": "RX",
+      "protocol": "NOTI19",
+      "sp": 10,
+      "skills": [
+        {
+          "slot": 0,
+          "id": 15,
+          "level": 10
+        },
+        {
+          "slot": 1,
+          "id": 27,
+          "level": 6
+        },
+        {
+          "slot": 2,
+          "id": 57,
+          "level": 5
+        },
+        {
+          "slot": 4,
+          "id": 31,
+          "level": 5
+        },
+        {
+          "slot": 5,
+          "id": 55,
+          "level": 2
+        },
+        {
+          "slot": 6,
+          "id": 19,
+          "level": 10
+        },
+        {
+          "slot": 7,
+          "id": 17,
+          "level": 20
+        },
+        {
+          "slot": 8,
+          "id": 16,
+          "level": 5
+        },
+        {
+          "slot": 10,
+          "id": 18,
+          "level": 5
+        },
+        {
+          "slot": 11,
+          "id": 42,
+          "level": 1
+        },
+        {
+          "slot": 12,
+          "id": 2,
+          "level": 9
+        },
+        {
+          "slot": 13,
+          "id": 29,
+          "level": 7
+        },
+        {
+          "slot": 14,
+          "id": 38,
+          "level": 10
+        },
+        {
+          "slot": 15,
+          "id": 61,
+          "level": 6
+        },
+        {
+          "slot": 17,
+          "id": 64,
+          "level": 6
+        },
+        {
+          "slot": 90,
+          "id": 3,
+          "level": 1
+        },
+        {
+          "slot": 91,
+          "id": 37,
+          "level": 1
+        },
+        {
+          "slot": 92,
+          "id": 4,
+          "level": 1
+        },
+        {
+          "slot": 93,
+          "id": 14,
+          "level": 1
+        },
+        {
+          "slot": 94,
+          "id": 12,
+          "level": 1
+        },
+        {
+          "slot": 132,
+          "id": 28,
+          "level": 5
+        },
+        {
+          "slot": 137,
+          "id": 11,
+          "level": 1
+        },
+        {
+          "slot": 174,
+          "id": 181,
+          "level": 3
+        },
+        {
+          "slot": 175,
+          "id": 182,
+          "level": 3
+        },
+        {
+          "slot": 176,
+          "id": 184,
+          "level": 2
+        },
+        {
+          "slot": 177,
+          "id": 187,
+          "level": 1
+        },
+        {
+          "slot": 178,
+          "id": 179,
+          "level": 5
+        },
+        {
+          "slot": 179,
+          "id": 169,
+          "level": 1
+        },
+        {
+          "slot": 180,
+          "id": 170,
+          "level": 1
+        },
+        {
+          "slot": 181,
+          "id": 176,
+          "level": 10
+        },
+        {
+          "slot": 182,
+          "id": 175,
+          "level": 1
+        },
+        {
+          "slot": 183,
+          "id": 188,
+          "level": 9
+        },
+        {
+          "slot": 184,
+          "id": 180,
+          "level": 10
+        },
+        {
+          "slot": 185,
+          "id": 189,
+          "level": 1
+        }
+      ],
+      "first_line": 97,
+      "last_line": 97,
+      "time": "2026-10-30T03:49:27.816",
+      "wire_sha256": "EC05F276BE72DC8C42CF25E823347CDE1523A2752414B7C5541F51CF3D0AF91B",
+      "decode": "GamePayloadCipher.DecryptServerPayload"
+    },
+    {
+      "client": "A",
+      "direction": "TX",
+      "protocol": "CMD30",
+      "sequence": 9,
+      "source": 0,
+      "destination": 2,
+      "first_line": 106,
+      "last_line": 106,
+      "time": "2026-10-30T03:50:08.692",
+      "wire_sha256": "0832475F6558E4F4B9EEB9B424D212C1E6A1E283BD9585D9ED5E3C411B9ACCE3",
+      "decode": "GameClientCipherState\u002BCRC32"
+    },
+    {
+      "client": "A",
+      "direction": "RX",
+      "protocol": "CMD30",
+      "payload_hex": "010002",
+      "first_line": 107,
+      "last_line": 107,
+      "time": "2026-10-30T03:50:08.736",
+      "wire_sha256": "074D7E04796A1967831640EFDA657B8B5118161A7B062994680ABF9E4B5FE415",
+      "decode": "GamePayloadCipher.DecryptServerPayload"
+    },
+    {
+      "client": "A",
+      "direction": "TX",
+      "protocol": "CMD30",
+      "sequence": 10,
+      "source": 1,
+      "destination": 3,
+      "first_line": 108,
+      "last_line": 108,
+      "time": "2026-10-30T03:50:10.125",
+      "wire_sha256": "E6AB12175B26C704B7EB37B263617A73CD154B8264B93AA3561652A40A711E2C",
+      "decode": "GameClientCipherState\u002BCRC32"
+    },
+    {
+      "client": "A",
+      "direction": "RX",
+      "protocol": "CMD30",
+      "payload_hex": "010103",
+      "first_line": 109,
+      "last_line": 109,
+      "time": "2026-10-30T03:50:10.131",
+      "wire_sha256": "82760EB0B0D22D2AD9ED3E4FC037C72703660D47D303926E5EDE323C821A99C8",
+      "decode": "GamePayloadCipher.DecryptServerPayload"
+    }
+  ],
+  "errors": [],
+  "selected_decode_failures": 0,
+  "other_decode_failures": 0,
+  "streams": [
+    {
+      "flow": "RX 192.168.3.177:12329 -\u003E 192.168.3.177:7001",
+      "Failed": false,
+      "pending_bytes": 0,
+      "frames": 33
+    },
+    {
+      "flow": "TX 192.168.3.177:12329 -\u003E 192.168.3.177:7001",
+      "Failed": false,
+      "pending_bytes": 0,
+      "frames": 11
+    }
+  ],
+  "scope": "Only CMD30 slot requests/ACK and NOTI19 skill triples emitted. Socket return log timestamps are not native apply or wire transmission times. Last partial live record/frame remains pending; no scan resync."
+}

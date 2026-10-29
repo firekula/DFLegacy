@@ -4694,7 +4694,6 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, greeting);
                 }
 
-                PacketFrame? queuedRequest = null;
                 Task<PacketFrame?>? pendingPacketRead = null;
                 // "短 tick 到点但一个包都没有"（终审 P2）：流程不落进解码/镜像（那是"有包"路径的
                 // 事），只把信箱取走就回到循环顶部。每轮重置。
@@ -4740,8 +4739,7 @@ public sealed class EntranceService(
                         await HandleMonsterDeathAsync(monsterId, sweepInstance, sweepGeneration);
                     }
 
-                    var request = queuedRequest;
-                    queuedRequest = null;
+                    PacketFrame? request = null;
                     idlePartyMailTick = false;
                     if (request is null)
                     {
@@ -9069,129 +9067,9 @@ public sealed class EntranceService(
                             var sourceQuickSlot = request.Body[2];
                             var destinationQuickSlot = request.Body[3];
 
-                            // Dropping a skill onto an occupied quick slot sends
-                            // spare->target and target->source as two adjacent
-                            // commands. Wait for both before acknowledging them
-                            // in wire order, so the target is not left visibly
-                            // empty between the two client-side swaps.
-                            await Task.Delay(TimeSpan.FromMilliseconds(5), serverToken);
-                            PacketFrame? adjacentRawRequest = null;
-                            if (client.Available > 0)
-                            {
-                                adjacentRawRequest = await PacketFrame.ReadAsync(
-                                    stream,
-                                    options.MaximumPacketLength,
-                                    serverToken);
-                            }
-
-                            if (adjacentRawRequest is not null
-                                && adjacentRawRequest.Type == GameProtocolEngine.CommandPacketType
-                                && adjacentRawRequest.ProtocolId
-                                    == GameProtocolEngine.ChangeSkillSlotCommand)
-                            {
-                                if (!gameClientCipher!.TryDecode(
-                                        adjacentRawRequest,
-                                        out var adjacentRequest))
-                                {
-                                    LogPacket("RX-ENC", runtimeSession, adjacentRawRequest);
-                                    logger.LogWarning(
-                                        "Could not decode the adjacent skill quick-slot command.");
-                                    continue;
-                                }
-
-                                runtime.CountPacket(runtimeSession);
-                                runtimeSession.LastProtocolId = adjacentRequest.ProtocolId;
-                                LogPacket("RX", runtimeSession, adjacentRequest);
-
-                                if (adjacentRequest.Body.Length >= 4)
-                                {
-                                    var adjacentSourceSlot = adjacentRequest.Body[2];
-                                    var adjacentDestinationSlot = adjacentRequest.Body[3];
-                                    var isCompoundMove = adjacentSourceSlot == destinationQuickSlot;
-                                    var replies = new[]
-                                    {
-                                        (Request: request,
-                                            Source: sourceQuickSlot,
-                                            Destination: destinationQuickSlot),
-                                        (Request: adjacentRequest,
-                                            Source: adjacentSourceSlot,
-                                            Destination: adjacentDestinationSlot)
-                                    };
-
-                                    IReadOnlyList<CharacterSkillRecord> candidateSkills = currentSkills;
-                                    var rejected = false;
-                                    var rejectionReason = string.Empty;
-                                    foreach (var (_, replySourceSlot, replyDestinationSlot) in replies)
-                                    {
-                                        if (!skillCatalog.TrySwapSlots(
-                                            activeCharacter.Job,
-                                            candidateSkills,
-                                            replySourceSlot,
-                                            replyDestinationSlot,
-                                            out var swappedSkills,
-                                            out rejectionReason))
-                                        {
-                                            rejected = true;
-                                            break;
-                                        }
-
-                                        candidateSkills = swappedSkills;
-                                    }
-
-                                    if (!rejected && !currentSkills.SequenceEqual(candidateSkills))
-                                    {
-                                        currentSkills = candidateSkills.ToList();
-                                        activeCharacter = await store.SaveCharacterSkillsAsync(
-                                            accountName,
-                                            activeCharacter.Id,
-                                            currentSp,
-                                            currentSkills,
-                                            serverToken) ?? activeCharacter;
-                                    }
-
-                                    foreach (var (replyRequest, replySourceSlot, replyDestinationSlot) in replies)
-                                    {
-                                        var quickSlotBatchReply = rejected
-                                            ? GameProtocolEngine.CreateCommandError(
-                                                replyRequest,
-                                                errorCode: 1)
-                                            : GameProtocolEngine.CreateChangeSkillSlotReply(
-                                                replySourceSlot,
-                                                replyDestinationSlot);
-                                        await quickSlotBatchReply.WriteAsync(stream, serverToken);
-                                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                                        LogPacket("TX", runtimeSession, quickSlotBatchReply);
-                                    }
-
-                                    if (rejected)
-                                    {
-                                        logger.LogWarning(
-                                            "Rejected adjacent skill-slot changes {FirstSource}->{FirstDestination}, {SecondSource}->{SecondDestination}: {Reason}.",
-                                            sourceQuickSlot,
-                                            destinationQuickSlot,
-                                            adjacentSourceSlot,
-                                            adjacentDestinationSlot,
-                                            rejectionReason);
-                                    }
-                                    else
-                                    {
-                                        logger.LogInformation(
-                                            "Changed adjacent skill slots {FirstSource}->{FirstDestination}, {SecondSource}->{SecondDestination}; compound={Compound}.",
-                                            sourceQuickSlot,
-                                            destinationQuickSlot,
-                                            adjacentSourceSlot,
-                                            adjacentDestinationSlot,
-                                            isCompoundMove);
-                                    }
-
-                                    continue;
-                                }
-                            }
-                            else if (adjacentRawRequest is not null)
-                            {
-                                queuedRequest = adjacentRawRequest;
-                            }
-
+                            // ACT1 emits compound drags as separate CMD30 frames.
+                            // Process and persist each in wire order: bytes available
+                            // for the next frame do not mean that frame is complete.
                             var skillSlotMoveAccepted = skillCatalog.TrySwapSlots(
                                 activeCharacter.Job,
                                 currentSkills,
@@ -9201,13 +9079,22 @@ public sealed class EntranceService(
                                 out var simpleRejectionReason);
                             if (skillSlotMoveAccepted && !currentSkills.SequenceEqual(movedSkills))
                             {
-                                currentSkills = movedSkills.ToList();
-                                activeCharacter = await store.SaveCharacterSkillsAsync(
+                                var savedSkills = await store.SaveCharacterSkillsAsync(
                                     accountName,
                                     activeCharacter.Id,
                                     currentSp,
-                                    currentSkills,
-                                    serverToken) ?? activeCharacter;
+                                    movedSkills,
+                                    serverToken);
+                                if (savedSkills is null)
+                                {
+                                    skillSlotMoveAccepted = false;
+                                    simpleRejectionReason = "the character could not be persisted";
+                                }
+                                else
+                                {
+                                    currentSkills = movedSkills.ToList();
+                                    activeCharacter = savedSkills;
+                                }
                             }
 
                             var quickSlotReply = skillSlotMoveAccepted

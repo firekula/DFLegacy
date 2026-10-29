@@ -222,7 +222,7 @@ def test_orchestrate_wires_server_actors_steps_and_collect(tmp_path, monkeypatch
     assert (rp.server_dir / "state.json").is_file(), "必须复制出 run 私有存档"
     assert (rp.server_dir / "server.json").is_file(), "必须留 server.json provenance 副本"
     assert json.loads(rp.manifest.read_text(encoding="utf-8"))["config_overrides"] == [
-        {"key": "DFLegacy__DataPath", "old": "data/state.json",
+        {"key": "DFLegacy__DataPath", "old": str((client / "town-test/data/state.json").resolve()),
          "new": str(rp.server_dir / "state.json")}]
 
     # actor：各自账号别名、按场景顺序 A→B、真实 PID 写回
@@ -349,3 +349,38 @@ def test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback(tmp_pa
     assert "编排失败" in err, err
     assert "Found 2 start events" in err, err
     assert FakeRunner.instances[-1].stopped == 1, "PID 归因失败也要回收进程（finally: stop_all）"
+
+
+def test_orchestrate_carries_explicit_closed_seed_and_records_exact_source(tmp_path, monkeypatch):
+    client = _make_client_dir(tmp_path)
+    prior = tmp_path / "closed-private.json"
+    prior.write_text('{"Skills":[{"Slot":4,"SkillId":3}]}', encoding="utf-8")
+    raw = prior.read_bytes()
+    monkeypatch.setattr(cli, "Runner", FakeRunner)
+    monkeypatch.setattr(FakeRunner, "wait_until_listening", lambda self, *a, **kw: {"skipped": False, "host": "127.0.0.1", "port": 1, "waited_ms": 0})
+    monkeypatch.setattr(cli, "_confirm", lambda message: None)
+    pids = iter([7701, 7702])
+    monkeypatch.setattr(cli, "capture_client_pid", lambda *a, **kw: (next(pids), "fake", 0))
+    monkeypatch.setattr(cli, "promote_digest", lambda *a: None)
+    rc = orchestrate(SCEN, tmp_path / "runs", "seed123", actor_accounts="A=one,B=two",
+                     paths=_paths(client), seed_state=prior)
+    assert rc == 0
+    runner = FakeRunner.instances[-1]
+    rp = runner.last_rp
+    provenance = json.loads((rp.server_dir / "state-seed.json").read_text(encoding="utf-8"))
+    assert (rp.server_dir / "state.json").read_bytes() == raw == prior.read_bytes()
+    assert provenance["source"] == str(prior.resolve()) and provenance["selection"] == "explicit"
+    call = next(payload for name, payload in runner.calls if name == "start_server")
+    assert call["env"]["DFLegacy__DataPath"] == str(rp.server_dir / "state.json")
+
+
+def test_cli_forwards_explicit_seed_option(tmp_path, monkeypatch):
+    captured = {}
+    def run(*args, **kwargs):
+        captured.update(kwargs)
+        return 0
+    monkeypatch.setattr(cli, "orchestrate", run)
+    seed = tmp_path / "closed.json"
+    assert cli.main(["run", "--scenario", "town-two-clients", "--client-dir", str(tmp_path),
+                     "--actor-account", "A=one,B=two", "--seed-state", str(seed)]) == 0
+    assert captured["seed_state"] == seed

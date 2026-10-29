@@ -4192,7 +4192,8 @@ public sealed partial class JsonGameStore(
                 return null;
             }
 
-            var updated = account.Characters[index] with
+            var original = account.Characters[index];
+            var updated = original with
             {
                 Sp = Math.Max(0, remainingSp),
                 Skills = skills
@@ -4202,7 +4203,19 @@ public sealed partial class JsonGameStore(
                     .ToList()
             };
             account.Characters[index] = updated;
-            await SaveLockedAsync(cancellationToken);
+            var snapshotCommitted = false;
+            try
+            {
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true,
+                    isolateCommittedDiagnostics: true);
+            }
+            catch
+            {
+                // A failed write/replace must not install a rejected layout in
+                // the store cache, where an unrelated later save could revive it.
+                if (!snapshotCommitted) account.Characters[index] = original;
+                throw;
+            }
             return updated;
         }
         finally

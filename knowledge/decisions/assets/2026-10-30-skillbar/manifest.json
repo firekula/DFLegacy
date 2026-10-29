@@ -1,0 +1,62 @@
+[
+  {
+    "path": "01-before-edit.jpg",
+    "bytes": 371201,
+    "sha256": "CB2AC9191199D54BFC13D4338EE6785FDF07FDC6078F6BE311BC41E97B246D83"
+  },
+  {
+    "path": "02-fixed-edits-committed.jpg",
+    "bytes": 371453,
+    "sha256": "93F464381E6BBCBDA3A356107CA728CED0A0DE63BB3885DB8A5B1B5E59C89A16"
+  },
+  {
+    "path": "03-fixed-server-restart.jpg",
+    "bytes": 371734,
+    "sha256": "D0F3E4AFB416636D75EC04493A89F5969CDF10134A33E19D3FE922F4D70543E6"
+  },
+  {
+    "path": "A-first-decoded.json",
+    "bytes": 5506,
+    "sha256": "1FE0D46FF62D3DB1C96B3F1735D5E8338E655EBDBEFEFD9FE0B6A6D1B257E06B"
+  },
+  {
+    "path": "A-fixed-edit-decoded.json",
+    "bytes": 6269,
+    "sha256": "2DC0638A7762267ACCA23223DBEF82D0D48F29EC2B87BD9C53AE57D030034463"
+  },
+  {
+    "path": "A-fixed-relogin-decoded.json",
+    "bytes": 4748,
+    "sha256": "F2859A19268417C08664A7EF5E0B64EFDBE575A55F198077AAD4B03364103B26"
+  },
+  {
+    "path": "A-fixed-server-restart-decoded.json",
+    "bytes": 4755,
+    "sha256": "7200F7B9FDA6CA699BFE61EADBF9047D44B7AB821647EBB2043295A105B52985"
+  },
+  {
+    "path": "A-relogin-decoded.json",
+    "bytes": 4756,
+    "sha256": "9C45EECF3B69EAF06D5788E46A593263D2D9B3257A45DCEFC4A1A6958D14A5DC"
+  },
+  {
+    "path": "A-server-restart-decoded.json",
+    "bytes": 4750,
+    "sha256": "D3A0E8F0F979A6C7E6C3817FDD0D274C5A6C4AB6C75299D641E675C872FDBC38"
+  },
+  {
+    "path": "acceptance.json",
+    "bytes": 23422,
+    "sha256": "91469BE0D23208127F5D72F76FAE38CF64C8D34BF50313C6A14716F275917397"
+  },
+  {
+    "path": "offline/Offline.csproj",
+    "bytes": 413,
+    "sha256": "08E0432FDEB2DD3FA85426B47C03F5D19666F3EAD60CD4F2FC35DA8B4D79BD13"
+  },
+  {
+    "path": "offline/Program.cs",
+    "bytes": 7489,
+    "sha256": "BA77A3B1DDD0EB98D0D3F48C82844670DD8D60839BBEEE55AA7AD2B3B9FBED13"
+  }
+]

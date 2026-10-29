@@ -1,5 +1,7 @@
 # 项目状态与接续说明
 
+2026-10-30 U09：[技能栏持久化](knowledge/decisions/2026-10-30-skillbar-persistence-verification.md)完成同档基线及修复版两轮实机，逐包处理／null及替换失败回滚、CLI明确种子来源已补。完整托管通过，Python567／413subtests、2跳过及6既有失败。正常存档保持，接U11最后。
+
 2026-10-30 U10：[超重原始协议复核](knowledge/decisions/2026-10-30-overweight-verification.md)确认实际发送2.526kg，克→公斤换算已正确；纠正旧图文字解释，无业务修改。继续U09，U11最后。
 
 2026-10-30卡顿诊断：[默认关闭的回调计时／CLI](knowledge/decisions/2026-10-30-frame-profile-verification.md)及四端测试完成，新增各步骤与覆盖数据。两次51／69ms调用间隔仍未归因，不写成U08全修复；回城重组第四人原生拒绝亦保留阻断。后续U10／U09，U11最后。

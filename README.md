@@ -1,5 +1,7 @@
 # DFLegacy
 
+2026-10-30：[技能栏同档持久化](knowledge/decisions/2026-10-30-skillbar-persistence-verification.md)两轮实际编辑／重登／服务端重启通过，补逐包保存和测试种子来源／延续。U11最后接续。
+
 2026-10-30：[超重协议复核](knowledge/decisions/2026-10-30-overweight-verification.md)确认实际2.526kg，无需额外单位修复。
 
 2026-10-30计时增量：新增默认关闭的debug回调计时与CLI，记录各子区间、前台覆盖和调用间隔。四端两阶段发现51／69ms未归因间隔，已计时工作峰值<0.3ms，不能宣称全游戏无卡顿。见[计时数据及原图](knowledge/decisions/2026-10-30-frame-profile-verification.md)。
