@@ -1,0 +1,337 @@
+{
+  "schema": "dfl-sync-followup/v1",
+  "native_sha256": "8B344D54A7350316929E3D8E50073BC54F8AE3A716F055F9CCF404229DBD9EE8",
+  "server_sha256": "E058182878E8176981C3D9649515F744035385E812525DBE14B4D2C8059193C0",
+  "business_source_changes": false,
+  "town": [
+    {
+      "role": "A",
+      "transmitted": 3,
+      "received_peer": 3,
+      "maximum_rolling1000ms_count": 1,
+      "terminal_update": {
+        "client": "A",
+        "direction": "TX",
+        "protocol": "CMD37",
+        "uid": "1",
+        "sequence": 18,
+        "x": 1289,
+        "y": 247,
+        "direction_raw": 5,
+        "movement_value": 100,
+        "socket_first_time": "2026-10-30T02:28:42.378",
+        "socket_last_time": "2026-10-30T02:28:42.378",
+        "first_line": 429,
+        "last_line": 429,
+        "stream_byte_start": 467,
+        "stream_byte_end_exclusive": 486,
+        "body9_hex": "12000905F700056400",
+        "body9_sha256": "B8C9D790EDF17B395FF8D658F36CC4DD27BF3DDDEFF68958274AB0331FFBEF14",
+        "wire_frame_sha256": "AF2C62001DE71E754C8F2926E34D6575F2C2F55E56B474D9B137663BB4AAC4BE",
+        "decode": "GameClientCipherState+CRC32"
+      },
+      "terminal_exact_receive_candidates": [
+        {
+          "client": "B",
+          "direction": "RX",
+          "protocol": "NOTI22",
+          "uid": "1",
+          "sequence": null,
+          "x": 1289,
+          "y": 247,
+          "direction_raw": 5,
+          "movement_value": 100,
+          "socket_first_time": "2026-10-30T02:28:42.382",
+          "socket_last_time": "2026-10-30T02:28:42.382",
+          "first_line": 424,
+          "last_line": 424,
+          "stream_byte_start": 3030,
+          "stream_byte_end_exclusive": 3045,
+          "body9_hex": "01000905F700056400",
+          "body9_sha256": "CAD8239040F4AEE889AA26A000CF9F4E85C1725C6A6E0DD27D04403D76D55047",
+          "wire_frame_sha256": "0EB4F19C31C8096DC861826EA90DF3FDDF22074BBEEFDD69A5747C060DF2DE7A",
+          "decode": "GamePayloadCipher.DecryptServerPayload"
+        }
+      ],
+      "final_delta_samples": 80,
+      "maximum_final_xy_difference": 0.43749161303515977,
+      "final_delta": {
+        "dx": 0.4345700000001216,
+        "dy": 0.050476000000003296
+      }
+    },
+    {
+      "role": "B",
+      "transmitted": 4,
+      "received_peer": 4,
+      "maximum_rolling1000ms_count": 1,
+      "terminal_update": {
+        "client": "B",
+        "direction": "TX",
+        "protocol": "CMD37",
+        "uid": "2",
+        "sequence": 19,
+        "x": 1211,
+        "y": 247,
+        "direction_raw": 5,
+        "movement_value": 100,
+        "socket_first_time": "2026-10-30T02:28:48.355",
+        "socket_last_time": "2026-10-30T02:28:48.355",
+        "first_line": 547,
+        "last_line": 547,
+        "stream_byte_start": 480,
+        "stream_byte_end_exclusive": 499,
+        "body9_hex": "1300BB04F700056400",
+        "body9_sha256": "651889B235D008C80314EF48FEC4DB00A6CE866DB3071C205977C908EEBF4B84",
+        "wire_frame_sha256": "64CBC578FB7BBB6662BE675285700DF72DF04ADD78C2BB0881BD806FB5BB3BD3",
+        "decode": "GameClientCipherState+CRC32"
+      },
+      "terminal_exact_receive_candidates": [
+        {
+          "client": "A",
+          "direction": "RX",
+          "protocol": "NOTI22",
+          "uid": "2",
+          "sequence": null,
+          "x": 1211,
+          "y": 247,
+          "direction_raw": 5,
+          "movement_value": 100,
+          "socket_first_time": "2026-10-30T02:28:48.358",
+          "socket_last_time": "2026-10-30T02:28:48.358",
+          "first_line": 552,
+          "last_line": 552,
+          "stream_byte_start": 3201,
+          "stream_byte_end_exclusive": 3216,
+          "body9_hex": "0200BB04F700056400",
+          "body9_sha256": "2382A8BEA5C5ADEA8ED516653DA09E9C6202ED9241857569A3FED4B5DCD8B9DD",
+          "wire_frame_sha256": "AD965AED61CA78C78A6DAEFBE7E5830192E99CC3226E0AB3E3FED316F8B789B2",
+          "decode": "GamePayloadCipher.DecryptServerPayload"
+        }
+      ],
+      "final_delta_samples": 80,
+      "maximum_final_xy_difference": 0.3199325352649404,
+      "final_delta": {
+        "dx": -0.27320000000008804,
+        "dy": -0.16648900000001277
+      }
+    }
+  ],
+  "monster": {
+    "stop": "bounded_window_complete",
+    "poll_samples": 779,
+    "unique_sequence_pairs": 246,
+    "skew_excluded": 98,
+    "per_monster": [
+      {
+        "uid": 0,
+        "monster_id": 1,
+        "qualified_pairs": 148,
+        "maximum_distance": 30.269680549110863,
+        "over100": 0,
+        "longest_over100_seconds": 0
+      },
+      {
+        "uid": 1,
+        "monster_id": 1,
+        "qualified_pairs": 148,
+        "maximum_distance": 3.148662561611363,
+        "over100": 0,
+        "longest_over100_seconds": 0
+      },
+      {
+        "uid": 2,
+        "monster_id": 1,
+        "qualified_pairs": 148,
+        "maximum_distance": 12.391028423272763,
+        "over100": 0,
+        "longest_over100_seconds": 0
+      },
+      {
+        "uid": 3,
+        "monster_id": 1,
+        "qualified_pairs": 148,
+        "maximum_distance": 28.36529500000006,
+        "over100": 0,
+        "longest_over100_seconds": 0
+      }
+    ],
+    "last_sample_elapsed": 29.95299999997951,
+    "qualified_rows": 592,
+    "qualified_sequence_pairs": 148,
+    "wall_window_seconds": 30.001
+  },
+  "maximum_difference_rows": [
+    {
+      "uid": 0,
+      "monster_id": 1,
+      "elapsed": 25.06299999996554,
+      "a_sequence": 1121,
+      "b_sequence": 1115,
+      "capture_skew_ms": 16,
+      "distance": 30.269680549110863,
+      "a": {
+        "uid": 0,
+        "monster_id": 1,
+        "hp": 50,
+        "dead": false,
+        "active": true,
+        "position": {
+          "x": 372,
+          "y": 184,
+          "z": 0
+        },
+        "action": 0,
+        "queued_action": 4294967295,
+        "authority_token": 142844288
+      },
+      "b": {
+        "uid": 0,
+        "monster_id": 1,
+        "hp": 50,
+        "dead": false,
+        "active": true,
+        "position": {
+          "x": 395.178894,
+          "y": 203.467728,
+          "z": 0
+        },
+        "action": 0,
+        "queued_action": 4294967295,
+        "authority_token": 122025776
+      }
+    },
+    {
+      "uid": 1,
+      "monster_id": 1,
+      "elapsed": 7.327999999979511,
+      "a_sequence": 1034,
+      "b_sequence": 1028,
+      "capture_skew_ms": 0,
+      "distance": 3.148662561611363,
+      "a": {
+        "uid": 1,
+        "monster_id": 1,
+        "hp": 50,
+        "dead": false,
+        "active": true,
+        "position": {
+          "x": 328.550049,
+          "y": 222.531937,
+          "z": 0
+        },
+        "action": 0,
+        "queued_action": 4294967295,
+        "authority_token": 120288368
+      },
+      "b": {
+        "uid": 1,
+        "monster_id": 1,
+        "hp": 50,
+        "dead": false,
+        "active": true,
+        "position": {
+          "x": 330.925476,
+          "y": 224.598679,
+          "z": 0
+        },
+        "action": 0,
+        "queued_action": 4294967295,
+        "authority_token": 144966784
+      }
+    },
+    {
+      "uid": 2,
+      "monster_id": 1,
+      "elapsed": 19.530999999959022,
+      "a_sequence": 1094,
+      "b_sequence": 1088,
+      "capture_skew_ms": 31,
+      "distance": 12.391028423272763,
+      "a": {
+        "uid": 2,
+        "monster_id": 1,
+        "hp": 50,
+        "dead": false,
+        "active": true,
+        "position": {
+          "x": 415.60202,
+          "y": 278.126221,
+          "z": 0
+        },
+        "action": 0,
+        "queued_action": 4294967295,
+        "authority_token": 120288368
+      },
+      "b": {
+        "uid": 2,
+        "monster_id": 1,
+        "hp": 50,
+        "dead": false,
+        "active": true,
+        "position": {
+          "x": 414.563995,
+          "y": 265.778748,
+          "z": 0
+        },
+        "action": 0,
+        "queued_action": 4294967295,
+        "authority_token": 144966784
+      }
+    },
+    {
+      "uid": 3,
+      "monster_id": 1,
+      "elapsed": 10.171999999962281,
+      "a_sequence": 1048,
+      "b_sequence": 1042,
+      "capture_skew_ms": 0,
+      "distance": 28.36529500000006,
+      "a": {
+        "uid": 3,
+        "monster_id": 1,
+        "hp": 50,
+        "dead": false,
+        "active": true,
+        "position": {
+          "x": 573.449951,
+          "y": 294.662445,
+          "z": 0
+        },
+        "action": 0,
+        "queued_action": 4294967295,
+        "authority_token": 142844288
+      },
+      "b": {
+        "uid": 3,
+        "monster_id": 1,
+        "hp": 50,
+        "dead": false,
+        "active": true,
+        "position": {
+          "x": 545.084656,
+          "y": 294.662445,
+          "z": 0
+        },
+        "action": 0,
+        "queued_action": 4294967295,
+        "authority_token": 122025776
+      }
+    }
+  ],
+  "map": {
+    "dungeon_id": 1,
+    "map_id": 4,
+    "room_x": 1,
+    "room_y": 0
+  },
+  "source_scope": "New ordinary room, not the historical boss-room seed/context.",
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "limits": [
+    "Only fresh bounded no-reproduction; U07/historical monster divergence not marked fixed.",
+    "Map/actor tokens are process-local; compare coordinates/UIDs only with per-process identity binding.",
+    "Wire delivery and target CRC do not prove native application or GP42 inner contents.",
+    "200ms SDK sequential pairs; qualified skew<=75ms, no atomic pair claim.",
+    "Screenshots taken only after windows and at different times, not pixel-based coordinate evidence."
+  ]
+}

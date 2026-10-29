@@ -1,0 +1,137 @@
+{
+  "head": "d942297459248a8b635feb55f8ab95deb806205e",
+  "method": "Pure read-only independent Python analysis; no game/process/UI/build invoked",
+  "town": {
+    "start": "2026-10-30T02:28:27.709",
+    "end": "2026-10-30T02:28:54.698",
+    "polls": 718,
+    "input_actions": 4,
+    "raw_capture_sha256": {
+      "A": "ea12319dcd3d50e7dc85c3490c95e9564394cf13c8539e9fdab1ac8d13e37c13",
+      "B": "79e6e2180c34a880eacbe541d839cf1f4b064ef345b841ad4328b1509827cbd3"
+    },
+    "decoded_rows_match_existing": true,
+    "A": {
+      "tx_count": 3,
+      "peer_rx_count": 3,
+      "rolling_1000ms_halfopen_max": 1,
+      "final_target_body_match_candidates": 1,
+      "terminal_tx_local": "2026-10-30 02:28:42.378",
+      "terminal_peer_rx_local": "2026-10-30 02:28:42.382",
+      "terminal_xy": [
+        1289,
+        247
+      ],
+      "last80_final_own_peer_max_xy": 0.4374916130351598,
+      "last80_elapsed_span": 2.952999999979511
+    },
+    "B": {
+      "tx_count": 4,
+      "peer_rx_count": 4,
+      "rolling_1000ms_halfopen_max": 1,
+      "final_target_body_match_candidates": 1,
+      "terminal_tx_local": "2026-10-30 02:28:48.355",
+      "terminal_peer_rx_local": "2026-10-30 02:28:48.358",
+      "terminal_xy": [
+        1211,
+        247
+      ],
+      "last80_final_own_peer_max_xy": 0.3199325352649404,
+      "last80_elapsed_span": 2.952999999979511
+    }
+  },
+  "monster": {
+    "start": "2026-10-30T02:30:30.202",
+    "end": "2026-10-30T02:31:00.203",
+    "last_sample_elapsed": 29.95299999997951,
+    "polls": 779,
+    "native_key_actions": [
+      [
+        "A",
+        37
+      ],
+      [
+        "B",
+        38
+      ],
+      [
+        "A",
+        39
+      ],
+      [
+        "B",
+        37
+      ],
+      [
+        "A",
+        38
+      ],
+      [
+        "B",
+        39
+      ],
+      [
+        "A",
+        40
+      ],
+      [
+        "B",
+        40
+      ]
+    ],
+    "unique_sequence_pairs": 246,
+    "excluded_skew": 98,
+    "qualified_sequence_pairs": 148,
+    "qualified_rows": 592,
+    "qualified_skew_max": 32,
+    "all_samples_living_valid_same_room": true,
+    "room_identity_counts": {
+      "A": 1,
+      "B": 1
+    },
+    "per_uid": {
+      "0": {
+        "rows": 148,
+        "maximum_xy": 30.269680549110863,
+        "over50": 0,
+        "over100": 0
+      },
+      "1": {
+        "rows": 148,
+        "maximum_xy": 3.148662561611363,
+        "over50": 0,
+        "over100": 0
+      },
+      "2": {
+        "rows": 148,
+        "maximum_xy": 12.391028423272763,
+        "over50": 0,
+        "over100": 0
+      },
+      "3": {
+        "rows": 148,
+        "maximum_xy": 28.36529500000006,
+        "over50": 0,
+        "over100": 0
+      }
+    }
+  },
+  "additional_validation": {
+    "C_D_pre_post_identity_scene_generation_town_me_players_enemies_unchanged": true,
+    "all_8_monster_action_input_records_successful_and_no_screenshot": true,
+    "all_4_native_screenshot_input_records_started_after_measurement_window": true,
+    "A_B_returned_to_scene1_by_recorded_escape_and_menu_click_after_measurement": true,
+    "deployment_status": "stopped",
+    "product_changes_by_reviewer": false,
+    "game_process_UI_or_build_actions_by_reviewer": false
+  },
+  "findings": [
+    "No arithmetic mismatch or decoded-row mismatch found.",
+    "natural-summary.monster.qualified_pairs=592 counts per-UID rows; 148 is the qualified unique sequence-pair count.",
+    "Monster wall-clock window is 30.001 seconds; last-sample elapsed is 29.953 seconds. Town wall-clock window is 26.989 seconds.",
+    "All monster distances reported are XY Euclidean distances from independent approximately 200ms publications, qualified by capture tick skew <=75ms; no claim of atomic pair capture.",
+    "Socket-record receive match establishes arrival at the captured socket log boundary, not execution of the native apply branch or wire latency.",
+    "This bounded diagnostic did not reproduce the reported large discrepancy. It is not a synchronization fix, not closure of historic GP42/native-application uncertainty, and does not change the original strict per-axis 50px stop tolerance.",
+    "Six copied filter boundary selftest outputs were read and matched their asserted expected counts; no tests or builds were rerun."
+  ]
+}

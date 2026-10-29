@@ -1,0 +1,38 @@
+[
+  {
+    "case": "merged",
+    "passed": true,
+    "position_rows": 3,
+    "errors": 0
+  },
+  {
+    "case": "split",
+    "passed": true,
+    "position_rows": 3,
+    "errors": 0
+  },
+  {
+    "case": "truncated",
+    "passed": true,
+    "position_rows": 0,
+    "errors": 1
+  },
+  {
+    "case": "invalid_header",
+    "passed": true,
+    "position_rows": 0,
+    "errors": 1
+  },
+  {
+    "case": "incomplete",
+    "passed": true,
+    "position_rows": 1,
+    "errors": 0
+  },
+  {
+    "case": "partial_final_line",
+    "passed": true,
+    "position_rows": 2,
+    "errors": 0
+  }
+]
