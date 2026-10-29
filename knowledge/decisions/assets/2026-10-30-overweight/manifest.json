@@ -1,0 +1,17 @@
+[
+  {
+    "path": "decoded.json",
+    "bytes": 2694,
+    "sha256": "1EFC2530D6D96A7328907FC77412A707EE501BE5BD5D1914FB9B958142D8743D"
+  },
+  {
+    "path": "offline/Offline.csproj",
+    "bytes": 413,
+    "sha256": "08E0432FDEB2DD3FA85426B47C03F5D19666F3EAD60CD4F2FC35DA8B4D79BD13"
+  },
+  {
+    "path": "offline/Program.cs",
+    "bytes": 4563,
+    "sha256": "045EF04A80F6F0F35D8C4601E79C2773A76372CBF26158E567129A9029315D06"
+  }
+]

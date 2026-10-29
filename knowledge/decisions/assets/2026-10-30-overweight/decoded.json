@@ -1,0 +1,69 @@
+{
+  "schema": "overweight-only/v1",
+  "sources": [
+    {
+      "path": "G:/Game/DNF_ACT1/DFLegacy/.tmp/test-control-20261029/closed-tool-v1/A-netdump.log",
+      "bytes": 44677,
+      "sha256": "9061C2EB932A427741222BFC0CFDD2098F54B4160E52E4CBD1F06DA81D120984"
+    },
+    {
+      "path": "G:/Game/DNF_ACT1/DFLegacy/.tmp/test-control-20261029/closed-tool-v1/B-netdump.log",
+      "bytes": 43719,
+      "sha256": "FC7EB34A2842BF05900612BF441450D2C1716DC31DF05A4D49AF65E1365C945C"
+    },
+    {
+      "path": "G:/Game/DNF_ACT1/DFLegacy/.tmp/test-control-20261029/closed-tool-v1/C-netdump.log",
+      "bytes": 43264,
+      "sha256": "9F83791A2188B50F1010BB16DA6E09B2FE330D63C7258C2BD94719C2767B8AFB"
+    },
+    {
+      "path": "G:/Game/DNF_ACT1/DFLegacy/.tmp/test-control-20261029/closed-tool-v1/D-netdump.log",
+      "bytes": 43979,
+      "sha256": "5F772153229EADF4DA0636EDA9CB866D940CDECE189284CF3816B99FF058368F"
+    },
+    {
+      "path": "G:/Game/DNF_ACT1/DFLegacy/.tmp/test-control-20261029/closed-tool-v2s/A-netdump.log",
+      "bytes": 13312080,
+      "sha256": "D9BA143195724682A97116EAB9417CB84DEA242532DAB28E7C9385D5D2745C38"
+    },
+    {
+      "path": "G:/Game/DNF_ACT1/DFLegacy/.tmp/test-control-20261029/closed-tool-v2s/B-netdump.log",
+      "bytes": 13516988,
+      "sha256": "B29815614560EE8B080D4B83453B2FEE968C3BC3C333F84E0595AE791A9F6A16"
+    },
+    {
+      "path": "G:/Game/DNF_ACT1/DFLegacy/.tmp/test-control-20261029/closed-tool-v2s/C-netdump.log",
+      "bytes": 12919483,
+      "sha256": "9FB8EBA94C5FC2BCA563AAF9B138AE92ED47626F0946E031A1045CB253F406F9"
+    },
+    {
+      "path": "G:/Game/DNF_ACT1/DFLegacy/.tmp/test-control-20261029/closed-tool-v2s/D-netdump.log",
+      "bytes": 11494408,
+      "sha256": "232E8557D337CF16B2FDEFA48F198805FDE5D014C356C9B4A34D1FD890E9A373"
+    }
+  ],
+  "rows": [
+    {
+      "phase": "closed-tool-v2s",
+      "role": "A",
+      "protocol": "CMD46",
+      "body_hex": "0015",
+      "first_line": 82851,
+      "last_line": 82851,
+      "time": "2026-10-29T23:04:36.201"
+    },
+    {
+      "phase": "closed-tool-v2s",
+      "role": "A",
+      "protocol": "NOTI12",
+      "text": "\u5C06\u8D85\u51FA\u7269\u54C1\u680F\u8D1F\u91CD\u4E0A\u9650 2.526kg.",
+      "cp936_hex": "BDABB3ACB3F6CEEFC6B7C0B8B8BAD6D8C9CFCFDE20322E3532366B672E",
+      "first_line": 82851,
+      "last_line": 82851,
+      "time": "2026-10-29T23:04:36.201",
+      "wire_sha256": "98BB0D523049201B42DA0C972DFD03E364D141A8062AFDB4DDFEA0F3021C9994"
+    }
+  ],
+  "errors": [],
+  "scope": "RX TCP7001 only, strict stream framing; emits only kg NOTI12 type16 and CMD46 0015. No other packet bodies retained."
+}
