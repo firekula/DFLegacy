@@ -1,0 +1,369 @@
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#include "client_test_control.h"
+#include <algorithm>
+#include <array>
+#include <cstdio>
+#include <cstring>
+#include <cwchar>
+#include <locale>
+#include <sstream>
+#include <cmath>
+#include <iomanip>
+namespace dfl::client_test_control
+{
+    namespace
+    {
+        client_state::Reader Native{};
+        volatile LONG Enabled=0;
+        DWORD GameThread=0;
+        wchar_t Directory[MAX_PATH]{};
+        SRWLOCK InboxLock=SRWLOCK_INIT,OutboxLock=SRWLOCK_INIT;
+        struct Command {Request request{};Lease lease{};};
+        Command Inbox{};bool HaveInbox=false,HaveFile=false;
+        BY_HANDLE_FILE_INFORMATION PreviousFile{};
+        std::uint64_t Consumed=0,NextSerial=0,ExportedSerial=0;
+        struct Result
+        {
+            Request request{};const char* status="rejected";const char* reason="unknown";
+            std::uint64_t tick=0,serial=0;std::size_t appliedCount=0;
+        } GameResult{},Outbox{};
+        struct GroundRow {Ground ground{};client_state::Position position{};};
+        struct TestState
+        {
+            Request identity{};std::uint64_t tick=0,serial=0;
+            bool valid=false,truncated=false;const char* reason="ground_state_unavailable";
+            std::array<GroundRow,256> ground{};std::size_t count=0;
+        } GameState{},PublishedState{};
+        SRWLOCK StateLock=SRWLOCK_INIT,LeaseLock=SRWLOCK_INIT;
+        Lease LiveLease{};volatile LONG LeaseUid=0;
+        std::uint64_t StateSerial=0,ExportedStateSerial=0,LastStateCapture=0;
+        bool IsEnabled() noexcept{return InterlockedCompareExchange(&Enabled,0,0)!=0;}
+        std::uint64_t Now() noexcept{return Native.tickMs?Native.tickMs(Native.context):GetTickCount64();}
+        std::uint64_t FileTime() noexcept
+        {if(Native.fileTime)return Native.fileTime(Native.context);FILETIME ft{};GetSystemTimeAsFileTime(&ft);return(static_cast<std::uint64_t>(ft.dwHighDateTime)<<32)|ft.dwLowDateTime;}
+        struct Reads
+        {
+            template<class T> bool At(std::uint32_t base,std::uint32_t offset,T& value) const noexcept
+            {return base>=0x10000&&static_cast<std::uint64_t>(base)+offset+sizeof(T)<=0x100000000ULL&&Native.read&&Native.read(Native.context,base+offset,&value,sizeof(T));}
+            bool Secure(std::uint32_t base,std::uint32_t offset,std::uint32_t& out) const noexcept
+            {
+                if(base<0x10000||base>UINT32_MAX-offset)return false;const auto address=base+offset;
+                std::uint32_t manager=0,key=0,encoded=0,index=0,count=0,a=0,b=0,va=0,vb=0;
+                if(!At(0xCFD458,0,manager)||!At(0xCFD45C,0,key)||!At(address,0,encoded)||!At(address,4,index)
+                    ||((encoded^key)-address)!=index||!At(manager,4,count)||index>=count||index>0x1000000
+                    ||!At(manager,0x44,a)||!At(manager,0x48,b)||a>UINT32_MAX-index*4||b>UINT32_MAX-index*4)return false;
+                a+=index*4;b+=index*4;
+                if(!At(a,0,va)||!At(b,0,vb)||(va^a^key)!=(vb^b^key))return false;out=va^a^key;return true;
+            }
+            template<std::size_t N> bool Matches(std::uint32_t address,const unsigned char(&expected)[N]) const noexcept
+            {std::array<unsigned char,N> actual{};return At(address,0,actual)&&!std::memcmp(actual.data(),expected,N);}
+            bool Getter(std::uint32_t actor,std::uint32_t offset,std::uint32_t expected) const noexcept
+            {std::uint32_t table=0,fn=0;return At(actor,0,table)&&At(table,offset,fn)&&fn==expected;}
+        };
+        bool PositionSignatures() noexcept
+        {
+            constexpr unsigned char setter[]={0x55,0x8B,0xEC,0x8B,0x89,0xE0,0,0,0,0x5D,0xE9,0x51,0x87,0x05,0};
+            // 4715F0 is a tail thunk into the original controller setter.
+            constexpr unsigned char controller[]={0x55,0x8B,0xEC,0x8B,0x01,0x85,0xC0,0xC6,0x81,0x8C,0,0,0,0x01,0x74,0x16};
+            constexpr unsigned char getter[]={0x55,0x8B,0xEC,0x8B,0x89,0xE0,0,0,0,0x5D,0xE9,0xD1,0x85,0x05,0};
+            constexpr unsigned char plain[]={0x55,0x8B,0xEC,0xD9,0x45,0x0C,0x8B,0x45,0x08,0xD9,0x5C,0x81,0x04};
+            constexpr unsigned char secure[]={0x55,0x8B,0xEC,0x53,0x56,0x8B,0x75,0x08,0x8B,0x54,0xF1,0x69,0x57,0x8B,0x3D,0x58};
+            Reads r;return r.Matches(0x4715F0,setter)&&r.Matches(0x4C9D50,controller)&&r.Matches(0x471610,getter)
+                &&r.Matches(0x4736B0,plain)&&r.Matches(0x4CAC90,secure);
+        }
+        bool LivePointers(const Request& q,const client_state::Snapshot& s) noexcept
+        {
+            Reads r;std::uint32_t game=0,scene=0,actor=0,uid=0,map=0,binding=0,ui=0,stage=0,kind=0,dead=1;
+            std::uint16_t userUid=0;
+            return r.At(0xB5D6F0,0,game)&&r.Secure(game,0x10,scene)&&scene==3&&r.At(0xB75A14,0,actor)&&actor==q.actorToken
+                &&r.At(actor,0xD0,kind)&&kind==0x111&&r.Secure(actor,0xD4,uid)&&uid==q.uid
+                &&r.At(actor,0xE4,map)&&map==q.mapToken&&r.At(q.userToken,0x110,binding)&&binding==actor
+                &&r.At(q.userToken,4,userUid)&&userUid==uid&&r.At(0xB5DCE0,0,ui)&&r.At(ui,0x200010,stage)
+                &&stage==s.room.stageToken&&r.At(stage,0xB0,map)&&map==q.mapToken
+                &&r.Getter(actor,0x318,0x652A00)&&r.Secure(actor,0x142C,dead)&&dead==0;
+        }
+        bool LiveContext(const Command& c,const client_state::Snapshot& s) noexcept
+        {
+            return Native.supported&&Native.supported(Native.context)
+                &&!ValidateRequest(c.request,s,c.lease,Now(),FileTime(),0)&&LivePointers(c.request,s);
+        }
+        bool PositionReady(std::uint32_t actor) noexcept
+        {
+            PositionBinding binding{};if(!ReadPositionBinding(Native,actor,binding))return false;
+            Reads r;std::uint32_t table=0,getter=0,value=0;if(!r.At(binding.vector,0,table)||!r.At(table,0,getter))return false;
+            if(getter==0x4CAC70)
+                for(std::uint32_t i=0;i<3;++i)if(!r.Secure(binding.vector,0x35+i*8,value)||!r.Secure(binding.vector,0x65+i*8,value))return false;
+            return true;
+        }
+        bool SetPosition(std::uint32_t actor,std::int32_t x,std::int32_t y,bool& touched) noexcept
+        {
+            // Original PE: actor v+74 -> 4715F0 -> 4C9D50(index,int), ret8.
+            // Native vector setters update both protected mirrors and dirty state.
+            __try
+            {
+                if(!PositionSignatures()||!PositionReady(actor))return false;
+                using Set=void(__thiscall*)(void*,std::int32_t,std::int32_t);
+                using Get=std::int32_t(__thiscall*)(void*,std::int32_t);
+                touched=true;reinterpret_cast<Set>(0x4715F0)(reinterpret_cast<void*>(actor),0,x);
+                reinterpret_cast<Set>(0x4715F0)(reinterpret_cast<void*>(actor),1,y);
+                return reinterpret_cast<Get>(0x471610)(reinterpret_cast<void*>(actor),0)==x
+                    &&reinterpret_cast<Get>(0x471610)(reinterpret_cast<void*>(actor),1)==y;
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+        }
+        struct ActorVector
+        {std::uint32_t begin=0,end=0;std::array<std::uint32_t,MaximumGround> actors{};std::size_t count=0;};
+        bool ReadActors(std::uint32_t map,ActorVector& v) noexcept
+        {
+            Reads r;if(!r.At(map,0x10,v.begin)||!r.At(map,0x14,v.end)||v.end<v.begin||(v.end-v.begin)%4||(v.end-v.begin)/4>MaximumGround)return false;
+            v.count=(v.end-v.begin)/4;
+            for(std::size_t i=0;i<v.count;++i)if(!r.At(v.begin,static_cast<std::uint32_t>(i*4),v.actors[i]))return false;
+            std::uint32_t a=0,b=0;return r.At(map,0x10,a)&&a==v.begin&&r.At(map,0x14,b)&&b==v.end;
+        }
+        bool SameActors(std::uint32_t map,const ActorVector& v) noexcept
+        {ActorVector now;return ReadActors(map,now)&&now.begin==v.begin&&now.end==v.end&&now.count==v.count&&now.actors==v.actors;}
+        bool ReadGround(std::uint32_t actor,std::uint32_t map,Ground& g) noexcept
+        {
+            Reads r;std::uint32_t table=0,kind=0,actorMap=0;unsigned char active=0,pending=0;
+            if(!r.At(actor,0,table)||table!=0x999574||!r.At(actor,0xD0,kind)||kind!=0x121||!r.At(actor,0xE4,actorMap)||actorMap!=map
+                ||!r.Secure(actor,0xD4,g.id)||!r.At(actor,0x7A0,g.descriptor)
+                ||!r.At(actor,0x128,active)||active>1||!r.At(actor,0x7A5,pending)||pending>1)return false;
+            g.actor=actor;g.active=active!=0;g.pending=pending!=0;return true;
+        }
+        bool ReadCoordinates(std::uint32_t actor,client_state::Position& p) noexcept
+        {
+            p={};PositionBinding binding;if(!ReadPositionBinding(Native,actor,binding))return false;
+            Reads r;std::uint32_t table=0,getter=0;if(!r.At(binding.vector,0,table)||!r.At(table,0,getter))return false;
+            float values[3]{};
+            for(std::uint32_t i=0;i<3;++i)
+            {
+                if(getter==0x4CAC70){std::uint32_t bits=0;if(!r.Secure(binding.vector,0x35+i*8,bits))return false;std::memcpy(&values[i],&bits,4);}
+                else if(!r.At(binding.vector,4+i*4,values[i]))return false;
+                if(!std::isfinite(values[i])||std::fabs(values[i])>=1000000)return false;
+            }
+            p={true,values[0],values[1],values[2]};return true;
+        }
+        bool ReadGroundState(std::uint32_t map,TestState& state) noexcept
+        {
+            state.count=0;state.valid=false;state.truncated=false;state.reason="ground_state_unavailable";ActorVector actors;if(!ReadActors(map,actors))return false;
+            if(actors.count>state.ground.size()){state.truncated=true;state.reason="map_object_limit";return false;}Reads r;
+            std::array<GroundRow,256> rows{};std::size_t count=0;
+            for(std::size_t i=0;i<actors.count;++i)
+            {
+                const auto actor=actors.actors[i];if(!actor)continue;std::uint32_t kind=0;if(!r.At(actor,0xD0,kind))return false;if(kind!=0x121)continue;
+                auto& row=rows[count];if(!ReadGround(actor,map,row.ground)||!ReadCoordinates(actor,row.position))return false;
+                for(std::size_t j=0;j<count;++j)if(rows[j].ground.id==row.ground.id||rows[j].ground.actor==actor)return false;
+                ++count;
+            }
+            if(!SameActors(map,actors))return false;
+            for(std::size_t i=0;i<count;++i)
+            {
+                Ground verify;const auto& g=rows[i].ground;
+                if(!ReadGround(g.actor,map,verify)||verify.id!=g.id||verify.descriptor!=g.descriptor||verify.active!=g.active||verify.pending!=g.pending)return false;
+            }
+            state.ground=rows;state.count=count;state.valid=true;state.reason="ready";return true;
+        }
+        void CaptureTestState(const client_state::Snapshot& snapshot) noexcept
+        {
+            InterlockedExchange(&LeaseUid,snapshot.haveMe&&snapshot.me.uid.known?static_cast<LONG>(snapshot.me.uid.value):0);
+            const auto now=Now();if(LastStateCapture&&now>=LastStateCapture&&now-LastStateCapture<200)return;
+            Lease lease;if(!TryAcquireSRWLockShared(&LeaseLock))return;lease=LiveLease;ReleaseSRWLockShared(&LeaseLock);
+            Request q{};q.pid=snapshot.pid;q.uid=snapshot.me.uid.value;q.processStartedFileTime=snapshot.processStartedFileTime;
+            q.requestId=1;q.issuedTickMs=now;q.snapshotTickMs=snapshot.capturedTickMs;q.generation=snapshot.generation;q.snapshotSequence=snapshot.sequence;
+            q.actorToken=snapshot.me.actorToken;q.mapToken=snapshot.me.mapToken;q.userToken=snapshot.me.userToken;q.operation=1;q.targetId=static_cast<std::int32_t>(q.uid);
+            q.sessionNonce=lease.nonce;q.runId=lease.runId;const Command command{q,lease};
+            bool allowed=LiveContext(command,snapshot);
+            if(!allowed&&snapshot.truncated)
+            {
+                // Observation may explicitly report an unusable SDK sample. This branch
+                // never reaches mutation and never reads a truncated actor collection.
+                const auto ft=FileTime();
+                allowed=Native.supported&&Native.supported(Native.context)&&snapshot.valid&&snapshot.layoutSupported&&snapshot.haveMe
+                    &&snapshot.scene.known&&snapshot.scene.value==3&&snapshot.me.uid.known&&q.uid>0&&q.uid<=65535
+                    &&snapshot.me.dead.known&&!snapshot.me.dead.value&&snapshot.me.sameMap.known&&snapshot.me.sameMap.value
+                    &&snapshot.capturedTickMs<=now&&now-snapshot.capturedTickMs<=750&&lease.magic==0x4C545444&&lease.version==1
+                    &&lease.flags==1&&lease.uid==q.uid&&lease.nonce&&lease.runId&&lease.issuedFileTime&&lease.issuedFileTime<=ft
+                    &&ft-lease.issuedFileTime<=15000000&&LivePointers(q,snapshot);
+            }
+            if(!allowed)return;LastStateCapture=now;
+            TestState state;state.identity=q;state.tick=now;
+            if(snapshot.truncated){state.truncated=true;state.reason="client_snapshot_truncated";}
+            else {ReadGroundState(q.mapToken,state);if(!LiveContext(command,snapshot))return;}
+            state.serial=++StateSerial;GameState=state;
+            if(!TryAcquireSRWLockExclusive(&StateLock))return;PublishedState=GameState;ReleaseSRWLockExclusive(&StateLock);
+        }
+        const char* ApplyGround(const Command& command,const client_state::Snapshot& snapshot,std::size_t& applied,bool& touched) noexcept
+        {
+            const auto& q=command.request;ActorVector actors;std::array<Ground,MaximumGround> ground{};std::size_t count=0;Reads r;
+            if(!ReadActors(q.mapToken,actors))return "invalid_map_vector";
+            for(std::size_t i=0;i<actors.count;++i)
+            {
+                const auto actor=actors.actors[i];if(!actor)continue;std::uint32_t kind=0;if(!r.At(actor,0xD0,kind))return "map_actor_unreadable";
+                if(kind!=0x121)continue;if(!ReadGround(actor,q.mapToken,ground[count]))return "unsupported_ground_layout";++count;
+            }
+            MovePlan plan;const auto error=PlanGroundMoves(q,ground.data(),count,plan);if(error)return error;
+            // Complete preflight prevents a missing/duplicate/pending late actor from causing an avoidable partial batch.
+            for(std::size_t i=0;i<plan.count;++i)if(!PositionReady(plan.moves[i].ground.actor))return "unsupported_position_binding";
+            if(!PositionSignatures()||!LiveContext(command,snapshot)||!SameActors(q.mapToken,actors))return "live_context_changed";
+            for(std::size_t i=0;i<plan.count;++i)
+            {
+                const auto& move=plan.moves[i];Ground current;
+                if(!LiveContext(command,snapshot)||!SameActors(q.mapToken,actors)||!ReadGround(move.ground.actor,q.mapToken,current)
+                    ||current.id!=move.ground.id||current.descriptor!=move.ground.descriptor||!current.active||current.pending)return "ground_identity_changed";
+                if(!SetPosition(current.actor,move.x,move.y,touched))return "native_position_failed";
+                ++applied;
+            }
+            return nullptr;
+        }
+        bool FindKillTarget(std::uint32_t map,std::uint32_t target,std::uint32_t local,std::uint32_t& output) noexcept
+        {
+            ActorVector actors;if(!ReadActors(map,actors))return false;Reads r;std::uint32_t found=0;
+            for(std::size_t i=0;i<actors.count;++i)
+            {
+                const auto actor=actors.actors[i];if(!actor)continue;std::uint32_t kind=0,uid=0;
+                if(!r.At(actor,0xD0,kind))return false;if(kind!=529)continue;
+                if(!r.Secure(actor,0xD4,uid))return false;if(uid!=target)continue;if(found)return false;found=actor;
+            }
+            std::uint32_t actorMap=0,owner=0,hp=0,dead=1;std::int32_t team=0;unsigned char active=0;
+            if(!found||!r.At(found,0xE4,actorMap)||actorMap!=map||!r.At(found,0x1864,owner)||owner!=local
+                ||!r.At(found,0x128,active)||active!=1||!r.At(found,0x424,team)||team!=100
+                ||!r.Secure(found,0x1168,hp)||!hp||hp>INT32_MAX||!r.Secure(found,0x142C,dead)||dead)return false;
+            constexpr std::uint32_t offsets[]={0x34,0x138,0x18C,0x314,0x318,0x328,0x32C,0x330};
+            constexpr std::uint32_t functions[]={0x4073D0,0x47F480,0x42C990,0x47FFB0,0x652A00,0x481000,0x4BCA70,0x652A20};
+            for(std::size_t i=0;i<8;++i)if(!r.Getter(found,offsets[i],functions[i]))return false;
+            if(!SameActors(map,actors))return false;output=found;return true;
+        }
+        bool DeathSignatures() noexcept
+        {
+            constexpr unsigned char setter[]={0x55,0x8B,0xEC,0x83,0xEC,0x0C,0x56,0x8B,0xF1,0xE8,0x12,0x26,0xFF,0xFF,0x84,0xC0,
+                0x0F,0x84,0xE2,0x01,0,0,0x8B,0x06,0x8B,0xCE,0xFF,0x90,0x18,0x03,0,0};
+            constexpr unsigned char authority[]={0x8B,0x01,0xFF,0x90,0x38,0x01,0,0,0x8B,0x0D,0x14,0x5A,0xB7,0,0x3B,0xC1,0x75,0x0A,0x85,0xC9,0x74,0x06,0xB8,1,0,0,0,0xC3,0x33,0xC0,0xC3};
+            constexpr unsigned char owner[]={0x8B,0x81,0x64,0x18,0,0,0xC3};
+            constexpr unsigned char apply[]={0x55,0x8B,0xEC,0x56,0x8B,0xF1,0x8B,0x06,0x57,0xFF,0x90,0xEC,0x02,0,0,0x8B,0xC8};
+            constexpr unsigned char cleanup[]={0xC2,0x0C,0};
+            Reads r;return r.Matches(0x481000,setter)&&r.Matches(0x473620,authority)&&r.Matches(0x47F480,owner)
+                &&r.Matches(0x4BCA70,apply)&&r.Matches(0x4811FC,cleanup);
+        }
+        const char* ApplyKill(const Command& command,const client_state::Snapshot& snapshot,std::size_t& applied,bool& touched) noexcept
+        {
+            __try
+            {
+                std::uint32_t actor=0;const auto& q=command.request;
+                if(!DeathSignatures()||!LiveContext(command,snapshot)||!FindKillTarget(q.mapToken,static_cast<std::uint32_t>(q.targetId),q.actorToken,actor))return "monster_not_alive_local_authority_or_layout";
+                using Authority=bool(__thiscall*)(void*);using Hp=void(__thiscall*)(void*,int,bool,void*);
+                if(!reinterpret_cast<Authority>(0x473620)(reinterpret_cast<void*>(actor)))return "monster_not_local_authority";
+                // Proven original Map::allDie caller: (HP=0, force=true, source=null).
+                // Original revive/status logic and subsequent game frame/reporting are preserved.
+                touched=true;reinterpret_cast<Hp>(0x481000)(reinterpret_cast<void*>(actor),0,true,nullptr);applied=1;return nullptr;
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER){return "native_death_request_failed";}
+        }
+        void FlushResult() noexcept
+        {if(!GameResult.serial||!TryAcquireSRWLockExclusive(&OutboxLock))return;Outbox=GameResult;ReleaseSRWLockExclusive(&OutboxLock);}
+        void Dispatch(const Command& command,const client_state::Snapshot& snapshot) noexcept
+        {
+            const auto& q=command.request;const auto reason=ValidateRequest(q,snapshot,command.lease,Now(),FileTime(),Consumed);
+            if(q.requestId>Consumed)Consumed=q.requestId;
+            std::size_t applied=0;bool touched=false;const char* error=reason;
+            if(!error&&(!Native.supported||!Native.supported(Native.context)))error="unsupported_layout";
+            if(!error&&!LiveContext(command,snapshot))error="live_context_unavailable";
+            if(!error)
+            {
+                if(q.operation==1)
+                {if(!SetPosition(q.actorToken,q.x,q.y,touched))error="native_position_failed";else applied=1;}
+                else if(q.operation==2)error=ApplyKill(command,snapshot,applied,touched);
+                else error=ApplyGround(command,snapshot,applied,touched);
+            }
+            GameResult={q,error?(touched?"partial":"rejected"):"applied",error?error:(q.operation==2?"native_death_requested":"native_position_observed"),Now(),++NextSerial,applied};FlushResult();
+        }
+        bool SameFile(const BY_HANDLE_FILE_INFORMATION& a,const BY_HANDLE_FILE_INFORMATION& b) noexcept
+        {return a.dwVolumeSerialNumber==b.dwVolumeSerialNumber&&a.nFileIndexHigh==b.nFileIndexHigh&&a.nFileIndexLow==b.nFileIndexLow
+            &&a.ftLastWriteTime.dwHighDateTime==b.ftLastWriteTime.dwHighDateTime&&a.ftLastWriteTime.dwLowDateTime==b.ftLastWriteTime.dwLowDateTime
+            &&a.nFileSizeHigh==b.nFileSizeHigh&&a.nFileSizeLow==b.nFileSizeLow;}
+        template<class T> bool ReadExact(const wchar_t* path,T& output,BY_HANDLE_FILE_INFORMATION* info=nullptr) noexcept
+        {
+            auto file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+            if(file==INVALID_HANDLE_VALUE)return false;BY_HANDLE_FILE_INFORMATION details{};std::array<unsigned char,sizeof(T)+1> bytes{};DWORD n=0;
+            const bool okay=GetFileInformationByHandle(file,&details)&&details.nFileSizeHigh==0&&details.nFileSizeLow==sizeof(T)
+                &&ReadFile(file,bytes.data(),static_cast<DWORD>(bytes.size()),&n,nullptr)&&n==sizeof(T);CloseHandle(file);
+            if(!okay)return false;std::memcpy(&output,bytes.data(),sizeof(T));if(info)*info=details;return true;
+        }
+        void ReadCommand() noexcept
+        {
+            wchar_t path[MAX_PATH]{};Command command;BY_HANDLE_FILE_INFORMATION info{};
+            if(swprintf_s(path,L"%s\\dfdebug-test-control-%lu.bin",Directory,Native.pid)<0||!ReadExact(path,command.request,&info)
+                ||(HaveFile&&SameFile(info,PreviousFile)))return;
+            if(swprintf_s(path,L"%s\\dfdebug-test-lease-%u.bin",Directory,command.request.uid)<0)return;
+            if(!ReadExact(path,command.lease))command.lease={0,0,0,0,0,0,0};
+            if(!TryAcquireSRWLockExclusive(&InboxLock))return;
+            if(!HaveInbox){Inbox=command;HaveInbox=true;PreviousFile=info;HaveFile=true;}ReleaseSRWLockExclusive(&InboxLock);
+        }
+        void ReadLiveLease() noexcept
+        {
+            const auto uid=InterlockedCompareExchange(&LeaseUid,0,0);Lease lease{0,0,0,0,0,0,0};wchar_t path[MAX_PATH]{};
+            if(uid>0&&swprintf_s(path,L"%s\\dfdebug-test-lease-%ld.bin",Directory,uid)>0)
+                if(!ReadExact(path,lease))lease={0,0,0,0,0,0,0};
+            if(!TryAcquireSRWLockExclusive(&LeaseLock))return;LiveLease=lease;ReleaseSRWLockExclusive(&LeaseLock);
+        }
+        void Token(std::ostream& out,std::uint32_t value)
+        {char text[16]{};std::snprintf(text,sizeof(text),"0x%08X",value);out<<'"'<<text<<'"';}
+        void ExportResult()
+        {
+            Result result;if(!TryAcquireSRWLockShared(&OutboxLock))return;result=Outbox;ReleaseSRWLockShared(&OutboxLock);
+            if(!result.serial||result.serial==ExportedSerial)return;const auto& q=result.request;std::ostringstream out;out.imbue(std::locale::classic());
+            out<<"{\"schema\":\"dfl-client-test-control/v1\",\"pid\":"<<Native.pid<<",\"process_started_filetime\":"<<Native.processStartedFileTime
+                <<",\"request_id\":"<<q.requestId<<",\"uid\":"<<q.uid<<",\"generation\":"<<q.generation<<",\"actor_token\":";Token(out,q.actorToken);
+            out<<",\"map_token\":";Token(out,q.mapToken);out<<",\"user_token\":";Token(out,q.userToken);
+            out<<",\"operation\":"<<q.operation<<",\"target_id\":"<<q.targetId<<",\"x\":"<<q.x<<",\"y\":"<<q.y<<",\"session_nonce\":"<<q.sessionNonce
+                <<",\"run_id\":"<<q.runId<<",\"tick_ms\":"<<result.tick<<",\"status\":\""<<result.status<<"\",\"reason\":\""<<result.reason
+                <<"\",\"applied_count\":"<<result.appliedCount<<",\"server_committed\":false,\"persistence_verified\":false}";
+            const auto json=out.str();wchar_t path[MAX_PATH]{},temporary[MAX_PATH]{};
+            if(swprintf_s(path,L"%s\\dfdebug-test-control-%lu.json",Directory,Native.pid)<0||swprintf_s(temporary,L"%s.tmp",path)<0)return;
+            auto file=CreateFileW(temporary,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(file==INVALID_HANDLE_VALUE)return;
+            DWORD n=0;const bool okay=WriteFile(file,json.data(),static_cast<DWORD>(json.size()),&n,nullptr)&&n==json.size()&&FlushFileBuffers(file);CloseHandle(file);
+            if(okay&&MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))ExportedSerial=result.serial;else DeleteFileW(temporary);
+        }
+        void ExportState()
+        {
+            TestState state;if(!TryAcquireSRWLockShared(&StateLock))return;state=PublishedState;ReleaseSRWLockShared(&StateLock);
+            if(!state.serial||state.serial==ExportedStateSerial)return;const auto& q=state.identity;std::ostringstream out;out.imbue(std::locale::classic());out<<std::setprecision(9);
+            out<<"{\"schema\":\"dfl-client-test-state/v1\",\"pid\":"<<Native.pid<<",\"uid\":"<<q.uid<<",\"process_started_filetime\":"<<Native.processStartedFileTime
+                <<",\"generation\":"<<q.generation<<",\"map_token\":";Token(out,q.mapToken);
+            out<<",\"captured_tick_ms\":"<<state.tick<<",\"snapshot_sequence\":"<<q.snapshotSequence<<",\"session_nonce\":"<<q.sessionNonce<<",\"run_id\":"<<q.runId
+                <<",\"valid\":"<<(state.valid?"true":"false")<<",\"truncated\":"<<(state.truncated?"true":"false")<<",\"reason\":\""<<state.reason<<"\",\"ground_items\":[";
+            for(std::size_t i=0;i<state.count;++i)
+            {
+                if(i)out<<',';const auto& row=state.ground[i];out<<"{\"ground_id\":"<<row.ground.id<<",\"actor_token\":";Token(out,row.ground.actor);
+                out<<",\"descriptor_token\":";Token(out,row.ground.descriptor);
+                out<<",\"x\":"<<row.position.x<<",\"y\":"<<row.position.y<<",\"z\":"<<row.position.z<<",\"active\":"<<(row.ground.active?"true":"false")<<",\"pending\":"<<(row.ground.pending?"true":"false")<<'}';
+            }
+            out<<"]}";const auto json=out.str();wchar_t path[MAX_PATH]{},temporary[MAX_PATH]{};
+            if(swprintf_s(path,L"%s\\dfdebug-test-state-%lu.json",Directory,Native.pid)<0||swprintf_s(temporary,L"%s.tmp",path)<0)return;
+            auto file=CreateFileW(temporary,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(file==INVALID_HANDLE_VALUE)return;
+            DWORD n=0;const bool okay=WriteFile(file,json.data(),static_cast<DWORD>(json.size()),&n,nullptr)&&n==json.size();CloseHandle(file);
+            if(okay&&MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING))ExportedStateSerial=state.serial;else DeleteFileW(temporary);
+        }
+    }
+    void Initialize(const wchar_t* settings,const wchar_t* directory,client_state::Reader reader) noexcept
+    {
+        InterlockedExchange(&Enabled,0);
+        if(!settings||!directory||wcsnlen_s(directory,MAX_PATH)>=MAX_PATH-64||GetPrivateProfileIntW(L"DebugOverlay",L"EnableTestControl",0,settings)!=1)return;
+        Native=reader;wcscpy_s(Directory,directory);GameThread=0;HaveInbox=HaveFile=false;Inbox={};GameResult={};Outbox={};Consumed=NextSerial=ExportedSerial=0;
+        GameState={};PublishedState={};LiveLease={};InterlockedExchange(&LeaseUid,0);StateSerial=ExportedStateSerial=LastStateCapture=0;
+        InterlockedExchange(&Enabled,Native.read&&Native.pid&&Native.processStartedFileTime?1:0);
+    }
+    void OnFrame() noexcept
+    {if(!IsEnabled())return;client_state::Snapshot snapshot;if(client_state::CopyLatest(snapshot))OnFrame(snapshot);}
+    void OnFrame(const client_state::Snapshot& snapshot) noexcept
+    {
+        if(!IsEnabled())return;if(!GameThread)GameThread=GetCurrentThreadId();if(GameThread!=GetCurrentThreadId())return;FlushResult();
+        CaptureTestState(snapshot);
+        Command command;bool have=false;if(TryAcquireSRWLockExclusive(&InboxLock)){if(HaveInbox){command=Inbox;HaveInbox=false;have=true;}ReleaseSRWLockExclusive(&InboxLock);}
+        if(have)Dispatch(command,snapshot);
+    }
+    void PumpWorker() noexcept
+    {if(!IsEnabled())return;try{ReadLiveLease();ReadCommand();ExportResult();ExportState();}catch(...){/* worker IO must not escape into host */}}
+    void Shutdown() noexcept{InterlockedExchange(&Enabled,0);}
+}

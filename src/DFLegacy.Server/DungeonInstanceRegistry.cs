@@ -44,7 +44,8 @@ internal sealed record DungeonLootPickupAttempt(
     byte[] RoutingScores,
     DungeonInstance? Instance = null,
     DungeonGroundItem? GroundItem = null,
-    Guid PickupId = default);
+    Guid PickupId = default,
+    DungeonTestLootContext? TestContext = null);
 
 /// <summary>
 /// 副本实例注册表（设计稿 §3.1）：队伍键 / 角色绑定 / 单人键三张表 + 待选图、待入队两个信箱。

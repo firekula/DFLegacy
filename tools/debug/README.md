@@ -200,6 +200,54 @@ python -m unittest discover -s tools/debug -p 'test*.py' -v
 
 ## 构建和验证
 
+### 仅测试环境的 CLI 控制
+
+默认关闭。隔离服务端同时开启 `DFLegacy.Debug.ClientOverlay.Enabled=true` 和
+`DFLegacy.Debug.TestControl.Enabled=true`，客户端对应的 `Config.ini` 开启：
+
+```ini
+[DebugOverlay]
+ExportState=1
+EnableTestControl=1
+SnapshotDirectory=G:\path\to\isolated-test\snapshots
+```
+
+服务端的 `ClientOverlay.SnapshotDirectory` 必须指向同一目录。CLI不会替用户打开开关，
+也不需要截图、操作系统输入或任意地址读写。租约由开启测试控制的服务端产生，绑定本次进程、
+run和UID；旧进程、旧房间、旧演员或过期请求会拒绝。
+
+在仓库根目录运行（`--uid` 是当前会话的区用户ID，不是账号序号）：
+
+```powershell
+python -m tools.debug.test_control --directory G:\test\snapshots state --uid 1
+python -m tools.debug.test_control --directory G:\test\snapshots player teleport --uid 1 --x 300 --y 240
+python -m tools.debug.test_control --directory G:\test\snapshots monster kill --uid 1 --monster 0
+python -m tools.debug.test_control --directory G:\test\snapshots drop isolate --uid 1 --ground 5 --park-x 800 --park-y 240
+python -m tools.debug.test_control --directory G:\test\snapshots loot result --uid 1 --ground 5 --run 123 --after-event 10
+```
+
+- `state` 分别返回服务端已提交背包/金币/负重、实例/掉落与原生位置/HP/敌人和地面状态。
+- `player teleport` 只在当前副本房间定位本机角色，并核对原有同房队员看到的位置；不换地图或跨区。
+- `monster kill` 使用原生HP死亡入口，保留原生权限、复活等分支，随后观察服务端死亡与各端状态。
+  UID从0开始；需要指定拥有怪物原生控制权的客户端。收到死亡请求不代表死亡已完成。
+- `drop isolate` 把现存ground放到指定角色脚下，其他同房掉落放到停车点（至少相距100像素）；
+  保留物品和掉落身份。服务端布局先原子验证，再协调所有客户端；部分执行必须返回`partial_sync`。
+  客户端独立地面快照核对后才返回`synchronized`，不能只依靠setter回执。
+- `loot result` 查询真实业务路径的最终`committed/rejected`，而非“骰子选中了谁”的中间日志。
+  `committed`必须具有`persisted=true`；装备同时给出得主、目标槽位与实例ID。金币的ledger提交
+  没有装备槽位。`--after-event`排除同一掉落早先的拒绝；明确`--run`可在实例销毁后查询本进程
+  最近512条结果，重启进程后不能把旧结果冒充本次提交。
+
+退出码：0=观察/同步成功或已提交；2=拒绝、部分同步；1=输入、身份、读取或超时错误。
+已执行后的错误保留已知回执及部分同步信息。原生结果明确`server_committed=false`、
+`persistence_verified=false`，不能代替服务端结果。测试控制准备场景不能冒充正常移动或战斗验收。
+Windows短暂文件访问拒绝和快照替换缺口采用有限重试；不会重新生成修改请求或拼接不同轮次的队员集合。
+实机边界、四端掉落矩阵及原图见[验收记录](../../knowledge/decisions/2026-10-29-test-control-four-client-loot-verification.md)。
+
+聚焦验证：`python -m pytest tests/test_debug_test_control.py -q`、
+`dotnet run --project tests/DFLegacy.SmokeTests -c Release -- --test-control`、
+`debug_tests.exe --client-test-control`。完整Python套件另需按验收工具约定将`tools`加入`PYTHONPATH`。
+
 使用 VS MSBuild，`Configuration=Release`、`Platform=Win32`：
 
 - `src/DFLegacy.Debug/DFLegacy.Debug.vcxproj` → `artifacts/native/debug/Release/debug.dll`

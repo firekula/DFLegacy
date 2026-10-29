@@ -217,8 +217,14 @@ public sealed class TownGhostOptions
     public int HiddenSeconds { get; set; } = 0;
 }
 
+public sealed class TestControlOptions
+{
+    public bool Enabled { get; set; }
+}
+
 public sealed class DebugOptions
 {
+    public TestControlOptions TestControl { get; set; } = new();
     public TownGhostOptions TownGhost { get; set; } = new();
     public ClientOverlayOptions ClientOverlay { get; set; } = new();
 }

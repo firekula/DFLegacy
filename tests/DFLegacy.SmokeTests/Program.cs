@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--test-control"))
+{
+    await TestControlSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Test control smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--active-drop"))
 {
     await ActiveDropSmokeTests.RunAsync(Check);
@@ -141,6 +149,7 @@ if (args.Contains("--party-gold"))
 if (args.Contains("--debug-overlay"))
 {
     DungeonDebugOverlaySmokeTests.Run(Check);
+    await TestControlSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Debug overlay smoke: {failures.Count} failures");
     Environment.Exit(failures.Count > 0 ? 1 : 0);
@@ -158,6 +167,7 @@ if (args.Contains("--boss-room-death"))
 {
     DungeonBossDeathSmokeTests.Run(Check);
     DungeonDebugOverlaySmokeTests.Run(Check);
+    await TestControlSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Boss room death smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
@@ -269,6 +279,7 @@ await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
 DungeonBossDeathSmokeTests.Run(Check);
 DungeonDebugOverlaySmokeTests.Run(Check);
+    await TestControlSmokeTests.RunAsync(Check);
 await GameplayDatagramSmokeTests.RunAsync(Check);
 LootRoutingSmokeTests.Run(Check);
 await PickupRemovalSmokeTests.RunAsync(Check);

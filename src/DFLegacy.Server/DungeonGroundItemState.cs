@@ -210,6 +210,13 @@ public sealed class DungeonGroundItemState
     /// 全在快照里，直接放回即可）。GroundId 若已被别人占用（理论上的 id 回绕）返回 false，
     /// 调用方要记错误日志——不许静默丢件。
     /// </summary>
+    internal void Relocate(DungeonGroundItem item, short x, short y)
+    {
+        if (!_items.TryGetValue(item.GroundId, out var current) || !ReferenceEquals(current, item))
+            throw new InvalidOperationException("Ground relocation requires the original record.");
+        _items[item.GroundId] = item with { X = x, Y = y };
+    }
+
     public bool TryReAdd(DungeonGroundItem item) => _items.TryAdd(item.GroundId, item);
 
     public IReadOnlyList<DungeonGroundItem> GetRoomItems(byte roomX, byte roomY) =>

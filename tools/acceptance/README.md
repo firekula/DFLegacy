@@ -56,3 +56,13 @@ python tools/acceptance/native_control.py <run-dir> A <fresh-label> '<steps-json
 运行目录须有当前running部署记录和既有 `builtin_driver.py`。控制器验证PID、路径、启动时间及证据标签；普通调用默认不附加PrintScreen，只有关键验收追加 `--screenshot`。旧 `--no-shot` 仍兼容。历史冻结的 `control.py` 有“默认截图”行为，仅保留为旧证据，不作为新运行的默认控制器。
 
 原生截图本身可造成约57～70ms的短停顿；[操作停顿对照与原图](../../knowledge/decisions/2026-10-29-operation-stutter-verification.md)记录了本轮有限路径，未据此排除其他卡顿来源。
+
+## 四客户端窗口排列
+
+按用户偏好，测试启动四个实际 DNF 进程并确认部署身份后，固定调用排布，无需再次请求用户排列窗口：
+
+```powershell
+python tools/acceptance/window_layout.py --journal <run-dir>/deployment.json --out <run-dir>/window-layout-001.json
+```
+
+也可导入 `window_layout.arrange(journal)`，传入部署记录路径或已解码的记录，返回 JSON 兼容回执。A/B 位于上排，C/D 位于下排；使用 A 所在显示器的工作区及物理坐标，保留原窗口大小、前台焦点和层叠次序。仅匹配记录中角色、PID、完整 DNF.exe 路径及精确启动时间一致的四个进程，每个进程须有唯一可见且无所有者的游戏主窗口。窗口最小化、最大化或身份不明确时拒绝移动；四个原尺寸窗口放不下时返回 `does_not_fit`，不调整大小或显示设置。`--out` 仅创建新文件，已有回执会在任何移动之前阻止执行；退出码 0 表示位置及尺寸复核成功，2 表示未完成。回执保存原位置、目标位置、实际位置及验证结果，出现部分移动失败时应先检查回执。

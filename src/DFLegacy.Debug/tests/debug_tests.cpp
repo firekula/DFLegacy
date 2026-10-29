@@ -55,9 +55,12 @@ int RunClientPartyTests();
 int RunClientPartyRuntimeTests();
 int RunMapClickFeedbackTests();
 int RunMapClickFeedbackRuntimeTests();
+int RunClientTestControlTests();
+int RunClientTestControlRuntimeTests();
 
 int main(int argc, char** argv)
 {
+    if(argc==2&&std::strcmp(argv[1],"--client-test-control")==0)return RunClientTestControlTests()+RunClientTestControlRuntimeTests();
     if (argc == 2 && std::strcmp(argv[1], "--map-feedback") == 0) return RunMapClickFeedbackTests()+RunMapClickFeedbackRuntimeTests();
     if (argc == 2 && std::strcmp(argv[1], "--client-party") == 0) return RunClientPartyTests()+RunClientPartyRuntimeTests();
     if (argc == 2 && std::strcmp(argv[1], "--client-state") == 0) return RunClientStateTests();
@@ -67,6 +70,7 @@ int main(int argc, char** argv)
     using namespace dfl;
     if (argc < 2 || argc > 3) return 2;
     Failures += RunMapClickFeedbackTests()+RunMapClickFeedbackRuntimeTests();
+    Failures += RunClientTestControlTests()+RunClientTestControlRuntimeTests();
     std::uint32_t manager[32]{}, valuesA[4]{}, valuesB[4]{}, wrapper[2]{};
     constexpr std::uint32_t key = 0x12345678;
     manager[1] = 4;
