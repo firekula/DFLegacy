@@ -52,9 +52,10 @@ namespace dfl::town_route
         bool active_ = false, pending_ = false, leg_ = false;
         bool birthCheck_ = false, escaping_ = false, activeEscape_ = false;
         bool selected_ = false, haveContinuation_ = false, havePlan_ = false;
+        bool haveIngress_ = false;
         bool missing_ = false, freshnessWait_ = false, portalWait_ = false;
         Goal target_{};
-        Observation binding_{}, current_{}, source_{}, completed_{};
+        Observation binding_{}, current_{}, source_{}, completed_{}, ingress_{};
         Portal portal_{};
         Waypoint escape_{}, issued_{}, lastPlan_{};
         Point progressPosition_{}, lastPlanPosition_{};

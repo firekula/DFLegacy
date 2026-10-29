@@ -55,9 +55,11 @@ namespace
         auto action=c.Tick(cat,o,1000);Check(action.kind==Action::Kind::SetDestination && action.point==Waypoint{315,60},"selected portal approach");
         c.ConfirmDestination(o,action.point,1000,true);
         o=At(o,{10,60},1100);o.area={1,1};o.map=0x500000;++o.generation;o.autoActive=false;
-        action=c.Tick(cat,o,1100);Check(action.kind==Action::Kind::SetDestination && action.point==Waypoint{25,60},"expected new area/map re-arms reverse birth portal before continuing");
+        Check(c.Tick(cat,o,1100).kind==Action::Kind::None,"expected new area/map queues its local birth baseline");
+        ++o.sequence;o.capturedTick=1110;
+        action=c.Tick(cat,o,1110);Check(action.kind==Action::Kind::SetDestination && action.point==Waypoint{25,60},"expected new area/map re-arms reverse birth portal before continuing");
         if (action.kind!=Action::Kind::SetDestination) return;
-        c.ConfirmDestination(o,action.point,1100,true);o=At(o,action.point,1200);
+        c.ConfirmDestination(o,action.point,1110,true);o=At(o,action.point,1200);
         action=c.Tick(cat,o,1200);Check(action.kind==Action::Kind::SetDestination && action.point==Waypoint{180,60},"after safe birth exit continue to final coordinate");
         if (action.kind!=Action::Kind::SetDestination) return;
         c.ConfirmDestination(o,action.point,1200,true);o=At(o,action.point,1300);
@@ -138,9 +140,9 @@ namespace
     void ReplanAndForeignDoors()
     {
         Catalog cat;cat.pvfSha256="corridor";cat.areas={Room({1,0},{{0,0,100,100},{90,20,110,20},{180,20,220,80}})};
-        auto o=Sample();o.position={190,60};o.destination={190,60};Controller c;
+        auto o=Sample();o.position={190,60};o.destination={60,60};o.autoActive=true;o.directionX=0;Controller c;
         if (!Begin(c,cat,o,{{1,0},{310,60}})) return;
-        o=At(o,{99,60},1100);o.autoActive=false;
+        ++o.sequence;o.capturedTick=1100;o.position={99,60};
         auto action=c.Tick(cat,o,1100);Check(action.kind==Action::Kind::SetDestination && action.point==Waypoint{95,30},"replan whole native path from fresh actual position, not Start position");
         c.ConfirmDestination(o,action.point,1100,true);
         o=At(o,action.point,1200);
@@ -211,7 +213,8 @@ namespace
         action=c.Tick(cat,o,1000);Check(action.kind==Action::Kind::SetDestination && !(action.point==cat.areas[0].portals[0].point),"portal approach has an intermediate native leg");
         c.ConfirmDestination(o,action.point,1000,true);
         o=At(o,{60,60},1100);o.area={1,1};o.map++;o.generation++;o.autoActive=false;
-        action=c.Tick(cat,o,1100);
+        Check(c.Tick(cat,o,1100).kind==Action::Kind::None,"early expected crossing records the new area before continuing");
+        ++o.sequence;o.capturedTick=1110;action=c.Tick(cat,o,1110);
         Check(action.kind==Action::Kind::SetDestination && action.point==Waypoint{180,60},"selected expected portal can cross during any intermediate accepted leg");
         Catalog rounding;rounding.pvfSha256="rounded-outside";auto room=Room({1,0},{{0,40,70,20}});
         room.portals={{{1,0},{1,8},{30,30,40,40},{50,50}}};rounding.areas={room,Room({1,8})};
@@ -237,11 +240,13 @@ namespace
         cat.areas.push_back(Room({9,9}));auto o=Sample();o.area=key(0);o.position={10,60};o.destination={10,60};
         Controller c;if (!Begin(c,cat,o,{key(256),{315,60}})) return;
         std::uint64_t now=1000;unsigned region=0;
-        for (unsigned iteration=0;iteration<1200 && c.Active();++iteration)
+        for (unsigned iteration=0;iteration<1800 && c.Active();++iteration)
         {
             const auto action=c.Tick(cat,o,now);
+            if (action.kind==Action::Kind::None && c.Active())
+            {++now;++o.sequence;o.capturedTick=now;continue;}
             if (action.kind!=Action::Kind::SetDestination) break;
-            c.ConfirmDestination(o,action.point,now,true);now+=100;
+            c.ConfirmDestination(o,action.point,now,true);now+=50;
             o=At(o,action.point,now);
             if (action.point==Waypoint{315,60} && region<256)
             {++region;o.area=key(region);++o.map;++o.generation;o.position={10,60};o.destination={10,60};o.autoActive=false;}
@@ -347,6 +352,66 @@ namespace
         o=At(o,{60,60},5750);o.autoActive=false;
         Check(c.Tick(cat,o,6000).kind==Action::Kind::Interrupted && c.Reason()=="fresh_sample_unavailable","send freshness wait has its own five-second bound");
     }
+    void FirstLegIntentGuard()
+    {
+        const auto cat=Rooms();
+        for (const std::uint64_t age:{33,300})
+        for (unsigned field=0;field<6;++field)
+        {
+            auto o=Sample();o.autoActive=field==2;Controller c;
+            if (!Begin(c,cat,o,{{1,0},{180,60}})) continue;
+            auto fresh=o;++fresh.sequence;fresh.capturedTick=1100;
+            const char* reason="destination_changed";
+            if (field==0) {fresh.destination={200,60};fresh.autoActive=true;}
+            if (field==1) {fresh.directionX=0;reason="manual_movement";}
+            if (field==2) {fresh.autoActive=false;reason="native_auto_move_stopped";}
+            if (field==3) {fresh.autoActive=true;reason="native_auto_move_changed";}
+            if (field==4) {fresh.directionY=1;reason="manual_movement";}
+            if (field==5) {fresh.autoKnown=false;reason="native_auto_move_unknown";}
+            const auto action=c.Tick(cat,fresh,1100+age);
+            Check(action.kind==Action::Kind::Interrupted && c.Reason()==reason && c.Steps()==0 && !c.Active(),
+                "first-leg intent change cancels before age200 send eligibility and consumes no native step");
+            Check(c.Tick(cat,o,1500).kind==Action::Kind::None,"restored old intent cannot revive cancelled first leg");
+        }
+        auto o=Sample();o.autoActive=true;o.directionX=1;o.destination={250,60};Controller c;
+        Begin(c,cat,o,{{1,0},{180,60}});
+        auto natural=o;++natural.sequence;natural.capturedTick=1100;natural.position={80,60};
+        const auto action=c.Tick(cat,natural,1100);
+        Check(action.kind==Action::Kind::SetDestination && action.point==Waypoint{180,60},
+            "new goal can take over unchanged previous automatic movement using its fresh actual position");
+        c=Controller();Begin(c,cat,o,{{1,0},{180,60}});
+        auto idle=natural;idle.directionX=4;
+        Check(c.Tick(cat,idle,1350).kind==Action::Kind::None && c.Steps()==0,
+            "old movement may settle idle while first leg waits for send freshness");
+        auto restart=idle;++restart.sequence;restart.capturedTick=1200;restart.directionX=1;
+        Check(c.Tick(cat,restart,1500).kind==Action::Kind::Interrupted && c.Reason()=="manual_movement" && c.Steps()==0,
+            "settled idle baseline cannot later restart the old direction before the first native leg");
+        c=Controller();Begin(c,cat,o,{{1,0},{180,60}});
+        Check(c.Tick(cat,idle,1100).kind==Action::Kind::SetDestination,
+            "natural old direction settling idle does not prevent an otherwise fresh new goal");
+    }
+    void PostTransitionIntentGuard()
+    {
+        const auto cat=Rooms(true);
+        for (unsigned field=0;field<5;++field)
+        {
+            auto o=Sample();Controller c;if (!Begin(c,cat,o,{{1,1},{180,60}})) continue;
+            const auto first=c.Tick(cat,o,1000);c.ConfirmDestination(o,first.point,1000,true);
+            o=At(o,{10,60},1100);o.area={1,1};++o.map;++o.generation;o.autoActive=field==2;
+            const auto entered=c.Tick(cat,o,1100);
+            Check(entered.kind==Action::Kind::None && c.Active() && c.Steps()==1,
+                "expected transition captures its new-area intent baseline without immediately moving the birth point");
+            auto next=o;++next.sequence;next.capturedTick=1200;
+            const char* reason="destination_changed";
+            if (field==0) next.destination={60,60};
+            if (field==1) {next.directionX=0;reason="manual_movement";}
+            if (field==2) {next.autoActive=false;reason="native_auto_move_stopped";}
+            if (field==3) {next.autoActive=true;reason="native_auto_move_changed";}
+            if (field==4) {next.directionY=1;reason="manual_movement";}
+            Check(c.Tick(cat,next,1500).kind==Action::Kind::Interrupted && c.Reason()==reason && c.Steps()==1,
+                "fresh new-area manual intent cancels before the birth native leg without comparing old-map destination");
+        }
+    }
 }
 int RunTownRouteControllerTests()
 {
@@ -354,5 +419,6 @@ int RunTownRouteControllerTests()
     StrongCancellation();LoadingAndBudgets();ReplanAndForeignDoors();BirthSafetyAndTakeover();
     AdditionalLifecycleBoundaries();NativeStepBudget();TransactionalFirstPlan();SupportedTownKinds();RealPvfGateRegression();
     KnownSceneAndContinuationCancellation();
+    FirstLegIntentGuard();PostTransitionIntentGuard();
     std::printf("town route controller tests: %d failure(s)\n",Failures);return Failures;
 }

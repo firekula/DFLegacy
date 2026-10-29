@@ -88,6 +88,7 @@ namespace dfl::town_route
         }
         if (expected!=goal.area) {error="invalid_route";return false;}
         active_=true;birthCheck_=true;target_=goal;binding_=current_=source_=o;began_=lastNow_=now;
+        haveIngress_=true;ingress_=o;
         catalogHash_=catalog.pvfSha256;status_="queued";reason_="goal_queued";
         // Probe only the first plan in a discarded candidate. No action escapes,
         // and Tick still replans from its later actual start. An unreachable new
@@ -166,6 +167,21 @@ namespace dfl::town_route
     }
     Action Controller::Prepare(const Catalog& catalog,const Observation& o,std::uint64_t now)
     {
+        // A queued goal owns no native movement yet. Preserve newer manual
+        // intent across the caller's first-frame delay and send-freshness wait.
+        // A portal birth gets its own baseline from the new map, never the old
+        // map's destination. Natural previous movement may settle to idle, but
+        // once idle it may not silently start moving again before our leaf.
+        if (haveIngress_)
+        {
+            if (!(o.destination==ingress_.destination)) return Stop("destination_changed");
+            if (!o.autoKnown) return Stop("native_auto_move_unknown");
+            if (o.autoActive!=ingress_.autoActive)
+                return Stop(o.autoActive?"native_auto_move_changed":"native_auto_move_stopped");
+            if ((o.directionX!=ingress_.directionX && o.directionX!=4)
+                || (o.directionY!=ingress_.directionY && o.directionY!=4)) return Stop("manual_movement");
+            ingress_.directionX=o.directionX;ingress_.directionY=o.directionY;
+        }
         if (haveContinuation_)
         {
             if (!(o.destination==completed_.destination)) return Stop("destination_changed");
@@ -221,7 +237,7 @@ namespace dfl::town_route
         if (repeats_>=3) return Stop("native_no_progress");
         if (steps_>=MaximumSteps) return Stop("route_step_limit");
         ++steps_;havePlan_=true;lastPlan_=point;lastPlanPosition_=o.position;
-        source_=o;issued_=point;pending_=true;activeEscape_=escaping_;pendingAt_=now;portalWait_=false;
+        source_=o;issued_=point;pending_=true;activeEscape_=escaping_;pendingAt_=now;portalWait_=false;haveIngress_=false;
         status_="awaiting_confirmation";reason_="native_destination_pending";
         return {Action::Kind::SetDestination,point,reason_};
     }
@@ -265,6 +281,10 @@ namespace dfl::town_route
             if (o.generation<=current_.generation || o.map==current_.map) return Stop("map_transition_unproven");
             leg_=pending_=selected_=escaping_=activeEscape_=haveContinuation_=havePlan_=portalWait_=false;
             birthCheck_=true;repeats_=0;current_=o;source_=o;
+            if (!o.autoKnown) return Stop("native_auto_move_unknown");
+            ingress_=o;haveIngress_=true;
+            status_="queued";reason_="area_entered";
+            return {};
         }
         else
         {
