@@ -24,6 +24,7 @@ namespace
         std::unordered_map<std::uint32_t, unsigned char> bytes;
         bool layout = true, changeActorAtEnd = false, changeTownAreaAtEnd = false, changeMenuTargetAtEnd = false, changeMenuAtEnd = false;
         bool readWrappedAddress = false, readNullMirrorAddress = false;
+        bool changeSkillAtEnd = false;unsigned skillSlotReads = 0;
         std::uint64_t utc = 123456789000ULL, tick = 1000, counter = 5;
         std::uint32_t index = 0, readCount = 0, townAreaReads = 0, menuTargetReads = 0, menuReads = 0;
         static constexpr std::uint32_t Key = 0x12345678, Manager = 0x01002000;
@@ -47,6 +48,21 @@ namespace
             std::uint32_t bits = 0; std::memcpy(&bits, &value, sizeof(bits)); Secure(address, bits);
         }
         void SetScene(std::uint32_t scene) { Secure(0x01000010, scene); }
+        void SkillTimer(std::uint32_t now)
+        {
+            U32(0xB75978,0x99875C);Secure(0xB75988,1);Secure(0xB75990,1);Secure(0xB75998,0);
+            Secure(0xB75980,1);Secure(0xB759A0,0);Put<unsigned char>(0xCFD44C,0);U32(0xCFD27C,now);
+            U32(0x04400000,0x99EE78);U32(0x04400004,Actor);Secure(0x04400008,20);Secure(0x0440034C,3000);Secure(0x04400354,8000);
+        }
+        void SkillResources()
+        {
+            U32(Vtable+0x138,0x493880);U32(Vtable+0x368,0x492A60);U32(Actor+0x154,0);
+            Secure(0x04400008,20);Secure(0x044002EC,1);Secure(0x04400208,0);
+            U32(0x04400184,0x09200000);U32(0x04400188,0x09200008);Secure(0x09200000,6);
+            U32(0x044001BC,0);U32(0x044001C0,0);U32(0x044001CC,0);U32(0x044001D0,0);
+            U32(Actor+0x1E7C,0x09110000);U32(Actor+0x1E80,0);U32(0x09110000,0x09110000);U32(0x09110004,0x09110000);
+            for(unsigned i=0;i<23;++i){U32(Actor+0x13C4+i*4,0);U32(Actor+0x1FCC+i*4,0);}
+        }
         void PlayerAt(std::uint32_t actor, std::uint32_t uid)
         {
             U32(actor, Vtable); U32(actor + 0xD0, 0x111); Secure(actor + 0xD4, uid);
@@ -107,6 +123,7 @@ namespace
         static bool Read(void* context, std::uint32_t address, void* output, std::size_t size) noexcept
         {
             auto& self = *static_cast<Memory*>(context); ++self.readCount;
+            if(self.changeSkillAtEnd&&address==Actor+0x1AEC+20*4&&++self.skillSlotReads==2)self.U32(address,0x04410000);
             if (address == 0x00010010) self.readWrappedAddress = true;
             if (address == 0x00010004) self.readNullMirrorAddress = true;
             if (self.changeActorAtEnd && self.readCount > 200 && address == 0xB75A14) self.U32(address, Actor + 0x1000);
@@ -257,7 +274,7 @@ static int RunDungeonAndExportTests()
           "learned skill levels are captured without game getter calls");
     const auto json = ToJson(first, memory.utc + 500);
     Check(json.find("\"schema\":\"dfl-client-state/v2\"") != std::string::npos
-          && json.find("\"cooldown_ms\":null,\"usable\":null") != std::string::npos
+          && json.find("\"cooldown_ms\":null,\"cooldown_blocked\":null,\"usable\":null") != std::string::npos
           && json.find("\"server_context\":null") != std::string::npos,
           "JSON schema and unsupported cooldown/context remain explicit");
     const auto captured = first.capturedTickMs;
@@ -469,6 +486,74 @@ static int RunDungeonAndExportTests()
 
 int RunClientStateTests()
 {
+    {
+        Memory m;m.SkillTimer(9000);m.SkillResources();History h;Snapshot s;
+        m.U32(Memory::Vtable+0x54C,0x498D90);m.U32(Memory::Vtable+0x4DC,0x494410);
+        m.U32(Memory::Actor+0x13E8,0x09500000);m.U32(0x09500000,0x09510000);
+        m.U32(0x095100DC,0x4A7B50);m.U32(0x095100E0,0x4A7B60);m.U32(0x09510118,0x4A7BE0);
+        m.Secure(0x095000D0,0);m.U32(0x09500390,0);m.U32(0x09500394,0);m.U32(0x095006A0,0);
+        m.U32(Memory::Actor+0x2040,0x09600000);m.U32(Memory::Actor+0x2044,0x09600058);
+        m.SecureFloat(0x09600038,0.9f);m.Secure(0x04400208,1);m.Secure(0x09200000,7);m.Secure(Memory::Actor+0x1170,6);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":true")!=std::string::npos,"weapon MP factor and truncated cost permit exact available MP");
+        m.Secure(Memory::Actor+0x1170,5);Capture(m.Make(),h,s);Check(ToJson(s,0).find("\"usable\":false")!=std::string::npos,"weapon-factor cost below needed MP is unavailable");
+        m.Secure(Memory::Actor+0x1170,6);m.U32(0x095006A0,0x09800000);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":null")!=std::string::npos,"uninterpreted attached equipment modifiers cannot silently grant readiness");
+        m.U32(0x095006A0,0);m.SecureFloat(0x09600038,0.6f);m.Secure(0x09200000,5);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":null")!=std::string::npos,"unmeasured precision near integer MP boundary stays unknown");
+    }
+    {
+        Memory m;m.SkillTimer(9000);m.SkillResources();History h;Snapshot s;
+        m.U32(Memory::Actor+0x1E80,1);m.U32(0x09110000,0x09800000);m.U32(0x09110004,0x09800000);
+        m.U32(Memory::Actor+0x1E88,0x09700000);m.U32(Memory::Actor+0x1E8C,0x09700008);m.U32(Memory::Actor+0x1E94,0);m.U32(Memory::Actor+0x1E98,1);
+        m.U32(0x09700000,0x09800000);m.U32(0x09700004,0x09110000);m.U32(0x09800000,0x09110000);m.U32(0x09800008,20);m.SecureFloat(0x0980000C,0.5f);
+        m.Secure(Memory::Actor+0x1170,3);Capture(m.Make(),h,s);Check(ToJson(s,0).find("\"usable\":true")!=std::string::npos,"bounded per-skill factor lookup uses actual factor rather than default one");
+        m.U32(0x09800008,1);m.U32(0x09800000,0x09800000);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":null")!=std::string::npos,"cyclic per-skill factor map fails closed within its bound");
+        m.U32(0x09700000,0x09110000);m.U32(0x09700004,0x09800000);m.Secure(Memory::Actor+0x1170,123);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":null")!=std::string::npos,"unexpected sentinel before bucket end is not a missing-factor result");
+        m.changeSkillAtEnd=true;m.skillSlotReads=0;Capture(m.Make(),h,s);Check(s.truncated,"skill replacement while sampling cannot publish a mixed complete snapshot");
+    }
+    {
+        Memory m;m.SkillTimer(9000);m.SkillResources();History h;Snapshot s;Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":true")!=std::string::npos,"native context ready plus verified resources and cooldown gives known usable");
+        m.Secure(0x04400008,21);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":null,\"cooldown_blocked\":null,\"usable\":null")!=std::string::npos,"same-owner skill ID mismatch cannot supply another slot's cooldown");m.Secure(0x04400008,20);
+        m.Secure(Memory::Actor+0x1170,5);Capture(m.Make(),h,s);Check(ToJson(s,0).find("\"usable\":false")!=std::string::npos,"MP shortage blocks a cooldown-ready skill");
+        m.Secure(Memory::Actor+0x1170,123);m.Secure(0x044002EC,0);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":false")!=std::string::npos,"original context bit blocks despite enough MP and zero cooldown");
+        m.Secure(0x044002EC,1);m.Secure(0x04400354,10000);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":false")!=std::string::npos,"positive native cooldown blocks actual precast readiness");
+        m.Secure(0x04400354,8000);m.U32(0x044001BC,0x09300000);m.U32(0x044001C0,0x09300018);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":null")!=std::string::npos,"unsupported item-cost gate remains unknown rather than assumed sufficient");
+        m.U32(0x044001BC,0);m.U32(0x044001C0,0);m.U32(0x044001CC,0x09400000);m.U32(0x044001D0,0x09400008);m.Secure(0x09400000,1);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":null")!=std::string::npos,"unproven nonzero use limit cannot grant known usability");
+        m.Secure(0x09400000,0);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"usable\":null")!=std::string::npos,"use-limit table does not clamp an out-of-range learned level to a final zero");
+        m.U32(0x044001CC,0);m.U32(0x044001D0,0);m.Secure(0x0440034C,0xFFFFFFFE);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":null,\"cooldown_blocked\":null,\"usable\":null")!=std::string::npos,"unsupported negative duration cannot silently become known ready");
+    }
+    {
+        Memory m;m.SkillTimer(5000);History h;Snapshot s;Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":3000")!=std::string::npos,"skill cooldown uses actual native game clock rather than SDK wall tick");
+        m.U32(0xCFD27C,7999);Capture(m.Make(),h,s);Check(ToJson(s,0).find("\"cooldown_ms\":1")!=std::string::npos,"native cooldown one millisecond before deadline remains blocked");
+        m.U32(0xCFD27C,8000);Capture(m.Make(),h,s);Check(ToJson(s,0).find("\"cooldown_ms\":0")!=std::string::npos,"exact deadline is known zero");
+        m.Secure(0xB75998,1);m.Secure(0xB759A8,5000);m.U32(0xCFD27C,9000);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":3000")!=std::string::npos,"paused timer uses frozen native time despite base clock advancement");
+        m.Secure(0x0440034C,0xFFFFFFFF);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":null,\"cooldown_blocked\":true")!=std::string::npos,"native indefinite duration is blocked and cannot become known ready");
+        m.Secure(0x0440034C,3000);m.Secure(0x04400354,0x20);m.Secure(0xB75998,0);m.U32(0xCFD27C,0xFFFFFFF0);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":48")!=std::string::npos,"native unsigned clock wrap is decoded with signed remaining bits");
+        m.Put<unsigned char>(0xCFD44C,1);m.U32(0xCFD27C,0x09010000);m.Secure(0x09010000,0xFFFFFFF0);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":48")!=std::string::npos,"secure clock mode decodes the pointer target rather than the slot");
+        m.Secure(0xB759A0,0x30);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":0")!=std::string::npos,"clock offset and uint32 wrap participate in actual native time");
+        m.Secure(0xB75980,16);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":null,\"cooldown_blocked\":null")!=std::string::npos,"invalid indexed clock cannot fabricate known ready");
+        m.Secure(0xB75988,0);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"cooldown_ms\":32")!=std::string::npos,"disabled native clock has original zero value independent of wall time");
+        m.U32(0x04400004,Memory::Actor+0x1000);Capture(m.Make(),h,s);
+        Check(s.skillCount==1&&ToJson(s,0).find("\"cooldown_ms\":null,\"cooldown_blocked\":null")!=std::string::npos,"foreign skill owner preserves level inventory but cannot supply readiness");
+    }
     {
         Memory m;m.U32(Memory::Vtable+0x2E0,0x652670);m.U32(Memory::Vtable+0x340,0x652A70);m.U32(Memory::Vtable+0x344,0x652A80);
         m.Secure(Memory::Actor+0x1170,123);m.Secure(Memory::Actor+0xE48,151);m.SecureFloat(Memory::Actor+0xE50,0.999f);

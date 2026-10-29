@@ -44,7 +44,7 @@ namespace dfl::client_state
         out << ",\"generation\":" << s.generation << ",\"capture_duration_us\":" << s.captureDurationUs
             << ",\"skipped_publications\":" << s.skippedPublications << ",\"truncated\":" << s.truncated << ",\"errors\":[";
         for (std::size_t i = 0; i < s.errorCount; ++i) { if (i) out << ','; out << '"' << s.errors[i].data() << '"'; }
-        out << "],\"capabilities\":{\"skill_levels\":" << s.skillLevelsSupported << ",\"skill_cooldown\":false,\"skill_usable\":false},\"server_context\":null,\"room\":";
+        out << "],\"capabilities\":{\"skill_levels\":" << s.skillLevelsSupported << ",\"skill_cooldown\":" << s.skillCooldownSupported << ",\"skill_usable\":" << s.skillUsableSupported << "},\"server_context\":null,\"room\":";
         if (!s.room.present) out << "null";
         else
         {
@@ -115,7 +115,8 @@ namespace dfl::client_state
         for (std::size_t i = 0; i < s.skillCount; ++i)
         {
             if (i) out << ',';
-            out << "{\"id\":" << s.skills[i].id << ",\"level\":" << s.skills[i].level << ",\"cooldown_ms\":null,\"usable\":null}";
+            out << "{\"id\":" << s.skills[i].id << ",\"level\":" << s.skills[i].level << ",\"cooldown_ms\":";Nullable(out,s.skills[i].cooldownMs);
+            out << ",\"cooldown_blocked\":";Nullable(out,s.skills[i].cooldownBlocked);out << ",\"usable\":";Nullable(out,s.skills[i].usable);out << '}';
         }
         out << "]}\n"; return out.str();
     }

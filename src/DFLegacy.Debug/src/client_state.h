@@ -28,7 +28,11 @@ namespace dfl::client_state
         Value<bool> dead{}, active{};
         Position position{};
     };
-    struct Skill { std::uint32_t id = 0; std::int32_t level = 0; };
+    struct Skill
+    {
+        std::uint32_t id = 0; std::int32_t level = 0;
+        Value<std::int32_t> cooldownMs{};Value<bool> cooldownBlocked{},usable{};
+    };
     struct Room
     {
         bool present = false;
@@ -64,6 +68,7 @@ namespace dfl::client_state
         std::uint64_t captureDurationUs = 0, skippedPublications = 0;
         bool layoutSupported = false, valid = false, truncated = false, haveMe = false;
         bool skillLevelsSupported = false;
+        bool skillCooldownSupported = false, skillUsableSupported = false;
         Value<std::uint32_t> scene{};
         Room room{};
         Town town{};

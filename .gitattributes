@@ -64,3 +64,4 @@ compose.yaml text eol=lf
 
 /knowledge/decisions/assets/2026-10-30-active-drop-four/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 /knowledge/decisions/assets/2026-10-30-player-kill-mp/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-skill-state/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

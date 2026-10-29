@@ -30,7 +30,7 @@ _ENEMY = {
     "active": "bool", "position": _POSITION, "action": "i32",
     "queued_action": "u32", "authority_token": "u32",
 }
-_SKILL = {"id": "u32", "level": "u32", "cooldown_ms": "uint", "usable": "bool"}
+_SKILL = {"id": "u32", "level": "u32", "cooldown_ms": "duration", "cooldown_blocked": "bool", "usable": "bool"}
 _RECT = {
     "left": "i32", "top": "i32", "width": "u32", "height": "u32",
 }
@@ -114,6 +114,8 @@ def _shape(value, shape, *, nullable=True):
     if isinstance(shape, dict):
         _require(isinstance(value, dict), "bad_object")
         for key, child in shape.items():
+            if shape is _SKILL and key == "cooldown_blocked" and key not in value:
+                continue  # Additive v2 diagnostic; old snapshots remain unknown.
             if shape is _TOWN and key == "auto_move_active" and key not in value:
                 continue  # Additive v2 field; absence remains unknown to get_known_field.
             _require(key in value, "missing_field")
@@ -132,6 +134,7 @@ def _shape(value, shape, *, nullable=True):
         "i32": lambda: _integer(value, -(1 << 31), (1 << 31) - 1),
         "uid": lambda: _integer(value, 1, 65535),
         "hp": lambda: _integer(value, 0, (1 << 31) - 1),
+        "duration": lambda: _integer(value, 0, (1 << 31) - 1),
         "number": lambda: _finite(value),
         "token": lambda: isinstance(value, str) and _TOKEN.fullmatch(value) is not None
         and int(value, 16) != 0,
@@ -142,6 +145,15 @@ def _shape(value, shape, *, nullable=True):
 def _unique(rows, key):
     known = [row[key] for row in rows if row[key] is not None]
     _require(len(known) == len(set(known)), "duplicate_identity")
+
+
+def _skill_identity(snapshot):
+    me, room = snapshot.get("me"), snapshot.get("room")
+    return (isinstance(me, dict) and isinstance(room, dict) and _integer(me.get("uid"), 1, 65535)
+            and all(isinstance(me.get(key), str) and _TOKEN.fullmatch(me[key]) and int(me[key], 16) != 0
+                    for key in ("actor_token", "user_token"))
+            and all(isinstance(room.get(key), str) and _TOKEN.fullmatch(room[key]) and int(room[key], 16) != 0
+                    for key in ("stage_token", "map_token")))
 
 
 def _validate(snapshot):
@@ -177,13 +189,21 @@ def _validate(snapshot):
                          for direction in ("left", "right", "up", "down")), "bad_doors")
     caps = snapshot["capabilities"]
     _require(all(type(caps[key]) is bool for key in _CAPABILITIES), "bad_capabilities")
-    _require(caps["skill_cooldown"] is False and caps["skill_usable"] is False,
+    skill_state = version2 and snapshot["scene"] == 3 and caps["skill_levels"] is True
+    _require(skill_state or (caps["skill_cooldown"] is False and caps["skill_usable"] is False),
              "unsupported_capability")
+    _require(not (caps["skill_cooldown"] or caps["skill_usable"]) or _skill_identity(snapshot), "skill_actor_unbound")
     for skill in snapshot["skills"]:
         _require(_integer(skill["id"], 0, (1 << 32) - 1)
                  and _integer(skill["level"], 0, (1 << 32) - 1), "bad_skill")
-        _require(skill["cooldown_ms"] is None and skill["usable"] is None,
-                 "unproven_skill_state")
+        _require((caps["skill_cooldown"] or (skill["cooldown_ms"] is None and skill.get("cooldown_blocked") is None))
+                 and (caps["skill_usable"] or skill["usable"] is None), "unproven_skill_state")
+        blocked = skill.get("cooldown_blocked")
+        _require(blocked is None or skill["cooldown_ms"] is None or blocked == (skill["cooldown_ms"] > 0), "inconsistent_skill_state")
+        _require(blocked is not True or skill["usable"] is not True, "inconsistent_skill_state")
+        _require(skill["cooldown_ms"] is None or skill["cooldown_ms"] == 0 or skill["usable"] is not True, "inconsistent_skill_state")
+        _require(skill["usable"] is not True or (snapshot["me"]["dead"] is False
+                 and snapshot["me"]["same_map"] is True and snapshot["me"]["detached"] is False), "skill_actor_unavailable")
     _unique(snapshot["players"], "uid")
     _unique(snapshot["players"], "actor_token")
     _unique(snapshot["enemies"], "uid")
@@ -278,8 +298,13 @@ def get_known_field(snapshot, dotted_path):
     parts = dotted_path.split(".")
     if parts[0] == "skills":
         caps = snapshot.get("capabilities", {})
-        if not caps.get("skill_levels") or any(part in ("cooldown_ms", "usable") for part in parts):
+        dynamic = any(part in ("cooldown_ms", "cooldown_blocked", "usable") for part in parts)
+        if not caps.get("skill_levels") or (any(part in ("cooldown_ms", "cooldown_blocked") for part in parts) and not caps.get("skill_cooldown")) \
+                or ("usable" in parts and not caps.get("skill_usable")) \
+                or (dynamic and (snapshot.get("schema") != SCHEMA_V2 or snapshot.get("scene") != 3)):
             raise UnknownFieldError(dotted_path, "unsupported")
+        if dynamic and not _skill_identity(snapshot):
+            raise UnknownFieldError(dotted_path, "skill_actor_unbound")
     if parts[0] in ("town", "ui") and snapshot.get("schema") != SCHEMA_V2:
         raise UnknownFieldError(dotted_path, "unsupported")
     if parts[:2] == ["ui", "player_menu"] and len(parts) > 2 \
@@ -382,7 +407,8 @@ def summarize(snapshot):
                         if door["enabled"] is None or door["enabled"] is True and door["rect"] is None],
         },
         "skills": {"levels": snapshot["capabilities"]["skill_levels"],
-                   "cooldown": False, "usable": False},
+                   "cooldown": snapshot["capabilities"]["skill_cooldown"],
+                   "usable": snapshot["capabilities"]["skill_usable"]},
     }
     if snapshot.get("schema") == SCHEMA_V2:
         town = snapshot["town"]

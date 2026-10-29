@@ -71,6 +71,10 @@ python tools/debug/watch_dungeon.py --directory G:/Game/DNF_ACT1/DF/town-test/de
 
 ## 原生客户端状态
 
+新增v2动态技能：`skills[i].cooldown_ms`、`cooldown_blocked`和`usable`，由能力标志分别声明支持。有限冷却过期为0；原生持续禁用为毫秒null、blocked=true；其他未知为null。`usable`为正常手动施放的原生预检候选，不是按键／目标／命中回执。原生上下文、死亡、CD、MP成本和已证明资源条件都通过才为true；复杂物品成本、次数限制、装备修正和精度边界为unknown。支持范围及5张原图见[验收](../../knowledge/decisions/2026-10-30-skill-state-verification.md)。
+
+读取完整快照后按`id`找到本次技能数组索引，再使用既有查询／等待，例如`--wait skills.0.usable=true`。数组位置不是技能ID，不能把裸Z一律当id5；原PVF中鬼剑士裸Z上挑为id46。消费者区分已知0／false与null，旧v1和未绑定本地角色不开放动态技能字段。更新DLL时同步更新消费脚本；没有调用分配／消耗型原生方法进行观察。
+
 新导出使用独立的 `dfl-client-state/v2` JSON，消费脚本同时兼容已有 v1；不改变 DLL ABI v2 或服务端箱怪协议。客户端先以 `EnableDebugOverlay=1` 加载 DLL，再显式开启默认关闭的导出：
 
 ```ini

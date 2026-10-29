@@ -75,6 +75,8 @@
 
 ### 2026-10-29：测试接口、四人掉落与城镇操作
 
+2026-10-30技能增量：debug v2现有字段支持`cooldown_ms`、`usable`，另有`cooldown_blocked`区分持续禁用；按原生时钟／上下文／资源预检读取，未知不冒充可用。见[跨两职业施放、跳跃与死亡原图](knowledge/decisions/2026-10-30-skill-state-verification.md)。
+
 2026-10-30后续：新增测试专用 `player kill --uid`（2～4人组队副本中的本机角色），独立核对原生／服务端／各端死亡；新增副本本地MP及上限，正常技能消耗和恢复已核对。见[5张原图、测试及适用范围](knowledge/decisions/2026-10-30-player-kill-mp-verification.md)。U11已按最新要求移至队列最后。
 
 2026-10-30增量：测试CLI增加原生背包 `inventory drop` 及独立库存观测；四端完成蓝装、封装紫装四向交接、材料部分丢弃、金币均分和换房返回后的唯一保存。见[5张原图、测试与精确边界](knowledge/decisions/2026-10-30-active-drop-four-verification.md)；只部署隔离测试目录，普通配置默认关闭。

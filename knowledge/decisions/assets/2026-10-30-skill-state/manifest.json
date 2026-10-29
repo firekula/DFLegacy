@@ -1,0 +1,107 @@
+[
+  {
+    "file": "01-C-ready.jpg",
+    "bytes": 431576,
+    "sha256": "20CD28421B84E793AF54153A822C3926EAB9CEE1E9B5BC429A30B93FEAD6DBD1"
+  },
+  {
+    "file": "02-C-cast.jpg",
+    "bytes": 432441,
+    "sha256": "493447E2229344D40C7E2A978C656BB7C9C156751A0282196C242CDB6B8B0F74"
+  },
+  {
+    "file": "03-D-cast.jpg",
+    "bytes": 430983,
+    "sha256": "0B6C7D14F6EE04138D5C0C1EB87AD7712E78F22D8AFC74433F36A256131BD361"
+  },
+  {
+    "file": "04-C-airborne.jpg",
+    "bytes": 427788,
+    "sha256": "FD4DDA84616E9DA7C062C6AC280DED7EF69056D3D9AF53563B68D6190CE72A52"
+  },
+  {
+    "file": "05-C-dead.jpg",
+    "bytes": 422060,
+    "sha256": "B952DEBD99C2CAC439C704B0A07A29B869D0FE4373245E0B9A781773D39BBFF6"
+  },
+  {
+    "file": "acceptance.json",
+    "bytes": 14014,
+    "sha256": "9420B83D9D9F402DCE2C0D6E9AB73AB01763790D68D80069C39E07E45F1D1F2F"
+  },
+  {
+    "file": "cooldown-contract.md",
+    "bytes": 13007,
+    "sha256": "73B8AE0B7D55A7B0CB6A7049E2E02BD68C9BA5A959DC4AE1BAE55628A4E2E652"
+  },
+  {
+    "file": "final--client-navigation.txt",
+    "bytes": 72,
+    "sha256": "B4FAECBE6B668DDB73FFDEB9808DF62C21849F76607F19584CC0A645D9F061B5"
+  },
+  {
+    "file": "final--client-party.txt",
+    "bytes": 100,
+    "sha256": "2F2578F7968DCD8C7C0E43511C36960F46464CAB92336BA6CC6706C583D50B2E"
+  },
+  {
+    "file": "final--client-test-control.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "file": "final--town-route.txt",
+    "bytes": 221,
+    "sha256": "B19F4A5F20645D053AC9B2D5898E39B567CA94F39EE79A4A880900AD88FA11A0"
+  },
+  {
+    "file": "identity-green.txt",
+    "bytes": 32,
+    "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+  },
+  {
+    "file": "identity-red.txt",
+    "bytes": 208,
+    "sha256": "3D7D3106233366A1A84F6EAFCE68BF4441B413621F1F1426BB0DA1318BE4B897"
+  },
+  {
+    "file": "native-ready-red.txt",
+    "bytes": 921,
+    "sha256": "81CDD4088E58B8B0F58B856FBB69A64154B7E26E1EE2EEB5BAD944B38C329AD7"
+  },
+  {
+    "file": "python-full.txt",
+    "bytes": 1071,
+    "sha256": "6D971D18CC2224BA799BFD1E6C4341FDB85305E7D3540864E5E8FAB0D5545863"
+  },
+  {
+    "file": "python-related.txt",
+    "bytes": 330,
+    "sha256": "DF4FCE9C33A44D54C306C07714C6C3178597F7D8264FFB5AD729A287A2E00781"
+  },
+  {
+    "file": "review-consumer-green.txt",
+    "bytes": 121,
+    "sha256": "FD33BA49836D3596BF80DD9E51F6FA35623EA99A01CF0789803C49C84A057718"
+  },
+  {
+    "file": "review-consumer-red.txt",
+    "bytes": 1211,
+    "sha256": "BFAF6059425BCD6E49CE91A74B78664DEE25CCA2F4E9CC46C892A6520ABE60CC"
+  },
+  {
+    "file": "review-red.txt",
+    "bytes": 214,
+    "sha256": "9666CB7F4EC2FD160E9F450896681A44E6C5CA1AD646F23D793F906810048F23"
+  },
+  {
+    "file": "review.txt",
+    "bytes": 718,
+    "sha256": "08EAB7DEA5372CC9AF4DEB64760B347EF2D4C7465DDDC64C32B2094FCC943F98"
+  },
+  {
+    "file": "usability-contract.md",
+    "bytes": 11907,
+    "sha256": "5A054262E40DA2EF583B6C2D5D994D5CD7D5F2818AD1013A6B9E420028F3221F"
+  }
+]

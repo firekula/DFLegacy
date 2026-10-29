@@ -351,6 +351,75 @@ class ClientStateTests(unittest.TestCase):
             with self.assertRaises(self.api.SnapshotError):
                 self.load()
 
+    def test_v2_skill_state_known_zero_false_and_unknown_are_distinct(self):
+        value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+        value['capabilities'].update(skill_cooldown=True,skill_usable=True)
+        value['skills']=[dict(id=5,level=1,cooldown_ms=1250,cooldown_blocked=True,usable=False),dict(id=46,level=1,cooldown_ms=None,usable=None)]
+        self.write(value);result=self.load()
+        self.assertEqual(self.api.get_known_field(result,'skills.0.cooldown_ms'),1250)
+        self.assertIs(self.api.get_known_field(result,'skills.0.cooldown_blocked'),True)
+        self.assertIs(self.api.get_known_field(result,'skills.0.usable'),False)
+        self.assertTrue(self.api.match_condition(result,'skills.0.usable',False))
+        self.assertFalse(self.api.match_condition(result,'skills.0.usable',0))
+        with self.assertRaises(self.api.UnknownFieldError):self.api.get_known_field(result,'skills.1.usable')
+        self.assertFalse(self.api.match_condition(result,'skills.1.cooldown_ms',None))
+        value['skills'][0].update(cooldown_ms=0,cooldown_blocked=False,usable=True);self.write(value);result=self.load()
+        self.assertTrue(self.api.match_condition(result,'skills.0.cooldown_ms',0))
+        self.assertIs(self.api.get_known_field(result,'skills.0.usable'),True)
+        self.assertTrue(self.api.summarize(result)['skills']['cooldown'])
+        self.assertTrue(self.api.summarize(result)['skills']['usable'])
+
+    def test_skill_state_capabilities_are_independent_and_fields_require_support(self):
+        value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+        value['capabilities']['skill_cooldown']=True;value['skills'][0]['cooldown_ms']=0
+        self.write(value);result=self.load();self.assertEqual(self.api.get_known_field(result,'skills.0.cooldown_ms'),0)
+        with self.assertRaises(self.api.UnknownFieldError):self.api.get_known_field(result,'skills.0.usable')
+        value['skills'][0]['usable']=False;self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_skill_cooldown_rejects_invalid_range_and_town_cannot_claim_support(self):
+        for cooldown in [-1,True,2147483648,0.5]:
+            with self.subTest(cooldown=cooldown):
+                value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+                value['capabilities']['skill_cooldown']=True;value['skills'][0]['cooldown_ms']=cooldown
+                self.write(value)
+                with self.assertRaises(self.api.SnapshotError):self.load()
+        value=town_fixture();value['capabilities']['skill_usable']=True;self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_direct_known_field_query_cannot_enable_v1_skills_by_flipping_capability(self):
+        value=fixture();value['capabilities'].update(skill_cooldown=True,skill_usable=True)
+        value['skills'][0].update(cooldown_ms=0,usable=True)
+        for field in ['cooldown_ms','usable']:
+            with self.subTest(field=field),self.assertRaises(self.api.UnknownFieldError):
+                self.api.get_known_field(value,'skills.0.'+field)
+
+    def test_skill_indefinite_blocking_is_known_and_inconsistent_states_are_rejected(self):
+        value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+        value['capabilities'].update(skill_cooldown=True,skill_usable=True)
+        value['skills'][0].update(cooldown_ms=None,cooldown_blocked=True,usable=False)
+        self.write(value);result=self.load();self.assertIs(self.api.get_known_field(result,'skills.0.cooldown_blocked'),True)
+        for change in [dict(cooldown_blocked=1),dict(usable=True),dict(cooldown_ms=0),dict(cooldown_ms=1,cooldown_blocked=False)]:
+            with self.subTest(change=change):
+                bad=deepcopy(value);bad['skills'][0].update(change);self.write(bad)
+                with self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_skill_readiness_requires_local_identity_and_cannot_ignore_positive_cooldown(self):
+        base=fixture();base.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+        base['capabilities'].update(skill_cooldown=True,skill_usable=True);base['skills'][0].update(cooldown_ms=0,usable=True)
+        for change in ['positive_cd','no_me','no_actor','dead','detached']:
+            with self.subTest(change=change):
+                value=deepcopy(base)
+                if change=='positive_cd':value['skills'][0]['cooldown_ms']=1250
+                elif change=='no_me':value.update(me=None,players=[])
+                elif change=='no_actor':value['me']['actor_token']=None
+                elif change=='dead':value['me']['dead']=True
+                else:value['me'].update(same_map=False,detached=True,map_token=None,position=None)
+                self.write(value)
+                with self.assertRaises(self.api.SnapshotError):self.load()
+        base.update(me=None,players=[])
+        with self.assertRaises(self.api.UnknownFieldError):self.api.get_known_field(base,'skills.0.usable')
+
     def test_v2_local_mp_supports_zero_partial_and_raw_over_max_without_accepting_remote_mp(self):
         for mp,maximum in [(123,150),(0,0),(None,500),(700,500)]:
             with self.subTest(mp=mp,maximum=maximum):

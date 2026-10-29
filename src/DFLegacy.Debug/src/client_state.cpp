@@ -9,6 +9,7 @@
 #include <cwchar>
 #include <limits>
 #include "client_state.h"
+#include "client_skill_state.h"
 
 namespace dfl::client_state
 {
@@ -428,6 +429,8 @@ namespace dfl::client_state
             if (!r.Getter(actor, 0x508, 0x493DC0) || !r.Getter(actor, 0x51C, 0x4A3510))
             { Error(s, "unsupported_skill_layout"); return; }
             s.skillLevelsSupported = true;
+            s.skillCooldownSupported = s.skillUsableSupported = true;
+            const auto clock = client_skill_state::Clock(r);
             for (std::uint32_t id = 0; id < MaximumSkills; ++id)
             {
                 std::uint32_t skill = 0;
@@ -436,7 +439,22 @@ namespace dfl::client_state
                 std::int32_t level = 0;
                 if (!r.SignedAt(skill, 0x2E0, level) || level < 0 || level > 1000)
                 { s.truncated = true; Error(s, "invalid_skill_level"); continue; }
-                if (level > 0) s.skills[s.skillCount++] = {id, level};
+                if (level > 0)
+                {
+                    Skill result{id,level};std::uint32_t table=0,owner=0,again=0,actualId=0;std::int32_t finalLevel=0;
+                    const bool bound=r.Read(skill,table)&&table==0x99EE78&&r.ReadAt(skill,4,owner)&&owner==actor
+                        &&r.SecureAt(skill,8,actualId)&&actualId==id;
+                    if(bound)
+                    {
+                        client_skill_state::Cooldown(r,skill,clock,result);
+                        client_skill_state::Usability(r,s.me,skill,result);
+                    }
+                    if(!r.ReadAt(actor,0x1AEC+id*4,again)||again!=skill||!r.SignedAt(skill,0x2E0,finalLevel)||finalLevel!=level
+                        ||(bound&&(!r.ReadAt(skill,4,again)||again!=actor||!r.SecureAt(skill,8,again)||again!=id
+                            ||!r.Read(skill,again)||again!=table)))
+                    {s.truncated=true;Error(s,"skill_changed_during_capture");return;}
+                    s.skills[s.skillCount++]=result;
+                }
             }
         }
     }
