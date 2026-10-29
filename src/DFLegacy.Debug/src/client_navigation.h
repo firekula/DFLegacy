@@ -31,6 +31,9 @@ namespace dfl::client_navigation
     bool BlankMarkers(const client_state::Reader&, std::uint32_t plane, std::int32_t px, std::int32_t py) noexcept;
     bool ReadCanvasTarget(const client_state::Reader&, const client_state::Snapshot&,
                           std::uint32_t minimap, std::int32_t& x, std::int32_t& y) noexcept;
+    struct CanvasGoal { std::int32_t town = -1, area = -1, x = 0, y = 0; };
+    bool ReadRouteCanvasTarget(const client_state::Reader&, const client_state::Snapshot&,
+                               std::uint32_t minimap, CanvasGoal&) noexcept;
     using PatchOperation = bool (*)(const unsigned char* expected, const unsigned char* replacement) noexcept;
     bool RestoreInstalledHook(bool& installed, const std::array<unsigned char,5>& patched, PatchOperation) noexcept;
     struct DestinationOperations

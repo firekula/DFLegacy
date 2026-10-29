@@ -145,6 +145,64 @@ namespace dfl::client_navigation
             && r.At(im,0xFF0,finalOwner) && finalOwner==minimap && r.At(minimap,0xC,finalPlane) && finalPlane==plane
             && r.At(panel,0x10,finalVisible) && finalVisible==1;
     }
+    bool ReadRouteCanvasTarget(const client_state::Reader& reader, const client_state::Snapshot& s,
+                               std::uint32_t minimap, CanvasGoal& output) noexcept
+    {
+        if (!s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
+            || !s.scene.known || s.scene.value!=1) return false;
+        Reads r{reader};
+        std::uint32_t im=0,owner=0,table=0,panel=0,id=0,capture=0,plane=0,regionsMenu=0,npcsMenu=0;
+        unsigned char visible=0,enabled=0,prior=0,now=0,mode=0,regionsOpen=0,npcsOpen=0;
+        std::int32_t dx=0,dy=0,mx=0,my=0,cx=0,cy=0;
+        // 79D242 runs before the native right-button previous-state update (79D4DC).
+        // B55188 is the right-release hit CNWindow ID, not a generic hover slot.
+        if (!r.At(0xB5DCE8,0,im) || !r.At(im,0xFF0,owner) || owner!=minimap
+            || !r.At(minimap,0,table) || table!=0xA7CF3C || !r.At(minimap,4,panel)
+            || !r.At(panel,0x10,visible) || visible!=1 || !r.At(panel,0x11,enabled) || enabled!=1
+            || !r.At(panel,12,id) || !r.At(0xB55188,0,capture) || capture!=id
+            || !r.At(im,0xFD9,prior) || prior!=1 || !r.At(0xCFD202,0,now) || now!=0
+            || !r.At(0xCFD20A,0,mode) || mode!=0
+            || !r.At(minimap,0x1C,regionsMenu) || !r.At(regionsMenu,0x10,regionsOpen) || regionsOpen!=0
+            || !r.At(minimap,0x64,npcsMenu) || !r.At(npcsMenu,0x10,npcsOpen) || npcsOpen!=0
+            || !r.At(minimap,0xC,plane) || !plane || !r.At(0xBEEFC4,0,dx) || !r.At(0xB53C28,0,dy)
+            || dx < -4096 || dx>4096 || dy < -4096 || dy>4096
+            || !r.At(plane,4,cx) || !r.At(plane,8,cy) || cx!=-dx || cy!=-dy
+            || !r.At(0xCFD1EC,0,mx) || !r.At(0xCFD1F0,0,my)) return false;
+        const auto wideX=static_cast<std::int64_t>(mx)-dx,wideY=static_cast<std::int64_t>(my)-dy;
+        if (wideX<INT32_MIN || wideX>INT32_MAX || wideY<INT32_MIN || wideY>INT32_MAX) return false;
+        const auto px=static_cast<std::int32_t>(wideX),py=static_cast<std::int32_t>(wideY);
+        std::array<RegionRect,MaximumRegions> projects{},reals{};std::size_t pc=0,rc=0;
+        if (plane>UINT32_MAX-0x20 || !ReadRegions(reader,plane+0x20,projects,pc)
+            || !ReadRegions(reader,0xBEF024,reals,rc)) return false;
+        const RegionRect* project=nullptr;const RegionRect* real=nullptr;std::size_t hits=0;
+        for (std::size_t i=0;i<pc;++i) if (Inside(projects[i].rect,px,py)) { ++hits;project=&projects[i]; }
+        if (hits!=1 || !project) return false;
+        for (std::size_t i=0;i<rc;++i)
+            if (reals[i].town==project->town && reals[i].area==project->area) real=&reals[i];
+        CanvasGoal goal;
+        if (!real || !BlankMarkers(reader,plane,px,py)
+            || !InverseProject(project->rect,real->rect,px,py,goal.x,goal.y)) return false;
+        goal.town=project->town;goal.area=project->area;
+        // A reader can fail or observe a replaced/closed map. Publish only a complete,
+        // still-owned gesture; never call native input, UI or destination routines here.
+        std::uint32_t finalIm=0,finalOwner=0,finalTable=0,finalPanel=0,finalId=0,finalCapture=0,finalPlane=0,finalRegions=0,finalNpcs=0;
+        unsigned char finalVisible=0,finalEnabled=0,finalPrior=0,finalNow=0,finalMode=0,finalRegionsOpen=0,finalNpcsOpen=0;
+        std::int32_t finalDx=0,finalDy=0,finalMx=0,finalMy=0,finalCx=0,finalCy=0;
+        if (!r.At(0xB5DCE8,0,finalIm) || finalIm!=im || !r.At(im,0xFF0,finalOwner) || finalOwner!=minimap
+            || !r.At(minimap,0,finalTable) || finalTable!=table || !r.At(minimap,4,finalPanel) || finalPanel!=panel
+            || !r.At(panel,12,finalId) || finalId!=id || !r.At(0xB55188,0,finalCapture) || finalCapture!=id
+            || !r.At(panel,0x10,finalVisible) || finalVisible!=1 || !r.At(panel,0x11,finalEnabled) || finalEnabled!=1
+            || !r.At(im,0xFD9,finalPrior) || finalPrior!=1 || !r.At(0xCFD202,0,finalNow) || finalNow!=0
+            || !r.At(0xCFD20A,0,finalMode) || finalMode!=0
+            || !r.At(minimap,0x1C,finalRegions) || finalRegions!=regionsMenu
+            || !r.At(regionsMenu,0x10,finalRegionsOpen) || finalRegionsOpen!=0
+            || !r.At(minimap,0x64,finalNpcs) || finalNpcs!=npcsMenu || !r.At(npcsMenu,0x10,finalNpcsOpen) || finalNpcsOpen!=0
+            || !r.At(minimap,0xC,finalPlane) || finalPlane!=plane
+            || !r.At(0xBEEFC4,0,finalDx) || finalDx!=dx || !r.At(0xB53C28,0,finalDy) || finalDy!=dy
+            || !r.At(plane,4,finalCx) || finalCx!=cx || !r.At(plane,8,finalCy) || finalCy!=cy
+            || !r.At(0xCFD1EC,0,finalMx) || finalMx!=mx || !r.At(0xCFD1F0,0,finalMy) || finalMy!=my) return false;
+        output=goal;return true;
+    }
     bool RestoreInstalledHook(bool& installed,const std::array<unsigned char,5>& patched,PatchOperation replace) noexcept
     {
         constexpr unsigned char original[]={0xE8,0xD9,0x3B,0x0E,0x00};

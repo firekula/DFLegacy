@@ -27,11 +27,13 @@ namespace
     struct Memory
     {
         std::unordered_map<std::uint32_t, unsigned char> data;
+        std::uint32_t mutateAt=0,mutateTo=0;
+        unsigned mutateOnRead=0,matchingReads=0;
         template<class T> void Put(std::uint32_t at, T value)
         { const auto* p=reinterpret_cast<const unsigned char*>(&value); for(std::size_t i=0;i<sizeof(value);++i)data[at+static_cast<std::uint32_t>(i)]=p[i]; }
         void U(std::uint32_t at, std::uint32_t value) { Put(at,value); }
         static bool Read(void* context,std::uint32_t at,void* output,std::size_t count) noexcept
-        { auto& m=*static_cast<Memory*>(context);auto* p=static_cast<unsigned char*>(output);for(std::size_t i=0;i<count;++i){auto it=m.data.find(at+static_cast<std::uint32_t>(i));if(it==m.data.end())return false;p[i]=it->second;}return true; }
+        { auto& m=*static_cast<Memory*>(context);if(at==m.mutateAt && ++m.matchingReads==m.mutateOnRead)m.U(at,m.mutateTo);auto* p=static_cast<unsigned char*>(output);for(std::size_t i=0;i<count;++i){auto it=m.data.find(at+static_cast<std::uint32_t>(i));if(it==m.data.end())return false;p[i]=it->second;}return true; }
         dfl::client_state::Reader Reader() { dfl::client_state::Reader r{};r.context=this;r.read=Read;return r; }
         void Hash()
         {
@@ -45,17 +47,25 @@ namespace
             U(0x200014,0x210000);U(0x200018,0x210004);U(0x210000,0x220000);U(0x220000,0x230000);U(0x230004,hit);
             Put<std::int32_t>(0x220008,50);Put<std::int32_t>(0x22000C,60);U(0x220010,0x240000);U(0x240014,10);U(0x240018,20);
         }
-        void Row(std::uint32_t hash,std::uint32_t allocation,const Rect& rect)
+        void Row(std::uint32_t hash,std::uint32_t allocation,const Rect& rect,std::int32_t town=1,std::int32_t area=0)
         {
             const auto head=allocation,node=allocation+0x100,record=allocation+0x200,rectangle=allocation+0x300;
             U(hash+8,head);U(hash+12,1);U(head,node);U(head+4,node);U(node,head);U(node+4,head);
-            Put<std::int32_t>(node+8,1024);U(node+12,record);Put<std::int32_t>(record,1);Put<std::int32_t>(record+4,0);U(record+8,rectangle);Put(rectangle,rect);
+            Put<std::int32_t>(node+8,(town<<10)+area);U(node+12,record);Put<std::int32_t>(record,town);Put<std::int32_t>(record+4,area);U(record+8,rectangle);Put(rectangle,rect);
+        }
+        void SecondProject(std::int32_t town,std::int32_t area)
+        {
+            U(0x53002C,2);U(0x540004,0x540400);U(0x540100,0x540400);
+            U(0x540400,0x540000);U(0x540404,0x540100);Put<std::int32_t>(0x540408,(town<<10)+area);U(0x54040C,0x540500);
+            Put<std::int32_t>(0x540500,town);Put<std::int32_t>(0x540504,area);U(0x540508,0x540600);Put(0x540600,Rect{10,20,100,50});
         }
         void Canvas()
         {
             U(0xB5DCE8,0x500000);U(0x500FF0,0x510000);U(0x510000,0xA7CF3C);U(0x510004,0x520000);U(0x51000C,0x530000);
             Put<unsigned char>(0x520010,1);Put<unsigned char>(0x520011,1);U(0x52000C,777);U(0xB55184,777);
             Put<unsigned char>(0x500FD8,1);Put<unsigned char>(0xCFD200,0);Put<unsigned char>(0xCFD20A,0);
+            Put<unsigned char>(0x500FD9,1);Put<unsigned char>(0xCFD202,0);U(0xB55188,777);
+            U(0x51001C,0x560000);Put<unsigned char>(0x560010,0);U(0x510064,0x570000);Put<unsigned char>(0x570010,0);
             Put<std::int32_t>(0xBEEFC4,0);Put<std::int32_t>(0xB53C28,26);Put<std::int32_t>(0x530004,0);Put<std::int32_t>(0x530008,-26);
             Put<std::int32_t>(0xCFD1EC,60);Put<std::int32_t>(0xCFD1F0,71);U(0x530014,0);U(0x530018,0);
             Row(0x530020,0x540000,{10,20,100,50});Row(0xBEF024,0x550000,{-100,100,1000,500});
@@ -73,10 +83,56 @@ namespace
         r.generation=s.generation;r.snapshotSequence=s.sequence;r.actorToken=s.me.actorToken;r.mapToken=s.me.mapToken;r.userToken=s.me.userToken;r.contextToken=s.town.contextToken;
         r.townId=s.town.townId;r.areaId=s.town.areaId;r.x=150;r.y=220;return r;
     }
+    void RouteCanvasTests()
+    {
+        const auto s=Sample();Memory m;m.Canvas();CanvasGoal goal;
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal)&&goal.town==1&&goal.area==0&&goal.x==400&&goal.y==350,"right canvas release selects current region");
+        m.Put<unsigned char>(0x500FD8,0);m.Put<unsigned char>(0xCFD200,1);m.U(0xB55184,778);
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal),"right reader is independent of all left button fields");
+        m.Row(0x530020,0x540000,{10,20,100,50},2,3);m.Row(0xBEF024,0x550000,{-100,100,1000,500},2,3);
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal)&&goal.town==2&&goal.area==3&&goal.x==400&&goal.y==350,"right release selects another displayed town and area");
+        auto denied=[&](const char* label)
+        {
+            goal={9,8,7,6};const bool accepted=ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal);
+            Check(!accepted&&goal.town==9&&goal.area==8&&goal.x==7&&goal.y==6,label);
+        };
+        m.Canvas();m.Put<unsigned char>(0x500FD9,0);denied("left release alone never selects route");
+        m.Canvas();m.Put<unsigned char>(0xCFD202,1);denied("held right button never selects route");
+        m.Canvas();m.Put<unsigned char>(0x500FD9,2);denied("invalid prior right state rejected");
+        m.Canvas();m.Put<unsigned char>(0xCFD20A,1);denied("unsupported input mode rejected");
+        m.Canvas();m.U(0xB55188,778);denied("right child dropdown button close or foreign capture rejected");
+        m.Canvas();m.Put<unsigned char>(0x520010,0);denied("hidden cached map rejected");
+        m.Canvas();m.Put<unsigned char>(0x520011,0);denied("disabled map rejected");
+        m.Canvas();m.Put<unsigned char>(0x560010,1);denied("expanded region dropdown rejects blank canvas right click");
+        m.Canvas();m.Put<unsigned char>(0x570010,1);denied("expanded NPC dropdown rejects blank canvas right click");
+        m.Canvas();m.data.erase(0x560010);denied("unknown dropdown visibility fails closed");
+        m.Canvas();m.U(0x500FF0,0x510100);denied("obsolete map owner rejected");
+        m.Canvas();m.U(0x510000,0xA7D330);denied("dungeon HUD minimap rejected");
+        m.Canvas();m.Put<std::int32_t>(0x530008,0);denied("undrawn cached plane rejected");
+        m.Canvas();m.Row(0xBEF024,0x550000,{-100,100,1000,500},2,3);denied("displayed region missing matching real geometry rejected");
+        m.Canvas();m.SecondProject(1,1);denied("overlapping displayed regions rejected");
+        m.Canvas();m.SecondProject(1,0);denied("duplicate displayed region keys rejected");
+        m.Canvas();m.Put<std::int32_t>(0xCFD1EC,110);denied("project right boundary is exclusive");
+        m.Canvas();m.Put<std::int32_t>(0xCFD1F0,96);denied("project bottom boundary is exclusive");
+        m.Canvas();m.Marker();m.U(0x530014,0x210000);m.U(0x530018,0x210004);m.Put<std::int32_t>(0x220008,60);m.Put<std::int32_t>(0x22000C,45);
+        denied("NPC marker rejects right goal");
+        m.Marker(0xDEADBEEF);denied("unknown marker layout rejects right goal");
+        m.Canvas();m.Put<std::int32_t>(0xCFD1EC,INT32_MAX);m.Put<std::int32_t>(0xBEEFC4,-1);m.Put<std::int32_t>(0x530004,1);denied("mouse translation overflow rejected");
+        m.Canvas();m.mutateAt=0x51000C;m.mutateTo=0x530100;m.mutateOnRead=2;m.matchingReads=0;denied("plane replacement during read rejected");
+        m.mutateAt=0;m.Canvas();m.mutateAt=0xB55188;m.mutateTo=778;m.mutateOnRead=2;m.matchingReads=0;denied("right capture replacement during read rejected");
+        m.mutateAt=0;m.Canvas();m.mutateAt=0x520010;m.mutateTo=0;m.mutateOnRead=2;m.matchingReads=0;denied("map closes during read without publishing partial goal");
+        m.mutateAt=0;m.Canvas();auto unavailable=s;unavailable.layoutSupported=false;
+        Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal),"unsupported snapshot rejects right goal");
+        unavailable=s;unavailable.truncated=true;Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal),"truncated snapshot rejects right goal");
+        unavailable=s;unavailable.scene.value=3;Check(!ReadRouteCanvasTarget(m.Reader(),unavailable,0x510000,goal),"non Town scene rejects right goal");
+        m.Canvas();m.Put<unsigned char>(0x500FD9,0);std::int32_t x=0,y=0;
+        Check(ReadCanvasTarget(m.Reader(),s,0x510000,x,y)&&x==400&&y==350,"legacy left reader still operates with no right edge");
+    }
 }
 int RunClientNavigationTests()
 {
     Failures=0;auto s=Sample();auto r=Command(s);
+    RouteCanvasTests();
     Check(ValidateRequest(r,s,1100,49)==nullptr,"fresh matching Town request accepted");
     Check(ValidateRequest(r,s,1100,50)!=nullptr,"replayed request rejected");
     Check(ValidateRequest(r,s,2200,49)!=nullptr,"expired request rejected");
