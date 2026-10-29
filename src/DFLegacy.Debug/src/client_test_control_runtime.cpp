@@ -30,11 +30,19 @@ namespace dfl::client_test_control
             std::uint64_t tick=0,serial=0;std::size_t appliedCount=0;
         } GameResult{},Outbox{};
         struct GroundRow {Ground ground{};client_state::Position position{};};
+        struct InventoryRow {std::uint32_t slot=0,item=0,id=0,count=0;};
+        struct InventoryState
+        {
+            bool valid=false,pending=false;const char* reason="inventory_unavailable";
+            std::uint32_t container=0,array=0,capacity=0;std::size_t count=0;
+            std::array<InventoryRow,512> rows{};
+        };
         struct TestState
         {
             Request identity{};std::uint64_t tick=0,serial=0;
             bool valid=false,truncated=false;const char* reason="ground_state_unavailable";
             std::array<GroundRow,256> ground{};std::size_t count=0;
+            InventoryState inventory{};
         } GameState{},PublishedState{};
         SRWLOCK StateLock=SRWLOCK_INIT,LeaseLock=SRWLOCK_INIT;
         Lease LiveLease{};volatile LONG LeaseUid=0;
@@ -165,6 +173,55 @@ namespace dfl::client_test_control
             }
             state.ground=rows;state.count=count;state.valid=true;state.reason="ready";return true;
         }
+        bool ReadInventoryState(InventoryState& output) noexcept
+        {
+            output={};InventoryState next;Reads r;std::uint32_t space=0,begin=0,end=0,cap=0;
+            if(!r.At(0xB5DCEC,0,next.container)||!r.Secure(next.container,0,space)||space!=0
+                ||!r.Secure(next.container,0x10,next.capacity)||next.capacity<9||next.capacity>next.rows.size()
+                ||!r.At(next.container,0x18,next.array)||next.array<0x10000
+                ||static_cast<std::uint64_t>(next.array)+next.capacity*4>0x100000000ULL
+                ||!r.At(next.container,0x20,begin)||!r.At(next.container,0x24,end)||!r.At(next.container,0x28,cap)
+                ||end<begin||cap<end||(end-begin)%4||(end-begin)/4>64||(!begin&&(end||cap)))return false;
+            next.pending=begin!=end;
+            for(std::uint32_t slot=0;slot<next.capacity;++slot)
+            {
+                if(slot>0&&slot<9)continue;InventoryRow row;row.slot=slot;
+                if(!r.At(next.array,slot*4,row.item))return false;if(!row.item)continue;
+                if(!r.Getter(row.item,0x18,0x4619A0)||!r.Getter(row.item,0x34,0x461AB0)
+                    ||!r.At(row.item,0xC,row.id)||row.id>65535||((slot==0)!=(row.id==0))
+                    ||!r.Secure(row.item,0xA0,row.count))return false;
+                for(std::size_t i=0;i<next.count;++i)if(next.rows[i].item==row.item)return false;
+                next.rows[next.count++]=row;
+            }
+            // No partial inventory escapes when a slot or container changed.
+            std::uint32_t value=0;
+            if(!r.At(0xB5DCEC,0,value)||value!=next.container||!r.Secure(next.container,0,space)||space!=0
+                ||!r.At(next.container,0x18,value)||value!=next.array||!r.Secure(next.container,0x10,value)||value!=next.capacity
+                ||!r.At(next.container,0x20,value)||value!=begin||!r.At(next.container,0x24,value)||value!=end
+                ||!r.At(next.container,0x28,value)||value!=cap)return false;
+            std::size_t index=0;
+            for(std::uint32_t slot=0;slot<next.capacity;++slot)
+            {
+                if(slot>0&&slot<9)continue;if(!r.At(next.array,slot*4,value))return false;
+                const auto* row=index<next.count&&next.rows[index].slot==slot?&next.rows[index++]:nullptr;
+                if(value!=(row?row->item:0))return false;if(!row)continue;
+                if(!r.At(row->item,0xC,value)||value!=row->id||!r.Secure(row->item,0xA0,value)||value!=row->count)return false;
+            }
+            next.valid=true;next.reason="ready";output=next;return true;
+        }
+        const char* ValidateInventoryTarget(const Request& q,const InventoryState& inv,InventoryRow& row) noexcept
+        {
+            if(!inv.valid)return "inventory_unavailable";if(inv.pending)return "inventory_pending";
+            if(q.operation!=5||q.targetId<0||static_cast<std::uint32_t>(q.targetId)>=inv.capacity
+                ||(q.targetId>0&&q.targetId<9)||q.x<1||q.y<0||q.y>65535||((q.targetId==0)!=(q.y==0)))return "invalid_inventory_target";
+            for(std::size_t i=0;i<inv.count;++i)
+            {
+                const auto& item=inv.rows[i];if(item.slot!=static_cast<std::uint32_t>(q.targetId))continue;
+                if(item.item!=static_cast<std::uint32_t>(q.reserved)||item.id!=static_cast<std::uint32_t>(q.y))return "inventory_item_changed";
+                if(item.count<static_cast<std::uint32_t>(q.x))return "inventory_quantity_changed";row=item;return nullptr;
+            }
+            return "inventory_slot_empty";
+        }
         void CaptureTestState(const client_state::Snapshot& snapshot) noexcept
         {
             InterlockedExchange(&LeaseUid,snapshot.haveMe&&snapshot.me.uid.known?static_cast<LONG>(snapshot.me.uid.value):0);
@@ -191,6 +248,7 @@ namespace dfl::client_test_control
             TestState state;state.identity=q;state.tick=now;
             if(snapshot.truncated){state.truncated=true;state.reason="client_snapshot_truncated";}
             else {ReadGroundState(q.mapToken,state);if(!LiveContext(command,snapshot))return;}
+            ReadInventoryState(state.inventory);
             state.serial=++StateSerial;GameState=state;
             if(!TryAcquireSRWLockExclusive(&StateLock))return;PublishedState=GameState;ReleaseSRWLockExclusive(&StateLock);
         }
@@ -260,6 +318,94 @@ namespace dfl::client_test_control
             }
             __except(EXCEPTION_EXECUTE_HANDLER){return "native_death_request_failed";}
         }
+        // Exact original PE ranges, independently frozen in native-contract/native-policy.
+        bool InventorySignatures() noexcept
+        {
+            constexpr unsigned char drop_full[]={
+                0x55,0x8B,0xEC,0x83,0xEC,0x08,0x57,0x8B,0xF9,0x8B,0x4F,0x20,0x85,0xC9,0x74,0x11,
+                0x8B,0x47,0x24,0x2B,0xC1,0xC1,0xF8,0x02,0x83,0xF8,0x01,0x0F,0x8D,0x4C,0x01,0x00,
+                0x00,0x8D,0x4F,0x10,0xE8,0x17,0x2F,0xFA,0xFF,0x8B,0x4D,0x08,0x3B,0xC8,0x0F,0x8D,
+                0x39,0x01,0x00,0x00,0x8B,0x47,0x18,0x83,0x3C,0x88,0x00,0x0F,0x84,0x2C,0x01,0x00,
+                0x00,0x8B,0xD0,0x8B,0x0C,0x8A,0x8B,0x01,0xFF,0x50,0x34,0x3B,0x45,0x0C,0x0F,0x82,
+                0x19,0x01,0x00,0x00,0x56,0x8B,0x35,0x14,0x5A,0xB7,0x00,0x85,0xF6,0x74,0x4C,0x8B,
+                0x16,0x8B,0xCE,0xFF,0x52,0x54,0x85,0xC0,0x74,0x41,0x8B,0xCF,0xE8,0xCF,0x2E,0xFA,
+                0xFF,0x85,0xC0,0x74,0x0C,0x8B,0xCF,0xE8,0xC4,0x2E,0xFA,0xFF,0x83,0xF8,0x07,0x75,
+                0x2A,0xA1,0xFC,0xDC,0xB5,0x00,0x66,0x81,0x78,0x04,0xFF,0xFF,0x74,0x27,0x6A,0x10,
+                0x68,0x6D,0x75,0x00,0x00,0xE8,0x16,0xB4,0x44,0x00,0x8B,0x0D,0xE8,0xDC,0xB5,0x00,
+                0x83,0xC4,0x04,0x50,0x6A,0x00,0xE8,0x55,0xBE,0x33,0x00,0x5E,0x32,0xC0,0x5F,0x8B,
+                0xE5,0x5D,0xC2,0x08,0x00,0x8B,0x0D,0x9C,0x0A,0xBF,0x00,0x53,0x6A,0x32,0xE8,0x9D,
+                0x34,0x45,0x00,0x8B,0x16,0x8B,0x1D,0x9C,0x0A,0xBF,0x00,0x8B,0xCE,0xFF,0x92,0x84,
+                0x00,0x00,0x00,0x89,0x45,0xF8,0x6A,0x02,0x8D,0x45,0xF8,0x50,0x8B,0xCB,0xE8,0x7D,
+                0x32,0x45,0x00,0x8B,0x16,0x8B,0x1D,0x9C,0x0A,0xBF,0x00,0x8B,0xCE,0xFF,0x92,0x88,
+                0x00,0x00,0x00,0x89,0x45,0xF8,0x6A,0x02,0x8D,0x45,0xF8,0x50,0x8B,0xCB,0xE8,0x5D,
+                0x32,0x45,0x00,0x8B,0x35,0x9C,0x0A,0xBF,0x00,0x8B,0xCF,0xE8,0x30,0x2E,0xFA,0xFF,
+                0x6A,0x01,0x8D,0x4D,0xFC,0x51,0x8B,0xCE,0x88,0x45,0xFC,0xE8,0x40,0x32,0x45,0x00,
+                0x8B,0x55,0x08,0x8B,0x0D,0x9C,0x0A,0xBF,0x00,0x6A,0x02,0x8D,0x45,0x08,0x50,0x89,
+                0x55,0x08,0xE8,0x29,0x32,0x45,0x00,0x8B,0x4D,0x0C,0x6A,0x04,0x8D,0x55,0x08,0x89,
+                0x4D,0x08,0x8B,0x0D,0x9C,0x0A,0xBF,0x00,0x52,0xE8,0x12,0x32,0x45,0x00,0x8B,0x0D,
+                0x9C,0x0A,0xBF,0x00,0xE8,0x77,0x32,0x45,0x00,0x6A,0x01,0x8B,0xCF,0xE8,0xEE,0xFB,
+                0xFA,0xFF,0x5B,0x5E,0xB0,0x01,0x5F,0x8B,0xE5,0x5D,0xC2,0x08,0x00,0x32,0xC0,0x5F,
+                0x8B,0xE5,0x5D,0xC2,0x08,0x00,
+            };
+            constexpr unsigned char allow_full[]={
+                0x56,0x57,0x8B,0xF9,0x8B,0x07,0x6A,0x02,0xFF,0x50,0x1C,0x84,0xC0,0x74,0x45,0x6A,
+                0x00,0x68,0xC0,0xD6,0xAF,0x00,0x68,0xA8,0xD6,0xAF,0x00,0x6A,0x00,0x57,0xE8,0x5E,
+                0xE2,0x4B,0x00,0x8B,0xF0,0x83,0xC4,0x14,0x85,0xF6,0x74,0x28,0x8B,0x16,0x8B,0xCE,
+                0xFF,0x92,0xDC,0x00,0x00,0x00,0x83,0x38,0x13,0x75,0x19,0x8B,0x06,0x8B,0xCE,0xFF,
+                0x90,0xDC,0x00,0x00,0x00,0x8B,0xC8,0x83,0xC1,0x04,0xE8,0xC1,0x55,0xFA,0xFF,0x83,
+                0xF8,0x01,0x74,0x13,0x8B,0x17,0x8B,0xCF,0xFF,0x52,0x58,0x84,0xC0,0x74,0x08,0x5F,
+                0xB8,0x01,0x00,0x00,0x00,0x5E,0xC3,0x5F,0x33,0xC0,0x5E,0xC3,
+            };
+            constexpr unsigned char fallback_full[]={
+                0x8B,0x41,0x24,0x85,0xC0,0x74,0x0F,0x83,0xF8,0x03,0x75,0x07,0x8A,0x41,0x28,0x84,
+                0xC0,0x75,0x03,0x33,0xC0,0xC3,0xB8,0x01,0x00,0x00,0x00,0xC3,
+            };
+            constexpr unsigned char descriptor_getter[]={
+                0x8D,0x41,0x08,0xC3,
+            };
+            constexpr unsigned char count_getter[]={
+                0x81,0xC1,0xA0,0x00,0x00,0x00,0xE9,0x75,0x05,0xFA,0xFF,
+            };
+            constexpr unsigned char typeflag_getter[]={
+                0x55,0x8B,0xEC,0x8B,0x45,0x08,0x8B,0x49,0x04,0x23,0xC8,0x3B,0xC8,0x0F,0x94,0xC0,
+                0x5D,0xC2,0x04,0x00,
+            };
+            Reads r;return r.Matches(0x45f0f0,drop_full)
+                &&r.Matches(0x45ca20,allow_full)
+                &&r.Matches(0x461a10,fallback_full)
+                &&r.Matches(0x4619a0,descriptor_getter)
+                &&r.Matches(0x461ab0,count_getter)
+                &&r.Matches(0x45c040,typeflag_getter);
+        }
+        const char* ApplyInventoryDrop(const Command& command,const client_state::Snapshot& snapshot,std::size_t& applied,bool& touched) noexcept
+        {
+            __try
+            {
+                const auto& q=command.request;InventoryState before;InventoryRow item;Reads r;
+                if(!InventorySignatures()||!LiveContext(command,snapshot))return "inventory_context_or_signatures";
+                if(!ReadInventoryState(before))return "inventory_unavailable";
+                if(const auto error=ValidateInventoryTarget(q,before,item))return error;
+                std::uint32_t table=0,trade=0,socket=0,readable=0;std::uint16_t target=0;
+                if(!r.At(item.item,0,table)||(table!=0x99EE84&&table!=0x9A99DC&&table!=0x99C5EC&&table!=0x99C68C)
+                    ||!r.Getter(item.item,0x54,0x45CA20)||!r.Getter(item.item,0x58,0x461A10)
+                    ||!r.Getter(item.item,0x1C,0x45C040))return "unsupported_discard_item";
+                if(!r.At(0xB5DCFC,0,trade)||!r.At(trade,4,target)||target!=0xFFFF
+                    ||!r.At(0xBF0A9C,0,socket)||!r.At(socket,0,readable))return "trade_or_socket_unavailable";
+                using Allow=bool(__thiscall*)(void*);using Drop=bool(__thiscall*)(void*,std::int32_t,std::uint32_t);
+                // Keep the exact original UI predicate before its complete sender.
+                if(!reinterpret_cast<Allow>(0x45CA20)(reinterpret_cast<void*>(item.item)))return "native_discard_forbidden";
+                InventoryState after;InventoryRow current;
+                if(!LiveContext(command,snapshot)||!ReadInventoryState(after))return "inventory_context_changed";
+                if(const auto error=ValidateInventoryTarget(q,after,current))return error;
+                if(after.container!=before.container||after.array!=before.array||after.capacity!=before.capacity
+                    ||current.count!=item.count)return "inventory_context_changed";
+                touched=true;
+                if(!reinterpret_cast<Drop>(0x45F0F0)(reinterpret_cast<void*>(after.container),q.targetId,static_cast<std::uint32_t>(q.x)))
+                {touched=false;return "native_drop_refused";}
+                applied=1;return nullptr;
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER){return "native_drop_request_failed";}
+        }
         void FlushResult() noexcept
         {if(!GameResult.serial||!TryAcquireSRWLockExclusive(&OutboxLock))return;Outbox=GameResult;ReleaseSRWLockExclusive(&OutboxLock);}
         void Dispatch(const Command& command,const client_state::Snapshot& snapshot) noexcept
@@ -274,9 +420,10 @@ namespace dfl::client_test_control
                 if(q.operation==1)
                 {if(!SetPosition(q.actorToken,q.x,q.y,touched))error="native_position_failed";else applied=1;}
                 else if(q.operation==2)error=ApplyKill(command,snapshot,applied,touched);
+                else if(q.operation==5)error=ApplyInventoryDrop(command,snapshot,applied,touched);
                 else error=ApplyGround(command,snapshot,applied,touched);
             }
-            GameResult={q,error?(touched?"partial":"rejected"):"applied",error?error:(q.operation==2?"native_death_requested":"native_position_observed"),Now(),++NextSerial,applied};FlushResult();
+            GameResult={q,error?(touched?"partial":"rejected"):"applied",error?error:(q.operation==2?"native_death_requested":q.operation==5?"native_drop_requested":"native_position_observed"),Now(),++NextSerial,applied};FlushResult();
         }
         bool SameFile(const BY_HANDLE_FILE_INFORMATION& a,const BY_HANDLE_FILE_INFORMATION& b) noexcept
         {return a.dwVolumeSerialNumber==b.dwVolumeSerialNumber&&a.nFileIndexHigh==b.nFileIndexHigh&&a.nFileIndexLow==b.nFileIndexLow
@@ -316,7 +463,7 @@ namespace dfl::client_test_control
             out<<"{\"schema\":\"dfl-client-test-control/v1\",\"pid\":"<<Native.pid<<",\"process_started_filetime\":"<<Native.processStartedFileTime
                 <<",\"request_id\":"<<q.requestId<<",\"uid\":"<<q.uid<<",\"generation\":"<<q.generation<<",\"actor_token\":";Token(out,q.actorToken);
             out<<",\"map_token\":";Token(out,q.mapToken);out<<",\"user_token\":";Token(out,q.userToken);
-            out<<",\"operation\":"<<q.operation<<",\"target_id\":"<<q.targetId<<",\"x\":"<<q.x<<",\"y\":"<<q.y<<",\"session_nonce\":"<<q.sessionNonce
+            out<<",\"operation\":"<<q.operation<<",\"target_id\":"<<q.targetId<<",\"x\":"<<q.x<<",\"y\":"<<q.y<<",\"reserved\":"<<q.reserved<<",\"session_nonce\":"<<q.sessionNonce
                 <<",\"run_id\":"<<q.runId<<",\"tick_ms\":"<<result.tick<<",\"status\":\""<<result.status<<"\",\"reason\":\""<<result.reason
                 <<"\",\"applied_count\":"<<result.appliedCount<<",\"server_committed\":false,\"persistence_verified\":false}";
             const auto json=out.str();wchar_t path[MAX_PATH]{},temporary[MAX_PATH]{};
@@ -339,7 +486,16 @@ namespace dfl::client_test_control
                 out<<",\"descriptor_token\":";Token(out,row.ground.descriptor);
                 out<<",\"x\":"<<row.position.x<<",\"y\":"<<row.position.y<<",\"z\":"<<row.position.z<<",\"active\":"<<(row.ground.active?"true":"false")<<",\"pending\":"<<(row.ground.pending?"true":"false")<<'}';
             }
-            out<<"]}";const auto json=out.str();wchar_t path[MAX_PATH]{},temporary[MAX_PATH]{};
+            out<<"],\"supported_operations\":[1,2,3,4,5],\"inventory\":{\"valid\":"<<(state.inventory.valid?"true":"false")
+                <<",\"reason\":\""<<state.inventory.reason<<"\",\"space\":0,\"container_token\":";Token(out,state.inventory.container);
+            out<<",\"array_token\":";Token(out,state.inventory.array);
+            out<<",\"capacity\":"<<state.inventory.capacity<<",\"pending\":"<<(state.inventory.pending?"true":"false")<<",\"items\":[";
+            for(std::size_t i=0;i<state.inventory.count;++i)
+            {
+                if(i)out<<',';const auto& row=state.inventory.rows[i];out<<"{\"slot\":"<<row.slot<<",\"item_token\":";Token(out,row.item);
+                out<<",\"item_id\":"<<row.id<<",\"count\":"<<row.count<<'}';
+            }
+            out<<"]}}";const auto json=out.str();wchar_t path[MAX_PATH]{},temporary[MAX_PATH]{};
             if(swprintf_s(path,L"%s\\dfdebug-test-state-%lu.json",Directory,Native.pid)<0||swprintf_s(temporary,L"%s.tmp",path)<0)return;
             auto file=CreateFileW(temporary,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(file==INVALID_HANDLE_VALUE)return;
             DWORD n=0;const bool okay=WriteFile(file,json.data(),static_cast<DWORD>(json.size()),&n,nullptr)&&n==json.size();CloseHandle(file);

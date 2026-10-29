@@ -158,7 +158,7 @@ def parse_lease(raw,*,uid,now_filetime):
     return dict(session_nonce=nonce,run_id=run,uid=user,issued_filetime=issued)
 
 
-def make_request(snapshot,lease,*,operation,target_id,x=0,y=0,request_id,issued_tick_ms,park=None):
+def make_request(snapshot,lease,*,operation,target_id,x=0,y=0,request_id,issued_tick_ms,park=None,item_token=None):
     try:state._validate(snapshot)
     except state.SnapshotError as error:raise TestControlError(error.code) from error
     require(snapshot['scene']==3 and snapshot['me'] and snapshot['room'],'dungeon_required')
@@ -170,11 +170,18 @@ def make_request(snapshot,lease,*,operation,target_id,x=0,y=0,request_id,issued_
     require(snapshot['captured_tick_ms']<=issued_tick_ms and issued_tick_ms-snapshot['captured_tick_ms']<=750,
         'stale_snapshot')
     require(lease['uid']==me['uid'],'lease_identity_mismatch')
-    require(integer(operation,1,4) and integer(target_id,0,65535) and point(x,y),'invalid_target')
+    require(integer(operation,1,5) and integer(target_id,0,65535),'invalid_target')
+    require(operation==5 or point(x,y),'invalid_target')
+    require(operation==5 or item_token is None,'unexpected_item_token')
     require(operation!=1 or target_id==me['uid'],'teleport_self_only')
     require(operation not in (3,4) or target_id>0,'invalid_ground_id')
     reserved=0
-    if operation==4:
+    if operation==5:
+        require(integer(x,1,0x7fffffff) and integer(y,0,65535),'invalid_inventory_drop')
+        require(park is None,'unexpected_parking')
+        token=object_token(item_token)
+        reserved=token if token<0x80000000 else token-(1<<32)
+    elif operation==4:
         require(isinstance(park,(tuple,list)) and len(park)==2 and point(*park),'parking_required')
         packed=(park[0]&0xffff)|((park[1]&0xffff)<<16)
         reserved=packed if packed<0x80000000 else packed-(1<<32)
@@ -195,11 +202,16 @@ def parse_request(raw):
     require(r['pid']>0 and 0<r['uid']<=65535 and all(r[k]>0 for k in
         ('process_started_filetime','request_id','generation','snapshot_sequence','actor_token','map_token','user_token',
          'session_nonce','run_id')),'bad_request_identity')
-    require(1<=r['operation']<=4 and 0<=r['target_id']<=65535 and point(r['x'],r['y']),'invalid_target')
+    require(1<=r['operation']<=5 and 0<=r['target_id']<=65535,'invalid_target')
+    if r['operation']==5:
+        require((r['target_id']==0 or 9<=r['target_id']<=511) and integer(r['x'],1,0x7fffffff)
+            and integer(r['y'],0,65535) and (r['target_id']==0)==(r['y']==0),'invalid_inventory_drop')
+        require((r['reserved']&0xffffffff)>=0x10000,'invalid_item_token')
+    else:require(point(r['x'],r['y']),'invalid_target')
     require(r['snapshot_tick_ms']<=r['issued_tick_ms'] and r['issued_tick_ms']-r['snapshot_tick_ms']<=750,'stale_snapshot')
     require(r['operation']!=1 or r['target_id']==r['uid'],'teleport_self_only')
     require(r['operation'] not in (3,4) or r['target_id']>0,'invalid_ground_id')
-    require(r['operation']==4 or r['reserved']==0,'reserved_nonzero')
+    require(r['operation'] in (4,5) or r['reserved']==0,'reserved_nonzero')
     if r['operation']==4:
         r['park']=struct.unpack('<hh',struct.pack('<i',r['reserved']))
     return result
@@ -299,6 +311,172 @@ def load_ground_clients(directory,clients):
     return values
 
 
+
+def object_token(value):
+    require(isinstance(value,str) and state._TOKEN.fullmatch(value) is not None
+        and 0x10000<=int(value,16)<=0xffffffff,'invalid_item_token')
+    return int(value,16)
+
+
+def validate_inventory_snapshot(value,sdk,*,now_tick_ms,session_nonce,run_id):
+    # Ground extraction can independently fail; inventory has its own validity.
+    require(value.get('schema')=='dfl-client-test-state/v1','bad_inventory_snapshot_schema')
+    require(all(type(value.get(k)) is int and value[k]==sdk[k] for k in
+        ('pid','process_started_filetime','generation')) and type(value.get('uid')) is int
+        and value['uid']==sdk['me']['uid'] and value.get('map_token')==sdk['me']['map_token'],
+        'inventory_snapshot_identity_mismatch')
+    require(type(value.get('session_nonce')) is int and value['session_nonce']==session_nonce
+        and type(value.get('run_id')) is int and value['run_id']==run_id,'inventory_snapshot_epoch_mismatch')
+    require(fresh(value.get('captured_tick_ms'),now_tick_ms,750),'stale_inventory_snapshot')
+    ops=value.get('supported_operations')
+    require(isinstance(ops,list) and all(type(op) is int for op in ops) and 5 in ops,'inventory_drop_unsupported')
+    inv=value.get('inventory');require(isinstance(inv,dict) and inv.get('valid') is True,'invalid_inventory_snapshot')
+    require(isinstance(inv.get('reason'),str) and inv.get('pending') is False,'inventory_pending_or_unknown')
+    object_token(inv.get('container_token'));object_token(inv.get('array_token'))
+    require(integer(inv.get('capacity'),1,512),'inventory_capacity_invalid')
+    rows=inv.get('items');require(isinstance(rows,list) and len(rows)<=inv['capacity'],'inventory_bound')
+    slots=set();tokens=set()
+    for row in rows:
+        require(isinstance(row,dict) and integer(row.get('slot'),0,inv['capacity']-1)
+            and (row['slot']==0 or row['slot']>=9) and row['slot'] not in slots,'inventory_duplicate_or_invalid_slot')
+        token=object_token(row.get('item_token'))
+        require(token not in tokens,'inventory_duplicate_object')
+        require(integer(row.get('item_id'),0,65535) and integer(row.get('count'),0 if row['slot']==0 else 1,0xffffffff)
+            and (row['slot']==0)==(row['item_id']==0),'invalid_inventory_item')
+        slots.add(row['slot']);tokens.add(token)
+    return value
+
+
+DROP_METADATA=('instance_id','state','durability','seal_state','equipment_quality_seed')
+
+
+def drop_source(room,*,uid,slot,item_id,allow_missing=False):
+    members=[m for m in room['members'] if m['uid']==uid]
+    inventories=room.get('inventories')
+    require(len(members)==1 and isinstance(inventories,list),'inventory_source_missing')
+    rows=[r for r in inventories if isinstance(r,dict) and type(r.get('uid')) is int and r['uid']==uid]
+    require(len(rows)==1 and rows[0].get('character_id')==members[0]['character_id'],'inventory_source_identity_mismatch')
+    inv=rows[0]
+    if slot==0:
+        require(item_id==0 and integer(inv.get('gold'),0,0xffffffff),'invalid_gold_source')
+        return dict(item_id=0,count=inv['gold'])
+    items=inv.get('items');require(isinstance(items,list),'inventory_source_missing')
+    rows=[r for r in items if isinstance(r,dict) and r.get('space')=='main' and r.get('slot')==slot]
+    if not rows and allow_missing:return None
+    require(len(rows)==1 and rows[0].get('item_id')==item_id and integer(rows[0].get('count'),1,0xffffffff),
+        'inventory_source_mismatch')
+    row=rows[0]
+    require(all(k in row for k in DROP_METADATA),'inventory_metadata_missing')
+    require(row['instance_id'] is None or row['instance_id']=='00000000-0000-0000-0000-000000000000' or guid(row['instance_id']),'invalid_inventory_instance')
+    require(all(row[k] is None or integer(row[k],0,0xffffffff) for k in DROP_METADATA[1:]),'invalid_inventory_metadata')
+    return {k:row[k] for k in ('item_id','count')+DROP_METADATA}
+
+
+def validate_drop_native(directory,sdk,server,room,*,slot,item_id,count,item_token):
+    raw=read_json(Path(directory)/f"dfdebug-test-state-{sdk['pid']}.json")
+    value=validate_inventory_snapshot(raw,sdk,now_tick_ms=state.now_tick_ms(),
+        session_nonce=server['session_nonce'],run_id=room['run_id'])
+    source=drop_source(room,uid=sdk['me']['uid'],slot=slot,item_id=item_id)
+    rows=[r for r in value['inventory']['items'] if r['slot']==slot]
+    require(len(rows)==1 and rows[0]['item_id']==item_id and rows[0]['count']==source['count']
+        and count<=source['count'],'native_inventory_source_mismatch')
+    require(object_token(rows[0]['item_token'])==object_token(item_token),'inventory_item_token_changed')
+    return source
+
+
+def active_drop_sync(directory,clients,*,members,ground,session_nonce,run_id,tolerance=3):
+    observed={};positions=[]
+    for uid in members:
+        actual=None;failure=None
+        try:
+            sdk=clients.get(uid);require(sdk is not None,'client_unavailable')
+            value=validate_ground_snapshot(read_json(Path(directory)/f"dfdebug-test-state-{sdk['pid']}.json"),
+                sdk,now_tick_ms=state.now_tick_ms())
+            require(type(value.get('session_nonce')) is int and value['session_nonce']==session_nonce
+                and type(value.get('run_id')) is int and value['run_id']==run_id,'ground_snapshot_epoch_mismatch')
+            rows=[r for r in value['ground_items'] if r['ground_id']==ground['ground_id']]
+            if len(rows)==1:actual=rows[0]
+        except TestControlError as error:failure=error.code
+        matched=bool(actual and actual['active'] and not actual['pending'])
+        position=None if actual is None else {axis:actual[axis] for axis in ('x','y','z')}
+        observed[str(uid)]=dict(identity_matched=matched,matched=matched,position=position,
+            ground_item=actual,error=failure)
+        if matched:positions.append(position)
+    complete=bool(members) and all(v['identity_matched'] for v in observed.values())
+    spread={axis:max(p[axis] for p in positions)-min(p[axis] for p in positions)
+        for axis in ('x','y','z')} if positions else None
+    # Active-drop arcs are original-client animation. Report replica coordinates
+    # independently; a server spawn coordinate is not a final landing target.
+    return dict(complete=complete,identity_complete=complete,clients=observed,
+        positions=dict(consistent=bool(complete and all(v<=tolerance for v in spread.values())),
+            tolerance=tolerance,spread=spread,reference='native_replicas',
+            server_spawn=dict(x=ground['x'],y=ground['y'])))
+
+
+def inventory_drop(directory,*,uid,slot,item_id,count,timeout=5):
+    require(integer(uid,1,65535) and integer(slot,0,511) and (slot==0 or slot>=9)
+        and integer(item_id,0,65535) and (slot==0)==(item_id==0)
+        and integer(count,1,0x7fffffff),'invalid_inventory_drop')
+    require(slot!=0 or count<=1000,'gold_drop_limit')
+    before=load_server(directory);room=select_instance(before,uid=uid);members=[m['uid'] for m in room['members']]
+    require(1<=len(members)<=4,'invalid_party_size')
+    prior=load_clients(directory,uids=members)
+    require(set(prior)==set(members) and all(client_context(prior[m]) is not None for m in members),'all_dungeon_clients_required')
+    # Keep the controller reserved after the native acknowledgement, through
+    # the read-only server/peer confirmation window. A second controller fails closed.
+    with command_lock(directory,f"dfdebug-inventory-drop-{prior[uid]['pid']}"):
+        barrier=time.monotonic()+min(timeout,1)
+        while before['captured_filetime']<max(s['captured_filetime'] for s in prior.values()):
+            require(time.monotonic()<barrier,'server_snapshot_behind_client')
+            latest=load_server(directory,expected_nonce=before['session_nonce']);other=select_instance(latest,uid=uid)
+            check_binding(before,room,prior[uid],latest,other,prior[uid]);before,room=latest,other
+            time.sleep(.025)
+        raw=read_json(Path(directory)/f"dfdebug-test-state-{prior[uid]['pid']}.json")
+        inv=validate_inventory_snapshot(raw,prior[uid],now_tick_ms=state.now_tick_ms(),
+            session_nonce=before['session_nonce'],run_id=room['run_id'])['inventory']
+        rows=[r for r in inv['items'] if r['slot']==slot];require(len(rows)==1,'inventory_slot_empty')
+        token=rows[0]['item_token']
+        source=validate_drop_native(directory,prior[uid],before,room,slot=slot,item_id=item_id,count=count,item_token=token)
+        fresh_clients=load_clients(directory,uids=members)
+        require(set(fresh_clients)==set(members) and all(client_context(fresh_clients[m])==client_context(prior[m])
+            for m in members),'client_context_changed')
+        result=execute_native(directory,uid=uid,operation=5,target_id=slot,x=count,y=item_id,item_token=token,timeout=timeout,
+            expected_server=before,expected_room=room,expected_client=prior[uid])
+        if result['native']['status']=='rejected':return dict(status='rejected',**result)
+        # A partial sender receipt can follow a real send; confirm read-only, once.
+        change=dict(before=source,after=None,matched=False,changed=False);new_items=[];ground=None;sync={};error=None
+        deadline=time.monotonic()+timeout;before_ids={r['ground_id'] for r in room['ground_items']}
+        try:
+            while True:
+                current=load_server(directory,expected_nonce=before['session_nonce']);other=select_instance(current,uid=uid,run_id=room['run_id'])
+                check_binding(before,room,prior[uid],current,other,prior[uid])
+                require(other['members']==room['members'],'party_changed')
+                after=drop_source(other,uid=uid,slot=slot,item_id=item_id,allow_missing=True)
+                remaining=source['count']-count
+                matched=(after is None and remaining==0) or bool(after and after['count']==remaining
+                    and all(after.get(k)==source.get(k) for k in DROP_METADATA))
+                change=dict(before=source,after=after,matched=bool(matched),changed=after!=source)
+                new_items=[r for r in other['ground_items'] if r['ground_id'] not in before_ids]
+                candidates=[r for r in new_items if type(r.get('owner_uid')) is int and r['owner_uid']==uid
+                    and type(r.get('routing_source')) is int and r['routing_source']==0 and r.get('pending') is False
+                    and r.get('item_id')==item_id and r.get('count')==count and r.get('is_gold') is (slot==0)
+                    and (slot==0 or all(k in r and type(r[k]) is type(source[k]) and r[k]==source[k] for k in DROP_METADATA))]
+                ground=candidates[0] if len(candidates)==1 else None
+                if ground:
+                    clients=load_clients(directory,uids=members)
+                    require(set(clients)==set(members) and all(client_context(clients[m])==client_context(prior[m])
+                        for m in members),'client_context_changed')
+                    sync=active_drop_sync(directory,clients,members=members,ground=ground,
+                        session_nonce=before['session_nonce'],run_id=room['run_id'])
+                if matched and ground and sync.get('complete'):break
+                if time.monotonic()>=deadline:break
+                time.sleep(.05)
+        except (TestControlError,state.SnapshotError,OSError) as failure:error=str(failure)
+        status='synchronized' if change['matched'] and ground and sync.get('complete') else (
+            'partial_sync' if change['changed'] else 'not_confirmed')
+        return dict(status=status,**result,source_change=change,new_ground_items=new_items,ground_confirmation=ground,
+            synchronization=sync,authoritative_source='server_inventory_and_active_ground_snapshot',error=error)
+
 def load_server(directory,expected_nonce=None):
     value=validate_server(read_json(Path(directory)/'dfdebug-test-server.json'),now_filetime=filetime(),expected_nonce=expected_nonce)
     require(state.get_process_started_filetime(value['server_pid'])==value['server_started_filetime'],'server_process_changed')
@@ -334,6 +512,8 @@ def native_result(value,request,now):
     require(value.get('status') in ('applied','partial','rejected'),'native_result_not_final')
     require(value.get('operation')==request['operation'] and value.get('target_id')==request['target_id'],
         'native_result_target_mismatch')
+    if request['operation']==5:
+        require(type(value.get('reserved')) is int and value['reserved']==request['reserved'],'native_result_item_token_mismatch')
     require(integer(value.get('tick_ms')) and value['tick_ms']<=now and now-value['tick_ms']<=5000,'stale_native_result')
     return value
 
@@ -351,7 +531,7 @@ def check_binding(expected_server,expected_room,expected_client,server,room,clie
     require(client_context(expected_client) is not None and client_context(client)==client_context(expected_client),'client_context_changed')
 
 
-def execute_native(directory,*,uid,operation,target_id,x=0,y=0,park=None,timeout=5,
+def execute_native(directory,*,uid,operation,target_id,x=0,y=0,park=None,item_token=None,timeout=5,
                    expected_server=None,expected_room=None,expected_client=None):
     directory=Path(directory);server=load_server(directory);room=select_instance(server,uid=uid)
     clients=load_clients(directory,uids=[uid]);require(uid in clients,'client_unavailable')
@@ -372,11 +552,18 @@ def execute_native(directory,*,uid,operation,target_id,x=0,y=0,park=None,timeout
             time.sleep(.025)
         lease=parse_lease((directory/f'dfdebug-test-lease-{uid}.bin').read_bytes(),uid=uid,now_filetime=filetime())
         require(lease['session_nonce']==server['session_nonce'] and lease['run_id']==room['run_id'],'lease_server_mismatch')
+        if operation==5:
+            validate_drop_native(directory,snap,server,room,slot=target_id,item_id=y,count=x,item_token=item_token)
         request_id=filetime();raw=make_request(snap,lease,operation=operation,target_id=target_id,x=x,y=y,
-            park=park,request_id=request_id,issued_tick_ms=state.now_tick_ms());request=parse_request(raw)
+            park=park,item_token=item_token,request_id=request_id,issued_tick_ms=state.now_tick_ms());request=parse_request(raw)
         latest=load_server(directory,expected_nonce=server['session_nonce']);latest_room=select_instance(latest,uid=uid)
         latest_clients=load_clients(directory,uids=[uid]);require(uid in latest_clients,'client_unavailable')
         check_binding(expected_server,expected_room,expected_client,latest,latest_room,latest_clients[uid])
+        if operation==5:
+            old_source=drop_source(expected_room,uid=uid,slot=target_id,item_id=y)
+            require(drop_source(latest_room,uid=uid,slot=target_id,item_id=y)==old_source,'inventory_source_changed')
+            validate_drop_native(directory,latest_clients[uid],latest,latest_room,slot=target_id,item_id=y,
+                count=x,item_token=item_token)
         publish(directory/(stem+'.bin'),raw);deadline=time.monotonic()+timeout
         while time.monotonic()<deadline:
             require(state.get_process_started_filetime(pid)==snap['process_started_filetime'],'client_process_changed')
@@ -412,7 +599,7 @@ def teleport(directory,*,uid,x,y,timeout=5):
     require(len(prior)==len(members) and all(client_context(prior.get(m)) is not None for m in members),'all_dungeon_clients_required')
     result=execute_native(directory,uid=uid,operation=1,target_id=uid,x=x,y=y,timeout=timeout,
         expected_server=before,expected_room=room,expected_client=prior[uid])
-    if result['native']['status']!='applied':return dict(status='rejected',**result)
+    if result['native']['status']=='rejected':return dict(status='rejected',**result)
     deadline=time.monotonic()+timeout;sync={}
     try:
         while time.monotonic()<deadline:
@@ -446,7 +633,7 @@ def kill(directory,*,uid,monster_id,timeout=5):
     require(len(prior)==len(members) and all(client_context(prior.get(m)) is not None for m in members),'all_dungeon_clients_required')
     result=execute_native(directory,uid=uid,operation=2,target_id=monster_id,timeout=timeout,
         expected_server=before,expected_room=room,expected_client=prior[uid])
-    if result['native']['status']!='applied':return dict(status='rejected',**result)
+    if result['native']['status']=='rejected':return dict(status='rejected',**result)
     deadline=time.monotonic()+timeout;server_dead=False;clients_dead=False;drops=[];sync={}
     try:
         while time.monotonic()<deadline:
@@ -540,6 +727,8 @@ def main(argv=None):
     p.add_argument('--uid',type=int,required=True);p.add_argument('--monster',type=int,required=True)
     p=sub.add_parser('drop');q=p.add_subparsers(dest='action',required=True);p=q.add_parser('isolate')
     for name in ('uid','ground','park-x','park-y'):p.add_argument('--'+name,type=int,required=True)
+    p=sub.add_parser('inventory');q=p.add_subparsers(dest='action',required=True);p=q.add_parser('drop')
+    for name in ('uid','slot','item','count'):p.add_argument('--'+name,type=int,required=True)
     p=sub.add_parser('loot');q=p.add_subparsers(dest='action',required=True);p=q.add_parser('result')
     p.add_argument('--uid',type=int,required=True);p.add_argument('--ground',type=int,required=True)
     p.add_argument('--run',type=int);p.add_argument('--after-event',type=int,default=0)
@@ -553,6 +742,7 @@ def main(argv=None):
             result=dict(status='observed',server=value,clients=clients,client_ground=load_ground_clients(args.directory,clients))
         elif args.command=='player':result=teleport(args.directory,uid=args.uid,x=args.x,y=args.y,timeout=args.timeout)
         elif args.command=='monster':result=kill(args.directory,uid=args.uid,monster_id=args.monster,timeout=args.timeout)
+        elif args.command=='inventory':result=inventory_drop(args.directory,uid=args.uid,slot=args.slot,item_id=args.item,count=args.count,timeout=args.timeout)
         elif args.command=='drop':result=isolate(args.directory,uid=args.uid,ground_id=args.ground,park=(args.park_x,args.park_y),timeout=args.timeout)
         else:result=wait_loot(args.directory,uid=args.uid,ground_id=args.ground,run_id=args.run,after_event_id=args.after_event,timeout=args.timeout)
         print(json.dumps(result,ensure_ascii=True,allow_nan=False,indent=2))

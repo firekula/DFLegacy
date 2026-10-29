@@ -1,5 +1,7 @@
 # 项目状态与接续说明
 
+2026-10-30接续：已完成[四端主动丢弃扩展](knowledge/decisions/2026-10-30-active-drop-four-verification.md)，新增原生CMD50测试CLI及独立库存采样；蓝装、封装紫装四向交接，材料部分丢弃、金币守恒及换房返回共12次装备提交通过，附5张原图。托管91项新断言、完整Release冒烟、原生相关套件及Python相关221 tests／280 subtests通过；完整Python仍6个既有失败。仅隔离目录部署native12D58F6A／托管1ECD5759，进程已关闭、INI恢复、正常存档E0E2FB4B…保持。后续继续U05剩余观测、U07／怪物同步、U08其他卡顿与U10单位；U09技能栏最后处理。下方2026-10-29“下一阶段补U04”是前组历史范围，本组已按上述限定补齐。
+
 本文面向"换一个对话/换一个人继续开发"的场景，记录**当前实现状态、已验证与未验证的部分、可复用的验证方法、以及待办**。
 模块职责见 [README.md](README.md)，构建见 [BUILDING.md](BUILDING.md)，部署见 [DEPLOYING.md](DEPLOYING.md)，接口见 [ADMIN_API.md](ADMIN_API.md)。本文不重复这些内容。
 

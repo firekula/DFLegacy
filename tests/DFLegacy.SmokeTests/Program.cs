@@ -17,6 +17,14 @@ if (args.Contains("--test-control"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--active-drop-four"))
+{
+    await ActiveDropFourClientSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Active drop four-member smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--active-drop"))
 {
     await ActiveDropSmokeTests.RunAsync(Check);
@@ -266,6 +274,7 @@ await PartySmokeTests.RunAsync(Check);
 await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await ActiveDropSmokeTests.RunAsync(Check);
+await ActiveDropFourClientSmokeTests.RunAsync(Check);
 await MentorSmokeTests.RunAsync(Check);
 await MentorGrowthSmokeTests.RunAsync(Check);
 await MentorMasterGoldSmokeTests.RunAsync(Check);

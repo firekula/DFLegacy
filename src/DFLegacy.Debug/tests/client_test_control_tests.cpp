@@ -48,7 +48,19 @@ int RunClientTestControlTests()
     {Fixture f;Check(f.Validate(0,11001)!=nullptr,"stale request rejected");}
     {Fixture f;f.r.snapshotSequence=14;Check(f.Validate()!=nullptr,"old generation of snapshot rejected");}
     {Fixture f;f.r.operation=2;f.r.targetId=0;Check(f.Validate()==nullptr,"zero-based monster target accepted");f.r.targetId=-1;Check(f.Validate()!=nullptr,"negative monster target rejected");}
-    {Fixture f;f.r.operation=5;Check(f.Validate()!=nullptr,"unknown operation rejected");}
+    {Fixture f;f.r.operation=6;Check(f.Validate()!=nullptr,"unknown operation rejected");}
+    {Fixture f;f.r.operation=5;f.r.targetId=9;f.r.x=1;f.r.y=31901;f.r.reserved=0x40000;
+     Check(f.Validate()==nullptr,"inventory drop binds slot item count and native object");
+     f.r.targetId=0;f.r.y=0;Check(f.Validate()==nullptr,"gold slot zero is an explicit inventory target");
+     f.r.x=0;Check(f.Validate()!=nullptr,"zero inventory drop quantity rejected");f.r.x=1;
+     f.r.y=1;Check(f.Validate()!=nullptr,"gold slot item mismatch rejected");f.r.targetId=9;f.r.y=0;
+     Check(f.Validate()!=nullptr,"ordinary slot cannot target gold item");f.r.y=31901;f.r.reserved=0;
+     Check(f.Validate()!=nullptr,"inventory drop requires an observed object binding");}
+    {Fixture f;f.r.operation=5;f.r.targetId=73;f.r.x=100000;f.r.y=60000;f.r.reserved=0x40000;
+     Check(f.Validate()==nullptr,"inventory operands are count and item ID rather than signed16 coordinates");
+     f.r.targetId=-1;Check(f.Validate()!=nullptr,"negative inventory slot rejected");f.r.targetId=512;
+     Check(f.Validate()!=nullptr,"out of bounded inventory slot rejected");f.r.targetId=73;f.r.y=65536;
+     Check(f.Validate()!=nullptr,"oversized inventory item ID rejected");}
     {Fixture f;f.r.operation=4;f.r.targetId=21;f.r.reserved=static_cast<std::int32_t>(0xFFECFFF6);Check(f.Validate()==nullptr,"isolate-ground accepts signed16 parking coordinates");}
     {Fixture f;f.r.reserved=1;Check(f.Validate()!=nullptr,"unknown request extension rejected");}
     {Fixture f;f.r.operation=3;f.r.targetId=21;Ground grounds[]={{0x10000,21,0x40000,true,false},{0x20000,22,0x50000,true,false}};MovePlan plan;

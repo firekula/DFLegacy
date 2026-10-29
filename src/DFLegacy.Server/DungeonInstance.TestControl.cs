@@ -2,7 +2,8 @@ namespace DFLegacy.Server;
 
 internal sealed record DungeonTestMonster(ushort Uid, ushort MonsterId, bool Alive);
 internal sealed record DungeonTestGround(ushort GroundId, ushort ItemId, uint Count, bool IsGold,
-    short X, short Y, bool Pending, Guid InstanceId);
+    short X, short Y, bool Pending, Guid InstanceId, ushort OwnerUid, byte RoutingSource,
+    byte? State, ushort? Durability, byte? SealState, uint? EquipmentQualitySeed);
 internal sealed record DungeonTestState(long RunId, long Generation, ushort MapId, ushort DungeonId, byte RoomX,
     byte RoomY, DungeonInstanceMember[] Members, DungeonTestMonster[] Monsters, DungeonTestGround[] GroundItems);
 
@@ -20,7 +21,9 @@ internal sealed partial class DungeonInstance
                 _members.ToArray(), room.Monsters.Select(value => new DungeonTestMonster(value.UniqueId, value.MonsterIndex, AliveMonsters.Contains(value.UniqueId))).ToArray(),
                 GroundItems.GetRoomItems(_run.RoomX, _run.RoomY).Where(value => value.Activated).Select(value =>
                     new DungeonTestGround(value.GroundId, value.ItemId, value.CountOrValue, value.IsGold, value.X, value.Y,
-                        _pendingLoot.ContainsKey(value.GroundId), value.PreservedItem?.InstanceId ?? Guid.Empty)).ToArray());
+                        _pendingLoot.ContainsKey(value.GroundId), value.PreservedItem?.InstanceId ?? Guid.Empty,
+                        value.OwnerUserId, value.RoutingSource, value.PreservedItem?.State, value.PreservedItem?.Durability,
+                        value.PreservedItem?.SealState, value.PreservedItem?.EquipmentQualitySeed)).ToArray());
         }
     }
     internal string RelocateTestGround(DungeonTestCommand command)

@@ -59,7 +59,9 @@ internal sealed class DungeonTestControl(ServerOptions options, DungeonInstanceR
                 var character = store is null ? null : await store.GetCharacterAsync(member.AccountName, member.CharacterId, ct);
                 if (character is null) continue;
                 object[] Rows(IEnumerable<CharacterItemRecord>? rows, string space) => (rows ?? []).Select(row => (object)new
-                    { space, slot = row.Slot, item_id = row.ItemId, count = row.CountOrValue, instance_id = row.InstanceId }).ToArray();
+                    { space, slot = row.Slot, item_id = row.ItemId, count = row.CountOrValue, instance_id = row.InstanceId,
+                        state = row.State, durability = row.Durability, seal_state = row.SealState,
+                        equipment_quality_seed = row.EquipmentQualitySeed }).ToArray();
                 inventories.Add(new { uid = member.AreaUserId, character_id = member.CharacterId, gold = character.Gold,
                     weight = items is null ? 0 : CharacterInventoryPlanner.CalculateCarriedWeight(character.Inventory ?? [], character.Equipment ?? [], character.CreatureInventory ?? [], items),
                     weight_limit = items is null || stats is null ? 0 : CharacterInventoryPlanner.CalculateCarriedWeightLimit(stats.Get(character).InventoryLimit, character.Equipment ?? [], items),

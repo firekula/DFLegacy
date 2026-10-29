@@ -28,7 +28,7 @@ namespace dfl::client_test_control
     }
     const char* ValidateRequest(const Request& r,const client_state::Snapshot& s,const Lease& l,std::uint64_t now,std::uint64_t ft,std::uint64_t consumed) noexcept
     {
-        if(std::memcmp(r.magic,"DLTC",4)||r.version!=1||r.size!=112||r.operation<1||r.operation>4||(r.operation!=4&&r.reserved))return "invalid_request";
+        if(std::memcmp(r.magic,"DLTC",4)||r.version!=1||r.size!=112||r.operation<1||r.operation>5||((r.operation!=4&&r.operation!=5)&&r.reserved))return "invalid_request";
         if(!r.requestId||r.requestId<=consumed)return "replayed_request";
         if(l.magic!=0x4C545444||l.version!=1||l.flags!=1||!l.nonce||!l.runId||!l.issuedFileTime
             ||l.issuedFileTime>ft||ft-l.issuedFileTime>15000000||l.uid!=r.uid||l.nonce!=r.sessionNonce||l.runId!=r.runId)return "server_lease_unavailable";
@@ -39,6 +39,13 @@ namespace dfl::client_test_control
         if(r.snapshotTickMs>s.capturedTickMs||!r.snapshotSequence||r.snapshotSequence>s.sequence||s.sequence-r.snapshotSequence>5)return "snapshot_mismatch";
         if(r.pid!=s.pid||r.uid!=s.me.uid.value||r.processStartedFileTime!=s.processStartedFileTime||r.generation!=s.generation
             ||r.actorToken!=s.me.actorToken||r.mapToken!=s.me.mapToken||r.userToken!=s.me.userToken||!r.actorToken||!r.mapToken||!r.userToken)return "identity_mismatch";
+        if(!r.uid||r.uid>65535)return "invalid_target";
+        if(r.operation==5)
+        {
+            if(r.targetId<0||r.targetId>=512||(r.targetId>0&&r.targetId<9)||r.x<1||r.y<0||r.y>65535
+                ||((r.targetId==0)!=(r.y==0))||static_cast<std::uint32_t>(r.reserved)<0x10000)return "invalid_inventory_target";
+            return nullptr;
+        }
         if(r.x < -32768||r.x>32767||r.y < -32768||r.y>32767||!r.uid||r.uid>65535
             ||(r.operation==1&&r.targetId!=static_cast<std::int32_t>(r.uid))
             ||(r.operation==2&&(r.targetId<0||r.targetId>65535))

@@ -223,6 +223,8 @@ python -m tools.debug.test_control --directory G:\test\snapshots state --uid 1
 python -m tools.debug.test_control --directory G:\test\snapshots player teleport --uid 1 --x 300 --y 240
 python -m tools.debug.test_control --directory G:\test\snapshots monster kill --uid 1 --monster 0
 python -m tools.debug.test_control --directory G:\test\snapshots drop isolate --uid 1 --ground 5 --park-x 800 --park-y 240
+python -m tools.debug.test_control --directory G:\test\snapshots inventory drop --uid 1 --slot 22 --item 24002 --count 1
+python -m tools.debug.test_control --directory G:\test\snapshots inventory drop --uid 1 --slot 0 --item 0 --count 23
 python -m tools.debug.test_control --directory G:\test\snapshots loot result --uid 1 --ground 5 --run 123 --after-event 10
 ```
 
@@ -239,6 +241,13 @@ python -m tools.debug.test_control --directory G:\test\snapshots loot result --u
   最近512条结果，重启进程后不能把旧结果冒充本次提交。
 
 退出码：0=观察/同步成功或已提交；2=拒绝、部分同步；1=输入、身份、读取或超时错误。
+
+`inventory drop` 调用原版ACT1 CMD50背包丢弃入口。仅主背包9～511槽，金币为0槽、item=0；数量必须为正，测试CLI金币单次上限1000。执行前核对同一物品、数量、对象和房间，拒绝待处理库存、交易占用或陈旧绑定。`synchronized`要求源库存减少、新地面和所有当前同房客户端独立出现，装备另核对实例ID、状态、耐久、封印、品质；拾取仍需另查`loot result`。不直接改存档或生成物品。
+
+测试快照新增独立`inventory`的valid、reason、容器／数组绑定、容量、pending及占用槽位列表；行含slot、item_token、item_id、count。它与`ground.valid`分别校验，不能相互替代。当前只支持存活副本角色，死亡测试地面／库存观测仍待补。服务端库存与地面增加state、durability、seal_state、equipment_quality_seed；地面另含owner_uid、routing_source，缺失元数据以null表示。
+
+原生`partial`保留回执并继续只读核对，不误称安全拒绝或重发；丢弃动画坐标与身份确认分开报告。见[四端主动丢弃及5张原图](../../knowledge/decisions/2026-10-30-active-drop-four-verification.md)。
+
 已执行后的错误保留已知回执及部分同步信息。原生结果明确`server_committed=false`、
 `persistence_verified=false`，不能代替服务端结果。测试控制准备场景不能冒充正常移动或战斗验收。
 Windows短暂文件访问拒绝和快照替换缺口采用有限重试；不会重新生成修改请求或拼接不同轮次的队员集合。

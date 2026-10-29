@@ -1,0 +1,97 @@
+[
+  {
+    "file": "01-blue-tooltip.jpg",
+    "bytes": 422082,
+    "sha256": "43CDC3A54786A7ACE259E9DAFD1E7365815AAAB5D6C7FC3061336597C25A5491"
+  },
+  {
+    "file": "02-sealed-tooltip.jpg",
+    "bytes": 421239,
+    "sha256": "C03FE7655F59DA1EE280D107EAB5EC3276B9A9894A1969B5E86CE74E22FE59D1"
+  },
+  {
+    "file": "03-after-return.jpg",
+    "bytes": 435836,
+    "sha256": "1BFD58DE6908433112669F59A44D0AA6371E2EE2D40BCC5B46E6C274B8BAA84D"
+  },
+  {
+    "file": "04-C-world.jpg",
+    "bytes": 439912,
+    "sha256": "05EF5E5BDF5BAB0DC9019927ACD3529386D9BFCB92E6C213E1687B249B894531"
+  },
+  {
+    "file": "05-D-material-gold.jpg",
+    "bytes": 408547,
+    "sha256": "2F40C0B24ACF616B9B946A6EF1B9827CAD6D04DF351BC5BE8AA3DD0DFD4F60EF"
+  },
+  {
+    "file": "acceptance.json",
+    "bytes": 12904,
+    "sha256": "EED86291B48F3202E35FE1ADC5A8481DB28AA179F4CB4056590BD7B032D67DA8"
+  },
+  {
+    "file": "export-green.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "file": "final-full-smoke.txt",
+    "bytes": 399,
+    "sha256": "30CB7961FFFDA21146C9406995F518B36D1DE8983C90CE90870AE4872CFC7C2F"
+  },
+  {
+    "file": "final-navigation.txt",
+    "bytes": 72,
+    "sha256": "B4FAECBE6B668DDB73FFDEB9808DF62C21849F76607F19584CC0A645D9F061B5"
+  },
+  {
+    "file": "final-party.txt",
+    "bytes": 100,
+    "sha256": "2F2578F7968DCD8C7C0E43511C36960F46464CAB92336BA6CC6706C583D50B2E"
+  },
+  {
+    "file": "final-route.txt",
+    "bytes": 221,
+    "sha256": "B19F4A5F20645D053AC9B2D5898E39B567CA94F39EE79A4A880900AD88FA11A0"
+  },
+  {
+    "file": "final-state.txt",
+    "bytes": 32,
+    "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+  },
+  {
+    "file": "inventory-green.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "file": "partial-all-final.txt",
+    "bytes": 1299,
+    "sha256": "37346D7BF485F3993ABF80F07B1E3E79E8080B8EE6FB2553ACB9AD02F4CB0AF8"
+  },
+  {
+    "file": "partial-debug-final.txt",
+    "bytes": 284,
+    "sha256": "90D31B442AD7D1C81B502FD17575D9FD2EB65C4BA2959E8A37EF92756E5A2DA0"
+  },
+  {
+    "file": "partial-green.txt",
+    "bytes": 159,
+    "sha256": "407D55075730DC8D01A7F88B2F8A8703DD4E252C5AE38A2C445172E74E5DFA73"
+  },
+  {
+    "file": "review.txt",
+    "bytes": 829,
+    "sha256": "474B8F99161AF26107AA1E459EDB0411AD3EC9ABA90B217AE2FC77311C4F40F8"
+  },
+  {
+    "file": "runtime-green.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "file": "validation-green.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  }
+]

@@ -7,10 +7,81 @@ internal static class TestControlSmokeTests
 {
     public static async Task RunAsync(Action<bool, string> check)
     {
+        await CheckActiveDropProjectionAsync(check);
         await CheckPersistenceBoundaryAsync(check);
         // Removing either activation guard must make the disabled cases fail.
         foreach (var flags in new[] { (false, false), (false, true), (true, false), (true, true) })
             await CheckPublisherAsync(check, flags.Item1, flags.Item2);
+    }
+
+    private static async Task CheckActiveDropProjectionAsync(Action<bool, string> check)
+    {
+        // This catches missing/provenance-confused JSON fields, loss of equipment bytes,
+        // and diagnostic code inventing zero values for absent preserved metadata.
+        var directory = Path.GetFullPath("../../../../../.tmp/smoke-tests/test-control-projection/"
+            + Guid.NewGuid().ToString("N"), AppContext.BaseDirectory);
+        Directory.CreateDirectory(directory);
+        var options = JsonSerializer.Deserialize<ServerOptions>(JsonSerializer.Serialize(new
+        {
+            DataPath = Path.Combine(directory, "state.json"),
+            Debug = new { TestControl = new { Enabled = true }, ClientOverlay = new { Enabled = true } }
+        }))!;
+        var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+        await store.InitializeAsync();
+        var character = (await store.GetCharactersAsync("test"))[0];
+        var preserved = new CharacterItemRecord(9, 50011, 1, State: 13, Durability: 11,
+            SealState: 1, EquipmentQualitySeed: 0xF1234567, InstanceId: Guid.NewGuid());
+        var noQuality = new CharacterItemRecord(10, 50014, 1, State: 2, Durability: 7,
+            SealState: 3, InstanceId: Guid.NewGuid());
+        character = (await store.SaveCharacterInventoryAsync("test", character.Id,
+            character.Gold, [preserved, noQuality], []))!;
+        using var fixture = new DungeonFixture();
+        var instance = fixture.CreateSoloInstance(character.Id);
+        instance.AddMember(fixture.Member(character.Id, 2, "projection") with { AreaUserId = 74, AccountName = "test" });
+        instance.TryStartRun(fixture.Layout, 0, 0, out _, fixture.Random);
+        var active = instance.AddPlayerDroppedGroundItem(preserved, 74, 0, 0, 123, 234);
+        var generated = instance.AddGroundItem(new(true, 0, 23), 91, 5, 0, 0, 345, 456);
+        var registry = new DungeonInstanceRegistry();
+        registry.BindCharacter(character.Id, instance);
+        var publisher = new DungeonTestControl(options, registry, store, null, null);
+        var version = instance.Version;
+        await publisher.PublishAsync(directory, [], CancellationToken.None);
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "dfdebug-test-server.json")));
+        var snapshot = document.RootElement.GetProperty("instances")[0];
+        var grounds = snapshot.GetProperty("ground_items").EnumerateArray().ToArray();
+        var activeRow = grounds.Single(row => row.GetProperty("ground_id").GetUInt16() == active.GroundId);
+        var generatedRow = grounds.Single(row => row.GetProperty("ground_id").GetUInt16() == generated.GroundId);
+        check(Number(activeRow, "owner_uid", 74) && Number(activeRow, "routing_source", 0)
+                && activeRow.GetProperty("instance_id").GetGuid() == preserved.InstanceId,
+            "published active ground exposes actual owner UID, source0 and preserved instance identity");
+        check(Number(activeRow, "state", 13) && Number(activeRow, "durability", 11)
+                && Number(activeRow, "seal_state", 1) && Number(activeRow, "equipment_quality_seed", 0xF1234567),
+            "published active ground preserves reinforcement, durability, seal and unsigned quality seed");
+        check(Number(generatedRow, "owner_uid", 91) && Number(generatedRow, "routing_source", 1)
+                && Null(generatedRow, "state") && Null(generatedRow, "durability")
+                && Null(generatedRow, "seal_state") && Null(generatedRow, "equipment_quality_seed")
+                && generatedRow.GetProperty("instance_id").GetGuid() == Guid.Empty,
+            "generated gold retains source1 provenance and null absent preserved metadata");
+        var inventory = snapshot.GetProperty("inventories")[0].GetProperty("items").EnumerateArray().ToArray();
+        var itemRow = inventory.Single(row => row.GetProperty("slot").GetUInt16() == 9);
+        var nullRow = inventory.Single(row => row.GetProperty("slot").GetUInt16() == 10);
+        check(Number(itemRow, "state", 13) && Number(itemRow, "durability", 11)
+                && Number(itemRow, "seal_state", 1) && Number(itemRow, "equipment_quality_seed", 0xF1234567)
+                && itemRow.GetProperty("instance_id").GetGuid() == preserved.InstanceId,
+            "published persisted inventory exposes the same equipment bytes and instance identity");
+        check(Number(nullRow, "state", 2) && Number(nullRow, "durability", 7)
+                && Number(nullRow, "seal_state", 3) && Null(nullRow, "equipment_quality_seed"),
+            "inventory projection keeps a null quality seed nullable rather than fabricating zero");
+        var after = await store.GetCharacterAsync("test", character.Id);
+        check(instance.Version == version && instance.TryGetGroundItem(active.GroundId, 0, 0, out var unchanged)
+                && ReferenceEquals(unchanged, active) && (after!.Inventory ?? []).SequenceEqual(character.Inventory ?? []),
+            "publishing equipment diagnostics does not mutate ground identity, instance version or persisted inventory");
+        Console.WriteLine($"Test control projection artifacts: {directory}");
+
+        static bool Number(JsonElement row, string key, uint expected) => row.TryGetProperty(key, out var value)
+            && value.ValueKind == JsonValueKind.Number && value.TryGetUInt32(out var actual) && actual == expected;
+        static bool Null(JsonElement row, string key) => row.TryGetProperty(key, out var value)
+            && value.ValueKind == JsonValueKind.Null;
     }
 
     private static async Task CheckPersistenceBoundaryAsync(Action<bool, string> check)

@@ -13,18 +13,55 @@ namespace
     struct ControlMemory
     {
         std::unordered_map<std::uint32_t,unsigned char> bytes;
+        std::uint32_t swapAfterRead=0,replacement=0;
         template<class T> void Put(std::uint32_t at,T v){const auto* p=reinterpret_cast<const unsigned char*>(&v);for(std::size_t i=0;i<sizeof(T);++i)bytes[at+static_cast<std::uint32_t>(i)]=p[i];}
         void Hex(std::uint32_t at,const char* hex){for(std::uint32_t i=0;hex[i*2];++i){unsigned value=0;sscanf_s(hex+i*2,"%2x",&value);Put(at+i,static_cast<unsigned char>(value));}}
         void Secure(std::uint32_t at,std::uint32_t value,std::uint32_t index)
         {constexpr std::uint32_t key=0x12345678;Put(0xCFD458U,0x80000U);Put(0xCFD45CU,key);Put(0x80004U,100U);Put(0x80044U,0x90000U);Put(0x80048U,0xA0000U);Put(at,(at+index)^key);Put(at+4,index);Put(0x90000+index*4,value^(0x90000+index*4)^key);Put(0xA0000+index*4,value^(0xA0000+index*4)^key);}
         static bool Read(void* ctx,std::uint32_t at,void* out,std::size_t n) noexcept
-        {auto& m=*static_cast<ControlMemory*>(ctx);auto* p=static_cast<unsigned char*>(out);for(std::size_t i=0;i<n;++i){auto found=m.bytes.find(at+static_cast<std::uint32_t>(i));if(found==m.bytes.end())return false;p[i]=found->second;}return true;}
+        {auto& m=*static_cast<ControlMemory*>(ctx);auto* p=static_cast<unsigned char*>(out);for(std::size_t i=0;i<n;++i){auto found=m.bytes.find(at+static_cast<std::uint32_t>(i));if(found==m.bytes.end())return false;p[i]=found->second;}if(m.swapAfterRead==at){m.swapAfterRead=0;m.Put(at,m.replacement);}return true;}
     };
 }
 int RunClientTestControlRuntimeTests()
 {
     using namespace dfl::client_test_control;
     int failures=0;auto check=[&](bool b,const char* label){if(!b){++failures;std::fprintf(stderr,"FAIL test-control IO: %s\n",label);}};
+    {
+        ControlMemory m;Native.context=&m;Native.read=ControlMemory::Read;
+        m.Put(0xB5DCECU,0xB0000U);m.Secure(0xB0000,0,1);m.Secure(0xB0010,16,2);m.Put(0xB0018U,0xC0000U);
+        m.Put(0xB0020U,0U);m.Put(0xB0024U,0U);m.Put(0xB0028U,0U);
+        for(unsigned i=0;i<16;++i)m.Put(0xC0000+i*4,0U);
+        m.Put(0xC0000U,0xD0000U);m.Put(0xC0024U,0xE0000U);
+        m.Put(0xD0000U,0x99C68CU);m.Put(0xD000CU,0U);m.Secure(0xD00A0,50000,3);
+        m.Put(0xE0000U,0x99EE84U);m.Put(0xE000CU,31901U);m.Secure(0xE00A0,1,4);
+        for(auto table:{0x99C68CU,0x99EE84U}){m.Put(table+0x18,0x4619A0U);m.Put(table+0x34,0x461AB0U);}
+        InventoryState inv;check(ReadInventoryState(inv)&&inv.valid&&inv.count==2&&inv.capacity==16&&!inv.pending,"native inventory observes main slots and special gold quantity");
+        Request q{};q.operation=5;q.targetId=9;q.x=1;q.y=31901;q.reserved=0xE0000;InventoryRow row;
+        check(!ValidateInventoryTarget(q,inv,row)&&row.item==0xE0000,"discard preflight matches current observed item");
+        q.reserved=0xD0000;check(ValidateInventoryTarget(q,inv,row)!=nullptr,"same-slot obsolete object token rejected");q.reserved=0xE0000;
+        q.x=2;check(ValidateInventoryTarget(q,inv,row)!=nullptr,"excessive quantity rejected before native call");q.x=1;
+        q.y=31902;check(ValidateInventoryTarget(q,inv,row)!=nullptr,"replaced item ID rejected");q.y=31901;
+        m.Put(0xB0020U,0xF0000U);m.Put(0xB0024U,0xF0004U);m.Put(0xB0028U,0xF0004U);
+        check(ReadInventoryState(inv)&&inv.pending&&ValidateInventoryTarget(q,inv,row),"busy inventory remains observable but cannot discard");
+        m.Put(0xB0020U,0U);m.Put(0xB0024U,0U);m.Put(0xB0028U,0U);
+        m.swapAfterRead=0xC0024;m.replacement=0;
+        check(!ReadInventoryState(inv)&&!inv.valid&&inv.count==0,"torn slot observation never publishes a partial inventory");m.Put(0xC0024U,0xE0000U);
+        m.Secure(0xB0010,513,2);check(!ReadInventoryState(inv)&&!inv.valid,"oversized inventory refuses bounded capture");m.Secure(0xB0010,16,2);
+        m.Put(0x99EEB8U,0x123456U);check(!ReadInventoryState(inv),"foreign item quantity method rejected");
+        Native={};
+    }
+    {
+        ControlMemory m;Native.context=&m;Native.read=ControlMemory::Read;
+        m.Hex(0x45f0f0,"558bec83ec08578bf98b4f2085c974118b47242bc1c1f80283f8010f8d4c0100008d4f10e8172ffaff8b4d083bc80f8d390100008b4718833c88000f842c0100008bd08b0c8a8b01ff50343b450c0f8219010000568b35145ab70085f6744c8b168bceff525485c074418bcfe8cf2efaff85c0740c8bcfe8c42efaff83f807752aa1fcdcb50066817804ffff74276a10686d750000e816b444008b0de8dcb50083c404506a00e855be33005e32c05f8be55dc208008b0d9c0abf00536a32e89d3445008b168b1d9c0abf008bceff92840000008945f86a028d45f8508bcbe87d3245008b168b1d9c0abf008bceff92880000008945f86a028d45f8508bcbe85d3245008b359c0abf008bcfe8302efaff6a018d4dfc518bce8845fce8403245008b55088b0d9c0abf006a028d450850895508e8293245008b4d0c6a048d5508894d088b0d9c0abf0052e8123245008b0d9c0abf00e8773245006a018bcfe8eefbfaff5b5eb0015f8be55dc2080032c05f8be55dc20800");
+        m.Hex(0x45ca20,"56578bf98b076a02ff501c84c074456a0068c0d6af0068a8d6af006a0057e85ee24b008bf083c41485f674288b168bceff92dc00000083381375198b068bceff90dc0000008bc883c104e8c155faff83f80174138b178bcfff525884c074085fb8010000005ec35f33c05ec3");
+        m.Hex(0x461a10,"8b412485c0740f83f80375078a412884c0750333c0c3b801000000c3");
+        m.Hex(0x4619a0,"8d4108c3");
+        m.Hex(0x461ab0,"81c1a0000000e97505faff");
+        m.Hex(0x45c040,"558bec8b45088b490423c83bc80f94c05dc20400");
+        check(InventorySignatures(),"original PE discard and UI policy signatures accepted");
+        m.Put(0x45F1A5U,static_cast<unsigned char>(0x90));check(!InventorySignatures(),"altered discard body fails closed");
+        Native={};
+    }
     {
         ControlMemory memory;Native.context=&memory;Native.read=ControlMemory::Read;
         memory.Hex(0x4715F0,"558bec8b89e00000005de951870500");memory.Hex(0x471610,"558bec8b89e00000005de9d1850500");
@@ -101,6 +138,18 @@ int RunClientTestControlRuntimeTests()
     // Replacing the file with the same request must not invoke a native operation twice.
     save(cmd,&r,sizeof(r));PumpWorker();OnFrame(s);PumpWorker();check(text().find("replayed_request")!=std::string::npos,"replaced file with consumed ID reports replay");
     r.requestId=6;r.sessionNonce=1000;save(cmd,&r,sizeof(r));PumpWorker();OnFrame(s);PumpWorker();check(text().find("server_lease_unavailable")!=std::string::npos,"wrong server nonce rejected through real file IO");
-    Shutdown();DeleteFileW(cmd);DeleteFileW(leaseFile);DeleteFileW(result);DeleteFileW(ini);RemoveDirectoryW(dir);
+    r.requestId=7;r.sessionNonce=999;r.operation=5;r.targetId=9;r.x=1;r.y=31901;r.reserved=0x40000;
+    save(cmd,&r,sizeof(r));PumpWorker();OnFrame(s);PumpWorker();
+    check(text().find("unsupported_layout")!=std::string::npos&&text().find("\"reserved\":262144")!=std::string::npos,"discard receipt binds observed item without invoking unsupported image");
+    save(cmd,&r,sizeof(r));PumpWorker();OnFrame(s);PumpWorker();check(text().find("replayed_request")!=std::string::npos,"discard request is consumed at most once");
+    PublishedState={};PublishedState.serial=++StateSerial;PublishedState.identity=r;PublishedState.tick=10000;
+    PublishedState.inventory.valid=true;PublishedState.inventory.reason="ready";PublishedState.inventory.container=0xB0000;
+    PublishedState.inventory.array=0xC0000;PublishedState.inventory.capacity=16;PublishedState.inventory.count=1;
+    PublishedState.inventory.rows[0]={0,0xD0000,0,50000};ExportState();
+    wchar_t stateFile[MAX_PATH]{};swprintf_s(stateFile,L"%s\\dfdebug-test-state-42.json",dir);
+    {std::ifstream file(stateFile,std::ios::binary);const std::string json(std::istreambuf_iterator<char>(file),{});
+     check(json.find("\"valid\":false")!=std::string::npos&&json.find("\"inventory\":{\"valid\":true")!=std::string::npos,"inventory export validity is independent of ground observation");
+     check(json.find("\"supported_operations\":[1,2,3,4,5]")!=std::string::npos&&json.find("\"item_token\":\"0x000D0000\",\"item_id\":0,\"count\":50000")!=std::string::npos,"inventory export includes exact original gold object and quantity");}
+    Shutdown();DeleteFileW(cmd);DeleteFileW(leaseFile);DeleteFileW(result);DeleteFileW(stateFile);DeleteFileW(ini);RemoveDirectoryW(dir);
     std::printf("Client test control IO tests: %d failures\n",failures);return failures;
 }
