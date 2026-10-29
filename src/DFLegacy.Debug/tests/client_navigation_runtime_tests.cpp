@@ -10,6 +10,8 @@ namespace
     bool SupportedFixture(void*) noexcept { return true; }
     bool WatchNativeHit=false,HitOriginalRan=false,HitAfterRead=false,HitReadTooSoon=false;
     unsigned HitOriginalCalls=0;
+    unsigned HitLeftCaptureReads=0,HitRightCaptureReads=0;
+    std::uint32_t HitRelease=16;
     struct TrackingMemory
     {
         std::unordered_map<std::uint32_t,unsigned char> bytes;
@@ -25,7 +27,10 @@ namespace
             const auto a=0x2000000+i*4,b=0x2100000+i*4;U(a,value^a^key);U(b,value^b^key);
         }
         static bool Read(void* context,std::uint32_t at,void* output,std::size_t size) noexcept
-        { if(WatchNativeHit&&at==0xB5DCE8){HitAfterRead=true;if(!HitOriginalRan)HitReadTooSoon=true;}auto& m=*static_cast<TrackingMemory*>(context);auto* p=static_cast<unsigned char*>(output);for(std::size_t i=0;i<size;++i){auto it=m.bytes.find(at+static_cast<std::uint32_t>(i));if(it==m.bytes.end())return false;p[i]=it->second;}return true; }
+        { if(WatchNativeHit&&at==0xB5DCE8){HitAfterRead=true;if(!HitOriginalRan)HitReadTooSoon=true;}
+          if(WatchNativeHit&&at==0xB55184)++HitLeftCaptureReads;
+          if(WatchNativeHit&&at==0xB55188)++HitRightCaptureReads;
+          auto& m=*static_cast<TrackingMemory*>(context);auto* p=static_cast<unsigned char*>(output);for(std::size_t i=0;i<size;++i){auto it=m.bytes.find(at+static_cast<std::uint32_t>(i));if(it==m.bytes.end())return false;p[i]=it->second;}return true; }
         explicit TrackingMemory(const dfl::client_navigation::Request& r)
         {
             U(0xCFD458,0x1000000);U(0xCFD45C,0x12345678);U(0x1000004,1024);U(0x1000044,0x2000000);U(0x1000048,0x2100000);
@@ -49,9 +54,11 @@ namespace
     {
         ++HitOriginalCalls;HitOriginalRan=true;
         auto& memory=*static_cast<TrackingMemory*>(self);
-        memory.U(0xCFD1F8,0);memory.U(0xB55188,777);
+        memory.U(HitRelease==8?0xCFD1F4:0xCFD1F8,0);memory.U(HitRelease==8?0xB55184:0xB55188,777);
         return -7654321;
     }
+    void SafeOriginalMinimap(void*) noexcept
+    { ++HitOriginalCalls;HitOriginalRan=true; }
 }
 int RunClientNavigationRuntimeTests()
 {
@@ -108,6 +115,7 @@ int RunClientNavigationRuntimeTests()
     check(!Tracking && std::strcmp(Outbox.status,"arrived")==0,"observed arrival takes priority over cleared native auto flag");
     // Exercise the production hit wrapper using an injected original. These
     // fixtures can never enter8F6C30 or any other absolute game function.
+    for(const std::uint32_t release:{8U,16U})
     for(unsigned mode=0;mode<7;++mode)
     {
         Native={&memory,&TrackingMemory::Read,mode==0?&UnsupportedNavigationImage:&SupportedFixture,
@@ -115,11 +123,36 @@ int RunClientNavigationRuntimeTests()
         GameThread=GetCurrentThreadId();if(mode==2)++GameThread;
         InterlockedExchange(&Enabled,mode==1?0:1);
         WatchNativeHit=true;HitOriginalRan=HitAfterRead=HitReadTooSoon=false;HitOriginalCalls=0;
-        memory.U(0xCFD1F8,mode==3?2:mode==6?0:0x10);
-        if(mode==5)memory.bytes.erase(0xCFD1F9);
+        HitRelease=release;memory.U(0xCFD1F4,0);memory.U(0xCFD1F8,0);
+        const auto eventAddress=release==8?0xCFD1F4U:0xCFD1F8U;
+        memory.U(eventAddress,mode==3?2:mode==6?0:release);
+        if(mode==5)memory.bytes.erase(eventAddress+1);
         const auto result=HitPollWithOriginal(&memory,&SafeOriginalHit);
         check(result==-7654321&&HitOriginalCalls==1&&HitOriginalRan,"production hit wrapper always preserves the original full EAX exactly once");
-        check(!HitReadTooSoon&&HitAfterRead==(mode==4),"right business reads occur only after original traversal with a supported release event");
+        check(!HitReadTooSoon&&HitAfterRead==(mode==4),"either button business reads occur only after original traversal with its supported release event");
+    }
+    Native={&memory,&TrackingMemory::Read,&SupportedFixture,nullptr,&NavigationTestTick,nullptr,7,999};
+    GameThread=GetCurrentThreadId();InterlockedExchange(&Enabled,1);
+    WatchNativeHit=true;HitOriginalRan=HitAfterRead=HitReadTooSoon=false;HitOriginalCalls=0;
+    memory.bytes.erase(0x500FF0); // Missing owner stops a legacy reader before any absolute leaf.
+    MinimapPollWithOriginal(&memory,&SafeOriginalMinimap);
+    check(HitOriginalCalls==1&&HitOriginalRan&&!HitAfterRead,"old minimap poll runs original exactly once and never attempts early goal dispatch");
+    // A partial map fixture reaches the selected capture read but deliberately
+    // lacks dropdown data, so no route or absolute destination leaf is reachable.
+    memory.U(0x500FF0,0x510000);memory.U(0x510000,0xA7CF3C);memory.U(0x510004,0x520000);
+    memory.Put<unsigned char>(0x520010,1);memory.Put<unsigned char>(0x520011,1);memory.U(0x52000C,777);
+    memory.Put<unsigned char>(0xCFD200,0);memory.Put<unsigned char>(0xCFD202,0);memory.Put<unsigned char>(0xCFD20A,0);
+    for(unsigned mode=0;mode<3;++mode)
+    {
+        memory.U(0xCFD1F4,8);memory.U(0xCFD1F8,16);memory.U(0xB55184,777);memory.U(0xB55188,777);
+        HitRelease=mode==1?16:8;
+        if(mode==1)memory.bytes.erase(0xCFD1F5);
+        if(mode==2)memory.bytes.erase(0xCFD1F9);
+        HitOriginalRan=HitAfterRead=HitReadTooSoon=false;HitOriginalCalls=HitLeftCaptureReads=HitRightCaptureReads=0;
+        const auto result=HitPollWithOriginal(&memory,&SafeOriginalHit);
+        check(result==-7654321&&HitOriginalCalls==1&&!HitReadTooSoon,"mixed or missing other-button fields still preserve original-first and full EAX");
+        check(HitLeftCaptureReads==(HitRelease==8?1U:0U)&&HitRightCaptureReads==(HitRelease==16?1U:0U),
+            "production traversal selects left-first or the readable right token without cross-button capture reads");
     }
     WatchNativeHit=false;
     // Ownership flags model retained CALLs, but the reader refuses all bytes:

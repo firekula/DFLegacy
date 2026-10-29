@@ -72,7 +72,8 @@ namespace dfl::town_route
         if (!Coordinate(goal.point.x) || !Coordinate(goal.point.y)) {error="bad_target";return false;}
         const auto* area=catalog.Find(o.area);const auto* final=catalog.Find(goal.area);
         if (!area || !final) {error="unknown_area";return false;}
-        if (!Supported(area) || !Supported(final)) {error="unsupported_area";return false;}
+        const bool dungeonSource=area->kind=="dungeon_gate";
+        if ((!Supported(area) && !dungeonSource) || !Supported(final)) {error="unsupported_area";return false;}
         for (const auto& portal:final->portals)
             if (Near(portal,{static_cast<double>(goal.point.x),static_cast<double>(goal.point.y)})) {error="goal_inside_portal";return false;}
         std::vector<Waypoint> points;std::vector<Portal> route;
@@ -88,6 +89,7 @@ namespace dfl::town_route
         }
         if (expected!=goal.area) {error="invalid_route";return false;}
         active_=true;birthCheck_=true;target_=goal;binding_=current_=source_=o;began_=lastNow_=now;
+        initialDungeonGate_=dungeonSource;
         haveIngress_=true;ingress_=o;
         catalogHash_=catalog.pvfSha256;status_="queued";reason_="goal_queued";
         // Probe only the first plan in a discarded candidate. No action escapes,
@@ -198,7 +200,12 @@ namespace dfl::town_route
         }
         freshnessWait_=false;
         const auto* area=catalog.Find(o.area);
-        if (!Supported(area)) return Stop("unsupported_area");
+        // Returning from a dungeon can leave the actor in an entrance area.
+        // Permit departure only from that exact initial observation; route
+        // targets and the final area still require ordinary supported kinds.
+        const bool exitingInitialGate=initialDungeonGate_ && area && area->kind=="dungeon_gate"
+            && o.area==binding_.area && o.map==binding_.map && o.generation==binding_.generation;
+        if (!Supported(area) && !exitingInitialGate) return Stop("unsupported_area");
         if (area->portals.size()>256 || area->walkable.size()>256) return Stop("invalid_catalog");
         if (birthCheck_ && !escaping_)
         {

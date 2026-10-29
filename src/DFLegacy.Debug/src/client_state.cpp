@@ -612,9 +612,11 @@ namespace dfl::client_state
             if (output == INVALID_HANDLE_VALUE) return;
             DWORD written = 0;
             const bool saved = json.size() <= MAXDWORD && WriteFile(output, json.data(), static_cast<DWORD>(json.size()), &written, nullptr)
-                && written == json.size() && FlushFileBuffers(output);
+                && written == json.size();
             CloseHandle(output);
-            if (saved && MoveFileExW(temporary, file, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) LastExported = snapshot.sequence;
+            // Rebuildable observation: complete temporary write + atomic
+            // replacement is sufficient; this is not an economic commit.
+            if (saved && MoveFileExW(temporary, file, MOVEFILE_REPLACE_EXISTING)) LastExported = snapshot.sequence;
             else DeleteFileW(temporary);
         }
         catch (...) { /* Export failure must never escape into the existing worker. */ }

@@ -23,6 +23,10 @@ namespace dfl::client_party
         BY_HANDLE_FILE_INFORMATION PreviousFile{};
         std::uint64_t ConsumedId=0,ConsumedPrompt=0,NextPrompt=0,LastPoll=0,PublishedSerial=0,ExportedSerial=0;
         std::uint64_t SessionFloor=0;
+        // Worker-only successful export cache. Never compare main-thread
+        // publication bytes/padding or retimestamp a prior decision.
+        std::string ExportedStateKey,ExportedResultJson;
+        std::uint64_t LastStateExportTick=0;
         Pending PreviousPrompt{};
         struct Result { Request request{};const char* status="rejected";const char* reason="unknown";std::uint64_t tick=0; };
         struct Publication
@@ -149,11 +153,12 @@ namespace dfl::client_party
         }
         void Token(std::ostream& out,std::uint32_t value)
         {char text[16]{};std::snprintf(text,sizeof(text),"0x%08X",value);out<<'"'<<text<<'"';}
-        void Identity(std::ostream& out,const Request& r)
+        void Identity(std::ostream& out,const Request& r,bool transient=true)
         {
             out<<"\"pid\":"<<r.pid<<",\"uid\":"<<r.uid<<",\"process_started_filetime\":"<<r.processStartedFileTime
-                <<",\"generation\":"<<r.generation<<",\"snapshot_sequence\":"<<r.snapshotSequence
-                <<",\"snapshot_tick_ms\":"<<r.snapshotTickMs<<",\"actor_token\":";Token(out,r.actorToken);
+                <<",\"generation\":"<<r.generation;
+            if(transient)out<<",\"snapshot_sequence\":"<<r.snapshotSequence<<",\"snapshot_tick_ms\":"<<r.snapshotTickMs;
+            out<<",\"actor_token\":";Token(out,r.actorToken);
             out<<",\"map_token\":";Token(out,r.mapToken);out<<",\"user_token\":";Token(out,r.userToken);
             out<<",\"context_token\":";Token(out,r.contextToken);out<<",\"town_id\":"<<r.townId<<",\"area_id\":"<<r.areaId;
         }
@@ -164,31 +169,54 @@ namespace dfl::client_party
             const auto file=CreateFileW(temporary,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
             if(file==INVALID_HANDLE_VALUE)return false;
             DWORD written=0;const bool okay=json.size()<=MAXDWORD&&WriteFile(file,json.data(),static_cast<DWORD>(json.size()),&written,nullptr)
-                &&written==json.size()&&FlushFileBuffers(file);
+                &&written==json.size();
             CloseHandle(file);
-            if(okay&&MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))return true;
+            if(okay&&MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING))return true;
             DeleteFileW(temporary);return false;
         }
-        void Export(const Publication& p)
+        std::string StateJson(const Publication& p,bool transient)
         {
-            std::ostringstream out;out.imbue(std::locale::classic());out<<"{\"schema\":\"dfl-client-party/v1\",";Identity(out,p.binding);
-            out<<",\"tick_ms\":"<<p.tick<<",\"consumed_request_id\":"<<p.consumedRequest<<",\"available\":"<<(p.available?"true":"false")<<",\"reason\":\""<<p.reason<<"\",\"pending\":";
+            std::ostringstream out;out.imbue(std::locale::classic());out<<"{\"schema\":\"dfl-client-party/v1\",";Identity(out,p.binding,transient);
+            if(transient)out<<",\"tick_ms\":"<<p.tick;
+            out<<",\"consumed_request_id\":"<<p.consumedRequest<<",\"available\":"<<(p.available?"true":"false")<<",\"reason\":\""<<p.reason<<"\",\"pending\":";
             if(!p.pending.present)out<<"null";
             else
             {
                 const auto& q=p.pending;out<<"{\"window_token\":";Token(out,q.windowToken);
-                out<<",\"serial\":"<<q.serial<<",\"requester_uid\":"<<q.requesterUid<<",\"peer_type\":"<<q.peerType
-                    <<",\"remaining_ms\":"<<q.remainingMs<<",\"can_reply\":"<<(q.canReply?"true":"false")<<",\"reason\":\""<<q.reason<<"\"}";
+                out<<",\"serial\":"<<q.serial<<",\"requester_uid\":"<<q.requesterUid<<",\"peer_type\":"<<q.peerType;
+                if(transient)out<<",\"remaining_ms\":"<<q.remainingMs;
+                out<<",\"can_reply\":"<<(q.canReply?"true":"false")<<",\"reason\":\""<<q.reason<<"\"}";
             }
-            out<<'}';const bool stateWritten=WriteJson(L"",out.str());bool resultWritten=true;
-            if(p.haveResult)
+            out<<'}';return out.str();
+        }
+        std::string ResultJson(const Result& result)
+        {
+            std::ostringstream out;out.imbue(std::locale::classic());const auto& r=result.request;
+            out<<"{\"schema\":\"dfl-client-party-result/v1\",";Identity(out,r);
+            out<<",\"request_id\":"<<r.requestId<<",\"operation\":"<<r.operation<<",\"target_uid\":"<<r.targetUid<<",\"window_token\":";Token(out,r.windowToken);
+            out<<",\"invitation_serial\":"<<r.invitationSerial<<",\"tick_ms\":"<<result.tick<<",\"status\":\""<<result.status
+                <<"\",\"reason\":\""<<result.reason<<"\"}";
+            return out.str();
+        }
+        void Export(const Publication& p)
+        {
+            const auto resultJson=p.haveResult?ResultJson(p.result):std::string{};
+            // A new decision also publishes state promptly. Only continuously
+            // changing clock/sequence/countdown fields wait for the heartbeat.
+            const auto stateKey=StateJson(p,false)+'\n'+resultJson;
+            const auto now=Now();
+            const bool stateDue=ExportedStateKey.empty()||stateKey!=ExportedStateKey
+                ||now<LastStateExportTick||now-LastStateExportTick>=200;
+            bool stateWritten=true,resultWritten=true;
+            if(stateDue)
             {
-                out.str("");out.clear();const auto& result=p.result;const auto& r=result.request;
-                out<<"{\"schema\":\"dfl-client-party-result/v1\",";Identity(out,r);
-                out<<",\"request_id\":"<<r.requestId<<",\"operation\":"<<r.operation<<",\"target_uid\":"<<r.targetUid<<",\"window_token\":";Token(out,r.windowToken);
-                out<<",\"invitation_serial\":"<<r.invitationSerial<<",\"tick_ms\":"<<result.tick<<",\"status\":\""<<result.status
-                    <<"\",\"reason\":\""<<result.reason<<"\"}";
-                resultWritten=WriteJson(L".result",out.str());
+                stateWritten=WriteJson(L"",StateJson(p,true));
+                if(stateWritten){ExportedStateKey=stateKey;LastStateExportTick=now;}
+            }
+            if(p.haveResult&&resultJson!=ExportedResultJson)
+            {
+                resultWritten=WriteJson(L".result",resultJson);
+                if(resultWritten)ExportedResultJson=resultJson;
             }
             if(stateWritten&&resultWritten)ExportedSerial=p.serial;
         }
@@ -196,6 +224,7 @@ namespace dfl::client_party
     void Initialize(const wchar_t* settings,const wchar_t* directory,client_state::Reader reader) noexcept
     {
         InterlockedExchange(&Enabled,0);
+        LastStateExportTick=0;ExportedStateKey.clear();ExportedResultJson.clear();
         if(!settings||!directory||wcsnlen_s(directory,MAX_PATH)>=MAX_PATH-64
             ||GetPrivateProfileIntW(L"DebugOverlay",L"EnablePartyCommands",0,settings)!=1)return;
         const bool sameProcess=Native.pid&&Native.pid==reader.pid&&Native.processStartedFileTime==reader.processStartedFileTime;

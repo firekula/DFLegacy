@@ -1,0 +1,7 @@
+# Town return navigation and debug overhead diagnosis
+
+User reports intermittent hitches and both buttons unable to move on N map after dungeon return. Live5E5A returned to town1/2; right ingress exported rejected/unsupported_area for normal goal2/0. Allow safe egress from the initial real dungeon_gate only; retain no transit/transport/dungeon-selection bypass and all native floor/identity/portal guards. Move blank-map left ingress to authenticated after-native hit just like right; both blank buttons can set final destinations, preserve NPC/buttons/dropdowns and original return values.
+
+Do not presume sampling causes hitches. Measure SDK capture durations, active-only route capture, per-frame party publication/worker durable IO and synchronous netdump. Prefer bounded main-thread metrics and low-rate non-durable derived status exports; preserve currency/state durability and protocol checks. Any optimization must have an observed overhead and regression proof. User manual U04 white/gold/consumable/material visibility/pickup/gold split accepted; blue/boundaries remain unclaimed.
+
+No OS input, game-state injection or original EXE/PVF/save edits. Root owns live clients. Preserve Y manual evidence and pre-restart actual state. New namespace town-return-perf-20261029, previous frozen evidence untouched. Existing continuous authorization selects inline implementation with narrow independent agent tasks and review; no extra design-confirmation pause.

@@ -148,19 +148,22 @@ namespace dfl::client_navigation
     bool ReadRouteCanvasTarget(const client_state::Reader& reader, const client_state::Snapshot& s,
                                std::uint32_t minimap, CanvasGoal& output, std::uint32_t eventBefore) noexcept
     {
-        if (eventBefore!=0x10 || !s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
+        if ((eventBefore!=8 && eventBefore!=16) || !s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
             || !s.scene.known || s.scene.value!=1) return false;
+        const std::uint32_t captureAddress=eventBefore==8?0xB55184:0xB55188;
+        const std::uint32_t eventAddress=eventBefore==8?0xCFD1F4:0xCFD1F8;
+        const std::uint32_t buttonAddress=eventBefore==8?0xCFD200:0xCFD202;
         Reads r{reader};
         std::uint32_t im=0,owner=0,table=0,panel=0,id=0,capture=0,plane=0,regionsMenu=0,npcsMenu=0,event=0;
         unsigned char visible=0,enabled=0,now=0,mode=0,regionsOpen=0,npcsOpen=0;
         std::int32_t dx=0,dy=0,mx=0,my=0,cx=0,cy=0;
-        // Read after native8F6C30 consumes this call's right-release event and
-        // writes B55188. The earlier update phase may already have cleared FD9.
+        // Read after native8F6C30 consumes this call's selected release event
+        // and writes its capture. The update phase may already clear FD8/FD9.
         if (!r.At(0xB5DCE8,0,im) || !r.At(im,0xFF0,owner) || owner!=minimap
             || !r.At(minimap,0,table) || table!=0xA7CF3C || !r.At(minimap,4,panel)
             || !r.At(panel,0x10,visible) || visible!=1 || !r.At(panel,0x11,enabled) || enabled!=1
-            || !r.At(panel,12,id) || !r.At(0xB55188,0,capture) || capture!=id
-            || !r.At(0xCFD1F8,0,event) || event!=0 || !r.At(0xCFD202,0,now) || now!=0
+            || !r.At(panel,12,id) || !r.At(captureAddress,0,capture) || capture!=id
+            || !r.At(eventAddress,0,event) || event!=0 || !r.At(buttonAddress,0,now) || now!=0
             || !r.At(0xCFD20A,0,mode) || mode!=0
             || !r.At(minimap,0x1C,regionsMenu) || !r.At(regionsMenu,0x10,regionsOpen) || regionsOpen!=0
             || !r.At(minimap,0x64,npcsMenu) || !r.At(npcsMenu,0x10,npcsOpen) || npcsOpen!=0
@@ -190,9 +193,9 @@ namespace dfl::client_navigation
         std::int32_t finalDx=0,finalDy=0,finalMx=0,finalMy=0,finalCx=0,finalCy=0;
         if (!r.At(0xB5DCE8,0,finalIm) || finalIm!=im || !r.At(im,0xFF0,finalOwner) || finalOwner!=minimap
             || !r.At(minimap,0,finalTable) || finalTable!=table || !r.At(minimap,4,finalPanel) || finalPanel!=panel
-            || !r.At(panel,12,finalId) || finalId!=id || !r.At(0xB55188,0,finalCapture) || finalCapture!=id
+            || !r.At(panel,12,finalId) || finalId!=id || !r.At(captureAddress,0,finalCapture) || finalCapture!=id
             || !r.At(panel,0x10,finalVisible) || finalVisible!=1 || !r.At(panel,0x11,finalEnabled) || finalEnabled!=1
-            || !r.At(0xCFD1F8,0,finalEvent) || finalEvent!=0 || !r.At(0xCFD202,0,finalNow) || finalNow!=0
+            || !r.At(eventAddress,0,finalEvent) || finalEvent!=0 || !r.At(buttonAddress,0,finalNow) || finalNow!=0
             || !r.At(0xCFD20A,0,finalMode) || finalMode!=0
             || !r.At(minimap,0x1C,finalRegions) || finalRegions!=regionsMenu
             || !r.At(regionsMenu,0x10,finalRegionsOpen) || finalRegionsOpen!=0
@@ -232,11 +235,11 @@ namespace dfl::client_navigation
         // A failed rollback deliberately leaves ownership set, blocking unload.
         RestoreInstalledHook(pollInstalled,pollPatch,poll);return false;
     }
-    std::int32_t PollRightRelease(void* context,std::uint32_t eventBefore,RightHitOriginal original,RightHitAfter after) noexcept
+    std::int32_t PollCanvasRelease(void* context,std::uint32_t eventBefore,CanvasHitOriginal original,CanvasHitAfter after) noexcept
     {
         if (!original) return 0;
         const auto result=original(context);
-        if (eventBefore==0x10 && after) after(context,eventBefore);
+        if ((eventBefore==8 || eventBefore==16) && after) after(context,eventBefore);
         return result;
     }
     bool SetLiveAndActivate(const Request& request,const DestinationOperations& operations,LiveCheck live,std::uint64_t now) noexcept

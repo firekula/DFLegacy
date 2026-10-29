@@ -27,7 +27,7 @@ namespace dfl::client_navigation
         Request Inbox{}, Active{};
         client_state::Snapshot Current{};
         bool Tracking=false;
-        std::uint64_t ConsumedId=0, ActiveTick=0, ActiveSequence=0, MiniId=0;
+        std::uint64_t ConsumedId=0, ActiveTick=0, ActiveSequence=0;
         struct Result
         {
             Request request{};
@@ -186,28 +186,24 @@ namespace dfl::client_navigation
             Active=request;ActiveTick=now;ActiveSequence=Current.sequence;ActiveSource=source;Tracking=true;
             Publish(request,source,"requested","native_destination_set",Current.town.position);
         }
-        Request FromCurrent(std::int32_t x,std::int32_t y) noexcept
-        {
-            Request r;r.pid=Current.pid;r.uid=Current.me.uid.value;r.processStartedFileTime=Current.processStartedFileTime;
-            r.requestId=++MiniId;r.issuedTickMs=Now();r.snapshotTickMs=Current.capturedTickMs;r.generation=Current.generation;
-            r.snapshotSequence=Current.sequence;r.actorToken=Current.me.actorToken;r.mapToken=Current.me.mapToken;
-            r.userToken=Current.me.userToken;r.contextToken=Current.town.contextToken;r.townId=Current.town.townId;r.areaId=Current.town.areaId;r.x=x;r.y=y;return r;
-        }
-        void __fastcall MinimapPoll(void* self,void*) noexcept
+        void OriginalMinimapPoll(void* self) noexcept
         {
             using Original=void (__thiscall*)(void*);
             reinterpret_cast<Original>(0x880E20)(self);
-            if (!IsEnabled() || GetCurrentThreadId()!=GameThread || !Layout()) return;
-            std::int32_t x=0,y=0;
-            if (ReadCanvasTarget(Native,Current,static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(self)),x,y))
-                Dispatch(FromCurrent(x,y),"minimap");
         }
+        void MinimapPollWithOriginal(void* self,void (*original)(void*) noexcept) noexcept
+        {
+            if (!original) return;
+            original(self);
+        }
+        void __fastcall MinimapPoll(void* self,void*) noexcept
+        { MinimapPollWithOriginal(self,&OriginalMinimapPoll); }
         std::int32_t OriginalHit(void* self) noexcept
         {
             using Original=std::int32_t (__thiscall*)(void*);
             return reinterpret_cast<Original>(0x8F6C30)(self);
         }
-        void AfterRightHit(void*,std::uint32_t eventBefore) noexcept
+        void AfterCanvasHit(void*,std::uint32_t eventBefore) noexcept
         {
             if (!IsEnabled() || GetCurrentThreadId()!=GameThread || !Layout()) return;
             Reads reads;std::uint32_t im=0,minimap=0;CanvasGoal goal;
@@ -215,16 +211,22 @@ namespace dfl::client_navigation
                 &&ReadRouteCanvasTarget(Native,Current,minimap,goal,eventBefore))
                 client_town_route::BeginCanvasGoal(Current,goal);
         }
-        std::int32_t HitPollWithOriginal(void* self,RightHitOriginal original) noexcept
+        std::int32_t HitPollWithOriginal(void* self,CanvasHitOriginal original) noexcept
         {
             // Reading the pre-event has no UI side effects. Native traversal
             // always runs first; only its consumed release can select a goal.
             std::uint32_t eventBefore=0;
             if(IsEnabled()&&GetCurrentThreadId()==GameThread&&Layout())
-            {Reads reads;if(!reads.At(0xCFD1F8,0,eventBefore))eventBefore=0;}
-            return PollRightRelease(self,eventBefore,original,&AfterRightHit);
+            {
+                Reads reads;std::uint32_t left=0,right=0;
+                // Native hit traversal handles left release before right.
+                // Missing or unrelated state of the other button grants nothing.
+                if (reads.At(0xCFD1F4,0,left) && left==8) eventBefore=8;
+                else if (reads.At(0xCFD1F8,0,right) && right==16) eventBefore=16;
+            }
+            return PollCanvasRelease(self,eventBefore,original,&AfterCanvasHit);
         }
-        std::int32_t __fastcall RightHitPoll(void* self,void*) noexcept
+        std::int32_t __fastcall CanvasHitPoll(void* self,void*) noexcept
         {return HitPollWithOriginal(self,&OriginalHit);}
         bool PatchAt(std::uint32_t address,const unsigned char* expected,const unsigned char* replacement) noexcept
         {
@@ -263,7 +265,7 @@ namespace dfl::client_navigation
             const auto target=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&MinimapPoll));
             const std::uint32_t relative=target-(CallAddress+5);
             PatchedCall[0]=0xE8;std::memcpy(PatchedCall.data()+1,&relative,4);
-            const auto hitTarget=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&RightHitPoll));
+            const auto hitTarget=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&CanvasHitPoll));
             const std::uint32_t hitRelative=hitTarget-(HitCallAddress+5);
             PatchedHitCall[0]=0xE8;std::memcpy(PatchedHitCall.data()+1,&hitRelative,4);
             InstallCanvasHooks(Installed,HitInstalled,PatchedCall,PatchedHitCall,&Patch,&PatchHit);
@@ -331,7 +333,7 @@ namespace dfl::client_navigation
         Native=reader;wcscpy_s(Directory,directory);
         GameThread=0;Installed=HitInstalled=HookAttempted=HaveInbox=HaveFile=Tracking=false;
         InterlockedExchange(&HookPublished,0);
-        Inbox={};Active={};Outbox={};GameResult={};Current={};ConsumedId=ActiveTick=ActiveSequence=MiniId=NextSerial=ExportedSerial=LastPoll=0;
+        Inbox={};Active={};Outbox={};GameResult={};Current={};ConsumedId=ActiveTick=ActiveSequence=NextSerial=ExportedSerial=LastPoll=0;
         InterlockedExchange(&Enabled,Native.read && Native.pid && Native.processStartedFileTime?1:0);
         if(IsEnabled())client_town_route::Initialize(settingsPath,directory,reader,&ApplyRouteStep,&SupersedeForRoute);
     }
