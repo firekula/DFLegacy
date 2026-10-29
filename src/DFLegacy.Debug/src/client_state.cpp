@@ -106,7 +106,7 @@ namespace dfl::client_state
                     && std::fabs(p.x) < 1000000 && std::fabs(p.y) < 1000000 && std::fabs(p.z) < 1000000;
                 return p;
             }
-            Player Actor(std::uint32_t user, std::uint32_t actor, std::uint32_t map) noexcept
+            Player Actor(std::uint32_t user, std::uint32_t actor, std::uint32_t map, bool localMp = false) noexcept
             {
                 Player p; std::uint16_t uid = 0; std::uint32_t kind = 0, secureUid = 0, binding = 0;
                 if (!user || !actor || !ReadAt(user, 4, uid) || !uid
@@ -129,6 +129,25 @@ namespace dfl::client_state
                     }
                 }
                 else Error(snapshot, "unsupported_hp_layout");
+                if (localMp)
+                {
+                    if (Getter(actor, 0x340, 0x652A70) && Getter(actor, 0x344, 0x652A80) && Getter(actor, 0x2E0, 0x652670))
+                    {
+                        std::int32_t current = 0, base = 0; float factor = 0;
+                        if (SignedAt(actor, 0x1170, current) && current >= 0) p.mp = {true, current};
+                        else Error(snapshot, "invalid_mp");
+                        if (SignedAt(actor, 0xE48, base) && base >= 0 && FloatAt(actor, 0xE50, factor) && factor >= 0)
+                        {
+                            // 652A80 explicitly stores the integer base as float32 before multiplying.
+                            const volatile float nativeBase = static_cast<float>(base);
+                            const double maximum = static_cast<double>(nativeBase) * factor;
+                            if (std::isfinite(maximum) && maximum >= 0 && maximum <= INT32_MAX)
+                                p.maxMp = {true, static_cast<std::int32_t>(maximum)};
+                        }
+                        if (!p.maxMp.known) Error(snapshot, "invalid_max_mp");
+                    }
+                    else Error(snapshot, "unsupported_mp_layout");
+                }
                 std::int32_t dead = 0;
                 if (Getter(actor, 0x318, 0x652A00) && SignedAt(actor, 0x142C, dead)) p.dead = {true, dead != 0};
                 if (p.sameMap.known && p.mapToken != 0) p.detached = {true, false};
@@ -316,7 +335,7 @@ namespace dfl::client_state
                 if (!r.ReadAt(party, 0x10 + slot * 4, user)) { s.truncated = true; Error(s, "party_slot_unreadable"); continue; }
                 if (!user) continue;
                 if (!r.ReadAt(user, 0x110, actor) || !actor) { s.truncated = true; Error(s, "party_actor_unreadable"); continue; }
-                const auto player = r.Actor(user, actor, s.room.mapToken);
+                const auto player = r.Actor(user, actor, s.room.mapToken, user == s.me.userToken && actor == s.me.actorToken);
                 if (!player.uid.known) { s.truncated = true; continue; }
                 bool duplicate = false;
                 for (std::size_t i = 0; i < s.playerCount; ++i)
@@ -466,7 +485,7 @@ namespace dfl::client_state
         { Error(output, "dungeon_identity_unreadable"); return finish(); }
         output.room.present = true; output.room.stageToken = stage; output.room.mapToken = map;
         const auto user = FindUser(r, actor, uid);
-        output.me = r.Actor(user, actor, map); output.haveMe = output.me.uid.known;
+        output.me = r.Actor(user, actor, map, true); output.haveMe = output.me.uid.known;
         if (!output.haveMe) return finish();
         Players(r, output); Enemies(r, output); Skills(r, output); Doors(r, output);
         std::uint32_t finalScene = 0, finalStage = 0, finalMap = 0, finalActor = 0, finalBinding = 0;

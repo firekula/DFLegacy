@@ -202,6 +202,8 @@ python -m unittest discover -s tools/debug -p 'test*.py' -v
 
 ### 仅测试环境的 CLI 控制
 
+客户端v2状态现支持副本本地`me.mp/max_mp`及players中的同一本地身份；队友、城镇和v1仍为未知。字段分别可用，损坏镜像、负数、非有限和溢出为null；不把当前MP压到上限。读取原始MP时沿用原身份／地图和采样校验，`client_state.py`的字段查询与等待可直接使用。最大值按原getter先float32基础值、再乘截断；未确认所有运行时x87精度／舍入边界。见[玩家击杀与MP验收](../../knowledge/decisions/2026-10-30-player-kill-mp-verification.md)。
+
 默认关闭。隔离服务端同时开启 `DFLegacy.Debug.ClientOverlay.Enabled=true` 和
 `DFLegacy.Debug.TestControl.Enabled=true`，客户端对应的 `Config.ini` 开启：
 
@@ -221,6 +223,7 @@ run和UID；旧进程、旧房间、旧演员或过期请求会拒绝。
 ```powershell
 python -m tools.debug.test_control --directory G:\test\snapshots state --uid 1
 python -m tools.debug.test_control --directory G:\test\snapshots player teleport --uid 1 --x 300 --y 240
+python -m tools.debug.test_control --directory G:\test\snapshots player kill --uid 2
 python -m tools.debug.test_control --directory G:\test\snapshots monster kill --uid 1 --monster 0
 python -m tools.debug.test_control --directory G:\test\snapshots drop isolate --uid 1 --ground 5 --park-x 800 --park-y 240
 python -m tools.debug.test_control --directory G:\test\snapshots inventory drop --uid 1 --slot 22 --item 24002 --count 1
@@ -230,6 +233,7 @@ python -m tools.debug.test_control --directory G:\test\snapshots loot result --u
 
 - `state` 分别返回服务端已提交背包/金币/负重、实例/掉落与原生位置/HP/敌人和地面状态。
 - `player teleport` 只在当前副本房间定位本机角色，并核对原有同房队员看到的位置；不换地图或跨区。
+- `player kill` 初版用于2～4人组队副本中的本机角色，所有当前队员客户端须提供新鲜状态；单人、目标已死或缺少服务端成员生死数据会在发送前拒绝。调用原玩家HP死亡入口，操作不自动复活。发布前核对完整成员身份、目标存活和各端上下文；只有服务端alive=false、自身和各端新采样看到同一角色HP0/dead且SDK代次未变才返回`synchronized`。`partial`只继续只读确认，不重发。它与`monster kill`分开，不能用怪物ID去杀玩家。
 - `monster kill` 使用原生HP死亡入口，保留原生权限、复活等分支，随后观察服务端死亡与各端状态。
   UID从0开始；需要指定拥有怪物原生控制权的客户端。收到死亡请求不代表死亡已完成。
 - `drop isolate` 把现存ground放到指定角色脚下，其他同房掉落放到停车点（至少相距100像素）；

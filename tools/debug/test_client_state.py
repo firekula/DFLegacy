@@ -351,6 +351,23 @@ class ClientStateTests(unittest.TestCase):
             with self.assertRaises(self.api.SnapshotError):
                 self.load()
 
+    def test_v2_local_mp_supports_zero_partial_and_raw_over_max_without_accepting_remote_mp(self):
+        for mp,maximum in [(123,150),(0,0),(None,500),(700,500)]:
+            with self.subTest(mp=mp,maximum=maximum):
+                value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+                value['me'].update(mp=mp,max_mp=maximum);value['players'][0].update(mp=mp,max_mp=maximum)
+                self.write(value);result=self.load();self.assertEqual(result['me']['mp'],mp);self.assertEqual(result['me']['max_mp'],maximum)
+        value['players'][0].update(uid=2,actor_token='0x20000000',user_token='0x21000000')
+        self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_v2_local_mp_still_rejects_negative_boolean_and_overflow(self):
+        for mp in [-1,True,2147483648]:
+            with self.subTest(mp=mp):
+                value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui']);value['me']['mp']=mp
+                self.write(value)
+                with self.assertRaises(self.api.SnapshotError):self.load()
+
     def test_mp_fields_are_preserved_unknown_and_nonnull_is_rejected(self):
         result = self.load()
         self.assertIsNone(result["me"]["mp"])

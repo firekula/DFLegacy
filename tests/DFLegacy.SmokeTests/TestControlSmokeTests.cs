@@ -36,7 +36,7 @@ internal static class TestControlSmokeTests
         character = (await store.SaveCharacterInventoryAsync("test", character.Id,
             character.Gold, [preserved, noQuality], []))!;
         using var fixture = new DungeonFixture();
-        var instance = fixture.CreateSoloInstance(character.Id);
+        var instance = fixture.CreatePartyInstance(61030);
         instance.AddMember(fixture.Member(character.Id, 2, "projection") with { AreaUserId = 74, AccountName = "test" });
         instance.TryStartRun(fixture.Layout, 0, 0, out _, fixture.Random);
         var active = instance.AddPlayerDroppedGroundItem(preserved, 74, 0, 0, 123, 234);
@@ -48,6 +48,19 @@ internal static class TestControlSmokeTests
         await publisher.PublishAsync(directory, [], CancellationToken.None);
         using var document = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "dfdebug-test-server.json")));
         var snapshot = document.RootElement.GetProperty("instances")[0];
+        check(snapshot.GetProperty("members")[0].TryGetProperty("alive", out var living) && living.GetBoolean(),
+            "test member projection starts with the actual alive state");
+        check(instance.TrySetPartyMemberAlive(character.Id, false, DateTimeOffset.UtcNow), "projection fixture enters normal member-death state");
+        await publisher.PublishAsync(directory, [], CancellationToken.None);
+        using (var deadDocument = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "dfdebug-test-server.json"))))
+            check(deadDocument.RootElement.GetProperty("instances")[0].GetProperty("members")[0].TryGetProperty("alive", out var dead) && !dead.GetBoolean(),
+                "test member projection reports authoritative death rather than stale saved health");
+        check(instance.TrySetPartyMemberAlive(character.Id, true, DateTimeOffset.UtcNow), "projection fixture revives through the normal member state");
+        version = instance.Version;
+        await publisher.PublishAsync(directory, [], CancellationToken.None);
+        using (var revivedDocument = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "dfdebug-test-server.json"))))
+            check(revivedDocument.RootElement.GetProperty("instances")[0].GetProperty("members")[0].TryGetProperty("alive", out var revived) && revived.GetBoolean(),
+                "test member projection reports revival without mutating the member");
         var grounds = snapshot.GetProperty("ground_items").EnumerateArray().ToArray();
         var activeRow = grounds.Single(row => row.GetProperty("ground_id").GetUInt16() == active.GroundId);
         var generatedRow = grounds.Single(row => row.GetProperty("ground_id").GetUInt16() == generated.GroundId);
@@ -77,6 +90,15 @@ internal static class TestControlSmokeTests
                 && ReferenceEquals(unchanged, active) && (after!.Inventory ?? []).SequenceEqual(character.Inventory ?? []),
             "publishing equipment diagnostics does not mutate ground identity, instance version or persisted inventory");
         Console.WriteLine($"Test control projection artifacts: {directory}");
+        var solo = fixture.CreateSoloInstance(character.Id);
+        solo.AddMember(fixture.Member(character.Id, 2, "projection") with { AreaUserId = 74, AccountName = "test" });
+        solo.TryStartRun(fixture.Layout, 0, 0, out _, fixture.Random);
+        var soloRegistry = new DungeonInstanceRegistry();soloRegistry.BindCharacter(character.Id, solo);
+        await new DungeonTestControl(options, soloRegistry, store, null, null).PublishAsync(directory, [], CancellationToken.None);
+        using (var soloDocument = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "dfdebug-test-server.json"))))
+            check(soloDocument.RootElement.GetProperty("instances")[0].GetProperty("members")[0].TryGetProperty("alive", out var soloLife)
+                    && soloLife.ValueKind == JsonValueKind.Null,
+                "solo session-private life is explicitly unknown rather than invented alive");
 
         static bool Number(JsonElement row, string key, uint expected) => row.TryGetProperty(key, out var value)
             && value.ValueKind == JsonValueKind.Number && value.TryGetUInt32(out var actual) && actual == expected;

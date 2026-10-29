@@ -70,7 +70,8 @@ internal sealed class DungeonTestControl(ServerOptions options, DungeonInstanceR
             }
             snapshots.Add(new { run_id = snapshot.RunId, room_generation = snapshot.Generation, map_id = snapshot.MapId,
                 dungeon_id = snapshot.DungeonId, room_x = snapshot.RoomX, room_y = snapshot.RoomY,
-                members = snapshot.Members.Select(member => new { uid = member.AreaUserId, character_id = member.CharacterId, party_slot = member.PartySlot }),
+                members = snapshot.Members.Select(member => new { uid = member.AreaUserId, character_id = member.CharacterId, party_slot = member.PartySlot,
+                    alive = instance.IsParty ? (bool?)!snapshot.DeadMemberUids.Contains(member.AreaUserId) : null }),
                 monsters = snapshot.Monsters, ground_items = snapshot.GroundItems, inventories });
         }
         var path = Path.Combine(directory, "dfdebug-test-server.json");

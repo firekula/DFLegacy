@@ -677,4 +677,80 @@ class PartialActorOperationTests(unittest.TestCase):
                     self.assertEqual(result['clients_monster_dead'],scenario=='confirmed')
 
 
+class PlayerKillTests(unittest.TestCase):
+    setUp=TestControlTests.setUp
+    lease=TestControlTests.lease
+    request=TestControlTests.request
+
+    def test_player_death_wire_is_self_only_and_has_no_free_hp_operands(self):
+        raw=self.request(operation=6,target_id=1,x=0,y=0)
+        self.assertEqual(self.api.parse_request(raw)['operation'],6)
+        for values in [dict(target_id=2),dict(x=1),dict(y=-1),dict(item_token='0x10000')]:
+            with self.subTest(values=values):
+                args=dict(operation=6,target_id=1,x=0,y=0);args.update(values)
+                with self.assertRaises(self.api.TestControlError):self.request(**args)
+
+    def operation(self,scenario='confirmed',native_status='applied'):
+        self.assertTrue(callable(getattr(self.api,'player_kill',None)),'player kill interface missing')
+        before=server();before['instances'][0]['members'][0]['alive']=True
+        before['instances'][0]['members'].append(dict(uid=3,character_id='33333333-3333-4333-8333-333333333333',party_slot=1,alive=True))
+        local=client();peer=deepcopy(local);peer['pid']+=1;peer['me']=deepcopy(local['me']);peer['me'].update(uid=3,user_token='0x19000000',actor_token='0x19100000')
+        local['players'].append(deepcopy(peer['me']));peer['players']=deepcopy(local['players'])
+        prior={1:local,3:peer};after=deepcopy(before);observed=deepcopy(prior)
+        if scenario!='server_alive':after['instances'][0]['members'][0]['alive']=False
+        for s in observed.values():
+            s['sequence']+=1;s['captured_tick_ms']+=10
+            if scenario!='client_alive':
+                for p in s['players']:
+                    if p['uid']==1:p.update(hp=0,dead=True,map_token=None,same_map=False,detached=True,position=None)
+        if scenario!='client_alive':observed[1]['me'].update(hp=0,dead=True,map_token=None,same_map=False,detached=True,position=None)
+        if scenario=='missing_peer':observed[3]['players']=[p for p in observed[3]['players'] if p['uid']!=1]
+        if scenario=='room_changed':after['instances'][0]['room_generation']+=1
+        if scenario=='replaced_actor':observed[1]['me']['actor_token']='0x20000000'
+        if scenario=='new_generation':observed[1]['generation']+=1
+        if scenario=='stale_peer':observed[3]['sequence']=peer['sequence'];observed[3]['captured_tick_ms']=peer['captured_tick_ms']
+        receipt=dict(native=dict(status=native_status,reason='native_player_death_requested'),run_id=RUN,room_generation=3,session_nonce=NONCE)
+        calls=[]
+        def emit(*args,**kwargs):
+            self.assertFalse(calls,'player kill must never retransmit');calls.append(kwargs);return receipt
+        with patch.object(self.api,'execute_native',side_effect=emit), \
+                patch.object(self.api,'load_server',side_effect=lambda *a,**k:after if calls else before), \
+                patch.object(self.api,'load_clients',side_effect=lambda *a,**k:observed if calls else prior), \
+                patch.object(self.api.time,'sleep'):
+            out=self.api.player_kill('.',uid=1,timeout=.002)
+        self.assertEqual(len(calls),1);self.assertEqual(calls[0]['operation'],6);self.assertEqual(calls[0]['target_id'],1)
+        return out
+
+    def test_player_kill_requires_actual_server_self_and_peer_death(self):
+        r=self.operation();self.assertEqual(r['status'],'synchronized');self.assertTrue(r['server_player_dead']);self.assertTrue(r['synchronization']['complete'])
+
+    def test_incomplete_or_stale_observers_never_confirm_death(self):
+        for scenario in ['server_alive','client_alive','missing_peer','stale_peer','replaced_actor','room_changed','new_generation']:
+            with self.subTest(scenario=scenario):self.assertEqual(self.operation(scenario)['status'],'partial_sync')
+
+    def test_partial_native_player_death_is_observed_once_without_retransmission(self):
+        r=self.operation(native_status='partial');self.assertEqual(r['status'],'synchronized');self.assertEqual(r['native']['status'],'partial')
+
+    def test_player_kill_cli_dispatches_separately_from_monster_kill(self):
+        self.assertTrue(callable(getattr(self.api,'player_kill',None)),'player kill interface missing')
+        with patch.object(self.api,'player_kill',return_value=dict(status='synchronized')),patch('sys.stdout',new=io.StringIO()):
+            self.assertEqual(self.api.main(['--directory','.','player','kill','--uid','1']),0)
+
+    def test_player_kill_rechecks_party_and_authoritative_life_before_publishing(self):
+        for changed in ['party','dead']:
+            with self.subTest(changed=changed),tempfile.TemporaryDirectory() as directory:
+                before=server();before['instances'][0]['members'][0]['alive']=True;after=deepcopy(before);sdk=client()
+                if changed=='party':after['instances'][0]['members'].append(dict(uid=3,character_id='33333333-3333-4333-8333-333333333333',party_slot=1,alive=True))
+                else:after['instances'][0]['members'][0]['alive']=False
+                Path(directory,'dfdebug-test-lease-1.bin').write_bytes(self.lease())
+                with patch.object(self.api,'load_server',side_effect=[before,before,after]), \
+                        patch.object(self.api,'load_clients',return_value={1:sdk}), \
+                        patch.object(self.api,'filetime',return_value=FT), \
+                        patch.object(self.api.state,'get_process_started_filetime',return_value=START), \
+                        patch.object(self.api.state,'now_tick_ms',return_value=NOW):
+                    with self.assertRaisesRegex(self.api.TestControlError,'party_changed|authoritative_living_player_required'):
+                        self.api.execute_native(directory,uid=1,operation=6,target_id=1,timeout=.001)
+                self.assertFalse(Path(directory,f'dfdebug-test-control-{sdk["pid"]}.bin').exists())
+
+
 if __name__=='__main__':unittest.main()

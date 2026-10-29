@@ -1,0 +1,3 @@
+Test control projection artifacts: D:\codex_worktree\party-chat-gold\DFLegacy\.tmp\smoke-tests\test-control-projection\6ecbb9d0b6cd484ebd9dfbbc14e708b8
+Test control smoke: 1 failures
+FAIL: solo session-private life is explicitly unknown rather than invented alive

@@ -28,7 +28,7 @@ namespace dfl::client_state
             out << "{\"uid\":"; Nullable(out, p.uid); out << ",\"user_token\":"; Token(out, p.userToken);
             out << ",\"actor_token\":"; Token(out, p.actorToken); out << ",\"map_token\":"; Token(out, p.mapToken);
             out << ",\"hp\":"; Nullable(out, p.hp); out << ",\"max_hp\":"; Nullable(out, p.maxHp);
-            out << ",\"mp\":null,\"max_mp\":null";
+            out << ",\"mp\":"; Nullable(out, p.mp); out << ",\"max_mp\":"; Nullable(out, p.maxMp);
             out << ",\"dead\":"; Nullable(out, p.dead); out << ",\"same_map\":"; Nullable(out, p.sameMap);
             out << ",\"detached\":"; Nullable(out, p.detached); out << ",\"position\":"; Point(out, p.position); out << '}';
         }

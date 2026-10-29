@@ -5,7 +5,7 @@ internal sealed record DungeonTestGround(ushort GroundId, ushort ItemId, uint Co
     short X, short Y, bool Pending, Guid InstanceId, ushort OwnerUid, byte RoutingSource,
     byte? State, ushort? Durability, byte? SealState, uint? EquipmentQualitySeed);
 internal sealed record DungeonTestState(long RunId, long Generation, ushort MapId, ushort DungeonId, byte RoomX,
-    byte RoomY, DungeonInstanceMember[] Members, DungeonTestMonster[] Monsters, DungeonTestGround[] GroundItems);
+    byte RoomY, DungeonInstanceMember[] Members, ushort[] DeadMemberUids, DungeonTestMonster[] Monsters, DungeonTestGround[] GroundItems);
 
 internal sealed partial class DungeonInstance
 {
@@ -18,7 +18,8 @@ internal sealed partial class DungeonInstance
         {
             if (!_run.IsActive || _run.CurrentRoom is not { } room) return null;
             return new(_debugRunId, _roomGeneration, room.MapId, _run.DungeonId, _run.RoomX, _run.RoomY,
-                _members.ToArray(), room.Monsters.Select(value => new DungeonTestMonster(value.UniqueId, value.MonsterIndex, AliveMonsters.Contains(value.UniqueId))).ToArray(),
+                _members.ToArray(), _members.Where(member => _deadMembers.Contains(member.CharacterId)).Select(member => member.AreaUserId).ToArray(),
+                room.Monsters.Select(value => new DungeonTestMonster(value.UniqueId, value.MonsterIndex, AliveMonsters.Contains(value.UniqueId))).ToArray(),
                 GroundItems.GetRoomItems(_run.RoomX, _run.RoomY).Where(value => value.Activated).Select(value =>
                     new DungeonTestGround(value.GroundId, value.ItemId, value.CountOrValue, value.IsGold, value.X, value.Y,
                         _pendingLoot.ContainsKey(value.GroundId), value.PreservedItem?.InstanceId ?? Guid.Empty,

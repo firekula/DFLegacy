@@ -166,7 +166,10 @@ def _validate(snapshot):
         _require(key in snapshot, "missing_field")
         _shape(snapshot[key], shape, nullable=key in ("room", "me"))
     for player in snapshot["players"] + ([snapshot["me"]] if snapshot["me"] is not None else []):
-        _require(player["mp"] is None and player["max_mp"] is None, "unproven_mp")
+        me = snapshot["me"]
+        local_mp = (version2 and snapshot["scene"] == 3 and me is not None
+                    and all(player[key] == me[key] for key in ("uid", "actor_token", "user_token")))
+        _require(local_mp or (player["mp"] is None and player["max_mp"] is None), "unproven_mp")
     room = snapshot["room"]
     if room is not None:
         _require(isinstance(room["doors"], dict)

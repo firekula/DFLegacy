@@ -48,7 +48,14 @@ int RunClientTestControlTests()
     {Fixture f;Check(f.Validate(0,11001)!=nullptr,"stale request rejected");}
     {Fixture f;f.r.snapshotSequence=14;Check(f.Validate()!=nullptr,"old generation of snapshot rejected");}
     {Fixture f;f.r.operation=2;f.r.targetId=0;Check(f.Validate()==nullptr,"zero-based monster target accepted");f.r.targetId=-1;Check(f.Validate()!=nullptr,"negative monster target rejected");}
-    {Fixture f;f.r.operation=6;Check(f.Validate()!=nullptr,"unknown operation rejected");}
+    {Fixture f;f.r.operation=7;Check(f.Validate()!=nullptr,"unknown operation rejected");}
+    {Fixture f;f.r.operation=6;f.r.x=f.r.y=0;
+     Check(!f.Validate(),"player kill accepts only bound living self with no HP operand");
+     f.r.targetId=78;Check(f.Validate()!=nullptr,"player kill cannot target a peer");f.r.targetId=77;
+     f.r.x=1;Check(f.Validate()!=nullptr,"player kill rejects arbitrary HP operand");f.r.x=0;
+     f.r.y=1;Check(f.Validate()!=nullptr,"player kill rejects hidden second operand");f.r.y=0;
+     f.r.reserved=1;Check(f.Validate()!=nullptr,"player kill rejects extension operand");f.r.reserved=0;
+     f.s.me.dead.value=true;Check(f.Validate()!=nullptr,"already dead player cannot be killed again");}
     {Fixture f;f.r.operation=5;f.r.targetId=9;f.r.x=1;f.r.y=31901;f.r.reserved=0x40000;
      Check(f.Validate()==nullptr,"inventory drop binds slot item count and native object");
      f.r.targetId=0;f.r.y=0;Check(f.Validate()==nullptr,"gold slot zero is an explicit inventory target");

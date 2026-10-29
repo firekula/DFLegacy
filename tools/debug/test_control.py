@@ -170,10 +170,11 @@ def make_request(snapshot,lease,*,operation,target_id,x=0,y=0,request_id,issued_
     require(snapshot['captured_tick_ms']<=issued_tick_ms and issued_tick_ms-snapshot['captured_tick_ms']<=750,
         'stale_snapshot')
     require(lease['uid']==me['uid'],'lease_identity_mismatch')
-    require(integer(operation,1,5) and integer(target_id,0,65535),'invalid_target')
+    require(integer(operation,1,6) and integer(target_id,0,65535),'invalid_target')
     require(operation==5 or point(x,y),'invalid_target')
     require(operation==5 or item_token is None,'unexpected_item_token')
     require(operation!=1 or target_id==me['uid'],'teleport_self_only')
+    require(operation!=6 or (target_id==me['uid'] and x==0 and y==0),'player_death_self_only')
     require(operation not in (3,4) or target_id>0,'invalid_ground_id')
     reserved=0
     if operation==5:
@@ -202,7 +203,8 @@ def parse_request(raw):
     require(r['pid']>0 and 0<r['uid']<=65535 and all(r[k]>0 for k in
         ('process_started_filetime','request_id','generation','snapshot_sequence','actor_token','map_token','user_token',
          'session_nonce','run_id')),'bad_request_identity')
-    require(1<=r['operation']<=5 and 0<=r['target_id']<=65535,'invalid_target')
+    require(1<=r['operation']<=6 and 0<=r['target_id']<=65535,'invalid_target')
+    require(r['operation']!=6 or (r['target_id']==r['uid'] and r['x']==0 and r['y']==0 and r['reserved']==0),'player_death_self_only')
     if r['operation']==5:
         require((r['target_id']==0 or 9<=r['target_id']<=511) and integer(r['x'],1,0x7fffffff)
             and integer(r['y'],0,65535) and (r['target_id']==0)==(r['y']==0),'invalid_inventory_drop')
@@ -532,12 +534,17 @@ def check_binding(expected_server,expected_room,expected_client,server,room,clie
 
 
 def execute_native(directory,*,uid,operation,target_id,x=0,y=0,park=None,item_token=None,timeout=5,
-                   expected_server=None,expected_room=None,expected_client=None):
+                   expected_server=None,expected_room=None,expected_client=None,expected_clients=None):
     directory=Path(directory);server=load_server(directory);room=select_instance(server,uid=uid)
     clients=load_clients(directory,uids=[uid]);require(uid in clients,'client_unavailable')
     snap=clients[uid];pid=snap['pid'];stem=f'dfdebug-test-control-{pid}'
     if expected_server is None:expected_server,expected_room,expected_client=server,room,snap
     check_binding(expected_server,expected_room,expected_client,server,room,snap)
+    if operation==6:
+        member_identity=lambda rows:[(m['uid'],m['character_id'],m['party_slot']) for m in rows]
+        expected_members=[m['uid'] for m in expected_room['members']]
+        if expected_clients is None:expected_clients=load_clients(directory,uids=expected_members)
+        require(set(expected_clients)==set(expected_members) and all(client_context(expected_clients[m]) is not None for m in expected_members),'all_dungeon_clients_required')
     with command_lock(directory,stem):
         # A newly entered native room must not be paired with the preceding
         # periodic server snapshot. Wait for a server observation after the
@@ -559,6 +566,11 @@ def execute_native(directory,*,uid,operation,target_id,x=0,y=0,park=None,item_to
         latest=load_server(directory,expected_nonce=server['session_nonce']);latest_room=select_instance(latest,uid=uid)
         latest_clients=load_clients(directory,uids=[uid]);require(uid in latest_clients,'client_unavailable')
         check_binding(expected_server,expected_room,expected_client,latest,latest_room,latest_clients[uid])
+        if operation==6:
+            require(member_identity(latest_room['members'])==member_identity(expected_room['members']),'party_changed')
+            require(next(m for m in latest_room['members'] if m['uid']==uid).get('alive') is True,'authoritative_living_player_required')
+            peers=load_clients(directory,uids=expected_members)
+            require(set(peers)==set(expected_members) and all(client_context(peers[m])==client_context(expected_clients[m]) for m in expected_members),'client_context_changed')
         if operation==5:
             old_source=drop_source(expected_room,uid=uid,slot=target_id,item_id=y)
             require(drop_source(latest_room,uid=uid,slot=target_id,item_id=y)==old_source,'inventory_source_changed')
@@ -652,6 +664,57 @@ def kill(directory,*,uid,monster_id,timeout=5):
         server_monster_removed=server_dead,clients_monster_dead=clients_dead,new_ground_items=drops,synchronization=sync)
 
 
+def player_death_sync(before,after,*,members,target_uid):
+    observed={}
+    for uid in members:
+        old=before.get(uid);new=after.get(uid);matched=False;same=False;person=None
+        if old and new and old.get('room') and new.get('room') and old.get('me') and new.get('me'):
+            same=(new.get('scene')==3 and new.get('valid') is True and not new.get('truncated')
+                and all(new.get(k)==old.get(k) for k in ('pid','process_started_filetime'))
+                and all(new['me'].get(k)==old['me'].get(k) for k in ('uid','user_token','actor_token'))
+                and all(new['room'].get(k)==old['room'].get(k) for k in ('map_token','stage_token'))
+                and new['generation']==old['generation'] and new['sequence']>old['sequence']
+                and new['captured_tick_ms']>old['captured_tick_ms'])
+            previous=[p for p in old['players'] if p['uid']==target_uid]
+            now=[p for p in new['players'] if p['uid']==target_uid]
+            if same and len(previous)==len(now)==1:
+                person=now[0]
+                matched=(all(person.get(k)==previous[0].get(k) for k in ('uid','actor_token','user_token'))
+                    and person.get('dead') is True and type(person.get('hp')) is int and person['hp']==0)
+                if uid==target_uid:
+                    matched=matched and new['me'].get('dead') is True and type(new['me'].get('hp')) is int and new['me']['hp']==0
+        observed[str(uid)]=dict(context_matched=same,matched=bool(matched),player=person)
+    return dict(complete=bool(members) and all(v['matched'] for v in observed.values()),clients=observed)
+
+
+def player_kill(directory,*,uid,timeout=5):
+    before=load_server(directory);room=select_instance(before,uid=uid);members=[m['uid'] for m in room['members']]
+    require(2<=len(members)<=4,'player_death_party_required')
+    target=next(m for m in room['members'] if m['uid']==uid)
+    require(target.get('alive') is True,'authoritative_living_player_required')
+    prior=load_clients(directory,uids=members)
+    require(set(prior)==set(members) and all(client_context(prior.get(m)) is not None for m in members),'all_dungeon_clients_required')
+    require(prior[uid]['me']['dead'] is False and type(prior[uid]['me']['hp']) is int and prior[uid]['me']['hp']>0,'live_player_required')
+    result=execute_native(directory,uid=uid,operation=6,target_id=uid,timeout=timeout,
+        expected_server=before,expected_room=room,expected_client=prior[uid],expected_clients=prior)
+    if result['native']['status']=='rejected':return dict(status='rejected',**result)
+    deadline=time.monotonic()+timeout;server_dead=False;sync={};error=None
+    try:
+        while time.monotonic()<deadline:
+            current=load_server(directory,expected_nonce=before['session_nonce']);other=select_instance(current,uid=uid,run_id=room['run_id'])
+            check_binding(before,room,prior[uid],current,other,prior[uid])
+            identity=lambda rows:[(m['uid'],m['character_id'],m['party_slot']) for m in rows]
+            require(identity(other['members'])==identity(room['members']),'party_changed')
+            server_dead=next(m for m in other['members'] if m['uid']==uid).get('alive') is False
+            sync=player_death_sync(prior,load_clients(directory,uids=members),members=members,target_uid=uid)
+            if server_dead and sync['complete']:break
+            time.sleep(.05)
+    except (TestControlError,state.SnapshotError,OSError) as failure:error=str(failure)
+    return dict(status='synchronized' if server_dead and sync.get('complete') else 'partial_sync',**result,
+        server_player_dead=server_dead,synchronization=sync,error=error,
+        authoritative_source='server_member_life_and_native_player_observers')
+
+
 def server_layout(directory,server,room,uid,placements,timeout):
     directory=Path(directory)
     with command_lock(directory,'dfdebug-test-server-command'):
@@ -723,6 +786,7 @@ def main(argv=None):
     p=sub.add_parser('state');p.add_argument('--uid',type=int)
     p=sub.add_parser('player');q=p.add_subparsers(dest='action',required=True);p=q.add_parser('teleport')
     for name in ('uid','x','y'):p.add_argument('--'+name,type=int,required=True)
+    p=q.add_parser('kill');p.add_argument('--uid',type=int,required=True)
     p=sub.add_parser('monster');q=p.add_subparsers(dest='action',required=True);p=q.add_parser('kill')
     p.add_argument('--uid',type=int,required=True);p.add_argument('--monster',type=int,required=True)
     p=sub.add_parser('drop');q=p.add_subparsers(dest='action',required=True);p=q.add_parser('isolate')
@@ -740,7 +804,7 @@ def main(argv=None):
             if args.uid is not None:value={**value,'instances':[select_instance(value,uid=args.uid)]}
             clients=load_clients(args.directory,uids=None if args.uid is None else [args.uid])
             result=dict(status='observed',server=value,clients=clients,client_ground=load_ground_clients(args.directory,clients))
-        elif args.command=='player':result=teleport(args.directory,uid=args.uid,x=args.x,y=args.y,timeout=args.timeout)
+        elif args.command=='player':result=player_kill(args.directory,uid=args.uid,timeout=args.timeout) if args.action=='kill' else teleport(args.directory,uid=args.uid,x=args.x,y=args.y,timeout=args.timeout)
         elif args.command=='monster':result=kill(args.directory,uid=args.uid,monster_id=args.monster,timeout=args.timeout)
         elif args.command=='inventory':result=inventory_drop(args.directory,uid=args.uid,slot=args.slot,item_id=args.item,count=args.count,timeout=args.timeout)
         elif args.command=='drop':result=isolate(args.directory,uid=args.uid,ground_id=args.ground,park=(args.park_x,args.park_y),timeout=args.timeout)

@@ -28,6 +28,24 @@ int RunClientTestControlRuntimeTests()
     int failures=0;auto check=[&](bool b,const char* label){if(!b){++failures;std::fprintf(stderr,"FAIL test-control IO: %s\n",label);}};
     {
         ControlMemory m;Native.context=&m;Native.read=ControlMemory::Read;
+        Request q{};q.operation=6;q.uid=77;q.targetId=77;q.actorToken=0x10000;q.mapToken=0x20000;q.userToken=0x30000;
+        m.Put(0xB75A14U,q.actorToken);m.Put(0x10000U,0xA032BCU);m.Put(0x100D0U,0x111U);
+        m.Secure(0x100D4,77,1);m.Put(0x100E4U,q.mapToken);m.Put(0x10128U,static_cast<unsigned char>(1));
+        m.Put(0x30110U,q.actorToken);m.Put(0x30004U,static_cast<unsigned short>(77));m.Secure(0x11168,470,2);m.Secure(0x1142C,0,3);
+        for(auto entry: {std::pair<unsigned,unsigned>{0x138,0x493880},{0x318,0x652A00},{0x324,0x47FD90},{0x328,0x481000},{0x32C,0x4A1E40},{0x330,0x652A20},{0x334,0x652A30}})
+            m.Put(0xA032BC+entry.first,entry.second);
+        std::uint32_t target=0;
+        check(ReadPlayerDeathTarget(q,target)&&target==q.actorToken,"player death binds only living local player and original HP policy");
+        q.targetId=78;check(!ReadPlayerDeathTarget(q,target),"player death cannot mutate another UID");q.targetId=77;
+        m.Put(0xB75A14U,0x40000U);check(!ReadPlayerDeathTarget(q,target),"changed local player rejected");m.Put(0xB75A14U,q.actorToken);
+        m.Secure(0x1142C,1,3);check(!ReadPlayerDeathTarget(q,target),"already dead player rejected before native call");m.Secure(0x1142C,0,3);
+        m.Secure(0x11168,0,2);check(!ReadPlayerDeathTarget(q,target),"zero HP transitional player rejected");m.Secure(0x11168,470,2);
+        m.Put(0x100D0U,0x211U);check(!ReadPlayerDeathTarget(q,target),"monster cannot enter player death operation");m.Put(0x100D0U,0x111U);
+        m.Put(0xA035E8U,0x4BCA70U);check(!ReadPlayerDeathTarget(q,target),"monster HP apply override cannot enter player death operation");
+        Native={};
+    }
+    {
+        ControlMemory m;Native.context=&m;Native.read=ControlMemory::Read;
         m.Put(0xB5DCECU,0xB0000U);m.Secure(0xB0000,0,1);m.Secure(0xB0010,16,2);m.Put(0xB0018U,0xC0000U);
         m.Put(0xB0020U,0U);m.Put(0xB0024U,0U);m.Put(0xB0028U,0U);
         for(unsigned i=0;i<16;++i)m.Put(0xC0000+i*4,0U);
@@ -142,6 +160,11 @@ int RunClientTestControlRuntimeTests()
     save(cmd,&r,sizeof(r));PumpWorker();OnFrame(s);PumpWorker();
     check(text().find("unsupported_layout")!=std::string::npos&&text().find("\"reserved\":262144")!=std::string::npos,"discard receipt binds observed item without invoking unsupported image");
     save(cmd,&r,sizeof(r));PumpWorker();OnFrame(s);PumpWorker();check(text().find("replayed_request")!=std::string::npos,"discard request is consumed at most once");
+    r.requestId=8;r.operation=6;r.targetId=77;r.x=r.y=r.reserved=0;
+    save(cmd,&r,sizeof(r));PumpWorker();OnFrame(s);PumpWorker();
+    check(text().find("unsupported_layout")!=std::string::npos,"player kill cannot run on an unsupported native image");
+    save(cmd,&r,sizeof(r));PumpWorker();OnFrame(s);PumpWorker();
+    check(text().find("replayed_request")!=std::string::npos,"player kill request is consumed at most once through file IO");
     PublishedState={};PublishedState.serial=++StateSerial;PublishedState.identity=r;PublishedState.tick=10000;
     PublishedState.inventory.valid=true;PublishedState.inventory.reason="ready";PublishedState.inventory.container=0xB0000;
     PublishedState.inventory.array=0xC0000;PublishedState.inventory.capacity=16;PublishedState.inventory.count=1;
@@ -149,7 +172,7 @@ int RunClientTestControlRuntimeTests()
     wchar_t stateFile[MAX_PATH]{};swprintf_s(stateFile,L"%s\\dfdebug-test-state-42.json",dir);
     {std::ifstream file(stateFile,std::ios::binary);const std::string json(std::istreambuf_iterator<char>(file),{});
      check(json.find("\"valid\":false")!=std::string::npos&&json.find("\"inventory\":{\"valid\":true")!=std::string::npos,"inventory export validity is independent of ground observation");
-     check(json.find("\"supported_operations\":[1,2,3,4,5]")!=std::string::npos&&json.find("\"item_token\":\"0x000D0000\",\"item_id\":0,\"count\":50000")!=std::string::npos,"inventory export includes exact original gold object and quantity");}
+     check(json.find("\"supported_operations\":[1,2,3,4,5,6]")!=std::string::npos&&json.find("\"item_token\":\"0x000D0000\",\"item_id\":0,\"count\":50000")!=std::string::npos,"inventory export includes exact original gold object and quantity");}
     Shutdown();DeleteFileW(cmd);DeleteFileW(leaseFile);DeleteFileW(result);DeleteFileW(stateFile);DeleteFileW(ini);RemoveDirectoryW(dir);
     std::printf("Client test control IO tests: %d failures\n",failures);return failures;
 }

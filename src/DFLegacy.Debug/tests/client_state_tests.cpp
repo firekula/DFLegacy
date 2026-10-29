@@ -53,6 +53,7 @@ namespace
             U32(actor + 0xE4, Map); U32(actor + 0xE0, 0);
             Secure(actor + 0x1168, 470); Secure(actor + 0xE38, 470);
             SecureFloat(actor + 0xE40, 1.0f); Secure(actor + 0x142C, 0);
+            Secure(actor + 0x1170, 123); Secure(actor + 0xE48, 1000); SecureFloat(actor + 0xE50, 1.25f);
             Put<unsigned char>(actor + 0x20A2, 0);
             for (std::uint32_t id = 0; id < MaximumSkills; ++id) U32(actor + 0x1AEC + id * 4, 0);
         }
@@ -82,6 +83,7 @@ namespace
             Put<unsigned char>(Stage + 0x110, 0); U32(Map + 0x10, 0x06100000); U32(Map + 0x14, 0x06100000);
             Secure(Map + 0x10C, 0);
             U32(Vtable + 0x330, 0x652A20); U32(Vtable + 0x334, 0x652A30);
+            U32(Vtable + 0x340, 0x652A70); U32(Vtable + 0x344, 0x652A80); U32(Vtable + 0x2E0, 0x652670);
             U32(Vtable + 0x80, 0x471610);
             U32(Vtable + 0x318, 0x652A00); U32(Vtable + 0x508, 0x493DC0); U32(Vtable + 0x51C, 0x4A3510);
             PlayerAt(Actor, 1); U32(Actor + 0xE0, 0x04100000);
@@ -262,8 +264,8 @@ static int RunDungeonAndExportTests()
     const auto newerExport = ToJson(first, memory.utc + 999999);
     Check(first.capturedTickMs == captured && newerExport.find("\"captured_tick_ms\":1000") != std::string::npos,
           "serialization cannot refresh capture time");
-    Check(json.find("\"mp\":null,\"max_mp\":null") != std::string::npos,
-          "unverified MP fields are explicitly null");
+    Check(json.find("\"mp\":123,\"max_mp\":1250") != std::string::npos,
+          "verified local MP fields are serialized through the actual capture");
     Check(first.room.mapClearState.known && first.room.mapClearState.value == 0
           && json.find("\"map_clear_state\":0") != std::string::npos,
           "native zero map-clear value remains raw zero rather than door-open inference");
@@ -467,6 +469,20 @@ static int RunDungeonAndExportTests()
 
 int RunClientStateTests()
 {
+    {
+        Memory m;m.U32(Memory::Vtable+0x2E0,0x652670);m.U32(Memory::Vtable+0x340,0x652A70);m.U32(Memory::Vtable+0x344,0x652A80);
+        m.Secure(Memory::Actor+0x1170,123);m.Secure(Memory::Actor+0xE48,151);m.SecureFloat(Memory::Actor+0xE50,0.999f);
+        History h;Snapshot s;Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"mp\":123,\"max_mp\":150")!=std::string::npos,"local MP and truncated maxMP follow verified native getters");
+        m.Secure(Memory::Actor+0xE48,16777217);m.SecureFloat(Memory::Actor+0xE50,1.0f);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"mp\":123,\"max_mp\":16777216")!=std::string::npos,"maxMP rounds base to float32 before native multiplication");
+        m.SecureFloat(Memory::Actor+0xE50,std::numeric_limits<float>::infinity());Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"mp\":123,\"max_mp\":null")!=std::string::npos,"invalid maxMP does not discard independently valid current MP");
+        m.SecureFloat(Memory::Actor+0xE50,256.0f);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"max_mp\":null")!=std::string::npos,"out-of-int32 maxMP is unknown rather than saturated");
+        m.U32(Memory::Vtable+0x340,0x12345678);Capture(m.Make(),h,s);
+        Check(ToJson(s,0).find("\"mp\":null,\"max_mp\":null")!=std::string::npos&&s.me.hp.known,"foreign MP getter does not fabricate MP or corrupt HP observation");
+    }
     RunTownStateTests();
     return RunDungeonAndExportTests();
 }

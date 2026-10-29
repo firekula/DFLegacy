@@ -1,0 +1,122 @@
+[
+  {
+    "file": "01-A-full-MP.jpg",
+    "bytes": 436050,
+    "sha256": "14AB19DC4C46298BA8D9916FFBF5DDDAD8CA4BB6907A09BE5A7ECD818F028DCC"
+  },
+  {
+    "file": "02-B-death.jpg",
+    "bytes": 421937,
+    "sha256": "335CE180E2DCE5983865C2A2779062242FC90CB52875C59957F4B7B999DDAB9C"
+  },
+  {
+    "file": "03-A-leader-death.jpg",
+    "bytes": 430749,
+    "sha256": "BEA61C1EFF5170D8321B72A8EC767FC40B8011D20C6F585BEDE410BC11E05412"
+  },
+  {
+    "file": "04-C-peer-HUD.jpg",
+    "bytes": 436499,
+    "sha256": "923FDB5B82441442547AEC262B6AC43029E13F4890AA348576300EF8EEB18ED7"
+  },
+  {
+    "file": "05-C-MP-consumed.jpg",
+    "bytes": 435100,
+    "sha256": "69636A7022305860AD309C99020CD22B5FBFCBE9A878CFF581A37F736FA7ACEB"
+  },
+  {
+    "file": "acceptance.json",
+    "bytes": 5618,
+    "sha256": "AA3F343081E49C09636B5C7E15260FED8F9D3352FD52D00DA38E5627F6E5A7B1"
+  },
+  {
+    "file": "final--client-navigation.txt",
+    "bytes": 72,
+    "sha256": "B4FAECBE6B668DDB73FFDEB9808DF62C21849F76607F19584CC0A645D9F061B5"
+  },
+  {
+    "file": "final--client-party.txt",
+    "bytes": 100,
+    "sha256": "2F2578F7968DCD8C7C0E43511C36960F46464CAB92336BA6CC6706C583D50B2E"
+  },
+  {
+    "file": "final--client-test-control.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "file": "final--town-route.txt",
+    "bytes": 221,
+    "sha256": "B19F4A5F20645D053AC9B2D5898E39B567CA94F39EE79A4A880900AD88FA11A0"
+  },
+  {
+    "file": "generation-red.txt",
+    "bytes": 372,
+    "sha256": "131CAF6B03865E816559F6C19358905A65FE34C64EBB4816E57D1814A353BAEF"
+  },
+  {
+    "file": "managed-full-green.txt",
+    "bytes": 399,
+    "sha256": "C9E4F87397BF7E5F82E2C645A00EEC858C75C194531A0A561779137CE480BA57"
+  },
+  {
+    "file": "managed-red-party.txt",
+    "bytes": 1078,
+    "sha256": "16E729982F4A667B3E83CF4D48581A4ADB0541128157693C3F6CA642B48B443F"
+  },
+  {
+    "file": "mp-final.txt",
+    "bytes": 32,
+    "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+  },
+  {
+    "file": "mp-red.txt",
+    "bytes": 272,
+    "sha256": "B53DCF512C4BF438A78D3955F4F1B73BC4B69E254ECD31B5B3AA271784EE63E6"
+  },
+  {
+    "file": "mp-static-contract.txt",
+    "bytes": 7529,
+    "sha256": "E679827568C00033526FAF79F4C0F44EAA43B335B259C84A80EA7C1BB62DC857"
+  },
+  {
+    "file": "native-final.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "file": "native-red.txt",
+    "bytes": 163,
+    "sha256": "CB2CBB1269FD6130E91E9937F29EC2C2CFBCA205F4B82C4AE1D63DD48DCEC340"
+  },
+  {
+    "file": "preflight-red-valid.txt",
+    "bytes": 484,
+    "sha256": "F4A353E845FAF2EE1EB39337A4490A6539EE1E7080102FE87F131EB8F7A56110"
+  },
+  {
+    "file": "python-full-final.txt",
+    "bytes": 1071,
+    "sha256": "3CC8D2CC91C5574CDA01BD5B11BB4DE922CBD8D06861B28D16DE02E5717057B3"
+  },
+  {
+    "file": "python-mp-related-green.txt",
+    "bytes": 345,
+    "sha256": "2E33EDA3866CEF2C103DE16A2026C259ADD2A761C8439224404043D01BC38DE7"
+  },
+  {
+    "file": "python-red.txt",
+    "bytes": 681,
+    "sha256": "0064B78A8123C887DB418E8C02ADBFFA49DE72EA45BE2DB5DE4AE15EA4638A20"
+  },
+  {
+    "file": "review.txt",
+    "bytes": 829,
+    "sha256": "F7EE6756DCE888FB461FE59BC74ADB6767C419822B23C3A304F29A4A0DA37416"
+  },
+  {
+    "file": "solo-life-red.txt",
+    "bytes": 267,
+    "sha256": "1AEC1E566CBF284EDE48D5D89A29FF7C636B07B5025E928A054D5323F7D98E1C"
+  }
+]

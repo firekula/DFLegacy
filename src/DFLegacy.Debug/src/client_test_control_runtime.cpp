@@ -304,6 +304,39 @@ namespace dfl::client_test_control
             Reads r;return r.Matches(0x481000,setter)&&r.Matches(0x473620,authority)&&r.Matches(0x47F480,owner)
                 &&r.Matches(0x4BCA70,apply)&&r.Matches(0x4811FC,cleanup);
         }
+        bool ReadPlayerDeathTarget(const Request& q,std::uint32_t& output) noexcept
+        {
+            output=0;Reads r;std::uint32_t actor=0,kind=0,uid=0,map=0,binding=0,hp=0,dead=1,table=0;
+            std::uint16_t userUid=0;unsigned char active=0;
+            if(q.operation!=6||q.targetId!=static_cast<std::int32_t>(q.uid)||q.x||q.y||q.reserved
+                ||!r.At(0xB75A14,0,actor)||actor!=q.actorToken||!r.At(actor,0,table)
+                ||!r.At(actor,0xD0,kind)||kind!=0x111||!r.Secure(actor,0xD4,uid)||uid!=q.uid
+                ||!r.At(actor,0xE4,map)||map!=q.mapToken||!r.At(q.userToken,0x110,binding)||binding!=actor
+                ||!r.At(q.userToken,4,userUid)||userUid!=uid||!r.At(actor,0x128,active)||active!=1
+                ||!r.Secure(actor,0x1168,hp)||!hp||hp>INT32_MAX||!r.Secure(actor,0x142C,dead)||dead)return false;
+            bool playerTable=false;for(auto expected:{0xA032BCU,0xA038DCU,0xA03EFCU,0xA0451CU,0xA04B3CU,0xA0515CU})playerTable|=table==expected;
+            if(!playerTable)return false;
+            constexpr std::uint32_t offsets[]={0x138,0x318,0x324,0x328,0x32C,0x330,0x334};
+            constexpr std::uint32_t functions[]={0x493880,0x652A00,0x47FD90,0x481000,0x4A1E40,0x652A20,0x652A30};
+            for(std::size_t i=0;i<7;++i)if(!r.Getter(actor,offsets[i],functions[i]))return false;
+            output=actor;return true;
+        }
+        const char* ApplyPlayerKill(const Command& command,const client_state::Snapshot& snapshot,std::size_t& applied,bool& touched) noexcept
+        {
+            __try
+            {
+                constexpr unsigned char self[]={0x8B,0xC1,0xC3};
+                constexpr unsigned char playerApply[]={0x55,0x8B,0xEC,0x64,0xA1,0,0,0,0,0x6A,0xFF,0x68,0x67,0x09,0x96,0,0x50,0x64,0x89,0x25,0,0,0,0,0x53,0x56,0x8B,0xF1,0x8B,0x06,0x57};
+                Reads r;std::uint32_t actor=0;
+                if(!DeathSignatures()||!r.Matches(0x493880,self)||!r.Matches(0x4A1E40,playerApply)
+                    ||!LiveContext(command,snapshot)||!ReadPlayerDeathTarget(command.request,actor))return "player_not_alive_self_or_layout";
+                using Authority=bool(__thiscall*)(void*);using Hp=void(__thiscall*)(void*,int,bool,void*);
+                if(!reinterpret_cast<Authority>(0x473620)(reinterpret_cast<void*>(actor)))return "player_not_local_authority";
+                // Same original HP setter ABI, player-specific v32C apply policy.
+                touched=true;reinterpret_cast<Hp>(0x481000)(reinterpret_cast<void*>(actor),0,true,nullptr);applied=1;return nullptr;
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER){return "native_player_death_request_failed";}
+        }
         const char* ApplyKill(const Command& command,const client_state::Snapshot& snapshot,std::size_t& applied,bool& touched) noexcept
         {
             __try
@@ -421,9 +454,10 @@ namespace dfl::client_test_control
                 {if(!SetPosition(q.actorToken,q.x,q.y,touched))error="native_position_failed";else applied=1;}
                 else if(q.operation==2)error=ApplyKill(command,snapshot,applied,touched);
                 else if(q.operation==5)error=ApplyInventoryDrop(command,snapshot,applied,touched);
+                else if(q.operation==6)error=ApplyPlayerKill(command,snapshot,applied,touched);
                 else error=ApplyGround(command,snapshot,applied,touched);
             }
-            GameResult={q,error?(touched?"partial":"rejected"):"applied",error?error:(q.operation==2?"native_death_requested":q.operation==5?"native_drop_requested":"native_position_observed"),Now(),++NextSerial,applied};FlushResult();
+            GameResult={q,error?(touched?"partial":"rejected"):"applied",error?error:(q.operation==2?"native_death_requested":q.operation==6?"native_player_death_requested":q.operation==5?"native_drop_requested":"native_position_observed"),Now(),++NextSerial,applied};FlushResult();
         }
         bool SameFile(const BY_HANDLE_FILE_INFORMATION& a,const BY_HANDLE_FILE_INFORMATION& b) noexcept
         {return a.dwVolumeSerialNumber==b.dwVolumeSerialNumber&&a.nFileIndexHigh==b.nFileIndexHigh&&a.nFileIndexLow==b.nFileIndexLow
@@ -486,7 +520,7 @@ namespace dfl::client_test_control
                 out<<",\"descriptor_token\":";Token(out,row.ground.descriptor);
                 out<<",\"x\":"<<row.position.x<<",\"y\":"<<row.position.y<<",\"z\":"<<row.position.z<<",\"active\":"<<(row.ground.active?"true":"false")<<",\"pending\":"<<(row.ground.pending?"true":"false")<<'}';
             }
-            out<<"],\"supported_operations\":[1,2,3,4,5],\"inventory\":{\"valid\":"<<(state.inventory.valid?"true":"false")
+            out<<"],\"supported_operations\":[1,2,3,4,5,6],\"inventory\":{\"valid\":"<<(state.inventory.valid?"true":"false")
                 <<",\"reason\":\""<<state.inventory.reason<<"\",\"space\":0,\"container_token\":";Token(out,state.inventory.container);
             out<<",\"array_token\":";Token(out,state.inventory.array);
             out<<",\"capacity\":"<<state.inventory.capacity<<",\"pending\":"<<(state.inventory.pending?"true":"false")<<",\"items\":[";

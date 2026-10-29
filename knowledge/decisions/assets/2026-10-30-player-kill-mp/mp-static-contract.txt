@@ -1,0 +1,42 @@
+U05 local-player MP static native contract (2026-10-30)
+Scope: original ACT1 PE static reads only; no client launch, process inspection, OS input, builds, product/test modifications. New evidence files are confined to this directory.
+Image: G:/Game/DNF_ACT1/Loot4_A/DNF.exe
+SHA256: 6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5
+Image base: 0x00400000. All addresses below are original preferred VAs.
+
+SUPPORTED GETTERS
+- current MP: int __thiscall(actor*), vtable+0x340 => 0x00652A70. Exact 11 bytes 81c170110000e9b5f5daff. Tailcalls secure-int reader 0x00402030 on actor+0x1170. Returns the decoded signed 32-bit value unchanged; no getter clamp, no scaling.
+- maximum MP: int __thiscall(actor*), vtable+0x344 => 0x00652A80. Exact full 55-byte body captured in contract.json/native-evidence.txt. Calls vtable+0x2E0 with selector3, reads secure int at returned stats+0x18 and secure float at stats+0x20. Converts signed base to x87 then stores to float32, loads secure float factor, multiplies by rounded base, truncates toward zero via CRT helper0x0091B708, returns EAX unchanged. No getter clamp/finite check. Helper returns a 64-bit EDX:EAX integer; meaningful 32-bit observation must guard representability.
+- stat selector: Stats* __thiscall(actor*, int selector), vtable+0x2E0 => 0x00652670. actor+0x488+selector*0x338, ret4. Selector3=>actor+0xE30; baseMaxMP secure+0xE48; maxMP factor secure float+0xE50.
+- local-player table0x00A032BC has +0x2E0=652670, +0x330=652A20 HP, +0x334=652A30 maxHP, +0x340=652A70 MP, +0x344=652A80 maxMP; it also matches existing level508=493DC0 and direction51C=4A3510 contracts. contract.json includes exact entry VAs and bodies. Scanning original pointer tables finds256 tables with these matching HP/MP getters; all share selector652670. This static type family does not by itself authorize expanding U05 to remote players or town actor layouts.
+
+SECURE READ CONTRACT
+Same secure scheme as existing HP reads: pair at field (encoded,index); (encoded XOR global key atCFD45C)-field ==index. Global manager pointerCFD458, table pointers manager+44/+48. Decode each mirror as value_at(table+index*4) XOR address_of_slot XOR key; mirrors must agree. Secure int402030 returns bits inEAX; secure float418260 loads those bits as float toST0. Observer adds its existing index/count/pointer safety checks and must never invoke native error handlers901470.
+
+INDEPENDENT NATIVE CALLERS
+1. 00494FD0 (complete body through49506D): reads secure actor+1170; signed compare against cost at494FE8. If sufficient, subtracts cost at495054 and calls virtual+33C at49505D. Confirms actual consumption uses same MP field; no percent conversion or 100/1000 scaling.
+2. 0049C760 and0049CA51: skill cost path independently reads secure1170, compares/subtracts native calculated cost4F4D30, then virtual+33C at49CA6A. Raw range in getters-initial.txt/candidates.txt and callers-first.txt; no stronger function-name claim is inferred.
+3. 007C8DEE..7C8E55: UI gets maxMP+344 (7C8E1B) and currentMP+340 (7C8E27), formats both through renderer+58 using native stringA7DE0C=%d/%d. 7D06F2/7D06FE and7BC9A2/7BC9AE repeat this order in other UI views. Calls prove direct integer current/maximum display; they do not alone prove that these particular UI objects always hold the local player.
+4. 0089E14D..89E17D: roster actor fielduser+110, compares virtual maxMP344/currentMP340; if unequal calls setter33C with maxMP. Separate refill behavior; getter itself does not clamp.
+5. 00481870 (virtual338): before downstream raw setter, clamps requested MP below0 to0 at4818B8..C2, above native maxMP344 down to max at4818C4..D8; may early return for actor/death/special-state conditions. Exact body through481993 captured. Raw virtual33C=>481F00 accepts integer and writes both secure1170 mirrors without range clamp, apart from special-state decrease suppression. Therefore MP>maxMP can exist transiently or via direct33C; do not invent a getter clamp or silently replace raw MP with maximum.
+
+BOUNDARIES AND IMPLEMENTATION CAUTIONS
+- Float32 rounding of base is explicit even before multiplication. At default nearest rounding, 16777217 becomes16777216; float(INT32_MAX) becomes2147483648. A plain double(base)*factor does not exactly model this step.
+- Native x87 control word precision/rounding at runtime was not observed under this read-only task. Do not claim exact tie/subnormal/overflow behavior from static arithmetic alone. Use ordinary non-boundary factors for initial acceptance; live FPU control state would be needed for exhaustive x87 numeric equivalence. A float32 product may differ from an extended product, e.g. 10*float32(0.7). No live client operations were performed.
+- For safe snapshot observation, return unknown for unsupported getter/selector signatures, secure corruption/read failure, negative currentMP, negative base/factor, NaN/Inf factor, or a nonfinite/out-of-int32 computed maximum. Such guards are observer policy, not claimed original clamps. Zero values are valid. Keep other proven fields available on MP failure.
+- Do not assume mp<=max_mp is a getter invariant; direct33C has no clamp. If policy rejects this relationship, explain as observer policy instead of native behavior.
+- Town actor has a distinct table/binding; current evidence is dungeon actor only. Local identity/map consistency must continue using existing sample checks. If task scope is local-only, preserve remote/town MP asunknown.
+
+MEANINGFUL TEST RECOMMENDATIONS (not implemented here)
+1. Fixture with local matching340/344/2E0 signatures and secure current123, base1000, factor1.25 =>123/1250; confirms offsets, signed/float decoding and scaling separately from HP.
+2. Zero current and zero maximum remain known zero; dead actor behavior should preserve valid native reads unless U05 contract explicitly excludes it.
+3. base1001 factor0.5 =>500, andbase1001 factor1.25=>1251 prove truncation rather than rounding.
+4. base16777217 factor1=>16777216 tests explicit float32 base step; document assumed runtime nearest mode. baseINT32_MAX factor1 must not accidentally report2147483647 using double(base).
+5. Each of340,344,2E0 wrong/missing independently prevents unsupported result; do not require fixed vtable base if intentionally supporting all original-compatible subclasses.
+6. Per MP/base/factor field, broken encoded/index relation, out-of-range index, unreadable mirrors and mismatched mirrors =>unknown, preserving existing HP/identity.
+7. Negative current, negative base/factor, NaN/Inf and maximum overflow =>unknown; ensure no C++ out-of-range float-to-int conversion occurs. Use exact secure float bit patterns for nonfinite inputs.
+8. mp>max_mp tests raw observation policy explicitly. Do not silently clamp it while claiming native getter equivalence.
+9. JSON actually serializes known MP/maxMP values and keeps unknown asnull; Python schema accepts valid values and still failsclosed on negative/out-of-range/wrongtype. Existing test currently rejects every nonnull MP and must change when root implements observation.
+10. Local-only scope: remote/town MP remainsnull; capture identity/map change must discard mixed sample. Export/reload/wait(mp condition) should use a fresh sequence and never matchunknown.
+
+Evidence status: STATIC CONTRACT VERIFIED for this exact image; no live MP recovery or visual/HUD parity claim. All research outputs are new files under D repo .tmp/local-mp-20261030/. Frozen .tmp/test-control-20261029 and .tmp/active-drop-four-20261029 were not written.

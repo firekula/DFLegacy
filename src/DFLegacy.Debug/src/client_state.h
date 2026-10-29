@@ -17,7 +17,7 @@ namespace dfl::client_state
     {
         Value<std::uint32_t> uid{};
         std::uint32_t userToken = 0, actorToken = 0, mapToken = 0;
-        Value<std::int32_t> hp{}, maxHp{};
+        Value<std::int32_t> hp{}, maxHp{}, mp{}, maxMp{};
         Value<bool> dead{}, sameMap{}, detached{};
         Position position{};
     };
