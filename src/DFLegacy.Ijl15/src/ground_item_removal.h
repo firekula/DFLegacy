@@ -40,10 +40,32 @@ namespace dfl::ground_item_removal
             void (__cdecl* Deactivate)(void* actor);
         };
 
+        struct ContextReader
+        {
+            void* State = nullptr;
+            bool (__cdecl* Read)(void*, std::uintptr_t, void*, std::size_t) = nullptr;
+        };
+        struct MapContext
+        {
+            void* Stage = nullptr;
+            void* UiStage = nullptr;
+            void* Map = nullptr;
+            void* Actor = nullptr;
+            void* ActorMap = nullptr;
+            int Scene = -1;
+            bool DeathKnown = false;
+            bool Dead = false;
+            const char* Reason = "context-unavailable";
+        };
+        // Read the actual receiver's current dispatcher/UI context. No native
+        // secure getter is called: protected mirrors are decoded read-only.
+        void* ReadCurrentMap(void* dispatcher, const ContextReader& reader,
+            MapContext& context) noexcept;
+
         // This only marks the matched ground actor inactive, as NOTI39 does.
         // The existing map frame then removes it and destroys its descriptor.
         // There is no inventory grant or descriptor detachment on this path.
         bool ApplyRemoval(void* map, const PickupRemoval& removal,
-            const ClientFunctions& functions) noexcept;
+            const ClientFunctions& functions, const char** outcome = nullptr) noexcept;
     }
 }

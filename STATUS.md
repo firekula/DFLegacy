@@ -1,5 +1,7 @@
 # 项目状态与接续说明
 
+2026-10-30 队列最后U11：[死亡队员接收端修复](knowledge/decisions/2026-10-30-dead-ground-removal-verification.md)完成旧版复现和新8B06模块四端同房／真门往返／金币验收；目标actor最终不存在，关闭后装备唯一。32项及完整IJL通过，debug修改仍要求存活。U07历史同步、U08剩余卡顿和回城第四人邀请仍阻断，不写成全游戏完成。
+
 2026-10-30 U09：[技能栏持久化](knowledge/decisions/2026-10-30-skillbar-persistence-verification.md)完成同档基线及修复版两轮实机，逐包处理／null及替换失败回滚、CLI明确种子来源已补。完整托管通过，Python567／413subtests、2跳过及6既有失败。正常存档保持，接U11最后。
 
 2026-10-30 U10：[超重原始协议复核](knowledge/decisions/2026-10-30-overweight-verification.md)确认实际发送2.526kg，克→公斤换算已正确；纠正旧图文字解释，无业务修改。继续U09，U11最后。

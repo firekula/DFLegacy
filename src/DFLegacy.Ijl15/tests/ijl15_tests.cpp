@@ -1329,10 +1329,13 @@ bool TestSyntheticKeyboardStateMerge()
 }
 }
 
+bool TestGroundItemRemovalContext();
 bool TestAutoInputDrag();
 
 int main(int argc, char** argv)
 {
+    if (argc == 2 && std::strcmp(argv[1], "--ground-item-removal-only") == 0)
+        return TestGroundItemRemovalNotification() && TestGroundItemRemovalContext() ? 0 : 1;
     if (argc == 2 && std::strcmp(argv[1], "--auto-input-drag-only") == 0) return TestAutoInputDrag() ? 0 : 1;
     if (!TestAutoInputDrag()) return Fail("auto-input drag failed");
     if (argc == 2 && std::strcmp(argv[1], "--dungeon-tooltip-only") == 0) return TestDungeonTooltipCleanup()?0:1;
@@ -1400,6 +1403,7 @@ int main(int argc, char** argv)
     {
         return Fail("Priest healing target replay failed");
     }
+    if (!TestGroundItemRemovalContext()) return Fail("ground receiver context failed");
     if (!TestGroundItemRemovalNotification())
     {
         return Fail("ground item removal notification failed");

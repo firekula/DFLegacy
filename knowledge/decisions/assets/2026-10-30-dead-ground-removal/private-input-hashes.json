@@ -1,0 +1,52 @@
+[
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-setup-complete.json",
+    "sha256": "BBEF0A8177702A467193ED9D82CDAF1E507E2CB1FB37D8116B8C039E8171637A",
+    "bytes": 64850
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-two-dead-before-pickup.json",
+    "sha256": "6C6E5A26BEF8157B37C1585AAE9304EB6DC00B10922B5E98C713883DB988644F",
+    "bytes": 82446
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-same-room-stable-removal.json",
+    "sha256": "1CF9DA3CC9C96985EB7804A0A28990AAE7592F72A2BF1B39D993770A1B715A4A",
+    "bytes": 1167586
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-away-room-entered.json",
+    "sha256": "E34898D72AB2B554D489FCED1D46E21D7797DF5AC7756E66DB3237C71CB29BD3",
+    "bytes": 70162
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-away-ground-not-visible.json",
+    "sha256": "CFB0968890476239910F6125A392FBC291F18A30FA11CF975680BCC967BCE7DA",
+    "bytes": 76278
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-return-room-entered.json",
+    "sha256": "168B054B4964FA6D3436A0064A138597E4E4EA95543AC69FD71CE7A20CBCE4EC",
+    "bytes": 62906
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-returned-blue-preserved.json",
+    "sha256": "EC441C82B4BFBA0CFCF7BB8C001B3C06C9692C66F34D327026849DF36863AB6D",
+    "bytes": 36173
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-after-return-stable-removal.json",
+    "sha256": "037419C28DB2CC8E310E19C92A179DC1F0DF4F7E96973CDA6BF1EC7DD187062B",
+    "bytes": 1145002
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-gold-and-final-verified.json",
+    "sha256": "7C3EC2A40F11E024E2FB0BC8D6D14DFA0A06998D8D2FFF1D53FD769620820755",
+    "bytes": 76040
+  },
+  {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-remove-verification-20261030\\evidence-dead-remove-v3\\u11-final-live-audit.json",
+    "sha256": "76E3B5DE445061BD16C5E7479A31C5A4310AFC87132653B5758BC93BD01008D1",
+    "bytes": 83721
+  }
+]

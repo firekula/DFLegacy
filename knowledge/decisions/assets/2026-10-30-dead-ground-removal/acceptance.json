@@ -1,0 +1,346 @@
+{
+  "schema": "dfl-dead-ground-removal-acceptance/v1",
+  "native_ijl_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+  "debug_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+  "server_sha256": "AA11B5DB22B5C674E2041F3F72D44ADAE8009ACDB7A7AC3B9E73CDAC51081907",
+  "phase": "dead-remove-v3",
+  "source_manifest_sha256": "6E37E7D4155C33BF9246024422275C78A1D001CAF046C932235921F65A254BB4",
+  "closed_state_sha256": "066353E2517632E3598494EA79869F8D4F75CA3B9A249485B85CD8CF2689EE03",
+  "room_transition": [
+    {
+      "run_id": 639289013838036063,
+      "room_generation": 1,
+      "room_x": 0,
+      "room_y": 0,
+      "map_id": 3
+    },
+    {
+      "run_id": 639289013838036063,
+      "room_generation": 2,
+      "room_x": 1,
+      "room_y": 0,
+      "map_id": 6
+    },
+    {
+      "run_id": 639289013838036063,
+      "room_generation": 3,
+      "room_x": 0,
+      "room_y": 0,
+      "map_id": 3
+    }
+  ],
+  "setup_records": {
+    "white": {
+      "ground": {
+        "ground_id": 2,
+        "item_id": 13201,
+        "count": 1,
+        "is_gold": false,
+        "x": 400,
+        "y": 230,
+        "pending": false,
+        "instance_id": "01a16d9a-7ed2-7e64-9306-3c09cbd0a36e",
+        "owner_uid": 1,
+        "routing_source": 0,
+        "state": 0,
+        "durability": 34,
+        "seal_state": 0,
+        "equipment_quality_seed": null
+      },
+      "item": {
+        "space": "main",
+        "slot": 13,
+        "item_id": 13201,
+        "count": 1,
+        "instance_id": "01a16d9a-7ed2-7e64-9306-3c09cbd0a36e",
+        "state": 0,
+        "durability": 34,
+        "seal_state": 0,
+        "equipment_quality_seed": null
+      }
+    },
+    "control": {
+      "ground": {
+        "ground_id": 3,
+        "item_id": 13201,
+        "count": 1,
+        "is_gold": false,
+        "x": 400,
+        "y": 230,
+        "pending": false,
+        "instance_id": "01a16db6-f45d-796f-acb6-92d57bef4dea",
+        "owner_uid": 1,
+        "routing_source": 0,
+        "state": 0,
+        "durability": 34,
+        "seal_state": 0,
+        "equipment_quality_seed": null
+      },
+      "item": {
+        "space": "main",
+        "slot": 15,
+        "item_id": 13201,
+        "count": 1,
+        "instance_id": "01a16db6-f45d-796f-acb6-92d57bef4dea",
+        "state": 0,
+        "durability": 34,
+        "seal_state": 0,
+        "equipment_quality_seed": null
+      }
+    },
+    "blue": {
+      "ground": {
+        "ground_id": 4,
+        "item_id": 24002,
+        "count": 1,
+        "is_gold": false,
+        "x": 400,
+        "y": 230,
+        "pending": false,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471",
+        "owner_uid": 1,
+        "routing_source": 0,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null
+      },
+      "item": {
+        "space": "main",
+        "slot": 22,
+        "item_id": 24002,
+        "count": 1,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471",
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null
+      }
+    },
+    "gold": {
+      "ground": {
+        "ground_id": 5,
+        "item_id": 0,
+        "count": 100,
+        "is_gold": true,
+        "x": 400,
+        "y": 230,
+        "pending": false,
+        "instance_id": "00000000-0000-0000-0000-000000000000",
+        "owner_uid": 1,
+        "routing_source": 0,
+        "state": null,
+        "durability": null,
+        "seal_state": null,
+        "equipment_quality_seed": null
+      }
+    }
+  },
+  "same_room": {
+    "event": {
+      "event_id": 1,
+      "persisted": true,
+      "run_id": 639289013838036063,
+      "room_generation": 1,
+      "map_id": 3,
+      "room_x": 0,
+      "room_y": 0,
+      "ground_id": 2,
+      "item_id": 13201,
+      "count": 1,
+      "is_gold": false,
+      "pickup_id": "4eb193eb-3e94-4aab-9b2f-64d2498724b7",
+      "picker_uid": 1,
+      "winner_uid": 1,
+      "winner_character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+      "party_slot": 0,
+      "scores": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "status": "committed",
+      "reason": "persisted",
+      "publication_error": null,
+      "destination_slot": 13,
+      "instance_id": "01a16d9a-7ed2-7e64-9306-3c09cbd0a36e",
+      "captured_filetime": 134377782166514127
+    },
+    "samples": 21,
+    "unique_sequences": {
+      "1": 11,
+      "2": 10,
+      "3": 10,
+      "4": 10
+    }
+  },
+  "after_return": {
+    "event": {
+      "event_id": 2,
+      "persisted": true,
+      "run_id": 639289013838036063,
+      "room_generation": 3,
+      "map_id": 3,
+      "room_x": 0,
+      "room_y": 0,
+      "ground_id": 4,
+      "item_id": 24002,
+      "count": 1,
+      "is_gold": false,
+      "pickup_id": "2564355f-f4a1-4016-986b-e7cb198049c3",
+      "picker_uid": 1,
+      "winner_uid": 1,
+      "winner_character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+      "party_slot": 0,
+      "scores": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "status": "committed",
+      "reason": "persisted",
+      "publication_error": null,
+      "destination_slot": 15,
+      "instance_id": "01a18860-caab-7803-a562-f84ce92c8471",
+      "captured_filetime": 134377782916289374
+    },
+    "samples": 21,
+    "unique_sequences": {
+      "1": 10,
+      "2": 10,
+      "3": 10,
+      "4": 10
+    }
+  },
+  "gold": {
+    "event": {
+      "event_id": 3,
+      "persisted": true,
+      "run_id": 639289013838036063,
+      "room_generation": 3,
+      "map_id": 3,
+      "room_x": 0,
+      "room_y": 0,
+      "ground_id": 5,
+      "item_id": 0,
+      "count": 100,
+      "is_gold": true,
+      "pickup_id": "8b44e7b1-81db-4aa5-8190-0d34ae97bf09",
+      "picker_uid": 2,
+      "winner_uid": 2,
+      "winner_character_id": "9483cd28-722b-4d1e-8251-a9b710a42c6f",
+      "party_slot": 1,
+      "scores": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "status": "committed",
+      "reason": "gold-ledger-committed",
+      "publication_error": null,
+      "destination_slot": null,
+      "instance_id": "00000000-0000-0000-0000-000000000000",
+      "captured_filetime": 134377783881185190
+    },
+    "before": {
+      "1": 50468,
+      "3": 50029,
+      "4": 50036,
+      "2": 50189
+    },
+    "after": {
+      "1": 50518,
+      "3": 50029,
+      "4": 50036,
+      "2": 50239
+    },
+    "expected": {
+      "1": 50518,
+      "3": 50029,
+      "4": 50036,
+      "2": 50239
+    },
+    "dead_after_room_change_ineligible": [
+      "C",
+      "D"
+    ],
+    "repeat_unchanged": true
+  },
+  "closed_owned_instances": {
+    "white": [
+      {
+        "character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+        "space": "Inventory",
+        "item": {
+          "Slot": 13,
+          "ItemId": 13201,
+          "CountOrValue": 1,
+          "State": 0,
+          "Durability": 34,
+          "SealState": 0,
+          "AvatarExpireAt": null,
+          "AvatarAbilityIndex": null,
+          "CreatureStomach": null,
+          "CreatureExperience": null,
+          "CreatureLevel": null,
+          "CreatureName": null,
+          "CreatureNoCharge": null,
+          "CreatureStomachRemainderSeconds": null,
+          "EquipmentQualitySeed": null,
+          "InstanceId": "01a16d9a-7ed2-7e64-9306-3c09cbd0a36e"
+        }
+      }
+    ],
+    "blue": [
+      {
+        "character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+        "space": "Inventory",
+        "item": {
+          "Slot": 15,
+          "ItemId": 24002,
+          "CountOrValue": 1,
+          "State": 0,
+          "Durability": 0,
+          "SealState": 0,
+          "AvatarExpireAt": null,
+          "AvatarAbilityIndex": null,
+          "CreatureStomach": null,
+          "CreatureExperience": null,
+          "CreatureLevel": null,
+          "CreatureName": null,
+          "CreatureNoCharge": null,
+          "CreatureStomachRemainderSeconds": null,
+          "EquipmentQualitySeed": null,
+          "InstanceId": "01a18860-caab-7803-a562-f84ce92c8471"
+        }
+      }
+    ]
+  },
+  "all_target_actors_absent": true,
+  "same_item_control_active": true,
+  "actual_client_ijl_sha256": {
+    "A": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+    "B": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+    "C": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+    "D": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18"
+  },
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "restored_INIs": 4,
+  "restored_client_IJLs": 4,
+  "protected_unchanged": 16,
+  "old_frozen_namespaces_verified": 31,
+  "normal_directory_deployed": false,
+  "processes_closed": true,
+  "limits": [
+    "Old-build baseline resulted from launcher replacing planned IJL; hash mismatch identified and kept as old reproduction, never counted as fixed-build failure.",
+    "Private apphost startup did not return, with no game process/confirmation window; owned helper/server stopped; known launcher used with temporary backed-up bundle restored after launch.",
+    "Gold committed before an observer-script KeyError (gold is slot0/count); corrected read-only resume, no resend.",
+    "Original revive prompt partly occludes ground; pictures show scene/death context, data and native receiver logs prove removal.",
+    "No native revival-after-removal or retained-nonzero dead actor map case was performed; old-map branch is fixture-covered.",
+    "Nine-byte payload has no room epoch: no universal stale-packet rejection claim.",
+    "Managed/Python product code unchanged from U09; latest full managed passed and Python retained6known failures, not rerun here."
+  ]
+}

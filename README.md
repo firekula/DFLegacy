@@ -1,5 +1,7 @@
 # DFLegacy
 
+2026-10-30：[U11死亡队员地面清除](knowledge/decisions/2026-10-30-dead-ground-removal-verification.md)已修复并四端验证，同房白装／真实换房返回蓝装／金币通过，5张原图；U07／U08及再邀请的原生生命周期阻断仍明确保留。
+
 2026-10-30：[技能栏同档持久化](knowledge/decisions/2026-10-30-skillbar-persistence-verification.md)两轮实际编辑／重登／服务端重启通过，补逐包保存和测试种子来源／延续。U11最后接续。
 
 2026-10-30：[超重协议复核](knowledge/decisions/2026-10-30-overweight-verification.md)确认实际2.526kg，无需额外单位修复。
