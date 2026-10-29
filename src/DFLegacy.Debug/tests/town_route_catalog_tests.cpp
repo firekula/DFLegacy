@@ -143,6 +143,21 @@ int RunTownRouteCatalogTests()
     Check(LoadFixture(Archive(files), c, error) && c.Find({1, 0}) != nullptr, "strict CP949 normalized directory paths");
     files[1].second = "[area]\n0 `test/\xB8\xB6\xC0\xBB.map` `[normal]`\n[/area]"; files[2].first = "map/test/\xB8\xB6\xC0\xBB.map";
     Check(LoadFixture(Archive(files), c, error) && c.Find({1, 0}) && c.Find({1, 0})->mapPath == u8"map/test/마을.map", "CP949 map references become UTF8 catalog paths");
+    // CP949 includes case pairs outside ASCII: Greek, Cyrillic and fullwidth.
+    // Directory normalization must agree with Python/C# invariant lowercase.
+    for (const auto& pair : std::vector<std::pair<std::string, std::string>>{
+            {"\xA5\xC1", "\xA5\xE1"}, {"\xAC\xA1", "\xAC\xD1"}, {"\xA3\xC1", "\xA3\xE1"}})
+    {
+        for (bool reverse : {false, true})
+        {
+            files = Files(Map("0 0 100 100"));
+            files[0].second = "1 `" + (reverse ? pair.first : pair.second) + ".twn`\n";
+            files[1].first = "town/" + (reverse ? pair.second : pair.first) + ".twn";
+            Check(LoadFixture(Archive(files), c, error) && error.empty() && c.Find({1, 0}), "CP949 non-ASCII directory/reference case pairs agree");
+        }
+        files.push_back({"town/" + pair.first + ".twn", files[1].second});
+        Check(!LoadFixture(Archive(files), c, error) && error == "invalid_pvf", "Unicode-normalized duplicate directory rejected");
+    }
     for (const Bytes& bytes : std::vector<Bytes>{Bytes{}, Bytes(26, 0), Bytes(27, 0)})
         Check(!LoadFixture(bytes, c, error) && error == "invalid_pvf" && c.areas.size() == 1, "invalid archive preserves old catalog");
     auto bytes = Archive(Files(Map("0 0 100 100"))); bytes[15] = 3;

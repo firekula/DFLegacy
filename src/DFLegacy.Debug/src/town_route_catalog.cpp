@@ -154,9 +154,28 @@ namespace dfl::town_route
         }
         std::string Lower(std::string text)
         { for (char& c : text) if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A')); return text; }
+        std::string LowerPath(std::string text, const char* code)
+        {
+            // ASCII tags keep the cheap helper above; CP949 paths also carry
+            // Greek/Cyrillic/fullwidth case pairs. Match the original reader's
+            // invariant Unicode lowercase before comparing UTF8 path keys.
+            if (std::all_of(text.begin(), text.end(), [](unsigned char c) { return c < 128; })) return Lower(std::move(text));
+            if (text.size() > MaxEntry) Bad(code);
+            const int size = static_cast<int>(text.size());
+            const int count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), size, nullptr, 0);
+            if (count <= 0) Bad(code); std::wstring wide(static_cast<std::size_t>(count), L'\0');
+            if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), size, wide.data(), count) != count) Bad(code);
+            const int mappedSize = LCMapStringEx(LOCALE_NAME_INVARIANT, LCMAP_LOWERCASE, wide.data(), count, nullptr, 0, nullptr, nullptr, 0);
+            if (mappedSize <= 0) Bad(code); std::wstring mapped(static_cast<std::size_t>(mappedSize), L'\0');
+            if (LCMapStringEx(LOCALE_NAME_INVARIANT, LCMAP_LOWERCASE, wide.data(), count, mapped.data(), mappedSize, nullptr, nullptr, 0) != mappedSize) Bad(code);
+            const int utf8Size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, mapped.data(), mappedSize, nullptr, 0, nullptr, nullptr);
+            if (utf8Size <= 0) Bad(code); std::string result(static_cast<std::size_t>(utf8Size), '\0');
+            if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, mapped.data(), mappedSize, result.data(), utf8Size, nullptr, nullptr) != utf8Size) Bad(code);
+            return result;
+        }
         std::string Normalize(std::string path, const char* code)
         {
-            for (char& c : path) if (c == '\\') c = '/'; path = Lower(std::move(path));
+            for (char& c : path) if (c == '\\') c = '/'; path = LowerPath(std::move(path), code);
             if (path.empty() || path.front() == '/' || path.find('\0') != std::string::npos || path.find(':') != std::string::npos) Bad(code);
             std::size_t cursor = 0;
             for (;;)
