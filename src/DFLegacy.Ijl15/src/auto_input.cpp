@@ -91,7 +91,7 @@ namespace dfl::auto_input
         bool g_downDone[kMaxSteps] = {};
         bool g_upDone[kMaxSteps] = {};   // key/click: up fired; move: the move fired
         bool g_dragMoveDone[kMaxSteps] = {};
-        unsigned g_dragStageTick[kMaxSteps] = {};
+        unsigned g_mouseStageTick[kMaxSteps] = {};
         bool g_mouseLeftDown = false;
         bool g_mouseRightDown = false;
         int g_mouseX = 0;
@@ -1520,6 +1520,25 @@ namespace dfl::auto_input
             SynthClear();
         }
 
+        bool EarlierMouseBlocks(int index, unsigned nowMs) noexcept
+        {
+            const Step& step = g_plan[index];
+            for (int i = 0; i < g_count; ++i)
+            {
+                if (g_plan[i].op == kKey || g_plan[i].op == kText || g_plan[i].t > step.t
+                    || (g_plan[i].t == step.t && i >= index)) continue;
+                if (step.op != kDrag && g_plan[i].op != kDrag) continue;
+                // A drag owns the pointer through its target release sample;
+                // it also waits for earlier mouse steps and their last sample.
+                // Include unstarted steps so pass 1 moves cannot jump past a
+                // nominally earlier drag which pass 2 has not started yet.
+                // Ordinary click/move pairs retain their existing semantics.
+                if (!g_upDone[i] || nowMs - g_mouseStageTick[i] < kDragStageSpacingMs)
+                    return true;
+            }
+            return false;
+        }
+
         // ------------------------------------------------------------------
         // JSON subset parser (spec 3.1). Hand-written descent over a grammar
         // whose depth is fixed by the subset itself (root -> steps array ->
@@ -2389,6 +2408,8 @@ namespace dfl::auto_input
         for (int i = 0; i < g_count; ++i)
         {
             const Step& step = g_plan[i];
+            if (step.op != kKey && step.op != kText && EarlierMouseBlocks(i, nowMs))
+                continue;
             if (step.op == kKey)
             {
                 if (!g_upDone[i] && g_downDone[i]
@@ -2447,24 +2468,26 @@ namespace dfl::auto_input
                     && elapsed >= static_cast<unsigned>(step.t) + static_cast<unsigned>(step.dur))
                 {
                     g_upDone[i] = true;
+                    g_mouseStageTick[i] = nowMs;
                     EmitMouse(step.op == kRClick ? kMouseRightUp : kMouseUp, step.x, step.y);
                 }
             }
             else if (step.op == kDrag)
             {
                 if (!g_downDone[i] || g_upDone[i]
-                    || nowMs - g_dragStageTick[i] < kDragStageSpacingMs) continue;
+                    || nowMs - g_mouseStageTick[i] < kDragStageSpacingMs) continue;
                 if (!g_dragMoveDone[i]
                     && elapsed >= static_cast<unsigned>(step.t) + static_cast<unsigned>(step.dur) / 2u)
                 {
                     g_dragMoveDone[i] = true;
-                    g_dragStageTick[i] = nowMs;
+                    g_mouseStageTick[i] = nowMs;
                     EmitMouse(kMouseMove, step.x2, step.y2);
                 }
                 else if (g_dragMoveDone[i]
                     && elapsed >= static_cast<unsigned>(step.t) + static_cast<unsigned>(step.dur))
                 {
                     g_upDone[i] = true;
+                    g_mouseStageTick[i] = nowMs;
                     EmitMouse(kMouseUp, step.x2, step.y2);
                 }
             }
@@ -2473,6 +2496,7 @@ namespace dfl::auto_input
                 if (!g_upDone[i] && elapsed >= static_cast<unsigned>(step.t))
                 {
                     g_upDone[i] = true;
+                    g_mouseStageTick[i] = nowMs;
                     EmitMouse(kMouseMove, step.x, step.y);
                 }
             }
@@ -2484,6 +2508,8 @@ namespace dfl::auto_input
         for (int i = 0; i < g_count; ++i)
         {
             const Step& step = g_plan[i];
+            if (step.op != kKey && step.op != kText && EarlierMouseBlocks(i, nowMs))
+                continue;
             if (step.op == kKey)
             {
                 if (!g_downDone[i] && elapsed >= static_cast<unsigned>(step.t))
@@ -2533,7 +2559,7 @@ namespace dfl::auto_input
                 if (!g_downDone[i] && elapsed >= static_cast<unsigned>(step.t))
                 {
                     g_downDone[i] = true;
-                    if (step.op == kDrag) g_dragStageTick[i] = nowMs;
+                    if (step.op == kDrag) g_mouseStageTick[i] = nowMs;
                     EmitMouse(kMouseMove, step.x, step.y);
                     EmitMouse(step.op == kRClick ? kMouseRightDown : kMouseDown, step.x, step.y);
                 }
@@ -2631,6 +2657,9 @@ namespace dfl::auto_input
             nullptr);
         if (handle == INVALID_HANDLE_VALUE)
         {
+            const DWORD error = GetLastError();
+            if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
+                CancelPlan();
             return false;
         }
 
@@ -2715,7 +2744,7 @@ namespace dfl::auto_input
             g_downDone[i] = false;
             g_upDone[i] = false;
             g_dragMoveDone[i] = false;
-            g_dragStageTick[i] = 0;
+            g_mouseStageTick[i] = 0;
             g_textDowns[i] = 0;
             g_textUps[i] = 0;
             for (int j = 0; j < 64; ++j)
@@ -2743,7 +2772,7 @@ namespace dfl::auto_input
             g_downDone[i] = false;
             g_upDone[i] = false;
             g_dragMoveDone[i] = false;
-            g_dragStageTick[i] = 0;
+            g_mouseStageTick[i] = 0;
             g_textDowns[i] = 0;
             g_textUps[i] = 0;
         }

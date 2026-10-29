@@ -41,6 +41,8 @@ namespace dfl::auto_input
         kRClick = 4,
         // Left drag: source move/down, target move, target up. Stages keep
         // at least16ms spacing even if a pump arrives past the nominal end.
+        // Earlier mouse steps finish at least16ms before a drag starts;
+        // later mouse steps wait until at least16ms after its target up.
         kDrag = 5,
     };
 

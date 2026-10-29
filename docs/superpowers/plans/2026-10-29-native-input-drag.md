@@ -29,7 +29,9 @@
 
 - [x] Build Win32 Release DLL/tests with /W4 /WX, retain logs and SHA256 of own artifacts.
 - [x] Explain nominal versus delayed timing, schema, lifecycle behavior and unverified live limits.
-- [ ] Commit scoped changes and ask existing party_api_review for independent review; return final SHA/artifact paths to root.
+- [x] Commit initial scoped changes and ask existing party_api_review for independent review.
+- [x] Reproduce and fix unreadable-file cancellation and both directions of delayed mouse sequencing.
+- [ ] Freeze the reviewed follow-up commit/artifacts and return final SHA/artifact paths to root.
 
 ## Ledger
 
@@ -38,3 +40,6 @@
 - Ruling: keep ParsePlan pure and compatibility for existing operation fields; reject x2/y2 on non-drag, require x/y/x2/y2 on new drag, reject drag's irrelevant vk/chars.
 - TDD: drag-red.log17 expected failures; drag-final.log0 failures; native-full-final.log confirms full compatibility passed. Strict release-rebuild.log0 warnings/errors.
 - Ruling: lifecycle cancellation preserves a nested timeline guard while releasing held inputs; malformed replacement files cancel, missing files do not. Existing click remains a same-coordinate gesture.
+- Review P2: an exclusive own-test-file handle reproduced unreadable-open cancellation2fail in unreadable-red.log. Only file/path-not-found now preserve the old plan; focused/full unreadable-green logs pass.
+- Root-approved review boundary: nominally ordered drag and other mouse steps must remain ordered after a late pump, retaining16ms after the prior final mouse sample. Keyboard/text remain parallel; ordinary click→click semantics stay unchanged. Order is nominal t then array index.
+- TDD: sequence-red.log20fail covers drag→click/rclick/drag/move; prefix-red.log10fail covers click/rclick/move→drag. Corresponding focused/full GREEN logs pass, including same-tick/+15/+16 boundaries and held target move. No live input, driver changes or deployment occurred.

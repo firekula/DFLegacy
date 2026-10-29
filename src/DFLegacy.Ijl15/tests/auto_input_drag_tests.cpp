@@ -118,6 +118,104 @@ namespace
             "drag stage spacing remains valid across GetTickCount wrap");
     }
 
+    void CatchUpMouseSequence()
+    {
+        // Nominally separate gestures must remain separate when the first
+        // pump arrives after both scheduled end times. Keyboard/text stay
+        // independent of the drag's ownership of the one native pointer.
+        for (Op next : {kClick, kRClick, kDrag, kMove})
+        {
+            Restore(); ClearInjectionLog();
+            Step plan[4]{};
+            if (!Check(ParseDrag(plan[0]), "catch-up sequence drag parses")) continue;
+            plan[1].op = next; plan[1].t = 200; plan[1].dur = 80;
+            plan[1].x = 500; plan[1].y = 600; plan[1].x2 = 700; plan[1].y2 = 800;
+            plan[2].op = kKey; plan[2].t = 200; plan[2].vk = 'A';
+            plan[3].op = kText; plan[3].t = 200; strcpy_s(plan[3].text, "b");
+            Check(ArmPlan(plan, 4, 1), "catch-up sequence arms");
+            InjectionRecord all[32] = {}, mouse[16] = {};
+            const auto mouseLog = [&]()
+            {
+                const int count = GetInjectionLog(all, 32);
+                int found = 0;
+                for (int i = 0; i < count; ++i)
+                    if (all[i].op >= kMouseMove) mouse[found++] = all[i];
+                return found;
+            };
+            Advance(1000);
+            Check(mouseLog() == 2 && mouse[0].x == 10 && mouse[1].op == kMouseDown,
+                "late later click/drag/move cannot overwrite the first drag down");
+            Check((QueryKey('A', 0) & 0x8000) != 0 && (QueryKey('B', 0) & 0x8000) != 0,
+                "keyboard and text start in parallel while later mouse gestures wait");
+            Advance(1016);
+            Check(mouseLog() == 3 && mouse[2].op == kMouseMove
+                && mouse[2].x == 300 && mouse[2].buttons == 1,
+                "later mouse actions cannot move or release an active drag");
+            Advance(1032); Advance(1032); Advance(1047);
+            Check(mouseLog() == 4 && mouse[3].op == kMouseUp
+                && mouse[3].x == 300 && mouse[3].y == 400 && mouse[3].buttons == 0,
+                "drag target release has a full16ms sample before the next mouse action");
+            Advance(1048);
+            const int started = next == kMove ? 5 : 6;
+            Check(mouseLog() == started && mouse[4].op == kMouseMove
+                && mouse[4].x == 500 && mouse[4].y == 600,
+                "the deferred mouse action starts after the drag release sampling gap");
+            if (next == kDrag)
+            {
+                Advance(1063); Check(mouseLog() == 6, "second late drag retains its own down sample");
+                Advance(1064); Advance(1080);
+                Check(mouseLog() == 8 && mouse[6].op == kMouseMove && mouse[6].x == 700
+                    && mouse[6].buttons == 1 && mouse[7].op == kMouseUp
+                    && mouse[7].x == 700 && mouse[7].y == 800 && IsFinished(),
+                    "second late drag completes at its own target after distinct stages");
+            }
+            else if (next != kMove)
+            {
+                // Preserve ordinary click's existing late-up behavior: its
+                // up is eligible on the next Advance, without a new16ms rule.
+                Advance(1048);
+                Check(mouseLog() == 7 && mouse[6].op == (next == kRClick ? kMouseRightUp : kMouseUp)
+                    && mouse[6].x == 500 && mouse[6].y == 600 && IsFinished(),
+                    "deferred ordinary click retains its existing next-pump release semantics");
+            }
+            else Check(IsFinished(), "deferred move completes after the first drag");
+        }
+    }
+
+    void CatchUpMousePrefix()
+    {
+        for (Op prefix : {kClick, kRClick, kMove})
+        {
+            Restore(); ClearInjectionLog();
+            Step plan[2]{};
+            plan[0].op = prefix; plan[0].dur = 80; plan[0].x = 500; plan[0].y = 600;
+            if (!Check(ParseDrag(plan[1], 200), "catch-up drag prefix parses")) continue;
+            Check(ArmPlan(plan, 2, 1), "catch-up drag prefix arms");
+            InjectionRecord log[16] = {};
+            Advance(1000);
+            const int initial = prefix == kMove ? 1 : 2;
+            Check(GetInjectionLog(log, 16) == initial && log[0].op == kMouseMove && log[0].x == 500,
+                "late drag waits for the earlier click/rclick/move instead of double-down");
+            const unsigned releasedAt = prefix == kMove ? 1000u : 1016u;
+            Advance(releasedAt); Advance(releasedAt); Advance(releasedAt + 15u);
+            const int released = prefix == kMove ? 1 : 3;
+            Check(GetInjectionLog(log, 16) == released && (prefix == kMove
+                || (log[2].op == (prefix == kRClick ? kMouseRightUp : kMouseUp)
+                    && log[2].x == 500 && log[2].buttons == 0)),
+                "drag cannot overwrite its prefix release in the same or next15ms sample");
+            Advance(releasedAt + 16u);
+            Check(GetInjectionLog(log, 16) == released + 2 && log[released].op == kMouseMove
+                && log[released].x == 10 && log[released + 1].op == kMouseDown,
+                "drag begins after the earlier mouse action completed and a16ms sample elapsed");
+            Advance(releasedAt + 32u); Advance(releasedAt + 48u);
+            Check(GetInjectionLog(log, 16) == released + 4 && log[released + 2].op == kMouseMove
+                && log[released + 2].x == 300 && log[released + 2].buttons == 1
+                && log[released + 3].op == kMouseUp && log[released + 3].x == 300
+                && log[released + 3].y == 400 && IsFinished(),
+                "drag after a delayed mouse prefix retains held target move and target release");
+        }
+    }
+
     void Lifecycle()
     {
         for (Op op : {kClick, kRClick})
@@ -180,6 +278,26 @@ namespace
             "malformed replacement file cancels and releases the old held drag");
         Advance(2000);
         Check(GetInjectionLog(log, 8) == 1, "malformed file leaves no delayed drag edge");
+        ArmPlan(&step, 1, 1); Advance(0); ClearInjectionLog();
+        const HANDLE exclusive = CreateFileA(path, GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (Check(exclusive != INVALID_HANDLE_VALUE, "test owns an exclusive replacement-plan file handle"))
+        {
+            Check(!LoadPlanFile(), "an exclusively locked replacement file cannot arm");
+            Check(GetInjectionLog(log, 8) == 1 && log[0].op == kMouseUp,
+                "an unreadable replacement plan releases the old held mouse button");
+            Advance(2000);
+            Check(GetInjectionLog(log, 8) == 1 && log[0].op == kMouseUp,
+                "open failure cancellation leaves no later drag edge");
+            CloseHandle(exclusive);
+        }
+        Check(DeleteFileA(path) != FALSE, "test removes only its own replacement file");
+        ArmPlan(&step, 1, 1); Advance(0); ClearInjectionLog();
+        Check(!LoadPlanFile() && GetInjectionLog(log, 8) == 0,
+            "a genuinely missing replacement file preserves the old valid plan");
+        Advance(40); Advance(80);
+        Check(GetInjectionLog(log, 8) == 2 && log[0].op == kMouseMove && log[1].op == kMouseUp && IsFinished(),
+            "the old plan still completes normally when no replacement file exists");
         if (existed)
         {
             std::ofstream output(path, std::ios::binary | std::ios::trunc);
@@ -229,7 +347,8 @@ namespace
 bool TestAutoInputDrag()
 {
     failures = 0;
-    Schema(); Timeline(); CatchUpAndWrap(); Lifecycle(); MalformedFile(); MalformedTypedAndPureParse();
+    Schema(); Timeline(); CatchUpAndWrap(); CatchUpMouseSequence(); CatchUpMousePrefix();
+    Lifecycle(); MalformedFile(); MalformedTypedAndPureParse();
     dfl::auto_input::Restore();
     std::printf("Auto-input drag tests: %d failures\n", failures);
     return failures == 0;
