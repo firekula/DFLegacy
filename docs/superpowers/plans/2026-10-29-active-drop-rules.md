@@ -69,3 +69,16 @@
 - Task2: source commit0fb5754, final active-drop/pickup-removal/party-gold/loot-routing/store-write-transaction all exit0/0 failures. Added a detached-room RED1→GREEN0 after the initial transaction tests.
 - Ruling: full regression remains incomplete after two existing File.Move failures in unrelated save callers; retain exact logs and hand this limitation to root instead of changing global file-I/O semantics or claiming full GREEN.
 - Final review: delegated by the parent coordinator; this child does not spawn another agent. Branch remains in place for review and integration, with live acceptance outstanding.
+
+### Review fixes (root-authorized, same worktree)
+
+- [x] Actual SerializedWriteStream/TCS queued publication RED: room29→old40, including return to the same coordinates.
+- [x] Add write-gate conditional packet entry; capture room generation during activation; wire all four production registrations and solo; never fall back to ordinary Send.
+- [x] Pin actual predicate timing after gate acquisition, party/solo revisit and member-incarnation cases, plus missing conditional sender fail-closed behavior.
+- [x] Real post-File.Move logger IOException RED in the complete active-drop transaction; isolate that committed diagnostic only for SaveCharacterItemSpacesAsync; keep disk/memory debit, pickup object and40/ACK.
+- [x] Assert unchanged logging-exception behavior of SaveCharacterInventoryAsync and existing pre-commit failure rollback.
+- [x] Active-drop/pickup-removal/party-gold/loot-routing/store-write-transaction final focused gates0; Server Release0warnings/0errors.
+- Ruling: root authorized only known post-commit diagnostic isolation for the item-space save API. Do not retry the economic save, undo a committed snapshot, or globally swallow logging failures.
+- Ruling: root required state validation inside the same physical send gate used by NOTI29. The condition sender is explicit and mandatory for active publication; no ordinary-Send fallback and no instance lock across await.
+- Review evidence: independent reviewer party_api_review re-ran four focused gates0 and reported both original P2s addressed in the final source difference. Its ignored report is `.tmp/active-drop-validation/independent-review-20261029.md`.
+- Full smoke after review fixes: FriendSmokeTests.CheckFriendStorageAsync→CreateAccountAsync→File.Move UnauthorizedAccessException, exit-532462766; exact output retained in review-fixes-full-smoke.log. No global file-I/O workaround and no full-suite GREEN claim.

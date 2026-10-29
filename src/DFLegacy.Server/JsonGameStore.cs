@@ -3982,7 +3982,8 @@ public sealed partial class JsonGameStore(
             var snapshotCommitted = false;
             try
             {
-                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true);
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true,
+                    isolateCommittedDiagnostics: true);
             }
             catch
             {
@@ -6420,7 +6421,8 @@ public sealed partial class JsonGameStore(
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
     }
 
-    private async Task SaveLockedAsync(CancellationToken cancellationToken, Action? snapshotCommitted = null)
+    private async Task SaveLockedAsync(CancellationToken cancellationToken, Action? snapshotCommitted = null,
+        bool isolateCommittedDiagnostics = false)
     {
         ThrowIfRewardQuarantinedLocked();
         _ = SettleWarehouseUpgradeItemsLocked();
@@ -6447,7 +6449,16 @@ public sealed partial class JsonGameStore(
 
         File.Move(temporary, StorePath, overwrite: true);
         snapshotCommitted?.Invoke();
-        logger.LogInformation("Saved emulator state to {Path}", StorePath);
+        if (!isolateCommittedDiagnostics)
+            logger.LogInformation("Saved emulator state to {Path}", StorePath);
+        else
+        {
+            // Item-space callers must receive the successful commit even if a
+            // logging provider fails. This contains diagnostics only: the atomic
+            // replacement is already done, and must never be retried or undone.
+            try { logger.LogInformation("Saved emulator state to {Path}", StorePath); }
+            catch (Exception) { }
+        }
     }
 
     private void ThrowIfRewardQuarantinedLocked()

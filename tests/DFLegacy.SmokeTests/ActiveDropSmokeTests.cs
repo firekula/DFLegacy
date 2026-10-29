@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class ActiveDropSmokeTests
@@ -61,6 +62,220 @@ internal static class ActiveDropSmokeTests
         }
         await CheckTransactionAsync(check, fixture.Catalog);
         await CheckGoldConservationAsync(check, fixture.Catalog);
+        await CheckPostCommitLogFailureAsync(check, fixture.Catalog);
+        await CheckQueuedRoomPublicationAsync(check, fixture.Catalog);
+        await CheckSerializedGuardAsync(check);
+        await CheckMissingConditionalSenderAsync(check, fixture.Catalog);
+    }
+
+    private static async Task CheckQueuedRoomPublicationAsync(Action<bool, string> check, ItemCatalog catalog)
+    {
+        using var fixture = new DungeonFixture();
+        await using var harness = await PartyHarness.CreateAsync(tempParent: Path.GetFullPath("../../../../../.tmp/active-drop-tests", AppContext.BaseDirectory));
+        using var service = new DungeonPartyService(harness.Service, harness.Directory,
+            new DungeonInstanceRegistry(), TimeProvider.System, NullLogger<DungeonPartyService>.Instance);
+        foreach (var (party, returnToSameCoordinates, replaceMember) in new[]
+        {
+            (true, false, false), (true, true, false), (false, false, false), (false, true, false),
+            (true, false, true)
+        })
+        {
+            using var wire = new MemoryStream();
+            using var serialized = new SerializedWriteStream(wire);
+            var enteredSend = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseSend = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            async ValueTask Send(GameServerPacket packet)
+            {
+                if (packet.ProtocolId == 40)
+                {
+                    enteredSend.TrySetResult();
+                    await releaseSend.Task;
+                }
+                await packet.WriteAsync(serialized);
+            }
+            async ValueTask SendConditional(GameServerPacket packet, Func<bool> canWrite)
+            {
+                if (packet.ProtocolId == 40)
+                {
+                    enteredSend.TrySetResult();
+                    await releaseSend.Task;
+                }
+                await serialized.WritePacketIfAsync(packet, canWrite);
+            }
+            var member = Guid.NewGuid();
+            var instance = party ? fixture.CreatePartyInstance(4190) : fixture.CreateSoloInstance(member);
+            instance.AddMember(new(member, 7, 0, "queued actor", Send, SendConditional: SendConditional));
+            instance.TryStartRun(fixture.Layout, 0, 0, out _);
+            DungeonItemDropPlanner.TryPlan(new Dictionary<ushort, CharacterItemRecord> { [9] = new(9, 50010, 1) },
+                0, 9, 1, catalog, out var plan, out _);
+            var pending = DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
+                7, 0, 0, 100, 120, _ => Task.FromResult(true), Send, SendConditional);
+            await enteredSend.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            if (replaceMember)
+            {
+                instance.RemoveMember(member);
+                instance.AddMember(new(member, 7, 0, "new incarnation", Send, SendConditional: SendConditional));
+            }
+            else
+            {
+                instance.TryMoveRoom(1, 0, out _, fixture.Random);
+                await new GameServerPacket(0, 29, []).WriteAsync(serialized);
+                if (returnToSameCoordinates)
+                {
+                    instance.TryMoveRoom(0, 0, out _, fixture.Random);
+                    await new GameServerPacket(0, 29, []).WriteAsync(serialized);
+                }
+            }
+            releaseSend.SetResult();
+            await pending;
+            var ids = PacketIds(wire.ToArray());
+            var expected = replaceMember ? new byte[] { 50 }
+                : returnToSameCoordinates ? new byte[] { 29, 29, 50 } : new byte[] { 29, 50 };
+            check(ids.SequenceEqual(expected),
+                $"queued actor guard: party={party}, revisit={returnToSameCoordinates}, replaced member={replaceMember}");
+        }
+    }
+
+    private static async Task CheckMissingConditionalSenderAsync(Action<bool, string> check, ItemCatalog catalog)
+    {
+        using var fixture = new DungeonFixture();
+        await using var harness = await PartyHarness.CreateAsync(tempParent: Path.GetFullPath("../../../../../.tmp/active-drop-tests", AppContext.BaseDirectory));
+        using var service = new DungeonPartyService(harness.Service, harness.Directory,
+            new DungeonInstanceRegistry(), TimeProvider.System, NullLogger<DungeonPartyService>.Instance);
+        var id = Guid.NewGuid();
+        var instance = fixture.CreatePartyInstance(4191);
+        var ordinaryCalls = 0;
+        instance.AddMember(new(id, 7, 0, "unguarded channel", _ => { ordinaryCalls++; return ValueTask.CompletedTask; }));
+        instance.TryStartRun(fixture.Layout, 0, 0, out _);
+        DungeonItemDropPlanner.TryPlan(new Dictionary<ushort, CharacterItemRecord> { [9] = new(9, 50010, 1) },
+            0, 9, 1, catalog, out var plan, out _);
+        var privatePackets = new List<GameServerPacket>();
+        ValueTask SendPrivate(GameServerPacket packet) { privatePackets.Add(packet); return ValueTask.CompletedTask; }
+        await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service, 7, 0, 0, 100, 120,
+            _ => Task.FromResult(true), SendPrivate, Guarded(SendPrivate));
+        check(ordinaryCalls == 0 && privatePackets.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 50 }),
+            "active publication never falls back to ordinary Send when a member lacks the conditional write contract");
+    }
+
+    private static Func<GameServerPacket, Func<bool>, ValueTask> Guarded(Func<GameServerPacket, ValueTask> send) =>
+        (packet, canWrite) => canWrite() ? send(packet) : ValueTask.CompletedTask;
+
+    private static async Task CheckSerializedGuardAsync(Action<bool, string> check)
+    {
+        using var inner = new BlockingFirstWriteStream();
+        using var serialized = new SerializedWriteStream(inner);
+        var roomPacket = new GameServerPacket(0, 29, []).WriteAsync(serialized).AsTask();
+        await inner.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var current = true;
+        var checks = 0;
+        var actor = new GameServerPacket(0, 40, []);
+        var queued = serialized.WritePacketIfAsync(actor, () => { checks++; return current; }).AsTask();
+        check(checks == 0 && !queued.IsCompleted,
+            "a guarded packet checks state only after obtaining the actual SerializedWriteStream gate");
+        current = false;
+        inner.Release.SetResult();
+        await roomPacket;
+        check(!await queued && checks == 1 && PacketIds(inner.ToArray()).SequenceEqual(new byte[] { 29 }),
+            "room invalidation while waiting for the write gate suppresses the old actor's bytes");
+        check(await serialized.WritePacketIfAsync(actor, () => true)
+                && PacketIds(inner.ToArray()).SequenceEqual(new byte[] { 29, 40 }),
+            "a current guarded packet still writes one complete native frame");
+    }
+
+    private sealed class BlockingFirstWriteStream : MemoryStream
+    {
+        internal TaskCompletionSource Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private bool first = true;
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken token = default)
+        {
+            if (first)
+            {
+                first = false;
+                Entered.SetResult();
+                await Release.Task.WaitAsync(token);
+            }
+            await base.WriteAsync(bytes, token);
+        }
+    }
+
+    private static byte[] PacketIds(byte[] wire)
+    {
+        var ids = new List<byte>();
+        for (var offset = 0; offset < wire.Length;)
+        {
+            ids.Add(wire[offset + 1]);
+            offset += checked((int)BinaryPrimitives.ReadUInt32LittleEndian(wire.AsSpan(offset + 2)));
+        }
+        return ids.ToArray();
+    }
+
+    private static async Task CheckPostCommitLogFailureAsync(Action<bool, string> check, ItemCatalog catalog)
+    {
+        using var fixture = new DungeonFixture();
+        await using var harness = await PartyHarness.CreateAsync(tempParent: Path.GetFullPath("../../../../../.tmp/active-drop-tests", AppContext.BaseDirectory));
+        var logger = new ThrowAfterSnapshotLogger();
+        var store = new JsonGameStore(harness.Options, logger);
+        await store.InitializeAsync();
+        var original = (await store.GetCharactersAsync("alice"))[0];
+        DungeonItemDropPlanner.TryPlan((original.Inventory ?? []).ToDictionary(i => i.Slot),
+            0, 0, 100, catalog, out var plan, out _, currentGold: checked((uint)original.Gold));
+        using var service = new DungeonPartyService(harness.Service, harness.Directory,
+            new DungeonInstanceRegistry(), TimeProvider.System, NullLogger<DungeonPartyService>.Instance);
+        var instance = fixture.CreateSoloInstance(original.Id);
+        instance.TryStartRun(fixture.Layout, 0, 0, out _);
+        var packets = new List<GameServerPacket>();
+        ValueTask SendCommitted(GameServerPacket packet) { packets.Add(packet); return ValueTask.CompletedTask; }
+        DungeonGroundItem? ground = null;
+        logger.Armed = true;
+        try
+        {
+            ground = await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
+                7, 0, 0, 100, 120, async token =>
+                    await store.SaveCharacterItemSpacesAsync("alice", original.Id, checked((int)plan.Gold),
+                        plan.Inventory.Values, original.Equipment ?? [], original.Warehouse ?? [], token,
+                        avatarInventory: original.AvatarInventory, creatureInventory: original.CreatureInventory) is not null,
+                SendCommitted, Guarded(SendCommitted));
+        }
+        catch (IOException) { }
+        var saved = (await store.GetCharactersAsync("alice"))[0];
+        check(logger.Throws == 1 && saved.Gold == original.Gold - 100
+                && ground is { IsGold: true, Activated: true }
+                && instance.TryGetGroundItem(ground.GroundId, 0, 0, out _)
+                && packets.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 40, 50 }),
+            "a logging IOException after atomic snapshot replacement keeps the committed drop and sends actor/ACK");
+        logger.Armed = false;
+        var disk = new JsonGameStore(harness.Options, NullLogger<JsonGameStore>.Instance);
+        await disk.InitializeAsync();
+        check((await disk.GetCharactersAsync("alice"))[0].Gold == original.Gold - 100,
+            "post-commit diagnostics do not restore or retry an already persisted gold debit");
+        logger.Armed = true;
+        var otherApiThrew = false;
+        try
+        {
+            await store.SaveCharacterInventoryAsync("alice", original.Id, saved.Gold,
+                saved.Inventory ?? [], saved.Equipment ?? []);
+        }
+        catch (IOException) { otherApiThrew = true; }
+        check(otherApiThrew && logger.Throws == 2,
+            "isolating committed item-space diagnostics does not change other save API exception behavior");
+    }
+
+    private sealed class ThrowAfterSnapshotLogger : ILogger<JsonGameStore>
+    {
+        internal bool Armed;
+        internal int Throws;
+        public bool IsEnabled(LogLevel level) => true;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (Armed && formatter(state, exception).StartsWith("Saved emulator state", StringComparison.Ordinal))
+            {
+                Throws++;
+                throw new IOException("controlled diagnostic failure after atomic replacement");
+            }
+        }
     }
 
     private static async Task CheckTransactionAsync(Action<bool, string> check, ItemCatalog catalog)
@@ -76,8 +291,8 @@ internal static class ActiveDropSmokeTests
         ValueTask SendMine(GameServerPacket packet) { mine.Add(packet); return ValueTask.CompletedTask; }
         ValueTask SendPeer(GameServerPacket packet) { theirs.Add(packet); return ValueTask.CompletedTask; }
         var instance = fixture.CreatePartyInstance(4100);
-        instance.AddMember(new(sender, 7, 0, "dropper", SendMine));
-        instance.AddMember(new(peer, 9, 1, "picker", SendPeer));
+        instance.AddMember(new(sender, 7, 0, "dropper", SendMine, SendConditional: Guarded(SendMine)));
+        instance.AddMember(new(peer, 9, 1, "picker", SendPeer, SendConditional: Guarded(SendPeer)));
         instance.TryStartRun(fixture.Layout, 0, 0, out _);
         var source = new CharacterItemRecord(9, 50011, 1, State: 7, Durability: 23, EquipmentQualitySeed: 123456);
         DungeonItemDropPlanner.TryPlan(new Dictionary<ushort, CharacterItemRecord> { [9] = source },
@@ -91,7 +306,7 @@ internal static class ActiveDropSmokeTests
                         && !instance.TryGetGroundItem(1, 0, 0, out _),
                     "an active discard cannot be seen or picked while its inventory save is pending");
                 return Task.FromResult(true);
-            }, SendMine);
+            }, SendMine, Guarded(SendMine));
         check(saves == 1 && ground is not null, "a successful active discard persists exactly once");
         check(mine.Select(p => (p.Type, p.ProtocolId)).SequenceEqual(new[] { ((byte)0, (byte)40), ((byte)1, (byte)50) })
                 && theirs.Count == 1 && theirs[0].ProtocolId == 40,
@@ -116,14 +331,14 @@ internal static class ActiveDropSmokeTests
         }
         mine.Clear(); theirs.Clear();
         var rejected = await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
-            7, 0, 0, 100, 120, _ => Task.FromResult(false), SendMine);
+            7, 0, 0, 100, 120, _ => Task.FromResult(false), SendMine, Guarded(SendMine));
         check(rejected is null && instance.GetRoomGroundItems(0, 0).Length == 0
                 && mine.Count == 0 && theirs.Count == 0,
             "failed persistence rolls back the reserved ground entity without notification or success ACK");
         try
         {
             await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
-                7, 0, 0, 100, 120, _ => throw new IOException("synthetic save failure"), SendMine);
+                7, 0, 0, 100, 120, _ => throw new IOException("synthetic save failure"), SendMine, Guarded(SendMine));
             check(false, "persistence exceptions remain visible to the session failure handler");
         }
         catch (IOException)
@@ -132,19 +347,20 @@ internal static class ActiveDropSmokeTests
                 "exceptional persistence also rolls back its unpublished ground reservation");
         }
         var poison = Guid.NewGuid();
-        instance.AddMember(new(poison, 10, 2, "closed", async _ =>
+        async ValueTask SendClosed(GameServerPacket packet)
         {
             await Task.Yield();
             throw new OperationCanceledException("closed peer's token");
-        }));
+        }
+        instance.AddMember(new(poison, 10, 2, "closed", SendClosed, SendConditional: Guarded(SendClosed)));
         ground = await DungeonActiveDropTransaction.CommitAsync(instance, plan, catalog, service,
-            7, 0, 0, 100, 120, _ => Task.FromResult(true), SendMine);
+            7, 0, 0, 100, 120, _ => Task.FromResult(true), SendMine, Guarded(SendMine));
         check(ground is not null && mine.Count == 2 && theirs.Count == 1,
             "an asynchronously canceled peer cannot prevent healthy delivery or the dropper ACK");
         if (ground is not null) instance.RemoveGroundItem(ground.GroundId);
         mine.Clear(); theirs.Clear();
         var resetInstance = fixture.CreatePartyInstance(4102);
-        resetInstance.AddMember(new(sender, 7, 0, "reset dropper", SendMine));
+        resetInstance.AddMember(new(sender, 7, 0, "reset dropper", SendMine, SendConditional: Guarded(SendMine)));
         resetInstance.TryStartRun(fixture.Layout, 0, 0, out _);
         DungeonGroundItem? replacement = null;
         rejected = await DungeonActiveDropTransaction.CommitAsync(resetInstance, plan, catalog, service,
@@ -153,7 +369,7 @@ internal static class ActiveDropSmokeTests
                 resetInstance.ResetGroundItems();
                 replacement = resetInstance.AddGroundItem(new(true, 0, 9), 7, 0, 0, 0, 100, 120);
                 return Task.FromResult(false);
-            }, SendMine);
+            }, SendMine, Guarded(SendMine));
         check(rejected is null && replacement is not null
                 && resetInstance.TryGetGroundItem(replacement.GroundId, 0, 0, out var stillThere)
                 && ReferenceEquals(stillThere, replacement) && mine.Count == 0,
@@ -163,21 +379,21 @@ internal static class ActiveDropSmokeTests
             {
                 instance.TryMoveRoom(1, 0, out _, fixture.Random);
                 return Task.FromResult(true);
-            }, SendMine);
+            }, SendMine, Guarded(SendMine));
         check(ground is not null && mine.Count == 1 && mine[0].ProtocolId == 50 && theirs.Count == 0,
             "a room change during saving does not spawn an old-room actor in the new room");
         var solo = fixture.CreateSoloInstance(sender);
         solo.TryStartRun(fixture.Layout, 0, 0, out _);
         mine.Clear();
         ground = await DungeonActiveDropTransaction.CommitAsync(solo, plan, catalog, service,
-            7, 0, 0, 100, 120, _ => Task.FromResult(true), SendMine);
+            7, 0, 0, 100, 120, _ => Task.FromResult(true), SendMine, Guarded(SendMine));
         check(ground is not null && mine.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 40, 50 }) && theirs.Count == 0,
             "a solo active drop sends one actor and one ACK without notifying another instance");
         var tutorial = fixture.CreateSoloInstance(sender);
         tutorial.EnterDetachedRoom(DungeonFixture.Room([]));
         mine.Clear();
         ground = await DungeonActiveDropTransaction.CommitAsync(tutorial, plan, catalog, service,
-            7, 1, 0, 100, 120, _ => Task.FromResult(true), SendMine);
+            7, 1, 0, 100, 120, _ => Task.FromResult(true), SendMine, Guarded(SendMine));
         check(ground is not null && mine.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 50 }),
             "a detached tutorial room at0,0 does not receive an old-room1,0 ground actor");
     }
@@ -196,8 +412,9 @@ internal static class ActiveDropSmokeTests
         var mine = new List<GameServerPacket>();
         var theirs = new List<GameServerPacket>();
         ValueTask SendMine(GameServerPacket p) { mine.Add(p); return ValueTask.CompletedTask; }
-        instance.AddMember(new(alice.Id, 7, 0, "gold dropper", SendMine));
-        instance.AddMember(new(bob.Id, 9, 1, "gold picker", p => { theirs.Add(p); return ValueTask.CompletedTask; }));
+        instance.AddMember(new(alice.Id, 7, 0, "gold dropper", SendMine, SendConditional: Guarded(SendMine)));
+        ValueTask SendGoldPeer(GameServerPacket packet) { theirs.Add(packet); return ValueTask.CompletedTask; }
+        instance.AddMember(new(bob.Id, 9, 1, "gold picker", SendGoldPeer, SendConditional: Guarded(SendGoldPeer)));
         instance.TryStartRun(fixture.Layout, 0, 0, out _);
         DungeonItemDropPlanner.TryPlan((alice.Inventory ?? []).ToDictionary(i => i.Slot), 0, 0, 101,
             catalog, out var plan, out _, currentGold: 1000);
@@ -207,7 +424,7 @@ internal static class ActiveDropSmokeTests
                 alice = (await harness.Store.SaveCharacterInventoryAsync("alice", alice.Id,
                     checked((int)plan.Gold), plan.Inventory.Values, alice.Equipment ?? []))!;
                 return alice is not null;
-            }, SendMine);
+            }, SendMine, Guarded(SendMine));
         check(ground is { IsGold: true, ItemId: 0, CountOrValue: 101, RoutingSource: 0 }
                 && alice.Gold == 899 && mine.Count == 2 && theirs.Count == 1,
             "gold discard durably debits currency and broadcasts one source0 currency entity");
@@ -245,7 +462,7 @@ internal static class ActiveDropSmokeTests
                             checked((int)failingPlan.Gold), failingPlan.Inventory.Values,
                             original.Equipment ?? [], original.Warehouse ?? [], token,
                             avatarInventory: original.AvatarInventory, creatureInventory: original.CreatureInventory) is not null,
-                    SendMine);
+                    SendMine, Guarded(SendMine));
                 check(false, "the synthetic file lock actually rejects the active-drop save");
             }
             catch (IOException)

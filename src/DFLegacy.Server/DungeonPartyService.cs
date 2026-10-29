@@ -347,17 +347,19 @@ public sealed class DungeonPartyService : BackgroundService
     }
 
     internal async Task BroadcastActiveDropAsync(
-        DungeonInstance instance, DungeonGroundItem groundItem, GameServerPacket packet)
+        DungeonInstance instance, DungeonGroundItem groundItem, GameServerPacket packet, long roomGeneration)
     {
         foreach (var member in instance.Members)
         {
-            // All instance members share one room. Recheck after each await:
-            // a saved old-room object must not be spawned after NOTI29 advances it.
-            if (!instance.IsGroundItemInCurrentRoom(groundItem)) break;
-            if (!ReferenceEquals(instance.FindMember(member.CharacterId), member)) continue;
+            if (!instance.IsGroundItemInCurrentRoom(groundItem, roomGeneration)) break;
+            // Never fall back to ordinary Send: it can wait for the write gate
+            // after this check, letting a new room packet overtake the old actor.
+            if (member.SendConditional is not { } sendConditional) continue;
             await CrossSessionDelivery.SendSafelyAsync(_logger, packet,
                 CrossSessionDelivery.Describe(member.CharacterId, member.CharacterName, member.AreaUserId),
-                member.Send);
+                value => sendConditional(value, () =>
+                    instance.IsGroundItemInCurrentRoom(groundItem, roomGeneration)
+                    && ReferenceEquals(instance.FindMember(member.CharacterId), member)));
         }
     }
 

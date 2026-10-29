@@ -8,6 +8,7 @@ internal static class DungeonActiveDropTransaction
         DungeonInstance instance, DungeonItemDropPlan plan, ItemCatalog catalog,
         DungeonPartyService party, ushort dropperUid, byte roomX, byte roomY, short x, short y,
         Func<CancellationToken, Task<bool>> persist, Func<GameServerPacket, ValueTask> sendPrivate,
+        Func<GameServerPacket, Func<bool>, ValueTask> sendConditional,
         CancellationToken cancellationToken = default)
     {
         DungeonGroundItem ground;
@@ -23,14 +24,14 @@ internal static class DungeonActiveDropTransaction
         {
             saved = await persist(cancellationToken);
             if (!saved) return null;
-            var active = instance.ActivatePlayerDroppedGroundItem(ground);
-            if (active is not null && instance.IsGroundItemInCurrentRoom(active))
+            var active = instance.ActivatePlayerDroppedGroundItem(ground, out var roomGeneration);
+            if (active is not null && instance.IsGroundItemInCurrentRoom(active, roomGeneration))
             {
                 var notification = GameProtocolEngine.CreateDropItem(dropperUid, x, y,
                     new(active.GroundId, active.ItemId, active.GetClientAddInfo(catalog),
                         active.GetClientDurability(catalog), active.OwnerUserId, active.GetClientItemAttr(catalog)));
-                if (instance.IsParty) await party.BroadcastActiveDropAsync(instance, active, notification);
-                else await sendPrivate(notification);
+                if (instance.IsParty) await party.BroadcastActiveDropAsync(instance, active, notification, roomGeneration);
+                else await sendConditional(notification, () => instance.IsGroundItemInCurrentRoom(active, roomGeneration));
             }
             // Persistence committed even if a concurrent room/run teardown removed
             // the old object. Its inventory ACK remains private and truthful.

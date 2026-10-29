@@ -19,11 +19,11 @@
 
 `DungeonActiveDropTransaction` 是实际 CMD50 handler 使用的持久化与发布入口：先分配不可见、不可拾取的地面预留，调用原 `SaveCharacterItemSpacesAsync`，成功才激活并发 NOTI40，最后只向自己发 CMD50 ACK。保存返回空或抛异常时，按原对象引用回收预留，不会误删 reset 后复用同 GroundId 的新对象。物品品质 seed、强化/耐久/封印和实例身份继续保留。
 
-组队通过 `BroadcastActiveDropAsync` 使用现有 CrossSessionDelivery 的坏会话保护；包括丢弃者，每端只发一个 actor。实例共用当前房间，发包前及每次异步发送后重新核对对象及房间；保存中换房时保留旧房地面物，但不把旧房 actor 发到新房。单人走自己的会话发送句柄。
+组队通过 `BroadcastActiveDropAsync` 使用现有 CrossSessionDelivery 的坏会话保护；包括丢弃者，每端只发一个 actor。独立审查复现了原先“检查后 await Send”的窗口：若新房 NOTI29 先抢到发送锁，旧房40仍会随后写出。因此增加明确的条件发送句柄，四处实际入场注册和单人丢弃均接入 `SerializedWriteStream.WritePacketIfAsync`：取得原有 `_writeGate` 后才检查地面对象、激活时同锁捕获的房间代次，以及当前成员引用，再对 inner 写完整包并 flush。实例状态锁没有跨 await；条件发送不允许退回普通 Send。即使离房后回到同一坐标，旧代次也不能发布旧 actor。保存中换房保留旧房地面物，私有背包 ACK 仍准确发送。
 
 金币拾取复用已有预留、唯一 claim、持久化分账和移除流程；source0 一并传给经济账本，不制造自然掉落来源的额外收益。队友可拾取，均分及拾取者余数保持现有金币规则。
 
-真实临时快照文件锁回归发现原 `SaveCharacterItemSpacesAsync` 在写盘失败前已修改内存记录。经主任务明确授权，仅该 API 增加失败回退：`SaveLockedAsync` 在原子 `File.Move` 返回后标记已提交，只有未到该边界才恢复原角色记录。其他保存 API 不增加回退。此结论仅覆盖可证明的提交前失败；没有宣称提交后/结果不明错误可以撤销已持久化的数据。
+真实临时快照文件锁回归发现原 `SaveCharacterItemSpacesAsync` 在写盘失败前已修改内存记录。经主任务明确授权，仅该 API 增加失败回退：`SaveLockedAsync` 在原子 `File.Move` 返回后标记已提交，只有未到该边界才恢复原角色记录。独立审查又以真实 ILogger 复现：File.Move 后“Saved emulator state”诊断日志抛 IOException，会让事务误判未提交并删掉预留。修复将这一条已提交诊断日志与该保存 API 的成功结果隔离，正常返回已提交角色，使事务继续激活可拾取掉落并发送40/ACK；没有重试 save 或回退已持久化数据。其他保存 API 保持原日志抛错行为，提交前异常仍抛出并回收预留。未知提交结果不扩大成可撤销已持久化数据的承诺。
 
 ## 明确的适配界限
 
@@ -36,10 +36,14 @@
 
 TDD 中，规则回归先捕获4项旧行为失败；金币规划捕获7项失败；事务与投递捕获7项失败；真实提交前文件锁捕获1项余额残留失败；另补 detached tutorial 房间坐标的1项 RED，再分别修改实现取得 GREEN。
 
+审查修复另保留 `queued-room-red.log` 的2项真实 SerializedWriteStream/TCS 失败，以及 `post-commit-log-red.log` 的1项完整事务失败。最终回归覆盖 party/solo、同坐标重访、成员重挂、缺条件句柄禁止 fallback、持真实发送锁后才运行 predicate、真实已提交磁盘/内存扣款和可拾取地面/40/ACK；同时证明其他保存 API 仍会抛同一日志异常。`review-fixes-*.log` 为修复后的门与构建输出。
+
 定向门：`--active-drop`、`--pickup-removal`、`--party-gold`、`--loot-routing`、`--store-write-transaction` 均退出0、0 failures。新增用例覆盖白/蓝/rarity2、rarity3拒绝、title/avatar、精确封印及 SealingTrade、堆叠分拆、金币边界、原数据不变、未保存预留不可拾取、双成员/单人唯一 actor、私有 ACK、异步断开成员、换房、旧 GroundId 回滚、队友唯一领取/两端移除、真实存盘金币守恒与失败内存/磁盘余额。
 
 托管 Server Release build：0 warnings、0 errors。解决方案级 `dotnet build DFLegacy.Emulator.slnx --no-restore` 未通过：5个 native vcxproj 缺 VS C++ 导入，3个无关 relay/launcher 项目缺未还原 assets；未为此构建或修改 native 代码。
 
 验证日志保存在本 worktree `.tmp/active-drop-validation/`。默认完整 smoke 在主任务确认允许现有临时双栈/loopback 测试夹具后执行，所有 TEMP/TMP 均重定向到本 worktree。首轮在无关 TradeSmokeTests.CreateCharacterAsync 的原有 File.Move 遇到 UnauthorizedAccessException；新短临时目录的第二轮到达 CeraGiftSmokeTests.Rejections，又在 SendCharacterMailAsync 的 File.Move 遇到相同错误。两轮均退出-532462766，保留 full-smoke.log/full-smoke-retry.log；没有扩改其他保存 API 或为绕过环境问题加入全局文件重试，也没有把定向通过冒充完整套件通过。
+
+两项审查修复后的第三轮完整默认 smoke 仍在无关 FriendSmokeTests.CheckFriendStorageAsync→CreateAccountAsync 的 File.Move 遇到同一 UnauthorizedAccessException，退出-532462766，保留 `review-fixes-full-smoke.log`。最终五项聚焦门仍全部0 failures，托管 Server Release仍0 warnings/0 errors；完整套件未取得 GREEN。
 
 待主任务集成后的双客户端验收：同房 A 丢金币1/1000、白装、蓝装、自由堆叠物；两端恰有同 GroundId 的一个 actor，只有 A 收 CMD50 ACK；B 拾取，仅一份物品入账，两端地面消失；金币核对双方余额与余数。反向 A/B、自己拾取、跨实例隔离、失败余额、1001拒绝、封印/title/rarity3拒绝也需实测。没有把这些静态/离线证据称为新实机 GREEN。

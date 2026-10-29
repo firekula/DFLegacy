@@ -5,6 +5,7 @@ namespace DFLegacy.Server;
 /// <summary>
 /// 副本实例成员：会话入场时登记自己的发送句柄。Send 走会话的 SerializedWriteStream
 /// （`EntranceService.SendTownPacketAsync`，跨线程写入已串行化），所以别的会话可以直接投包。
+/// SendConditional 必须在同一写门内检查谓词；主动掉落不能退回普通 Send 绕过这一门控。
 /// </summary>
 internal sealed record DungeonInstanceMember(
     Guid CharacterId,
@@ -13,7 +14,8 @@ internal sealed record DungeonInstanceMember(
     string CharacterName,
     Func<GameServerPacket, ValueTask> Send,
     string AccountName = "",
-    Guid MentorGoldIncarnation = default);
+    Guid MentorGoldIncarnation = default,
+    Func<GameServerPacket, Func<bool>, ValueTask>? SendConditional = null);
 
 /// <summary>
 /// 会话镜像快照：会话在主循环顶部按 <see cref="DungeonInstance.Version"/> 决定要不要刷新自己的
@@ -1855,21 +1857,23 @@ internal sealed partial class DungeonInstance(
         }
     }
 
-    internal DungeonGroundItem? ActivatePlayerDroppedGroundItem(DungeonGroundItem expected)
+    internal DungeonGroundItem? ActivatePlayerDroppedGroundItem(DungeonGroundItem expected, out long roomGeneration)
     {
         lock (Gate)
         {
+            roomGeneration = _roomGeneration;
             var active = GroundItems.Activate(expected);
             if (active is not null) Version++;
             return active;
         }
     }
 
-    internal bool IsGroundItemInCurrentRoom(DungeonGroundItem expected)
+    internal bool IsGroundItemInCurrentRoom(DungeonGroundItem expected, long? roomGeneration = null)
     {
         lock (Gate)
         {
-            return CurrentRoomLocked() is not null
+            return (roomGeneration is null || roomGeneration == _roomGeneration)
+                && CurrentRoomLocked() is not null
                 && (_run.IsActive
                     ? _run.RoomX == expected.RoomX && _run.RoomY == expected.RoomY
                     : expected.RoomX == 0 && expected.RoomY == 0)

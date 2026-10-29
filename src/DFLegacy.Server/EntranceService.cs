@@ -1154,6 +1154,13 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, packet);
                 }
 
+                async ValueTask SendConditionalDungeonPacketAsync(GameServerPacket packet, Func<bool> canWrite)
+                {
+                    if (!await stream.WritePacketIfAsync(packet, canWrite, serverToken)) return;
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, packet);
+                }
+
                 Func<GameServerPacket, ValueTask> CreateDungeonPacketDelivery()
                 {
                     dungeonMemberSend = weaknessRecovery.BeginDungeonDelivery(
@@ -3868,7 +3875,8 @@ public sealed class EntranceService(
                                 localUserId,
                                 checked((byte)slotIndex),
                                 activeCharacter.Name,
-                                CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty),
+                                CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
+                                SendConditional: SendConditionalDungeonPacketAsync),
                             out var room))
                     {
                         logger.LogWarning(
@@ -13398,7 +13406,7 @@ public sealed class EntranceService(
                                     await packet.WriteAsync(stream, serverToken);
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
                                     LogPacket("TX", runtimeSession, packet);
-                                }, serverToken);
+                                }, SendConditionalDungeonPacketAsync, serverToken);
                             if (groundItem is null)
                             {
                                 var error =
@@ -13891,7 +13899,8 @@ public sealed class EntranceService(
                                     localUserId,
                                     PartySlot: 0,
                                     activeCharacter.Name,
-                                    CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty));
+                                    CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
+                                    SendConditional: SendConditionalDungeonPacketAsync));
                                 dungeonInstance.EnterDetachedRoom(new DungeonRoomDefinition(
                                     GameProtocolEngine.TutorialMapId,
                                     DungeonMapType.Boss,
@@ -14062,7 +14071,8 @@ public sealed class EntranceService(
                                             localUserId,
                                             checked((byte)leaderSlotIndex),
                                             activeCharacter.Name,
-                                            CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty),
+                                            CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
+                                            SendConditional: SendConditionalDungeonPacketAsync),
                                         out var liveRoom))
                                 {
                                     logger.LogWarning(
@@ -14134,7 +14144,8 @@ public sealed class EntranceService(
                                     localUserId,
                                     checked((byte)leaderSlotIndex),
                                     activeCharacter.Name,
-                                    CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty)))
+                                    CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
+                                    SendConditional: SendConditionalDungeonPacketAsync)))
                             {
                                 logger.LogWarning(
                                     "Party dungeon entry aborted for {Name}: instance {PartyId} has already started town return.",

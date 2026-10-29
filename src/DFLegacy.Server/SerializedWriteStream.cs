@@ -1,8 +1,25 @@
+using DFLegacy.Protocol;
+
 namespace DFLegacy.Server;
 
 internal sealed class SerializedWriteStream(Stream inner) : Stream
 {
     private readonly SemaphoreSlim _writeGate = new(1, 1);
+
+    internal async ValueTask<bool> WritePacketIfAsync(GameServerPacket packet,
+        Func<bool> canWrite, CancellationToken cancellationToken = default)
+    {
+        await _writeGate.WaitAsync(cancellationToken);
+        try
+        {
+            // NOTI29 uses this same gate. Once this check passes, the complete
+            // packet precedes every later room packet, including its flush.
+            if (!canWrite()) return false;
+            await packet.WriteAsync(inner, cancellationToken);
+            return true;
+        }
+        finally { _writeGate.Release(); }
+    }
 
     public override bool CanRead => inner.CanRead;
     public override bool CanSeek => inner.CanSeek;
