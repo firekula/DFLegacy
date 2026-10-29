@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-29 — 测试 CLI、四人掉落与城镇交互
+
+- 新增默认关闭的 `Debug.TestControl` 及客户端 `EnableTestControl`：通过新鲜租约与进程／run／房间身份约束，提供原生定位、指定怪物死亡、现有掉落隔离和权威提交查询。游戏线程执行原生操作，工作线程负责文件 IO；部分同步如实返回，文件访问有限重试不重复生成修改请求。用法见[debug说明](tools/debug/README.md)。
+- 四端完成25次拾取：24次持久化提交、1次合法超重拒绝；白装、蓝材料、紫装、粉装各四次，史诗八次，另含23金币的5／5／5／8均分。四人“否”均保留地面、不增加库存，“是／掷点”的实际得主、精确槽位、唯一实例及四端同步已核对，关闭后的保存再次一致。使用独立存档与明确MOB夹具，不扩大到自然掉率、蓝装或正常战斗能力；见[7张原图和完整范围](knowledge/decisions/2026-10-29-test-control-four-client-loot-verification.md)。
+- 新增测试窗口排布工具，校验四个进程身份后按A/B、C/D田字形排列，保留窗口大小和焦点；普通自动操作默认不截图。此前隐式原生截图引起的短停顿已有[对照验证](knowledge/decisions/2026-10-29-operation-stutter-verification.md)，不排除其他卡顿。
+- 新增客户端内城镇跨区域单目标寻路、组队请求／接受／拒绝接口；N地图按用户最终要求仅右键触发，并连续显示两次黄色扩散反馈。双端同区／跨区、回城再寻路及手动打断见[寻路](knowledge/decisions/2026-10-29-native-town-route-verification.md)、[右键反馈](knowledge/decisions/2026-10-29-map-right-feedback-verification.md)和[回城记录](knowledge/decisions/2026-10-29-town-return-perf-verification.md)。
+- 修复选图超时关闭后副本介绍残留，双端轮流队长完成超时、重新打开和正常进图回归，见[原图](knowledge/decisions/2026-10-29-dungeon-tooltip-verification.md)。副本主动丢弃的同房广播与保存已恢复，用户手动确认白装／金币／消耗品／材料可被队友拾取，见[人工记录](knowledge/decisions/2026-10-29-active-drop-manual-verification.md)；蓝装、封印元数据及反向／重复／换房边界继续验收。
+- 新测试CLI聚焦33 tests／64 subtests、相关Python合计145 tests／237 subtests、Release托管与原生聚焦检查通过。完整Python仍有6个在未修改HEAD复现的既有失败；原生完整覆盖层UI套件的桌面时序失败也保留记录，不称全量全绿。测试开关已恢复关闭，正常存档和资源未改。超重提示单位另列待核对，技能栏持久化按用户要求排最后。
+
 ## 2026-10-28 — 频道重入假死与普通商城赠送
 
 - 修复设置返回频道后再次进入的同步MTU重复探测；按同一连接环境缓存实际原生结果，并在使用前刷新主机引用。基线三次10.8–11.0秒，最终双端登录应答至继续请求为0–1毫秒，组队进副本和换房回归通过。首次或网络身份变化仍保留原探测，完整进城耗时不等同于该包间隔，见[频道图文验收](knowledge/decisions/2026-10-27-channel-return-verification.md)。

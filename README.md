@@ -34,6 +34,7 @@
 | [CHANGELOG.md](CHANGELOG.md) | 里程碑、功能变更和验证范围。 |
 | [副本调试面板](tools/debug/README.md) | 独立 debug.dll 的配置、构建、浮动面板、掉落测试开关与自动控制。 |
 | [城镇地图与状态接口验收](knowledge/decisions/2026-10-29-debug-town-navigation-verification.md) | N 地图同区点击移动、debug 目的地、结构化状态与双端原图。 |
+| [测试 CLI 与四人掉落验收](knowledge/decisions/2026-10-29-test-control-four-client-loot-verification.md) | 仅测试环境的定位、指定敌人死亡、掉落隔离与权威结果查询，四端矩阵及7张原图。 |
 | [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
 
 容器部署使用仓库根目录的 `Dockerfile`、`.dockerignore` 与 `compose.yaml`，说明见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)。
@@ -48,7 +49,7 @@
 | `DFLegacy.Launcher` | Windows 启动器：WPF 交互式登录壳，含注册/登录/改密/找回/账号管理/配置；检查运行环境、安装 IJL15 模块并启动客户端，可按需启动本地服务端。`--headless`/`--account` 仍支持双击即玩。 |
 | `DFLegacy.AccountClient` | 启动器使用的账号 HTTP 客户端（注册、改密、找回密码、健康检查）。 |
 | `DFLegacy.Ijl15` | 32 位 C++ `ijl15.dll` 兼容模块，提供客户端所需的 JPEG 功能及进程内兼容补丁、窗口缩放等功能。 |
-| `DFLegacy.Debug` | 可选的 32 位 `debug.dll`，由 IJL15 延迟加载，以浮动面板显示 BOSS 房箱怪信息并控制本局掉落测试；默认关闭。 |
+| `DFLegacy.Debug` | 可选的 32 位 `debug.dll`，由 IJL15 延迟加载；提供浮动面板、结构化状态、城镇寻路及组队操作接口。另有默认关闭、需新鲜服务端租约的隔离测试控制。 |
 | `DFLegacy.RandomNative` | 64 位 C++ 硬件随机种子桥接，为玩法随机提供 RDSEED 支持；不支持该指令时自动回退，不是运行必需项。 |
 | `wwwroot/admin` | 独立的中文后台管理页面，使用现代浏览器访问，不依赖前端构建工具。需登录：管理员看到全部 GM 功能与「用户角色」，普通玩家只看到自己的角色（另有独立的玩家页 `player.html`）。 |
 | `wwwroot/client` | 充值及会员服务页面，与后台管理页面分离。 |
@@ -71,6 +72,14 @@
 因此服务端可以部署在 Linux 或 macOS 上、也可以放进容器，由 Windows 客户端远程连接；构建方式见 [BUILDING.md](BUILDING.md)，部署与网络配置见 [DEPLOYING.md](DEPLOYING.md)。
 
 ## 当前实现
+
+### 2026-10-29：测试接口、四人掉落与城镇操作
+
+- 新增仅测试环境 CLI：查看状态、当前副本角色定位、调用原生指定怪物死亡入口、隔离现有掉落、查询真实提交／拒绝。客户端与服务端均需显式开启，普通配置默认关闭；原生回执与服务端保存分别核对。见[接口说明](tools/debug/README.md)及[实机记录](knowledge/decisions/2026-10-29-test-control-four-client-loot-verification.md)。
+- 四客户端独立存档完成白装、蓝色材料、紫装、粉装和史诗选择矩阵：25次含金币的拾取为24次持久化提交、1次正确超重拒绝；四人各操作史诗“否／是／掷点”，金币23按5／5／5／8入账。使用明确的服务端 MOB 必掉夹具，不代表原始自然掉率或蓝色装备已验；7张原图及精确槽位／实例见上述记录。
+- N城镇地图已支持客户端内跨区规划，仅右键有效空白点设置目标，黄色扩散反馈连续两次；debug单目标接口无需分段控制。双端跨区、回城后的再次寻路及手动打断已验，见[右键反馈](knowledge/decisions/2026-10-29-map-right-feedback-verification.md)与[回城验证](knowledge/decisions/2026-10-29-town-return-perf-verification.md)。
+- 副本介绍超时残留已[双端修复验收](knowledge/decisions/2026-10-29-dungeon-tooltip-verification.md)。主动丢弃的白装、金币、消耗品、材料已由用户确认队友可见／可拾取及金币平分，蓝装与扩展边界仍按[列表](knowledge/decisions/2026-10-28-restoration-backlog.md)接续。
+- 普通自动操作默认不截图，关键验收显式请求，避免已确认的隐式截图短停顿；测试启动四窗按A/B、C/D排列。见[停顿对照](knowledge/decisions/2026-10-29-operation-stutter-verification.md)及[布局工具](tools/acceptance/README.md#四客户端窗口排列)。怪物位置同步、其余卡顿和技能栏持久化没有因此关闭。
 
 ### 2026-10-28：倒计时复活币与后续列表
 

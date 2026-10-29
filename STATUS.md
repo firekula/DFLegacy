@@ -5,7 +5,11 @@
 
 ## 1. 近期改动的功能
 
-2026-10-29 debug 状态与城镇移动：新增 client-state/v2 的 Town/UI、房间／敌人／玩家／已学技能只读数据；同区 debug 目的地与 N 城镇地图点击共用原生 setter 和一次持续移动激活，保留方向键停止。源码02de7053/debug5449，双端实际到达、控件保护和四类拒绝通过，71项Python及原生状态／导航／运行状态机／完整overlay测试通过。最终构建单人副本完成原生字段对照与无截图的数据驱动移动、攻击；未宣称同组完整流程、MP/冷却、跨区规划或怪物同步已修复。详见[带原图验收](knowledge/decisions/2026-10-29-debug-town-navigation-verification.md)和[继续修复列表](knowledge/decisions/2026-10-28-restoration-backlog.md)。
+2026-10-29最新接续（源码 `7f8ddf5`）：默认关闭的测试CLI/debug已完成，支持状态、当前副本定位、指定怪物原生死亡、现有掉落隔离及服务端最终结果查询。隔离四端25次拾取为24次持久化提交、1次超重拒绝，四次史诗“否”保留地面，四人“是／掷点”均有实际结果；金币23分为5／5／5／8。源码、测试、7张原图及边界见[本组记录](knowledge/decisions/2026-10-29-test-control-four-client-loot-verification.md)。仅部署到隔离测试客户端／服务端，不写成正常运行目录已升级；测试进程已关闭、四份INI恢复、正常存档E0E2FB4B…保持。下一阶段补U04蓝色装备、封印等元数据及反向／重复／换房四人验收；技能栏持久化仍放最后。
+
+2026-10-29城镇操作的后续范围已推进：[客户端内跨区规划](knowledge/decisions/2026-10-29-native-town-route-verification.md)、[仅右键及黄色双次反馈](knowledge/decisions/2026-10-29-map-right-feedback-verification.md)、[回城再寻路](knowledge/decisions/2026-10-29-town-return-perf-verification.md)和[组队接口及同组副本闭环](knowledge/decisions/2026-10-29-debug-party-commands-verification.md)分别有原图记录。普通操作默认不截图，四窗启动固定排成田字形，不能把早期同区验证范围当作当前跨区能力的上限。MP／技能冷却、通用模态UI、选图scene2消费、怪物位置同步及其他卡顿仍按[待处理列表](knowledge/decisions/2026-10-28-restoration-backlog.md)接续。新增相关检查通过，完整Python的6个既有失败及原生UI时序失败见本组记录。
+
+2026-10-29早期 debug 状态与城镇移动（历史范围）：新增 client-state/v2 的 Town/UI、房间／敌人／玩家／已学技能只读数据；同区 debug 目的地与 N 城镇地图点击共用原生 setter 和一次持续移动激活，保留方向键停止。源码02de7053/debug5449，双端实际到达、控件保护和四类拒绝通过，71项Python及原生状态／导航／运行状态机／完整overlay测试通过。当时最终构建单人副本完成原生字段对照与无截图的数据驱动移动、攻击；不把该历史阶段算作同组完整流程、MP/冷却、跨区规划或怪物同步已修复。详见[原验收](knowledge/decisions/2026-10-29-debug-town-navigation-verification.md)，后续范围见上方记录。
 
 2026-10-28 倒计时复活币：native09429cc/19C修复隐藏100004单币购买结果误入普通商城的未知错误，价格显示100且标签一次，官服发币与ACT1 CMD44复活分开。双客户端完成队员已有币复活、队员购买后复活、转队长购买后复活，普通10币/880礼包保持原结果窗口。三轮消费与四笔购买钱包守恒；最终445文件证据、严格UDP、422次响应采样、四处native及49运行文件交付/原配置和原档核验完成，见[9张原图及精确边界](knowledge/decisions/2026-10-28-countdown-coin-purchase-verification.md)。managed仍保留59666d9。新增[用户待办](knowledge/decisions/2026-10-28-restoration-backlog.md)，优先debug.dll结构化状态以减少截图；6级heal1024符合官服≤17级退出豁免，无需修复虚弱。怪物位置同步继续排查。
 
