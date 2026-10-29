@@ -56,6 +56,34 @@ def entries_for(areas):
     return entries
 
 
+def native_steering_model(rectangles, start, goal):
+    """Bounded integer-pixel model of the verified 186:122 axis steering.
+
+    Evidence: 4795F0/4797D5/479807 choose separate axis speeds;
+    4C8C00 checks each pixel/axis, 4C8F32 keeps the last valid position;
+    776C60 uses right/bottom-exclusive rectangles. This model tests the
+    planning assumption and is not a replacement for native acceptance.
+    """
+    x, y = start
+    credit = 0
+    for _ in range(5000):
+        if (x, y) == goal:
+            return x, y
+        credit += 186
+        x_steps, credit = divmod(credit, 122)
+        for axis, count in ((0, x_steps), (1, 1)):
+            for _ in range(count):
+                position = [x, y]
+                if position[axis] == goal[axis]:
+                    break
+                position[axis] += 1 if goal[axis] > position[axis] else -1
+                if not any(a <= position[0] < a + w and b <= position[1] < b + h
+                           for a, b, w, h in rectangles):
+                    break
+                x, y = position
+    return x, y
+
+
 class TownNavigationTests(unittest.TestCase):
     def setUp(self):
         try:
@@ -206,6 +234,54 @@ class TownNavigationTests(unittest.TestCase):
         self.expect_code("outside_walkable", lambda: catalog.waypoints((1, 0), (float("nan"), 0), (10, 10)))
         self.expect_code("outside_walkable", lambda: catalog.waypoints((1, 0), (10 ** 1000, 0), (10, 10)))
 
+    def test_native_half_open_right_bottom_boundaries_and_degenerate_box(self):
+        catalog = self.load_areas({(1, 0): ([(0, 0, 20, 20)], [], "normal")})
+        rect = catalog.area((1, 0)).walkable[0]
+        self.assertTrue(rect.contains(0, 0))
+        self.assertFalse(rect.contains(20, 10))
+        self.assertFalse(rect.contains(10, 20))
+        for start, goal in [((10, 10), (20, 10)), ((10, 10), (10, 20)),
+                            ((20, 2), (20, 18)), ((2, 20), (18, 20))]:
+            with self.subTest(start=start, goal=goal):
+                self.expect_code("outside_walkable", lambda: catalog.waypoints((1, 0), start, goal))
+
+    def test_corner_only_contact_has_no_native_axis_path_but_shared_edges_do(self):
+        rectangles = [(0, 0, 20, 20), (20, 20, 20, 20)]
+        self.assertEqual(native_steering_model(rectangles, (10, 10), (30, 30)), (19, 19))
+        catalog = self.load_areas({(1, 0): (rectangles, [], "normal")})
+        self.expect_code("no_path", lambda: catalog.waypoints((1, 0), (10, 10), (30, 30)))
+        for rectangles, start, goal in [
+                ([(0, 0, 20, 20), (20, 0, 20, 20)], (10, 10), (30, 10)),
+                ([(0, 0, 20, 20), (0, 20, 20, 20)], (10, 10), (10, 30)),
+                ([(0, 0, 20, 100), (20, 50, 20, 50)], (10, 10), (30, 90)),
+                ([(0, 0, 20, 100), (20, 50, 20, 50)], (30, 90), (10, 10)),
+                ([(0, 0, 100, 20), (50, 20, 50, 20)], (10, 10), (90, 30)),
+                ([(0, 0, 100, 20), (50, 20, 50, 20)], (90, 30), (10, 10))]:
+            catalog = self.load_areas({(1, 0): (rectangles, [], "normal")})
+            position = start
+            for point in catalog.waypoints((1, 0), position, goal):
+                position = native_steering_model(rectangles, position, point)
+                self.assertEqual(position, point)
+            self.assertEqual(position, goal)
+
+    def test_native_fixed_axis_ratio_requires_turns_despite_straight_visibility(self):
+        rectangles = [(0, 0, 100, 100), (90, 20, 110, 20), (180, 20, 220, 80)]
+        start, goal = (10, 10), (310, 60)
+        self.assertEqual(native_steering_model(rectangles, start, goal), (99, 60))
+        catalog = self.load_areas({(1, 0): (rectangles, [], "normal")})
+        points = catalog.waypoints((1, 0), start, goal)
+        self.assertGreater(len(points), 1, "a mathematically visible segment is not a native-safe leg")
+        previous = start
+        for point in points:
+            # Exhaust the integer cells of each closed leg bounding box.
+            # All script rectangle boundaries are integers and half-open.
+            for x in range(min(previous[0], point[0]), max(previous[0], point[0]) + 1):
+                for y in range(min(previous[1], point[1]), max(previous[1], point[1]) + 1):
+                    self.assertTrue(any(a <= x < a + w and b <= y < b + h for a, b, w, h in rectangles))
+            self.assertEqual(native_steering_model(rectangles, previous, point), point)
+            previous = point
+        self.assertEqual(previous, goal)
+
     @unittest.skipUnless(ACTUAL_PVF.is_file(), "original ACT1 PVF is not installed")
     def test_actual_pvf_sha_portal_points_and_multitown_forward_reverse_regression(self):
         catalog = self.api.load_catalog(ACTUAL_PVF)
@@ -223,8 +299,22 @@ class TownNavigationTests(unittest.TestCase):
                 self.assertTrue(portal.rect.contains(*portal.point))
                 self.assertTrue(any(r.contains(*portal.point) for r in area.walkable))
                 r = area.walkable[0]
-                points = catalog.waypoints(current, (r.x + r.width / 2, r.y + r.height / 2), portal.point)
+                position = (r.x + r.width // 2, r.y + r.height // 2)
+                points = catalog.waypoints(current, position, portal.point)
                 self.assertEqual(points[-1], portal.point)
+                rectangles = [(r.x, r.y, r.width, r.height) for r in area.walkable]
+                for point in points:
+                    # Independent Cartesian boundary partition checks every
+                    # membership cell of the leg box, including right/bottom.
+                    xs, ys = {position[0], point[0]}, {position[1], point[1]}
+                    for a, b, w, h in rectangles:
+                        xs.update(x for x in (a, a + w) if min(position[0], point[0]) <= x <= max(position[0], point[0]))
+                        ys.update(y for y in (b, b + h) if min(position[1], point[1]) <= y <= max(position[1], point[1]))
+                    for x in xs:
+                        for y in ys:
+                            self.assertTrue(any(a <= x < a + w and b <= y < b + h for a, b, w, h in rectangles))
+                    self.assertEqual(native_steering_model(rectangles, position, point), point)
+                    position = point
                 current = portal.target
             self.assertEqual(current, goal)
 

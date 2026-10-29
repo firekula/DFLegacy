@@ -2,7 +2,10 @@
 
 PVF word decoding follows src/DFLegacy.Protocol/PvfArchiveReader.cs. This
 module never extracts files, controls a client, or changes navigation state.
-Rectangles use the script's x/y/width/height convention and closed bounds.
+Rectangles use the script's x/y/width/height convention and the original
+776C60 right/bottom-exclusive bounds. A native leg requires its entire
+closed axis-aligned bounding box to be covered, because 4795F0 steers x/y
+independently at 186:122 rather than following an arbitrary straight line.
 """
 from collections import deque
 from dataclasses import dataclass
@@ -54,7 +57,7 @@ class Rect:
         return self.y + self.height
 
     def contains(self, x: float, y: float) -> bool:
-        return self.x <= x <= self.right and self.y <= y <= self.bottom
+        return self.x <= x < self.right and self.y <= y < self.bottom
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,31 +92,50 @@ def _middle(rect: Rect) -> Point:
     return rect.x + rect.width // 2, rect.y + rect.height // 2
 
 
-def _visible(rectangles: tuple[Rect, ...], start, end) -> bool:
-    """Cover the entire segment by clipped parameter intervals, not samples."""
-    intervals = []
-    dx, dy = end[0] - start[0], end[1] - start[1]
+def _bridge(a: Rect, b: Rect) -> tuple[Point, ...] | None:
+    shared = _intersection(a, b)
+    if shared is None:
+        return None
+    x, y = _middle(shared)
+    if shared.width > 0 and shared.height > 0:
+        return ((x, y),)
+    # With half-open membership a shared edge belongs to only one side.
+    # Keep integer points on both sides so the preceding/following native
+    # legs remain in their own rectangle; only the one-pixel bridge crosses.
+    if shared.width == 0:
+        return ((x - 1, y), (x, y)) if a.right == b.x else ((x, y), (x - 1, y))
+    return ((x, y - 1), (x, y)) if a.bottom == b.y else ((x, y), (x, y - 1))
+
+
+def _box_covered(rectangles: tuple[Rect, ...], start, end) -> bool:
+    """Prove coverage of the closed leg AABB by the half-open union.
+
+    Sweep all rectangle x boundaries and intervening open slabs. Active
+    rectangles are constant in each slab; their half-open y intervals must
+    cover the whole closed [bottom,top] range, including a degenerate line.
+    Boundary columns are checked separately so excluded right/bottom edges
+    cannot pass through an equality or an epsilon comparison.
+    """
+    left, right = sorted((start[0], end[0]))
+    bottom, top = sorted((start[1], end[1]))
+    cuts = {left, right}
     for rect in rectangles:
-        low, high = 0.0, 1.0
-        for origin, delta, minimum, maximum in (
-                (start[0], dx, rect.x, rect.right), (start[1], dy, rect.y, rect.bottom)):
-            if delta == 0:
-                if not minimum <= origin <= maximum:
-                    low, high = 1.0, 0.0
-                    break
-            else:
-                a, b = (minimum - origin) / delta, (maximum - origin) / delta
-                low, high = max(low, min(a, b)), min(high, max(a, b))
-        if low <= high:
-            intervals.append((low, high))
-    covered = 0.0
-    for low, high in sorted(intervals):
-        if low > covered + 1e-12:
+        cuts.update(x for x in (rect.x, rect.right) if left <= x <= right)
+    columns = sorted(cuts)
+    columns += [(a + b) / 2 for a, b in zip(columns, columns[1:])]
+    for x in columns:
+        covered = bottom
+        for low, high in sorted((r.y, r.bottom) for r in rectangles if r.x <= x < r.right):
+            if high <= covered:
+                continue
+            if low > covered:
+                return False
+            covered = high
+            if covered > top:  # upper bounds are excluded, including at top
+                break
+        else:
             return False
-        covered = max(covered, high)
-        if covered >= 1.0:
-            return True
-    return False
+    return True
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,7 +185,7 @@ class Catalog:
         goals = {i for i, rect in enumerate(rectangles) if rect.contains(*target_xy)}
         if not starts or not goals:
             raise NavigationCatalogError("outside_walkable", f"endpoint outside {key} walkable rectangles")
-        if _visible(rectangles, start_xy, target_xy):
+        if _box_covered(rectangles, start_xy, target_xy):
             return (target_xy,)
         # A sequence of rectangle intersections supplies a path even where
         # reaching the goal requires initially moving farther away from it.
@@ -178,22 +200,22 @@ class Catalog:
             for next_index, rect in enumerate(rectangles):
                 if next_index in previous:
                     continue
-                shared = _intersection(rectangles[current], rect)
-                if shared is not None:
-                    previous[next_index] = (current, _middle(shared))
+                bridge = _bridge(rectangles[current], rect)
+                if bridge is not None:
+                    previous[next_index] = (current, bridge)
                     queue.append(next_index)
         if final is None:
             raise NavigationCatalogError("no_path", f"disconnected walkable rectangles in {key}")
         turns = [target_xy]
         while previous[final] is not None:
-            final, point = previous[final]
-            turns.append(point)
+            final, bridge = previous[final]
+            turns.extend(reversed(bridge))
         path = [start_xy] + list(reversed(turns))
-        # Retain only turns needed to keep each full straight leg covered.
+        # Simplify only where the entire native leg AABB stays walkable.
         result, index = [], 0
         while index < len(path) - 1:
             for next_index in range(len(path) - 1, index, -1):
-                if _visible(rectangles, path[index], path[next_index]):
+                if _box_covered(rectangles, path[index], path[next_index]):
                     result.append(path[next_index])
                     index = next_index
                     break
