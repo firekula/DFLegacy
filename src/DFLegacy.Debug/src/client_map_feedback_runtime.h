@@ -4,6 +4,7 @@
 
 namespace dfl::client_map_feedback
 {
+    // Feedback appends to the original NMap owner draw callback (88187E -> 8814A0).
     void Initialize(client_state::Reader,const wchar_t* directory) noexcept;
     void AcceptGoal(const client_state::Snapshot&,const client_navigation::CanvasGoal&) noexcept;
     void ObserveFrame(const client_state::Snapshot&,bool navigationHooksReady) noexcept;

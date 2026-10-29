@@ -199,6 +199,17 @@ int RunMapClickFeedbackRuntimeTests()
         OriginalCalls=AfterCalls=0;Ordered=true;
         Check(DrawWithOriginal(reinterpret_cast<void*>(0x990000),Original,AfterDraw)==-7654321 && OriginalCalls==1 && Feedback.Active(),
             "unrelated UI root runs original without drawing or cancelling valid effect");
+        constexpr unsigned char specificCall[]={0xE8,0x1D,0xFC,0xFF,0xFF};
+        Check(DrawCallAddress==0x88187E && DrawTargetAddress==0x8814A0 && std::memcmp(OriginalCall,specificCall,5)==0,
+            "SourceSpecificBinding: hook targets original minimap draw call and exact bytes");
+        Reason("before_specific_callback");FunctionsVerified=false;
+        DrawWithOriginal(reinterpret_cast<void*>(0x300000),Original,AfterDraw);
+        Check(!Feedback.Active() && std::strcmp(Stats.reason,"native_signature_unavailable")==0,
+            "SourceSpecificBinding: minimap self reaches protected render path after original");
+        Feedback.Start(Current.binding,{80,90},1000);Reason("before_generic_root");
+        DrawWithOriginal(reinterpret_cast<void*>(0x310000),Original,AfterDraw);
+        Check(Feedback.Active() && std::strcmp(Stats.reason,"before_generic_root")==0,
+            "SourceSpecificBinding: generic UI root is not accepted as minimap self");
         InterlockedExchange(&Enabled,0);Feedback.Reset();
     }
     {

@@ -40,7 +40,10 @@ namespace dfl::client_map_feedback
         using PatchOperation=bool (*)(void*,const unsigned char*,const unsigned char*) noexcept;
         using OriginalOperation=std::int32_t (*)(void*) noexcept;
         using AfterOperation=void (*)(void*) noexcept;
-        constexpr unsigned char OriginalCall[]={0xE8,0xC5,0xFA,0xFF,0xFF};
+        // 881860 has already selected this minimap's visible root child here.
+        // ECX is the minimap owner; 880B90 still follows this CALL unchanged.
+        constexpr std::uint32_t DrawCallAddress=0x88187E,DrawTargetAddress=0x8814A0;
+        constexpr unsigned char OriginalCall[]={0xE8,0x1D,0xFC,0xFF,0xFF};
         bool CopyPixels(const LockedPixels& mapping) noexcept
         {
             if(!mapping.bits || mapping.pitch<88 || mapping.pitch>1048576)return false;
@@ -194,7 +197,9 @@ namespace dfl::client_map_feedback
             if(FunctionsVerified)return true;
             struct Signature {std::uint32_t address;std::array<unsigned char,16> bytes;};
             constexpr Signature signatures[]={
-                {0x8F6A80,{0x53,0x56,0x8B,0xF1,0x8B,0x06,0x57,0xFF,0x50,0x18,0x8B,0x46,0x54,0x85,0xC0,0x74}},
+                {DrawTargetAddress,{0x55,0x8B,0xEC,0x6A,0xFF,0x68,0x7B,0xBB,0x98,0x00,0x64,0xA1,0x00,0x00,0x00,0x00}},
+                {0x881860,{0x55,0x8B,0xEC,0x56,0x8B,0xF1,0x8B,0x46,0x04,0x57,0x8B,0x7D,0x08,0x3B,0xF8,0x75}},
+                {0x88187C,{0x8B,0xCE,0xE8,0x1D,0xFC,0xFF,0xFF,0x8B,0xCE,0xE8,0x06,0xF3,0xFF,0xFF,0x3B,0x7E}},
                 {0x91857A,{0x56,0x8B,0x74,0x24,0x08,0xEB,0x10,0x56,0xE8,0x37,0x66,0x00,0x00,0x85,0xC0,0x59}},
                 {0x919D7D,{0xE9,0xF6,0x0B,0x00,0x00,0x55,0x8B,0xEC,0x83,0xEC,0x20,0x8B,0x45,0x0C,0x56,0x8B}},
                 {0x8E16A0,{0x55,0x8B,0xEC,0x8B,0x45,0x10,0x8B,0x55,0x08,0x56,0x8B,0xF1,0x8B,0x4D,0x0C,0x50}},
@@ -371,7 +376,7 @@ namespace dfl::client_map_feedback
             if(!InterlockedCompareExchange(&Enabled,0,0) || InterlockedCompareExchange(&StopRequested,0,0) || !NavigationReady || !Thread() || !Layout())return;
             map_click_feedback::Binding binding;std::uint32_t root=0;map_click_feedback::Point view;
             if(!Fresh() || !ReadCanvas(binding,root,view)){Feedback.Reset();Reason("map_hidden_or_context_unavailable");Publish();return;}
-            if(reinterpret_cast<std::uintptr_t>(self)!=root)return;
+            if(reinterpret_cast<std::uintptr_t>(self)!=binding.minimapToken)return;
             Feedback.Update(binding,true,Now());
             if(!Feedback.Active()){Reason("idle_or_expired");Publish();return;}
             if(!LeafGate()){Feedback.Reset();Reason("native_signature_unavailable");Publish();return;}
@@ -408,15 +413,15 @@ namespace dfl::client_map_feedback
             Publish();
         }
         std::int32_t OriginalDraw(void* self) noexcept
-        {using F=std::int32_t (__thiscall*)(void*);return reinterpret_cast<F>(0x8F6A80)(self);}
+        {using F=std::int32_t (__thiscall*)(void*);return reinterpret_cast<F>(DrawTargetAddress)(self);}
         std::int32_t __fastcall DrawBridge(void* self,void*) noexcept
         {Activity activity;return DrawWithOriginal(self,OriginalDraw,AfterDraw);}
         bool NativePatch(void*,const unsigned char* expected,const unsigned char* replacement) noexcept
         {
             if(!Thread() || !Layout())return false;
             Reads r;std::array<unsigned char,5> actual{};
-            if(!r.At(0x8F6FB6,0,actual) || std::memcmp(actual.data(),expected,5)!=0)return false;
-            auto* address=reinterpret_cast<unsigned char*>(0x8F6FB6);DWORD old=0,ignored=0;
+            if(!r.At(DrawCallAddress,0,actual) || std::memcmp(actual.data(),expected,5)!=0)return false;
+            auto* address=reinterpret_cast<unsigned char*>(DrawCallAddress);DWORD old=0,ignored=0;
             if(!VirtualProtect(address,5,PAGE_EXECUTE_READWRITE,&old))return false;
             std::memcpy(address,replacement,5);FlushInstructionCache(GetCurrentProcess(),address,5);
             if(VirtualProtect(address,5,old,&ignored))return true;
@@ -433,7 +438,7 @@ namespace dfl::client_map_feedback
             if(!DrawHook.installed)
             {
                 const auto target=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&DrawBridge));
-                const std::uint32_t displacement=target-(0x8F6FB6+5);
+                const std::uint32_t displacement=target-(DrawCallAddress+5);
                 std::array<unsigned char,5> patched{};patched[0]=0xE8;std::memcpy(patched.data()+1,&displacement,4);
                 if(InstallHook(DrawHook,patched,HookPatchContext,HookPatchOperation))
                 {InterlockedExchange(&HookPublished,1);++Stats.revision;Reason("hook_ready");}
