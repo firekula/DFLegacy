@@ -1,0 +1,48 @@
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\DFLegacy.Debug.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\DFLegacy.Debug.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.RandomNative\DFLegacy.RandomNative.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.RandomNative\DFLegacy.RandomNative.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+  正在确定要还原的项目…
+  已还原 D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Relay\DFLegacy.Relay.csproj (用时 81 毫秒)。
+  已还原 D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Relay.Core\DFLegacy.Relay.Core.csproj (用时 80 毫秒)。
+  已还原 D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj (用时 3.23 秒)。
+  6 个项目(共 9 个)是最新的，无法还原。
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj(20,3): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj(34,3): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj(8,2): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\DFLegacy.Debug.vcxproj(8,2): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.RandomNative\DFLegacy.RandomNative.vcxproj(20,3): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+  DFLegacy.Protocol -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Protocol\bin\Release\net10.0\DFLegacy.Protocol.dll
+  DFLegacy.AccountClient -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.AccountClient\bin\Release\net10.0\DFLegacy.AccountClient.dll
+  DFLegacy.InterProcess -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.InterProcess\bin\Release\net10.0\DFLegacy.InterProcess.dll
+  DFLegacy.Relay.Core -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Relay.Core\bin\Release\net10.0\DFLegacy.Relay.Core.dll
+  DFLegacy.Channel -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Channel\bin\Release\net10.0\DFLegacy.Channel.dll
+  DFLegacy.Server -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Server\bin\Release\net10.0\DFLegacy.Server.dll
+  DFLegacy.Relay -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Relay\bin\Release\net10.0\DFLegacy.Relay.dll
+  DFLegacy.SmokeTests -> D:\codex_worktree\party-chat-gold\DFLegacy\tests\DFLegacy.SmokeTests\bin\Release\net10.0\DFLegacy.SmokeTests.dll
+  DFLegacy.Launcher -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Launcher\bin\Release\net10.0-windows\DFLegacy.Launcher.dll
+  Exception: D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\build-native.ps1:19
+  Line |
+    19 |      throw "CMake 3.24 or newer is required to build DFLegacy.Ijl15."
+       |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+       | CMake 3.24 or newer is required to build DFLegacy.Ijl15.
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj(54,5): error MSB3073: 命令“pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\build-native.ps1" -Configuration "Release"”已退出，代码为 1。
+
+生成失败。
+
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\DFLegacy.Debug.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\DFLegacy.Debug.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.RandomNative\DFLegacy.RandomNative.vcxproj : warning NU1503: 正在跳过项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.RandomNative\DFLegacy.RandomNative.vcxproj”的还原操作。项目文件可能无效或缺少还原所需的目标。 [D:\codex_worktree\party-chat-gold\DFLegacy\DFLegacy.Emulator.slnx]
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj(20,3): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj(34,3): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj(8,2): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Debug\DFLegacy.Debug.vcxproj(8,2): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.RandomNative\DFLegacy.RandomNative.vcxproj(20,3): error MSB4278: 导入的文件“$(VCTargetsPath)\Microsoft.Cpp.Default.props”不存在，并且似乎是 Visual Studio 组件的一部分。此文件可能需要 MSBuild.exe 才能成功导入，因此可能无法在 dotnet CLI 中生成。 
+D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj(54,5): error MSB3073: 命令“pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\build-native.ps1" -Configuration "Release"”已退出，代码为 1。
+    5 个警告
+    6 个错误
+
+已用时间 00:00:08.00

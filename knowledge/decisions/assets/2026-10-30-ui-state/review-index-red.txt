@@ -1,0 +1,2 @@
+FAIL client state: selector projection and legacy index cannot describe different selections
+Client state tests: 1 failures

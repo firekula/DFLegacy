@@ -668,3 +668,24 @@ def test_record_run_config_writes_config_overrides_to_manifest(tmp_path):
     r.record_run_config(rp, entries)
     mf = json.loads(rp.manifest.read_text(encoding="utf-8"))
     assert mf["config_overrides"] == entries
+
+
+@pytest.mark.usefixtures("synthetic_server_ports")
+def test_start_server_explicit_private_save_removes_all_inherited_path_aliases(tmp_path, monkeypatch):
+    r=Runner(workspace=tmp_path,acceptance_dir=tmp_path/'acc',runs_dir=tmp_path/'runs')
+    sc=Scenario(id='s',goal='g',expect_t0='server-accept',actors=(ActorSpec('A','synthetic'),),steps=())
+    rp,_=r.prepare(sc,git_sha='private')
+    sj=_write_server_json(rp.server_dir/'server.json');out=rp.server_dir/'env.json'
+    script=rp.server_dir/'env_server.py'
+    script.write_text("import os,json,sys\nfrom pathlib import Path\nPath(sys.argv[1]).write_text(json.dumps({k:v for k,v in os.environ.items() if k.replace('__',':').casefold()=='dflegacy:datapath'}))\n",encoding='utf-8')
+    monkeypatch.setenv('DFLegacy:DataPath',str(tmp_path/'normal.json'))
+    monkeypatch.setenv('dflegacy__datapath',str(tmp_path/'stale.json'))
+    private=str(rp.server_dir/'state.json')
+    try:
+        r.start_server(rp,exe=Path(sys.executable),workdir=rp.server_dir,server_json=sj,
+                       env={'DFLegacy__DataPath':private},server_args=[str(script),str(out)])
+        deadline=time.monotonic()+10
+        while not out.exists() and time.monotonic()<deadline:time.sleep(.025)
+        actual=json.loads(out.read_text(encoding='utf-8'))
+        assert len(actual)==1 and set(actual.values())=={private}
+    finally:r.stop_all()

@@ -1,0 +1,91 @@
+{
+  "checked_at_utc": "2026-10-30T06:30:53.388877+00:00",
+  "branch": "codex/channel-return-next",
+  "base_head": "1c4fc0dac2a051685e6fb196c1ae956fe9203c03",
+  "python": {
+    "passed": 620,
+    "subtests": 569,
+    "skipped": 0,
+    "exit_code": 0
+  },
+  "debug_groups": [
+    {
+      "mode": "--client-state",
+      "exit_code": 0
+    },
+    {
+      "mode": "--client-navigation",
+      "exit_code": 0
+    },
+    {
+      "mode": "--client-party",
+      "exit_code": 0
+    },
+    {
+      "mode": "--town-route",
+      "exit_code": 0
+    },
+    {
+      "mode": "--frame-profile",
+      "exit_code": 0
+    },
+    {
+      "mode": "--gameplay-trace",
+      "exit_code": 0
+    },
+    {
+      "mode": "--native-loop",
+      "exit_code": 0
+    },
+    {
+      "mode": "--client-test-control",
+      "exit_code": 0
+    },
+    {
+      "mode": "--map-feedback",
+      "exit_code": 0
+    },
+    {
+      "mode": "--gameplay-abi",
+      "exit_code": 0
+    },
+    {
+      "mode": "full-overlay-with-fresh-managed-fixture",
+      "exit_code": 0
+    }
+  ],
+  "builds": {
+    "debug": 0,
+    "ijl": 0
+  },
+  "full_ijl_compatibility_exit": 0,
+  "managed_overlay_smoke_exit": 0,
+  "managed_full_suite_rerun": false,
+  "live_game_matrix_rerun": false,
+  "debug_sha256": "2D443011161A943B79BE4ED7C02EACAFE02F120DC5B0688C142A313D789BBF83",
+  "ijl_sha256": "0103C7DCE1FA8AEA5233D7A02C6E1115F83598A8E3A02EF85AC8834F24B2871A",
+  "restoration": {
+    "restored_files": 14,
+    "protected_files": 8,
+    "normal_save_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283"
+  },
+  "daily_package_deployed": false,
+  "historical_report_binding_notes": [
+    {
+      "report": "knowledge/decisions/2026-10-30-remaining-blockers-followup.md",
+      "original_manifest": "knowledge/decisions/assets/2026-10-30-remaining-blockers-followup/manifest.json",
+      "declared_report_sha256": "A90F91701D73588123FFC73FDEEED1AD007E3D278E3BCA7A6E6707A6A6EF3326",
+      "current_report_sha256": "f52fef944e9b8c36ab036d848564b6426d6e71ece8b5d01fe4a28dbb1da0d2fd",
+      "disposition": "Original manifest and original attachments preserved. Current report bound by this archive; cause not inferred."
+    }
+  ],
+  "python_diagnostic": "Existing Unicorn.mem_map Windows faulthandler stacks retained; tests completed exit0.",
+  "excluded": [
+    "normal/private raw state",
+    "credentials",
+    "raw encrypted network dumps",
+    "raw thread memory",
+    "Python caches",
+    "private run directories"
+  ]
+}

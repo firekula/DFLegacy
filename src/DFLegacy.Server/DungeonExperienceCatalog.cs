@@ -219,10 +219,10 @@ public sealed class DungeonExperienceCatalog
             PartyBonus = partyBonus,
             AvatarBonus = Bonus(bonuses.HasAvatar ? memberCount == 1 ? 0.02 : 0.05 : 0, true),
             CreatureBonus = Bonus(bonuses.HasCreature ? memberCount == 1 ? 0.02 : 0.05 : 0, true),
-            MentorBonus = Bonus(bonuses.MentorBonusRate),
             EventBonus = Bonus(bonuses.EventBonusRate),
             BlackDiamondBonus = Bonus(bonuses.HasBlackDiamond ? _blackDiamondClearBonusRate : 0),
-            ChannelBonus = Bonus(bonuses.ChannelBonusRate)
+            ChannelBonus = Bonus(bonuses.ChannelBonusRate),
+            MentorBonus = Bonus(bonuses.MentorBonusRate)
         };
     }
 

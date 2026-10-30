@@ -1,0 +1,4 @@
+FAIL: creature row gift: actual native record price at+40 enables eligible row without changing record
+FAIL: creature row gift: actual native record price at+40 enables eligible row without changing record
+FAIL: creature row gift: actual native record price at+40 enables eligible row without changing record
+FAIL: creature row gift: old mistaken price-at+32 layout is rejected

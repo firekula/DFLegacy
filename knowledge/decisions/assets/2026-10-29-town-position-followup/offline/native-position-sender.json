@@ -1,0 +1,7 @@
+{
+  "original_exe_sha256": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5",
+  "start": "0x479a40",
+  "end_exclusive": "0x479b65",
+  "range_sha256": "4b14ed7063fd4329dc6c1135b6149ea97a3f4ce8910ff0dbc05a0c2457161253",
+  "binding": "CNRDVirtualCharacter vtable9988DC+17C stores479A40"
+}

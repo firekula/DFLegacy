@@ -346,6 +346,23 @@ public sealed class DungeonPartyService : BackgroundService
         }
     }
 
+    internal async Task BroadcastActiveDropAsync(
+        DungeonInstance instance, DungeonGroundItem groundItem, GameServerPacket packet, long roomGeneration)
+    {
+        foreach (var member in instance.Members)
+        {
+            if (!instance.IsGroundItemInCurrentRoom(groundItem, roomGeneration)) break;
+            // Never fall back to ordinary Send: it can wait for the write gate
+            // after this check, letting a new room packet overtake the old actor.
+            if (member.SendConditional is not { } sendConditional) continue;
+            await CrossSessionDelivery.SendSafelyAsync(_logger, packet,
+                CrossSessionDelivery.Describe(member.CharacterId, member.CharacterName, member.AreaUserId),
+                value => sendConditional(value, () =>
+                    instance.IsGroundItemInCurrentRoom(groundItem, roomGeneration)
+                    && ReferenceEquals(instance.FindMember(member.CharacterId), member)));
+        }
+    }
+
     /// <summary>
     /// 原生 NOTI39 消费四槽骰子分，并仅在 winner uid 等于本地 uid 时入背包。
     /// 骰子结果必须先到全队，再由调用方广播地面移除；直取仍只通知得主会话。

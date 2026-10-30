@@ -31,6 +31,7 @@ from .orchestrate import (capture_client_pid, launcher_command,
                           parse_actor_accounts, write_steps)
 from .runner import Runner, ServerStartupError, _is_split_server, isolate_state
 from .verdict import Verdict, digest, judge, write_verdict
+from .state_seed import seed_state as clone_seed_state
 
 HERE = Path(__file__).resolve().parent
 SCENARIOS = HERE / "scenarios"
@@ -127,7 +128,7 @@ def _orchestration_paths(args: argparse.Namespace) -> dict:
 
 def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
                 actor_accounts: str, paths: dict, expected_actors: int | None = None,
-                server_start_timeout: float = 300.0) -> int:
+                server_start_timeout: float = 300.0, seed_state: Path | None = None) -> int:
     """一条命令：建 run + 隔离存档 + 起服务端与 N 个 actor + 真人 UI + 归集判定。
 
     存档隔离靠 `DFLegacy__DataPath` 指向 run 私有副本（绝不写活存档）；
@@ -182,11 +183,13 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
 
     r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
     rp, _ = r.prepare(sc, git_sha=git_sha)
-    live_state = server_exe.parent / "data" / "state.json"
-    if not live_state.is_file():
-        print(f"活存档不存在：{live_state}", file=sys.stderr)
+    try:
+        seed_record = clone_seed_state(server_json, rp.server_dir, seed_state=seed_state)
+    except (OSError, ValueError) as error:
+        print(f"无法准备隔离存档：{error}", file=sys.stderr)
         return 2
-    isolate_state(live_state, rp.server_dir)  # 复制 → run 私有初始存档
+    (rp.server_dir / "state-seed.json").write_text(
+        json.dumps(seed_record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     shutil.copy2(server_json, rp.server_dir / "server.json")
     run_state = rp.server_dir / "state.json"
     client_pids: dict[str, int | None] = {}
@@ -211,7 +214,7 @@ def orchestrate(scenario_path: Path, runs_dir: Path, git_sha: str, *,
                            env={"DFLegacy__DataPath": str(run_state)},
                            log_path=rp.server_dir / "server-game.log")
         r.record_run_config(rp, [{"key": "DFLegacy__DataPath",
-                                  "old": "data/state.json", "new": str(run_state)}])
+                                  "old": seed_record["source"], "new": str(run_state)}])
         # 必须等服务端真的开始监听再起 actor：launcher 在 StartServer=false 时只探一次端口
         # （src/DFLegacy.Launcher/Program.cs:336-347），而真服务端要约 5.4 秒才监听（2026-10-15 实测）。
         listen = r.wait_until_listening(rp, sc,
@@ -372,7 +375,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
             return 2
         return orchestrate(scen, runs_dir, sha, actor_accounts=args.actor_account,
                            paths=_orchestration_paths(args), expected_actors=args.actors,
-                           server_start_timeout=args.server_start_timeout)
+                           server_start_timeout=args.server_start_timeout,
+                           seed_state=Path(args.seed_state) if args.seed_state else None)
     # 只建 run 目录并打印 runId，供人工 run 使用
     sc = load_scenario(scen)
     r = Runner(workspace=runs_dir.parent, acceptance_dir=HERE, runs_dir=runs_dir)
@@ -426,6 +430,8 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--run-id", default=None)
     p_run.add_argument("--client-dir", default=None,
                        help="客户端目录（netdump-<pid>.log 所在；--collect 与一条命令共用）")
+    p_run.add_argument("--seed-state", default=None,
+                       help="显式选择种子存档（如上一轮关闭保存）；只复制到新run，不回写")
     p_run.add_argument("--actor-account", default=None,
                        help="一条命令用：A=alias1,B=alias2（账号别名；密码只留在 launcher.json）")
     p_run.add_argument("--launcher-exe", default=None,

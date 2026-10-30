@@ -1,5 +1,11 @@
 # DFLegacy 部署指南
 
+## 已有日常运行目录交接
+
+合并前 [2026-10-30 手测记录](knowledge/decisions/2026-10-30-dungeon-gate-map-target-verification.md)中的 debug `0082559C…` 仅在 `Loot4_A` 手测客户端加载，其他日常目录未升级。原私有服务、测试存档及恢复脚本归属见 [当前交接](HANDOFF-2026-10-30.md)。手测结束应使用原私有目录的 `Stop-ManualTest.ps1`，不可在客户端仍加载 DLL 时覆盖，也不可用测试档回写正常存档。
+
+该分支已有原生诊断与 U05 数据／CLI 的隔离验收不等同新构建的日常部署。源码合并不自动替换 DLL、启动器旁副本或正常存档；升级仍需备份、匹配 ABI／消费脚本、重启并验收，旧构建矩阵保留原身份。
+
 下载与你系统对应的发行包，校验可信来源与 SHA-256，解压到一个新目录。管理器和 Server 为自包含 .NET 程序；不需要安装 SDK 或运行时，但系统仍需满足 [.NET 系统依赖](https://learn.microsoft.com/dotnet/core/install/)。游戏客户端与 `Script.pvf` 由使用者自行提供，发行包不包括这些资源。
 
 ## 本机启动与首次设置

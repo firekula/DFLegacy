@@ -1,0 +1,4 @@
+2026-10-29 14:26:36.742 [60624] focus request completed
+2026-10-29 14:26:36.748 [60624] GetDeviceState calls=37914 res=0x0 nonzeroPeak=1 synthKeys=0
+2026-10-29 14:26:36.791 [60624] plan armed (3 steps)
+2026-10-29 14:26:37.794 [60624] focus request completed

@@ -1,0 +1,27 @@
+[
+  {
+    "File": "A-30d-preview.jpg",
+    "Sha256": "82BE706DE92B7F54F019803D1FB78216189C3C5D48EA89D8593F5E01B729872A",
+    "OriginalEqual": true
+  },
+  {
+    "File": "A-30d-gift-result.jpg",
+    "Sha256": "430A8AA2D3CDDF441AFCB0527C73AB960E1E3D9D2526E1D30E5D0029BC4192D6",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-read-30d-gift.jpg",
+    "Sha256": "74CAA6EF0381E62AF681A2A04CE9181FE6F23D99DEF6B7179FFDAB55955C4367",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-30d-claimed-tooltip.jpg",
+    "Sha256": "6F0DE707DAD28CEDA188CAE5E7ECB696145132AEA49A6DD467B3506BDCE38553",
+    "OriginalEqual": true
+  },
+  {
+    "File": "thirty-day-frozen-proof.json",
+    "Sha256": "6A7E95B79717C82219A7B032A4178E8D4FADEF7802ECB57DD396E8CE9B6D6E05",
+    "OriginalEqual": true
+  }
+]

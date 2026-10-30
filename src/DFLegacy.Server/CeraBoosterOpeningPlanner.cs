@@ -45,6 +45,7 @@ public static class CeraBoosterOpeningPlanner
         var plannedAvatar = avatarInventory.ToDictionary(pair => pair.Key, pair => pair.Value);
         var plannedCreature = creatureInventory.ToDictionary(pair => pair.Key, pair => pair.Value);
         var overflow = new List<CharacterMailAttachmentRecord>();
+        var grantedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         if (sourceItem.CountOrValue == 1)
         {
             plannedMain.Remove(sourceSlot);
@@ -67,6 +68,12 @@ public static class CeraBoosterOpeningPlanner
 
             var isAvatar = rewardDefinition.InventoryCategory
                 == ItemInventoryCategory.Avatar;
+            if (isAvatar && reward.AvatarPeriodDays is < 0 or > 49_710)
+            {
+                failure = "the avatar reward period exceeds the ACT1 remaining-seconds field";
+                return false;
+            }
+            var avatarSeconds = isAvatar ? checked((uint)reward.AvatarPeriodDays * 86_400u) : 0u;
             var attachment = CharacterItemIdentity.Ensure(
                 new CharacterMailAttachmentRecord(
                 reward.ItemId,
@@ -78,13 +85,11 @@ public static class CeraBoosterOpeningPlanner
                 SealState: rewardDefinition.AttachType == ItemAttachType.Sealing
                     ? (byte)1
                     : (byte)0,
-                // The DF2008 client treats this field as a remaining period,
-                // not an absolute timestamp. DFLegacy currently grants every
-                // Cera-shop Avatar without a time limit.
-                AvatarRemainingSeconds: isAvatar ? 0u : null,
+                AvatarRemainingSeconds: isAvatar ? avatarSeconds : null,
                 AvatarAbilityIndex: isAvatar
                     ? reward.AvatarAbilityIndex
-                    : null),
+                    : null,
+                AvatarExpiresAtUnixSeconds: avatarSeconds == 0 ? null : checked(grantedAt + avatarSeconds)),
                 rewardDefinition);
 
             if (isAvatar)

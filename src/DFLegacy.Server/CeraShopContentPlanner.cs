@@ -3,7 +3,8 @@ namespace DFLegacy.Server;
 public sealed record CeraShopContentReward(
     ushort ItemId,
     uint Count,
-    ushort AvatarAbilityIndex = 0);
+    ushort AvatarAbilityIndex = 0,
+    int AvatarPeriodDays = 0);
 
 public sealed record CeraShopContentPlacementPlan(
     Dictionary<ushort, CharacterItemRecord> MainInventory,
@@ -44,7 +45,8 @@ public static class CeraShopContentPlanner
                     new CeraShopContentReward(
                         reward.ItemId,
                         reward.Count,
-                        reward.AvatarAbilityIndex)));
+                        reward.AvatarAbilityIndex,
+                        reward.AvatarPeriodDays)));
             }
         }
         else if (containerDefinition.CeraPackage is { } package)
@@ -104,6 +106,7 @@ public static class CeraShopContentPlanner
         var plannedAvatar = avatarInventory.ToDictionary(pair => pair.Key, pair => pair.Value);
         var plannedCreature = creatureInventory.ToDictionary(pair => pair.Key, pair => pair.Value);
         var overflow = new List<CharacterMailAttachmentRecord>();
+        var grantedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         foreach (var reward in rewards)
         {
             if (reward.Count == 0
@@ -120,6 +123,12 @@ public static class CeraShopContentPlanner
 
             var isAvatar = rewardDefinition.InventoryCategory
                 == ItemInventoryCategory.Avatar;
+            if (isAvatar && reward.AvatarPeriodDays is < 0 or > 49_710)
+            {
+                failure = "the avatar reward period exceeds the ACT1 remaining-seconds field";
+                return false;
+            }
+            var avatarSeconds = isAvatar ? checked((uint)reward.AvatarPeriodDays * 86_400u) : 0u;
             var attachment = CharacterItemIdentity.Ensure(
                 new CharacterMailAttachmentRecord(
                 reward.ItemId,
@@ -131,12 +140,11 @@ public static class CeraShopContentPlanner
                 SealState: rewardDefinition.AttachType == ItemAttachType.Sealing
                     ? (byte)1
                     : (byte)0,
-                // The DF2008 client reads this field as remaining seconds.
-                // Cera-shop rewards are permanent until expiration is implemented.
-                AvatarRemainingSeconds: isAvatar ? 0u : null,
+                AvatarRemainingSeconds: isAvatar ? avatarSeconds : null,
                 AvatarAbilityIndex: isAvatar
                     ? reward.AvatarAbilityIndex
-                    : null),
+                    : null,
+                AvatarExpiresAtUnixSeconds: avatarSeconds == 0 ? null : checked(grantedAt + avatarSeconds)),
                 rewardDefinition);
 
             foreach (var chunk in CharacterInventoryPlanner.CreateMailAttachments(

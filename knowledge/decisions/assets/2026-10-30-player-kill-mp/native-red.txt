@@ -1,0 +1,3 @@
+FAIL test-control: player kill accepts only bound living self with no HP operand
+Client test control tests: 1 failures
+Client test control IO tests: 0 failures

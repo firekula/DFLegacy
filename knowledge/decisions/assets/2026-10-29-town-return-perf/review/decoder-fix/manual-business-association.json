@@ -1,0 +1,1349 @@
+{
+  "scope": "manual copied logs, parse-complete only; no automated acceptance or full rarity matrix claimed",
+  "inputs": [
+    {
+      "side": "A",
+      "pid": 33324,
+      "input_sha256": "98E5501ACAC02F4E75F793602311A5A942D35BCFC475B769FF298CE0AB8504B1",
+      "raw_lines": 20661,
+      "selected": 35,
+      "status": "complete",
+      "ignored_udp": 20428,
+      "ignored_remote_tcp": 72,
+      "protocol_counts": {
+        "RX:0:39": 6,
+        "RX:0:86": 8,
+        "RX:0:40": 7,
+        "TX:1:46": 5,
+        "RX:1:46": 5,
+        "TX:1:50": 2,
+        "RX:1:50": 2
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "input_sha256": "618BDCC5C97AB8ED117FCC39B8F7EE0B61ED69DD11B0A0549D1FE16371B82EF9",
+      "raw_lines": 20681,
+      "selected": 35,
+      "status": "complete",
+      "ignored_udp": 20432,
+      "ignored_remote_tcp": 72,
+      "protocol_counts": {
+        "TX:1:46": 3,
+        "RX:0:39": 4,
+        "RX:0:86": 8,
+        "RX:1:46": 3,
+        "TX:1:50": 5,
+        "RX:0:40": 7,
+        "RX:1:50": 5
+      }
+    }
+  ],
+  "commands": [
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:37:10.288",
+      "rawline_start": 5262,
+      "rawline_end": 5262,
+      "fields": {
+        "sequence": 31,
+        "ground_id": 2,
+        "route": 0,
+        "client_rarity": 0,
+        "check_token": 11799
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:37:10.302",
+      "rawline_start": 5265,
+      "rawline_end": 5265,
+      "fields": {
+        "result": 1
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:37:25.619",
+      "rawline_start": 5693,
+      "rawline_end": 5693,
+      "fields": {
+        "sequence": 32,
+        "ground_id": 3,
+        "route": 0,
+        "client_rarity": 0,
+        "check_token": 8351
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:37:25.677",
+      "rawline_start": 5695,
+      "rawline_end": 5695,
+      "fields": {
+        "result": 1
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:45:56.962",
+      "rawline_start": 18368,
+      "rawline_end": 18368,
+      "fields": {
+        "sequence": 41,
+        "x": 436,
+        "y": 263,
+        "item_space": 0,
+        "source_slot": 43,
+        "count": 4
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:45:56.967",
+      "rawline_start": 18369,
+      "rawline_end": 18369,
+      "fields": {
+        "result": 1,
+        "item_space": 0,
+        "source_slot": 43,
+        "count": 4
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:10.167",
+      "rawline_start": 18706,
+      "rawline_end": 18706,
+      "fields": {
+        "sequence": 43,
+        "ground_id": 5,
+        "route": 0,
+        "client_rarity": 2,
+        "check_token": 32287
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:10.251",
+      "rawline_start": 18711,
+      "rawline_end": 18711,
+      "fields": {
+        "result": 1
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:26.554",
+      "rawline_start": 19110,
+      "rawline_end": 19110,
+      "fields": {
+        "sequence": 44,
+        "ground_id": 7,
+        "route": 0,
+        "client_rarity": 2,
+        "check_token": 10450
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:26.562",
+      "rawline_start": 19111,
+      "rawline_end": 19111,
+      "fields": {
+        "result": 1
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:26.771",
+      "rawline_start": 19119,
+      "rawline_end": 19119,
+      "fields": {
+        "sequence": 45,
+        "ground_id": 6,
+        "route": 0,
+        "client_rarity": 1,
+        "check_token": 30614
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:26.778",
+      "rawline_start": 19120,
+      "rawline_end": 19120,
+      "fields": {
+        "result": 1
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:46:38.780",
+      "rawline_start": 19402,
+      "rawline_end": 19402,
+      "fields": {
+        "sequence": 46,
+        "x": 610,
+        "y": 263,
+        "item_space": 0,
+        "source_slot": 77,
+        "count": 992
+      }
+    },
+    {
+      "side": "A",
+      "pid": 33324,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:46:38.786",
+      "rawline_start": 19403,
+      "rawline_end": 19403,
+      "fields": {
+        "result": 1,
+        "item_space": 0,
+        "source_slot": 77,
+        "count": 992
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:36:27.160",
+      "rawline_start": 4033,
+      "rawline_end": 4033,
+      "fields": {
+        "sequence": 36,
+        "ground_id": 1,
+        "route": 0,
+        "client_rarity": 0,
+        "check_token": 8855
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:36:27.216",
+      "rawline_start": 4035,
+      "rawline_end": 4035,
+      "fields": {
+        "result": 1
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:37:02.700",
+      "rawline_start": 5047,
+      "rawline_end": 5047,
+      "fields": {
+        "sequence": 42,
+        "x": 313,
+        "y": 274,
+        "item_space": 0,
+        "source_slot": 14,
+        "count": 1
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:37:02.824",
+      "rawline_start": 5051,
+      "rawline_end": 5051,
+      "fields": {
+        "result": 1,
+        "item_space": 0,
+        "source_slot": 14,
+        "count": 1
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:37:21.053",
+      "rawline_start": 5576,
+      "rawline_end": 5576,
+      "fields": {
+        "sequence": 44,
+        "x": 313,
+        "y": 274,
+        "item_space": 0,
+        "source_slot": 0,
+        "count": 10
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:37:21.061",
+      "rawline_start": 5577,
+      "rawline_end": 5577,
+      "fields": {
+        "result": 1,
+        "item_space": 0,
+        "source_slot": 0,
+        "count": 10
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:00.353",
+      "rawline_start": 18467,
+      "rawline_end": 18467,
+      "fields": {
+        "sequence": 53,
+        "ground_id": 4,
+        "route": 0,
+        "client_rarity": 1,
+        "check_token": 11799
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:00.362",
+      "rawline_start": 18468,
+      "rawline_end": 18468,
+      "fields": {
+        "result": 1
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:46:07.690",
+      "rawline_start": 18648,
+      "rawline_end": 18648,
+      "fields": {
+        "sequence": 54,
+        "x": 585,
+        "y": 265,
+        "item_space": 0,
+        "source_slot": 55,
+        "count": 7
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:46:07.697",
+      "rawline_start": 18649,
+      "rawline_end": 18649,
+      "fields": {
+        "result": 1,
+        "item_space": 0,
+        "source_slot": 55,
+        "count": 7
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:46:22.914",
+      "rawline_start": 19021,
+      "rawline_end": 19021,
+      "fields": {
+        "sequence": 56,
+        "x": 585,
+        "y": 265,
+        "item_space": 0,
+        "source_slot": 76,
+        "count": 992
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:46:22.922",
+      "rawline_start": 19022,
+      "rawline_end": 19022,
+      "fields": {
+        "result": 1,
+        "item_space": 0,
+        "source_slot": 76,
+        "count": 992
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:46:23.913",
+      "rawline_start": 19046,
+      "rawline_end": 19046,
+      "fields": {
+        "sequence": 57,
+        "x": 585,
+        "y": 265,
+        "item_space": 0,
+        "source_slot": 75,
+        "count": 3
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 50,
+      "timestamp": "2026-10-29 13:46:23.922",
+      "rawline_start": 19047,
+      "rawline_end": 19047,
+      "fields": {
+        "result": 1,
+        "item_space": 0,
+        "source_slot": 75,
+        "count": 3
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "TX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:42.329",
+      "rawline_start": 19511,
+      "rawline_end": 19511,
+      "fields": {
+        "sequence": 59,
+        "ground_id": 8,
+        "route": 0,
+        "client_rarity": 1,
+        "check_token": 8351
+      }
+    },
+    {
+      "side": "B",
+      "pid": 14376,
+      "direction": "RX",
+      "type": 1,
+      "protocol": 46,
+      "timestamp": "2026-10-29 13:46:42.340",
+      "rawline_start": 19512,
+      "rawline_end": 19512,
+      "fields": {
+        "result": 1
+      }
+    }
+  ],
+  "ground_chains": [
+    {
+      "ground_id": 1,
+      "events": [
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:36:27.213",
+          "rawline_start": 4031,
+          "rawline_end": 4031,
+          "fields": {
+            "kind": "gold",
+            "ground_id": 1,
+            "picker_uid": 2,
+            "amounts": [
+              10,
+              10,
+              0,
+              0
+            ],
+            "adjustment_counts": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:36:27.218",
+          "rawline_start": 4032,
+          "rawline_end": 4032,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 2,
+            "item_id": 0,
+            "ground_id": 1
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:36:27.215",
+          "rawline_start": 4034,
+          "rawline_end": 4034,
+          "fields": {
+            "kind": "gold",
+            "ground_id": 1,
+            "picker_uid": 2,
+            "amounts": [
+              10,
+              10,
+              0,
+              0
+            ],
+            "adjustment_counts": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:36:27.215",
+          "rawline_start": 4034,
+          "rawline_end": 4034,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 2,
+            "item_id": 0,
+            "ground_id": 1
+          }
+        }
+      ]
+    },
+    {
+      "ground_id": 2,
+      "events": [
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:37:02.822",
+          "rawline_start": 5037,
+          "rawline_end": 5037,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 313,
+            "y": 274,
+            "ground_id": 2,
+            "item_id": 33000,
+            "item_attr": 0,
+            "add_info": 1,
+            "durability": 35
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:37:10.302",
+          "rawline_start": 5265,
+          "rawline_end": 5265,
+          "fields": {
+            "kind": "item",
+            "ground_id": 2,
+            "picker_uid": 1,
+            "scores": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "winner_uid": 1,
+            "destination_slot": 16
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:37:10.302",
+          "rawline_start": 5265,
+          "rawline_end": 5265,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 33000,
+            "ground_id": 2
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:37:02.824",
+          "rawline_start": 5051,
+          "rawline_end": 5051,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 313,
+            "y": 274,
+            "ground_id": 2,
+            "item_id": 33000,
+            "item_attr": 0,
+            "add_info": 1,
+            "durability": 35
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:37:10.303",
+          "rawline_start": 5276,
+          "rawline_end": 5276,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 33000,
+            "ground_id": 2
+          }
+        }
+      ]
+    },
+    {
+      "ground_id": 3,
+      "events": [
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:37:21.057",
+          "rawline_start": 5563,
+          "rawline_end": 5563,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 313,
+            "y": 274,
+            "ground_id": 3,
+            "item_id": 0,
+            "item_attr": 0,
+            "add_info": 10,
+            "durability": 0,
+            "gold_amount": 10
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:37:25.677",
+          "rawline_start": 5695,
+          "rawline_end": 5695,
+          "fields": {
+            "kind": "gold",
+            "ground_id": 3,
+            "picker_uid": 1,
+            "amounts": [
+              5,
+              5,
+              0,
+              0
+            ],
+            "adjustment_counts": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:37:25.677",
+          "rawline_start": 5695,
+          "rawline_end": 5695,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 0,
+            "ground_id": 3
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:37:21.061",
+          "rawline_start": 5577,
+          "rawline_end": 5577,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 313,
+            "y": 274,
+            "ground_id": 3,
+            "item_id": 0,
+            "item_attr": 0,
+            "add_info": 10,
+            "durability": 0,
+            "gold_amount": 10
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:37:25.678",
+          "rawline_start": 5708,
+          "rawline_end": 5708,
+          "fields": {
+            "kind": "gold",
+            "ground_id": 3,
+            "picker_uid": 1,
+            "amounts": [
+              5,
+              5,
+              0,
+              0
+            ],
+            "adjustment_counts": [
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:37:25.678",
+          "rawline_start": 5708,
+          "rawline_end": 5708,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 0,
+            "ground_id": 3
+          }
+        }
+      ]
+    },
+    {
+      "ground_id": 4,
+      "events": [
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:45:56.967",
+          "rawline_start": 18369,
+          "rawline_end": 18369,
+          "fields": {
+            "dropper_uid": 1,
+            "x": 436,
+            "y": 263,
+            "ground_id": 4,
+            "item_id": 1004,
+            "item_attr": 0,
+            "add_info": 4,
+            "durability": 0
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:00.359",
+          "rawline_start": 18455,
+          "rawline_end": 18455,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 2,
+            "item_id": 1004,
+            "ground_id": 4
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:45:56.969",
+          "rawline_start": 18381,
+          "rawline_end": 18381,
+          "fields": {
+            "dropper_uid": 1,
+            "x": 436,
+            "y": 263,
+            "ground_id": 4,
+            "item_id": 1004,
+            "item_attr": 0,
+            "add_info": 4,
+            "durability": 0
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:46:00.362",
+          "rawline_start": 18468,
+          "rawline_end": 18468,
+          "fields": {
+            "kind": "item",
+            "ground_id": 4,
+            "picker_uid": 2,
+            "scores": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "winner_uid": 2,
+            "destination_slot": 43
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:00.362",
+          "rawline_start": 18468,
+          "rawline_end": 18468,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 2,
+            "item_id": 1004,
+            "ground_id": 4
+          }
+        }
+      ]
+    },
+    {
+      "ground_id": 5,
+      "events": [
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:46:07.694",
+          "rawline_start": 18636,
+          "rawline_end": 18636,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 585,
+            "y": 265,
+            "ground_id": 5,
+            "item_id": 5579,
+            "item_attr": 0,
+            "add_info": 7,
+            "durability": 0
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:46:10.251",
+          "rawline_start": 18711,
+          "rawline_end": 18711,
+          "fields": {
+            "kind": "item",
+            "ground_id": 5,
+            "picker_uid": 1,
+            "scores": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "winner_uid": 1,
+            "destination_slot": 43
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:10.251",
+          "rawline_start": 18711,
+          "rawline_end": 18711,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 5579,
+            "ground_id": 5
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:46:07.697",
+          "rawline_start": 18649,
+          "rawline_end": 18649,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 585,
+            "y": 265,
+            "ground_id": 5,
+            "item_id": 5579,
+            "item_attr": 0,
+            "add_info": 7,
+            "durability": 0
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:10.249",
+          "rawline_start": 18723,
+          "rawline_end": 18723,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 5579,
+            "ground_id": 5
+          }
+        }
+      ]
+    },
+    {
+      "ground_id": 6,
+      "events": [
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:46:22.918",
+          "rawline_start": 19008,
+          "rawline_end": 19008,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 585,
+            "y": 265,
+            "ground_id": 6,
+            "item_id": 3027,
+            "item_attr": 0,
+            "add_info": 992,
+            "durability": 0
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:46:26.778",
+          "rawline_start": 19120,
+          "rawline_end": 19120,
+          "fields": {
+            "kind": "item",
+            "ground_id": 6,
+            "picker_uid": 1,
+            "scores": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "winner_uid": 1,
+            "destination_slot": 77
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:26.778",
+          "rawline_start": 19120,
+          "rawline_end": 19120,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 3027,
+            "ground_id": 6
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:46:22.922",
+          "rawline_start": 19022,
+          "rawline_end": 19022,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 585,
+            "y": 265,
+            "ground_id": 6,
+            "item_id": 3027,
+            "item_attr": 0,
+            "add_info": 992,
+            "durability": 0
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:26.781",
+          "rawline_start": 19133,
+          "rawline_end": 19133,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 3027,
+            "ground_id": 6
+          }
+        }
+      ]
+    },
+    {
+      "ground_id": 7,
+      "events": [
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:46:23.922",
+          "rawline_start": 19031,
+          "rawline_end": 19031,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 585,
+            "y": 265,
+            "ground_id": 7,
+            "item_id": 3021,
+            "item_attr": 0,
+            "add_info": 3,
+            "durability": 0
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:46:26.562",
+          "rawline_start": 19111,
+          "rawline_end": 19111,
+          "fields": {
+            "kind": "item",
+            "ground_id": 7,
+            "picker_uid": 1,
+            "scores": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "winner_uid": 1,
+            "destination_slot": 76
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:26.562",
+          "rawline_start": 19111,
+          "rawline_end": 19111,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 3021,
+            "ground_id": 7
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:46:23.922",
+          "rawline_start": 19047,
+          "rawline_end": 19047,
+          "fields": {
+            "dropper_uid": 2,
+            "x": 585,
+            "y": 265,
+            "ground_id": 7,
+            "item_id": 3021,
+            "item_attr": 0,
+            "add_info": 3,
+            "durability": 0
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:26.560",
+          "rawline_start": 19125,
+          "rawline_end": 19125,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 1,
+            "item_id": 3021,
+            "ground_id": 7
+          }
+        }
+      ]
+    },
+    {
+      "ground_id": 8,
+      "events": [
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:46:38.786",
+          "rawline_start": 19403,
+          "rawline_end": 19403,
+          "fields": {
+            "dropper_uid": 1,
+            "x": 610,
+            "y": 263,
+            "ground_id": 8,
+            "item_id": 3027,
+            "item_attr": 0,
+            "add_info": 992,
+            "durability": 0
+          }
+        },
+        {
+          "side": "A",
+          "pid": 33324,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:42.336",
+          "rawline_start": 19497,
+          "rawline_end": 19497,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 2,
+            "item_id": 3027,
+            "ground_id": 8
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 40,
+          "timestamp": "2026-10-29 13:46:38.784",
+          "rawline_start": 19417,
+          "rawline_end": 19417,
+          "fields": {
+            "dropper_uid": 1,
+            "x": 610,
+            "y": 263,
+            "ground_id": 8,
+            "item_id": 3027,
+            "item_attr": 0,
+            "add_info": 992,
+            "durability": 0
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 39,
+          "timestamp": "2026-10-29 13:46:42.340",
+          "rawline_start": 19512,
+          "rawline_end": 19512,
+          "fields": {
+            "kind": "item",
+            "ground_id": 8,
+            "picker_uid": 2,
+            "scores": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "winner_uid": 2,
+            "destination_slot": 103
+          }
+        },
+        {
+          "side": "B",
+          "pid": 14376,
+          "direction": "RX",
+          "type": 0,
+          "protocol": 86,
+          "timestamp": "2026-10-29 13:46:42.340",
+          "rawline_start": 19512,
+          "rawline_end": 19512,
+          "fields": {
+            "subtype": 5,
+            "picker_uid": 2,
+            "item_id": 3027,
+            "ground_id": 8
+          }
+        }
+      ]
+    }
+  ]
+}

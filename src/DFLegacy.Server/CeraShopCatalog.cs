@@ -1,4 +1,6 @@
 using DFLegacy.Protocol;
+using System.Collections.Concurrent;
+using System.Text;
 
 namespace DFLegacy.Server;
 
@@ -11,7 +13,9 @@ public sealed record CeraShopProduct(
     string Section,
     PremiumContractDefinition? PremiumContract = null,
     ushort? WarehouseUpgradeCapacity = null,
-    CeraShopDirectCurrencyGrant? DirectCurrencyGrant = null)
+    CeraShopDirectCurrencyGrant? DirectCurrencyGrant = null,
+    bool GiftDisallowed = false,
+    int Sticker = 0)
 {
     public bool UsesMainInventory =>
         !string.Equals(Section, "avatar", StringComparison.OrdinalIgnoreCase);
@@ -68,6 +72,11 @@ public sealed class CeraShopCatalog
     private readonly ItemCatalog _items;
     private readonly ILogger<CeraShopCatalog> _logger;
     private readonly Lazy<IReadOnlyDictionary<uint, CeraShopProduct>> _products;
+    private readonly ConcurrentDictionary<ushort, int> _avatarOptionCounts = new();
+    private readonly Dictionary<uint, bool> _creatureGiftQuantityIsOne = new();
+    private readonly ConcurrentDictionary<ushort, bool> _creatureGiftPermanent = new();
+    private static readonly Encoding AvatarScriptEncoding = CreateAvatarScriptEncoding();
+    private int _maxGiftCount = 1; // ACT1 B539D4 default when PVF has no override.
 
     public CeraShopCatalog(
         ScriptFileSystem scripts,
@@ -84,9 +93,84 @@ public sealed class CeraShopCatalog
 
     public int Count => _products.Value.Count;
     public IEnumerable<CeraShopProduct> Products => _products.Value.Values;
+    public int MaxGiftCount { get { _ = _products.Value; return _maxGiftCount; } }
 
     public bool TryGetProduct(uint commodityNo, out CeraShopProduct product) =>
         _products.Value.TryGetValue(commodityNo, out product!);
+
+    public bool TryGetAvatarAbilityOptionCount(ushort itemId, out int optionCount)
+    {
+        optionCount = _avatarOptionCounts.GetOrAdd(itemId, LoadAvatarOptionCount);
+        return optionCount > 0;
+    }
+
+    public bool TryResolveAvatarPurchase(GameCeraShopPurchaseItem request,
+        out CeraShopProduct product, out ItemDefinition definition)
+    {
+        product = null!;
+        definition = null!;
+        return TryGetProduct(request.CommodityNo, out product)
+            && string.Equals(product.Section, "avatar", StringComparison.OrdinalIgnoreCase)
+            && product.Quantity == 1
+            && request.AttributeValue is >= 1 and <= 3
+            && request.AttributeValue == product.AttributeValue
+            && _items.TryGetDefinition(product.ItemId, out definition)
+            && definition.InventoryCategory == ItemInventoryCategory.Avatar
+            && request.AvatarAbilityIndex != byte.MaxValue
+            && TryGetAvatarAbilityOptionCount(product.ItemId, out var optionCount)
+            && request.AvatarAbilityIndex < optionCount;
+    }
+
+    public bool TryResolveCreatureEggGift(GameCeraShopPurchaseItem request,
+        out CeraShopProduct product, out ItemDefinition definition)
+    {
+        product = null!;
+        definition = null!;
+        return TryGetProduct(request.CommodityNo, out product)
+            && string.Equals(product.Section, "creature", StringComparison.OrdinalIgnoreCase)
+            && request.ProductType == byte.MaxValue && request.AttributeValue == 0
+            && product.AttributeValue == 0 && product.Quantity == 1
+            && _creatureGiftQuantityIsOne.TryGetValue(product.CommodityNo, out var rawOne) && rawOne
+            && !product.GiftDisallowed && product.Sticker != 99
+            && product.PremiumContract is null && product.WarehouseUpgradeCapacity is null && product.DirectCurrencyGrant is null
+            && _items.TryGetDefinition(product.ItemId, out definition)
+            && definition.InventoryCategory == ItemInventoryCategory.Creature
+            && CharacterCreatureInventoryLayout.IsCreature(definition)
+            && definition.CreatureSubType == 1 && definition.AttachType == ItemAttachType.Sealing
+            && definition.CeraBooster is null && definition.CeraPackage is null && definition.Lottery is null
+            && definition.CreatureOutputIndex is > 0 and <= ushort.MaxValue
+            && _items.TryGetDefinition((ushort)definition.CreatureOutputIndex.Value, out var output)
+            && CharacterCreatureInventoryLayout.IsCreature(output) && output.CreatureSubType != 1
+            && _creatureGiftPermanent.GetOrAdd(product.ItemId, LoadCreatureGiftPermanent);
+    }
+
+    private bool LoadCreatureGiftPermanent(ushort itemId)
+    {
+        try
+        {
+            return _items.TryGetDefinition(itemId, out var definition)
+                && _scripts.FileExists(definition.ScriptPath)
+                && CreatureEggGiftLifetime.IsPermanent(_scripts.ReadAllText(definition.ScriptPath, AvatarScriptEncoding));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(exception, "Cannot read creature egg lifetime for item {ItemId}; gift denied.", itemId);
+            return false;
+        }
+    }
+
+    private int LoadAvatarOptionCount(ushort itemId) =>
+        _items.TryGetDefinition(itemId, out var definition)
+            && definition.InventoryCategory == ItemInventoryCategory.Avatar
+            && _scripts.FileExists(definition.ScriptPath)
+                ? AvatarAbilityOptions.ReadOptionCount(_scripts.ReadAllText(definition.ScriptPath, AvatarScriptEncoding))
+                : 0;
+
+    private static Encoding CreateAvatarScriptEncoding()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(936, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+    }
 
     public bool TryGetPremiumContract(
         ushort itemId,
@@ -109,6 +193,7 @@ public sealed class CeraShopCatalog
     private IReadOnlyDictionary<uint, CeraShopProduct> LoadProducts()
     {
         var products = new Dictionary<uint, CeraShopProduct>();
+        var giftDisallowance = new HashSet<uint>();
         const string path = "etc/newcashshop.etc";
         if (!_scripts.FileExists(path))
         {
@@ -138,13 +223,33 @@ public sealed class CeraShopCatalog
                 continue;
             }
 
+            if (section == "gift disallowance")
+            {
+                foreach (var token in line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries))
+                    if (uint.TryParse(token, out var forbidden)) giftDisallowance.Add(forbidden);
+                continue;
+            }
+            if (section == "max gift count")
+            {
+                if (int.TryParse(line, out var max) && max is >= 0 and <= byte.MaxValue) _maxGiftCount = max;
+                continue;
+            }
             if (!TryParseProductLine(section, line, out var product))
             {
                 continue;
             }
 
             products[product.CommodityNo] = product;
+            // Keep the final successfully loaded row's raw quantity eligibility.
+            // Standard parsing intentionally normalizes zero/malformed quantities for self-buy.
+            var rawFields = line.Split('`')[0].Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+            _creatureGiftQuantityIsOne[product.CommodityNo] = section == "creature"
+                && rawFields.Length > 2 && uint.TryParse(rawFields[2], out var rawQuantity) && rawQuantity == 1;
         }
+
+        foreach (var commodity in giftDisallowance)
+            if (products.TryGetValue(commodity, out var product))
+                products[commodity] = product with { GiftDisallowed = true };
 
         _logger.LogInformation(
             "Loaded {Count} DFLegacy Cera-shop products from {Path}.",
@@ -164,6 +269,12 @@ public sealed class CeraShopCatalog
         var fields = numericPrefix.Split(
             [' ', '\t'],
             StringSplitOptions.RemoveEmptyEntries);
+        var descriptionEnd = descriptionStart < 0 ? -1 : line.IndexOf('`', descriptionStart + 1);
+        var stickerFields = descriptionEnd >= 0
+            ? line[(descriptionEnd + 1)..].Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)
+            : fields.Skip(section == "avatar" ? 3 : section == "package" ? 5 : 6).ToArray();
+        var sticker = stickerFields.Length > 0 && int.TryParse(stickerFields[0], out var parsedSticker)
+            ? parsedSticker : 0;
 
         if (string.Equals(section, "avatar", StringComparison.OrdinalIgnoreCase))
         {
@@ -190,7 +301,8 @@ public sealed class CeraShopCatalog
                 1,
                 avatarAttributeValue,
                 avatarCashPrice,
-                section);
+                section,
+                Sticker: sticker);
             return true;
         }
 
@@ -267,7 +379,8 @@ public sealed class CeraShopCatalog
             section,
             premiumContract,
             warehouseUpgradeCapacity,
-            directCurrencyGrant);
+            directCurrencyGrant,
+            Sticker: sticker);
         return true;
     }
 
@@ -336,6 +449,8 @@ public sealed class CeraShopCatalog
         var path = definition.ScriptPath.Replace('\\', '/').ToLowerInvariant();
         contract = path switch
         {
+            "stackable/cash/shop_private.stk" =>
+                new(GameProtocolEngine.PrivateStoreServiceType, 30),
             "stackable/cash/contract_monarch1.stk" =>
                 new(GameProtocolEngine.OverlordContractServiceType, 1),
             "stackable/cash/contract_monarch3.stk" =>
@@ -370,10 +485,16 @@ public sealed class CeraShopCatalog
             return false;
         }
 
-        // TODO: Restore the client's 1.0x/2.2x/6.6x period pricing after
-        // avatar expiration timestamps and expiry enforcement are implemented.
-        // All avatar purchases are currently permanent, so charge 6.6x.
-        var calculatedPrice = ((long)basePrice * 22 / 10) * 3;
+        // ACT1 0x867AD0 uses the float32 constant 2.2 on the x87 stack,
+        // truncates the 30-day price, then multiplies that integer by three
+        // for unlimited. E.g. base107 is107/235/705, not107/235/706.
+        var monthlyPrice = (long)((double)basePrice * 2.2f);
+        var calculatedPrice = attributeValue switch
+        {
+            1 => basePrice,
+            2 => monthlyPrice,
+            _ => monthlyPrice * 3
+        };
         if (calculatedPrice is < 0 or > int.MaxValue)
         {
             cashPrice = 0;

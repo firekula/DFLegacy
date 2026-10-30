@@ -1,0 +1,1958 @@
+{
+  "method": "Deduplicate immutable completed buckets across every saved poll; retain only buckets wholly inside each phase: start >= phase.start and start+1000 <= phase.end. Current/partial buckets excluded. Validate every saved profile with its role/process identity and max(poll tick, export tick) for sequential-read timestamp ordering.",
+  "runs": {
+    "town": {
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\evidence-frame-profile-v1\\perf-town-timed-window.json",
+      "sha256": "5fcdb8ec1df73bf24ad52083d9157790de4ad53f07c32fab6b48de8c45059e4c",
+      "polls": 548,
+      "read_errors": [
+        {
+          "role": "A",
+          "phase": "single_destination",
+          "tick_ms": 413647343,
+          "error": "unreadable_profile"
+        },
+        {
+          "role": "C",
+          "phase": "single_destination",
+          "tick_ms": 413647343,
+          "error": "unreadable_profile"
+        },
+        {
+          "role": "D",
+          "phase": "short_ui_plans",
+          "tick_ms": 413666171,
+          "error": "unreadable_profile"
+        },
+        {
+          "role": "D",
+          "phase": "short_ui_plans",
+          "tick_ms": 413672937,
+          "error": "unreadable_profile"
+        },
+        {
+          "role": "D",
+          "phase": "native_route",
+          "tick_ms": 413697718,
+          "error": "unreadable_profile"
+        }
+      ],
+      "phases": [
+        {
+          "name": "idle_before",
+          "start_tick_ms": 413629484,
+          "end_tick_ms": 413641515,
+          "elapsed_seconds": 12.031,
+          "expected_wholly_contained_buckets": 11,
+          "roles": {
+            "A": {
+              "complete_windows": 11,
+              "bucket_start_ticks": [
+                413630000,
+                413631000,
+                413632000,
+                413633000,
+                413634000,
+                413635000,
+                413636000,
+                413637000,
+                413638000,
+                413639000,
+                413640000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 1589,
+              "foreground_frames": 1589,
+              "foreground_intervals": 1589,
+              "unknown_foreground_frames": 0,
+              "background_frames": 0,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 156,
+              "max_foreground_hook_us": 156,
+              "max_foreground_interval_us": 42114,
+              "maximum_parts_us": [
+                46,
+                67,
+                49,
+                83,
+                129
+              ],
+              "slow_events": []
+            },
+            "B": {
+              "complete_windows": 11,
+              "bucket_start_ticks": [
+                413630000,
+                413631000,
+                413632000,
+                413633000,
+                413634000,
+                413635000,
+                413636000,
+                413637000,
+                413638000,
+                413639000,
+                413640000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 1714,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 1714,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 125,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                27,
+                49,
+                54,
+                13,
+                100
+              ],
+              "slow_events": []
+            },
+            "C": {
+              "complete_windows": 11,
+              "bucket_start_ticks": [
+                413630000,
+                413631000,
+                413632000,
+                413633000,
+                413634000,
+                413635000,
+                413636000,
+                413637000,
+                413638000,
+                413639000,
+                413640000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 1679,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 1679,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 141,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                27,
+                82,
+                87,
+                75,
+                98
+              ],
+              "slow_events": []
+            },
+            "D": {
+              "complete_windows": 11,
+              "bucket_start_ticks": [
+                413630000,
+                413631000,
+                413632000,
+                413633000,
+                413634000,
+                413635000,
+                413636000,
+                413637000,
+                413638000,
+                413639000,
+                413640000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 1685,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 1685,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 122,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                32,
+                33,
+                12,
+                8,
+                105
+              ],
+              "slow_events": []
+            }
+          }
+        },
+        {
+          "name": "single_destination",
+          "start_tick_ms": 413641515,
+          "end_tick_ms": 413661578,
+          "elapsed_seconds": 20.063,
+          "expected_wholly_contained_buckets": 19,
+          "roles": {
+            "A": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413642000,
+                413643000,
+                413644000,
+                413645000,
+                413646000,
+                413647000,
+                413648000,
+                413649000,
+                413650000,
+                413651000,
+                413652000,
+                413653000,
+                413654000,
+                413655000,
+                413656000,
+                413657000,
+                413658000,
+                413659000,
+                413660000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3221,
+              "foreground_frames": 3221,
+              "foreground_intervals": 3221,
+              "unknown_foreground_frames": 0,
+              "background_frames": 0,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 1,
+              "max_hook_us": 217,
+              "max_foreground_hook_us": 217,
+              "max_foreground_interval_us": 68761,
+              "maximum_parts_us": [
+                19,
+                91,
+                35,
+                164,
+                146
+              ],
+              "slow_events": [
+                {
+                  "serial": 76050,
+                  "tick_ms": 413652281,
+                  "scene": 1,
+                  "hook_us": 46,
+                  "foreground_interval_us": 68761,
+                  "interval_known": true,
+                  "foreground_known": true,
+                  "foreground_begin": true,
+                  "foreground_end": true,
+                  "parts_us": [
+                    16,
+                    8,
+                    4,
+                    3,
+                    15
+                  ],
+                  "phase_offset_ms": 10766,
+                  "interval_start_estimate_tick_ms": 413652212.239,
+                  "after_observed_goal_arrival_ms": 7344
+                }
+              ]
+            },
+            "B": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413642000,
+                413643000,
+                413644000,
+                413645000,
+                413646000,
+                413647000,
+                413648000,
+                413649000,
+                413650000,
+                413651000,
+                413652000,
+                413653000,
+                413654000,
+                413655000,
+                413656000,
+                413657000,
+                413658000,
+                413659000,
+                413660000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3377,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3377,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 191,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                96,
+                98,
+                52,
+                47,
+                103
+              ],
+              "slow_events": []
+            },
+            "C": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413642000,
+                413643000,
+                413644000,
+                413645000,
+                413646000,
+                413647000,
+                413648000,
+                413649000,
+                413650000,
+                413651000,
+                413652000,
+                413653000,
+                413654000,
+                413655000,
+                413656000,
+                413657000,
+                413658000,
+                413659000,
+                413660000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3295,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3295,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 131,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                77,
+                86,
+                89,
+                26,
+                100
+              ],
+              "slow_events": []
+            },
+            "D": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413642000,
+                413643000,
+                413644000,
+                413645000,
+                413646000,
+                413647000,
+                413648000,
+                413649000,
+                413650000,
+                413651000,
+                413652000,
+                413653000,
+                413654000,
+                413655000,
+                413656000,
+                413657000,
+                413658000,
+                413659000,
+                413660000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3302,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3302,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 167,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                30,
+                138,
+                81,
+                61,
+                102
+              ],
+              "slow_events": []
+            }
+          }
+        },
+        {
+          "name": "short_ui_plans",
+          "start_tick_ms": 413661578,
+          "end_tick_ms": 413681671,
+          "elapsed_seconds": 20.093,
+          "expected_wholly_contained_buckets": 19,
+          "roles": {
+            "A": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413662000,
+                413663000,
+                413664000,
+                413665000,
+                413666000,
+                413667000,
+                413668000,
+                413669000,
+                413670000,
+                413671000,
+                413672000,
+                413673000,
+                413674000,
+                413675000,
+                413676000,
+                413677000,
+                413678000,
+                413679000,
+                413680000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3094,
+              "foreground_frames": 3094,
+              "foreground_intervals": 3094,
+              "unknown_foreground_frames": 0,
+              "background_frames": 0,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 236,
+              "max_foreground_hook_us": 236,
+              "max_foreground_interval_us": 21157,
+              "maximum_parts_us": [
+                26,
+                84,
+                52,
+                18,
+                221
+              ],
+              "slow_events": []
+            },
+            "B": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413662000,
+                413663000,
+                413664000,
+                413665000,
+                413666000,
+                413667000,
+                413668000,
+                413669000,
+                413670000,
+                413671000,
+                413672000,
+                413673000,
+                413674000,
+                413675000,
+                413676000,
+                413677000,
+                413678000,
+                413679000,
+                413680000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3392,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3392,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 142,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                38,
+                34,
+                115,
+                22,
+                102
+              ],
+              "slow_events": []
+            },
+            "C": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413662000,
+                413663000,
+                413664000,
+                413665000,
+                413666000,
+                413667000,
+                413668000,
+                413669000,
+                413670000,
+                413671000,
+                413672000,
+                413673000,
+                413674000,
+                413675000,
+                413676000,
+                413677000,
+                413678000,
+                413679000,
+                413680000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3298,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3298,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 165,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                25,
+                63,
+                86,
+                46,
+                101
+              ],
+              "slow_events": []
+            },
+            "D": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413662000,
+                413663000,
+                413664000,
+                413665000,
+                413666000,
+                413667000,
+                413668000,
+                413669000,
+                413670000,
+                413671000,
+                413672000,
+                413673000,
+                413674000,
+                413675000,
+                413676000,
+                413677000,
+                413678000,
+                413679000,
+                413680000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3296,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3296,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 129,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                38,
+                111,
+                57,
+                24,
+                63
+              ],
+              "slow_events": []
+            }
+          }
+        },
+        {
+          "name": "native_route",
+          "start_tick_ms": 413681671,
+          "end_tick_ms": 413701703,
+          "elapsed_seconds": 20.032,
+          "expected_wholly_contained_buckets": 19,
+          "roles": {
+            "A": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413682000,
+                413683000,
+                413684000,
+                413685000,
+                413686000,
+                413687000,
+                413688000,
+                413689000,
+                413690000,
+                413691000,
+                413692000,
+                413693000,
+                413694000,
+                413695000,
+                413696000,
+                413697000,
+                413698000,
+                413699000,
+                413700000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 2923,
+              "foreground_frames": 2923,
+              "foreground_intervals": 2923,
+              "unknown_foreground_frames": 0,
+              "background_frames": 0,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 220,
+              "max_foreground_hook_us": 220,
+              "max_foreground_interval_us": 26037,
+              "maximum_parts_us": [
+                51,
+                72,
+                189,
+                25,
+                120
+              ],
+              "slow_events": []
+            },
+            "B": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413682000,
+                413683000,
+                413684000,
+                413685000,
+                413686000,
+                413687000,
+                413688000,
+                413689000,
+                413690000,
+                413691000,
+                413692000,
+                413693000,
+                413694000,
+                413695000,
+                413696000,
+                413697000,
+                413698000,
+                413699000,
+                413700000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3099,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3099,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 143,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                62,
+                85,
+                77,
+                26,
+                76
+              ],
+              "slow_events": []
+            },
+            "C": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413682000,
+                413683000,
+                413684000,
+                413685000,
+                413686000,
+                413687000,
+                413688000,
+                413689000,
+                413690000,
+                413691000,
+                413692000,
+                413693000,
+                413694000,
+                413695000,
+                413696000,
+                413697000,
+                413698000,
+                413699000,
+                413700000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3078,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3078,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 139,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                66,
+                95,
+                99,
+                9,
+                114
+              ],
+              "slow_events": []
+            },
+            "D": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                413682000,
+                413683000,
+                413684000,
+                413685000,
+                413686000,
+                413687000,
+                413688000,
+                413689000,
+                413690000,
+                413691000,
+                413692000,
+                413693000,
+                413694000,
+                413695000,
+                413696000,
+                413697000,
+                413698000,
+                413699000,
+                413700000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3074,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3074,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 136,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                41,
+                55,
+                53,
+                12,
+                117
+              ],
+              "slow_events": []
+            }
+          }
+        },
+        {
+          "name": "idle_after",
+          "start_tick_ms": 413701703,
+          "end_tick_ms": 413713828,
+          "elapsed_seconds": 12.125,
+          "expected_wholly_contained_buckets": 11,
+          "roles": {
+            "A": {
+              "complete_windows": 11,
+              "bucket_start_ticks": [
+                413702000,
+                413703000,
+                413704000,
+                413705000,
+                413706000,
+                413707000,
+                413708000,
+                413709000,
+                413710000,
+                413711000,
+                413712000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 1672,
+              "foreground_frames": 1672,
+              "foreground_intervals": 1672,
+              "unknown_foreground_frames": 0,
+              "background_frames": 0,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 118,
+              "max_foreground_hook_us": 118,
+              "max_foreground_interval_us": 8667,
+              "maximum_parts_us": [
+                20,
+                55,
+                72,
+                24,
+                103
+              ],
+              "slow_events": []
+            },
+            "B": {
+              "complete_windows": 11,
+              "bucket_start_ticks": [
+                413702000,
+                413703000,
+                413704000,
+                413705000,
+                413706000,
+                413707000,
+                413708000,
+                413709000,
+                413710000,
+                413711000,
+                413712000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 1785,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 1785,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 111,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                24,
+                60,
+                86,
+                12,
+                57
+              ],
+              "slow_events": []
+            },
+            "C": {
+              "complete_windows": 11,
+              "bucket_start_ticks": [
+                413702000,
+                413703000,
+                413704000,
+                413705000,
+                413706000,
+                413707000,
+                413708000,
+                413709000,
+                413710000,
+                413711000,
+                413712000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 1772,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 1772,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 106,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                54,
+                32,
+                66,
+                11,
+                93
+              ],
+              "slow_events": []
+            },
+            "D": {
+              "complete_windows": 11,
+              "bucket_start_ticks": [
+                413702000,
+                413703000,
+                413704000,
+                413705000,
+                413706000,
+                413707000,
+                413708000,
+                413709000,
+                413710000,
+                413711000,
+                413712000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 1788,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 1788,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 260,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                45,
+                213,
+                59,
+                29,
+                87
+              ],
+              "slow_events": []
+            }
+          }
+        }
+      ],
+      "roles": {
+        "A": {
+          "pid": 46412,
+          "process_started_filetime": 134377736705665226,
+          "valid_profile_polls": 547,
+          "capture_lag_ms_min": 0,
+          "capture_lag_ms_max": 438,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "B": {
+          "pid": 24948,
+          "process_started_filetime": 134377736714643599,
+          "valid_profile_polls": 548,
+          "capture_lag_ms_min": 0,
+          "capture_lag_ms_max": 422,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "C": {
+          "pid": 54952,
+          "process_started_filetime": 134377736723910143,
+          "valid_profile_polls": 547,
+          "capture_lag_ms_min": 15,
+          "capture_lag_ms_max": 469,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "D": {
+          "pid": 53832,
+          "process_started_filetime": 134377736732775131,
+          "valid_profile_polls": 545,
+          "capture_lag_ms_min": 0,
+          "capture_lag_ms_max": 438,
+          "export_ahead_of_poll_ms_max": 0
+        }
+      },
+      "screenshots_unchanged": true,
+      "validation_errors": [],
+      "identity_or_immutable_bucket_errors": [],
+      "screenshot_inventory_equality_recomputed": true,
+      "screenshot_inventory_counts": {
+        "A": 24,
+        "B": 18,
+        "C": 23,
+        "D": 16
+      },
+      "navigation_arrival_tick_ms": 413644937
+    },
+    "dungeon": {
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\evidence-frame-profile-v1\\perf-dungeon-timed-window.json",
+      "sha256": "68cafe727f5e1d2601d09f5098dd5033d08897e05dcb3b612aceb5fd312201d2",
+      "polls": 105,
+      "read_errors": [],
+      "phases": [
+        {
+          "name": "dungeon",
+          "start_tick_ms": 413798906,
+          "end_tick_ms": 413814953,
+          "elapsed_seconds": 16.047,
+          "expected_wholly_contained_buckets": 15,
+          "roles": {
+            "A": {
+              "complete_windows": 15,
+              "bucket_start_ticks": [
+                413799000,
+                413800000,
+                413801000,
+                413802000,
+                413803000,
+                413804000,
+                413805000,
+                413806000,
+                413807000,
+                413808000,
+                413809000,
+                413810000,
+                413811000,
+                413812000,
+                413813000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 2421,
+              "foreground_frames": 2421,
+              "foreground_intervals": 2421,
+              "unknown_foreground_frames": 0,
+              "background_frames": 0,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 268,
+              "max_foreground_hook_us": 268,
+              "max_foreground_interval_us": 42708,
+              "maximum_parts_us": [
+                190,
+                171,
+                28,
+                53,
+                106
+              ],
+              "slow_events": []
+            },
+            "B": {
+              "complete_windows": 15,
+              "bucket_start_ticks": [
+                413799000,
+                413800000,
+                413801000,
+                413802000,
+                413803000,
+                413804000,
+                413805000,
+                413806000,
+                413807000,
+                413808000,
+                413809000,
+                413810000,
+                413811000,
+                413812000,
+                413813000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 2756,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 2756,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 212,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                96,
+                67,
+                31,
+                66,
+                117
+              ],
+              "slow_events": []
+            },
+            "C": {
+              "complete_windows": 15,
+              "bucket_start_ticks": [
+                413799000,
+                413800000,
+                413801000,
+                413802000,
+                413803000,
+                413804000,
+                413805000,
+                413806000,
+                413807000,
+                413808000,
+                413809000,
+                413810000,
+                413811000,
+                413812000,
+                413813000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 2712,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 2712,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 169,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                108,
+                67,
+                68,
+                69,
+                104
+              ],
+              "slow_events": []
+            },
+            "D": {
+              "complete_windows": 15,
+              "bucket_start_ticks": [
+                413799000,
+                413800000,
+                413801000,
+                413802000,
+                413803000,
+                413804000,
+                413805000,
+                413806000,
+                413807000,
+                413808000,
+                413809000,
+                413810000,
+                413811000,
+                413812000,
+                413813000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 2735,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 2735,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 131,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                87,
+                55,
+                30,
+                43,
+                81
+              ],
+              "slow_events": []
+            }
+          }
+        }
+      ],
+      "roles": {
+        "A": {
+          "pid": 46412,
+          "process_started_filetime": 134377736705665226,
+          "valid_profile_polls": 105,
+          "capture_lag_ms_min": 109,
+          "capture_lag_ms_max": 313,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "B": {
+          "pid": 24948,
+          "process_started_filetime": 134377736714643599,
+          "valid_profile_polls": 105,
+          "capture_lag_ms_min": 31,
+          "capture_lag_ms_max": 422,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "C": {
+          "pid": 54952,
+          "process_started_filetime": 134377736723910143,
+          "valid_profile_polls": 105,
+          "capture_lag_ms_min": 31,
+          "capture_lag_ms_max": 391,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "D": {
+          "pid": 53832,
+          "process_started_filetime": 134377736732775131,
+          "valid_profile_polls": 105,
+          "capture_lag_ms_min": 16,
+          "capture_lag_ms_max": 422,
+          "export_ahead_of_poll_ms_max": 0
+        }
+      },
+      "screenshots_unchanged": true,
+      "validation_errors": [],
+      "identity_or_immutable_bucket_errors": [],
+      "end_clients": {
+        "A": {
+          "pid": 46412,
+          "scene": 3,
+          "uid": 1,
+          "dead": false,
+          "hp": 1380,
+          "map": "0x1D00CC30",
+          "room": {
+            "stage_token": "0x071681E8",
+            "map_token": "0x1D00CC30",
+            "boss_dead": false,
+            "assembly_phase": 0,
+            "map_clear_state": 0,
+            "direction_mask": 4,
+            "living_count": 4,
+            "majority_required": 3,
+            "doors": {
+              "left": {
+                "enabled": true,
+                "rect": {
+                  "left": 15,
+                  "top": 180,
+                  "width": 120,
+                  "height": 106
+                }
+              },
+              "right": {
+                "enabled": false,
+                "rect": {
+                  "left": 985,
+                  "top": 173,
+                  "width": 120,
+                  "height": 106
+                }
+              },
+              "up": {
+                "enabled": false,
+                "rect": {
+                  "left": 538,
+                  "top": 148,
+                  "width": 140,
+                  "height": 40
+                }
+              },
+              "down": {
+                "enabled": false,
+                "rect": {
+                  "left": 490,
+                  "top": 328,
+                  "width": 140,
+                  "height": 40
+                }
+              }
+            }
+          },
+          "native_dead": null
+        },
+        "B": {
+          "pid": 24948,
+          "scene": 3,
+          "uid": 2,
+          "dead": false,
+          "hp": 470,
+          "map": "0x17C0ADE0",
+          "room": {
+            "stage_token": "0x072C4BC8",
+            "map_token": "0x17C0ADE0",
+            "boss_dead": false,
+            "assembly_phase": 0,
+            "map_clear_state": 0,
+            "direction_mask": 4,
+            "living_count": 4,
+            "majority_required": 3,
+            "doors": {
+              "left": {
+                "enabled": true,
+                "rect": {
+                  "left": 15,
+                  "top": 180,
+                  "width": 120,
+                  "height": 106
+                }
+              },
+              "right": {
+                "enabled": false,
+                "rect": {
+                  "left": 985,
+                  "top": 173,
+                  "width": 120,
+                  "height": 106
+                }
+              },
+              "up": {
+                "enabled": false,
+                "rect": {
+                  "left": 538,
+                  "top": 148,
+                  "width": 140,
+                  "height": 40
+                }
+              },
+              "down": {
+                "enabled": false,
+                "rect": {
+                  "left": 490,
+                  "top": 328,
+                  "width": 140,
+                  "height": 40
+                }
+              }
+            }
+          },
+          "native_dead": null
+        },
+        "C": {
+          "pid": 54952,
+          "scene": 3,
+          "uid": 3,
+          "dead": false,
+          "hp": 302,
+          "map": "0x08C473A8",
+          "room": {
+            "stage_token": "0x086D0230",
+            "map_token": "0x08C473A8",
+            "boss_dead": false,
+            "assembly_phase": 0,
+            "map_clear_state": 0,
+            "direction_mask": 4,
+            "living_count": 4,
+            "majority_required": 3,
+            "doors": {
+              "left": {
+                "enabled": true,
+                "rect": {
+                  "left": 15,
+                  "top": 180,
+                  "width": 120,
+                  "height": 106
+                }
+              },
+              "right": {
+                "enabled": false,
+                "rect": {
+                  "left": 985,
+                  "top": 173,
+                  "width": 120,
+                  "height": 106
+                }
+              },
+              "up": {
+                "enabled": false,
+                "rect": {
+                  "left": 538,
+                  "top": 148,
+                  "width": 140,
+                  "height": 40
+                }
+              },
+              "down": {
+                "enabled": false,
+                "rect": {
+                  "left": 490,
+                  "top": 328,
+                  "width": 140,
+                  "height": 40
+                }
+              }
+            }
+          },
+          "native_dead": null
+        },
+        "D": {
+          "pid": 53832,
+          "scene": 3,
+          "uid": 4,
+          "dead": false,
+          "hp": 277,
+          "map": "0x08FC7FB0",
+          "room": {
+            "stage_token": "0x086E9BE0",
+            "map_token": "0x08FC7FB0",
+            "boss_dead": false,
+            "assembly_phase": 0,
+            "map_clear_state": 0,
+            "direction_mask": 4,
+            "living_count": 4,
+            "majority_required": 3,
+            "doors": {
+              "left": {
+                "enabled": true,
+                "rect": {
+                  "left": 15,
+                  "top": 180,
+                  "width": 120,
+                  "height": 106
+                }
+              },
+              "right": {
+                "enabled": false,
+                "rect": {
+                  "left": 985,
+                  "top": 173,
+                  "width": 120,
+                  "height": 106
+                }
+              },
+              "up": {
+                "enabled": false,
+                "rect": {
+                  "left": 538,
+                  "top": 148,
+                  "width": 140,
+                  "height": 40
+                }
+              },
+              "down": {
+                "enabled": false,
+                "rect": {
+                  "left": 490,
+                  "top": 328,
+                  "width": 140,
+                  "height": 40
+                }
+              }
+            }
+          },
+          "native_dead": null
+        }
+      }
+    },
+    "repeat": {
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\evidence-frame-profile-v2\\perf-repeat-timed-window.json",
+      "sha256": "1633dbd19f9c70f8a6c6de9b278b66044443a04e28fa56bf5868d7cbf9ebd66b",
+      "polls": 130,
+      "read_errors": [
+        {
+          "role": "D",
+          "phase": "repeat_single_destination",
+          "tick_ms": 414494875,
+          "error": "unreadable_profile"
+        }
+      ],
+      "phases": [
+        {
+          "name": "repeat_single_destination",
+          "start_tick_ms": 414477671,
+          "end_tick_ms": 414497796,
+          "elapsed_seconds": 20.125,
+          "expected_wholly_contained_buckets": 19,
+          "roles": {
+            "A": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                414478000,
+                414479000,
+                414480000,
+                414481000,
+                414482000,
+                414483000,
+                414484000,
+                414485000,
+                414486000,
+                414487000,
+                414488000,
+                414489000,
+                414490000,
+                414491000,
+                414492000,
+                414493000,
+                414494000,
+                414495000,
+                414496000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3045,
+              "foreground_frames": 3045,
+              "foreground_intervals": 3045,
+              "unknown_foreground_frames": 0,
+              "background_frames": 0,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 1,
+              "max_hook_us": 165,
+              "max_foreground_hook_us": 165,
+              "max_foreground_interval_us": 51450,
+              "maximum_parts_us": [
+                50,
+                136,
+                52,
+                26,
+                77
+              ],
+              "slow_events": [
+                {
+                  "serial": 6854,
+                  "tick_ms": 414493953,
+                  "scene": 1,
+                  "hook_us": 31,
+                  "foreground_interval_us": 51450,
+                  "interval_known": true,
+                  "foreground_known": true,
+                  "foreground_begin": true,
+                  "foreground_end": true,
+                  "parts_us": [
+                    1,
+                    8,
+                    5,
+                    3,
+                    14
+                  ],
+                  "phase_offset_ms": 16282,
+                  "interval_start_estimate_tick_ms": 414493901.55,
+                  "after_observed_goal_arrival_ms": 12875
+                }
+              ]
+            },
+            "B": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                414478000,
+                414479000,
+                414480000,
+                414481000,
+                414482000,
+                414483000,
+                414484000,
+                414485000,
+                414486000,
+                414487000,
+                414488000,
+                414489000,
+                414490000,
+                414491000,
+                414492000,
+                414493000,
+                414494000,
+                414495000,
+                414496000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3187,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3187,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 122,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                34,
+                73,
+                60,
+                62,
+                53
+              ],
+              "slow_events": []
+            },
+            "C": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                414478000,
+                414479000,
+                414480000,
+                414481000,
+                414482000,
+                414483000,
+                414484000,
+                414485000,
+                414486000,
+                414487000,
+                414488000,
+                414489000,
+                414490000,
+                414491000,
+                414492000,
+                414493000,
+                414494000,
+                414495000,
+                414496000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3165,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3165,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 141,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                27,
+                57,
+                109,
+                27,
+                117
+              ],
+              "slow_events": []
+            },
+            "D": {
+              "complete_windows": 19,
+              "bucket_start_ticks": [
+                414478000,
+                414479000,
+                414480000,
+                414481000,
+                414482000,
+                414483000,
+                414484000,
+                414485000,
+                414486000,
+                414487000,
+                414488000,
+                414489000,
+                414490000,
+                414491000,
+                414492000,
+                414493000,
+                414494000,
+                414495000,
+                414496000
+              ],
+              "missing_wholly_contained_buckets": [],
+              "frames": 3142,
+              "foreground_frames": 0,
+              "foreground_intervals": 0,
+              "unknown_foreground_frames": 0,
+              "background_frames": 3142,
+              "foreground_transition_frames": 0,
+              "clock_errors": 0,
+              "foreground_hook_over15ms": 0,
+              "foreground_hook_over50ms": 0,
+              "foreground_intervals_over50ms": 0,
+              "max_hook_us": 177,
+              "max_foreground_hook_us": null,
+              "max_foreground_interval_us": null,
+              "maximum_parts_us": [
+                41,
+                82,
+                69,
+                70,
+                89
+              ],
+              "slow_events": []
+            }
+          }
+        }
+      ],
+      "roles": {
+        "A": {
+          "pid": 74032,
+          "process_started_filetime": 134377747932220615,
+          "valid_profile_polls": 130,
+          "capture_lag_ms_min": 15,
+          "capture_lag_ms_max": 422,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "B": {
+          "pid": 48500,
+          "process_started_filetime": 134377747940255061,
+          "valid_profile_polls": 130,
+          "capture_lag_ms_min": 15,
+          "capture_lag_ms_max": 438,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "C": {
+          "pid": 52616,
+          "process_started_filetime": 134377747950712764,
+          "valid_profile_polls": 130,
+          "capture_lag_ms_min": 15,
+          "capture_lag_ms_max": 438,
+          "export_ahead_of_poll_ms_max": 0
+        },
+        "D": {
+          "pid": 43068,
+          "process_started_filetime": 134377747960231260,
+          "valid_profile_polls": 129,
+          "capture_lag_ms_min": 31,
+          "capture_lag_ms_max": 407,
+          "export_ahead_of_poll_ms_max": 0
+        }
+      },
+      "screenshots_unchanged": true,
+      "validation_errors": [],
+      "identity_or_immutable_bucket_errors": [],
+      "screenshot_inventory_equality_recomputed": true,
+      "screenshot_inventory_counts": {
+        "A": 26,
+        "B": 18,
+        "C": 23,
+        "D": 16
+      },
+      "navigation_arrival_tick_ms": 414481078
+    }
+  },
+  "issues": [
+    {
+      "severity": "interpretation",
+      "issue": "Complete-bucket maxima cover79/84.344s town,15/16.047s dungeon,19/20.125s repeat. Boundary/partial seconds are deliberately omitted; do not present these extrema as exact bounds for every instant of the complete wall-time runs."
+    },
+    {
+      "severity": "interpretation",
+      "issue": "Event hook46us/31us belongs to callback at interval end. The measured intervals contain the previous callback plus all untimed work between callback starts. Phase callback maxima217us/165us bound previous callback cost but cannot identify the remaining cause."
+    },
+    {
+      "severity": "interpretation",
+      "issue": "B/C/D have known-background callbacks and zero foreground intervals in every complete phase. Their foreground interval maxima are NULL; these runs do not show whether those clients would freeze while foreground."
+    },
+    {
+      "severity": "evidence_log",
+      "issue": "final-native.log contains1 IO fixture-copy failure. verified-native.log/final-native-no-fixture.log contain0 failures. FullPython log has6 failures and554 passes; related suite has246 passes1 skip. Report chronology and limits explicitly."
+    },
+    {
+      "severity": "evidence_scope",
+      "issue": "Town/repeat screenshot inventories match by independent equality. Dungeon saved only screenshots_unchanged:true; its measurement script asserts before/after equality but does not save inventories, so equality cannot be independently reconstructed from dungeon JSON alone."
+    },
+    {
+      "severity": "open_diagnosis",
+      "issue": "Repeated foreground invocation intervals>50ms remain. Existing DebugRender work through ContentPublish was small in retained complete buckets. Profiler bookkeeping/probes and native input/network/render/Present are not attributed. U08 capability may be complete; exact-cause diagnosis remains BLOCKED and general no-freeze is not established."
+    },
+    {
+      "severity": "separate_native_failure",
+      "issue": "After native dungeon return, A->D and D->A invitations returned native_action_failed. Fresh-process restart restored four-client join setup, but does not demonstrate repair of the failed lifecycle. Preserve those logs as a separate unresolved observation."
+    }
+  ],
+  "summary_comparison_errors": [],
+  "artifact_integrity": [
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v1\\A-netdump.log",
+      "matches": true,
+      "sha256": "0912FE89BF8754F198A1EF3865155E2F6E1111E42AE9D3421AE20383CE360126"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v1\\B-netdump.log",
+      "matches": true,
+      "sha256": "9A475C5E1B779D240CD9F1DC3D3CE34F1558FBCF2891485D88B32F807499540B"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v1\\C-netdump.log",
+      "matches": true,
+      "sha256": "7804A07FF0073FAA99A4FEF56023F9CF1D6FE95098D0F10C8CC24428AE818059"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v1\\D-netdump.log",
+      "matches": true,
+      "sha256": "775AB94952953798E99E1D79660A3C75E1F5C7744DF5EC82AC6C9F6D945D1BE9"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v1\\deployment.json",
+      "matches": true,
+      "sha256": "79B9E76D4A53E8C5C25E51632F2125078B3164F96CFF799F88E178D2A6DB42BD"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v1\\server-frame-profile-v1.err.log",
+      "matches": true,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v1\\server-frame-profile-v1.log",
+      "matches": true,
+      "sha256": "44690956D009D23114B5D858EEEECE2F557A52F3E44ADA23B7C08B89617B4A2D"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v1\\state.json",
+      "matches": true,
+      "sha256": "88D662001A2CCBB66A6F002F9350593C6E50C0C2DE8D12BD3FA42B86F3B039EC"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\build-manifest.json",
+      "tag": "town",
+      "matches": true,
+      "sha256": "DF5BBCA3071DCDE58ACECE22C14A1F31F3ACCDDDB300157FBF84E877F8CA956D"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\build-manifest.json",
+      "tag": "dungeon",
+      "matches": true,
+      "sha256": "DF5BBCA3071DCDE58ACECE22C14A1F31F3ACCDDDB300157FBF84E877F8CA956D"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v2\\A-netdump.log",
+      "matches": true,
+      "sha256": "61AB096CF2478A28715903E67CD64EEE72146C40C8CFB74DEABD8B9062A609B2"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v2\\B-netdump.log",
+      "matches": true,
+      "sha256": "DAE423986530B6C83B34BC7E6CE69A90550A0FC73CBF84A2963780BE3F88DA4E"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v2\\C-netdump.log",
+      "matches": true,
+      "sha256": "8B7571110C716D9E7B10D95BEED5E9D6D51B1530F8BB1B7579B519ADC2B4DFD9"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v2\\D-netdump.log",
+      "matches": true,
+      "sha256": "4E888A5044C5C343052C829C6F5D283F091CD8128199C19052E1E2A2E56D62B7"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v2\\deployment.json",
+      "matches": true,
+      "sha256": "F85C9EACA49D2F4FD1B71642A9CE1E21CC3B5604990DCDD405E6D67EF819FE79"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v2\\server-frame-profile-v2.err.log",
+      "matches": true,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v2\\server-frame-profile-v2.log",
+      "matches": true,
+      "sha256": "CA73728F8660BA357E3FA37E1FD5AB71EF130811892AC4B86EFAB1B6F2D64652"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\closed-frame-profile-v2\\state.json",
+      "matches": true,
+      "sha256": "77E4288863B6012AF683CEAD411A324DD21C1EE37BAC7869A0E191C0CDB70F46"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\frame-profile-20261030\\build-manifest-v2.json",
+      "tag": "repeat",
+      "matches": true,
+      "sha256": "15753830640CBCE20967B09EF69CCF4E3A6058A20FF8492F3F1EBDCA3A84BC5B"
+    }
+  ],
+  "review_verdict": "Published numeric summaries reproduced exactly. Diagnostic capability evidence accepted with stated sampling/scope limits. Root-cause/no-freeze closure not supported.",
+  "review_constraints": "Only new review files written under D:/codex_worktree/party-chat-gold/DFLegacy/.tmp/frame-profile-review-20261030; no product/evidence changes, builds, live process controls or UI actions. Saved JSON analyzed with Python only.",
+  "deployment_identity_checks": [
+    {
+      "tag": "town",
+      "role": "A",
+      "matches": true,
+      "pid": 46412,
+      "process_started_filetime": 134377736705665226
+    },
+    {
+      "tag": "town",
+      "role": "B",
+      "matches": true,
+      "pid": 24948,
+      "process_started_filetime": 134377736714643599
+    },
+    {
+      "tag": "town",
+      "role": "C",
+      "matches": true,
+      "pid": 54952,
+      "process_started_filetime": 134377736723910143
+    },
+    {
+      "tag": "town",
+      "role": "D",
+      "matches": true,
+      "pid": 53832,
+      "process_started_filetime": 134377736732775131
+    },
+    {
+      "tag": "dungeon",
+      "role": "A",
+      "matches": true,
+      "pid": 46412,
+      "process_started_filetime": 134377736705665226
+    },
+    {
+      "tag": "dungeon",
+      "role": "B",
+      "matches": true,
+      "pid": 24948,
+      "process_started_filetime": 134377736714643599
+    },
+    {
+      "tag": "dungeon",
+      "role": "C",
+      "matches": true,
+      "pid": 54952,
+      "process_started_filetime": 134377736723910143
+    },
+    {
+      "tag": "dungeon",
+      "role": "D",
+      "matches": true,
+      "pid": 53832,
+      "process_started_filetime": 134377736732775131
+    },
+    {
+      "tag": "repeat",
+      "role": "A",
+      "matches": true,
+      "pid": 74032,
+      "process_started_filetime": 134377747932220615
+    },
+    {
+      "tag": "repeat",
+      "role": "B",
+      "matches": true,
+      "pid": 48500,
+      "process_started_filetime": 134377747940255061
+    },
+    {
+      "tag": "repeat",
+      "role": "C",
+      "matches": true,
+      "pid": 52616,
+      "process_started_filetime": 134377747950712764
+    },
+    {
+      "tag": "repeat",
+      "role": "D",
+      "matches": true,
+      "pid": 43068,
+      "process_started_filetime": 134377747960231260
+    }
+  ]
+}

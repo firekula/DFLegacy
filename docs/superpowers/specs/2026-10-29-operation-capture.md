@@ -1,0 +1,7 @@
+# Operation capture default
+
+The user reports repeated stutters during agent operation. A controlled native PrintScreen phase produced six contiguous original-timer pauses of56.69–70.24ms, matching six original JPG files. Same-area idle controls have no >15ms qualified pause. The per-run controller currently requests screenshots by default, despite the user asking for debug-data operation with screenshots only at key checkpoints.
+
+Make screenshots explicit in a reusable owned-run controller. Reuse the existing IJL per-run file driver. Preserve exact PID/path/start binding before and after input, unchanged running journal, role uniqueness, label safety, fresh evidence and atomic reservation. Keep --no-shot compatibility. Capture remains native PrintScreen, with the inherent pause accepted only for explicit key evidence. No EXE/PVF/save or DLL change, external input or business-packet injection.
+
+Validation: port legacy behavior and observe default-capture regression fail; fix opt-in default; related Python tests. Matched same-area continuous keys and16 short plans must generate no JPG without flags; explicit --screenshot must still yield a byte-identical original JPG. Retain every observation poll and exclude observer scheduling gaps. Native timer pair is not GPU Present. Do not claim all intermittent stutters solved. Early delta-one-only samples and their gaps are limited; preserve corrections.

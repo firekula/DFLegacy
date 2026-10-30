@@ -1,0 +1,19 @@
+{
+  "private_root": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\loop-sync-20261030",
+  "raw_windows": [
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\loop-sync-20261030\\evidence-loop-v3\\loop-setup-window.jsonl",
+      "sha256": "A3E5B71354D80F03D8B04F2A51FEA31E877954950F45FCD81B47E29A9FA679A0"
+    },
+    {
+      "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\loop-sync-20261030\\evidence-loop-v5\\provider-native-boss.json",
+      "sha256": "7E3B2BA61B94D01EA4C766F3F8384B036BD79FDECDC85E577C1B17101393FF37"
+    }
+  ],
+  "raw_failed_probe_log": {
+    "file": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\loop-sync-20261030\\closed-loop-v4\\A-exception.log",
+    "sha256": "3FE23BF59EE7AEAAC647DA11778711B3F990CB7877B775F6D330288BE67513D4"
+  },
+  "final_build_sha256": "C38B1176D4E9D499134AE3F9104051FA68B1F01884FAAAC4A9D423353F40EFA8",
+  "restoration_sha256": "893C3467A51AEE908F11EE3C884F46FED56E388EAAE0AF7D9A4C6F0637C38D0B"
+}

@@ -58,7 +58,11 @@ public sealed record DungeonMazeDefinition(
     string RoomTopology,
     DungeonRoomPosition[] StartPositions,
     DungeonRoomPosition[] BossPositions,
-    IReadOnlyDictionary<DungeonRoomPosition, ushort[]> MapSpecifications);
+    IReadOnlyDictionary<DungeonRoomPosition, ushort[]> MapSpecifications)
+{
+    public IReadOnlyDictionary<DungeonRoomPosition, ushort[]> BossMapSpecifications { get; init; } =
+        new Dictionary<DungeonRoomPosition, ushort[]>();
+}
 
 public sealed class DungeonLayout
 {
@@ -1128,7 +1132,11 @@ public sealed class DungeonCatalog
                 topology,
                 starts,
                 bosses,
-                ParseMapSpecifications(mazeText, width, height)));
+                ParseMapSpecifications(mazeText, width, height))
+            {
+                BossMapSpecifications = ParseMapSpecifications(
+                    mazeText, width, height, "boss map specification")
+            });
         }
 
         return result.ToArray();
@@ -1186,10 +1194,11 @@ public sealed class DungeonCatalog
     private static IReadOnlyDictionary<DungeonRoomPosition, ushort[]> ParseMapSpecifications(
         string maze,
         byte width,
-        byte height)
+        byte height,
+        string section = "map specification")
     {
         var result = new Dictionary<DungeonRoomPosition, ushort[]>();
-        foreach (var values in ParseAllBlocks(maze, "map specification")
+        foreach (var values in ParseAllBlocks(maze, section)
                      .Select(ParseIntegers))
         {
             if (values.Length < 3
@@ -1265,6 +1274,19 @@ public sealed class DungeonCatalog
             var selected = candidates[random.Next(candidates.Count)].MapId;
             layout.SetResolvedMap(point, selected);
             return selected;
+        }
+
+        if (role == MapKind.Boss && TryResolveSpecifiedMap(
+                state,
+                layout.Maze.BossMapSpecifications,
+                point,
+                topology,
+                static map => map.MapType == DungeonMapType.Boss,
+                random,
+                out var specifiedBossMap))
+        {
+            layout.SetResolvedMap(point, specifiedBossMap);
+            return specifiedBossMap;
         }
 
         if (TryResolveSpecifiedMap(

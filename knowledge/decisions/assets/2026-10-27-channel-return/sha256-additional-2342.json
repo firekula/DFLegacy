@@ -1,0 +1,13 @@
+{
+  "schema": "dflegacy.unaltered-evidence-copy.v1",
+  "files": [
+    {
+      "file": "latency-20261027-2342.json",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\reentry-latency-20261027-2342.json",
+      "source_sha256": "C11D18828C98A30FA5358F79CF65B7B80BB2ACB0ECA3EC7AE5F42983827DB523",
+      "copy_sha256": "C11D18828C98A30FA5358F79CF65B7B80BB2ACB0ECA3EC7AE5F42983827DB523",
+      "bytes": 9939,
+      "unaltered": true
+    }
+  ]
+}

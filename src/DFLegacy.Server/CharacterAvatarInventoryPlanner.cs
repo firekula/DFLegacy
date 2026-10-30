@@ -105,6 +105,7 @@ public static class CharacterAvatarInventoryPlanner
                     SealState: item.SealState,
                     AvatarRemainingSeconds: item.AvatarRemainingSeconds ?? 0,
                     AvatarAbilityIndex: item.AvatarAbilityIndex ?? 0,
+                    AvatarExpiresAtUnixSeconds: item.AvatarExpiresAtUnixSeconds,
                     InstanceId: CharacterItemIdentity.GetUnitInstanceId(
                         definition,
                         item.InstanceId,
@@ -221,5 +222,6 @@ public static class CharacterAvatarInventoryPlanner
             item.SealState,
             item.AvatarRemainingSeconds,
             item.AvatarAbilityIndex,
-            InstanceId: item.InstanceId);
+            InstanceId: item.InstanceId,
+            AvatarExpiresAtUnixSeconds: item.AvatarExpiresAtUnixSeconds);
 }

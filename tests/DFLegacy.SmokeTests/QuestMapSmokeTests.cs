@@ -22,7 +22,8 @@ internal static class QuestMapSmokeTests
             File.WriteAllText(Path.Combine(root, "dungeon/test.dgn"),
                 "[minimum level] 1\n[basis level] 1\n[maze info]\n[size] 3 1\n"
                 + "[greed]\n`PPP`\n[start map]\n0 0\n[/start map]\n"
-                + "[boss map]\n2 0\n1 0\n[/boss map]\n");
+                + "[boss map]\n2 0\n1 0\n[/boss map]\n"
+                + "[boss map specification]\n2 0 3\n[/boss map specification]\n");
             File.WriteAllText(Path.Combine(root, "map/map.lst"),
                 "1 `start.map`\n2 `normal.map`\n3 `boss.map`\n2224 `rescue.map`\n");
             foreach (var name in new[] { "start", "normal", "boss", "rescue" })

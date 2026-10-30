@@ -1,0 +1,111 @@
+{
+  "route_unchanged": true,
+  "snapshot": {
+    "schema": "dfl-client-state/v2",
+    "pid": 64280,
+    "process_started_filetime": 134377284957567115,
+    "sequence": 1374,
+    "captured_filetime": 134377287961221878,
+    "captured_tick_ms": 368426562,
+    "exported_filetime": 134377287961453240,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 8,
+    "capture_duration_us": 5,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 1,
+      "area_id": 0,
+      "context_token": "0x0712EB90",
+      "map_token": "0x18468A20",
+      "position": {
+        "x": 581,
+        "y": 196,
+        "z": 0
+      },
+      "destination": {
+        "x": 581,
+        "y": 196
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": false,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": 0,
+        "hover": 0
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x072F63B0",
+      "actor_token": "0x1812F6C8",
+      "map_token": "0x18468A20",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 581,
+        "y": 196,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x072F63B0",
+        "actor_token": "0x1812F6C8",
+        "map_token": "0x18468A20",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 581,
+          "y": 196,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "phase": "return-green",
+  "build_manifest_sha256": "76F9EF9A2750BCC39B0D4E4E124A983640E85F59391EE9D2EF8D19E65F626FAA",
+  "journal_sha256": "E9243126DB089F19387AC02287FCA9300B4B7BFC86290CBC3366B2CDD3C4D145"
+}

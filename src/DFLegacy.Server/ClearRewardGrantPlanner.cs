@@ -121,7 +121,9 @@ internal static class ClearRewardGrantPlanner
         IReadOnlyList<CharacterItemRecord> expectedInventory,
         IReadOnlyList<CharacterItemRecord> expectedEquipment,
         ushort? expectedWarehouseCapacity,
-        ClearRewardGrantPlan plan)
+        ClearRewardGrantPlan plan,
+        uint requestedGoldReward = 0,
+        Guid mentorGoldIncarnation = default)
     {
         var request = new DungeonRewardCommitRequest(
             idempotencyKey,
@@ -140,7 +142,9 @@ internal static class ClearRewardGrantPlanner
             expectedEquipment,
             plan.Mails,
             plan.WarehouseCapacity,
-            expectedWarehouseCapacity);
+            expectedWarehouseCapacity,
+            requestedGoldReward,
+            mentorGoldIncarnation);
         return request with { PayloadFingerprint = JsonGameStore.ComputeDungeonRewardFingerprint(request) };
     }
 }

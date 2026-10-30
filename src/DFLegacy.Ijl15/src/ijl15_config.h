@@ -37,6 +37,8 @@ namespace dfl::ijl15_config
         // the entire module lifetime. Load() never changes them after first use.
         char ClientPayUrl[ClientPageUrlCapacity];
         char ClientDiamondUrl[ClientPageUrlCapacity];
+        bool ExportGameplayTrace=false;
+        bool ExportNativeLoopProfile=false;
     };
 
     // Load once from Config.ini beside the client executable. Missing or

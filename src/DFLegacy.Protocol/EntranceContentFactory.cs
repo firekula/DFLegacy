@@ -13,8 +13,9 @@ namespace DFLegacy.Protocol;
 /// </remarks>
 public sealed class EntranceContentFactory(
     Func<byte[]?> readChannelScript,
-    EntranceChannel channel)
+    IReadOnlyList<EntranceChannel> channels)
 {
+    public EntranceContentFactory(Func<byte[]?> readChannelScript, EntranceChannel channel) : this(readChannelScript, new[] { channel }) { }
     private readonly object _gate = new();
     private EntranceContent? _content;
 
@@ -29,7 +30,7 @@ public sealed class EntranceContentFactory(
         {
             _content ??= new EntranceContent(
                 readChannelScript(),
-                EntranceMetadata.BuildSingleLocalChannel(channel));
+                EntranceMetadata.BuildLocalChannels(channels));
             return _content;
         }
     }

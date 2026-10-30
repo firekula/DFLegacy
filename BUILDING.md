@@ -47,6 +47,21 @@ dotnet run --project src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj 
 
 IJL15 的 CMake 测试也构建和测试 `debug.dll`。32 位 IJL15/Debug 供游戏客户端使用，64 位 RandomNative 供 Windows Server 可选使用；后者不可用时服务端使用托管随机源。真实 PVF 专项、跨机器连接和图形客户端进图不是普通无资源 CI 的替代项，必须单独记录结果。
 
+## ACT1 原生调试专项与历史验收
+
+当前源码、实机构建归属与未闭合边界见[交接](HANDOFF-2026-10-30.md)。合并前该分支记录的完整 Python 为 620 项／569 子测试；此数字对应原始 ACT1 及所需原生导出夹具均已提供的本机环境，不表示新机器缺少数据时条件用例也已执行，也不替代合并结果的验证。
+
+```powershell
+$env:PYTHONPATH = Join-Path (Get-Location) 'tools'
+python -B -m pytest -q
+MSBuild.exe .\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj /m /p:Configuration=Release /p:Platform=Win32
+.\artifacts\native\debug-tests\Release\debug_tests.exe --client-state
+```
+
+`--client-navigation`、`--client-party`、`--town-route`、`--frame-profile`、`--gameplay-trace`、`--native-loop` 可分别运行模型／IO 回归。真实城镇控制器通过 `DFL_TOWN_ROUTE_CONTROLLER_PVF=<原始Script.pvf>` 提供原 PVF，完整 overlay 测试还需 C# 生成的 fixture，见 [debug 构建验证](tools/debug/README.md)。缺夹具的 skip 必须单列；自动化回归不要求重开已完成的实机矩阵。
+
+合并前 [2026-10-30 门前终点修复](knowledge/decisions/2026-10-30-dungeon-gate-map-target-verification.md)记录的 debug 为 `0082559C…`，IJL 为 `0103C7DC…`／ABI v2；这些是历史实载身份，不是新合并构建的身份。
+
 ## 构建不可变 Windows 客户端资源
 
 发行目录必须是新目录。完整自包含登录器输出不可只摘取一个 exe；工具校验 apphost、运行时、WPF 与 `.deps.json` 引用的依赖，替换发行配置并生成 SHA-256 清单。

@@ -11,7 +11,17 @@
 #include "auto_input.h"
 #include "debug_module.h"
 #include "boss_room_death.h"
+#include "channel_reentry.h"
+#include "relay_send_queue.h"
+#include "channel_switch.h"
+#include "creature_gift_row.h"
+#include "countdown_coin.h"
+#include "dungeon_tooltip.h"
 #include "ground_item_removal.h"
+#include "motion_horizon.h"
+#include "native_loop_probe.h"
+#include "motion_test_probe.h"
+#include "provider_probe.h"
 #include "dnf_patches.h"
 #include "d3d8_scaler.h"
 #include "external_string_table.h"
@@ -176,7 +186,7 @@ namespace
         std::array<unsigned char, 6> Replacement;
     };
 
-    constexpr std::array<CodePatch, 39> Patches = { {
+    constexpr std::array<CodePatch, 40> Patches = { {
         {
             dfl::dnf_patches::DisableDebuggerDetection,
             0x0040AEE0,
@@ -247,6 +257,16 @@ namespace
             {0xC6, 0x40, 0x10, 0x00, 0xE8, 0x41},
             // Keep the Creature tab visible while the main inventory is selected.
             {0xC6, 0x40, 0x10, 0x01, 0xE8, 0x41}
+        },
+        {
+            true,
+            // The released ACT1 client forces cart gifting off even after its
+            // original scan found no [gift disallowance] item. Restore the
+            // already-computed nonempty flag (BL); the disallowed-item exit at
+            // 0x85E03C still disables gifting, and empty carts remain disabled.
+            0x0085E02F,
+            {0xC6, 0x41, 0x11, 0x00, 0x5B, 0xC3},
+            {0x88, 0x59, 0x11, 0x90, 0x5B, 0xC3}
         },
         {
             dfl::dnf_patches::SinglePermanentAvatarPeriodOption,
@@ -1186,6 +1206,30 @@ namespace dfl::dnf_patches
                 "DFLegacy.Ijl15: Mage contact skill prerequisite repair was not installed.\n");
         }
 
+        if (!dfl::creature_gift_row::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: verified creature egg gift row was not installed.\n");
+        }
+        if (!dfl::countdown_coin::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: ACT1 countdown coin presentation was not installed.\n");
+        }
+        if (!dfl::dungeon_tooltip::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: dungeon tooltip scene cleanup was not installed.\n");
+        }
+        if (!dfl::channel_switch::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: selected channel reconnect repair was not installed.\n");
+        }
+        if (!dfl::relay_send_queue::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: ACT1 relay send/retirement serialization was not installed.\n");
+        }
+        if (!dfl::channel_reentry::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: channel reentry MTU reuse was not installed.\n");
+        }
         if (!dfl::boss_room_death::Install())
         {
             OutputDebugStringA(
@@ -1209,10 +1253,21 @@ namespace dfl::dnf_patches
                 "DFLegacy.Ijl15: ground item removal repair was not installed.\n");
         }
 
+        if (!dfl::motion_horizon::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: ACT1 inactive-acceleration interpolation repair was not installed.\n");
+
         if (!dfl::debug_module::Install())
         {
             OutputDebugStringA("DFLegacy.Ijl15: debug overlay unavailable; gameplay continues.\n");
         }
+
+        if (!dfl::native_loop_probe::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: native loop timing not installed; original gameplay continues.\n");
+
+        if (!dfl::provider_probe::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: provider observation not installed; original gameplay continues.\n");
+        if (!dfl::motion_test_probe::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: motion-test observation not installed; original gameplay continues.\n");
 
         if (dfl::ijl15_config::Get().EnableAutoInput
             && !dfl::auto_input::Install())

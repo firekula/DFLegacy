@@ -1,0 +1,54 @@
+{
+  "created_utc": "2026-10-29T06:03:55.450591+00:00",
+  "head": "fa1bd68eb441979d218b5526510f862fe62b13ca",
+  "uncommitted": true,
+  "scope": [
+    "src/DFLegacy.Debug/src/client_navigation.h",
+    "src/DFLegacy.Debug/src/client_navigation.cpp",
+    "src/DFLegacy.Debug/src/client_navigation_runtime.cpp",
+    "src/DFLegacy.Debug/tests/client_navigation_tests.cpp",
+    "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp"
+  ],
+  "files": {
+    "src/DFLegacy.Debug/src/client_navigation.h": {
+      "size": 3762,
+      "sha256": "A4D55A4DAA973DA4CC296AE531610079761CE4A7CA82F1516EA74E5AEAA017FA"
+    },
+    "src/DFLegacy.Debug/src/client_navigation.cpp": {
+      "size": 18142,
+      "sha256": "74BBDA62AB34C84C4F0AB6C9D065418716C47F0C7A76AAEF9B9A22EE1CA22017"
+    },
+    "src/DFLegacy.Debug/src/client_navigation_runtime.cpp": {
+      "size": 25327,
+      "sha256": "A349C6E61F635DD092810322D117C9C44DFC00C3C136CE399062C3CEE183CFAE"
+    },
+    "src/DFLegacy.Debug/tests/client_navigation_tests.cpp": {
+      "size": 23568,
+      "sha256": "2774F613EA975C500B38737D368BE2A373186EEAEB1176E74829175CFB578D3F"
+    },
+    "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp": {
+      "size": 12223,
+      "sha256": "3B431A675B37EB0B0F70AD5C1D79C90A85F1F3B0ED0C9EBFE1455F2B201E3E3D"
+    }
+  },
+  "original_pe_sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5",
+  "private_test_exe": {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\nav\\shared-out\\navigation_tests.exe",
+    "sha256": "79361E4747135F1A979D09A2367018BEDFEEC9CF13C052AAC0C7210971E5F56D"
+  },
+  "red": {
+    "core": 4,
+    "runtime": 2,
+    "exit_code": 6,
+    "log": "shared-red-tests.log"
+  },
+  "final": {
+    "strict_rebuild_exit": 0,
+    "core": 0,
+    "runtime": 0,
+    "test_exit": 0,
+    "build_log": "shared-final-build.log",
+    "test_log": "shared-final-tests.log"
+  },
+  "live_operations": 0
+}

@@ -113,18 +113,24 @@ internal static class DeploymentHostingSmokeTests
                 Entrance = new { Enabled = false },
                 CharacterDatagram = new { Enabled = false },
                 GameplayDatagram = new { Enabled = false },
+                FallbackRelay = new { Enabled = false },
                 GameProbe = new { Enabled = false }
             }
         }));
         const string password = "initial-password-keep-private";
         const string recovery = "987654321";
         var input = JsonSerializer.Serialize(new { userName = "firstadmin", password, oicqCode = recovery });
-        using (var init = Child.Start(configPath, work, null, "--initialize-admin"))
+        var offlineConfigPath = Path.Combine(root, "offline listener validation.json");
+        var offlineConfig = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(configPath))!;
+        offlineConfig["DFLegacy"]!["Pvp"] = new System.Text.Json.Nodes.JsonObject { ["Enabled"] = true, ["Port"] = 0 };
+        offlineConfig["DFLegacy"]!["FallbackRelay"] = new System.Text.Json.Nodes.JsonObject { ["Enabled"] = true, ["AdvertisedHost"] = "offline.example.test", ["TcpPort"] = 0 };
+        await File.WriteAllTextAsync(offlineConfigPath, offlineConfig.ToJsonString());
+        using (var init = Child.Start(offlineConfigPath, work, null, "--initialize-admin"))
         {
             await init.SendAsync(input);
             var exited = await init.WaitAsync();
             check(exited && init.Process.ExitCode == 0,
-                "offline admin command exits successfully using an absolute config outside cwd");
+                "offline admin command uses selected config outside cwd without validating network listeners");
             if (!exited || init.Process.ExitCode != 0) return;
             var output = await init.Output;
             var error = await init.Error;

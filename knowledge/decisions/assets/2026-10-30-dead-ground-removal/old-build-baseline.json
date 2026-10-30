@@ -1,0 +1,218 @@
+{
+  "reason": "Normal launcher replaced planned new module before process startup",
+  "planned_ijl_sha256": "8B060DBB004395770FF31B60C6A440AEB6032A29D8AD86307D809E7BE83FDE18",
+  "actual_client_file_sha256": {
+    "A": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+    "B": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+    "C": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+    "D": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+  },
+  "active_by_uid": {
+    "1": false,
+    "3": true,
+    "2": false,
+    "4": true
+  },
+  "event": {
+    "event_id": 1,
+    "persisted": true,
+    "run_id": 639289008571076283,
+    "room_generation": 1,
+    "map_id": 1,
+    "room_x": 0,
+    "room_y": 0,
+    "ground_id": 3,
+    "item_id": 13201,
+    "count": 1,
+    "is_gold": false,
+    "pickup_id": "95d655a9-ef1b-44ac-8cd5-992703468b14",
+    "picker_uid": 1,
+    "winner_uid": 1,
+    "winner_character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+    "party_slot": 0,
+    "scores": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "status": "committed",
+    "reason": "persisted",
+    "publication_error": null,
+    "destination_slot": 13,
+    "instance_id": "01a16d9a-7ed2-7e64-9306-3c09cbd0a36e",
+    "captured_filetime": 134377777793591195
+  },
+  "dead_observers": {
+    "3": {
+      "me": {
+        "uid": 3,
+        "user_token": "0x087ACE68",
+        "actor_token": "0x087AE9E0",
+        "map_token": null,
+        "hp": 0,
+        "max_hp": 302,
+        "mp": 245,
+        "max_mp": 245,
+        "dead": true,
+        "same_map": false,
+        "detached": true,
+        "position": null
+      },
+      "observer": {
+        "actor_token": "0x087AE9E0",
+        "user_token": "0x087ACE68",
+        "actor_map_token": null,
+        "stage_token": "0x08698558",
+        "dead": true
+      },
+      "ground": [
+        {
+          "ground_id": 1,
+          "actor_token": "0x1A2909D0",
+          "descriptor_token": "0x1A4A8028",
+          "x": 900,
+          "y": 310,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 2,
+          "actor_token": "0x1A4AE768",
+          "descriptor_token": "0x1A4A72E8",
+          "x": 900,
+          "y": 310,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 3,
+          "actor_token": "0x08C01558",
+          "descriptor_token": "0x08EB1BF8",
+          "x": 300,
+          "y": 230,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 4,
+          "actor_token": "0x0871A240",
+          "descriptor_token": "0x08EB2340",
+          "x": 780,
+          "y": 300,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 5,
+          "actor_token": "0x08AF1678",
+          "descriptor_token": "0x08EB2A88",
+          "x": 560,
+          "y": 240,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 6,
+          "actor_token": "0x08AAB6D8",
+          "descriptor_token": "0x1A4A77E0",
+          "x": 720,
+          "y": 230,
+          "z": 0,
+          "active": true,
+          "pending": false
+        }
+      ]
+    },
+    "4": {
+      "me": {
+        "uid": 4,
+        "user_token": "0x085E1338",
+        "actor_token": "0x0877FFA0",
+        "map_token": null,
+        "hp": 0,
+        "max_hp": 277,
+        "mp": 270,
+        "max_mp": 270,
+        "dead": true,
+        "same_map": false,
+        "detached": true,
+        "position": null
+      },
+      "observer": {
+        "actor_token": "0x0877FFA0",
+        "user_token": "0x085E1338",
+        "actor_map_token": null,
+        "stage_token": "0x086A0690",
+        "dead": true
+      },
+      "ground": [
+        {
+          "ground_id": 1,
+          "actor_token": "0x1AC88050",
+          "descriptor_token": "0x1AE51508",
+          "x": 900,
+          "y": 310,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 2,
+          "actor_token": "0x08A07700",
+          "descriptor_token": "0x1AE51010",
+          "x": 900,
+          "y": 310,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 3,
+          "actor_token": "0x1AF09490",
+          "descriptor_token": "0x091458E8",
+          "x": 300,
+          "y": 230,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 4,
+          "actor_token": "0x0872DBC8",
+          "descriptor_token": "0x09143480",
+          "x": 780,
+          "y": 300,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 5,
+          "actor_token": "0x08AEC020",
+          "descriptor_token": "0x09146030",
+          "x": 560,
+          "y": 240,
+          "z": 0,
+          "active": true,
+          "pending": false
+        },
+        {
+          "ground_id": 6,
+          "actor_token": "0x087B8780",
+          "descriptor_token": "0x1AE52740",
+          "x": 720,
+          "y": 230,
+          "z": 0,
+          "active": true,
+          "pending": false
+        }
+      ]
+    }
+  }
+}

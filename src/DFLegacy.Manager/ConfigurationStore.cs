@@ -24,6 +24,12 @@ public sealed class ConfigurationStore
         [nameof(DeploymentConfig.CharacterPort)] = "CharacterDatagram:Port",
         [nameof(DeploymentConfig.GameplayPrimaryPort)] = "GameplayDatagram:PrimaryPort",
         [nameof(DeploymentConfig.GameplaySecondaryPort)] = "GameplayDatagram:SecondaryPort",
+        [nameof(DeploymentConfig.FallbackRelayEnabled)] = "FallbackRelay:Enabled",
+        [nameof(DeploymentConfig.FallbackRelayAdvertisedHost)] = "FallbackRelay:AdvertisedHost",
+        [nameof(DeploymentConfig.FallbackRelayTcpPort)] = "FallbackRelay:TcpPort",
+        [nameof(DeploymentConfig.FallbackRelayUdpPort)] = "FallbackRelay:UdpPort",
+        [nameof(DeploymentConfig.PvpEnabled)] = "Pvp:Enabled",
+        [nameof(DeploymentConfig.PvpPort)] = "Pvp:Port",
         [nameof(DeploymentConfig.ChannelName)] = "Channel:Name",
         [nameof(DeploymentConfig.MaximumUsers)] = "Channel:MaximumUsers",
         [nameof(DeploymentConfig.MonsterExperienceMultiplier)] = "Experience:MonsterMultiplier",
@@ -59,27 +65,13 @@ public sealed class ConfigurationStore
             var section = root["DFLegacy"] as JsonObject ?? throw new InvalidDataException("配置缺少 DFLegacy 节。");
             var settings = JsonSerializer.Deserialize<ManagerSettings>(File.ReadAllText(_paths.SettingsFile), Json) ?? new();
             var saved = ReadConfig(section, settings);
-            var effectiveNode = section.DeepClone().AsObject();
-            var overrides = new List<string>();
-            foreach (var (key, value) in _environment)
-            {
-                if (!key.StartsWith("DFLegacy__", StringComparison.OrdinalIgnoreCase) || value is null) continue;
-                var path = key[10..].Replace("__", ":", StringComparison.Ordinal);
-                JsonNode? node;
-                var stringField = Fields.Any(field => field.Value.Equals(path, StringComparison.OrdinalIgnoreCase) && typeof(DeploymentConfig).GetProperty(field.Key)!.PropertyType == typeof(string));
-                if (stringField || Get(effectiveNode, path) is JsonValue existing && existing.TryGetValue<string>(out _)) node = JsonValue.Create(value);
-                else try { node = JsonNode.Parse(value); } catch (JsonException) { node = JsonValue.Create(value); }
-                if (node is not JsonValue) node = JsonValue.Create(value);
-                Set(effectiveNode, path, node);
-                overrides.Add(key);
-            }
+            var effectiveNode = ApplyEnvironment(section, out var overrides);
             return new(saved, ReadConfig(effectiveNode, settings), overrides.ToArray(), settings.Configured);
         }
     }
 
     public ConfigurationSnapshot Save(DeploymentConfig config)
     {
-        Validate(config);
         lock (_gate)
         {
             var before = Read();
@@ -99,7 +91,6 @@ public sealed class ConfigurationStore
             var section = root["DFLegacy"]!.AsObject();
             foreach (var (field, path) in Fields) Set(section, path, JsonSerializer.SerializeToNode(typeof(DeploymentConfig).GetProperty(field)!.GetValue(config)));
             Set(section, "GameplayDatagram:AdvertisedHost", JsonValue.Create(gameHost));
-            Set(section, "ScriptPvfPath", JsonValue.Create(Path.GetFullPath(config.ScriptPvfPath, _paths.Root)));
             if (config.BindHost != before.Saved.BindHost)
                 foreach (var path in new[] { "CharacterDatagram:Host", "GameplayDatagram:Host", "Channel:Host" }) Set(section, path, JsonValue.Create(config.BindHost));
             var extraPorts = Get(section, "Entrance:AdditionalPorts")?.DeepClone() as JsonArray ?? new JsonArray(before.Saved.ChannelPort, before.Saved.AdditionalEntrancePort);
@@ -116,14 +107,30 @@ public sealed class ConfigurationStore
                 if (!found) extraPorts.Add(newPort);
             }
             Set(section, "Entrance:AdditionalPorts", extraPorts);
+            var settings = new ManagerSettings
+            {
+                AdvertisedHost = config.AdvertisedHost, AccountServiceUrl = config.AccountServiceUrl,
+                RelayEnabled = config.RelayEnabled, RelayPreference = config.RelayPreference, Autostart = config.Autostart, Configured = true
+            };
+            var effectiveDocument = ApplyEnvironment(section, out _);
+            var effectiveConfig = ReadConfig(effectiveDocument, settings);
+            if (Get(effectiveDocument, "Entrance:AdditionalPorts") is JsonArray actualPorts)
+            {
+                // Validate the actual array before the UI projection can replace
+                // a missing non-channel entry with its default visible port.
+                var ports = actualPorts.Select(port => port!.GetValue<int>()).ToArray();
+                var exclusive = new[] { effectiveConfig.EntrancePort, effectiveConfig.AdminPort }
+                    .Concat(effectiveConfig.FallbackRelayEnabled ? new[] { effectiveConfig.FallbackRelayTcpPort } : [])
+                    .Concat(effectiveConfig.PvpEnabled ? new[] { effectiveConfig.PvpPort } : []);
+                if (ports.Any(port => port is < 1 or > 65535) || ports.Distinct().Count() != ports.Length || ports.Intersect(exclusive).Any())
+                    throw new ArgumentException("附加 TCP 端口无效、重复或与其他监听端口冲突。");
+            }
+            Validate(effectiveConfig);
+            Set(section, "ScriptPvfPath", JsonValue.Create(Path.GetFullPath(config.ScriptPvfPath, _paths.Root)));
+            settings = settings with { AccountServiceUrl = settings.AccountServiceUrl.TrimEnd('/') };
             var backup = Path.Combine(_paths.Backups, "server-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff") + ".json");
             File.Copy(_paths.ServerConfig, backup);
             AtomicFile.Write(_paths.ServerConfig, root.ToJsonString(Json));
-            var settings = new ManagerSettings
-            {
-                AdvertisedHost = config.AdvertisedHost, AccountServiceUrl = config.AccountServiceUrl.TrimEnd('/'),
-                RelayEnabled = config.RelayEnabled, RelayPreference = config.RelayPreference, Autostart = config.Autostart, Configured = true
-            };
             AtomicFile.Write(_paths.SettingsFile, JsonSerializer.Serialize(settings, Json));
             foreach (var old in new DirectoryInfo(_paths.Backups).GetFiles("server-*.json").OrderByDescending(x => x.Name).Skip(20)) old.Delete();
             return Read();
@@ -132,15 +139,48 @@ public sealed class ConfigurationStore
 
     public JsonObject ReadServerDocument() { lock (_gate) return ParseFile(_paths.ServerConfig); }
 
+    private JsonObject ApplyEnvironment(JsonObject section, out List<string> overrides)
+    {
+        var effectiveNode = section.DeepClone().AsObject();
+        overrides = new List<string>();
+        foreach (var (key, value) in _environment)
+        {
+            if (!key.StartsWith("DFLegacy__", StringComparison.OrdinalIgnoreCase) || value is null) continue;
+            var path = key[10..].Replace("__", ":", StringComparison.Ordinal);
+            JsonNode? node;
+            var stringField = Fields.Any(field => field.Value.Equals(path, StringComparison.OrdinalIgnoreCase) && typeof(DeploymentConfig).GetProperty(field.Key)!.PropertyType == typeof(string));
+            if (stringField || Get(effectiveNode, path) is JsonValue existing && existing.TryGetValue<string>(out _)) node = JsonValue.Create(value);
+            else try { node = JsonNode.Parse(value); } catch (JsonException) { node = JsonValue.Create(value); }
+            if (node is not JsonValue) node = JsonValue.Create(value);
+            Set(effectiveNode, path, node);
+            overrides.Add(key);
+        }
+        return effectiveNode;
+    }
+
     public static void Validate(DeploymentConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.ScriptPvfPath) || config.ScriptPvfPath.Length > 4096) throw new ArgumentException("请指定 Script.pvf 路径。");
         if (!IPAddress.TryParse(config.BindHost, out _) || !IPAddress.TryParse(config.AdminHost, out _)) throw new ArgumentException("监听地址必须为 IP 地址，不能使用域名。");
         ValidateDestination(config.AdvertisedHost);
-        var tcp = new[] { config.EntrancePort, config.ChannelPort, config.AdditionalEntrancePort, config.AdminPort };
-        var udp = new[] { config.CharacterPort, config.GameplayPrimaryPort, config.GameplaySecondaryPort };
+        var tcp = config.ForwardedTcpPorts().Append(config.AdminPort).ToArray();
+        var udp = config.ForwardedUdpPorts();
         if (tcp.Concat(udp).Any(port => port is < 1 or > 65535)) throw new ArgumentException("端口必须为 1–65535。");
         if (tcp.Distinct().Count() != tcp.Length || udp.Distinct().Count() != udp.Length) throw new ArgumentException("同类 TCP 或 UDP 监听端口不能重复。");
+        if (config.FallbackRelayEnabled)
+        {
+            var fallbackHost = string.IsNullOrWhiteSpace(config.FallbackRelayAdvertisedHost)
+                ? config.RelayEnabled ? "127.0.0.1" : config.AdvertisedHost : config.FallbackRelayAdvertisedHost;
+            if (!IPAddress.TryParse(fallbackHost, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork
+                || ip.Equals(IPAddress.Any) || ip.Equals(IPAddress.Broadcast) || ip.GetAddressBytes()[0] >= 224)
+                throw new ArgumentException("ACT1 回退中继须通告具体 IPv4；域名直连请填写回退中继 IPv4 或关闭该中继。");
+            var bind = IPAddress.Parse(config.BindHost);
+            if ((bind.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 && !bind.Equals(IPAddress.IPv6Any))
+                || IPAddress.IsLoopback(bind) && !bind.Equals(ip)
+                || IPAddress.IsLoopback(ip) && !bind.Equals(IPAddress.Any) && !bind.Equals(IPAddress.IPv6Any) && !bind.Equals(ip))
+                throw new ArgumentException("回退中继监听地址无法服务通告的 IPv4，请调整监听地址。");
+            if (config.RelayEnabled && !ip.Equals(IPAddress.Loopback)) throw new ArgumentException("客户端 Relay 模式的回退中继 IPv4 请留空或填写 127.0.0.1。");
+        }
         if (config.MaximumUsers is < 1 or > 65535) throw new ArgumentException("最大人数必须为 1–65535。");
         if (string.IsNullOrWhiteSpace(config.ChannelName) || config.ChannelName.Length > 64 || config.ChannelName.Any(char.IsControl)) throw new ArgumentException("频道名长度为 1–64 个字符。");
         if (new[] { config.MonsterExperienceMultiplier, config.ClearExperienceMultiplier, config.DropEconomicRate }.Any(value => !double.IsFinite(value) || value < 0 || value > 1000)

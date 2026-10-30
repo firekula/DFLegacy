@@ -485,6 +485,7 @@ public sealed class CharacterSessionLease
     public uint CharacterNo { get; }
     public Guid SessionId { get; }
     public Task Released => _released.Task;
+    public bool WasReplaced => Volatile.Read(ref _kickIssued) != 0;
 
     internal CharacterSessionKey Key { get; }
 

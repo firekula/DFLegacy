@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-30T05:13:39.825881+00:00",
+  "scope": "Independent read-only U05 type1 command early gate, CFD208 engine mouse-button-state defer observation, three additional dialog classes and bounded native layer placement, additive v2 consumer compatibility. Only the new review-static evidence directory was written. No game or process control, normal save reads, or frozen evidence edits.",
+  "original_exe_sha256": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5",
+  "source_files": [
+    {
+      "path": "src/DFLegacy.Debug/src/client_state.h",
+      "sha256": "65f07964673d5901d129e82ba7e26e0ff85ebf68973c64a6a997592b3a1dc149"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_ui_state.h",
+      "sha256": "afef7a8a34908417a48eeaf9f5487d2c582b913c323859e91b566b32bff6b680"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state.cpp",
+      "sha256": "1e80b4a1a36f25558e8db0a4f514918511d648de9172e8c713a2a6762cec2d0d"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state_json.cpp",
+      "sha256": "17fa9c89fa5fccb7939b0f08b4c6f5ec00bf039d4d9512be80a5106510cb9452"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_state_tests.cpp",
+      "sha256": "22715ea069413ea49b7711d9ccc1e5a209d1d02e71c07b0d0da8c4ef7eac248f"
+    },
+    {
+      "path": "tools/debug/client_state.py",
+      "sha256": "0d5941de5b96d7de06115ee829cf7d045417c4b09afef42622c377c19c3e0d52"
+    },
+    {
+      "path": "tools/debug/test_client_state.py",
+      "sha256": "922de5707704e40de91e227198f71835def1768e1de41c382a9412ddbb9e0727"
+    }
+  ],
+  "findings": [],
+  "conclusion": "No issue blocking isolated live validation was found in the reviewed delta. This does not establish live observability of nonzero fields, final command admission, pixel visibility, or global/world input blocking.",
+  "confirmed_implementation": [
+    "Type1 optional +68 int32/+90 byte observations use repeated reads and retain independently valid type0 keyboard state if the mouse fields fail. Nonzero +68 or +90 describes the early physical checker exclusion only.",
+    "CFD208 is read as one byte with native 8FCAE8/7993C4/8FCC9D signatures, domain {0,1}, and equal repeated values. It has a separate engine_mouse_button_state scope.",
+    "Inventory classes7/9/23/25/30/56/59/6A are explicit decimal/hex native IDs. Actual active groups are low0 and high2. Each needed layer is cached once per before/after pass; complete doubly linked traversal is bounded to128 nodes, with aggregate64 registered dialogs and64 pending-close tokens.",
+    "Native layer failures or current low/high pointer aliasing retain known dialog registration and leave only affected placement unknown. Shared same-layer flags/token and cross-layer alias/order consistency are validated by the consumer.",
+    "Old v2 snapshots may omit new UI mouse fields, command mouse object, dialog placement and class coverage. Without explicit coverage, only legacy five dialog IDs are accepted.",
+    "Host/Frame ABI v2 is unchanged. The reader does not call native getters, mutate UI or consume mouse queues."
+  ],
+  "independent_checks": [
+    {
+      "command": "python -m unittest tools.debug.test_client_state.ClientStateTests.test_mouse_command_exclusion_has_its_own_scope_and_native_operands tools.debug.test_client_state.ClientStateTests.test_mouse_button_state_deferral_never_claims_global_blocking tools.debug.test_client_state.ClientStateTests.test_eight_dialogs_require_coverage_and_keep_native_layers_separate",
+      "result": "3 tests passed; exit0"
+    },
+    {
+      "command": "python .tmp/u05-ui-followup-20261030/review-static/verify_type1_gate.py",
+      "result": "144 original-EXE offline Unicorn combinations;0 failures; original SHA checked;exit0"
+    }
+  ],
+  "limits_and_followup": [
+    "8BAAD0 upper command generation may override false through checker+6C and checker+78 whitelist. Do not convert early physical exclusion into absolute command/global/world blocking.",
+    "Ordinary Town ground click uses direct button state and independent UI/capture/world gates. A dialog appearing or layer flags changing does not establish mouse-blocked state.",
+    "CFD208 does not clear old held buttons. Coordinates and optional callback still run; DirectInput branch does not queue transient button events. Deferred does not promise replay or full mouse blocking.",
+    "Native level2 entry/release path is real but short and can precede supported actor binding. Level1 source found is outside current API scenes1/2/3. A missed live pulse remains unknown/unobserved.",
+    "Mailbox-open command99 native waiting path is a candidate for isolated live reachability, not an established trigger. Do not use attachment-extract command98 for this observation.",
+    "Live four-client matrix, complete native fixture suite and broader regression results reported by the parent were not independently rerun in this bounded review. Historical U07/U08 remain unresolved."
+  ]
+}

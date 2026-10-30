@@ -1,0 +1,138 @@
+{
+  "Schema": "original-native-screenshots/v1",
+  "Images": [
+    {
+      "File": "normal-A-settlement.jpg",
+      "Phase": "normal-v3",
+      "Label": "v3-normal-boss-A-finish",
+      "Pid": 28084,
+      "InputStarted": "2026-10-28T14:26:21.919+08:00",
+      "InputCompleted": "2026-10-28T14:26:33.233+08:00",
+      "OriginalImageFile": "ScreenShot00889.JPG",
+      "OriginalImageSha256": "24A527B40F10867B1AD6FC150A4BF826778A6174B147D37451E642FE369C5DF3",
+      "InputReceiptSha256": "C0E64FA560D5F41DA246CA83AAD292B0FE1191233B2F0900DAA79577FF26E5BE"
+    },
+    {
+      "File": "normal-B-settlement-animation.jpg",
+      "Phase": "normal-v3",
+      "Label": "v3-normal-B-boss-result",
+      "Pid": 30584,
+      "InputStarted": "2026-10-28T14:26:37.798+08:00",
+      "InputCompleted": "2026-10-28T14:26:38.869+08:00",
+      "OriginalImageFile": "ScreenShot00851.JPG",
+      "OriginalImageSha256": "1E2BC9D9C3169D6C871E49FC6F94A74F76847D3A38369F1C6255D1C79AE6A241",
+      "InputReceiptSha256": "674ADE984FCE8B4F06F13318BC22F4270159EA96EB84CF783D8175D063E9A589"
+    },
+    {
+      "File": "fallback-A-boss.jpg",
+      "Phase": "fallback-v4",
+      "Label": "v4-fault-A-boss",
+      "Pid": 50156,
+      "InputStarted": "2026-10-28T16:38:31.527+08:00",
+      "InputCompleted": "2026-10-28T16:38:32.553+08:00",
+      "OriginalImageFile": "ScreenShot00944.JPG",
+      "OriginalImageSha256": "52DA7384C3EBCC3F4CABFB165628794D06FF1E60EAE182086374783B4801E958",
+      "InputReceiptSha256": "CBE7206211B0BC19953B3EA6C2715D86A4EC2A02536BD07583EA0705407E625F"
+    },
+    {
+      "File": "fallback-B-boss.jpg",
+      "Phase": "fallback-v4",
+      "Label": "v4-fault-B-boss",
+      "Pid": 73488,
+      "InputStarted": "2026-10-28T16:38:33.241+08:00",
+      "InputCompleted": "2026-10-28T16:38:34.258+08:00",
+      "OriginalImageFile": "ScreenShot00878.JPG",
+      "OriginalImageSha256": "DCCE44A032729C372B9ACA13F15C1F281E459EDC41BE1CCD177A80555C244A58",
+      "InputReceiptSha256": "76AA5D51883AAEC90DC7155C617E0C9D36CEDC3CEEDD43DEC03B41FC02D52406"
+    },
+    {
+      "File": "fallback-A-settlement.jpg",
+      "Phase": "fallback-v4",
+      "Label": "v4-fault-A-settlement",
+      "Pid": 50156,
+      "InputStarted": "2026-10-28T16:39:39.849+08:00",
+      "InputCompleted": "2026-10-28T16:39:43.807+08:00",
+      "OriginalImageFile": "ScreenShot00945.JPG",
+      "OriginalImageSha256": "28BC17D1CC0D025215E29F936458774D01B52B407C6481317F4576EE62D5E613",
+      "InputReceiptSha256": "50F86C110CC998EF661F1D2E011EE4B2E7DB93F0C8B03F75281E17255C32CF33"
+    },
+    {
+      "File": "fallback-B-settlement.jpg",
+      "Phase": "fallback-v4",
+      "Label": "v4-fault-B-settlement",
+      "Pid": 73488,
+      "InputStarted": "2026-10-28T16:39:44.510+08:00",
+      "InputCompleted": "2026-10-28T16:39:45.628+08:00",
+      "OriginalImageFile": "ScreenShot00879.JPG",
+      "OriginalImageSha256": "712EB2FE57782E65A33F9E3EF96FC5186FDEE55AF5386B8847986417B59C6662",
+      "InputReceiptSha256": "72C8108709A9661D3B221EFBB0F90A3CCE8BD80E0DF6B18536FBD12961DF406F"
+    },
+    {
+      "File": "fallback-A-return-town.jpg",
+      "Phase": "fallback-v4",
+      "Label": "v4-fault-A-return-town",
+      "Pid": 50156,
+      "InputStarted": "2026-10-28T16:40:34.315+08:00",
+      "InputCompleted": "2026-10-28T16:40:41.303+08:00",
+      "OriginalImageFile": "ScreenShot00947.JPG",
+      "OriginalImageSha256": "7833D57B625B224D81ECA022D8328C57D2C8F4388D4EC5DE7818A06E379B974D",
+      "InputReceiptSha256": "9A42FD90ED39FEC9737C4A8F5D1ACB2713B2DD58929C821C809CF16A80088D83"
+    },
+    {
+      "File": "fallback-B-return-town.jpg",
+      "Phase": "fallback-v4",
+      "Label": "v4-fault-B-return-town",
+      "Pid": 73488,
+      "InputStarted": "2026-10-28T16:40:42.010+08:00",
+      "InputCompleted": "2026-10-28T16:40:43.031+08:00",
+      "OriginalImageFile": "ScreenShot00881.JPG",
+      "OriginalImageSha256": "3A2933B0FF001C8533AB87BD62AAFD69D99D74DB6E93A839C53A0F827B79FA74",
+      "InputReceiptSha256": "074332B23294ACFE19418A50306694C2414E4A6628379961CE1226FA57B668B0"
+    },
+    {
+      "File": "fallback-A-channel.jpg",
+      "Phase": "fallback-v3",
+      "Label": "v3-fault-A-channel",
+      "Pid": 71788,
+      "InputStarted": "2026-10-28T16:18:39.160+08:00",
+      "InputCompleted": "2026-10-28T16:18:40.687+08:00",
+      "OriginalImageFile": "ScreenShot00923.JPG",
+      "OriginalImageSha256": "42D69D363E58C3DCE4CE917495040CD3550DCF7AA582C22CA220B6BDB19A42E9",
+      "InputReceiptSha256": "05DD4BB48C3AA1F58A13A4DCCF6AECF312D6ABBF62E891E6760BDFAA2933146F"
+    },
+    {
+      "File": "fallback-B-channel.jpg",
+      "Phase": "fallback-v3",
+      "Label": "v3-fault-B-channel",
+      "Pid": 60056,
+      "InputStarted": "2026-10-28T16:20:00.499+08:00",
+      "InputCompleted": "2026-10-28T16:20:03.840+08:00",
+      "OriginalImageFile": "ScreenShot00871.JPG",
+      "OriginalImageSha256": "3C31A06398AFD0016A74B27E0BAEFB8AB60DC63FE3B0CA56E6F5C7DE4B3B9C50",
+      "InputReceiptSha256": "D68DD412F0882C238EB7985B3E68691D1EE9BD6EB2F769157B8E682C448A9FCA"
+    },
+    {
+      "File": "fallback-A-reentry.jpg",
+      "Phase": "fallback-v3",
+      "Label": "v3-fault-A-reentry",
+      "Pid": 71788,
+      "InputStarted": "2026-10-28T16:18:55.812+08:00",
+      "InputCompleted": "2026-10-28T16:19:10.718+08:00",
+      "OriginalImageFile": "ScreenShot00924.JPG",
+      "OriginalImageSha256": "B886162385FA5BBE163CB8CBFE65202D7EE558511D6BCF6136AE12CBA169DB8B",
+      "InputReceiptSha256": "9EBEA118DC401A5F886A0A0704C05E4828D8A972CE27A98AAEDBAC4DA59F3D2A"
+    },
+    {
+      "File": "fallback-B-reentry.jpg",
+      "Phase": "fallback-v3",
+      "Label": "v3-fault-B-reentry",
+      "Pid": 60056,
+      "InputStarted": "2026-10-28T16:20:12.703+08:00",
+      "InputCompleted": "2026-10-28T16:20:27.655+08:00",
+      "OriginalImageFile": "ScreenShot00872.JPG",
+      "OriginalImageSha256": "AF43B797B48E0FBADC78D49F3352910943A6850563AF6259C0041892F46FD231",
+      "InputReceiptSha256": "685403A5550D97EB1D3F7E2D6AEDBC2D80B8DD260C75D0FB1E12B47FD2627E3F"
+    }
+  ],
+  "Scope": "Unmodified original native PrintScreen JPG bytes; no collage, crop or generated image. Normal B is settlement animation; fallback B is score fade-out."
+}

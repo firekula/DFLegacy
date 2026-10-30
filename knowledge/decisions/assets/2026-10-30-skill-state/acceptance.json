@@ -1,0 +1,570 @@
+{
+  "schema": "dfl-skill-state-acceptance/v1",
+  "native_sha256": "6431518F6DB43F19B281900FABDECACA086864C8048F44E52533774D81F6F4C9",
+  "server_sha256": "E058182878E8176981C3D9649515F744035385E812525DBE14B4D2C8059193C0",
+  "server_unchanged_from": "0d437af",
+  "cycles": [
+    {
+      "role": "C",
+      "skill_id": 46,
+      "before_mp": 245,
+      "minimum_mp": 239,
+      "active_samples": 11,
+      "maximum_observed_cooldown": 2094,
+      "samples": [
+        {
+          "sequence": 1605,
+          "generation": 6,
+          "tick": 408888593,
+          "mp": 245,
+          "z": 0,
+          "capture_us": 44,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 0,
+          "cooldown_blocked": false,
+          "usable": true
+        },
+        {
+          "sequence": 1606,
+          "generation": 6,
+          "tick": 408888796,
+          "mp": 245,
+          "z": 0,
+          "capture_us": 47,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 0,
+          "cooldown_blocked": false,
+          "usable": true
+        },
+        {
+          "sequence": 1607,
+          "generation": 6,
+          "tick": 408889000,
+          "mp": 239,
+          "z": -0.0456000045,
+          "capture_us": 49,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 2094,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1608,
+          "generation": 6,
+          "tick": 408889203,
+          "mp": 239,
+          "z": 0,
+          "capture_us": 91,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 1893,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1609,
+          "generation": 6,
+          "tick": 408889406,
+          "mp": 239,
+          "z": 0,
+          "capture_us": 47,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 1691,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1610,
+          "generation": 6,
+          "tick": 408889609,
+          "mp": 239,
+          "z": 0,
+          "capture_us": 44,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 1491,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1611,
+          "generation": 6,
+          "tick": 408889812,
+          "mp": 239,
+          "z": 0,
+          "capture_us": 55,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 1282,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1612,
+          "generation": 6,
+          "tick": 408890015,
+          "mp": 239,
+          "z": 0,
+          "capture_us": 89,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 1084,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1613,
+          "generation": 6,
+          "tick": 408890218,
+          "mp": 240,
+          "z": 0,
+          "capture_us": 45,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 876,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1614,
+          "generation": 6,
+          "tick": 408890421,
+          "mp": 240,
+          "z": 0,
+          "capture_us": 51,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 674,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1615,
+          "generation": 6,
+          "tick": 408890625,
+          "mp": 240,
+          "z": 0,
+          "capture_us": 45,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 471,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1616,
+          "generation": 6,
+          "tick": 408890828,
+          "mp": 240,
+          "z": 0,
+          "capture_us": 58,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 273,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1617,
+          "generation": 6,
+          "tick": 408891031,
+          "mp": 240,
+          "z": 0,
+          "capture_us": 49,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 67,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1618,
+          "generation": 6,
+          "tick": 408891234,
+          "mp": 240,
+          "z": 0,
+          "capture_us": 46,
+          "id": 46,
+          "level": 1,
+          "cooldown_ms": 0,
+          "cooldown_blocked": false,
+          "usable": true
+        }
+      ]
+    },
+    {
+      "role": "D",
+      "skill_id": 4,
+      "before_mp": 270,
+      "minimum_mp": 266,
+      "active_samples": 8,
+      "maximum_observed_cooldown": 1611,
+      "samples": [
+        {
+          "sequence": 1115,
+          "generation": 6,
+          "tick": 408790718,
+          "mp": 270,
+          "z": 0,
+          "capture_us": 42,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 0,
+          "cooldown_blocked": false,
+          "usable": true
+        },
+        {
+          "sequence": 1116,
+          "generation": 6,
+          "tick": 408790921,
+          "mp": 270,
+          "z": 0,
+          "capture_us": 45,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 0,
+          "cooldown_blocked": false,
+          "usable": true
+        },
+        {
+          "sequence": 1117,
+          "generation": 6,
+          "tick": 408791125,
+          "mp": 270,
+          "z": 0,
+          "capture_us": 48,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 0,
+          "cooldown_blocked": false,
+          "usable": true
+        },
+        {
+          "sequence": 1118,
+          "generation": 6,
+          "tick": 408791328,
+          "mp": 266,
+          "z": 0,
+          "capture_us": 51,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 1611,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1119,
+          "generation": 6,
+          "tick": 408791531,
+          "mp": 266,
+          "z": 0,
+          "capture_us": 39,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 1405,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1120,
+          "generation": 6,
+          "tick": 408791734,
+          "mp": 266,
+          "z": 0,
+          "capture_us": 40,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 1207,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1121,
+          "generation": 6,
+          "tick": 408791937,
+          "mp": 266,
+          "z": -0.0216000006,
+          "capture_us": 43,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 1000,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1122,
+          "generation": 6,
+          "tick": 408792140,
+          "mp": 266,
+          "z": 0,
+          "capture_us": 39,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 799,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1123,
+          "generation": 6,
+          "tick": 408792343,
+          "mp": 267,
+          "z": 0,
+          "capture_us": 40,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 592,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1124,
+          "generation": 6,
+          "tick": 408792546,
+          "mp": 267,
+          "z": 0,
+          "capture_us": 43,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 393,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1125,
+          "generation": 6,
+          "tick": 408792750,
+          "mp": 267,
+          "z": 0,
+          "capture_us": 46,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 188,
+          "cooldown_blocked": true,
+          "usable": false
+        },
+        {
+          "sequence": 1126,
+          "generation": 6,
+          "tick": 408792953,
+          "mp": 267,
+          "z": 0,
+          "capture_us": 42,
+          "id": 4,
+          "level": 1,
+          "cooldown_ms": 0,
+          "cooldown_blocked": false,
+          "usable": true
+        }
+      ]
+    }
+  ],
+  "jump": {
+    "skill_id": 46,
+    "samples": [
+      {
+        "sequence": 1771,
+        "generation": 6,
+        "tick": 408922312,
+        "z": 0,
+        "mp": 245,
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": true
+      },
+      {
+        "sequence": 1772,
+        "generation": 6,
+        "tick": 408922515,
+        "z": 0,
+        "mp": 245,
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": true
+      },
+      {
+        "sequence": 1773,
+        "generation": 6,
+        "tick": 408922718,
+        "z": 0,
+        "mp": 245,
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "sequence": 1774,
+        "generation": 6,
+        "tick": 408922921,
+        "z": 95.9124298,
+        "mp": 245,
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "sequence": 1775,
+        "generation": 6,
+        "tick": 408923125,
+        "z": 134.473358,
+        "mp": 245,
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "sequence": 1776,
+        "generation": 6,
+        "tick": 408923328,
+        "z": 112.562988,
+        "mp": 245,
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "sequence": 1777,
+        "generation": 6,
+        "tick": 408923531,
+        "z": 32.8969154,
+        "mp": 245,
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "sequence": 1778,
+        "generation": 6,
+        "tick": 408923734,
+        "z": 0,
+        "mp": 245,
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": true
+      }
+    ],
+    "blocked_airborne_samples": 4
+  },
+  "death": {
+    "uid": 3,
+    "hp": 0,
+    "dead": true,
+    "skills": [
+      {
+        "id": 5,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "id": 46,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "id": 173,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "id": 179,
+        "level": 5,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "id": 181,
+        "level": 2,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "id": 182,
+        "level": 2,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      },
+      {
+        "id": 184,
+        "level": 1,
+        "cooldown_ms": 0,
+        "cooldown_blocked": false,
+        "usable": false
+      }
+    ],
+    "server_and_four_clients_confirmed": true
+  },
+  "capture_profile": {
+    "A": {
+      "samples": 21,
+      "maximum_us": 113,
+      "skill_count": 34,
+      "known_usable": 32
+    },
+    "B": {
+      "samples": 21,
+      "maximum_us": 63,
+      "skill_count": 7,
+      "known_usable": 6
+    },
+    "C": {
+      "samples": 20,
+      "maximum_us": 52,
+      "skill_count": 7,
+      "known_usable": 7
+    },
+    "D": {
+      "samples": 20,
+      "maximum_us": 71,
+      "skill_count": 6,
+      "known_usable": 6
+    }
+  },
+  "incorrect_first_observation": {
+    "actual_native_key": "Z -> id46",
+    "watched_skill_id": 5,
+    "active_count": 0,
+    "not_counted_as_cooldown_pass": true
+  },
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "protected_files_verified": 16,
+  "test_INIs_restored": 4,
+  "active_sessions_at_stop": 0,
+  "limits": [
+    "Usable is native manual-precast candidacy; not UI input receipt, target resolution or damage.",
+    "Nonempty item costs, nonzero use limits, unsupported modifiers and unproven floating boundaries remain unknown.",
+    "Pause/secure-clock/wrap/MP-shortage/resource corruption are offline fixtures, not all live cases.",
+    "First C run watched Ghost Slash id5 while Z used Upper Slash id46; corrected using original PVF, not counted as cooldown pass.",
+    "C maximum observed2094 is runtime remaining; script nominal2000 is not an asserted exact upper bound after native modifiers.",
+    "No managed source changes or managed suite rerun in this group.",
+    "U11 remains deferred last."
+  ]
+}

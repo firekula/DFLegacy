@@ -37,7 +37,8 @@ internal static class PartyCardOwnColumnCommitter
         ushort warehouseCapacity,
         uint inventoryWeightLimit,
         ItemCatalog itemCatalog,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid mentorGoldIncarnation = default)
     {
         var paidCost = (int)Math.Min(int.MaxValue, roll.GoldCardCost);
         var targetGold = type == PartyCardType.Free
@@ -67,11 +68,13 @@ internal static class PartyCardOwnColumnCommitter
             inventory.Values.ToArray(),
             equipment,
             warehouseCapacity,
-            plan);
+            plan,
+            type == PartyCardType.Free ? roll.FreeGoldAmount : 0,
+            mentorGoldIncarnation);
         var result = await store.CommitDungeonRewardAsync(request, cancellationToken);
         return new PartyCardOwnColumnCommitResult(
             new PartyCardCommitOutcome(result.Status, result.RejectionCode ?? result.UnknownReason),
-            targetGold,
+            result.UpdatedCharacter?.Gold ?? targetGold,
             plan,
             result.UpdatedCharacter);
     }

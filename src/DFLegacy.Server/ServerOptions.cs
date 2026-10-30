@@ -16,6 +16,8 @@ public sealed class ServerOptions
     public TownSyncOptions TownSync { get; set; } = new();
     public DebugOptions Debug { get; set; } = new();
     public ChannelOptions Channel { get; set; } = new();
+    public PvpOptions Pvp { get; set; } = new();
+    public FallbackRelayOptions FallbackRelay { get; set; } = new();
     public DropOptions Drop { get; set; } = new();
     public ExperienceOptions Experience { get; set; } = new();
     public DungeonOptions Dungeon { get; set; } = new();
@@ -216,8 +218,14 @@ public sealed class TownGhostOptions
     public int HiddenSeconds { get; set; } = 0;
 }
 
+public sealed class TestControlOptions
+{
+    public bool Enabled { get; set; }
+}
+
 public sealed class DebugOptions
 {
+    public TestControlOptions TestControl { get; set; } = new();
     public TownGhostOptions TownGhost { get; set; } = new();
     public ClientOverlayOptions ClientOverlay { get; set; } = new();
 }

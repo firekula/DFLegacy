@@ -108,8 +108,8 @@ public sealed class ClientPackageExporter
                         ClientPath = "../DNF.exe", EntranceHost = config.AdvertisedHost, config.EntrancePort, AccountServicePort = config.AdminPort,
                         config.AccountServiceUrl, Theme = "dark", Account = "", Password = "", Accounts = Array.Empty<object>(), AccountIndex = 0, StartServer = false,
                         D3D9Adapter = 0, D3D9TimeoutSeconds = 30, D3D9RetryIntervalSeconds = 1,
-                        Relay = new { Enabled = config.RelayEnabled, TcpPorts = string.Join(',', config.EntrancePort, config.ChannelPort, config.AdditionalEntrancePort),
-                            UdpPorts = string.Join(',', config.CharacterPort, config.GameplayPrimaryPort, config.GameplaySecondaryPort), Preference = config.RelayPreference }
+                        Relay = new { Enabled = config.RelayEnabled, TcpPorts = string.Join(',', config.ForwardedTcpPorts()),
+                            UdpPorts = string.Join(',', config.ForwardedUdpPorts()), Preference = config.RelayPreference }
                     };
                     await Add(prefix + "launcher.json", JsonSerializer.Serialize(launcher, new JsonSerializerOptions { WriteIndented = true }));
                 }

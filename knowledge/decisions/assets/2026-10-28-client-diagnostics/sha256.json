@@ -1,0 +1,68 @@
+{
+  "Entries": [
+    {
+      "File": "007-diagnostics-A-town.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\evidence\\007-diagnostics-A-town.jpg",
+      "SourceSha256": "D12592419FFA639C18C8169807E3EE1EC677D14933DCD6E741CECBA71C8C081D",
+      "CopiedSha256": "D12592419FFA639C18C8169807E3EE1EC677D14933DCD6E741CECBA71C8C081D",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "008-diagnostics-B-town.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\evidence\\008-diagnostics-B-town.jpg",
+      "SourceSha256": "CE21B705EE347614A76278E2CD9AD4E349D5A5690026EF0CF2F3CC2A6412EA1E",
+      "CopiedSha256": "CE21B705EE347614A76278E2CD9AD4E349D5A5690026EF0CF2F3CC2A6412EA1E",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "diagnostics-acceptance.json",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\diagnostics-acceptance.json",
+      "SourceSha256": "D3A118FCFDA5644C9ECDD04052432E90247878D6A5E8AA12A90FE39CADCE0277",
+      "CopiedSha256": "D3A118FCFDA5644C9ECDD04052432E90247878D6A5E8AA12A90FE39CADCE0277",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": false
+    },
+    {
+      "File": "red.log",
+      "Source": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-28-client-diagnostics\\red.log",
+      "SourceSha256": "BE6DBC4D5F1743C941928E49A0B9CBE31B58F6C2D9F8452870268E98649B8E3B",
+      "CopiedSha256": "BE6DBC4D5F1743C941928E49A0B9CBE31B58F6C2D9F8452870268E98649B8E3B",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": false
+    },
+    {
+      "File": "green-direct.log",
+      "Source": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-28-client-diagnostics\\green-direct.log",
+      "SourceSha256": "7C34DEB9E051DCD6AB9F44A0B678334B1201220A3439889DE1714FD850A0653E",
+      "CopiedSha256": "7C34DEB9E051DCD6AB9F44A0B678334B1201220A3439889DE1714FD850A0653E",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": false
+    },
+    {
+      "File": "full-smoke.log",
+      "Source": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-28-client-diagnostics\\full-smoke.log",
+      "SourceSha256": "BB0F6179836CFC0576A58C8B803A1FE8D679543721490F4F720CE06950218ACC",
+      "CopiedSha256": "BB0F6179836CFC0576A58C8B803A1FE8D679543721490F4F720CE06950218ACC",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": false
+    },
+    {
+      "File": "server-release.log",
+      "Source": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-28-client-diagnostics\\server-release.log",
+      "SourceSha256": "33702D6C1CA3ADB5B58BE7CF614D35985C9D6AA852C64017FEE426B4EC4492B8",
+      "CopiedSha256": "33702D6C1CA3ADB5B58BE7CF614D35985C9D6AA852C64017FEE426B4EC4492B8",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": false
+    },
+    {
+      "File": "smoke-release.log",
+      "Source": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-28-client-diagnostics\\smoke-release.log",
+      "SourceSha256": "6A08AD827774895A48EFAD7ECF8183DC56217B152E0D232D047032CD2498D691",
+      "CopiedSha256": "6A08AD827774895A48EFAD7ECF8183DC56217B152E0D232D047032CD2498D691",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": false
+    }
+  ]
+}

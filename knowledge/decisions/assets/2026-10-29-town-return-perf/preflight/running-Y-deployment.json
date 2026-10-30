@@ -1,0 +1,55 @@
+{
+  "Schema": "party-native-phase/v1",
+  "Phase": "drop-green",
+  "Status": "running",
+  "StartedAtUtc": "2026-10-29T05:29:45.8762677Z",
+  "StoppedAtUtc": null,
+  "BuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-native-20261029\\build-manifest-drop-green.json",
+  "BuildManifestSha256": "6E439100584B47972A7CFFDDAD70953D143842702A8EBD0FD863D5F89D0973CE",
+  "Runtime": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-native-20261029\\runtime-drop-green",
+  "State": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-native-20261029\\state-drop-green.json",
+  "InitialFixtureSha256": "A3E6922E6C58B20DD787BEBA3B82586C192AFA23612C7ED8B9CDEECB6046FE8C",
+  "Server": {
+    "Role": "server",
+    "Id": 72620,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-native-20261029\\runtime-drop-green\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-29T05:29:46.0347988Z"
+  },
+  "Clients": [
+    {
+      "Role": "A",
+      "Id": 33324,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T05:29:48.7784937Z"
+    },
+    {
+      "Role": "B",
+      "Id": 14376,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T05:29:49.5026735Z"
+    }
+  ],
+  "Launchers": [
+    {
+      "Role": "launcher-A",
+      "Id": 51484,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T05:29:48.3089868Z"
+    },
+    {
+      "Role": "launcher-B",
+      "Id": 56504,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T05:29:49.0011137Z"
+    }
+  ],
+  "Sink": null,
+  "SinkLog": null,
+  "Stdout": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-native-20261029\\server-drop-green.log",
+  "Stderr": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-native-20261029\\server-drop-green.err.log",
+  "PeerSink": false,
+  "RoleAccounts": {
+    "A": "shizuku",
+    "B": "test"
+  }
+}

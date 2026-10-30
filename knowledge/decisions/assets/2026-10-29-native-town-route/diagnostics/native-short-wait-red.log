@@ -1,0 +1,2 @@
+FAIL: real DLL captures and worker exports even when old Frame scene hides overlay
+Debug overlay tests: 1 failures

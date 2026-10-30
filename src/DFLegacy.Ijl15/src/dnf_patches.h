@@ -10,7 +10,8 @@ namespace dfl::dnf_patches
 	inline constexpr bool AllowMultipleClientInstances = true;
 	inline constexpr bool DisableStartupMinimize = true;
 	inline constexpr bool DisableBackgroundThrottling = true;
-	inline constexpr bool SinglePermanentAvatarPeriodOption = true;
+	// The server now enforces7/30-day lifetimes; retain ACT1's native picker.
+	inline constexpr bool SinglePermanentAvatarPeriodOption = false;
 	inline constexpr bool EnableCustomStackableUseMode1 = true;
 	inline constexpr bool RemoveCustomPopupAnnouncementTitle = true;
 	inline constexpr bool UseExternalDnfStringTable = true;

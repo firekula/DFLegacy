@@ -1,0 +1,181 @@
+[
+  {
+    "file": "30AD-B-real-egg-claim.jpg",
+    "sha256": "3F71A22C7BCDFA83811334FD778D8C84E1EAD00FF8A19B3A6BB53A5FD47C0E81",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "B-real-egg-claim.jpg",
+    "meaning": "claimed attachment now absent; protocol/state prove claim"
+  },
+  {
+    "file": "30AD-B-sealed-egg-tooltip.jpg",
+    "sha256": "68303F43C8535308B313757F549294B89A47D1AE120766FE11738E1051D3F0B5",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "B-sealed-egg-tooltip.jpg",
+    "meaning": "root-reviewed actual claim/hatch original image"
+  },
+  {
+    "file": "30AD-B-egg-hatch-native-rightclick.jpg",
+    "sha256": "C7D7FC859E84150E775C94CA03021EFD23977C422C5E3252A00E64148AEC12CA",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "B-egg-hatch-native-rightclick.jpg",
+    "meaning": "actual native hatch confirmation modal"
+  },
+  {
+    "file": "30AD-B-confirm-native-egg-hatch.jpg",
+    "sha256": "8311C91E2560DE525C32C1AFC7D238487E39333D6C60A0E65CEFD958AE0851D0",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "B-confirm-native-egg-hatch.jpg",
+    "meaning": "root-reviewed actual claim/hatch original image"
+  },
+  {
+    "file": "30AD-B-hatched-pet-tooltip.jpg",
+    "sha256": "B66107CBCA6EF0A2E2AC30B6EB25B218729628CD4EDDA04BCB0B069E7F449F37",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "B-hatched-pet-tooltip.jpg",
+    "meaning": "root-reviewed actual claim/hatch original image"
+  },
+  {
+    "file": "30AD-B-relogin-pet-tooltip.jpg",
+    "sha256": "0A2B3A7C4DC8640EAA6C110F4235E23ADFF0EA7F5D355EA31FC2190E07B529EA",
+    "source_namespace": "frozen-native-creature-final-relogin",
+    "source_name": "B-relogin-pet-tooltip.jpg",
+    "meaning": "root-reviewed relogin actual pet tooltip"
+  },
+  {
+    "file": "30AD-A-food-gift-remains-disabled.jpg",
+    "sha256": "6F27B9B6E39451F114EA74EFAC64C9D55F9DF059907B22000BA1AB732B8A7C6C",
+    "source_namespace": "frozen-native-creature-final-relogin",
+    "source_name": "A-food-gift-remains-disabled.jpg",
+    "meaning": "row Gift gray; generic All Gift remains; rename card selected but not submitted"
+  },
+  {
+    "file": "30AD-A-avatar-original-gift-entry.jpg",
+    "sha256": "F0153C4D32CCCC7381EBBEEEAB976503FE3E1CCDDB376B1176E111AAA6894755",
+    "source_namespace": "frozen-native-creature-final-relogin",
+    "source_name": "A-avatar-original-gift-entry.jpg",
+    "meaning": "original avatar All Gift opens blank UI112; no query/order"
+  },
+  {
+    "file": "30AD-A-pet-gift-after-shop-reopen.jpg",
+    "sha256": "7044AAF56BC5B5FFD444E89252B3D87FF456A0CFB21C30264286EE353801E2C6",
+    "source_namespace": "frozen-native-creature-final-relogin",
+    "source_name": "A-pet-gift-after-shop-reopen.jpg",
+    "meaning": "three eligible egg Gift buttons and three empty rows without buttons"
+  },
+  {
+    "file": "30AD-attempt-B-restart-read-same-egg.jpg",
+    "sha256": "6C14A5A26D2CC15EABB2CC9C1746DAE822F5188C6906080100D8441685E4246D",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "B-restart-read-same-egg.jpg",
+    "meaning": "world; not read-mail proof"
+  },
+  {
+    "file": "30AD-attempt-B-claim-egg-attachment.jpg",
+    "sha256": "178173A4978E9753BB6880223AB873E0BFBD2DE4BB80F97238CEFCF8E918F77A",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "B-claim-egg-attachment.jpg",
+    "meaning": "inbox only; not actual claim"
+  },
+  {
+    "file": "30AD-attempt-B-native-hatch-dialog.jpg",
+    "sha256": "E5B5A20B9251BA8C9BA2A0F9E13FBFD062B21BC5AC565FDF59045EA1267EE703",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "B-native-hatch-dialog.jpg",
+    "meaning": "mailbox blocked rightclick; not hatch modal"
+  },
+  {
+    "file": "30AD-authoritative-final-v3.json",
+    "sha256": "9AB4FAE454A297691ECCADB4C44EBF1E48B14A582CF03EED9724B00BB09377F0",
+    "source_namespace": "frozen-native-creature-final-relogin",
+    "source_name": "authoritative-final-v3.json",
+    "meaning": "sanitized six-stage authoritative proof"
+  },
+  {
+    "file": "30AD-check-final-v3-corrected.json",
+    "sha256": "CF7E9F3695BEBBF1B61C398304FE84CF3640F4E045F00C23A8843176802C8744",
+    "source_namespace": "frozen-native-creature-final-relogin",
+    "source_name": "check-final-v3-corrected.json",
+    "meaning": "final corrected check57/57"
+  },
+  {
+    "file": "30AD-native-final-supplement.json",
+    "sha256": "E23F7417FEBF3AE1ACEC364FF8DB53309C0FD815D3E88817FA3E64D9CF45AD34",
+    "source_namespace": "frozen-native-creature-final-relogin",
+    "source_name": "native-final-supplement.json",
+    "meaning": "two restarts and103CRC supplement"
+  },
+  {
+    "file": "30AD-check-final-v3-before-correction.json",
+    "sha256": "C3109E4C07389258A18C01963F53D2A4E4BECA4399D49EDC459B9C012F47BB18",
+    "source_namespace": "frozen-native-creature-final-relogin",
+    "source_name": "check-final-v3.json",
+    "meaning": "preserved56/57 failure caused by read-and-claim same-phase assertion"
+  },
+  {
+    "file": "30AD-checker-read-before-restart-red.txt",
+    "sha256": "4E6EC34A1BB29D54B175C7889A219F171EF406B29E0C0340870C9B36A6A0A4B9",
+    "source_namespace": "overnight-20261028",
+    "source_name": "creature-v3-read-before-restart-red.txt",
+    "meaning": "actual fixture behavioral RED against old checker",
+    "source_sha256": "E0FFC20F9308D09CBF3B852A83DF33E2D256F9302D1AFF29CB2C3A53352DD91F",
+    "transformation": "only private local directory redacted; original failure text retained"
+  },
+  {
+    "file": "30AD-checker-final-green.json",
+    "sha256": "E6F61580B4CE714460ABDE21FFD97ADBBD355E92E2B4A0DB0B12022C3B27211A",
+    "source_namespace": "overnight-20261028",
+    "source_name": "creature-v3-final-green.json",
+    "meaning": "frozen checker test execution record"
+  },
+  {
+    "file": "30AD-authoritative-through-hatched-v3.json",
+    "sha256": "BE83D28B4F81B310A4B8CA00FAB25F98C7E8B93196C340F1CEB158AD7D1EE937",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "authoritative-through-hatched-v3.json",
+    "meaning": "historical partial proof before final relogin"
+  },
+  {
+    "file": "30AD-partial-check-before-correction.json",
+    "sha256": "9DAE36408C9B8FF429927A51DE1DB6D1E3027D75FF5946331E674B0A67CF5469",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "partial-relations-check.json",
+    "meaning": "preserved17/19 partial checker failure: mail row deletion assumption"
+  },
+  {
+    "file": "30AD-partial-check-corrected.json",
+    "sha256": "6DC3309B4B4B76E4F351195A89F92523DBA4B74DFB903A6ACE12D5B80DDD661F",
+    "source_namespace": "frozen-native-creature-final-hatched",
+    "source_name": "partial-relations-check-corrected.json",
+    "meaning": "19/19 partial corrected Attachment=null relation; at-time FINAL_PENDING"
+  },
+  {
+    "file": "30AD-B-restart-read-egg-confirmed.jpg",
+    "sha256": "CF91E62B2B0E8A46E95555A95728FAB2C24BB5BB8471CDA18F56112FF3658308",
+    "source_namespace": "frozen-native-creature-final-read-supplement",
+    "source_phase": "unclaimed-restart (closed)",
+    "source_name": "B-restart-read-egg-confirmed.jpg",
+    "meaning": "root-reviewed same egg mail still unclaimed after restart; no duplicate144 implied",
+    "source_sha256": "CF91E62B2B0E8A46E95555A95728FAB2C24BB5BB8471CDA18F56112FF3658308",
+    "supplemental_freeze_sha256": "803A115299873F643BA4CA9D39083EA16803C38430F024985E9E1657AB4B90CB"
+  },
+  {
+    "file": "verify-native-evidence-v3-before-read-chain-13AA.py",
+    "sha256": "13AA07A20C9AA911436481E0AD512C4A2328114DDD9084F36F15BA1211D991F0",
+    "meaning": "Historical checker reconstructed by reversing the exact known change; full SHA matches original13AA record; not represented as a contemporary saved copy"
+  },
+  {
+    "file": "30AD-unclaimed-history-checker-replay.json",
+    "sha256": "AAB79E2D9C3722137312E5E3D85D2A85DD0DDB08F65D3AF370958F42FCE486C4",
+    "meaning": "Fresh replay of old unclaimed evidence using exact13AA checker:27/27"
+  },
+  {
+    "file": "30AD-final-history-checker-replay-fail.json",
+    "sha256": "C3109E4C07389258A18C01963F53D2A4E4BECA4399D49EDC459B9C012F47BB18",
+    "meaning": "Fresh reproduction of old final56/57 failure using exact13AA checker"
+  },
+  {
+    "file": "30AD-final-public-recheck.json",
+    "sha256": "CF7E9F3695BEBBF1B61C398304FE84CF3640F4E045F00C23A8843176802C8744",
+    "meaning": "Fresh public final proof recheck using corrected6977 checker:57/57"
+  }
+]

@@ -1,0 +1,494 @@
+{
+  "schema": "dflegacy.channel-reentry-latency.v2",
+  "time_basis": "Asia/Shanghai client timestamps, millisecond precision; full dates retained across midnight",
+  "method": "Exact per-PID TCP local/remote groups; pair first transmitted CMD2 with last received CMD1 before it. Exclude each PID initial connection; reentry requires preceding successful CMD3 exit ACK in same PID.",
+  "native_fix_source": "e6959ca",
+  "final_merged_source": "1d915dc",
+  "final_native_sha256": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121",
+  "sources": [
+    {
+      "name": "headers-crash-baseline-20261027-231251-738110.json",
+      "sha256": "F5F590661E74E628D28205CA1348864C7432D86FC5AB95A0060A48580F731520",
+      "phase": "crash-baseline"
+    },
+    {
+      "name": "headers-native-mtu-analysis-20261027-2342.json",
+      "sha256": "C20C3092EC8BA276B16FE96FFF88ECC244AA183E48EEE55F69880D4657BFE987",
+      "phase": "native-mtu"
+    },
+    {
+      "name": "headers-gift-online-final-analysis-20261028-0015.json",
+      "sha256": "DE1A98AA20B86D8D30A131DE2B06549382E7776DC91014B45499BFB51B452577",
+      "phase": "gift-online"
+    }
+  ],
+  "captures": [
+    {
+      "role": "A",
+      "pid": 26236,
+      "phase": "crash-baseline",
+      "status": "parsed",
+      "capture_bytes": 131472,
+      "sha256": "1387A5A3F25CFBA7474C76B946639C2FCDC3D504D49201914F8BC718D16384C3",
+      "parser_error_count": 0
+    },
+    {
+      "role": "B",
+      "pid": 59236,
+      "phase": "crash-baseline",
+      "status": "parsed",
+      "capture_bytes": 89422,
+      "sha256": "7467DCB7911346DF88F7679330E94C68782CC0E78728D6ACD2F337A41A4B69FE",
+      "parser_error_count": 0
+    },
+    {
+      "role": "A",
+      "pid": 74232,
+      "phase": "native-mtu",
+      "status": "parsed",
+      "capture_bytes": 131773,
+      "sha256": "AF92A38348262905F67F4C389662668E37A9395ED68C563E909A9A00AFBDB8B5",
+      "parser_error_count": 0
+    },
+    {
+      "role": "B",
+      "pid": 64892,
+      "phase": "native-mtu",
+      "status": "parsed",
+      "capture_bytes": 89122,
+      "sha256": "AD6070232E420060AAF38687B4314F4AF6309C05C4737AF09C8AC59EC1D9A8A8",
+      "parser_error_count": 0
+    },
+    {
+      "role": "B",
+      "pid": 56476,
+      "phase": "gift-online",
+      "status": "parsed",
+      "capture_bytes": 100067,
+      "sha256": "F51765D20969191BDF4B80A18C8B61BB2CC935B836F392371ED8C9ECED25D3DA",
+      "parser_error_count": 0
+    },
+    {
+      "role": "A",
+      "pid": 55720,
+      "phase": "gift-online",
+      "status": "parsed",
+      "capture_bytes": 91772,
+      "sha256": "2C82FFA40656A0B74728A6A61B05C5E3802E94D6E912D80B81BFD7443F3A7386",
+      "parser_error_count": 0
+    }
+  ],
+  "connections": [
+    {
+      "phase": "crash-baseline",
+      "role": "A",
+      "pid": 26236,
+      "connection_ordinal": 1,
+      "local": "192.168.3.177:14131",
+      "remote": "192.168.3.177:7001",
+      "classification": "initial",
+      "ack1": {
+        "at": "2026-10-27 23:07:03.224",
+        "line": 80,
+        "last_line": 80
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:07:03.310",
+        "line": 90,
+        "last_line": 90
+      },
+      "ack1_to_cmd2_ms": 86
+    },
+    {
+      "phase": "crash-baseline",
+      "role": "A",
+      "pid": 26236,
+      "connection_ordinal": 2,
+      "local": "192.168.3.177:5668",
+      "remote": "192.168.3.177:7001",
+      "classification": "reentry",
+      "ack1": {
+        "at": "2026-10-27 23:08:34.839",
+        "line": 190,
+        "last_line": 190
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:08:45.813",
+        "line": 192,
+        "last_line": 192
+      },
+      "ack1_to_cmd2_ms": 10974,
+      "preceding_successful_exit_ack": {
+        "local": "192.168.3.177:14131",
+        "remote": "192.168.3.177:7001",
+        "at": "2026-10-27 23:08:02.005",
+        "line": 122,
+        "last_line": 122
+      }
+    },
+    {
+      "phase": "crash-baseline",
+      "role": "A",
+      "pid": 26236,
+      "connection_ordinal": 3,
+      "local": "192.168.3.177:4659",
+      "remote": "192.168.3.177:7001",
+      "classification": "reentry",
+      "ack1": {
+        "at": "2026-10-27 23:12:01.408",
+        "line": 312,
+        "last_line": 312
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:12:12.304",
+        "line": 314,
+        "last_line": 314
+      },
+      "ack1_to_cmd2_ms": 10896,
+      "preceding_successful_exit_ack": {
+        "local": "192.168.3.177:5668",
+        "remote": "192.168.3.177:7001",
+        "at": "2026-10-27 23:11:56.766",
+        "line": 236,
+        "last_line": 236
+      }
+    },
+    {
+      "phase": "crash-baseline",
+      "role": "B",
+      "pid": 59236,
+      "connection_ordinal": 1,
+      "local": "192.168.3.177:14221",
+      "remote": "192.168.3.177:7001",
+      "classification": "initial",
+      "ack1": {
+        "at": "2026-10-27 23:07:09.149",
+        "line": 80,
+        "last_line": 80
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:07:09.252",
+        "line": 90,
+        "last_line": 90
+      },
+      "ack1_to_cmd2_ms": 103
+    },
+    {
+      "phase": "crash-baseline",
+      "role": "B",
+      "pid": 59236,
+      "connection_ordinal": 2,
+      "local": "192.168.3.177:14185",
+      "remote": "192.168.3.177:7001",
+      "classification": "reentry",
+      "ack1": {
+        "at": "2026-10-27 23:10:35.496",
+        "line": 203,
+        "last_line": 203
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:10:46.310",
+        "line": 205,
+        "last_line": 205
+      },
+      "ack1_to_cmd2_ms": 10814,
+      "preceding_successful_exit_ack": {
+        "local": "192.168.3.177:14221",
+        "remote": "192.168.3.177:7001",
+        "at": "2026-10-27 23:10:31.024",
+        "line": 196,
+        "last_line": 196
+      }
+    },
+    {
+      "phase": "native-mtu",
+      "role": "A",
+      "pid": 74232,
+      "connection_ordinal": 1,
+      "local": "192.168.3.177:13995",
+      "remote": "192.168.3.177:7001",
+      "classification": "initial",
+      "ack1": {
+        "at": "2026-10-27 23:29:22.687",
+        "line": 80,
+        "last_line": 80
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:29:22.766",
+        "line": 90,
+        "last_line": 90
+      },
+      "ack1_to_cmd2_ms": 79
+    },
+    {
+      "phase": "native-mtu",
+      "role": "A",
+      "pid": 74232,
+      "connection_ordinal": 2,
+      "local": "192.168.3.177:4930",
+      "remote": "192.168.3.177:7001",
+      "classification": "reentry",
+      "ack1": {
+        "at": "2026-10-27 23:30:23.730",
+        "line": 187,
+        "last_line": 187
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:30:23.732",
+        "line": 189,
+        "last_line": 189
+      },
+      "ack1_to_cmd2_ms": 2,
+      "preceding_successful_exit_ack": {
+        "local": "192.168.3.177:13995",
+        "remote": "192.168.3.177:7001",
+        "at": "2026-10-27 23:30:19.238",
+        "line": 180,
+        "last_line": 180
+      }
+    },
+    {
+      "phase": "native-mtu",
+      "role": "A",
+      "pid": 74232,
+      "connection_ordinal": 3,
+      "local": "192.168.3.177:10333",
+      "remote": "192.168.3.177:7001",
+      "classification": "reentry",
+      "ack1": {
+        "at": "2026-10-27 23:32:26.605",
+        "line": 301,
+        "last_line": 301
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:32:26.606",
+        "line": 303,
+        "last_line": 303
+      },
+      "ack1_to_cmd2_ms": 1,
+      "preceding_successful_exit_ack": {
+        "local": "192.168.3.177:4930",
+        "remote": "192.168.3.177:7001",
+        "at": "2026-10-27 23:32:22.108",
+        "line": 229,
+        "last_line": 229
+      }
+    },
+    {
+      "phase": "native-mtu",
+      "role": "B",
+      "pid": 64892,
+      "connection_ordinal": 1,
+      "local": "192.168.3.177:14077",
+      "remote": "192.168.3.177:7001",
+      "classification": "initial",
+      "ack1": {
+        "at": "2026-10-27 23:29:28.445",
+        "line": 80,
+        "last_line": 80
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:29:28.535",
+        "line": 90,
+        "last_line": 90
+      },
+      "ack1_to_cmd2_ms": 90
+    },
+    {
+      "phase": "native-mtu",
+      "role": "B",
+      "pid": 64892,
+      "connection_ordinal": 2,
+      "local": "192.168.3.177:5018",
+      "remote": "192.168.3.177:7001",
+      "classification": "reentry",
+      "ack1": {
+        "at": "2026-10-27 23:30:31.522",
+        "line": 185,
+        "last_line": 185
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:30:31.523",
+        "line": 187,
+        "last_line": 187
+      },
+      "ack1_to_cmd2_ms": 1,
+      "preceding_successful_exit_ack": {
+        "local": "192.168.3.177:14077",
+        "remote": "192.168.3.177:7001",
+        "at": "2026-10-27 23:30:26.985",
+        "line": 178,
+        "last_line": 178
+      }
+    },
+    {
+      "phase": "gift-online",
+      "role": "B",
+      "pid": 56476,
+      "connection_ordinal": 1,
+      "local": "192.168.3.177:3949",
+      "remote": "192.168.3.177:7001",
+      "classification": "initial",
+      "ack1": {
+        "at": "2026-10-27 23:45:13.720",
+        "line": 80,
+        "last_line": 80
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:45:13.808",
+        "line": 90,
+        "last_line": 90
+      },
+      "ack1_to_cmd2_ms": 88
+    },
+    {
+      "phase": "gift-online",
+      "role": "B",
+      "pid": 56476,
+      "connection_ordinal": 2,
+      "local": "192.168.3.177:2414",
+      "remote": "192.168.3.177:7001",
+      "classification": "reentry",
+      "ack1": {
+        "at": "2026-10-28 00:02:14.524",
+        "line": 305,
+        "last_line": 305
+      },
+      "cmd2": {
+        "at": "2026-10-28 00:02:14.525",
+        "line": 307,
+        "last_line": 307
+      },
+      "ack1_to_cmd2_ms": 1,
+      "preceding_successful_exit_ack": {
+        "local": "192.168.3.177:3949",
+        "remote": "192.168.3.177:7001",
+        "at": "2026-10-28 00:02:10.178",
+        "line": 227,
+        "last_line": 227
+      }
+    },
+    {
+      "phase": "gift-online",
+      "role": "A",
+      "pid": 55720,
+      "connection_ordinal": 1,
+      "local": "192.168.3.177:5116",
+      "remote": "192.168.3.177:7001",
+      "classification": "initial",
+      "ack1": {
+        "at": "2026-10-27 23:55:11.329",
+        "line": 80,
+        "last_line": 80
+      },
+      "cmd2": {
+        "at": "2026-10-27 23:55:11.405",
+        "line": 90,
+        "last_line": 90
+      },
+      "ack1_to_cmd2_ms": 76
+    },
+    {
+      "phase": "gift-online",
+      "role": "A",
+      "pid": 55720,
+      "connection_ordinal": 2,
+      "local": "192.168.3.177:2885",
+      "remote": "192.168.3.177:7001",
+      "classification": "reentry",
+      "ack1": {
+        "at": "2026-10-28 00:02:07.151",
+        "line": 234,
+        "last_line": 234
+      },
+      "cmd2": {
+        "at": "2026-10-28 00:02:07.151",
+        "line": 236,
+        "last_line": 236
+      },
+      "ack1_to_cmd2_ms": 0,
+      "preceding_successful_exit_ack": {
+        "local": "192.168.3.177:5116",
+        "remote": "192.168.3.177:7001",
+        "at": "2026-10-28 00:02:02.716",
+        "line": 155,
+        "last_line": 155
+      }
+    }
+  ],
+  "native_mtu_observations": [
+    {
+      "phase": "gift-online",
+      "role": "A",
+      "pid": 55720,
+      "source_name": "channel-reentry-55720.log",
+      "sha256": "7BBDC473D4131BDC113EDD751F091BA8907138B1B5EEA564A51F1BDDEE61FBCE",
+      "entries": [
+        {
+          "tick": 229743031,
+          "reused": 0,
+          "native_mtu": 1472,
+          "elapsed_ms": 0
+        },
+        {
+          "tick": 230158843,
+          "reused": 1,
+          "native_mtu": 1472,
+          "elapsed_ms": 0
+        }
+      ]
+    },
+    {
+      "phase": "gift-online",
+      "role": "B",
+      "pid": 56476,
+      "source_name": "channel-reentry-56476.log",
+      "sha256": "83E10FF63764BFBEC7F009AE6B5C429B8AC0238A457BFAAEB8222DFA69E14475",
+      "entries": [
+        {
+          "tick": 229145421,
+          "reused": 0,
+          "native_mtu": 1472,
+          "elapsed_ms": 0
+        },
+        {
+          "tick": 230166218,
+          "reused": 1,
+          "native_mtu": 1472,
+          "elapsed_ms": 0
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "crash-baseline": {
+      "completed_reentry_count": 3,
+      "delays_ms": [
+        10974,
+        10896,
+        10814
+      ],
+      "min_ms": 10814,
+      "max_ms": 10974
+    },
+    "native-mtu": {
+      "completed_reentry_count": 3,
+      "delays_ms": [
+        2,
+        1,
+        1
+      ],
+      "min_ms": 1,
+      "max_ms": 2
+    },
+    "gift-online": {
+      "completed_reentry_count": 2,
+      "delays_ms": [
+        1,
+        0
+      ],
+      "min_ms": 0,
+      "max_ms": 1
+    }
+  }
+}

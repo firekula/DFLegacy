@@ -1,0 +1,201 @@
+{
+  "files": [
+    {
+      "path": "A-final-scene.jpg",
+      "bytes": 429287,
+      "sha256": "19E28193D929F2B5E580A77151C62A274546EAB06524A0652E0B54569909D671"
+    },
+    {
+      "path": "B-dead-coin-prompt.jpg",
+      "bytes": 421543,
+      "sha256": "9FCE7013D31D928A1D1C17D9E95617F692980B39B7855B8084B60F09602C14CB"
+    },
+    {
+      "path": "C-final-scene.jpg",
+      "bytes": 417218,
+      "sha256": "98DEB2E7EEECE3D363462C83972944828D4C40AC54CF299FE65CBB1220252807"
+    },
+    {
+      "path": "closeout-audit.json",
+      "bytes": 2641,
+      "sha256": "89A428809F09A1FA7BFEED4057DFD737C61C1ABCF8FF2B1BB64E73D4055537EF"
+    },
+    {
+      "path": "D-final-scene.jpg",
+      "bytes": 416579,
+      "sha256": "28397004080FA4A9679B2195E39D231426AC518035DF675E34A49B7C2BDE21DB"
+    },
+    {
+      "path": "identity-ledger.json",
+      "bytes": 3318,
+      "sha256": "CC8419D3511AF493B0AADCF94132E7081D0B2472642CA28440D53E00D712886C"
+    },
+    {
+      "path": "native-final-results.json",
+      "bytes": 320,
+      "sha256": "1BD09FD18FE27693A3D117BADEDA0D2EA0B91CDF1A9416E3A8C0AB0C2F6A14C4"
+    },
+    {
+      "path": "native-final.log",
+      "bytes": 754,
+      "sha256": "41203ED3F83526CAD474CC81997206CB462BFF0AA8BACA0C955A19EA6DE5945D"
+    },
+    {
+      "path": "native-red-heap.log",
+      "bytes": 1368,
+      "sha256": "8BD4AA1387BCF0DDC2D2A882CFFB59C2C97C0E7B4950631652EDC4F28CE39081"
+    },
+    {
+      "path": "native-resource-red.log",
+      "bytes": 1335,
+      "sha256": "27A15D194481565B187F3820A361DBA0F9AD960D30C35FF1F73694F55CC17577"
+    },
+    {
+      "path": "native-resource.asm",
+      "bytes": 72117,
+      "sha256": "ABA870D417FB2D9955666516CB634A991438378288F65969987F85BEEA3863D8"
+    },
+    {
+      "path": "native-review-green.log",
+      "bytes": 32,
+      "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+    },
+    {
+      "path": "native-review-red.log",
+      "bytes": 313,
+      "sha256": "F927725232B6B6F96E1C378042E0B0870075306763287E76BF7951199A1DA002"
+    },
+    {
+      "path": "password-constructor.asm",
+      "bytes": 21378,
+      "sha256": "5595D2B70CD3855E3FA24F7D722D960F653DF8E13DBE28FE5F02B3482F777F74"
+    },
+    {
+      "path": "provenance/closeout_audit.py",
+      "bytes": 3376,
+      "sha256": "B751EAF076ACD6FBFAB785441A4F705A36F1DAE962184ADBCEA0662D2C1AB6E2"
+    },
+    {
+      "path": "provenance/native_sampler.py",
+      "bytes": 4815,
+      "sha256": "E2B08B5F0F4AA45B088BB45C7CC2F7B0FC0911DAB6A12E221E8BC89676F5A4E0"
+    },
+    {
+      "path": "provenance/observe_live.py",
+      "bytes": 1734,
+      "sha256": "67467A5A5F639F239F2E81F2E3146A6DFF938DCF6F33661355F3C9E6C7A0DF04"
+    },
+    {
+      "path": "provenance/publish.py",
+      "bytes": 7932,
+      "sha256": "E51505461EF9B41BB3B087171F0DACA052656027CC344E1EF392120659445EE5"
+    },
+    {
+      "path": "provenance/resource_witness.py",
+      "bytes": 4545,
+      "sha256": "76A74A1839D62E59E47FF1DDA703280794DDFC17ECFE60725DFFE12B468181AD"
+    },
+    {
+      "path": "python-final.log",
+      "bytes": 409131,
+      "sha256": "D603634C2425A4E8F335D36265CF389ABFA4417855ABC0EF5FB168824BBAD115"
+    },
+    {
+      "path": "python-resources-green.log",
+      "bytes": 119,
+      "sha256": "7BEBB7B0C667C541B7AE37D9B62E6698EDAF05B774A867A58C917F5694F18FAD"
+    },
+    {
+      "path": "python-resources-red.log",
+      "bytes": 15810,
+      "sha256": "7F69A22BB0B01F77FE59E4E217034CAA2908CEAC77B6E41EDDA7C0E01D74C89F"
+    },
+    {
+      "path": "resource-four-dungeon-initial.json",
+      "bytes": 52588,
+      "sha256": "B8682671EA1C851B8BD12AA526B23CB742729963A2A1DE71D5E4CF40D12261E4"
+    },
+    {
+      "path": "resource-four-final-state.json",
+      "bytes": 45642,
+      "sha256": "6820B50BBB0FA36FDD928D40FD92FCF4D437E464E7C1A701BE10525E6E8EDE85"
+    },
+    {
+      "path": "resource-four-live-cli.json",
+      "bytes": 105809,
+      "sha256": "248E9B9B01E0F28CBE60E32404B3D90D67129D838D79EF07C03CE97A55F629D5"
+    },
+    {
+      "path": "resource-raw-witnesses.json",
+      "bytes": 5574,
+      "sha256": "F376FEEC3FFE1C91AA2B077A045EB6BD90FB49EC529A6710D9722A64071FA846"
+    },
+    {
+      "path": "resource-twelve-second-window.json",
+      "bytes": 1373265,
+      "sha256": "8FF3CABDC6A871A9C261CBEDAA0F64302F07CA0DC56C0BEAC1308FCE99D50771"
+    },
+    {
+      "path": "restoration-final.json",
+      "bytes": 146,
+      "sha256": "7BAFDCDBB78D7ECAB25C944BD2FE6B813C8F8F3131C979FA82E27E5B938F47A4"
+    },
+    {
+      "path": "review/counter-repro.log",
+      "bytes": 344,
+      "sha256": "9E83354A41A98024BA69B2673C69B6CD72133E6C36395D8C96F25539155001FD"
+    },
+    {
+      "path": "review/counter_repro.cpp",
+      "bytes": 2307,
+      "sha256": "9B4309705DDDE0E253C747017ADFFCA409D67AA541087B115507D024CC55F19E"
+    },
+    {
+      "path": "review/final-evidence-review.json",
+      "bytes": 4220,
+      "sha256": "E01E9ECBB2203AD137BF48B4AE998F83C16413EE63E422C6BBA31059479D90BB"
+    },
+    {
+      "path": "review/native-client-state-green.log",
+      "bytes": 32,
+      "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+    },
+    {
+      "path": "review/native-oracle.json",
+      "bytes": 2891,
+      "sha256": "93633EA98EAAA7D3E70A35FC9D706EE99814F740A26087F1E743D038E7A5FDE2"
+    },
+    {
+      "path": "review/native_oracle.py",
+      "bytes": 5659,
+      "sha256": "E624D04712A52EB6B0FE4E79520DE300B47B4E6703E1F1E87ED947ED2DA5E04E"
+    },
+    {
+      "path": "review/python-client-state-green.log",
+      "bytes": 171,
+      "sha256": "41659D67EFC92DE954E9E1DF4BC92E5E21CA6325DC70B8A28990FFA37AF4CAAC"
+    },
+    {
+      "path": "review/review-manifest.json",
+      "bytes": 2245,
+      "sha256": "8F2CB6CC7CA99402E1CB552F3FE0F4C038FD235747D541694E951B0FCBB648F1"
+    },
+    {
+      "path": "test-crash-stack.txt",
+      "bytes": 729,
+      "sha256": "AEBBACA463033D579693BBA5B98760D2A3ADBF96BECCA2F208380EC37B9E04EE"
+    },
+    {
+      "path": "verification.json",
+      "bytes": 2736,
+      "sha256": "D663A9CEFA82E7E701AFC106263876CFB5085D77A004537FB1D5FF3D5F270865"
+    }
+  ],
+  "excludes": [
+    "raw normal/private state and accounts",
+    "launcher credentials",
+    "raw journal",
+    "raw encrypted network dumps",
+    "raw thread memory"
+  ]
+}

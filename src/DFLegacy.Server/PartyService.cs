@@ -382,6 +382,20 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
+        // Blacklist lookup above yields to other sessions. Reserve both participants only after
+        // it completes, and retain the lease through the actual invitation send. PvP acquisition
+        // uses the same registry gate, so an entrant cannot miss a concurrently created invite.
+        using var admission = _store.Commerce.TryBeginPartyAdmission(requesterCharacterId, target.CharacterId);
+        if (admission is null
+            || !_channels.TryGetValue(requesterCharacterId, out var currentRequester) || currentRequester != requester
+            || !_channels.TryGetValue(target.CharacterId, out var currentTarget) || currentTarget != target
+            || !_directory.TryGetSnapshot(requesterCharacterId, out _)
+            || !_directory.TryGetSnapshot(target.CharacterId, out _))
+        {
+            await SendRequestFailureAsync(requesterCharacterId, cancellationToken);
+            return;
+        }
+
         var pending = new PartyPendingRequest
         {
             RequesterCharacterId = requesterCharacterId,
@@ -491,6 +505,18 @@ public sealed class PartyService : BackgroundService
             || !_channels.TryGetValue(pending.RequesterCharacterId, out var requester))
         {
             // 一侧已离线：窗口不再有意义，静默收场（请求方由超时路径兜底）。
+            return;
+        }
+
+        // The pending request has already been consumed. Cancellation alone cannot protect this
+        // interval: admission of BOTH players and the complete accepted/roster publication must
+        // exclude the PvP ownership transition atomically, including asynchronous socket writes.
+        using var admission = _store.Commerce.TryBeginPartyAdmission(pending.RequesterCharacterId, accepterCharacterId);
+        if (admission is null
+            || !_directory.TryGetSnapshot(pending.RequesterCharacterId, out _)
+            || !_directory.TryGetSnapshot(accepterCharacterId, out _))
+        {
+            await SendRequestFailureAsync(accepterCharacterId, cancellationToken);
             return;
         }
 
@@ -604,6 +630,24 @@ public sealed class PartyService : BackgroundService
 
         await RemoveMemberFromPartyAsync(characterId, PartyLeaveNotice.Silent, cancellationToken);
         return true;
+    }
+
+    /// <summary>Called after the entrant owns Commerce.Pvp and before publishing PvP membership.
+    /// Removes both invitation directions, then drains the ordinary party departure. The shared
+    /// admission lease prevents an already-consumed response from crossing this transition.</summary>
+    internal async Task PrepareForPvpAsync(Guid characterId, CancellationToken cancellationToken = default)
+    {
+        if (!_store.Commerce.Is(characterId, CommerceActivity.Pvp))
+            throw new InvalidOperationException("PvP must reserve the entrant before cancelling party admission.");
+        lock (_gate)
+        {
+            _pending.TryRemove(characterId, out _);
+            _blockedRequests.TryRemove(characterId, out _);
+            foreach (var (target, request) in _pending)
+                if (request.RequesterCharacterId == characterId)
+                    _pending.TryRemove(new KeyValuePair<Guid, PartyPendingRequest>(target, request));
+        }
+        await TryLeavePartySilentlyAsync(characterId, cancellationToken);
     }
 
     /// <summary>
@@ -756,6 +800,10 @@ public sealed class PartyService : BackgroundService
         {
             return;
         }
+
+        // CMD12 can create a one-person party even without an invitation.
+        using var admission = _store.Commerce.TryBeginPartyAdmission(characterId);
+        if (admission is null) return;
 
         PartyRoster? roster = null;
         lock (_gate)
@@ -998,10 +1046,38 @@ public sealed class PartyService : BackgroundService
     }
 
     /// <summary>
-    /// 把包发给该角色所在队伍的**其他**成员（不含自己）；不在队伍时返回 0
-    /// （单人路径因此一份包都不会多发——队长的外观推送靠这条护栏）。
-    /// 坏通道（含被踢/掉线成员自己的 OCE）走 <see cref="CrossSessionDelivery"/>：只告警、
-    /// 不影响其他收件人，也不把异常顺着发送者的会话冒泡（终审 I1）。
+    /// ACT1 队伍聊天发给当前全部队员（含自己），不按城镇区域或副本筛选。
+    /// </summary>
+    internal async Task<int> SendPartyChatAsync(
+        Guid characterId,
+        byte[] messageBytes,
+        CancellationToken cancellationToken)
+    {
+        var slots = GetPartySlots(characterId);
+        var sender = slots?.FirstOrDefault(slot => slot.CharacterId == characterId);
+        if (sender is null) return 0;
+        var packet = GameProtocolEngine.CreateMessageNotification(
+            GameMessageType.Type02LightCyan, sender.AreaUserId, messageBytes);
+        var sent = 0;
+        foreach (var slot in slots!)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await slot.Send(packet);
+                sent++;
+            }
+            catch (Exception exception) when (CrossSessionDelivery.IsBrokenChannel(exception))
+            {
+                _logger.LogWarning(exception, "Could not deliver party chat from {Sender} to {Recipient}.",
+                    characterId, slot.CharacterId);
+            }
+        }
+        return sent;
+    }
+
+    /// <summary>
+    /// 把包发给队伍其他成员；单人时返回 0。坏通道不影响其他收件人。
     /// </summary>
     internal async Task<int> SendToOtherMembersAsync(
         Guid omitCharacterId,

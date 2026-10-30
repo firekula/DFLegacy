@@ -1,0 +1,45 @@
+{
+  "started": "2026-10-29T14:26:34.051+08:00",
+  "pid": 64280,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "A-map-hidden-guard-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T14:26:34.222+08:00",
+  "steps": [
+    {
+      "t": 100,
+      "op": "key",
+      "vk": 78,
+      "dur": 120
+    },
+    {
+      "t": 500,
+      "op": "move",
+      "x": 410,
+      "y": 286
+    },
+    {
+      "t": 800,
+      "op": "rclick",
+      "x": 410,
+      "y": 286,
+      "dur": 120
+    },
+    {
+      "t": 1420,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "6c1e85d3300766d119db0794e322440617063617466e089fe6383ff7fbcd1a62",
+  "plan_written": "2026-10-29T14:26:34.222+08:00",
+  "focus_reassertions": 1,
+  "plan_completed": "2026-10-29T14:26:35.887+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01116.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\evidence-return-green\\A-map-hidden-guard-input.jpg",
+  "own_pid_diag_lines": 5,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T14:26:36.076+08:00"
+}

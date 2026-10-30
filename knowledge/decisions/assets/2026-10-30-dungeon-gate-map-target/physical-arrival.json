@@ -1,0 +1,323 @@
+{
+  "role": "A",
+  "before": {
+    "schema": "dfl-client-state/v2",
+    "pid": 48476,
+    "process_started_filetime": 134378185968768514,
+    "sequence": 578,
+    "captured_filetime": 134378187679251584,
+    "captured_tick_ms": 458396109,
+    "exported_filetime": 134378187679423943,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 6,
+    "capture_duration_us": 10,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 1,
+      "area_id": 2,
+      "context_token": "0x073332A8",
+      "map_token": "0x18496CA0",
+      "position": {
+        "x": 320.423187,
+        "y": 247,
+        "z": 0
+      },
+      "destination": {
+        "x": 320,
+        "y": 247
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": true,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1,
+        "instance_token": null,
+        "transition_pending": null,
+        "phase_raw": null,
+        "stage_token": null,
+        "input_suppression_raw": null,
+        "record_count": null,
+        "selected_dungeon_id": null,
+        "difficulty_raw": null,
+        "maximum_difficulty_raw": null
+      },
+      "countdown": {
+        "state_raw": 0
+      },
+      "dialogs": {
+        "valid": true,
+        "truncated": false,
+        "items": [],
+        "covered_class_ids": [
+          7,
+          9,
+          35,
+          37,
+          48,
+          86,
+          89,
+          106
+        ]
+      },
+      "command_input": {
+        "scope": "native_command_checker_type0",
+        "actor_token": "0x1818B080",
+        "uid": 1,
+        "checker_token": "0x17F76CF0",
+        "keyboard_lock_level": 0,
+        "keyboard_suppressed": false,
+        "mouse": {
+          "scope": "native_command_checker_type1",
+          "lock_level": 0,
+          "lock_suppressed": false,
+          "checker_flag90_raw": false,
+          "physical_excluded": false
+        }
+      },
+      "mouse_button_state": {
+        "scope": "engine_mouse_button_state",
+        "deferred": false
+      },
+      "input_blocked": null
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x18100AA0",
+      "actor_token": "0x070F1E20",
+      "map_token": "0x18496CA0",
+      "hp": null,
+      "max_hp": null,
+      "mp": 200,
+      "max_mp": 200,
+      "mp_source": {
+        "actor_token": "0x1818B080",
+        "local": true
+      },
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 320.423187,
+        "y": 247,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x18100AA0",
+        "actor_token": "0x070F1E20",
+        "map_token": "0x18496CA0",
+        "hp": null,
+        "max_hp": null,
+        "mp": 200,
+        "max_mp": 200,
+        "mp_source": {
+          "actor_token": "0x1818B080",
+          "local": true
+        },
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 320.423187,
+          "y": 247,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "after": {
+    "schema": "dfl-client-state/v2",
+    "pid": 48476,
+    "process_started_filetime": 134378185968768514,
+    "sequence": 585,
+    "captured_filetime": 134378187693444941,
+    "captured_tick_ms": 458397531,
+    "exported_filetime": 134378187693827154,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 6,
+    "capture_duration_us": 10,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 1,
+      "area_id": 2,
+      "context_token": "0x073332A8",
+      "map_token": "0x18496CA0",
+      "position": {
+        "x": 320.423187,
+        "y": 247,
+        "z": 0
+      },
+      "destination": {
+        "x": 320,
+        "y": 247
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": false,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1,
+        "instance_token": null,
+        "transition_pending": null,
+        "phase_raw": null,
+        "stage_token": null,
+        "input_suppression_raw": null,
+        "record_count": null,
+        "selected_dungeon_id": null,
+        "difficulty_raw": null,
+        "maximum_difficulty_raw": null
+      },
+      "countdown": {
+        "state_raw": 0
+      },
+      "dialogs": {
+        "valid": true,
+        "truncated": false,
+        "items": [],
+        "covered_class_ids": [
+          7,
+          9,
+          35,
+          37,
+          48,
+          86,
+          89,
+          106
+        ]
+      },
+      "command_input": {
+        "scope": "native_command_checker_type0",
+        "actor_token": "0x1818B080",
+        "uid": 1,
+        "checker_token": "0x17F76CF0",
+        "keyboard_lock_level": 0,
+        "keyboard_suppressed": false,
+        "mouse": {
+          "scope": "native_command_checker_type1",
+          "lock_level": 0,
+          "lock_suppressed": false,
+          "checker_flag90_raw": false,
+          "physical_excluded": false
+        }
+      },
+      "mouse_button_state": {
+        "scope": "engine_mouse_button_state",
+        "deferred": false
+      },
+      "input_blocked": null
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x18100AA0",
+      "actor_token": "0x070F1E20",
+      "map_token": "0x18496CA0",
+      "hp": null,
+      "max_hp": null,
+      "mp": 200,
+      "max_mp": 200,
+      "mp_source": {
+        "actor_token": "0x1818B080",
+        "local": true
+      },
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 320.423187,
+        "y": 247,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x18100AA0",
+        "actor_token": "0x070F1E20",
+        "map_token": "0x18496CA0",
+        "hp": null,
+        "max_hp": null,
+        "mp": 200,
+        "max_mp": 200,
+        "mp_source": {
+          "actor_token": "0x1818B080",
+          "local": true
+        },
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 320.423187,
+          "y": 247,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "input_label": "gate-v2-physical-arrival-input",
+  "acknowledged_tick_ms": 458397437,
+  "native_response": null,
+  "phase": "manual-v2",
+  "build_manifest_sha256": "15547DA23FC6793BF7B8B417AD45A4A2744EF361E1C9CEA821D2784839F93F50",
+  "journal_sha256": "A6C87ADE100A2EF7663B9AC0002D16D148F3BE6AD42DAA6C9BD4C9D3DB21AC58"
+}

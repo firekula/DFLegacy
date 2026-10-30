@@ -1,0 +1,10 @@
+{
+  "schema": "mentor-growth-native-runtime-hashes/v1",
+  "source_commit": "695232c7c6ba7191d79f074c6e7e6dab103a39a7",
+  "phase": "mentor-growth-695232c",
+  "source_manifest_sha256": "E47C5B3F15C7CC7BD8771374165E58DB43363F7F11C3379BEE659CC76F83EF5E",
+  "runtime_files_verified": 13,
+  "all_native_files_match": true,
+  "native_server_dll_sha256": "01D664C4465769E3A617D40215C0FF471EFA74E6D707F0ED63D20A31E8E933AF",
+  "scope": "Historical native695 only. Final changed-build runtime/deployment/overlap evidence remains pending."
+}

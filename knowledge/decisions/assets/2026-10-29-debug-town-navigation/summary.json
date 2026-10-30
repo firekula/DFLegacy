@@ -1,0 +1,107 @@
+{
+  "Schema": "dfl-debug-town-verification/v1",
+  "AtUtc": "2026-10-28T19:03:07.311353+00:00",
+  "Scope": "Two-client same-region Town navigation; SDK A Town/B soloDungeon, not same-party complete dungeon",
+  "SourceCommit": "02de70534576e1cdae6dc38f06f9d5fb36dd3684",
+  "DebugSha256": "5449F6F79024DE6AA2A0C206C40248D0D754C84DB83623A10C3EE8A16FF64492",
+  "NativeSha256": "19C0CC26185D959882F7DEF3BCD15B28248D34553E31E4F66C266798646A62D4",
+  "BuildManifestSha256": "3418C6E0DAFD87DCF4690E1C26419667D90B87390FC3AC9A6EB2BFA8DBAC990E",
+  "PythonTests": 71,
+  "NativeFailures": {
+    "State": 0,
+    "Navigation": 0,
+    "Runtime": 0,
+    "FullOverlay": 0
+  },
+  "MapArrivals": [
+    {
+      "EvidenceLabel": "nav4-A-map-arrived-confirmed",
+      "Source": "minimap",
+      "Status": "arrived",
+      "Uid": 1,
+      "Target": {
+        "x": 642,
+        "y": 256
+      },
+      "Position": {
+        "x": 642,
+        "y": 256,
+        "z": 0
+      },
+      "NativeResponseSha256": "100000645371FB2588768EA452CAAEF36BADDB474349C5F213F1510C01CD5F07",
+      "PostResponseCapture": true
+    },
+    {
+      "EvidenceLabel": "nav4-A-short-map-arrived-confirmed",
+      "Source": "minimap",
+      "Status": "arrived",
+      "Uid": 1,
+      "Target": {
+        "x": 853,
+        "y": 256
+      },
+      "Position": {
+        "x": 852.510559,
+        "y": 256,
+        "z": 0
+      },
+      "NativeResponseSha256": "F406399DB58DF42BBC93FFB4CEB0905B2464C77BA62C12364CDCF6B64237F6D5",
+      "PostResponseCapture": true
+    },
+    {
+      "EvidenceLabel": "nav4-B-map-arrived-confirmed",
+      "Source": "minimap",
+      "Status": "arrived",
+      "Uid": 2,
+      "Target": {
+        "x": 877,
+        "y": 256
+      },
+      "Position": {
+        "x": 877.157654,
+        "y": 255.879974,
+        "z": 0
+      },
+      "NativeResponseSha256": "140BDE9D41BCE07D1D926B265F44EDDE8962C0DADC251C1B0A6D20BB2F5DF43D",
+      "PostResponseCapture": true
+    }
+  ],
+  "DataOperation": {
+    "Role": "B",
+    "Uid": 2,
+    "EnemyUid": 2,
+    "EnemyHpBefore": 50,
+    "EnemyHpAfter": 20,
+    "InputUsed": "Original native keys; state-gated position walk and X attacks",
+    "ScreenshotsUsedToChooseAction": false
+  },
+  "NormalConfigurationActivationSha256": "924863B170D918E8AA0DCA092A00F0EE2F4D962296640839A44681B2940A732B",
+  "NormalConfigurations": [
+    {
+      "Role": "A",
+      "Sha256": "67A9C538BE31193F32B60EB5AC1355039F2B84F961EDB8C11F030AE326493864",
+      "AddedKeys": [
+        "DebugOverlay.ExportState=1",
+        "DebugOverlay.EnableTownNavigation=1"
+      ],
+      "SnapshotDirectoryUnchanged": true
+    },
+    {
+      "Role": "B",
+      "Sha256": "A9E8B5C21B0777FD4661D18688E8CF1365C76D69B9162632065D5A4D5C852A1E",
+      "AddedKeys": [
+        "DebugOverlay.ExportState=1",
+        "DebugOverlay.EnableTownNavigation=1"
+      ],
+      "SnapshotDirectoryUnchanged": true
+    }
+  ],
+  "Unfinished": [
+    "cross-region routes or A*",
+    "MP/cooldown/skill usability",
+    "same-party complete dungeon flow",
+    "all town/filter/overlap UI combinations",
+    "monster sync diagnosis",
+    "four-client loot matrix"
+  ]
+}

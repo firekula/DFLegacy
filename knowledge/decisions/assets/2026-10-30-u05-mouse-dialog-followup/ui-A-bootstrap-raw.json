@@ -1,0 +1,262 @@
+{
+  "role": "A",
+  "pid": 72288,
+  "process_started_filetime": 134378108829074150,
+  "sampling": "read-only owned-process research; not SDK history",
+  "period_ms": 10,
+  "max_seconds": 25,
+  "samples": 165,
+  "read_calls": 3783,
+  "events": [
+    {
+      "tick_ms": 450550421,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450550531,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450550640,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450550750,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450550859,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450550968,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551078,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551187,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551296,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551406,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551515,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551625,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551734,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551843,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450551953,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450552062,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450552171,
+      "scene": 0,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450552203,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": null,
+      "command": null
+    },
+    {
+      "tick_ms": 450552218,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8735070",
+      "command": {
+        "uid": 1,
+        "checker_token": "0x85f63d8",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 450552234,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8735070",
+      "command": {
+        "uid": 1,
+        "checker_token": "0x85f63d8",
+        "keyboard_lock_level": 2,
+        "mouse_lock_level": 2,
+        "checker_flag90_raw": false,
+        "physical_excluded": true,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 450552343,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8735070",
+      "command": {
+        "uid": 1,
+        "checker_token": "0x85f63d8",
+        "keyboard_lock_level": 2,
+        "mouse_lock_level": 2,
+        "checker_flag90_raw": false,
+        "physical_excluded": true,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 450552437,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8735070",
+      "command": {
+        "uid": 1,
+        "checker_token": "0x85f63d8",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 450552546,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8735070",
+      "command": {
+        "uid": 1,
+        "checker_token": "0x85f63d8",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 450552656,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8735070",
+      "command": {
+        "uid": 1,
+        "checker_token": "0x85f63d8",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 450552765,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8735070",
+      "command": {
+        "uid": 1,
+        "checker_token": "0x85f63d8",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 450552875,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8735070",
+      "command": {
+        "uid": 1,
+        "checker_token": "0x85f63d8",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    }
+  ],
+  "errors": [],
+  "phase": "ui-v1",
+  "build_manifest_sha256": "8E9065D1D1699ABF19F72D6C5846689CA05C4E70F6837C972D701666E3F9364C",
+  "journal_sha256": "71B8EF4A0C20770FE2F64708CA7FCDEB62763B67E2BB0B7F3FC3453DE1028A97"
+}

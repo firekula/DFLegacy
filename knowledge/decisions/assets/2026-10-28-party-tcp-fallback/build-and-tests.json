@@ -1,0 +1,81 @@
+{
+  "Schema": "party-relay-public-build-tests/v1",
+  "SourceCommit": "f86cb548fda9eabd32c13e644cdc228f17c49b8c",
+  "ManagedSourceCommit": "20d996f66775ba21f0b52995e00dc2ae40de99f0",
+  "NativeSourceCommit": "b4fe25f0c82c0cf8ab87813ec7670f1d6b2bf662",
+  "BuildManifestSha256": "28C9B6A1199CEF82AA75D6FF9E558B15FC599E01EF3435589FBF0489E116FFFB",
+  "BuildFiles": 50,
+  "Binaries": [
+    {
+      "File": "DFLegacy.Protocol.dll",
+      "Sha256": "DF52310E3EC91A942277CC9AD4A59C04C89529830178285C537F8477DAF8A66E"
+    },
+    {
+      "File": "DFLegacy.Server.dll",
+      "Sha256": "17C9612C34547012A8D44EF1C5152C00F1B385295C67B287843630C6A7EE4BE8"
+    },
+    {
+      "File": "ijl15.dll",
+      "Sha256": "8AB0660B416F2240ABFC0E0840E3B93D8F54BFCBB8B15E8C4C5ACBD5CD0142DC"
+    }
+  ],
+  "Checks": [
+    {
+      "EvidenceId": "peer-identity-full-smoke.log",
+      "Sha256": "BB0F6179836CFC0576A58C8B803A1FE8D679543721490F4F720CE06950218ACC",
+      "LastLines": [
+        "All DFLegacy protocol smoke tests passed."
+      ]
+    },
+    {
+      "EvidenceId": "postcommit-20d996f-build.log",
+      "Sha256": "C6DC8F71C73D9D704E0523CD7B5C46C8399D8AA5C4049E9286552E07870D5EF2",
+      "LastLines": [
+        "",
+        "已成功生成。",
+        "    0 个警告",
+        "    0 个错误",
+        "",
+        "已用时间 00:00:10.47"
+      ]
+    },
+    {
+      "EvidenceId": "native-queue-review-green.log",
+      "Sha256": "EF26AA359C8EB0ACCEAC61A020C608088B26CFBE8937F0F2BBD19919C02023B5",
+      "LastLines": [
+        "relay send queue tests passed"
+      ]
+    },
+    {
+      "EvidenceId": "native-queue-review-dll-build.log",
+      "Sha256": "4CC6B3B5886FE00524EFE95B412E4A1E37066EBB604B7F81520B01F80D45F4C4",
+      "LastLines": [
+        "  正在生成代码",
+        "  43 of 1002 functions ( 4.3%) were compiled, the rest were copied from previous compilation.",
+        "    33 functions were new in current compilation",
+        "    8 functions had inline decision re-evaluated but remain unchanged",
+        "  已完成代码的生成",
+        "  DFLegacy.Ijl15.vcxproj -> D:\\codex_worktree\\party-chat-gold\\DFLegacy\\artifacts\\native\\party-relay-queue\\dll\\ijl15.dll"
+      ]
+    },
+    {
+      "EvidenceId": "native-queue-review-full-compat.log",
+      "Sha256": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547",
+      "LastLines": [
+        "ijl15 compatibility tests passed"
+      ]
+    },
+    {
+      "EvidenceId": "decoder-final-green.log",
+      "Sha256": "3F69EB1B6B47FD1943D80FAA013F3D6E74D4792A17021610AAE4895284E6078F",
+      "LastLines": [
+        "........",
+        "----------------------------------------------------------------------",
+        "Ran 8 tests in 0.107s",
+        "",
+        "OK"
+      ]
+    }
+  ],
+  "Scope": "Existing successful verification is bound to its actual component commit. Later documentation is not a rebuilt assembly."
+}

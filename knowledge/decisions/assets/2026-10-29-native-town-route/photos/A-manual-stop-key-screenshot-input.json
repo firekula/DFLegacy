@@ -1,0 +1,32 @@
+{
+  "started": "2026-10-29T13:02:48.346+08:00",
+  "pid": 58960,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "A-manual-stop-key-screenshot-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T13:02:48.516+08:00",
+  "steps": [
+    {
+      "t": 500,
+      "op": "key",
+      "vk": 44,
+      "dur": 900
+    },
+    {
+      "t": 1900,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "e2d69c3ed087e1e3e250be4ce3ee5356702f938775038ab417991902055cc45c",
+  "plan_written": "2026-10-29T13:02:48.516+08:00",
+  "focus_reassertions": 2,
+  "plan_completed": "2026-10-29T13:02:50.687+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01109.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-manual-stop-key-screenshot-input.jpg",
+  "own_pid_diag_lines": 5,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T13:02:50.850+08:00"
+}

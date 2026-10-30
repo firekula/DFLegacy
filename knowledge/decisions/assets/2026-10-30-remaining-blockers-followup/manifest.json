@@ -1,0 +1,152 @@
+{
+  "schema": "dfl-evidence-manifest/v1",
+  "date": "2026-10-30",
+  "files": [
+    {
+      "file": "01-singleton-party.jpg",
+      "bytes": 427721,
+      "sha256": "02A4FB2010F9DF312DD4F4B783218D3B5698879A2BE91DD4830AA91AC59CCF73"
+    },
+    {
+      "file": "02-four-recovered.jpg",
+      "bytes": 429381,
+      "sha256": "8DC85BF03937D6DE20B256F53B5EBBB9E33BCD8203B837B39C04D2979EB56B9B"
+    },
+    {
+      "file": "03-teleport-A.jpg",
+      "bytes": 436967,
+      "sha256": "AA96D8FBA619071FBAB67C4A8DEA1BC7ED590DBF86B1C0F8C96FA6DF5C4711D5"
+    },
+    {
+      "file": "04-teleport-B.jpg",
+      "bytes": 436667,
+      "sha256": "1155680DF2DA097EF2F5C5F989872D91008DEA507C2F0345379E103C61612403"
+    },
+    {
+      "file": "05-native-room.jpg",
+      "bytes": 444072,
+      "sha256": "500D9986DB9EC7391A7EDF913E4B536FBA22D240990A90FDE2D395F4358947EA"
+    },
+    {
+      "file": "arithmetic-repro.json",
+      "bytes": 10530,
+      "sha256": "E0B369CECB6453BE6BA2E0FCAFEA41A062040E18FAE089292AD206807FAE4C31"
+    },
+    {
+      "file": "etw-current-attempt.log",
+      "bytes": 360,
+      "sha256": "8128E9238D0770B7A342B9658C798A390CD60530751FD5F10596D5E02AA453D3"
+    },
+    {
+      "file": "final-native-debug.log",
+      "bytes": 1191,
+      "sha256": "3E85B7492ED8CC0E45846BAE019D9DC191C3A7C52730D283896020C2E4BE5DB6"
+    },
+    {
+      "file": "final-native-frame-fixture.json",
+      "bytes": 1694,
+      "sha256": "BC1AE923CB8BF3B2AEFD9346913425EE919AF9D8B630D02687E78E2A39BD4F0F"
+    },
+    {
+      "file": "final-native-ijl.log",
+      "bytes": 186,
+      "sha256": "6ED6B690D75A5978AD40ABCDD96C21DD4D6401F5C48CB37386B2CAB75D51468F"
+    },
+    {
+      "file": "final-python.log",
+      "bytes": 165384,
+      "sha256": "B32F65E554299DF27C222051246FD5F642DD089EA6B7F2633C2403F0F23F89E1"
+    },
+    {
+      "file": "horizon-installed-bytes.bin",
+      "bytes": 3,
+      "sha256": "BCB90B3D686A0026F9E25197640C8D459EBC6CCA1D33F1C9ED25962784F07851"
+    },
+    {
+      "file": "horizon-native-green.log",
+      "bytes": 762,
+      "sha256": "BC7A5B83731A8A144C08D95F9086A86EEA7685AF2FE161E1A2E25B681BAE813C"
+    },
+    {
+      "file": "horizon-native-red.log",
+      "bytes": 4284,
+      "sha256": "9166D2D19F42D0C1CC359777A1D1B12F0BDA331B7C9B12E802661D718C4B668C"
+    },
+    {
+      "file": "independent-review.json",
+      "bytes": 13490,
+      "sha256": "87B912EF1CFBC9E9450B3CD870E8B31B182C2A555327C8C7DA225DFA8F5D3F94"
+    },
+    {
+      "file": "motion-apply.asm",
+      "bytes": 30519,
+      "sha256": "AF2EA424F58F14D765B116C8D6D8A3B74836C75DA04D0EBF776C5CB0F588107C"
+    },
+    {
+      "file": "motion-integration.asm",
+      "bytes": 15426,
+      "sha256": "2BB7A3775001D8EF7CA11101D93108C2DC016F070F6EB73742F99DDCA71EC78E"
+    },
+    {
+      "file": "native-movement-admissions.json",
+      "bytes": 282003,
+      "sha256": "A0818A4F15E3384D6DCD68945E2FAD9778259BCE08FEFAC850BEB09B0D9C95C7"
+    },
+    {
+      "file": "natural-windows.json",
+      "bytes": 32545,
+      "sha256": "8638685AC602656464142979C7CCC40530042DD4C5FA2668E76F1A5068AEFA9D"
+    },
+    {
+      "file": "official-0859C114.asm",
+      "bytes": 31236,
+      "sha256": "32ADA32AC2BE19A7398A2EE836D1154160AFBE5E512ABAB29B5E48B27DC0EF44"
+    },
+    {
+      "file": "official-085B2BAA.asm",
+      "bytes": 43446,
+      "sha256": "894A3D484213621905D5C9EB8DF843541C3CAB9A9021BD8934F4850BBD5673B2"
+    },
+    {
+      "file": "party-recovery.json",
+      "bytes": 16726,
+      "sha256": "D7C1CB4CC3011C960CA4F3EC0773C59D33D197927D9FC24E6A6DA46BF178CC91"
+    },
+    {
+      "file": "pipeline-window.json",
+      "bytes": 7063,
+      "sha256": "BA9133EA8A82094C5007B0CF541BAAD42B9D0C4F3573166E5ADE302F8030CBA0"
+    },
+    {
+      "file": "protection.json",
+      "bytes": 3768,
+      "sha256": "B91DCC471AB6C8E17D3ED4D2B498D499CCBB9AEEE2C1B0917C54EE6171A77835"
+    },
+    {
+      "file": "remaining-native-motion.json",
+      "bytes": 13017,
+      "sha256": "5C2D3992AD4C6F4469E9CF768471041C3C037C452C23B2297703B302C5EE9BE0"
+    },
+    {
+      "file": "setup-stutters.json",
+      "bytes": 11068,
+      "sha256": "1779972455606FF4A392F5B73EF89F15F8E97BC948A63CEA1857D6EBB1FD8C0D"
+    },
+    {
+      "file": "sources.json",
+      "bytes": 12688,
+      "sha256": "AEF30A49DB9EE9264D07D66A274002A4BEC0C4FADEAEE361C47A03C02CA6663E"
+    },
+    {
+      "file": "teleport-publication.json",
+      "bytes": 19998,
+      "sha256": "21954BC5FB7629FDCBA65A0CF78103C0D2E8D605CEC2B83B46640820E1A043BF"
+    },
+    {
+      "file": "trace-clock-native-fixture.json",
+      "bytes": 763,
+      "sha256": "9C9E6D75F202B4350980EA139BC723C10700C9036C20E26F265AFC728161D93F"
+    }
+  ],
+  "report_sha256": "A90F91701D73588123FFC73FDEEED1AD007E3D278E3BCA7A6E6707A6A6EF3326"
+}

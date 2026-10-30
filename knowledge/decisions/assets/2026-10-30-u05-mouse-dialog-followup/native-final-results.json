@@ -1,0 +1,22 @@
+[
+  {
+    "mode": "--client-state",
+    "exit_code": 0
+  },
+  {
+    "mode": "--client-navigation",
+    "exit_code": 0
+  },
+  {
+    "mode": "--client-party",
+    "exit_code": 0
+  },
+  {
+    "mode": "--town-route",
+    "exit_code": 0
+  },
+  {
+    "mode": "full-overlay-abi",
+    "exit_code": 0
+  }
+]

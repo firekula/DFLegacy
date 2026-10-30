@@ -1,0 +1,4 @@
+FAIL client state: local MP and truncated maxMP follow verified native getters
+FAIL client state: maxMP rounds base to float32 before native multiplication
+FAIL client state: invalid maxMP does not discard independently valid current MP
+Client state tests: 3 failures

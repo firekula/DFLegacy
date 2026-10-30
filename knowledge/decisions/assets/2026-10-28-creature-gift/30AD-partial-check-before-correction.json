@@ -1,0 +1,88 @@
+{
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "restart input exact closed initial31B4",
+      "passed": true
+    },
+    {
+      "name": "restart preserves selected roles and same unclaimed mail",
+      "passed": true
+    },
+    {
+      "name": "claimed same UUID UID1 and correct seal item",
+      "passed": true
+    },
+    {
+      "name": "claimed Lv1 EXP0 stomach100 defaults",
+      "passed": true
+    },
+    {
+      "name": "claimed one receiver item and no mail or sender grant",
+      "passed": false
+    },
+    {
+      "name": "claimed cash quota stable",
+      "passed": true
+    },
+    {
+      "name": "hatched same UUID UID1 and correct seal item",
+      "passed": true
+    },
+    {
+      "name": "hatched Lv1 EXP0 stomach100 defaults",
+      "passed": true
+    },
+    {
+      "name": "hatched one receiver item and no mail or sender grant",
+      "passed": false
+    },
+    {
+      "name": "hatched cash quota stable",
+      "passed": true
+    },
+    {
+      "name": "A complete framing and CRC",
+      "passed": true
+    },
+    {
+      "name": "B complete framing and CRC",
+      "passed": true
+    },
+    {
+      "name": "native CMD98 actual unique request precedes success",
+      "passed": true
+    },
+    {
+      "name": "claim correct original mail",
+      "passed": true
+    },
+    {
+      "name": "native CMD105 actual unique request precedes success",
+      "passed": true
+    },
+    {
+      "name": "hatch creature item space7",
+      "passed": true
+    },
+    {
+      "name": "native NOTI13 list7 63007 UID1",
+      "passed": true
+    },
+    {
+      "name": "native NOTI13 list7 63003 UID1",
+      "passed": true
+    },
+    {
+      "name": "full final checker rejects absent relogin",
+      "passed": true
+    }
+  ],
+  "passed": 17,
+  "total": 19,
+  "authoritative_sha256": "BE83D28B4F81B310A4B8CA00FAB25F98C7E8B93196C340F1CEB158AD7D1EE937",
+  "limitations": [
+    "Only closed initial and unclaimed-restart phases. Final relogin absent; no final PASS.",
+    "Screenshot meanings are root-reviewed labels; failed/misnamed images preserved without positive interpretation."
+  ]
+}

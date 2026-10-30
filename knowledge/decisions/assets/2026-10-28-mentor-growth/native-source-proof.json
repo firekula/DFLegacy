@@ -1,0 +1,992 @@
+{
+  "schema": "mentor-growth-frozen-source-proof/v1",
+  "source_commit": "695232c7c6ba7191d79f074c6e7e6dab103a39a7",
+  "phase": "mentor-growth-695232c",
+  "native_actions_owner": "/root",
+  "evidence_reviewer": "/root/mentor_growth_evidence",
+  "process_pause_reported_at": "2026-10-28T04:28:18+08:00",
+  "frozen_raw_copy_manifest_at": "2026-10-28T04:30:18.061056+08:00",
+  "capture_export_sha256": "B20691DD61837633F8A0853AFE37426D3B32F46770FCB39D320191C941378858",
+  "private_source_anchors": [
+    {
+      "id": "private:A-53140",
+      "sha256": "A4F98A1094CE2C41335C36AF7AB7D9780C615F887C76F10FECAC1372EAC5ED09",
+      "bytes": 5566333,
+      "raw_file_published": false
+    },
+    {
+      "id": "private:B-14144",
+      "sha256": "2B51A7201A73124C488072EA3A4C18AD8D343DD0224A69FDA976BD23B2825DFB",
+      "bytes": 5616154,
+      "raw_file_published": false
+    },
+    {
+      "id": "private:A-58124",
+      "sha256": "059C394980C80F0A63EBE49948AD10F017B16A5F0FAD4D42DCF45FD26F9E814A",
+      "bytes": 44986,
+      "raw_file_published": false
+    },
+    {
+      "id": "private:server-log",
+      "sha256": "604B433DE571D40473F304E82C6AFC931A2F9DAB8EB37C909567B0766B922F02",
+      "bytes": 11351550,
+      "raw_file_published": false
+    },
+    {
+      "id": "private:canonical-freeze",
+      "sha256": "AB528D5275B7F42EFD395765AD760ECB0FF12E7DE816A42FC107EFA3CE0C5EEB",
+      "raw_file_published": false
+    }
+  ],
+  "helper_hashes": {
+    "collector": "5AF535CAA814E92D5A0554560249D93FC214E8E89522AC784864E10606C49D27",
+    "capture_exporter": "57AA90D1DA851773D03293AB30FBFD89E77AF41A2C78DFA309C8521FA125F712",
+    "header_reader": "93ACFED765E1EF00A4BA999E0930251589EA4ED4CE15646757D58A1C2BA11C01",
+    "basis_reader": "21B80AC08219006418A914AD787524E1476742F65267FE3B941DDB8D5191542D"
+  },
+  "native_capture_integrity": [
+    {
+      "role": "A",
+      "pid": 53140,
+      "start_time_utc": "2026-10-27T19:18:39.4668585Z",
+      "raw_sha256": "A4F98A1094CE2C41335C36AF7AB7D9780C615F887C76F10FECAC1372EAC5ED09",
+      "status": "decoded",
+      "counts": {
+        "TX_frames": 197,
+        "RX_frames": 352,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "mentor_list_request": 4,
+        "mentor_list_reply": 15,
+        "mentor_command": 1,
+        "experience": 46,
+        "native_death_report": 36,
+        "clear_experience_prefix": 1,
+        "incomplete_bytes": 0,
+        "disabled_flows": 0
+      }
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "start_time_utc": "2026-10-27T19:18:40.6296083Z",
+      "raw_sha256": "2B51A7201A73124C488072EA3A4C18AD8D343DD0224A69FDA976BD23B2825DFB",
+      "status": "decoded",
+      "counts": {
+        "TX_frames": 315,
+        "RX_frames": 633,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "mentor_list_request": 8,
+        "mentor_list_reply": 19,
+        "mentor_command": 1,
+        "mentor_established": 1,
+        "native_death_report": 43,
+        "experience": 81,
+        "clear_experience_prefix": 3,
+        "mentor_presence": 2,
+        "incomplete_bytes": 0,
+        "disabled_flows": 0
+      }
+    },
+    {
+      "role": "A",
+      "pid": 58124,
+      "start_time_utc": "2026-10-27T20:24:35.1800032Z",
+      "raw_sha256": "059C394980C80F0A63EBE49948AD10F017B16A5F0FAD4D42DCF45FD26F9E814A",
+      "status": "decoded",
+      "counts": {
+        "TX_frames": 12,
+        "RX_frames": 32,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "mentor_list_request": 2,
+        "mentor_list_reply": 3,
+        "incomplete_bytes": 0,
+        "disabled_flows": 0
+      }
+    }
+  ],
+  "selected_world_headers": [
+    {
+      "role": "A",
+      "pid": 53140,
+      "at": "2026-10-28 03:20:27.850",
+      "line": 94,
+      "last_line": 94,
+      "direction": "TX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 13,
+      "stream_offset": 231
+    },
+    {
+      "role": "A",
+      "pid": 53140,
+      "at": "2026-10-28 03:20:28.263",
+      "line": 95,
+      "last_line": 95,
+      "direction": "RX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 85,
+      "stream_offset": 189
+    },
+    {
+      "role": "A",
+      "pid": 53140,
+      "at": "2026-10-28 03:20:28.529",
+      "line": 102,
+      "last_line": 102,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 1778
+    },
+    {
+      "role": "A",
+      "pid": 53140,
+      "at": "2026-10-28 03:50:23.191",
+      "line": 326,
+      "last_line": 326,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 2472
+    },
+    {
+      "role": "A",
+      "pid": 53140,
+      "at": "2026-10-28 03:50:42.509",
+      "line": 338,
+      "last_line": 338,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 3138
+    },
+    {
+      "role": "A",
+      "pid": 53140,
+      "at": "2026-10-28 04:03:30.076",
+      "line": 19670,
+      "last_line": 19670,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 8279
+    },
+    {
+      "role": "A",
+      "pid": 53140,
+      "at": "2026-10-28 04:14:38.278",
+      "line": 38212,
+      "last_line": 38212,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 12187
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 03:20:39.571",
+      "line": 94,
+      "last_line": 94,
+      "direction": "TX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 13,
+      "stream_offset": 225
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 03:20:39.578",
+      "line": 95,
+      "last_line": 95,
+      "direction": "RX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 85,
+      "stream_offset": 244
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 03:20:39.777",
+      "line": 98,
+      "last_line": 98,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 1627
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 03:34:03.978",
+      "line": 209,
+      "last_line": 209,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 2096
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 03:38:09.296",
+      "line": 250,
+      "last_line": 250,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 2407
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 03:38:54.965",
+      "line": 265,
+      "last_line": 265,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 2868
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 03:40:51.714",
+      "line": 287,
+      "last_line": 287,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 3389
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 03:49:27.812",
+      "line": 498,
+      "last_line": 498,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 6290
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 04:03:30.106",
+      "line": 19806,
+      "last_line": 19806,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 12578
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 04:17:45.246",
+      "line": 38376,
+      "last_line": 38376,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 18093
+    },
+    {
+      "role": "B",
+      "pid": 14144,
+      "at": "2026-10-28 04:27:46.342",
+      "line": 38590,
+      "last_line": 38590,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 21910
+    },
+    {
+      "role": "A",
+      "pid": 58124,
+      "at": "2026-10-28 04:25:22.474",
+      "line": 93,
+      "last_line": 93,
+      "direction": "TX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 13,
+      "stream_offset": 231
+    },
+    {
+      "role": "A",
+      "pid": 58124,
+      "at": "2026-10-28 04:25:22.476",
+      "line": 94,
+      "last_line": 94,
+      "direction": "RX",
+      "type": 1,
+      "op": 4,
+      "wire_length": 85,
+      "stream_offset": 189
+    },
+    {
+      "role": "A",
+      "pid": 58124,
+      "at": "2026-10-28 04:25:22.619",
+      "line": 97,
+      "last_line": 97,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 1838
+    }
+  ],
+  "selected_dungeon_commands": [
+    {
+      "source_line": 553,
+      "at_local": "03:41:10",
+      "sequence": 55,
+      "dungeon_id": 2,
+      "difficulty": 0,
+      "option": 0
+    },
+    {
+      "source_line": 2202,
+      "at_local": "03:52:30",
+      "sequence": 58,
+      "dungeon_id": 2,
+      "difficulty": 0,
+      "option": 0
+    },
+    {
+      "source_line": 37448,
+      "at_local": "04:05:47",
+      "sequence": 187,
+      "dungeon_id": 2,
+      "difficulty": 0,
+      "option": 0
+    },
+    {
+      "source_line": 64445,
+      "at_local": "04:18:46",
+      "sequence": 234,
+      "dungeon_id": 1,
+      "difficulty": 0,
+      "option": 0
+    }
+  ],
+  "endpoint_growth": [
+    {
+      "source_line": 289,
+      "at_local": "03:30:28",
+      "endpoint_role": "A",
+      "attachment_sha256": "55DDE4215D387A6ADC02C90876D39A501D3671E7035AD29F8CA2B7159BC31EA3",
+      "status": "Committed",
+      "relationship_cumulative_exp": 1,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 296,
+      "at_local": "03:30:39",
+      "endpoint_role": "B",
+      "attachment_sha256": "6F4AE5BC092737B5C98DDF66B534B5C3654D9FBA8FA8E07898A5840D0E829690",
+      "status": "Committed",
+      "relationship_cumulative_exp": 2,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 511,
+      "at_local": "03:40:28",
+      "endpoint_role": "A",
+      "attachment_sha256": "55DDE4215D387A6ADC02C90876D39A501D3671E7035AD29F8CA2B7159BC31EA3",
+      "status": "Committed",
+      "relationship_cumulative_exp": 3,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 518,
+      "at_local": "03:40:40",
+      "endpoint_role": "B",
+      "attachment_sha256": "6F4AE5BC092737B5C98DDF66B534B5C3654D9FBA8FA8E07898A5840D0E829690",
+      "status": "Committed",
+      "relationship_cumulative_exp": 4,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 956,
+      "at_local": "03:50:29",
+      "endpoint_role": "A",
+      "attachment_sha256": "55DDE4215D387A6ADC02C90876D39A501D3671E7035AD29F8CA2B7159BC31EA3",
+      "status": "Committed",
+      "relationship_cumulative_exp": 5,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 965,
+      "at_local": "03:50:40",
+      "endpoint_role": "B",
+      "attachment_sha256": "6F4AE5BC092737B5C98DDF66B534B5C3654D9FBA8FA8E07898A5840D0E829690",
+      "status": "Committed",
+      "relationship_cumulative_exp": 6,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 24135,
+      "at_local": "04:00:29",
+      "endpoint_role": "A",
+      "attachment_sha256": "55DDE4215D387A6ADC02C90876D39A501D3671E7035AD29F8CA2B7159BC31EA3",
+      "status": "Committed",
+      "relationship_cumulative_exp": 7,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 24741,
+      "at_local": "04:00:41",
+      "endpoint_role": "B",
+      "attachment_sha256": "6F4AE5BC092737B5C98DDF66B534B5C3654D9FBA8FA8E07898A5840D0E829690",
+      "status": "Committed",
+      "relationship_cumulative_exp": 8,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 52293,
+      "at_local": "04:10:29",
+      "endpoint_role": "A",
+      "attachment_sha256": "55DDE4215D387A6ADC02C90876D39A501D3671E7035AD29F8CA2B7159BC31EA3",
+      "status": "Committed",
+      "relationship_cumulative_exp": 9,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 52984,
+      "at_local": "04:10:41",
+      "endpoint_role": "B",
+      "attachment_sha256": "6F4AE5BC092737B5C98DDF66B534B5C3654D9FBA8FA8E07898A5840D0E829690",
+      "status": "Committed",
+      "relationship_cumulative_exp": 10,
+      "eligible_edges": 1
+    },
+    {
+      "source_line": 64514,
+      "at_local": "04:20:41",
+      "endpoint_role": "B",
+      "attachment_sha256": "6F4AE5BC092737B5C98DDF66B534B5C3654D9FBA8FA8E07898A5840D0E829690",
+      "status": "Committed",
+      "relationship_cumulative_exp": null,
+      "eligible_edges": 0
+    }
+  ],
+  "canonical_observations": [
+    {
+      "id": "initial-canonical",
+      "source_json_sha256": "C6C8D83636ADCC28E4BA089706C670F63E4AF8336B2BF399F977AAC8F760F217",
+      "at": "2026-10-28T03:23:22.877070+08:00",
+      "private_canonical_sha256": "2447CA93689617EAE0C95815C1B46D75BB0A2CC157F94614B89703D6BD44D3CC",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402034,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 1
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 14518,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": {
+            "level": 1,
+            "current": 0,
+            "next": 3
+          },
+          "town": 1,
+          "area": 1
+        }
+      ]
+    },
+    {
+      "id": "after-two-endpoint-ticks",
+      "source_json_sha256": "04ED25B5F476A7AE84E9C9DAB6C3A3CFB7612839A0EEE5E75B524D30DC9451D6",
+      "at": "2026-10-28T03:31:46.992892+08:00",
+      "private_canonical_sha256": "004D887D2C996FD76D2398200E1463B3D2B6C51A6557B3302298A58FC9DF8EF3",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402034,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 1
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 14518,
+          "relationship_cumulative_exp": 2,
+          "relationship_projection": {
+            "level": 1,
+            "current": 2,
+            "next": 3
+          },
+          "town": 1,
+          "area": 1
+        }
+      ]
+    },
+    {
+      "id": "second-round-master-tick",
+      "source_json_sha256": "AFD727ED449471104B27662F7ACBD2F8F1BD5EFF9B6965259C8DF5C46EA6BB49",
+      "at": "2026-10-28T03:40:26.735866+08:00",
+      "private_canonical_sha256": "AB2187BF353DD060140CF2C132F85D109E0479533336D922CF83B33BBA7AB3DD",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402034,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 1
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 14518,
+          "relationship_cumulative_exp": 2,
+          "relationship_projection": {
+            "level": 1,
+            "current": 2,
+            "next": 3
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "second-round-level2",
+      "source_json_sha256": "82E645C45CB26351E72531C4A2083EA89AFF095E223150FEF8EE3F1F71A70175",
+      "at": "2026-10-28T03:40:40.304318+08:00",
+      "private_canonical_sha256": "9D78E3944DF0E824C4A96B993F61C1F21ECF8CE01E5E245032C31C4F3A2370B9",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402034,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 1
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 14518,
+          "relationship_cumulative_exp": 4,
+          "relationship_projection": {
+            "level": 2,
+            "current": 1,
+            "next": 3
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "before-party-boss-online",
+      "source_json_sha256": "80532C1737F62B09A861C56940248C340B96617BBC2FB396B919828CDA38D8EC",
+      "at": "2026-10-28T04:01:03.563418+08:00",
+      "private_canonical_sha256": "F9DD4BF57C5B9AAF6E12D75DB7209A0F63FB07063588819469BB45E7C44FAF27",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402054,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 15563,
+          "relationship_cumulative_exp": 8,
+          "relationship_projection": {
+            "level": 3,
+            "current": 2,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "party1-after-boss",
+      "source_json_sha256": "3C8F96F8EAED1C12AD0E728E959FA82B0152365B26EBCEB37E9FC6D4DCE51B87",
+      "at": "2026-10-28T04:02:18.037180+08:00",
+      "private_canonical_sha256": "DAC4F044590B6F569E91FEBDA2CA898158F74B334791A9ED4B2F786991D8D115",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402086,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 16169,
+          "relationship_cumulative_exp": 8,
+          "relationship_projection": {
+            "level": 3,
+            "current": 2,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "before-direct-kill-master-town",
+      "source_json_sha256": "A3F9ED37FB4175C1D478949437196BCAD52000FC1C9D99C5DC83BDB0C3A9A775",
+      "at": "2026-10-28T04:14:43.979908+08:00",
+      "private_canonical_sha256": "AF3212689876218F144BA819BB6EB555D7521FEF600B2AAD936B1A81F9A6510F",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402107,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 16647,
+          "relationship_cumulative_exp": 10,
+          "relationship_projection": {
+            "level": 3,
+            "current": 4,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "direct-online-after-clear",
+      "source_json_sha256": "EC8D110BA19F479B3CC93FBA02B8DBC13AB7471BADD872946C7B16CB5DA36A27",
+      "at": "2026-10-28T04:16:17.318199+08:00",
+      "private_canonical_sha256": "74FCBAD014F1EB9A1BBBE86BF2A22BA3AED42692C6FF394ED2C772B96C44A357",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402107,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 17266,
+          "relationship_cumulative_exp": 10,
+          "relationship_projection": {
+            "level": 3,
+            "current": 4,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "master-offline-start",
+      "source_json_sha256": "992A069069258DD9AEA3026F24CB0D765FB3B9779432757ACC4ADE4A28667DA3",
+      "at": "2026-10-28T04:18:18.192366+08:00",
+      "private_canonical_sha256": "E2DA538E765DDECD761D4F398921142FDCEF6405BC9B4ED54B94990B62F835A6",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402107,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 17266,
+          "relationship_cumulative_exp": 10,
+          "relationship_projection": {
+            "level": 3,
+            "current": 4,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "master-offline-after-apprentice-tick",
+      "source_json_sha256": "C335DA3CB6B6495ECDE45C7CCDE6E2A6B56C5938BEB822D4378D64FABAFB47AC",
+      "at": "2026-10-28T04:21:02.352560+08:00",
+      "private_canonical_sha256": "352A6380FAC6EB58DBC74D158F66A305980680CF2C9809B306F86EF5AD90313A",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402107,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 17356,
+          "relationship_cumulative_exp": 10,
+          "relationship_projection": {
+            "level": 3,
+            "current": 4,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "offline-after-clear",
+      "source_json_sha256": "DD6DE4957A87F20E3ED2941147F4ACE90FBB33A6657E25EB172C0AB2A5B75036",
+      "at": "2026-10-28T04:23:51.693467+08:00",
+      "private_canonical_sha256": "B7B4C289488108C19579FC68F3336F2F8B330B085D8710CAECCE8078DBD22D7C",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402107,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 17743,
+          "relationship_cumulative_exp": 10,
+          "relationship_projection": {
+            "level": 3,
+            "current": 4,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "master-relogin-initial",
+      "source_json_sha256": "C988AADCAB2DF245A48DB8643B7EBDDC8710A8B34A2DD22A5790315F78D63C98",
+      "at": "2026-10-28T04:26:44.010479+08:00",
+      "private_canonical_sha256": "60277955788E047581D299B8D55194D30A6803EDA67B3F789C1359B0CC532AE0",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402107,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 17743,
+          "relationship_cumulative_exp": 10,
+          "relationship_projection": {
+            "level": 3,
+            "current": 4,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    },
+    {
+      "id": "master-relogin-later",
+      "source_json_sha256": "D3629B29CCABCE8881D32B504006F8770C272E808B04EC4E24BB5FFF149CF5D9",
+      "at": "2026-10-28T04:27:53.888074+08:00",
+      "private_canonical_sha256": "60277955788E047581D299B8D55194D30A6803EDA67B3F789C1359B0CC532AE0",
+      "characters": [
+        {
+          "role": "A",
+          "name": "mageco",
+          "character_level": 45,
+          "character_exp": 38402107,
+          "relationship_cumulative_exp": 0,
+          "relationship_projection": null,
+          "town": 1,
+          "area": 2
+        },
+        {
+          "role": "B",
+          "name": "heal1024",
+          "character_level": 6,
+          "character_exp": 17743,
+          "relationship_cumulative_exp": 10,
+          "relationship_projection": {
+            "level": 3,
+            "current": 4,
+            "next": 5
+          },
+          "town": 1,
+          "area": 2
+        }
+      ]
+    }
+  ],
+  "offline_presence": [
+    {
+      "index": 119,
+      "at": "2026-10-28 04:18:18.031",
+      "online": false,
+      "channel": 255,
+      "level": 45,
+      "name": "mageco"
+    },
+    {
+      "index": 155,
+      "at": "2026-10-28 04:25:22.482",
+      "online": true,
+      "channel": 1,
+      "level": 45,
+      "name": "mageco"
+    }
+  ],
+  "master_absence": {
+    "source_json_sha256": "F350564650581D63EE75C319E4BDE6D4AE4BACFA2C42A1B12BA658E911EBFFC1",
+    "observed_at": "2026-10-28T04:18:18.0817494+08:00",
+    "master_client_absent": true,
+    "server_pid": 56304,
+    "remaining_client_pids": [
+      14144
+    ]
+  },
+  "relogin": {
+    "retired_master_pid": 53140,
+    "new_master_pid": 58124,
+    "old_last_endpoint_tick": {
+      "source_line": 52293,
+      "at_local": "04:10:29",
+      "endpoint_role": "A",
+      "attachment_sha256": "55DDE4215D387A6ADC02C90876D39A501D3671E7035AD29F8CA2B7159BC31EA3",
+      "status": "Committed",
+      "relationship_cumulative_exp": 9,
+      "eligible_edges": 1
+    },
+    "old_next_due_at": "2026-10-28T04:20:29+08:00",
+    "new_master_online_observed_at": "2026-10-28 04:25:22.482",
+    "new_world_complete_header": {
+      "role": "A",
+      "pid": 58124,
+      "at": "2026-10-28 04:25:22.619",
+      "line": 97,
+      "last_line": 97,
+      "direction": "RX",
+      "type": 0,
+      "op": 136,
+      "wire_length": 6,
+      "stream_offset": 1838
+    },
+    "note": "CMD4 selects character in this ACT1 build; CMD7 returns to character selection. Header proof exports no body."
+  },
+  "independent_offline_basis": {
+    "dungeon": 1,
+    "character_level": 6,
+    "relationship_level_counterfactual": 3,
+    "boss_basis": 120,
+    "boss_online_counterfactual_mentor": 3,
+    "actual_clear_kills": 16,
+    "clear_basis_formula": "truncate(30*kills/2*.5)",
+    "clear_basis": 120,
+    "clear_online_counterfactual_mentor": 3,
+    "actual_offline_mentor_monster": 0,
+    "actual_offline_mentor_clear": 0
+  },
+  "sanitized_server_log_source_sha256": "604B433DE571D40473F304E82C6AFC931A2F9DAB8EB37C909567B0766B922F02",
+  "historical_native_build_only": true,
+  "remaining": [
+    "server_restart_durable_progress",
+    "final_delivery_binding"
+  ],
+  "natural_sweep_native_proven": false
+}

@@ -1,0 +1,95 @@
+{
+  "unique_projections": 231,
+  "mp_observations": 924,
+  "endpoint_bindings_stable": true,
+  "projected_sources_match_endpoint_bindings": true,
+  "each_projection_was_loaded_through_strict_consumer": true,
+  "full_per_frame_actor_tokens_preserved": false,
+  "capture_duration_us": {
+    "minimum": 43,
+    "maximum": 186
+  },
+  "recoveries": {
+    "A:uid1": {
+      "minimum": 2095,
+      "last": 2101,
+      "rebounded": true
+    },
+    "A:uid2": {
+      "minimum": 194,
+      "last": 199,
+      "rebounded": true
+    },
+    "A:uid3": {
+      "minimum": 264,
+      "last": 268,
+      "rebounded": true
+    },
+    "A:uid4": {
+      "minimum": 296,
+      "last": 299,
+      "rebounded": true
+    },
+    "B:uid1": {
+      "minimum": 2095,
+      "last": 2101,
+      "rebounded": true
+    },
+    "B:uid2": {
+      "minimum": 195,
+      "last": 200,
+      "rebounded": true
+    },
+    "B:uid3": {
+      "minimum": 264,
+      "last": 268,
+      "rebounded": true
+    },
+    "B:uid4": {
+      "minimum": 296,
+      "last": 299,
+      "rebounded": true
+    },
+    "C:uid1": {
+      "minimum": 2095,
+      "last": 2101,
+      "rebounded": true
+    },
+    "C:uid2": {
+      "minimum": 194,
+      "last": 199,
+      "rebounded": true
+    },
+    "C:uid3": {
+      "minimum": 264,
+      "last": 268,
+      "rebounded": true
+    },
+    "C:uid4": {
+      "minimum": 296,
+      "last": 299,
+      "rebounded": true
+    },
+    "D:uid1": {
+      "minimum": 2095,
+      "last": 2101,
+      "rebounded": true
+    },
+    "D:uid2": {
+      "minimum": 194,
+      "last": 199,
+      "rebounded": true
+    },
+    "D:uid3": {
+      "minimum": 264,
+      "last": 268,
+      "rebounded": true
+    },
+    "D:uid4": {
+      "minimum": 296,
+      "last": 299,
+      "rebounded": true
+    }
+  },
+  "note": "Endpoint cross-check plus strict consumer provenance, not an original per-frame complete memory dump."
+}

@@ -1,0 +1,111 @@
+{
+  "SourceCommit": "f6a9eb93cfff8678d3b99ad0fe7a5a92871b551f",
+  "WorktreeClean": true,
+  "Sources": [
+    {
+      "File": "docs/superpowers/plans/2026-10-29-native-town-route.md",
+      "Sha256": "D294F0204C9DFDA2E8A4513D5A2253341B23983B95FDB3566BD5636B0F809899"
+    },
+    {
+      "File": "docs/superpowers/specs/2026-10-29-native-town-route-design.md",
+      "Sha256": "D4BB671D2221A4E6D277535A7CD5F7C49147E56B2542083E26FA98551724FB7D"
+    },
+    {
+      "File": "src/DFLegacy.Debug/DFLegacy.Debug.vcxproj",
+      "Sha256": "8B7ECF37B772C51E7686964658FF2CA4B4308C33EA6D859C37FA2FF117E81FCE"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_navigation.cpp",
+      "Sha256": "9B99574016A32745742FEE42A11912EE2BF170DCA4007D8F3578E59E7FFAB3A9"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_navigation.h",
+      "Sha256": "277348E429FEF24B014DB1CEE301646D70FB6D56A3A2B3E205A43D74D2A70111"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_navigation_runtime.cpp",
+      "Sha256": "F61CA42819053704176A2DAED22162E682C3B7585E758684C30119DB7F539A55"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_town_route_contract.cpp",
+      "Sha256": "F6CCFE525983E4806C35B4BF75771F3DECEC272B0F1A17AC40989E32EBEBD9FC"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_town_route_runtime.cpp",
+      "Sha256": "5F8EEF96C7AFDFB919EAC2D83DAAB22664173F8A298FB9946B1008EE6F6D020A"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_town_route_runtime.h",
+      "Sha256": "FD809CB1D991C3E7929693DEAEBA02E3DFC7609C957DCE099AE2B70D12398007"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/town_route_catalog.cpp",
+      "Sha256": "B038DC950DAFC8827C961401091FE36263B6A4CCAC1EE3345D0E44939F39C48D"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/town_route_catalog.h",
+      "Sha256": "7C1A4EB226BFBE5F9D7C56A4DCB7293BDB6B096F70AB7B053FC8C6867D6E8D24"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/town_route_controller.cpp",
+      "Sha256": "457306B79B73C673A7979213D5A93BE37FEF2363371E301C7C4ECCD5403DC1C5"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/town_route_controller.h",
+      "Sha256": "9253DBF632D6A69CC83F177CCBB72473834214F42126611DF10E2F3ECF22C1FE"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/DFLegacy.Debug.Tests.vcxproj",
+      "Sha256": "1DBB1B49255CBDF7A2A9F8D8C9AF1CECCD2B9611240478B2F30FFADC7F4468AA"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp",
+      "Sha256": "A86BA1C9D0E6D4FB4E4EBFD69A501BB9237D53DFBEFE06A2C3D41D956296AE3B"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/client_navigation_tests.cpp",
+      "Sha256": "7BF8036D8F4E71EB5498FACC241CAFB9DAC92F27B39DAF20434653B3D47B8C1B"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/debug_tests.cpp",
+      "Sha256": "E3900C4EE1935D0992819B454926E69DB46318D4E2CAD0A570624AA0DE8F3A89"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/town_route_catalog_tests.cpp",
+      "Sha256": "5B793083A69BE3EFE37F6A99E0D535317E034344D6CCFA64DCB16FA0FEAF5DBD"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/town_route_controller_tests.cpp",
+      "Sha256": "42853D25B4C179C3AF55287144908C57CF7CA9DC19A081A3659D9C3B5C412E3E"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/town_route_io_tests.cpp",
+      "Sha256": "2FA44448303AA03E33A46B00F720C08DE18DF04C983701074EF40200B9591F99"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/town_route_runtime_tests.cpp",
+      "Sha256": "835C4EF06A799A224D2F5AB31FCBB9ACF5118B7671376BCB88671113BB35E060"
+    },
+    {
+      "File": "tools/debug/README.md",
+      "Sha256": "5498337C0F3996DAA7F792977E7661A333926ED4C7DEACA6390F3271F45CCA3C"
+    },
+    {
+      "File": "tools/debug/client_native_route.py",
+      "Sha256": "F751F989413412C8974F94B69D43F12D60A70E38FEA8328C9978835948DAA543"
+    },
+    {
+      "File": "tools/debug/test_client_native_route.py",
+      "Sha256": "318EF90A806574DFECFD01E3704F5A813EB9CB6BC88CF95D42928B75ABC1D1F7"
+    }
+  ],
+  "DebugDll": {
+    "Path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\artifacts\\native\\debug\\Release\\debug.dll",
+    "Sha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B"
+  },
+  "TestExe": {
+    "Path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\artifacts\\native\\debug-tests\\Release\\debug_tests.exe",
+    "Sha256": "1C5E9E52E717FD28685B9FC55BC936320964BAB956C215957194410DDBAE90A8"
+  },
+  "BuildManifestSha256": "A34115D8AE0812ACD82AD57C2A4133AD4BEE570E956C837B84C66A3688D1F5D5"
+}

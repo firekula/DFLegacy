@@ -1,0 +1,47 @@
+{
+  "created_utc": "2026-10-29T05:55:10.947608+00:00",
+  "base": "fa1bd68eb441979d218b5526510f862fe62b13ca",
+  "head_at_verification": "fa1bd68eb441979d218b5526510f862fe62b13ca",
+  "uncommitted": true,
+  "catalog_unchanged": true,
+  "live_operations": 0,
+  "files": {
+    "src/DFLegacy.Debug/src/town_route_controller.h": {
+      "size": 3271,
+      "sha256": "A7937EFE88F79133322C1BC505D533E86C6935B1708F7C17AF9E231D50CAD42F"
+    },
+    "src/DFLegacy.Debug/src/town_route_controller.cpp": {
+      "size": 20192,
+      "sha256": "62D195816F8F838ED63ADEDE8478E3FA821447B82605BDBA38CBD27E87104DCE"
+    },
+    "src/DFLegacy.Debug/tests/town_route_controller_tests.cpp": {
+      "size": 36075,
+      "sha256": "617691BF4B406297BCCC0F2F786BCB0FF3F538FF508E033DA1FB5AC621089454"
+    }
+  },
+  "original_pvf": {
+    "path": "G:/Game/DNF_ACT1/DF/Script.pvf",
+    "sha256": "288D58AACE8ED4724A0A94AAA4CD0957B1D52C633771132EDE2F96363C1B506F"
+  },
+  "test_exe": {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\controller\\out\\controller_tests.exe",
+    "sha256": "F71F4ECC5592BBEB9469206870D106434A95D615B4620D0DEA93E263096B3E03"
+  },
+  "strict_build": {
+    "toolset": "v145",
+    "platform": "Win32",
+    "configuration": "Release",
+    "warning_level": 4,
+    "warnings_as_errors": true,
+    "exit_code": 0
+  },
+  "red": {
+    "log": "red-corrected-tests.log",
+    "failures": 4
+  },
+  "green": {
+    "log": "green-tests.log",
+    "failures": 0,
+    "actual_pvf": true
+  }
+}

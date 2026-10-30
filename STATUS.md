@@ -1,14 +1,75 @@
 # 项目状态与接续说明
 
+2026-10-30新增修复：[N地图副本门前终点](knowledge/decisions/2026-10-30-dungeon-gate-map-target-verification.md)已完成。debug `0082559C…` 支持精确 `dungeon_gate` 终点和区内移动，保留门、图标及禁止借道规则；单客户端新增跨区／同区／返回／拒绝场景通过，未重复四端矩阵。当前手测客户端使用新DLL，其他日常目录未覆盖。
+
+最新总入口：[2026-10-30源码与交接](HANDOFF-2026-10-30.md)。U05已支持能力和未证边界分开记录；U07／GP42、U08仍未闭合，日常目录未随本次源码归档更新。
+
+2026-10-30本轮U05：[技能资源与接续交接](knowledge/decisions/2026-10-30-u05-resource-closeout.md)新增MP成本、非零使用上限／计数及原生首槽物品门，保持未知守卫。最终2D已四端实载；13条实机匹配、4条未知超时、240条SDK投影，初始四端存活与后续B/C/D自然死亡分开记录。Python620项／569子测试、相关原生及overlay/ABI通过；14文件恢复／8保护项不变。全局输入、密码PvP及特殊未证分支保留；U07／GP42、U08保持，未部署日常包。
+
+2026-10-30前阶段U05接续：[鼠标门与八类弹窗](knowledge/decisions/2026-10-30-u05-mouse-dialog-followup.md)已补type1早期门、CFD208按钮更新暂缓和分层覆盖。最终B4四端实载，07/09开关、自然原生门及24条实机CLI通过；16条另记历史回放。完整Python617项／553子测试、相关原生及overlay/ABI通过，5张原图；14文件恢复、8保护项保持。全局输入阻断、56实机和其他未证UI保留；U07／GP42、U08继续暂停，日常包未覆盖。
+
+2026-10-30前阶段U05：[队友／城镇MP、键盘门和弹窗层级](knowledge/decisions/2026-10-30-u05-mp-input-dialog-verification.md)已完成限定四端验收，含MP来源、聊天锁级、四端0x25弹窗附着／层序和CLI等待。613项全量＋1项夹具补验通过，原生回归通过；14文件恢复、8保护项不变。全局输入阻断仍未知，U07／U08／GP42保留；最终收窄守卫仅补竞争回归，实机和最终产物哈希分别记录，未部署日常包。下文为历史阶段。
+
+2026-10-30后续源码进展：[三个剩余阻断](knowledge/decisions/2026-10-30-remaining-blockers-followup.md)。第四人邀请按原生旧单人队流程闭环；测试瞬移完整发布、原生普通插值旧时限分支已修。U08卡顿和U07自然大差／GP42继续阻断，四端首领仍捕获421px级差。Python586通过／1条件跳过／445子断言，完整IJL及相关debug原生测试无失败。所有测试进程关闭、12个客户端文件恢复，正常存档保持；本轮改动未覆盖日常发布包。下方保留夜间交付及各阶段历史状态。
+
+2026-10-30最终状态：[夜间报告](knowledge/decisions/2026-10-30-overnight-restoration-report.md)和[日常交付验收](knowledge/decisions/2026-10-30-normal-delivery-verification.md)。服务端AA11／IJL8B06／debug1AFD现已更新到日常目录，33文件核对、8保护项保持、四端启动与跨区组队通过，测试已全部关闭。最新完整Python574通过、2跳过、413子断言、0失败，之前6项测试耦合已收尾；完整托管及IJL通过。U11已作为最后业务项完成；U07历史同步、U08剩余卡顿及U05回城第四人再邀请保留阻断。以下是各阶段历史，未部署／6项失败并非当前状态。
+
+2026-10-30 队列最后U11：[死亡队员接收端修复](knowledge/decisions/2026-10-30-dead-ground-removal-verification.md)完成旧版复现和新8B06模块四端同房／真门往返／金币验收；目标actor最终不存在，关闭后装备唯一。32项及完整IJL通过，debug修改仍要求存活。U07历史同步、U08剩余卡顿和回城第四人邀请仍阻断，不写成全游戏完成。
+
+2026-10-30 U09：[技能栏持久化](knowledge/decisions/2026-10-30-skillbar-persistence-verification.md)完成同档基线及修复版两轮实机，逐包处理／null及替换失败回滚、CLI明确种子来源已补。完整托管通过，Python567／413subtests、2跳过及6既有失败。正常存档保持，接U11最后。
+
+2026-10-30 U10：[超重原始协议复核](knowledge/decisions/2026-10-30-overweight-verification.md)确认实际发送2.526kg，克→公斤换算已正确；纠正旧图文字解释，无业务修改。继续U09，U11最后。
+
+2026-10-30卡顿诊断：[默认关闭的回调计时／CLI](knowledge/decisions/2026-10-30-frame-profile-verification.md)及四端测试完成，新增各步骤与覆盖数据。两次51／69ms调用间隔仍未归因，不写成U08全修复；回城重组第四人原生拒绝亦保留阻断。后续U10／U09，U11最后。
+
+2026-10-30位置复测：[U07城镇／怪物新窗口](knowledge/decisions/2026-10-30-sync-followup.md)末次上报送达、城镇终差<1px，普通房间592行最大30.27px；未复现历史大差，未改同步业务。原生应用事件／GP42未知保留阻断，继续后项。
+
+2026-10-30死亡观测增量：[U05测试地面／库存](knowledge/decisions/2026-10-30-dead-observation-verification.md)已分离观测与修改，C／D死亡脱离后35／34个新序列及库存核对通过，死者修改零发布。完整Python547／392subtests、6项既有失败；继续U07／U08／U10／U09，U11最后。
+
+2026-10-30界面增量：[U05选择副本／常用弹窗](knowledge/decisions/2026-10-30-ui-state-verification.md)已补v2 scene2消费、稳定索引投影和五类活动窗原生标志。四端加载、实际class37／35开关、返回按钮通过；完整Python545／376subtests及6项既有失败。死亡测试地面观测继续，U11仍最后。
+
+2026-10-30最新：[U05技能冷却与可用性](knowledge/decisions/2026-10-30-skill-state-verification.md)限定完成。native6431518F仅隔离部署，四端验证C上挑／D枪手CD循环、跳跃上下文和死亡阻止；复杂道具／装备／次数／精度分支保持未知，不等同实际命中。原生相关和Python235/315通过，完整541/363仍6既有失败；托管E058未改未重跑。进程已关闭、四份INI恢复、正常存档E0E2FB4B…保持。接U05 UI／scene2等剩余，用户已授权整夜完成列表，阻断记录跳过，U11最后。
+
+2026-10-30最新：新增[玩家击杀CLI与本地MP观测](knowledge/decisions/2026-10-30-player-kill-mp-verification.md)。2～4人组队副本本机角色，队员／队长原生死亡、服务端及四端确认、已死重复拒绝通过；本地MP技能消耗／恢复与HUD核对通过，5张原图。native E1CB3D51／托管E0581828仅隔离部署，已关闭并恢复配置，正常存档E0E2FB4B…保持。完整托管冒烟、相关原生和Python229 tests／300 subtests通过，完整Python仍6项既有失败。后续接U05技能冷却／可用性与UI等剩余项；U11按最新指示移到队列最后，排在U09技能栏之后，覆盖下方历史“技能栏最后”的顺序。
+
+2026-10-30接续：已完成[四端主动丢弃扩展](knowledge/decisions/2026-10-30-active-drop-four-verification.md)，新增原生CMD50测试CLI及独立库存采样；蓝装、封装紫装四向交接，材料部分丢弃、金币守恒及换房返回共12次装备提交通过，附5张原图。托管91项新断言、完整Release冒烟、原生相关套件及Python相关221 tests／280 subtests通过；完整Python仍6个既有失败。仅隔离目录部署native12D58F6A／托管1ECD5759，进程已关闭、INI恢复、正常存档E0E2FB4B…保持。后续继续U05剩余观测、U07／怪物同步、U08其他卡顿与U10单位；U09技能栏最后处理。下方2026-10-29“下一阶段补U04”是前组历史范围，本组已按上述限定补齐。
+
 本文面向"换一个对话/换一个人继续开发"的场景，记录**当前实现状态、已验证与未验证的部分、可复用的验证方法、以及待办**。
 模块职责见 [README.md](README.md)，构建见 [BUILDING.md](BUILDING.md)，部署见 [DEPLOYING.md](DEPLOYING.md)，接口见 [ADMIN_API.md](ADMIN_API.md)。本文不重复这些内容。
 
 ## 1. 近期改动的功能
 
-2026-10-27：完整取得官服拾取/普通骰子/特殊确认流程，并对齐 ACT1 的 8 字节 CMD46 与 12 字节 NOTI39。普通物品仅活人参与，来源/确认选择覆盖、武器职业加分、独立容量预筛、总人数轮转、无候选 22、预留 token 和失败取消回包已落地。洛兰双客户端已验证蓝色材料、白色武器、粉装、史诗三个原生确认按钮及同房死亡成员排除，双方地面与单次入账一致。独立浮动调试面板的显示、鼠标进出、开关真实点击与两端状态已验收，支持带服务端回执的本地自动控制。规则边界见[官服接口对齐](knowledge/decisions/2026-10-27-official-loot-contract.md)，结果见[实机记录](knowledge/decisions/2026-10-27-loot-live-verification.md)。后期全队投票、金币分摊与幸运点生成仍不属于已移植内容；独占全屏等面板场景仍待扩展实测。上一轮真实 PVF 的 8 项数据期望失败保留在历史记录，未冒称已修复。
+2026-10-29最新接续（源码 `7f8ddf5`）：默认关闭的测试CLI/debug已完成，支持状态、当前副本定位、指定怪物原生死亡、现有掉落隔离及服务端最终结果查询。隔离四端25次拾取为24次持久化提交、1次超重拒绝，四次史诗“否”保留地面，四人“是／掷点”均有实际结果；金币23分为5／5／5／8。源码、测试、7张原图及边界见[本组记录](knowledge/decisions/2026-10-29-test-control-four-client-loot-verification.md)。仅部署到隔离测试客户端／服务端，不写成正常运行目录已升级；测试进程已关闭、四份INI恢复、正常存档E0E2FB4B…保持。下一阶段补U04蓝色装备、封印等元数据及反向／重复／换房四人验收；技能栏持久化仍放最后。
+
+2026-10-29城镇操作的后续范围已推进：[客户端内跨区规划](knowledge/decisions/2026-10-29-native-town-route-verification.md)、[仅右键及黄色双次反馈](knowledge/decisions/2026-10-29-map-right-feedback-verification.md)、[回城再寻路](knowledge/decisions/2026-10-29-town-return-perf-verification.md)和[组队接口及同组副本闭环](knowledge/decisions/2026-10-29-debug-party-commands-verification.md)分别有原图记录。普通操作默认不截图，四窗启动固定排成田字形，不能把早期同区验证范围当作当前跨区能力的上限。MP／技能冷却、通用模态UI、选图scene2消费、怪物位置同步及其他卡顿仍按[待处理列表](knowledge/decisions/2026-10-28-restoration-backlog.md)接续。新增相关检查通过，完整Python的6个既有失败及原生UI时序失败见本组记录。
+
+2026-10-29早期 debug 状态与城镇移动（历史范围）：新增 client-state/v2 的 Town/UI、房间／敌人／玩家／已学技能只读数据；同区 debug 目的地与 N 城镇地图点击共用原生 setter 和一次持续移动激活，保留方向键停止。源码02de7053/debug5449，双端实际到达、控件保护和四类拒绝通过，71项Python及原生状态／导航／运行状态机／完整overlay测试通过。当时最终构建单人副本完成原生字段对照与无截图的数据驱动移动、攻击；不把该历史阶段算作同组完整流程、MP/冷却、跨区规划或怪物同步已修复。详见[原验收](knowledge/decisions/2026-10-29-debug-town-navigation-verification.md)，后续范围见上方记录。
+
+2026-10-28 倒计时复活币：native09429cc/19C修复隐藏100004单币购买结果误入普通商城的未知错误，价格显示100且标签一次，官服发币与ACT1 CMD44复活分开。双客户端完成队员已有币复活、队员购买后复活、转队长购买后复活，普通10币/880礼包保持原结果窗口。三轮消费与四笔购买钱包守恒；最终445文件证据、严格UDP、422次响应采样、四处native及49运行文件交付/原配置和原档核验完成，见[9张原图及精确边界](knowledge/decisions/2026-10-28-countdown-coin-purchase-verification.md)。managed仍保留59666d9。新增[用户待办](knowledge/decisions/2026-10-28-restoration-backlog.md)，优先debug.dll结构化状态以减少截图；6级heal1024符合官服≤17级退出豁免，无需修复虚弱。怪物位置同步继续排查。
+
+2026-10-28 洛兰3×3：补读每套maze的Boss专用候选，选中Boss角色坐标时优先应用；修正(2,2)回退洛兰MAP13的问题，实际选择MAP6416与Boss1077。真实PVF、旧布局/无效候选/任务替换/缓存及起点重合回归、完整冒烟、严格Release通过。59666d9托管/native8AB双客户端走完实际3×3路线，两端加载同一Boss房；B死亡、A自然清场，双方Continue及队长带队回城完成。正常目录49文件交付与PS5.1克隆档启动已验，原配置/存档与历史证据保持。见[8张原始截图及精确范围](knowledge/decisions/2026-10-28-boss-map-specification-verification.md)。接续怪物位置同步S02；本次不计为位置同步或复活币UI修复。
+
+2026-10-28 组队 TCP 回退：ACT1 完整登录尾、真实 peer 账号及原生 12 字节中继已恢复；原生发送队列竞争另经九处受保护入口修复。完整 .NET 冒烟、Release、Win32 兼容及独立严格抓包检查通过。同一 20d/8AB 构建完成正常 UDP、两轮受控 UDP 故障的自然战斗/通关/回城，以及双端频道重入；含 12 张原图的[验收记录](knowledge/decisions/2026-10-28-party-tcp-fallback-verification.md)区分失败 v2、v3 截图缺项与 v4 补证。正常目录 49 文件交付及 Windows PowerShell5.1 克隆存档启动通过；五份原配置、两原档、EXE/PVF、历史包及备份复算一致，测试进程退出。怪物位置同步尚未修复：新快速观察有一只普通怪持续约653–736平面差异，继续对照原始接收链；不强制怪物归队长、不写坐标。
+
+2026-10-28 频道重入：用户补图的“未响应后能进入”由原生同步MTU探测造成，基线三次阻塞10.814–10.974秒。同一manager/主机/本地IP/端口复用真实MTU并刷新主机引用；最终合并构建双端登录应答至继续请求为0/1毫秒，首次和身份变化仍走原探测。双端组队、副本战斗和换房17项回归通过；UDP应用审计仍有既有CRC/cipher警告，未宣称全部解码通过。图文、计时口径与边界见[频道验收](knowledge/decisions/2026-10-27-channel-return-verification.md)。
+
+2026-10-28 普通商城赠送：恢复ACT1 CMD146查询及CMD67 gift1，官服普通实物、黑名单和账号月次数规则，默认额度1；扣点券、邮件、计数同快照原子提交，账号在线会话重读规范余额。原生全部赠送门控恢复，空篮和禁赠商品仍禁用。在线及离线原生赠送、收信领取、额度、重登/重启守恒102项检查通过，附18张原图和官服/ACT1差异的[验收记录](knowledge/decisions/2026-10-27-cera-gift-verification.md)。完整.NET冒烟、Win32兼容、各自Release构建和服务端发布通过；整份slnx的dotnet构建仍受C++ VCTargetsPath工具链限制，未计为成功。同一实测构建已部署，5份原配置与原存档哈希不变，正常环境26项核对通过，两端停在频道选择。时装/宠物/礼包/直接效果赠送和物理删角的官服24错误码尚不对等，详见记录。
+
+2026-10-27 商城限时时装：ACT1原生7天/30天/无限制菜单和计价已恢复，服务器绝对截止持久化，穿脱/领取/重启不续期，到期原子清理并刷新本人装备和对端外观。邮件、合成5秒门槛、陈旧快照与写入故障由自动化覆盖；完整.NET冒烟、Win32原生兼容及Release发布通过。真实双客户端完成六档购买（26600→19250点券）、三种期限提示、在线穿戴/包内回收、对端外观及离线重启清理，见含18张原图的[验收记录](knowledge/decisions/2026-10-27-avatar-periods-verification.md)。同一实测构建已部署，5份原配置与原档路径恢复、原档哈希不变，正常环境26项核对通过，两端停在频道选择。升级需同步服务端和两端及启动器旁IJL15；原生邮件/合成/副本到期画面未逐项验收，未开放时装直接交易/摆摊或CMD22/23延期。
+
+2026-10-27 普通摆摊：ACT1 CMD85–90 与 NOTI78–85 已接通，普通店按官服开放7格、手续费为毛额4%向下取整，商品持久托管、售款信用及直接交易共享商业占位已实现。服务8为商人许可，ACT1城镇W入口依赖mode0许可标志；原生商城100022/物品16为380点券、30天，管理API可授予任意正整数天数。完整协议冒烟与Release发布在 `e494483` 通过。真实双客户端已完成材料10个分4+6购买、第一轮撤摊返还6个，以及24金币装备（强化+3/品质种子37/耐久19）转移，161项验收断言通过。服务端售罄保留营业，ACT1原生客户端会自动发送CMD89收摊；旧文案14格/1%与本轮7格/4%也存在版本差异，详见[验收说明](knowledge/decisions/2026-10-27-private-store-verification.md)。同一实测构建已部署，原配置和原存档路径已恢复，原档哈希不变，部署后25项核对通过。
+
+2026-10-27 师徒基础关系：CMD79/80/81/82 与 NOTI72/73/74/75/77 已按 ACT1 接通，官服等级、容量、黑名单、06:00登记/解除日界和空关系重置已实现。关系原子保存，删角清理，按会话有序投递。完整冒烟和 Release 发布通过，真实双客户端完成拒绝、接受、列表、上下线、重登、在线/离线解除及再次结成，37项证据断言通过，原配置和原存档已恢复并部署。关系经验、COF和经验/疲劳奖励仍未恢复；详见[验收说明](knowledge/decisions/2026-10-27-mentor-verification.md)。
+
+2026-10-27 后续：恢复队伍聊天与普通金币均分。使用 ACT1 NOTI12 与四槽 24 字节 NOTI39；金币资格独立于活人物品投骰，支持同房尸体、死亡换房排除与复活恢复。持久信用与永久收据防止重复拾取及会话陈旧余额覆盖，交易交付和翻牌回调已处理。完整冒烟与 Release 发布通过，双客户端证据见[本次验收](knowledge/decisions/2026-10-27-party-chat-gold-verification.md)。后期公会税、幸运点、1199 与装备/宠物加成仍未移植。
+
+2026-10-27：完整取得官服拾取/普通骰子/特殊确认流程，并对齐 ACT1 的 8 字节 CMD46 与 12 字节 NOTI39。普通物品仅活人参与，来源/确认选择覆盖、武器职业加分、独立容量预筛、总人数轮转、无候选 22、预留 token 和失败取消回包已落地。洛兰双客户端已验证蓝色材料、白色武器、粉装、史诗三个原生确认按钮及同房死亡成员排除，双方地面与单次入账一致。独立浮动调试面板的显示、鼠标进出、开关真实点击与两端状态已验收，支持带服务端回执的本地自动控制。规则边界见[官服接口对齐](knowledge/decisions/2026-10-27-official-loot-contract.md)，结果见[实机记录](knowledge/decisions/2026-10-27-loot-live-verification.md)。后期全队投票与幸运点生成仍不属于已移植内容；独占全屏等面板场景仍待扩展实测。上一轮真实 PVF 的 8 项数据期望失败保留在历史记录，未冒称已修复。
 
 | 功能 | 关键位置 |
 | --- | --- |
+| ACT1 组队 TCP 回退：完整登录/peer账号、规范会话路由、原生发送串行化及严格证据解码 | `FallbackRelayService`、`GameplayDatagramService.FallbackRelay`、`NativeFallbackRelayProtocol`、`relay_send_queue`、`party_fallback_evidence.py` |
+| 普通商城赠送：ACT1查询/结算、原子扣款/邮件/账号月次数、会话现金失效；在线/离线双端验收 | `GameProtocolEngine.CeraGift`、`JsonGameStore.CeraGift`、`CeraGiftSessionEffects`、`CeraShopCatalog` |
+| 返回频道重入：刷新owned host引用、按连接身份复用原生实际MTU，保留首次/变化探测 | `DFLegacy.Ijl15/src/channel_reentry.cpp`、`dnf_patches.cpp` |
 | SP 按经验进度渐进发放；PVF 缺少 `etc/sptable.etc` 时用内置回退表（取值与原版一致） | `CharacterSpCatalog`，8 处给经验调用点 |
 | 清除地图任务：救援图替换当次副本的 boss 房并按 boss 房结算 | `DungeonCatalog.TryApplyQuestMap` / `IsQuestRescueRoom` |
 | 客户端 IPv6 中继：核心库 + 独立 exe + 由启动器进程内托管 | `DFLegacy.Relay.Core`、`DFLegacy.Launcher` |
@@ -19,6 +80,7 @@
 | 启动器账号 UI：WPF + HandyControl 交互式登录壳（注册/登录/改密/找回/账号管理/设置），headless 路径保留 | `DFLegacy.Launcher`（`MainWindow`、`Views/*`、`App.xaml.cs`）、`DFLegacy.AccountClient` |
 | 城镇同屏与附近聊天：同镇同区的成员目录、外观/位置转发与区域聊天接线完成（真机可见性待 Task 11）；位置走 TCP（默认限速 10 条/秒）；调试幽灵支持单人复现 | `TownSessionDirectory`、`AreaUserIdPool`、`TownGhostService`、`EntranceService` |
 | 交易系统：城镇内双向交易（24 物品格 + 金币、锁定/最终确认/原子结算、取消/超时/掉线/换区整笔回退）；协议要点与真机结论见 §2.5 | `ItemTradeService`、`ItemTradePlanner`、`JsonGameStore.CommitItemTradeAsync`、`EntranceService`（CMD 10/11/19/26） |
+| 普通摆摊：7格商品、4%手续费、持久托管/售款信用、会话代际与离场回收；双客户端材料和装备交易已验收，见[验收说明](knowledge/decisions/2026-10-27-private-store-verification.md) | `PrivateStoreService`、`CommerceActivityRegistry`、`JsonGameStore.PrivateStore`、`GameProtocolEngine.PrivateStore`（CMD85–90/NOTI78–85） |
 | 组队系统：城镇内组队（邀请/申请加入、成员名单与队长、退出/踢人/掉线、队伍信息列表与推荐伙伴的数据前提）；协议要点与真机验收清单见 §2.6 | `PartyService`、`PartyRoster`、`EntranceService`（CMD 10/11/12/13/14） |
 | 同队进副本：每队共享副本实例（队员由自己会话入场、门口集结制换房、共享广播/掉落先到先得/各自结算）；实现摘要与真机验收清单见 §2.7 | `DungeonInstance`、`DungeonInstanceRegistry`、`DungeonPartyService`、`DungeonDoorAssembly`、`EntranceService` |
 | 客户端 TCP/UDP 全量打印（`Config.ini` 的 `DumpNetwork`）：钩客户端自己的 ws2_32，绕开"抓包看不到 loopback"；用法与真机判定标准见 §3.4 | `DFLegacy.Ijl15/src/net_dump.cpp`、`DFLegacy.Ijl15/tests/ijl15_tests.cpp` |

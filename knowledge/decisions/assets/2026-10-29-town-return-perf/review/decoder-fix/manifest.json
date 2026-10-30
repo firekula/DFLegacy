@@ -1,0 +1,126 @@
+{
+  "schema": "offline-decoder-format-fix/v1",
+  "scope": "offline copied raw only; no product/live changes",
+  "original_decoder": {
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-native-20261029\\review\\server\\decoder\\decode_netdump.py",
+    "sha256": "01295D2A5D13CB0037B4CDA95DEA3C06BC72D5F7F1A7FBDD1B886746D1C33C78",
+    "unchanged": true
+  },
+  "tests": {
+    "frozen": 17,
+    "added": 2,
+    "red_failures": 2,
+    "green_total": 19,
+    "green_failures": 0
+  },
+  "inputs": [
+    {
+      "side": "A",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\preflight\\manual-A-netdump.log",
+      "sha256": "98E5501ACAC02F4E75F793602311A5A942D35BCFC475B769FF298CE0AB8504B1",
+      "old_selected_unchanged": true,
+      "selected": 35,
+      "old_errors": 20428,
+      "new_errors": 0,
+      "ignored_udp": 20428,
+      "ignored_remote_tcp": 72
+    },
+    {
+      "side": "B",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\preflight\\manual-B-netdump.log",
+      "sha256": "618BDCC5C97AB8ED117FCC39B8F7EE0B61ED69DD11B0A0549D1FE16371B82EF9",
+      "old_selected_unchanged": true,
+      "selected": 35,
+      "old_errors": 20432,
+      "new_errors": 0,
+      "ignored_udp": 20432,
+      "ignored_remote_tcp": 72
+    }
+  ],
+  "files": [
+    {
+      "name": "decode_netdump.py",
+      "bytes": 15466,
+      "sha256": "5787620C88C5BE771A696FDBF7068DFBCC4BB3DAEFDA68910B919519323034CE"
+    },
+    {
+      "name": "finalize.py",
+      "bytes": 2331,
+      "sha256": "67265D9027D97F242A4F9C614174BEE1C060BF10D7ED3AC2FDEC95C549B0E676"
+    },
+    {
+      "name": "inspect_prefixes.py",
+      "bytes": 1544,
+      "sha256": "4C8297F68CC7F8968CEE66FB27A4DF212FDD3F1B8CADE6D5F83AB2FEF572AD7C"
+    },
+    {
+      "name": "manual-A-business-fixed.json",
+      "bytes": 28938,
+      "sha256": "81200745DF0036E6A6DF8F752F34A7688FBEDCF09DE1F4F2596B188C7BCBA165"
+    },
+    {
+      "name": "manual-A-decode-fixed.log",
+      "bytes": 48,
+      "sha256": "65420A050BAA265A603EA9DB2528F7DA39315959FB2845CDC745A0BCBB7200A0"
+    },
+    {
+      "name": "manual-B-business-fixed.json",
+      "bytes": 28973,
+      "sha256": "00CD59731E54E3BA9A64DCE7DE0D72CB8DCDF2D57C69BF7A6691985C0B3FCA13"
+    },
+    {
+      "name": "manual-B-decode-fixed.log",
+      "bytes": 48,
+      "sha256": "65420A050BAA265A603EA9DB2528F7DA39315959FB2845CDC745A0BCBB7200A0"
+    },
+    {
+      "name": "manual-business-association.json",
+      "bytes": 32351,
+      "sha256": "E1D7E34EEC49B10DF2BD6346E7418FD9714C1B788C546CB3EBB41116CEF9B7CC"
+    },
+    {
+      "name": "manual-business-association.log",
+      "bytes": 32351,
+      "sha256": "E1D7E34EEC49B10DF2BD6346E7418FD9714C1B788C546CB3EBB41116CEF9B7CC"
+    },
+    {
+      "name": "official-vectors.json",
+      "bytes": 1093,
+      "sha256": "AC3005D802BBFE53A31450CE7FA552F41EB684A91B236E2D318D335B81E0F2D9"
+    },
+    {
+      "name": "prefix-metadata.json",
+      "bytes": 1207,
+      "sha256": "2140ABF260CD55F31DB11FBF30A5E5F0945BFA8E38CC2408D380D9E728B9B9E4"
+    },
+    {
+      "name": "README.md",
+      "bytes": 3934,
+      "sha256": "4E2F264878D6EB17D983E51D2A76205C463FDA913DE68A69AA377B90C7899F82"
+    },
+    {
+      "name": "summarize_manual.py",
+      "bytes": 1783,
+      "sha256": "938DB6384D885ED98B9596B41E3096B1A9BD54C3D07A8FDEBA0574513B9D3624"
+    },
+    {
+      "name": "test_decode_netdump.py",
+      "bytes": 9126,
+      "sha256": "C45F8D9E880D0B328756AEF89FEC5B52B3680DF68B2ED8B56E537ABF99DE570A"
+    },
+    {
+      "name": "tests-green.log",
+      "bytes": 2702,
+      "sha256": "C4476E0FC238651F6D3D6192AB2E4A55C10078CB8A6A5308FCD735DBC48DF874"
+    },
+    {
+      "name": "tests-red.log",
+      "bytes": 4712,
+      "sha256": "4031B73344A1F740D67B0121F87AE1ED8BF1C67C3316DE04EE203FBE100E5A63"
+    }
+  ],
+  "limits": [
+    "parse completeness and whitelisted packet association only",
+    "manual four-category success is user-reported; no full automated rarity/dice matrix acceptance"
+  ]
+}

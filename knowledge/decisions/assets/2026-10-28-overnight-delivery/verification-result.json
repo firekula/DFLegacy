@@ -1,0 +1,124 @@
+{
+  "status": "PASS_AS_SCOPED",
+  "passed": 29,
+  "total": 29,
+  "checks": [
+    {
+      "name": "closed scoped schema",
+      "passed": true
+    },
+    {
+      "name": "approved gameplay sources and binaries",
+      "passed": true
+    },
+    {
+      "name": "49 source package;48 published excluding original config",
+      "passed": true
+    },
+    {
+      "name": "publish and restore receipt identities",
+      "passed": true
+    },
+    {
+      "name": "original FB save and five config hashes",
+      "passed": true
+    },
+    {
+      "name": "83 backups and EXE/PVF unchanged",
+      "passed": true
+    },
+    {
+      "name": "four approved native copies",
+      "passed": true
+    },
+    {
+      "name": "original and final absent processes",
+      "passed": true
+    },
+    {
+      "name": "nine historical packages and nine artifacts retained",
+      "passed": true
+    },
+    {
+      "name": "final startup helper identity separate from gameplay",
+      "passed": true
+    },
+    {
+      "name": "old helper retained as historical",
+      "passed": true
+    },
+    {
+      "name": "original settings retained",
+      "passed": true
+    },
+    {
+      "name": "all three historical failures retained",
+      "passed": true
+    },
+    {
+      "name": "05 confirmed defect and failed entry remain",
+      "passed": true
+    },
+    {
+      "name": "historical failure hashes",
+      "passed": true
+    },
+    {
+      "name": "actual06 closed successful receipt",
+      "passed": true
+    },
+    {
+      "name": "actual owned PID and start",
+      "passed": true
+    },
+    {
+      "name": "both ports same process",
+      "passed": true
+    },
+    {
+      "name": "normal runtime hidden executable no CLI",
+      "passed": true
+    },
+    {
+      "name": "unique isolated state and original read-only guards",
+      "passed": true
+    },
+    {
+      "name": "isolated copy may change while original stays intact",
+      "passed": true
+    },
+    {
+      "name": "same-host actual empty environment restored",
+      "passed": true
+    },
+    {
+      "name": "child scoped environment",
+      "passed": true
+    },
+    {
+      "name": "stable readiness and owned stop without retry",
+      "passed": true
+    },
+    {
+      "name": "source review execution review and environment identities",
+      "passed": true
+    },
+    {
+      "name": "401 whole nonnative bytes and git scope preserved",
+      "passed": true
+    },
+    {
+      "name": "six distinct historical/native scopes",
+      "passed": true
+    },
+    {
+      "name": "no whole-game or blocked-value overclaim",
+      "passed": true
+    },
+    {
+      "name": "recorded audit bound",
+      "passed": true
+    }
+  ],
+  "artifact_hashes": "PASS"
+}

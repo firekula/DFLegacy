@@ -114,7 +114,7 @@ Invoke-RestMethod `
 | `GET` | `/api/accounts/{userName}/characters` | 本人 | 查看该账号的角色列表 |
 | `POST` | `/api/client-pay/cera` | 管理员 | 给账号增加点券 |
 | `POST` | `/api/client-pay/diamond` | 管理员 | 给账号开通 30 天黑钻 |
-| `POST` | `/api/client-pay/premium` | 管理员 | 给账号开通黑钻、霸王契约或达人契约 |
+| `POST` | `/api/client-pay/premium` | 管理员 | 给账号开通商人许可、黑钻、霸王契约或达人契约 |
 | `POST` | `/api/accounts` | 公开 | 创建账号（注册） |
 | `PUT` | `/api/accounts/{userName}/password` | 本人 | 携带 token 并使用旧密码修改密码 |
 | `POST` | `/api/accounts/{userName}/password/reset` | 公开 | 使用 QQ 恢复信息重置密码 |
@@ -856,12 +856,18 @@ Invoke-RestMethod `
 
 | `serviceType` | 服务 | 天数规则 |
 |---:|---|---|
+| `8` | 商人许可（普通摆摊） | 任意正整数天数 |
 | `16` | 黑钻 | 必须为 30 天 |
 | `22` | 霸王契约 | 任意正整数天数 |
 | `27` | 达人契约 | 任意正整数天数 |
 
 有效服务会从当前到期时间累加；已过期服务从当前时间重新计算。成功返回 `200`，失败返回
 `400`。响应中的 `expiresAt` 是 UTC Unix 秒，`remainingSeconds` 是本次写入后的剩余秒数。
+
+授予普通摆摊许可时，使用 `{"account":"test","serviceType":8,"days":30}`；管理接口的
+`days` 可改为任意正整数。管理员身份本身不会绕过摆摊许可检查。ACT1原生商城商品
+`100022`（物品 `16`）为380点券、30天，通过商城购买时仍按固定30天开通服务8。活跃许可
+通过mode0许可标志开放城镇W入口；协议、交易和双客户端范围见[摆摊验收说明](knowledge/decisions/2026-10-27-private-store-verification.md)。
 
 ## 7. 在线通知
 

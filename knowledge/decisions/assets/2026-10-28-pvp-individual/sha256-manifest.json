@@ -1,0 +1,189 @@
+{
+  "algorithm": "SHA256",
+  "excludes": [
+    "sha256-manifest.json",
+    "native-check.json"
+  ],
+  "files": [
+    {
+      "name": "evidence-schema.md",
+      "bytes": 4808,
+      "sha256": "5473DD38DF4AE44AF26D01EEDF0090990FDBC3E9FF1805F438B357853B6658B7"
+    },
+    {
+      "name": "fix1-focused.log",
+      "bytes": 34,
+      "sha256": "C4DED93003D9C38287960A958A37EE84B2DAF71389ECB39B605455DCF79D9011"
+    },
+    {
+      "name": "fix1-full.log",
+      "bytes": 43,
+      "sha256": "BB0F6179836CFC0576A58C8B803A1FE8D679543721490F4F720CE06950218ACC"
+    },
+    {
+      "name": "fix1-red.log",
+      "bytes": 705,
+      "sha256": "86C1E5FF69171FEC85B1FDAED4C2C2E20B85BCDEDB522CB64D8CF93BAFED4AB1"
+    },
+    {
+      "name": "fix1-release-server.log",
+      "bytes": 483,
+      "sha256": "4A46669D612401C32CF9BB93D7CC3233EB107F88B33C6CAC00293B9C353A8E3D"
+    },
+    {
+      "name": "fix1-release-tests.log",
+      "bytes": 896,
+      "sha256": "5868CC0636106EE09958B7E02CBE9EB5D02D64445F37B9CE99650E829FB3D8D0"
+    },
+    {
+      "name": "native-combat.json",
+      "bytes": 2551,
+      "sha256": "F48133C64C64E2B370B47938E7D8A57EB3EF21ACC717EAD8389DBB4090539112"
+    },
+    {
+      "name": "native-four-target-binding.json",
+      "bytes": 659,
+      "sha256": "F10ECBC716E739004FD7D55465A4E4759AB7640626584D3BBDC426F1AFC12230"
+    },
+    {
+      "name": "native-packets.json",
+      "bytes": 133370,
+      "sha256": "F3E63A6D6068BED5DD6EE0DB14939EFD59F060FD7D7DD9B4B0913CB5FA218AC4"
+    },
+    {
+      "name": "native-private-check.json",
+      "bytes": 429,
+      "sha256": "F8DDB110F33531AEA1CF7F2692720B1DBCE81C70B249712E787F47773C62F569"
+    },
+    {
+      "name": "native-responsiveness.json",
+      "bytes": 4996,
+      "sha256": "C2C0ADF23073ECC0954A8E8E39319D09D84BA8609FBFDF1E8EA86E77E54A10EF"
+    },
+    {
+      "name": "native-runtime-hashes.json",
+      "bytes": 2105,
+      "sha256": "91BBF6C4D14D78100375A151D9F6D99CCD01E10D33CD44F5E71DFEBE873A261D"
+    },
+    {
+      "name": "native-state-delta.json",
+      "bytes": 1402,
+      "sha256": "87C3E0777C7920115851F32249981BD07AEB64F8DD039FD2DA9468461E36843D"
+    },
+    {
+      "name": "native-switch-full.log",
+      "bytes": 34,
+      "sha256": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547"
+    },
+    {
+      "name": "native-switch-green.log",
+      "bytes": 34,
+      "sha256": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547"
+    },
+    {
+      "name": "native-switch-red.log",
+      "bytes": 683,
+      "sha256": "EC194EFDA5EC2ED289564DFBA52391B3FBFD08129D8B5DE4BFB6BD53CF5FA72B"
+    },
+    {
+      "name": "native-switch-release.log",
+      "bytes": 20717,
+      "sha256": "ED7F3096316DDBC4C7B3F1ECD1D643E4CEDB1EB5323105913B8A8AC19246BDCE"
+    },
+    {
+      "name": "pvp-A-host-start1.jpg",
+      "bytes": 344058,
+      "sha256": "7701EF525605E486493F580CEFC8435AAA28A139140521383CC7C9140286E608"
+    },
+    {
+      "name": "pvp-A-leave-room3.jpg",
+      "bytes": 347921,
+      "sha256": "D5B6C65908FD45A4D90684957042844CCC6B5AB2D9DDA4CC66888B9D7A5AF4B8"
+    },
+    {
+      "name": "pvp-A-return-normal-world.jpg",
+      "bytes": 383160,
+      "sha256": "ED509D8DEF6EAB612C355ED9E3AB15DB4FDECC56F185ED603AE471D48D81BD27"
+    },
+    {
+      "name": "pvp-A-second-auto-enter.jpg",
+      "bytes": 347193,
+      "sha256": "622F4817B5BB4879F431C9C90C9C80B4B17625758FABE0A3F62A36004E04D530"
+    },
+    {
+      "name": "pvp-B-confirm-join.jpg",
+      "bytes": 339456,
+      "sha256": "7959F6C617D8CD83A5729781E33783441CA2D91579EA7B379ACFA7C7F09D4272"
+    },
+    {
+      "name": "pvp-B-ready1.jpg",
+      "bytes": 341751,
+      "sha256": "89A1936DF864144F461D2E00E2E347C5EE1F2ECDBB704413D98AA32E4C718482"
+    },
+    {
+      "name": "pvp-B-return-normal-world.jpg",
+      "bytes": 390710,
+      "sha256": "6D1265A37C5D7F3EEB8220F6C79AB43163084B92018AFFCAB86FCE17BBF5D3D4"
+    },
+    {
+      "name": "pvp-B-second-auto-enter.jpg",
+      "bytes": 350757,
+      "sha256": "03203EE28772BF83C9877A200CE8078B4073922CDB128E0720082FA734A381EE"
+    },
+    {
+      "name": "pvp-create-default-room.jpg",
+      "bytes": 323181,
+      "sha256": "B72E93D99F49CA97E589FCE8D140BEC3E4B628039B1FE6CB498F2C9332C041EA"
+    },
+    {
+      "name": "pvp-fix-A-auto-enter.jpg",
+      "bytes": 347833,
+      "sha256": "7989BEFC01306DE1755DB02A6A3ED602ADE2A81CD335D2D11E90DA2E9A93E64D"
+    },
+    {
+      "name": "pvp-fix-A-normal-world.jpg",
+      "bytes": 375394,
+      "sha256": "6E1EBD9490378837B472DC36482694DC184E19598E55A1452090A5DBA2566657"
+    },
+    {
+      "name": "pvp-fix-A-open-list.jpg",
+      "bytes": 379616,
+      "sha256": "E2AA438648BB5A39E4CF4977CE00CBF7F6E1A4BEDE1549707A330D4D56EC807B"
+    },
+    {
+      "name": "pvp-fix-B-auto-enter.jpg",
+      "bytes": 352795,
+      "sha256": "FF116456741E5AF645CF63E04E154D4A5EC2E9118B21B95EA0460D1953391D94"
+    },
+    {
+      "name": "pvp-fix-B-level52-world.jpg",
+      "bytes": 382177,
+      "sha256": "A47F8B2538EAFDEC378FBEEBAC767D535C48F493596514997CE4B79CD6F57755"
+    },
+    {
+      "name": "pvp-match2-result-window.jpg",
+      "bytes": 234403,
+      "sha256": "5AEFA296FEA8CA6E97CEE718AF946ED8E06EE06641DEDB4F9CAAB2CEE792D69D"
+    },
+    {
+      "name": "pvp-match3-observed-fight-finish-A.jpg",
+      "bytes": 246225,
+      "sha256": "B19F089204F87DB8F93678E35894F2A2E68FB451BD80E0A36F219199D95B8B4D"
+    },
+    {
+      "name": "pvp-match3-observed-fight-finish-B.jpg",
+      "bytes": 334387,
+      "sha256": "20487C388C679151906579C798AEB6376B6E5F661FA93A69F2FF85FDC3E61CB8"
+    },
+    {
+      "name": "pvp-select-HendonPub.jpg",
+      "bytes": 338380,
+      "sha256": "277AD672CBD1C8776DDA8C98D6AF20EB7CB8F421A77BBE870F8B736709CC2945"
+    },
+    {
+      "name": "verify-native-evidence.py",
+      "bytes": 6182,
+      "sha256": "86572254A08EBB995C2E4CFEF569747BB4D870F2FC8DA8CD917F653181F0CBE0"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ namespace DFLegacy.Server;
 /// <summary>
 /// 副本实例成员：会话入场时登记自己的发送句柄。Send 走会话的 SerializedWriteStream
 /// （`EntranceService.SendTownPacketAsync`，跨线程写入已串行化），所以别的会话可以直接投包。
+/// SendConditional 必须在同一写门内检查谓词；主动掉落不能退回普通 Send 绕过这一门控。
 /// </summary>
 internal sealed record DungeonInstanceMember(
     Guid CharacterId,
@@ -12,7 +13,9 @@ internal sealed record DungeonInstanceMember(
     byte PartySlot,
     string CharacterName,
     Func<GameServerPacket, ValueTask> Send,
-    string AccountName = "");
+    string AccountName = "",
+    Guid MentorGoldIncarnation = default,
+    Func<GameServerPacket, Func<bool>, ValueTask>? SendConditional = null);
 
 /// <summary>
 /// 会话镜像快照：会话在主循环顶部按 <see cref="DungeonInstance.Version"/> 决定要不要刷新自己的
@@ -736,6 +739,7 @@ internal sealed partial class DungeonInstance(
             // 新成员默认"未加载"：要等他自己发 CMD 40（FINISH_LOADING）才算这一房间加载完成。
             _loadedMembers.Remove(member.CharacterId);
             _deadMembers.Remove(member.CharacterId);
+            _goldIneligibleMembers.Remove(member.CharacterId);
             _partyRevivalInterruptedWipeDeadline = null;
             UpdatePartyWipeDeadlineLocked(DateTimeOffset.UtcNow);
             Version++;
@@ -783,6 +787,7 @@ internal sealed partial class DungeonInstance(
 
             _loadedMembers.Remove(characterId);
             _deadMembers.Remove(characterId);
+            _goldIneligibleMembers.Remove(characterId);
             _cancelledLoot.Remove(characterId);
             foreach (var pair in _pendingLoot.Where(pair => pair.Value.Winner == characterId).ToArray())
             {
@@ -846,6 +851,7 @@ internal sealed partial class DungeonInstance(
 
             if (isAlive)
             {
+                _goldIneligibleMembers.Remove(characterId);
                 // 成功落库后的提交。任何一次真正复活都让之前的全灭期限作废；
                 // 其它并发预留若失败，不能把已经被成功复活打断的旧期限恢复回来。
                 _partyRevivalReservations.Remove(characterId);
@@ -1004,6 +1010,7 @@ internal sealed partial class DungeonInstance(
     private void ResetPartyMemberLivesLocked()
     {
         _deadMembers.Clear();
+        _goldIneligibleMembers.Clear();
         _partyWipeDeadline = null;
         _partyWipeReturnIssued = false;
         _partyWipeReturnStarted = false;
@@ -1351,6 +1358,8 @@ internal sealed partial class DungeonInstance(
 
             InvalidatePartyCardSettlementLocked();
             // 与改造前 CMD 48 的行为一致：换房间清掉"本房间"的临时集合与开放标记。
+            _goldIneligibleMembers.UnionWith(_deadMembers);
+            _goldIneligibleMembers.UnionWith(_partyRevivalReservations);
             ClearEnabled = false;
             LastRoomEntryWasFirstVisit = transition.FirstVisit;
             ResetRoomCollections(transition.Room.Monsters);
@@ -1804,11 +1813,13 @@ internal sealed partial class DungeonInstance(
         byte roomX,
         byte roomY,
         short x,
-        short y)
+        short y,
+        bool isGold = false,
+        bool activated = true)
     {
         lock (Gate)
         {
-            var item = GroundItems.AddPlayerDropped(droppedItem, ownerUserId, roomX, roomY, x, y);
+            var item = GroundItems.AddPlayerDropped(droppedItem, ownerUserId, roomX, roomY, x, y, isGold, activated);
             Version++;
             return item;
         }
@@ -1827,15 +1838,15 @@ internal sealed partial class DungeonInstance(
     {
         lock (Gate)
         {
-            return [.. GroundItems.GetRoomItems(roomX, roomY)];
+            return [.. GroundItems.GetRoomItems(roomX, roomY).Where(item => item.Activated)];
         }
     }
 
-    public bool RemoveGroundItem(ushort groundId)
+    public bool RemoveGroundItem(ushort groundId, DungeonGroundItem? expectedItem = null)
     {
         lock (Gate)
         {
-            if (!GroundItems.Remove(groundId))
+            if (!GroundItems.Remove(groundId, expectedItem))
             {
                 return false;
             }
@@ -1843,6 +1854,31 @@ internal sealed partial class DungeonInstance(
             _pendingLoot.Remove(groundId);
             Version++;
             return true;
+        }
+    }
+
+    internal DungeonGroundItem? ActivatePlayerDroppedGroundItem(DungeonGroundItem expected, out long roomGeneration)
+    {
+        lock (Gate)
+        {
+            roomGeneration = _roomGeneration;
+            var active = GroundItems.Activate(expected);
+            if (active is not null) Version++;
+            return active;
+        }
+    }
+
+    internal bool IsGroundItemInCurrentRoom(DungeonGroundItem expected, long? roomGeneration = null)
+    {
+        lock (Gate)
+        {
+            return (roomGeneration is null || roomGeneration == _roomGeneration)
+                && CurrentRoomLocked() is not null
+                && (_run.IsActive
+                    ? _run.RoomX == expected.RoomX && _run.RoomY == expected.RoomY
+                    : expected.RoomX == 0 && expected.RoomY == 0)
+                && GroundItems.TryGet(expected.GroundId, expected.RoomX, expected.RoomY, out var current)
+                && ReferenceEquals(current, expected);
         }
     }
 

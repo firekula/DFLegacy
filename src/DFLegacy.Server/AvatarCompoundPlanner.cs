@@ -10,7 +10,10 @@ public enum AvatarCompoundFailure
     JobMismatch,
     GradeMismatch,
     ResultUnavailable,
-    OptionOutOfRange
+    OptionOutOfRange,
+    LifetimeMismatch,
+    LifetimeTooShort,
+    LifetimeOverflow
 }
 
 public sealed record AvatarCompoundPlan(
@@ -91,6 +94,33 @@ public static class AvatarCompoundPlanner
             return false;
         }
 
+        var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var firstLimited = AvatarLifetimePolicy.IsLimited(firstAvatar);
+        var secondLimited = AvatarLifetimePolicy.IsLimited(secondAvatar);
+        if (firstLimited != secondLimited)
+        {
+            failure = AvatarCompoundFailure.LifetimeMismatch;
+            return false;
+        }
+        uint remainingSeconds = 0;
+        if (firstLimited)
+        {
+            var firstSeconds = AvatarLifetimePolicy.GetRemainingSeconds(firstAvatar, nowUnixSeconds);
+            var secondSeconds = AvatarLifetimePolicy.GetRemainingSeconds(secondAvatar, nowUnixSeconds);
+            if (firstSeconds <= 5 || secondSeconds <= 5)
+            {
+                failure = AvatarCompoundFailure.LifetimeTooShort;
+                return false;
+            }
+            var total = (ulong)firstSeconds + secondSeconds;
+            if (total > uint.MaxValue)
+            {
+                failure = AvatarCompoundFailure.LifetimeOverflow;
+                return false;
+            }
+            remainingSeconds = (uint)total;
+        }
+
         if (firstMetadata.Job != characterJob || secondMetadata.Job != characterJob)
         {
             failure = AvatarCompoundFailure.JobMismatch;
@@ -152,9 +182,10 @@ public static class AvatarCompoundPlanner
             State: 0,
             Durability: 0,
             SealState: 0,
-            AvatarRemainingSeconds: 0,
+            AvatarRemainingSeconds: remainingSeconds,
             AvatarAbilityIndex: selectedOption,
-            InstanceId: CharacterItemIdentity.CreateInstanceId());
+            InstanceId: CharacterItemIdentity.CreateInstanceId(),
+            AvatarExpiresAtUnixSeconds: firstLimited ? checked(nowUnixSeconds + remainingSeconds) : null);
 
         plan = new AvatarCompoundPlan(
             plannedMain,

@@ -1,0 +1,1476 @@
+{
+  "method": {
+    "pairing": "Carry forward rows.clients increments; deduplicate by role pair and both capture sequences; equal generation; capture skew <=150ms; captures no more than750ms older than poll start; native consumer also validates every read.",
+    "enemy": "Same UID, active, alive, positive HP, same typed associated player UID resolved separately in each process by authority_token matching players.actor_token.",
+    "scope": "Not atomic multi-process snapshots. Raw native tokens are never compared across processes. Missing/invalid/stale reads are not converted to zero or success."
+  },
+  "windows": {
+    "pre_trace": {
+      "source": "evidence-blockers-v5/native-trace-next-room.json",
+      "seconds": 30.01600000000326,
+      "stop": "bounded_complete",
+      "pairs": 3510,
+      "over100": 51,
+      "worst": [
+        {
+          "tick": 435281265,
+          "roles": "CD",
+          "uid": 0,
+          "distance": 234.04742400000003,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 606.781189,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435281218,
+            435281234
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1378,
+            1370
+          ]
+        },
+        {
+          "tick": 435281453,
+          "roles": "CD",
+          "uid": 0,
+          "distance": 234.04742400000003,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 606.781189,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435281421,
+            435281437
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1379,
+            1371
+          ]
+        },
+        {
+          "tick": 435281703,
+          "roles": "CD",
+          "uid": 0,
+          "distance": 234.04742400000003,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 606.781189,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435281625,
+            435281640
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1380,
+            1372
+          ]
+        }
+      ],
+      "errors": {
+        "unreadable_trace": 3
+      },
+      "trace_gaps": [],
+      "screenshots_unchanged": true,
+      "focus_AC_UID0_over100": [
+        {
+          "tick": 435279031,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 102.513061,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 575.22821,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 472.715149,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435279000,
+            435278984
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1378,
+            1367
+          ]
+        },
+        {
+          "tick": 435279296,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 115.34906000000001,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 575.22821,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 459.87915,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435279203,
+            435279187
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1379,
+            1368
+          ]
+        },
+        {
+          "tick": 435279484,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 128.37356499999999,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 575.22821,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 446.854645,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435279406,
+            435279390
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1380,
+            1369
+          ]
+        },
+        {
+          "tick": 435279671,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 140.95788499999998,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 575.22821,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 434.270325,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435279609,
+            435279593
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1381,
+            1370
+          ]
+        },
+        {
+          "tick": 435279906,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 153.66805999999997,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 575.22821,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 421.56015,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435279812,
+            435279796
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1382,
+            1371
+          ]
+        },
+        {
+          "tick": 435280031,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 166.69253499999996,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 575.22821,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 408.535675,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435280015,
+            435280000
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1383,
+            1372
+          ]
+        },
+        {
+          "tick": 435280265,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 179.40249599999999,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 575.22821,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 395.825714,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435280218,
+            435280203
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1384,
+            1373
+          ]
+        },
+        {
+          "tick": 435280500,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 192.112457,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 575.22821,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 383.115753,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435280421,
+            435280406
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1385,
+            1374
+          ]
+        },
+        {
+          "tick": 435280718,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 205.118042,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 577.851807,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435280625,
+            435280609
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1386,
+            1375
+          ]
+        },
+        {
+          "tick": 435280890,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 217.89862,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 590.632385,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435280828,
+            435280812
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1387,
+            1376
+          ]
+        },
+        {
+          "tick": 435281078,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 230.574951,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 603.308716,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435281031,
+            435281015
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1388,
+            1377
+          ]
+        },
+        {
+          "tick": 435281265,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 233.98553399999997,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 606.719299,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435281234,
+            435281218
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1389,
+            1378
+          ]
+        },
+        {
+          "tick": 435281453,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 233.98553399999997,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 606.719299,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435281437,
+            435281421
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1390,
+            1379
+          ]
+        },
+        {
+          "tick": 435281703,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 233.98553399999997,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 606.719299,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435281640,
+            435281625
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1391,
+            1380
+          ]
+        },
+        {
+          "tick": 435281890,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 233.98553399999997,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 606.719299,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435281843,
+            435281828
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1392,
+            1381
+          ]
+        },
+        {
+          "tick": 435282062,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 233.98553399999997,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 606.719299,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": 0
+            }
+          ],
+          "captured": [
+            435282046,
+            435282031
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1393,
+            1382
+          ]
+        },
+        {
+          "tick": 435282343,
+          "roles": "AC",
+          "uid": 0,
+          "distance": 233.98553399999997,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 606.719299,
+              "y": 160.429901,
+              "z": 0
+            },
+            {
+              "x": 372.733765,
+              "y": 160.429901,
+              "z": -0.0907500088
+            }
+          ],
+          "captured": [
+            435282250,
+            435282234
+          ],
+          "actions": [
+            0,
+            8
+          ],
+          "sequences": [
+            1394,
+            1383
+          ]
+        }
+      ]
+    },
+    "pre_gate": {
+      "source": "evidence-blockers-v8/gate-natural-room1.json",
+      "seconds": 30.030999999959022,
+      "stop": "bounded_complete",
+      "pairs": 3530,
+      "over100": 141,
+      "worst": [
+        {
+          "tick": 436884062,
+          "roles": "BD",
+          "uid": 3,
+          "distance": 157.78959990691592,
+          "owner": 4,
+          "positions": [
+            {
+              "x": 662.879883,
+              "y": 251.699036,
+              "z": 0
+            },
+            {
+              "x": 537.423706,
+              "y": 156,
+              "z": 0
+            }
+          ],
+          "captured": [
+            436883968,
+            436883937
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            427,
+            412
+          ]
+        },
+        {
+          "tick": 436884234,
+          "roles": "BD",
+          "uid": 3,
+          "distance": 157.78959990691592,
+          "owner": 4,
+          "positions": [
+            {
+              "x": 662.879883,
+              "y": 251.699036,
+              "z": 0
+            },
+            {
+              "x": 537.423706,
+              "y": 156,
+              "z": 0
+            }
+          ],
+          "captured": [
+            436884171,
+            436884140
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            428,
+            413
+          ]
+        },
+        {
+          "tick": 436884421,
+          "roles": "BD",
+          "uid": 3,
+          "distance": 157.78959990691592,
+          "owner": 4,
+          "positions": [
+            {
+              "x": 662.879883,
+              "y": 251.699036,
+              "z": 0
+            },
+            {
+              "x": 537.423706,
+              "y": 156,
+              "z": 0
+            }
+          ],
+          "captured": [
+            436884375,
+            436884343
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            429,
+            414
+          ]
+        }
+      ],
+      "errors": {
+        "unreadable_trace": 1
+      },
+      "trace_gaps": [],
+      "screenshots_unchanged": true
+    },
+    "pre_boss": {
+      "source": "evidence-blockers-v8/gate-natural-boss.json",
+      "seconds": 20.0,
+      "stop": "bounded_complete",
+      "pairs": 4086,
+      "over100": 0,
+      "worst": [
+        {
+          "tick": 436932687,
+          "roles": "AD",
+          "uid": 5,
+          "distance": 61.46380999999997,
+          "owner": 4,
+          "positions": [
+            {
+              "x": 1073.55298,
+              "y": 178.126663,
+              "z": 0
+            },
+            {
+              "x": 1012.08917,
+              "y": 178.126663,
+              "z": 0
+            }
+          ],
+          "captured": [
+            436932656,
+            436932625
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            672,
+            651
+          ]
+        },
+        {
+          "tick": 436932687,
+          "roles": "AC",
+          "uid": 5,
+          "distance": 61.14825999999994,
+          "owner": 4,
+          "positions": [
+            {
+              "x": 1073.55298,
+              "y": 178.126663,
+              "z": 0
+            },
+            {
+              "x": 1012.40472,
+              "y": 178.126663,
+              "z": 0
+            }
+          ],
+          "captured": [
+            436932656,
+            436932625
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            672,
+            658
+          ]
+        },
+        {
+          "tick": 436932687,
+          "roles": "AB",
+          "uid": 5,
+          "distance": 61.08025999999995,
+          "owner": 4,
+          "positions": [
+            {
+              "x": 1073.55298,
+              "y": 178.126663,
+              "z": 0
+            },
+            {
+              "x": 1012.47272,
+              "y": 178.126663,
+              "z": 0
+            }
+          ],
+          "captured": [
+            436932656,
+            436932625
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            672,
+            666
+          ]
+        }
+      ],
+      "errors": {},
+      "trace_gaps": [],
+      "screenshots_unchanged": true
+    },
+    "pre_targets": {
+      "source": "evidence-blockers-v9/gate-target-normal.json",
+      "seconds": 35.04700000002049,
+      "stop": "bounded_complete",
+      "pairs": 6839,
+      "over100": 0,
+      "worst": [
+        {
+          "tick": 437149109,
+          "roles": "BC",
+          "uid": 1,
+          "distance": 51.3019988580975,
+          "owner": 2,
+          "positions": [
+            {
+              "x": 133.109146,
+              "y": 253.622589,
+              "z": 0
+            },
+            {
+              "x": 184.250717,
+              "y": 257.676575,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437149093,
+            437149015
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            422,
+            414
+          ]
+        },
+        {
+          "tick": 437148937,
+          "roles": "BC",
+          "uid": 1,
+          "distance": 48.02911281330089,
+          "owner": 2,
+          "positions": [
+            {
+              "x": 144,
+              "y": 262.317047,
+              "z": 0
+            },
+            {
+              "x": 192,
+              "y": 263.989075,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437148890,
+            437148812
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            421,
+            413
+          ]
+        },
+        {
+          "tick": 437148937,
+          "roles": "BD",
+          "uid": 1,
+          "distance": 46.853783688031484,
+          "owner": 2,
+          "positions": [
+            {
+              "x": 144,
+              "y": 262.317047,
+              "z": 0
+            },
+            {
+              "x": 190.848083,
+              "y": 263.047913,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437148890,
+            437148890
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            421,
+            406
+          ]
+        }
+      ],
+      "errors": {
+        "unreadable_trace": 4
+      },
+      "trace_gaps": [],
+      "screenshots_unchanged": true
+    },
+    "pre_arithmetic": {
+      "source": "evidence-blockers-v9/collision-native-window.json",
+      "seconds": 35.09299999999348,
+      "stop": "bounded_complete",
+      "pairs": 5156,
+      "over100": 0,
+      "worst": [
+        {
+          "tick": 437341296,
+          "roles": "BC",
+          "uid": 3,
+          "distance": 84.135208,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 159.874695,
+              "y": 226,
+              "z": 0
+            },
+            {
+              "x": 244.009903,
+              "y": 226,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437341187,
+            437341187
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1366,
+            1360
+          ]
+        },
+        {
+          "tick": 437341453,
+          "roles": "BC",
+          "uid": 3,
+          "distance": 84.135208,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 159.874695,
+              "y": 226,
+              "z": 0
+            },
+            {
+              "x": 244.009903,
+              "y": 226,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437341390,
+            437341390
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1367,
+            1361
+          ]
+        },
+        {
+          "tick": 437341656,
+          "roles": "BC",
+          "uid": 3,
+          "distance": 84.135208,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 159.874695,
+              "y": 226,
+              "z": 0
+            },
+            {
+              "x": 244.009903,
+              "y": 226,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437341593,
+            437341593
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1368,
+            1362
+          ]
+        }
+      ],
+      "errors": {
+        "unreadable_trace": 1
+      },
+      "trace_gaps": [],
+      "screenshots_unchanged": true
+    },
+    "fixed_room9": {
+      "source": "evidence-blockers-v10/fixed-natural-window.json",
+      "seconds": 35.01600000000326,
+      "stop": "bounded_complete",
+      "pairs": 4947,
+      "over100": 91,
+      "worst": [
+        {
+          "tick": 437973109,
+          "roles": "BD",
+          "uid": 4,
+          "distance": 276.7983008294397,
+          "owner": 2,
+          "positions": [
+            {
+              "x": 219.208466,
+              "y": 229.285309,
+              "z": 0
+            },
+            {
+              "x": 496,
+              "y": 227.349838,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437972890,
+            437972937
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1067,
+            1046
+          ]
+        },
+        {
+          "tick": 437973109,
+          "roles": "BC",
+          "uid": 4,
+          "distance": 276.7921995924258,
+          "owner": 2,
+          "positions": [
+            {
+              "x": 219.208466,
+              "y": 229.285309,
+              "z": 0
+            },
+            {
+              "x": 496,
+              "y": 229.892319,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437972890,
+            437973015
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1067,
+            1063
+          ]
+        },
+        {
+          "tick": 437973109,
+          "roles": "AC",
+          "uid": 4,
+          "distance": 276.5498029283589,
+          "owner": 2,
+          "positions": [
+            {
+              "x": 219.466827,
+              "y": 226.859543,
+              "z": 0
+            },
+            {
+              "x": 496,
+              "y": 229.892319,
+              "z": 0
+            }
+          ],
+          "captured": [
+            437973000,
+            437973015
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1061,
+            1063
+          ]
+        }
+      ],
+      "errors": {
+        "unreadable_trace": 19,
+        "stale": 31
+      },
+      "trace_gaps": [
+        {
+          "role": "D",
+          "after": 2544,
+          "first": 2546,
+          "tick_ms": 437959468
+        },
+        {
+          "role": "C",
+          "after": 3934,
+          "first": 3942,
+          "tick_ms": 437967609
+        }
+      ],
+      "screenshots_unchanged": true
+    },
+    "fixed_dynamic": {
+      "source": "evidence-blockers-v10/fixed-dynamic-window.json",
+      "seconds": 30.0,
+      "stop": "bounded_complete",
+      "pairs": 3790,
+      "over100": 0,
+      "worst": [
+        {
+          "tick": 438098656,
+          "roles": "AB",
+          "uid": 3,
+          "distance": 66.19018930844744,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 651.983948,
+              "y": 249.617355,
+              "z": 0
+            },
+            {
+              "x": 601.264526,
+              "y": 207.08876,
+              "z": 0
+            }
+          ],
+          "captured": [
+            438098625,
+            438098515
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1589,
+            1620
+          ]
+        },
+        {
+          "tick": 438098921,
+          "roles": "AD",
+          "uid": 0,
+          "distance": 65.688263,
+          "owner": 4,
+          "positions": [
+            {
+              "x": 471.514374,
+              "y": 143.851395,
+              "z": 0
+            },
+            {
+              "x": 537.202637,
+              "y": 143.851395,
+              "z": 0
+            }
+          ],
+          "captured": [
+            438098828,
+            438098921
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1590,
+            1623
+          ]
+        },
+        {
+          "tick": 438098656,
+          "roles": "AD",
+          "uid": 3,
+          "distance": 65.56159337308125,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 651.983948,
+              "y": 249.617355,
+              "z": 0
+            },
+            {
+              "x": 601.745483,
+              "y": 207.4935,
+              "z": 0
+            }
+          ],
+          "captured": [
+            438098625,
+            438098515
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            1589,
+            1621
+          ]
+        }
+      ],
+      "errors": {
+        "unreadable_trace": 4,
+        "stale": 81
+      },
+      "trace_gaps": [
+        {
+          "role": "A",
+          "after": 7931,
+          "first": 7949,
+          "tick_ms": 438084125
+        },
+        {
+          "role": "A",
+          "after": 9357,
+          "first": 9361,
+          "tick_ms": 438107593
+        }
+      ],
+      "screenshots_unchanged": true
+    },
+    "fixed_boss": {
+      "source": "evidence-blockers-v10/fixed-boss-window.json",
+      "seconds": 9.26600000000326,
+      "stop": "player_health_guard",
+      "pairs": 1718,
+      "over100": 120,
+      "worst": [
+        {
+          "tick": 438271562,
+          "roles": "BD",
+          "uid": 0,
+          "distance": 420.5678533011266,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 540.66272,
+              "y": 324.352112,
+              "z": 0
+            },
+            {
+              "x": 127,
+              "y": 248.45433,
+              "z": 0
+            }
+          ],
+          "captured": [
+            438271375,
+            438271484
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            2396,
+            2423
+          ]
+        },
+        {
+          "tick": 438271562,
+          "roles": "CD",
+          "uid": 0,
+          "distance": 419.0604473767045,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 539.521545,
+              "y": 322.194641,
+              "z": 0
+            },
+            {
+              "x": 127,
+              "y": 248.45433,
+              "z": 0
+            }
+          ],
+          "captured": [
+            438271375,
+            438271484
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            2430,
+            2423
+          ]
+        },
+        {
+          "tick": 438271562,
+          "roles": "AD",
+          "uid": 0,
+          "distance": 404.5137758231386,
+          "owner": 3,
+          "positions": [
+            {
+              "x": 522.899902,
+              "y": 331.488434,
+              "z": 0
+            },
+            {
+              "x": 127,
+              "y": 248.45433,
+              "z": 0
+            }
+          ],
+          "captured": [
+            438271468,
+            438271484
+          ],
+          "actions": [
+            0,
+            0
+          ],
+          "sequences": [
+            2374,
+            2423
+          ]
+        }
+      ],
+      "errors": {
+        "unreadable_trace": 2,
+        "stale": 20
+      },
+      "trace_gaps": [
+        {
+          "role": "C",
+          "after": 14939,
+          "first": 14947,
+          "tick_ms": 438268406
+        },
+        {
+          "role": "A",
+          "after": 14773,
+          "first": 14811,
+          "tick_ms": 438269609
+        },
+        {
+          "role": "B",
+          "after": 14984,
+          "first": 15023,
+          "tick_ms": 438269609
+        },
+        {
+          "role": "D",
+          "after": 13730,
+          "first": 13737,
+          "tick_ms": 438269609
+        },
+        {
+          "role": "A",
+          "after": 14931,
+          "first": 14933,
+          "tick_ms": 438270421
+        },
+        {
+          "role": "A",
+          "after": 14996,
+          "first": 15025,
+          "tick_ms": 438271484
+        },
+        {
+          "role": "B",
+          "after": 15185,
+          "first": 15225,
+          "tick_ms": 438271484
+        },
+        {
+          "role": "D",
+          "after": 13939,
+          "first": 13968,
+          "tick_ms": 438271484
+        },
+        {
+          "role": "A",
+          "after": 15386,
+          "first": 15392,
+          "tick_ms": 438275703
+        }
+      ],
+      "screenshots_unchanged": true
+    }
+  }
+}

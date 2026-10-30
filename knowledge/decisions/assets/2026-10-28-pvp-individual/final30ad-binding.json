@@ -1,0 +1,22 @@
+{
+  "schema": "act1-final-pvp-30ad-binding/v1",
+  "phase": "final-pvp-30AD",
+  "server_pid": 64868,
+  "clients": {
+    "A": 52320,
+    "B": 60896
+  },
+  "approved": {
+    "managed_source_commit": "5078da27a4807695f002ceea61333c43e1932ce4",
+    "native_source_commit": "ab1e6b685021f6cd6f8d125fc04dc0c5c50e931f",
+    "build_manifest_sha256": "09EFFBE39AB99B377AAFB540933EA75919E9E04642FCE79F4D6AF0CB1CC05204",
+    "native_approval_sha256": "832A30A725206FE2A789EFAD4EE7A3194E03B49CCF781E3D931D4C3C99BB8CD8",
+    "server_sha256": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+    "protocol_sha256": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+    "native_sha256": "30AD9A4A3CD565DE845F74AB3D6C6D60EED1F3429EC7D53929D912F158246584"
+  },
+  "runtime_files_independently_hashed": true,
+  "closed_journal_sha256": "7D1034AA1784A95AB385AF5455873D062B1DAE345C557DC6119C6C443687DC19",
+  "private_freeze_manifest_sha256": "D08C55562B53CE9BBB79CCDE19EF325380D7FC52EEA8B0D790691260867155B0",
+  "historical_scope": "Earlier three receipts were proven on native743 and managedcacab; only fourth death match is this final30AD phase."
+}

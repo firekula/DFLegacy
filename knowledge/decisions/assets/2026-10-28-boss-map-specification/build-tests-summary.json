@@ -1,0 +1,91 @@
+{
+  "Schema": "boss-map-public-build-tests/v1",
+  "SourceCommit": "59666d9b543abc5119012cd98ad1fe8e57d7858c",
+  "NativeSourceCommit": "b4fe25f0c82c0cf8ab87813ec7670f1d6b2bf662",
+  "AssemblyVersion": "1.0.0+59666d9b543abc5119012cd98ad1fe8e57d7858c",
+  "BuildManifestSha256": "1F201242877DDEEE783C338515FBAF8029292462E3039E369487A5643151931D",
+  "CodeFilesVerified": 489,
+  "SmokeUsesDeliveredManagedDlls": true,
+  "ManagedDlls": [
+    {
+      "File": "DFLegacy.InterProcess.dll",
+      "Sha256": "17FBD64CD7987050ED2E6EE7667EA28C5E0258E557E34D2A6D7F0B0E8AD365C6"
+    },
+    {
+      "File": "DFLegacy.Protocol.dll",
+      "Sha256": "79295A31A0D08DB18E7790886422F6B01A85958087170A2D151AA4E247023263"
+    },
+    {
+      "File": "DFLegacy.Server.dll",
+      "Sha256": "0E576748248436A974093A1CF4491A756B2D4D52B1CB6823577D2B4529000D25"
+    }
+  ],
+  "FocusedCommand": "dotnet run --project tests/DFLegacy.SmokeTests --configuration Release -- --dungeon-map-selection --lorien-boss-map",
+  "FullCommand": "dotnet run --project tests/DFLegacy.SmokeTests --configuration Release --no-build",
+  "ExplicitRealPvf": true,
+  "ActualSelection": {
+    "Maze": 2,
+    "Size": [
+      3,
+      3
+    ],
+    "Boss": [
+      2,
+      2
+    ],
+    "Map": 6416,
+    "BossMonster": 1077
+  },
+  "Logs": [
+    {
+      "EvidenceId": "boss-map-red.log",
+      "ExitCode": 1,
+      "Sha256": "09B3327383C1F042DD36E2EA7CAC0138A5CAA300C67BFA99D2E10F29C69C4A67",
+      "Meaning": "Old implementation: six related assertion failures"
+    },
+    {
+      "EvidenceId": "start-priority-red.log",
+      "ExitCode": 1,
+      "Sha256": "7E778809D0A8FA0AE00217EFE75AA59E37EFE5A09A57287118FA3D8B07E0D1A1",
+      "Meaning": "1x1 overlap: one failing assertion before role guard"
+    },
+    {
+      "EvidenceId": "start-priority-green.log",
+      "ExitCode": 0,
+      "Sha256": "AE12A7F2D63D06F896025BA1AE747C0589ADC407FBB05F85872732E2C88432EF",
+      "Meaning": "Overlap and actual PVF green"
+    },
+    {
+      "EvidenceId": "boss-map-full-smoke-v2.log",
+      "ExitCode": 0,
+      "Sha256": "BB0F6179836CFC0576A58C8B803A1FE8D679543721490F4F720CE06950218ACC",
+      "Meaning": "Full suite before source commit"
+    },
+    {
+      "EvidenceId": "boss-map-release-v2.log",
+      "ExitCode": 0,
+      "Sha256": "1AC828AB89C49A4C26013FD09DA0F196C86A7FE0F58629E583DC90F076F7415B",
+      "Meaning": "Strict Release0warnings/0errors"
+    },
+    {
+      "EvidenceId": "postcommit-publish.log",
+      "ExitCode": 0,
+      "Sha256": "8D8876464DF1DC87A57914E730524161B00FDE5CCBF9DB8F129666493B6C5768",
+      "Meaning": "Committed package publish"
+    },
+    {
+      "EvidenceId": "postcommit-focused.log",
+      "ExitCode": 0,
+      "Sha256": "AE12A7F2D63D06F896025BA1AE747C0589ADC407FBB05F85872732E2C88432EF",
+      "Meaning": "Committed actual PVF/focused run"
+    },
+    {
+      "EvidenceId": "postcommit-full-smoke.log",
+      "ExitCode": 0,
+      "Sha256": "BB0F6179836CFC0576A58C8B803A1FE8D679543721490F4F720CE06950218ACC",
+      "Meaning": "Committed full suite; same three managed DLL hashes as delivered"
+    }
+  ],
+  "IndependentReviewer": "/root/tcp_fallback_final_review",
+  "Review": "Start-overlap Important resolved with RED/GREEN; no remaining Critical/Important at code review"
+}

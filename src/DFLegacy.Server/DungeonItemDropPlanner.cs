@@ -8,7 +8,9 @@ public enum DungeonItemDropFailure
     ItemNotFound,
     InvalidCount,
     InvalidItem,
-    NotTradeable
+    NotTradeable,
+    RarityRestricted,
+    GoldLimit
 }
 
 public sealed record DungeonItemDropPlan(
@@ -16,10 +18,21 @@ public sealed record DungeonItemDropPlan(
     ushort SourceSlot,
     uint Count,
     CharacterItemRecord DroppedItem,
-    Dictionary<ushort, CharacterItemRecord> Inventory);
+    Dictionary<ushort, CharacterItemRecord> Inventory,
+    uint Gold = 0,
+    bool IsGold = false);
 
 public static class DungeonItemDropPlanner
 {
+    public static byte GetErrorCode(DungeonItemDropFailure failure) => failure switch
+    {
+        DungeonItemDropFailure.RarityRestricted => 13,
+        DungeonItemDropFailure.GoldLimit => 70,
+        DungeonItemDropFailure.NotTradeable or DungeonItemDropFailure.InvalidItem
+            or DungeonItemDropFailure.UnsupportedItemSpace => 23,
+        _ => 17
+    };
+
     public static bool TryPlan(
         IReadOnlyDictionary<ushort, CharacterItemRecord> inventory,
         byte itemSpace,
@@ -27,7 +40,8 @@ public static class DungeonItemDropPlanner
         uint count,
         ItemCatalog catalog,
         out DungeonItemDropPlan plan,
-        out DungeonItemDropFailure failure)
+        out DungeonItemDropFailure failure,
+        uint currentGold = 0)
     {
         plan = null!;
         failure = DungeonItemDropFailure.None;
@@ -36,6 +50,25 @@ public static class DungeonItemDropPlanner
         {
             failure = DungeonItemDropFailure.UnsupportedItemSpace;
             return false;
+        }
+
+        if (itemSpace == 0 && sourceSlot == CharacterInventoryLayout.GoldSlot)
+        {
+            if (count > 1000)
+            {
+                failure = DungeonItemDropFailure.GoldLimit;
+                return false;
+            }
+            if (count == 0 || count > currentGold)
+            {
+                failure = DungeonItemDropFailure.InvalidCount;
+                return false;
+            }
+            plan = new DungeonItemDropPlan(itemSpace, sourceSlot, count,
+                new CharacterItemRecord(ushort.MaxValue, 0, count),
+                inventory.ToDictionary(pair => pair.Key, pair => pair.Value),
+                currentGold - count, IsGold: true);
+            return true;
         }
 
         var validSlot = itemSpace switch
@@ -64,9 +97,24 @@ public static class DungeonItemDropPlanner
             return false;
         }
 
-        if (!CharacterItemSealing.CanTrade(sourceItem, definition))
+        // CParty::drop_item@085A6986: this is a discard policy, distinct
+        // from trade/mail. [sealing trade] passes, [sealing] requires byte1.
+        if (!(definition.AttachType is ItemAttachType.Free or ItemAttachType.SealingTrade
+            || definition.AttachType == ItemAttachType.Sealing && sourceItem.SealState == 1))
         {
             failure = DungeonItemDropFailure.NotTradeable;
+            return false;
+        }
+
+        if (definition.Rarity > 2)
+        {
+            failure = DungeonItemDropFailure.RarityRestricted;
+            return false;
+        }
+
+        if (definition.IsTitle || definition.InventoryCategory == ItemInventoryCategory.Avatar)
+        {
+            failure = DungeonItemDropFailure.InvalidItem;
             return false;
         }
 
@@ -116,7 +164,8 @@ public static class DungeonItemDropPlanner
                 Slot = ushort.MaxValue,
                 CountOrValue = count
             },
-            plannedInventory);
+            plannedInventory,
+            currentGold);
         return true;
     }
 }

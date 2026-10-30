@@ -1,0 +1,370 @@
+{
+  "pvfSha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+  "entries": [
+    {
+      "item": 63000,
+      "path": "equipment/creature/faras.equ",
+      "length": 449,
+      "entrySha256": "cadbc3e33cee240c5668d6e1aea653a177c06165b614f2fb28c8c13d93c4dcbe",
+      "fixtureSha256": "cadbc3e33cee240c5668d6e1aea653a177c06165b614f2fb28c8c13d93c4dcbe"
+    },
+    {
+      "item": 63003,
+      "path": "equipment/creature/charp.equ",
+      "length": 479,
+      "entrySha256": "d16313a48fbb037583a378cb776a737ef60219a8c5dd04484b3dcd2770bffeee",
+      "fixtureSha256": "d16313a48fbb037583a378cb776a737ef60219a8c5dd04484b3dcd2770bffeee"
+    },
+    {
+      "item": 63006,
+      "path": "equipment/creature/egg_faras.equ",
+      "length": 463,
+      "entrySha256": "5dbe5b9614844bbec7ffb7a9ac8720553439032cec52ac688667f1da3586c972",
+      "fixtureSha256": "5dbe5b9614844bbec7ffb7a9ac8720553439032cec52ac688667f1da3586c972"
+    },
+    {
+      "item": 63007,
+      "path": "equipment/creature/egg_charp.equ",
+      "length": 493,
+      "entrySha256": "cda45eaed691005fb4f4bd62dda233eedb6453377116f4cc0b5a603b8801e15e",
+      "fixtureSha256": "cda45eaed691005fb4f4bd62dda233eedb6453377116f4cc0b5a603b8801e15e"
+    },
+    {
+      "item": 63008,
+      "path": "equipment/creature/botis.equ",
+      "length": 414,
+      "entrySha256": "bf982a366b9fc012a58ad280568cafebd86e3c7b1cf0dfe3d8b96609a521b595",
+      "fixtureSha256": "bf982a366b9fc012a58ad280568cafebd86e3c7b1cf0dfe3d8b96609a521b595"
+    },
+    {
+      "item": 63009,
+      "path": "equipment/creature/marbas.equ",
+      "length": 458,
+      "entrySha256": "21f67f3b27553863ae954597c08d78db022c513cb6b9c822717b9fead2b8e2a5",
+      "fixtureSha256": "21f67f3b27553863ae954597c08d78db022c513cb6b9c822717b9fead2b8e2a5"
+    },
+    {
+      "item": 63010,
+      "path": "equipment/creature/balam.equ",
+      "length": 416,
+      "entrySha256": "a62dd04268e3ba921a560555ea68b11ee4adfc456b7bb0b2910a00858c5665a7",
+      "fixtureSha256": "a62dd04268e3ba921a560555ea68b11ee4adfc456b7bb0b2910a00858c5665a7"
+    },
+    {
+      "item": 63011,
+      "path": "equipment/creature/haagenti.equ",
+      "length": 398,
+      "entrySha256": "c745ac5cb8f19e70ef1492bc948a9924593ce1d8cae9b13ff7f535b42a1e1074",
+      "fixtureSha256": "c745ac5cb8f19e70ef1492bc948a9924593ce1d8cae9b13ff7f535b42a1e1074"
+    },
+    {
+      "item": 63012,
+      "path": "equipment/creature/berith.equ",
+      "length": 418,
+      "entrySha256": "f393dc402fe6516d6389f62a4ae29fca0e00ba4a7322f500e7dc11311e77312b",
+      "fixtureSha256": "f393dc402fe6516d6389f62a4ae29fca0e00ba4a7322f500e7dc11311e77312b"
+    },
+    {
+      "item": 63013,
+      "path": "equipment/creature/egg_botis.equ",
+      "length": 452,
+      "entrySha256": "352f175ff01f9500a611d7b281b06e1a921b624d3a4584efd64eeab31083e7e2",
+      "fixtureSha256": "352f175ff01f9500a611d7b281b06e1a921b624d3a4584efd64eeab31083e7e2"
+    },
+    {
+      "item": 63014,
+      "path": "equipment/creature/egg_marbas.equ",
+      "length": 496,
+      "entrySha256": "d46ed7ef40c606d5eae267fbd83487c47f3d6a7a56fa13aad5a41dc5676e030f",
+      "fixtureSha256": "d46ed7ef40c606d5eae267fbd83487c47f3d6a7a56fa13aad5a41dc5676e030f"
+    },
+    {
+      "item": 63015,
+      "path": "equipment/creature/egg_balam.equ",
+      "length": 454,
+      "entrySha256": "a54c64281f600909a91d8abf479ed4e08c77676ca9aba8af30989129cf7404a7",
+      "fixtureSha256": "a54c64281f600909a91d8abf479ed4e08c77676ca9aba8af30989129cf7404a7"
+    },
+    {
+      "item": 63016,
+      "path": "equipment/creature/egg_haagenti.equ",
+      "length": 437,
+      "entrySha256": "095db483ef3201a4d0b17cd0650f7b052c8472919bec498b951812b420d5921a",
+      "fixtureSha256": "095db483ef3201a4d0b17cd0650f7b052c8472919bec498b951812b420d5921a"
+    },
+    {
+      "item": 63017,
+      "path": "equipment/creature/egg_berith.equ",
+      "length": 456,
+      "entrySha256": "0674793388774ddaeaa9e251f0957f68c0453b6f4646e4e703251f8abc2436c9",
+      "fixtureSha256": "0674793388774ddaeaa9e251f0957f68c0453b6f4646e4e703251f8abc2436c9"
+    },
+    {
+      "item": 63018,
+      "path": "equipment/creature/egg_zagan.equ",
+      "length": 444,
+      "entrySha256": "efcafaaa89a910eecf0be11831f5ad4b0eadf71e65ee0cef189279925e740897",
+      "fixtureSha256": "efcafaaa89a910eecf0be11831f5ad4b0eadf71e65ee0cef189279925e740897"
+    },
+    {
+      "item": 63019,
+      "path": "equipment/creature/zagan.equ",
+      "length": 431,
+      "entrySha256": "696264cc15a439621c6e8bb56e2811619cec11cd871664df59c7b0601ea8c967",
+      "fixtureSha256": "696264cc15a439621c6e8bb56e2811619cec11cd871664df59c7b0601ea8c967"
+    },
+    {
+      "item": 63022,
+      "path": "equipment/creature/egg_bobo.equ",
+      "length": 469,
+      "entrySha256": "49b47906017f66421fb2ffc6df7c7a4e18d974ed91ae369db3cae7955bf8056c",
+      "fixtureSha256": "49b47906017f66421fb2ffc6df7c7a4e18d974ed91ae369db3cae7955bf8056c"
+    },
+    {
+      "item": 63023,
+      "path": "equipment/creature/bobo.equ",
+      "length": 430,
+      "entrySha256": "46f39e42e09ec2dc6c7c235525c98567f194b518862ee011113d2d01e69eb4bb",
+      "fixtureSha256": "46f39e42e09ec2dc6c7c235525c98567f194b518862ee011113d2d01e69eb4bb"
+    },
+    {
+      "item": 63024,
+      "path": "equipment/creature/egg_amy.equ",
+      "length": 455,
+      "entrySha256": "bcef6ea11f51f06a35bbbe0f2547e5c85c2f284f9d38af11977827882e750d41",
+      "fixtureSha256": "bcef6ea11f51f06a35bbbe0f2547e5c85c2f284f9d38af11977827882e750d41"
+    },
+    {
+      "item": 63025,
+      "path": "equipment/creature/amy.equ",
+      "length": 418,
+      "entrySha256": "11105a37dadf42018726ebb1ad50bf45291039f8ae35cdb8c77010f144b3ab00",
+      "fixtureSha256": "11105a37dadf42018726ebb1ad50bf45291039f8ae35cdb8c77010f144b3ab00"
+    },
+    {
+      "item": 63027,
+      "path": "equipment/creature/elbon.equ",
+      "length": 446,
+      "entrySha256": "22a06e3dc697edbd185d6e4d29b0fae115d68fc10fbb96ad68b31b627015f2c0",
+      "fixtureSha256": "22a06e3dc697edbd185d6e4d29b0fae115d68fc10fbb96ad68b31b627015f2c0"
+    },
+    {
+      "item": 63028,
+      "path": "equipment/creature/egg_elbon.equ",
+      "length": 474,
+      "entrySha256": "d47675450d8a84dd72b4682b20715a1183f29ed3d5a86d87f8c7f17da3e74e53",
+      "fixtureSha256": "d47675450d8a84dd72b4682b20715a1183f29ed3d5a86d87f8c7f17da3e74e53"
+    },
+    {
+      "item": 63031,
+      "path": "equipment/creature/egg_belz.equ",
+      "length": 463,
+      "entrySha256": "feb2f37ca4e66c72b48fc0388df3cb1bfd8afc9524f4320a3dec5fcb9c7ec339",
+      "fixtureSha256": "feb2f37ca4e66c72b48fc0388df3cb1bfd8afc9524f4320a3dec5fcb9c7ec339"
+    },
+    {
+      "item": 63032,
+      "path": "equipment/creature/belz.equ",
+      "length": 436,
+      "entrySha256": "b4351bd8ba35480a90799a3d97becef10f6f68c9d93624c8251e3801a38ccb8b",
+      "fixtureSha256": "b4351bd8ba35480a90799a3d97becef10f6f68c9d93624c8251e3801a38ccb8b"
+    },
+    {
+      "item": 63033,
+      "path": "equipment/creature/belzebe.equ",
+      "length": 441,
+      "entrySha256": "707296182c63c6bd93830e5d753467ec29a35d7b20f158f640f4b6299aed810f",
+      "fixtureSha256": "707296182c63c6bd93830e5d753467ec29a35d7b20f158f640f4b6299aed810f"
+    },
+    {
+      "item": 63035,
+      "path": "equipment/creature/egg_bronzepig.equ",
+      "length": 522,
+      "entrySha256": "f1b13fc3f80174668e9c74687efbb2b63453f526a8dc23b6b55d26e703cc4468",
+      "fixtureSha256": "f1b13fc3f80174668e9c74687efbb2b63453f526a8dc23b6b55d26e703cc4468"
+    },
+    {
+      "item": 63036,
+      "path": "equipment/creature/pig_bronze.equ",
+      "length": 506,
+      "entrySha256": "31082d7eb10913caae8852e0da230a0c86b99c58aaf58514b91f75a0ab7f4f40",
+      "fixtureSha256": "31082d7eb10913caae8852e0da230a0c86b99c58aaf58514b91f75a0ab7f4f40"
+    },
+    {
+      "item": 63037,
+      "path": "equipment/creature/pig_silver.equ",
+      "length": 506,
+      "entrySha256": "9289cc854e6405d8be15a35edded728109cb4497e4c3df0c38ff184e6cfe0dcd",
+      "fixtureSha256": "9289cc854e6405d8be15a35edded728109cb4497e4c3df0c38ff184e6cfe0dcd"
+    },
+    {
+      "item": 63134,
+      "path": "equipment/creature/egg_belzebe.equ",
+      "length": 429,
+      "entrySha256": "099da7e4f6df5d564dcfd78d9ecb48f4757d5ac192f0d9a3c0a75e1830b60f8e",
+      "fixtureSha256": "099da7e4f6df5d564dcfd78d9ecb48f4757d5ac192f0d9a3c0a75e1830b60f8e"
+    },
+    {
+      "item": 63136,
+      "path": "equipment/creature/egg_silverpig.equ",
+      "length": 492,
+      "entrySha256": "27738789da10739a70907c5b50c7e3a85831108cf4ecc130153f355f32f40b21",
+      "fixtureSha256": "27738789da10739a70907c5b50c7e3a85831108cf4ecc130153f355f32f40b21"
+    }
+  ],
+  "derived": [
+    {
+      "path": "equipment/equipment.lst",
+      "sourceEntry": "equipment/equipment.lst",
+      "sourceEntrySha256": "56750eebfd0ef02e9ab529c20bd1575437407c9158370352d5514f07190b3c32",
+      "fixtureSha256": "4a2410239df7c41ea61adda1f477565b09ce222be4f9acbb74231d6118a54e60",
+      "derivation": "scope-only rows, original values/order; CP936",
+      "hashPolicy": "LF-normalized scope-derived text; sourceEntrySha256 hashes original PVF bytes"
+    },
+    {
+      "path": "etc/newcashshop.etc",
+      "sourceEntry": "etc/newcashshop.etc",
+      "sourceEntrySha256": "9f120280a27c62dd4d2439d9fe0cafd231750dc558b1fd8d85315f2daca9c317",
+      "fixtureSha256": "7507ac04ecf0e10e2e9dc68afeb5655c4247f0eb3155f5fe165656028b17c510",
+      "derivation": "scope-only rows, original values/order; CP936",
+      "hashPolicy": "LF-normalized scope-derived text; sourceEntrySha256 hashes original PVF bytes"
+    }
+  ],
+  "eggs": [
+    {
+      "commodity": 105008,
+      "item": 63006,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_faras.equ",
+      "name": "宠物蛋 (佛拉斯)",
+      "output": 63000
+    },
+    {
+      "commodity": 105009,
+      "item": 63007,
+      "quantity": 1,
+      "price": 6600,
+      "path": "equipment/creature/egg_charp.equ",
+      "name": "宠物蛋 (恰克斯)",
+      "output": 63003
+    },
+    {
+      "commodity": 105010,
+      "item": 63013,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_botis.equ",
+      "name": "宠物蛋 (波堤斯)",
+      "output": 63008
+    },
+    {
+      "commodity": 105011,
+      "item": 63014,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_marbas.equ",
+      "name": "宠物蛋 (玛巴斯)",
+      "output": 63009
+    },
+    {
+      "commodity": 105012,
+      "item": 63015,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_balam.equ",
+      "name": "宠物蛋 (巴拉姆)",
+      "output": 63010
+    },
+    {
+      "commodity": 105013,
+      "item": 63016,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_haagenti.equ",
+      "name": "宠物蛋 (哈艮地)",
+      "output": 63011
+    },
+    {
+      "commodity": 105014,
+      "item": 63017,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_berith.equ",
+      "name": "宠物蛋 (比利士)",
+      "output": 63012
+    },
+    {
+      "commodity": 105015,
+      "item": 63018,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_zagan.equ",
+      "name": "宠物蛋 (撒共)",
+      "output": 63019
+    },
+    {
+      "commodity": 105016,
+      "item": 63022,
+      "quantity": 1,
+      "price": 6600,
+      "path": "equipment/creature/egg_bobo.equ",
+      "name": "宠物蛋 (波比)",
+      "output": 63023
+    },
+    {
+      "commodity": 105017,
+      "item": 63024,
+      "quantity": 1,
+      "price": 6600,
+      "path": "equipment/creature/egg_amy.equ",
+      "name": "宠物蛋 (亚米)",
+      "output": 63025
+    },
+    {
+      "commodity": 105018,
+      "item": 63028,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_elbon.equ",
+      "name": "宠物蛋 (伊尔本)",
+      "output": 63027
+    },
+    {
+      "commodity": 105019,
+      "item": 63031,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_belz.equ",
+      "name": "宠物蛋 (贝雷斯)",
+      "output": 63032
+    },
+    {
+      "commodity": 105020,
+      "item": 63035,
+      "quantity": 1,
+      "price": 13200,
+      "path": "equipment/creature/egg_bronzepig.equ",
+      "name": "宠物蛋 (铜色皮特兰猪)",
+      "output": 63036
+    },
+    {
+      "commodity": 105028,
+      "item": 63134,
+      "quantity": 1,
+      "price": 9900,
+      "path": "equipment/creature/egg_belzebe.equ",
+      "name": "宠物蛋 (贝雷斯普)",
+      "output": 63033
+    },
+    {
+      "commodity": 105030,
+      "item": 63136,
+      "quantity": 1,
+      "price": 13200,
+      "path": "equipment/creature/egg_silverpig.equ",
+      "name": "宠物蛋 (银色皮特兰猪)",
+      "output": 63037
+    }
+  ]
+}

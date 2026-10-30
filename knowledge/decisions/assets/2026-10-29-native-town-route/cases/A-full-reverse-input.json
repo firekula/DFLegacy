@@ -1,0 +1,25 @@
+{
+  "started": "2026-10-29T12:56:27.765+08:00",
+  "pid": 58960,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "A-full-reverse-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T12:56:27.949+08:00",
+  "steps": [
+    {
+      "t": 500,
+      "op": "rclick",
+      "x": 410,
+      "y": 263,
+      "dur": 180
+    }
+  ],
+  "plan_sha256": "23300275ab2827c8a742cd500a97619d69aef72fabeb09806336d5c63238c32e",
+  "plan_written": "2026-10-29T12:56:27.949+08:00",
+  "focus_reassertions": 0,
+  "plan_completed": "2026-10-29T12:56:28.706+08:00",
+  "own_pid_diag_lines": 2,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T12:56:28.706+08:00"
+}

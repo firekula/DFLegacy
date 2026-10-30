@@ -1,0 +1,41 @@
+{
+  "schema": "dflegacy.unaltered-evidence-copy.v1",
+  "files": [
+    {
+      "file": "latency-final-20261028-0015.json",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\reentry-latency-final-20261028-0015.json",
+      "source_sha256": "FB28AEB5A3055A7F020044CD931C159173428A1713A193003E9C748DF301B2CB",
+      "copy_sha256": "FB28AEB5A3055A7F020044CD931C159173428A1713A193003E9C748DF301B2CB",
+      "bytes": 13136,
+      "unaltered": true,
+      "visually_inspected": false
+    },
+    {
+      "file": "native-update-final.json",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\approved-native-update.json",
+      "source_sha256": "6FA18FFB334750D1B4759292F457329B4A8AEB33EB2DA6911200E648BC0AB441",
+      "copy_sha256": "6FA18FFB334750D1B4759292F457329B4A8AEB33EB2DA6911200E648BC0AB441",
+      "bytes": 1890,
+      "unaltered": true,
+      "visually_inspected": false
+    },
+    {
+      "file": "115-A-restart-select.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\115-A-restart-select.jpg",
+      "source_sha256": "C336783AF59DB117A0A23061CD80D2C2EE3BAEF897B74BE709E08B6739875A52",
+      "copy_sha256": "C336783AF59DB117A0A23061CD80D2C2EE3BAEF897B74BE709E08B6739875A52",
+      "bytes": 375994,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "116-B-restart-select.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\116-B-restart-select.jpg",
+      "source_sha256": "F105400251C3A1417BB1E625376C294619A7AEDBBD848DC29C2C9618257ADD3A",
+      "copy_sha256": "F105400251C3A1417BB1E625376C294619A7AEDBBD848DC29C2C9618257ADD3A",
+      "bytes": 375280,
+      "unaltered": true,
+      "visually_inspected": true
+    }
+  ]
+}

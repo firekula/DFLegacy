@@ -1,0 +1,12 @@
+
+tools\debug\test_client_state.py:421: AssertionError
+---------------------------- Captured stdout call -----------------------------
+uuuuu
+=========================== short test summary info ===========================
+SUBFAILED(change='positive_cd') tools/debug/test_client_state.py::ClientStateTests::test_skill_readiness_requires_local_identity_and_cannot_ignore_positive_cooldown
+SUBFAILED(change='no_me') tools/debug/test_client_state.py::ClientStateTests::test_skill_readiness_requires_local_identity_and_cannot_ignore_positive_cooldown
+SUBFAILED(change='no_actor') tools/debug/test_client_state.py::ClientStateTests::test_skill_readiness_requires_local_identity_and_cannot_ignore_positive_cooldown
+SUBFAILED(change='dead') tools/debug/test_client_state.py::ClientStateTests::test_skill_readiness_requires_local_identity_and_cannot_ignore_positive_cooldown
+SUBFAILED(change='detached') tools/debug/test_client_state.py::ClientStateTests::test_skill_readiness_requires_local_identity_and_cannot_ignore_positive_cooldown
+FAILED tools/debug/test_client_state.py::ClientStateTests::test_skill_readiness_requires_local_identity_and_cannot_ignore_positive_cooldown
+6 failed, 49 deselected in 0.23s

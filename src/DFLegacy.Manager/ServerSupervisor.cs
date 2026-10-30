@@ -82,9 +82,9 @@ public sealed class ServerSupervisor : IAsyncDisposable
             var pvfPath = Path.GetFullPath(settings.ScriptPvfPath, _paths.Root);
             if (!File.Exists(pvfPath)) throw new InvalidOperationException("找不到 Script.pvf，请指定或挂载客户端匹配的文件。");
             using (var pvf = File.OpenRead(pvfPath)) if (pvf.Length == 0) throw new InvalidOperationException("Script.pvf 文件为空。");
-            foreach (var port in new[] { settings.EntrancePort, settings.ChannelPort, settings.AdditionalEntrancePort }) ProbePort(settings.BindHost, port, SocketType.Stream);
+            foreach (var port in settings.ForwardedTcpPorts()) ProbePort(settings.BindHost, port, SocketType.Stream);
             ProbePort(settings.AdminHost, settings.AdminPort, SocketType.Stream);
-            foreach (var port in new[] { settings.CharacterPort, settings.GameplayPrimaryPort, settings.GameplaySecondaryPort }) ProbePort(settings.BindHost, port, SocketType.Dgram);
+            foreach (var port in settings.ForwardedUdpPorts()) ProbePort(settings.BindHost, port, SocketType.Dgram);
             var start = CreateStartInfo();
             _controlSecret = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
             start.Environment["DFLEGACY_MANAGER_CONTROL_TOKEN"] = _controlSecret;

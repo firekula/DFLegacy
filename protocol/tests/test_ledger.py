@@ -1,12 +1,28 @@
 import hashlib
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 
 from protocol import importer, ledger, s1
 
-SPEC_SCENARIOS = Path("tools/acceptance/scenarios")
+REPO_SCENARIOS = Path(__file__).resolve().parents[2] / "tools/acceptance/scenarios"
+CORE_SCENARIOS = ("town-two-clients", "party-invite", "trade-open", "town-position-sync")
+
+
+def _copy_core_scenarios(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    for name in CORE_SCENARIOS:
+        shutil.copyfile(REPO_SCENARIOS / (name + ".yaml"), directory / (name + ".yaml"))
+    return directory
+
+
+@pytest.fixture
+def spec_scenarios(tmp_path):
+    # These assertions specify the original four-scenario contract. Additional
+    # production scenarios must not silently change this fixture's 12 rows.
+    return _copy_core_scenarios(tmp_path / "core-scenarios")
 
 
 # ---------------------------------------------------------------- parse_frame
@@ -47,8 +63,8 @@ def test_parse_frame_keeps_the_high_length_bytes_of_a_full_header():
 
 # ---------------------------------------------------------------- scenarios
 
-def test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects():
-    rows = ledger.build_scenarios(SPEC_SCENARIOS, verified={})
+def test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects(spec_scenarios):
+    rows = ledger.build_scenarios(spec_scenarios, verified={})
     assert len(rows) == 12
     assert {r["scenario_id"] for r in rows} == {
         "town-two-clients", "party-invite", "trade-open", "town-position-sync"}
@@ -57,14 +73,14 @@ def test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects():
     assert {r["mapped_opcodes"] for r in tc if r["mapped_opcodes"]} == {"CMD:11", "CMD:12"}
 
 
-def test_semantic_expect_has_no_pattern_and_no_opcode():
-    rows = ledger.build_scenarios(SPEC_SCENARIOS, verified={})
+def test_semantic_expect_has_no_pattern_and_no_opcode(spec_scenarios):
+    rows = ledger.build_scenarios(spec_scenarios, verified={})
     sem = next(r for r in rows if r["level"] == "[语义]")
     assert sem["pattern"] == "" and sem["mapped_opcodes"] == ""
 
 
-def test_verified_run_and_result_land_in_scenario_rows():
-    rows = ledger.build_scenarios(SPEC_SCENARIOS,
+def test_verified_run_and_result_land_in_scenario_rows(spec_scenarios):
+    rows = ledger.build_scenarios(spec_scenarios,
                                   verified={"town-two-clients": "RID-1"},
                                   results={("town-two-clients", 1, 1): "pass"})
     row = next(r for r in rows if r["scenario_id"] == "town-two-clients"
@@ -72,9 +88,9 @@ def test_verified_run_and_result_land_in_scenario_rows():
     assert row["verified_run_id"] == "RID-1" and row["verdict_result"] == "pass"
 
 
-def test_semantic_row_keeps_the_run_that_judged_it():
+def test_semantic_row_keeps_the_run_that_judged_it(spec_scenarios):
     """[语义] 行也有归属 run（该 run 对它出过结论），只是结果是 needs-human。"""
-    rows = ledger.build_scenarios(SPEC_SCENARIOS,
+    rows = ledger.build_scenarios(spec_scenarios,
                                   verified={"town-two-clients": "RID-1"},
                                   results={("town-two-clients", 3, 1): "needs-human"})
     sem = next(r for r in rows if r["scenario_id"] == "town-two-clients" and r["level"] == "[语义]")
@@ -207,7 +223,8 @@ def _make_env(tmp_path: Path) -> dict:
         "# kind\tid\tmark\tevidence\n"
         "CMD\t11\tfield_read\t证据甲\n"
         "CMD\t11\tbyte_verified\t证据乙\n".encode("utf-8"))
-    return {"base": base, "raw": raw, "tmp": tmp_path}
+    return {"base": base, "raw": raw, "tmp": tmp_path,
+            "scenarios": _copy_core_scenarios(tmp_path / "core-scenarios")}
 
 
 def _town_entries(lines: tuple[str, str, str]) -> list[dict]:
@@ -261,7 +278,7 @@ def _write_run_inputs(tmp_path: Path, *, run_id: str, scenario_id: str,
 def _ledger_argv(env: dict, *, run_id: str, scenario_id: str, verdict: Path,
                  run_manifest: Path, digest: Path) -> list[str]:
     return ["ledger", "--base", str(env["base"]), "--raw-dir", str(env["raw"]),
-            "--scenarios-dir", str(SPEC_SCENARIOS), "--verified-run", run_id,
+            "--scenarios-dir", str(env["scenarios"]), "--verified-run", run_id,
             "--verified-scenario", scenario_id, "--verdict", str(verdict),
             "--run-manifest", str(run_manifest), "--verdict-digest", str(digest)]
 
@@ -408,3 +425,13 @@ def test_cmd_ledger_scenario_mismatch_exits_2(tmp_path, capsys):
     assert rc == 2
     out = capsys.readouterr().out
     assert "ledger: FAIL (2)" in out and "不符" in out
+
+
+def test_added_scenario_is_discovered_without_restricting_ledger_to_four_names(spec_scenarios):
+    text=(spec_scenarios / "town-two-clients.yaml").read_text(encoding="utf-8")
+    (spec_scenarios / "additional.yaml").write_text(text.replace("town-two-clients", "extra-contract"), encoding="utf-8")
+    rows=ledger.build_scenarios(spec_scenarios, verified={})
+    extra=[row for row in rows if row["scenario_id"]=="extra-contract"]
+    assert len(rows)==16 and len(extra)==4
+    assert [row["level"] for row in extra]==["[存在]", "[存在]", "[存在]", "[语义]"]
+    assert {row["scenario_id"] for row in rows}==set(CORE_SCENARIOS)|{"extra-contract"}

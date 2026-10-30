@@ -1,0 +1,31 @@
+{
+  "BuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\build-manifest-return-green.json",
+  "BuildManifestSha256": "76F9EF9A2750BCC39B0D4E4E124A983640E85F59391EE9D2EF8D19E65F626FAA",
+  "DebugSha256": "C3ED35E1008D74536D96307A9478C636AAD092186DEF3C9EE99CF8F3652D14AD",
+  "Targets": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\debug.dll",
+      "BeforeSha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B",
+      "Sha256": "C3ED35E1008D74536D96307A9478C636AAD092186DEF3C9EE99CF8F3652D14AD",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\preflight\\debug-before-0.dll"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\debug.dll",
+      "BeforeSha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B",
+      "Sha256": "C3ED35E1008D74536D96307A9478C636AAD092186DEF3C9EE99CF8F3652D14AD",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\preflight\\debug-before-1.dll"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\debug.dll",
+      "BeforeSha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B",
+      "Sha256": "C3ED35E1008D74536D96307A9478C636AAD092186DEF3C9EE99CF8F3652D14AD",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\preflight\\debug-before-2.dll"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\debug.dll",
+      "BeforeSha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B",
+      "Sha256": "C3ED35E1008D74536D96307A9478C636AAD092186DEF3C9EE99CF8F3652D14AD",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\preflight\\debug-before-3.dll"
+    }
+  ]
+}

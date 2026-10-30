@@ -1,0 +1,62 @@
+[
+  {
+    "file": "01-A-town.jpg",
+    "bytes": 440915,
+    "sha256": "EC39DED9C4F9E6A1292F08045E5D759CAAF621DD836F3A231F91F2AEFF37086C"
+  },
+  {
+    "file": "02-B-town.jpg",
+    "bytes": 439981,
+    "sha256": "D6A8F8C1BDDD0849FF9B524BB620538791D2E2B389C8436D11C4403F7E81F362"
+  },
+  {
+    "file": "03-A-monsters.jpg",
+    "bytes": 435725,
+    "sha256": "BB45A6CAB775BB834DCC9A02580F4A3CD5DC7F3063DA957E720D71B891B8DE0F"
+  },
+  {
+    "file": "04-B-monsters.jpg",
+    "bytes": 434224,
+    "sha256": "BEDD59C79AA96B7F2D1D5AE4C49DA4A795AF841889A9D968B179A388D6630E8B"
+  },
+  {
+    "file": "A-position-wire.json",
+    "bytes": 6574,
+    "sha256": "76F9BE26053B42393B8EEEAE7051C12D08BFB35993806F747110E0CCA80D8380"
+  },
+  {
+    "file": "acceptance.json",
+    "bytes": 9855,
+    "sha256": "421BDF8E962CCED6586590B13DF5DA65A6C07F9C0B72C0DF5A85B865DD73AC17"
+  },
+  {
+    "file": "B-position-wire.json",
+    "bytes": 6563,
+    "sha256": "D57A06E3E0B915DFE951A263CA5D7B6F9B37F28A8000B3FDE7E6F2ECA0950631"
+  },
+  {
+    "file": "closeout-verification.json",
+    "bytes": 3954,
+    "sha256": "1B406C2DA99742DBFF4A6A534312FFA07EE3EEE1FA39EC65FC83A33364ADA2B7"
+  },
+  {
+    "file": "filter-selftests.json",
+    "bytes": 611,
+    "sha256": "A947BE9709B44A525DA331E96BDA6E7C3963AFC5EC084B2CB534526B069C6F35"
+  },
+  {
+    "file": "independent-review.json",
+    "bytes": 4385,
+    "sha256": "BF0DF1CDF8DFB2B1A86733B100511F6734BCD5B30968FC9514A9771183EFCE21"
+  },
+  {
+    "file": "independent-review.txt",
+    "bytes": 2938,
+    "sha256": "09E8776DE43B84A785A0FEA276C7FA4C489F189768F3C3CFAC3B05E7AEAF1625"
+  },
+  {
+    "file": "native-contract.md",
+    "bytes": 16951,
+    "sha256": "DBE8D7A89FFB2E2D8FF5B9D65E187879BABF1C60279D1F8B8AE6627BD1669B99"
+  }
+]

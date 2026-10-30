@@ -59,10 +59,11 @@ async function loadConfig() {
     if (input.type === "checkbox") input.checked = value; else input.value = value;
     input.disabled = false;
   }
-  const mapping = { scriptPvfPath: "ScriptPvfPath", bindHost: "Entrance__Host", adminHost: "Admin__Host", entrancePort: "Entrance__Port", channelPort: "Channel__Port", adminPort: "Admin__Port", characterPort: "CharacterDatagram__Port", gameplayPrimaryPort: "GameplayDatagram__PrimaryPort", gameplaySecondaryPort: "GameplayDatagram__SecondaryPort", channelName: "Channel__Name", maximumUsers: "Channel__MaximumUsers", monsterExperienceMultiplier: "Experience__MonsterMultiplier", clearExperienceMultiplier: "Experience__ClearMultiplier", dropRatePercent: "Drop__RatePercent", dropEconomicRate: "Drop__EconomicRate", additionalEntrancePort: "Entrance__AdditionalPorts__1" };
+  const mapping = { fallbackRelayEnabled: "FallbackRelay__Enabled", fallbackRelayAdvertisedHost: "FallbackRelay__AdvertisedHost", fallbackRelayTcpPort: "FallbackRelay__TcpPort", fallbackRelayUdpPort: "FallbackRelay__UdpPort", pvpEnabled: "Pvp__Enabled", pvpPort: "Pvp__Port", scriptPvfPath: "ScriptPvfPath", bindHost: "Entrance__Host", adminHost: "Admin__Host", entrancePort: "Entrance__Port", channelPort: "Channel__Port", adminPort: "Admin__Port", characterPort: "CharacterDatagram__Port", gameplayPrimaryPort: "GameplayDatagram__PrimaryPort", gameplaySecondaryPort: "GameplayDatagram__SecondaryPort", channelName: "Channel__Name", maximumUsers: "Channel__MaximumUsers", monsterExperienceMultiplier: "Experience__MonsterMultiplier", clearExperienceMultiplier: "Experience__ClearMultiplier", dropRatePercent: "Drop__RatePercent", dropEconomicRate: "Drop__EconomicRate", additionalEntrancePort: "Entrance__AdditionalPorts__1" };
   for (const [name, key] of Object.entries(mapping)) {
     if ((snapshot.environmentOverrides || []).some(variable => variable.toLowerCase() === ("DFLegacy__" + key).toLowerCase())) {
-      const input = fields.namedItem(name); input.disabled = true; input.value = snapshot.effective[name];
+      const input = fields.namedItem(name); input.disabled = true;
+      if (input.type === "checkbox") input.checked = snapshot.effective[name]; else input.value = snapshot.effective[name];
       const note = document.createElement("small"); note.dataset.environmentNote = "true";
       note.textContent = "显示环境变量生效值；文件中保存的值为 " + savedConfig[name] + "。"; input.closest("label").append(note);
     }

@@ -29,8 +29,12 @@ internal static class EntranceSessionReadWait
         TimeSpan deadlineWait,
         bool pollPartyMailbox,
         CancellationToken cancellationToken,
-        Task? wakeTask = null)
+        Task? wakeTask = null,
+        TimeSpan? additionalWakeDelay = null)
     {
+        var additionalFirst = additionalWakeDelay is { } extra
+            && (deadlineWait == Timeout.InfiniteTimeSpan || extra <= deadlineWait);
+        if (additionalFirst) deadlineWait = additionalWakeDelay!.Value;
         var mailTickFirst = pollPartyMailbox
             && (deadlineWait == Timeout.InfiniteTimeSpan || deadlineWait > PartyMailCheckInterval);
         var delay = mailTickFirst ? PartyMailCheckInterval : deadlineWait;
@@ -50,7 +54,7 @@ internal static class EntranceSessionReadWait
             // 同时到达时优先处理包；调用方仍负责唯一一次 await/消费该网络读取。
             return pendingPacketRead.IsCompleted
                 ? EntranceReadWakeReason.Packet
-                : wakeTask?.IsCompleted == true || mailTickFirst
+                : wakeTask?.IsCompleted == true || mailTickFirst || additionalFirst
                     ? EntranceReadWakeReason.PartyMailTick
                     : EntranceReadWakeReason.Deadline;
         }

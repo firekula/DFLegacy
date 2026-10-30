@@ -1,0 +1,85 @@
+适用于 .NET Framework MSBuild 版本 18.11.1-1.26513.3+940033be3
+生成启动时间为 2026/10/28 7:15:53。
+
+     1>项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj”在节点 1 上(Rebuild 个目标)。
+     1>CoreClean:
+         正在创建目录“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/”。
+       PrepareForBuild:
+         已启用结构化输出。编译器诊断的格式设置将反映错误层次结构。有关详细信息，请参阅 https://aka.ms/cpp/structured-output。
+         正在创建目录“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/dll/”。
+         正在创建目录“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/DFLegacy.Ijl15.tlog\”。
+       InitializeBuildStatus:
+         正在创建“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/DFLegacy.Ijl15.tlog\unsuccessfulbuild”，因为已指定“AlwaysCreate”。
+         正在对“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/DFLegacy.Ijl15.tlog\unsuccessfulbuild”执行 Touch 任务。
+       ClCompile:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\CL.exe /c /Iinclude /Zi /nologo /W4 /WX /diagnostics:column /sdl /O2 /Oi /Oy- /GL /D IJL15_EXPORTS /D UNICODE /D _UNICODE /D NDEBUG /D _WINDLL /D _UNICODE /D UNICODE /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /permissive- /Fo"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/" /Fd"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/vc145.pdb" /external:W4 /Gd /TP /analyze- /FC /errorReport:queue src\auto_input.cpp src\debug_module.cpp src\boss_room_death.cpp src\channel_reentry.cpp src\channel_switch.cpp src\creature_gift_row.cpp src\ground_item_removal.cpp src\party_card_display.cpp src\d3d8_scaler.cpp src\dnf_patches.cpp src\external_string_table.cpp src\ijl15_config.cpp src\ijl15.cpp src\memory_patch.cpp src\message_audio.cpp src\net_dump.cpp src\mouse_wheel.cpp src\output_paths.cpp src\performance_overlay.cpp src\party_combat_detail.cpp src\mage_skill_contact.cpp src\priest_heal_target.cpp src\stage_follow.cpp src\summon_owner_death.cpp src\window_scaling.cpp
+         auto_input.cpp
+         debug_module.cpp
+         boss_room_death.cpp
+         channel_reentry.cpp
+         channel_switch.cpp
+         creature_gift_row.cpp
+         ground_item_removal.cpp
+         party_card_display.cpp
+         d3d8_scaler.cpp
+         dnf_patches.cpp
+         external_string_table.cpp
+         ijl15_config.cpp
+         ijl15.cpp
+         memory_patch.cpp
+         message_audio.cpp
+         net_dump.cpp
+         mouse_wheel.cpp
+         output_paths.cpp
+         performance_overlay.cpp
+         party_combat_detail.cpp
+         正在编译...
+         mage_skill_contact.cpp
+         priest_heal_target.cpp
+         stage_follow.cpp
+         summon_owner_death.cpp
+         window_scaling.cpp
+       Link:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\link.exe /ERRORREPORT:QUEUE /OUT:"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/dll/ijl15.dll" /NOLOGO ole32.lib psapi.lib shlwapi.lib windowscodecs.lib ws2_32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /DEF:"src\ijl15.def" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/dll/ijl15.pdb" /SUBSYSTEM:WINDOWS /OPT:REF /OPT:ICF /LTCG:incremental /LTCGOUT:"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/ijl15.iobj" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/dll/ijl15.lib" /MACHINE:X86 /SAFESEH /DLL "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/auto_input.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/debug_module.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/boss_room_death.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/channel_reentry.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/channel_switch.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/creature_gift_row.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/ground_item_removal.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/party_card_display.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/d3d8_scaler.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/dnf_patches.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/external_string_table.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/ijl15_config.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/ijl15.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/memory_patch.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/message_audio.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/net_dump.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/mouse_wheel.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/output_paths.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/performance_overlay.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/party_combat_detail.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/mage_skill_contact.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/priest_heal_target.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/stage_follow.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/summon_owner_death.obj"
+         "D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/window_scaling.obj"
+           正在创建库 D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/dll/ijl15.lib 和对象 D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/dll/ijl15.exp
+         正在生成代码
+         Previous IPDB not found, fall back to full compilation.
+         All 835 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+         已完成代码的生成
+         DFLegacy.Ijl15.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\creature-gift-row-fix1\dll\ijl15.dll
+       _CopyOutOfDateSourceItemsToOutputDirectory:
+         正在将文件从“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\Config.ini”复制到“D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\creature-gift-row-fix1\dll\Config.ini”。
+       FinalizeBuildStatus:
+         正在删除文件“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/DFLegacy.Ijl15.tlog\unsuccessfulbuild”。
+         正在对“D:/codex_worktree/party-chat-gold/DFLegacy/artifacts/native/creature-gift-row-fix1/obj-dll/DFLegacy.Ijl15.tlog\DFLegacy.Ijl15.lastbuildstate”执行 Touch 任务。
+     1>已完成生成项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj”(Rebuild 个目标)的操作。
+
+已成功生成。
+    0 个警告
+    0 个错误
+
+已用时间 00:00:14.55

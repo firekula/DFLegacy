@@ -5,7 +5,7 @@ using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
 
-public sealed class GameplayDatagramService(
+public sealed partial class GameplayDatagramService(
     ServerOptions options,
     RuntimeState runtime,
     ILogger<GameplayDatagramService> logger) : BackgroundService
@@ -165,6 +165,59 @@ public sealed class GameplayDatagramService(
             sender);
     }
 
+    internal sealed record PvpRelayContext(Guid Attachment, Guid Room, Guid? Match);
+
+    internal bool SetPvpContext(Guid sessionId, Guid attachment, Guid room, Guid? match)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session)) return false;
+        lock (session.Gate)
+        {
+            if (session.PvpContext is { } existing && existing.Attachment != attachment) return false;
+            var next = new PvpRelayContext(attachment, room, match);
+            if (session.PvpContext != next || session.RelayPartyId is not null
+                || session.RelayDungeonInstance is not null) session.RelayContextRevision++;
+            session.PvpContext = next;
+            session.RelayPartyId = null; session.RelayDungeonInstance = null;
+            return true;
+        }
+    }
+
+    internal void ClearPvpContext(Guid sessionId, Guid attachment, Guid room)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session)) return;
+        lock (session.Gate)
+        {
+            if (session.PvpContext is { } context && context.Attachment == attachment && context.Room == room)
+            {
+                session.PvpContext = null;
+                session.RelayContextRevision++;
+            }
+        }
+    }
+
+    internal bool HasUniqueEndpoint(Guid sessionId)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session)) return false;
+        IPEndPoint? endpoint;
+        lock (session.Gate) endpoint = session.DatagramEndpoint;
+        return endpoint is not null && FindSessionKeyByEndpoint(endpoint) == sessionId;
+    }
+
+    internal IReadOnlyList<IPEndPoint> PvpRelayTargets(Guid sessionId)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var origin)) return [];
+        PvpRelayContext? context; IPEndPoint? endpoint;
+        lock (origin.Gate) { context = origin.PvpContext; endpoint = origin.DatagramEndpoint; }
+        if (context is null || endpoint is null || FindSessionKeyByEndpoint(endpoint) != sessionId) return [];
+        var candidates = new List<(Guid Key, IPEndPoint? Endpoint)>();
+        foreach (var (key, session) in _sessions)
+            lock (session.Gate)
+                if (session.PvpContext is { } other && other.Room == context.Room && other.Match == context.Match
+                    && session.DatagramEndpoint is { } target)
+                    candidates.Add((key, target));
+        return SelectRelayTargets(candidates.Where(c => c.Endpoint is { } target && FindSessionKeyByEndpoint(target) == c.Key), sessionId, endpoint);
+    }
+
     public void SetRelayContext(Guid sessionId, ushort? partyId, object? dungeonInstance = null)
     {
         UpdateRelayContext(sessionId, partyId, dungeonInstance, updateParty: true, updateDungeon: true);
@@ -194,6 +247,7 @@ public sealed class GameplayDatagramService(
         bool inDungeon;
         lock (session.Gate)
         {
+            if (session.PvpContext is not null) return;
             var changed = (updateParty && session.RelayPartyId != partyId)
                 || (updateDungeon && !ReferenceEquals(session.RelayDungeonInstance, dungeonInstance));
             if (!changed)
@@ -203,6 +257,7 @@ public sealed class GameplayDatagramService(
 
             if (updateParty) session.RelayPartyId = partyId;
             if (updateDungeon) session.RelayDungeonInstance = dungeonInstance;
+            session.RelayContextRevision++;
             currentParty = session.RelayPartyId;
             inDungeon = session.RelayDungeonInstance is not null;
         }
@@ -216,12 +271,14 @@ public sealed class GameplayDatagramService(
     {
         ArgumentNullException.ThrowIfNull(runtimeSession);
         ArgumentNullException.ThrowIfNull(tcpAddress);
-        _sessions[runtimeSession.Id] = new GameplaySession(runtimeSession);
+        RevokeRelayAccount(runtimeSession.Id);
+        _sessions[runtimeSession.Id] = new GameplaySession(runtimeSession, tcpAddress);
     }
 
     public void UnregisterChannelSession(Guid sessionId)
     {
         _sessions.TryRemove(sessionId, out _);
+        RevokeRelayAccount(sessionId);
     }
 
     public void SetNatReport(Guid sessionId, GameNatReport report)
@@ -261,6 +318,12 @@ public sealed class GameplayDatagramService(
             return false;
         }
 
+        return TryGetPeerInfo(session, userId, accountId, out peer);
+    }
+
+    private static bool TryGetPeerInfo(GameplaySession session, ushort userId, uint accountId, out GamePeerInfo peer)
+    {
+        peer = null!;
         lock (session.Gate)
         {
             if (session.NatReport is not { } report)
@@ -305,7 +368,7 @@ public sealed class GameplayDatagramService(
         uint sequence;
         lock (session.Gate)
         {
-            if (session.DatagramEndpoint is null)
+            if (session.DatagramEndpoint is null || session.PvpContext is not null)
             {
                 return false;
             }
@@ -514,11 +577,12 @@ public sealed class GameplayDatagramService(
         {
             lock (session.Gate)
             {
-                snapshot.Add((key, session.DatagramEndpoint, session.RelayPartyId, session.RelayDungeonInstance));
+                if (session.PvpContext is null) snapshot.Add((key, session.DatagramEndpoint, session.RelayPartyId, session.RelayDungeonInstance));
             }
         }
 
-        var targets = SelectRelayTargets(snapshot, senderKey, sender);
+        var targets = PvpRelayTargets(senderKey.Value);
+        if (targets.Count == 0) targets = SelectRelayTargets(snapshot, senderKey, sender);
         var forwarded = 0;
         foreach (var target in targets)
         {
@@ -812,14 +876,18 @@ public sealed class GameplayDatagramService(
     private static IPAddress NormalizeAddress(IPAddress address) =>
         address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
 
-    private sealed class GameplaySession(RuntimeSession runtimeSession)
+    private sealed class GameplaySession(RuntimeSession runtimeSession, IPAddress tcpAddress)
     {
         public object Gate { get; } = new();
         public RuntimeSession Runtime { get; } = runtimeSession;
+        public IPAddress TcpAddress { get; } = NormalizeAddress(tcpAddress);
+        public uint AccountUid { get; set; }
         public GameNatReport? NatReport { get; set; }
         public IPEndPoint? DatagramEndpoint { get; set; }
+        public PvpRelayContext? PvpContext { get; set; }
         public ushort? RelayPartyId { get; set; }
         public object? RelayDungeonInstance { get; set; }
+        public long RelayContextRevision { get; set; }
         public uint NextSequence { get; set; }
     }
 }

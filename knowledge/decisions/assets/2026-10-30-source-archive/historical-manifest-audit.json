@@ -1,0 +1,60 @@
+{
+  "groups": [
+    {
+      "folder": "knowledge\\decisions\\assets\\2026-10-30-remaining-blockers-followup",
+      "declared_files": 29,
+      "asset_mismatches": [],
+      "manifest_sha256": "651c9be40fe84ebaa4665c0bee61068f5c8b86e14b8ef307b62f9cbeeac52d2f",
+      "declared_report_sha256": "A90F91701D73588123FFC73FDEEED1AD007E3D278E3BCA7A6E6707A6A6EF3326",
+      "current_report_sha256": "f52fef944e9b8c36ab036d848564b6426d6e71ece8b5d01fe4a28dbb1da0d2fd",
+      "report": "knowledge/decisions/2026-10-30-remaining-blockers-followup.md"
+    },
+    {
+      "folder": "knowledge\\decisions\\assets\\2026-10-30-native-loop-and-motion-followup",
+      "declared_files": 11,
+      "asset_mismatches": [],
+      "manifest_sha256": "d81dce8ff19c67684d8f2faf90667f20ff2ec023a88d67363161f01038d40b54",
+      "declared_report_sha256": null,
+      "current_report_sha256": "d6b98789c3b6a194fad9163d61edf7ba860fd93fbfff0679e081878b1a760c2e",
+      "report": "knowledge/decisions/2026-10-30-native-loop-and-motion-followup.md"
+    },
+    {
+      "folder": "knowledge\\decisions\\assets\\2026-10-30-u05-mp-input-dialog",
+      "declared_files": 36,
+      "asset_mismatches": [],
+      "manifest_sha256": "77f4cd260f160f61e0a8bb3dd3acb28ac7f8e2ecd13997398b995edc7dfd3767",
+      "declared_report_sha256": null,
+      "current_report_sha256": "f40b62d0daddd78b521aeb75d6a21233314c6a53bb0a6eb4060fa28914aa4d35",
+      "report": "knowledge/decisions/2026-10-30-u05-mp-input-dialog-verification.md"
+    },
+    {
+      "folder": "knowledge\\decisions\\assets\\2026-10-30-u05-mouse-dialog-followup",
+      "declared_files": 37,
+      "asset_mismatches": [],
+      "manifest_sha256": "8bb58ccb5574950a4727b578063d533d587a2c4c516265a525d6d137db3e01d3",
+      "declared_report_sha256": null,
+      "current_report_sha256": "80cde54b7004c0c564da28c96cb65a395216a0de8a7d40b133919bd73281fbef",
+      "report": "knowledge/decisions/2026-10-30-u05-mouse-dialog-followup.md"
+    },
+    {
+      "folder": "knowledge\\decisions\\assets\\2026-10-30-u05-resource-closeout",
+      "declared_files": 38,
+      "asset_mismatches": [],
+      "manifest_sha256": "443eb1a46eab792b041d4ca79c9c679d2a8d419d6dce25cf575985ed3bbdc0dc",
+      "declared_report_sha256": null,
+      "current_report_sha256": "7d3a2c5f27bf8e99977811fc805b4ab2667467e43f54e805fa8bdfc0789e6f52",
+      "report": "knowledge/decisions/2026-10-30-u05-resource-closeout.md"
+    }
+  ],
+  "report_binding_notes": [
+    {
+      "report": "knowledge/decisions/2026-10-30-remaining-blockers-followup.md",
+      "original_manifest": "knowledge/decisions/assets/2026-10-30-remaining-blockers-followup/manifest.json",
+      "declared_report_sha256": "A90F91701D73588123FFC73FDEEED1AD007E3D278E3BCA7A6E6707A6A6EF3326",
+      "current_report_sha256": "f52fef944e9b8c36ab036d848564b6426d6e71ece8b5d01fe4a28dbb1da0d2fd",
+      "disposition": "Original manifest and original attachments preserved. Current report bound by this archive; cause not inferred."
+    }
+  ],
+  "attachments_unchanged": 156,
+  "declared_attachments_checked": 151
+}

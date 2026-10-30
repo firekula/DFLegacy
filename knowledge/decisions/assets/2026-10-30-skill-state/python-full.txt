@@ -1,0 +1,12 @@
+E         
+E       assert 'Found 2 start events' in '����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�\n'
+
+tools\acceptance\tests\test_cli_orchestrate.py:350: AssertionError
+=========================== short test summary info ===========================
+FAILED protocol/tests/test_ledger.py::test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects
+FAILED protocol/tests/test_ledger.py::test_cmd_ledger_end_to_end_writes_three_ledgers
+FAILED protocol/tests/test_ledger.py::test_cmd_ledger_merges_runs_and_does_not_clear_other_scenarios
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_wires_server_actors_steps_and_collect
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_waits_for_the_server_to_listen_before_starting_actors
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback
+6 failed, 541 passed, 363 subtests passed in 29.27s

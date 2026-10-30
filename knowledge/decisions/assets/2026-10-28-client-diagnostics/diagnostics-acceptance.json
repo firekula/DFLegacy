@@ -1,0 +1,168 @@
+{
+  "schema": "act1-diagnostics-acceptance/v1",
+  "source_commit": "294fdf3",
+  "scope": "Two real native clients logged in and selected characters with diagnostic-only change; no native125 deliberately triggered. Deterministic actual handler tests cover125 grammar and routing. Header parsing is not payload CRC verification.",
+  "captures": [
+    {
+      "role": "A",
+      "pid": 75692,
+      "phase": "diagnostics-294fdf3",
+      "path": "G:\\Game\\DNF_ACT1\\DF\\netdump-75692.log",
+      "sha256": "D033E32D56D0C4378178189C374683A3CE83AC8EC2D44C630BAA19DFB33FF986",
+      "capture_start_local": "2026-10-28 03:01:45",
+      "capture_bytes": 44706,
+      "status": "parsed",
+      "errors": [],
+      "character_select_requests": 1,
+      "world_complete_notifications": 1,
+      "actual_trace_125_requests": 0,
+      "actual_historical_118_requests": 0,
+      "clock_141_requests": 0
+    },
+    {
+      "role": "B",
+      "pid": 52932,
+      "phase": "diagnostics-294fdf3",
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\netdump-52932.log",
+      "sha256": "2DB291AECE7FDE4F90CCE5EF84441FEEAAB8C2520AD316C6674DDD823FD97239",
+      "capture_start_local": "2026-10-28 03:01:46",
+      "capture_bytes": 43785,
+      "status": "parsed",
+      "errors": [],
+      "character_select_requests": 1,
+      "world_complete_notifications": 1,
+      "actual_trace_125_requests": 0,
+      "actual_historical_118_requests": 0,
+      "clock_141_requests": 0
+    }
+  ],
+  "checks": [
+    {
+      "name": "A: capture parsed",
+      "passed": true
+    },
+    {
+      "name": "A: actual character selection",
+      "passed": true
+    },
+    {
+      "name": "A: actual enter world complete",
+      "passed": true
+    },
+    {
+      "name": "B: capture parsed",
+      "passed": true
+    },
+    {
+      "name": "B: actual character selection",
+      "passed": true
+    },
+    {
+      "name": "B: actual enter world complete",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.InterProcess.dll",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.InterProcess.pdb",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.Protocol.dll",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.Protocol.pdb",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.RandomNative.dll",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.Server.deps.json",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.Server.dll",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.Server.exe",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.Server.pdb",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.Server.runtimeconfig.json",
+      "passed": true
+    },
+    {
+      "name": "tested-build:DFLegacy.Server.staticwebassets.endpoints.json",
+      "passed": true
+    },
+    {
+      "name": "tested-build:server.json",
+      "passed": true
+    },
+    {
+      "name": "tested-build:web.config",
+      "passed": true
+    },
+    {
+      "name": "original save preserved",
+      "passed": true
+    },
+    {
+      "name": "diagnostics did not change baseline frozen state",
+      "passed": true
+    },
+    {
+      "name": "native-unchanged:A/DNF.exe",
+      "passed": true
+    },
+    {
+      "name": "native-unchanged:A/Script.pvf",
+      "passed": true
+    },
+    {
+      "name": "native-unchanged:A/ijl15.dll",
+      "passed": true
+    },
+    {
+      "name": "native-unchanged:launcher-A/ijl15.dll",
+      "passed": true
+    },
+    {
+      "name": "native-unchanged:B/DNF.exe",
+      "passed": true
+    },
+    {
+      "name": "native-unchanged:B/Script.pvf",
+      "passed": true
+    },
+    {
+      "name": "native-unchanged:B/ijl15.dll",
+      "passed": true
+    },
+    {
+      "name": "native-unchanged:launcher-B/ijl15.dll",
+      "passed": true
+    },
+    {
+      "name": "green-direct.log",
+      "passed": true
+    },
+    {
+      "name": "full-smoke.log",
+      "passed": true
+    }
+  ],
+  "total": 31,
+  "passed": 31,
+  "runtime_server_sha256": "AA93820087AF1052433DDD19C18D1761FE7A13FAF5AD58697864D4F212F9DC2D"
+}

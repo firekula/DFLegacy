@@ -1,0 +1,200 @@
+{
+  "checkedAt": "2026-10-28T01:00:50.3013457+08:00",
+  "total": 26,
+  "passed": 26,
+  "checks": [
+    {
+      "name": "normal_config_exact_Config-0.ini",
+      "passed": true,
+      "actual": "03333C57357058DC73D67B4E2C8E56E4B03403B73E7E6B79AF370A596A108920",
+      "expected": "03333C57357058DC73D67B4E2C8E56E4B03403B73E7E6B79AF370A596A108920"
+    },
+    {
+      "name": "normal_config_exact_Config-1.ini",
+      "passed": true,
+      "actual": "3F04A210C46907E202D3C3FEDCC7AFF7E7D838F7A90249CB6381317493815861",
+      "expected": "3F04A210C46907E202D3C3FEDCC7AFF7E7D838F7A90249CB6381317493815861"
+    },
+    {
+      "name": "normal_config_exact_launcher-A.json",
+      "passed": true,
+      "actual": "E1217E2FD1202E81FE34D1E6DE01B2A63E54820EEDD6AB90D4E3A7BDC9142E4E",
+      "expected": "E1217E2FD1202E81FE34D1E6DE01B2A63E54820EEDD6AB90D4E3A7BDC9142E4E"
+    },
+    {
+      "name": "normal_config_exact_launcher-B.json",
+      "passed": true,
+      "actual": "88FE0C76A3B3F614244282EF032BB8B28F227083C815FCD767A5CDC7DBB95609",
+      "expected": "88FE0C76A3B3F614244282EF032BB8B28F227083C815FCD767A5CDC7DBB95609"
+    },
+    {
+      "name": "normal_config_exact_server.json",
+      "passed": true,
+      "actual": "D604F6F0F9F351745B306EAEEEC8DAD028BF0330D4071090BCE80176CCB8F47C",
+      "expected": "D604F6F0F9F351745B306EAEEEC8DAD028BF0330D4071090BCE80176CCB8F47C"
+    },
+    {
+      "name": "normal_native_G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+      "passed": true,
+      "actual": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121",
+      "expected": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121"
+    },
+    {
+      "name": "normal_native_G:\\Game\\DNF_ACT1\\DF\\town-test\\ijl15.dll",
+      "passed": true,
+      "actual": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121",
+      "expected": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121"
+    },
+    {
+      "name": "normal_native_G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+      "passed": true,
+      "actual": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121",
+      "expected": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121"
+    },
+    {
+      "name": "normal_native_G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\ijl15.dll",
+      "passed": true,
+      "actual": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121",
+      "expected": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.InterProcess.dll",
+      "passed": true,
+      "actual": "F9C987DF25CA5EF207BB1D62DC44222DF8A9FC849B73B2E222F93E1FB6A3ACF1",
+      "expected": "F9C987DF25CA5EF207BB1D62DC44222DF8A9FC849B73B2E222F93E1FB6A3ACF1"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.InterProcess.pdb",
+      "passed": true,
+      "actual": "462F8C7CDCB5756A83DE1B00A5C384DA32C7807DDA9420A77A12C9DC45398B42",
+      "expected": "462F8C7CDCB5756A83DE1B00A5C384DA32C7807DDA9420A77A12C9DC45398B42"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.Protocol.dll",
+      "passed": true,
+      "actual": "F4D6EF68882BA2625ED1CBA841E69619240B1EE1D44B02A99B9F3BFD65B8EDD4",
+      "expected": "F4D6EF68882BA2625ED1CBA841E69619240B1EE1D44B02A99B9F3BFD65B8EDD4"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.Protocol.pdb",
+      "passed": true,
+      "actual": "1F411319920130C7BFA5C4DE35321E8718C100F134BC96A4E70E9C1F03C0A439",
+      "expected": "1F411319920130C7BFA5C4DE35321E8718C100F134BC96A4E70E9C1F03C0A439"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.Server.deps.json",
+      "passed": true,
+      "actual": "CFFA39C3A8B8C711E669B4584CFD9D7FC4EBFA00B0EFADE0B64C55ECC63AB13E",
+      "expected": "CFFA39C3A8B8C711E669B4584CFD9D7FC4EBFA00B0EFADE0B64C55ECC63AB13E"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.Server.dll",
+      "passed": true,
+      "actual": "711356C0921FEFD026C668C51661B9DB2636C1E68ACA4FFA7CDDF69A8E014F8D",
+      "expected": "711356C0921FEFD026C668C51661B9DB2636C1E68ACA4FFA7CDDF69A8E014F8D"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.Server.exe",
+      "passed": true,
+      "actual": "A814BABDB300DA1363E9E6401FDDD3B5F6F9878D5654BE39530ED59053BF2447",
+      "expected": "A814BABDB300DA1363E9E6401FDDD3B5F6F9878D5654BE39530ED59053BF2447"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.Server.pdb",
+      "passed": true,
+      "actual": "6E515CDF57CB70073127D9DA88123EEC31075B6BB80DE1A91E89EF1923215A5A",
+      "expected": "6E515CDF57CB70073127D9DA88123EEC31075B6BB80DE1A91E89EF1923215A5A"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.Server.runtimeconfig.json",
+      "passed": true,
+      "actual": "9FD781CDA327A8010D236D8B004D3A47D523C4AB220FBDC4D4636314896FC88D",
+      "expected": "9FD781CDA327A8010D236D8B004D3A47D523C4AB220FBDC4D4636314896FC88D"
+    },
+    {
+      "name": "normal_tested_build_DFLegacy.Server.staticwebassets.endpoints.json",
+      "passed": true,
+      "actual": "1763EECAD19251AE748732C124FF56AB59E1BBF5EE78D45FE9F7A7CC54E2B95E",
+      "expected": "1763EECAD19251AE748732C124FF56AB59E1BBF5EE78D45FE9F7A7CC54E2B95E"
+    },
+    {
+      "name": "normal_listener_7001",
+      "passed": true,
+      "actual": [
+        8081,
+        27001,
+        8080,
+        7001
+      ],
+      "expected": 7001
+    },
+    {
+      "name": "normal_listener_27001",
+      "passed": true,
+      "actual": [
+        8081,
+        27001,
+        8080,
+        7001
+      ],
+      "expected": 27001
+    },
+    {
+      "name": "normal_listener_8080",
+      "passed": true,
+      "actual": [
+        8081,
+        27001,
+        8080,
+        7001
+      ],
+      "expected": 8080
+    },
+    {
+      "name": "normal_listener_8081",
+      "passed": true,
+      "actual": [
+        8081,
+        27001,
+        8080,
+        7001
+      ],
+      "expected": 8081
+    },
+    {
+      "name": "normal_original_save_unchanged",
+      "passed": true,
+      "actual": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+      "expected": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52"
+    },
+    {
+      "name": "normal_client_running_A",
+      "passed": true,
+      "actual": {
+        "Id": 48880,
+        "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+        "StartTimeUtc": "2026-10-27T16:59:46.939626Z"
+      },
+      "expected": "recorded path/PID/start time"
+    },
+    {
+      "name": "normal_client_running_B",
+      "passed": true,
+      "actual": {
+        "Id": 39764,
+        "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+        "StartTimeUtc": "2026-10-27T16:59:48.0890096Z"
+      },
+      "expected": "recorded path/PID/start time"
+    }
+  ],
+  "nativeScreenshots": [
+    "normal-A-channel-20261028.jpg",
+    "normal-B-channel-20261028.jpg"
+  ],
+  "server": {
+    "Id": 72668,
+    "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-27T16:59:10.2400304Z"
+  }
+}

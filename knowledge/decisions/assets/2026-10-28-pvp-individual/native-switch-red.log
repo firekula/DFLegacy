@@ -1,0 +1,9 @@
+FAIL: channel switch: current legacy-layout catalog resolves actual PvP endpoint
+FAIL: channel switch: ACK closes original socket before arming native reconnect
+FAIL: channel switch: late FD_CLOSE and repeated ACK preserve earliest timer
+FAIL: channel switch: FD_CLOSE inside original close cannot double arm
+FAIL: channel switch: pending normal endpoint is selected from metadata without a PvP hardcode
+FAIL: channel switch: native FD_CLOSE alone retains its valid pending transition
+FAIL: channel switch: transaction installs two actual relative CALL targets
+FAIL: channel switch: repeated install recognizes its complete owned pair
+FAIL: channel switch transition failed

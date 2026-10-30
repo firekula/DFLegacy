@@ -1,0 +1,129 @@
+[
+  {
+    "file": "30AD-A-final-pet-page3.jpg",
+    "sha256": "738CA6DC435E7078D204F5DF15F9AB7AA2434C193CD8663A7507CB56DECA5F14",
+    "source_namespace": "native-creature-row-final",
+    "source_phase": "gift-entry-final",
+    "source_name": "A-final-pet-page3.jpg",
+    "image_kind": "unaltered native screenshot",
+    "viewed": true
+  },
+  {
+    "file": "30AD-A-final-row-opens-recipient.jpg",
+    "sha256": "C17FA8EE732BCE2F67C2F1041956ED516AFD80A6F930B8658B78788908C54D3F",
+    "source_namespace": "native-creature-row-final",
+    "source_phase": "gift-entry-final",
+    "source_name": "A-final-row-opens-recipient.jpg",
+    "image_kind": "unaltered native screenshot",
+    "viewed": true
+  },
+  {
+    "file": "30AD-A-final-recipient-query.jpg",
+    "sha256": "525AE0370C4FC4A13E1E05D08B805930EDB41E7A104CC8675C5C28F580F935DF",
+    "source_namespace": "native-creature-row-final",
+    "source_phase": "gift-entry-final",
+    "source_name": "A-final-recipient-query.jpg",
+    "image_kind": "unaltered native screenshot",
+    "viewed": true
+  },
+  {
+    "file": "30AD-A-final-egg-checkout.jpg",
+    "sha256": "49CDAE9341F371136830C6CC0839F8C8F2FF4476E4EE83D4A0F49686B5B39D7D",
+    "source_namespace": "native-creature-row-final",
+    "source_phase": "gift-entry-final",
+    "source_name": "A-final-egg-checkout.jpg",
+    "image_kind": "unaltered native screenshot",
+    "viewed": true
+  },
+  {
+    "file": "30AD-A-final-egg-gift-committed.jpg",
+    "sha256": "29A82DD3E1A8E2C98AB8F81E620A0F6D3B01C01538C83C98A53941E063DFF22B",
+    "source_namespace": "native-creature-row-final",
+    "source_phase": "gift-entry-final",
+    "source_name": "A-final-egg-gift-committed.jpg",
+    "image_kind": "unaltered native screenshot",
+    "viewed": true
+  },
+  {
+    "file": "30AD-B-open-egg-inbox.jpg",
+    "sha256": "6A38CCEC8DAA16440AA03B5F257D30446265DCC07761DBD819BEB0675CDF3584",
+    "source_namespace": "native-creature-row-final",
+    "source_phase": "gift-entry-final",
+    "source_name": "B-open-egg-inbox.jpg",
+    "image_kind": "unaltered native screenshot",
+    "viewed": true
+  },
+  {
+    "file": "30AD-B-read-egg-unclaimed.jpg",
+    "sha256": "32CABF7CDDF9276A5E7DF8EDE1DC877353759208CEFAC6B9FE6ABD02C252EBA3",
+    "source_namespace": "native-creature-row-final",
+    "source_phase": "gift-entry-final",
+    "source_name": "B-read-egg-unclaimed.jpg",
+    "image_kind": "unaltered native screenshot",
+    "viewed": true
+  },
+  {
+    "file": "native-row-fix1-red.txt",
+    "sha256": "BA6C07A73EC25528CA7EC3CE682C5C6717A93A62A4083A352471943EE798FBA1",
+    "source_scope": "frozen native row fix1 evidence",
+    "source_name": "native-row-fix1-red.log"
+  },
+  {
+    "file": "native-row-fix1-focused.txt",
+    "sha256": "C67903E6A85AB2619D4AD07ABA10DEC644C54C67650CD5FD839398C7EB2EA34C",
+    "source_scope": "frozen native row fix1 evidence",
+    "source_name": "native-row-fix1-focused.log"
+  },
+  {
+    "file": "native-row-fix1-full.txt",
+    "sha256": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547",
+    "source_scope": "frozen native row fix1 evidence",
+    "source_name": "native-row-fix1-full.log"
+  },
+  {
+    "file": "native-row-fix1-red-build.txt",
+    "sha256": "1986E61990C092B68D07B567F986238AC363893D76F19F3673B35797AB347D7A",
+    "source_scope": "frozen native row fix1 evidence",
+    "source_name": "native-row-fix1-red-build.log"
+  },
+  {
+    "file": "native-row-fix1-green-build.txt",
+    "sha256": "A6F25DFE9B2405656151F7C62718566E7616B4F3CC802F04BCA278A4AB78652A",
+    "source_scope": "frozen native row fix1 evidence",
+    "source_name": "native-row-fix1-green-build.log"
+  },
+  {
+    "file": "native-row-fix1-release-build.txt",
+    "sha256": "6A27EF31D0B7762B96AF7C1916EBB13A2E42C0BE0993E8300A694769FDC0F2B5",
+    "source_scope": "frozen native row fix1 evidence",
+    "source_name": "native-row-fix1-release-build.log"
+  },
+  {
+    "file": "native-row-fix1-review.md",
+    "sha256": "6A992B88FDBDB22BA94ECB5D1474497C2D7B380C49C039A569E2164C1A45A976",
+    "source_scope": "frozen native row fix1 evidence",
+    "source_name": "native-row-fix1-review.md"
+  },
+  {
+    "file": "C79-native-guard-comparison.json",
+    "sha256": "B175E7F5C6A0D9377D8FFED2DD4EA1CBE8FBC8AF752F3BE43140ECE4BDDCC792",
+    "source_scope": "C79 actual native record guard comparison",
+    "source_name": "guard-comparison.json"
+  },
+  {
+    "file": "C79-A-pet-mall-green.jpg",
+    "sha256": "1D73D31F9114263820A02BEDFA71451B3AB2002A91FA1ADAFA53AFB120E70288",
+    "source_namespace": "native-creature-row-green",
+    "source_phase": "gift-entry-green",
+    "source_name": "A-pet-mall-green.jpg",
+    "image_kind": "unaltered native screenshot; actual ENTRY_RED despite phase name"
+  },
+  {
+    "file": "C79-A-egg-row-gift-click.jpg",
+    "sha256": "BEDF9F32DD0A554ABB06DD9CB2D858C3041F71E74D2ACEADD016D253C36FF1BC",
+    "source_namespace": "native-creature-row-green",
+    "source_phase": "gift-entry-green",
+    "source_name": "A-egg-row-gift-click.jpg",
+    "image_kind": "unaltered native screenshot; actual ENTRY_RED despite phase name"
+  }
+]

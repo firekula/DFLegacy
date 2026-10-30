@@ -1,0 +1,25 @@
+{
+  "Schema": "current-debug-source-seal-clarification/v1",
+  "Seal": "build-source-seal-v2.json",
+  "SealSha256": "48BFC439EBA6B689263D56EA487837198D9A6510A857CE328429769491048C26",
+  "Scope": "The seal inventories the current native checkout. Only src/DFLegacy.Debug and Directory.Build.props describe sources of the 022A debug.dll. Current Ijl15 sources/tests are context only; the unchanged deployed 0F Ijl15 still uses its independently frozen 17af build lineage. The inherited build manifest SourceFiles/VerificationLogs are historical and must not be claimed as current debug source/test coverage.",
+  "CurrentDebugBuildLog": {
+    "File": "specific-native-build.log",
+    "Sha256": "46A9598B6ED2A7C53C4513636E9AC27BBBC7293DF110955748BB095F2B5C1EA4"
+  },
+  "CurrentTests": [
+    {
+      "File": "specific-feedback.log",
+      "Sha256": "41F8CC9DAB060D6E30123EF6E8F8F758548518F3EB83FC794A1974BE85D1A0C6"
+    },
+    {
+      "File": "specific-navigation.log",
+      "Sha256": "B4FAECBE6B668DDB73FFDEB9808DF62C21849F76607F19584CC0A645D9F061B5"
+    },
+    {
+      "File": "specific-full-overlay.log",
+      "Sha256": "8F54F039CA486BA64CDE1F22C9E9E5E805824691DCF7BEA3EDACB0AA8A75BDBA"
+    }
+  ],
+  "GitCommit": "c39d28246c2e5e923f025926af305e6f66e9e80a"
+}

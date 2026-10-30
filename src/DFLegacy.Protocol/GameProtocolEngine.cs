@@ -283,7 +283,7 @@ public readonly record struct GameItemTradeDeliveryEntry(
 /// but the body begins with a two-byte command sequence number. Command payload
 /// serialization starts after that sequence number.
 /// </summary>
-public static class GameProtocolEngine
+public static partial class GameProtocolEngine
 {
     private const byte GrowthSkillClassCount = 5;
 
@@ -376,13 +376,14 @@ public static class GameProtocolEngine
     public const byte CreatureScriptMessageCommand = 132;
 
     /// <summary>
-    /// `CMD 118 TRACE_ERROR`（官服命令表逐字；`Dispatcher_TraceError::dispatch_sig` @0x08204b0c 只做
-    /// `PacketBuf::get_byte` ×2 + `cMyTrace`，**不回包、不改任何状态**）：客户端把"我这边出错了"
-    /// 上报给服务端。真机证据：客户端弹 `error : 3525:100` 或崩溃之前**最后一个上行包**就是它
-    /// （party26 `23:29:33` 队长端 body=`3B000801000000`、party27 `00:09:14` 队员端 body=`1F000801000000`，
-    /// 两轮 code/flag 逐字段相同），而我们此前完全忽略 ⇒ 现场只剩"客户端断线"这一个信号。
+    /// ACT1 CMD125：客户端错误诊断。004AF42B/004AF4A6 发送 type2/error；对应官服
+    /// Dispatcher_TraceError::dispatch_sig@08204B0C 的诊断语义，不回包、不改业务状态。
     /// </summary>
-    public const byte TraceErrorCommand = 118;
+    public const byte Act1TraceErrorCommand = 125;
+    /// <summary>ACT1 CMD118 的历史客户端报告；保留 code/flag 样本，完整语义尚未证明。</summary>
+    public const byte LegacyClientReportCommand = 118;
+    /// <summary>历史公开名称兼容；仍为118，不代表ACT1已证实的TRACE_ERROR命令。</summary>
+    public const byte TraceErrorCommand = LegacyClientReportCommand;
     public const byte DeleteItemCommand = 18;
     public const byte MoveItemSpaceCommand = 19;
     public const byte SortItemCommand = 20;
@@ -501,7 +502,8 @@ public static class GameProtocolEngine
     public const byte CardSelectRightStateCommand = 73;
     public const byte SelectCardCommand = 74;
     public const byte EplpCommand = 75;
-    public const byte PrivateStorePollCommand = 82;
+    // Historical public alias; ACT1 command 82 is the mentorship list.
+    public const byte PrivateStorePollCommand = MentorListCommand;
     public const byte UpgradeItemCommand = 83;
     public const byte ResetItemAttributeCommand = 84;
     public const byte MailboxSendCommand = 97;
@@ -562,13 +564,10 @@ public static class GameProtocolEngine
                 ["127.0.0.1"u8.ToArray()],
                 port1: 2311,
                 port2: 2311),
-            // A successful login response contains the general success byte,
-            // three account flags and one trailing client-state flag. Zeroes
-            // select the normal character-list path in this client build.
-            LoginCommand => new GameServerPacket(
-                CommandPacketType,
-                LoginCommand,
-                [1, 0, 0, 0, 0]),
+            // ACT1 also reads UID, relay address/ports and two profile bytes.
+            // This stateless serializer has no identity or relay availability;
+            // the live authenticated channel supplies its complete context.
+            LoginCommand => CreateChannelLoginSuccess(0, string.Empty, 0, 0),
             // The 1.0.1.9 client clears a possible old game session before it
             // begins the selected-channel login flow. A one-byte true result is
             // the complete successful response consumed by its EXIT handler.
@@ -626,18 +625,7 @@ public static class GameProtocolEngine
             [1]);
 
     public static GameServerPacket CreatePrivateStorePollReply() =>
-        new(
-            CommandPacketType,
-            PrivateStorePollCommand,
-            [
-                1,             // result
-                0, 0,          // local store state
-                0, 0, 0, 0,   // empty store name
-                0, 0,          // store flags
-                0, 0, 0, 0,   // first store value
-                0, 0, 0, 0,   // second store value
-                0              // additional store count
-            ]);
+        CreateMentorListReply(null, []);
 
     public static GameServerPacket CreateExchangeServerCharacterInfoReply() =>
         new(
@@ -1882,7 +1870,8 @@ public static class GameProtocolEngine
     public static GameServerPacket CreateCeraShopBuyReply(
         int shopCategory,
         uint commodityNo,
-        IReadOnlyList<GameCeraShopReward>? rewards = null)
+        IReadOnlyList<GameCeraShopReward>? rewards = null,
+        bool isGift = false)
     {
         rewards ??= [];
         if (rewards.Count > ushort.MaxValue)
@@ -1895,7 +1884,7 @@ public static class GameProtocolEngine
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)1);
-        writer.Write((byte)0);
+        writer.Write((byte)(isGift ? 1 : 0));
         writer.Write(Math.Clamp(shopCategory, 0, 3));
         writer.Write(commodityNo);
         // The DF2008 client keys its Cera result-item map by these values.
@@ -1926,6 +1915,7 @@ public static class GameProtocolEngine
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)0);
+        writer.Write((byte)0); // ACT1 reads this unused byte before the byte error.
         writer.Write(errorCode);
         writer.Write(Math.Clamp(shopCategory, 0, 3));
         writer.Write(commodityNo);
@@ -3717,13 +3707,23 @@ public static class GameProtocolEngine
             throw new ArgumentOutOfRangeException(nameof(pickerPartyIndex));
         }
 
+        var amounts = new uint[4];
+        amounts[pickerPartyIndex] = goldAmount;
+        return CreateGoldItemPickup(groundId, pickerUserId, amounts);
+    }
+
+    public static GameServerPacket CreateGoldItemPickup(
+        ushort groundId, ushort pickerUserId, IReadOnlyList<uint> amounts)
+    {
+        ArgumentNullException.ThrowIfNull(amounts);
+        if (amounts.Count != 4) throw new ArgumentException("Gold pickup requires four party slots.", nameof(amounts));
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write(groundId);
         writer.Write(pickerUserId);
         for (var partyIndex = 0; partyIndex < 4; partyIndex++)
         {
-            writer.Write(partyIndex == pickerPartyIndex ? goldAmount : 0u);
+            writer.Write(amounts[partyIndex]);
             writer.Write((byte)0); // no economic-control adjustment entries
         }
 
@@ -4251,7 +4251,8 @@ public static class GameProtocolEngine
         ushort userId,
         IReadOnlyCollection<GameInventoryEntry>? equippedItems = null,
         GameCreatureAppearanceEntry? equippedCreature = null,
-        bool hasBlackDiamond = false)
+        bool hasBlackDiamond = false,
+        bool hasPrivateStorePermission = false)
     {
         if (userId == 0)
         {
@@ -4319,7 +4320,9 @@ public static class GameProtocolEngine
 
         writer.Write((byte)0); // town-entity extension state
         writer.Write(0u);      // guild id
-        writer.Write((byte)0); // guild/member flag
+        // 419F17 -> record+A0 -> 47B9B0 allocates the actor's shop component.
+        // This is the private-store entitlement, independent of guild state.
+        writer.Write(hasPrivateStorePermission ? (byte)1 : (byte)0);
 
         // DFLegacy mode zero keeps the legacy guild/title placeholders even
         // when they are empty. Omitting either length prefix shifts every

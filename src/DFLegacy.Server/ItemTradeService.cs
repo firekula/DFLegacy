@@ -278,6 +278,12 @@ public sealed class ItemTradeService : BackgroundService
             CreatedAt = now,
             LastActivityAt = now
         };
+        var activityIds = blocked ? new[] { requester.CharacterId } : new[] { requester.CharacterId, target.CharacterId };
+        if (!_store.Commerce.TryAcquire(CommerceActivity.Trade, session.TradeId, activityIds))
+        {
+            await SendRequestFailureAsync(requester, cancellationToken);
+            return;
+        }
         _sessions[requester.CharacterId] = session;
         if (blocked)
         {
@@ -1268,6 +1274,7 @@ public sealed class ItemTradeService : BackgroundService
             new KeyValuePair<Guid, ItemTradeSession>(session.Initiator.Channel.CharacterId, session));
         var partnerRemoved = _sessions.TryRemove(
             new KeyValuePair<Guid, ItemTradeSession>(session.Partner.Channel.CharacterId, session));
+        _store.Commerce.Release(session.TradeId, session.Initiator.Channel.CharacterId, session.Partner.Channel.CharacterId);
         return removed || partnerRemoved;
     }
 

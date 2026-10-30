@@ -1,0 +1,107 @@
+{
+  "Schema": "original-act1-monster-contract-summary/v1",
+  "OriginalExeSha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5",
+  "Functions": [
+    {
+      "query": 7925248,
+      "start": 7925248,
+      "end": 7938362,
+      "raw_sha256": "07b501ac84a113511214691d90e25665919ca916515fa1cde29adb660c7ad86c"
+    },
+    {
+      "query": 7919616,
+      "start": 7919616,
+      "end": 7920380,
+      "raw_sha256": "55c2626d9316f0b3c7502a8a79f1db575b899dadfa24d2cae863fcfc3102c800"
+    },
+    {
+      "query": 4666912,
+      "start": 4666912,
+      "end": 4666943,
+      "raw_sha256": "4dd79163fcbf002f1e290f7c8fe521cbcdbdea79a271214088fb323c83b7a78e"
+    },
+    {
+      "query": 4223952,
+      "start": 4223952,
+      "end": 4223959,
+      "raw_sha256": "3f0376cf2d7b9c11e925d941b3713fb314f7b6436e249f976badc622aebd5877"
+    },
+    {
+      "query": 4225008,
+      "start": 4225008,
+      "end": 4225019,
+      "raw_sha256": "f50fe9c20686cb5ff474d48d774fcd795089be7c66ed7fc20a608f340236c6b9"
+    },
+    {
+      "query": 4223968,
+      "start": 4223968,
+      "end": 4223975,
+      "raw_sha256": "168272c33521913fb654a11593ab88d9b032c5a4a04243957a93241a468b30b0"
+    },
+    {
+      "query": 4715648,
+      "start": 4715648,
+      "end": 4715655,
+      "raw_sha256": "dbb6843fe531d5990870f6f8d64da735715baf1d4a48c60eb4564b5d96e8064d"
+    },
+    {
+      "query": 4908944,
+      "start": 4908944,
+      "end": 4909089,
+      "raw_sha256": "b9ce3e3da6ace868bcde07096b6d366e9b7753fd8bb3dd0f5f96ac1643a0763f"
+    },
+    {
+      "query": 5018224,
+      "start": 5018224,
+      "end": 5020514,
+      "raw_sha256": "35e0c06c4cd86d159f113693d7353745d7644048fa157c6223cd6acf7b579ba6"
+    },
+    {
+      "query": 5017568,
+      "start": 5017568,
+      "end": 5018209,
+      "raw_sha256": "1b5b8d273c577668b00b442d05f18ae42b869d9e0e687f107c5077ff15eb409a"
+    },
+    {
+      "query": 7827328,
+      "start": 7827328,
+      "end": 7827450,
+      "raw_sha256": "b6fc55a7ec286d629be0630feea8fc84187806976faacbee630349d3aeae2c5a"
+    },
+    {
+      "query": 7437552,
+      "start": 7437552,
+      "end": 7437660,
+      "raw_sha256": "372225ae1189b6b1f4e72e1195ca8f565fa36d8e66436a56180232138b1e7f80"
+    },
+    {
+      "query": 9205072,
+      "start": 9205072,
+      "end": 9205112,
+      "raw_sha256": "0b4597cd7ec04f574e5a3fcc050c7ba321ff45cf1cfc49348668593ec38ebee8"
+    },
+    {
+      "query": 9459728,
+      "start": 9459728,
+      "end": 9460256,
+      "raw_sha256": "8dc3642a9fb621d3b57414801f26ec177e1f39e1ad353955377c439990da38f3"
+    },
+    {
+      "query": 9465968,
+      "start": 9465968,
+      "end": 9466205,
+      "raw_sha256": "05ff17d848e20ea0708cfd0036098a6e473e4153523cf62bc1f8ea6f65a80209"
+    }
+  ],
+  "VtableAddress": 10534404,
+  "Vtable": {
+    "0x34": 4223952,
+    "0x38": 4225008,
+    "0x40": 4223968,
+    "0x138": 4715648,
+    "0x2d8": 4908944,
+    "0x330": 6629920,
+    "0x5dc": 4658512
+  },
+  "Scope": "Original PE byte hashes only; does not observe native dispatch branches"
+}

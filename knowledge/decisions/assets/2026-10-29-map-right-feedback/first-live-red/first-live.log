@@ -1,0 +1,19 @@
+{"label": "A-open-map-input", "success": true, "error": null, "screenshot": null, "own_plan_armed": true}
+{"label": "A-left-inert-input", "success": true, "error": null, "screenshot": null, "own_plan_armed": true}
+{"role": "A", "town": {"town_id": 1, "area_id": 1, "context_token": "0x07303880", "map_token": "0x180A37F0", "position": {"x": 474, "y": 234, "z": 0}, "destination": {"x": 474, "y": 234}, "direction_raw": {"x": 4, "y": 4}, "auto_move_active": false}, "ui": {"selection_mode_raw": 0, "player_menu": {"visible": false, "target_uid": null, "action_ids": null}, "town_minimap": {"visible": true, "enabled": true}, "dungeon_selector": {"visible": null, "active_raw": 1, "selected": -1, "hover": -1}, "countdown": {"state_raw": 0}}}
+{"role": "A", "town": {"town_id": 1, "area_id": 1, "context_token": "0x07303880", "map_token": "0x180A37F0", "position": {"x": 474, "y": 234, "z": 0}, "destination": {"x": 474, "y": 234}, "direction_raw": {"x": 4, "y": 4}, "auto_move_active": false}, "ui": {"selection_mode_raw": 0, "player_menu": {"visible": false, "target_uid": null, "action_ids": null}, "town_minimap": {"visible": true, "enabled": true}, "dungeon_selector": {"visible": null, "active_raw": 1, "selected": -1, "hover": -1}, "countdown": {"state_raw": 0}}}
+PASS A left has no route/pulse/movement
+{"label": "B-open-map-input", "success": true, "error": null, "screenshot": null, "own_plan_armed": true}
+{"label": "B-left-inert-input", "success": true, "error": null, "screenshot": null, "own_plan_armed": true}
+{"role": "B", "town": {"town_id": 1, "area_id": 1, "context_token": "0x0737FAC8", "map_token": "0x17F512C0", "position": {"x": 474, "y": 234, "z": 0}, "destination": {"x": 474, "y": 234}, "direction_raw": {"x": 4, "y": 4}, "auto_move_active": false}, "ui": {"selection_mode_raw": 0, "player_menu": {"visible": false, "target_uid": null, "action_ids": null}, "town_minimap": {"visible": true, "enabled": true}, "dungeon_selector": {"visible": null, "active_raw": 1, "selected": -1, "hover": -1}, "countdown": {"state_raw": 0}}}
+{"role": "B", "town": {"town_id": 1, "area_id": 1, "context_token": "0x0737FAC8", "map_token": "0x17F512C0", "position": {"x": 474, "y": 234, "z": 0}, "destination": {"x": 474, "y": 234}, "direction_raw": {"x": 4, "y": 4}, "auto_move_active": false}, "ui": {"selection_mode_raw": 0, "player_menu": {"visible": false, "target_uid": null, "action_ids": null}, "town_minimap": {"visible": true, "enabled": true}, "dungeon_selector": {"visible": null, "active_raw": 1, "selected": -1, "hover": -1}, "countdown": {"state_raw": 0}}}
+PASS B left has no route/pulse/movement
+{"label": "A-first-right-pulses", "success": true, "error": null, "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\evidence-right-pulse-green\\A-first-right-pulses.jpg", "own_plan_armed": true}
+
+
+{"terminal": null, "feedback": {"schema": "dfl-map-feedback/v1", "pid": 53816, "process_started_filetime": 134377429774851791, "tick_ms": 382933843, "capture_tick_ms": 382933750, "capture_sequence": 1501, "trigger_serial": 1, "active": false, "hook_installed": true, "cleanup_pending": false, "target": {"x": 278, "y": 213}, "rings": [{"visible": false, "scale": 0, "color": 0}, {"visible": false, "scale": 0, "color": 0}], "draw_count": 0, "texture_creations": 0, "reason": "identity_changed_clock_regressed_or_expired"}, "two_visible": true}
+Traceback (most recent call last):
+  File "G:\Game\DNF_ACT1\DFLegacy\.tmp\map-right-pulse-20261029\first-live.py", line 46, in <module>
+    assert any(f['trigger_serial']==old['trigger_serial']+1 and sum(r['visible'] for r in f['rings'])==2 and f['draw_count']>old['draw_count'] for f in updates),'No actual two-ring native draw'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: No actual two-ring native draw

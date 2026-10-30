@@ -1,0 +1,13 @@
+{
+  "ObservedAt": "2026-10-28T00:44:19.4891968+08:00",
+  "Phase": "gift-offline",
+  "RecipientClientAbsent": true,
+  "GameClients": [
+    {
+      "Id": 36284,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "StartTimeUtc": "2026-10-27T16:37:06.0578034Z"
+    }
+  ],
+  "DeliveryObservation": "gift-offline-delivered.json"
+}

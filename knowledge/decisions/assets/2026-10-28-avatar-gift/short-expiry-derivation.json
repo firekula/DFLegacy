@@ -1,0 +1,27 @@
+{
+  "Schema": "act1-native-short-expiry-derivation/v1",
+  "SourcePath": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\state-claimed-final-paused.json",
+  "SourceSha256": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B",
+  "DerivedSha256": "4AE16CAC0EAF952AD822B2105BA0DA8159D7E07A74429812C17F69B8409642E1",
+  "ChangedPaths": [
+    "/Accounts/0/Characters/2/AvatarInventory/0/AvatarExpiresAtUnixSeconds"
+  ],
+  "CreatedAtUtc": "2026-10-27T22:19:30.054149+00:00",
+  "CreatedAtUnix": 1793139570,
+  "Seconds": 120,
+  "OriginalDeadline": 1793741733,
+  "NewDeadline": 1793139690,
+  "DeadlineUtc": "2026-10-27T22:21:30+00:00",
+  "InstanceId": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14",
+  "CharacterId": "9483cd28-722b-4d1e-8251-a9b710a42c6f",
+  "ItemId": 51020,
+  "PreservedDuration": 604800,
+  "PreservedAbility": 4,
+  "PreservedCashA": 26300,
+  "PreservedCashB": 997790,
+  "PreservedReceiveYearMonth": 202610,
+  "PreservedReceiveCount": 1,
+  "BuildManifestSha256": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266",
+  "SystemClockChanged": false,
+  "Disclosure": "Separate derived short absolute deadline. Not natural seven-day expiry; not the unmodified gift flow."
+}

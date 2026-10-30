@@ -1,0 +1,14 @@
+Mentor growth smoke: 13 failures
+FAIL: mentor roster projects cumulative 1 as 1/1/3
+FAIL: mentor roster projects cumulative 3 as 1/3/3
+FAIL: mentor roster projects cumulative 4 as 2/1/3
+FAIL: mentor roster projects cumulative 6 as 2/3/3
+FAIL: mentor roster projects cumulative 7 as 3/1/5
+FAIL: mentor roster projects cumulative 879 as 10/411/412
+FAIL: mentor roster projects cumulative 880 as 10/412/412
+FAIL: the first endpoint's own 600-second event grows its online edge once
+FAIL: the staggered second endpoint independently grows the same edge once
+FAIL: late sweeps claim only one event per endpoint and immediate repeats do not catch up
+FAIL: same-connection same-character reattachment retires the prior timer incarnation
+FAIL: replacement attachment starts a fresh 600-second timer
+FAIL: uint saturation reports the actual five experience granted rather than requested 100

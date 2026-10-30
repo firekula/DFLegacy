@@ -24,8 +24,28 @@ add_library(ijl15 SHARED
     src/client_debug_state.h
     src/boss_room_death.cpp
     src/boss_room_death.h
+    src/creature_gift_row.cpp
+    src/creature_gift_row.h
+    src/countdown_coin.cpp
+    src/countdown_coin.h
+    src/dungeon_tooltip.cpp
+    src/dungeon_tooltip.h
+    src/channel_switch.cpp
+    src/channel_switch.h
+    src/channel_reentry.cpp
+    src/channel_reentry.h
+    src/relay_send_queue.cpp
+    src/relay_send_queue.h
     src/ground_item_removal.cpp
     src/ground_item_removal.h
+    src/motion_horizon.cpp
+    src/motion_horizon.h
+    src/native_loop_probe.cpp
+    src/native_loop_probe.h
+    src/motion_test_probe.cpp
+    src/motion_test_probe.h
+    src/provider_probe.cpp
+    src/provider_probe.h
     src/party_card_display.cpp
     src/party_card_display.h
     src/d3d8_scaler.cpp
@@ -128,15 +148,38 @@ if(BUILD_TESTING)
         src/boss_room_death.cpp
         src/boss_room_death.h
         tests/boss_room_death_tests.cpp
+        src/creature_gift_row.cpp
+        src/creature_gift_row.h
+        src/channel_switch.cpp
+        src/channel_switch.h
+        src/channel_reentry.cpp
+        src/channel_reentry.h
+        tests/channel_reentry_tests.cpp
+        src/relay_send_queue.cpp
+        src/relay_send_queue.h
+        tests/relay_send_queue_tests.cpp
+        tests/channel_switch_tests.cpp
+        tests/creature_gift_row_tests.cpp
+        src/countdown_coin.cpp
+        src/countdown_coin.h
+        tests/countdown_coin_tests.cpp
+        src/dungeon_tooltip.cpp
+        src/dungeon_tooltip.h
+        tests/dungeon_tooltip_tests.cpp
         src/priest_heal_target.cpp
         src/priest_heal_target.h
         tests/priest_heal_target_tests.cpp
         src/ground_item_removal.cpp
         src/ground_item_removal.h
         tests/ground_item_removal_tests.cpp
+        src/motion_horizon.cpp
+        src/motion_horizon.h
+        tests/motion_horizon_tests.cpp
+        tests/native_loop_probe_tests.cpp
         src/party_card_display.cpp
         src/party_card_display.h
         tests/party_card_display_tests.cpp
+        tests/auto_input_drag_tests.cpp
         tests/ijl15_tests.cpp)
     target_sources(ijl15_tests PRIVATE tests/client_service_url_tests.cpp)
     target_compile_options(ijl15_tests PRIVATE /W4 /WX /permissive- /EHsc)
@@ -152,20 +195,68 @@ if(BUILD_TESTING)
     set_tests_properties(ijl15_compatibility PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:ijl15_tests>")
 endif()
 
-# Optional game diagnostic module, loaded by ijl15 only when enabled.
-add_library(df_debug SHARED ../DFLegacy.Debug/src/debug_overlay.cpp ../DFLegacy.Debug/src/debug_window.cpp ../DFLegacy.Debug/src/debug.def)
+# Keep explicit source lists aligned with the native vcxproj targets.
+add_library(df_debug SHARED
+    ../DFLegacy.Debug/src/debug_overlay.cpp
+    ../DFLegacy.Debug/src/frame_profile.cpp
+    ../DFLegacy.Debug/src/gameplay_trace.cpp
+    ../DFLegacy.Debug/src/native_loop_profile.cpp
+    ../DFLegacy.Debug/src/client_test_control.cpp
+    ../DFLegacy.Debug/src/client_test_control_runtime.cpp
+    ../DFLegacy.Debug/src/client_state.cpp
+    ../DFLegacy.Debug/src/client_party.cpp
+    ../DFLegacy.Debug/src/client_party_runtime.cpp
+    ../DFLegacy.Debug/src/client_state_json.cpp
+    ../DFLegacy.Debug/src/client_navigation.cpp
+    ../DFLegacy.Debug/src/map_click_feedback.cpp
+    ../DFLegacy.Debug/src/client_map_feedback_runtime.cpp
+    ../DFLegacy.Debug/src/client_navigation_runtime.cpp
+    ../DFLegacy.Debug/src/town_route_catalog.cpp
+    ../DFLegacy.Debug/src/town_route_controller.cpp
+    ../DFLegacy.Debug/src/client_town_route_contract.cpp
+    ../DFLegacy.Debug/src/client_town_route_runtime.cpp
+    ../DFLegacy.Debug/src/debug_window.cpp
+    ../DFLegacy.Debug/src/debug.def)
 set_target_properties(df_debug PROPERTIES OUTPUT_NAME "debug")
 target_compile_definitions(df_debug PRIVATE UNICODE _UNICODE)
 target_compile_options(df_debug PRIVATE /W4 /WX /utf-8 /EHsc /Brepro)
 target_link_options(df_debug PRIVATE /Brepro /INCREMENTAL:NO /PDBALTPATH:debug.pdb)
-target_link_libraries(df_debug PRIVATE user32)
+target_link_libraries(df_debug PRIVATE user32 bcrypt)
 
 if(BUILD_TESTING)
     find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
-    add_executable(df_debug_tests ../DFLegacy.Debug/tests/debug_tests.cpp)
+    add_executable(df_debug_tests
+    ../DFLegacy.Debug/tests/gameplay_trace_tests.cpp
+    ../DFLegacy.Debug/tests/native_loop_profile_tests.cpp
+    ../DFLegacy.Debug/tests/../src/native_loop_profile.cpp
+    ../DFLegacy.Debug/tests/debug_tests.cpp
+    ../DFLegacy.Debug/tests/frame_profile_tests.cpp
+    ../DFLegacy.Debug/tests/frame_profile_runtime_tests.cpp
+    ../DFLegacy.Debug/tests/client_test_control_tests.cpp
+    ../DFLegacy.Debug/tests/client_test_control_runtime_tests.cpp
+    ../DFLegacy.Debug/tests/../src/client_test_control.cpp
+    ../DFLegacy.Debug/tests/client_state_tests.cpp
+    ../DFLegacy.Debug/tests/client_party_tests.cpp
+    ../DFLegacy.Debug/tests/client_party_runtime_tests.cpp
+    ../DFLegacy.Debug/tests/../src/client_party.cpp
+    ../DFLegacy.Debug/tests/client_navigation_tests.cpp
+    ../DFLegacy.Debug/tests/map_click_feedback_tests.cpp
+    ../DFLegacy.Debug/tests/map_click_feedback_runtime_tests.cpp
+    ../DFLegacy.Debug/tests/../src/map_click_feedback.cpp
+    ../DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp
+    ../DFLegacy.Debug/tests/../src/client_navigation.cpp
+    ../DFLegacy.Debug/tests/../src/town_route_catalog.cpp
+    ../DFLegacy.Debug/tests/../src/town_route_controller.cpp
+    ../DFLegacy.Debug/tests/../src/client_town_route_contract.cpp
+    ../DFLegacy.Debug/tests/town_route_io_tests.cpp
+    ../DFLegacy.Debug/tests/town_route_catalog_tests.cpp
+    ../DFLegacy.Debug/tests/town_route_controller_tests.cpp
+    ../DFLegacy.Debug/tests/town_route_runtime_tests.cpp
+    ../DFLegacy.Debug/tests/../src/client_state.cpp
+    ../DFLegacy.Debug/tests/../src/client_state_json.cpp)
     target_compile_definitions(df_debug_tests PRIVATE UNICODE _UNICODE)
     target_compile_options(df_debug_tests PRIVATE /W4 /WX /utf-8 /EHsc)
-    target_link_libraries(df_debug_tests PRIVATE user32)
+    target_link_libraries(df_debug_tests PRIVATE user32 bcrypt)
     add_dependencies(df_debug_tests df_debug)
     add_custom_command(TARGET df_debug_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:df_debug>" "$<TARGET_FILE_DIR:df_debug_tests>/debug.dll")
     set(DEBUG_OVERLAY_FIXTURE "${CMAKE_CURRENT_BINARY_DIR}/debug-overlay-fixture.bin")
@@ -179,4 +270,10 @@ if(BUILD_TESTING)
     set_tests_properties(debug_overlay PROPERTIES
         FIXTURES_REQUIRED DebugOverlayFixture
         WORKING_DIRECTORY "$<TARGET_FILE_DIR:df_debug_tests>")
+    foreach(debug_group IN ITEMS native-loop gameplay-trace frame-profile client-test-control map-feedback client-party client-state client-navigation town-route)
+        add_test(NAME debug_${debug_group} COMMAND df_debug_tests --${debug_group})
+        set_tests_properties(debug_${debug_group} PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:df_debug_tests>")
+    endforeach()
+    add_test(NAME debug_gameplay_abi COMMAND df_debug_tests --gameplay-abi "$<TARGET_FILE:df_debug>")
+    set_tests_properties(debug_gameplay_abi PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:df_debug_tests>")
 endif()

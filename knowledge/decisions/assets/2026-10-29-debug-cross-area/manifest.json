@@ -1,0 +1,405 @@
+{
+  "Schema": "byte-preserved-artifacts/v1",
+  "Files": [
+    {
+      "File": "A-hendon.jpg",
+      "Sha256": "73EFC0E1C5A12BB6F8954EE44F6C601A9C1EB850D4A51FDE2085A441752E938A",
+      "Bytes": 383732
+    },
+    {
+      "File": "A-interrupted.jpg",
+      "Sha256": "044025A2F4D492AC3EC511DF68E18E77CAF62B575B46F4DF58405DFB9179F478",
+      "Bytes": 351186
+    },
+    {
+      "File": "A-native-manual-interruption-v2.json",
+      "Sha256": "D1DD31FE4D3E459986FE587B12151004CE0FD000E9A1D67305B96AB9DD73C49F",
+      "Bytes": 12417
+    },
+    {
+      "File": "A-room.jpg",
+      "Sha256": "2E29262D7C5CEEE240E35AEFD7F414509083F67D8CC846270B2B78BCE5FEEAFA",
+      "Bytes": 379726
+    },
+    {
+      "File": "A-v5-forward.json",
+      "Sha256": "D88C5E8778EA270693067C51B8CA6806C196DA30227F219688FE283D8D5D9458",
+      "Bytes": 12589
+    },
+    {
+      "File": "A-v5-reverse.json",
+      "Sha256": "69A430F5FAF708E08E2DFB9188DE19F23D716A4A08DDB22E446AD57DED703D64",
+      "Bytes": 12589
+    },
+    {
+      "File": "B-hendon.jpg",
+      "Sha256": "9F7BFCE66EF9C378D5B0E3A855BA9F1605951C145E31698C26795AECF12CEC13",
+      "Bytes": 382872
+    },
+    {
+      "File": "B-room.jpg",
+      "Sha256": "31F021F8215EA8FCE958A7941A23EAB9A820337834724F4B2E256A5FE401B7F5",
+      "Bytes": 387387
+    },
+    {
+      "File": "B-v5-forward.json",
+      "Sha256": "3A65A0A910D371DC3C3EDA4FC65DBDBB69003FCD0B6A1A7806512BCE587A7DBA",
+      "Bytes": 12591
+    },
+    {
+      "File": "B-v5-reverse.json",
+      "Sha256": "FA00C6E78FA2BF32719EE6D018B535F4B711097FD23D3C103204E3249A569BC7",
+      "Bytes": 12597
+    },
+    {
+      "File": "closeout-restoration.json",
+      "Sha256": "BF39FAC1CB7EF4C3DF44C42324364952F7CEBA518429860522223B93EE73F96F",
+      "Bytes": 12853
+    },
+    {
+      "File": "diagnostics/A-accepted-forward.json",
+      "Sha256": "6A8FF20429A959934D913F84F469B548C61FB91287A9DF57E35E3F4B83141DC9",
+      "Bytes": 12115
+    },
+    {
+      "File": "diagnostics/A-accepted-reverse.json",
+      "Sha256": "0C1FB6FEA688C5FD3DC034FDB2B4B2F0463FCE17D2F1B6D71A7C630F35AF5806",
+      "Bytes": 12538
+    },
+    {
+      "File": "diagnostics/A-delayed-mailbox-expiry-recovery-validation.json",
+      "Sha256": "5B7F5688C4EFF5816B84DCECE0AB7216E0C6BEED9E4491E1B4C02EB2E4BA6763",
+      "Bytes": 364
+    },
+    {
+      "File": "diagnostics/A-delayed-mailbox-expiry-recovery.json",
+      "Sha256": "8317C8253120EBCD409F46E06C030B8CCA84ACFDC96F73EAA765C6241C7BBCDC",
+      "Bytes": 16003
+    },
+    {
+      "File": "diagnostics/A-final-reverse.json",
+      "Sha256": "89399A02EDFA646C1129B57FDAC527FDDC30379B3CBC21D4165E64C6BDC15F08",
+      "Bytes": 6576
+    },
+    {
+      "File": "diagnostics/A-native-manual-interruption-v2-diagnostic.json",
+      "Sha256": "73A8976E6C181986BAD38CEA1872B2FE71AA203A91F450E2832835421864BC60",
+      "Bytes": 6688
+    },
+    {
+      "File": "diagnostics/A-one-goal-forward-accepted.json",
+      "Sha256": "FCBF442104A554239D6DCD13A1B0BDCFEBC045EB09EFF42C5FC278416ADC773F",
+      "Bytes": 7896
+    },
+    {
+      "File": "diagnostics/B-accepted-forward.json",
+      "Sha256": "EEC2930FFF355BAD477A02DD7A7F562CD381735716CC8D2ABBAFE5591D620F0B",
+      "Bytes": 12555
+    },
+    {
+      "File": "diagnostics/B-accepted-reverse.json",
+      "Sha256": "1CAE2FA9071F5BEFCD6A4DBCFC182F650F2101E3AA68982932860A1AB30C13E3",
+      "Bytes": 11175
+    },
+    {
+      "File": "diagnostics/B-cross-town-readonly-plan.json",
+      "Sha256": "390CC15FCC34100B6FBF5CE2C9F5383F136370EAA273F0CDA97AC815A3130438",
+      "Bytes": 3381
+    },
+    {
+      "File": "diagnostics/B-final-reverse.json",
+      "Sha256": "C5FC65A45BE732C9CA2BFF3915CD69E399624CB5CCB56C8749F5A794F324432E",
+      "Bytes": 12561
+    },
+    {
+      "File": "diagnostics/B-one-goal-first-diagnostic.json",
+      "Sha256": "EC4803E305EC68CCF53F030CA3F2B0766C10B9BC124DF51646556857EE1353A9",
+      "Bytes": 6595
+    },
+    {
+      "File": "diagnostics/B-one-goal-forward-accepted.json",
+      "Sha256": "13BD681AC1890398DEE2F79499A0D80C8790763B7919DF53E74105D2A1FFA345",
+      "Bytes": 11648
+    },
+    {
+      "File": "diagnostics/B-one-goal-portal-rearm-diagnostic.json",
+      "Sha256": "2727E41AF96DDF54A5960C74D884346C2590049457A9B59E1F6D3F61786C7883",
+      "Bytes": 9355
+    },
+    {
+      "File": "diagnostics/B-portal-not-crossed-geometry.json",
+      "Sha256": "778EFE7CB6611BBAF06B200233A9208F9925DC78513E416C8F22B3E301997539",
+      "Bytes": 516
+    },
+    {
+      "File": "diagnostics/B-v5-prepare-room.json",
+      "Sha256": "46A102A0F88A0CAED43108705A32442A83E64892D9F77A68A59F7597556F11C2",
+      "Bytes": 7976
+    },
+    {
+      "File": "diagnostics/closeout-restoration.json",
+      "Sha256": "BF39FAC1CB7EF4C3DF44C42324364952F7CEBA518429860522223B93EE73F96F",
+      "Bytes": 12853
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-native-1.json",
+      "Sha256": "C7A72D3770EFA39319FC532D35C9D2BA39E990BC9050009F16AAC88E6B6BB742",
+      "Bytes": 386
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-native-2.json",
+      "Sha256": "EF82DD3420E05CE7567CB44091FD9D6BBC3DEE2C2DA46E9746613FC6A86088F0",
+      "Bytes": 421
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-native-3.json",
+      "Sha256": "CB6C50428DEF64645B2D3C7429FB6357AB9F17863FF0BF8D7DD4355AF4AD2492",
+      "Bytes": 397
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-native-4.json",
+      "Sha256": "EA90C7E904DDDBCB3BD119E287155D9DFBAF7AEA0A71160B70A7E4FF0CDF321D",
+      "Bytes": 405
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-native-5.json",
+      "Sha256": "B3C3D153AD7B76E622A6DAEA486C598D5E775EAE5672324EFC0CBEC20439D2C4",
+      "Bytes": 420
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-native-6.json",
+      "Sha256": "5E5E05A485D71DB1398E72CB5E5213A925963AEC4965B033D450ADEA6E16A3BF",
+      "Bytes": 406
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-native-7.json",
+      "Sha256": "3D40E0BF8BE64B51BB4AD68511E40C5C0401343AD60A5898DECAEA6EA405852A",
+      "Bytes": 413
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-request-1.bin",
+      "Sha256": "B6B01E5D962E6DF9C2BCD855F21732B808E20395CD482525372700D3368CC660",
+      "Bytes": 96
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-request-2.bin",
+      "Sha256": "07FF8DDC3ACE08DE3298310357042EEFACA70A386A2512F0B6ACD47E04F35128",
+      "Bytes": 96
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-request-3.bin",
+      "Sha256": "AD2D688B38BC213716874C9F9046D1CC95B4D89A66ED3A35F11617A110C4CF2D",
+      "Bytes": 96
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-request-4.bin",
+      "Sha256": "45407A51280CFF3768B48A9230C1A7B213996C999488E99948D726082F555FD8",
+      "Bytes": 96
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-request-5.bin",
+      "Sha256": "7DEC1049765E9CBAF0E1AAB6486C911037BDA2D7D4C302D6BDFC78F2ADF047C2",
+      "Bytes": 96
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-request-6.bin",
+      "Sha256": "5979872CA5A58DC4EAEBA231862F591E56E9504BB80E7E375AB6B848491AB1EE",
+      "Bytes": 96
+    },
+    {
+      "File": "diagnostics/delayed-mailbox-request-7.bin",
+      "Sha256": "24EC5D70571D7FEDAECA5E00028D0AB2A8B18A540E03EFE14A92950534FD1D4F",
+      "Bytes": 96
+    },
+    {
+      "File": "diagnostics/single-destination-portal-probe.json",
+      "Sha256": "F34904BD8736DA83DB2F0BCE67B907A703127DE7B20DDAB8F58930681E4D037A",
+      "Bytes": 7892
+    },
+    {
+      "File": "provenance/A-final-reverse-late-native-result.json",
+      "Sha256": "7958945A93E6D0AB52DC6801E1F213CD50A1F0C6A93D8E6C639986B06773047B",
+      "Bytes": 405
+    },
+    {
+      "File": "provenance/A-rejected-expired-native.json",
+      "Sha256": "6C14BA0C8AC4570CC438D621B3C55144D5A32BD70A1A2B1C4B22AA61637F5132",
+      "Bytes": 385
+    },
+    {
+      "File": "provenance/B-rejected-expired-native.json",
+      "Sha256": "08D89769E2E88567B8AE0A56F053183696CDE7A4E3ACA0806A619E62092BB8EA",
+      "Bytes": 385
+    },
+    {
+      "File": "provenance/closed-runtime-manifest.json",
+      "Sha256": "148E73A4CC60041B481DB9E5A79D29255CA125DB3D30637A107D4193BFBCA713",
+      "Bytes": 766
+    },
+    {
+      "File": "provenance/deployment-at-start.json",
+      "Sha256": "B1EE84F5618491BD5DB1A943D8F2140DD1899BD742241A1265982564187F42E8",
+      "Bytes": 2072
+    },
+    {
+      "File": "provenance/first-manual-stop-native-result.json",
+      "Sha256": "225761F79357C66708EE4C982897F383666555CCC923C463ACAA5E10AD926B2A",
+      "Bytes": 425
+    },
+    {
+      "File": "provenance/loaded-modules.json",
+      "Sha256": "DF121C2DF336DAA70DBA88F996617CB0D39485DDFA3AAA698AB071985CAB6806",
+      "Bytes": 951
+    },
+    {
+      "File": "provenance/runtime-build-manifest.json",
+      "Sha256": "E8A2B339A15DD5ABF3A34B11AEF9ACA6C1529970EFAC10E0AF2A6285FD36063D",
+      "Bytes": 102377
+    },
+    {
+      "File": "review/client-route-expiry-recovery-final-review.md",
+      "Sha256": "6C3AA8AAA631FF8053DA013EA0E265A881611D3DCAA9071FA5B95E657C0E4BCC",
+      "Bytes": 2756
+    },
+    {
+      "File": "review/client-route-expiry-recovery-review.md",
+      "Sha256": "76FF3CA325427ACD795DD37EAAC0134082AE929CB74EED3BCE55618251EA0571",
+      "Bytes": 3084
+    },
+    {
+      "File": "review/client-route-inflight-gap-review.md",
+      "Sha256": "F585393F2DDB51566643D70A0B4B945E3F48D74DF0D25FB95ECD75A1A05EDA06",
+      "Bytes": 2133
+    },
+    {
+      "File": "review/client-route-post-transition-grace-review.md",
+      "Sha256": "CD4C459495126764F725AEA71A6448A35FF718A98DEE56412318F7902996C7DB",
+      "Bytes": 2515
+    },
+    {
+      "File": "review/client-route-task2-final-review.md",
+      "Sha256": "675CCDD88176EE4AC475492766ACD3401A407129ACA73DC781EC25C11FAF1AA6",
+      "Bytes": 6087
+    },
+    {
+      "File": "review/client-route-task2-review.md",
+      "Sha256": "12BE46B45D6E91500490FBF9E037B23E0AA2CE5740B8FBAB1115AC661957C5AA",
+      "Bytes": 8972
+    },
+    {
+      "File": "review/native-town-idle-rounding-review.md",
+      "Sha256": "60E005DFEE19BCB1E7B8B189867C0701248B9598B1B44771FF61055C59C56C09",
+      "Bytes": 2983
+    },
+    {
+      "File": "review/native-town-navigation-review.md",
+      "Sha256": "A6C65199F9FF4F2829A27E7C5753478B5680B32700624EC91E0C5BCE7F20EF6E",
+      "Bytes": 9640
+    },
+    {
+      "File": "review/town-catalog-task1-extended-final-review.md",
+      "Sha256": "7C59C6B7B33539C6A1A26E7112517BE485226BCD2CDDE0DB2391EBC16B50EDAB",
+      "Bytes": 1427
+    },
+    {
+      "File": "review/town-catalog-task1-final-review.md",
+      "Sha256": "6991B84BAADF3DD83F59C27ADBB265BC28ABFFB5A68D0417E8C87CE6A3E76ECA",
+      "Bytes": 5070
+    },
+    {
+      "File": "review/town-catalog-task1-review.md",
+      "Sha256": "EB062309D5F17832601CDD35823B0BB37DC09C0EEB928584053E56FAAE76AC46",
+      "Bytes": 6116
+    },
+    {
+      "File": "screenshots/cross-area-A-v5-hendon-input.json",
+      "Sha256": "78CC26A56651354B265B15570CB09E0F579CDD8BD3B51FB14C0130F7E8E9C95F",
+      "Bytes": 1019
+    },
+    {
+      "File": "screenshots/cross-area-A-v5-hendon.json",
+      "Sha256": "CE3E99CFAAF0D8208DF1C3ED119E4CA8378743CF6E21BBD129A25FDACCE7DA7A",
+      "Bytes": 5886
+    },
+    {
+      "File": "screenshots/cross-area-A-v5-interrupted-input.json",
+      "Sha256": "7097231CE1F4CFAB613718EAB39E0294B2B06E660377024EFC07F0519D15E799",
+      "Bytes": 1029
+    },
+    {
+      "File": "screenshots/cross-area-A-v5-interrupted.json",
+      "Sha256": "53A93F2DFCF60BEECE985E886B2D69A58CF0558FCE974B295BB5D4C1683247C6",
+      "Bytes": 5961
+    },
+    {
+      "File": "screenshots/cross-area-A-v5-room-input.json",
+      "Sha256": "CBEB47D9E1CCE4A73CCCE733DD7D348779E871FA8737357C69649F6908410D40",
+      "Bytes": 1015
+    },
+    {
+      "File": "screenshots/cross-area-A-v5-room.json",
+      "Sha256": "05BE7C51E71DFC6B300B487F7E49E499BA4E1F89EA1AF322741A1F0871E77331",
+      "Bytes": 5882
+    },
+    {
+      "File": "screenshots/cross-area-B-v5-hendon-input.json",
+      "Sha256": "B55B1A7A75F2A632F038A01685058FC75F358FCE3F90BA85CDED061BE71400B9",
+      "Bytes": 1039
+    },
+    {
+      "File": "screenshots/cross-area-B-v5-hendon.json",
+      "Sha256": "76189C3C378FB7CAFC2C107E0B71CE39E2A4996A2A6AF24A726936E9C1FB591C",
+      "Bytes": 5886
+    },
+    {
+      "File": "screenshots/cross-area-B-v5-room-input.json",
+      "Sha256": "50BE60DC0875805007FCE9A9436DBC26EC15C53C7A3AD4BD4BD9F87F3CFC3816",
+      "Bytes": 1035
+    },
+    {
+      "File": "screenshots/cross-area-B-v5-room.json",
+      "Sha256": "6E3873B34EE5A0985A499CB8933441A749B3909D54A23131D67987AA078EC909",
+      "Bytes": 5882
+    },
+    {
+      "File": "summary.json",
+      "Sha256": "EC5241BA167F67080A044BA4ED47E5E256CAB40B790E1ADAAF7EB3EDF1AF40AB",
+      "Bytes": 7420
+    },
+    {
+      "File": "tests/baseline-ledger-existing-failures.log",
+      "Sha256": "63B3CEDDB38A2580F1E378831F80CB96FA3B75B3EBEC8CFAA06998DEE170CA56",
+      "Bytes": 4867
+    },
+    {
+      "File": "tests/baseline-orchestrate-existing-failures.log",
+      "Sha256": "806E4E4E8BEB9F6E9C8738F563E8A6B1292567CFF71C2D73B14AAF956B142DF6",
+      "Bytes": 7678
+    },
+    {
+      "File": "tests/excluded-tcp-ports.txt",
+      "Sha256": "5A2E0242FA8B71A8241D3754A45B46C38BCF426BDE0024BDF33AE98A63C048B4",
+      "Bytes": 679
+    },
+    {
+      "File": "tests/local-port-bind-probe.json",
+      "Sha256": "C3F3E624E93C10372EF982EEC771D34BE38CECA972A391AB55A4891CD6803652",
+      "Bytes": 343
+    },
+    {
+      "File": "tests/port-2311-after-closeout.json",
+      "Sha256": "A5338D955B09046EC0B16F3A9625B7955C763AAE07DC722E474E6078745F932F",
+      "Bytes": 4
+    },
+    {
+      "File": "tests/root-full-repository-after-closeout.log",
+      "Sha256": "0266598F0F50E735AE700EF0741A45247F8FD2774E27D6C24ED26D38DC91AE30",
+      "Bytes": 12729
+    },
+    {
+      "File": "tests/route-aged-cancellation-green.log",
+      "Sha256": "BE7C8BDEAE6C2944587552C75CC13903C939EA430775BA8701EF17E88D0602E2",
+      "Bytes": 205
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+Mentor growth smoke: 1 failures
+FAIL: nominal clear uint overflow reserves every established component before mentor, before cumulative-cap clipping

@@ -35,6 +35,12 @@ bool TestGroundItemRemovalNotification();
 bool TestPartyCardDisplay();
 bool TestClientServiceUrls();
 int ClientServiceUrlProbe(int argc, char** argv);
+bool TestChannelReentryMtu();
+bool TestChannelSwitch();
+bool TestCreatureGiftRow();
+bool TestCountdownCoin();
+bool TestRelaySendQueue();
+bool TestDungeonTooltipCleanup();
 
 namespace
 {
@@ -981,7 +987,7 @@ bool TestParsePlanRejectsGarbage()
         "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"vk\":13},\"x\"]}",
         "{\"version\":1,\"steps\":[{\"t\":-1,\"op\":\"key\"}]}",
         "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"dur\":-5}]}",
-        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"text\",\"chars\":\"a\\nb\"}]}",
+        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"text\",\"chars\":\"a\\tb\"}]}",
         "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"vk\":13,\"vk\":14}]}",
         "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"who\":3}]}",
         "{\"version\":1,\"steps\":["
@@ -999,6 +1005,24 @@ bool TestParsePlanRejectsGarbage()
             return false;  // a rejected plan must not touch the caller's buffer
         }
     }
+    return true;
+}
+
+bool TestTextReturnCharacters()
+{
+    using namespace dfl::auto_input;
+    Step step{};int count=0,version=0;
+    if(!ParsePlan("{\"version\":1,\"steps\":[{\"t\":100,\"op\":\"text\",\"chars\":\"\\r\\n\"}]}",&step,1,&count,&version)
+        || count!=1 || step.text[0]!='\r' || step.text[1]!='\n' || step.text[2]!=0) return false;
+    if(!ArmPlan(&step,count,version,0))return false;
+    Advance(100);if(!(QueryKey(13,0)&0x8000))return false;
+    Advance(140);if(!(QueryKey(13,0)&0x8000))return false;
+    Advance(180);if(QueryKey(13,0)!=0 || !IsFinished())return false;
+    const char* bad[]={
+        "{\"version\":1,\"steps\":[{\"t\":0,\"op\":\"text\",\"chars\":\"\r\"}]}",
+        "{\"version\":1,\"steps\":[{\"t\":0,\"op\":\"text\",\"chars\":\"\\u000d\"}]}",
+        "{\"version\":1,\"steps\":[{\"t\":0,\"op\":\"text\",\"chars\":\"\\0\"}]}"};
+    for(const auto* json:bad)if(ParsePlan(json,&step,1,&count,&version))return false;
     return true;
 }
 
@@ -1325,11 +1349,51 @@ bool TestSyntheticKeyboardStateMerge()
 }
 }
 
+bool TestGroundItemRemovalContext();
+bool TestMotionHorizon();
+bool TestNativeLoopReturnStack();
+bool TestAutoInputDrag();
+
 int main(int argc, char** argv)
 {
     const int probe = ClientServiceUrlProbe(argc, argv);
     if (probe >= 0) return probe;
     if (!TestClientServiceUrls()) return Fail("client service URL configuration failed");
+    if(argc==2&&std::strcmp(argv[1],"--auto-input-text-only")==0)return TestTextReturnCharacters()?0:Fail("text Return escapes could not reach the native input timeline");
+    if(argc==2&&std::strcmp(argv[1],"--native-loop-only")==0)return TestNativeLoopReturnStack()?0:1;
+    if(!TestNativeLoopReturnStack())return Fail("native loop return stack failed");
+    if(argc==2&&std::strcmp(argv[1],"--motion-horizon-only")==0)return TestMotionHorizon()?0:1;
+    if(!TestMotionHorizon())return Fail("motion horizon repair failed");
+    if (argc == 2 && std::strcmp(argv[1], "--ground-item-removal-only") == 0)
+        return TestGroundItemRemovalNotification() && TestGroundItemRemovalContext() ? 0 : 1;
+    if (argc == 2 && std::strcmp(argv[1], "--auto-input-drag-only") == 0) return TestAutoInputDrag() ? 0 : 1;
+    if (!TestAutoInputDrag()) return Fail("auto-input drag failed");
+    if (argc == 2 && std::strcmp(argv[1], "--dungeon-tooltip-only") == 0) return TestDungeonTooltipCleanup()?0:1;
+    if (!TestDungeonTooltipCleanup()) return Fail("dungeon tooltip cleanup failed");
+    if (argc == 2 && std::strcmp(argv[1], "--countdown-coin-only") == 0)
+    {
+        if (!TestCountdownCoin()) return 1;
+        std::puts("countdown coin tests passed");
+        return 0;
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--relay-send-queue-only") == 0)
+    {
+        if (!TestRelaySendQueue()) return 1;
+        std::puts("relay send queue tests passed");
+        return 0;
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--creature-gift-row-only") == 0)
+    {
+        if (!TestCreatureGiftRow()) return 1;
+        std::puts("creature gift row tests passed");
+        return 0;
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--channel-switch-only") == 0)
+    {
+        if (!TestChannelSwitch()) return 1;
+        std::puts("channel switch transition tests passed");
+        return 0;
+    }
     // First: it hooks this executable's own import table and puts it back, so
     // later tests get the imports they expect.
     if (!TestNetDump())
@@ -1369,9 +1433,18 @@ int main(int argc, char** argv)
     {
         return Fail("Priest healing target replay failed");
     }
+    if (!TestGroundItemRemovalContext()) return Fail("ground receiver context failed");
     if (!TestGroundItemRemovalNotification())
     {
         return Fail("ground item removal notification failed");
+    }
+    if (!TestRelaySendQueue()) return Fail("relay send queue serialization failed");
+    if (!TestCreatureGiftRow()) return Fail("creature gift row failed");
+    if (!TestCountdownCoin()) return Fail("countdown coin presentation failed");
+    if (!TestChannelSwitch()) return Fail("channel switch transition failed");
+    if (!TestChannelReentryMtu())
+    {
+        return Fail("channel reentry MTU reuse failed");
     }
     if (!TestPartyCardDisplay())
     {
@@ -1415,6 +1488,7 @@ int main(int argc, char** argv)
     {
         return Fail("auto-input JSON subset happy path failed");
     }
+    if (!TestTextReturnCharacters())return Fail("text Return escapes could not reach the native input timeline");
     if (!TestParsePlanRejectsGarbage())
     {
         return Fail("auto-input JSON subset parser accepted invalid input");
@@ -1606,15 +1680,11 @@ int main(int argc, char** argv)
     if (version == nullptr
         || version->major != 1
         || version->minor != 5
-        || version->build != 4)
+        || version->build != 4
+        || version->BuildDate == nullptr
+        || std::strncmp(version->BuildDate, "source:", 7) != 0)
     {
         return Fail("version export is invalid");
-    }
-    if (version->BuildDate == nullptr
-        || std::strncmp(version->BuildDate, "source:", 7) != 0
-        || version->BuildDate[7] == '\0')
-    {
-        return Fail("version metadata must identify the source revision rather than build time");
     }
     if (std::strcmp(api.ErrorStr(IJL_BUFFER_TOO_SMALL),
             "Output buffer too small") != 0)

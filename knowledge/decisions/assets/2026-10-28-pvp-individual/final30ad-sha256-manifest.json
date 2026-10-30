@@ -1,0 +1,102 @@
+{
+  "schema": "act1-final-pvp-publication/v1",
+  "status": "PASS_AS_SCOPED",
+  "files": [
+    {
+      "name": "final30ad-A-create-room.jpg",
+      "sha256": "30766D04C942E167DC239B6D739AB141006C374EA55789988E6672EAF493AEBF",
+      "bytes": 327187
+    },
+    {
+      "name": "final30ad-A-return-channel-chooser.jpg",
+      "sha256": "7F5EFFA5819F30D160122AF97DDEA8E277399A3CC3F616800D96CAF009A602E6",
+      "bytes": 209524
+    },
+    {
+      "name": "final30ad-A-return-normal-world.jpg",
+      "sha256": "BCAFC702B1B6241CDB58E3E99A8BBB350B9145468FF3CF92A5AEB5F0FC3C3E1B",
+      "bytes": 384728
+    },
+    {
+      "name": "final30ad-A-second-entry.jpg",
+      "sha256": "E6E9B3333D5C155960113E0329D8B63BB0B171CD33BE3DF34A0D5C961FC3FD7D",
+      "bytes": 351666
+    },
+    {
+      "name": "final30ad-A-start.jpg",
+      "sha256": "3D99E44C80B863C421B38CA502ECD3260F4A999403AE14545EA21D4BE8F22BE1",
+      "bytes": 344059
+    },
+    {
+      "name": "final30ad-B-join-room.jpg",
+      "sha256": "29CCC3FC3125CF9A1C5D4BE7FDEE7874E3FAB537A72DBA5FD71003D139544290",
+      "bytes": 345632
+    },
+    {
+      "name": "final30ad-B-return-channel-chooser.jpg",
+      "sha256": "5CA3CDD6FF4DFC2420C376A3C97D30861A94DFBB58CEAEFEA9748105319A0ADA",
+      "bytes": 209558
+    },
+    {
+      "name": "final30ad-B-return-normal-world.jpg",
+      "sha256": "35C72DE752AB2CEBE39D5B4140B0FA0127635B6D8D44026016C2B133EF1AD830",
+      "bytes": 391921
+    },
+    {
+      "name": "final30ad-B-second-entry.jpg",
+      "sha256": "452AF583A088C168103DAB4B2F0A2E4A8495400715DF194C91D8590AFCBD3208",
+      "bytes": 357716
+    },
+    {
+      "name": "final30ad-binding.json",
+      "sha256": "98E861A08EBDF29F6AAF1C1B5A93DABB3D686A07B974EEF8222438DABFDEC73E",
+      "bytes": 1188
+    },
+    {
+      "name": "final30ad-check.json",
+      "sha256": "D1F8F5E1E752ED8176E11D6D3BB51B6109C45D5690F2EE3BC05869D761B7922D",
+      "bytes": 7079
+    },
+    {
+      "name": "final30ad-combat.json",
+      "sha256": "FC3DA10A34D25C58714717DC2420E61DE95E4F3988F10C8F1CA2D5C8D27E7C48",
+      "bytes": 6856
+    },
+    {
+      "name": "final30ad-packets.json",
+      "sha256": "30F9CA01FDF80B82D8DEF085F0F22293AD57DBC14C2D6573F26164EE6B48DBA4",
+      "bytes": 78027
+    },
+    {
+      "name": "final30ad-private-check.json",
+      "sha256": "DFA6687B5006AAA14AB6713D330225197E7ECEE0304631A9CE04074FFD744DCB",
+      "bytes": 1176
+    },
+    {
+      "name": "final30ad-real-death-finish-B.jpg",
+      "sha256": "BB5B84FF4FDEF37834539DB9F0660A6AA470291A4AD59526A56B50679D89F1B4",
+      "bytes": 333640
+    },
+    {
+      "name": "final30ad-responsiveness.json",
+      "sha256": "58DC50F33C3CE8F7584E17E1EB10ADFF60E8BF4DD1926485DBFD7155A24564F8",
+      "bytes": 44748
+    },
+    {
+      "name": "final30ad-select-map3.jpg",
+      "sha256": "687365D671CEA79E91D864E19D173B3F5A7E528EB33697D99EF57536E5A66BF2",
+      "bytes": 337465
+    },
+    {
+      "name": "final30ad-state-delta.json",
+      "sha256": "7423414C224600E69CB3D530875C72FBD4F65B7858A34BABD1B88A8C9B728080",
+      "bytes": 1567
+    },
+    {
+      "name": "verify-final30ad-evidence.py",
+      "sha256": "7D1CC37447053AC621428083015840AAEDBBD9EF7021E4EF207CDAFF81DEFDF4",
+      "bytes": 9998
+    }
+  ],
+  "scope": "final30AD fourth receipt and channel round trip; separate from historical743 and final normal-runtime delivery"
+}

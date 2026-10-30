@@ -1,0 +1,5 @@
+Independent reviewer: /root/player_kill_review, read-only.
+Two P2 findings fixed and independently rechecked: exact SDK generation; party identity/alive/all-peer context revalidation before publication. Cross-generation death refuses; changed party/dead target/changed peer produce zero publish.
+MP static getter/secure-field, numeric guards, independent unknown fields and v2-local-only schema reviewed without confirmed P1/P2. Runtime x87 precision/rounding caveat retained.
+No reviewer writes, builds or live operations.
+Final read-only report/evidence audit passed: all public hashes and five original images, both deaths with four fresh observers, MP consumption/recovery, runtime hashes, closed manifest,16 protected files and4 restored INIs matched. Scope and queue order consistent; no new P1/P2 or inflated claims.

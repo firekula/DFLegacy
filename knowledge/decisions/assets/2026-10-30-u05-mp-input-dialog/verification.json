@@ -1,0 +1,80 @@
+{
+  "task": "U05 MP/keyboard/dialog bounded extension",
+  "artifacts": {
+    "debug_final": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\artifacts\\native\\debug\\Release\\debug.dll",
+      "sha256": "B2CC1403E76EB8EA5F2C5459AD6F9F21CE3CADE083594AA600327836407FCD68"
+    },
+    "debug_live": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\u05-state-20261030\\native-v3\\debug.dll",
+      "sha256": "538EB8C1B0D72C3921B22096328F5D28BC18E7D6D0017990B510F5BB3769F07F"
+    },
+    "ijl15_final": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\artifacts\\native\\ijl15\\Release\\ijl15.dll",
+      "sha256": "0103C7DCE1FA8AEA5233D7A02C6E1115F83598A8E3A02EF85AC8834F24B2871A"
+    },
+    "ijl15_live": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\u05-state-20261030\\native-v3\\ijl15.dll",
+      "sha256": "0103C7DCE1FA8AEA5233D7A02C6E1115F83598A8E3A02EF85AC8834F24B2871A"
+    }
+  },
+  "python_full": {
+    "passed": 613,
+    "skipped": 1,
+    "subtests_passed": 537,
+    "exit_code": 0,
+    "log": "python-final.log"
+  },
+  "skipped_case_supplement": {
+    "passed": 1,
+    "exit_code": 0,
+    "fixture": ".tmp/dead-observation-20261030/native-observer-fixture.json",
+    "log": "python-native-observer-fixture-final.log"
+  },
+  "distinct_python_cases_passed": 614,
+  "native_test_exit_codes": {
+    "ijl15_full": 0,
+    "debug_overlay_full": 0,
+    "debug_focused": 0,
+    "town_real_pvf": 0
+  },
+  "emulator_diagnostics": "Existing Windows faulthandler stacks in Unicorn mem_map are retained; pytest continued and exited 0.",
+  "native_binding_guard": {
+    "red_failures": 1,
+    "green_failures": 0,
+    "final_binary_reloaded_in_four_clients": false,
+    "behavior": "After live acceptance, add non-town actor==MP source guard. Wrong binding now makes MP unknown; native race fixture and 231 projections/endpoints support unchanged stable path."
+  },
+  "schema": "dfl-client-state/v2",
+  "host_frame_abi": 2,
+  "dialog_live_classes": [
+    37
+  ],
+  "dialog_supported_classes": [
+    35,
+    37,
+    48,
+    89,
+    106
+  ],
+  "command_scope": "native_command_checker_type0",
+  "global_input_blocked": null,
+  "stalls_and_sync_left_open": true,
+  "restoration": {
+    "restored_files": 14,
+    "protected_files": 8,
+    "normal_save_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283"
+  },
+  "source_hashes": {
+    "src/DFLegacy.Debug/src/client_state.cpp": "0A116749D8206C4905A8B48B194B71D8F2C406AADB741296D9525A3714E74177",
+    "src/DFLegacy.Debug/src/client_state.h": "9667EB4861DB8E1A814D45CB9D635A5467BE66F8AD2BCFA714EE2F379EF0A3FE",
+    "src/DFLegacy.Debug/src/client_state_json.cpp": "05A0781BE09752502C59C733AA88D2F77165F1AD64B062E22F9CD01545321143",
+    "src/DFLegacy.Debug/src/client_ui_state.h": "A3B5275576B4B852BECA32B82E1F402D012F32C66E21C6811DBEC08C209207AE",
+    "src/DFLegacy.Debug/tests/client_state_tests.cpp": "0630ED1135C79958FBCC26CC4E625F5CD02F0F06F2C8D823AC4DC06583E2F590",
+    "src/DFLegacy.Ijl15/src/auto_input.cpp": "03805A2F65B6B454A3C5648224CFA60E52A5E8BBDC9FBA292C13F615384A932F",
+    "src/DFLegacy.Ijl15/src/auto_input.h": "DA0744943F128FC676BEDB6368BA7C2074AD4ECC8E791862AD22907BBCA95F9C",
+    "src/DFLegacy.Ijl15/tests/ijl15_tests.cpp": "3B9F0315C1AB6BDF537240BAF37AC779E71EFDDA6A5618942BBA6D0E72674B5E",
+    "tools/debug/client_state.py": "4B05564CE8F18FEC35B05476A771F8C7120E8287FBDEADA2BED3B243E21ABF7C",
+    "tools/debug/test_client_state.py": "246728DEB76FBFB1FCB52DC7AED2ED775AA7070845357C5931A6FE083E0E4223"
+  }
+}

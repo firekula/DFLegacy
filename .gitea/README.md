@@ -46,6 +46,8 @@ Windows/Linux 共用 Git 提交时间 `SOURCE_DATE_EPOCH`，发行 stage 规范�
 
 测试 job 在独立 venv 通过 `tools/release/requirements-ci.txt` 安装锁定版本和 SHA-256 的 pytest、PyYAML、Pillow 及全部传递依赖，实际运行 `tools/acceptance/tests` 和 `tools/debug/test_drop_control.py`（`PYTHONPATH=tools`）。这些测试使用临时文件/进程/socket，无需客户端；不得为通过 CI 将其无理由跳过。
 
+合入 ACT1 分支后，离线原生字节回放所需的 pefile、Capstone、Unicorn 也使用固定版本和 wheel 摘要安装。原始客户端、已安装补丁字节或专用生产者夹具只供条件用例使用，未提供时必须保留明确的 skip，不能声称已执行。Windows 原生 CTest 同时运行调试模型和 ABI 检查；真实 PVF 的城镇控制器子用例仍需显式提供原 PVF。
+
 metadata 只导出 `DFLEGACY_RELEASE_VERSION`、`DFLEGACY_RELEASE_COMMIT` 与 `SOURCE_DATE_EPOCH`，Docker build args 也采用前两个限定名称；job outputs 仍为 `version`/`commit`。通用 `VERSION=v...` 会被 MSBuild 当成非法 NuGet 版本，因此工作流与构建子进程会清理遗留变量，不能改回旧名称。
 
 手工 `workflow_dispatch` 默认只运行完整测试/构建并保留 artifact。仅在 main 或正式标签上把 `publish` 精确设为 `true`，才在全部门禁通过后进入相同发布 job；不提供跳过测试的手动发布路径。完整 Release 除五个归档和 inventory 外，单独附 bridge Compose、host IPv6 Compose 和 `.env.example` 并记录摘要。镜像 `latest` 仅在正式标签完整发布成功后更新，开发版始终使用自己的版本标签。

@@ -1,0 +1,31 @@
+{
+  "BuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\build-manifest-right-pulse-v2.json",
+  "BuildManifestSha256": "00F9C92D246464AE84DD398C0C24EB0185F4C5ACCAC9702799A26502923AF41E",
+  "DebugSha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+  "Targets": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\debug.dll",
+      "BeforeSha256": "F5F92FFFCC190C3F77060323E4C78CC5B44B650BA20CA2A310C696E54819E8C9",
+      "Sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\preflight\\debug-before-0.dll"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\debug.dll",
+      "BeforeSha256": "F5F92FFFCC190C3F77060323E4C78CC5B44B650BA20CA2A310C696E54819E8C9",
+      "Sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\preflight\\debug-before-1.dll"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\debug.dll",
+      "BeforeSha256": "F5F92FFFCC190C3F77060323E4C78CC5B44B650BA20CA2A310C696E54819E8C9",
+      "Sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\preflight\\debug-before-2.dll"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\debug.dll",
+      "BeforeSha256": "F5F92FFFCC190C3F77060323E4C78CC5B44B650BA20CA2A310C696E54819E8C9",
+      "Sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\preflight\\debug-before-3.dll"
+    }
+  ]
+}

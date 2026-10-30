@@ -1,5 +1,9 @@
 # 本机多客户端验收平台（S0）
 
+最新新增场景：[副本门前N地图右键终点](../../knowledge/decisions/2026-10-30-dungeon-gate-map-target-verification.md)。仅重启原手测客户端加载修复，沿用同一私有服务与存档，原生IJL文件输入及新鲜SDK确认跨区／同区／返回和副本门目标拒绝；保留关键原图，没有重复既有四端矩阵。
+
+当前2026-10-30能力与证据入口见[交接](../../HANDOFF-2026-10-30.md)、[debug状态／CLI](../debug/README.md)及[最新U05验收](../../knowledge/decisions/2026-10-30-u05-resource-closeout.md)。下文Task0及旧人工场景保留其历史环境，不作为当前自动化能力或未闭合项的完整清单。默认使用原生输入与新鲜状态，普通步骤不截屏；四端窗口、私有存档来源和恢复规则见[RUNBOOK](RUNBOOK.md)。
+
 ## Task 0 环境前置结论
 
 已在 `G:\Game\DNF_ACT1\DFLegacy` 使用 UTF-8 环境运行：
@@ -43,3 +47,26 @@ python -m pytest tools/acceptance/tests -q
 现有 `party_dungeon.run_live` 和部分历史辅助脚本包含外部聚焦/系统鼠标点击，
 不适用于用户要求“只能使用内置输入”的测试。本轮此类实测及驱动见
 `.tmp/party-live-20261024/report.md`、`builtin_driver.py`。
+
+
+## 常规操作默认不截图
+
+自2026-10-29起，绑定运行目录的内置输入使用统一控制器：
+
+```powershell
+python tools/acceptance/native_control.py <run-dir> A <fresh-label> '<steps-json>'
+```
+
+运行目录须有当前running部署记录和既有 `builtin_driver.py`。控制器验证PID、路径、启动时间及证据标签；普通调用默认不附加PrintScreen，只有关键验收追加 `--screenshot`。旧 `--no-shot` 仍兼容。历史冻结的 `control.py` 有“默认截图”行为，仅保留为旧证据，不作为新运行的默认控制器。
+
+原生截图本身可造成约57～70ms的短停顿；[操作停顿对照与原图](../../knowledge/decisions/2026-10-29-operation-stutter-verification.md)记录了本轮有限路径，未据此排除其他卡顿来源。
+
+## 四客户端窗口排列
+
+按用户偏好，测试启动四个实际 DNF 进程并确认部署身份后，固定调用排布，无需再次请求用户排列窗口：
+
+```powershell
+python tools/acceptance/window_layout.py --journal <run-dir>/deployment.json --out <run-dir>/window-layout-001.json
+```
+
+也可导入 `window_layout.arrange(journal)`，传入部署记录路径或已解码的记录，返回 JSON 兼容回执。A/B 位于上排，C/D 位于下排；使用 A 所在显示器的工作区及物理坐标，保留原窗口大小、前台焦点和层叠次序。仅匹配记录中角色、PID、完整 DNF.exe 路径及精确启动时间一致的四个进程，每个进程须有唯一可见且无所有者的游戏主窗口。窗口最小化、最大化或身份不明确时拒绝移动；四个原尺寸窗口放不下时返回 `does_not_fit`，不调整大小或显示设置。`--out` 仅创建新文件，已有回执会在任何移动之前阻止执行；退出码 0 表示位置及尺寸复核成功，2 表示未完成。回执保存原位置、目标位置、实际位置及验证结果，出现部分移动失败时应先检查回执。

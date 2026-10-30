@@ -1,0 +1,151 @@
+{
+  "verified_at_utc": "2026-10-30T05:37:05.179480+00:00",
+  "debug_sha256": "B4E03F330153AF6D60BB10B7EB61D3D6D3DCD008DCB722226028BB61BC921E69",
+  "ijl_sha256": "0103C7DCE1FA8AEA5233D7A02C6E1115F83598A8E3A02EF85AC8834F24B2871A",
+  "final_binary_was_loaded_on_all_four_clients": true,
+  "product_source_unchanged_since_independent_review": true,
+  "source_files": [
+    {
+      "path": "src/DFLegacy.Debug/src/client_state.h",
+      "sha256": "65f07964673d5901d129e82ba7e26e0ff85ebf68973c64a6a997592b3a1dc149"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_ui_state.h",
+      "sha256": "afef7a8a34908417a48eeaf9f5487d2c582b913c323859e91b566b32bff6b680"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state.cpp",
+      "sha256": "1e80b4a1a36f25558e8db0a4f514918511d648de9172e8c713a2a6762cec2d0d"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state_json.cpp",
+      "sha256": "17fa9c89fa5fccb7939b0f08b4c6f5ec00bf039d4d9512be80a5106510cb9452"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_state_tests.cpp",
+      "sha256": "22715ea069413ea49b7711d9ccc1e5a209d1d02e71c07b0d0da8c4ef7eac248f"
+    },
+    {
+      "path": "tools/debug/client_state.py",
+      "sha256": "0d5941de5b96d7de06115ee829cf7d045417c4b09afef42622c377c19c3e0d52"
+    },
+    {
+      "path": "tools/debug/test_client_state.py",
+      "sha256": "922de5707704e40de91e227198f71835def1768e1de41c382a9412ddbb9e0727"
+    }
+  ],
+  "python": {
+    "tests": 617,
+    "subtests": 553,
+    "skipped": 0,
+    "exit_code": 0,
+    "diagnostic": "Existing Windows faulthandler stacks in Unicorn.mem_map remain in the raw log; suite continued and exited0."
+  },
+  "native": [
+    {
+      "mode": "--client-state",
+      "exit_code": 0
+    },
+    {
+      "mode": "--client-navigation",
+      "exit_code": 0
+    },
+    {
+      "mode": "--client-party",
+      "exit_code": 0
+    },
+    {
+      "mode": "--town-route",
+      "exit_code": 0
+    },
+    {
+      "mode": "full-overlay-abi",
+      "exit_code": 0
+    }
+  ],
+  "reused_unchanged_ijl_compatibility": "Prior U05 complete compatibility at exact identical IJL SHA; not repeated this turn.",
+  "live_cli": {
+    "form_conditions": 21,
+    "released_conditions": 3,
+    "total": 24
+  },
+  "closed_sdk_replay_conditions": 16,
+  "closed_global_unknown_timeout_count": 4,
+  "final_extra_live_cli_attempt": "Import failure before any condition executed; no passes counted.",
+  "raw_observations": {
+    "A": {
+      "bootstrap_samples": 165,
+      "type1_level2_tick": 450552234,
+      "later_level0_tick": 450552437,
+      "same_bound_actor_checker_uid": true,
+      "deferred_true_tick": 451025031,
+      "deferred_false_tick": 451025046,
+      "captured_file": "ui-A-mail-icon-native-gate.json",
+      "requested_period_ms": 10
+    },
+    "B": {
+      "bootstrap_samples": 150,
+      "type1_level2_tick": 450554546,
+      "later_level0_tick": 450554734,
+      "same_bound_actor_checker_uid": true,
+      "deferred_true_tick": 451072984,
+      "deferred_false_tick": 451073000,
+      "captured_file": "ui-B-mail-native-gate.json",
+      "requested_period_ms": 10
+    },
+    "C": {
+      "bootstrap_samples": 155,
+      "type1_level2_tick": 450556968,
+      "later_level0_tick": 450557187,
+      "same_bound_actor_checker_uid": true,
+      "deferred_true_tick": 451075562,
+      "deferred_false_tick": 451075578,
+      "captured_file": "ui-C-mail-native-gate.json",
+      "requested_period_ms": 10
+    },
+    "D": {
+      "bootstrap_samples": 146,
+      "type1_level2_tick": 450559328,
+      "later_level0_tick": 450559484,
+      "same_bound_actor_checker_uid": true,
+      "deferred_true_tick": 451206125,
+      "deferred_false_tick": 451206140,
+      "captured_file": "ui-D-mail-native-gate-fine.json",
+      "requested_period_ms": 2
+    }
+  },
+  "d_first_mail_pulse_unobserved": true,
+  "sampling": "10/2ms requested sleeps are not guaranteed temporal resolution; these are bounded read-only raw observations, not SDK history.",
+  "supported_classes_hex": [
+    "07",
+    "09",
+    "23",
+    "25",
+    "30",
+    "56",
+    "59",
+    "6A"
+  ],
+  "new_four_client_live_classes_hex": [
+    "07",
+    "09"
+  ],
+  "password56": "static original native contract and fixtures only",
+  "input_blocked": "unknown/null",
+  "no_normal_save_clone": true,
+  "restoration": {
+    "restored_files": 14,
+    "protected_files": 8,
+    "normal_save_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283"
+  },
+  "independent_review": {
+    "code_findings": [],
+    "final_evidence_findings": [],
+    "limitation": "Reviewer cross-checked identities, counts and five screenshots; audited summaries only for network/restoration, without raw-state reads or independent netdump decoding."
+  },
+  "held": [
+    "U07 position sync / GP42",
+    "U08 stalls"
+  ],
+  "daily_package_deployed": false
+}

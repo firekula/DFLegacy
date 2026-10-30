@@ -1,0 +1,59 @@
+{
+  "reviewed_head": "1c4fc0dac2a051685e6fb196c1ae956fe9203c03",
+  "native_exit": 0,
+  "python_exit": 0,
+  "source_and_evidence_hashes": [
+    {
+      "path": "src/DFLegacy.Debug/src/client_skill_resources.h",
+      "sha256": "d39a87a0f8d36389a354d6710d65d691bfc803fbabc1d21486137aae1f6c7507"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_skill_state.h",
+      "sha256": "9a5e92bae7dc6e209fb98c032e40851183e8627f03b7629e7ebb7e76fe060c88"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state.cpp",
+      "sha256": "516c6bd37f5886c6dee33aa2675b01b562cb9a1d0e1543f44ad38e2b87045a73"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state.h",
+      "sha256": "eee244b2b6d6337642050636d32527de025188e4176af84eaa9a470730a68e49"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state_json.cpp",
+      "sha256": "d37de1972c68823c4e790269472260c0cd5c9f839b252188fcdd07d6a5a08d31"
+    },
+    {
+      "path": "tools/debug/client_state.py",
+      "sha256": "60a264d13a31e955860e7752d58fd2690636fb2444e9ee4db045b9c59481bb5e"
+    },
+    {
+      "path": "tools/debug/test_client_state.py",
+      "sha256": "80eb9b6e648cad1e0e0cc04533f5bfed3b6200bea060843a01d8ef74dc09b18f"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_state_tests.cpp",
+      "sha256": "4c07716abeacaa70b3133d3d980bece9436d671c11972095b3ceedde35e809e7"
+    },
+    {
+      "path": "artifacts/native/debug-tests/Release/debug_tests.exe",
+      "sha256": "87182d821192a7cd56c37e6ad85657b469cc8093872af100ff09a3cc7619ab44"
+    },
+    {
+      "path": ".tmp/u05-final-20261030/review/native_oracle.py",
+      "sha256": "e624d04712a52eb6b0fe4e79520de300b47b4e6703e1f1e87ed947ed2da5e04e"
+    },
+    {
+      "path": ".tmp/u05-final-20261030/review/native-oracle.json",
+      "sha256": "93633ea98eaaa7d3e70a35fc9d706ee99814f740a26087f1e743d038e7a5fde2"
+    },
+    {
+      "path": ".tmp/u05-final-20261030/review/counter_repro.cpp",
+      "sha256": "9b4309705ddde0e253c747017adffca409d67aa541087b115507d024cc55f19e"
+    },
+    {
+      "path": ".tmp/u05-final-20261030/review/counter-repro.log",
+      "sha256": "9e83354a41a98024ba69b2673c69b6cd72133e6c36395d8c96f25539155001fd"
+    }
+  ]
+}

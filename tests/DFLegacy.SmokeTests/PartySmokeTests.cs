@@ -1666,9 +1666,9 @@ internal sealed class PartyHarness : IAsyncDisposable
         }
     }
 
-    public static async Task<PartyHarness> CreateAsync(ILogger<PartyService>? logger = null)
+    public static async Task<PartyHarness> CreateAsync(ILogger<PartyService>? logger = null, string? tempParent = null)
     {
-        var root = Path.Combine(Path.GetTempPath(), $"dflegacy-party-harness-{Guid.NewGuid():N}");
+        var root = Path.Combine(tempParent ?? Path.GetTempPath(), $"dflegacy-party-harness-{Guid.NewGuid():N}");
         System.IO.Directory.CreateDirectory(root);
         var options = new ServerOptions
         {

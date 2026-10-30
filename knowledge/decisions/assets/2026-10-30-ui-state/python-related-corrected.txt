@@ -1,0 +1,12 @@
+        assert "����ʧ��" in err, err
+>       assert "Found 2 start events" in err, err
+E       AssertionError: ����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�
+E         
+E       assert 'Found 2 start events' in '����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�\n'
+
+tools\acceptance\tests\test_cli_orchestrate.py:350: AssertionError
+=========================== short test summary info ===========================
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_wires_server_actors_steps_and_collect
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_waits_for_the_server_to_listen_before_starting_actors
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback
+3 failed, 357 passed, 208 subtests passed in 13.94s

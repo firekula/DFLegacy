@@ -281,6 +281,10 @@ namespace dfl::ijl15_config
                 DefaultSettings.EnableAutoInput);
             CurrentSettings.EnableDebugOverlay = ReadBoolean(
                 path, "Features", "EnableDebugOverlay", false);
+            CurrentSettings.ExportGameplayTrace = ReadBoolean(
+                path, "DebugOverlay", "ExportGameplayTrace", false);
+            CurrentSettings.ExportNativeLoopProfile = ReadBoolean(
+                path, "DebugOverlay", "ExportNativeLoopProfile", false);
             CurrentSettings.ScaleFilter = ReadScaleFilter(
                 path,
                 DefaultSettings.ScaleFilter);

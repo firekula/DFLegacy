@@ -56,6 +56,9 @@ class Metadata(unittest.TestCase):
             ci.build_version("refs/tags/v1.bad", commit, "2026-10-30T12:34:56Z")
 
     def test_smoke_runs_process_and_rejects_healthy_game_before_setup(self):
+        # Windows venv uses a redirector executable. This stdlib-only fixture
+        # must be the actual leaf process that smoke_command terminates/waits.
+        interpreter = getattr(sys, "_base_executable", sys.executable) if sys.platform == "win32" else sys.executable
         with tempfile.TemporaryDirectory(prefix="DFLegacy probe ") as temporary:
             root = Path(temporary)
             source = root / "fake_manager.py"
@@ -67,10 +70,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
  def log_message(self, *args): pass
 http.server.HTTPServer(('127.0.0.1', int(sys.argv[1])), Handler).serve_forever()
 ''')
-            ci.smoke_command(lambda port, data: [sys.executable, str(source), str(port)], root)
+            ci.smoke_command(lambda port, data: [interpreter, str(source), str(port)], root.parent)
             source.write_text(source.read_text().replace("else 503", "else 200"))
             with self.assertRaises(ci.ReleaseError):
-                ci.smoke_command(lambda port, data: [sys.executable, str(source), str(port)], root)
+                ci.smoke_command(lambda port, data: [interpreter, str(source), str(port)], root.parent)
 
 
 if __name__ == "__main__":

@@ -24,6 +24,12 @@ public sealed record DeploymentConfig
     public int CharacterPort { get; init; } = 2311;
     public int GameplayPrimaryPort { get; init; } = 7002;
     public int GameplaySecondaryPort { get; init; } = 7003;
+    public bool FallbackRelayEnabled { get; init; } = true;
+    public string FallbackRelayAdvertisedHost { get; init; } = "";
+    public int FallbackRelayTcpPort { get; init; } = 7005;
+    public int FallbackRelayUdpPort { get; init; } = 7005;
+    public bool PvpEnabled { get; init; }
+    public int PvpPort { get; init; } = 7004;
     public string ChannelName { get; init; } = "DFLegacy";
     public int MaximumUsers { get; init; } = 100;
     public double MonsterExperienceMultiplier { get; init; } = 1;
@@ -34,6 +40,12 @@ public sealed record DeploymentConfig
     public bool RelayEnabled { get; init; }
     public string RelayPreference { get; init; } = "ipv6";
     public bool Autostart { get; init; }
+
+    public int[] ForwardedTcpPorts() => new[] { EntrancePort, ChannelPort, AdditionalEntrancePort }
+        .Concat(FallbackRelayEnabled ? new[] { FallbackRelayTcpPort } : [])
+        .Concat(PvpEnabled ? new[] { PvpPort } : []).ToArray();
+    public int[] ForwardedUdpPorts() => new[] { CharacterPort, GameplayPrimaryPort, GameplaySecondaryPort }
+        .Concat(FallbackRelayEnabled ? new[] { FallbackRelayUdpPort } : []).ToArray();
 }
 
 public sealed record ConfigurationSnapshot(DeploymentConfig Saved, DeploymentConfig Effective, string[] EnvironmentOverrides, bool Configured);

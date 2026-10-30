@@ -1,0 +1,12 @@
+{
+  "src/DFLegacy.Debug/src/map_click_feedback.h": "3cdb4c2d636d7b5b156548e036a94e7997ee1a62be81db45ef0192946bf05ae3",
+  "src/DFLegacy.Debug/src/map_click_feedback.cpp": "4baac43a65bcc06fca8bd619d93e40d442d590b40444a734d1084a277a446b7a",
+  "src/DFLegacy.Debug/src/map_click_ring_pixels.inc": "448dde39298ab30a54948b456216e817b181ae415eb29b1cc50cfa2fa5e9d817",
+  "src/DFLegacy.Debug/tests/map_click_feedback_tests.cpp": "c8aa24cd4a465bd9c39667d73af3e8444c4a1691abf23162a1053245f14a286c",
+  "embedded_source_count": 1936,
+  "embedded_source_decoded_sha256": "c1da5f256eace3c660bd2d7abd9f7cde79664144c829ea2b29f3023d6e412484",
+  "source_matches_frozen_native_evidence": true,
+  "red_exit": 24,
+  "green_exit": 0,
+  "build": "MSVC14.51 x86 /W4 /WX /EHsc /std:c++17 /MT /utf-8"
+}

@@ -129,7 +129,9 @@ public sealed class DungeonGroundItemState
         byte roomX,
         byte roomY,
         short x = 0,
-        short y = 0)
+        short y = 0,
+        bool isGold = false,
+        bool activated = true)
     {
         ArgumentNullException.ThrowIfNull(droppedItem);
         var groundId = AllocateGroundId();
@@ -137,12 +139,13 @@ public sealed class DungeonGroundItemState
             groundId,
             droppedItem.ItemId,
             droppedItem.CountOrValue,
-            IsGold: false,
+            IsGold: isGold,
             ownerUserId,
             SourceMonsterId: ushort.MaxValue,
             roomX,
             roomY,
-            PreservedItem: droppedItem with { Slot = ushort.MaxValue },
+            Activated: activated,
+            PreservedItem: isGold ? null : droppedItem with { Slot = ushort.MaxValue },
             X: x,
             Y: y,
             RoutingSource: 0);
@@ -189,13 +192,31 @@ public sealed class DungeonGroundItemState
         return activated;
     }
 
-    public bool Remove(ushort groundId) => _items.Remove(groundId);
+    public bool Remove(ushort groundId, DungeonGroundItem? expected = null) =>
+        (expected is null || _items.TryGetValue(groundId, out var item) && ReferenceEquals(item, expected))
+        && _items.Remove(groundId);
+
+    public DungeonGroundItem? Activate(DungeonGroundItem expected)
+    {
+        if (!_items.TryGetValue(expected.GroundId, out var item) || !ReferenceEquals(item, expected))
+            return null;
+        var active = item with { Activated = true };
+        _items[item.GroundId] = active;
+        return active;
+    }
 
     /// <summary>
     /// 落库失败时把刚摘掉的掉落**按原 GroundId 原样放回**（记录里的房间/归属/被动物件关联/耐久/坐标
     /// 全在快照里，直接放回即可）。GroundId 若已被别人占用（理论上的 id 回绕）返回 false，
     /// 调用方要记错误日志——不许静默丢件。
     /// </summary>
+    internal void Relocate(DungeonGroundItem item, short x, short y)
+    {
+        if (!_items.TryGetValue(item.GroundId, out var current) || !ReferenceEquals(current, item))
+            throw new InvalidOperationException("Ground relocation requires the original record.");
+        _items[item.GroundId] = item with { X = x, Y = y };
+    }
+
     public bool TryReAdd(DungeonGroundItem item) => _items.TryAdd(item.GroundId, item);
 
     public IReadOnlyList<DungeonGroundItem> GetRoomItems(byte roomX, byte roomY) =>

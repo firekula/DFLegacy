@@ -7,6 +7,13 @@
 #include "../include/debug_api.h"
 #include "debug_model.h"
 #include "debug_window.h"
+#include "client_state.h"
+#include "client_navigation.h"
+#include "client_party.h"
+#include "client_test_control.h"
+#include "frame_profile.h"
+#include "gameplay_trace.h"
+#include "native_loop_profile.h"
 
 namespace
 {
@@ -54,6 +61,13 @@ namespace
             }
             // A busy paint/input queue must not postpone shutdown indefinitely.
             if (WaitForSingleObject(StopEvent, 0) == WAIT_OBJECT_0) break;
+            dfl::client_state::ExportLatest();
+            dfl::client_navigation::PumpWorker();
+            dfl::client_party::PumpWorker();
+            dfl::client_test_control::PumpWorker();
+            dfl::frame_profile::Export();
+            dfl::gameplay_trace::Export();
+            dfl::native_loop_profile::Export();
             dfl::debug_window::Content content{};
             AcquireSRWLockShared(&ContentLock); content = Published; ReleaseSRWLockShared(&ContentLock);
             dfl::debug_window::Update(content);
@@ -159,9 +173,23 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (StopEvent == nullptr) return 0;
     ReadyEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (ReadyEvent == nullptr) { CloseHandle(StopEvent); StopEvent = nullptr; return 0; }
+    dfl::client_state::Initialize(host->settingsPath, directory);
+    dfl::client_navigation::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
+    dfl::client_party::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
+    dfl::client_test_control::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
+    dfl::frame_profile::Initialize(host->settingsPath, directory, host->gameWindow, dfl::client_state::NativeReader());
+    dfl::gameplay_trace::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
+    dfl::native_loop_profile::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     Worker = CreateThread(nullptr, 0, &ReadSnapshots, nullptr, 0, nullptr);
     if (Worker == nullptr)
     {
+        dfl::client_party::Shutdown();
+        dfl::frame_profile::Shutdown();
+        dfl::gameplay_trace::Shutdown();
+        dfl::native_loop_profile::Shutdown();
+        dfl::client_test_control::Shutdown();
+        dfl::client_navigation::Shutdown();
+        dfl::client_state::Shutdown();
         CloseHandle(StopEvent); CloseHandle(ReadyEvent); StopEvent = ReadyEvent = nullptr; return 0;
     }
     // Initialize is called outside DllMain. Cross-thread owned windows can
@@ -175,15 +203,66 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (!WindowReady)
     {
         WaitForSingleObject(Worker, INFINITE);
+        dfl::client_party::Shutdown();
+        dfl::frame_profile::Shutdown();
+        dfl::gameplay_trace::Shutdown();
+        dfl::native_loop_profile::Shutdown();
+        dfl::client_test_control::Shutdown();
+        dfl::client_navigation::Shutdown();
+        dfl::client_state::Shutdown();
         CloseHandle(Worker); CloseHandle(StopEvent); Worker = StopEvent = nullptr;
         return 0;
     }
     return 1;
 }
 
+extern "C" int __stdcall DebugPipelineEnabled() noexcept
+{
+    return dfl::frame_profile::PipelineEnabled()?1:0;
+}
+extern "C" int __stdcall DebugGameplayTraceEnabled() noexcept
+{
+    return dfl::gameplay_trace::Enabled()?1:0;
+}
+extern "C" int __stdcall DebugNativeLoopEnabled() noexcept{return dfl::native_loop_profile::Enabled()?1:0;}
+extern "C" void __stdcall DebugRecordNativeLoop(const dfl::debug_api::NativeLoopSample* input) noexcept
+{if(input)dfl::native_loop_profile::Record(*input);}
+extern "C" void __stdcall DebugObserveGameplay(std::uint32_t context,const void* bytes,std::uint32_t length,std::uint32_t provider) noexcept
+{
+    if(provider<=1)dfl::gameplay_trace::Observe(context,bytes,length,provider==1,0);
+}
+extern "C" void __stdcall DebugObserveGameplayV2(std::uint32_t context,const void* bytes,std::uint32_t length,std::uint32_t provider,std::uint32_t frame) noexcept
+{
+    if(provider<=1)dfl::gameplay_trace::Observe(context,bytes,length,provider==1,frame);
+}
+extern "C" void __stdcall DebugObserveMovementGate(const dfl::debug_api::MovementGate* input) noexcept
+{
+    if(input&&input->size==sizeof(*input)&&input->version==1)dfl::gameplay_trace::ObserveGate(*input);
+}
+extern "C" void __stdcall DebugRecordPipeline(const dfl::debug_api::PipelineSample* input) noexcept
+{
+    if(!input||input->size!=sizeof(*input)||input->version!=1||input->foregroundKnown>1
+        ||input->foregroundBegin>1||input->foregroundEnd>1)return;
+    dfl::frame_profile::Sample sample;
+    sample.beginUs=input->beginUs;sample.endUs=input->endUs;sample.tickMs=input->tickMs;sample.scene=input->scene;
+    sample.foregroundKnown=input->foregroundKnown==1;sample.foregroundBegin=input->foregroundBegin==1;
+    sample.foregroundEnd=input->foregroundEnd==1;
+    for(std::size_t i=0;i<sample.parts.size();++i)sample.parts[i]=input->partsUs[i];
+    dfl::frame_profile::RecordPipeline(sample);
+}
 extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexcept
 {
     if (Worker == nullptr || frame == nullptr || frame->size != sizeof(*frame)) return;
+    dfl::frame_profile::Frame timing(frame->scene);
+    // Independent native capture precedes all old Frame.scene / visibility gates.
+    dfl::client_state::CaptureFrame();
+    timing.Mark();
+    dfl::client_navigation::OnFrame();
+    timing.Mark();
+    dfl::client_party::OnFrame();
+    timing.Mark();
+    dfl::client_test_control::OnFrame();
+    timing.Mark();
     Building = {};
     struct Publish
     {
@@ -267,7 +346,15 @@ extern "C" int __stdcall DebugShutdown() noexcept
         MSG message{}; PeekMessageW(&message, nullptr, 0, 0, PM_NOREMOVE);
         MsgWaitForMultipleObjects(1, &Worker, FALSE, 10, QS_SENDMESSAGE);
     }
+    // A retained native CALL must keep this DLL loaded if restoration fails.
+    dfl::frame_profile::Shutdown();
+    dfl::gameplay_trace::Shutdown();
+    dfl::native_loop_profile::Shutdown();
+    dfl::client_party::Shutdown();
+    dfl::client_test_control::Shutdown();
+    if (!dfl::client_navigation::Shutdown()) return 0;
     CloseHandle(Worker); CloseHandle(StopEvent);
+    dfl::client_state::Shutdown();
     Worker = nullptr; StopEvent = nullptr;
     Host = {};
     Published = {}; Building = {}; Settings[0] = 0;

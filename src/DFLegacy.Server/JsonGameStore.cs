@@ -34,7 +34,10 @@ public sealed record CharacterItemRecord(
     uint? EquipmentQualitySeed = null,
     // Server-only identity. DF2008's item wire format has no GUID field.
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    Guid InstanceId = default);
+    Guid InstanceId = default,
+    // Server UTC deadline; the legacy AvatarExpireAt key above remains seconds.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    long? AvatarExpiresAtUnixSeconds = null);
 
 public sealed record CharacterSkillRecord(
     byte Slot,
@@ -56,7 +59,9 @@ public sealed record CharacterMailAttachmentRecord(
     ushort? AvatarAbilityIndex = null,
     uint? EquipmentQualitySeed = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    Guid InstanceId = default);
+    Guid InstanceId = default,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    long? AvatarExpiresAtUnixSeconds = null);
 
 public sealed record CharacterMailRecord(
     uint Id,
@@ -251,7 +256,8 @@ public enum WeaknessRecoveryFailure
     None,
     CharacterNotFound,
     NotWeakened,
-    InsufficientGold
+    InsufficientGold,
+    Busy
 }
 
 public sealed record WeaknessRecoveryResult(
@@ -328,8 +334,26 @@ public sealed record CharacterRecord(
     int PvpCount = 0,
     byte PvpGradeExtension = 0,
     Guid? MentorCharacterId = null,
-    byte MentorExperienceBonusPercent = 0)
+    byte MentorExperienceBonusPercent = 0,
+    uint MentorRelationshipExperience = 0)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<DungeonGoldCredit>? PendingDungeonGoldCredits { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<MentorGoldAwardReceipt>? MentorGoldAwards { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MentorRegistrationState? MentorRegistration { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PrivateStoreStock? PrivateStoreStock { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<PrivateStoreGoldCredit>? PendingPrivateStoreGoldCredits { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<Guid>? ExpiredAvatarInstanceIds { get; init; }
+
     [JsonIgnore]
     public bool IsWeakened => WeaknessRecovery < DungeonWeaknessPolicy.FullStamina;
 }
@@ -357,7 +381,13 @@ public sealed record AccountRecord(
     List<AccountFriendRecord>? Friends = null,
     // 账号级黑名单。旧 state.json 里没有这个字段，反序列化后是 null（等同空名单）；
     // 与 Friends 一样按可空成员处理，上限见 JsonGameStore.MaximumBlacklist。
-    List<AccountBlacklistRecord>? Blacklist = null);
+    List<AccountBlacklistRecord>? Blacklist = null)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int GiftReceiveYearMonth { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int GiftReceiveCount { get; init; }
+}
 
 public sealed record ClientCeraTopUpRequest(string Account, int Amount);
 public sealed record ClientDiamondGrantRequest(string Account, int Days);
@@ -477,12 +507,14 @@ internal sealed class DungeonRewardSnapshotWriter : IDungeonRewardSnapshotWriter
     }
 }
 
-public sealed class JsonGameStore(
+public sealed partial class JsonGameStore(
     ServerOptions options,
     ILogger<JsonGameStore> logger,
     CharacterExperienceCatalog? experienceCatalog = null,
     ItemCatalog? itemCatalog = null,
-    CharacterStatCatalog? statCatalog = null)
+    CharacterStatCatalog? statCatalog = null,
+    PrivateStoreCatalog? privateStoreCatalog = null,
+    TimeProvider? avatarTimeProvider = null)
 {
     private const byte LegacyOverlordContractServiceType = 17;
     private const int DefaultAccountCash = 50_000;
@@ -598,8 +630,9 @@ public sealed class JsonGameStore(
     private bool _rewardQuarantined;
 
     internal JsonGameStore(ServerOptions options, ILogger<JsonGameStore> logger, IDungeonRewardSnapshotWriter writer,
-        CharacterExperienceCatalog? experienceCatalog = null, ItemCatalog? itemCatalog = null, CharacterStatCatalog? statCatalog = null)
-        : this(options, logger, experienceCatalog, itemCatalog, statCatalog) => _rewardWriter = writer;
+        CharacterExperienceCatalog? experienceCatalog = null, ItemCatalog? itemCatalog = null, CharacterStatCatalog? statCatalog = null,
+        TimeProvider? avatarTimeProvider = null)
+        : this(options, logger, experienceCatalog, itemCatalog, statCatalog, avatarTimeProvider: avatarTimeProvider) => _rewardWriter = writer;
 
     // 交易交付守门：一笔交易落库后，两个角色在各自会话安装新状态之前，
     // 拒绝任何"把调用方内存里的背包整份写回"的盲写保存——否则被动方会话会
@@ -621,6 +654,8 @@ public sealed class JsonGameStore(
         public uint NextTestAccountUid { get; set; } = 1;
         public int FatigueDayKey { get; set; }
         public List<DungeonRewardLedgerEntry> DungeonRewardLedger { get; set; } = [];
+        public List<DungeonGoldLedgerEntry> DungeonGoldLedger { get; set; } = [];
+        public List<PvpSettlementReceipt> PvpLedger { get; set; } = [];
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
@@ -686,9 +721,12 @@ public sealed class JsonGameStore(
                         : state.NextTestAccountUid;
                     _fatigueDayKey = state.FatigueDayKey;
                     _dungeonRewardLedger = state.DungeonRewardLedger ?? [];
+                    _dungeonGoldLedger = state.DungeonGoldLedger ?? [];
+                    _pvpLedger = state.PvpLedger ?? [];
                     _rewardQuarantined = _dungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown);
                 }
 
+                await RecoverPrivateStoresAtStartupLockedAsync(cancellationToken);
                 stateChanged |= MigrateIdentityLocked();
                 stateChanged |= MigratePremiumServicesLocked();
                 stateChanged |= MigrateWeaknessRecoveryLocked();
@@ -696,8 +734,10 @@ public sealed class JsonGameStore(
                 stateChanged |= RefreshPresetCharactersLocked();
                 stateChanged |= MigrateAccountCashLocked();
                 stateChanged |= NormalizeCharacterExperienceLocked();
+                stateChanged |= NormalizeMentorGrowthLocked();
                 stateChanged |= SettleWarehouseUpgradeItemsLocked();
                 stateChanged |= MigrateItemInstanceIdsLocked();
+                await SettleAvatarLifetimesAtStartupLockedAsync(cancellationToken);
                 if (ResetFatigueForNewDayLocked(
                         DateTimeOffset.Now,
                         out var startupResetCharacterIds))
@@ -1993,7 +2033,9 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var account = FindAccountLocked(userName);
+            ThrowIfRewardQuarantinedLocked();
+            var accounts = CopyMentorAccountsLocked();
+            var account = accounts.FirstOrDefault(a => string.Equals(a.UserName, userName, StringComparison.OrdinalIgnoreCase));
             if (account is null)
             {
                 return (false, null, "Account does not exist.");
@@ -2007,7 +2049,10 @@ public sealed class JsonGameStore(
             var character = account.Characters[slot];
             account.Characters.RemoveAt(slot);
             ReindexCharacterSlotsLocked(account);
-            await SaveLockedAsync(cancellationToken);
+            var notices = PrepareRemovedMentorEdgesLocked(accounts);
+            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+                return (false, null, "Character deletion outcome is uncertain; store quarantined.");
+            PublishMentorRemovalNotices(notices);
             logger.LogInformation(
                 "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
                 character.Name,
@@ -2036,7 +2081,9 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var account = _accounts.FirstOrDefault(candidate =>
+            ThrowIfRewardQuarantinedLocked();
+            var accounts = CopyMentorAccountsLocked();
+            var account = accounts.FirstOrDefault(candidate =>
                 candidate.AccountUid == accountUid);
             if (account is null)
             {
@@ -2051,7 +2098,10 @@ public sealed class JsonGameStore(
             var character = account.Characters[slot];
             account.Characters.RemoveAt(slot);
             ReindexCharacterSlotsLocked(account);
-            await SaveLockedAsync(cancellationToken);
+            var notices = PrepareRemovedMentorEdgesLocked(accounts);
+            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+                return (false, null, "Character deletion outcome is uncertain; store quarantined.");
+            PublishMentorRemovalNotices(notices);
             logger.LogInformation(
                 "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
                 character.Name,
@@ -2088,7 +2138,9 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            var targetAccount = _accounts.FirstOrDefault(account =>
+            ThrowIfRewardQuarantinedLocked();
+            var accounts = CopyMentorAccountsLocked();
+            var targetAccount = accounts.FirstOrDefault(account =>
                 string.Equals(account.UserName, targetUserName, StringComparison.OrdinalIgnoreCase));
             if (targetAccount is null)
             {
@@ -2100,7 +2152,7 @@ public sealed class JsonGameStore(
                 .Select(character => character.CharacterNo)
                 .Where(characterNo => characterNo != 0)
                 .ToHashSet();
-            foreach (var account in _accounts)
+            foreach (var account in accounts)
             {
                 account.Characters.Clear();
             }
@@ -2135,7 +2187,11 @@ public sealed class JsonGameStore(
                 });
             }
 
-            await SaveLockedAsync(cancellationToken);
+            var notices = PrepareRemovedMentorEdgesLocked(accounts);
+            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+                return (false, 0, "Roster replacement outcome is uncertain; store quarantined.");
+            Commerce.RevokeStores();
+            PublishMentorRemovalNotices(notices);
             logger.LogInformation(
                 "Replaced all emulator characters with {Count} maximum-level transfers on account {Account}.",
                 replacements.Length,
@@ -2494,7 +2550,8 @@ public sealed class JsonGameStore(
     }
 
     private static bool IsSupportedPremiumServiceType(byte serviceType) => serviceType is
-        GameProtocolEngine.BlackDiamondServiceType
+        GameProtocolEngine.PrivateStoreServiceType
+        or GameProtocolEngine.BlackDiamondServiceType
         or GameProtocolEngine.OverlordContractServiceType
         or GameProtocolEngine.MasterContractServiceType;
 
@@ -2595,7 +2652,9 @@ public sealed class JsonGameStore(
                 now,
                 checked(now + (uint)TimeSpan.FromDays(30).TotalSeconds));
             mailbox.Add(mail);
-            owner.Characters[characterIndex] = character with { Mailbox = mailbox };
+            var updated = ReconcileAvatarLifetimes(character with { Mailbox = mailbox }, character);
+            owner.Characters[characterIndex] = updated;
+            mail = updated.Mailbox!.Single(m => m.Id == mailId);
             await SaveLockedAsync(cancellationToken);
             logger.LogInformation(
                 "Created mail {MailId} for character {CharacterId}: gold={Gold}, item={ItemId}.",
@@ -2622,6 +2681,9 @@ public sealed class JsonGameStore(
         CancellationToken cancellationToken = default)
     {
         request = EnsureMailAttachmentInstanceId(request);
+        if (request.Attachment is { } limited
+            && (limited.AvatarExpiresAtUnixSeconds is not null || limited.AvatarRemainingSeconds is > 0))
+            return new(false, null, Guid.Empty, null, CharacterMailSendFailure.InvalidRequest);
         if (ValidateMailRequest(request) is not null
             || string.IsNullOrWhiteSpace(recipientName)
             || recipientName.Length > 20
@@ -2639,7 +2701,7 @@ public sealed class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(senderCharacterId))
+            if (IsEconomicWriteBlocked(senderCharacterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -2834,7 +2896,7 @@ public sealed class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -2856,6 +2918,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[characterIndex];
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
                     warehouseCapacity,
@@ -2898,7 +2961,7 @@ public sealed class JsonGameStore(
                 WarehouseCapacity = nextWarehouseCapacity,
                 Mailbox = mailbox
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[characterIndex] = updated;
             await SaveLockedAsync(cancellationToken);
             return new CharacterMailClaimResult(updated, mail);
@@ -3255,13 +3318,18 @@ public sealed class JsonGameStore(
                 return new(DungeonRewardLedgerStatus.Unknown, null, null, 0, null, "store-quarantined");
             if (request.TargetGold < 0 || request.ExpectedGold < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-gold", null);
             if (plannedInventory.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedEquipment.GroupBy(x => x.Slot).Any(g => g.Count() > 1) || plannedInventory.Any(x => x.ItemId == 0) || plannedEquipment.Any(x => x.ItemId == 0)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
-            var account = _accounts.FirstOrDefault(a => string.Equals(a.UserName, request.UserName, StringComparison.OrdinalIgnoreCase)); var index = account?.Characters.FindIndex(x => x.Id == request.CharacterId) ?? -1; if (account is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "account-not-found", null); if (index < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-not-found", null); if (_pendingTradeDeliveries.ContainsKey(request.CharacterId)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "pending-trade-delivery", null);
+            var account = _accounts.FirstOrDefault(a => string.Equals(a.UserName, request.UserName, StringComparison.OrdinalIgnoreCase)); var index = account?.Characters.FindIndex(x => x.Id == request.CharacterId) ?? -1; if (account is null) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "account-not-found", null); if (index < 0) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-not-found", null); if (IsEconomicWriteBlocked(request.CharacterId)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "pending-trade-delivery", null);
             var current = account.Characters[index];
+            var targetGold = request.TargetGold;
+            if (request.CardType == (byte)PartyCardType.Free && request.RequestedGoldReward > 0 && targetGold >= current.Gold)
+                targetGold = (int)Math.Min(targetGold, Math.Max(current.Gold, int.MaxValue - PendingDungeonGold(current)
+                    - PendingStoreGold(current) - PendingMentorGold(current)));
+            if (!HasDungeonGoldCapacity(current, targetGold)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "gold-capacity-reserved", null);
             if (current.Gold != request.ExpectedGold || !ItemsEqual(current.Inventory, expectedInventory) || !ItemsEqual(current.Equipment, expectedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "character-state-conflict", null);
             if (!InventoryPlanPreservesBaseline(current.Inventory, plannedInventory) || !ItemsEqual(current.Equipment, plannedEquipment)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-planning", null);
             if (!TryResolveWarehouseCapacityUpdate(current, request.WarehouseCapacity, request.ExpectedWarehouseCapacity, out var capacity)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "warehouse-capacity-conflict", null);
             if (!TryAppendGeneratedMailsLocked(current, mails, out var mailbox, out _, out var generated)) return new(DungeonRewardLedgerStatus.Rejected, null, null, 0, "invalid-mails", null); capacity = Math.Max(capacity, generated);
-            var accounts = JsonSerializer.Deserialize<List<AccountRecord>>(JsonSerializer.Serialize(_accounts))!; var updated = current with { Gold = request.TargetGold, Inventory = plannedInventory.OrderBy(x => x.Slot).ToList(), Equipment = plannedEquipment.OrderBy(x => x.Slot).ToList(), Mailbox = mailbox, WarehouseCapacity = capacity }; accounts.First(a => a.Id == account.Id).Characters[index] = updated; var now = DateTimeOffset.UtcNow; var entry = new DungeonRewardLedgerEntry(request.IdempotencyKey, fingerprint, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, DungeonRewardLedgerStatus.Committed, now, now, null, request.TargetGold - current.Gold, null, null); var ledger = new List<DungeonRewardLedgerEntry>(_dungeonRewardLedger) { entry }; 
+            var accounts = JsonSerializer.Deserialize<List<AccountRecord>>(JsonSerializer.Serialize(_accounts))!; var updated = current with { Gold = targetGold, Inventory = plannedInventory.OrderBy(x => x.Slot).ToList(), Equipment = plannedEquipment.OrderBy(x => x.Slot).ToList(), Mailbox = mailbox, WarehouseCapacity = capacity }; accounts.First(a => a.Id == account.Id).Characters[index] = updated; var now = DateTimeOffset.UtcNow; var entry = new DungeonRewardLedgerEntry(request.IdempotencyKey, fingerprint, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, DungeonRewardLedgerStatus.Committed, now, now, null, targetGold - current.Gold, null, null); var ledger = new List<DungeonRewardLedgerEntry>(_dungeonRewardLedger) { entry };
             try
             {
                 await WriteRewardStatePrivilegedAsync(accounts, ledger, cancellationToken);
@@ -3279,6 +3347,8 @@ public sealed class JsonGameStore(
             }
             _accounts = accounts;
             _dungeonRewardLedger = ledger;
+            if (request.CardType == (byte)PartyCardType.Free)
+                AccrueMentorGoldLocked(request.CharacterId, request.MentorGoldIncarnation, request.RequestedGoldReward);
             return new(DungeonRewardLedgerStatus.Committed, updated, null, entry.GoldDelta, null, null);
         }
         finally { _gate.Release(); }
@@ -3339,12 +3409,13 @@ public sealed class JsonGameStore(
 
     private void InstallRewardRootLocked(JsonGameStoreState state)
     {
+        Commerce.RevokeStores();
         _nextCharacterNo = state.NextCharacterNo;
         _nextNormalAccountUid = state.NextNormalAccountUid;
         _nextTestAccountUid = state.NextTestAccountUid;
         _fatigueDayKey = state.FatigueDayKey;
         _accounts = state.Accounts;
-        _dungeonRewardLedger = state.DungeonRewardLedger;
+        _dungeonRewardLedger = state.DungeonRewardLedger; _dungeonGoldLedger = state.DungeonGoldLedger; _pvpLedger = state.PvpLedger ?? [];
         _rewardQuarantined = false;
     }
 
@@ -3373,7 +3444,7 @@ public sealed class JsonGameStore(
         var plannedInventory = request.PlannedInventory?.OrderBy(x => x.Slot).ToArray();
         var plannedEquipment = request.PlannedEquipment?.OrderBy(x => x.Slot).ToArray();
         var mails = request.GeneratedMails?.ToArray();
-        var canonical = JsonSerializer.Serialize(new { request.IdempotencyKey, request.UserName, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, request.TargetGold, request.ExpectedGold, expectedInventory, expectedEquipment, plannedInventory, plannedEquipment, mails, request.WarehouseCapacity, request.ExpectedWarehouseCapacity });
+        var canonical = JsonSerializer.Serialize(new { request.IdempotencyKey, request.UserName, request.CharacterId, request.DungeonGeneration, request.PartySlot, request.CardType, request.CardColumn, request.TargetGold, request.ExpectedGold, expectedInventory, expectedEquipment, plannedInventory, plannedEquipment, mails, request.WarehouseCapacity, request.ExpectedWarehouseCapacity, request.RequestedGoldReward, request.MentorGoldIncarnation });
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 
@@ -3407,7 +3478,7 @@ public sealed class JsonGameStore(
         {
             if (_rewardQuarantined)
                 throw new InvalidOperationException("store is quarantined after uncertain dungeon reward write");
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3428,6 +3499,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
                     warehouseCapacity,
@@ -3459,7 +3531,7 @@ public sealed class JsonGameStore(
                 WarehouseCapacity = nextWarehouseCapacity,
                 Mailbox = mailbox
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             await SaveLockedAsync(cancellationToken);
             LogGeneratedMails(characterId, createdMailCount);
@@ -3510,6 +3582,8 @@ public sealed class JsonGameStore(
                     false, ItemTradeCommitFailure.CharacterMissing, Guid.Empty, null, null, null);
             }
 
+            if (IsEconomicWriteBlocked(request.InitiatorCharacterId) || IsEconomicWriteBlocked(request.PartnerCharacterId))
+                return new(false, ItemTradeCommitFailure.EscrowMissing, Guid.Empty, null, null, null);
             var settlementRequest = new ItemTradeSettlementRequest(
                 initiator,
                 partner,
@@ -3546,6 +3620,9 @@ public sealed class JsonGameStore(
             }
 
             var tradeId = Guid.NewGuid();
+            if (!HasDungeonGoldCapacity(initiator, checked(initiator.Gold + plan.Initiator.GoldDelta))
+                || !HasDungeonGoldCapacity(partner, checked(partner.Gold + plan.Partner.GoldDelta)))
+                return new(false, ItemTradeCommitFailure.GoldOverflow, Guid.Empty, null, null, null);
             var previousInitiator = initiator;
             var previousPartner = partner;
             var updatedInitiator = ApplyTradePlan(initiator, plan.Initiator);
@@ -3671,7 +3748,7 @@ public sealed class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3696,6 +3773,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[characterIndex];
+            if (!HasDungeonGoldCapacity(character, remainingGold)) return null;
             var persistedItems = (character.Inventory ?? [])
                 .OrderBy(item => item.Slot)
                 .ToArray();
@@ -3717,7 +3795,7 @@ public sealed class JsonGameStore(
                 Gold = remainingGold,
                 Inventory = plannedItems.ToList()
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[characterIndex] = updated;
             await SaveLockedAsync(cancellationToken);
             return updated;
@@ -3766,7 +3844,7 @@ public sealed class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3815,7 +3893,7 @@ public sealed class JsonGameStore(
                 Inventory = plannedMainItems.ToList(),
                 Equipment = plannedEquippedItems.ToList()
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[characterIndex] = updated;
             await SaveLockedAsync(cancellationToken);
             return updated;
@@ -3848,7 +3926,7 @@ public sealed class JsonGameStore(
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3869,6 +3947,7 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
                     warehouseCapacity,
@@ -3905,9 +3984,22 @@ public sealed class JsonGameStore(
                 WarehouseCapacity = nextWarehouseCapacity,
                 Mailbox = mailbox
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
-            await SaveLockedAsync(cancellationToken);
+            var snapshotCommitted = false;
+            try
+            {
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true,
+                    isolateCommittedDiagnostics: true);
+            }
+            catch
+            {
+                // Only File.Move commits the atomic replacement. A failed
+                // temporary write must not leave an uncommitted inventory/gold
+                // debit in memory. Never undo memory after replacement succeeded.
+                if (!snapshotCommitted) account.Characters[index] = character;
+                throw;
+            }
             LogGeneratedMails(characterId, createdMailCount);
             return updated;
         }
@@ -3932,13 +4024,14 @@ public sealed class JsonGameStore(
         uint? victoryPoints = null,
         int? expectedCash = null,
         ushort? warehouseCapacity = null,
-        ushort? expectedWarehouseCapacity = null)
+        ushort? expectedWarehouseCapacity = null,
+        uint? expectedVictoryPoints = null)
     {
         await _gate.WaitAsync(cancellationToken);
         try
         {
             ThrowIfRewardQuarantinedLocked();
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -3981,6 +4074,8 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!IsVictoryPointUpdateCurrent(character, victoryPoints, expectedVictoryPoints)) return null;
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
                     warehouseCapacity,
@@ -4024,7 +4119,7 @@ public sealed class JsonGameStore(
                 WarehouseCapacity = nextWarehouseCapacity,
                 Mailbox = mailbox
             };
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             account = SetAccountCash(account, updated.Cash);
             updated = account.Characters[index];
@@ -4053,7 +4148,7 @@ public sealed class JsonGameStore(
         var now = checked((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         foreach (var grantGroup in grants.GroupBy(grant => grant.ServiceType))
         {
-            if (grantGroup.Key is not (GameProtocolEngine.OverlordContractServiceType
+            if (grantGroup.Key is not (GameProtocolEngine.PrivateStoreServiceType or GameProtocolEngine.OverlordContractServiceType
                     or GameProtocolEngine.MasterContractServiceType)
                 || grantGroup.Any(grant => grant.Days <= 0))
             {
@@ -4104,7 +4199,8 @@ public sealed class JsonGameStore(
                 return null;
             }
 
-            var updated = account.Characters[index] with
+            var original = account.Characters[index];
+            var updated = original with
             {
                 Sp = Math.Max(0, remainingSp),
                 Skills = skills
@@ -4114,7 +4210,19 @@ public sealed class JsonGameStore(
                     .ToList()
             };
             account.Characters[index] = updated;
-            await SaveLockedAsync(cancellationToken);
+            var snapshotCommitted = false;
+            try
+            {
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true,
+                    isolateCommittedDiagnostics: true);
+            }
+            catch
+            {
+                // A failed write/replace must not install a rejected layout in
+                // the store cache, where an unrelated later save could revive it.
+                if (!snapshotCommitted) account.Characters[index] = original;
+                throw;
+            }
             return updated;
         }
         finally
@@ -4146,7 +4254,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4255,7 +4363,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4381,7 +4489,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4551,7 +4659,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4691,7 +4799,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -4837,7 +4945,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -5189,7 +5297,7 @@ public sealed class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -5237,7 +5345,7 @@ public sealed class JsonGameStore(
             {
                 updated = HiddenDungeonUnlockCatalog.ApplyUnlocks(updated, unlockedDungeonIds);
             }
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             await SaveLockedAsync(cancellationToken);
             return updated;
@@ -5648,6 +5756,8 @@ public sealed class JsonGameStore(
                 }
 
                 var character = account.Characters[characterIndex];
+                if (IsEconomicWriteBlocked(characterId))
+                    return new(false, character, recoveryCost, WeaknessRecoveryFailure.Busy);
                 if (!character.IsWeakened)
                 {
                     return new(
@@ -5856,12 +5966,13 @@ public sealed class JsonGameStore(
         ushort? warehouseCapacity = null,
         ushort? expectedWarehouseCapacity = null,
         int? growType = null,
-        IEnumerable<ushort>? unlockedDungeonIds = null)
+        IEnumerable<ushort>? unlockedDungeonIds = null,
+        uint? expectedVictoryPoints = null)
     {
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_pendingTradeDeliveries.ContainsKey(characterId))
+            if (IsEconomicWriteBlocked(characterId))
             {
                 // 该角色有一笔已落库、尚未被其会话安装的交易交付：拒绝盲写，
                 // 否则会话会用陈旧的内存背包覆盖掉刚收到的物品（复制）。
@@ -5882,6 +5993,8 @@ public sealed class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (!IsVictoryPointUpdateCurrent(character, victoryPoints, expectedVictoryPoints)) return null;
+            if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (character.Quests?.Any(quest => quest.QuestId == questId) != true)
             {
                 return null;
@@ -5951,7 +6064,7 @@ public sealed class JsonGameStore(
             {
                 updated = HiddenDungeonUnlockCatalog.ApplyUnlocks(updated, unlockedDungeonIds);
             }
-            updated = SettleWarehouseUpgradeItems(updated);
+            updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
             await SaveLockedAsync(cancellationToken);
             LogGeneratedMails(characterId, createdMailCount);
@@ -6023,6 +6136,11 @@ public sealed class JsonGameStore(
                                 questId,
                                 character.Id,
                                 rewardPlan.Error);
+                            continue;
+                        }
+
+                        if (!HasDungeonGoldCapacity(character, rewardPlan.Gold))
+                        {
                             continue;
                         }
 
@@ -6316,13 +6434,15 @@ public sealed class JsonGameStore(
     }
 
     // Privileged operator recovery: persists a rejection ledger while quarantine is still held.
-    private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger, CancellationToken cancellationToken)
+    private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger,
+        CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null, List<PvpSettlementReceipt>? pvpLedger = null)
     {
-        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger }, new JsonSerializerOptions { WriteIndented = true });
+        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger, PvpLedger = pvpLedger ?? _pvpLedger }, new JsonSerializerOptions { WriteIndented = true });
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
     }
 
-    private async Task SaveLockedAsync(CancellationToken cancellationToken)
+    private async Task SaveLockedAsync(CancellationToken cancellationToken, Action? snapshotCommitted = null,
+        bool isolateCommittedDiagnostics = false)
     {
         ThrowIfRewardQuarantinedLocked();
         _ = SettleWarehouseUpgradeItemsLocked();
@@ -6339,14 +6459,26 @@ public sealed class JsonGameStore(
                     NextNormalAccountUid = _nextNormalAccountUid,
                     NextTestAccountUid = _nextTestAccountUid,
                     FatigueDayKey = _fatigueDayKey,
-                    DungeonRewardLedger = _dungeonRewardLedger
+                    DungeonRewardLedger = _dungeonRewardLedger,
+                    DungeonGoldLedger = _dungeonGoldLedger,
+                    PvpLedger = _pvpLedger
                 },
                 new JsonSerializerOptions { WriteIndented = true },
                 cancellationToken);
         }
 
         File.Move(temporary, StorePath, overwrite: true);
-        logger.LogInformation("Saved emulator state to {Path}", StorePath);
+        snapshotCommitted?.Invoke();
+        if (!isolateCommittedDiagnostics)
+            logger.LogInformation("Saved emulator state to {Path}", StorePath);
+        else
+        {
+            // Item-space callers must receive the successful commit even if a
+            // logging provider fails. This contains diagnostics only: the atomic
+            // replacement is already done, and must never be retried or undone.
+            try { logger.LogInformation("Saved emulator state to {Path}", StorePath); }
+            catch (Exception) { }
+        }
     }
 
     private void ThrowIfRewardQuarantinedLocked()

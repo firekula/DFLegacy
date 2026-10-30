@@ -1,0 +1,609 @@
+{
+  "Role": "A",
+  "Kind": "controlled consumer mailbox write delay",
+  "HighLevelCalls": 1,
+  "ManualTravelInputs": 0,
+  "InjectedDelayMs": 1100,
+  "NoTimestampOrPacketOrGameStateChanges": true,
+  "Before": {
+    "schema": "dfl-client-state/v2",
+    "pid": 24404,
+    "process_started_filetime": 134377120770311727,
+    "sequence": 27277,
+    "captured_filetime": 134377176542455072,
+    "captured_tick_ms": 357284687,
+    "exported_filetime": 134377176544405649,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 24,
+    "capture_duration_us": 3,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 2,
+      "area_id": 1,
+      "context_token": "0x072A6208",
+      "map_token": "0x17D1F4B0",
+      "position": {
+        "x": 1787.65552,
+        "y": 279.817688,
+        "z": 0
+      },
+      "destination": {
+        "x": 3781,
+        "y": 280
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": false
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": false,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x070C9E18",
+      "actor_token": "0x17F43F50",
+      "map_token": "0x17D1F4B0",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 1787.65552,
+        "y": 279.817688,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x070C9E18",
+        "actor_token": "0x17F43F50",
+        "map_token": "0x17D1F4B0",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 1787.65552,
+          "y": 279.817688,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "After": {
+    "schema": "dfl-client-state/v2",
+    "pid": 24404,
+    "process_started_filetime": 134377120770311727,
+    "sequence": 27383,
+    "captured_filetime": 134377176778442481,
+    "captured_tick_ms": 357308281,
+    "exported_filetime": 134377176779781904,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 26,
+    "capture_duration_us": 4,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 1,
+      "area_id": 1,
+      "context_token": "0x072A6208",
+      "map_token": "0x17ED3A20",
+      "position": {
+        "x": 474,
+        "y": 234.361694,
+        "z": 0
+      },
+      "destination": {
+        "x": 474,
+        "y": 234
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": false,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x070C9E18",
+      "actor_token": "0x17F43F50",
+      "map_token": "0x17ED3A20",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 474,
+        "y": 234.361694,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x070C9E18",
+        "actor_token": "0x17F43F50",
+        "map_token": "0x17ED3A20",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 474,
+          "y": 234.361694,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "Writes": [
+    {
+      "File": "delayed-mailbox-request-1.bin",
+      "Request": {
+        "pid": 24404,
+        "uid": 1,
+        "process_started_filetime": 134377120770311727,
+        "request_id": 1793244055530633300,
+        "issued_tick_ms": 357285968,
+        "snapshot_tick_ms": 357285906,
+        "generation": 24,
+        "snapshot_sequence": 27283,
+        "actor_token": 401882960,
+        "map_token": 399635632,
+        "user_token": 118267416,
+        "context_token": 120218120,
+        "town_id": 2,
+        "area_id": 1,
+        "x": 3781,
+        "y": 280
+      },
+      "DelayMs": 1094,
+      "Sha256": "B6B01E5D962E6DF9C2BCD855F21732B808E20395CD482525372700D3368CC660"
+    },
+    {
+      "File": "delayed-mailbox-request-2.bin",
+      "Request": {
+        "pid": 24404,
+        "uid": 1,
+        "process_started_filetime": 134377120770311727,
+        "request_id": 1793244057806010400,
+        "issued_tick_ms": 357288234,
+        "snapshot_tick_ms": 357288140,
+        "generation": 24,
+        "snapshot_sequence": 27294,
+        "actor_token": 401882960,
+        "map_token": 399635632,
+        "user_token": 118267416,
+        "context_token": 120218120,
+        "town_id": 2,
+        "area_id": 1,
+        "x": 3781,
+        "y": 280
+      },
+      "DelayMs": 0,
+      "Sha256": "07FF8DDC3ACE08DE3298310357042EEFACA70A386A2512F0B6ACD47E04F35128"
+    },
+    {
+      "File": "delayed-mailbox-request-3.bin",
+      "Request": {
+        "pid": 24404,
+        "uid": 1,
+        "process_started_filetime": 134377120770311727,
+        "request_id": 1793244069202131300,
+        "issued_tick_ms": 357299640,
+        "snapshot_tick_ms": 357299546,
+        "generation": 25,
+        "snapshot_sequence": 27340,
+        "actor_token": 401882960,
+        "map_token": 405172536,
+        "user_token": 118267416,
+        "context_token": 120218120,
+        "town_id": 1,
+        "area_id": 0,
+        "x": 29,
+        "y": 262
+      },
+      "DelayMs": 0,
+      "Sha256": "AD2D688B38BC213716874C9F9046D1CC95B4D89A66ED3A35F11617A110C4CF2D"
+    },
+    {
+      "File": "delayed-mailbox-request-4.bin",
+      "Request": {
+        "pid": 24404,
+        "uid": 1,
+        "process_started_filetime": 134377120770311727,
+        "request_id": 1793244070671932600,
+        "issued_tick_ms": 357301109,
+        "snapshot_tick_ms": 357300968,
+        "generation": 25,
+        "snapshot_sequence": 27347,
+        "actor_token": 401882960,
+        "map_token": 405172536,
+        "user_token": 118267416,
+        "context_token": 120218120,
+        "town_id": 1,
+        "area_id": 0,
+        "x": 783,
+        "y": 200
+      },
+      "DelayMs": 0,
+      "Sha256": "45407A51280CFF3768B48A9230C1A7B213996C999488E99948D726082F555FD8"
+    },
+    {
+      "File": "delayed-mailbox-request-5.bin",
+      "Request": {
+        "pid": 24404,
+        "uid": 1,
+        "process_started_filetime": 134377120770311727,
+        "request_id": 1793244074779632800,
+        "issued_tick_ms": 357305218,
+        "snapshot_tick_ms": 357305031,
+        "generation": 25,
+        "snapshot_sequence": 27367,
+        "actor_token": 401882960,
+        "map_token": 405172536,
+        "user_token": 118267416,
+        "context_token": 120218120,
+        "town_id": 1,
+        "area_id": 0,
+        "x": 784,
+        "y": 163
+      },
+      "DelayMs": 0,
+      "Sha256": "7DEC1049765E9CBAF0E1AAB6486C911037BDA2D7D4C302D6BDFC78F2ADF047C2"
+    },
+    {
+      "File": "delayed-mailbox-request-6.bin",
+      "Request": {
+        "pid": 24404,
+        "uid": 1,
+        "process_started_filetime": 134377120770311727,
+        "request_id": 1793244075781207500,
+        "issued_tick_ms": 357306218,
+        "snapshot_tick_ms": 357306046,
+        "generation": 26,
+        "snapshot_sequence": 27372,
+        "actor_token": 401882960,
+        "map_token": 401422880,
+        "user_token": 118267416,
+        "context_token": 120218120,
+        "town_id": 1,
+        "area_id": 1,
+        "x": 474,
+        "y": 319
+      },
+      "DelayMs": 0,
+      "Sha256": "5979872CA5A58DC4EAEBA231862F591E56E9504BB80E7E375AB6B848491AB1EE"
+    },
+    {
+      "File": "delayed-mailbox-request-7.bin",
+      "Request": {
+        "pid": 24404,
+        "uid": 1,
+        "process_started_filetime": 134377120770311727,
+        "request_id": 1793244076820204800,
+        "issued_tick_ms": 357307250,
+        "snapshot_tick_ms": 357307062,
+        "generation": 26,
+        "snapshot_sequence": 27377,
+        "actor_token": 401882960,
+        "map_token": 401422880,
+        "user_token": 118267416,
+        "context_token": 120218120,
+        "town_id": 1,
+        "area_id": 1,
+        "x": 474,
+        "y": 234
+      },
+      "DelayMs": 0,
+      "Sha256": "24EC5D70571D7FEDAECA5E00028D0AB2A8B18A540E03EFE14A92950534FD1D4F"
+    }
+  ],
+  "NativeReceipts": [
+    {
+      "RequestId": 1793244055530633300,
+      "Status": "rejected",
+      "Reason": "expired_request",
+      "File": "delayed-mailbox-native-1.json",
+      "Sha256": "C7A72D3770EFA39319FC532D35C9D2BA39E990BC9050009F16AAC88E6B6BB742"
+    },
+    {
+      "RequestId": 1793244057806010400,
+      "Status": "requested",
+      "Reason": "native_destination_set",
+      "File": "delayed-mailbox-native-2.json",
+      "Sha256": "EF82DD3420E05CE7567CB44091FD9D6BBC3DEE2C2DA46E9746613FC6A86088F0"
+    },
+    {
+      "RequestId": 1793244069202131300,
+      "Status": "arrived",
+      "Reason": "position_observed",
+      "File": "delayed-mailbox-native-3.json",
+      "Sha256": "CB6C50428DEF64645B2D3C7429FB6357AB9F17863FF0BF8D7DD4355AF4AD2492"
+    },
+    {
+      "RequestId": 1793244070671932600,
+      "Status": "requested",
+      "Reason": "native_destination_set",
+      "File": "delayed-mailbox-native-4.json",
+      "Sha256": "EA90C7E904DDDBCB3BD119E287155D9DFBAF7AEA0A71160B70A7E4FF0CDF321D"
+    },
+    {
+      "RequestId": 1793244074779632800,
+      "Status": "requested",
+      "Reason": "native_destination_set",
+      "File": "delayed-mailbox-native-5.json",
+      "Sha256": "B3C3D153AD7B76E622A6DAEA486C598D5E775EAE5672324EFC0CBEC20439D2C4"
+    },
+    {
+      "RequestId": 1793244075781207500,
+      "Status": "requested",
+      "Reason": "native_destination_set",
+      "File": "delayed-mailbox-native-6.json",
+      "Sha256": "5E5E05A485D71DB1398E72CB5E5213A925963AEC4965B033D450ADEA6E16A3BF"
+    },
+    {
+      "RequestId": 1793244076820204800,
+      "Status": "requested",
+      "Reason": "native_destination_set",
+      "File": "delayed-mailbox-native-7.json",
+      "Sha256": "3D40E0BF8BE64B51BB4AD68511E40C5C0401343AD60A5898DECAEA6EA405852A"
+    }
+  ],
+  "Result": {
+    "ok": true,
+    "status": "arrived",
+    "reason": "final_position_observed",
+    "goal": {
+      "town_id": 1,
+      "area_id": 1,
+      "x": 474,
+      "y": 234
+    },
+    "observed": {
+      "town_id": 1,
+      "area_id": 1,
+      "context_token": "0x072A6208",
+      "map_token": "0x17ED3A20",
+      "position": {
+        "x": 474,
+        "y": 234.361694,
+        "z": 0
+      },
+      "destination": {
+        "x": 474,
+        "y": 234
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "request_ids": [
+      1793244055530633300,
+      1793244057806010400,
+      1793244069202131300,
+      1793244070671932600,
+      1793244074779632800,
+      1793244075781207500,
+      1793244076820204800
+    ],
+    "history": [
+      {
+        "request_id": 1793244057806010400,
+        "target": {
+          "x": 3781,
+          "y": 280
+        },
+        "source_area": [
+          2,
+          1
+        ],
+        "observed_area": [
+          1,
+          0
+        ],
+        "source_generation": 24,
+        "observed_generation": 25,
+        "sequence": 27340,
+        "native_status": "requested",
+        "portal": true
+      },
+      {
+        "request_id": 1793244069202131300,
+        "target": {
+          "x": 29,
+          "y": 262
+        },
+        "source_area": [
+          1,
+          0
+        ],
+        "observed_area": [
+          1,
+          0
+        ],
+        "source_generation": 25,
+        "observed_generation": 25,
+        "sequence": 27344,
+        "native_status": "arrived",
+        "portal": false
+      },
+      {
+        "request_id": 1793244070671932600,
+        "target": {
+          "x": 783,
+          "y": 200
+        },
+        "source_area": [
+          1,
+          0
+        ],
+        "observed_area": [
+          1,
+          0
+        ],
+        "source_generation": 25,
+        "observed_generation": 25,
+        "sequence": 27367,
+        "native_status": "requested",
+        "portal": true
+      },
+      {
+        "request_id": 1793244074779632800,
+        "target": {
+          "x": 784,
+          "y": 163
+        },
+        "source_area": [
+          1,
+          0
+        ],
+        "observed_area": [
+          1,
+          1
+        ],
+        "source_generation": 25,
+        "observed_generation": 26,
+        "sequence": 27372,
+        "native_status": "requested",
+        "portal": true
+      },
+      {
+        "request_id": 1793244075781207500,
+        "target": {
+          "x": 474,
+          "y": 319
+        },
+        "source_area": [
+          1,
+          1
+        ],
+        "observed_area": [
+          1,
+          1
+        ],
+        "source_generation": 26,
+        "observed_generation": 26,
+        "sequence": 27377,
+        "native_status": "requested",
+        "portal": false
+      },
+      {
+        "request_id": 1793244076820204800,
+        "target": {
+          "x": 474,
+          "y": 234
+        },
+        "source_area": [
+          1,
+          1
+        ],
+        "observed_area": [
+          1,
+          1
+        ],
+        "source_generation": 26,
+        "observed_generation": 26,
+        "sequence": 27383,
+        "native_status": "requested",
+        "portal": false
+      }
+    ],
+    "expired_request_renewals": [
+      1793244055530633300
+    ],
+    "pid": 24404,
+    "uid": 1,
+    "process_started_filetime": 134377120770311727,
+    "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f"
+  },
+  "ElapsedMs": 23484,
+  "ConsumerSources": {
+    "tools\\debug\\client_route.py": "CFE6B98B5BAA347E77DD62B929E2B51F40A0EBC3E2D0A48DDD40B1BDE347AF21",
+    "tools\\debug\\town_navigation.py": "D6C10815E65D02B795E52D5984FAE2F0A14877F114EBEBD705DC9E7A9BB7877A",
+    "tools\\debug\\client_navigation.py": "1436993F61D9BA0F3985AD7064549FA189F08CADEA2B2B1430AA3DAD83678952",
+    "tools\\debug\\client_state.py": "C1188B8D3A5DDD38C334543A3BD39BD338B64282143D2BF5DDD21A8E097502DF"
+  },
+  "TrackedHead": "8ba4b88032e9769505abb38f1a55c51c151961a8"
+}

@@ -1,0 +1,129 @@
+{
+  "schema": "mentor-growth-native-review/v1",
+  "status": "NOT_READY",
+  "native_scope_status": "PASS",
+  "native_predicates_passed": 7,
+  "native_predicates_required": 7,
+  "server_restart_durability_status": "PASS",
+  "scope": "Artifact integrity, independent arithmetic, and explicit manual-review gates; never a completion certificate.",
+  "natural_sweep_native_proven": false,
+  "checked": [
+    {
+      "canonical_observations": 14
+    },
+    {
+      "decoded_client_captures": 5
+    },
+    {
+      "claim": "growth",
+      "status": "PASS",
+      "roster_cumulative_sequence": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "different_area": true
+    },
+    {
+      "case": "online_direct",
+      "basis": 240,
+      "float32_rate": 0.029999999329447746,
+      "mentor": 7,
+      "actual": 247,
+      "following_awards": [
+        {
+          "event_index": 118,
+          "grant": 372,
+          "mentor": 9,
+          "cumulative": 17266
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "online_clear",
+      "basis": 281,
+      "float32_rate": 0.029999999329447746,
+      "mentor": 8,
+      "actual": 317,
+      "following_awards": [],
+      "status": "PASS"
+    },
+    {
+      "case": "party_recipient",
+      "basis": 180,
+      "float32_rate": 0.029999999329447746,
+      "mentor": 5,
+      "actual": 185,
+      "following_awards": [
+        {
+          "event_index": 87,
+          "grant": 22,
+          "mentor": 0,
+          "cumulative": 15814
+        },
+        {
+          "event_index": 88,
+          "grant": 38,
+          "mentor": 1,
+          "cumulative": 15852
+        },
+        {
+          "event_index": 89,
+          "grant": 317,
+          "mentor": 8,
+          "cumulative": 16169
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "offline_direct",
+      "basis": 120,
+      "float32_rate": 0.029999999329447746,
+      "mentor": 0,
+      "actual": 120,
+      "following_awards": [
+        {
+          "event_index": 154,
+          "grant": 132,
+          "mentor": 0,
+          "cumulative": 17743
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "offline_clear",
+      "basis": 120,
+      "float32_rate": 0.029999999329447746,
+      "mentor": 0,
+      "actual": 132,
+      "following_awards": [],
+      "status": "PASS"
+    },
+    {
+      "claim": "server_restart",
+      "status": "PASS",
+      "phase": "pvp-creature-cacab2e",
+      "old_server_pid": 56304,
+      "new_server_pid": 48776,
+      "loaded_state_sha256": "AB528D5275B7F42EFD395765AD760ECB0FF12E7DE816A42FC107EFA3CE0C5EEB",
+      "preserved_relationship_exp": 10
+    },
+    {
+      "claim": "relogin_no_catchup",
+      "status": "PASS",
+      "old_next_due_at": "2026-10-28T04:20:29+08:00",
+      "new_world_attached_at": "2026-10-28T04:25:22.482+08:00",
+      "preserved_relationship_exp": 10
+    }
+  ],
+  "blockers": [
+    "final delivery deployment binding pending"
+  ],
+  "manifest_sha256": "083485A84AFDB78FBB9D1A1BB4DD0FC8803D99B324878474574DA60EEC7F3924",
+  "checker_sha256": "2BEC1F3D5D57DA472C695BA396F795FF5684202A5733B11A292154A43CB01371"
+}

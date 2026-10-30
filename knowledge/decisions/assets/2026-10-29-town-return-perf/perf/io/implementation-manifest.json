@@ -1,0 +1,58 @@
+{
+  "Worktree": "D:/codex_worktree/derived-state-io/DFLegacy",
+  "BaseCommit": "fa1bd68eb441979d218b5526510f862fe62b13ca",
+  "Committed": false,
+  "Scope": [
+    "src/DFLegacy.Debug/src/client_party_runtime.cpp",
+    "src/DFLegacy.Debug/src/client_state.cpp",
+    "src/DFLegacy.Debug/tests/client_party_runtime_tests.cpp"
+  ],
+  "SourceHashes": [
+    {
+      "File": "src/DFLegacy.Debug/src/client_party_runtime.cpp",
+      "Sha256": "08C0C6381C3815D6AC422491F7797FF49BA4D53321F413B572B65F64A39DFFF4"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_state.cpp",
+      "Sha256": "5457E8AE78500CE47E27F5B85F69BB56D5F2600FB9BE399ECAA0E8A2923E4994"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/client_party_runtime_tests.cpp",
+      "Sha256": "C37B3D61071139B68B5F67091D46FAC868CCFD24E762B529A31F818A175AC539"
+    }
+  ],
+  "Artifacts": [
+    {
+      "File": "derived-state-io.patch",
+      "Sha256": "0055013AE392C70A93CF0590A1507B0D2D62CD138CC74DA04C317CFF8E4BDC43"
+    },
+    {
+      "File": "red-tests-confined.log",
+      "Sha256": "923636D3BBA53693A94785226A5AB43427BDD83F2A45F50EBB14FA69F3129AB3"
+    },
+    {
+      "File": "red-build-final.log",
+      "Sha256": "9C6A8FDF31CD4DC9A40F4ACBE9FF1F8799FB0DA579BF345C03F243BE31212E4E"
+    },
+    {
+      "File": "green-tests.log",
+      "Sha256": "78EA6151D1049C44EAFCC016FDF4C963988161147B55ADAC87BB7BF56524615B"
+    },
+    {
+      "File": "final-build.log",
+      "Sha256": "9C6A8FDF31CD4DC9A40F4ACBE9FF1F8799FB0DA579BF345C03F243BE31212E4E"
+    },
+    {
+      "File": "final-tests.log",
+      "Sha256": "78EA6151D1049C44EAFCC016FDF4C963988161147B55ADAC87BB7BF56524615B"
+    },
+    {
+      "File": "out/derived_io_tests.exe",
+      "Sha256": "05360EC93EE693EC520E86B5E5AC5CD2CB439FC40E1A798693506B68236BF691"
+    }
+  ],
+  "Red": "Valid confined run:9 behavior failures, old party/core SDK gates0",
+  "Green": "Win32 Release /W4 /WX private focused rebuild exit0; party IO/runtime/core and client_state all0 failures",
+  "Temp": "G:/Game/DNF_ACT1/DFLegacy/.tmp/town-return-perf-20261029/perf/io/temp",
+  "Excluded": "No product DLL/server/native-client build, deployment, live control, economic/command persistence changes or root checkout mutations"
+}

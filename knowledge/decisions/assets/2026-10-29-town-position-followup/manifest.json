@@ -1,0 +1,421 @@
+{
+  "Schema": "published-acceptance-artifacts/v1",
+  "SourceCommit": "c39d28246c2e5e923f025926af305e6f66e9e80a",
+  "Files": [
+    {
+      "File": "A-standing-town-input.json",
+      "Bytes": 1004,
+      "Sha256": "FB4182F7563BD302A7D74C2CE64D059737D402B2C790A48417BA081B8CCF688E"
+    },
+    {
+      "File": "A-standing-town.jpg",
+      "Bytes": 377530,
+      "Sha256": "3134F7150ABE67B02BF0E1C89C75B0FD4576786664374C74231D7754728FE718"
+    },
+    {
+      "File": "closed-input-manifest.json",
+      "Bytes": 768,
+      "Sha256": "44CE14EE55AA8E5CEAD2637F3D780B9F7640486EFCC0BA2827FE36F4C5235696"
+    },
+    {
+      "File": "frozen-private-receipt.json",
+      "Bytes": 196,
+      "Sha256": "1620EC72AC152B8D9D9E71412EFD8C58278A5E0EA0B6DE8A16B2889205956C66"
+    },
+    {
+      "File": "live\\A-destination.json",
+      "Bytes": 129067,
+      "Sha256": "054B7D20128B7378AA59B250202B2E96B92B2F997699A5E2BB3AE173650BD744"
+    },
+    {
+      "File": "live\\A-direction.json",
+      "Bytes": 128210,
+      "Sha256": "DE2B7709621730E95B3035602F8A9803B553926B78B2D461997DD7A9A0ECF291"
+    },
+    {
+      "File": "live\\A-ground.json",
+      "Bytes": 127252,
+      "Sha256": "60EDE7D7B01C5049459326A5948539C8B62FF03C5BD41F56B0A4F2CB146287F5"
+    },
+    {
+      "File": "live\\B-destination.json",
+      "Bytes": 134130,
+      "Sha256": "D592CAA6B4E1BF7AFAB32AEC251CEDB3C637DF6D9B367C375955D81D109F42F3"
+    },
+    {
+      "File": "live\\B-direction.json",
+      "Bytes": 131941,
+      "Sha256": "D3144801A5C0ECF4E34AAA59E95224B45E59755AAC17092E834F55C35ACCE080"
+    },
+    {
+      "File": "live\\B-ground.json",
+      "Bytes": 130143,
+      "Sha256": "AB8E0C3954AFD38B4DFCF5A539B337D65015CF22929CFB9CD8C32D595A451DC3"
+    },
+    {
+      "File": "native-contract\\00404380-scene_to_current_actor_collection.asm",
+      "Bytes": 117,
+      "Sha256": "6FFDC379CFDF71706AF4132CEDE4B4AD97BB766D3880F73FF0DF08B9FEB73EF3"
+    },
+    {
+      "File": "native-contract\\00404380-scene_to_current_actor_collection.bin",
+      "Bytes": 7,
+      "Sha256": "A33ED4C54F724B1CDD526B3C3E8BFC670F9881DB0DF0A549F9DD82F82745C8CF"
+    },
+    {
+      "File": "native-contract\\00407460-get_x.asm",
+      "Bytes": 223,
+      "Sha256": "7B173C238EDB726BCB9999374BF4D61DB6983E1250384222684D8C69E98E94F8"
+    },
+    {
+      "File": "native-contract\\00407460-get_x.bin",
+      "Bytes": 11,
+      "Sha256": "85049AF963AEE4D3D5E541C3192A4A605FA030F3B61D80D946B121890667F755"
+    },
+    {
+      "File": "native-contract\\00407470-get_y.asm",
+      "Bytes": 223,
+      "Sha256": "767A61712D44C2D0ED3D3FA1045EBEE4A2897D8DE29524FE55736830E0253666"
+    },
+    {
+      "File": "native-contract\\00407470-get_y.bin",
+      "Bytes": 11,
+      "Sha256": "549B10C07AD57F9E40E606510B8A2AE579ABB09D9091274EC67E638B8BDA3CA9"
+    },
+    {
+      "File": "native-contract\\0040ABC0-town_context_to_scene.asm",
+      "Bytes": 117,
+      "Sha256": "1FFEE1485C893450B5B71C632C351BC7D95C14A1031DABAF1E890EFF45C11DD8"
+    },
+    {
+      "File": "native-contract\\0040ABC0-town_context_to_scene.bin",
+      "Bytes": 4,
+      "Sha256": "58E7369C57F4C2E5078496DCBDB6CEC15F32EB29799A5B214CCE0FC70A736BEB"
+    },
+    {
+      "File": "native-contract\\00417AA0-user_to_town_actor.asm",
+      "Bytes": 118,
+      "Sha256": "78E6610A16A7A712AE162DB15F999CA37875475AAC7A410EA610B4746D9058BB"
+    },
+    {
+      "File": "native-contract\\00417AA0-user_to_town_actor.bin",
+      "Bytes": 7,
+      "Sha256": "6ED25EB8A7D10FCB21F3FEC73F75962D5ED8731050D02D47BA684E54803859B7"
+    },
+    {
+      "File": "native-contract\\00417DF0-game_to_town_context.asm",
+      "Bytes": 117,
+      "Sha256": "CC44ED1A59A8B87720246011801DD14DCF05D118540BBB55D0A557D3755C2FFC"
+    },
+    {
+      "File": "native-contract\\00417DF0-game_to_town_context.bin",
+      "Bytes": 4,
+      "Sha256": "0B78473B3A56C63FF2A64431FB600078066CBE407D3DEE7EA8FD7575BD7F82D5"
+    },
+    {
+      "File": "native-contract\\00418260-protected_float_read.asm",
+      "Bytes": 2519,
+      "Sha256": "57BA1FF18BEDB67A5ECDF383BA7C236EF44FBE274C6E55DC31BBD2AF6FC07B58"
+    },
+    {
+      "File": "native-contract\\00418260-protected_float_read.bin",
+      "Bytes": 108,
+      "Sha256": "E5C8F38554177EAB5593245CFA19262E7C75EA116E229B97EBE53AE3B92DE53F"
+    },
+    {
+      "File": "native-contract\\00419420-notification_dispatch_header.asm",
+      "Bytes": 1332,
+      "Sha256": "CD3547F55CB3F9A6F11CDCF9DB81EB67468533DA2322F6F041393F9D98E86633"
+    },
+    {
+      "File": "native-contract\\00419420-notification_dispatch_header.bin",
+      "Bytes": 91,
+      "Sha256": "14EC8A9B86689AB5C89CC3812775A6C9EE8A2458D756BF79C7F73BDEB51547F9"
+    },
+    {
+      "File": "native-contract\\0041E878-noti22_case.asm",
+      "Bytes": 4425,
+      "Sha256": "0E29E401A92A057ADA434F8B71C2F6D947A13767DCCD97D3A26886D4C577BFDC"
+    },
+    {
+      "File": "native-contract\\0041E878-noti22_case.bin",
+      "Bytes": 335,
+      "Sha256": "02E0ABCAE5F359EF0579DB0BB4D5E8B5701D3968F340FF8327CBE18F95ABEB56"
+    },
+    {
+      "File": "native-contract\\00433940-float_to_nearest_integer.asm",
+      "Bytes": 840,
+      "Sha256": "5DE5E3D6C8BEE48751233119DD2BCB67606CA0DB7354C286F2331E856C21C9F9"
+    },
+    {
+      "File": "native-contract\\00433940-float_to_nearest_integer.bin",
+      "Bytes": 49,
+      "Sha256": "D97F3F49A67D567C07DE165F0F20C0544D8165AA1DFBB599C6058FBC6EB23947"
+    },
+    {
+      "File": "native-contract\\004715B0-set_actor_integer_position.asm",
+      "Bytes": 1215,
+      "Sha256": "908CF3236F934D98F830E829BAB904FFBE19F2CDA0C3DCFD519CEBF5A4C57110"
+    },
+    {
+      "File": "native-contract\\004715B0-set_actor_integer_position.bin",
+      "Bytes": 62,
+      "Sha256": "E101125CEB68C2A4EC6A0C84BAAE14FC85A83650CFF045545589B219349165EF"
+    },
+    {
+      "File": "native-contract\\00471610-actor_get_integer_axis.asm",
+      "Bytes": 274,
+      "Sha256": "B3F5F4A6C9013E28D84046202ECB394D16AD5B77AA6EF4F4306379812ECACB5E"
+    },
+    {
+      "File": "native-contract\\00471610-actor_get_integer_axis.bin",
+      "Bytes": 15,
+      "Sha256": "0089A2CF83C0C4060E17BF30582DD7F4D372ED3CC7243A5BC7566543029F5ADC"
+    },
+    {
+      "File": "native-contract\\00473490-normal_actor_update_movement.asm",
+      "Bytes": 6227,
+      "Sha256": "8513DDEC521DC5B61367271F31CD5C3D7852F8A977FA6E5F7FF73F5751D5425F"
+    },
+    {
+      "File": "native-contract\\00473490-normal_actor_update_movement.bin",
+      "Bytes": 329,
+      "Sha256": "0C8FBE4BF8A07BCEF67749D0F4E2165EED0581A88F9B195E74CC5147AC8AF4FD"
+    },
+    {
+      "File": "native-contract\\00478F00-remote_direction_decode.asm",
+      "Bytes": 2543,
+      "Sha256": "25C9624832F12B7E18D73FFF23B83E90920D5EC852315131135E70723596D1FF"
+    },
+    {
+      "File": "native-contract\\00478F00-remote_direction_decode.bin",
+      "Bytes": 110,
+      "Sha256": "5E0E12E421D65E63DF76005A00CFB899A68C99210C7546A7A4F33B271784AFCB"
+    },
+    {
+      "File": "native-contract\\00478F70-set_town_destination.asm",
+      "Bytes": 968,
+      "Sha256": "6E0EC93ADAB60AC15B8C50303345B3C688127A6410ACB04855647A339DE4B6BD"
+    },
+    {
+      "File": "native-contract\\00478F70-set_town_destination.bin",
+      "Bytes": 53,
+      "Sha256": "39209A2104C3C4D86DC833AB7A70334E8AB47055E8ABED909D8AF0D1F8BFA791"
+    },
+    {
+      "File": "native-contract\\004795F0-town_steer.asm",
+      "Bytes": 11099,
+      "Sha256": "A1828858F1131A9B352A21FC80A9DCF7DF8329357BC3D5CFED125B9A32627A49"
+    },
+    {
+      "File": "native-contract\\004795F0-town_steer.bin",
+      "Bytes": 675,
+      "Sha256": "CEB92C7D0B9688BAB5CF246A55A095E9AEC37C5729B0E1ACD5024E7CA4F30A9B"
+    },
+    {
+      "File": "native-contract\\004798A0-remote_extrapolate_stop_deadband.asm",
+      "Bytes": 7947,
+      "Sha256": "5847F494D1CF9C545C13C300DD0DF5AA1CFAC26C8E9E2266DABFF8C59ACE6D91"
+    },
+    {
+      "File": "native-contract\\004798A0-remote_extrapolate_stop_deadband.bin",
+      "Bytes": 414,
+      "Sha256": "4D768ADB8D4E454BD77D6EF3A304C8D0E0509E41EC5FB72C1F8A0720DA39F0FA"
+    },
+    {
+      "File": "native-contract\\00479A40-send_cmd37_if_position_changed.asm",
+      "Bytes": 5222,
+      "Sha256": "E50D52FF075A703A8D529E9BE55C8067F9F55539F9223B31B6E6B50661232FB6"
+    },
+    {
+      "File": "native-contract\\00479A40-send_cmd37_if_position_changed.bin",
+      "Bytes": 293,
+      "Sha256": "4B14ED7063FD4329DC6C1135B6149EA97A3F4CE8910FF0DBC05A0C2457161253"
+    },
+    {
+      "File": "native-contract\\0047A8E0-town_actor_update.asm",
+      "Bytes": 56079,
+      "Sha256": "878E88F923958FB03ABB2107EFE06B5D51EFE68D65FA63528ADCA2A67583D45B"
+    },
+    {
+      "File": "native-contract\\0047A8E0-town_actor_update.bin",
+      "Bytes": 3338,
+      "Sha256": "08983E4F65227B6D9756A03E1027A1A6ED4E4F227F369F4DC4F5BDE067912C79"
+    },
+    {
+      "File": "native-contract\\004C5310-map_actor_membership.asm",
+      "Bytes": 1617,
+      "Sha256": "0824477A890E9FC29582BCC087A1B4A41FB7E5DD02099B44E33DBE4261D68333"
+    },
+    {
+      "File": "native-contract\\004C5310-map_actor_membership.bin",
+      "Bytes": 61,
+      "Sha256": "8A9631A396B4DE3AB0DDF8785E5A7CA9CF8449494A053C23B36DFB2FF51E67CD"
+    },
+    {
+      "File": "native-contract\\004C9BF0-controller_get_integer_axis.asm",
+      "Bytes": 1536,
+      "Sha256": "1E0041D3CE8C992915C1E315B008222218757CB4821CFC0D1B75AE3308CE4D8F"
+    },
+    {
+      "File": "native-contract\\004C9BF0-controller_get_integer_axis.bin",
+      "Bytes": 61,
+      "Sha256": "C8D8B240341283ADF59395F21EA5DF32442C4246EA31B91C4B1D235E39F59926"
+    },
+    {
+      "File": "native-contract\\abi-and-constants.json",
+      "Bytes": 1103,
+      "Sha256": "7D7BE4161E807D27663E7017849B72D37F8115203C0CFA8382770C9BBF019B05"
+    },
+    {
+      "File": "native-contract\\contract.txt",
+      "Bytes": 8955,
+      "Sha256": "A38F253AA0D94FA8F23DF2C15AFD5E9A992312E7A7687012CFCB33FBE7B1CCC5"
+    },
+    {
+      "File": "native-contract\\extract_native_contract.py",
+      "Bytes": 6362,
+      "Sha256": "9C03A00EC726B0A853D8FED12770131214ABEE7ABE2B2E00B63C7A4B5ED7FFE7"
+    },
+    {
+      "File": "native-contract\\manifest.json",
+      "Bytes": 13928,
+      "Sha256": "3BFA451CC3977BF8F708BAB29538E434C4A7B8B0922A4E1231856803958D0D5D"
+    },
+    {
+      "File": "native-contract\\notification-jumptable-21-24.bin",
+      "Bytes": 16,
+      "Sha256": "F33D4F08AF05B66EFBF5400E512C4371064D20464C70B2D30990634370EB1DA9"
+    },
+    {
+      "File": "native-contract\\samples-and-semantic-model.json",
+      "Bytes": 9833,
+      "Sha256": "55C8D8A4EA7B13BFB463CC6D77E5C67F1AAAE6B7808C5785D549FE5FC8B21E79"
+    },
+    {
+      "File": "native-contract\\town-vtable.bin",
+      "Bytes": 424,
+      "Sha256": "E8F688CF9740DBE3468BD7B85A228770404954292A06301BE113296EC394502F"
+    },
+    {
+      "File": "observe-six-inputs.py",
+      "Bytes": 4120,
+      "Sha256": "A0C1089D5989F8EB19F72259CE391BCD21F91F3327AD8A87EB17D3D657044BDC"
+    },
+    {
+      "File": "offline\\A-closed-final.json",
+      "Bytes": 20601,
+      "Sha256": "683F3DAE764FF666A3B6665ABB20FEB5F1C2E16088329111054D16542B9ECB3F"
+    },
+    {
+      "File": "offline\\B-closed-final.json",
+      "Bytes": 24337,
+      "Sha256": "B19E58211FC59A54F3941510C1D27B0B801381D200DC4D98C4578ED9A5CB740F"
+    },
+    {
+      "File": "offline\\filter-selftest-results.json",
+      "Bytes": 611,
+      "Sha256": "A947BE9709B44A525DA331E96BDA6E7C3963AFC5EC084B2CB534526B069C6F35"
+    },
+    {
+      "File": "offline\\join_windows_closed.py",
+      "Bytes": 2391,
+      "Sha256": "CDB8F5BFAF2464B5E4B434A72449D26549AE2812A6AE7421EF112EAA19E71B52"
+    },
+    {
+      "File": "offline\\native-position-apply.asm",
+      "Bytes": 10229,
+      "Sha256": "EA05E594E686473495247D476DCE222FA2EDC9C47BB9A378A8A50E84012C4016"
+    },
+    {
+      "File": "offline\\native-position-apply.json",
+      "Bytes": 768,
+      "Sha256": "EA5FB97B759F4FE3FC59E3A6AAE600E87BC71224A25EC9521DE86D7B1E1752BA"
+    },
+    {
+      "File": "offline\\native-position-receiver.asm",
+      "Bytes": 2064,
+      "Sha256": "D57AB99491A559A69362BA9714941BF3C78EEF0D73549C49AF76F2EAC497525B"
+    },
+    {
+      "File": "offline\\native-position-sender.asm",
+      "Bytes": 3194,
+      "Sha256": "47E5B75BDA7A47BEDF8C9E41AB8A4169DBEE0AC5E800CD5DB7F03839D18822D1"
+    },
+    {
+      "File": "offline\\native-position-sender.json",
+      "Bytes": 308,
+      "Sha256": "2978D8DBD4A889970780B455FFC5AA5C53085AED3253F3FF4B74518C699727B3"
+    },
+    {
+      "File": "offline\\native-position-vtable.json",
+      "Bytes": 361,
+      "Sha256": "B9B6793DEDC7E66587934690C1DD71FC6AD18B9CA8D878ED091284D88B452BC9"
+    },
+    {
+      "File": "offline\\official-move-callers.json",
+      "Bytes": 187,
+      "Sha256": "F6EC6A222BC2F84F64B22F8CEB70F8E88A4AE3BF69EDDCDDC70D44524CD82A61"
+    },
+    {
+      "File": "offline\\official-position.asm",
+      "Bytes": 13039,
+      "Sha256": "0D6FFD4B8B7212969B5C7234F187D37F482BDDC49728738133B88384F6B7CF92"
+    },
+    {
+      "File": "offline\\official-position.json",
+      "Bytes": 1295,
+      "Sha256": "A010B6B2E5140CAF8D4CB4FAF37ACDAD572EFC72E56B75D7A9F019947B714707"
+    },
+    {
+      "File": "offline\\position-contract-and-results.md",
+      "Bytes": 7796,
+      "Sha256": "07521AFB21767D2DDF8256E27EF29FE962CA20C7D7A47A6CDC2BC1F0C1EA9109"
+    },
+    {
+      "File": "offline\\PositionFilter.csproj",
+      "Bytes": 413,
+      "Sha256": "08E0432FDEB2DD3FA85426B47C03F5D19666F3EAD60CD4F2FC35DA8B4D79BD13"
+    },
+    {
+      "File": "offline\\Program.cs",
+      "Bytes": 7112,
+      "Sha256": "F3653CC7822E795513FF015DA6B147F7986B72F1A06F5705E22D18A0BC845D6C"
+    },
+    {
+      "File": "offline\\receipt-neighbor-samples.json",
+      "Bytes": 7936,
+      "Sha256": "C3598D7BAA821C7BA613CD13AB4BADB89B7213BBC326846F3745753EAD7121F5"
+    },
+    {
+      "File": "offline\\six-window-position-match-closed-final.json",
+      "Bytes": 17417,
+      "Sha256": "E08627494592B0B1602A1F142B2BAEB172CA3CBAE50C84D09F7A6CD960C2D90D"
+    },
+    {
+      "File": "offline\\test_filter.py",
+      "Bytes": 3000,
+      "Sha256": "0B5D203BF23529AD4F2DEC05AC2BF04A6C1E1335F6738142B69BC0A8C6B26503"
+    },
+    {
+      "File": "review\\u07-evidence-review.md",
+      "Bytes": 11535,
+      "Sha256": "14E05E4595663ABF057F4720191AE7CEBA0336C23EA4DA8F01F8D67BE667413B"
+    },
+    {
+      "File": "running-deployment.json",
+      "Bytes": 2031,
+      "Sha256": "E216960E8C69EF2DA1933CF97B5C0D4C891F62AF0FC9B4D4DAD5436FD3958C1D"
+    },
+    {
+      "File": "semantic-model-field-clarification.json",
+      "Bytes": 460,
+      "Sha256": "AF740646494096C3C7B242EA6C92FF3581762F4A14C1DA0663111596690E4451"
+    },
+    {
+      "File": "six-inputs.log",
+      "Bytes": 4800,
+      "Sha256": "7B3654FEEDA07DD93A3752367F61BD90F005679961CB630234EB0AC146E21E7E"
+    }
+  ]
+}

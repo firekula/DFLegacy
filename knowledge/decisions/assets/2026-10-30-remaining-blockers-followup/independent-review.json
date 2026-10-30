@@ -1,0 +1,265 @@
+{
+  "schema": "dfl-independent-blocker-review/v1",
+  "reviewed_at_utc": "2026-10-30T02:03:17.445981+00:00",
+  "base_head": "1c4fc0dac2a051685e6fb196c1ae956fe9203c03",
+  "report": "knowledge/decisions/2026-10-30-remaining-blockers-followup.md",
+  "report_sha256_at_review": "A90F91701D73588123FFC73FDEEED1AD007E3D278E3BCA7A6E6707A6A6EF3326",
+  "review_scope": [
+    "Read-only source review of party rejection diagnosis, optional pipeline profiler, accepted/gameplay movement-entry probes and consumers, player-only test teleport publication, and the three-byte native motion horizon guard.",
+    "Independent offline disassembly and Unicorn replay against original ACT1 executable SHA256 6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5.",
+    "Independent reconstruction of public numerical projections from task-owned raw evidence; review of final report statuses and stated limits.",
+    "Only this independent-review.json was authored by this reviewer; source code, game processes and other evidence were not changed."
+  ],
+  "conclusion": {
+    "important_unresolved_code_findings": [],
+    "U05": "Closed for the documented explicit native singleton disband and same-process invitation recovery; no automatic party disband was added.",
+    "U08": "Unresolved. Valid timed buckets do not identify the cause of the out-of-window long invocation intervals; foreground endpoint samples are not continuous foreground or GPU Present evidence.",
+    "U07": "Blocked overall. The captured stale-horizon arithmetic branch and player test-teleport publication are repaired; natural differences of 276.798px and 420.568px remain in later runs.",
+    "GP42": "Internal CRC-passed observation is available; an exact outer-provider-branch to inner-message correspondence remains unobserved."
+  },
+  "independent_verification": {
+    "source_diff_whitespace_check": "git diff --check passed",
+    "source_manifest": {
+      "matched_sha256_and_length": 37,
+      "mismatches": 0,
+      "scope": "Only sources under the named task evidence roots were hashed."
+    },
+    "original_images": {
+      "byte_identical_to_listed_source_hashes": 5,
+      "scope": "Binary identity verification; screenshots are outside measurement windows."
+    },
+    "filtered_native_samples": {
+      "arithmetic_exact_subsets": 9,
+      "remaining_motion_exact_subsets": 10,
+      "mismatches": 0
+    },
+    "party_process_identity_before_after": {
+      "A": true,
+      "B": true,
+      "C": true,
+      "D": true
+    },
+    "natural_windows": {
+      "pre_trace": {
+        "pairs": 3510,
+        "over100": 51,
+        "max_distance_px": 234.04742400000003,
+        "independently_recomputed": true
+      },
+      "pre_gate": {
+        "pairs": 3530,
+        "over100": 141,
+        "max_distance_px": 157.78959990691592,
+        "independently_recomputed": true
+      },
+      "pre_boss": {
+        "pairs": 4086,
+        "over100": 0,
+        "max_distance_px": 61.46380999999997,
+        "independently_recomputed": true
+      },
+      "pre_targets": {
+        "pairs": 6839,
+        "over100": 0,
+        "max_distance_px": 51.3019988580975,
+        "independently_recomputed": true
+      },
+      "pre_arithmetic": {
+        "pairs": 5156,
+        "over100": 0,
+        "max_distance_px": 84.135208,
+        "independently_recomputed": true
+      },
+      "fixed_room9": {
+        "pairs": 4947,
+        "over100": 91,
+        "max_distance_px": 276.7983008294397,
+        "independently_recomputed": true
+      },
+      "fixed_dynamic": {
+        "pairs": 3790,
+        "over100": 0,
+        "max_distance_px": 66.19018930844744,
+        "independently_recomputed": true
+      },
+      "fixed_boss": {
+        "pairs": 1718,
+        "over100": 120,
+        "max_distance_px": 420.5678533011266,
+        "independently_recomputed": true
+      }
+    },
+    "native_admissions_v8": {
+      "focus": "object kind529 UID3, associated player kind273 UID4, room0,1",
+      "A": 63,
+      "B": 63,
+      "C": 63,
+      "ordered_payload_sequence_equal": true,
+      "identity_flags_thread_frame_context_mismatches": 0,
+      "serial_gaps_in_reconstructed_streams": 0,
+      "scope": "Entry only; frame_token is a reused stack address and is not a unique message ID."
+    },
+    "post_patch_players": {
+      "first_window_owner_observer_pairs": 1674,
+      "first_window_max_px": 47.690888,
+      "dynamic_window_owner_observer_pairs": 1310,
+      "dynamic_window_max_px": 79.45709199999999,
+      "over100": 0,
+      "observed_gp4_with_exact_adjacent_gate": 1560,
+      "scope": "Fresh valid captured samples only. Trace gaps remain; player native vectors were not collected to prove that every message exercised the changed horizon branch."
+    },
+    "pipeline_background_unknowns": "B/C/D foreground maxima are null with zero eligible foreground frames in staging and repository projection.",
+    "build_hashes": {
+      "ijl15.dll": "CFE0EE46A66DFB1579349692051B7AE136ACBF429256C29F4C4DBA93D5E27C4E",
+      "debug.dll": "E6D1AAA6015F074E6C9BE06D0AE05CB87A617C07EAB24F158E1B8EA06F73CEAE"
+    }
+  },
+  "tests": {
+    "independently_executed": [
+      {
+        "test": "Native debug --client-test-control",
+        "result": "core and IO zero failures"
+      },
+      {
+        "test": "Native debug --gameplay-trace",
+        "result": "zero failures, including controlled clock race regression"
+      },
+      {
+        "test": "Native debug --gameplay-abi against actual debug.dll",
+        "result": "PASS for legacy stdcall@16 and independent V2@20 exports"
+      },
+      {
+        "test": "tools.acceptance.tests.test_gameplay_probe_abi",
+        "result": "2 passed using actual compiled IJL probe bytes"
+      },
+      {
+        "test": "tools.debug.test_gameplay_trace",
+        "result": "3 passed"
+      },
+      {
+        "test": "Native IJL --motion-horizon-only",
+        "result": "zero failures"
+      },
+      {
+        "test": "tools.acceptance.tests.test_motion_horizon_native latest version",
+        "result": "4 passed using original EXE and actual installed three-byte fixture; includes native full vector copy branch"
+      },
+      {
+        "test": "Native trace clock fixture through Python validate_trace",
+        "result": "PASS; exported10020 >= event10010"
+      }
+    ],
+    "full_suite_logs_reviewed_not_fully_rerun_by_reviewer": {
+      "python": "586 passed, 1 skipped, 445 subtests passed",
+      "native_ijl": "compatibility suite passed",
+      "native_debug": "listed switches and complete overlay zero failures"
+    },
+    "native_replay_limits": "Packet decoding is outside the reconciliation-tail fixture; actor collision, live authority and transport delivery are not emulated. The full-vector test runs the copy branch, not a complete network publication path."
+  },
+  "restoration_review": {
+    "protected_file_contents": "Normal saves and normal launcher configuration contents were not read by this reviewer; restoration conclusions use the supplied protection and restore metadata.",
+    "restore_metadata": "All 12 test-client file rows are marked matched; protection status records owned processes stopped, active channel sessions0, WPR not recording.",
+    "recorded_evidence_process_ids_checked_absent": 18,
+    "scope": "Absence check covers the process IDs recorded in the reviewed public evidence, not an independent inventory of every temporary helper ever launched."
+  },
+  "next_steps": [
+    {
+      "id": "U07-native-movement-subgates",
+      "status": "read_only_followup_not_a_physics_change",
+      "entry": "004B3C30, observed actor.v94",
+      "evidence": "Boss D/UID0 has advancing native updated_raw, pause0, nonzero correction velocity/acceleration and repeated X-axis result4; this proves original movement-test rejection and clamping, not which predicate rejected.",
+      "getter_validation": "234 original-PE primary tables with v94=4B3C30 and v40=4073E0 share the getter targets below. Validate each actual runtime vtable slot before interpreting memory; do not execute getters merely to collect observations.",
+      "read_only_fields": [
+        {
+          "gate": "activity/appendage precheck",
+          "vtable_slot": "5C",
+          "expected_getter": "00407410",
+          "field": "actor+128 byte"
+        },
+        {
+          "gate": "appendage collection",
+          "vtable_slot": "2FC",
+          "expected_getter": "006526B0",
+          "field": "actor+1204 pointer; collection begin/end at +4/+8; bounded entries; entry+4 must equal actor"
+        },
+        {
+          "gate": "web-pull appendage exception",
+          "type": "CNThrowWebPullAppendage",
+          "vtable_slot": "60",
+          "expected_getter": "0044D2C0",
+          "field": "matching appendage+5C byte; preserve RTTI/type and pointer bounds"
+        },
+        {
+          "gate": "state slot16",
+          "vtable_slot": "358",
+          "expected_getter": "0047EEE0",
+          "field": "actor+11FC pointer; observe that object actual v8 boolean getter binding before decoding its state"
+        },
+        {
+          "gate": "state-dependent early return",
+          "vtable_slot": "390",
+          "expected_getter": "00652AC0",
+          "field": "secure integer actor+1434; native branch compares to5"
+        },
+        {
+          "gate": "boundary versus grid path",
+          "field": "secure integers actor+1A8 and actor+1B0; when both zero, native code checks converted x/16,y/12 against globals00B0DE98/00B0DE9C"
+        },
+        {
+          "gate": "grid query inputs",
+          "function": "008A8FE0",
+          "field": "manager00AFDE10 dimensions at +10088/+1008C, grid pointer+10090 and queried cell byte; also capture the y+1 row when native conversion crosses a cell"
+        },
+        {
+          "gate": "grid additional arguments",
+          "getters": {
+            "v1C8": "0042C9C0 -> actor+1B8",
+            "v18C": "0042C990 -> actor+424"
+          }
+        },
+        {
+          "gate": "solver freshness",
+          "field": "controller+EC/+F0/+F4 axis results, +E0 pause, +E4 native updated clock, +90 bound owner, +78/+7C provider, and both vector position/velocity/acceleration/duration; compare updated_raw only within one process"
+        }
+      ],
+      "interpretation_limits": "VM fields are sequential reads. Require repeated fresh observations and stable process/map/UID/controller bindings; a result4 can be stale during pause and common Z-axis ground rejection does not identify an XY cause."
+    },
+    {
+      "id": "U07-GP6-publication-order-candidate",
+      "status": "static_candidate_not_confirmed_root_cause",
+      "facts": [
+        "GP6 case at0078F512 resolves the new player and calls monster v2D8=004AE790.",
+        "004AE790 new-owner-local branch calls004C8FE0(force1,selector0) before0047F450 writes actor+1864.",
+        "004C8FE0 uses00473620, whose actor.v138=0047F480 reads actor+1864 and compares with local player."
+      ],
+      "next_read_only_check": "Correlate actual owner before/after, publication gate entry and emitted full message. Do not equate the presence of the call with a completed send, reorder ownership, or declare this the cause of every divergence.",
+      "known_recovery": "Boss D observed full0x10 UID0 owner2 at tick438273781 and subsequently left X127; existing GP5 full publication can still recover position."
+    },
+    {
+      "id": "GP7-semantics",
+      "status": "position_request_hypothesis_rejected",
+      "facts": "Original case7=0078F6FB casts to IRDMonster and calls v4BC=004AE680. The observed30-byte body and callee match object identity, owner UID and24 bytes of timer state; the callee updates monster+18E8. It does not call004C8FE0.",
+      "relay": "Current fallback routing selects the original transport recipient account; CreateDelivery changes transport opcode to3 and preserves the remaining header and payload. No GP7-specific rerouting was found."
+    },
+    {
+      "id": "U08",
+      "status": "unattributed",
+      "next_read_only_check": "Obtain permitted scheduler/native-loop/presentation sampling or bounded ABI-preserving segments; preserve unknown foreground and timing coverage limits."
+    },
+    {
+      "id": "GP42",
+      "status": "unobserved_outer_inner_branch_pair",
+      "next_read_only_check": "Use direct provider branch evidence if exact correspondence is needed; buffer-address equality alone is insufficient."
+    }
+  ],
+  "diagnostic_errata": [
+    {
+      "corrected_utc": "2026-10-30T03:22:16.126253+00:00",
+      "original_review_sha256": "2F6818F0C3723D10B8FAFE97CE7BE42B4A47D22C5A35B1887F64356C8D969001",
+      "original": "Converted y/6 in the boundary/grid review field was incorrect.",
+      "corrected": "Original signed IMUL 0x2AAAAAAB followed by SAR EDX,1 computes trunc0(y/12); second row uses signed32 INC y before the same division.",
+      "evidence": "tools/acceptance/tests/test_motion_grid_native.py executes original ACT1 bytes, including negative coordinates and INT_MAX wrap.",
+      "scope": "Only the read-only grid coordinate interpretation was wrong. Original game instructions were unchanged. Previous derived candidate cells using /6 must not be used for rejection attribution."
+    }
+  ]
+}

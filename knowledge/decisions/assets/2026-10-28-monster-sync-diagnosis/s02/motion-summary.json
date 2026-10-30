@@ -1,0 +1,621 @@
+{
+  "Schema": "monster-diagnosis-s02-summary/v1",
+  "Verdict": "UNRESOLVED_NATIVE_APPLICATION_CONTRACT",
+  "SocketJoinSourceSha256": "CE339712771AD6E41FA49E2B3D08971AA2035A328048F882C4D3AD3C5DEE7E71",
+  "SocketPhases": [
+    {
+      "Phase": "normal-v3",
+      "BuildManifestSha256": "28C9B6A1199CEF82AA75D6FF9E558B15FC599E01EF3435589FBF0489E116FFFB",
+      "Counts": {
+        "A": {
+          "outer_applications": 51316,
+          "outer_crc_unresolved": 0,
+          "opaque_GP42": 2074
+        },
+        "B": {
+          "outer_applications": 51316,
+          "outer_crc_unresolved": 0,
+          "opaque_GP42": 2074
+        }
+      },
+      "Selection": {
+        "Object": [
+          529,
+          3
+        ],
+        "Room": [
+          2,
+          2
+        ]
+      },
+      "NativeWindow": [
+        "2026-10-28T14:25:20.599+08:00",
+        "2026-10-28T14:25:44.547+08:00"
+      ],
+      "PaddedSocketLogWindow": [
+        "2026-10-28T14:25:15.000+08:00",
+        "2026-10-28T14:25:50.000+08:00"
+      ],
+      "SelectedCounts": {
+        "A-RX": 20,
+        "A-TX": 63,
+        "B-TX": 20,
+        "B-RX": 63
+      },
+      "ExactRxMatches": 83,
+      "AmbiguousRxMatches": 0,
+      "ObservedSocketLogDeltaUs": {
+        "Min": 1000,
+        "Max": 16000
+      },
+      "Note": "Log differences only; GP42 remains opaque; no native apply time or matched-seed causal comparison"
+    },
+    {
+      "Phase": "fallback-v3",
+      "BuildManifestSha256": "28C9B6A1199CEF82AA75D6FF9E558B15FC599E01EF3435589FBF0489E116FFFB",
+      "Counts": {
+        "A": {
+          "outer_applications": 60941,
+          "outer_crc_unresolved": 0,
+          "opaque_GP42": 24285
+        },
+        "B": {
+          "outer_applications": 60941,
+          "outer_crc_unresolved": 0,
+          "opaque_GP42": 24283
+        }
+      },
+      "Selection": {
+        "Object": [
+          529,
+          3
+        ],
+        "Room": [
+          1,
+          2
+        ]
+      },
+      "NativeWindow": [
+        "2026-10-28T16:07:10.753+08:00",
+        "2026-10-28T16:07:34.667+08:00"
+      ],
+      "PaddedSocketLogWindow": [
+        "2026-10-28T16:07:05.000+08:00",
+        "2026-10-28T16:07:40.000+08:00"
+      ],
+      "SelectedCounts": {
+        "A-RX": 67,
+        "B-TX": 67
+      },
+      "ExactRxMatches": 67,
+      "AmbiguousRxMatches": 0,
+      "ObservedSocketLogDeltaUs": {
+        "Min": 0,
+        "Max": 16000
+      },
+      "Note": "Log differences only; GP42 remains opaque; no native apply time or matched-seed causal comparison"
+    },
+    {
+      "Phase": "fallback-monster-v1",
+      "BuildManifestSha256": "28C9B6A1199CEF82AA75D6FF9E558B15FC599E01EF3435589FBF0489E116FFFB",
+      "Counts": {
+        "A": {
+          "outer_applications": 20698,
+          "outer_crc_unresolved": 0,
+          "opaque_GP42": 2177
+        },
+        "B": {
+          "outer_applications": 20693,
+          "outer_crc_unresolved": 0,
+          "opaque_GP42": 2176
+        }
+      },
+      "Selection": {
+        "Object": [
+          529,
+          1
+        ],
+        "Room": [
+          2,
+          1
+        ]
+      },
+      "NativeWindow": [
+        "2026-10-28T17:56:31.433+08:00",
+        "2026-10-28T17:56:55.400+08:00"
+      ],
+      "PaddedSocketLogWindow": [
+        "2026-10-28T17:56:26.000+08:00",
+        "2026-10-28T17:57:01.000+08:00"
+      ],
+      "SelectedCounts": {
+        "A-RX": 82,
+        "B-TX": 82
+      },
+      "ExactRxMatches": 82,
+      "AmbiguousRxMatches": 0,
+      "ObservedSocketLogDeltaUs": {
+        "Min": 1000,
+        "Max": 16000
+      },
+      "Note": "Log differences only; GP42 remains opaque; no native apply time or matched-seed causal comparison"
+    }
+  ],
+  "NativeWindows": {
+    "NormalV3": {
+      "SourceSha256": "B7269064D0050CB6DD07A6A4DAAA5B5796355AFA75B907411D17FB850A395FC9",
+      "Samples": 280,
+      "SelectedUid": 3,
+      "LivingPairs": 1609,
+      "AllLivingMaxXY": 63.843269768714826,
+      "AllLivingOver100": 0,
+      "SelectedLivingPairs": 280,
+      "SelectedMinXY": 0.009606834711634737,
+      "SelectedMaxXY": 2.1862460112047994,
+      "SelectedOver100": 0,
+      "PairReadSpanMs": {
+        "Median": 5.27585,
+        "Max": 8.2851
+      },
+      "ReadErrors": 0,
+      "DistinctMaps": {
+        "A": 1,
+        "B": 1
+      },
+      "DistinctSelectedPointers": {
+        "A": 1,
+        "B": 1
+      },
+      "ActualStageRooms": null
+    },
+    "FallbackV3": {
+      "SourceSha256": "1FD0E8BF026937856582B7CB2D54943B26A4F1D575F3BB41E8F88C14FDA56398",
+      "Samples": 274,
+      "SelectedUid": 3,
+      "LivingPairs": 1445,
+      "AllLivingMaxXY": 735.765479472443,
+      "AllLivingOver100": 274,
+      "SelectedLivingPairs": 274,
+      "SelectedMinXY": 653.0183536468288,
+      "SelectedMaxXY": 735.765479472443,
+      "SelectedOver100": 274,
+      "PairReadSpanMs": {
+        "Median": 7.01205,
+        "Max": 10.2482
+      },
+      "ReadErrors": 0,
+      "DistinctMaps": {
+        "A": 1,
+        "B": 1
+      },
+      "DistinctSelectedPointers": {
+        "A": 1,
+        "B": 1
+      },
+      "ActualStageRooms": null
+    },
+    "FreshM1": {
+      "SourceSha256": "078E4E9FB73102BFA4C1255186DA5DD2B9B3A4A6D04C950AF7C35C7F366944FA",
+      "Samples": 285,
+      "SelectedUid": 1,
+      "LivingPairs": 1995,
+      "AllLivingMaxXY": 121.37007463222494,
+      "AllLivingOver100": 121,
+      "SelectedLivingPairs": 285,
+      "SelectedMinXY": 0.0,
+      "SelectedMaxXY": 121.37007463222494,
+      "SelectedOver100": 121,
+      "PairReadSpanMs": {
+        "Median": 3.6135,
+        "Max": 5.7354
+      },
+      "ReadErrors": 0,
+      "DistinctMaps": {
+        "A": 1,
+        "B": 1
+      },
+      "DistinctSelectedPointers": {
+        "A": 1,
+        "B": 1
+      },
+      "ActualStageRooms": {
+        "A": [
+          [
+            2,
+            1
+          ]
+        ],
+        "B": [
+          [
+            2,
+            1
+          ]
+        ]
+      }
+    },
+    "FreshM1Room0": {
+      "SourceSha256": "0ADFEA8438EC64F6FA96A9CD6046EC1D2157389AD5AE6CB3E086C3A0EB930F5C",
+      "Samples": 292,
+      "SelectedUid": 1,
+      "LivingPairs": 573,
+      "AllLivingMaxXY": 6.299488911548333,
+      "AllLivingOver100": 0,
+      "SelectedLivingPairs": 248,
+      "SelectedMinXY": 0.0,
+      "SelectedMaxXY": 5.0968017578125,
+      "SelectedOver100": 0,
+      "PairReadSpanMs": {
+        "Median": 1.5843,
+        "Max": 3.2433
+      },
+      "ReadErrors": 0,
+      "DistinctMaps": {
+        "A": 1,
+        "B": 1
+      },
+      "DistinctSelectedPointers": {
+        "A": 1,
+        "B": 1
+      },
+      "ActualStageRooms": {
+        "A": [
+          [
+            0,
+            1
+          ]
+        ],
+        "B": [
+          [
+            0,
+            1
+          ]
+        ]
+      }
+    }
+  },
+  "FreshM1LargestPair": {
+    "At": "2026-10-28T17:56:36.327+08:00",
+    "Uid": 1,
+    "XYDelta": 121.37007463222494,
+    "PairReadSpanMs": 3.7624,
+    "A": {
+      "Current": [
+        229.83995056152344,
+        233.22642517089844,
+        0.0
+      ],
+      "Target": [
+        351.0,
+        233.01742553710938,
+        0.0
+      ],
+      "CurrentRaw16To24": [
+        52.36000442504883,
+        41.80000305175781,
+        -2941.5
+      ],
+      "TargetRaw16To24": [
+        52.36000442504883,
+        41.80000305175781,
+        -2925.0
+      ],
+      "CurrentRaw28To48": [
+        0,
+        0,
+        -1500,
+        52348,
+        43988,
+        -1
+      ],
+      "TargetRaw28To48": [
+        0,
+        0,
+        -1500,
+        52348,
+        43988,
+        -1
+      ],
+      "AssociatedIdentity": {
+        "kind": 273,
+        "uid": 2
+      }
+    },
+    "B": {
+      "Current": [
+        351.2094421386719,
+        233.60263061523438,
+        0.0
+      ],
+      "Target": [
+        351.0,
+        233.01742553710938,
+        0.0
+      ],
+      "CurrentRaw16To24": [
+        52.36000442504883,
+        41.80000305175781,
+        -2946.0
+      ],
+      "TargetRaw16To24": [
+        52.36000442504883,
+        41.80000305175781,
+        -2925.0
+      ],
+      "CurrentRaw28To48": [
+        0,
+        0,
+        -1500,
+        52348,
+        43988,
+        -1
+      ],
+      "TargetRaw28To48": [
+        0,
+        0,
+        -1500,
+        52348,
+        43988,
+        -1
+      ],
+      "AssociatedIdentity": {
+        "kind": 273,
+        "uid": 2
+      }
+    }
+  },
+  "CurrentMovement": [
+    {
+      "Role": "A",
+      "Uid": 0,
+      "Samples": 285,
+      "DistinctCurrentXY": 88,
+      "DistinctTargetXY": 19,
+      "CurrentPathXY": 382.548129560439,
+      "FirstCurrent": [
+        725.3825073242188,
+        326.92242431640625,
+        0.0
+      ],
+      "LastCurrent": [
+        875.0670166015625,
+        346.1940002441406,
+        0.0
+      ]
+    },
+    {
+      "Role": "A",
+      "Uid": 1,
+      "Samples": 285,
+      "DistinctCurrentXY": 154,
+      "DistinctTargetXY": 40,
+      "CurrentPathXY": 999.8330642350954,
+      "FirstCurrent": [
+        141.1136016845703,
+        232.76663208007812,
+        0.0
+      ],
+      "LastCurrent": [
+        71.1766586303711,
+        195.39785766601562,
+        0.0
+      ]
+    },
+    {
+      "Role": "A",
+      "Uid": 2,
+      "Samples": 285,
+      "DistinctCurrentXY": 34,
+      "DistinctTargetXY": 7,
+      "CurrentPathXY": 147.80785406361596,
+      "FirstCurrent": [
+        671.6619262695312,
+        304.1730651855469,
+        0.0
+      ],
+      "LastCurrent": [
+        715.6996459960938,
+        329.1993713378906,
+        0.0
+      ]
+    },
+    {
+      "Role": "A",
+      "Uid": 3,
+      "Samples": 285,
+      "DistinctCurrentXY": 38,
+      "DistinctTargetXY": 7,
+      "CurrentPathXY": 173.3482743053346,
+      "FirstCurrent": [
+        1062.294677734375,
+        293.59478759765625,
+        0.0
+      ],
+      "LastCurrent": [
+        980.8804321289062,
+        317.76739501953125,
+        0.0
+      ]
+    },
+    {
+      "Role": "A",
+      "Uid": 4,
+      "Samples": 285,
+      "DistinctCurrentXY": 1,
+      "DistinctTargetXY": 1,
+      "CurrentPathXY": 0.0,
+      "FirstCurrent": [
+        1072.0,
+        267.0,
+        0.0
+      ],
+      "LastCurrent": [
+        1072.0,
+        267.0,
+        0.0
+      ]
+    },
+    {
+      "Role": "A",
+      "Uid": 5,
+      "Samples": 285,
+      "DistinctCurrentXY": 145,
+      "DistinctTargetXY": 31,
+      "CurrentPathXY": 591.5393372917815,
+      "FirstCurrent": [
+        1209.1068115234375,
+        234.69863891601562,
+        0.0
+      ],
+      "LastCurrent": [
+        1200.9296875,
+        299.5686950683594,
+        0.0
+      ]
+    },
+    {
+      "Role": "A",
+      "Uid": 6,
+      "Samples": 285,
+      "DistinctCurrentXY": 1,
+      "DistinctTargetXY": 1,
+      "CurrentPathXY": 0.0,
+      "FirstCurrent": [
+        141.45480346679688,
+        234.2886199951172,
+        0.0
+      ],
+      "LastCurrent": [
+        141.45480346679688,
+        234.2886199951172,
+        0.0
+      ]
+    },
+    {
+      "Role": "B",
+      "Uid": 0,
+      "Samples": 285,
+      "DistinctCurrentXY": 113,
+      "DistinctTargetXY": 24,
+      "CurrentPathXY": 383.64177467888425,
+      "FirstCurrent": [
+        725.4695434570312,
+        326.6139831542969,
+        0.0
+      ],
+      "LastCurrent": [
+        875.0726928710938,
+        346.3492126464844,
+        0.0
+      ]
+    },
+    {
+      "Role": "B",
+      "Uid": 1,
+      "Samples": 285,
+      "DistinctCurrentXY": 193,
+      "DistinctTargetXY": 39,
+      "CurrentPathXY": 987.2321692328172,
+      "FirstCurrent": [
+        207.24191284179688,
+        232.76663208007812,
+        0.0
+      ],
+      "LastCurrent": [
+        70.98789978027344,
+        195.39785766601562,
+        0.0
+      ]
+    },
+    {
+      "Role": "B",
+      "Uid": 2,
+      "Samples": 285,
+      "DistinctCurrentXY": 40,
+      "DistinctTargetXY": 9,
+      "CurrentPathXY": 147.1179495110355,
+      "FirstCurrent": [
+        671.5669555664062,
+        304.2734069824219,
+        0.0
+      ],
+      "LastCurrent": [
+        715.450439453125,
+        329.0284118652344,
+        0.0
+      ]
+    },
+    {
+      "Role": "B",
+      "Uid": 3,
+      "Samples": 285,
+      "DistinctCurrentXY": 44,
+      "DistinctTargetXY": 8,
+      "CurrentPathXY": 172.14339912803135,
+      "FirstCurrent": [
+        1062.33056640625,
+        293.6730041503906,
+        0.0
+      ],
+      "LastCurrent": [
+        980.6637573242188,
+        317.95159912109375,
+        0.0
+      ]
+    },
+    {
+      "Role": "B",
+      "Uid": 4,
+      "Samples": 285,
+      "DistinctCurrentXY": 1,
+      "DistinctTargetXY": 1,
+      "CurrentPathXY": 0.0,
+      "FirstCurrent": [
+        1072.0,
+        267.0,
+        0.0
+      ],
+      "LastCurrent": [
+        1072.0,
+        267.0,
+        0.0
+      ]
+    },
+    {
+      "Role": "B",
+      "Uid": 5,
+      "Samples": 285,
+      "DistinctCurrentXY": 129,
+      "DistinctTargetXY": 26,
+      "CurrentPathXY": 585.300411517483,
+      "FirstCurrent": [
+        1209.22705078125,
+        234.69656372070312,
+        0.0
+      ],
+      "LastCurrent": [
+        1200.993896484375,
+        299.5322570800781,
+        0.0
+      ]
+    },
+    {
+      "Role": "B",
+      "Uid": 6,
+      "Samples": 285,
+      "DistinctCurrentXY": 1,
+      "DistinctTargetXY": 1,
+      "CurrentPathXY": 0.0,
+      "FirstCurrent": [
+        141.45480346679688,
+        234.2886199951172,
+        0.0
+      ],
+      "LastCurrent": [
+        141.45480346679688,
+        234.2886199951172,
+        0.0
+      ]
+    }
+  ],
+  "Scope": "Actual bounds/positions only. No universal cause, no movement/owner edits, no forced correction or position-fix acceptance."
+}

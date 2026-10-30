@@ -1,0 +1,496 @@
+[
+  {
+    "Label": "gift-online-baseline",
+    "Phase": "gift-online",
+    "ObservedAtUnixSeconds": 1793115935,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-online-baseline.json",
+    "SourceSha256": "365DDA007E948BC2E3252951D72571DFC642F70957448263D9EC4218A0582CF2",
+    "StateSha256": "EDA0F318C3016E70FC3BD3E98E553EEAA1FB93705DAB8FDD5175DEFE816A3BED",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26600,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-online-delivered",
+    "Phase": "gift-online",
+    "ObservedAtUnixSeconds": 1793116633,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-online-delivered.json",
+    "SourceSha256": "BF2C467E6B3A08F9981CA4B7A24EBED53C91F9B9E678B61534AFA9A95B5562F2",
+    "StateSha256": "6DF37526D4B5C20BA5EEF935750BAAF634E755BA1E950ADB82DCEC3D691D2A25",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 1
+      }
+    }
+  },
+  {
+    "Label": "gift-online-claimed",
+    "Phase": "gift-online",
+    "ObservedAtUnixSeconds": 1793116734,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-online-claimed.json",
+    "SourceSha256": "3D10A3C7072696CC8C6AC6350ABFF308A563527759B1F4C3BD08D568F42433BD",
+    "StateSha256": "C721D09BAEE1E0639E12F0812F4DBB1C55F02AF00D3E93CAF9D27A00AA50F4D0",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 1,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-online-quota",
+    "Phase": "gift-online",
+    "ObservedAtUnixSeconds": 1793116779,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-online-quota.json",
+    "SourceSha256": "6E951BA8E9FFEB1B15AABA0522797D9F3EB8C40EC4F6304E559622E3EAC5B343",
+    "StateSha256": "C721D09BAEE1E0639E12F0812F4DBB1C55F02AF00D3E93CAF9D27A00AA50F4D0",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 1,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-online-forbidden",
+    "Phase": "gift-online",
+    "ObservedAtUnixSeconds": 1793116913,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-online-forbidden.json",
+    "SourceSha256": "4B2DDA4ED3A11BF8E90AEED0F25DAB329FCC4F94ABA5D8C8B9F53A09FCCABE2B",
+    "StateSha256": "C721D09BAEE1E0639E12F0812F4DBB1C55F02AF00D3E93CAF9D27A00AA50F4D0",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 1,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-online-rejoined",
+    "Phase": "gift-online",
+    "ObservedAtUnixSeconds": 1793117060,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-online-rejoined.json",
+    "SourceSha256": "7582E8C4F223B659767AA156FBD0BD4525C7F1D723F878FF806FC4A98DD7646A",
+    "StateSha256": "740F84631FB02E95C486FEC2B40A6E5515939C5762ED26223F2A903B94EB6C19",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 1,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-online-after-server-restart",
+    "Phase": "gift-online-restart",
+    "ObservedAtUnixSeconds": 1793117065,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-online-after-server-restart.json",
+    "SourceSha256": "B2593FF6B686E38290CF5492F792C05BAB60CFA5E4868C5D567E3A70EF49A8F0",
+    "StateSha256": "740F84631FB02E95C486FEC2B40A6E5515939C5762ED26223F2A903B94EB6C19",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 1,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-online-after-party",
+    "Phase": "gift-online-restart",
+    "ObservedAtUnixSeconds": 1793118945,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-online-after-party.json",
+    "SourceSha256": "AC9824E4E1695A45B8FD91FD655665D2FBCA532E402CE7E799DF199479F40A90",
+    "StateSha256": "562CAF1CF686C9E7E9EFCE79977CC3DA791B81B6A472E9DC6186A9655BCE10E2",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50614,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50185,
+        "Item15InventoryCount": 1,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-offline-baseline",
+    "Phase": "gift-offline",
+    "ObservedAtUnixSeconds": 1793119026,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-offline-baseline.json",
+    "SourceSha256": "42874EBAE600A970E5C4FB3682A4BE21C8F476FB9277D77A14205D0FDB770CF2",
+    "StateSha256": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26600,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-offline-delivered",
+    "Phase": "gift-offline",
+    "ObservedAtUnixSeconds": 1793119405,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-offline-delivered.json",
+    "SourceSha256": "415CE782B6854FD25B1B508DD3AF6BD1F2B0E2EE212D536352A344DB0DBE1DE7",
+    "StateSha256": "B942E0FFF08894B4BFA5421A6EF43EC873989BE9151760802D0411622E43E640",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 1
+      }
+    }
+  },
+  {
+    "Label": "gift-offline-after-delivery-restart",
+    "Phase": "gift-offline-receipt",
+    "ObservedAtUnixSeconds": 1793119463,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-offline-after-delivery-restart.json",
+    "SourceSha256": "59F11EA1FA14E7D08E197A242BD732935C5272191D4EE10C13A2E8F86822FAF4",
+    "StateSha256": "B942E0FFF08894B4BFA5421A6EF43EC873989BE9151760802D0411622E43E640",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 1
+      }
+    }
+  },
+  {
+    "Label": "gift-offline-claimed",
+    "Phase": "gift-offline-receipt",
+    "ObservedAtUnixSeconds": 1793119683,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-offline-claimed.json",
+    "SourceSha256": "CB584113A34EFE4E34781110631249BA086AE16DC599BF7117F6F3DE611490F0",
+    "StateSha256": "1FD5A453707CD46C83252A48049040ECE447113CF95359E9EC7EAD5F843B3AF1",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 1,
+        "Item15MailCount": 0
+      }
+    }
+  },
+  {
+    "Label": "gift-offline-after-final-restart",
+    "Phase": "gift-offline-final",
+    "ObservedAtUnixSeconds": 1793119690,
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\gift-offline-after-final-restart.json",
+    "SourceSha256": "A84D727650B8B1480C31ADC0A31BF3B0AB4748725773D938C24FA5BB3598E269",
+    "StateSha256": "9C7CB83F1EADB2DCA3F21EE98513583827EBDD37AA8C7F6D9919123642BA4EA9",
+    "Accounts": {
+      "A": {
+        "UserName": "shizuku",
+        "Cash": 26450,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": null
+      },
+      "B": {
+        "UserName": "test",
+        "Cash": 997790,
+        "GiftReceiveYearMonth": 202610,
+        "GiftReceiveCount": 1
+      }
+    },
+    "Characters": {
+      "A": {
+        "Name": "mageco",
+        "Level": 45,
+        "Gold": 50604,
+        "Item15InventoryCount": 0,
+        "Item15MailCount": 0
+      },
+      "B": {
+        "Name": "heal1024",
+        "Level": 6,
+        "Gold": 50176,
+        "Item15InventoryCount": 1,
+        "Item15MailCount": 0
+      }
+    }
+  }
+]

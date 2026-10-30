@@ -1,0 +1,117 @@
+[
+  {
+    "path": "01-old-C-residue.jpg",
+    "bytes": 422425,
+    "sha256": "43A75B94471B3B71F2F1140EC1239DF23F202997422BE49FFC7B0D1070E24AAE"
+  },
+  {
+    "path": "02-fixed-C-same-room.jpg",
+    "bytes": 424384,
+    "sha256": "9603E3D89FFF0E30D7B00C99A4F09A15682D2F0C831C37A6B49812D51B72198A"
+  },
+  {
+    "path": "03-fixed-C-after-return.jpg",
+    "bytes": 418809,
+    "sha256": "7ED51EFCFB6C4EC1E1EAD9385B73CE9D6DBBC29F6F5A9A20CA783C626FA669A0"
+  },
+  {
+    "path": "04-fixed-D-after-return.jpg",
+    "bytes": 418872,
+    "sha256": "6F8EA65930B07A8CE9287D869BB5A20A5DB935A7AED6E6CA577FF57B81426CDF"
+  },
+  {
+    "path": "05-fixed-A-final-world.jpg",
+    "bytes": 433544,
+    "sha256": "F6ED86C35C6A950804E8424C2A78ED1E245B513A38093797CE458887D252A618"
+  },
+  {
+    "path": "A-fixed-receiver.txt",
+    "bytes": 752,
+    "sha256": "D3BE6F690F515887A07C73BBB3E44353A1F64752118FC46BD76C53ACD82F086A"
+  },
+  {
+    "path": "A-old-receiver.txt",
+    "bytes": 104,
+    "sha256": "62B2957DB058232DB168780C6F70AA7A3C479D5BEE94D34155CF0379E1EC3A7E"
+  },
+  {
+    "path": "acceptance.json",
+    "bytes": 10061,
+    "sha256": "A93C33C788A7FA19CBB7A42D37EDA08B12A6D197536B7CA1345349BFFA0FE06C"
+  },
+  {
+    "path": "after-return-samples.json",
+    "bytes": 68726,
+    "sha256": "05FF65BD8826159A9FB396E344BD1E8C6BE33548B6B87A3368322E3F6650509C"
+  },
+  {
+    "path": "B-fixed-receiver.txt",
+    "bytes": 742,
+    "sha256": "29A53F42586D70575BD7EE2E99D6FABBB330CA8471A28269458AAD1D49EA6977"
+  },
+  {
+    "path": "B-old-receiver.txt",
+    "bytes": 85,
+    "sha256": "CBF1C8AEF5B734C8F9ACC69AE0BBFA41701D9336DAD6727A2ACA5CA0D783960E"
+  },
+  {
+    "path": "C-fixed-receiver.txt",
+    "bytes": 772,
+    "sha256": "B3BB2B5ECD86A393F433BFC0BEAA73813FE335A2172FCB6B88E55E7CDF1AE723"
+  },
+  {
+    "path": "C-old-receiver.txt",
+    "bytes": 104,
+    "sha256": "62B2957DB058232DB168780C6F70AA7A3C479D5BEE94D34155CF0379E1EC3A7E"
+  },
+  {
+    "path": "D-fixed-receiver.txt",
+    "bytes": 772,
+    "sha256": "43F30C5EB08216110F15F2EF9355C50CD263E1AE7CC1D86648BF9BECC1E321D2"
+  },
+  {
+    "path": "D-old-receiver.txt",
+    "bytes": 104,
+    "sha256": "62B2957DB058232DB168780C6F70AA7A3C479D5BEE94D34155CF0379E1EC3A7E"
+  },
+  {
+    "path": "independent-review.txt",
+    "bytes": 1691,
+    "sha256": "C9E8642888C46DF2950FE5D84C558F5595009A2047BB7C5028BF2C8912AE6F35"
+  },
+  {
+    "path": "native-action-guard.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "path": "native-context-green3.txt",
+    "bytes": 48,
+    "sha256": "EA23C40FA8676AFECE3D81524E76FA324C84DE075ECB243BA6E27DF85B04C5DC"
+  },
+  {
+    "path": "native-context-red.txt",
+    "bytes": 491,
+    "sha256": "FC0DFEDD7CCCFCBA13D6AAB50391B5D5E9125DD3B46B5E21751BCB7382BC4ECD"
+  },
+  {
+    "path": "native-full.txt",
+    "bytes": 152,
+    "sha256": "86CB6CD780B88A09925D368551900DB6EE770CDE01F37FB8F4248B0C7297FD32"
+  },
+  {
+    "path": "old-build-baseline.json",
+    "bytes": 5575,
+    "sha256": "6D3F6423185AB473054E75A9EC10119D9C2EEC26A9E64F7A7F47E90794711BDF"
+  },
+  {
+    "path": "private-input-hashes.json",
+    "bytes": 2577,
+    "sha256": "2CA861B8FC020CFF68EF15E0901338BA752BB61348BB731FC487C8D3A0356DFB"
+  },
+  {
+    "path": "same-room-samples.json",
+    "bytes": 69636,
+    "sha256": "09CAE5C4B57D600E22B5FCDB3F1500ABEC7CD79F2943C766A6797425432CA978"
+  }
+]

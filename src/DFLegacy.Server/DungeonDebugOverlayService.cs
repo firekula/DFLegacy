@@ -59,12 +59,14 @@ internal static class DungeonDebugOverlayWire
 
 public sealed class DungeonDebugOverlayService(
     ServerOptions options, DungeonInstanceRegistry instances,
-    ILogger<DungeonDebugOverlayService> logger) : BackgroundService
+    ILogger<DungeonDebugOverlayService> logger, JsonGameStore? store = null,
+    ItemCatalog? items = null, CharacterStatCatalog? stats = null) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.Debug.ClientOverlay.Enabled) return;
         var directory = Path.GetFullPath(options.Debug.ClientOverlay.SnapshotDirectory, AppContext.BaseDirectory);
+        var testControl = new DungeonTestControl(options, instances, store, items, stats);
         var published = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         try
         {
@@ -99,6 +101,12 @@ public sealed class DungeonDebugOverlayService(
                             logger.LogDebug(error, "Debug snapshot temporarily busy: {Path}", path);
                         }
                     }
+                }
+                try { await testControl.PublishAsync(directory, active, stoppingToken); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+                {
+                    logger.LogDebug(error, "Test control snapshot temporarily unavailable.");
+                    active.UnionWith(published.Where(path => Path.GetFileName(path).StartsWith("dfdebug-test-", StringComparison.Ordinal)));
                 }
                 foreach (var expired in published.Except(active))
                 {

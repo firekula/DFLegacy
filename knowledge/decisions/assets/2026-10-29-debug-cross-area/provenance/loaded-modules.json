@@ -1,0 +1,30 @@
+[
+  {
+    "Role": "A",
+    "Id": 24404,
+    "StartTimeUtc": "2026-10-29T01:47:57.0311727Z",
+    "Path": "G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+    "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+  },
+  {
+    "Role": "A",
+    "Id": 24404,
+    "StartTimeUtc": "2026-10-29T01:47:57.0311727Z",
+    "Path": "G:\\Game\\DNF_ACT1\\DF\\debug.dll",
+    "Sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570"
+  },
+  {
+    "Role": "B",
+    "Id": 32980,
+    "StartTimeUtc": "2026-10-29T01:47:57.8147972Z",
+    "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+    "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+  },
+  {
+    "Role": "B",
+    "Id": 32980,
+    "StartTimeUtc": "2026-10-29T01:47:57.8147972Z",
+    "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\debug.dll",
+    "Sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570"
+  }
+]

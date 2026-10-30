@@ -1,0 +1,12 @@
+FAIL client state: MP shortage blocks a cooldown-ready skill
+FAIL client state: original context bit blocks despite enough MP and zero cooldown
+FAIL client state: positive native cooldown blocks actual precast readiness
+FAIL client state: skill cooldown uses actual native game clock rather than SDK wall tick
+FAIL client state: native cooldown one millisecond before deadline remains blocked
+FAIL client state: exact deadline is known zero
+FAIL client state: paused timer uses frozen native time despite base clock advancement
+FAIL client state: native indefinite duration is blocked and cannot become known ready
+FAIL client state: native unsigned clock wrap is decoded with signed remaining bits
+FAIL client state: secure clock mode decodes the pointer target rather than the slot
+FAIL client state: foreign skill owner preserves level inventory but cannot supply readiness
+Client state tests: 12 failures

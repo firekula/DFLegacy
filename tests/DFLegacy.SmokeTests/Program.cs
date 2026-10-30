@@ -25,9 +25,164 @@ if (args.Contains("--deployment-hosting"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--skill-slot-persistence"))
+{
+    await SkillSlotPersistenceSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Skill-slot persistence smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+
+if (args.Contains("--test-control"))
+{
+    await TestControlSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Test control smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--active-drop-four"))
+{
+    await ActiveDropFourClientSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Active drop four-member smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--active-drop"))
+{
+    await ActiveDropSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Active drop smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--dungeon-map-selection") || args.Contains("--lorien-boss-map"))
+{
+    DungeonMapSelectionSmokeTests.Run(Check);
+    if (args.Contains("--lorien-boss-map"))
+    {
+        var pvf = Environment.GetEnvironmentVariable("DF2008_REAL_PVF_PATH");
+        Check(!string.IsNullOrWhiteSpace(pvf) && File.Exists(pvf),
+            "the actual Lorien regression requires an explicit DF2008_REAL_PVF_PATH");
+        if (!string.IsNullOrWhiteSpace(pvf) && File.Exists(pvf))
+            DungeonMapSelectionSmokeTests.RunActualLorienConfiguration(Check, pvf);
+    }
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Dungeon map selection smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--fallback-relay"))
+{
+    await FallbackRelaySmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Fallback relay smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--fallback-protocol"))
+{
+    await FallbackRelayProtocolSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Fallback protocol smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--pvp-individual-only"))
+{
+    await PvpIndividualSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"PvP individual smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--pvp-protocol-rating") || args.Contains("--pvp-protocol-only"))
+{
+    await PvpProtocolRatingSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"PvP protocol/rating smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--mentor-growth"))
+{
+    await MentorGrowthSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Mentor growth smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--mentor-gold"))
+{
+    await MentorMasterGoldSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Mentor master gold smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--client-diagnostics"))
+{
+    ClientDiagnosticsSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Client diagnostics smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--cera-gift"))
+{
+    await CeraGiftSmokeTests.RunAsync(Check);
+    await AvatarPurchaseSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Cera gift smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--avatar-lifetime"))
+{
+    await AvatarLifetimeSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Avatar lifetime smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--private-store"))
+{
+    await PrivateStoreSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Private store smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--mentor"))
+{
+    await MentorSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Mentor smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--party-chat"))
+{
+    await PartyChatSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Party chat smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--party-gold"))
+{
+    await PartyGoldSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Party gold smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--debug-overlay"))
 {
     DungeonDebugOverlaySmokeTests.Run(Check);
+    await TestControlSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Debug overlay smoke: {failures.Count} failures");
     Environment.Exit(failures.Count > 0 ? 1 : 0);
@@ -45,6 +200,7 @@ if (args.Contains("--boss-room-death"))
 {
     DungeonBossDeathSmokeTests.Run(Check);
     DungeonDebugOverlaySmokeTests.Run(Check);
+    await TestControlSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Boss room death smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
@@ -134,15 +290,33 @@ static ItemCatalog CreateItems(ScriptFileSystem scripts) =>
 AccountClientSmokeTests.Run(Check);
 ScriptFileSystemCaseSmokeTests.Run(Check);
 await DeploymentHostingSmokeTests.RunAsync(Check);
+ClientDiagnosticsSmokeTests.Run(Check);
+await FallbackRelayProtocolSmokeTests.RunAsync(Check);
+await FallbackRelaySmokeTests.RunAsync(Check);
 await AdminAuthSmokeTests.RunAsync(Check);
 await TownSyncSmokeTests.RunAsync(Check);
 await FriendSmokeTests.RunAsync(Check);
 await TradeSmokeTests.RunAsync(Check);
 await PartySmokeTests.RunAsync(Check);
+await PartyChatSmokeTests.RunAsync(Check);
+await PartyGoldSmokeTests.RunAsync(Check);
+await ActiveDropSmokeTests.RunAsync(Check);
+await SkillSlotPersistenceSmokeTests.RunAsync(Check);
+await ActiveDropFourClientSmokeTests.RunAsync(Check);
+await MentorSmokeTests.RunAsync(Check);
+await MentorGrowthSmokeTests.RunAsync(Check);
+await MentorMasterGoldSmokeTests.RunAsync(Check);
+await PvpIndividualSmokeTests.RunAsync(Check);
+await PvpProtocolRatingSmokeTests.RunAsync(Check);
+await AvatarLifetimeSmokeTests.RunAsync(Check);
+await CeraGiftSmokeTests.RunAsync(Check);
+await AvatarPurchaseSmokeTests.RunAsync(Check);
+await PrivateStoreSmokeTests.RunAsync(Check);
 await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
 DungeonBossDeathSmokeTests.Run(Check);
 DungeonDebugOverlaySmokeTests.Run(Check);
+    await TestControlSmokeTests.RunAsync(Check);
 await GameplayDatagramSmokeTests.RunAsync(Check);
 LootRoutingSmokeTests.Run(Check);
 await PickupRemovalSmokeTests.RunAsync(Check);
@@ -150,6 +324,7 @@ PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 QuestMapSmokeTests.Run(Check);
+DungeonMapSelectionSmokeTests.Run(Check);
 QuestPvpRankSmokeTests.Run(Check);
 AvatarCompoundSmokeTests.Run(Check);
 WorldMapSmokeTests.Run(Check);
@@ -418,27 +593,27 @@ Check(EntranceService.TryReadSendMessage(
     && Encoding.GetEncoding(936).GetString(
         capturedCreatureScriptType02.MessageBytes) == "啧啧",
     "captured 2008 CMD 132 also preserves the Creature type-2 script channel");
-// CMD 118 TRACE_ERROR：客户端在弹 `error : 3525:100` / 崩溃之前发出的**最后一个上行包**
+// CMD118 历史诊断报告：客户端在弹 `error : 3525:100` / 崩溃之前发出的**最后一个上行包**
 // （真机两轮逐字段相同：party26 23:29:33 队长端 body=`3B000801000000`、party27 00:09:14 队员端
-// body=`1F000801000000`）。官服 `Dispatcher_TraceError::dispatch_sig` @0x08204b0c 只 `get_byte` ×2 +
-// `cMyTrace`（不回包、不改状态），所以这里只需要把 code/flag 解析对 + 长度不足不抛。
+// body=`1F000801000000`）。这些样本只保留既有 code/flag 兼容读取，完整语义未证明；
+// ACT1 已证实的 TRACE_ERROR 路径是 CMD125，不能借官服118命令号为此处推断语义。
 Check(EntranceService.TryReadTraceError(
         Convert.FromHexString("3B000801000000"),
         out var traceCodeCaptain,
         out var traceFlagCaptain)
     && traceCodeCaptain == 8
     && traceFlagCaptain == 1,
-    "the captured TRACE_ERROR from the captain (party26) parses as code 8 / flag 1");
+    "the captured historical CMD118 diagnostic from the captain (party26) parses as code 8 / flag 1");
 Check(EntranceService.TryReadTraceError(
         Convert.FromHexString("1F000801000000"),
         out var traceCodeMember,
         out var traceFlagMember)
     && traceCodeMember == 8
     && traceFlagMember == 1,
-    "the captured TRACE_ERROR from the member (party27) parses to the same code / flag");
+    "the captured historical CMD118 diagnostic from the member (party27) parses to the same code / flag");
 Check(!EntranceService.TryReadTraceError([0x1F, 0x00], out _, out _)
     && !EntranceService.TryReadTraceError([], out _, out _),
-    "a TRACE_ERROR body without the two fields is rejected instead of throwing");
+    "a historical CMD118 diagnostic body without the two fields is rejected instead of throwing");
 
 var notificationText = Encoding.GetEncoding(936).GetBytes("系统通知");var messageNotification = GameProtocolEngine.CreateMessageNotification(
     messageType: GameMessageType.Type00DualRouteBrown,
@@ -1947,13 +2122,14 @@ var ceraShopBuyError = GameProtocolEngine.CreateCeraShopBuyError(
     errorCode: 4,
     shopCategory: -1,
     commodityNo: 100001);
-Check(ceraShopBuyError.Payload.Length == 20
+Check(ceraShopBuyError.Payload.Length == 21
     && ceraShopBuyError.Payload[0] == 0
-    && ceraShopBuyError.Payload[1] == 4
+    && ceraShopBuyError.Payload[1] == 0
+    && ceraShopBuyError.Payload[2] == 4
     && BinaryPrimitives.ReadInt32LittleEndian(
-        ceraShopBuyError.Payload.AsSpan(2, 4)) == 0
+        ceraShopBuyError.Payload.AsSpan(3, 4)) == 0
     && BinaryPrimitives.ReadUInt32LittleEndian(
-        ceraShopBuyError.Payload.AsSpan(6, 4)) == 100001,
+        ceraShopBuyError.Payload.AsSpan(7, 4)) == 100001,
     "DFLegacy Cera-shop error reply keeps the client catalog index in range");
 var ceraTicket = GameProtocolEngine.CreateCeraTicketReply("DFLegacy", 7);
 Check(ceraTicket.ProtocolId == GameProtocolEngine.GenerateCeraTicketCommand
@@ -1967,40 +2143,11 @@ Check(ceraTicket.ProtocolId == GameProtocolEngine.GenerateCeraTicketCommand
             7, 0, 0, 0
         }),
     "DFLegacy command 68 returns the length-prefixed Cera web ticket");
-var ceraShopParser = typeof(EntranceService).GetMethod(
-    "TryReadCeraShopPurchase",
-    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-object?[] ceraShopParserArguments =
-[
-    new byte[]
-    {
-        0x0B, 0x00,
-        0x00,
-        0x01,
-        0x0F, 0x03, 0x00, 0x00, 0x23, 0x02, 0x00
-    },
-    null,
-    false
-];
-var parsedCeraShopRequest = ceraShopParser is not null
-    && (bool)ceraShopParser.Invoke(null, ceraShopParserArguments)!;
-var parsedCeraShopProducts = parsedCeraShopRequest
-    ? (Array)ceraShopParserArguments[1]!
-    : Array.Empty<object>();
-var parsedCeraShopProduct = parsedCeraShopProducts.Length == 1
-    ? parsedCeraShopProducts.GetValue(0)
-    : null;
-var parsedCeraShopProductType = parsedCeraShopProduct?.GetType();
-Check(parsedCeraShopRequest
-    && !(bool)ceraShopParserArguments[2]!
-    && parsedCeraShopProducts.Length == 1
-    && (byte)parsedCeraShopProductType!.GetProperty("ProductType")!
-        .GetValue(parsedCeraShopProduct!)! == 0x0F
-    && (ushort)parsedCeraShopProductType.GetProperty("AttributeValue")!
-        .GetValue(parsedCeraShopProduct!)! == 3
-    && (uint)parsedCeraShopProductType.GetProperty("CommodityNo")!
-        .GetValue(parsedCeraShopProduct!)! == 140032,
-    "DFLegacy command 67 parses gift mode, product count and seven-byte product rows");
+Check(GameProtocolEngine.TryReadCeraShopPurchase(
+        [0x0B, 0x00, 0x00, 0x01, 0x0F, 0x03, 0x00, 0x00, 0x23, 0x02, 0x00], out var parsedCeraPurchase)
+    && !parsedCeraPurchase.IsGift && parsedCeraPurchase.RecipientName == ""
+    && parsedCeraPurchase.Products.SequenceEqual(new[] { new GameCeraShopPurchaseItem(0x0F, 3, 140032) }),
+    "DFLegacy command67 parses gift mode, product count and seven-byte product rows");
 var ceraUpdate = GameProtocolEngine.CreateCeraUpdate(true, 1_000_000);
 Check(ceraUpdate.ProtocolId == GameProtocolEngine.CeraUpdateNotification
     && ceraUpdate.Payload.SequenceEqual(
@@ -2242,7 +2389,8 @@ try
         && boosterOpenPlan.AvatarInventory.Values.Single() is
         {
             ItemId: 39000,
-            AvatarRemainingSeconds: 0,
+            AvatarRemainingSeconds: 2_592_000,
+            AvatarExpiresAtUnixSeconds: > 0,
             AvatarAbilityIndex: 4
         }
         && boosterOpenPlan.OverflowItems.Count == 0,
@@ -2266,7 +2414,8 @@ try
         && boosterPurchasePlan.AvatarInventory.Values.Single() is
         {
             ItemId: 39000,
-            AvatarRemainingSeconds: 0,
+            AvatarRemainingSeconds: 2_592_000,
+            AvatarExpiresAtUnixSeconds: > 0,
             AvatarAbilityIndex: 4
         }
         && boosterPurchasePlan.MainInventory.Values.All(item => item.ItemId != 71),
@@ -2365,17 +2514,17 @@ try
     Check(ceraCatalog.TryGetProduct(120000, out var avatarProduct)
         && avatarProduct.ItemId == 39000
         && avatarProduct.AttributeValue == 1
-        && avatarProduct.CashPrice == 2_970
+        && avatarProduct.CashPrice == 450
         && avatarProduct.ClientCategory == 0
         && !avatarProduct.UsesMainInventory,
-        "DFLegacy Cera catalog charges the permanent price while expiration is unsupported");
+        "DFLegacy Cera catalog charges the native7-day price for period code1");
     Check(ceraCatalog.TryGetProduct(120001, out var avatar30DayProduct)
             && avatar30DayProduct.AttributeValue == 2
-            && avatar30DayProduct.CashPrice == 2_970
+            && avatar30DayProduct.CashPrice == 990
             && ceraCatalog.TryGetProduct(120002, out var avatarPermanentProduct)
             && avatarPermanentProduct.AttributeValue == 3
             && avatarPermanentProduct.CashPrice == 2_970,
-        "DFLegacy avatar period codes all charge 6.6x until expiration is implemented");
+        "DFLegacy avatar period codes distinguish30-day and permanent native prices");
     var premiumBenefits = new PremiumBenefitCatalog(
         ceraScripts,
         NullLogger<PremiumBenefitCatalog>.Instance);
@@ -5132,7 +5281,8 @@ try
         [1016],
         growType: 3,
         awakeningType: 1,
-        victoryPoints: 321);
+        victoryPoints: 321,
+        expectedVictoryPoints: storedCharacter.VictoryPoints);
     if (completedCharacter is not null)
     {
         completedCharacter = await questStore.SaveCharacterCeraShopPurchaseAsync(
@@ -5149,6 +5299,7 @@ try
                     15)
             ],
             victoryPoints: 421,
+            expectedVictoryPoints: completedCharacter.VictoryPoints,
             warehouseCapacity: 40,
             expectedWarehouseCapacity: 24)
             ?? completedCharacter;
@@ -7182,6 +7333,20 @@ var droppableInventory = new Dictionary<ushort, CharacterItemRecord>
         Durability: 7,
         SealState: 3)
 };
+Check(!DungeonItemDropPlanner.TryPlan(
+        droppableInventory,
+        itemSpace: 0,
+        CharacterInventoryLayout.MaterialSlotStart,
+        count: 2,
+        smokeItemCatalog!,
+        out _,
+        out var nonSealedDropFailure)
+    && nonSealedDropFailure == DungeonItemDropFailure.NotTradeable
+    && droppableInventory[CharacterInventoryLayout.MaterialSlotStart].CountOrValue == 3
+    && droppableInventory[CharacterInventoryLayout.MaterialSlotStart].SealState == 3,
+    "dungeon drops reject sealing instances outside exact state1 without changing the source");
+droppableInventory[CharacterInventoryLayout.MaterialSlotStart] =
+    droppableInventory[CharacterInventoryLayout.MaterialSlotStart] with { SealState = 1 };
 Check(DungeonItemDropPlanner.TryPlan(
         droppableInventory,
         itemSpace: 0,
@@ -7196,7 +7361,7 @@ Check(DungeonItemDropPlanner.TryPlan(
     && dungeonDropPlan.DroppedItem.CountOrValue == 2
     && dungeonDropPlan.DroppedItem.State == 5
     && dungeonDropPlan.DroppedItem.Durability == 7
-    && dungeonDropPlan.DroppedItem.SealState == 3
+    && dungeonDropPlan.DroppedItem.SealState == 1
     && droppableInventory[
         CharacterInventoryLayout.MaterialSlotStart].CountOrValue == 3,
     "dungeon drops remove only the requested stack count without mutating source data");
@@ -7218,7 +7383,7 @@ Check(!DungeonItemDropPlanner.TryPlan(
     && rejectedDungeonDropFailure == DungeonItemDropFailure.NotTradeable
     && rejectedDropInventory.ContainsKey(
         CharacterInventoryLayout.ConsumableSlotStart),
-    "dungeon drops reject attach types other than free and sealing");
+    "dungeon drops reject trade-bound consumables");
 
 var playerDropGroundState = new DungeonGroundItemState();
 var generatedEquipmentGroundItem = playerDropGroundState.Add(
@@ -7690,8 +7855,9 @@ Check(capturedClientCipherState.TryDecode(capturedProtocol8, out var decodedProt
 
 var loginReply = GameProtocolEngine.Handle(decodedLogin);
 Check(loginReply?.ProtocolId == GameProtocolEngine.LoginCommand, "login command receives a reply");
-Check(loginReply?.Payload.SequenceEqual(new byte[] { 1, 0, 0, 0, 0 }) == true,
-    "login reply selects the normal character-list path");
+Check(loginReply?.Payload.SequenceEqual(new byte[]
+    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }) == true,
+    "login reply selects normal characters with a complete unavailable relay tail");
 
 var userInfoRequest = new PacketFrame(
     GameProtocolEngine.CommandPacketType,

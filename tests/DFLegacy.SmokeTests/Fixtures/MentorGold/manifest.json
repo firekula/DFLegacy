@@ -1,0 +1,72 @@
+{
+  "scope": "Original table and CP936 PVF entry; independently derived exact-rational math oracle",
+  "pvfEntry": {
+    "sourcePath": "G:\\Game\\DNF_ACT1\\DF\\Script.pvf",
+    "pvfSha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+    "path": "etc/goldlimitbylevel.etc",
+    "length": 1367,
+    "entrySha256": "718960fccddac3f6205ca9e0a21686493cde8b3727e1e6d3860caac69e465e1e",
+    "fixtureSha256": "718960fccddac3f6205ca9e0a21686493cde8b3727e1e6d3860caac69e465e1e",
+    "encoding": "CP936 (original bytes)"
+  },
+  "memberTable": {
+    "path": "member_cnt_config.tbl",
+    "length": 658,
+    "sha256": "b21733a1b5f71fe98d40fcbdb56fbebb4fbac15c12c3c2d43a6cea91aa12d3bc"
+  },
+  "inputs": {
+    "client": {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "size": 9846272,
+      "sha256": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5"
+    },
+    "official": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.superpowers\\sdd\\2026-09-29-dungeon-party\\work\\official\\df_game_r.bin",
+      "size": 36360954,
+      "sha256": "8859c99d8290dc5fb58151444138cf2697b2bfff12d47d6159596a03f20b5261"
+    },
+    "monitor": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.superpowers\\sdd\\2026-09-29-dungeon-party\\work\\official\\template\\neople\\monitor\\df_monitor_r",
+      "size": 2461318,
+      "sha256": "a099d2b3ebc77bfe1393bec3543a41ba8c20c99d0abc26619241d31964dea6d7"
+    },
+    "pvf": {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\Script.pvf",
+      "size": 65951563,
+      "sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f"
+    }
+  },
+  "evidence": [
+    {
+      "path": "monitor-economics.txt",
+      "sha256": "535db51762640ea8a0e3c44e451c0ac463332e557e82889b426131d4919775f1"
+    },
+    {
+      "path": "monitor-constants.txt",
+      "sha256": "137eba96a89dd2cded3df05304fee07650102e0ec8ba88fa6041515e2d170b6c"
+    },
+    {
+      "path": "official-lifecycle.txt",
+      "sha256": "685a63af8e903b06752845c1c62bbadff481092148c08ac8b9ac547d8af3b75f"
+    },
+    {
+      "path": "client-tax-helpers.txt",
+      "sha256": "6c164a21401babb01a3bddb12d166d7596433c36748a329ce5a6bf9f66b12f12"
+    },
+    {
+      "path": "client-tax-case.asm",
+      "sha256": "9e242218de8f2d7924d601e06b14a286c14bf1b6ec7024325fbeb8550bc5967b"
+    }
+  ],
+  "derived": [
+    {
+      "path": "math-oracle.json",
+      "sha256": "dfa91db8a032416cda56e9adaa674f02c259de7fdfe20135fd2bdc9c53b7dfc0"
+    },
+    {
+      "path": "generate_oracle.py",
+      "sha256": "628a3018a723336b9e5bd7c100def714bb8fc9a9700c6dbea65d9d7deef73474"
+    }
+  ],
+  "method": "Monitor 08082E30..08082E62 float32 stores; binary64 constants 7b14ae47e17a843f/9a9999999999a93f. Fraction arithmetic with integer ties-to-even, exact product floor. Timer 086B1BD2..086B1C77 signed32 LCG, signed truncating division, masks, XOR, unsigned comparison."
+}

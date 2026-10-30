@@ -1,0 +1,144 @@
+{
+  "Schema": "boss-map-public-native/v1",
+  "Status": "PASS_AS_SCOPED",
+  "Phase": "normal-boss-spec-v2",
+  "Selection": {
+    "Dungeon": 1,
+    "Maze": 2,
+    "Size": [
+      3,
+      3
+    ],
+    "Start": [
+      0,
+      0
+    ],
+    "Boss": [
+      2,
+      2
+    ],
+    "BossMap": 6416,
+    "Route": [
+      [
+        "1",
+        "0",
+        "9"
+      ],
+      [
+        "1",
+        "1",
+        "8"
+      ],
+      [
+        "1",
+        "2",
+        "10"
+      ],
+      [
+        "2",
+        "2",
+        "6416"
+      ]
+    ],
+    "Bosses": {
+      "A": {
+        "Uid": 2,
+        "MonsterIndex": 1077,
+        "InitialHp": 625
+      },
+      "B": {
+        "Uid": 2,
+        "MonsterIndex": 1077,
+        "InitialHp": 625
+      }
+    },
+    "NativeMonsterCounts": {
+      "A": 9,
+      "B": 9
+    }
+  },
+  "Combat": "A killed the script-defined Boss through finite directional/X input; Boss HP0 observed on both clients. B died during the Boss encounter; no revival purchase was tested.",
+  "Settlement": "Server sent result13/code0 to both; original pictures show death/clear and both Continue menus, not the transient Score overlay.",
+  "ReturnTown": "Leader B clicked Continue/ReturnTown; both returned to scene1 with positive HP.",
+  "WindowsResponding": {
+    "Samples": 424,
+    "ByRole": {
+      "A": 212,
+      "B": 212
+    },
+    "NotResponding": 0,
+    "Scope": "25s after clear; window responsiveness only"
+  },
+  "Limitations": "One LAN dual-client3x3/Boss6416 run; no universal map-layout, no revival UI repair and no monster-position-sync fix claim.",
+  "FailedAttempts": "v1 invitation failed and later only A entered3x3; v2 initial cursor/position attempts, finite helper log-decoding failure and rejected reinvite are retained. Tree and portal-boundary walking failures were corrected through normal input.",
+  "NativeAcceptanceSha256": "6D489F5B2D2B0E7B2CA3ABDFF13EC275073BD51E1869E19751C704F42F445844",
+  "CompleteFiles": 915,
+  "CompleteBytes": 76268999,
+  "CompleteManifestSha256": "3EB4A4077AFA975E9DA49548553EEE8DC1D8893F3813FAF4C7D7D443C00FDF03",
+  "OriginalPictures": [
+    {
+      "File": "A-piper-before.jpg",
+      "OriginalEvidenceLabel": "b2-A-piper-before",
+      "OriginalScreenshotName": "ScreenShot00994.JPG",
+      "NativeInputReceiptSha256": "FC4493867A0838B3E51F0E4DEF95BC44D19FD97379B3C41FF3C41BD0865648EC",
+      "OriginalSha256": "DDB2752D3E424D1D7B25A7BBF80E6EC658079D3B5544F5C7E9F587339E876A53",
+      "Unmodified": true
+    },
+    {
+      "File": "B-piper-before.jpg",
+      "OriginalEvidenceLabel": "b2-B-piper-before",
+      "OriginalScreenshotName": "ScreenShot00912.JPG",
+      "NativeInputReceiptSha256": "940F69F76321D8D5492D31380C934825CE5AE12E04DEBA55B358EDB06BD2D2AC",
+      "OriginalSha256": "76FF184943DDF5516727FAE26B793F1C193E8D8AEF5B7A3A34DB58C233686A13",
+      "Unmodified": true
+    },
+    {
+      "File": "A-piper-cleared.jpg",
+      "OriginalEvidenceLabel": "b2-A-piper-settlement",
+      "OriginalScreenshotName": "ScreenShot00995.JPG",
+      "NativeInputReceiptSha256": "A0F8CCE0A03B5D76A9D8D02F280151FD8CA00B1E1D448008ED80749E3B865039",
+      "OriginalSha256": "82A1F3808FBAD2795477D151A2ADAB74B8B4E126D76F6E69075F78BFBCA26A22",
+      "Unmodified": true
+    },
+    {
+      "File": "B-piper-cleared.jpg",
+      "OriginalEvidenceLabel": "b2-B-piper-settlement",
+      "OriginalScreenshotName": "ScreenShot00913.JPG",
+      "NativeInputReceiptSha256": "DF8B5B5C58CEA26E215189E6EE0B73A57105AD2EC2F2D2D10F6911BDF34137A6",
+      "OriginalSha256": "455D49E69EC1C321471C14891EFAFC397D650D3820ACDD87522BD93CCD42AB63",
+      "Unmodified": true
+    },
+    {
+      "File": "A-continue.jpg",
+      "OriginalEvidenceLabel": "b2-A-piper-score",
+      "OriginalScreenshotName": "ScreenShot00996.JPG",
+      "NativeInputReceiptSha256": "190E771A7737134FC2F2E9E46E0ECF35929BE96D11DBA7C85BB57330BE770071",
+      "OriginalSha256": "65CB5C66193722AEA4757A39FC68AEB6B6890A03104DB280D1060A4048F6A234",
+      "Unmodified": true
+    },
+    {
+      "File": "B-continue.jpg",
+      "OriginalEvidenceLabel": "b2-B-piper-score",
+      "OriginalScreenshotName": "ScreenShot00914.JPG",
+      "NativeInputReceiptSha256": "90F440982DA95F4E0E52C453E959363A7722AB47C0C509313969D09AB06BE5B0",
+      "OriginalSha256": "C7E2C7C966653E2D3F2F824FA1092CE9D481200513F376557D36FCC2D37EA8DF",
+      "Unmodified": true
+    },
+    {
+      "File": "A-return-town.jpg",
+      "OriginalEvidenceLabel": "b2-A-piper-return-town",
+      "OriginalScreenshotName": "ScreenShot00997.JPG",
+      "NativeInputReceiptSha256": "E5540CD0D7FD54F062012D79FFBD8C88C82451A123047331996ACFEE7C7CCF19",
+      "OriginalSha256": "450785BA551EC16DB02FDA6CA824B5C2394AED1EABB41D2F2896B626BEB34EAA",
+      "Unmodified": true
+    },
+    {
+      "File": "B-return-town.jpg",
+      "OriginalEvidenceLabel": "b2-B-piper-return-town",
+      "OriginalScreenshotName": "ScreenShot00915.JPG",
+      "NativeInputReceiptSha256": "AAEFF0A3EAB6F59D790EE36E779505BE180994C032787D2ED2930F37A58E18FA",
+      "OriginalSha256": "46A0D90A590C44BC41077F7A90FAFCA3B31C2A31D9AF8C004D5B74A371D4638E",
+      "Unmodified": true
+    }
+  ]
+}

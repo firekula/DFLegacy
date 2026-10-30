@@ -63,6 +63,8 @@ if (hosting.InitializeAdmin)
     return;
 }
 
+options.Pvp.Validate(options);
+options.FallbackRelay.Validate(options);
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var clientTextEncoding = Encoding.GetEncoding(
     936,
@@ -82,6 +84,14 @@ builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
 // 好友在线索引按角色名跨连接共享，必须单例：EntranceService 的所有会话共用它。
 builder.Services.AddSingleton<FriendService>();
+builder.Services.AddSingleton<MentorService>();
+builder.Services.AddSingleton<PvpMapCatalog>();
+builder.Services.AddSingleton<PvpService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<PvpService>());
+builder.Services.AddSingleton<PrivateStoreCatalog>();
+builder.Services.AddSingleton<PrivateStoreService>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<PrivateStoreService>());
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<MentorService>());
 // 通道表/会话表同样跨连接共享；托管后台扫描，单例与托管服务必须是同一个实例。
 builder.Services.AddSingleton<ItemTradeService>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ItemTradeService>());
@@ -145,6 +155,8 @@ builder.Services.AddSingleton<ObjectDropGenerator>();
 builder.Services.AddSingleton<ClearRewardCatalog>();
 builder.Services.AddSingleton<ClearRewardGenerator>();
 builder.Services.AddSingleton<GameplayDatagramService>();
+builder.Services.AddSingleton<FallbackRelayService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<FallbackRelayService>());
 builder.Services.AddHostedService<EntranceHandshakeService>();
 // I4：game 侧链路客户端（拆分模式拨号 channel 进程；单体模式 ExecuteAsync 直接返回）。
 // 单例 + 托管：/api/status 要读同一个 Client 实例。
@@ -236,6 +248,7 @@ var characterSpCatalog = app.Services.GetRequiredService<CharacterSpCatalog>();
 characterSpCatalog.Initialize();
 var pvpExperienceCatalog = app.Services.GetRequiredService<PvpExperienceCatalog>();
 pvpExperienceCatalog.Initialize();
+if (options.Pvp.Enabled) _ = app.Services.GetRequiredService<PvpMapCatalog>().Entries;
 var normalizedPvpGrades = await gameStore.NormalizePvpGradesAsync(
     pvpExperienceCatalog);
 if (normalizedPvpGrades != 0)
@@ -371,7 +384,7 @@ app.MapGet("/admin", () => Results.Redirect("/admin/index.html"));
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "dflegacy-emulator" }));
 
-app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items, ChannelLinkService channelLink) => Results.Ok(new
+app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items, ChannelLinkService channelLink, FallbackRelayService fallbackRelay) => Results.Ok(new
 {
     runtime.StartedAt,
     runtime.TotalConnections,
@@ -392,6 +405,7 @@ app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemC
         }
         : [],
     GameProbe = options.GameProbe.Enabled ? $"{options.GameProbe.Host}:{options.GameProbe.Port}" : "disabled",
+    FallbackRelay = fallbackRelay.Snapshot(),
     Random = GameRandomSource.Shared.GetStatus(),
     ChannelScriptConfigured = scripts.FileExists("etc/channel_info.etc"),
     CachedItems = items.Count,

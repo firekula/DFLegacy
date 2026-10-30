@@ -1,0 +1,36 @@
+{
+  "elf_path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.superpowers\\sdd\\2026-09-29-dungeon-party\\work\\official\\df_game_r.bin",
+  "elf_sha256": "8859c99d8290dc5fb58151444138cf2697b2bfff12d47d6159596a03f20b5261",
+  "functions": [
+    {
+      "name": "_ZN17DisPatcher_SetPos4readER9PacketBufR8MSG_BASE",
+      "start": "0x81c97a6",
+      "size": 289,
+      "sha256": "7ef89a9471afe860f60f78c25a499005893804656abd29b5c2415126225906e1"
+    },
+    {
+      "name": "_ZN9GameWorld13move_positionEP5CUseriiit",
+      "start": "0x86c5706",
+      "size": 550,
+      "sha256": "e2dfaa5b7651c799b462696a8215a9284a5865ff63aa2cb1a1dc99e8b88d1554"
+    },
+    {
+      "name": "_ZN17DisPatcher_SetPos7processEP5CUserR8MSG_BASER9ParamBase",
+      "start": "0x81c98c8",
+      "size": 203,
+      "sha256": "b908754bb9c73f1cb08468b3bc2c6efdf94cca7c63bc89127ba69abdf1732770"
+    },
+    {
+      "name": "_ZN17DisPatcher_SetPos11check_errorEP5CUserR8MSG_BASE",
+      "start": "0x81c9994",
+      "size": 41,
+      "sha256": "076cfa058f660ad539634e24e4cb4e0adb3d6e39ac001ccbe9c181da03f7c2f7"
+    },
+    {
+      "name": "_ZN5CUser12set_positionEttc",
+      "start": "0x82f0e2a",
+      "size": 69,
+      "sha256": "6144b1a1b38a78a240a64cd9b570f9521033c18b8150302ec1a8e3cc48650a15"
+    }
+  ]
+}

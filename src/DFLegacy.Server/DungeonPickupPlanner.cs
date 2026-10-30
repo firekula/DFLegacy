@@ -33,7 +33,8 @@ public static class DungeonPickupPlanner
                     AvatarAbilityIndex: preservedItem?.AvatarAbilityIndex,
                     EquipmentQualitySeed:
                         preservedItem?.EquipmentQualitySeed,
-                    InstanceId: preservedItem?.InstanceId ?? Guid.Empty),
+                    InstanceId: preservedItem?.InstanceId ?? Guid.Empty,
+                    AvatarExpiresAtUnixSeconds: preservedItem?.AvatarExpiresAtUnixSeconds),
                 catalog,
                 weightLimit,
                 out var placement,

@@ -1,0 +1,56 @@
+{
+  "schema": "mentor-master-gold-component-acceptance/v1",
+  "component_native": "PASS_AS_SCOPED",
+  "whole_round": "PENDING_ROOT_FINAL_RUNTIME_CONFIG_RESTORE_AND_INTEGRATION",
+  "phase_proofs": [
+    {
+      "public_file": "native-public-proof.json",
+      "scope": "743 ordinary-online award and first full restart",
+      "bytes": 22302,
+      "sha256": "01707E7BE9FA5CD791675B571A1291B65C07152D06373B3261BF48ACDB9D66DD"
+    },
+    {
+      "public_file": "native-C79-timer-offline-proof.json",
+      "scope": "C79 natural first Gold timer and actual master-offline25 control",
+      "bytes": 35594,
+      "sha256": "9C0F9F56D78F2D596B8109B69BE07ADD15AB22977817AB2304B103A9006575CD"
+    },
+    {
+      "public_file": "native-final30AD-relogin-proof.json",
+      "scope": "30AD full restart after offline control; no delayed reward and retained wallet/receipts",
+      "bytes": 8803,
+      "sha256": "A3B7E23E5B75C07451CA3918B19C3F13B6B75CCF836BD9DF2D182F29ED1B01A8"
+    }
+  ],
+  "native_matrix": {
+    "generated_PvE_pickup": "PASS",
+    "normal_automatic_free_card": "PASS_PACKET_LEDGER",
+    "ordinary_select_character_flush_named_message": "PASS",
+    "natural_first_attachment_600_plus_random_timer": "PASS_TRIGGER_INFERRED_BY_TIMING_AND_NO_RETIREMENT",
+    "master_offline_real_positive_source": "PASS",
+    "offline_source_followed_by_full_restart_no_catchup": "PASS",
+    "awarded_wallet_and_receipts_retained_across_two_full_restarts": "PASS",
+    "final30AD_identity_bridge": "PASS_AS_SCOPED"
+  },
+  "native_not_exercised": [
+    "wallet cap and zero-award cap behavior",
+    "actual trade/private-store delivery races",
+    "forced replacement and concurrent persistence faults",
+    "multiple children/capacity levels",
+    "all possible random jitter values or an exact logged Gold deadline"
+  ],
+  "automated_coverage_reference": "Reviewed source5078, full Smoke/Release and real sender/store/session interleaving evidence linked in the main record",
+  "out_of_scope_blocked": [
+    "fatigue benefit values",
+    "COF values"
+  ],
+  "final_selected_state": {
+    "A_gold": 50681,
+    "B_gold": 50495,
+    "A_applied_award_receipts": 2,
+    "pending_gold_all_categories": 0,
+    "B_own_edge_experience": 18,
+    "existing_Pvp_receipts": 3
+  },
+  "interpretation": "Prior phase proof files preserve their time-local PENDING statuses; this aggregate resolves the specified follow-ups with separately frozen later phases. Earlier native builds are never relabelled as30AD."
+}

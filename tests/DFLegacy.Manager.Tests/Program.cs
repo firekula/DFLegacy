@@ -31,9 +31,11 @@ try
         """);
     var config = new ConfigurationStore(paths, new Dictionary<string, string?>());
     var original = config.Read().Saved;
+    Reject(() => config.Save(original with { AdvertisedHost = "dns.example.test" }),
+        "default native fallback refuses a DNS advertisement without an explicit IPv4 address");
     Check(Path.IsPathFullyQualified(original.ScriptPvfPath), "PVF resolves independently of current working directory");
     Check(Path.GetDirectoryName(paths.ServerConfig) == Path.Combine(paths.Data, "config"), "user config lives in the selected data directory");
-    var edited = original with { AdvertisedHost = "game.example.test", AccountServiceUrl = "https://accounts.example.test", ChannelName = "测试频道", MonsterExperienceMultiplier = 2.5 };
+    var edited = original with { BindHost = "0.0.0.0", AdvertisedHost = "game.example.test", FallbackRelayAdvertisedHost = "203.0.113.42", AccountServiceUrl = "https://accounts.example.test", ChannelName = "测试频道", MonsterExperienceMultiplier = 2.5 };
     config.Save(edited);
     var savedDocument = JsonNode.Parse(File.ReadAllText(paths.ServerConfig))!;
     Check(savedDocument["Keep"]!["Nested"]!.GetValue<int>() == 42 && savedDocument["DFLegacy"]!["UnknownFuture"]!["retain"]!.GetValue<int>() == 123,
@@ -44,6 +46,11 @@ try
     Check(loadedAgain.ChannelName == "测试频道" && loadedAgain.MonsterExperienceMultiplier == 2.5, "restarting manager does not replace user configuration");
     Reject(() => config.Save(edited with { EntrancePort = 0 }), "zero listening port is rejected");
     Reject(() => config.Save(edited with { AdminPort = edited.EntrancePort }), "colliding TCP listeners are rejected before starting");
+    var configBeforeDuplicate = File.ReadAllText(paths.ServerConfig);
+    var settingsBeforeDuplicate = File.ReadAllText(paths.SettingsFile);
+    Reject(() => config.Save(edited with { AdditionalEntrancePort = edited.ChannelPort }), "additional entrance port cannot collapse into the channel port");
+    Check(File.ReadAllText(paths.ServerConfig) == configBeforeDuplicate && File.ReadAllText(paths.SettingsFile) == settingsBeforeDuplicate,
+        "rejected additional-port collision leaves both saved configuration files untouched");
     Reject(() => config.Save(edited with { AdvertisedHost = "0.0.0.0" }), "wildcard is not advertised to players");
     Reject(() => config.Save(edited with { BindHost = "example.test" }), "listening interface must be a literal IP");
     Reject(() => config.Save(edited with { MonsterExperienceMultiplier = double.NaN }), "non-finite multipliers cannot enter configuration");
@@ -52,11 +59,35 @@ try
     Check(overridden.Read().Effective.AdminPort == 19081 && overridden.Read().Saved.AdminPort == 8081,
         "effective environment settings and on-disk settings are shown separately");
     Reject(() => overridden.Save(edited with { AdminPort = 29081 }), "editing an environment-controlled field is explicitly rejected");
-    var relayConfiguration = config.Save(edited with { RelayEnabled = true });
+    var relayConfiguration = config.Save(edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "" });
     Check(relayConfiguration.Saved.AdvertisedHost == "game.example.test" && relayConfiguration.Effective.GameplayAdvertisedHost == "127.0.0.1"
         && config.ReadServerDocument()["DFLegacy"]!["GameplayDatagram"]!["AdvertisedHost"]!.GetValue<string>() == "127.0.0.1",
         "IPv6 relay retains the real destination while advertising the client-local relay to the game protocol");
     config.Save(edited);
+    Reject(() => config.Save(edited with { FallbackRelayTcpPort = edited.EntrancePort }), "fallback TCP collision is rejected before starting");
+    Reject(() => config.Save(edited with { FallbackRelayUdpPort = edited.CharacterPort }), "fallback UDP collision is rejected before starting");
+    Reject(() => config.Save(edited with { PvpEnabled = true, PvpPort = edited.ChannelPort }), "PvP TCP collision is rejected before starting");
+    Reject(() => config.Save(edited with { RelayEnabled = true }), "local client relay cannot receive a remote fallback IPv4 advertisement");
+    var fallbackOverride = new ConfigurationStore(new ManagerPaths(Path.Combine(scratch, "fallback environment")),
+        new Dictionary<string, string?> { ["DFLegacy__FallbackRelay__AdvertisedHost"] = "203.0.113.9" });
+    var fallbackInput = fallbackOverride.Read().Saved with { BindHost = "0.0.0.0", AdvertisedHost = "game.example.test" };
+    try
+    {
+        var result = fallbackOverride.Save(fallbackInput);
+        Check(result.Saved.FallbackRelayAdvertisedHost == "" && result.Effective.FallbackRelayAdvertisedHost == "203.0.113.9",
+            "valid effective fallback IPv4 allows DNS while preserving the blank locked file value");
+    }
+    catch (ArgumentException) { Check(false, "valid effective fallback IPv4 allows DNS while preserving the blank locked file value"); }
+    Reject(() => fallbackOverride.Save(fallbackInput with { RelayEnabled = true }), "environment fallback advertisement cannot break local client relay");
+    var fallbackDisabled = new ConfigurationStore(new ManagerPaths(Path.Combine(scratch, "fallback disabled environment")),
+        new Dictionary<string, string?> { ["DFLegacy__FallbackRelay__Enabled"] = "false" });
+    try
+    {
+        var result = fallbackDisabled.Save(fallbackDisabled.Read().Saved with { AdvertisedHost = "game.example.test" });
+        Check(result.Saved.FallbackRelayEnabled && !result.Effective.FallbackRelayEnabled,
+            "environment-disabled fallback allows DNS without changing the locked saved switch");
+    }
+    catch (ArgumentException) { Check(false, "environment-disabled fallback allows DNS without changing the locked saved switch"); }
     Reject(() => config.Save(edited with { AccountServiceUrl = "https://accounts.example.test/%s" }), "embedded client formatter cannot receive percent directives in page URLs");
     Reject(() => config.Save(edited with { AccountServiceUrl = "http://0.0.0.0:8081" }), "account registration cannot target a wildcard address");
     var relayOverride = new ConfigurationStore(paths, new Dictionary<string, string?> { ["DFLegacy__GameplayDatagram__AdvertisedHost"] = "2001:db8::42" });
@@ -130,7 +161,7 @@ try
     WriteAssets(commit);
     WriteRelease();
     var exporter = new ClientPackageExporter(paths);
-    var zipPath = await exporter.ExportAsync("launcher", edited);
+    var zipPath = await exporter.ExportAsync("launcher", edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "" });
     using (var archive = ZipFile.OpenRead(zipPath))
     {
         string Read(string name) { using var reader = new StreamReader(archive.GetEntry(name)!.Open()); return reader.ReadToEnd(); }
@@ -139,11 +170,27 @@ try
             "exported launcher never carries bundled accounts or passwords");
         Check(!launcher["StartServer"]!.GetValue<bool>() && launcher["ClientPath"]!.GetValue<string>() == "../DNF.exe", "player bundle uses relative client path and remote-only startup");
         Check(launcher["EntranceHost"]!.GetValue<string>() == "game.example.test", "player bundle points to the configured server");
+        Check(launcher["Relay"]!["TcpPorts"]!.GetValue<string>().Split(',').Contains("7005")
+            && launcher["Relay"]!["UdpPorts"]!.GetValue<string>().Split(',').Contains("7005"),
+            "default native fallback TCP and UDP ports are forwarded by exported local relay");
         Check(Read("DFLegacyLauncher/Config.ini").Contains("ClientServiceUrl=https://accounts.example.test"), "embedded client pages use the deployed account API origin");
         Check(Read("DFLegacyLauncher/Config.ini").Contains("EnableDebugOverlay=0"), "debug overlay remains disabled for distributed players");
         Check(archive.GetEntry("SHA256SUMS") is not null && archive.GetEntry("README.txt") is not null, "client package includes checksums and install instructions");
         Check(archive.Entries.All(entry => !entry.FullName.Contains("state.json") && !entry.FullName.Contains("Script.pvf")), "exports never include saved games or private PVF resources");
     }
+    var pvpDocument = config.ReadServerDocument();
+    pvpDocument["DFLegacy"]!["Pvp"] = new JsonObject { ["Enabled"] = true, ["Port"] = 9051 };
+    File.WriteAllText(paths.ServerConfig, pvpDocument.ToJsonString());
+    var pvpZip = await exporter.ExportAsync("launcher", config.Read().Effective);
+    using (var archive = ZipFile.OpenRead(pvpZip))
+    {
+        using var reader = new StreamReader(archive.GetEntry("DFLegacyLauncher/launcher.json")!.Open());
+        var launcher = JsonNode.Parse(reader.ReadToEnd())!;
+        Check(launcher["Relay"]!["TcpPorts"]!.GetValue<string>().Split(',').Contains("9051"),
+            "exported relay includes the configured enabled PvP TCP listener");
+    }
+    pvpDocument["DFLegacy"]!["Pvp"]!["Enabled"] = false;
+    File.WriteAllText(paths.ServerConfig, pvpDocument.ToJsonString());
     var patchPath = await exporter.ExportAsync("patch", edited);
     using (var archive = ZipFile.OpenRead(patchPath)) Check(archive.GetEntry("ijl15.dll") is not null && archive.GetEntry("DFLegacyLauncher/DFLegacy.Launcher.exe") is null,
         "patch-only export contains client DLL without the full launcher");

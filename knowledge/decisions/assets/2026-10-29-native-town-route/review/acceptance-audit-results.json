@@ -1,0 +1,631 @@
+{
+  "checks": 2375,
+  "failures": 0,
+  "running_journal_sha256": "59C95948675A1AD0752D4CEB5BD3F7DAC14B15F3A6419D936DE031067D410017",
+  "build_manifest_sha256": "A34115D8AE0812ACD82AD57C2A4133AD4BEE570E956C837B84C66A3688D1F5D5",
+  "source_commit": "f6a9eb93cfff8678d3b99ad0fe7a5a92871b551f",
+  "debug_sha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B",
+  "ijl_sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+  "positive_cases": [
+    {
+      "case": "A-full-forward",
+      "pid": 58960,
+      "uid": 1,
+      "request_id": 4,
+      "path": [
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "goal": {
+        "town_id": 2,
+        "area_id": 2,
+        "x": 1734,
+        "y": 263
+      },
+      "native_steps": 14,
+      "event_rows": 129,
+      "seen_steps": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        10,
+        11,
+        14
+      ],
+      "elapsed_ms": 30672,
+      "sdk_after_terminal_ms": 157,
+      "sdk_export_delay_ms": 102.7533,
+      "input_sha256": "0fc08b028801c21499af269a2bd96a2895b1a8899b5d6372d4a4352509f967b4",
+      "proof_sha256": "1E3B1BF38D197C01C46D2A19BBD5E3B8D6843F10D26F0439E59FAC3FDEF15532",
+      "updates_sha256": "0EE36F59A4028C6E776B6C0BD918B5EF1B7DA4D48EDDFD1206BF1A751298AD8B"
+    },
+    {
+      "case": "A-full-reverse",
+      "pid": 58960,
+      "uid": 1,
+      "request_id": 2,
+      "path": [
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "goal": {
+        "town_id": 1,
+        "area_id": 1,
+        "x": 575,
+        "y": 297
+      },
+      "native_steps": 14,
+      "event_rows": 125,
+      "seen_steps": [
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "elapsed_ms": 30625,
+      "sdk_after_terminal_ms": 125,
+      "sdk_export_delay_ms": 73.6491,
+      "input_sha256": "23300275ab2827c8a742cd500a97619d69aef72fabeb09806336d5c63238c32e",
+      "proof_sha256": "25176114B8309309EC6A05E07735C0D0D23A405C55905D80CC2014E3E1A0FC23",
+      "updates_sha256": "1FEDC2D6CE020E5C52606BB3BA4DCEBDBB963F7F5DBF2F97B78DCD4294B19648"
+    },
+    {
+      "case": "B-full-forward",
+      "pid": 76432,
+      "uid": 2,
+      "request_id": 2,
+      "path": [
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "goal": {
+        "town_id": 2,
+        "area_id": 2,
+        "x": 1734,
+        "y": 263
+      },
+      "native_steps": 14,
+      "event_rows": 127,
+      "seen_steps": [
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        13,
+        14
+      ],
+      "elapsed_ms": 32454,
+      "sdk_after_terminal_ms": 359,
+      "sdk_export_delay_ms": 21.3596,
+      "input_sha256": "0fc08b028801c21499af269a2bd96a2895b1a8899b5d6372d4a4352509f967b4",
+      "proof_sha256": "4E6C21D3A557F050CFE34F790538D1ED18F55D9711486F10A1C78B01D4CFFD00",
+      "updates_sha256": "0DB47426DDB00133CC424C4303541CC1573B499A874C41DB209BBEE8DEBB0D6F"
+    },
+    {
+      "case": "B-full-reverse",
+      "pid": 76432,
+      "uid": 2,
+      "request_id": 3,
+      "path": [
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "goal": {
+        "town_id": 1,
+        "area_id": 1,
+        "x": 575,
+        "y": 297
+      },
+      "native_steps": 14,
+      "event_rows": 127,
+      "seen_steps": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "elapsed_ms": 30422,
+      "sdk_after_terminal_ms": 282,
+      "sdk_export_delay_ms": 4.0342,
+      "input_sha256": "23300275ab2827c8a742cd500a97619d69aef72fabeb09806336d5c63238c32e",
+      "proof_sha256": "38D33D740E544A1E02452827BD0DD772FB3AB7B6A8C9B079E4E3F7BBFD08AD63",
+      "updates_sha256": "77ED07850B503435679EE23CC14BCEF3B66BC81A2B0F300F8A93624747F8AC04"
+    },
+    {
+      "case": "A-same-area",
+      "pid": 58960,
+      "uid": 1,
+      "request_id": 3,
+      "path": [
+        [
+          1,
+          1
+        ]
+      ],
+      "goal": {
+        "town_id": 1,
+        "area_id": 1,
+        "x": 351,
+        "y": 278
+      },
+      "native_steps": 1,
+      "event_rows": 6,
+      "seen_steps": [
+        1
+      ],
+      "elapsed_ms": 2922,
+      "sdk_after_terminal_ms": 187,
+      "sdk_export_delay_ms": 77.2243,
+      "input_sha256": "8e5ca6bb0a1f2479159e05c78de25dd45ac1f5a90b792f8e29b375d00eb747c1",
+      "proof_sha256": "FA90A674E46CCB090ED015FF2EC2068ED3F06D88CC81C7635CAEFFA47191EA0E",
+      "updates_sha256": "27D26F42A3D7596B46F16CD1B6974C8C3E725D0901C2FE8D3F9150BF9141CD8A"
+    },
+    {
+      "case": "B-same-area",
+      "pid": 76432,
+      "uid": 2,
+      "request_id": 1,
+      "path": [
+        [
+          1,
+          1
+        ]
+      ],
+      "goal": {
+        "town_id": 1,
+        "area_id": 1,
+        "x": 575,
+        "y": 297
+      },
+      "native_steps": 1,
+      "event_rows": 5,
+      "seen_steps": [
+        0,
+        1
+      ],
+      "elapsed_ms": 2531,
+      "sdk_after_terminal_ms": 390,
+      "sdk_export_delay_ms": 94.3329,
+      "input_sha256": "23300275ab2827c8a742cd500a97619d69aef72fabeb09806336d5c63238c32e",
+      "proof_sha256": "885BCD7CEDB9E50D27E89E9480CF7CEC4067CBE616FE6368ABD1E425CD089260",
+      "updates_sha256": "01C9738126B60958E50B31EC1376349ED976DFCCD0026F1D52ACEE897140AA5D"
+    }
+  ],
+  "api": {
+    "request_id": 1793250289134858600,
+    "steps": 14,
+    "elapsed_ms": 26843,
+    "goal": {
+      "town_id": 2,
+      "area_id": 2,
+      "x": 1200,
+      "y": 280
+    },
+    "sdk_after_terminal_ms": 31,
+    "raw_sha256": "33B4C6EB341B3C645DBA5519A54FE0C0B8ACDCD3A7D5E7A85E1B8E149963AF18"
+  },
+  "images": [
+    {
+      "name": "A-hendon-key-screenshot",
+      "source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01107.JPG",
+      "copy": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-hendon-key-screenshot-input.jpg",
+      "sha256": "1BF47B1D5966C89CC53A0AC40D52B1C814A86F676FD896EA7413856AB07383E8",
+      "area": [
+        2,
+        2
+      ]
+    },
+    {
+      "name": "B-hendon-key-screenshot",
+      "source": "G:\\Game\\DNF_ACT1\\Client_test2\\ScreenShot\\ScreenShot00992.JPG",
+      "copy": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-hendon-key-screenshot-input.jpg",
+      "sha256": "284417E42AF24C2EBCF41E39DF2D02E9AA46C39A5199D224382B2B610E1F2E3A",
+      "area": [
+        2,
+        2
+      ]
+    },
+    {
+      "name": "A-room-key-screenshot",
+      "source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01105.JPG",
+      "copy": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-room-key-screenshot-input.jpg",
+      "sha256": "374458762B535872A8E03C6EFDD1AF38ADB2ABE76AA2E68BA16BC2A47E70A4BF",
+      "area": [
+        1,
+        1
+      ]
+    },
+    {
+      "name": "B-room-key-screenshot",
+      "source": "G:\\Game\\DNF_ACT1\\Client_test2\\ScreenShot\\ScreenShot00994.JPG",
+      "copy": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-room-key-screenshot-input.jpg",
+      "sha256": "10A67F4583957348A8D773E5DCFA38E88C2AD428BAA2B02EB9CC5A23E4804B41",
+      "area": [
+        1,
+        1
+      ]
+    },
+    {
+      "name": "A-map-open-retry",
+      "source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01103.JPG",
+      "copy": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-map-open-retry-input.jpg",
+      "sha256": "0B6FFCCC383D2FF76A118808C19AB3C1046D754824000CD8A703B20F3E5C8B38",
+      "area": [
+        1,
+        1
+      ]
+    },
+    {
+      "name": "B-open-map-key-screenshot",
+      "source": "G:\\Game\\DNF_ACT1\\Client_test2\\ScreenShot\\ScreenShot00990.JPG",
+      "copy": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\B-open-map-key-screenshot-input.jpg",
+      "sha256": "EBD76D2E17F48BA3C03A55CAA534CF50E7F20EB57E765A894F6D5CAB90442391",
+      "area": [
+        1,
+        1
+      ]
+    }
+  ],
+  "harness": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\goaltest_v3.py",
+      "sha256": "72756995C6B095118D878FB36874DFBBABC11E26A47FFE0B432F86CF35DA322F",
+      "calls": [
+        "(h.EVIDENCE / (label + '-route-updates.jsonl')).open",
+        "abs",
+        "all",
+        "dict",
+        "f.write",
+        "h.identity",
+        "h.save",
+        "h.snapshot",
+        "h.state.now_tick_ms",
+        "history.append",
+        "json.dumps",
+        "json.loads",
+        "len",
+        "p.communicate",
+        "p.communicate(timeout=12)[0].decode",
+        "p.exists",
+        "p.read_bytes",
+        "print",
+        "range",
+        "route",
+        "run",
+        "states.append",
+        "str",
+        "subprocess.Popen",
+        "time.monotonic",
+        "time.sleep"
+      ]
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\h.py",
+      "sha256": "2EC67A6158C6EE636976E8B8379334118EEC2ED4CFB48382449EE76170EBD7A7",
+      "calls": [
+        "(EVIDENCE / (label + '.json')).open",
+        "(ROOT / 'deployment.json').read_bytes",
+        "EVIDENCE.mkdir",
+        "JOURNAL.decode",
+        "Path",
+        "Path(__file__).resolve",
+        "RuntimeError",
+        "ValueError",
+        "c.POINTER",
+        "c.WinDLL",
+        "c.byref",
+        "c.c_ulong",
+        "c.create_unicode_buffer",
+        "cmd.append",
+        "datetime.datetime",
+        "datetime.datetime.fromisoformat",
+        "dest.open",
+        "dict",
+        "expected_start",
+        "file.write",
+        "hashlib.sha256",
+        "hashlib.sha256(JOURNAL).hexdigest",
+        "hashlib.sha256(JOURNAL).hexdigest().upper",
+        "hashlib.sha256(raw).hexdigest",
+        "hashlib.sha256(raw).hexdigest().upper",
+        "identity",
+        "int",
+        "json.dump",
+        "json.dumps",
+        "json.loads",
+        "kernel.CloseHandle",
+        "kernel.OpenProcess",
+        "kernel.QueryFullProcessImageNameW",
+        "keys",
+        "len",
+        "move",
+        "nav.execute",
+        "next",
+        "path.exists",
+        "path.read_bytes",
+        "print",
+        "proof.update",
+        "range",
+        "re.fullmatch",
+        "response_witness",
+        "rows.items",
+        "save",
+        "snapshot",
+        "state.get_process_started_filetime",
+        "state.load_snapshot",
+        "state.now_tick_ms",
+        "str",
+        "subprocess.run",
+        "sys.path.insert",
+        "text.removesuffix",
+        "text.removesuffix('Z').partition",
+        "time.monotonic",
+        "time.sleep"
+      ]
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\control.py",
+      "sha256": "762D704E7DA4EE0ECDEF0F3E07238C08EAD0FD697CF9386D81F89E4D13FC72A6",
+      "calls": [
+        "(ROOT / 'deployment.json').read_text",
+        "(output / (label + '-driver.log')).open",
+        "(output / (label + '.json')).read_text",
+        "Path",
+        "Path(__file__).resolve",
+        "ValueError",
+        "command.append",
+        "f.write",
+        "int",
+        "json.dumps",
+        "json.loads",
+        "next",
+        "output.mkdir",
+        "print",
+        "re.fullmatch",
+        "record.get",
+        "str",
+        "subprocess.run",
+        "sys.exit"
+      ]
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\builtin_driver.py",
+      "sha256": "BFEC410E346404E1C0B540FEA78A6CC8F012D14440B564BDE3A17881D070AFC3",
+      "calls": [
+        "'\\n'.join",
+        "(client / 'DNF.exe').is_file",
+        "Path",
+        "Path(value.removeprefix('@')).read_text",
+        "RuntimeError",
+        "TimeoutError",
+        "ValueError",
+        "all",
+        "any",
+        "argparse.ArgumentParser",
+        "args.client_dir.resolve",
+        "args.out_dir.resolve",
+        "atomic_text",
+        "before_images.get",
+        "bool",
+        "candidates.append",
+        "candidates.clear",
+        "client.is_dir",
+        "completed.unlink",
+        "current.items",
+        "datetime.now",
+        "datetime.now().astimezone",
+        "datetime.now().astimezone().isoformat",
+        "diag.open",
+        "diag.stat",
+        "diagnostic_path.exists",
+        "diagnostic_path.write_text",
+        "dict",
+        "directory.exists",
+        "directory.iterdir",
+        "end_ms",
+        "expected.strip",
+        "focus.exists",
+        "focus_done.unlink",
+        "fresh.splitlines",
+        "hashlib.sha256",
+        "hashlib.sha256(payload.encode('utf-8')).hexdigest",
+        "image.suffix.lower",
+        "image_snapshot",
+        "isinstance",
+        "json.dumps",
+        "json.loads",
+        "len",
+        "load_steps",
+        "main",
+        "max",
+        "output.glob",
+        "output.mkdir",
+        "parsed.get",
+        "parser.add_argument",
+        "parser.error",
+        "parser.parse_args",
+        "path.is_file",
+        "path.read_text",
+        "path.read_text(encoding='utf-8').strip",
+        "path.stat",
+        "path.suffix.lower",
+        "path.with_name",
+        "payload.encode",
+        "plan.exists",
+        "predicate",
+        "print",
+        "re.sub",
+        "re.sub('[^\\\\w.-]', '_', args.label).strip",
+        "record.get",
+        "record_path.exists",
+        "record_path.write_text",
+        "result.append",
+        "set",
+        "shutil.copy2",
+        "stamp",
+        "step.get",
+        "steps.append",
+        "str",
+        "stream.read",
+        "stream.read().decode",
+        "stream.seek",
+        "stripped.startswith",
+        "sys.exit",
+        "temporary.replace",
+        "temporary.write_text",
+        "text_matches",
+        "time.monotonic",
+        "time.sleep",
+        "type",
+        "value.lstrip",
+        "value.removeprefix",
+        "wait_until"
+      ]
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\manual_native.py",
+      "sha256": "386AFE95BDB57FA80E3AB1A8D2BC116B954F99F5DBCE8A902053C0C05385EEAD",
+      "calls": [
+        "RuntimeError",
+        "abs",
+        "all",
+        "dict",
+        "h.keys",
+        "h.save",
+        "h.snapshot",
+        "json.loads",
+        "latest",
+        "predicate",
+        "print",
+        "route",
+        "time.monotonic",
+        "time.sleep",
+        "wait"
+      ]
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\protection_native.py",
+      "sha256": "C53FF028B9FDDB7F1584E312E3060E46134F17E1DEFEB5E175D03F5859993CFC",
+      "calls": [
+        "abs",
+        "all",
+        "dict",
+        "h.keys",
+        "h.save",
+        "h.snapshot",
+        "inspect",
+        "latest",
+        "print",
+        "route",
+        "time.sleep",
+        "unchanged",
+        "wait"
+      ]
+    }
+  ],
+  "manual_protection": "verified as scoped; hidden map asserts no new map route only",
+  "closeout": "independent rehash of 2 configs, 8 interface states, 4 debug + 4 IJL targets, 15 protected inputs/backups, 50 normal files, 146 old W frozen files and 6 archive files; no live process enumeration",
+  "scope": "archived evidence only; no harness execution/native calls/process control/build/deployment",
+  "extra_closeout_hash_checks": {
+    "normal_files": 50,
+    "oldW_frozen_files": 146,
+    "archive_files": 6,
+    "protected_inputs": 15
+  }
+}

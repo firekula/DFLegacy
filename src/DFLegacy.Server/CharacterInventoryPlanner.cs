@@ -712,7 +712,8 @@ public static class CharacterInventoryPlanner
             item.AvatarRemainingSeconds,
             item.AvatarAbilityIndex,
             item.EquipmentQualitySeed,
-            item.InstanceId);
+            item.InstanceId,
+            item.AvatarExpiresAtUnixSeconds);
 
     public static IReadOnlyList<CharacterMailAttachmentRecord> CreateMailAttachments(
         CharacterMailAttachmentRecord item,

@@ -1,0 +1,313 @@
+{
+  "schema": "act1-final-pvp-30ad-check/v1",
+  "status": "PASS_AS_SCOPED",
+  "passed": 62,
+  "total": 62,
+  "checks": [
+    {
+      "name": "explicit final30AD phase",
+      "passed": true
+    },
+    {
+      "name": "both frozen client identities",
+      "passed": true
+    },
+    {
+      "name": "original capture prefixes independently equal",
+      "passed": true
+    },
+    {
+      "name": "pinned before and stopped final state hashes",
+      "passed": true
+    },
+    {
+      "name": "three historical receipts retained and one new",
+      "passed": true
+    },
+    {
+      "name": "all nonPvP full-state fields exactly equal",
+      "passed": true
+    },
+    {
+      "name": "atomic dual award",
+      "passed": true
+    },
+    {
+      "name": "A complete error-free TX framing CRC",
+      "passed": true
+    },
+    {
+      "name": "A normal PvP normal PvP same process",
+      "passed": true
+    },
+    {
+      "name": "A three successful channel exits",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/45",
+      "passed": true
+    },
+    {
+      "name": "A map3 individual mode0",
+      "passed": true
+    },
+    {
+      "name": "A exactly two occupied seats",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/46",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/49",
+      "passed": true
+    },
+    {
+      "name": "exactly one TX/61",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/47",
+      "passed": true
+    },
+    {
+      "name": "exactly one TX/60",
+      "passed": true
+    },
+    {
+      "name": "A one settlement record",
+      "passed": true
+    },
+    {
+      "name": "A ordered death result lifecycle",
+      "passed": true
+    },
+    {
+      "name": "A B victory no draw ordinaryEXP0",
+      "passed": true
+    },
+    {
+      "name": "A actual submitted score preserved",
+      "passed": true
+    },
+    {
+      "name": "A exact receipt versus wire",
+      "passed": true
+    },
+    {
+      "name": "A canonical wallet versus atomic award",
+      "passed": true
+    },
+    {
+      "name": "A ordinary winner loser rule and one award",
+      "passed": true
+    },
+    {
+      "name": "A native threshold agrees grade",
+      "passed": true
+    },
+    {
+      "name": "A no second award on normal and PvP reentry",
+      "passed": true
+    },
+    {
+      "name": "B complete error-free TX framing CRC",
+      "passed": true
+    },
+    {
+      "name": "B normal PvP normal PvP same process",
+      "passed": true
+    },
+    {
+      "name": "B three successful channel exits",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/45",
+      "passed": true
+    },
+    {
+      "name": "B map3 individual mode0",
+      "passed": true
+    },
+    {
+      "name": "B exactly two occupied seats",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/46",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/49",
+      "passed": true
+    },
+    {
+      "name": "exactly one TX/61",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/47",
+      "passed": true
+    },
+    {
+      "name": "exactly one TX/60",
+      "passed": true
+    },
+    {
+      "name": "B one settlement record",
+      "passed": true
+    },
+    {
+      "name": "B ordered death result lifecycle",
+      "passed": true
+    },
+    {
+      "name": "B B victory no draw ordinaryEXP0",
+      "passed": true
+    },
+    {
+      "name": "B actual submitted score preserved",
+      "passed": true
+    },
+    {
+      "name": "B exact receipt versus wire",
+      "passed": true
+    },
+    {
+      "name": "B canonical wallet versus atomic award",
+      "passed": true
+    },
+    {
+      "name": "B ordinary winner loser rule and one award",
+      "passed": true
+    },
+    {
+      "name": "B native threshold agrees grade",
+      "passed": true
+    },
+    {
+      "name": "B no second award on normal and PvP reentry",
+      "passed": true
+    },
+    {
+      "name": "dual membership and result agree",
+      "passed": true
+    },
+    {
+      "name": "exactly one TX/58",
+      "passed": true
+    },
+    {
+      "name": "actual A death reports B runtime UID",
+      "passed": true
+    },
+    {
+      "name": "no timeout or B death substitute",
+      "passed": true
+    },
+    {
+      "name": "exactly one TX/53",
+      "passed": true
+    },
+    {
+      "name": "exactly one RX/54",
+      "passed": true
+    },
+    {
+      "name": "native create and join",
+      "passed": true
+    },
+    {
+      "name": "native VM_READ HP12742 to0 and B15042 unchanged",
+      "passed": true
+    },
+    {
+      "name": "390 response samples with no failure",
+      "passed": true
+    },
+    {
+      "name": "A/return-channel-chooser honest sampling coverage",
+      "passed": true
+    },
+    {
+      "name": "A/return-normal-world honest sampling coverage",
+      "passed": true
+    },
+    {
+      "name": "A/second-entry honest sampling coverage",
+      "passed": true
+    },
+    {
+      "name": "B/return-channel-chooser honest sampling coverage",
+      "passed": true
+    },
+    {
+      "name": "B/return-normal-world honest sampling coverage",
+      "passed": true
+    },
+    {
+      "name": "B/second-entry honest sampling coverage",
+      "passed": true
+    }
+  ],
+  "timeline": [
+    {
+      "role": "A",
+      "logins": [
+        {
+          "at": "2026-10-28 08:10:17.264",
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:12:59.614",
+          "mode": 4
+        },
+        {
+          "at": "2026-10-28 08:20:19.065",
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:21:53.457",
+          "mode": 4
+        }
+      ],
+      "start": "2026-10-28 08:16:23.749",
+      "result": "2026-10-28 08:17:39.716",
+      "ack": "2026-10-28 08:17:55.490"
+    },
+    {
+      "role": "B",
+      "logins": [
+        {
+          "at": "2026-10-28 08:11:29.905",
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:13:30.373",
+          "mode": 4
+        },
+        {
+          "at": "2026-10-28 08:21:17.519",
+          "mode": 0
+        },
+        {
+          "at": "2026-10-28 08:22:45.677",
+          "mode": 4
+        }
+      ],
+      "start": "2026-10-28 08:16:23.749",
+      "result": "2026-10-28 08:17:39.715",
+      "ack": "2026-10-28 08:17:55.494"
+    }
+  ],
+  "limits": [
+    "One death match on final30AD; historical743 three matches remain separate.",
+    "Stopped disk snapshot and same-client reentry persist the fourth receipt; independent server restart of receipt4 was not observed.",
+    "Sampling does not cover B normal-world entry or either second PvP entry.",
+    "UDP application CRC/native peer behavior is not asserted by diagnostic counts.",
+    "Final normal runtime restoration/delivery remains separate."
+  ]
+}

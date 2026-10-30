@@ -1,0 +1,33 @@
+Independent live evidence review
+
+Published numeric summaries reproduced exactly. Diagnostic capability evidence accepted with stated sampling/scope limits. Root-cause/no-freeze closure not supported.
+
+Method: Deduplicate immutable completed buckets across every saved poll; retain only buckets wholly inside each phase: start >= phase.start and start+1000 <= phase.end. Current/partial buckets excluded. Validate every saved profile with its role/process identity and max(poll tick, export tick) for sequential-read timestamp ordering.
+
+Saved profiles validated: 3126. Summary mismatches: 0. Artifact integrity mismatches: 0. Deployment PID/start mismatches: 0.
+
+town: 548 polls; 5 unreadable-profile errors; no saved-profile validation errors or immutable-bucket/identity errors.
+  idle_before: ticks[413629484,413641515), 12.031s; A complete buckets=11, frames=1589, foreground intervals=1589, max work=156us, max interval=42114us, parts=[46, 67, 49, 83, 129]; missing expected complete buckets=[].
+  single_destination: ticks[413641515,413661578), 20.063s; A complete buckets=19, frames=3221, foreground intervals=3221, max work=217us, max interval=68761us, parts=[19, 91, 35, 164, 146]; missing expected complete buckets=[].
+    Event tick=413652281, phase+10766ms, arrival+7344ms; interval=68761us, ending callback=46us, parts=[16, 8, 4, 3, 15].
+  short_ui_plans: ticks[413661578,413681671), 20.093s; A complete buckets=19, frames=3094, foreground intervals=3094, max work=236us, max interval=21157us, parts=[26, 84, 52, 18, 221]; missing expected complete buckets=[].
+  native_route: ticks[413681671,413701703), 20.032s; A complete buckets=19, frames=2923, foreground intervals=2923, max work=220us, max interval=26037us, parts=[51, 72, 189, 25, 120]; missing expected complete buckets=[].
+  idle_after: ticks[413701703,413713828), 12.125s; A complete buckets=11, frames=1672, foreground intervals=1672, max work=118us, max interval=8667us, parts=[20, 55, 72, 24, 103]; missing expected complete buckets=[].
+
+dungeon: 105 polls; 0 unreadable-profile errors; no saved-profile validation errors or immutable-bucket/identity errors.
+  dungeon: ticks[413798906,413814953), 16.047s; A complete buckets=15, frames=2421, foreground intervals=2421, max work=268us, max interval=42708us, parts=[190, 171, 28, 53, 106]; missing expected complete buckets=[].
+
+repeat: 130 polls; 1 unreadable-profile errors; no saved-profile validation errors or immutable-bucket/identity errors.
+  repeat_single_destination: ticks[414477671,414497796), 20.125s; A complete buckets=19, frames=3045, foreground intervals=3045, max work=165us, max interval=51450us, parts=[50, 136, 52, 26, 77]; missing expected complete buckets=[].
+    Event tick=414493953, phase+16282ms, arrival+12875ms; interval=51450us, ending callback=31us, parts=[1, 8, 5, 3, 14].
+
+Interpretation and reporting issues:
+- Complete-bucket maxima cover79/84.344s town,15/16.047s dungeon,19/20.125s repeat. Boundary/partial seconds are deliberately omitted; do not present these extrema as exact bounds for every instant of the complete wall-time runs.
+- Event hook46us/31us belongs to callback at interval end. The measured intervals contain the previous callback plus all untimed work between callback starts. Phase callback maxima217us/165us bound previous callback cost but cannot identify the remaining cause.
+- B/C/D have known-background callbacks and zero foreground intervals in every complete phase. Their foreground interval maxima are NULL; these runs do not show whether those clients would freeze while foreground.
+- final-native.log contains1 IO fixture-copy failure. verified-native.log/final-native-no-fixture.log contain0 failures. FullPython log has6 failures and554 passes; related suite has246 passes1 skip. Report chronology and limits explicitly.
+- Town/repeat screenshot inventories match by independent equality. Dungeon saved only screenshots_unchanged:true; its measurement script asserts before/after equality but does not save inventories, so equality cannot be independently reconstructed from dungeon JSON alone.
+- Repeated foreground invocation intervals>50ms remain. Existing DebugRender work through ContentPublish was small in retained complete buckets. Profiler bookkeeping/probes and native input/network/render/Present are not attributed. U08 capability may be complete; exact-cause diagnosis remains BLOCKED and general no-freeze is not established.
+- After native dungeon return, A->D and D->A invitations returned native_action_failed. Fresh-process restart restored four-client join setup, but does not demonstrate repair of the failed lifecycle. Preserve those logs as a separate unresolved observation.
+
+Only new review files written under D:/codex_worktree/party-chat-gold/DFLegacy/.tmp/frame-profile-review-20261030; no product/evidence changes, builds, live process controls or UI actions. Saved JSON analyzed with Python only.
