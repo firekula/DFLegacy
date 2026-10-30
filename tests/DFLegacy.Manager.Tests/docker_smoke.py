@@ -31,6 +31,8 @@ def fixture_pvf(path):
         return b"".join(struct.pack("<I", ((word << 6) | (word >> 26)) & 0xFFFFFFFF) for word in words)
     encrypted_tree = encrypt(tree)
     path.write_bytes(b"DNF_SCRIPT_PACK" + struct.pack("<iII", len(encrypted_tree), 0, 1) + encrypted_tree + encrypt(payload))
+    # Only this disposable synthetic file is shared with the app's non-root UID.
+    path.chmod(0o644)
 
 
 def exercise(image):
@@ -52,7 +54,7 @@ def exercise(image):
             def start():
                 nonlocal active
                 docker("run", "-d", "--name", identifier, "-p", "127.0.0.1::18080", "--mount", f"type=volume,source={volume},target=/app/data",
-                       "--mount", f"type=bind,source={fixture},target=/pvf,readonly", image)
+                       "--mount", f"type=bind,source={fixture / 'Script.pvf'},target=/pvf/Script.pvf,readonly", image)
                 active = True
                 mapping = docker("port", identifier, "18080/tcp").splitlines()[0]
                 base = "http://" + mapping

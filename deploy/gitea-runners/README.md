@@ -67,6 +67,8 @@ docker compose ps
 
 Runner 以容器内的 host 模式执行 job。专用 DinD 守护进程只共享 Unix socket，不对宿主发布 Docker TCP 端口，也不使用 Docker Desktop 的宿主 socket。DinD 为特权容器；仅给受信任私有仓库使用，不要向其开放不可信 PR 执行。Runner 和 DinD 同时挂载 Linux 原生 `work:/work`，且 `TMPDIR=/work/tmp`，因此测试创建的 PVF 路径可由 sibling 容器原样只读挂载。禁止只挂宿主 socket 而丢失这些路径。
 
+Runner 使用 `network_mode: service:docker` 共享 DinD 的网络命名空间，使现有测试可以从 Runner 访问发布在 DinD `127.0.0.1` 上的临时端口；这些端口不发布到 Windows 宿主。容器烟测仅只读挂载可读的合成 `Script.pvf` 文件，保持宿主临时目录的私有权限，兼容应用的普通用户 UID。
+
 Docker Desktop 必须运行；Compose 使用 `restart: unless-stopped`。本次安装另有当前用户计划任务 `DFLegacy-Gitea-Runner-Linux`，登录 20 秒后执行 `D:\DFLegacyCI\linux\start-runner.ps1`，启动 Docker Desktop 并执行 Compose `up -d`。脚本检测 `D:\DFLegacyCI\linux\disabled` 标记后会跳过启动；长期停用也可禁用该计划任务。
 
 `docker compose stop runner` 停止拉取任务；空闲时 `docker compose restart runner` 可验证恢复。`docker compose down` 保留数据卷；不要使用 `down -v`，否则会删除构建缓存和工作卷。更新时先等待任务结束，备份受保护的 state、记录旧 image digest，再重建并启动。
