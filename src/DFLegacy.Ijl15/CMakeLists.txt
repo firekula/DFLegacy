@@ -68,16 +68,19 @@ target_compile_definitions(ijl15 PRIVATE
     UNICODE
     _UNICODE)
 target_compile_options(ijl15 PRIVATE
+    /Brepro
     /W4
     /WX
     /permissive-
     /EHsc)
+target_link_options(ijl15 PRIVATE /Brepro /INCREMENTAL:NO /PDBALTPATH:ijl15.pdb)
 target_include_directories(ijl15 PUBLIC include)
 target_link_libraries(ijl15 PRIVATE
     ole32
     psapi
     shlwapi
     windowscodecs
+    winhttp
     ws2_32)
 
 set_target_properties(ijl15 PROPERTIES
@@ -135,9 +138,10 @@ if(BUILD_TESTING)
         src/party_card_display.h
         tests/party_card_display_tests.cpp
         tests/ijl15_tests.cpp)
+    target_sources(ijl15_tests PRIVATE tests/client_service_url_tests.cpp)
     target_compile_options(ijl15_tests PRIVATE /W4 /WX /permissive- /EHsc)
     target_include_directories(ijl15_tests PRIVATE include src)
-    target_link_libraries(ijl15_tests PRIVATE shlwapi ws2_32 user32)
+    target_link_libraries(ijl15_tests PRIVATE shlwapi ws2_32 user32 winhttp)
     add_dependencies(ijl15_tests ijl15)
     # The tests load ijl15.dll by bare name, so it has to sit beside them.
     add_custom_command(TARGET ijl15_tests POST_BUILD
@@ -145,18 +149,34 @@ if(BUILD_TESTING)
             "$<TARGET_FILE:ijl15>"
             "$<TARGET_FILE_DIR:ijl15_tests>/ijl15.dll")
     add_test(NAME ijl15_compatibility COMMAND ijl15_tests)
+    set_tests_properties(ijl15_compatibility PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:ijl15_tests>")
 endif()
 
 # Optional game diagnostic module, loaded by ijl15 only when enabled.
-add_library(df_debug SHARED ../DFLegacy.Debug/src/debug_overlay.cpp ../DFLegacy.Debug/src/debug.def)
+add_library(df_debug SHARED ../DFLegacy.Debug/src/debug_overlay.cpp ../DFLegacy.Debug/src/debug_window.cpp ../DFLegacy.Debug/src/debug.def)
 set_target_properties(df_debug PROPERTIES OUTPUT_NAME "debug")
-target_compile_options(df_debug PRIVATE /W4 /WX /utf-8 /EHsc)
+target_compile_definitions(df_debug PRIVATE UNICODE _UNICODE)
+target_compile_options(df_debug PRIVATE /W4 /WX /utf-8 /EHsc /Brepro)
+target_link_options(df_debug PRIVATE /Brepro /INCREMENTAL:NO /PDBALTPATH:debug.pdb)
 target_link_libraries(df_debug PRIVATE user32)
 
 if(BUILD_TESTING)
+    find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
     add_executable(df_debug_tests ../DFLegacy.Debug/tests/debug_tests.cpp)
+    target_compile_definitions(df_debug_tests PRIVATE UNICODE _UNICODE)
     target_compile_options(df_debug_tests PRIVATE /W4 /WX /utf-8 /EHsc)
     target_link_libraries(df_debug_tests PRIVATE user32)
     add_dependencies(df_debug_tests df_debug)
     add_custom_command(TARGET df_debug_tests POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:df_debug>" "$<TARGET_FILE_DIR:df_debug_tests>/debug.dll")
+    set(DEBUG_OVERLAY_FIXTURE "${CMAKE_CURRENT_BINARY_DIR}/debug-overlay-fixture.bin")
+    add_test(NAME debug_overlay_fixture COMMAND "${DOTNET_EXECUTABLE}" run
+        --project "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/DFLegacy.SmokeTests"
+        -c $<CONFIG> -- --debug-overlay)
+    set_tests_properties(debug_overlay_fixture PROPERTIES
+        FIXTURES_SETUP DebugOverlayFixture
+        ENVIRONMENT "DFLEGACY_DEBUG_TEST_FIXTURE=${DEBUG_OVERLAY_FIXTURE}")
+    add_test(NAME debug_overlay COMMAND df_debug_tests "${DEBUG_OVERLAY_FIXTURE}")
+    set_tests_properties(debug_overlay PROPERTIES
+        FIXTURES_REQUIRED DebugOverlayFixture
+        WORKING_DIRECTORY "$<TARGET_FILE_DIR:df_debug_tests>")
 endif()

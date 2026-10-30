@@ -74,11 +74,6 @@ namespace
         0x00,
         0x01};
 
-    constexpr char LocalClientDiamondUrl[] =
-        "http://127.0.0.1:8081/client/client_diamond.htm";
-    constexpr char LocalClientPayUrl[] =
-        "http://127.0.0.1:8081/client/client_pay.htm";
-
     static_assert(
         sizeof(std::uintptr_t) == sizeof(std::uint32_t),
         "DFLegacy.Ijl15 must be built for x86");
@@ -831,11 +826,11 @@ namespace dfl::dnf_patches
         const PointerPatchState diamondUrlState = InspectClientPageUrl(
             ClientDiamondUrlOperand,
             OriginalClientDiamondUrl,
-            LocalClientDiamondUrl);
+            ijl15_config::Get().ClientDiamondUrl);
         const PointerPatchState payUrlState = InspectClientPageUrl(
             ClientPayUrlOperand,
             OriginalClientPayUrl,
-            LocalClientPayUrl);
+            ijl15_config::Get().ClientPayUrl);
         if (diamondUrlState == PointerPatchState::Mismatch
             || payUrlState == PointerPatchState::Mismatch)
         {
@@ -850,7 +845,7 @@ namespace dfl::dnf_patches
         {
             if (!WriteClientPageUrl(
                     ClientDiamondUrlOperand,
-                    LocalClientDiamondUrl))
+                    ijl15_config::Get().ClientDiamondUrl))
             {
                 RestoreClientPageUrl(
                     ClientDiamondUrlOperand,
@@ -863,7 +858,7 @@ namespace dfl::dnf_patches
         }
         if (payUrlState == PointerPatchState::Original)
         {
-            if (!WriteClientPageUrl(ClientPayUrlOperand, LocalClientPayUrl))
+            if (!WriteClientPageUrl(ClientPayUrlOperand, ijl15_config::Get().ClientPayUrl))
             {
                 RestoreClientPageUrl(
                     ClientPayUrlOperand,

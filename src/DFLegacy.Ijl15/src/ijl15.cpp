@@ -32,7 +32,8 @@ namespace
         "ijl15.dll",
         "1.5.4-compatible",
         "DFLegacy.WIC.1",
-        __DATE__,
+        // This ABI field identifies the source version, never the build clock.
+        "source:DFLegacy.WIC.1",
         "Microsoft*"
     };
 

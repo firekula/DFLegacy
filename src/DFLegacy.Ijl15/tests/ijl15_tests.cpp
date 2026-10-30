@@ -33,6 +33,8 @@ bool TestBossRoomLateSpawnDeath();
 bool TestPriestHealTargetReplay();
 bool TestGroundItemRemovalNotification();
 bool TestPartyCardDisplay();
+bool TestClientServiceUrls();
+int ClientServiceUrlProbe(int argc, char** argv);
 
 namespace
 {
@@ -1323,8 +1325,11 @@ bool TestSyntheticKeyboardStateMerge()
 }
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    const int probe = ClientServiceUrlProbe(argc, argv);
+    if (probe >= 0) return probe;
+    if (!TestClientServiceUrls()) return Fail("client service URL configuration failed");
     // First: it hooks this executable's own import table and puts it back, so
     // later tests get the imports they expect.
     if (!TestNetDump())
@@ -1604,6 +1609,12 @@ int main()
         || version->build != 4)
     {
         return Fail("version export is invalid");
+    }
+    if (version->BuildDate == nullptr
+        || std::strncmp(version->BuildDate, "source:", 7) != 0
+        || version->BuildDate[7] == '\0')
+    {
+        return Fail("version metadata must identify the source revision rather than build time");
     }
     if (std::strcmp(api.ErrorStr(IJL_BUFFER_TOO_SMALL),
             "Output buffer too small") != 0)

@@ -4,6 +4,8 @@ import socket
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from acceptance import cli
 from acceptance.actor_pid import AmbiguousPIDError, PIDTimeoutError
 from acceptance.cli import orchestrate
@@ -12,6 +14,36 @@ from acceptance.runner import ServerStartupError
 from acceptance.verdict import Verdict
 
 SCEN = Path(__file__).resolve().parents[1] / "scenarios" / "town-two-clients.yaml"
+_PORT_RESERVATIONS: dict[int, socket.socket] = {}
+
+
+@pytest.fixture(autouse=True)
+def _release_test_ports():
+    yield
+    for listener in _PORT_RESERVATIONS.values():
+        listener.close()
+    _PORT_RESERVATIONS.clear()
+
+
+def _reserve_tcp_port() -> int:
+    listener = socket.socket()
+    try:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        listener.bind(("127.0.0.1", 0))
+    except BaseException:
+        listener.close()
+        raise
+    port = listener.getsockname()[1]
+    # Keep the OS-assigned port reserved until FakeRunner starts listening;
+    # closing and rebinding would let a parallel test claim it in between.
+    _PORT_RESERVATIONS[port] = listener
+    return port
+
+
+def _client_entrance_port(client: Path) -> int:
+    config = json.loads((client / "town-test" / "server.json").read_text(encoding="utf-8"))
+    return config["DFLegacy"]["Entrance"]["Port"]
 
 
 class FakeRunner:
@@ -70,11 +102,9 @@ class FakeRunner:
         port = endpoints["Entrance"].port
         self.calls.append(("wait_until_listening", port))
         if self.raise_on_wait:
-            raise ServerStartupError("服务端在 60.0s 内没有在 127.0.0.1:2311 开始监听")
+            raise ServerStartupError(f"服务端在 60.0s 内没有在 127.0.0.1:{port} 开始监听")
         if port:
-            self._listener = socket.socket()
-            self._listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self._listener.bind(("127.0.0.1", port))
+            self._listener = _PORT_RESERVATIONS[port]
             self._listener.listen(1)
         return {"skipped": False, "host": "127.0.0.1", "port": port, "waited_ms": 1}
 
@@ -108,6 +138,7 @@ class FakeRunner:
 
 
 def _make_client_dir(tmp_path: Path, *, dump_network: str = "1") -> Path:
+    port = _reserve_tcp_port()
     client = tmp_path / "client"
     (client / "town-test" / "data").mkdir(parents=True, exist_ok=True)
     (client / "DNF.exe").write_bytes(b"stub")
@@ -117,7 +148,7 @@ def _make_client_dir(tmp_path: Path, *, dump_network: str = "1") -> Path:
     (client / "town-test" / "DFLegacy.Launcher.exe").write_bytes(b"stub")
     (client / "town-test" / "DFLegacy.Server.exe").write_bytes(b"stub")
     (client / "town-test" / "server.json").write_text(
-        '{"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 2311}}}', encoding="utf-8")
+        json.dumps({"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": port}}}), encoding="utf-8")
     (client / "town-test" / "data" / "state.json").write_text('{"characters":[]}',
                                                               encoding="utf-8")
     (client / "town-test" / "launcher.log").write_text("", encoding="utf-8")
@@ -187,6 +218,7 @@ def test_orchestrate_rejects_duplicate_account_aliases_before_starting_anything(
 def test_orchestrate_wires_server_actors_steps_and_collect(tmp_path, monkeypatch, capsys):
     FakeRunner.instances.clear()
     client = _make_client_dir(tmp_path)
+    port = _client_entrance_port(client)
     pids = iter([7001, 7002])
     monkeypatch.setattr(cli, "Runner", FakeRunner)
     monkeypatch.setattr(cli, "capture_client_pid",
@@ -202,10 +234,10 @@ def test_orchestrate_wires_server_actors_steps_and_collect(tmp_path, monkeypatch
                         lambda rp, acc: Path(acc) / "verdicts" / f"{rp.run_dir.name}.json")
 
     (client / "netdump-7001.log").write_text(
-        "2026-10-15 00:00:01.000 T=1 TX TCP 127.0.0.1:1 -> 127.0.0.1:2311 len=1 hex=00\n",
+        f"2026-10-15 00:00:01.000 T=1 TX TCP 127.0.0.1:1 -> 127.0.0.1:{port} len=1 hex=00\n",
         encoding="utf-8")
     (client / "netdump-7002.log").write_text(
-        "2026-10-15 00:00:02.000 T=2 TX TCP 127.0.0.1:1 -> 127.0.0.1:2311 len=1 hex=00\n",
+        f"2026-10-15 00:00:02.000 T=2 TX TCP 127.0.0.1:1 -> 127.0.0.1:{port} len=1 hex=00\n",
         encoding="utf-8")
 
     rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
@@ -268,7 +300,8 @@ def test_orchestrate_waits_for_the_server_to_listen_before_starting_actors(tmp_p
     names = [name for name, _ in FakeRunner.instances[-1].calls]
     assert names.index("start_server") < names.index("wait_until_listening") < names.index("start_actors"), \
         f"顺序必须是 起服务端 → 等监听 → 起 actor，实际 {names}"
-    assert "等待服务端在 127.0.0.1:2311 开始监听" in capsys.readouterr().out
+    port = _client_entrance_port(client)
+    assert f"等待服务端在 127.0.0.1:{port} 开始监听" in capsys.readouterr().out
 
 
 def test_orchestrate_waits_for_the_entrance_port_declared_in_server_json(tmp_path, monkeypatch):
@@ -278,8 +311,9 @@ def test_orchestrate_waits_for_the_entrance_port_declared_in_server_json(tmp_pat
     """
     FakeRunner.instances.clear()
     client = _make_client_dir(tmp_path)
+    port = _reserve_tcp_port()
     (client / "town-test" / "server.json").write_text(
-        json.dumps({"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": 24011}}}),
+        json.dumps({"DFLegacy": {"Entrance": {"Host": "0.0.0.0", "Port": port}}}),
         encoding="utf-8")
     monkeypatch.setattr(cli, "Runner", FakeRunner)
     monkeypatch.setattr(cli, "_confirm", lambda message: None)
@@ -291,7 +325,7 @@ def test_orchestrate_waits_for_the_entrance_port_declared_in_server_json(tmp_pat
                      actor_accounts="A=x,B=y", paths=_paths(client))
     assert rc == 0
     port_arg = dict(FakeRunner.instances[-1].calls)["wait_until_listening"]
-    assert port_arg == 24011, f"等待的端口应取自 server.json 的 Entrance.Port，得到 {port_arg}"
+    assert port_arg == port, f"等待的端口应取自 server.json 的 Entrance.Port，得到 {port_arg}"
 
 
 def test_orchestrate_reports_server_that_never_listens_as_clear_failure(tmp_path, monkeypatch,
@@ -312,7 +346,8 @@ def test_orchestrate_reports_server_that_never_listens_as_clear_failure(tmp_path
                      actor_accounts="A=x,B=y", paths=_paths(client))
     assert rc == 1
     err = capsys.readouterr().err
-    assert "编排失败" in err and "没有在 127.0.0.1:2311 开始监听" in err, err
+    port = _client_entrance_port(client)
+    assert "编排失败" in err and f"没有在 127.0.0.1:{port} 开始监听" in err, err
     assert FakeRunner.instances[-1].stopped == 1, "失败也要回收已启动的服务端"
 
 
@@ -329,7 +364,8 @@ def test_orchestrate_stops_processes_when_pid_capture_fails(tmp_path, monkeypatc
                      actor_accounts="A=x,B=y", paths=_paths(client))
     assert rc == 1
     assert FakeRunner.instances[-1].stopped == 1, "PID 归因失败也要回收进程"
-    assert "编排失败" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "编排失败" in err and "no start line" in err, err
 
 
 def test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback(tmp_path, monkeypatch, capsys):

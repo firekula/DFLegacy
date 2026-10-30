@@ -11,5 +11,10 @@
  <PropertyGroup><OutDir>$(MSBuildProjectDirectory)\..\..\artifacts\native\debug\$(Configuration)\</OutDir><IntDir>$(MSBuildProjectDirectory)\..\..\artifacts\native\debug-obj\$(Configuration)\</IntDir><TargetName>debug</TargetName></PropertyGroup>
  <ItemDefinitionGroup><ClCompile><WarningLevel>Level4</WarningLevel><TreatWarningAsError>true</TreatWarningAsError><LanguageStandard>stdcpp17</LanguageStandard><ConformanceMode>true</ConformanceMode><ExceptionHandling>Sync</ExceptionHandling><RuntimeLibrary>MultiThreaded</RuntimeLibrary><AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions><PreprocessorDefinitions>UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile><Link><ModuleDefinitionFile>src\debug.def</ModuleDefinitionFile><AdditionalDependencies>user32.lib;%(AdditionalDependencies)</AdditionalDependencies><TargetMachine>MachineX86</TargetMachine><GenerateDebugInformation>true</GenerateDebugInformation></Link></ItemDefinitionGroup>
  <ItemGroup><ClCompile Include="src\debug_overlay.cpp" /><ClCompile Include="src\debug_window.cpp" /><ClInclude Include="src\debug_window.h" /><ClInclude Include="include\debug_api.h" /><ClInclude Include="src\debug_model.h" /><None Include="src\debug.def" /></ItemGroup>
+ <PropertyGroup><LinkIncremental>false</LinkIncremental></PropertyGroup>
+ <ItemDefinitionGroup>
+  <ClCompile><AdditionalOptions>%(AdditionalOptions) /Brepro</AdditionalOptions></ClCompile>
+  <Link><AdditionalOptions>%(AdditionalOptions) /Brepro /PDBALTPATH:$(TargetName).pdb</AdditionalOptions></Link>
+ </ItemDefinitionGroup>
  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

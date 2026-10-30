@@ -23,9 +23,11 @@ add_library(DFLegacy.RandomNative SHARED
 target_compile_definitions(DFLegacy.RandomNative PRIVATE
     DFLEGACY_RANDOM_EXPORTS)
 target_compile_options(DFLegacy.RandomNative PRIVATE
+    /Brepro
     /W4
     /WX
     /permissive-)
+target_link_options(DFLegacy.RandomNative PRIVATE /Brepro /INCREMENTAL:NO /PDBALTPATH:DFLegacy.RandomNative.pdb)
 target_include_directories(DFLegacy.RandomNative PUBLIC include)
 
 set_target_properties(DFLegacy.RandomNative PROPERTIES

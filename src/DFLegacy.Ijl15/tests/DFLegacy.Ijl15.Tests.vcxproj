@@ -58,8 +58,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <OutDir>$(MSBuildProjectDirectory)\..\artifacts\native\ijl15-tests\$(Configuration)\</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\artifacts\native\ijl15-tests-vcx\$(Configuration)\</IntDir>
+    <OutDir>$(MSBuildProjectDirectory)\..\..\..\artifacts\native\ijl15-tests\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\..\artifacts\native\ijl15-tests-vcx\$(Configuration)\</IntDir>
     <TargetName>ijl15_tests</TargetName>
     <!-- The test loads ijl15.dll by bare name, so it resolves the module built
          next to it rather than any ijl15 the host happens to have. -->
@@ -80,7 +80,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;ws2_32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;ws2_32.lib;winhttp.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -103,7 +103,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;ws2_32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;ws2_32.lib;winhttp.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX86</TargetMachine>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
@@ -140,6 +140,7 @@
     <ClCompile Include="..\src\party_card_display.cpp" />
     <ClCompile Include="party_card_display_tests.cpp" />
     <ClCompile Include="ijl15_tests.cpp" />
+    <ClCompile Include="client_service_url_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\auto_input.h" />

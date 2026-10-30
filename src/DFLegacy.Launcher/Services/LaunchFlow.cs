@@ -18,7 +18,7 @@ internal static class LaunchFlow
         var clientPath = Program.ResolveClientPath(options.ClientPath);
         Program.ValidateClient(clientPath);
         Program.ValidateScriptPvf(clientPath);
-        var ijl15 = Ijl15ReplacementInstaller.Install(clientPath);
+        var ijl15 = Ijl15ReplacementInstaller.Install(clientPath, options.ResolveAccountServiceUrl());
         if (ijl15.Installed)
             Program.WriteLauncherLog(
                 $"Installed x86 ijl15 replacement at {ijl15.TargetPath}; sha256={ijl15.Sha256}; backup={ijl15.BackupPath ?? "(none)"}.");

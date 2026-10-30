@@ -22,13 +22,15 @@ internal static class Ijl15ReplacementInstaller
         return new BundledIjl15(path, ComputeSha256(path));
     }
 
-    internal static Ijl15InstallResult Install(string clientPath)
+    internal static Ijl15InstallResult Install(string clientPath, string clientServiceUrl)
     {
+        var normalizedBaseUrl = ClientServiceConfiguration.NormalizeBaseUrl(clientServiceUrl);
         var bundled = ValidateBundledReplacement();
         var clientDirectory = Path.GetDirectoryName(clientPath)
             ?? throw new InvalidDataException("DNF.exe 路径缺少父目录。");
         var targetPath = Path.Combine(clientDirectory, ReplacementFileName);
         InstallBundledConfig(clientDirectory);
+        ClientServiceConfiguration.Update(Path.Combine(clientDirectory, ConfigFileName), normalizedBaseUrl);
 
         if (Path.GetFullPath(bundled.Path).Equals(
                 Path.GetFullPath(targetPath),
@@ -138,8 +140,8 @@ internal static class Ijl15ReplacementInstaller
         }
 
         var targetPath = Path.Combine(clientDirectory, ConfigFileName);
-        // A user-edited client Config.ini is authoritative. The bundled file
-        // only supplies defaults on the first installation.
+        // The bundled file supplies first-install defaults. Install() updates
+        // only Network.ClientServiceUrl separately; other user settings stay.
         if (!File.Exists(targetPath))
         {
             File.Copy(bundledPath, targetPath, overwrite: false);

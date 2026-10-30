@@ -39,16 +39,16 @@ internal static class Program
             ValidateClient(clientPath);
             ValidateScriptPvf(clientPath);
             var bundledIjl15 = Ijl15ReplacementInstaller.ValidateBundledReplacement();
-            _ = BuildLauncherData(options); // 触发字段校验，与原 Main 行为一致
-
             if (args.Contains("--install-ijl15", StringComparer.OrdinalIgnoreCase))
             {
-                var install = Ijl15ReplacementInstaller.Install(clientPath);
+                var install = Ijl15ReplacementInstaller.Install(clientPath, options.ResolveAccountServiceUrl());
                 WriteLauncherLog(install.Installed
                     ? $"Installed x86 ijl15 replacement at {install.TargetPath}; sha256={install.Sha256}; backup={install.BackupPath ?? "(none)"}."
                     : $"x86 ijl15 replacement is already installed at {install.TargetPath}; sha256={install.Sha256}.");
                 return 0;
             }
+
+            _ = BuildLauncherData(options); // Actual login requires explicit credentials.
 
             if (args.Contains("--self-test", StringComparer.OrdinalIgnoreCase))
             {
@@ -73,6 +73,8 @@ internal static class Program
     {
         ValidateOptions(options);
         var account = options.GetSelectedAccount();
+        ValidateLauncherField(account.Account, "Account");
+        ValidateLauncherField(account.Password, "Password");
         // With the relay enabled the client talks to the local relay instead of
         // the real server, which is what lets an IPv4-only client reach an IPv6
         // server.
@@ -123,16 +125,6 @@ internal static class Program
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(
                 options.AccountIndex,
                 options.Accounts.Count);
-            for (var index = 0; index < options.Accounts.Count; index++)
-            {
-                ValidateLauncherField(options.Accounts[index].Account, $"Accounts[{index}].Account");
-                ValidateLauncherField(options.Accounts[index].Password, $"Accounts[{index}].Password");
-            }
-        }
-        else
-        {
-            ValidateLauncherField(options.Account, nameof(options.Account));
-            ValidateLauncherField(options.Password, nameof(options.Password));
         }
 
         ArgumentOutOfRangeException.ThrowIfNegative(options.D3D9Adapter);

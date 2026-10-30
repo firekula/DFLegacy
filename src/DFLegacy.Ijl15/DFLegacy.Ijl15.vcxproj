@@ -65,7 +65,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>src\ijl15.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -89,7 +89,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>src\ijl15.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX86</TargetMachine>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
@@ -153,6 +153,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <PropertyGroup><LinkIncremental>false</LinkIncremental></PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile><AdditionalOptions>%(AdditionalOptions) /Brepro</AdditionalOptions></ClCompile>
+    <Link><AdditionalOptions>%(AdditionalOptions) /Brepro /PDBALTPATH:$(TargetName).pdb</AdditionalOptions></Link>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>

@@ -1,7 +1,12 @@
 #pragma once
 
+#include <cstddef>
+
 namespace dfl::ijl15_config
 {
+    // Includes the entire base before the fixed /client/... page suffix.
+    inline constexpr std::size_t MaximumClientServiceUrlLength = 1000;
+    inline constexpr std::size_t ClientPageUrlCapacity = 1032;
     enum class ScaleFilterMode
     {
         Native,
@@ -28,6 +33,10 @@ namespace dfl::ijl15_config
         // cannot fill the disk.
         int DumpNetworkMaxMegabytes;
         bool EnableDebugOverlay;
+        // Fixed module-owned storage: patched client pointers remain valid for
+        // the entire module lifetime. Load() never changes them after first use.
+        char ClientPayUrl[ClientPageUrlCapacity];
+        char ClientDiamondUrl[ClientPageUrlCapacity];
     };
 
     // Load once from Config.ini beside the client executable. Missing or

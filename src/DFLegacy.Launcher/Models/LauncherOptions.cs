@@ -20,8 +20,8 @@ internal sealed class LauncherOptions
     public string AccountServiceUrl { get; set; } = string.Empty;
 
     public string Theme { get; set; } = "auto";
-    public string Account { get; set; } = "test";
-    public string Password { get; set; } = "test";
+    public string Account { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
     public List<LauncherAccountProfile> Accounts { get; set; } = [];
     public int AccountIndex { get; set; }
     public bool StartServer { get; set; } = true;
@@ -41,14 +41,14 @@ internal sealed class LauncherOptions
     /// </summary>
     public string ResolveAccountServiceUrl() =>
         string.IsNullOrWhiteSpace(AccountServiceUrl)
-            ? $"http://{EntranceHost}:{AccountServicePort}"
+            ? $"http://{(EntranceHost.Contains(':') && !EntranceHost.StartsWith('[') ? $"[{EntranceHost}]" : EntranceHost)}:{AccountServicePort}"
             : AccountServiceUrl.Trim();
 }
 
 internal sealed class LauncherAccountProfile
 {
-    public string Account { get; set; } = "test";
-    public string Password { get; set; } = "test";
+    public string Account { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
     public string? DisplayName { get; set; }
     public DateTimeOffset? CreateTime { get; set; }
     public string? OicqCode { get; set; }

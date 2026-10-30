@@ -7,8 +7,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+$visualStudio = if (Test-Path -LiteralPath $vswhere) {
+    & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json |
+        ConvertFrom-Json | Select-Object -First 1
+}
 $cmakeCandidates = @(
     $env:CMAKE_EXE,
+    $(if ($visualStudio) { Join-Path $visualStudio.installationPath "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" }),
     (Join-Path $env:ProgramFiles "CMake\bin\cmake.exe"),
     (Get-Command cmake.exe -ErrorAction SilentlyContinue |
         Select-Object -First 1 -ExpandProperty Source)
@@ -29,6 +35,7 @@ $generator = @(
     "Visual Studio 17 2022",
     "Visual Studio 16 2019"
 ) | Where-Object { $cmakeHelp -match [regex]::Escape($_) } |
+    Where-Object { -not $visualStudio -or $_ -match "^Visual Studio $(([version]$visualStudio.installationVersion).Major) " } |
     Select-Object -First 1
 if (-not $generator) {
     throw "A Visual Studio C++ CMake generator is required."

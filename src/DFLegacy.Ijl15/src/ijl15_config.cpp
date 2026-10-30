@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <winhttp.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -34,10 +35,62 @@ namespace
         false,
         DefaultDumpNetworkPayloadBytes,
         DefaultDumpNetworkMaxMegabytes,
-        false};
+        false,
+        "http://127.0.0.1:8081/client/client_pay.htm",
+        "http://127.0.0.1:8081/client/client_diamond.htm"};
 
     dfl::ijl15_config::Settings CurrentSettings = DefaultSettings;
     bool ConfigLoaded = false;
+
+    void ReadClientServiceUrls(const char* path) noexcept
+    {
+        // One extra byte beyond the accepted maximum distinguishes a truncated
+        // INI read from a valid URL at the boundary. Never patch a truncated URL.
+        char base[dfl::ijl15_config::MaximumClientServiceUrlLength + 2]{};
+        const DWORD length = GetPrivateProfileStringA("Network", "ClientServiceUrl",
+            "", base, static_cast<DWORD>(sizeof(base)), path);
+        if (length == 0 || length > dfl::ijl15_config::MaximumClientServiceUrlLength)
+            return;
+
+        wchar_t wide[dfl::ijl15_config::MaximumClientServiceUrlLength + 1]{};
+        for (DWORD i = 0; i < length; ++i)
+        {
+            const unsigned char value = static_cast<unsigned char>(base[i]);
+            // The legacy URL builder treats this string as a format string.
+            // Exclude format directives, INI injection, ambiguous separators,
+            // credentials and query/fragment suffixes from the service base.
+            if (value <= 32 || value >= 127 || std::strchr("%\\\"?#@", value) != nullptr)
+                return;
+            wide[i] = static_cast<wchar_t>(value);
+        }
+        if (_strnicmp(base, "http://", 7) != 0 && _strnicmp(base, "https://", 8) != 0)
+            return;
+        const char* authority = std::strstr(base, "://") + 3;
+        if (*authority == '/' || *authority == '\0')
+            return;
+        URL_COMPONENTS parts{};
+        parts.dwStructSize = sizeof(parts);
+        parts.dwHostNameLength = static_cast<DWORD>(-1);
+        parts.dwUserNameLength = static_cast<DWORD>(-1);
+        parts.dwPasswordLength = static_cast<DWORD>(-1);
+        if (!WinHttpCrackUrl(wide, length, 0, &parts)
+            || (parts.nScheme != INTERNET_SCHEME_HTTP && parts.nScheme != INTERNET_SCHEME_HTTPS)
+            || parts.dwHostNameLength == 0 || parts.dwUserNameLength != 0
+            || parts.dwPasswordLength != 0 || parts.nPort == 0)
+            return;
+
+        std::size_t baseLength = length;
+        while (baseLength > 0 && base[baseLength - 1] == '/')
+            base[--baseLength] = '\0';
+        constexpr char PaySuffix[] = "/client/client_pay.htm";
+        constexpr char DiamondSuffix[] = "/client/client_diamond.htm";
+        static_assert(dfl::ijl15_config::MaximumClientServiceUrlLength + sizeof(DiamondSuffix)
+            <= dfl::ijl15_config::ClientPageUrlCapacity);
+        std::memcpy(CurrentSettings.ClientPayUrl, base, baseLength);
+        std::memcpy(CurrentSettings.ClientPayUrl + baseLength, PaySuffix, sizeof(PaySuffix));
+        std::memcpy(CurrentSettings.ClientDiamondUrl, base, baseLength);
+        std::memcpy(CurrentSettings.ClientDiamondUrl + baseLength, DiamondSuffix, sizeof(DiamondSuffix));
+    }
 
     bool IsTrue(const char* value) noexcept
     {
@@ -202,6 +255,7 @@ namespace dfl::ijl15_config
         char path[MAX_PATH * 2]{};
         if (BuildConfigPath(path, sizeof(path)))
         {
+            ReadClientServiceUrls(path);
             CurrentSettings.WindowWidth = ReadWindowDimension(
                 path,
                 "Width",
