@@ -26,10 +26,14 @@ public sealed class EntranceHandshakeServer(
 
     public Task<int[]> StartAsync(CancellationToken cancellationToken)
     {
+        try
+        {
         foreach (var port in ports.Where(port => port is >= 0 and <= 65535).Distinct())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var listener = new TcpListener(address, port);
-            listener.Start();
+            try { listener.Start(); }
+            catch { listener.Stop(); throw; }
             lock (_listenersGate)
             {
                 _listeners.Add(listener);
@@ -46,6 +50,8 @@ public sealed class EntranceHandshakeServer(
 
         BoundPorts = bound;
         return Task.FromResult(bound.ToArray());
+        }
+        catch { Stop(); BoundPorts = []; throw; }
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)

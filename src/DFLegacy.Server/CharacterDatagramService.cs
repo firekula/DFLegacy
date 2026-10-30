@@ -14,7 +14,8 @@ namespace DFLegacy.Server;
 public sealed class CharacterDatagramService(
     ServerOptions options,
     RuntimeState runtime,
-    ILogger<CharacterDatagramService> logger) : BackgroundService
+    ILogger<CharacterDatagramService> logger,
+    ListenerReadiness? readiness = null) : BackgroundService
 {
     private readonly ConcurrentDictionary<string, DatagramSession> _sessions = new();
     private UdpClient? _listener;
@@ -35,6 +36,7 @@ public sealed class CharacterDatagramService(
 
         try
         {
+            readiness?.MarkReady("character");
             while (!stoppingToken.IsCancellationRequested)
             {
                 var received = await _listener.ReceiveAsync(stoppingToken);
@@ -46,6 +48,7 @@ public sealed class CharacterDatagramService(
         }
         finally
         {
+            readiness?.MarkStopped("character");
             _listener.Dispose();
             foreach (var session in _sessions.Values)
             {

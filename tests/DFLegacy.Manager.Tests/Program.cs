@@ -5,6 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using DFLegacy.Manager;
 
+if (args.Contains("--startup-only")) return await StartupRecoveryTests.RunAsync();
+if (await StartupRecoveryTests.RunAsync() != 0) return 1;
+
 var failures = new List<string>();
 var checks = 0;
 void Check(bool value, string message)

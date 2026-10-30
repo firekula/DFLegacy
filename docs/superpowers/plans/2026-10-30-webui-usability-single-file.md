@@ -35,7 +35,7 @@
 
 - [ ] Add and run failing real-socket/child tests: delayed or failed listener never reports ready; a second failed bind releases the first; same supervisor retries; bind access denial differs from address-in-use; failed start before child creation is recoverable.
 - [ ] Add listener readiness and finally/disposal coverage around binding, await complete readiness and process liveness under the state lock, clear failed child state, explain native socket error and affected protocol/port without killing other processes.
-- [ ] Run `dotnet run --project tests/DFLegacy.Manager.Tests -c Release -- --http --server-dir src/DFLegacy.Server/bin/Release/net10.0` and default Server smoke; expect zero failures. Commit `fix: recover partial startup and wait for listener readiness`.
+- [ ] Run `dotnet run --project tests/DFLegacy.Manager.Tests -c Release -- --http --server-dir src/DFLegacy.Server/bin/Release/net10.0`; expect zero failures. Keep complete default Server smoke mandatory in Task 4, where it is already a CI gate. Commit `fix: recover partial startup and wait for listener readiness`.
 
 ### Task 2: PVF upload and understandable configuration
 

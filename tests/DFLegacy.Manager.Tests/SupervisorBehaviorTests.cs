@@ -31,11 +31,49 @@ internal static class SupervisorBehaviorTests
         await using var supervisor = new ServerSupervisor(paths, config, log);
         try
         {
+            using (var conflict = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, settings.EntrancePort))
+            {
+                conflict.Start();
+                try { await supervisor.StartAsync(); check(false, "TCP conflict rejects startup"); }
+                catch (InvalidOperationException error)
+                {
+                    check(error.Message.Contains("/tcp") && error.Message.Contains("其他程序"), "TCP conflict identifies protocol and a different owning program");
+                    check(supervisor.Snapshot.State == "failed" && supervisor.Snapshot.Pid is null, "preflight failure leaves no partially started owned process");
+                }
+            }
+            var executable = Path.Combine(paths.ServerDirectory, OperatingSystem.IsWindows() ? "DFLegacy.Server.exe" : "DFLegacy.Server");
+            if (File.Exists(executable))
+            {
+                File.Move(executable, executable + ".original");
+                try
+                {
+                    File.WriteAllText(executable, "invalid executable fixture");
+                    try { await supervisor.StartAsync(); check(false, "invalid executable rejects startup"); }
+                    catch (InvalidOperationException) { check(supervisor.Snapshot.State == "failed" && supervisor.Snapshot.Pid is null, "unstarted Process failure is cleaned up and leaves retry available"); }
+                }
+                finally { File.Delete(executable); File.Move(executable + ".original", executable); }
+            }
             await supervisor.InitializeAdminAsync(new("firstadmin", "A game password 123!", "12345678"));
             check(File.Exists(paths.GameData), "offline game admin initialization writes only selected game storage");
             var before = File.ReadAllText(paths.GameData);
             try { await supervisor.InitializeAdminAsync(new("firstadmin", "changed password 123!", "12345678")); check(false, "existing game administrator is not silently replaced"); }
             catch (InvalidOperationException) { check(File.ReadAllText(paths.GameData) == before, "duplicate bootstrap preserves existing password and saved data"); }
+            var originalConfiguration = File.ReadAllText(paths.ServerConfig);
+            var badListener = JsonNode.Parse(originalConfiguration)!;
+            badListener["DFLegacy"]!["GameplayDatagram"]!["Host"] = "192.0.2.123";
+            File.WriteAllText(paths.ServerConfig, badListener.ToJsonString());
+            try
+            {
+                try { await supervisor.StartAsync(); check(false, "unavailable later gameplay listener cannot report running"); }
+                catch (InvalidOperationException) { check(supervisor.Snapshot.State == "failed" && supervisor.Snapshot.Pid is null, "partial real-server startup failure is fully reaped"); }
+                foreach (var port in settings.ForwardedTcpPorts())
+                {
+                    using var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, port);
+                    probe.Start(); probe.Stop();
+                }
+                check(true, "failed real-server startup releases all earlier TCP listeners before retry");
+            }
+            finally { File.WriteAllText(paths.ServerConfig, originalConfiguration); }
             var started = await supervisor.StartAsync();
             check(started.State == "running" && started.Pid is not null, "real game process reaches owned authenticated readiness");
             var repeated = await supervisor.StartAsync();

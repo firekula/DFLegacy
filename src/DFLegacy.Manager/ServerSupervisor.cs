@@ -126,10 +126,14 @@ public sealed class ServerSupervisor : IAsyncDisposable
                     if (response.IsSuccessStatusCode)
                     {
                         var body = await response.Content.ReadFromJsonAsync<JsonObject>(deadline.Token);
-                        if (body?["managed"]?.GetValue<bool>() == true)
+                        if (body?["managed"]?.GetValue<bool>() == true && body?["ready"]?.GetValue<bool>() == true)
                         {
-                            _runningConfig = settings;
-                            SetSnapshot(Snapshot with { State = "running", RestartRequired = false });
+                            lock (_stateGate)
+                            {
+                                if (process.HasExited) throw new InvalidOperationException("游戏服务在就绪时退出，请检查日志。");
+                                _runningConfig = settings;
+                                _snapshot = _snapshot with { State = "running", RestartRequired = false };
+                            }
                             _log.Write("manager", "游戏服务已通过专用管理通道的就绪检查。");
                             return Snapshot;
                         }
@@ -142,8 +146,9 @@ public sealed class ServerSupervisor : IAsyncDisposable
         }
         catch (Exception exception)
         {
-            var exitCode = _process is { HasExited: true } ended ? ended.ExitCode : (int?)null;
+            var exitCode = HasStarted(_process) && _process!.HasExited ? _process.ExitCode : (int?)null;
             await KillOwnedAsync();
+            _process?.Dispose(); _process = null; _controlSecret = ""; _runningConfig = null;
             var message = exception is OperationCanceledException ? "游戏服务启动超时或被取消，请检查日志。" : exception.Message;
             SetSnapshot(new("failed", ExitCode: exitCode, Error: message));
             _log.Write("manager", message);
@@ -240,11 +245,25 @@ public sealed class ServerSupervisor : IAsyncDisposable
         if (address.Equals(IPAddress.IPv6Any)) socket.DualMode = true;
         socket.ExclusiveAddressUse = true;
         try { socket.Bind(new IPEndPoint(address, port)); if (type == SocketType.Stream) socket.Listen(1); }
-        catch (SocketException exception) { throw new InvalidOperationException($"端口 {host}:{port}/{(type == SocketType.Stream ? "tcp" : "udp")} 已被占用或无法使用。", exception); }
+        catch (SocketException exception)
+        {
+            var reason = exception.SocketErrorCode switch
+            {
+                SocketError.AddressAlreadyInUse => "已被其他程序占用，请停止对应程序或修改这个端口",
+                SocketError.AccessDenied => "被操作系统拒绝绑定，可能属于系统保留端口或没有绑定权限；请更换此端口，Windows 可用 netsh interface ipv4 show excludedportrange 检查保留范围",
+                _ => "无法绑定：" + exception.Message
+            };
+            throw new InvalidOperationException($"端口 {host}:{port}/{(type == SocketType.Stream ? "tcp" : "udp")} {reason}（错误 {exception.NativeErrorCode}）。", exception);
+        }
+    }
+    private static bool HasStarted(Process? process)
+    {
+        if (process is null) return false;
+        try { _ = process.Id; return true; } catch (InvalidOperationException) { return false; }
     }
     private async Task KillOwnedAsync()
     {
-        if (_process is { HasExited: false } process) { process.Kill(entireProcessTree: true); await process.WaitForExitAsync(); }
+        if (HasStarted(_process) && _process is { HasExited: false } process) { process.Kill(entireProcessTree: true); await process.WaitForExitAsync(); process.WaitForExit(); }
     }
     public async ValueTask DisposeAsync() { await StopAsync(); _client.Dispose(); _process?.Dispose(); _gate.Dispose(); }
 }

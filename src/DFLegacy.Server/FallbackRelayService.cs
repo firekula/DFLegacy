@@ -12,7 +12,7 @@ public sealed record FallbackRelayStatus(bool Enabled, bool Listening, int Conne
 
 /// <summary>ACT1 native transport. The game session owns identity and party/PvP scope.</summary>
 public sealed class FallbackRelayService(ServerOptions options, GameplayDatagramService contexts,
-    ILogger<FallbackRelayService> logger) : BackgroundService
+    ILogger<FallbackRelayService> logger, ListenerReadiness? readiness = null) : BackgroundService
 {
     private const int MaximumConnections = 1000;
     private readonly CancellationTokenSource _shutdown = new();
@@ -50,6 +50,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
                 _tcp.Start();
                 _udp = DualStackUdp.Bind(new IPEndPoint(ip, options.FallbackRelay.UdpPort));
                 _listening = true;
+                readiness?.MarkReady("fallback");
                 logger.LogInformation("Native fallback relay ready: TCP {TcpPort}, UDP {UdpPort}, advertised {Host}",
                     options.FallbackRelay.TcpPort, options.FallbackRelay.UdpPort,
                     options.FallbackRelay.ResolveAdvertisedHost(options));
@@ -225,6 +226,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
 
     private void CloseListeners()
     {
+        readiness?.MarkStopped("fallback");
         _listening = false;
         _tcp?.Stop();
         _udp?.Dispose();

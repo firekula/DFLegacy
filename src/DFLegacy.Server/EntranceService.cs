@@ -48,7 +48,8 @@ public sealed class EntranceService(
     GameplayDatagramService gameplayDatagram,
     ScriptFileSystem scripts,
     ILogger<EntranceService> logger,
-    FallbackRelayService? fallbackRelay = null) : BackgroundService
+    FallbackRelayService? fallbackRelay = null,
+    ListenerReadiness? readiness = null) : BackgroundService
 {
     private const ushort RiverLetheItemId = 3;
     private const ushort RiverLetheBellItemId = 28;
@@ -160,16 +161,18 @@ public sealed class EntranceService(
             PvpChannelConfiguration.Ports(options));
         var ports = channelPorts;
 
+        try
+        {
         foreach (var port in ports)
         {
             var listener = new TcpListener(address, port);
-            listener.Start();
+            try { listener.Start(); }
+            catch { listener.Stop(); throw; }
             _listeners.Add(listener);
             logger.LogInformation("Entrance listener ready at {Address}:{Port}", address, port);
         }
 
-        try
-        {
+            readiness?.MarkReady("channel");
             await Task.WhenAll(_listeners.Select(listener =>
                 AcceptLoopAsync(listener, ((IPEndPoint)listener.LocalEndpoint).Port, stoppingToken)));
         }
@@ -178,10 +181,12 @@ public sealed class EntranceService(
         }
         finally
         {
+            readiness?.MarkStopped("channel");
             foreach (var listener in _listeners)
             {
                 listener.Stop();
             }
+            _listeners.Clear();
         }
     }
 

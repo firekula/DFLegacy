@@ -8,7 +8,8 @@ namespace DFLegacy.Server;
 public sealed partial class GameplayDatagramService(
     ServerOptions options,
     RuntimeState runtime,
-    ILogger<GameplayDatagramService> logger) : BackgroundService
+    ILogger<GameplayDatagramService> logger,
+    ListenerReadiness? readiness = null) : BackgroundService
 {
     private readonly ConcurrentDictionary<Guid, GameplaySession> _sessions = new();
 
@@ -438,15 +439,16 @@ public sealed partial class GameplayDatagramService(
         var secondaryEndpoint = new IPEndPoint(
             address,
             options.GameplayDatagram.SecondaryPort);
+        try
+        {
         _primary = DualStackUdp.Bind(primaryEndpoint);
         _secondary = DualStackUdp.Bind(secondaryEndpoint);
+        readiness?.MarkReady("gameplay");
         logger.LogInformation(
             "Gameplay UDP primary/secondary listeners ready at {Primary} and {Secondary}",
             primaryEndpoint,
             secondaryEndpoint);
 
-        try
-        {
             var loops = new List<Task>
             {
                 ReceiveLoopAsync(_primary, "primary", stoppingToken),
@@ -491,8 +493,9 @@ public sealed partial class GameplayDatagramService(
         }
         finally
         {
-            _primary.Dispose();
-            _secondary.Dispose();
+            readiness?.MarkStopped("gameplay");
+            _primary?.Dispose();
+            _secondary?.Dispose();
             _primary = null;
             _secondary = null;
             _sessions.Clear();

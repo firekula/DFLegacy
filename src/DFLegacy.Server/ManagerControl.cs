@@ -39,7 +39,8 @@ public static class ManagerControl
             if (HttpMethods.IsGet(context.Request.Method)
                 && string.Equals(path, "/internal/manager/status", StringComparison.OrdinalIgnoreCase))
             {
-                await context.Response.WriteAsJsonAsync(new { managed = true });
+                var readiness = app.Services.GetRequiredService<ListenerReadiness>();
+                await context.Response.WriteAsJsonAsync(new { managed = true, ready = readiness.IsReady, pending = readiness.Pending });
                 return;
             }
             if (HttpMethods.IsPost(context.Request.Method)

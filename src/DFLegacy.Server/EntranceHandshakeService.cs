@@ -13,7 +13,8 @@ public sealed class EntranceHandshakeService(
     ServerOptions options,
     RuntimeState runtime,
     ScriptFileSystem scripts,
-    ILogger<EntranceHandshakeService> logger) : BackgroundService
+    ILogger<EntranceHandshakeService> logger,
+    ListenerReadiness? readiness = null) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -60,8 +61,13 @@ public sealed class EntranceHandshakeService(
             (message, error) => logger.LogWarning(error, "{Message}", message),
             options.MaximumPacketLength,
             options.RejectBadCrc32);
-        await server.StartAsync(stoppingToken);
-        await server.RunAsync(stoppingToken);
+        try
+        {
+            await server.StartAsync(stoppingToken);
+            readiness?.MarkReady("entrance");
+            await server.RunAsync(stoppingToken);
+        }
+        finally { readiness?.MarkStopped("entrance"); server.Stop(); }
     }
 
     private byte[]? ReadChannelScript()

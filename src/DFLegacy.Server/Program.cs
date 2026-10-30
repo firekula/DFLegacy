@@ -74,6 +74,7 @@ builder.WebHost.ConfigureKestrel(kestrel =>
     kestrel.Listen(IPAddress.Parse(options.Admin.Host), options.Admin.Port));
 
 builder.Services.AddSingleton(options);
+builder.Services.AddSingleton<ListenerReadiness>();
 builder.Services.AddSingleton<ScriptFileSystem>();
 builder.Services.AddSingleton<RuntimeState>();
 builder.Services.AddSingleton<JsonGameStore>();

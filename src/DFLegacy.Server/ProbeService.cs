@@ -11,7 +11,7 @@ namespace DFLegacy.Server;
 public sealed class ProbeService(
     ServerOptions options,
     RuntimeState runtime,
-    ILogger<ProbeService> logger) : BackgroundService
+    ILogger<ProbeService> logger, ListenerReadiness? readiness = null) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -26,6 +26,7 @@ public sealed class ProbeService(
 
         try
         {
+            readiness?.MarkReady("probe");
             while (!stoppingToken.IsCancellationRequested)
             {
                 var client = await listener.AcceptTcpClientAsync(stoppingToken);
@@ -37,6 +38,7 @@ public sealed class ProbeService(
         }
         finally
         {
+            readiness?.MarkStopped("probe");
             listener.Stop();
         }
     }
