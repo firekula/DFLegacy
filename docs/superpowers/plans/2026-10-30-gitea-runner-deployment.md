@@ -32,10 +32,10 @@
 
 **Interfaces:** The Linux runner and DinD both mount `work:/work`, with `TMPDIR=/work/tmp`; Docker uses only a shared Unix socket. `DFLEGACY_ALLOW_HTTP_REGISTRY=true` adds Skopeo TLS flags only to the publishing commands. Durable private state lives in `D:\DFLegacyCI` on this installation.
 
-- [ ] Record HTTPS probe failure for the existing HTTP Registry, then add the explicit transport option without changing Docker global settings.
-- [ ] Build the Linux runner image, verify tool versions, matching workspace bind mounts, buildx amd64/arm64 support, and compose health.
-- [ ] Register both runners at repository scope, verify online labels and persistent startup configuration.
-- [ ] Validate shell/YAML syntax, run release tooling tests, and commit the sanitized deployment configuration.
+- [x] Record HTTPS probe failure for the existing HTTP Registry, then add the explicit transport option without changing Docker global settings.
+- [x] Build the Linux runner image, verify tool versions, matching workspace bind mounts, buildx amd64/arm64 support, and compose health.
+- [x] Register both runners at repository scope, verify online labels and persistent startup configuration.
+- [x] Validate shell/YAML syntax, run release tooling tests, and commit the sanitized deployment configuration.
 
 ### Task 2: Run and verify actual CI/CD
 
@@ -43,7 +43,7 @@
 
 **Interfaces:** A main push/dispatch must execute Windows and Linux tests, transfer same-SHA artifacts, build five archives and a dual-platform OCI image, then publish a complete development prerelease.
 
-- [ ] Push verified configuration, run the main pipeline, inspect actual failures, fix their causes, and repeat affected gates.
-- [ ] Verify all jobs, archive identity/checksums, complete Release assets and Registry platform/digest metadata from the published result.
-- [ ] Restart idle runners and verify durable registration/health; document exact start/stop/update and host availability requirements.
-- [ ] Obtain a fresh review of deployment changes, address important findings, and push the final documentation.
+- [x] Push verified configuration, run the main pipeline, inspect actual failures, fix their causes, and repeat affected gates.
+- [x] Verify all jobs, archive identity/checksums, complete Release assets and Registry platform/digest metadata from the published result.
+- [x] Restart idle runners and verify durable registration/health; document exact start/stop/update and host availability requirements.
+- [x] Obtain a fresh review of deployment changes, address important findings, and push the final documentation.

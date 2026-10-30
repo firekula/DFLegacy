@@ -2,7 +2,7 @@
 
 日期：2026-10-30
 
-状态：用户已于 2026-10-30 确认，代码与发行脚本已实施；本地验证及待接入项见[交付记录](../reports/2026-10-30-cross-platform-deployment-release-validation.md)。远端 Runner、Registry 与游戏实机验收尚待环境接入。
+状态：用户已于 2026-10-30 确认，代码、发行脚本及 Windows/Docker Linux Runner 已实施；[真实 Gitea CI/CD 验收](../reports/2026-10-30-gitea-runner-deployment-validation.md)已完成。macOS/ARM 原生运行及真实游戏客户端联机仍需对应环境验收。
 
 代码基线：`8259048`，Gitea 实例版本经 `/api/v1/version` 确认为 `1.26.0`。
 
