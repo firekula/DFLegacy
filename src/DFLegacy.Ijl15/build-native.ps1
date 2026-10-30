@@ -71,7 +71,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if ($RunTests) {
-    & $cmake --build $buildDirectory --config $Configuration --target RUN_TESTS
+    & $cmake -E env CTEST_OUTPUT_ON_FAILURE=1 $cmake `
+        --build $buildDirectory --config $Configuration --target RUN_TESTS
     if ($LASTEXITCODE -ne 0) {
         throw "Native ijl15 tests failed with exit code $LASTEXITCODE."
     }
