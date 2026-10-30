@@ -1,85 +1,33 @@
-# DFLegacy 服务端容器编排（面向 IPv6 公网服务器；只含服务端，游戏客户端是 32 位 Windows 程序）。
-#
-# 部署步骤：
-#   1) 载入镜像：      docker load -i dflegacy-server-<版本>.tar
-#   2) 放入 PVF：      把客户端的 Script.pvf 复制到本文件所在目录
-#   3) 建数据目录：    mkdir -p data && sudo chown 1654:1654 data
-#   4) 改下面的 AdvertisedHost 为客户端可达的地址（公网 IPv6 或域名）
-#   5) 启动：          docker compose up -d
-#
-# 完整说明见仓库 DEPLOYING.md 的「容器部署」一节。
-
+# Copy .env.example to .env and fill DFLEGACY_IMAGE/PVF_PATH before starting.
 services:
   dflegacy:
-    image: dflegacy-server:1.1.0
-    container_name: dflegacy-server
-    # host 网络：Linux 下容器直接使用宿主机的网络栈，IPv6 开箱可用，
-    # 也不需要任何端口映射。业务端口默认绑定 "::"（Linux 上是双栈，IPv4/IPv6 都收）。
-    network_mode: host
+    image: ${DFLEGACY_IMAGE:?Set a versioned image or immutable image digest in .env}
     restart: unless-stopped
+    stop_grace_period: 45s
     environment:
-      # 【必填】下发给客户端用于连接玩法 UDP 端口的地址。
-      # 必须填客户端能访问到的地址：服务器的公网 IPv6（如 2001:db8::10）或域名。
-      # 填 0.0.0.0 / :: 会让客户端进图失败；配置有问题时启动日志会打印警告。
-      DFLegacy__GameplayDatagram__AdvertisedHost: "change-me.example.com"
-
-      # 后台管理（8081）现在需要登录：Bearer token + 角色档位，见 ADMIN_API.md §1.2。
-      # 默认绑定 "::"（双栈），host 网络下即宿主机 8081 对外可访问——这正是远程管理所需的，
-      # 但请务必：①用防火墙限制来源；②在反向代理层终止 HTTPS（token 走明文 HTTP 可被嗅探）。
-      #
-      # 【必配】引导管理员名单：名单里的账号在服务端【启动时】被提升为管理员。
-      # 提升刻意不在注册时进行——否则名单里的账号还没注册时，任何人都能抢注该名字拿到管理员。
-      # 流程：先启动服务（或先注册你的账号）→ 确认账号已存在 → 重启容器使其成为管理员。
-      DFLegacy__Admin__Users__0: "test"
-      #
-      # 只允许宿主机本机访问后台（配 SSH 隧道用）时改成 127.0.0.1：
-      # DFLegacy__Admin__Host: "127.0.0.1"
-      #
-      # host 网络下，服务端绑定的每个端口都直接占用宿主机端口（见下文 volumes 旁的
-      # network_mode 注释），所以 admin 默认的 8081 若与宿主上其它服务（含别的容器
-      # 发布到宿主的 8081）撞端口，启动会以 "address already in use" 崩溃重启。
-      # 撞了就把它挪到一个空闲端口，例如：
-      # DFLegacy__Admin__Port: "18081"
-
-      # 其它按需覆盖（键名 = server.json 的层级，用双下划线分隔）：
-      # DFLegacy__Experience__MonsterMultiplier: "1.0"
-      # DFLegacy__Drop__RatePercent: "100"
-      # DFLegacy__Entrance__Port: "2311"
-      # DFLegacy__GameplayDatagram__PrimaryPort: "7002"
+      DFLEGACY_MANAGER_ALLOWED_HOSTS: ${MANAGER_ALLOWED_HOSTS:-}
+      DFLEGACY_MANAGER_TRUSTED_PROXIES: ${MANAGER_TRUSTED_PROXIES:-}
+    ports:
+      - "${MANAGER_BIND:-127.0.0.1}:${MANAGER_PORT:-18080}:18080/tcp"
+      - "${GAME_API_BIND:-0.0.0.0}:${GAME_API_PORT:-8081}:8081/tcp"
+      - "${GAME_BIND:-0.0.0.0}:2311:2311/tcp"
+      - "${GAME_BIND:-0.0.0.0}:7001:7001/tcp"
+      - "${GAME_BIND:-0.0.0.0}:8080:8080/tcp"
+      - "${GAME_BIND:-0.0.0.0}:2311:2311/udp"
+      - "${GAME_BIND:-0.0.0.0}:7002:7002/udp"
+      - "${GAME_BIND:-0.0.0.0}:7003:7003/udp"
     volumes:
-      # 客户端的 Script.pvf，只读挂载。镜像不包含也不应包含 PVF。
-      - ./Script.pvf:/pvf/Script.pvf:ro
-      # 存档数据：绑定挂载到当前目录下的 data/，便于直接备份与迁移。
-      # 首次启动前需要让容器用户（UID 1654）可写，见文件头的第 3 步。
-      - ./data:/app/data
-    # Podman + SELinux 环境需给挂载项追加 :Z，例如：
-    #   - ./Script.pvf:/pvf/Script.pvf:ro,Z
-    #   - ./data:/app/data:Z
-
-# ---------------------------------------------------------------------------
-# 备选：桥接网络 + 端口映射
-#
-# 仅当你想用端口映射（例如 Docker 已启用 IPv6 桥接，或本机就是 IPv4 环境）时才用这套。
-# 注意默认桥接网络是 IPv4-only：要让容器服务 IPv6，需要在 Docker 守护进程启用 ipv6
-# 并创建 IPv6 网络，否则宿主的 IPv6 流量到不了容器。
-#
-# services:
-#   dflegacy:
-#     image: dflegacy-server:1.1.0
-#     restart: unless-stopped
-#     environment:
-#       DFLegacy__GameplayDatagram__AdvertisedHost: "change-me.example.com"
-#       DFLegacy__Admin__Host: "::"      # 让上面的 8081 映射能访问到后台（默认已是 ::）
-#       DFLegacy__Admin__Users__0: "test" # 引导管理员（必配，否则没人能进后台）
-#     ports:
-#       - "2311:2311/tcp"                # 登录入口
-#       - "7001:7001/tcp"                # 频道入口
-#       - "8080:8080/tcp"                # 登录入口附加端口
-#       - "2311:2311/udp"                # 角色数据报
-#       - "7002:7002/udp"                # 玩法主端口
-#       - "7003:7003/udp"                # 玩法次端口
-#       - "127.0.0.1:8081:8081/tcp"      # 后台管理：需要登录；只映射到宿主回环最稳妥，
-#                                        # 要远程访问则改为 "8081:8081/tcp" 并在前置代理上做 HTTPS
-#     volumes:
-#       - ./Script.pvf:/pvf/Script.pvf:ro
-#       - ./data:/app/data
+      - type: volume
+        source: dflegacy-data
+        target: /app/data
+      - type: bind
+        source: ${PVF_PATH:?Set the absolute path to your own Script.pvf}
+        target: /pvf/Script.pvf
+        read_only: true
+        bind:
+          create_host_path: false
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+volumes:
+  dflegacy-data:

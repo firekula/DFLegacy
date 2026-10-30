@@ -1,200 +1,116 @@
-# DFLegacy 构建指南
+# DFLegacy 构建与发行
 
-本文档说明如何从源码构建 DFLegacy 的各个组成部分，以及各平台的能力边界。
-部署、配置与升级流程见 [DEPLOYING.md](DEPLOYING.md)；模块职责见 [README.md](README.md)。
+本仓库提供独立 Web Manager、游戏 Server、可选 Channel、Windows WPF 登录器和 Windows 原生补丁。部署发行包不需要安装 .NET；源码构建使用 `global.json` 固定的 .NET SDK 10.0.402（允许同一 feature band 的补丁更新），Python 3.12+，以及 Git。操作系统仍需满足 [.NET 系统依赖](https://learn.microsoft.com/dotnet/core/install/)；Linux 需要 ICU 与时区数据。
 
-## 1. 平台与工具链总览
+发行环境变量与 Docker build args 使用 `DFLEGACY_RELEASE_VERSION`、`DFLEGACY_RELEASE_COMMIT`。不要将 `v1.2.3` 一类标签放入通用 `VERSION`：MSBuild 会忽略环境属性名大小写并把它当作 NuGet Version，导致 restore 失败。发行工具启动构建子进程时会清除遗留的该变量；step output 的 `version`/`commit` 名称不受影响。
 
-| 项目 | 目标框架 | 可构建平台 | 需要的工具链 |
-| --- | --- | --- | --- |
-| `DFLegacy.Server` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
-| `DFLegacy.Protocol` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
-| `DFLegacy.Relay` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
-| `tests/DFLegacy.SmokeTests` | `net10.0` | Windows、Linux、macOS | .NET 10 SDK |
-| `DFLegacy.Launcher` | `net10.0-windows`（WPF + HandyControl） | 仅 Windows | .NET 10 SDK + PowerShell 7 + CMake + VS C++ |
-| `DFLegacy.Ijl15` | 原生 C++17，32 位 | 仅 Windows | VS C++ + CMake ≥ 3.24 |
-| `DFLegacy.RandomNative` | 原生 C++17，64 位 | 仅 Windows | VS C++ + CMake ≥ 3.24 |
+| 产物 | 构建主机与额外工具 | 首版运行验证范围 |
+| --- | --- | --- |
+| win-x64 | Windows x64、VS C++、CMake 3.24+、PowerShell 7 | Windows 管理器及原生测试；真实客户端另做手工验收 |
+| linux-x64 | Linux x64 + .NET SDK | 管理器 HTTP、子进程、解压包及容器检查 |
+| linux-arm64、osx-x64、osx-arm64 | Linux 上交叉 publish | 摘要、依赖和归档模式；不代表目标机器实测 |
+| OCI linux/amd64、linux/arm64 | Linux、Docker buildx，预先配置多架构 builder/QEMU | amd64 容器检查；arm64 仅构建时需明确标注 |
+| Windows 客户端资源 | Windows 原生工具链与 WPF | 同一提交构建一次，复用于所有包和镜像 |
 
-两个原生项目在各自的 `CMakeLists.txt` 开头就强制了平台与指定位宽，非 Windows 或位宽不符会直接报错：
+## 本地测试
 
-- `src/DFLegacy.Ijl15/CMakeLists.txt`：`NOT WIN32` 报错；必须 `-A Win32`（32 位，因为要替换客户端的 `ijl15.dll`）。
-- `src/DFLegacy.RandomNative/CMakeLists.txt`：`NOT WIN32` 报错；必须 `-A x64`（64 位，配合 64 位服务端进程）。
-
-服务端本身**没有强制性的原生依赖**：`DFLegacy.RandomNative.dll` 只用于 RDSEED 硬件随机，由 `GameRandomSource` 在 Windows + 64 位进程下探测加载，缺失或加载失败时回退到 `RandomNumberGenerator` / `Random.Shared`。因此 Linux 与 macOS 上可以只构建服务端；也可以直接用容器构建，见 [DEPLOYING.md §5](DEPLOYING.md#5-容器部署docker--podman)。
-
-## 2. 前置条件
-
-### 2.1 全部平台
-
-- **.NET 10 SDK**。运行服务端还需要 ASP.NET Core 10 运行时（安装 SDK 即包含）。
-
-### 2.2 Windows：原生模块与启动器
-
-- **Visual Studio**（2026 / 2022 / 2019），安装"使用 C++ 的桌面开发"工作负载。
-- **CMake 3.24 或更新版本**，且能生成 Visual Studio 工程（构建脚本会自动在 `Visual Studio 18 2026` / `17 2022` / `16 2019` 中挑选可用的生成器）。
-- **PowerShell 7（`pwsh`）**：构建脚本与启动器发布都通过 `pwsh` 调用。
-
-### 2.3 Linux / macOS
-
-- **.NET 10 SDK**。不构建原生模块与启动器，因此不需要 C++ 工具链。
-
-## 3. Windows：完整构建（推荐）
-
-在仓库根目录打开 **Visual Studio 开发者 PowerShell**，构建混合解决方案：
+在仓库根目录执行；默认冒烟使用可生成的 fixture，不依赖私有 PVF：
 
 ```powershell
-msbuild .\DFLegacy.Emulator.slnx /m /restore /p:Configuration=Release
+dotnet run --project tests/DFLegacy.SmokeTests -c Release
+dotnet run --project tests/DFLegacy.SmokeTests -c Release -- --deployment-hosting
+dotnet run --project tests/DFLegacy.Manager.Tests -c Release -- --http --server-dir "$PWD/src/DFLegacy.Server/bin/Release/net10.0"
+py -3.12 tools/release/release.py test
 ```
 
-若 `msbuild` 不在 `PATH`（未打开开发者命令行），可直接用完整路径，例如
-`"C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"`。
+Linux 将最后一行改为 `python3 tools/release/release.py test`。测试入口是控制台程序，必须实际 `dotnet run` 并检查退出码；仅运行 `dotnet test` 不能证明这些测试已执行。Manager 的 `--server-dir` 必须指向已构建的 Server 目录；前一条默认冒烟会构建相应程序。
 
-在 **Git Bash** 里执行时，MSBuild 开关必须用 `-` 前缀（`-m -restore -p:Configuration=Release`）。写 `/m`、`/restore` 会被 MSYS 当成路径转换成 `M:/`、`D:/Program Files/Git/restore`，报 `MSB1008: 只能指定一个项目`。
-
-`DFLegacy.Emulator.slnx` 同时包含两个 `.vcxproj`，只有 .NET Framework 版 MSBuild（即 Visual Studio 自带的 `msbuild`）能构建它们；`dotnet build` 不能，原因见 [§8](#8-常见构建问题)。
-
-服务端项目在 Visual Studio / `msbuild` 下会把原生随机桥作为项目引用一起构建（`DFLegacy.Server.csproj` 中的 `BuildRandomNativeReference` 条件为 `'$(MSBuildRuntimeType)' == 'Full'`），并把产物复制到输出目录。
-
-原生产物固定落在：
-
-```text
-artifacts/native/ijl15/Release/ijl15.dll                      # 32 位客户端补丁
-artifacts/native/random/Release/DFLegacy.RandomNative.dll     # 64 位硬件随机桥
-```
-
-## 4. Windows：只构建服务端
-
-只需要服务端时，用 .NET SDK 即可，不依赖 Visual Studio 的 C++ 组件：
+现有无客户端 Python 工具测试也属于 CI 必过项；测试依赖（含传递依赖）固定版本与 PyPI wheel SHA-256，发行 CLI 本身仍只使用标准库。在独立虚拟环境运行：
 
 ```powershell
-dotnet build .\src\DFLegacy.Server\DFLegacy.Server.csproj -c Release
+py -3.12 -m venv artifacts/python-test-env
+./artifacts/python-test-env/Scripts/python.exe -m pip install --require-hashes --only-binary=:all: -r tools/release/requirements-ci.txt
+$env:PYTHONPATH = Join-Path $PWD 'tools'
+./artifacts/python-test-env/Scripts/python.exe -m pytest tools/acceptance/tests tools/debug/test_drop_control.py -q
 ```
 
-发布到目录：
+Linux 使用 `python3 -m venv` 与虚拟环境的 `bin/python`，运行 pytest 时设 `PYTHONPATH="$PWD/tools"`。这些测试只使用临时文件、模拟进程和本机 socket，不需要游戏客户端；端口或环境错误应修复或如实报告，不能用跳过用例制造通过结果。
+
+Windows 原生与登录器行为测试：
 
 ```powershell
-dotnet publish .\src\DFLegacy.Server\DFLegacy.Server.csproj -c Release -o .\dist\DFLegacy.Server
+pwsh -NoProfile -File src/DFLegacy.Ijl15/build-native.ps1 -Configuration Release -RunTests
+pwsh -NoProfile -File src/DFLegacy.RandomNative/build-native.ps1 -Configuration Release -RunTests
+$ijl15 = Join-Path $PWD 'artifacts/native/ijl15/Release/ijl15.dll'
+dotnet run --project src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj -c Release -p:BuildNativeAssets=false "-p:Ijl15PrebuiltPath=$ijl15"
 ```
 
-两点说明：
+IJL15 的 CMake 测试也构建和测试 `debug.dll`。32 位 IJL15/Debug 供游戏客户端使用，64 位 RandomNative 供 Windows Server 可选使用；后者不可用时服务端使用托管随机源。真实 PVF 专项、跨机器连接和图形客户端进图不是普通无资源 CI 的替代项，必须单独记录结果。
 
-- 这种构建方式**不会**构建原生随机桥，服务端自动回退到托管随机。若此前已经用 §3 或 §7 生成了 `artifacts/native/random/Release/DFLegacy.RandomNative.dll`，发布时会自动带上它（csproj 里的 `Content` 条件为"文件存在或处于完整 MSBuild"）。
-- 发布目录会生成 `web.config`，那是 `Microsoft.NET.Sdk.Web` 的默认产物。服务端只用 Kestrel，不注册 IIS/HTTP.sys，该文件在非 IIS 部署下不生效，可忽略。
+## 构建不可变 Windows 客户端资源
 
-## 5. Linux 与 macOS：构建并发布服务端
+发行目录必须是新目录。完整自包含登录器输出不可只摘取一个 exe；工具校验 apphost、运行时、WPF 与 `.deps.json` 引用的依赖，替换发行配置并生成 SHA-256 清单。
+
+```powershell
+$env:DFLEGACY_RELEASE_COMMIT = (git rev-parse HEAD).Trim()
+$env:DFLEGACY_RELEASE_VERSION = 'v1.2.3' # 正式版必须对应同名标签；开发版用下述 metadata 生成
+$ijl15 = Join-Path $PWD 'artifacts/native/ijl15/Release/ijl15.dll'
+dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -r win-x64 --self-contained true -p:BuildNativeAssets=false "-p:Ijl15PrebuiltPath=$ijl15" -o artifacts/launcher-v1.2.3
+py -3.12 tools/release/release.py build-client-assets --launcher-output artifacts/launcher-v1.2.3 --ijl15 $ijl15 --config src/DFLegacy.Ijl15/Config.ini --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --output client-assets
+py -3.12 tools/release/release.py verify client-assets --client-assets --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT
+```
+
+`--debug <debug.dll>` 是明确选用的测试资源；普通资源不包括它，调试浮窗始终默认关闭。完整登录器模板账号、密码与账号列表为空，`StartServer=false`，`ClientPath=../DNF.exe`。不得把游戏客户端、PVF、存档、个人路径、凭据或 CI secret 放入资源。
+
+同一个干净提交的自动化入口为：
+
+```powershell
+$env:BUILD_COMMIT = (git rev-parse HEAD).Trim()
+$env:BUILD_REF = 'refs/heads/main'
+py -3.12 tools/release/ci.py metadata
+# metadata 显示 dev-<提交UTC时间>-<SHA前12位>，CI也写入环境与step outputs
+py -3.12 tools/release/ci.py windows --version <显示的版本> --commit $env:BUILD_COMMIT
+```
+
+`windows` 入口实际运行原生和登录器测试，构建 Windows 发行包并启动解压后的 Manager 检查 `/health` 与停服时 `/ready=503`，生成 `artifacts/client-assets.tar.gz` 用于跨主机传输。不要在同一个工作目录重复调用；保留输出后换干净检出或新目录。
+
+## 五个平台的自包含发行包
+
+```powershell
+py -3.12 tools/release/release.py publish --rid win-x64 --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --client-assets client-assets --output artifacts/DFLegacy-v1.2.3-win-x64 --verification 'Windows构建；尚未做真实客户端验收'
+py -3.12 tools/release/release.py verify artifacts/DFLegacy-v1.2.3-win-x64.zip --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT
+```
+
+RID 支持 `win-x64`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`。Linux/macOS 使用 `.tar.gz` 保留执行位；Windows 使用 ZIP。工具默认调用 `dotnet publish --self-contained true` 构建 Manager、Server、Channel，分发相同版本的 Windows 资源；可通过 `--manager-output`、`--server-output`、`--channel-output` 提供事先发布的完整目录。验证针对最终归档，也检查相同版本/提交、文件摘要、依赖与安全模板。摘要不替代签名或信任来源。
+
+发行根目录包含 Manager 运行时和 `wwwroot`、`runtime/server/`、`runtime/channel/`、`client-assets/`、`templates/`、`resources/README.txt`、三种启动脚本与 `release-manifest.json`。不包含 `data/` 或 `Script.pvf`；不能向正在使用的安装目录 publish。归档和目录已存在时直接拒绝覆盖。
+
+在 Linux 干净检出上接收同 SHA 的 Windows artifact 后：
 
 ```bash
-dotnet build src/DFLegacy.Server/DFLegacy.Server.csproj -c Release
-dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o ./dist/DFLegacy.Server
+python3 tools/release/ci.py linux --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT" --assets-archive /absolute/client-assets.tar.gz
 ```
 
-需要独立运行时（目标机没装 .NET 10）或需要跨平台发布时，显式指定 RID：
+它安全解包并校验资源，生成其他四个平台的归档，实际启动解压后的 linux-x64 管理器。macOS 包未签名、未公证；首次运行策略与系统依赖见 [部署指南](DEPLOYING.md)。本机没有相应运行环境时，清单应写“交叉构建、未运行验证”，不要改成实机通过。
+
+## 容器构建
+
+根目录需存在已校验的 `client-assets/`，版本/提交与构建参数必须一致。Dockerfile 的恢复层包括 Manager、Server、Channel、Protocol 与 InterProcess 项目引用，镜像内不编译 WPF/Windows C++。
 
 ```bash
-# 在目标平台上直接发布（框架依赖）
-dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o ./dist/DFLegacy.Server
-
-# 自包含，不要求目标机安装 .NET
-dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release \
-  -r linux-x64 --self-contained true -o ./dist/DFLegacy.Server
+export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$DFLEGACY_RELEASE_COMMIT")"
+docker buildx build --platform linux/amd64 --build-arg DFLEGACY_RELEASE_VERSION="$DFLEGACY_RELEASE_VERSION" --build-arg DFLEGACY_RELEASE_COMMIT="$DFLEGACY_RELEASE_COMMIT" --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --provenance=false --sbom=false --load -t dflegacy:local .
+docker buildx build --platform linux/amd64,linux/arm64 --build-arg DFLEGACY_RELEASE_VERSION="$DFLEGACY_RELEASE_VERSION" --build-arg DFLEGACY_RELEASE_COMMIT="$DFLEGACY_RELEASE_COMMIT" --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --provenance=false --sbom=false --output type=oci,dest=artifacts/dflegacy-image.oci.tar,rewrite-timestamp=true .
 ```
 
-可用的服务端 RID：`linux-x64`、`linux-arm64`、`osx-x64`（Intel Mac）、`osx-arm64`（Apple 芯片）。在 Windows 上也可以交叉发布这些目标，产物直接拷到目标机运行。
+多架构 builder、QEMU 与 Docker daemon 由部署者预先提供，脚本不更改 Docker 全局设置。基础镜像显式使用 Ubuntu 24.04 Noble（[.NET 10 默认发行版说明](https://learn.microsoft.com/dotnet/core/compatibility/containers/10.0/default-images-use-ubuntu)），安装系统 Python 并断言至少 3.12。只有 Docker 客户端可用不能证明镜像构建或运行验收完成。
 
-注意：
+SDK stage 使用构建主机平台，通过目标 RID 交叉发布；runtime stage 使用目标平台，避免在 arm64 模拟环境下运行整套 SDK 编译。
 
-- **不要用 `DFLegacy.Emulator.slnx`**。它包含两个 `.vcxproj`，Linux 与 macOS 上的 .NET MSBuild 无法构建（参见 §8）。
-- 发布产物包含当前平台的应用宿主（Linux 上为 ELF、macOS 上为 Mach-O 可执行文件 `DFLegacy.Server`），因此既可以直接运行它，也可以用 `dotnet DFLegacy.Server.dll` 启动。交叉发布时必须指定 `-r`。
-- 原生随机桥与客户端补丁均为 Windows 专属，Linux 与 macOS 上不存在也不需要。
-- macOS 自带 ICU 与时区数据，无需额外安装；Linux 的最小化系统需要，见 [DEPLOYING.md §4](DEPLOYING.md#4-linux-与-macos-无头服务端部署)。
+CI 使用 [Git 提交时间固定 BuildKit 时间戳](https://docs.docker.com/build/ci/github-actions/reproducible-builds/)，并关闭非确定性的 provenance/SBOM 附件、清理 apt 动态日志、规范化 ASP.NET 生成的 HTTP Last-Modified。重试发布应复用原先通过门禁的 artifacts；基础镜像、apt 或 NuGet 内容变动会改变构建输入，此时完整 inventory 预留应拒绝覆盖已有版本。
 
-## 6. 启动器与原生模块
+## Gitea CI 与发布
 
-### 6.1 启动器（仅 Windows）
+完整流程和 Runner 配置见 [.gitea/README.md](.gitea/README.md)。工作流只使用自托管标签，不会凭空提供 Windows/Linux 机器。所有必过测试和构建先完成；`main` 发布开发预发布、`vX.Y.Z` 标签发布正式版，其他分支与 PR 只生成 artifact。正式发布前仍须做 Windows 客户端连接 Windows/Linux/Docker 的真实手工验收。
 
-```powershell
-dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\dist\DFLegacy.Server
-```
-
-发布过程会通过 `BuildIjl15` 目标调用 `pwsh` 执行 `src/DFLegacy.Ijl15/build-native.ps1`，因此这一步**必须**具备 PowerShell 7、CMake 和 Visual Studio C++ 生成器；缺失会在发布时报错，而不是静默跳过。
-
-发布产物包含启动器本体、`launcher.json`、`Config.ini`、`DFLegacy.Relay.Core.dll` 和 32 位 `ijl15.dll`。按 [README](README.md#构建与启动) 的默认做法，启动器与服务端发布到同一目录即可。
-
-`launcher.json` 的 `Relay`（见 [DEPLOYING.md §6.4](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)）由启动器在自身进程内运行，中继核心作为项目引用自动随发布输出，因此无需额外步骤。只有不使用启动器、要单独运行中继时，才需要额外发布那个独立可执行文件：
-
-```powershell
-dotnet publish .\src\DFLegacy.Relay\DFLegacy.Relay.csproj -c Release -o .\dist\DFLegacy.Server
-```
-
-### 6.2 原生模块单独构建
-
-两个脚本都支持 `-Configuration Debug|Release` 与可选的 `-RunTests`：
-
-```powershell
-# 32 位客户端补丁 -> artifacts/native/ijl15/<Configuration>/ijl15.dll
-pwsh .\src\DFLegacy.Ijl15\build-native.ps1 -Configuration Release
-
-# 64 位硬件随机桥 -> artifacts/native/random/<Configuration>/DFLegacy.RandomNative.dll
-pwsh .\src\DFLegacy.RandomNative\build-native.ps1 -Configuration Release
-
-# 顺带跑原生单元测试
-pwsh .\src\DFLegacy.RandomNative\build-native.ps1 -Configuration Release -RunTests
-```
-
-脚本支持通过 `CMAKE_EXE` 环境变量指定 `cmake` 路径；未设置时依次查找 `%ProgramFiles%\CMake\bin\cmake.exe` 与 `PATH` 中的 `cmake.exe`。若构建目录里缓存的生成器与当前可用的生成器不一致，脚本会先删除 `artifacts/native/...` 下的构建目录再重新配置。
-
-## 7. 发布产物一览
-
-| 发布目标 | 命令 | 主要产物 |
-| --- | --- | --- |
-| 服务端 | `dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj -c Release -o <dir>` | `DFLegacy.Server.dll` / `.exe`、`DFLegacy.Protocol.dll`、`server.json`、`wwwroot/`、`web.config`；若已构建则含 `DFLegacy.RandomNative.dll` |
-| 启动器 | `dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -o <dir>` | `DFLegacy.Launcher.exe`、`DFLegacy.Protocol.dll`、`launcher.json`、`Config.ini`、`ijl15.dll` |
-| 客户端中继 | `dotnet publish src/DFLegacy.Relay/DFLegacy.Relay.csproj -c Release -o <dir>` | `DFLegacy.Relay.exe` / `.dll`、`DFLegacy.Relay.deps.json`、`DFLegacy.Relay.runtimeconfig.json` |
-
-`server.json` 与 `launcher.json` 都以 `PreserveNewest` 方式复制，源文件比目标新时会覆盖目标。反复发布到同一个目录前请先备份这两个文件，详见 [DEPLOYING.md](DEPLOYING.md#10-升级流程)。
-
-## 8. 常见构建问题
-
-| 现象 | 原因 | 处理 |
-| --- | --- | --- |
-| `MSB4278: 导入的文件 "$(VCTargetsPath)\Microsoft.Cpp.Default.props" 不存在` | 用 `dotnet build` 构建了 `.vcxproj`（直接指定，或通过 `.slnx`） | 改用 Visual Studio 开发者 PowerShell 里的 `msbuild`；或只构建 `.csproj`（`dotnet build src/DFLegacy.Server/DFLegacy.Server.csproj`） |
-| 启动器发布失败：`pwsh` 不是内部或外部命令 | 启动器的 `BuildIjl15` 目标依赖 PowerShell 7 | 安装 PowerShell 7，或改为在 Visual Studio 中构建整个解决方案 |
-| 构建脚本报 `CMake 3.24 or newer is required` | CMake 未安装或版本过低 | 安装 CMake ≥ 3.24，或用 `CMAKE_EXE` 指定路径 |
-| 构建脚本报 `A Visual Studio C++ CMake generator is required` | 未安装 Visual Studio C++ 生成器 | 在 Visual Studio 安装程序里勾选"使用 C++ 的桌面开发" |
-| 服务端启动日志提示随机源回退 | 未提供或无法加载 `DFLegacy.RandomNative.dll`（Linux、32 位进程、CPU 不支持 RDSEED 等） | 属正常回退，不影响玩法；需要硬件随机时在 Windows 64 位环境按 §3/§6.2 构建并随服务端一起发布 |
-| 发布后 `server.json` 的 PVF 路径变回示例值 | `PreserveNewest` 复制覆盖了本机配置 | 发布前备份 `server.json`，发布后改回本机路径 |
-
-## 9. 测试
-
-冒烟测试覆盖协议编解码、PVF 数据解析与主要业务规则：
-
-```powershell
-dotnet run --project .\tests\DFLegacy.SmokeTests\DFLegacy.SmokeTests.csproj -c Release
-```
-
-默认使用内置的临时 fixture 数据，可在任意平台运行。把环境变量 `DF2008_REAL_PVF_PATH` 指向真实的 `Script.pvf`，会额外启用一批"真实数据"检查：
-
-```powershell
-$env:DF2008_REAL_PVF_PATH = 'D:\DFLegacy\DF2008\Script.pvf'
-dotnet run --project .\tests\DFLegacy.SmokeTests\DFLegacy.SmokeTests.csproj -c Release
-```
-
-这些检查针对特定 PVF 版本编写：PVF 版本不一致时，涉及文件清单、商城价格、宠物进化等条目可能失败，属数据差异而非构建问题；判定时要结合失败项的具体名称。
-
-原生模块自带测试，通过构建脚本的 `-RunTests` 开关运行（见 §6.2）。
-该脚本需要 CMake，而 CMake 并非每台机器都装（2026-10-04 实测本机 PATH 与 VS 安装目录下都没有 `cmake.exe`，
-脚本会在第一项检查就退出，MSBuild 与 x86 工具集则齐备），因此同一份测试源也可以直接用 MSBuild 构建：
-
-```powershell
-MSBuild.exe .\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj -p:Configuration=Release -p:Platform=Win32
-# 运行（需要旁边的 ijl15.dll 与 Config.ini，两者由该工程的生成后事件拷入）
-Push-Location .\src\DFLegacy.Ijl15\artifacts\native\ijl15-tests\Release
-try { .\ijl15_tests.exe } finally { Pop-Location }
-```
-
-该工程已挂进 `DFLegacy.Emulator.slnx`，所以"构建整个解决方案"就会一起构建它。
-`CMakeLists.txt` 里仍定义同名目标；**两份源文件列表要同步改**（新加源文件时两边都加）。
-
-## 副本游戏内调试覆盖层
-
-独立 `debug.dll`、IJL15 加载开关、服务端 BOSS 房提前确定/缓存、只读监听脚本及构建验证说明见 [tools/debug/README.md](tools/debug/README.md)。普通发行配置默认关闭，实际本机调试部署需要同时开启客户端与服务端开关。
+`release.py release` 要求五个验证通过的归档；另附独立 `compose.yaml`、`compose.host-ipv6.yaml` 和 `.env.example`，全部纳入发行 inventory 摘要，先上传草稿，全部成功后再公开。`--check-only` 可在任何外部写入前核对整套归档和远端版本身份。匹配提交与摘要的中断草稿可重试；已公开版本拒绝覆盖。工作流支持手工触发，默认只测试构建；显式 `publish=true` 也需通过所有门禁。镜像 `latest` 仅在正式标签完整发布成功后更新，开发版不更新该别名。`prune` 默认 dry-run，只选择本流程标记的开发预发布与对应标签，保留最近 20 个，需 `--apply` 才删除。脚本不自动更新在线服务器。

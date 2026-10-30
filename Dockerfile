@@ -1,78 +1,69 @@
-# Server-only image. The launcher and the two native Windows modules are not
-# part of it: the game client is a 32-bit Windows binary and cannot be
-# containerised this way.
-#
-# Uses only classic Dockerfile constructs so both Docker and Podman/Buildah can
-# build it (no BuildKit-only features).
-
-# ---------------------------------------------------------------------------
-# Build stage. This runs on Linux, where DFLegacy.Server.csproj's
-# MSBuildRuntimeType conditions skip the Windows-only .vcxproj references.
-# ---------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# syntax=docker/dockerfile:1
+# Windows assets are built once and verified against DFLEGACY_RELEASE_VERSION/DFLEGACY_RELEASE_COMMIT.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402-noble AS build
+ARG TARGETARCH
+ARG DFLEGACY_RELEASE_VERSION
+ARG DFLEGACY_RELEASE_COMMIT
+ARG SOURCE_DATE_EPOCH
 WORKDIR /src
-
-# Restore from the project files alone so source edits reuse the cached layer.
-# server.json sits at the repository root and is linked into the server project
-# as content, so it has to be present before publishing.
-COPY src/DFLegacy.Protocol/DFLegacy.Protocol.csproj src/DFLegacy.Protocol/
-COPY src/DFLegacy.Server/DFLegacy.Server.csproj src/DFLegacy.Server/
-COPY server.json ./
-RUN dotnet restore src/DFLegacy.Server/DFLegacy.Server.csproj
-
-COPY src/ src/
-RUN dotnet publish src/DFLegacy.Server/DFLegacy.Server.csproj \
-        -c Release --no-restore -o /app
-
-# ---------------------------------------------------------------------------
-# Runtime stage. The ASP.NET Core image ships ICU and tzdata, which the server
-# needs for its CP936/CP949 code pages and its local-time fatigue reset.
-# ---------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
-WORKDIR /app
-COPY --from=build /app ./
-
-# The save file lives under /app/data; the /pvf mount point holds the client's
-# Script.pvf (never shipped in the image, see DEPLOYING.md). curl backs the
-# HEALTHCHECK below and doubles as an in-container tool for the admin API.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+RUN apt-get update && apt-get install -y --no-install-recommends python3 \
+    && python3 -c 'import sys; assert sys.version_info >= (3, 12), "Python 3.12+ required"' \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /app/data /pvf \
-    && chown -R app:app /app/data
-USER app
+    && rm -f /var/log/apt/* /var/log/dpkg.log /var/log/alternatives.log /var/cache/ldconfig/aux-cache
+COPY global.json ./
+# Include every transitive project reference in the restore cache layer.
+COPY src/DFLegacy.Manager/DFLegacy.Manager.csproj src/DFLegacy.Manager/
+COPY src/DFLegacy.Server/DFLegacy.Server.csproj src/DFLegacy.Server/
+COPY src/DFLegacy.Channel/DFLegacy.Channel.csproj src/DFLegacy.Channel/
+COPY src/DFLegacy.Protocol/DFLegacy.Protocol.csproj src/DFLegacy.Protocol/
+COPY src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj src/DFLegacy.InterProcess/
+COPY server.json ./
+RUN case "$TARGETARCH" in amd64) rid=linux-x64;; arm64) rid=linux-arm64;; *) exit 2;; esac \
+    && dotnet restore src/DFLegacy.Manager/DFLegacy.Manager.csproj -r "$rid" \
+    && dotnet restore src/DFLegacy.Server/DFLegacy.Server.csproj -r "$rid" \
+    && dotnet restore src/DFLegacy.Channel/DFLegacy.Channel.csproj -r "$rid"
+COPY src/ src/
+COPY tools/release/ tools/release/
+COPY deploy/ deploy/
+COPY client-assets/ client-assets/
+RUN python3 tools/release/release.py verify client-assets --client-assets --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT" \
+    && case "$TARGETARCH" in amd64) rid=linux-x64;; arm64) rid=linux-arm64;; *) exit 2;; esac \
+    && python3 tools/release/release.py publish --rid "$rid" --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT" \
+       --client-assets client-assets --output /out/DFLegacy \
+       --verification "Docker cross-build for $TARGETARCH; container execution is validated separately by CI"
 
-# Bind every interface inside the container; reachability is controlled by the
-# published ports (or by host networking). The business listeners default to
-# "::" rather than "0.0.0.0": on Linux that is dual-stack, so the container
-# accepts IPv4 and IPv6 clients alike, which an IPv6 public deployment needs.
-# The admin API also binds "::" now, so remote management works out of the box;
-# it is protected by Bearer-token login plus per-account roles (ADMIN_API.md
-# §1.2), so operators MUST set DFLegacy__Admin__Users__0 (bootstrap admin) and
-# should restrict the source range / terminate TLS in front of it.
-#
-# DFLegacy__GameplayDatagram__AdvertisedHost must be supplied at run time: it is
-# the address handed to clients for the gameplay UDP ports, and a container
-# cannot discover the host address clients use.
-ENV DFLegacy__ScriptPvfPath=/pvf/Script.pvf \
-    DFLegacy__Entrance__Host=:: \
-    DFLegacy__CharacterDatagram__Host=:: \
-    DFLegacy__GameplayDatagram__Host=:: \
-    DFLegacy__Admin__Host=::
-
-# The server binds every listener from its own configuration, so clear the base
-# image defaults (ASPNETCORE_HTTP_PORTS=8080 / ASPNETCORE_URLS) that would
-# otherwise emit a misleading "Overriding address(es)" warning. Use
-# DFLegacy__Admin__Host / __Port to move the admin listener.
-ENV ASPNETCORE_HTTP_PORTS= \
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-noble AS runtime
+ARG DFLEGACY_RELEASE_VERSION
+ARG DFLEGACY_RELEASE_COMMIT
+ARG SOURCE_DATE_EPOCH
+LABEL org.opencontainers.image.title="DFLegacy" \
+      org.opencontainers.image.version="$DFLEGACY_RELEASE_VERSION" \
+      org.opencontainers.image.revision="$DFLEGACY_RELEASE_COMMIT"
+WORKDIR /app
+COPY --from=build /out/DFLegacy/ ./
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /var/log/apt/* /var/log/dpkg.log /var/log/alternatives.log /var/cache/ldconfig/aux-cache \
+    && mkdir -p /app/data /pvf && chown app:app /app/data
+ENV DFLEGACY_MANAGER_ROOT=/app \
+    DFLEGACY_MANAGER_DATA=/app/data \
+    DFLEGACY_MANAGER_LISTEN=0.0.0.0 \
+    DFLEGACY_MANAGER_PORT=18080 \
+    DFLEGACY_MANAGER_NO_BROWSER=true \
+    DFLegacy__ScriptPvfPath=/pvf/Script.pvf \
+    DFLegacy__SeedTestAccount=false \
+    DFLegacy__Entrance__Host=0.0.0.0 \
+    DFLegacy__CharacterDatagram__Host=0.0.0.0 \
+    DFLegacy__GameplayDatagram__Host=0.0.0.0 \
+    DFLegacy__Admin__Host=0.0.0.0 \
+    ASPNETCORE_HTTP_PORTS= \
     ASPNETCORE_URLS=
-
-# Login entry (TCP 2311), channel entry (TCP 7001), login extra port (TCP 8080),
-# admin HTTP (TCP 8081), character datagram (UDP 2311) and gameplay UDP pair.
-EXPOSE 2311/tcp 7001/tcp 8080/tcp 8081/tcp
+USER app
+VOLUME ["/app/data"]
+EXPOSE 18080/tcp 8081/tcp 2311/tcp 7001/tcp 8080/tcp
 EXPOSE 2311/udp 7002/udp 7003/udp
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8081/health || exit 1
-
-ENTRYPOINT ["dotnet", "DFLegacy.Server.dll"]
+# A stopped game is a normal management state. /ready is separate.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:18080/health || exit 1
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/app/DFLegacy.Manager", "--root", "/app", "--data-dir", "/app/data", "--listen", "0.0.0.0", "--port", "18080", "--no-browser"]
