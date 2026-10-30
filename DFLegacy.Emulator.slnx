@@ -19,4 +19,7 @@
   <Project Path="src/DFLegacy.Channel/DFLegacy.Channel.csproj" />
   <Project Path="tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj" />
   <Project Path="src/DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
+  <Project Path="src/DFLegacy.Manager/DFLegacy.Manager.csproj" />
+  <Project Path="tests/DFLegacy.Manager.Tests/DFLegacy.Manager.Tests.csproj" />
+  <Project Path="src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj" />
 </Solution>
