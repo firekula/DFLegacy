@@ -109,3 +109,9 @@ tools/release/*.py text eol=lf
 
 # 门前区域修复的测试和截图保留原始字节。
 /knowledge/decisions/assets/2026-10-30-dungeon-gate-map-target/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# Runner build contexts must remain LF on Windows.
+deploy/gitea-runners/Dockerfile text eol=lf
+deploy/gitea-runners/compose.yaml text eol=lf
+deploy/gitea-runners/.env.example text eol=lf
+deploy/gitea-runners/.dockerignore text eol=lf

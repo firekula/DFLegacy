@@ -196,6 +196,7 @@ jobs:
       GITEA_URL: ${{ gitea.server_url }}
       GITEA_REPOSITORY: ${{ gitea.repository }}
       ALLOW_HTTP: ${{ vars.DFLEGACY_ALLOW_HTTP_API }}
+      ALLOW_HTTP_REGISTRY: ${{ vars.DFLEGACY_ALLOW_HTTP_REGISTRY }}
     steps:
       - uses: https://github.com/actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -236,14 +237,17 @@ jobs:
           test -n "$REGISTRY_TOKEN"
           auth=$(mktemp)
           trap 'rm -f "$auth"' EXIT
-          printf '%s' "$REGISTRY_TOKEN" | skopeo login --authfile "$auth" --username "$REGISTRY_USER" --password-stdin "$REGISTRY_HOST"
+          tls=()
+          copy_tls=()
+          if test "$ALLOW_HTTP_REGISTRY" = true; then tls+=(--tls-verify=false); copy_tls+=(--dest-tls-verify=false); fi
+          printf '%s' "$REGISTRY_TOKEN" | skopeo login "${tls[@]}" --authfile "$auth" --username "$REGISTRY_USER" --password-stdin "$REGISTRY_HOST"
           expected=$(python3 -c 'import json; print(json.load(open("incoming/linux/oci-metadata.json"))["containerimage.digest"])')
           # Never rebuild after gates. Content-addressed transport preserves index.
-          if skopeo inspect --authfile "$auth" --format '{{.Digest}}' "docker://$REGISTRY_IMAGE:$DFLEGACY_RELEASE_VERSION" > incoming/existing-image-digest.txt 2> incoming/registry-inspect.err; then
+          if skopeo inspect "${tls[@]}" --authfile "$auth" --format '{{.Digest}}' "docker://$REGISTRY_IMAGE:$DFLEGACY_RELEASE_VERSION" > incoming/existing-image-digest.txt 2> incoming/registry-inspect.err; then
             test "$(cat incoming/existing-image-digest.txt)" = "$expected"
             printf '%s\n' "$expected" > incoming/image-digest.txt
           elif grep -Eqi 'manifest unknown|name unknown|status code: 404' incoming/registry-inspect.err; then
-            skopeo copy --all --preserve-digests --authfile "$auth" --digestfile incoming/image-digest.txt \
+            skopeo copy "${copy_tls[@]}" --all --preserve-digests --authfile "$auth" --digestfile incoming/image-digest.txt \
               oci-archive:incoming/linux/dflegacy-image.oci.tar "docker://$REGISTRY_IMAGE:$DFLEGACY_RELEASE_VERSION"
           else
             cat incoming/registry-inspect.err >&2
@@ -269,5 +273,8 @@ jobs:
           set -euo pipefail
           auth=$(mktemp)
           trap 'rm -f "$auth"' EXIT
-          printf '%s' "$REGISTRY_TOKEN" | skopeo login --authfile "$auth" --username "$REGISTRY_USER" --password-stdin "$REGISTRY_HOST"
-          skopeo copy --all --preserve-digests --authfile "$auth" "docker://$REGISTRY_IMAGE@$(cat incoming/image-digest.txt)" "docker://$REGISTRY_IMAGE:latest"
+          tls=()
+          copy_tls=()
+          if test "$ALLOW_HTTP_REGISTRY" = true; then tls+=(--tls-verify=false); copy_tls+=(--src-tls-verify=false --dest-tls-verify=false); fi
+          printf '%s' "$REGISTRY_TOKEN" | skopeo login "${tls[@]}" --authfile "$auth" --username "$REGISTRY_USER" --password-stdin "$REGISTRY_HOST"
+          skopeo copy "${copy_tls[@]}" --all --preserve-digests --authfile "$auth" "docker://$REGISTRY_IMAGE@$(cat incoming/image-digest.txt)" "docker://$REGISTRY_IMAGE:latest"

@@ -15,6 +15,9 @@
 - `DFLEGACY_REGISTRY_IMAGE`：`registry/owner/dflegacy`，不带标签，owner 使用小写。
 - `DFLEGACY_REGISTRY_USER`：Registry 发布用户。
 - `DFLEGACY_ALLOW_HTTP_API`：默认空；仅受信 HTTP Gitea 实例设为 `true`。该值不改变 Registry TLS 校验。
+- `DFLEGACY_ALLOW_HTTP_REGISTRY`：默认空；仅对明确使用 HTTP 的 Registry 设为 `true`。该值只给本次 Skopeo 登录、检查和复制添加对应 TLS 选项，不修改 Docker 全局设置。
+
+本机 Windows + Docker Linux Runner 的部署、启动/停止与持久卷约定见[部署说明](../deploy/gitea-runners/README.md)。
 
 仅发布任务使用 secret `DFLEGACY_REGISTRY_TOKEN`，限制为必要包写权限。Release 使用内建 `GITEA_TOKEN`；Gitea 1.26 job 指定 `code: read`、`releases: write` 与 `packages: write`，且仍受仓库/组织最大权限限制。测试任务只读。权限与 fork 限制见 [官方 job token 文档](https://docs.gitea.com/1.26/usage/actions/token-permissions/)。Registry 是否接受该实例的 token、HTTPS 与 push 需接入时实际验证；工作流采用独立最小权限 Registry token，不复用个人全权限凭据。
 
