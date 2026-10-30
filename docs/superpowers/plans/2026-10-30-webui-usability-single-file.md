@@ -52,12 +52,12 @@
 
 **Files:** Launcher csproj/installer/default template; Manager exporter; `tools/release/{bundle.py,release.py,ci.py,tests/test_release.py}`; `tests/DFLegacy.Manager.Tests/{Program,docker_smoke.py}`; `.gitea/workflows/release.yaml`, Dockerfile as needed, deployment instructions.
 
-**Interfaces:** release `check_app(...)` understands and verifies single-file bundle tables/embedded deps/runtime config/runtime RID; optional legacy fixture format remains strictly validated. `ExportAsync("client",...)` and compatible old aliases emit the same root player layout; defaults embedded in Launcher.
+**Interfaces:** release `check_app(...)` understands and verifies single-file bundle tables/embedded deps/runtime config/runtime RID; loose main-assembly layouts are rejected, including fixtures. `ExportAsync("client",...)` and compatible old aliases emit the same root player layout; defaults embedded in Launcher.
 
-- [ ] Add/run RED bundle-format/real-publish tests and ZIP contract tests: apphost stub, missing/mismatched embedded dependency, compressed-entry bounds, root launcher+patch, no Config.ini, no credentials, DNF.exe relative path, preserve existing INI on installation.
-- [ ] Publish with `PublishSingleFile=true`, `IncludeNativeLibrariesForSelfExtract=true`, `DebugType=embedded`, no trimming/AOT. Parse actual official .NET bundle format rather than trust arbitrary sidecars; verify embedded deps and RID/native/WPF files. Include the same options in Windows client build; keep external web/config content and native bridge working.
-- [ ] Embed default INI in Launcher; preserve existing config when installing. Export a single root ZIP; update UI/docs/test fixtures and Docker smoke to the new contract. Maintain immutable identity/hash/path safeguards.
-- [ ] Run Manager and Launcher suites, all release tooling tests, actual Windows single-file Manager/Server/Launcher lifecycle and Launcher installation with nonexistent DOTNET_ROOT. Linux final package/container lifecycle and all five RID archive checks are the mandatory actual CI acceptance in Task 4. Commit `feat: ship compact single-file server and player packages`.
+- [x] Add/run RED bundle-format/real-publish tests and ZIP contract tests: apphost stub, missing/mismatched embedded dependency, compressed-entry bounds, root launcher+patch, no Config.ini, no credentials, DNF.exe relative path, preserve existing INI on installation.
+- [x] Publish with `PublishSingleFile=true`, `IncludeNativeLibrariesForSelfExtract=true`, `DebugType=embedded`, no trimming/AOT. Parse actual official .NET bundle format rather than trust arbitrary sidecars; verify embedded deps and RID/native/WPF files. Include the same options in Windows client build; keep external web/config content and native bridge working.
+- [x] Embed default INI in Launcher; preserve existing config when installing. Export a single root ZIP; update UI/docs/test fixtures and Docker smoke to the new contract. Maintain immutable identity/hash/path safeguards.
+- [x] Run Manager and Launcher suites, all release tooling tests, actual Windows single-file Manager/Server/Launcher lifecycle and Launcher installation with nonexistent DOTNET_ROOT. Linux final package/container lifecycle and all five RID archive checks are the mandatory actual CI acceptance in Task 4. Commit `feat: ship compact single-file server and player packages`.
 
 ### Task 4: Review, CI and immutable release publication
 
@@ -65,7 +65,7 @@
 
 **Interfaces:** existing Gitea workflow, registry private owner, release verification scripts; user main dirty-file inventory must remain byte-for-byte unchanged.
 
-- [ ] Run complete required local gates; dispatch one fresh whole-branch review using requesting-code-review. Resolve Critical/Important findings with RED→GREEN tests and a full green suite; record rulings/minors in the ledger.
+- [x] Run complete required local gates; dispatch one fresh whole-branch review using requesting-code-review. Resolve Critical/Important findings with RED→GREEN tests and a full green suite; record rulings/minors in the ledger.
 - [ ] Fast-forward main preserving the original tracked/untracked inventory; push authorized changes and temporarily resume both registered runners. Wait for actual required jobs and publication; fix any discovered integration failure with a regression before republishing a new immutable version.
 - [ ] Independently download remote attachments and verify archives, OCI manifest/config digests and private authorization; inspect actual ZIP contents/file counts and final Windows/Linux behavior evidence.
 - [ ] Pause runners again, preserve CI evidence outside worktree, finish report and final communication with release link and actual platform verification limits. Commit `docs: record compact release validation` as appropriate; documentation-only CI need not republish indefinitely.

@@ -120,13 +120,20 @@ class ClientNavigationTests(unittest.TestCase):
         self.assertEqual(len(lines),1,"only the final result may be printed")
         return code,json.loads(lines[0])
 
+    def wait_for_command(self):
+        path = self.directory / f"dfdebug-navigation-{PID}.bin"
+        deadline = time.monotonic() + 1
+        while True:
+            try:
+                return self.api.parse_request(path.read_bytes())
+            except (FileNotFoundError, PermissionError):
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(.005)
+
     def native_reply(self,status="requested",*,change_snapshot=None,change_response=None,delay=.025):
         def writer():
-            path=self.directory/f"dfdebug-navigation-{PID}.bin"
-            end=time.monotonic()+1
-            while not path.exists() and time.monotonic()<end:time.sleep(.005)
-            if not path.exists():return
-            request=self.api.parse_request(path.read_bytes());time.sleep(delay)
+            request=self.wait_for_command();time.sleep(delay)
             if change_snapshot:
                 value=deepcopy(self.snapshot);value.update(sequence=2,captured_tick_ms=NOW)
                 change_snapshot(value);self.write_json(self.snapshot_path,value)
@@ -224,11 +231,7 @@ class ClientNavigationTests(unittest.TestCase):
 
     def accepted_then(self, *, destination_changed=False, minimap_result=False, ack_tick=NOW-10):
         def writer():
-            command=self.directory/f"dfdebug-navigation-{PID}.bin"
-            deadline=time.monotonic()+1
-            while not command.exists() and time.monotonic()<deadline:time.sleep(.005)
-            if not command.exists():return
-            request=self.api.parse_request(command.read_bytes())
+            request=self.wait_for_command()
             result=self.directory/f"dfdebug-navigation-{PID}.json"
             value=response(request)
             value["tick_ms"]=ack_tick
@@ -271,6 +274,27 @@ class ClientNavigationTests(unittest.TestCase):
         code,result=self.invoke()
         self.assertEqual(code,2);self.assertEqual(result["status"],"interrupted")
         self.assertEqual(result["reason"],"destination_changed")
+
+    def assert_command_read_denial_recovers(self, scenario):
+        original = Path.read_bytes
+        command = self.directory / f"dfdebug-navigation-{PID}.bin"
+        denied = []
+        def read(path):
+            if path == command and not denied:
+                denied.append(path)
+                raise PermissionError("transient Windows command sharing violation")
+            return original(path)
+        with patch.object(Path, "read_bytes", read):
+            scenario()
+        self.assertEqual(denied, [command])
+
+    def test_native_reply_recovers_transient_command_open_denial(self):
+        self.assert_command_read_denial_recovers(
+            self.test_accepted_is_explicit_and_does_not_claim_arrival)
+
+    def test_post_ack_reply_recovers_transient_command_open_denial(self):
+        self.assert_command_read_denial_recovers(
+            self.test_minimap_result_overwrite_and_post_ack_target_change_interrupts)
 
     def test_transient_snapshot_read_failure_retries_with_fresh_identity(self):
         original=self.api.state.load_snapshot
