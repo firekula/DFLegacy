@@ -54,6 +54,14 @@ namespace dfl::client_test_control
             ||(r.operation>=3&&(r.targetId<=0||r.targetId>65535)))return "invalid_target";
         return nullptr;
     }
+    const char* CompletePlayerTeleport(const PlayerTeleportOperations& ops,std::uint32_t actor,
+        std::int32_t x,std::int32_t y,bool& touched,std::size_t& applied) noexcept
+    {
+        if(!ops.set||!ops.publish)return "native_position_publication_unavailable";
+        if(!ops.set(ops.context,actor,x,y,touched))return "native_position_failed";
+        applied=1;
+        return ops.publish(ops.context,actor)?nullptr:"native_position_publication_failed";
+    }
     bool ReadPositionBinding(const client_state::Reader& r,std::uint32_t actor,PositionBinding& out) noexcept
     {
         auto read=[&](std::uint32_t base,std::uint32_t offset,void* to,std::size_t n) noexcept

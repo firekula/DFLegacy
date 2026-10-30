@@ -28,6 +28,7 @@ namespace dfl::client_party
         std::string ExportedStateKey,ExportedResultJson;
         std::uint64_t LastStateExportTick=0;
         Pending PreviousPrompt{};
+        const char* NativeRequestFailure=nullptr;
         struct Result { Request request{};const char* status="rejected";const char* reason="unknown";std::uint64_t tick=0; };
         struct Publication
         {
@@ -89,6 +90,7 @@ namespace dfl::client_party
         }
         bool NativeRequest(void*,const Request& request) noexcept
         {
+            NativeRequestFailure=ReadRequestFailure(Native,request);
             __try
             {
                 using Function=bool (__cdecl*)(std::uint32_t);
@@ -266,7 +268,9 @@ namespace dfl::client_party
         if(have)
         {
             const Operations ops{nullptr,&Live,&NativeRequest,&NativeAccept,&NativeReject};
+            NativeRequestFailure=nullptr;
             const char* error=Perform(request,snapshot,Game.pending,Now(),ConsumedId,ConsumedPrompt,ops,SessionFloor);
+            if(error&&std::strcmp(error,"native_action_failed")==0&&NativeRequestFailure)error=NativeRequestFailure;
             Game.result={request,error?"rejected":"dispatched",error?error:(request.operation==1?"native_request_sent":
                 (request.operation==2?"native_accept_callback":"native_reject_sent")),Now()};Game.haveResult=true;
         }

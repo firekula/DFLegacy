@@ -87,5 +87,29 @@ int RunClientTestControlTests()
      Check(ReadPositionBinding(rd,0x10000,p)&&p.controller==0x30000&&p.vector==0x40000,"verified normal vector binding accepted");
      m.Put(0x50004U,0x123456U);Check(!ReadPositionBinding(rd,0x10000,p),"foreign vector setter rejected before any call");
      m.Put(0x50004U,0x4736B0U);m.Put(0x30078U,0x60000U);m.Put(0x3007CU,static_cast<unsigned char>(1));Check(!ReadPositionBinding(rd,0x10000,p),"external provider coordinates rejected");}
+    {
+        struct NativePosition
+        {
+            std::uint32_t actor=0;int x=0,y=0,sets=0,publications=0;bool setOkay=true,publishOkay=true;
+            static bool Set(void* p,std::uint32_t actor,int x,int y,bool& touched) noexcept
+            {auto& s=*static_cast<NativePosition*>(p);++s.sets;if(!s.setOkay)return false;s.actor=actor;s.x=x;s.y=y;touched=true;return true;}
+            static bool Publish(void* p,std::uint32_t actor) noexcept
+            {auto& s=*static_cast<NativePosition*>(p);++s.publications;return s.publishOkay&&s.actor==actor&&s.x==700&&s.y==240;}
+        } native;
+        PlayerTeleportOperations ops{&native,&NativePosition::Set,&NativePosition::Publish};
+        bool touched=false;std::size_t applied=0;
+        Check(!CompletePlayerTeleport(ops,0x10000,700,240,touched,applied)&&native.publications==1&&touched&&applied==1,
+            "player teleport publishes the confirmed new position before reporting complete");
+        native={};native.publishOkay=false;touched=false;applied=0;
+        const auto* error=CompletePlayerTeleport(ops,0x10000,700,240,touched,applied);
+        Check(error&&std::strcmp(error,"native_position_publication_failed")==0&&touched&&applied==1,
+            "publication failure retains evidence of the local mutation for partial status");
+        native={};native.setOkay=false;touched=false;applied=0;
+        Check(CompletePlayerTeleport(ops,0x10000,700,240,touched,applied)&&native.publications==0&&!touched&&applied==0,
+            "failed setter never publishes a stale position");
+        native={};ops.publish=nullptr;touched=false;applied=0;
+        Check(CompletePlayerTeleport(ops,0x10000,700,240,touched,applied)&&native.sets==0&&!touched,
+            "missing publication path rejects before changing the player");
+    }
     std::printf("Client test control tests: %d failures\n",failures);return failures;
 }

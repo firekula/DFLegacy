@@ -1,0 +1,727 @@
+{
+  "cases": [
+    {
+      "index": 0,
+      "uid": 1,
+      "x": 560,
+      "y": 282,
+      "result": {
+        "status": "synchronized",
+        "native": {
+          "schema": "dfl-client-test-control/v1",
+          "pid": 64416,
+          "process_started_filetime": 134377964491424926,
+          "request_id": 134377967374220844,
+          "uid": 1,
+          "generation": 6,
+          "actor_token": "0x18054FD8",
+          "map_token": "0x18F069C8",
+          "user_token": "0x17DCFE08",
+          "operation": 1,
+          "target_id": 1,
+          "x": 560,
+          "y": 282,
+          "reserved": 0,
+          "session_nonce": 9755132442770582265,
+          "run_id": 639289199333183999,
+          "tick_ms": 436367921,
+          "status": "applied",
+          "reason": "native_position_publication_requested",
+          "applied_count": 1,
+          "server_committed": false,
+          "persistence_verified": false
+        },
+        "run_id": 639289199333183999,
+        "session_nonce": 9755132442770582265,
+        "room_generation": 1,
+        "request_id": 134377967374220844,
+        "synchronization": {
+          "complete": true,
+          "clients": {
+            "1": {
+              "position": {
+                "x": 560,
+                "y": 282,
+                "z": 0
+              },
+              "matched": true
+            },
+            "2": {
+              "position": {
+                "x": 560,
+                "y": 282,
+                "z": 0
+              },
+              "matched": true
+            },
+            "4": {
+              "position": {
+                "x": 560,
+                "y": 282,
+                "z": 0
+              },
+              "matched": true
+            },
+            "3": {
+              "position": {
+                "x": 560,
+                "y": 282,
+                "z": 0
+              },
+              "matched": true
+            }
+          }
+        }
+      },
+      "after": {
+        "A": {
+          "pid": 64416,
+          "process_started_filetime": 134377964491424926,
+          "sequence": 1062,
+          "position": {
+            "x": 560,
+            "y": 282,
+            "z": 0
+          }
+        },
+        "B": {
+          "pid": 66736,
+          "process_started_filetime": 134377964500011514,
+          "sequence": 1056,
+          "position": {
+            "x": 560,
+            "y": 282,
+            "z": 0
+          }
+        },
+        "C": {
+          "pid": 55400,
+          "process_started_filetime": 134377964509855154,
+          "sequence": 1049,
+          "position": {
+            "x": 560,
+            "y": 282,
+            "z": 0
+          }
+        },
+        "D": {
+          "pid": 58452,
+          "process_started_filetime": 134377964519548518,
+          "sequence": 1040,
+          "position": {
+            "x": 560,
+            "y": 282,
+            "z": 0
+          }
+        }
+      }
+    },
+    {
+      "index": 1,
+      "uid": 1,
+      "x": 700,
+      "y": 240,
+      "result": {
+        "status": "synchronized",
+        "native": {
+          "schema": "dfl-client-test-control/v1",
+          "pid": 64416,
+          "process_started_filetime": 134377964491424926,
+          "request_id": 134377967379074877,
+          "uid": 1,
+          "generation": 6,
+          "actor_token": "0x18054FD8",
+          "map_token": "0x18F069C8",
+          "user_token": "0x17DCFE08",
+          "operation": 1,
+          "target_id": 1,
+          "x": 700,
+          "y": 240,
+          "reserved": 0,
+          "session_nonce": 9755132442770582265,
+          "run_id": 639289199333183999,
+          "tick_ms": 436368515,
+          "status": "applied",
+          "reason": "native_position_publication_requested",
+          "applied_count": 1,
+          "server_committed": false,
+          "persistence_verified": false
+        },
+        "run_id": 639289199333183999,
+        "session_nonce": 9755132442770582265,
+        "room_generation": 1,
+        "request_id": 134377967379074877,
+        "synchronization": {
+          "complete": true,
+          "clients": {
+            "1": {
+              "position": {
+                "x": 700,
+                "y": 240,
+                "z": 0
+              },
+              "matched": true
+            },
+            "2": {
+              "position": {
+                "x": 700,
+                "y": 240,
+                "z": 0
+              },
+              "matched": true
+            },
+            "4": {
+              "position": {
+                "x": 700,
+                "y": 240,
+                "z": 0
+              },
+              "matched": true
+            },
+            "3": {
+              "position": {
+                "x": 700,
+                "y": 240,
+                "z": 0
+              },
+              "matched": true
+            }
+          }
+        }
+      },
+      "after": {
+        "A": {
+          "pid": 64416,
+          "process_started_filetime": 134377964491424926,
+          "sequence": 1065,
+          "position": {
+            "x": 700,
+            "y": 240,
+            "z": 0
+          }
+        },
+        "B": {
+          "pid": 66736,
+          "process_started_filetime": 134377964500011514,
+          "sequence": 1059,
+          "position": {
+            "x": 700,
+            "y": 240,
+            "z": 0
+          }
+        },
+        "C": {
+          "pid": 55400,
+          "process_started_filetime": 134377964509855154,
+          "sequence": 1052,
+          "position": {
+            "x": 700,
+            "y": 240,
+            "z": 0
+          }
+        },
+        "D": {
+          "pid": 58452,
+          "process_started_filetime": 134377964519548518,
+          "sequence": 1043,
+          "position": {
+            "x": 700,
+            "y": 240,
+            "z": 0
+          }
+        }
+      }
+    },
+    {
+      "index": 2,
+      "uid": 2,
+      "x": 400,
+      "y": 240,
+      "result": {
+        "status": "synchronized",
+        "native": {
+          "schema": "dfl-client-test-control/v1",
+          "pid": 66736,
+          "process_started_filetime": 134377964500011514,
+          "request_id": 134377967384331000,
+          "uid": 2,
+          "generation": 6,
+          "actor_token": "0x087F4478",
+          "map_token": "0x1786B930",
+          "user_token": "0x0875FAA0",
+          "operation": 1,
+          "target_id": 2,
+          "x": 400,
+          "y": 240,
+          "reserved": 0,
+          "session_nonce": 9755132442770582265,
+          "run_id": 639289199333183999,
+          "tick_ms": 436368921,
+          "status": "applied",
+          "reason": "native_position_publication_requested",
+          "applied_count": 1,
+          "server_committed": false,
+          "persistence_verified": false
+        },
+        "run_id": 639289199333183999,
+        "session_nonce": 9755132442770582265,
+        "room_generation": 1,
+        "request_id": 134377967384331000,
+        "synchronization": {
+          "complete": true,
+          "clients": {
+            "1": {
+              "position": {
+                "x": 400,
+                "y": 240,
+                "z": 0
+              },
+              "matched": true
+            },
+            "2": {
+              "position": {
+                "x": 400,
+                "y": 240,
+                "z": 0
+              },
+              "matched": true
+            },
+            "4": {
+              "position": {
+                "x": 400,
+                "y": 240,
+                "z": 0
+              },
+              "matched": true
+            },
+            "3": {
+              "position": {
+                "x": 400,
+                "y": 240,
+                "z": 0
+              },
+              "matched": true
+            }
+          }
+        }
+      },
+      "after": {
+        "A": {
+          "pid": 64416,
+          "process_started_filetime": 134377964491424926,
+          "sequence": 1067,
+          "position": {
+            "x": 400,
+            "y": 240,
+            "z": 0
+          }
+        },
+        "B": {
+          "pid": 66736,
+          "process_started_filetime": 134377964500011514,
+          "sequence": 1061,
+          "position": {
+            "x": 400,
+            "y": 240,
+            "z": 0
+          }
+        },
+        "C": {
+          "pid": 55400,
+          "process_started_filetime": 134377964509855154,
+          "sequence": 1054,
+          "position": {
+            "x": 400,
+            "y": 240,
+            "z": 0
+          }
+        },
+        "D": {
+          "pid": 58452,
+          "process_started_filetime": 134377964519548518,
+          "sequence": 1046,
+          "position": {
+            "x": 400,
+            "y": 240,
+            "z": 0
+          }
+        }
+      }
+    },
+    {
+      "index": 3,
+      "uid": 3,
+      "x": 600,
+      "y": 260,
+      "result": {
+        "status": "synchronized",
+        "native": {
+          "schema": "dfl-client-test-control/v1",
+          "pid": 55400,
+          "process_started_filetime": 134377964509855154,
+          "request_id": 134377967389594000,
+          "uid": 3,
+          "generation": 6,
+          "actor_token": "0x08713970",
+          "map_token": "0x19EB7EC8",
+          "user_token": "0x087101F0",
+          "operation": 1,
+          "target_id": 3,
+          "x": 600,
+          "y": 260,
+          "reserved": 0,
+          "session_nonce": 9755132442770582265,
+          "run_id": 639289199333183999,
+          "tick_ms": 436369468,
+          "status": "applied",
+          "reason": "native_position_publication_requested",
+          "applied_count": 1,
+          "server_committed": false,
+          "persistence_verified": false
+        },
+        "run_id": 639289199333183999,
+        "session_nonce": 9755132442770582265,
+        "room_generation": 1,
+        "request_id": 134377967389594000,
+        "synchronization": {
+          "complete": true,
+          "clients": {
+            "1": {
+              "position": {
+                "x": 600,
+                "y": 260,
+                "z": 0
+              },
+              "matched": true
+            },
+            "2": {
+              "position": {
+                "x": 600,
+                "y": 260,
+                "z": 0
+              },
+              "matched": true
+            },
+            "4": {
+              "position": {
+                "x": 600,
+                "y": 260,
+                "z": 0
+              },
+              "matched": true
+            },
+            "3": {
+              "position": {
+                "x": 600,
+                "y": 260,
+                "z": 0
+              },
+              "matched": true
+            }
+          }
+        }
+      },
+      "after": {
+        "A": {
+          "pid": 64416,
+          "process_started_filetime": 134377964491424926,
+          "sequence": 1069,
+          "position": {
+            "x": 600,
+            "y": 260,
+            "z": 0
+          }
+        },
+        "B": {
+          "pid": 66736,
+          "process_started_filetime": 134377964500011514,
+          "sequence": 1063,
+          "position": {
+            "x": 600,
+            "y": 260,
+            "z": 0
+          }
+        },
+        "C": {
+          "pid": 55400,
+          "process_started_filetime": 134377964509855154,
+          "sequence": 1056,
+          "position": {
+            "x": 600,
+            "y": 260,
+            "z": 0
+          }
+        },
+        "D": {
+          "pid": 58452,
+          "process_started_filetime": 134377964519548518,
+          "sequence": 1048,
+          "position": {
+            "x": 600,
+            "y": 260,
+            "z": 0
+          }
+        }
+      }
+    },
+    {
+      "index": 4,
+      "uid": 4,
+      "x": 500,
+      "y": 230,
+      "result": {
+        "status": "synchronized",
+        "native": {
+          "schema": "dfl-client-test-control/v1",
+          "pid": 58452,
+          "process_started_filetime": 134377964519548518,
+          "request_id": 134377967394347697,
+          "uid": 4,
+          "generation": 6,
+          "actor_token": "0x086C9840",
+          "map_token": "0x1AE0EAC8",
+          "user_token": "0x085F9AA0",
+          "operation": 1,
+          "target_id": 4,
+          "x": 500,
+          "y": 230,
+          "reserved": 0,
+          "session_nonce": 9755132442770582265,
+          "run_id": 639289199333183999,
+          "tick_ms": 436369984,
+          "status": "applied",
+          "reason": "native_position_publication_requested",
+          "applied_count": 1,
+          "server_committed": false,
+          "persistence_verified": false
+        },
+        "run_id": 639289199333183999,
+        "session_nonce": 9755132442770582265,
+        "room_generation": 1,
+        "request_id": 134377967394347697,
+        "synchronization": {
+          "complete": true,
+          "clients": {
+            "1": {
+              "position": {
+                "x": 500,
+                "y": 230,
+                "z": 0
+              },
+              "matched": true
+            },
+            "2": {
+              "position": {
+                "x": 500,
+                "y": 230,
+                "z": 0
+              },
+              "matched": true
+            },
+            "4": {
+              "position": {
+                "x": 500,
+                "y": 230,
+                "z": 0
+              },
+              "matched": true
+            },
+            "3": {
+              "position": {
+                "x": 500,
+                "y": 230,
+                "z": 0
+              },
+              "matched": true
+            }
+          }
+        }
+      },
+      "after": {
+        "A": {
+          "pid": 64416,
+          "process_started_filetime": 134377964491424926,
+          "sequence": 1072,
+          "position": {
+            "x": 500,
+            "y": 230,
+            "z": 0
+          }
+        },
+        "B": {
+          "pid": 66736,
+          "process_started_filetime": 134377964500011514,
+          "sequence": 1066,
+          "position": {
+            "x": 500,
+            "y": 230,
+            "z": 0
+          }
+        },
+        "C": {
+          "pid": 55400,
+          "process_started_filetime": 134377964509855154,
+          "sequence": 1059,
+          "position": {
+            "x": 500,
+            "y": 230,
+            "z": 0
+          }
+        },
+        "D": {
+          "pid": 58452,
+          "process_started_filetime": 134377964519548518,
+          "sequence": 1050,
+          "position": {
+            "x": 500,
+            "y": 230,
+            "z": 0
+          }
+        }
+      }
+    }
+  ],
+  "three_recipients_source": "evidence-blockers-v9/full-publication-three-recipients.json",
+  "three_recipients": {
+    "A": [],
+    "B": [
+      {
+        "accepted": {
+          "serial": 464,
+          "tick_ms": 437106187,
+          "counter_us": 437106221164,
+          "thread": 44540,
+          "context_token": 432533536,
+          "buffer_token": 11884392,
+          "event_kind": "accepted",
+          "frame_token": 1766828,
+          "native_gate": null,
+          "provider_buffer_match": false,
+          "length": 70,
+          "captured_bytes": 70,
+          "truncated": false,
+          "hex": "01040031f2e0e8110101001101010000001000000000000c4400008d430000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+        },
+        "next_event": {
+          "serial": 465,
+          "tick_ms": 437106187,
+          "counter_us": 437106221164,
+          "thread": 44540,
+          "context_token": 432533536,
+          "buffer_token": 0,
+          "event_kind": "gp4_movement_entered",
+          "frame_token": 1766828,
+          "native_gate": {
+            "actor_token": 118432432,
+            "controller_token": 138159400,
+            "movement_flags": 16,
+            "object_kind": 273,
+            "object_uid": 1,
+            "player_kind": 273,
+            "player_uid": 1,
+            "room_x": 0,
+            "room_y": 0
+          },
+          "provider_buffer_match": false,
+          "length": 0,
+          "captured_bytes": 0,
+          "truncated": false,
+          "hex": ""
+        }
+      }
+    ],
+    "C": [
+      {
+        "accepted": {
+          "serial": 473,
+          "tick_ms": 437106187,
+          "counter_us": 437106217033,
+          "thread": 31908,
+          "context_token": 153391136,
+          "buffer_token": 11884392,
+          "event_kind": "accepted",
+          "frame_token": 1766828,
+          "native_gate": null,
+          "provider_buffer_match": false,
+          "length": 70,
+          "captured_bytes": 70,
+          "truncated": false,
+          "hex": "01040031f2e0e8110101001101010000001000000000000c4400008d430000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+        },
+        "next_event": {
+          "serial": 474,
+          "tick_ms": 437106187,
+          "counter_us": 437106217033,
+          "thread": 31908,
+          "context_token": 153391136,
+          "buffer_token": 0,
+          "event_kind": "gp4_movement_entered",
+          "frame_token": 1766828,
+          "native_gate": {
+            "actor_token": 145741808,
+            "controller_token": 138199824,
+            "movement_flags": 16,
+            "object_kind": 273,
+            "object_uid": 1,
+            "player_kind": 273,
+            "player_uid": 1,
+            "room_x": 0,
+            "room_y": 0
+          },
+          "provider_buffer_match": false,
+          "length": 0,
+          "captured_bytes": 0,
+          "truncated": false,
+          "hex": ""
+        }
+      }
+    ],
+    "D": [
+      {
+        "accepted": {
+          "serial": 422,
+          "tick_ms": 437106187,
+          "counter_us": 437106219664,
+          "thread": 72624,
+          "context_token": 156090400,
+          "buffer_token": 11884392,
+          "event_kind": "accepted",
+          "frame_token": 1766828,
+          "native_gate": null,
+          "provider_buffer_match": false,
+          "length": 70,
+          "captured_bytes": 70,
+          "truncated": false,
+          "hex": "01040031f2e0e8110101001101010000001000000000000c4400008d430000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+        },
+        "next_event": {
+          "serial": 423,
+          "tick_ms": 437106187,
+          "counter_us": 437106219664,
+          "thread": 72624,
+          "context_token": 156090400,
+          "buffer_token": 0,
+          "event_kind": "gp4_movement_entered",
+          "frame_token": 1766828,
+          "native_gate": {
+            "actor_token": 147418568,
+            "controller_token": 140837672,
+            "movement_flags": 16,
+            "object_kind": 273,
+            "object_uid": 1,
+            "player_kind": 273,
+            "player_uid": 1,
+            "room_x": 0,
+            "room_y": 0
+          },
+          "provider_buffer_match": false,
+          "length": 0,
+          "captured_bytes": 0,
+          "truncated": false,
+          "hex": ""
+        }
+      }
+    ]
+  },
+  "scope": "Operation1 alone invokes original4C8FE0(controller,true,1) after validated local position. native_position_publication_requested is not a transport acknowledgment; synchronized additionally requires all client observations. Ground relocation and ordinary game movement are unchanged by this testing command fix."
+}

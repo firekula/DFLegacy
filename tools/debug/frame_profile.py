@@ -7,6 +7,7 @@ from pathlib import Path
 from . import client_state as state
 
 PARTS=['state_capture','navigation','party','test_control','overlay_and_content_publish']
+PIPELINE_PARTS=['input_and_original_overlay','text_setup','debug_module','fps_and_memory_format','text_draw']
 COUNTERS=('frames','foreground_frames','unknown_foreground_frames','background_frames',
     'foreground_transition_frames','foreground_intervals','clock_errors','foreground_hook_over15ms',
     'foreground_hook_over50ms','foreground_intervals_over50ms')
@@ -38,8 +39,8 @@ def stats(s):
         'inconsistent_thresholds')
     return s
 
-def validate_profile(value,*,pid,process_started_filetime,now_tick_ms):
-    require(isinstance(value,dict) and value.get('schema')=='dfl-client-frame-profile/v1','unsupported_schema')
+def validate_profile(value,*,pid,process_started_filetime,now_tick_ms,pipeline=False):
+    require(isinstance(value,dict) and value.get('schema')==('dfl-client-frame-pipeline/v1' if pipeline else 'dfl-client-frame-profile/v1'),'unsupported_schema')
     require(state._integer(pid,1,0xffffffff) and state._integer(process_started_filetime,1)
         and state._integer(value.get('pid'),1,0xffffffff) and value['pid']==pid
         and state._integer(value.get('process_started_filetime'),1)
@@ -49,7 +50,7 @@ def validate_profile(value,*,pid,process_started_filetime,now_tick_ms):
         and now_tick_ms-value['captured_tick_ms']<=1500,'stale_profile')
     require(state._integer(value.get('skipped_publications')) and state._integer(value.get('missing_buckets'))
         and state._integer(value.get('unattributed_clock_errors'))
-        and value.get('parts')==PARTS,'bad_header')
+        and value.get('parts')==(PIPELINE_PARTS if pipeline else PARTS),'bad_header')
     total=stats(value.get('total'));require(total['frames']>0,'no_valid_frames')
     require(value['serial']==total['frames']+total['clock_errors']
         and value['unattributed_clock_errors']<=total['clock_errors'],'inconsistent_serial')
@@ -101,15 +102,17 @@ def summarize(value):
         foreground_sampled=s['foreground_frames']>0,foreground_frames=s['foreground_frames'],
         unknown_foreground_frames=s['unknown_foreground_frames'],clock_errors=s['clock_errors'],
         max_foreground_hook_us=s['max_foreground_hook_us'],max_foreground_interval_us=s['max_foreground_interval_us'],
-        maximum_parts_us=dict(zip(PARTS,s['maximum_parts_us'])),
+        maximum_parts_us=dict(zip(value['parts'],s['maximum_parts_us'])),
         foreground_hook_over50ms=s['foreground_hook_over50ms'],foreground_intervals_over50ms=s['foreground_intervals_over50ms'],
         unattributed_clock_errors=value['unattributed_clock_errors'],
         missing_buckets=value['missing_buckets'],retained_completed_windows=len(value['completed_windows']),
-        scope='Existing DebugRender workload; profiler bookkeeping/export excluded. Invocation intervals are not GPU Present or continuous foreground proof.')
+        scope=('IJL performance-overlay call including DebugRender; native work outside this call and profiler overhead excluded. Invocation intervals are not GPU Present or continuous foreground proof.'
+            if value['schema']=='dfl-client-frame-pipeline/v1' else
+            'Existing DebugRender workload; profiler bookkeeping/export excluded. Invocation intervals are not GPU Present or continuous foreground proof.'))
 
-def load_profile(directory,*,pid,process_started_filetime,now_tick_ms=None):
+def load_profile(directory,*,pid,process_started_filetime,now_tick_ms=None,pipeline=False):
     require(state._integer(pid,1,0xffffffff),'bad_pid')
-    path=Path(directory)/f'dfdebug-frame-profile-{pid}.json'
+    path=Path(directory)/f'dfdebug-frame-{"pipeline" if pipeline else "profile"}-{pid}.json'
     try:
         with path.open('rb') as f:raw=f.read(MAX_BYTES+1)
         require(len(raw)<=MAX_BYTES,'oversize_profile')
@@ -118,11 +121,12 @@ def load_profile(directory,*,pid,process_started_filetime,now_tick_ms=None):
         if isinstance(error,ProfileError):raise
         raise ProfileError('unreadable_profile') from error
     return validate_profile(value,pid=pid,process_started_filetime=process_started_filetime,
-        now_tick_ms=state.now_tick_ms() if now_tick_ms is None else now_tick_ms)
+        now_tick_ms=state.now_tick_ms() if now_tick_ms is None else now_tick_ms,pipeline=pipeline)
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--directory',type=Path,required=True)
     p.add_argument('--pid',type=int,required=True);p.add_argument('--process-started-filetime',type=int)
+    p.add_argument('--pipeline',action='store_true',help='Read optional IJL outer-call timings')
     args=p.parse_args(argv)
     try:
         require(state._integer(args.pid,1,0xffffffff),'bad_pid')
@@ -130,7 +134,7 @@ def main(argv=None):
         else:
             require(state._integer(args.process_started_filetime,1),'bad_process_start')
             started=args.process_started_filetime
-        value=load_profile(args.directory,pid=args.pid,process_started_filetime=started)
+        value=load_profile(args.directory,pid=args.pid,process_started_filetime=started,pipeline=args.pipeline)
         print(json.dumps(summarize(value)));return 0
     except (ProfileError,state.SnapshotError) as error:
         print(json.dumps(dict(ok=False,status='invalid',error=error.code)));return 1

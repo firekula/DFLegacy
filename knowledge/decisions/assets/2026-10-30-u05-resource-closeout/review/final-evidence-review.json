@@ -1,0 +1,93 @@
+{
+  "review_status": "pass",
+  "scope": "Read-only audit of five named public-safe evidence summaries, four JPGs, and restoration count projection; no game control, tests, raw-state/account/netdump inspection, or protected-file rehash.",
+  "roles": {
+    "A": {
+      "pid": 32092,
+      "process_started_filetime": 134378136135163666,
+      "actor_token": "0x18173440",
+      "uid": 1,
+      "initial_dead": false,
+      "cli_dead": false,
+      "window_dead": false,
+      "window_rows": 60,
+      "window_tick_span_ms": 11984,
+      "final_dead": false
+    },
+    "B": {
+      "pid": 1872,
+      "process_started_filetime": 134378136144401236,
+      "actor_token": "0x087EF468",
+      "uid": 2,
+      "initial_dead": false,
+      "cli_dead": true,
+      "window_dead": true,
+      "window_rows": 60,
+      "window_tick_span_ms": 11985,
+      "final_dead": true
+    },
+    "C": {
+      "pid": 75336,
+      "process_started_filetime": 134378136155216069,
+      "actor_token": "0x086E7568",
+      "uid": 3,
+      "initial_dead": false,
+      "cli_dead": true,
+      "window_dead": true,
+      "window_rows": 60,
+      "window_tick_span_ms": 11985,
+      "final_dead": true
+    },
+    "D": {
+      "pid": 2056,
+      "process_started_filetime": 134378136166209333,
+      "actor_token": "0x086557A8",
+      "uid": 4,
+      "initial_dead": false,
+      "cli_dead": true,
+      "window_dead": true,
+      "window_rows": 60,
+      "window_tick_span_ms": 11985,
+      "final_dead": true
+    }
+  },
+  "cli_matched_scalar_checks": {
+    "A": 3,
+    "B": 4,
+    "C": 3,
+    "D": 3
+  },
+  "cli_total": 13,
+  "unique_sdk_window_rows": 240,
+  "global_unknown_timeouts": 4,
+  "restoration_recorded_counts": {
+    "restored_files": 14,
+    "protected_files": 8
+  },
+  "findings": [],
+  "boundaries": [
+    "Initial four-role alive evidence is only resource-four-dungeon-initial.json.",
+    "CLI and 12-second window have A alive; B/C/D are dead. No whole-window four-alive claim.",
+    "The window key before holds the ending full snapshots, matching each last row; it is not a starting snapshot.",
+    "A27/A55 require item3037 quantity1 per row and have no matching slot in the bounded witness.",
+    "B51 live use_limit5/use_count0 is an empty-counter path only. Positive/exhausted counters remain fixture/original-byte oracle coverage.",
+    "Four JPGs support scene/death context; B/C/D show revive-coin prompts, not skill tooltips, and do not prove resource scalar pixels.",
+    "Witnesses are bounded same-process research, not SDK history or skill-execution receipts.",
+    "Reported final DLL SHA256 is supplied by coordinator; no deployment binary was read during this evidence-only audit.",
+    "Coordinator reports deployment stopped, Python620 tests/569 subtests with0 skips/exit0, and native focused/full-overlay0; this audit did not rerun tests."
+  ],
+  "coordinator_reported_final_dll_sha256": "2d443011161a943b79be4ed7c02eacafe02f120dc5b0688c142a313d789bbf83",
+  "build_manifest_sha256": "A8B26979FCE2E6B28FAFB0CDF6432B06F9514F7F44BE8E9DB60C4BFA9214C22D",
+  "journal_sha256": "B4FF0CD420E533F88112EA49D1D8D36256CA2A44B33A9FFE3878858CCB1EC736",
+  "evidence_sha256": {
+    "resource-four-dungeon-initial.json": "b8682671ea1c851b8bd12aa526b23cb742729963a2a1de71d5e4cf40d12261e4",
+    "resource-four-live-cli.json": "248e9b9b01e0f28cbe60e32404b3d90d67129d838d79ef07c03ce97a55f629d5",
+    "resource-raw-witnesses.json": "f376feec3ffe1c91aa2b077a045eb6bd90fb49ec529a6710d9722a64071fa846",
+    "resource-twelve-second-window.json": "8ff3cabdc6a871a9c261cbedaa0f64302f07ca0dc56c0beac1308fce99d50771",
+    "resource-four-final-state.json": "6820b50bbb0fa36fdd928d40fd92fcf4d437e464e7c1a701be10525e6e8ede85",
+    "resource-A-final-key-image.jpg": "19e28193d929f2b5e580a77151c62a274546eab06524a0652e0b54569909d671",
+    "resource-B-skill51-hover.jpg": "9fce7013d31d928a1d1c17d9e95617f692980b39b7855b8084b60f09602c14cb",
+    "resource-C-final-key-image.jpg": "98deb2e7eeece3d363462c83972944828d4c40ac54cf299fe65cbb1220252807",
+    "resource-D-final-key-image.jpg": "28397004080fa4a9679b2195e39d231426ac518035df675e34a49b7c2bde21db"
+  }
+}

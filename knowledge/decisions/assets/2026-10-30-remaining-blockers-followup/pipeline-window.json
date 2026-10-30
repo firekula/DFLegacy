@@ -1,0 +1,258 @@
+{
+  "begin": 434420437,
+  "end": 434500609,
+  "results": {
+    "A-callback": {
+      "retained_seconds": 80,
+      "frames": 12018,
+      "foreground_frames": 12018,
+      "max_hook_us": 275,
+      "max_foreground_hook_us": 275,
+      "max_foreground_interval_us": 40908,
+      "events": [],
+      "parts_max_us": [
+        178,
+        107,
+        110,
+        66,
+        212
+      ],
+      "scope": "Per-second windows whose start and last observed frame are inside the explicit timed interval; first partial second excluded, final current second may be partial."
+    },
+    "A-pipeline": {
+      "retained_seconds": 80,
+      "frames": 12018,
+      "foreground_frames": 12018,
+      "max_hook_us": 5212,
+      "max_foreground_hook_us": 5212,
+      "max_foreground_interval_us": 40906,
+      "events": [],
+      "parts_max_us": [
+        4799,
+        5,
+        279,
+        146,
+        1055
+      ],
+      "scope": "Per-second windows whose start and last observed frame are inside the explicit timed interval; first partial second excluded, final current second may be partial."
+    },
+    "B-callback": {
+      "retained_seconds": 80,
+      "frames": 12753,
+      "foreground_frames": 0,
+      "max_hook_us": 263,
+      "max_foreground_hook_us": null,
+      "max_foreground_interval_us": null,
+      "events": [],
+      "parts_max_us": [
+        86,
+        96,
+        88,
+        86,
+        244
+      ],
+      "scope": "Per-second windows whose start and last observed frame are inside the explicit timed interval; first partial second excluded, final current second may be partial."
+    },
+    "B-pipeline": {
+      "retained_seconds": 80,
+      "frames": 12753,
+      "foreground_frames": 0,
+      "max_hook_us": 1037,
+      "max_foreground_hook_us": null,
+      "max_foreground_interval_us": null,
+      "events": [],
+      "parts_max_us": [
+        187,
+        43,
+        268,
+        173,
+        995
+      ],
+      "scope": "Per-second windows whose start and last observed frame are inside the explicit timed interval; first partial second excluded, final current second may be partial."
+    },
+    "C-callback": {
+      "retained_seconds": 80,
+      "frames": 12971,
+      "foreground_frames": 0,
+      "max_hook_us": 293,
+      "max_foreground_hook_us": null,
+      "max_foreground_interval_us": null,
+      "events": [],
+      "parts_max_us": [
+        76,
+        265,
+        128,
+        188,
+        250
+      ],
+      "scope": "Per-second windows whose start and last observed frame are inside the explicit timed interval; first partial second excluded, final current second may be partial."
+    },
+    "C-pipeline": {
+      "retained_seconds": 80,
+      "frames": 12972,
+      "foreground_frames": 0,
+      "max_hook_us": 1064,
+      "max_foreground_hook_us": null,
+      "max_foreground_interval_us": null,
+      "events": [],
+      "parts_max_us": [
+        224,
+        1,
+        294,
+        245,
+        1021
+      ],
+      "scope": "Per-second windows whose start and last observed frame are inside the explicit timed interval; first partial second excluded, final current second may be partial."
+    },
+    "D-callback": {
+      "retained_seconds": 80,
+      "frames": 12722,
+      "foreground_frames": 0,
+      "max_hook_us": 217,
+      "max_foreground_hook_us": null,
+      "max_foreground_interval_us": null,
+      "events": [],
+      "parts_max_us": [
+        61,
+        110,
+        68,
+        44,
+        204
+      ],
+      "scope": "Per-second windows whose start and last observed frame are inside the explicit timed interval; first partial second excluded, final current second may be partial."
+    },
+    "D-pipeline": {
+      "retained_seconds": 80,
+      "frames": 12722,
+      "foreground_frames": 0,
+      "max_hook_us": 949,
+      "max_foreground_hook_us": null,
+      "max_foreground_interval_us": null,
+      "events": [],
+      "parts_max_us": [
+        146,
+        2,
+        220,
+        173,
+        906
+      ],
+      "scope": "Per-second windows whose start and last observed frame are inside the explicit timed interval; first partial second excluded, final current second may be partial."
+    }
+  },
+  "errors": [
+    {
+      "role": "A",
+      "kind": "pipeline",
+      "code": "unreadable_profile",
+      "tick_ms": 434431859
+    },
+    {
+      "role": "C",
+      "kind": "pipeline",
+      "code": "unreadable_profile",
+      "tick_ms": 434439671
+    },
+    {
+      "role": "A",
+      "kind": "callback",
+      "code": "unreadable_profile",
+      "tick_ms": 434454515
+    },
+    {
+      "role": "A",
+      "kind": "pipeline",
+      "code": "unreadable_profile",
+      "tick_ms": 434458859
+    },
+    {
+      "role": "B",
+      "kind": "callback",
+      "code": "unreadable_profile",
+      "tick_ms": 434466796
+    },
+    {
+      "role": "C",
+      "kind": "callback",
+      "code": "unreadable_profile",
+      "tick_ms": 434473359
+    },
+    {
+      "role": "A",
+      "kind": "pipeline",
+      "code": "unreadable_profile",
+      "tick_ms": 434495171
+    }
+  ],
+  "screenshots_unchanged": true,
+  "phases": [
+    {
+      "name": "idle",
+      "start_tick_ms": 434420437,
+      "end_tick_ms": 434432484,
+      "seconds": 12.047000000020489
+    },
+    {
+      "name": "single_destination",
+      "start_tick_ms": 434432484,
+      "end_tick_ms": 434460593,
+      "seconds": 28.10899999999674
+    },
+    {
+      "name": "native_route",
+      "start_tick_ms": 434460593,
+      "end_tick_ms": 434488593,
+      "seconds": 28.0
+    },
+    {
+      "name": "short_ui",
+      "start_tick_ms": 434488593,
+      "end_tick_ms": 434500609,
+      "seconds": 12.01600000000326
+    }
+  ],
+  "outside_window_same_tick": [
+    {
+      "kind": "A-callback",
+      "event": {
+        "serial": 6825,
+        "tick_ms": 434417687,
+        "scene": 1,
+        "hook_us": 41,
+        "foreground_interval_us": 55502,
+        "interval_known": true,
+        "foreground_known": true,
+        "foreground_begin": true,
+        "foreground_end": true,
+        "parts_us": [
+          1,
+          11,
+          5,
+          3,
+          21
+        ]
+      }
+    },
+    {
+      "kind": "A-pipeline",
+      "event": {
+        "serial": 6824,
+        "tick_ms": 434417687,
+        "scene": 1,
+        "hook_us": 433,
+        "foreground_interval_us": 55502,
+        "interval_known": true,
+        "foreground_known": true,
+        "foreground_begin": true,
+        "foreground_end": true,
+        "parts_us": [
+          3,
+          0,
+          43,
+          11,
+          376
+        ]
+      }
+    }
+  ],
+  "scope": "80.172s explicit window; these 80 per-second buckets exclude the first partial second and include a partial final second. Foreground known only at endpoints; GPU Present, native work outside this call and continuous foreground are unobserved."
+}

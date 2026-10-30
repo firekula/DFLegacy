@@ -26,6 +26,14 @@ def fixture():
 class ProfileTests(unittest.TestCase):
     def validate(self,v):return api.validate_profile(v,pid=42,process_started_filetime=123,now_tick_ms=5003)
 
+    def test_outer_pipeline_summary_preserves_measured_section_names(self):
+        v=fixture();v['schema']='dfl-client-frame-pipeline/v1'
+        v['parts']=['input_and_original_overlay','text_setup','debug_module','fps_and_memory_format','text_draw']
+        summary=api.summarize(v)
+        self.assertEqual(summary['maximum_parts_us'],dict(input_and_original_overlay=100,
+            text_setup=200,debug_module=100,fps_and_memory_format=300,text_draw=19300))
+        self.assertIn('IJL',summary['scope'])
+
     def test_known_hook_cost_and_unknown_interval_are_distinct(self):
         v=self.validate(fixture());s=api.summarize(v)
         self.assertTrue(s['foreground_sampled'])

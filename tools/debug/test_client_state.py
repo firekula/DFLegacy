@@ -415,6 +415,53 @@ class ClientStateTests(unittest.TestCase):
             with self.assertRaises(self.api.SnapshotError):
                 self.load()
 
+    def test_skill_resources_are_optional_bound_scalars_and_cli_conditions(self):
+        value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+        value['capabilities'].update(skill_cooldown=True,skill_usable=True)
+        value['me'].update(mp=10,max_mp=100);value['players']=[deepcopy(value['me'])]
+        value['skills']=[dict(id=46,level=1,cooldown_ms=0,cooldown_blocked=False,usable=True,
+            resources=dict(scope='native_manual_precast_resources',mp_cost=6,use_limit=2,use_count=1,items_sufficient=True))]
+        self.write(value);result=self.load()
+        for field,expected in [('mp_cost',6),('use_limit',2),('use_count',1),('items_sufficient',True)]:
+            with self.subTest(field=field):
+                path='skills.0.resources.'+field
+                self.assertEqual(self.api.get_known_field(result,path),expected)
+                self.assertTrue(self.api.match_condition(result,path,expected))
+        value['skills'][0].pop('resources');self.write(value);result=self.load()
+        with self.assertRaises(self.api.UnknownFieldError):self.api.get_known_field(result,'skills.0.resources.mp_cost')
+
+    def test_skill_resources_reject_unproven_scope_domains_and_false_readiness(self):
+        base=fixture();base.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+        base['capabilities'].update(skill_cooldown=True,skill_usable=True)
+        base['me'].update(mp=10,max_mp=100);base['players']=[deepcopy(base['me'])]
+        base['skills']=[dict(id=46,level=1,cooldown_ms=0,cooldown_blocked=False,usable=True,
+            resources=dict(scope='native_manual_precast_resources',mp_cost=6,use_limit=2,use_count=1,items_sufficient=True))]
+        for field,bad in [('scope','global'),('scope',None),('mp_cost',-1),('mp_cost',True),('mp_cost',None),
+                          ('use_limit',-1),('use_limit',None),('use_count',-1),('use_count',2),('use_count',None),
+                          ('items_sufficient',False),('items_sufficient',None)]:
+            with self.subTest(field=field,bad=bad):
+                value=deepcopy(base);value['skills'][0]['resources'][field]=bad;self.write(value)
+                with self.assertRaises(self.api.SnapshotError):self.load()
+        value=deepcopy(base);value['me']['mp']=5;value['players']=[deepcopy(value['me'])];self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+        value=deepcopy(base);value['capabilities']['skill_usable']=False;value['skills'][0]['usable']=None;self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_partial_skill_resources_remain_useful_without_fabricating_readiness(self):
+        value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
+        value['capabilities'].update(skill_cooldown=True,skill_usable=True)
+        value['skills']=[dict(id=46,level=1,cooldown_ms=0,cooldown_blocked=False,usable=None,
+            resources=dict(scope='native_manual_precast_resources',mp_cost=None,use_limit=2,use_count=None,items_sufficient=False))]
+        self.write(value);result=self.load()
+        self.assertEqual(self.api.get_known_field(result,'skills.0.resources.use_limit'),2)
+        self.assertIs(self.api.get_known_field(result,'skills.0.resources.items_sufficient'),False)
+        for field in ['mp_cost','use_count']:
+            with self.assertRaises(self.api.UnknownFieldError):self.api.get_known_field(result,'skills.0.resources.'+field)
+        value['skills'][0]['resources'].update(use_limit=0,use_count=1);self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+        direct=fixture();direct['skills'][0]['resources']=deepcopy(value['skills'][0]['resources'])
+        with self.assertRaises(self.api.UnknownFieldError):self.api.get_known_field(direct,'skills.0.resources.use_count')
+
     def test_v2_skill_state_known_zero_false_and_unknown_are_distinct(self):
         value=fixture();value.update(schema='dfl-client-state/v2',town=None,ui=town_fixture()['ui'])
         value['capabilities'].update(skill_cooldown=True,skill_usable=True)
@@ -491,6 +538,153 @@ class ClientStateTests(unittest.TestCase):
                 value['me'].update(mp=mp,max_mp=maximum);value['players'][0].update(mp=mp,max_mp=maximum)
                 self.write(value);result=self.load();self.assertEqual(result['me']['mp'],mp);self.assertEqual(result['me']['max_mp'],maximum)
         value['players'][0].update(uid=2,actor_token='0x20000000',user_token='0x21000000')
+        self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_v2_dialog_layer_placement_remains_separate_from_global_input(self):
+        value=town_fixture();value['ui']['dialogs']=dict(valid=True,truncated=False,items=[dict(
+            class_id=89,instance_token='0x18006000',root_token='0x18007000',shown_raw=True,input_enabled_raw=True,
+            placement=dict(layer_token='0x18008000',attached=True,order=0,layer_shown_raw=True,layer_input_enabled_raw=False))])
+        self.write(value);result=self.load()
+        self.assertEqual(self.api.get_known_field(result,'ui.dialogs.items.0.placement.order'),0)
+        self.assertFalse(self.api.match_condition(result,'ui.input_blocked',True))
+        for change in ('detached_order','attached_missing','null_layer','order_bound'):
+            bad=deepcopy(value);p=bad['ui']['dialogs']['items'][0]['placement']
+            if change=='detached_order':p['attached']=False
+            elif change=='attached_missing':p['order']=None
+            elif change=='null_layer':p['layer_token']=None
+            else:p['order']=128
+            self.write(bad)
+            with self.subTest(change=change),self.assertRaises(self.api.SnapshotError):self.load()
+        value['ui']['dialogs']['items'][0]['placement'].update(attached=False,order=None);self.write(value)
+        self.assertFalse(self.api.get_known_field(self.load(),'ui.dialogs.items.0.placement.attached'))
+
+    def test_v2_native_keyboard_gate_is_scoped_and_validated(self):
+        value=town_fixture();gate=dict(scope='native_command_checker_type0',actor_token='0x18004000',
+            uid=value['me']['uid'],checker_token='0x18005000',keyboard_lock_level=3,keyboard_suppressed=True)
+        value['ui']['command_input']=gate;self.write(value)
+        result=self.load();self.assertTrue(self.api.get_known_field(result,'ui.command_input.keyboard_suppressed'))
+        self.assertFalse(self.api.match_condition(result,'ui.input_blocked',True))
+        for change in ('scope','uid','zero','null_token','type'):
+            bad=deepcopy(value);g=bad['ui']['command_input']
+            if change=='scope':g['scope']='all_input'
+            elif change=='uid':g['uid']=2
+            elif change=='zero':g['keyboard_lock_level']=0
+            elif change=='null_token':g['checker_token']=None
+            else:g['keyboard_lock_level']=True
+            self.write(bad)
+            with self.subTest(change=change),self.assertRaises(self.api.SnapshotError):self.load()
+        gate.update(keyboard_lock_level=0,keyboard_suppressed=False);self.write(value)
+        status,result=self.invoke('--wait','ui.command_input.keyboard_suppressed=false','--timeout-seconds','0')
+        self.assertEqual(status,0);self.assertEqual(result['status'],'matched')
+
+    def test_mouse_command_exclusion_has_its_own_scope_and_native_operands(self):
+        value=town_fixture();value['ui']['command_input']=dict(scope='native_command_checker_type0',actor_token='0x18004000',
+            uid=1,checker_token='0x18005000',keyboard_lock_level=0,keyboard_suppressed=False,
+            mouse=dict(scope='native_command_checker_type1',lock_level=2,lock_suppressed=True,checker_flag90_raw=False,physical_excluded=True))
+        self.write(value);s=self.load()
+        self.assertTrue(self.api.get_known_field(s,'ui.command_input.mouse.physical_excluded'))
+        self.assertFalse(self.api.get_known_field(s,'ui.command_input.keyboard_suppressed'))
+        for change in ('scope','lock_boolean','flag_type','wrong_lock_predicate','wrong_exclusion'):
+            bad=deepcopy(value);mouse=bad['ui']['command_input']['mouse']
+            if change=='scope':mouse['scope']='world_input'
+            elif change=='lock_boolean':mouse['lock_level']=True
+            elif change=='flag_type':mouse['checker_flag90_raw']=1
+            elif change=='wrong_lock_predicate':mouse['lock_suppressed']=False
+            else:mouse['physical_excluded']=False
+            self.write(bad)
+            with self.subTest(change=change),self.assertRaises(self.api.SnapshotError):self.load()
+        value['ui']['command_input']['mouse'].update(lock_level=0,lock_suppressed=False,checker_flag90_raw=True)
+        self.write(value);self.assertTrue(self.api.get_known_field(self.load(),'ui.command_input.mouse.physical_excluded'))
+        value['ui']['command_input']['mouse']=None;self.write(value)
+        self.assertFalse(self.api.match_condition(self.load(),'ui.command_input.mouse.physical_excluded',False))
+        value['ui']['command_input'].pop('mouse');self.write(value);self.assertFalse(self.api.match_condition(self.load(),'ui.command_input.mouse.physical_excluded',False))
+
+    def test_mouse_button_state_deferral_never_claims_global_blocking(self):
+        value=town_fixture();value['ui']['mouse_button_state']=dict(scope='engine_mouse_button_state',deferred=True)
+        self.write(value);s=self.load();self.assertTrue(self.api.get_known_field(s,'ui.mouse_button_state.deferred'))
+        self.assertFalse(self.api.match_condition(s,'ui.input_blocked',True))
+        for change in ('scope','deferred_type','missing'):
+            bad=deepcopy(value);m=bad['ui']['mouse_button_state']
+            if change=='scope':m['scope']='global_input'
+            elif change=='deferred_type':m['deferred']=1
+            else:m.pop('deferred')
+            self.write(bad)
+            with self.subTest(change=change),self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_eight_dialogs_require_coverage_and_keep_native_layers_separate(self):
+        value=town_fixture();low=dict(class_id=7,instance_token='0x18006000',root_token='0x18007000',shown_raw=True,input_enabled_raw=True,
+            placement=dict(layer_token='0x18008000',attached=True,order=0,layer_shown_raw=True,layer_input_enabled_raw=True))
+        high=deepcopy(low);high.update(class_id=89,instance_token='0x18006100',root_token='0x18007100');high['placement']['layer_token']='0x18009000'
+        value['ui']['dialogs']=dict(valid=True,truncated=False,items=[low,high],covered_class_ids=[7,9,35,37,48,86,89,106])
+        self.write(value);s=self.load();self.assertEqual(self.api.get_known_field(s,'ui.dialogs.items.0.placement.order'),0)
+        self.assertEqual(self.api.get_known_field(s,'ui.dialogs.covered_class_ids.0'),7)
+        for change in ('missing_coverage','wrong_coverage','duplicate_coverage','unknown_class','same_layer_token'):
+            bad=deepcopy(value);d=bad['ui']['dialogs']
+            if change=='missing_coverage':d.pop('covered_class_ids')
+            elif change=='wrong_coverage':d['covered_class_ids']=[35,89]
+            elif change=='duplicate_coverage':d['covered_class_ids']=[7,7,89]
+            elif change=='unknown_class':d['covered_class_ids']=[1,7,89]
+            else:d['items'][1]['placement']['layer_token']=d['items'][0]['placement']['layer_token']
+            self.write(bad)
+            with self.subTest(change=change),self.assertRaises(self.api.SnapshotError):self.load()
+        for cls in (7,9,0x56):
+            single=deepcopy(value);single['ui']['dialogs']['items']=[deepcopy(low)];single['ui']['dialogs']['items'][0]['class_id']=cls;self.write(single)
+            with self.subTest(cls=cls):self.assertEqual(self.api.get_known_field(self.load(),'ui.dialogs.items.0.class_id'),cls)
+
+    def test_dialogs_cannot_claim_conflicting_layer_order_or_flags(self):
+        value=town_fixture();one=dict(class_id=89,instance_token='0x18006000',root_token='0x18007000',
+            shown_raw=True,input_enabled_raw=True,placement=dict(layer_token='0x18008000',attached=True,order=0,
+            layer_shown_raw=True,layer_input_enabled_raw=True))
+        two=deepcopy(one);two.update(instance_token='0x18006100',root_token='0x18007100')
+        value['ui']['dialogs']=dict(valid=True,truncated=False,items=[one,two])
+        for change in ('same_order','flags','different_layer'):
+            bad=deepcopy(value);p=bad['ui']['dialogs']['items'][1]['placement']
+            if change=='flags':p.update(order=1,layer_shown_raw=False)
+            elif change=='different_layer':p.update(order=1,layer_token='0x18009000')
+            self.write(bad)
+            with self.subTest(change=change),self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_cli_summary_exposes_mp_and_identified_party_sources(self):
+        value=town_fixture();value['me'].update(mp=0,max_mp=200,mp_source=dict(actor_token='0x18005000',local=True))
+        value['players']=[deepcopy(value['me'])];self.write(value)
+        status,result=self.invoke();self.assertEqual(status,0)
+        self.assertEqual(result['summary']['me']['mp'],0)
+        self.assertEqual(result['summary']['players'][0]['mp_source'],value['me']['mp_source'])
+
+    def test_v2_town_and_peer_mp_require_explicit_bound_source(self):
+        for town in (False, True):
+            value = town_fixture()
+            if not town:
+                value.update(scene=3, town=None, room=fixture()['room'], capabilities=fixture()['capabilities'])
+                value['me'].update(hp=470, max_hp=470, dead=False)
+            value['me'].update(mp=0,max_mp=200,mp_source=dict(actor_token='0x1800A000' if town else value['me']['actor_token'],local=True))
+            peer=deepcopy(value['me']);peer.update(uid=2,user_token='0x18002000',actor_token='0x18003000',mp=81,
+                mp_source=dict(actor_token='0x18004000' if town else '0x18003000',local=False))
+            value['players']=[deepcopy(value['me']),peer];self.write(value)
+            with self.subTest(town=town):
+                result=self.load();self.assertEqual(self.api.get_known_field(result,'players.1.mp'),81)
+                self.assertEqual(self.api.get_known_field(result,'me.mp'),0)
+            for change in ('missing','wrong_scope','null_token','wrong_dungeon_actor'):
+                if town and change=='wrong_dungeon_actor':continue
+                bad=deepcopy(value);source=bad['players'][1]['mp_source']
+                if change=='missing':bad['players'][1].pop('mp_source')
+                elif change=='wrong_scope':source['local']=True
+                elif change=='null_token':source['actor_token']=None
+                else:source['actor_token']='0x18005000'
+                self.write(bad)
+                with self.subTest(town=town,change=change),self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_mp_source_cannot_belong_to_two_uids(self):
+        value=town_fixture();value['me'].update(mp=1,max_mp=200,mp_source=dict(actor_token='0x18005000',local=True))
+        peer=deepcopy(value['me']);peer.update(uid=2,user_token='0x18002000',actor_token='0x18003000')
+        peer['mp_source']['local']=False;value['players']=[deepcopy(value['me']),peer];self.write(value)
+        with self.assertRaises(self.api.SnapshotError):self.load()
+
+    def test_command_requires_dungeon_me_without_raising_type_error(self):
+        value=town_fixture();value.update(scene=3,me=None,town=None,players=[],room=fixture()['room'])
+        value['ui']['command_input']=dict(scope='native_command_checker_type0',actor_token='0x18004000',uid=1,
+            checker_token='0x18005000',keyboard_lock_level=0,keyboard_suppressed=False)
         self.write(value)
         with self.assertRaises(self.api.SnapshotError):self.load()
 

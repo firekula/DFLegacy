@@ -1,0 +1,64 @@
+{
+  "scope": "Strict from-byte-zero TX TCP frame headers to private channel47001. Bodies remain encrypted; no business-commit inference.",
+  "forbidden": {
+    "create_party": 12,
+    "add_friend": 63,
+    "remove_friend": 64,
+    "send_mail": 97,
+    "extract_attachment": 98
+  },
+  "results": {
+    "A": {
+      "segments": 24,
+      "frames": 24,
+      "mailbox_open_99": 1,
+      "forbidden_counts": {
+        "12": 0,
+        "63": 0,
+        "64": 0,
+        "97": 0,
+        "98": 0
+      },
+      "netdump_sha256": "42fe6c10ee55fb25cd37880186b4f5270ce274908a5f6f00a1247ab260ad96b9"
+    },
+    "B": {
+      "segments": 24,
+      "frames": 24,
+      "mailbox_open_99": 1,
+      "forbidden_counts": {
+        "12": 0,
+        "63": 0,
+        "64": 0,
+        "97": 0,
+        "98": 0
+      },
+      "netdump_sha256": "34cb0bd673e013fa19bd6efa3905f035e40333d3af4e522dc53b8a7fe5d8a1c5"
+    },
+    "C": {
+      "segments": 24,
+      "frames": 24,
+      "mailbox_open_99": 1,
+      "forbidden_counts": {
+        "12": 0,
+        "63": 0,
+        "64": 0,
+        "97": 0,
+        "98": 0
+      },
+      "netdump_sha256": "f0bafaaa86ae6e767a9e50829f68e12c13fe1162bc9436a0ee2e70e8530a5cdf"
+    },
+    "D": {
+      "segments": 26,
+      "frames": 26,
+      "mailbox_open_99": 3,
+      "forbidden_counts": {
+        "12": 0,
+        "63": 0,
+        "64": 0,
+        "97": 0,
+        "98": 0
+      },
+      "netdump_sha256": "ccdc1a22abee2df0673aa29f3d30d66911347ae69d6c55d5104879571cfbdd7c"
+    }
+  }
+}

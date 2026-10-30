@@ -1,0 +1,102 @@
+{
+  "phase": "resource-v1",
+  "status": "stopped",
+  "clients": [
+    {
+      "Role": "A",
+      "Id": 32092,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T06:00:13.5163666Z"
+    },
+    {
+      "Role": "B",
+      "Id": 1872,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_B\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T06:00:14.4401236Z"
+    },
+    {
+      "Role": "C",
+      "Id": 75336,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_C\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T06:00:15.5216069Z"
+    },
+    {
+      "Role": "D",
+      "Id": 2056,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_D\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T06:00:16.6209333Z"
+    }
+  ],
+  "server": {
+    "Role": "server",
+    "Id": 8596,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\u05-final-20261030\\runtime-v1\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-30T06:00:10.5539979Z"
+  },
+  "started_at_utc": "2026-10-30T06:00:10.4403106Z",
+  "stopped_at_utc": "2026-10-30T06:07:04.4140560Z",
+  "bindings": {
+    "A": {
+      "pid": 32092,
+      "process_started_filetime": 134378136135163666,
+      "actor_token": "0x18173440",
+      "uid": 1
+    },
+    "B": {
+      "pid": 1872,
+      "process_started_filetime": 134378136144401236,
+      "actor_token": "0x087EF468",
+      "uid": 2
+    },
+    "C": {
+      "pid": 75336,
+      "process_started_filetime": 134378136155216069,
+      "actor_token": "0x086E7568",
+      "uid": 3
+    },
+    "D": {
+      "pid": 2056,
+      "process_started_filetime": 134378136166209333,
+      "actor_token": "0x086557A8",
+      "uid": 4
+    }
+  },
+  "source_files": [
+    {
+      "path": "src/DFLegacy.Debug/src/client_skill_resources.h",
+      "sha256": "d39a87a0f8d36389a354d6710d65d691bfc803fbabc1d21486137aae1f6c7507"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_skill_state.h",
+      "sha256": "9a5e92bae7dc6e209fb98c032e40851183e8627f03b7629e7ebb7e76fe060c88"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state.cpp",
+      "sha256": "516c6bd37f5886c6dee33aa2675b01b562cb9a1d0e1543f44ad38e2b87045a73"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state.h",
+      "sha256": "eee244b2b6d6337642050636d32527de025188e4176af84eaa9a470730a68e49"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_state_json.cpp",
+      "sha256": "d37de1972c68823c4e790269472260c0cd5c9f839b252188fcdd07d6a5a08d31"
+    },
+    {
+      "path": "tools/debug/client_state.py",
+      "sha256": "60a264d13a31e955860e7752d58fd2690636fb2444e9ee4db045b9c59481bb5e"
+    },
+    {
+      "path": "tools/debug/test_client_state.py",
+      "sha256": "80eb9b6e648cad1e0e0cc04533f5bfed3b6200bea060843a01d8ef74dc09b18f"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_state_tests.cpp",
+      "sha256": "4c07716abeacaa70b3133d3d980bece9436d671c11972095b3ceedde35e809e7"
+    }
+  ],
+  "debug_sha256": "2D443011161A943B79BE4ED7C02EACAFE02F120DC5B0688C142A313D789BBF83",
+  "ijl_sha256": "0103C7DCE1FA8AEA5233D7A02C6E1115F83598A8E3A02EF85AC8834F24B2871A",
+  "build_manifest_sha256": "A8B26979FCE2E6B28FAFB0CDF6432B06F9514F7F44BE8E9DB60C4BFA9214C22D",
+  "private_seed_state_sha256": "B66607B13F407B5A9949A276FF814F54DBC8A28D3162530ED2E4974B2C411F6A"
+}

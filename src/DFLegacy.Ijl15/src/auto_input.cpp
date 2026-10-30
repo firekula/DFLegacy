@@ -1603,8 +1603,8 @@ namespace dfl::auto_input
         bool ParseString(const char*& p, char* out, int cap)
         {
             // The opening quote is already consumed; parses up to the closing
-            // quote. Only \\ and \" exist as escapes; raw control bytes and
-            // anything past the capacity are rejected.
+            // quote. Return escapes reach the existing text/WM_CHAR path;
+            // raw control bytes, other escapes and overflow remain rejected.
             int used = 0;
             while (*p != '"')
             {
@@ -1617,11 +1617,13 @@ namespace dfl::auto_input
                 if (c == '\\')
                 {
                     ++p;
-                    if (*p != '\\' && *p != '"')
+                    if (*p == 'r') decoded='\r';
+                    else if (*p == 'n') decoded='\n';
+                    else if (*p == '\\' || *p == '"') decoded=*p;
+                    else
                     {
                         return false;
                     }
-                    decoded = *p;
                 }
                 else
                 {

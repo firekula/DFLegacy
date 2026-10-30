@@ -985,7 +985,7 @@ bool TestParsePlanRejectsGarbage()
         "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"vk\":13},\"x\"]}",
         "{\"version\":1,\"steps\":[{\"t\":-1,\"op\":\"key\"}]}",
         "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"dur\":-5}]}",
-        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"text\",\"chars\":\"a\\nb\"}]}",
+        "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"text\",\"chars\":\"a\\tb\"}]}",
         "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"vk\":13,\"vk\":14}]}",
         "{\"version\":1,\"steps\":[{\"t\":1,\"op\":\"key\",\"who\":3}]}",
         "{\"version\":1,\"steps\":["
@@ -1003,6 +1003,24 @@ bool TestParsePlanRejectsGarbage()
             return false;  // a rejected plan must not touch the caller's buffer
         }
     }
+    return true;
+}
+
+bool TestTextReturnCharacters()
+{
+    using namespace dfl::auto_input;
+    Step step{};int count=0,version=0;
+    if(!ParsePlan("{\"version\":1,\"steps\":[{\"t\":100,\"op\":\"text\",\"chars\":\"\\r\\n\"}]}",&step,1,&count,&version)
+        || count!=1 || step.text[0]!='\r' || step.text[1]!='\n' || step.text[2]!=0) return false;
+    if(!ArmPlan(&step,count,version,0))return false;
+    Advance(100);if(!(QueryKey(13,0)&0x8000))return false;
+    Advance(140);if(!(QueryKey(13,0)&0x8000))return false;
+    Advance(180);if(QueryKey(13,0)!=0 || !IsFinished())return false;
+    const char* bad[]={
+        "{\"version\":1,\"steps\":[{\"t\":0,\"op\":\"text\",\"chars\":\"\r\"}]}",
+        "{\"version\":1,\"steps\":[{\"t\":0,\"op\":\"text\",\"chars\":\"\\u000d\"}]}",
+        "{\"version\":1,\"steps\":[{\"t\":0,\"op\":\"text\",\"chars\":\"\\0\"}]}"};
+    for(const auto* json:bad)if(ParsePlan(json,&step,1,&count,&version))return false;
     return true;
 }
 
@@ -1330,10 +1348,17 @@ bool TestSyntheticKeyboardStateMerge()
 }
 
 bool TestGroundItemRemovalContext();
+bool TestMotionHorizon();
+bool TestNativeLoopReturnStack();
 bool TestAutoInputDrag();
 
 int main(int argc, char** argv)
 {
+    if(argc==2&&std::strcmp(argv[1],"--auto-input-text-only")==0)return TestTextReturnCharacters()?0:Fail("text Return escapes could not reach the native input timeline");
+    if(argc==2&&std::strcmp(argv[1],"--native-loop-only")==0)return TestNativeLoopReturnStack()?0:1;
+    if(!TestNativeLoopReturnStack())return Fail("native loop return stack failed");
+    if(argc==2&&std::strcmp(argv[1],"--motion-horizon-only")==0)return TestMotionHorizon()?0:1;
+    if(!TestMotionHorizon())return Fail("motion horizon repair failed");
     if (argc == 2 && std::strcmp(argv[1], "--ground-item-removal-only") == 0)
         return TestGroundItemRemovalNotification() && TestGroundItemRemovalContext() ? 0 : 1;
     if (argc == 2 && std::strcmp(argv[1], "--auto-input-drag-only") == 0) return TestAutoInputDrag() ? 0 : 1;
@@ -1458,6 +1483,7 @@ int main(int argc, char** argv)
     {
         return Fail("auto-input JSON subset happy path failed");
     }
+    if (!TestTextReturnCharacters())return Fail("text Return escapes could not reach the native input timeline");
     if (!TestParsePlanRejectsGarbage())
     {
         return Fail("auto-input JSON subset parser accepted invalid input");

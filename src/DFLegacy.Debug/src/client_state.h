@@ -18,6 +18,8 @@ namespace dfl::client_state
         Value<std::uint32_t> uid{};
         std::uint32_t userToken = 0, actorToken = 0, mapToken = 0;
         Value<std::int32_t> hp{}, maxHp{}, mp{}, maxMp{};
+        std::uint32_t mpActorToken = 0;
+        bool mpLocal = false; // Peer values are the receiving client's native observation.
         Value<bool> dead{}, sameMap{}, detached{};
         Position position{};
     };
@@ -32,6 +34,12 @@ namespace dfl::client_state
     {
         std::uint32_t id = 0; std::int32_t level = 0;
         Value<std::int32_t> cooldownMs{};Value<bool> cooldownBlocked{},usable{};
+        struct Resources
+        {
+            bool present=false;
+            Value<std::int32_t> mpCost{},useLimit{},useCount{};
+            Value<bool> itemsSufficient{};
+        } resources{};
     };
     struct Room
     {
@@ -51,10 +59,16 @@ namespace dfl::client_state
         Value<bool> autoMoveActive{};
         Value<std::int32_t> destinationX{}, destinationY{}, directionX{}, directionY{};
     };
+    inline constexpr std::array<std::uint32_t,8> DialogClassIds={7,9,0x23,0x25,0x30,0x56,0x59,0x6A};
     struct Dialog
     {
         std::uint32_t classId = 0, instanceToken = 0, rootToken = 0;
         bool shownRaw = false, inputEnabledRaw = false;
+        struct Placement
+        {
+            bool present=false,attached=false,layerShownRaw=false,layerInputEnabledRaw=false;
+            std::uint32_t layerToken=0,order=0;
+        } placement{};
     };
     struct Dialogs
     {
@@ -72,6 +86,15 @@ namespace dfl::client_state
     };
     struct Ui
     {
+        struct CommandInput
+        {
+            bool present=false;
+            std::uint32_t actorToken=0,checkerToken=0,uid=0;
+            std::int32_t keyboardLockLevel=0;
+            Value<std::int32_t> mouseLockLevel{};
+            Value<bool> mouseFlag90{};
+        } commandInput{};
+        Value<bool> mouseButtonsDeferred{};
         Value<std::int32_t> selectionMode{}, selectorSelected{}, selectorHover{}, countdownState{};
         Value<std::uint32_t> selectorActive{}, menuTargetUid{};
         Value<bool> menuVisible{}, minimapVisible{}, minimapEnabled{};

@@ -37,9 +37,22 @@ int RunFrameProfileRuntimeTests()
         if(GetEnvironmentVariableW(L"DFLEGACY_FRAME_PROFILE_FIXTURE",fixture,MAX_PATH))
             check(CopyFileW(output,fixture,TRUE)!=0,"native profile fixture preserves exact exported bytes");
     }
-    Shutdown();auto size=json.size();{Frame f(1);for(int i=0;i<4;++i)f.Mark();}Export();
+    wchar_t pipelinePath[MAX_PATH]{};
+    swprintf_s(pipelinePath,L"%s\\dfdebug-frame-pipeline-%lu.json",folder,GetCurrentProcessId());
+    check(PipelineEnabled(),"outer pipeline profiling follows explicit opt-in");
+    Sample pipeline=slow;pipeline.beginUs+=100000;pipeline.endUs=pipeline.beginUs+60000;
+    pipeline.parts={100,200,300,59000,400};
+    RecordPipeline(pipeline);LastExport=0;Export();
+    std::ifstream pipelineFile(pipelinePath,std::ios::binary);
+    std::string pipelineJson(std::istreambuf_iterator<char>(pipelineFile),{});pipelineFile.close();
+    check(pipelineJson.find("\"schema\":\"dfl-client-frame-pipeline/v1\"")!=std::string::npos,
+          "outer pipeline has a separate process-bound evidence stream");
+    check(pipelineJson.find("\"parts_us\":[100,200,300,59000,400]")!=std::string::npos,
+          "slow memory query remains attributable outside DebugRender");
+    Shutdown();check(!PipelineEnabled(),"shutdown disables the optional outer producer");
+    auto size=json.size();{Frame f(1);for(int i=0;i<4;++i)f.Mark();}RecordPipeline(pipeline);Export();
     std::ifstream after(output,std::ios::binary);std::string stopped(std::istreambuf_iterator<char>(after),{});after.close();
     check(stopped.size()==size&&stopped==json,"shutdown stops publication without rewriting observations");
-    DeleteFileW(output);RemoveDirectoryW(folder);DeleteFileW(ini);
+    DeleteFileW(pipelinePath);DeleteFileW(output);RemoveDirectoryW(folder);DeleteFileW(ini);
     std::printf("Frame profile IO tests: %d failures\n",failures);return failures;
 }

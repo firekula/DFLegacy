@@ -91,6 +91,8 @@ namespace dfl::frame_profile
     void Initialize(const wchar_t*,const wchar_t*,void*,client_state::Reader) noexcept;
     void Export() noexcept;
     void Shutdown() noexcept;
+    bool PipelineEnabled() noexcept;
+    void RecordPipeline(const Sample&) noexcept;
     class Frame
     {
     public:

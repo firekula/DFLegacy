@@ -12,6 +12,8 @@
 #include "client_party.h"
 #include "client_test_control.h"
 #include "frame_profile.h"
+#include "gameplay_trace.h"
+#include "native_loop_profile.h"
 
 namespace
 {
@@ -64,6 +66,8 @@ namespace
             dfl::client_party::PumpWorker();
             dfl::client_test_control::PumpWorker();
             dfl::frame_profile::Export();
+            dfl::gameplay_trace::Export();
+            dfl::native_loop_profile::Export();
             dfl::debug_window::Content content{};
             AcquireSRWLockShared(&ContentLock); content = Published; ReleaseSRWLockShared(&ContentLock);
             dfl::debug_window::Update(content);
@@ -174,11 +178,15 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     dfl::client_party::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     dfl::client_test_control::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     dfl::frame_profile::Initialize(host->settingsPath, directory, host->gameWindow, dfl::client_state::NativeReader());
+    dfl::gameplay_trace::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
+    dfl::native_loop_profile::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     Worker = CreateThread(nullptr, 0, &ReadSnapshots, nullptr, 0, nullptr);
     if (Worker == nullptr)
     {
         dfl::client_party::Shutdown();
         dfl::frame_profile::Shutdown();
+        dfl::gameplay_trace::Shutdown();
+        dfl::native_loop_profile::Shutdown();
         dfl::client_test_control::Shutdown();
         dfl::client_navigation::Shutdown();
         dfl::client_state::Shutdown();
@@ -197,6 +205,8 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
         WaitForSingleObject(Worker, INFINITE);
         dfl::client_party::Shutdown();
         dfl::frame_profile::Shutdown();
+        dfl::gameplay_trace::Shutdown();
+        dfl::native_loop_profile::Shutdown();
         dfl::client_test_control::Shutdown();
         dfl::client_navigation::Shutdown();
         dfl::client_state::Shutdown();
@@ -206,6 +216,40 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     return 1;
 }
 
+extern "C" int __stdcall DebugPipelineEnabled() noexcept
+{
+    return dfl::frame_profile::PipelineEnabled()?1:0;
+}
+extern "C" int __stdcall DebugGameplayTraceEnabled() noexcept
+{
+    return dfl::gameplay_trace::Enabled()?1:0;
+}
+extern "C" int __stdcall DebugNativeLoopEnabled() noexcept{return dfl::native_loop_profile::Enabled()?1:0;}
+extern "C" void __stdcall DebugRecordNativeLoop(const dfl::debug_api::NativeLoopSample* input) noexcept
+{if(input)dfl::native_loop_profile::Record(*input);}
+extern "C" void __stdcall DebugObserveGameplay(std::uint32_t context,const void* bytes,std::uint32_t length,std::uint32_t provider) noexcept
+{
+    if(provider<=1)dfl::gameplay_trace::Observe(context,bytes,length,provider==1,0);
+}
+extern "C" void __stdcall DebugObserveGameplayV2(std::uint32_t context,const void* bytes,std::uint32_t length,std::uint32_t provider,std::uint32_t frame) noexcept
+{
+    if(provider<=1)dfl::gameplay_trace::Observe(context,bytes,length,provider==1,frame);
+}
+extern "C" void __stdcall DebugObserveMovementGate(const dfl::debug_api::MovementGate* input) noexcept
+{
+    if(input&&input->size==sizeof(*input)&&input->version==1)dfl::gameplay_trace::ObserveGate(*input);
+}
+extern "C" void __stdcall DebugRecordPipeline(const dfl::debug_api::PipelineSample* input) noexcept
+{
+    if(!input||input->size!=sizeof(*input)||input->version!=1||input->foregroundKnown>1
+        ||input->foregroundBegin>1||input->foregroundEnd>1)return;
+    dfl::frame_profile::Sample sample;
+    sample.beginUs=input->beginUs;sample.endUs=input->endUs;sample.tickMs=input->tickMs;sample.scene=input->scene;
+    sample.foregroundKnown=input->foregroundKnown==1;sample.foregroundBegin=input->foregroundBegin==1;
+    sample.foregroundEnd=input->foregroundEnd==1;
+    for(std::size_t i=0;i<sample.parts.size();++i)sample.parts[i]=input->partsUs[i];
+    dfl::frame_profile::RecordPipeline(sample);
+}
 extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexcept
 {
     if (Worker == nullptr || frame == nullptr || frame->size != sizeof(*frame)) return;
@@ -304,6 +348,8 @@ extern "C" int __stdcall DebugShutdown() noexcept
     }
     // A retained native CALL must keep this DLL loaded if restoration fails.
     dfl::frame_profile::Shutdown();
+    dfl::gameplay_trace::Shutdown();
+    dfl::native_loop_profile::Shutdown();
     dfl::client_party::Shutdown();
     dfl::client_test_control::Shutdown();
     if (!dfl::client_navigation::Shutdown()) return 0;

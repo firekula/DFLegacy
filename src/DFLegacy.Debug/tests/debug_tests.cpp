@@ -17,6 +17,38 @@
 namespace
 {
     int Failures = 0;
+    void Check(bool value,const char* message);
+    DWORD ObserverBefore=0,ObserverAfter=0;
+    FARPROC ObserverEntry=nullptr;
+    int CheckObserverAbi(const char* path)
+    {
+        const auto module=LoadLibraryA(path);
+        Check(module!=nullptr,"debug DLL loads for observer ABI check");
+        if(!module)return 1;
+        for(const auto name:{"DebugObserveGameplay","DebugObserveGameplayV2"})
+        {
+            ObserverEntry=GetProcAddress(module,name);
+            Check(ObserverEntry!=nullptr,name);
+            if(!ObserverEntry)continue;
+            const bool v2=std::strcmp(name,"DebugObserveGameplayV2")==0;
+            // Restore ESP explicitly so an incompatible callee is reported,
+            // without corrupting the test runner's own return stack.
+            __asm { mov ObserverBefore,esp }
+            if(v2){__asm { push 0 }}
+            __asm
+            {
+                push 0
+                push 0
+                push 0
+                push 0
+                call ObserverEntry
+                mov ObserverAfter,esp
+                mov esp,ObserverBefore
+            }
+            Check(ObserverBefore==ObserverAfter,"optional observer export preserves its stdcall stack width");
+        }
+        FreeLibrary(module);return Failures?1:0;
+    }
     std::vector<std::wstring> Lines;
     std::vector<const char*> RawLines;
     std::vector<std::string> ExpectedLines;
@@ -45,6 +77,8 @@ namespace
 }
 
 int RunClientStateTests();
+int RunGameplayTraceTests();
+int RunNativeLoopProfileTests();
 int RunFrameProfileTests();
 int RunFrameProfileRuntimeTests();
 int RunTownRouteCatalogTests();
@@ -62,6 +96,9 @@ int RunClientTestControlRuntimeTests();
 
 int main(int argc, char** argv)
 {
+    if(argc==2&&std::strcmp(argv[1],"--native-loop")==0)return RunNativeLoopProfileTests();
+    if(argc==3&&std::strcmp(argv[1],"--gameplay-abi")==0)return CheckObserverAbi(argv[2]);
+    if(argc==2&&std::strcmp(argv[1],"--gameplay-trace")==0)return RunGameplayTraceTests();
     if(argc==2&&std::strcmp(argv[1],"--frame-profile")==0)return RunFrameProfileTests()+RunFrameProfileRuntimeTests();
     if(argc==2&&std::strcmp(argv[1],"--client-test-control")==0)return RunClientTestControlTests()+RunClientTestControlRuntimeTests();
     if (argc == 2 && std::strcmp(argv[1], "--map-feedback") == 0) return RunMapClickFeedbackTests()+RunMapClickFeedbackRuntimeTests();

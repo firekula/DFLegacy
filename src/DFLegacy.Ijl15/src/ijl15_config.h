@@ -28,6 +28,8 @@ namespace dfl::ijl15_config
         // cannot fill the disk.
         int DumpNetworkMaxMegabytes;
         bool EnableDebugOverlay;
+        bool ExportGameplayTrace=false;
+        bool ExportNativeLoopProfile=false;
     };
 
     // Load once from Config.ini beside the client executable. Missing or

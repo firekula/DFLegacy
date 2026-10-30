@@ -29,6 +29,8 @@ namespace dfl::client_party
     bool ReadPending(const client_state::Reader&,std::uint32_t manager,Pending&) noexcept;
     void AssignInvitationSerial(Pending&,Pending& lastObserved,std::uint64_t& nextSerial) noexcept;
     bool ReadLiveContext(const client_state::Reader&,const Request&,std::uint32_t& manager,bool requirePeer) noexcept;
+    // Diagnostic only. A one-member party still counts as a party in ACT1.
+    const char* ReadRequestFailure(const client_state::Reader&,const Request&) noexcept;
     const char* ValidateRequest(const Request&,const client_state::Snapshot&,const Pending&,
                                std::uint64_t now,std::uint64_t consumedId,std::uint64_t consumedPrompt,std::uint64_t sessionFloor=0) noexcept;
     struct Operations

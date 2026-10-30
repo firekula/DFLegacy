@@ -1,0 +1,398 @@
+{
+  "scope": "Uncontrolled preparation/party setup, not the80s timed window. Foreground endpoints only. Includes stale-context command rejection, which was not mistaken for a dispatched mutation.",
+  "profiles": {
+    "A": {
+      "pid": 72500,
+      "process_started_filetime": 134377980394274147,
+      "parts": [
+        "input_and_original_overlay",
+        "text_setup",
+        "debug_module",
+        "fps_and_memory_format",
+        "text_draw"
+      ],
+      "total": {
+        "frames": 8444,
+        "foreground_frames": 0,
+        "unknown_foreground_frames": 0,
+        "background_frames": 8444,
+        "foreground_transition_frames": 0,
+        "foreground_intervals": 0,
+        "clock_errors": 0,
+        "max_hook_us": 7265,
+        "max_foreground_hook_us": null,
+        "max_foreground_interval_us": null,
+        "foreground_hook_over15ms": 0,
+        "foreground_hook_over50ms": 0,
+        "foreground_intervals_over50ms": 0,
+        "maximum_parts_us": [
+          6794,
+          1,
+          486,
+          157,
+          896
+        ]
+      },
+      "slow_events": [],
+      "scope": "IJL performance-overlay call through text draw, including DebugRender and its bookkeeping. Native work outside this call, producer and recorder overhead, GPU Present and continuous foreground are not measured."
+    },
+    "B": {
+      "pid": 44632,
+      "process_started_filetime": 134377980402118659,
+      "parts": [
+        "input_and_original_overlay",
+        "text_setup",
+        "debug_module",
+        "fps_and_memory_format",
+        "text_draw"
+      ],
+      "total": {
+        "frames": 8556,
+        "foreground_frames": 67,
+        "unknown_foreground_frames": 0,
+        "background_frames": 8489,
+        "foreground_transition_frames": 0,
+        "foreground_intervals": 66,
+        "clock_errors": 0,
+        "max_hook_us": 34492,
+        "max_foreground_hook_us": 513,
+        "max_foreground_interval_us": 4417,
+        "foreground_hook_over15ms": 0,
+        "foreground_hook_over50ms": 0,
+        "foreground_intervals_over50ms": 0,
+        "maximum_parts_us": [
+          33931,
+          5,
+          461,
+          78,
+          1318
+        ]
+      },
+      "slow_events": [],
+      "scope": "IJL performance-overlay call through text draw, including DebugRender and its bookkeeping. Native work outside this call, producer and recorder overhead, GPU Present and continuous foreground are not measured."
+    },
+    "C": {
+      "pid": 54932,
+      "process_started_filetime": 134377980415049099,
+      "parts": [
+        "input_and_original_overlay",
+        "text_setup",
+        "debug_module",
+        "fps_and_memory_format",
+        "text_draw"
+      ],
+      "total": {
+        "frames": 9355,
+        "foreground_frames": 27,
+        "unknown_foreground_frames": 0,
+        "background_frames": 9328,
+        "foreground_transition_frames": 0,
+        "foreground_intervals": 26,
+        "clock_errors": 0,
+        "max_hook_us": 1283,
+        "max_foreground_hook_us": 473,
+        "max_foreground_interval_us": 4224,
+        "foreground_hook_over15ms": 0,
+        "foreground_hook_over50ms": 0,
+        "foreground_intervals_over50ms": 0,
+        "maximum_parts_us": [
+          138,
+          7,
+          209,
+          124,
+          1243
+        ]
+      },
+      "slow_events": [],
+      "scope": "IJL performance-overlay call through text draw, including DebugRender and its bookkeeping. Native work outside this call, producer and recorder overhead, GPU Present and continuous foreground are not measured."
+    },
+    "D": {
+      "pid": 53364,
+      "process_started_filetime": 134377980424836620,
+      "parts": [
+        "input_and_original_overlay",
+        "text_setup",
+        "debug_module",
+        "fps_and_memory_format",
+        "text_draw"
+      ],
+      "total": {
+        "frames": 8017,
+        "foreground_frames": 8017,
+        "unknown_foreground_frames": 0,
+        "background_frames": 0,
+        "foreground_transition_frames": 0,
+        "foreground_intervals": 8016,
+        "clock_errors": 0,
+        "max_hook_us": 50215,
+        "max_foreground_hook_us": 50215,
+        "max_foreground_interval_us": 2544472,
+        "foreground_hook_over15ms": 1,
+        "foreground_hook_over50ms": 1,
+        "foreground_intervals_over50ms": 13,
+        "maximum_parts_us": [
+          49655,
+          3,
+          246,
+          109,
+          869
+        ]
+      },
+      "slow_events": [
+        {
+          "serial": 341,
+          "tick_ms": 437753515,
+          "scene": 1,
+          "hook_us": 531,
+          "foreground_interval_us": 2544472,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            71,
+            1,
+            80,
+            11,
+            368
+          ]
+        },
+        {
+          "serial": 2260,
+          "tick_ms": 437762140,
+          "scene": 1,
+          "hook_us": 50215,
+          "foreground_interval_us": 4008,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            49655,
+            3,
+            83,
+            21,
+            453
+          ]
+        },
+        {
+          "serial": 2261,
+          "tick_ms": 437762187,
+          "scene": 1,
+          "hook_us": 358,
+          "foreground_interval_us": 54474,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            2,
+            0,
+            28,
+            6,
+            322
+          ]
+        },
+        {
+          "serial": 2315,
+          "tick_ms": 437762562,
+          "scene": 1,
+          "hook_us": 516,
+          "foreground_interval_us": 153529,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            78,
+            1,
+            48,
+            9,
+            380
+          ]
+        },
+        {
+          "serial": 3389,
+          "tick_ms": 437767953,
+          "scene": 1,
+          "hook_us": 12562,
+          "foreground_interval_us": 246494,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            12064,
+            1,
+            69,
+            12,
+            416
+          ]
+        },
+        {
+          "serial": 3989,
+          "tick_ms": 437771109,
+          "scene": 1,
+          "hook_us": 468,
+          "foreground_interval_us": 192045,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            46,
+            0,
+            45,
+            8,
+            369
+          ]
+        },
+        {
+          "serial": 4265,
+          "tick_ms": 437772484,
+          "scene": 1,
+          "hook_us": 521,
+          "foreground_interval_us": 71926,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            51,
+            1,
+            36,
+            9,
+            424
+          ]
+        },
+        {
+          "serial": 4282,
+          "tick_ms": 437772625,
+          "scene": 1,
+          "hook_us": 368,
+          "foreground_interval_us": 53770,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            2,
+            0,
+            35,
+            8,
+            323
+          ]
+        },
+        {
+          "serial": 5463,
+          "tick_ms": 437778500,
+          "scene": 1,
+          "hook_us": 540,
+          "foreground_interval_us": 81381,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            69,
+            1,
+            65,
+            12,
+            393
+          ]
+        },
+        {
+          "serial": 5789,
+          "tick_ms": 437780375,
+          "scene": 1,
+          "hook_us": 492,
+          "foreground_interval_us": 247939,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            47,
+            1,
+            51,
+            9,
+            384
+          ]
+        },
+        {
+          "serial": 6205,
+          "tick_ms": 437782609,
+          "scene": 1,
+          "hook_us": 11950,
+          "foreground_interval_us": 201467,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            11475,
+            1,
+            60,
+            11,
+            403
+          ]
+        },
+        {
+          "serial": 6389,
+          "tick_ms": 437783640,
+          "scene": 1,
+          "hook_us": 475,
+          "foreground_interval_us": 118987,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            42,
+            1,
+            46,
+            9,
+            377
+          ]
+        },
+        {
+          "serial": 6546,
+          "tick_ms": 437784703,
+          "scene": 1,
+          "hook_us": 602,
+          "foreground_interval_us": 292246,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            89,
+            0,
+            59,
+            14,
+            440
+          ]
+        },
+        {
+          "serial": 7265,
+          "tick_ms": 437788718,
+          "scene": 1,
+          "hook_us": 545,
+          "foreground_interval_us": 306842,
+          "interval_known": true,
+          "foreground_known": true,
+          "foreground_begin": true,
+          "foreground_end": true,
+          "parts_us": [
+            75,
+            0,
+            46,
+            8,
+            416
+          ]
+        }
+      ],
+      "scope": "IJL performance-overlay call through text draw, including DebugRender and its bookkeeping. Native work outside this call, producer and recorder overhead, GPU Present and continuous foreground are not measured."
+    }
+  }
+}

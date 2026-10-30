@@ -1,0 +1,47 @@
+{
+  "clients": {
+    "A": {
+      "pid": 41588,
+      "process_started_filetime": 134378034725184004,
+      "call": "e8d1b8767b",
+      "shared_tail": "85c0748a8b4510",
+      "same_row_edge": "7422",
+      "motion_serial": 4518,
+      "provider_serial": 24196,
+      "debug_log": "debug overlay: passive exception observer; no debug input injection\ndebug.dll loaded; ABI version=2; owned floating window\nmodule bases debug=17780000 ijl15=7BC10000\ndungeon render begin uid=1\ndungeon render complete\ndungeon render begin uid=1\ndungeon render complete\ndungeon render begin uid=1\ndungeon render complete\n"
+    },
+    "B": {
+      "pid": 52008,
+      "process_started_filetime": 134378034733039507,
+      "call": "e8d1b8857b",
+      "shared_tail": "85c0748a8b4510",
+      "same_row_edge": "7422",
+      "motion_serial": 4672,
+      "provider_serial": 24101,
+      "debug_log": "debug overlay: passive exception observer; no debug input injection\ndebug.dll loaded; ABI version=2; owned floating window\nmodule bases debug=7A180000 ijl15=7BD00000\ndungeon render begin uid=2\ndungeon render complete\ndungeon render begin uid=2\ndungeon render complete\ndungeon render begin uid=2\ndungeon render complete\n"
+    },
+    "C": {
+      "pid": 8040,
+      "process_started_filetime": 134378034742214018,
+      "call": "e8d1b88e7b",
+      "shared_tail": "85c0748a8b4510",
+      "same_row_edge": "7422",
+      "motion_serial": 4551,
+      "provider_serial": 24361,
+      "debug_log": "debug overlay: passive exception observer; no debug input injection\ndebug.dll loaded; ABI version=2; owned floating window\nmodule bases debug=7A3F0000 ijl15=7BD90000\ndungeon render begin uid=3\ndungeon render complete\ndungeon render begin uid=3\ndungeon render complete\ndungeon render begin uid=3\ndungeon render complete\n"
+    },
+    "D": {
+      "pid": 37752,
+      "process_started_filetime": 134378034752094960,
+      "call": "e8d1b8977b",
+      "shared_tail": "85c0748a8b4510",
+      "same_row_edge": "7422",
+      "motion_serial": 4558,
+      "provider_serial": 24300,
+      "debug_log": "debug overlay: passive exception observer; no debug input injection\ndebug.dll loaded; ABI version=2; owned floating window\nmodule bases debug=7A660000 ijl15=7BE20000\ndungeon render begin uid=4\ndungeon render complete\ndungeon render begin uid=4\ndungeon render complete\ndungeon render begin uid=4\ndungeon render complete\n"
+    }
+  },
+  "phase": "loop-v5",
+  "build_manifest_sha256": "C38B1176D4E9D499134AE3F9104051FA68B1F01884FAAAC4A9D423353F40EFA8",
+  "journal_sha256": "CE5697266437EE40529714930A9F8A726529ED6630248DE524E9B50A4110F3E0"
+}

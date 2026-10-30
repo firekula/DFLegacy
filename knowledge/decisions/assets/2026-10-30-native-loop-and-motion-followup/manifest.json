@@ -1,0 +1,61 @@
+{
+  "schema": "dfl-evidence-manifest/v1",
+  "date": "2026-10-30",
+  "files": [
+    {
+      "file": "01-A-boss.jpg",
+      "bytes": 434497,
+      "sha256": "2BA9C87CDC915CF0F53D3207D4E14A3A9A9557892BF6586654B013B6A007BD86"
+    },
+    {
+      "file": "02-B-boss.jpg",
+      "bytes": 432748,
+      "sha256": "94D4267189E666540CE6FC678C76C55B34683DF586294B03FE69D7C71F595AA4"
+    },
+    {
+      "file": "03-C-boss.jpg",
+      "bytes": 433175,
+      "sha256": "C0C1DF5FC88AF0AC170E6F2DB07712F0DDB861FE920B14B0412C8793F3E19E12"
+    },
+    {
+      "file": "04-D-boss.jpg",
+      "bytes": 433356,
+      "sha256": "F850F82FC0F0AEB33C00A1AF20A5F48946B2C1D0D08DA3C983E1C2230F833E9C"
+    },
+    {
+      "file": "installed-sites.json",
+      "bytes": 2675,
+      "sha256": "81BC9A25DEC1529764383C42BD909A357B4F17973A1492FCF1314DE6EB348750"
+    },
+    {
+      "file": "motion-provider-window.json",
+      "bytes": 304943,
+      "sha256": "8EF8F4AA589E7C62EDC31130206E61E1E3357512E6167F67183E8DAC05C6232C"
+    },
+    {
+      "file": "restoration.json",
+      "bytes": 3315,
+      "sha256": "893C3467A51AEE908F11EE3C884F46FED56E388EAAE0AF7D9A4C6F0637C38D0B"
+    },
+    {
+      "file": "source-hashes.json",
+      "bytes": 2769,
+      "sha256": "F39618FF2DD66A3D90EEA823E426BA463A92C409E0F6E3927A03704F8C4EAB47"
+    },
+    {
+      "file": "sources.json",
+      "bytes": 944,
+      "sha256": "DD2D50BA5E62A8AC9FA69B0011CBB108FEBD67675627CA939E24E6F5FC245B53"
+    },
+    {
+      "file": "timing-window.json",
+      "bytes": 6893,
+      "sha256": "EEDA424B4E24C7A98974620EF8F280C0B24C592DC4786CE1352835F86E32250F"
+    },
+    {
+      "file": "verification.json",
+      "bytes": 4315,
+      "sha256": "AF42C1C0ECF7405C603093498A97ABCFCFBD5AA1EFD1EA4A200678197A256AF2"
+    }
+  ]
+}

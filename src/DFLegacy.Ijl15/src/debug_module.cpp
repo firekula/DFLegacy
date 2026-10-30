@@ -9,12 +9,30 @@
 #include "debug_module.h"
 #include "ijl15_config.h"
 #include "performance_overlay.h"
+#include "memory_patch.h"
+#include "native_loop_probe.h"
 #include "../../DFLegacy.Debug/include/debug_api.h"
 
 namespace
 {
     HMODULE Module = nullptr;
     dfl::debug_api::Render Draw = nullptr;
+    dfl::debug_api::PipelineEnabled ProfileEnabled=nullptr;
+    dfl::debug_api::RecordPipeline ProfileRecord=nullptr;
+    dfl::debug_api::PipelineEnabled TraceEnabled=nullptr;
+    dfl::debug_api::ObserveGameplayV2 TraceObserve=nullptr;
+    dfl::debug_api::ObserveMovementGate TraceGate=nullptr;
+    bool GameplayProbesInstalled=false;
+    HWND ProfileWindow=nullptr;
+    std::uint32_t ProfileScene=0;
+    std::uint64_t ProfileClock() noexcept
+    {
+        static const auto frequency=[]() noexcept {LARGE_INTEGER f{};return QueryPerformanceFrequency(&f)?f.QuadPart:0LL;}();
+        LARGE_INTEGER now{};
+        if(frequency<=0||!QueryPerformanceCounter(&now)||now.QuadPart<=0)return 0;
+        return static_cast<std::uint64_t>(now.QuadPart/frequency)*1000000
+            +static_cast<std::uint64_t>(now.QuadPart%frequency)*1000000/frequency;
+    }
     bool WasDungeon = false;
     bool Enabled = false;
     bool Attempted = false;
@@ -114,6 +132,90 @@ namespace
 
 namespace dfl::debug_module
 {
+    void __stdcall ObserveAcceptedGameplay(std::uint32_t context,std::uint32_t length,const void* bytes,std::uint32_t frame) noexcept
+    {
+        if(!GameplayProbesInstalled||!TraceEnabled||!TraceObserve||Disabled||!TraceEnabled())return;
+        const auto pointer=reinterpret_cast<std::uintptr_t>(bytes);
+        const bool provider=context<=UINT32_MAX-0x10000C&&pointer==context+0x10000C;
+        TraceObserve(context,bytes,length,provider?1:0,frame);
+    }
+    __declspec(naked) void AcceptedGameplayProbe()
+    {
+        __asm
+        {
+            pushfd
+            pushad
+            mov eax,[ebp+10h]
+            add eax,7
+            push ebp
+            push edi
+            push eax
+            push ebx
+            call ObserveAcceptedGameplay
+            popad
+            popfd
+            // Preserve the original cdecl arguments and return address.
+            push 007927A0h
+            ret
+        }
+    }
+    void __stdcall ObserveMovementEntry(std::uint32_t actor,std::uint32_t controller,std::uint32_t flags,std::uint32_t frame) noexcept
+    {
+        if(!GameplayProbesInstalled||!TraceEnabled||!TraceGate||Disabled||!TraceEnabled())return;
+        __try
+        {
+            debug_api::MovementGate gate{};gate.size=sizeof(gate);gate.version=1;
+            gate.context=*reinterpret_cast<const std::uint32_t*>(0xB5DCE0);
+            gate.frame=frame;gate.actor=actor;gate.controller=controller;gate.flags=flags;
+            gate.objectKind=*reinterpret_cast<const std::uint16_t*>(frame-0x24);
+            gate.objectUid=*reinterpret_cast<const std::uint16_t*>(frame-0x14);
+            gate.playerKind=*reinterpret_cast<const std::uint16_t*>(frame-0x1C);
+            gate.playerUid=*reinterpret_cast<const std::uint16_t*>(frame-0x20);
+            gate.roomX=*reinterpret_cast<const unsigned char*>(frame+0xF);
+            gate.roomY=*reinterpret_cast<const unsigned char*>(frame+0x13);
+            TraceGate(&gate);
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER){/* An unavailable observation never changes dispatch. */}
+    }
+    __declspec(naked) void MovementEntryProbe()
+    {
+        __asm
+        {
+            pushfd
+            pushad
+            mov eax,[esp+28h]
+            push ebp
+            push eax
+            push ecx
+            push edi
+            call ObserveMovementEntry
+            popad
+            popfd
+            push 004C9270h
+            ret
+        }
+    }
+    bool InstallGameplayProbe() noexcept
+    {
+        constexpr unsigned char expected[]={0xE8,0x70,0x38,0,0};
+        constexpr unsigned char movement[]={0xE8,0x3F,0xA0,0xD3,0xFF};
+        __try
+        {
+            if(std::memcmp(reinterpret_cast<const void*>(0x78EF2B),expected,sizeof(expected))!=0
+                ||std::memcmp(reinterpret_cast<const void*>(0x78F22C),movement,sizeof(movement))!=0)return false;
+            if(!memory_patch::WriteRelativeCall(0x78EF2B,reinterpret_cast<std::uintptr_t>(&AcceptedGameplayProbe))
+                ||!memory_patch::WriteRelativeCall(0x78F22C,reinterpret_cast<std::uintptr_t>(&MovementEntryProbe)))
+            {
+                const bool restoredAccepted=memory_patch::WriteBytes(0x78EF2B,expected,sizeof(expected));
+                const bool restoredMovement=memory_patch::WriteBytes(0x78F22C,movement,sizeof(movement));
+                if(!restoredAccepted||!restoredMovement)
+                    OutputDebugStringA("DFLegacy.Ijl15: gameplay probe rollback failed; both observers remain disabled.\n");
+                return false;
+            }
+            GameplayProbesInstalled=true;return true;
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+    }
     bool LoadModule() noexcept
     {
         if (Module != nullptr) return Draw != nullptr;
@@ -148,6 +250,18 @@ namespace dfl::debug_module
         }
         Module = candidate;
         Draw = render;
+        ProfileEnabled=reinterpret_cast<debug_api::PipelineEnabled>(GetProcAddress(candidate,"DebugPipelineEnabled"));
+        ProfileRecord=reinterpret_cast<debug_api::RecordPipeline>(GetProcAddress(candidate,"DebugRecordPipeline"));
+        ProfileWindow=gameWindow;
+        native_loop_probe::Configure(
+            reinterpret_cast<debug_api::PipelineEnabled>(GetProcAddress(candidate,"DebugNativeLoopEnabled")),
+            reinterpret_cast<debug_api::RecordNativeLoop>(GetProcAddress(candidate,"DebugRecordNativeLoop")),gameWindow,&ProfileScene);
+        TraceEnabled=reinterpret_cast<debug_api::PipelineEnabled>(GetProcAddress(candidate,"DebugGameplayTraceEnabled"));
+        TraceObserve=reinterpret_cast<debug_api::ObserveGameplayV2>(GetProcAddress(candidate,"DebugObserveGameplayV2"));
+        TraceGate=reinterpret_cast<debug_api::ObserveMovementGate>(GetProcAddress(candidate,"DebugObserveMovementGate"));
+        // Intermediate/older debug modules lack the gate export. Keep their
+        // observation path disabled while both native calls remain untouched.
+        if(!GameplayProbesInstalled||!TraceObserve||!TraceGate){TraceObserve=nullptr;TraceGate=nullptr;}
         Note("debug.dll loaded; ABI version=2; owned floating window\r\n");
         char bases[120]{};
         _snprintf_s(bases, _TRUNCATE, "module bases debug=%p ijl15=%p\r\n",
@@ -162,6 +276,10 @@ namespace dfl::debug_module
         // Apply runs in IJL15 DllMain. Load debug.dll on the first render,
         // outside the loader lock; never start or wait on workers in DllMain.
         Enabled = ijl15_config::Get().EnableDebugOverlay;
+        // All gameplay dispatch hooks are installed with the other IJL patches,
+        // before the game starts. Never rewrite an executing dispatch call.
+        if(Enabled&&ijl15_config::Get().ExportGameplayTrace&&!InstallGameplayProbe())
+            OutputDebugStringA("DFLegacy.Ijl15: gameplay trace signature mismatch; probe not installed.\n");
         return true;
     }
 
@@ -178,6 +296,7 @@ namespace dfl::debug_module
         debug_api::Frame frame{};
         frame.size = sizeof(frame);
         if (!Capture(frame)) frame.scene = 0;
+        ProfileScene=frame.scene;
         if (frame.scene == 3 && !WasDungeon)
         {
             FILETIME now{};
@@ -200,5 +319,30 @@ namespace dfl::debug_module
             Note("overlay disabled after render exception; gameplay continues\r\n");
         }
         if (frame.scene == 3 && traces++ < 3) Note("dungeon render complete\r\n");
+    }
+    Pipeline::Pipeline() noexcept
+    {
+        if(!ProfileEnabled||!ProfileRecord||Disabled||!ProfileEnabled())return;
+        active=true;sample.size=sizeof(sample);sample.version=1;
+        sample.beginUs=last=ProfileClock();sample.tickMs=GetTickCount64();
+        sample.foregroundKnown=ProfileWindow&&IsWindow(ProfileWindow)?1:0;
+        sample.foregroundBegin=ProfileWindow&&GetForegroundWindow()==ProfileWindow?1:0;
+    }
+    void Pipeline::Mark() noexcept
+    {
+        if(!active||next>=4)return;
+        const auto now=ProfileClock();
+        if(!last||now<last)clockValid=false;else sample.partsUs[next]=now-last;
+        last=now;++next;
+    }
+    Pipeline::~Pipeline() noexcept
+    {
+        if(!active||!ProfileRecord||next!=4)return;
+        sample.endUs=ProfileClock();sample.scene=ProfileScene;
+        sample.foregroundEnd=ProfileWindow&&GetForegroundWindow()==ProfileWindow?1:0;
+        sample.foregroundKnown=sample.foregroundKnown&&ProfileWindow&&IsWindow(ProfileWindow)?1:0;
+        if(!last||sample.endUs<last)clockValid=false;else sample.partsUs[4]=sample.endUs-last;
+        if(!clockValid)sample.endUs=0;
+        ProfileRecord(&sample);
     }
 }

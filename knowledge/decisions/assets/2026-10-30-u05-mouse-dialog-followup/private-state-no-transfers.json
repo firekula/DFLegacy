@@ -1,0 +1,15 @@
+{
+  "accounts_checked": 4,
+  "characters_checked": 7,
+  "friend_blacklist_cash_unchanged": true,
+  "character_fields_unchanged": [
+    "Gold",
+    "Cash",
+    "Inventory",
+    "Equipment",
+    "Warehouse",
+    "AvatarInventory",
+    "CreatureInventory"
+  ],
+  "scope": "Private test clone only; mailbox observation/weakness/last-seen metadata may change. Normal save checked separately by hash."
+}

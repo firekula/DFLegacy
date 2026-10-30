@@ -18,6 +18,10 @@
 #include "countdown_coin.h"
 #include "dungeon_tooltip.h"
 #include "ground_item_removal.h"
+#include "motion_horizon.h"
+#include "native_loop_probe.h"
+#include "motion_test_probe.h"
+#include "provider_probe.h"
 #include "dnf_patches.h"
 #include "d3d8_scaler.h"
 #include "external_string_table.h"
@@ -1254,10 +1258,21 @@ namespace dfl::dnf_patches
                 "DFLegacy.Ijl15: ground item removal repair was not installed.\n");
         }
 
+        if (!dfl::motion_horizon::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: ACT1 inactive-acceleration interpolation repair was not installed.\n");
+
         if (!dfl::debug_module::Install())
         {
             OutputDebugStringA("DFLegacy.Ijl15: debug overlay unavailable; gameplay continues.\n");
         }
+
+        if (!dfl::native_loop_probe::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: native loop timing not installed; original gameplay continues.\n");
+
+        if (!dfl::provider_probe::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: provider observation not installed; original gameplay continues.\n");
+        if (!dfl::motion_test_probe::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: motion-test observation not installed; original gameplay continues.\n");
 
         if (dfl::ijl15_config::Get().EnableAutoInput
             && !dfl::auto_input::Install())

@@ -1,0 +1,196 @@
+{
+  "files": [
+    {
+      "path": "A-party-create.jpg",
+      "bytes": 362163,
+      "sha256": "CE7C974B545538E92963A1269CBB0EB7F718689D2A70337D9966B47D418F690D"
+    },
+    {
+      "path": "B-friend-add.jpg",
+      "bytes": 350200,
+      "sha256": "7CCB5C311CF4387210FA7FE93ADA08CA3C1E1E189D4E31453316DAE05C19C6E3"
+    },
+    {
+      "path": "C-party-create.jpg",
+      "bytes": 359527,
+      "sha256": "329ABF3A4CC30EEF3359E6E1BE36EC8BE86C822C19025A559ACB5992E92AF6D4"
+    },
+    {
+      "path": "closed-sdk-cli-replay.json",
+      "bytes": 57772,
+      "sha256": "065E4AFCBAB83BDC9B7D28521D2FC59DEE0BBCD24182DCE7620D4A06861AF7FE"
+    },
+    {
+      "path": "D-friend-add.jpg",
+      "bytes": 361680,
+      "sha256": "5FCDA6033076D605CC7AD0A5274AC735A033933F6F81A9959F7FFCD3273C8891"
+    },
+    {
+      "path": "D-receive-mail.jpg",
+      "bytes": 385755,
+      "sha256": "3573EDF386CB0DD43E06BAFC254AF94CB9BFC6DE2C3206F0496841BA238EAA26"
+    },
+    {
+      "path": "identity-ledger.json",
+      "bytes": 2485,
+      "sha256": "384156ADC78391C0B7739F51FAF696753AAF4F5C24F8ED5FA80FA1AA29934BBC"
+    },
+    {
+      "path": "native-final-results.json",
+      "bytes": 320,
+      "sha256": "1BD09FD18FE27693A3D117BADEDA0D2EA0B91CDF1A9416E3A8C0AB0C2F6A14C4"
+    },
+    {
+      "path": "native-final.log",
+      "bytes": 754,
+      "sha256": "41203ED3F83526CAD474CC81997206CB462BFF0AA8BACA0C955A19EA6DE5945D"
+    },
+    {
+      "path": "outgoing-header-audit.json",
+      "bytes": 1564,
+      "sha256": "76E5AE065AFDD42398EE6009A8D89E7ED7529CE4F073805DDED66325E7036253"
+    },
+    {
+      "path": "private-state-no-transfers.json",
+      "bytes": 411,
+      "sha256": "1BB1091F4FC750F48F4CDB7C4915069FCE4652D583A6DF659448A221CA0F0078"
+    },
+    {
+      "path": "provenance/closeout_checks.py",
+      "bytes": 4974,
+      "sha256": "6BD658E55F6ADCFA399FF95E136196651D3867095E696E1B70AA5AE377893129"
+    },
+    {
+      "path": "provenance/native_sampler.py",
+      "bytes": 4821,
+      "sha256": "C90CCE17193C0480131B0EACF43C50724D91A77BCC8DAD9AE6255D8F6051D104"
+    },
+    {
+      "path": "provenance/publish.py",
+      "bytes": 11028,
+      "sha256": "FFF4788864381DE9A093B1BB16CEEDAEBACDEC6A4BCBE81502A63AF9DD3B4B39"
+    },
+    {
+      "path": "python-final.log",
+      "bytes": 409138,
+      "sha256": "FDF621292F62149F87D39643FA5084182A8FF8DFC60FC92ADB69FFB3BF34CED4"
+    },
+    {
+      "path": "restoration-final.json",
+      "bytes": 146,
+      "sha256": "7BAFDCDBB78D7ECAB25C944BD2FE6B813C8F8F3131C979FA82E27E5B938F47A4"
+    },
+    {
+      "path": "static/implementation-review.json",
+      "bytes": 5077,
+      "sha256": "EAE0976B56DCCDC7C1AE11AFB80EC1C06FA31635A106AC3204E1FA548959F10D"
+    },
+    {
+      "path": "static/manifest.json",
+      "bytes": 1139,
+      "sha256": "9C409002C6A59B12409727AE8324530BCED908E8A454D31C017BBA2F64983D89"
+    },
+    {
+      "path": "static/native-contract.asm",
+      "bytes": 146383,
+      "sha256": "B2EA8D4384C3C26D6C7D7855EDBE83D8B55E008C98D4F5E382464F17E33F4B13"
+    },
+    {
+      "path": "static/native-ranges.json",
+      "bytes": 28951,
+      "sha256": "FF7B7089244C8A30FE037A16E91FFE94A5D628DC8348B44541E2F49FD8E985CC"
+    },
+    {
+      "path": "static/outer-command-layer.asm",
+      "bytes": 9338,
+      "sha256": "0FA05F6B7E47A735668244CBD92DE824C7D9BA6BD702D9D6F843A6EA1CA94805"
+    },
+    {
+      "path": "static/review-contract.json",
+      "bytes": 7462,
+      "sha256": "425A6AFC6D88CAF8115ECE75F7E620A613D40075D5EB09B530FF982411E00C5F"
+    },
+    {
+      "path": "static/verify_type1_gate.py",
+      "bytes": 1908,
+      "sha256": "A8F9024D06C028AD838A1C52124182239F9B9A0A6168087AB075319B03FCDAFA"
+    },
+    {
+      "path": "ui-A-bootstrap-raw.json",
+      "bytes": 6410,
+      "sha256": "77EC0578228F9BB72349C0A30AE68B90F72AF146D17F2F66E9E7AC7F7A32F4A3"
+    },
+    {
+      "path": "ui-A-mail-icon-native-gate.json",
+      "bytes": 11994,
+      "sha256": "5C2BAA5B0DC0401FF1AD0CC7BC0A536E0F6859A61523A36DF6B732125A895EA2"
+    },
+    {
+      "path": "ui-B-bootstrap-raw.json",
+      "bytes": 5951,
+      "sha256": "19CE9DD4486E1B0CD0A58F7AC9E79EFD39CD00EA35827EED2E5B8B5DF4150E5E"
+    },
+    {
+      "path": "ui-B-mail-native-gate.json",
+      "bytes": 5244,
+      "sha256": "7873FE7E188D27B59E33612DCEF2C4EFBCAFA44D3AD6EAB27F023372AEEDDE31"
+    },
+    {
+      "path": "ui-C-bootstrap-raw.json",
+      "bytes": 6501,
+      "sha256": "4C2D570E881BC71BC6FA0B6CD5E76D43D638FB0BE407C7FC8228CBA95BA0CBAE"
+    },
+    {
+      "path": "ui-C-mail-native-gate.json",
+      "bytes": 5244,
+      "sha256": "121710AF3982191D54C0E8325BE8C6CFA20904829B57E875084B120155180253"
+    },
+    {
+      "path": "ui-D-bootstrap-raw.json",
+      "bytes": 5951,
+      "sha256": "D666EB8B5B7FEB6C1513F372D1AE0046A62BBAE0D1F1262B61FD4A4CE4EE2E9B"
+    },
+    {
+      "path": "ui-D-mail-fine-state.json",
+      "bytes": 3986,
+      "sha256": "C9D3DE11CF3348D646F3A41175B5D6275AE43ABE5D308AD9FABA95516EF7CE41"
+    },
+    {
+      "path": "ui-D-mail-native-gate-fine.json",
+      "bytes": 4846,
+      "sha256": "545A3CADA3C4FC9671EDFE0833E666C27650502BC95E0514C57F9A9DCA97E220"
+    },
+    {
+      "path": "ui-D-mail-native-gate.json",
+      "bytes": 10407,
+      "sha256": "85441D2ACEF4AD30C3CA497DCF71A218BD8535A18B9F156A385DA51F3C15A6B5"
+    },
+    {
+      "path": "ui-four-login-native-gates.json",
+      "bytes": 18398,
+      "sha256": "5E5B9989E74CC8FEE61CA946D8072C1DE3FD0DBDD5402A8C2C4A9BCD7E5CD381"
+    },
+    {
+      "path": "ui-four-mail-button-state.json",
+      "bytes": 82056,
+      "sha256": "058475BFE10E3C3C020EAD53364E7CE4E01AD4DD75B09DD983AA9F50C314118E"
+    },
+    {
+      "path": "ui-four-new-forms-result.json",
+      "bytes": 229107,
+      "sha256": "032729F229572E058483BE46E276FCB243A7E2ACC18A2BB78211FBAE8C8655E2"
+    },
+    {
+      "path": "verification.json",
+      "bytes": 4987,
+      "sha256": "BEBC62A5929B4552B6A1F615C5D2EED41DAB1676565DD5692584241CE126BFF6"
+    }
+  ],
+  "excludes": [
+    "normal save",
+    "private raw state/accounts",
+    "launcher credentials",
+    "raw journals",
+    "raw encrypted netdump"
+  ]
+}

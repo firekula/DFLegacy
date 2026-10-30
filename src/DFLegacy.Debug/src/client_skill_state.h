@@ -1,5 +1,6 @@
 #pragma once
 #include "client_state.h"
+#include "client_skill_resources.h"
 #include <array>
 #include <cmath>
 #include <cstring>
@@ -120,6 +121,20 @@ namespace dfl::client_skill_state
         }
         out=static_cast<std::int32_t>(cost);return true;
     }
+    template<class R> void Resources(R& r,client_skill_resources::InventoryCache& cache,
+                                      const client_state::Player& me,std::uint32_t skill,client_state::Skill& out)
+    {
+        auto& resource=out.resources;resource.present=true;
+        std::int32_t cost=0,limit=0,again=0;
+        if(MpCost(r,me.actorToken,skill,out.id,out.level,cost))resource.mpCost={true,cost};
+        if(LevelInt(r,skill,0x1CC,out.level,limit)&&limit>=0
+            &&LevelInt(r,skill,0x1CC,out.level,again)&&again==limit)
+        {
+            resource.useLimit={true,limit};
+            if(limit)resource.useCount=client_skill_resources::Counter(r,me.actorToken,out.id);
+        }
+        resource.itemsSufficient=client_skill_resources::Items(r,cache,me.actorToken,skill,out.level);
+    }
     template<class R> void Usability(R& r,const client_state::Player& me,std::uint32_t skill,client_state::Skill& out)
     {
         if(me.dead.known&&me.dead.value){out.usable={true,false};return;}
@@ -130,10 +145,14 @@ namespace dfl::client_skill_state
         if(!me.dead.known||me.dead.value||!r.SignedAt(skill,0x2EC,allowed)||!allowed
             ||!me.sameMap.known||!me.sameMap.value||!me.detached.known||me.detached.value
             ||!r.ReadAt(me.actorToken,0x154,mode)||mode==2||!r.Getter(me.actorToken,0x138,0x493880))return;
-        std::int32_t cost=0,limit=0;std::uint32_t begin=0,end=0;
-        if(!me.mp.known||!MpCost(r,me.actorToken,skill,out.id,out.level,cost))return;
-        if(me.mp.value<cost){out.usable={true,false};return;}
-        if(!LevelInt(r,skill,0x1CC,out.level,limit)||limit!=0||!r.ReadAt(skill,0x1BC,begin)||!r.ReadAt(skill,0x1C0,end)||begin!=end)return;
+        const auto& resource=out.resources;
+        if(resource.useLimit.known&&resource.useLimit.value&&resource.useCount.known
+            &&resource.useCount.value>=resource.useLimit.value){out.usable={true,false};return;}
+        if(resource.itemsSufficient.known&&!resource.itemsSufficient.value){out.usable={true,false};return;}
+        if(!me.mp.known||!resource.mpCost.known)return;
+        if(me.mp.value<resource.mpCost.value){out.usable={true,false};return;}
+        if(!resource.useLimit.known||(resource.useLimit.value&&!resource.useCount.known)
+            ||!resource.itemsSufficient.known)return;
         if(out.cooldownBlocked.known&&!out.cooldownBlocked.value)out.usable={true,true};
     }
 }

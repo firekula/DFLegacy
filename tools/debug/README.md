@@ -1,5 +1,7 @@
 # 副本调试覆盖层
 
+当前功能、四端构建与未闭合边界见[2026-10-30交接](../../HANDOFF-2026-10-30.md)。资源／键鼠／八类窗均为有界局部观测；原生循环和运动／provider诊断沿用各自默认关闭开关，不将本次源码归档当作日常部署或U07／U08闭环。
+
 `ijl15.dll` 在首个渲染帧加载客户端目录的独立 `debug.dll`（ABI v2）。面板使用游戏窗口所属的浮动窗口，在聊天文字之上绘制独立背景，不再进入原生文字队列；不激活面板、不接管键盘焦点。DLL 加载与工作线程初始化均在 `DllMain` 之外。
 
 进入副本约半秒内显示本次 BOSS 房的实际箱怪表：有/无、数量、容器脚本索引与地图坐标、怪物编号/等级、待进房/未释放/已释放/已死亡、通关状态。包含箱子和地堡使用的 `IsBoxMonster` 条目。
@@ -80,15 +82,50 @@ ExportFrameProfile=1
 
 在相同`SnapshotDirectory`导出`dfdebug-frame-profile-PID.json`。查询：`python -m tools.debug.frame_profile --directory <目录> --pid <PID>`；Python可用`load_profile`读取完整8桶／32事件。CLI汇总是本进程启用后的累计值，分阶段比较使用`completed_windows`及明确时间范围。只测`DebugRender`原有工作至内容发布及相邻调用间隔，排除计时器自身汇总／导出；不是GPU呈现计时或连续前台证明。未知保持null，时钟错误、覆盖缺口明确报告，不能以低SDK读取耗时推断无整帧停顿。见[实机计时、两次未归因间隔及原图](../../knowledge/decisions/2026-10-30-frame-profile-verification.md)。
 
+同一开关另导出`dfdebug-frame-pipeline-PID.json`，覆盖外层性能绘制调用，分为`input_and_original_overlay`、`text_setup`、`debug_module`、`fps_and_memory_format`、`text_draw`五段。查询时追加`--pipeline`，或使用`load_profile(..., pipeline=True)`。Host／Frame ABI v2及原回调文件格式不变；旧debug DLL没有可选导出时不记录外层数据。首个加载debug模块的帧不纳入外层计时。计时仍不覆盖调用之外的原生更新、GPU Present、记录器自身和连续前台状态。
+
+### 原生玩法接收和运动入口
+
+默认关闭；需在启动前同时启用`Features.EnableDebugOverlay=1`和`DebugOverlay.ExportGameplayTrace=1`。原生接收观察写入64条固定环，每条最多保留2048字节；游戏线程不写盘、不分配动态内存，沿用工作线程每200ms尝试导出。读取：
+
+```powershell
+python -m tools.debug.gameplay_trace --directory <SnapshotDirectory> --pid <PID>
+```
+
+文件`dfdebug-gameplay-trace-PID.json`使用`dfl-native-gameplay-trace/v2`，消费者也支持v1。`accepted`位于ACT1的`78EF2B`，表示已过原生CRC门、尚未opcode分派；保留原始内部应用消息，独立严格解码器可继续校验CRC。`gp4_movement_entered`位于`78F22C`，表示对象、房间和关联角色检查通过，将调用原`4C9270`，不表示函数已经完成或坐标已经收敛。两种事件分别计数。
+
+`frame_token`是可复用的栈地址。关联事件应同时核对序号相邻、thread、context、frame、对象／角色／房间及flags；有序号缺口、`lock_drops`或`invalid_records`时不作缺失事件或唯一配对推断。`capacity_overwrites`是环的正常覆盖计数，实际采集是否丢失须比较连续读取的serial范围。静默且无新事件时文件可过期；过期不等于没有消息。`provider_buffer_match`仅表示指针等于原生provider结果缓冲区，不能单独证明GP42分支执行或与某个外层包一一对应；不扫描不透明字节寻找内部头。
+
+观察通过原始调用继续执行，没有替换TerSafe provider或改动其返回值。旧四参数`DebugObserveGameplay`导出保留，新入口独立命名`DebugObserveGameplayV2`；新版IJL缺少所需导出或安装不完整时同时禁用两个观察入口。相关回归、四端数据及当前仍未关闭的大差见[剩余阻断接续](../../knowledge/decisions/2026-10-30-remaining-blockers-followup.md)。
+
 仅测试地面／库存观测现可在角色死亡后继续更新，独立于修改校验；新增`observer`绑定当前本机角色、stage、死亡状态及原生actor-map，后者脱离时为null。地面采用当前stage地图，消费者拒绝旧的未绑定死亡数据；修改接口仍要求存活。见[四端死亡观测、库存核对和原图](../../knowledge/decisions/2026-10-30-dead-observation-verification.md)。
 
 v2支持只读scene2：选择界面没有town／room／me／players／enemies／skills，不授权移动和战斗操作。`ui.dungeon_selector.selected`是索引，新增`selected_dungeon_id`／`difficulty_raw`为经重复校验的选中行投影；`transition_pending`／`phase_raw`／`stage_token`保留原生加载状态。`active_raw`是初始化标志，visible仍null。
 
-`ui.dialogs`仅列出已验证的五类常用原生窗，含`valid`／`truncated`／`items`；行内`class_id`、实例／根token及`shown_raw`／`input_enabled_raw`可通过`get_known_field(snapshot, "ui.dialogs.items.0.class_id")`查询，也可用既有`--wait`等待标量条件。活动池与待关闭队列分开，列表不完整时行查询拒绝；不把原生根标志当全局输入阻断，`ui.input_blocked`保持null。scene2及两类实际弹窗的[原图与范围](../../knowledge/decisions/2026-10-30-ui-state-verification.md)。
+`ui.dialogs`仅列出已验证的八类常用原生窗，十六进制07/09/23/25/30/56/59/6A，JSON中的`class_id`为十进制7/9/35/37/48/86/89/106。`covered_class_ids`显式声明局部覆盖；含`valid`／`truncated`／`items`，条目有实例／根token及`shown_raw`／`input_enabled_raw`。活动池与待关闭队列分开，列表不完整时行查询拒绝；空列表不表示其他UI关闭。旧v2没有覆盖字段时只接受原五类窗。
 
-新增v2动态技能：`skills[i].cooldown_ms`、`cooldown_blocked`和`usable`，由能力标志分别声明支持。有限冷却过期为0；原生持续禁用为毫秒null、blocked=true；其他未知为null。`usable`为正常手动施放的原生预检候选，不是按键／目标／命中回执。原生上下文、死亡、CD、MP成本和已证明资源条件都通过才为true；复杂物品成本、次数限制、装备修正和精度边界为unknown。支持范围及5张原图见[验收](../../knowledge/decisions/2026-10-30-skill-state-verification.md)。
+条目的`placement`记录原生层token、附着、层内顺序及层shown/enabled原值。07/09属于低层，其余当前类属于高层；不同层可都有order0。同层共用有界前后快照，单层损坏只使对应placement未知。根或层标志不等同像素可见和全局输入阻断。新增07/09四端打开／取消及56仅静态覆盖的边界见[接续验收与五张原图](../../knowledge/decisions/2026-10-30-u05-mouse-dialog-followup.md)。
+
+`ui.command_input`的父scope仍为`native_command_checker_type0`，绑定本机UID／actor／checker，提供`keyboard_lock_level/keyboard_suppressed`。可选`mouse`对象使用独立scope `native_command_checker_type1`，含`lock_level`、`lock_suppressed`、`checker_flag90_raw`和`physical_excluded`：锁非零或flag90置位只表示早期物理检查排除，上层仍可能合成命令，城镇地面点击另有路径。鼠标字段无效不抹去独立有效的键盘状态。
+
+独立`ui.mouse_button_state`使用scope `engine_mouse_button_state`和`deferred`，表示原生CFD208使按钮状态更新暂缓。原有held状态仍保留、坐标／回调继续；只有WM分支排队，DirectInput分支不承诺重放。不可将这些字段合并为全局操作许可；`ui.input_blocked`保持null，短脉冲可能被目标200ms的SDK导出漏采。
+
+新增标量沿用既有CLI，无需新增动作接口，例如：
+
+```powershell
+python tools/debug/client_state.py --directory <SnapshotDirectory> --pid <PID> --wait ui.command_input.mouse.physical_excluded=false --timeout-seconds 5
+python tools/debug/client_state.py --directory <SnapshotDirectory> --pid <PID> --wait ui.mouse_button_state.deferred=false --timeout-seconds 5
+```
+
+先从完整快照按class_id定位当前条目索引，再查询`ui.dialogs.items.0.class_id`／`placement.attached`等；数组顺序不等于窗类号。旧v2缺字段保持未知，null不匹配任何条件。
+
+新增v2动态技能：`skills[i].cooldown_ms`、`cooldown_blocked`和`usable`，由能力标志分别声明支持。有限冷却过期为0；原生持续禁用为毫秒null、blocked=true；其他未知为null。`usable`为正常手动施放的原生预检候选，不是按键／目标／命中回执。原生上下文、死亡、CD、MP成本和已证明资源条件都通过才为true；超界或未证的物品／计数布局、非空装备修正和精度边界为unknown。支持范围及5张原图见[验收](../../knowledge/decisions/2026-10-30-skill-state-verification.md)。
 
 读取完整快照后按`id`找到本次技能数组索引，再使用既有查询／等待，例如`--wait skills.0.usable=true`。数组位置不是技能ID，不能把裸Z一律当id5；原PVF中鬼剑士裸Z上挑为id46。消费者区分已知0／false与null，旧v1和未绑定本地角色不开放动态技能字段。更新DLL时同步更新消费脚本；没有调用分配／消耗型原生方法进行观察。
+
+可选`skills[i].resources`使用scope `native_manual_precast_resources`，独立提供`mp_cost`、`use_limit`、`use_count`及`items_sufficient`。非零上限按ACT1原表及signed计数比较；上限0时count为null，不能把不适用写成已用0。物品需求采用原生向零截断插值，查询第一个匹配库存槽，不合并同ID堆叠。64节点计数表／32物品行／512库存槽均有界且校验变化；库存前后快照由本次技能采集共享。资源字段可在动作／死亡／冷却已阻止时独立有效，但true仍须全部守卫通过，不等于实际施放成功。
+
+先按技能ID找到索引，再例如`--wait skills.0.resources.use_count=0`或`--wait skills.0.resources.items_sufficient=false`；只能等待已知值。旧v2缺对象保持未知，坏scope／来源／资源矛盾会拒绝。新2D DLL及消费脚本的[13条实机CLI、原始依据和交接边界](../../knowledge/decisions/2026-10-30-u05-resource-closeout.md)已归档；全局输入、密码PvP、非空装备修正和未证精度仍保留，不以局部资源充分证明全局许可。
 
 新导出使用独立的 `dfl-client-state/v2` JSON，消费脚本同时兼容已有 v1；不改变 DLL ABI v2 或服务端箱怪协议。客户端先以 `EnableDebugOverlay=1` 加载 DLL，再显式开启默认关闭的导出：
 
@@ -111,7 +148,7 @@ python tools/debug/client_state.py --directory G:/Game/DNF_ACT1/DF/town-test/deb
 
 等待只打印最终匹配或timeout，不逐帧输出。退出码0表示一次有效读取或已知条件匹配，1表示超时，2表示无效数据/身份变化；timeout范围0到300秒。默认最大采样年龄750ms，使用同机Win32 `GetTickCount64`，不使用UTC差值判断新鲜度。重写旧JSON或UTC跳变不会续期；同序号内容变化、序号/代次倒退也不能完成等待。
 
-路径只遍历数据，可使用 `room.map_token`、`me.hp`、`players.0.dead` 等，不执行表达式。未知null永不匹配，连 `=null` 也不会完成；布尔false不等于数字0。完整性不足、未证MP/职业/冷却/可用性、未绑定实体/地图的位置以及独立 `server_context` 均不能当作已知动作条件。技能等级不等于技能已可用，authority token不推断为owner。v1 的有效Town保留 `me`、`room` 为null；v2 读取 Town 原生角色绑定，HP、MP和死亡状态仍保持null，不伪造HP0或死亡。
+路径只遍历数据，可使用 `room.map_token`、`me.hp`、`players.0.dead` 等，不执行表达式。未知null永不匹配，连 `=null` 也不会完成；布尔false不等于数字0。完整性不足、未证MP/职业/冷却/可用性、未绑定实体/地图的位置以及独立 `server_context` 均不能当作已知动作条件。技能等级不等于技能已可用，authority token不推断为owner。v1 的有效Town保留 `me`、`room` 为null；v2读取Town原生角色绑定，HP和死亡仍未知，MP可在统计对象／secure值／UID绑定均通过时提供，附`mp_source`，不伪造HP0或死亡。队友MP是接收端原生观察值，详见[MP验收](../../knowledge/decisions/2026-10-30-u05-mp-input-dialog-verification.md)。
 
 v2 新增 `town` 与 `ui`：Town包含当前 `town_id/area_id`、位置、原生 `destination.x/y` 和 `direction_raw.x/y`；`auto_move_active` 是原生连续移动开关的只读bool，缺失或未证原值时未知。Dungeon的 `town` 必须为null。Town位置须与本地角色及地图绑定一致。UI包含玩家菜单、M地图、选图及复活倒计时的只读状态。`ui.dungeon_selector.active_raw` 是原始字节，不代表可见性；该选择器的 `visible` 仍为null。`ui.countdown.state_raw` 保留原生数值，未知不变成0。隐藏玩家菜单的目标UID和动作列表不能完成操作条件。
 
@@ -161,6 +198,8 @@ python tools/debug/client_party.py reject --directory <SnapshotDirectory> --pid 
 `state` 导出邀请来源 UID、剩余毫秒和邀请序号。`accept` / `reject` 默认针对当前已读取的邀请，也可传 `--target-uid` 限定来源；没有邀请时不会盲目回复。自动化建议同时传 `--process-started-filetime` 固定进程创建时间。命令绑定 PID、创建时间、UID、场景代次、角色/地图/区域及邀请指纹，750 毫秒以上的旧状态、旧角色、重复请求和过期邀请会拒绝。`dispatched` 只表示客户端已调用原生处理，实际组队成功必须再检查双方 `client_state` 队伍名单。当前只支持同一城镇区域、一个待处理的组队邀请；多个同时出现的同类邀请或交易等其他邀请不会代答。发送缓冲区忙时返回不可用，调用方应重新读取状态后再决定是否重试。
 
 状态文件为 `dfdebug-party-<pid>.json`，命令为固定 108 字节的 `dfdebug-party-<pid>.bin`，结果为 `.result.json`。接口默认关闭；不修改只读状态采样器，不发送外部网络包，不伪造 UI 按钮捕获状态。
+
+副本内依次中途退出时，最后一人会保留原来的单人队，符合官服规则。此时三人新队邀请他，双方均已有队伍，原版 ACT1 会在发送前拒绝；新版回执以 `both_already_in_parties` 说明这个已验证原因。先由该角色在原生“队伍信息”中显式解散单人队，再邀请／接受即可，无需重启。CLI 不会自动退队；`players` 只有本人也不能据此判为未组队。未知原生拒绝仍返回 `native_action_failed`。
 
 先按上文加载debug.dll，再开启默认关闭的导航开关并重启客户端：
 
@@ -221,7 +260,15 @@ python -m unittest discover -s tools/debug -p 'test*.py' -v
 
 ### 仅测试环境的 CLI 控制
 
-客户端v2状态现支持副本本地`me.mp/max_mp`及players中的同一本地身份；队友、城镇和v1仍为未知。字段分别可用，损坏镜像、负数、非有限和溢出为null；不把当前MP压到上限。读取原始MP时沿用原身份／地图和采样校验，`client_state.py`的字段查询与等待可直接使用。最大值按原getter先float32基础值、再乘截断；未确认所有运行时x87精度／舍入边界。见[玩家击杀与MP验收](../../knowledge/decisions/2026-10-30-player-kill-mp-verification.md)。
+客户端v2支持本机／队友及城镇／副本`mp/max_mp`，附`mp_source={actor_token,local}`。城镇MP来自经绑定的`user+110`统计对象，展示actor仍用于身份／位置；Town HP／死亡保持未知。队友值是接收端原生观测；旧v2没有source时仅兼容原本地副本MP，v1仍未知。坏镜像、负数、非有限、溢出或身份变化为null；当前MP不压到上限。最大值按原getter先float32基础值、再乘截断，全部x87边界仍未证明。CLI摘要含队友MP与来源，字段查询／等待沿用现有接口。见[四端数据和范围](../../knowledge/decisions/2026-10-30-u05-mp-input-dialog-verification.md)。
+
+新增`ui.command_input`固定scope为`native_command_checker_type0`，携带本机actor／UID／checker及`keyboard_lock_level/keyboard_suppressed`。锁级非零是原键盘命令早期阻断；零不承诺角色一定能移动，`ui.input_blocked`仍null。五类`ui.dialogs.items[i].placement`提供层附着、正向order及层原始标志；坏链／超限／变化时placement为null，detached时order为null。它们不表示像素可见或全局输入允许。
+
+```powershell
+python -m tools.debug.client_state --directory <SnapshotDirectory> --pid <PID> --process-started-filetime <FILETIME> --uid <UID> --wait 'ui.command_input.keyboard_suppressed=false' --timeout-seconds 5
+```
+
+原IJL文本输入JSON现支持`\r`、`\n`转义，送到既有Return/WM_CHAR路径。单次聊天激活用`{"t":0,"op":"text","chars":"\r"}`；`\r\n`是两个Return槽。其他未支持转义、原始控制字节及超限仍拒绝。
 
 默认关闭。隔离服务端同时开启 `DFLegacy.Debug.ClientOverlay.Enabled=true` 和
 `DFLegacy.Debug.TestControl.Enabled=true`，客户端对应的 `Config.ini` 开启：
@@ -252,6 +299,7 @@ python -m tools.debug.test_control --directory G:\test\snapshots loot result --u
 
 - `state` 分别返回服务端已提交背包/金币/负重、实例/掉落与原生位置/HP/敌人和地面状态。
 - `player teleport` 只在当前副本房间定位本机角色，并核对原有同房队员看到的位置；不换地图或跨区。
+  定位后调用经签名和本机绑定验证的原版`4C8FE0(controller,true,1)`，请求完整`0x10`发布并更新原生压缩基线。`native_position_publication_requested`只表示调用已执行；CLI仍须观察所有同房客户端才返回`synchronized`。发布前校验失败不修改位置，部分写入或发布失败保留部分结果；地面物定位不使用此角色发布路径。
 - `player kill` 初版用于2～4人组队副本中的本机角色，所有当前队员客户端须提供新鲜状态；单人、目标已死或缺少服务端成员生死数据会在发送前拒绝。调用原玩家HP死亡入口，操作不自动复活。发布前核对完整成员身份、目标存活和各端上下文；只有服务端alive=false、自身和各端新采样看到同一角色HP0/dead且SDK代次未变才返回`synchronized`。`partial`只继续只读确认，不重发。它与`monster kill`分开，不能用怪物ID去杀玩家。
 - `monster kill` 使用原生HP死亡入口，保留原生权限、复活等分支，随后观察服务端死亡与各端状态。
   UID从0开始；需要指定拥有怪物原生控制权的客户端。收到死亡请求不代表死亡已完成。
@@ -295,3 +343,19 @@ Windows短暂文件访问拒绝和快照替换缺口采用有限重试；不会�
 测试传入 `--interactive-cursor` 会等待测试预览窗口获得前台，再验证“游戏隐藏系统指针 → 指针位于面板时可见 → 隐藏面板后精确恢复显示计数”，并覆盖绘制消息积压时退出。该项需要可交互桌面；普通无前台运行会明确跳过真实指针检查，继续其余窗口/协议检查。卸载失败时保留 DLL 执行代码并输出线程栈/等待链，不在工作线程仍存活时强制卸载。
 
 异常诊断独立于自动输入：客户端目录 `debug-overlay-<pid>.log` 记录加载基址、进图绘制与异常位置。发生渲染异常会停用该次覆盖层；场景和UID只读校验保护整数，不调用客户端断言修复。文字缓冲区在整个原生绘制批次内保持有效。
+
+原生循环分段与运动拒绝观察默认关闭：
+
+- `[DebugOverlay] ExportNativeLoopProfile=1`启用原ACT1 `433B00`至tail返回的七段计时，以及相邻调用之间的耗时。`dfdebug-native-loop-<pid>.json`由worker约200ms导出；主线程旧采样与新worker心跳分开，未完成、嵌套、漏序号和缺CPU数据保留为未知。CPU是量化的线程user+kernel时间，不能当GPU计时。scene是最近一次debug绘制观察值，前台只检查端点。
+- `EnableDebugOverlay=1`及`ExportGameplayTrace=1`同时启用时，IJL固定内存环保留原`4C8EBC`的实际X/Y逐步候选、原v94拒绝返回及state／bounds／两次grid出口。只收集双绑定、已入图的怪物`529`和原函数`4B3C30`；Z的v90不在此流。漏marker是`unknown_exit`，不从缺失记录推断bounds。版本2不改变Host／Frame ABI v2。
+- 同一开关还观察实际GP42 provider调用在`78EE76`的结果及返回时source/output快照。source尚不能当作调用前未修改的输入；output位于后续copy、二次变换和原生CRC／dispatch之前。成功与CRC有效都不能单独证明运动完成。每侧最多2048字节，截断和未知分别标记。
+
+两个内存环使用已加载PE的DATA导出，CLI只申请查询／读取权限，绑定PID、启动时间和EXE路径；不调用远程函数或写进程内存。事件revision双读保护一致性；丢锁、overflow／invalid计数独立更新，不代表与事件同一瞬间。`--after-serial`只筛选新事件，旧事件年龄不作为当前状态证明。
+
+```powershell
+python -m tools.debug.native_loop_profile --directory 'G:\task\snapshots' --pid 1234
+python -m tools.debug.motion_test_trace --pid 1234 --exe 'G:\task\DNF.exe' --after-serial 100
+python -m tools.debug.provider_trace --pid 1234 --exe 'G:\task\DNF.exe' --after-serial 100
+```
+
+离线重算必须使用实际候选：`grid_cells(x,y)`按`trunc0(x/16)`、`trunc0(y/12)`与`trunc0(wrap_i32(y+1)/12)`转换。原EXE两段机器码覆盖负数、换行和溢出回绕；当前／目标向量代替实际候选时只能作为假设。安装表由`DflMotionProbeSites`实际导出供控制流审计；测试执行原函数的同一行和跨行路径，不能只验证每个独立trampoline。

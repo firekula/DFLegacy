@@ -166,6 +166,17 @@ pwsh .\src\DFLegacy.RandomNative\build-native.ps1 -Configuration Release -RunTes
 
 ## 9. 测试
 
+当前源码、实机构建归属与未闭合边界见[交接](HANDOFF-2026-10-30.md)。最近完整Python为620项／569子测试；此数字对应原始ACT1及所需原生导出夹具均已提供的本机环境，不表示新机器缺少数据时条件用例也已执行。
+
+```powershell
+$env:PYTHONPATH = Join-Path (Get-Location) 'tools'
+python -B -m pytest -q
+MSBuild.exe .\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj /m /p:Configuration=Release /p:Platform=Win32
+.\artifacts\native\debug-tests\Release\debug_tests.exe --client-state
+```
+
+`--client-navigation`、`--client-party`、`--town-route`、`--frame-profile`、`--gameplay-trace`、`--native-loop`可分别运行相关模型／IO回归。真实城镇控制器用`DFL_TOWN_ROUTE_CONTROLLER_PVF`提供原PVF；完整overlay测试还需C#生成的fixture参数，生成及原生运行方式见[debug构建验证](tools/debug/README.md)。缺夹具的skip必须单列，不能写成通过；自动化验证不要求重开已完成的实机矩阵。
+
 冒烟测试覆盖协议编解码、PVF 数据解析与主要业务规则：
 
 ```powershell

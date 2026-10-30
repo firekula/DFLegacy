@@ -4,6 +4,50 @@
 
 namespace dfl::client_state::ui_detail
 {
+    template<class R> void Commands(R& r, Ui& ui, const Player& me, bool haveMe,std::uint32_t scene) noexcept
+    {
+        Ui::CommandInput out;std::uint32_t actor=0,raw=0,kind=0,category=0,uid=0,table=0,repeated=0;
+        if (!r.Read(0xB75A14,actor) || !actor || !r.Getter(actor,0x5D4,0x493770)
+            || !r.ReadAt(actor,0xCC,category) || category!=0x111
+            || !r.ReadAt(actor,0xD0,kind) || (kind!=0x111 && (scene==3 || kind!=0))
+            || !r.SecureAt(actor,0xD4,uid) || !uid || uid>65535
+            || (haveMe && (!me.uid.known || me.uid.value!=uid || !r.ReadAt(me.userToken,0x110,repeated) || repeated!=actor))
+            || !r.ReadAt(actor,0x2384,raw)) return;
+        const auto checker=raw?raw:0xB5DE68; // 493770 returns the literal static object address.
+        const auto supported=[&]() noexcept {
+            return r.Read(checker,table) && table==0x99A88C && r.Getter(checker,0x28,0x8BA0C0)
+                && r.Getter(checker,0x30,0x8BA7F0) && r.Getter(checker,0x40,0x8BA030) && r.Getter(checker,0x44,0x43BC30);
+        };
+        if (!supported() || !r.ReadAt(checker,0x64,out.keyboardLockLevel)) return;
+        std::int32_t mouseLevel=0;unsigned char mouseFlag=0;
+        const bool mouseKnown=r.ReadAt(checker,0x68,mouseLevel) && r.ReadAt(checker,0x90,mouseFlag) && mouseFlag<=1;
+        std::int32_t finalLevel=0;std::uint16_t userUid=0;
+        if (!r.Read(0xB75A14,repeated) || repeated!=actor || !r.Getter(actor,0x5D4,0x493770)
+            || !r.SecureAt(actor,0xD4,repeated) || repeated!=uid
+            || !r.ReadAt(actor,0xD0,repeated) || repeated!=kind
+            || !r.ReadAt(actor,0xCC,repeated) || repeated!=category
+            || !r.ReadAt(actor,0x2384,repeated) || repeated!=raw
+            || (haveMe && (!r.ReadAt(me.userToken,0x110,repeated) || repeated!=actor
+                          || !r.ReadAt(me.userToken,4,userUid) || userUid!=uid))
+            || !supported() || !r.ReadAt(checker,0x64,finalLevel) || finalLevel!=out.keyboardLockLevel) return;
+        std::int32_t finalMouse=0;unsigned char finalFlag=0;
+        if(mouseKnown && r.ReadAt(checker,0x68,finalMouse) && finalMouse==mouseLevel
+            && r.ReadAt(checker,0x90,finalFlag) && finalFlag==mouseFlag)
+        {out.mouseLockLevel={true,mouseLevel};out.mouseFlag90={true,mouseFlag!=0};}
+        out.present=true;out.actorToken=actor;out.checkerToken=checker;out.uid=uid;ui.commandInput=out;
+    }
+    template<class R> Value<bool> MouseButtons(R& r) noexcept
+    {
+        constexpr std::array<unsigned char,5> Read={0xA0,0x08,0xD2,0xCF,0x00};
+        constexpr std::array<unsigned char,7> Acquire={0xC6,0x05,0x08,0xD2,0xCF,0x00,0x01};
+        constexpr std::array<unsigned char,7> Release={0xC6,0x05,0x08,0xD2,0xCF,0x00,0x00};
+        std::array<unsigned char,5> read{};std::array<unsigned char,7> acquire{},release{};
+        unsigned char first=0,last=0;
+        if(r.Read(0x8FCAE8,read) && read==Read && r.Read(0x7993C4,acquire) && acquire==Acquire
+            && r.Read(0x8FCC9D,release) && release==Release && r.Read(0xCFD208,first) && first<=1
+            && r.Read(0xCFD208,last) && last==first)return {true,first!=0};
+        return {};
+    }
     struct Vector
     {
         std::uint32_t begin = 0, end = 0, capacity = 0;
@@ -77,8 +121,43 @@ namespace dfl::client_state::ui_detail
             && Same(a.maximumDifficulty, b.maximumDifficulty);
     }
 
-    constexpr std::uint32_t Classes[] = {0x23, 0x25, 0x30, 0x59, 0x6A};
-    constexpr std::uint32_t Tables[] = {0xA7E254, 0xA7E2F4, 0xA7E434, 0xA7EA5C, 0xA7F4C4};
+    constexpr auto& Classes=DialogClassIds;
+    constexpr std::array<std::uint32_t,8> Tables={0xA7E614,0xA7E6B4,0xA7E254,0xA7E2F4,0xA7E434,0xA7F154,0xA7EA5C,0xA7F4C4};
+    constexpr unsigned LayerIndex(std::uint32_t type) noexcept {return type<=0x0F?0:type<=0x17?1:2;}
+    struct Layer
+    {
+        std::uint32_t token=0,head=0,first=0,last=0,count=0;
+        unsigned char shown=0,enabled=0;
+        std::array<std::uint32_t,128> nodes{},next{},previous{},roots{};
+        bool operator==(const Layer& b) const noexcept
+        {
+            return token==b.token && head==b.head && first==b.first && last==b.last && count==b.count
+                && shown==b.shown && enabled==b.enabled && nodes==b.nodes && next==b.next
+                && previous==b.previous && roots==b.roots;
+        }
+    };
+    // Order is native forward rendering order within the class's layer.
+    template<class R> bool ReadLayer(R& r,std::uint32_t manager,unsigned index,Layer& layer) noexcept
+    {
+        std::uint32_t table=0;
+        if (index>2 || !r.ReadAt(manager,0xC8+index*4,layer.token) || !layer.token || !r.Read(layer.token,table) || table!=0x9A1608
+            || !r.Getter(layer.token,0x10,0x8F6880)
+            || !r.ReadAt(layer.token,0x10,layer.shown) || layer.shown>1
+            || !r.ReadAt(layer.token,0x11,layer.enabled) || layer.enabled>1
+            || !r.ReadAt(layer.token,0x64,layer.head) || !layer.head
+            || !r.ReadAt(layer.token,0x68,layer.count) || layer.count>layer.nodes.size()
+            || !r.Read(layer.head,layer.first) || !r.ReadAt(layer.head,4,layer.last)) return false;
+        auto node=layer.first,previous=layer.head;
+        for(std::uint32_t i=0;i<layer.count;++i)
+        {
+            if (!node || node==layer.head || std::find(layer.nodes.begin(),layer.nodes.begin()+i,node)!=layer.nodes.begin()+i
+                || !r.Read(node,layer.next[i]) || !r.ReadAt(node,4,layer.previous[i]) || layer.previous[i]!=previous
+                || !r.ReadAt(node,8,layer.roots[i]) || !layer.roots[i]
+                || std::find(layer.roots.begin(),layer.roots.begin()+i,layer.roots[i])!=layer.roots.begin()+i) return false;
+            layer.nodes[i]=node;previous=node;node=layer.next[i];
+        }
+        return node==layer.head && previous==layer.last;
+    }
     template<class R> bool Window(R& r, std::uint32_t manager, std::uint32_t token,
                                   std::size_t kind, Dialog& d) noexcept
     {
@@ -95,7 +174,7 @@ namespace dfl::client_state::ui_detail
     }
     template<class R> Dialogs Inventory(R& r, std::uint32_t manager) noexcept
     {
-        Dialogs out; Vector closing; std::array<Vector, 5> banks{};
+        Dialogs out; Vector closing; std::array<Vector,DialogClassIds.size()> banks{};
         std::array<std::uint32_t, 64> closes{}, tokens{};
         std::array<std::size_t, 64> kinds{}; std::size_t count = 0;
         if (!Header(r, manager, 0xEF8, 4, closing)) return out;
@@ -122,6 +201,11 @@ namespace dfl::client_state::ui_detail
             if (!Window(r, manager, tokens[i], kinds[i], out.items[out.count])) { out.count = 0; return out; }
             ++out.count;
         }
+        std::array<Layer,3> layers{};std::array<bool,3> used{},known{};
+        for(std::size_t i=0;i<out.count;++i)used[LayerIndex(out.items[i].classId)]=true;
+        for(unsigned i=0;i<3;++i)if(used[i])known[i]=ReadLayer(r,manager,i,layers[i]);
+        for(unsigned i=0;i<3;++i)for(unsigned j=i+1;j<3;++j)
+            if(known[i]&&known[j]&&layers[i].token==layers[j].token){known[i]=known[j]=false;}
         // Repeat registration, queue content and every root identity. No native getters are called.
         if (!SameHeader(r, manager, 0xEF8, 4, closing)) { out.count = 0; return out; }
         for (std::uint32_t i = 0; i < closeCount; ++i)
@@ -143,6 +227,21 @@ namespace dfl::client_state::ui_detail
         }
         std::uint32_t finalManager = 0;
         if (!r.Read(0xB5DCE8, finalManager) || finalManager != manager) { out.count = 0; return out; }
+        for(unsigned layerIndex=0;layerIndex<3;++layerIndex)
+        {
+            Layer finalLayer;
+            if(!known[layerIndex] || !ReadLayer(r,manager,layerIndex,finalLayer) || !(layers[layerIndex]==finalLayer))continue;
+            const auto& layer=layers[layerIndex];
+            for(std::size_t i=0;i<out.count;++i)
+            {
+                auto& d=out.items[i];auto& p=d.placement;
+                if(LayerIndex(d.classId)!=layerIndex)continue;
+                const auto found=std::find(layer.roots.begin(),layer.roots.begin()+layer.count,d.rootToken);
+                p.present=true;p.attached=found!=layer.roots.begin()+layer.count;p.layerToken=layer.token;
+                p.layerShownRaw=layer.shown!=0;p.layerInputEnabledRaw=layer.enabled!=0;
+                if(p.attached)p.order=static_cast<std::uint32_t>(found-layer.roots.begin());
+            }
+        }
         out.valid = true; return out;
     }
 }

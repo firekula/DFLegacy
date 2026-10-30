@@ -21,3 +21,4 @@ DNF2008/
 /runs/
 tools/acceptance/**/__pycache__/
 tools/debug/**/__pycache__/
+tests/**/__pycache__/

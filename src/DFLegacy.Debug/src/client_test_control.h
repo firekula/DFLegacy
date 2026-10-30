@@ -33,6 +33,14 @@ namespace dfl::client_test_control
     struct Move {Ground ground{};std::int32_t x=0,y=0;};
     struct MovePlan {std::array<Move,MaximumGround> moves{};std::size_t count=0;};
     const char* PlanGroundMoves(const Request&,const Ground*,std::size_t,MovePlan&) noexcept;
+    struct PlayerTeleportOperations
+    {
+        void* context=nullptr;
+        bool (*set)(void*,std::uint32_t,std::int32_t,std::int32_t,bool&) noexcept=nullptr;
+        bool (*publish)(void*,std::uint32_t) noexcept=nullptr;
+    };
+    const char* CompletePlayerTeleport(const PlayerTeleportOperations&,std::uint32_t actor,
+        std::int32_t x,std::int32_t y,bool& touched,std::size_t& applied) noexcept;
     void Initialize(const wchar_t*,const wchar_t*,client_state::Reader) noexcept;
     void OnFrame() noexcept;
     void OnFrame(const client_state::Snapshot&) noexcept;

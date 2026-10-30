@@ -108,6 +108,42 @@ namespace dfl::client_state
                     && std::fabs(p.x) < 1000000 && std::fabs(p.y) < 1000000 && std::fabs(p.z) < 1000000;
                 return p;
             }
+            void Mp(Player& p, bool local) noexcept
+            {
+                std::uint32_t actor=0, own=0, uid=0, kind=0,category=0;
+                const bool town=snapshot.scene.known && snapshot.scene.value==1;
+                if (!p.uid.known || !ReadAt(p.userToken,0x110,actor) || !actor
+                    || (!town && actor!=p.actorToken)
+                    || !Read(0xB75A14,own) || !own || ((actor==own)!=local)
+                    || !ReadAt(actor,0xCC,category) || category!=0x111
+                    || !ReadAt(actor,0xD0,kind) || (kind!=0x111 && (!town || kind!=0))
+                    || !SecureAt(actor,0xD4,uid) || uid!=p.uid.value) return;
+                if (!Getter(actor,0x340,0x652A70) || !Getter(actor,0x344,0x652A80) || !Getter(actor,0x2E0,0x652670))
+                { Error(snapshot,"unsupported_mp_layout"); return; }
+                Value<std::int32_t> mp{}, maximumMp{};
+                std::int32_t current=0, base=0;float factor=0;
+                if (SignedAt(actor,0x1170,current) && current>=0) mp={true,current};
+                else Error(snapshot,"invalid_mp");
+                if (SignedAt(actor,0xE48,base) && base>=0 && FloatAt(actor,0xE50,factor) && factor>=0)
+                {
+                    // 652A80 stores the integer base as float32 before multiplying.
+                    const volatile float nativeBase=static_cast<float>(base);
+                    const double maximum=static_cast<double>(nativeBase)*factor;
+                    if (std::isfinite(maximum) && maximum>=0 && maximum<=INT32_MAX)
+                        maximumMp={true,static_cast<std::int32_t>(maximum)};
+                }
+                if (!maximumMp.known) Error(snapshot,"invalid_max_mp");
+                std::uint32_t repeated=0;std::uint16_t userUid=0;
+                if (!ReadAt(p.userToken,0x110,repeated) || repeated!=actor
+                    || !ReadAt(p.userToken,4,userUid) || userUid!=uid
+                    || !SecureAt(actor,0xD4,repeated) || repeated!=uid
+                    || !ReadAt(actor,0xD0,repeated) || repeated!=kind
+                    || !ReadAt(actor,0xCC,repeated) || repeated!=category
+                    || !Read(0xB75A14,repeated) || repeated!=own
+                    || !Getter(actor,0x340,0x652A70) || !Getter(actor,0x344,0x652A80) || !Getter(actor,0x2E0,0x652670))
+                { Error(snapshot,"mp_identity_changed"); return; }
+                p.mp=mp;p.maxMp=maximumMp;p.mpActorToken=actor;p.mpLocal=local;
+            }
             Player Actor(std::uint32_t user, std::uint32_t actor, std::uint32_t map, bool localMp = false) noexcept
             {
                 Player p; std::uint16_t uid = 0; std::uint32_t kind = 0, secureUid = 0, binding = 0;
@@ -131,25 +167,7 @@ namespace dfl::client_state
                     }
                 }
                 else Error(snapshot, "unsupported_hp_layout");
-                if (localMp)
-                {
-                    if (Getter(actor, 0x340, 0x652A70) && Getter(actor, 0x344, 0x652A80) && Getter(actor, 0x2E0, 0x652670))
-                    {
-                        std::int32_t current = 0, base = 0; float factor = 0;
-                        if (SignedAt(actor, 0x1170, current) && current >= 0) p.mp = {true, current};
-                        else Error(snapshot, "invalid_mp");
-                        if (SignedAt(actor, 0xE48, base) && base >= 0 && FloatAt(actor, 0xE50, factor) && factor >= 0)
-                        {
-                            // 652A80 explicitly stores the integer base as float32 before multiplying.
-                            const volatile float nativeBase = static_cast<float>(base);
-                            const double maximum = static_cast<double>(nativeBase) * factor;
-                            if (std::isfinite(maximum) && maximum >= 0 && maximum <= INT32_MAX)
-                                p.maxMp = {true, static_cast<std::int32_t>(maximum)};
-                        }
-                        if (!p.maxMp.known) Error(snapshot, "invalid_max_mp");
-                    }
-                    else Error(snapshot, "unsupported_mp_layout");
-                }
+                Mp(p,localMp);
                 std::int32_t dead = 0;
                 if (Getter(actor, 0x318, 0x652A00) && SignedAt(actor, 0x142C, dead)) p.dead = {true, dead != 0};
                 if (p.sameMap.known && p.mapToken != 0) p.detached = {true, false};
@@ -161,7 +179,7 @@ namespace dfl::client_state
                 }
                 return p;
             }
-            Player TownActor(std::uint32_t user, std::uint32_t actor, std::uint32_t map) noexcept
+            Player TownActor(std::uint32_t user, std::uint32_t actor, std::uint32_t map, bool localMp=false) noexcept
             {
                 Player p; std::uint16_t uid = 0; std::uint32_t table = 0, secureUid = 0, binding = 0, actorMap = 0;
                 if (!user || !actor || !ReadAt(user, 4, uid) || !uid
@@ -179,6 +197,7 @@ namespace dfl::client_state
                 }
                 // Town's virtual character is not the Dungeon combat actor.
                 // HP, max HP and death remain unknown even if stale offsets are readable.
+                Mp(p,localMp);
                 return p;
             }
         };
@@ -203,6 +222,7 @@ namespace dfl::client_state
         }
         void UiState(Reads& r, Snapshot& s, std::uint32_t game) noexcept
         {
+            if(s.scene.known && s.scene.value==2) ui_detail::Commands(r,s.ui,s.me,false,2);
             if (s.scene.known && s.scene.value == 2) ui_detail::Selection(r, s.ui, game);
             std::uint32_t ui = 0, object = 0, table = 0, panel = 0, repeated = 0;
             if (r.ReadAt(game, 0x20, object) && object && r.Read(object, table) && table == 0x99A5B8)
@@ -216,6 +236,7 @@ namespace dfl::client_state
             }
             if (!r.Read(0xB5DCE8, ui) || !ui) return;
             Ui candidate = s.ui; std::int32_t mode = 0;
+            candidate.mouseButtonsDeferred=ui_detail::MouseButtons(r);
             candidate.dialogs = ui_detail::Inventory(r, ui);
             if (r.ReadAt(ui, 0xFC4, mode)) candidate.selectionMode = {true, mode};
             if (r.ReadAt(ui, 0xF08, object) && object && r.Read(object, table) && table == 0xA7CF2C)
@@ -285,8 +306,9 @@ namespace dfl::client_state
                 || !r.SecureAt(actor, 0xD4, uid) || !uid || uid > 65535)
             { Error(s, "town_identity_unreadable"); return false; }
             const auto user = FindUser(r, actor, uid, 0x10C);
-            s.me = r.TownActor(user, actor, map); s.haveMe = s.me.uid.known;
+            s.me = r.TownActor(user, actor, map, true); s.haveMe = s.me.uid.known;
             if (!s.haveMe) return false;
+            ui_detail::Commands(r,s.ui,s.me,true,1);
             auto& town = s.town; town.present = true; town.townId = townId; town.areaId = areaId;
             town.contextToken = context; town.mapToken = map; town.position = s.me.position;
             unsigned char autoMove = 0;
@@ -302,7 +324,7 @@ namespace dfl::client_state
                 if (!r.ReadAt(party, 0x10 + slot * 4, memberUser)) { s.truncated = true; Error(s, "party_slot_unreadable"); continue; }
                 if (!memberUser) continue;
                 if (!r.ReadAt(memberUser, 0x10C, memberActor) || !memberActor) { s.truncated = true; Error(s, "town_party_actor_unreadable"); continue; }
-                const auto member = r.TownActor(memberUser, memberActor, map);
+                const auto member = r.TownActor(memberUser, memberActor, map, memberUser==user && memberActor==actor);
                 if (!member.uid.known) { s.truncated = true; continue; }
                 bool duplicate = false;
                 for (std::size_t i = 0; i < s.playerCount; ++i) duplicate = duplicate || s.players[i].uid.value == member.uid.value;
@@ -434,6 +456,7 @@ namespace dfl::client_state
             s.skillLevelsSupported = true;
             s.skillCooldownSupported = s.skillUsableSupported = true;
             const auto clock = client_skill_state::Clock(r);
+            client_skill_resources::InventoryCache resourceInventory{};
             for (std::uint32_t id = 0; id < MaximumSkills; ++id)
             {
                 std::uint32_t skill = 0;
@@ -450,6 +473,7 @@ namespace dfl::client_state
                     if(bound)
                     {
                         client_skill_state::Cooldown(r,skill,clock,result);
+                        client_skill_state::Resources(r,resourceInventory,s.me,skill,result);
                         client_skill_state::Usability(r,s.me,skill,result);
                     }
                     if(!r.ReadAt(actor,0x1AEC+id*4,again)||again!=skill||!r.SignedAt(skill,0x2E0,finalLevel)||finalLevel!=level
@@ -520,6 +544,7 @@ namespace dfl::client_state
         output.room.present = true; output.room.stageToken = stage; output.room.mapToken = map;
         const auto user = FindUser(r, actor, uid);
         output.me = r.Actor(user, actor, map, true); output.haveMe = output.me.uid.known;
+        if(output.haveMe) ui_detail::Commands(r,output.ui,output.me,true,3);
         if (!output.haveMe) return finish();
         Players(r, output); Enemies(r, output); Skills(r, output); Doors(r, output);
         std::uint32_t finalScene = 0, finalStage = 0, finalMap = 0, finalActor = 0, finalBinding = 0;

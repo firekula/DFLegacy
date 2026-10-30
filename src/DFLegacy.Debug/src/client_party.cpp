@@ -99,6 +99,31 @@ namespace dfl::client_party
             ||!r.At(actor,0xE4,map)||map!=request.mapToken)return false;
         return true;
     }
+    const char* ReadRequestFailure(const client_state::Reader& reader,const Request& request) noexcept
+    {
+        std::uint32_t im=0;
+        if(!ReadLiveContext(reader,request,im,true))return nullptr;
+        Reads r{reader};std::uint32_t ownParty=0,manager=0,head=0,node=0;
+        if(!r.At(request.userToken,0xFC,ownParty)||!ownParty
+            ||!r.At(0xB5DCB8,0,manager)||!r.At(manager,0xC,head)||!r.At(head,0,node))return nullptr;
+        // Original 4FEA65..4FEA97 rejects ANY two non-null party links, including
+        // the one-member party retained by the last dungeon give-up. Never
+        // disband it implicitly or treat the resolved HUD row count as membership.
+        std::array<std::uint32_t,256> visited{};std::size_t count=0;
+        while(node!=head)
+        {
+            if(count==visited.size()||std::find(visited.begin(),visited.begin()+count,node)!=visited.begin()+count)return nullptr;
+            visited[count++]=node;std::uint32_t user=0;std::uint16_t uid=0;
+            if(!r.At(node,0xC,user)||!r.At(user,4,uid))return nullptr;
+            if(uid==request.targetUid)
+            {
+                std::uint32_t peerParty=0;
+                return r.At(user,0xFC,peerParty)&&peerParty?"both_already_in_parties":nullptr;
+            }
+            if(!r.At(node,0,node))return nullptr;
+        }
+        return nullptr;
+    }
     void AssignInvitationSerial(Pending& pending,Pending& last,std::uint64_t& next) noexcept
     {
         // Unknown/empty frames are not proof of a different episode. In particular an

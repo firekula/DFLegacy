@@ -1,0 +1,507 @@
+{
+  "source": "evidence-blockers-v10/fixed-boss-window.json",
+  "focus": "D monsterUID0",
+  "samples": [
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438270656,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          127.0,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff0000000000000000ffffffff01",
+        "native_velocity": [
+          214.50001525878906,
+          0.0,
+          -8884.5
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          127.22040557861328,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff0000000000000000ffffffff01",
+        "native_velocity": [
+          214.50001525878906,
+          0.0,
+          -8346.0
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          4,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 7516
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438272062,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          127.0,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "aef7ffff0000000024faffffac01000000000000ffffffff01",
+        "native_velocity": [
+          913.1395263671875,
+          0.0,
+          -11214.0
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          393.5722351074219,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff0000000000000000ffffffff01",
+        "native_velocity": [
+          214.50001525878906,
+          0.0,
+          -10956.0
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          4,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 8934
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438272406,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          127.0,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "aef7ffff0000000024faffff5c00000000000000ffffffff01",
+        "native_velocity": [
+          197.4598388671875,
+          0.0,
+          -11718.0
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          393.5722351074219,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff0000000000000000ffffffff01",
+        "native_velocity": [
+          214.50001525878906,
+          0.0,
+          -10956.0
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          4,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 9270
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438272906,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          127.3956298828125,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "b1f3ffff0000000024faffff1100000000000000ffffffff01",
+        "native_velocity": [
+          56.485748291015625,
+          0.0,
+          -12468.0
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          520.984619140625,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffee01000000000000ffffffff00",
+        "native_velocity": [
+          -214.50001525878906,
+          0.0,
+          -11847.0
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          1,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 9771
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438273343,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          127.0,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "0df7ffff0000000024faffffe300000000000000ffffffff01",
+        "native_velocity": [
+          520.6849365234375,
+          0.0,
+          -13008.0
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          413.7350769042969,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff0000000000000000ffffffff01",
+        "native_velocity": [
+          2.9187445640563965,
+          0.0,
+          -12597.0
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          4,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 10130
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438273765,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          127.0,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024fafffff401000000000000ffffffff01",
+        "native_velocity": [
+          1042.0001220703125,
+          0.0,
+          -13747.5
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          127.0,
+          248.45433044433594,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024fafffff401000000000000ffffffff01",
+        "native_velocity": [
+          1042.0001220703125,
+          0.0,
+          -13585.5
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          4,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 10632
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438274625,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          459.6781005859375,
+          374.78131103515625,
+          0.0
+        ],
+        "raw_scalars_1c_34": "f7fffffff9ffffff24faffffdb5d0000c1000000ffffffff00",
+        "native_velocity": [
+          216.245849609375,
+          1.357999563217163,
+          -1467.0
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          394.2500915527344,
+          375.0069580078125,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb000000000000000ffffffff01",
+        "native_velocity": [
+          214.50001525878906,
+          0.0,
+          -1008.0
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          1,
+          1,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 11492
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438275062,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          557.4925537109375,
+          374.9120178222656,
+          0.0
+        ],
+        "raw_scalars_1c_34": "e1ffffff0000000024fafffff81b000000000000ffffffff00",
+        "native_velocity": [
+          221.96878051757812,
+          0.0,
+          -2155.5
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          501.71435546875,
+          374.9120178222656,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff2a5d000000000000ffffffff00",
+        "native_velocity": [
+          214.65280151367188,
+          0.0,
+          -1759.5
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          1,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 11933
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438275906,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          530.64306640625,
+          374.9120178222656,
+          0.0
+        ],
+        "raw_scalars_1c_34": "0e0000000000000024faffff2401000000000000ffffffff00",
+        "native_velocity": [
+          -4.1019978523254395,
+          0.0,
+          -3378.0
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          530.0286865234375,
+          374.9120178222656,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024fafffff401000000000000ffffffff00",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -3067.5
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          1,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 12770
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    },
+    {
+      "role": "D",
+      "uid": 0,
+      "at_tick_ms": 438276437,
+      "actor": "0x18eac480",
+      "controller": "0x18d6e7e8",
+      "current": {
+        "token": "0x18d6e7f0",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          316.58795166015625,
+          311.4991760253906,
+          0.0
+        ],
+        "raw_scalars_1c_34": "400400000000000024faffffdb00000000000000ffffffff01",
+        "native_velocity": [
+          -238.3394317626953,
+          -142.50001525878906,
+          -4420.5
+        ]
+      },
+      "target": {
+        "token": "0x18d6e825",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          394.3313903808594,
+          374.9120178222656,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffd900000000000000ffffffff00",
+        "native_velocity": [
+          -178.50001525878906,
+          -142.50001525878906,
+          -3753.0
+        ]
+      },
+      "native_solver": {
+        "test_move_entry": "0x4b3c30",
+        "axis_results": [
+          1,
+          2,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 13290
+      },
+      "interpolation_guard": "8b53f485d2c745f8f401000076098b0385c07e038945f8"
+    }
+  ],
+  "scope": "Axis result4 proves the original v94 movement test rejected a candidate and clamped movement; it does not distinguish map geometry, state restriction or another predicate. updated_raw is an individual process native clock and is not cross-process time. Later native full publication and recovery remain possible."
+}

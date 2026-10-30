@@ -1,0 +1,4 @@
+counter_repro.cpp
+corrupt null equal bucket boundaries: count.known=0 count.value=0 usable.known=0 usable.value=0
+corrupt unreadable equal bucket boundaries: count.known=0 count.value=0 usable.known=0 usable.value=0
+bucket endpoints change head -> existing node during double read: count.known=0 count.value=0 usable.known=0 usable.value=0

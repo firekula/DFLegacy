@@ -1,0 +1,6 @@
+适用于 .NET Framework MSBuild 版本 18.11.1-1.26513.3+940033be3
+
+  DFLegacy.Ijl15.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\ijl15\Release\ijl15.dll
+  DFLegacy.Ijl15.Tests.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\artifacts\native\ijl15-tests\Release\ijl15_tests.exe
+  Copying the ijl15 module under test next to the test executable
+  copied D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\..\..\artifacts\native\ijl15\Release\ijl15.dll and D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\Config.ini -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests\Release\

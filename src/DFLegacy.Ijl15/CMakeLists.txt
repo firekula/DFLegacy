@@ -38,6 +38,14 @@ add_library(ijl15 SHARED
     src/relay_send_queue.h
     src/ground_item_removal.cpp
     src/ground_item_removal.h
+    src/motion_horizon.cpp
+    src/motion_horizon.h
+    src/native_loop_probe.cpp
+    src/native_loop_probe.h
+    src/motion_test_probe.cpp
+    src/motion_test_probe.h
+    src/provider_probe.cpp
+    src/provider_probe.h
     src/party_card_display.cpp
     src/party_card_display.h
     src/d3d8_scaler.cpp
@@ -161,6 +169,10 @@ if(BUILD_TESTING)
         src/ground_item_removal.cpp
         src/ground_item_removal.h
         tests/ground_item_removal_tests.cpp
+        src/motion_horizon.cpp
+        src/motion_horizon.h
+        tests/motion_horizon_tests.cpp
+        tests/native_loop_probe_tests.cpp
         src/party_card_display.cpp
         src/party_card_display.h
         tests/party_card_display_tests.cpp
@@ -179,13 +191,13 @@ if(BUILD_TESTING)
 endif()
 
 # Optional game diagnostic module, loaded by ijl15 only when enabled.
-add_library(df_debug SHARED ../DFLegacy.Debug/src/debug_overlay.cpp ../DFLegacy.Debug/src/debug.def)
+add_library(df_debug SHARED ../DFLegacy.Debug/src/debug_overlay.cpp ../DFLegacy.Debug/src/debug.def ../DFLegacy.Debug/src/native_loop_profile.cpp)
 set_target_properties(df_debug PROPERTIES OUTPUT_NAME "debug")
 target_compile_options(df_debug PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(df_debug PRIVATE user32)
 
 if(BUILD_TESTING)
-    add_executable(df_debug_tests ../DFLegacy.Debug/tests/debug_tests.cpp)
+    add_executable(df_debug_tests ../DFLegacy.Debug/tests/debug_tests.cpp ../DFLegacy.Debug/tests/native_loop_profile_tests.cpp ../DFLegacy.Debug/src/native_loop_profile.cpp)
     target_compile_options(df_debug_tests PRIVATE /W4 /WX /utf-8 /EHsc)
     target_link_libraries(df_debug_tests PRIVATE user32)
     add_dependencies(df_debug_tests df_debug)

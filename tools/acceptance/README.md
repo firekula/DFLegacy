@@ -1,5 +1,7 @@
 # 本机多客户端验收平台（S0）
 
+当前2026-10-30能力与证据入口见[交接](../../HANDOFF-2026-10-30.md)、[debug状态／CLI](../debug/README.md)及[最新U05验收](../../knowledge/decisions/2026-10-30-u05-resource-closeout.md)。下文Task0及旧人工场景保留其历史环境，不作为当前自动化能力或未闭合项的完整清单。默认使用原生输入与新鲜状态，普通步骤不截屏；四端窗口、私有存档来源和恢复规则见[RUNBOOK](RUNBOOK.md)。
+
 ## Task 0 环境前置结论
 
 已在 `G:\Game\DNF_ACT1\DFLegacy` 使用 UTF-8 环境运行：

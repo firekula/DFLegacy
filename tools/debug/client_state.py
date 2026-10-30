@@ -19,10 +19,11 @@ UINT64_MAX = (1 << 64) - 1
 _TOKEN = re.compile(r"0x[0-9a-fA-F]{8}\Z")
 _PATH = re.compile(r"[A-Za-z][A-Za-z0-9_]*(?:\.(?:[A-Za-z][A-Za-z0-9_]*|[0-9]+))*\Z")
 _POSITION = {"x": "number", "y": "number", "z": "number"}
+_MP_SOURCE = {"actor_token": "token", "local": "bool"}
 _PLAYER = {
     "uid": "uid", "user_token": "token", "actor_token": "token",
     "map_token": "token", "hp": "hp", "max_hp": "hp", "mp": "hp",
-    "max_mp": "hp", "dead": "bool",
+    "max_mp": "hp", "dead": "bool", "mp_source": _MP_SOURCE,
     "same_map": "bool", "detached": "bool", "position": _POSITION,
 }
 _ENEMY = {
@@ -30,7 +31,9 @@ _ENEMY = {
     "active": "bool", "position": _POSITION, "action": "i32",
     "queued_action": "u32", "authority_token": "u32",
 }
-_SKILL = {"id": "u32", "level": "u32", "cooldown_ms": "duration", "cooldown_blocked": "bool", "usable": "bool"}
+_SKILL_RESOURCES = {'scope':'resource_scope','mp_cost':'hp','use_limit':'hp','use_count':'hp','items_sufficient':'bool'}
+_SKILL = {"id": "u32", "level": "u32", "cooldown_ms": "duration", "cooldown_blocked": "bool", "usable": "bool",
+          'resources':_SKILL_RESOURCES}
 _RECT = {
     "left": "i32", "top": "i32", "width": "u32", "height": "u32",
 }
@@ -47,16 +50,27 @@ _SELECTOR_EXTRA = {
     'selected_dungeon_id': 'i32', 'difficulty_raw': 'i32', 'maximum_difficulty_raw': 'i32',
 }
 _SELECTOR = {"visible": "bool", "active_raw": "u8", "selected": "i32", "hover": "i32", **_SELECTOR_EXTRA}
-_DIALOG = {'class_id': 'u32', 'instance_token': 'token', 'root_token': 'token',
+_PLACEMENT = {'layer_token': 'token', 'attached': 'bool', 'order': 'u32',
+              'layer_shown_raw': 'bool', 'layer_input_enabled_raw': 'bool'}
+_DIALOG_BASE = {'class_id': 'u32', 'instance_token': 'token', 'root_token': 'token',
            'shown_raw': 'bool', 'input_enabled_raw': 'bool'}
-_DIALOGS = {'valid': 'bool', 'truncated': 'bool', 'items': [_DIALOG, 64]}
+_DIALOG = {**_DIALOG_BASE, 'placement': _PLACEMENT}
+_DIALOG_LEGACY_CLASSES = (0x23,0x25,0x30,0x59,0x6A)
+_DIALOG_CLASSES = (7,9,0x23,0x25,0x30,0x56,0x59,0x6A)
+_DIALOGS = {'valid': 'bool', 'truncated': 'bool', 'items': [_DIALOG, 64], 'covered_class_ids': ['u32',8]}
+_MOUSE_COMMAND = {'scope': 'mouse_command_scope', 'lock_level': 'i32', 'lock_suppressed': 'bool',
+                  'checker_flag90_raw': 'bool', 'physical_excluded': 'bool'}
+_MOUSE_BUTTONS = {'scope': 'mouse_button_scope', 'deferred': 'bool'}
+_COMMAND_BASE = {'scope': 'command_scope', 'actor_token': 'token', 'uid': 'uid',
+                  'checker_token': 'token', 'keyboard_lock_level': 'i32', 'keyboard_suppressed': 'bool'}
+_COMMAND_INPUT = {**_COMMAND_BASE,'mouse':_MOUSE_COMMAND}
 _UI = {
     "selection_mode_raw": "i32",
     "player_menu": {"visible": "bool", "target_uid": "uid", "action_ids": ["u32", 32]},
     "town_minimap": {"visible": "bool", "enabled": "bool"},
     "dungeon_selector": _SELECTOR,
     "countdown": {"state_raw": "i32"},
-    'dialogs': _DIALOGS, 'input_blocked': 'bool',
+    'dialogs': _DIALOGS, 'input_blocked': 'bool', 'command_input': _COMMAND_INPUT, 'mouse_button_state':_MOUSE_BUTTONS,
 }
 _ROOM = {
     "stage_token": "token", "map_token": "token", "boss_dead": "bool",
@@ -124,10 +138,16 @@ def _shape(value, shape, *, nullable=True):
     if isinstance(shape, dict):
         _require(isinstance(value, dict), "bad_object")
         for key, child in shape.items():
-            if key not in value and ((shape is _UI and key in ('dialogs', 'input_blocked'))
+            if (shape is _DIALOGS and key=='covered_class_ids' or shape is _COMMAND_INPUT and key=='mouse') and key not in value:
+                continue
+            if shape is _DIALOG and key=='placement' and key not in value:
+                continue
+            if shape is _PLAYER and key == 'mp_source' and key not in value:
+                continue  # Additive provenance; legacy local-dungeon MP remains compatible.
+            if key not in value and ((shape is _UI and key in ('dialogs', 'input_blocked', 'command_input','mouse_button_state'))
                                     or (shape is _SELECTOR and key in _SELECTOR_EXTRA)):
                 continue  # Additive observation fields remain unknown on older v2 producers.
-            if shape is _SKILL and key == "cooldown_blocked" and key not in value:
+            if shape is _SKILL and key in ("cooldown_blocked",'resources') and key not in value:
                 continue  # Additive v2 diagnostic; old snapshots remain unknown.
             if shape is _TOWN and key == "auto_move_active" and key not in value:
                 continue  # Additive v2 field; absence remains unknown to get_known_field.
@@ -141,6 +161,10 @@ def _shape(value, shape, *, nullable=True):
         return
     checks = {
         "bool": lambda: type(value) is bool,
+        "command_scope": lambda: value == 'native_command_checker_type0',
+        "mouse_command_scope": lambda: value == 'native_command_checker_type1',
+        "mouse_button_scope": lambda: value == 'engine_mouse_button_state',
+        'resource_scope':lambda: value=='native_manual_precast_resources',
         "uint": lambda: _integer(value),
         "u32": lambda: _integer(value, 0, (1 << 32) - 1),
         "u8": lambda: _integer(value, 0, 255),
@@ -190,11 +214,26 @@ def _validate(snapshot):
     for key, shape in _BODY.items():
         _require(key in snapshot, "missing_field")
         _shape(snapshot[key], shape, nullable=key in ("room", "me"))
+    mp_owners={}
     for player in snapshot["players"] + ([snapshot["me"]] if snapshot["me"] is not None else []):
         me = snapshot["me"]
         local_mp = (version2 and snapshot["scene"] == 3 and me is not None
                     and all(player[key] == me[key] for key in ("uid", "actor_token", "user_token")))
-        _require(local_mp or (player["mp"] is None and player["max_mp"] is None), "unproven_mp")
+        source = player.get('mp_source')
+        bound_mp = False
+        if source is not None:
+            is_local = me is not None and all(player[key] == me[key] for key in ('uid','actor_token','user_token'))
+            _require(version2 and snapshot['scene'] in (1,3)
+                     and all(player[key] is not None for key in ('uid','actor_token','user_token'))
+                     and source['actor_token'] is not None and type(source['local']) is bool
+                     and source['local'] == is_local
+                     and (snapshot['scene'] != 3 or source['actor_token'] == player['actor_token']), 'mp_source_unbound')
+            bound_mp = True
+            actor=source['actor_token'].lower()
+            _require(actor not in mp_owners or mp_owners[actor]==player['uid'], 'duplicate_mp_source')
+            mp_owners[actor]=player['uid']
+        _require(bound_mp or (local_mp and 'mp_source' not in player)
+                 or (player["mp"] is None and player["max_mp"] is None), "unproven_mp")
     room = snapshot["room"]
     if room is not None:
         _require(isinstance(room["doors"], dict)
@@ -217,6 +256,18 @@ def _validate(snapshot):
         _require(skill["cooldown_ms"] is None or skill["cooldown_ms"] == 0 or skill["usable"] is not True, "inconsistent_skill_state")
         _require(skill["usable"] is not True or (snapshot["me"]["dead"] is False
                  and snapshot["me"]["same_map"] is True and snapshot["me"]["detached"] is False), "skill_actor_unavailable")
+        resources=skill.get('resources')
+        if resources is not None:
+            _require(skill_state and caps['skill_usable'] and _skill_identity(snapshot) and skill['level']>0,
+                     'unproven_skill_resources')
+            _require(resources.get('scope')=='native_manual_precast_resources','bad_resource_scope')
+            limit,count=resources['use_limit'],resources['use_count']
+            _require(count is None or limit is not None and limit>0,'unbound_skill_use_count')
+            if skill['usable'] is True:
+                cost=resources['mp_cost'];mp=snapshot['me']['mp']
+                _require(cost is not None and mp is not None and mp>=cost and limit is not None
+                         and (limit==0 or count is not None and count<limit)
+                         and resources['items_sufficient'] is True,'inconsistent_skill_resources')
     _unique(snapshot["players"], "uid")
     _unique(snapshot["players"], "actor_token")
     _unique(snapshot["enemies"], "uid")
@@ -229,6 +280,23 @@ def _validate(snapshot):
             _require(isinstance(snapshot["ui"][key], dict), "bad_ui")
         _require(snapshot["ui"]["dungeon_selector"]["visible"] is None, "unproven_ui_visibility")
         _require(snapshot['ui'].get('input_blocked') is None, 'unproven_global_input_block')
+        command=snapshot['ui'].get('command_input')
+        if command is not None:
+            me=snapshot['me']
+            _require(all(command[key] is not None for key in _COMMAND_BASE)
+                     and command['keyboard_suppressed'] == (command['keyboard_lock_level'] != 0)
+                     and (me is None or command['uid'] == me['uid'])
+                     and (snapshot['scene'] != 3 or (me is not None and command['actor_token'] == me['actor_token']))
+                     and (me is None or me.get('mp_source') is None
+                          or command['actor_token'] == me['mp_source']['actor_token']), 'command_input_unbound')
+            mouse=command.get('mouse')
+            if mouse is not None:
+                _require(all(mouse[key] is not None for key in _MOUSE_COMMAND)
+                         and mouse['lock_suppressed']==(mouse['lock_level']!=0)
+                         and mouse['physical_excluded']==(mouse['lock_suppressed'] or mouse['checker_flag90_raw']), 'mouse_command_unbound')
+        buttons=snapshot['ui'].get('mouse_button_state')
+        if buttons is not None:
+            _require(all(buttons[key] is not None for key in _MOUSE_BUTTONS),'mouse_button_state_unbound')
         selector = snapshot['ui']['dungeon_selector']
         if any(selector.get(key) is not None for key in _SELECTOR_EXTRA):
             _require(snapshot['scene'] == 2 and selector.get('instance_token') is not None
@@ -242,9 +310,29 @@ def _validate(snapshot):
         if dialogs is not None:
             _require(type(dialogs['valid']) is bool and type(dialogs['truncated']) is bool
                      and isinstance(dialogs['items'], list), 'bad_dialog_inventory')
+            coverage=dialogs.get('covered_class_ids')
+            if coverage is not None:
+                _require(isinstance(coverage,list) and bool(coverage) and len(coverage)==len(set(coverage))
+                         and all(c in _DIALOG_CLASSES for c in coverage),'bad_dialog_coverage')
+            else:coverage=_DIALOG_LEGACY_CLASSES
+            layer_signatures={};layer_groups={};layer_orders=set()
             for dialog in dialogs['items']:
-                _require(dialog['class_id'] in (0x23, 0x25, 0x30, 0x59, 0x6A)
-                         and all(dialog[key] is not None for key in _DIALOG), 'dialog_unbound')
+                _require(dialog['class_id'] in coverage
+                         and all(dialog[key] is not None for key in _DIALOG_BASE), 'dialog_unbound')
+                placement=dialog.get('placement')
+                if placement is not None:
+                    _require(all(placement[key] is not None for key in _PLACEMENT if key!='order')
+                             and (placement['order'] is None if placement['attached'] is False
+                                  else _integer(placement['order'],0,127)), 'dialog_placement_unbound')
+                    signature=(placement['layer_token'].lower(),placement['layer_shown_raw'],placement['layer_input_enabled_raw'])
+                    group=0 if dialog['class_id']<=0xF else 1 if dialog['class_id']<=0x17 else 2
+                    _require(group not in layer_signatures or layer_signatures[group]==signature,'inconsistent_dialog_layer')
+                    _require(signature[0] not in layer_groups or layer_groups[signature[0]]==group,'aliased_dialog_layer')
+                    layer_signatures[group]=signature;layer_groups[signature[0]]=group
+                    if placement['attached']:
+                        order=(signature[0],placement['order'])
+                        _require(order not in layer_orders,'duplicate_dialog_order')
+                        layer_orders.add(order)
             _unique(dialogs['items'], 'instance_token')
             _unique(dialogs['items'], 'root_token')
         if snapshot["scene"] == 3:
@@ -263,7 +351,7 @@ def _validate(snapshot):
             _require(snapshot["room"] is None and not snapshot["enemies"] and not snapshot["skills"]
                      and caps["skill_levels"] is False, "stale_town_payload")
             for player in snapshot["players"] + [me]:
-                _require(all(player[key] is None for key in ("hp", "max_hp", "mp", "max_mp", "dead")),
+                _require(all(player[key] is None for key in ("hp", "max_hp", "dead")),
                          "unproven_town_combat")
         else:
             _require(snapshot["town"] is None and snapshot["room"] is None and snapshot["me"] is None
@@ -335,9 +423,9 @@ def get_known_field(snapshot, dotted_path):
     parts = dotted_path.split(".")
     if parts[0] == "skills":
         caps = snapshot.get("capabilities", {})
-        dynamic = any(part in ("cooldown_ms", "cooldown_blocked", "usable") for part in parts)
+        dynamic = any(part in ("cooldown_ms", "cooldown_blocked", "usable",'resources') for part in parts)
         if not caps.get("skill_levels") or (any(part in ("cooldown_ms", "cooldown_blocked") for part in parts) and not caps.get("skill_cooldown")) \
-                or ("usable" in parts and not caps.get("skill_usable")) \
+                or (any(part in ('usable','resources') for part in parts) and not caps.get("skill_usable")) \
                 or (dynamic and (snapshot.get("schema") != SCHEMA_V2 or snapshot.get("scene") != 3)):
             raise UnknownFieldError(dotted_path, "unsupported")
         if dynamic and not _skill_identity(snapshot):
@@ -456,6 +544,10 @@ def summarize(snapshot):
                    "usable": snapshot["capabilities"]["skill_usable"]},
     }
     if snapshot.get("schema") == SCHEMA_V2:
+        if result['me'] is not None:
+            result['me'].update({key:me.get(key) for key in ('mp','max_mp','mp_source')})
+        result['players']=[{key:player.get(key) for key in ('uid','mp','max_mp','mp_source')}
+                           for player in snapshot['players']]
         town = snapshot["town"]
         result["town"] = None if town is None else {
             key: town[key] for key in ("town_id", "area_id", "position", "destination", "direction_raw")}

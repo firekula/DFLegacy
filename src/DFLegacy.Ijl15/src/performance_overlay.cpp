@@ -87,6 +87,7 @@ namespace
 
     int __fastcall DrawFpsAndMemory(void* performanceObject, void*) noexcept
     {
+        dfl::debug_module::Pipeline timing;
         if (dfl::auto_input::IsEnabled()) { dfl::auto_input::Pump(); }
 
         // The original call site checks [this + 0x2F0] before entering
@@ -103,6 +104,7 @@ namespace
             originalRenderer(performanceObject);
         }
 
+        timing.Mark();
         // The call site passes the performance object in ECX. The renderer
         // used by sub_836990 is the separate global at 0x00BF1648.
         void* const renderer = *reinterpret_cast<void**>(0x00BF1648);
@@ -132,10 +134,12 @@ namespace
         state.mode = 1;
         state.font = *reinterpret_cast<const std::uint32_t*>(0x00B5B384);
         beginText(renderer, &state);
+        timing.Mark();
         // Share the original frame's initialized text state with the plugin.
         // Do not begin/reset a native text batch separately for every line.
         dfl::debug_module::Render();
-        if (!dfl::ijl15_config::Get().EnablePerformanceOverlay) return 0;
+        timing.Mark();
+        if (!dfl::ijl15_config::Get().EnablePerformanceOverlay) {timing.Mark();return 0;}
 
         char fpsText[64]{};
         _snprintf_s(
@@ -146,6 +150,7 @@ namespace
 
         char memoryText[64]{};
         FormatCommittedMemory(memoryText, sizeof(memoryText));
+        timing.Mark();
 
         const int fpsResult = drawText(
             renderer,

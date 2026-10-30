@@ -64,7 +64,7 @@ namespace dfl::auto_input
     // Parses the spec section 3.1 JSON subset. Accepts only a root object
     // with "version" (must be the integer 1) and "steps" (an array of flat
     // step objects whose keys are t/op/vk/x/y/dur/chars/x2/y2); strings know only
-    // the \\ and \" escapes; numbers are decimal integers. Any other shape --
+    // the \\, \", \r and \n escapes; numbers are decimal integers. Any other shape --
     // unknown keys, other escapes, trailing bytes, more steps than the
     // caller takes -- is rejected. On success fills steps/count/version and
     // returns true; on failure returns false and leaves the caller's

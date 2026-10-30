@@ -148,6 +148,8 @@
     <ClCompile Include="priest_heal_target_tests.cpp" />
     <ClCompile Include="..\src\ground_item_removal.cpp" />
     <ClCompile Include="ground_item_removal_tests.cpp" />
+    <ClCompile Include="..\src\motion_horizon.cpp" />
+    <ClCompile Include="motion_horizon_tests.cpp" /><ClCompile Include="native_loop_probe_tests.cpp" />
     <ClCompile Include="..\src\party_card_display.cpp" />
     <ClCompile Include="party_card_display_tests.cpp" />
     <ClCompile Include="..\src\relay_send_queue.cpp" />

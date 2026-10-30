@@ -152,6 +152,40 @@ namespace dfl::client_test_control
             }
             __except(EXCEPTION_EXECUTE_HANDLER){return false;}
         }
+        bool TeleportPublicationReady(std::uint32_t actor,PositionBinding& binding) noexcept
+        {
+            Reads r;std::uint32_t local=0,owner=0,map=0,stage=0,network=0,currentStage=0;
+            constexpr unsigned char publish[]={0x55,0x8B,0xEC,0x56,0x8B,0xF1,0x8B,0x4E,0x74,0x85,0xC9,
+                0x0F,0x84,0x6B,0x02,0,0,0xE8,0x2A,0xA6,0xFA,0xFF,0x84,0xC0};
+            return r.Matches(0x4C8FE0,publish)&&ReadPositionBinding(Native,actor,binding)
+                &&r.At(0xB75A14,0,local)&&local==actor&&r.At(binding.controller,0x74,owner)&&owner==actor
+                &&r.Getter(actor,0x40,0x4073E0)&&r.Getter(actor,0x54,0x407400)&&r.Getter(actor,0x138,0x493880)
+                &&r.At(actor,0xE4,map)&&map&&r.At(map,0xF4,stage)&&stage
+                &&r.At(0xB5DCE0,0,network)&&r.At(network,0x200010,currentStage)&&currentStage==stage;
+        }
+        struct TeleportBinding {PositionBinding before{};};
+        bool SetPlayerTeleport(void* context,std::uint32_t actor,std::int32_t x,std::int32_t y,bool& touched) noexcept
+        {
+            auto& state=*static_cast<TeleportBinding*>(context);
+            // Validate the new publication path before either local axis changes.
+            return TeleportPublicationReady(actor,state.before)&&SetPosition(actor,x,y,touched);
+        }
+        bool PublishPlayerTeleport(void* context,std::uint32_t actor) noexcept
+        {
+            const auto& before=static_cast<TeleportBinding*>(context)->before;PositionBinding after{};
+            if(!TeleportPublicationReady(actor,after)||before.actor!=after.actor
+                ||before.controller!=after.controller||before.vector!=after.vector)return false;
+            __try
+            {
+                // Original player reposition callers 4929E1 / 8A537F use (1,1).
+                // This updates the native compression baseline as well as requesting
+                // the full 0x10 publication. The void return is NOT delivery proof.
+                using Publish=void(__thiscall*)(void*,bool,std::int32_t);
+                reinterpret_cast<Publish>(0x4C8FE0)(reinterpret_cast<void*>(after.controller),true,1);
+                return true;
+            }
+            __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+        }
         struct ActorVector
         {std::uint32_t begin=0,end=0;std::array<std::uint32_t,MaximumGround> actors{};std::size_t count=0;};
         bool ReadActors(std::uint32_t map,ActorVector& v) noexcept
@@ -473,13 +507,16 @@ namespace dfl::client_test_control
             if(!error)
             {
                 if(q.operation==1)
-                {if(!SetPosition(q.actorToken,q.x,q.y,touched))error="native_position_failed";else applied=1;}
+                {
+                    TeleportBinding binding;const PlayerTeleportOperations ops{&binding,&SetPlayerTeleport,&PublishPlayerTeleport};
+                    error=CompletePlayerTeleport(ops,q.actorToken,q.x,q.y,touched,applied);
+                }
                 else if(q.operation==2)error=ApplyKill(command,snapshot,applied,touched);
                 else if(q.operation==5)error=ApplyInventoryDrop(command,snapshot,applied,touched);
                 else if(q.operation==6)error=ApplyPlayerKill(command,snapshot,applied,touched);
                 else error=ApplyGround(command,snapshot,applied,touched);
             }
-            GameResult={q,error?(touched?"partial":"rejected"):"applied",error?error:(q.operation==2?"native_death_requested":q.operation==6?"native_player_death_requested":q.operation==5?"native_drop_requested":"native_position_observed"),Now(),++NextSerial,applied};FlushResult();
+            GameResult={q,error?(touched?"partial":"rejected"):"applied",error?error:(q.operation==1?"native_position_publication_requested":q.operation==2?"native_death_requested":q.operation==6?"native_player_death_requested":q.operation==5?"native_drop_requested":"native_position_observed"),Now(),++NextSerial,applied};FlushResult();
         }
         bool SameFile(const BY_HANDLE_FILE_INFORMATION& a,const BY_HANDLE_FILE_INFORMATION& b) noexcept
         {return a.dwVolumeSerialNumber==b.dwVolumeSerialNumber&&a.nFileIndexHigh==b.nFileIndexHigh&&a.nFileIndexLow==b.nFileIndexLow

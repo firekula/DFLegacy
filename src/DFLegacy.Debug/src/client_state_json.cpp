@@ -29,6 +29,9 @@ namespace dfl::client_state
             out << ",\"actor_token\":"; Token(out, p.actorToken); out << ",\"map_token\":"; Token(out, p.mapToken);
             out << ",\"hp\":"; Nullable(out, p.hp); out << ",\"max_hp\":"; Nullable(out, p.maxHp);
             out << ",\"mp\":"; Nullable(out, p.mp); out << ",\"max_mp\":"; Nullable(out, p.maxMp);
+            out << ",\"mp_source\":";
+            if (!p.mpActorToken) out << "null";
+            else { out << "{\"actor_token\":"; Token(out,p.mpActorToken); out << ",\"local\":" << p.mpLocal << '}'; }
             out << ",\"dead\":"; Nullable(out, p.dead); out << ",\"same_map\":"; Nullable(out, p.sameMap);
             out << ",\"detached\":"; Nullable(out, p.detached); out << ",\"position\":"; Point(out, p.position); out << '}';
         }
@@ -114,9 +117,40 @@ namespace dfl::client_state
             const auto& d = s.ui.dialogs.items[i]; if (i) out << ',';
             out << "{\"class_id\":" << d.classId << ",\"instance_token\":"; Token(out, d.instanceToken);
             out << ",\"root_token\":"; Token(out, d.rootToken);
-            out << ",\"shown_raw\":" << d.shownRaw << ",\"input_enabled_raw\":" << d.inputEnabledRaw << '}';
+            out << ",\"shown_raw\":" << d.shownRaw << ",\"input_enabled_raw\":" << d.inputEnabledRaw << ",\"placement\":";
+            const auto& p=d.placement;
+            if(!p.present) out << "null";
+            else
+            {
+                out << "{\"layer_token\":";Token(out,p.layerToken);
+                out << ",\"attached\":" << p.attached << ",\"order\":";
+                if(p.attached)out << p.order;else out << "null";
+                out << ",\"layer_shown_raw\":" << p.layerShownRaw << ",\"layer_input_enabled_raw\":" << p.layerInputEnabledRaw << '}';
+            }
+            out << '}';
         }
-        out << "]},\"input_blocked\":null}";
+        out << "],\"covered_class_ids\":[";
+        for(std::size_t i=0;i<DialogClassIds.size();++i){if(i)out << ',';out << DialogClassIds[i];}
+        out << "]},\"command_input\":";
+        const auto& command=s.ui.commandInput;
+        if (!command.present) out << "null";
+        else
+        {
+            out << "{\"scope\":\"native_command_checker_type0\",\"actor_token\":";Token(out,command.actorToken);
+            out << ",\"uid\":" << command.uid << ",\"checker_token\":";Token(out,command.checkerToken);
+            out << ",\"keyboard_lock_level\":" << command.keyboardLockLevel
+                << ",\"keyboard_suppressed\":" << (command.keyboardLockLevel!=0) << ",\"mouse\":";
+            if(!command.mouseLockLevel.known || !command.mouseFlag90.known)out << "null";
+            else out << "{\"scope\":\"native_command_checker_type1\",\"lock_level\":" << command.mouseLockLevel.value
+                << ",\"lock_suppressed\":" << (command.mouseLockLevel.value!=0)
+                << ",\"checker_flag90_raw\":" << command.mouseFlag90.value
+                << ",\"physical_excluded\":" << (command.mouseLockLevel.value!=0 || command.mouseFlag90.value) << '}';
+            out << '}';
+        }
+        out << ",\"mouse_button_state\":";
+        if(!s.ui.mouseButtonsDeferred.known)out << "null";
+        else out << "{\"scope\":\"engine_mouse_button_state\",\"deferred\":" << s.ui.mouseButtonsDeferred.value << '}';
+        out << ",\"input_blocked\":null}";
         out << ",\"me\":"; if (s.haveMe) Person(out, s.me); else out << "null";
         out << ",\"players\":[";
         for (std::size_t i = 0; i < s.playerCount; ++i) { if (i) out << ','; Person(out, s.players[i]); }
@@ -135,7 +169,16 @@ namespace dfl::client_state
         {
             if (i) out << ',';
             out << "{\"id\":" << s.skills[i].id << ",\"level\":" << s.skills[i].level << ",\"cooldown_ms\":";Nullable(out,s.skills[i].cooldownMs);
-            out << ",\"cooldown_blocked\":";Nullable(out,s.skills[i].cooldownBlocked);out << ",\"usable\":";Nullable(out,s.skills[i].usable);out << '}';
+            out << ",\"cooldown_blocked\":";Nullable(out,s.skills[i].cooldownBlocked);out << ",\"usable\":";Nullable(out,s.skills[i].usable);
+            const auto& resources=s.skills[i].resources;out << ",\"resources\":";
+            if(!resources.present)out << "null";
+            else
+            {
+                out << "{\"scope\":\"native_manual_precast_resources\",\"mp_cost\":";Nullable(out,resources.mpCost);
+                out << ",\"use_limit\":";Nullable(out,resources.useLimit);out << ",\"use_count\":";Nullable(out,resources.useCount);
+                out << ",\"items_sufficient\":";Nullable(out,resources.itemsSufficient);out << '}';
+            }
+            out << '}';
         }
         out << "]}\n"; return out.str();
     }

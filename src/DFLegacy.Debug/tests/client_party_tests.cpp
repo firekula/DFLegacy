@@ -110,6 +110,19 @@ int RunClientPartyTests()
     memory.Secure(0xC100D4,1);memory.U(0xC100E4,base.mapToken);
     std::uint32_t liveManager=0;
     check(ReadLiveContext(reader,base,liveManager,true)&&liveManager==0x500000,"live self and target actor bindings verified");
+    memory.U(base.userToken+0xFC,0xD00000);memory.U(0xC000FC,0xD10000);
+    const auto* bothParties=ReadRequestFailure(reader,base);
+    check(bothParties&&std::strcmp(bothParties,"both_already_in_parties")==0,
+          "retained singleton plus newly formed party explains native invite rejection");
+    memory.U(0xC000FC,0);
+    check(ReadRequestFailure(reader,base)==nullptr,"explicit singleton disband removes both-party rejection");
+    memory.U(base.userToken+0xFC,0);memory.U(0xC000FC,0xD10000);
+    check(ReadRequestFailure(reader,base)==nullptr,"unpartied requester can apply to existing party");
+    memory.U(base.userToken+0xFC,0xD00000);memory.U(0xC100E4,base.mapToken+4);
+    check(ReadRequestFailure(reader,base)==nullptr,"changed peer context cannot produce a stale diagnosis");
+    memory.U(0xC100E4,base.mapToken);memory.bytes.erase(0xC000FC);
+    check(ReadRequestFailure(reader,base)==nullptr,"unreadable membership remains unknown");
+    memory.U(0xC000FC,0);
     memory.U(0xC100E4,base.mapToken+4);
     check(!ReadLiveContext(reader,base,liveManager,true),"peer from another area/map cannot receive stale command");
     memory.U(0xC100E4,base.mapToken);memory.Secure(base.actorToken+0xD4,3);
