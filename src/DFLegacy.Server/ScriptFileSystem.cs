@@ -18,6 +18,7 @@ public sealed class ScriptFileSystem
     private readonly int _bodyOffset;
     private readonly IReadOnlyDictionary<string, PvfEntry> _entries;
     private readonly string? _directoryRoot;
+    private readonly Lazy<DirectoryIndex>? _directoryIndex;
     private readonly ConcurrentDictionary<string, byte[]> _contentCache =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -43,6 +44,8 @@ public sealed class ScriptFileSystem
         if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
         {
             _directoryRoot = directory;
+            _directoryIndex = new Lazy<DirectoryIndex>(
+                IndexDirectory, LazyThreadSafetyMode.ExecutionAndPublication);
             _entries = new Dictionary<string, PvfEntry>();
             SourceDescription = directory;
             _logger.LogWarning(
@@ -154,27 +157,38 @@ public sealed class ScriptFileSystem
                 .ToArray();
         }
 
-        if (_directoryRoot is null)
+        if (_directoryIndex is null)
         {
             return [];
         }
 
-        var searchRoot = _directoryRoot;
-        if (normalizedPrefix.Length > 0)
-        {
-            var directoryPrefix = normalizedPrefix.TrimEnd('/');
-            if (!TryResolveDirectoryPath(directoryPrefix, out searchRoot)
-                || !Directory.Exists(searchRoot))
-            {
-                return [];
-            }
-        }
+        var paths = _directoryIndex.Value.VirtualPaths;
+        var start = Array.BinarySearch(paths, normalizedPrefix, StringComparer.OrdinalIgnoreCase);
+        if (start < 0) start = ~start;
+        var end = start;
+        while (end < paths.Length && paths[end].StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase))
+            end++;
+        return paths[start..end];
+    }
 
-        return Directory.EnumerateFiles(searchRoot, "*", SearchOption.AllDirectories)
-            .Select(path => NormalizeVirtualPath(Path.GetRelativePath(_directoryRoot, path)))
-            .Where(path => path.StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+    private DirectoryIndex IndexDirectory()
+    {
+        var realPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var enumeration = new EnumerationOptions
+        {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint,
+            IgnoreInaccessible = false
+        };
+        foreach (var path in Directory.EnumerateFiles(_directoryRoot!, "*", enumeration))
+        {
+            var virtualPath = NormalizeVirtualPath(Path.GetRelativePath(_directoryRoot!, path));
+            if (!realPaths.TryAdd(virtualPath, path))
+                throw new InvalidDataException(
+                    $"Unpacked scripts contain ambiguous case-insensitive virtual path '{virtualPath}'.");
+        }
+        var paths = realPaths.Keys.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
+        return new(realPaths, paths);
     }
 
     private byte[] ReadPvfEntry(PvfEntry entry)
@@ -198,7 +212,7 @@ public sealed class ScriptFileSystem
     private bool TryResolveDirectoryPath(string normalized, out string path)
     {
         path = string.Empty;
-        if (_directoryRoot is null)
+        if (_directoryRoot is null || _directoryIndex is null)
         {
             return false;
         }
@@ -214,8 +228,7 @@ public sealed class ScriptFileSystem
             return false;
         }
 
-        path = candidate;
-        return true;
+        return _directoryIndex.Value.RealPaths.TryGetValue(normalized, out path!);
     }
 
     private static (byte[] Archive, int BodyOffset, IReadOnlyDictionary<string, PvfEntry> Entries)
@@ -312,4 +325,8 @@ public sealed class ScriptFileSystem
         int Length,
         uint Crc32,
         string Path);
+
+    private sealed record DirectoryIndex(
+        IReadOnlyDictionary<string, string> RealPaths,
+        string[] VirtualPaths);
 }
