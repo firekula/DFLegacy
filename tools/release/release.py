@@ -415,7 +415,7 @@ def publish(rid, version, commit, client_assets, output, manager_output=None, se
         copy_tree(REPO / "deploy/templates", stage / "templates")
         copy_tree(REPO / "deploy/start", stage)
         (stage / "resources").mkdir()
-        (stage / "resources/README.txt").write_text("Supply your own Script.pvf here, or select an absolute PVF path in Manager. Game resources are not distributed.\n", encoding="utf-8")
+        (stage / "resources/README.txt").write_text("Upload your own Script.pvf in Manager's service configuration; it is saved under the persistent data/resources directory. Existing external PVF paths remain supported. Game resources are not distributed.\n", encoding="utf-8")
         for path in files(stage):
             if executable(path):
                 path.chmod(0o755)

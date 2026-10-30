@@ -17,7 +17,7 @@ macOS 首版未签名、未公证，也未宣称已完成原生机器验收。�
 Manager 默认监听 `127.0.0.1:18080`，本机模式会尝试打开浏览器。无桌面时传 `--no-browser`，访问控制台显示的地址。关闭浏览器不会停服。部署管理身份独立于游戏账号/GM，游戏服务停止后仍可登录 Manager。
 
 1. 本机首次页面使用一次性设置凭据。无头模式从 `data/management/setup-token.txt` 读取它；该文件应仅运行账号可读，成功设置后失效并删除。
-2. 创建部署管理账号，选择你持有的 PVF 文件和连接设置。
+2. 创建部署管理账号，在「服务配置」上传你持有的 PVF 文件，再填写连接设置；无需输入服务器路径。上传上限 1 GiB，失败保留原资源和配置，运行中需先停服。
 3. 使用向导创建初始游戏管理员；已有存档可跳过创建，不会重置账号。重名冲突要明确处理后重试。
 4. 检查 PVF 可读、端口和公布地址，保存后点击启动游戏服务。首次配置与后续配置不会自动覆盖现有存档。
 
@@ -27,13 +27,14 @@ Manager 默认监听 `127.0.0.1:18080`，本机模式会尝试打开浏览器。
 
 ```text
 DFLegacy/
-  DFLegacy.Manager[.exe] + 运行时 + wwwroot/
-  runtime/server/                 Server完整运行时与网页
-  runtime/channel/                高级手动部署的Channel
+  DFLegacy.Manager[.exe] + wwwroot/ 自包含单文件管理器及网页
+  runtime/server/                 自包含单文件Server与网页
+  runtime/channel/                高级手动部署的单文件Channel
   client-assets/                  同版Windows登录器、补丁和manifest
   templates/                      安全默认配置
   release-manifest.json           版本、提交、摘要、验证范围
-  resources/                      自备PVF的位置或使用外部路径
+  resources/                      资源说明；已有外部PVF配置仍兼容
+  data/resources/                 网页上传的PVF（按内容摘要保存）
   data/config/                    server.json、manager.json
   data/management/                管理账号哈希与一次性设置凭据
   data/game/                      游戏存档
@@ -60,16 +61,20 @@ CLI：`--root <目录> --data-dir <目录> --listen <IP> --port <端口> --no-br
 
 远程管理使用 SSH 隧道或 HTTPS 反向代理，保持默认 loopback 映射。例如 `ssh -L 18080:127.0.0.1:18080 user@server` 后访问本机 `http://127.0.0.1:18080`。显式公开管理口时同时配置 HTTPS 与受信任的访问 Host。反代域名添加到 `--allowed-hosts`/`DFLEGACY_MANAGER_ALLOWED_HOSTS`，仅可信代理 IP 添加到 `DFLEGACY_MANAGER_TRUSTED_PROXIES`（逗号分隔），代理传递正确 Host/Origin 与 Forwarded Headers。Compose 对应 `.env` 的 `MANAGER_ALLOWED_HOSTS`、`MANAGER_TRUSTED_PROXIES`。cookie/CSRF 不能替代传输加密。游戏 API 的 GM/玩家身份与部署管理账号分别登录。
 
-Manager `/health` 只表示管理器可响应；`/ready` 表示游戏就绪，停服时返回 503。正常停服不应触发容器反复重启。启动失败时管理页继续可用，查看日志处理 PVF、端口占用或配置问题。
+Manager `/health` 只表示管理器可响应；`/ready` 表示私有通道与全部必要监听已就绪，停服时返回 503。正常停服不应触发容器反复重启。部分启动失败会回收本次进程与已绑定端口，管理页继续可用，修正配置后可直接重试。日志会区分端口占用与 Windows 系统保留端口导致的拒绝访问；不会终止外部占用进程。
+
+掉落概率以倍数显示：1 倍对应 `Drop.RatePercent=100`，沿用 PVF 基础概率；2 倍表示基础概率乘 2，最高仍为 100%，不表示所有物品必掉。普通怪物/深渊额外倍率与相关概率判定重叠时相乘，不代表金币数量倍率。详细操作见 [部署管理器说明](DEPLOYMENT_MANAGER.md)。
 
 ## Docker / Compose
 
-镜像内 Manager 根为 `/app`，持久化数据为 `/app/data`，PVF 为 `/pvf/Script.pvf`。镜像使用非 root `app` 用户，命名卷首次自动建立为可写目录；不需要挂载 Docker socket。
+镜像内 Manager 根为 `/app`，持久化数据为 `/app/data`；默认从管理页上传 PVF，保存到 `/app/data/resources/`。镜像使用非 root `app` 用户，命名卷首次自动建立为可写目录；不需要挂载 Docker socket。单文件程序首次运行可将原生依赖解压到数据卷的 `.net` 缓存目录。
 
 1. 复制 `.env.example` 为 `.env`。
-2. 将 `DFLEGACY_IMAGE` 设为你构建/发布的版本镜像或可信的 `registry/owner/image@sha256:...`；将 `PVF_PATH` 设为已存在 PVF 的绝对路径。未填写会直接拒绝启动，不会创建假的目录代替文件。
+2. 将 `DFLEGACY_IMAGE` 设为你构建/发布的版本镜像或可信的 `registry/owner/image@sha256:...`。默认模板不要求填写 `PVF_PATH`。
 3. 执行 `docker compose config` 审查映射，然后 `docker compose up -d`。
-4. 执行 `docker compose exec dflegacy cat /app/data/management/setup-token.txt` 取得首次设置凭据，通过本机管理页或隧道完成配置，确认公布地址/API URL 后启动游戏。
+4. 执行 `docker compose exec dflegacy cat /app/data/management/setup-token.txt` 取得首次设置凭据，通过本机管理页或隧道上传 PVF、完成配置，确认公布地址/API URL 后启动游戏。
+
+需要保留只读宿主 PVF 挂载时，下载同版 `compose.pvf.yaml`，将 `.env` 的 `PVF_PATH` 设为已有文件的绝对路径，再执行 `docker compose -f compose.yaml -f compose.pvf.yaml up -d`；源码仓库中第二个文件位于 `deploy/compose.pvf.yaml`。显式环境变量控制的 PVF 不能在网页替换。下方 host/IPv6 示例仍要求填写 `PVF_PATH`。
 
 默认 bridge 模板将管理口仅映射宿主 `127.0.0.1:18080`，业务 API 8081 以及游戏 TCP/UDP 端口单独映射。可通过 `.env` 调整宿主绑定；游戏 API 在不受信网络需置于 HTTPS 代理后。查看日志用 `docker compose logs --tail 100 -f`，停止用 `docker compose stop`。`stop_grace_period` 给 Manager 时间软停止自己的游戏子进程。
 
@@ -88,9 +93,9 @@ Docker build/多架构发行见 [BUILDING.md](BUILDING.md)。Gitea Registry 使�
 
 ## 导出玩家包
 
-在 Manager 中确认公布地址、账号 API URL、端口和 Relay 偏好后，选择“补丁包”或“完整登录器包”。所有系统使用随版 Windows 资源离线组包，不需要在服务器上安装 VS 或 WPF。
+在 Manager 中确认公布地址、账号 API URL、端口和 Relay 偏好后，点击“生成并下载玩家包 ZIP”。所有系统使用随版 Windows 资源离线组包，不需要在服务器上安装 VS 或 WPF。
 
-补丁包只含固定 DLL/配置与说明；完整包包含自包含 WPF 登录器及依赖。游戏退出后先备份再替换，保留自己的客户端配置；登录器不会强行覆盖现有 `Config.ini`。玩家包不包含管理凭据、游戏存档、PVF 或预置游戏账号，玩家自行登录/注册。
+ZIP 包含单文件 WPF 登录器、必需的 `ijl15.dll`、空凭据连接配置、条款、说明和摘要，直接解压到 `DNF.exe` 所在目录。游戏退出后先备份再替换；ZIP 不直接包含 `Config.ini`，登录器仅在缺少配置时从内嵌模板生成，保留已有设置。玩家包不包含管理凭据、游戏存档、PVF 或预置游戏账号，玩家自行登录/注册。
 
 调试浮窗默认关闭。`debug.dll` 依赖本机共享快照目录，不能声称远程 Linux/macOS/Docker 已支持该调试传输。兼容补丁和普通性能浮窗与调试功能分别设置。第三方可选 `d3d8to9` 不会自动分发，使用时自行核对仓库附带许可与兼容性。
 

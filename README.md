@@ -297,7 +297,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | `TownSync.PrivateAreas` | 额外私密区域列表，格式为 `城镇:区域`，默认 `[]`。五城赛丽亚房间 `1:1`、`2:5`、`3:2`、`4:1`、`5:1` 始终隔离，无需填写。 |
 | `Drop.Enabled` | 服务端掉落总开关。 |
 | `Drop.RatePercent` | 普通掉落倍率百分比，`100` 使用 PVF 原始概率。 |
-| `Drop.EconomicRate` | 金币倍率，默认 `1.0`。 |
+| `Drop.EconomicRate` | 普通怪物/深渊相应判定的额外掉落倍率，默认 `1.0`；与概率倍率重叠时相乘，不表示金币数量倍率。 |
 | `Drop.ForceDrops` | 强制掉落测试开关，正常体验应保持 `false`。 |
 | `Experience.MonsterMultiplier` | 逐只怪物经验倍率，默认 `1.0`。 |
 | `Experience.ClearMultiplier` | 通关基础经验及评分奖励倍率，默认 `1.0`。 |
@@ -320,7 +320,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 
 `Relay.Enabled` 打开后，启动器会把本地中继托管在自己进程内（启动客户端后驻留到客户端退出，不额外产生进程），用于客户端只能 IPv4、服务器只有 IPv6 的场景，见 [DEPLOYING.md](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)。
 
-启动器会安装发布目录中的 `ijl15.dll`，首次替换已有模块时保留 `ijl15.original.dll`，缺少客户端 `Config.ini` 时复制默认配置。IJL15 补丁只修改当前进程内存，不改写磁盘上的 PE；Launcher 启动器本身不读写客户端进程内存。
+启动器会安装发布目录中的 `ijl15.dll`，首次替换已有模块时保留 `ijl15.original.dll`，缺少客户端 `Config.ini` 时从内嵌模板生成默认配置，已有配置继续保留。部署管理器导出的统一玩家 ZIP 直接解压到 `DNF.exe` 所在目录，包含单文件登录器，不需要分别下载补丁与完整登录器。IJL15 补丁只修改当前进程内存，不改写磁盘上的 PE；Launcher 启动器本身不读写客户端进程内存。
 
 客户端目录中的 `Config.ini` 提供以下常用设置：
 
