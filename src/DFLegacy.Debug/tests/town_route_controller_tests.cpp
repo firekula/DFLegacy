@@ -267,10 +267,10 @@ namespace
         for (const char* kind:{"normal","gate","pub","dungeon_gate","fishing_place","transport","unknown"})
         {
             auto cat=Rooms();cat.areas[0].kind=kind;auto o=Sample();Controller c;std::string error;
-            const bool allowed=std::string(kind)=="normal" || std::string(kind)=="gate" || std::string(kind)=="pub";
+            const bool allowed=std::string(kind)=="normal" || std::string(kind)=="gate" || std::string(kind)=="pub" || std::string(kind)=="dungeon_gate";
             const bool started=c.Start(cat,o,{{1,0},{180,60}},1000,error);
-            Check(started==allowed,"normal/gate/pub allowed; dungeon/fishing/transport/unknown refused");
-            if (started) Check(c.Tick(cat,o,1000).kind==Action::Kind::SetDestination,"supported ordinary Town kind plans a native leg");
+            Check(started==allowed,"ordinary Town and dungeon-gate endpoints allowed; fishing/transport/unknown refused");
+            if (started) Check(c.Tick(cat,o,1000).kind==Action::Kind::SetDestination,"supported Town endpoint plans a native leg");
         }
         auto cat=Rooms();cat.areas[1].kind="fishing_place";
         cat.areas[1].portals.push_back({{1,1},{1,8},{300,20,30,80},{315,60}});
@@ -301,8 +301,9 @@ namespace
         o=Sample();c=Controller();
         Check(!c.Start(cat,o,{{1,1},{10,60}},1000,error) && error=="goal_inside_portal",
             "source exception still rejects a final point inside an ordinary area's dangerous portal");
-        Check(!c.Start(cat,o,{{1,0},{180,60}},1000,error) && error=="unsupported_area",
-            "dungeon gate remains forbidden as a final area even when it is the current source");
+        Check(c.Start(cat,o,{{1,0},{180,60}},1000,error),
+            "current dungeon-gate Town area can also be the final walking area");
+        c=Controller();
         o.busy=true;
         Check(!c.Start(cat,o,{{1,1},{180,60}},1000,error) && error=="ui_busy" && c.Steps()==0,
             "selection or transport UI busy cannot use the source exception");
@@ -314,8 +315,8 @@ namespace
         o=Sample();c=Controller();
         Check(!c.Start(transit,o,{{1,8},{180,60}},1000,error) && !c.Active() && c.Steps()==0,
             "ordinary route cannot use a dungeon gate as an intermediate area");
-        Check(!c.Start(transit,o,{{1,1},{180,60}},1000,error) && error=="unsupported_area",
-            "ordinary route cannot choose a dungeon gate as its final area");
+        Check(c.Start(transit,o,{{1,1},{180,60}},1000,error),
+            "ordinary route can choose a dungeon gate as its final walking area");
         for (unsigned field=0;field<3;++field)
         {
             o=Sample();c=Controller();
@@ -326,6 +327,54 @@ namespace
             if (field==2) ++changed.actor;
             Check(c.Tick(cat,changed,1100).kind==Action::Kind::Interrupted && c.Steps()==0,
                 "initial dungeon-gate departure still pins original actor map and generation");
+        }
+    }
+    void DungeonGateFinalArrival()
+    {
+        auto cat=Rooms(true);cat.areas[1].kind="dungeon_gate";
+        cat.areas[1].portals.push_back({{1,1},{-1,-1},{360,20,35,80},{375,60}});
+        auto o=Sample();Controller c;std::string error;
+        const bool started=c.Start(cat,o,{{1,1},{180,60}},1000,error);
+        Check(started,"ordinary Town source queues a dungeon-gate final target");
+        if(started)
+        {
+            auto action=c.Tick(cat,o,1000);
+            Check(action.kind==Action::Kind::SetDestination&&action.point==Waypoint{315,60},"gate endpoint still approaches its original Town portal");
+            c.ConfirmDestination(o,action.point,1000,true);
+            o=At(o,{10,60},1100);o.area={1,1};o.map=0x500000;++o.generation;o.autoActive=false;
+            Check(c.Tick(cat,o,1100).kind==Action::Kind::None,"arrival in final gate waits for a fresh birth observation");
+            ++o.sequence;o.capturedTick=1110;action=c.Tick(cat,o,1110);
+            Check(action.kind==Action::Kind::SetDestination&&action.point==Waypoint{25,60},"final gate re-arms its reverse Town portal safely");
+            c.ConfirmDestination(o,action.point,1110,true);o=At(o,action.point,1200);
+            action=c.Tick(cat,o,1200);
+            Check(action.kind==Action::Kind::SetDestination&&action.point==Waypoint{180,60},"final gate plans the requested local coordinate after rearm");
+            c.ConfirmDestination(o,action.point,1200,true);o=At(o,action.point,1300);
+            Check(c.Tick(cat,o,1300).kind==Action::Kind::Arrived&&!c.Active(),"fresh physical position completes the gate endpoint route");
+        }
+        o=Sample();o.area={1,1};o.position={180,60};o.destination={180,60};c=Controller();
+        const bool same=c.Start(cat,o,{{1,1},{220,60}},1000,error);
+        Check(same,"same dungeon-gate area accepts another safe walking target");
+        if(same)
+        {
+            auto action=c.Tick(cat,o,1000);
+            Check(action.kind==Action::Kind::SetDestination&&action.point==Waypoint{220,60},"same-gate movement retains the final coordinate");
+            c.ConfirmDestination(o,action.point,1000,true);o=At(o,action.point,1100);
+            Check(c.Tick(cat,o,1100).kind==Action::Kind::Arrived,"same-gate physical arrival succeeds");
+        }
+        for(const auto point:{Waypoint{10,60},Waypoint{375,60},Waypoint{356,60}})
+        {
+            o=Sample();c=Controller();
+            Check(!c.Start(cat,o,{{1,1},point},1000,error)&&error=="goal_inside_portal"&&!c.Active()&&c.Steps()==0,
+                "Town, dungeon-selector and expanded selector-edge goals remain protected");
+        }
+        for(const auto scene:{2,3})
+        {
+            o=Sample();o.area={1,1};o.position={180,60};o.destination={180,60};c=Controller();
+            if(!c.Start(cat,o,{{1,1},{220,60}},1000,error))continue;
+            const auto action=c.Tick(cat,o,1000);c.ConfirmDestination(o,action.point,1000,true);
+            o=At(o,{190,60},1100);o.scene=scene;
+            Check(c.Tick(cat,o,1100).kind==Action::Kind::Interrupted&&!c.Active()&&c.Steps()==1,
+                "selector or dungeon scene change cancels gate walking without another destination");
         }
     }
     bool SafePoint(const Catalog& cat,const Area& area,Waypoint& point)
@@ -385,6 +434,42 @@ namespace
         Check(crossed.size()==3 && crossed[0]==Key{1,0} && crossed[1]==Key{2,1} && crossed[2]==Key{2,0},
             "actual departure observes exactly the three expected map transitions");
     }
+    void RealPvfDungeonGateFinal(const Catalog& cat)
+    {
+        const auto* target=cat.Find({1,2});
+        Check(target&&target->kind=="dungeon_gate","reported1/2 keeps its original PVF dungeon-gate kind");
+        if(!target)return;
+        for(const auto from:{Key{1,0},Key{1,2}})
+        {
+            const auto* source=cat.Find(from);Waypoint start{};const Waypoint goal{320,247};std::string error;
+            if(!source||!SafePoint(cat,*source,start)){Check(false,"actual endpoint source has a safe physical point");continue;}
+            auto o=Sample();o.area=from;o.position={static_cast<double>(start.x),static_cast<double>(start.y)};o.destination=start;
+            Controller c;const bool started=c.Start(cat,o,{{1,2},goal},1000,error);
+            Check(started,"actual PVF permits the reported gate point from ordinary or same-area source");
+            if(!started)continue;
+            std::uint64_t now=1000;unsigned transitions=0;
+            for(unsigned iteration=0;iteration<128&&c.Active();++iteration)
+            {
+                const auto action=c.Tick(cat,o,now);
+                if(action.kind==Action::Kind::None){++now;++o.sequence;o.capturedTick=now;continue;}
+                if(action.kind!=Action::Kind::SetDestination)break;
+                std::vector<Portal> remaining;
+                if(!cat.Route(o.area,{1,2},remaining,error)){Check(false,"actual final-gate graph remains valid");break;}
+                const bool crossing=!remaining.empty()&&action.point==remaining.front().point;
+                c.ConfirmDestination(o,action.point,now,true);now+=100;o=At(o,action.point,now);
+                if(!crossing)continue;
+                const auto previous=o.area;const auto next=remaining.front().target;const auto* area=cat.Find(next);
+                const Portal* birth=nullptr;
+                if(area)for(const auto& portal:area->portals)if(portal.target==previous){birth=&portal;break;}
+                if(!birth){Check(false,"actual gate entry has the native reverse Town portal");break;}
+                o.area=next;o.map+=0x1000;++o.generation;o.autoActive=false;
+                o.position={static_cast<double>(birth->point.x),static_cast<double>(birth->point.y)};o.destination=birth->point;++transitions;
+            }
+            Check(!c.Active()&&c.Status()=="arrived"&&o.area==Key{1,2}&&o.destination==goal,
+                "actual gate target completes all native legs and the final physical point");
+            Check(transitions==(from==Key{1,2}?0U:1U),"actual same-area or one-Town-portal route has no dungeon transition");
+        }
+    }
     void RealPvfGateRegression()
     {
         wchar_t* file=nullptr;std::size_t length=0;
@@ -405,7 +490,7 @@ namespace
             const bool okay=c.Start(cat,o,{to,goal},1000,error);Check(okay,error.empty()?"actual PVF route Start succeeds":error.c_str());
             if (okay) Check(c.Tick(cat,o,1000).kind==Action::Kind::SetDestination,"actual PVF forward/reverse Start/Tick emits first native leg");
         }
-        RealPvfDungeonGateExit(cat);
+        RealPvfDungeonGateExit(cat);RealPvfDungeonGateFinal(cat);
     }
     void KnownSceneAndContinuationCancellation()
     {
@@ -511,7 +596,7 @@ int RunTownRouteControllerTests()
 {
     Failures=0;SameAreaAndHandshake();ExpectedTransitionAndBirth();BindingAndContextGuards();
     StrongCancellation();LoadingAndBudgets();ReplanAndForeignDoors();BirthSafetyAndTakeover();
-    AdditionalLifecycleBoundaries();NativeStepBudget();TransactionalFirstPlan();SupportedTownKinds();DungeonGateSourceExit();RealPvfGateRegression();
+    AdditionalLifecycleBoundaries();NativeStepBudget();TransactionalFirstPlan();SupportedTownKinds();DungeonGateSourceExit();DungeonGateFinalArrival();RealPvfGateRegression();
     KnownSceneAndContinuationCancellation();
     FirstLegIntentGuard();PostTransitionIntentGuard();
     std::printf("town route controller tests: %d failure(s)\n",Failures);return Failures;

@@ -13,6 +13,8 @@ namespace dfl::town_route
         constexpr std::size_t MaximumSteps=1024, MaximumEscapeCandidates=4096;
         bool Supported(const Area* area) noexcept
         { return area && (area->kind=="normal" || area->kind=="gate" || area->kind=="pub"); }
+        bool SupportedTarget(const Area* area,Key final) noexcept
+        { return Supported(area) || (area && area->key==final && area->kind=="dungeon_gate"); }
         bool Coordinate(double x) noexcept { return std::isfinite(x) && x>=-1000000 && x<=1000000; }
         bool Near(const Portal& p,Point position) noexcept
         {
@@ -73,7 +75,7 @@ namespace dfl::town_route
         const auto* area=catalog.Find(o.area);const auto* final=catalog.Find(goal.area);
         if (!area || !final) {error="unknown_area";return false;}
         const bool dungeonSource=area->kind=="dungeon_gate";
-        if ((!Supported(area) && !dungeonSource) || !Supported(final)) {error="unsupported_area";return false;}
+        if ((!Supported(area) && !dungeonSource) || !SupportedTarget(final,goal.area)) {error="unsupported_area";return false;}
         for (const auto& portal:final->portals)
             if (Near(portal,{static_cast<double>(goal.point.x),static_cast<double>(goal.point.y)})) {error="goal_inside_portal";return false;}
         std::vector<Waypoint> points;std::vector<Portal> route;
@@ -84,7 +86,7 @@ namespace dfl::town_route
         for (const auto& portal:route)
         {
             if (portal.source!=expected) {error="invalid_route";return false;}
-            if (!Supported(catalog.Find(portal.target))) {error="unsupported_area";return false;}
+            if (!SupportedTarget(catalog.Find(portal.target),goal.area)) {error="unsupported_area";return false;}
             expected=portal.target;
         }
         if (expected!=goal.area) {error="invalid_route";return false;}
@@ -201,11 +203,11 @@ namespace dfl::town_route
         freshnessWait_=false;
         const auto* area=catalog.Find(o.area);
         // Returning from a dungeon can leave the actor in an entrance area.
-        // Permit departure only from that exact initial observation; route
-        // targets and the final area still require ordinary supported kinds.
+        // Permit departure from that exact initial observation, or walking
+        // within the requested final entrance. Never allow entrance transit.
         const bool exitingInitialGate=initialDungeonGate_ && area && area->kind=="dungeon_gate"
             && o.area==binding_.area && o.map==binding_.map && o.generation==binding_.generation;
-        if (!Supported(area) && !exitingInitialGate) return Stop("unsupported_area");
+        if (!SupportedTarget(area,target_.area) && !exitingInitialGate) return Stop("unsupported_area");
         if (area->portals.size()>256 || area->walkable.size()>256) return Stop("invalid_catalog");
         if (birthCheck_ && !escaping_)
         {
@@ -223,7 +225,7 @@ namespace dfl::town_route
             std::vector<Portal> path;std::string error;
             if (!catalog.Route(o.area,target_.area,path,error)) return Stop(error.c_str());
             if (path.empty() || path.size()>256 || path.front().source!=o.area) return Stop("invalid_route");
-            for (const auto& p:path) if (!Supported(catalog.Find(p.target))) return Stop("unsupported_area");
+            for (const auto& p:path) if (!SupportedTarget(catalog.Find(p.target),target_.area)) return Stop("unsupported_area");
             portal_=path.front();selected_=true;
         }
         const auto end=escaping_?escape_:(selected_?portal_.point:target_.point);

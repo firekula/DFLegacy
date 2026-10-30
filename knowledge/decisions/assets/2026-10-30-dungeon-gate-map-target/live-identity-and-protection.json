@@ -1,0 +1,33 @@
+{
+  "Phase": "manual-v2",
+  "Client": {
+    "Role": "A",
+    "Id": 48476,
+    "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\DNF.exe",
+    "StartTimeUtc": "2026-10-30T07:23:16.8768514Z"
+  },
+  "Server": {
+    "Role": "server",
+    "Id": 51664,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\manual-one-20261030\\runtime-v1\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-30T07:10:40.6624264Z"
+  },
+  "Modules": [
+    {
+      "Name": "ijl15.dll",
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\ijl15.dll",
+      "Sha256": "0103C7DCE1FA8AEA5233D7A02C6E1115F83598A8E3A02EF85AC8834F24B2871A"
+    },
+    {
+      "Name": "debug.dll",
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\debug.dll",
+      "Sha256": "0082559CB80050226500290C6BAB2CD482BD09B571682D0EAB614F3F5099CFCB"
+    }
+  ],
+  "ProtectedFileCount": 8,
+  "NormalSaveSha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "PrivateStatePreserved": true,
+  "NormalLauncherRestored": true,
+  "NoActiveInputPlan": true,
+  "ObservedAtUtc": "2026-10-30T07:26:21.4133955Z"
+}

@@ -1,5 +1,7 @@
 # 本机多客户端验收平台（S0）
 
+最新新增场景：[副本门前N地图右键终点](../../knowledge/decisions/2026-10-30-dungeon-gate-map-target-verification.md)。仅重启原手测客户端加载修复，沿用同一私有服务与存档，原生IJL文件输入及新鲜SDK确认跨区／同区／返回和副本门目标拒绝；保留关键原图，没有重复既有四端矩阵。
+
 当前2026-10-30能力与证据入口见[交接](../../HANDOFF-2026-10-30.md)、[debug状态／CLI](../debug/README.md)及[最新U05验收](../../knowledge/decisions/2026-10-30-u05-resource-closeout.md)。下文Task0及旧人工场景保留其历史环境，不作为当前自动化能力或未闭合项的完整清单。默认使用原生输入与新鲜状态，普通步骤不截屏；四端窗口、私有存档来源和恢复规则见[RUNBOOK](RUNBOOK.md)。
 
 ## Task 0 环境前置结论

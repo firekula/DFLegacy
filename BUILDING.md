@@ -1,5 +1,7 @@
 # DFLegacy 构建指南
 
+2026-10-30[门前终点修复](knowledge/decisions/2026-10-30-dungeon-gate-map-target-verification.md)产物为debug `0082559C…`，IJL保持 `0103C7DC…`／ABI v2。构建 `src/DFLegacy.Debug/tests/DFLegacy.Debug.Tests.vcxproj` Release／Win32后，设置 `DFL_TOWN_ROUTE_CONTROLLER_PVF=<原始Script.pvf>`，运行 `artifacts/native/debug-tests/Release/debug_tests.exe --town-route` 可复核真实入口终点与离开路径；单独运行不带该环境变量会跳过真实PVF用例。
+
 本文档说明如何从源码构建 DFLegacy 的各个组成部分，以及各平台的能力边界。
 部署、配置与升级流程见 [DEPLOYING.md](DEPLOYING.md)；模块职责见 [README.md](README.md)。
 

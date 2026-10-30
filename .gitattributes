@@ -95,3 +95,6 @@ compose.yaml text eol=lf
 /knowledge/decisions/2026-10-30-u05-mouse-dialog-followup.md -text whitespace=cr-at-eol
 /knowledge/decisions/2026-10-30-u05-resource-closeout.md -text whitespace=cr-at-eol
 /knowledge/decisions/2026-10-30-source-archive-verification.md -text whitespace=cr-at-eol
+
+# 门前区域修复的测试和截图保留原始字节。
+/knowledge/decisions/assets/2026-10-30-dungeon-gate-map-target/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

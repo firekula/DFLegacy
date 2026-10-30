@@ -28,7 +28,8 @@ namespace dfl::town_route
     };
     // Pure lifecycle: no process/file access, native calls, locks or time reads.
     // Only successful Start takes over; Tick emits at most one pending action.
-    // An observed dungeon gate is permitted only as the initial departure area.
+    // A dungeon gate is permitted as initial departure or final walking area,
+    // never as transit; final points must stay outside every portal margin.
     // ConfirmDestination is synchronous confirmation of the caller's native leaf.
     class Controller
     {
