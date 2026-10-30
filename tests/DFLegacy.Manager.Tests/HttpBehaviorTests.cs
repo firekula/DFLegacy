@@ -33,6 +33,11 @@ internal static class HttpBehaviorTests
             check(ready, "HTTP manager starts from an unrelated working directory");
             if (!ready) { lock (output) Console.Error.WriteLine(string.Join('\n', output)); return; }
             check((await client.GetAsync("/api/status")).StatusCode == HttpStatusCode.Unauthorized, "anonymous users cannot inspect or control deployment");
+            static ByteArrayContent PvfBody(byte[] bytes)
+            {
+                var content = new ByteArrayContent(bytes); content.Headers.ContentType = new("application/octet-stream"); return content;
+            }
+            check((await client.PostAsync("/api/resources/pvf", PvfBody([0]))).StatusCode == HttpStatusCode.Unauthorized, "anonymous users cannot upload PVF resources");
             check((await client.GetAsync("/ready")).StatusCode == HttpStatusCode.ServiceUnavailable, "readiness distinguishes stopped game from healthy manager");
             using (var hostile = new HttpRequestMessage(HttpMethod.Get, "/health"))
             {
@@ -50,12 +55,26 @@ internal static class HttpBehaviorTests
             var csrf = session!["csrf"]!.GetValue<string>();
             check(session["userName"]!.GetValue<string>() == "operator" && csrf.Length >= 32, "authenticated session returns independent user identity and anti-forgery token");
             check((await client.PostAsJsonAsync("/api/server/start", new { })).StatusCode == HttpStatusCode.Forbidden, "state-changing cookie requests require CSRF proof");
+            check((await client.PostAsync("/api/resources/pvf", PvfBody([0]))).StatusCode == HttpStatusCode.Forbidden, "PVF upload requires CSRF proof");
             using (var hostile = new HttpRequestMessage(HttpMethod.Post, "/api/server/start"))
             {
                 hostile.Headers.Add("X-CSRF-Token", csrf); hostile.Headers.Add("Origin", "http://hostile.example.test"); hostile.Content = JsonContent.Create(new { });
                 check((await client.SendAsync(hostile)).StatusCode == HttpStatusCode.Forbidden, "hostile Origin is rejected even with a session cookie");
             }
             client.DefaultRequestHeaders.Add("X-CSRF-Token", csrf);
+            using (var hostileUpload = new HttpRequestMessage(HttpMethod.Post, "/api/resources/pvf"))
+            {
+                hostileUpload.Headers.Add("Origin", "http://hostile.example.test"); hostileUpload.Content = PvfBody([0]);
+                check((await client.SendAsync(hostileUpload)).StatusCode == HttpStatusCode.Forbidden, "PVF upload rejects hostile Origin");
+            }
+            check((await client.PostAsJsonAsync("/api/resources/pvf", new { })).StatusCode == HttpStatusCode.UnsupportedMediaType, "PVF endpoint requires a raw binary stream");
+            check((await client.PostAsync("/api/resources/pvf", PvfBody([0]))).StatusCode == HttpStatusCode.BadRequest, "malformed upload fails at the HTTP boundary");
+            var fixture = Path.Combine(root, "http-fixture.pvf"); SupervisorBehaviorTests.WriteFixturePvf(fixture);
+            var resourceBytes = File.ReadAllBytes(fixture).Concat(new byte[128 * 1024]).ToArray();
+            using (var uploaded = await client.PostAsync("/api/resources/pvf", PvfBody(resourceBytes)))
+                check(uploaded.IsSuccessStatusCode && Directory.GetFiles(Path.Combine(paths.Data, "resources"), "*.pvf").Length == 1, "authenticated PVF upload exceeds JSON limit without buffering or arbitrary path input");
+            using (var resourceStatus = await client.GetAsync("/api/resources/pvf"))
+                check(resourceStatus.IsSuccessStatusCode, "authenticated UI can inspect uploaded resource status");
             check((await client.PostAsJsonAsync("/api/setup", new { setupToken = bootstrap, userName = "attacker", password = "Another password 123!" })).StatusCode == HttpStatusCode.BadRequest,
                 "first-run token is one-use through the HTTP boundary");
             check((await client.GetAsync("/api/status")).IsSuccessStatusCode, "management is usable while game process is stopped");

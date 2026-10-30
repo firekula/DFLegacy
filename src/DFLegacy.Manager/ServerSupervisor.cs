@@ -23,20 +23,38 @@ public sealed class ServerSupervisor : IAsyncDisposable
     private Uri? _controlAddress;
     private DeploymentConfig? _runningConfig;
     private ServerSnapshot _snapshot;
+    private readonly PvfResourceStore _resources;
 
     public ServerSupervisor(ManagerPaths paths, ConfigurationStore config, ManagerLog log)
     {
         _paths = paths; _config = config; _log = log;
+        _resources = new(paths);
         _snapshot = new(config.Read().Configured ? "stopped" : "not_configured");
     }
     public ServerSnapshot Snapshot { get { lock (_stateGate) return _snapshot; } }
+    public PvfResourceStatus GetPvfStatus() => _resources.GetStatus(_config.Read());
+    public async Task<PvfResourceStatus> UploadPvfAsync(Stream input, CancellationToken cancellationToken = default)
+    {
+        if (!await _gate.WaitAsync(0, cancellationToken)) throw new InvalidOperationException("正在处理服务或上传任务，请稍后重试。");
+        try
+        {
+            if (_process is { HasExited: false }) throw new InvalidOperationException("请先停止游戏服务再替换 Script.pvf。");
+            if (GetPvfStatus().ExternallyControlled) throw new InvalidOperationException("PVF 由环境变量或容器挂载控制，请修改部署环境。");
+            var stored = await _resources.StoreAsync(input, cancellationToken);
+            try { cancellationToken.ThrowIfCancellationRequested(); _config.SetPvfPath(stored.Path); }
+            catch { if (stored.Created) File.Delete(stored.Path); throw; }
+            ConfigurationChanged(); _log.Write("manager", "Script.pvf 上传完成并已选择；请保存其他服务配置后启动。");
+            return GetPvfStatus();
+        }
+        finally { _gate.Release(); }
+    }
     private void SetSnapshot(ServerSnapshot snapshot) { lock (_stateGate) _snapshot = snapshot; }
     public void ConfigurationChanged()
     {
         lock (_stateGate)
         {
             if (_snapshot.State == "running") _snapshot = _snapshot with { RestartRequired = _runningConfig != _config.Read().Effective };
-            else if (_snapshot.State == "not_configured") _snapshot = new("stopped");
+            else if (_snapshot.State == "not_configured" && _config.Read().Configured) _snapshot = new("stopped");
         }
     }
     public async Task<ConfigurationSnapshot> SaveConfigurationAsync(DeploymentConfig request, CancellationToken cancellationToken = default)

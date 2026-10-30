@@ -6,7 +6,9 @@ using System.Text.Json.Nodes;
 using DFLegacy.Manager;
 
 if (args.Contains("--startup-only")) return await StartupRecoveryTests.RunAsync();
+if (args.Contains("--pvf-only")) return await PvfUploadTests.RunAsync();
 if (await StartupRecoveryTests.RunAsync() != 0) return 1;
+if (await PvfUploadTests.RunAsync() != 0) return 1;
 
 var failures = new List<string>();
 var checks = 0;

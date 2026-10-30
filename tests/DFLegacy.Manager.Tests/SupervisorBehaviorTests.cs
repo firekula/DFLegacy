@@ -76,6 +76,9 @@ internal static class SupervisorBehaviorTests
             finally { File.WriteAllText(paths.ServerConfig, originalConfiguration); }
             var started = await supervisor.StartAsync();
             check(started.State == "running" && started.Pid is not null, "real game process reaches owned authenticated readiness");
+            using var replacement = File.OpenRead(pvf);
+            try { await supervisor.UploadPvfAsync(replacement); check(false, "running game rejects PVF replacement"); }
+            catch (InvalidOperationException error) { check(error.Message.Contains("停止"), "running game rejects PVF replacement without stopping the process"); }
             var repeated = await supervisor.StartAsync();
             check(repeated.Pid == started.Pid, "repeated start cannot create a second writer");
             using var client = new HttpClient();

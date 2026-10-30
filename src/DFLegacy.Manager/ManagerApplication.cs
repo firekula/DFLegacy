@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace DFLegacy.Manager;
 
@@ -72,7 +73,8 @@ public static class ManagerApplication
                     if (origin.Length > 0 && (!Uri.TryCreate(origin, UriKind.Absolute, out var supplied)
                         || !supplied.GetLeftPart(UriPartial.Authority).Equals($"{context.Request.Scheme}://{context.Request.Host}", StringComparison.OrdinalIgnoreCase)))
                     { context.Response.StatusCode = 403; await context.Response.WriteAsJsonAsync(new { error = "请求来源不匹配。" }); return; }
-                    if (context.Request.Path.StartsWithSegments("/api") && context.Request.ContentLength > 0 && !context.Request.HasJsonContentType())
+                    var binaryUpload = context.Request.Path == "/api/resources/pvf" && HttpMethods.IsPost(context.Request.Method);
+                    if (context.Request.Path.StartsWithSegments("/api") && context.Request.ContentLength > 0 && !context.Request.HasJsonContentType() && !binaryUpload)
                     { context.Response.StatusCode = 415; return; }
                 }
                 try { await next(context); }
@@ -113,6 +115,17 @@ public static class ManagerApplication
             api.MapGet("/session", (HttpContext context) => new { userName = context.User.Identity!.Name, csrf = context.User.FindFirstValue("csrf") });
             api.MapPost("/logout", async (HttpContext context) => { await context.SignOutAsync(); return Results.Ok(); });
             api.MapGet("/config", () => config.Read());
+            api.MapGet("/resources/pvf", () => supervisor.GetPvfStatus());
+            api.MapPost("/resources/pvf", async (HttpContext context) =>
+            {
+                if (!string.Equals(context.Request.ContentType?.Split(';')[0].Trim(), "application/octet-stream", StringComparison.OrdinalIgnoreCase))
+                    return Results.Json(new { error = "请上传 Script.pvf 二进制文件。" }, statusCode: 415);
+                if (context.Request.ContentLength > PvfResourceStore.MaximumBytes)
+                    return Results.Json(new { error = "Script.pvf 超过 1 GiB 上限。" }, statusCode: 413);
+                var limit = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+                if (limit is { IsReadOnly: false }) limit.MaxRequestBodySize = PvfResourceStore.MaximumBytes;
+                return Results.Ok(await supervisor.UploadPvfAsync(context.Request.Body, context.RequestAborted));
+            });
             api.MapPut("/config", async (DeploymentConfig request, HttpContext context) =>
             {
                 var result = await supervisor.SaveConfigurationAsync(request, context.RequestAborted);

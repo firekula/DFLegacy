@@ -139,6 +139,20 @@ public sealed class ConfigurationStore
 
     public JsonObject ReadServerDocument() { lock (_gate) return ParseFile(_paths.ServerConfig); }
 
+    public void SetPvfPath(string path)
+    {
+        lock (_gate)
+        {
+            if (_environment.Keys.Any(key => key.Equals("DFLegacy__ScriptPvfPath", StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("PVF 由环境变量或容器挂载控制，请修改部署环境。");
+            var document = ParseFile(_paths.ServerConfig);
+            Set(document["DFLegacy"]!.AsObject(), "ScriptPvfPath", JsonValue.Create(Path.GetFullPath(path)));
+            var backup = Path.Combine(_paths.Backups, "server-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff") + ".json");
+            File.Copy(_paths.ServerConfig, backup);
+            AtomicFile.Write(_paths.ServerConfig, document.ToJsonString(Json));
+        }
+    }
+
     private JsonObject ApplyEnvironment(JsonObject section, out List<string> overrides)
     {
         var effectiveNode = section.DeepClone().AsObject();
