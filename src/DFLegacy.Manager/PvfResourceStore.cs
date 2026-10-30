@@ -57,6 +57,7 @@ public sealed class PvfResourceStore(ManagerPaths paths, long maximumBytes = Pvf
             var fileCount = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(Magic.Length + 8, 4));
             if (treeLength <= 0 || treeLength % 4 != 0 || treeLength > length - header.Length || fileCount > int.MaxValue || fileCount * 20L > treeLength)
                 throw new InvalidDataException("Script.pvf 索引长度或文件数量无效，文件可能不完整。");
+            await PvfIndexValidator.ValidateAsync(temporary, header, length, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             var digest = hash.GetHashAndReset();
             var destination = System.IO.Path.Combine(Resources, Convert.ToHexStringLower(digest) + ".pvf");

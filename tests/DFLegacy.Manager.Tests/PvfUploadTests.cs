@@ -1,4 +1,6 @@
 using System.Text;
+using System.Buffers.Binary;
+using System.Numerics;
 using DFLegacy.Manager;
 
 internal static class PvfUploadTests
@@ -31,6 +33,16 @@ internal static class PvfUploadTests
             var before = File.ReadAllText(paths.ServerConfig);
             foreach (var bad in new[] { Array.Empty<byte>(), Encoding.UTF8.GetBytes("not a PVF"), valid[..20] })
                 await Reject(() => supervisor.UploadPvfAsync(new MemoryStream(bad)), "malformed PVF is rejected");
+            var malformedTree = new byte["DNF_SCRIPT_PACK"u8.Length + 12 + 24];
+            "DNF_SCRIPT_PACK"u8.CopyTo(malformedTree);
+            BinaryPrimitives.WriteInt32LittleEndian(malformedTree.AsSpan(15), 24);
+            BinaryPrimitives.WriteUInt32LittleEndian(malformedTree.AsSpan(23), 1);
+            await Reject(() => supervisor.UploadPvfAsync(new MemoryStream(malformedTree)), "valid-looking header with an invalid decrypted tree cannot replace selected PVF");
+            await Reject(() => supervisor.UploadPvfAsync(new MemoryStream(valid[..^4])), "valid index referencing a truncated payload cannot replace selected PVF");
+            var keyedTree = BuildLargeKeyedIndex();
+            var keyed = await new PvfResourceStore(paths).StoreAsync(new MemoryStream(keyedTree));
+            Check(keyed.SizeBytes == keyedTree.Length, "nonzero PVF key and index records crossing the streaming buffer are accepted");
+            if (keyed.Created) File.Delete(keyed.Path);
             using (var cancel = new CancellationTokenSource()) { cancel.Cancel(); await Reject(() => supervisor.UploadPvfAsync(new MemoryStream(valid), cancel.Token), "cancelled upload is rejected"); }
             await Reject(() => supervisor.UploadPvfAsync(new HookStream(valid, failAfterRead: true)), "interrupted upload is rejected");
             Check(File.ReadAllText(paths.ServerConfig) == before && File.ReadAllBytes(status.Path).SequenceEqual(valid), "rejected uploads preserve the previous config and PVF");
@@ -80,6 +92,28 @@ internal static class PvfUploadTests
             if (_read && failAfterRead) throw new IOException("interrupted fixture");
             _read = true; return base.ReadAsync(buffer, cancellationToken);
         }
+    }
+
+    private static byte[] BuildLargeKeyedIndex()
+    {
+        const uint key = 0xa1b2c3d4;
+        using var tree = new MemoryStream();
+        using (var writer = new BinaryWriter(tree, Encoding.UTF8, leaveOpen: true))
+        {
+            foreach (var path in new[] { new byte[65535], new byte[] { (byte)'b' } })
+            {
+                Array.Fill(path, (byte)'a');
+                writer.Write(1u); writer.Write(0u); writer.Write(1); writer.Write(0u); writer.Write(path.Length); writer.Write(path);
+            }
+            while (tree.Length % 4 != 0) writer.Write((byte)0);
+        }
+        var encrypted = tree.ToArray();
+        for (var offset = 0; offset < encrypted.Length; offset += 4)
+            BinaryPrimitives.WriteUInt32LittleEndian(encrypted.AsSpan(offset, 4), BitOperations.RotateLeft(BinaryPrimitives.ReadUInt32LittleEndian(encrypted.AsSpan(offset, 4)), 6) ^ key);
+        using var archive = new MemoryStream();
+        using (var writer = new BinaryWriter(archive, Encoding.UTF8, leaveOpen: true))
+        { writer.Write("DNF_SCRIPT_PACK"u8); writer.Write(encrypted.Length); writer.Write(key); writer.Write(2u); writer.Write(encrypted); writer.Write(0u); }
+        return archive.ToArray();
     }
 
     private sealed class PausedStream(byte[] bytes, TaskCompletionSource entered, TaskCompletionSource release) : MemoryStream(bytes)

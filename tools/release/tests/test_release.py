@@ -34,16 +34,38 @@ def write(root, name, content=b"fixture"):
 
 
 def app(root, name, rid):
+    from test_bundle import fixture
+    root.mkdir(parents=True, exist_ok=True)
     ext = ".exe" if rid.startswith("win") else ""
-    for suffix in (ext, ".dll", ".deps.json", ".runtimeconfig.json"):
-        write(root, name + suffix, "{}" if suffix.endswith("json") else b"fixture")
-    for name in release.runtime_files(rid):
-        write(root, name)
-    write(root, "Fixture.Dependency.dll")
-    # A real .deps target lets dependency removal be distinguished from hash tampering.
-    write(root, next(p.name for p in root.glob("*.deps.json")), json.dumps({"targets": {"net10.0/" + rid: {"Fixture/1.0.0": {"runtime": {"Fixture.Dependency.dll": {}}}}}}))
-    write(root, "wwwroot/index.html", "<!doctype html><title>fixture</title>")
+    managed = [name + ".dll", "System.Private.CoreLib.dll", "Fixture.Dependency.dll"]
+    frameworks = ["Microsoft.NETCore.App"]
+    if name == "DFLegacy.Launcher":
+        managed += ["PresentationFramework.dll", "PresentationCore.dll", "WindowsBase.dll"]
+        frameworks.append("Microsoft.WindowsDesktop.App")
+    elif name != "DFLegacy.Channel":
+        frameworks.append("Microsoft.AspNetCore.App")
+        write(root, "wwwroot/index.html", "<!doctype html><title>fixture</title>")
+    target = "net10.0/" + rid
+    deps = {"runtimeTarget": {"name": target}, "targets": {target: {name + "/1.0": {"runtime": {item: {} for item in managed}}}}}
+    entries = {item: b"fixture managed assembly" for item in managed}
+    entries[name + ".deps.json"] = json.dumps(deps).encode()
+    entries[name + ".runtimeconfig.json"] = json.dumps({"runtimeOptions": {"tfm": "net10.0", "includedFrameworks": [{"name": item} for item in frameworks]}}).encode()
+    fixture(root / (name + ext), entries, rid=rid)
     return root
+
+
+def remove_embedded(root, name, rid, entry):
+    from test_bundle import fixture
+    executable = root / (name + (".exe" if rid.startswith("win") else ""))
+    parsed = release.read_bundle(executable, rid)
+    contents = {key: parsed.read(key) for key in parsed.entries if key != entry}
+    fixture(executable, contents, rid=rid)
+
+
+def refresh_manifest(root, name):
+    path = root / name; old = release.read_json(path); path.unlink()
+    extra = {key: value for key, value in old.items() if key not in ("version", "commit", "files")}
+    release.write_json(path, release.manifest(root, old["version"], old["commit"], **extra))
 
 
 class Bundles(unittest.TestCase):
@@ -54,13 +76,23 @@ class Bundles(unittest.TestCase):
 
     def assets(self):
         source = app(self.root / "launcher-input", "DFLegacy.Launcher", "win-x64")
-        write(source, "PresentationFramework.dll")
         write(source, "launcher.json", '{"Password":"PRIVATE", "ClientPath":"C:\\\\private\\\\DNF.exe"}')
         native = write(self.root, "native/ijl15.dll")
         config = write(self.root, "native/Config.ini", "[Window]\nWidth=640\n[Debug]\nEnabled=1\n")
         output = self.root / "assets"
         release.build_client_assets(source, native, config, output, VERSION, COMMIT)
         return output
+
+    def test_production_rejects_complete_loose_launcher_before_player_export(self):
+        legacy = self.root / "legacy-launcher"
+        for name in ("DFLegacy.Launcher.exe", "DFLegacy.Launcher.dll", "PresentationFramework.dll", "PresentationCore.dll", "WindowsBase.dll", *release.runtime_files("win-x64")):
+            write(legacy, name)
+        write(legacy, "DFLegacy.Launcher.deps.json", '{"targets":{}}')
+        write(legacy, "DFLegacy.Launcher.runtimeconfig.json", '{}')
+        native = write(self.root, "legacy-native/ijl15.dll")
+        config = write(self.root, "legacy-native/Config.ini", '[Features]\nEnableDebugOverlay=0\n')
+        with self.assertRaisesRegex(release.ReleaseError, "single-file"):
+            release.build_client_assets(legacy, native, config, self.root / "bad-legacy-assets", VERSION, COMMIT)
 
     def test_real_dotnet_publish_ignores_legacy_version_environment(self):
         write(self.root, "src/Fixture/Fixture.csproj", '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><NuGetAudit>false</NuGetAudit></PropertyGroup></Project>')
@@ -107,23 +139,24 @@ class Bundles(unittest.TestCase):
     def test_assets_clean_credentials_and_keep_complete_runtime(self):
         assets = self.assets()
         manifest = release.verify_assets(assets, VERSION, COMMIT)
-        self.assertGreater(len(manifest["files"]), 8)
+        self.assertEqual(len(manifest["files"]), 6)
         config = json.loads((assets / "launcher/launcher.json").read_text())
         self.assertEqual(config["Accounts"], [])
         self.assertEqual(config["Password"], "")
         self.assertFalse(config["StartServer"])
         self.assertEqual(config["ClientPath"], "DNF.exe")
-        self.assertTrue((assets / "launcher/PresentationFramework.dll").is_file())
+        self.assertIn("PresentationFramework.dll", release.read_bundle(assets / "launcher/DFLegacy.Launcher.exe", "win-x64").entries)
 
     def test_assets_reject_missing_wpf_dependency(self):
         assets = self.assets()
-        (assets / "launcher/PresentationFramework.dll").unlink()
+        remove_embedded(assets / "launcher", "DFLegacy.Launcher", "win-x64", "PresentationFramework.dll")
+        refresh_manifest(assets, "manifest.json")
         with self.assertRaises(release.ReleaseError):
             release.verify_assets(assets, VERSION, COMMIT)
 
     def test_dependency_omission_rejected_even_when_manifest_is_recomputed(self):
         assets = self.assets()
-        (assets / "launcher/Fixture.Dependency.dll").unlink()
+        remove_embedded(assets / "launcher", "DFLegacy.Launcher", "win-x64", "Fixture.Dependency.dll")
         (assets / "manifest.json").unlink()
         (assets / "manifest.json").write_text(json.dumps(release.manifest(assets, VERSION, COMMIT)))
         with self.assertRaises(release.ReleaseError):
@@ -156,10 +189,14 @@ class Bundles(unittest.TestCase):
 
     def test_dependency_names_containing_usersecrets_are_not_credentials(self):
         assets = self.assets()
-        dependencies = assets / "launcher/DFLegacy.Launcher.deps.json"
-        data = json.loads(dependencies.read_text())
+        from test_bundle import fixture
+        executable = assets / "launcher/DFLegacy.Launcher.exe"
+        parsed = release.read_bundle(executable, "win-x64")
+        contents = {name: parsed.read(name) for name in parsed.entries}
+        data = json.loads(contents["DFLegacy.Launcher.deps.json"])
         data["libraries"] = {"Microsoft.Extensions.Configuration.UserSecrets/10.0.13": {"type": "package", "sha512": ""}}
-        dependencies.write_text(json.dumps(data))
+        contents["DFLegacy.Launcher.deps.json"] = json.dumps(data).encode()
+        fixture(executable, contents)
         (assets / "manifest.json").unlink()
         (assets / "manifest.json").write_text(json.dumps(release.manifest(assets, VERSION, COMMIT)))
         release.verify_assets(assets, VERSION, COMMIT)
@@ -233,12 +270,14 @@ class Bundles(unittest.TestCase):
         output, archive = self.package("win-x64")
         with zipfile.ZipFile(archive) as archive_file:
             self.assertIn(output.name + "/Start.cmd", archive_file.namelist())
-            self.assertIn(output.name + "/runtime/server/coreclr.dll", archive_file.namelist())
+            self.assertIn(output.name + "/runtime/server/DFLegacy.Server.exe", archive_file.namelist())
+            self.assertNotIn(output.name + "/runtime/server/coreclr.dll", archive_file.namelist())
         release.verify(archive, VERSION, COMMIT)
 
     def test_missing_runtime_is_rejected(self):
         output, _ = self.package()
-        (output / "libcoreclr.so").unlink()
+        remove_embedded(output, "DFLegacy.Manager", "linux-x64", "System.Private.CoreLib.dll")
+        refresh_manifest(output, "release-manifest.json")
         with self.assertRaises(release.ReleaseError):
             release.verify(output, VERSION, COMMIT)
 

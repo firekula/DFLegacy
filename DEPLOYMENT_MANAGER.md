@@ -95,3 +95,4 @@ Gitea 流水线产物包括五平台自包含归档、校验清单、独立 Comp
 - Windows 绑定端口出现错误 10013，可能来自系统保留端口，并不一定有占用进程。用 `netsh interface ipv4 show excludedportrange protocol=tcp` 查看，再修改相应端口；不会替你终止外部进程或删除系统保留规则。
 - 管理器、游戏服务及高级 Channel 工具分别打为自包含单文件程序；网页、模板、客户端资源和用户数据仍保留外部文件。运行时可能将少量原生依赖解压到用户私有目录，Docker 使用数据卷内的 `.net`。
 - 默认 `compose.yaml` 只要求镜像配置，启动后从网页上传 PVF。保留只读挂载时，下载同版本 `compose.pvf.yaml`、填写 `.env` 的 `PVF_PATH`，执行 `docker compose -f compose.yaml -f compose.pvf.yaml up -d`。Linux host/IPv6 示例仍采用显式只读挂载。
+历史成功上传的 PVF 会保留，供旧配置备份回退；不同内容的多次上传会增加磁盘占用。清理时先停服并确认当前配置、需要保留的配置备份不再引用相应文件，再删除无引用的历史资源。资源上传会检查解密后的索引和数据范围，不会把格式损坏或数据截断的文件切换为当前资源。

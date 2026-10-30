@@ -22,9 +22,16 @@ def string(value):
     return bytes(prefix) + bytes([length]) + b
 
 
-def fixture(path, names=None, compressed=False):
+def fixture(path, names=None, compressed=False, rid="win-x64"):
     contents = names or {"Fixture.dll": b"assembly", "Fixture.deps.json": b'{"runtimeTarget":{"name":"net10.0/win-x64"}}', "Fixture.runtimeconfig.json": b'{}'}
-    data = bytearray(4096); data[:2] = b"MZ"; struct.pack_into("<I", data, 0x3c, 128); data[128:132] = b"PE\0\0"; struct.pack_into("<H", data, 132, 0x8664); data[256:288] = SIGNATURE
+    data = bytearray(4096)
+    if rid.startswith("win"):
+        data[:2] = b"MZ"; struct.pack_into("<I", data, 0x3c, 128); data[128:132] = b"PE\0\0"; struct.pack_into("<H", data, 132, 0x8664)
+    elif rid.startswith("linux"):
+        data[:6] = b"\x7fELF\x02\x01"; struct.pack_into("<H", data, 18, 62 if rid.endswith("x64") else 183)
+    else:
+        data[:4] = b"\xcf\xfa\xed\xfe"; struct.pack_into("<I", data, 4, 0x1000007 if rid.endswith("x64") else 0x100000c)
+    data[256:288] = SIGNATURE
     entries = []; locations = {}
     for name, body in contents.items():
         offset = len(data)

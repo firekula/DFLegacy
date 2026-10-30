@@ -170,56 +170,37 @@ def runtime_files(rid):
 
 def check_app(root, assembly, rid, web=False, wpf=False):
     executable = assembly + (".exe" if rid.startswith("win") else "")
-    if not (root / (assembly + ".dll")).is_file():
-        try:
-            bundle = read_bundle(root / executable, rid)
-            for name in (assembly + ".dll", "System.Private.CoreLib.dll", *(("PresentationFramework.dll", "PresentationCore.dll", "WindowsBase.dll") if wpf else ())):
-                if name not in bundle.entries or bundle.entries[name][1] <= 0:
-                    raise ValueError("missing embedded dependency: " + name)
-            configuration = json.loads(bundle.read(assembly + ".runtimeconfig.json"), object_pairs_hook=unique_keys)["runtimeOptions"]
-            frameworks = {item["name"] for item in configuration.get("includedFrameworks", [])}
-            required_frameworks = {"Microsoft.NETCore.App"} | ({"Microsoft.AspNetCore.App"} if web else set()) | ({"Microsoft.WindowsDesktop.App"} if wpf else set())
-            if not required_frameworks <= frameworks or configuration.get("tfm") != "net10.0" or configuration.get("framework") or configuration.get("frameworks"):
-                raise ValueError("bundle is not a self-contained .NET 10 application")
-            dependencies = json.loads(bundle.read(assembly + ".deps.json"), object_pairs_hook=unique_keys)
-            target = dependencies["runtimeTarget"]["name"]
-            if not target.endswith("/" + rid):
-                raise ValueError("embedded runtime target differs from RID")
-            for library in dependencies["targets"][target].values():
-                for category in ("runtime", "native", "resources"):
-                    for dependency, metadata in library.get(category, {}).items():
-                        safe_path(dependency); name = PurePosixPath(dependency).name
-                        if name == "_._":
-                            continue
-                        relative = (PurePosixPath(metadata["locale"]) / name).as_posix() if category == "resources" and metadata.get("locale") else name
-                        safe_path(relative)
-                        if relative not in bundle.entries:
-                            raise ValueError("missing embedded dependency: " + relative)
-            if web and not any(p.is_file() for p in (root / "wwwroot").rglob("*")):
-                raise ValueError("missing external web assets")
-            return
-        except (ValueError, KeyError, TypeError, OSError) as error:
-            raise ReleaseError(f"incomplete single-file {assembly}: {error}") from error
-    required = [executable, assembly + ".dll", assembly + ".deps.json", assembly + ".runtimeconfig.json", *runtime_files(rid)]
-    if wpf:
-        required.append("PresentationFramework.dll")
-    for name in required:
-        if not (root / name).is_file():
-            raise ReleaseError(f"incomplete self-contained {assembly}: missing {name}")
-    dependencies = read_json(root / (assembly + ".deps.json"))
-    for libraries in dependencies.get("targets", {}).values():
-        for library in libraries.values():
+    if (root / (assembly + ".dll")).exists():
+        raise ReleaseError(f"{assembly} requires single-file output; loose application DLL found")
+    try:
+        bundle = read_bundle(root / executable, rid)
+        for name in (assembly + ".dll", "System.Private.CoreLib.dll", *(("PresentationFramework.dll", "PresentationCore.dll", "WindowsBase.dll") if wpf else ())):
+            if name not in bundle.entries or bundle.entries[name][1] <= 0:
+                raise ValueError("missing embedded dependency: " + name)
+        configuration = json.loads(bundle.read(assembly + ".runtimeconfig.json"), object_pairs_hook=unique_keys)["runtimeOptions"]
+        frameworks = {item["name"] for item in configuration.get("includedFrameworks", [])}
+        required_frameworks = {"Microsoft.NETCore.App"} | ({"Microsoft.AspNetCore.App"} if web else set()) | ({"Microsoft.WindowsDesktop.App"} if wpf else set())
+        if not required_frameworks <= frameworks or configuration.get("tfm") != "net10.0" or configuration.get("framework") or configuration.get("frameworks"):
+            raise ValueError("bundle is not a self-contained .NET 10 application")
+        dependencies = json.loads(bundle.read(assembly + ".deps.json"), object_pairs_hook=unique_keys)
+        target = dependencies["runtimeTarget"]["name"]
+        if not target.endswith("/" + rid):
+            raise ValueError("embedded runtime target differs from RID")
+        for library in dependencies["targets"][target].values():
             for category in ("runtime", "native", "resources"):
                 for dependency, metadata in library.get(category, {}).items():
-                    safe_path(dependency)
-                    name = PurePosixPath(dependency).name
+                    safe_path(dependency); name = PurePosixPath(dependency).name
                     if name == "_._":
                         continue
-                    relative = Path(metadata["locale"]) / name if category == "resources" and metadata.get("locale") else Path(name)
-                    if not (root / relative).is_file():
-                        raise ReleaseError(f"incomplete {assembly}: dependency {name} missing")
-    if web and not any(p.is_file() for p in (root / "wwwroot").rglob("*")):
-        raise ReleaseError(f"missing web assets: {assembly}")
+                    relative = (PurePosixPath(metadata["locale"]) / name).as_posix() if category == "resources" and metadata.get("locale") else name
+                    safe_path(relative)
+                    if relative not in bundle.entries:
+                        raise ValueError("missing embedded dependency: " + relative)
+        if web and not any(p.is_file() for p in (root / "wwwroot").rglob("*")):
+            raise ValueError("missing external web assets")
+        return
+    except (ValueError, KeyError, TypeError, OSError) as error:
+        raise ReleaseError(f"incomplete single-file {assembly}: {error}") from error
 
 
 def manifest(root, version, commit, **extra):
@@ -268,7 +249,7 @@ def verify_assets(root, version=None, commit=None):
             raise ReleaseError("missing client asset: " + required)
     check_app(root / "launcher", "DFLegacy.Launcher", "win-x64", wpf=True)
     launcher = read_json(root / "launcher/launcher.json")
-    client_paths = {"DNF.exe"} | ({"../DNF.exe"} if (root / "launcher/DFLegacy.Launcher.dll").is_file() else set())
+    client_paths = {"DNF.exe"}
     if launcher.get("Accounts") != [] or launcher.get("Account") != "" or launcher.get("Password") != "" or launcher.get("StartServer") is not False or launcher.get("ClientPath") not in client_paths:
         raise ReleaseError("unsafe launcher profile")
     if (root / "launcher/ijl15.dll").exists() and digest(root / "launcher/ijl15.dll") != digest(root / "patch/ijl15.dll"):
