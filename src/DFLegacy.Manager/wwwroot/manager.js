@@ -84,7 +84,7 @@ async function refreshStatus() {
   $("#serverDescription").textContent = server.error || (server.restartRequired ? "配置已更新，重启游戏服务后应用。" : running ? "游戏服务已就绪，可打开游戏后台或分发客户端。" : status.configured ? "服务已配置，可以启动或查看上一次运行日志。" : "先完成服务配置，再创建游戏管理员并启动服务。");
   $("#start").disabled = busy || running || pending || !status.configured;
   $("#stop").disabled = busy || !running || pending; $("#restart").disabled = busy || !running || pending;
-  $("#summaryHost").textContent = savedConfig ? savedConfig.advertisedHost + ":" + savedConfig.entrancePort : "尚未配置";
+  $("#summaryHost").textContent = status.entranceHost + ":" + status.entrancePort;
   $("#summaryApi").textContent = status.accountServiceUrl; $("#summaryGameplay").textContent = status.gameplayAdvertisedHost;
   $("#summaryData").textContent = status.dataDirectory;
   $("#assetNotice").hidden = status.assetsAvailable;

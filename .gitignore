@@ -20,6 +20,7 @@ DNF2008/
 .worktrees/
 /.tmp-*/
 /client-assets/
+/.venv-ci/
 /runs/
 tools/acceptance/**/__pycache__/
 tools/debug/**/__pycache__/

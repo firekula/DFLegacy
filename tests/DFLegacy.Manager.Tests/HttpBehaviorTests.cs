@@ -15,6 +15,7 @@ internal static class HttpBehaviorTests
         var port = FreePort();
         using var process = new Process { StartInfo = new ProcessStartInfo("dotnet") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = Path.GetTempPath() } };
         foreach (var argument in new[] { typeof(ManagerPaths).Assembly.Location, "--root", root, "--port", port.ToString(), "--no-browser" }) process.StartInfo.ArgumentList.Add(argument);
+        process.StartInfo.Environment["DFLegacy__Entrance__Port"] = "12345";
         var output = new List<string>();
         process.OutputDataReceived += (_, e) => { if (e.Data is not null) lock (output) output.Add(e.Data); };
         process.ErrorDataReceived += (_, e) => { if (e.Data is not null) lock (output) output.Add(e.Data); };
@@ -58,6 +59,8 @@ internal static class HttpBehaviorTests
             check((await client.PostAsJsonAsync("/api/setup", new { setupToken = bootstrap, userName = "attacker", password = "Another password 123!" })).StatusCode == HttpStatusCode.BadRequest,
                 "first-run token is one-use through the HTTP boundary");
             check((await client.GetAsync("/api/status")).IsSuccessStatusCode, "management is usable while game process is stopped");
+            var effectiveStatus = await client.GetFromJsonAsync<JsonObject>("/api/status");
+            check(effectiveStatus!["entrancePort"]?.GetValue<int>() == 12345, "overview reports the effective player port rather than a shadowed on-disk value");
             var config = await client.GetFromJsonAsync<JsonObject>("/api/config");
             check(config!["saved"] is JsonObject && config["effective"] is JsonObject, "UI obtains saved and effective settings distinctly");
             check((await client.PutAsJsonAsync("/api/config", config["saved"])).IsSuccessStatusCode, "authenticated configuration save works through CSRF boundary");

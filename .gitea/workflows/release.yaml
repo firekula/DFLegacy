@@ -137,6 +137,10 @@ jobs:
           docker run -d --name "$name" -v "$volume:/app/data" "dflegacy-ci:$DFLEGACY_RELEASE_COMMIT"
           docker exec "$name" test -f /app/data/ci-persistence-check
           docker stop --time 40 "$name"
+      - name: Exercise setup, game lifecycle, client export and persistence
+        run: |
+          set -euo pipefail
+          python3 tests/DFLegacy.Manager.Tests/docker_smoke.py --image "dflegacy-ci:$DFLEGACY_RELEASE_COMMIT"
       - name: Build both architectures to OCI without publishing
         run: |
           set -euo pipefail

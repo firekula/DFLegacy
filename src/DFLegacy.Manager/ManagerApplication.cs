@@ -122,7 +122,8 @@ public static class ManagerApplication
             {
                 var configuration = config.Read();
                 return new { server = supervisor.Snapshot, configuration.Configured, dataDirectory = paths.Data, version = ReadVersion(paths), assetsAvailable = File.Exists(Path.Combine(paths.AssetsDirectory, "manifest.json")),
-                    accountServiceUrl = configuration.Effective.AccountServiceUrl, gameplayAdvertisedHost = configuration.Effective.GameplayAdvertisedHost };
+                    accountServiceUrl = configuration.Effective.AccountServiceUrl, entranceHost = configuration.Effective.AdvertisedHost,
+                    entrancePort = configuration.Effective.EntrancePort, gameplayAdvertisedHost = configuration.Effective.GameplayAdvertisedHost };
             });
             api.MapGet("/logs", (long? after) => log.Read(after ?? 0));
             api.MapPost("/server/start", async (CancellationToken token) => Results.Ok(await supervisor.StartAsync(token)));
