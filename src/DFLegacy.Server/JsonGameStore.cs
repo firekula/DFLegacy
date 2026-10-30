@@ -724,6 +724,13 @@ public sealed class JsonGameStore(
             _nextNormalAccountUid = AccountUidRules.NormalUidStart;
             _nextTestAccountUid = 1;
             _fatigueDayKey = GetFatigueDayKey(DateTimeOffset.Now);
+            if (!options.SeedTestAccount)
+            {
+                _accounts = [];
+                await SaveLockedAsync(cancellationToken);
+                return;
+            }
+
             const uint defaultTestAccountUid = 1;
             var preset = CreatePresetCharacterLocked(defaultTestAccountUid, slot: 0);
             _accounts =

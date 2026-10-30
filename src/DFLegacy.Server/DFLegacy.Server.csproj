@@ -23,7 +23,7 @@
     </Content>
     <Content Include="$(RandomNativeBinary)"
              Link="DFLegacy.RandomNative.dll"
-             Condition="Exists('$(RandomNativeBinary)') or '$(BuildRandomNativeReference)' == 'true'">
+             Condition="'$(OS)' == 'Windows_NT' and ('$(RuntimeIdentifier)' == '' or '$(RuntimeIdentifier)' == 'win-x64') and (Exists('$(RandomNativeBinary)') or '$(BuildRandomNativeReference)' == 'true')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>

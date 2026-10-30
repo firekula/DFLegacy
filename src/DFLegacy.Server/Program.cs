@@ -4,7 +4,26 @@ using System.Text.Json;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
 
-var builder = WebApplication.CreateBuilder(args);
+HostingArguments hosting;
+try
+{
+    hosting = HostingArguments.Parse(args);
+}
+catch (ArgumentException exception)
+{
+    Console.Error.WriteLine(exception.Message);
+    Environment.ExitCode = 2;
+    return;
+}
+
+if (!File.Exists(hosting.ConfigPath))
+{
+    Console.Error.WriteLine("The server configuration file does not exist.");
+    Environment.ExitCode = 2;
+    return;
+}
+
+var builder = WebApplication.CreateBuilder(hosting.HostArguments);
 // The default Windows Event Log provider can require an administrator-created
 // event source. This emulator must be runnable as a normal desktop user.
 builder.Logging.ClearProviders();
@@ -15,7 +34,7 @@ builder.Logging.AddSimpleConsole(console =>
 });
 builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
 builder.Configuration.AddJsonFile(
-    Path.Combine(AppContext.BaseDirectory, "server.json"),
+    hosting.ConfigPath,
     optional: false,
     reloadOnChange: true);
 // Registered after server.json so environment variables take precedence, as in
@@ -26,6 +45,24 @@ builder.Configuration.AddEnvironmentVariables();
 
 var options = builder.Configuration.GetSection("DFLegacy").Get<ServerOptions>() ?? new ServerOptions();
 options.Processes.Validate();
+StoreProcessLease storeLease;
+try
+{
+    storeLease = StoreProcessLease.Acquire(options.DataPath);
+}
+catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+{
+    Console.Error.WriteLine(exception.Message);
+    Environment.ExitCode = 2;
+    return;
+}
+using var storeLeaseLifetime = storeLease;
+if (hosting.InitializeAdmin)
+{
+    Environment.ExitCode = await HostingArguments.InitializeAdministratorAsync(options, Console.In, Console.Out);
+    return;
+}
+
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var clientTextEncoding = Encoding.GetEncoding(
     936,
@@ -280,6 +317,7 @@ await gameStore.MigrateLegacyQuestRewardsAsync(
     itemCatalog,
     skillCatalog: app.Services.GetRequiredService<SkillCatalog>());
 
+app.UseManagerControl(Environment.GetEnvironmentVariable(ManagerControl.TokenEnvironmentVariable));
 app.UseStaticFiles();
 
 // 8081 管理接口鉴权。刻意集中成"路由表 + 一个中间件"而不是给三十多条路由各挂过滤器：

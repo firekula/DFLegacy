@@ -9,6 +9,7 @@ public sealed class ServerOptions
     public GameplayDatagramOptions GameplayDatagram { get; set; } = new();
     public ListenerOptions GameProbe { get; set; } = new() { Port = 7001, Enabled = false };
     public string DataPath { get; set; } = "data/state.json";
+    public bool SeedTestAccount { get; set; } = true;
     public string ScriptPvfPath { get; set; } = "data/Script.pvf";
     public string SkillScriptPath { get; set; } = "";
     public string OriginalSkillScriptPath { get; set; } = "";
