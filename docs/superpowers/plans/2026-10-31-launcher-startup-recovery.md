@@ -40,15 +40,16 @@ Files: new Launcher ClientBootstrapInspector.cs / ClientStartupMonitor.cs / Clie
 
 - [x] Add synthetic PE layout regression for the observed packed bootstrap and compatible renamed/unfolded PE; no version-based rejection. Baseline installer with empty saved credentials stays valid.
 - [x] Add real test-child immediate exit0/nonzero and still-running/cancel cases; observe RED, implement bounded startup observation and actionable errors without logging launch arguments/passwords.
-- [ ] Expose an explicit accessible 注册账号 button alongside existing account actions, opening the same existing dialog. Test actual rendering and activation.
-- [ ] Run Launcher tests and actual single-file headless/UI startup, then commit.
+- [x] Expose an explicit accessible 注册账号 button alongside existing account actions, using the existing dialog. Compiled WPF and actual UI Automation tree confirm RegistrationButton plus focus/accessibility description.
+- [ ] Physical rendering/Tab/activation remains pending: the related screenshot contains an OS firewall prompt; the window inventory alone did not expose it. No permission action was taken.
+- [x] Run Launcher suite and actual final single-file headless startup, then commit. Actual UI process opens and account service reports reachable; physical interaction remains pending above.
 
 ### Task3: Local repair, full acceptance and integration
 
-- [ ] Verify backup of the user's packed EXE, use the already-owned same-version validated unfolded EXE, leave PVF/NPK/config/saves unchanged except documented automatic runtime outputs and necessary patch installation.
-- [ ] Run the user's actual directory with the existing ordinary playtest account; record window/protocol evidence and graceful stop of only test processes. Report any Windows permission handoff honestly.
-- [ ] Run Manager100, release tools46, native13+RDSEED, full Python/native-fixture gate and required default Server smokes through final CI; don't weaken gates.
-- [ ] Dispatch one fresh whole-branch review, resolve important findings RED→GREEN, preserve main user state, commit/push authorized fixes, verify CI/release as applicable, restore runner state and write acceptance report.
+- [x] Verify backup of the user's packed EXE, use the already-owned same-version validated unfolded EXE, leave PVF/NPK/config/saves unchanged except documented automatic runtime outputs and necessary patch installation.
+- [x] Run the user's actual directory with the existing ordinary playtest account; record live game-window evidence and stop only owned test processes. The bounded test used exact-path/PID termination, not an unverified graceful-shutdown claim. Report the Windows permission handoff honestly.
+- [x] Actual run12 passed Windows/Linux protocol smokes, Manager100, release tools46, native13+RDSEED and the full Python gate:705 tests +592 subtests, JUnit1297 entries, zero failures/errors/skips. Packaging/container/publication still follows below; no gates weakened.
+- [x] Dispatch one fresh whole-branch review, resolve all findings with RED/GREEN evidence, preserve main user state and push verified fixes. Actual CI12 passed4/4 after the failed infrastructure stage reran at the same SHA; remote10 attachments/five RIDs/private dual-arch OCI independently verified; runner pause markers restored. Acceptance report records the remaining physical UI handoff.
 
 NPKStudio is a separate project and separate plan; its code and game asset outputs do not enter this change.
 
@@ -56,4 +57,4 @@ NPKStudio is a separate project and separate plan; its code and game asset outpu
 
 Fresh independent staged review: no Critical; cancellation ownership Important fixed after runtime RED4 assertions (pre-cancel preflight/creation and actual child remains alive), then GREEN actual ownership tests including retained successful no-relay handoff and termination on aborted/non-handoff lifetimes. Root also addressed the reported native test temporary-path conversion defect after a real Chinese TEMP run reproduced failure: CP_ACP conversion now matches actual filesystem paths; corrected-working-directory Unicode suite GREEN with no FAIL lines. No deferred review findings.
 
-Actual native13/13 and complete Launcher suite GREEN. Actual self-contained launcher exited0 and game window remained alive, both in isolation and repaired G:/dnf_local/DNF_2008; packed original now rejects with exit1 before spawning. Original425NPK+PVF426hashes and Config.ini/launcher.json remained identical. Original EXE/launcher/DLL/config backup verified. Windows firewall dialog was not acted on; physical registration keyboard/mouse and deeper gameplay remain manual handoff, not falsely claimed passed. Full CI/publication follows verified source commit.
+Actual native13/13 and complete Launcher suite GREEN. Actual self-contained launcher exited0 and game window remained alive, both in isolation and repaired G:/dnf_local/DNF_2008; packed original now rejects with exit1 before spawning. Original425NPK+PVF426hashes and Config.ini/launcher.json remained identical. Original EXE/launcher/DLL/config backup verified. Windows firewall dialog was not acted on; physical registration keyboard/mouse and deeper gameplay remain manual handoff, not falsely claimed passed. Actual CI12 completed4/4 successfully against this product source; see the final acceptance report for remote publication and runner restoration. Physical UI handoff above remains pending.
