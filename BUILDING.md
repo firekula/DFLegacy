@@ -49,6 +49,10 @@ IJL15 的 CMake 测试也构建和测试 `debug.dll`。32 位 IJL15/Debug 供游
 
 ## ACT1 原生调试专项与历史验收
 
+原生跨语言测试现在有可再生的专用夹具，见 [JSON 导出](tests/fixtures/native-debug/README.md)、[有界原始指令](tests/fixtures/act1-motion-horizon/README.md)和[城镇脚本子集](tests/fixtures/act1-town-navigation/README.md)。默认 Python 回放不需要安装游戏或提供完整 PVF。需要执行实际编译 DLL 的探针时，先构建 Windows 原生项目并设置 `DFLEGACY_GAMEPLAY_PROBE_DLL`、`DFLEGACY_NATIVE_LOOP_DLL` 为本次 `ijl15.dll`。
+
+Windows CI 在原生构建后重新生成 JSON 夹具、核对实际安装的运动补丁，再运行完整 Python 套件；JUnit 中出现任何跳过都会使该门禁失败。CI 为原生城镇控制器设置 `DFL_TOWN_ROUTE_CONTROLLER_PVF`，指向有界 PVF 子集；本机也可通过此变量选择子集或原始资源。夹具只证明离线原始指令、解析、模型和序列化合同，不扩充历史实机验收结论。
+
 当前源码、实机构建归属与未闭合边界见[交接](HANDOFF-2026-10-30.md)。合并前该分支记录的完整 Python 为 620 项／569 子测试；此数字对应原始 ACT1 及所需原生导出夹具均已提供的本机环境，不表示新机器缺少数据时条件用例也已执行，也不替代合并结果的验证。
 
 ```powershell

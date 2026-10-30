@@ -10,6 +10,12 @@ deploy/start/*.command text eol=lf
 deploy/*.yaml text eol=lf
 .gitea/workflows/*.yaml text eol=lf
 tools/release/*.py text eol=lf
+# Native fixture hashes describe exact producer bytes on every checkout.
+/tests/fixtures/native-debug/** -text whitespace=cr-at-eol
+/tests/fixtures/act1-motion-horizon/** -text whitespace=cr-at-eol
+/tests/fixtures/act1-motion-horizon/*.bin binary
+/tests/fixtures/act1-town-navigation/** -text whitespace=cr-at-eol
+/tests/fixtures/act1-town-navigation/*.pvf binary
 
 # 本组验收原件按字节校验，检入/检出时保留 JSON、日志和图片的原始字节。
 /knowledge/decisions/assets/2026-10-27-channel-return/** -text whitespace=cr-at-eol

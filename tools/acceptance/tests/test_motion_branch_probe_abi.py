@@ -1,13 +1,10 @@
 import os,unittest,re,struct
-from pathlib import Path
+from tools.acceptance.motion_replay_fixture import load_original_image
 class MotionBranchProbeTests(unittest.TestCase):
  def test_native_refusal_branch_markers_exist_in_actual_dll(self):
   path=os.environ.get('DFLEGACY_NATIVE_LOOP_DLL')
   if not path:self.skipTest('Explicit built IJL required')
   executable=os.environ.get('DFLEGACY_DNF_EXE')
-  if not executable:
-   executable='G:/Game/DNF_ACT1/Loot4_A/DNF.exe'
-   if not Path(executable).is_file():self.skipTest('Original ACT1 executable required')
   import pefile,capstone
   p=pefile.PE(path);raw=p.get_memory_mapped_image();base=p.OPTIONAL_HEADER.ImageBase;md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32);points={}
   for m in re.finditer(rb'\x9c\x60\x81\xec\x20\x02\x00\x00',raw):
@@ -17,7 +14,7 @@ class MotionBranchProbeTests(unittest.TestCase):
   from unicorn import Uc,UC_ARCH_X86,UC_MODE_32,UC_HOOK_CODE
   from unicorn.x86_const import (UC_X86_REG_EAX,UC_X86_REG_EBX,UC_X86_REG_ECX,UC_X86_REG_EDX,UC_X86_REG_ESI,UC_X86_REG_EDI,
    UC_X86_REG_EBP,UC_X86_REG_ESP,UC_X86_REG_EIP,UC_X86_REG_EFLAGS,UC_X86_REG_FPCW,UC_X86_REG_FP0,UC_X86_REG_FPSW,UC_X86_REG_FPTAG,UC_X86_REG_MXCSR,UC_X86_REG_XMM0,UC_X86_REG_XMM7)
-  original=pefile.PE(executable)
+  original=load_original_image(executable=executable)
   entries={111:0x4B3DC5,113:0x4B3D22,114:0x4B3D71}
   for point,(probe,helper) in points.items():
    for value in (0,1,5,7,0xffffffff):

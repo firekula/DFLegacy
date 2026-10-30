@@ -433,7 +433,10 @@ def test_runner_starts_and_stops_a_fake_actor_and_records_pid(tmp_path):
     sc = Scenario(id="s", goal="g", expect_t0="server-accept",
                   actors=(ActorSpec("A", "synthetic"),), steps=(Step("A", "do", (Expect("x"),)),))
     rp, _ = r.prepare(sc, git_sha="abc1234")
-    recs = r.start_actors(rp, sc, launcher_cmd=["cmd", "/c", "ping -n 30 127.0.0.1"])
+    # This stdlib-only fixture must terminate the actual leaf interpreter,
+    # including when the suite itself uses a Windows venv redirector.
+    interpreter = getattr(sys, "_base_executable", sys.executable)
+    recs = r.start_actors(rp, sc, launcher_cmd=[interpreter, "-c", "import time; time.sleep(30)"])
     try:
         assert len(recs) == 1
         assert recs[0]["name"] == "A" and isinstance(recs[0]["pid"], int)

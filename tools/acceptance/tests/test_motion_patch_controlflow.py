@@ -1,14 +1,11 @@
 """Audit real installation sites and execute same-row and cross-row tails."""
-from pathlib import Path
 import os,struct,unittest,re
+from tools.acceptance.motion_replay_fixture import load_original_image
 class MotionPatchControlFlowTests(unittest.TestCase):
  def test_no_original_jump_enters_a_patch_interior_and_both_grid_paths_return(self):
   path=os.environ.get('DFLEGACY_NATIVE_LOOP_DLL')
   if not path:self.skipTest('Explicit actual IJL required')
   executable=os.environ.get('DFLEGACY_DNF_EXE')
-  if not executable:
-   executable='G:/Game/DNF_ACT1/Loot4_A/DNF.exe'
-   if not Path(executable).is_file():self.skipTest('Original ACT1 executable required')
   import pefile,capstone
   from unicorn import Uc,UC_ARCH_X86,UC_MODE_32,UC_HOOK_CODE
   from unicorn.x86_const import UC_X86_REG_EAX,UC_X86_REG_EBX,UC_X86_REG_ECX,UC_X86_REG_EDX,UC_X86_REG_ESI,UC_X86_REG_EDI,UC_X86_REG_EBP,UC_X86_REG_ESP,UC_X86_REG_EIP,UC_X86_REG_EFLAGS
@@ -16,7 +13,7 @@ class MotionPatchControlFlowTests(unittest.TestCase):
   exports=[e for e in p.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'DflMotionProbeSites'];self.assertEqual(len(exports),1,'inspect the actual installer table')
   at=exports[0].address;magic,version,count,size=struct.unpack_from('<4I',raw,at);self.assertEqual((magic,version,count,size),(0x4D505331,1,5,32))
   sites=[struct.unpack_from('<4I8s2I',raw,at+16+i*32) for i in range(count)]
-  original=pefile.PE(executable)
+  original=load_original_image(executable=executable)
   md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32);md.detail=True
   for address,target,length,call,expected,_,_ in sites:self.assertEqual(original.get_data(address-0x400000,length),expected[:length])
   for ins in md.disasm(original.get_data(0x4B3C30-0x400000,0x1EB),0x4B3C30):

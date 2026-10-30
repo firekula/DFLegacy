@@ -79,8 +79,8 @@ class ProfileTests(unittest.TestCase):
             with self.subTest(change=change),self.assertRaises(api.ProfileError):self.validate(v)
 
     def test_real_native_export_roundtrip(self):
-        path=os.environ.get('DFLEGACY_FRAME_PROFILE_FIXTURE')
-        if not path:self.skipTest('Explicit native fixture is required')
+        from tools.acceptance.native_fixtures import fixture_path
+        path=fixture_path('frame-profile')
         v=json.loads(Path(path).read_bytes())
         api.validate_profile(v,pid=v['pid'],process_started_filetime=v['process_started_filetime'],
             now_tick_ms=v['exported_tick_ms'])

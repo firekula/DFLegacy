@@ -80,8 +80,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Release tool suite failed' }
       - name: Native tests, immutable Windows assets and self-contained package
         run: |
+          if (-not $env:DFL_TOWN_ROUTE_CONTROLLER_PVF) { $env:DFL_TOWN_ROUTE_CONTROLLER_PVF = Join-Path $PWD 'tests/fixtures/act1-town-navigation/catalog.pvf' }
           py -3.12 tools/release/ci.py windows --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT
           if ($LASTEXITCODE -ne 0) { throw 'Windows release gate failed' }
+      - name: Generate native fixtures and run the complete Python gate
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./.venv-ci/Scripts/python.exe tools/release/native_fixtures.py generate --build-dir artifacts/native/ijl15 --output artifacts/native-test-fixtures
+          if ($LASTEXITCODE -ne 0) { throw 'Native fixture generation failed' }
+          $env:PYTHONPATH = Join-Path $PWD 'tools'
+          $env:DFLEGACY_NATIVE_FIXTURE_ROOT = Join-Path $PWD 'artifacts/native-test-fixtures'
+          $env:DFLEGACY_GAMEPLAY_PROBE_DLL = Join-Path $PWD 'artifacts/native/ijl15/Release/ijl15.dll'
+          $env:DFLEGACY_NATIVE_LOOP_DLL = $env:DFLEGACY_GAMEPLAY_PROBE_DLL
+          ./.venv-ci/Scripts/python.exe -B -m pytest -q --junitxml=artifacts/python-complete.xml
+          if ($LASTEXITCODE -ne 0) { throw 'Complete Python tests failed' }
+          [xml]$results = Get-Content -Raw artifacts/python-complete.xml
+          if (($results.testsuites.testsuite | ForEach-Object { [int]$_.skipped } | Measure-Object -Sum).Sum -ne 0) { throw 'Complete Python gate must not skip tests' }
       # v3 uses Gitea's legacy artifact protocol; v4+ GitHub service is incompatible.
       # Node 20 backports selected instead of Node 16/24; runner must provide Node 20.
       - uses: https://github.com/actions/upload-artifact@c6a3b2bd78b3985e4b2f15397fec357f0fd808de # v3.2.2-node20
@@ -90,6 +104,8 @@ jobs:
           path: |
             artifacts/client-assets.tar.gz
             artifacts/DFLegacy-*-win-x64.zip
+            artifacts/native-test-fixtures/
+            artifacts/python-complete.xml
           if-no-files-found: error
           retention-days: 7
 

@@ -390,10 +390,12 @@ class TownNavigationTests(unittest.TestCase):
             self.expect_code("invalid_catalog", lambda: catalog.waypoints(
                 (1, 0), (10, 10), (90, 90), blocked_portals=invalid))
 
-    @unittest.skipUnless(ACTUAL_PVF.is_file(), "original ACT1 PVF is not installed")
     def test_actual_pvf_tolerant_replanning_avoids_unselected_doors(self):
-        catalog = self.api.load_catalog(ACTUAL_PVF)
-        self.assertEqual(catalog.pvf_sha256, ACTUAL_SHA)
+        from tools.acceptance.town_fixture import load_fixture_catalog
+        fixture = load_fixture_catalog()
+        catalog = fixture.catalog
+        self.assertEqual(fixture.source_pvf_sha256, ACTUAL_SHA)
+        self.assertEqual(catalog.pvf_sha256, fixture.catalog_pvf_sha256)
         area = catalog.area((1, 0))
         rectangles = [(r.x, r.y, r.width, r.height) for r in area.walkable]
         for start, target in [((785.0, 174.0), (2, 1)),
@@ -417,10 +419,12 @@ class TownNavigationTests(unittest.TestCase):
             else:
                 self.fail("actual PVF tolerant replanning failed to make bounded progress")
 
-    @unittest.skipUnless(ACTUAL_PVF.is_file(), "original ACT1 PVF is not installed")
     def test_actual_pvf_sha_portal_points_and_multitown_forward_reverse_regression(self):
-        catalog = self.api.load_catalog(ACTUAL_PVF)
-        self.assertEqual(catalog.pvf_sha256, ACTUAL_SHA)
+        from tools.acceptance.town_fixture import load_fixture_catalog
+        fixture = load_fixture_catalog()
+        catalog = fixture.catalog
+        self.assertEqual(fixture.source_pvf_sha256, ACTUAL_SHA)
+        self.assertEqual(catalog.pvf_sha256, fixture.catalog_pvf_sha256)
         self.assertEqual(catalog.area((1, 0)).map_path, "map/elvengard/elvengard.map")
         self.assertEqual(catalog.area((1, 2)).kind, "dungeon_gate")
         for start, goal in [((1, 1), (5, 1)), ((5, 1), (1, 1)), ((1, 0), (3, 1))]:

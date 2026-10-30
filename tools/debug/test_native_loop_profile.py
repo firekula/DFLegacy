@@ -11,8 +11,8 @@ from tools.debug import native_loop_profile as api
 
 class NativeLoopProfileTests(unittest.TestCase):
     def fixture(self):
-        path=os.environ.get('DFLEGACY_NATIVE_LOOP_FIXTURE')
-        if not path:self.skipTest('Explicit actual native loop fixture required')
+        from tools.acceptance.native_fixtures import fixture_path
+        path=fixture_path('native-loop')
         return json.loads(Path(path).read_bytes())
     def validate(self,v,now=None):
         return api.validate_profile(v,pid=v['pid'],process_started_filetime=v['process_started_filetime'],now_tick_ms=v['exported_tick_ms']+1 if now is None else now)

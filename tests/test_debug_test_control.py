@@ -228,6 +228,7 @@ class TestControlTests(unittest.TestCase):
         with patch.object(Path,'glob',side_effect=[[],[path]]),\
                 patch.object(self.api,'read_json',return_value=dict(pid=PID)),\
                 patch.object(self.api.state,'get_process_started_filetime',return_value=START),\
+                patch.object(self.api.state,'now_tick_ms',return_value=NOW),\
                 patch.object(self.api.state,'load_snapshot',return_value=client()),patch.object(self.api.time,'sleep'):
             self.assertEqual(set(self.api.load_clients('.',uids=[1])),{1})
 
@@ -235,6 +236,7 @@ class TestControlTests(unittest.TestCase):
         with patch.object(Path,'glob',return_value=[Path('snapshot.json')]),\
                 patch.object(self.api,'read_json',return_value=dict(pid=PID)),\
                 patch.object(self.api.state,'get_process_started_filetime',return_value=START),\
+                patch.object(self.api.state,'now_tick_ms',return_value=NOW),\
                 patch.object(self.api.state,'load_snapshot',side_effect=[self.api.state.SnapshotError('unreadable_json'),client()]),\
                 patch.object(self.api.time,'sleep'):
             self.assertEqual(set(self.api.load_clients('.',uids=[1])),{1})
@@ -244,6 +246,7 @@ class TestControlTests(unittest.TestCase):
         with patch.object(Path,'glob',return_value=[Path('snapshot.json')]),\
                 patch.object(self.api,'read_json',return_value=dict(pid=PID)),\
                 patch.object(self.api.state,'get_process_started_filetime',return_value=START),\
+                patch.object(self.api.state,'now_tick_ms',return_value=NOW),\
                 patch.object(self.api.state,'load_snapshot',side_effect=[client(),second]*3),\
                 patch.object(self.api.time,'sleep'):
             result=self.api.load_clients('.',uids=[1,2])
@@ -354,9 +357,8 @@ class InventoryDropTests(unittest.TestCase):
     lease=TestControlTests.lease
     request=TestControlTests.request
     def test_native_exported_dead_observer_fixture_roundtrip(self):
-        fixture_path=os.environ.get('DFLEGACY_TEST_CONTROL_OBSERVER_FIXTURE')
-        if not fixture_path:self.skipTest('Native export roundtrip requires an explicitly generated fixture')
-        value=json.loads(Path(fixture_path).read_bytes())
+        from tools.acceptance.native_fixtures import fixture_path
+        value=json.loads(fixture_path('observer').read_bytes())
         sdk=client();sdk.update(pid=value['pid'],process_started_filetime=value['process_started_filetime'],
             sequence=value['snapshot_sequence'],generation=value['generation'])
         sdk['room'].update(map_token=value['map_token'],stage_token=value['observer']['stage_token'])

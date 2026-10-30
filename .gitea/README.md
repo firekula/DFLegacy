@@ -46,7 +46,9 @@ Windows/Linux 共用 Git 提交时间 `SOURCE_DATE_EPOCH`，发行 stage 规范�
 
 测试 job 在独立 venv 通过 `tools/release/requirements-ci.txt` 安装锁定版本和 SHA-256 的 pytest、PyYAML、Pillow 及全部传递依赖，实际运行 `tools/acceptance/tests` 和 `tools/debug/test_drop_control.py`（`PYTHONPATH=tools`）。这些测试使用临时文件/进程/socket，无需客户端；不得为通过 CI 将其无理由跳过。
 
-合入 ACT1 分支后，离线原生字节回放所需的 pefile、Capstone、Unicorn 也使用固定版本和 wheel 摘要安装。原始客户端、已安装补丁字节或专用生产者夹具只供条件用例使用，未提供时必须保留明确的 skip，不能声称已执行。Windows 原生 CTest 同时运行调试模型和 ABI 检查；真实 PVF 的城镇控制器子用例仍需显式提供原 PVF。
+离线原生字节回放所需的 pefile、Capstone、Unicorn 也使用固定版本和 wheel 摘要安装。Windows 原生 CTest 同时运行调试模型和 ABI 检查；城镇控制器使用有界源脚本子集执行生产解析与导航检查。
+
+后续专用夹具补齐后，原先 11 项的默认输入由仓库中的真实原生导出与有界原始指令提供；相邻探针及城镇回放也有可校验的有界源数据。Windows 的完整门禁在构建后重新生成当前原生导出，设置本次 DLL 路径，执行全部 Python 测试并要求 JUnit 零跳过。原生城镇控制器默认 CI 输入为脚本子集 PVF；完整原始 EXE/PVF 仅用于明确选择的对照或再生，不上传到仓库、artifact 或镜像。
 
 metadata 只导出 `DFLEGACY_RELEASE_VERSION`、`DFLEGACY_RELEASE_COMMIT` 与 `SOURCE_DATE_EPOCH`，Docker build args 也采用前两个限定名称；job outputs 仍为 `version`/`commit`。通用 `VERSION=v...` 会被 MSBuild 当成非法 NuGet 版本，因此工作流与构建子进程会清理遗留变量，不能改回旧名称。
 

@@ -22,8 +22,8 @@ class TraceTests(unittest.TestCase):
         v=fixture();v.update(serial=0,events=[],lock_drops=1)
         self.assertEqual(self.validate(v)['lock_drops'],1)
     def test_actual_native_export_clock_boundary(self):
-        path=os.environ.get('DFLEGACY_GAMEPLAY_TRACE_FIXTURE')
-        if not path:self.skipTest('Explicit native producer fixture required')
+        from tools.acceptance.native_fixtures import fixture_path
+        path=fixture_path('gameplay-trace')
         value=json.loads(Path(path).read_bytes())
         validated=api.validate_trace(value,pid=value['pid'],process_started_filetime=value['process_started_filetime'],
             now_tick_ms=value['exported_tick_ms']+1)
