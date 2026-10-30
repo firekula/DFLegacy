@@ -14,7 +14,8 @@ public sealed class ClientPackageExporter
 
     public async Task<string> ExportAsync(string kind, DeploymentConfig config, CancellationToken cancellationToken = default)
     {
-        if (kind is not ("patch" or "launcher")) throw new ArgumentException("未知客户端包类型。");
+        if (kind is not ("client" or "patch" or "launcher")) throw new ArgumentException("未知客户端包类型。");
+        kind = "client";
         ConfigurationStore.Validate(config);
         if (!await _gate.WaitAsync(0, cancellationToken)) throw new InvalidOperationException("正在生成其他客户端包，请稍后重试。");
         string? destination = null;
@@ -65,7 +66,7 @@ public sealed class ClientPackageExporter
                 var actual = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, cancellationToken));
                 if (!actual.Equals(hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"客户端资源校验失败：{name}");
             }
-            foreach (var required in new[] { "patch/ijl15.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe", "launcher/DFLegacy.Launcher.dll", "launcher/DFLegacy.Launcher.deps.json", "launcher/DFLegacy.Launcher.runtimeconfig.json", "launcher/coreclr.dll" })
+            foreach (var required in new[] { "patch/ijl15.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe" })
                 if (!files.ContainsKey(required)) throw new InvalidDataException($"客户端资源不完整：{required}");
 
             foreach (var old in new DirectoryInfo(_paths.Exports).GetFiles("dflegacy-*.zip").Where(file => file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1))) old.Delete();
@@ -81,13 +82,16 @@ public sealed class ClientPackageExporter
                     await target.WriteAsync(data, cancellationToken);
                     sums.Append(Convert.ToHexStringLower(SHA256.HashData(data))).Append("  ").Append(name).Append('\n');
                 }
-                var prefix = kind == "launcher" ? "DFLegacyLauncher/" : "";
                 foreach (var (name, file) in files)
                 {
-                    if (!name.StartsWith(kind == "launcher" ? "launcher/" : "patch/", StringComparison.Ordinal)) continue;
-                    var relative = name[(name.IndexOf('/') + 1)..];
-                    if (relative.Equals("launcher.json", StringComparison.OrdinalIgnoreCase) || relative.Equals("Config.ini", StringComparison.OrdinalIgnoreCase)) continue;
-                    var zipName = prefix + relative;
+                    var zipName = name switch
+                    {
+                        "patch/ijl15.dll" => "ijl15.dll",
+                        "launcher/DFLegacy.Launcher.exe" => "DFLegacy.Launcher.exe",
+                        "launcher/Assets/Skin/fwtk.html" => "Assets/Skin/fwtk.html",
+                        _ => null
+                    };
+                    if (zipName is null) continue;
                     await using var source = File.OpenRead(file.FullPath);
                     await using var target = archive.CreateEntry(zipName, CompressionLevel.Fastest).Open();
                     using var digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -97,24 +101,17 @@ public sealed class ClientPackageExporter
                     if (!actual.Equals(file.Hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"生成时客户端资源已发生变更：{name}");
                     sums.Append(actual).Append("  ").Append(zipName).Append('\n');
                 }
-                var ini = await File.ReadAllTextAsync(files["patch/Config.ini"].FullPath, cancellationToken);
-                ini = SetIni(ini, "Features", "EnableDebugOverlay", "0");
-                ini = SetIni(ini, "Network", "ClientServiceUrl", config.AccountServiceUrl.TrimEnd('/'));
-                await Add(prefix + "Config.ini", ini);
-                if (kind == "launcher")
+                var launcher = new
                 {
-                    var launcher = new
-                    {
-                        ClientPath = "../DNF.exe", EntranceHost = config.AdvertisedHost, config.EntrancePort, AccountServicePort = config.AdminPort,
-                        config.AccountServiceUrl, Theme = "dark", Account = "", Password = "", Accounts = Array.Empty<object>(), AccountIndex = 0, StartServer = false,
-                        D3D9Adapter = 0, D3D9TimeoutSeconds = 30, D3D9RetryIntervalSeconds = 1,
-                        Relay = new { Enabled = config.RelayEnabled, TcpPorts = string.Join(',', config.ForwardedTcpPorts()),
-                            UdpPorts = string.Join(',', config.ForwardedUdpPorts()), Preference = config.RelayPreference }
-                    };
-                    await Add(prefix + "launcher.json", JsonSerializer.Serialize(launcher, new JsonSerializerOptions { WriteIndented = true }));
-                }
+                    ClientPath = "DNF.exe", EntranceHost = config.AdvertisedHost, config.EntrancePort, AccountServicePort = config.AdminPort,
+                    config.AccountServiceUrl, Theme = "dark", Account = "", Password = "", Accounts = Array.Empty<object>(), AccountIndex = 0, StartServer = false,
+                    D3D9Adapter = 0, D3D9TimeoutSeconds = 30, D3D9RetryIntervalSeconds = 1,
+                    Relay = new { Enabled = config.RelayEnabled, TcpPorts = string.Join(',', config.ForwardedTcpPorts()),
+                        UdpPorts = string.Join(',', config.ForwardedUdpPorts()), Preference = config.RelayPreference }
+                };
+                await Add("launcher.json", JsonSerializer.Serialize(launcher, new JsonSerializerOptions { WriteIndented = true }));
                 await Add("README.txt", $"DFLegacy {version}\n提交：{commit}\n\n请先退出游戏并备份客户端 ijl15.dll 和 Config.ini。\n"
-                    + (kind == "launcher" ? "将 DFLegacyLauncher 目录放在 DNF.exe 同级，运行其中的 DFLegacy.Launcher.exe；首次自行注册或输入账号。\n" : "将 ijl15.dll 放到客户端 DNF.exe 同级。Config.ini 为配置模板，请合并所需设置并保留自己的窗口设置。\n")
+                    + "将 ZIP 内容直接解压到 DNF.exe 所在目录，运行 DFLegacy.Launcher.exe；首次自行注册或输入账号。\n默认配置内嵌，已有 Config.ini 仅更新必要连接字段并保留窗口设置。\n"
                     + "不包含客户端或 Script.pvf，请自行提供与服务端匹配的资源。\n远程调试浮窗默认关闭；当前调试浮窗需要与服务端共享本机目录。\n");
                 var checksumData = Encoding.UTF8.GetBytes(sums.ToString());
                 await using var checksum = archive.CreateEntry("SHA256SUMS").Open();

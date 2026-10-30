@@ -28,6 +28,9 @@ import urllib.request
 import uuid
 import zipfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from bundle import read_bundle
+
 REPO = Path(__file__).resolve().parents[2]
 RIDS = ("win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64")
 OWNER_MARKER = "<!-- dflegacy-release-pipeline:v1 -->"
@@ -167,6 +170,36 @@ def runtime_files(rid):
 
 def check_app(root, assembly, rid, web=False, wpf=False):
     executable = assembly + (".exe" if rid.startswith("win") else "")
+    if not (root / (assembly + ".dll")).is_file():
+        try:
+            bundle = read_bundle(root / executable, rid)
+            for name in (assembly + ".dll", "System.Private.CoreLib.dll", *(("PresentationFramework.dll", "PresentationCore.dll", "WindowsBase.dll") if wpf else ())):
+                if name not in bundle.entries or bundle.entries[name][1] <= 0:
+                    raise ValueError("missing embedded dependency: " + name)
+            configuration = json.loads(bundle.read(assembly + ".runtimeconfig.json"), object_pairs_hook=unique_keys)["runtimeOptions"]
+            frameworks = {item["name"] for item in configuration.get("includedFrameworks", [])}
+            required_frameworks = {"Microsoft.NETCore.App"} | ({"Microsoft.AspNetCore.App"} if web else set()) | ({"Microsoft.WindowsDesktop.App"} if wpf else set())
+            if not required_frameworks <= frameworks or configuration.get("tfm") != "net10.0" or configuration.get("framework") or configuration.get("frameworks"):
+                raise ValueError("bundle is not a self-contained .NET 10 application")
+            dependencies = json.loads(bundle.read(assembly + ".deps.json"), object_pairs_hook=unique_keys)
+            target = dependencies["runtimeTarget"]["name"]
+            if not target.endswith("/" + rid):
+                raise ValueError("embedded runtime target differs from RID")
+            for library in dependencies["targets"][target].values():
+                for category in ("runtime", "native", "resources"):
+                    for dependency, metadata in library.get(category, {}).items():
+                        safe_path(dependency); name = PurePosixPath(dependency).name
+                        if name == "_._":
+                            continue
+                        relative = (PurePosixPath(metadata["locale"]) / name).as_posix() if category == "resources" and metadata.get("locale") else name
+                        safe_path(relative)
+                        if relative not in bundle.entries:
+                            raise ValueError("missing embedded dependency: " + relative)
+            if web and not any(p.is_file() for p in (root / "wwwroot").rglob("*")):
+                raise ValueError("missing external web assets")
+            return
+        except (ValueError, KeyError, TypeError, OSError) as error:
+            raise ReleaseError(f"incomplete single-file {assembly}: {error}") from error
     required = [executable, assembly + ".dll", assembly + ".deps.json", assembly + ".runtimeconfig.json", *runtime_files(rid)]
     if wpf:
         required.append("PresentationFramework.dll")
@@ -235,7 +268,8 @@ def verify_assets(root, version=None, commit=None):
             raise ReleaseError("missing client asset: " + required)
     check_app(root / "launcher", "DFLegacy.Launcher", "win-x64", wpf=True)
     launcher = read_json(root / "launcher/launcher.json")
-    if launcher.get("Accounts") != [] or launcher.get("Account") != "" or launcher.get("Password") != "" or launcher.get("StartServer") is not False or launcher.get("ClientPath") != "../DNF.exe":
+    client_paths = {"DNF.exe"} | ({"../DNF.exe"} if (root / "launcher/DFLegacy.Launcher.dll").is_file() else set())
+    if launcher.get("Accounts") != [] or launcher.get("Account") != "" or launcher.get("Password") != "" or launcher.get("StartServer") is not False or launcher.get("ClientPath") not in client_paths:
         raise ReleaseError("unsafe launcher profile")
     if (root / "launcher/ijl15.dll").exists() and digest(root / "launcher/ijl15.dll") != digest(root / "patch/ijl15.dll"):
         raise ReleaseError("mixed native patch binaries")
@@ -292,7 +326,7 @@ def build_client_assets(launcher, ijl15, config, output, version, commit, debug=
             (stage / name).write_text(text.getvalue(), encoding="utf-8")
         # A source publish can contain developer credentials. They are replaced,
         # never copied into the immutable release asset manifest.
-        write_json(stage / "launcher/launcher.json", {"ClientPath": "../DNF.exe", "EntranceHost": "127.0.0.1", "EntrancePort": 2311,
+        write_json(stage / "launcher/launcher.json", {"ClientPath": "DNF.exe", "EntranceHost": "127.0.0.1", "EntrancePort": 2311,
                    "AccountServiceUrl": "http://127.0.0.1:8081", "Account": "", "Password": "", "Accounts": [], "AccountIndex": 0,
                    "StartServer": False, "Relay": {"Enabled": False}})
         (stage / "launcher/debug.dll").unlink(missing_ok=True)
@@ -312,7 +346,8 @@ def dotnet_environment():
 
 def publish_dotnet(project, rid, output):
     command = ["dotnet", "publish", str(REPO / "src" / project / (project + ".csproj")), "-c", "Release", "-r", rid,
-               "--self-contained", "true", "-p:UseAppHost=true", "-p:ContinuousIntegrationBuild=true", "-p:BuildRandomNativeReference=false", "-o", str(output)]
+               "--self-contained", "true", "-p:UseAppHost=true", "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true",
+               "-p:DebugType=embedded", "-p:PublishTrimmed=false", "-p:ContinuousIntegrationBuild=true", "-p:BuildRandomNativeReference=false", "-o", str(output)]
     subprocess.run(command, cwd=REPO, check=True, env=dotnet_environment())
 
 
@@ -568,7 +603,7 @@ def release(api, version, commit, archives, image_digest=None, check_only=False,
         checked.append((path.name, digest(path), path))
     if platforms != set(RIDS):
         raise ReleaseError("release requires all five verified platform archives")
-    for name, source in (("compose.yaml", REPO / "compose.yaml"), ("compose.host-ipv6.yaml", REPO / "deploy/compose.host-ipv6.yaml"), (".env.example", REPO / ".env.example")):
+    for name, source in (("compose.yaml", REPO / "compose.yaml"), ("compose.host-ipv6.yaml", REPO / "deploy/compose.host-ipv6.yaml"), ("compose.pvf.yaml", REPO / "deploy/compose.pvf.yaml"), (".env.example", REPO / ".env.example")):
         if not source.is_file() or source.is_symlink() or name in names:
             raise ReleaseError("missing or conflicting standalone deployment example")
         scan(source)

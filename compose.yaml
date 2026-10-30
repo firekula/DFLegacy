@@ -1,4 +1,4 @@
-# Copy .env.example to .env and fill DFLEGACY_IMAGE/PVF_PATH before starting.
+# Set DFLEGACY_IMAGE, start, then upload Script.pvf through Manager.
 services:
   dflegacy:
     image: ${DFLEGACY_IMAGE:?Set a versioned image or immutable image digest in .env}
@@ -23,12 +23,6 @@ services:
       - type: volume
         source: dflegacy-data
         target: /app/data
-      - type: bind
-        source: ${PVF_PATH:?Set the absolute path to your own Script.pvf}
-        target: /pvf/Script.pvf
-        read_only: true
-        bind:
-          create_host_path: false
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]

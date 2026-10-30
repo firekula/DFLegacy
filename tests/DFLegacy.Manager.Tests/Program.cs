@@ -166,20 +166,21 @@ try
     WriteAssets(commit);
     WriteRelease();
     var exporter = new ClientPackageExporter(paths);
-    var zipPath = await exporter.ExportAsync("launcher", edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "" });
+    var zipPath = await exporter.ExportAsync("client", edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "" });
     using (var archive = ZipFile.OpenRead(zipPath))
     {
         string Read(string name) { using var reader = new StreamReader(archive.GetEntry(name)!.Open()); return reader.ReadToEnd(); }
-        var launcher = JsonNode.Parse(Read("DFLegacyLauncher/launcher.json"))!;
+        var launcher = JsonNode.Parse(Read("launcher.json"))!;
         Check(launcher["Account"]!.GetValue<string>() == "" && launcher["Password"]!.GetValue<string>() == "" && launcher["Accounts"]!.AsArray().Count == 0,
             "exported launcher never carries bundled accounts or passwords");
-        Check(!launcher["StartServer"]!.GetValue<bool>() && launcher["ClientPath"]!.GetValue<string>() == "../DNF.exe", "player bundle uses relative client path and remote-only startup");
+        Check(!launcher["StartServer"]!.GetValue<bool>() && launcher["ClientPath"]!.GetValue<string>() == "DNF.exe", "player bundle uses relative client path and remote-only startup");
         Check(launcher["EntranceHost"]!.GetValue<string>() == "game.example.test", "player bundle points to the configured server");
         Check(launcher["Relay"]!["TcpPorts"]!.GetValue<string>().Split(',').Contains("7005")
             && launcher["Relay"]!["UdpPorts"]!.GetValue<string>().Split(',').Contains("7005"),
             "default native fallback TCP and UDP ports are forwarded by exported local relay");
-        Check(Read("DFLegacyLauncher/Config.ini").Contains("ClientServiceUrl=https://accounts.example.test"), "embedded client pages use the deployed account API origin");
-        Check(Read("DFLegacyLauncher/Config.ini").Contains("EnableDebugOverlay=0"), "debug overlay remains disabled for distributed players");
+        Check(launcher["AccountServiceUrl"]!.GetValue<string>() == "https://accounts.example.test", "embedded client pages use the deployed account API origin");
+        Check(archive.GetEntry("Config.ini") is null && archive.GetEntry("DFLegacy.Launcher.exe") is not null && archive.GetEntry("ijl15.dll") is not null, "root player bundle includes launcher and patch without overwriting existing Config.ini");
+        Check(archive.Entries.All(entry => !entry.FullName.StartsWith("DFLegacyLauncher/") && !entry.FullName.EndsWith("coreclr.dll")), "player ZIP has no wrapper directory or loose runtime files");
         Check(archive.GetEntry("SHA256SUMS") is not null && archive.GetEntry("README.txt") is not null, "client package includes checksums and install instructions");
         Check(archive.Entries.All(entry => !entry.FullName.Contains("state.json") && !entry.FullName.Contains("Script.pvf")), "exports never include saved games or private PVF resources");
     }
@@ -189,7 +190,7 @@ try
     var pvpZip = await exporter.ExportAsync("launcher", config.Read().Effective);
     using (var archive = ZipFile.OpenRead(pvpZip))
     {
-        using var reader = new StreamReader(archive.GetEntry("DFLegacyLauncher/launcher.json")!.Open());
+        using var reader = new StreamReader(archive.GetEntry("launcher.json")!.Open());
         var launcher = JsonNode.Parse(reader.ReadToEnd())!;
         Check(launcher["Relay"]!["TcpPorts"]!.GetValue<string>().Split(',').Contains("9051"),
             "exported relay includes the configured enabled PvP TCP listener");
@@ -197,8 +198,8 @@ try
     pvpDocument["DFLegacy"]!["Pvp"]!["Enabled"] = false;
     File.WriteAllText(paths.ServerConfig, pvpDocument.ToJsonString());
     var patchPath = await exporter.ExportAsync("patch", edited);
-    using (var archive = ZipFile.OpenRead(patchPath)) Check(archive.GetEntry("ijl15.dll") is not null && archive.GetEntry("DFLegacyLauncher/DFLegacy.Launcher.exe") is null,
-        "patch-only export contains client DLL without the full launcher");
+    using (var archive = ZipFile.OpenRead(patchPath)) Check(archive.GetEntry("ijl15.dll") is not null && archive.GetEntry("DFLegacy.Launcher.exe") is not null,
+        "legacy patch export alias now returns the same complete root player bundle");
     async Task RejectExport(string message)
     {
         try { await exporter.ExportAsync("launcher", edited); Check(false, message); }

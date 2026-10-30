@@ -73,6 +73,29 @@ class Bundles(unittest.TestCase):
         executable = output / ("Fixture.exe" if os.name == "nt" else "Fixture")
         result = subprocess.run([str(executable)], check=True, capture_output=True, text=True)
         self.assertEqual(result.stdout.strip(), "isolated build fixture")
+        self.assertFalse((output / "Fixture.dll").exists(), "real release publish must bundle managed dependencies")
+        release.check_app(output, "Fixture", rid)
+
+    def test_single_file_app_checks_embedded_dependencies_and_runtime_identity(self):
+        from test_bundle import fixture
+        root = self.root / "single-file"; root.mkdir()
+        target = "net10.0/win-x64"
+        deps = {"runtimeTarget": {"name": target}, "targets": {target: {"Fixture/1.0": {"runtime": {"Fixture.dll": {}, "Needed.dll": {}}}}}}
+        entries = {"Fixture.dll": b"fixture", "Needed.dll": b"dependency", "System.Private.CoreLib.dll": b"corelib",
+                   "Fixture.deps.json": json.dumps(deps).encode(), "Fixture.runtimeconfig.json": json.dumps({"runtimeOptions": {"tfm": "net10.0", "includedFrameworks": [{"name": "Microsoft.NETCore.App"}]}}).encode()}
+        fixture(root / "Fixture.exe", entries)
+        release.check_app(root, "Fixture", "win-x64")
+        missing = dict(entries); del missing["Needed.dll"]
+        fixture(root / "Fixture.exe", missing)
+        with self.assertRaisesRegex(release.ReleaseError, "Needed.dll"):
+            release.check_app(root, "Fixture", "win-x64")
+        wrong = copy.deepcopy(deps); wrong["runtimeTarget"]["name"] = "net10.0/linux-x64"
+        fixture(root / "Fixture.exe", entries | {"Fixture.deps.json": json.dumps(wrong).encode()})
+        with self.assertRaisesRegex(release.ReleaseError, "runtime target"):
+            release.check_app(root, "Fixture", "win-x64")
+        fixture(root / "Fixture.exe", entries | {"Fixture.runtimeconfig.json": b'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App"}}}'})
+        with self.assertRaisesRegex(release.ReleaseError, "self-contained"):
+            release.check_app(root, "Fixture", "win-x64")
 
     def package(self, rid="linux-x64"):
         assets = self.assets()
@@ -89,7 +112,7 @@ class Bundles(unittest.TestCase):
         self.assertEqual(config["Accounts"], [])
         self.assertEqual(config["Password"], "")
         self.assertFalse(config["StartServer"])
-        self.assertEqual(config["ClientPath"], "../DNF.exe")
+        self.assertEqual(config["ClientPath"], "DNF.exe")
         self.assertTrue((assets / "launcher/PresentationFramework.dll").is_file())
 
     def test_assets_reject_missing_wpf_dependency(self):
@@ -367,8 +390,8 @@ class Remote(unittest.TestCase):
         archives = self.archives()
         release.release(self.api, VERSION, COMMIT, archives)
         self.assertFalse(FakeGitea.releases[0]["draft"])
-        self.assertEqual(len(FakeGitea.attachments), 9)
-        self.assertTrue({"compose.yaml", "compose.host-ipv6.yaml", ".env.example"}.issubset({value["name"] for value in FakeGitea.attachments.values()}))
+        self.assertEqual(len(FakeGitea.attachments), 10)
+        self.assertTrue({"compose.yaml", "compose.host-ipv6.yaml", "compose.pvf.yaml", ".env.example"}.issubset({value["name"] for value in FakeGitea.attachments.values()}))
         self.assertEqual(FakeGitea.requests[-1][0], "PATCH")
 
     def test_check_only_validates_complete_set_without_remote_mutation(self):
@@ -402,7 +425,7 @@ class Remote(unittest.TestCase):
         self.assertTrue(FakeGitea.releases[0]["draft"])
         FakeGitea.fail_after = None
         release.release(self.api, VERSION, COMMIT, archives)
-        self.assertEqual(len(FakeGitea.attachments), 9)
+        self.assertEqual(len(FakeGitea.attachments), 10)
         self.assertEqual(sum(method == "DELETE" for method, _ in FakeGitea.requests), 0)
         self.assertTrue(all(FakeGitea.attachments[key] == value for key, value in originals.items()))
 
@@ -419,7 +442,7 @@ class Remote(unittest.TestCase):
         result = release.release(self.api, VERSION, COMMIT, archives)
         self.assertEqual(result["status"], "already-published")
         self.assertFalse(FakeGitea.releases[0]["draft"])
-        self.assertEqual(len(FakeGitea.attachments), 9)
+        self.assertEqual(len(FakeGitea.attachments), 10)
         self.assertFalse(any(method == "DELETE" for method, _ in FakeGitea.requests))
 
     def test_same_published_identity_check_only_is_read_only_for_latest_retry(self):

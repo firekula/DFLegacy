@@ -441,13 +441,13 @@ public sealed partial class GameplayDatagramService(
             options.GameplayDatagram.SecondaryPort);
         try
         {
-        _primary = DualStackUdp.Bind(primaryEndpoint);
-        _secondary = DualStackUdp.Bind(secondaryEndpoint);
-        readiness?.MarkReady("gameplay");
-        logger.LogInformation(
-            "Gameplay UDP primary/secondary listeners ready at {Primary} and {Secondary}",
-            primaryEndpoint,
-            secondaryEndpoint);
+            _primary = DualStackUdp.Bind(primaryEndpoint);
+            _secondary = DualStackUdp.Bind(secondaryEndpoint);
+            readiness?.MarkReady("gameplay");
+            logger.LogInformation(
+                "Gameplay UDP primary/secondary listeners ready at {Primary} and {Secondary}",
+                primaryEndpoint,
+                secondaryEndpoint);
 
             var loops = new List<Task>
             {

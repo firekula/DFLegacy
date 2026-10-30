@@ -124,6 +124,7 @@ def windows(version, commit):
         "-p:BuildNativeAssets=false", "-p:Ijl15PrebuiltPath=" + str(native))
     launcher = new_output(REPO / "artifacts" / ("launcher-" + version))
     run("dotnet", "publish", "src/DFLegacy.Launcher/DFLegacy.Launcher.csproj", "-c", "Release", "-r", "win-x64", "--self-contained", "true",
+        "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:DebugType=embedded", "-p:PublishTrimmed=false",
         "-p:BuildNativeAssets=false", "-p:Ijl15PrebuiltPath=" + str(native), "-p:ContinuousIntegrationBuild=true", "-o", launcher)
     assets = build_client_assets(launcher, native, REPO / "src/DFLegacy.Ijl15/Config.ini", REPO / "client-assets", version, commit)
     # Tar transport keeps the immutable assets together. All receivers verify it.

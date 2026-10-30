@@ -49,8 +49,9 @@
     </Content>
     <Content Include="../DFLegacy.Ijl15/Config.ini" Link="Config.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </Content>
+    <EmbeddedResource Include="../DFLegacy.Ijl15/Config.ini" LogicalName="DFLegacy.Launcher.DefaultConfig.ini" />
   </ItemGroup>
   <Target Name="BuildIjl15"
           BeforeTargets="Build"

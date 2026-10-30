@@ -28,28 +28,28 @@ public sealed class EntranceHandshakeServer(
     {
         try
         {
-        foreach (var port in ports.Where(port => port is >= 0 and <= 65535).Distinct())
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var listener = new TcpListener(address, port);
-            try { listener.Start(); }
-            catch { listener.Stop(); throw; }
-            lock (_listenersGate)
+            foreach (var port in ports.Where(port => port is >= 0 and <= 65535).Distinct())
             {
-                _listeners.Add(listener);
+                cancellationToken.ThrowIfCancellationRequested();
+                var listener = new TcpListener(address, port);
+                try { listener.Start(); }
+                catch { listener.Stop(); throw; }
+                lock (_listenersGate)
+                {
+                    _listeners.Add(listener);
+                }
+
+                log($"Entrance listener ready at {address}:{((IPEndPoint)listener.LocalEndpoint).Port}");
             }
 
-            log($"Entrance listener ready at {address}:{((IPEndPoint)listener.LocalEndpoint).Port}");
-        }
+            int[] bound;
+            lock (_listenersGate)
+            {
+                bound = _listeners.Select(listener => ((IPEndPoint)listener.LocalEndpoint).Port).ToArray();
+            }
 
-        int[] bound;
-        lock (_listenersGate)
-        {
-            bound = _listeners.Select(listener => ((IPEndPoint)listener.LocalEndpoint).Port).ToArray();
-        }
-
-        BoundPorts = bound;
-        return Task.FromResult(bound.ToArray());
+            BoundPorts = bound;
+            return Task.FromResult(bound.ToArray());
         }
         catch { Stop(); BoundPorts = []; throw; }
     }

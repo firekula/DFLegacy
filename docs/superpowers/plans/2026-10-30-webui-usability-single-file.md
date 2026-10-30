@@ -1,6 +1,6 @@
 # Web UI usability and single-file release implementation plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Fix startup recovery, accept administrator PVF uploads, explain probability multipliers, export one root-layout player ZIP and publish self-contained single-file programs.
 
@@ -33,9 +33,9 @@
 
 **Interfaces:** `ListenerReadiness` records enabled listener states and reports `IsReady`; private `/internal/manager/status` exposes `managed` and `ready`; Supervisor accepts readiness only when both are true. `ServerSupervisor` continues owning the only child and gate.
 
-- [ ] Add and run failing real-socket/child tests: delayed or failed listener never reports ready; a second failed bind releases the first; same supervisor retries; bind access denial differs from address-in-use; failed start before child creation is recoverable.
-- [ ] Add listener readiness and finally/disposal coverage around binding, await complete readiness and process liveness under the state lock, clear failed child state, explain native socket error and affected protocol/port without killing other processes.
-- [ ] Run `dotnet run --project tests/DFLegacy.Manager.Tests -c Release -- --http --server-dir src/DFLegacy.Server/bin/Release/net10.0`; expect zero failures. Keep complete default Server smoke mandatory in Task 4, where it is already a CI gate. Commit `fix: recover partial startup and wait for listener readiness`.
+- [x] Add and run failing real-socket/child tests: delayed or failed listener never reports ready; a second failed bind releases the first; same supervisor retries; bind access denial differs from address-in-use; failed start before child creation is recoverable.
+- [x] Add listener readiness and finally/disposal coverage around binding, await complete readiness and process liveness under the state lock, clear failed child state, explain native socket error and affected protocol/port without killing other processes.
+- [x] Run `dotnet run --project tests/DFLegacy.Manager.Tests -c Release -- --http --server-dir src/DFLegacy.Server/bin/Release/net10.0`; expect zero failures. Keep complete default Server smoke mandatory in Task 4, where it is already a CI gate. Commit `fix: recover partial startup and wait for listener readiness`.
 
 ### Task 2: PVF upload and understandable configuration
 
@@ -43,10 +43,10 @@
 
 **Interfaces:** authenticated `GET /api/resources/pvf` returns availability/size/external-control; `POST /api/resources/pvf` accepts raw `application/octet-stream` and streams to owned data storage. `ServerSupervisor.UploadPvfAsync(Stream,CancellationToken)` serializes with start/stop/config and returns resource metadata. Root directory/files selected server-side.
 
-- [ ] Write and run RED tests for valid synthetic PVF, malformed/empty/truncated/oversized/cancelled streams, failed config commit, concurrent/running/external-controlled replacement, authentication/CSRF/Origin/content type, upload after Manager restart.
-- [ ] Stream into a private temporary file, validate PVF header/tree bounds, select an immutable content-addressed filename, commit configuration only after file completion; roll back candidates on failure. Preserve old external paths. Set body limits only for this endpoint.
-- [ ] Replace editable PVF path with upload/progress/status controls. Show 1x/2x probability multiplier with the existing percent conversion and accurate overlapping extra-rate explanation; reduce export buttons to one in preparation for Task 3.
-- [ ] Run full Manager behavior/HTTP/child suite and JavaScript syntax checks; expect zero failures. Commit `feat: upload PVF resources and clarify deployment controls`.
+- [x] Write and run RED tests for valid synthetic PVF, malformed/empty/truncated/oversized/cancelled streams, failed config commit, concurrent/running/external-controlled replacement, authentication/CSRF/Origin/content type, upload after Manager restart.
+- [x] Stream into a private temporary file, validate PVF header/tree bounds, select an immutable content-addressed filename, commit configuration only after file completion; roll back candidates on failure. Preserve old external paths. Set body limits only for this endpoint.
+- [x] Replace editable PVF path with upload/progress/status controls. Show 1x/2x probability multiplier with the existing percent conversion and accurate overlapping extra-rate explanation; reduce export buttons to one in preparation for Task 3.
+- [x] Run full Manager behavior/HTTP/child suite and JavaScript syntax checks; expect zero failures. Commit `feat: upload PVF resources and clarify deployment controls`.
 
 ### Task 3: Root-layout player bundle and verified single-file applications
 
@@ -57,7 +57,7 @@
 - [ ] Add/run RED bundle-format/real-publish tests and ZIP contract tests: apphost stub, missing/mismatched embedded dependency, compressed-entry bounds, root launcher+patch, no Config.ini, no credentials, DNF.exe relative path, preserve existing INI on installation.
 - [ ] Publish with `PublishSingleFile=true`, `IncludeNativeLibrariesForSelfExtract=true`, `DebugType=embedded`, no trimming/AOT. Parse actual official .NET bundle format rather than trust arbitrary sidecars; verify embedded deps and RID/native/WPF files. Include the same options in Windows client build; keep external web/config content and native bridge working.
 - [ ] Embed default INI in Launcher; preserve existing config when installing. Export a single root ZIP; update UI/docs/test fixtures and Docker smoke to the new contract. Maintain immutable identity/hash/path safeguards.
-- [ ] Run Manager and Launcher suites, all release tooling tests, actual Windows final-publish/Launcher startup with nonexistent DOTNET_ROOT, Linux final package/container lifecycle, all RID structure checks. Commit `feat: ship compact single-file server and player packages`.
+- [ ] Run Manager and Launcher suites, all release tooling tests, actual Windows single-file Manager/Server/Launcher lifecycle and Launcher installation with nonexistent DOTNET_ROOT. Linux final package/container lifecycle and all five RID archive checks are the mandatory actual CI acceptance in Task 4. Commit `feat: ship compact single-file server and player packages`.
 
 ### Task 4: Review, CI and immutable release publication
 

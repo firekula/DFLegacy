@@ -133,13 +133,18 @@ internal static class Ijl15ReplacementInstaller
 
     private static void InstallBundledConfig(string clientDirectory)
     {
+        var targetPath = Path.Combine(clientDirectory, ConfigFileName);
+        if (File.Exists(targetPath)) return;
         var bundledPath = Path.Combine(AppContext.BaseDirectory, ConfigFileName);
         if (!File.Exists(bundledPath))
         {
+            using var defaults = typeof(Ijl15ReplacementInstaller).Assembly.GetManifestResourceStream("DFLegacy.Launcher.DefaultConfig.ini")
+                ?? throw new InvalidDataException("登录器缺少内嵌的默认配置。");
+            using var output = new FileStream(targetPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            defaults.CopyTo(output);
             return;
         }
 
-        var targetPath = Path.Combine(clientDirectory, ConfigFileName);
         // The bundled file supplies first-install defaults. Install() updates
         // only Network.ClientServiceUrl separately; other user settings stay.
         if (!File.Exists(targetPath))

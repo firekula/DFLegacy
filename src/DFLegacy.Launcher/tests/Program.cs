@@ -78,6 +78,16 @@ try
         var client = Path.Combine(root, "DNF.exe");
         File.WriteAllBytes(client, []);
         var config = Path.Combine(root, "Config.ini");
+        var externalDefaults = Path.Combine(AppContext.BaseDirectory, "Config.ini");
+        var savedDefaults = externalDefaults + ".test-backup";
+        if (File.Exists(externalDefaults)) File.Move(externalDefaults, savedDefaults);
+        try
+        {
+            Ijl15ReplacementInstaller.Install(client, "https://game.example:8443/api");
+            var generated = File.ReadAllText(config);
+            Check(generated.Contains("[Features]") && generated.Contains("EnableDebugOverlay=0"), "launcher creates embedded defaults without a loose INI template");
+        }
+        finally { if (File.Exists(savedDefaults)) File.Move(savedDefaults, externalDefaults); }
         const string customized = "; 用户自定义\r\n[Resolution]\r\nWidth=1234\r\n[Network]\r\nOther=keep\r\nClientServiceUrl=http://old.example\r\n[Custom]\r\nValue=保留\r\n";
         File.WriteAllText(config, customized);
         Ijl15ReplacementInstaller.Install(client, "https://game.example:8443/api///");

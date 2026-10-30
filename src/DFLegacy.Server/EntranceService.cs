@@ -163,14 +163,14 @@ public sealed class EntranceService(
 
         try
         {
-        foreach (var port in ports)
-        {
-            var listener = new TcpListener(address, port);
-            try { listener.Start(); }
-            catch { listener.Stop(); throw; }
-            _listeners.Add(listener);
-            logger.LogInformation("Entrance listener ready at {Address}:{Port}", address, port);
-        }
+            foreach (var port in ports)
+            {
+                var listener = new TcpListener(address, port);
+                try { listener.Start(); }
+                catch { listener.Stop(); throw; }
+                _listeners.Add(listener);
+                logger.LogInformation("Entrance listener ready at {Address}:{Port}", address, port);
+            }
 
             readiness?.MarkReady("channel");
             await Task.WhenAll(_listeners.Select(listener =>

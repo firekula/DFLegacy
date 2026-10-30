@@ -65,7 +65,11 @@ internal static class SupervisorBehaviorTests
             try
             {
                 try { await supervisor.StartAsync(); check(false, "unavailable later gameplay listener cannot report running"); }
-                catch (InvalidOperationException) { check(supervisor.Snapshot.State == "failed" && supervisor.Snapshot.Pid is null, "partial real-server startup failure is fully reaped"); }
+                catch (InvalidOperationException)
+                {
+                    check(supervisor.Snapshot.State == "failed" && supervisor.Snapshot.Pid is null, "partial real-server startup failure is fully reaped");
+                    check(supervisor.Snapshot.Error?.Contains("SocketException") == true, "startup error retains the underlying listener failure instead of only exit code zero");
+                }
                 foreach (var port in settings.ForwardedTcpPorts())
                 {
                     using var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, port);

@@ -87,6 +87,7 @@ public sealed class ServerSupervisor : IAsyncDisposable
     {
         if (_process is { HasExited: false }) return Snapshot;
         if (_process is not null) { _process.Dispose(); _process = null; }
+        var startupLogId = _log.Read().LastOrDefault()?.Id ?? 0;
         try
         {
             var configuration = _config.Read();
@@ -168,6 +169,15 @@ public sealed class ServerSupervisor : IAsyncDisposable
             await KillOwnedAsync();
             _process?.Dispose(); _process = null; _controlSecret = ""; _runningConfig = null;
             var message = exception is OperationCanceledException ? "游戏服务启动超时或被取消，请检查日志。" : exception.Message;
+            var failure = _log.Read(startupLogId).FirstOrDefault(line => line.Source == "server"
+                && (line.Text.Contains("fail:", StringComparison.OrdinalIgnoreCase)
+                    || line.Text.Contains("crit:", StringComparison.OrdinalIgnoreCase)
+                    || line.Text.Contains("Unhandled exception", StringComparison.OrdinalIgnoreCase)));
+            if (failure is not null)
+            {
+                var detail = System.Text.RegularExpressions.Regex.Replace(failure.Text, @"\s+at\s+.*$", "", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+                message += " 原因：" + (detail.Length > 600 ? detail[..600] + "…" : detail);
+            }
             SetSnapshot(new("failed", ExitCode: exitCode, Error: message));
             _log.Write("manager", message);
             throw new InvalidOperationException(message, exception);
