@@ -66,6 +66,6 @@
 **Interfaces:** existing Gitea workflow, registry private owner, release verification scripts; user main dirty-file inventory must remain byte-for-byte unchanged.
 
 - [x] Run complete required local gates; dispatch one fresh whole-branch review using requesting-code-review. Resolve Critical/Important findings with RED→GREEN tests and a full green suite; record rulings/minors in the ledger.
-- [ ] Fast-forward main preserving the original tracked/untracked inventory; push authorized changes and temporarily resume both registered runners. Wait for actual required jobs and publication; fix any discovered integration failure with a regression before republishing a new immutable version.
-- [ ] Independently download remote attachments and verify archives, OCI manifest/config digests and private authorization; inspect actual ZIP contents/file counts and final Windows/Linux behavior evidence.
-- [ ] Pause runners again, preserve CI evidence outside worktree, finish report and final communication with release link and actual platform verification limits. Commit `docs: record compact release validation` as appropriate; documentation-only CI need not republish indefinitely.
+- [x] Fast-forward main preserving the original tracked/untracked inventory; push authorized changes and temporarily resume both registered runners. Wait for actual required jobs and publication; fix any discovered integration failure with a regression before republishing a new immutable version.
+- [x] Independently download remote attachments and verify archives, OCI manifest/config digests and private authorization; inspect actual ZIP contents/file counts and final Windows/Linux behavior evidence.
+- [x] Pause runners again, preserve CI evidence outside worktree, finish report and final communication with release link and actual platform verification limits. Commit `docs: record compact release validation` as appropriate; documentation-only CI need not republish indefinitely.
