@@ -83,3 +83,5 @@ Gitea 流水线产物包括五平台自包含归档、校验清单、独立 Comp
 ## 验证边界
 
 各发行包的 `release-manifest.json` 记录构建身份和验证范围。交叉构建/摘要通过不代表在目标硬件上运行通过。macOS、Linux arm64 未有原生 Runner；真实 Windows 客户端到远程服务端的登录、进图与长期运行仍需游戏实机验收。现有代码和工具检查通过也不代表已在 Gitea 启用 Runner 或成功发布到远端 Registry。
+
+2026-10-30 首版本地构建、测试与未执行项见[交付记录](docs/superpowers/reports/2026-10-30-cross-platform-deployment-release-validation.md)。

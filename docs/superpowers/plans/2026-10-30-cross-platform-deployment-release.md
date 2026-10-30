@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-30-cross-platform-deployment-release-design.md` (approved 2026-10-30, including subsequent Web page inventory).
 
+**Execution status (2026-10-30):** Tasks 1–8 are implemented in `codex/deployment-web-release`. The checklists below preserve the planned scenarios; they are not a claim that every target hardware or external service has been exercised. Actual checks, build identity and outstanding Runner/Registry/game acceptance are recorded in [the delivery report](../reports/2026-10-30-cross-platform-deployment-release-validation.md).
+
 ## Global Constraints
 
 - Five targets: win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64; Docker linux/amd64 and linux/arm64.
