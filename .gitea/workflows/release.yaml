@@ -237,6 +237,7 @@ jobs:
           test -n "$REGISTRY_TOKEN"
           auth=$(mktemp)
           trap 'rm -f "$auth"' EXIT
+          printf '%s\n' '{"auths":{}}' > "$auth"
           tls=()
           copy_tls=()
           if test "$ALLOW_HTTP_REGISTRY" = true; then tls+=(--tls-verify=false); copy_tls+=(--dest-tls-verify=false); fi
@@ -273,6 +274,7 @@ jobs:
           set -euo pipefail
           auth=$(mktemp)
           trap 'rm -f "$auth"' EXIT
+          printf '%s\n' '{"auths":{}}' > "$auth"
           tls=()
           copy_tls=()
           if test "$ALLOW_HTTP_REGISTRY" = true; then tls+=(--tls-verify=false); copy_tls+=(--src-tls-verify=false --dest-tls-verify=false); fi

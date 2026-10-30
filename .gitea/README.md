@@ -19,6 +19,8 @@
 
 本机 Windows + Docker Linux Runner 的部署、启动/停止与持久卷约定见[部署说明](../deploy/gitea-runners/README.md)。
 
+包读取权限跟随所有者的可见性，不继承所关联仓库的私有权限；公开个人账号下的镜像包不能因此视为私有。私有发行可使用专用私有组织。本次实例使用仅含 `firekula` 成员的私有组织 `dflegacy-ci`，镜像地址为 `firekula.site:3000/dflegacy-ci/dflegacy`。见 [Gitea 1.26 包访问限制](https://docs.gitea.com/1.26/usage/packages/overview/#access-restrictions)。
+
 仅发布任务使用 secret `DFLEGACY_REGISTRY_TOKEN`，限制为必要包写权限。Release 使用内建 `GITEA_TOKEN`；Gitea 1.26 job 指定 `code: read`、`releases: write` 与 `packages: write`，且仍受仓库/组织最大权限限制。测试任务只读。权限与 fork 限制见 [官方 job token 文档](https://docs.gitea.com/1.26/usage/actions/token-permissions/)。Registry 是否接受该实例的 token、HTTPS 与 push 需接入时实际验证；工作流采用独立最小权限 Registry token，不复用个人全权限凭据。
 
 `release.yaml` 先在 Windows/Linux 实际执行默认 `dotnet run` 冒烟、Manager HTTP/子进程测试和 Python 行为测试。Windows 再构建/测试原生项目、登录器和 win-x64 包；同 SHA 的不可变 Windows 资源交给 Linux 交叉生成其余四 RID。Linux x64 解压包与容器必须实际通过健康/停服 readiness、non-root 与命名卷持久化检查。只有全部完成，发布任务才上传 OCI 镜像，并将五个包全部上传到 Release 草稿后公开。任何 test/build 失败均使发布任务不能运行。
