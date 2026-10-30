@@ -52,7 +52,8 @@ internal static class Program
 
             if (args.Contains("--self-test", StringComparer.OrdinalIgnoreCase))
             {
-                WriteLauncherLog($"Self-test passed for DFLegacy client {clientPath} (file version check disabled); ijl15={bundledIjl15.Sha256}.");
+                ClientBootstrapInspector.ValidateForLaunch(clientPath);
+                WriteLauncherLog($"Self-test passed for DFLegacy client {clientPath} (bootstrap layout checked; file version is metadata only); ijl15={bundledIjl15.Sha256}.");
                 return 0;
             }
 
@@ -275,6 +276,7 @@ internal static class Program
         }
         catch (SocketException exception)
         {
+            relay.Stop();
             throw new InvalidOperationException(
                 $"本地中继无法绑定 {RelayListenAddress} 的转发端口：{exception.Message}" +
                 "（端口可能被上一个未退出的实例占用）",

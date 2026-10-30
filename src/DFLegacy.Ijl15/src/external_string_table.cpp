@@ -242,27 +242,6 @@ namespace
             return -1;
         }
 
-        std::vector<unsigned char> bytes;
-        if (!ReadFileBytes(sourcePath, bytes))
-        {
-            OutputDebugStringA(
-                "DFLegacy.Ijl15: could not read Plugin\\dnf.str.\n");
-            return -1;
-        }
-
-        const auto validation = dfl::external_string_table::ValidateCp936(
-            bytes.data(),
-            bytes.size());
-        if (validation
-            != dfl::external_string_table::EncodingValidation::ValidCp936)
-        {
-            OutputDebugStringA(
-                "DFLegacy.Ijl15: Plugin\\dnf.str rejected: ");
-            OutputDebugStringA(EncodingErrorText(validation));
-            OutputDebugStringA(". CP936 is required.\n");
-            return -1;
-        }
-
         if (destinationFileName == nullptr)
         {
             OutputDebugStringA(
@@ -273,14 +252,10 @@ namespace
         const auto resolveClientPath = reinterpret_cast<ResolveClientPath>(
             ResolveClientPathFunction);
         char* const destinationPath = resolveClientPath(destinationFileName);
-        if (destinationPath == nullptr
-            || !WriteFileBytes(destinationPath, bytes))
-        {
-            OutputDebugStringA(
-                "DFLegacy.Ijl15: could not stage Plugin\\dnf.str for the client parser.\n");
-            return -1;
-        }
-        return 1;
+        return dfl::external_string_table::ExtractOrFallback(
+            sourcePath, destinationPath, destinationFileName,
+            reinterpret_cast<dfl::external_string_table::BuiltinExtractor>(
+                OriginalExtractionFunction));
     }
 
     bool GetCallDestination(
@@ -319,6 +294,46 @@ namespace
 
 namespace dfl::external_string_table
 {
+    int ExtractOrFallback(
+        const wchar_t* sourcePath,
+        const char* destinationPath,
+        const char* resourceName,
+        BuiltinExtractor builtin) noexcept
+    {
+        if (sourcePath == nullptr || resourceName == nullptr) return -1;
+        std::vector<unsigned char> bytes;
+        if (!ReadFileBytes(sourcePath, bytes))
+        {
+            const DWORD attributes = GetFileAttributesW(sourcePath);
+            const DWORD error = attributes == INVALID_FILE_ATTRIBUTES
+                ? GetLastError() : ERROR_SUCCESS;
+            if (attributes == INVALID_FILE_ATTRIBUTES
+                && (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND)
+                && builtin != nullptr)
+            {
+                OutputDebugStringA(
+                    "DFLegacy.Ijl15: no external dnf.str; using built-in client extraction.\n");
+                return builtin(resourceName);
+            }
+            OutputDebugStringA("DFLegacy.Ijl15: could not read Plugin\\dnf.str.\n");
+            return -1;
+        }
+        const auto validation = ValidateCp936(bytes.data(), bytes.size());
+        if (validation != EncodingValidation::ValidCp936)
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: Plugin\\dnf.str rejected: ");
+            OutputDebugStringA(EncodingErrorText(validation));
+            OutputDebugStringA(". CP936 is required.\n");
+            return -1;
+        }
+        if (destinationPath == nullptr || !WriteFileBytes(destinationPath, bytes))
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: could not stage Plugin\\dnf.str for the client parser.\n");
+            return -1;
+        }
+        return 1;
+    }
+
     EncodingValidation ValidateCp936(
         const unsigned char* bytes,
         std::size_t size) noexcept

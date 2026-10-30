@@ -847,6 +847,57 @@ bool TestExternalStringTableConfiguration()
             sizeof(EmbeddedNull)) == Validation::EmbeddedNull;
 }
 
+int BuiltinStringCalls = 0;
+int __cdecl BuiltinStringFixture(const char* name)
+{
+    ++BuiltinStringCalls;
+    return name && std::strcmp(name, "dnf.str") == 0 ? 7 : -1;
+}
+
+bool TestExternalStringTableFallback()
+{
+    char temporary[MAX_PATH]{}, unique[MAX_PATH]{};
+    if (!GetTempPathA(MAX_PATH, temporary)
+        || !GetTempFileNameA(temporary, "dfs", 0, unique)) return false;
+    DeleteFileA(unique);
+    if (!CreateDirectoryA(unique, nullptr)) return false;
+    const std::string source = std::string(unique) + "\\override.str";
+    const std::string output = std::string(unique) + "\\staged.str";
+    const int wideLength = MultiByteToWideChar(
+        CP_ACP, 0, source.data(), static_cast<int>(source.size()), nullptr, 0);
+    if (wideLength <= 0) { RemoveDirectoryA(unique); return false; }
+    std::wstring sourceWide(static_cast<std::size_t>(wideLength), L'\0');
+    if (MultiByteToWideChar(CP_ACP, 0, source.data(), static_cast<int>(source.size()),
+            sourceWide.data(), wideLength) != wideLength)
+    { RemoveDirectoryA(unique); return false; }
+    const auto extract = [&](dfl::external_string_table::BuiltinExtractor builtin = BuiltinStringFixture)
+    {
+        return dfl::external_string_table::ExtractOrFallback(
+            sourceWide.c_str(), output.c_str(), "dnf.str", builtin);
+    };
+    bool ok = true;
+    BuiltinStringCalls = 0;
+    ok &= extract() == 7 && BuiltinStringCalls == 1;
+    ok &= extract(nullptr) == -1 && BuiltinStringCalls == 1;
+    const std::string valid = "723>\xCD\xE6\xBC\xD2\r\n";
+    { std::ofstream file(source, std::ios::binary); file.write(valid.data(), valid.size()); }
+    ok &= extract() == 1 && BuiltinStringCalls == 1;
+    { std::ifstream file(output, std::ios::binary);
+      ok &= std::string(std::istreambuf_iterator<char>(file), {}) == valid; }
+    HANDLE locked = CreateFileA(source.c_str(), GENERIC_READ, 0, nullptr,
+        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    ok &= locked != INVALID_HANDLE_VALUE && extract() == -1 && BuiltinStringCalls == 1;
+    if (locked != INVALID_HANDLE_VALUE) CloseHandle(locked);
+    { std::ofstream file(source, std::ios::binary | std::ios::trunc); }
+    ok &= extract() == -1 && BuiltinStringCalls == 1;
+    { std::ofstream file(source, std::ios::binary | std::ios::trunc); file << "\xEF\xBB\xBF" "723>bad"; }
+    ok &= extract() == -1 && BuiltinStringCalls == 1;
+    { std::ifstream file(output, std::ios::binary);
+      ok &= std::string(std::istreambuf_iterator<char>(file), {}) == valid; }
+    DeleteFileA(source.c_str()); DeleteFileA(output.c_str()); RemoveDirectoryA(unique);
+    return ok;
+}
+
 bool TestRelativeOutputPathPolicy()
 {
     char output[128]{};
@@ -1474,6 +1525,10 @@ int main(int argc, char** argv)
     if (!TestExternalStringTableConfiguration())
     {
         return Fail("external CP936 dnf.str configuration failed");
+    }
+    if (!TestExternalStringTableFallback())
+    {
+        return Fail("missing external string table fallback or override protection failed");
     }
     if (!TestRelativeOutputPathPolicy())
     {

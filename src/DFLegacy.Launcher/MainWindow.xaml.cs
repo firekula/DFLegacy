@@ -193,6 +193,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.WriteLauncherLog($"Launcher failed: {ex}");
             Show();
             Growl.Info($"启动失败：{ex.Message}");
         }

@@ -26,6 +26,13 @@ namespace dfl::external_string_table
         wchar_t* output,
         std::size_t outputCapacity) noexcept;
 
+    using BuiltinExtractor = int (__cdecl*)(const char* resourceName);
+    int ExtractOrFallback(
+        const wchar_t* sourcePath,
+        const char* destinationPath,
+        const char* resourceName,
+        BuiltinExtractor builtin) noexcept;
+
     enum class HookState
     {
         Original,

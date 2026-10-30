@@ -1,6 +1,14 @@
 using DFLegacy.Launcher;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Diagnostics;
+using System.Buffers.Binary;
+
+if (args.Length == 2 && args[0] == "--startup-test-child")
+{
+    if (args[1] == "wait") { await Task.Delay(30_000); return 0; }
+    return int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture);
+}
 
 var failures = 0;
 void Check(bool condition, string message)
@@ -14,6 +22,137 @@ var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.Ne
 Directory.CreateDirectory(root);
 try
 {
+    byte[] BootstrapFixture(bool packed)
+    {
+        var image = new byte[0x1000];
+        void U16(int offset, ushort value) => BinaryPrimitives.WriteUInt16LittleEndian(image.AsSpan(offset), value);
+        void U32(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(image.AsSpan(offset), value);
+        U16(0, 0x5a4d); U32(60, 0x80); U32(0x80, 0x4550);
+        U16(0x84, 0x14c); U16(0x86, 3); U16(0x94, 0xe0); U16(0x96, 0x102);
+        var optional = 0x98; U16(optional, 0x10b);
+        U32(optional + 16, packed ? 0xa8d17bU : 0x51e6fdU);
+        U32(optional + 28, 0x400000); U32(optional + 32, 0x1000);
+        U32(optional + 36, 0x200); U32(optional + 56, 0xb39000); U32(optional + 60, 0x400);
+        U32(optional + 92, 16);
+        void Section(int index, string name, uint size, uint address, uint rawSize, uint raw)
+        {
+            var s = optional + 0xe0 + 40 * index;
+            Encoding.ASCII.GetBytes(name).CopyTo(image, s);
+            U32(s + 8, size); U32(s + 12, address); U32(s + 16, rawSize); U32(s + 20, raw);
+            U32(s + 36, 0x60000020);
+        }
+        Section(0, "nsn\0t", 0x5967e6, 0x1000, packed ? 0x400U : 0x596800U, 0x400);
+        Section(1, "nsn", 0xa6000, 0xa8d000, 0x400, 0x800);
+        Section(2, ".vmp0", 0x426c, 0xb33000, 0x400, 0xc00);
+        return image;
+    }
+    var packedPath = Path.Combine(root, "renamed-packed.exe");
+    File.WriteAllBytes(packedPath, BootstrapFixture(true));
+    try { ClientBootstrapInspector.ValidateForLaunch(packedPath); Check(false, "known packed bootstrap is rejected before creating a child"); }
+    catch (InvalidDataException ex) { Check(ex.Message.Contains("加壳"), "packed-client error explains required compatible bootstrap"); }
+    var rebuiltPath = Path.Combine(root, "renamed-rebuilt.exe");
+    File.WriteAllBytes(rebuiltPath, BootstrapFixture(false));
+    ClientBootstrapInspector.ValidateForLaunch(rebuiltPath);
+
+    Process StartFixture(string mode)
+    {
+        var info = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, CreateNoWindow = true };
+        if (Path.GetFileNameWithoutExtension(info.FileName).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
+            info.ArgumentList.Add(typeof(NativeProfile).Assembly.Location);
+        info.ArgumentList.Add("--startup-test-child"); info.ArgumentList.Add(mode);
+        return Process.Start(info)!;
+    }
+    using (var cancelled = new CancellationTokenSource())
+    {
+        cancelled.Cancel();
+        var invalid = new LauncherOptions { ClientPath = Path.Combine(root, "not-created.exe"), Account = "player", Password = "secret" };
+        try { await LaunchFlow.RunAsync(invalid, invalid.GetSelectedAccount(), cancelled.Token); Check(false, "pre-cancelled launch stops before preflight/installation"); }
+        catch (OperationCanceledException) { }
+        catch (Exception) { Check(false, "pre-cancelled launch performed preflight side effects"); }
+        var created = 0;
+        try
+        {
+            await ClientProcessLifetime.RunAsync(() => { created++; return StartFixture("0"); },
+                (_, _) => Task.CompletedTask, handoffOnSuccess: true, cancelled.Token);
+            Check(false, "pre-cancelled lifetime must not start a child");
+        }
+        catch (OperationCanceledException) { }
+        Check(created == 0, "cancelled ownership boundary does not invoke child factory");
+    }
+    Process? cancellationProbe = null;
+    using (var cancelled = new CancellationTokenSource(150))
+    {
+        try
+        {
+            try
+            {
+                await ClientProcessLifetime.RunAsync(() =>
+                {
+                    var child = StartFixture("wait");
+                    cancellationProbe = Process.GetProcessById(child.Id);
+                    _ = cancellationProbe.SafeHandle;
+                    return child;
+                }, (child, token) => ClientStartupMonitor.ObserveAsync(child, TimeSpan.FromSeconds(5), token),
+                    handoffOnSuccess: true, cancelled.Token);
+                Check(false, "cancelled startup propagates cancellation");
+            }
+            catch (OperationCanceledException) { }
+            Check(cancellationProbe is not null && cancellationProbe.HasExited,
+                "cancelling actual startup stops and awaits the owned child before returning");
+        }
+        finally
+        {
+            if (cancellationProbe is not null)
+            {
+                if (!cancellationProbe.HasExited) cancellationProbe.Kill(entireProcessTree: true);
+                await cancellationProbe.WaitForExitAsync(); cancellationProbe.Dispose();
+            }
+        }
+    }
+    foreach (var handoff in new[] { false, true })
+    {
+        Process? probe = null;
+        try
+        {
+            await ClientProcessLifetime.RunAsync(() =>
+            {
+                var child = StartFixture("wait");
+                probe = Process.GetProcessById(child.Id); _ = probe.SafeHandle;
+                return child;
+            }, (child, token) => ClientStartupMonitor.ObserveAsync(child, TimeSpan.FromMilliseconds(100), token),
+                handoffOnSuccess: handoff, CancellationToken.None);
+            Check(probe is not null && probe.HasExited != handoff,
+                handoff ? "successful no-relay handoff keeps the real client alive" : "ending an owned lifetime stops its still-running child");
+        }
+        finally
+        {
+            if (probe is not null)
+            {
+                if (!probe.HasExited) probe.Kill(entireProcessTree: true);
+                await probe.WaitForExitAsync(); probe.Dispose();
+            }
+        }
+    }
+    foreach (var code in new[] { 0, 37 })
+    {
+        using var child = StartFixture(code.ToString());
+        try { await ClientStartupMonitor.ObserveAsync(child, TimeSpan.FromSeconds(5)); Check(false, "a child that exits before startup observation is not reported successful"); }
+        catch (InvalidOperationException ex)
+        { Check(ex.Message.Contains($"0x{code:X8}") && ex.Message.Contains("退出"), "early exit error contains the real child exit code"); }
+    }
+    using (var child = StartFixture("wait"))
+    {
+        try
+        {
+            await ClientStartupMonitor.ObserveAsync(child, TimeSpan.FromMilliseconds(100));
+            Check(!child.HasExited, "startup observation succeeds while actual child remains alive");
+            using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+            try { await ClientStartupMonitor.ObserveAsync(child, TimeSpan.FromSeconds(5), cancelled.Token); Check(false, "startup cancellation propagates"); }
+            catch (OperationCanceledException) { }
+        }
+        finally { if (!child.HasExited) child.Kill(entireProcessTree: true); await child.WaitForExitAsync(); }
+    }
+
     var store = new LauncherAccountStore(Path.Combine(root, "launcher.json"));
     var fresh = store.Load();
     Check(fresh.Account == "" && fresh.Password == "" && fresh.Accounts.Count == 0,
