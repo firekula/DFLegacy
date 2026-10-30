@@ -34,6 +34,19 @@
 | [CHANGELOG.md](CHANGELOG.md) | 里程碑、功能变更和验证范围。 |
 | [副本调试面板](tools/debug/README.md) | 独立 debug.dll 的配置、构建、浮动面板、掉落测试开关与自动控制。 |
 | [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
+| [DEPLOYMENT_MANAGER.md](DEPLOYMENT_MANAGER.md) | 跨平台部署管理器、首次设置、客户端包导出及验证范围。 |
+
+## 一键部署与自动发行
+
+新增 `DFLegacy.Manager`，Windows、Linux、macOS 与 Docker 共用中文 Web 管理页面。本机启动管理器会打开浏览器；管理器与游戏服务分别运行，停止游戏服务后仍可修改配置、查看日志、初始化游戏管理员及导出客户端补丁/登录器。
+
+- 发行包按 `win-x64`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64` 自包含发布。Windows 运行 `Start.cmd`，Linux 运行 `./start.sh`，macOS 运行 `Start.command`；游戏客户端仍为 Windows 程序。
+- 首次设置凭据只使用一次，保存在数据目录 `management/setup-token.txt`；双击启动时由本机浏览器自动携带。管理账号与游戏账号分开，发行模板不生成 `test/test`。
+- 服务端配置、存档、日志保存在独立 `data/` 目录。升级先停服、备份数据，将新版本解压到新目录，再复用数据目录；不要直接覆盖正在运行的安装。
+- 各平台和容器都使用同版本预构建的 Windows 客户端资源导出 ZIP，包含空凭据登录器、IJL15、配置和摘要。游戏内充值/黑钻页面保留 460×315 布局，GM 后台和玩家中心继续使用普通浏览器。
+- `.gitea/workflows/release.yaml` 在提交后测试并构建；`main` 成功后发布开发预发布版，`vX.Y.Z` 标签发布正式版和镜像。需要先配置 Windows/Linux Runner 与 Registry，见 [部署说明](DEPLOYING.md)。
+
+这些是新增部署能力；真实客户端跨机进图、macOS 原生运行和远端 CI 发布的验收状态，见 [部署管理说明](DEPLOYMENT_MANAGER.md)。
 
 容器部署使用仓库根目录的 `Dockerfile`、`.dockerignore` 与 `compose.yaml`，说明见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)。
 

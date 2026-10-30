@@ -5,3 +5,8 @@
 Dockerfile text eol=lf
 .dockerignore text eol=lf
 compose.yaml text eol=lf
+deploy/start/*.sh text eol=lf
+deploy/start/*.command text eol=lf
+deploy/*.yaml text eol=lf
+.gitea/workflows/*.yaml text eol=lf
+tools/release/*.py text eol=lf
