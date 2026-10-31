@@ -96,11 +96,11 @@
 
 **Interfaces:** `ExportAsync(string kind,DeploymentConfig config,bool testBuild=false,CancellationToken cancellationToken=default)` (adjust named calls to avoid cancellation ambiguity). `/api/export/client` accepts optional JSON bool `testBuild`, default false; old aliases return normal. client-assets bundle carries `patch/DFLegacy.Client.dll`, optional `patch/debug.dll`, default INI and launcher with embedded helper, all same source version. Release builders produce fixed installed/update manifests and V2/tool asset names; no new old-name V1 ZIP.
 
-- [ ] Add RED Manager tests for defaults, test mode, invalid bool, missing optional debug (ordinary works/test fails), mixed version/hash, privacy, preserved root layout and no ijl15. Add release tests for four new ZIP assets, exact manifests/modes, no player config in GitHub tools, paired debug version and absence of legacy update asset.
-- [ ] Run focused tests and record RED.
-- [ ] Implement checkbox in existing download card with text from spec; ensure export request captures the user's chosen bool. Package only flavor's required files after immutable-release validation. Update README to clearly explain one-time manual migration, packed limitation and local-only server overlay data.
-- [ ] Update native/client-asset build CLI and CI arguments; build/package/test both flavors on Windows, consume verified assets for Linux/macOS server bundles, publish schema2/tools to GitHub only after existing same-source gates. Maintain public source snapshot mapping and no secret-bearing config/history changes. Update archive inventory validation rather than hardcoded wrong asset counts.
-- [ ] Run Manager tests and `python -m unittest discover -s tools/release/tests -v`; validate fixture packages with actual launcher parser. Commit.
+- [x] Add RED Manager tests for defaults, test mode, invalid bool, missing optional debug (ordinary works/test fails), mixed version/hash, privacy, preserved root layout and no ijl15. Add release tests for four new ZIP assets, exact manifests/modes, no player config in GitHub tools, paired debug version and absence of legacy update asset.
+- [x] Run focused tests and record RED.
+- [x] Implement checkbox in existing download card with text from spec; ensure export request captures the user's chosen bool. Package only flavor's required files after immutable-release validation. Update README to clearly explain one-time manual migration, packed limitation and local-only server overlay data.
+- [x] Update native/client-asset build CLI and CI arguments; build/package/test both flavors on Windows, consume verified assets for Linux/macOS server bundles, publish schema2/tools to GitHub only after existing same-source gates. Maintain public source snapshot mapping and no secret-bearing config/history changes. Update archive inventory validation rather than hardcoded wrong asset counts.
+- [x] Run Manager tests and `python -m unittest discover -s tools/release/tests -v`; validate fixture packages with actual launcher parser. Commit.
 
 ## Task 6: Integrated acceptance and delivery evidence
 
