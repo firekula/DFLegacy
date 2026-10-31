@@ -23,6 +23,7 @@
 #include "motion_test_probe.h"
 #include "provider_probe.h"
 #include "dnf_patches.h"
+#include "../../DFLegacy.Client/bootstrap_runtime.h"
 #include "d3d8_scaler.h"
 #include "external_string_table.h"
 #include "ijl15_config.h"
@@ -801,7 +802,8 @@ namespace dfl::dnf_patches
                 continue;
             }
             states[index] = Inspect(Patches[index]);
-            if (states[index] == PatchState::Mismatch)
+            if (states[index] == PatchState::Mismatch
+                || (dfl::client_bootstrap::IsStandalone() && states[index] != PatchState::Original))
             {
                 OutputDebugStringA(
                     "DFLegacy.Ijl15: DNF patch bytes do not match.\n");
@@ -1285,14 +1287,4 @@ namespace dfl::dnf_patches
         }
         return true;
     }
-}
-
-BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
-{
-    if (reason == DLL_PROCESS_ATTACH
-        && dfl::dnf_patches::IsTargetProcess())
-    {
-        return dfl::dnf_patches::Apply() ? TRUE : FALSE;
-    }
-    return TRUE;
 }

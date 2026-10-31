@@ -154,6 +154,8 @@
     <ClCompile Include="src\d3d8_hooks.cpp" />
     <ClCompile Include="src\window_input_scaling.cpp" />
     <ClCompile Include="src\dnf_patches.cpp" />
+    <ClCompile Include="src\ijl15_entry.cpp" />
+    <ClCompile Include="..\DFLegacy.Client\bootstrap_runtime.cpp" />
     <ClCompile Include="src\external_string_table.cpp" />
     <ClCompile Include="src\ijl15_config.cpp" />
     <ClCompile Include="src\ijl15.cpp" />

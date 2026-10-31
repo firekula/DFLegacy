@@ -15,6 +15,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+set(DETOURS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/detours/src")
+add_library(detours STATIC
+    ${DETOURS_DIR}/detours.cpp ${DETOURS_DIR}/modules.cpp
+    ${DETOURS_DIR}/disasm.cpp ${DETOURS_DIR}/image.cpp ${DETOURS_DIR}/creatwth.cpp
+    ${DETOURS_DIR}/disolx86.cpp ${DETOURS_DIR}/disolx64.cpp
+    ${DETOURS_DIR}/disolia64.cpp ${DETOURS_DIR}/disolarm.cpp ${DETOURS_DIR}/disolarm64.cpp)
+target_include_directories(detours PUBLIC ${DETOURS_DIR})
+target_compile_options(detours PRIVATE /W4 /WX /Brepro)
+
 add_library(ijl15 SHARED
     include/ijl15.h
     src/auto_input.cpp
@@ -62,6 +71,8 @@ add_library(ijl15 SHARED
     src/presentation_scaling.cpp
     src/presentation_scaling.h
     src/dnf_patches.cpp
+    src/ijl15_entry.cpp
+    ../DFLegacy.Client/bootstrap_runtime.cpp
     src/dnf_patches.h
     src/external_string_table.cpp
     src/external_string_table.h
@@ -118,12 +129,59 @@ set_target_properties(ijl15 PROPERTIES
     OUTPUT_NAME "ijl15"
     DEBUG_POSTFIX "")
 
+get_target_property(client_sources ijl15 SOURCES)
+list(REMOVE_ITEM client_sources src/ijl15.cpp src/ijl15.def src/ijl15_entry.cpp)
+add_library(client_patch SHARED ${client_sources}
+    ../DFLegacy.Client/client_entry.cpp ../DFLegacy.Client/client.def)
+set_target_properties(client_patch PROPERTIES OUTPUT_NAME "DFLegacy.Client")
+target_compile_definitions(client_patch PRIVATE UNICODE _UNICODE)
+target_compile_options(client_patch PRIVATE /W4 /WX /permissive- /EHsc /Brepro)
+target_link_options(client_patch PRIVATE /Brepro /INCREMENTAL:NO /PDBALTPATH:DFLegacy.Client.pdb)
+target_include_directories(client_patch PRIVATE include)
+target_link_libraries(client_patch PRIVATE detours ole32 psapi shlwapi windowscodecs winhttp ws2_32)
+
 add_custom_command(TARGET ijl15 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/Config.ini"
         "$<TARGET_FILE_DIR:ijl15>/Config.ini")
 
 include(CTest)
+add_executable(client_bootstrap ../DFLegacy.Client/bootstrap_main.cpp)
+set_target_properties(client_bootstrap PROPERTIES OUTPUT_NAME "DFLegacy.Bootstrap32")
+target_compile_options(client_bootstrap PRIVATE /W4 /WX /utf-8 /EHsc /Brepro)
+target_link_options(client_bootstrap PRIVATE /Brepro /INCREMENTAL:NO /PDBALTPATH:DFLegacy.Bootstrap32.pdb)
+target_link_libraries(client_bootstrap PRIVATE detours bcrypt)
+if(BUILD_TESTING)
+    add_library(bootstrap_original_ijl SHARED ../DFLegacy.Client/tests/bootstrap_fixture.cpp)
+    target_compile_definitions(bootstrap_original_ijl PRIVATE FIXTURE_ORIGINAL_IJL)
+    set_target_properties(bootstrap_original_ijl PROPERTIES OUTPUT_NAME "ijl15"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fixture-original"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fixture-original")
+    add_executable(bootstrap_fixture ../DFLegacy.Client/tests/bootstrap_fixture.cpp)
+    target_link_libraries(bootstrap_fixture PRIVATE bootstrap_original_ijl)
+    add_library(bootstrap_fixture_dll SHARED ../DFLegacy.Client/tests/bootstrap_fixture.cpp ../DFLegacy.Client/bootstrap_runtime.cpp)
+    target_sources(bootstrap_fixture_dll PRIVATE ../DFLegacy.Client/client_entry.cpp ../DFLegacy.Client/client.def)
+    target_link_libraries(bootstrap_fixture_dll PRIVATE detours)
+    target_compile_definitions(bootstrap_fixture_dll PRIVATE FIXTURE_DLL)
+    set_target_properties(bootstrap_fixture_dll PROPERTIES OUTPUT_NAME "DFLegacy.Client"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fixture"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fixture")
+    add_executable(bootstrap_tests ../DFLegacy.Client/tests/bootstrap_tests.cpp)
+    foreach(target bootstrap_fixture bootstrap_fixture_dll bootstrap_tests bootstrap_original_ijl)
+        target_compile_options(${target} PRIVATE /W4 /WX /utf-8 /EHsc /Brepro)
+    endforeach()
+    target_link_libraries(bootstrap_tests PRIVATE bcrypt)
+    set(bootstrap_cases initializes_before_entry_outside_loader_lock failure_never_runs_entry rejects_hash_architecture_and_unknown_image unicode_path_preserves_files parent_eof_owns_cleanup ack_releases_only_owned_child)
+    set(bootstrap_args init failure reject unicode eof mismatch)
+    foreach(index RANGE 0 5)
+        list(GET bootstrap_cases ${index} name)
+        list(GET bootstrap_args ${index} arg)
+        add_test(NAME bootstrap_${name} COMMAND bootstrap_tests ${arg} $<TARGET_FILE:client_bootstrap> $<TARGET_FILE:bootstrap_fixture> $<TARGET_FILE:bootstrap_fixture_dll> $<TARGET_FILE:client_patch> $<TARGET_FILE:bootstrap_original_ijl>)
+    endforeach()
+    foreach(arg timeout uncommitted killed unknown location eof-initializing)
+        add_test(NAME bootstrap_${arg} COMMAND bootstrap_tests ${arg} $<TARGET_FILE:client_bootstrap> $<TARGET_FILE:bootstrap_fixture> $<TARGET_FILE:bootstrap_fixture_dll> $<TARGET_FILE:client_patch> $<TARGET_FILE:bootstrap_original_ijl>)
+    endforeach()
+endif()
 if(BUILD_TESTING)
     add_executable(pe_import_tests tests/pe_import_tests.cpp)
     target_compile_options(pe_import_tests PRIVATE /W4 /WX /utf-8 /EHsc)
