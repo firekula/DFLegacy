@@ -18,18 +18,24 @@ public partial class MainWindow : System.Windows.Window
     /// <summary>原版 QQLogin.xml 的 CaptionHeight：顶部这块区域按下可拖动整个无边框窗口。</summary>
     private const int CaptionDragHeight = 100;
 
-    private readonly LauncherAccountStore _store = new(Path.Combine(AppContext.BaseDirectory, "launcher.json"));
+    private readonly LauncherAccountStore _store;
     private AccountServiceClient _account;
     private readonly DispatcherTimer _statusTimer;
     private LauncherOptions _options;
     private LocalServerSelection? _serverSelection;
+    private AccountServiceClient? _serverHealthAccount;
+    private readonly bool _refreshStatus;
     private readonly Dictionary<string, ImageSource> _artwork = [];
     private bool _refreshingStatus;
     private static readonly string[] BannerTitles = ["勇士，欢迎重返阿拉德", "经典职业，再次集结", "携手伙伴，开启冒险", "熟悉的世界，新的旅程", "准备出发，探索阿拉德"];
 
-    public MainWindow()
+    public MainWindow() : this(new LauncherAccountStore(Path.Combine(AppContext.BaseDirectory, "launcher.json"))) { }
+
+    internal MainWindow(LauncherAccountStore store, bool refreshStatus = true)
     {
         InitializeComponent();
+        _store = store;
+        _refreshStatus = refreshStatus;
         _options = _store.Load();
         // 账号服务地址 = 入口域名 + 账号服务端口（可用 AccountServiceUrl 覆盖），发布前只改端口。
         _account = new AccountServiceClient(_options.ResolveAccountServiceUrl());
@@ -41,8 +47,7 @@ public partial class MainWindow : System.Windows.Window
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
-        _statusTimer.Start();
-        _ = RefreshStatusAsync();
+        if (refreshStatus) { _statusTimer.Start(); _ = RefreshStatusAsync(); }
     }
 
     private void RefreshAccounts()
@@ -87,26 +92,28 @@ public partial class MainWindow : System.Windows.Window
 
     // 状态灯语义按原版：探的是游戏入口（EntranceHost:EntrancePort），不是本机账号 API。
     // 账号 API（注册/改密/找回用）单独一行显示，避免"远端服务端明明在跑却提示不可达"的误解。
-    private async Task RefreshStatusAsync()
+    internal async Task RefreshStatusAsync()
     {
         if (_refreshingStatus) return;
         _refreshingStatus = true;
-        var options = _options; var accountClient = _account;
+        var options = _options; var selection = _serverSelection;
+        var target = selection?.Choices[0] ?? new LocalServerChoice("本地服务器", options.EntranceHost ?? "", options.EntrancePort);
+        var accountClient = _serverHealthAccount ?? _account;
         try
         {
         try
         {
             var entranceUp = await ProbeTcpAsync(
-                options.EntranceHost, options.EntrancePort, TimeSpan.FromSeconds(2));
-            if (!ReferenceEquals(options, _options)) return;
+                target.Host, target.Port, TimeSpan.FromSeconds(2));
+            if (!ReferenceEquals(options, _options) || !ReferenceEquals(selection, _serverSelection)) return;
             ServerDot.Fill = entranceUp ? Brushes.LimeGreen : Brushes.IndianRed;
             ServerText.Text = entranceUp ? "服务端：可连接" : "服务端：未上线";
-            ServerAddr.Text = $"{options.EntranceHost}:{options.EntrancePort}";
+            ServerAddr.Text = target.Endpoint;
             SetServerArtwork(entranceUp);
         }
         catch (Exception)
         {
-            if (!ReferenceEquals(options, _options)) return;
+            if (!ReferenceEquals(options, _options) || !ReferenceEquals(selection, _serverSelection)) return;
             ServerDot.Fill = Brushes.IndianRed;
             ServerText.Text = "服务端未上线";
             SetServerArtwork(false);
@@ -115,16 +122,16 @@ public partial class MainWindow : System.Windows.Window
         try
         {
             var apiUp = await accountClient.CheckHealthAsync();
-            if (!ReferenceEquals(options, _options)) return;
+            if (!ReferenceEquals(options, _options) || !ReferenceEquals(selection, _serverSelection)) return;
             ApiDot.Fill = apiUp ? Brushes.LimeGreen : Brushes.Gray;
             ApiText.Text = apiUp ? "账号服务：可达" : "账号服务：不可达";
-            ApiText.ToolTip = options.ResolveAccountServiceUrl();
+            ApiText.ToolTip = selection?.AccountServiceUrl ?? options.ResolveAccountServiceUrl();
         }
         catch (Exception)
         {
             // CheckHealthAsync 只捕获 HttpRequestException，超时会以 TaskCanceledException 冒出；
             // DispatcherTimer 的 Tick 是 async void，任何失败都按不可达处理，避免拖垮应用。
-            if (!ReferenceEquals(options, _options)) return;
+            if (!ReferenceEquals(options, _options) || !ReferenceEquals(selection, _serverSelection)) return;
             ApiDot.Fill = Brushes.Gray;
             ApiText.Text = "账号服务：不可达";
         }
@@ -415,6 +422,7 @@ public partial class MainWindow : System.Windows.Window
         try
         {
             _options = _store.Load();      // 设置变更后重新加载（host/url/relay 等）
+            _serverSelection = null; _serverHealthAccount = null;
             RefreshAccounts();
             // 设置里改了账号 API URL 后必须重建客户端（_account 按构造时的 URL 创建），
             // 否则状态点与注册/改密/找回窗口会一直打到旧地址；重建后立即重探一次状态。
@@ -439,7 +447,7 @@ public partial class MainWindow : System.Windows.Window
     private ImageSource Artwork(string name)
     {
         if (_artwork.TryGetValue(name, out var image)) return image;
-        var bitmap = new BitmapImage(new Uri($"pack://application:,,,/Assets/Skin/{name}", UriKind.Absolute));
+        var bitmap = new BitmapImage(new Uri($"pack://application:,,,/DFLegacy.Launcher;component/Assets/Skin/{name}", UriKind.Absolute));
         bitmap.Freeze(); _artwork[name] = bitmap; return bitmap;
     }
     private void SetServerArtwork(bool online)
@@ -488,14 +496,20 @@ public partial class MainWindow : System.Windows.Window
         LoginPage.Visibility = Visibility.Collapsed; ServerPage.Visibility = Visibility.Visible;
         ReloadServerSelection();
     }
-    private void ReloadServerSelection()
+    internal void ReloadServerSelection()
     {
         _serverSelection = null;
+        _serverHealthAccount = null;
+        ServerDot.Fill = ApiDot.Fill = Brushes.Gray;
+        ServerText.Text = "服务端：检测中…"; ApiText.Text = "账号服务：检测中…";
+        SetServerArtwork(false);
         try
         {
-            _serverSelection = LocalServerSelection.Open(_store); var choice = _serverSelection.Choices[0];
+            var selection = LocalServerSelection.Open(_store); var choice = selection.Choices[0];
+            _serverHealthAccount = new AccountServiceClient(selection.AccountServiceUrl); _serverSelection = selection;
             ServerEndpointText.Text = "连接地址　　" + choice.Endpoint; SelectedServerText.Text = choice.Name;
             ServerSelectionError.Text = ""; ServerChoiceButton.IsEnabled = true; ConfirmServerButton.IsEnabled = true;
+            if (_refreshStatus) _ = RefreshStatusAsync();
         }
         catch (Exception ex)
         {
@@ -516,6 +530,7 @@ public partial class MainWindow : System.Windows.Window
             var accountClient = new AccountServiceClient(options.ResolveAccountServiceUrl());
             var typedAccount = AccountText.Text; var typedPassword = PasswordText.Password;
             _options = options; _account = accountClient;
+            _serverSelection = null; _serverHealthAccount = null;
             RefreshAccounts(); AccountText.Text = typedAccount; PasswordText.Password = typedPassword;
             UpdateAccountHint(); BackToLogin_Click(this, e); _ = RefreshStatusAsync();
         }

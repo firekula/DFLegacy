@@ -46,7 +46,8 @@ public sealed class PixelText : Control
                 var raster = PixelRasterizer.Render(line, SizePixels, Colors.White, OutlineThickness);
                 width = Math.Max(width, Math.Max(raster.Advance, raster.Image.PixelWidth) / dpi.DpiScaleX);
             }
-            return new Size(Math.Min(constraint.Width, width + Padding.Left + Padding.Right), lines.Length * LineHeight + Padding.Top + Padding.Bottom);
+            return new Size(Math.Min(constraint.Width, width + Padding.Left + Padding.Right),
+                Math.Min(constraint.Height, lines.Length * LineHeight + Padding.Top + Padding.Bottom));
         }
         catch (Win32Exception) { _fallback = true; return Fallback(constraint.Width).BuildGeometry(new Point()).Bounds.Size; }
     }

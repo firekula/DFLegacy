@@ -7,6 +7,9 @@ using System.Windows.Media.Imaging;
 using DFLegacy.Launcher.Controls;
 using DFLegacy.Launcher;
 using DFLegacy.Launcher.Views;
+using System.Net;
+using System.Net.Sockets;
+using System.Windows.Threading;
 
 internal static class ClassicUiTests
 {
@@ -19,6 +22,7 @@ internal static class ClassicUiTests
         {
             try
             {
+                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
                 var plain = PixelRasterizer.Render("窗口分辨率", 13, Colors.White, 0);
                 var edged = PixelRasterizer.Render("窗口分辨率", 13, Colors.Gold, 1);
                 byte[] Pixels(BitmapSource image)
@@ -97,7 +101,7 @@ internal static class ClassicUiTests
                 {
                     var store = new LauncherAccountStore(Path.Combine(scratch, "launcher.json"));
                     store.Save(new LauncherOptions { ClientPath = Path.Combine(scratch, "missing-client", "DNF.exe") });
-                    var settings = new ConfigWindow(store) { Height = 360, WindowStartupLocation = WindowStartupLocation.Manual,
+                    var settings = new ConfigWindow(store, trackMonitor: false) { Height = 360, WindowStartupLocation = WindowStartupLocation.Manual,
                         Left = -32000, Top = -32000, ShowActivated = false, ShowInTaskbar = false };
                     try
                     {
@@ -114,8 +118,99 @@ internal static class ClassicUiTests
                         DependencyObject? parent = error;
                         while (parent is not null && parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
                         check(parent is ScrollViewer { ScrollableHeight: > 0 }, "long error text has a real scrollable viewport at minimum height");
+                        var result = (PixelText)settings.FindName("DisplaySaveResultText");
+                        result.Text = string.Concat(Enumerable.Repeat("保存失败，配置路径过长或文件被占用，原文件保持不变。", 16)); settings.UpdateLayout();
+                        check(reload.TranslatePoint(new Point(0, reload.ActualHeight), settings).Y <= settings.ActualHeight,
+                            "long SAVE failure cannot push the fixed footer outside a 360px window");
+                        parent = result;
+                        while (parent is not null && parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
+                        check(parent is ScrollViewer { ScrollableHeight: > 0 }, "detailed save failures remain inside a scrollable viewport");
+                        var tabs = (TabControl)settings.FindName("SettingsTabs");
+                        foreach (TabItem tab in tabs.Items)
+                        {
+                            var hit = settings.InputHitTest(tab.TranslatePoint(new Point(4, 14), settings)) as DependencyObject;
+                            while (hit is not null && !ReferenceEquals(hit, tab)) hit = VisualTreeHelper.GetParent(hit);
+                            check(ReferenceEquals(hit, tab), "whole tab artwork receives clicks outside its header glyphs");
+                        }
+                        settings.FitToWorkArea(new Size(320, 240)); settings.UpdateLayout();
+                        check(settings.ActualWidth <= 320 && settings.ActualHeight <= 240,
+                            "settings fit a smaller monitor work area below nominal minimum dimensions");
+                        var bottom = reload.TranslatePoint(new Point(reload.ActualWidth, reload.ActualHeight), settings);
+                        check(bottom.X <= settings.ActualWidth && bottom.Y <= settings.ActualHeight,
+                            "compact monitor fallback keeps footer actions inside actual bounds");
                     }
                     finally { settings.Close(); }
+                    using var closedPort = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    closedPort.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                    var oldPort = ((IPEndPoint)closedPort.LocalEndPoint!).Port;
+                    using var liveEntrance = new TcpListener(IPAddress.Loopback, 0); liveEntrance.Start();
+                    var livePort = ((IPEndPoint)liveEntrance.LocalEndpoint).Port;
+                    var localOptions = store.Load(); localOptions.EntranceHost = "127.0.0.1"; localOptions.EntrancePort = oldPort;
+                    localOptions.AccountServiceUrl = $"http://127.0.0.1:{oldPort}"; store.Save(localOptions);
+                    var main = new MainWindow(store, refreshStatus: false) { WindowStartupLocation = WindowStartupLocation.Manual,
+                        Left = -32000, Top = -32000, ShowActivated = false, ShowInTaskbar = false };
+                    try
+                    {
+                        main.Show(); main.UpdateLayout();
+                        IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
+                        {
+                            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+                            {
+                                var child = VisualTreeHelper.GetChild(root, i);
+                                if (child is T found) yield return found;
+                                foreach (var nested in Descendants<T>(child)) yield return nested;
+                            }
+                        }
+                        void CheckInkCenter(PixelText label, FrameworkElement surface, string name)
+                        {
+                            var w = Math.Max(1, (int)Math.Ceiling(label.ActualWidth)); var h = Math.Max(1, (int)Math.Ceiling(label.ActualHeight));
+                            var bitmap = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32); bitmap.Render(label);
+                            var raw = Pixels(bitmap); var ink = Enumerable.Range(0, w * h).Where(i => raw[i * 4 + 3] > 0).ToArray();
+                            check(ink.Length > 0, name + " contains visible glyphs");
+                            if (ink.Length == 0) return;
+                            var origin = label.TranslatePoint(new Point(), surface);
+                            var cx = origin.X + (ink.Min(i => i % w) + ink.Max(i => i % w) + 1) / 2d;
+                            var cy = origin.Y + (ink.Min(i => i / w) + ink.Max(i => i / w) + 1) / 2d;
+                            if (Math.Abs(cx - surface.ActualWidth / 2) > 1 || Math.Abs(cy - surface.ActualHeight / 2) > 1)
+                                Console.WriteLine($"Ink layout: {name}, surface={surface.ActualWidth}x{surface.ActualHeight}, label={w}x{h}, origin={origin}, inkCenter={cx},{cy}");
+                            check(Math.Abs(cx - surface.ActualWidth / 2) <= 1 && Math.Abs(cy - surface.ActualHeight / 2) <= 1,
+                                name + " actual glyph ink is centered on both axes");
+                        }
+                        foreach (var name in new[] { "Slide0", "Slide1", "Slide2", "Slide3", "Slide4" })
+                        {
+                            var slide = (SkinButton)main.FindName(name);
+                            CheckInkCenter(Descendants<PixelText>(slide).Single(), slide, name);
+                        }
+                        foreach (var tag in Descendants<Border>(main).Where(b => b.Child is PixelText t && t.Text is "公告" or "指南" or "账号" or "设置" or "帮助"))
+                            CheckInkCenter((PixelText)tag.Child, tag, "news tag " + ((PixelText)tag.Child).Text);
+                        var shade = (Border)main.FindName("ModalShade"); shade.Visibility = Visibility.Visible; main.UpdateLayout();
+                        var shadeImage = new RenderTargetBitmap(567, 512, 96, 96, PixelFormats.Pbgra32); shadeImage.Render(shade);
+                        var shadePixels = Pixels(shadeImage);
+                        check(shadePixels[3] == 0 && shadePixels[(200 * 567 + 100) * 4 + 3] > 0,
+                            "modal shade preserves transparent launcher corners while dimming opaque artwork");
+                        shade.Visibility = Visibility.Collapsed;
+                        ((FrameworkElement)main.FindName("LoginPage")).Visibility = Visibility.Collapsed;
+                        ((FrameworkElement)main.FindName("ServerPage")).Visibility = Visibility.Visible;
+                        var endpoint = (PixelText)main.FindName("ServerEndpointText");
+                        var details = (PixelText)main.FindName("ServerSelectionError");
+                        endpoint.Text = new string('x', 500); details.Text = string.Concat(Enumerable.Repeat("无法读取服务器配置，路径内容很长。", 16));
+                        main.UpdateLayout();
+                        foreach (var text in new[] { endpoint, details })
+                        {
+                            DependencyObject? parent = text;
+                            while (parent is not null && parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
+                            check(parent is ScrollViewer { ScrollableHeight: > 0 }, "long server endpoint and diagnostics are readable by scrolling");
+                        }
+                        localOptions.EntrancePort = livePort; store.Save(localOptions); main.ReloadServerSelection();
+                        var statusTask = main.RefreshStatusAsync(); var timeout = Stopwatch.StartNew();
+                        while (!statusTask.IsCompleted && timeout.Elapsed < TimeSpan.FromSeconds(6))
+                        { Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { })); Thread.Sleep(1); }
+                        check(statusTask.IsCompleted, "local status probe completes against owned loopback endpoints");
+                        if (statusTask.IsCompleted) statusTask.GetAwaiter().GetResult();
+                        check(endpoint.Text.Contains(":" + livePort) && ((PixelText)main.FindName("ServerText")).Text.Contains("可连接"),
+                            "server page health probes the newly displayed saved endpoint rather than the old cached endpoint");
+                    }
+                    finally { main.Close(); }
                 }
                 finally { Directory.Delete(scratch, true); }
             }

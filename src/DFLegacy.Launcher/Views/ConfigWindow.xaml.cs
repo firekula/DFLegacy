@@ -15,15 +15,19 @@ public partial class ConfigWindow : System.Windows.Window
     private LauncherOptions _options;
     private ClientDisplaySnapshot? _display;
     private bool _loadingDisplay = true;
+    private readonly bool _trackMonitor;
+    private bool _fitQueued;
+    private double? _preferredHeight;
     private sealed record ResolutionChoice(int Width, int Height, string Label)
     {
         public override string ToString() => Label;
     }
 
-    internal ConfigWindow(LauncherAccountStore store)
+    internal ConfigWindow(LauncherAccountStore store, bool trackMonitor = true)
     {
         InitializeComponent();
         _store = store;
+        _trackMonitor = trackMonitor;
         _options = store.Load();
         HostBox.Text = _options.EntranceHost;
         PortBox.Text = _options.EntrancePort.ToString();
@@ -44,13 +48,47 @@ public partial class ConfigWindow : System.Windows.Window
         AccountUrlBox.TextChanged += (_, _) => UpdateAccountUrlHint();
         ClientPathBox.TextChanged += (_, _) => UpdateDisplayAvailability();
         UpdateAccountUrlHint();
-        MaxHeight = Math.Max(MinHeight, SystemParameters.WorkArea.Height - 24);
-        MaxWidth = Math.Max(MinWidth, SystemParameters.WorkArea.Width - 24);
-        Width = Math.Min(Width, MaxWidth);
-        Height = Math.Min(Height, MaxHeight);
+        if (_trackMonitor)
+        {
+            SourceInitialized += (_, _) => FitToMonitor(useOwner: true);
+            ContentRendered += (_, _) => FitToMonitor(useOwner: false);
+            LocationChanged += (_, _) => QueueMonitorFit();
+        }
         Loaded += (_, _) => UpdateDisplayAvailability();
         LoadDisplay();
     }
+
+    internal void FitToWorkArea(Size logicalArea)
+    {
+        _preferredHeight ??= Height;
+        var availableWidth = Math.Max(1, logicalArea.Width - 16);
+        var availableHeight = Math.Max(1, logicalArea.Height - 16);
+        var scale = Math.Min(1, Math.Min(availableWidth / 480, availableHeight / 360));
+        SettingsSurface.LayoutTransform = scale == 1 ? Transform.Identity : new ScaleTransform(scale, scale);
+        MinWidth = MinHeight = 0;
+        MaxWidth = availableWidth; MaxHeight = availableHeight;
+        MinWidth = 480 * scale; MinHeight = 360 * scale;
+        Width = MinWidth; Height = Math.Min(_preferredHeight.Value * scale, availableHeight);
+    }
+
+    private void FitToMonitor(bool useOwner)
+    {
+        var area = WindowWorkArea.Read(useOwner ? Owner ?? this : this);
+        var dpi = VisualTreeHelper.GetDpi(this);
+        FitToWorkArea(area is { } physical ? new Size(physical.Width / dpi.DpiScaleX, physical.Height / dpi.DpiScaleY) : SystemParameters.WorkArea.Size);
+        UpdateLayout();
+        if (area is { } bounds) WindowWorkArea.Clamp(this, bounds);
+    }
+
+    private void QueueMonitorFit()
+    {
+        if (!_trackMonitor || _fitQueued || !IsLoaded) return;
+        _fitQueued = true;
+        Dispatcher.BeginInvoke(new Action(() => { _fitQueued = false; if (IsLoaded) FitToMonitor(useOwner: false); }));
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    { base.OnDpiChanged(oldDpi, newDpi); QueueMonitorFit(); }
 
     /// <summary>实时展示账号服务「实际会用」的地址：域名跟随入口，端口可改，覆盖值优先。</summary>
     private void UpdateAccountUrlHint()
@@ -124,6 +162,7 @@ public partial class ConfigWindow : System.Windows.Window
         _loadingDisplay = true;
         _display = null;
         DisplaySaveResultText.Text = "";
+        DisplayFooterText.Text = "下次启动后生效";
         DisplayErrorText.Text = "";
         try
         {
@@ -188,8 +227,9 @@ public partial class ConfigWindow : System.Windows.Window
         if (ready && supported && choice is not null)
         {
             var dpi = VisualTreeHelper.GetDpi(this);
-            if (choice.Width + 32 > SystemParameters.WorkArea.Width * dpi.DpiScaleX
-                || choice.Height + 48 > SystemParameters.WorkArea.Height * dpi.DpiScaleY)
+            var work = WindowWorkArea.Read(this);
+            if (choice.Width + 32 > (work?.Width ?? SystemParameters.WorkArea.Width * dpi.DpiScaleX)
+                || choice.Height + 48 > (work?.Height ?? SystemParameters.WorkArea.Height * dpi.DpiScaleY))
                 DisplayWarningText.Text = "此窗口可能超出当前屏幕可用区域；保存时仍会保留你的选择。";
         }
     }
@@ -204,11 +244,14 @@ public partial class ConfigWindow : System.Windows.Window
         try
         {
             _display = ClientDisplayConfiguration.SaveWithAuthority(_store, _display, _options.ClientPath, ClientPathBox.Text, choice.Width, choice.Height, mode);
-            DisplaySaveResultText.Text = "已保存显示设置，下次启动游戏生效。";
+            DisplaySaveResultText.Text = "";
+            DisplayFooterText.Text = "已保存 · 下次启动后生效";
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or JsonException)
         {
             DisplaySaveResultText.Text = "保存失败，原配置未被覆盖：" + ex.Message;
+            DisplayFooterText.Text = "保存失败，请查看提示";
+            DisplayScroll.ScrollToTop();
             _display = null;
             UpdateDisplayAvailability();
         }

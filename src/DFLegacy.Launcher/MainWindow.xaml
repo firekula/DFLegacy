@@ -3,14 +3,14 @@
         xmlns:c="clr-namespace:DFLegacy.Launcher.Controls"
         Title="地下城与勇士" Width="567" Height="512" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen" ShowInTaskbar="True" UseLayoutRounding="True" SnapsToDevicePixels="True"
-        Icon="pack://application:,,,/Assets/Skin/QQGame.ico" MouseLeftButtonDown="Window_MouseLeftButtonDown" KeyDown="Window_KeyDown">
+        Icon="pack://application:,,,/DFLegacy.Launcher;component/Assets/Skin/QQGame.ico" MouseLeftButtonDown="Window_MouseLeftButtonDown" KeyDown="Window_KeyDown">
   <Window.Resources><ResourceDictionary>
     <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Views/ClassicStyles.xaml"/></ResourceDictionary.MergedDictionaries>
     <Style x:Key="LoginText" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="5,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></Style>
     <Style x:Key="LoginPassword" TargetType="PasswordBox" BasedOn="{StaticResource {x:Type PasswordBox}}"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="5,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></Style>
     <Style x:Key="LoginAgree" TargetType="CheckBox"><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox"><Grid Width="15" Height="15"><Image x:Name="Check" Source="Assets/Skin/checkbox_00.png"/><Border x:Name="Focus" BorderBrush="#FFE5AD" BorderThickness="1" Visibility="Collapsed"/></Grid><ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="Check" Property="Source" Value="Assets/Skin/checkbox_01.png"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Focus" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
-    <Style x:Key="NewsButton" TargetType="c:SkinButton" BasedOn="{StaticResource ClassicButton}"><Setter Property="Height" Value="19"/><Setter Property="MinWidth" Value="0"/><Setter Property="FontSize" Value="12"/><Setter Property="Padding" Value="0"/><Setter Property="Foreground" Value="{StaticResource ClassicInk}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="c:SkinButton"><Border x:Name="Frame" Background="Transparent" BorderBrush="Transparent" BorderThickness="1"><c:PixelText Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" FontSize="12" Foreground="{TemplateBinding Foreground}" TextWrapping="NoWrap"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{StaticResource ClassicGold}"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="#FFE5AD"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
-    <Style x:Key="NewsTag" TargetType="Border"><Setter Property="Background" Value="#59370E"/><Setter Property="BorderBrush" Value="#361E07"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Width" Value="27"/><Setter Property="Height" Value="16"/></Style>
+    <Style x:Key="NewsButton" TargetType="c:SkinButton" BasedOn="{StaticResource ClassicButton}"><Setter Property="Height" Value="19"/><Setter Property="MinWidth" Value="0"/><Setter Property="FontSize" Value="12"/><Setter Property="Padding" Value="0"/><Setter Property="Foreground" Value="{StaticResource ClassicInk}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="c:SkinButton"><Border x:Name="Frame" Background="Transparent" BorderBrush="Transparent" BorderThickness="1"><c:PixelText Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" FontSize="12" Foreground="{TemplateBinding Foreground}" TextWrapping="NoWrap"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{StaticResource ClassicGold}"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="{StaticResource ClassicGold}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+    <Style x:Key="NewsTag" TargetType="Border"><Setter Property="Background" Value="#59370E"/><Setter Property="BorderBrush" Value="#361E07"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Width" Value="33"/><Setter Property="Height" Value="19"/></Style>
     <Style x:Key="ClassicMenuItem" TargetType="MenuItem"><Setter Property="Foreground" Value="{StaticResource ClassicGold}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="MenuItem"><Border x:Name="Frame" Background="Transparent" Padding="10,5"><c:PixelText Text="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" Foreground="{TemplateBinding Foreground}" TextWrapping="NoWrap"/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Frame" Property="Background" Value="#51432A"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
   </ResourceDictionary></Window.Resources>
   <Grid Width="567" Height="512">
@@ -31,25 +31,25 @@
       <Image x:Name="BannerImage" Canvas.Left="21" Canvas.Top="140" Width="315" Height="202" Source="Assets/Skin/classic-banner0.png"/>
       <Border Canvas.Left="21" Canvas.Top="311" Width="315" Height="31" Background="#B4120F07"/>
       <c:PixelText x:Name="BannerCaption" Canvas.Left="31" Canvas.Top="312" Width="285" Height="19" Text="勇士，欢迎重返阿拉德" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
-      <c:SkinButton x:Name="Slide0" Canvas.Left="214" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="11" Padding="0" Style="{StaticResource ClassicButton}" Content="1" Tag="0" AutomationProperties.Name="宣传图 1" Click="Slide_Click"/>
-      <c:SkinButton x:Name="Slide1" Canvas.Left="237" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="11" Padding="0" Style="{StaticResource ClassicButton}" Content="2" Tag="1" AutomationProperties.Name="宣传图 2" Click="Slide_Click"/>
-      <c:SkinButton x:Name="Slide2" Canvas.Left="260" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="11" Padding="0" Style="{StaticResource ClassicButton}" Content="3" Tag="2" AutomationProperties.Name="宣传图 3" Click="Slide_Click"/>
-      <c:SkinButton x:Name="Slide3" Canvas.Left="283" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="11" Padding="0" Style="{StaticResource ClassicButton}" Content="4" Tag="3" AutomationProperties.Name="宣传图 4" Click="Slide_Click"/>
-      <c:SkinButton x:Name="Slide4" Canvas.Left="306" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="11" Padding="0" Style="{StaticResource ClassicButton}" Content="5" Tag="4" AutomationProperties.Name="宣传图 5" Click="Slide_Click"/>
+      <c:SkinButton x:Name="Slide0" Canvas.Left="214" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="13" Padding="0" Style="{StaticResource ClassicButton}" Content="1" Tag="0" AutomationProperties.Name="宣传图 1" Click="Slide_Click"/>
+      <c:SkinButton x:Name="Slide1" Canvas.Left="237" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="13" Padding="0" Style="{StaticResource ClassicButton}" Content="2" Tag="1" AutomationProperties.Name="宣传图 2" Click="Slide_Click"/>
+      <c:SkinButton x:Name="Slide2" Canvas.Left="260" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="13" Padding="0" Style="{StaticResource ClassicButton}" Content="3" Tag="2" AutomationProperties.Name="宣传图 3" Click="Slide_Click"/>
+      <c:SkinButton x:Name="Slide3" Canvas.Left="283" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="13" Padding="0" Style="{StaticResource ClassicButton}" Content="4" Tag="3" AutomationProperties.Name="宣传图 4" Click="Slide_Click"/>
+      <c:SkinButton x:Name="Slide4" Canvas.Left="306" Canvas.Top="326" Width="21" MinWidth="0" Height="16" FontSize="13" Padding="0" Style="{StaticResource ClassicButton}" Content="5" Tag="4" AutomationProperties.Name="宣传图 5" Click="Slide_Click"/>
       <c:PixelText Canvas.Left="355" Canvas.Top="137" Width="185" Height="27" Text="公告新闻" FontSize="20" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
       <c:PixelText Canvas.Left="357" Canvas.Top="164" Width="180" Height="14" Text="ARAD NEWS" FontSize="10" Foreground="#E0B75E" TextWrapping="NoWrap"/>
-      <Border Canvas.Left="350" Canvas.Top="183" Style="{StaticResource NewsTag}"><c:PixelText Text="公告" FontSize="11" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
-      <c:SkinButton Canvas.Left="383" Canvas.Top="182" Width="160" Style="{StaticResource NewsButton}" Content="欢迎来到阿拉德大陆" Tag="welcome" Click="News_Click"/>
-      <Border Canvas.Left="350" Canvas.Top="208" Style="{StaticResource NewsTag}"><c:PixelText Text="指南" FontSize="11" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
-      <c:SkinButton Canvas.Left="383" Canvas.Top="207" Width="160" Style="{StaticResource NewsButton}" Content="客户端安装与启动" Tag="install" Click="News_Click"/>
-      <Border Canvas.Left="350" Canvas.Top="233" Style="{StaticResource NewsTag}"><c:PixelText Text="账号" FontSize="11" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
-      <c:SkinButton Canvas.Left="383" Canvas.Top="232" Width="160" Style="{StaticResource NewsButton}" Content="注册与密码找回" Tag="account" Click="News_Click"/>
-      <Border Canvas.Left="350" Canvas.Top="258" Style="{StaticResource NewsTag}"><c:PixelText Text="设置" FontSize="11" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
-      <c:SkinButton Canvas.Left="383" Canvas.Top="257" Width="160" Style="{StaticResource NewsButton}" Content="分辨率与画质说明" Tag="display" Click="News_Click"/>
-      <Border Canvas.Left="350" Canvas.Top="283" Style="{StaticResource NewsTag}"><c:PixelText Text="帮助" FontSize="11" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
-      <c:SkinButton Canvas.Left="383" Canvas.Top="282" Width="160" Style="{StaticResource NewsButton}" Content="连接与常见问题" Tag="connection" Click="News_Click"/>
-      <Border Canvas.Left="350" Canvas.Top="308" Style="{StaticResource NewsTag}"><c:PixelText Text="公告" FontSize="11" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
-      <c:SkinButton Canvas.Left="383" Canvas.Top="307" Width="160" Style="{StaticResource NewsButton}" Content="冒险旅程，从这里开始" Tag="welcome" Click="News_Click"/>
+      <Border Canvas.Left="350" Canvas.Top="183" Style="{StaticResource NewsTag}"><c:PixelText Text="公告" FontSize="13" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
+      <c:SkinButton Canvas.Left="389" Canvas.Top="182" Width="154" Style="{StaticResource NewsButton}" Content="欢迎来到阿拉德大陆" Tag="welcome" Click="News_Click"/>
+      <Border Canvas.Left="350" Canvas.Top="208" Style="{StaticResource NewsTag}"><c:PixelText Text="指南" FontSize="13" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
+      <c:SkinButton Canvas.Left="389" Canvas.Top="207" Width="154" Style="{StaticResource NewsButton}" Content="客户端安装与启动" Tag="install" Click="News_Click"/>
+      <Border Canvas.Left="350" Canvas.Top="233" Style="{StaticResource NewsTag}"><c:PixelText Text="账号" FontSize="13" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
+      <c:SkinButton Canvas.Left="389" Canvas.Top="232" Width="154" Style="{StaticResource NewsButton}" Content="注册与密码找回" Tag="account" Click="News_Click"/>
+      <Border Canvas.Left="350" Canvas.Top="258" Style="{StaticResource NewsTag}"><c:PixelText Text="设置" FontSize="13" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
+      <c:SkinButton Canvas.Left="389" Canvas.Top="257" Width="154" Style="{StaticResource NewsButton}" Content="分辨率与画质说明" Tag="display" Click="News_Click"/>
+      <Border Canvas.Left="350" Canvas.Top="283" Style="{StaticResource NewsTag}"><c:PixelText Text="帮助" FontSize="13" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
+      <c:SkinButton Canvas.Left="389" Canvas.Top="282" Width="154" Style="{StaticResource NewsButton}" Content="连接与常见问题" Tag="connection" Click="News_Click"/>
+      <Border Canvas.Left="350" Canvas.Top="308" Style="{StaticResource NewsTag}"><c:PixelText Text="公告" FontSize="13" TextAlignment="Center" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/></Border>
+      <c:SkinButton Canvas.Left="389" Canvas.Top="307" Width="154" Style="{StaticResource NewsButton}" Content="冒险旅程，从这里开始" Tag="welcome" Click="News_Click"/>
       <c:SkinButton Canvas.Left="25" Canvas.Top="358" Width="116" Height="77" Style="{StaticResource ClassicImageButton}" NormalSource="Assets/Skin/choose_00.png" HoverSource="Assets/Skin/choose_01.png" PressedSource="Assets/Skin/choose_02.png" AutomationProperties.Name="选择服务器" Click="SelectServer_Click"/>
       <c:PixelText Canvas.Left="164" Canvas.Top="369" Width="65" Height="17" Text="游戏账号" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
       <c:PixelText Canvas.Left="164" Canvas.Top="392" Width="65" Height="17" Text="账号密码" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
@@ -73,17 +73,21 @@
       <c:SkinButton x:Name="ServerChoiceButton" Canvas.Left="88" Canvas.Top="157" Width="101" Height="25" FontSize="12" Padding="12,0,0,0" Style="{StaticResource ClassicImageButton}" NormalSource="Assets/Skin/classic-offline0.png" HoverSource="Assets/Skin/classic-offline1.png" PressedSource="Assets/Skin/classic-offline2.png" Content="本地服务器" Click="ServerChoice_Click"/>
       <c:PixelText Canvas.Left="47" Canvas.Top="304" Width="22" Height="24" Text="信" FontSize="18" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
       <c:PixelText Canvas.Left="47" Canvas.Top="327" Width="22" Height="24" Text="息" FontSize="18" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
-      <c:PixelText x:Name="ServerEndpointText" Canvas.Left="88" Canvas.Top="304" Width="420" Height="22" TextWrapping="NoWrap"/>
-      <Ellipse x:Name="ServerDot" Canvas.Left="89" Canvas.Top="336" Width="7" Height="7" Fill="Gray"/>
-      <c:PixelText x:Name="ServerText" Canvas.Left="104" Canvas.Top="329" Width="185" Height="20" Text="服务端：检测中…" FontSize="12" TextWrapping="NoWrap"/>
-      <c:PixelText x:Name="ServerAddr" Visibility="Collapsed"/>
-      <Ellipse x:Name="ApiDot" Canvas.Left="289" Canvas.Top="336" Width="7" Height="7" Fill="Gray"/>
-      <c:PixelText x:Name="ApiText" Canvas.Left="304" Canvas.Top="329" Width="207" Height="20" Text="账号服务：检测中…" FontSize="12" TextWrapping="NoWrap"/>
-      <c:PixelText x:Name="ServerSelectionError" Canvas.Left="88" Canvas.Top="352" Width="420" Height="47" Foreground="#FFE0A0" FontSize="12"/>
+      <ScrollViewer Canvas.Left="88" Canvas.Top="304" Width="420" Height="95" Style="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+          <c:PixelText x:Name="ServerEndpointText" Margin="0,0,8,6"/>
+          <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="200"/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal"><Ellipse x:Name="ServerDot" Width="7" Height="7" Fill="Gray" Margin="0,0,8,0"/><c:PixelText x:Name="ServerText" Text="服务端：检测中…" FontSize="12"/></StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal"><Ellipse x:Name="ApiDot" Width="7" Height="7" Fill="Gray" Margin="0,0,8,0"/><c:PixelText x:Name="ApiText" Text="账号服务：检测中…" FontSize="12"/></StackPanel>
+          </Grid>
+          <c:PixelText x:Name="ServerAddr" Visibility="Collapsed"/>
+          <c:PixelText x:Name="ServerSelectionError" Foreground="#FFE0A0" FontSize="12" Margin="0,0,8,0"/>
+        </StackPanel>
+      </ScrollViewer>
       <c:PixelText x:Name="SelectedServerText" Canvas.Left="230" Canvas.Top="424" Width="165" Height="22" Text="本地服务器" TextWrapping="NoWrap"/>
       <c:SkinButton Canvas.Left="25" Canvas.Top="429" Width="70" Height="21" FontSize="12" Style="{StaticResource ClassicButton}" Content="返回登录" Click="BackToLogin_Click"/>
       <c:SkinButton x:Name="ConfirmServerButton" Canvas.Left="428" Canvas.Top="416" Width="110" Height="40" Style="{StaticResource ClassicImageButton}" NormalSource="Assets/Skin/classic-confirm0.png" HoverSource="Assets/Skin/classic-confirm1.png" PressedSource="Assets/Skin/classic-confirm2.png" AutomationProperties.Name="确认选择" Click="ConfirmServer_Click"/>
     </Canvas>
-    <Border x:Name="ModalShade" Background="#96000000" Visibility="Collapsed"/>
+    <Border x:Name="ModalShade" Background="#96000000" Visibility="Collapsed"><Border.OpacityMask><ImageBrush ImageSource="Assets/Skin/classic-login-background.png" Stretch="Fill"/></Border.OpacityMask></Border>
   </Grid>
 </Window>

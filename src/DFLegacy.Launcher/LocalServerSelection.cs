@@ -16,8 +16,14 @@ internal sealed record LocalServerChoice(string Name, string Host, int Port)
 internal sealed class LocalServerSelection
 {
     internal IReadOnlyList<LocalServerChoice> Choices { get; }
-    private LocalServerSelection(LocalServerChoice choice) => Choices = Array.AsReadOnly(new[] { choice });
-    internal static LocalServerSelection Open(LauncherAccountStore store) => new(LocalServerChoice.From(store.Load()));
+    internal string AccountServiceUrl { get; }
+    private LocalServerSelection(LocalServerChoice choice, string accountServiceUrl)
+    { Choices = Array.AsReadOnly(new[] { choice }); AccountServiceUrl = accountServiceUrl; }
+    internal static LocalServerSelection Open(LauncherAccountStore store)
+    {
+        var options = store.Load();
+        return new(LocalServerChoice.From(options), options.ResolveAccountServiceUrl());
+    }
     internal LauncherOptions Confirm(LauncherAccountStore store)
     {
         var options = store.Load(); var current = LocalServerChoice.From(options); var selected = Choices[0];
