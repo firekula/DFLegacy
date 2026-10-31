@@ -117,3 +117,28 @@
 ## Self-review / Execution Ruling
 
 All approved spec sections map to tasks1–6; native helpers precede managed consumers, mode and metadata use the one fixed contract, release tools come after consumers. Old-shell support is explicitly rejected, not silently substituted. UI redesign is outside scope except existing-style migration dialog and one Manager checkbox. No plan-approval pause: user explicitly authorized implementing, testing and publishing this reviewed design; task execution method is a routine implementation choice under that instruction. Use serial SDD task gates, not parallel implementers.
+
+## Task 7: Empty ordinary new-character defaults (added user bug fix)
+
+**Authority/order:** User explicitly requested new characters without the title, 50,000 gold or consumables. Execute after task2's review gate, before final task6 acceptance/publication; task numbers remain stable. No new design approval gate.
+
+**Files:** `src/DFLegacy.Server/{JsonGameStore.cs,EntranceService.cs}`, focused `tests/DFLegacy.SmokeTests/NewCharacterDefaultsSmokeTests.cs`, registration/existing assertions in `Program.cs`, and only affected test fixtures that depended on implicit free possessions.
+
+**Evidence:** `CharacterRecord` has a 50,000 Gold optional default; `CreateCharacterLocked` omits Gold and Inventory. First selection uses `character.Inventory ?? CreateStarterInventory(accountUid)`; ordinary starter list grants title26043 and item8x100. Explicit test-account presets are a separate intentional testing facility. Account Cash is shared, so creating a character must not erase an existing account balance.
+
+- [ ] Add RED coverage for both ordinary character creation overloads, persistence/reload, and first selection/inventory initialization: zero Gold, no equipment/title/consumable/main/avatar/creature/warehouse gifts. A manually created new character on a test account must also start empty; keep the explicitly generated test preset stocked. Cover existing funded characters/items and existing shared account Cash preserved. A newly registered ordinary account starts without the legacy free account Cash; test-account preset balances remain explicit.
+- [ ] Set explicit empty/zero values at ordinary creation boundaries, avoiding broad changes to deserialization defaults of old records. Remove ordinary fallback gifts while preserving explicit test-preset setup. Existing saved possessions are never cleared or migrated away. If tests need money/items, seed their own fixture rather than retain production gifts.
+- [ ] Run new focused tests RED then GREEN, affected fixture suites and complete server smoke suite once after fixes. Commit only scoped source/tests and report counts/evidence.
+
+## Task 8: Keep the selected backpack tab (added user bug fix)
+
+**Authority/order:** User explicitly requested Sort and close/reopen to retain the last chosen main backpack tab. Execute serially after task7, before final task6 acceptance/publication. This belongs to ordinary native features, available without debug.dll.
+
+**Files:** Focused native module/tests under `src/DFLegacy.Ijl15/`, shared CMake/project wiring and patch application as needed; a bounded acceptance fixture under `tools/acceptance/`. Do not alter inventory authority, item slots, sort results or protocol semantics just to hide the UI symptom.
+
+**Read-only recon:** `C:/DFLCI/inventory-tabs-20261031/` contains output from an owned copy of the compatible client's IDA database. `noti13raw.txt` shows NOTI13 full refresh at0x41D01C clearing the model, then `push 1` at0x41D1FB passed to `sub_45E280` at0x41D212. `tabset-callers.txt` shows that flag invokes auto-selection `sub_7AAAF0` for main inventory. `tabraw.txt` shows it writes window+0x3C according to the last inserted slot, explaining material-tab jumps after server CMD20 sends a sorted NOTI13 list. Main-window initialization0x7AA740 defaults tab0 once; direct tab click writes at0x7AAFAA and drag-related selection at0x7AAE45 are distinct. `tab-writes.txt` inventories accesses; opening/closing path still needs bounded confirmation, not an assumed separate reset. Raw decompilation and client binaries stay private.
+
+- [ ] Finish the narrow call-chain check for show/hide and any hidden-window refresh affecting tab memory. Establish whether suppressing full-refresh auto-selection alone covers both reported cases; prefer the smallest proven change. Do not disable manual tab clicks or useful drag behavior.
+- [ ] Add a failing native executable fixture exercising the actual compatible x86 refresh/call contract with deterministic fake inventory/UI state. Cover all four tabs, populated mixed categories ending in Materials/Quest, empty list, repeated sort, close/reopen with intervening refresh, first-open equipment default, manual switch still effective, and unaffected other inventory spaces. Validate supported instruction bytes; unknown/already modified sites must be safe and not partially patched.
+- [ ] Implement the proven scoped native correction in the common core so normal and test modes behave identically. Keep original files unchanged on disk. Verify fixture RED/GREEN plus existing native regression suite; record exact site/signature and evidence. Runtime integration must not require diagnostic exports or auto input in normal mode.
+- [ ] Controller later performs real-client sort/reopen acceptance once physical UI operation resumes; fixture results must not be described as that manual/gameplay check. Commit scoped correction/tests.
