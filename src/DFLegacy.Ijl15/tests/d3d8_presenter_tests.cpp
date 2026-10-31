@@ -61,7 +61,7 @@ namespace
     bool EffectiveSharp()
     {
         wchar_t executable[MAX_PATH]{};GetModuleFileNameW(nullptr,executable,MAX_PATH);std::wstring path(executable);path.resize(path.find_last_of(L"\\/"));
-        path+=L"\\render-diagnostics\\"+std::to_wstring(GetCurrentProcessId())+L".json";
+        path+=L"\\Logs\\DFLegacy\\render-diagnostics\\"+std::to_wstring(GetCurrentProcessId())+L".json";
         std::ifstream file(path,std::ios::binary);const std::string text((std::istreambuf_iterator<char>(file)),{});
         return text.find("\"effective\":\"sharp\"")!=std::string::npos;
     }

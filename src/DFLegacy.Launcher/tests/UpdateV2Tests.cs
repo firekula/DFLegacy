@@ -6,6 +6,14 @@ using DFLegacy.Launcher.Updates;
 
 internal static class UpdateV2Tests
 {
+    private static readonly string[] PreservedFiles = ["Config.ini", "launcher.json", "ijl15.dll", "DNF.exe", "Script.pvf", "player.NPK",
+        "ImagePacks2/player.NPK", "Logs/DFLegacy/launcher.log", "Logs/DFLegacy/legacy/rs_log.txt", "unrelated.json", "notes.txt"];
+    private static void CheckPreserved(string directory, Action<bool,string> check, string boundary)
+    {
+        foreach(var name in PreservedFiles)
+            check(File.Exists(Path.Combine(directory,name)) && File.ReadAllBytes(Path.Combine(directory,name)).SequenceEqual(Encoding.UTF8.GetBytes("preserve "+name)),
+                "V2 preserves player configuration, originals, resources and logs: "+boundary+" "+name);
+    }
     internal static byte[] Manifest(string directory, string flavor = "normal", string version = "old", bool legacy = false)
         => JsonSerializer.SerializeToUtf8Bytes(new {
             schemaVersion = legacy ? 1 : 2, version, commit = new string('a',40), flavor,
@@ -20,7 +28,11 @@ internal static class UpdateV2Tests
         File.WriteAllText(Path.Combine(target,"DFLegacy.Launcher.exe"),"old exe");
         File.WriteAllText(Path.Combine(target,"DFLegacy.Client.dll"),"old dll");
         File.WriteAllText(Path.Combine(target,"debug.dll"),"old debug");
-        foreach(var name in new[]{"Config.ini","launcher.json","ijl15.dll","DNF.exe","Script.pvf","player.NPK"}) File.WriteAllText(Path.Combine(target,name),"preserve "+name);
+        foreach(var name in PreservedFiles)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(target,name))!);
+            File.WriteAllText(Path.Combine(target,name),"preserve "+name);
+        }
         InstallMetadata(target,flavor); return target;
     }
     internal static byte[] Package(string root, string flavor = "normal", string variant = "valid")
@@ -78,8 +90,7 @@ internal static class UpdateV2Tests
         check(result.Success && !result.Restarted,"schema2 installation commits despite restart failure");
         check(ClientPackageManifest.LoadAndValidate(target).Version=="dev-test","schema2 installed metadata matches committed binaries");
         check(result.BackupDirectory!=null && File.ReadAllBytes(Path.Combine(result.BackupDirectory,"client-package.json")).SequenceEqual(oldMetadata),"schema2 metadata backed up byte-for-byte");
-        foreach(var name in new[]{"Config.ini","launcher.json","ijl15.dll","DNF.exe","Script.pvf","player.NPK"})
-            check(File.ReadAllText(Path.Combine(target,name))=="preserve "+name,"manual_migration_preserves_player_configuration: "+name);
+        CheckPreserved(target,check,"normal commit");
         check(File.ReadAllText(Path.Combine(target,"debug.dll"))=="old debug" && ClientPackageManifest.LoadAndValidate(target).Flavor=="normal", "retained_debug_is_not_loaded_by_normal_mode: update preserves explicit normal flavor");
         foreach(var variant in new[]{"legacy","missing-metadata"})
         {
@@ -95,6 +106,7 @@ internal static class UpdateV2Tests
         check(!UpdateTransaction.Apply(normalTarget,test,_=>true).Success && ClientPackageManifest.LoadAndValidate(normalTarget).Version=="old","normal_update_rejects_test_or_legacy: test cannot replace normal");
         var testTarget=Installation(root,"test");
         check(UpdateTransaction.Apply(testTarget,test,_=>true).Success && ClientPackageManifest.LoadAndValidate(testTarget).Flavor=="test" && File.ReadAllText(Path.Combine(testTarget,"debug.dll"))=="new debug","test_update_requires_same_version_debug: exact test set commits");
+        CheckPreserved(testTarget,check,"test commit");
         foreach(var invalid in new[]{"missing","hash"})
         {
             var bad=Installation(root);
@@ -118,6 +130,7 @@ internal static class UpdateV2Tests
                 check(result.BackupDirectory!=null && File.Exists(Path.Combine(result.BackupDirectory,"receipt.json")),"rollback reached durable journal: "+flavor+" "+leaf);
                 check(!result.Success && before.All(p=>ReadShared(Path.Combine(rollback,p.Key)).SequenceEqual(p.Value)),"schema2_metadata_rollback_at_each_boundary: "+flavor+" "+leaf);
                 check(!Directory.EnumerateFiles(rollback,"*.tmp",SearchOption.AllDirectories).Any(),"failed metadata replacement cleans owned temporary writes: "+flavor+" "+leaf);
+                CheckPreserved(rollback,check,"sharing violation "+flavor+" "+leaf);
             }
         }
         foreach(var flavor in new[]{"normal","test"})
@@ -143,6 +156,7 @@ internal static class UpdateV2Tests
                 var state=session.ReadState();
                 check(recovered.Success && state==null && original.All(p=>File.ReadAllBytes(Path.Combine(interrupted,p.Key)).SequenceEqual(p.Value)) && !File.Exists(Path.Combine(interrupted,".dflegacy","pending.json")),
                     "schema2_metadata_rollback_at_each_boundary: startup power-loss recovery "+flavor+" "+boundary);
+                CheckPreserved(interrupted,check,"power-loss recovery "+flavor+" "+boundary);
             }
         }
         foreach(var invalid in new[]{"journal-path","backup-hash","missing-metadata"})
