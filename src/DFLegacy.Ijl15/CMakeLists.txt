@@ -47,6 +47,8 @@ add_library(ijl15 SHARED
     src/relay_send_queue.h
     src/ground_item_removal.cpp
     src/ground_item_removal.h
+    src/inventory_tab.cpp
+    src/inventory_tab.h
     src/motion_horizon.cpp
     src/motion_horizon.h
     src/native_loop_probe.cpp
@@ -160,6 +162,14 @@ add_custom_command(TARGET ijl15 POST_BUILD
         "$<TARGET_FILE_DIR:ijl15>/Config.ini")
 
 include(CTest)
+if(BUILD_TESTING)
+    add_executable(inventory_tab_tests tests/inventory_tab_tests.cpp src/inventory_tab.cpp src/memory_patch.cpp)
+    target_include_directories(inventory_tab_tests PRIVATE src)
+    target_compile_options(inventory_tab_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    target_link_options(inventory_tab_tests PRIVATE /DYNAMICBASE:NO /BASE:0x10000000)
+    add_test(NAME inventory_tab_preservation COMMAND inventory_tab_tests)
+    add_test(NAME inventory_tab_original_control COMMAND inventory_tab_tests --original-control)
+endif()
 add_executable(client_bootstrap ../DFLegacy.Client/bootstrap_main.cpp)
 set_target_properties(client_bootstrap PROPERTIES OUTPUT_NAME "DFLegacy.Bootstrap32")
 target_compile_options(client_bootstrap PRIVATE /W4 /WX /utf-8 /EHsc /Brepro)

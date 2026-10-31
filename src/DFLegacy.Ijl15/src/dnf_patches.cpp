@@ -19,6 +19,7 @@
 #include "countdown_coin.h"
 #include "dungeon_tooltip.h"
 #include "ground_item_removal.h"
+#include "inventory_tab.h"
 #include "motion_horizon.h"
 #include "native_loop_probe.h"
 #include "motion_test_probe.h"
@@ -1242,6 +1243,9 @@ namespace dfl::dnf_patches
             OutputDebugStringA(
                 "DFLegacy.Ijl15: ground item removal repair was not installed.\n");
         }
+
+        if (!dfl::inventory_tab::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: backpack tab preservation was not installed.\n");
 
         if (!dfl::motion_horizon::Install())
             OutputDebugStringA("DFLegacy.Ijl15: ACT1 inactive-acceleration interpolation repair was not installed.\n");
