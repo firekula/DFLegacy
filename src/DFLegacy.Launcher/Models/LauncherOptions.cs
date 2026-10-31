@@ -5,6 +5,7 @@ namespace DFLegacy.Launcher;
 
 internal sealed class LauncherOptions
 {
+    public bool IncludePrereleaseUpdates { get; set; } = true;
     public string ClientPath { get; set; } = Program.DefaultClientPath;
     public string EntranceHost { get; set; } = "127.0.0.1";
     public int EntrancePort { get; set; } = 2311;

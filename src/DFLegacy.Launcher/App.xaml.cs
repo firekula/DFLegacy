@@ -10,6 +10,11 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Contains("--dflegacy-apply-update", StringComparer.Ordinal))
+        {
+            Shutdown(await Updates.UpdateInstaller.RunHelperAsync(e.Args));
+            return;
+        }
         base.OnStartup(e);
         var args = e.Args;
         if (args.Any(a => HeadlessArgs.Contains(a, StringComparer.OrdinalIgnoreCase)))

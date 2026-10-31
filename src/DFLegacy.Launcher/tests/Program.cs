@@ -10,6 +10,7 @@ if (args.Length == 2 && args[0] == "--startup-test-child")
     return int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture);
 }
 
+if (await UpdateHelperTests.Dispatch(args) is int helperExit) return helperExit;
 var failures = 0;
 void Check(bool condition, string message)
 {
@@ -29,6 +30,11 @@ try
         Console.WriteLine(failures == 0 ? "Server selection tests passed" : $"Server selection tests failed: {failures}");
         return failures == 0 ? 0 : 1;
     }
+    await UpdateTransportTests.Run(root, Check);
+    await UpdateInstallerTests.Run(root, Check);
+    await UpdateHelperTests.Run(root, Check);
+    await UpdateBoundaryTests.Run(root, Check);
+    if (args.Contains("--update-tests")) return failures == 0 ? 0 : 1;
     DisplayConfigurationTests.Run(root, Check);
     RenderDiagnosticTests.Run(root, Check);
     ClassicUiTests.Run(Check);
