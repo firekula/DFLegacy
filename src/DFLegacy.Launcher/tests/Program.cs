@@ -23,6 +23,12 @@ var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.Ne
 Directory.CreateDirectory(root);
 try
 {
+    if (args.Contains("--login-input-tests"))
+    {
+        ClassicUiTests.Run(Check, loginOnly: true);
+        Console.WriteLine(failures == 0 ? "Login input tests passed" : $"Login input tests failed: {failures}");
+        return failures == 0 ? 0 : 1;
+    }
     if (args.Contains("--server-selection-tests"))
     {
         ClassicUiTests.Run(Check);

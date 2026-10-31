@@ -6,8 +6,24 @@
         Icon="pack://application:,,,/DFLegacy.Launcher;component/Assets/Skin/QQGame.ico" MouseLeftButtonDown="Window_MouseLeftButtonDown" KeyDown="Window_KeyDown">
   <Window.Resources><ResourceDictionary>
     <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Views/ClassicStyles.xaml"/></ResourceDictionary.MergedDictionaries>
-    <Style x:Key="LoginText" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="5,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></Style>
-    <Style x:Key="LoginPassword" TargetType="PasswordBox" BasedOn="{StaticResource {x:Type PasswordBox}}"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="5,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></Style>
+    <!-- WPF forwards Padding to the content host and reserves 2px in TextBoxView
+         for the bidi caret. Apply padding once: 3px + 2px = the artwork's 5px inset. -->
+    <Style x:Key="LoginText" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+      <Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="3,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox">
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+          <ScrollViewer x:Name="PART_ContentHost" Style="{x:Null}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+        </Border>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="LoginPassword" TargetType="PasswordBox" BasedOn="{StaticResource {x:Type PasswordBox}}">
+      <Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="3,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="PasswordBox">
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+          <ScrollViewer x:Name="PART_ContentHost" Style="{x:Null}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+        </Border>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <Style x:Key="LoginAgree" TargetType="CheckBox"><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox"><Grid Width="15" Height="15"><Image x:Name="Check" Source="Assets/Skin/checkbox_00.png"/><Border x:Name="Focus" BorderBrush="#FFE5AD" BorderThickness="1" Visibility="Collapsed"/></Grid><ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="Check" Property="Source" Value="Assets/Skin/checkbox_01.png"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Focus" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
     <Style x:Key="NewsButton" TargetType="c:SkinButton" BasedOn="{StaticResource ClassicButton}"><Setter Property="Height" Value="19"/><Setter Property="MinWidth" Value="0"/><Setter Property="FontSize" Value="12"/><Setter Property="Padding" Value="0"/><Setter Property="Foreground" Value="{StaticResource ClassicInk}"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="c:SkinButton"><Border x:Name="Frame" Background="Transparent" BorderBrush="Transparent" BorderThickness="1"><c:PixelText Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" FontSize="12" Foreground="{TemplateBinding Foreground}" TextWrapping="NoWrap"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{StaticResource ClassicGold}"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="{StaticResource ClassicGold}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
     <Style x:Key="NewsTag" TargetType="Border"><Setter Property="Background" Value="#59370E"/><Setter Property="BorderBrush" Value="#361E07"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Width" Value="33"/><Setter Property="Height" Value="19"/></Style>

@@ -40,6 +40,8 @@ public partial class MainWindow : System.Windows.Window
         RefreshAccounts();
         AccountText.TextChanged += (_, _) => UpdateAccountHint();
         PasswordText.PasswordChanged += (_, _) => UpdateAccountHint();
+        AccountText.IsKeyboardFocusWithinChanged += (_, _) => UpdateAccountHint();
+        PasswordText.IsKeyboardFocusWithinChanged += (_, _) => UpdateAccountHint();
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
@@ -82,8 +84,8 @@ public partial class MainWindow : System.Windows.Window
 
     private void UpdateAccountHint()
     {
-        AccountHint.Visibility = string.IsNullOrEmpty(AccountText.Text) ? Visibility.Visible : Visibility.Collapsed;
-        PasswordHint.Visibility = string.IsNullOrEmpty(PasswordText.Password) ? Visibility.Visible : Visibility.Collapsed;
+        AccountHint.Visibility = string.IsNullOrEmpty(AccountText.Text) && !AccountText.IsKeyboardFocusWithin ? Visibility.Visible : Visibility.Collapsed;
+        PasswordHint.Visibility = string.IsNullOrEmpty(PasswordText.Password) && !PasswordText.IsKeyboardFocusWithin ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void StartGame()

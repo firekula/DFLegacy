@@ -15,7 +15,7 @@ internal static class ClassicUiTests
 {
     [DllImport("user32.dll")] private static extern uint GetGuiResources(IntPtr process, uint flags);
 
-    internal static void Run(Action<bool, string> check)
+    internal static void Run(Action<bool, string> check, bool loginOnly = false)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
@@ -24,6 +24,8 @@ internal static class ClassicUiTests
             try
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                LoginInputTests.Run(check);
+                if (loginOnly) return;
                 UpdateUiTests.Run(check);
                 ClassicMessageTests.Run(check);
                 var messageCloser = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Background,
