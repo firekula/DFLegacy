@@ -38,11 +38,11 @@
 
 **Interfaces:** Consumes legacy options/store. Produces `LauncherServerProfile` with Id/Name/Region/Host/Port/AccountServicePort/AccountServiceUrl; `LauncherOptions.Servers` and optional selected identity, preserving legacy fields. `LocalServerSelection` exposes configured choices and selected choice, `Select(id)` and `Confirm(store)` resolve a cloned in-memory target while retaining account/display configuration. Preserve compatibility of existing callers where practical; new UI lives in a partial MainWindow file if it reduces shared-file growth.
 
-- [ ] Add meaningful failing tests for no initial highlight, both groups, legacy fallback, independent two-server API endpoints, selecting versus health refresh, stale probe, cancellation, corrupt/changed saved config and unknown-field preservation. Add actual WPF hit-target/selection/long-name/footer rendering tests.
-- [ ] Run focused launcher checks; capture expected RED before implementation.
-- [ ] Implement grouping/selection, asynchronous cancellable TCP connection timing and UI from approved preview. Load original311 labels and legend with no unrelated painted checkbox. Four columns per section; overflow scrolls within section. Selected item stays highlighted even during hover/probe changes; confirmation uses the selected profile, preserves typed credentials and does not mutate unrelated saved settings.
-- [ ] Run full launcher check command; self-review with spec and record GREEN evidence.
-- [ ] Commit task files and write task report with exact commits, test evidence and interface names for Task4.
+- [x] Add meaningful failing tests for no initial highlight, both groups, legacy fallback, independent two-server API endpoints, selecting versus health refresh, stale probe, cancellation, corrupt/changed saved config and unknown-field preservation. Add actual WPF hit-target/selection/long-name/footer rendering tests.
+- [x] Run focused launcher checks; capture expected RED before implementation.
+- [x] Implement grouping/selection, asynchronous cancellable TCP connection timing and UI from approved preview. Load original311 labels and legend with no unrelated painted checkbox. Four columns per section; overflow scrolls within section. Selected item stays highlighted even during hover/probe changes; confirmation uses the selected profile, preserves typed credentials and does not mutate unrelated saved settings.
+- [x] Run full launcher check command; self-review with spec and record GREEN evidence.
+- [x] Commit task files and write task report with exact commits, test evidence and interface names for Task4.
 
 ### Task 2: Original message panel and readable notifications
 
