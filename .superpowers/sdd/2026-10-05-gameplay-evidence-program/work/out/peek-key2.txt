@@ -1,0 +1,37 @@
+pid = 3996
+
+=== 1. 对象头（total_key_len + vector 三指针）===
+=== VA 0x2311c7a0  len=16  实读 16 字节
+  2311c7a0  4e 01 00 00 b8 cb 11 23 f0 cb 11 23 f0 cb 11 23  |N......#...#...#|
+
+=== 2. vector 的 14 个 ICryptoGraph*（静态分析说链长 14）===
+=== VA 0x2311cbb8  len=56  实读 56 字节
+  2311cbb8  f8 cb 11 23 f8 bd 10 23 90 d0 11 23 28 7a 12 23  |...#...#...#(z.#|
+  2311cbc8  68 ac 14 23 f8 b5 14 23 e0 e2 14 23 b0 31 15 23  |h..#...#...#.1.#|
+  2311cbd8  60 f4 11 23 98 f4 11 23 40 f5 11 23 d8 f5 11 23  |`..#...#@..#...#|
+  2311cbe8  00 f6 11 23 38 f6 11 23                          |...#8..#|
+
+=== 3. 密钥缓冲：+0x10 起 334 字节（total_key_len）===
+=== VA 0x2311c7b0  len=334  实读 334 字节
+  2311c7b0  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c7c0  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c7d0  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c7e0  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c7f0  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+  2311c800  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c810  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c820  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c830  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c840  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+  2311c850  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c860  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c870  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c880  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c890  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+  2311c8a0  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c8b0  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c8c0  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c8d0  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c8e0  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+  2311c8f0  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68        |MapObject/Path|
+--- exit=0 ---

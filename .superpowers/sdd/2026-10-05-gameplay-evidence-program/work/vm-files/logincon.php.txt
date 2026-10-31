@@ -1,0 +1,393 @@
+<?php 
+session_start();
+ini_set("display_errors", 0);
+Require("rsa.php");
+
+$dbhost = 'localhost';   //鏁版嵁搴撳湴鍧�
+$dbuser = 'game';   //鏁版嵁搴撶敤鎴峰悕					
+$dbpass = 'REDACTED_VM_DB_PASSWORD';   //鏁版嵁搴撳瘑鐮�						
+$msgkey = 'Passwordisaw';	   //绂佹淇敼锛屽惁鍒欏悗鏋滆嚜璐�
+//鐧诲綍鍣ㄤ娇鐢ㄥ姛鑳藉紑鍏�
+$debug = 'open';   //璋冭瘯妯″紡寮�鍏陈仿仿疯皟璇曟ā寮忓皢浼氬叧闂墍鏈夋娴嬬劧鑰屽苟涓嶅寘鎷娇鐢ㄥ姛鑳铰仿仿�
+$reg = 'open';   //娉ㄥ唽甯愬彿寮�鍏�
+$up = 'close';    //鑷姩鏇存柊寮�鍏�
+$rec = 'open';   //鑷姪鍏呭�煎紑鍏�
+$qu = 'open';   //D鐐瑰厬鎹甯佸紑鍏�
+$regdb = '0';   //娉ㄥ唽閫丏甯佹暟閲�
+$regdd = '0';   //娉ㄥ唽閫丏鐐规暟閲�
+//鐧诲綍鍣ㄥ姛鑳藉紑鍏宠鏄庯細open涓哄紑鍚� close涓哄叧闂� 淇敼鏃惰鍐嶄笁纭鏄惁姝ｇ‘锛屽惁鍒欏皢浼氬嚭鐜拌嚧鍛界殑閿欒锛�
+
+$testing = '涓�';   //瀹夊叏绯荤粺妫�娴嬪瓧绗�
+//瀹夊叏绯荤粺妫�娴嬬殑瀛楃娣诲姞璇存槑锛氳浠モ�滀辅鈥� 浣滀负鍒嗛殧骞朵互鈥滀辅鈥� 缁撳熬銆� 渚嬪*涓哄叧閿瓧锛�**涓�**涓�**涓�  銆愭坊鍔犳椂璇蜂粩缁嗘枱閰屼互鍏嶈鎶ャ��
+
+
+$con = Mysql_connect($dbhost, $dbuser, $dbpass);
+if (!$con){
+	echo "Mysql Connect Error";
+	exit;
+}
+
+if(substr($_POST['Data'],0,11)=='GET_TempKey'){
+	$_SESSION[Temp_Key]=GET_Temp_Key();
+	exit(strtoupper(strToHex(rc4($_SESSION[Temp_Key],$msgkey))));
+}
+$temps = str_decode($_POST['Data'],$msgkey,$_SESSION[Temp_Key]);
+//file_put_contents("data.txt",$temps,FILE_APPEND); //杈撳嚭鐧诲綍鍣ㄥ彂閫佺殑鏁版嵁淇℃伅
+$temp = explode('|',$temps);
+
+if(count($temp)<3){
+	exit('So begins a new age of knowledge');
+}
+
+$rand = $temp[0];
+
+
+  if($temp[1]=='update'){//鑷姩鏇存柊绯荤粺
+     if($up=='open'){
+     echo str_encode("update start",$msgkey,$rand);
+     exit;
+ } else if($up=='close'){
+     echo str_encode("update close",$msgkey,$rand);
+     exit;
+   }
+}
+
+
+  if($temp[1]=='debug'){//璋冭瘯妯″紡
+     if($debug=='open'){
+     echo str_encode("debug start",$msgkey,$rand);
+     exit;
+ } else if($debug=='close'){
+     echo str_encode("debug close",$msgkey,$rand);
+     exit;
+   }
+}
+
+
+  if($temp[1]=='security'){//鏇存柊瀹夊叏绯荤粺 
+     echo str_encode($testing,$msgkey,$rand);
+     exit;
+   }
+
+
+
+  if($temp[1]=='login'){//鐧诲綍娓告垙
+$username = $temp[2];
+$password = $temp[3];
+$sql = Mysql_query("select * from d_taiwan.accounts where accountname='$username' and password='$password'");
+	if(Mysql_num_rows($sql)==0){
+		echo str_encode("Username or password Error",$msgkey,$rand);
+		exit;
+	}else{
+		$str = Mysql_fetch_array($sql);
+		$uid = $str['UID'];
+		$m_id = $uid + 1;
+	if(empty($str['qq'])){	
+		echo str_encode("QQ Error",$msgkey,$rand);
+		exit;
+	}else{		
+   $data =  sprintf("%08x010101010101010101010101010101010101010101010101010101010101010155914510010403030101",$uid);
+   $data = hex2zhbin($data);
+   $encrypted = ""; 
+   $pi_key =  openssl_pkey_get_private($private_key);
+   openssl_private_encrypt($data,$encrypted,$pi_key);
+   $encrypted = base64_encode($encrypted);
+	 echo str_encode($encrypted,$msgkey,$rand);
+	      Mysql_query("update taiwan_login.member_login set m_id=$uid where m_id=$m_id");//鍙栨秷寮傚父鏁版嵁
+	      Mysql_query("update d_taiwan.limit_create_character set count=0 where m_id='$uid'");//鍙栨秷瑙掕壊鍒涘缓闄愬埗
+	 exit;
+		}
+	}
+}
+
+
+  if($temp[1]=='safety'){//璁剧疆瀹夊叏妯″紡
+$username = $temp[2];
+$qq = $temp[3];
+$sql = Mysql_query("select * from d_taiwan.accounts where accountname='$username' and qq='$qq'");
+	if(Mysql_num_rows($sql)==0){
+		echo str_encode("Username or password Error",$msgkey,$rand);
+		exit;
+	}else{
+  $str = Mysql_fetch_array($sql);
+	$uid = $str['UID'];
+	$m_id = $uid + 10000;
+	  if(Mysql_query("update taiwan_login.member_login set m_id=$m_id where m_id=$uid")){
+		  echo str_encode("safety success",$msgkey,$rand);
+			exit;
+	}else{
+			echo str_encode("safety fail",$msgkey,$rand);
+			exit;
+		}
+  }
+}
+
+
+
+
+  if($temp[1]=='registered'){//娉ㄥ唽甯愬彿
+if($reg=='open'){
+$username = $temp[2];
+$password = $temp[3];
+$qq = $temp[4];
+	$sql = Mysql_query("select * from d_taiwan.accounts where accountname='$username'");
+	if(Mysql_num_rows($sql)==0){
+		$sql = Mysql_query("select * from d_taiwan.accounts order by UID desc limit 1");
+		if(Mysql_num_rows($sql)==0){
+			$uid = 18000000;
+		}else{
+			$str = Mysql_fetch_array($sql);
+			$uid = $str['UID'] + 1;
+		}
+		if(!isset($_COOKIE['ip']) && !isset($_COOKIE['count'])) {//闄愬埗娉ㄥ唽
+		if(Mysql_query("insert into d_taiwan.accounts (UID,accountname,password,qq) VALUES ('$uid','$username','$password','$qq')")){
+			Mysql_query("insert into d_taiwan.limit_create_character (m_id) VALUES ('$uid')");
+			Mysql_query("insert into d_taiwan.member_info (m_id,user_id) VALUES ('$uid','$uid')");
+			Mysql_query("insert into d_taiwan.member_join_info (m_id) VALUES ('$uid')");
+			Mysql_query("insert into d_taiwan.member_miles (m_id) VALUES ('$uid')");
+			Mysql_query("insert into d_taiwan.member_white_account (m_id) VALUES ('$uid')");
+			Mysql_query("insert into taiwan_login.member_login (m_id) VALUES ('$uid')");
+			Mysql_query("insert into taiwan_billing.cash_cera (account,cera,mod_date,reg_date) VALUES ('$uid','$regdb',now(),now())");
+      Mysql_query("insert into taiwan_billing.cash_cera_point (account,cera_point,reg_date,mod_date) VALUES ('$uid','$regdd',now(),now())");
+	setcookie('ip',$_SERVER['REMOTE_ADDR'],time()+60*60);//闄愬埗鏃堕棿1灏忔椂
+  setcookie('count',1,time()+60*60);
+			echo str_encode("registered success",$msgkey,$rand);
+			exit;
+		}else{
+			echo str_encode("registered fail",$msgkey,$rand);
+			exit;
+}
+		} else if(($_COOKIE['ip'] == $_SERVER['REMOTE_ADDR']) && $_COOKIE['ip'] > 1){
+			echo str_encode("registered not",$msgkey,$rand);
+			exit;
+}
+	}else{
+		echo str_encode("registered repeat",$msgkey,$rand);
+		exit;
+	  }
+  }else if($reg=='close'){
+		echo str_encode("registered close",$msgkey,$rand);
+		exit;
+ }
+}
+
+
+
+  if($temp[1]=='modify'){//淇敼瀵嗙爜
+$username = $temp[2];
+$password = $temp[3];
+$newpassword = $temp[4];
+$sql = Mysql_query("select * from d_taiwan.accounts where accountname='$username' and password='$password'");
+	if(Mysql_num_rows($sql)==0){
+		echo str_encode("Username or password Error",$msgkey,$rand);
+		exit;
+	}
+		if(Mysql_query("update d_taiwan.accounts set password='$newpassword' where accountname='$username'")){
+			echo str_encode("modify success",$msgkey,$rand);
+			exit;
+		}else{
+			echo str_encode("modify fail",$msgkey,$rand);
+			exit;
+		}
+	}
+
+
+  if($temp[1]=='back'){//瀵嗙爜鎵惧洖
+$username = $temp[2];
+$qq = $temp[3];
+$password = $temp[4];
+$sql = Mysql_query("select * from d_taiwan.accounts where accountname='$username' and qq='$qq'");
+	if(Mysql_num_rows($sql)==0){
+		echo str_encode("Username or qq Error",$msgkey,$rand);
+		exit;
+	}
+		if(Mysql_query("update d_taiwan.accounts set password='$password' where accountname='$username'")){
+			echo str_encode("back success",$msgkey,$rand);
+			exit;
+		}else{
+			echo str_encode("back fail",$msgkey,$rand);
+			exit;
+		}	
+}
+
+
+  if($temp[1]=='recharge'){//鑷姪鍏呭��
+$username = $temp[2];
+$number = $temp[3];
+ if($rec=='open'){
+$sql = Mysql_query("select * from d_taiwan.accounts where accountname='$username'");
+	if(Mysql_num_rows($sql)==0){
+			echo str_encode("recharge name error",$msgkey,$rand);
+			exit;	
+	}else{
+		$str = Mysql_fetch_array($sql);
+		$uid = $str['UID'];
+	  if(Mysql_query("update taiwan_billing.cash_cera set cera='$number' where account='$uid'")){
+		  echo str_encode("recharge success",$msgkey,$rand);
+			exit;
+	}else{
+			echo str_encode("recharge fail",$msgkey,$rand);
+			exit;
+	}	
+}
+	}else if($rec=='close'){
+			echo str_encode("recharge close",$msgkey,$rand);
+			exit;
+  }
+}
+
+
+
+  if($temp[1]=='query'){//鏌ヨD鐐硅繘琛屽厬鎹�
+$username = $temp[2];
+$password = $temp[3];
+$sql = Mysql_query("select * from d_taiwan.accounts where accountname='$username' and password='$password'");
+	if(Mysql_num_rows($sql)==0){
+		echo str_encode("Username or password Error",$msgkey,$rand);
+		exit;
+	}else{	
+		$str = Mysql_fetch_array($sql);
+		$uid = $str['UID'];
+$sql = Mysql_query("select * from taiwan_billing.cash_cera_point where account='$uid'");		
+ 	if(Mysql_num_rows($sql)==0){
+ 		echo str_encode("query fail",$msgkey,$rand);
+		exit;  	
+	}else{
+	  $sat = Mysql_fetch_array($sql);
+	  $number = $sat['cera_point'];
+	 	echo str_encode($number,$msgkey,$rand);
+		exit;
+	 }
+ }
+}
+
+
+  if($temp[1]=='exchange'){//D鐐瑰厬鎹甯�
+$username = $temp[2];
+$number = $temp[3];
+ if($qu=='open'){
+$sql = Mysql_query("select * from d_taiwan.accounts where accountname='$username'");
+	if(Mysql_num_rows($sql)==0){
+			echo str_encode("exchange name error",$msgkey,$rand);
+			exit;	
+	}else{
+		$str = Mysql_fetch_array($sql);
+		$uid = $str['UID'];
+	  if(Mysql_query("update taiwan_billing.cash_cera_point set cera_point=cera_point-$number where account='$uid'")){
+	  	Mysql_query("update taiwan_billing.cash_cera set cera=cera+$number where account='$uid'");
+		  echo str_encode("exchange success",$msgkey,$rand);
+			exit;
+	}else{
+			echo str_encode("exchange fail",$msgkey,$rand);
+			exit;
+	}	
+}
+	}else if($qu=='close'){
+			echo str_encode("exchange close",$msgkey,$rand);
+			exit;
+  }
+}
+
+
+
+  if($temp[1]=='qq'){//qq楠岃瘉
+$username = $temp[2];
+$qq = $temp[3];
+	  if(Mysql_query("update d_taiwan.accounts set qq='$qq' where accountname='$username'")){
+		  echo str_encode("qq success",$msgkey,$rand);
+			exit;
+	}else{
+			echo str_encode("qq fail",$msgkey,$rand);
+			exit;
+		}
+	}
+	
+
+
+
+function rc4($data,$pwd)
+{  
+	$key[] ="";
+	$box[] ="";
+	$pwd_length = strlen($pwd);
+	$data_length = strlen($data);
+	for ($i = 0; $i < 256; $i++)
+	{
+		$key[$i] = ord($pwd[$i % $pwd_length]);
+		$box[$i] = $i;
+	}
+	for ($j = $i = 0; $i < 256; $i++)
+	{
+		$j = ($j + $box[$i] + $key[$i]) % 256;
+		$tmp = $box[$i];
+		$box[$i] = $box[$j];
+		$box[$j] = $tmp;
+	}
+	for ($a = $j = $i = 0; $i < $data_length; $i++)
+	{
+		$a = ($a + 1) % 256;
+		$j = ($j + $box[$a]) % 256;
+		$tmp = $box[$a];
+		$box[$a] = $box[$j];
+		$box[$j] = $tmp;
+
+		$k = $box[(($box[$a] + $box[$j]) % 256)];
+		$cipher .= chr(ord($data[$i]) ^ $k);
+	}
+	return $cipher;
+}
+function HexTostr($s){
+	$r = "";
+	for ( $i = 0; $i<strlen($s); $i += 2)
+	{
+		$x1 = ord($s{$i});
+		$x1 = ($x1>=48 && $x1<58) ? $x1-48 : $x1-97+10;
+		$x2 = ord($s{$i+1});
+		$x2 = ($x2>=48 && $x2<58) ? $x2-48 : $x2-97+10;
+		$r .= chr((($x1 << 4) & 0xf0) | ($x2 & 0x0f));
+	}
+	return $r;
+}
+function strToHex($s) {
+	$r = "";
+	$hexes = array ("0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f");
+	for ($i=0; $i<strlen($s); $i++) {$r .= ($hexes [(ord($s{$i}) >> 4)] . $hexes [(ord($s{$i}) & 0xf)]);}
+	return $r;
+}
+function str_decode($str,$key,$key_rand){
+	return (string)rc4(HexTostr((string)rc4(HexTostr($str),(string)$key_rand)),$key);
+}
+function str_encode($str,$key,$key_rand){
+	$key_temp = strToHex(rc4($str,(string)$key_rand));
+	$key_temp = strtoupper(strToHex(rc4($key_temp,$key)));
+	return $key_temp;
+}
+function GET_Temp_Key(){
+    if (function_exists('com_create_guid')){
+        return com_create_guid();
+    }else{
+        mt_srand((double)microtime()*10000);
+        $charid = strtoupper(md5(uniqid(rand(), true)));
+        $hyphen = chr(45);// "-"
+        $uuid = chr(123)// "{"
+                .substr($charid, 0, 8).$hyphen
+                .substr($charid, 8, 4).$hyphen
+                .substr($charid,12, 4).$hyphen
+                .substr($charid,16, 4).$hyphen
+                .substr($charid,20,12)
+                .chr(125);// "}"
+        return $uuid;
+    }
+}
+
+function hex2zhbin( $str ) {
+        $sbin = "";
+        $len = strlen( $str );
+        for ( $i = 0; $i < $len; $i += 2 ) {
+            $sbin .= pack( "H*", substr( $str, $i, 2 ) );
+        }
+
+        return $sbin;
+    }
+
+?>

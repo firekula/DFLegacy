@@ -1,0 +1,12 @@
+FAIL frame profile: complete valid callback is counted
+FAIL frame profile: total callback and component timings are separate
+FAIL frame profile: foreground same-scene interval can reveal work outside debug callback
+FAIL frame profile: slow callback is retained with components
+FAIL frame profile: background samples split foreground interval continuity
+FAIL frame profile: scene changes do not become steady-scene intervals
+FAIL frame profile: rollback is unknown rather than a huge unsigned duration
+FAIL frame profile: component overflow cannot masquerade as measured hook time
+FAIL frame profile: completed windows retain only the bounded newest history in order
+FAIL frame profile: slow event ring is bounded and ordered
+FAIL frame profile: unobserved buckets are counted explicitly
+Frame profile tests: 11 failures

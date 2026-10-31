@@ -1,0 +1,16 @@
+{
+  "vtable": "0x9988DC",
+  "slots": {
+    "0x84": "0x407460",
+    "0x88": "0x407470",
+    "0x170": "0x478f00",
+    "0x174": "0x4798a0",
+    "0x178": "0x478f70",
+    "0x17c": "0x479a40"
+  },
+  "receiver_range_to_padding": [
+    "0x478f00",
+    "0x478fa5"
+  ],
+  "range_sha256": "5d3fbc743ab5bbc520832e9e66e98eb1a731193aa367aac22787e4b6c8cbdf71"
+}

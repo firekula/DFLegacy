@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "scope": "New independent U05 review-static artifacts only; source hashes are recorded in implementation-review.json",
+  "files": [
+    {
+      "name": "implementation-review.json",
+      "bytes": 5077,
+      "sha256": "eae0976b56dccdc7c1ae11afb80ec1c06fa31635a106ac3204e1fa548959f10d"
+    },
+    {
+      "name": "native-contract.asm",
+      "bytes": 146383,
+      "sha256": "b2ea8d4384c3c26d6c7d7855edbe83d8b55e008c98d4f5e382464f17e33f4b13"
+    },
+    {
+      "name": "native-ranges.json",
+      "bytes": 28951,
+      "sha256": "ff7b7089244c8a30fe037a16e91ffe94a5d628dc8348b44541e2f49fd8e985cc"
+    },
+    {
+      "name": "outer-command-layer.asm",
+      "bytes": 9338,
+      "sha256": "0fa05f6b7e47a735668244cbd92de824c7d9ba6bd702d9d6f843a6ea1ca94805"
+    },
+    {
+      "name": "review-contract.json",
+      "bytes": 7462,
+      "sha256": "425a6afc6d88caf8115ece75f7e620a613d40075d5eb09b530ff982411e00c5f"
+    },
+    {
+      "name": "verify_type1_gate.py",
+      "bytes": 1908,
+      "sha256": "a8f9024d06c028ad838a1c52124182239f9b9a0a6168087ab075319b03fcdafa"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+kind	id	name	rodata_va	dispatcher	status	tier	read_count	write_count	ext_mark
+S2S	4	NOTICE_CHANNEL_SERVER	-	DFLegacy.InterProcess.InterProcessLink	mapped	T4_fields-read+write	1	1	-
+S2S	128	REGISTER	-	DFLegacy.InterProcess.InterProcessLink	mapped	T4_fields-read+write	1	1	-
+S2S	129	REGISTER_ACK	-	DFLegacy.InterProcess.InterProcessLink	mapped	T4_fields-read+write	1	1	-
+S2S	130	STATUS	-	DFLegacy.InterProcess.InterProcessLink	mapped	T4_fields-read+write	1	1	-

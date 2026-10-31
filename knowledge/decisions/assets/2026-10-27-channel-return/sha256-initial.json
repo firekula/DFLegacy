@@ -1,0 +1,95 @@
+{
+  "schema": "dflegacy.unaltered-evidence-copy.v1",
+  "files": [
+    {
+      "file": "00-user-unresponsive.png",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\00-user-unresponsive.png",
+      "source_sha256": "1D1818E7BF9ECF73602067CC2944C2053DEDF7C59406D3F53140ECF26CD269E4",
+      "copy_sha256": "1D1818E7BF9ECF73602067CC2944C2053DEDF7C59406D3F53140ECF26CD269E4",
+      "bytes": 254835,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "05-A-settings.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\05-A-settings.jpg",
+      "source_sha256": "162E79794DFEC48184B1204882D144BD0F1663B37CBF5C4A420A7C51A0D34C83",
+      "copy_sha256": "162E79794DFEC48184B1204882D144BD0F1663B37CBF5C4A420A7C51A0D34C83",
+      "bytes": 371370,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "06-A-return-channel.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\06-A-return-channel.jpg",
+      "source_sha256": "C3F694D8F14ABFA6F297B142F8AEC12781BC1BA5C110564B7DA6F70639221032",
+      "copy_sha256": "C3F694D8F14ABFA6F297B142F8AEC12781BC1BA5C110564B7DA6F70639221032",
+      "bytes": 209733,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "09-A-start-channel-again.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\09-A-start-channel-again.jpg",
+      "source_sha256": "5429CAEE3370394C36DB5D7F234968A9118FAA809B87E8B04B4F603914C03062",
+      "copy_sha256": "5429CAEE3370394C36DB5D7F234968A9118FAA809B87E8B04B4F603914C03062",
+      "bytes": 213956,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "10-A-second-channel-state.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\10-A-second-channel-state.jpg",
+      "source_sha256": "46B7D571E9B8E8F209F5EDA219BD5E8BC3B699F94AEE1A3780680C9203B4EFE7",
+      "copy_sha256": "46B7D571E9B8E8F209F5EDA219BD5E8BC3B699F94AEE1A3780680C9203B4EFE7",
+      "bytes": 383103,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "34-A-fixed-back-in-town.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\34-A-fixed-back-in-town.jpg",
+      "source_sha256": "8BE6FBB6354B34B5730B1A924FA03C160184649F6AA68F586CF7797FCD2C7BF3",
+      "copy_sha256": "8BE6FBB6354B34B5730B1A924FA03C160184649F6AA68F586CF7797FCD2C7BF3",
+      "bytes": 382261,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "35-B-fixed-back-in-town.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\35-B-fixed-back-in-town.jpg",
+      "source_sha256": "9D4D452B05830638E65BDF17E3B433532D21EEECF78DA2E6E046B24EB7F95B79",
+      "copy_sha256": "9D4D452B05830638E65BDF17E3B433532D21EEECF78DA2E6E046B24EB7F95B79",
+      "bytes": 379557,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "latency-20261027-2335.json",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\reentry-latency-20261027-2335.json",
+      "source_sha256": "9969CC92DA2A068D73272A7BA9B457C2A4CC7C54DDE67702D03F49C03E49496A",
+      "copy_sha256": "9969CC92DA2A068D73272A7BA9B457C2A4CC7C54DDE67702D03F49C03E49496A",
+      "bytes": 9209,
+      "unaltered": true,
+      "visually_inspected": false
+    },
+    {
+      "file": "native-red.log",
+      "source": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-27-channel-return\\native-red.log",
+      "source_sha256": "1529845966109D1217E7948FC63C8333DED4501B72E4EC78704C5C72E7DF08EC",
+      "copy_sha256": "1529845966109D1217E7948FC63C8333DED4501B72E4EC78704C5C72E7DF08EC",
+      "bytes": 247,
+      "unaltered": true,
+      "visually_inspected": false
+    },
+    {
+      "file": "native-green.log",
+      "source": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-27-channel-return\\native-green.log",
+      "source_sha256": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547",
+      "copy_sha256": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547",
+      "bytes": 34,
+      "unaltered": true,
+      "visually_inspected": false
+    }
+  ]
+}

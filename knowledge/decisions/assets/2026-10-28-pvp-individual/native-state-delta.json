@@ -1,0 +1,59 @@
+{
+  "before_sha256": "B9831C157CB9A6A77DE3BFF7C07B591860E34D8A294BF1B18B0AEE9EBFAAB9FB",
+  "after_sha256": "EF99CD680A517BEB812758E4BE18E5A23371A196D95A7A2EFF30D6041977DBC6",
+  "changes": [
+    {
+      "role": "B",
+      "changes": {
+        "VictoryPoints": {
+          "before": 0,
+          "after": 12
+        },
+        "PvpPoints": {
+          "before": 0,
+          "after": 3000
+        },
+        "PvpGrade": {
+          "before": 0,
+          "after": 2
+        },
+        "PvpWins": {
+          "before": 0,
+          "after": 3
+        },
+        "PvpPlayCount": {
+          "before": 0,
+          "after": 3
+        },
+        "PvpCount": {
+          "before": 0,
+          "after": 3
+        }
+      }
+    },
+    {
+      "role": "A",
+      "changes": {
+        "VictoryPoints": {
+          "before": 0,
+          "after": 3
+        },
+        "PvpLosses": {
+          "before": 0,
+          "after": 3
+        },
+        "PvpPlayCount": {
+          "before": 0,
+          "after": 3
+        },
+        "PvpCount": {
+          "before": 0,
+          "after": 3
+        }
+      }
+    }
+  ],
+  "three_unique_dual_receipts": true,
+  "all_other_fields_equal": true,
+  "note": "Full snapshots and identifiers remain private; all account fields, other characters, non-PvP character fields and other ledgers were compared for equality."
+}

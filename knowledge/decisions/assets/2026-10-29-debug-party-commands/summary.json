@@ -1,0 +1,204 @@
+{
+  "schema": "debug-party-acceptance/v1",
+  "status": "PASS_AS_SCOPED",
+  "at_utc": "2026-10-29T00:30:30.503493+00:00",
+  "debug_source_commit": "a5b625a3e0f9e18831d58280d33f4eef4e674d68",
+  "consumer_source_commit": "da5a7628496f071a2eb1d36ee021dbe1c9bb1755",
+  "debug_sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570",
+  "native_sha256": "19C0CC26185D959882F7DEF3BCD15B28248D34553E31E4F66C266798646A62D4",
+  "party_uids": [
+    1,
+    2
+  ],
+  "native_actions": [
+    "request",
+    "reject",
+    "request",
+    "accept"
+  ],
+  "negative_rejections": [
+    "replayed_request",
+    "expired_request",
+    "identity_mismatch"
+  ],
+  "extra_network_replies_after_negative": 0,
+  "dungeon": {
+    "dungeon_id": 1,
+    "difficulty": "normal",
+    "logical_run_id": 639288291529638996,
+    "room_path": [
+      [
+        0,
+        1,
+        2
+      ],
+      [
+        1,
+        1,
+        7
+      ],
+      [
+        2,
+        1,
+        13
+      ]
+    ],
+    "client_generations": [
+      8,
+      9,
+      10
+    ],
+    "boss_monster_id": 2,
+    "boss_hp_at_entry": 147,
+    "boss_dead_on_both": true,
+    "final_both_town": true,
+    "party_preserved": true
+  },
+  "settlement": {
+    "auto_free_columns": {
+      "A": 0,
+      "B": 1
+    },
+    "free_gold": {
+      "A": 7,
+      "B": 8
+    },
+    "exp_delta": {
+      "mageco": 30,
+      "heal1024": 354
+    },
+    "gold_total_delta": {
+      "mageco": 17,
+      "heal1024": 17
+    },
+    "B_overflow_mail_attachment": {
+      "item_id": 29901,
+      "count": 1,
+      "attachment_still_present": true
+    }
+  },
+  "verification": {
+    "python_tests": 80,
+    "native_party_failures": 0,
+    "native_runtime_failures": 0,
+    "native_state_failures": 0,
+    "native_navigation_failures": 0,
+    "native_overlay_fixture_failures": 0
+  },
+  "activation": {
+    "Configs": [
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\DF\\Config.ini",
+        "PreviousNormalSha256": "67A9C538BE31193F32B60EB5AC1355039F2B84F961EDB8C11F030AE326493864",
+        "NormalSha256": "0D9A612813DE316D9342A211BA2C87DB545342EC2E5D0CDBF0AA146C727582DB",
+        "OnlyAddedEnablePartyCommands": true,
+        "SnapshotDirectoryUnchanged": true
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\Config.ini",
+        "PreviousNormalSha256": "A9E8B5C21B0777FD4661D18688E8CF1365C76D69B9162632065D5A4D5C852A1E",
+        "NormalSha256": "319F31069F00630115F671FB0365CC2F450F707B5F82F5D0DE9B59D40696441B",
+        "OnlyAddedEnablePartyCommands": true,
+        "SnapshotDirectoryUnchanged": true
+      }
+    ],
+    "RestoredInterfaces": [
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.done.json",
+        "Exists": true,
+        "Sha256": "2C59460763EB611FABB30A4B481D0C0C55EBCA4EC3EAD4EED2342AE45AE52952",
+        "MatchesBaseline": true
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.focus",
+        "Exists": false,
+        "Sha256": null,
+        "MatchesBaseline": true
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.focus.done",
+        "Exists": true,
+        "Sha256": "E078FAF4056E7B95F3F83AE13CB506850789182B532DE320B54552664532B6E2",
+        "MatchesBaseline": true
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.cancel",
+        "Exists": false,
+        "Sha256": null,
+        "MatchesBaseline": true
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.done.json",
+        "Exists": true,
+        "Sha256": "2C59460763EB611FABB30A4B481D0C0C55EBCA4EC3EAD4EED2342AE45AE52952",
+        "MatchesBaseline": true
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.focus",
+        "Exists": false,
+        "Sha256": null,
+        "MatchesBaseline": true
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.focus.done",
+        "Exists": true,
+        "Sha256": "B422361DB5C139FA3D88255707DDC858F72C718673BB8D4C335B321FC1A0F1CD",
+        "MatchesBaseline": true
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.cancel",
+        "Exists": false,
+        "Sha256": null,
+        "MatchesBaseline": true
+      }
+    ],
+    "NormalA": {
+      "Matched": 50,
+      "Missing": [],
+      "Mismatched": [],
+      "ExcludedConfiguration": [
+        {
+          "File": "server.json",
+          "Reason": "preserved protected normal configuration",
+          "Sha256": "D604F6F0F9F351745B306EAEEEC8DAD028BF0330D4071090BCE80176CCB8F47C"
+        }
+      ]
+    },
+    "DebugTargets": [
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\DF\\debug.dll",
+        "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\party-sdk-acceptance-20261029\\preflight\\debug-before-party-api\\0-debug.dll",
+        "BeforeSha256": "5449F6F79024DE6AA2A0C206C40248D0D754C84DB83623A10C3EE8A16FF64492",
+        "Sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570"
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\debug.dll",
+        "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\party-sdk-acceptance-20261029\\preflight\\debug-before-party-api\\1-debug.dll",
+        "BeforeSha256": "5449F6F79024DE6AA2A0C206C40248D0D754C84DB83623A10C3EE8A16FF64492",
+        "Sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570"
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\debug.dll",
+        "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\party-sdk-acceptance-20261029\\preflight\\debug-before-party-api\\2-debug.dll",
+        "BeforeSha256": "5449F6F79024DE6AA2A0C206C40248D0D754C84DB83623A10C3EE8A16FF64492",
+        "Sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570"
+      },
+      {
+        "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\debug.dll",
+        "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\party-sdk-acceptance-20261029\\preflight\\debug-before-party-api\\3-debug.dll",
+        "BeforeSha256": "5449F6F79024DE6AA2A0C206C40248D0D754C84DB83623A10C3EE8A16FF64492",
+        "Sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570"
+      }
+    ],
+    "SourceFileCount": 519,
+    "ConsumerManifestSha256": "9C62CA324F917A2224317661D5CA1695C7C8F54F1F38DA29F97A342408449180",
+    "OriginalTestProcessesStopped": true
+  },
+  "limits": [
+    "normal Lorien only; adventure MAP6416 not tested in this run",
+    "no four-client rarity/epic dice matrix in this run",
+    "MP/cooldown/readiness still unknown; ordinary skill hotkey attempts use native client gating",
+    "free-card result verified by server settlement and persistent state; screenshots show post-settlement menu, not the transient flip animation",
+    "no active DLL unload/reload lifecycle support"
+  ]
+}

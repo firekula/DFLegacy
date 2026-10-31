@@ -1,0 +1,7 @@
+xref -> 0x08097306   共 2 处
+分布在 2 个函数里：
+
+    1x  GlobalData::Init()
+        0x0829c595
+    1x  InitCipherKeyString()
+        0x082a03d8

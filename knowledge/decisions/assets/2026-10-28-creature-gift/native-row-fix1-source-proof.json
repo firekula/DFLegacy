@@ -1,0 +1,59 @@
+{
+  "scope": "Frozen C79 actual record provenance and ab1e6b6/30AD bounded fix; this static recount is not a test rerun or native acceptance",
+  "native_source_commit": "ab1e6b685021f6cd6f8d125fc04dc0c5c50e931f",
+  "native_sha256": "30AD9A4A3CD565DE845F74AB3D6C6D60EED1F3429EC7D53929D912F158246584",
+  "freeze_manifest_sha256": "AE103E9C7C34680FC6F261A411FA49138BA207BA9572C75A4EF71860890AA8B4",
+  "review_sha256": "6A992B88FDBDB22BA94ECB5D1474497C2D7B380C49C039A569E2164C1A45A976",
+  "all_frozen_entries_hash_verified": 28,
+  "records": [
+    {
+      "commodity": 105010,
+      "item": 63013,
+      "native_price_dwords_32_36_40": [
+        0,
+        0,
+        9900
+      ],
+      "raw_record_sha256": "335B309E49B90D3ADEFD3CD40FEA94412C7D2CCDEEAD7CA12A94EF44CEA60776",
+      "all84_literal_bytes_match_frozen_native_snapshot": true,
+      "runtime_test_relocation": "only record+80 item pointer relocated to readable test storage"
+    },
+    {
+      "commodity": 105009,
+      "item": 63007,
+      "native_price_dwords_32_36_40": [
+        0,
+        0,
+        6600
+      ],
+      "raw_record_sha256": "7C9073B95F74CCEB59DD7D3F1D4892B148270F8BE33C6E3CED6FFC2D680E7B10",
+      "all84_literal_bytes_match_frozen_native_snapshot": true,
+      "runtime_test_relocation": "only record+80 item pointer relocated to readable test storage"
+    },
+    {
+      "commodity": 105008,
+      "item": 63006,
+      "native_price_dwords_32_36_40": [
+        0,
+        0,
+        9900
+      ],
+      "raw_record_sha256": "60DBBF35BB43BDFBBAE13898B32740DC0BA557F9C67B7E9A03C23AA224D26636",
+      "all84_literal_bytes_match_frozen_native_snapshot": true,
+      "runtime_test_relocation": "only record+80 item pointer relocated to readable test storage"
+    }
+  ],
+  "original_exe_sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5",
+  "raw_shop_snapshot_sha256": "35FDF0EB4167F21AB5E477F087AE184DB9D40B61E9452C41EA1F191286A9D977",
+  "raw_hook_snapshot_sha256": "4B6E581FE090FEFFFB5967472CE7CEFBBAFB12D1F076EF9F876E8428C51812AB",
+  "original_parser_price_consumer_provenance_sha256": "9C53FB62825F4826FCCB9D251BB31EA1DB157E389D8B70D89E14162372F0F6A3",
+  "source_test_sha256": "05DE8301A5507E2DE36F3DBF462E68A7507E471B887990C78DCF1FDD1459BC57",
+  "frozen_validation": {
+    "red": "exit1: three real rows disabled plus swapped mistaken layout accepted",
+    "focused": "exit0 creature gift row tests passed",
+    "full": "exit0 ijl15 compatibility tests passed",
+    "tests_build": "0 warnings / 0 errors",
+    "dll_build": "0 warnings / 0 errors"
+  },
+  "private_raw_inputs_exported": false
+}

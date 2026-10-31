@@ -1,0 +1,13 @@
+LIBRARY "debug"
+EXPORTS
+    DebugInitialize=_DebugInitialize@8
+    DebugRender=_DebugRender@4
+    DebugShutdown=_DebugShutdown@0
+    DebugPipelineEnabled=_DebugPipelineEnabled@0
+    DebugRecordPipeline=_DebugRecordPipeline@4
+    DebugGameplayTraceEnabled=_DebugGameplayTraceEnabled@0
+    DebugObserveGameplay=_DebugObserveGameplay@16
+    DebugObserveGameplayV2=_DebugObserveGameplayV2@20
+    DebugObserveMovementGate=_DebugObserveMovementGate@4
+    DebugNativeLoopEnabled=_DebugNativeLoopEnabled@0
+    DebugRecordNativeLoop=_DebugRecordNativeLoop@4

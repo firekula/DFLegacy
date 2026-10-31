@@ -1,0 +1,14 @@
+  正在确定要还原的项目…
+  所有项目均是最新的，无法还原。
+  DFLegacy.AccountClient -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.AccountClient\bin\Release\net10.0\DFLegacy.AccountClient.dll
+  DFLegacy.Protocol -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Protocol\bin\Release\net10.0\DFLegacy.Protocol.dll
+  DFLegacy.InterProcess -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.InterProcess\bin\Release\net10.0\DFLegacy.InterProcess.dll
+  DFLegacy.Server -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Server\bin\Release\net10.0\DFLegacy.Server.dll
+  DFLegacy.Channel -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Channel\bin\Release\net10.0\DFLegacy.Channel.dll
+  DFLegacy.SmokeTests -> D:\codex_worktree\party-chat-gold\DFLegacy\tests\DFLegacy.SmokeTests\bin\Release\net10.0\DFLegacy.SmokeTests.dll
+
+已成功生成。
+    0 个警告
+    0 个错误
+
+已用时间 00:00:01.83

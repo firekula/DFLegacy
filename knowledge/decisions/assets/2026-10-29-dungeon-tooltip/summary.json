@@ -1,0 +1,179 @@
+{
+  "Schema": "dungeon-tooltip-acceptance/v1",
+  "SourceCommit": "626890396dfba6eeed2a345ea04ca3981252efa7",
+  "BuildManifestSha256": "6901A9216A105F1F0B13CEC508AB5DB5179C6F610F3963926DD613F1CBD374D9",
+  "NativeSha256": "EAA7781BF1265EAE98E8BAD6BB56E9AE50C14A6018F6A4AC524DD19D3EBC9EDC",
+  "RedFinal": {
+    "role": "A",
+    "pid": 37796,
+    "process_started_filetime": 134377077334500515,
+    "tick_ms": 348093765,
+    "sdk_sequence": 3300,
+    "sdk_generation": 12,
+    "sdk_capture_tick": 348093453,
+    "scene": 1,
+    "local_user": 118205544,
+    "uid": 1,
+    "manager": 118702752,
+    "selector": 120332992,
+    "selector_active_raw": 1,
+    "selected": 0,
+    "hover": 0,
+    "tooltip_key": 1,
+    "registered_count": 1,
+    "windows": [
+      {
+        "window": 409695720,
+        "root": 118924808,
+        "control": {
+          "pointer": 118924808,
+          "type": ".?AVCNWindow@nengine@@",
+          "flag10_raw": 1,
+          "flag11_raw": 1,
+          "rect_raw": [
+            304,
+            62,
+            0,
+            0
+          ]
+        },
+        "in_delete_queue": false
+      }
+    ],
+    "delete_queue_count": 0,
+    "delete_queue": []
+  },
+  "GreenAFinal": {
+    "role": "A",
+    "pid": 77496,
+    "process_started_filetime": 134377086517244091,
+    "tick_ms": 348494609,
+    "sdk_sequence": 777,
+    "sdk_generation": 6,
+    "sdk_capture_tick": 348494359,
+    "scene": 1,
+    "local_user": 292576304,
+    "uid": 1,
+    "manager": 120539544,
+    "selector": 119629768,
+    "selector_active_raw": 1,
+    "selected": 0,
+    "hover": 0,
+    "tooltip_key": -1,
+    "registered_count": 0,
+    "windows": [],
+    "delete_queue_count": 0,
+    "delete_queue": []
+  },
+  "GreenBFinal": {
+    "role": "B",
+    "pid": 27296,
+    "process_started_filetime": 134377093644189628,
+    "tick_ms": 349423640,
+    "sdk_sequence": 1776,
+    "sdk_generation": 6,
+    "sdk_capture_tick": 349423421,
+    "scene": 1,
+    "local_user": 401529504,
+    "uid": 2,
+    "manager": 121024560,
+    "selector": 399955576,
+    "selector_active_raw": 1,
+    "selected": 0,
+    "hover": 0,
+    "tooltip_key": -1,
+    "registered_count": 0,
+    "windows": [],
+    "delete_queue_count": 0,
+    "delete_queue": []
+  },
+  "ManualCases": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-green-A\\u01-green-A-manual-native-reset-passed.json",
+      "Sha256": "DFDEC2C7A243424A27AFADE1D011AC2466CB2F75D793EBFB0FF41AEA07F33C9C",
+      "Passed": true
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-green-B\\u01-green-B-manual-gate-aligned-passed.json",
+      "Sha256": "14278B081E9621112D73003A0F392A547B65E2DFE5112E62092C3CB3F3A53EC0",
+      "Passed": true
+    }
+  ],
+  "NormalEntry": {
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\evidence-u01-green-B\\u01-green-B-normal-entry-ready-passed.json",
+    "Sha256": "330B12035A139240F05AECB0E5204C049C1B9A76D036EDB0AB71B8FA1C4380BC",
+    "After": {
+      "A": {
+        "role": "A",
+        "pid": 61920,
+        "process_started_filetime": 134377093635765236,
+        "tick_ms": 349561671,
+        "sdk_sequence": 2494,
+        "sdk_generation": 10,
+        "sdk_capture_tick": 349561453,
+        "scene": 3,
+        "local_user": 118014680,
+        "uid": 1,
+        "manager": 120954920,
+        "selector": 120617336,
+        "selector_active_raw": 1,
+        "selected": 0,
+        "hover": -1,
+        "tooltip_key": -1,
+        "registered_count": 0,
+        "windows": [],
+        "delete_queue_count": 0,
+        "delete_queue": []
+      },
+      "B": {
+        "role": "B",
+        "pid": 27296,
+        "process_started_filetime": 134377093644189628,
+        "tick_ms": 349561671,
+        "sdk_sequence": 2440,
+        "sdk_generation": 10,
+        "sdk_capture_tick": 349561406,
+        "scene": 3,
+        "local_user": 401529504,
+        "uid": 2,
+        "manager": 121024560,
+        "selector": 399955576,
+        "selector_active_raw": 1,
+        "selected": 0,
+        "hover": 0,
+        "tooltip_key": -1,
+        "registered_count": 0,
+        "windows": [],
+        "delete_queue_count": 0,
+        "delete_queue": []
+      }
+    },
+    "BothPartyUids": [
+      1,
+      2
+    ],
+    "Scope": "entry regression only"
+  },
+  "NaturalStateInheritance": [
+    {
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\closed-u01-red\\state.json",
+      "SourceSha256": "086236E27B9FDEDF0C45B399E3AD5C6471B3B0A6807E5CC05B8AAA5A4244EEE8",
+      "Fixture": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\fixture-u01-green-A.json",
+      "FixtureSha256": "086236E27B9FDEDF0C45B399E3AD5C6471B3B0A6807E5CC05B8AAA5A4244EEE8",
+      "NoStateByteChanges": true
+    },
+    {
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\closed-u01-green-A\\state.json",
+      "SourceSha256": "492BA228CDBA3B11D05BAEE1DE7B94EC706D229CA1B0C1EF8C2D6505EB11E234",
+      "Fixture": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\fixture-u01-green-B.json",
+      "FixtureSha256": "492BA228CDBA3B11D05BAEE1DE7B94EC706D229CA1B0C1EF8C2D6505EB11E234",
+      "NoStateByteChanges": true
+    }
+  ],
+  "NormalActivation": {
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\u01-normal-activation.json",
+    "Sha256": "0AB22321A07ADEBC536DA2DB89A5EE259EBDDFCAAC5E39D2E383F03B000B7558"
+  },
+  "OriginalPrintScreen": true,
+  "PassiveMemberTooltipNotReproduced": true
+}

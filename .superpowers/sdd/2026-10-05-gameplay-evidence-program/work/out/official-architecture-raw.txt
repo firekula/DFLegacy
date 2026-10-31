@@ -1,0 +1,285 @@
+########## A. 当前在跑的进程（按二进制名归并）##########
+ 3232       42:27 /bin/sh /opt/lampp/bin/mysqld_safe --datadir=/opt/lampp/var/mysql --pid-file=/opt/lampp/var/mysql/localhost.pid
+ 3592       42:27 /opt/lampp/sbin/mysqld --basedir=/opt/lampp --datadir=/opt/lampp/var/mysql --plugin-dir=/opt/lampp/lib/mysql/plugin --user=nobody --log-error=/opt/lampp/var/mysql/localhost.err --pid-file=/opt/lampp/var/mysql/localhost.pid --socket=/opt/lampp/var/mysql/mysql.sock --port=3306
+ 3686       42:20 /opt/lampp/bin/httpd -k start -DSSL -DPHP5 -E /opt/lampp/logs/error_log
+ 3698       42:20 ./df_stun_r start
+ 3732       42:19 /opt/lampp/bin/httpd -k start -DSSL -DPHP5 -E /opt/lampp/logs/error_log
+ 3733       42:19 /opt/lampp/bin/httpd -k start -DSSL -DPHP5 -E /opt/lampp/logs/error_log
+ 3734       42:19 /opt/lampp/bin/httpd -k start -DSSL -DPHP5 -E /opt/lampp/logs/error_log
+ 3735       42:19 /opt/lampp/bin/httpd -k start -DSSL -DPHP5 -E /opt/lampp/logs/error_log
+ 3736       42:19 /opt/lampp/bin/httpd -k start -DSSL -DPHP5 -E /opt/lampp/logs/error_log
+ 3739       42:19 /opt/lampp/bin/httpd -k start -DSSL -DPHP5 -E /opt/lampp/logs/error_log
+ 3744       42:19 ./df_manager_r manager start
+ 3748       42:19 ./df_monitor_r mnt_siroco start
+ 3752       42:19 ./df_relay_r relay_200 start
+ 3759       42:18 ./df_bridge_r bridge start
+ 3760       42:18 ./df_channel_r channel start
+ 3766       42:17 ./df_dbmw_r dbmw_gld_siroco start
+ 3771       42:17 ./df_dbmw_r dbmw_mnt_siroco start
+ 3777       42:17 ./df_dbmw_r dbmw_stat_siroco start
+ 3863       42:13 ./df_guild_r gld_siroco start
+ 3879       42:09 ./df_statics_r stat_siroco start
+ 3908       42:07 ./gunnersvr -t30 -i1
+ 3911       42:07 ./secagent
+ 3913       42:07 ./df_coserver_r coserver start
+ 3944       42:06 ./df_community_r community start
+ 3995       41:01 ./df_game_r siroco52 start
+ 3996       41:01 ./df_game_r siroco11 start
+
+########## B. 每个进程的监听端口 ##########
+tcp 0.0.0.0:10013 3996/./df_game_r
+tcp 0.0.0.0:10315 3995/./df_game_r
+tcp 0.0.0.0:20203 3771/./df_dbmw_r
+tcp 0.0.0.0:20303 3777/./df_dbmw_r
+tcp 0.0.0.0:20403 3766/./df_dbmw_r
+tcp 0.0.0.0:30303 3748/./df_monitor_r
+tcp 0.0.0.0:30403 3863/./df_guild_r
+tcp 0.0.0.0:3306 3592/mysqld
+tcp 0.0.0.0:40403 3744/./df_manager_r
+tcp 0.0.0.0:7000 3759/./df_bridge_r
+tcp 0.0.0.0:7001 3760/./df_channel_r
+tcp 0.0.0.0:7200 3752/./df_relay_r
+tcp :::1234 3686/httpd
+tcp 127.0.0.1:20013 3996/./df_game_r
+tcp 127.0.0.1:31100 3944/./df_community
+tcp :::443 3686/httpd
+udp 0.0.0.0:11013 
+udp 0.0.0.0:11315 
+udp 0.0.0.0:20203 
+udp 0.0.0.0:20303 
+udp 0.0.0.0:20403 
+udp 0.0.0.0:2311 
+udp 0.0.0.0:2312 
+udp 0.0.0.0:2313 
+udp 0.0.0.0:30303 
+udp 0.0.0.0:30403 
+udp 0.0.0.0:30503 
+udp 0.0.0.0:30703 
+udp 0.0.0.0:36945 
+udp 0.0.0.0:39805 
+udp 0.0.0.0:40397 
+udp 0.0.0.0:40403 
+udp 0.0.0.0:41783 
+udp 0.0.0.0:41879 
+udp 0.0.0.0:42024 
+udp 0.0.0.0:46426 
+udp 0.0.0.0:48112 
+udp 0.0.0.0:52740 
+udp 0.0.0.0:54321 
+udp 0.0.0.0:54759 
+udp 0.0.0.0:55985 
+udp 0.0.0.0:56993 
+udp 0.0.0.0:58379 
+udp 0.0.0.0:59218 
+udp 0.0.0.0:59492 
+udp 0.0.0.0:59512 
+udp 0.0.0.0:59655 
+udp 0.0.0.0:60090 
+udp 0.0.0.0:60175 
+udp 0.0.0.0:60190 
+udp 0.0.0.0:60635 
+udp 0.0.0.0:7000 
+udp 0.0.0.0:7001 
+udp 0.0.0.0:7200 
+
+########## C. 各服务的 cfg：监听端口 + 依赖的对端 ##########
+=== auction ===
+  --- auction_siroco.cfg ---
+    this_ip = 127.0.0.1
+    this_tcp_port = 30803
+    this_udp_port = 30803
+    logserver_ip = 127.0.0.1
+    logserver_port = 7009
+    monitor_server_ip = 127.0.0.1
+    monitor_server_port = 30303 //udp port
+    game_db_ip = 127.0.0.1
+    game_db_port = 3306
+    game_db_acc = game
+    game_db_pwd = 20e35501e56fcedbe8b10c1f8bc3595be8b10c1f8bc3595b 
+    game_db_name = taiwan_cain_2nd
+    auction_db_ip = 127.0.0.1
+    auction_db_port = 3306
+    auction_db_acc = game
+    auction_db_pwd = 20e35501e56fcedbe8b10c1f8bc3595be8b10c1f8bc3595b 
+    auction_db_name = taiwan_cain_auction_gold
+=== bridge ===
+  --- bridge.cfg ---
+    this_ip = 127.0.0.1
+    this_udp_port = 7000
+    this_tcp_port = 7000
+    db_ip = 127.0.0.1
+    db_name = d_channel
+    db_pwd = REDACTED_VM_DB_PASSWORD
+=== channel ===
+  --- channel.cfg ---
+    this_ip = 43.248.76.238
+    this_tcp_port = 7001
+    this_udp_port = 7001
+    bridge_ip = 127.0.0.1
+    bridge_port = 7000
+=== community ===
+  --- community.cfg ---
+    ip=127.0.0.1
+    port = 31100
+=== coserver ===
+  --- coserver.cfg ---
+    # Siroco Server UDP Port
+=== dbmw_guild ===
+  --- dbmw_gld_siroco.cfg ---
+    tcp_port = 20403
+    udp_port = 20403
+    dbmw_type = 2
+    master_db_ip = 127.0.0.1
+    master_db_port = 3306
+    master_db_acc = game
+    master_db_pwd = 20e35501e56fcedbe8b10c1f8bc3595be8b10c1f8bc3595b
+    master_db_name = d_taiwan
+=== dbmw_mnt ===
+  --- dbmw_mnt_siroco.cfg ---
+    tcp_port = 20203
+    udp_port = 20203
+    dbmw_type = 1
+    master_db_ip = 127.0.0.1
+    master_db_port = 3306
+    master_db_acc = game
+    master_db_pwd = 20e35501e56fcedbe8b10c1f8bc3595be8b10c1f8bc3595b
+    master_db_name = d_taiwan
+=== dbmw_stat ===
+  --- dbmw_stat_siroco.cfg ---
+    tcp_port = 20303
+    udp_port = 20303
+    dbmw_type = 3
+    master_db_ip = 127.0.0.1
+    master_db_port = 3306
+    master_db_acc = game
+    master_db_pwd = 20e35501e56fcedbe8b10c1f8bc3595be8b10c1f8bc3595b
+    master_db_name = d_taiwan
+=== game ===
+  --- db_info_tw.cfg ---
+    game_db_type = siroco
+    udp_ip_of_monitor = 127.0.0.1
+    udp_port_of_monitor = 30303
+    tcp_port_of_monitor = 30303
+    udp_ip_of_guild = 127.0.0.1
+    udp_port_of_guild = 30403
+    tcp_port_of_guild = 30403
+    udp_ip_of_statistic = 127.0.0.1
+    udp_port_of_statistic = 30503
+  --- siroco01.cfg ---
+    gc_no = 3001
+    server_type = 0
+    channel_no = 01
+    channel_name = ch.01
+    ip = 192.168.200.131
+    tcp_port = 10011
+    udp_port = 11011
+    udp_ip_of_monitor = 127.0.0.1
+    udp_port_of_monitor = 30303
+    tcp_port_of_monitor = 30303
+    udp_ip_of_doublecheck = 127.0.0.1
+    udp_port_of_doublecheck = 30703
+    udp_ip_of_statistic = 127.0.0.1
+    udp_port_of_statistic = 30503
+    udp_ip_of_guild = 127.0.0.1
+    udp_port_of_guild = 30403
+    tcp_port_of_guild = 30403
+    udp_ip_of_channel = 127.0.0.1
+    udp_port_of_channel = 7000
+    tcp_port_of_channel = 7000
+    exchange_server_ip = 127.0.0.1
+    exchange_server_port = 20011
+  --- siroco06.cfg ---
+    gc_no = 3006
+    server_type = 0
+    channel_no = 06
+    channel_name = ch.06
+    ip = 192.168.200.131
+    tcp_port = 10012
+    udp_port = 11012
+    udp_ip_of_monitor = 127.0.0.1
+    udp_port_of_monitor = 30303
+    tcp_port_of_monitor = 30303
+    udp_ip_of_doublecheck = 127.0.0.1
+    udp_port_of_doublecheck = 30703
+    udp_ip_of_statistic = 127.0.0.1
+    udp_port_of_statistic = 30503
+    udp_ip_of_guild = 127.0.0.1
+    udp_port_of_guild = 30403
+    tcp_port_of_guild = 30403
+    udp_ip_of_channel = 127.0.0.1
+    udp_port_of_channel = 7000
+    tcp_port_of_channel = 7000
+    exchange_server_ip = 127.0.0.1
+    exchange_server_port = 20012
+=== guild ===
+  --- gld_siroco.cfg ---
+    2.Define_Server_UDP_Port                        30403
+    4.Define_Server_TCP_Port                        30403
+    5.Define_DBMW_TCP_IP                            127.0.0.1
+    6.Define_DBMW_TCP_PORT                          20403
+    #Type   | Server Group| Index |  Server IP    | Server UDP Port  |
+=== manager ===
+  --- manager.cfg ---
+    2.Define_Server_UDP_Port                        40403
+    3.Define_Server_TCP_Port                        40403
+=== monitor ===
+  --- mnt_siroco.cfg ---
+    2.Define_Server_UDP_Port                        30303
+    4.Define_Server_TCP_Port                        30303
+    5.Define_DBMW_TCP_IP                            127.0.0.1
+    6.Define_DBMW_TCP_PORT                          20203
+    7.Define_MANAGER_TCP_IP                         127.0.0.1
+    8.Define_MANAGER_TCP_PORT                       40403
+    #Type   | Server Group| Index |  Server IP    | Server UDP Port  |
+=== point ===
+  --- point_siroco.cfg ---
+    this_ip = 127.0.0.1
+    this_tcp_port = 30603
+    this_udp_port = 30603
+    logserver_ip = 127.0.0.1
+    logserver_port = 7009
+    monitor_server_ip = 127.0.0.1
+    monitor_server_port = 30303 //udp port
+    game_db_ip = 127.0.0.1
+    game_db_port = 3306
+    game_db_acc = game
+    game_db_pwd = 20e35501e56fcedbe8b10c1f8bc3595be8b10c1f8bc3595b 
+    game_db_name = taiwan_cain_2nd
+    auction_db_ip = 127.0.0.1
+    auction_db_port = 3306
+    auction_db_acc = game
+    auction_db_pwd = 20e35501e56fcedbe8b10c1f8bc3595be8b10c1f8bc3595b
+    auction_db_name = taiwan_cain_auction_cera
+=== relay ===
+  --- relay_200.cfg ---
+    this_ip = 127.0.0.1
+    this_tcp_port=7200
+    this_udp_port=7200
+    udp_port_to_monitor=7200
+    monitor_ip=127.0.0.1
+    monitor_port=30303
+=== statics ===
+  --- stat_siroco.cfg ---
+    2.Define_Server_UDP_Port                        30503
+=== stun ===
+  --- udp_server.cfg ---
+
+########## D. 目录结构（每个服务的文件构成）##########
+  auction        exe=iteminfo.dat   cfg=1 table=0 log=yes pid=yes
+  bridge         exe=df_bridge_r    cfg=2 table=0 log=yes pid=yes
+  channel        exe=df_channel_r   cfg=1 table=0 log=yes pid=yes
+  community      exe=df_community_r cfg=1 table=0 log=yes pid=yes
+  coserver       exe=df_coserver_r  cfg=1 table=1 log=yes pid=yes
+  dbmw_guild     exe=df_dbmw_r      cfg=1 table=1 log=yes pid=yes
+  dbmw_mnt       exe=df_dbmw_r      cfg=1 table=1 log=yes pid=yes
+  dbmw_stat      exe=df_dbmw_r      cfg=1 table=1 log=yes pid=yes
+  game           exe=Hshield.dat    cfg=38 table=0 log=yes pid=yes
+  guild          exe=server_str.xml cfg=1 table=0 log=yes pid=yes
+  manager        exe=df_manager_r   cfg=1 table=1 log=yes pid=yes
+  monitor        exe=server_str.xml cfg=1 table=0 log=yes pid=yes
+  point          exe=iteminfo.dat   cfg=1 table=0 log=yes pid=yes
+  relay          exe=df_relay_r     cfg=1 table=0 log=yes pid=yes
+  secsvr         exe=—            cfg=0 table=0 log=yes pid=no
+  statics        exe=df_statics_r   cfg=1 table=1 log=yes pid=yes
+  stun           exe=df_stun_r      cfg=1 table=0 log=yes pid=yes
+--- exit=0 ---

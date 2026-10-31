@@ -1,0 +1,88 @@
+{
+  "review_scope": "Read-only native ACT1 contract review, no game control/process access/normal-save reads/closed-state reads/source edits. Evidence outputs only in this directory.",
+  "command_input": {
+    "actor_global": "0xB75A14",
+    "actor_kind_at_D0": "0x111",
+    "actor_uid": "secure +0xD4",
+    "getter_slot_5D4": "0x493770",
+    "getter_contract": "return actor+0x2384 when nonzero, else literal address 0xB5DE68; do not dereference B5DE68 as pointer",
+    "checker_table": "0x99A88C, RTTI CNCommandChecker",
+    "verified_slots": {
+      "0x28": "0x8BA0C0",
+      "0x30": "0x8BA7F0",
+      "0x40": "0x8BA030",
+      "0x44": "0x43BC30"
+    },
+    "predicate": "checker DWORD+0x64 != 0 suppresses type0 physical keyboard admission before reading BF164C/BF1650 keyboard objects",
+    "level_semantics": "8BA030 uses unsigned max priority on acquire, clears only when stored level <= release level; not a reference count",
+    "limits": [
+      "Zero means this gate is open, not that world movement must occur.",
+      "Lock level does not identify its owner or the popup that set it.",
+      "Existing command list and actor/scene gates, physical focus, click autowalk, chat text input and other controllers are outside this predicate.",
+      "Bind local UID and user+110 in scenes1/3 after capturing me. Repeat global actor/table/getter/UID/user binding/raw checker pointer/lock value. Scene2 keeps only original global/getter contract."
+    ]
+  },
+  "native_ui_writers": {
+    "waiting": "7993B0 setWaiting writes manager+FC4=0x11, CFD208=1, and checker.v40(0,false,1); 799400 releaseWaiting clears and calls v40(0,true,1).",
+    "chat": "84BE80 checks chat+16C !=0 then 84BEC3 calls checker.v40(0,false,1); 843D40 setActiveEdit changes chat+16C, false branch 843E3E calls v40(0,true,1). Enter/Esc are proposed live activation/cancel and require observation, not assumed outcome."
+  },
+  "dialog_layer": {
+    "high_layer": "manager+0xD0 for all current five class IDs >=0x18",
+    "table": "0x9A1608, RTTI nengine::IControl",
+    "slots": {
+      "0x04": "0x8F67A0",
+      "0x08": "0x8F67B0",
+      "0x0C": "0x4EA870",
+      "0x10": "0x8F6880",
+      "0x14": "0x8F6790",
+      "0x18": "0x401020",
+      "0x1C": "0x401020"
+    },
+    "list": "layer+64 sentinel, +68 count; node next0/prev4/value(root)+8; append at tail; render forward, hit reverse. Hit processing can reorder nodes.",
+    "limits": [
+      "8F6A80/8F6C30 are nonvirtual traversal functions, not layer vtable slots.",
+      "Root A7E09C is nengine::CNWindow and differs from layer IControl table.",
+      "Layer shown/enabled raw and attached/order do not prove visible pixels or a global input blocker.",
+      "C8/CC attach under manager+4C; D0 attaches under manager+50; no complete outer ancestor-chain contract exported."
+    ]
+  },
+  "official_elf_scope": {
+    "source": "G:/Game/DNF_ACT1/DFLegacy/.superpowers/sdd/2026-09-29-dungeon-party/work/official/df_game_r.bin",
+    "symbol_search_zero_matches": [
+      "CNCommandChecker",
+      "CNRDChatting",
+      "keyboard"
+    ],
+    "business_distinction": "Server ELF has packet/user-state validation (for example DisPatcher_MoveMap::read/process); that is not a client keyboard/UI admission contract and cannot establish these ACT1 addresses or root visibility."
+  },
+  "minimum_live_acceptance": [
+    "Keep four owned clients, same process identities, protected normal saves. No need to replay completed unrelated matrices.",
+    "For each role separately: town idle with known zero or observed initial level, Enter into empty chat, poll known nonzero scoped lock and try a short original direction key, Esc cancel without sending chat, poll zero/restored movement; other three remain controls.",
+    "Record pointer/UID/checker stability, before/during/after raw level and scoped Boolean. Do not infer a reason from dialog count.",
+    "Open/cancel an already authorized native confirmation once and record class/root active registration, close exclusion, high-layer attachment/order/raw layer flags. Do not require it to block keyboard unless exact gate actually changes."
+  ],
+  "optional_dialog_extensions": [
+    {
+      "class_id": 7,
+      "table": "0xA7E614",
+      "native_class": "CNRDPartyCreateWindow",
+      "ctor": "0x7C0D90",
+      "layer": "manager+C8"
+    },
+    {
+      "class_id": 9,
+      "table": "0xA7E6B4",
+      "native_class": "CNRDFriendAddRemoveWindow",
+      "ctor": "0x7C0FF0",
+      "layer": "manager+C8"
+    },
+    {
+      "class_id": 86,
+      "table": "0xA7F154",
+      "native_class": "CNRDInputRoomPasswordWindow",
+      "ctor": "0x7C3300",
+      "layer": "manager+D0"
+    }
+  ],
+  "mp_contract": "7C86BE UID lookup; 7C86CE user+110 saved at panel+34; 7C8E1B/27 call344/340. 652A70 reads secure+1170. 652A80 via652670(3)=actor+E30: base secure+E48 explicitly float32, factor securefloat+E50. Receiver native observation only; live replication still requires measurement."
+}

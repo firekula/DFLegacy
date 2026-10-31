@@ -1,0 +1,198 @@
+{
+  "schema": "map-feedback-source-specific-review/v1",
+  "date": "2026-10-29",
+  "verdict": "P1 none; P2 none; previous P2 remains resolved",
+  "workingTree": "D:\\codex_worktree\\party-chat-gold\\DFLegacy",
+  "base": "4825b825",
+  "priorReviewFilesPreserved": true,
+  "changedSinceP2Review": [
+    "src/DFLegacy.Debug/src/client_map_feedback_runtime.h",
+    "src/DFLegacy.Debug/src/client_map_feedback_runtime.cpp",
+    "src/DFLegacy.Debug/tests/map_click_feedback_runtime_tests.cpp"
+  ],
+  "unchangedSourceCount": 14,
+  "hookCall": "0x88187E",
+  "hookTarget": "0x8814A0",
+  "hookOriginalBytes": "E81DFCFFFF",
+  "ownerSelf": "binding.minimapToken",
+  "rawCallbackCallTargetIndependentlyDecoded": "0x8814A0",
+  "callsiteExactRawSlice": true,
+  "authorManifestMismatches": 0,
+  "authorReportedRedExit": 3,
+  "authorReportedGreenExit": 0,
+  "reviewerRanBuildOrTests": false,
+  "previousRootReportedLive": "RED: active goals with zero draw_count/texture_creations",
+  "freshLivePass": false,
+  "deviceChangeLiveTested": false,
+  "sources": [
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation.h",
+      "sha256": "42cebbee322b6df5f5073fa3a339dd80756a13d8a73e02fbeae40a5214a7b370",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation.cpp",
+      "sha256": "eed41c186ad07b96ebce221a7213bca89625e877c5a1925351cd97905207eedc",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation_runtime.cpp",
+      "sha256": "3a125a296467f0344124e2cbbf0038ca66047536f6ab4b81995cf199e18e1f5b",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_navigation_tests.cpp",
+      "sha256": "64e1e0ab39d8eba7a89f2e9b04be8c7518fff51ae26b906d556dbb7241835262",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp",
+      "sha256": "4fd2a31e56bf8c00be3694f65e1326d359ce8f0d4c3750fc1f268276a0ed3e45",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/DFLegacy.Debug.vcxproj",
+      "sha256": "484e325827dd5d1f336d720d259a4520fb2887759990a4bb9733226534097b1c",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/DFLegacy.Debug.Tests.vcxproj",
+      "sha256": "095973d16b82ad1c92986f41e49e3f7cfaf464962044cf452c87d69fe8042330",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/debug_tests.cpp",
+      "sha256": "0fbc50219a7f6f31defd4c44735ef1ec7c616a9a6b374d65c8297f36a09cea19",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/map_click_feedback.h",
+      "sha256": "3cdb4c2d636d7b5b156548e036a94e7997ee1a62be81db45ef0192946bf05ae3",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/map_click_feedback.cpp",
+      "sha256": "4baac43a65bcc06fca8bd619d93e40d442d590b40444a734d1084a277a446b7a",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/map_click_ring_pixels.inc",
+      "sha256": "448dde39298ab30a54948b456216e817b181ae415eb29b1cc50cfa2fa5e9d817",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/map_click_feedback_tests.cpp",
+      "sha256": "c8aa24cd4a465bd9c39667d73af3e8444c4a1691abf23162a1053245f14a286c",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_map_feedback_runtime.h",
+      "sha256": "1a04bb88adb0ca814e7ae0ef4b8c7dbe182e9e76610b4b25952bfa97b19add07",
+      "unchangedSinceP2Review": false
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_map_feedback_runtime.cpp",
+      "sha256": "05c1baca75b8388229d26a55acc37f6e94af5310edd8fbc84023d903326c48f1",
+      "unchangedSinceP2Review": false
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/map_click_feedback_runtime_tests.cpp",
+      "sha256": "4104a7440dc0568f3fcb8363e82a68f2e0825e8994c07fa0e0d884039ea0a5c1",
+      "unchangedSinceP2Review": false
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-29-map-right-feedback.md",
+      "sha256": "4a10753dc5dd2282d992a99051c1ff8d55721e10aa1c33e0814dc235a698572f",
+      "unchangedSinceP2Review": true
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-29-map-right-feedback.md",
+      "sha256": "dc13362de0ff6cd8e3c84f434b9745f07387911c58e8e21272fadf45914e393b",
+      "unchangedSinceP2Review": true
+    }
+  ],
+  "evidence": [
+    {
+      "path": "review/source-review.md",
+      "sha256": "b796c637f88da6af10490bc83318c7908f616e397d07b1a5f79e781c83dd1f0f"
+    },
+    {
+      "path": "review/reviewed-hashes.json",
+      "sha256": "c6851843720d7bc265edd2432df63d268114e48b0db13df14b3c9ff48b1a9499"
+    },
+    {
+      "path": "review/source-review-p2-followup.md",
+      "sha256": "878b96751e12eef61db3ff7c96d4470611d104d88fd47a07f6fc03767d473d6d"
+    },
+    {
+      "path": "review/reviewed-hashes-p2-followup.json",
+      "sha256": "f484c98fc6b84dc57965f50fbf4e456ec8d4344c2b18e7b6f1f66760a7e86871"
+    },
+    {
+      "path": "P/native-renderer/native-renderer-source-specific-manifest.json",
+      "sha256": "fea3d18a453505b1edf100b323be978f0cd1acf7c5e81eb65a3a980786d695b6"
+    },
+    {
+      "path": "P/native-renderer/SourceSpecific-red.log",
+      "sha256": "791c234690486a61b97d15219ab450944eb125e7356a54b514977b9071b7345a"
+    },
+    {
+      "path": "P/native-renderer/SourceSpecific-green.log",
+      "sha256": "9f14a1ff481a943dc4b41696741f2b1f1150e085b08fd7afeb6198cca9f3a400"
+    },
+    {
+      "path": "P/native-renderer/SourceSpecific-red-build.log",
+      "sha256": "d48584803ac5f277611c5fbdd4d363445ea034317f850a6cc26281487dcc939c"
+    },
+    {
+      "path": "P/native-renderer/SourceSpecific-green-build.log",
+      "sha256": "d48584803ac5f277611c5fbdd4d363445ea034317f850a6cc26281487dcc939c"
+    },
+    {
+      "path": "P/native-renderer/source-specific-hook-report.md",
+      "sha256": "dcaa002848943ee0fe12d8dbbddbf3d1785a06e10a0750e300282f030694bce3"
+    }
+  ],
+  "nativeIncrement": [
+    {
+      "path": "native-contract-increment/008814A0-nmap_draw.asm.txt",
+      "length": 16071,
+      "sha256": "cc0520f31054bd0d1467e030d9b4d62ff9bba2a153d0a1e7f512b6eb695d7b77"
+    },
+    {
+      "path": "native-contract-increment/008814A0-nmap_draw.bin",
+      "length": 949,
+      "sha256": "281837e34be98f525eaac1d721962a724de7a5c0746581c24df5e0ce26b61a38"
+    },
+    {
+      "path": "native-contract-increment/00881860-nmap_callback.asm.txt",
+      "length": 1738,
+      "sha256": "6512f981b8bec4b297f053f7b3a67529ee0a2d153f123d0ea2747c3d332c70d7"
+    },
+    {
+      "path": "native-contract-increment/00881860-nmap_callback.bin",
+      "length": 82,
+      "sha256": "68698ffade85e5190c36819a94554eef1eab27cbc93329091a3d2255b3e0bde6"
+    },
+    {
+      "path": "native-contract-increment/0088187C-nmap_specific_draw_callsite.asm.txt",
+      "length": 192,
+      "sha256": "f7b81a252ed0bbbbcbfc3ae5804dcaf5cefbf3d30e4141a1d1eed81f19c394a1"
+    },
+    {
+      "path": "native-contract-increment/0088187C-nmap_specific_draw_callsite.bin",
+      "length": 14,
+      "sha256": "84e67609d024c61b573c67b25b439572674b7baebdcb06ea5f6a408cd826786a"
+    },
+    {
+      "path": "native-contract-increment/contract.md",
+      "length": 2865,
+      "sha256": "41836e53f6474167c19951318982c7f82f677028159ef7c0b3b9eba1b64972cd"
+    },
+    {
+      "path": "native-contract-increment/nmap-source-specific-contract.json",
+      "length": 1700,
+      "sha256": "c1e923dfff11cec49f9932057f8d03b360dc8d1a01d73bd6d9aeec39292d85e0"
+    }
+  ]
+}

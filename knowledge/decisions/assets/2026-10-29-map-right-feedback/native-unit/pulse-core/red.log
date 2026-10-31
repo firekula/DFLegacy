@@ -1,0 +1,24 @@
+FAIL map click feedback: start activates exact clock
+FAIL map click feedback: map local point preserved
+FAIL map click feedback: first frame
+FAIL map click feedback: initial 50ms hold
+FAIL map click feedback: growth begins at 50ms
+FAIL map click feedback: mid growth fades RGB and alpha
+FAIL map click feedback: second keyframe
+FAIL map click feedback: mid long fade
+FAIL map click feedback: third keyframe
+FAIL map click feedback: mid final fade
+FAIL map click feedback: transparent final frame
+FAIL map click feedback: second starts at 200ms
+FAIL map click feedback: second owns shifted original curve
+FAIL map click feedback: lifetime remains active through 1949ms
+FAIL map click feedback: same binding survives normal cross area
+FAIL map click feedback: new click replaces point and clock
+FAIL map click feedback: replacement resets delayed ring
+FAIL map click feedback: high tick lifetime does not overflow
+FAIL map click feedback: zero tick is valid
+FAIL map click feedback: blue source intensity maps to yellow
+FAIL map click feedback: max RGB includes every channel
+FAIL map click feedback: five bit intensity and alpha preserved
+FAIL map click feedback: all 65536 source colors preserve alpha and maximum intensity
+FAIL map click feedback: native ring is colored and keeps sparse outline

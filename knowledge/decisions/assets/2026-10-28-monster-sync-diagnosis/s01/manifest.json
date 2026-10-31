@@ -1,0 +1,20 @@
+{
+  "Schema": "monster-sync-s01-assets/v1",
+  "Files": [
+    {
+      "File": "decoded-counts.json",
+      "Bytes": 30641,
+      "Sha256": "394FE432F92B73F4D34D11443792E2981B4625539D97D510A1F9D6614D61FA34"
+    },
+    {
+      "File": "evidence-index.json",
+      "Bytes": 1482,
+      "Sha256": "71B3466E6FBBA7AAE54DB990956565DF6CCF56866E1349078566E7FAA51D64F1"
+    },
+    {
+      "File": "native-contract.json",
+      "Bytes": 3111,
+      "Sha256": "40C557A1871B7C4E3007380C272B24A24F501220F10B317ABA224D4CF4128FF8"
+    }
+  ]
+}

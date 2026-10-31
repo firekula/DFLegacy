@@ -1,0 +1,256 @@
+0x0809df90  push    ebp
+0x0809df91  mov     ebp, esp
+0x0809df93  push    edi
+0x0809df94  push    esi
+0x0809df95  push    ebx
+0x0809df96  sub     esp, 0x1c
+0x0809df99  mov     eax, dword ptr [ebp + 8]
+0x0809df9c  cmp     eax, 0xd
+0x0809df9f  ja      0x809e2c3
+0x0809dfa5  mov     eax, dword ptr [eax*4 + 0x8b13c48]
+0x0809dfac  jmp     eax
+0x0809dfae  mov     dword ptr [esp], 0xc
+0x0809dfb5  call 0x08724450  _Znwj
+0x0809dfba  mov     ebx, eax
+0x0809dfbc  mov     eax, ebx
+0x0809dfbe  mov     dword ptr [esp], eax
+0x0809dfc1  call 0x0809ce50  _ZN11CNCryptoTeaC2Ev
+0x0809dfc6  jmp     0x809dfe0
+0x0809dfc8  mov     esi, edx
+0x0809dfca  mov     edi, eax
+0x0809dfcc  mov     dword ptr [esp], ebx
+0x0809dfcf  call 0x087244f0  _ZdlPv
+0x0809dfd4  mov     eax, edi
+0x0809dfd6  mov     edx, esi
+0x0809dfd8  mov     dword ptr [esp], eax
+0x0809dfdb  call 0x08ae3750  _Unwind_Resume
+0x0809dfe0  mov     eax, ebx
+0x0809dfe2  jmp     0x809e2c8
+0x0809dfe7  mov     dword ptr [esp], 0xc
+0x0809dfee  call 0x08724450  _Znwj
+0x0809dff3  mov     ebx, eax
+0x0809dff5  mov     eax, ebx
+0x0809dff7  mov     dword ptr [esp], eax
+0x0809dffa  call 0x0809bf08  _ZN16CNCryptoRijndaelC2Ev
+0x0809dfff  jmp     0x809e019
+0x0809e001  mov     esi, edx
+0x0809e003  mov     edi, eax
+0x0809e005  mov     dword ptr [esp], ebx
+0x0809e008  call 0x087244f0  _ZdlPv
+0x0809e00d  mov     eax, edi
+0x0809e00f  mov     edx, esi
+0x0809e011  mov     dword ptr [esp], eax
+0x0809e014  call 0x08ae3750  _Unwind_Resume
+0x0809e019  mov     eax, ebx
+0x0809e01b  jmp     0x809e2c8
+0x0809e020  mov     dword ptr [esp], 0x10
+0x0809e027  call 0x08724450  _Znwj
+0x0809e02c  mov     ebx, eax
+0x0809e02e  mov     eax, ebx
+0x0809e030  mov     dword ptr [esp], eax
+0x0809e033  call 0x0809980c  _ZN16CNCryptoBlowFishC1Ev
+0x0809e038  jmp     0x809e052
+0x0809e03a  mov     esi, edx
+0x0809e03c  mov     edi, eax
+0x0809e03e  mov     dword ptr [esp], ebx
+0x0809e041  call 0x087244f0  _ZdlPv
+0x0809e046  mov     eax, edi
+0x0809e048  mov     edx, esi
+0x0809e04a  mov     dword ptr [esp], eax
+0x0809e04d  call 0x08ae3750  _Unwind_Resume
+0x0809e052  mov     eax, ebx
+0x0809e054  jmp     0x809e2c8
+0x0809e059  mov     dword ptr [esp], 0xc
+0x0809e060  call 0x08724450  _Znwj
+0x0809e065  mov     ebx, eax
+0x0809e067  mov     eax, ebx
+0x0809e069  mov     dword ptr [esp], eax
+0x0809e06c  call 0x0809bb40  _ZN11CNCryptoRc6C2Ev
+0x0809e071  jmp     0x809e08b
+0x0809e073  mov     esi, edx
+0x0809e075  mov     edi, eax
+0x0809e077  mov     dword ptr [esp], ebx
+0x0809e07a  call 0x087244f0  _ZdlPv
+0x0809e07f  mov     eax, edi
+0x0809e081  mov     edx, esi
+0x0809e083  mov     dword ptr [esp], eax
+0x0809e086  call 0x08ae3750  _Unwind_Resume
+0x0809e08b  mov     eax, ebx
+0x0809e08d  jmp     0x809e2c8
+0x0809e092  mov     dword ptr [esp], 0x10
+0x0809e099  call 0x08724450  _Znwj
+0x0809e09e  mov     ebx, eax
+0x0809e0a0  mov     eax, ebx
+0x0809e0a2  mov     dword ptr [esp], eax
+0x0809e0a5  call 0x0809c442  _ZN13CNCryptoShiftC2Ev
+0x0809e0aa  jmp     0x809e0c4
+0x0809e0ac  mov     esi, edx
+0x0809e0ae  mov     edi, eax
+0x0809e0b0  mov     dword ptr [esp], ebx
+0x0809e0b3  call 0x087244f0  _ZdlPv
+0x0809e0b8  mov     eax, edi
+0x0809e0ba  mov     edx, esi
+0x0809e0bc  mov     dword ptr [esp], eax
+0x0809e0bf  call 0x08ae3750  _Unwind_Resume
+0x0809e0c4  mov     eax, ebx
+0x0809e0c6  jmp     0x809e2c8
+0x0809e0cb  mov     dword ptr [esp], 0xc
+0x0809e0d2  call 0x08724450  _Znwj
+0x0809e0d7  mov     ebx, eax
+0x0809e0d9  mov     eax, ebx
+0x0809e0db  mov     dword ptr [esp], eax
+0x0809e0de  call 0x0809d328  _ZN15CNCryptoTwoFishC1Ev
+0x0809e0e3  jmp     0x809e0fd
+0x0809e0e5  mov     esi, edx
+0x0809e0e7  mov     edi, eax
+0x0809e0e9  mov     dword ptr [esp], ebx
+0x0809e0ec  call 0x087244f0  _ZdlPv
+0x0809e0f1  mov     eax, edi
+0x0809e0f3  mov     edx, esi
+0x0809e0f5  mov     dword ptr [esp], eax
+0x0809e0f8  call 0x08ae3750  _Unwind_Resume
+0x0809e0fd  mov     eax, ebx
+0x0809e0ff  jmp     0x809e2c8
+0x0809e104  mov     dword ptr [esp], 0xc
+0x0809e10b  call 0x08724450  _Znwj
+0x0809e110  mov     ebx, eax
+0x0809e112  mov     eax, ebx
+0x0809e114  mov     dword ptr [esp], eax
+0x0809e117  call 0x0809c8ac  _ZN16CNCryptoSkipjackC1Ev
+0x0809e11c  jmp     0x809e136
+0x0809e11e  mov     esi, edx
+0x0809e120  mov     edi, eax
+0x0809e122  mov     dword ptr [esp], ebx
+0x0809e125  call 0x087244f0  _ZdlPv
+0x0809e12a  mov     eax, edi
+0x0809e12c  mov     edx, esi
+0x0809e12e  mov     dword ptr [esp], eax
+0x0809e131  call 0x08ae3750  _Unwind_Resume
+0x0809e136  mov     eax, ebx
+0x0809e138  jmp     0x809e2c8
+0x0809e13d  mov     dword ptr [esp], 0xc
+0x0809e144  call 0x08724450  _Znwj
+0x0809e149  mov     ebx, eax
+0x0809e14b  mov     eax, ebx
+0x0809e14d  mov     dword ptr [esp], eax
+0x0809e150  call 0x0809a4b0  _ZN14CNCryptoKasumiC2Ev
+0x0809e155  jmp     0x809e16f
+0x0809e157  mov     esi, edx
+0x0809e159  mov     edi, eax
+0x0809e15b  mov     dword ptr [esp], ebx
+0x0809e15e  call 0x087244f0  _ZdlPv
+0x0809e163  mov     eax, edi
+0x0809e165  mov     edx, esi
+0x0809e167  mov     dword ptr [esp], eax
+0x0809e16a  call 0x08ae3750  _Unwind_Resume
+0x0809e16f  mov     eax, ebx
+0x0809e171  jmp     0x809e2c8
+0x0809e176  mov     dword ptr [esp], 0xc
+0x0809e17d  call 0x08724450  _Znwj
+0x0809e182  mov     ebx, eax
+0x0809e184  mov     eax, ebx
+0x0809e186  mov     dword ptr [esp], eax
+0x0809e189  call 0x0809d8cc  _ZN12CNCryptoXTeaC2Ev
+0x0809e18e  jmp     0x809e1a8
+0x0809e190  mov     esi, edx
+0x0809e192  mov     edi, eax
+0x0809e194  mov     dword ptr [esp], ebx
+0x0809e197  call 0x087244f0  _ZdlPv
+0x0809e19c  mov     eax, edi
+0x0809e19e  mov     edx, esi
+0x0809e1a0  mov     dword ptr [esp], eax
+0x0809e1a3  call 0x08ae3750  _Unwind_Resume
+0x0809e1a8  mov     eax, ebx
+0x0809e1aa  jmp     0x809e2c8
+0x0809e1af  mov     dword ptr [esp], 0xc
+0x0809e1b6  call 0x08724450  _Znwj
+0x0809e1bb  mov     ebx, eax
+0x0809e1bd  mov     eax, ebx
+0x0809e1bf  mov     dword ptr [esp], eax
+0x0809e1c2  call 0x0809b59c  _ZN15CNCryptoNoekeonC1Ev
+0x0809e1c7  jmp     0x809e1e1
+0x0809e1c9  mov     esi, edx
+0x0809e1cb  mov     edi, eax
+0x0809e1cd  mov     dword ptr [esp], ebx
+0x0809e1d0  call 0x087244f0  _ZdlPv
+0x0809e1d5  mov     eax, edi
+0x0809e1d7  mov     edx, esi
+0x0809e1d9  mov     dword ptr [esp], eax
+0x0809e1dc  call 0x08ae3750  _Unwind_Resume
+0x0809e1e1  mov     eax, ebx
+0x0809e1e3  jmp     0x809e2c8
+0x0809e1e8  mov     dword ptr [esp], 0xc
+0x0809e1ef  call 0x08724450  _Znwj
+0x0809e1f4  mov     ebx, eax
+0x0809e1f6  mov     eax, ebx
+0x0809e1f8  mov     dword ptr [esp], eax
+0x0809e1fb  call 0x0809aff8  _ZN14CNCryptoMulti2C1Ev
+0x0809e200  jmp     0x809e21a
+0x0809e202  mov     esi, edx
+0x0809e204  mov     edi, eax
+0x0809e206  mov     dword ptr [esp], ebx
+0x0809e209  call 0x087244f0  _ZdlPv
+0x0809e20e  mov     eax, edi
+0x0809e210  mov     edx, esi
+0x0809e212  mov     dword ptr [esp], eax
+0x0809e215  call 0x08ae3750  _Unwind_Resume
+0x0809e21a  mov     eax, ebx
+0x0809e21c  jmp     0x809e2c8
+0x0809e221  mov     dword ptr [esp], 0xc
+0x0809e228  call 0x08724450  _Znwj
+0x0809e22d  mov     ebx, eax
+0x0809e22f  mov     eax, ebx
+0x0809e231  mov     dword ptr [esp], eax
+0x0809e234  call 0x08099f0c  _ZN13CNCryptoCast5C1Ev
+0x0809e239  jmp     0x809e253
+0x0809e23b  mov     esi, edx
+0x0809e23d  mov     edi, eax
+0x0809e23f  mov     dword ptr [esp], ebx
+0x0809e242  call 0x087244f0  _ZdlPv
+0x0809e247  mov     eax, edi
+0x0809e249  mov     edx, esi
+0x0809e24b  mov     dword ptr [esp], eax
+0x0809e24e  call 0x08ae3750  _Unwind_Resume
+0x0809e253  mov     eax, ebx
+0x0809e255  jmp     0x809e2c8
+0x0809e257  mov     dword ptr [esp], 0xc
+0x0809e25e  call 0x08724450  _Znwj
+0x0809e263  mov     ebx, eax
+0x0809e265  mov     eax, ebx
+0x0809e267  mov     dword ptr [esp], eax
+0x0809e26a  call 0x0809aa54  _ZN14CNCryptoKhazadC1Ev
+0x0809e26f  jmp     0x809e289
+0x0809e271  mov     esi, edx
+0x0809e273  mov     edi, eax
+0x0809e275  mov     dword ptr [esp], ebx
+0x0809e278  call 0x087244f0  _ZdlPv
+0x0809e27d  mov     eax, edi
+0x0809e27f  mov     edx, esi
+0x0809e281  mov     dword ptr [esp], eax
+0x0809e284  call 0x08ae3750  _Unwind_Resume
+0x0809e289  mov     eax, ebx
+0x0809e28b  jmp     0x809e2c8
+0x0809e28d  mov     dword ptr [esp], 0xc
+0x0809e294  call 0x08724450  _Znwj
+0x0809e299  mov     ebx, eax
+0x0809e29b  mov     eax, ebx
+0x0809e29d  mov     dword ptr [esp], eax
+0x0809e2a0  call 0x08099264  _ZN14CNCryptoAnubisC2Ev
+0x0809e2a5  jmp     0x809e2bf
+0x0809e2a7  mov     esi, edx
+0x0809e2a9  mov     edi, eax
+0x0809e2ab  mov     dword ptr [esp], ebx
+0x0809e2ae  call 0x087244f0  _ZdlPv
+0x0809e2b3  mov     eax, edi
+0x0809e2b5  mov     edx, esi
+0x0809e2b7  mov     dword ptr [esp], eax
+0x0809e2ba  call 0x08ae3750  _Unwind_Resume
+0x0809e2bf  mov     eax, ebx
+0x0809e2c1  jmp     0x809e2c8
+0x0809e2c3  mov     eax, 0
+0x0809e2c8  add     esp, 0x1c
+0x0809e2cb  pop     ebx
+0x0809e2cc  pop     esi
+0x0809e2cd  pop     edi
+0x0809e2ce  pop     ebp
+0x0809e2cf  ret     

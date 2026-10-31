@@ -1,0 +1,146 @@
+0x082a002a  push    ebp
+0x082a002b  mov     ebp, esp
+0x082a002d  sub     esp, 0x48
+0x082a0030  mov     dword ptr [ebp - 0x14], 0
+0x082a0037  mov     dword ptr [esp], 5
+0x082a003e  call 0x086b1b87  _Z12get_rand_inti
+0x082a0043  mov     dword ptr [ebp - 0x10], eax
+0x082a0046  lea     eax, [ebp - 0x18]
+0x082a0049  mov     dword ptr [esp], eax
+0x082a004c  call 0x082b3cd8  _ZNSt17_Rb_tree_iteratorISt4pairIKiSsEEC1Ev
+0x082a0051  lea     eax, [ebp - 0x1c]
+0x082a0054  mov     dword ptr [esp], eax
+0x082a0057  call 0x082b3cd8  _ZNSt17_Rb_tree_iteratorISt4pairIKiSsEEC1Ev
+0x082a005c  cmp     dword ptr [ebp - 0x10], 4
+0x082a0060  ja      0x82a0217
+0x082a0066  mov     eax, dword ptr [ebp - 0x10]
+0x082a0069  shl     eax, 2
+0x082a006c  mov     eax, dword ptr [eax + 0x8c186f0]
+0x082a0072  jmp     eax
+0x082a0074  lea     eax, [ebp - 0x2c]
+0x082a0077  mov     dword ptr [esp + 4], 0x94fdc00
+0x082a007f  mov     dword ptr [esp], eax
+0x082a0082  call 0x080e60f2  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE5beginEv
+0x082a0087  sub     esp, 4
+0x082a008a  mov     eax, dword ptr [ebp - 0x2c]
+0x082a008d  mov     dword ptr [ebp - 0x18], eax
+0x082a0090  lea     eax, [ebp - 0x2c]
+0x082a0093  mov     dword ptr [esp + 4], 0x94fdc00
+0x082a009b  mov     dword ptr [esp], eax
+0x082a009e  call 0x080e6118  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE3endEv
+0x082a00a3  sub     esp, 4
+0x082a00a6  mov     eax, dword ptr [ebp - 0x2c]
+0x082a00a9  mov     dword ptr [ebp - 0x1c], eax
+0x082a00ac  mov     dword ptr [esp], 0x7d0
+0x082a00b3  call 0x086b1b87  _Z12get_rand_inti
+0x082a00b8  mov     dword ptr [ebp - 0xc], eax
+0x082a00bb  jmp     0x82a01ea
+0x082a00c0  lea     eax, [ebp - 0x2c]
+0x082a00c3  mov     dword ptr [esp + 4], 0x94fac00
+0x082a00cb  mov     dword ptr [esp], eax
+0x082a00ce  call 0x080e60f2  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE5beginEv
+0x082a00d3  sub     esp, 4
+0x082a00d6  mov     eax, dword ptr [ebp - 0x2c]
+0x082a00d9  mov     dword ptr [ebp - 0x18], eax
+0x082a00dc  lea     eax, [ebp - 0x2c]
+0x082a00df  mov     dword ptr [esp + 4], 0x94fac00
+0x082a00e7  mov     dword ptr [esp], eax
+0x082a00ea  call 0x080e6118  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE3endEv
+0x082a00ef  sub     esp, 4
+0x082a00f2  mov     eax, dword ptr [ebp - 0x2c]
+0x082a00f5  mov     dword ptr [ebp - 0x1c], eax
+0x082a00f8  mov     dword ptr [esp], 0x1388
+0x082a00ff  call 0x086b1b87  _Z12get_rand_inti
+0x082a0104  mov     dword ptr [ebp - 0xc], eax
+0x082a0107  jmp     0x82a01ea
+0x082a010c  lea     eax, [ebp - 0x2c]
+0x082a010f  mov     dword ptr [esp + 4], 0x94ff260
+0x082a0117  mov     dword ptr [esp], eax
+0x082a011a  call 0x080e60f2  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE5beginEv
+0x082a011f  sub     esp, 4
+0x082a0122  mov     eax, dword ptr [ebp - 0x2c]
+0x082a0125  mov     dword ptr [ebp - 0x18], eax
+0x082a0128  lea     eax, [ebp - 0x2c]
+0x082a012b  mov     dword ptr [esp + 4], 0x94ff260
+0x082a0133  mov     dword ptr [esp], eax
+0x082a0136  call 0x080e6118  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE3endEv
+0x082a013b  sub     esp, 4
+0x082a013e  mov     eax, dword ptr [ebp - 0x2c]
+0x082a0141  mov     dword ptr [ebp - 0x1c], eax
+0x082a0144  mov     dword ptr [esp], 0x1f4
+0x082a014b  call 0x086b1b87  _Z12get_rand_inti
+0x082a0150  mov     dword ptr [ebp - 0xc], eax
+0x082a0153  jmp     0x82a01ea
+0x082a0158  lea     eax, [ebp - 0x2c]
+0x082a015b  mov     dword ptr [esp + 4], 0x9500480
+0x082a0163  mov     dword ptr [esp], eax
+0x082a0166  call 0x080e60f2  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE5beginEv
+0x082a016b  sub     esp, 4
+0x082a016e  mov     eax, dword ptr [ebp - 0x2c]
+0x082a0171  mov     dword ptr [ebp - 0x18], eax
+0x082a0174  lea     eax, [ebp - 0x2c]
+0x082a0177  mov     dword ptr [esp + 4], 0x9500480
+0x082a017f  mov     dword ptr [esp], eax
+0x082a0182  call 0x080e6118  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE3endEv
+0x082a0187  sub     esp, 4
+0x082a018a  mov     eax, dword ptr [ebp - 0x2c]
+0x082a018d  mov     dword ptr [ebp - 0x1c], eax
+0x082a0190  mov     dword ptr [esp], 0x3e8
+0x082a0197  call 0x086b1b87  _Z12get_rand_inti
+0x082a019c  mov     dword ptr [ebp - 0xc], eax
+0x082a019f  jmp     0x82a01ea
+0x082a01a1  lea     eax, [ebp - 0x2c]
+0x082a01a4  mov     dword ptr [esp + 4], 0x94ff3a0
+0x082a01ac  mov     dword ptr [esp], eax
+0x082a01af  call 0x080e60f2  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE5beginEv
+0x082a01b4  sub     esp, 4
+0x082a01b7  mov     eax, dword ptr [ebp - 0x2c]
+0x082a01ba  mov     dword ptr [ebp - 0x18], eax
+0x082a01bd  lea     eax, [ebp - 0x2c]
+0x082a01c0  mov     dword ptr [esp + 4], 0x94ff3a0
+0x082a01c8  mov     dword ptr [esp], eax
+0x082a01cb  call 0x080e6118  _ZNSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE3endEv
+0x082a01d0  sub     esp, 4
+0x082a01d3  mov     eax, dword ptr [ebp - 0x2c]
+0x082a01d6  mov     dword ptr [ebp - 0x1c], eax
+0x082a01d9  mov     dword ptr [esp], 0x3e8
+0x082a01e0  call 0x086b1b87  _Z12get_rand_inti
+0x082a01e5  mov     dword ptr [ebp - 0xc], eax
+0x082a01e8  jmp     0x82a0217
+0x082a01ea  jmp     0x82a0217
+0x082a01ec  lea     eax, [ebp - 0x18]
+0x082a01ef  mov     dword ptr [esp], eax
+0x082a01f2  call 0x080e6610  _ZNSt17_Rb_tree_iteratorISt4pairIKiSsEEppEv
+0x082a01f7  lea     edx, [ebp - 0x1c]
+0x082a01fa  mov     dword ptr [esp + 4], edx
+0x082a01fe  mov     dword ptr [esp], eax
+0x082a0201  call 0x080c7044  _ZNKSt17_Rb_tree_iteratorISt4pairIKiSsEEeqERKS3_
+0x082a0206  test    al, al
+0x082a0208  je      0x82a0217
+0x082a020a  lea     eax, [ebp - 0x18]
+0x082a020d  mov     dword ptr [esp], eax
+0x082a0210  call 0x080c7b88  _ZNSt17_Rb_tree_iteratorISt4pairIKiSsEEmmEv
+0x082a0215  jmp     0x82a0228
+0x082a0217  mov     eax, dword ptr [ebp - 0x14]
+0x082a021a  cmp     eax, dword ptr [ebp - 0xc]
+0x082a021d  setl    al
+0x082a0220  add     dword ptr [ebp - 0x14], 1
+0x082a0224  test    al, al
+0x082a0226  jne     0x82a01ec
+0x082a0228  mov     eax, dword ptr [ebp + 8]
+0x082a022b  mov     edx, dword ptr [ebp - 0x10]
+0x082a022e  mov     dword ptr [eax], edx
+0x082a0230  lea     eax, [ebp - 0x18]
+0x082a0233  mov     dword ptr [esp], eax
+0x082a0236  call 0x082aaa64  _ZNKSt17_Rb_tree_iteratorISt4pairIKiSsEEdeEv
+0x082a023b  mov     edx, dword ptr [eax]
+0x082a023d  mov     eax, dword ptr [ebp + 0xc]
+0x082a0240  mov     dword ptr [eax], edx
+0x082a0242  lea     eax, [ebp - 0x18]
+0x082a0245  mov     dword ptr [esp], eax
+0x082a0248  call 0x082aaa64  _ZNKSt17_Rb_tree_iteratorISt4pairIKiSsEEdeEv
+0x082a024d  add     eax, 4
+0x082a0250  mov     dword ptr [esp], eax
+0x082a0253  call 0x087064f0  _ZNKSs5c_strEv
+0x082a0258  leave   
+0x082a0259  ret     

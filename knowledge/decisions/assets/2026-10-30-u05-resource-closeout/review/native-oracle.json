@@ -1,0 +1,190 @@
+{
+  "pe_sha256": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5",
+  "interpolation": [
+    {
+      "first": 2,
+      "last": 4,
+      "level": 1,
+      "maximum": 10,
+      "native": 2
+    },
+    {
+      "first": 4,
+      "last": 1,
+      "level": 2,
+      "maximum": 3,
+      "native": 3
+    },
+    {
+      "first": 2,
+      "last": 4,
+      "level": 10,
+      "maximum": 10,
+      "native": 4
+    },
+    {
+      "first": 9,
+      "last": 0,
+      "level": 2,
+      "maximum": 4,
+      "native": 6
+    },
+    {
+      "first": 0,
+      "last": 8,
+      "level": 3,
+      "maximum": 5,
+      "native": 4
+    }
+  ],
+  "lookup": [
+    {
+      "requested": 20,
+      "keys": [
+        20
+      ],
+      "matched": true
+    },
+    {
+      "requested": 20,
+      "keys": [
+        1,
+        20,
+        30
+      ],
+      "matched": true
+    },
+    {
+      "requested": 20,
+      "keys": [
+        21
+      ],
+      "matched": false
+    },
+    {
+      "requested": 20,
+      "keys": [
+        1,
+        19
+      ],
+      "matched": false
+    },
+    {
+      "requested": 20,
+      "keys": [],
+      "matched": false
+    }
+  ],
+  "signed_limit": [
+    {
+      "count": -1,
+      "limit": 2,
+      "below": true
+    },
+    {
+      "count": 0,
+      "limit": 2,
+      "below": true
+    },
+    {
+      "count": 1,
+      "limit": 2,
+      "below": true
+    },
+    {
+      "count": 2,
+      "limit": 2,
+      "below": false
+    },
+    {
+      "count": 3,
+      "limit": 2,
+      "below": false
+    },
+    {
+      "count": 0,
+      "limit": 2147483647,
+      "below": true
+    }
+  ],
+  "first_slot": [
+    {
+      "ids": [
+        1001,
+        1001
+      ],
+      "native_slot": 0
+    },
+    {
+      "ids": [
+        2002,
+        1001
+      ],
+      "native_slot": 1
+    },
+    {
+      "ids": [
+        2002,
+        3003
+      ],
+      "native_slot": -1
+    }
+  ],
+  "icon_items": [
+    {
+      "first": 2,
+      "last": 4,
+      "level": 1,
+      "maximum": 10,
+      "quantities": [
+        1,
+        100
+      ],
+      "native": false
+    },
+    {
+      "first": 2,
+      "last": 4,
+      "level": 1,
+      "maximum": 10,
+      "quantities": [
+        2,
+        0
+      ],
+      "native": true
+    },
+    {
+      "first": 4,
+      "last": 1,
+      "level": 2,
+      "maximum": 3,
+      "quantities": [
+        2,
+        100
+      ],
+      "native": false
+    },
+    {
+      "first": 4,
+      "last": 1,
+      "level": 2,
+      "maximum": 3,
+      "quantities": [
+        3,
+        0
+      ],
+      "native": true
+    },
+    {
+      "first": 0,
+      "last": 0,
+      "level": 1,
+      "maximum": 10,
+      "quantities": [
+        0,
+        0
+      ],
+      "native": true
+    }
+  ]
+}

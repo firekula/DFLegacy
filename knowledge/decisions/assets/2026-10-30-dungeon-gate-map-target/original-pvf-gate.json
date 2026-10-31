@@ -1,0 +1,63 @@
+{
+  "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+  "kind": "dungeon_gate",
+  "map_path": "map/elvengard/d_elvengard.map",
+  "walkable": [
+    {
+      "x": 7,
+      "y": 192,
+      "width": 655,
+      "height": 128
+    }
+  ],
+  "portals": [
+    {
+      "target": [
+        1,
+        0
+      ],
+      "rect": {
+        "x": -2,
+        "y": 176,
+        "width": 21,
+        "height": 143
+      },
+      "point": [
+        13,
+        255
+      ]
+    },
+    {
+      "target": [
+        -1,
+        -1
+      ],
+      "rect": {
+        "x": 643,
+        "y": 177,
+        "width": 27,
+        "height": 145
+      },
+      "point": [
+        652,
+        256
+      ]
+    }
+  ],
+  "route": [
+    {
+      "source": [
+        1,
+        0
+      ],
+      "target": [
+        1,
+        2
+      ],
+      "point": [
+        1548,
+        264
+      ]
+    }
+  ]
+}

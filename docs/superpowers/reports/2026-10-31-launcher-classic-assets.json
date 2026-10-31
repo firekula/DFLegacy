@@ -1,0 +1,434 @@
+{
+  "approved": "User accepted revision2 login/settings, original server page and RT_BITMAP314 message panel in chat",
+  "build_dependency": "none; all PNG files checked in and embedded by WPF",
+  "assets": [
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-login-background.png",
+      "sha256": "50d62a1736889ef721e92ece5ae86404524310d4df4b685ab667af4db8cb09b7",
+      "pixels": [
+        567,
+        512
+      ],
+      "sources": [
+        {
+          "file": "preview/assets/login.png",
+          "sha256": "ae3b56561248e22755d2bca4a4d809d16a684652d1a0609e43e910f5237cf7cb"
+        },
+        {
+          "file": "images/image-0106.png",
+          "sha256": "4036f68f7e191c6ad301cb1fd18c209a9333d1698a915ac98e6eccf7987c04d5"
+        }
+      ],
+      "operation": "approved revision2 map/news backplate; all labels, buttons and fields remain live controls"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-banner0.png",
+      "sha256": "312cc58d8b1b61308a0f8f396941965d67ed13ed30b9515fddb73625b935bfa8",
+      "pixels": [
+        315,
+        202
+      ],
+      "sources": [
+        {
+          "file": "images/image-0007.png",
+          "sha256": "0c40abd0d26bef95cb12c8a8fffacd2c1f4dfb202f9fe9370f33037bcc8bc77e"
+        }
+      ],
+      "operation": "manual banner crop; first crop matches approved revision2 exactly"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-banner1.png",
+      "sha256": "a65d48ee8d05d49dcf1b637a3c28a523c005079aa26bb38b501c72a64d9e58fd",
+      "pixels": [
+        315,
+        202
+      ],
+      "sources": [
+        {
+          "file": "images/image-0007.png",
+          "sha256": "0c40abd0d26bef95cb12c8a8fffacd2c1f4dfb202f9fe9370f33037bcc8bc77e"
+        }
+      ],
+      "operation": "manual banner crop; first crop matches approved revision2 exactly"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-banner2.png",
+      "sha256": "86261775c7ccb2b5aed119fe17d93658185a2afa1aa2a15906a06a62e8360f85",
+      "pixels": [
+        315,
+        202
+      ],
+      "sources": [
+        {
+          "file": "images/image-0007.png",
+          "sha256": "0c40abd0d26bef95cb12c8a8fffacd2c1f4dfb202f9fe9370f33037bcc8bc77e"
+        }
+      ],
+      "operation": "manual banner crop; first crop matches approved revision2 exactly"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-banner3.png",
+      "sha256": "b4d04b8bface7f8849678f88567e7e91c0032357f7030b3d20231be2b3e50f19",
+      "pixels": [
+        315,
+        202
+      ],
+      "sources": [
+        {
+          "file": "images/image-0007.png",
+          "sha256": "0c40abd0d26bef95cb12c8a8fffacd2c1f4dfb202f9fe9370f33037bcc8bc77e"
+        }
+      ],
+      "operation": "manual banner crop; first crop matches approved revision2 exactly"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-banner4.png",
+      "sha256": "4d5b8417396b1bca52eca650dc16a8db3e320aa4d67e2c2e677a4283351a966b",
+      "pixels": [
+        315,
+        202
+      ],
+      "sources": [
+        {
+          "file": "images/image-0106.png",
+          "sha256": "4036f68f7e191c6ad301cb1fd18c209a9333d1698a915ac98e6eccf7987c04d5"
+        }
+      ],
+      "operation": "manual banner crop; first crop matches approved revision2 exactly"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-settings-panel.png",
+      "sha256": "ae2455facc2ba70fd170f08f360835034e753f38e681b2967d7870bc32ce1f88",
+      "pixels": [
+        480,
+        428
+      ],
+      "sources": [
+        {
+          "file": "preview/revision-2/settings-panel.png",
+          "sha256": "ae2455facc2ba70fd170f08f360835034e753f38e681b2967d7870bc32ce1f88"
+        }
+      ],
+      "operation": "approved480x428 full panel, clean border and single non-cyclic stone field"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-crest.png",
+      "sha256": "00f980b716d8bd93ac14b7c5513d8a322f7ecb1e822bb659192728661fdba2cb",
+      "pixels": [
+        233,
+        48
+      ],
+      "sources": [
+        {
+          "file": "preview/assets/crest.png",
+          "sha256": "00f980b716d8bd93ac14b7c5513d8a322f7ecb1e822bb659192728661fdba2cb"
+        }
+      ],
+      "operation": "approved source-derived UI asset; original images preserved in audit"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-small0.png",
+      "sha256": "057e78521d502cb1dacccf6cd3d49a542788ffa013cc38729a857397d92afc87",
+      "pixels": [
+        70,
+        21
+      ],
+      "sources": [
+        {
+          "file": "preview/assets/small0.png",
+          "sha256": "057e78521d502cb1dacccf6cd3d49a542788ffa013cc38729a857397d92afc87"
+        }
+      ],
+      "operation": "approved source-derived UI asset; original images preserved in audit"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-small1.png",
+      "sha256": "6b29369ad55fca29c8d8886ecb10e0f73834294b2a6aaac959ba1d12db68e0cd",
+      "pixels": [
+        70,
+        21
+      ],
+      "sources": [
+        {
+          "file": "preview/assets/small1.png",
+          "sha256": "6b29369ad55fca29c8d8886ecb10e0f73834294b2a6aaac959ba1d12db68e0cd"
+        }
+      ],
+      "operation": "approved source-derived UI asset; original images preserved in audit"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-small2.png",
+      "sha256": "6ad969814102dcad650f56bdbafb1edd2287b8454640d8d3bcf5c07bb2569128",
+      "pixels": [
+        70,
+        21
+      ],
+      "sources": [
+        {
+          "file": "preview/assets/small2.png",
+          "sha256": "6ad969814102dcad650f56bdbafb1edd2287b8454640d8d3bcf5c07bb2569128"
+        }
+      ],
+      "operation": "approved source-derived UI asset; original images preserved in audit"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-confirm0.png",
+      "sha256": "b8baadcd9a0d8dc44415d78f57dd6cfc2e6f03dbb754446e95ad4177b942a4c6",
+      "pixels": [
+        110,
+        40
+      ],
+      "sources": [
+        {
+          "file": "preview/assets/confirm0.png",
+          "sha256": "b8baadcd9a0d8dc44415d78f57dd6cfc2e6f03dbb754446e95ad4177b942a4c6"
+        }
+      ],
+      "operation": "approved source-derived UI asset; original images preserved in audit"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-confirm1.png",
+      "sha256": "878eda54569b3629c38410ba4cb93cda97cccd0ca200d904f303cb829d21df6c",
+      "pixels": [
+        110,
+        40
+      ],
+      "sources": [
+        {
+          "file": "preview/assets/confirm1.png",
+          "sha256": "878eda54569b3629c38410ba4cb93cda97cccd0ca200d904f303cb829d21df6c"
+        }
+      ],
+      "operation": "approved source-derived UI asset; original images preserved in audit"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-confirm2.png",
+      "sha256": "797a35cc2ebb05893719924917bbec789b3a7af12e3d13b7cc1464e34b27666f",
+      "pixels": [
+        110,
+        40
+      ],
+      "sources": [
+        {
+          "file": "preview/assets/confirm2.png",
+          "sha256": "797a35cc2ebb05893719924917bbec789b3a7af12e3d13b7cc1464e34b27666f"
+        }
+      ],
+      "operation": "approved source-derived UI asset; original images preserved in audit"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-server.png",
+      "sha256": "5c392a7588cb3efbdd23759ad0beaf310d417e13b07ae0084a58e233e8ce3cfe",
+      "pixels": [
+        567,
+        512
+      ],
+      "sources": [
+        {
+          "file": "images/image-0106.png",
+          "sha256": "4036f68f7e191c6ad301cb1fd18c209a9333d1698a915ac98e6eccf7987c04d5"
+        },
+        {
+          "file": "preview/assets/server.png",
+          "sha256": "4d3976cfc3434007eb9bc0a2f4f531eda4a6ae574faa589da9c92c2547aafdc7"
+        }
+      ],
+      "operation": "RT_BITMAP311 labels/legend preserved; remove only painted nonfunctional full-screen checkbox using existing clean map patch"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-row0.png",
+      "sha256": "79681fdffd787f19382e833f62a763ce1971da52b6292e4fcb499ea08b30a0de",
+      "pixels": [
+        101,
+        25
+      ],
+      "sources": [
+        {
+          "file": "images/image-0094.png",
+          "sha256": "8b306a282004146b011aea432de7aa6ab7c247c1846476c6c793686f469a6b16"
+        }
+      ],
+      "operation": "RT_BITMAP265 default / 266 hover / 264 selected; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-row1.png",
+      "sha256": "453b40d131b46149b41c522d57f361e1007b1295753d64496c06d493d32fa438",
+      "pixels": [
+        101,
+        25
+      ],
+      "sources": [
+        {
+          "file": "images/image-0095.png",
+          "sha256": "a3968e3367b9401d20968d4bc5ac5295468f5b400c90bc17b59161405334e1db"
+        }
+      ],
+      "operation": "RT_BITMAP265 default / 266 hover / 264 selected; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-row2.png",
+      "sha256": "7f5875c6b211a82aea225a00761681486a4c5cfd6c18239280d2bb43284378d9",
+      "pixels": [
+        101,
+        25
+      ],
+      "sources": [
+        {
+          "file": "images/image-0093.png",
+          "sha256": "c92529ac5fd2a5e1892e37627f074a5ca82235853b8add0017c1cebc9fde04c5"
+        }
+      ],
+      "operation": "RT_BITMAP265 default / 266 hover / 264 selected; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-offline0.png",
+      "sha256": "2b6892a07cc83d44e4daafcdca1c347e9724fb1ef80baa9ef960fabd013898fe",
+      "pixels": [
+        101,
+        25
+      ],
+      "sources": [
+        {
+          "file": "images/image-0102.png",
+          "sha256": "0dcfee84dcb750d181233bed7faec8215a608fad450884fe98512b6324fa115f"
+        }
+      ],
+      "operation": "original gray server state; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-offline1.png",
+      "sha256": "c17bf41ea58760b122b4ae8c39c28925c8541af1c47e3758a42bcb64b3b7761e",
+      "pixels": [
+        101,
+        25
+      ],
+      "sources": [
+        {
+          "file": "images/image-0103.png",
+          "sha256": "53a5c5cf299f044d46e812929171bde3d54e4371caddb89eb202969a4b4f03e9"
+        }
+      ],
+      "operation": "original gray server state; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-offline2.png",
+      "sha256": "b08839c5fd5b29970e908e6caedba362f9cab1679807abe79448e8d3243f1c64",
+      "pixels": [
+        101,
+        25
+      ],
+      "sources": [
+        {
+          "file": "images/image-0104.png",
+          "sha256": "13385865c205201dcd48d21e5441ca1e9e1ee1540577b97cd4d4b6b571cb6253"
+        }
+      ],
+      "operation": "original gray server state; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-message-panel.png",
+      "sha256": "d7fab5f9198f7ec780857efeddfefbf1162b229d16290f5b730e2792ffbe1d87",
+      "pixels": [
+        286,
+        170
+      ],
+      "sources": [
+        {
+          "file": "images/image-0056.png",
+          "sha256": "0e5016ef3148145b16bb233396511f5e4587a84ffdbe3cadb4083e6dda84d045"
+        }
+      ],
+      "operation": "original RT_BITMAP314 panel at native286x170; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-message-confirm0.png",
+      "sha256": "aed319d6758be893e679b373a3cdb7bc3a100efd227a763a2f809f1317903383",
+      "pixels": [
+        80,
+        29
+      ],
+      "sources": [
+        {
+          "file": "loose/data/ui/button_yes00.png",
+          "sha256": "d8f91b770c85081183a907ba041eff6a9db707dd097cc713cbe628e0aa3c8cb6"
+        }
+      ],
+      "operation": "original HintMsg.xml yes-button state; native80x29 pixels unchanged"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-message-confirm1.png",
+      "sha256": "cca4bd50e49c9a5de513e200ae3fc2b1e818cce6b5b2e3b031468acdfd4d1e31",
+      "pixels": [
+        80,
+        29
+      ],
+      "sources": [
+        {
+          "file": "loose/data/ui/button_yes01.png",
+          "sha256": "b2cfad7a4947ada524341d2f800b838de019ae9bed89d017b2c232f9c38754f7"
+        }
+      ],
+      "operation": "original HintMsg.xml yes-button state; native80x29 pixels unchanged"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-message-confirm2.png",
+      "sha256": "f7860bf3236ab5dd24548e0179dbee11ae49ddb86f0345b020e629241fbf1eb8",
+      "pixels": [
+        80,
+        29
+      ],
+      "sources": [
+        {
+          "file": "loose/data/ui/button_yes02.png",
+          "sha256": "d57ce3f9cd24986f0206929b5fc397fbebc38d7cb1dd5bbef97de7a6d3f8ea56"
+        }
+      ],
+      "operation": "original HintMsg.xml yes-button state; native80x29 pixels unchanged"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-update-panel.png",
+      "sha256": "55c0434ec2f23ef56c1690d3436f4f3ce70f455723ffbecb9134cab00c2e8f75",
+      "pixels": [
+        567,
+        512
+      ],
+      "sources": [
+        {
+          "file": "images/image-0063.png",
+          "sha256": "a6d69df0f514690c88275fe90b06b5bad45f0a2485f7c3219ebdb10ffe5a86f6"
+        }
+      ],
+      "operation": "DNFchina.exe RT_BITMAP198 native567x512; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-install-panel.png",
+      "sha256": "ad12ed5065245eb625908aa0b1d4d03c43d52e4063f38bfecedb8652426485b9",
+      "pixels": [
+        286,
+        104
+      ],
+      "sources": [
+        {
+          "file": "images/image-0115.png",
+          "sha256": "1c4ffd6d175787104863c5730e8c47cc0455df9d78e118feb2a48d24073989b1"
+        }
+      ],
+      "operation": "LauncherUpdator.exe RT_BITMAP132 native286x104; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-update-progress.png",
+      "sha256": "009568306e1aceb492a326657b578701e73423f521fb862c788c2cebb4263f74",
+      "pixels": [
+        2,
+        8
+      ],
+      "sources": [
+        {
+          "file": "images/image-0081.png",
+          "sha256": "009568306e1aceb492a326657b578701e73423f521fb862c788c2cebb4263f74"
+        }
+      ],
+      "operation": "DNFchina.exe RT_BITMAP249 original progress texture; magenta colour key to transparency"
+    }
+  ]
+}

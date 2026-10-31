@@ -1,0 +1,300 @@
+{
+  "schema": "dfl-followup-timing/v1",
+  "begin_tick_ms": 441786796,
+  "end_tick_ms": 441813281,
+  "errors": {
+    "unreadable_profile": 3
+  },
+  "clients": {
+    "A": {
+      "event": {
+        "event_id": 2,
+        "sequence": 7172,
+        "thread": 62212,
+        "begin_tick_ms": 441790546,
+        "tick_ms": 441790546,
+        "scene_begin": 1,
+        "scene_end": 1,
+        "foreground_known": true,
+        "foreground_begin": false,
+        "foreground_end": false,
+        "loop_us": 305,
+        "sections_us": [
+          11,
+          2,
+          3,
+          285,
+          1,
+          2,
+          1
+        ],
+        "cpu_known": true,
+        "cpu_loop_us": 0,
+        "cpu_sections_us": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "interval_known": true,
+        "interval_us": 600828,
+        "outside_us": 600578,
+        "cpu_outside_known": true,
+        "cpu_outside_us": 609375,
+        "previous_sequence": 7171,
+        "previous_loop_us": 250,
+        "previous_sections_us": [
+          6,
+          0,
+          3,
+          238,
+          2,
+          1,
+          0
+        ],
+        "previous_cpu_loop_us": 0
+      },
+      "sampled_eip": "0x77335fb8",
+      "sampled_tick_ms": 441790375,
+      "source_sequence": 7171,
+      "pause_us": 139,
+      "prior_suspend_count": 0,
+      "native_return_chain": [
+        "0x9199f7",
+        "0x90c8d8",
+        "0x90bbd9",
+        "0x90c434",
+        "0x90b185",
+        "0x82fac3",
+        "0x83009b",
+        "0x8b3e92",
+        "0x8b3cc5",
+        "0x904e1f"
+      ],
+      "max_observed_counters": {
+        "invalid": 0,
+        "drops": 1,
+        "gaps": 1
+      }
+    },
+    "B": {
+      "event": {
+        "event_id": 3,
+        "sequence": 7769,
+        "thread": 67920,
+        "begin_tick_ms": 441790500,
+        "tick_ms": 441790500,
+        "scene_begin": 1,
+        "scene_end": 1,
+        "foreground_known": true,
+        "foreground_begin": false,
+        "foreground_end": false,
+        "loop_us": 328,
+        "sections_us": [
+          22,
+          2,
+          4,
+          296,
+          2,
+          2,
+          0
+        ],
+        "cpu_known": true,
+        "cpu_loop_us": 0,
+        "cpu_sections_us": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "interval_known": true,
+        "interval_us": 559048,
+        "outside_us": 558359,
+        "cpu_outside_known": true,
+        "cpu_outside_us": 546875,
+        "previous_sequence": 7768,
+        "previous_loop_us": 689,
+        "previous_sections_us": [
+          20,
+          1,
+          2,
+          662,
+          2,
+          1,
+          1
+        ],
+        "previous_cpu_loop_us": 0
+      },
+      "sampled_eip": "0x7731879c",
+      "sampled_tick_ms": 441790375,
+      "source_sequence": 7768,
+      "pause_us": 90,
+      "prior_suspend_count": 0,
+      "native_return_chain": [
+        "0x92c45c",
+        "0x92c58d",
+        "0x924320",
+        "0x91bbae",
+        "0x91bbdf",
+        "0x8cc36a",
+        "0x8e4037",
+        "0x8e4dbb",
+        "0x8b41fd",
+        "0x904e1f"
+      ],
+      "max_observed_counters": {
+        "invalid": 0,
+        "drops": 0,
+        "gaps": 0
+      }
+    },
+    "C": {
+      "event": {
+        "event_id": 2,
+        "sequence": 7126,
+        "thread": 52940,
+        "begin_tick_ms": 441790468,
+        "tick_ms": 441790468,
+        "scene_begin": 1,
+        "scene_end": 1,
+        "foreground_known": true,
+        "foreground_begin": false,
+        "foreground_end": false,
+        "loop_us": 302,
+        "sections_us": [
+          11,
+          1,
+          3,
+          283,
+          1,
+          2,
+          1
+        ],
+        "cpu_known": true,
+        "cpu_loop_us": 0,
+        "cpu_sections_us": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "interval_known": true,
+        "interval_us": 525908,
+        "outside_us": 525186,
+        "cpu_outside_known": true,
+        "cpu_outside_us": 531250,
+        "previous_sequence": 7125,
+        "previous_loop_us": 722,
+        "previous_sections_us": [
+          6,
+          1,
+          2,
+          710,
+          1,
+          1,
+          1
+        ],
+        "previous_cpu_loop_us": 0
+      },
+      "sampled_eip": "0x90c2f4",
+      "sampled_tick_ms": 441790375,
+      "source_sequence": 7125,
+      "pause_us": 74,
+      "prior_suspend_count": 0,
+      "native_return_chain": [
+        "0x90b185",
+        "0x82fb1c",
+        "0x83009b",
+        "0x8b3e92",
+        "0x8b3cc5",
+        "0x904e1f"
+      ],
+      "max_observed_counters": {
+        "invalid": 0,
+        "drops": 0,
+        "gaps": 0
+      }
+    },
+    "D": {
+      "event": {
+        "event_id": 6,
+        "sequence": 6867,
+        "thread": 51060,
+        "begin_tick_ms": 441790531,
+        "tick_ms": 441790531,
+        "scene_begin": 1,
+        "scene_end": 1,
+        "foreground_known": true,
+        "foreground_begin": true,
+        "foreground_end": true,
+        "loop_us": 324,
+        "sections_us": [
+          12,
+          2,
+          2,
+          266,
+          39,
+          2,
+          1
+        ],
+        "cpu_known": true,
+        "cpu_loop_us": 15625,
+        "cpu_sections_us": [
+          0,
+          0,
+          0,
+          15625,
+          0,
+          0,
+          0
+        ],
+        "interval_known": true,
+        "interval_us": 597258,
+        "outside_us": 596670,
+        "cpu_outside_known": true,
+        "cpu_outside_us": 593750,
+        "previous_sequence": 6866,
+        "previous_loop_us": 588,
+        "previous_sections_us": [
+          5,
+          1,
+          2,
+          571,
+          7,
+          1,
+          1
+        ],
+        "previous_cpu_loop_us": 0
+      },
+      "sampled_eip": "0x90bca4",
+      "sampled_tick_ms": 441790375,
+      "source_sequence": 6866,
+      "pause_us": 71,
+      "prior_suspend_count": 0,
+      "native_return_chain": [
+        "0x90c4c3",
+        "0x90b185",
+        "0x82fae3",
+        "0x83009b",
+        "0x8b3e92",
+        "0x8b3cc5",
+        "0x904e1f"
+      ],
+      "max_observed_counters": {
+        "invalid": 0,
+        "drops": 0,
+        "gaps": 0
+      }
+    }
+  },
+  "scope": "Consecutive known outside intervals; sampled read tick lies inside each interval. Profiling windows include bounded thread-context sampling. CPU times are quantized; foreground endpoints are not continuous-foreground evidence. Raw stacks remain in the private run directory."
+}

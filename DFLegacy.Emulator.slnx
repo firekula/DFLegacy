@@ -1,0 +1,25 @@
+<Solution>
+  <Project Path="src/DFLegacy.Debug/tests/DFLegacy.Debug.Tests.vcxproj" Id="33673938-42e9-4e41-a5fc-1101a30bca77"><Platform Project="Win32" /></Project>
+  <Project Path="src/DFLegacy.Debug/DFLegacy.Debug.vcxproj" Id="89c9d55b-3606-444b-9ba8-3042a590418e"><Platform Project="Win32" /></Project>
+  <Project Path="src/DFLegacy.Ijl15/DFLegacy.Ijl15.vcxproj" Id="b5e9130b-04a6-46a2-8a4e-fe5b77f307be">
+    <Platform Project="Win32" />
+  </Project>
+  <Project Path="src/DFLegacy.Ijl15/tests/DFLegacy.Ijl15.Tests.vcxproj" Id="7c1a6f42-3e5b-4a88-9d21-5b0e8c4a1d77">
+    <Platform Project="Win32" />
+  </Project>
+  <Project Path="src/DFLegacy.RandomNative/DFLegacy.RandomNative.vcxproj" Id="414afaaa-2b3d-4d08-959c-10c4208e65b0">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="src/DFLegacy.Launcher/DFLegacy.Launcher.csproj" />
+  <Project Path="src/DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+  <Project Path="src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
+  <Project Path="src/DFLegacy.Relay/DFLegacy.Relay.csproj" />
+  <Project Path="src/DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
+  <Project Path="src/DFLegacy.Server/DFLegacy.Server.csproj" />
+  <Project Path="src/DFLegacy.Channel/DFLegacy.Channel.csproj" />
+  <Project Path="tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj" />
+  <Project Path="src/DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
+  <Project Path="src/DFLegacy.Manager/DFLegacy.Manager.csproj" />
+  <Project Path="tests/DFLegacy.Manager.Tests/DFLegacy.Manager.Tests.csproj" />
+  <Project Path="src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj" />
+</Solution>

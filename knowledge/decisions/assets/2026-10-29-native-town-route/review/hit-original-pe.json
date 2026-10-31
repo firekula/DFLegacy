@@ -1,0 +1,77 @@
+{
+  "original_pe_sha256": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5",
+  "byte_checks": [
+    {
+      "va": "0x79d242",
+      "bytes": "e8d93b0e00"
+    },
+    {
+      "va": "0x8f6faf",
+      "bytes": "e87cfcffff"
+    },
+    {
+      "va": "0x8f6fad",
+      "bytes": "8bcee87cfcffff8bcee8c5faffff"
+    },
+    {
+      "va": "0x8f6c30",
+      "bytes": "558bec83ec08578bf98a471084c07407"
+    },
+    {
+      "va": "0x79cc1b",
+      "bytes": "8b0d8851b5003b480c0f85bc010000"
+    }
+  ],
+  "plain_ret_sites": [
+    {
+      "va": "0x8f6c50",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6c5f",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6d47",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6db2",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6de8",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6e09",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6e74",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6e98",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6ebc",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6ee0",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6f02",
+      "operand": ""
+    },
+    {
+      "va": "0x8f6f11",
+      "operand": ""
+    }
+  ],
+  "trace_sha256": "b2fdfbee51f88d73cd918ae9b4b46c3512227dd4121ea4e05b100d82b61c038d",
+  "call_target": "0x8f6c30"
+}

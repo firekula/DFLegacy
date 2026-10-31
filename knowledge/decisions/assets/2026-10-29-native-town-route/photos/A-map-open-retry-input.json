@@ -1,0 +1,38 @@
+{
+  "started": "2026-10-29T12:55:21.445+08:00",
+  "pid": 58960,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "A-map-open-retry-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T12:55:21.619+08:00",
+  "steps": [
+    {
+      "t": 500,
+      "op": "key",
+      "vk": 78,
+      "dur": 250
+    },
+    {
+      "t": 1500,
+      "op": "key",
+      "vk": 44,
+      "dur": 900
+    },
+    {
+      "t": 2900,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "f308a862297ec832ff55de848711ac2e66b6dfd3c8026e8b406310174fd99c2d",
+  "plan_written": "2026-10-29T12:55:21.619+08:00",
+  "focus_reassertions": 3,
+  "plan_completed": "2026-10-29T12:55:24.945+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01103.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\evidence-native-ui-v2\\A-map-open-retry-input.jpg",
+  "own_pid_diag_lines": 8,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T12:55:25.021+08:00"
+}

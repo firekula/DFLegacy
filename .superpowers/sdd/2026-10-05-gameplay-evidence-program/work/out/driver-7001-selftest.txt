@@ -1,0 +1,20 @@
+7001 已知答案自检（M1 硬门 S3）
+重放回复: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evidence-program\work\out\replay-s.bin
+期望来源: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evidence-program\work\captures\streams\7001-58840.bin（同一靶子的记录抓包）
+
+replay : 7469 B, 4 帧, 恰好铺满=True, 帧长=[47, 43, 7240, 139]
+capture: 7465 B, 4 帧, 恰好铺满=True, 帧长=[47, 43, 7235, 140]
+
+   信息行（**不是判据**，见 docstring 的证据）：整帧长度序列 不一致  （replay=[47, 43, 7240, 139] vs capture=[47, 43, 7235, 140]） —— 会话密钥不同 ⇒ 密文不同 ⇒ zlib 压缩长度差几字节
+   会话密钥（重放 / 记录）= 32303236313030353233323133320000 / 32303236313030353230303830380000
+
+判据① 结构性不变:
+   (cat,id) 序列: replay=[(124, 12), (124, 6), (124, 10), (124, 3)] capture=[(124, 12), (124, 6), (124, 10), (124, 3)] -> 一致
+   解密明文长度: id=10 13312 vs 13312；id=3 128 vs 128 -> 一致
+   （更强）id=10 明文逐字节相同: True
+   => 判据① PASS
+
+   id=12 正文 36 B, status=0  -> PASS（判据③ 要求 0）
+   id=3 正文 128 B -> zlib 128 B -> AES 128 B, 首4B=01 00 00 00  -> PASS（判据② 要求 128 B 且 01 00 00 00）
+
+VERDICT: PASS

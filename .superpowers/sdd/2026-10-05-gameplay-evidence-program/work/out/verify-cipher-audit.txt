@@ -1,0 +1,7 @@
+PLT 0x0807e360 localtime_r PASS
+PLT 0x0807e3b0 strlen PASS
+PLT 0x0807d8a0 memcpy PASS
+PLT 0x0807dcc0 memset PASS
+PLT 0x0807dca0 rand PASS
+GetCryptoType arithmetic: all 65536 uint16 inputs equal n % 14 PASS
+LIMIT: this verifies selector arithmetic, not any cipher algorithm or packet plaintext

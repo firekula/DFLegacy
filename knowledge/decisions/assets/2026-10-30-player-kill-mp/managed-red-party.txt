@@ -1,0 +1,6 @@
+C:\Program Files\dotnet\sdk\10.0.402\Microsoft.Common.CurrentVersion.targets(5455,5): warning MSB3026: 无法将“D:\codex_worktree\party-chat-gold\DFLegacy\tests\DFLegacy.SmokeTests\obj\Release\net10.0\apphost.exe”复制到“bin\Release\net10.0\DFLegacy.SmokeTests.exe”。1000 毫秒后将开始第 7 次重试。The process cannot access the file 'D:\codex_worktree\party-chat-gold\DFLegacy\tests\DFLegacy.SmokeTests\bin\Release\net10.0\DFLegacy.SmokeTests.exe' because it is being used by another process. 文件被“DFLegacy.SmokeTests (6152)”锁定。 [D:\codex_worktree\party-chat-gold\DFLegacy\tests\DFLegacy.SmokeTests\DFLegacy.SmokeTests.csproj]
+Test control projection artifacts: D:\codex_worktree\party-chat-gold\DFLegacy\.tmp\smoke-tests\test-control-projection\da07f007ba984119ba1474168fe4d675
+Test control smoke: 3 failures
+FAIL: test member projection starts with the actual alive state
+FAIL: test member projection reports authoritative death rather than stale saved health
+FAIL: test member projection reports revival without mutating the member

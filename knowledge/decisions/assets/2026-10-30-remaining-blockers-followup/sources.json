@@ -1,0 +1,216 @@
+{
+  "private_run_root": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030",
+  "sources": {
+    "evidence-blockers-v1\\same-process-four-recovered.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v1\\same-process-four-recovered.json",
+      "sha256": "F9A9AD13120655C556C5F97EC1217B3195D6D17F7D8E2095AE04CE86B95B0D6E",
+      "bytes": 47662
+    },
+    "evidence-blockers-v2\\reinvite-rejected-D.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v2\\reinvite-rejected-D.json",
+      "sha256": "CBDCEE41F25EE19E26A69D9B0E28AA218127C1D77B9164784841CC99D6F7F8F5",
+      "bytes": 47132
+    },
+    ".tmp\\blockers-20261030\\pipeline-summary.json": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\pipeline-summary.json",
+      "sha256": "07503215DCE9747D0FE8FE7707AB5D6DA4F80FDFF2ADCFC86DFBC92A2D69C199",
+      "bytes": 5214
+    },
+    "evidence-blockers-v4\\pipeline-timed-window.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v4\\pipeline-timed-window.json",
+      "sha256": "3DFCA43A9A7D4326BBD54D0EDCF8422E8C8BA42E87C121CB7DDC750D3B27CBDB",
+      "bytes": 52384145
+    },
+    "evidence-blockers-v5\\native-trace-next-room.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v5\\native-trace-next-room.json",
+      "sha256": "80DC515CA3B397EBC413B45166FA62EF6B8CBB2D745CB89F41FA567789D07AC8",
+      "bytes": 8477183
+    },
+    "evidence-blockers-v8\\gate-natural-room1.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v8\\gate-natural-room1.json",
+      "sha256": "6A2801FB99E8EF77727A2D0FB5D66C6D1B0530871DC855C234BEFA411816E13E",
+      "bytes": 13413957
+    },
+    "evidence-blockers-v8\\gate-natural-boss.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v8\\gate-natural-boss.json",
+      "sha256": "47B1F61A1A23BBE889BBCCF62629F04821857B5961A5C4531AAF1297E0541D66",
+      "bytes": 10742370
+    },
+    "evidence-blockers-v9\\gate-target-normal.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v9\\gate-target-normal.json",
+      "sha256": "12CC4AF89B4005C9DA576F25F8EC6070FA28A272C57257F9B838CF5E61570ED3",
+      "bytes": 27033587
+    },
+    "evidence-blockers-v9\\collision-native-window.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v9\\collision-native-window.json",
+      "sha256": "E5936BE9F8E39CFCC9E99FC112FBCAD37247875B87741157BFE67EA23080E8D9",
+      "bytes": 24976411
+    },
+    "evidence-blockers-v10\\fixed-natural-window.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v10\\fixed-natural-window.json",
+      "sha256": "02BDB0D5A32B30AD504D1C8874143C7B9CF566A2B99678A2E0C00045AD4FAD28",
+      "bytes": 21636341
+    },
+    "evidence-blockers-v10\\fixed-dynamic-window.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v10\\fixed-dynamic-window.json",
+      "sha256": "6B3C37C03C66F9432699AF761DD6E668F4EDA95C21164DBCAA05B2E068537E7A",
+      "bytes": 22361136
+    },
+    "evidence-blockers-v10\\fixed-boss-window.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v10\\fixed-boss-window.json",
+      "sha256": "A43DD7A9F17A3137248416CDE26D2B24A32602E2C50FB336FAF3FB561C6E62BB",
+      "bytes": 13112412
+    },
+    "evidence-blockers-v6\\teleport-full-publication-0.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v6\\teleport-full-publication-0.json",
+      "sha256": "581785D577581988B67E65DCAA6BBBDB369A900A4AC6357FC16BB14034A9D3F4",
+      "bytes": 105413
+    },
+    "evidence-blockers-v6\\teleport-full-publication-1.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v6\\teleport-full-publication-1.json",
+      "sha256": "74C01CC4E047979CBD919DCC5D5E372B6AB0EAC0414E6E0502E44BB2BBEFEE46",
+      "bytes": 104542
+    },
+    "evidence-blockers-v6\\teleport-full-publication-2.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v6\\teleport-full-publication-2.json",
+      "sha256": "EB73242AAEBB78C46AF5AF0354F47C48DB514019D2EE21C054FFD9F55E709CED",
+      "bytes": 86495
+    },
+    "evidence-blockers-v6\\teleport-full-publication-3.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v6\\teleport-full-publication-3.json",
+      "sha256": "31A490C5AB706B88FB1B8B2ED40EDF67AF14865A45C113C6D02C67D43D867956",
+      "bytes": 85042
+    },
+    "evidence-blockers-v6\\teleport-full-publication-4.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v6\\teleport-full-publication-4.json",
+      "sha256": "C2AA4FD4F7E626631086D80DA7B6EEFE657F26E909A9059090C383E6AC1318E9",
+      "bytes": 96365
+    },
+    "evidence-blockers-v9\\full-publication-three-recipients.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v9\\full-publication-three-recipients.json",
+      "sha256": "BB355711B18AC6E4D2717FD909042A00DBBDEF822E9726A89130DBDA03FC3EB7",
+      "bytes": 218273
+    },
+    "evidence-blockers-v1\\party-panel-D-input.jpg": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v1\\party-panel-D-input.jpg",
+      "sha256": "02A4FB2010F9DF312DD4F4B783218D3B5698879A2BE91DD4830AA91AC59CCF73",
+      "bytes": 427721
+    },
+    "evidence-blockers-v1\\same-process-recovered-A-input.jpg": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v1\\same-process-recovered-A-input.jpg",
+      "sha256": "8DC85BF03937D6DE20B256F53B5EBBB9E33BCD8203B837B39C04D2979EB56B9B",
+      "bytes": 429381
+    },
+    "evidence-blockers-v6\\teleport-matrix-key-UI-A-input.jpg": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v6\\teleport-matrix-key-UI-A-input.jpg",
+      "sha256": "AA96D8FBA619071FBAB67C4A8DEA1BC7ED590DBF86B1C0F8C96FA6DF5C4711D5",
+      "bytes": 436967
+    },
+    "evidence-blockers-v6\\teleport-matrix-key-UI-B-input.jpg": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v6\\teleport-matrix-key-UI-B-input.jpg",
+      "sha256": "1155680DF2DA097EF2F5C5F989872D91008DEA507C2F0345379E103C61612403",
+      "bytes": 436667
+    },
+    "evidence-blockers-v8\\gate-natural-room1-key-A-input.jpg": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v8\\gate-natural-room1-key-A-input.jpg",
+      "sha256": "500D9986DB9EC7391A7EDF913E4B536FBA22D240990A90FDE2D395F4358947EA",
+      "bytes": 444072
+    },
+    "restored-test-clients.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\restored-test-clients.json",
+      "sha256": "C42F2A5DDE57FA4E7EA99FA83293C70D366B38C4694EAF5FD7E08CE7F94AA229",
+      "bytes": 1915
+    },
+    "preflight\\protected-files.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\preflight\\protected-files.json",
+      "sha256": "90E5DF9494AEFD9DEB86D0E4EE0A6E638287DAB9BA5A41F32BA40CAB584EE74C",
+      "bytes": 1246
+    },
+    "build-manifest-v10.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\build-manifest-v10.json",
+      "sha256": "5774B65B78ED49E404277667FF999A0E9461C59B531D8C0A6BA1657CFE422514",
+      "bytes": 1968
+    },
+    "closed-blockers-v10\\deployment.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\closed-blockers-v10\\deployment.json",
+      "sha256": "1772A1E4D681556DB8327E0C470EACFCC7CD23E6A020A005659C5B8AF2B6260E",
+      "bytes": 2878
+    },
+    ".tmp\\blockers-20261030\\final-python.log": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\final-python.log",
+      "sha256": "B32F65E554299DF27C222051246FD5F642DD089EA6B7F2633C2403F0F23F89E1",
+      "bytes": 165384
+    },
+    ".tmp\\blockers-20261030\\final-native-debug.log": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\final-native-debug.log",
+      "sha256": "3E85B7492ED8CC0E45846BAE019D9DC191C3A7C52730D283896020C2E4BE5DB6",
+      "bytes": 1191
+    },
+    ".tmp\\blockers-20261030\\final-native-ijl.log": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\final-native-ijl.log",
+      "sha256": "6ED6B690D75A5978AD40ABCDD96C21DD4D6401F5C48CB37386B2CAB75D51468F",
+      "bytes": 186
+    },
+    ".tmp\\blockers-20261030\\horizon-native-red.log": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\horizon-native-red.log",
+      "sha256": "9166D2D19F42D0C1CC359777A1D1B12F0BDA331B7C9B12E802661D718C4B668C",
+      "bytes": 4284
+    },
+    ".tmp\\blockers-20261030\\horizon-native-green.log": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\horizon-native-green.log",
+      "sha256": "BC7A5B83731A8A144C08D95F9086A86EEA7685AF2FE161E1A2E25B681BAE813C",
+      "bytes": 762
+    },
+    ".tmp\\blockers-20261030\\horizon-installed-bytes.bin": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\horizon-installed-bytes.bin",
+      "sha256": "BCB90B3D686A0026F9E25197640C8D459EBC6CCA1D33F1C9ED25962784F07851",
+      "bytes": 3
+    },
+    ".tmp\\blockers-20261030\\trace-clock-native-fixture.json": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\trace-clock-native-fixture.json",
+      "sha256": "9C9E6D75F202B4350980EA139BC723C10700C9036C20E26F265AFC728161D93F",
+      "bytes": 763
+    },
+    ".tmp\\blockers-20261030\\final-native-frame-fixture.json": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\final-native-frame-fixture.json",
+      "sha256": "BC1AE923CB8BF3B2AEFD9346913425EE919AF9D8B630D02687E78E2A39BD4F0F",
+      "bytes": 1694
+    },
+    "evidence-blockers-v10\\setup-expired-request-profiles.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v10\\setup-expired-request-profiles.json",
+      "bytes": 41534,
+      "sha256": "85CA98165159D01EC0C2D79A2F3A3A287BF8443437275264156151C4A616CBF2"
+    },
+    ".tmp\\blockers-20261030\\etw-current-attempt.log": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\etw-current-attempt.log",
+      "bytes": 360,
+      "sha256": "8128E9238D0770B7A342B9658C798A390CD60530751FD5F10596D5E02AA453D3"
+    },
+    "evidence-blockers-v1\\reinvite-rejected-D.json": {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\blockers-20261030\\evidence-blockers-v1\\reinvite-rejected-D.json",
+      "bytes": 47223,
+      "sha256": "CCF4C49B4C34D8ABB0B0AF30E627BE58D71C66D554BA609F2107C4BA2C44CD56"
+    },
+    ".tmp\\blockers-20261030\\official-0859C114.asm": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\official-0859C114.asm",
+      "bytes": 31236,
+      "sha256": "32ADA32AC2BE19A7398A2EE836D1154160AFBE5E512ABAB29B5E48B27DC0EF44"
+    },
+    ".tmp\\blockers-20261030\\official-085B2BAA.asm": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\official-085B2BAA.asm",
+      "bytes": 43446,
+      "sha256": "894A3D484213621905D5C9EB8DF843541C3CAB9A9021BD8934F4850BBD5673B2"
+    },
+    ".tmp\\blockers-20261030\\motion-apply.asm": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\motion-apply.asm",
+      "bytes": 30519,
+      "sha256": "AF2EA424F58F14D765B116C8D6D8A3B74836C75DA04D0EBF776C5CB0F588107C"
+    },
+    ".tmp\\blockers-20261030\\motion-integration.asm": {
+      "path": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\blockers-20261030\\motion-integration.asm",
+      "bytes": 15426,
+      "sha256": "2BB7A3775001D8EF7CA11101D93108C2DC016F070F6EB73742F99DDCA71EC78E"
+    }
+  },
+  "scope": "Selected immutable raw evidence and unmodified images. Normal save contents and runtime account/configuration contents are not published. Full private run journals, raw native plans, snapshots and closed netdump logs remain under the private root."
+}

@@ -1,0 +1,37 @@
+{
+  "source_hashes": {
+    "src/DFLegacy.Debug/src/client_map_feedback_runtime.h": "1a04bb88adb0ca814e7ae0ef4b8c7dbe182e9e76610b4b25952bfa97b19add07",
+    "src/DFLegacy.Debug/src/client_map_feedback_runtime.cpp": "05c1baca75b8388229d26a55acc37f6e94af5310edd8fbc84023d903326c48f1",
+    "src/DFLegacy.Debug/tests/map_click_feedback_runtime_tests.cpp": "4104a7440dc0568f3fcb8363e82a68f2e0825e8994c07fa0e0d884039ea0a5c1"
+  },
+  "source_specific_red_exit": 3,
+  "source_specific_green_exit": 0,
+  "compiler": "MSVC14.51.36231 x86 /W4 /WX /EHsc /std:c++17 /MT /utf-8",
+  "live_calls_performed": false,
+  "hook_call": "0x88187E",
+  "hook_original_target": "0x8814A0",
+  "hook_original_bytes": "E81DFCFFFF",
+  "callback_self": "binding.minimapToken",
+  "prior_live_result": "root reported sourceF5: accepted targets, zero draw_count andzero texture_creations; preserved aslive renderingRED",
+  "artifacts": {
+    "SourceSpecific-red.cmd": "08d9847b256ba7d140f51fb9591158452b7b6f75e9f88d7a001c14f8af334bc5",
+    "SourceSpecific-red-build.log": "d48584803ac5f277611c5fbdd4d363445ea034317f850a6cc26281487dcc939c",
+    "SourceSpecific-red.log": "791c234690486a61b97d15219ab450944eb125e7356a54b514977b9071b7345a",
+    "SourceSpecific-red-tests.exe": "3d022b1ba5ec4f8909e26b3dfefb22a673212bbe4be461212235bafd8d78028e",
+    "SourceSpecific-green.cmd": "d5b4f43af436dbb86d85894b4bc4027ea62ebb05566fd99f392e524b3b9e2214",
+    "SourceSpecific-green-build.log": "d48584803ac5f277611c5fbdd4d363445ea034317f850a6cc26281487dcc939c",
+    "SourceSpecific-green.log": "9f14a1ff481a943dc4b41696741f2b1f1150e085b08fd7afeb6198cca9f3a400",
+    "SourceSpecific-green-tests.exe": "acb05d4ac74856047777dd1a0f30a2653f863f00c16fd8983c891e1b83b815ee",
+    "source-specific-hook-report.md": "dcaa002848943ee0fe12d8dbbddbf3d1785a06e10a0750e300282f030694bce3"
+  },
+  "native_increment": {
+    "008814A0-nmap_draw.asm.txt": "cc0520f31054bd0d1467e030d9b4d62ff9bba2a153d0a1e7f512b6eb695d7b77",
+    "008814A0-nmap_draw.bin": "281837e34be98f525eaac1d721962a724de7a5c0746581c24df5e0ce26b61a38",
+    "00881860-nmap_callback.asm.txt": "6512f981b8bec4b297f053f7b3a67529ee0a2d153f123d0ea2747c3d332c70d7",
+    "00881860-nmap_callback.bin": "68698ffade85e5190c36819a94554eef1eab27cbc93329091a3d2255b3e0bde6",
+    "0088187C-nmap_specific_draw_callsite.asm.txt": "f7b81a252ed0bbbbcbfc3ae5804dcaf5cefbf3d30e4141a1d1eed81f19c394a1",
+    "0088187C-nmap_specific_draw_callsite.bin": "84e67609d024c61b573c67b25b439572674b7baebdcb06ea5f6a408cd826786a",
+    "contract.md": "41836e53f6474167c19951318982c7f82f677028159ef7c0b3b9eba1b64972cd",
+    "nmap-source-specific-contract.json": "c1e923dfff11cec49f9932057f8d03b360dc8d1a01d73bd6d9aeec39292d85e0"
+  }
+}

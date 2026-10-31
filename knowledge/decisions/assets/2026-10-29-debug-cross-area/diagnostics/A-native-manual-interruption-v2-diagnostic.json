@@ -1,0 +1,289 @@
+{
+  "Result": {
+    "ok": false,
+    "status": "interrupted",
+    "reason": "native_auto_move_stopped",
+    "goal": {
+      "town_id": 1,
+      "area_id": 1,
+      "x": 474,
+      "y": 234
+    },
+    "observed": {
+      "town_id": 2,
+      "area_id": 1,
+      "context_token": "0x072A6208",
+      "map_token": "0x17D1F4B0",
+      "position": {
+        "x": 1705.59155,
+        "y": 279.817688,
+        "z": 0
+      },
+      "destination": {
+        "x": 3781,
+        "y": 280
+      },
+      "direction_raw": {
+        "x": 1,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "request_ids": [
+      1793243965865327700
+    ],
+    "history": [],
+    "expired_request_renewals": [],
+    "pid": 24404,
+    "uid": 1,
+    "process_started_filetime": 134377120770311727,
+    "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f"
+  },
+  "After": {
+    "schema": "dfl-client-state/v2",
+    "pid": 24404,
+    "process_started_filetime": 134377120770311727,
+    "sequence": 26857,
+    "captured_filetime": 134377175684944722,
+    "captured_tick_ms": 357198937,
+    "exported_filetime": 134377175685175145,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 24,
+    "capture_duration_us": 3,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 2,
+      "area_id": 1,
+      "context_token": "0x072A6208",
+      "map_token": "0x17D1F4B0",
+      "position": {
+        "x": 1787.65552,
+        "y": 279.817688,
+        "z": 0
+      },
+      "destination": {
+        "x": 3781,
+        "y": 280
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": false
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": false,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x070C9E18",
+      "actor_token": "0x17F43F50",
+      "map_token": "0x17D1F4B0",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 1787.65552,
+        "y": 279.817688,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x070C9E18",
+        "actor_token": "0x17F43F50",
+        "map_token": "0x17D1F4B0",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 1787.65552,
+          "y": 279.817688,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "Settled": {
+    "schema": "dfl-client-state/v2",
+    "pid": 24404,
+    "process_started_filetime": 134377120770311727,
+    "sequence": 26867,
+    "captured_filetime": 134377175705291559,
+    "captured_tick_ms": 357200968,
+    "exported_filetime": 134377175706365736,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 24,
+    "capture_duration_us": 4,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 2,
+      "area_id": 1,
+      "context_token": "0x072A6208",
+      "map_token": "0x17D1F4B0",
+      "position": {
+        "x": 1787.65552,
+        "y": 279.817688,
+        "z": 0
+      },
+      "destination": {
+        "x": 3781,
+        "y": 280
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": false
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": false,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x070C9E18",
+      "actor_token": "0x17F43F50",
+      "map_token": "0x17D1F4B0",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 1787.65552,
+        "y": 279.817688,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x070C9E18",
+        "actor_token": "0x17F43F50",
+        "map_token": "0x17D1F4B0",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 1787.65552,
+          "y": 279.817688,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "InputCompletedTick": 357198421,
+  "RequestBefore": {
+    "pid": 24404,
+    "uid": 1,
+    "process_started_filetime": 134377120770311727,
+    "request_id": 1793243965865327700,
+    "issued_tick_ms": 357196296,
+    "snapshot_tick_ms": 357196203,
+    "generation": 24,
+    "snapshot_sequence": 26846,
+    "actor_token": 401882960,
+    "map_token": 399635632,
+    "user_token": 118267416,
+    "context_token": 120218120,
+    "town_id": 2,
+    "area_id": 1,
+    "x": 3781,
+    "y": 280
+  },
+  "RequestAfter": {
+    "pid": 24404,
+    "uid": 1,
+    "process_started_filetime": 134377120770311727,
+    "request_id": 1793243965865327700,
+    "issued_tick_ms": 357196296,
+    "snapshot_tick_ms": 357196203,
+    "generation": 24,
+    "snapshot_sequence": 26846,
+    "actor_token": 401882960,
+    "map_token": 399635632,
+    "user_token": 118267416,
+    "context_token": 120218120,
+    "town_id": 2,
+    "area_id": 1,
+    "x": 3781,
+    "y": 280
+  }
+}

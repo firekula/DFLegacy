@@ -1,0 +1,275 @@
+{
+  "Verified": true,
+  "Configs": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\Config.ini",
+      "Sha256": "10B505A3C03872778BE1DDF58E6F0C8D6185E46626635EF1CED744DB84526A08"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\Config.ini",
+      "Sha256": "319F31069F00630115F671FB0365CC2F450F707B5F82F5D0DE9B59D40696441B"
+    }
+  ],
+  "Interfaces": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.json",
+      "Exists": false,
+      "Sha256": null
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.done.json",
+      "Exists": true,
+      "Sha256": "D1E98424B611833969C62E34DFC99D7B0A1AB4DFF0DD81C292154EF7E033FD27"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.focus",
+      "Exists": false,
+      "Sha256": null
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.focus.done",
+      "Exists": true,
+      "Sha256": "6724EDBBC3FAB21959599514FAAEE1BF60136B258F4B0B90AA9BDBC6F48B5A32"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.json",
+      "Exists": false,
+      "Sha256": null
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.done.json",
+      "Exists": true,
+      "Sha256": "2C59460763EB611FABB30A4B481D0C0C55EBCA4EC3EAD4EED2342AE45AE52952"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.focus",
+      "Exists": false,
+      "Sha256": null
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.focus.done",
+      "Exists": true,
+      "Sha256": "B422361DB5C139FA3D88255707DDC858F72C718673BB8D4C335B321FC1A0F1CD"
+    }
+  ],
+  "NormalRuntimeFiles": [
+    {
+      "File": "debug.dll",
+      "Sha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42"
+    },
+    {
+      "File": "DFLegacy.InterProcess.dll",
+      "Sha256": "57F8DB1AE80AFA53B4E9DF9F435FDCD5A5F274A785EA88F6E34D09C1C66E4116"
+    },
+    {
+      "File": "DFLegacy.InterProcess.pdb",
+      "Sha256": "0FE588B8335E24E27425CA3F2F38404841D5956D9A41CB5530861A16528FD039"
+    },
+    {
+      "File": "DFLegacy.Protocol.dll",
+      "Sha256": "8D1E4462498F9C07254D23A06E664BC0456FA6E3D817DC2B5D8C2FF5BBF6C226"
+    },
+    {
+      "File": "DFLegacy.Protocol.pdb",
+      "Sha256": "191B7A9759289C64631E6BEF146866EEE0CE4DAF30B79AB25770F373217A4E38"
+    },
+    {
+      "File": "DFLegacy.RandomNative.dll",
+      "Sha256": "261883BD20CFF1CD882E89467D9F1851E4C63E92CA5D805CC9074ACE827AA583"
+    },
+    {
+      "File": "DFLegacy.Server.deps.json",
+      "Sha256": "2DAEB1832EDF969061314A541B26ED75C9A558A5B4A267812E8E90D4B2A37959"
+    },
+    {
+      "File": "DFLegacy.Server.dll",
+      "Sha256": "FCCA7D5CD83110F641DFDFA0F7404D940F0FF5A93114CA92C53A644DDA11FE64"
+    },
+    {
+      "File": "DFLegacy.Server.exe",
+      "Sha256": "5D212CC12698512EB59031EB9BC4B09266131312BF6CED7E3E1032735C54E91A"
+    },
+    {
+      "File": "DFLegacy.Server.pdb",
+      "Sha256": "80112A0E50E2E925A0A28C367D8C5E76BB1B5F8C7EB106A342EF59D02600E234"
+    },
+    {
+      "File": "DFLegacy.Server.runtimeconfig.json",
+      "Sha256": "9FD781CDA327A8010D236D8B004D3A47D523C4AB220FBDC4D4636314896FC88D"
+    },
+    {
+      "File": "DFLegacy.Server.staticwebassets.endpoints.json",
+      "Sha256": "BD639124033477255219E94FAF3E18D1C3020F3A27DB5E9DA6DC6194E88FC8BA"
+    },
+    {
+      "File": "ijl15.dll",
+      "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+    },
+    {
+      "File": "web.config",
+      "Sha256": "74056335736AC0DD02C899C0C1AB8B8ED46B5C770A8A53EA2596C0C075DAEE6D"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.css",
+      "Sha256": "768DF249E8B4B82470E75BFF60478F837E31BD19B38E6CB7FB983D19E5BC9125"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.css.br",
+      "Sha256": "8AF2DBC6A8E159EED204095BDF6B835CFF0688814DABD04629492C999A37329D"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.css.gz",
+      "Sha256": "61B640C2D6F34348637F347BA81DB4957EB7AB9CC6E54B11029A7DBB5D73BEAD"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.js",
+      "Sha256": "94074F9CBA61AE40A1F4729F9366056383C5BBD524ED08716DED0C41231D91F8"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.js.br",
+      "Sha256": "F9D43C53BF57898622F8A1BDBFFE491B48AF5D77D6E19903BF94CB5D4026C00C"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.js.gz",
+      "Sha256": "54F26874C2189FB169127EB1D25B1C99F707D658417F33D8A5FEBA992D2C9DC4"
+    },
+    {
+      "File": "wwwroot\\admin\\index.html",
+      "Sha256": "B449FC2E8B11838286EC35B228ECF5AEDF00F17AB92DEE406C83CD23428093DF"
+    },
+    {
+      "File": "wwwroot\\admin\\index.html.br",
+      "Sha256": "ECA6D2253E03E61122E9B8A4BF16C1C25EC932D89C81D8AD5CBCD637D269B9CA"
+    },
+    {
+      "File": "wwwroot\\admin\\index.html.gz",
+      "Sha256": "7A36FC5EC6C2E62419DE79A17B330A8F7378B8492511A9FF6A28E3EEA31C369E"
+    },
+    {
+      "File": "wwwroot\\admin\\player.html",
+      "Sha256": "4208D6AC2E1F9028253858AC6340C6F3980D1E0A1B831A2E879AD93E1303B9A6"
+    },
+    {
+      "File": "wwwroot\\admin\\player.html.br",
+      "Sha256": "DBA8C82569162FC7938CF59324B95892283B40D85DC6F16F6765B35AA4148BBB"
+    },
+    {
+      "File": "wwwroot\\admin\\player.html.gz",
+      "Sha256": "CC571CBD78D5A62506C65DFF2216477E6ECB06DCF5252672B1F1D56BDB291C4E"
+    },
+    {
+      "File": "wwwroot\\client\\client-auth.js",
+      "Sha256": "89341D4BE7DDD08BDA60B9705E8BC10917596252C74A0C64DAE54C402FE94416"
+    },
+    {
+      "File": "wwwroot\\client\\client-auth.js.br",
+      "Sha256": "FED58E84299BA67B4FD514630E6248E72E4B875BC0782B707610FC74F9438CFF"
+    },
+    {
+      "File": "wwwroot\\client\\client-auth.js.gz",
+      "Sha256": "BF2BE8BF12C8EC6E0BBFE3ED770A4AC3297CC08FB926C6175BFCE23002E7BB29"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond.htm",
+      "Sha256": "D4F992D6AA6797EF60BC03C36B4FE4E55FC3830053D1B484EF5CFC669A9651C2"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond.htm.br",
+      "Sha256": "4F5CA52F268E48FA8DFABCA5277AB1FF599125F149AF3E54EE3B042889B39DB5"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond.htm.gz",
+      "Sha256": "9D5B04D41C0C7A6175ADB2B2DE85F24A22A4B57A3140A9B025FB772DDFFD8957"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond_netbar.htm",
+      "Sha256": "BD361D066E02D3840F8E1E0E8D5C04AA243A39730627CE45EADC1A65A9B90700"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond_netbar.htm.br",
+      "Sha256": "7F5734FD995B339273D7AB7B4C04963DA04D656A0DBEFE78456EF1577AA85C62"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond_netbar.htm.gz",
+      "Sha256": "14C9E4EBC795F79D11A7BE496E9447DB7D4BD31693E17F9B380C470F0F1E2ECE"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay.htm",
+      "Sha256": "FFF3A1D8C7EF49422E66F8C919CFA0548C7B23A539A83C9B3D83974F4E783A82"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay.htm.br",
+      "Sha256": "056C297E2BE7BAFE6BC594FB045347C7DB949591D884A5C8E605B3B146621CA5"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay.htm.gz",
+      "Sha256": "ACD44357D9ACD23D20AD5CE53037370CA2DAA717263B30DED01D7A56CCD09B2A"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_bank.htm",
+      "Sha256": "40D87A03B02DF5896E338B5E116AEBB1AF79B12D17AD79471D34399960B2FA1B"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_bank.htm.br",
+      "Sha256": "A9D78A684F992BC11B5905AEBEFFE55500EF9DB054DC68F15B311DE19F306228"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_bank.htm.gz",
+      "Sha256": "C2DFF2DFD9C0BC9972A52FDE947BF2FD44863B4F9E387178496AA5D84EC754D4"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_netbar.htm",
+      "Sha256": "D36815B970E8C47C50338522F88173E6AF6AEC66CB657918E3DF0264060732B4"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_netbar.htm.br",
+      "Sha256": "E9AEC8BC644330464CCE0127EA448C789D8D17A2CF6EC6F3C5A5FCC22620B252"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_netbar.htm.gz",
+      "Sha256": "9BE90D5DD90076545FA79C0E467B289B2486D065EA502D026B94B1012FD771CF"
+    },
+    {
+      "File": "wwwroot\\client\\css\\commen.css",
+      "Sha256": "B447A626E6CD6AB7D7B33C3555924EA7D87DB9D775D0433B9F504A65222D6398"
+    },
+    {
+      "File": "wwwroot\\client\\css\\commen.css.br",
+      "Sha256": "D127B419BD2EF8448952A09FCD146E3F55DA250E8D264E6FA25D2BEB488B7F37"
+    },
+    {
+      "File": "wwwroot\\client\\css\\commen.css.gz",
+      "Sha256": "C12901BF78F988052D2EE3A5D4531690754101032135C0571AF18950BDE2C62A"
+    },
+    {
+      "File": "wwwroot\\client\\images\\cz.png",
+      "Sha256": "FCBB59D4F061C0D455B3830BAA4708EB8D7A7114FD52CC4BF5045EEB7E4F910F"
+    },
+    {
+      "File": "wwwroot\\client\\images\\hz.gif",
+      "Sha256": "3B1E718C715C0A456B519CB29FA6A08CC669FB3C35B6C46532D0AD6CA660DF10"
+    },
+    {
+      "File": "wwwroot\\client\\images\\pic.png",
+      "Sha256": "AE4D0D4DE04A87E2AD1CB11DE1F96A6F0F3F4AAEDBE4E0CC357909A26E200FD6"
+    }
+  ],
+  "DebugSha256": "022A81AC3CE59B0BF4662B7712ECC0938FC3AA1665102BABF899C64D78ED6D42",
+  "NativeSha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+  "OriginalStateSha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "OriginalStateCopied": false,
+  "ManualProgressPreserved": true,
+  "PriorFrozenNamespaces": [
+    {
+      "Directory": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029",
+      "ManifestSha256": "03E96277E8BA5040DD6BD54272CEE8976406FFD593C25E51A567AA552D47BF64",
+      "Files": 539
+    },
+    {
+      "Directory": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-operation-stutter-20261029",
+      "ManifestSha256": "7507ACB3908538EB055131493BABEB88D86569D35EAE0C71C0A4857CC2ACDB37",
+      "Files": 305
+    }
+  ],
+  "ClosedManifestSha256": "44CE14EE55AA8E5CEAD2637F3D780B9F7640486EFCC0BA2827FE36F4C5235696"
+}

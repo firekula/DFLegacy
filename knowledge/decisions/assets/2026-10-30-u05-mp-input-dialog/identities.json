@@ -1,0 +1,78 @@
+{
+  "phase": "u05-v3",
+  "status": "stopped",
+  "mp_chat_clients": [
+    {
+      "Role": "A",
+      "Id": 9440,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:09:23.1009601Z"
+    },
+    {
+      "Role": "B",
+      "Id": 43736,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_B\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:08:00.07609Z"
+    },
+    {
+      "Role": "C",
+      "Id": 38660,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_C\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:08:01.0699989Z"
+    },
+    {
+      "Role": "D",
+      "Id": 43184,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_D\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:08:02.019079Z"
+    }
+  ],
+  "final_popup_cli_clients": [
+    {
+      "Role": "A",
+      "Id": 59328,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:15:16.0543696Z"
+    },
+    {
+      "Role": "B",
+      "Id": 43736,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_B\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:08:00.07609Z"
+    },
+    {
+      "Role": "C",
+      "Id": 38660,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_C\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:08:01.0699989Z"
+    },
+    {
+      "Role": "D",
+      "Id": 43184,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_D\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:08:02.019079Z"
+    }
+  ],
+  "retired_clients": [
+    {
+      "Role": "A",
+      "Id": 56064,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:07:59.3347778Z"
+    },
+    {
+      "Role": "A",
+      "Id": 9440,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T04:09:23.1009601Z"
+    }
+  ],
+  "stopped_server": {
+    "Role": "server",
+    "Id": 4392,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\u05-state-20261030\\runtime-v3\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-30T04:07:56.3745079Z"
+  },
+  "active_channel_sessions_before_stop": 0,
+  "mp_chat_journal_sha256": "0FB26B250D92B8E26FC23BE25464E1311B1A220D1BEF30890A49D8146BA35757"
+}

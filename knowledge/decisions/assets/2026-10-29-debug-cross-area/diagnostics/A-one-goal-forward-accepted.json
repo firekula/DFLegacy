@@ -1,0 +1,337 @@
+{
+  "Role": "A",
+  "Goal": {
+    "town_id": 2,
+    "area_id": 2,
+    "x": 575,
+    "y": 247
+  },
+  "HighLevelCalls": 1,
+  "ManualTravelInputs": 0,
+  "Before": {
+    "schema": "dfl-client-state/v2",
+    "pid": 24404,
+    "process_started_filetime": 134377120770311727,
+    "sequence": 19370,
+    "captured_filetime": 134377160343889815,
+    "captured_tick_ms": 355664828,
+    "exported_filetime": 134377160344391200,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 3,
+    "capture_duration_us": 5,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 1,
+      "area_id": 0,
+      "context_token": "0x072A6208",
+      "map_token": "0x18267138",
+      "position": {
+        "x": 785,
+        "y": 246.505875,
+        "z": 0
+      },
+      "destination": {
+        "x": 785,
+        "y": 247
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": false,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x070C9E18",
+      "actor_token": "0x17F43F50",
+      "map_token": "0x18267138",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 785,
+        "y": 246.505875,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x070C9E18",
+        "actor_token": "0x17F43F50",
+        "map_token": "0x18267138",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 785,
+          "y": 246.505875,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "After": null,
+  "AfterError": "stale",
+  "Result": {
+    "ok": false,
+    "status": "interrupted",
+    "reason": "stale",
+    "goal": {
+      "town_id": 2,
+      "area_id": 2,
+      "x": 575,
+      "y": 247
+    },
+    "observed": {
+      "town_id": 2,
+      "area_id": 2,
+      "context_token": "0x072A6208",
+      "map_token": "0x1850DAA8",
+      "position": {
+        "x": 575,
+        "y": 362,
+        "z": 0
+      },
+      "destination": {
+        "x": 575,
+        "y": 362
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": false
+    },
+    "request_ids": [
+      1793242435367591900,
+      1793242441269247000,
+      1793242441936416500,
+      1793242454932700100,
+      1793242456200821300,
+      1793242457384080300,
+      1793242458287440900,
+      1793242462466947900,
+      1793242463659972200
+    ],
+    "history": [
+      {
+        "request_id": 1793242435367591900,
+        "target": {
+          "x": 16,
+          "y": 264
+        },
+        "source_area": [
+          1,
+          0
+        ],
+        "observed_area": [
+          2,
+          1
+        ],
+        "source_generation": 3,
+        "observed_generation": 4,
+        "sequence": 19394,
+        "native_status": "requested",
+        "portal": true
+      },
+      {
+        "request_id": 1793242441269247000,
+        "target": {
+          "x": 3772,
+          "y": 277
+        },
+        "source_area": [
+          2,
+          1
+        ],
+        "observed_area": [
+          2,
+          1
+        ],
+        "source_generation": 4,
+        "observed_generation": 4,
+        "sequence": 19397,
+        "native_status": "arrived",
+        "portal": false
+      },
+      {
+        "request_id": 1793242441936416500,
+        "target": {
+          "x": 1005,
+          "y": 230
+        },
+        "source_area": [
+          2,
+          1
+        ],
+        "observed_area": [
+          2,
+          1
+        ],
+        "source_generation": 4,
+        "observed_generation": 4,
+        "sequence": 19461,
+        "native_status": "requested",
+        "portal": true
+      },
+      {
+        "request_id": 1793242454932700100,
+        "target": {
+          "x": 1005,
+          "y": 178
+        },
+        "source_area": [
+          2,
+          1
+        ],
+        "observed_area": [
+          2,
+          0
+        ],
+        "source_generation": 4,
+        "observed_generation": 5,
+        "sequence": 19465,
+        "native_status": "requested",
+        "portal": true
+      },
+      {
+        "request_id": 1793242456200821300,
+        "target": {
+          "x": 1029,
+          "y": 449
+        },
+        "source_area": [
+          2,
+          0
+        ],
+        "observed_area": [
+          2,
+          0
+        ],
+        "source_generation": 5,
+        "observed_generation": 5,
+        "sequence": 19471,
+        "native_status": "arrived",
+        "portal": false
+      },
+      {
+        "request_id": 1793242457384080300,
+        "target": {
+          "x": 1028,
+          "y": 440
+        },
+        "source_area": [
+          2,
+          0
+        ],
+        "observed_area": [
+          2,
+          0
+        ],
+        "source_generation": 5,
+        "observed_generation": 5,
+        "sequence": 19476,
+        "native_status": "arrived",
+        "portal": true
+      },
+      {
+        "request_id": 1793242458287440900,
+        "target": {
+          "x": 339,
+          "y": 231
+        },
+        "source_area": [
+          2,
+          0
+        ],
+        "observed_area": [
+          2,
+          0
+        ],
+        "source_generation": 5,
+        "observed_generation": 5,
+        "sequence": 19496,
+        "native_status": "arrived",
+        "portal": true
+      },
+      {
+        "request_id": 1793242462466947900,
+        "target": {
+          "x": 339,
+          "y": 177
+        },
+        "source_area": [
+          2,
+          0
+        ],
+        "observed_area": [
+          2,
+          2
+        ],
+        "source_generation": 5,
+        "observed_generation": 6,
+        "sequence": 19501,
+        "native_status": "requested",
+        "portal": true
+      }
+    ],
+    "pid": 24404,
+    "uid": 1,
+    "process_started_filetime": 134377120770311727,
+    "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f"
+  },
+  "ElapsedMs": 29500,
+  "ConsumerSources": {
+    "tools\\debug\\client_route.py": "B3DE0E766EBB2025FEC560C413DE9FF691777F2A9C500D07F5ECEA6126665E4B",
+    "tools\\debug\\town_navigation.py": "D6C10815E65D02B795E52D5984FAE2F0A14877F114EBEBD705DC9E7A9BB7877A",
+    "tools\\debug\\client_navigation.py": "1436993F61D9BA0F3985AD7064549FA189F08CADEA2B2B1430AA3DAD83678952",
+    "tools\\debug\\client_state.py": "C1188B8D3A5DDD38C334543A3BD39BD338B64282143D2BF5DDD21A8E097502DF"
+  },
+  "TrackedHead": "62b78483ffecf81a4fb4ec95f89a88991f07a681",
+  "Journal": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\deployment.json",
+  "JournalSha256": "B1EE84F5618491BD5DB1A943D8F2140DD1899BD742241A1265982564187F42E8",
+  "BuildManifestSha256": "E8A2B339A15DD5ABF3A34B11AEF9ACA6C1529970EFAC10E0AF2A6285FD36063D"
+}

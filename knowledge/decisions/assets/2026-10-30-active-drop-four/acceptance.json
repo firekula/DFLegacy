@@ -1,0 +1,469 @@
+{
+  "schema": "dfl-active-drop-four-acceptance/v1",
+  "dates": "2026-10-29/30",
+  "roles": {
+    "A": "mageco",
+    "B": "heal1024",
+    "C": "fourC",
+    "D": "fourD"
+  },
+  "native_sha256": "12D58F6AA209FCE2AA9DAE6004C547A99104EA97B818C194101414D721838E72",
+  "server_sha256": "1ECD5759BEB56A9BFA7EBC5349F2D026AD8B832B66318C446665D6874495ECAF",
+  "equipment_transfers": [
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-blue-A-D-received",
+      "event_id": 4,
+      "ground_id": 11,
+      "source": "A",
+      "source_slot": 22,
+      "native_request_id": 134377633645578108,
+      "winner": "D",
+      "slot": 25,
+      "metadata": {
+        "item_id": 24002,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-blue-B-C-received",
+      "event_id": 7,
+      "ground_id": 14,
+      "source": "B",
+      "source_slot": 24,
+      "native_request_id": 134377633735660916,
+      "winner": "C",
+      "slot": 18,
+      "metadata": {
+        "item_id": 24002,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-blue-C-B-received",
+      "event_id": 8,
+      "ground_id": 15,
+      "source": "C",
+      "source_slot": 18,
+      "native_request_id": 134377633763290334,
+      "winner": "B",
+      "slot": 24,
+      "metadata": {
+        "item_id": 24002,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-blue-D-A-received",
+      "event_id": 5,
+      "ground_id": 12,
+      "source": "D",
+      "source_slot": 25,
+      "native_request_id": 134377633678382506,
+      "winner": "A",
+      "slot": 22,
+      "metadata": {
+        "item_id": 24002,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-blue-setup-A-B-received",
+      "event_id": 6,
+      "ground_id": 13,
+      "source": "A",
+      "source_slot": 22,
+      "native_request_id": 134377633703027700,
+      "winner": "B",
+      "slot": 24,
+      "metadata": {
+        "item_id": 24002,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-blue-setup-C-A-received",
+      "event_id": 3,
+      "ground_id": 10,
+      "source": "C",
+      "source_slot": 18,
+      "native_request_id": 134377631623235038,
+      "winner": "A",
+      "slot": 22,
+      "metadata": {
+        "item_id": 24002,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-sealed-A-D-received",
+      "event_id": 10,
+      "ground_id": 17,
+      "source": "A",
+      "source_slot": 22,
+      "native_request_id": 134377634315405545,
+      "winner": "D",
+      "slot": 24,
+      "metadata": {
+        "item_id": 22050,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 1,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caac-7f54-8e06-9fa1a07947ec"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-sealed-B-C-received",
+      "event_id": 12,
+      "ground_id": 19,
+      "source": "B",
+      "source_slot": 25,
+      "native_request_id": 134377634368120325,
+      "winner": "C",
+      "slot": 18,
+      "metadata": {
+        "item_id": 22050,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 1,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caac-7f54-8e06-9fa1a07947ec"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-sealed-C-B-received",
+      "event_id": 13,
+      "ground_id": 20,
+      "source": "C",
+      "source_slot": 18,
+      "native_request_id": 134377634390600275,
+      "winner": "B",
+      "slot": 25,
+      "metadata": {
+        "item_id": 22050,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 1,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caac-7f54-8e06-9fa1a07947ec"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-sealed-D-A-received",
+      "event_id": 9,
+      "ground_id": 16,
+      "source": "D",
+      "source_slot": 24,
+      "native_request_id": 134377634290687318,
+      "winner": "A",
+      "slot": 22,
+      "metadata": {
+        "item_id": 22050,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 1,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caac-7f54-8e06-9fa1a07947ec"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v1",
+      "label": "drop4-sealed-setup-D-B-received",
+      "event_id": 11,
+      "ground_id": 18,
+      "source": "D",
+      "source_slot": 24,
+      "native_request_id": 134377634343087230,
+      "winner": "B",
+      "slot": 25,
+      "metadata": {
+        "item_id": 22050,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 1,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caac-7f54-8e06-9fa1a07947ec"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    },
+    {
+      "phase": "drop4-v2",
+      "label": "drop4-blue-after-return-received",
+      "event_id": 1,
+      "ground_id": 8,
+      "source": "A",
+      "source_slot": 22,
+      "native_request_id": 134377643887891711,
+      "winner": "A",
+      "slot": 22,
+      "metadata": {
+        "item_id": 24002,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471"
+      },
+      "native_discard_applied": true,
+      "source_saved_absent": true,
+      "four_clients_appeared": true,
+      "persisted": true,
+      "four_clients_removed": true,
+      "repeat_input_unchanged": true
+    }
+  ],
+  "closed_save_unique_owners": [
+    {
+      "character": "mageco",
+      "slot": 22,
+      "metadata": {
+        "item_id": 24002,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 0,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caab-7803-a562-f84ce92c8471"
+      }
+    },
+    {
+      "character": "heal1024",
+      "slot": 25,
+      "metadata": {
+        "item_id": 22050,
+        "count": 1,
+        "state": 0,
+        "durability": 0,
+        "seal_state": 1,
+        "equipment_quality_seed": null,
+        "instance_id": "01a18860-caac-7f54-8e06-9fa1a07947ec"
+      }
+    }
+  ],
+  "gold": {
+    "before_gold": {
+      "1": 50609,
+      "2": 50181,
+      "3": 50024,
+      "4": 50031
+    },
+    "after_gold": {
+      "1": 50591,
+      "2": 50189,
+      "3": 50029,
+      "4": 50036
+    },
+    "party_total_conserved": true
+  },
+  "stack": {
+    "authoritative": {
+      "authoritative_source": "server_commit_journal",
+      "result": {
+        "event_id": 14,
+        "persisted": true,
+        "run_id": 639288861382674180,
+        "room_generation": 1,
+        "map_id": 1,
+        "room_x": 0,
+        "room_y": 0,
+        "ground_id": 21,
+        "item_id": 3030,
+        "count": 1,
+        "is_gold": false,
+        "pickup_id": "55b90100-a45a-4160-a17f-80c5e3947236",
+        "picker_uid": 4,
+        "winner_uid": 4,
+        "winner_character_id": "e33a4371-6f16-439f-aeb3-09a35da4bf94",
+        "party_slot": 3,
+        "scores": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "status": "committed",
+        "reason": "persisted",
+        "publication_error": null,
+        "destination_slot": 73,
+        "instance_id": "00000000-0000-0000-0000-000000000000",
+        "captured_filetime": 134377636358762027
+      }
+    },
+    "before_counts": {
+      "1": 4,
+      "2": 0,
+      "3": 5,
+      "4": 5
+    },
+    "after_counts": {
+      "1": 3,
+      "2": 0,
+      "3": 5,
+      "4": 6
+    },
+    "source_persisted_before_pickup": true
+  },
+  "room_return": {
+    "old_room": [
+      0,
+      0
+    ],
+    "away_room": [
+      1,
+      0
+    ],
+    "returned_room": [
+      0,
+      0
+    ],
+    "ground": {
+      "ground_id": 8,
+      "item_id": 24002,
+      "count": 1,
+      "is_gold": false,
+      "x": 283,
+      "y": 341,
+      "pending": false,
+      "instance_id": "01a18860-caab-7803-a562-f84ce92c8471",
+      "owner_uid": 1,
+      "routing_source": 0,
+      "state": 0,
+      "durability": 0,
+      "seal_state": 0,
+      "equipment_quality_seed": null
+    },
+    "all_four_alive": true,
+    "all_four_away_absent": true,
+    "all_four_returned_present": true
+  },
+  "final_hp": {
+    "C": 302,
+    "A": 1517,
+    "B": 470,
+    "D": 277
+  },
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "stopped_phases": [
+    "stopped",
+    "stopped"
+  ],
+  "limits": [
+    "Fixture changes two MOB item lists only; no natural drop-rate claim.",
+    "Live state/durability are zero and quality seed null; nonzero metadata covered by managed tests.",
+    "Repeat input after removal is not duplicate wire-packet replay.",
+    "First room attempt interrupted and C/D died; recovery excluded from four-alive acceptance.",
+    "Second attempt initially read one stale ground sample; fresh all-four sample and return then passed.",
+    "Dead native test-state inventory/ground observation still unsupported."
+  ]
+}

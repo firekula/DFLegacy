@@ -1,0 +1,23 @@
+Client state tests: 0 failures
+navigation tests: 0 failure(s)
+navigation runtime tests: 0 failure(s)
+party tests: 0 failure(s)
+party derived IO tests: 0 failure(s)
+party runtime tests: 0 failure(s)
+Town route catalog: 72 checks, 0 failures
+town route controller tests: 0 failure(s)
+town route adapter tests: 0 failure(s)
+town route IO tests: 0 failure(s)
+Frame profile tests: 0 failures
+Frame profile IO tests: 0 failures
+Gameplay trace tests: 0 failures
+Native loop model: 0 failures
+Client test control tests: 0 failures
+Client test control IO tests: 0 failures
+PASS map click feedback: finite native-curve rings, identity, clock, 1555 pixels
+PASS map feedback runtime: native seams, state restore, hook ownership, pitch, cleanup, P2 drain interleaving
+PASS map click feedback: finite native-curve rings, identity, clock, 1555 pixels
+PASS map feedback runtime: native seams, state restore, hook ownership, pitch, cleanup, P2 drain interleaving
+Client test control tests: 0 failures
+Client test control IO tests: 0 failures
+Debug overlay tests: 0 failures

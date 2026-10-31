@@ -1,0 +1,13 @@
+{
+  "schema": "dflegacy.unaltered-evidence-copy.v1",
+  "files": [
+    {
+      "file": "normal-restored-20261028-005912.json",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-restored.json",
+      "source_sha256": "540494658CE76528B0489DF479A369506D8958E769D02210A6C62EADA7ADAEF5",
+      "copy_sha256": "540494658CE76528B0489DF479A369506D8958E769D02210A6C62EADA7ADAEF5",
+      "bytes": 432,
+      "unaltered": true
+    }
+  ]
+}

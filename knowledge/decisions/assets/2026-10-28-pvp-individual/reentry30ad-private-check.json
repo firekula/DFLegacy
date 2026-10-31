@@ -1,0 +1,27 @@
+{
+  "frozen_originals": 38,
+  "all_raw_copy_hashes_verified": true,
+  "full_state_bytes_before_after_equal": true,
+  "pvp_receipt_count": 4,
+  "previous_pvp_and_native_assets_unchanged": true,
+  "raw_prefixes_independently_equal": true,
+  "checks": 43,
+  "total": 43,
+  "collector_sha256": "2E271B8CE04360223ABE43FBA7A59132B37CFDD0A532213179F40F0F4FB60CE2",
+  "freeze_script_sha256": "3CD2F90D809763ACEE088D92481322F9BFB4CDC839D6A5A4814796A2FD7265F5",
+  "checker_sha256": "72B9A2BE04F036BB679506D3538AB27FEA71059233C510C8DC204F48D485DC5A",
+  "negative_cases": [
+    "CRC wrong",
+    "unexpected PvP login",
+    "missing normal login",
+    "changed state",
+    "extra receipt",
+    "wrong receipt award",
+    "not responding",
+    "world outside sampling",
+    "wrong PID",
+    "wrong native binary"
+  ],
+  "root_reviewed_chooser_and_world_images": true,
+  "normal_runtime_delivery": "PENDING_ROOT"
+}

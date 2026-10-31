@@ -1,0 +1,9 @@
+# Test-only Player Death
+
+User explicitly requested player kill first, then the existing queue; U11 is now last, superseding the older skillbar-last ordering only for U11. Reuse the already authorized local native test-control architecture. Chosen implementation: DLTC112 op6, `player kill --uid`, self only in the current live dungeon, existing default-off flags and fresh server lease, original native HP setter with player-specific type/vtable/authority validation. No raw packet or persisted HP edit.
+
+Native ACK means request executed, not observed death. Require fresh self HP0/dead, same-room peer death observations and authoritative server member alive=false before synchronized. Partial results retain receipt and are never retried. Already dead, stale/changed actor, room, party or lease refuse. Server test snapshot adds actual member alive state, keeping production death business unchanged. Offline tests cover validation, object binding, at-most-once IO and confirmation failures; isolated dual-client acceptance proves normal native/server death and key UI. U11 ground removal remains deferred, not silently fixed here.
+
+After this interface, continue U05 structured observation work, beginning with currently missing local MP and limits, with independently verified original offsets and tests. Existing worktree reused; all previously frozen evidence stays read-only. New private namespace `.tmp/player-kill-20261030`, normal state E0E2FB4B… untouched.
+
+Implementation scope: the high-level CLI requires 2–4 current party members because solo life is session-private; solo member alive is null, never invented true. This initial boundary is an implementer choice based on the existing architecture. Local MP/maxMP was additionally completed with static getter/secure-field proof, tests and real skill consumption/HUD evidence; peer/Town/v1 remain unknown. Native x87 runtime precision/rounding remains unmeasured.

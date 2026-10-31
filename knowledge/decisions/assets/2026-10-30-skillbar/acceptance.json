@@ -1,0 +1,1118 @@
+{
+  "schema": "dfl-skillbar-persistence-acceptance/v1",
+  "same_data_path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\skillbar-verification-20261030\\state.json",
+  "no_reseed_between_four_server_phases": true,
+  "checks": {
+    "baseline-edit": {
+      "character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+      "sp": 10,
+      "skills": [
+        {
+          "Slot": 0,
+          "SkillId": 15,
+          "Level": 10
+        },
+        {
+          "Slot": 1,
+          "SkillId": 27,
+          "Level": 6
+        },
+        {
+          "Slot": 2,
+          "SkillId": 57,
+          "Level": 5
+        },
+        {
+          "Slot": 4,
+          "SkillId": 31,
+          "Level": 5
+        },
+        {
+          "Slot": 5,
+          "SkillId": 55,
+          "Level": 2
+        },
+        {
+          "Slot": 6,
+          "SkillId": 19,
+          "Level": 10
+        },
+        {
+          "Slot": 7,
+          "SkillId": 17,
+          "Level": 20
+        },
+        {
+          "Slot": 8,
+          "SkillId": 16,
+          "Level": 5
+        },
+        {
+          "Slot": 10,
+          "SkillId": 18,
+          "Level": 5
+        },
+        {
+          "Slot": 11,
+          "SkillId": 42,
+          "Level": 1
+        },
+        {
+          "Slot": 12,
+          "SkillId": 2,
+          "Level": 9
+        },
+        {
+          "Slot": 13,
+          "SkillId": 29,
+          "Level": 7
+        },
+        {
+          "Slot": 14,
+          "SkillId": 38,
+          "Level": 10
+        },
+        {
+          "Slot": 15,
+          "SkillId": 61,
+          "Level": 6
+        },
+        {
+          "Slot": 17,
+          "SkillId": 64,
+          "Level": 6
+        },
+        {
+          "Slot": 90,
+          "SkillId": 3,
+          "Level": 1
+        },
+        {
+          "Slot": 91,
+          "SkillId": 37,
+          "Level": 1
+        },
+        {
+          "Slot": 92,
+          "SkillId": 4,
+          "Level": 1
+        },
+        {
+          "Slot": 93,
+          "SkillId": 14,
+          "Level": 1
+        },
+        {
+          "Slot": 94,
+          "SkillId": 12,
+          "Level": 1
+        },
+        {
+          "Slot": 132,
+          "SkillId": 28,
+          "Level": 5
+        },
+        {
+          "Slot": 137,
+          "SkillId": 11,
+          "Level": 1
+        },
+        {
+          "Slot": 174,
+          "SkillId": 181,
+          "Level": 3
+        },
+        {
+          "Slot": 175,
+          "SkillId": 182,
+          "Level": 3
+        },
+        {
+          "Slot": 176,
+          "SkillId": 184,
+          "Level": 2
+        },
+        {
+          "Slot": 177,
+          "SkillId": 187,
+          "Level": 1
+        },
+        {
+          "Slot": 178,
+          "SkillId": 179,
+          "Level": 5
+        },
+        {
+          "Slot": 179,
+          "SkillId": 169,
+          "Level": 1
+        },
+        {
+          "Slot": 180,
+          "SkillId": 170,
+          "Level": 1
+        },
+        {
+          "Slot": 181,
+          "SkillId": 176,
+          "Level": 10
+        },
+        {
+          "Slot": 182,
+          "SkillId": 175,
+          "Level": 1
+        },
+        {
+          "Slot": 183,
+          "SkillId": 188,
+          "Level": 9
+        },
+        {
+          "Slot": 184,
+          "SkillId": 180,
+          "Level": 10
+        },
+        {
+          "Slot": 185,
+          "SkillId": 189,
+          "Level": 1
+        }
+      ],
+      "source_sha256": "E94AB95B025C31BCC7F3B9EE1AF047D0C00DC0D745DE5E0C1275D3AAADC1532D"
+    },
+    "baseline-client-relogin": {
+      "character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+      "sp": 10,
+      "skills": [
+        {
+          "Slot": 0,
+          "SkillId": 15,
+          "Level": 10
+        },
+        {
+          "Slot": 1,
+          "SkillId": 27,
+          "Level": 6
+        },
+        {
+          "Slot": 2,
+          "SkillId": 57,
+          "Level": 5
+        },
+        {
+          "Slot": 4,
+          "SkillId": 31,
+          "Level": 5
+        },
+        {
+          "Slot": 5,
+          "SkillId": 55,
+          "Level": 2
+        },
+        {
+          "Slot": 6,
+          "SkillId": 19,
+          "Level": 10
+        },
+        {
+          "Slot": 7,
+          "SkillId": 17,
+          "Level": 20
+        },
+        {
+          "Slot": 8,
+          "SkillId": 16,
+          "Level": 5
+        },
+        {
+          "Slot": 10,
+          "SkillId": 18,
+          "Level": 5
+        },
+        {
+          "Slot": 11,
+          "SkillId": 42,
+          "Level": 1
+        },
+        {
+          "Slot": 12,
+          "SkillId": 2,
+          "Level": 9
+        },
+        {
+          "Slot": 13,
+          "SkillId": 29,
+          "Level": 7
+        },
+        {
+          "Slot": 14,
+          "SkillId": 38,
+          "Level": 10
+        },
+        {
+          "Slot": 15,
+          "SkillId": 61,
+          "Level": 6
+        },
+        {
+          "Slot": 17,
+          "SkillId": 64,
+          "Level": 6
+        },
+        {
+          "Slot": 90,
+          "SkillId": 3,
+          "Level": 1
+        },
+        {
+          "Slot": 91,
+          "SkillId": 37,
+          "Level": 1
+        },
+        {
+          "Slot": 92,
+          "SkillId": 4,
+          "Level": 1
+        },
+        {
+          "Slot": 93,
+          "SkillId": 14,
+          "Level": 1
+        },
+        {
+          "Slot": 94,
+          "SkillId": 12,
+          "Level": 1
+        },
+        {
+          "Slot": 132,
+          "SkillId": 28,
+          "Level": 5
+        },
+        {
+          "Slot": 137,
+          "SkillId": 11,
+          "Level": 1
+        },
+        {
+          "Slot": 174,
+          "SkillId": 181,
+          "Level": 3
+        },
+        {
+          "Slot": 175,
+          "SkillId": 182,
+          "Level": 3
+        },
+        {
+          "Slot": 176,
+          "SkillId": 184,
+          "Level": 2
+        },
+        {
+          "Slot": 177,
+          "SkillId": 187,
+          "Level": 1
+        },
+        {
+          "Slot": 178,
+          "SkillId": 179,
+          "Level": 5
+        },
+        {
+          "Slot": 179,
+          "SkillId": 169,
+          "Level": 1
+        },
+        {
+          "Slot": 180,
+          "SkillId": 170,
+          "Level": 1
+        },
+        {
+          "Slot": 181,
+          "SkillId": 176,
+          "Level": 10
+        },
+        {
+          "Slot": 182,
+          "SkillId": 175,
+          "Level": 1
+        },
+        {
+          "Slot": 183,
+          "SkillId": 188,
+          "Level": 9
+        },
+        {
+          "Slot": 184,
+          "SkillId": 180,
+          "Level": 10
+        },
+        {
+          "Slot": 185,
+          "SkillId": 189,
+          "Level": 1
+        }
+      ],
+      "source_sha256": "F4285F7AB817959E8BF166E04D1393492971054BD33C6F6B7E4C53433AEFEA4E"
+    },
+    "baseline-server-restart": {
+      "character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+      "sp": 10,
+      "skills": [
+        {
+          "Slot": 0,
+          "SkillId": 15,
+          "Level": 10
+        },
+        {
+          "Slot": 1,
+          "SkillId": 27,
+          "Level": 6
+        },
+        {
+          "Slot": 2,
+          "SkillId": 57,
+          "Level": 5
+        },
+        {
+          "Slot": 4,
+          "SkillId": 31,
+          "Level": 5
+        },
+        {
+          "Slot": 5,
+          "SkillId": 55,
+          "Level": 2
+        },
+        {
+          "Slot": 6,
+          "SkillId": 19,
+          "Level": 10
+        },
+        {
+          "Slot": 7,
+          "SkillId": 17,
+          "Level": 20
+        },
+        {
+          "Slot": 8,
+          "SkillId": 16,
+          "Level": 5
+        },
+        {
+          "Slot": 10,
+          "SkillId": 18,
+          "Level": 5
+        },
+        {
+          "Slot": 11,
+          "SkillId": 42,
+          "Level": 1
+        },
+        {
+          "Slot": 12,
+          "SkillId": 2,
+          "Level": 9
+        },
+        {
+          "Slot": 13,
+          "SkillId": 29,
+          "Level": 7
+        },
+        {
+          "Slot": 14,
+          "SkillId": 38,
+          "Level": 10
+        },
+        {
+          "Slot": 15,
+          "SkillId": 61,
+          "Level": 6
+        },
+        {
+          "Slot": 17,
+          "SkillId": 64,
+          "Level": 6
+        },
+        {
+          "Slot": 90,
+          "SkillId": 3,
+          "Level": 1
+        },
+        {
+          "Slot": 91,
+          "SkillId": 37,
+          "Level": 1
+        },
+        {
+          "Slot": 92,
+          "SkillId": 4,
+          "Level": 1
+        },
+        {
+          "Slot": 93,
+          "SkillId": 14,
+          "Level": 1
+        },
+        {
+          "Slot": 94,
+          "SkillId": 12,
+          "Level": 1
+        },
+        {
+          "Slot": 132,
+          "SkillId": 28,
+          "Level": 5
+        },
+        {
+          "Slot": 137,
+          "SkillId": 11,
+          "Level": 1
+        },
+        {
+          "Slot": 174,
+          "SkillId": 181,
+          "Level": 3
+        },
+        {
+          "Slot": 175,
+          "SkillId": 182,
+          "Level": 3
+        },
+        {
+          "Slot": 176,
+          "SkillId": 184,
+          "Level": 2
+        },
+        {
+          "Slot": 177,
+          "SkillId": 187,
+          "Level": 1
+        },
+        {
+          "Slot": 178,
+          "SkillId": 179,
+          "Level": 5
+        },
+        {
+          "Slot": 179,
+          "SkillId": 169,
+          "Level": 1
+        },
+        {
+          "Slot": 180,
+          "SkillId": 170,
+          "Level": 1
+        },
+        {
+          "Slot": 181,
+          "SkillId": 176,
+          "Level": 10
+        },
+        {
+          "Slot": 182,
+          "SkillId": 175,
+          "Level": 1
+        },
+        {
+          "Slot": 183,
+          "SkillId": 188,
+          "Level": 9
+        },
+        {
+          "Slot": 184,
+          "SkillId": 180,
+          "Level": 10
+        },
+        {
+          "Slot": 185,
+          "SkillId": 189,
+          "Level": 1
+        }
+      ],
+      "source_sha256": "45E82B28784EAE284EE2B329C885EF82FCAF50FA0975D4ECAA9045BD2E2EE77C"
+    },
+    "fixed-edit": {
+      "character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+      "sp": 10,
+      "skills": [
+        {
+          "Slot": 0,
+          "SkillId": 57,
+          "Level": 5
+        },
+        {
+          "Slot": 2,
+          "SkillId": 15,
+          "Level": 10
+        },
+        {
+          "Slot": 3,
+          "SkillId": 27,
+          "Level": 6
+        },
+        {
+          "Slot": 4,
+          "SkillId": 31,
+          "Level": 5
+        },
+        {
+          "Slot": 5,
+          "SkillId": 55,
+          "Level": 2
+        },
+        {
+          "Slot": 6,
+          "SkillId": 19,
+          "Level": 10
+        },
+        {
+          "Slot": 7,
+          "SkillId": 17,
+          "Level": 20
+        },
+        {
+          "Slot": 8,
+          "SkillId": 16,
+          "Level": 5
+        },
+        {
+          "Slot": 10,
+          "SkillId": 18,
+          "Level": 5
+        },
+        {
+          "Slot": 11,
+          "SkillId": 42,
+          "Level": 1
+        },
+        {
+          "Slot": 12,
+          "SkillId": 2,
+          "Level": 9
+        },
+        {
+          "Slot": 13,
+          "SkillId": 29,
+          "Level": 7
+        },
+        {
+          "Slot": 14,
+          "SkillId": 38,
+          "Level": 10
+        },
+        {
+          "Slot": 15,
+          "SkillId": 61,
+          "Level": 6
+        },
+        {
+          "Slot": 17,
+          "SkillId": 64,
+          "Level": 6
+        },
+        {
+          "Slot": 90,
+          "SkillId": 3,
+          "Level": 1
+        },
+        {
+          "Slot": 91,
+          "SkillId": 37,
+          "Level": 1
+        },
+        {
+          "Slot": 92,
+          "SkillId": 4,
+          "Level": 1
+        },
+        {
+          "Slot": 93,
+          "SkillId": 14,
+          "Level": 1
+        },
+        {
+          "Slot": 94,
+          "SkillId": 12,
+          "Level": 1
+        },
+        {
+          "Slot": 132,
+          "SkillId": 28,
+          "Level": 5
+        },
+        {
+          "Slot": 137,
+          "SkillId": 11,
+          "Level": 1
+        },
+        {
+          "Slot": 174,
+          "SkillId": 181,
+          "Level": 3
+        },
+        {
+          "Slot": 175,
+          "SkillId": 182,
+          "Level": 3
+        },
+        {
+          "Slot": 176,
+          "SkillId": 184,
+          "Level": 2
+        },
+        {
+          "Slot": 177,
+          "SkillId": 187,
+          "Level": 1
+        },
+        {
+          "Slot": 178,
+          "SkillId": 179,
+          "Level": 5
+        },
+        {
+          "Slot": 179,
+          "SkillId": 169,
+          "Level": 1
+        },
+        {
+          "Slot": 180,
+          "SkillId": 170,
+          "Level": 1
+        },
+        {
+          "Slot": 181,
+          "SkillId": 176,
+          "Level": 10
+        },
+        {
+          "Slot": 182,
+          "SkillId": 175,
+          "Level": 1
+        },
+        {
+          "Slot": 183,
+          "SkillId": 188,
+          "Level": 9
+        },
+        {
+          "Slot": 184,
+          "SkillId": 180,
+          "Level": 10
+        },
+        {
+          "Slot": 185,
+          "SkillId": 189,
+          "Level": 1
+        }
+      ],
+      "source_sha256": "B595D721C39527FF366CE29AFE170D8C9C93AF37406B858416EAD7FC5A8CC1B6"
+    },
+    "fixed-client-relogin": {
+      "character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+      "sp": 10,
+      "skills": [
+        {
+          "Slot": 0,
+          "SkillId": 57,
+          "Level": 5
+        },
+        {
+          "Slot": 2,
+          "SkillId": 15,
+          "Level": 10
+        },
+        {
+          "Slot": 3,
+          "SkillId": 27,
+          "Level": 6
+        },
+        {
+          "Slot": 4,
+          "SkillId": 31,
+          "Level": 5
+        },
+        {
+          "Slot": 5,
+          "SkillId": 55,
+          "Level": 2
+        },
+        {
+          "Slot": 6,
+          "SkillId": 19,
+          "Level": 10
+        },
+        {
+          "Slot": 7,
+          "SkillId": 17,
+          "Level": 20
+        },
+        {
+          "Slot": 8,
+          "SkillId": 16,
+          "Level": 5
+        },
+        {
+          "Slot": 10,
+          "SkillId": 18,
+          "Level": 5
+        },
+        {
+          "Slot": 11,
+          "SkillId": 42,
+          "Level": 1
+        },
+        {
+          "Slot": 12,
+          "SkillId": 2,
+          "Level": 9
+        },
+        {
+          "Slot": 13,
+          "SkillId": 29,
+          "Level": 7
+        },
+        {
+          "Slot": 14,
+          "SkillId": 38,
+          "Level": 10
+        },
+        {
+          "Slot": 15,
+          "SkillId": 61,
+          "Level": 6
+        },
+        {
+          "Slot": 17,
+          "SkillId": 64,
+          "Level": 6
+        },
+        {
+          "Slot": 90,
+          "SkillId": 3,
+          "Level": 1
+        },
+        {
+          "Slot": 91,
+          "SkillId": 37,
+          "Level": 1
+        },
+        {
+          "Slot": 92,
+          "SkillId": 4,
+          "Level": 1
+        },
+        {
+          "Slot": 93,
+          "SkillId": 14,
+          "Level": 1
+        },
+        {
+          "Slot": 94,
+          "SkillId": 12,
+          "Level": 1
+        },
+        {
+          "Slot": 132,
+          "SkillId": 28,
+          "Level": 5
+        },
+        {
+          "Slot": 137,
+          "SkillId": 11,
+          "Level": 1
+        },
+        {
+          "Slot": 174,
+          "SkillId": 181,
+          "Level": 3
+        },
+        {
+          "Slot": 175,
+          "SkillId": 182,
+          "Level": 3
+        },
+        {
+          "Slot": 176,
+          "SkillId": 184,
+          "Level": 2
+        },
+        {
+          "Slot": 177,
+          "SkillId": 187,
+          "Level": 1
+        },
+        {
+          "Slot": 178,
+          "SkillId": 179,
+          "Level": 5
+        },
+        {
+          "Slot": 179,
+          "SkillId": 169,
+          "Level": 1
+        },
+        {
+          "Slot": 180,
+          "SkillId": 170,
+          "Level": 1
+        },
+        {
+          "Slot": 181,
+          "SkillId": 176,
+          "Level": 10
+        },
+        {
+          "Slot": 182,
+          "SkillId": 175,
+          "Level": 1
+        },
+        {
+          "Slot": 183,
+          "SkillId": 188,
+          "Level": 9
+        },
+        {
+          "Slot": 184,
+          "SkillId": 180,
+          "Level": 10
+        },
+        {
+          "Slot": 185,
+          "SkillId": 189,
+          "Level": 1
+        }
+      ],
+      "source_sha256": "12199DFEF7CD0A2E92945312A28D7779D412AF20284282CC7F8AEACBF28F0D67"
+    },
+    "fixed-server-restart": {
+      "character_id": "a65fa361-85a3-4e26-ab3d-b4809aebaef6",
+      "sp": 10,
+      "skills": [
+        {
+          "Slot": 0,
+          "SkillId": 57,
+          "Level": 5
+        },
+        {
+          "Slot": 2,
+          "SkillId": 15,
+          "Level": 10
+        },
+        {
+          "Slot": 3,
+          "SkillId": 27,
+          "Level": 6
+        },
+        {
+          "Slot": 4,
+          "SkillId": 31,
+          "Level": 5
+        },
+        {
+          "Slot": 5,
+          "SkillId": 55,
+          "Level": 2
+        },
+        {
+          "Slot": 6,
+          "SkillId": 19,
+          "Level": 10
+        },
+        {
+          "Slot": 7,
+          "SkillId": 17,
+          "Level": 20
+        },
+        {
+          "Slot": 8,
+          "SkillId": 16,
+          "Level": 5
+        },
+        {
+          "Slot": 10,
+          "SkillId": 18,
+          "Level": 5
+        },
+        {
+          "Slot": 11,
+          "SkillId": 42,
+          "Level": 1
+        },
+        {
+          "Slot": 12,
+          "SkillId": 2,
+          "Level": 9
+        },
+        {
+          "Slot": 13,
+          "SkillId": 29,
+          "Level": 7
+        },
+        {
+          "Slot": 14,
+          "SkillId": 38,
+          "Level": 10
+        },
+        {
+          "Slot": 15,
+          "SkillId": 61,
+          "Level": 6
+        },
+        {
+          "Slot": 17,
+          "SkillId": 64,
+          "Level": 6
+        },
+        {
+          "Slot": 90,
+          "SkillId": 3,
+          "Level": 1
+        },
+        {
+          "Slot": 91,
+          "SkillId": 37,
+          "Level": 1
+        },
+        {
+          "Slot": 92,
+          "SkillId": 4,
+          "Level": 1
+        },
+        {
+          "Slot": 93,
+          "SkillId": 14,
+          "Level": 1
+        },
+        {
+          "Slot": 94,
+          "SkillId": 12,
+          "Level": 1
+        },
+        {
+          "Slot": 132,
+          "SkillId": 28,
+          "Level": 5
+        },
+        {
+          "Slot": 137,
+          "SkillId": 11,
+          "Level": 1
+        },
+        {
+          "Slot": 174,
+          "SkillId": 181,
+          "Level": 3
+        },
+        {
+          "Slot": 175,
+          "SkillId": 182,
+          "Level": 3
+        },
+        {
+          "Slot": 176,
+          "SkillId": 184,
+          "Level": 2
+        },
+        {
+          "Slot": 177,
+          "SkillId": 187,
+          "Level": 1
+        },
+        {
+          "Slot": 178,
+          "SkillId": 179,
+          "Level": 5
+        },
+        {
+          "Slot": 179,
+          "SkillId": 169,
+          "Level": 1
+        },
+        {
+          "Slot": 180,
+          "SkillId": 170,
+          "Level": 1
+        },
+        {
+          "Slot": 181,
+          "SkillId": 176,
+          "Level": 10
+        },
+        {
+          "Slot": 182,
+          "SkillId": 175,
+          "Level": 1
+        },
+        {
+          "Slot": 183,
+          "SkillId": 188,
+          "Level": 9
+        },
+        {
+          "Slot": 184,
+          "SkillId": 180,
+          "Level": 10
+        },
+        {
+          "Slot": 185,
+          "SkillId": 189,
+          "Level": 1
+        }
+      ],
+      "source_sha256": "99723839E4CBDC6045BDB94AF4615E29D73BC2F2142D7F7E0917371AD62D0968"
+    }
+  },
+  "baseline_server_sha256": "E058182878E8176981C3D9649515F744035385E812525DBE14B4D2C8059193C0",
+  "fixed_server_sha256": "AA11B5DB22B5C674E2041F3F72D44ADAE8009ACDB7A7AC3B9E73CDAC51081907",
+  "native_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+  "actual_fixed_native_moves": [
+    {
+      "source": 0,
+      "destination": 2,
+      "ack": "010002"
+    },
+    {
+      "source": 1,
+      "destination": 3,
+      "ack": "010103"
+    }
+  ],
+  "all_native_decoded_files_errors": 0,
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "INIs_restored": 4,
+  "protected_files": 16,
+  "pinned_previous_evidence_verified": 26,
+  "processes_closed": true,
+  "normal_directory_deployed": false,
+  "verification": {
+    "handler_red": 7,
+    "store_red": 3,
+    "managed_final_failures": 0,
+    "full_managed": "All DFLegacy protocol smoke tests passed",
+    "full_python": {
+      "passed": 567,
+      "skipped": 2,
+      "subtests": 413,
+      "existing_failures": [
+        "protocol/tests/test_ledger.py::test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects",
+        "protocol/tests/test_ledger.py::test_cmd_ledger_end_to_end_writes_three_ledgers",
+        "protocol/tests/test_ledger.py::test_cmd_ledger_merges_runs_and_does_not_clear_other_scenarios",
+        "tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_wires_server_actors_steps_and_collect",
+        "tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_waits_for_the_server_to_listen_before_starting_actors",
+        "tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback"
+      ]
+    }
+  },
+  "limits": [
+    "Baseline already persisted actual edits; original user historical reset cause not uniquely established. Fresh template seeding is a confirmed separate reset mechanism.",
+    "Closed K-editor drags emitted no CMD30 and are excluded; first invalid wait-step was refused before arming.",
+    "Native compound inventory-to-occupied drag not performed; real-handler compound coalesced/delayed and disk/relog regression passed.",
+    "Windows replacement failure tested on actual filesystem; non-Windows skip only statically reviewed.",
+    "Two initial loopback setup failures were retained, not counted as valid product RED.",
+    "No normal save or launcher config overwrite."
+  ]
+}

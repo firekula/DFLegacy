@@ -1,0 +1,50 @@
+{
+  "schema": "native-acceptance-assets/v1",
+  "files": [
+    {
+      "file": "01-party-A.jpg",
+      "bytes": 449232,
+      "sha256": "72E15BEF5635A1A51559B4CE022B13FF7445338FA2B8C7C532F24191F90EE57D"
+    },
+    {
+      "file": "02-party-B.jpg",
+      "bytes": 442724,
+      "sha256": "5F8625C50AACB09E20E40662CE694955F1862D6DF3B762D2BECBD266E578EB94"
+    },
+    {
+      "file": "03-boss-room-A.jpg",
+      "bytes": 425127,
+      "sha256": "43D031CB61BFF5A2CEF89FACFE82BD93BEE418F7CDF980C08423C275CE8E6149"
+    },
+    {
+      "file": "04-boss-room-B.jpg",
+      "bytes": 421629,
+      "sha256": "DC85FEB7DD74D31EE7523FCAF1B5FBBB233EE0BC365561C69BE089BE7A2C8EB5"
+    },
+    {
+      "file": "05-settlement-menu-A.jpg",
+      "bytes": 381793,
+      "sha256": "A80627AE94172929288071376DE6303C7E82ECC7651FF73696D710D61B87EF05"
+    },
+    {
+      "file": "06-settlement-menu-B.jpg",
+      "bytes": 368145,
+      "sha256": "607AF22D530A5414981E9625A07C67A1943B6C82FE7F13E4EF93C1DFAB99F76D"
+    },
+    {
+      "file": "07-town-A.jpg",
+      "bytes": 437906,
+      "sha256": "B923CB2D66256491DE2D8854206175C2084D8F619E89B87F3A33D22893485859"
+    },
+    {
+      "file": "08-town-B.jpg",
+      "bytes": 436883,
+      "sha256": "09DDF7EDC995B37D2DFE255152FB7A1E84E56E117A5DEE4AF2A5FE7F8C47BE03"
+    },
+    {
+      "file": "summary.json",
+      "bytes": 6937,
+      "sha256": "F9C53E50B26177EFF2C6AEE80EDB509F4A56F7C56A434789CE1DB8766FB9B49F"
+    }
+  ]
+}

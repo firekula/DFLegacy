@@ -1,0 +1,5 @@
+FAIL test-control IO: dead local actor publishes fresh bounded ground observation
+FAIL test-control IO: detached dead observer reads stage map rather than missing actor map
+FAIL test-control IO: dead old-map actor cannot redirect observation away from current stage
+Client test control tests: 0 failures
+Client test control IO tests: 3 failures

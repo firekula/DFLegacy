@@ -1,0 +1,8 @@
+{"label": "A-rapid-right-yellow-double-input", "success": true, "error": null, "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\evidence-right-pulse-v2\\A-rapid-right-yellow-double-input.jpg", "own_plan_armed": true}
+
+
+Traceback (most recent call last):
+  File "G:\Game\DNF_ACT1\DFLegacy\.tmp\map-right-pulse-20261029\v2-edges.py", line 27, in <module>
+    assert v[-1]['trigger_serial']==old['trigger_serial']+2,(old,v[-1])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ({'schema': 'dfl-map-feedback/v1', 'pid': 8820, 'process_started_filetime': 134377441565015453, 'tick_ms': 384021125, 'capture_tick_ms': 384021000, 'capture_sequence': 1049, 'trigger_serial': 3, 'active': False, 'hook_installed': True, 'cleanup_pending': False, 'target': {'x': 254, 'y': 220}, 'rings': [{'visible': False, 'scale': 0, 'color': 0}, {'visible': False, 'scale': 0, 'color': 0}], 'draw_count': 1018, 'texture_creations': 1, 'reason': 'idle_or_expired'}, {'schema': 'dfl-map-feedback/v1', 'pid': 8820, 'process_started_filetime': 134377441565015453, 'tick_ms': 384025171, 'capture_tick_ms': 384025062, 'capture_sequence': 1069, 'trigger_serial': 4, 'active': False, 'hook_installed': True, 'cleanup_pending': False, 'target': {'x': 260, 'y': 220}, 'rings': [{'visible': False, 'scale': 0, 'color': 0}, {'visible': False, 'scale': 0, 'color': 0}], 'draw_count': 1398, 'texture_creations': 1, 'reason': 'idle_or_expired'})

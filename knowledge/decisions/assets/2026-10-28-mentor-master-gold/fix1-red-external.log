@@ -1,0 +1,5 @@
+Mentor master gold smoke: 4 failures
+FAIL: R1 actual trade cancellation NOTI14 sampled before mentor, delivered late uses owner ordering and canonical final HUD
+FAIL: R1 actual trade cancellation NOTI14 during mentor delta uses owner ordering and canonical final HUD
+FAIL: R1 actual seller NOTI82 sampled before mentor, delivered late uses owner ordering and canonical final HUD
+FAIL: R1 actual seller NOTI82 during mentor delta uses owner ordering and canonical final HUD

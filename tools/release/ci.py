@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Small, locally reusable CI driver; it does not push images or publish releases."""
+from datetime import datetime, timezone
+import argparse
+import json
+import os
+import re
+from pathlib import Path
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from release import REPO, ReleaseError, build_client_assets, build_client_update, dotnet_environment, make_archive, new_output, publish, read_json, unpack, validate_identity, verify, verify_assets, write_json
+
+
+def build_version(ref, commit, timestamp):
+    if ref.startswith("refs/tags/"):
+        version = ref.removeprefix("refs/tags/")
+    else:
+        stamp = datetime.fromisoformat(timestamp).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        version = "dev-" + stamp + "-" + commit[:12]
+    try:
+        validate_identity(version, commit)
+    except ReleaseError as error:
+        raise ValueError(str(error)) from error
+    return version
+
+
+def run(*command):
+    subprocess.run([str(part) for part in command], cwd=REPO, check=True, env=dotnet_environment())
+
+
+def normalize_oci_metadata(path, version, commit, epoch):
+    validate_identity(version, commit)
+    if not isinstance(epoch, str) or not epoch.isascii() or not epoch.isdigit() or not 0 <= int(epoch) <= 253402300799:
+        raise ReleaseError("invalid SOURCE_DATE_EPOCH")
+    digest = read_json(path).get("containerimage.digest")
+    if not isinstance(digest, str) or not re.fullmatch(r"sha256:[a-f0-9]{64}", digest):
+        raise ReleaseError("Buildx metadata lacks a valid image index digest")
+    # buildx.build.ref and provenance contain invocation-specific identifiers.
+    # The published metadata records only the immutable release identity.
+    write_json(path, {"containerimage.digest": digest, "version": version, "commit": commit,
+                      "source_date_epoch": int(epoch), "platforms": ["linux/amd64", "linux/arm64"],
+                      "provenance": False, "sbom": False})
+
+
+def smoke_command(command, cwd):
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    with tempfile.TemporaryDirectory(prefix="DFLegacy smoke data ") as data, tempfile.TemporaryFile() as output:
+        process = subprocess.Popen(command(port, data), cwd=cwd, stdout=output, stderr=subprocess.STDOUT)
+        try:
+            deadline = time.monotonic() + 30
+            while True:
+                if process.poll() is not None:
+                    raise ReleaseError("packaged Manager exited before health became ready")
+                try:
+                    with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=1) as response:
+                        if response.status == 200:
+                            break
+                except (OSError, urllib.error.HTTPError):
+                    pass
+                if time.monotonic() > deadline:
+                    raise ReleaseError("packaged Manager health timed out")
+                time.sleep(0.1)
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/ready", timeout=2).close()
+            except urllib.error.HTTPError as error:
+                if error.code != 503:
+                    raise ReleaseError("stopped game readiness must be 503") from error
+            else:
+                raise ReleaseError("unconfigured game incorrectly reports ready")
+        finally:
+            process.terminate()
+            try:
+                process.wait(timeout=35)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+                raise ReleaseError("packaged Manager failed to stop in 35 seconds")
+
+
+def smoke_archive(archive):
+    data = verify(archive)
+    with tempfile.TemporaryDirectory(prefix="DFLegacy release with spaces ") as temporary:
+        root = unpack(archive, Path(temporary))
+        executable = root / ("DFLegacy.Manager.exe" if data["rid"].startswith("win") else "start.sh")
+        smoke_command(lambda port, data: [str(executable), "--root", str(root), "--data-dir", data, "--listen", "127.0.0.1", "--port", str(port), "--no-browser"], Path(temporary).parent)
+
+
+def metadata():
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
+    if commit != os.environ["BUILD_COMMIT"]:
+        raise ReleaseError("checkout SHA differs from triggering commit")
+    timestamp = subprocess.check_output(["git", "show", "-s", "--format=%cI", commit], cwd=REPO, text=True).strip()
+    epoch = subprocess.check_output(["git", "show", "-s", "--format=%ct", commit], cwd=REPO, text=True).strip()
+    if not epoch.isascii() or not epoch.isdigit():
+        raise ReleaseError("Git commit has no valid source timestamp")
+    version = build_version(os.environ["BUILD_REF"], commit, timestamp)
+    for filename, rows in ((os.environ.get("GITHUB_OUTPUT"), ("version=" + version, "commit=" + commit, "source_date_epoch=" + epoch)),
+                           (os.environ.get("GITHUB_ENV"), ("DFLEGACY_RELEASE_VERSION=" + version, "DFLEGACY_RELEASE_COMMIT=" + commit, "SOURCE_DATE_EPOCH=" + epoch))):
+        if filename:
+            with open(filename, "a", encoding="utf-8") as stream:
+                stream.write("\n".join(rows) + "\n")
+    print(json.dumps({"version": version, "commit": commit, "source_date_epoch": int(epoch)}))
+
+
+def windows(version, commit):
+    if os.name != "nt":
+        raise ReleaseError("Windows asset build requires Windows")
+    validate_identity(version, commit)
+    # Clean checkout in CI; source scripts fail on any native build/test failure.
+    run("pwsh", "-NoProfile", "-File", "src/DFLegacy.Ijl15/build-native.ps1", "-Configuration", "Release", "-RunTests")
+    run("pwsh", "-NoProfile", "-File", "src/DFLegacy.RandomNative/build-native.ps1", "-Configuration", "Release", "-RunTests")
+    native = REPO / "artifacts/native/ijl15/Release/ijl15.dll"
+    run("dotnet", "run", "--project", "src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj", "-c", "Release",
+        "-p:BuildNativeAssets=false", "-p:Ijl15PrebuiltPath=" + str(native))
+    launcher = new_output(REPO / "artifacts" / ("launcher-" + version))
+    run("dotnet", "publish", "src/DFLegacy.Launcher/DFLegacy.Launcher.csproj", "-c", "Release", "-r", "win-x64", "--self-contained", "true",
+        "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:DebugType=embedded", "-p:PublishTrimmed=false",
+        "-p:BuildNativeAssets=false", "-p:Ijl15PrebuiltPath=" + str(native), "-p:ContinuousIntegrationBuild=true", "-o", launcher)
+    assets = build_client_assets(launcher, native, REPO / "src/DFLegacy.Ijl15/Config.ini", REPO / "client-assets", version, commit)
+    # Tar transport keeps the immutable assets together. All receivers verify it.
+    make_archive(assets, REPO / "artifacts/client-assets.tar.gz", "linux-x64")
+    _, archive = publish("win-x64", version, commit, assets, REPO / "artifacts" / ("DFLegacy-" + version + "-win-x64"),
+                         verification="Windows x64 CI: managed/native tests and packaged Manager health/readiness; GPU and graphical game acceptance are not executed in headless CI")
+    smoke_archive(archive)
+    build_client_update(assets, REPO / "artifacts", version, commit)
+
+
+def linux(version, commit, archive):
+    if sys.platform != "linux":
+        raise ReleaseError("Linux packaging gate requires Linux")
+    validate_identity(version, commit)
+    if (REPO / "client-assets").exists():
+        raise ReleaseError("client-assets already exists; use a clean checkout")
+    with tempfile.TemporaryDirectory(prefix="dflegacy-transfer-") as temporary:
+        assets = unpack(Path(archive), Path(temporary))
+        verify_assets(assets, version, commit)
+        shutil.copytree(assets, REPO / "client-assets")
+    for rid in ("linux-x64", "linux-arm64", "osx-x64", "osx-arm64"):
+        status = "Linux x64 CI managed tests and packaged Manager health/readiness; no graphical game acceptance" if rid == "linux-x64" else "cross-built and archive verified; native execution not performed"
+        _, package = publish(rid, version, commit, REPO / "client-assets", REPO / "artifacts" / ("DFLegacy-" + version + "-" + rid), verification=status)
+        if rid == "linux-x64":
+            smoke_archive(package)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("metadata")
+    for command in ("windows", "linux"):
+        child = sub.add_parser(command)
+        child.add_argument("--version", required=True)
+        child.add_argument("--commit", required=True)
+        if command == "linux":
+            child.add_argument("--assets-archive", required=True)
+    child = sub.add_parser("smoke")
+    child.add_argument("archive")
+    child = sub.add_parser("image-metadata")
+    for name in ("path", "version", "commit", "epoch"):
+        child.add_argument("--" + name, required=True)
+    args = parser.parse_args()
+    try:
+        if args.command == "metadata":
+            metadata()
+        elif args.command == "windows":
+            windows(args.version, args.commit)
+        elif args.command == "linux":
+            linux(args.version, args.commit, args.assets_archive)
+        elif args.command == "image-metadata":
+            normalize_oci_metadata(args.path, args.version, args.commit, args.epoch)
+        else:
+            smoke_archive(args.archive)
+    except (ReleaseError, ValueError, OSError, subprocess.CalledProcessError) as error:
+        print("CI gate failed: " + str(error), file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

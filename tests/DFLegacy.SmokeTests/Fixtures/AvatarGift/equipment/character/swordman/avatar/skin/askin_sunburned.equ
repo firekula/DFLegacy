@@ -1,0 +1,28 @@
+[name] `¹ÅÍ­É«ÐÔ¸ÐÆ¤·ô`
+[name2] `Sunburned Skin`
+[grade] 0
+[attach type] `[trade]`
+[usable job]
+`[swordman]`
+[/usable job]
+
+[icon] `item/avatar/swordman/sm_abody.img` 1
+
+[equipment type] `[skin avatar]` 0
+[sub type] 0
+[cash] 300
+
+[hit recovery] +80
+
+
+[variation] 0 1
+
+[move wav] `CLOTH_TOUCH`
+
+
+
+
+[avatar select ability]
+`[PHYSICAL ABSOLUTE DEFENSE]` `+` 3
+`[MAGICAL ABSOLUTE DEFENSE]` `+` 3
+[/avatar select ability]

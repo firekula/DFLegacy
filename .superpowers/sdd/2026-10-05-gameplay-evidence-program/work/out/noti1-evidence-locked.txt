@@ -1,0 +1,101 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+ELF_SIZE=36360954
+SYMBOL Encryption::Encrypt VA=0x0848da70 SIZE=237 NAME=_ZN10Encryption7EncryptEPviRj
+SYMBOL Encryption::SeedRand VA=0x0848d51a SIZE=150 NAME=_ZN10Encryption8SeedRandERj
+SYMBOL Encryption::make_crc_table VA=0x0848d3e4 SIZE=141 NAME=_ZN10Encryption14make_crc_tableEv
+SYMBOL Encryption::crc32 VA=0x0848d472 SIZE=85 NAME=_ZN10Encryption5crc32EjPKcj
+SYMBOL Encryption::crc32NE VA=0x0848d4c8 SIZE=81 NAME=_ZN10Encryption6crc32NEPvi
+SYMBOL PacketBuf::finalize VA=0x0858d548 SIZE=802 NAME=_ZN9PacketBuf8finalizeEb
+SYMBOL PacketBuf::encrypt_packet VA=0x0858d86a SIZE=446 NAME=_ZN9PacketBuf14encrypt_packetEv
+ENCRYPT_CALLS=0x0848da8f->0x0848d51a,0x0848dab6->0x0807d8a0
+ENCRYPT_DISASSEMBLY (exact function boundary; raw call addresses, no guessed labels)
+0x0848da70 55 push ebp
+0x0848da71 89e5 mov ebp, esp
+0x0848da73 57 push edi
+0x0848da74 56 push esi
+0x0848da75 53 push ebx
+0x0848da76 83ec2c sub esp, 0x2c
+0x0848da79 c745e0b53e4504 mov dword ptr [ebp - 0x20], 0x4453eb5
+0x0848da80 8b4510 mov eax, dword ptr [ebp + 0x10]
+0x0848da83 8b00 mov eax, dword ptr [eax]
+0x0848da85 85c0 test eax, eax
+0x0848da87 740e je 0x848da97
+0x0848da89 8b4510 mov eax, dword ptr [ebp + 0x10]
+0x0848da8c 890424 mov dword ptr [esp], eax
+0x0848da8f e886faffff call 0x848d51a
+0x0848da94 8945e0 mov dword ptr [ebp - 0x20], eax
+0x0848da97 c745e400000000 mov dword ptr [ebp - 0x1c], 0
+0x0848da9e 8d45e0 lea eax, [ebp - 0x20]
+0x0848daa1 83c001 add eax, 1
+0x0848daa4 c744240801000000 mov dword ptr [esp + 8], 1
+0x0848daac 89442404 mov dword ptr [esp + 4], eax
+0x0848dab0 8d45df lea eax, [ebp - 0x21]
+0x0848dab3 890424 mov dword ptr [esp], eax
+0x0848dab6 e8e5fdbeff call 0x807d8a0
+0x0848dabb 0fb645df movzx eax, byte ptr [ebp - 0x21]
+0x0848dabf 83e007 and eax, 7
+0x0848dac2 8845df mov byte ptr [ebp - 0x21], al
+0x0848dac5 c745e400000000 mov dword ptr [ebp - 0x1c], 0
+0x0848dacc eb76 jmp 0x848db44
+0x0848dace 8b5508 mov edx, dword ptr [ebp + 8]
+0x0848dad1 8b45e4 mov eax, dword ptr [ebp - 0x1c]
+0x0848dad4 01c2 add edx, eax
+0x0848dad6 8b4d08 mov ecx, dword ptr [ebp + 8]
+0x0848dad9 8b45e4 mov eax, dword ptr [ebp - 0x1c]
+0x0848dadc 8d0401 lea eax, [ecx + eax]
+0x0848dadf 0fb600 movzx eax, byte ptr [eax]
+0x0848dae2 89c1 mov ecx, eax
+0x0848dae4 8b45e0 mov eax, dword ptr [ebp - 0x20]
+0x0848dae7 31c8 xor eax, ecx
+0x0848dae9 8802 mov byte ptr [edx], al
+0x0848daeb 8b5508 mov edx, dword ptr [ebp + 8]
+0x0848daee 8b45e4 mov eax, dword ptr [ebp - 0x1c]
+0x0848daf1 01c2 add edx, eax
+0x0848daf3 8b4d08 mov ecx, dword ptr [ebp + 8]
+0x0848daf6 8b45e4 mov eax, dword ptr [ebp - 0x1c]
+0x0848daf9 8d0401 lea eax, [ecx + eax]
+0x0848dafc 0fb600 movzx eax, byte ptr [eax]
+0x0848daff 0fb6d8 movzx ebx, al
+0x0848db02 0fb645df movzx eax, byte ptr [ebp - 0x21]
+0x0848db06 0fb6c0 movzx eax, al
+0x0848db09 89de mov esi, ebx
+0x0848db0b 89c1 mov ecx, eax
+0x0848db0d d3fe sar esi, cl
+0x0848db0f 89f0 mov eax, esi
+0x0848db11 89c3 mov ebx, eax
+0x0848db13 8b4d08 mov ecx, dword ptr [ebp + 8]
+0x0848db16 8b45e4 mov eax, dword ptr [ebp - 0x1c]
+0x0848db19 8d0401 lea eax, [ecx + eax]
+0x0848db1c 0fb600 movzx eax, byte ptr [eax]
+0x0848db1f 0fb6f0 movzx esi, al
+0x0848db22 0fb645df movzx eax, byte ptr [ebp - 0x21]
+0x0848db26 0fb6c0 movzx eax, al
+0x0848db29 b908000000 mov ecx, 8
+0x0848db2e 89cf mov edi, ecx
+0x0848db30 29c7 sub edi, eax
+0x0848db32 89f8 mov eax, edi
+0x0848db34 89f7 mov edi, esi
+0x0848db36 89c1 mov ecx, eax
+0x0848db38 d3e7 shl edi, cl
+0x0848db3a 89f8 mov eax, edi
+0x0848db3c 09d8 or eax, ebx
+0x0848db3e 8802 mov byte ptr [edx], al
+0x0848db40 8345e401 add dword ptr [ebp - 0x1c], 1
+0x0848db44 8b45e4 mov eax, dword ptr [ebp - 0x1c]
+0x0848db47 3b450c cmp eax, dword ptr [ebp + 0xc]
+0x0848db4a 0f9cc0 setl al
+0x0848db4d 84c0 test al, al
+0x0848db4f 0f8579ffffff jne 0x848dace
+0x0848db55 83c42c add esp, 0x2c
+0x0848db58 5b pop ebx
+0x0848db59 5e pop esi
+0x0848db5a 5f pop edi
+0x0848db5b 5d pop ebp
+0x0848db5c c3 ret 
+FORWARD_LOOKUP_INVERSE_AND_WIRE_ROUNDTRIP=PASS (same hypothesis, not singleton validation)
+CAPTURE streams-live/10013-2343.bin SIZE=46174 SHA256=4371a09c7cbebe22a9684df518ad25268911eb77df7246d83f4aadf05a254d9e
+REPLAY streams-live FRAME_SIZE=450 BODY_AFTER_15=435 POS_U32=5 CHANNEL=b'ch.11' KEY_SHA256=40b8a8230548024ca85a514f8dd7c4ad5e2549f9d6042a82a47f8c177611aab2 POSITIVE=True WRONG_ROTATION_NEGATIVE=True
+FORWARD_LOOKUP_INVERSE_AND_WIRE_ROUNDTRIP=PASS (same hypothesis, not singleton validation)
+CAPTURE streams-live2/10013-14805.bin SIZE=46144 SHA256=a041e77e6b1fc408aa03dbb986a3ca25a1b6045aaf27a364a8d6d454caab1ded
+REPLAY streams-live2 FRAME_SIZE=450 BODY_AFTER_15=435 POS_U32=5 CHANNEL=b'ch.11' KEY_SHA256=40b8a8230548024ca85a514f8dd7c4ad5e2549f9d6042a82a47f8c177611aab2 POSITIVE=True WRONG_ROTATION_NEGATIVE=True
+VERDICT=EVIDENCE_LOCKED_NOT_KEY_CLOSED

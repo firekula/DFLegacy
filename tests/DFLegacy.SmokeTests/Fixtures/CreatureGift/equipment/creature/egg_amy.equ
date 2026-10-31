@@ -1,0 +1,27 @@
+[name] `³èÎïµ° (ÑÇÃ×)`
+[name2] `An Egg of Amy`
+[attach type] `[sealing]`
+[rarity] 1
+[usable job]
+`[all]`
+[/usable job]
+[minimum level] 1
+
+[icon] `item/creature/creature_egg.img` 8
+[field image] `item/fieldimage.img` 30
+
+[equipment type] `[creature]` 0
+
+[sub type] 1
+[creature species] 21
+[output index] 63025
+
+[cool time] 10000
+
+[MP MAX rate] 5.00
+[inventory limit] +10000
+
+[move wav] `CREATURE_EGG_TOUCH`
+
+[set item master] -1
+

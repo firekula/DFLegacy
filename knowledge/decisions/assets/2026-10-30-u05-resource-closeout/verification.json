@@ -1,0 +1,90 @@
+{
+  "verified_at_utc": "2026-10-30T06:10:08.601445+00:00",
+  "python": {
+    "tests": 620,
+    "subtests": 569,
+    "skipped": 0,
+    "exit_code": 0,
+    "diagnostic": "Existing Unicorn.mem_map Windows faulthandler diagnostic stacks retained in the raw log; suite completed exit0."
+  },
+  "native": [
+    {
+      "mode": "--client-state",
+      "exit_code": 0
+    },
+    {
+      "mode": "--client-navigation",
+      "exit_code": 0
+    },
+    {
+      "mode": "--client-party",
+      "exit_code": 0
+    },
+    {
+      "mode": "--town-route",
+      "exit_code": 0
+    },
+    {
+      "mode": "full-overlay-abi",
+      "exit_code": 0
+    }
+  ],
+  "independent_original_byte_oracle_cases": 24,
+  "final_binary_loaded_on_all_four": true,
+  "source_unchanged_since_live": true,
+  "live_cli_matches": 13,
+  "global_unknown_timeouts": 4,
+  "unique_sdk_rows": 240,
+  "rows_per_role": 60,
+  "skill_observations": 3240,
+  "capture_duration_us": {
+    "minimum": 50,
+    "maximum": 247
+  },
+  "timing_scope": "Reader duration in this window only, not whole-frame timing or an U08 conclusion.",
+  "health": {
+    "initial_alive": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "live_cli_and_window_alive": [
+      "A"
+    ],
+    "natural_deaths": [
+      "B",
+      "C",
+      "D"
+    ]
+  },
+  "window_complete_snapshot_note": "The raw window JSON's 'before' key was captured at the end of the loop; it is not the start snapshot.",
+  "tested_live": {
+    "A": "skills27/55 require item3037 x1; native inventory no matching slot; CLI validates skill27 cost94/limit0/items=false",
+    "B": "skill51 cost10/limit5/count0/items=true",
+    "C": "skill46 cost6/limit0/items=true",
+    "D": "skill4 cost4/limit0/items=true"
+  },
+  "limited_to_fixtures_and_oracle": [
+    "positive/exhausted use counts",
+    "nonzero item cost sufficient first stack and duplicate-stack shortage"
+  ],
+  "unsupported": [
+    "global input boolean",
+    "password56 live: existing PvP business rejects password rooms",
+    "type1 level1/flag90 positive live routes",
+    "nonempty equipment modifiers and unproved x87 boundaries"
+  ],
+  "ijl_compatibility": "Reused prior complete suite at identical0103 SHA, no IJL source change or repeated manual matrix.",
+  "fixture_stack_fix": "26 large legacy nested test snapshots moved to heap after exact Win32 debugger stack confirmation; native stack size and game behavior unchanged.",
+  "restoration": {
+    "restored_files": 14,
+    "protected_files": 8,
+    "normal_save_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283"
+  },
+  "daily_package_deployed": false,
+  "held": [
+    "U07/GP42",
+    "U08"
+  ]
+}

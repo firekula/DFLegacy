@@ -1,0 +1,2 @@
+installed-427104 picker=0 item=0 ground=0
+absent-inactive-or-outside-map picker=1 item=13201 ground=3

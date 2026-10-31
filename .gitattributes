@@ -1,0 +1,117 @@
+# 容器相关文件必须保持 LF 换行：在 Windows 上以 CRLF 检出会破坏 Dockerfile
+# 的行继续（反斜杠后跟回车），导致 docker build 失败。
+# 自身也固定为 LF，否则行尾的 CR 会让 eol=lf 被解析成非法属性而静默失效。
+.gitattributes text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+compose.yaml text eol=lf
+deploy/start/*.sh text eol=lf
+deploy/start/*.command text eol=lf
+deploy/*.yaml text eol=lf
+.gitea/workflows/*.yaml text eol=lf
+tools/release/*.py text eol=lf
+# Native fixture hashes describe exact producer bytes on every checkout.
+/tests/fixtures/native-debug/** -text whitespace=cr-at-eol
+/tests/fixtures/act1-motion-horizon/** -text whitespace=cr-at-eol
+/tests/fixtures/act1-motion-horizon/*.bin binary
+/tests/fixtures/act1-town-navigation/** -text whitespace=cr-at-eol
+/tests/fixtures/act1-town-navigation/*.pvf binary
+
+# 本组验收原件按字节校验，检入/检出时保留 JSON、日志和图片的原始字节。
+/knowledge/decisions/assets/2026-10-27-channel-return/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-27-cera-gift/** -text whitespace=cr-at-eol
+# 此原始 MSBuild 诊断包含行尾空格，保留原件而不改写构建证据。
+/knowledge/decisions/assets/2026-10-27-cera-gift/task-1-release-build.log whitespace=-blank-at-eol,cr-at-eol
+/knowledge/decisions/assets/2026-10-28-client-diagnostics/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-mentor-growth/** -text whitespace=cr-at-eol
+# 此筛选日志保留服务器原始空进度行的尾空格。
+/knowledge/decisions/assets/2026-10-28-mentor-growth/native-selected-server.log whitespace=-blank-at-eol,cr-at-eol
+/knowledge/decisions/assets/2026-10-28-pvp-individual/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-avatar-gift/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-creature-gift/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-mentor-master-gold/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-overnight-delivery/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-28-countdown-coin-purchase/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-29-debug-town-navigation/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-29-debug-party-commands/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-29-dungeon-tooltip/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-29-debug-cross-area/** -text whitespace=cr-at-eol
+# 原始 pytest/netsh 输出含尾部空格，保留验收原字节。
+/knowledge/decisions/assets/2026-10-29-debug-cross-area/tests/*.log whitespace=-blank-at-eol,cr-at-eol
+/knowledge/decisions/assets/2026-10-29-debug-cross-area/tests/excluded-tcp-ports.txt whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+# 两份发布时快照被历史清单按字节引用，保留其原始换行。
+/knowledge/decisions/2026-10-28-creature-gift-unclaimed-at-publication.md -text whitespace=cr-at-eol
+/knowledge/decisions/2026-10-28-creature-gift-final-at-publication.md -text whitespace=cr-at-eol
+# 发布的启动脚本按已验证字节复制到运行目录，保留两种 PowerShell 的原始编码/换行。
+/tools/runtime/Start-NormalServer.ps1 -text whitespace=cr-at-eol
+/tools/runtime/Start-NormalServer.cmd -text whitespace=cr-at-eol
+/tools/acceptance/Test-NormalServerStartup.ps1 -text whitespace=cr-at-eol
+# 时装能力测试保留从 PVF 提取的 CP936 脚本原始字节。
+/tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/equipment/**/*.equ -text whitespace=cr-at-eol
+# 原始 PVF 条目包含尾部空行，按原字节保留，不将其作为新增源码空白错误。
+/tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/**/*.equ -text whitespace=-blank-at-eof,cr-at-eol
+# 师徒金币规则直接验证 PVF 原始表，不转换编码或换行。
+/tests/DFLegacy.SmokeTests/Fixtures/MentorGold/** -text whitespace=-blank-at-eof,cr-at-eol
+# 原始人数表的韩文注释带行尾空格，保留原始提取字节。
+/tests/DFLegacy.SmokeTests/Fixtures/MentorGold/member_cnt_config.tbl whitespace=-blank-at-eof,-blank-at-eol,cr-at-eol
+
+# 原始客户端截图、协议和验收数据按字节保留。
+/knowledge/decisions/assets/2026-10-29-native-town-route/** -text whitespace=cr-at-eol
+/knowledge/decisions/assets/2026-10-29-native-town-route/**/*.log whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-29-native-town-route/review/acceptance-review.md whitespace=-blank-at-eof,cr-at-eol
+
+# 原始实机截图、观测 JSON 和测试日志保留已验证字节。
+/knowledge/decisions/assets/2026-10-29-town-return-perf/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# 操作卡顿原始轮询、原生截图与测试日志按验收字节保存。
+/knowledge/decisions/assets/2026-10-29-operation-stutter/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# 地图双圈原图、构建日志和位置合同原字节保持封印哈希。
+/knowledge/decisions/assets/2026-10-29-map-right-feedback/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-29-town-position-followup/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# 本组原生截图与有界验收 JSON 按已核对字节保存。
+/knowledge/decisions/assets/2026-10-29-test-control-four-client/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+/knowledge/decisions/assets/2026-10-30-active-drop-four/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-player-kill-mp/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-skill-state/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-ui-state/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-dead-observation/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-sync-followup/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-frame-profile/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+/knowledge/decisions/assets/2026-10-30-overweight/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+/knowledge/decisions/assets/2026-10-30-skillbar/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+/knowledge/decisions/assets/2026-10-30-dead-ground-removal/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+/knowledge/decisions/assets/2026-10-30-verification-closeout/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+/knowledge/decisions/assets/2026-10-30-normal-delivery/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# 阻断接续及U05分阶段原件保持封存字节，避免core.autocrlf改变清单哈希。
+/knowledge/decisions/assets/2026-10-30-remaining-blockers-followup/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-native-loop-and-motion-followup/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-u05-mp-input-dialog/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-u05-mouse-dialog-followup/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-u05-resource-closeout/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+/knowledge/decisions/assets/2026-10-30-source-archive/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# 本次归档的有界报告按其现有字节绑定，避免跨平台换行制造新的报告哈希差异。
+/knowledge/decisions/2026-10-30-remaining-blockers-followup.md -text whitespace=cr-at-eol
+/knowledge/decisions/2026-10-30-native-loop-and-motion-followup.md -text whitespace=cr-at-eol
+/knowledge/decisions/2026-10-30-u05-mp-input-dialog-verification.md -text whitespace=cr-at-eol
+/knowledge/decisions/2026-10-30-u05-mouse-dialog-followup.md -text whitespace=cr-at-eol
+/knowledge/decisions/2026-10-30-u05-resource-closeout.md -text whitespace=cr-at-eol
+/knowledge/decisions/2026-10-30-source-archive-verification.md -text whitespace=cr-at-eol
+
+# 门前区域修复的测试和截图保留原始字节。
+/knowledge/decisions/assets/2026-10-30-dungeon-gate-map-target/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# Runner build contexts must remain LF on Windows.
+deploy/gitea-runners/Dockerfile text eol=lf
+deploy/gitea-runners/compose.yaml text eol=lf
+deploy/gitea-runners/.env.example text eol=lf
+deploy/gitea-runners/.dockerignore text eol=lf

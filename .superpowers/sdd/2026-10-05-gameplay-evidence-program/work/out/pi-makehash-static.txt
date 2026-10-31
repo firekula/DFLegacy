@@ -1,0 +1,34 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _Z8MakeHashPhjh VA=0x0808c311 SIZE=87
+0x0808c311 push     ebp
+0x0808c312 mov      ebp, esp
+0x0808c314 sub      esp, 0x38
+0x0808c317 mov      eax, dword ptr [ebp + 0x10]
+0x0808c31a mov      byte ptr [ebp - 0x1c], al
+0x0808c31d lea      eax, [ebp - 0x10]
+0x0808c320 mov      dword ptr [esp + 8], eax
+0x0808c324 mov      eax, dword ptr [ebp + 0xc]
+0x0808c327 mov      dword ptr [esp + 4], eax
+0x0808c32b mov      eax, dword ptr [ebp + 8]
+0x0808c32e mov      dword ptr [esp], eax
+0x0808c331 call     0x808c174 ; _Z15DoSuperFastHashPhjRj
+0x0808c336 lea      eax, [ebp - 0x10]
+0x0808c339 mov      dword ptr [ebp - 0xc], eax
+0x0808c33c mov      eax, dword ptr [ebp - 0xc]
+0x0808c33f movzx    edx, byte ptr [eax]
+0x0808c342 mov      eax, dword ptr [ebp - 0xc]
+0x0808c345 add      eax, 1
+0x0808c348 movzx    eax, byte ptr [eax]
+0x0808c34b xor      edx, eax
+0x0808c34d mov      eax, dword ptr [ebp - 0xc]
+0x0808c350 add      eax, 2
+0x0808c353 movzx    eax, byte ptr [eax]
+0x0808c356 xor      edx, eax
+0x0808c358 mov      eax, dword ptr [ebp - 0xc]
+0x0808c35b add      eax, 3
+0x0808c35e movzx    eax, byte ptr [eax]
+0x0808c361 xor      eax, edx
+0x0808c363 xor      al, byte ptr [ebp - 0x1c]
+0x0808c366 leave
+0x0808c367 ret

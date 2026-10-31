@@ -1,0 +1,285 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZN6Taiwan21SigLoadRestrictPolicy3setERS0_ VA=0x0815de38 SIZE=99
+0x0815de38 push     ebp
+0x0815de39 mov      ebp, esp
+0x0815de3b sub      esp, 0x18
+0x0815de3e mov      eax, dword ptr [ebp + 0xc]
+0x0815de41 mov      edx, dword ptr [eax]
+0x0815de43 mov      eax, dword ptr [ebp + 8]
+0x0815de46 mov      dword ptr [eax], edx
+0x0815de48 mov      eax, dword ptr [ebp + 0xc]
+0x0815de4b mov      edx, dword ptr [eax + 4]
+0x0815de4e mov      eax, dword ptr [ebp + 8]
+0x0815de51 mov      dword ptr [eax + 4], edx
+0x0815de54 mov      eax, dword ptr [ebp + 0xc]
+0x0815de57 lea      edx, [eax + 8]
+0x0815de5a mov      eax, dword ptr [ebp + 8]
+0x0815de5d add      eax, 8
+0x0815de60 mov      dword ptr [esp + 8], 0x1194
+0x0815de68 mov      dword ptr [esp + 4], edx
+0x0815de6c mov      dword ptr [esp], eax
+0x0815de6f call     0x807d8a0 ; memcpy
+0x0815de74 mov      eax, dword ptr [ebp + 0xc]
+0x0815de77 lea      edx, [eax + 0x119c]
+0x0815de7d mov      eax, dword ptr [ebp + 8]
+0x0815de80 add      eax, 0x119c
+0x0815de85 mov      dword ptr [esp + 8], 0x64
+0x0815de8d mov      dword ptr [esp + 4], edx
+0x0815de91 mov      dword ptr [esp], eax
+0x0815de94 call     0x807d8a0 ; memcpy
+0x0815de99 leave
+0x0815de9a ret
+
+FUNCTION _ZN6Taiwan21SigLoadRestrictPolicy3setEiic VA=0x0815de02 SIZE=54
+0x0815de02 push     ebp
+0x0815de03 mov      ebp, esp
+0x0815de05 sub      esp, 4
+0x0815de08 mov      eax, dword ptr [ebp + 0x14]
+0x0815de0b mov      byte ptr [ebp - 4], al
+0x0815de0e mov      eax, dword ptr [ebp + 8]
+0x0815de11 mov      edx, dword ptr [ebp + 0xc]
+0x0815de14 mov      dword ptr [eax], edx
+0x0815de16 mov      eax, dword ptr [ebp + 0x10]
+0x0815de19 mov      edx, dword ptr [ebp + 8]
+0x0815de1c movzx    ecx, byte ptr [ebp - 4]
+0x0815de20 mov      byte ptr [edx + eax + 0x119c], cl
+0x0815de27 mov      eax, dword ptr [ebp + 8]
+0x0815de2a mov      eax, dword ptr [eax + 4]
+0x0815de2d lea      edx, [eax + 1]
+0x0815de30 mov      eax, dword ptr [ebp + 8]
+0x0815de33 mov      dword ptr [eax + 4], edx
+0x0815de36 leave
+0x0815de37 ret
+
+FUNCTION _ZN22ServiceRestrictManager11beginPolicyEN16RestrictCategory4EnumERKSs VA=0x0816e54a SIZE=148
+0x0816e54a push     ebp
+0x0816e54b mov      ebp, esp
+0x0816e54d sub      esp, 0x28
+0x0816e550 mov      edx, dword ptr [ebp + 8]
+0x0816e553 lea      eax, [ebp - 0x10]
+0x0816e556 lea      ecx, [ebp + 0xc]
+0x0816e559 mov      dword ptr [esp + 8], ecx
+0x0816e55d mov      dword ptr [esp + 4], edx
+0x0816e561 mov      dword ptr [esp], eax
+0x0816e564 call     0x816f09c ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE4findERS7_
+0x0816e569 sub      esp, 4
+0x0816e56c mov      edx, dword ptr [ebp + 8]
+0x0816e56f lea      eax, [ebp - 0xc]
+0x0816e572 mov      dword ptr [esp + 4], edx
+0x0816e576 mov      dword ptr [esp], eax
+0x0816e579 call     0x816f0c8 ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE3endEv
+0x0816e57e sub      esp, 4
+0x0816e581 lea      eax, [ebp - 0xc]
+0x0816e584 mov      dword ptr [esp + 4], eax
+0x0816e588 lea      eax, [ebp - 0x10]
+0x0816e58b mov      dword ptr [esp], eax
+0x0816e58e call     0x816f0ee ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEneERKS7_
+0x0816e593 test     al, al
+0x0816e595 je       0x816e5b8
+0x0816e597 lea      eax, [ebp - 0x10]
+0x0816e59a mov      dword ptr [esp], eax
+0x0816e59d call     0x816f102 ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEptEv
+0x0816e5a2 mov      eax, dword ptr [eax + 4]
+0x0816e5a5 mov      edx, dword ptr [eax]
+0x0816e5a7 add      edx, 8
+0x0816e5aa mov      ecx, dword ptr [edx]
+0x0816e5ac mov      edx, dword ptr [ebp + 0x10]
+0x0816e5af mov      dword ptr [esp + 4], edx
+0x0816e5b3 mov      dword ptr [esp], eax
+0x0816e5b6 call     ecx
+0x0816e5b8 mov      eax, dword ptr [ebp + 0xc]
+0x0816e5bb mov      dword ptr [esp + 4], eax
+0x0816e5bf mov      eax, dword ptr [ebp + 8]
+0x0816e5c2 mov      dword ptr [esp], eax
+0x0816e5c5 call     0x816ea6a ; _ZN22ServiceRestrictManager11printPolicyEN16RestrictCategory4EnumE
+0x0816e5ca mov      eax, dword ptr [ebp + 0xc]
+0x0816e5cd mov      dword ptr [esp + 4], eax
+0x0816e5d1 mov      eax, dword ptr [ebp + 8]
+0x0816e5d4 mov      dword ptr [esp], eax
+0x0816e5d7 call     0x816eb62 ; _ZN22ServiceRestrictManager12updatePolicyEN16RestrictCategory4EnumE
+0x0816e5dc leave
+0x0816e5dd ret
+
+FUNCTION _ZN22ServiceRestrictManager12isRestrictedEP5CUserN16RestrictCategory4EnumEi VA=0x0816e6b8 SIZE=165
+0x0816e6b8 push     ebp
+0x0816e6b9 mov      ebp, esp
+0x0816e6bb sub      esp, 0x28
+0x0816e6be cmp      dword ptr [ebp + 0xc], 0
+0x0816e6c2 jne      0x816e6ce
+0x0816e6c4 mov      eax, 0
+0x0816e6c9 jmp      0x816e75b
+0x0816e6ce mov      eax, dword ptr [ebp + 0xc]
+0x0816e6d1 mov      dword ptr [esp], eax
+0x0816e6d4 call     0x816ee1e ; _ZN5CUser17getGarenaAuthDataEv
+0x0816e6d9 mov      dword ptr [esp], eax
+0x0816e6dc call     0x8173022 ; _ZN6Taiwan14GarenaAuthData13getMobileAuthEv
+0x0816e6e1 test     al, al
+0x0816e6e3 je       0x816e6ec
+0x0816e6e5 mov      eax, 0
+0x0816e6ea jmp      0x816e75b
+0x0816e6ec mov      edx, dword ptr [ebp + 8]
+0x0816e6ef lea      eax, [ebp - 0x10]
+0x0816e6f2 lea      ecx, [ebp + 0x10]
+0x0816e6f5 mov      dword ptr [esp + 8], ecx
+0x0816e6f9 mov      dword ptr [esp + 4], edx
+0x0816e6fd mov      dword ptr [esp], eax
+0x0816e700 call     0x816f09c ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE4findERS7_
+0x0816e705 sub      esp, 4
+0x0816e708 mov      edx, dword ptr [ebp + 8]
+0x0816e70b lea      eax, [ebp - 0xc]
+0x0816e70e mov      dword ptr [esp + 4], edx
+0x0816e712 mov      dword ptr [esp], eax
+0x0816e715 call     0x816f0c8 ; _ZNSt3mapIN16RestrictCategory4EnumEP22InterfaceServicePolicySt4lessIS1_ESaISt4pairIKS1_S3_EEE3endEv
+0x0816e71a sub      esp, 4
+0x0816e71d lea      eax, [ebp - 0xc]
+0x0816e720 mov      dword ptr [esp + 4], eax
+0x0816e724 lea      eax, [ebp - 0x10]
+0x0816e727 mov      dword ptr [esp], eax
+0x0816e72a call     0x816f0ee ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEneERKS7_
+0x0816e72f test     al, al
+0x0816e731 je       0x816e756
+0x0816e733 lea      eax, [ebp - 0x10]
+0x0816e736 mov      dword ptr [esp], eax
+0x0816e739 call     0x816f102 ; _ZNKSt17_Rb_tree_iteratorISt4pairIKN16RestrictCategory4EnumEP22InterfaceServicePolicyEEptEv
+0x0816e73e mov      eax, dword ptr [eax + 4]
+0x0816e741 mov      edx, dword ptr [eax]
+0x0816e743 add      edx, 0x14
+0x0816e746 mov      ecx, dword ptr [edx]
+0x0816e748 mov      edx, dword ptr [ebp + 0x14]
+0x0816e74b mov      dword ptr [esp + 4], edx
+0x0816e74f mov      dword ptr [esp], eax
+0x0816e752 call     ecx
+0x0816e754 jmp      0x816e75b
+0x0816e756 mov      eax, 1
+0x0816e75b leave
+0x0816e75c ret
+
+FUNCTION _ZN24AuthMobileRestrictPolicy13printRestrictEv VA=0x0816d866 SIZE=314
+0x0816d866 push     ebp
+0x0816d867 mov      ebp, esp
+0x0816d869 push     esi
+0x0816d86a push     ebx
+0x0816d86b sub      esp, 0x60
+0x0816d86e mov      dword ptr [esp + 0x14], 1
+0x0816d876 mov      dword ptr [esp + 0x10], 1
+0x0816d87e mov      dword ptr [esp + 0xc], 9
+0x0816d886 mov      dword ptr [esp + 8], 0x8d
+0x0816d88e mov      dword ptr [esp + 4], 0x8b82d40
+0x0816d896 lea      eax, [ebp - 0x3c]
+0x0816d899 mov      dword ptr [esp], eax
+0x0816d89c call     0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0816d8a1 mov      dword ptr [esp + 4], 0x8b81c28
+0x0816d8a9 lea      eax, [ebp - 0x3c]
+0x0816d8ac mov      dword ptr [esp], eax
+0x0816d8af call     0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0816d8b4 mov      dword ptr [ebp - 0xc], 0
+0x0816d8bb jmp      0x816d937
+0x0816d8bd mov      eax, dword ptr [ebp + 8]
+0x0816d8c0 lea      edx, [eax + 0xc]
+0x0816d8c3 mov      eax, dword ptr [ebp - 0xc]
+0x0816d8c6 mov      dword ptr [esp + 4], eax
+0x0816d8ca mov      dword ptr [esp], edx
+0x0816d8cd call     0x816eee8 ; _ZNSt6vectorIsSaIsEEixEj
+0x0816d8d2 movzx    eax, word ptr [eax]
+0x0816d8d5 movsx    esi, ax
+0x0816d8d8 mov      eax, dword ptr [ebp - 0xc]
+0x0816d8db mov      dword ptr [esp], eax
+0x0816d8de call     0x816d463 ; _ZN14MobileRestrict12enumToStringENS_4EnumE
+0x0816d8e3 mov      ebx, eax
+0x0816d8e5 mov      dword ptr [esp + 0x14], 1
+0x0816d8ed mov      dword ptr [esp + 0x10], 1
+0x0816d8f5 mov      dword ptr [esp + 0xc], 9
+0x0816d8fd mov      dword ptr [esp + 8], 0x90
+0x0816d905 mov      dword ptr [esp + 4], 0x8b82d40
+0x0816d90d lea      eax, [ebp - 0x2c]
+0x0816d910 mov      dword ptr [esp], eax
+0x0816d913 call     0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0816d918 mov      dword ptr [esp + 0xc], esi
+0x0816d91c mov      dword ptr [esp + 8], ebx
+0x0816d920 mov      dword ptr [esp + 4], 0x8b81c3b
+0x0816d928 lea      eax, [ebp - 0x2c]
+0x0816d92b mov      dword ptr [esp], eax
+0x0816d92e call     0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0816d933 add      dword ptr [ebp - 0xc], 1
+0x0816d937 mov      eax, dword ptr [ebp + 8]
+0x0816d93a add      eax, 0xc
+0x0816d93d mov      dword ptr [esp], eax
+0x0816d940 call     0x816eece ; _ZNKSt6vectorIsSaIsEE4sizeEv
+0x0816d945 cmp      eax, dword ptr [ebp - 0xc]
+0x0816d948 seta     al
+0x0816d94b test     al, al
+0x0816d94d jne      0x816d8bd
+0x0816d953 mov      dword ptr [esp + 0x14], 1
+0x0816d95b mov      dword ptr [esp + 0x10], 1
+0x0816d963 mov      dword ptr [esp + 0xc], 9
+0x0816d96b mov      dword ptr [esp + 8], 0x94
+0x0816d973 mov      dword ptr [esp + 4], 0x8b82d40
+0x0816d97b lea      eax, [ebp - 0x1c]
+0x0816d97e mov      dword ptr [esp], eax
+0x0816d981 call     0x854f746 ; _ZN8cMyTraceC2EPKciibb
+0x0816d986 mov      dword ptr [esp + 4], 0x8b81c46
+0x0816d98e lea      eax, [ebp - 0x1c]
+0x0816d991 mov      dword ptr [esp], eax
+0x0816d994 call     0x854f788 ; _ZN8cMyTraceclEPKcz
+0x0816d999 add      esp, 0x60
+0x0816d99c pop      ebx
+0x0816d99d pop      esi
+0x0816d99e pop      ebp
+0x0816d99f ret
+
+FUNCTION _ZN22SecurityRestrictPolicy16getRestrictValueERN6Taiwan21SigLoadRestrictPolicyE VA=0x0816dd22 SIZE=175
+0x0816dd22 push     ebp
+0x0816dd23 mov      ebp, esp
+0x0816dd25 push     ebx
+0x0816dd26 sub      esp, 0x24
+0x0816dd29 mov      eax, dword ptr [ebp + 8]
+0x0816dd2c mov      dword ptr [esp], eax
+0x0816dd2f call     0x816ee12 ; _ZN22InterfaceServicePolicy7getCodeEv
+0x0816dd34 mov      edx, eax
+0x0816dd36 mov      eax, dword ptr [ebp + 0xc]
+0x0816dd39 mov      dword ptr [eax], edx
+0x0816dd3b mov      eax, dword ptr [ebp + 0xc]
+0x0816dd3e mov      dword ptr [eax + 4], 0
+0x0816dd45 mov      dword ptr [ebp - 0xc], 1
+0x0816dd4c jmp      0x816ddb3
+0x0816dd4e mov      eax, dword ptr [ebp - 0xc]
+0x0816dd51 mov      dword ptr [esp], eax
+0x0816dd54 call     0x816d481 ; _ZN16SecurityRestrict12enumToStringENS_4EnumE
+0x0816dd59 mov      edx, dword ptr [ebp - 0xc]
+0x0816dd5c imul     edx, edx, 0x2d
+0x0816dd5f add      edx, dword ptr [ebp + 0xc]
+0x0816dd62 add      edx, 8
+0x0816dd65 mov      dword ptr [esp + 8], 0x2d
+0x0816dd6d mov      dword ptr [esp + 4], eax
+0x0816dd71 mov      dword ptr [esp], edx
+0x0816dd74 call     0x807d8d0 ; strncpy
+0x0816dd79 mov      ebx, dword ptr [ebp - 0xc]
+0x0816dd7c mov      eax, dword ptr [ebp + 8]
+0x0816dd7f lea      edx, [eax + 0xc]
+0x0816dd82 mov      eax, dword ptr [ebp - 0xc]
+0x0816dd85 mov      dword ptr [esp + 4], eax
+0x0816dd89 mov      dword ptr [esp], edx
+0x0816dd8c call     0x816eee8 ; _ZNSt6vectorIsSaIsEEixEj
+0x0816dd91 movzx    eax, word ptr [eax]
+0x0816dd94 mov      edx, eax
+0x0816dd96 mov      eax, dword ptr [ebp + 0xc]
+0x0816dd99 mov      byte ptr [eax + ebx + 0x119c], dl
+0x0816dda0 mov      eax, dword ptr [ebp + 0xc]
+0x0816dda3 mov      eax, dword ptr [eax + 4]
+0x0816dda6 lea      edx, [eax + 1]
+0x0816dda9 mov      eax, dword ptr [ebp + 0xc]
+0x0816ddac mov      dword ptr [eax + 4], edx
+0x0816ddaf add      dword ptr [ebp - 0xc], 1
+0x0816ddb3 mov      eax, dword ptr [ebp + 8]
+0x0816ddb6 add      eax, 0xc
+0x0816ddb9 mov      dword ptr [esp], eax
+0x0816ddbc call     0x816eece ; _ZNKSt6vectorIsSaIsEE4sizeEv
+0x0816ddc1 cmp      eax, dword ptr [ebp - 0xc]
+0x0816ddc4 seta     al
+0x0816ddc7 test     al, al
+0x0816ddc9 jne      0x816dd4e
+0x0816ddcb add      esp, 0x24
+0x0816ddce pop      ebx
+0x0816ddcf pop      ebp
+0x0816ddd0 ret

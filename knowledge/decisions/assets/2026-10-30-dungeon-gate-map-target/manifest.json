@@ -1,0 +1,175 @@
+{
+  "schema": "dfl-dungeon-gate-map-target/v1",
+  "base_commit": "37f86cb8403b7b408231395dd377a218351c64ee",
+  "debug_sha256": "0082559CB80050226500290C6BAB2CD482BD09B571682D0EAB614F3F5099CFCB",
+  "ijl_sha256": "0103C7DCE1FA8AEA5233D7A02C6E1115F83598A8E3A02EF85AC8834F24B2871A",
+  "exe_sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5",
+  "pvf_sha256": "288D58AACE8ED4724A0A94AAA4CD0957B1D52C633771132EDE2F96363C1B506F",
+  "sources": [
+    {
+      "file": "src/DFLegacy.Debug/src/town_route_controller.cpp",
+      "sha256": "985721156F1DB99DA82D916C2135C0FB8C3176FF8F29081ECFF3D5273C4D97CA"
+    },
+    {
+      "file": "src/DFLegacy.Debug/src/town_route_controller.h",
+      "sha256": "FC639EDCC01424B95DA8544927DE921EAB6C8F34CD969E36A0D6FBFE5BB2C29C"
+    },
+    {
+      "file": "src/DFLegacy.Debug/tests/town_route_controller_tests.cpp",
+      "sha256": "2A8ADB022C199F64183A4FB57F2E3EAE587F59FC415E22330B72105DF484EA18"
+    }
+  ],
+  "provenance": {
+    "user_report": "user-reported-region.png is the user annotation, copied unchanged; it is not an acceptance screenshot",
+    "native_screenshots": [
+      "same-entry-feedback.jpg",
+      "physical-arrival.jpg"
+    ],
+    "captures": "Original IJL PrintScreen JPEG bytes, no crop or repaint",
+    "live_scope": "One restarted manual client, same private server and private save; prior four-client matrices were not repeated",
+    "baseline": "live-red.json binds old PID8256/DLL2D; green proofs bind new PID48476/DLL0082; do not mix process identity",
+    "regression": "620 Python tests and569 subtests exit0; existing Unicorn faulthandler diagnostic retained; nine debug groups plus town-route and overlay runtime exit0; unchanged IJL full suite retained at baseline"
+  },
+  "files": [
+    {
+      "file": "cli-arrival.json",
+      "bytes": 9497,
+      "sha256": "FA23911A8AEE75F3988F140F276DF7A311157D2EBD75DB736C3703F2AFB337E7"
+    },
+    {
+      "file": "client-navigation.log",
+      "bytes": 72,
+      "sha256": "B4FAECBE6B668DDB73FFDEB9808DF62C21849F76607F19584CC0A645D9F061B5"
+    },
+    {
+      "file": "client-party.log",
+      "bytes": 100,
+      "sha256": "2F2578F7968DCD8C7C0E43511C36960F46464CAB92336BA6CC6706C583D50B2E"
+    },
+    {
+      "file": "client-state.log",
+      "bytes": 32,
+      "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+    },
+    {
+      "file": "client-test-control.log",
+      "bytes": 81,
+      "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+    },
+    {
+      "file": "cross-entry.json",
+      "bytes": 59285,
+      "sha256": "D4617D3709ABE414909CA5A5B4B4204008F49FB9AE3CA969BAC6791F92A5569E"
+    },
+    {
+      "file": "frame-profile.log",
+      "bytes": 69,
+      "sha256": "CCAC6BC40EEA4BC54B1E20B30A1445F21266F00CB04B0B609694ABB59C53D2D9"
+    },
+    {
+      "file": "gameplay-abi-result.json",
+      "bytes": 712,
+      "sha256": "EBD41C6248B9CCD2994BF7D74125C66D6D65F6438C5E4FF5355BE7E9CCE92EC8"
+    },
+    {
+      "file": "gameplay-abi.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "gameplay-trace.log",
+      "bytes": 34,
+      "sha256": "6901386F9D44F9DE0C1198C8F24C4FF3196A4C7A02582CBF657062F44B1F9D08"
+    },
+    {
+      "file": "green-build.log",
+      "bytes": 350,
+      "sha256": "E07DB72538E9E1C9CD53DF3708C950CE5787AA3007F24E6202D7F7EBCDE3D2D9"
+    },
+    {
+      "file": "green-tests.log",
+      "bytes": 161,
+      "sha256": "E0F856C29AC31E8097D21F329503531B263333A87A0D4C2C06C701EA18E2AE34"
+    },
+    {
+      "file": "live-identity-and-protection.json",
+      "bytes": 1068,
+      "sha256": "798CC98E044C8EF2F96E28E71121A345BD4AD5C5B397478E165E134B51AC2A47"
+    },
+    {
+      "file": "live-red.json",
+      "bytes": 5215,
+      "sha256": "534A305048DAAC06B5B16E68683F876ABEA85CD8C8D9082B0392A8500064A7B7"
+    },
+    {
+      "file": "map-feedback.log",
+      "bytes": 193,
+      "sha256": "41F8CC9DAB060D6E30123EF6E8F8F758548518F3EB83FC794A1974BE85D1A0C6"
+    },
+    {
+      "file": "map-geometry.json",
+      "bytes": 12669,
+      "sha256": "EEFD152AF8C1FEBDBF4BC234F3D99085A1569390CFFA42BAB276A0999EE0DD23"
+    },
+    {
+      "file": "native-loop.log",
+      "bytes": 31,
+      "sha256": "40F3DEDFCDC17AA79F1505878064148E7E325BD2CE302A01094DAC7AF2BAA6C7"
+    },
+    {
+      "file": "original-pvf-gate.json",
+      "bytes": 950,
+      "sha256": "0D5CBC336EEE31D807A9B587065B07E91EB96B4D267AEFFDCDDFE4724EB3B32F"
+    },
+    {
+      "file": "overlay-runtime.log",
+      "bytes": 389,
+      "sha256": "B917B2FA372D32D1CF92AB79D333EDBFD3323CCFAEFDD99F3CA8C9574B2B9EAB"
+    },
+    {
+      "file": "physical-arrival.jpg",
+      "bytes": 432716,
+      "sha256": "AFEFC6026EA600345B8A600A42CD4C28108D6B76A84336CC1A07B30C8B3A2709"
+    },
+    {
+      "file": "physical-arrival.json",
+      "bytes": 7881,
+      "sha256": "118140040ED389A13A4AF330E23F444936B2E665816165A322A5C5E0EE9D9020"
+    },
+    {
+      "file": "python-regression.log",
+      "bytes": 409131,
+      "sha256": "C1DEB8E586017E4B82F080AB3382D4DFDB084EB7459DEAB961B210127CDFA3FE"
+    },
+    {
+      "file": "red-tests.log",
+      "bytes": 998,
+      "sha256": "082B38C548B35EE22C54953E04FF590EC69FACBBEF15696D23446B4255455CF3"
+    },
+    {
+      "file": "return-town.json",
+      "bytes": 34546,
+      "sha256": "6D9F4B25BA3DB164E844F03A4FAC7AC1E282936498D5A413D36FEB4446EBF7DD"
+    },
+    {
+      "file": "same-entry-feedback.jpg",
+      "bytes": 326941,
+      "sha256": "C1D48CDA11FAC6D803FA675B5427BF020B4E0A7CC1F344256A46C19C6BE68B82"
+    },
+    {
+      "file": "same-entry.json",
+      "bytes": 20088,
+      "sha256": "4F4F827AF294E7FAFBFFD98FF64773F76B31F5D77E512614D8D9780D898CAD11"
+    },
+    {
+      "file": "selector-rejected.json",
+      "bytes": 9111,
+      "sha256": "E9E499D7F252254C1D2CEBF484ACCDDE1F39EA9E4BEA99CA4F3389EDDF815FD8"
+    },
+    {
+      "file": "user-reported-region.png",
+      "bytes": 38019,
+      "sha256": "4B2F997376E2D348C8C287ACB274419D9F570FB733418B5DDDCB3A2F6D67CCAF"
+    }
+  ]
+}

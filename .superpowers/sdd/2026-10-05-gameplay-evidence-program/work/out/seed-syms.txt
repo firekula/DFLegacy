@@ -1,0 +1,7 @@
+命中 6 个（关键字 ['srand', 'SeedKey', 'SetKeyString', 'KeyString']）
+  0x082a002a(   560)  SelectKeyString(int*, int*)
+  0x082a025a(   511)  InitCipherKeyString()
+  0x08514b08(    15)  CStackableItem::IsRandomOptionUnseal() const
+  0x08514e5e(    15)  CEquipItem::IsRandomOption() const
+  0x08514426(    10)  CItem::IsRandomOptionUnseal() const
+  0x08514412(    10)  CItem::IsRandomOption() const

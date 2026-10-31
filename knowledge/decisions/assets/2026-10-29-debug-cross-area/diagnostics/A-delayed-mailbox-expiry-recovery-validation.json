@@ -1,0 +1,8 @@
+{
+  "Status": "passed",
+  "ProofSha256": "8317C8253120EBCD409F46E06C030B8CCA84ACFDC96F73EAA765C6241C7BBCDC",
+  "MeasuredFirstWriteDelayMs": 1094,
+  "NativeExpiryRejectedBeforeRenewal": true,
+  "FirstHarnessAssertion": "Measured delay>=1100 was too strict; actual1094ms exceeds1000ms and real Native rejected expired_request",
+  "NoProofBytesChanged": true
+}

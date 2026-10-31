@@ -1,0 +1,4 @@
+适用于 .NET Framework MSBuild 版本 18.11.1-1.26513.3+940033be3
+
+  DFLegacy.Debug.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\debug\Release\debug.dll
+  DFLegacy.Debug.Tests.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\debug-tests\Release\debug_tests.exe

@@ -1,0 +1,73 @@
+{
+  "root_reported_dll_sha256": "C3ED35E1008D74536D96307A9478C636AAD092186DEF3C9EE99CF8F3652D14AD",
+  "head": "fa1bd68eb441979d218b5526510f862fe62b13ca",
+  "review": "read-only narrow source review",
+  "files": [
+    {
+      "file": "src/DFLegacy.Debug/src/client_navigation_runtime.cpp",
+      "matches_delivery": true,
+      "sha256": "A349C6E61F635DD092810322D117C9C44DFC00C3C136CE399062C3CEE183CFAE",
+      "expected_sha256": "A349C6E61F635DD092810322D117C9C44DFC00C3C136CE399062C3CEE183CFAE"
+    },
+    {
+      "file": "src/DFLegacy.Debug/src/client_navigation.cpp",
+      "matches_delivery": true,
+      "sha256": "74BBDA62AB34C84C4F0AB6C9D065418716C47F0C7A76AAEF9B9A22EE1CA22017",
+      "expected_sha256": "74BBDA62AB34C84C4F0AB6C9D065418716C47F0C7A76AAEF9B9A22EE1CA22017"
+    },
+    {
+      "file": "src/DFLegacy.Debug/src/client_navigation.h",
+      "matches_delivery": true,
+      "sha256": "A4D55A4DAA973DA4CC296AE531610079761CE4A7CA82F1516EA74E5AEAA017FA",
+      "expected_sha256": "A4D55A4DAA973DA4CC296AE531610079761CE4A7CA82F1516EA74E5AEAA017FA"
+    },
+    {
+      "file": "src/DFLegacy.Debug/src/client_party_runtime.cpp",
+      "matches_delivery": true,
+      "sha256": "08C0C6381C3815D6AC422491F7797FF49BA4D53321F413B572B65F64A39DFFF4",
+      "expected_sha256": "08C0C6381C3815D6AC422491F7797FF49BA4D53321F413B572B65F64A39DFFF4"
+    },
+    {
+      "file": "src/DFLegacy.Debug/src/client_state.cpp",
+      "matches_delivery": true,
+      "sha256": "5457E8AE78500CE47E27F5B85F69BB56D5F2600FB9BE399ECAA0E8A2923E4994",
+      "expected_sha256": "5457E8AE78500CE47E27F5B85F69BB56D5F2600FB9BE399ECAA0E8A2923E4994"
+    },
+    {
+      "file": "src/DFLegacy.Debug/src/town_route_controller.cpp",
+      "matches_delivery": true,
+      "sha256": "62D195816F8F838ED63ADEDE8478E3FA821447B82605BDBA38CBD27E87104DCE",
+      "expected_sha256": "62D195816F8F838ED63ADEDE8478E3FA821447B82605BDBA38CBD27E87104DCE"
+    },
+    {
+      "file": "src/DFLegacy.Debug/src/town_route_controller.h",
+      "matches_delivery": true,
+      "sha256": "A7937EFE88F79133322C1BC505D533E86C6935B1708F7C17AF9E231D50CAD42F",
+      "expected_sha256": "A7937EFE88F79133322C1BC505D533E86C6935B1708F7C17AF9E231D50CAD42F"
+    },
+    {
+      "file": "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp",
+      "matches_delivery": true,
+      "sha256": "3B431A675B37EB0B0F70AD5C1D79C90A85F1F3B0ED0C9EBFE1455F2B201E3E3D",
+      "expected_sha256": "3B431A675B37EB0B0F70AD5C1D79C90A85F1F3B0ED0C9EBFE1455F2B201E3E3D"
+    },
+    {
+      "file": "src/DFLegacy.Debug/tests/client_navigation_tests.cpp",
+      "matches_delivery": true,
+      "sha256": "2774F613EA975C500B38737D368BE2A373186EEAEB1176E74829175CFB578D3F",
+      "expected_sha256": "2774F613EA975C500B38737D368BE2A373186EEAEB1176E74829175CFB578D3F"
+    },
+    {
+      "file": "src/DFLegacy.Debug/tests/client_party_runtime_tests.cpp",
+      "matches_delivery": true,
+      "sha256": "C37B3D61071139B68B5F67091D46FAC868CCFD24E762B529A31F818A175AC539",
+      "expected_sha256": "C37B3D61071139B68B5F67091D46FAC868CCFD24E762B529A31F818A175AC539"
+    },
+    {
+      "file": "src/DFLegacy.Debug/tests/town_route_controller_tests.cpp",
+      "matches_delivery": true,
+      "sha256": "617691BF4B406297BCCC0F2F786BCB0FF3F538FF508E033DA1FB5AC621089454",
+      "expected_sha256": "617691BF4B406297BCCC0F2F786BCB0FF3F538FF508E033DA1FB5AC621089454"
+    }
+  ]
+}

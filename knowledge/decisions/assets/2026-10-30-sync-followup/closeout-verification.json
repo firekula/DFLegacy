@@ -1,0 +1,103 @@
+{
+  "protected_files": 16,
+  "restored_INIs": 4,
+  "active_sessions": 0,
+  "old_frozen": [
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\test-control-20261029",
+      "files": 71,
+      "manifest_sha256": "B9296C068E2CAA2CB764D1D89F87AFD0D7588C41A824DAAE81F34D1EADF50785",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\active-drop-four-20261029",
+      "files": 132,
+      "manifest_sha256": "C7EE15489DFE9D5D47918F02005AD66CDFD80AD2138C871048FEBA7F7D56054A",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\player-kill-20261030",
+      "files": 41,
+      "manifest_sha256": "2A75A53A79C9F8E383B2293868CBF4F4675395A448EB0AF734D535E7B8A8FCCD",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\local-mp-20261030",
+      "files": 16,
+      "manifest_sha256": "D97901F40A01A794920E9A269C565684E4A3DEEC8D26C61FA5A18F98C08FA18E",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\skill-state-20261030",
+      "files": 36,
+      "manifest_sha256": "B977B95751995298B56499B8B72CD29942285926B86BA79A929200436DDF4E92",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\skill-cooldown-20261030",
+      "files": 9,
+      "manifest_sha256": "C7C095688C219DD929487A6EE48B17C256DB06992AEB91F55C45B9DFBFBB2655",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\skill-usable-20261030",
+      "files": 10,
+      "manifest_sha256": "703131D8A84F861246279B90CD368B0E4308FC61539E0D47C99BF63CA5CAE48C",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\ui-live-20261030",
+      "files": 40,
+      "manifest_sha256": "3B1DBD0D94F6D521255904EBDA4340A3D8177D32C94BCDC92985324714B3366B",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\ui-state-20261030",
+      "files": 11,
+      "manifest_sha256": "7C433E50EB585CDB93653A1F0BB9847173689A34117DB911D1CC54D521226210",
+      "unchanged": true
+    },
+    {
+      "root": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\test-control-20261029",
+      "files": 1381,
+      "manifest_sha256": "251DD041D619E66E0A3EB04FD6EFCEAFAB11DC796FE15A4DACF8702FDBF6F1D3",
+      "unchanged": true
+    },
+    {
+      "root": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-four-20261029",
+      "files": 827,
+      "manifest_sha256": "3DC50C86FD59EE199A57106A8221184A2E803B734C8B4A7FC748177106DAB09A",
+      "unchanged": true
+    },
+    {
+      "root": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\player-kill-20261030",
+      "files": 286,
+      "manifest_sha256": "6FC397F03B63B203AB8F5D799112841B942BAE27BE1E76D852B8D99027CF9B98",
+      "unchanged": true
+    },
+    {
+      "root": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\skill-state-20261030",
+      "files": 294,
+      "manifest_sha256": "150A7A5C1A5C5EB9AB8EB308960CDBE7AE21EF902FC576511149BF3CE9C1E187",
+      "unchanged": true
+    },
+    {
+      "root": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\ui-live-20261030",
+      "files": 325,
+      "manifest_sha256": "A7D04FCBC2C992859D20A52B23E83BF9CEA863905D4AD24033A6C672F84A6AAC",
+      "unchanged": true
+    },
+    {
+      "root": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\dead-observation-20261030",
+      "files": 30,
+      "manifest_sha256": "5E7B75E7867F1BE9490988CE88CAA8F1BD94951E749BC48020CC204542F8C3A2",
+      "unchanged": true
+    },
+    {
+      "root": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dead-observation-20261030",
+      "files": 331,
+      "manifest_sha256": "5074ADB596D7E3BE90A2D7D1C5B477FD849AE21EDCA8C320EAFBD66E6ACD6F3F",
+      "unchanged": true
+    }
+  ]
+}

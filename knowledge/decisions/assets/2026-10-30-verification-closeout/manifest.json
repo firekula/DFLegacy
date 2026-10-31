@@ -1,0 +1,32 @@
+[
+  {
+    "path": "acceptance.json",
+    "bytes": 1013,
+    "sha256": "60A9BFC5785E316E176CDFC549DCAF3C0361478D75FAED23AB761FDB17FA4C78"
+  },
+  {
+    "path": "debug-test-control.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "path": "fixture-related.txt",
+    "bytes": 101,
+    "sha256": "C20163C38480681A2044442F493B6E72CD8D88AB1F7572493B40C420BECC4C74"
+  },
+  {
+    "path": "full-ijl.txt",
+    "bytes": 152,
+    "sha256": "86CB6CD780B88A09925D368551900DB6EE770CDE01F37FB8F4248B0C7297FD32"
+  },
+  {
+    "path": "full-managed.txt",
+    "bytes": 399,
+    "sha256": "76143C75EC932A99A18D6126CF2F6F44850C9CDBD5E11DF76E0EE935B1D0B2D2"
+  },
+  {
+    "path": "full-python.txt",
+    "bytes": 730,
+    "sha256": "E94FF5868F0D283F8763E04F15FAAFC1839183AC54D0B0A4FC8B902E9A5548C4"
+  }
+]

@@ -1,0 +1,75 @@
+{
+  "phase": "ui-v1",
+  "status": "stopped",
+  "started_at_utc": "2026-10-30T05:14:39.4242469Z",
+  "stopped_at_utc": "2026-10-30T05:29:27.9254114Z",
+  "clients": [
+    {
+      "Role": "A",
+      "Id": 72288,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_A\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T05:14:42.907415Z"
+    },
+    {
+      "Role": "B",
+      "Id": 55920,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_B\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T05:14:44.6400065Z"
+    },
+    {
+      "Role": "C",
+      "Id": 31384,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_C\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T05:14:46.1689757Z"
+    },
+    {
+      "Role": "D",
+      "Id": 48384,
+      "Path": "G:\\Game\\DNF_ACT1\\Loot4_D\\DNF.exe",
+      "StartTimeUtc": "2026-10-30T05:14:47.6069571Z"
+    }
+  ],
+  "server": {
+    "Role": "server",
+    "Id": 53132,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\u05-ui-followup-20261030\\runtime-v1\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-30T05:14:39.5249028Z"
+  },
+  "bindings": {
+    "A": {
+      "pid": 72288,
+      "process_started_filetime": 134378108829074150,
+      "uid": 1,
+      "actor_token": "0x08735070",
+      "checker_token": "0x085F63D8"
+    },
+    "B": {
+      "pid": 55920,
+      "process_started_filetime": 134378108846400065,
+      "uid": 2,
+      "actor_token": "0x0878FC80",
+      "checker_token": "0x085A2D70"
+    },
+    "C": {
+      "pid": 31384,
+      "process_started_filetime": 134378108861689757,
+      "uid": 3,
+      "actor_token": "0x08643048",
+      "checker_token": "0x0854DCA0"
+    },
+    "D": {
+      "pid": 48384,
+      "process_started_filetime": 134378108876069571,
+      "uid": 4,
+      "actor_token": "0x08696180",
+      "checker_token": "0x085B6D60"
+    }
+  },
+  "active_channel_sessions_before_stop": 0,
+  "cleanup_evidence": "Every recorded native-channel connection has its post-Runtime.Remove disconnected log; no admin authentication attempted",
+  "original_exe_sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5",
+  "official_elf_sha256": "8859C99D8290DC5FB58151444138CF2697B2BFFF12D47D6159596A03F20B5261",
+  "build_manifest_sha256": "8E9065D1D1699ABF19F72D6C5846689CA05C4E70F6837C972D701666E3F9364C",
+  "journal_sha256": "71B8EF4A0C20770FE2F64708CA7FCDEB62763B67E2BB0B7F3FC3453DE1028A97",
+  "private_seed_state_sha256": "76C83BAE5A05E659A785D0FB25F8D4952284F4F98DD5109B3C9849EBDB81AE18"
+}

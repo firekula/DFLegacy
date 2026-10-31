@@ -1,0 +1,28 @@
+[
+  {
+    "Role": "A",
+    "Client": {
+      "Id": 48880,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "StartTimeUtc": "2026-10-27T16:59:46.9396260Z"
+    },
+    "Launcher": {
+      "Id": 76760,
+      "Path": null,
+      "StartTimeUtc": "2026-10-27T16:59:46.4928486Z"
+    }
+  },
+  {
+    "Role": "B",
+    "Client": {
+      "Id": 39764,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "StartTimeUtc": "2026-10-27T16:59:48.0890096Z"
+    },
+    "Launcher": {
+      "Id": 65928,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-27T16:59:47.4521881Z"
+    }
+  }
+]

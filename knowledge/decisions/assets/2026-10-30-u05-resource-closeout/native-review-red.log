@@ -1,0 +1,4 @@
+FAIL client state: equal null or unreadable bucket endpoints are not a proven absent counter
+FAIL client state: equal null or unreadable bucket endpoints are not a proven absent counter
+FAIL client state: changing empty-bucket endpoints cannot pass a two-read consistency check
+Client state tests: 3 failures

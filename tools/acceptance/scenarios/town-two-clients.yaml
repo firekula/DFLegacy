@@ -1,0 +1,20 @@
+id: town-two-clients
+goal: 两个客户端各自登录→选角→进城，A 能看到 B
+expect_t0: server-accept
+actors:
+  - {name: A, driver: real-client}
+  - {name: B, driver: real-client}
+steps:
+  - actor: A
+    action: 登录并进到城镇
+    expect:
+      - {description: "c2s:login-ok（首个握手帧）", level: "[存在]", pattern: "000B2B0000000000000001", evidence: "[抓包]"}
+      - {description: "s2c:noti1（服务端首个回包）", level: "[存在]", pattern: "000C2F0000000000000001", evidence: "[抓包]"}
+  - actor: B
+    action: 登录并进到城镇
+    expect:
+      - {description: "c2s:login-ok（首个握手帧）", level: "[存在]", pattern: "000B2B0000000000000001", evidence: "[抓包]"}
+  - actor: A
+    action: 走到 B 附近
+    expect:
+      - {description: "A 收到 B 的 USERINFO 且同屏", level: "[语义]"}

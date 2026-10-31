@@ -1,0 +1,5 @@
+2026-10-29 14:26:34.199 [64280] focus request completed
+2026-10-29 14:26:34.244 [64280] plan armed (4 steps)
+2026-10-29 14:26:34.935 [64280] GetDeviceState calls=30184 res=0x0 nonzeroPeak=1 synthKeys=0
+2026-10-29 14:26:35.294 [64280] focus request completed
+2026-10-29 14:26:35.683 [64280] vk polled: 0x2Cx600

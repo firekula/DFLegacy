@@ -1,0 +1,134 @@
+函数符号 8891 个；正在 demangle…
+完成
+
+=== 按类名（demangled 的 `::` 前两段）聚类 ===
+    173  std::basic_string<char, std
+    171  std::basic_string<wchar_t, std
+     80  __gnu_cxx::new_allocator<std
+     75  std::basic_istream<char, std
+     72  std::_Rb_tree<int, std
+     71  std::basic_istream<wchar_t, std
+     68  TaoCrypt::Integer
+     65  std::_Rb_tree<unsigned int, std
+     61  std::basic_ostream<char, std
+     59  std::basic_ostream<wchar_t, std
+     56  std::_Rb_tree_iterator<std
+     56  yaSSL::SSL
+     51  std::pair<std
+     50  __static_initialization_and_destruction_0
+     46  std::basic_streambuf<wchar_t, std
+     46  std::basic_streambuf<char, std
+     40  std::allocator<std
+     36  std::locale
+     35  std::_Rb_tree_node<std
+     33  std::_Rb_tree<unsigned char, std
+     32  std::basic_ios<char, std
+     32  std::basic_ios<wchar_t, std
+     32  __cxa_pure_virtual
+     32  __gnu_cxx::__normal_iterator<std
+     30  std::vector<std
+     29  std::_Rb_tree<std
+     29  std::num_get<char, std
+     29  std::num_get<wchar_t, std
+     28  yaSSL::SSL_CTX
+     28  std::moneypunct<wchar_t, true>
+     28  std::basic_filebuf<wchar_t, std
+     28  std::moneypunct<char, false>
+     28  std::moneypunct<wchar_t, false>
+     28  std::moneypunct<char, true>
+     28  std::basic_filebuf<char, std
+     27  comp_by_time
+     27  yaSSL::CertManager
+     26  bool std::has_facet<std
+     26  std::_Rb_tree<ENUM_DB_HANDLE_IDX, std
+     25  std::num_put<wchar_t, std
+
+=== 关键词扫描（demangled 上）===
+
+  [Packet] 451 个，前 6：
+     global constructors keyed to g_szNotiPacketName
+     global constructors keyed to CPacketDecoderInstance()
+     global constructors keyed to CPacketTracerInstance()
+     global constructors keyed to CPacketTranslater::m_pclApp
+     global constructors keyed to PacketCounter.cpp
+     CDBManager::QueryReloadSpecDb(Packet_Frame_Lag_Statistic_Reload_Spec*, CStatisticsServer*)
+
+  [Query] 97 个，前 6：
+     global constructors keyed to CQueryCounterInstance()
+     CDBManager::QueryReloadSpecDb(Packet_Frame_Lag_Statistic_Reload_Spec*, CStatisticsServer*)
+     getList2inQuery(unsigned int, unsigned int const*, char*)
+     CPacketTranslater::OnWriteQueryStatistics(PacketHeader*)
+     CPacketTranslater::OnQueryGuild(PacketHeader*)
+     CDBManager::QueryFirstLoadSpecDb(Packet_Frame_Lag_Statistic_Load_Spec*, CStatisticsServer*)
+
+  [Handler] 74 个，前 6：
+     global constructors keyed to CFrameCountHandler::CFrameCountHandler()
+     global constructors keyed to EpollHandler::EpollHandler()
+     global constructors keyed to CUdpHandler::CUdpHandler()
+     global constructors keyed to CSystemTimeHandler::CSystemTimeHandler()
+     global constructors keyed to CServerHandler::CServerHandler()
+     CServerHandler::GetStatisticsServerPtr()
+
+  [Recv] 270 个，前 6：
+     global constructors keyed to CUdpRecvBuffer::m_RecvBufferMemPool_
+     CTcpRecvBuffer::operator delete(void*, unsigned int)
+     CAppLoadChecker::checkUdpRecvLoad(int)
+     CUdpRecvBuffer::operator delete(void*)
+     CUdpRecvBuffer*** std::copy_backward<CUdpRecvBuffer***, CUdpRecvBuffer***>(CUdpRecvBuffer***, CUdpRecvBuffer***, CUdpRec
+     __gnu_cxx::new_allocator<CTcpRecvBuffer**>::new_allocator()
+
+  [Send] 151 个，前 6：
+     CGameServer::SendToServer(char*, int)
+     CPacketTranslater::OnSendHWspec(PacketHeader*)
+     std::queue<CTcpSendBuffer*, std::deque<CTcpSendBuffer*, std::allocator<CTcpSendBuffer*> > >::front()
+     __gnu_cxx::new_allocator<CTcpSendBuffer*>::deallocate(CTcpSendBuffer**, unsigned int)
+     CTcpSendBuffer*** std::__copy_move_backward_a2<false, CTcpSendBuffer***, CTcpSendBuffer***>(CTcpSendBuffer***, CTcpSendB
+     std::_Deque_base<CTcpSendBuffer*, std::allocator<CTcpSendBuffer*> >::_Deque_base(std::_Deque_base<CTcpSendBuffer*, std::
+
+  [Load] 82 个，前 6：
+     global constructors keyed to CTableBase::Load_Txt_Table_Data(char const*, int)
+     global constructors keyed to CAppLoadCheckerInstance()
+     CAppLoadChecker::checkUdpRecvLoad(int)
+     CDBManager::OnSaveLoadingTimeReport(Packet_DBMW_Loading_Time_Report*)
+     Packet_Guild_Load_Guild_Cargo::Packet_Guild_Load_Guild_Cargo()
+     CDBManager::QueryFirstLoadSpecDb(Packet_Frame_Lag_Statistic_Load_Spec*, CStatisticsServer*)
+
+  [Config] 118 个，前 6：
+     global constructors keyed to CAppConfig::Parse_Table(char*, int)
+     global constructors keyed to CKillUSRConfig::~CKillUSRConfig()
+     global constructors keyed to CServerConfig::Parse_Table(char*, int)
+     CKillUSRConfig::~CKillUSRConfig()
+     void std::_Destroy<ST_KillUSRConfig**, ST_KillUSRConfig*>(ST_KillUSRConfig**, ST_KillUSRConfig**, std::allocator<ST_Kill
+     std::__miter_base<ST_KillUSRConfig**, false>::__b(ST_KillUSRConfig**)
+
+  [Table] 19 个，前 6：
+     global constructors keyed to CAppConfig::Parse_Table(char*, int)
+     global constructors keyed to CServerConfig::Parse_Table(char*, int)
+     global constructors keyed to CTableBase::Load_Txt_Table_Data(char const*, int)
+     CTableBase::Load_Txt_Table_Data(char const*, int)
+     CTableBase::~CTableBase()
+     CKillUSRConfig::Load_Table(std::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+
+  [Process] 125 个，前 6：
+     SHA1ProcessMessageBlock
+     std::_Rb_tree<unsigned int, std::pair<unsigned int const, stPacketProcess>, std::_Select1st<std::pair<unsigned int const
+     yaSSL::Data::Process(yaSSL::input_buffer&, yaSSL::SSL&)
+     std::pair<std::_Rb_tree_iterator<std::pair<unsigned int const, stPacketProcess> >, bool>::pair<std::_Rb_tree_iterator<st
+     std::_Rb_tree_node<std::pair<unsigned int const, stPacketProcess> >::~_Rb_tree_node()
+     std::allocator<std::_Rb_tree_node<std::pair<unsigned int const, stPacketProcess> > >::allocator()
+
+  [DB] 337 个，前 6：
+     global constructors keyed to CDBManager::CDBManager()
+     CDBManager::QueryReloadSpecDb(Packet_Frame_Lag_Statistic_Reload_Spec*, CStatisticsServer*)
+     CDBManager::OnGuildJoinByListApprove(unsigned int, char, unsigned int, unsigned int, STGuildJoinInfo&, unsigned int&)
+     CDBManager::InsertDailyBadSpecStatistics(Packet_Frame_Lag_Statistic_Write_Daily_Bad_Spec*)
+     CDBManager::OnSaveLoadingTimeReport(Packet_DBMW_Loading_Time_Report*)
+     std::_Rb_tree_iterator<std::pair<ENUM_DB_HANDLE_IDX const, std::basic_string<char, std::char_traits<char>, std::allocato
+
+  [Session] 11 个，前 6：
+     yaSSL::SSL_CTX::SetSessionCacheOff()
+     yaSSL::Sessions::lookup(unsigned char const*, yaSSL::SSL_SESSION*)
+     yaSSL::GetSessions()
+     yaSSL::Sessions::~Sessions()
+     yaSSL::SSL_CTX::GetSessionCacheFlushOff() const
+     yaSSL::Sessions::add(yaSSL::SSL const&)

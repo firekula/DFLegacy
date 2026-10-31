@@ -1,0 +1,7 @@
+{
+  "Schema": "semantic-model-field-clarification/v1",
+  "File": "native-contract/samples-and-semantic-model.json",
+  "FileSha256": "55C8D8A4EA7B13BFB463CC6D77E5C67F1AAAE6B7808C5785D549FE5FC8B21E79",
+  "Field": "axes.own_peer_final_delta",
+  "Convention": "This field contains peer minus own. Live samples dx/dy, six-window tables and root report consistently use own minus peer. Target matching is unaffected. Preserve original sealed artifact bytes."
+}

@@ -1,0 +1,296 @@
+{
+  "schema": "dfl-frame-profile-acceptance/v1",
+  "native_sha256": "1AFDF77A2D48B026DF67810EFE7ECD4F03CB38D60935872922933B86C0BC4D25",
+  "server_sha256": "E058182878E8176981C3D9649515F744035385E812525DBE14B4D2C8059193C0",
+  "server_unchanged": true,
+  "town": {
+    "phases": [
+      {
+        "phase": "idle_before",
+        "seconds": 12.03100000001723,
+        "complete_windows": 11,
+        "frames": 1589,
+        "foreground_frames": 1589,
+        "unknown_foreground_frames": 0,
+        "clock_errors": 0,
+        "maximum_foreground_hook_us": 156,
+        "maximum_foreground_interval_us": 42114,
+        "maximum_parts_us": [
+          46,
+          67,
+          49,
+          83,
+          129
+        ],
+        "slow_events": []
+      },
+      {
+        "phase": "single_destination",
+        "seconds": 20.06299999996554,
+        "complete_windows": 19,
+        "frames": 3221,
+        "foreground_frames": 3221,
+        "unknown_foreground_frames": 0,
+        "clock_errors": 0,
+        "maximum_foreground_hook_us": 217,
+        "maximum_foreground_interval_us": 68761,
+        "maximum_parts_us": [
+          19,
+          91,
+          35,
+          164,
+          146
+        ],
+        "slow_events": [
+          {
+            "serial": 76050,
+            "tick_ms": 413652281,
+            "scene": 1,
+            "hook_us": 46,
+            "foreground_interval_us": 68761,
+            "interval_known": true,
+            "foreground_known": true,
+            "foreground_begin": true,
+            "foreground_end": true,
+            "parts_us": [
+              16,
+              8,
+              4,
+              3,
+              15
+            ]
+          }
+        ]
+      },
+      {
+        "phase": "short_ui_plans",
+        "seconds": 20.09299999999348,
+        "complete_windows": 19,
+        "frames": 3094,
+        "foreground_frames": 3094,
+        "unknown_foreground_frames": 0,
+        "clock_errors": 0,
+        "maximum_foreground_hook_us": 236,
+        "maximum_foreground_interval_us": 21157,
+        "maximum_parts_us": [
+          26,
+          84,
+          52,
+          18,
+          221
+        ],
+        "slow_events": []
+      },
+      {
+        "phase": "native_route",
+        "seconds": 20.03200000000652,
+        "complete_windows": 19,
+        "frames": 2923,
+        "foreground_frames": 2923,
+        "unknown_foreground_frames": 0,
+        "clock_errors": 0,
+        "maximum_foreground_hook_us": 220,
+        "maximum_foreground_interval_us": 26037,
+        "maximum_parts_us": [
+          51,
+          72,
+          189,
+          25,
+          120
+        ],
+        "slow_events": []
+      },
+      {
+        "phase": "idle_after",
+        "seconds": 12.125,
+        "complete_windows": 11,
+        "frames": 1672,
+        "foreground_frames": 1672,
+        "unknown_foreground_frames": 0,
+        "clock_errors": 0,
+        "maximum_foreground_hook_us": 118,
+        "maximum_foreground_interval_us": 8667,
+        "maximum_parts_us": [
+          20,
+          55,
+          72,
+          24,
+          103
+        ],
+        "slow_events": []
+      }
+    ],
+    "screenshots_unchanged": true,
+    "profile_errors": [
+      {
+        "role": "A",
+        "phase": "single_destination",
+        "tick_ms": 413647343,
+        "error": "unreadable_profile"
+      },
+      {
+        "role": "C",
+        "phase": "single_destination",
+        "tick_ms": 413647343,
+        "error": "unreadable_profile"
+      },
+      {
+        "role": "D",
+        "phase": "short_ui_plans",
+        "tick_ms": 413666171,
+        "error": "unreadable_profile"
+      },
+      {
+        "role": "D",
+        "phase": "short_ui_plans",
+        "tick_ms": 413672937,
+        "error": "unreadable_profile"
+      },
+      {
+        "role": "D",
+        "phase": "native_route",
+        "tick_ms": 413697718,
+        "error": "unreadable_profile"
+      }
+    ]
+  },
+  "dungeon": {
+    "roles": [
+      {
+        "role": "A",
+        "complete_windows": 15,
+        "frames": 2421,
+        "foreground_frames": 2421,
+        "max_hook_us": 268,
+        "maximum_parts_us": [
+          190,
+          171,
+          28,
+          53,
+          106
+        ],
+        "max_foreground_interval_us": 42708,
+        "clock_errors": 0
+      },
+      {
+        "role": "B",
+        "complete_windows": 15,
+        "frames": 2756,
+        "foreground_frames": 0,
+        "max_hook_us": 212,
+        "maximum_parts_us": [
+          96,
+          67,
+          31,
+          66,
+          117
+        ],
+        "max_foreground_interval_us": null,
+        "clock_errors": 0
+      },
+      {
+        "role": "C",
+        "complete_windows": 15,
+        "frames": 2712,
+        "foreground_frames": 0,
+        "max_hook_us": 169,
+        "maximum_parts_us": [
+          108,
+          67,
+          68,
+          69,
+          104
+        ],
+        "max_foreground_interval_us": null,
+        "clock_errors": 0
+      },
+      {
+        "role": "D",
+        "complete_windows": 15,
+        "frames": 2735,
+        "foreground_frames": 0,
+        "max_hook_us": 131,
+        "maximum_parts_us": [
+          87,
+          55,
+          30,
+          43,
+          81
+        ],
+        "max_foreground_interval_us": null,
+        "clock_errors": 0
+      }
+    ],
+    "screenshots_unchanged": true,
+    "errors": [],
+    "start_tick_ms": 413798906,
+    "end_tick_ms": 413814953
+  },
+  "repeat": {
+    "phase": {
+      "name": "repeat_single_destination",
+      "start_tick_ms": 414477671,
+      "started_local": "2026-10-30T03:14:07.230",
+      "end_tick_ms": 414497796,
+      "elapsed_seconds": 20.125
+    },
+    "samples": 130,
+    "errors": [
+      {
+        "role": "D",
+        "phase": "repeat_single_destination",
+        "tick_ms": 414494875,
+        "error": "unreadable_profile"
+      }
+    ],
+    "complete_windows": 19,
+    "frames": 3045,
+    "foreground_frames": 3045,
+    "maximum_foreground_hook_us": 165,
+    "maximum_foreground_interval_us": 51450,
+    "maximum_parts_us": [
+      50,
+      136,
+      52,
+      26,
+      77
+    ],
+    "slow_events": [
+      {
+        "serial": 6854,
+        "tick_ms": 414493953,
+        "scene": 1,
+        "hook_us": 31,
+        "foreground_interval_us": 51450,
+        "interval_known": true,
+        "foreground_known": true,
+        "foreground_begin": true,
+        "foreground_end": true,
+        "parts_us": [
+          1,
+          8,
+          5,
+          3,
+          14
+        ]
+      }
+    ],
+    "screenshots_unchanged": true
+  },
+  "exact_attribution": "BLOCKED",
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "protected_files_verified": 16,
+  "test_INIs_restored": 4,
+  "closed_phases": 2,
+  "limits": [
+    "Scope is existing DebugRender workload through content publication; probe bookkeeping/export and native work outside it are excluded.",
+    "Invocation intervals are not GPU Present or continuous foreground proof.",
+    "46us/31us are the callback at the end of each interval; phase maxima also bound prior measured callbacks.",
+    "Two post-arrival intervals68761/51450us remain unattributed; no broad no-stutter claim.",
+    "B/C/D have no foreground interval coverage; null is retained.",
+    "Dungeon image equality is an asserted recorded fact; both underlying image inventories were not retained.",
+    "Reforming fourth member D after return was rejected native_action_failed; same-save process restart succeeded; lifecycle not claimed fixed.",
+    "One intermediate native rerun refused overwriting an existing fixture; later correct runs pass and original fixture retained.",
+    "Six existing full-Python failures remain."
+  ]
+}

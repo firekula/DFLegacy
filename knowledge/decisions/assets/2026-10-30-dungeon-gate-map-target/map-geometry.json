@@ -1,0 +1,815 @@
+{
+  "role": "A",
+  "manager": 118455240,
+  "minimap": 119829864,
+  "plane": 120440400,
+  "panel": {
+    "pointer": 120263680,
+    "type": ".?AVIControl@nengine@@",
+    "kind": 0,
+    "id": 129,
+    "visible": true,
+    "enabled": true,
+    "rect": [
+      0,
+      0,
+      640,
+      480
+    ],
+    "center": [
+      320,
+      240
+    ]
+  },
+  "shift": [
+    0,
+    26
+  ],
+  "plane_origin": [
+    0,
+    -26
+  ],
+  "projects": [
+    {
+      "town": 2,
+      "area": 7,
+      "rect": [
+        170,
+        242,
+        30,
+        28
+      ]
+    },
+    {
+      "town": 2,
+      "area": 6,
+      "rect": [
+        154,
+        201,
+        30,
+        28
+      ]
+    },
+    {
+      "town": 3,
+      "area": 6,
+      "rect": [
+        408,
+        113,
+        35,
+        21
+      ]
+    },
+    {
+      "town": 2,
+      "area": 5,
+      "rect": [
+        258,
+        149,
+        13,
+        8
+      ]
+    },
+    {
+      "town": 3,
+      "area": 5,
+      "rect": [
+        496,
+        218,
+        31,
+        24
+      ]
+    },
+    {
+      "town": 2,
+      "area": 4,
+      "rect": [
+        320,
+        167,
+        38,
+        20
+      ]
+    },
+    {
+      "town": 3,
+      "area": 4,
+      "rect": [
+        425,
+        144,
+        34,
+        20
+      ]
+    },
+    {
+      "town": 1,
+      "area": 3,
+      "rect": [
+        301,
+        309,
+        30,
+        23
+      ]
+    },
+    {
+      "town": 2,
+      "area": 3,
+      "rect": [
+        255,
+        101,
+        37,
+        22
+      ]
+    },
+    {
+      "town": 3,
+      "area": 3,
+      "rect": [
+        511,
+        190,
+        31,
+        24
+      ]
+    },
+    {
+      "town": 4,
+      "area": 3,
+      "rect": [
+        433,
+        350,
+        45,
+        28
+      ]
+    },
+    {
+      "town": 5,
+      "area": 3,
+      "rect": [
+        83,
+        128,
+        36,
+        24
+      ]
+    },
+    {
+      "town": 1,
+      "area": 2,
+      "rect": [
+        444,
+        242,
+        29,
+        25
+      ]
+    },
+    {
+      "town": 2,
+      "area": 2,
+      "rect": [
+        230,
+        162,
+        77,
+        29
+      ]
+    },
+    {
+      "town": 3,
+      "area": 2,
+      "rect": [
+        376,
+        179,
+        13,
+        9
+      ]
+    },
+    {
+      "town": 4,
+      "area": 2,
+      "rect": [
+        508,
+        310,
+        43,
+        23
+      ]
+    },
+    {
+      "town": 5,
+      "area": 2,
+      "rect": [
+        83,
+        98,
+        36,
+        24
+      ]
+    },
+    {
+      "town": 1,
+      "area": 1,
+      "rect": [
+        399,
+        230,
+        13,
+        9
+      ]
+    },
+    {
+      "town": 2,
+      "area": 1,
+      "rect": [
+        209,
+        245,
+        154,
+        25
+      ]
+    },
+    {
+      "town": 2,
+      "area": 9,
+      "rect": [
+        205,
+        76,
+        38,
+        22
+      ]
+    },
+    {
+      "town": 3,
+      "area": 1,
+      "rect": [
+        364,
+        141,
+        52,
+        22
+      ]
+    },
+    {
+      "town": 4,
+      "area": 1,
+      "rect": [
+        376,
+        299,
+        15,
+        6
+      ]
+    },
+    {
+      "town": 5,
+      "area": 1,
+      "rect": [
+        162,
+        96,
+        15,
+        10
+      ]
+    },
+    {
+      "town": 1,
+      "area": 0,
+      "rect": [
+        372,
+        242,
+        66,
+        26
+      ]
+    },
+    {
+      "town": 2,
+      "area": 0,
+      "rect": [
+        194,
+        201,
+        131,
+        29
+      ]
+    },
+    {
+      "town": 2,
+      "area": 8,
+      "rect": [
+        187,
+        161,
+        37,
+        28
+      ]
+    },
+    {
+      "town": 3,
+      "area": 0,
+      "rect": [
+        347,
+        190,
+        159,
+        24
+      ]
+    },
+    {
+      "town": 4,
+      "area": 0,
+      "rect": [
+        350,
+        307,
+        152,
+        28
+      ]
+    },
+    {
+      "town": 5,
+      "area": 0,
+      "rect": [
+        122,
+        106,
+        87,
+        39
+      ]
+    }
+  ],
+  "reals": [
+    {
+      "town": 2,
+      "area": 7,
+      "rect": [
+        8,
+        143,
+        659,
+        170
+      ]
+    },
+    {
+      "town": 2,
+      "area": 6,
+      "rect": [
+        8,
+        143,
+        659,
+        170
+      ]
+    },
+    {
+      "town": 3,
+      "area": 6,
+      "rect": [
+        12,
+        221,
+        866,
+        123
+      ]
+    },
+    {
+      "town": 2,
+      "area": 5,
+      "rect": [
+        329,
+        165,
+        291,
+        170
+      ]
+    },
+    {
+      "town": 3,
+      "area": 5,
+      "rect": [
+        10,
+        147,
+        653,
+        170
+      ]
+    },
+    {
+      "town": 2,
+      "area": 4,
+      "rect": [
+        80,
+        181,
+        1183,
+        140
+      ]
+    },
+    {
+      "town": 3,
+      "area": 4,
+      "rect": [
+        12,
+        221,
+        866,
+        123
+      ]
+    },
+    {
+      "town": 1,
+      "area": 3,
+      "rect": [
+        7,
+        161,
+        655,
+        160
+      ]
+    },
+    {
+      "town": 2,
+      "area": 3,
+      "rect": [
+        13,
+        221,
+        645,
+        137
+      ]
+    },
+    {
+      "town": 3,
+      "area": 3,
+      "rect": [
+        10,
+        147,
+        653,
+        170
+      ]
+    },
+    {
+      "town": 4,
+      "area": 3,
+      "rect": [
+        17,
+        141,
+        996,
+        182
+      ]
+    },
+    {
+      "town": 5,
+      "area": 3,
+      "rect": [
+        22,
+        352,
+        840,
+        225
+      ]
+    },
+    {
+      "town": 1,
+      "area": 2,
+      "rect": [
+        7,
+        191,
+        655,
+        129
+      ]
+    },
+    {
+      "town": 2,
+      "area": 2,
+      "rect": [
+        20,
+        176,
+        1885,
+        193
+      ]
+    },
+    {
+      "town": 3,
+      "area": 2,
+      "rect": [
+        329,
+        165,
+        291,
+        170
+      ]
+    },
+    {
+      "town": 4,
+      "area": 2,
+      "rect": [
+        20,
+        173,
+        993,
+        130
+      ]
+    },
+    {
+      "town": 5,
+      "area": 2,
+      "rect": [
+        22,
+        352,
+        840,
+        225
+      ]
+    },
+    {
+      "town": 1,
+      "area": 1,
+      "rect": [
+        329,
+        165,
+        291,
+        170
+      ]
+    },
+    {
+      "town": 2,
+      "area": 1,
+      "rect": [
+        12,
+        168,
+        3774,
+        166
+      ]
+    },
+    {
+      "town": 2,
+      "area": 9,
+      "rect": [
+        23,
+        221,
+        853,
+        120
+      ]
+    },
+    {
+      "town": 3,
+      "area": 1,
+      "rect": [
+        68,
+        170,
+        1262,
+        191
+      ]
+    },
+    {
+      "town": 4,
+      "area": 1,
+      "rect": [
+        329,
+        165,
+        291,
+        170
+      ]
+    },
+    {
+      "town": 5,
+      "area": 1,
+      "rect": [
+        329,
+        165,
+        291,
+        170
+      ]
+    },
+    {
+      "town": 1,
+      "area": 0,
+      "rect": [
+        9,
+        157,
+        1548,
+        198
+      ]
+    },
+    {
+      "town": 2,
+      "area": 0,
+      "rect": [
+        2,
+        173,
+        2228,
+        304
+      ]
+    },
+    {
+      "town": 2,
+      "area": 8,
+      "rect": [
+        23,
+        221,
+        853,
+        120
+      ]
+    },
+    {
+      "town": 3,
+      "area": 0,
+      "rect": [
+        2,
+        171,
+        3124,
+        315
+      ]
+    },
+    {
+      "town": 4,
+      "area": 0,
+      "rect": [
+        16,
+        142,
+        2423,
+        327
+      ]
+    },
+    {
+      "town": 5,
+      "area": 0,
+      "rect": [
+        40,
+        354,
+        2163,
+        561
+      ]
+    }
+  ],
+  "menus": {
+    "0x1c": {
+      "pointer": 399709544,
+      "type": ".?AVCNButton@nengine@@",
+      "kind": 1,
+      "id": 131,
+      "visible": false,
+      "enabled": true,
+      "rect": [
+        0,
+        0,
+        124,
+        18
+      ],
+      "center": [
+        62,
+        9
+      ]
+    },
+    "0x64": {
+      "pointer": 399715736,
+      "type": ".?AVCNButton@nengine@@",
+      "kind": 1,
+      "id": 148,
+      "visible": false,
+      "enabled": true,
+      "rect": [
+        0,
+        0,
+        124,
+        18
+      ],
+      "center": [
+        62,
+        9
+      ]
+    }
+  },
+  "snapshot": {
+    "schema": "dfl-client-state/v2",
+    "pid": 48476,
+    "process_started_filetime": 134378185968768514,
+    "sequence": 58,
+    "captured_filetime": 134378186602952054,
+    "captured_tick_ms": 458288484,
+    "exported_filetime": 134378186603010320,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 2,
+    "capture_duration_us": 11,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 1,
+      "area_id": 1,
+      "context_token": "0x073332A8",
+      "map_token": "0x1813A228",
+      "position": {
+        "x": 474,
+        "y": 234,
+        "z": 0
+      },
+      "destination": {
+        "x": 474,
+        "y": 234
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": false
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": true,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1,
+        "instance_token": null,
+        "transition_pending": null,
+        "phase_raw": null,
+        "stage_token": null,
+        "input_suppression_raw": null,
+        "record_count": null,
+        "selected_dungeon_id": null,
+        "difficulty_raw": null,
+        "maximum_difficulty_raw": null
+      },
+      "countdown": {
+        "state_raw": 0
+      },
+      "dialogs": {
+        "valid": true,
+        "truncated": false,
+        "items": [],
+        "covered_class_ids": [
+          7,
+          9,
+          35,
+          37,
+          48,
+          86,
+          89,
+          106
+        ]
+      },
+      "command_input": {
+        "scope": "native_command_checker_type0",
+        "actor_token": "0x1818B080",
+        "uid": 1,
+        "checker_token": "0x17F76CF0",
+        "keyboard_lock_level": 0,
+        "keyboard_suppressed": false,
+        "mouse": {
+          "scope": "native_command_checker_type1",
+          "lock_level": 0,
+          "lock_suppressed": false,
+          "checker_flag90_raw": false,
+          "physical_excluded": false
+        }
+      },
+      "mouse_button_state": {
+        "scope": "engine_mouse_button_state",
+        "deferred": false
+      },
+      "input_blocked": null
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x18100AA0",
+      "actor_token": "0x070F1E20",
+      "map_token": "0x1813A228",
+      "hp": null,
+      "max_hp": null,
+      "mp": 200,
+      "max_mp": 200,
+      "mp_source": {
+        "actor_token": "0x1818B080",
+        "local": true
+      },
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 474,
+        "y": 234,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x18100AA0",
+        "actor_token": "0x070F1E20",
+        "map_token": "0x1813A228",
+        "hp": null,
+        "max_hp": null,
+        "mp": 200,
+        "max_mp": 200,
+        "mp_source": {
+          "actor_token": "0x1818B080",
+          "local": true
+        },
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 474,
+          "y": 234,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "controls": [],
+  "phase": "manual-v2",
+  "build_manifest_sha256": "15547DA23FC6793BF7B8B417AD45A4A2744EF361E1C9CEA821D2784839F93F50",
+  "journal_sha256": "A6C87ADE100A2EF7663B9AC0002D16D148F3BE6AD42DAA6C9BD4C9D3DB21AC58"
+}

@@ -1,0 +1,197 @@
+{
+  "scope": "Bounded read-only same-process research, not SDK history or execution receipt",
+  "results": {
+    "A": {
+      "role": "A",
+      "pid": 32092,
+      "process_started_filetime": 134378136135163666,
+      "sdk_sequence": 1610,
+      "actor_token": "0x18173440",
+      "uid": 1,
+      "read_tick_ms": 453608562,
+      "skills": [
+        {
+          "skill_id": 27,
+          "skill_token": "0x183961a8",
+          "level": 6,
+          "maximum_level": 30,
+          "context_enable_raw": 1,
+          "item_costs": [
+            {
+              "item_id": 3037,
+              "first": 1,
+              "last": 1,
+              "required": 1,
+              "matches": []
+            }
+          ],
+          "inventory_token": "0x17d610e0",
+          "inventory_capacity": 137,
+          "counter_nodes": [],
+          "sdk_skill": {
+            "id": 27,
+            "level": 6,
+            "cooldown_ms": 0,
+            "cooldown_blocked": false,
+            "usable": false,
+            "resources": {
+              "scope": "native_manual_precast_resources",
+              "mp_cost": 94,
+              "use_limit": 0,
+              "use_count": null,
+              "items_sufficient": false
+            }
+          }
+        },
+        {
+          "skill_id": 55,
+          "skill_token": "0x18396530",
+          "level": 2,
+          "maximum_level": 30,
+          "context_enable_raw": 1,
+          "item_costs": [
+            {
+              "item_id": 3037,
+              "first": 1,
+              "last": 1,
+              "required": 1,
+              "matches": []
+            }
+          ],
+          "inventory_token": "0x17d610e0",
+          "inventory_capacity": 137,
+          "counter_nodes": [],
+          "sdk_skill": {
+            "id": 55,
+            "level": 2,
+            "cooldown_ms": 0,
+            "cooldown_blocked": false,
+            "usable": false,
+            "resources": {
+              "scope": "native_manual_precast_resources",
+              "mp_cost": 115,
+              "use_limit": 0,
+              "use_count": null,
+              "items_sufficient": false
+            }
+          }
+        }
+      ],
+      "read_calls": 648
+    },
+    "B": {
+      "role": "B",
+      "pid": 1872,
+      "process_started_filetime": 134378136144401236,
+      "sdk_sequence": 1600,
+      "actor_token": "0x087EF468",
+      "uid": 2,
+      "read_tick_ms": 453608578,
+      "skills": [
+        {
+          "skill_id": 51,
+          "skill_token": "0x88ac530",
+          "level": 1,
+          "maximum_level": 30,
+          "context_enable_raw": 0,
+          "item_costs": [],
+          "inventory_token": "0x8338d80",
+          "inventory_capacity": 137,
+          "counter_nodes": [],
+          "sdk_skill": {
+            "id": 51,
+            "level": 1,
+            "cooldown_ms": 0,
+            "cooldown_blocked": false,
+            "usable": false,
+            "resources": {
+              "scope": "native_manual_precast_resources",
+              "mp_cost": 10,
+              "use_limit": 5,
+              "use_count": 0,
+              "items_sufficient": true
+            }
+          }
+        }
+      ],
+      "read_calls": 295
+    },
+    "C": {
+      "role": "C",
+      "pid": 75336,
+      "process_started_filetime": 134378136155216069,
+      "sdk_sequence": 1589,
+      "actor_token": "0x086E7568",
+      "uid": 3,
+      "read_tick_ms": 453608593,
+      "skills": [
+        {
+          "skill_id": 46,
+          "skill_token": "0x8970c40",
+          "level": 1,
+          "maximum_level": 20,
+          "context_enable_raw": 0,
+          "item_costs": [],
+          "inventory_token": "0x8323490",
+          "inventory_capacity": 137,
+          "counter_nodes": [],
+          "sdk_skill": {
+            "id": 46,
+            "level": 1,
+            "cooldown_ms": 0,
+            "cooldown_blocked": false,
+            "usable": false,
+            "resources": {
+              "scope": "native_manual_precast_resources",
+              "mp_cost": 6,
+              "use_limit": 0,
+              "use_count": null,
+              "items_sufficient": true
+            }
+          }
+        }
+      ],
+      "read_calls": 265
+    },
+    "D": {
+      "role": "D",
+      "pid": 2056,
+      "process_started_filetime": 134378136166209333,
+      "sdk_sequence": 1577,
+      "actor_token": "0x086557A8",
+      "uid": 4,
+      "read_tick_ms": 453608593,
+      "skills": [
+        {
+          "skill_id": 4,
+          "skill_token": "0x8882760",
+          "level": 1,
+          "maximum_level": 20,
+          "context_enable_raw": 0,
+          "item_costs": [],
+          "inventory_token": "0x82b9d08",
+          "inventory_capacity": 137,
+          "counter_nodes": [],
+          "sdk_skill": {
+            "id": 4,
+            "level": 1,
+            "cooldown_ms": 0,
+            "cooldown_blocked": false,
+            "usable": false,
+            "resources": {
+              "scope": "native_manual_precast_resources",
+              "mp_cost": 4,
+              "use_limit": 0,
+              "use_count": null,
+              "items_sufficient": true
+            }
+          }
+        }
+      ],
+      "read_calls": 286
+    }
+  },
+  "phase": "resource-v1",
+  "build_manifest_sha256": "A8B26979FCE2E6B28FAFB0CDF6432B06F9514F7F44BE8E9DB60C4BFA9214C22D",
+  "journal_sha256": "B4FF0CD420E533F88112EA49D1D8D36256CA2A44B33A9FFE3878858CCB1EC736"
+}

@@ -1,0 +1,3547 @@
+{
+  "before": {
+    "schema": "dfl-client-state/v2",
+    "pid": 8820,
+    "process_started_filetime": 134377441565015453,
+    "sequence": 138,
+    "captured_filetime": 134377442033869409,
+    "captured_tick_ms": 383833828,
+    "exported_filetime": 134377442034138674,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 2,
+    "capture_duration_us": 3,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 2,
+      "area_id": 5,
+      "context_token": "0x072F7870",
+      "map_token": "0x17ED3A00",
+      "position": {
+        "x": 474,
+        "y": 234,
+        "z": 0
+      },
+      "destination": {
+        "x": 474,
+        "y": 234
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": false
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": true,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x17ED2A00",
+      "actor_token": "0x17ECE270",
+      "map_token": "0x17ED3A00",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 474,
+        "y": 234,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x17ED2A00",
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 474,
+          "y": 234,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "after": {
+    "schema": "dfl-client-state/v2",
+    "pid": 8820,
+    "process_started_filetime": 134377441565015453,
+    "sequence": 183,
+    "captured_filetime": 134377442145926141,
+    "captured_tick_ms": 383845031,
+    "exported_filetime": 134377442146304164,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 4,
+    "capture_duration_us": 2,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 2,
+      "area_id": 0,
+      "context_token": "0x072F7870",
+      "map_token": "0x18260D98",
+      "position": {
+        "x": 1430.60437,
+        "y": 298.884033,
+        "z": 0
+      },
+      "destination": {
+        "x": 1431,
+        "y": 299
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": true,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x17ED2A00",
+      "actor_token": "0x17ECE270",
+      "map_token": "0x18260D98",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 1430.60437,
+        "y": 298.884033,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x17ED2A00",
+        "actor_token": "0x17ECE270",
+        "map_token": "0x18260D98",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 1430.60437,
+          "y": 298.884033,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "feedback_before": {
+    "schema": "dfl-map-feedback/v1",
+    "pid": 8820,
+    "process_started_filetime": 134377441565015453,
+    "tick_ms": 383833890,
+    "capture_tick_ms": 383833828,
+    "capture_sequence": 138,
+    "trigger_serial": 0,
+    "active": false,
+    "hook_installed": true,
+    "cleanup_pending": false,
+    "target": {
+      "x": 0,
+      "y": 0
+    },
+    "rings": [
+      {
+        "visible": false,
+        "scale": 0,
+        "color": 0
+      },
+      {
+        "visible": false,
+        "scale": 0,
+        "color": 0
+      }
+    ],
+    "draw_count": 0,
+    "texture_creations": 0,
+    "reason": "idle_or_expired"
+  },
+  "feedback_updates": [
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383833890,
+      "capture_tick_ms": 383833828,
+      "capture_sequence": 138,
+      "trigger_serial": 0,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 0,
+        "y": 0
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 0,
+      "texture_creations": 0,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383834125,
+      "capture_tick_ms": 383834031,
+      "capture_sequence": 139,
+      "trigger_serial": 0,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 0,
+        "y": 0
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 0,
+      "texture_creations": 0,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383834312,
+      "capture_tick_ms": 383834234,
+      "capture_sequence": 140,
+      "trigger_serial": 0,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 0,
+        "y": 0
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 0,
+      "texture_creations": 0,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383834531,
+      "capture_tick_ms": 383834437,
+      "capture_sequence": 141,
+      "trigger_serial": 0,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 0,
+        "y": 0
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 0,
+      "texture_creations": 0,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383834765,
+      "capture_tick_ms": 383834640,
+      "capture_sequence": 142,
+      "trigger_serial": 0,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 0,
+        "y": 0
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 0,
+      "texture_creations": 0,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383834953,
+      "capture_tick_ms": 383834843,
+      "capture_sequence": 143,
+      "trigger_serial": 1,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 0.5,
+          "color": 4294967295
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383835187,
+      "capture_tick_ms": 383835046,
+      "capture_sequence": 144,
+      "trigger_serial": 1,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 0.684000015,
+          "color": 3453540568
+        },
+        {
+          "visible": true,
+          "scale": 0.5,
+          "color": 4294967295
+        }
+      ],
+      "draw_count": 58,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383835421,
+      "capture_tick_ms": 383835250,
+      "capture_sequence": 145,
+      "trigger_serial": 1,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 0.917999983,
+          "color": 2393352103
+        },
+        {
+          "visible": true,
+          "scale": 0.717999995,
+          "color": 3302085073
+        }
+      ],
+      "draw_count": 158,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383835609,
+      "capture_tick_ms": 383835453,
+      "capture_sequence": 146,
+      "trigger_serial": 1,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 1736474752
+        },
+        {
+          "visible": true,
+          "scale": 0.906000018,
+          "color": 2443815337
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383837750,
+      "capture_tick_ms": 383837718,
+      "capture_sequence": 147,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383837984,
+      "capture_tick_ms": 383837921,
+      "capture_sequence": 148,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383838203,
+      "capture_tick_ms": 383838125,
+      "capture_sequence": 149,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383838437,
+      "capture_tick_ms": 383838328,
+      "capture_sequence": 150,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383838671,
+      "capture_tick_ms": 383838531,
+      "capture_sequence": 151,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383838906,
+      "capture_tick_ms": 383838734,
+      "capture_sequence": 152,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383839140,
+      "capture_tick_ms": 383839140,
+      "capture_sequence": 154,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383839375,
+      "capture_tick_ms": 383839343,
+      "capture_sequence": 155,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383839609,
+      "capture_tick_ms": 383839546,
+      "capture_sequence": 156,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383839843,
+      "capture_tick_ms": 383839750,
+      "capture_sequence": 157,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383840078,
+      "capture_tick_ms": 383839953,
+      "capture_sequence": 158,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383840312,
+      "capture_tick_ms": 383840156,
+      "capture_sequence": 159,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383840531,
+      "capture_tick_ms": 383840359,
+      "capture_sequence": 160,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383840765,
+      "capture_tick_ms": 383840765,
+      "capture_sequence": 162,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383841015,
+      "capture_tick_ms": 383840968,
+      "capture_sequence": 163,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383841250,
+      "capture_tick_ms": 383841171,
+      "capture_sequence": 164,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383841468,
+      "capture_tick_ms": 383841375,
+      "capture_sequence": 165,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383841703,
+      "capture_tick_ms": 383841578,
+      "capture_sequence": 166,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383841937,
+      "capture_tick_ms": 383841781,
+      "capture_sequence": 167,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383842171,
+      "capture_tick_ms": 383841984,
+      "capture_sequence": 168,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383842406,
+      "capture_tick_ms": 383842390,
+      "capture_sequence": 170,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383842640,
+      "capture_tick_ms": 383842593,
+      "capture_sequence": 171,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383842875,
+      "capture_tick_ms": 383842796,
+      "capture_sequence": 172,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383843109,
+      "capture_tick_ms": 383843000,
+      "capture_sequence": 173,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383843343,
+      "capture_tick_ms": 383843203,
+      "capture_sequence": 174,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383843578,
+      "capture_tick_ms": 383843406,
+      "capture_sequence": 175,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383843812,
+      "capture_tick_ms": 383843812,
+      "capture_sequence": 177,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383844046,
+      "capture_tick_ms": 383844015,
+      "capture_sequence": 178,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383844281,
+      "capture_tick_ms": 383844218,
+      "capture_sequence": 179,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383844500,
+      "capture_tick_ms": 383844421,
+      "capture_sequence": 180,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383844734,
+      "capture_tick_ms": 383844625,
+      "capture_sequence": 181,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 383844968,
+      "capture_tick_ms": 383844828,
+      "capture_sequence": 182,
+      "trigger_serial": 1,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 278,
+        "y": 213
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 234,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    }
+  ],
+  "route_updates": [
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383834953,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 1,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 5,
+        "map_token": "0x17ED3A00",
+        "observation_generation": 1,
+        "position": {
+          "x": 474,
+          "y": 234
+        },
+        "destination": {
+          "x": 474,
+          "y": 234
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": false
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383835156,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 1,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 5,
+        "map_token": "0x17ED3A00",
+        "observation_generation": 1,
+        "position": {
+          "x": 474,
+          "y": 263.2038574
+        },
+        "destination": {
+          "x": 474,
+          "y": 329
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383835359,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 1,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 5,
+        "map_token": "0x17ED3A00",
+        "observation_generation": 1,
+        "position": {
+          "x": 474,
+          "y": 293.3018494
+        },
+        "destination": {
+          "x": 474,
+          "y": 329
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383835562,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 1,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 5,
+        "map_token": "0x17ED3A00",
+        "observation_generation": 1,
+        "position": {
+          "x": 474,
+          "y": 324.144928
+        },
+        "destination": {
+          "x": 474,
+          "y": 329
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383837734,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 2,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 867,
+          "y": 186
+        },
+        "destination": {
+          "x": 867,
+          "y": 186
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": false
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383837828,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 3,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 867,
+          "y": 201.3469238
+        },
+        "destination": {
+          "x": 867,
+          "y": 201
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383838000,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 4,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 867,
+          "y": 226.5277863
+        },
+        "destination": {
+          "x": 867,
+          "y": 227
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383838203,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 4,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 830.1715088,
+          "y": 250.6837463
+        },
+        "destination": {
+          "x": 575,
+          "y": 327
+        },
+        "direction_raw": {
+          "x": 0,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383838406,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 4,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 792.7852783,
+          "y": 275.2054749
+        },
+        "destination": {
+          "x": 575,
+          "y": 327
+        },
+        "direction_raw": {
+          "x": 0,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383838609,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 4,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 755.2128906,
+          "y": 299.8491821
+        },
+        "destination": {
+          "x": 575,
+          "y": 327
+        },
+        "direction_raw": {
+          "x": 0,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383838812,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 4,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 717.640686,
+          "y": 324.4927979
+        },
+        "destination": {
+          "x": 575,
+          "y": 327
+        },
+        "direction_raw": {
+          "x": 0,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383839015,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 4,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 672.5548096,
+          "y": 326.5667725
+        },
+        "destination": {
+          "x": 575,
+          "y": 327
+        },
+        "direction_raw": {
+          "x": 0,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383839218,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 4,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 626.8399658,
+          "y": 326.5667725
+        },
+        "destination": {
+          "x": 575,
+          "y": 327
+        },
+        "direction_raw": {
+          "x": 0,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383839421,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 4,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 582.4629517,
+          "y": 326.5667725
+        },
+        "destination": {
+          "x": 575,
+          "y": 327
+        },
+        "direction_raw": {
+          "x": 0,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383839453,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 5,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 2,
+        "map_token": "0x0720E988",
+        "observation_generation": 2,
+        "position": {
+          "x": 575.3269043,
+          "y": 326.5667725
+        },
+        "destination": {
+          "x": 575,
+          "y": 327
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383839640,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 6,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 338,
+          "y": 174
+        },
+        "destination": {
+          "x": 338,
+          "y": 174
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": false
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383839734,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 7,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 338,
+          "y": 186.6649323
+        },
+        "destination": {
+          "x": 338,
+          "y": 187
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383839937,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 7,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 338.9299927,
+          "y": 216.4787598
+        },
+        "destination": {
+          "x": 339,
+          "y": 232
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383840031,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 338.9299927,
+          "y": 232.2726593
+        },
+        "destination": {
+          "x": 339,
+          "y": 232
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383840234,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 374.8277588,
+          "y": 255.818634
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383840437,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 412.3995361,
+          "y": 280.4622803
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 3
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383840640,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 452.3043213,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383840843,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 497.7962952,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383841046,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 542.8421631,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383841250,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 587.8880615,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383841453,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 633.8260498,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383841656,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 678.4259033,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383841859,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 724.586731,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383842062,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 769.6328125,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383842265,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 814.4558105,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383842468,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 859.5019531,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383842671,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 905.2169189,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383842875,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 950.7091064,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383843078,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 995.5321045,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383843281,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1040.35498,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383843484,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1086.738892,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383843687,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1131.784912,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383843890,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1177.053833,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383844093,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1221.876709,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383844296,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1266.922729,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383844500,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1312.860596,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383844703,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1358.129517,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "moving",
+      "reason": "native_destination_set",
+      "tick_ms": 383844906,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1403.398438,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 1,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    },
+    {
+      "schema": "dfl-client-route/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "request_id": 1,
+      "source": "minimap",
+      "status": "arrived",
+      "reason": "final_position_observed",
+      "tick_ms": 383845015,
+      "uid": 1,
+      "goal": {
+        "town_id": 2,
+        "area_id": 0,
+        "x": 1431,
+        "y": 299
+      },
+      "origin": {
+        "generation": 1,
+        "actor_token": "0x17ECE270",
+        "map_token": "0x17ED3A00",
+        "user_token": "0x17ED2A00",
+        "context_token": "0x072F7870"
+      },
+      "steps": 8,
+      "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+      "observed": {
+        "town_id": 2,
+        "area_id": 0,
+        "map_token": "0x18260D98",
+        "observation_generation": 3,
+        "position": {
+          "x": 1430.60437,
+          "y": 298.8840332
+        },
+        "destination": {
+          "x": 1431,
+          "y": 299
+        },
+        "direction_raw": {
+          "x": 4,
+          "y": 4
+        },
+        "auto_move_active": true
+      }
+    }
+  ],
+  "terminal": {
+    "schema": "dfl-client-route/v1",
+    "pid": 8820,
+    "process_started_filetime": 134377441565015453,
+    "request_id": 1,
+    "source": "minimap",
+    "status": "arrived",
+    "reason": "final_position_observed",
+    "tick_ms": 383845015,
+    "uid": 1,
+    "goal": {
+      "town_id": 2,
+      "area_id": 0,
+      "x": 1431,
+      "y": 299
+    },
+    "origin": {
+      "generation": 1,
+      "actor_token": "0x17ECE270",
+      "map_token": "0x17ED3A00",
+      "user_token": "0x17ED2A00",
+      "context_token": "0x072F7870"
+    },
+    "steps": 8,
+    "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+    "observed": {
+      "town_id": 2,
+      "area_id": 0,
+      "map_token": "0x18260D98",
+      "observation_generation": 3,
+      "position": {
+        "x": 1430.60437,
+        "y": 298.8840332
+      },
+      "destination": {
+        "x": 1431,
+        "y": 299
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    }
+  },
+  "elapsed_ms": 11032,
+  "phase": "right-pulse-v2",
+  "build_manifest_sha256": "00F9C92D246464AE84DD398C0C24EB0185F4C5ACCAC9702799A26502923AF41E",
+  "journal_sha256": "E216960E8C69EF2DA1933CF97B5C0D4C891F62AF0FC9B4D4DAD5436FD3958C1D"
+}

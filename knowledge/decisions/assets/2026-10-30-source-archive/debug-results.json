@@ -1,0 +1,46 @@
+[
+  {
+    "mode": "--client-state",
+    "exit_code": 0
+  },
+  {
+    "mode": "--client-navigation",
+    "exit_code": 0
+  },
+  {
+    "mode": "--client-party",
+    "exit_code": 0
+  },
+  {
+    "mode": "--town-route",
+    "exit_code": 0
+  },
+  {
+    "mode": "--frame-profile",
+    "exit_code": 0
+  },
+  {
+    "mode": "--gameplay-trace",
+    "exit_code": 0
+  },
+  {
+    "mode": "--native-loop",
+    "exit_code": 0
+  },
+  {
+    "mode": "--client-test-control",
+    "exit_code": 0
+  },
+  {
+    "mode": "--map-feedback",
+    "exit_code": 0
+  },
+  {
+    "mode": "--gameplay-abi",
+    "exit_code": 0
+  },
+  {
+    "mode": "full-overlay-with-fresh-managed-fixture",
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,53 @@
+{
+  "baselines": {
+    "cmd": 608,
+    "ext_marks": {
+      "byte_verified": 1,
+      "field_read": 2,
+      "name_only": 1168
+    },
+    "noti": 563,
+    "opcodes_total": 1171,
+    "s2s": 4,
+    "status": {
+      "mapped": 428,
+      "no-dispatcher": 741,
+      "unused": 2
+    },
+    "tiers": {
+      "T0_no-evidence": 743,
+      "T1_dispatcher-no-handlerdata": 187,
+      "T2_handlerdata-no-fields": 64,
+      "T3_fields-read-only": 109,
+      "T3b_fields-write-only": 16,
+      "T4_fields-read+write": 52
+    }
+  },
+  "files": {
+    "ledger/opcodes.tsv": {
+      "rows": 1171,
+      "sha256": "aae6d1a5dc492b2c374ecfba3d230bf4c17fdd3f74eead1ffa21e134d7a733c3"
+    },
+    "ledger/runs.tsv": {
+      "rows": 5,
+      "sha256": "d2fac2f54513dbc0d3f824729b158825a7ff7e408d8db8c08900a23a0996dd3c"
+    },
+    "ledger/scenarios.tsv": {
+      "rows": 12,
+      "sha256": "e1633a21f6551f784ab419672cd3e2eb5f23e21b2cfb720b0d849e99d4eac867"
+    },
+    "map/index.md": {
+      "rows": 0,
+      "sha256": "4cbeab858f9cce38c69562b890b537d0bafe60ae06f877aa6cbea4da6ac3c827"
+    },
+    "map/opcode-map.tsv": {
+      "rows": 1171,
+      "sha256": "f4e9a76415a4557f9e9f9bfd3d0206d631bfa0738d6f0a351d6fe80e5c1a7406"
+    },
+    "map/s2s-map.tsv": {
+      "rows": 4,
+      "sha256": "09433db8bc9beb927f1a1662e8cb8c5e707fc1761968d415ee5fb6bdfc8082ea"
+    }
+  },
+  "schema": 1
+}

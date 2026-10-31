@@ -1,0 +1,4768 @@
+// hexrays=True
+// ===== 8160796 (_ZN30InterLoadServiceRestrictPolicy12dispatch_sigEP5CUserPci) =====
+int __cdecl InterLoadServiceRestrictPolicy::dispatch_sig(InterLoadServiceRestrictPolicy *this, CUser *a2, char *a3)
+{
+  int v4; // ebx
+  int v5; // eax
+  char v6; // [esp+8h] [ebp-30h]
+  int v7[4]; // [esp+14h] [ebp-24h] BYREF
+  int v8; // [esp+24h] [ebp-14h] BYREF
+  char v9[13]; // [esp+2Bh] [ebp-Dh] BYREF
+
+  *(_DWORD *)&v9[1] = a3;
+  if ( a3 )
+  {
+    std::allocator<char>::allocator(v9);
+    std::string::string((int)&v8, (char *)(*(_DWORD *)&v9[1] + 4509), (int)v9);
+    v4 = **(_DWORD **)&v9[1];
+    v5 = ARAD::Singleton<ServiceRestrictManager>::Get();
+    ServiceRestrictManager::beginPolicy(v5, v4, &v8);
+    std::string::~string(&v8);
+    std::allocator<char>::~allocator(v9);
+    return 0;
+  }
+  else
+  {
+    cMyTrace::cMyTrace(
+      (cMyTrace *)v7,
+      "virtual int InterLoadServiceRestrictPolicy::dispatch_sig(CUser*, char*, int)",
+      148,
+      5);
+    cMyTrace::operator()((int)v7, "[Taiwan, Restrict] SigLoadRestrictPolicy is null.", v6);
+    return 149;
+  }
+}
+
+// ===== 819FCB4 (_ZN4ARAD10DISPATCHER29Dispatcher_AradEmblemCompound14checkWorkStateEP5CUserRN4arad21SigAradEmblemCompoundE) =====
+_BOOL4 __cdecl ARAD::DISPATCHER::Dispatcher_AradEmblemCompound::checkWorkState(
+        ARAD::DISPATCHER::Dispatcher_AradEmblemCompound *this,
+        CUser *a2,
+        arad::SigAradEmblemCompound *a3)
+{
+  int v3; // eax
+  EmblemCompoundServer *v5; // eax
+  int v6; // [esp+1Ch] [ebp-Ch]
+
+  v3 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v3, a2, 1, 21) )
+  {
+    CUser::SendCmdErrorPacket(a2, 590, 209);
+    return 0;
+  }
+  else
+  {
+    v6 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 42);
+    if ( v6 )
+    {
+      CUser::SendCmdErrorPacket(a2, 590, (unsigned __int8)v6);
+      return 0;
+    }
+    else
+    {
+      v5 = (EmblemCompoundServer *)ARAD::Singleton<EmblemCompoundServer>::Get();
+      return (unsigned __int8)EmblemCompoundServer::CheckCondition(v5, a2, a3) == 1;
+    }
+  }
+}
+
+// ===== 81BE46A (_ZN18DisPatcher_BuyItem11check_errorEP5CUserR8MSG_BASE) =====
+int __cdecl DisPatcher_BuyItem::check_error(DisPatcher_BuyItem *this, CUser *a2, MSG_BASE *a3)
+{
+  unsigned int v3; // esi
+  unsigned int v4; // ebx
+  CDataManager *v5; // eax
+  int v6; // ebx
+  int v7; // eax
+  WongWork::CHackAnalyzer *HackAnalyzer; // eax
+  int v10; // eax
+  private_store::CPrivateStoreMgr *InstancePrivateStoreMgr; // eax
+  int v12; // ebx
+  int v13; // eax
+  int RepeatEvent; // eax
+  private_store *v15; // [esp+0h] [ebp-38h]
+  int v16; // [esp+2Ch] [ebp-Ch]
+
+  v3 = *(_DWORD *)((char *)a3 + 13);
+  v4 = *(_DWORD *)((char *)a3 + 21);
+  v5 = (CDataManager *)G_CDataManager();
+  if ( (unsigned __int8)CDataManager::checkValidShopItem(v5, v4, v3) != 1 )
+  {
+    v6 = *(_DWORD *)((char *)a3 + 21);
+    v7 = G_CDataManager();
+    if ( (unsigned __int8)CItemShop::IsOneADayShop(*(CItemShop **)(v7 + 36028), v6) )
+    {
+      return 17;
+    }
+    else
+    {
+      HackAnalyzer = (WongWork::CHackAnalyzer *)CUser::getHackAnalyzer(a2);
+      WongWork::CHackAnalyzer::addServerHackCnt(HackAnalyzer, a2, 969, 1, 0, 0);
+      return -1;
+    }
+  }
+  else if ( (unsigned __int8)CUser::CheckInTrade(a2) )
+  {
+    return 19;
+  }
+  else if ( CUserCharacInfo::getCurCharacR(a2) )
+  {
+    if ( (unsigned __int8)CUser::isHackUser(a2) )
+    {
+      return 19;
+    }
+    else
+    {
+      v10 = ARAD::Singleton<ServiceRestrictManager>::Get();
+      if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v10, a2, 1, 3) )
+      {
+        return 209;
+      }
+      else if ( CUser::get_state(a2) == 8
+             || (v16 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 34)) == 0 )
+      {
+        InstancePrivateStoreMgr = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v15);
+        if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(InstancePrivateStoreMgr, a2) )
+        {
+          return 60;
+        }
+        else
+        {
+          v12 = *(_DWORD *)((char *)a3 + 21);
+          v13 = G_CDataManager();
+          if ( (unsigned __int8)CItemShop::IsOneADayShop(*(CItemShop **)(v13 + 36028), v12)
+            && (RepeatEvent = CEventManager::GetRepeatEvent(GlobalData::s_event_manager, 109),
+                (*(unsigned __int8 (__cdecl **)(int, _DWORD))(*(_DWORD *)RepeatEvent + 52))(RepeatEvent, 0) ^ 1) )
+          {
+            return 17;
+          }
+          else
+          {
+            return 0;
+          }
+        }
+      }
+      else
+      {
+        return v16;
+      }
+    }
+  }
+  else
+  {
+    return 19;
+  }
+}
+
+// ===== 81BF8BE (_ZN19DisPatcher_BuySkill11check_errorEP5CUserR8MSG_BASE) =====
+int __cdecl DisPatcher_BuySkill::check_error(DisPatcher_BuySkill *this, CUser *a2, MSG_BASE *a3)
+{
+  int v4; // eax
+  int i; // [esp+18h] [ebp-10h]
+  unsigned __int8 v6; // [esp+1Fh] [ebp-9h]
+
+  if ( !a2 )
+    return -1;
+  for ( i = 0; *((char *)a3 + 14) > i; ++i )
+  {
+    v6 = *((_BYTE *)a3 + 3 * i + 15);
+    if ( v6 > 0xC7u && v6 <= 0xD0u )
+    {
+      v4 = ARAD::Singleton<ServiceRestrictManager>::Get();
+      if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v4, a2, 1, 30) )
+        return 209;
+    }
+  }
+  return 0;
+}
+
+// ===== 81C0830 (_ZN23DisPatcher_CreateCharac11check_errorEP5CUserR8MSG_BASE) =====
+int __cdecl DisPatcher_CreateCharac::check_error(DisPatcher_CreateCharac *this, CUser *a2, MSG_BASE *a3)
+{
+  int v4; // eax
+  int charac_count; // eax
+  int v7; // ebx
+  const char *v9; // [esp+4h] [ebp-44h]
+  char v10; // [esp+8h] [ebp-40h]
+  int v11[8]; // [esp+14h] [ebp-34h] BYREF
+  CRestrictCharacCreationEvent *RepeatEvent; // [esp+34h] [ebp-14h]
+  MSG_BASE *v13; // [esp+38h] [ebp-10h]
+  int Character; // [esp+3Ch] [ebp-Ch]
+
+  if ( CUser::get_state(a2) != 2 )
+    return 0x7FFFFFFF;
+  if ( (unsigned __int8)CUser::isLockedDeleteCharac(a2) )
+    return 19;
+  if ( (unsigned __int8)CUser::isLocked4DataLoad(a2) )
+    return 19;
+  v4 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v4, a2, 1, 32) )
+    return 209;
+  RepeatEvent = (CRestrictCharacCreationEvent *)CEventManager::GetRepeatEvent(GlobalData::s_event_manager, 49);
+  if ( RepeatEvent )
+  {
+    v9 = 0;
+    if ( (*(unsigned __int8 (__cdecl **)(CRestrictCharacCreationEvent *))(*(_DWORD *)RepeatEvent + 52))(RepeatEvent) )
+    {
+      charac_count = CUser::get_charac_count(a2);
+      Character = CRestrictCharacCreationEvent::getLimitCreateCharacter(RepeatEvent, charac_count);
+      if ( Character )
+        return Character;
+    }
+  }
+  v7 = CUser::get_charac_count(a2);
+  if ( v7 >= (unsigned __int8)CUser::getCharacSlotLimit(a2) )
+    return 4;
+  if ( CUser::get_charac_count(a2) == 36 )
+  {
+    cMyTrace::cMyTrace((cMyTrace *)v11, "int DisPatcher_CreateCharac::check_error(CUser*, MSG_BASE&)", 2208, 5);
+    cMyTrace::operator()((int)v11, "DisPatcher_CreateCharac pUser->get_charac_count() == MAX_CHARAC_SLOT false", v10);
+    return 4;
+  }
+  else
+  {
+    v13 = a3;
+    if ( (unsigned __int8)restrict_inputting_name::isUtf8StrInUnicodeRange((MSG_BASE *)((char *)a3 + 18), v9) != 1 )
+    {
+      return 159;
+    }
+    else if ( (unsigned __int8)checkSpecialChar((char *)v13 + 18)
+           || (unsigned __int8)checkSpecialCharName((char *)v13 + 18) )
+    {
+      return 159;
+    }
+    else
+    {
+      return 0;
+    }
+  }
+}
+
+// ===== 81C14F0 (_ZN23DisPatcher_DeleteCharac11check_errorEP5CUserR8MSG_BASE) =====
+int __cdecl DisPatcher_DeleteCharac::check_error(DisPatcher_DeleteCharac *this, CUser *a2, MSG_BASE *a3)
+{
+  int v4; // ebx
+  int CurCharacNo; // ebx
+  char v8; // si
+  int v9; // eax
+  char v10; // [esp+8h] [ebp-40h]
+  int v11[4]; // [esp+14h] [ebp-34h] BYREF
+  int v12[4]; // [esp+24h] [ebp-24h] BYREF
+  MSG_BASE *v13; // [esp+34h] [ebp-14h]
+  char *s1; // [esp+38h] [ebp-10h]
+  int v15; // [esp+3Ch] [ebp-Ch]
+
+  if ( CUser::get_state(a2) != 2 )
+    return -1;
+  if ( (unsigned __int8)CUser::isLockedCreateCharac(a2) )
+    return 19;
+  v13 = a3;
+  v4 = *((char *)a3 + 13);
+  if ( v4 >= CUser::get_charac_count(a2) || *((char *)v13 + 13) < 0 )
+    return -2;
+  if ( (unsigned __int8)CUser::CheckDeleteCharacTime(a2, *((char *)v13 + 13)) != 1 )
+    return 22;
+  if ( CUserCharacInfo::getCurCharacNo(a2)
+    && (CurCharacNo = CUserCharacInfo::getCurCharacNo(a2), CurCharacNo == CUser::get_charac_no(a2, *((char *)v13 + 13))) )
+  {
+    CUser::get_charac_no(a2, *((char *)v13 + 13));
+    v8 = *((_BYTE *)v13 + 13);
+    cMyTrace::cMyTrace((cMyTrace *)v11, "int DisPatcher_DeleteCharac::check_error(CUser*, MSG_BASE&)", 2724, 5);
+    cMyTrace::operator()((int)v11, "pUser->getCurCharacNo() == recv_pk_del_charac.charac_index %d %d", v8);
+    return 22;
+  }
+  else if ( (unsigned __int8)CUser::isLocked4DataLoad(a2) )
+  {
+    return 19;
+  }
+  else if ( CUserCharacInfo::getCurCharacR(a2) )
+  {
+    return -3;
+  }
+  else if ( *(char *)(std::vector<_Charac_info>::operator[]((char *)a2 + 497384, *((char *)v13 + 13)) + 4678) <= 1 )
+  {
+    s1 = (char *)CUser::get_charac_name(a2, *((char *)v13 + 13));
+    if ( s1 && *((_BYTE *)v13 + 18) )
+    {
+      if ( !strncmp(s1, (const char *)v13 + 18, 0x1Eu) )
+      {
+        v9 = ARAD::Singleton<ServiceRestrictManager>::Get();
+        if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v9, a2, 1, 23) )
+        {
+          return 209;
+        }
+        else
+        {
+          v15 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 46);
+          if ( v15 )
+            return v15;
+          else
+            return 0;
+        }
+      }
+      else
+      {
+        return -6;
+      }
+    }
+    else
+    {
+      return -5;
+    }
+  }
+  else
+  {
+    cMyTrace::cMyTrace((cMyTrace *)v12, "int DisPatcher_DeleteCharac::check_error(CUser*, MSG_BASE&)", 2740, 5);
+    cMyTrace::operator()((int)v12, "LINK_LOG : ABNOMAL CHARAC DELETEING!!", v10);
+    return -4;
+  }
+}
+
+// ===== 81C1CF6 (_ZN21DisPatcher_DeleteItem16restricted_checkEP5CUserR8MSG_BASE) =====
+int __cdecl DisPatcher_DeleteItem::restricted_check(DisPatcher_DeleteItem *this, CUser *a2)
+{
+  int v2; // eax
+  int v4; // [esp+1Ch] [ebp-Ch]
+
+  v2 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v2, a2, 1, 1) )
+    return 209;
+  v4 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 29);
+  if ( v4 )
+    return v4;
+  else
+    return 0;
+}
+
+// ===== 81C2D9A (_ZN19DisPatcher_DropItem11check_errorEP5CUserR8MSG_BASER9ParamBase) =====
+int __cdecl DisPatcher_DropItem::check_error(DisPatcher_DropItem *this, CUser *a2, MSG_BASE *a3, ParamBase *a4)
+{
+  GameWorld *v5; // eax
+  int v6; // eax
+  int v7; // ebx
+  int InvenTypeFromItemSpace; // eax
+  int v9; // eax
+  int Party; // [esp+20h] [ebp-18h]
+  int v11; // [esp+28h] [ebp-10h]
+  int v12; // [esp+2Ch] [ebp-Ch]
+
+  if ( !CUserCharacInfo::getCurCharacR(a2) )
+    return -1;
+  if ( *((int *)a3 + 5) <= 0 )
+    return -1;
+  if ( CUser::get_state(a2) == 10 )
+    return 19;
+  Party = CUser::GetParty(a2);
+  if ( Party )
+  {
+    v11 = *(_DWORD *)(Party + 3244);
+    if ( v11 )
+    {
+      if ( *(_BYTE *)(v11 + 2207) )
+        return 19;
+    }
+  }
+  v5 = (GameWorld *)G_GameWorld();
+  if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v5) )
+    return 19;
+  v6 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v6, a2, 1, 1) )
+  {
+    *((_DWORD *)a4 + 3) = 1;
+    return 209;
+  }
+  else if ( *((_BYTE *)a3 + 24) == 1
+         || (v12 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 30)) == 0 )
+  {
+    v7 = *((__int16 *)a3 + 9);
+    InvenTypeFromItemSpace = GetInvenTypeFromItemSpace(*((char *)a3 + 17));
+    if ( (unsigned __int8)CUser::CheckItemLock(a2, InvenTypeFromItemSpace, v7) )
+    {
+      return 213;
+    }
+    else if ( (unsigned __int8)CUser::isHackUser(a2) )
+    {
+      return 19;
+    }
+    else
+    {
+      v9 = *((char *)a3 + 17);
+      if ( v9 == 1 )
+      {
+        return 23;
+      }
+      else if ( v9 == 3 && *((__int16 *)a3 + 9) <= 9 )
+      {
+        return 23;
+      }
+      else if ( *((_BYTE *)a3 + 17) || *((_WORD *)a3 + 9) || *((_DWORD *)a3 + 5) <= 0x3E8u )
+      {
+        return 0;
+      }
+      else
+      {
+        return 70;
+      }
+    }
+  }
+  else
+  {
+    *((_DWORD *)a4 + 3) = 1;
+    return v12;
+  }
+}
+
+// ===== 81CC636 (_ZN23Dispatcher_MailBox_Send11check_errorEP5CUserR8MSG_BASE) =====
+int __cdecl Dispatcher_MailBox_Send::check_error(Dispatcher_MailBox_Send *this, CUser *a2, MSG_BASE *a3)
+{
+  int v4; // ebx
+  int v5; // eax
+  int v6; // ebx
+  int InvenTypeFromItemSpace; // eax
+  int v8; // ebx
+  int v9; // eax
+  CSyncSlangFilter *Instance; // eax
+  size_t v11; // eax
+  CSyncSlangFilter *v13; // [esp+0h] [ebp-38h]
+  std::string v14; // [esp+1Ch] [ebp-1Ch] BYREF
+  bool v15; // [esp+22h] [ebp-16h] BYREF
+  char v16[5]; // [esp+23h] [ebp-15h] BYREF
+  MSG_BASE *v17; // [esp+28h] [ebp-10h]
+  int v18; // [esp+2Ch] [ebp-Ch]
+
+  if ( CUser::get_state(a2) != 3 || !CUserCharacInfo::getCurCharacR(a2) )
+    return -1;
+  v5 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v5, a2, 1, 4) )
+    return 209;
+  *(_DWORD *)&v16[1] = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 63);
+  if ( *(_DWORD *)&v16[1] )
+    return *(_DWORD *)&v16[1];
+  v17 = a3;
+  v6 = *(unsigned __int16 *)((char *)a3 + 55);
+  InvenTypeFromItemSpace = GetInvenTypeFromItemSpace(*((unsigned __int8 *)a3 + 54));
+  if ( (unsigned __int8)CUser::CheckItemLock(a2, InvenTypeFromItemSpace, v6) )
+    return 213;
+  v15 = 1;
+  v8 = *(unsigned __int16 *)((char *)v17 + 55);
+  v9 = GetInvenTypeFromItemSpace(*((unsigned __int8 *)v17 + 54));
+  CheckItemTradeLimitCountToMoveByUser(a2, v9, v8, &v15);
+  if ( !v15 )
+    return 114;
+  std::allocator<char>::allocator(v16);
+  std::string::string((int)&v14, (char *)v17 + 69, (int)v16);
+  std::allocator<char>::~allocator(v16);
+  Instance = (CSyncSlangFilter *)CSyncSlangFilter::GetInstance(v13);
+  if ( (unsigned __int8)CSyncSlangFilter::HasSlang(Instance, &v14) )
+  {
+    v4 = 159;
+  }
+  else
+  {
+    v11 = strlen((const char *)v17 + 69);
+    if ( v11 == *(_DWORD *)((char *)v17 + 65) )
+    {
+      if ( *(_DWORD *)((char *)v17 + 57) || *(_DWORD *)((char *)v17 + 46) || *((_BYTE *)v17 + 69) )
+      {
+        if ( *(_DWORD *)((char *)v17 + 50) && (v18 = Dispatcher_MailBox_Send::GuildMailCheck(this, a2, a3)) != 0 )
+        {
+          v4 = v18;
+        }
+        else if ( (unsigned __int8)CUserCharacInfo::GetReliablePerson(a2) != 1
+               && (unsigned __int8)CUserCharacInfo::IsAvailableCurCharacTradeGoldDaily(
+                                     a2,
+                                     *(_DWORD *)((char *)v17 + 46)) != 1 )
+        {
+          v4 = 70;
+        }
+        else
+        {
+          v4 = 0;
+        }
+      }
+      else
+      {
+        v4 = 22;
+      }
+    }
+    else
+    {
+      v4 = -3;
+    }
+  }
+  std::string::~string(&v14);
+  return v4;
+}
+
+// ===== 81CFC04 (_ZN30Dispatcher_RequestDisjointItem11check_errorEP5CUserR8MSG_BASER9ParamBase) =====
+int __cdecl Dispatcher_RequestDisjointItem::check_error(Dispatcher_RequestDisjointItem *this, CUser *a2, MSG_BASE *a3)
+{
+  int v5; // eax
+  unsigned __int16 v6; // bx
+  GameWorld *v7; // eax
+
+  if ( (int)CUser::get_state(a2) <= 2 || !CUserCharacInfo::getCurCharacR(a2) )
+    return -1;
+  v5 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v5, a2, 1, 19) )
+    return 209;
+  v6 = *((_WORD *)a3 + 7);
+  v7 = (GameWorld *)G_GameWorld();
+  if ( GameWorld::find_from_world(v7, v6) )
+    return 0;
+  else
+    return 3;
+}
+
+// ===== 81D6AF4 (_ZN34Dispather_RegenerationRandomOption7processEP5CUserR8MSG_BASER9ParamBase) =====
+int __cdecl Dispather_RegenerationRandomOption::process(
+        Dispather_RegenerationRandomOption *this,
+        CUser *a2,
+        MSG_BASE *a3,
+        ParamBase *a4)
+{
+  Inven_Item *v4; // ebx
+  int i; // esi
+  int v6; // ebx
+  int CurCharacInvenR; // eax
+  char *v8; // ebx
+  int v9; // ebx
+  int v10; // esi
+  CDataManager *v11; // eax
+  int v13; // eax
+  int ReSealCount; // ebx
+  __int16 v15; // di
+  char UsableLevel; // si
+  int v17; // eax
+  int CurDate; // ebx
+  const char *charac_10_level_section; // eax
+  int v20; // ebx
+  const char *v21; // eax
+  char *v22; // ebx
+  int CurCharacInvenW; // eax
+  int v24; // eax
+  int v26; // [esp+50h] [ebp-158h]
+  int v27[15]; // [esp+60h] [ebp-148h] BYREF
+  char v28; // [esp+9Ch] [ebp-10Ch]
+  char v29[61]; // [esp+A5h] [ebp-103h] BYREF
+  __int16 v30; // [esp+E2h] [ebp-C6h] BYREF
+  int v31[15]; // [esp+11Fh] [ebp-89h] BYREF
+  char v32; // [esp+15Bh] [ebp-4Dh]
+  char *v33; // [esp+15Ch] [ebp-4Ch] BYREF
+  std::string v34; // [esp+160h] [ebp-48h] BYREF
+  CItem *v35[2]; // [esp+164h] [ebp-44h]
+  MSG_BASE *v36; // [esp+16Ch] [ebp-3Ch]
+  ParamBase *v37; // [esp+170h] [ebp-38h]
+  char v38; // [esp+176h] [ebp-32h]
+  unsigned __int8 v39; // [esp+177h] [ebp-31h]
+  int v40; // [esp+178h] [ebp-30h]
+  int j; // [esp+17Ch] [ebp-2Ch]
+  int v42; // [esp+180h] [ebp-28h]
+  CInventory *v43; // [esp+184h] [ebp-24h]
+  int inserted; // [esp+188h] [ebp-20h]
+  unsigned int k; // [esp+18Ch] [ebp-1Ch]
+
+  v36 = a3;
+  v37 = a4;
+  *((_DWORD *)a4 + 1) = 0;
+  v4 = (Inven_Item *)v29;
+  for ( i = 1; i != -1; --i )
+  {
+    Inven_Item::Inven_Item(v4);
+    v4 = (Inven_Item *)((char *)v4 + 61);
+  }
+  v38 = 1;
+  v39 = 0;
+  for ( j = 0; j <= 1; ++j )
+  {
+    v6 = j;
+    CurCharacInvenR = CUserCharacInfo::getCurCharacInvenR(a2);
+    v8 = &v29[61 * v6];
+    CInventory::GetInvenSlot((CInventory *)v27, CurCharacInvenR, 1);
+    *(_DWORD *)v8 = v27[0];
+    *((_DWORD *)v8 + 1) = v27[1];
+    *((_DWORD *)v8 + 2) = v27[2];
+    *((_DWORD *)v8 + 3) = v27[3];
+    *((_DWORD *)v8 + 4) = v27[4];
+    *((_DWORD *)v8 + 5) = v27[5];
+    *((_DWORD *)v8 + 6) = v27[6];
+    *((_DWORD *)v8 + 7) = v27[7];
+    *((_DWORD *)v8 + 8) = v27[8];
+    *((_DWORD *)v8 + 9) = v27[9];
+    *((_DWORD *)v8 + 10) = v27[10];
+    *((_DWORD *)v8 + 11) = v27[11];
+    *((_DWORD *)v8 + 12) = v27[12];
+    *((_DWORD *)v8 + 13) = v27[13];
+    *((_DWORD *)v8 + 14) = v27[14];
+    v8[60] = v28;
+    if ( (unsigned __int8)Inven_Item::isEmpty((Inven_Item *)&v29[61 * j]) )
+    {
+      *((_DWORD *)v37 + 1) = 19;
+      return 0;
+    }
+    if ( (unsigned __int8)Inven_Item::isEquipableItemType((Inven_Item *)&v29[61 * j]) != 1 )
+    {
+      *((_DWORD *)v37 + 1) = 19;
+      return 0;
+    }
+    if ( (unsigned __int8)RandomOption::empty((RandomOption *)&v29[61 * j + 37]) )
+    {
+      *((_DWORD *)v37 + 1) = 19;
+      return 0;
+    }
+    v9 = j;
+    v10 = *(_DWORD *)&v29[61 * j + 2];
+    v11 = (CDataManager *)G_CDataManager();
+    v35[v9] = (CItem *)CDataManager::find_item(v11, v10);
+    if ( !v35[j] || (*(unsigned __int8 (__cdecl **)(CItem *))(*(_DWORD *)v35[j] + 76))(v35[j]) != 1 )
+    {
+      *((_DWORD *)v37 + 1) = 19;
+      return 0;
+    }
+    v13 = ARAD::Singleton<ServiceRestrictManager>::Get();
+    if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v13, a2, 1, 16) )
+    {
+      *((_DWORD *)v37 + 1) = 209;
+      return 0;
+    }
+    v42 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 27);
+    if ( v42 )
+    {
+      *((_DWORD *)v37 + 1) = v42;
+      return 0;
+    }
+    if ( (unsigned __int8)CUser::CheckItemLock(a2, 1, *(__int16 *)((char *)v36 + 2 * j + 13)) )
+    {
+      *((_DWORD *)v37 + 1) = 213;
+      return 0;
+    }
+    if ( v29[61 * j] != 1 )
+      v38 = 0;
+  }
+  ReSealCount = (unsigned __int8)Inven_Item::GetReSealCount((Inven_Item *)v29);
+  v39 = (__int16)((long double)(ReSealCount + (unsigned __int8)Inven_Item::GetReSealCount((Inven_Item *)&v30)) / 2.0
+                + 0.5);
+  std::string::string(&v34);
+  Inven_Item::Inven_Item((Inven_Item *)v31);
+  v33 = 0;
+  v40 = 0;
+  v26 = *(__int16 *)((char *)v36 + 19);
+  v15 = *(_WORD *)((char *)v36 + 17);
+  UsableLevel = CItem::getUsableLevel(v35[1]);
+  LOBYTE(ReSealCount) = CItem::getUsableLevel(v35[0]);
+  v17 = G_CDataManager();
+  v40 = RegenerationROI::Regenerate(
+          (RegenerationROI *)(v17 + 20544),
+          ReSealCount,
+          UsableLevel,
+          v15,
+          v26,
+          (int *)&v33,
+          (Inven_Item *)v31,
+          a2);
+  if ( v40 )
+  {
+    *((_DWORD *)v37 + 1) = v40;
+  }
+  else
+  {
+    CurDate = CSystemTime::getCurDate(GlobalData::s_systemTime_);
+    charac_10_level_section = (const char *)CUserCharacInfo::get_charac_10_level_section(a2);
+    statistc_proxy::add(
+      a2,
+      (CUser *)"log_random_option",
+      "regen_cnt",
+      (const char *)1,
+      "%d,'%s'",
+      charac_10_level_section,
+      CurDate);
+    if ( (int)v33 > 0 )
+    {
+      v20 = CSystemTime::getCurDate(GlobalData::s_systemTime_);
+      v21 = (const char *)CUserCharacInfo::get_charac_10_level_section(a2);
+      statistc_proxy::add(a2, (CUser *)"log_random_option", "regen_gold", v33, "%d,'%s'", v21, v20);
+    }
+    v22 = v33;
+    CurCharacInvenW = CUserCharacInfo::getCurCharacInvenW(a2);
+    if ( (unsigned __int8)CInventory::use_money(CurCharacInvenW, (int)v22, (char *)0x2F, 1) != 1 )
+    {
+      *((_DWORD *)v37 + 1) = 10;
+    }
+    else
+    {
+      CUser::SendUpdateItemList(a2, 1, 0, 0);
+      v43 = (CInventory *)CUserCharacInfo::getCurCharacInvenW(a2);
+      for ( k = 0; k <= 1; ++k )
+      {
+        if ( (unsigned __int8)CInventory::delete_item(v43, 1, *(__int16 *)((char *)v36 + 2 * k + 13), 1, 46, 1) != 1 )
+        {
+          *((_DWORD *)v37 + 1) = 19;
+          goto LABEL_41;
+        }
+      }
+      CUser::SendUpdateItemList(a2, 1, 0, *(__int16 *)((char *)v36 + 13));
+      CUser::SendUpdateItemList(a2, 1, 0, *(__int16 *)((char *)v36 + 15));
+      LOBYTE(v31[0]) = v38;
+      Inven_Item::SetReSealCount((Inven_Item *)v31, v39);
+      v24 = CUserCharacInfo::getCurCharacInvenW(a2);
+      inserted = CInventory::insertItemIntoInventory(
+                   v24,
+                   v31[0],
+                   v31[1],
+                   v31[2],
+                   v31[3],
+                   v31[4],
+                   v31[5],
+                   v31[6],
+                   v31[7],
+                   v31[8],
+                   v31[9],
+                   v31[10],
+                   v31[11],
+                   v31[12],
+                   v31[13],
+                   v31[14],
+                   v32,
+                   54,
+                   1,
+                   1);
+      if ( inserted >= 0 )
+      {
+        CUser::SendUpdateItemList(a2, 1, 0, inserted);
+        *((_WORD *)v37 + 4) = inserted;
+      }
+      cUserHistoryLog::RandomOption((char *)a2 + 497408, v31, 1);
+    }
+  }
+LABEL_41:
+  std::string::~string(&v34);
+  return 0;
+}
+
+// ===== 81DC9BA (_ZN29Dispatcher_ChangeRandomOption7processEP5CUserR8MSG_BASER9ParamBase) =====
+int __cdecl Dispatcher_ChangeRandomOption::process(Dispatcher_ChangeRandomOption *this, CUser *a2, MSG_BASE *a3)
+{
+  bool v3; // al
+  int v4; // ebx
+  CInventory *CurCharacInvenW; // eax
+  int v6; // ebx
+  CDataManager *v7; // eax
+  int v8; // eax
+  int rarity; // ebx
+  int UsableLevel; // esi
+  int v12; // eax
+  int v13; // eax
+  CInventory *CurCharacInvenR; // eax
+  int RandomOption; // eax
+  int v16; // edi
+  int ItemGroupName; // esi
+  int v18; // ebx
+  char *v19; // eax
+  int CurDate; // ebx
+  const char *charac_10_level_section; // eax
+  int v22; // ebx
+  CInventory *v23; // eax
+  int v24; // ebx
+  const char *v25; // eax
+  int v26; // eax
+  int v27; // ebx
+  CInventory *v28; // eax
+  random_option *v30; // [esp+0h] [ebp-B8h]
+  int v31; // [esp+2Ch] [ebp-8Ch]
+  char v32[7]; // [esp+3Bh] [ebp-7Dh] BYREF
+  int v33; // [esp+42h] [ebp-76h]
+  char v34[12]; // [esp+78h] [ebp-40h] BYREF
+  MSG_BASE *v35; // [esp+84h] [ebp-34h]
+  int InvenRef; // [esp+88h] [ebp-30h]
+  CItem *item; // [esp+8Ch] [ebp-2Ch]
+  unsigned __int8 v38; // [esp+93h] [ebp-25h]
+  int v39; // [esp+94h] [ebp-24h]
+  char *OptionModificationCost; // [esp+98h] [ebp-20h]
+  int v41; // [esp+9Ch] [ebp-1Ch]
+
+  v35 = a3;
+  v3 = (int)CUser::get_state(a2) <= 2 || !CUserCharacInfo::getCurCharacR(a2);
+  if ( !v3 && !(unsigned __int8)CUser::CheckInTrade(a2) )
+  {
+    if ( (unsigned __int8)CUser::CheckItemLock(a2, 1, *((unsigned __int16 *)v35 + 7)) )
+    {
+      CUser::SendCmdErrorPacket(a2, 438, 213);
+      return 0;
+    }
+    v4 = *((unsigned __int16 *)v35 + 7);
+    CurCharacInvenW = (CInventory *)CUserCharacInfo::getCurCharacInvenW(a2);
+    InvenRef = CInventory::GetInvenRef(CurCharacInvenW, 1, v4);
+    if ( !InvenRef )
+      goto LABEL_27;
+    v6 = *(_DWORD *)(InvenRef + 2);
+    v7 = (CDataManager *)G_CDataManager();
+    item = (CItem *)CDataManager::find_item(v7, v6);
+    if ( !item )
+      goto LABEL_27;
+    v38 = *((_BYTE *)v35 + 18);
+    if ( !*(_BYTE *)(InvenRef + 3 * v38 + 37) )
+      goto LABEL_27;
+    v8 = ARAD::Singleton<ServiceRestrictManager>::Get();
+    if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v8, a2, 1, 15) )
+    {
+      CUser::SendCmdErrorPacket(a2, 438, 209);
+      return 0;
+    }
+    v41 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 37);
+    if ( v41 )
+    {
+      CUser::SendCmdErrorPacket(a2, 438, (unsigned __int8)v41);
+      return 0;
+    }
+    if ( (unsigned __int8)RandomOption::empty((RandomOption *)(InvenRef + 37))
+      || (v39 = *((unsigned __int8 *)v35 + 18), v39 > 2) )
+    {
+      CUser::SendCmdErrorPacket(a2, 438, 19);
+      return 0;
+    }
+    if ( (unsigned __int8)RandomOptionField::empty((RandomOptionField *)(InvenRef + 47)) != 1
+      && (*(_BYTE *)(InvenRef + 50) & 3) != (unsigned __int8)v39 )
+    {
+      CUser::SendCmdErrorPacket(a2, 438, 4);
+      return 0;
+    }
+    rarity = CItem::get_rarity(item);
+    UsableLevel = (__int16)CItem::getUsableLevel(item);
+    v12 = G_CDataManager();
+    OptionModificationCost = (char *)RandomOptionScript::getOptionModificationCost(v12 + 19984, UsableLevel, rarity);
+    if ( OptionModificationCost == (char *)-1 )
+    {
+LABEL_27:
+      CUser::SendCmdErrorPacket(a2, 438, 17);
+      return 0;
+    }
+    *((_WORD *)v35 + 8) = -1;
+    if ( *((_WORD *)v35 + 8) == 0xFFFF )
+    {
+      CurCharacInvenR = (CInventory *)CUserCharacInfo::getCurCharacInvenR(a2);
+      if ( CInventory::get_money(CurCharacInvenR) < (int)OptionModificationCost )
+      {
+        CUser::SendCmdErrorPacket(a2, 438, 10);
+        return 0;
+      }
+    }
+    else
+    {
+      v13 = CUserCharacInfo::getCurCharacInvenR(a2);
+      CInventory::GetInvenSlot((CInventory *)v32, v13, 1);
+      if ( v33 <= 0 )
+      {
+LABEL_30:
+        CUser::SendCmdErrorPacket(a2, 438, 22);
+        return 0;
+      }
+    }
+    if ( !(_BYTE)`guard variable for'Dispatcher_ChangeRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle
+      && _cxa_guard_acquire(&`guard variable for'Dispatcher_ChangeRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle) )
+    {
+      random_option::CRandomOptionItemHandle::CRandomOptionItemHandle((random_option::CRandomOptionItemHandle *)&Dispatcher_ChangeRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle);
+      _cxa_guard_release(&`guard variable for'Dispatcher_ChangeRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle);
+      __cxa_atexit(
+        random_option::CRandomOptionItemHandle::~CRandomOptionItemHandle,
+        &Dispatcher_ChangeRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle,
+        &_dso_handle);
+    }
+    RandomOption = random_option::GetRandomOption(v30);
+    random_option::CRandomOptionItemHandle::set_random_option_give(
+      (random_option::CRandomOptionItemHandle *)&Dispatcher_ChangeRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle,
+      (CRandomOptionGive *)(RandomOption + 340));
+    v31 = InvenRef + 37;
+    v16 = (*(int (__cdecl **)(CItem *))(*(_DWORD *)item + 80))(item);
+    ItemGroupName = CItem::getItemGroupName(item);
+    v18 = CItem::getUsableLevel(item);
+    v19 = (char *)CItem::get_rarity(item);
+    if ( (unsigned __int8)random_option::CRandomOptionItemHandle::change_option(
+                            (random_option::CRandomOptionItemHandle *)&Dispatcher_ChangeRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle,
+                            *(char **)(InvenRef + 2),
+                            v19,
+                            v18,
+                            ItemGroupName,
+                            v16,
+                            v39,
+                            v31) != 1 )
+    {
+      CUser::SendCmdErrorPacket(a2, 438, 19);
+      return 0;
+    }
+    cUserHistoryLog::RandomOption((char *)a2 + 497408, InvenRef, 2);
+    CurDate = CSystemTime::getCurDate(GlobalData::s_systemTime_);
+    charac_10_level_section = (const char *)CUserCharacInfo::get_charac_10_level_section(a2);
+    statistc_proxy::add(
+      a2,
+      (CUser *)"log_random_option",
+      "change_cnt",
+      (const char *)1,
+      "%d,'%s'",
+      charac_10_level_section,
+      CurDate);
+    *((_WORD *)v35 + 8) = -1;
+    if ( *((_WORD *)v35 + 8) == 0xFFFF )
+    {
+      v24 = CSystemTime::getCurDate(GlobalData::s_systemTime_);
+      v25 = (const char *)CUserCharacInfo::get_charac_10_level_section(a2);
+      statistc_proxy::add(a2, (CUser *)"log_random_option", "change_gold", OptionModificationCost, "%d,'%s'", v25, v24);
+      v26 = CUserCharacInfo::getCurCharacInvenW(a2);
+      if ( (unsigned __int8)CInventory::use_money(v26, (int)OptionModificationCost, (char *)0x2C, 1) != 1 )
+      {
+        CUser::SendCmdErrorPacket(a2, 438, 10);
+        return 0;
+      }
+    }
+    else
+    {
+      v22 = *((unsigned __int16 *)v35 + 8);
+      v23 = (CInventory *)CUserCharacInfo::getCurCharacInvenW(a2);
+      if ( CInventory::use_item(v23, v22, (char *)1, 1) )
+        goto LABEL_30;
+      CUser::SendUpdateItem(a2, 1, 0, *((unsigned __int16 *)v35 + 8));
+    }
+    CUser::SendUpdateItemList(a2, 1, 0, 0);
+    PacketGuard::PacketGuard((PacketGuard *)v34);
+    InterfacePacketBuf::put_header((InterfacePacketBuf *)v34, 0, 14);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v34, 0);
+    InterfacePacketBuf::put_short((InterfacePacketBuf *)v34, 1);
+    v27 = *((unsigned __int16 *)v35 + 7);
+    v28 = (CInventory *)CUserCharacInfo::getCurCharacInvenR(a2);
+    CInventory::MakeItemPacket(v28, 1, v27, (OS_API *)v34);
+    InterfacePacketBuf::finalize((InterfacePacketBuf *)v34, 1);
+    CUser::Send(a2, (PacketGuard *)v34);
+    CUser::SendCmdOkPacket(a2, 438);
+    PacketGuard::~PacketGuard((PacketGuard *)v34);
+  }
+  return 0;
+}
+
+// ===== 81DD2BE (_ZN27DispatcherResetRandomOption7processEP5CUserR8MSG_BASER9ParamBase) =====
+int __cdecl DispatcherResetRandomOption::process(DispatcherResetRandomOption *this, CUser *a2, MSG_BASE *a3)
+{
+  int v5; // ebx
+  CInventory *CurCharacInvenW; // eax
+  int v7; // ebx
+  CDataManager *v8; // eax
+  int v9; // eax
+  int CurCharacInvenR; // eax
+  random_option *v11; // ebx
+  int rarity; // eax
+  int CurDate; // ebx
+  const char *charac_10_level_section; // eax
+  int v15; // ebx
+  CInventory *v16; // eax
+  char v17[2]; // [esp+2Bh] [ebp-6Dh] BYREF
+  int v18; // [esp+2Dh] [ebp-6Bh]
+  int v19; // [esp+32h] [ebp-66h]
+  MSG_BASE *v20; // [esp+68h] [ebp-30h]
+  int InvenRef; // [esp+6Ch] [ebp-2Ch]
+  CItem *item; // [esp+70h] [ebp-28h]
+  int v23; // [esp+74h] [ebp-24h]
+  int v24; // [esp+78h] [ebp-20h]
+  int v25; // [esp+7Ch] [ebp-1Ch]
+
+  v20 = a3;
+  if ( CUser::get_state(a2) != 3 || !CUserCharacInfo::getCurCharacR(a2) )
+    return 0;
+  if ( (unsigned __int8)CUser::CheckInTrade(a2) )
+    return 0;
+  if ( (unsigned __int8)CUser::CheckItemLock(a2, 1, *((unsigned __int16 *)v20 + 7)) )
+  {
+    CUser::SendCmdErrorPacket(a2, 456, 213);
+    return 0;
+  }
+  else
+  {
+    v5 = *((unsigned __int16 *)v20 + 7);
+    CurCharacInvenW = (CInventory *)CUserCharacInfo::getCurCharacInvenW(a2);
+    InvenRef = CInventory::GetInvenRef(CurCharacInvenW, 1, v5);
+    if ( InvenRef
+      && (v7 = *(_DWORD *)(InvenRef + 2),
+          v8 = (CDataManager *)G_CDataManager(),
+          (item = (CItem *)CDataManager::find_item(v8, v7)) != 0) )
+    {
+      v9 = ARAD::Singleton<ServiceRestrictManager>::Get();
+      if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v9, a2, 1, 15) )
+      {
+        CUser::SendCmdErrorPacket(a2, 456, 209);
+        return 0;
+      }
+      else
+      {
+        v23 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 38);
+        if ( v23 )
+        {
+          CUser::SendCmdErrorPacket(a2, 456, (unsigned __int8)v23);
+          return 0;
+        }
+        else if ( (unsigned __int8)RandomOption::empty((RandomOption *)(InvenRef + 37))
+               || (v24 = *((unsigned __int8 *)v20 + 18), v24 > 2) )
+        {
+          CUser::SendCmdErrorPacket(a2, 456, 19);
+          return 0;
+        }
+        else
+        {
+          CurCharacInvenR = CUserCharacInfo::getCurCharacInvenR(a2);
+          CInventory::GetInvenSlot((CInventory *)v17, CurCharacInvenR, 1);
+          if ( v19 > 0 && (v18 == 15 || v18 == 897 || v18 == 690000114) )
+          {
+            v25 = 0;
+            if ( !(_BYTE)`guard variable for'DispatcherResetRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle
+              && _cxa_guard_acquire(&`guard variable for'DispatcherResetRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle) )
+            {
+              random_option::CRandomOptionItemHandle::CRandomOptionItemHandle((random_option::CRandomOptionItemHandle *)&DispatcherResetRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle);
+              _cxa_guard_release(&`guard variable for'DispatcherResetRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle);
+              __cxa_atexit(
+                random_option::CRandomOptionItemHandle::~CRandomOptionItemHandle,
+                &DispatcherResetRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle,
+                &_dso_handle);
+            }
+            v11 = (random_option *)(InvenRef + 37);
+            rarity = CItem::get_rarity(item);
+            v25 = random_option::CRandomOptionItemHandle::reset_option(
+                    (int)&DispatcherResetRandomOption::process(CUser *,MSG_BASE &,ParamBase &)::handle,
+                    *(_DWORD *)(InvenRef + 2),
+                    rarity,
+                    v24,
+                    v11);
+            if ( v25 )
+            {
+              CUser::SendCmdErrorPacket(a2, 456, (unsigned __int8)v25);
+              return 0;
+            }
+            else
+            {
+              cUserHistoryLog::RandomOption((char *)a2 + 497408, InvenRef, 3);
+              CurDate = CSystemTime::getCurDate(GlobalData::s_systemTime_);
+              charac_10_level_section = (const char *)CUserCharacInfo::get_charac_10_level_section(a2);
+              statistc_proxy::add(
+                a2,
+                (CUser *)"log_random_option",
+                "reset_cnt",
+                (const char *)1,
+                "%d,'%s'",
+                charac_10_level_section,
+                CurDate);
+              v15 = *((unsigned __int16 *)v20 + 8);
+              v16 = (CInventory *)CUserCharacInfo::getCurCharacInvenW(a2);
+              if ( CInventory::use_item(v16, v15, (char *)1, 1) )
+              {
+                CUser::SendCmdErrorPacket(a2, 456, 22);
+              }
+              else
+              {
+                CUser::SendUpdateItem(a2, 1, 0, *((unsigned __int16 *)v20 + 7));
+                CUser::SendUpdateItem(a2, 1, 0, *((unsigned __int16 *)v20 + 8));
+                CUser::SendCmdOkPacket(a2, 456);
+              }
+              return 0;
+            }
+          }
+          else
+          {
+            CUser::SendCmdErrorPacket(a2, 456, 21);
+            return 0;
+          }
+        }
+      }
+    }
+    else
+    {
+      CUser::SendCmdErrorPacket(a2, 456, 17);
+      return 0;
+    }
+  }
+}
+
+// ===== 81E8C78 (_ZN16DisPatcher_Login12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl DisPatcher_Login::dispatch_sig(DisPatcher_Login *this, CUser *a2, PacketBuf *a3)
+{
+  int v3; // ebx
+  GameWorld *v4; // eax
+  int RepeatEvent; // eax
+  char v6; // bl
+  void *GarenaAuthData; // eax
+  unsigned int v8; // ebx
+  Taiwan::GarenaAuthData *v9; // eax
+  Taiwan::GarenaAuthData *v10; // eax
+  Taiwan::GarenaAuthData *v11; // eax
+  int v12; // eax
+  unsigned int acc_id; // eax
+  unsigned int v14; // eax
+  unsigned int v15; // eax
+  unsigned int v16; // eax
+  unsigned int v17; // eax
+  int v18; // ebx
+  Stream *v19; // eax
+  int v20; // eax
+  char UID; // bl
+  int v22; // eax
+  int v23; // eax
+  GameWorld *v24; // eax
+  unsigned int v25; // eax
+  Taiwan::GarenaAuthData *v26; // eax
+  unsigned int v27; // eax
+  const char *v28; // eax
+  Taiwan::GarenaAuthData *v29; // eax
+  int TimeStamp; // eax
+  GameWorld *v31; // eax
+  int v32; // ebx
+  int v33; // eax
+  int gc_no_hardcode; // eax
+  int CurSec; // eax
+  const char *v37; // [esp+4h] [ebp-1C4h]
+  char v38; // [esp+8h] [ebp-1C0h]
+  char v39; // [esp+8h] [ebp-1C0h]
+  Taiwan::GarenaAuthData *v40; // [esp+Ch] [ebp-1BCh]
+  unsigned int v41; // [esp+Ch] [ebp-1BCh]
+  char s[13]; // [esp+21h] [ebp-1A7h] BYREF
+  int v43; // [esp+2Eh] [ebp-19Ah] BYREF
+  char v44[24]; // [esp+32h] [ebp-196h] BYREF
+  unsigned int v45; // [esp+4Ah] [ebp-17Eh] BYREF
+  char v46[132]; // [esp+4Eh] [ebp-17Ah] BYREF
+  char v47[5]; // [esp+D2h] [ebp-F6h] BYREF
+  char v48[9]; // [esp+D7h] [ebp-F1h] BYREF
+  char v49[12]; // [esp+E0h] [ebp-E8h] BYREF
+  char v50[12]; // [esp+ECh] [ebp-DCh] BYREF
+  char v51[12]; // [esp+F8h] [ebp-D0h] BYREF
+  char v52[12]; // [esp+104h] [ebp-C4h] BYREF
+  char v53[15]; // [esp+110h] [ebp-B8h] BYREF
+  unsigned __int8 v54; // [esp+11Fh] [ebp-A9h] BYREF
+  int v55; // [esp+120h] [ebp-A8h] BYREF
+  char v56[8]; // [esp+124h] [ebp-A4h] BYREF
+  unsigned int v57; // [esp+12Ch] [ebp-9Ch] BYREF
+  unsigned int v58; // [esp+130h] [ebp-98h] BYREF
+  char src[8]; // [esp+134h] [ebp-94h] BYREF
+  char *v60; // [esp+13Ch] [ebp-8Ch] BYREF
+  Taiwan::GarenaAuthData *v61; // [esp+140h] [ebp-88h] BYREF
+  char v62[4]; // [esp+144h] [ebp-84h] BYREF
+  int v63[4]; // [esp+148h] [ebp-80h] BYREF
+  int v64[4]; // [esp+158h] [ebp-70h] BYREF
+  int v65[4]; // [esp+168h] [ebp-60h] BYREF
+  int v66[4]; // [esp+178h] [ebp-50h] BYREF
+  int v67[4]; // [esp+188h] [ebp-40h] BYREF
+  int v68[4]; // [esp+198h] [ebp-30h] BYREF
+  int v69[5]; // [esp+1A8h] [ebp-20h] BYREF
+  char *dest; // [esp+1BCh] [ebp-Ch]
+
+  if ( CUser::get_state(a2) == 1 )
+  {
+    CUser::OnRecvEvent(a2);
+    v4 = (GameWorld *)G_GameWorld();
+    if ( GameWorld::GetChannelType(v4) == 6 )
+    {
+      RepeatEvent = CEventManager::GetRepeatEvent(GlobalData::s_event_manager, 33);
+      if ( (*(unsigned __int8 (__cdecl **)(int, _DWORD))(*(_DWORD *)RepeatEvent + 52))(RepeatEvent, 0) != 1 )
+      {
+        PacketGuard::PacketGuard((PacketGuard *)v51);
+        InterfacePacketBuf::put_header((InterfacePacketBuf *)v51, 1, 1);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v51, 0);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v51, 66);
+        InterfacePacketBuf::finalize((InterfacePacketBuf *)v51, 1);
+        CUser::Send(a2, (PacketGuard *)v51);
+        cMyTrace::cMyTrace((cMyTrace *)v63, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 26100, 0);
+        cMyTrace::operator()((int)v63, "Can't Enter Into Guild War Channel ", v38);
+        CUser::DisConnSig(a2, (char *)0x16, 1, 0);
+        v3 = 0;
+        PacketGuard::~PacketGuard((PacketGuard *)v51);
+        return v3;
+      }
+    }
+    memset(s, 0, 0xBFu);
+    *(_DWORD *)v62 = 0;
+    if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)v62) != 1 )
+      return LineFunc(26113, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( *(_DWORD *)v62 > 0xE10u )
+    {
+      v6 = v62[0];
+      cMyTrace::cMyTrace((cMyTrace *)v64, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 26117, 5);
+      cMyTrace::operator()((int)v64, "[Taiwan, Auth] Invalid patch time. (time:%d,limit:%d)", v6);
+      return LineFunc(26119, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    v61 = 0;
+    if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)&v61) != 1 )
+      return LineFunc(26125, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    memset(DisPatcher_Login::dispatch_sig(CUser *,PacketBuf &)::garenaToken, 0, 0x801u);
+    if ( (unsigned __int8)PacketBuf::get_str(
+                            a3,
+                            DisPatcher_Login::dispatch_sig(CUser *,PacketBuf &)::garenaToken,
+                            2049,
+                            (int)v61) != 1 )
+      return LineFunc(26130, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    GarenaAuthData = (void *)CUser::getGarenaAuthData(a2);
+    if ( Taiwan::AuthGarenaToken::decrypt(
+           (Taiwan::AuthGarenaToken *)DisPatcher_Login::dispatch_sig(CUser *,PacketBuf &)::garenaToken,
+           (const char *)v61,
+           GarenaAuthData,
+           v40) )
+    {
+      cMyTrace::cMyTrace((cMyTrace *)v65, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 26135, 5);
+      cMyTrace::operator()(
+        (int)v65,
+        "[Taiwan, Auth] Fail decrypt:%s",
+        (char)DisPatcher_Login::dispatch_sig(CUser *,PacketBuf &)::garenaToken);
+      return LineFunc(26136, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    v8 = *(_DWORD *)v62;
+    v9 = (Taiwan::GarenaAuthData *)CUser::getGarenaAuthData(a2);
+    Taiwan::GarenaAuthData::setPatchTime(v9, v8);
+    v69[4] = CSystemTime::getCurSec((CSystemTime *)GlobalData::s_systemTime_);
+    v10 = (Taiwan::GarenaAuthData *)CUser::getGarenaAuthData(a2);
+    Taiwan::GarenaAuthData::getPatchTime(v10);
+    v11 = (Taiwan::GarenaAuthData *)CUser::getGarenaAuthData(a2);
+    LOBYTE(v8) = Taiwan::GarenaAuthData::getTimeStamp(v11);
+    cMyTrace::cMyTrace((cMyTrace *)v66, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 26142, 0);
+    cMyTrace::operator()(
+      (int)v66,
+      "[Taiwan, Auth] Token timestamp info. (token_time:%u, current_time:%u, patch_time:%d)",
+      v8);
+    v12 = ARAD::Singleton<ServiceRestrictManager>::Get();
+    if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v12, a2, 1, 33) )
+    {
+      CUser::SendCmdErrorPacket(a2, 1, 209);
+      return 0;
+    }
+    if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)&v43) != 1 )
+      return LineFunc(26207, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( (unsigned __int8)PacketBuf::get_str(a3, v44, 24, v43) != 1 )
+      return LineFunc(26237, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( (unsigned __int8)PacketBuf::get_int(a3, &v45) != 1 )
+      return LineFunc(26258, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( v45 > 0x83 )
+      return LineFunc(26264, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( (unsigned __int8)PacketBuf::get_str(a3, v46, 132, v45) != 1 )
+      return LineFunc(26280, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( (unsigned __int8)PacketBuf::get_byte(a3, (unsigned __int8 *)v47) != 1 )
+      return LineFunc(26420, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( v47[0] >= 3u )
+    {
+      acc_id = CUser::get_acc_id(a2);
+      return LineFunc(26424, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, acc_id);
+    }
+    v60 = 0;
+    if ( (unsigned __int8)PacketBuf::get_int(a3, (int *)&v60) != 1 )
+    {
+      v14 = CUser::get_acc_id(a2);
+      return LineFunc(26431, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, v14);
+    }
+    if ( v60 != (char *)8 )
+    {
+      v15 = CUser::get_acc_id(a2);
+      return LineFunc(26433, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, v15);
+    }
+    if ( (unsigned __int8)PacketBuf::get_binary(a3, v48, 8) != 1 )
+      return LineFunc(26434, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( (unsigned __int8)Dispatcher_MouseRegister::decryptPassword((Dispatcher_MouseRegister *)v48, src, v60, v41) != 1 )
+    {
+      CUser::SendCmdErrorPacket(a2, 1, 1);
+      v16 = CUser::get_acc_id(a2);
+      return LineFunc(26446, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, v16);
+    }
+    if ( (unsigned __int8)Dispatcher_MouseRegister::checkValiedPassword((Dispatcher_MouseRegister *)src, v37) != 1 )
+    {
+      CUser::SendCmdErrorPacket(a2, 1, 1);
+      v17 = CUser::get_acc_id(a2);
+      return LineFunc(26452, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, v17);
+    }
+    memcpy(v48, src, 7u);
+    if ( (unsigned __int8)PacketBuf::get_int(a3, &v58) != 1 )
+      return LineFunc(26460, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( *(_DWORD *)(G_CDataManager() + 960) != v58 )
+    {
+      PacketGuard::PacketGuard((PacketGuard *)v50);
+      InterfacePacketBuf::put_header((InterfacePacketBuf *)v50, 1, 1);
+      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v50, 0);
+      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v50, 23);
+      InterfacePacketBuf::finalize((InterfacePacketBuf *)v50, 1);
+      CUser::Send(a2, (PacketGuard *)v50);
+      v18 = ++*((_DWORD *)this + 1);
+      cMyTrace::cMyTrace((cMyTrace *)v67, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 26643, 0);
+      cMyTrace::operator()((int)v67, "version dismatched: count(%d)", v18);
+      CUser::DisConnSig(a2, (char *)0x19, 0, 0);
+      v3 = 0;
+      PacketGuard::~PacketGuard((PacketGuard *)v50);
+      return v3;
+    }
+    v57 = 0;
+    if ( (unsigned __int8)PacketBuf::get_int(a3, &v57) != 1 )
+      return LineFunc(26651, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    v19 = (Stream *)BigStreamPool::Acquire(GlobalData::s_big_stream_pool, "PacketDispatcher_Impl_1.cpp", 26994);
+    CStreamGuard::CStreamGuard((CStreamGuard *)v56, v19, 1);
+    v20 = CStreamGuard::operator*(v56);
+    CStreamGuard::operator<<(v20, 3);
+    UID = CUser::GetUID(a2);
+    v22 = CStreamGuard::operator*(v56);
+    CStreamGuard::operator<<(v22, UID);
+    v23 = CStreamGuard::operator->(v56);
+    dest = (char *)CStreamGuard::GetInBuffer<SIG_LOGIN_DATA>(v23);
+    memset(dest, 0, 0x4358u);
+    if ( (unsigned __int8)PacketBuf::get_short(a3, (__int16 *)dest + 7452) != 1 )
+    {
+      v3 = LineFunc(27008, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+LABEL_71:
+      CStreamGuard::~CStreamGuard((CStreamGuard *)v56);
+      return v3;
+    }
+    if ( *((_WORD *)dest + 7452) >= 0x12u )
+      *((_WORD *)dest + 7452) = 0;
+    v24 = (GameWorld *)G_GameWorld();
+    if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v24) != 1 )
+    {
+      *((_WORD *)dest + 7452) = 0;
+    }
+    else
+    {
+      cMyTrace::cMyTrace((cMyTrace *)v68, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 27034, 0);
+      cMyTrace::operator()((int)v68, "CheckLoginServerGroup user_id(%s), server_group(%d)", (char)v44);
+      v25 = *((__int16 *)dest + 7452);
+      if ( v25 <= 0xA && ((1 << v25) & 0x580) != 0 )
+      {
+        v3 = LineFunc(27042, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+        goto LABEL_71;
+      }
+    }
+    CUser::SetServerGroup(a2, *((__int16 *)dest + 7452));
+    v55 = 0;
+    if ( (unsigned __int8)PacketBuf::get_int(a3, &v55) != 1 )
+    {
+      v3 = LineFunc(27087, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else
+    {
+      CUser::set_local_ip_address(a2, v55);
+      v54 = 0;
+      if ( (unsigned __int8)PacketBuf::get_byte(a3, &v54) != 1 )
+        v54 = 0;
+      CUser::SetLogInOutState(a2, v54);
+      v26 = (Taiwan::GarenaAuthData *)CUser::getGarenaAuthData(a2);
+      v27 = Taiwan::GarenaAuthData::getUid(v26);
+      v28 = (const char *)NumberToString(v27, 0);
+      strncpy(dest, v28, 0x18u);
+      memset(dest + 24, 0, 0x84u);
+      v29 = (Taiwan::GarenaAuthData *)CUser::getGarenaAuthData(a2);
+      TimeStamp = Taiwan::GarenaAuthData::getTimeStamp(v29);
+      *((_DWORD *)dest + 3724) = TimeStamp;
+      v31 = (GameWorld *)G_GameWorld();
+      if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v31) )
+      {
+        v32 = *((__int16 *)dest + 7452);
+        v33 = G_CEnvironment();
+        gc_no_hardcode = CEnvironment::get_gc_no_hardcode(v33, v32);
+        *((_DWORD *)dest + 39) = gc_no_hardcode;
+      }
+      else
+      {
+        *((_DWORD *)dest + 39) = *(_DWORD *)(G_CEnvironment() + 408);
+      }
+      CNetwork<4096,450000>::GetPeerIP2((int)a2 + 224, dest + 161, 0x14u);
+      dest[160] = v47[0];
+      strncpy(dest + 14597, v48, 7u);
+      CurSec = CSystemTime::getCurSec((CSystemTime *)GlobalData::s_systemTime_);
+      CUser::SetLoginTime(a2, CurSec);
+      *((_DWORD *)dest + 3725) = v57;
+      *((_DWORD *)a2 + 145669) = CSystemTime::getCurSec((CSystemTime *)GlobalData::s_systemTime_);
+      CNetwork<4096,450000>::GetPeerIP2((int)a2 + 224, (char *)a2 + 582680, 0x14u);
+      *((_BYTE *)a2 + 582672) = 0;
+      *((_DWORD *)a2 + 145676) = 0;
+      *((_DWORD *)a2 + 145675) = 0;
+      *((_DWORD *)a2 + 145680) = 0;
+      PacketGuard::PacketGuard((PacketGuard *)v53);
+      InterfacePacketBuf::put_header((InterfacePacketBuf *)v53, 0, 183);
+      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v53, 0);
+      if ( (unsigned __int8)CAuctionServerProxy::IsRunning(GlobalData::s_auction_proxy) )
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v53, 1);
+      else
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v53, 0);
+      InterfacePacketBuf::finalize((InterfacePacketBuf *)v53, 1);
+      CUser::Send(a2, (PacketGuard *)v53);
+      PacketGuard::PacketGuard((PacketGuard *)v49);
+      InterfacePacketBuf::put_header((InterfacePacketBuf *)v49, 0, 183);
+      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v49, 1);
+      if ( (unsigned __int8)CCeraAuctionServerProxy::IsRunning(GlobalData::s_cera_auction_proxy) )
+      {
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v49, 1);
+        puts("\n\nInter_AuctionNotifyAuctionService::dispatch_sig : point opened\n");
+      }
+      else
+      {
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v49, 0);
+        puts("\n\nInter_AuctionNotifyAuctionService::dispatch_sig : point closed\n");
+      }
+      InterfacePacketBuf::finalize((InterfacePacketBuf *)v49, 1);
+      CUser::Send(a2, (PacketGuard *)v49);
+      cMyTrace::cMyTrace((cMyTrace *)v69, "virtual int DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)", 27259, 0);
+      cMyTrace::operator()((int)v69, "USER LOGINED! SEND ENUM_NOTIPACKET_AUCTION_NOTIFY_AUCTION_SERVICE", v39);
+      PacketGuard::~PacketGuard((PacketGuard *)v49);
+      MsgQueueMgr::put((int)GlobalData::s_msgq_mgr, 2, (CStreamGuard *)v56);
+      v3 = 0;
+      PacketGuard::~PacketGuard((PacketGuard *)v53);
+    }
+    goto LABEL_71;
+  }
+  PacketGuard::PacketGuard((PacketGuard *)v52);
+  InterfacePacketBuf::put_header((InterfacePacketBuf *)v52, 1, 3);
+  InterfacePacketBuf::put_byte((InterfacePacketBuf *)v52, 1);
+  InterfacePacketBuf::finalize((InterfacePacketBuf *)v52, 1);
+  CUser::Send(a2, (PacketGuard *)v52);
+  v3 = 0;
+  PacketGuard::~PacketGuard((PacketGuard *)v52);
+  return v3;
+}
+
+// ===== 81EAA5C (_ZN19DisPatcher_Compound12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl DisPatcher_Compound::dispatch_sig(DisPatcher_Compound *this, CUser *a2, PacketBuf *a3)
+{
+  int v3; // ebx
+  int v4; // eax
+  char v6[12]; // [esp+2Ch] [ebp-2Ch] BYREF
+  unsigned int v7; // [esp+45h] [ebp-13h] BYREF
+  unsigned __int8 v8; // [esp+49h] [ebp-Fh] BYREF
+  unsigned __int16 v9; // [esp+4Ah] [ebp-Eh] BYREF
+  int v10; // [esp+4Ch] [ebp-Ch]
+
+  if ( CUser::get_state(a2) != 3 )
+    return 0;
+  v4 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v4, a2, 1, 9) )
+  {
+    CUser::SendCmdErrorPacket(a2, 27, 209);
+    return 0;
+  }
+  else if ( (unsigned __int8)PacketBuf::get_int(a3, &v7) != 1 )
+  {
+    return LineFunc(27706, "virtual int DisPatcher_Compound::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  }
+  else if ( (unsigned __int8)PacketBuf::get_byte(a3, &v8) != 1 )
+  {
+    return LineFunc(27707, "virtual int DisPatcher_Compound::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  }
+  else if ( (unsigned __int8)PacketBuf::get_short(a3, &v9) != 1 )
+  {
+    return LineFunc(27709, "virtual int DisPatcher_Compound::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  }
+  else if ( v9 )
+  {
+    if ( v8 == 1 || !(unsigned __int8)CUser::CheckItemLock(a2, 1, v7) )
+    {
+      v10 = CUser::compound_item(a2, v7, v8 == 1, v9, 27);
+      if ( v10 <= 0 )
+      {
+        if ( a2 && !v10 )
+          APSystem::CUserProc::ClearActionAndSendtoUser(a2, 6, 0, 0);
+        return 0;
+      }
+      else
+      {
+        PacketGuard::PacketGuard((PacketGuard *)v6);
+        InterfacePacketBuf::put_header((InterfacePacketBuf *)v6, 1, 27);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v6, 0);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v6, v10);
+        InterfacePacketBuf::finalize((InterfacePacketBuf *)v6, 1);
+        CUser::Send(a2, (PacketGuard *)v6);
+        v3 = 0;
+        PacketGuard::~PacketGuard((PacketGuard *)v6);
+      }
+    }
+    else
+    {
+      CUser::SendCmdErrorPacket(a2, 27, 213);
+      return 0;
+    }
+  }
+  else
+  {
+    return LineFunc(27712, "virtual int DisPatcher_Compound::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  }
+  return v3;
+}
+
+// ===== 81EED08 (_ZN18DisPatcher_ReqPeer12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl DisPatcher_ReqPeer::dispatch_sig(DisPatcher_ReqPeer *this, CUser *a2, PacketBuf *a3)
+{
+  int v4; // ebx
+  private_store::CPrivateStoreMgr *InstancePrivateStoreMgr; // eax
+  GameWorld *v6; // eax
+  unsigned __int16 v7; // bx
+  GameWorld *v8; // eax
+  int SoloPlay_msgType; // ebx
+  char *CurCharacName; // eax
+  int GameOptionRef; // eax
+  int v13; // ebx
+  char *v14; // eax
+  GameWorld *v15; // eax
+  char v17; // bl
+  pvp_assault::CAssaultMgr *InstanceAssaultMgr; // eax
+  unsigned int charac_no; // eax
+  private_store::CPrivateStoreMgr *v21; // eax
+  char PowerSide; // bl
+  int CurCharacChaosKillTime; // eax
+  char v28; // al
+  int v29; // eax
+  char v30; // al
+  char v31; // al
+  unsigned __int16 unique_id; // ax
+  int CurCharacTotalMaxFatigue; // ebx
+  unsigned __int16 CurCharacTotalFatigue; // ax
+  unsigned __int8 CurCharacStamina; // al
+  int v36; // eax
+  int v37; // eax
+  private_store::CPrivateStoreMgr *v39; // eax
+  unsigned int v40; // eax
+  int state; // ebx
+  unsigned __int16 v42; // ax
+  int Time; // eax
+  private_store::CPrivateStoreMgr *v44; // eax
+  unsigned __int16 v45; // ax
+  unsigned __int16 v46; // ax
+  unsigned int acc_id; // eax
+  unsigned int v48; // eax
+  pvp_assault::CAssaultMgr *v50; // eax
+  int v51; // eax
+  int v52; // eax
+  private_store *v54; // [esp+0h] [ebp-88h]
+  pvp_assault *v55; // [esp+0h] [ebp-88h]
+  private_store *v56; // [esp+0h] [ebp-88h]
+  private_store *v57; // [esp+0h] [ebp-88h]
+  private_store *v58; // [esp+0h] [ebp-88h]
+  pvp_assault *v59; // [esp+0h] [ebp-88h]
+  bool *v60; // [esp+8h] [ebp-80h]
+  bool *v61; // [esp+8h] [ebp-80h]
+  unsigned __int16 v62; // [esp+2Ah] [ebp-5Eh] BYREF
+  char v63[12]; // [esp+2Ch] [ebp-5Ch] BYREF
+  int v64[3]; // [esp+38h] [ebp-50h] BYREF
+  unsigned __int16 v65; // [esp+45h] [ebp-43h] BYREF
+  char v66; // [esp+47h] [ebp-41h] BYREF
+  int v67; // [esp+48h] [ebp-40h] BYREF
+  CUserCharacInfo *v68; // [esp+4Ch] [ebp-3Ch]
+  int v69; // [esp+50h] [ebp-38h]
+  int v70; // [esp+54h] [ebp-34h]
+  CParty *Party; // [esp+58h] [ebp-30h]
+  int CurSec; // [esp+5Ch] [ebp-2Ch]
+  CParty *v73; // [esp+60h] [ebp-28h]
+  int v74; // [esp+64h] [ebp-24h]
+  int v75; // [esp+68h] [ebp-20h]
+  WarRoom *WarRoom; // [esp+70h] [ebp-18h]
+  int v78; // [esp+74h] [ebp-14h]
+  int v79; // [esp+78h] [ebp-10h]
+  int v80; // [esp+7Ch] [ebp-Ch]
+
+  if ( CUser::get_state(a2) == 3 || CUser::get_state(a2) == 6 || CUser::get_state(a2) == 8 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v63);
+    if ( (unsigned __int8)PacketBuf::get_short(a3, &v65) != 1 )
+    {
+      v4 = LineFunc(29274, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( (unsigned __int8)PacketBuf::get_byte(a3, &v66) != 1 )
+    {
+      v4 = LineFunc(29275, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)&v67) != 1 )
+    {
+      v4 = LineFunc(29276, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else
+    {
+      InstancePrivateStoreMgr = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v54);
+      if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(InstancePrivateStoreMgr, a2) )
+      {
+        CUser::SendCmdPeerErrorPacket(a2, 10, v66, 60);
+        v4 = 0;
+      }
+      else if ( (unsigned __int8)CUserCharacInfo::IsBusyDisjointStore(a2) )
+      {
+        CUser::SendCmdPeerErrorPacket(a2, 10, v66, 191);
+        v4 = 0;
+      }
+      else
+      {
+        if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(a2) )
+          goto LABEL_147;
+        v6 = (GameWorld *)G_GameWorld();
+        if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v6) )
+        {
+          if ( v66 != 2 )
+            goto LABEL_147;
+        }
+        v7 = v65;
+        v8 = (GameWorld *)G_GameWorld();
+        v68 = (CUserCharacInfo *)GameWorld::find_from_world(v8, v7);
+        v69 = 1;
+        if ( !v68 )
+        {
+LABEL_23:
+          CUser::SendCmdPeerErrorPacket(a2, 10, v66, 3);
+          v4 = 0;
+          goto LABEL_184;
+        }
+        if ( (unsigned __int8)CUser::alonePlay_Mode(v68, (int)v64) )
+        {
+          SoloPlay_msgType = CUser::get_SoloPlay_msgType(v68, v64);
+          CurCharacName = (char *)CUserCharacInfo::getCurCharacName(v68);
+          CUser::Send_SoloPlay_Reject_NotiPack(a2, CurCharacName, 1, SoloPlay_msgType);
+          v4 = 0;
+          goto LABEL_184;
+        }
+        v70 = 36;
+        if ( v66 == 1 )
+        {
+          v70 = 31;
+        }
+        else if ( v66 > 1 )
+        {
+          if ( v66 == 2 )
+          {
+            v70 = 7;
+          }
+          else if ( v66 == 3 )
+          {
+            v70 = 8;
+          }
+        }
+        else if ( !v66 )
+        {
+          v70 = 6;
+        }
+        if ( v70 != 36 )
+        {
+          GameOptionRef = CUser::GetGameOptionRef(v68);
+          if ( (unsigned __int16)CGameOption::get_etc_option(GameOptionRef, v70) )
+          {
+            v13 = CUser::get_SoloPlay_msgType(v68, v64);
+            v14 = (char *)CUserCharacInfo::getCurCharacName(v68);
+            CUser::Send_SoloPlay_Reject_NotiPack(a2, v14, 0, v13);
+            v4 = 0;
+            goto LABEL_184;
+          }
+        }
+        v15 = (GameWorld *)G_GameWorld();
+        if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v15) )
+        {
+          if ( CUser::get_state(v68) == 6 || CUser::get_state(v68) == 7 )
+          {
+LABEL_147:
+            CUser::SendCmdPeerErrorPacket(a2, 10, v66, 19);
+            v4 = 0;
+            goto LABEL_184;
+          }
+        }
+        if ( (unsigned __int8)CUserCharacInfo::IsBusyDisjointStore(v68) )
+        {
+          CUser::SendCmdPeerErrorPacket(a2, 10, v66, 192);
+          v4 = 0;
+        }
+        else
+        {
+          v17 = v66;
+          InstanceAssaultMgr = (pvp_assault::CAssaultMgr *)pvp_assault::GetInstanceAssaultMgr(v55);
+          v69 = pvp_assault::CAssaultMgr::check_party_teleport_user(InstanceAssaultMgr, v17, a2, v68, 1);
+          if ( v69 <= 0 )
+          {
+            switch ( v66 )
+            {
+              case 0:
+                if ( CUser::get_state(a2) == 5
+                  || !(unsigned __int8)CNetwork<4096,450000>::get_nat_type((char *)a2 + 224) )
+                {
+                  goto LABEL_147;
+                }
+                charac_no = CUser::get_charac_no(a2, -1);
+                if ( (unsigned __int8)CUser::isBlackUser(v68, charac_no) )
+                  goto LABEL_61;
+                if ( (unsigned __int8)CUser::isCompetitionMercenary(a2) )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 234);
+                  v4 = 0;
+                }
+                else
+                {
+                  if ( (unsigned __int8)CUser::isCompetitionMercenary(v68) )
+                    goto LABEL_65;
+                  v21 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v56);
+                  if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v21, v68) )
+                    goto LABEL_145;
+                  if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                    goto LABEL_147;
+                  if ( CUser::get_state(v68) == 5
+                    || !(unsigned __int8)CNetwork<4096,450000>::get_nat_type((char *)v68 + 224) )
+                  {
+                    goto LABEL_23;
+                  }
+                  if ( (unsigned __int8)CPowerManager::IsPowerWarEventOn(GlobalData::s_power_manager) )
+                  {
+                    if ( (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) == 7
+                      && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) == 7 )
+                    {
+                      PowerSide = CUser::getPowerSide(a2);
+                      if ( PowerSide != (unsigned __int8)CUser::getPowerSide(v68) )
+                        goto LABEL_147;
+                    }
+                    else if ( (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) != 7
+                           && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) == 7
+                           || (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) == 7
+                           && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) != 7 )
+                    {
+                      goto LABEL_147;
+                    }
+                  }
+                  Party = (CParty *)CUser::GetParty(a2);
+                  if ( Party
+                    && ((int)CParty::get_member_count(Party) > 3
+                     || (unsigned __int8)CParty::CanDoPartyActionAssalutState(Party) != 1) )
+                  {
+                    goto LABEL_147;
+                  }
+                  if ( (unsigned __int8)CUser::CheckInParty(a2) && (unsigned __int8)CUser::CheckInParty(v68) )
+                  {
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 18);
+                    v4 = 0;
+                  }
+                  else
+                  {
+                    if ( (unsigned __int8)CPowerManager::IsPowerWarEventOn(GlobalData::s_power_manager) == 1
+                      || ((CurSec = CSystemTime::getCurSec((CSystemTime *)GlobalData::s_systemTime_),
+                           !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(a2, 0, v60))
+                       || (v73 = (CParty *)CUser::GetParty(v68),
+                           CurCharacChaosKillTime = CUserCharacInfo::GetCurCharacChaosKillTime(v68),
+                           CurCharacChaosKillTime + 600 <= CurSec)
+                       && (!v73 || !(unsigned __int8)CParty::CheckMemberLastTryAssaultTime(v73) ? (v28 = 0) : (v28 = 1),
+                           !v28))
+                      && ((v29 = CUserCharacInfo::GetCurCharacChaosKillTime(a2), v29 + 600 <= CurSec)
+                       || !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(v68, 0, v61)
+                        ? (v30 = 0)
+                        : (v30 = 1),
+                          !v30
+                       && (!Party
+                        || !(unsigned __int8)CParty::CheckMemberLastTryAssaultTime(Party)
+                        || !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(v68, 0, v61)
+                         ? (v31 = 0)
+                         : (v31 = 1),
+                           !v31)) )
+                    {
+                      v62 = 0;
+                      PacketBuf::get_short(a3, &v62);
+                      InterfacePacketBuf::clear((InterfacePacketBuf *)v63);
+                      InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                      unique_id = CUser::get_unique_id(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, unique_id);
+                      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 0);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v67);
+                      CurCharacTotalMaxFatigue = (unsigned __int16)CUser::getCurCharacTotalMaxFatigue(a2);
+                      CurCharacTotalFatigue = CUser::getCurCharacTotalFatigue(a2);
+                      InterfacePacketBuf::put_short(
+                        (InterfacePacketBuf *)v63,
+                        CurCharacTotalMaxFatigue - CurCharacTotalFatigue);
+                      CurCharacStamina = CUserCharacInfo::getCurCharacStamina(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, CurCharacStamina);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v62);
+                      InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                      CUser::Send(v68, (PacketGuard *)v63);
+                      goto LABEL_183;
+                    }
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 250);
+                    v4 = 0;
+                  }
+                }
+                break;
+              case 1:
+                v74 = 1;
+                v36 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v36, a2, 1, 6)
+                  || (v37 = ARAD::Singleton<ServiceRestrictManager>::Get(),
+                      (unsigned __int8)ServiceRestrictManager::isRestricted(v37, v68, 1, 6)) )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 209);
+                  v4 = 0;
+                  break;
+                }
+                v75 = CSecu_ProtectionField::CheckOpposite(GlobalData::s_pSecuProtectionField, a2, 54, v68);
+                if ( v75 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v75);
+                  v4 = 0;
+                  break;
+                }
+                v39 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v57);
+                if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v39, v68) )
+                  goto LABEL_145;
+                if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                  goto LABEL_147;
+                v40 = CUser::get_charac_no(a2, -1);
+                if ( !(unsigned __int8)CUser::isBlackUser(v68, v40) )
+                {
+                  if ( (unsigned __int8)CUser::CheckInTrade(v68) != 1 )
+                  {
+                    state = CUser::get_state(a2);
+                    if ( state == CUser::get_state(v68) )
+                    {
+                      InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                      v42 = CUser::get_unique_id(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v42);
+                      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 1);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v67);
+                      Time = CUserCharacInfo::getCurCharacCreateTime(a2);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, Time);
+                      InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                      CUser::Send(v68, (PacketGuard *)v63);
+                      CUser::SetReceivedRequestType(v68, v66);
+                      v4 = 0;
+                      break;
+                    }
+                    v74 = 19;
+                  }
+                  if ( v68 )
+                  {
+                    if ( (unsigned __int8)CUser::CheckInTrade(v68) )
+                      v74 = 18;
+                  }
+                  else
+                  {
+                    v74 = 3;
+                  }
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v74);
+                  goto LABEL_183;
+                }
+LABEL_61:
+                CUser::SendCmdPeerErrorPacket(a2, 10, v66, 77);
+                v4 = 0;
+                break;
+              case 2:
+                if ( !CUser::GetPVPRoom(a2) )
+                {
+                  v4 = LineFunc(29844, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  break;
+                }
+                v44 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v58);
+                if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v44, v68) )
+                {
+LABEL_145:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 61);
+                  v4 = 0;
+                  break;
+                }
+                if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                  goto LABEL_147;
+                if ( (unsigned __int8)CUser::isCompetitionMercenary(v68) )
+                {
+LABEL_65:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 190);
+                  v4 = 0;
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                v45 = CUser::get_unique_id(a2);
+                InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v45);
+                InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 2);
+                InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v65);
+                InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                CUser::Send(v68, (PacketGuard *)v63);
+                goto LABEL_183;
+              case 3:
+                WarRoom = (WarRoom *)CUser::GetWarRoom(a2);
+                if ( !WarRoom )
+                {
+                  v4 = LineFunc(29887, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                if ( WarRoom::GetState(WarRoom) == 2 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                v46 = CUser::get_unique_id(a2);
+                InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v46);
+                InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 3);
+                InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v65);
+                InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                CUser::Send(v68, (PacketGuard *)v63);
+                goto LABEL_183;
+              case 4:
+                v78 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 55);
+                if ( v78 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v78);
+                  v4 = 0;
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                acc_id = CUser::get_acc_id(a2);
+                if ( (unsigned __int8)WongWork::CGMAccounts::isGM(GlobalData::s_pGMAccounts_, acc_id) != 1 )
+                {
+                  v48 = CUser::get_acc_id(v68);
+                  if ( (unsigned __int8)WongWork::CGMAccounts::isGM(GlobalData::s_pGMAccounts_, v48) )
+                  {
+                    v4 = 0;
+                    break;
+                  }
+                }
+                v50 = (pvp_assault::CAssaultMgr *)pvp_assault::GetInstanceAssaultMgr(v59);
+                if ( (unsigned __int8)pvp_assault::CAssaultMgr::OnRequestAssault(v50, a2, v68, 0) == 1 )
+                  goto LABEL_183;
+                v4 = 30096;
+                break;
+              case 5:
+              case 7:
+                v51 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v51, a2, 1, 8) )
+                  goto LABEL_172;
+                v79 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 33);
+                if ( v79 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v79, (InterfacePacketBuf *)v63);
+                  v4 = 0;
+                  break;
+                }
+                if ( CUserCharacInfo::GetCurCharacExpertJobType(v68) != 1 )
+                  goto LABEL_176;
+                goto LABEL_182;
+              case 6:
+              case 8:
+                v52 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v52, a2, 1, 8) )
+                {
+LABEL_172:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 209, (InterfacePacketBuf *)v63);
+                  v4 = 0;
+                }
+                else
+                {
+                  v80 = CSecu_ProtectionField::CheckOpposite(GlobalData::s_pSecuProtectionField, a2, 32, v68);
+                  if ( v80 )
+                  {
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v80, (InterfacePacketBuf *)v63);
+                    v4 = 0;
+                  }
+                  else if ( CUserCharacInfo::GetCurCharacExpertJobType(a2) == 1 )
+                  {
+LABEL_182:
+                    expert_job::CExpertJobMgr::OnRequestPeer(
+                      (int)GlobalData::s_ExpertJobMgr,
+                      a2,
+                      v68,
+                      v66,
+                      (InterfacePacketBuf *)v63);
+LABEL_183:
+                    CUser::SetReceivedRequestType(v68, v66);
+                    v4 = 0;
+                  }
+                  else
+                  {
+LABEL_176:
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 23, (InterfacePacketBuf *)v63);
+                    v4 = 0;
+                  }
+                }
+                break;
+              default:
+                goto LABEL_183;
+            }
+          }
+          else
+          {
+            v4 = 0;
+          }
+        }
+      }
+    }
+LABEL_184:
+    PacketGuard::~PacketGuard((PacketGuard *)v63);
+    return v4;
+  }
+  return 0;
+}
+
+// ===== 81EED08 (_ZN18DisPatcher_ReqPeer12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl DisPatcher_ReqPeer::dispatch_sig(DisPatcher_ReqPeer *this, CUser *a2, PacketBuf *a3)
+{
+  int v4; // ebx
+  private_store::CPrivateStoreMgr *InstancePrivateStoreMgr; // eax
+  GameWorld *v6; // eax
+  unsigned __int16 v7; // bx
+  GameWorld *v8; // eax
+  int SoloPlay_msgType; // ebx
+  char *CurCharacName; // eax
+  int GameOptionRef; // eax
+  int v13; // ebx
+  char *v14; // eax
+  GameWorld *v15; // eax
+  char v17; // bl
+  pvp_assault::CAssaultMgr *InstanceAssaultMgr; // eax
+  unsigned int charac_no; // eax
+  private_store::CPrivateStoreMgr *v21; // eax
+  char PowerSide; // bl
+  int CurCharacChaosKillTime; // eax
+  char v28; // al
+  int v29; // eax
+  char v30; // al
+  char v31; // al
+  unsigned __int16 unique_id; // ax
+  int CurCharacTotalMaxFatigue; // ebx
+  unsigned __int16 CurCharacTotalFatigue; // ax
+  unsigned __int8 CurCharacStamina; // al
+  int v36; // eax
+  int v37; // eax
+  private_store::CPrivateStoreMgr *v39; // eax
+  unsigned int v40; // eax
+  int state; // ebx
+  unsigned __int16 v42; // ax
+  int Time; // eax
+  private_store::CPrivateStoreMgr *v44; // eax
+  unsigned __int16 v45; // ax
+  unsigned __int16 v46; // ax
+  unsigned int acc_id; // eax
+  unsigned int v48; // eax
+  pvp_assault::CAssaultMgr *v50; // eax
+  int v51; // eax
+  int v52; // eax
+  private_store *v54; // [esp+0h] [ebp-88h]
+  pvp_assault *v55; // [esp+0h] [ebp-88h]
+  private_store *v56; // [esp+0h] [ebp-88h]
+  private_store *v57; // [esp+0h] [ebp-88h]
+  private_store *v58; // [esp+0h] [ebp-88h]
+  pvp_assault *v59; // [esp+0h] [ebp-88h]
+  bool *v60; // [esp+8h] [ebp-80h]
+  bool *v61; // [esp+8h] [ebp-80h]
+  unsigned __int16 v62; // [esp+2Ah] [ebp-5Eh] BYREF
+  char v63[12]; // [esp+2Ch] [ebp-5Ch] BYREF
+  int v64[3]; // [esp+38h] [ebp-50h] BYREF
+  unsigned __int16 v65; // [esp+45h] [ebp-43h] BYREF
+  char v66; // [esp+47h] [ebp-41h] BYREF
+  int v67; // [esp+48h] [ebp-40h] BYREF
+  CUserCharacInfo *v68; // [esp+4Ch] [ebp-3Ch]
+  int v69; // [esp+50h] [ebp-38h]
+  int v70; // [esp+54h] [ebp-34h]
+  CParty *Party; // [esp+58h] [ebp-30h]
+  int CurSec; // [esp+5Ch] [ebp-2Ch]
+  CParty *v73; // [esp+60h] [ebp-28h]
+  int v74; // [esp+64h] [ebp-24h]
+  int v75; // [esp+68h] [ebp-20h]
+  WarRoom *WarRoom; // [esp+70h] [ebp-18h]
+  int v78; // [esp+74h] [ebp-14h]
+  int v79; // [esp+78h] [ebp-10h]
+  int v80; // [esp+7Ch] [ebp-Ch]
+
+  if ( CUser::get_state(a2) == 3 || CUser::get_state(a2) == 6 || CUser::get_state(a2) == 8 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v63);
+    if ( (unsigned __int8)PacketBuf::get_short(a3, &v65) != 1 )
+    {
+      v4 = LineFunc(29274, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( (unsigned __int8)PacketBuf::get_byte(a3, &v66) != 1 )
+    {
+      v4 = LineFunc(29275, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)&v67) != 1 )
+    {
+      v4 = LineFunc(29276, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else
+    {
+      InstancePrivateStoreMgr = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v54);
+      if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(InstancePrivateStoreMgr, a2) )
+      {
+        CUser::SendCmdPeerErrorPacket(a2, 10, v66, 60);
+        v4 = 0;
+      }
+      else if ( (unsigned __int8)CUserCharacInfo::IsBusyDisjointStore(a2) )
+      {
+        CUser::SendCmdPeerErrorPacket(a2, 10, v66, 191);
+        v4 = 0;
+      }
+      else
+      {
+        if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(a2) )
+          goto LABEL_147;
+        v6 = (GameWorld *)G_GameWorld();
+        if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v6) )
+        {
+          if ( v66 != 2 )
+            goto LABEL_147;
+        }
+        v7 = v65;
+        v8 = (GameWorld *)G_GameWorld();
+        v68 = (CUserCharacInfo *)GameWorld::find_from_world(v8, v7);
+        v69 = 1;
+        if ( !v68 )
+        {
+LABEL_23:
+          CUser::SendCmdPeerErrorPacket(a2, 10, v66, 3);
+          v4 = 0;
+          goto LABEL_184;
+        }
+        if ( (unsigned __int8)CUser::alonePlay_Mode(v68, (int)v64) )
+        {
+          SoloPlay_msgType = CUser::get_SoloPlay_msgType(v68, v64);
+          CurCharacName = (char *)CUserCharacInfo::getCurCharacName(v68);
+          CUser::Send_SoloPlay_Reject_NotiPack(a2, CurCharacName, 1, SoloPlay_msgType);
+          v4 = 0;
+          goto LABEL_184;
+        }
+        v70 = 36;
+        if ( v66 == 1 )
+        {
+          v70 = 31;
+        }
+        else if ( v66 > 1 )
+        {
+          if ( v66 == 2 )
+          {
+            v70 = 7;
+          }
+          else if ( v66 == 3 )
+          {
+            v70 = 8;
+          }
+        }
+        else if ( !v66 )
+        {
+          v70 = 6;
+        }
+        if ( v70 != 36 )
+        {
+          GameOptionRef = CUser::GetGameOptionRef(v68);
+          if ( (unsigned __int16)CGameOption::get_etc_option(GameOptionRef, v70) )
+          {
+            v13 = CUser::get_SoloPlay_msgType(v68, v64);
+            v14 = (char *)CUserCharacInfo::getCurCharacName(v68);
+            CUser::Send_SoloPlay_Reject_NotiPack(a2, v14, 0, v13);
+            v4 = 0;
+            goto LABEL_184;
+          }
+        }
+        v15 = (GameWorld *)G_GameWorld();
+        if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v15) )
+        {
+          if ( CUser::get_state(v68) == 6 || CUser::get_state(v68) == 7 )
+          {
+LABEL_147:
+            CUser::SendCmdPeerErrorPacket(a2, 10, v66, 19);
+            v4 = 0;
+            goto LABEL_184;
+          }
+        }
+        if ( (unsigned __int8)CUserCharacInfo::IsBusyDisjointStore(v68) )
+        {
+          CUser::SendCmdPeerErrorPacket(a2, 10, v66, 192);
+          v4 = 0;
+        }
+        else
+        {
+          v17 = v66;
+          InstanceAssaultMgr = (pvp_assault::CAssaultMgr *)pvp_assault::GetInstanceAssaultMgr(v55);
+          v69 = pvp_assault::CAssaultMgr::check_party_teleport_user(InstanceAssaultMgr, v17, a2, v68, 1);
+          if ( v69 <= 0 )
+          {
+            switch ( v66 )
+            {
+              case 0:
+                if ( CUser::get_state(a2) == 5
+                  || !(unsigned __int8)CNetwork<4096,450000>::get_nat_type((char *)a2 + 224) )
+                {
+                  goto LABEL_147;
+                }
+                charac_no = CUser::get_charac_no(a2, -1);
+                if ( (unsigned __int8)CUser::isBlackUser(v68, charac_no) )
+                  goto LABEL_61;
+                if ( (unsigned __int8)CUser::isCompetitionMercenary(a2) )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 234);
+                  v4 = 0;
+                }
+                else
+                {
+                  if ( (unsigned __int8)CUser::isCompetitionMercenary(v68) )
+                    goto LABEL_65;
+                  v21 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v56);
+                  if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v21, v68) )
+                    goto LABEL_145;
+                  if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                    goto LABEL_147;
+                  if ( CUser::get_state(v68) == 5
+                    || !(unsigned __int8)CNetwork<4096,450000>::get_nat_type((char *)v68 + 224) )
+                  {
+                    goto LABEL_23;
+                  }
+                  if ( (unsigned __int8)CPowerManager::IsPowerWarEventOn(GlobalData::s_power_manager) )
+                  {
+                    if ( (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) == 7
+                      && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) == 7 )
+                    {
+                      PowerSide = CUser::getPowerSide(a2);
+                      if ( PowerSide != (unsigned __int8)CUser::getPowerSide(v68) )
+                        goto LABEL_147;
+                    }
+                    else if ( (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) != 7
+                           && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) == 7
+                           || (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) == 7
+                           && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) != 7 )
+                    {
+                      goto LABEL_147;
+                    }
+                  }
+                  Party = (CParty *)CUser::GetParty(a2);
+                  if ( Party
+                    && ((int)CParty::get_member_count(Party) > 3
+                     || (unsigned __int8)CParty::CanDoPartyActionAssalutState(Party) != 1) )
+                  {
+                    goto LABEL_147;
+                  }
+                  if ( (unsigned __int8)CUser::CheckInParty(a2) && (unsigned __int8)CUser::CheckInParty(v68) )
+                  {
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 18);
+                    v4 = 0;
+                  }
+                  else
+                  {
+                    if ( (unsigned __int8)CPowerManager::IsPowerWarEventOn(GlobalData::s_power_manager) == 1
+                      || ((CurSec = CSystemTime::getCurSec((CSystemTime *)GlobalData::s_systemTime_),
+                           !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(a2, 0, v60))
+                       || (v73 = (CParty *)CUser::GetParty(v68),
+                           CurCharacChaosKillTime = CUserCharacInfo::GetCurCharacChaosKillTime(v68),
+                           CurCharacChaosKillTime + 600 <= CurSec)
+                       && (!v73 || !(unsigned __int8)CParty::CheckMemberLastTryAssaultTime(v73) ? (v28 = 0) : (v28 = 1),
+                           !v28))
+                      && ((v29 = CUserCharacInfo::GetCurCharacChaosKillTime(a2), v29 + 600 <= CurSec)
+                       || !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(v68, 0, v61)
+                        ? (v30 = 0)
+                        : (v30 = 1),
+                          !v30
+                       && (!Party
+                        || !(unsigned __int8)CParty::CheckMemberLastTryAssaultTime(Party)
+                        || !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(v68, 0, v61)
+                         ? (v31 = 0)
+                         : (v31 = 1),
+                           !v31)) )
+                    {
+                      v62 = 0;
+                      PacketBuf::get_short(a3, &v62);
+                      InterfacePacketBuf::clear((InterfacePacketBuf *)v63);
+                      InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                      unique_id = CUser::get_unique_id(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, unique_id);
+                      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 0);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v67);
+                      CurCharacTotalMaxFatigue = (unsigned __int16)CUser::getCurCharacTotalMaxFatigue(a2);
+                      CurCharacTotalFatigue = CUser::getCurCharacTotalFatigue(a2);
+                      InterfacePacketBuf::put_short(
+                        (InterfacePacketBuf *)v63,
+                        CurCharacTotalMaxFatigue - CurCharacTotalFatigue);
+                      CurCharacStamina = CUserCharacInfo::getCurCharacStamina(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, CurCharacStamina);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v62);
+                      InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                      CUser::Send(v68, (PacketGuard *)v63);
+                      goto LABEL_183;
+                    }
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 250);
+                    v4 = 0;
+                  }
+                }
+                break;
+              case 1:
+                v74 = 1;
+                v36 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v36, a2, 1, 6)
+                  || (v37 = ARAD::Singleton<ServiceRestrictManager>::Get(),
+                      (unsigned __int8)ServiceRestrictManager::isRestricted(v37, v68, 1, 6)) )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 209);
+                  v4 = 0;
+                  break;
+                }
+                v75 = CSecu_ProtectionField::CheckOpposite(GlobalData::s_pSecuProtectionField, a2, 54, v68);
+                if ( v75 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v75);
+                  v4 = 0;
+                  break;
+                }
+                v39 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v57);
+                if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v39, v68) )
+                  goto LABEL_145;
+                if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                  goto LABEL_147;
+                v40 = CUser::get_charac_no(a2, -1);
+                if ( !(unsigned __int8)CUser::isBlackUser(v68, v40) )
+                {
+                  if ( (unsigned __int8)CUser::CheckInTrade(v68) != 1 )
+                  {
+                    state = CUser::get_state(a2);
+                    if ( state == CUser::get_state(v68) )
+                    {
+                      InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                      v42 = CUser::get_unique_id(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v42);
+                      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 1);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v67);
+                      Time = CUserCharacInfo::getCurCharacCreateTime(a2);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, Time);
+                      InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                      CUser::Send(v68, (PacketGuard *)v63);
+                      CUser::SetReceivedRequestType(v68, v66);
+                      v4 = 0;
+                      break;
+                    }
+                    v74 = 19;
+                  }
+                  if ( v68 )
+                  {
+                    if ( (unsigned __int8)CUser::CheckInTrade(v68) )
+                      v74 = 18;
+                  }
+                  else
+                  {
+                    v74 = 3;
+                  }
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v74);
+                  goto LABEL_183;
+                }
+LABEL_61:
+                CUser::SendCmdPeerErrorPacket(a2, 10, v66, 77);
+                v4 = 0;
+                break;
+              case 2:
+                if ( !CUser::GetPVPRoom(a2) )
+                {
+                  v4 = LineFunc(29844, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  break;
+                }
+                v44 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v58);
+                if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v44, v68) )
+                {
+LABEL_145:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 61);
+                  v4 = 0;
+                  break;
+                }
+                if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                  goto LABEL_147;
+                if ( (unsigned __int8)CUser::isCompetitionMercenary(v68) )
+                {
+LABEL_65:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 190);
+                  v4 = 0;
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                v45 = CUser::get_unique_id(a2);
+                InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v45);
+                InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 2);
+                InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v65);
+                InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                CUser::Send(v68, (PacketGuard *)v63);
+                goto LABEL_183;
+              case 3:
+                WarRoom = (WarRoom *)CUser::GetWarRoom(a2);
+                if ( !WarRoom )
+                {
+                  v4 = LineFunc(29887, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                if ( WarRoom::GetState(WarRoom) == 2 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                v46 = CUser::get_unique_id(a2);
+                InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v46);
+                InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 3);
+                InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v65);
+                InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                CUser::Send(v68, (PacketGuard *)v63);
+                goto LABEL_183;
+              case 4:
+                v78 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 55);
+                if ( v78 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v78);
+                  v4 = 0;
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                acc_id = CUser::get_acc_id(a2);
+                if ( (unsigned __int8)WongWork::CGMAccounts::isGM(GlobalData::s_pGMAccounts_, acc_id) != 1 )
+                {
+                  v48 = CUser::get_acc_id(v68);
+                  if ( (unsigned __int8)WongWork::CGMAccounts::isGM(GlobalData::s_pGMAccounts_, v48) )
+                  {
+                    v4 = 0;
+                    break;
+                  }
+                }
+                v50 = (pvp_assault::CAssaultMgr *)pvp_assault::GetInstanceAssaultMgr(v59);
+                if ( (unsigned __int8)pvp_assault::CAssaultMgr::OnRequestAssault(v50, a2, v68, 0) == 1 )
+                  goto LABEL_183;
+                v4 = 30096;
+                break;
+              case 5:
+              case 7:
+                v51 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v51, a2, 1, 8) )
+                  goto LABEL_172;
+                v79 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 33);
+                if ( v79 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v79, (InterfacePacketBuf *)v63);
+                  v4 = 0;
+                  break;
+                }
+                if ( CUserCharacInfo::GetCurCharacExpertJobType(v68) != 1 )
+                  goto LABEL_176;
+                goto LABEL_182;
+              case 6:
+              case 8:
+                v52 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v52, a2, 1, 8) )
+                {
+LABEL_172:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 209, (InterfacePacketBuf *)v63);
+                  v4 = 0;
+                }
+                else
+                {
+                  v80 = CSecu_ProtectionField::CheckOpposite(GlobalData::s_pSecuProtectionField, a2, 32, v68);
+                  if ( v80 )
+                  {
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v80, (InterfacePacketBuf *)v63);
+                    v4 = 0;
+                  }
+                  else if ( CUserCharacInfo::GetCurCharacExpertJobType(a2) == 1 )
+                  {
+LABEL_182:
+                    expert_job::CExpertJobMgr::OnRequestPeer(
+                      (int)GlobalData::s_ExpertJobMgr,
+                      a2,
+                      v68,
+                      v66,
+                      (InterfacePacketBuf *)v63);
+LABEL_183:
+                    CUser::SetReceivedRequestType(v68, v66);
+                    v4 = 0;
+                  }
+                  else
+                  {
+LABEL_176:
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 23, (InterfacePacketBuf *)v63);
+                    v4 = 0;
+                  }
+                }
+                break;
+              default:
+                goto LABEL_183;
+            }
+          }
+          else
+          {
+            v4 = 0;
+          }
+        }
+      }
+    }
+LABEL_184:
+    PacketGuard::~PacketGuard((PacketGuard *)v63);
+    return v4;
+  }
+  return 0;
+}
+
+// ===== 81EED08 (_ZN18DisPatcher_ReqPeer12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl DisPatcher_ReqPeer::dispatch_sig(DisPatcher_ReqPeer *this, CUser *a2, PacketBuf *a3)
+{
+  int v4; // ebx
+  private_store::CPrivateStoreMgr *InstancePrivateStoreMgr; // eax
+  GameWorld *v6; // eax
+  unsigned __int16 v7; // bx
+  GameWorld *v8; // eax
+  int SoloPlay_msgType; // ebx
+  char *CurCharacName; // eax
+  int GameOptionRef; // eax
+  int v13; // ebx
+  char *v14; // eax
+  GameWorld *v15; // eax
+  char v17; // bl
+  pvp_assault::CAssaultMgr *InstanceAssaultMgr; // eax
+  unsigned int charac_no; // eax
+  private_store::CPrivateStoreMgr *v21; // eax
+  char PowerSide; // bl
+  int CurCharacChaosKillTime; // eax
+  char v28; // al
+  int v29; // eax
+  char v30; // al
+  char v31; // al
+  unsigned __int16 unique_id; // ax
+  int CurCharacTotalMaxFatigue; // ebx
+  unsigned __int16 CurCharacTotalFatigue; // ax
+  unsigned __int8 CurCharacStamina; // al
+  int v36; // eax
+  int v37; // eax
+  private_store::CPrivateStoreMgr *v39; // eax
+  unsigned int v40; // eax
+  int state; // ebx
+  unsigned __int16 v42; // ax
+  int Time; // eax
+  private_store::CPrivateStoreMgr *v44; // eax
+  unsigned __int16 v45; // ax
+  unsigned __int16 v46; // ax
+  unsigned int acc_id; // eax
+  unsigned int v48; // eax
+  pvp_assault::CAssaultMgr *v50; // eax
+  int v51; // eax
+  int v52; // eax
+  private_store *v54; // [esp+0h] [ebp-88h]
+  pvp_assault *v55; // [esp+0h] [ebp-88h]
+  private_store *v56; // [esp+0h] [ebp-88h]
+  private_store *v57; // [esp+0h] [ebp-88h]
+  private_store *v58; // [esp+0h] [ebp-88h]
+  pvp_assault *v59; // [esp+0h] [ebp-88h]
+  bool *v60; // [esp+8h] [ebp-80h]
+  bool *v61; // [esp+8h] [ebp-80h]
+  unsigned __int16 v62; // [esp+2Ah] [ebp-5Eh] BYREF
+  char v63[12]; // [esp+2Ch] [ebp-5Ch] BYREF
+  int v64[3]; // [esp+38h] [ebp-50h] BYREF
+  unsigned __int16 v65; // [esp+45h] [ebp-43h] BYREF
+  char v66; // [esp+47h] [ebp-41h] BYREF
+  int v67; // [esp+48h] [ebp-40h] BYREF
+  CUserCharacInfo *v68; // [esp+4Ch] [ebp-3Ch]
+  int v69; // [esp+50h] [ebp-38h]
+  int v70; // [esp+54h] [ebp-34h]
+  CParty *Party; // [esp+58h] [ebp-30h]
+  int CurSec; // [esp+5Ch] [ebp-2Ch]
+  CParty *v73; // [esp+60h] [ebp-28h]
+  int v74; // [esp+64h] [ebp-24h]
+  int v75; // [esp+68h] [ebp-20h]
+  WarRoom *WarRoom; // [esp+70h] [ebp-18h]
+  int v78; // [esp+74h] [ebp-14h]
+  int v79; // [esp+78h] [ebp-10h]
+  int v80; // [esp+7Ch] [ebp-Ch]
+
+  if ( CUser::get_state(a2) == 3 || CUser::get_state(a2) == 6 || CUser::get_state(a2) == 8 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v63);
+    if ( (unsigned __int8)PacketBuf::get_short(a3, &v65) != 1 )
+    {
+      v4 = LineFunc(29274, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( (unsigned __int8)PacketBuf::get_byte(a3, &v66) != 1 )
+    {
+      v4 = LineFunc(29275, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)&v67) != 1 )
+    {
+      v4 = LineFunc(29276, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else
+    {
+      InstancePrivateStoreMgr = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v54);
+      if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(InstancePrivateStoreMgr, a2) )
+      {
+        CUser::SendCmdPeerErrorPacket(a2, 10, v66, 60);
+        v4 = 0;
+      }
+      else if ( (unsigned __int8)CUserCharacInfo::IsBusyDisjointStore(a2) )
+      {
+        CUser::SendCmdPeerErrorPacket(a2, 10, v66, 191);
+        v4 = 0;
+      }
+      else
+      {
+        if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(a2) )
+          goto LABEL_147;
+        v6 = (GameWorld *)G_GameWorld();
+        if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v6) )
+        {
+          if ( v66 != 2 )
+            goto LABEL_147;
+        }
+        v7 = v65;
+        v8 = (GameWorld *)G_GameWorld();
+        v68 = (CUserCharacInfo *)GameWorld::find_from_world(v8, v7);
+        v69 = 1;
+        if ( !v68 )
+        {
+LABEL_23:
+          CUser::SendCmdPeerErrorPacket(a2, 10, v66, 3);
+          v4 = 0;
+          goto LABEL_184;
+        }
+        if ( (unsigned __int8)CUser::alonePlay_Mode(v68, (int)v64) )
+        {
+          SoloPlay_msgType = CUser::get_SoloPlay_msgType(v68, v64);
+          CurCharacName = (char *)CUserCharacInfo::getCurCharacName(v68);
+          CUser::Send_SoloPlay_Reject_NotiPack(a2, CurCharacName, 1, SoloPlay_msgType);
+          v4 = 0;
+          goto LABEL_184;
+        }
+        v70 = 36;
+        if ( v66 == 1 )
+        {
+          v70 = 31;
+        }
+        else if ( v66 > 1 )
+        {
+          if ( v66 == 2 )
+          {
+            v70 = 7;
+          }
+          else if ( v66 == 3 )
+          {
+            v70 = 8;
+          }
+        }
+        else if ( !v66 )
+        {
+          v70 = 6;
+        }
+        if ( v70 != 36 )
+        {
+          GameOptionRef = CUser::GetGameOptionRef(v68);
+          if ( (unsigned __int16)CGameOption::get_etc_option(GameOptionRef, v70) )
+          {
+            v13 = CUser::get_SoloPlay_msgType(v68, v64);
+            v14 = (char *)CUserCharacInfo::getCurCharacName(v68);
+            CUser::Send_SoloPlay_Reject_NotiPack(a2, v14, 0, v13);
+            v4 = 0;
+            goto LABEL_184;
+          }
+        }
+        v15 = (GameWorld *)G_GameWorld();
+        if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v15) )
+        {
+          if ( CUser::get_state(v68) == 6 || CUser::get_state(v68) == 7 )
+          {
+LABEL_147:
+            CUser::SendCmdPeerErrorPacket(a2, 10, v66, 19);
+            v4 = 0;
+            goto LABEL_184;
+          }
+        }
+        if ( (unsigned __int8)CUserCharacInfo::IsBusyDisjointStore(v68) )
+        {
+          CUser::SendCmdPeerErrorPacket(a2, 10, v66, 192);
+          v4 = 0;
+        }
+        else
+        {
+          v17 = v66;
+          InstanceAssaultMgr = (pvp_assault::CAssaultMgr *)pvp_assault::GetInstanceAssaultMgr(v55);
+          v69 = pvp_assault::CAssaultMgr::check_party_teleport_user(InstanceAssaultMgr, v17, a2, v68, 1);
+          if ( v69 <= 0 )
+          {
+            switch ( v66 )
+            {
+              case 0:
+                if ( CUser::get_state(a2) == 5
+                  || !(unsigned __int8)CNetwork<4096,450000>::get_nat_type((char *)a2 + 224) )
+                {
+                  goto LABEL_147;
+                }
+                charac_no = CUser::get_charac_no(a2, -1);
+                if ( (unsigned __int8)CUser::isBlackUser(v68, charac_no) )
+                  goto LABEL_61;
+                if ( (unsigned __int8)CUser::isCompetitionMercenary(a2) )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 234);
+                  v4 = 0;
+                }
+                else
+                {
+                  if ( (unsigned __int8)CUser::isCompetitionMercenary(v68) )
+                    goto LABEL_65;
+                  v21 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v56);
+                  if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v21, v68) )
+                    goto LABEL_145;
+                  if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                    goto LABEL_147;
+                  if ( CUser::get_state(v68) == 5
+                    || !(unsigned __int8)CNetwork<4096,450000>::get_nat_type((char *)v68 + 224) )
+                  {
+                    goto LABEL_23;
+                  }
+                  if ( (unsigned __int8)CPowerManager::IsPowerWarEventOn(GlobalData::s_power_manager) )
+                  {
+                    if ( (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) == 7
+                      && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) == 7 )
+                    {
+                      PowerSide = CUser::getPowerSide(a2);
+                      if ( PowerSide != (unsigned __int8)CUser::getPowerSide(v68) )
+                        goto LABEL_147;
+                    }
+                    else if ( (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) != 7
+                           && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) == 7
+                           || (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) == 7
+                           && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) != 7 )
+                    {
+                      goto LABEL_147;
+                    }
+                  }
+                  Party = (CParty *)CUser::GetParty(a2);
+                  if ( Party
+                    && ((int)CParty::get_member_count(Party) > 3
+                     || (unsigned __int8)CParty::CanDoPartyActionAssalutState(Party) != 1) )
+                  {
+                    goto LABEL_147;
+                  }
+                  if ( (unsigned __int8)CUser::CheckInParty(a2) && (unsigned __int8)CUser::CheckInParty(v68) )
+                  {
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 18);
+                    v4 = 0;
+                  }
+                  else
+                  {
+                    if ( (unsigned __int8)CPowerManager::IsPowerWarEventOn(GlobalData::s_power_manager) == 1
+                      || ((CurSec = CSystemTime::getCurSec((CSystemTime *)GlobalData::s_systemTime_),
+                           !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(a2, 0, v60))
+                       || (v73 = (CParty *)CUser::GetParty(v68),
+                           CurCharacChaosKillTime = CUserCharacInfo::GetCurCharacChaosKillTime(v68),
+                           CurCharacChaosKillTime + 600 <= CurSec)
+                       && (!v73 || !(unsigned __int8)CParty::CheckMemberLastTryAssaultTime(v73) ? (v28 = 0) : (v28 = 1),
+                           !v28))
+                      && ((v29 = CUserCharacInfo::GetCurCharacChaosKillTime(a2), v29 + 600 <= CurSec)
+                       || !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(v68, 0, v61)
+                        ? (v30 = 0)
+                        : (v30 = 1),
+                          !v30
+                       && (!Party
+                        || !(unsigned __int8)CParty::CheckMemberLastTryAssaultTime(Party)
+                        || !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(v68, 0, v61)
+                         ? (v31 = 0)
+                         : (v31 = 1),
+                           !v31)) )
+                    {
+                      v62 = 0;
+                      PacketBuf::get_short(a3, &v62);
+                      InterfacePacketBuf::clear((InterfacePacketBuf *)v63);
+                      InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                      unique_id = CUser::get_unique_id(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, unique_id);
+                      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 0);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v67);
+                      CurCharacTotalMaxFatigue = (unsigned __int16)CUser::getCurCharacTotalMaxFatigue(a2);
+                      CurCharacTotalFatigue = CUser::getCurCharacTotalFatigue(a2);
+                      InterfacePacketBuf::put_short(
+                        (InterfacePacketBuf *)v63,
+                        CurCharacTotalMaxFatigue - CurCharacTotalFatigue);
+                      CurCharacStamina = CUserCharacInfo::getCurCharacStamina(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, CurCharacStamina);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v62);
+                      InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                      CUser::Send(v68, (PacketGuard *)v63);
+                      goto LABEL_183;
+                    }
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 250);
+                    v4 = 0;
+                  }
+                }
+                break;
+              case 1:
+                v74 = 1;
+                v36 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v36, a2, 1, 6)
+                  || (v37 = ARAD::Singleton<ServiceRestrictManager>::Get(),
+                      (unsigned __int8)ServiceRestrictManager::isRestricted(v37, v68, 1, 6)) )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 209);
+                  v4 = 0;
+                  break;
+                }
+                v75 = CSecu_ProtectionField::CheckOpposite(GlobalData::s_pSecuProtectionField, a2, 54, v68);
+                if ( v75 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v75);
+                  v4 = 0;
+                  break;
+                }
+                v39 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v57);
+                if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v39, v68) )
+                  goto LABEL_145;
+                if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                  goto LABEL_147;
+                v40 = CUser::get_charac_no(a2, -1);
+                if ( !(unsigned __int8)CUser::isBlackUser(v68, v40) )
+                {
+                  if ( (unsigned __int8)CUser::CheckInTrade(v68) != 1 )
+                  {
+                    state = CUser::get_state(a2);
+                    if ( state == CUser::get_state(v68) )
+                    {
+                      InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                      v42 = CUser::get_unique_id(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v42);
+                      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 1);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v67);
+                      Time = CUserCharacInfo::getCurCharacCreateTime(a2);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, Time);
+                      InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                      CUser::Send(v68, (PacketGuard *)v63);
+                      CUser::SetReceivedRequestType(v68, v66);
+                      v4 = 0;
+                      break;
+                    }
+                    v74 = 19;
+                  }
+                  if ( v68 )
+                  {
+                    if ( (unsigned __int8)CUser::CheckInTrade(v68) )
+                      v74 = 18;
+                  }
+                  else
+                  {
+                    v74 = 3;
+                  }
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v74);
+                  goto LABEL_183;
+                }
+LABEL_61:
+                CUser::SendCmdPeerErrorPacket(a2, 10, v66, 77);
+                v4 = 0;
+                break;
+              case 2:
+                if ( !CUser::GetPVPRoom(a2) )
+                {
+                  v4 = LineFunc(29844, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  break;
+                }
+                v44 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v58);
+                if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v44, v68) )
+                {
+LABEL_145:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 61);
+                  v4 = 0;
+                  break;
+                }
+                if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                  goto LABEL_147;
+                if ( (unsigned __int8)CUser::isCompetitionMercenary(v68) )
+                {
+LABEL_65:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 190);
+                  v4 = 0;
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                v45 = CUser::get_unique_id(a2);
+                InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v45);
+                InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 2);
+                InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v65);
+                InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                CUser::Send(v68, (PacketGuard *)v63);
+                goto LABEL_183;
+              case 3:
+                WarRoom = (WarRoom *)CUser::GetWarRoom(a2);
+                if ( !WarRoom )
+                {
+                  v4 = LineFunc(29887, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                if ( WarRoom::GetState(WarRoom) == 2 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                v46 = CUser::get_unique_id(a2);
+                InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v46);
+                InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 3);
+                InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v65);
+                InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                CUser::Send(v68, (PacketGuard *)v63);
+                goto LABEL_183;
+              case 4:
+                v78 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 55);
+                if ( v78 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v78);
+                  v4 = 0;
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                acc_id = CUser::get_acc_id(a2);
+                if ( (unsigned __int8)WongWork::CGMAccounts::isGM(GlobalData::s_pGMAccounts_, acc_id) != 1 )
+                {
+                  v48 = CUser::get_acc_id(v68);
+                  if ( (unsigned __int8)WongWork::CGMAccounts::isGM(GlobalData::s_pGMAccounts_, v48) )
+                  {
+                    v4 = 0;
+                    break;
+                  }
+                }
+                v50 = (pvp_assault::CAssaultMgr *)pvp_assault::GetInstanceAssaultMgr(v59);
+                if ( (unsigned __int8)pvp_assault::CAssaultMgr::OnRequestAssault(v50, a2, v68, 0) == 1 )
+                  goto LABEL_183;
+                v4 = 30096;
+                break;
+              case 5:
+              case 7:
+                v51 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v51, a2, 1, 8) )
+                  goto LABEL_172;
+                v79 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 33);
+                if ( v79 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v79, (InterfacePacketBuf *)v63);
+                  v4 = 0;
+                  break;
+                }
+                if ( CUserCharacInfo::GetCurCharacExpertJobType(v68) != 1 )
+                  goto LABEL_176;
+                goto LABEL_182;
+              case 6:
+              case 8:
+                v52 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v52, a2, 1, 8) )
+                {
+LABEL_172:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 209, (InterfacePacketBuf *)v63);
+                  v4 = 0;
+                }
+                else
+                {
+                  v80 = CSecu_ProtectionField::CheckOpposite(GlobalData::s_pSecuProtectionField, a2, 32, v68);
+                  if ( v80 )
+                  {
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v80, (InterfacePacketBuf *)v63);
+                    v4 = 0;
+                  }
+                  else if ( CUserCharacInfo::GetCurCharacExpertJobType(a2) == 1 )
+                  {
+LABEL_182:
+                    expert_job::CExpertJobMgr::OnRequestPeer(
+                      (int)GlobalData::s_ExpertJobMgr,
+                      a2,
+                      v68,
+                      v66,
+                      (InterfacePacketBuf *)v63);
+LABEL_183:
+                    CUser::SetReceivedRequestType(v68, v66);
+                    v4 = 0;
+                  }
+                  else
+                  {
+LABEL_176:
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 23, (InterfacePacketBuf *)v63);
+                    v4 = 0;
+                  }
+                }
+                break;
+              default:
+                goto LABEL_183;
+            }
+          }
+          else
+          {
+            v4 = 0;
+          }
+        }
+      }
+    }
+LABEL_184:
+    PacketGuard::~PacketGuard((PacketGuard *)v63);
+    return v4;
+  }
+  return 0;
+}
+
+// ===== 81EED08 (_ZN18DisPatcher_ReqPeer12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl DisPatcher_ReqPeer::dispatch_sig(DisPatcher_ReqPeer *this, CUser *a2, PacketBuf *a3)
+{
+  int v4; // ebx
+  private_store::CPrivateStoreMgr *InstancePrivateStoreMgr; // eax
+  GameWorld *v6; // eax
+  unsigned __int16 v7; // bx
+  GameWorld *v8; // eax
+  int SoloPlay_msgType; // ebx
+  char *CurCharacName; // eax
+  int GameOptionRef; // eax
+  int v13; // ebx
+  char *v14; // eax
+  GameWorld *v15; // eax
+  char v17; // bl
+  pvp_assault::CAssaultMgr *InstanceAssaultMgr; // eax
+  unsigned int charac_no; // eax
+  private_store::CPrivateStoreMgr *v21; // eax
+  char PowerSide; // bl
+  int CurCharacChaosKillTime; // eax
+  char v28; // al
+  int v29; // eax
+  char v30; // al
+  char v31; // al
+  unsigned __int16 unique_id; // ax
+  int CurCharacTotalMaxFatigue; // ebx
+  unsigned __int16 CurCharacTotalFatigue; // ax
+  unsigned __int8 CurCharacStamina; // al
+  int v36; // eax
+  int v37; // eax
+  private_store::CPrivateStoreMgr *v39; // eax
+  unsigned int v40; // eax
+  int state; // ebx
+  unsigned __int16 v42; // ax
+  int Time; // eax
+  private_store::CPrivateStoreMgr *v44; // eax
+  unsigned __int16 v45; // ax
+  unsigned __int16 v46; // ax
+  unsigned int acc_id; // eax
+  unsigned int v48; // eax
+  pvp_assault::CAssaultMgr *v50; // eax
+  int v51; // eax
+  int v52; // eax
+  private_store *v54; // [esp+0h] [ebp-88h]
+  pvp_assault *v55; // [esp+0h] [ebp-88h]
+  private_store *v56; // [esp+0h] [ebp-88h]
+  private_store *v57; // [esp+0h] [ebp-88h]
+  private_store *v58; // [esp+0h] [ebp-88h]
+  pvp_assault *v59; // [esp+0h] [ebp-88h]
+  bool *v60; // [esp+8h] [ebp-80h]
+  bool *v61; // [esp+8h] [ebp-80h]
+  unsigned __int16 v62; // [esp+2Ah] [ebp-5Eh] BYREF
+  char v63[12]; // [esp+2Ch] [ebp-5Ch] BYREF
+  int v64[3]; // [esp+38h] [ebp-50h] BYREF
+  unsigned __int16 v65; // [esp+45h] [ebp-43h] BYREF
+  char v66; // [esp+47h] [ebp-41h] BYREF
+  int v67; // [esp+48h] [ebp-40h] BYREF
+  CUserCharacInfo *v68; // [esp+4Ch] [ebp-3Ch]
+  int v69; // [esp+50h] [ebp-38h]
+  int v70; // [esp+54h] [ebp-34h]
+  CParty *Party; // [esp+58h] [ebp-30h]
+  int CurSec; // [esp+5Ch] [ebp-2Ch]
+  CParty *v73; // [esp+60h] [ebp-28h]
+  int v74; // [esp+64h] [ebp-24h]
+  int v75; // [esp+68h] [ebp-20h]
+  WarRoom *WarRoom; // [esp+70h] [ebp-18h]
+  int v78; // [esp+74h] [ebp-14h]
+  int v79; // [esp+78h] [ebp-10h]
+  int v80; // [esp+7Ch] [ebp-Ch]
+
+  if ( CUser::get_state(a2) == 3 || CUser::get_state(a2) == 6 || CUser::get_state(a2) == 8 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v63);
+    if ( (unsigned __int8)PacketBuf::get_short(a3, &v65) != 1 )
+    {
+      v4 = LineFunc(29274, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( (unsigned __int8)PacketBuf::get_byte(a3, &v66) != 1 )
+    {
+      v4 = LineFunc(29275, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)&v67) != 1 )
+    {
+      v4 = LineFunc(29276, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else
+    {
+      InstancePrivateStoreMgr = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v54);
+      if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(InstancePrivateStoreMgr, a2) )
+      {
+        CUser::SendCmdPeerErrorPacket(a2, 10, v66, 60);
+        v4 = 0;
+      }
+      else if ( (unsigned __int8)CUserCharacInfo::IsBusyDisjointStore(a2) )
+      {
+        CUser::SendCmdPeerErrorPacket(a2, 10, v66, 191);
+        v4 = 0;
+      }
+      else
+      {
+        if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(a2) )
+          goto LABEL_147;
+        v6 = (GameWorld *)G_GameWorld();
+        if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v6) )
+        {
+          if ( v66 != 2 )
+            goto LABEL_147;
+        }
+        v7 = v65;
+        v8 = (GameWorld *)G_GameWorld();
+        v68 = (CUserCharacInfo *)GameWorld::find_from_world(v8, v7);
+        v69 = 1;
+        if ( !v68 )
+        {
+LABEL_23:
+          CUser::SendCmdPeerErrorPacket(a2, 10, v66, 3);
+          v4 = 0;
+          goto LABEL_184;
+        }
+        if ( (unsigned __int8)CUser::alonePlay_Mode(v68, (int)v64) )
+        {
+          SoloPlay_msgType = CUser::get_SoloPlay_msgType(v68, v64);
+          CurCharacName = (char *)CUserCharacInfo::getCurCharacName(v68);
+          CUser::Send_SoloPlay_Reject_NotiPack(a2, CurCharacName, 1, SoloPlay_msgType);
+          v4 = 0;
+          goto LABEL_184;
+        }
+        v70 = 36;
+        if ( v66 == 1 )
+        {
+          v70 = 31;
+        }
+        else if ( v66 > 1 )
+        {
+          if ( v66 == 2 )
+          {
+            v70 = 7;
+          }
+          else if ( v66 == 3 )
+          {
+            v70 = 8;
+          }
+        }
+        else if ( !v66 )
+        {
+          v70 = 6;
+        }
+        if ( v70 != 36 )
+        {
+          GameOptionRef = CUser::GetGameOptionRef(v68);
+          if ( (unsigned __int16)CGameOption::get_etc_option(GameOptionRef, v70) )
+          {
+            v13 = CUser::get_SoloPlay_msgType(v68, v64);
+            v14 = (char *)CUserCharacInfo::getCurCharacName(v68);
+            CUser::Send_SoloPlay_Reject_NotiPack(a2, v14, 0, v13);
+            v4 = 0;
+            goto LABEL_184;
+          }
+        }
+        v15 = (GameWorld *)G_GameWorld();
+        if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v15) )
+        {
+          if ( CUser::get_state(v68) == 6 || CUser::get_state(v68) == 7 )
+          {
+LABEL_147:
+            CUser::SendCmdPeerErrorPacket(a2, 10, v66, 19);
+            v4 = 0;
+            goto LABEL_184;
+          }
+        }
+        if ( (unsigned __int8)CUserCharacInfo::IsBusyDisjointStore(v68) )
+        {
+          CUser::SendCmdPeerErrorPacket(a2, 10, v66, 192);
+          v4 = 0;
+        }
+        else
+        {
+          v17 = v66;
+          InstanceAssaultMgr = (pvp_assault::CAssaultMgr *)pvp_assault::GetInstanceAssaultMgr(v55);
+          v69 = pvp_assault::CAssaultMgr::check_party_teleport_user(InstanceAssaultMgr, v17, a2, v68, 1);
+          if ( v69 <= 0 )
+          {
+            switch ( v66 )
+            {
+              case 0:
+                if ( CUser::get_state(a2) == 5
+                  || !(unsigned __int8)CNetwork<4096,450000>::get_nat_type((char *)a2 + 224) )
+                {
+                  goto LABEL_147;
+                }
+                charac_no = CUser::get_charac_no(a2, -1);
+                if ( (unsigned __int8)CUser::isBlackUser(v68, charac_no) )
+                  goto LABEL_61;
+                if ( (unsigned __int8)CUser::isCompetitionMercenary(a2) )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 234);
+                  v4 = 0;
+                }
+                else
+                {
+                  if ( (unsigned __int8)CUser::isCompetitionMercenary(v68) )
+                    goto LABEL_65;
+                  v21 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v56);
+                  if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v21, v68) )
+                    goto LABEL_145;
+                  if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                    goto LABEL_147;
+                  if ( CUser::get_state(v68) == 5
+                    || !(unsigned __int8)CNetwork<4096,450000>::get_nat_type((char *)v68 + 224) )
+                  {
+                    goto LABEL_23;
+                  }
+                  if ( (unsigned __int8)CPowerManager::IsPowerWarEventOn(GlobalData::s_power_manager) )
+                  {
+                    if ( (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) == 7
+                      && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) == 7 )
+                    {
+                      PowerSide = CUser::getPowerSide(a2);
+                      if ( PowerSide != (unsigned __int8)CUser::getPowerSide(v68) )
+                        goto LABEL_147;
+                    }
+                    else if ( (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) != 7
+                           && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) == 7
+                           || (unsigned __int8)CUserCharacInfo::getCurCharacVill(a2) == 7
+                           && (unsigned __int8)CUserCharacInfo::getCurCharacVill(v68) != 7 )
+                    {
+                      goto LABEL_147;
+                    }
+                  }
+                  Party = (CParty *)CUser::GetParty(a2);
+                  if ( Party
+                    && ((int)CParty::get_member_count(Party) > 3
+                     || (unsigned __int8)CParty::CanDoPartyActionAssalutState(Party) != 1) )
+                  {
+                    goto LABEL_147;
+                  }
+                  if ( (unsigned __int8)CUser::CheckInParty(a2) && (unsigned __int8)CUser::CheckInParty(v68) )
+                  {
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 18);
+                    v4 = 0;
+                  }
+                  else
+                  {
+                    if ( (unsigned __int8)CPowerManager::IsPowerWarEventOn(GlobalData::s_power_manager) == 1
+                      || ((CurSec = CSystemTime::getCurSec((CSystemTime *)GlobalData::s_systemTime_),
+                           !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(a2, 0, v60))
+                       || (v73 = (CParty *)CUser::GetParty(v68),
+                           CurCharacChaosKillTime = CUserCharacInfo::GetCurCharacChaosKillTime(v68),
+                           CurCharacChaosKillTime + 600 <= CurSec)
+                       && (!v73 || !(unsigned __int8)CParty::CheckMemberLastTryAssaultTime(v73) ? (v28 = 0) : (v28 = 1),
+                           !v28))
+                      && ((v29 = CUserCharacInfo::GetCurCharacChaosKillTime(a2), v29 + 600 <= CurSec)
+                       || !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(v68, 0, v61)
+                        ? (v30 = 0)
+                        : (v30 = 1),
+                          !v30
+                       && (!Party
+                        || !(unsigned __int8)CParty::CheckMemberLastTryAssaultTime(Party)
+                        || !(unsigned __int8)expert_job::CAlchemist::GetAssaultPrevent(v68, 0, v61)
+                         ? (v31 = 0)
+                         : (v31 = 1),
+                           !v31)) )
+                    {
+                      v62 = 0;
+                      PacketBuf::get_short(a3, &v62);
+                      InterfacePacketBuf::clear((InterfacePacketBuf *)v63);
+                      InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                      unique_id = CUser::get_unique_id(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, unique_id);
+                      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 0);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v67);
+                      CurCharacTotalMaxFatigue = (unsigned __int16)CUser::getCurCharacTotalMaxFatigue(a2);
+                      CurCharacTotalFatigue = CUser::getCurCharacTotalFatigue(a2);
+                      InterfacePacketBuf::put_short(
+                        (InterfacePacketBuf *)v63,
+                        CurCharacTotalMaxFatigue - CurCharacTotalFatigue);
+                      CurCharacStamina = CUserCharacInfo::getCurCharacStamina(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, CurCharacStamina);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v62);
+                      InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                      CUser::Send(v68, (PacketGuard *)v63);
+                      goto LABEL_183;
+                    }
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 250);
+                    v4 = 0;
+                  }
+                }
+                break;
+              case 1:
+                v74 = 1;
+                v36 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v36, a2, 1, 6)
+                  || (v37 = ARAD::Singleton<ServiceRestrictManager>::Get(),
+                      (unsigned __int8)ServiceRestrictManager::isRestricted(v37, v68, 1, 6)) )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 209);
+                  v4 = 0;
+                  break;
+                }
+                v75 = CSecu_ProtectionField::CheckOpposite(GlobalData::s_pSecuProtectionField, a2, 54, v68);
+                if ( v75 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v75);
+                  v4 = 0;
+                  break;
+                }
+                v39 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v57);
+                if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v39, v68) )
+                  goto LABEL_145;
+                if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                  goto LABEL_147;
+                v40 = CUser::get_charac_no(a2, -1);
+                if ( !(unsigned __int8)CUser::isBlackUser(v68, v40) )
+                {
+                  if ( (unsigned __int8)CUser::CheckInTrade(v68) != 1 )
+                  {
+                    state = CUser::get_state(a2);
+                    if ( state == CUser::get_state(v68) )
+                    {
+                      InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                      v42 = CUser::get_unique_id(a2);
+                      InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v42);
+                      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 1);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v67);
+                      Time = CUserCharacInfo::getCurCharacCreateTime(a2);
+                      InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, Time);
+                      InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                      CUser::Send(v68, (PacketGuard *)v63);
+                      CUser::SetReceivedRequestType(v68, v66);
+                      v4 = 0;
+                      break;
+                    }
+                    v74 = 19;
+                  }
+                  if ( v68 )
+                  {
+                    if ( (unsigned __int8)CUser::CheckInTrade(v68) )
+                      v74 = 18;
+                  }
+                  else
+                  {
+                    v74 = 3;
+                  }
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v74);
+                  goto LABEL_183;
+                }
+LABEL_61:
+                CUser::SendCmdPeerErrorPacket(a2, 10, v66, 77);
+                v4 = 0;
+                break;
+              case 2:
+                if ( !CUser::GetPVPRoom(a2) )
+                {
+                  v4 = LineFunc(29844, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  break;
+                }
+                v44 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v58);
+                if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(v44, v68) )
+                {
+LABEL_145:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 61);
+                  v4 = 0;
+                  break;
+                }
+                if ( (unsigned __int8)CUserCharacInfo::IsCurCharacGhost(v68) )
+                  goto LABEL_147;
+                if ( (unsigned __int8)CUser::isCompetitionMercenary(v68) )
+                {
+LABEL_65:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 190);
+                  v4 = 0;
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                v45 = CUser::get_unique_id(a2);
+                InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v45);
+                InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 2);
+                InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v65);
+                InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                CUser::Send(v68, (PacketGuard *)v63);
+                goto LABEL_183;
+              case 3:
+                WarRoom = (WarRoom *)CUser::GetWarRoom(a2);
+                if ( !WarRoom )
+                {
+                  v4 = LineFunc(29887, "virtual int DisPatcher_ReqPeer::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                if ( WarRoom::GetState(WarRoom) == 2 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                InterfacePacketBuf::put_header((InterfacePacketBuf *)v63, 0, 7);
+                v46 = CUser::get_unique_id(a2);
+                InterfacePacketBuf::put_short((InterfacePacketBuf *)v63, v46);
+                InterfacePacketBuf::put_byte((InterfacePacketBuf *)v63, 3);
+                InterfacePacketBuf::put_int((InterfacePacketBuf *)v63, v65);
+                InterfacePacketBuf::finalize((InterfacePacketBuf *)v63, 1);
+                CUser::Send(v68, (PacketGuard *)v63);
+                goto LABEL_183;
+              case 4:
+                v78 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 55);
+                if ( v78 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v78);
+                  v4 = 0;
+                  break;
+                }
+                if ( (int)CUser::get_state(v68) > 4 )
+                {
+                  v4 = 0;
+                  break;
+                }
+                acc_id = CUser::get_acc_id(a2);
+                if ( (unsigned __int8)WongWork::CGMAccounts::isGM(GlobalData::s_pGMAccounts_, acc_id) != 1 )
+                {
+                  v48 = CUser::get_acc_id(v68);
+                  if ( (unsigned __int8)WongWork::CGMAccounts::isGM(GlobalData::s_pGMAccounts_, v48) )
+                  {
+                    v4 = 0;
+                    break;
+                  }
+                }
+                v50 = (pvp_assault::CAssaultMgr *)pvp_assault::GetInstanceAssaultMgr(v59);
+                if ( (unsigned __int8)pvp_assault::CAssaultMgr::OnRequestAssault(v50, a2, v68, 0) == 1 )
+                  goto LABEL_183;
+                v4 = 30096;
+                break;
+              case 5:
+              case 7:
+                v51 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v51, a2, 1, 8) )
+                  goto LABEL_172;
+                v79 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 33);
+                if ( v79 )
+                {
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v79, (InterfacePacketBuf *)v63);
+                  v4 = 0;
+                  break;
+                }
+                if ( CUserCharacInfo::GetCurCharacExpertJobType(v68) != 1 )
+                  goto LABEL_176;
+                goto LABEL_182;
+              case 6:
+              case 8:
+                v52 = ARAD::Singleton<ServiceRestrictManager>::Get();
+                if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v52, a2, 1, 8) )
+                {
+LABEL_172:
+                  CUser::SendCmdPeerErrorPacket(a2, 10, v66, 209, (InterfacePacketBuf *)v63);
+                  v4 = 0;
+                }
+                else
+                {
+                  v80 = CSecu_ProtectionField::CheckOpposite(GlobalData::s_pSecuProtectionField, a2, 32, v68);
+                  if ( v80 )
+                  {
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, (unsigned __int8)v80, (InterfacePacketBuf *)v63);
+                    v4 = 0;
+                  }
+                  else if ( CUserCharacInfo::GetCurCharacExpertJobType(a2) == 1 )
+                  {
+LABEL_182:
+                    expert_job::CExpertJobMgr::OnRequestPeer(
+                      (int)GlobalData::s_ExpertJobMgr,
+                      a2,
+                      v68,
+                      v66,
+                      (InterfacePacketBuf *)v63);
+LABEL_183:
+                    CUser::SetReceivedRequestType(v68, v66);
+                    v4 = 0;
+                  }
+                  else
+                  {
+LABEL_176:
+                    CUser::SendCmdPeerErrorPacket(a2, 10, v66, 23, (InterfacePacketBuf *)v63);
+                    v4 = 0;
+                  }
+                }
+                break;
+              default:
+                goto LABEL_183;
+            }
+          }
+          else
+          {
+            v4 = 0;
+          }
+        }
+      }
+    }
+LABEL_184:
+    PacketGuard::~PacketGuard((PacketGuard *)v63);
+    return v4;
+  }
+  return 0;
+}
+
+// ===== 81F2D0C (_ZN19DisPatcher_SellItem12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl DisPatcher_SellItem::dispatch_sig(DisPatcher_SellItem *this, CUser *a2, PacketBuf *a3)
+{
+  int v4; // ebx
+  int v5; // eax
+  Inven_Item *InvenItemPtr; // ebx
+  int ItemPtr; // eax
+  WongWork::CHackAnalyzer *HackAnalyzer; // eax
+  private_store::CPrivateStoreMgr *InstancePrivateStoreMgr; // eax
+  WongWork::CHackAnalyzer *v10; // eax
+  CDataManager *v11; // eax
+  WongWork::CHackAnalyzer *v13; // eax
+  char *area; // ebx
+  char *CurCharacVill; // esi
+  GameWorld *v16; // eax
+  GameWorld *v17; // eax
+  char v18; // al
+  WongWork::CHackAnalyzer *v19; // eax
+  __int16 v20; // di
+  __int16 v21; // si
+  char v22; // bl
+  Store *v23; // eax
+  unsigned int CurTickCount; // eax
+  WongWork::CHackAnalyzer *v25; // eax
+  WongWork::CHackAnalyzer *v26; // eax
+  private_store *v28; // [esp+0h] [ebp-88h]
+  unsigned int v29; // [esp+24h] [ebp-64h] BYREF
+  char v30[14]; // [esp+28h] [ebp-60h] BYREF
+  char v31; // [esp+43h] [ebp-45h] BYREF
+  __int16 v32; // [esp+44h] [ebp-44h] BYREF
+  __int16 v33; // [esp+46h] [ebp-42h] BYREF
+  int v34; // [esp+48h] [ebp-40h]
+  int v35; // [esp+4Ch] [ebp-3Ch]
+  int v36; // [esp+50h] [ebp-38h]
+  int v37; // [esp+54h] [ebp-34h]
+  int v38; // [esp+58h] [ebp-30h]
+  int Party; // [esp+5Ch] [ebp-2Ch]
+  char v40[4]; // [esp+60h] [ebp-28h]
+  CMap *map; // [esp+64h] [ebp-24h]
+  Village *UserVillage; // [esp+68h] [ebp-20h]
+  Area *v43; // [esp+6Ch] [ebp-1Ch]
+
+  if ( CUser::get_state(a2) != 3
+    && CUser::get_state(a2) != 8
+    && CUser::get_state(a2) != 5
+    && CUser::get_state(a2) != 10
+    && CUser::get_state(a2) != 12 )
+  {
+    return 0;
+  }
+  if ( (unsigned __int8)PacketBuf::get_byte(a3, &v31) != 1 )
+    return LineFunc(32277, "virtual int DisPatcher_SellItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  if ( (unsigned __int8)PacketBuf::get_short(a3, &v32) != 1 )
+    return LineFunc(32278, "virtual int DisPatcher_SellItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  if ( (unsigned __int8)PacketBuf::get_short(a3, (unsigned __int16 *)&v33) != 1 )
+    return LineFunc(32279, "virtual int DisPatcher_SellItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  v5 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v5, a2, 1, 3) )
+  {
+    CUser::SendCmdErrorPacket(a2, 24, 209);
+    return 0;
+  }
+  else
+  {
+    InvenItemPtr = (Inven_Item *)CSecu_ProtectionField::GetInvenItemPtr(
+                                   GlobalData::s_pSecuProtectionField,
+                                   a2,
+                                   v31,
+                                   v32);
+    ItemPtr = CSecu_ProtectionField::GetItemPtr(GlobalData::s_pSecuProtectionField, a2, v31, v32);
+    v34 = CSecu_ProtectionField::CheckItemRarity(GlobalData::s_pSecuProtectionField, a2, 35, ItemPtr, InvenItemPtr);
+    if ( v34 )
+    {
+      CUser::SendCmdErrorPacket(a2, 24, (unsigned __int8)v34);
+      return 0;
+    }
+    else if ( (unsigned __int8)CUser::CheckItemLockSlotSpace(a2, v31, v32) )
+    {
+      CUser::SendCmdErrorPacket(a2, 24, 213);
+      return 0;
+    }
+    else
+    {
+      if ( CUser::get_state(a2) == 5 && CUser::getInDungeonItemSellCount(a2, v31, v32) == 7 )
+      {
+        HackAnalyzer = (WongWork::CHackAnalyzer *)CUser::getHackAnalyzer(a2);
+        WongWork::CHackAnalyzer::addServerHackCnt(HackAnalyzer, a2, 313, 1, 0, 0);
+      }
+      PacketGuard::PacketGuard((PacketGuard *)v30);
+      InstancePrivateStoreMgr = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v28);
+      if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(InstancePrivateStoreMgr, a2) )
+      {
+        InterfacePacketBuf::clear((InterfacePacketBuf *)v30);
+        InterfacePacketBuf::put_header((InterfacePacketBuf *)v30, 1, 24);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v30, 0);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v30, 60);
+        InterfacePacketBuf::finalize((InterfacePacketBuf *)v30, 1);
+        CUser::Send(a2, (PacketGuard *)v30);
+        v4 = 0;
+      }
+      else
+      {
+        v29 = 0;
+        if ( (unsigned __int8)PacketBuf::get_int(a3, &v29) != 1 )
+        {
+          v4 = LineFunc(32369, "virtual int DisPatcher_SellItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+        }
+        else
+        {
+          v35 = 0;
+          if ( v32 + v31 + (unsigned __int16)v33 != v29 )
+          {
+            v10 = (WongWork::CHackAnalyzer *)CUser::getHackAnalyzer(a2);
+            WongWork::CHackAnalyzer::addServerHackCnt(v10, a2, 821, 1, 0, 0);
+          }
+          v36 = 6;
+          if ( v31 == 1 || v31 == 3 && v32 <= 9 )
+          {
+            CUser::SendCmdErrorPacket(a2, 24, 23);
+            v4 = 0;
+          }
+          else
+          {
+            if ( CUser::get_state(a2) == 5 )
+            {
+              Party = CUser::GetParty(a2);
+              if ( Party )
+              {
+                *(_DWORD *)v40 = CBattle_Field::get_cur_map((CBattle_Field *)(Party + 2852));
+                v11 = (CDataManager *)G_CDataManager();
+                map = (CMap *)CDataManager::find_map(v11, v40[0]);
+                if ( map
+                  && !CMap::getAssignedNPCCount(map)
+                  && (unsigned __int8)CBattle_Field::IsAssignNPCByPotion((CBattle_Field *)(Party + 2852)) != 1 )
+                {
+                  v13 = (WongWork::CHackAnalyzer *)CUser::getHackAnalyzer(a2);
+                  WongWork::CHackAnalyzer::addServerHackCnt(v13, a2, 803, 1, 0, 0);
+                }
+              }
+            }
+            if ( CUser::get_state(a2) == 3 )
+            {
+              area = (char *)CUser::get_area(a2, 0);
+              CurCharacVill = (char *)(char)CUserCharacInfo::getCurCharacVill(a2);
+              v16 = (GameWorld *)G_GameWorld();
+              if ( (unsigned __int8)GameWorld::check_valid_area(v16, CurCharacVill, area) )
+              {
+                v17 = (GameWorld *)G_GameWorld();
+                UserVillage = (Village *)GameWorld::getUserVillage(v17, a2);
+                if ( UserVillage )
+                {
+                  v18 = CUser::get_area(a2, 0);
+                  v43 = (Area *)Village::getArea(UserVillage, v18);
+                  if ( v43 )
+                  {
+                    if ( (unsigned __int8)Area::IsExistItemShopNPC(v43) != 1 )
+                    {
+                      v19 = (WongWork::CHackAnalyzer *)CUser::getHackAnalyzer(a2);
+                      WongWork::CHackAnalyzer::addServerHackCnt(v19, a2, 804, 1, 0, 0);
+                    }
+                  }
+                }
+              }
+            }
+            v20 = v33;
+            v21 = v32;
+            v22 = v31;
+            v23 = (Store *)G_Store();
+            v37 = Store::user_sell_item(v23, a2, v22, v21, v20);
+            if ( v37 )
+            {
+              InterfacePacketBuf::put_header((InterfacePacketBuf *)v30, 1, 24);
+              InterfacePacketBuf::put_byte((InterfacePacketBuf *)v30, 0);
+              InterfacePacketBuf::put_byte((InterfacePacketBuf *)v30, v37);
+              InterfacePacketBuf::finalize((InterfacePacketBuf *)v30, 1);
+              CUser::Send(a2, (PacketGuard *)v30);
+              if ( v37 == 22 )
+                CUser::SendMoneyFullReason(a2, 3, 0, 0);
+            }
+            v38 = 0;
+            CurTickCount = CSystemTime::getCurTickCount((CSystemTime *)GlobalData::s_systemTime_);
+            v38 = CUser::SellItemTimeChecker(a2, CurTickCount, 0x3E8u);
+            if ( v38 == 2 )
+            {
+              v25 = (WongWork::CHackAnalyzer *)CUser::getHackAnalyzer(a2);
+              WongWork::CHackAnalyzer::addServerHackCnt(v25, a2, 312, 1, 0, 0);
+            }
+            else if ( v38 == 4 )
+            {
+              v26 = (WongWork::CHackAnalyzer *)CUser::getHackAnalyzer(a2);
+              WongWork::CHackAnalyzer::addServerHackCnt(v26, a2, 801, 1, 0, 0);
+            }
+            v4 = 0;
+          }
+        }
+      }
+      PacketGuard::~PacketGuard((PacketGuard *)v30);
+    }
+  }
+  return v4;
+}
+
+// ===== 81F63C0 (_ZN19DisPatcher_UseStack12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl DisPatcher_UseStack::dispatch_sig(DisPatcher_UseStack *this, CUser *a2, PacketBuf *a3)
+{
+  int v3; // ebx
+  int v5; // eax
+  WongWork::CHackAnalyzer *HackAnalyzer; // eax
+  int v7; // eax
+  int v9; // esi
+  int InvenTypeFromItemSpace; // ebx
+  CInventory *CurCharacInvenR; // eax
+  int v12; // ebx
+  CDataManager *v13; // eax
+  int v14; // eax
+  unsigned int v15; // eax
+  unsigned int v16; // eax
+  unsigned __int16 CurCharacFatigue; // ax
+  WongWork::CDeathTower::CDungeonMgr *CDungeonMGr; // eax
+  CDungeon *Dungeon; // eax
+  int v21; // esi
+  int v22; // ebx
+  CInventory *v23; // eax
+  char CurCharacNo; // bl
+  int v25; // esi
+  int v26; // ebx
+  CInventory *v27; // eax
+  int v28; // ebx
+  CDataManager *v29; // eax
+  int v31; // esi
+  int v32; // ebx
+  CInventory *v33; // eax
+  int CurSec; // eax
+  char v37[12]; // [esp+20h] [ebp-108h] BYREF
+  char v38[12]; // [esp+2Ch] [ebp-FCh] BYREF
+  char v39[12]; // [esp+38h] [ebp-F0h] BYREF
+  char v40[12]; // [esp+44h] [ebp-E4h] BYREF
+  char v41[12]; // [esp+50h] [ebp-D8h] BYREF
+  char v42[12]; // [esp+5Ch] [ebp-CCh] BYREF
+  char v43[12]; // [esp+68h] [ebp-C0h] BYREF
+  char v44[12]; // [esp+74h] [ebp-B4h] BYREF
+  char v45[12]; // [esp+80h] [ebp-A8h] BYREF
+  char v46[12]; // [esp+8Ch] [ebp-9Ch] BYREF
+  char v47[12]; // [esp+98h] [ebp-90h] BYREF
+  int v48; // [esp+A4h] [ebp-84h] BYREF
+  int v49; // [esp+A8h] [ebp-80h] BYREF
+  int v50; // [esp+ACh] [ebp-7Ch] BYREF
+  unsigned __int8 v51; // [esp+B0h] [ebp-78h] BYREF
+  unsigned __int16 v52; // [esp+BEh] [ebp-6Ah] BYREF
+  int v53[4]; // [esp+C0h] [ebp-68h] BYREF
+  CItem *ItemPtr; // [esp+D0h] [ebp-58h]
+  int v55; // [esp+D4h] [ebp-54h]
+  int v56; // [esp+D8h] [ebp-50h]
+  int Party; // [esp+DCh] [ebp-4Ch]
+  int v58; // [esp+E0h] [ebp-48h]
+  int InvenRef; // [esp+E4h] [ebp-44h]
+  int item; // [esp+E8h] [ebp-40h]
+  unsigned __int16 v61; // [esp+ECh] [ebp-3Ch]
+  char v62; // [esp+EFh] [ebp-39h]
+  int DeathTower; // [esp+F0h] [ebp-38h]
+  WongWork::CDeathTower *v64; // [esp+F4h] [ebp-34h]
+  int v65; // [esp+F8h] [ebp-30h]
+  unsigned int v66; // [esp+FCh] [ebp-2Ch]
+  CDungeon *v67; // [esp+100h] [ebp-28h]
+  int v68; // [esp+104h] [ebp-24h]
+  CItem *v69; // [esp+108h] [ebp-20h]
+  CStackableItem *v70; // [esp+10Ch] [ebp-1Ch]
+  int v71; // [esp+110h] [ebp-18h]
+  int CurCharacChaosKillTime; // [esp+114h] [ebp-14h]
+  CParty *v73; // [esp+118h] [ebp-10h]
+  char v74; // [esp+11Fh] [ebp-9h]
+
+  if ( (unsigned __int8)PacketBuf::get_short(a3, (__int16 *)&v52) != 1 )
+    return LineFunc(33557, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  if ( (unsigned __int8)PacketBuf::get_byte(a3, &v51) != 1 )
+    return LineFunc(33560, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  v50 = 0;
+  v49 = 0;
+  if ( (unsigned __int8)PacketBuf::get_int(a3, &v50) != 1 )
+    return LineFunc(33565, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  if ( (unsigned __int8)PacketBuf::get_int(a3, &v49) != 1 )
+    return LineFunc(33566, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  if ( CUser::get_state(a2) != 5
+    && CUser::get_state(a2) != 7
+    && CUser::get_state(a2) != 8
+    && CUser::get_state(a2) != 3
+    && CUser::get_state(a2) != 6
+    && CUser::get_state(a2) != 10
+    && CUser::get_state(a2) != 12 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v47);
+    InterfacePacketBuf::put_header((InterfacePacketBuf *)v47, 1, 47);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v47, 0);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v47, 19);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v47, v51);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v47, v50);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v47, v49);
+    InterfacePacketBuf::finalize((InterfacePacketBuf *)v47, 1);
+    CUser::Send(a2, (PacketGuard *)v47);
+    v3 = 0;
+    PacketGuard::~PacketGuard((PacketGuard *)v47);
+    return v3;
+  }
+  v48 = 0;
+  if ( (unsigned __int8)PacketBuf::get_int(a3, &v48) != 1 )
+    return LineFunc(33592, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  v5 = CUser::getCurCharacInvenCheckSum(a2);
+  if ( v5 != v48 )
+  {
+    HackAnalyzer = (WongWork::CHackAnalyzer *)CUser::getHackAnalyzer(a2);
+    WongWork::CHackAnalyzer::addServerHackCnt(HackAnalyzer, a2, 603, 1, 0, 0);
+  }
+  v7 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v7, a2, 1, 12) )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v46);
+    InterfacePacketBuf::put_header((InterfacePacketBuf *)v46, 1, 47);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v46, 0);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v46, 209);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v46, v51);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v46, v50);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v46, v49);
+    InterfacePacketBuf::finalize((InterfacePacketBuf *)v46, 1);
+    CUser::Send(a2, (PacketGuard *)v46);
+    v3 = 0;
+    PacketGuard::~PacketGuard((PacketGuard *)v46);
+    return v3;
+  }
+  ItemPtr = (CItem *)CSecu_ProtectionField::GetItemPtr(GlobalData::s_pSecuProtectionField, a2, v51, v52);
+  if ( !ItemPtr )
+    return LineFunc(33620, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  v55 = CSecu_ProtectionField::CheckItem(GlobalData::s_pSecuProtectionField, a2, 42, ItemPtr);
+  if ( v55 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v45);
+    InterfacePacketBuf::put_header((InterfacePacketBuf *)v45, 1, 47);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v45, 0);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v45, v55);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v45, v51);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v45, v50);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v45, v49);
+    InterfacePacketBuf::finalize((InterfacePacketBuf *)v45, 1);
+    CUser::Send(a2, (PacketGuard *)v45);
+    v3 = 0;
+    PacketGuard::~PacketGuard((PacketGuard *)v45);
+    return v3;
+  }
+  if ( (unsigned __int8)CItem::is_stackable(ItemPtr)
+    && (unsigned __int8)CStackableItem::verifyUsablePlace(ItemPtr, a2) != 1 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v44);
+    InterfacePacketBuf::put_header((InterfacePacketBuf *)v44, 1, 47);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v44, 0);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v44, 19);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v44, v51);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v44, v50);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v44, v49);
+    InterfacePacketBuf::finalize((InterfacePacketBuf *)v44, 1);
+    CUser::Send(a2, (PacketGuard *)v44);
+    v3 = 0;
+    PacketGuard::~PacketGuard((PacketGuard *)v44);
+    return v3;
+  }
+  v56 = 0;
+  if ( !CUserCharacInfo::GetAssaultPlace(a2) && (CUser::get_state(a2) == 3 || CUser::get_state(a2) == 6) )
+  {
+    v9 = (__int16)v52;
+    InvenTypeFromItemSpace = GetInvenTypeFromItemSpace(v51);
+    CurCharacInvenR = (CInventory *)CUserCharacInfo::getCurCharacInvenR(a2);
+    InvenRef = CInventory::GetInvenRef(CurCharacInvenR, InvenTypeFromItemSpace, v9);
+    if ( !InvenRef )
+      return LineFunc(33719, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    v12 = *(_DWORD *)(InvenRef + 2);
+    v13 = (CDataManager *)G_CDataManager();
+    item = CDataManager::find_item(v13, v12);
+    if ( !item )
+      return 0;
+    v14 = (*(int (__cdecl **)(int))(*(_DWORD *)item + 12))(item);
+    if ( v14 != 22 )
+    {
+      if ( v14 > 22 )
+      {
+        if ( v14 == 24 || v14 == 35 )
+          goto LABEL_58;
+      }
+      else if ( v14 == 3 )
+      {
+        goto LABEL_58;
+      }
+      v15 = *(_DWORD *)(InvenRef + 2);
+      if ( v15 != 51 )
+      {
+        if ( v15 > 0x33 )
+        {
+          if ( v15 < 0x1E6D || v15 > 0x1E73 && v15 != 2660234 )
+            goto LABEL_57;
+        }
+        else if ( v15 != 10 && v15 != 24 )
+        {
+LABEL_57:
+          PacketGuard::PacketGuard((PacketGuard *)v43);
+          InterfacePacketBuf::put_header((InterfacePacketBuf *)v43, 1, 47);
+          InterfacePacketBuf::put_byte((InterfacePacketBuf *)v43, 0);
+          InterfacePacketBuf::put_byte((InterfacePacketBuf *)v43, 19);
+          InterfacePacketBuf::put_byte((InterfacePacketBuf *)v43, v51);
+          InterfacePacketBuf::put_int((InterfacePacketBuf *)v43, v50);
+          InterfacePacketBuf::put_int((InterfacePacketBuf *)v43, v49);
+          InterfacePacketBuf::finalize((InterfacePacketBuf *)v43, 1);
+          CUser::Send(a2, (PacketGuard *)v43);
+          v3 = 0;
+          PacketGuard::~PacketGuard((PacketGuard *)v43);
+          return v3;
+        }
+      }
+    }
+LABEL_58:
+    v61 = 0;
+    v62 = 0;
+    v16 = *(_DWORD *)(InvenRef + 2);
+    if ( v16 != 8079 )
+    {
+      if ( v16 <= 0x1F8F )
+      {
+        if ( v16 == 7518 )
+        {
+          v62 = 1;
+          v61 = 10;
+        }
+        else if ( v16 > 0x1D5E )
+        {
+          if ( v16 - 7644 <= 1 )
+          {
+            v62 = 1;
+            v61 = 6;
+          }
+        }
+        else if ( v16 == 7456 )
+        {
+          v62 = 1;
+          v61 = 40;
+        }
+        goto LABEL_77;
+      }
+      if ( v16 != 2600026 )
+      {
+        if ( v16 <= 0x27AC5A )
+        {
+          if ( v16 == 8221 )
+          {
+            v61 = 20;
+            v62 = 1;
+          }
+LABEL_77:
+          if ( v62 )
+          {
+            if ( CUser::get_state(a2) != 3 )
+            {
+              PacketGuard::PacketGuard((PacketGuard *)v42);
+              InterfacePacketBuf::put_header((InterfacePacketBuf *)v42, 1, 47);
+              InterfacePacketBuf::put_byte((InterfacePacketBuf *)v42, 0);
+              InterfacePacketBuf::put_byte((InterfacePacketBuf *)v42, 19);
+              InterfacePacketBuf::put_byte((InterfacePacketBuf *)v42, v51);
+              InterfacePacketBuf::put_int((InterfacePacketBuf *)v42, v50);
+              InterfacePacketBuf::put_int((InterfacePacketBuf *)v42, v49);
+              InterfacePacketBuf::finalize((InterfacePacketBuf *)v42, 1);
+              CUser::Send(a2, (PacketGuard *)v42);
+              v3 = 0;
+              PacketGuard::~PacketGuard((PacketGuard *)v42);
+              return v3;
+            }
+            CurCharacFatigue = CUserCharacInfo::getCurCharacFatigue(a2);
+            if ( CurCharacFatigue < v61 )
+            {
+              PacketGuard::PacketGuard((PacketGuard *)v41);
+              InterfacePacketBuf::put_header((InterfacePacketBuf *)v41, 1, 47);
+              InterfacePacketBuf::put_byte((InterfacePacketBuf *)v41, 0);
+              InterfacePacketBuf::put_byte((InterfacePacketBuf *)v41, 95);
+              InterfacePacketBuf::put_byte((InterfacePacketBuf *)v41, v51);
+              InterfacePacketBuf::put_int((InterfacePacketBuf *)v41, v50);
+              InterfacePacketBuf::put_int((InterfacePacketBuf *)v41, v49);
+              InterfacePacketBuf::finalize((InterfacePacketBuf *)v41, 1);
+              CUser::Send(a2, (PacketGuard *)v41);
+              v3 = 0;
+              PacketGuard::~PacketGuard((PacketGuard *)v41);
+              return v3;
+            }
+          }
+          goto LABEL_82;
+        }
+        if ( v16 != 2600413 && v16 != 690000094 )
+          goto LABEL_77;
+      }
+    }
+    v61 = 30;
+    v62 = 1;
+    goto LABEL_77;
+  }
+LABEL_82:
+  if ( CUser::get_state(a2) == 10 )
+  {
+    DeathTower = CUser::getDeathTower(a2);
+    if ( !DeathTower )
+      return LineFunc(33878, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    if ( (unsigned __int8)WongWork::CDeathTower::handleUseStackable(DeathTower, a2, v51, v52) != 1 )
+      return LineFunc(33880, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  }
+  Party = CUser::GetParty(a2);
+  if ( !Party )
+    goto LABEL_129;
+  v64 = 0;
+  if ( CUser::get_state(a2) == 10 )
+    v64 = (WongWork::CDeathTower *)CUser::getDeathTower(a2);
+  if ( v64 )
+  {
+    CDungeonMGr = (WongWork::CDeathTower::CDungeonMgr *)WongWork::CDeathTower::getCDungeonMGr(v64);
+    Dungeon = (CDungeon *)WongWork::CDeathTower::CDungeonMgr::getDungeon(CDungeonMGr);
+    if ( (unsigned __int8)CDungeon::limitOfStackableItemInTower(Dungeon) != 1 && *(_DWORD *)(Party + 3288) == 1 )
+    {
+      PacketGuard::PacketGuard((PacketGuard *)v40);
+      InterfacePacketBuf::put_header((InterfacePacketBuf *)v40, 1, 47);
+      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v40, 0);
+      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v40, 0);
+      InterfacePacketBuf::put_byte((InterfacePacketBuf *)v40, v51);
+      InterfacePacketBuf::put_int((InterfacePacketBuf *)v40, v50);
+      InterfacePacketBuf::put_int((InterfacePacketBuf *)v40, v49);
+      InterfacePacketBuf::finalize((InterfacePacketBuf *)v40, 1);
+      CUser::Send(a2, (PacketGuard *)v40);
+      v3 = 0;
+      PacketGuard::~PacketGuard((PacketGuard *)v40);
+      return v3;
+    }
+    goto LABEL_129;
+  }
+  if ( *(_DWORD *)(Party + 3288) == 1 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v39);
+    InterfacePacketBuf::put_header((InterfacePacketBuf *)v39, 1, 47);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v39, 0);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v39, 0);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v39, v51);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v39, v50);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v39, v49);
+    InterfacePacketBuf::finalize((InterfacePacketBuf *)v39, 1);
+    CUser::Send(a2, (PacketGuard *)v39);
+    v3 = 0;
+    PacketGuard::~PacketGuard((PacketGuard *)v39);
+    return v3;
+  }
+  if ( *(_DWORD *)(Party + 3244)
+    && (unsigned __int8)CDungeon::isTowerOfDespairDungeon(*(CDungeon **)(Party + 3244))
+    && (unsigned __int8)CDungeon::limitOfStackableItemInTower(*(CDungeon **)(Party + 3244)) )
+  {
+    v21 = (__int16)v52;
+    v22 = GetInvenTypeFromItemSpace(v51);
+    v23 = (CInventory *)CUserCharacInfo::getCurCharacInvenR(a2);
+    v65 = CInventory::GetInvenRef(v23, v22, v21);
+    if ( !v65 )
+      return 0;
+    v66 = *(_DWORD *)(v65 + 2);
+    if ( v66 != 24 )
+    {
+      if ( v66 > 0x18 )
+      {
+        if ( v66 != 51 && v66 != 2660234 )
+          goto LABEL_110;
+      }
+      else if ( v66 != 10 )
+      {
+LABEL_110:
+        CBattle_Field::get_dungeon_index((CBattle_Field *)(Party + 2852));
+        CurCharacNo = CUserCharacInfo::getCurCharacNo(a2);
+        cMyTrace::cMyTrace(
+          (cMyTrace *)v53,
+          "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)",
+          33954,
+          5);
+        cMyTrace::operator()((int)v53, "TOD : charac_no(%u),dungeonIndex(%d),item_id(%lu)", CurCharacNo);
+        return 0;
+      }
+    }
+  }
+  if ( *(_DWORD *)(Party + 3244) )
+  {
+    v67 = *(CDungeon **)(Party + 3244);
+    if ( (unsigned __int8)CDungeon::isTournamentDungeon(v67) )
+    {
+      v25 = (__int16)v52;
+      v26 = GetInvenTypeFromItemSpace(v51);
+      v27 = (CInventory *)CUserCharacInfo::getCurCharacInvenR(a2);
+      v68 = CInventory::GetInvenRef(v27, v26, v25);
+      if ( !v68 )
+        return LineFunc(33969, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+      v28 = *(_DWORD *)(v68 + 2);
+      v29 = (CDataManager *)G_CDataManager();
+      v69 = (CItem *)CDataManager::find_item(v29, v28);
+      if ( !v69 )
+        return 0;
+      if ( (unsigned __int8)CItem::is_stackable(v69) != 1 )
+        return 0;
+      v70 = v69;
+      v71 = 0;
+      if ( CStackableItem::get_sub_type(v69) == 2 )
+      {
+        v71 = 255;
+      }
+      else if ( *((_BYTE *)v70 + 868) && (*(int (__cdecl **)(CStackableItem *))(*(_DWORD *)v70 + 12))(v70) != 18 )
+      {
+        v71 = 255;
+      }
+      if ( v71 )
+      {
+        PacketGuard::PacketGuard((PacketGuard *)v38);
+        InterfacePacketBuf::put_header((InterfacePacketBuf *)v38, 1, 47);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v38, 0);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v38, v71);
+        InterfacePacketBuf::put_byte((InterfacePacketBuf *)v38, v51);
+        InterfacePacketBuf::put_int((InterfacePacketBuf *)v38, v50);
+        InterfacePacketBuf::put_int((InterfacePacketBuf *)v38, v49);
+        InterfacePacketBuf::finalize((InterfacePacketBuf *)v38, 1);
+        CUser::Send(a2, (PacketGuard *)v38);
+        v3 = 0;
+        PacketGuard::~PacketGuard((PacketGuard *)v38);
+        return v3;
+      }
+    }
+  }
+LABEL_129:
+  v31 = (__int16)v52;
+  v32 = GetInvenTypeFromItemSpace(v51);
+  v33 = (CInventory *)CUserCharacInfo::getCurCharacInvenR(a2);
+  v58 = CInventory::GetInvenRef(v33, v32, v31);
+  if ( !v58 )
+    return 0;
+  if ( *(_DWORD *)(v58 + 2) != 2600010 )
+    goto LABEL_148;
+  CurCharacChaosKillTime = CUserCharacInfo::GetCurCharacChaosKillTime(a2);
+  v73 = (CParty *)CUser::GetParty(a2);
+  v74 = 0;
+  CurSec = CSystemTime::getCurSec((CSystemTime *)GlobalData::s_systemTime_);
+  if ( CurSec >= CurCharacChaosKillTime + 600 )
+  {
+    if ( v73 && (unsigned __int8)CParty::CheckMemberLastTryAssaultTime(v73) )
+      v74 = -3;
+  }
+  else
+  {
+    v74 = -6;
+  }
+  if ( v74 )
+  {
+    PacketGuard::PacketGuard((PacketGuard *)v37);
+    InterfacePacketBuf::put_header((InterfacePacketBuf *)v37, 1, 47);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v37, 0);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v37, v74);
+    InterfacePacketBuf::put_byte((InterfacePacketBuf *)v37, v51);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v37, v50);
+    InterfacePacketBuf::put_int((InterfacePacketBuf *)v37, v49);
+    InterfacePacketBuf::finalize((InterfacePacketBuf *)v37, 1);
+    CUser::Send(a2, (PacketGuard *)v37);
+    v3 = 0;
+    PacketGuard::~PacketGuard((PacketGuard *)v37);
+  }
+  else
+  {
+LABEL_148:
+    if ( (unsigned __int8)CUser::use_stackable(a2, v52, (CStackableItem *)v51, v50, v49) != 1 )
+      return LineFunc(34056, "virtual int DisPatcher_UseStack::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    else
+      return 0;
+  }
+  return v3;
+}
+
+// ===== 81F8A7C (_Z30_check_disjointable_user_stateP5CUser14ENUM_CMDPACKETcs) =====
+int __cdecl _check_disjointable_user_state(CUser *a1, int a2, char a3, __int16 a4)
+{
+  int v5; // eax
+  Inven_Item *InvenItemPtr; // ebx
+  int ItemPtr; // eax
+  int v8; // [esp+3Ch] [ebp-Ch]
+
+  if ( (int)CUser::get_state(a1) <= 2 )
+    return 0;
+  v5 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v5, a1, 1, 10) )
+  {
+    CUser::SendCmdErrorPacket(a1, a2, 209);
+    return 0;
+  }
+  else
+  {
+    InvenItemPtr = (Inven_Item *)CSecu_ProtectionField::GetInvenItemPtr(GlobalData::s_pSecuProtectionField, a1, a3, a4);
+    ItemPtr = CSecu_ProtectionField::GetItemPtr(GlobalData::s_pSecuProtectionField, a1, a3, a4);
+    v8 = CSecu_ProtectionField::CheckItemRarity(GlobalData::s_pSecuProtectionField, a1, 40, ItemPtr, InvenItemPtr);
+    if ( v8 )
+    {
+      CUser::SendCmdErrorPacket(a1, a2, (unsigned __int8)v8);
+      return 0;
+    }
+    else
+    {
+      return 1;
+    }
+  }
+}
+
+// ===== 81FD396 (_ZN26Dispatcher_BuyCeraShopItem12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl Dispatcher_BuyCeraShopItem::dispatch_sig(Dispatcher_BuyCeraShopItem *this, CUser *a2, PacketBuf *a3)
+{
+  unsigned int acc_id; // eax
+  char v4; // bl
+  int v6; // ebx
+  private_store::CPrivateStoreMgr *InstancePrivateStoreMgr; // eax
+  GameWorld *v9; // eax
+  GameWorld *v10; // eax
+  unsigned int v11; // eax
+  char v12; // bl
+  int v14; // ebx
+  CDataManager *v15; // eax
+  int ItemIdx; // ebx
+  CDataManager *v17; // eax
+  int AvatarOptionSize; // eax
+  private_store::CPrivateStoreMgr *v21; // eax
+  unsigned int v22; // eax
+  char v23; // bl
+  int v24; // eax
+  unsigned int v25; // ebx
+  unsigned __int16 CashShopErr; // ax
+  int v27; // ebx
+  const char *charac_no; // eax
+  int v29; // eax
+  private_store *v31; // [esp+0h] [ebp-7FC8h]
+  private_store *v32; // [esp+0h] [ebp-7FC8h]
+  int v33[4066]; // [esp+38h] [ebp-7F90h] BYREF
+  char src[13]; // [esp+3FC0h] [ebp-4008h] BYREF
+  unsigned __int16 v35; // [esp+3FCDh] [ebp-3FFBh] BYREF
+  char v36; // [esp+3FCFh] [ebp-3FF9h] BYREF
+  char v37[38]; // [esp+3FD0h] [ebp-3FF8h] BYREF
+  unsigned __int8 v38[3]; // [esp+3FF6h] [ebp-3FD2h] BYREF
+  unsigned int v39[4050]; // [esp+3FF9h] [ebp-3FCFh] BYREF
+  int v40; // [esp+7F44h] [ebp-84h] BYREF
+  char v41[12]; // [esp+7F48h] [ebp-80h] BYREF
+  int v42[4]; // [esp+7F54h] [ebp-74h] BYREF
+  int v43[4]; // [esp+7F64h] [ebp-64h] BYREF
+  int v44[4]; // [esp+7F74h] [ebp-54h] BYREF
+  int v45; // [esp+7F84h] [ebp-44h]
+  int i; // [esp+7F88h] [ebp-40h]
+  private_store::CPrivateStore *StoreSeller; // [esp+7F8Ch] [ebp-3Ch]
+  CCeraShopGoods *Goods; // [esp+7F90h] [ebp-38h]
+  CEquipItem *item; // [esp+7F94h] [ebp-34h]
+  int rand_int; // [esp+7F98h] [ebp-30h]
+  int j; // [esp+7F9Ch] [ebp-2Ch]
+  int k; // [esp+7FA0h] [ebp-28h]
+  int m; // [esp+7FA4h] [ebp-24h]
+  int n; // [esp+7FA8h] [ebp-20h]
+  int v55; // [esp+7FACh] [ebp-1Ch]
+
+  acc_id = CUser::get_acc_id(a2);
+  v4 = NumberToString(acc_id, 0);
+  cMyTrace::cMyTrace(
+    (cMyTrace *)v42,
+    "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+    36710,
+    0);
+  cMyTrace::operator()((int)v42, "Dispatcher_BuyCeraShopItem(m_id(%s))", v4);
+  if ( a2 && !(unsigned __int8)CUser::CheckInTrade(a2) )
+  {
+    if ( (int)CUser::get_state(a2) <= 2 || !CUserCharacInfo::getCurCharacR(a2) )
+      return LineFunc(36731, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    PacketGuard::PacketGuard((PacketGuard *)v41);
+    InstancePrivateStoreMgr = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v31);
+    if ( (unsigned __int8)private_store::CPrivateStoreMgr::IsBusyPrivateStore(InstancePrivateStoreMgr, a2) )
+    {
+      WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, 0x3Cu, 0, 0, 1, 1, 0);
+      v6 = 0;
+    }
+    else if ( (unsigned __int8)CUser::CheckInTrade(a2) )
+    {
+      WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, 0x13u, 0, 0, 1, 1, 0);
+      v6 = 0;
+    }
+    else if ( (unsigned __int8)PacketBuf::get_short(a3, (__int16 *)&v35) != 1 )
+    {
+      v6 = LineFunc(36777, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else if ( v35 < 2u )
+    {
+      if ( (unsigned __int8)PacketBuf::get_byte(a3, (unsigned __int8 *)&v36) == 1 )
+      {
+        if ( v36 == 1 )
+        {
+          v40 = 0;
+          if ( (unsigned __int8)PacketBuf::get_int(a3, &v40) != 1 )
+          {
+            v6 = LineFunc(36795, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+            goto LABEL_115;
+          }
+          if ( (unsigned __int8)PacketBuf::get_str(a3, v37, 30, v40) != 1 )
+          {
+            v6 = LineFunc(36796, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+            goto LABEL_115;
+          }
+        }
+        if ( v36 == 1 && v35 == 1 )
+        {
+          v6 = LineFunc(36802, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+        }
+        else
+        {
+          v9 = (GameWorld *)G_GameWorld();
+          if ( (unsigned __int8)GameWorld::IsIntegratedPvPBaseChannel(v9)
+            && ((v10 = (GameWorld *)G_GameWorld(), GameWorld::GetChannelType(v10) != 15) || v36 == 1) )
+          {
+            WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, 0x3Cu, 0, 0, 1, 1, 0);
+            v6 = 0;
+          }
+          else
+          {
+            CUserCharacInfo::getCurCharacName(a2);
+            CUserCharacInfo::getCurCharacNo(a2);
+            v11 = CUser::get_acc_id(a2);
+            v12 = NumberToString(v11, 0);
+            cMyTrace::cMyTrace(
+              (cMyTrace *)v43,
+              "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+              36868,
+              0);
+            cMyTrace::operator()(
+              (int)v43,
+              "NEXON BILLING : BuyCeraShopItem m_id(%s), charac_no(%d), charac_name(%s), buytype(%d)",
+              v12);
+            if ( (unsigned __int8)PacketBuf::get_byte(a3, v38) != 1 || !v38[0] || v38[0] > 0x23u )
+            {
+              WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, 1u, 0, v39[0], 1, 1, 0);
+              v6 = 0;
+            }
+            else
+            {
+              for ( i = 0; v38[0] > i; ++i )
+              {
+                if ( (unsigned __int8)PacketBuf::get_byte(a3, (unsigned __int8 *)&src[463 * i + 55]) != 1 )
+                {
+                  v6 = LineFunc(36887, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  goto LABEL_115;
+                }
+                if ( (unsigned __int8)PacketBuf::get_byte(a3, &src[463 * i + 56]) != 1 )
+                {
+                  v6 = LineFunc(36888, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  goto LABEL_115;
+                }
+                if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)&src[463 * i + 57]) != 1 )
+                {
+                  v6 = LineFunc(36889, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+                  goto LABEL_115;
+                }
+                if ( (unsigned __int8)PacketBuf::get_byte(a3, (unsigned __int8 *)&src[463 * i + 61]) != 1
+                  || *((_BYTE *)&v39[1] + 463 * i) > 0x23u )
+                {
+                  goto LABEL_76;
+                }
+                if ( v38[463 * i + 1] == 0xFF && !*((_BYTE *)&v39[1] + 463 * i) )
+                {
+                  v14 = *(unsigned int *)((char *)v39 + 463 * i);
+                  v15 = (CDataManager *)G_CDataManager();
+                  Goods = (CCeraShopGoods *)CDataManager::FindGoods(v15, v14);
+                  if ( !Goods )
+                  {
+                    v6 = LineFunc(
+                           36914,
+                           "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                           0,
+                           0);
+                    goto LABEL_115;
+                  }
+                  ItemIdx = CCeraShopGoods::GetItemIdx(Goods);
+                  v17 = (CDataManager *)G_CDataManager();
+                  item = (CEquipItem *)CDataManager::find_item(v17, ItemIdx);
+                  if ( item && (*(unsigned __int8 (__cdecl **)(CEquipItem *))(*(_DWORD *)item + 16))(item) )
+                  {
+                    AvatarOptionSize = CEquipItem::getAvatarOptionSize(item);
+                    rand_int = get_rand_int(AvatarOptionSize);
+                    if ( rand_int <= 99 )
+                      v38[463 * i + 1] = rand_int;
+                  }
+                }
+                for ( j = 0; *((unsigned __int8 *)&v39[1] + 463 * i) > j; ++j )
+                {
+                  if ( (unsigned __int8)PacketBuf::get_int(a3, (unsigned int *)((char *)&v35 + 463 * i + 5 * j + 49)) != 1 )
+                  {
+                    v6 = LineFunc(
+                           36933,
+                           "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                           0,
+                           0);
+                    goto LABEL_115;
+                  }
+                  if ( (unsigned __int8)PacketBuf::get_byte(a3, (unsigned __int8 *)&v37[463 * i + 50 + 5 * j]) != 1 )
+                  {
+                    v6 = LineFunc(
+                           36934,
+                           "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                           0,
+                           0);
+                    goto LABEL_115;
+                  }
+                }
+                if ( (unsigned __int8)PacketBuf::get_byte(a3, (unsigned __int8 *)&src[463 * i + 237]) != 1
+                  || *((_BYTE *)&v39[45] + 463 * i) > 0x23u )
+                {
+LABEL_76:
+                  WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, 1u, 0, v39[0], 1, 1, 0);
+                  v6 = 0;
+                  goto LABEL_115;
+                }
+                for ( k = 0; *((unsigned __int8 *)&v39[45] + 463 * i) > k; ++k )
+                {
+                  if ( (unsigned __int8)PacketBuf::get_item_idx(a3, (unsigned int *)&src[463 * i + 238 + 8 * k]) != 1 )
+                  {
+                    v6 = LineFunc(
+                           36947,
+                           "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                           0,
+                           0);
+                    goto LABEL_115;
+                  }
+                  if ( (unsigned __int8)PacketBuf::get_short(a3, (unsigned __int16 *)&src[463 * i + 242 + 8 * k]) != 1 )
+                  {
+                    v6 = LineFunc(
+                           36948,
+                           "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                           0,
+                           0);
+                    goto LABEL_115;
+                  }
+                  if ( (unsigned __int8)PacketBuf::get_short(a3, (unsigned __int16 *)&src[463 * i + 244 + 8 * k]) != 1 )
+                  {
+                    v6 = LineFunc(
+                           36949,
+                           "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                           0,
+                           0);
+                    goto LABEL_115;
+                  }
+                }
+                for ( m = 0; *((unsigned __int8 *)&v39[45] + 463 * i) > m; ++m )
+                {
+                  for ( n = m + 1; *((unsigned __int8 *)&v39[45] + 463 * i) > n; ++n )
+                  {
+                    if ( *(unsigned int *)((char *)&v39[45] + 463 * i + 8 * m + 1) == *(unsigned int *)((char *)&v39[45] + 463 * i + 8 * n + 1)
+                      && *(_WORD *)((char *)&v39[46] + 463 * i + 8 * m + 1) == *(_WORD *)((char *)&v39[46]
+                                                                                        + 463 * i
+                                                                                        + 8 * n
+                                                                                        + 1) )
+                    {
+                      v6 = LineFunc(
+                             36958,
+                             "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                             0,
+                             0);
+                      goto LABEL_115;
+                    }
+                  }
+                }
+                v21 = (private_store::CPrivateStoreMgr *)private_store::GetInstancePrivateStoreMgr(v32);
+                StoreSeller = (private_store::CPrivateStore *)private_store::CPrivateStoreMgr::FindStoreSeller(v21, a2);
+                if ( StoreSeller
+                  && (unsigned __int8)private_store::CPrivateStore::isDollCreated(StoreSeller)
+                  && *(unsigned int *)((char *)v39 + 463 * i) == 117421 )
+                {
+                  WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, 0xE7u, 0, v39[0], 1, 1, 0);
+                  v6 = 0;
+                  goto LABEL_115;
+                }
+                CUserCharacInfo::getCurCharacName(a2);
+                CUserCharacInfo::getCurCharacNo(a2);
+                v22 = CUser::get_acc_id(a2);
+                v23 = NumberToString(v22, 0);
+                cMyTrace::cMyTrace(
+                  (cMyTrace *)v44,
+                  "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                  36976,
+                  0);
+                cMyTrace::operator()(
+                  (int)v44,
+                  "NEXON BILLING : BuyCeraShopItem m_id(%s), charac_no(%d), charac_name(%s), buytype(%d), product_no(%d)",
+                  v23);
+              }
+              v24 = ARAD::Singleton<ServiceRestrictManager>::Get();
+              if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v24, a2, 1, 17) )
+              {
+                WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, 0xD1u, 0, v39[0], 1, 1, v36);
+                v6 = 0;
+              }
+              else
+              {
+                v45 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 56);
+                if ( v45 )
+                {
+                  v25 = v39[0];
+                  CashShopErr = CSecu_ProtectionField::GetCashShopErr(GlobalData::s_pSecuProtectionField, v45);
+                  WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, CashShopErr, 0, v25, 1, 1, 0);
+                  v6 = 0;
+                }
+                else if ( (unsigned __int8)Dispatcher_BuyCeraShopItem::useCountDownCoinInFreeCoinDungeon(this, a2, src) )
+                {
+                  WongWork::CCeraShop::ProcessError(GlobalData::s_pCeraShop, a2, 0x13u, 0, 0, 1, 1, 0);
+                  v6 = 0;
+                }
+                else if ( v36 == 1 )
+                {
+                  MSG_CHECK_MAIL_RECEIVER::set<(MSG_CHECK_MAIL_RECEIVER::ENUM_MAILBOX_CHECKTYPE)1,MSG_BUY_CERASHOP_ITEM>(
+                    (int)v33,
+                    src);
+                  v55 = WongWork::CMailBoxHelper::ReqDBCheckReceiver(a2, v37, v33);
+                  if ( v55 )
+                  {
+                    v27 = v55;
+                    charac_no = (const char *)CUser::get_charac_no(a2, -1);
+                    LogManager::logFormat(
+                      (LogManager *)1,
+                      (int)"PacketDispatcher_Impl_1.cpp",
+                      "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                      (const char *)0x90C2,
+                      (int)"[ITEM_GIFT] Fail charac_no[%u] error_code[%d]",
+                      charac_no,
+                      v27);
+                    CUser::SendCmdErrorPacket2Byte(a2, 67, (unsigned __int16)v55);
+                  }
+                  v6 = 0;
+                }
+                else
+                {
+                  if ( (unsigned __int8)ItemVendingMachine::BuyItem(GlobalData::s_pItemVendingMachine, a2, (int)src) )
+                    v29 = 0;
+                  else
+                    v29 = LineFunc(
+                            37070,
+                            "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)",
+                            0,
+                            0);
+                  v6 = v29;
+                }
+              }
+            }
+          }
+        }
+        goto LABEL_115;
+      }
+      v6 = LineFunc(36791, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+    else
+    {
+      v6 = LineFunc(36781, "virtual int Dispatcher_BuyCeraShopItem::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+    }
+LABEL_115:
+    PacketGuard::~PacketGuard((PacketGuard *)v41);
+    return v6;
+  }
+  return 0;
+}
+
+// ===== 81FFCC2 (_ZN31Dispatcher_CallGuildCreateRight12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl Dispatcher_CallGuildCreateRight::dispatch_sig(Dispatcher_CallGuildCreateRight *this, CUser *a2)
+{
+  int v3; // ebx
+  int v4; // eax
+  char *GuildName; // eax
+  restrict_inputting_name *v6; // eax
+  CSyncSlangFilter *Instance; // eax
+  CSyncSlangFilter *v8; // eax
+  const char *v9; // ebx
+  CDataManager *v10; // eax
+  char v11; // al
+  CInventory *CurCharacInvenR; // eax
+  int CurCharacInvenW; // eax
+  char *GuildAddr; // edi
+  char *v16; // esi
+  unsigned int CurCharacNo; // ebx
+  int ServerGroup; // eax
+  CGuildServerProxy *ServerProxy; // eax
+  CSyncSlangFilter *v21; // [esp+0h] [ebp-48h]
+  CSyncSlangFilter *v22; // [esp+0h] [ebp-48h]
+  const char *v23; // [esp+4h] [ebp-44h]
+  std::string v24; // [esp+1Ch] [ebp-2Ch] BYREF
+  char v25[5]; // [esp+23h] [ebp-25h] BYREF
+  int money; // [esp+28h] [ebp-20h]
+  int v27; // [esp+2Ch] [ebp-1Ch]
+
+  if ( (int)CUser::get_state(a2) <= 2 || !CUserCharacInfo::getCurCharacR(a2) )
+    return LineFunc(37876, "virtual int Dispatcher_CallGuildCreateRight::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  v4 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v4, a2, 1, 28) )
+  {
+    CUser::SendCmdErrorPacket(a2, 71, 209);
+    return 0;
+  }
+  else
+  {
+    *(_DWORD *)&v25[1] = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 6);
+    if ( *(_DWORD *)&v25[1] )
+    {
+      CUser::SendCmdErrorPacket(a2, 71, (unsigned __int8)v25[1]);
+      return 0;
+    }
+    else
+    {
+      std::allocator<char>::allocator(v25);
+      GuildName = (char *)CUserCharacInfo::getCreateGuildName(a2);
+      std::string::string((int)&v24, GuildName, (int)v25);
+      std::allocator<char>::~allocator(v25);
+      v6 = (restrict_inputting_name *)std::string::c_str(&v24);
+      if ( (unsigned __int8)restrict_inputting_name::isUtf8StrInUnicodeRange(v6, v23) != 1
+        || (Instance = (CSyncSlangFilter *)CSyncSlangFilter::GetInstance(v21),
+            (unsigned __int8)CSyncSlangFilter::HasSlangName(Instance, &v24))
+        || ((v8 = (CSyncSlangFilter *)CSyncSlangFilter::GetInstance(v22),
+             !(unsigned __int8)CSyncSlangFilter::HasSlang(v8, &v24))
+         && (v9 = (const char *)CUserCharacInfo::getCreateGuildName(a2),
+             v10 = (CDataManager *)G_CDataManager(),
+             !(unsigned __int8)CDataManager::hasSpecialCharacter(v10, v9))
+          ? (v11 = 0)
+          : (v11 = 1),
+            v11) )
+      {
+        CUser::SendCmdErrorPacket(a2, 71, 159);
+        v3 = 0;
+      }
+      else if ( CUserCharacInfo::get_charac_guildkey(a2)
+             || (unsigned __int8)CUserCharacInfo::get_guild_create_right(a2) == 2 )
+      {
+        CUser::SendCmdErrorPacket(a2, 71, 32);
+        v3 = 0;
+      }
+      else if ( (unsigned __int8)CUserCharacInfo::isSetGuildCreateFlag(a2, 2u) != 1 )
+      {
+        CUser::SendCmdErrorPacket(a2, 71, 109);
+        v3 = 0;
+      }
+      else if ( (unsigned __int8)CUserCharacInfo::isSetGuildCreateFlag(a2, 4u) != 1 )
+      {
+        CUser::SendCmdErrorPacket(a2, 71, 113);
+        v3 = 0;
+      }
+      else
+      {
+        CurCharacInvenR = (CInventory *)CUserCharacInfo::getCurCharacInvenR(a2);
+        money = CInventory::get_money(CurCharacInvenR);
+        v27 = *(_DWORD *)(G_CDataManager() + 42252);
+        if ( v27 <= money )
+        {
+          CurCharacInvenW = CUserCharacInfo::getCurCharacInvenW(a2);
+          CInventory::use_money(CurCharacInvenW, v27, (char *)0xB, 1);
+          Dispatcher_CallGuildCreateRight::send_packet_guildcreateright(this, a2, 1u);
+          CUserCharacInfo::set_guild_create_right(a2, 1u);
+          CUser::UpdateData(a2);
+          GuildAddr = (char *)CUserCharacInfo::getCreateGuildAddr(a2);
+          v16 = (char *)CUserCharacInfo::getCreateGuildName(a2);
+          CurCharacNo = CUserCharacInfo::getCurCharacNo(a2);
+          ServerGroup = CUser::GetServerGroup(a2);
+          ServerProxy = (CGuildServerProxy *)CServerProxyMgr<CGuildServerProxy>::GetServerProxy(
+                                               GlobalData::s_guild_proxy_mgr,
+                                               ServerGroup);
+          CGuildServerProxy::SendGuildCreate(ServerProxy, CurCharacNo, v16, GuildAddr);
+          CUserCharacInfo::resetGuildCreateFlag(a2);
+          CUserCharacInfo::resetTempGuildNameAddr(a2);
+        }
+        else
+        {
+          CUser::SendCmdErrorPacket(a2, 71, 31);
+        }
+        v3 = 0;
+      }
+      std::string::~string(&v24);
+    }
+  }
+  return v3;
+}
+
+// ===== 82001F0 (_ZN27Dispatcher_CallGuildLevelUp12dispatch_sigEP5CUserR9PacketBuf) =====
+int __cdecl Dispatcher_CallGuildLevelUp::dispatch_sig(Dispatcher_CallGuildLevelUp *this, CUser *a2)
+{
+  int v4; // eax
+  unsigned int charac_guildkey; // edi
+  unsigned int CurCharacNo; // esi
+  int UID; // ebx
+  int ServerGroup; // eax
+  CGuildServerProxy *ServerProxy; // eax
+  char *v10; // ebx
+  int v11; // eax
+  CGuildServerProxy *v12; // eax
+  unsigned int v13; // [esp+2Ch] [ebp-4Ch]
+  char dest[26]; // [esp+36h] [ebp-42h] BYREF
+  unsigned int v15; // [esp+50h] [ebp-28h] BYREF
+  int v16; // [esp+54h] [ebp-24h]
+  int v17; // [esp+58h] [ebp-20h]
+  void *src; // [esp+5Ch] [ebp-1Ch]
+
+  if ( (int)CUser::get_state(a2) <= 2 || !CUserCharacInfo::getCurCharacR(a2) )
+    return LineFunc(38015, "virtual int Dispatcher_CallGuildLevelUp::dispatch_sig(CUser*, PacketBuf&)", 0, 0);
+  v4 = ARAD::Singleton<ServiceRestrictManager>::Get();
+  if ( (unsigned __int8)ServiceRestrictManager::isRestricted(v4, a2, 1, 29) )
+  {
+    Dispatcher_CallGuildLevelUp::send_packet_guild_levelup(this, a2, 0xD1u);
+    return 0;
+  }
+  else
+  {
+    v16 = CSecu_ProtectionField::Check(GlobalData::s_pSecuProtectionField, a2, 7);
+    if ( v16 )
+    {
+      Dispatcher_CallGuildLevelUp::send_packet_guild_levelup(this, a2, v16);
+      return 0;
+    }
+    else
+    {
+      v15 = 0;
+      v17 = CUser::CheckGuildLevelUp(a2, &v15);
+      if ( v17 )
+      {
+        Dispatcher_CallGuildLevelUp::send_packet_guild_levelup(this, a2, v17);
+      }
+      else
+      {
+        Dispatcher_CallGuildLevelUp::send_packet_guild_levelup(this, a2, 0);
+        v13 = v15;
+        charac_guildkey = CUserCharacInfo::get_charac_guildkey(a2);
+        CurCharacNo = CUserCharacInfo::getCurCharacNo(a2);
+        UID = CUser::GetUID(a2);
+        ServerGroup = CUser::GetServerGroup(a2);
+        ServerProxy = (CGuildServerProxy *)CServerProxyMgr<CGuildServerProxy>::GetServerProxy(
+                                             GlobalData::s_guild_proxy_mgr,
+                                             ServerGroup);
+        CGuildServerProxy::SendGuildLevelup(ServerProxy, UID, CurCharacNo, charac_guildkey, v13);
+        src = (void *)CUser::GetGuildDBInfo(a2);
+        STGuildProxy::STGuildProxy((STGuildProxy *)dest);
+        dest[23] = *((_BYTE *)src + 27) + 1;
+        memcpy(dest, src, 0x16u);
+        dest[24] = *((_BYTE *)src + 149);
+        v10 = (char *)CUserCharacInfo::get_charac_guildkey(a2);
+        v11 = CUser::GetServerGroup(a2);
+        v12 = (CGuildServerProxy *)CServerProxyMgr<CGuildServerProxy>::GetServerProxy(
+                                     GlobalData::s_guild_proxy_mgr,
+                                     v11);
+        CGuildServerProxy::ModifyGuildInfoProxy(v12, v10, (STGuildProxy *)dest);
+      }
+      return 0;
+    }
+  }
+}
+

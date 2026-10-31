@@ -1,0 +1,97 @@
+[
+  {
+    "file": "01-C-party-response.jpg",
+    "bytes": 429737,
+    "sha256": "3EF509F59B316B94BDE875C30C2E78AF5981897267DD02EB47E29B00687A7845"
+  },
+  {
+    "file": "02-B-popup-on-selector.jpg",
+    "bytes": 289596,
+    "sha256": "04CC38DB60973838CFA9CF174F787E03B2D2F1FC40A7D5EF22E938159C4BC695"
+  },
+  {
+    "file": "03-B-selector.jpg",
+    "bytes": 257240,
+    "sha256": "9A8981DC31A38E1A85CFBFF498E329DB39D696B19779E3043EAAFAB199888BE7"
+  },
+  {
+    "file": "acceptance.json",
+    "bytes": 2925,
+    "sha256": "3014CD8A04F4C614E7DB4CED20DFC61DF4D2538D59C8E46FA666F7BB8ABF9C0F"
+  },
+  {
+    "file": "closeout-verification.json",
+    "bytes": 2751,
+    "sha256": "46473257C7C2FDB589CB84AD1DCD4E007C01ACA0999D32E61112C806616761EF"
+  },
+  {
+    "file": "consumer-ui-green.txt",
+    "bytes": 158,
+    "sha256": "4DC046211A4668A123C8894F537D40BF1C506ED3D00625E74E04541C42F74325"
+  },
+  {
+    "file": "consumer-ui-red.txt",
+    "bytes": 787,
+    "sha256": "8C915816600763BE02CAAA0FF8727219842C4AF16C633C68A3CB0B4FC284A3A0"
+  },
+  {
+    "file": "final--client-navigation.txt",
+    "bytes": 72,
+    "sha256": "B4FAECBE6B668DDB73FFDEB9808DF62C21849F76607F19584CC0A645D9F061B5"
+  },
+  {
+    "file": "final--client-party.txt",
+    "bytes": 100,
+    "sha256": "2F2578F7968DCD8C7C0E43511C36960F46464CAB92336BA6CC6706C583D50B2E"
+  },
+  {
+    "file": "final--client-test-control.txt",
+    "bytes": 81,
+    "sha256": "D7BC89C19726D7314167AE7CF2A500BCEA0C0DF0AC64C76C43FD72D589E8084C"
+  },
+  {
+    "file": "final--town-route.txt",
+    "bytes": 221,
+    "sha256": "B19F4A5F20645D053AC9B2D5898E39B567CA94F39EE79A4A880900AD88FA11A0"
+  },
+  {
+    "file": "native-contract.md",
+    "bytes": 13879,
+    "sha256": "22546571369A4E01E50F24997AA6E86888568B31899A53C44283738029961E86"
+  },
+  {
+    "file": "native-final.txt",
+    "bytes": 32,
+    "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+  },
+  {
+    "file": "native-red.txt",
+    "bytes": 784,
+    "sha256": "3A0FD6AC837324EFBF94C5E394975C688EBDDB9BC22DA9AB6DC1882414A413C0"
+  },
+  {
+    "file": "python-full-corrected.txt",
+    "bytes": 1071,
+    "sha256": "45CBF4C7255D221EC95A55049BF8A38F8074470F6D3D2C31387700E7732292A5"
+  },
+  {
+    "file": "python-related-corrected.txt",
+    "bytes": 1057,
+    "sha256": "D96E4874AC93FDBEEA246EF47CD85C0CB8533DA4E82BF70D19E3B1124BB04229"
+  },
+  {
+    "file": "review-index-green.txt",
+    "bytes": 32,
+    "sha256": "2F625ECD2CEDDB6E6A0B07F3492F1A004323E58243A77BF1579E2353ECAE05EC"
+  },
+  {
+    "file": "review-index-red.txt",
+    "bytes": 126,
+    "sha256": "0AE618CB0511739BD62B1538BDECD382D59A8CD73AF41DFDF96983FE632EBBEF"
+  },
+  {
+    "file": "review.txt",
+    "bytes": 335,
+    "sha256": "46AC7F4C19D110CFF18A3184283913AAD0E97C40B0A60A5A3613132A29D875B4"
+  }
+]

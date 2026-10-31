@@ -1,0 +1,6 @@
+
+tests\test_debug_test_control.py:751: AssertionError
+=========================== short test summary info ===========================
+SUBFAILED(changed='party') tests/test_debug_test_control.py::PlayerKillTests::test_player_kill_rechecks_party_and_authoritative_life_before_publishing
+SUBFAILED(changed='dead') tests/test_debug_test_control.py::PlayerKillTests::test_player_kill_rechecks_party_and_authoritative_life_before_publishing
+2 failed, 1 passed, 61 deselected in 0.37s

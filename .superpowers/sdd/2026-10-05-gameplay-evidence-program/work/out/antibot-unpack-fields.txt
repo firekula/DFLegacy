@@ -1,0 +1,337 @@
+SHA256=8f6263dae6fcd1eb19baece6f7c9408d2161abd1a05bd492d398d5cb7783d2a7 DT_PLTGOT=0x294534
+
+FUNCTION _ZN9sec_proto22DPDynamicAlgorithmHead6unpackERN9tsf4g_tdr10TdrReadBufEj 0x15fb70 154
+0015fb70 push     ebp
+0015fb71 mov      ecx, 0xfffffffe
+0015fb76 mov      ebp, esp
+0015fb78 push     edi
+0015fb79 push     esi
+0015fb7a mov      esi, dword ptr [ebp + 0xc]
+0015fb7d mov      edi, dword ptr [ebp + 8]
+0015fb80 mov      edx, dword ptr [esi + 4]
+0015fb83 mov      eax, dword ptr [esi + 8]
+0015fb86 sub      eax, edx
+0015fb88 cmp      eax, 3
+0015fb8b jbe      0x15fbce
+0015fb8d mov      eax, dword ptr [esi]
+0015fb8f mov      edx, dword ptr [eax + edx]
+0015fb92 mov      eax, edx
+0015fb94 mov      ecx, edx
+0015fb96 and      eax, 0xff0000
+0015fb9b shr      eax, 8
+0015fb9e shr      ecx, 0x18
+0015fba1 or       ecx, eax
+0015fba3 mov      eax, edx
+0015fba5 and      eax, 0xff00
+0015fbaa shl      edx, 0x18
+0015fbad shl      eax, 8
+0015fbb0 or       eax, edx
+0015fbb2 or       ecx, eax
+0015fbb4 mov      dword ptr [edi], ecx
+0015fbb6 mov      edx, dword ptr [esi + 4]
+0015fbb9 mov      ecx, 0xfffffffe
+0015fbbe mov      eax, dword ptr [esi + 8]
+0015fbc1 add      edx, 4
+0015fbc4 sub      eax, edx
+0015fbc6 cmp      eax, 3
+0015fbc9 mov      dword ptr [esi + 4], edx
+0015fbcc ja       0x15fbd4
+0015fbce pop      esi
+0015fbcf mov      eax, ecx
+0015fbd1 pop      edi
+0015fbd2 pop      ebp
+0015fbd3 ret
+0015fbd4 mov      eax, dword ptr [esi]
+0015fbd6 mov      edx, dword ptr [eax + edx]
+0015fbd9 mov      eax, edx
+0015fbdb mov      ecx, edx
+0015fbdd and      eax, 0xff0000
+0015fbe2 shr      eax, 8
+0015fbe5 shr      ecx, 0x18
+0015fbe8 or       ecx, eax
+0015fbea mov      eax, edx
+0015fbec and      eax, 0xff00
+0015fbf1 shl      eax, 8
+0015fbf4 shl      edx, 0x18
+0015fbf7 or       eax, edx
+0015fbf9 or       ecx, eax
+0015fbfb mov      dword ptr [edi + 4], ecx
+0015fbfe xor      ecx, ecx
+0015fc00 add      dword ptr [esi + 4], 4
+0015fc04 mov      eax, ecx
+0015fc06 pop      esi
+0015fc07 pop      edi
+0015fc08 pop      ebp
+0015fc09 ret
+
+FUNCTION _ZN9sec_proto15DPAlgorithmData6unpackERN9tsf4g_tdr10TdrReadBufEj 0x15fc80 270
+0015fc80 push     ebp
+0015fc81 mov      ebp, esp
+0015fc83 push     edi
+0015fc84 push     esi
+0015fc85 push     ebx
+0015fc86 sub      esp, 0xc
+0015fc89 mov      esi, dword ptr [ebp + 0xc]
+0015fc8c call     0x88577 ; __i686.get_pc_thunk.bx
+0015fc91 add      ebx, 0x1348a3
+0015fc97 mov      edx, dword ptr [esi + 4]
+0015fc9a mov      eax, dword ptr [esi + 8]
+0015fc9d sub      eax, edx
+0015fc9f cmp      eax, 3
+0015fca2 jbe      0x15fd87
+0015fca8 mov      eax, dword ptr [esi]
+0015fcaa mov      edx, dword ptr [eax + edx]
+0015fcad mov      eax, edx
+0015fcaf mov      ecx, edx
+0015fcb1 and      eax, 0xff0000
+0015fcb6 shr      eax, 8
+0015fcb9 shr      ecx, 0x18
+0015fcbc or       ecx, eax
+0015fcbe mov      eax, edx
+0015fcc0 and      eax, 0xff00
+0015fcc5 shl      edx, 0x18
+0015fcc8 shl      eax, 8
+0015fccb or       eax, edx
+0015fccd or       ecx, eax
+0015fccf mov      eax, dword ptr [ebp + 8]
+0015fcd2 mov      dword ptr [eax], ecx
+0015fcd4 mov      edx, dword ptr [esi + 4]
+0015fcd7 mov      eax, dword ptr [esi + 8]
+0015fcda add      edx, 4
+0015fcdd sub      eax, edx
+0015fcdf cmp      eax, 3
+0015fce2 mov      dword ptr [esi + 4], edx
+0015fce5 jbe      0x15fd87
+0015fceb mov      eax, dword ptr [esi]
+0015fced mov      edx, dword ptr [eax + edx]
+0015fcf0 mov      eax, edx
+0015fcf2 mov      ecx, edx
+0015fcf4 and      eax, 0xff0000
+0015fcf9 shr      eax, 8
+0015fcfc shr      ecx, 0x18
+0015fcff or       ecx, eax
+0015fd01 mov      eax, edx
+0015fd03 and      eax, 0xff00
+0015fd08 shl      edx, 0x18
+0015fd0b shl      eax, 8
+0015fd0e or       eax, edx
+0015fd10 mov      edx, dword ptr [ebp + 8]
+0015fd13 or       ecx, eax
+0015fd15 mov      dword ptr [edx + 4], ecx
+0015fd18 mov      edx, dword ptr [esi + 4]
+0015fd1b add      edx, 4
+0015fd1e cmp      dword ptr [esi + 8], edx
+0015fd21 mov      dword ptr [esi + 4], edx
+0015fd24 je       0x15fd87
+0015fd26 mov      eax, dword ptr [esi]
+0015fd28 mov      ecx, 0xfffffffe
+0015fd2d movzx    eax, byte ptr [eax + edx]
+0015fd31 mov      edx, dword ptr [ebp + 8]
+0015fd34 mov      byte ptr [edx + 8], al
+0015fd37 mov      edx, dword ptr [esi + 4]
+0015fd3a add      edx, 1
+0015fd3d mov      dword ptr [esi + 4], edx
+0015fd40 mov      eax, dword ptr [ebp + 8]
+0015fd43 movzx    edi, byte ptr [eax + 8]
+0015fd47 mov      eax, dword ptr [esi + 8]
+0015fd4a sub      eax, edx
+0015fd4c cmp      edi, eax
+0015fd4e jbe      0x15fd60
+0015fd50 add      esp, 0xc
+0015fd53 mov      eax, ecx
+0015fd55 pop      ebx
+0015fd56 pop      esi
+0015fd57 pop      edi
+0015fd58 pop      ebp
+0015fd59 ret
+0015fd5a lea      esi, [esi]
+0015fd60 mov      dword ptr [esp + 8], edi
+0015fd64 add      edx, dword ptr [esi]
+0015fd66 mov      dword ptr [esp + 4], edx
+0015fd6a mov      eax, dword ptr [ebp + 8]
+0015fd6d add      eax, 9
+0015fd70 mov      dword ptr [esp], eax
+0015fd73 call     0x80544 ; memmove
+0015fd78 xor      ecx, ecx
+0015fd7a add      dword ptr [esi + 4], edi
+0015fd7d add      esp, 0xc
+0015fd80 pop      ebx
+0015fd81 mov      eax, ecx
+0015fd83 pop      esi
+0015fd84 pop      edi
+0015fd85 pop      ebp
+0015fd86 ret
+0015fd87 mov      ecx, 0xfffffffe
+0015fd8c jmp      0x15fd50
+
+FUNCTION _ZN9sec_proto12DPServerCode6unpackERN9tsf4g_tdr10TdrReadBufEj 0x15f990 167
+0015f990 push     ebp
+0015f991 mov      ecx, 0xfffffff8
+0015f996 mov      ebp, esp
+0015f998 sub      esp, 0x18
+0015f99b mov      dword ptr [ebp - 4], edi
+0015f99e mov      edi, dword ptr [ebp + 8]
+0015f9a1 mov      dword ptr [ebp - 0xc], ebx
+0015f9a4 call     0x88577 ; __i686.get_pc_thunk.bx
+0015f9a9 add      ebx, 0x134b8b
+0015f9af mov      dword ptr [ebp - 8], esi
+0015f9b2 mov      esi, dword ptr [ebp + 0xc]
+0015f9b5 test     edi, edi
+0015f9b7 je       0x15f9c8
+0015f9b9 mov      edx, dword ptr [esi + 4]
+0015f9bc mov      cl, 0xfe
+0015f9be mov      eax, dword ptr [esi + 8]
+0015f9c1 sub      eax, edx
+0015f9c3 cmp      eax, 0xf
+0015f9c6 ja       0x15f9d7
+0015f9c8 mov      ebx, dword ptr [ebp - 0xc]
+0015f9cb mov      eax, ecx
+0015f9cd mov      esi, dword ptr [ebp - 8]
+0015f9d0 mov      edi, dword ptr [ebp - 4]
+0015f9d3 mov      esp, ebp
+0015f9d5 pop      ebp
+0015f9d6 ret
+0015f9d7 mov      dword ptr [esp + 8], 0x10
+0015f9df add      edx, dword ptr [esi]
+0015f9e1 mov      dword ptr [esp], edi
+0015f9e4 mov      dword ptr [esp + 4], edx
+0015f9e8 call     0x80544 ; memmove
+0015f9ed mov      edx, dword ptr [esi + 4]
+0015f9f0 mov      ecx, 0xfffffffe
+0015f9f5 mov      eax, dword ptr [esi + 8]
+0015f9f8 add      edx, 0x10
+0015f9fb sub      eax, edx
+0015f9fd cmp      eax, 3
+0015fa00 mov      dword ptr [esi + 4], edx
+0015fa03 jbe      0x15f9c8
+0015fa05 mov      eax, dword ptr [esi]
+0015fa07 mov      edx, dword ptr [eax + edx]
+0015fa0a mov      eax, edx
+0015fa0c mov      ecx, edx
+0015fa0e and      eax, 0xff0000
+0015fa13 shr      eax, 8
+0015fa16 shr      ecx, 0x18
+0015fa19 or       ecx, eax
+0015fa1b mov      eax, edx
+0015fa1d and      eax, 0xff00
+0015fa22 shl      eax, 8
+0015fa25 shl      edx, 0x18
+0015fa28 or       eax, edx
+0015fa2a or       ecx, eax
+0015fa2c mov      dword ptr [edi + 0x10], ecx
+0015fa2f xor      ecx, ecx
+0015fa31 add      dword ptr [esi + 4], 4
+0015fa35 jmp      0x15f9c8
+
+FUNCTION _ZN9sec_proto19DPClientDecryptInfo6unpackERN9tsf4g_tdr10TdrReadBufEj 0x15ff60 154
+0015ff60 push     ebp
+0015ff61 mov      ecx, 0xfffffffe
+0015ff66 mov      ebp, esp
+0015ff68 push     edi
+0015ff69 push     esi
+0015ff6a mov      esi, dword ptr [ebp + 0xc]
+0015ff6d mov      edi, dword ptr [ebp + 8]
+0015ff70 mov      edx, dword ptr [esi + 4]
+0015ff73 mov      eax, dword ptr [esi + 8]
+0015ff76 sub      eax, edx
+0015ff78 cmp      eax, 3
+0015ff7b jbe      0x15ffbe
+0015ff7d mov      eax, dword ptr [esi]
+0015ff7f mov      edx, dword ptr [eax + edx]
+0015ff82 mov      eax, edx
+0015ff84 mov      ecx, edx
+0015ff86 and      eax, 0xff0000
+0015ff8b shr      eax, 8
+0015ff8e shr      ecx, 0x18
+0015ff91 or       ecx, eax
+0015ff93 mov      eax, edx
+0015ff95 and      eax, 0xff00
+0015ff9a shl      edx, 0x18
+0015ff9d shl      eax, 8
+0015ffa0 or       eax, edx
+0015ffa2 or       ecx, eax
+0015ffa4 mov      dword ptr [edi], ecx
+0015ffa6 mov      edx, dword ptr [esi + 4]
+0015ffa9 mov      ecx, 0xfffffffe
+0015ffae mov      eax, dword ptr [esi + 8]
+0015ffb1 add      edx, 4
+0015ffb4 sub      eax, edx
+0015ffb6 cmp      eax, 3
+0015ffb9 mov      dword ptr [esi + 4], edx
+0015ffbc ja       0x15ffc4
+0015ffbe pop      esi
+0015ffbf mov      eax, ecx
+0015ffc1 pop      edi
+0015ffc2 pop      ebp
+0015ffc3 ret
+0015ffc4 mov      eax, dword ptr [esi]
+0015ffc6 mov      edx, dword ptr [eax + edx]
+0015ffc9 mov      eax, edx
+0015ffcb mov      ecx, edx
+0015ffcd and      eax, 0xff0000
+0015ffd2 shr      eax, 8
+0015ffd5 shr      ecx, 0x18
+0015ffd8 or       ecx, eax
+0015ffda mov      eax, edx
+0015ffdc and      eax, 0xff00
+0015ffe1 shl      eax, 8
+0015ffe4 shl      edx, 0x18
+0015ffe7 or       eax, edx
+0015ffe9 or       ecx, eax
+0015ffeb mov      dword ptr [edi + 4], ecx
+0015ffee xor      ecx, ecx
+0015fff0 add      dword ptr [esi + 4], 4
+0015fff4 mov      eax, ecx
+0015fff6 pop      esi
+0015fff7 pop      edi
+0015fff8 pop      ebp
+0015fff9 ret
+
+FUNCTION _ZN9sec_proto15DPInterDataHead6unpackERN9tsf4g_tdr10TdrReadBufEj 0x15a1c0 125
+0015a1c0 push     ebp
+0015a1c1 mov      ebp, esp
+0015a1c3 mov      ecx, dword ptr [ebp + 0xc]
+0015a1c6 push     esi
+0015a1c7 mov      esi, dword ptr [ebp + 8]
+0015a1ca mov      edx, dword ptr [ecx + 4]
+0015a1cd mov      eax, dword ptr [ecx + 8]
+0015a1d0 sub      eax, edx
+0015a1d2 cmp      eax, 1
+0015a1d5 jbe      0x15a236
+0015a1d7 mov      eax, dword ptr [ecx]
+0015a1d9 movzx    eax, word ptr [eax + edx]
+0015a1dd mov      edx, eax
+0015a1df shr      edx, 8
+0015a1e2 shl      eax, 8
+0015a1e5 or       eax, edx
+0015a1e7 mov      word ptr [esi], ax
+0015a1ea mov      edx, dword ptr [ecx + 4]
+0015a1ed mov      eax, dword ptr [ecx + 8]
+0015a1f0 add      edx, 2
+0015a1f3 sub      eax, edx
+0015a1f5 cmp      eax, 1
+0015a1f8 mov      dword ptr [ecx + 4], edx
+0015a1fb jbe      0x15a236
+0015a1fd mov      eax, dword ptr [ecx]
+0015a1ff movzx    eax, word ptr [eax + edx]
+0015a203 mov      edx, eax
+0015a205 shr      edx, 8
+0015a208 shl      eax, 8
+0015a20b or       eax, edx
+0015a20d mov      word ptr [esi + 2], ax
+0015a211 mov      edx, dword ptr [ecx + 4]
+0015a214 mov      eax, 0xfffffffe
+0015a219 add      edx, 2
+0015a21c cmp      dword ptr [ecx + 8], edx
+0015a21f mov      dword ptr [ecx + 4], edx
+0015a222 je       0x15a233
+0015a224 mov      eax, dword ptr [ecx]
+0015a226 movzx    eax, byte ptr [eax + edx]
+0015a22a mov      byte ptr [esi + 4], al
+0015a22d xor      eax, eax
+0015a22f add      dword ptr [ecx + 4], 1
+0015a233 pop      esi
+0015a234 pop      ebp
+0015a235 ret
+0015a236 mov      eax, 0xfffffffe
+0015a23b jmp      0x15a233

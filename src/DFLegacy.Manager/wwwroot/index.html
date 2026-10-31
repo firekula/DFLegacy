@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DFLegacy · 部署管理</title>
+  <link rel="stylesheet" href="/manager.css">
+  <script src="/manager.js" defer></script>
+</head>
+<body>
+  <section id="authPanel" class="auth-wrap">
+    <form id="authForm" class="auth-card">
+      <div class="brand"><span class="brand-mark">DF</span><div><strong>DFLegacy</strong><span>部署管理</span></div></div>
+      <p class="eyebrow">SERVER MANAGER</p>
+      <h1 id="authTitle">连接你的服务器</h1>
+      <p id="authDescription" class="muted">正在检查管理器状态…</p>
+      <label id="setupTokenField" hidden>首次设置凭据<input id="setupToken" autocomplete="off" placeholder="读取 data/management/setup-token.txt"></label>
+      <label>管理账号<input id="userName" autocomplete="username" required maxlength="32" autofocus></label>
+      <label>管理密码<input id="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+      <p id="authError" class="error" role="alert"></p>
+      <button id="authSubmit" class="primary" type="submit" disabled>登录</button>
+      <p class="small muted">部署管理账号用于配置和启停服务器，与游戏账号分别管理。</p>
+    </form>
+  </section>
+
+  <div id="application" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">DF</span><div><strong>DFLegacy</strong><span>服务器工作台</span></div></div>
+      <p class="nav-label">部署管理</p>
+      <nav aria-label="管理功能">
+        <button type="button" data-view="overview" class="nav-item active">运行概览 <span>01</span></button>
+        <button type="button" data-view="configuration" class="nav-item">服务配置 <span>02</span></button>
+        <button type="button" data-view="clients" class="nav-item">客户端分发 <span>03</span></button>
+        <button type="button" data-view="logs" class="nav-item">运行日志 <span>04</span></button>
+      </nav>
+      <div class="sidebar-foot"><span class="live-dot"></span>管理器持续运行<p>关闭浏览器后，服务器继续工作。</p></div>
+    </aside>
+    <main class="workspace">
+      <header class="topbar"><div><p class="eyebrow">DFLEGACY / SERVER</p><h1 id="viewTitle">运行概览</h1></div><div class="identity"><span id="identityName"></span><button id="logout" class="quiet" type="button">退出登录</button></div></header>
+      <section id="overview" class="view">
+        <div class="welcome"><div><span id="stateBadge" class="badge">检查中</span><h2 id="serverHeadline">你的服务器工作台</h2><p id="serverDescription">完成服务配置，然后启动游戏服务。</p></div><div class="actions"><button id="start" class="primary" type="button">启动服务</button><button id="restart" type="button">重启</button><button id="stop" type="button">停止</button></div></div>
+        <div class="metrics"><article><span>游戏服务</span><strong id="metricState">—</strong><small id="metricPid">等待启动</small></article><article><span>管理器</span><strong>在线</strong><small>停服时仍可配置与查看日志</small></article><article><span>当前版本</span><strong id="metricVersion">开发构建</strong><small>程序与客户端资源配套发布</small></article></div>
+        <div class="columns"><article class="surface"><div class="section-heading"><h2>连接信息</h2><span class="subtle">供玩家使用</span></div><dl><dt>服务器地址</dt><dd id="summaryHost">尚未配置</dd><dt>账号服务</dt><dd id="summaryApi">—</dd><dt>游戏协议地址</dt><dd id="summaryGameplay">—</dd><dt>数据目录</dt><dd id="summaryData">—</dd></dl><button class="quiet jump-config" type="button">编辑配置 →</button></article><article class="surface"><div class="section-heading"><h2>游戏后台</h2><span class="subtle">已有管理工具</span></div><p class="muted">服务启动后，可继续使用原有 GM 后台与玩家中心。</p><div class="link-cards"><a id="gmLink" target="_blank" rel="noopener noreferrer"><strong>GM 管理后台 ↗</strong><span>邮件、通知、副本权限和管理员角色</span></a><a id="playerLink" target="_blank" rel="noopener noreferrer"><strong>玩家中心 ↗</strong><span>查看游戏账号名下的角色</span></a></div><p id="gameLinksNote" class="small muted">这些页面需要游戏服务运行。</p></article></div>
+      </section>
+
+      <section id="configuration" class="view" hidden>
+        <div class="page-intro"><h2>让服务器按你的方式运行</h2><p>配置保存在数据目录。修改后重启游戏服务即可应用，已有存档会保留。</p></div>
+        <p id="environmentNotice" class="notice" hidden></p>
+        <form id="configForm">
+          <article class="surface"><div class="section-heading"><h2>资源与网络</h2><span class="subtle">必填</span></div><div class="form-grid"><div class="pvf-resource span-two"><label for="pvfFile">上传 Script.pvf</label><p id="pvfStatus" class="muted" aria-live="polite">正在检查资源…</p><div class="inline"><input id="pvfFile" type="file" accept=".pvf"><button id="uploadPvf" type="button">上传并使用</button></div><progress id="pvfProgress" max="100" value="0" hidden></progress><small id="pvfNote">选择与客户端匹配的文件，最大 1 GiB；替换前请先停止游戏服务。</small></div><label>连接方式<select id="networkPreset"><option value="custom">保留当前配置</option><option value="local">本机使用</option><option value="lan">局域网 / 公网 IPv4</option><option value="relay">IPv6 服务器 + 玩家本机中继</option></select></label><label>玩家连接地址<input name="advertisedHost" required placeholder="服务器 IP 或域名"><small>填写玩家可访问的地址。</small></label><label>游戏监听地址<input name="bindHost" required></label><label>账号 API 监听地址<input name="adminHost" required></label><label class="span-two">玩家账号服务 URL<div class="inline"><input name="accountServiceUrl" type="url" required><button id="deriveApi" type="button">按地址生成</button></div><small>用于注册、改密和游戏内充值页面；支持 HTTP(S)，远程访问可填写 HTTPS 反向代理地址。</small></label></div></article>
+          <article class="surface"><div class="section-heading"><h2>端口与频道</h2></div><div class="form-grid thirds"><label>登录 TCP<input name="entrancePort" type="number" min="1" max="65535" required></label><label>频道 TCP<input name="channelPort" type="number" min="1" max="65535" required></label><label>附加入口 TCP<input name="additionalEntrancePort" type="number" min="1" max="65535" required></label><label>账号 / GM HTTP<input name="adminPort" type="number" min="1" max="65535" required></label><label>角色 UDP<input name="characterPort" type="number" min="1" max="65535" required></label><label>玩法主 UDP<input name="gameplayPrimaryPort" type="number" min="1" max="65535" required></label><label>玩法次 UDP<input name="gameplaySecondaryPort" type="number" min="1" max="65535" required></label><label>频道名称<input name="channelName" maxlength="64" required></label><label>最大人数<input name="maximumUsers" type="number" min="1" max="65535" required></label></div></article>
+          <article class="surface"><div class="section-heading"><h2>玩法倍率与启动选项</h2></div><div class="form-grid thirds"><label>怪物经验倍率（倍）<input name="monsterExperienceMultiplier" type="number" min="0" max="1000" step="any" required></label><label>通关经验倍率（倍）<input name="clearExperienceMultiplier" type="number" min="0" max="1000" step="any" required></label><label>怪物 / 深渊额外掉落倍率（倍）<input name="dropEconomicRate" type="number" min="0" max="1000" step="any" required></label><label>掉落概率倍率（倍）<input name="dropRatePercent" type="number" min="0" max="100" step="any" required></label><p class="small muted span-two">1 倍 = PVF 基础概率，2 倍 = 基础概率乘 2，最高仍为 100%；不会让所有物品必掉，也不会增加掉落表中的种类。额外倍率作用于普通怪物与深渊的相应判定，重叠时相乘，不代表金币数量倍率。经验倍率同样以 1 为原始值，保存后重启生效。</p><label>中继地址族<select name="relayPreference"><option value="ipv6">优先 IPv6</option><option value="ipv4">优先 IPv4</option></select></label></div><div class="check-row"><label class="checkbox"><input name="relayEnabled" type="checkbox">玩家登录器启用本机中继</label><label class="checkbox"><input name="autostart" type="checkbox">下次启动管理器时自动启动游戏服务</label></div><p class="small muted">中继模式下，游戏协议地址自动设为玩家本机回环地址；登录器仍连接上方的真实服务器地址。</p></article>
+          <article class="surface"><div class="section-heading"><h2>ACT1 回退中继与 PvP</h2></div><div class="check-row"><label class="checkbox"><input name="fallbackRelayEnabled" type="checkbox">启用游戏内 TCP / UDP 回退中继</label><label class="checkbox"><input name="pvpEnabled" type="checkbox">启用 PvP 频道</label></div><div class="form-grid thirds"><label>回退 TCP<input name="fallbackRelayTcpPort" type="number" min="1" max="65535" required></label><label>回退 UDP<input name="fallbackRelayUdpPort" type="number" min="1" max="65535" required></label><label>PvP TCP<input name="pvpPort" type="number" min="1" max="65535" required></label><label class="span-two">回退中继通告 IPv4<input name="fallbackRelayAdvertisedHost" placeholder="留空跟随游戏协议地址"><small>域名直连时填写玩家可达的 IPv4；玩家登录器使用本机中继时请留空。更改端口后也须调整防火墙和 Docker 映射。</small></label></div></article>
+          <div class="save-bar"><span id="saveHint">保存不会停止当前游戏服务。</span><button class="primary" type="submit">保存配置</button></div>
+        </form>
+        <article class="surface admin-bootstrap"><div class="section-heading"><h2>首次创建游戏管理员</h2><span class="subtle">游戏服务停止时可用</span></div><p class="muted">已有游戏管理员可直接使用，无需再次创建。新建账号不会重置已有存档。</p><form id="gameAdminForm" class="form-grid"><label>游戏管理员账号<input name="userName" autocomplete="off" minlength="4" maxlength="32" required></label><label>游戏密码<input name="password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required></label><label>找回码<input name="oicqCode" autocomplete="off" minlength="5" required></label><div class="field-action"><button type="submit">创建游戏管理员</button></div></form></article>
+      </section>
+
+      <section id="clients" class="view" hidden>
+        <div class="page-intro"><h2>生成可直接分发的客户端包</h2><p>根据已保存的连接设置生成 Windows 客户端包，无需在这台服务器上编译。</p></div>
+        <p id="assetNotice" class="notice" hidden>当前缺少配套客户端资源，请使用包含 client-assets 的完整发行包。</p>
+        <article class="surface export-card"><span class="eyebrow">PLAYER CLIENT</span><h2>玩家客户端包</h2><p>一个 ZIP，解压到 DNF.exe 所在目录即可使用。</p><ul><li>单文件 Windows 登录器与配套兼容补丁</li><li>已配置服务器地址，账号密码由玩家自己填写</li><li>默认配置由登录器生成，保留已有窗口设置</li></ul><button id="exportClient" class="primary" type="button">生成并下载玩家包 ZIP</button></article>
+        <article class="surface"><h2>安装说明</h2><p class="muted">先退出游戏并备份客户端中的 ijl15.dll 和 Config.ini。将 ZIP 内容直接解压到 DNF.exe 所在目录，运行 DFLegacy.Launcher.exe。首次启动自动生成缺失的默认配置，已有 Config.ini 仅更新必要连接设置。</p><p class="small muted">发行包不含游戏客户端或 Script.pvf。游戏内充值页面继续使用 460×315 布局；调试浮窗默认关闭，当前仅支持与服务端共享本机目录。</p></article>
+      </section>
+      <section id="logs" class="view" hidden><div class="page-intro"><h2>查看启动和运行记录</h2><p>保留最近 500 条，完整轮转日志位于数据目录 logs/ 中。</p></div><div class="log-toolbar"><label class="checkbox"><input id="autoScroll" type="checkbox" checked>跟随最新记录</label><button id="clearLogs" class="quiet" type="button">清空当前显示</button></div><pre id="logOutput" class="log-output" aria-live="polite">等待日志…</pre></section>
+      <footer>DFLegacy · 本地模拟服务端 <span>配置 · 运行 · 分发</span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

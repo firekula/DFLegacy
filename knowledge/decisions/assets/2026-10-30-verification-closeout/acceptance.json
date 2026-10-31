@@ -1,0 +1,21 @@
+{
+  "schema": "dfl-verification-closeout/v1",
+  "full_python": {
+    "passed": 574,
+    "skipped": 2,
+    "subtests": 413,
+    "failures": 0
+  },
+  "related_fixture_tests": 44,
+  "full_managed": "All DFLegacy protocol smoke tests passed.",
+  "full_ijl": "ijl15 compatibility tests passed",
+  "debug_test_control_failures": 0,
+  "former_six_failures_resolved_by_test_fixtures": true,
+  "product_gameplay_changed_by_this_closeout": false,
+  "baseline_red": "Earlier complete run567passed2skipped413subtests6failed, sealed under skillbar-verification-20261030",
+  "changes": [
+    "Ledger original4/12-row contract gets its own copied4YAML fixture; extra fifth scenario must be discovered (16rows). Production ledger still enumerates all repository scenarios.",
+    "FakeRunner records configured port while its incidental lifetime socket bindsOSport0; real readiness/loopback tests retained."
+  ],
+  "review": "fresh read-only review found noP1/P2; no builds/tests/process reads by reviewer"
+}

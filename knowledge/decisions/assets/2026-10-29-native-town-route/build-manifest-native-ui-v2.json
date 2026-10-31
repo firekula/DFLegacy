@@ -1,0 +1,2469 @@
+{
+  "Schema": "debug-client-state-build/v1",
+  "Build": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\build-native-ui-v2",
+  "SourceCommit": "f6a9eb93cfff8678d3b99ad0fe7a5a92871b551f",
+  "DebugSourceCommit": "f6a9eb93cfff8678d3b99ad0fe7a5a92871b551f",
+  "ManagedSourceCommit": "59666d9b543abc5119012cd98ad1fe8e57d7858c",
+  "NativeSourceCommit": "17af17257d8a0c0f72e1c392b9f9450821ee7d7c",
+  "AssemblyVersion": "1.0.0+59666d9b543abc5119012cd98ad1fe8e57d7858c",
+  "NativeSha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225",
+  "DebugSha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B",
+  "NativeArtifact": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\build-native-ui-v2\\ijl15.dll",
+  "DebugArtifact": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\build-native-ui-v2\\debug.dll",
+  "PreviousBuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\build-manifest-native-ui.json",
+  "PreviousBuildManifestSha256": "07449A48DCBA2AAE05C088509EB5D93D90021F03D8543218C7B83198504111AE",
+  "Files": [
+    {
+      "File": "debug.dll",
+      "Bytes": 1699840,
+      "Sha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B"
+    },
+    {
+      "File": "DFLegacy.InterProcess.dll",
+      "Bytes": 42496,
+      "Sha256": "17FBD64CD7987050ED2E6EE7667EA28C5E0258E557E34D2A6D7F0B0E8AD365C6"
+    },
+    {
+      "File": "DFLegacy.InterProcess.pdb",
+      "Bytes": 18508,
+      "Sha256": "3EBEA96C9346B6AF2A8E54A3E3AF7F53306B4D87B09EB850089FDF90A966BA49"
+    },
+    {
+      "File": "DFLegacy.Protocol.dll",
+      "Bytes": 248320,
+      "Sha256": "79295A31A0D08DB18E7790886422F6B01A85958087170A2D151AA4E247023263"
+    },
+    {
+      "File": "DFLegacy.Protocol.pdb",
+      "Bytes": 65736,
+      "Sha256": "36A6C3F8685AD00AD15BC3AB8FD68D3DE5CCBE69E649E946C21DF5E2E0F3C574"
+    },
+    {
+      "File": "DFLegacy.RandomNative.dll",
+      "Bytes": 105472,
+      "Sha256": "261883BD20CFF1CD882E89467D9F1851E4C63E92CA5D805CC9074ACE827AA583"
+    },
+    {
+      "File": "DFLegacy.Server.deps.json",
+      "Bytes": 1310,
+      "Sha256": "2DAEB1832EDF969061314A541B26ED75C9A558A5B4A267812E8E90D4B2A37959"
+    },
+    {
+      "File": "DFLegacy.Server.dll",
+      "Bytes": 2754048,
+      "Sha256": "0E576748248436A974093A1CF4491A756B2D4D52B1CB6823577D2B4529000D25"
+    },
+    {
+      "File": "DFLegacy.Server.exe",
+      "Bytes": 268288,
+      "Sha256": "EFF19132762D846461467C59749230680598D01B9CB55ADD2F2813335DE7CBCE"
+    },
+    {
+      "File": "DFLegacy.Server.pdb",
+      "Bytes": 526272,
+      "Sha256": "36EEC313ACD3A3423C711D8C89531F38C61B2810C4B33607435036395C8FBCEA"
+    },
+    {
+      "File": "DFLegacy.Server.runtimeconfig.json",
+      "Bytes": 539,
+      "Sha256": "9FD781CDA327A8010D236D8B004D3A47D523C4AB220FBDC4D4636314896FC88D"
+    },
+    {
+      "File": "DFLegacy.Server.staticwebassets.endpoints.json",
+      "Bytes": 78776,
+      "Sha256": "411B7DF1295E103C298DFA09752197A62FEE8370F10E01F4892422BD98A78D12"
+    },
+    {
+      "File": "ijl15.dll",
+      "Bytes": 296960,
+      "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+    },
+    {
+      "File": "server.json",
+      "Bytes": 6158,
+      "Sha256": "BE6C23E76A750917D03D048B45744080AB2B1A2CFBAA3E77CC4888D9D099E00D"
+    },
+    {
+      "File": "web.config",
+      "Bytes": 501,
+      "Sha256": "74056335736AC0DD02C899C0C1AB8B8ED46B5C770A8A53EA2596C0C075DAEE6D"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.css",
+      "Bytes": 11555,
+      "Sha256": "768DF249E8B4B82470E75BFF60478F837E31BD19B38E6CB7FB983D19E5BC9125"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.css.br",
+      "Bytes": 2450,
+      "Sha256": "8AF2DBC6A8E159EED204095BDF6B835CFF0688814DABD04629492C999A37329D"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.css.gz",
+      "Bytes": 2941,
+      "Sha256": "61B640C2D6F34348637F347BA81DB4957EB7AB9CC6E54B11029A7DBB5D73BEAD"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.js",
+      "Bytes": 24425,
+      "Sha256": "94074F9CBA61AE40A1F4729F9366056383C5BBD524ED08716DED0C41231D91F8"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.js.br",
+      "Bytes": 5462,
+      "Sha256": "F9D43C53BF57898622F8A1BDBFFE491B48AF5D77D6E19903BF94CB5D4026C00C"
+    },
+    {
+      "File": "wwwroot\\admin\\admin.js.gz",
+      "Bytes": 6606,
+      "Sha256": "54F26874C2189FB169127EB1D25B1C99F707D658417F33D8A5FEBA992D2C9DC4"
+    },
+    {
+      "File": "wwwroot\\admin\\index.html",
+      "Bytes": 12935,
+      "Sha256": "B449FC2E8B11838286EC35B228ECF5AEDF00F17AB92DEE406C83CD23428093DF"
+    },
+    {
+      "File": "wwwroot\\admin\\index.html.br",
+      "Bytes": 2179,
+      "Sha256": "ECA6D2253E03E61122E9B8A4BF16C1C25EC932D89C81D8AD5CBCD637D269B9CA"
+    },
+    {
+      "File": "wwwroot\\admin\\index.html.gz",
+      "Bytes": 2970,
+      "Sha256": "7A36FC5EC6C2E62419DE79A17B330A8F7378B8492511A9FF6A28E3EEA31C369E"
+    },
+    {
+      "File": "wwwroot\\admin\\player.html",
+      "Bytes": 12057,
+      "Sha256": "4208D6AC2E1F9028253858AC6340C6F3980D1E0A1B831A2E879AD93E1303B9A6"
+    },
+    {
+      "File": "wwwroot\\admin\\player.html.br",
+      "Bytes": 2882,
+      "Sha256": "DBA8C82569162FC7938CF59324B95892283B40D85DC6F16F6765B35AA4148BBB"
+    },
+    {
+      "File": "wwwroot\\admin\\player.html.gz",
+      "Bytes": 3659,
+      "Sha256": "CC571CBD78D5A62506C65DFF2216477E6ECB06DCF5252672B1F1D56BDB291C4E"
+    },
+    {
+      "File": "wwwroot\\client\\client-auth.js",
+      "Bytes": 8561,
+      "Sha256": "89341D4BE7DDD08BDA60B9705E8BC10917596252C74A0C64DAE54C402FE94416"
+    },
+    {
+      "File": "wwwroot\\client\\client-auth.js.br",
+      "Bytes": 2377,
+      "Sha256": "FED58E84299BA67B4FD514630E6248E72E4B875BC0782B707610FC74F9438CFF"
+    },
+    {
+      "File": "wwwroot\\client\\client-auth.js.gz",
+      "Bytes": 2862,
+      "Sha256": "BF2BE8BF12C8EC6E0BBFE3ED770A4AC3297CC08FB926C6175BFCE23002E7BB29"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond.htm",
+      "Bytes": 3701,
+      "Sha256": "D4F992D6AA6797EF60BC03C36B4FE4E55FC3830053D1B484EF5CFC669A9651C2"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond.htm.br",
+      "Bytes": 1175,
+      "Sha256": "4F5CA52F268E48FA8DFABCA5277AB1FF599125F149AF3E54EE3B042889B39DB5"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond.htm.gz",
+      "Bytes": 1698,
+      "Sha256": "9D5B04D41C0C7A6175ADB2B2DE85F24A22A4B57A3140A9B025FB772DDFFD8957"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond_netbar.htm",
+      "Bytes": 1322,
+      "Sha256": "BD361D066E02D3840F8E1E0E8D5C04AA243A39730627CE45EADC1A65A9B90700"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond_netbar.htm.br",
+      "Bytes": 426,
+      "Sha256": "7F5734FD995B339273D7AB7B4C04963DA04D656A0DBEFE78456EF1577AA85C62"
+    },
+    {
+      "File": "wwwroot\\client\\client_diamond_netbar.htm.gz",
+      "Bytes": 721,
+      "Sha256": "14C9E4EBC795F79D11A7BE496E9447DB7D4BD31693E17F9B380C470F0F1E2ECE"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay.htm",
+      "Bytes": 5049,
+      "Sha256": "FFF3A1D8C7EF49422E66F8C919CFA0548C7B23A539A83C9B3D83974F4E783A82"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay.htm.br",
+      "Bytes": 1449,
+      "Sha256": "056C297E2BE7BAFE6BC594FB045347C7DB949591D884A5C8E605B3B146621CA5"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay.htm.gz",
+      "Bytes": 2015,
+      "Sha256": "ACD44357D9ACD23D20AD5CE53037370CA2DAA717263B30DED01D7A56CCD09B2A"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_bank.htm",
+      "Bytes": 5192,
+      "Sha256": "40D87A03B02DF5896E338B5E116AEBB1AF79B12D17AD79471D34399960B2FA1B"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_bank.htm.br",
+      "Bytes": 1496,
+      "Sha256": "A9D78A684F992BC11B5905AEBEFFE55500EF9DB054DC68F15B311DE19F306228"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_bank.htm.gz",
+      "Bytes": 2092,
+      "Sha256": "C2DFF2DFD9C0BC9972A52FDE947BF2FD44863B4F9E387178496AA5D84EC754D4"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_netbar.htm",
+      "Bytes": 1405,
+      "Sha256": "D36815B970E8C47C50338522F88173E6AF6AEC66CB657918E3DF0264060732B4"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_netbar.htm.br",
+      "Bytes": 499,
+      "Sha256": "E9AEC8BC644330464CCE0127EA448C789D8D17A2CF6EC6F3C5A5FCC22620B252"
+    },
+    {
+      "File": "wwwroot\\client\\client_pay_netbar.htm.gz",
+      "Bytes": 809,
+      "Sha256": "9BE90D5DD90076545FA79C0E467B289B2486D065EA502D026B94B1012FD771CF"
+    },
+    {
+      "File": "wwwroot\\client\\css\\commen.css",
+      "Bytes": 4885,
+      "Sha256": "B447A626E6CD6AB7D7B33C3555924EA7D87DB9D775D0433B9F504A65222D6398"
+    },
+    {
+      "File": "wwwroot\\client\\css\\commen.css.br",
+      "Bytes": 1229,
+      "Sha256": "D127B419BD2EF8448952A09FCD146E3F55DA250E8D264E6FA25D2BEB488B7F37"
+    },
+    {
+      "File": "wwwroot\\client\\css\\commen.css.gz",
+      "Bytes": 1551,
+      "Sha256": "C12901BF78F988052D2EE3A5D4531690754101032135C0571AF18950BDE2C62A"
+    },
+    {
+      "File": "wwwroot\\client\\images\\cz.png",
+      "Bytes": 328,
+      "Sha256": "FCBB59D4F061C0D455B3830BAA4708EB8D7A7114FD52CC4BF5045EEB7E4F910F"
+    },
+    {
+      "File": "wwwroot\\client\\images\\hz.gif",
+      "Bytes": 162,
+      "Sha256": "3B1E718C715C0A456B519CB29FA6A08CC669FB3C35B6C46532D0AD6CA660DF10"
+    },
+    {
+      "File": "wwwroot\\client\\images\\pic.png",
+      "Bytes": 60983,
+      "Sha256": "AE4D0D4DE04A87E2AD1CB11DE1F96A6F0F3F4AAEDBE4E0CC357909A26E200FD6"
+    }
+  ],
+  "SourceFiles": [
+    {
+      "File": "docs/superpowers/plans/2026-10-29-dungeon-tooltip-cleanup.md",
+      "Sha256": "3F1370DDE9F982732D8809B9A9B8EF0B251E48F1FAEB5948AA5396E5EFB50237"
+    },
+    {
+      "File": "docs/superpowers/plans/2026-10-29-party-dungeon-acceptance.md",
+      "Sha256": "346DD3EAB17137631104DB3F3247CC2E303900E643C76DD1B6634A3FFDD3A996"
+    },
+    {
+      "File": "docs/superpowers/specs/2026-10-29-debug-party-commands.md",
+      "Sha256": "1E2A54A1670B7B66AD6645FE7747F84A4040C8E8576EB752F16C54CE34306270"
+    },
+    {
+      "File": "src/DFLegacy.AccountClient/AccountDtos.cs",
+      "Sha256": "6C590103D88E6DC741AE30F88B360287421CD7462216482751BACF26D8E2F3FC"
+    },
+    {
+      "File": "src/DFLegacy.AccountClient/AccountServiceClient.cs",
+      "Sha256": "0A148C2829E1F44F5A09F17405DA7799DD27AE6C7F36EB6C866E86E630CB0797"
+    },
+    {
+      "File": "src/DFLegacy.AccountClient/DFLegacy.AccountClient.csproj",
+      "Sha256": "4CEEE8BF2BB416393EE5BBF11AE5E37B19D39804D5A68DE5B46FE344984D3C57"
+    },
+    {
+      "File": "src/DFLegacy.Channel/ChannelOptions.cs",
+      "Sha256": "6443AC60F303E7B30AB33F021C03CDE89A0C14CF06D93136E26C463F270C0774"
+    },
+    {
+      "File": "src/DFLegacy.Channel/ChannelScriptSource.cs",
+      "Sha256": "B604C694A56AC17244FB2C601FCA0012345F4DEA0146FF15D6D36435DF7304C7"
+    },
+    {
+      "File": "src/DFLegacy.Channel/ChannelSessionSink.cs",
+      "Sha256": "8757CA642CC9CF841323437162352B9221DE740250F0E0781DC9F1B2F546A1C2"
+    },
+    {
+      "File": "src/DFLegacy.Channel/DFLegacy.Channel.csproj",
+      "Sha256": "2988F04FD518693AD93F9DC9A63AB4FDDF9825D8F486B8CB3156790E33B543A3"
+    },
+    {
+      "File": "src/DFLegacy.Channel/Program.cs",
+      "Sha256": "F395A7C34E9624A77F5B4BA531D8937E1F0ABED220A3B07692C6D58DE6B034CE"
+    },
+    {
+      "File": "src/DFLegacy.Debug/DFLegacy.Debug.vcxproj",
+      "Sha256": "8C9176B29E57DB01D61C367B9025570F1C7FF635507EBEB0E0E37F2C57B3EB59"
+    },
+    {
+      "File": "src/DFLegacy.Debug/include/debug_api.h",
+      "Sha256": "12033E05BDBAEE1B4BC28B75D8C8E528A44D18ADBE452892623B2523E7A35021"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_navigation.cpp",
+      "Sha256": "F763814D357C73A09B8B4C0BA1965B1656F2073FEECB118FA9A1B8BD5BF6665A"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_navigation.h",
+      "Sha256": "E020FC09832EB8236B30DB6A16C7C0627D958BB1630E37812B47C37E4D09BD12"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_navigation_runtime.cpp",
+      "Sha256": "63AF2AF09BEA4F2A6489F4B669073CD89DB129D1DE7C78EE90E9AF921C540BF5"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_party.cpp",
+      "Sha256": "3C5E25E97DECBD68F0517B9BD69BD4D7BD8444D4F0F75F4B997406F687D6F4F0"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_party.h",
+      "Sha256": "9F38C234522BA7B1BA4A27AC849D3E90FB4CBD4F6D37E4E3BA79E3319B5E96E0"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_party_runtime.cpp",
+      "Sha256": "F679364AEE60B546B17BE813F4A576FEF942A8FCCC98DE80747F9E45C01EC1DC"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_state.cpp",
+      "Sha256": "5B2A02D11BB79FCA6C0015D5E70DD3FC677AACCBC6868B74D894ACB56C4FFD2A"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_state.h",
+      "Sha256": "E0DF0C1AAD4949780C3A7619AC98474DE62EF6876E44CA7DCD51F5148163C9B1"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/client_state_json.cpp",
+      "Sha256": "DF74B5E952B32AF71DCE2641E8C742CBF63E597C2E23A240183D55AA9C4A005B"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/debug.def",
+      "Sha256": "8989835C0A2DF973B460894E339D09D777DEE2F2865A6FDD7A69F7D58AA6AADD"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/debug_model.h",
+      "Sha256": "84AD88B74C2BBA41A7029647D20AD9B5F89BADCA732FFD4FC95274BBFEDC8884"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/debug_overlay.cpp",
+      "Sha256": "89EFA60422BD507E128A28617BC052E4E7D723684EC2E20368FAB46B62DF5BAA"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/debug_window.cpp",
+      "Sha256": "8A0FC2474F9AFC47FF683402C4CB6AD11DD199BEB034B7D9F61D8EDC1B245E0F"
+    },
+    {
+      "File": "src/DFLegacy.Debug/src/debug_window.h",
+      "Sha256": "35162860A54DCCB1740C13A885BC80E3BDB74D457ADEDC0A6F7E1B0DCACBC8FF"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/DFLegacy.Debug.Tests.vcxproj",
+      "Sha256": "E1DC53376B3E1D3BCF911538E348024E6EBD0C478776EF9001E0057D8B768454"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp",
+      "Sha256": "9A5EA9EF04DE050EC793E07D0DF2FB3F191F4D24997C51B4F9075378029666E5"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/client_navigation_tests.cpp",
+      "Sha256": "2D979B2445246A2D0BBC0C356DB42EDB9AE5AB92563D9042C0B05B7D243EFF7E"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/client_party_runtime_tests.cpp",
+      "Sha256": "325F26BD8C0CD0B6A1993155E464C8E7E6067E33D46BB4AAFF79D2D647146A3E"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/client_party_tests.cpp",
+      "Sha256": "35A641291A0014A8FB353449200B48CF64C5ACB6C5821F1B492EEA59563C734A"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/client_state_tests.cpp",
+      "Sha256": "74D0AF1FF13A99B877DAFD8C45CCFEFFD421FD4AC2F9AFBF5CC667A516CED0FB"
+    },
+    {
+      "File": "src/DFLegacy.Debug/tests/debug_tests.cpp",
+      "Sha256": "8541520498832678D7014978F69D83F7B733156EFF4080ADF618DAF9327FB231"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/CMakeLists.txt",
+      "Sha256": "CDA5A800D0B77CC45C299F45A79D0AD30F6AE534A10F4538F471D19EA8BE7F6C"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/Config.ini",
+      "Sha256": "489892D470716E3A76D0039D3D9F5E9BBE00460A547A682122EBAB26FB44B576"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/DFLegacy.Ijl15.vcxproj",
+      "Sha256": "401BDEDBFA8B1FAF87F539EB430300A4847D377795971C526EE74746DB882617"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/DFLegacy.Ijl15.vcxproj.filters",
+      "Sha256": "968B3A1D8D5478124C143B5ACD745512041D4A9D4888FB17A7AFEB347FBFDEB4"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/build-native.ps1",
+      "Sha256": "EDE6B9BE21982157653B89E303D0961E5A86AC2A4097D59F7E6DE685A5BF65A3"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/include/ijl15.h",
+      "Sha256": "B70ED27E16A04F8153D579D79C18AF7D1A86B1162CB1E899DBB60D8703153BAD"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/auto_input.cpp",
+      "Sha256": "7E066FC161925F54CFA4A9CEF7C2FC8A39130390C7761459B445E44EDEAD3873"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/auto_input.h",
+      "Sha256": "B35DD93DAE61FC945D948C1257DDA993A14B721357BE6161CE388391A0DD950A"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/boss_room_death.cpp",
+      "Sha256": "58D3DAF9D8447102D5C7F72C386D32ABBEA3046F86BDA223EEC0723D6D85DC45"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/boss_room_death.h",
+      "Sha256": "234BB34768A26764F663B89321B48DE8FB22AFB685707023A3D724F6F10F14DA"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/channel_reentry.cpp",
+      "Sha256": "E7A8720E8F07EA0664F4B57B95C43DB3E8C476154CB2F767C5FB84F7C9E5ABF6"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/channel_reentry.h",
+      "Sha256": "98B6D38BD0E207EDB7746780BF9DD53B7F59F71DFAFB29CB4FEAEC25F16349BA"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/channel_switch.cpp",
+      "Sha256": "4752E6564429CCB256FC9AE6A32D5EC99793708028BDD2D55CD171C976C7322F"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/channel_switch.h",
+      "Sha256": "E4CABD939DF85D81D2CDB66242B092AA60EAFB51FD19853CAE3222367FBFF271"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/client_debug_state.h",
+      "Sha256": "858A1DA042EF0F170F23BDBA02225C39F37BFE62A37C724A8BE57BBBDFBE4093"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/countdown_coin.cpp",
+      "Sha256": "00273B675BB6FBDBE85122F8FEB307222F8E1B79D159F5F45323CE8CCFFAA554"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/countdown_coin.h",
+      "Sha256": "3B8D670A9CD3325B631D246DFD3F07D958A2D1D891038D9003A4AA5EAC39AD39"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/creature_gift_row.cpp",
+      "Sha256": "C3984ED805172846B6EC4D99C1B4C45D57CF4A699ABD532BEB2BC9059D4199C1"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/creature_gift_row.h",
+      "Sha256": "9A7E9EB4D7AE3F4E2FB263A256E6D20BD1E0359D80A66DC3A243B7767DA52705"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/d3d8_scaler.cpp",
+      "Sha256": "DB35C1AFDA0A6F094431F292778D70077FC38D8A080877612F0B92D2860553AC"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/d3d8_scaler.h",
+      "Sha256": "7E85C32C1209D444B9024F08D12F4AE03BBCB9C9C55F5C7543B3763AD49CBF38"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/debug_module.cpp",
+      "Sha256": "2B4055069848CB94EFF7407FA8431FB7D09B6ACDCEC39EC2C4F4397BC24094AD"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/debug_module.h",
+      "Sha256": "5BA1EA591A8FFBC0673A5BA7AE448A0AA433C0D6ABE82AF481F02CCCFB81A502"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/dnf_patches.cpp",
+      "Sha256": "7A52B40BD1BA64E5B4237194DB10B9B96B57308A0B994C6D40C3EACAAAE1872B"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/dnf_patches.h",
+      "Sha256": "8412DD8A7690459399FBB4268EB1B67166F868E05254EF9726F255B34C018B21"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/dungeon_tooltip.cpp",
+      "Sha256": "06FA548D9DB6969DA388E615AE5C8FB9542B7B963CA0BDCB2C36899716E234FB"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/dungeon_tooltip.h",
+      "Sha256": "D3F0301EDD0AC4DE8C82C348D5EF73BA91531FFF3E1B9EC42F08947E8D9A2124"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/external_string_table.cpp",
+      "Sha256": "EA8D4DA6EFDE83029F8340FA328C0628D92CF7ED6FEEDC5F1CCA784C8B46C911"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/external_string_table.h",
+      "Sha256": "B63891BEEC07A74F26766D21250462032D7374ECACA2F0207C1EE1FAF33B8F58"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/ground_item_removal.cpp",
+      "Sha256": "3A2E0943A9419332BE7AFFE6FAFBFFD181CC092DD21D65415AF29BBF81625E53"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/ground_item_removal.h",
+      "Sha256": "E8BF576C7920CDF2CD084A559CF360496F2B0F302D90AA07693EC2417024337C"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/ijl15.cpp",
+      "Sha256": "293807D748182C030550F5CDCD8D759F071AA38E31BE5FCEC7A6DF3DC3556EAD"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/ijl15.def",
+      "Sha256": "C12EC237455DBFAA51F11C83657E42F0A638F9A2C4361CF36CEA648EEF4371B6"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/ijl15_config.cpp",
+      "Sha256": "4E8C3C3B0FE8031D7F3B4ADF742A030A26CB060851408A58657F5E0ADD211391"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/ijl15_config.h",
+      "Sha256": "80362E11035E8148FF9AA0CB1BA2820CE91D2E32EBC767438983B4EBFBD59147"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/mage_skill_contact.cpp",
+      "Sha256": "388151DAB060246D299EE47A50ECC746E04116A4CA9B94B316F59A33C170ED62"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/mage_skill_contact.h",
+      "Sha256": "4BB42C5E6F0EB19A6788A623157408F508A1822D97DE4CEBB2829341C0CAD38D"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/memory_patch.cpp",
+      "Sha256": "FD9BCCCF7CFF9640A7493000749F9221DBE2D614DC5A7D7A08F3D820BC4E31A4"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/memory_patch.h",
+      "Sha256": "2F683CAB289556D6E8B7964F4481DA76ABF00FDA8FCF55919425BB6AB98AA706"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/message_audio.cpp",
+      "Sha256": "D879CC42ED260561B3663EE91CA4D92F7FEC7C9A6FFBE2FE9A677DB1D8871E59"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/message_audio.h",
+      "Sha256": "22B83C5B8B8194314457D0DF37B4B8A0ACF8C5BE1C2C4E81D01B1775F64EFB90"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/mouse_wheel.cpp",
+      "Sha256": "23617C9CE782DC4EF048A23DBFF6B231DC93D402213C859A578645471756732C"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/mouse_wheel.h",
+      "Sha256": "960679C8EBADDC0ED112F765994E8596B72AEC1A80C884118E5711183E0013C9"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/net_dump.cpp",
+      "Sha256": "E00D760F5409D026DB34B2A42BD560A7B0EA4A9DD2B5F9BD839FFF92BC83F86B"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/net_dump.h",
+      "Sha256": "BA4D0512C0D71A1FFB6A372592E63A13C62805BCC58569F76CAD4DAB8B16000B"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/output_paths.cpp",
+      "Sha256": "B2149DB461B7E00FE1CAC8A1CB127412FD17B2ECC0F205B02070DA72F5197349"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/output_paths.h",
+      "Sha256": "4A42EA734260800C2FCF281B0BDB091ABBB91E4AEB820C04AFDA9F99D1D46573"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/party_card_display.cpp",
+      "Sha256": "C7946AAE6A9A8858FD772AC3FDC8FE66D4379F958BD743A8D62103F2D388FE5E"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/party_card_display.h",
+      "Sha256": "7F05B1AB46E6ACA5106C66FA278A9DF883683038DD21B720DA58650E5087FC87"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/party_combat_detail.cpp",
+      "Sha256": "511F8AD6129AFA4E8D74CAFC1FD44A61246B36041B2192F7F51D69EBE0354F03"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/party_combat_detail.h",
+      "Sha256": "48F30FCCF340E158806C1AA5B8A690A14F837BBC2B9D2A2AE85428C77F6EF8E4"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/performance_overlay.cpp",
+      "Sha256": "6467158B8CF4208AE243BB830B766994E93140C5D7CBF9E6FC5D6DF84A30AD11"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/performance_overlay.h",
+      "Sha256": "2C4E5C5A5F1F2AF29523E0ACA1BE7D1C16337F679A8C3A9605EF89796F560F13"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/priest_heal_target.cpp",
+      "Sha256": "9C5E11FE0E5CFB83FE974AD97B344929E60873D348F6891943C906302B14B8D5"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/priest_heal_target.h",
+      "Sha256": "5F7B23A4B9493A29344A5C790919E739D9ADB4D37C4B7FDD6B5913F995BE1A89"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/relay_send_queue.cpp",
+      "Sha256": "117C25024ADAC1816274A25E0343B8F270921E2B121E87BDC7EDF2FEDAD220A1"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/relay_send_queue.h",
+      "Sha256": "9D43BFA7419357E8661675D32C2B36B9A918DBC42EACFDB769509CFFF250427B"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/stage_follow.cpp",
+      "Sha256": "518B23E80828A71ED77E7AED32F4B1681433A4239241ED8F0F146F5744075901"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/stage_follow.h",
+      "Sha256": "C1917DAADCFD721B56EC3D44CF3CBBF808C63FA78B61B57104E22AE815998D55"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/summon_owner_death.cpp",
+      "Sha256": "B6630053950F8B265A418366992541F077A1F1D42876E26EC5615F605D4D2268"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/summon_owner_death.h",
+      "Sha256": "C6049B58C700C2AD952556204A20B084E4F52A729B5287EB841335637872248A"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/window_scaling.cpp",
+      "Sha256": "F2DF36C703660D2882E3BBA0E2969AA12F0970D25033DFA37BAD7F85E0757448"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/window_scaling.h",
+      "Sha256": "E284C314352608B51279546923A6177D9788625C0EC220EFE5886B88CCB171C4"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/DFLegacy.Ijl15.Tests.vcxproj",
+      "Sha256": "5CD44E7ACA69345D778D29635CF3AC3A266E63E9E0F7F5411EC7EDA7213AAA25"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/boss_room_death_tests.cpp",
+      "Sha256": "BE3537D4A221E8D56D98920E78B086ECCDA6357711F49292FE6EF6E10A29B5EC"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/channel_reentry_tests.cpp",
+      "Sha256": "2DE82C6E7092428C310E4AA628C664B0498AA5046256F99C833DB312B8A9FD56"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/channel_switch_tests.cpp",
+      "Sha256": "8E21E2400819A6FAB54AB7E1C49951235F1955E7ACCF393605CFDB46E3F20B53"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/countdown_coin_tests.cpp",
+      "Sha256": "15D19E504564651E85EB060A1B0AB1B080EAA168635EB5C2B1F0FF756660FA03"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/creature_gift_row_tests.cpp",
+      "Sha256": "05DE8301A5507E2DE36F3DBF462E68A7507E471B887990C78DCF1FDD1459BC57"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/dungeon_tooltip_tests.cpp",
+      "Sha256": "ED6D399EB6981A71A6AEE89FE226E96FAE1250A6DEF638D840C4B08AA4FA3068"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/ground_item_removal_tests.cpp",
+      "Sha256": "F4A04362FE62F26A3346110E84AE7945C26B7EA37D3DD13EE26A2C8254A339E9"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/ijl15_tests.cpp",
+      "Sha256": "2FA77362011A158A5F8CCD6CDEE212B4CA41DED7C4D7EFC03BD9324311B3A421"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/mage_skill_contact_tests.cpp",
+      "Sha256": "F27317CDA3BEAF7C1E2DF4F892138CE6A789D2353B4168B813FBFFFE4D21D4A1"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/party_card_display_tests.cpp",
+      "Sha256": "32C38DDD4B58DCC52CAEB42B12FA58162DD0F65792143230C49ED1018DA0321F"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/party_combat_detail_tests.cpp",
+      "Sha256": "5819E3256F70A488A5E606BB7A5875898E5DC2A7430BF2ABDB61369FDD8401BF"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/priest_heal_target_tests.cpp",
+      "Sha256": "313B28E93ECFE5E785E44C43389F238474CEAF25131BEA153DD1EB11D1F45CA4"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/relay_send_queue_tests.cpp",
+      "Sha256": "7BFC2BA26CD6B3DE66EBDCFFB9E65F65DE2A1A729FBE26CCFBD83677505C68BD"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/stage_follow_tests.cpp",
+      "Sha256": "762261B637992B2A4E9300E18CD5628F0EA27CACE10C3844B98B630AD64EB1BB"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/summon_owner_death_tests.cpp",
+      "Sha256": "0B9912D828A1D97D18BF291CB87B3285D5DE294012CAD726998D1F1AA4C0423F"
+    },
+    {
+      "File": "src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj",
+      "Sha256": "8B78DE826181FF31FE445678F291643C5B5D862B285F427E4E42AB823EAAB135"
+    },
+    {
+      "File": "src/DFLegacy.InterProcess/InterProcessLink.cs",
+      "Sha256": "676235A0384A3FA18CC6F53FE37639FE341F5C9144EAB6E6199BA4243224BC41"
+    },
+    {
+      "File": "src/DFLegacy.InterProcess/InterProcessLinkClient.cs",
+      "Sha256": "77F6C9748FB8A9F1CD1CE6A13529457DB2195503BC8FB307381B51F48016C333"
+    },
+    {
+      "File": "src/DFLegacy.InterProcess/InterProcessLinkServer.cs",
+      "Sha256": "A9143B9C20BABA21BDF9689CC3FE7AD352631D5A16D18CCA9792C722A3884FF6"
+    },
+    {
+      "File": "src/DFLegacy.InterProcess/InterProcessMessageIds.cs",
+      "Sha256": "65B511D0B7BC3A041B333A86956C77F72251E489E3AA11886850638FDB420DE0"
+    },
+    {
+      "File": "src/DFLegacy.InterProcess/InterProcessPayloads.cs",
+      "Sha256": "AEE9517BB58C2DBA98062C3A6E2242336C0C4B2463CE5176375BDDD4F326244A"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/App.xaml",
+      "Sha256": "D5B0599B0D50E2CBE073FE32FCB8D30067868FB28ADC2BC5E5EB46101E4F3A03"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/App.xaml.cs",
+      "Sha256": "40CC21C4BA9DA7334D7A49095AF6DA2F7AFF2C75A2119DFC1CAF00AAEAD99BEA"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/QQGame.ico",
+      "Sha256": "7864D61A55DE9DAC14F232D4C772C6D52C18261160B090D18996F2450F8BF822"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/backgd_di1.png",
+      "Sha256": "D390CC149F538CA5FE18083366305B1291C6D80EB574F695BFB5FED5DC395691"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_bs03.png",
+      "Sha256": "38562E9D183653F19F8F842D5F5949F051A825C0E8628469996204B145162254"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_close00.png",
+      "Sha256": "09FA65313CB5A420E96A0A07B0B1D1E4EC1D288BB9E04615818C9225214BDB23"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_close01.png",
+      "Sha256": "FED894AF5D4EBF5569DA55721B3EDBCD19D0B674082223EB545864E6E9C83F36"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_close02.png",
+      "Sha256": "CE601050449351168925383DAABE6EC49D3BA1041255EB8F5F20FC83D3C98DA9"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_gfwz00.png",
+      "Sha256": "364C5CF5D5841FF77973FE6B1304CAD4EE6A490898D1D90F34B50DC467F1933F"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_gfwz01.png",
+      "Sha256": "7D210F8FB9D926F9E5F035B0B5E12ABEAAE2EBB2F360D3DE9B6AF2A380305EAE"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_gfwz02.png",
+      "Sha256": "776FA493D1AD99D3A2CBD53983B9307F19ECE946BE4F900BCBFF138E624E8402"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_kffw00.png",
+      "Sha256": "FDE7C392BFB0ACA0C0AB4C3A8AD8D0CAFAEB9E75034EBF88601FDDD8378C20BB"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_kffw01.png",
+      "Sha256": "0948FE03B48C6ED23F3CBEB8B93AF44E2F028464936685A9C602E94FB1878558"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_kffw02.png",
+      "Sha256": "8F34EE99447CA8F9B131F1F1E6CF38E839FC436937B10BB3ABBC9A58CE2EC0EF"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_sccz00.png",
+      "Sha256": "CC47F7BC3E3D9D55ACEEB6A2ABAA9C8B2A17565991656CDBF055732D74F970EA"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_sccz01.png",
+      "Sha256": "E68122794CD6BCE1ED570351A0ACF839F6B134F79336ED55BB6AB3029265A71B"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_sccz02.png",
+      "Sha256": "F6907D9B4CAF38AECFB32C0CD032A6F357C0BDA341FF96CFAFFE6B366C332A72"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_yxlt00.png",
+      "Sha256": "B69D566771BC2FEC529FDF5E671AFFB763617313F0BA197DFD67260810553593"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_yxlt01.png",
+      "Sha256": "3D591CEF0B3570450673490FAB7B152E20962B0AA15FB48C98389AD8B782CB1C"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_yxlt02.png",
+      "Sha256": "7B14944F98A48FD255D3FFDB33932FD90449F051BBE2687A0C18A2D05F8FBCF7"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_zczh00.png",
+      "Sha256": "EC0C85DA584A76D390DB20DC67A2BD5E4ADFC6430F4FF531EC624E052A106DBE"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_zczh01.png",
+      "Sha256": "C2C2539ED594B5F1B2A1845DBE64061B21BBD9B809236F196F05A870CE97A59D"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/buton_zczh02.png",
+      "Sha256": "E41559F18AE7492D03971820550E3FB9BE60E880C47839BF11389C95A2774284"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/checkbox_00.png",
+      "Sha256": "8DD1A6FCDCCF25D30B0CCE34AC3C1600A69990B397B0FA343C31AB9612D4A119"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/checkbox_01.png",
+      "Sha256": "F7FA4E22D80DD8CCE8426A0ABEB68A8EE41DE5EF332BF6FD9736EF443EB3B540"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/choose_00.png",
+      "Sha256": "19BBC5AE695B70E32DC8A1DD90EF6663302CDBC3BB66334A78AE9812811D3B86"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/choose_01.png",
+      "Sha256": "0BD4A28D7AEC0B8799BD116B2E0BFE8224873289EF6F7CD58B24D756E6E5B372"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/choose_02.png",
+      "Sha256": "314489577FB8DBD463D17D52BCAF409A026C399DC72134EFEB8E47A6C31AF926"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/enter_00.png",
+      "Sha256": "462A6DCDFBCFD0235EE94F43254D75C5EE81F1ED5F369E868BA5833C07B4924A"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/enter_01.png",
+      "Sha256": "5B84AACBD8FAD0102AB035AD79D71F8DE3C5603A70E5F398DB1F3B7E9DA78105"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/enter_02.png",
+      "Sha256": "7F32462951E001E05B3F38568526B8BCE940E5B0E1E95E0DC48E8288F9339B72"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Assets/Skin/fwtk.html",
+      "Sha256": "3A8B5A005232C95D45EB02E7F21BF5B0377E4A8F59CFAD19073B2D3758E09D6F"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/ClientProcessLauncher.cs",
+      "Sha256": "162F0864F4CCBE49325ED40769AB5AEFFDED3150CEBFCA5B67F088852349DA34"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/D3D9DeviceProbe.cs",
+      "Sha256": "5E30BCB18A70DC30735FB45FBCE5215247F6B08B8E01F6865EE62FF59E4D3D70"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/DFLegacy.Launcher.csproj",
+      "Sha256": "0AD296F5A329AF6E87C0A0411524D3B4D8EB26DB1165D7B7C09CF8D0CD9D6521"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/DFLegacy.Launcher.ico",
+      "Sha256": "7A65A6D6AA5910B1F3A32B546F9E269E7D259CA780BF0041151388FD11251794"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Ijl15ReplacementInstaller.cs",
+      "Sha256": "F31CCD311A5013C87F8DCD906B07D07BCFD2D8DB2BFF86F06F0406D27AFE17C9"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/MainWindow.xaml",
+      "Sha256": "04DB3243135D3A6237E0C7875005EDAE303EF8D2FD37B94EAF25F8779B9971BE"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/MainWindow.xaml.cs",
+      "Sha256": "ABA940A4EBA1277DE08DF3B586BAB7FF5DB6B03B67585779F2405DA063B8DBD5"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Models/LauncherOptions.cs",
+      "Sha256": "428BFA79B278C416059C48D05092FE636B1E27E55F67F0C35078CF7128487F80"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Program.cs",
+      "Sha256": "230757D4B0B40D894C53BFBC0C55C3857883DA17DFDEBF8EF616D6BA230D0B57"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Services/LaunchFlow.cs",
+      "Sha256": "7F5AEB59DB77DEB71C05CC7D9E1C061FD1BD4590FB9C796D916CD994CC45653F"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Services/LauncherAccountStore.cs",
+      "Sha256": "DA01E04DEF871B82D0F8CBE4F561C50D45C4EF1FD72F63135DB95EC903812BAF"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/SkinImage.cs",
+      "Sha256": "668D1214D843B416ACFCE5B1338C14E24F8AFF62ADB8206A0AAD5F45128B445A"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/AccountEditWindow.xaml",
+      "Sha256": "40FECA33CFE7C091C1BE4F435BF3896BFE3476E1C4617B083B89E47154175C89"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/AccountEditWindow.xaml.cs",
+      "Sha256": "76D93562D1731019E37EDDAA8547F5D2610538AAF7FD2219C8251FE14AF4FF67"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/AccountFieldDialog.xaml",
+      "Sha256": "33B938E90B584E8CCD6BD731EAF16B34DD92AFB9328309D04CF0F89C9E78FC8C"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/AccountFieldDialog.xaml.cs",
+      "Sha256": "18DC7503DD7964699F75CEC2D695B60594E0BFE51F1F86AD717162F0B6F61492"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/ConfigWindow.xaml",
+      "Sha256": "F5D900C085A51AD1672CE6366739B5F81FFB2E8A4910ECCED447C502D45324F9"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/ConfigWindow.xaml.cs",
+      "Sha256": "CD69AAD155A4F33CF2958F1792ED8043158E6D94E77A5A9677AAD81871A90158"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/ModifyWindow.xaml",
+      "Sha256": "4E90ACC155542AA8DDE7B8BBB63777B504F1698C64BB6EE4F8A9065AD738BA46"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/ModifyWindow.xaml.cs",
+      "Sha256": "07FCE677983F69BD2EF35F225F3F2186CE015055DF31C6527E52BAA53FFCD1A4"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/RegisterWindow.xaml",
+      "Sha256": "BCC531BEBC4843A1B34F556C6C9E0DBA37AA4EDFD653AACBF18F4648FBF7466A"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/RegisterWindow.xaml.cs",
+      "Sha256": "D793605EAB868F9984E6DC9460EE2B7C94B09038E607226479399C21F2F89D01"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/ResetWindow.xaml",
+      "Sha256": "24B350E2DBFB7B914A046978E429E64DC52F766785182C4E45E49697DD9CCAD5"
+    },
+    {
+      "File": "src/DFLegacy.Launcher/Views/ResetWindow.xaml.cs",
+      "Sha256": "E7D7E0841EB46B39F93E60F154C80E8084279B5093B29AF94BD32FE5EF4FB37F"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/Crc32.cs",
+      "Sha256": "D447F77AE7A11ADB761EC6EF738FFC8C241D26D77199F255CAFC7E4F3E092DC8"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/DFLegacy.Protocol.csproj",
+      "Sha256": "92058F239708D6092A558B2507D3D449D829AE754178253BA8ED260FE886645C"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/EntranceContentFactory.cs",
+      "Sha256": "2085FB19B92F650CCFBE4E28B9BF715FFF571D5299BA329A5CA881A94248A698"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/EntranceCrypto.cs",
+      "Sha256": "C9A49F02FCB431B88FAD761353CF8CBC21131A93A5732F82EC0B06048A7A25DD"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/EntranceDialHost.cs",
+      "Sha256": "2E6A1D240B7269541BB6D844609F029B8ECAEA5C400459C6FD8819D2DDDBB1CE"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/EntranceHandshakeServer.cs",
+      "Sha256": "7A555DB5F18A62F5F59F4434D22B6730264584CC42B05B301893629C5A36FAF1"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/EntranceMetadata.cs",
+      "Sha256": "86BCDDA9479A832D40F17D0861E7971C0C93DC53F1D8C95088FA2CB6C532748C"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/EntrancePortFamilies.cs",
+      "Sha256": "8BA82C225C0AB862F3748A1F76CAFC43B77872FB5B535B33A7161300A45E2B0C"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/EntranceProtocolEngine.cs",
+      "Sha256": "465D1AF4295DE5FEF51727D0770952FC94366112585B6659B2CF726514383315"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/EntranceSessionSink.cs",
+      "Sha256": "421FD6A324D6A99F3D979E7C28FEAF85B4EE4854E9577608C8DCF7DBC423FACD"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameClearCardReward.cs",
+      "Sha256": "EECC4DB3A827F6C8499902159A60FD983E505F9E03896A4623266AA6482C5757"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameClientPayloadCipher.cs",
+      "Sha256": "F7DA5571907D73E2ECBE051EBFD7F515D26E4FF3FB3A2CD9B8A5B0DF1DB3DFA4"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameDatagramProtocol.cs",
+      "Sha256": "97CB2D29683CC8C129CC7577EC3F926DAEBF837ABDB3B583DA8F15842CEA1628"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameProtocolEngine.CeraGift.cs",
+      "Sha256": "3DFC18A07A36EFE2897EB456D4B23D2E7F0BF82385418A03C078AB89C3C6A5F5"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameProtocolEngine.Login.cs",
+      "Sha256": "1740A1CE620249D95B55477F67B8709996463E82A4F1734D0565223F49CF16C4"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameProtocolEngine.Mentor.cs",
+      "Sha256": "10C23BA4275CDEE8FA544F70B12B8F928FAECFD497AE9B9434A42D8D7AA1472F"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameProtocolEngine.PrivateStore.cs",
+      "Sha256": "FA3E472110947A9C2B5253A88124A7FA2E5BCBC7197CE6CBED6F2D3F11C4C68C"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameProtocolEngine.Pvp.cs",
+      "Sha256": "0E431477631807ED3E1B7A315E167B711950FB73F0AE56331180E068AF4F89CA"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameProtocolEngine.cs",
+      "Sha256": "A20A2493AFFBDD755EE0237AD534F7426B8E82E0F7550E998C91D9A3655513B3"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/GameServerPacket.cs",
+      "Sha256": "0B096955C869D494FFC37443EC0E6869A5C3EEA9997ED3A199671990F977CA9B"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/LegacyDatagramProtocol.cs",
+      "Sha256": "697F165421F017EF5DBCCF87DEF9A7EA1D199FB3015D26108EA11240D23783CC"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/NativeFallbackRelayProtocol.cs",
+      "Sha256": "7E0C814CC6656A54C9BE04BD7FB6369B6776E6152E50B624BFE40B38B70C1079"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/PacketFrame.cs",
+      "Sha256": "1ED85182B4323257B6DC84448BCF6439FC3F580189EBF297A9FC5E850F6F1392"
+    },
+    {
+      "File": "src/DFLegacy.Protocol/PvfArchiveReader.cs",
+      "Sha256": "3325AE84DA448AF3C09B4D6B2BB969BCFED262DC653F24FA998E59AF0B496B0B"
+    },
+    {
+      "File": "src/DFLegacy.RandomNative/CMakeLists.txt",
+      "Sha256": "6E6628FB6839A3CB7E933F1940BFE9E0E49591477321055DEF8199B9932B2857"
+    },
+    {
+      "File": "src/DFLegacy.RandomNative/DFLegacy.RandomNative.vcxproj",
+      "Sha256": "F84B23BA0E47B9A2F1684AE131978210AC80AA8678D5232C16B1942A72DBDAC7"
+    },
+    {
+      "File": "src/DFLegacy.RandomNative/DFLegacy.RandomNative.vcxproj.filters",
+      "Sha256": "4EB75C1888E91227E3D1258C1AB9090DA6CFAAFE7D882A33040B64E7742FFAF1"
+    },
+    {
+      "File": "src/DFLegacy.RandomNative/build-native.ps1",
+      "Sha256": "E0D77165C37033E8E1BBF90CAB787D18DE4FB47739375F9F1C9D2E9DDEFD54DB"
+    },
+    {
+      "File": "src/DFLegacy.RandomNative/include/dflegacy_random.h",
+      "Sha256": "09534C927DEA62C87868603FE311D284FAE6D7D4DCF1C6CB07DA06BFED8F3B8D"
+    },
+    {
+      "File": "src/DFLegacy.RandomNative/src/dflegacy_random.cpp",
+      "Sha256": "54C31ED82992450C3F5F34E60969857FFBE6AD51DC40657BE751A47833A9781A"
+    },
+    {
+      "File": "src/DFLegacy.RandomNative/src/dflegacy_random.def",
+      "Sha256": "4D424C06EBE4450E662C2E1E49CC81E59420972E3B5A649C042EBBD75A4AC313"
+    },
+    {
+      "File": "src/DFLegacy.RandomNative/tests/random_native_tests.cpp",
+      "Sha256": "29A58A546BAF26E3F2D7DDD962D87DC5B3FA3F3BDE24E18B32C53E23C3CAE685"
+    },
+    {
+      "File": "src/DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj",
+      "Sha256": "ACBD2F03E0AD403AA2FDACA2AEFD1E272975337A2018B20193DBD6FFA1858E17"
+    },
+    {
+      "File": "src/DFLegacy.Relay.Core/RelayHost.cs",
+      "Sha256": "B92D59165D6157D216B44EB723476F2316AE5339237648602FF12BFFB6A4B313"
+    },
+    {
+      "File": "src/DFLegacy.Relay/DFLegacy.Relay.csproj",
+      "Sha256": "09479610AAD67F5B782D44ACF4A282B5B82B323E727065A0B1E9B7EE487DF757"
+    },
+    {
+      "File": "src/DFLegacy.Relay/Program.cs",
+      "Sha256": "9B2C2D59ADAFBC5C33D7C89F44BA86CA40F9EFA4D30A0F1A5DDFEE02F03D7444"
+    },
+    {
+      "File": "src/DFLegacy.Relay/RelayOptions.cs",
+      "Sha256": "EC988B3C926FF9FB56BEEC944C3E1AC1359FD4033E0E1B82D501C2E24BCF7BF9"
+    },
+    {
+      "File": "src/DFLegacy.Server/AccountIdentity.cs",
+      "Sha256": "F59169A70864F3F69511A2A278947E215CDEDB0D4E1445A62CB60E28F26CB1AB"
+    },
+    {
+      "File": "src/DFLegacy.Server/AdminAccessPolicy.cs",
+      "Sha256": "E7805786D9D13CF6923E7BF50280A59C4884E6C1F8F9700867AD6243861CAFE1"
+    },
+    {
+      "File": "src/DFLegacy.Server/AdminApiModels.cs",
+      "Sha256": "23EC5FFF834EABD0D26FC80C3EEA05DD24B2B1F41514CD13BACF91FB7697049F"
+    },
+    {
+      "File": "src/DFLegacy.Server/AdminAuthService.cs",
+      "Sha256": "8D4F88B341A26760141EF012A971240E03CCBA91D11FFD94634C7E9651C35AFC"
+    },
+    {
+      "File": "src/DFLegacy.Server/AreaUserIdPool.cs",
+      "Sha256": "C50B8B17BA75845F435B46EAA48EA3E88ABEA821615A6C6A37EDA7478E71059B"
+    },
+    {
+      "File": "src/DFLegacy.Server/AvatarAbilityOptions.cs",
+      "Sha256": "ED434E3581C1186ADE7F334B3974AAEA31E1593CBAEDE2FE625EB9A6BF0FD3A9"
+    },
+    {
+      "File": "src/DFLegacy.Server/AvatarCompoundCatalog.cs",
+      "Sha256": "5E30C360A3ABA13A9F79708DEFEAA40E5FCF0B9F09152F86BA9AA525B1E1CC30"
+    },
+    {
+      "File": "src/DFLegacy.Server/AvatarCompoundPlanner.cs",
+      "Sha256": "BD268D1952893310C316A2178B3D0780DD85F99D07DDE8155AA15D8010FBC1A9"
+    },
+    {
+      "File": "src/DFLegacy.Server/AvatarLifetimePolicy.cs",
+      "Sha256": "609F5A04B22157C294D1F80D8E77F550D7C19E19320C659FE40167CCC3F708FF"
+    },
+    {
+      "File": "src/DFLegacy.Server/AvatarLifetimeSessionRefresh.cs",
+      "Sha256": "D3C69EF5FC7B70DA6DC3E7BA3ADB4C381938ABCA7577C049035D5695D2515CEB"
+    },
+    {
+      "File": "src/DFLegacy.Server/CeraBoosterOpeningPlanner.cs",
+      "Sha256": "EF0761D6CC5D5D6A742F013D9A88C1265DE7A51AB8885BF900F2BEF9A3460BF2"
+    },
+    {
+      "File": "src/DFLegacy.Server/CeraGiftSessionEffects.cs",
+      "Sha256": "9C07E0C9BF51C314955319D9787053B3B8FFCF2243EC2BE0CD3CB6C57C95F999"
+    },
+    {
+      "File": "src/DFLegacy.Server/CeraShopCatalog.cs",
+      "Sha256": "F8F79BEC1FD929C5E5E8AC0C3D4F21956817F8E0CB262EB772454BF520FDF90E"
+    },
+    {
+      "File": "src/DFLegacy.Server/CeraShopContentPlanner.cs",
+      "Sha256": "F4CDC4BC395C4809E66F4545B1EB26ED9F03C4711D1A69E8E762022A5F1C2C5A"
+    },
+    {
+      "File": "src/DFLegacy.Server/ChannelLinkService.cs",
+      "Sha256": "40BAA67F27B8B7A404002832285178DEFE72C92E83D44F97061109F07B54538A"
+    },
+    {
+      "File": "src/DFLegacy.Server/ChannelLoginAuthentication.cs",
+      "Sha256": "9C63409650764AD2C1DD1F2FDB1F6D3C45BA9E02C3CA182A40B2CFB91480C27C"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterAvatarInventoryPlanner.cs",
+      "Sha256": "F14EB2C10233B9642245009873638BB86274619225B8A660E66734E0AB9E9C32"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterCreatureInventoryPlanner.cs",
+      "Sha256": "4BFDC754369FFAE0532ADE6791CDD66028BDA294B4022E35A74F8EA6AD7DFC42"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterDatagramService.cs",
+      "Sha256": "43BA02E74B65C5B9BFAEB5A12F013DA4EAF4891CCED23514A63C364B487F9E3F"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterExperienceCatalog.cs",
+      "Sha256": "35C1F29EE99C85701FC5D9DAE9338ABBC56C1A4CDEEDF32D43E052AA58C49F78"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterInventoryPlanner.cs",
+      "Sha256": "221AF63C9BBBCD17ED63A8405A4C59E760500FF379283AEAD943B96C4A0ED3F2"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterInventorySorter.cs",
+      "Sha256": "709A92E8BA5D9A1886F0C14CC307EAE1B94E513937D2AC547DAD95F424FB2C2A"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterItemIdentity.cs",
+      "Sha256": "6C82189387D390B6EBC5706A1DE17EE01C7B46FB5AC113E590877F7DF8E2E91A"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterItemSealing.cs",
+      "Sha256": "69259400D7FF59AD70C75BDFEEB51B63B84EF80540D2771D6B85F8755517774C"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterItemWireProjection.cs",
+      "Sha256": "4E79E908A89327EA49CEC90A2761F93E66775D4226FD6EE79632EF9A5561EBCC"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterSessionRegistry.cs",
+      "Sha256": "70A19D72D68C7FFA6C160A0A6B82FB0C84C54877A5B6F911F89D40CC41595604"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterSpCatalog.cs",
+      "Sha256": "7D358C2AAADA4D4FED509722F63B054DF81721406AA059B2425F423062CD454E"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterStatCatalog.cs",
+      "Sha256": "4D11735D2B7732330937A04702773E91BEF12794F558B9E737282AFD8D4EADCA"
+    },
+    {
+      "File": "src/DFLegacy.Server/CharacterWarehouseProgression.cs",
+      "Sha256": "B9F28DDEF58613CCB66C2EE32342C902B5A7F902EA108E3BDAAA64E3FDA75CC3"
+    },
+    {
+      "File": "src/DFLegacy.Server/ClearRewardCardPlanner.cs",
+      "Sha256": "781FA85B8A2B698A3BD72BFF337DDFBD9F807B5A1878E992EE637BA721C90D32"
+    },
+    {
+      "File": "src/DFLegacy.Server/ClearRewardCatalog.cs",
+      "Sha256": "AB2912A6A97F64110D0DD5CD164D7AD5B71F87E150917B9B1DFE1708E6E236EF"
+    },
+    {
+      "File": "src/DFLegacy.Server/ClearRewardGrantPlanner.cs",
+      "Sha256": "F858E6607C6350A53B1B256676C883373D0CF56C6C7B38877EB8856CA6AEBA1B"
+    },
+    {
+      "File": "src/DFLegacy.Server/ClientDiagnosticHandler.cs",
+      "Sha256": "1BDC6ED1FF8849E7A6FBE3EB073D3E206A4B72920A0D563BB64E92960A386CB9"
+    },
+    {
+      "File": "src/DFLegacy.Server/CommerceActivityRegistry.cs",
+      "Sha256": "CF9AEF905BAB0D6241FF1553877B05DEF11680DE9FAA5F57A68425FF0E93B751"
+    },
+    {
+      "File": "src/DFLegacy.Server/CompoundCatalog.cs",
+      "Sha256": "745C878D791DAA8ABE3E64CC4B1CB610B730781680D7F1781957AA43C6CE3B47"
+    },
+    {
+      "File": "src/DFLegacy.Server/CompoundItemPlanner.cs",
+      "Sha256": "ACE6D85317024819707A04A1990DAED8B8D7FE247A6F33AAD6E42677E9A6E701"
+    },
+    {
+      "File": "src/DFLegacy.Server/CreatureEggGiftLifetime.cs",
+      "Sha256": "C5647293EEEC8504FDCBAF4B26929C9A8A1C873B354770EB93CF69194BA29BDF"
+    },
+    {
+      "File": "src/DFLegacy.Server/CreatureExperienceCatalog.cs",
+      "Sha256": "C5E8ECCF871E9BD4B526CE230ACF08A6411E310B1C6D476D44C07654D20485D3"
+    },
+    {
+      "File": "src/DFLegacy.Server/CreatureHungerPlanner.cs",
+      "Sha256": "35DC7A6A224210E543CA23A4D5974B24D66B171D755E6D1EB7FD2BC3680EEE55"
+    },
+    {
+      "File": "src/DFLegacy.Server/CrossSessionDelivery.cs",
+      "Sha256": "3067D7DB7ED4D198B8521D4A231AE33B03C99EC3CB55D8FA75246AFBAE2B6DAC"
+    },
+    {
+      "File": "src/DFLegacy.Server/DFLegacy.Server.csproj",
+      "Sha256": "EF8AF698A4ACACF0954B2F746A797F23EA143EC46CE77DEF4F7AD9987DAB1AC6"
+    },
+    {
+      "File": "src/DFLegacy.Server/DFLegacy.Server.ico",
+      "Sha256": "DF23AC574FA01F1BF12CF1045E82884BDB8D2B8DD2DDD715E0EAA9C172318115"
+    },
+    {
+      "File": "src/DFLegacy.Server/DebugChatCommands.cs",
+      "Sha256": "52330400F50A7F5ABAE5C1568648F1A23430F1E227E4C070A1105C80E38AA68E"
+    },
+    {
+      "File": "src/DFLegacy.Server/DisjointCatalog.cs",
+      "Sha256": "21014EB944F24883CDC439D3E280F492280EFEEC45D0C61CAA8DC402042B5244"
+    },
+    {
+      "File": "src/DFLegacy.Server/DisjointItemPlanner.cs",
+      "Sha256": "1A8E216B5D8C48C2842396E15AF41E286F841DEB98A12662FAB86F58D5390838"
+    },
+    {
+      "File": "src/DFLegacy.Server/DropCatalog.cs",
+      "Sha256": "E4F78A7A7A005169CE82FC4DEF5E9FEE9CDB0DCA2DD3A5EC17C01A46D66ADEEE"
+    },
+    {
+      "File": "src/DFLegacy.Server/DualStackUdp.cs",
+      "Sha256": "D72CB732FAE190BD6A84782B40159CB2070B743D4E35043469276AF1776CC58D"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonBossDeathSweep.cs",
+      "Sha256": "8C9212783E2D23741B5D30A8ABFCA9BD1CAEAF71FE506001A597E4B2E22E19F4"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonCatalog.cs",
+      "Sha256": "FFBD89886EEF53437A0C23595922A49D7D41EBEDE89E3872EF4A587BC57503C6"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonClearBonusContext.cs",
+      "Sha256": "E1A70528E18BDC9CF5E0877C43CFCBBECD1034A305349285EFD4FDAD9BA48D78"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonClearScore.cs",
+      "Sha256": "8CD2895570F8E64D8A423A410A291A325B55ED6316EEE8F29AC2116F8A2981E8"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonDebugDropControl.cs",
+      "Sha256": "D0214BF6DCB06B2DFF142B3B3EA07A28E5FF0CA56610D6AB190F56C68CDE360B"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonDebugOverlayService.cs",
+      "Sha256": "D96C7ABFAAC9C3F8E8AAA05FCC561CA282403C3A0E334635F54BD32F110A05DF"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonDifficultyProgression.cs",
+      "Sha256": "5C8786C251C4DA96C7945073267D9BCE83569B6B34E051C18279E9D3C4CCC898"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonExperienceCatalog.cs",
+      "Sha256": "24E1141A664F5A3DBF6F47445211C31EFE0F800D2267A80FD75C9A503B6FC14B"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonFatigueRules.cs",
+      "Sha256": "839C3EB20D81944687FE13DA48CE070690BAEEB01D62545AB976FFDB5075C769"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonGoldSharing.cs",
+      "Sha256": "A2E1151A9181180D6AB7597FF527C998655199AE7957F159112F298390498FEA"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonGroundItemState.cs",
+      "Sha256": "F7DCB7B259C313B93DE48AA1A42F6A7BF0C311F460049BC9419B4E8D0100E2E5"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonInstance.DebugControl.cs",
+      "Sha256": "AA236EE54CEAEFAD5EB010648155590929E6E60F7E27F97D755F4F3B936CE389"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonInstance.Gold.cs",
+      "Sha256": "3DF980FEC3302611F229AA08633BA38D68E5242879EBE4F496F481C31CA8BC5A"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonInstance.cs",
+      "Sha256": "9B0BB8597E806F753BF25BF05531F8FE4410025B5BE909A1E0FC796CBF199D99"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonInstanceRegistry.cs",
+      "Sha256": "EE2E3030548555F346F32E1AFC29E17A8F7BE8BC27C49AE49B74CF1A17971F4E"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonItemDropPlanner.cs",
+      "Sha256": "096F3882ADF2FF745AA8493F060652E8BC83508B78A0D029B8FAA93930BA442C"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonPartyService.cs",
+      "Sha256": "D12B97A8181B4D6F0EAF983C97F3BE4EA533DDBED68C0F6CB1BAF2B6968E37A8"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonPickupPlanner.cs",
+      "Sha256": "D8B42729B25A357F0BDE2DC21EBA648DA1896DD6B8AA2EB72C85C4290A3E3D26"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonRewardLedgerModels.cs",
+      "Sha256": "33389C754C361F65D8199E75D2F94B07D6C062CF2E02508F14866BA1D291FA56"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonRoomClearRules.cs",
+      "Sha256": "845B82D44892E0262491D4D972DA9028C0F19FE4704808D5A69A312D00F53103"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonRoomSettlementState.cs",
+      "Sha256": "73C4424B587EB13476A78871F830120C39ED8C83AAE668D18003B2E87A1288D8"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonRunState.cs",
+      "Sha256": "68DCE7E1C563642D48E07EA5B2191307336BCD8EDA86DCF5BDAB1DBFD838DE73"
+    },
+    {
+      "File": "src/DFLegacy.Server/DungeonWeaknessPolicy.cs",
+      "Sha256": "9F5CCFD042785C0A457F85F4BAA65D1FAE3FD22EDF0CD23C7A77FFD3F96D91DD"
+    },
+    {
+      "File": "src/DFLegacy.Server/EntranceHandshakeService.cs",
+      "Sha256": "09DB40A3CAAB23B0003321BE0EA4B7B58D61A8EF9057CD3CB269D722F7AA6CD5"
+    },
+    {
+      "File": "src/DFLegacy.Server/EntranceService.cs",
+      "Sha256": "1DF0B150D6C44E5BD998D9C25960D8268A4DB89444375B767D0028D3F8201477"
+    },
+    {
+      "File": "src/DFLegacy.Server/EntranceSessionReadWait.cs",
+      "Sha256": "6013CC27ABF6214679953556B7126BBA8ABEFDFA8BB822C62D21D57EB328E279"
+    },
+    {
+      "File": "src/DFLegacy.Server/EntranceSessionWakeSignal.cs",
+      "Sha256": "00A70A0A3F49EB3C35E21E4952250FDBC86E5EB7F1E7DC93C6086247E8691D84"
+    },
+    {
+      "File": "src/DFLegacy.Server/EntranceWeaknessRecovery.cs",
+      "Sha256": "D17273035B27F5C607977F7EBC0C07FCF0E2210227F147C0F8804C4424A2F7ED"
+    },
+    {
+      "File": "src/DFLegacy.Server/EquipmentQualityAdjustmentPlanner.cs",
+      "Sha256": "D52A58EAC4A762775B57393D92446B6F2CC55677CB579A19B521A8B4AC6BE2F2"
+    },
+    {
+      "File": "src/DFLegacy.Server/EquipmentReinforcementCatalog.cs",
+      "Sha256": "CC4A568D9F512257C9B62C65142793C4D4529EA66302C0C9EF6F14C6AA4730DB"
+    },
+    {
+      "File": "src/DFLegacy.Server/EquipmentReinforcementPlanner.cs",
+      "Sha256": "7F68F1D4A89E55C92DAAAE0BAF5EBB1B16C3CC4D599D89C292EF9015BBC22A7F"
+    },
+    {
+      "File": "src/DFLegacy.Server/FallbackRelayOptions.cs",
+      "Sha256": "95E5D6E37919CD074EA0A02DA697EE876BA63868E09CF55FA89D57BA0F3CED09"
+    },
+    {
+      "File": "src/DFLegacy.Server/FallbackRelayService.cs",
+      "Sha256": "70FA06E01BF95B3BBE1F72A01FC94705B8C183CA7D51DC58CA108BE8E536DBA1"
+    },
+    {
+      "File": "src/DFLegacy.Server/FatigueResetService.cs",
+      "Sha256": "8582662DF97377D744EE6BBF605B01F782504F28B0A3744A412320397A52B529"
+    },
+    {
+      "File": "src/DFLegacy.Server/FriendService.cs",
+      "Sha256": "26FDC1F99354DF1281D975A07946C1FCA909B1A3A5BD7187EBFC66059F1989C0"
+    },
+    {
+      "File": "src/DFLegacy.Server/GameRandomSource.cs",
+      "Sha256": "81D1FAF463ADE1234C79EF5255A5DE76648E0A5CBE6B1508AE2196CC577773AA"
+    },
+    {
+      "File": "src/DFLegacy.Server/GameplayDatagramService.FallbackRelay.cs",
+      "Sha256": "27FEDA083317E4570E7FB5C39005B719D3B13B4E916C2901B12A2FF9597DC6FA"
+    },
+    {
+      "File": "src/DFLegacy.Server/GameplayDatagramService.cs",
+      "Sha256": "3D5381AEC8F06CD65659586D522528E7A59B1A52C6796729BDC2B4A12304667D"
+    },
+    {
+      "File": "src/DFLegacy.Server/HellDropCatalog.cs",
+      "Sha256": "D9833D52164768AA839EB3393C36C50D7F813314E3F648FF550B161EA891507A"
+    },
+    {
+      "File": "src/DFLegacy.Server/HiddenDungeonUnlockCatalog.cs",
+      "Sha256": "D19C8BBE79E5927DD1A9BD86C1404425389C7613DFC6C2D41AA331EDCDA5A3B4"
+    },
+    {
+      "File": "src/DFLegacy.Server/ItemCatalog.cs",
+      "Sha256": "559A197BC0BEF28BD53AC6753E023A6BBA61FD80BD1253FB0FAAFEF7F759BBC8"
+    },
+    {
+      "File": "src/DFLegacy.Server/ItemTradePlanner.cs",
+      "Sha256": "E2E7D1A898D5D9D09BD0086F1C0CB196DF7002FE36D759E379A0093498FE2BFF"
+    },
+    {
+      "File": "src/DFLegacy.Server/ItemTradeService.cs",
+      "Sha256": "A40FE670C1331602BDF394CDA64A99DB4A090DD7D4867B28F0B92CC870A6C42A"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.AvatarLifetime.cs",
+      "Sha256": "9EE4A6051D774B7A0BE679ACD3CFD77FA1066581DC21571A3B16EBDC2F222304"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.CeraGift.cs",
+      "Sha256": "283A80EB24D6A042F7890EDE627E32FCC3D4686776ABB3F221AA4B2AD5917060"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.DungeonGold.cs",
+      "Sha256": "0216092582D80D49725C64E0E981BB972B6C6E6233D1B94DEFD38FA6406AADBD"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.Mentor.cs",
+      "Sha256": "20C324572D4A357BE0ABA78BC095158B37970CB72C540580F833DA392F4430D2"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.MentorGold.cs",
+      "Sha256": "FF77B581B7645187BB270CC566F1624941BA6EB09B727C0ED8FE75EC72BAA168"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.MentorGrowth.cs",
+      "Sha256": "C7445A347D594F358AED6C9544730D56F285C385BEA3971BD5C54C612AFC8F9F"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.PrivateStore.cs",
+      "Sha256": "8B724C2D950991B628571DC991645C2FCD0C8F3564DA1C0C6E75C38A22EA8334"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.Pvp.cs",
+      "Sha256": "8F92E696AA5BEFB97C2A11C7180093B0C5EF5CD04B08E36CC6046323DB5F52BB"
+    },
+    {
+      "File": "src/DFLegacy.Server/JsonGameStore.cs",
+      "Sha256": "03697DE6F51F99F57C18A9357838108884D6E1454ECE2D3AF1B23F86495A65E2"
+    },
+    {
+      "File": "src/DFLegacy.Server/LootRouting.cs",
+      "Sha256": "6676A6A075B1626AFC7AE8B788FA265BE01C7EE2F16214C0A4EE64A1C4D9FF13"
+    },
+    {
+      "File": "src/DFLegacy.Server/LotteryItemPlanner.cs",
+      "Sha256": "A504E1438C2F87312D5A76BB51EAF706F0BFCA54A4C5FE7341BEB7B054D41B13"
+    },
+    {
+      "File": "src/DFLegacy.Server/MaximumTransferRoster.cs",
+      "Sha256": "FA931FC15FF3B27BD460A571C3B171F1949967EF7ECD5342859718629E0D1EB6"
+    },
+    {
+      "File": "src/DFLegacy.Server/MentorGoldModels.cs",
+      "Sha256": "E521E831A0A812C1E1B3CB9A1D79B3DA47D4FDFDD8B1FC35F4BFC3A210C35B14"
+    },
+    {
+      "File": "src/DFLegacy.Server/MentorGoldPolicy.cs",
+      "Sha256": "A7A55BCEFDFE802BB35361C5813A6B386D65111D409097A099EC6396909D0A4A"
+    },
+    {
+      "File": "src/DFLegacy.Server/MentorGoldSessionRefresh.cs",
+      "Sha256": "D542E9A15E5C2A30698E6A1083D263C364F00374393E785AB5BD37789D0047CB"
+    },
+    {
+      "File": "src/DFLegacy.Server/MentorGoldTimerPolicy.cs",
+      "Sha256": "E5F41B9C193180EB99320006140E5A59D0863A7EBE3AB0D915FEB2911A6A9DC6"
+    },
+    {
+      "File": "src/DFLegacy.Server/MentorGrowthPolicy.cs",
+      "Sha256": "5EA0973B04DC5DCB3A664EE21F8666652749E0AA1D23C6D6B5E50FF0BA6E4686"
+    },
+    {
+      "File": "src/DFLegacy.Server/MentorRules.cs",
+      "Sha256": "ED8888946239BB0E7795C7950B28FD618B4886629311FD160730C1CB9DBFB4AB"
+    },
+    {
+      "File": "src/DFLegacy.Server/MentorService.cs",
+      "Sha256": "9471B4A60BBA0D6008185380A6A69D7E8DBDB0AEC6D9A35B962562314A60262A"
+    },
+    {
+      "File": "src/DFLegacy.Server/MonsterChampionDropCatalog.cs",
+      "Sha256": "4F0832807952ABEAED34D8760AD0EF21843A1065BEFE4F242A66E53FBD125337"
+    },
+    {
+      "File": "src/DFLegacy.Server/NativeLootInventory.cs",
+      "Sha256": "D6012401EDCF6DF985CE120C07FE29C77D2BCBB2E716DFA91DC808E5321F5C0B"
+    },
+    {
+      "File": "src/DFLegacy.Server/ObjectDropCatalog.cs",
+      "Sha256": "5C353F21B4FDC8E18F05A6131130C83730693F99693AD0129913A1EB9C2BE3CD"
+    },
+    {
+      "File": "src/DFLegacy.Server/OwnerCurrencyDeliveryQueue.cs",
+      "Sha256": "889102EDA1820D37FB79D3B52C1B7906B3385230D6B7893B53263CBD2CF1668B"
+    },
+    {
+      "File": "src/DFLegacy.Server/PartyCardOwnColumnCommitter.cs",
+      "Sha256": "6D42FBBF14C78182C9B7C30F7765FA612568D7EBAEF7541DD427BFD01D557CC6"
+    },
+    {
+      "File": "src/DFLegacy.Server/PartyCardSelectionState.cs",
+      "Sha256": "7CA25161DC175D14E6178B9A0C85C39693159B3A45E0EF2F78582F62DC3F37A2"
+    },
+    {
+      "File": "src/DFLegacy.Server/PartyCardSettlementFlow.cs",
+      "Sha256": "D6AECF32DAC54A69195AE566DE9BB6414E339B01F8662CA80CDBE50259573304"
+    },
+    {
+      "File": "src/DFLegacy.Server/PartyMemberDetailProjection.cs",
+      "Sha256": "0099D7C92CA29FE9409A5194C4A4FF908B803FA2B83D1E59D83ADDB4A5F6B1F1"
+    },
+    {
+      "File": "src/DFLegacy.Server/PartyRoster.cs",
+      "Sha256": "DA375AD55658AA8BEE21E5DE4B73BD0CB0D0BA274D2F7A9E3926094E2D6E3C72"
+    },
+    {
+      "File": "src/DFLegacy.Server/PartyService.cs",
+      "Sha256": "6E642FE4EAC9EB5A0B882457B54EE6F5E7F436F900A091D121E85FCD6A1DCAB6"
+    },
+    {
+      "File": "src/DFLegacy.Server/PremiumBenefitCatalog.cs",
+      "Sha256": "9B9E1420778EAF3A4E4F05104AF88655FE27AAAD01B8391AB4F4C05F3C3F4763"
+    },
+    {
+      "File": "src/DFLegacy.Server/PrivateStoreCatalog.cs",
+      "Sha256": "E1ACF8E4EADC0162F001A0ACA418F7D79D69A24D15B24FDD7992B7DE78962360"
+    },
+    {
+      "File": "src/DFLegacy.Server/PrivateStoreModels.cs",
+      "Sha256": "7E1AEF16B4758D3409101D19FAC2DA43D7113C647DA7CCACF4951A43E9479DB5"
+    },
+    {
+      "File": "src/DFLegacy.Server/PrivateStoreService.cs",
+      "Sha256": "000A25C08975337A9F3524FB0EBA8F501C5F13AEB68607D3BFFEB1A140081223"
+    },
+    {
+      "File": "src/DFLegacy.Server/ProbeService.cs",
+      "Sha256": "7064D74D27C3555FBEF4A2367FAAFA9AB3FAC4A92C1122F03E4AF7FFDA3333F8"
+    },
+    {
+      "File": "src/DFLegacy.Server/ProcessOptions.cs",
+      "Sha256": "6BEE1800C0527FBF33F78C5177163E600F674C8ADE9CAD27EEECDBA8885F5BAE"
+    },
+    {
+      "File": "src/DFLegacy.Server/Program.cs",
+      "Sha256": "C3EC34D303935A41FB6B0BD4EFCFD2201FB0247F488B4D69306E108951129F21"
+    },
+    {
+      "File": "src/DFLegacy.Server/Properties/AssemblyInfo.cs",
+      "Sha256": "E70237F98ED8DB7BC8C90709F54F0FE602B5EEAAAB977C1B04DF637972A35C1C"
+    },
+    {
+      "File": "src/DFLegacy.Server/Properties/launchSettings.json",
+      "Sha256": "9694F5ED18B1D709669F2F2E8CA94010D639DD69340E41C9133272A6BDD6368A"
+    },
+    {
+      "File": "src/DFLegacy.Server/PvpCommandSequence.cs",
+      "Sha256": "FA87498523A3991406F8855635C546CEB061F7A8B43A55A919EF05394CC278AF"
+    },
+    {
+      "File": "src/DFLegacy.Server/PvpExperienceCatalog.cs",
+      "Sha256": "4292C6B66F8DCB57535F8C3C31AE6D4B70173561B01603917FB92AACF573F592"
+    },
+    {
+      "File": "src/DFLegacy.Server/PvpMapCatalog.cs",
+      "Sha256": "614C0051E838832AD833E6C05B4875EB23A9068BEAB21C51E1A22E0C0B3E50D9"
+    },
+    {
+      "File": "src/DFLegacy.Server/PvpOptions.cs",
+      "Sha256": "83B0172F30CF166F021F05D21C6E7A185E44AE084F676DA0FD6D4A6F9812418E"
+    },
+    {
+      "File": "src/DFLegacy.Server/PvpRatingPolicy.cs",
+      "Sha256": "C23BC4A139F103F79FDAECB656E3F511DBB00CA08B9DE5171D0021FFDC2718A3"
+    },
+    {
+      "File": "src/DFLegacy.Server/PvpService.cs",
+      "Sha256": "85C11EB93E1B4C6BB0BF2085ABA5E7995ED87B4060369E075BE3B8362C16A960"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestAcceptancePlanner.cs",
+      "Sha256": "FD75041B7F7DD8819CCB725C187E5EEDE39751DE07495136338BE62C7199B976"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestCatalog.cs",
+      "Sha256": "A6AA82DDDACA6A559480C40B990A74F7E89D17A5D61E41DF05556712F99CB273"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestDungeonClearRequirement.cs",
+      "Sha256": "ACAF93D3667ED0A42CB4A4D9E01A2046985BC948CF3E1254F8B7CDC0EC0C0B34"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestItemDropPlanner.cs",
+      "Sha256": "766837F4608F53C0938440502CB0405E055DE482336A2D4446597C5178491B60"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestItemRequirementPlanner.cs",
+      "Sha256": "09B528FF260FD3342AA44FA5EB05411FD39F564792C196961E1B194BE7FAC691"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestMapRequirement.cs",
+      "Sha256": "089E68C5A1D124F55007165C3F276B7D8BAFA3BEFE9A16DF48CDD4E9A513A2E4"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestMeetNpcRequirement.cs",
+      "Sha256": "5B74442289D103E24246DB2C7D1F5EF39E628E68169264FBC0E67E619AE3D431"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestPvpRankRequirement.cs",
+      "Sha256": "70F349634757CEF1DBA4D1819C200D2658B016DBF587621EB857DEE25FADFEAA"
+    },
+    {
+      "File": "src/DFLegacy.Server/QuestRewardPlanner.cs",
+      "Sha256": "DF4E29716EFD5C893280B07870AB880A83F1CDA9254114A302D2C0520B5FFB67"
+    },
+    {
+      "File": "src/DFLegacy.Server/ResealCatalog.cs",
+      "Sha256": "892558A9A56E0E41D3D909EB8D27D2F2C14254A012B8E96E53083E9598389BC3"
+    },
+    {
+      "File": "src/DFLegacy.Server/RuntimeEntranceSink.cs",
+      "Sha256": "F3DCD2D5EC2CE2E2DDCA69A2FC9D908D302951988B7E7C221B7912E13D97C9E5"
+    },
+    {
+      "File": "src/DFLegacy.Server/RuntimeState.cs",
+      "Sha256": "D45F6D3106066743280B09F0EEE523D5C7592794579E69F7A897B43EAD8F1D07"
+    },
+    {
+      "File": "src/DFLegacy.Server/ScriptFileSystem.cs",
+      "Sha256": "5B452405031D60FD289ABC994E04E536ABA0BD1F431631C3DF7AF1E3CCD964E7"
+    },
+    {
+      "File": "src/DFLegacy.Server/SerializedWriteStream.cs",
+      "Sha256": "07DE01D2F8699DC1970CC2AC22FB990FC2F3EC90E60063D16A1DC8023CDF06DB"
+    },
+    {
+      "File": "src/DFLegacy.Server/ServerOptions.cs",
+      "Sha256": "86AD8B34A6100B6238AAE96B321A27A55ECA6702BE66BECF855D86233BEAAA63"
+    },
+    {
+      "File": "src/DFLegacy.Server/SessionPartyCardRewardAgent.cs",
+      "Sha256": "8206DABD2EE01CBB336F823496CAEB84A66B14AB04585C5BACE9B0EFF0407780"
+    },
+    {
+      "File": "src/DFLegacy.Server/SkillCatalog.cs",
+      "Sha256": "BE473BE9959E7B0688987C44EC49E27050FE46B6A64060E0DD3FEFA6EAC2B715"
+    },
+    {
+      "File": "src/DFLegacy.Server/StaminaRecoveryCatalog.cs",
+      "Sha256": "B871E4C1B83D137DD9FE6784682A9D082A498AE5FB479D3D5BDE004A5D92C257"
+    },
+    {
+      "File": "src/DFLegacy.Server/StatusProjection.cs",
+      "Sha256": "D2D97A557B9323563BCACCA272F9460D8D7DEBA31D99619E8CCE4AC888ECB4ED"
+    },
+    {
+      "File": "src/DFLegacy.Server/TownGhostService.cs",
+      "Sha256": "087DD156501C6A80C7D5494CF29CD791C67D6123E4DC3EBFDC7E8813B2DC4E5E"
+    },
+    {
+      "File": "src/DFLegacy.Server/TownSessionDirectory.cs",
+      "Sha256": "E1437A2C8C038B8F7A6FD27AA2D32D8E977271949DA626871165DB266CE775A5"
+    },
+    {
+      "File": "src/DFLegacy.Server/WeaknessRecoveryService.cs",
+      "Sha256": "1E9668B5093296AEC1D4FEC9482470D2AEC39AC6F1EFAE5F18A382CB909C0396"
+    },
+    {
+      "File": "src/DFLegacy.Server/WeightedItemTable.cs",
+      "Sha256": "A6DE18FD8BB3392C2F8E9F9FF55545B7593A4F9066248B61809495320F21BF15"
+    },
+    {
+      "File": "src/DFLegacy.Server/WorldMapCatalog.cs",
+      "Sha256": "B5E975BCE31BD1B72DED0709CFAF1E2E9586B7918B375980FABDF0EAF930C7A7"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/admin/admin.css",
+      "Sha256": "768DF249E8B4B82470E75BFF60478F837E31BD19B38E6CB7FB983D19E5BC9125"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/admin/admin.js",
+      "Sha256": "94074F9CBA61AE40A1F4729F9366056383C5BBD524ED08716DED0C41231D91F8"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/admin/index.html",
+      "Sha256": "B449FC2E8B11838286EC35B228ECF5AEDF00F17AB92DEE406C83CD23428093DF"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/admin/player.html",
+      "Sha256": "4208D6AC2E1F9028253858AC6340C6F3980D1E0A1B831A2E879AD93E1303B9A6"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/client-auth.js",
+      "Sha256": "89341D4BE7DDD08BDA60B9705E8BC10917596252C74A0C64DAE54C402FE94416"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/client_diamond.htm",
+      "Sha256": "D4F992D6AA6797EF60BC03C36B4FE4E55FC3830053D1B484EF5CFC669A9651C2"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/client_diamond_netbar.htm",
+      "Sha256": "BD361D066E02D3840F8E1E0E8D5C04AA243A39730627CE45EADC1A65A9B90700"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/client_pay.htm",
+      "Sha256": "FFF3A1D8C7EF49422E66F8C919CFA0548C7B23A539A83C9B3D83974F4E783A82"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/client_pay_bank.htm",
+      "Sha256": "40D87A03B02DF5896E338B5E116AEBB1AF79B12D17AD79471D34399960B2FA1B"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/client_pay_netbar.htm",
+      "Sha256": "D36815B970E8C47C50338522F88173E6AF6AEC66CB657918E3DF0264060732B4"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/css/commen.css",
+      "Sha256": "B447A626E6CD6AB7D7B33C3555924EA7D87DB9D775D0433B9F504A65222D6398"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/images/cz.png",
+      "Sha256": "FCBB59D4F061C0D455B3830BAA4708EB8D7A7114FD52CC4BF5045EEB7E4F910F"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/images/hz.gif",
+      "Sha256": "3B1E718C715C0A456B519CB29FA6A08CC669FB3C35B6C46532D0AD6CA660DF10"
+    },
+    {
+      "File": "src/DFLegacy.Server/wwwroot/client/images/pic.png",
+      "Sha256": "AE4D0D4DE04A87E2AD1CB11DE1F96A6F0F3F4AAEDBE4E0CC357909A26E200FD6"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/AccountClientSmokeTests.cs",
+      "Sha256": "60F9AE55A9C43CE7B8BA774A14765BA3387A475B382EEE0261160763521EFE07"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/AdminAuthSmokeTests.cs",
+      "Sha256": "2BA50BECE91A604DFE2665DBE2408D89DD5BB1C63CF08A7C03CF1814A21A7F3F"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/AvatarCompoundSmokeTests.cs",
+      "Sha256": "7EA4D4A66231CC491D426A150C170B7E6B2A291F50573125E25B2CBD3EEA7B4A"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/AvatarLifetimeSmokeTests.cs",
+      "Sha256": "C924A2BB159D9DEBB43FA791C1B0DFC26723A7245F1E2FE83F68E9782D2690B3"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/AvatarPurchaseSmokeTests.cs",
+      "Sha256": "A6689182BFA9AA911ED3DAA0D3BEC11160E353B86F43E5D9BCBE2BEC74435BBF"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/CeraGiftSmokeTests.Avatar.cs",
+      "Sha256": "B196B2AC326064DA0A121D264BEFBD2E1638529DFCF29C651AB41D4EF30A16CA"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/CeraGiftSmokeTests.AvatarRisks.cs",
+      "Sha256": "7EC3B5AD2AAECAB412E386780A4403FA3AD55553503F057BDE9CDA1EB827D620"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/CeraGiftSmokeTests.Creature.cs",
+      "Sha256": "9101A39ACFF8A48147396A6D9001E735EF226F6D55F6AFB73DA6D80914611FED"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/CeraGiftSmokeTests.cs",
+      "Sha256": "ACD11EABE9186104961EBA1A7662286BF91655842FFCDC88BCEFCD2551ABF61D"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/ChannelProcessSmokeTests.cs",
+      "Sha256": "0B264CB669B1E7C7E8952DDD602684A99CD4F9EC08BE9D8B0A4D301F56A01B66"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/ClearRewardGrantPlannerSmokeTests.cs",
+      "Sha256": "57FB3078FA733162ECA91FD8068AC2B2CB92D4E94B4EAF2C56D87282960468DE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/ClientDiagnosticsSmokeTests.cs",
+      "Sha256": "25D1DCF6D00752DD10B49B5B547EFD148EFAE214A96090AEF12E19D84281AE91"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/CompoundItemSmokeTests.cs",
+      "Sha256": "3AB9CA53C53B5E57F22CCD97A9A5512888DC1CA6A09102D6A9A46B9E48F7B7A8"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/CreatureGiftFixture.cs",
+      "Sha256": "F4B62B6AD19DDBEA4649A2578BF88973EA257825D0D0D5E0542F102D13A9C6DD"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj",
+      "Sha256": "36048CD0972018FE057EAAFD8CC7D1C49999747553DC83523AA8629A2FF57BE8"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonBossDeathSmokeTests.cs",
+      "Sha256": "2B0B4A8BAE96D53218D29DCA86B99AE724DED97A71964C5EB1C91A25B2C741C1"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonClearExperienceSmokeTests.cs",
+      "Sha256": "436839E4FF5ACCF9A8D93695332168A1DEF7F9F18D8DB989304634AC6B358807"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonDebugOverlaySmokeTests.cs",
+      "Sha256": "2979CC83BD156BB069ACB834D15304D5E2ABFB2CE94EF13FEBF7EA7E563307CB"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonDepartureSmokeTests.cs",
+      "Sha256": "91462F86C6EBE3BFD51EB8F9B8C594E84F5A7138E5DD61A886D97E33A189AEF7"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonMapSelectionSmokeTests.cs",
+      "Sha256": "3F784CA1CC3E019A08D10231C0F4C4A185C615F680284C736B55794762E47DAE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonPartySmokeTests.cs",
+      "Sha256": "F9E57D2864747DE73FE285792A79328691C7A929E0F3537383B47D3E974FC7B9"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonRewardCommitSmokeTests.cs",
+      "Sha256": "36122AB663A6C2330B2C37FFA7BD194B7512A33CA36B12FA5090320BF190D8BE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonRewardStoreSmokeTests.cs",
+      "Sha256": "762906A448EAA8239A0CB95A59C4F8E6C7F921CEEF9149446D9408369988862A"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/DungeonRewardUnknownSmokeTests.cs",
+      "Sha256": "890F85A074ABDC2B03C022F889A8DD6010D90231219283FE3D5B02BEA51E9123"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/EntranceSessionReadWaitSmokeTests.cs",
+      "Sha256": "A4A13A40DAC8632220B2C221FFF4C3497BE6467C89DE756F62901054FF2F6B3D"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/EntranceSplitSmokeTests.cs",
+      "Sha256": "6BA6F7E8DE55B30D54B49C36AE8CD1B98729DD655302932A10C25FA03F080E0D"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/EntranceWeaknessRecoverySmokeTests.cs",
+      "Sha256": "A2B21FAB0A0A3BB67478ECE88F8F262F355A2F64B3A3D257D910A06BE81ADF55"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/EquipmentQualitySmokeTests.cs",
+      "Sha256": "22992FF456F0C6ECD65D3DECADFED9E09E59ABCA35EF3C7E2E64B908043B3769"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/EquipmentReinforcementSmokeTests.cs",
+      "Sha256": "BE961E591DF142ABA1B94F291448A40FB7A1B4215341471A3EC9926A54B3E317"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/FallbackRelayLifecycleSmokeTests.cs",
+      "Sha256": "08EDFAC8547845F235209E9CA86E406DEA3B36BBCF3A3AE77A9D29D0E24B1DE7"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/FallbackRelayLoginSmokeTests.cs",
+      "Sha256": "AB34381B8336115E326569E4A4A6C6D8B0CE1D37357E03391CF418C0B6349309"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/FallbackRelayPeerIdentitySmokeTests.cs",
+      "Sha256": "2DADD77FF0AECD1AF2D371DC6D56E8FDAC3C6AC4E98E0D7E20D39B2FEFFAB7B5"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/FallbackRelayProtocolSmokeTests.cs",
+      "Sha256": "916C598EFE8F8CFF48A03A33B7E7AF3191C5C2A200D22679187D8DDF553AFED3"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/FallbackRelaySmokeTests.cs",
+      "Sha256": "6A73949F8862B8ABD4B49987C5B012EC5AD9CD683E6557470109DD24AF6F8830"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/FallbackRelaySocketSmokeTests.cs",
+      "Sha256": "04E795EB1E57960A1FB2E705B38F9BDFB6AF89091590C8274A970DC5BB96B135"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/README.md",
+      "Sha256": "40FD9CCF411F521FEC51F6FD976FE45FED8E04F6CE630E7A3632EF4FD4C49A90"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/equipment/character/mage/avatar/cap/aband_wtwinghair2.equ",
+      "Sha256": "5A8723B613DF1C7906F4A5A15E20AF9C7F996B49F2D5A88AF7CE19000A8E0C04"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/equipment/character/mage/avatar/coat/atop_rubyjewel2.equ",
+      "Sha256": "AF17712F5D3F069D393F961DB267AC9B1C8A42CB0E51C37810B5443A213DEB39"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/equipment/character/swordman/avatar/skin/askin_sunburned.equ",
+      "Sha256": "E0CCA63995A4A647D969C8A10B538655BC7299372043016546AC52AAB9CF24B7"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/equipment/equipment.lst",
+      "Sha256": "0BA11D57EC0A21211D8C1109138814CAEFA1DD5AB2081BBB2C88E72AE1A97B0E"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/etc/newcashshop.etc",
+      "Sha256": "4F87267304DC4B8B16E269864C78608C7BEE018E426CB5F42F1CAA77EBFC1D36"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/provenance.json",
+      "Sha256": "54913A8B0FD9E86AE4A25E21648E88E54BF59B719A03E21DF11DF5B4EEFD9833"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/README.md",
+      "Sha256": "2C46D5FACF8CBFA312F8DC9DDA2C4532D8BB2B4A4E436898988C45F79532C6BE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/amy.equ",
+      "Sha256": "11105A37DADF42018726EBB1AD50BF45291039F8AE35CDB8C77010F144B3AB00"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/balam.equ",
+      "Sha256": "A62DD04268E3BA921A560555EA68B11EE4ADFC456B7BB0B2910A00858C5665A7"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/belz.equ",
+      "Sha256": "B4351BD8BA35480A90799A3D97BECEF10F6F68C9D93624C8251E3801A38CCB8B"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/belzebe.equ",
+      "Sha256": "707296182C63C6BD93830E5D753467EC29A35D7B20F158F640F4B6299AED810F"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/berith.equ",
+      "Sha256": "F393DC402FE6516D6389F62A4AE29FCA0E00BA4A7322F500E7DC11311E77312B"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/bobo.equ",
+      "Sha256": "46F39E42E09EC2DC6C7C235525C98567F194B518862EE011113D2D01E69EB4BB"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/botis.equ",
+      "Sha256": "BF982A366B9FC012A58AD280568CAFEBD86E3C7B1CF0DFE3D8B96609A521B595"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/charp.equ",
+      "Sha256": "D16313A48FBB037583A378CB776A737EF60219A8C5DD04484B3DCD2770BFFEEE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_amy.equ",
+      "Sha256": "BCEF6EA11F51F06A35BBBE0F2547E5C85C2F284F9D38AF11977827882E750D41"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_balam.equ",
+      "Sha256": "A54C64281F600909A91D8ABF479ED4E08C77676CA9ABA8AF30989129CF7404A7"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_belz.equ",
+      "Sha256": "FEB2F37CA4E66C72B48FC0388DF3CB1BFD8AFC9524F4320A3DEC5FCB9C7EC339"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_belzebe.equ",
+      "Sha256": "099DA7E4F6DF5D564DCFD78D9ECB48F4757D5AC192F0D9A3C0A75E1830B60F8E"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_berith.equ",
+      "Sha256": "0674793388774DDAEAA9E251F0957F68C0453B6F4646E4E703251F8ABC2436C9"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_bobo.equ",
+      "Sha256": "49B47906017F66421FB2FFC6DF7C7A4E18D974ED91AE369DB3CAE7955BF8056C"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_botis.equ",
+      "Sha256": "352F175FF01F9500A611D7B281B06E1A921B624D3A4584EFD64EEAB31083E7E2"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_bronzepig.equ",
+      "Sha256": "F1B13FC3F80174668E9C74687EFBB2B63453F526A8DC23B6B55D26E703CC4468"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_charp.equ",
+      "Sha256": "CDA45EAED691005FB4F4BD62DDA233EEDB6453377116F4CC0B5A603B8801E15E"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_elbon.equ",
+      "Sha256": "D47675450D8A84DD72B4682B20715A1183F29ED3D5A86D87F8C7F17DA3E74E53"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_faras.equ",
+      "Sha256": "5DBE5B9614844BBEC7FFB7A9AC8720553439032CEC52AC688667F1DA3586C972"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_haagenti.equ",
+      "Sha256": "095DB483EF3201A4D0B17CD0650F7B052C8472919BEC498B951812B420D5921A"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_marbas.equ",
+      "Sha256": "D46ED7EF40C606D5EAE267FBD83487C47F3D6A7A56FA13AAD5A41DC5676E030F"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_silverpig.equ",
+      "Sha256": "27738789DA10739A70907C5B50C7E3A85831108CF4ECC130153F355F32F40B21"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/egg_zagan.equ",
+      "Sha256": "EFCAFAAA89A910EECF0BE11831F5AD4B0EADF71E65EE0CEF189279925E740897"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/elbon.equ",
+      "Sha256": "22A06E3DC697EDBD185D6E4D29B0FAE115D68FC10FBB96AD68B31B627015F2C0"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/faras.equ",
+      "Sha256": "CADBC3E33CEE240C5668D6E1AEA653A177C06165B614F2FB28C8C13D93C4DCBE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/haagenti.equ",
+      "Sha256": "C745AC5CB8F19E70EF1492BC948A9924593CE1D8CAE9B13FF7F535B42A1E1074"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/marbas.equ",
+      "Sha256": "21F67F3B27553863AE954597C08D78DB022C513CB6B9C822717B9FEAD2B8E2A5"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/pig_bronze.equ",
+      "Sha256": "31082D7EB10913CAAE8852E0DA230A0C86B99C58AAF58514B91F75A0AB7F4F40"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/pig_silver.equ",
+      "Sha256": "9289CC854E6405D8BE15A35EDDED728109CB4497E4C3DF0C38FF184E6CFE0DCD"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/creature/zagan.equ",
+      "Sha256": "696264CC15A439621C6E8BB56E2811619CEC11CD871664DF59C7B0601EA8C967"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/equipment/equipment.lst",
+      "Sha256": "4A2410239DF7C41EA61ADDA1F477565B09CE222BE4F9ACBB74231D6118A54E60"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/etc/newcashshop.etc",
+      "Sha256": "7507AC04ECF0E10E2E9DC68AFEB5655C4247F0EB3155F5FE165656028B17C510"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/manifest.json",
+      "Sha256": "2A3BF86CB4FA298B2119746C6404B93EC783ABB27A8613CD326AB6790C59B3AC"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/MentorGold/README.md",
+      "Sha256": "B327583F5A0124F4071EBB3530688AA2AE38C8AD229E35F9B2D180C54791BC87"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/MentorGold/etc/goldlimitbylevel.etc",
+      "Sha256": "718960FCCDDAC3F6205CA9E0A21686493CDE8B3727E1E6D3860CAAC69E465E1E"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/MentorGold/generate_oracle.py",
+      "Sha256": "628A3018A723336B9E5BD7C100DEF714BB8FC9A9700C6DBEA65D9D7DEEF73474"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/MentorGold/manifest.json",
+      "Sha256": "842F3CEBCE8D8C7C5AA35A57AB693207FBED58AEFB39698BDE0C4F4FD3581A8B"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/MentorGold/math-oracle.json",
+      "Sha256": "7EF161C3852455B37E45B6EDE2288D11050323E8D8120A7CFE514908CDE6DFA7"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/MentorGold/member_cnt_config.tbl",
+      "Sha256": "B21733A1B5F71FE98D40FCBDB56FBEBB4FBAC15C12C3C2D43A6CEA91AA12D3BC"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Fixtures/PvpRatingOracle.csv",
+      "Sha256": "E6C3C08195E1F9A918C90401E25274941DADC8299C8AB8F59D2E8E28F08254AD"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/FriendSmokeTests.cs",
+      "Sha256": "D282210C12EF0DE509E4E49948F1B03BF421750E02FCCBCF7EB3CFBD5FC15FFF"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/GameplayDatagramSmokeTests.cs",
+      "Sha256": "BE81C847D7FCED222BEC2137678249934882E893EE85A74849AC9B98EC294153"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/HiddenDungeonQuestSmokeTests.cs",
+      "Sha256": "F549DB8A138314EAA5B7D71EA053C701858DF2FEA55427533CEC1DA2385B40D4"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/InterProcessCodecSmokeTests.cs",
+      "Sha256": "2E3545F2E52B5200FF4B7B6EB7A70892DCE3C8224E55F97DC0C4D7C177E1D159"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/InterProcessLinkSmokeTests.cs",
+      "Sha256": "6F13D8FE0482989A3ED7AA193F0F291D8CEA6BE39AA9B498DA10C56F673326C9"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/ItemIdentitySmokeTests.cs",
+      "Sha256": "7CACE1DEA790AD31CA0DE93F9E547CD794542339ED66036E128F6DF3910C976E"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/ItemSealingSmokeTests.cs",
+      "Sha256": "61F3DFC07221567D5BF6864214BDA80F3A0A6824635CD8C2BCDF99BEAF77EE1A"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/LootRoutingSmokeTests.cs",
+      "Sha256": "C1A2E93AD39F29A268DF222DE32A8C16940BA6274FF6765B2B380752EAB80F70"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorGoldExternalDeliverySmokeTests.cs",
+      "Sha256": "967D6C9CF249365B10FE5A37037E3CDFC47A5EF0EB738674B0FB7189D1270BCD"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorGoldLifecycleSmokeTests.cs",
+      "Sha256": "F0792BDDCC20F48E8CC82C15615B4B620ED9ED5C03A90CF7CCB93F1A3A452518"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorGoldPolicySmokeTests.cs",
+      "Sha256": "DE7613CB0C354C78D0A2DA62A4E738F922FCC1952EA2852627FAD8BF34BB6BA9"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorGoldSourceSmokeTests.cs",
+      "Sha256": "8DB23D2CA199AC9CBEB5DB4FF46F0444CE5164BD6A2493BA064C7740B3519A2D"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorGoldStoreSmokeTests.cs",
+      "Sha256": "0AA421D94528027F4C08147515C7F39C82E1C28BF270573E6C4DFA804277E65C"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorGoldTestFixture.cs",
+      "Sha256": "DAAB019FC3C6B368F737A6BEE96AC9FAA0E56324F176CA0DF3657F73DB2B8659"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorGrowthSmokeTests.cs",
+      "Sha256": "2484DE28E3867F1A8600348BA4068094D7942E59627471DFB499A343CE9AD697"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorMasterGoldSmokeTests.cs",
+      "Sha256": "478E88E1AA9DC5095C18282E2C40925369B277D2726A0BB18917F9553C8C548D"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/MentorSmokeTests.cs",
+      "Sha256": "9A5D2ABB655B24278C0E4068AAEDA920C6B4B4053B35A650227176A8523177ED"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/OfficialLootContractSmokeTests.cs",
+      "Sha256": "323E5C2EC1BB83BC6DDB8BA95E9E4289508FB61C5546B7D321CA51FE6458610A"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyCardAgentAuditSmokeTests.cs",
+      "Sha256": "B0EE7FCFDD823EEC1D97AC546DDF025C062D49BB303251431DC580BC8211A503"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyCardEntryPointSmokeTests.cs",
+      "Sha256": "E60FEB6D1F11A69EB5356B22CC68CF4D3577F15D6E51032C8716C651A3010D20"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyCardRewardAgentSmokeTests.cs",
+      "Sha256": "D25E785CEA830BF29970B0C41F5086372D511B8897A3F30D94613B9A9BE80E90"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyCardSelectionSmokeTests.cs",
+      "Sha256": "95D2C4DB0E376E997E3E0174ADBB3A3608909C3A5EE4D33E8E59EA7AC2DDB6FE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyCardSettlementCoordinatorSmokeTests.cs",
+      "Sha256": "FF0C17B0053FAB668D3877177AB8EFBE77BE3E670CB4950117DD2FC0A9CA2BA2"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyCardSettlementFlowSmokeTests.cs",
+      "Sha256": "25DEEB91D63D985613C1B8CEB40B39AC72230C5FA6D5582D5185A20F4E504638"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyChatSmokeTests.cs",
+      "Sha256": "E5CEDB2288CF84F42CB4F3A14CC4B627C221D62B901A8190DD441B2830D0B110"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyGoldSmokeTests.cs",
+      "Sha256": "D670413400239D6D78FF7DFABAE1BCD9CE55C8E12B4A5EFA42787D0A3CBB70A5"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyMemberDetailSmokeTests.cs",
+      "Sha256": "AD2E1536D7E102942F1FACC18AAE085A51ECCD0E5FA4EDD8EA6A113316BBE211"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyMemberSkillDetailSmokeTests.cs",
+      "Sha256": "D71FFA557EF6016E5B9F07432E33A1A2246CA3461624D37467416211E734AF4B"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartyRosterDetailSmokeTests.cs",
+      "Sha256": "C7C8B6906DD04CD3FA433FA12A0F9BE5DBA75B7BFF509174B0EB9A39D340BCFE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PartySmokeTests.cs",
+      "Sha256": "A1FE29FCCC76EAED71CC334D990FA9CBE9A026DF03EAEC7DC722E2253EA68D36"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PickupRemovalSmokeTests.cs",
+      "Sha256": "ED3361D08558912F418ABCC3081B691D1F5936EF74A147B5F7C19B88FF6A097D"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PrivateStoreSmokeTests.cs",
+      "Sha256": "BC623959DFA6924D8846875FBD904543D8C892B21F498C2BB4647FB40E35733E"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/Program.cs",
+      "Sha256": "041FFF360B3776D4CFF0CB59C9D7130FBD264AAA09B98DC20DFF7C63EF418314"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PvpIndividualSmokeTests.cs",
+      "Sha256": "1229CEE6E00A3A0967F81724AD863818A53760C74E66D73069A978FEB8B082EF"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PvpPartyAdmissionSmokeTests.cs",
+      "Sha256": "E6F8164D4048C76A81DD34659289A2D1BA0A609E2C963527FABF7F939720739A"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/PvpProtocolRatingSmokeTests.cs",
+      "Sha256": "69AF141EB19E22A918C19F1D86EBDCFB941B859562FCA34251FFF1B2E09D7EEE"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/QuestMapSmokeTests.cs",
+      "Sha256": "5EA1E9FA766CEF7D3AAD66ACA36275DF97D02F5960290D940E212443049C31BB"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/QuestPvpRankSmokeTests.cs",
+      "Sha256": "3B9C173049B331DA44760CBAF62A716BDEDF30DFC721887FE33C26A68AF849B0"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/StatusProjectionSmokeTests.cs",
+      "Sha256": "975183E2933239028DD9E9846120EC30AA2232C486062CE044640846DA234190"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/TownAppearanceDetailSmokeTests.cs",
+      "Sha256": "0BF19AC212338BBA9F680E0BA8F377EB080FC7BC91D31B1F16F4DA4BBC016798"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/TownSyncSmokeTests.cs",
+      "Sha256": "6A8B76A5F9777EB3C7CE7ECF3E8F22C7C55275FFC175A44C3EE69AC7E1A4F9DB"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/TradeSmokeTests.cs",
+      "Sha256": "083FB481084E4037580FC5B54056CDBF083AA8B93D12D978DF92D872B570A9D6"
+    },
+    {
+      "File": "tests/DFLegacy.SmokeTests/WorldMapSmokeTests.cs",
+      "Sha256": "4A415E44E9DC5E01E00AF2D3DC79439F2B3CFDEDCFA8279285A39F2800DEA388"
+    },
+    {
+      "File": "tests/test_act1_gameplay_evidence.py",
+      "Sha256": "52B9BC96C2EFDDF54202DDAF2E839E9BD875188A30BE8F98E32892819FF4158D"
+    },
+    {
+      "File": "tests/test_act1_stream_timing.py",
+      "Sha256": "45CFBABE031BF55C07198FE1DE5E3F32C855CA79FE91E7DCF029DA0343953DFC"
+    },
+    {
+      "File": "tests/test_party_fallback_evidence.py",
+      "Sha256": "3880EDCEB4E2E0C3A6403D7D85DB158E412A0AA687102361AFA55829BA563B5E"
+    },
+    {
+      "File": "tools/debug/README.md",
+      "Sha256": "47556898FE53579D0F78CE3D77C232054C001488ACC1A2753B15CDA7E0779E16"
+    },
+    {
+      "File": "tools/debug/client_navigation.py",
+      "Sha256": "1436993F61D9BA0F3985AD7064549FA189F08CADEA2B2B1430AA3DAD83678952"
+    },
+    {
+      "File": "tools/debug/client_party.py",
+      "Sha256": "30A12B2D6E88725D8C3CCCAFB6FFB8540F4D5E395B4B1C159976EEADBA107877"
+    },
+    {
+      "File": "tools/debug/client_state.py",
+      "Sha256": "C1188B8D3A5DDD38C334543A3BD39BD338B64282143D2BF5DDD21A8E097502DF"
+    },
+    {
+      "File": "tools/debug/drop_control.py",
+      "Sha256": "82F931801C9AA3AD6E394FDE6DF5297B9BB1C3D31759C4C59875510CAEBCD687"
+    },
+    {
+      "File": "tools/debug/test_client_navigation.py",
+      "Sha256": "2B0BDB44D61469E1A44E6C93C101D6962272543080F79853EFBCA588143AA067"
+    },
+    {
+      "File": "tools/debug/test_client_party.py",
+      "Sha256": "579AF6B042E95625C8D3EFBD2BBA298C742835ABE4F8DA1A1C85816CA3C9722D"
+    },
+    {
+      "File": "tools/debug/test_client_state.py",
+      "Sha256": "03FECC5A005DC7C0B319BA01013DFC07BCE55B71823ADCBA26FBD9A8EB16EECA"
+    },
+    {
+      "File": "tools/debug/test_drop_control.py",
+      "Sha256": "CE53E848D3E03D9F8AD28538C9444F4BF62C4375B1F066D9FCBFFF195290C408"
+    },
+    {
+      "File": "tools/debug/watch_dungeon.py",
+      "Sha256": "37B62E245FFD33FE0AAC92A0D266639F71BDD599D8A81CF2B7B3E85AC230ED47"
+    }
+  ],
+  "VerificationLogs": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\verification-u01\\build.log",
+      "Sha256": "DBE0ADEF678898904B2CC52B06458166D8E5BAE6B72341CBFA75423EBBCEF65C",
+      "Bytes": 727
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\verification-u01\\tooltip.log",
+      "Sha256": "9F35092506B43AD369FD946F820D542D26A2461E84EC7439E56169F7A6AEF8D7",
+      "Bytes": 35
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\dungeon-tooltip-20261029\\verification-u01\\full-native.log",
+      "Sha256": "83ED25DFE95F97F27860AEF7EE83AE7BA26238B628123697C6DEDC76E012604A",
+      "Bytes": 69
+    }
+  ],
+  "ConsumerSourceCommit": "da5a7628496f071a2eb1d36ee021dbe1c9bb1755",
+  "IntegrationCommit": "413c556598e64227a75b64353054124eaf36002f",
+  "NativeOverlaySourceFiles": [
+    {
+      "File": "docs/superpowers/plans/2026-10-29-native-input-drag.md",
+      "Sha256": "B45C96AEADB57ADA239DD545B77C24E3C7C1ADE9F9414A742E3283AD986C0D86",
+      "BuildSourceSha256": "75F814B5D7BD9794CE6BF4E7E82D0B2C66B72976AD4F9121AC61F0DACE0531B4",
+      "IdenticalGitBlob": "a080430b316f59814d35acfe6f55175b650356b1"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/AUTO_INPUT.md",
+      "Sha256": "2BDD9097751DFDC3C13915408CE85B2A30522092B459C2B716AFEDE907AD3011",
+      "BuildSourceSha256": "8FAB2224703296739199753EC667EB2FDE9788921A3A1992760E2B87C0ABA5CC",
+      "IdenticalGitBlob": "4c441a6379242f3bec50b62d1b1859e7354e6561"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/CMakeLists.txt",
+      "Sha256": "1E44BE0B717528B72C43A06C0861B69228251FE17CF2E7EC8A112EC1C5B0874A",
+      "BuildSourceSha256": "1E44BE0B717528B72C43A06C0861B69228251FE17CF2E7EC8A112EC1C5B0874A",
+      "IdenticalGitBlob": "10e4bc4e3f78ecd0b9938572bb1762bd5bdb5302"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/auto_input.cpp",
+      "Sha256": "8758E0A2C242121AAB22D920661397AA4E3F2A314A17ACE5CE0B00658380833C",
+      "BuildSourceSha256": "8758E0A2C242121AAB22D920661397AA4E3F2A314A17ACE5CE0B00658380833C",
+      "IdenticalGitBlob": "b5f4c418f778050652a756f3969ef1a9aeb109c4"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/src/auto_input.h",
+      "Sha256": "AAF4CAC1214046EDD036FFE894DC84C427AF5EF5343304D1A76C113F091F2C07",
+      "BuildSourceSha256": "AAF4CAC1214046EDD036FFE894DC84C427AF5EF5343304D1A76C113F091F2C07",
+      "IdenticalGitBlob": "fd5e659ac3db31c3262ff1eef769bf63af6b8c48"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/DFLegacy.Ijl15.Tests.vcxproj",
+      "Sha256": "A5FFD61A2169795D629F6667342DA059112ED1C169E569C009283BFE13DB12BF",
+      "BuildSourceSha256": "A5FFD61A2169795D629F6667342DA059112ED1C169E569C009283BFE13DB12BF",
+      "IdenticalGitBlob": "7370f4cd0a4fad099eda0daf91fe6a186704dc76"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/auto_input_drag_tests.cpp",
+      "Sha256": "2378A19B89B2EAD209C4DC4E15B58EAD1F5BAE1A07E15D050509DB283C47A750",
+      "BuildSourceSha256": "C88532E22F301182B3A04A8BFFC22BC27941551F4B46F161DD66BAFC0640487D",
+      "IdenticalGitBlob": "af71fe515c057e436cfe90f8f5c3587d3b3ee5aa"
+    },
+    {
+      "File": "src/DFLegacy.Ijl15/tests/ijl15_tests.cpp",
+      "Sha256": "48E54CF99CDEC2EAED0C011C9ABC7F1F3CBBC37AF5840E74855C64728EF7B365",
+      "BuildSourceSha256": "48E54CF99CDEC2EAED0C011C9ABC7F1F3CBBC37AF5840E74855C64728EF7B365",
+      "IdenticalGitBlob": "15672b6ee12a042253befbe3d8526449c87dda16"
+    }
+  ],
+  "NativeFrozenManifest": "D:\\codex_worktree\\native-input-drag\\DFLegacy\\.tmp\\native-input-drag-validation\\frozen-artifacts-review-fixed.json",
+  "NativeFrozenManifestSha256": "520B0195EA5BAAA5B23AA247BA18CB98132499A6339125E6581DD74F6AB5B2EF",
+  "ManagedBaseline": "59666d9b543abc5119012cd98ad1fe8e57d7858c",
+  "SourceFilesMeaning": "unchanged parent baseline snapshot; NativeOverlaySourceFiles supersedes its native input files",
+  "NativeVerificationLogs": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\verification-native-drag\\frozen-artifacts-review-fixed.json",
+      "Sha256": "520B0195EA5BAAA5B23AA247BA18CB98132499A6339125E6581DD74F6AB5B2EF"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\verification-native-drag\\independent-review.md",
+      "Sha256": "DCBE523D36793952D6425D4DB8347FC89019A010E9B363272BB34D670FECB7E6"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\verification-native-drag\\review-fixed-freeze-build.log",
+      "Sha256": "CCF919E8A5193585952DF1434BBFA7488D5EF1D15BB34DCE10EFD0BD895DDE8B"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\verification-native-drag\\review-fixed-freeze-drag.log",
+      "Sha256": "76634231548A8B059CD0F1131693619744F88D28B18743DC3BD7531C3FAD105E"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\verification-native-drag\\review-fixed-freeze-full.log",
+      "Sha256": "BD96FF662438E753ACEA943A2E01B7B4C0C62F0A4578CAAA68C54F71F998F741"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\verification-native-drag\\root-full-native-D.log",
+      "Sha256": "BD96FF662438E753ACEA943A2E01B7B4C0C62F0A4578CAAA68C54F71F998F741"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\verification-native-drag\\root-full-native.log",
+      "Sha256": "847847F66366F4BE2F4608D27826642445FAFB1F92492C6EF9DEDB9DBAEDB544"
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+0x086478b5  call 0x081458ac  _ZN11CSystemTime15getCurTickCountEv
+0x08647952  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x08647978  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x08647a0e  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x08647a34  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x08647a54  call 0x0807d8a0  _init
+0x08647ab0  call 0x08ad3c0a  _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x08647ae5  call 0x08696e58  _ZN15CPacketVerifier12UpdatePacketERK7_header
+0x08647b02  call 0x080da36e  _ZNK5CUser10get_acc_idEv
+0x08647b12  call 0x0810904b  _Z14NumberToStringji
+0x08647b2b  call 0x08696e48  _ZN15CPacketVerifier11GetSequenceEv
+0x08647b80  call 0x08ad3c0a  _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x08647bb9  call 0x08274f73  _Z22_NS_PI_2ND_RecvHash_CSPcP5CUserj
+0x08647bfd  call 0x082a713a  _Z8G_Cipherv
+0x08647c25  call 0x0809751e  _ZN6Cipher7DecryptEiPKhiPhPi
+0x08647c57  call 0x0807d8a0  _init
+0x08647c75  call 0x0848d4c8  _ZN10Encryption6crc32NEPvi
+0x08647c93  call 0x0808cc4b  _Z31_NS_PI_2ND_MakeChecksumTo1Byte2RjS_
+0x08647cba  call 0x082a2112  _Z13GetPacketName16ENUM_PACKETCLASSt
+0x08647cdf  call 0x0854f718  _ZN8cMyTraceC1EPKcii
+0x08647cf6  call 0x0854f788  _ZN8cMyTraceclEPKcz
+0x08647d1f  call 0x080de62c  _ZN12CStreamGuardC1Eb
+0x08647d45  call 0x0828ff74  _ZN15SmallStreamPool7AcquireEPKci
+0x08647d57  call 0x080de644  _ZN12CStreamGuard3SetEP6Stream
+0x08647d88  call 0x0828fa86  _ZN10StreamPool7AcquireEPKci
+0x08647d9a  call 0x080de644  _ZN12CStreamGuard3SetEP6Stream
+0x08647db9  call 0x08290262  _ZN13BigStreamPool7AcquireEPKci
+0x08647dcb  call 0x080de644  _ZN12CStreamGuard3SetEP6Stream
+0x08647dd9  call 0x080c8c46  _ZN12CStreamGuarddeEv
+0x08647de9  call 0x080c8c56  _ZN12CStreamGuardlsEi
+0x08647df4  call 0x080c8c96  _ZNK5CUser6GetUIDEv
+0x08647e04  call 0x080c8c46  _ZN12CStreamGuarddeEv
+0x08647e10  call 0x080c8c56  _ZN12CStreamGuardlsEi
+0x08647e2a  call 0x080c8c4e  _ZN12CStreamGuardptEv
+0x08647e3a  call 0x080de652  _ZN12CStreamGuard10put_binaryEPvi
+0x08647e59  call 0x08570fde  _ZN11MsgQueueMgr3putENS_9QUEUE_IDXER12CStreamGuard
+0x08647e71  call 0x0861c8d2  _ZN12CStreamGuardD2Ev
+0x08647e85  call 0x0861c8d2  _ZN12CStreamGuardD2Ev
+0x08647e91  call 0x08ae3750  _Unwind_Resume
+0x08647f35  call 0x08ad3c0a  _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x08647f64  call 0x0807d880  _init
+0x08647f91  call 0x08725ce0  __cxa_begin_catch
+0x08647fc4  call 0x08ad3c0a  _ZN10LogManager9logFormatEiPKcS1_iS1_z
+0x08647fce  call 0x08725c30  __cxa_end_catch
+0x08647fd9  call 0x08725c30  __cxa_end_catch
+0x08647fe5  call 0x08ae3750  _Unwind_Resume
+
+=== 去重后的被调用者（30 个）===
+    2x  _Unwind_Resume
+    1x  _Z13GetPacketName16ENUM_PACKETCLASSt
+    1x  _Z14NumberToStringji
+    1x  _Z22_NS_PI_2ND_RecvHash_CSPcP5CUserj
+    1x  _Z31_NS_PI_2ND_MakeChecksumTo1Byte2RjS_
+    1x  _Z8G_Cipherv
+    1x  _ZN10Encryption6crc32NEPvi
+    4x  _ZN10LogManager9logFormatEiPKcS1_iS1_z
+    1x  _ZN10StreamPool7AcquireEPKci
+    1x  _ZN11CSystemTime15getCurTickCountEv
+    1x  _ZN11MsgQueueMgr3putENS_9QUEUE_IDXER12CStreamGuard
+    1x  _ZN12CStreamGuard10put_binaryEPvi
+    3x  _ZN12CStreamGuard3SetEP6Stream
+    1x  _ZN12CStreamGuardC1Eb
+    2x  _ZN12CStreamGuardD2Ev
+    2x  _ZN12CStreamGuarddeEv
+    2x  _ZN12CStreamGuardlsEi
+    1x  _ZN12CStreamGuardptEv
+    1x  _ZN13BigStreamPool7AcquireEPKci
+    1x  _ZN15CPacketVerifier11GetSequenceEv
+    1x  _ZN15CPacketVerifier12UpdatePacketERK7_header
+    1x  _ZN15SmallStreamPool7AcquireEPKci
+    1x  _ZN6Cipher7DecryptEiPKhiPhPi
+    3x  _ZN8cMyTraceC1EPKcii
+    3x  _ZN8cMyTraceclEPKcz
+    1x  _ZNK5CUser10get_acc_idEv
+    1x  _ZNK5CUser6GetUIDEv
+    1x  __cxa_begin_catch
+    2x  __cxa_end_catch
+    3x  _init

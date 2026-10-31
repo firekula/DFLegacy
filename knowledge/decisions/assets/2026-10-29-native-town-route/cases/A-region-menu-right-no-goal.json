@@ -1,0 +1,306 @@
+{
+  "before_route": {
+    "schema": "dfl-client-route/v1",
+    "pid": 58960,
+    "process_started_filetime": 134377232355326353,
+    "request_id": 8,
+    "source": "minimap",
+    "status": "arrived",
+    "reason": "final_position_observed",
+    "tick_ms": 363473390,
+    "uid": 1,
+    "goal": {
+      "town_id": 2,
+      "area_id": 2,
+      "x": 1734,
+      "y": 263
+    },
+    "origin": {
+      "generation": 13,
+      "actor_token": "0x180A7170",
+      "map_token": "0x184646C0",
+      "user_token": "0x070BC840",
+      "context_token": "0x072E8D20"
+    },
+    "steps": 1,
+    "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+    "observed": {
+      "town_id": 2,
+      "area_id": 2,
+      "map_token": "0x184646C0",
+      "observation_generation": 13,
+      "position": {
+        "x": 1733.703735,
+        "y": 262.7561646
+      },
+      "destination": {
+        "x": 1734,
+        "y": 263
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    }
+  },
+  "after_route": {
+    "schema": "dfl-client-route/v1",
+    "pid": 58960,
+    "process_started_filetime": 134377232355326353,
+    "request_id": 8,
+    "source": "minimap",
+    "status": "arrived",
+    "reason": "final_position_observed",
+    "tick_ms": 363473390,
+    "uid": 1,
+    "goal": {
+      "town_id": 2,
+      "area_id": 2,
+      "x": 1734,
+      "y": 263
+    },
+    "origin": {
+      "generation": 13,
+      "actor_token": "0x180A7170",
+      "map_token": "0x184646C0",
+      "user_token": "0x070BC840",
+      "context_token": "0x072E8D20"
+    },
+    "steps": 1,
+    "pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+    "observed": {
+      "town_id": 2,
+      "area_id": 2,
+      "map_token": "0x184646C0",
+      "observation_generation": 13,
+      "position": {
+        "x": 1733.703735,
+        "y": 262.7561646
+      },
+      "destination": {
+        "x": 1734,
+        "y": 263
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    }
+  },
+  "before": {
+    "schema": "dfl-client-state/v2",
+    "pid": 58960,
+    "process_started_filetime": 134377232355326353,
+    "sequence": 2889,
+    "captured_filetime": 134377238514405819,
+    "captured_tick_ms": 363481875,
+    "exported_filetime": 134377238515723015,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 14,
+    "capture_duration_us": 4,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 2,
+      "area_id": 2,
+      "context_token": "0x072E8D20",
+      "map_token": "0x184646C0",
+      "position": {
+        "x": 1733.70374,
+        "y": 262.756165,
+        "z": 0
+      },
+      "destination": {
+        "x": 1734,
+        "y": 263
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": true,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x070BC840",
+      "actor_token": "0x180A7170",
+      "map_token": "0x184646C0",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 1733.70374,
+        "y": 262.756165,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x070BC840",
+        "actor_token": "0x180A7170",
+        "map_token": "0x184646C0",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 1733.70374,
+          "y": 262.756165,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "after": {
+    "schema": "dfl-client-state/v2",
+    "pid": 58960,
+    "process_started_filetime": 134377232355326353,
+    "sequence": 2900,
+    "captured_filetime": 134377238537044731,
+    "captured_tick_ms": 363484140,
+    "exported_filetime": 134377238537456613,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 14,
+    "capture_duration_us": 4,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 2,
+      "area_id": 2,
+      "context_token": "0x072E8D20",
+      "map_token": "0x184646C0",
+      "position": {
+        "x": 1733.70374,
+        "y": 262.756165,
+        "z": 0
+      },
+      "destination": {
+        "x": 1734,
+        "y": 263
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": true,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x070BC840",
+      "actor_token": "0x180A7170",
+      "map_token": "0x184646C0",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 1733.70374,
+        "y": 262.756165,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x070BC840",
+        "actor_token": "0x180A7170",
+        "map_token": "0x184646C0",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 1733.70374,
+          "y": 262.756165,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "exact_route_bytes_unchanged": true,
+  "phase": "native-ui-v2",
+  "build_manifest_sha256": "A34115D8AE0812ACD82AD57C2A4133AD4BEE570E956C837B84C66A3688D1F5D5",
+  "journal_sha256": "59C95948675A1AD0752D4CEB5BD3F7DAC14B15F3A6419D936DE031067D410017"
+}

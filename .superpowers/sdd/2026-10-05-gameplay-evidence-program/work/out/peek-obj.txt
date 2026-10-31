@@ -1,0 +1,46 @@
+pid = 3996
+
+=== 1. 0x2311c7a0 处 96 字节（疑似 Cipher 对象）===
+=== VA 0x2311c7a0  len=96  实读 96 字节
+  2311c7a0  4e 01 00 00 b8 cb 11 23 f0 cb 11 23 f0 cb 11 23  |N......#...#...#|
+  2311c7b0  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c7c0  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c7d0  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c7e0  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c7f0  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+
+=== 2. +0x10 起 512 字节（静态分析指向：Cipher+0x10 被 memset 0x801 ⇒ 疑似密钥缓冲）===
+=== VA 0x2311c7b0  len=512  实读 512 字节
+  2311c7b0  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c7c0  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c7d0  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c7e0  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c7f0  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+  2311c800  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c810  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c820  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c830  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c840  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+  2311c850  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c860  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c870  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c880  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c890  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+  2311c8a0  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 47 61  |MapObject/PathGa|
+  2311c8b0  74 65 2f 41 63 74 32 2f 44 45 44 6f 77 6e 4e 6f  |te/Act2/DEDownNo|
+  2311c8c0  72 6d 61 6c 2e 6f 62 6a 4d 61 70 4f 62 6a 65 63  |rmal.objMapObjec|
+  2311c8d0  74 2f 50 61 74 68 47 61 74 65 2f 41 63 74 32 2f  |t/PathGate/Act2/|
+  2311c8e0  44 45 44 6f 77 6e 4e 6f 72 6d 61 6c 2e 6f 62 6a  |DEDownNormal.obj|
+  2311c8f0  4d 61 70 4f 62 6a 65 63 74 2f 50 61 74 68 65 76  |MapObject/Pathev|
+  2311c900  65 6e 74 20 69 64 3d 22 39 39 22 3e 20 3c 21 2d  |ent id="99"> <!-|
+  2311c910  2d 20 3f 3f 20 3f 3f 20 3f 3f 3f 20 2d 2d 3e 0a  |- ?? ?? ??? -->.|
+  2311c920  09 09 3c 63 6f 6c 6f 72 20 72 65 64 20 3d 20 22  |..<color red = "|
+  2311c930  32 35 35 22 20 67 72 65 65 6e 20 3d 20 22 30 22  |255" green = "0"|
+  2311c940  20 62 6c 75 65 20 3d 20 22 31 31 30 22 20 61 6c  | blue = "110" al|
+  2311c950  70 68 61 20 3d 20 22 32 35 35 22 20 2f 3e 0a 09  |pha = "255" />..|
+  2311c960  09 3c 6b 6f 72 20 73 74 61 72 74 5f 6d 73 67 3d  |.<kor start_msg=|
+  2311c970  22 3f 3f 20 3f 3f 20 3f 3f 3f 3f 20 3f 3f 3f 3f  |"?? ?? ???? ????|
+  2311c980  3f 3f 3f 2e 22 09 09 09 09 09 65 6e 64 5f 6d 73  |???.".....end_ms|
+  2311c990  67 3d 22 3f 3f 20 3f 3f 20 3f 3f 3f 3f 20 3f 3f  |g="?? ?? ???? ??|
+  2311c9a0  3f 3f 3f 3f 3f 2e 22 2f 3e 0a 09 09 3c 74 77 6e  |?????."/>...<twn|
+--- exit=0 ---

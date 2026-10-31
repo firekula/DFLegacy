@@ -1,0 +1,142 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _Z15DoSuperFastHashPhjRj VA=0x0808c174 SIZE=413
+0x0808c174 push     ebp
+0x0808c175 mov      ebp, esp
+0x0808c177 sub      esp, 0x10
+0x0808c17a mov      eax, dword ptr [ebp + 0x10]
+0x0808c17d mov      dword ptr [eax], 0
+0x0808c183 mov      eax, dword ptr [ebp + 0xc]
+0x0808c186 mov      dword ptr [ebp - 0xc], eax
+0x0808c189 cmp      dword ptr [ebp + 0xc], 0
+0x0808c18d je       0x808c195
+0x0808c18f cmp      dword ptr [ebp + 8], 0
+0x0808c193 jne      0x808c19f
+0x0808c195 mov      eax, 0
+0x0808c19a jmp      0x808c30f
+0x0808c19f mov      eax, dword ptr [ebp + 0xc]
+0x0808c1a2 and      eax, 3
+0x0808c1a5 mov      dword ptr [ebp - 4], eax
+0x0808c1a8 shr      dword ptr [ebp + 0xc], 2
+0x0808c1ac jmp      0x808c214
+0x0808c1ae mov      eax, dword ptr [ebp + 8]
+0x0808c1b1 add      eax, 1
+0x0808c1b4 movzx    eax, byte ptr [eax]
+0x0808c1b7 movzx    eax, al
+0x0808c1ba mov      edx, eax
+0x0808c1bc shl      edx, 8
+0x0808c1bf mov      eax, dword ptr [ebp + 8]
+0x0808c1c2 movzx    eax, byte ptr [eax]
+0x0808c1c5 movzx    eax, al
+0x0808c1c8 lea      eax, [edx + eax]
+0x0808c1cb add      dword ptr [ebp - 0xc], eax
+0x0808c1ce mov      eax, dword ptr [ebp + 8]
+0x0808c1d1 add      eax, 3
+0x0808c1d4 movzx    eax, byte ptr [eax]
+0x0808c1d7 movzx    eax, al
+0x0808c1da mov      edx, eax
+0x0808c1dc shl      edx, 8
+0x0808c1df mov      eax, dword ptr [ebp + 8]
+0x0808c1e2 add      eax, 2
+0x0808c1e5 movzx    eax, byte ptr [eax]
+0x0808c1e8 movzx    eax, al
+0x0808c1eb lea      eax, [edx + eax]
+0x0808c1ee shl      eax, 0xb
+0x0808c1f1 xor      eax, dword ptr [ebp - 0xc]
+0x0808c1f4 mov      dword ptr [ebp - 8], eax
+0x0808c1f7 mov      eax, dword ptr [ebp - 0xc]
+0x0808c1fa shl      eax, 0x10
+0x0808c1fd xor      eax, dword ptr [ebp - 8]
+0x0808c200 mov      dword ptr [ebp - 0xc], eax
+0x0808c203 add      dword ptr [ebp + 8], 4
+0x0808c207 mov      eax, dword ptr [ebp - 0xc]
+0x0808c20a shr      eax, 0xb
+0x0808c20d add      dword ptr [ebp - 0xc], eax
+0x0808c210 sub      dword ptr [ebp + 0xc], 1
+0x0808c214 cmp      dword ptr [ebp + 0xc], 0
+0x0808c218 setne    al
+0x0808c21b test     al, al
+0x0808c21d jne      0x808c1ae
+0x0808c21f mov      eax, dword ptr [ebp - 4]
+0x0808c222 cmp      eax, 2
+0x0808c225 je       0x808c254
+0x0808c227 cmp      eax, 3
+0x0808c22a je       0x808c288
+0x0808c22c cmp      eax, 1
+0x0808c22f jne      0x808c2cc
+0x0808c235 mov      eax, dword ptr [ebp + 8]
+0x0808c238 movzx    eax, byte ptr [eax]
+0x0808c23b movzx    eax, al
+0x0808c23e add      dword ptr [ebp - 0xc], eax
+0x0808c241 mov      eax, dword ptr [ebp - 0xc]
+0x0808c244 shl      eax, 0xa
+0x0808c247 xor      dword ptr [ebp - 0xc], eax
+0x0808c24a mov      eax, dword ptr [ebp - 0xc]
+0x0808c24d shr      eax, 1
+0x0808c24f add      dword ptr [ebp - 0xc], eax
+0x0808c252 jmp      0x808c2cc
+0x0808c254 mov      eax, dword ptr [ebp + 8]
+0x0808c257 add      eax, 1
+0x0808c25a movzx    eax, byte ptr [eax]
+0x0808c25d movzx    eax, al
+0x0808c260 mov      edx, eax
+0x0808c262 shl      edx, 8
+0x0808c265 mov      eax, dword ptr [ebp + 8]
+0x0808c268 movzx    eax, byte ptr [eax]
+0x0808c26b movzx    eax, al
+0x0808c26e lea      eax, [edx + eax]
+0x0808c271 add      dword ptr [ebp - 0xc], eax
+0x0808c274 mov      eax, dword ptr [ebp - 0xc]
+0x0808c277 shl      eax, 0xb
+0x0808c27a xor      dword ptr [ebp - 0xc], eax
+0x0808c27d mov      eax, dword ptr [ebp - 0xc]
+0x0808c280 shr      eax, 0x11
+0x0808c283 add      dword ptr [ebp - 0xc], eax
+0x0808c286 jmp      0x808c2cc
+0x0808c288 mov      eax, dword ptr [ebp + 8]
+0x0808c28b add      eax, 1
+0x0808c28e movzx    eax, byte ptr [eax]
+0x0808c291 movzx    eax, al
+0x0808c294 mov      edx, eax
+0x0808c296 shl      edx, 8
+0x0808c299 mov      eax, dword ptr [ebp + 8]
+0x0808c29c movzx    eax, byte ptr [eax]
+0x0808c29f movzx    eax, al
+0x0808c2a2 lea      eax, [edx + eax]
+0x0808c2a5 add      dword ptr [ebp - 0xc], eax
+0x0808c2a8 mov      eax, dword ptr [ebp - 0xc]
+0x0808c2ab shl      eax, 0x10
+0x0808c2ae xor      dword ptr [ebp - 0xc], eax
+0x0808c2b1 mov      eax, dword ptr [ebp + 8]
+0x0808c2b4 add      eax, 2
+0x0808c2b7 movzx    eax, byte ptr [eax]
+0x0808c2ba movzx    eax, al
+0x0808c2bd shl      eax, 0x12
+0x0808c2c0 xor      dword ptr [ebp - 0xc], eax
+0x0808c2c3 mov      eax, dword ptr [ebp - 0xc]
+0x0808c2c6 shr      eax, 0xb
+0x0808c2c9 add      dword ptr [ebp - 0xc], eax
+0x0808c2cc mov      eax, dword ptr [ebp - 0xc]
+0x0808c2cf shl      eax, 3
+0x0808c2d2 xor      dword ptr [ebp - 0xc], eax
+0x0808c2d5 mov      eax, dword ptr [ebp - 0xc]
+0x0808c2d8 shr      eax, 5
+0x0808c2db add      dword ptr [ebp - 0xc], eax
+0x0808c2de mov      eax, dword ptr [ebp - 0xc]
+0x0808c2e1 shl      eax, 4
+0x0808c2e4 xor      dword ptr [ebp - 0xc], eax
+0x0808c2e7 mov      eax, dword ptr [ebp - 0xc]
+0x0808c2ea shr      eax, 0x11
+0x0808c2ed add      dword ptr [ebp - 0xc], eax
+0x0808c2f0 mov      eax, dword ptr [ebp - 0xc]
+0x0808c2f3 shl      eax, 0x19
+0x0808c2f6 xor      dword ptr [ebp - 0xc], eax
+0x0808c2f9 mov      eax, dword ptr [ebp - 0xc]
+0x0808c2fc shr      eax, 6
+0x0808c2ff add      dword ptr [ebp - 0xc], eax
+0x0808c302 mov      eax, dword ptr [ebp + 0x10]
+0x0808c305 mov      edx, dword ptr [ebp - 0xc]
+0x0808c308 mov      dword ptr [eax], edx
+0x0808c30a mov      eax, 1
+0x0808c30f leave
+0x0808c310 ret

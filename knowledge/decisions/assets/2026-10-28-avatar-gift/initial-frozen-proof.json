@@ -1,0 +1,1035 @@
+{
+  "schema": "avatar-gift-initial-proof/v1",
+  "case": "avatar7d",
+  "phase": "initial",
+  "checked_at": "2026-10-28T05:38:50.395216+08:00",
+  "status": "initial_passed_remaining_pending",
+  "native_acceptance": "PARTIAL",
+  "total": 58,
+  "passed": 58,
+  "checks": [
+    {
+      "name": "closed phase identity",
+      "passed": true,
+      "actual": [
+        "avatar7d",
+        "initial"
+      ],
+      "expected": [
+        "avatar7d",
+        "initial"
+      ]
+    },
+    {
+      "name": "frozen SHA256 netdump-28960.log",
+      "passed": true,
+      "actual": "013C5D67CB7A5F12D410FD7C1D82823ADB7DDE66227413A208580D87EDBAAB6F",
+      "expected": "013C5D67CB7A5F12D410FD7C1D82823ADB7DDE66227413A208580D87EDBAAB6F"
+    },
+    {
+      "name": "frozen SHA256 netdump-66956.log",
+      "passed": true,
+      "actual": "AF7FFC23102C84C0E319F7A4444A7F74A0BDD33B4B1FC75910C0AB145D68C3F0",
+      "expected": "AF7FFC23102C84C0E319F7A4444A7F74A0BDD33B4B1FC75910C0AB145D68C3F0"
+    },
+    {
+      "name": "frozen SHA256 server-initial.log",
+      "passed": true,
+      "actual": "5945E4FF6F687E0777EF47A6971B0838BB0AE370366221FE50ADCBE9290CC252",
+      "expected": "5945E4FF6F687E0777EF47A6971B0838BB0AE370366221FE50ADCBE9290CC252"
+    },
+    {
+      "name": "frozen SHA256 server-initial.err.log",
+      "passed": true,
+      "actual": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "expected": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "frozen SHA256 deployment-unclaimed-paused.json",
+      "passed": true,
+      "actual": "33C6E8AC960320ACBDBD98FF6CCED302D37C7B1E9778162383E50461C05C926E",
+      "expected": "33C6E8AC960320ACBDBD98FF6CCED302D37C7B1E9778162383E50461C05C926E"
+    },
+    {
+      "name": "frozen SHA256 state-unclaimed-paused.json",
+      "passed": true,
+      "actual": "7B05C243A004B0CFC3D5F8F248A9F495268BA6535A3A1EDEEADA9B0993BF25E1",
+      "expected": "7B05C243A004B0CFC3D5F8F248A9F495268BA6535A3A1EDEEADA9B0993BF25E1"
+    },
+    {
+      "name": "closed durable state hash",
+      "passed": true,
+      "actual": "7B05C243A004B0CFC3D5F8F248A9F495268BA6535A3A1EDEEADA9B0993BF25E1",
+      "expected": "7B05C243A004B0CFC3D5F8F248A9F495268BA6535A3A1EDEEADA9B0993BF25E1"
+    },
+    {
+      "name": "case original baseline",
+      "passed": true,
+      "actual": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+      "expected": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52"
+    },
+    {
+      "name": "independent case baseline observer",
+      "passed": true,
+      "actual": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+      "expected": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52"
+    },
+    {
+      "name": "approved manifest exact hash",
+      "passed": true,
+      "actual": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266",
+      "expected": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266"
+    },
+    {
+      "name": "case binds approved manifest",
+      "passed": true,
+      "actual": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266",
+      "expected": "3D92263FE0E44BA5F56E3255D61CE1080E31B77D55ECDC17551BB6435B64D266"
+    },
+    {
+      "name": "case source commit",
+      "passed": true,
+      "actual": "5078da27a4807695f002ceea61333c43e1932ce4",
+      "expected": "5078da27a4807695f002ceea61333c43e1932ce4"
+    },
+    {
+      "name": "initial recorded artifact DFLegacy.Server.dll",
+      "passed": true,
+      "actual": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+      "expected": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134"
+    },
+    {
+      "name": "initial artifact retained DFLegacy.Server.dll",
+      "passed": true,
+      "actual": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+      "expected": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134"
+    },
+    {
+      "name": "initial recorded artifact DFLegacy.Protocol.dll",
+      "passed": true,
+      "actual": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+      "expected": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E"
+    },
+    {
+      "name": "initial artifact retained DFLegacy.Protocol.dll",
+      "passed": true,
+      "actual": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+      "expected": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E"
+    },
+    {
+      "name": "initial recorded artifact ijl15.dll",
+      "passed": true,
+      "actual": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC",
+      "expected": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC"
+    },
+    {
+      "name": "initial artifact retained ijl15.dll",
+      "passed": true,
+      "actual": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC",
+      "expected": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC"
+    },
+    {
+      "name": "authoritative journal stopped",
+      "passed": true,
+      "actual": "stopped",
+      "expected": "stopped"
+    },
+    {
+      "name": "A decoded closed capture",
+      "passed": true,
+      "actual": "observed",
+      "expected": "observed"
+    },
+    {
+      "name": "A TX_crc_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A selected_layout_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A incomplete_tcp_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A disabled_flows",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A pending_log_line_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A appended_after_snapshot_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A all gameplay TX CRC checked",
+      "passed": true,
+      "actual": 19,
+      "expected": 19
+    },
+    {
+      "name": "A no omitted selected events",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B decoded closed capture",
+      "passed": true,
+      "actual": "observed",
+      "expected": "observed"
+    },
+    {
+      "name": "B TX_crc_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B selected_layout_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B incomplete_tcp_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B disabled_flows",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B pending_log_line_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B appended_after_snapshot_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B all gameplay TX CRC checked",
+      "passed": true,
+      "actual": 16,
+      "expected": 16
+    },
+    {
+      "name": "B no omitted selected events",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "exact two initial client sources",
+      "passed": true,
+      "actual": [
+        [
+          "A",
+          28960
+        ],
+        [
+          "B",
+          66956
+        ]
+      ],
+      "expected": [
+        [
+          "A",
+          28960
+        ],
+        [
+          "B",
+          66956
+        ]
+      ]
+    },
+    {
+      "name": "one native recipient reply",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "recipient native level/job/quota",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          6,
+          4,
+          0
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          6,
+          4,
+          0
+        ]
+      ]
+    },
+    {
+      "name": "one native shop request",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "CMD67 gift and strict ability4 term1 commodity270000 row",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          7,
+          1,
+          [
+            {
+              "ability_index": 4,
+              "term": 1,
+              "commodity": 270000
+            }
+          ]
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          7,
+          1,
+          [
+            {
+              "ability_index": 4,
+              "term": 1,
+              "commodity": 270000
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "one native shop reply",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "CMD67 category0 gift1 empty buyer reward",
+      "passed": true,
+      "actual": [
+        [
+          true,
+          true,
+          0,
+          270000,
+          0,
+          [],
+          true
+        ]
+      ],
+      "expected": [
+        [
+          true,
+          true,
+          0,
+          270000,
+          0,
+          [],
+          true
+        ]
+      ]
+    },
+    {
+      "name": "sender native cash update",
+      "passed": true,
+      "actual": [
+        26300
+      ],
+      "expected": [
+        26300
+      ]
+    },
+    {
+      "name": "committed observation phase",
+      "passed": true,
+      "actual": "initial",
+      "expected": "initial"
+    },
+    {
+      "name": "closed canonical gift data equals committed observation",
+      "passed": true,
+      "actual": {
+        "A": {
+          "Cash": 26300,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1159876143,
+              "SentAt": 1793136933,
+              "ExpiresAt": 1795728933,
+              "Attachment": {
+                "ItemId": 51020,
+                "CountOrValue": 1,
+                "State": 0,
+                "Durability": 0,
+                "SealState": 0,
+                "InstanceId": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14",
+                "AvatarExpireAt": 604800,
+                "AvatarAbilityIndex": 4,
+                "AvatarExpiresAtUnixSeconds": 1793741733
+              }
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        }
+      },
+      "expected": {
+        "A": {
+          "Cash": 26300,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1159876143,
+              "SentAt": 1793136933,
+              "ExpiresAt": 1795728933,
+              "Attachment": {
+                "ItemId": 51020,
+                "CountOrValue": 1,
+                "State": 0,
+                "Durability": 0,
+                "SealState": 0,
+                "InstanceId": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14",
+                "AvatarExpireAt": 604800,
+                "AvatarAbilityIndex": 4,
+                "AvatarExpiresAtUnixSeconds": 1793741733
+              }
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        }
+      }
+    },
+    {
+      "name": "A exact cash and ordinary gold",
+      "passed": true,
+      "actual": [
+        26300,
+        50604
+      ],
+      "expected": [
+        26300,
+        50604
+      ]
+    },
+    {
+      "name": "B cash unchanged and quota charged once",
+      "passed": true,
+      "actual": [
+        997790,
+        50176,
+        202610,
+        1
+      ],
+      "expected": [
+        997790,
+        50176,
+        202610,
+        1
+      ]
+    },
+    {
+      "name": "A receives no selected gift item",
+      "passed": true,
+      "actual": [
+        [],
+        [],
+        [],
+        []
+      ],
+      "expected": [
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "name": "B has not claimed into any selected bag",
+      "passed": true,
+      "actual": [
+        [],
+        [],
+        []
+      ],
+      "expected": [
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "name": "B exactly one gift mail",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "gift target mail and attachment identity",
+      "passed": true,
+      "actual": [
+        1159876143,
+        51020,
+        1,
+        4,
+        "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+      ],
+      "expected": [
+        1159876143,
+        51020,
+        1,
+        4,
+        "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+      ]
+    },
+    {
+      "name": "gift absolute deadline starts at commit",
+      "passed": true,
+      "actual": [
+        1793136933,
+        604800,
+        1793741733
+      ],
+      "expected": [
+        1793136933,
+        604800,
+        1793741733
+      ]
+    },
+    {
+      "name": "deadline minus sentAt is seven days",
+      "passed": true,
+      "actual": 604800,
+      "expected": 604800
+    },
+    {
+      "name": "B native attachment delivery",
+      "passed": true,
+      "actual": [
+        [
+          1159876143,
+          51020,
+          604800,
+          4,
+          1793136933
+        ]
+      ],
+      "expected": [
+        [
+          1159876143,
+          51020,
+          604800,
+          4,
+          1793136933
+        ]
+      ]
+    },
+    {
+      "name": "initial native did not claim",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    }
+  ],
+  "frozen_manifest_sha256": "8A4EB2836DF3A0920D6F380D29E534061499FF53ADDBB3D4B9A0F166A4F3C6F6",
+  "helper_sha256": "C0E8AB45084B8C09309E6319ADD7112ADF0D43FAE981B1AC1D8589126F50A39C",
+  "checker_sha256": "8F623316A77E61ED2C5E3C71006D125D2D2A06686113A37FE2C6D3F179E5AD8A",
+  "journals": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\frozen-native-initial\\deployment-unclaimed-paused.json",
+      "sha256": "33C6E8AC960320ACBDBD98FF6CCED302D37C7B1E9778162383E50461C05C926E",
+      "phase": "initial",
+      "status": "stopped",
+      "server_pid": 48516,
+      "server_start_time_utc": "2026-10-27T21:27:11.3252837Z"
+    }
+  ],
+  "captures": [
+    {
+      "phase": "initial",
+      "role": "A",
+      "pid": 28960,
+      "start_time_utc": "2026-10-27T21:27:14.3518265Z",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\frozen-native-initial\\netdump-28960.log",
+      "journal_refs": [
+        0
+      ],
+      "original_capture_path": "G:\\Game\\DNF_ACT1\\DF\\netdump-28960.log",
+      "sha256": "013C5D67CB7A5F12D410FD7C1D82823ADB7DDE66227413A208580D87EDBAAB6F",
+      "snapshot_bytes": 49900,
+      "events": [
+        {
+          "at": "2026-10-28 05:28:24.622",
+          "completed_at": "2026-10-28 05:28:24.622",
+          "line": 102,
+          "last_line": 102,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 225,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 18,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:28:24.622",
+          "completed_at": "2026-10-28 05:28:24.622",
+          "line": 102,
+          "last_line": 102,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:28:24.622",
+          "completed_at": "2026-10-28 05:28:24.622",
+          "line": 102,
+          "last_line": 102,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:28:24.622",
+          "completed_at": "2026-10-28 05:28:24.622",
+          "line": 102,
+          "last_line": 102,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:28:24.622",
+          "completed_at": "2026-10-28 05:28:24.622",
+          "line": 102,
+          "last_line": 102,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 99,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        },
+        {
+          "at": "2026-10-28 05:32:44.825",
+          "completed_at": "2026-10-28 05:32:44.825",
+          "line": 135,
+          "last_line": 135,
+          "direction": "TX",
+          "type": 1,
+          "op": 146,
+          "wire_length": 24,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "recipient_query",
+          "sequence": 13,
+          "recipient_name_bytes_redacted": 8
+        },
+        {
+          "at": "2026-10-28 05:32:44.840",
+          "completed_at": "2026-10-28 05:32:44.840",
+          "line": 136,
+          "last_line": 136,
+          "direction": "RX",
+          "type": 1,
+          "op": 146,
+          "wire_length": 25,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "recipient_reply",
+          "success": true,
+          "recipient_name_bytes_redacted": 8,
+          "level": 6,
+          "job": 4,
+          "growth": 0,
+          "gender": 0,
+          "received_count": 0
+        },
+        {
+          "at": "2026-10-28 05:35:33.849",
+          "completed_at": "2026-10-28 05:35:33.849",
+          "line": 157,
+          "last_line": 157,
+          "direction": "TX",
+          "type": 1,
+          "op": 67,
+          "wire_length": 33,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "shop_request",
+          "sequence": 17,
+          "gift": true,
+          "recipient_name_bytes_redacted": 8,
+          "product_count": 1,
+          "products": [
+            {
+              "ability_index": 4,
+              "term": 1,
+              "commodity": 270000
+            }
+          ],
+          "row_bytes": 7
+        },
+        {
+          "at": "2026-10-28 05:35:33.938",
+          "completed_at": "2026-10-28 05:35:33.938",
+          "line": 158,
+          "last_line": 158,
+          "direction": "RX",
+          "type": 1,
+          "op": 67,
+          "wire_length": 34,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "shop_reply",
+          "success": true,
+          "gift": true,
+          "category": 0,
+          "commodity": 270000,
+          "progress_key": 270000,
+          "last_key": 270000,
+          "reserved": 65535,
+          "reward_count": 0,
+          "target_rewards": [],
+          "tail_sentinel": 65535,
+          "tail_value": 0,
+          "result_keys_match": true
+        },
+        {
+          "at": "2026-10-28 05:35:33.938",
+          "completed_at": "2026-10-28 05:35:33.938",
+          "line": 158,
+          "last_line": 158,
+          "direction": "RX",
+          "type": 0,
+          "op": 53,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "cash_update",
+          "success": true,
+          "cash": 26300
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "013C5D67CB7A5F12D410FD7C1D82823ADB7DDE66227413A208580D87EDBAAB6F",
+      "capture_start_local": "2026-10-28 05:27:14",
+      "appended_after_snapshot_bytes": 0,
+      "counts": {
+        "TX_frames": 19,
+        "RX_frames": 34,
+        "TX_crc_valid": 19,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 10,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 4,
+        "RX_NOTI97": 1,
+        "TX_CMD146": 1,
+        "RX_CMD146": 1,
+        "TX_CMD67": 1,
+        "RX_CMD67": 1,
+        "RX_NOTI53": 1
+      },
+      "status": "observed"
+    },
+    {
+      "phase": "initial",
+      "role": "B",
+      "pid": 66956,
+      "start_time_utc": "2026-10-27T21:27:15.3355224Z",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\frozen-native-initial\\netdump-66956.log",
+      "journal_refs": [
+        0
+      ],
+      "original_capture_path": "G:\\Game\\DNF_ACT1\\Client_test2\\netdump-66956.log",
+      "sha256": "AF7FFC23102C84C0E319F7A4444A7F74A0BDD33B4B1FC75910C0AB145D68C3F0",
+      "snapshot_bytes": 48108,
+      "events": [
+        {
+          "at": "2026-10-28 05:29:26.560",
+          "completed_at": "2026-10-28 05:29:26.560",
+          "line": 95,
+          "last_line": 95,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 369,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 30,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:29:26.560",
+          "completed_at": "2026-10-28 05:29:26.560",
+          "line": 95,
+          "last_line": 95,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:29:26.560",
+          "completed_at": "2026-10-28 05:29:26.560",
+          "line": 95,
+          "last_line": 95,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:29:26.560",
+          "completed_at": "2026-10-28 05:29:26.560",
+          "line": 95,
+          "last_line": 95,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:29:26.752",
+          "completed_at": "2026-10-28 05:29:26.752",
+          "line": 98,
+          "last_line": 98,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 12,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 0,
+          "body_count": 0,
+          "not_loaded_count": 0,
+          "target_packages": [],
+          "target_bodies": []
+        },
+        {
+          "at": "2026-10-28 05:35:33.937",
+          "completed_at": "2026-10-28 05:35:33.937",
+          "line": 144,
+          "last_line": 144,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1159876143,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 51020,
+              "seal": 0,
+              "count_or_value": 604800,
+              "durability": 4,
+              "state": 0,
+              "sent_at": 1793136933,
+              "body_join_id": 1159876143
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1159876143,
+              "expires_at": 1795728933,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793136933,
+              "state": 1
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 05:36:10.120",
+          "completed_at": "2026-10-28 05:36:10.120",
+          "line": 149,
+          "last_line": 149,
+          "direction": "RX",
+          "type": 0,
+          "op": 99,
+          "wire_length": 8,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_alarm",
+          "new_mail_count": 1
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "AF7FFC23102C84C0E319F7A4444A7F74A0BDD33B4B1FC75910C0AB145D68C3F0",
+      "capture_start_local": "2026-10-28 05:27:15",
+      "appended_after_snapshot_bytes": 0,
+      "counts": {
+        "TX_frames": 16,
+        "RX_frames": 33,
+        "TX_crc_valid": 16,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 7,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 4,
+        "RX_NOTI97": 2,
+        "RX_NOTI99": 1
+      },
+      "status": "observed"
+    }
+  ],
+  "canonical_observer_sha256": "A8FDEEE8EA877513BD6B1A1065DA5E5E39FD1424C4E76216A02E7DF11CA4F13D",
+  "pending": [
+    "same-case unclaimed restart",
+    "native B read and claim",
+    "gift0 selected ability",
+    "independent 30-day gift",
+    "independent permanent gift",
+    "explicit expiry scenario",
+    "final integrated deployment and original environment restore"
+  ],
+  "cautions": [
+    "after-gift-unclaimed.json and capture-initial-unclaimed.json precede final YES; never gift-commit proof.",
+    "B-mailbox-unclaimed.jpg is world view, not opened mailbox UI.",
+    "Raw logs and full frozen state remain private; this report exports selected decoded fields only."
+  ]
+}

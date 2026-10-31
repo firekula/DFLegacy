@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{B5E9130B-04A6-46A2-8A4E-FE5B77F307BE}</ProjectGuid>
+    <RootNamespace>DFLegacyIjl15</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' &gt;= '18.0'">v145</PlatformToolset>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' &lt; '18.0'">v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' &gt;= '18.0'">v145</PlatformToolset>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' &lt; '18.0'">v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <OutDir>$(MSBuildProjectDirectory)\..\..\artifacts\native\ijl15\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\artifacts\native\ijl15-vcx\$(Configuration)\</IntDir>
+    <TargetName>ijl15</TargetName>
+    <TargetExt>.dll</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>IJL15_EXPORTS;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile>src\ijl15.def</ModuleDefinitionFile>
+      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <Optimization>MaxSpeed</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>IJL15_EXPORTS;UNICODE;_UNICODE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile>src\ijl15.def</ModuleDefinitionFile>
+      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="src\channel_switch.h" />
+    <ClInclude Include="src\creature_gift_row.h" />
+    <ClInclude Include="src\countdown_coin.h" />
+    <ClInclude Include="src\dungeon_tooltip.h" />
+    <ClInclude Include="include\ijl15.h" />
+    <ClInclude Include="src\auto_input.h" />
+    <ClInclude Include="src\debug_module.h" />
+    <ClInclude Include="src\client_debug_state.h" />
+    <ClInclude Include="src\boss_room_death.h" />
+    <ClInclude Include="src\channel_reentry.h" />
+    <ClInclude Include="src\relay_send_queue.h" />
+    <ClInclude Include="src\ground_item_removal.h" />
+    <ClInclude Include="src\motion_horizon.h" />
+    <ClInclude Include="src\party_card_display.h" />
+    <ClInclude Include="src\d3d8_scaler.h" />
+    <ClInclude Include="src\d3d8_abi.h" />
+    <ClInclude Include="src\d3d8_presenter.h" />
+    <ClInclude Include="src\presentation_scaling.h" />
+    <ClInclude Include="src\d3d8_hooks.h" />
+    <ClInclude Include="src\diagnostic_delivery.h" />
+    <ClInclude Include="src\pe_import.h" />
+    <ClInclude Include="src\window_input_scaling.h" />
+    <ClInclude Include="src\dnf_patches.h" />
+    <ClInclude Include="src\external_string_table.h" />
+    <ClInclude Include="src\ijl15_config.h" />
+    <ClInclude Include="src\memory_patch.h" />
+    <ClInclude Include="src\message_audio.h" />
+    <ClInclude Include="src\net_dump.h" />
+    <ClInclude Include="src\mouse_wheel.h" />
+    <ClInclude Include="src\output_paths.h" />
+    <ClInclude Include="src\performance_overlay.h" />
+    <ClInclude Include="src\party_combat_detail.h" />
+    <ClInclude Include="src\mage_skill_contact.h" />
+    <ClInclude Include="src\priest_heal_target.h" />
+    <ClInclude Include="src\stage_follow.h" />
+    <ClInclude Include="src\summon_owner_death.h" />
+    <ClInclude Include="src\window_scaling.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\auto_input.cpp" />
+    <ClCompile Include="src\debug_module.cpp" />
+    <ClCompile Include="src\boss_room_death.cpp" />
+    <ClCompile Include="src\channel_reentry.cpp" />
+    <ClCompile Include="src\relay_send_queue.cpp" />
+    <ClCompile Include="src\channel_switch.cpp" />
+    <ClCompile Include="src\creature_gift_row.cpp" />
+    <ClCompile Include="src\countdown_coin.cpp" />
+    <ClCompile Include="src\dungeon_tooltip.cpp" />
+    <ClCompile Include="src\ground_item_removal.cpp" />
+    <ClCompile Include="src\motion_horizon.cpp" /><ClCompile Include="src\native_loop_probe.cpp" /><ClCompile Include="src\motion_test_probe.cpp" /><ClCompile Include="src\provider_probe.cpp" />
+    <ClCompile Include="src\party_card_display.cpp" />
+    <ClCompile Include="src\d3d8_scaler.cpp" />
+    <ClCompile Include="src\d3d8_presenter.cpp" />
+    <ClCompile Include="src\presentation_scaling.cpp" />
+    <ClCompile Include="src\d3d8_hooks.cpp" />
+    <ClCompile Include="src\window_input_scaling.cpp" />
+    <ClCompile Include="src\dnf_patches.cpp" />
+    <ClCompile Include="src\external_string_table.cpp" />
+    <ClCompile Include="src\ijl15_config.cpp" />
+    <ClCompile Include="src\ijl15.cpp" />
+    <ClCompile Include="src\memory_patch.cpp" />
+    <ClCompile Include="src\message_audio.cpp" />
+    <ClCompile Include="src\net_dump.cpp" />
+    <ClCompile Include="src\mouse_wheel.cpp" />
+    <ClCompile Include="src\output_paths.cpp" />
+    <ClCompile Include="src\performance_overlay.cpp" />
+    <ClCompile Include="src\party_combat_detail.cpp" />
+    <ClCompile Include="src\mage_skill_contact.cpp" />
+    <ClCompile Include="src\priest_heal_target.cpp" />
+    <ClCompile Include="src\stage_follow.cpp" />
+    <ClCompile Include="src\summon_owner_death.cpp" />
+    <ClCompile Include="src\window_scaling.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="build-native.ps1" />
+    <None Include="CMakeLists.txt" />
+    <None Include="src\ijl15.def" />
+    <None Include="Config.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <PropertyGroup><LinkIncremental>false</LinkIncremental></PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile><AdditionalOptions>%(AdditionalOptions) /Brepro</AdditionalOptions></ClCompile>
+    <Link><AdditionalOptions>%(AdditionalOptions) /Brepro /PDBALTPATH:$(TargetName).pdb</AdditionalOptions></Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

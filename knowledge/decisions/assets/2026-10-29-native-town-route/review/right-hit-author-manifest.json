@@ -1,0 +1,41 @@
+{
+  "base_head": "76db1cb807303853b4c48bf67e8272540b4c4ba2",
+  "uncommitted": true,
+  "no_commit_requested": true,
+  "files": [
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation.h",
+      "sha256": "277348e429fef24b014db1cee301646d70fb6d56a3a2b3e205a43d74d2a70111"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation.cpp",
+      "sha256": "9b99574016a32745742fee42a11912ee2bf170dca4007d8f3578e59e7ffab3a9"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation_runtime.cpp",
+      "sha256": "f61ca42819053704176a2daed22162e682c3b7585e758684c30119db7f539a55"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_navigation_tests.cpp",
+      "sha256": "7bf8036d8f4e71eb5498facc241cafb9dac92f27b39daf20434653b3d47b8c1b"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp",
+      "sha256": "a86ba1c9d0e6d4fb4e4ebfd69a501bb9237d53dfbefe06a2c3d41d956296ae3b"
+    }
+  ],
+  "legacy_ReadCanvasTarget_unchanged": true,
+  "old_poll_left_only": true,
+  "tests": {
+    "red_failures": 13,
+    "red_log": "red-tests.log",
+    "final_log": "freeze-tests.log",
+    "core_failures": 0,
+    "runtime_failures": 0,
+    "compiler": "Win32 C++17 /W4 /WX",
+    "test_exe_sha256": "0c0ef649d0ac0813e5b1cc4eb2bb000973f24715a56c5d7793211e9c9570dd5c",
+    "build_log": "freeze-build.log"
+  },
+  "recon_report": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\recon\\right-hit-order\\order-correction.md",
+  "frozen_utc": "2026-10-29T04:48:21.210615+00:00"
+}

@@ -1,0 +1,7 @@
+FAIL ground context: dead detached receiver removes current-stage target
+FAIL ground context: one current-map lookup, identical-item control remains active
+FAIL ground context: duplicate receive never deactivates twice
+FAIL ground context: dead old-map receiver removes current-stage target
+FAIL ground context: one current-map lookup, identical-item control remains active
+FAIL ground context: duplicate receive never deactivates twice
+Ground receiver context: 32 checks, 6 failures

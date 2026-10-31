@@ -1,0 +1,22 @@
+[
+  {
+    "File": "B-before-short-expiry.jpg",
+    "Sha256": "445E59B765B67FAE8C2DEF42FA4DA69713A1671C3C4592923E9C1CD512AF914A",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-after-short-expiry.jpg",
+    "Sha256": "3D45A80F9F1793F20B8E04D1546F2AE5B6CAF5057F33E77C51DD2C8D5E14F8DA",
+    "OriginalEqual": true
+  },
+  {
+    "File": "short-expiry-frozen-proof.json",
+    "Sha256": "2DF0778FE3EF67F36AB36F5EEA66FE12EB08EE926172D1FA147F4C338D440071",
+    "OriginalEqual": true
+  },
+  {
+    "File": "short-expiry-derivation.json",
+    "Sha256": "05A8C377B44BE8A3AE8490706A04231BBACCA7F2CE55D7B82DEEB336641F64DD",
+    "OriginalEqual": true
+  }
+]

@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DFLegacy 后台</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">DF</span>
+        <div>
+          <strong>DFLegacy</strong>
+          <span>GM工具</span>
+        </div>
+      </div>
+      <nav class="nav" aria-label="后台功能">
+        <button class="nav-item active admin-only" type="button" data-view="mail">邮件</button>
+        <button class="nav-item admin-only" type="button" data-view="direct">单人通知</button>
+        <button class="nav-item admin-only" type="button" data-view="broadcast">广播通知</button>
+        <button class="nav-item admin-only" type="button" data-view="dungeon">副本权限</button>
+        <button class="nav-item admin-only" type="button" data-view="users">用户角色</button>
+        <button class="nav-item player-only" type="button" data-view="characters">我的角色</button>
+      </nav>
+      <div class="sidebar-foot">
+        <span id="onlineCount" class="admin-only">0 名角色在线</span>
+        <button id="refreshData" class="quiet-button" type="button">刷新数据</button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">邮件</h1>
+          <p id="pageSubtitle">发送系统邮件和游戏物品</p>
+        </div>
+        <div class="topbar-meta">
+          <div class="identity">
+            <span id="identityRole" class="identity-role">当前身份：未登录</span>
+            <span id="identityName" class="identity-name">—</span>
+          </div>
+          <div id="serverState" class="server-state pending">
+            <span class="state-dot"></span>
+            <span>正在连接服务端</span>
+          </div>
+          <button id="logoutButton" class="quiet-button" type="button">退出登录</button>
+        </div>
+      </header>
+
+      <section class="view active admin-only" data-view-panel="mail">
+        <form id="mailForm" class="surface form-layout">
+          <div class="section-heading">
+            <h2>新邮件</h2>
+            <p>每封邮件最多携带一种物品，金币可与物品同时发送。</p>
+          </div>
+          <div class="form-grid two-column">
+            <label class="field span-two">
+              <span>收件角色</span>
+              <select class="character-select" name="characterId" required></select>
+            </label>
+            <label class="field">
+              <span>发件人</span>
+              <input name="sender" value="DFLegacy" maxlength="20" required>
+            </label>
+            <label class="field">
+              <span>金币</span>
+              <input name="gold" type="number" min="0" step="1" value="0" required>
+            </label>
+            <label class="field span-two">
+              <span>正文</span>
+              <textarea name="text" maxlength="255" rows="4" placeholder="邮件内容"></textarea>
+            </label>
+            <label class="field">
+              <span>附件类型</span>
+              <select id="attachmentKind" name="attachmentKind">
+                <option value="0">无附件</option>
+                <option value="1">普通道具 / 装备</option>
+                <option value="2">Avatar 装备</option>
+                <option value="3">宠物蛋</option>
+              </select>
+            </label>
+            <label id="quantityField" class="field attachment-field hidden">
+              <span>数量</span>
+              <input name="quantity" type="number" min="1" step="1" value="1">
+            </label>
+            <label id="avatarAbilityField" class="field attachment-field hidden">
+              <span>Avatar 能力索引</span>
+              <input name="avatarAbilityIndex" type="number" min="0" max="65535" step="1" value="0">
+            </label>
+            <div id="itemPicker" class="field span-two attachment-field hidden">
+              <span>物品 ID 或名称</span>
+              <div class="search-row">
+                <input id="itemSearch" autocomplete="off" placeholder="输入物品 ID、名称或脚本路径">
+                <button id="itemSearchButton" class="secondary-button" type="button">查询</button>
+              </div>
+              <select id="itemResults" class="item-results" size="5" aria-label="物品查询结果"></select>
+              <input id="selectedItemId" name="itemId" type="hidden">
+              <div id="itemMeta" class="item-meta">尚未选择物品</div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="primary-button" type="submit">发送邮件</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="view admin-only" data-view-panel="direct">
+        <div class="split-layout">
+          <form id="directPopupForm" class="surface form-layout">
+            <div class="section-heading">
+              <h2>单人弹框</h2>
+              <p>向指定在线角色发送客户端弹窗。</p>
+            </div>
+            <label class="field">
+              <span>目标角色</span>
+              <select class="character-select online-only" name="characterId" required></select>
+            </label>
+            <label class="field">
+              <span>弹框内容</span>
+              <textarea name="message" maxlength="127" rows="6" required></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">发送弹框</button>
+            </div>
+          </form>
+
+          <form id="directMessageForm" class="surface form-layout">
+            <div class="section-heading">
+              <h2>单人消息</h2>
+              <p>向指定在线角色的消息栏发送通知。</p>
+            </div>
+            <label class="field">
+              <span>目标角色</span>
+              <select class="character-select online-only" name="characterId" required></select>
+            </label>
+            <label class="field">
+              <span>消息类型</span>
+              <select class="message-type-select" name="messageType" required></select>
+            </label>
+            <label class="field">
+              <span>消息内容</span>
+              <textarea name="message" maxlength="127" rows="4" required></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">发送消息</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="view admin-only" data-view-panel="broadcast">
+        <div class="split-layout">
+          <form id="broadcastPopupForm" class="surface form-layout danger-surface">
+            <div class="section-heading">
+              <h2>广播弹框</h2>
+              <p>发送到当前全部在线角色。</p>
+            </div>
+            <label class="field">
+              <span>弹框内容</span>
+              <textarea name="message" maxlength="127" rows="7" required></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="danger-button" type="submit">广播弹框</button>
+            </div>
+          </form>
+
+          <form id="broadcastMessageForm" class="surface form-layout danger-surface">
+            <div class="section-heading">
+              <h2>广播消息</h2>
+              <p>发送到当前全部在线角色的消息栏。</p>
+            </div>
+            <label class="field">
+              <span>消息类型</span>
+              <select class="message-type-select" name="messageType" required></select>
+            </label>
+            <label class="field">
+              <span>消息内容</span>
+              <textarea name="message" maxlength="127" rows="4" required></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="danger-button" type="submit">广播消息</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="view admin-only" data-view-panel="dungeon">
+        <form id="dungeonForm" class="surface form-layout compact-form">
+          <div class="section-heading">
+            <h2>开放副本难度</h2>
+            <p>保存角色对指定 DGN 的最高可进入难度；在线角色会立即同步。</p>
+          </div>
+          <label class="field">
+            <span>角色</span>
+            <select class="character-select" name="characterId" required></select>
+          </label>
+          <label class="field">
+            <span>副本</span>
+            <select id="dungeonSelect" name="dungeonId" required></select>
+          </label>
+          <fieldset class="field difficulty-field">
+            <legend>最高开放难度</legend>
+            <div class="segmented">
+              <label><input type="radio" name="maximumDifficulty" value="0"><span>普通</span></label>
+              <label><input type="radio" name="maximumDifficulty" value="1"><span>冒险</span></label>
+              <label><input type="radio" name="maximumDifficulty" value="2"><span>勇士</span></label>
+              <label><input type="radio" name="maximumDifficulty" value="3" checked><span>王者</span></label>
+            </div>
+          </fieldset>
+          <div class="form-actions">
+            <button class="primary-button" type="submit">保存副本权限</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="view admin-only" data-view-panel="users">
+        <div class="surface form-layout">
+          <div class="section-heading">
+            <h2>用户角色</h2>
+            <p>提升或降级账号的后台权限；角色变更会立即作废该账号已登录的 token。</p>
+          </div>
+          <div class="table-scroll">
+            <table id="userTable" class="data-table">
+              <thead>
+                <tr>
+                  <th>账号</th>
+                  <th>角色</th>
+                  <th>角色数</th>
+                  <th>UID 段</th>
+                  <th class="align-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody"></tbody>
+            </table>
+          </div>
+          <p id="userEmpty" class="empty-hint hidden">还没有任何账号。</p>
+        </div>
+      </section>
+
+      <section class="view player-only" data-view-panel="characters">
+        <div class="surface form-layout">
+          <div class="section-heading">
+            <h2>我的角色</h2>
+            <p>账号 <strong id="ownerName">—</strong> 名下的角色列表。</p>
+          </div>
+          <div class="table-scroll">
+            <table id="characterTable" class="data-table">
+              <thead>
+                <tr>
+                  <th>角色名</th>
+                  <th>等级</th>
+                  <th>职业</th>
+                  <th>槽位</th>
+                </tr>
+              </thead>
+              <tbody id="characterTableBody"></tbody>
+            </table>
+          </div>
+          <p id="characterEmpty" class="empty-hint hidden">该账号还没有角色，进入游戏创建角色后会显示在这里。</p>
+          <div class="form-actions">
+            <a class="secondary-button link-button" href="/admin/player.html">打开玩家页面 player.html</a>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="loginOverlay" class="login-overlay hidden">
+    <form id="loginForm" class="surface login-card">
+      <div class="login-head">
+        <span class="brand-mark">DF</span>
+        <div>
+          <h2>登录 DFLegacy</h2>
+          <p>请输入账号和密码</p>
+        </div>
+      </div>
+      <label class="field">
+        <span>账号</span>
+        <input id="loginUserName" name="userName" autocomplete="username" required>
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="loginError" class="login-error hidden" role="alert"></p>
+      <div class="form-actions login-actions">
+        <button id="loginSubmit" class="primary-button" type="submit">登录</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/admin/admin.js" defer></script>
+</body>
+</html>

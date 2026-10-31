@@ -1,0 +1,27 @@
+[
+  {
+    "start": "0x41944b",
+    "end_exclusive": "0x41947b",
+    "sha256": "425bf9a0c4a3caed2c6e5a780b9cdfbfe3be8eb4fee23a349ea9fd37dc76d4b7"
+  },
+  {
+    "start": "0x41e878",
+    "end_exclusive": "0x41e9c7",
+    "sha256": "02e0abcae5f359ef0579db0bb4d5e8b5701d3968f340ff8327cbe18f95abeb56"
+  },
+  {
+    "start": "0x478f00",
+    "end_exclusive": "0x478f6e",
+    "sha256": "5e0e12e421d65e63df76005a00cfb899a68c99210c7546a7a4f33b271784afcb"
+  },
+  {
+    "start": "0x4798a0",
+    "end_exclusive": "0x479a40",
+    "sha256": "b7a1fb50f973df27a69306b1b9c67986db455445680062e3c025d3d9938c66a8"
+  },
+  {
+    "start": "0x407460",
+    "end_exclusive": "0x407480",
+    "sha256": "dd85cb4c451335876e5023ddf13cfce73d6c1b2d25addffb7bdb503cd7fb0e68"
+  }
+]

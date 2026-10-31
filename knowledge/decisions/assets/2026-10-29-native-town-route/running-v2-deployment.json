@@ -1,0 +1,55 @@
+{
+  "Schema": "party-native-phase/v1",
+  "Phase": "native-ui-v2",
+  "Status": "running",
+  "StartedAtUtc": "2026-10-29T04:53:52.9995750Z",
+  "StoppedAtUtc": null,
+  "BuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\build-manifest-native-ui-v2.json",
+  "BuildManifestSha256": "A34115D8AE0812ACD82AD57C2A4133AD4BEE570E956C837B84C66A3688D1F5D5",
+  "Runtime": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime-native-ui-v2",
+  "State": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\state-native-ui-v2.json",
+  "InitialFixtureSha256": "A3E6922E6C58B20DD787BEBA3B82586C192AFA23612C7ED8B9CDEECB6046FE8C",
+  "Server": {
+    "Role": "server",
+    "Id": 60424,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\runtime-native-ui-v2\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-29T04:53:53.1212359Z"
+  },
+  "Clients": [
+    {
+      "Role": "A",
+      "Id": 58960,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T04:53:55.5326353Z"
+    },
+    {
+      "Role": "B",
+      "Id": 76432,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T04:53:56.3334670Z"
+    }
+  ],
+  "Launchers": [
+    {
+      "Role": "launcher-A",
+      "Id": 77116,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T04:53:55.1279055Z"
+    },
+    {
+      "Role": "launcher-B",
+      "Id": 4896,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T04:53:55.7562950Z"
+    }
+  ],
+  "Sink": null,
+  "SinkLog": null,
+  "Stdout": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\server-native-ui-v2.log",
+  "Stderr": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\server-native-ui-v2.err.log",
+  "PeerSink": false,
+  "RoleAccounts": {
+    "A": "shizuku",
+    "B": "test"
+  }
+}

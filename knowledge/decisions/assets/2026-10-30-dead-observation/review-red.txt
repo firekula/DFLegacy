@@ -1,0 +1,4 @@
+FAIL test-control IO: lease revoked during capture cannot publish old-epoch observation
+FAIL test-control IO: detached observer serializes null actor-map consistently with SDK
+Client test control tests: 0 failures
+Client test control IO tests: 2 failures

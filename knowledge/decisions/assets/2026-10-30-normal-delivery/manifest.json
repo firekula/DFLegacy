@@ -1,0 +1,12 @@
+[
+  {
+    "path": "01-normal-four-party.jpg",
+    "bytes": 443081,
+    "sha256": "DA41D53D23CC9E81201E2D806389A4CE490DA1E4BB87D0C2ADB79352C1BF3D36"
+  },
+  {
+    "path": "acceptance.json",
+    "bytes": 14640,
+    "sha256": "91E4258A9E31C42D7AB66E8D773B0E87A436B97AC429E7A7C68B8D7BE4C5383E"
+  }
+]

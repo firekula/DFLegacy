@@ -1,0 +1,8 @@
+Final independent read-only evidence review, 2026-10-30
+Reviewer: /root/active_drop_review
+12 equipment transfers matched received/native/source/repeat evidence: v1 blue6 sealed5, v2 blue1.
+Both closed saves contain one original blue item at A22 and one sealed item at B25 across inventory/equipment/storage.
+Gold/material events14/15 and values matched. Four fresh away samples omit ground8; return preserves all ground fields and four appearances. Final HP matched.
+Five original screenshots and public/private manifests matched byte-for-byte. Failure/recovery limits accurately retained.
+Blue item Chinese label corrected to 稻草戒指. Both managed output paths confirmed under smoke-tests with random subdirectories.
+No Important/Critical findings remain. Review did not operate live clients or rerun full suites.

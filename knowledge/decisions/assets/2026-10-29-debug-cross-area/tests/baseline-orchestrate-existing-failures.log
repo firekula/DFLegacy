@@ -1,0 +1,105 @@
+....FF...F                                                               [100%]
+================================== FAILURES ===================================
+___________ test_orchestrate_wires_server_actors_steps_and_collect ____________
+
+tmp_path = WindowsPath('D:/codex_worktree/debug-town-navigation/DFLegacy/.tmp/pytest-tp/test_orchestrate_wires_server_actors_steps_and_collect_58860_4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000023DCE132780>
+capsys = <_pytest.capture.CaptureFixture object at 0x0000023DCE130E60>
+
+    def test_orchestrate_wires_server_actors_steps_and_collect(tmp_path, monkeypatch, capsys):
+        FakeRunner.instances.clear()
+        client = _make_client_dir(tmp_path)
+        pids = iter([7001, 7002])
+        monkeypatch.setattr(cli, "Runner", FakeRunner)
+        monkeypatch.setattr(cli, "capture_client_pid",
+                            lambda log, offset, timeout_s=60.0: (next(pids), "started-line", offset))
+        monkeypatch.setattr(cli, "_confirm", lambda message: None)
+        collected: list[tuple[str, Path | None]] = []
+        monkeypatch.setattr(cli, "collect_actor",
+                            lambda rp, name, source: collected.append((name, source)))
+        monkeypatch.setattr(cli, "judge",
+                            lambda sc, dirs, server_dir: Verdict(scenario_id=sc.id, entries=[]))
+        monkeypatch.setattr(cli, "write_verdict", lambda rp, v: (rp.verdict, rp.verdict_digest))
+        monkeypatch.setattr(cli, "promote_digest",
+                            lambda rp, acc: Path(acc) / "verdicts" / f"{rp.run_dir.name}.json")
+    
+        (client / "netdump-7001.log").write_text(
+            "2026-10-15 00:00:01.000 T=1 TX TCP 127.0.0.1:1 -> 127.0.0.1:2311 len=1 hex=00\n",
+            encoding="utf-8")
+        (client / "netdump-7002.log").write_text(
+            "2026-10-15 00:00:02.000 T=2 TX TCP 127.0.0.1:1 -> 127.0.0.1:2311 len=1 hex=00\n",
+            encoding="utf-8")
+    
+        rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                         actor_accounts="A=alias-one,B=alias-two", paths=_paths(client))
+>       assert rc == 0
+E       assert 1 == 0
+
+tools\acceptance\tests\test_cli_orchestrate.py:213: AssertionError
+---------------------------- Captured stderr call -----------------------------
+����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�
+___ test_orchestrate_waits_for_the_server_to_listen_before_starting_actors ____
+
+tmp_path = WindowsPath('D:/codex_worktree/debug-town-navigation/DFLegacy/.tmp/pytest-tp/test_orchestrate_waits_for_the_server_to_listen_before_starting_actors_58860_5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000023DCE17ABA0>
+capsys = <_pytest.capture.CaptureFixture object at 0x0000023DCE17B6B0>
+
+    def test_orchestrate_waits_for_the_server_to_listen_before_starting_actors(tmp_path, monkeypatch,
+                                                                              capsys):
+        """��� 2026-10-15 ȱ�ݻع飺һ���������**�ȷ���˿�ʼ����**���� actor��
+    
+        ʵ�����˴����������� 2311 Լ 5.4 �루���� 48343 ���ű� + �� catalog������ launcher ��
+        `EnsureServerReadyAsync` �� `StartServer=false` ʱ**ֻ̽һ�ζ˿ھ��״�**
+        \uff08src/DFLegacy.Launcher/Program.cs:336-347\uff09\u21d2 \u4e0d\u7b49\u5f85\u5c31\u5fc5\u7136\u62a5
+        "����ʧ�ܣ�Launcher failed ... ��ڷ��� 127.0.0.1:2311 δ�������� StartServer=false"��
+        """
+        FakeRunner.instances.clear()
+        client = _make_client_dir(tmp_path)
+        monkeypatch.setattr(cli, "Runner", FakeRunner)
+        monkeypatch.setattr(cli, "_confirm", lambda message: None)
+        monkeypatch.setattr(cli, "capture_client_pid",
+                            lambda log, offset, timeout_s=60.0: (7001 + offset % 7, "fake start line", 0))
+        # �����ܰѼ��ж������� git ���ٵ� verdicts/������ж������������
+        monkeypatch.setattr(cli, "promote_digest",
+                            lambda rp, acc: Path(acc) / "verdicts" / f"{rp.run_dir.name}.json")
+        rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                         actor_accounts="A=x,B=y", paths=_paths(client))
+>       assert rc == 0, "�ȴ��ǳɹ�·����һ���֣���Ӧʧ��"
+E       AssertionError: �ȴ��ǳɹ�·����һ���֣���Ӧʧ��
+E       assert 1 == 0
+
+tools\acceptance\tests\test_cli_orchestrate.py:267: AssertionError
+---------------------------- Captured stderr call -----------------------------
+����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�
+____ test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback ____
+
+tmp_path = WindowsPath('D:/codex_worktree/debug-town-navigation/DFLegacy/.tmp/pytest-tp/test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback_58860_9')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000023DCE179D90>
+capsys = <_pytest.capture.CaptureFixture object at 0x0000023DCE17BCE0>
+
+    def test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback(tmp_path, monkeypatch, capsys):
+        """launcher.log \u672c\u6b21\u65b0\u589e**\u591a\u6761**\u542f\u52a8\u884c \u21d2 \u5fc5\u987b\u8d70\u65e2\u6709\u53cb\u597d\u5931\u8d25\u8def\u5f84\uff08"\u7f16\u6392\u5931\u8d25\uff1a\u2026" + rc=1\uff09\uff0c
+        ������ AmbiguousPIDError ���ݳ� traceback������ I-3���˱� L290���ò���Ψһ PID ����ȷʧ�ܡ������£���"""
+        FakeRunner.instances.clear()
+        client = _make_client_dir(tmp_path)
+        monkeypatch.setattr(cli, "Runner", FakeRunner)
+        monkeypatch.setattr(cli, "_confirm", lambda message: None)
+        monkeypatch.setattr(cli, "capture_client_pid",
+                            lambda log, offset, timeout_s=60.0: (_ for _ in ()).throw(
+                                AmbiguousPIDError("Found 2 start events in launcher.log")))
+        rc = orchestrate(SCEN, tmp_path / "runs", "abc1234",
+                         actor_accounts="A=x,B=y", paths=_paths(client))
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "����ʧ��" in err, err
+>       assert "Found 2 start events" in err, err
+E       AssertionError: ����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�
+E         
+E       assert 'Found 2 start events' in '����ʧ�ܣ�[WinError 10013] ��һ�ַ���Ȩ�޲������ķ�ʽ����һ�������׽��ֵĳ��ԡ�\n'
+
+tools\acceptance\tests\test_cli_orchestrate.py:350: AssertionError
+=========================== short test summary info ===========================
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_wires_server_actors_steps_and_collect
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_waits_for_the_server_to_listen_before_starting_actors
+FAILED tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback
+3 failed, 7 passed in 0.35s

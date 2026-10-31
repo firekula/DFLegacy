@@ -1,0 +1,4 @@
+installed-427104 picker=0 item=0 ground=0 time=04:08:34.140 T=56180 scene=-1 stage=00000000 ui-stage=00000000 map=00000000 actor=00000000 actor-map=00000000 death=-1 context=none
+deactivated picker=1 item=13201 ground=2 time=04:10:16.663 T=56180 scene=3 stage=072C91D0 ui-stage=072C91D0 map=17C1FA70 actor=088D0C28 actor-map=17C1FA70 death=0 context=ready-attached
+deactivated picker=1 item=24002 ground=4 time=04:11:31.632 T=56180 scene=3 stage=072C91D0 ui-stage=072C91D0 map=17C1FA70 actor=088D0C28 actor-map=17C1FA70 death=0 context=ready-attached
+already-inactive picker=2 item=0 ground=5 time=04:13:08.121 T=56180 scene=3 stage=072C91D0 ui-stage=072C91D0 map=17C1FA70 actor=088D0C28 actor-map=17C1FA70 death=0 context=ready-attached

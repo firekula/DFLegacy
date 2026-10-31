@@ -1,0 +1,120 @@
+{
+  "DFLegacy": {
+    "Processes": {
+      "//": "进程拓扑开关。默认 = 单体模式（一个进程绑全部端口）。拆分布局：Channel.Enabled=true 且 Game.EntranceBinding=false。Channel.LinkPort 是两进程之间的链路端口。",
+      "Channel": {
+        "Enabled": false,
+        "LinkPort": 7004
+      },
+      "Game": {
+        "EntranceBinding": true
+      }
+    },
+    "Admin": {
+      "//": "管理接口（含后台页面与 API）。:: 为双栈（IPv4+IPv6 都通）；服务端玩法面是 IPv6，绑 0.0.0.0 会让 IPv6 侧访问不到。只本机访问填 127.0.0.1。",
+      "Host": "::",
+      "Port": 8081,
+      "//Users": "引导管理员名单：这些账号在服务端【启动时】被提升为管理员（注册不提升——否则名单账号还没注册时，任何人都能抢注该名字拿到管理员）。",
+      "Users": [],
+      "//TokenHours": "登录 token 有效期（小时），每次使用滑动续期。",
+      "TokenHours": 12,
+      "//MaxTokenLifetimeHours": "token 绝对有效期上限（小时）：滑动续期也不能让 token 永生（防被窃 token 长期有效）。",
+      "MaxTokenLifetimeHours": 168,
+      "//LoginSourceMaxAttempts": "同一来源（IP）的登录/找回总尝试额度；超出后该来源一律 429（含正确密码），用于硬挡单机爆破与扫号。",
+      "LoginSourceMaxAttempts": 30,
+      "//LoginAccountLockSources": "账号级锁定所需的不同失败来源数：来自这么多不同 IP 的失败才锁定该账号。设为 1 会让单个 IP 就能锁死别人的账号（拒绝服务），默认 3。",
+      "LoginAccountLockSources": 3,
+      "//LoginLockoutMinutes": "触发限流后的锁定时长（分钟）。",
+      "LoginLockoutMinutes": 5
+    },
+    "Entrance": {
+      "Enabled": true,
+      "Host": "127.0.0.1",
+      "Port": 2311,
+      "AdditionalPorts": [
+        7001,
+        8080
+      ]
+    },
+    "CharacterDatagram": {
+      "Enabled": true,
+      "Host": "127.0.0.1",
+      "Port": 2311
+    },
+    "GameplayDatagram": {
+      "Enabled": true,
+      "Host": "127.0.0.1",
+      "PrimaryPort": 7002,
+      "SecondaryPort": 7003,
+      "MonsterObjectType": 529,
+      "SenderPartyIndex": 0
+    },
+    "GameProbe": {
+      "Enabled": false,
+      "Host": "127.0.0.1",
+      "Port": 7001
+    },
+    "FallbackRelay": {
+      "//": "ACT1 组队 UDP 握手失败后的原生 TCP 回退；与启动器 IPv4/IPv6 端口代理是不同服务。Host 留空继承游戏 TCP 绑定地址，AdvertisedHost 留空沿用频道下发地址。",
+      "Enabled": true,
+      "Host": "",
+      "AdvertisedHost": "",
+      "TcpPort": 7005,
+      "UdpPort": 7005
+    },
+    "DataPath": "data/state.json",
+    "ScriptPvfPath": "D:\\DFLegacy\\DF2008\\Script.pvf",
+    "SkillScriptPath": "",
+    "TownSync": {
+      "//": "城镇同屏与附近聊天：仅在【同一城镇 + 同一区域】内生效；跨区/跨城镇不可见属预期（配置为私密区域的除外，见 PrivateAreas）。",
+      "Enabled": true,
+      "//ForeignAppearanceBeforeRoster": "给新进区域的人先发别人的外观（USERINFO 记录）还是先发名单；默认 true（外观在前）。客户端会静默丢弃 AREA_USERS/USER_AREA 里没有 USERINFO 记录的 uid，名单在前时新人看不到任何人；仅作对照实验时才改为 false。",
+      "ForeignAppearanceBeforeRoster": true,
+      "//DepartureSignal": "成员离开区域时的通知信号：UserAreaInactive（默认，发带 0xFF/0xFF 哨兵的 USER_AREA，客户端因区域不匹配销毁角色及其特效）或 RosterResend（重发不含该成员的名单；AREA_USERS 只增不减，**不能移除角色**，残留特效/旧位置依旧，仅作兼容备选）。",
+      "DepartureSignal": "UserAreaInactive",
+      "//MaxPositionForwardsPerSecond": "每个成员每秒最多转发的位置包数；<=0 不限制。",
+      "MaxPositionForwardsPerSecond": 10,
+      "//PrivateAreas": "额外的私密（单人实例）区域，格式为 城镇:区域（两侧 1..255）。五处赛丽亚房间 1:1、2:5、3:2、4:1、5:1 由代码始终隔离，无需配置。列表默认空；非法条目启动时告警跳过。",
+      "PrivateAreas": []
+    },
+    "Debug": {
+      "//": "调试用：往指定区域投一个会走动的合成角色，用于单人复现同屏。生产环境请保持 Enabled=false。",
+      "//TownGhost": "默认区域必须是共享区：1/1 赛利亚房间已配置为私密区域（见 TownSync.PrivateAreas），幽灵投在那里会与玩家各自成区、单人调试看不到任何角色；默认用 1/0 城镇广场。",
+      "TownGhost": {
+        "Enabled": false,
+        "TownId": 1,
+        "AreaId": 0,
+        "Name": "TEST",
+        "StepIntervalMs": 1000,
+        "VisibleSeconds": 0,
+        "HiddenSeconds": 0
+      }
+    },
+    "Channel": {
+      "Name": "Local Channel",
+      "Host": "127.0.0.1",
+      "Port": 7001,
+      "ChannelNumber": 1,
+      "MaximumUsers": 100,
+      "CurrentUsers": 1
+    },
+    "Drop": {
+      "Enabled": true,
+      "RatePercent": 100.0,
+      "EconomicRate": 1.0,
+      "ForceDrops": false
+    },
+    "Experience": {
+      "MonsterMultiplier": 1.0,
+      "ClearMultiplier": 1.0
+    },
+    "Dungeon": {
+      "//DoorGraceSeconds": "门口集结的宽限窗口（秒）：0 = 关闭（退回\"第一个上报 CMD 48 的人立刻推进\"）。真机证据（server-party28.log）表明 2008 客户端组队时只有一方会每房上报 CMD 48（7 次换房全是同一会话、另一会话 0 次），所以\"全员到齐\"永远不成立：此前立刻推进会把握不住节奏的队友拽进下一房（疑似客户端硬崩诱因）。窗口内全员到齐即推进；到点仍有人没报就照旧强制推进（门不会打不开）。扫描每秒一轮，实际生效 = 窗口 + 最多 1 秒。",
+      "DoorGraceSeconds": 2
+    },
+    "MaximumPacketLength": 4194304,
+    "RejectBadCrc32": false,
+    "EnablePacketTracing": true,
+    "HexDumpLimit": 64
+  }
+}

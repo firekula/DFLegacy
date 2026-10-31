@@ -1,0 +1,254 @@
+{
+  "Schema": "dfl-debug-cross-area-acceptance/v1",
+  "Status": "passed-scoped",
+  "SourceCommit": "8ba4b88032e9769505abb38f1a55c51c151961a8",
+  "ConsumerSha256": "CFE6B98B5BAA347E77DD62B929E2B51F40A0EBC3E2D0A48DDD40B1BDE347AF21",
+  "GeometrySha256": "D6C10815E65D02B795E52D5984FAE2F0A14877F114EBEBD705DC9E7A9BB7877A",
+  "NativeRuntime": [
+    {
+      "Role": "A",
+      "Id": 24404,
+      "StartTimeUtc": "2026-10-29T01:47:57.0311727Z",
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+      "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+    },
+    {
+      "Role": "A",
+      "Id": 24404,
+      "StartTimeUtc": "2026-10-29T01:47:57.0311727Z",
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\debug.dll",
+      "Sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570"
+    },
+    {
+      "Role": "B",
+      "Id": 32980,
+      "StartTimeUtc": "2026-10-29T01:47:57.8147972Z",
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+      "Sha256": "0F2CB060C1DBAA09367C40E81B297951B5CC2883278B1B255EE4672258709225"
+    },
+    {
+      "Role": "B",
+      "Id": 32980,
+      "StartTimeUtc": "2026-10-29T01:47:57.8147972Z",
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\debug.dll",
+      "Sha256": "B31E9342E5278A41EECE1E8439A9594F7F6CD6C6DFBCD1683223E143683B4570"
+    }
+  ],
+  "PVFSha256": "288D58AACE8ED4724A0A94AAA4CD0957B1D52C633771132EDE2F96363C1B506F",
+  "Cases": [
+    {
+      "Role": "A",
+      "Direction": "forward",
+      "Proof": "A-v5-forward.json",
+      "Sha256": "D88C5E8778EA270693067C51B8CA6806C196DA30227F219688FE283D8D5D9458",
+      "HighLevelCalls": 1,
+      "ManualTravelInputs": 0,
+      "AreaPath": [
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "ElapsedMs": 38187,
+      "NativeRequests": 13,
+      "ExpiredRequestRenewals": [],
+      "FinalPosition": {
+        "x": 575,
+        "y": 246.971802,
+        "z": 0
+      }
+    },
+    {
+      "Role": "A",
+      "Direction": "reverse",
+      "Proof": "A-v5-reverse.json",
+      "Sha256": "69A430F5FAF708E08E2DFB9188DE19F23D716A4A08DDB22E446AD57DED703D64",
+      "HighLevelCalls": 1,
+      "ManualTravelInputs": 0,
+      "AreaPath": [
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "ElapsedMs": 35422,
+      "NativeRequests": 13,
+      "ExpiredRequestRenewals": [],
+      "FinalPosition": {
+        "x": 474,
+        "y": 233.915024,
+        "z": 0
+      }
+    },
+    {
+      "Role": "B",
+      "Direction": "forward",
+      "Proof": "B-v5-forward.json",
+      "Sha256": "3A65A0A910D371DC3C3EDA4FC65DBDBB69003FCD0B6A1A7806512BCE587A7DBA",
+      "HighLevelCalls": 1,
+      "ManualTravelInputs": 0,
+      "AreaPath": [
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "ElapsedMs": 36328,
+      "NativeRequests": 13,
+      "ExpiredRequestRenewals": [],
+      "FinalPosition": {
+        "x": 575,
+        "y": 246.972061,
+        "z": 0
+      }
+    },
+    {
+      "Role": "B",
+      "Direction": "reverse",
+      "Proof": "B-v5-reverse.json",
+      "Sha256": "FA00C6E78FA2BF32719EE6D018B535F4B711097FD23D3C103204E3249A569BC7",
+      "HighLevelCalls": 1,
+      "ManualTravelInputs": 0,
+      "AreaPath": [
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "ElapsedMs": 39047,
+      "NativeRequests": 13,
+      "ExpiredRequestRenewals": [],
+      "FinalPosition": {
+        "x": 474,
+        "y": 234.063751,
+        "z": 0
+      }
+    }
+  ],
+  "ManualInterruption": {
+    "Proof": "A-native-manual-interruption-v2.json",
+    "Reason": "native_auto_move_stopped",
+    "NoLaterNativeRequest": true,
+    "ObservedStoppedForSeconds": 2
+  },
+  "Screenshots": [
+    {
+      "File": "A-room.jpg",
+      "Sha256": "2E29262D7C5CEEE240E35AEFD7F414509083F67D8CC846270B2B78BCE5FEEAFA",
+      "NativeOriginal": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01095.JPG",
+      "DriverReceipt": "cross-area-A-v5-room-input.json"
+    },
+    {
+      "File": "A-hendon.jpg",
+      "Sha256": "73EFC0E1C5A12BB6F8954EE44F6C601A9C1EB850D4A51FDE2085A441752E938A",
+      "NativeOriginal": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01097.JPG",
+      "DriverReceipt": "cross-area-A-v5-hendon-input.json"
+    },
+    {
+      "File": "B-room.jpg",
+      "Sha256": "31F021F8215EA8FCE958A7941A23EAB9A820337834724F4B2E256A5FE401B7F5",
+      "NativeOriginal": "G:\\Game\\DNF_ACT1\\Client_test2\\ScreenShot\\ScreenShot00988.JPG",
+      "DriverReceipt": "cross-area-B-v5-room-input.json"
+    },
+    {
+      "File": "B-hendon.jpg",
+      "Sha256": "9F7BFCE66EF9C378D5B0E3A855BA9F1605951C145E31698C26795AECF12CEC13",
+      "NativeOriginal": "G:\\Game\\DNF_ACT1\\Client_test2\\ScreenShot\\ScreenShot00986.JPG",
+      "DriverReceipt": "cross-area-B-v5-hendon-input.json"
+    },
+    {
+      "File": "A-interrupted.jpg",
+      "Sha256": "044025A2F4D492AC3EC511DF68E18E77CAF62B575B46F4DF58405DFB9179F478",
+      "NativeOriginal": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01099.JPG",
+      "DriverReceipt": "cross-area-A-v5-interrupted-input.json"
+    }
+  ],
+  "DebugTests": "152 passed, 134 subtests passed",
+  "ControlledExpiryRecovery": {
+    "Proof": "diagnostics/A-delayed-mailbox-expiry-recovery.json",
+    "IntendedWriteDelayMs": 1100,
+    "MeasuredWriteDelayMs": 1094,
+    "NativeExpiredRejectionThenFreshIdRenewal": true,
+    "FinalArrivalObserved": true
+  },
+  "FullRepositoryFailures": [
+    "protocol/tests/test_ledger.py::test_scenario_rows_cover_all_four_scenarios_and_match_s0_expects",
+    "protocol/tests/test_ledger.py::test_cmd_ledger_end_to_end_writes_three_ledgers",
+    "protocol/tests/test_ledger.py::test_cmd_ledger_merges_runs_and_does_not_clear_other_scenarios",
+    "tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_wires_server_actors_steps_and_collect",
+    "tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_waits_for_the_server_to_listen_before_starting_actors",
+    "tools/acceptance/tests/test_cli_orchestrate.py::test_orchestrate_reports_ambiguous_pid_as_clear_failure_not_traceback"
+  ],
+  "FullRepositoryResult": "6 failed, 450 passed, 182 subtests passed in 14.01s",
+  "CloseoutVerified": true,
+  "Limitations": [
+    "Only five ACT1 Town areas tested; not all towns or transport modes",
+    "No direction keys in positive travel; one native key only in the interruption negative test",
+    "No guarantee for dynamic obstacles or unobserved human input",
+    "U04 active discard and four-client rarity/epic matrix remain pending"
+  ]
+}

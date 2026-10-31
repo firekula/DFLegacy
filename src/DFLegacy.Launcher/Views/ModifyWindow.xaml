@@ -1,0 +1,25 @@
+<Window x:Class="DFLegacy.Launcher.Views.ModifyWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        Title="修改密码" Height="340" Width="360"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <TextBlock Grid.Row="0" Text="用户名"/>
+    <TextBox    Grid.Row="1" x:Name="UserName" Margin="0,4,0,8"/>
+    <TextBlock Grid.Row="2" Text="旧密码"/>
+    <PasswordBox Grid.Row="3" x:Name="OldBox" Margin="0,4,0,8"/>
+    <TextBlock Grid.Row="4" Text="新密码（6-128）"/>
+    <PasswordBox Grid.Row="5" x:Name="NewBox" Margin="0,4,0,8"/>
+    <TextBlock Grid.Row="6" Text="确认新密码"/>
+    <PasswordBox Grid.Row="7" x:Name="ConfirmBox" Margin="0,4,0,8"/>
+    <Button Grid.Row="8" x:Name="SubmitBtn" Content="修改密码" Height="36" Margin="0,12,0,0" Click="SubmitBtn_Click"/>
+  </Grid>
+</Window>

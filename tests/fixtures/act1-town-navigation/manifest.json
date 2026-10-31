@@ -1,0 +1,190 @@
+{
+  "derived": {
+    "bytes": 50635,
+    "path": "catalog.pvf",
+    "sha256": "d2f0a13f4d702bcfcca38dde080e197134252029f31c5a4df50ec86851cfd01e"
+  },
+  "schema": "dfl-act1-town-navigation/v1",
+  "scripts": {
+    "map/alfhlyra/alfhlyra.map": {
+      "bytes": 1760,
+      "sha256": "b5c06015cb38e3d31f1b745699d6aea01e3ee6b8b0af9474f2769d4e841b4a29",
+      "source_offset": 17929947
+    },
+    "map/alfhlyra/d_alfhlyra.map": {
+      "bytes": 1245,
+      "sha256": "7304faf4aedcf81d8aaf5133d90fad6b43cc9796c79e9c983fc17c8485417e25",
+      "source_offset": 6166727
+    },
+    "map/alfhlyra/d_alfhlyra2.map": {
+      "bytes": 1265,
+      "sha256": "9c4bad1b180fcea71aef8d6e5e1772b813213fe89d333094464f96d85acd62c4",
+      "source_offset": 33146403
+    },
+    "map/alfhlyra/gate_alfh.map": {
+      "bytes": 749,
+      "sha256": "16f6e970f4daf2994d3093440e48610660f230272715d88c18b5630d1864e5ac",
+      "source_offset": 5739335
+    },
+    "map/elvengard/d_elvengard.map": {
+      "bytes": 1073,
+      "sha256": "867c4ee4799ee733bf8fe12d86c251a51bba80f3eff6e6440335c0ea0484bcd7",
+      "source_offset": 43843823
+    },
+    "map/elvengard/elven2alfh.map": {
+      "bytes": 1179,
+      "sha256": "93fa806407bcd90360f9fc202c4b2d960f2b11ba824c8d4f856b37541de751d9",
+      "source_offset": 39731639
+    },
+    "map/elvengard/elvengard.map": {
+      "bytes": 1771,
+      "sha256": "9160f5d94542beecf814367d97cc3cef6c38696670fbcd2a05d35d3ac32620e1",
+      "source_offset": 16587311
+    },
+    "map/elvengard/gate.map": {
+      "bytes": 787,
+      "sha256": "b8a94fcd082f9b8a3af6ab1f32e1da174a4a21dfd57b612b27921bc09164e9d5",
+      "source_offset": 32971495
+    },
+    "map/hendonmyre/d_hendon.map": {
+      "bytes": 861,
+      "sha256": "04413c8587c0ca55c769abe771e5b9c87b31de6abe61a2ded7de99b26996252e",
+      "source_offset": 26195095
+    },
+    "map/hendonmyre/d_hendon2.map": {
+      "bytes": 886,
+      "sha256": "94f9e490d29e2a2a1446a202a414c4d1e9549826b706ef4c86d914a4fbdd3076",
+      "source_offset": 65067171
+    },
+    "map/hendonmyre/d_westcoast.map": {
+      "bytes": 861,
+      "sha256": "6ee091d83f05b79bc4038f2d349043c4114d3edb378091841f3daa351e2ce41d",
+      "source_offset": 46957667
+    },
+    "map/hendonmyre/d_westcoast2.map": {
+      "bytes": 886,
+      "sha256": "05e914928f87bf8bf3dd185f440f8383cf867cff9a2049cfcce8c01526f60ecb",
+      "source_offset": 42693755
+    },
+    "map/hendonmyre/gate_hendon.map": {
+      "bytes": 749,
+      "sha256": "3ba46f2eeab51f10f8a1091367c84c15395f39ea1ac4052c60a5471bff04fe8d",
+      "source_offset": 30295855
+    },
+    "map/hendonmyre/gate_west.map": {
+      "bytes": 1186,
+      "sha256": "cd8f689fe2418a1feca42be7a1fbdb60703153d534c3f960c2de2840dcbba0c1",
+      "source_offset": 58446023
+    },
+    "map/hendonmyre/hendon.map": {
+      "bytes": 2334,
+      "sha256": "2e4dfd99db8780c7738fd8d2ffa00efd2fbde43591a4c8d7e379056c94ebec0d",
+      "source_offset": 12435931
+    },
+    "map/hendonmyre/hendon2north.map": {
+      "bytes": 1031,
+      "sha256": "9d30b4fd68e9168563d72a2f3eec999ce7ae92ccd4bfe73e66a578a71883b1fd",
+      "source_offset": 18126695
+    },
+    "map/hendonmyre/hendon2storm.map": {
+      "bytes": 1075,
+      "sha256": "1b63bfcf527d248226f9ac3e8c0261f5740094ddaa1182907ce80fbacd78bb45",
+      "source_offset": 20018463
+    },
+    "map/hendonmyre/hendon_auction.map": {
+      "bytes": 2262,
+      "sha256": "c530a7053180848df61fbc228fdb39175c235a319c7c2e3aceac922303348ffe",
+      "source_offset": 3633123
+    },
+    "map/hendonmyre/hendon_city.map": {
+      "bytes": 2562,
+      "sha256": "64a079376677983e43cf32d9902d56a8db2231c51bca064032905e72d0fa6132",
+      "source_offset": 43265227
+    },
+    "map/hendonmyre/hendon_pub.map": {
+      "bytes": 719,
+      "sha256": "99caf68b3b2276383c8b1ea95486e7ac522a399c3bfea96925f5e2f620465f6e",
+      "source_offset": 65078427
+    },
+    "map/hendonmyre/hendon_ura.map": {
+      "bytes": 1627,
+      "sha256": "0f89942a6991c40f3e2a1f841095216f5c64078d1ef4961fd04efaab2397963f",
+      "source_offset": 47214279
+    },
+    "map/hendonmyre/sky_westcoast.map": {
+      "bytes": 1250,
+      "sha256": "6a87e8c925179cf199b9cfb1fffc2d98d211e9d4ae1eee444905fd9895fb988a",
+      "source_offset": 13988295
+    },
+    "map/hendonmyre/sky_westcoast2.map": {
+      "bytes": 1212,
+      "sha256": "88660985a4b8fb4cdb255faff5a8b188470ed45f7dc8f15d6002009ba93af9c4",
+      "source_offset": 32782767
+    },
+    "map/hendonmyre/westcoast.map": {
+      "bytes": 2763,
+      "sha256": "d3eba410e48634a2421c73467ecf15d8093958942897a9c6da5f97450c761128",
+      "source_offset": 14790823
+    },
+    "map/hendonmyre/westcoast_magic.map": {
+      "bytes": 1557,
+      "sha256": "7fb59c02a3efc119f6b5454ebce39162e630b88fc352f71f8af57f1486dd5e7f",
+      "source_offset": 33092819
+    },
+    "map/stormpass/d_stormpass.map": {
+      "bytes": 1259,
+      "sha256": "3acb505dda74cceb87391cc5949055aa8c0b6afc961734fa825d652f51c82c73",
+      "source_offset": 54490775
+    },
+    "map/stormpass/d_stormpass2.map": {
+      "bytes": 1258,
+      "sha256": "106db5d9477cb8f7312aca3c0852ba8166e89c796fd1a0c352eec5f4551b60f2",
+      "source_offset": 55132443
+    },
+    "map/stormpass/gate_storm.map": {
+      "bytes": 1186,
+      "sha256": "e52edb099204d0b580c061e0ad5b3e7ee1c3f16bafb1a81b9200f01645612a58",
+      "source_offset": 40372203
+    },
+    "map/stormpass/stormpass.map": {
+      "bytes": 4014,
+      "sha256": "8a097ca6797d4d97802a41f375c8b42e59561eb84f9a13a5e4deba3bf71c39d4",
+      "source_offset": 12497663
+    },
+    "town/alfhlyra.twn": {
+      "bytes": 1162,
+      "sha256": "5f16ab01bfe6f546e1dc98f39ce95b4449d30d7ad691ff479a2da49d08e939a1",
+      "source_offset": 11878843
+    },
+    "town/elvengard.twn": {
+      "bytes": 1157,
+      "sha256": "e0a7d64cb31a25360a629ff172ee70b424ff385c7097649f0048889f273ac41a",
+      "source_offset": 30422903
+    },
+    "town/hendonmyre.twn": {
+      "bytes": 2122,
+      "sha256": "f48b72a2b4bf86ff03064208ae5cee797776462906b97ba528d72bc9621fdb92",
+      "source_offset": 55365159
+    },
+    "town/stormpass.twn": {
+      "bytes": 1168,
+      "sha256": "d5b7c306dac542222ba3147e65fa6bdc3cbb30ee38b2f52e3c43d4f7c381509e",
+      "source_offset": 9846851
+    },
+    "town/town.lst": {
+      "bytes": 259,
+      "sha256": "0e4e43933c0d9f87baae4d4019861ad65d626b9deaf7fce95cd61e02780edb93",
+      "source_offset": 12088411
+    },
+    "town/westcoast.twn": {
+      "bytes": 1672,
+      "sha256": "0996d4b9fdeb222ead02ce24db932c8886963f3754e53c782811fa979c9455f7",
+      "source_offset": 39842619
+    }
+  },
+  "source": {
+    "bytes": 65951563,
+    "name": "Script.pvf",
+    "sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f"
+  }
+}

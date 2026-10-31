@@ -1,0 +1,11 @@
+{
+  "verified": true,
+  "source_commit": "e6dac3f99ec9afbf59bc9515d5ae09c3f607ed14",
+  "qualified_screenshot_pauses": 6,
+  "default_plans": 17,
+  "default_keys": 48,
+  "new_implicit_native_images": 0,
+  "explicit_original_jpg_sha256": "2861FFB66BA14585DFE2C310EEB3B575E711442DD6BCE1EF39EB8C485F43DDBC",
+  "byte_copies_verified": true,
+  "source_unchanged_since_tests": true
+}

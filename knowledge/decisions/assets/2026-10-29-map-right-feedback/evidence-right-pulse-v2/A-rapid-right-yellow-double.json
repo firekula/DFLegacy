@@ -1,0 +1,732 @@
+{
+  "before": {
+    "schema": "dfl-map-feedback/v1",
+    "pid": 8820,
+    "process_started_filetime": 134377441565015453,
+    "tick_ms": 384021125,
+    "capture_tick_ms": 384021000,
+    "capture_sequence": 1049,
+    "trigger_serial": 3,
+    "active": false,
+    "hook_installed": true,
+    "cleanup_pending": false,
+    "target": {
+      "x": 254,
+      "y": 220
+    },
+    "rings": [
+      {
+        "visible": false,
+        "scale": 0,
+        "color": 0
+      },
+      {
+        "visible": false,
+        "scale": 0,
+        "color": 0
+      }
+    ],
+    "draw_count": 1018,
+    "texture_creations": 1,
+    "reason": "idle_or_expired"
+  },
+  "updates": [
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384021125,
+      "capture_tick_ms": 384021000,
+      "capture_sequence": 1049,
+      "trigger_serial": 3,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 254,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1018,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384021359,
+      "capture_tick_ms": 384021203,
+      "capture_sequence": 1050,
+      "trigger_serial": 3,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 254,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1018,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384021593,
+      "capture_tick_ms": 384021406,
+      "capture_sequence": 1051,
+      "trigger_serial": 3,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 254,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1018,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384021828,
+      "capture_tick_ms": 384021812,
+      "capture_sequence": 1053,
+      "trigger_serial": 3,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 254,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1018,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384022062,
+      "capture_tick_ms": 384022015,
+      "capture_sequence": 1054,
+      "trigger_serial": 3,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 254,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1018,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384022296,
+      "capture_tick_ms": 384022218,
+      "capture_sequence": 1055,
+      "trigger_serial": 3,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 254,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1018,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384022531,
+      "capture_tick_ms": 384022421,
+      "capture_sequence": 1056,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 0.5,
+          "color": 4294967295
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1022,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384022765,
+      "capture_tick_ms": 384022625,
+      "capture_sequence": 1057,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 0.715000033,
+          "color": 3302085073
+        },
+        {
+          "visible": true,
+          "scale": 0.514999986,
+          "color": 4210818043
+        }
+      ],
+      "draw_count": 1060,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384023000,
+      "capture_tick_ms": 384022828,
+      "capture_sequence": 1058,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 0.949999988,
+          "color": 2241896608
+        },
+        {
+          "visible": true,
+          "scale": 0.75,
+          "color": 3150629578
+        }
+      ],
+      "draw_count": 1118,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384023203,
+      "capture_tick_ms": 384023031,
+      "capture_sequence": 1059,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 1601664887
+        },
+        {
+          "visible": true,
+          "scale": 0.953000009,
+          "color": 2225053599
+        }
+      ],
+      "draw_count": 1168,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384023406,
+      "capture_tick_ms": 384023234,
+      "capture_sequence": 1060,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 1078873678
+        },
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 1601599094
+        }
+      ],
+      "draw_count": 1204,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384023640,
+      "capture_tick_ms": 384023437,
+      "capture_sequence": 1061,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 455090208
+        },
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 977815624
+        }
+      ],
+      "draw_count": 1260,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384023875,
+      "capture_tick_ms": 384023843,
+      "capture_sequence": 1063,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 101058054
+        },
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 353966361
+        }
+      ],
+      "draw_count": 1318,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384024093,
+      "capture_tick_ms": 384024046,
+      "capture_sequence": 1064,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 16843009
+        },
+        {
+          "visible": true,
+          "scale": 1,
+          "color": 101058054
+        }
+      ],
+      "draw_count": 1374,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384024328,
+      "capture_tick_ms": 384024250,
+      "capture_sequence": 1065,
+      "trigger_serial": 4,
+      "active": true,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 1,
+          "color": 0
+        }
+      ],
+      "draw_count": 1398,
+      "texture_creations": 1,
+      "reason": "rendered"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384024468,
+      "capture_tick_ms": 384024453,
+      "capture_sequence": 1066,
+      "trigger_serial": 4,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1398,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384024703,
+      "capture_tick_ms": 384024656,
+      "capture_sequence": 1067,
+      "trigger_serial": 4,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1398,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384024937,
+      "capture_tick_ms": 384024859,
+      "capture_sequence": 1068,
+      "trigger_serial": 4,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1398,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    },
+    {
+      "schema": "dfl-map-feedback/v1",
+      "pid": 8820,
+      "process_started_filetime": 134377441565015453,
+      "tick_ms": 384025171,
+      "capture_tick_ms": 384025062,
+      "capture_sequence": 1069,
+      "trigger_serial": 4,
+      "active": false,
+      "hook_installed": true,
+      "cleanup_pending": false,
+      "target": {
+        "x": 260,
+        "y": 220
+      },
+      "rings": [
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        },
+        {
+          "visible": false,
+          "scale": 0,
+          "color": 0
+        }
+      ],
+      "draw_count": 1398,
+      "texture_creations": 1,
+      "reason": "idle_or_expired"
+    }
+  ],
+  "after": {
+    "schema": "dfl-client-state/v2",
+    "pid": 8820,
+    "process_started_filetime": 134377441565015453,
+    "sequence": 1070,
+    "captured_filetime": 134377443948230963,
+    "captured_tick_ms": 384025265,
+    "exported_filetime": 134377443948322788,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 4,
+    "capture_duration_us": 3,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 2,
+      "area_id": 0,
+      "context_token": "0x072F7870",
+      "map_token": "0x18260D98",
+      "position": {
+        "x": 1125,
+        "y": 372,
+        "z": 0
+      },
+      "destination": {
+        "x": 1125,
+        "y": 372
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": true
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": true,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 1,
+      "user_token": "0x17ED2A00",
+      "actor_token": "0x17ECE270",
+      "map_token": "0x18260D98",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 1125,
+        "y": 372,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 1,
+        "user_token": "0x17ED2A00",
+        "actor_token": "0x17ECE270",
+        "map_token": "0x18260D98",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 1125,
+          "y": 372,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "phase": "right-pulse-v2",
+  "build_manifest_sha256": "00F9C92D246464AE84DD398C0C24EB0185F4C5ACCAC9702799A26502923AF41E",
+  "journal_sha256": "E216960E8C69EF2DA1933CF97B5C0D4C891F62AF0FC9B4D4DAD5436FD3958C1D"
+}

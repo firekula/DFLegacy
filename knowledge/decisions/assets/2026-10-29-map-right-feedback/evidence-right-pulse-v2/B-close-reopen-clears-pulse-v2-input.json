@@ -1,0 +1,43 @@
+{
+  "started": "2026-10-29T18:47:26.896+08:00",
+  "pid": 8568,
+  "client_dir": "G:\\Game\\DNF_ACT1\\Client_test2",
+  "label": "B-close-reopen-clears-pulse-v2-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T18:47:27.161+08:00",
+  "steps": [
+    {
+      "t": 100,
+      "op": "move",
+      "x": 260,
+      "y": 246
+    },
+    {
+      "t": 200,
+      "op": "rclick",
+      "x": 260,
+      "y": 246,
+      "dur": 80
+    },
+    {
+      "t": 600,
+      "op": "key",
+      "vk": 78,
+      "dur": 80
+    },
+    {
+      "t": 1000,
+      "op": "key",
+      "vk": 78,
+      "dur": 80
+    }
+  ],
+  "plan_sha256": "29e0862fa389d820dbd5cc81c06451ad7a0b9a5c7e7553acf9d2cadf35fcf0f2",
+  "plan_written": "2026-10-29T18:47:27.161+08:00",
+  "focus_reassertions": 1,
+  "plan_completed": "2026-10-29T18:47:28.271+08:00",
+  "own_pid_diag_lines": 4,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T18:47:28.272+08:00"
+}

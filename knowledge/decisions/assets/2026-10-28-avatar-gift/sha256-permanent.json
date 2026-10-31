@@ -1,0 +1,47 @@
+[
+  {
+    "File": "A-permanent-preview-verified.jpg",
+    "Sha256": "2084E9B96704A6C4FA7122DF60BD99F94FE1C2CE8BB1959F660E678E9CEA1366",
+    "OriginalEqual": true
+  },
+  {
+    "File": "A-permanent-gift-committed.jpg",
+    "Sha256": "4F456A72EA03A781C4010F543AEF8B2E09D59C8BC0225E3DDED66AEB1EAE2EA3",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-open-permanent-inbox.jpg",
+    "Sha256": "24E01C9187BD4D4BF18036893A87BF3C950F81039A0C78EC7BD117BBF3557A8E",
+    "OriginalEqual": true
+  },
+  {
+    "File": "B-permanent-claimed-tooltip.jpg",
+    "Sha256": "61B08525C68EF6855A2AA6E5413F34ADC09B1CC15E9F348E5DE30C36F3B5BDC4",
+    "OriginalEqual": true
+  },
+  {
+    "File": "A-post-gift-monthly-cap.jpg",
+    "Sha256": "59726A33DF0E4CF885AA50DA0A19DDDB72DBD50758A09EFB8E6E5C86BBD1B7BE",
+    "OriginalEqual": true
+  },
+  {
+    "File": "A-selfbuy-ability4-preview.jpg",
+    "Sha256": "D5FAA17A02961065C247DE2ED312E709D7CF2F06B1229818CB5A4247DDA0D178",
+    "OriginalEqual": true
+  },
+  {
+    "File": "A-selfbuy-ability4-result.jpg",
+    "Sha256": "31F58139FD2666B0CF2996C556869B0AE373649D57DF2F54E5EAA72964138C77",
+    "OriginalEqual": true
+  },
+  {
+    "File": "A-selfbuy-native-tooltip.jpg",
+    "Sha256": "0857277C9D7608C3409220BCB7F8E042B484770DC51A8C2EE50B8B141355FE1C",
+    "OriginalEqual": true
+  },
+  {
+    "File": "permanent-selfbuy-frozen-proof.json",
+    "Sha256": "BE585CFD85ED306F5FC6355B3B66B327F6BA0B9F3CB6AD449FBB4323F2F208FB",
+    "OriginalEqual": true
+  }
+]

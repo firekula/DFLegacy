@@ -1,0 +1,68 @@
+FF....F.                                                                 [100%]
+================================== FAILURES ===================================
+___________ test_default_command_does_not_request_native_screenshot ___________
+
+tmp_path = WindowsPath('D:/codex_worktree/party-chat-gold/DFLegacy/.tmp/pytest-tp/test_default_command_does_not_request_native_screenshot_74284_0')
+
+    def test_default_command_does_not_request_native_screenshot(tmp_path):
+     c=control.build_command(tmp_path/'builtin_driver.py',target(),'sample',tmp_path,[dict(t=100,op='key',vk=39,dur=200)])
+>    assert '--screenshot' not in c
+E    AssertionError: assert '--screenshot' not in ['D:\\Program Files\\Python312\\python.exe', 'D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\pytest-tp\\test_def...nd_does_not_request_native_screenshot_74284_0\\builtin_driver.py', '--client-dir', 'G:\\Game\\DF', '--pid', '123', ...]
+
+tools\acceptance\tests\test_native_control.py:14: AssertionError
+_____ test_cli_capture_is_explicit_and_legacy_no_shot_remains_compatible ______
+
+    def test_cli_capture_is_explicit_and_legacy_no_shot_remains_compatible():
+     p=control.parser()
+>    assert not p.parse_args(['run','A','sample','[]']).screenshot
+E    AssertionError: assert not True
+E     +  where True = Namespace(run_dir=WindowsPath('run'), role='A', label='sample', steps='[]', screenshot=True, no_shot=False).screenshot
+E     +    where Namespace(run_dir=WindowsPath('run'), role='A', label='sample', steps='[]', screenshot=True, no_shot=False) = parse_args(['run', 'A', 'sample', '[]'])
+E     +      where parse_args = ArgumentParser(prog='__main__.py', usage=None, description='PID-bound control of an owned IJL input run; captures are ...s fresh evidence labels.\n', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True).parse_args
+
+tools\acceptance\tests\test_native_control.py:20: AssertionError
+______________ test_exact_journal_and_both_id_checks_wrap_driver ______________
+
+tmp_path = WindowsPath('D:/codex_worktree/party-chat-gold/DFLegacy/.tmp/pytest-tp/test_exact_journal_and_both_id_checks_wrap_driver_74284_3')
+
+    def test_exact_journal_and_both_id_checks_wrap_driver(tmp_path):
+     run=tmp_path/'run';run.mkdir();(run/'builtin_driver.py').write_text('unused')
+     journal=dict(Status='running',Phase='one',Clients=[target()]);(run/'deployment.json').write_text(json.dumps(journal));out=run/'evidence-one'
+     def driver(command,**kwargs):
+      assert '--screenshot' not in command
+      (out/'sample.json').write_text(json.dumps(dict(label='sample',success=True,own_plan_armed=True,screenshot=None)))
+      class Result:returncode=0;stdout='done';stderr=''
+      return Result()
+     with patch.object(control,'verify_target') as verify,patch.object(control.subprocess,'run',side_effect=driver):
+>     assert control.run_control(run,'A','sample','[]')['success']
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tools\acceptance\tests\test_native_control.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tools\acceptance\native_control.py:74: in run_control
+    result=subprocess.run(build_command(driver,target,label,output,steps,screenshot=screenshot),capture_output=True,text=True,encoding='utf-8',errors='replace')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+D:\Program Files\Python312\Lib\unittest\mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+D:\Program Files\Python312\Lib\unittest\mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+D:\Program Files\Python312\Lib\unittest\mock.py:1204: in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+command = ['D:\\Program Files\\Python312\\python.exe', 'D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\pytest-tp\\test_exa...l_and_both_id_checks_wrap_driver_74284_3\\run\\builtin_driver.py', '--client-dir', 'G:\\Game\\DF', '--pid', '123', ...]
+kwargs = {'capture_output': True, 'text': True, 'encoding': 'utf-8', 'errors': 'replace'}
+
+    def driver(command,**kwargs):
+>    assert '--screenshot' not in command
+E    AssertionError: assert '--screenshot' not in ['D:\\Program Files\\Python312\\python.exe', 'D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\pytest-tp\\test_exa...l_and_both_id_checks_wrap_driver_74284_3\\run\\builtin_driver.py', '--client-dir', 'G:\\Game\\DF', '--pid', '123', ...]
+
+tools\acceptance\tests\test_native_control.py:57: AssertionError
+=========================== short test summary info ===========================
+FAILED tools/acceptance/tests/test_native_control.py::test_default_command_does_not_request_native_screenshot
+FAILED tools/acceptance/tests/test_native_control.py::test_cli_capture_is_explicit_and_legacy_no_shot_remains_compatible
+FAILED tools/acceptance/tests/test_native_control.py::test_exact_journal_and_both_id_checks_wrap_driver
+3 failed, 5 passed in 0.29s

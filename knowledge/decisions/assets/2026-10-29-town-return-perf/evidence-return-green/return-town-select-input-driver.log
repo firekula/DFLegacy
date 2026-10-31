@@ -1,0 +1,39 @@
+{
+  "started": "2026-10-29T14:24:12.647+08:00",
+  "pid": 64280,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "return-town-select-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T14:24:12.768+08:00",
+  "steps": [
+    {
+      "t": 100,
+      "op": "move",
+      "x": 313,
+      "y": 325
+    },
+    {
+      "t": 350,
+      "op": "click",
+      "x": 313,
+      "y": 325,
+      "dur": 120
+    },
+    {
+      "t": 970,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "c245edbcc6f10a7ed2f431c63815f8f3704d904268af372506b3ec3ac74ba3bc",
+  "plan_written": "2026-10-29T14:24:12.768+08:00",
+  "focus_reassertions": 1,
+  "plan_completed": "2026-10-29T14:24:14.028+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01113.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\evidence-return-green\\return-town-select-input.jpg",
+  "own_pid_diag_lines": 4,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T14:24:14.220+08:00"
+}

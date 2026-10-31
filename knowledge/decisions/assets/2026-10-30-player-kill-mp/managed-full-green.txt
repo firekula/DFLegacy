@@ -1,0 +1,4 @@
+Active drop four-member coverage: 91 assertions
+Active drop four-member artifacts: D:\codex_worktree\party-chat-gold\DFLegacy\.tmp\smoke-tests\active-drop-four\managed-45612741f72341f38dc3bdb70e97c183
+Test control projection artifacts: D:\codex_worktree\party-chat-gold\DFLegacy\.tmp\smoke-tests\test-control-projection\adfcc7ba67cd4111b17402a956e9d709
+All DFLegacy protocol smoke tests passed.

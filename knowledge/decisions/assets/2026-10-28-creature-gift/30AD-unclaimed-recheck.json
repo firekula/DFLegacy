@@ -1,0 +1,125 @@
+{
+  "schema": "act1-creature-gift-check/v1",
+  "stage": "unclaimed",
+  "checks": [
+    {
+      "name": "v3 exact manifest dual source build native approval and 3E5 clone",
+      "passed": true
+    },
+    {
+      "name": "v3 original manifest included in frozen input hashes",
+      "passed": true
+    },
+    {
+      "name": "raw input hashes are bounded and explicit",
+      "passed": true
+    },
+    {
+      "name": "raw observer recomputation matched every required report",
+      "passed": true
+    },
+    {
+      "name": "existing filtered capture independently redecoded",
+      "passed": true
+    },
+    {
+      "name": "nonempty frozen capture set",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/A/47508 exact frozen framing and complete tail",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/A/47508 every game TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/A/47508 selected export complete",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/B/51716 exact frozen framing and complete tail",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/B/51716 every game TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/B/51716 selected export complete",
+      "passed": true
+    },
+    {
+      "name": "baseline cash and unused receiver quota",
+      "passed": true
+    },
+    {
+      "name": "baseline has no selected egg or hatch output",
+      "passed": true
+    },
+    {
+      "name": "one actual native egg gift request",
+      "passed": true
+    },
+    {
+      "name": "category3 gift success empty buyer rewards",
+      "passed": true
+    },
+    {
+      "name": "request precedes success in same recorded client",
+      "passed": true
+    },
+    {
+      "name": "native recipient lookup reports level6 quota0",
+      "passed": true
+    },
+    {
+      "name": "sender 6600 debit receiver cash and quota",
+      "passed": true
+    },
+    {
+      "name": "sender gains no egg or pet",
+      "passed": true
+    },
+    {
+      "name": "one unclaimed receiver egg mail",
+      "passed": true
+    },
+    {
+      "name": "fresh sealed count1 attachment and UUID",
+      "passed": true
+    },
+    {
+      "name": "creature attachment has no avatar/quality fields",
+      "passed": true
+    },
+    {
+      "name": "mail has existing 30day lifetime",
+      "passed": true
+    },
+    {
+      "name": "unclaimed gift has not entered recipient item spaces",
+      "passed": true
+    },
+    {
+      "name": "native mailbox sealed egg tuple matches mail",
+      "passed": true
+    },
+    {
+      "name": "unclaimed freeze contains no receiver claim",
+      "passed": true
+    }
+  ],
+  "passed": 27,
+  "total": 27,
+  "status": "PASS",
+  "native_acceptance": "ROOT_UI_REVIEW_REQUIRED",
+  "limitations": [
+    "Only closed packet and selected canonical fields checked. Root must review original UI screenshots and deployment/restoration separately.",
+    "V3 source clone 3E5 continues the frozen row-red state without business seeding; it is distinct from later snapshots.",
+    "Selected creature rows prove nonzero/stable target UID; unrelated creature UID collision census is outside this filtered schema."
+  ],
+  "evidence_sha256": "4D2FA5E1D8A9E6713566CE6E48C00D183EA57D7B378EA8186D4B93A48BDE2C51",
+  "checker_sha256": "13AA07A20C9AA911436481E0AD512C4A2328114DDD9084F36F15BA1211D991F0"
+}

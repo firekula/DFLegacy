@@ -1,0 +1,245 @@
+{
+  "schema": "act1-creature-gift-check/v1",
+  "stage": "final",
+  "checks": [
+    {
+      "name": "v3 exact manifest dual source build native approval and 3E5 clone",
+      "passed": true
+    },
+    {
+      "name": "v3 original manifest included in frozen input hashes",
+      "passed": true
+    },
+    {
+      "name": "raw input hashes are bounded and explicit",
+      "passed": true
+    },
+    {
+      "name": "raw observer recomputation matched every required report",
+      "passed": true
+    },
+    {
+      "name": "existing filtered capture independently redecoded",
+      "passed": true
+    },
+    {
+      "name": "nonempty frozen capture set",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/A/47508 exact frozen framing and complete tail",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/A/47508 every game TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/A/47508 selected export complete",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/B/51716 exact frozen framing and complete tail",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/B/51716 every game TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "gift-entry-final/B/51716 selected export complete",
+      "passed": true
+    },
+    {
+      "name": "unclaimed-restart/A/72984 exact frozen framing and complete tail",
+      "passed": true
+    },
+    {
+      "name": "unclaimed-restart/A/72984 every game TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "unclaimed-restart/A/72984 selected export complete",
+      "passed": true
+    },
+    {
+      "name": "unclaimed-restart/B/47016 exact frozen framing and complete tail",
+      "passed": true
+    },
+    {
+      "name": "unclaimed-restart/B/47016 every game TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "unclaimed-restart/B/47016 selected export complete",
+      "passed": true
+    },
+    {
+      "name": "hatched-relogin/A/5372 exact frozen framing and complete tail",
+      "passed": true
+    },
+    {
+      "name": "hatched-relogin/A/5372 every game TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "hatched-relogin/A/5372 selected export complete",
+      "passed": true
+    },
+    {
+      "name": "hatched-relogin/B/77584 exact frozen framing and complete tail",
+      "passed": true
+    },
+    {
+      "name": "hatched-relogin/B/77584 every game TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "hatched-relogin/B/77584 selected export complete",
+      "passed": true
+    },
+    {
+      "name": "baseline cash and unused receiver quota",
+      "passed": true
+    },
+    {
+      "name": "baseline has no selected egg or hatch output",
+      "passed": true
+    },
+    {
+      "name": "one actual native egg gift request",
+      "passed": true
+    },
+    {
+      "name": "category3 gift success empty buyer rewards",
+      "passed": true
+    },
+    {
+      "name": "request precedes success in same recorded client",
+      "passed": true
+    },
+    {
+      "name": "native recipient lookup reports level6 quota0",
+      "passed": true
+    },
+    {
+      "name": "sender 6600 debit receiver cash and quota",
+      "passed": true
+    },
+    {
+      "name": "sender gains no egg or pet",
+      "passed": true
+    },
+    {
+      "name": "one unclaimed receiver egg mail",
+      "passed": true
+    },
+    {
+      "name": "fresh sealed count1 attachment and UUID",
+      "passed": true
+    },
+    {
+      "name": "creature attachment has no avatar/quality fields",
+      "passed": true
+    },
+    {
+      "name": "mail has existing 30day lifetime",
+      "passed": true
+    },
+    {
+      "name": "unclaimed gift has not entered recipient item spaces",
+      "passed": true
+    },
+    {
+      "name": "native mailbox sealed egg tuple matches mail",
+      "passed": true
+    },
+    {
+      "name": "restart preserves original unclaimed mail and UUID",
+      "passed": true
+    },
+    {
+      "name": "claimed only recipient creature space contains one gift",
+      "passed": true
+    },
+    {
+      "name": "claimed same UUID and nonzero stable wire UID",
+      "passed": true
+    },
+    {
+      "name": "claimed correct egg/hatch and fresh defaults",
+      "passed": true
+    },
+    {
+      "name": "claimed name is original decoded egg name",
+      "passed": true
+    },
+    {
+      "name": "claimed cash quota and no sender grant preserved",
+      "passed": true
+    },
+    {
+      "name": "hatched only recipient creature space contains one gift",
+      "passed": true
+    },
+    {
+      "name": "hatched same UUID and nonzero stable wire UID",
+      "passed": true
+    },
+    {
+      "name": "hatched correct egg/hatch and fresh defaults",
+      "passed": true
+    },
+    {
+      "name": "hatched cash quota and no sender grant preserved",
+      "passed": true
+    },
+    {
+      "name": "relogin only recipient creature space contains one gift",
+      "passed": true
+    },
+    {
+      "name": "relogin same UUID and nonzero stable wire UID",
+      "passed": true
+    },
+    {
+      "name": "relogin correct egg/hatch and fresh defaults",
+      "passed": true
+    },
+    {
+      "name": "relogin cash quota and no sender grant preserved",
+      "passed": true
+    },
+    {
+      "name": "native open/read/claim requests and success",
+      "passed": true
+    },
+    {
+      "name": "native hatch request and success",
+      "passed": true
+    },
+    {
+      "name": "claimed native list7 contains stable UID",
+      "passed": true
+    },
+    {
+      "name": "hatched native list7 contains stable UID",
+      "passed": true
+    },
+    {
+      "name": "relogin native list7 contains stable UID",
+      "passed": true
+    }
+  ],
+  "passed": 57,
+  "total": 57,
+  "status": "PASS",
+  "native_acceptance": "ROOT_UI_REVIEW_REQUIRED",
+  "limitations": [
+    "Only closed packet and selected canonical fields checked. Root must review original UI screenshots and deployment/restoration separately.",
+    "V3 source clone 3E5 continues the frozen row-red state without business seeding; it is distinct from later snapshots.",
+    "Selected creature rows prove nonzero/stable target UID; unrelated creature UID collision census is outside this filtered schema."
+  ],
+  "evidence_sha256": "9AB4FAE454A297691ECCADB4C44EBF1E48B14A582CF03EED9724B00BB09377F0",
+  "checker_sha256": "697767E48F186807EB183DFF7B8F983990FAE19C9F1BC71866253594D06D97AF"
+}

@@ -1,0 +1,31 @@
+{
+  "author_manifest_sha256": "e39ca0f09c8e468895b269d586d3ed23a303abcd41f5595d157f43adf959c1b9",
+  "files": [
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation.h",
+      "sha256": "277348e429fef24b014db1cee301646d70fb6d56a3a2b3e205a43d74d2a70111"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation.cpp",
+      "sha256": "9b99574016a32745742fee42a11912ee2bf170dca4007d8f3578e59e7ffab3a9"
+    },
+    {
+      "path": "src/DFLegacy.Debug/src/client_navigation_runtime.cpp",
+      "sha256": "f61ca42819053704176a2daed22162e682c3b7585e758684c30119db7f539a55"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_navigation_tests.cpp",
+      "sha256": "7bf8036d8f4e71eb5498facc241cafb9dac92f27b39daf20434653b3d47b8c1b"
+    },
+    {
+      "path": "src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp",
+      "sha256": "a86ba1c9d0e6d4fb4e4ebfd69a501bb9237d53dfbefe06a2c3d41d956296ae3b"
+    }
+  ],
+  "legacy_left_reader_text_unchanged": true,
+  "debug_test_wait_sha256": "e3900c4ee1935d0992819b454926e69db46318d4e2cad0a570624aa0de8f3a89",
+  "dll_sha256": "5E5FF3F218E738C9C4AAEFACBB496B800A44BD5D44BA88E45BB00AFFB401836B",
+  "independent_exe_sha256": "33290BC8C37F36BC36D2C31FD0022D61603F9C578658E7A0DA5924939FBECBB6",
+  "conclusion": "no blocking P1/P2; source may freeze for controlled live UI acceptance",
+  "minimal_tests": "core0/runtime0/EAXmatrix20case0"
+}

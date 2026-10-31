@@ -1,0 +1,3 @@
+FAIL: channel reentry: same endpoint restores the actual MTU without another blocking native probe
+FAIL: channel reentry: context reads fresh owned strings without dereferencing the stale selected pointer
+FAIL: channel reentry MTU reuse failed

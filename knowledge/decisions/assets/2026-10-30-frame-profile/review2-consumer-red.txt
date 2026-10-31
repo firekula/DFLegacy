@@ -1,0 +1,12 @@
+            if change=='component':v['current_window']['statistics']['maximum_parts_us'][3]=500
+>           with self.subTest(change=change),self.assertRaises(api.ProfileError):self.validate(v)
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: ProfileError not raised
+
+tools\debug\test_frame_profile.py:71: AssertionError
+=========================== short test summary info ===========================
+SUBFAILED(change='lifetime') tools/debug/test_frame_profile.py::ProfileTests::test_retained_evidence_cannot_exceed_lifetime_summary
+SUBFAILED(change='serial') tools/debug/test_frame_profile.py::ProfileTests::test_retained_evidence_cannot_exceed_lifetime_summary
+SUBFAILED(change='event') tools/debug/test_frame_profile.py::ProfileTests::test_retained_evidence_cannot_exceed_lifetime_summary
+SUBFAILED(change='component') tools/debug/test_frame_profile.py::ProfileTests::test_retained_evidence_cannot_exceed_lifetime_summary
+4 failed, 6 passed, 1 skipped, 17 subtests passed in 0.14s

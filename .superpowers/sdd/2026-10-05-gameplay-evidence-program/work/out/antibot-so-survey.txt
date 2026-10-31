@@ -1,0 +1,190 @@
+SOURCE=G:\Work\Server\dnf\build\dnf_data\home\template\neople\game\libantisvrimport.so
+SHA256=8f6263dae6fcd1eb19baece6f7c9408d2161abd1a05bd492d398d5cb7783d2a7
+SIZE=31904293
+ELF_CLASS=32 MACHINE=EM_386
+NEEDED=librt.so.1
+NEEDED=libstdc++.so.6
+NEEDED=libm.so.6
+NEEDED=libgcc_s.so.1
+NEEDED=libpthread.so.0
+NEEDED=libc.so.6
+VTABLE_STORAGE+00 ADDRESS_POINT_SLOT=-8 RAW=00000000 RELOC=None RAW_EXACT=
+VTABLE_STORAGE+04 ADDRESS_POINT_SLOT=-4 RAW=00000000 RELOC=(1, '_ZTI16AntibotInterface', 2698488) RAW_EXACT=
+VTABLE_STORAGE+08 ADDRESS_POINT_SLOT=+0 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface10InitializeEP9IBusinessPc', 559536) RAW_EXACT=
+VTABLE_STORAGE+0c ADDRESS_POINT_SLOT=+4 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface9AddClientEiijjP9TUserInfo', 562256) RAW_EXACT=
+VTABLE_STORAGE+10 ADDRESS_POINT_SLOT=+8 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface12DeleteClientEiij', 562752) RAW_EXACT=
+VTABLE_STORAGE+14 ADDRESS_POINT_SLOT=+12 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface22OnRecvBufferFromClientEiijPht', 563056) RAW_EXACT=
+VTABLE_STORAGE+18 ADDRESS_POINT_SLOT=+16 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface19ProcessAntiBotInputEv', 564560) RAW_EXACT=
+VTABLE_STORAGE+1c ADDRESS_POINT_SLOT=+20 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface10CheckTimerEiij', 558528) RAW_EXACT=
+VTABLE_STORAGE+20 ADDRESS_POINT_SLOT=+24 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface10SetLogPathEPc', 558544) RAW_EXACT=
+VTABLE_STORAGE+24 ADDRESS_POINT_SLOT=+28 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface8ShowInfoEv', 558560) RAW_EXACT=
+VTABLE_STORAGE+28 ADDRESS_POINT_SLOT=+32 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface12P2PAddClientEjij', 558496) RAW_EXACT=
+VTABLE_STORAGE+2c ADDRESS_POINT_SLOT=+36 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface15P2PDeleteClientEj', 558512) RAW_EXACT=
+VTABLE_STORAGE+30 ADDRESS_POINT_SLOT=+40 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface20RecvBufferForEncryptEjPhjS0_Rj', 563456) RAW_EXACT=
+VTABLE_STORAGE+34 ADDRESS_POINT_SLOT=+44 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface20RecvBufferForDecryptEjPhtS0_Rt', 564016) RAW_EXACT=
+VTABLE_STORAGE+38 ADDRESS_POINT_SLOT=+48 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface13IsCmdInUpListEji', 558832) RAW_EXACT=
+VTABLE_STORAGE+3c ADDRESS_POINT_SLOT=+52 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface15IsCmdInDownListEji', 558704) RAW_EXACT=
+VTABLE_STORAGE+40 ADDRESS_POINT_SLOT=+56 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface14OnNotifyServerEiijPhs', 564768) RAW_EXACT=
+VTABLE_STORAGE+44 ADDRESS_POINT_SLOT=+60 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface15AntiCheatPacketEji', 565200) RAW_EXACT=
+VTABLE_STORAGE+48 ADDRESS_POINT_SLOT=+64 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface18QueryProtectPolicyEiijP12SSafeModePkg', 560080) RAW_EXACT=
+VTABLE_STORAGE+4c ADDRESS_POINT_SLOT=+68 RAW=00000000 RELOC=(1, '_ZN16AntibotInterface11ForwardDataEiijjjPKh', 558576) RAW_EXACT=
+VTABLE_STORAGE+50 ADDRESS_POINT_SLOT=+72 RAW=00000000 RELOC=(1, '_ZN16AntibotInterfaceD1Ev', 559968) RAW_EXACT=
+VTABLE_STORAGE+54 ADDRESS_POINT_SLOT=+76 RAW=00000000 RELOC=(1, '_ZN16AntibotInterfaceD0Ev', 559920) RAW_EXACT=
+FUNCTION GetAntiBotInterfaceAll 0x88980 44
+00088980 push     ebp
+00088981 mov      ebp, esp
+00088983 push     ebx
+00088984 call     0x88577
+00088989 add      ebx, 0x20bbab
+0008898f sub      esp, 4
+00088992 lea      eax, [ebx - 0x7b6b8]
+00088998 mov      dword ptr [esp], eax
+0008899b call     0x84d14
+000889a0 lea      eax, [ebx + 0x8b2c]
+000889a6 add      esp, 4
+000889a9 pop      ebx
+000889aa pop      ebp
+000889ab ret
+FUNCTION _ZN16AntibotInterface20RecvBufferForEncryptEjPhjS0_Rj 0x89900 549
+00089900 push     ebp
+00089901 mov      ebp, esp
+00089903 sub      esp, 0x68
+00089906 mov      dword ptr [ebp - 8], esi
+00089909 mov      esi, dword ptr [ebp + 0x10]
+0008990c mov      dword ptr [ebp - 0xc], ebx
+0008990f call     0x88577
+00089914 add      ebx, 0x20ac20
+0008991a mov      dword ptr [ebp - 4], edi
+0008991d mov      edi, dword ptr [ebp + 0x18]
+00089920 test     esi, esi
+00089922 mov      dword ptr [ebp - 0x48], 0
+00089929 mov      dword ptr [ebp - 0x44], 0
+00089930 je       0x89941
+00089932 test     edi, edi
+00089934 je       0x89aa0
+0008993a mov      eax, dword ptr [ebp + 0x14]
+0008993d test     eax, eax
+0008993f jne      0x89980
+00089941 mov      ecx, dword ptr [ebp + 0x1c]
+00089944 mov      eax, dword ptr [ecx]
+00089946 mov      dword ptr [esp + 0x14], eax
+0008994a mov      eax, dword ptr [ebp + 0x14]
+0008994d mov      edx, dword ptr [ebp + 0xc]
+00089950 mov      dword ptr [esp + 0x10], edi
+00089954 mov      dword ptr [esp + 8], esi
+00089958 mov      dword ptr [esp + 0xc], eax
+0008995c lea      eax, [ebx - 0x7bbfc]
+00089962 mov      dword ptr [esp], eax
+00089965 mov      dword ptr [esp + 4], edx
+00089969 call     0x80904
+0008996e mov      eax, 0xffffffff
+00089973 mov      ebx, dword ptr [ebp - 0xc]
+00089976 mov      esi, dword ptr [ebp - 8]
+00089979 mov      edi, dword ptr [ebp - 4]
+0008997c mov      esp, ebp
+0008997e pop      ebp
+0008997f ret
+00089980 mov      edx, dword ptr [ebp + 0x1c]
+00089983 mov      eax, dword ptr [edx]
+00089985 test     eax, eax
+00089987 je       0x89946
+00089989 mov      dword ptr [esp + 0x14], eax
+0008998d mov      eax, dword ptr [ebp + 0xc]
+00089990 mov      ecx, dword ptr [ebp + 0x14]
+00089993 mov      dword ptr [esp + 8], esi
+00089997 mov      dword ptr [esp + 0x10], edi
+0008999b mov      dword ptr [esp + 4], eax
+0008999f lea      eax, [ebx - 0x7bb6c]
+000899a5 mov      dword ptr [esp + 0xc], ecx
+000899a9 mov      dword ptr [esp], eax
+000899ac call     0x7c9b4
+000899b1 mov      edx, dword ptr [ebp + 0xc]
+000899b4 mov      ecx, dword ptr [ebp + 0x14]
+000899b7 mov      dword ptr [ebp - 0x20], esi
+000899ba lea      esi, [ebx + 0x8bcc]
+000899c0 mov      dword ptr [ebp - 0x34], 0x133
+000899c7 mov      dword ptr [ebp - 0x24], edx
+000899ca mov      edx, dword ptr [ebp + 0x1c]
+000899cd mov      dword ptr [ebp - 0x2c], 0
+000899d4 mov      dword ptr [ebp - 0x28], 0
+000899db mov      dword ptr [ebp - 0x1c], ecx
+000899de mov      dword ptr [ebp - 0x18], edi
+000899e1 mov      eax, dword ptr [edx]
+000899e3 cmp      byte ptr [ebx + 0x8bcc], 0
+000899ea mov      dword ptr [ebp - 0x30], 0xffffffff
+000899f1 mov      dword ptr [ebp - 0x14], eax
+000899f4 je       0x89aaa
+000899fa mov      eax, dword ptr [ebp - 0x30]
+000899fd lea      edx, [0x8bed]
+00089a03 lea      ecx, [ebp - 0x10]
+00089a06 sub      ecx, 0x24
+00089a09 mov      byte ptr [ebx + 0x8bec], 1
+00089a10 mov      dword ptr [ebx + 0x8bed], eax
+00089a16 mov      eax, dword ptr [ebp - 0x2c]
+00089a19 mov      dword ptr [ebx + edx + 4], eax
+00089a1d mov      eax, dword ptr [ebp - 0x28]
+00089a20 mov      dword ptr [ebx + edx + 8], eax
+00089a24 mov      eax, dword ptr [ebp - 0x24]
+00089a27 mov      dword ptr [ebx + edx + 0xc], eax
+00089a2b mov      eax, dword ptr [ebp - 0x20]
+00089a2e mov      dword ptr [ebx + edx + 0x10], eax
+00089a32 mov      eax, dword ptr [ebp - 0x1c]
+00089a35 mov      dword ptr [ebx + edx + 0x14], eax
+00089a39 mov      eax, dword ptr [ebp - 0x18]
+00089a3c mov      dword ptr [ebx + edx + 0x18], eax
+00089a40 mov      eax, dword ptr [ebp - 0x14]
+00089a43 mov      dword ptr [ebx + edx + 0x1c], eax
+00089a47 mov      eax, dword ptr [ebx + 0x8b30]
+00089a4d mov      eax, dword ptr [eax + 0x10]
+00089a50 mov      dword ptr [ebp - 0x44], ecx
+00089a53 mov      ecx, dword ptr [ebp - 0x44]
+00089a56 mov      dword ptr [ebp - 0x48], 3
+00089a5d mov      edx, dword ptr [ebp - 0x48]
+00089a60 mov      dword ptr [esp + 4], ecx
+00089a64 mov      dword ptr [esp], edx
+00089a67 call     eax
+00089a69 mov      eax, dword ptr [ebp - 0x14]
+00089a6c mov      ecx, dword ptr [ebp + 0x1c]
+00089a6f mov      dword ptr [ecx], eax
+00089a71 mov      edx, dword ptr [ebp - 0x30]
+00089a74 mov      dword ptr [esp + 8], eax
+00089a78 mov      eax, dword ptr [ebp + 0xc]
+00089a7b mov      dword ptr [esp + 0xc], edx
+00089a7f mov      dword ptr [esp + 4], eax
+00089a83 lea      eax, [ebx - 0x7bae8]
+00089a89 mov      dword ptr [esp], eax
+00089a8c call     0x7c9b4
+00089a91 mov      eax, dword ptr [ebp - 0x30]
+00089a94 mov      byte ptr [ebx + 0x8bec], 0
+00089a9b jmp      0x89973
+00089aa0 mov      edx, dword ptr [ebp + 0x1c]
+00089aa3 mov      eax, dword ptr [edx]
+00089aa5 jmp      0x89946
+00089aaa mov      dword ptr [esp], esi
+00089aad call     0x7b5f4
+00089ab2 test     eax, eax
+00089ab4 je       0x899fa
+00089aba lea      eax, [ebx + 0x8bed]
+00089ac0 mov      dword ptr [esp + 0x10], eax
+00089ac4 lea      eax, [ebx + 0x8bec]
+00089aca mov      dword ptr [esp + 0xc], eax
+00089ace lea      eax, [ebx - 0x7b4c3]
+00089ad4 mov      dword ptr [esp + 8], eax
+00089ad8 lea      eax, [ebx - 0x7b725]
+00089ade mov      dword ptr [esp + 4], eax
+00089ae2 lea      eax, [ebx - 0x7bf64]
+00089ae8 mov      byte ptr [ebx + 0x8bec], 0
+00089aef mov      dword ptr [esp], eax
+00089af2 call     0x84d14
+00089af7 mov      dword ptr [esp], esi
+00089afa call     0x81b84
+00089aff jmp      0x899fa
+00089b04 mov      byte ptr [ebx + 0x8bec], 0
+00089b0b mov      dword ptr [esp], eax
+00089b0e call     0x86de4
+00089b13 mov      edi, eax
+00089b15 mov      dword ptr [esp], esi
+00089b18 call     0x7ca94
+00089b1d mov      dword ptr [esp], edi
+00089b20 call     0x86de4
+LIMIT: candidate build asset only; VM library hash not established. Raw calls not guessed via nearest symbols.

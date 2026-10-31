@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>DFLegacy.Launcher</AssemblyName>
+    <ApplicationIcon>DFLegacy.Launcher.ico</ApplicationIcon>
+    <Ijl15ProjectDirectory>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\DFLegacy.Ijl15'))</Ijl15ProjectDirectory>
+    <Ijl15BuildScript>$(Ijl15ProjectDirectory)\build-native.ps1</Ijl15BuildScript>
+    <BuildNativeAssets Condition="'$(BuildNativeAssets)' == ''">true</BuildNativeAssets>
+    <Ijl15Output Condition="'$(Ijl15PrebuiltPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\ijl15.dll'))</Ijl15Output>
+    <Ijl15Output Condition="'$(Ijl15PrebuiltPath)' != ''">$([System.IO.Path]::GetFullPath('$(Ijl15PrebuiltPath)'))</Ijl15Output>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+    <InternalsVisibleTo Include="DFLegacy.Launcher.Tests" />
+    <PackageReference Include="HandyControl" Version="3.5.1" />
+  </ItemGroup>
+  <!-- 原版 2008 登录器皮肤素材（取自客户端 start\data\ui 与 config\layout\QQLogin.xml 的布局定义），
+       以 WPF 资源内嵌，发布后自带、不依赖机器上是否留有原版安装。
+       注意：backgd_di1.png 原图的透明区是 2008 年的色键做法（不透明品红 0xFF00FF，由原版
+       RegionSet FROMBGIMAGES 抠掉），入库前已用 tools/key-magenta.ps1 抠成真 alpha=0，
+       否则 WPF 会把品红原样画出来。 -->
+  <ItemGroup>
+    <Resource Include="Assets\Skin\*.png" />
+    <Resource Include="Assets\Skin\QQGame.ico" />
+    <!-- 原版服务条款页（config\fwtk.html）；保留为可直接编辑的文件，方便运营方替换成自己的条款。 -->
+    <Content Include="Assets\Skin\fwtk.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+  <!-- UseWPF 的隐式 usings 会移除 System.IO / System.Net.Http（避免与 WPF 的
+       Shapes.Path 等歧义）；本项目大量使用 Path/File 等，按 WinForms 时期语义恢复。 -->
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
+    <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+    <ProjectReference Include="../DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
+    <ProjectReference Include="../DFLegacy.Ijl15/DFLegacy.Ijl15.vcxproj"
+                      ReferenceOutputAssembly="false"
+                      Condition="'$(MSBuildRuntimeType)' != 'Core' and '$(BuildNativeAssets)' == 'true' and '$(Ijl15PrebuiltPath)' == ''" />
+    <Content Include="../../launcher.json" Link="launcher.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="../DFLegacy.Ijl15/Config.ini" Link="Config.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+    <EmbeddedResource Include="../DFLegacy.Ijl15/Config.ini" LogicalName="DFLegacy.Launcher.DefaultConfig.ini" />
+  </ItemGroup>
+  <Target Name="BuildIjl15"
+          BeforeTargets="Build"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeAssets)' == 'true' and '$(Ijl15PrebuiltPath)' == '' and '$(MSBuildRuntimeType)' == 'Core'">
+    <Exec Command="pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(Ijl15BuildScript)&quot; -Configuration &quot;$(Configuration)&quot;" />
+  </Target>
+  <Target Name="ValidateIjl15Asset" BeforeTargets="CopyIjl15ToOutput;CopyIjl15ToPublish"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(BuildNativeAssets)' != 'true' and '$(Ijl15PrebuiltPath)' == ''"
+           Text="BuildNativeAssets=false requires an explicit Ijl15PrebuiltPath to the matching revision's x86 ijl15.dll." />
+    <Error Condition="!Exists('$(Ijl15Output)')" Text="Required ijl15.dll asset does not exist: $(Ijl15Output)" />
+  </Target>
+  <Target Name="CopyIjl15ToOutput"
+          AfterTargets="Build"
+          DependsOnTargets="BuildIjl15"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Copy SourceFiles="$(Ijl15Output)"
+          DestinationFiles="$(TargetDir)ijl15.dll"
+          SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyIjl15ToPublish"
+          AfterTargets="Publish"
+          DependsOnTargets="BuildIjl15"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Copy SourceFiles="$(Ijl15Output)"
+          DestinationFiles="$(PublishDir)ijl15.dll"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>

@@ -1,0 +1,58 @@
+{
+  "before_sha256": "BDDD24C287F3FF1DF2D2C1C12155B967F727B0EA0833FC8FBE9639677DB6A7D3",
+  "after_sha256": "14D4526DC7BA4A847FC5F1C1128C79F21F14FCF40F985F86132A5F76D76298B4",
+  "historical_receipts_unchanged": true,
+  "new_unique_dual_receipt": true,
+  "receipt_count_before": 3,
+  "receipt_count_after": 4,
+  "all_other_full_state_fields_equal": true,
+  "changes": [
+    {
+      "role": "A",
+      "before": {
+        "VictoryPoints": 3,
+        "PvpPoints": 0,
+        "PvpGrade": 0,
+        "PvpWins": 0,
+        "PvpLosses": 3,
+        "PvpPlayCount": 3,
+        "PvpCount": 3,
+        "PvpGradeExtension": 0
+      },
+      "after": {
+        "VictoryPoints": 4,
+        "PvpPoints": 0,
+        "PvpGrade": 0,
+        "PvpWins": 0,
+        "PvpLosses": 4,
+        "PvpPlayCount": 4,
+        "PvpCount": 4,
+        "PvpGradeExtension": 0
+      }
+    },
+    {
+      "role": "B",
+      "before": {
+        "VictoryPoints": 12,
+        "PvpPoints": 3000,
+        "PvpGrade": 2,
+        "PvpWins": 3,
+        "PvpLosses": 0,
+        "PvpPlayCount": 3,
+        "PvpCount": 3,
+        "PvpGradeExtension": 0
+      },
+      "after": {
+        "VictoryPoints": 16,
+        "PvpPoints": 4000,
+        "PvpGrade": 2,
+        "PvpWins": 4,
+        "PvpLosses": 0,
+        "PvpPlayCount": 4,
+        "PvpCount": 4,
+        "PvpGradeExtension": 0
+      }
+    }
+  ],
+  "persistence": "Final stopped disk snapshot and same-client channel round trip; no independent full-server restart of this fourth receipt observed."
+}

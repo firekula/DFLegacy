@@ -1,0 +1,149 @@
+{
+  "Scope": "18 original native screenshots, individually viewed before copying; no cropping, redrawing or generated pixels",
+  "Entries": [
+    {
+      "File": "50-A-gift-box-open.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\50-A-gift-box-open.jpg",
+      "SourceSha256": "98A254FA5ACDFEBDD99AB0DAECE0091A7FAED122EE94644F598FDB79E26D439A",
+      "CopiedSha256": "98A254FA5ACDFEBDD99AB0DAECE0091A7FAED122EE94644F598FDB79E26D439A",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "59-gift-window-enabled.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\59-gift-window-enabled.jpg",
+      "SourceSha256": "DACB2F4BD7B6F736A47C9BE6322086F4310A79ED38FB4F4AB2547774B20B41ED",
+      "CopiedSha256": "DACB2F4BD7B6F736A47C9BE6322086F4310A79ED38FB4F4AB2547774B20B41ED",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "61-gift-unknown-query.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\61-gift-unknown-query.jpg",
+      "SourceSha256": "F5853F9004A02304302878F987FC0380709812837B31FEEFDA83006A42EE785C",
+      "CopiedSha256": "F5853F9004A02304302878F987FC0380709812837B31FEEFDA83006A42EE785C",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "72-self-query.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\72-self-query.jpg",
+      "SourceSha256": "83FE714236AB7B8E64A110FB4402D296D976B9598A214BF63622D7B1A0BAF365",
+      "CopiedSha256": "83FE714236AB7B8E64A110FB4402D296D976B9598A214BF63622D7B1A0BAF365",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "80-legal-query.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\80-legal-query.jpg",
+      "SourceSha256": "C4A8631D975184E4DECBA1205B54A72A29115C25BEA79F44AEC6D9A8A0436FA8",
+      "CopiedSha256": "C4A8631D975184E4DECBA1205B54A72A29115C25BEA79F44AEC6D9A8A0436FA8",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "81-gift-checkout.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\81-gift-checkout.jpg",
+      "SourceSha256": "2E9DD6EE009F0A8AA225F35BF623EFCBC810B58290E0EBCEE52345FCF6247619",
+      "CopiedSha256": "2E9DD6EE009F0A8AA225F35BF623EFCBC810B58290E0EBCEE52345FCF6247619",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "83-gift-send-yes.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\83-gift-send-yes.jpg",
+      "SourceSha256": "1E2EB6E62365E48BF523DF2636E94A0A82DEE5A5E01CE8ED6DDB026250A6445A",
+      "CopiedSha256": "1E2EB6E62365E48BF523DF2636E94A0A82DEE5A5E01CE8ED6DDB026250A6445A",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "88-B-open-mailbox.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\88-B-open-mailbox.jpg",
+      "SourceSha256": "1B3DFCA188F0162F0A36B096D587D1DF57DC1A351A97AD3913ED72D95159D620",
+      "CopiedSha256": "1B3DFCA188F0162F0A36B096D587D1DF57DC1A351A97AD3913ED72D95159D620",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "89-B-read-gift.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\89-B-read-gift.jpg",
+      "SourceSha256": "B1B26FA78115EBA36E7E06F722A03B63F20E7B5D1559FDCA4662A72B63843AFE",
+      "CopiedSha256": "B1B26FA78115EBA36E7E06F722A03B63F20E7B5D1559FDCA4662A72B63843AFE",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "90-B-claim-gift.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\90-B-claim-gift.jpg",
+      "SourceSha256": "0B282EDCAE57F00D97A03D056DB3E98FE31F49D6F5EF9856C01FE7E4BE2915DF",
+      "CopiedSha256": "0B282EDCAE57F00D97A03D056DB3E98FE31F49D6F5EF9856C01FE7E4BE2915DF",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "92-B-claimed-item-tooltip.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\92-B-claimed-item-tooltip.jpg",
+      "SourceSha256": "34A7E9363F412249146EB9E51A2101261AE97A3BFE1939D435B4FCEE33E6D3B7",
+      "CopiedSha256": "34A7E9363F412249146EB9E51A2101261AE97A3BFE1939D435B4FCEE33E6D3B7",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "96-A-quota-query.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\96-A-quota-query.jpg",
+      "SourceSha256": "BF6BBB596CAE264153D0C79EFAD2AD0CD2D13254162015BE5A09BE6E5B887F75",
+      "CopiedSha256": "BF6BBB596CAE264153D0C79EFAD2AD0CD2D13254162015BE5A09BE6E5B887F75",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "56-gift-shop-empty.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\56-gift-shop-empty.jpg",
+      "SourceSha256": "B34EB02E6CC7E414DDE7B92721FFB2CBF3FFC3F8AF2B0ABDF16C3C19BEF45959",
+      "CopiedSha256": "B34EB02E6CC7E414DDE7B92721FFB2CBF3FFC3F8AF2B0ABDF16C3C19BEF45959",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "101-A-forbidden-checkout-disabled.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\101-A-forbidden-checkout-disabled.jpg",
+      "SourceSha256": "0041DA4350B7927FCC8316492522713A74D19A9C1DD15C02711917420FEC5538",
+      "CopiedSha256": "0041DA4350B7927FCC8316492522713A74D19A9C1DD15C02711917420FEC5538",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "119-B-restart-item-tooltip.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\119-B-restart-item-tooltip.jpg",
+      "SourceSha256": "C2EF5165828282576F76241075D30F0771E3332A822E895ED8C92EF0E2B8AAB2",
+      "CopiedSha256": "C2EF5165828282576F76241075D30F0771E3332A822E895ED8C92EF0E2B8AAB2",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "182-offline-send.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\182-offline-send.jpg",
+      "SourceSha256": "1E2EB6E62365E48BF523DF2636E94A0A82DEE5A5E01CE8ED6DDB026250A6445A",
+      "CopiedSha256": "1E2EB6E62365E48BF523DF2636E94A0A82DEE5A5E01CE8ED6DDB026250A6445A",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "187-B-offline-read-gift.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\187-B-offline-read-gift.jpg",
+      "SourceSha256": "C3DE3D11DFFE0E1DA152DC8C8B84085A931C5C3C04FD5FED85A1A8FCCEC3592D",
+      "CopiedSha256": "C3DE3D11DFFE0E1DA152DC8C8B84085A931C5C3C04FD5FED85A1A8FCCEC3592D",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    },
+    {
+      "File": "190-B-offline-item-tooltip.jpg",
+      "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\190-B-offline-item-tooltip.jpg",
+      "SourceSha256": "F22C879EC983FE15AAC356D1E54BA8C81A6926387B273CF09092A42706E386FB",
+      "CopiedSha256": "F22C879EC983FE15AAC356D1E54BA8C81A6926387B273CF09092A42706E386FB",
+      "SourceEqualsCopy": true,
+      "ViewedOriginal": true
+    }
+  ]
+}

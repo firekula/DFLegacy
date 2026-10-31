@@ -1,0 +1,11 @@
+# Right-release ingress ordering correction
+
+The earlier reconstruction correctly identified CFD202 as current right state, IM+FD9 as previous state, and B55188 as the right-release hit windowID. It incorrectly inferred that these form a simultaneous readable event at79D242. Native UI RED A-right-edge-trace.json disproves that inference: at tick361885937 release initially has FD9=1/current0/captureFFFFFFFF; after update FD9=0/current0/capture129. This explains a completed right click with no route JSON. The earlier reports and native RED remain preserved.
+
+Original8F6F80 first resets release/capture outputs when its root+40requests reset, calls8F6C30 at8F6FAF, then8F6A80draw at8F6FB6. Right-release hit branch8F6EE1 requires CFD1F8==10h,8F6EEA consumes it to0, and8F6EF9 writes the hit child ID into B55188. Hooking the CALL at8F6FAF (original E8 7C FC FF FF) allows an original-first wrapper to read the PRE event, run the original traversal, then bind the consumed current event0 and real map root capture. Prior FD9 may already be0and is not evidence at this stage.
+
+The new wrapper is int32 __fastcall(self,unusedEDX), forwarding the original int32 __thiscall(self) with no stack arguments and preserving the full original EAX. Its post-read goal path requires the pre-event10h token, current event0/right0/mode0, current visible enabled FF0/map root and exact B55188 ID, closed dropdowns, drawn plane offsets, unique displayed region+real match, and blank native markers. It rechecks these before publishing. Missing token defaults0and denies cached/replayed capture; no capture/input/native flags are forged. Old79D242 calls original880E20and only the unchanged left/current-area reader.
+
+Both CALL sites and their native contexts/prologues are validated before patching. Second patch failure rolls back the first. Rollback/restore failures keep ownership set and returnfalsefrom shutdown, retaining the DLL until retry succeeds. The right hook restores before the old poll hook. Tests use injected originals/patch operations and fixture reads; no original absolute game function is reached.
+
+This corrects the static ingress design and its offline tests; it does not convert the original native UI RED into a live pass. Root owns the new DLL freeze/deployment and fresh native UI acceptance.

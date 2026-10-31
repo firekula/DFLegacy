@@ -1,0 +1,16 @@
+{"label": "A-rapid-right-yellow-double-v2-input", "success": true, "error": null, "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\evidence-right-pulse-v2\\A-rapid-right-yellow-double-v2-input.jpg", "own_plan_armed": true}
+
+
+PASS A two rapid clicks restart, two rings, expiry, texture reused
+{"label": "B-rapid-right-yellow-double-v2-input", "success": true, "error": null, "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\evidence-right-pulse-v2\\B-rapid-right-yellow-double-v2-input.jpg", "own_plan_armed": true}
+
+
+PASS B two rapid clicks restart, two rings, expiry, texture reused
+{"label": "A-close-reopen-clears-pulse-v2-input", "success": true, "error": null, "screenshot": null, "own_plan_armed": true}
+
+
+PASS A close clears, reopen does not replay
+{"label": "B-close-reopen-clears-pulse-v2-input", "success": true, "error": null, "screenshot": null, "own_plan_armed": true}
+
+
+PASS B close clears, reopen does not replay

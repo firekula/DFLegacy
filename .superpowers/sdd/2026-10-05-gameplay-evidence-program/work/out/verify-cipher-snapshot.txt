@@ -1,0 +1,4 @@
+snapshot object=0x2311c7a0 length=334 vector_count=14
+repeat_unit_length=40 key_repeat_exact=True
+PASS: captured pool[0] object layout and repeated key bytes agree
+LIMIT: pool[0] is not the G_Cipher singleton at global slot 0x0941f8a4

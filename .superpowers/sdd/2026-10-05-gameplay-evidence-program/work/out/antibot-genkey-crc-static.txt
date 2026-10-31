@@ -1,0 +1,83 @@
+SHA256=8f6263dae6fcd1eb19baece6f7c9408d2161abd1a05bd492d398d5cb7783d2a7 DT_PLTGOT=0x294534
+
+FUNCTION _Z6GenKeyijRPh 0x193420 157
+00193420 push     ebp
+00193421 mov      ebp, esp
+00193423 sub      esp, 0x38
+00193426 mov      dword ptr [ebp - 0xc], ebx
+00193429 call     0x88577 ; __i686.get_pc_thunk.bx
+0019342e add      ebx, 0x101106
+00193434 mov      dword ptr [ebp - 8], esi
+00193437 mov      dword ptr [ebp - 4], edi
+0019343a xor      edi, edi
+0019343c mov      dword ptr [esp], 0x20
+00193443 call     0x83544 ; _Znaj
+00193448 lea      edx, [ebp - 0x12]
+0019344b mov      dword ptr [ebp - 0x16], 0
+00193452 mov      dword ptr [ebp - 0x12], 0
+00193459 mov      word ptr [ebp - 0xe], 0
+0019345f mov      dword ptr [ebp - 0x20], edx
+00193462 mov      dword ptr [ebp - 0x24], eax
+00193465 mov      esi, dword ptr [ebp - 0x24]
+00193468 lea      eax, [ebp - 0x16]
+0019346b mov      dword ptr [ebp - 0x28], eax
+0019346e mov      edx, dword ptr [ebp + 0xc]
+00193471 mov      eax, dword ptr [ebp - 0x28]
+00193474 mov      dword ptr [eax], edx
+00193476 mov      edx, dword ptr [ebp + 8]
+00193479 lea      eax, [edi + edx]
+0019347c mov      edx, dword ptr [ebp - 0x20]
+0019347f add      edi, 1
+00193482 mov      dword ptr [edx], eax
+00193484 mov      eax, dword ptr [ebp - 0x28]
+00193487 mov      dword ptr [esp + 8], esi
+0019348b add      esi, 0x10
+0019348e mov      dword ptr [esp + 4], 8
+00193496 mov      dword ptr [esp], eax
+00193499 call     0x7e734 ; _Z6TenMd5PhjS_
+0019349e cmp      edi, 2
+001934a1 jne      0x19346e
+001934a3 mov      eax, dword ptr [ebp + 0x10]
+001934a6 mov      edx, dword ptr [ebp - 0x24]
+001934a9 mov      dword ptr [eax], edx
+001934ab mov      ebx, dword ptr [ebp - 0xc]
+001934ae mov      eax, 1
+001934b3 mov      esi, dword ptr [ebp - 8]
+001934b6 mov      edi, dword ptr [ebp - 4]
+001934b9 mov      esp, ebp
+001934bb pop      ebp
+001934bc ret
+
+FUNCTION _Z5Crc32Phj 0x19dc80 81
+0019dc80 push     ebp
+0019dc81 xor      eax, eax
+0019dc83 mov      ebp, esp
+0019dc85 mov      edx, dword ptr [ebp + 0xc]
+0019dc88 push     edi
+0019dc89 mov      ecx, dword ptr [ebp + 8]
+0019dc8c push     esi
+0019dc8d push     ebx
+0019dc8e call     0x88577 ; __i686.get_pc_thunk.bx
+0019dc93 add      ebx, 0xf68a1
+0019dc99 test     edx, edx
+0019dc9b je       0x19dccc
+0019dc9d xor      esi, esi
+0019dc9f mov      eax, 0xffffffff
+0019dca4 lea      edi, [ebx - 0x53e54]
+0019dcaa lea      esi, [esi]
+0019dcb0 mov      edx, eax
+0019dcb2 add      esi, 1
+0019dcb5 xor      al, byte ptr [ecx]
+0019dcb7 add      ecx, 1
+0019dcba shr      edx, 8
+0019dcbd movzx    eax, al
+0019dcc0 xor      edx, dword ptr [edi + eax*4]
+0019dcc3 cmp      dword ptr [ebp + 0xc], esi
+0019dcc6 mov      eax, edx
+0019dcc8 jne      0x19dcb0
+0019dcca not      eax
+0019dccc pop      ebx
+0019dccd pop      esi
+0019dcce pop      edi
+0019dccf pop      ebp
+0019dcd0 ret

@@ -1,0 +1,17 @@
+FAIL client state: nonzero native use limit reads actual count and permits remaining use
+FAIL client state: signed native count equal to limit proves exhausted
+FAIL client state: proven missing native counter defaults to zero
+FAIL client state: corrupt count lookup stays unknown rather than absent
+FAIL client state: use count changing between reads cannot grant readiness
+FAIL client state: count traversal cap fails closed within bounded reads
+FAIL client state: native resource scope publishes exact MP cost and sufficient first item slot
+FAIL client state: first matching native item stack below requirement blocks readiness
+FAIL client state: second same-ID stack is not summed or preferred over native first match
+FAIL client state: complete native inventory can prove item absent
+FAIL client state: zero interpolated item cost bypasses inventory lookup
+FAIL client state: changing first inventory slot cannot prove sufficiency or shortage
+FAIL client state: unbound global and actor inventory remains unknown
+FAIL client state: inventory cap prevents unbounded per-skill scans
+FAIL client state: native zero interpolation denominator is not evaluated or guessed
+FAIL client state: malformed item vector remains unknown
+FAIL client state: context blocker preserves independently available resource observations

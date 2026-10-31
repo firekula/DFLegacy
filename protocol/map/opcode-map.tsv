@@ -1,0 +1,1172 @@
+kind	id	name	rodata_va	dispatcher	status	tier	read_count	write_count	ext_mark
+CMD	0	CHECK_CONNECTION	0x08aeb9d8	CheckConn	mapped	T3_fields-read-only	2	0	name_only
+CMD	1	LOGIN	0x08aeb9f8	Login	mapped	T4_fields-read+write	15	16	byte_verified
+CMD	2	SET_UDP_IP_PORT	0x08aeba10	SetIP	mapped	T4_fields-read+write	7	2	name_only
+CMD	3	EXIT	0x08aeba2f	Exit	mapped	T3_fields-read-only	1	0	name_only
+CMD	4	SELECT_CHARACTER	0x08aeba44	SelectCharac	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	5	CREATE_CHARACTER	0x08aeba64	CreateCharac	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	6	DELETE_CHARACTER	0x08aeba84	DeleteCharac	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	7	RETURN_SELECT_CHARACTER	0x08aebaa4	ReturnToSelectCharacter	mapped	T3b_fields-write-only	0	3	name_only
+CMD	8	GET_USERINFO	0x08aebacb	GetUserInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	9	RECOVER_STAMINA	0x08aebae8	RecoverStamina	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	10	REQUEST_PEER	0x08aebb07	ReqPeer	mapped	T4_fields-read+write	4	20	name_only
+CMD	11	RESPONSE_PEER	0x08aebb23	ResPeer	mapped	T4_fields-read+write	3	127	name_only
+CMD	12	SET_PARTY_INFO	0x08aebb40	SetPartyInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	13	LEAVE_PARTY	0x08aebb5e	LeaveParty	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	14	WALKOUT_PARTY_MEMBER	0x08aebb7c	WalkoutParty	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	15	START_GAME	0x08aebba0	StartGame	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	16	SELECT_DUNGEON	0x08aebbba	SelectDungeon	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	17	SEND_MESSAGE	0x08aebbd8	SendMess	mapped	T3_fields-read-only	11	0	name_only
+CMD	18	DELETE_ITEM	0x08aebbf4	DeleteItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	19	MOVE_ITEMSPACE	0x08aebc0f	MoveItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	20	SORT_ITEM	0x08aebc2d	SortItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	21	BUY_ITEM	0x08aebc46	BuyItem	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	22	RENT_AVATAR	0x08aebc5e	RentAvatar	mapped	T3_fields-read-only	3	0	name_only
+CMD	23	EXTEND_AVATAR	0x08aebc79	ExtendAvatar	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	24	SELL_ITEM	0x08aebc96	SellItem	mapped	T4_fields-read+write	4	6	name_only
+CMD	25	REPAIR_EQUIPMENT	0x08aebcb0	RepairEquip	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	26	SET_ITEMTRADE_STATE	0x08aebcd0	SetTradeState	mapped	T3_fields-read-only	1	0	name_only
+CMD	27	COMPOUND_ITEM	0x08aebcf3	Compound	mapped	T4_fields-read+write	3	3	name_only
+CMD	28	DISJOINT_ITEM	0x08aebd10	DisJointItem	mapped	T3_fields-read-only	3	0	name_only
+CMD	29	USE_LOTTERY_ITEM	0x08aebd30	Lottery	mapped	T4_fields-read+write	1	6	name_only
+CMD	30	CHANGE_SKILLSLOT	0x08aebd50	ChangeSkill	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	31	BUY_SKILL	0x08aebd70	BuySkill	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	32	INCREASE_STATUS	0x08aebd8c	IncreStatus	mapped	T3_fields-read-only	1	0	name_only
+CMD	33	ACCEPT_QUEST	0x08aebdab	QuestAction	mapped	T3_fields-read-only	8	0	name_only
+CMD	34	GIVEUP_QUEST	0x08aebdc7	QuestAction	mapped	T3_fields-read-only	8	0	name_only
+CMD	35	SET_QUEST_TRIGGER	0x08aebde4	QuestAction	mapped	T3_fields-read-only	8	0	name_only
+CMD	36	FINISH_QUEST	0x08aebe05	QuestAction	mapped	T3_fields-read-only	8	0	name_only
+CMD	37	SET_USER_POSITION	0x08aebe24	SetPos	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	38	SET_USER_AREA	0x08aebe45	SetArea	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	39	FISHING	0x08aebe62	Fish	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	40	FINISH_LOADING	0x08aebe79	FinishLoad	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	41	USE_SKILL	0x08aebe97	UseSkill	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	42	DIE_MONSTER	0x08aebeb0	DieMob	mapped	T4_fields-read+write	28	8	name_only
+CMD	43	DIE_CHARACTER	0x08aebecb	DieCharacInDungeon	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	44	USE_COIN	0x08aebee8	UseCoin	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	45	GIVEUP_GAME	0x08aebf00	GiveUpGame	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	46	GET_ITEM	0x08aebf1b	GetItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	47	USE_STACKABLE	0x08aebf33	UseStack	mapped	T4_fields-read+write	5	66	name_only
+CMD	48	MOVE_MAP	0x08aebf50	MoveMap	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	49	SET_PLAY_RESULT	0x08aebf68	SetPlayResult	mapped	T3_fields-read-only	13	0	name_only
+CMD	50	DROP_ITEM	0x08aebf87	DropItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	51	DECREASE_DURABILITY	0x08aebfa0	UseEquip	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	52	REPORT_BAD_P2P_USER	0x08aebfc4	ReportBadP2PUser	mapped	T3_fields-read-only	1	0	name_only
+CMD	53	MAKE_PVP_ROOM	0x08aebfe7	MakePVP	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	54	ENTER_PVP_ROOM	0x08aec004	EnterPVP	mapped	T4_fields-read+write	4	3	name_only
+CMD	55	SET_PVP_SEAT_STATE	0x08aec024	SetPVPSeat	mapped	T3_fields-read-only	2	0	name_only
+CMD	56	SET_PVP_READY_STATE	0x08aec048	SetPVPReady	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	57	SET_PVP_TEAM_MODE	0x08aec06c	SetPVPTeam	mapped	T4_fields-read+write	1	3	name_only
+CMD	58	DIE_PVP_CHARACTER	0x08aec090	DiePvP	mapped	T4_fields-read+write	1	3	name_only
+CMD	59	PVP_TIME_OUT	0x08aec0b1	PvPTimeout	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	60	END_PVP_RESULT	0x08aec0cd	EndPvPResult	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	61	RES_PVP_RANK	0x08aec0eb	ResPvpRank	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	62	SET_PVP_MAP_INDEX	0x08aec108	SetPVPMapIndex	mapped	T4_fields-read+write	1	6	name_only
+CMD	63	ADD_FRIEND	0x08aec129	AddFriend	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	64	REMOVE_FRIEND	0x08aec143	RemoveFriend	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	65	DEBUG_COMMAND	0x08aec160	DebugCommand	mapped	T3_fields-read-only	1	0	name_only
+CMD	66	CERA	0x08aec17d	Cera	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	67	BUY_CERASHOP_ITEM	0x08aec194	BuyCeraShopItem	mapped	T3_fields-read-only	15	0	name_only
+CMD	68	GEN_CERATICKET	0x08aec1b5	GenCeraTicket	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	69	REQUEST_PVPEXP_OF_WEEK	0x08aec1d4	Request_PvpExpOfWeek	mapped	T3b_fields-write-only	0	2	name_only
+CMD	70	GUILD_MEMER_LIST	0x08aec1fc	CallGuildMembers	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	71	CALL_GUILD_CREATE_RIGHT	0x08aec21c	CallGuildCreateRight	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	72	SCORE_SCROLL_STATE	0x08aec244	Score_Scroll_State	mapped	T3b_fields-write-only	0	2	name_only
+CMD	73	CARD_SELECT_RIGHT_STATE	0x08aec268	Card_Select_Right_State	mapped	T3b_fields-write-only	0	5	name_only
+CMD	74	SELECT_CARD	0x08aec28f	Select_Card	mapped	T3_fields-read-only	2	0	name_only
+CMD	75	EPLP_COMMAND	0x08aec2aa	EPLPCommand	mapped	T4_fields-read+write	2	4	name_only
+CMD	76	CALL_GUILD_LEVEL_UP	0x08aec2c8	CallGuildLevelUp	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	77	GUILD_INFO	0x08aec2eb	CallGuildInfo	mapped	T4_fields-read+write	2	3	name_only
+CMD	78	REQUEST_GUILD_ENTER	0x08aec308		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	79	REQUEST_MEMBER_ENTER	0x08aec32c	RequestMemberEnter	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	80	MEMBER_ENTER_REPLY	0x08aec350	MemberEnterReply	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	81	MEMBER_SECEDE	0x08aec372	MemberSecede	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	82	CALL_MEMER_LIST	0x08aec390	CallMemberList	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	83	UPGRADE_ITEM	0x08aec3af	UpgradeItem	mapped	T3_fields-read-only	7	0	name_only
+CMD	84	RESET_ITEM_ATTR	0x08aec3cc	ModItemAttr	mapped	T3_fields-read-only	3	0	name_only
+CMD	85	BUY_PRIVATE_STORE_ITEM	0x08aec3ec	BuyPrivateStoreItem	mapped	T3_fields-read-only	2	0	name_only
+CMD	86	ENTER_PRIVATE_STORE	0x08aec414	EnterPrivateStore	mapped	T3_fields-read-only	1	0	name_only
+CMD	87	EXIT_PRIVATE_STORE	0x08aec438	ExitPrivateStore	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	88	CREATE_PRIVATE_STORE	0x08aec45c	CreatePrivateStore	mapped	T3_fields-read-only	5	0	name_only
+CMD	89	REMOVE_PRIVATE_STORE	0x08aec480	RemovePrivateStore	mapped	T3b_fields-write-only	0	3	name_only
+CMD	90	COMPLETE_DISPLAY	0x08aec4a4	CompleteDisplay	mapped	T3_fields-read-only	9	0	name_only
+CMD	91	MOVE_TO_GATE	0x08aec4c4	MoveToGate	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	92	MAKE_WARROOM_TEMP	0x08aec4e0		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	93	ENTER_WARROOM	0x08aec501	EnterWarRoom	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	94	SET_WARROOM_SEAT_STATE	0x08aec520	SetWarRoomSeatState	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	95	DIE_WARROOM_CHARACTER	0x08aec548	DieWarRoomCharacter	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	96	START_WARROOM_TEMP	0x08aec570	StartWarRoomTemp	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	97	MAILBOX_SEND	0x08aec592	MailBox_Send	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	98	MAILBOX_EXTRACT_ITEM	0x08aec5b0	MailBox_Extract	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	99	MAILBOX_OPEN	0x08aec5d4	MailBox_Open	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	100	PEER_CONNECT_RESULT	0x08aec5f0	PeerConnectResult	mapped	T3_fields-read-only	2	0	name_only
+CMD	101	QUICK_JOIN_ROOM	0x08aec614	QuickJoinRoom	mapped	T4_fields-read+write	1	3	name_only
+CMD	102	COMPOUND_AVATAR	0x08aec634	Compound_Avatar	mapped	T3_fields-read-only	9	0	name_only
+CMD	103	RENAME_CREATURE	0x08aec654	RenameCreature	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	104	RESPONSE_CREATURE	0x08aec674	ResponseCreature	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	105	HATCH_CREATURE	0x08aec695	HatchCreature	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	106	BUY_AUTOMAT_ITEM	0x08aec6b4	BuyAutomatItem	mapped	T3_fields-read-only	4	0	name_only
+CMD	107	REQUEST_AVAGACHA_COUPON	0x08aec6d4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	108	GATHERING_PARTY_STATUS	0x08aec6fc	GatheringPartyStatus	mapped	T3_fields-read-only	16	0	name_only
+CMD	109	WORLD_CUP_HIT_COUNT	0x08aec724		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	110	GM_COMMAND	0x08aec747	GM_Command	mapped	T4_fields-read+write	29	35	name_only
+CMD	111	REPORT_4_HACK	0x08aec761	ReportClient4Hack	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	112	GUILD_WAR_INFO	0x08aec77e	RequestGuildWarInfo	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	113	PVP_HEART_BEAT	0x08aec79c	PvpHeartBeat	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	114	CODE_CHECKSUM	0x08aec7ba	CodeCheckSum	mapped	T3_fields-read-only	2	0	name_only
+CMD	115	PVP_REQUEST_FIGHT	0x08aec7d8	PVPRequestFight	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	116	MOUSEREGISTER	0x08aec7f9	MouseRegister	mapped	T3_fields-read-only	4	0	name_only
+CMD	117	CREATURE_SEND_MESSAGE	0x08aec818	CreatureSendMessage	mapped	T3_fields-read-only	7	0	name_only
+CMD	118	TRACE_ERROR	0x08aec83d	TraceError	mapped	T3_fields-read-only	2	0	name_only
+CMD	119	OTHER_USER_INFO	0x08aec858		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	120	BOSS_DIE_CHECK	0x08aec877	BossDieCheck	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	121	REGISITER_TO_BLACKLIST	0x08aec898	RegisterToBlackList	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	122	DELETE_TO_BLACKLIST	0x08aec8c0	DeleteToBlackList	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	123	REQUEST_BLACKLIST	0x08aec8e4	RequestBlackList	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	124	CHANGE_HOST	0x08aec905	ChangeHost	mapped	T3_fields-read-only	1	0	name_only
+CMD	125	CREATURE_SCRIPT_MESSAGE	0x08aec920	CreatureScriptMessage	mapped	T3_fields-read-only	7	0	name_only
+CMD	126	CHARACTER_STATISTIC	0x08aec948	CharacterStatistic	mapped	T3_fields-read-only	6	0	name_only
+CMD	127	REPORT_CLIENT_SPEC	0x08aec96c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	128	GUILDMEMBER_NAMING	0x08aec990		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	129	SET_SUB_GUILD_MASTER	0x08aec9b4	SetSubGuildMaster	mapped	T3_fields-read-only	3	0	name_only
+CMD	130	EXCHANGE_SERVER_INFO	0x08aec9d8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	131	EXCHANGE_SERVER_INFO_RET	0x08aec9fc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	132	EXCHANGE_SERVER_CHARAC_INFO	0x08aeca24		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	133	EXCHANGE_SERVER_CHARAC_INFO_RET	0x08aeca50		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	134	TIME_CHECK	0x08aeca7f		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	135	BACK_2_VILLAGE	0x08aeca99	Back2Village	mapped	T3b_fields-write-only	0	3	name_only
+CMD	136	DNF_RADIO_LISTEN	0x08aecab8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	137	CHANGE_LETTER_STAT	0x08aecad8	ChangeLetterStat	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	138	CHANGE_CHARAC_NAME	0x08aecafc	ChangeCharacName	mapped	T3_fields-read-only	6	0	name_only
+CMD	139	QUERY_CHARAC_INFO	0x08aecb20	QueryCharacInfo	mapped	T3_fields-read-only	2	0	name_only
+CMD	140	REPORT_MANNERLESS_USER	0x08aecb44	ReportMannerlessUser	mapped	T3_fields-read-only	6	0	name_only
+CMD	141	ALLDIE_MONSTER	0x08aecb6a	DieMobAll	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	142	GUILD_MEMER_LIST_NEXT	0x08aecb88		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	143	GUILD_ALL_MEMBER_LIST	0x08aecbb0	CallGuildAllMembers	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	144	GUILD_ALL_MEMBER_LIST_NEXT	0x08aecbd8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	145	RPY_HUMAN_CERTIFY	0x08aecc04	HumanCertify	mapped	T3_fields-read-only	4	0	name_only
+CMD	146	CHANGE_TUTORIAL_FLAG	0x08aecc28	ChangeTutorialFlag	mapped	T3_fields-read-only	2	0	name_only
+CMD	147	DIE_AI_CHARACTER	0x08aecc4c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	148	COMPLETE_LOAD_ASSAULT	0x08aecc6c	CompleteLoadAssault	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	149	CONNECT_P2P_ASSAULT	0x08aecc94	ConnectP2PAssault	mapped	T3_fields-read-only	3	0	name_only
+CMD	150	DIE_ASSAULT_PLAYER	0x08aeccb8	DieAssaultPlayer	mapped	T3_fields-read-only	7	0	name_only
+CMD	151	REVIVAL_ASSAULT_PLAYER	0x08aeccdc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	152	CHANGE_HP	0x08aecd02	ChangeHp	mapped	T3_fields-read-only	1	0	name_only
+CMD	153	BVHACKINFO	0x08aecd1b	BVHackInfo	mapped	T3_fields-read-only	2	0	name_only
+CMD	154	CALL_GUILD_INVITE	0x08aecd38	CallGuildInvite	mapped	T3_fields-read-only	2	0	name_only
+CMD	155	REPLY_GUILD_INVITE	0x08aecd5c	ReplyGuildInvite	mapped	T4_fields-read+write	1	3	name_only
+CMD	156	REQ_GUILD_SECEDE	0x08aecd80	RequestGuildSecede	mapped	T3_fields-read-only	2	0	name_only
+CMD	157	NOTIFY_MESSAGE_TO_GUILD	0x08aecda0	NotifyMessageToGuild	mapped	T4_fields-read+write	2	2	name_only
+CMD	158	GUILD_MASTER_DELEGATE	0x08aecdc8	GuildMasterDelegate	mapped	T3_fields-read-only	2	0	name_only
+CMD	159	CHECK_GUILD_NAME_DOUBLE	0x08aecdf0	CheckGuildNameDouble	mapped	T3_fields-read-only	2	0	name_only
+CMD	160	CHECK_GUILD_ADDREASS_DOUBLE	0x08aece18	CheckGuildAddressDouble	mapped	T3_fields-read-only	2	0	name_only
+CMD	161	OPEN_GUILD_CREATE_WINDOW	0x08aece44	OpenGuildCreateWindow	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	162	DEATH_TOWER_STAGE_CMD	0x08aece6c	DeathTowerStageCommand	mapped	T3_fields-read-only	2	0	name_only
+CMD	163	USE_BOOSTER_ITEM	0x08aece94	UseBoosterItem	mapped	T4_fields-read+write	4	7	name_only
+CMD	164	SECURITY_CARD_ISSUE	0x08aeceb4	SecurityCardIssue	mapped	T3_fields-read-only	2	0	name_only
+CMD	165	SECURITY_CARD_DISUSE	0x08aeced8	SecurityCardDisuse	mapped	T3b_fields-write-only	0	2	name_only
+CMD	166	SECURITY_CARD_AUTH_REQ	0x08aecefc	SecurityCardAuthReq	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	167	SECURITY_CARD_AUTH_RPY	0x08aecf24	SecurityCardAuthRpy	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	168	SECURITY_CARD_CERT_KEY	0x08aecf4c	SecurityCardCertKey	mapped	T3_fields-read-only	2	0	name_only
+CMD	169	CALL_PARTY_MEMBER_REALTIME_INFO	0x08aecf74	CallPartyMemberRealtimeInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	170	EVADE_ASSAULT	0x08aecfa3	EvadeAssault	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	171	AGREE_ENCHANT	0x08aecfc0	AgreeEnchant	mapped	T3_fields-read-only	1	0	name_only
+CMD	172	TRY_ENCHANT	0x08aecfdd	TryEnchant	mapped	T3_fields-read-only	1	0	name_only
+CMD	173	PUT_ITEM_FOR_ENCHANT	0x08aecff8	PutItemForEnchant	mapped	T3_fields-read-only	1	0	name_only
+CMD	174	CLIENT_SPEC_STATISTIC	0x08aed01c	Client_Spec_Statistic	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	175	SECURITY_CARD_AUTH_CANCEL	0x08aed044	SecurityCardAuthCancel	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	176	HATCH_CREATURE_EGG	0x08aed070		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	177	REQUEST_HATCHED_CREATURE	0x08aed094		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	178	REQUEST_CREATURE_COUPON	0x08aed0bc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	179	GMDEBUG_COMMAND	0x08aed0e4	New_Gmdebug_Command	mapped	T3_fields-read-only	1	0	name_only
+CMD	180	JOIN_POWER	0x08aed103	Join_Power	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	181	SECEDE_POWER	0x08aed11d	Secede_Power	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	182	CHANGE_GUILD_NAME	0x08aed13c	ChangeGuildName	mapped	T4_fields-read+write	2	3	name_only
+CMD	183	SDC_DAMAGE_CHECK	0x08aed160	SDC_Damage_Check	mapped	T3_fields-read-only	3	0	name_only
+CMD	184	SDC_ACTIVESTATUS_CHECK	0x08aed180	SDC_ActiveStatus_Damage_Check	mapped	T3_fields-read-only	3	0	name_only
+CMD	185	AUCTION_ASK_AVERAGE_PRICE	0x08aed1a8	AuctionAskAveragePrice	mapped	T3_fields-read-only	7	0	name_only
+CMD	186	AUCTION_REGIST_ITEM	0x08aed1d4	AuctionRegistItem	mapped	T4_fields-read+write	16	6	name_only
+CMD	187	AUCTION_REGIST_CANCEL	0x08aed1f8	AuctionRegistCancel	mapped	T3_fields-read-only	3	0	name_only
+CMD	188	AUCTION_BIDDING	0x08aed220	AuctionBidding	mapped	T3_fields-read-only	7	0	name_only
+CMD	189	AUCTION_SEARCH_BY_ITEMKEY	0x08aed240	AuctionSearchByItemKey	mapped	T3_fields-read-only	18	0	name_only
+CMD	190	AUCTION_SEARCH_BY_NOITEMKEY	0x08aed26c	AuctionSearchByNoItmeKey	mapped	T3_fields-read-only	20	0	name_only
+CMD	191	AUCTION_MY_REGISTED_ITEM_INFO	0x08aed298	AuctionMyRegistedItemInfo	mapped	T3_fields-read-only	1	0	name_only
+CMD	192	AUCTION_MY_BIDDING_INFO	0x08aed2c8	AuctionMyBiddingInfo	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	193	AUCTION_MY_AUCTION_HISTORY	0x08aed2f0	AuctionMyAuctionHistory	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	194	DUNGEON_EVENT_STORY_PAUSE	0x08aed31c	DungeonEventStoryPause	mapped	T4_fields-read+write	2	4	name_only
+CMD	195	JOIN_POWER_WAR	0x08aed345	JoinPowerWar	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	196	GOBLIN_PAD_STATUS	0x08aed364	GoblinPadStatus	mapped	T3b_fields-write-only	0	3	name_only
+CMD	197	FRAME_LAG_STATISTICS	0x08aed388	FrameLagStatistics	mapped	T3_fields-read-only	21	0	name_only
+CMD	198	PVP_CHANNEL_INFO	0x08aed3ac	PvPChannelInfo	mapped	T3b_fields-write-only	0	4	name_only
+CMD	199	REQUEST_MATCH	0x08aed3cc	RequestMatch	mapped	T3_fields-read-only	1	0	name_only
+CMD	200	SAVE_GAME_OPTION_1	0x08aed3ec	SaveGameOption_1	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	201	SAVE_GAME_OPTION_2	0x08aed410	SaveGameOption_2	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	202	SECURITY_CARD_RETRANSFER	0x08aed434	SecurityCardRetransfer	mapped	T3_fields-read-only	2	0	name_only
+CMD	203	CERA_IDENTIFY	0x08aed45c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	204	USE_EMBLEM	0x08aed479	UseJewel	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	205	DISJOINT_AVATAR	0x08aed494	DisJointAvatar	mapped	T4_fields-read+write	2	7	name_only
+CMD	206	BEIJING_OLYMPIC_HIT_COUNT	0x08aed4b4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	207	PURIFY_ITEM	0x08aed4dd	PurifyItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	208	INVEST_ITEM_AMPLIFY_OPTION	0x08aed4f8	InvestItemAmplifyOption	mapped	T4_fields-read+write	8	9	name_only
+CMD	209	ADD_AVATAR_SOCKET	0x08aed524	AddSocketToAvatar	mapped	T4_fields-read+write	3	4	name_only
+CMD	210	SHOP_COIN_EVENT	0x08aed548	Shop_Coin_Event	mapped	T3b_fields-write-only	0	6	name_only
+CMD	211	USE_RANDOMBOX_ITEM	0x08aed568	MultiBoxLottery	mapped	T4_fields-read+write	2	3	name_only
+CMD	212	UDP_CHARACTERISTIC	0x08aed58c	UdpCharacteristic	mapped	T3_fields-read-only	8	0	name_only
+CMD	213	ONEDAY_LETHE	0x08aed5ae	OneDayLetheTicket	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	214	DISGUISE_REQUEST	0x08aed5cc	DisguiseRequest	mapped	T4_fields-read+write	2	3	name_only
+CMD	215	DISGUISE_CANCEL	0x08aed5ec	DisguiseCancel	mapped	T3b_fields-write-only	0	3	name_only
+CMD	216	REQUEST_PC_ROOM_PLAYER_LIST	0x08aed60c	RequestPCRoomPlayerList	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	217	REQUEST_PC_ROOM_PLAYER_COUNT	0x08aed638	RequestPCRoomPlayerCount	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	218	USE_VENDING_MACHINE	0x08aed664	UseVendingMachine	mapped	T4_fields-read+write	3	11	name_only
+CMD	219	ASSERT_INFO	0x08aed687	AssertManager	mapped	T3_fields-read-only	5	0	name_only
+CMD	220	OVERFLOW_INFO	0x08aed6a2	Overflow_Info	mapped	T3_fields-read-only	2	0	name_only
+CMD	221	SERVER_MESSAGE_SEND	0x08aed6c0	UpdateServerMessage	mapped	T4_fields-read+write	5	12	name_only
+CMD	222	SERVER_MESSAGE_CHECK	0x08aed6e4	CheckEnableServerMessage	mapped	T4_fields-read+write	1	8	name_only
+CMD	223	TEST_HACKSHIELD_REQUEST	0x08aed708		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	224	HACKSHIELD_CLIENT_RESPONSE	0x08aed730		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	225	GIVE_GIFT_TO_NPC	0x08aed75c	GiveGiftToNPC	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	226	GOBLIN_PAD_RESPONSE_CRYPT_KEY	0x08aed77c	GoblinPadRequestCryptKey	mapped	T3b_fields-write-only	0	8	name_only
+CMD	227	WRITE_GUILD_MEMBER_MEMO	0x08aed7ac	WriteGuildMemberMemo	mapped	T4_fields-read+write	2	2	name_only
+CMD	228	SET_PVP_GOLD	0x08aed7d3		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	229	COMPOUND_CREATURE	0x08aed7f0		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	230	CHECK_CREATE_GUILD_AGIT	0x08aed814		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	231	CREATE_GUILD_AGIT	0x08aed83c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	232	DELETE_GUILD_AGIT	0x08aed860		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	233	POWER_WAR_INFO	0x08aed881		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	234	UPGRADE_GUILD_AGIT	0x08aed8a0		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	235	HELLPARTY_START	0x08aed8c4	HellPartyStart	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	236	POWER_WAR_PROCESS_INFO	0x08aed8e4	PowerWarProcessInfo	mapped	T3b_fields-write-only	0	2	name_only
+CMD	237	HACKSHIELD_MESSAGEBOX_BUG	0x08aed90c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	238	CREATE_DISJOINT_STORE	0x08aed938	CreateDisjointStore	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	239	REQUEST_DISJOINT_ITEM	0x08aed960	RequestDisjointItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	240	REPAIR_DISJOINT_MACHINE	0x08aed988	RepairDisjointMachine	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	241	TELEPORT	0x08aed9af	Teleport	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	242	COMPOUND_ITEM_BY_EXPERT_JOB	0x08aed9c8	CompoundItemByExpertJob	mapped	T4_fields-read+write	2	3	name_only
+CMD	243	GIVEUP_EXPERT_JOB	0x08aed9f4	GiveupExpertJob	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	244	UPGRADE_DISJOINT_MACHINE	0x08aeda18	UpgradeDisjointMachine	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	245	ENTER_DISJOINT_STORE	0x08aeda40	EnterDisjointStore	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	246	CLOSE_DISJOINT_STORE	0x08aeda64	CloseDisjointStore	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	247	REPORT_ABUSE_USER	0x08aeda88	ReportAbuseUser	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	248	LOAD_COMPLETE_AFTER_ASSAULT	0x08aedaac	CompleteLoadAfterAssault	mapped	T3b_fields-write-only	0	2	name_only
+CMD	249	CONNECT_P2P_AFTER_ASSAULT	0x08aedad8	ConnectP2PAfterAssault	mapped	T3_fields-read-only	3	0	name_only
+CMD	250	CHANGE_NPC_FAVOR_DEBUG	0x08aedb04		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	251	GUILD_CARGO_PUSH_ITEM	0x08aedb2c	GuildCargoPushItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	252	GUILD_CARGO_POP_ITEM	0x08aedb54	GuildCargoPopItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	253	GUILD_CARGO_MOVE_ITEM	0x08aedb78	GuildCargoMoveItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	254	LODING_TIME_REPORT	0x08aedba0	LoadingTimeReport	mapped	T3_fields-read-only	13	0	name_only
+CMD	255	USE_SHARED_EFFECT_ITEM	0x08aedbc4	UseSharedEffectItem	mapped	T4_fields-read+write	2	6	name_only
+CMD	256	BUY_CERASHOP_LIMIT_ITEM	0x08aedbec	BuyCeraShopLimitItem	mapped	T3_fields-read-only	9	0	name_only
+CMD	257	ADD_HACKTYPE_CNT	0x08aedc14		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	258	CHANGE_EMOTION	0x08aedc34	ChangeEmotion	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	259	DIE_BLOOD_MONSTER	0x08aedc54	DieBloodMonster	mapped	T3_fields-read-only	2	0	name_only
+CMD	260	COMPOUND_EMBLEM	0x08aedc78	CompoundEmblem	mapped	T4_fields-read+write	4	5	name_only
+CMD	261	MOTION_RESULT	0x08aedc97	CheckAssaultMotionHack	mapped	T3_fields-read-only	2	0	name_only
+CMD	262	BLOOD_ROUND_UI_PREPARE_FINISH_	0x08aedcb4	BloodRoundUiPrepareFinish	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	263	REQUEST_CONDITION_EVENT_REWARD	0x08aedce4	RequestConditionEventReward	mapped	T4_fields-read+write	2	9	name_only
+CMD	264	CHANGE_ANOTHER_SKILL_TREE	0x08aedd14	ChangeAnotherSkillTree	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	265	GUILD_CARGO	0x08aedd3d	GuildCargo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	266	GUILD_CARGO_HISTORY	0x08aedd58	GuildCargoHistory	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	267	FIGHT_VILLAGE_MONSTER	0x08aedd7c	FightVillageMonster	mapped	T3_fields-read-only	1	0	name_only
+CMD	268	FINISH_VILLAGE_MONSTER_FIGHTING	0x08aedda4	FinishVillageMonsterFighting	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	269	UPGRADE_GUILD_CARGO	0x08aeddd4	UpgradeGuildCargo	mapped	T3b_fields-write-only	0	3	name_only
+CMD	270	MOVE_MAP_REPORT	0x08aeddf8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	271	REQUEST_ITEM_LOCK	0x08aede18	RequestItemLock	mapped	T3_fields-read-only	2	0	name_only
+CMD	272	REQUEST_ITEM_UNLOCK	0x08aede3c	RequestItemUnlock	mapped	T4_fields-read+write	2	4	name_only
+CMD	273	REQUEST_ITEM_UNLOCK_CANCEL	0x08aede60	RequestItemUnlockCancel	mapped	T3_fields-read-only	2	0	name_only
+CMD	274	UPGRADE_CHRONICLE	0x08aede8c	UpgradeChronicle	mapped	T4_fields-read+write	5	9	name_only
+CMD	275	ENCHANT_BY_BEAD	0x08aedeb0	EnchantByBead	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	276	DUNGEON_NPC_BUFF_INFO	0x08aeded0	DungeonNPCBuffInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	277	CREATE_WARROOM	0x08aedef5		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	278	START_WARROOM	0x08aedf13		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	279	WARROOM_CHANGE_TEAM	0x08aedf30		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	280	WARROOM_READY	0x08aedf53		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	281	WARROOM_RANDOM_TEAM	0x08aedf70		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	282	LAG_STATISTICS	0x08aedf93	Lag_Statistics	mapped	T3_fields-read-only	15	0	name_only
+CMD	283	HT_PS	0x08aedfb1	Security_ProcessScan	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	284	HT_IS	0x08aedfc6	Security_IPScan	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	285	HACK_LEVEL_UP	0x08aedfdb		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	286	PI	0x08aedff8	Security_PacketIntegrity	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	287	VERIFY_GOLD	0x08aee00a	VerifyGold	mapped	T4_fields-read+write	1	4	name_only
+CMD	288	ONTIME_EVENT_REQUEST_REWARD	0x08aee028	RequestOnTimeEventReward	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	289	REQUEST_ADD_PVP_BUDDY	0x08aee054	RequestAddPvPBuddy	mapped	T3_fields-read-only	3	0	name_only
+CMD	290	RESPONSE_ADD_PVP_BUDDY	0x08aee07c	ResponseAddPvPBuddy	mapped	T3_fields-read-only	3	0	name_only
+CMD	291	REMOVE_PVP_BUDDY	0x08aee0a4	RemovePvPBuddy	mapped	T3_fields-read-only	3	0	name_only
+CMD	292	PVP_BUDDY_CONN_LIST	0x08aee0c4	PvPBuddyConnList	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	293	CHECK_FINISH_LOADING	0x08aee0e8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	294	NCC	0x08aee10c	Security_NonClient_GetResponse	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	295	MI	0x08aee11f	Security_MemoryIntegrity	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	296	CHANGE_CHARAC_SLOT	0x08aee134	Change_Charac_Slot	mapped	T3_fields-read-only	2	0	name_only
+CMD	297	SECRET_SHOP_BUY_ITEM	0x08aee158	SecretShopBuyItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	298	SECRET_SHOP_OPEN_CLOSE	0x08aee17c	SecretShopOpenClose	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	299	COMPLETE_LOAD_PVP	0x08aee1a4	CompleteLoadPvP	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	300	CONNECT_P2P_PVP	0x08aee1c8	ConnectP2PPvP	mapped	T3_fields-read-only	3	0	name_only
+CMD	301	BIDDING_ROUTING_ITEM	0x08aee1e8	BiddingRoutingItem	mapped	T4_fields-read+write	1	2	name_only
+CMD	302	USE_SAMSUNG_RANDOMBOX_ITEM	0x08aee20c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	303	USE_GOBLIN_RANDOMBOX_ITEM	0x08aee238		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	304	BREAK_GUILD	0x08aee261		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	305	REQUEST_QUEST_AUTO_CLEAR	0x08aee27c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	306	CREATE_ACCOUNT_CARGO	0x08aee2a4	CreateAccountCargo	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	307	UPGRADE_ACCOUNT_CARGO	0x08aee2c8	UpgradeAccountCargo	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	308	DEPOSIT_MONEY	0x08aee2ed	DepositMoney	mapped	T3_fields-read-only	1	0	name_only
+CMD	309	WITHDRAW_MONEY	0x08aee30a	WithdrawMoney	mapped	T3_fields-read-only	1	0	name_only
+CMD	310	REDEEM_LIST	0x08aee328	RedeemList	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	311	REDEEM	0x08aee343	Redeem	mapped	T3_fields-read-only	1	0	name_only
+CMD	312	SECU_DATA_CONTROL	0x08aee35c	SecuDataControl	mapped	T3_fields-read-only	3	0	name_only
+CMD	313	CONNECT_LINK_CHARAC	0x08aee380		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	314	DISCONNECT_LINK_CHARAC	0x08aee3a4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	315	CHANGE_CHARAC_LINK_TYPE	0x08aee3cc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	316	MULTI_MAILBOX_SEND	0x08aee3f4	MultiMailBoxSend	mapped	T3_fields-read-only	10	0	name_only
+CMD	317	OPERATE_RIDABLE_OBJECT	0x08aee418	OperateRidableObject	mapped	T3_fields-read-only	2	0	name_only
+CMD	318	SELECT_ULTIMATE_DIFFICULTY	0x08aee440	SelectUltimateDifficulty	mapped	T4_fields-read+write	1	3	name_only
+CMD	319	PIV	0x08aee46a	Security_PI_HashModulation_S2C	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	320	PID	0x08aee47d	Security_PI_HashModulation_C2C	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	321	ECO_EVENT_ITEM	0x08aee490		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	322	ENTER_VIP_ROOM	0x08aee4ae		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	323	GET_DETECTIVE_GOBLIN_ITEM	0x08aee4cc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	324	USE_CREATURE_EVOLUTION_ITEM	0x08aee4f8	UseCreatureEvolutionItem	mapped	T3_fields-read-only	3	0	name_only
+CMD	325	QUERY_CHARAC_INFO_MAILBOX	0x08aee524	QueryCharacInfoMailbox	mapped	T3_fields-read-only	2	0	name_only
+CMD	326	COMPOUND_ITEM_BIND_SHPERE	0x08aee550	Compound_ExtreamItem	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	327	USE_RIDABLE	0x08aee579		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	328	CANCEL_RIDABLE	0x08aee594		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	329	CHANGE_PARTY_POSITION	0x08aee5b4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	330	ONE_TO_ONE_CHAT_STATE	0x08aee5dc	polic_one_to_one_chat_disable	mapped	T3_fields-read-only	2	0	name_only
+CMD	331	FIND_CHAR_NAME_USE_CHARAC_NO	0x08aee604	police_queryCharacName_useMid	mapped	T4_fields-read+write	1	4	name_only
+CMD	332	SKILL_COMMAND_CUSTOMIZING	0x08aee630	Skill_Command_Customizing	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	333	SKILL_COMMAND_ALL_DEFAULT	0x08aee65c	Skill_Command_All_Default	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	334	HACK_SCRIPT_HASH	0x08aee688	ValidateScriptHash	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	335	AUCTION_BUY_ITEM_APIECE	0x08aee6a8	AuctionBuyItemApiece	mapped	T3_fields-read-only	4	0	name_only
+CMD	336	CHANGE_PARTY_MEMBER_POSITION	0x08aee6d0	Change_PartyMemberPosition	mapped	T4_fields-read+write	2	8	name_only
+CMD	337	ACCFF	0x08aee6fc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	338	SCAN_BOT_BY_DLL	0x08aee714	ScanBotByDll	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	339	USE_LIMIT_CUBE	0x08aee733	UseLimitCube	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	340	REFRESH_GUILD_INFO	0x08aee754	RefreshGuildInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	341	OPEN_GUILD_BOARD	0x08aee778	Open_Guild_Board	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	342	WRITE_ON_THE_GUILDBOARD	0x08aee798	Write_On_The_GuildBoard	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	343	DELETE_GUILDBOARD_TEXT	0x08aee7c0	Delete_GuildBoard_Text	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	344	REFRESH_GUILDBOARD	0x08aee7e8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	345	REQUEST_VIDEO_OBSERVER	0x08aee80c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	346	STOP_VIDEO_OBSERVER	0x08aee834		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	347	DONATE_GUILD_FUND	0x08aee858	DonateGuildFund	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	348	CHECK_JOIN_GUILD	0x08aee87c	CheckJoinGuild	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	349	REQUEST_JOIN_GUILD	0x08aee89c	RequestJoinGuild	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	350	CANCEL_JOIN_GUILD	0x08aee8c0	CancelJoinGuild	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	351	APPROVE_JOIN_GUILD	0x08aee8e4	ApproveJoinGuild	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	352	DENY_JOIN_GUILD	0x08aee908	DenyJoinGuild	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	353	GUILD_JOIN_LIST	0x08aee928	GuildJoinList	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	354	REQUEST_VIDEO_OBSERVER_ERROR	0x08aee948		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	355	RESPONSE_VIDEO_OBSERVER	0x08aee974		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	356	GUILD_ATTENDANCE_INFO	0x08aee99c	GuildAttendanceInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	357	PASS_GATE_OBJECT	0x08aee9c4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	358	DUNGEON_MOTION	0x08aee9e4	MotionHack	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	359	REQUEST_OVERSEER	0x08aeea04		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	360	INSERT_OVERSEER	0x08aeea24		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	361	COMPOUND_EQUIPMENT_UPGRADE_CARD	0x08aeea44	Compound_Equipment_Upgrade_Card	mapped	T4_fields-read+write	3	5	name_only
+CMD	362	REFUND_CERA_ITEM	0x08aeea74		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	363	PICKUP_CERA_ITEM	0x08aeea94		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	364	CASH_INVENTORY	0x08aeeab4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	365	BREAK_AWAY_QUEST_CHECK	0x08aeead4	Break_Away_Quest_Check	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	366	JOIN_GUILD_INFO	0x08aeeafc	JoinGuildInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	367	SCAN_BOT_BY_DRV	0x08aeeb1c	ScanBotByDrv	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	368	ASK_REMATCH	0x08aeeb3b	AskRematch	mapped	T3_fields-read-only	1	0	name_only
+CMD	369	SAVE_GAME_OPTION_QUICKCHATTING	0x08aeeb58	SaveGameOption_QuickChatting	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	370	SELECT_3RD_CHRONICLE_ITEM_FOR_ENCHANT	0x08aeeb88	Select_3rdChronicleItem_ForEnchant	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	371	ENCHANT_3RD_CHRONICLE_ITEM	0x08aeebc0	Enchant_3rdChronicleItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	372	GOLD_TAKE_INCREASING_AMOUNT	0x08aeebec	GoldTakeIncreasingAmount	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	373	USE_HACK_BY_OTHER_PARTY_MEMBER_UID	0x08aeec18		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	374	CHECK_SECURITY_PROTECTION	0x08aeec4c	CheckSecurityProtection	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	375	FAIR_PVP_SCORE	0x08aeec75	FairPvPScore	mapped	T4_fields-read+write	2	9	name_only
+CMD	376	PVP_MISSION_HP_PERCENT	0x08aeec94	PvpMissionHPPercent	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	377	WARROOM_WP_PER_MONSTER	0x08aeecbc	WarRoomWpPerMonster	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	378	SET_LABYRINTH_READY_STATE	0x08aeece4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	379	SET_LABYRINTH_SEAT_STATE	0x08aeed10		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	380	REQUEST_LABYRINTH_MONSTER_UID	0x08aeed38		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	381	FINISH_LOADING_LABYRINTH	0x08aeed68		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	382	DIE_LABYRINTH_MONSTER	0x08aeed90		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	383	DESTROY_LABYRINTH_OBJECT	0x08aeedb8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	384	DIE_LABYRINTH_CHARACTER	0x08aeede0		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	385	DESTROY_LABYRINTH_CENTER_OBJECT	0x08aeee08		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	386	REQUEST_DUNGEON_PARTY_LIST	0x08aeee38		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	387	REGISTER_CARGO_PAD	0x08aeee64		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	388	MODIFY_CARGO_PAD	0x08aeee88		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	389	UNREGISTER_CARGO_PAD	0x08aeeea8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	390	CANCEL_CARGO_PAD	0x08aeeecc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	391	CARGO_PAD_STATUS	0x08aeeeec		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	392	CARGOPAD_KEY_REQ	0x08aeef0c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	393	CARGOPAD_CERTIFY	0x08aeef2c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	394	REQUEST_VIDEO_OBSERVER_LOG	0x08aeef4c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	395	USE_TAROT_CARD_ITEM	0x08aeef78		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	396	ABNORMAL_FUNCTION_CALL	0x08aeef9c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	397	EQUIPSLOT_SWITCH	0x08aeefc4	Equipslot_Switch	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	398	EXPAND_EQUIPSLOT_FLAG_UPDATE	0x08aeefe4	Expand_Equipslot_Flag_Update	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	399	BUY_CHARAC_STATUS_USING_QP	0x08aef010	Buy_Charac_Status_Using_QP	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	400	CLEAR_USED_QP	0x08aef03a	Clear_Used_QP	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	401	UNSEAL_RANDOM_OPTION	0x08aef058	UnsealRandomOption	mapped	T4_fields-read+write	2	3	name_only
+CMD	402	MOBILE_REQ_AUTH_NO	0x08aef07c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	403	MOBILE_REQ_VERIFY_AUTH_NO	0x08aef0a0		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	404	CHANGE_HOST_WARROOM	0x08aef0cc	ChangeHostWarRoom	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	405	VERIFY_PRIVATE_STORE_ITEM	0x08aef0f0	VerifyPrivateStoreItem	mapped	T3_fields-read-only	2	0	name_only
+CMD	406	SELECT_ITEM	0x08aef119	SelectItem	mapped	T3_fields-read-only	2	0	name_only
+CMD	407	REGENERATION_RANDOM_OPTION	0x08aef134	RegenerationRandomOption	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	408	UPGRADE_CARGO	0x08aef15e	UpgradeCargo	mapped	T4_fields-read+write	1	6	name_only
+CMD	409	SELECT_IDOL_POT	0x08aef17c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	410	IDOL_BRING_UP	0x08aef19b		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	411	PVP_MISSION_COMBO	0x08aef1b8	PvpMissionComboClear	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	412	TITLE_BOOK_PUT	0x08aef1d9	TitleBookPut	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	413	TITLE_BOOK_GET	0x08aef1f7	TitleBookGet	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	414	MONSTERCARD_BIND	0x08aef218	MonstercardBind	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	415	CHARAC_SLOT_EXTEND_EFFECT	0x08aef238	CharacSlotExtendEffect	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	416	EXPERT_EXTRACTION	0x08aef264	ExpertExtraction	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	417	ACHIEVEMENT_TRIGGER	0x08aef288	AchievementTrigger	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	418	REQUEST_EVENT_SERVER_LEVEL_UP	0x08aef2ac		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	419	CREATE_GROUP	0x08aef2d9		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	420	INVITE_MEMBER_FOR_GROUP	0x08aef2f8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	421	LEAVE_FROM_GROUP	0x08aef320		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	422	CHANGE_GROUP_CHAT_USER_STATE	0x08aef340		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	423	EVENT_ALL_USER_GIFT	0x08aef36c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	424	OTHER_USER_TITLE_BOOK_LIST	0x08aef390	TitleBookOtherUser	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	425	ITEM_HYPERLINK_MESSAGE	0x08aef3bc	ItemHyperLinkMessage	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	426	USER_HISTORY_LOG	0x08aef3e4	UserHistoryLog	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	427	REFUND_SKILL	0x08aef404	RefundSkill	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	428	REGISTER_PLAYER	0x08aef420		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	429	ATTENDANCE_CHECK	0x08aef440	FatigueAttendance	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	430	REQUEST_GOBLIN_PAD_IMG	0x08aef460		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	431	UPGRADE_INVENTORY	0x08aef488	UpgradeInventory	mapped	T4_fields-read+write	1	6	name_only
+CMD	432	SELECT_ITEM_GROWTH_POWER	0x08aef4ac	Select_Item_Grwoth_Power	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	433	REQUEST_SERIA_BUFF	0x08aef4d4	Request_Seria_Buff	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	434	USE_CHESTNUT_STONE_ITEM	0x08aef4f8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	435	PARTY_TELEPORT	0x08aef51f	PartyTeleport	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	436	PARTY_TELEPORT_CONFIRM	0x08aef540	PartyTeleportConfirm	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	437	ABNORMAL_USE_STACKABLE	0x08aef568	AbnormalUseStackable	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	438	CHANGE_RANDOM_OPTION	0x08aef590	ChangeRandomOption	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	439	UPGRADE_ITEM_SEPARATE	0x08aef5b4	UpgradeItemSeparate	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	440	ITEM_DICTIONARY	0x08aef5dc	ItemDictionary	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	441	MERCENARY_RETURN	0x08aef5fc	Mercenary_Return	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	442	MERCENARY_INFO	0x08aef61c	Mercenary_Info	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	443	MERCENARY_COMPETITION	0x08aef63c	Mercenary_Competition	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	444	REGISTER_QUICK_PARTY	0x08aef664	Register_Quick_Party	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	445	CANCEL_QUICK_PARTY	0x08aef688	Cancel_Quick_Party	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	446	DIRECT_ENTRANCE_DUNGEON_QUICK_PARTY	0x08aef6ac	Direct_Entrance_Quick_Party	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	447	REQUEST_ASSAULT_PRICE	0x08aef6e0	RequestAssaultPrice	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	448	SAVE_CHARACTER_OPTION	0x08aef708	SaveCharacterOption	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	449	EXCHANGE_RANDOM_ITEM_REWARD	0x08aef730	Exchange_Random_Item_Reward	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	450	AVATAR_DISJOINT_RANDOM_REWARD	0x08aef75c	Avatar_Disjoint_Random_Reward	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	451	CHECK_3RDPARTY_CONCENT	0x08aef78c	Check3rdPartyConcent	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	452	LOGGING_CRYPTED_TYPE	0x08aef7b4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	453	FLOAT_RDATA_MODULATION	0x08aef7d8	Float_RDATA_Modulation	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	454	REQ_URGENT_QUEST	0x08aef800	Req_Urgent_Quest	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	455	INSERT_RANDOM_OPTION_ITEM	0x08aef820		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	456	RESET_RANDOM_OPTION	0x08aef84c	ResetRandomOption	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	457	CLEAR_QUEST	0x08aef86f	Debug_Clear_Quest	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	458	TOURNAMENT_REWARD_SELECT_STATE	0x08aef88c	TournamentRewardSelectState	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	459	TOURNAMENT_REWARD_SELECT	0x08aef8bc	TournamentRewardSelect	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	460	AVATAR_OPTION_CHANGE	0x08aef8e4	AvatarOptionChange	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	461	CHARACTER_STATUS	0x08aef908		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	462	REQUEST_SOCIAL_EVENT_COIN_ITEM	0x08aef928		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	463	REQUEST_SOCIAL_EVENT_MEMBER	0x08aef958		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	464	RESPONSE_SOCIAL_EVENT_MEMBER	0x08aef984		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	465	LIMIT_NPC_BUY_ITEM	0x08aef9b0	LimitNpcBuyItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	466	QUERY_CHARAC_INFO_ADD_DATA	0x08aef9d4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	467	3_MONTH_STOP_STATISTIC	0x08aefa00		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	468	SERIA_ROOM_DECO_INFO	0x08aefa28		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	469	OBJECT_BRING_UP_USE_ITEM	0x08aefa4c	ObjectBringUp	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	470	PRECHECK_SOLO_TELEPOART	0x08aefa74	PrecheckSoloTeleport	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	471	SOLO_TELEPOART	0x08aefa9b	SoloTeleport	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	472	2012_NEWEVENT_PUTITEM	0x08aefabc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	473	SAVE_GAME_OPTION_CHATTING_EMOTICON	0x08aefae4	SaveGameOption_ChattingEmoticon	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	474	REPORT_CLIENT_HACK	0x08aefb18		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	475	RDATA_SECTION_MODULATION	0x08aefb3c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	476	IMAGE_COMMUNICATION_EQUIPMENT_USE	0x08aefb64	ImageCommunicationEquipmentUse	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	477	COMPATIBILITY_INDEX	0x08aefb98	CompatibilityIndex	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	478	INFORM_NOTICE	0x08aefbbb	InformNotice	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	479	P2P_STATISTICS	0x08aefbd8	P2P_Statistics	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	480	VERIFY_CREATURE_QUEST	0x08aefbf8	VerifyCreatureQuest	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	481	REPORT_PVP_LAG	0x08aefc1d		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	482	VERIFY_PVP_LAG_USER	0x08aefc3c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	483	COLLECT_ITEMS	0x08aefc5f	CollectItems	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	484	TUTORIAL_LEVEL_UP	0x08aefc7c	TutorialLevelUp	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	485	REQUEST_CHARAC_SKILL_INFO	0x08aefca0	RequestCharacSkillInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	486	CRANE_START_USE	0x08aefccc	UseCraneStart	mapped	T4_fields-read+write	1	4	name_only
+CMD	487	CRANE_PICKUP	0x08aefceb	CranePickUp	mapped	T4_fields-read+write	2	4	name_only
+CMD	488	SELECT_STRIKER	0x08aefd07	SelectStriker	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	489	REQUEST_INGAME_ADVERTISEMENT	0x08aefd28	RequestIngameAdvertisement	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	490	LOG_INGAME_ADVERTISEMENT	0x08aefd54	LogIngameAdvertisement	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	491	AUTO_SKILL	0x08aefd7c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	492	SKILL_INIT	0x08aefd96	SkillInit	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	493	PC_ROOM_PLAY_TIME_REWARD	0x08aefdb0	PcRoomPlayTimeReward	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	494	PC_ROOM_RENT_ITEM	0x08aefdd8	PcRoomRentItem	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	495	SERIAROOM_DECO_EVENT	0x08aefdfc	SeriaRoom_Deco_Event	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	496	BLUE_MARBLE	0x08aefe20	BlueMarble	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	497	GET_GROWTHCAPSULE	0x08aefe3c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	498	DYNAMIC_SCRIPT_RELOADING	0x08aefe60		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	499	USE_DYE	0x08aefe88	UseDye	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	500	PVP_HISTORY_LOG	0x08aefea0		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	501	PVP_USE_SKILL	0x08aefebf		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	502	ON_TIME_EVENT_WHILE_ONE_HOUR_GIFT	0x08aefedc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	503	USE_RIGHT_OF_CHANGE_GROW_TYPE	0x08aeff10	UseRightOfChangeGrowType	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	504	INFORM_NOTICE_2ND	0x08aeff40	InformNotice_2nd	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	505	GROWTH_WEAPON_CHANGE_INFINITY	0x08aeff64	GrowthWeaponEventChangeInfinity	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	506	GROWTH_WEAPON_USE_MATERIAL	0x08aeff94	GrowthWeaponEventUseMaterial	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	507	SAVE_QUEST_NOTIFY	0x08aeffc0	SaveQuestNotify	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	508	BLUE_MARBLE_CONFIRM_INFO	0x08aeffe4	BlueMarbleConfirmInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	509	COMBO_SKILL_INFO	0x08af000c	ComboSkill	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	510	USE_RENAME_CARD	0x08af002c	UseRenameCard	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	511	COMBO_SKILL_EXTENSION_QUICK_SLOT_RESET	0x08af004c	ComboSkillExtensionQuickSlotReset	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	512	EQUIPED_CREATURE_CHANGE_INFINITY_CREATURE	0x08af0084	GrowthCreatureChangeInfinityCreature	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	513	SERIAROOM_ANIMATION_DECO_EVENT	0x08af00c0	SeriaRoom_Ani_Deco_Event	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	514	BINGO_REWARD	0x08af00ee	BingoReward	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	515	BINGO_QUIZ	0x08af010a	BingoQuiz	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	516	USE_STACKABLE_ACTION	0x08af0124	StackableActionUse	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	517	DUAL_RAID_DUNGEON_JOIN	0x08af0148		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	518	DUAL_RAID_DUNGEON	0x08af0170		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	519	OPEN_CERAPACKAGE	0x08af0194	CeraPackageOpen	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	520	RACING_DUNGEON_JOIN	0x08af01b4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	521	RACING_DUNGEON_DISJOIN	0x08af01d8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	522	RACING_DUNGEON_GOAL_IN_PLAYER	0x08af0200		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	523	RACING_DUNGEON_RETURN_TO_VILLAGE	0x08af0230		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	524	DUAL_RAID_DUNGEON_READY	0x08af0260		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	525	DUAL_RAID_DUNGEON_REWARD	0x08af0288		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	526	UPDATE_CONTRACT_OF_CUBE_INFO	0x08af02b0	UpdateContractOfCubeInfo	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	527	HOUSING_TREE_INFO	0x08af02dc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	528	HOUSING_SET_NEW_TREE	0x08af0300		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	529	HOUSING_GIVE_WATER	0x08af0324		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	530	HOUSING_HARVEST_TREE	0x08af0348		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	531	HOUSING_WATER_HISTORY	0x08af036c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	532	HOUSING_RESET_TREE	0x08af0394		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	533	BUY_ITEM_USE_POINT	0x08af03b8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	534	CHECK_SHOP_ENTRANCE	0x08af03dc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	535	EVENT_DNFTREND_GET_REWARD	0x08af0400		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	536	EVENT_TEN_MINUTE_GET_REWARD	0x08af042c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	537	PREMIUM_SERVICE	0x08af0458		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	538	ANTIBOT_DELAY_LOG	0x08af0478	SecurityLog	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	539	EVENT_DUNGEON_DESTORY_OBJECT	0x08af049c	EventDungeon_DestoryObject	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	540	EVENT_DUNGEON_CLEAR_ROOM	0x08af04c8	EventDungeon_ClearRoom	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	541	CHANGE_CREATURE_TRADE_ATTR	0x08af04f0		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	542	LOGGING_CLONG	0x08af051a		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	543	MAPCLEAR_LOG_WARROOM	0x08af0538		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	544	STREET_VICTOR_BOARD_TOP_VICTOR_DATA	0x08af055c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	545	STREET_VICTOR_BOARD_MY_DATA	0x08af0590		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	546	INFORM_LOCK_TIME	0x08af05bc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	547	USE_EMBLEM_FOR_EQUIPMENT	0x08af05dc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	548	ADD_EQUIPMENT_SOCKET	0x08af0604		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	549	CONVERT_EMBLEM	0x08af0628		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	550	REPORT_BAD_USER	0x08af0648		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	551	GET_USER_INFO_FOR_REPORT_BAD_USER	0x08af0668		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	552	ACTION_POINT_ACTION_CLEAR	0x08af069c	ClearAction	mapped	T3_fields-read-only	1	0	name_only
+CMD	553	ACTION_POINT_GET_REWARD_ITEM	0x08af06c8	GetTodayReward	mapped	T3_fields-read-only	1	0	name_only
+CMD	554	DECORATION_USE_STACKABLE	0x08af06f4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	555	DECORATION_SETUP	0x08af071c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	556	DECORATION_MOVE_INVENSLOT	0x08af073c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	557	HOUSING_INVITE_FRIEND	0x08af0768		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	558	HOUSING_VISIT_ROOM	0x08af0790		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	559	HOUSING_ENTER_ROOM	0x08af07b4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	560	HOUSING_LEAVE_ROOM	0x08af07d8		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	561	HOUSING_SEND_MESSAGE	0x08af07fc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	562	PACKET_SWITCH_EQUIPSLOT	0x08af0820		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	563	KILL_PLAYER_LOG	0x08af0848		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	564	JOIN_TOURNAMENT	0x08af0868		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	565	TOURNAMENT_STATUS	0x08af0888		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	566	USE_AVATAR_POTTERY	0x08af08ac		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	567	MOVE_ITEM_TO_ACCOUNT_CARGO	0x08af08d0		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	568	ARAD_ATTENDANCE_CHECK	0x08af08fc		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	569	ARAD_COMPOUND_KATAGAKI	0x08af0924		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	570	EVENT_LOGIN_AND_GIFT	0x08af094c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	571	USED_GOLDSKILL	0x08af0970		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	572	ADVANCE_ALTAR_START_GAME	0x08af0990	StartGame	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	573	ADVANCE_ALTAR_BUY_ITEM	0x08af09b8	BuyItem	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	574	ADVANCE_ALTAR_SET_SLOT	0x08af09e0	SetSlot	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	575	ADVANCE_ALTAR_UPGRADE_GAGE	0x08af0a08	UpgradeGage	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	576	ADVANCE_ALTAR_SUMMON_UNIT	0x08af0a34	SummonUnit	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	577	ADVANCE_ALTAR_EXCHANGE_SLOT	0x08af0a60	ExchangeSlot	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	578	ADVANCE_ALTAR_PAUSE	0x08af0a8c	Pause	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	579	ADVANCE_ALTAR_GET_ACHIEVEMENT_REWARD	0x08af0ab0	GetAchievementReward	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	580	ADVANCE_ALTAR_RESET_STAR	0x08af0ae4	ResetStar	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	581	REQ_IGA_VER	0x08af0b0c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	582	PERIOD_ITEM_REBUY_STATISTIC	0x08af0b28		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	583	ADD_EQUIPMENT_EFFECT	0x08af0b54		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	584	MINORITY_EVENT	0x08af0b78		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	585	USE_JUMPING_CHAR_TICKET	0x08af0b98	AradJumpingCharacter	mapped	T3_fields-read-only	4	0	name_only
+CMD	586	USE_AVATAR_ROULETTE	0x08af0bc0	AvartarRoulette	mapped	T3_fields-read-only	2	0	name_only
+CMD	587	AVATAR_COIN_COUNT	0x08af0be4	AvartarCoinCount	mapped	T2_handlerdata-no-fields	0	0	name_only
+CMD	588	AVATAR_HIDDEN_OPTION_CHANGE	0x08af0c08	AvartarHiddenOptionChange	mapped	T3_fields-read-only	2	0	name_only
+CMD	589	USE_AVATAR_RECHARGE_JPN	0x08af0c34	AradUseAvatarRecharge	mapped	T3_fields-read-only	2	0	name_only
+CMD	590	EMBLEM_COMPOUND_JPN	0x08af0c5c	AradEmblemCompound	mapped	T3_fields-read-only	3	0	name_only
+CMD	591	AVATAR_CONVERT_JPN	0x08af0c80	AradAvatarConvert	mapped	T3_fields-read-only	3	0	name_only
+CMD	592	REQ_ARAD_CONDITION_EVENT_REWARD	0x08af0ca4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	593	USE_ANCIENT_MYSTIC_CUBE	0x08af0cd4		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	594	QUIZ_REQ_ITEM	0x08af0cfb		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	595	QUIZ_RES_ITEM	0x08af0d18		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	596	QUEST_BEFORE_70_LEVEL_EXPAND	0x08af0d38		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	597	LEVELUP_SUPPORT_REQ_ITEM	0x08af0d64	LevelupSupportReqestItem	mapped	T4_fields-read+write	1	3	name_only
+CMD	598	USE_DYE_CUBE	0x08af0d8c		no-dispatcher	T0_no-evidence	0	0	name_only
+CMD	599	P2P_HOLE_PUNCHING_SUCCESS_RATE	0x08af0da8	P2PHolePunchingSuccessRateStatistics	mapped	T1_dispatcher-no-handlerdata	0	0	name_only
+CMD	600	EVENT_CREATE_DNF_REQUEST	0x08af0dd8	EventCreateDnfRequest	mapped	T3b_fields-write-only	0	3	name_only
+CMD	601	REQUEST_PCROOM_DAYILY_REWARD	0x08af0e00	RequestPrcoomDayilyReward	mapped	T3_fields-read-only	1	0	name_only
+CMD	602	HERO_MISSION_DATA_REWARD	0x08af0e2c	HeroMissionEventState_Reward	mapped	T4_fields-read+write	2	6	name_only
+CMD	603	ANTIBOT	0x08af0e54	Antibot	mapped	T3_fields-read-only	2	0	name_only
+CMD	604	DPROTO	0x08af0e6b	Antibot_DP	mapped	T3_fields-read-only	2	0	name_only
+CMD	605	DPROTO_CALLBACK	0x08af0e84	Antibot_DPCallBack	mapped	T3_fields-read-only	2	0	name_only
+CMD	606	END	0x08af0ea3		unused	T0_no-evidence	0	0	name_only
+CMD	607	DISJOINT_ITEM	0x08bc237c		unused	T0_no-evidence	0	0	name_only
+NOTI	0	CHECK_CONNECTION	0x08ae6920		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	1	CHANNELINFO	0x08ae6941		no-dispatcher	T0_no-evidence	0	0	field_read
+NOTI	2	USERINFO	0x08ae695d		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	3	USER_STATE	0x08ae6976		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	4	STAMINA	0x08ae6991		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	5	DUNGEON_PERMISSION	0x08ae69ac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	6	USER_LEAVE	0x08ae69cf		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	7	REQUEST_PEER	0x08ae69ea		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	8	RESPONSE_PEER	0x08ae6a07		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	9	PARTY_INFO	0x08ae6a25		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	10	WALKOUT	0x08ae6a40		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	11	USER_UDP_IP_PORT	0x08ae6a58		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	12	MESSAGE	0x08ae6a79		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	13	ITEM_LIST	0x08ae6a91		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	14	UPDATE_ITEM_LIST	0x08ae6aac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	15	CHANGE_ITEMTRADE_ITEM	0x08ae6ad0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	16	CANCEL_ITEMTRADE	0x08ae6af8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	17	STATE_ITEMTRADE	0x08ae6b1c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	18	FINISH_ITEMTRADE	0x08ae6b3c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	19	SKILLINFO	0x08ae6b5d		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	20	CHANGE_BONUSSP	0x08ae6b78		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	21	ACCEPTABLE_QUEST_LIST	0x08ae6b98		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	22	USER_POSITION	0x08ae6bbe		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	23	USER_AREA	0x08ae6bdc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	24	AREA_USERS	0x08ae6bf6		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	25	FISHING	0x08ae6c11		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	26	UDP_HOST	0x08ae6c29		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	27	START_GAME	0x08ae6c42		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	28	DUNGEON_INFO	0x08ae6c5d		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	29	START_MAP	0x08ae6c7a		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	30	FINISH_LOADING	0x08ae6c94		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	31	ENABLE_CLEAR_DUNGEON	0x08ae6cb4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	32	DIE_STATE	0x08ae6cd9		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	33	FAIL_CLEAR_DUNGEON	0x08ae6cf4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	34	PLAY_RESULT	0x08ae6d17		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	35	CLEAR_DUNGEON_REWARD	0x08ae6d34		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	36	FATIGUE	0x08ae6d59		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	37	EXP	0x08ae6d71		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	38	DIE_MONSTER	0x08ae6d85		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	39	GET_ITEM	0x08ae6da1		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	40	DROP_ITEM	0x08ae6dba		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	41	PVP_ROOM_INFO	0x08ae6dd4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	42	PVP_ROOM_STATE	0x08ae6df4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	43	PVP_SEAT_STATE	0x08ae6e14		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	44	PVP_READY_STATE	0x08ae6e34		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	45	START_PVP	0x08ae6e54		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	46	DIE_PVP_CHARACTER	0x08ae6e70		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	47	END_PVP	0x08ae6e92		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	48	PVP_RECORD	0x08ae6eaa		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	49	REQ_PVP_RANK	0x08ae6ec5		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	50	KEY_COUNT	0x08ae6ee2		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	51	MONEY_FULL	0x08ae6efc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	52	FRIEND_INFO	0x08ae6f17		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	53	CERA	0x08ae6f33		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	54	BUDDY_IN	0x08ae6f48		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	55	BUDDY_OUT	0x08ae6f61		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	56	BUDDY_CONN_LIST	0x08ae6f7c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	57	PVPEXP_OF_WEEK	0x08ae6f9c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	58	GUILD_ENTER	0x08ae6fbb		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	59	GUILD_SECEDE	0x08ae6fd7		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	60	GUILD_MARK_CHANGE	0x08ae6ff4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	61	GUILD_DISMISS	0x08ae7016		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	62	GUILD_CHAT_MSG	0x08ae7034		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	63	GUILD_CHAR_NAMES	0x08ae7054		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	64	GUILD_MEMBER_LOGIN_OUT	0x08ae7078		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	65	MESSAGE_OTHER_CHANNEL	0x08ae70a0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	66	CERA_SPECIALITEM	0x08ae70c8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	67	CARD_SELECT_COMPLETE_STATE	0x08ae70ec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	68	CERA_GROUP_HISTORY	0x08ae7118		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	69	SERVEREVENT	0x08ae713b		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	70	GUILD_INFO	0x08ae7157		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	71	GUILD_CREATE	0x08ae7172		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	72	MEMBER_MEMBER_LOGIN_OUT	0x08ae7190		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	73	REQUEST_MEMBER_ENTER_TO_RESPONSER	0x08ae71b8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	74	MEMBER_ENTER_OK	0x08ae71ec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	75	DELETE_MEMBER_ID	0x08ae720c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	76	PAY_TAX_TO_UPPER	0x08ae7230		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	77	MEMBER_SECEDE	0x08ae7251		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	78	CREATE_PRIVATE_STORE	0x08ae7270		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	79	REMOVE_PRIVATE_STORE	0x08ae7298		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	80	FROCE_REMOVE_PRIVATE_STORE	0x08ae72c0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	81	COMPLETE_DISPLAY	0x08ae72ec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	82	BUY_PRIVATE_STORE_ITEM	0x08ae7310		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	83	PRIVATE_STORE_ITEM	0x08ae7338		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	84	PRIVATE_STORE_LIST	0x08ae735c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	85	PRIVATE_STORE_INFO	0x08ae7380		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	86	SERVER_BROADCAST	0x08ae73a4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	87	WARROOM_INFO	0x08ae73c5		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	88	WARROOM_STATE	0x08ae73e2		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	89	WARROOM_SEAT_STATE	0x08ae7400		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	90	START_WARROOM	0x08ae7423		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	91	WARROOM_MONSTER_SPAWN	0x08ae7444		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	92	CLEAR_WARAREA_REWARD	0x08ae746c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	93	WARROOM_GET_ITEM	0x08ae7494		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	94	ADD_KP	0x08ae74b5		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	95	WARROOM_DIE_STATE	0x08ae74cc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	96	CLEAR_WARAREA_FP	0x08ae74f0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	97	MAILBOX_MAIL_LIST	0x08ae7514		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	98	MAILBOX_REMOVE_MAIL	0x08ae7538		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	99	MAILBOX_ALARM	0x08ae755c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	100	DIED_CREATURE	0x08ae757a		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	101	RENAME_CREATURE	0x08ae7598		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	102	GAIN_EXP_CREATURE	0x08ae75b8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	103	CREATURE_STATE	0x08ae75dc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	104	RESPONSE_CREATURE	0x08ae75fc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	105	CREATURE_ITEM_LIST	0x08ae7620		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	106	EVOLUTE_CREATURE	0x08ae7644		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	107	REVIVAL_CREATURE	0x08ae7668		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	108	EVENT_INFO	0x08ae7689		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	109	GUILD_WAR_END	0x08ae76a4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	110	GUILD_WAR_RESULT	0x08ae76c4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	111	CODE_CHECKSUM_RANGE	0x08ae76e8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	112	PVP_TURN_PLAYER	0x08ae770c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	113	PVP_REQUEST_FIGHT	0x08ae772c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	114	CREATURE_MESSAGE	0x08ae7750		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	115	BOSS_DIE_CHECK	0x08ae7774		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	116	SEAL_DOOR_ITEMS	0x08ae7794		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	117	GUILD_WAR_START	0x08ae77b4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	118	MEGAPHONE_MSG	0x08ae77d4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	119	CREATURE_SCRIPT_MESSAGE	0x08ae77f4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	120	PVP_REVIVE	0x08ae781c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	121	TIME_CHECK	0x08ae7837		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	122	SP_RETURN_INFO	0x08ae7854		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	123	CHECK_FORCED_DISCONNECT	0x08ae7874		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	124	ENTER_GAMEWORLD_COMPLETE	0x08ae789c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	125	REQ_HUMAN_CERTIFY	0x08ae78c8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	126	GM_REQUEST_MID	0x08ae78ec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	127	GUILD_MEMBER_INFO	0x08ae790c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	128	MOVE_ASSAULT_PLACE	0x08ae7930		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	129	COMPLETE_LOAD_ASSAULT	0x08ae7954		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	130	START_ASSAULT	0x08ae797a		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	131	DIE_ASSAULT_PLAYER	0x08ae7998		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	132	END_ASSAULT	0x08ae79bb		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	133	REVIVAL_ASSAULT_PLAYER	0x08ae79d8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	134	VIEW_ASSAULT_ICON	0x08ae7a00		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	135	LEAVE_ASSAULT_PLACE	0x08ae7a24		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	136	CHANGE_HP	0x08ae7a48		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	137	CLOSE_ASSAULT	0x08ae7a62		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	138	TELEPORT	0x08ae7a80		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	139	GIVE_ALARM	0x08ae7a99		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	140	CHANGE_GUILD_MEMBER_GRADE	0x08ae7ab4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	141	GUILD_MESSAGE_TO_GUILD_MEMBER	0x08ae7ae0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	142	DEATH_TOWER_INFO	0x08ae7b10		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	143	START_DEATH_TOWER_MAP	0x08ae7b34		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	144	DEATH_TOWER_STATE_RANKING	0x08ae7b5c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	145	DEATH_TOWER_STATE_REWARD	0x08ae7b88		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	146	DEATH_TOWER_STATE_EPLP	0x08ae7bb4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	147	CALL_GUILD_INVITE_TO_INVITED	0x08ae7bdc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	148	REPLY_GUILD_INVITE_TO_CALLER	0x08ae7c0c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	149	GUILD_MASTER_DELEGATE	0x08ae7c3c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	150	HAS_BEEN_GUILD_MASTER	0x08ae7c64		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	151	GUILD_SECEDE_TO_USER	0x08ae7c8c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	152	SECURITY_CARD_AUTH_REQ	0x08ae7cb4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	153	PARTY_MEMBER_REALTIME_INFO	0x08ae7cdc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	154	NEW_FD	0x08ae7d07		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	155	TOTAL_POWER_WAR_POINT	0x08ae7d20		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	156	TRY_ENCHANT	0x08ae7d46		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	157	PUT_ITEM_FOR_ENCHANT	0x08ae7d64		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	158	CANCEL_ENCHANT	0x08ae7d8c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	159	POWER_WAR_START	0x08ae7dac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	160	POWER_WAR_END	0x08ae7dcc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	161	POWER_WAR_START_TIME	0x08ae7dec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	162	POWER_WAR_END_TIME	0x08ae7e14		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	163	POWER_WAR_PROLONG	0x08ae7e38		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	164	SET_CHARAC_UNLIMIT_CHALLENGE	0x08ae7e5c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	165	AA_STARTINFO	0x08ae7e89		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	166	AA_TIME	0x08ae7ea6		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	167	MANGLE_HEADER	0x08ae7ebe		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	168	HAS_NO_GO_WITH_APC_QUEST_IN_PARTY	0x08ae7edc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	169	AUCTION_ALARM	0x08ae7f0e		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	170	DUNGEON_EVENT_STORY_PAUSE	0x08ae7f2c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	171	MOUSE_REGIST_DISCARD	0x08ae7f58		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	172	LOAD_COOLTIME_ITEM_INFO	0x08ae7f80		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	173	GAME_OPTION	0x08ae7fa8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	174	LOAD_EFFECT_ITEM_INFO	0x08ae7fc4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	175	MATCH_STATE	0x08ae7fea		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	176	SECURE_INPUT_MSG_TRADING	0x08ae8008		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	177	SHOP_COIN_EVENT	0x08ae8034		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	178	USE_RANDOMBOX_ITEM	0x08ae8054		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	179	SET_DURABILITY	0x08ae8078		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	180	ONE_DAY_LETHE_INIT	0x08ae8098		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	181	GLOBAL_EFFECT_INFO	0x08ae80bc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	182	POWER_WAR_REWARD_CHARACTER_RANKING	0x08ae80e0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	183	AUCTION_NOTIFY_AUCTION_SERVICE	0x08ae8114		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	184	MINIINFO_DUNGEON_TO_VILLAGE	0x08ae8144		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	185	MINIINFO_GUILD_INFO	0x08ae8170		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	186	PCROOM_PLAYER_LOGIN_LOGOUT	0x08ae8194		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	187	SERVER_EVENT_PHASE	0x08ae81c0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	188	POWER_WAR_WINNER_SIDE	0x08ae81e4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	189	CREATE_GUILD_AGIT	0x08ae820c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	190	DELETE_GUILD_AGIT	0x08ae8230		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	191	GUILD_AGIT_INFO	0x08ae8254		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	192	SERVER_MESSAGE_INFO	0x08ae8274		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	193	HACKSHIELD_CLIENT_REQUEST	0x08ae8298		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	194	NPC_FAVOR	0x08ae82c2		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	195	NPC_MOOD	0x08ae82dc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	196	RETURNEE_COUNT	0x08ae82f8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	197	GUILD_MEMBER_MEMO	0x08ae8318		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	198	MILEAGE	0x08ae833a		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	199	DISCONNECT_REASON	0x08ae8354		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	200	POWER_WAR_POINT_AFTER_ASSAULT	0x08ae8378		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	201	POWER_WAR_PROCESS_INFO	0x08ae83a8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	202	VILLAGE_OBJECT_LIST	0x08ae83d0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	203	REQUEST_DISJOINT_ITEM	0x08ae83f4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	204	NEXON_CASH_EVENT	0x08ae841c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	205	EXPERT_JOB_INFO	0x08ae8440		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	206	CREATE_DISJOINT_STORE	0x08ae8460		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	207	HELLPARTY_VALUE	0x08ae8488		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	208	BLOOD_DUNGEON_STATE_RANKING	0x08ae84a8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	209	BLOOD_DUNGEON_STATE_REWARD	0x08ae84d4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	210	BLOOD_MONSTER_SPAWN	0x08ae8500		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	211	START_BLOOD_MAP	0x08ae8524		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	212	BLOOD_INFO	0x08ae8544		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	213	BLOOD_CRAZY_MONSTER_SPAWN	0x08ae8560		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	214	BLOOD_ROUND_MAX_TIME	0x08ae858c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	215	BLOOD_ROUND_INTERVAL_TIME	0x08ae85b4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	216	POWER_UP	0x08ae85de		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	217	CLOSE_DISJOINT_STORE	0x08ae85f8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	218	CHANGE_GUILD_NAME_TO_GUILD_MEMBERS	0x08ae8620		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	219	USE_SHARED_EFFECT_ITEM	0x08ae8654		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	220	POWER_WAR_POWER_UP_TIME	0x08ae867c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	221	POWER_WAR_POWER_UP_INFO	0x08ae86a4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	222	PUNISH_END_TIME	0x08ae86cc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	223	POWER_WAR_RESULT	0x08ae86ec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	224	POWER_WAR_STRAIGHT_VICTORIES	0x08ae8710		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	225	ITEM_LIMIT_EDITION_INFO	0x08ae8740		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	226	POWER_WAR_BAN_ABUSER	0x08ae8768		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	227	POWER_WAR_HP	0x08ae878d		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	228	REVIVAL_CHARAC_TIMEOUT	0x08ae87ac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	229	CHARAC_DAILY_CONNECTION	0x08ae87d4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	230	ASK_LEAVE_PARTY	0x08ae87fc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	231	POWER_WAR_USER_JOIN_INFO	0x08ae881c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	232	LOCK_IN_SERIA_ROOM_MESSAGE	0x08ae8848		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	233	REQUEST_EXIT	0x08ae8873		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	234	CONDITION_EVENT_CLEAR_INFO	0x08ae8890		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	235	BLOOD_DUNGEON_CLEAR_COUNT	0x08ae88bc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	236	BLACKLIST_PROBLEM_CHILD_TIME	0x08ae88e8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	237	GUILD_CARGO	0x08ae8915		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	238	VILLAGE_MONSTER_LIST	0x08ae8934		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	239	VILLAGE_MONSTER_POSITION	0x08ae895c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	240	UPDATE_VILLAGE_MONSTER_LIST	0x08ae8988		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	241	START_VILLAGE_ATTACKED	0x08ae89b4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	242	END_VILLAGE_ATTACKED	0x08ae89dc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	243	FIGHT_VILLAGE_MONSTER	0x08ae8a04		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	244	TAKE_SCREEN_SHOT	0x08ae8a2c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	245	MOVE_MAP	0x08ae8a4d		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	246	CREATE_VILLAGE_MONSTER	0x08ae8a68		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	247	UPDATE_VILLAGE_ATTACKED	0x08ae8a90		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	248	STARTED_VILLAGE_ATTACKED	0x08ae8ab8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	249	FINISH_VILLAGE_MONSTER_FIGHTING	0x08ae8ae4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	250	VILLAGE_ATTACKED_REWARD	0x08ae8b14		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	251	ITEM_LOCK_LIST	0x08ae8b3c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	252	ITEM_UNLOCK	0x08ae8b5b		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	253	ELEVATOR_CLEAR_TIME_CHECK	0x08ae8b78		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	254	EXERCISE_MODE_CLEAR	0x08ae8ba4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	255	SAFE_PUNISH_MESSAGE	0x08ae8bc8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	256	ADD_EFFECT_ITEM_INFO	0x08ae8bec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	257	ARS_ALERT	0x08ae8c11		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	258	MAX_LEVEL_LETHE_REWARD	0x08ae8c2c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	259	ITEM_EFFECT	0x08ae8c53		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	260	EPLP_RECHALLENGE	0x08ae8c70		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	261	ONTIME_EVENT_REWARD_START	0x08ae8c94		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	262	ONTIME_EVENT_REWARD_END	0x08ae8cc0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	263	ZERO_EXP	0x08ae8ce8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	264	POWER_WAR_VICTORY_BONUS	0x08ae8d04		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	265	HOLD_VICTORY	0x08ae8d2c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	266	VICTORY_INFO	0x08ae8d49		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	267	PROPER_DUNGEON_CLEAR_COUNT	0x08ae8d68		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	268	REQUEST_ADD_PVP_BUDDY	0x08ae8d94		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	269	PVP_BUDDY_IN	0x08ae8dba		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	270	PVP_BUDDY_OUT	0x08ae8dd7		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	271	PVP_BUDDY_CONN_LIST	0x08ae8df8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	272	NCC	0x08ae8e1c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	273	BREAK_AWAY_REWARD	0x08ae8e30		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	274	RENEWAL_LETHE_REWARD	0x08ae8e54		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	275	TRADE_PUNISH_END_TIME	0x08ae8e7c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	276	SECRET_SHOP_NPC	0x08ae8ea4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	277	SECRET_SHOP_ITEM_LIST	0x08ae8ec4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	278	COMPLETE_LOAD_PVP	0x08ae8eec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	279	CONNECT_P2P_PVP	0x08ae8f10		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	280	ONLIE_PRELIMINARY_TEAM	0x08ae8f30		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	281	SELECT_ROUTING	0x08ae8f58		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	282	ROUTING_RESULT	0x08ae8f78		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	283	TEMPORARY_PASSPAD_ALARM	0x08ae8f98		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	284	USE_SAMSUNG_RANDOMBOX_ITEM	0x08ae8fc0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	285	USE_GOBLIN_RANDOMBOX_ITEM	0x08ae8fec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	286	BREAK_GUILD	0x08ae9016		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	287	LIMIT_ITEM_USAGE	0x08ae9034		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	288	QUEST_TRIGGER_LIST	0x08ae9058		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	289	REDEEM_LIST	0x08ae907b		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	290	CHARAC_LINK_MESSAGE	0x08ae9098		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	291	CHARAC_LINK_BONUS	0x08ae90bc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	292	DISCONNECT_LOW_LEVEL_LINK_CHARAC	0x08ae90e0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	293	SPAWN_RIDABLE_OBJECT	0x08ae9114		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	294	ULTIMATE_DIFFICULTY_UI	0x08ae913c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	295	DUNGEON_INOUT_MESSAGE	0x08ae9164		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	296	MEMBER_BONUS_FATIGUE_LIMIT	0x08ae918c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	297	EVENT_RIDABLE_INFO	0x08ae91b8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	298	PREMIUM_GOLD_CARD	0x08ae91dc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	299	PERIODIC_MESSAGE	0x08ae9200		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	300	TIME_SYNC	0x08ae9221		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	301	RETURN_USER	0x08ae923b		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	302	REQUEST_VIDEO_OBSERVER	0x08ae9258		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	303	STOP_VIDEO_OBSERVER	0x08ae9280		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	304	TODAY_GUILD_MEMBER	0x08ae92a4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	305	JOIN_GUILD_INFO	0x08ae92c8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	306	REQUEST_VIDEO_OBSERVER_ERROR	0x08ae92e8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	307	RESPONSE_VIDEO_OBSERVER	0x08ae9318		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	308	ACHIEVE_GUILD_ATTENDANCE	0x08ae9340		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	309	COMPLETE_CONDITION_PASS_GATE	0x08ae936c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	310	BREAK_AWAY_QUEST_DATA	0x08ae939c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	311	ANSWER_REMATCH	0x08ae93c4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	312	SPECIFIC_EVENT_NOTIFICATION	0x08ae93e4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	313	CASH_INVENTORY	0x08ae9410		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	314	END_PVP_RESULT	0x08ae9430		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	315	REGISTER_MATCH	0x08ae9450		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	316	REMATCH_REMAIN_COUNT	0x08ae9470		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	317	TEAM_LEADER	0x08ae9495		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	318	DEBUG_FILE_PRINT	0x08ae94b4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	319	PUNISH_CANCEL	0x08ae94d5		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	320	PVP_MISSION_LIST	0x08ae94f4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	321	PVP_MISSION_CLEAR	0x08ae9518		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	322	PVP_MISSION_NEW	0x08ae953c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	323	ROOM_INFO_LABYRINTH	0x08ae955c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	324	ROOM_STATE_LABYRINTH	0x08ae9580		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	325	SEAT_STATE_LABYRINTH	0x08ae95a8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	326	DIE_CHARACTER_LABYRINTH	0x08ae95d0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	327	BATTLE_MODE_LABYRINTH	0x08ae95f8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	328	LABYRINTH_SEAT_STATE	0x08ae9620		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	329	LABYRINTH_ROOM_STATE	0x08ae9648		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	330	START_LABYRINTH	0x08ae9670		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	331	REPLY_LABYRINTH_MONSTER_UID	0x08ae9690		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	332	FINISH_LOADING_LABYRINTH	0x08ae96bc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	333	INCREASE_LABYRINTH_FP	0x08ae96e8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	334	DIE_LABYRINTH_CHARACTER	0x08ae9710		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	335	REVIVAL_LABYRINTH_CHARACTER	0x08ae9738		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	336	END_LABYRINTH	0x08ae9764		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	337	WARROOM_WP_PER_MONSTER	0x08ae9784		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	338	PVP_BONUS_COUNT	0x08ae97ac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	339	EXPAND_EQUIPSLOT_INFO	0x08ae97cc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	340	FAIR_PVP_CHANNEL_FIRST_LOGIN	0x08ae97f4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	341	RESET_ONE_A_DAY_ITEM_SHOP	0x08ae9824		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	342	WARROOM_PENALTY_WP	0x08ae9850		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	343	PVP_MISSION_FAIL	0x08ae9874		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	344	PVP_MISSION_DISAPPEAR	0x08ae9898		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	345	SECU_SERVICE_STATE	0x08ae98c0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	346	USER_APC_INFO_TOD	0x08ae98e4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	347	TOD_CLEAR_REWARD	0x08ae9908		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	348	CHARAC_QP_POINT	0x08ae992c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	349	QUEST_SHOP_BUYING_STATUS_LIST	0x08ae994c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	350	TOTAL_ITEM_MAKING_SKILL_POINT	0x08ae997c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	351	GAIN_ITEM_MAKING_SKILL_POINT	0x08ae99ac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	352	CHANGE_HOST_WARROOM	0x08ae99dc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	353	GIVE_ITEM	0x08ae9a00		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	354	IDOL_BRING_UP	0x08ae9a1a		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	355	CLEAR_QUEST_LIST	0x08ae9a38		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	356	CHARAC_INVISIBLE_FALGS	0x08ae9a5c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	357	TITLE_BOOK_LIST	0x08ae9a84		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	358	ACHIEVEMENT_LIST	0x08ae9aa4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	359	ACHIEVEMENT_COMPLETE	0x08ae9ac8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	360	EVENT_SERVER_AUTO_QUEST_CLEAR_REWARD_DATA	0x08ae9af0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	361	CREATE_GROUP	0x08ae9b2a		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	362	INVITE_MEMBER	0x08ae9b47		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	363	INVITE_MEMBER_LIST	0x08ae9b68		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	364	GROUP_MEMBER_LIST	0x08ae9b8c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	365	LEAVE_USER_FROM_GROUP	0x08ae9bb0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	366	MESSAGE_GROUP_CHAT	0x08ae9bd8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	367	GROUP_CHAT_USER_STATE	0x08ae9bfc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	368	EVENT_ALL_USER_GIFT	0x08ae9c24		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	369	CHECK_PICK_UP_RANDOM_OPTION_ITEM	0x08ae9c48		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	370	MESSAGE_HYPER_LINK	0x08ae9c7c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	371	MESSAGE_OTHER_CHANNEL_HYPER_LINK	0x08ae9ca0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	372	MEGAPHONE_MSG_HYPER_LINK	0x08ae9cd4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	373	PVP_SERVER_INFO	0x08ae9d00		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	374	EVENT_INIT_INFO	0x08ae9d20		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	375	EVENT_HISTORY_INFO	0x08ae9d40		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	376	START_GIVE_ITEM_GROWTH_POWER_SYSTEM	0x08ae9d64		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	377	PARTY_TELEPORT_STATUS	0x08ae9d98		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	378	AURA_TYPE_COOLTIME	0x08ae9dc0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	379	SHOW_EFFECT	0x08ae9de3		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	380	SECURITY_REWARD	0x08ae9e00		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	381	SOLOPLAY_REJECT_MSG	0x08ae9e20		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	382	MADE_QUICK_PARTY	0x08ae9e44		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	383	CANCEL_QUICK_PARTY	0x08ae9e68		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	384	UPDATE_QUICK_PARTY	0x08ae9e8c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	385	ITEM_DICTIONARY	0x08ae9eb0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	386	TOURNAMENT_INFO	0x08ae9ed0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	387	TOURNAMENT_MAP_INFO	0x08ae9ef0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	388	TOURNAMENT_CLEAR_REWARD	0x08ae9f14		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	389	REMAIN_GHOST_TIME	0x08ae9f3c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	390	CHARACTER_OPTION	0x08ae9f60		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	391	SHUTDOWN_NOTICE	0x08ae9f84		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	392	SHUTDOWN_TARGET_NOTICE	0x08ae9fa4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	393	SHUTDOWN_AlARM	0x08ae9fcc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	394	ITEM_DICTIONARY_TOTAL	0x08ae9fec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	395	SOCIAL_EVENT_SLOT_INFO	0x08aea014		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	396	SOCIAL_EVENT_REQUEST_LIST	0x08aea03c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	397	SOCIAL_EVENT_CHARAC_LOGIN	0x08aea068		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	398	RESPONSE_SOCIAL_EVENT_MEMBER	0x08aea094		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	399	SOCIAL_EVENT_SLOT_DEL_INFO	0x08aea0c4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	400	SOCIAL_EVENT_CHARAC_LOGOUT	0x08aea0f0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	401	LIMIT_NPC_BUY_ITEM_CHANGE_INFO	0x08aea11c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	402	CHARACTER_STATUS	0x08aea14c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	403	LIMIT_NPC_BUY_ITEM_INFO_ALL	0x08aea170		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	404	CHRISTMAS_TREE_INFO	0x08aea19c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	405	SERIA_ROOM_DECO_INFO	0x08aea1c0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	406	OBJECT_BRING_UP_USE_ITEM	0x08aea1e8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	407	SOCIAL_EVENT_SEVER_STATE	0x08aea214		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	408	2012NEWYEAR_INFO	0x08aea240		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	409	BUFF_EVENT_WINNER	0x08aea264		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	410	2012_NEWYEAR_DRAGON_EFFECT	0x08aea288		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	411	EMOTICON_CONF_INFO	0x08aea2b4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	412	BOOSTER_GAGE	0x08aea2d7		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	413	SHUTDOWN_AUTH_RESULT	0x08aea2f4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	414	TAG_CHARACTER_INFO	0x08aea31c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	415	MANAGE_LEVEL_UP	0x08aea340		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	416	INFORM_NOTICE	0x08aea360		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	417	VERIFY_PVP_LAG_USER	0x08aea380		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	418	PVP_LAG_USER_PENALTY	0x08aea3a4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	419	GM_CHECK_LAG_OCCUR	0x08aea3cc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	420	GM_CHECK_LAG_COUNT	0x08aea3f0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	421	GM_CHECK_KICK_OUT_ROOM_COUNT	0x08aea414		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	422	TIME_GATE_INFO	0x08aea444		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	423	RESET_CRANE_NEED_MATERIAL	0x08aea464		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	424	PC_ROOM_PLAY_TIME	0x08aea490		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	425	SKILL_INIT	0x08aea4b2		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	426	PC_ROOM_RERENT_ITEM	0x08aea4d0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	427	MILEAGE_DATA	0x08aea4f4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	428	SERIAROOM_DECO_EVENT	0x08aea514		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	429	EVENT_ITEM_MAIL_ALRAM_TOOLTIP_	0x08aea53c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	430	BLUE_MARBLE_ROOM_INFO	0x08aea56c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	431	BLUE_MARBLE_DICE_INFO	0x08aea594		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	432	BLUE_MARBLE_START	0x08aea5bc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	433	BLUE_MARBLE_CLEAR_INFO	0x08aea5e0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	434	BLUE_MARBLE_ACTION_INFO	0x08aea608		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	435	BLUE_MARBLE_TILE_GIVE_UP_INFO	0x08aea630		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	436	BLUE_MARBLE_ENTER_COUNT_INFO	0x08aea660		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	437	DYNAMIC_SCRIPT_RELOADING	0x08aea690		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	438	MAX_EQUIP_LEVEL	0x08aea6bc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	439	NEW_ACCOUNT_USER_EVENT	0x08aea6dc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	440	INFORM_NOTICE_2ND	0x08aea704		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	441	GROWTH_WEAPON_EVENT_INFO	0x08aea728		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	442	GROWTH_WEAPON_UESR_GIFT	0x08aea754		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	443	HORROR_BONUSCERA_COUNT	0x08aea77c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	444	RETURN_USER_LOGIN	0x08aea7a4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	445	COMBO_SKILL_INFO	0x08aea7c8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	446	CHARAC_QUEST_PIECE	0x08aea7ec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	447	HADES_ALERT	0x08aea80f		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	448	NEW_CHARAC_CREATURE_EVENT_INFO	0x08aea82c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	449	SERIAROOM_ANIMATION_DECO_EVENT	0x08aea85c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	450	BINGO_DATA	0x08aea88b		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	451	BINGO_MARK	0x08aea8a6		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	452	HOTKEY_OPTION	0x08aea8c1		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	453	DUAL_RAID_PARTY_GROUP_INFO	0x08aea8e0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	454	MULTIBOX_FAIL_CNT_OVER	0x08aea90c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	455	START_SCRIPT_RELOAD	0x08aea934		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	456	END_SCRIPT_RELOAD	0x08aea958		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	457	JUMPING_CHARACTER_INFO	0x08aea97c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	458	DUAL_RAID_DUNGEON_START	0x08aea9a4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	459	DUAL_RAID_DUNGEON_MOVE_INFO	0x08aea9cc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	460	MOVE_DUAL_RAID_BOSS_DUNGEON	0x08aea9f8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	461	EXIT_DUAL_RAID_USER	0x08aeaa24		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	462	DUAL_RAID_DUNGEON_MAP_CLEAR	0x08aeaa48		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	463	DUAL_RAID_DUNGEON_RESULT_REWARD	0x08aeaa74		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	464	REWARD_ITEMS	0x08aeaaa4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	465	ENTER_RACING_DUNGEON	0x08aeaac4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	466	ENTER_RACING_DUNGEON_FAIL	0x08aeaaec		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	467	RACING_DUNGEON_GOAL_IN_PLAYER	0x08aeab18		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	468	RACING_DUNGEON_PLAY_RESULT	0x08aeab48		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	469	RACING_DUNGEON_JOIN_COUNT	0x08aeab74		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	470	DUAL_RAID_DUNGEON_READY_COMPLETE	0x08aeaba0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	471	EVENT_ONTIME	0x08aeabd1		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	472	EVENT_DNFTREND_STATE	0x08aeabf0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	473	EVENT_DNFTREND_REWARD_STATE	0x08aeac18		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	474	EVENT_DNFTREND_ALL_REWARD_STATE	0x08aeac44		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	475	AUTO_USE_SPECIAL_BUFF_ITEM_USE_ITEM	0x08aeac74		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	476	EVENT_TEN_MINUTE_STATE	0x08aeaca8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	477	PREMIUM_SERVICE	0x08aeacd0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	478	CHARAC_PREMIUM_CHARAC_LINK_ITEM	0x08aeacf0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	479	LIMIT_IPGNO	0x08aead20		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	480	CHARAC_PREMIUM_NAME_TAG	0x08aead3c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	481	BOSS_TOWER_INFO	0x08aead64		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	482	START_BOSS_TOWER_MAP	0x08aead84		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	483	BOSS_TOWER_STATE_REWARD	0x08aeadac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	484	BOSS_TOWER_STATE_EPLP	0x08aeadd4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	485	VICTORCHARAC_LOGIN	0x08aeadfc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	486	FIGHTERCHARAC_INOUT	0x08aeae20		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	487	TOPVICTORCHARAC	0x08aeae44		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	488	CON_LIMIT_INOUT_COUNT	0x08aeae64		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	489	CON_VALENTINE_EVENT	0x08aeae8c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	490	CERASHOP_BONUS_ITEM	0x08aeaeb0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	491	PUNISH_CHATTING	0x08aeaed4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	492	VILLAGE_ATTACKED_COMBINE	0x08aeaef4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	493	DAILYSCHEDULE_CONTENTS_STATE	0x08aeaf20		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	494	SAFE_MODE	0x08aeaf4d		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	495	CHARAC_MIGRATION	0x08aeaf68		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	496	LIMIT_ITEM_INFO	0x08aeaf8c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	497	SERVER_BROADCAST_TIME_MESSAGE	0x08aeafac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	498	BUY_RESTRICT_ITEM_LIST	0x08aeafdc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	499	ACTION_POINT_ACTION_CLEAR	0x08aeb004		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	500	ACTION_POINT_LIST_STATE	0x08aeb030		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	501	DECORATION_INVENTORY_INFO	0x08aeb058		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	502	DECORATION_ROOM_INFO	0x08aeb084		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	503	HOUSING_INVITE_FRIEND	0x08aeb0ac		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	504	HOUSING_INVITE_TIMEOUT	0x08aeb0d4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	505	HOUSING_ROOM_USERS	0x08aeb0fc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	506	HOUSING_LEAVE_USER	0x08aeb120		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	507	HOUSING_LEAVE_OWNER	0x08aeb144		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	508	HOUSING_SEND_MESSAGE	0x08aeb168		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	509	PACKET_SERVER_TIME	0x08aeb190		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	510	PACKET_SWITCH_EQUIPSLOT	0x08aeb1b4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	511	HOUSING_TREE_INFO	0x08aeb1dc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	512	HOUSING_WATER_HISTORY	0x08aeb200		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	513	PERSONAL_INFO	0x08aeb226		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	514	TOURNAMENT_JOIN_BEGIN	0x08aeb244		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	515	TOURNAMENT_JOIN_END	0x08aeb26c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	516	TOURNAMENT_BEGIN	0x08aeb290		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	517	TOURNAMENT_END	0x08aeb2b4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	518	TOURNAMENT_REWARD_CHARACTER_RANKING	0x08aeb2d4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	519	TOURNAMENT_WINNER	0x08aeb308		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	520	TOURNAMENT_RANKERS	0x08aeb32c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	521	ADVANCE_ALTAR_STAGE_INFO	0x08aeb350		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	522	ADVANCE_ALTAR_START_MAP	0x08aeb37c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	523	ADVANCE_ALTAR_SPAWN_UNIT	0x08aeb3a4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	524	ADVANCE_ALTAR_UPDATE_STAGE_CLEAR	0x08aeb3d0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	525	ADVANCE_ALTAR_TEST_CHECK_GAGE	0x08aeb404		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	526	ADVANCE_ALTAR_EPLP_STATE	0x08aeb434		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	527	ADVANCE_ALTAR_CLEAR_STAGE	0x08aeb460		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	528	ADVANCE_ALTAR_UPDATE_RIDABLE	0x08aeb48c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	529	OCCUPY_DUNGEON_INFO	0x08aeb4bc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	530	OCCUPY_DUNGEON_INFO_AND_MYRECORD	0x08aeb4e0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	531	OCCUPY_DUNGEON_COMPLETE_INFO	0x08aeb514		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	532	EVENT_LOGIN_AND_GIFT	0x08aeb544		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	533	EVENT_PLANT_TREE	0x08aeb56c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	534	THANKSGIVING_PURCHASE_COUNT	0x08aeb590		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	535	CONTRACT_OF_CUBE_INFO	0x08aeb5bc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	536	PREMIUM_EXPIRE_NOTI	0x08aeb5e4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	537	ACCEPT_DEVIL_QUEST	0x08aeb608		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	538	SERVER_STATE_MESSAGE	0x08aeb62c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	539	MINORITY_EVENT	0x08aeb654		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	540	6THEVENT_SERVER_POINT	0x08aeb674		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	541	AVATAR_COIN_COUNT	0x08aeb69c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	542	ARAD_CONDITION_EVENT_CLEAR_INFO	0x08aeb6c0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	543	VISIT_ROOM_COUNT	0x08aeb6f0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	544	UPDATE_AVATAR_ENDURANCE	0x08aeb714		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	545	REFRESH_HUMAN_CERTIFY_JPN	0x08aeb73c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	546	USER_BUY_RESTRICT_UPDATE_ITEM_LIST	0x08aeb768		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	547	RENT_ITEM_USE_FATIGUE	0x08aeb79c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	548	FIRST_TIME_LOGIN	0x08aeb7c4		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	549	DAILY_REWARD_LOGIN	0x08aeb7e8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	550	UPDATE_ITEM_LIST_GOLDEFFECT	0x08aeb80c		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	551	HIT_BALL_SEED	0x08aeb838		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	552	QUEST_BEFORE_70_LEVEL_EXPAND	0x08aeb858		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	553	EVENT_GROWTH_PACKAGE_A	0x08aeb888		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	554	LEVELUP_SUPPORT_INFO	0x08aeb8b0		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	555	PUNISH_SHOW_TIPS	0x08aeb8d8		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	556	DYE_BOOSTER_POINT	0x08aeb8fc		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	557	EVENT_CREATE_DNF	0x08aeb920		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	558	PCROOM_DAYILY_REWARD_STATE	0x08aeb944		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	559	HERO_MISSION_STATE	0x08aeb970		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	560	ANTIBOT	0x08aeb993		no-dispatcher	T0_no-evidence	0	0	name_only
+NOTI	561	DPROTO	0x08aeb9ab		no-dispatcher	T0_no-evidence	0	0	field_read
+NOTI	562	END	0x08aeb9c2		no-dispatcher	T0_no-evidence	0	0	name_only

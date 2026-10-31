@@ -1,0 +1,50 @@
+{
+  "schema": "dflegacy.unaltered-evidence-copy.v1",
+  "files": [
+    {
+      "file": "143-B-two-member-party.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\143-B-two-member-party.jpg",
+      "source_sha256": "9A2E3B859B679B25C1FA88AD7A5EC215541788085023D4E6794A9A07512D1021",
+      "copy_sha256": "9A2E3B859B679B25C1FA88AD7A5EC215541788085023D4E6794A9A07512D1021",
+      "bytes": 125190,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "162-A-first-room-cleared.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\162-A-first-room-cleared.jpg",
+      "source_sha256": "4F9FF0E2412AB541710FF7062DA5F0AAD38ECB745569F694363DBD73BA49EF33",
+      "copy_sha256": "4F9FF0E2412AB541710FF7062DA5F0AAD38ECB745569F694363DBD73BA49EF33",
+      "bytes": 124172,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "169-A-next-room.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\169-A-next-room.jpg",
+      "source_sha256": "56F9DDD156FE5DA86F9D6970570D20798438B9D5993447835C851FB19EEFDA92",
+      "copy_sha256": "56F9DDD156FE5DA86F9D6970570D20798438B9D5993447835C851FB19EEFDA92",
+      "bytes": 126732,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "171-B-next-room.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\evidence\\171-B-next-room.jpg",
+      "source_sha256": "390381E0919E8EA2850C736490DF8F1EC24E6985EC978DD729F79C5B9C9FE0C0",
+      "copy_sha256": "390381E0919E8EA2850C736490DF8F1EC24E6985EC978DD729F79C5B9C9FE0C0",
+      "bytes": 126014,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "party-regression-proof-20261028-0045.json",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json",
+      "source_sha256": "47D293C9902E5DE781422F46D47AFA8B04C8F288B1EBC2AC32EAC6CC87F31110",
+      "copy_sha256": "47D293C9902E5DE781422F46D47AFA8B04C8F288B1EBC2AC32EAC6CC87F31110",
+      "bytes": 6047,
+      "unaltered": true,
+      "visually_inspected": false
+    }
+  ]
+}

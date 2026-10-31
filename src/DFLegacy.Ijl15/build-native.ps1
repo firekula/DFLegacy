@@ -1,0 +1,82 @@
+[CmdletBinding()]
+param(
+    [ValidateSet("Debug", "Release")]
+    [string] $Configuration = "Release",
+    [switch] $RunTests,
+    [switch] $RunGpuTests
+)
+
+$ErrorActionPreference = "Stop"
+if ($RunGpuTests -and -not $RunTests) { throw "RunGpuTests requires RunTests and an interactive graphics session." }
+
+$vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+$visualStudio = if (Test-Path -LiteralPath $vswhere) {
+    & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json |
+        ConvertFrom-Json | Select-Object -First 1
+}
+$cmakeCandidates = @(
+    $env:CMAKE_EXE,
+    $(if ($visualStudio) { Join-Path $visualStudio.installationPath "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" }),
+    (Join-Path $env:ProgramFiles "CMake\bin\cmake.exe"),
+    (Get-Command cmake.exe -ErrorAction SilentlyContinue |
+        Select-Object -First 1 -ExpandProperty Source)
+) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+
+$cmake = $cmakeCandidates | Select-Object -First 1
+if (-not $cmake) {
+    throw "CMake 3.24 or newer is required to build DFLegacy.Ijl15."
+}
+
+$projectDirectory = $PSScriptRoot
+$repositoryRoot = Split-Path (Split-Path $projectDirectory -Parent) -Parent
+$buildDirectory = Join-Path $repositoryRoot "artifacts\native\ijl15"
+
+$cmakeHelp = & $cmake --help
+$generator = @(
+    "Visual Studio 18 2026",
+    "Visual Studio 17 2022",
+    "Visual Studio 16 2019"
+) | Where-Object { $cmakeHelp -match [regex]::Escape($_) } |
+    Where-Object { -not $visualStudio -or $_ -match "^Visual Studio $(([version]$visualStudio.installationVersion).Major) " } |
+    Select-Object -First 1
+if (-not $generator) {
+    throw "A Visual Studio C++ CMake generator is required."
+}
+
+$cachePath = Join-Path $buildDirectory "CMakeCache.txt"
+if (Test-Path -LiteralPath $cachePath) {
+    $cachedGenerator = Get-Content -LiteralPath $cachePath |
+        Where-Object { $_ -like "CMAKE_GENERATOR:INTERNAL=*" } |
+        Select-Object -First 1
+    if ($cachedGenerator -ne "CMAKE_GENERATOR:INTERNAL=$generator") {
+        $resolvedBuild = [IO.Path]::GetFullPath($buildDirectory)
+        $resolvedArtifacts = [IO.Path]::GetFullPath(
+            (Join-Path $repositoryRoot "artifacts"))
+        if (-not $resolvedBuild.StartsWith(
+                $resolvedArtifacts + [IO.Path]::DirectorySeparatorChar,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Refusing to remove unexpected build directory: $resolvedBuild"
+        }
+        Remove-Item -LiteralPath $resolvedBuild -Recurse -Force
+    }
+}
+
+$gpuTests = if ($RunGpuTests) { "ON" } else { "OFF" }
+& $cmake -S $projectDirectory -B $buildDirectory `
+    -G $generator -A Win32 "-DDFLEGACY_ENABLE_GPU_TESTS=$gpuTests"
+if ($LASTEXITCODE -ne 0) {
+    throw "CMake configuration failed with exit code $LASTEXITCODE."
+}
+
+& $cmake --build $buildDirectory --config $Configuration
+if ($LASTEXITCODE -ne 0) {
+    throw "Native ijl15 build failed with exit code $LASTEXITCODE."
+}
+
+if ($RunTests) {
+    & $cmake -E env CTEST_OUTPUT_ON_FAILURE=1 $cmake `
+        --build $buildDirectory --config $Configuration --target RUN_TESTS
+    if ($LASTEXITCODE -ne 0) {
+        throw "Native ijl15 tests failed with exit code $LASTEXITCODE."
+    }
+}

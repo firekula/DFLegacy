@@ -1,0 +1,32 @@
+name: review-or-prune-development-releases
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Set exactly true to delete owned development releases beyond the newest 20; otherwise dry-run"
+        required: false
+        default: "false"
+permissions:
+  code: write # Deleting owned dev tags requires code write; this is manual/main only.
+  releases: write
+  packages: none
+jobs:
+  prune:
+    if: gitea.ref == 'refs/heads/main'
+    runs-on: dflegacy-linux-x64
+    steps:
+      - uses: https://github.com/actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_URL: ${{ gitea.server_url }}
+          GITEA_REPOSITORY: ${{ gitea.repository }}
+          APPLY: ${{ inputs.apply }}
+          ALLOW_HTTP: ${{ vars.DFLEGACY_ALLOW_HTTP_API }}
+        run: |
+          set -euo pipefail
+          extra=()
+          if test "$APPLY" = true; then extra+=(--apply); fi
+          if test "$ALLOW_HTTP" = true; then extra+=(--allow-http); fi
+          python3 tools/release/release.py prune --gitea-url "$GITEA_URL" --repository "$GITEA_REPOSITORY" --keep 20 "${extra[@]}"

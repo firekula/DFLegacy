@@ -1,0 +1,439 @@
+{
+  "checks": 94,
+  "failures": 0,
+  "real_sdk_loader": true,
+  "process_or_native_io": false,
+  "sources": {
+    "tools\\debug\\client_native_route.py": "F751F989413412C8974F94B69D43F12D60A70E38FEA8328C9978835948DAA543",
+    "tools\\debug\\test_client_native_route.py": "318EF90A806574DFECFD01E3704F5A813EB9CB6BC88CF95D42928B75ABC1D1F7"
+  },
+  "rows": [
+    {
+      "label": "arrived/age1000",
+      "actual": "arrived"
+    },
+    {
+      "label": "arrived/age1001",
+      "actual": "arrived"
+    },
+    {
+      "label": "arrived/age1240",
+      "actual": "arrived"
+    },
+    {
+      "label": "arrived/age149000",
+      "actual": "arrived"
+    },
+    {
+      "label": "arrived/schema",
+      "actual": "bad_response"
+    },
+    {
+      "label": "arrived/pid",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/process_started_filetime",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/request_id",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/uid",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/source",
+      "actual": "superseded"
+    },
+    {
+      "label": "arrived/generation",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/actor_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/map_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/user_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/context_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/goal_town",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/goal_area",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/goal_x",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/goal_y",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "arrived/before_issue",
+      "actual": "stale_response"
+    },
+    {
+      "label": "arrived/future",
+      "actual": "future_response"
+    },
+    {
+      "label": "rejected/age1000",
+      "actual": "rejected"
+    },
+    {
+      "label": "rejected/age1001",
+      "actual": "rejected"
+    },
+    {
+      "label": "rejected/age1240",
+      "actual": "rejected"
+    },
+    {
+      "label": "rejected/age149000",
+      "actual": "rejected"
+    },
+    {
+      "label": "rejected/schema",
+      "actual": "bad_response"
+    },
+    {
+      "label": "rejected/pid",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/process_started_filetime",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/request_id",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/uid",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/source",
+      "actual": "superseded"
+    },
+    {
+      "label": "rejected/generation",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/actor_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/map_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/user_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/context_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/goal_town",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/goal_area",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/goal_x",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/goal_y",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "rejected/before_issue",
+      "actual": "stale_response"
+    },
+    {
+      "label": "rejected/future",
+      "actual": "future_response"
+    },
+    {
+      "label": "interrupted/age1000",
+      "actual": "interrupted"
+    },
+    {
+      "label": "interrupted/age1001",
+      "actual": "interrupted"
+    },
+    {
+      "label": "interrupted/age1240",
+      "actual": "interrupted"
+    },
+    {
+      "label": "interrupted/age149000",
+      "actual": "interrupted"
+    },
+    {
+      "label": "interrupted/schema",
+      "actual": "bad_response"
+    },
+    {
+      "label": "interrupted/pid",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/process_started_filetime",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/request_id",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/uid",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/source",
+      "actual": "superseded"
+    },
+    {
+      "label": "interrupted/generation",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/actor_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/map_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/user_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/context_token",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/goal_town",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/goal_area",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/goal_x",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/goal_y",
+      "actual": "response_binding_mismatch"
+    },
+    {
+      "label": "interrupted/before_issue",
+      "actual": "stale_response"
+    },
+    {
+      "label": "interrupted/future",
+      "actual": "future_response"
+    },
+    {
+      "label": "requested/age1000",
+      "actual": "requested"
+    },
+    {
+      "label": "requested/age1001",
+      "actual": "stale_response"
+    },
+    {
+      "label": "queued/age1000",
+      "actual": "queued"
+    },
+    {
+      "label": "queued/age1001",
+      "actual": "stale_response"
+    },
+    {
+      "label": "awaiting_confirmation/age1000",
+      "actual": "awaiting_confirmation"
+    },
+    {
+      "label": "awaiting_confirmation/age1001",
+      "actual": "stale_response"
+    },
+    {
+      "label": "moving/age1000",
+      "actual": "moving"
+    },
+    {
+      "label": "moving/age1001",
+      "actual": "stale_response"
+    },
+    {
+      "label": "waiting_data/age1000",
+      "actual": "waiting_data"
+    },
+    {
+      "label": "waiting_data/age1001",
+      "actual": "stale_response"
+    },
+    {
+      "label": "waiting_fresh_sample/age1000",
+      "actual": "waiting_fresh_sample"
+    },
+    {
+      "label": "waiting_fresh_sample/age1001",
+      "actual": "stale_response"
+    },
+    {
+      "label": "waiting_transition/age1000",
+      "actual": "waiting_transition"
+    },
+    {
+      "label": "waiting_transition/age1001",
+      "actual": "stale_response"
+    },
+    {
+      "label": "real_sdk/late_arrived",
+      "actual": "arrived",
+      "writes": 1,
+      "sdk_reads": 2,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/late_rejected",
+      "actual": "rejected",
+      "writes": 1,
+      "sdk_reads": 1,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/late_interrupted",
+      "actual": "interrupted",
+      "writes": 1,
+      "sdk_reads": 1,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/stale",
+      "actual": "timeout",
+      "writes": 1,
+      "sdk_reads": 20,
+      "elapsed_ms": 2000
+    },
+    {
+      "label": "real_sdk/equal",
+      "actual": "timeout",
+      "writes": 1,
+      "sdk_reads": 49,
+      "elapsed_ms": 2000
+    },
+    {
+      "label": "real_sdk/future",
+      "actual": "future_capture",
+      "writes": 1,
+      "sdk_reads": 2,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/invalid",
+      "actual": "timeout",
+      "writes": 1,
+      "sdk_reads": 20,
+      "elapsed_ms": 2000
+    },
+    {
+      "label": "real_sdk/uid",
+      "actual": "uid_mismatch",
+      "writes": 1,
+      "sdk_reads": 2,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/actor",
+      "actual": "identity_changed",
+      "writes": 1,
+      "sdk_reads": 2,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/user",
+      "actual": "identity_changed",
+      "writes": 1,
+      "sdk_reads": 2,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/context",
+      "actual": "identity_changed",
+      "writes": 1,
+      "sdk_reads": 2,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/position",
+      "actual": "arrival_unproven",
+      "writes": 1,
+      "sdk_reads": 2,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/direction",
+      "actual": "arrival_unproven",
+      "writes": 1,
+      "sdk_reads": 2,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/process_replaced",
+      "actual": "process_start_mismatch",
+      "writes": 1,
+      "sdk_reads": 1,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/command_superseded",
+      "actual": "superseded",
+      "writes": 1,
+      "sdk_reads": 1,
+      "elapsed_ms": 0
+    },
+    {
+      "label": "real_sdk/wrong_native_binding",
+      "actual": "response_binding_mismatch",
+      "writes": 1,
+      "sdk_reads": 1,
+      "elapsed_ms": 1240
+    },
+    {
+      "label": "real_sdk/stale_progress",
+      "actual": "timeout",
+      "writes": 1,
+      "sdk_reads": 1,
+      "elapsed_ms": 2000
+    }
+  ]
+}

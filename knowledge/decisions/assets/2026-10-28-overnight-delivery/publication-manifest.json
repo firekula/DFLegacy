@@ -1,0 +1,47 @@
+{
+  "schema": "act1-final-delivery-publication/v1",
+  "status": "PASS_AS_SCOPED",
+  "scope": "New sanitized aggregate only; historical component assets remain unchanged",
+  "files": [
+    {
+      "file": "checker-tests.json",
+      "bytes": 824,
+      "sha256": "36541174985D3E3889A19BCAFA1376A14F619A257B8CE38A4E319F13ECF5A38E"
+    },
+    {
+      "file": "final-delivery.json",
+      "bytes": 24359,
+      "sha256": "37BB2679816BB3E2B65FAFB3863A14082803C88EB8FD579D234C942883745F72"
+    },
+    {
+      "file": "final-preservation-public-proof.json",
+      "bytes": 2215,
+      "sha256": "48B982A7C49796B8B87C5E6668C675208F98073931CC17755950426CFB7C976D"
+    },
+    {
+      "file": "readiness06-public-proof.json",
+      "bytes": 3281,
+      "sha256": "4DE55CAD631E32CE486031D2BD6DCE967BE2001BF6FD8B55C8EE739A3161B8DC"
+    },
+    {
+      "file": "README.md",
+      "bytes": 2592,
+      "sha256": "053B33F28E16BFB15070D86689B517E1DAD0EA595517AD0F60A3EE6F244FF1A6"
+    },
+    {
+      "file": "startup-history-public-proof.json",
+      "bytes": 3349,
+      "sha256": "57B055CC08EADFCA926F199BA3C40750AB0DEF03A01915FD49B0D33144AC8D8A"
+    },
+    {
+      "file": "verification-result.json",
+      "bytes": 2837,
+      "sha256": "DD8180C3556AF15CC24F0CD78B81A172870D1DA481773D688ACE7DDBD50253AA"
+    },
+    {
+      "file": "verify-final-delivery.py",
+      "bytes": 9693,
+      "sha256": "814F969584FB4DFE4DCD0887163EB956D30B79B715D5B8E3D47A6C3A387B5A0E"
+    }
+  ]
+}

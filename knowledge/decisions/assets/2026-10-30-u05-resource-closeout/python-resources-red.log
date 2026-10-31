@@ -1,0 +1,212 @@
+EEEEFFFFFFFFFFFFFE
+======================================================================
+ERROR: test_skill_resources_are_optional_bound_scalars_and_cli_conditions (tools.debug.test_client_state.ClientStateTests.test_skill_resources_are_optional_bound_scalars_and_cli_conditions) (field='mp_cost')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 437, in get_known_field
+    raise KeyError(part)
+KeyError: 'resources'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 428, in test_skill_resources_are_optional_bound_scalars_and_cli_conditions
+    self.assertEqual(self.api.get_known_field(result,path),expected)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 448, in get_known_field
+    raise UnknownFieldError(dotted_path) from error
+tools.debug.client_state.UnknownFieldError: skills.0.resources.mp_cost: unknown
+
+======================================================================
+ERROR: test_skill_resources_are_optional_bound_scalars_and_cli_conditions (tools.debug.test_client_state.ClientStateTests.test_skill_resources_are_optional_bound_scalars_and_cli_conditions) (field='use_limit')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 437, in get_known_field
+    raise KeyError(part)
+KeyError: 'resources'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 428, in test_skill_resources_are_optional_bound_scalars_and_cli_conditions
+    self.assertEqual(self.api.get_known_field(result,path),expected)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 448, in get_known_field
+    raise UnknownFieldError(dotted_path) from error
+tools.debug.client_state.UnknownFieldError: skills.0.resources.use_limit: unknown
+
+======================================================================
+ERROR: test_skill_resources_are_optional_bound_scalars_and_cli_conditions (tools.debug.test_client_state.ClientStateTests.test_skill_resources_are_optional_bound_scalars_and_cli_conditions) (field='use_count')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 437, in get_known_field
+    raise KeyError(part)
+KeyError: 'resources'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 428, in test_skill_resources_are_optional_bound_scalars_and_cli_conditions
+    self.assertEqual(self.api.get_known_field(result,path),expected)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 448, in get_known_field
+    raise UnknownFieldError(dotted_path) from error
+tools.debug.client_state.UnknownFieldError: skills.0.resources.use_count: unknown
+
+======================================================================
+ERROR: test_skill_resources_are_optional_bound_scalars_and_cli_conditions (tools.debug.test_client_state.ClientStateTests.test_skill_resources_are_optional_bound_scalars_and_cli_conditions) (field='items_sufficient')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 437, in get_known_field
+    raise KeyError(part)
+KeyError: 'resources'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 428, in test_skill_resources_are_optional_bound_scalars_and_cli_conditions
+    self.assertEqual(self.api.get_known_field(result,path),expected)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 448, in get_known_field
+    raise UnknownFieldError(dotted_path) from error
+tools.debug.client_state.UnknownFieldError: skills.0.resources.items_sufficient: unknown
+
+======================================================================
+ERROR: test_partial_skill_resources_remain_useful_without_fabricating_readiness (tools.debug.test_client_state.ClientStateTests.test_partial_skill_resources_remain_useful_without_fabricating_readiness)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 437, in get_known_field
+    raise KeyError(part)
+KeyError: 'resources'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 456, in test_partial_skill_resources_remain_useful_without_fabricating_readiness
+    self.assertEqual(self.api.get_known_field(result,'skills.0.resources.use_limit'),2)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 448, in get_known_field
+    raise UnknownFieldError(dotted_path) from error
+tools.debug.client_state.UnknownFieldError: skills.0.resources.use_limit: unknown
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='scope', bad='global')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='scope', bad=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='mp_cost', bad=-1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='mp_cost', bad=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='mp_cost', bad=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='use_limit', bad=-1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='use_limit', bad=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='use_count', bad=-1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='use_count', bad=2)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='use_count', bad=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='items_sufficient', bad=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness) (field='items_sufficient', bad=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 444, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+======================================================================
+FAIL: test_skill_resources_reject_unproven_scope_domains_and_false_readiness (tools.debug.test_client_state.ClientStateTests.test_skill_resources_reject_unproven_scope_domains_and_false_readiness)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 446, in test_skill_resources_reject_unproven_scope_domains_and_false_readiness
+    with self.assertRaises(self.api.SnapshotError):self.load()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SnapshotError not raised
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.048s
+
+FAILED (failures=13, errors=5)

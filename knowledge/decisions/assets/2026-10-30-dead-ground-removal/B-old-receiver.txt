@@ -1,0 +1,2 @@
+installed-427104 picker=0 item=0 ground=0
+deactivated picker=1 item=13201 ground=3

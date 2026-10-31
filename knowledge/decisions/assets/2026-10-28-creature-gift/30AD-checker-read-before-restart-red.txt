@@ -1,0 +1,20 @@
+Sanitized original behavioral RED log; local directory redacted.
+Original private log SHA256: E0FFC20F9308D09CBF3B852A83DF33E2D256F9302D1AFF29CB2C3A53352DD91F
+
+F.
+======================================================================
+FAIL: test_actual_initial_read_then_exact_restart_and_claim (__main__.ReadBeforeRestart.test_actual_initial_read_then_exact_restart_and_claim)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<private-run>\test-creature-v3-read-before-restart.py", line 9, in test_actual_initial_read_then_exact_restart_and_claim
+    def test_actual_initial_read_then_exact_restart_and_claim(self):self.assertEqual(c.assess(E,'final')['status'],'PASS')
+                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'FAIL' != 'PASS'
+- FAIL
++ PASS
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.013s
+
+FAILED (failures=1)

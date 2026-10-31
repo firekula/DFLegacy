@@ -1,0 +1,106 @@
+{
+  "rule": "B5DD20/B5DD34 pair, constant lower bound with successive reads <=10ms apart and each read <=5ms. Observer scheduling gaps excluded, not GPU Present.",
+  "input": "screenshot-polls-v4-C3ED.json",
+  "phases": [
+    {
+      "phase": "idle",
+      "polls": 3468,
+      "foreground_fraction": 1.0,
+      "max_read_ms": 0.9894000249914825,
+      "max_contiguous_constant_ms": 7.597999996505678,
+      "long_constant_runs": [],
+      "observer_gaps": [
+        {
+          "t": 4.062203599954955,
+          "between_reads_ms": 22.074899985454977,
+          "read_ms": 0.030499999411404133
+        }
+      ]
+    },
+    {
+      "phase": "screenshots",
+      "polls": 5764,
+      "foreground_fraction": 1.0,
+      "max_read_ms": 0.9080999880097806,
+      "max_contiguous_constant_ms": 70.23579999804497,
+      "long_constant_runs": [
+        {
+          "start": 13.982116799976211,
+          "end": 14.041417999949772,
+          "constant_lower_ms": 59.30119997356087,
+          "pair": [
+            7025,
+            14
+          ]
+        },
+        {
+          "start": 16.985367399989627,
+          "end": 17.042058899998665,
+          "constant_lower_ms": 56.691500009037554,
+          "pair": [
+            7054,
+            11
+          ]
+        },
+        {
+          "start": 19.988004599988926,
+          "end": 20.045116599998437,
+          "constant_lower_ms": 57.112000009510666,
+          "pair": [
+            7083,
+            9
+          ]
+        },
+        {
+          "start": 22.98769799998263,
+          "end": 23.05250219994923,
+          "constant_lower_ms": 64.80419996660203,
+          "pair": [
+            7112,
+            8
+          ]
+        },
+        {
+          "start": 25.984560399956536,
+          "end": 26.050862599979155,
+          "constant_lower_ms": 66.30220002261922,
+          "pair": [
+            7141,
+            11
+          ]
+        },
+        {
+          "start": 28.981896799989045,
+          "end": 29.05213259998709,
+          "constant_lower_ms": 70.23579999804497,
+          "pair": [
+            7170,
+            6
+          ]
+        }
+      ],
+      "observer_gaps": [
+        {
+          "t": 20.44571989995893,
+          "between_reads_ms": 73.21159995626658,
+          "read_ms": 0.04320003790780902
+        }
+      ]
+    },
+    {
+      "phase": "post-shot-idle",
+      "polls": 3462,
+      "foreground_fraction": 1.0,
+      "max_read_ms": 0.16240001423284411,
+      "max_contiguous_constant_ms": 7.157699961680919,
+      "long_constant_runs": [],
+      "observer_gaps": [
+        {
+          "t": 36.77039009996224,
+          "between_reads_ms": 28.50429998943582,
+          "read_ms": 0.03530003596097231
+        }
+      ]
+    }
+  ]
+}

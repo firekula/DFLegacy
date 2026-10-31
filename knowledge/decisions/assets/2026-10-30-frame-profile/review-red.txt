@@ -1,0 +1,6 @@
+FAIL frame profile: unknown foreground remains distinct from known background
+FAIL frame profile: eligible slow-event intervals have explicit measurement knowledge
+Frame profile tests: 2 failures
+FAIL frame profile IO: standalone profile creates a fresh output directory and captures own identity
+FAIL frame profile IO: unknown foreground coverage survives native JSON export
+Frame profile IO tests: 2 failures

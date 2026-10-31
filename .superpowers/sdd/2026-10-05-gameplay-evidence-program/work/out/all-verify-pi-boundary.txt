@@ -1,0 +1,6 @@
+BIT_LAYOUT_ALL_65536=PASS
+streams-live/10013-2343.bin EMPTY_BODY_RANDOM_HASH_NOT_PREDICTED frame=43 opcode=124
+streams-live/10013-2343.bin SHA256=4371a09c7cbebe22a9684df518ad25268911eb77df7246d83f4aadf05a254d9e frames=90 hash_mismatch=[]
+streams-live2/10013-14805.bin EMPTY_BODY_RANDOM_HASH_NOT_PREDICTED frame=43 opcode=124
+streams-live2/10013-14805.bin SHA256=a041e77e6b1fc408aa03dbb986a3ca25a1b6045aaf27a364a8d6d454caab1ded frames=90 hash_mismatch=[]
+LIMIT: random bytes decoded from captures, not predicted; no anti-cheat process implementation.

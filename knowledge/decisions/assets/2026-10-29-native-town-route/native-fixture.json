@@ -1,0 +1,47 @@
+{
+  "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\closed-drop-red-drag\\state.json",
+  "FixtureSha256": "A3E6922E6C58B20DD787BEBA3B82586C192AFA23612C7ED8B9CDEECB6046FE8C",
+  "NoStateByteChanges": true,
+  "interface_files": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.done.json",
+      "existed": true,
+      "backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\preflight\\A-auto-input.done.json",
+      "sha256": "2C59460763EB611FABB30A4B481D0C0C55EBCA4EC3EAD4EED2342AE45AE52952"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.focus",
+      "existed": false
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.focus.done",
+      "existed": true,
+      "backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\preflight\\A-auto-input.focus.done",
+      "sha256": "E078FAF4056E7B95F3F83AE13CB506850789182B532DE320B54552664532B6E2"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DF\\auto-input.cancel",
+      "existed": false
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.done.json",
+      "existed": true,
+      "backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\preflight\\B-auto-input.done.json",
+      "sha256": "2C59460763EB611FABB30A4B481D0C0C55EBCA4EC3EAD4EED2342AE45AE52952"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.focus",
+      "existed": false
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.focus.done",
+      "existed": true,
+      "backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\native-town-route-20261029\\preflight\\B-auto-input.focus.done",
+      "sha256": "B422361DB5C139FA3D88255707DDC858F72C718673BB8D4C335B321FC1A0F1CD"
+    },
+    {
+      "path": "G:\\Game\\DNF_ACT1\\Client_test2\\auto-input.cancel",
+      "existed": false
+    }
+  ]
+}

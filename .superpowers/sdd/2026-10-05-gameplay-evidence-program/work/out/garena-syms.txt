@@ -1,0 +1,11 @@
+命中 10 个（关键字 ['GarenaAuthToken', 'GarenaAuthData']）
+  0x081731f2(   893)  Taiwan::AuthGarenaToken::decrypt(char const*, int, Taiwan::GarenaAuthData&)
+  0x08172fea(    30)  Taiwan::GarenaAuthData::getTimeStamp()
+  0x08173008(    26)  Taiwan::GarenaAuthData::getGcaType()
+  0x08172fc8(    21)  Taiwan::GarenaAuthData::getUid()
+  0x08173022(    17)  Taiwan::GarenaAuthData::getMobileAuth()
+  0x08173034(    14)  Taiwan::GarenaAuthData::setPatchTime(unsigned int)
+  0x0816ee1e(    13)  CUser::getGarenaAuthData()
+  0x0817304e(    12)  Taiwan::GarenaAuthData::getGoldMemberType()
+  0x08172fde(    11)  Taiwan::GarenaAuthData::getUname()
+  0x08173042(    11)  Taiwan::GarenaAuthData::getPatchTime()

@@ -1,0 +1,37 @@
+[
+  {
+    "File": "gift-proof.json",
+    "Source": "G:/Game/DNF_ACT1/DFLegacy/.tmp/channel-return-20261027/agent-cera-gift-live/cera-gift-proof-20261028-005257-124612.json",
+    "SourceSha256": "526183C6DA9E663C2F4D276183101BC4D34CBAC59CE10EB8154D85278AD24D07",
+    "CopiedSha256": "526183C6DA9E663C2F4D276183101BC4D34CBAC59CE10EB8154D85278AD24D07",
+    "SourceEqualsCopy": true
+  },
+  {
+    "File": "normal-restored.json",
+    "Source": "G:/Game/DNF_ACT1/DFLegacy/.tmp/channel-return-20261027/normal-restored.json",
+    "SourceSha256": "540494658CE76528B0489DF479A369506D8958E769D02210A6C62EADA7ADAEF5",
+    "CopiedSha256": "540494658CE76528B0489DF479A369506D8958E769D02210A6C62EADA7ADAEF5",
+    "SourceEqualsCopy": true
+  },
+  {
+    "File": "assertions.json",
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\assertions.json",
+    "SourceSha256": "755AD12C7F01593C90540CCE7F167CB697810EB51D85ADAF1AC9E7B6484ABBBF",
+    "CopiedSha256": "755AD12C7F01593C90540CCE7F167CB697810EB51D85ADAF1AC9E7B6484ABBBF",
+    "SourceEqualsCopy": true
+  },
+  {
+    "File": "normal-postcheck.json",
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json",
+    "SourceSha256": "F056050406C34C09BF44623744719CDEECBCA1810161A1B3E6FA7EB7F0D1D093",
+    "CopiedSha256": "F056050406C34C09BF44623744719CDEECBCA1810161A1B3E6FA7EB7F0D1D093",
+    "SourceEqualsCopy": true
+  },
+  {
+    "File": "normal-clients-reopened.json",
+    "Source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-clients-reopened.json",
+    "SourceSha256": "60393AA790691E52F721B7B194DB271FB3D1868A885118FE47E28C6945E8676C",
+    "CopiedSha256": "60393AA790691E52F721B7B194DB271FB3D1868A885118FE47E28C6945E8676C",
+    "SourceEqualsCopy": true
+  }
+]

@@ -1,0 +1,10 @@
+FAIL client state: selector record index maps to actual dungeon ID and difficulty
+FAIL client state: scene2 can retain loading-stage metadata without claiming dungeon capture
+FAIL client state: unselected state does not silently choose the first dungeon
+FAIL client state: out-of-range selection cannot project another row
+FAIL client state: selector replacement during capture invalidates scene2 identity
+FAIL client state: recognized registered native dialog is observed through active bank only
+FAIL client state: native hidden flag is not mistaken for rendered visibility
+FAIL client state: queued-close objects are excluded before active-bank removal
+FAIL client state: broken root ownership means unknown dialogs rather than known empty
+Client state tests: 9 failures

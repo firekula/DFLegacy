@@ -1,0 +1,51 @@
+{
+  "Schema": "monster-s02-public-assets/v1",
+  "Files": [
+    {
+      "File": "A-auto-return-town.jpg",
+      "Bytes": 439732,
+      "Sha256": "183EB8337ECE4338CC8F81E245775B67409B0D89634E6F58F2D03A0CA9916973"
+    },
+    {
+      "File": "A-boss-before.jpg",
+      "Bytes": 424737,
+      "Sha256": "9D172AE7ADDEE417AFCEE760A6969809E4CE6C228F0C14E06A135BCD3F62C952"
+    },
+    {
+      "File": "A-clear.jpg",
+      "Bytes": 432216,
+      "Sha256": "99FD2567B1E8B3314DF56BC93CFB5CB3343C040B3D4084FB24B36FE26C172A14"
+    },
+    {
+      "File": "B-auto-return-town.jpg",
+      "Bytes": 437435,
+      "Sha256": "A5875EE84691AB2EFA9F4D05E8C7D717869A013261F93649DBB07259DAD6E9E6"
+    },
+    {
+      "File": "B-boss-before.jpg",
+      "Bytes": 423085,
+      "Sha256": "1EDB6E427CFF6FF6338589AB702748EDD1F14198EC427E6FC705A296DDDB5C39"
+    },
+    {
+      "File": "B-clear.jpg",
+      "Bytes": 426972,
+      "Sha256": "DCDB2325972272DBD986C7EC0AD597F2499AD968FE0B5128DBE81AA879BA354C"
+    },
+    {
+      "File": "motion-summary.json",
+      "Bytes": 14150,
+      "Sha256": "6F61591B6B6EE8771520ADABEFE1FD8D7BBB0BF7BAA66E55ABA8CE64650E2048"
+    },
+    {
+      "File": "native-phase-summary.json",
+      "Bytes": 3931,
+      "Sha256": "698DECD0CE3AF0E0EE8C9BA8EC8794F40A296B7DB356C655F5C80D553134988E"
+    },
+    {
+      "File": "tests-source.json",
+      "Bytes": 1654,
+      "Sha256": "806060B4D35C764E0406F5CA2E2F0F726456014E174825CA8DFA3590374A031C"
+    }
+  ],
+  "Scope": "Six unmodified original pictures and three sanitized summaries; native position root cause remains unresolved."
+}

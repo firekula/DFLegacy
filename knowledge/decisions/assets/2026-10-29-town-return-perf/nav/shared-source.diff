@@ -1,0 +1,353 @@
+diff --git a/src/DFLegacy.Debug/src/client_navigation.cpp b/src/DFLegacy.Debug/src/client_navigation.cpp
+index 5b402b4..9e6adf1 100644
+--- a/src/DFLegacy.Debug/src/client_navigation.cpp
++++ b/src/DFLegacy.Debug/src/client_navigation.cpp
+@@ -148,19 +148,22 @@ namespace dfl::client_navigation
+     bool ReadRouteCanvasTarget(const client_state::Reader& reader, const client_state::Snapshot& s,
+                                std::uint32_t minimap, CanvasGoal& output, std::uint32_t eventBefore) noexcept
+     {
+-        if (eventBefore!=0x10 || !s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
++        if ((eventBefore!=8 && eventBefore!=16) || !s.valid || !s.layoutSupported || s.truncated || !s.haveMe || !s.town.present
+             || !s.scene.known || s.scene.value!=1) return false;
++        const std::uint32_t captureAddress=eventBefore==8?0xB55184:0xB55188;
++        const std::uint32_t eventAddress=eventBefore==8?0xCFD1F4:0xCFD1F8;
++        const std::uint32_t buttonAddress=eventBefore==8?0xCFD200:0xCFD202;
+         Reads r{reader};
+         std::uint32_t im=0,owner=0,table=0,panel=0,id=0,capture=0,plane=0,regionsMenu=0,npcsMenu=0,event=0;
+         unsigned char visible=0,enabled=0,now=0,mode=0,regionsOpen=0,npcsOpen=0;
+         std::int32_t dx=0,dy=0,mx=0,my=0,cx=0,cy=0;
+-        // Read after native8F6C30 consumes this call's right-release event and
+-        // writes B55188. The earlier update phase may already have cleared FD9.
++        // Read after native8F6C30 consumes this call's selected release event
++        // and writes its capture. The update phase may already clear FD8/FD9.
+         if (!r.At(0xB5DCE8,0,im) || !r.At(im,0xFF0,owner) || owner!=minimap
+             || !r.At(minimap,0,table) || table!=0xA7CF3C || !r.At(minimap,4,panel)
+             || !r.At(panel,0x10,visible) || visible!=1 || !r.At(panel,0x11,enabled) || enabled!=1
+-            || !r.At(panel,12,id) || !r.At(0xB55188,0,capture) || capture!=id
+-            || !r.At(0xCFD1F8,0,event) || event!=0 || !r.At(0xCFD202,0,now) || now!=0
++            || !r.At(panel,12,id) || !r.At(captureAddress,0,capture) || capture!=id
++            || !r.At(eventAddress,0,event) || event!=0 || !r.At(buttonAddress,0,now) || now!=0
+             || !r.At(0xCFD20A,0,mode) || mode!=0
+             || !r.At(minimap,0x1C,regionsMenu) || !r.At(regionsMenu,0x10,regionsOpen) || regionsOpen!=0
+             || !r.At(minimap,0x64,npcsMenu) || !r.At(npcsMenu,0x10,npcsOpen) || npcsOpen!=0
+@@ -190,9 +193,9 @@ namespace dfl::client_navigation
+         std::int32_t finalDx=0,finalDy=0,finalMx=0,finalMy=0,finalCx=0,finalCy=0;
+         if (!r.At(0xB5DCE8,0,finalIm) || finalIm!=im || !r.At(im,0xFF0,finalOwner) || finalOwner!=minimap
+             || !r.At(minimap,0,finalTable) || finalTable!=table || !r.At(minimap,4,finalPanel) || finalPanel!=panel
+-            || !r.At(panel,12,finalId) || finalId!=id || !r.At(0xB55188,0,finalCapture) || finalCapture!=id
++            || !r.At(panel,12,finalId) || finalId!=id || !r.At(captureAddress,0,finalCapture) || finalCapture!=id
+             || !r.At(panel,0x10,finalVisible) || finalVisible!=1 || !r.At(panel,0x11,finalEnabled) || finalEnabled!=1
+-            || !r.At(0xCFD1F8,0,finalEvent) || finalEvent!=0 || !r.At(0xCFD202,0,finalNow) || finalNow!=0
++            || !r.At(eventAddress,0,finalEvent) || finalEvent!=0 || !r.At(buttonAddress,0,finalNow) || finalNow!=0
+             || !r.At(0xCFD20A,0,finalMode) || finalMode!=0
+             || !r.At(minimap,0x1C,finalRegions) || finalRegions!=regionsMenu
+             || !r.At(regionsMenu,0x10,finalRegionsOpen) || finalRegionsOpen!=0
+@@ -232,11 +235,11 @@ namespace dfl::client_navigation
+         // A failed rollback deliberately leaves ownership set, blocking unload.
+         RestoreInstalledHook(pollInstalled,pollPatch,poll);return false;
+     }
+-    std::int32_t PollRightRelease(void* context,std::uint32_t eventBefore,RightHitOriginal original,RightHitAfter after) noexcept
++    std::int32_t PollCanvasRelease(void* context,std::uint32_t eventBefore,CanvasHitOriginal original,CanvasHitAfter after) noexcept
+     {
+         if (!original) return 0;
+         const auto result=original(context);
+-        if (eventBefore==0x10 && after) after(context,eventBefore);
++        if ((eventBefore==8 || eventBefore==16) && after) after(context,eventBefore);
+         return result;
+     }
+     bool SetLiveAndActivate(const Request& request,const DestinationOperations& operations,LiveCheck live,std::uint64_t now) noexcept
+diff --git a/src/DFLegacy.Debug/src/client_navigation.h b/src/DFLegacy.Debug/src/client_navigation.h
+index 24d06ff..c66ed87 100644
+--- a/src/DFLegacy.Debug/src/client_navigation.h
++++ b/src/DFLegacy.Debug/src/client_navigation.h
+@@ -32,7 +32,7 @@ namespace dfl::client_navigation
+     bool ReadCanvasTarget(const client_state::Reader&, const client_state::Snapshot&,
+                           std::uint32_t minimap, std::int32_t& x, std::int32_t& y) noexcept;
+     struct CanvasGoal { std::int32_t town = -1, area = -1, x = 0, y = 0; };
+-    // eventBefore must be this traversal's native0x10 right-release event;
++    // eventBefore must be this traversal's native8 left or16 right release;
+     // read only after original8F6C30 consumed it. An absent token never replays.
+     bool ReadRouteCanvasTarget(const client_state::Reader&, const client_state::Snapshot&,
+                                std::uint32_t minimap, CanvasGoal&, std::uint32_t eventBefore = 0) noexcept;
+@@ -42,9 +42,9 @@ namespace dfl::client_navigation
+     bool InstallCanvasHooks(bool& pollInstalled, bool& hitInstalled,
+         const std::array<unsigned char,5>& pollPatch, const std::array<unsigned char,5>& hitPatch,
+         PatchOperation poll, PatchOperation hit) noexcept;
+-    using RightHitOriginal = std::int32_t (*)(void*) noexcept;
+-    using RightHitAfter = void (*)(void*,std::uint32_t eventBefore) noexcept;
+-    std::int32_t PollRightRelease(void*,std::uint32_t eventBefore,RightHitOriginal,RightHitAfter) noexcept;
++    using CanvasHitOriginal = std::int32_t (*)(void*) noexcept;
++    using CanvasHitAfter = void (*)(void*,std::uint32_t eventBefore) noexcept;
++    std::int32_t PollCanvasRelease(void*,std::uint32_t eventBefore,CanvasHitOriginal,CanvasHitAfter) noexcept;
+     struct DestinationOperations
+     {
+         void* context=nullptr;
+diff --git a/src/DFLegacy.Debug/src/client_navigation_runtime.cpp b/src/DFLegacy.Debug/src/client_navigation_runtime.cpp
+index 739e996..ccda950 100644
+--- a/src/DFLegacy.Debug/src/client_navigation_runtime.cpp
++++ b/src/DFLegacy.Debug/src/client_navigation_runtime.cpp
+@@ -27,7 +27,7 @@ namespace dfl::client_navigation
+         Request Inbox{}, Active{};
+         client_state::Snapshot Current{};
+         bool Tracking=false;
+-        std::uint64_t ConsumedId=0, ActiveTick=0, ActiveSequence=0, MiniId=0;
++        std::uint64_t ConsumedId=0, ActiveTick=0, ActiveSequence=0;
+         struct Result
+         {
+             Request request{};
+@@ -186,28 +186,24 @@ namespace dfl::client_navigation
+             Active=request;ActiveTick=now;ActiveSequence=Current.sequence;ActiveSource=source;Tracking=true;
+             Publish(request,source,"requested","native_destination_set",Current.town.position);
+         }
+-        Request FromCurrent(std::int32_t x,std::int32_t y) noexcept
+-        {
+-            Request r;r.pid=Current.pid;r.uid=Current.me.uid.value;r.processStartedFileTime=Current.processStartedFileTime;
+-            r.requestId=++MiniId;r.issuedTickMs=Now();r.snapshotTickMs=Current.capturedTickMs;r.generation=Current.generation;
+-            r.snapshotSequence=Current.sequence;r.actorToken=Current.me.actorToken;r.mapToken=Current.me.mapToken;
+-            r.userToken=Current.me.userToken;r.contextToken=Current.town.contextToken;r.townId=Current.town.townId;r.areaId=Current.town.areaId;r.x=x;r.y=y;return r;
+-        }
+-        void __fastcall MinimapPoll(void* self,void*) noexcept
++        void OriginalMinimapPoll(void* self) noexcept
+         {
+             using Original=void (__thiscall*)(void*);
+             reinterpret_cast<Original>(0x880E20)(self);
+-            if (!IsEnabled() || GetCurrentThreadId()!=GameThread || !Layout()) return;
+-            std::int32_t x=0,y=0;
+-            if (ReadCanvasTarget(Native,Current,static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(self)),x,y))
+-                Dispatch(FromCurrent(x,y),"minimap");
+         }
++        void MinimapPollWithOriginal(void* self,void (*original)(void*) noexcept) noexcept
++        {
++            if (!original) return;
++            original(self);
++        }
++        void __fastcall MinimapPoll(void* self,void*) noexcept
++        { MinimapPollWithOriginal(self,&OriginalMinimapPoll); }
+         std::int32_t OriginalHit(void* self) noexcept
+         {
+             using Original=std::int32_t (__thiscall*)(void*);
+             return reinterpret_cast<Original>(0x8F6C30)(self);
+         }
+-        void AfterRightHit(void*,std::uint32_t eventBefore) noexcept
++        void AfterCanvasHit(void*,std::uint32_t eventBefore) noexcept
+         {
+             if (!IsEnabled() || GetCurrentThreadId()!=GameThread || !Layout()) return;
+             Reads reads;std::uint32_t im=0,minimap=0;CanvasGoal goal;
+@@ -215,16 +211,22 @@ namespace dfl::client_navigation
+                 &&ReadRouteCanvasTarget(Native,Current,minimap,goal,eventBefore))
+                 client_town_route::BeginCanvasGoal(Current,goal);
+         }
+-        std::int32_t HitPollWithOriginal(void* self,RightHitOriginal original) noexcept
++        std::int32_t HitPollWithOriginal(void* self,CanvasHitOriginal original) noexcept
+         {
+             // Reading the pre-event has no UI side effects. Native traversal
+             // always runs first; only its consumed release can select a goal.
+             std::uint32_t eventBefore=0;
+             if(IsEnabled()&&GetCurrentThreadId()==GameThread&&Layout())
+-            {Reads reads;if(!reads.At(0xCFD1F8,0,eventBefore))eventBefore=0;}
+-            return PollRightRelease(self,eventBefore,original,&AfterRightHit);
++            {
++                Reads reads;std::uint32_t left=0,right=0;
++                // Native hit traversal handles left release before right.
++                // Missing or unrelated state of the other button grants nothing.
++                if (reads.At(0xCFD1F4,0,left) && left==8) eventBefore=8;
++                else if (reads.At(0xCFD1F8,0,right) && right==16) eventBefore=16;
++            }
++            return PollCanvasRelease(self,eventBefore,original,&AfterCanvasHit);
+         }
+-        std::int32_t __fastcall RightHitPoll(void* self,void*) noexcept
++        std::int32_t __fastcall CanvasHitPoll(void* self,void*) noexcept
+         {return HitPollWithOriginal(self,&OriginalHit);}
+         bool PatchAt(std::uint32_t address,const unsigned char* expected,const unsigned char* replacement) noexcept
+         {
+@@ -263,7 +265,7 @@ namespace dfl::client_navigation
+             const auto target=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&MinimapPoll));
+             const std::uint32_t relative=target-(CallAddress+5);
+             PatchedCall[0]=0xE8;std::memcpy(PatchedCall.data()+1,&relative,4);
+-            const auto hitTarget=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&RightHitPoll));
++            const auto hitTarget=static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(&CanvasHitPoll));
+             const std::uint32_t hitRelative=hitTarget-(HitCallAddress+5);
+             PatchedHitCall[0]=0xE8;std::memcpy(PatchedHitCall.data()+1,&hitRelative,4);
+             InstallCanvasHooks(Installed,HitInstalled,PatchedCall,PatchedHitCall,&Patch,&PatchHit);
+@@ -331,7 +333,7 @@ namespace dfl::client_navigation
+         Native=reader;wcscpy_s(Directory,directory);
+         GameThread=0;Installed=HitInstalled=HookAttempted=HaveInbox=HaveFile=Tracking=false;
+         InterlockedExchange(&HookPublished,0);
+-        Inbox={};Active={};Outbox={};GameResult={};Current={};ConsumedId=ActiveTick=ActiveSequence=MiniId=NextSerial=ExportedSerial=LastPoll=0;
++        Inbox={};Active={};Outbox={};GameResult={};Current={};ConsumedId=ActiveTick=ActiveSequence=NextSerial=ExportedSerial=LastPoll=0;
+         InterlockedExchange(&Enabled,Native.read && Native.pid && Native.processStartedFileTime?1:0);
+         if(IsEnabled())client_town_route::Initialize(settingsPath,directory,reader,&ApplyRouteStep,&SupersedeForRoute);
+     }
+diff --git a/src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp b/src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp
+index 6513ced..6ff0566 100644
+--- a/src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp
++++ b/src/DFLegacy.Debug/tests/client_navigation_runtime_tests.cpp
+@@ -10,6 +10,8 @@ namespace
+     bool SupportedFixture(void*) noexcept { return true; }
+     bool WatchNativeHit=false,HitOriginalRan=false,HitAfterRead=false,HitReadTooSoon=false;
+     unsigned HitOriginalCalls=0;
++    unsigned HitLeftCaptureReads=0,HitRightCaptureReads=0;
++    std::uint32_t HitRelease=16;
+     struct TrackingMemory
+     {
+         std::unordered_map<std::uint32_t,unsigned char> bytes;
+@@ -25,7 +27,10 @@ namespace
+             const auto a=0x2000000+i*4,b=0x2100000+i*4;U(a,value^a^key);U(b,value^b^key);
+         }
+         static bool Read(void* context,std::uint32_t at,void* output,std::size_t size) noexcept
+-        { if(WatchNativeHit&&at==0xB5DCE8){HitAfterRead=true;if(!HitOriginalRan)HitReadTooSoon=true;}auto& m=*static_cast<TrackingMemory*>(context);auto* p=static_cast<unsigned char*>(output);for(std::size_t i=0;i<size;++i){auto it=m.bytes.find(at+static_cast<std::uint32_t>(i));if(it==m.bytes.end())return false;p[i]=it->second;}return true; }
++        { if(WatchNativeHit&&at==0xB5DCE8){HitAfterRead=true;if(!HitOriginalRan)HitReadTooSoon=true;}
++          if(WatchNativeHit&&at==0xB55184)++HitLeftCaptureReads;
++          if(WatchNativeHit&&at==0xB55188)++HitRightCaptureReads;
++          auto& m=*static_cast<TrackingMemory*>(context);auto* p=static_cast<unsigned char*>(output);for(std::size_t i=0;i<size;++i){auto it=m.bytes.find(at+static_cast<std::uint32_t>(i));if(it==m.bytes.end())return false;p[i]=it->second;}return true; }
+         explicit TrackingMemory(const dfl::client_navigation::Request& r)
+         {
+             U(0xCFD458,0x1000000);U(0xCFD45C,0x12345678);U(0x1000004,1024);U(0x1000044,0x2000000);U(0x1000048,0x2100000);
+@@ -49,9 +54,11 @@ namespace
+     {
+         ++HitOriginalCalls;HitOriginalRan=true;
+         auto& memory=*static_cast<TrackingMemory*>(self);
+-        memory.U(0xCFD1F8,0);memory.U(0xB55188,777);
++        memory.U(HitRelease==8?0xCFD1F4:0xCFD1F8,0);memory.U(HitRelease==8?0xB55184:0xB55188,777);
+         return -7654321;
+     }
++    void SafeOriginalMinimap(void*) noexcept
++    { ++HitOriginalCalls;HitOriginalRan=true; }
+ }
+ int RunClientNavigationRuntimeTests()
+ {
+@@ -108,6 +115,7 @@ int RunClientNavigationRuntimeTests()
+     check(!Tracking && std::strcmp(Outbox.status,"arrived")==0,"observed arrival takes priority over cleared native auto flag");
+     // Exercise the production hit wrapper using an injected original. These
+     // fixtures can never enter8F6C30 or any other absolute game function.
++    for(const std::uint32_t release:{8U,16U})
+     for(unsigned mode=0;mode<7;++mode)
+     {
+         Native={&memory,&TrackingMemory::Read,mode==0?&UnsupportedNavigationImage:&SupportedFixture,
+@@ -115,11 +123,36 @@ int RunClientNavigationRuntimeTests()
+         GameThread=GetCurrentThreadId();if(mode==2)++GameThread;
+         InterlockedExchange(&Enabled,mode==1?0:1);
+         WatchNativeHit=true;HitOriginalRan=HitAfterRead=HitReadTooSoon=false;HitOriginalCalls=0;
+-        memory.U(0xCFD1F8,mode==3?2:mode==6?0:0x10);
+-        if(mode==5)memory.bytes.erase(0xCFD1F9);
++        HitRelease=release;memory.U(0xCFD1F4,0);memory.U(0xCFD1F8,0);
++        const auto eventAddress=release==8?0xCFD1F4U:0xCFD1F8U;
++        memory.U(eventAddress,mode==3?2:mode==6?0:release);
++        if(mode==5)memory.bytes.erase(eventAddress+1);
+         const auto result=HitPollWithOriginal(&memory,&SafeOriginalHit);
+         check(result==-7654321&&HitOriginalCalls==1&&HitOriginalRan,"production hit wrapper always preserves the original full EAX exactly once");
+-        check(!HitReadTooSoon&&HitAfterRead==(mode==4),"right business reads occur only after original traversal with a supported release event");
++        check(!HitReadTooSoon&&HitAfterRead==(mode==4),"either button business reads occur only after original traversal with its supported release event");
++    }
++    Native={&memory,&TrackingMemory::Read,&SupportedFixture,nullptr,&NavigationTestTick,nullptr,7,999};
++    GameThread=GetCurrentThreadId();InterlockedExchange(&Enabled,1);
++    WatchNativeHit=true;HitOriginalRan=HitAfterRead=HitReadTooSoon=false;HitOriginalCalls=0;
++    memory.bytes.erase(0x500FF0); // Missing owner stops a legacy reader before any absolute leaf.
++    MinimapPollWithOriginal(&memory,&SafeOriginalMinimap);
++    check(HitOriginalCalls==1&&HitOriginalRan&&!HitAfterRead,"old minimap poll runs original exactly once and never attempts early goal dispatch");
++    // A partial map fixture reaches the selected capture read but deliberately
++    // lacks dropdown data, so no route or absolute destination leaf is reachable.
++    memory.U(0x500FF0,0x510000);memory.U(0x510000,0xA7CF3C);memory.U(0x510004,0x520000);
++    memory.Put<unsigned char>(0x520010,1);memory.Put<unsigned char>(0x520011,1);memory.U(0x52000C,777);
++    memory.Put<unsigned char>(0xCFD200,0);memory.Put<unsigned char>(0xCFD202,0);memory.Put<unsigned char>(0xCFD20A,0);
++    for(unsigned mode=0;mode<3;++mode)
++    {
++        memory.U(0xCFD1F4,8);memory.U(0xCFD1F8,16);memory.U(0xB55184,777);memory.U(0xB55188,777);
++        HitRelease=mode==1?16:8;
++        if(mode==1)memory.bytes.erase(0xCFD1F5);
++        if(mode==2)memory.bytes.erase(0xCFD1F9);
++        HitOriginalRan=HitAfterRead=HitReadTooSoon=false;HitOriginalCalls=HitLeftCaptureReads=HitRightCaptureReads=0;
++        const auto result=HitPollWithOriginal(&memory,&SafeOriginalHit);
++        check(result==-7654321&&HitOriginalCalls==1&&!HitReadTooSoon,"mixed or missing other-button fields still preserve original-first and full EAX");
++        check(HitLeftCaptureReads==(HitRelease==8?1U:0U)&&HitRightCaptureReads==(HitRelease==16?1U:0U),
++            "production traversal selects left-first or the readable right token without cross-button capture reads");
+     }
+     WatchNativeHit=false;
+     // Ownership flags model retained CALLs, but the reader refuses all bytes:
+diff --git a/src/DFLegacy.Debug/tests/client_navigation_tests.cpp b/src/DFLegacy.Debug/tests/client_navigation_tests.cpp
+index 4c5b9ad..d28e72c 100644
+--- a/src/DFLegacy.Debug/tests/client_navigation_tests.cpp
++++ b/src/DFLegacy.Debug/tests/client_navigation_tests.cpp
+@@ -92,6 +92,7 @@ namespace
+             U(0xB5DCE8,0x500000);U(0x500FF0,0x510000);U(0x510000,0xA7CF3C);U(0x510004,0x520000);U(0x51000C,0x530000);
+             Put<unsigned char>(0x520010,1);Put<unsigned char>(0x520011,1);U(0x52000C,777);U(0xB55184,777);
+             Put<unsigned char>(0x500FD8,1);Put<unsigned char>(0xCFD200,0);Put<unsigned char>(0xCFD20A,0);
++            U(0xCFD1F4,0);
+             Put<unsigned char>(0x500FD9,0);Put<unsigned char>(0xCFD202,0);U(0xB55188,777);U(0xCFD1F8,0);
+             U(0x51001C,0x560000);Put<unsigned char>(0x560010,0);U(0x510064,0x570000);Put<unsigned char>(0x570010,0);
+             Put<std::int32_t>(0xBEEFC4,0);Put<std::int32_t>(0xB53C28,26);Put<std::int32_t>(0x530004,0);Put<std::int32_t>(0x530008,-26);
+@@ -166,12 +167,13 @@ namespace
+     void RightHitHookTests()
+     {
+         HitOrder order;
+-        Check(PollRightRelease(&order,0x10,&HitOrder::Original,&HitOrder::After)==-1234567
+-            &&order.ordered&&order.calls==1&&order.after==1&&order.event==0x10,"hit wrapper invokes original once before after-callback and preserves EAX");
++        for (std::uint32_t event:{8U,16U})
++        {order={};Check(PollCanvasRelease(&order,event,&HitOrder::Original,&HitOrder::After)==-1234567
++            &&order.ordered&&order.calls==1&&order.after==1&&order.event==event,"either release invokes original once before after-callback and preserves full EAX");}
+         for(std::uint32_t event:{0U,2U})
+-        {order={};Check(PollRightRelease(&order,event,&HitOrder::Original,&HitOrder::After)==-1234567
++        {order={};Check(PollCanvasRelease(&order,event,&HitOrder::Original,&HitOrder::After)==-1234567
+             &&order.calls==1&&order.after==0,"original hit traversal always runs without a right release");}
+-        order={};Check(PollRightRelease(&order,0x10,nullptr,&HitOrder::After)==0&&order.after==0,"missing original never dispatches a canvas action");
++        order={};Check(PollCanvasRelease(&order,0x10,nullptr,&HitOrder::After)==0&&order.after==0,"missing original never dispatches a canvas action");
+         const std::array<unsigned char,5> left={0xE8,0x11,2,3,4},right={0xE8,0x22,2,3,4};bool poll=false,hit=false;
+         Hooks={};Check(InstallCanvasHooks(poll,hit,left,right,&PollPatch,&HitPatch)&&poll&&hit&&std::strcmp(Hooks.order,"LR")==0,"both original CALL sites install in order");
+         Hooks.failHitRestore=true;Check(!RestoreInstalledHitHook(hit,right,&HitPatch)&&hit,"right restore failure retains ownership and blocks unload");
+@@ -185,11 +187,56 @@ namespace
+         Hooks={};Hooks.failPoll=true;
+         Check(!InstallCanvasHooks(poll,hit,left,right,&PollPatch,&HitPatch)&&!poll&&!hit&&Hooks.count==1,"first hook refusal never patches second site");
+     }
++    void LeftRouteCanvasTests()
++    {
++        const auto s=Sample();Memory m;CanvasGoal goal;
++        m.Canvas();m.Put<unsigned char>(0x500FD8,0);
++        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8) && goal.town==1 && goal.area==0 && goal.x==400 && goal.y==350,
++            "post-update FD8 zero still accepts this traversal's consumed left root release");
++        m.Put<unsigned char>(0xCFD202,1);m.U(0xB55188,778);m.U(0xCFD1F8,16);
++        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8),
++            "consumed left release is independent of held right button event and capture");
++        m.Row(0x530020,0x540000,{10,20,100,50},2,3);m.Row(0xBEF024,0x550000,{-100,100,1000,500},2,3);
++        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8) && goal.town==2 && goal.area==3,
++            "consumed left blank map release can choose another displayed region");
++        m.Canvas();goal={9,8,7,6};
++        Check(!ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal) && goal.town==9 && goal.area==8 && goal.x==7 && goal.y==6,
++            "default absent token cannot replay a cached left capture");
++        for (unsigned defect=0;defect<19;++defect)
++        {
++            m=Memory{};m.Canvas();m.Put<unsigned char>(0x500FD8,0);goal={9,8,7,6};
++            switch (defect)
++            {
++                case 0:m.Put<unsigned char>(0xCFD200,1);break;
++                case 1:m.U(0xCFD1F4,8);break;
++                case 2:m.U(0xB55184,778);break;
++                case 3:m.Put<unsigned char>(0x520010,0);break;
++                case 4:m.Put<unsigned char>(0x520011,0);break;
++                case 5:m.Put<unsigned char>(0x560010,1);break;
++                case 6:m.Put<unsigned char>(0x570010,1);break;
++                case 7:m.Marker();m.U(0x530014,0x210000);m.U(0x530018,0x210004);m.Put<std::int32_t>(0x220008,60);m.Put<std::int32_t>(0x22000C,45);break;
++                case 8:m.U(0x500FF0,0x510100);break;
++                case 9:m.Put<std::int32_t>(0x530008,0);break;
++                case 10:m.mutateAt=0xB55184;m.mutateTo=778;m.mutateOnRead=2;break;
++                case 11:m.mutateAt=0xCFD1F4;m.mutateTo=8;m.mutateOnRead=2;break;
++                case 12:m.mutateAt=0xCFD200;m.mutateTo=1;m.mutateOnRead=2;break;
++                case 13:m.mutateAt=0x560010;m.mutateTo=1;m.mutateOnRead=2;break;
++                case 14:m.mutateAt=0x51000C;m.mutateTo=0x530100;m.mutateOnRead=2;break;
++                case 15:m.data.erase(0xCFD1F5);break;
++                case 16:m.data.erase(0x570010);break;
++                case 17:m.Put<unsigned char>(0xCFD20A,1);break;
++                default:m.SecondProject(1,1);break;
++            }
++            Check(!ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,8) && goal.town==9 && goal.area==8 && goal.x==7 && goal.y==6,
++                "left release preserves consumed-event capture marker dropdown ownership and recheck guards");
++        }
++    }
+ }
+ int RunClientNavigationTests()
+ {
+     Failures=0;auto s=Sample();auto r=Command(s);
+     RouteCanvasTests();
++    LeftRouteCanvasTests();
+     RightHitHookTests();
+     Check(ValidateRequest(r,s,1100,49)==nullptr,"fresh matching Town request accepted");
+     Check(ValidateRequest(r,s,1100,50)!=nullptr,"replayed request rejected");

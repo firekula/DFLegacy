@@ -1,0 +1,3 @@
+# 测试产物不应入库（根 .gitignore 只显式覆盖 tools/ 两条规则，不覆盖 protocol/**）
+__pycache__/
+*.pyc

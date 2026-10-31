@@ -1,0 +1,72 @@
+{
+  "scope": "Independent ACT1 native contract review. No game control, process access, save reads, source edits, or writes to previously frozen evidence. Native ranges use end-exclusive addresses.",
+  "type1": {
+    "field": "Native DWORD checker+0x68; the API projects the raw bits as int32. The exclusion predicate is !=0, identical for signed/unsigned interpretations. It is a priority value, not a reference count. Same original source binding and table/getter checks as type0; repeat the level with actor/user/UID/checker identity.",
+    "early_lock_predicate": "8BA7F0: command DWORD+0 is type. For type1, checker+0x68 != 0 sets command byte+8 to 1 and returns false before physical button reads.",
+    "remaining_physical_branch": "After a zero lock, checker byte+0x90 must be zero. command DWORD+4 == 0 reads byte CFD200; every nonzero code reads CFD202. If the selected button is false, clear command byte+8 and return false. If true, a nonzero prior command byte+8 suppresses AL; otherwise return AL=1.",
+    "scope_limit": "This is the early physical check, not a promise that all command events are suppressed. Town ground-click processing uses CFD200/202 and its own panel/capture/hit/world gates rather than this type1 check.",
+    "outer_exception": "8BAAD0 calls v+30=8BA7F0. When that returns false, if checker+0x6C == 0 and the linked list at checker+0x78 contains this command ID, 8BABBF forces AL=1 before event generation. Do not infer complete command admission or world/global input from the lock alone.",
+    "priority": "8BA030 uses unsigned maximum priority when acquiring and clears only when stored level <= release level. It is not a reference count.",
+    "flag90": "One byte. 8BA9A4 initializes zero. 48F81E and 48F844 set one on an original 43BB30 checker installed into actor+2384 through v+5E4=493B50. Its owner/reason remains opaque. At the physical checker only, the unconditional exclusion predicate is lock1 != 0 OR flag90 != 0. Read/repeat it as an optional raw flag, not a global blocker."
+  },
+  "CFD208": {
+    "width": "One byte; native writes are 7993C4 -> 1 and 8FCC9D -> 0. The only absolute native reads found are 8FCAE8 and 8FCB7D. Native branch tests use !=0.",
+    "scope": "Engine mouse button-state processing suspension/defer flag. It does not clear existing held-button state.",
+    "direct_input": "When byte CFD20A == 1, 8FCAA0 first updates coordinates using device CFD20C +20/+24 and offsets CFD210/214. CFD208 !=0 skips updates to CFD200..203 and CFD1F4/F8. This branch does not enqueue button events.",
+    "window_messages": "When CFD20A !=1, coordinates are still updated from signed lParam XY plus offsets. CFD208 !=0 enqueues message ID only. With zero flag, WM201/202/204/205 update button state; WM203 and unrelated messages do not.",
+    "callback": "Both branches reach 8FCC45. If CFD204 is nonnull its v0 callback(msg,wParam,lParam) still executes at 8FCC57.",
+    "release": "8FCC80 clears CFD208 first, drains the message-ID queue through 8FCAA0(msg,0,0), then restores cursor/coordinates. This is not a guarantee that DirectInput clicks were queued or will replay.",
+    "safe_capture": "Read unsigned byte twice under the existing image/scene snapshot identity guard. Require both <=1 and equal; otherwise publish unknown. Do not call the original mouse handler/release/callback and do not walk or consume the native queue.",
+    "not_implied": [
+      "All mouse input blocked",
+      "Town/world click blocked",
+      "All pending clicks will replay",
+      "Pixel visibility",
+      "A waiting reason inferred from dialog count"
+    ]
+  },
+  "native_nonzero_sources": {
+    "priority2": "Notify419420 dispatches packet byte+1 via42A081. Table[2]=419A57; local UID/new-actor path41A31B..41A60F sets types0 and1 at priority2. Table[136]=42951C releases both at priority2. It can be short and may precede a valid local binding for the observer.",
+    "priority1": "494DA0 acquires all types0..3 at priority1 in494F50..6A. Caller79DDCE requires local+2270 !=0 and42E770(currentScene). That predicate is true only for scenes4,6,7,9. These are outside the current state API scenes1,2,3. 494440 clears2270/rebinds the actor and4947D4..EE releases types0..3 at1. This is not an ordinary Town popup trigger.",
+    "waiting_candidate": "The original short branch80E01D..80E040 sends command99 and tail-jumps7993B0. The repository protocol identifies99 as MailboxOpenCommand. Opening/refreshing an empty owned test mailbox through original UI is a candidate only; actual UI reachability and the observable waiting interval remain unverified. Nearby command98 extracts attachments and is not a proposed probe."
+  },
+  "dialogs": [
+    {
+      "class_id": 7,
+      "table": "0xA7E614",
+      "name": "CNRDPartyCreateWindow",
+      "layer_offset": "0xC8"
+    },
+    {
+      "class_id": 9,
+      "table": "0xA7E6B4",
+      "name": "CNRDFriendAddRemoveWindow",
+      "layer_offset": "0xC8"
+    },
+    {
+      "class_id": 86,
+      "table": "0xA7F154",
+      "name": "CNRDInputRoomPasswordWindow",
+      "layer_offset": "0xD0"
+    }
+  ],
+  "dialog_contract": "All three have slot+2C=7BF640 and+30=7BF650, and use base7BDB30 root/backlink contract. Show/remove chooseC8 for class<=0F, CC for10..17, D0 for>=18. Active registration, pending close, and attached layer order are separate observations. These three focus paths set/release type0 priority1; no inference of type1 locking from their existence.",
+  "verification": {
+    "offline_original_type1_gate_cases": 144,
+    "failures": 0,
+    "dimensions": "button code0,1,7 x left0/1 x right0/1 x lock0/1/2 x flag90 0/1 x consumed0/1. Actual original bytes in Unicorn; AL, command+8 and ret4 ESP compared."
+  },
+  "additional_source": {
+    "file": "outer-command-layer.asm",
+    "begin": "0x008BAAD0",
+    "end_exclusive": "0x008BAC84",
+    "bytes_sha256": "192a5503ed97684f793b74468186f3ee9bdacefc259c50cdbd9b792882797b56",
+    "bytes_hex": "558bec83ec1853568bf1578d4e04e87d9403008b4e548b56588bf88bc13bc2897dfc74188a580c84db75118b5e600358043bdf7d0783c0103bc275e83bc1743d8b56583bc28955f874308d9b000000008bd08b1a8bf9891f8b5a04895f048b5a08895f088b520c89570c8b55f883c01083c1103bc275d98b7dfc894e588b46543b465874268a480d84c97404c6400d008a480c84c9740a8b50048bcf2bca8948088b4e5883c0103bc175da8b46488b383bf80f84f50000008b168b5f0c8d4710508bceff523084c075278b4e6c85c975208b56788b0a3bca74178d9b0000000039590874068b093bca75f53bca7402b0018b4e582b4e54c1f90449781a8bd1c1e204035654391a7506807a0c0075084983ea1085c97dee84c0742b83f9ff753e8b4dfc8d55e8894dec528d4e50c745f000000000895de8c645f401c645f501e8cc6cc2ffeb1883f9ff74138b4654c1e104c644010c008b5654c644110d018a471d84c0753f8b4f088a411d84c075188b018a501d84d2750b8bc88b018a501d84d274f58bf9eb1d8b47048a481d84c975113b7808750c8bf88b40048a481d84c974ef8bf83b7e480f850bffffff5f5e5b8be55dc3",
+    "disassembly_sha256": "759d8a0d38d5904386031a01401a6bfe8d8ec3a8b84c0b382baf4a16a65dde16"
+  },
+  "not_judged": [
+    "Live nonzero observability, UI reachability and event admission are not established by the offline early-gate model.",
+    "PVP/spectator business behavior and historical U07/U08 remain outside this U05 read contract."
+  ],
+  "implementation_review": "See implementation-review.json for actual source/consumer hashes and independently executed bounded checks. No blocking issue found within that scope; this is not live UI acceptance."
+}

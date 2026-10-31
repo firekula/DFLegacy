@@ -1,0 +1,1171 @@
+{
+  "schema": "channel-return-cera-gift-root-acceptance/v1",
+  "source_commit": "1d915dc",
+  "total": 228,
+  "passed": 228,
+  "checks": [
+    {
+      "name": "complete_nonempty_native_gift_proof",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: one native gift request",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: one native gift success",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: request precedes successful reply",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: zero capture errors",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: zero CRC failures",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: zero incomplete TCP bytes",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: one native gift request",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: one native gift success",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: request precedes successful reply",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: zero capture errors",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: zero CRC failures",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: zero incomplete TCP bytes",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: state snapshots ordered",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: baseline A cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: baseline B cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: baseline A item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: baseline A item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: baseline A gift receive count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: baseline B item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: baseline B item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: baseline B gift receive count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: canonical B growth query",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:A account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:A item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:A item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:B account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:B item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:B item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:B monthly received count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:A received count unchanged",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:delivered:B receive month",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:A account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:A item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:A item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:B account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:B item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:B item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:B monthly received count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:A received count unchanged",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:claimed:B receive month",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:A account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:A item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:A item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:B account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:B item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:B item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:B monthly received count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:A received count unchanged",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online:restart:B receive month",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: state snapshots ordered",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: baseline A cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: baseline B cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: baseline A item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: baseline A item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: baseline A gift receive count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: baseline B item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: baseline B item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: baseline B gift receive count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: canonical B growth query",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:A account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:A item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:A item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:B account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:B item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:B item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:B monthly received count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:A received count unchanged",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:delivered:B receive month",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:A account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:A item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:A item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:B account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:B item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:B item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:B monthly received count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:A received count unchanged",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:claimed:B receive month",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:A account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:A item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:A item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:B account cash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:B item15 inventory",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:B item15 mail",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:B monthly received count",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:A received count unchanged",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline:restart:B receive month",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: no successful gift67 after restart",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-online: no new item15 mail package after restart",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: explicit persistence-only restart has no clients",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: persistence snapshot phase",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: persistence snapshot after restarted server start",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: final restart durable state hash matches paused freeze",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: process proof phase",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: recipient absent at actual delivery",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: only sender process existed at delivery",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: actual successful query predates B process start",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: gift-offline: offline delivery observation predates B process start",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: all selected captures TX_crc_decode_failures",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: all selected captures structural_errors",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: all selected captures selected_layout_errors",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: all selected captures incomplete_bytes",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "gift: all selected captures disabled_flows",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "final_gift_decoder_matches_recorded_code",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json"
+    },
+    {
+      "name": "complete_nonempty_party_room_proof",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: exact stopped regression deployment identity",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: frozen post-party state matches observer hash",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: two-member roster",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: native party request accepted",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: party dungeon entry instance",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: B enters same room and map",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: first room fatigue A",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: first room fatigue B",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: first room all two loaded",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: next room fatigue B",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: next room fatigue A",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: next room all two loaded",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: opaque UDP A forwards to one peer",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: opaque UDP B forwards to one peer",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: gift sender cash preserved after ordinary combat",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: gift receive monthly count preserved",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "party: claimed item15 remains one",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "baseline_reentry_stall_observed",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\reentry-latency-final-20261028-0015.json"
+    },
+    {
+      "name": "final_both_clients_reentered_below_two_seconds",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\reentry-latency-final-20261028-0015.json"
+    },
+    {
+      "name": "A_final_reentry_is_same_process_new_connection",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\reentry-latency-final-20261028-0015.json"
+    },
+    {
+      "name": "B_final_reentry_is_same_process_new_connection",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\reentry-latency-final-20261028-0015.json"
+    },
+    {
+      "name": "original_save_unchanged",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\lorien-loot-20261027\\state.json"
+    },
+    {
+      "name": "original_save_backup_intact",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\original-state.json"
+    },
+    {
+      "name": "verified_final_native_source",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\approved-native-update.json"
+    },
+    {
+      "name": "native_file: A/DNF.exe",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe"
+    },
+    {
+      "name": "native_file: A/Script.pvf",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DF\\Script.pvf"
+    },
+    {
+      "name": "native_file: A/ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DF\\ijl15.dll"
+    },
+    {
+      "name": "native_file: launcher-A/ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DF\\town-test\\ijl15.dll"
+    },
+    {
+      "name": "native_file: B/DNF.exe",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe"
+    },
+    {
+      "name": "native_file: B/Script.pvf",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\Client_test2\\Script.pvf"
+    },
+    {
+      "name": "native_file: B/ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll"
+    },
+    {
+      "name": "native_file: launcher-B/ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\ijl15.dll"
+    },
+    {
+      "name": "native_rollback_backup: G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\native-reentry\\ijl15-0.dll"
+    },
+    {
+      "name": "native_rollback_backup: G:\\Game\\DNF_ACT1\\DF\\town-test\\ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\native-reentry\\ijl15-1.dll"
+    },
+    {
+      "name": "native_rollback_backup: G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\native-reentry\\ijl15-2.dll"
+    },
+    {
+      "name": "native_rollback_backup: G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\native-reentry\\ijl15-3.dll"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.InterProcess.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.InterProcess.dll"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.InterProcess.pdb",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.InterProcess.pdb"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.Protocol.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.Protocol.dll"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.Protocol.pdb",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.Protocol.pdb"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.RandomNative.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.RandomNative.dll"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.Server.deps.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.Server.deps.json"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.Server.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.Server.dll"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.Server.exe",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.Server.exe"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.Server.pdb",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.Server.pdb"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.Server.runtimeconfig.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.Server.runtimeconfig.json"
+    },
+    {
+      "name": "tested_runtime: DFLegacy.Server.staticwebassets.endpoints.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\DFLegacy.Server.staticwebassets.endpoints.json"
+    },
+    {
+      "name": "tested_runtime: server.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\server.json"
+    },
+    {
+      "name": "tested_runtime: web.config",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\runtime-gift-offline-final\\web.config"
+    },
+    {
+      "name": "gift_original_photo: 50-A-gift-box-open.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\50-A-gift-box-open.jpg"
+    },
+    {
+      "name": "gift_original_photo: 59-gift-window-enabled.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\59-gift-window-enabled.jpg"
+    },
+    {
+      "name": "gift_original_photo: 61-gift-unknown-query.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\61-gift-unknown-query.jpg"
+    },
+    {
+      "name": "gift_original_photo: 72-self-query.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\72-self-query.jpg"
+    },
+    {
+      "name": "gift_original_photo: 80-legal-query.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\80-legal-query.jpg"
+    },
+    {
+      "name": "gift_original_photo: 81-gift-checkout.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\81-gift-checkout.jpg"
+    },
+    {
+      "name": "gift_original_photo: 83-gift-send-yes.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\83-gift-send-yes.jpg"
+    },
+    {
+      "name": "gift_original_photo: 88-B-open-mailbox.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\88-B-open-mailbox.jpg"
+    },
+    {
+      "name": "gift_original_photo: 89-B-read-gift.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\89-B-read-gift.jpg"
+    },
+    {
+      "name": "gift_original_photo: 90-B-claim-gift.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\90-B-claim-gift.jpg"
+    },
+    {
+      "name": "gift_original_photo: 92-B-claimed-item-tooltip.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\92-B-claimed-item-tooltip.jpg"
+    },
+    {
+      "name": "gift_original_photo: 96-A-quota-query.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\96-A-quota-query.jpg"
+    },
+    {
+      "name": "gift_original_photo: 56-gift-shop-empty.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\56-gift-shop-empty.jpg"
+    },
+    {
+      "name": "gift_original_photo: 101-A-forbidden-checkout-disabled.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\101-A-forbidden-checkout-disabled.jpg"
+    },
+    {
+      "name": "gift_original_photo: 119-B-restart-item-tooltip.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\119-B-restart-item-tooltip.jpg"
+    },
+    {
+      "name": "gift_original_photo: 182-offline-send.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\182-offline-send.jpg"
+    },
+    {
+      "name": "gift_original_photo: 187-B-offline-read-gift.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\187-B-offline-read-gift.jpg"
+    },
+    {
+      "name": "gift_original_photo: 190-B-offline-item-tooltip.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\190-B-offline-item-tooltip.jpg"
+    },
+    {
+      "name": "native_original_evidence: latency-20261027-2342.json",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\latency-20261027-2342.json"
+    },
+    {
+      "name": "native_original_evidence: latency-final-20261028-0015.json",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\latency-final-20261028-0015.json"
+    },
+    {
+      "name": "native_original_evidence: native-update-final.json",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\native-update-final.json"
+    },
+    {
+      "name": "native_original_evidence: 115-A-restart-select.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\115-A-restart-select.jpg"
+    },
+    {
+      "name": "native_original_evidence: 116-B-restart-select.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\116-B-restart-select.jpg"
+    },
+    {
+      "name": "native_original_evidence: 00-user-unresponsive.png",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\00-user-unresponsive.png"
+    },
+    {
+      "name": "native_original_evidence: 05-A-settings.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\05-A-settings.jpg"
+    },
+    {
+      "name": "native_original_evidence: 06-A-return-channel.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\06-A-return-channel.jpg"
+    },
+    {
+      "name": "native_original_evidence: 09-A-start-channel-again.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\09-A-start-channel-again.jpg"
+    },
+    {
+      "name": "native_original_evidence: 10-A-second-channel-state.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\10-A-second-channel-state.jpg"
+    },
+    {
+      "name": "native_original_evidence: 34-A-fixed-back-in-town.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\34-A-fixed-back-in-town.jpg"
+    },
+    {
+      "name": "native_original_evidence: 35-B-fixed-back-in-town.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\35-B-fixed-back-in-town.jpg"
+    },
+    {
+      "name": "native_original_evidence: latency-20261027-2335.json",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\latency-20261027-2335.json"
+    },
+    {
+      "name": "native_original_evidence: native-red.log",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\native-red.log"
+    },
+    {
+      "name": "native_original_evidence: native-green.log",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\native-green.log"
+    },
+    {
+      "name": "native_original_evidence: normal-clients-reopened.json",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\normal-clients-reopened.json"
+    },
+    {
+      "name": "native_original_evidence: normal-postcheck.json",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\normal-postcheck.json"
+    },
+    {
+      "name": "native_original_evidence: normal-A-channel-20261028.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\normal-A-channel-20261028.jpg"
+    },
+    {
+      "name": "native_original_evidence: normal-B-channel-20261028.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\normal-B-channel-20261028.jpg"
+    },
+    {
+      "name": "native_original_evidence: 143-B-two-member-party.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\143-B-two-member-party.jpg"
+    },
+    {
+      "name": "native_original_evidence: 162-A-first-room-cleared.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\162-A-first-room-cleared.jpg"
+    },
+    {
+      "name": "native_original_evidence: 169-A-next-room.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\169-A-next-room.jpg"
+    },
+    {
+      "name": "native_original_evidence: 171-B-next-room.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\171-B-next-room.jpg"
+    },
+    {
+      "name": "native_original_evidence: party-regression-proof-20261028-0045.json",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\party-regression-proof-20261028-0045.json"
+    },
+    {
+      "name": "native_original_evidence: normal-restored-20261028-005912.json",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\normal-restored-20261028-005912.json"
+    },
+    {
+      "name": "verification_log: task-1-green.log",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-27-cera-gift\\task-1-green.log"
+    },
+    {
+      "name": "verification_log: task-1-full-smoke.log",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-27-cera-gift\\task-1-full-smoke.log"
+    },
+    {
+      "name": "verification_log: gift-ui-native-tests.log",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-27-cera-gift\\gift-ui-native-tests.log"
+    },
+    {
+      "name": "offline_case_is_explicit_clean_baseline",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\offline-case-reset.json"
+    },
+    {
+      "name": "nonempty_normal_restoration_proof",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_Config-0.ini",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_Config-1.ini",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_launcher-A.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_launcher-B.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_server.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_native_G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_native_G:\\Game\\DNF_ACT1\\DF\\town-test\\ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_native_G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_native_G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\ijl15.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.InterProcess.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.InterProcess.pdb",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Protocol.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Protocol.pdb",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.deps.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.dll",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.exe",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.pdb",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.runtimeconfig.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.staticwebassets.endpoints.json",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_listener_7001",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_listener_27001",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_listener_8080",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_listener_8081",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_original_save_unchanged",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_client_running_A",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_client_running_B",
+      "passed": true,
+      "evidence": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json"
+    }
+  ],
+  "post_deploy": true,
+  "input_evidence_sha256": {
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\agent-cera-gift-live\\cera-gift-proof-20261028-005257-124612.json": "526183C6DA9E663C2F4D276183101BC4D34CBAC59CE10EB8154D85278AD24D07",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\party-regression-proof-20261028-0045.json": "47D293C9902E5DE781422F46D47AFA8B04C8F288B1EBC2AC32EAC6CC87F31110",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\reentry-latency-final-20261028-0015.json": "FB28AEB5A3055A7F020044CD931C159173428A1713A193003E9C748DF301B2CB",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\fixture-manifest.json": "DA6C6EEBB71AEDCFE205BB66BC0B56130B0F3E40B23C442E4F88C82BF4411341",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\approved-native-update.json": "6FA18FFB334750D1B4759292F457329B4A8AEB33EB2DA6911200E648BC0AB441",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\deployment.json": "2DFE7F5B21BD6058208631DC42B85D5C41EB57C38533DE6CFB3C4389DB836D9E",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\build-hashes-gift-offline-final.json": "979124F44B42577857DD0F82F28E4E0AF936AF601FE3B4DE93BE682DD36AA385",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-cera-gift\\sha256.json": "F704D2F5C17D72755CED9DFA5206B05102E4B2F854331A94908CABE59E03AEDE",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\sha256-additional-2342.json": "EE18097891F73CDFBF4B8147B65EC9B6FBD90833EEF4E97B4BBBE199DC212B6C",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\sha256-final-0015.json": "75F79C93327101B971F758E613213DB5BBD293E649CF67F1DF884DB8374A3F3C",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\sha256-initial.json": "61E740F5424608AFBA255262692C6BCD4E8ECE5CDA81CA723541653C17DF8F30",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\sha256-normal-postcheck-010050.json": "4BF4DD64588CCF1B3C28205FAF17C0BD698338D25D3442CEB38528AD6C7C9A83",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\sha256-party-0045.json": "F7346C11430E47BD625EB8DAF3FDE81D000CDE36C9BCFD532C63CC435FE6A995",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-channel-return\\sha256-restored-005912.json": "2D842A3364E091E1FD811B4899252E079CA948A1B363560D500BE6D230F7447D",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-27-cera-gift\\task-1-green.log": "FD853E44A5893ED1E6DE998DA2742324181A2C42D3984A30159B6DC75C0245E2",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-27-cera-gift\\task-1-full-smoke.log": "BB0F6179836CFC0576A58C8B803A1FE8D679543721490F4F720CE06950218ACC",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.superpowers\\sdd\\2026-10-27-cera-gift\\gift-ui-native-tests.log": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\offline-case-reset.json": "8D83DC760D814A6DC0E19325DB91D522849DEF2B76A3ABF7182E0477C828F68F",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json": "F056050406C34C09BF44623744719CDEECBCA1810161A1B3E6FA7EB7F0D1D093"
+  },
+  "scope": "Native channel reentry timing, party dungeon/room regression, native online/offline gifts, mailbox claims and persistence. UDP opaque relay warnings are preserved; full UDP decoding was not asserted."
+}

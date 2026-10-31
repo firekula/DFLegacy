@@ -1,0 +1,3 @@
+FAIL client state: use-limit table does not clamp an out-of-range learned level to a final zero
+FAIL client state: unsupported negative duration cannot silently become known ready
+Client state tests: 2 failures

@@ -1,0 +1,57 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZN24AuthMobileRestrictPolicyC2Ev VA=0x0816d6ce SIZE=144
+0x0816d6ce push     ebp
+0x0816d6cf mov      ebp, esp
+0x0816d6d1 push     esi
+0x0816d6d2 push     ebx
+0x0816d6d3 sub      esp, 0x20
+0x0816d6d6 mov      eax, dword ptr [ebp + 8]
+0x0816d6d9 mov      dword ptr [esp + 4], 1
+0x0816d6e1 mov      dword ptr [esp], eax
+0x0816d6e4 call     0x816ed98 ; _ZN22InterfaceServicePolicyC1EN16RestrictCategory4EnumE
+0x0816d6e9 mov      eax, dword ptr [ebp + 8]
+0x0816d6ec mov      dword ptr [eax], 0x8b82ee8
+0x0816d6f2 mov      eax, dword ptr [ebp + 8]
+0x0816d6f5 mov      byte ptr [eax + 4], 0
+0x0816d6f9 mov      eax, dword ptr [ebp + 8]
+0x0816d6fc add      eax, 0xc
+0x0816d6ff mov      dword ptr [esp], eax
+0x0816d702 call     0x816ed70 ; _ZN13ServicePolicy4InitEv
+0x0816d707 mov      dword ptr [ebp - 0xc], 0
+0x0816d70e jmp      0x816d72f
+0x0816d710 mov      word ptr [ebp - 0xe], 1
+0x0816d716 mov      eax, dword ptr [ebp + 8]
+0x0816d719 lea      edx, [eax + 0xc]
+0x0816d71c lea      eax, [ebp - 0xe]
+0x0816d71f mov      dword ptr [esp + 4], eax
+0x0816d723 mov      dword ptr [esp], edx
+0x0816d726 call     0x816eefa ; _ZNSt6vectorIsSaIsEE9push_backEOs
+0x0816d72b add      dword ptr [ebp - 0xc], 1
+0x0816d72f cmp      dword ptr [ebp - 0xc], 0x21
+0x0816d733 setle    al
+0x0816d736 test     al, al
+0x0816d738 jne      0x816d710
+0x0816d73a jmp      0x816d757
+0x0816d73c mov      ebx, edx
+0x0816d73e mov      esi, eax
+0x0816d740 mov      eax, dword ptr [ebp + 8]
+0x0816d743 mov      dword ptr [esp], eax
+0x0816d746 call     0x816edc0 ; _ZN22InterfaceServicePolicyD2Ev
+0x0816d74b mov      eax, esi
+0x0816d74d mov      edx, ebx
+0x0816d74f mov      dword ptr [esp], eax
+0x0816d752 call     0x8ae3750 ; _Unwind_Resume
+0x0816d757 add      esp, 0x20
+0x0816d75a pop      ebx
+0x0816d75b pop      esi
+0x0816d75c pop      ebp
+0x0816d75d ret
+
+FUNCTION _ZN14MobileRestrict12enumToStringENS_4EnumE VA=0x0816d463 SIZE=15
+0x0816d463 push     ebp
+0x0816d464 mov      ebp, esp
+0x0816d466 mov      eax, dword ptr [ebp + 8]
+0x0816d469 mov      eax, dword ptr [eax*4 + 0x93700c0]
+0x0816d470 pop      ebp
+0x0816d471 ret

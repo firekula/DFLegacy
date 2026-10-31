@@ -1,0 +1,13 @@
+FAIL route controller: current dungeon-gate Town area can also be the final walking area
+FAIL route controller: ordinary route can choose a dungeon gate as its final walking area
+FAIL route controller: ordinary Town source queues a dungeon-gate final target
+FAIL route controller: same dungeon-gate area accepts another safe walking target
+FAIL route controller: Town, dungeon-selector and expanded selector-edge goals remain protected
+FAIL route controller: Town, dungeon-selector and expanded selector-edge goals remain protected
+FAIL route controller: Town, dungeon-selector and expanded selector-edge goals remain protected
+FAIL route controller: actual PVF permits the reported gate point from ordinary or same-area source
+FAIL route controller: actual PVF permits the reported gate point from ordinary or same-area source
+Town route catalog: 72 checks, 0 failures
+town route controller tests: 9 failure(s)
+town route adapter tests: 0 failure(s)
+town route IO tests: 0 failure(s)

@@ -1,0 +1,45 @@
+{
+  "Schema": "party-relay-final-delivery/v1",
+  "AtUtc": "2026-10-28T08:52:07.878250+00:00",
+  "Status": "PASS_AS_SCOPED",
+  "SourceCommit": "f86cb548fda9eabd32c13e644cdc228f17c49b8c",
+  "ManagedSourceCommit": "20d996f66775ba21f0b52995e00dc2ae40de99f0",
+  "NativeSourceCommit": "b4fe25f0c82c0cf8ab87813ec7670f1d6b2bf662",
+  "BuildManifestSha256": "28C9B6A1199CEF82AA75D6FF9E558B15FC599E01EF3435589FBF0489E116FFFB",
+  "BuildFiles": 50,
+  "DeliveredFiles": 49,
+  "ProtectedOriginals": 15,
+  "ProtectedBackupsUnchanged": 11,
+  "RuntimeBackupsUnchanged": 69,
+  "OriginalNativeBackupsUnchanged": 4,
+  "CurrentAuthorizedNativeSha256": "8AB0660B416F2240ABFC0E0840E3B93D8F54BFCBB8B15E8C4C5ACBD5CD0142DC",
+  "OriginalConfigsRestored": 5,
+  "InputMailboxesRestored": 8,
+  "HistoricalPackages": 9,
+  "HistoricalFiles": 438,
+  "HistoricalNativeArtifacts": 9,
+  "Phases": {
+    "normal-v3": {
+      "CompleteManifestSha256": "50CD6A25184267E58286A336C188C0D517C1172A5BB171DB1A4474ED523A5A08",
+      "Files": 623,
+      "Bytes": 50528820,
+      "WireProofSha256": "A0A8E55BCE3B688C037747D89969457CCCF3153FB1AE76349B1E7018866FB96F"
+    },
+    "fallback-v3": {
+      "CompleteManifestSha256": "B75DF02B90FE14BE9309461FE272F6960178C76BEC0FF8F2C829E7E9EF3FD86C",
+      "Files": 610,
+      "Bytes": 63123274,
+      "WireProofSha256": "4377CF87D5F89ECE8608315CAF006BE00CF285806C57E338EF04FF6841936F5B"
+    },
+    "fallback-v4": {
+      "CompleteManifestSha256": "E49E452794C306596C5730896B0A1205FAA775CA542D0A9063574A63E2127A8C",
+      "Files": 378,
+      "Bytes": 23156618,
+      "WireProofSha256": "289E93503220E28D536B8674B3488BA63AC9B2FD022B2D06B2AC809670DB82C2"
+    }
+  },
+  "ReadinessSha256": "F8C6E967E1FFD9E3709F3A0DC37E1374E54CA7C03F61B9D08EE5982F12978FE9",
+  "WindowsPowerShell": "5.1.26100.9711",
+  "ActiveGameServerLauncherProcesses": 0,
+  "Scope": "Accepted local normal UDP and peer-sink TCP fallback; exact original configs/saves/EXE/PVF and backups preserved; four authorized native copies updated; monster sync remains under investigation."
+}

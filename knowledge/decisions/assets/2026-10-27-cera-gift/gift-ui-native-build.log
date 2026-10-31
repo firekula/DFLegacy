@@ -1,0 +1,76 @@
+生成启动时间为 2026/10/27 23:42:46。
+
+     1>节点 1 上的项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj”(默认目标)。
+     1>项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj”(1)正在节点 1 上生成“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj”(2) (默认目标)。
+     2>PrepareForBuild:
+         已启用结构化输出。编译器诊断的格式设置将反映错误层次结构。有关详细信息，请参阅 https://aka.ms/cpp/structured-output。
+       InitializeBuildStatus:
+         正在创建“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\DFLegacy.Ijl15.tlog\unsuccessfulbuild”，因为已指定“AlwaysCreate”。
+         正在对“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\DFLegacy.Ijl15.tlog\unsuccessfulbuild”执行 Touch 任务。
+       ClCompile:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\CL.exe /c /Iinclude /Zi /nologo /W4 /WX /diagnostics:column /sdl /O2 /Oi /Oy- /GL /D IJL15_EXPORTS /D UNICODE /D _UNICODE /D NDEBUG /D _WINDLL /D _UNICODE /D UNICODE /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /permissive- /Fo"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\\" /Fd"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\vc145.pdb" /external:W4 /Gd /TP /analyze- /FC /errorReport:queue src\dnf_patches.cpp
+         dnf_patches.cpp
+       Link:
+         D:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\HostX86\x86\link.exe /ERRORREPORT:QUEUE /OUT:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15\Release\ijl15.dll" /NOLOGO ole32.lib psapi.lib shlwapi.lib windowscodecs.lib ws2_32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /DEF:"src\ijl15.def" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15\Release\ijl15.pdb" /SUBSYSTEM:WINDOWS /OPT:REF /OPT:ICF /LTCG:incremental /LTCGOUT:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\ijl15.iobj" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15\Release\ijl15.lib" /MACHINE:X86 /SAFESEH /DLL "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\auto_input.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\debug_module.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\boss_room_death.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\channel_reentry.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\ground_item_removal.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\party_card_display.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\d3d8_scaler.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\dnf_patches.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\external_string_table.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\ijl15_config.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\ijl15.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\memory_patch.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\message_audio.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\net_dump.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\mouse_wheel.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\output_paths.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\performance_overlay.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\party_combat_detail.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\mage_skill_contact.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\priest_heal_target.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\stage_follow.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\summon_owner_death.obj"
+         "D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\window_scaling.obj"
+           正在创建库 D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15\Release\ijl15.lib 和对象 D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15\Release\ijl15.exp
+         正在生成代码
+         60 of 788 functions ( 7.6%) were compiled, the rest were copied from previous compilation.
+           5 functions were new in current compilation
+           5 functions had inline decision re-evaluated but remain unchanged
+         已完成代码的生成
+         DFLegacy.Ijl15.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\artifacts\native\ijl15\Release\ijl15.dll
+       _CopyOutOfDateSourceItemsToOutputDirectory:
+       正在跳过目标“_CopyOutOfDateSourceItemsToOutputDirectory”，因为所有输出文件相对于输入文件而言都是最新的。
+       FinalizeBuildStatus:
+         正在删除文件“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\DFLegacy.Ijl15.tlog\unsuccessfulbuild”。
+         正在对“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\..\..\artifacts\native\ijl15-vcx\Release\DFLegacy.Ijl15.tlog\DFLegacy.Ijl15.lastbuildstate”执行 Touch 任务。
+     2>已完成生成项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\DFLegacy.Ijl15.vcxproj”(默认目标)的操作。
+     1>PrepareForBuild:
+         已启用结构化输出。编译器诊断的格式设置将反映错误层次结构。有关详细信息，请参阅 https://aka.ms/cpp/structured-output。
+       InitializeBuildStatus:
+         正在创建“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests-vcx\Release\DFLegacy.7C1A6F42.tlog\unsuccessfulbuild”，因为已指定“AlwaysCreate”。
+         正在对“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests-vcx\Release\DFLegacy.7C1A6F42.tlog\unsuccessfulbuild”执行 Touch 任务。
+       ClCompile:
+         所有输出均为最新。
+       Link:
+         所有输出均为最新。
+         DFLegacy.Ijl15.Tests.vcxproj -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\artifacts\native\ijl15-tests\Release\ijl15_tests.exe
+       _CopyOutOfDateSourceItemsToOutputDirectory:
+       正在跳过目标“_CopyOutOfDateSourceItemsToOutputDirectory”，因为所有输出文件相对于输入文件而言都是最新的。
+       PostBuildEvent:
+         Copying the ijl15 module under test next to the test executable
+         powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $src=Join-Path 'D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\..\..\artifacts\native\ijl15\Release' 'ijl15.dll'; $dst=Join-Path 'D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests\Release\' 'ijl15.dll'; Copy-Item -LiteralPath $src -Destination $dst -Force; $cfgSrc=Join-Path 'D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..' 'Config.ini'; $cfgDst=Join-Path 'D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests\Release\' 'Config.ini'; Copy-Item -LiteralPath $cfgSrc -Destination $cfgDst -Force; Write-Host ('copied ' + $src + ' and ' + $cfgSrc + ' -> ' + 'D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests\Release\')"
+         :VCEnd
+         copied D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\..\..\artifacts\native\ijl15\Release\ijl15.dll and D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\Config.ini -> D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests\Release\
+       FinalizeBuildStatus:
+         正在删除文件“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests-vcx\Release\DFLegacy.7C1A6F42.tlog\unsuccessfulbuild”。
+         正在对“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\..\artifacts\native\ijl15-tests-vcx\Release\DFLegacy.7C1A6F42.tlog\DFLegacy.Ijl15.Tests.lastbuildstate”执行 Touch 任务。
+     1>已完成生成项目“D:\codex_worktree\party-chat-gold\DFLegacy\src\DFLegacy.Ijl15\tests\DFLegacy.Ijl15.Tests.vcxproj”(默认目标)的操作。
+
+已成功生成。
+    0 个警告
+    0 个错误
+
+已用时间 00:00:03.99

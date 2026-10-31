@@ -1,0 +1,176 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _Z39_NS_PI_2ND_ReconstructCheckSumRandomkeyRjj VA=0x0808ca60 SIZE=26
+0x0808ca60 push     ebp
+0x0808ca61 mov      ebp, esp
+0x0808ca63 mov      eax, dword ptr [ebp + 8]
+0x0808ca66 mov      eax, dword ptr [eax]
+0x0808ca68 movzx    edx, al
+0x0808ca6b mov      eax, dword ptr [ebp + 0xc]
+0x0808ca6e shl      eax, 8
+0x0808ca71 or       edx, eax
+0x0808ca73 mov      eax, dword ptr [ebp + 8]
+0x0808ca76 mov      dword ptr [eax], edx
+0x0808ca78 pop      ebp
+0x0808ca79 ret
+
+FUNCTION _ZN15PISenderManager18MakeHashForSendingEPhjb VA=0x0808be6e SIZE=250
+0x0808be6e push     ebp
+0x0808be6f mov      ebp, esp
+0x0808be71 push     ebx
+0x0808be72 sub      esp, 0x34
+0x0808be75 mov      eax, dword ptr [ebp + 0x14]
+0x0808be78 mov      byte ptr [ebp - 0x1c], al
+0x0808be7b cmp      byte ptr [ebp - 0x1c], 0
+0x0808be7f je       0x808be88
+0x0808be81 mov      eax, dword ptr [ebp + 8]
+0x0808be84 mov      byte ptr [eax + 4], 0x27
+0x0808be88 mov      eax, dword ptr [ebp + 8]
+0x0808be8b movzx    eax, byte ptr [eax + 4]
+0x0808be8f mov      byte ptr [ebp - 0x16], al
+0x0808be92 call     0x807dca0 ; rand
+0x0808be97 mov      byte ptr [ebp - 0x15], al
+0x0808be9a mov      eax, dword ptr [ebp + 8]
+0x0808be9d movzx    edx, byte ptr [ebp - 0x15]
+0x0808bea1 mov      byte ptr [eax + 4], dl
+0x0808bea4 mov      dword ptr [ebp - 0x14], 0
+0x0808beab mov      dword ptr [ebp - 0x10], 0
+0x0808beb2 mov      byte ptr [ebp - 9], 0
+0x0808beb6 cmp      dword ptr [ebp + 0x10], 0
+0x0808beba jne      0x808bec6
+0x0808bebc call     0x807dca0 ; rand
+0x0808bec1 mov      byte ptr [ebp - 9], al
+0x0808bec4 jmp      0x808bee3
+0x0808bec6 movzx    eax, byte ptr [ebp - 0x16]
+0x0808beca mov      dword ptr [esp + 8], eax
+0x0808bece mov      eax, dword ptr [ebp + 0x10]
+0x0808bed1 mov      dword ptr [esp + 4], eax
+0x0808bed5 mov      eax, dword ptr [ebp + 0xc]
+0x0808bed8 mov      dword ptr [esp], eax
+0x0808bedb call     0x808c311 ; _Z8MakeHashPhjh
+0x0808bee0 mov      byte ptr [ebp - 9], al
+0x0808bee3 movzx    eax, byte ptr [ebp - 9]
+0x0808bee7 shl      eax, 6
+0x0808beea movzx    edx, al
+0x0808beed movzx    eax, byte ptr [ebp - 9]
+0x0808bef1 and      eax, 0xc
+0x0808bef4 shl      eax, 0xc
+0x0808bef7 or       edx, eax
+0x0808bef9 movzx    eax, byte ptr [ebp - 9]
+0x0808befd and      eax, 0x30
+0x0808bf00 sar      eax, 2
+0x0808bf03 or       edx, eax
+0x0808bf05 movzx    eax, byte ptr [ebp - 9]
+0x0808bf09 and      ax, 0xc0
+0x0808bf0d shl      eax, 4
+0x0808bf10 or       edx, eax
+0x0808bf12 movzx    eax, byte ptr [ebp - 0x15]
+0x0808bf16 and      eax, 3
+0x0808bf19 shl      eax, 0xc
+0x0808bf1c or       edx, eax
+0x0808bf1e movzx    eax, byte ptr [ebp - 0x15]
+0x0808bf22 and      eax, 0xc
+0x0808bf25 shl      eax, 2
+0x0808bf28 or       edx, eax
+0x0808bf2a movzx    eax, byte ptr [ebp - 0x15]
+0x0808bf2e and      eax, 0x30
+0x0808bf31 shl      eax, 4
+0x0808bf34 or       edx, eax
+0x0808bf36 movzx    eax, byte ptr [ebp - 0x15]
+0x0808bf3a shr      al, 6
+0x0808bf3d movzx    eax, al
+0x0808bf40 or       eax, edx
+0x0808bf42 movzx    eax, ax
+0x0808bf45 mov      dword ptr [ebp - 0x14], eax
+0x0808bf48 mov      eax, dword ptr [ebp - 0x14]
+0x0808bf4b mov      ebx, eax
+0x0808bf4d shl      ebx, 8
+0x0808bf50 call     0x807dca0 ; rand
+0x0808bf55 and      eax, 0xff
+0x0808bf5a or       eax, ebx
+0x0808bf5c mov      dword ptr [ebp - 0x10], eax
+0x0808bf5f mov      eax, dword ptr [ebp - 0x10]
+0x0808bf62 add      esp, 0x34
+0x0808bf65 pop      ebx
+0x0808bf66 pop      ebp
+0x0808bf67 ret
+
+FUNCTION _Z13_NS_MakeHash_PcsRi VA=0x0808c8b5 SIZE=193
+0x0808c8b5 push     ebp
+0x0808c8b6 mov      ebp, esp
+0x0808c8b8 sub      esp, 0x38
+0x0808c8bb mov      eax, dword ptr [ebp + 0xc]
+0x0808c8be mov      word ptr [ebp - 0x1c], ax
+0x0808c8c2 cmp      word ptr [ebp - 0x1c], 0
+0x0808c8c7 jle      0x808c8d1
+0x0808c8c9 cmp      word ptr [ebp - 0x1c], 0x190
+0x0808c8cf jle      0x808c8db
+0x0808c8d1 mov      eax, 0
+0x0808c8d6 jmp      0x808c974
+0x0808c8db movsx    edx, word ptr [ebp - 0x1c]
+0x0808c8df mov      eax, dword ptr [ebp + 8]
+0x0808c8e2 lea      ecx, [ebp - 0x18]
+0x0808c8e5 mov      dword ptr [esp + 8], ecx
+0x0808c8e9 mov      dword ptr [esp + 4], edx
+0x0808c8ed mov      dword ptr [esp], eax
+0x0808c8f0 call     0x80b3d57 ; _Z3md5PhiS_
+0x0808c8f5 movzx    edx, byte ptr [ebp - 0x18]
+0x0808c8f9 movzx    ecx, byte ptr [ebp - 0xe]
+0x0808c8fd movzx    eax, byte ptr [ebp - 0x10]
+0x0808c901 xor      ecx, eax
+0x0808c903 movzx    eax, byte ptr [ebp - 0xb]
+0x0808c907 xor      eax, ecx
+0x0808c909 xor      eax, edx
+0x0808c90b xor      eax, 0xffffff81
+0x0808c90e mov      byte ptr [ebp - 0x18], al
+0x0808c911 movzx    edx, byte ptr [ebp - 0x17]
+0x0808c915 movzx    ecx, byte ptr [ebp - 0xc]
+0x0808c919 movzx    eax, byte ptr [ebp - 0x13]
+0x0808c91d xor      ecx, eax
+0x0808c91f movzx    eax, byte ptr [ebp - 0xf]
+0x0808c923 xor      eax, ecx
+0x0808c925 xor      eax, edx
+0x0808c927 xor      eax, 0x78
+0x0808c92a mov      byte ptr [ebp - 0x17], al
+0x0808c92d movzx    edx, byte ptr [ebp - 0x16]
+0x0808c931 movzx    ecx, byte ptr [ebp - 0x14]
+0x0808c935 movzx    eax, byte ptr [ebp - 0xa]
+0x0808c939 xor      ecx, eax
+0x0808c93b movzx    eax, byte ptr [ebp - 0x12]
+0x0808c93f xor      eax, ecx
+0x0808c941 xor      eax, edx
+0x0808c943 xor      eax, 0x1a
+0x0808c946 mov      byte ptr [ebp - 0x16], al
+0x0808c949 movzx    edx, byte ptr [ebp - 0x15]
+0x0808c94d movzx    ecx, byte ptr [ebp - 0x11]
+0x0808c951 movzx    eax, byte ptr [ebp - 0xd]
+0x0808c955 xor      ecx, eax
+0x0808c957 movzx    eax, byte ptr [ebp - 9]
+0x0808c95b xor      eax, ecx
+0x0808c95d xor      eax, edx
+0x0808c95f xor      eax, 0xffffffbf
+0x0808c962 mov      byte ptr [ebp - 0x15], al
+0x0808c965 lea      eax, [ebp - 0x18]
+0x0808c968 mov      edx, dword ptr [eax]
+0x0808c96a mov      eax, dword ptr [ebp + 0x10]
+0x0808c96d mov      dword ptr [eax], edx
+0x0808c96f mov      eax, 1
+0x0808c974 leave
+0x0808c975 ret
+
+FUNCTION _ZN6Taiwan14GarenaAuthData12setPatchTimeEj VA=0x08173034 SIZE=14
+0x08173034 push     ebp
+0x08173035 mov      ebp, esp
+0x08173037 mov      eax, dword ptr [ebp + 8]
+0x0817303a mov      edx, dword ptr [ebp + 0xc]
+0x0817303d mov      dword ptr [eax + 0x64], edx
+0x08173040 pop      ebp
+0x08173041 ret
+
+FUNCTION _ZN6Taiwan14GarenaAuthData12getPatchTimeEv VA=0x08173042 SIZE=11
+0x08173042 push     ebp
+0x08173043 mov      ebp, esp
+0x08173045 mov      eax, dword ptr [ebp + 8]
+0x08173048 mov      eax, dword ptr [eax + 0x64]
+0x0817304b pop      ebp
+0x0817304c ret

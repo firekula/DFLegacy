@@ -1,0 +1,79 @@
+{
+  "rows": [
+    {
+      "tick": 361883984,
+      "prior": "0000",
+      "now": "00000000",
+      "captureLeft": 4294967295,
+      "captureRight": 4294967295,
+      "rootId": 129,
+      "mouse": [
+        300,
+        201
+      ]
+    },
+    {
+      "tick": 361885328,
+      "prior": "0000",
+      "now": "00000100",
+      "captureLeft": 4294967295,
+      "captureRight": 4294967295,
+      "rootId": 129,
+      "mouse": [
+        300,
+        201
+      ]
+    },
+    {
+      "tick": 361885328,
+      "prior": "0001",
+      "now": "00000100",
+      "captureLeft": 4294967295,
+      "captureRight": 4294967295,
+      "rootId": 129,
+      "mouse": [
+        300,
+        201
+      ]
+    },
+    {
+      "tick": 361885937,
+      "prior": "0001",
+      "now": "00000000",
+      "captureLeft": 4294967295,
+      "captureRight": 4294967295,
+      "rootId": 129,
+      "mouse": [
+        300,
+        201
+      ]
+    },
+    {
+      "tick": 361885937,
+      "prior": "0000",
+      "now": "00000000",
+      "captureLeft": 4294967295,
+      "captureRight": 129,
+      "rootId": 129,
+      "mouse": [
+        300,
+        201
+      ]
+    },
+    {
+      "tick": 361885937,
+      "prior": "0000",
+      "now": "00000000",
+      "captureLeft": 4294967295,
+      "captureRight": 4294967295,
+      "rootId": 129,
+      "mouse": [
+        300,
+        201
+      ]
+    }
+  ],
+  "phase": "native-ui",
+  "build_manifest_sha256": "07449A48DCBA2AAE05C088509EB5D93D90021F03D8543218C7B83198504111AE",
+  "journal_sha256": "66D4245CD592FDC7DDB74478008BC89E4C428C7EB19805E8303BB6C9FE2DFEA1"
+}

@@ -1,0 +1,601 @@
+{
+  "schema": "act1-final-delivery/v2",
+  "status": "PASS_AS_SCOPED",
+  "approved": {
+    "managed_source_commit": "5078da27a4807695f002ceea61333c43e1932ce4",
+    "native_source_commit": "ab1e6b685021f6cd6f8d125fc04dc0c5c50e931f",
+    "build_manifest_sha256": "09EFFBE39AB99B377AAFB540933EA75919E9E04642FCE79F4D6AF0CB1CC05204",
+    "native_approval_sha256": "832A30A725206FE2A789EFAD4EE7A3194E03B49CCF781E3D931D4C3C99BB8CD8",
+    "server_sha256": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+    "protocol_sha256": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+    "native_sha256": "30AD9A4A3CD565DE845F74AB3D6C6D60EED1F3429EC7D53929D912F158246584"
+  },
+  "publication": {
+    "package_count": 49,
+    "published_count": 48,
+    "excluded": [
+      "server.json"
+    ],
+    "existing_extras_preserved": 216,
+    "helper_extras_count": 2,
+    "publish_receipt_sha256": "8E579F7F8B1E990D4586A150FA6B53F7658F10CDBCAFA5FBDBA99DEF63131451",
+    "restore_receipt_sha256": "98CC9EA40ED69A7191C602EF56AFA7F7CABA0F9E3C8C6AE6018120CB05C3E5C9"
+  },
+  "preservation": {
+    "original_save_sha256": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+    "original_save_unchanged": true,
+    "all_five_configs_original": true,
+    "config_hashes": {
+      "Config-0.ini": "03333C57357058DC73D67B4E2C8E56E4B03403B73E7E6B79AF370A596A108920",
+      "Config-1.ini": "3F04A210C46907E202D3C3FEDCC7AFF7E7D838F7A90249CB6381317493815861",
+      "launcher-A.json": "E1217E2FD1202E81FE34D1E6DE01B2A63E54820EEDD6AB90D4E3A7BDC9142E4E",
+      "launcher-B.json": "88FE0C76A3B3F614244282EF032BB8B28F227083C815FCD767A5CDC7DBB95609",
+      "server.json": "D604F6F0F9F351745B306EAEEEC8DAD028BF0330D4071090BCE80176CCB8F47C"
+    },
+    "backup_count": 83,
+    "all_backups_unchanged": true,
+    "exe_pvf_count": 4,
+    "exe_pvf_unchanged": true,
+    "four_native_targets_approved": true,
+    "native_target_count": 4,
+    "original_processes_absent": true,
+    "final_processes_absent": true,
+    "independent_process_observation": {
+      "count": 0,
+      "observed_at_utc": "2026-10-28T01:10:11.1439409Z",
+      "sha256": "13ACD702570C4A86726D3C88B4B8D65F3A2736C2BA96704DE01B1690A8854A7F"
+    },
+    "historical_package_count": 9,
+    "historical_artifact_count": 9,
+    "historical_hashes_unchanged": true,
+    "runtime_before_count": 266,
+    "runtime_before_all_unchanged": true,
+    "fixed_history_count": 38
+  },
+  "startup": {
+    "configured_server_entrance": 2311,
+    "configured_launcher_entrance": 27001,
+    "channel_port": 7001,
+    "launcher_start_server": false,
+    "original_server_config_rewritten": false,
+    "historical_helpers": {
+      "source_commit": "22f2f0a4f03c9d79e6fe5ee2df09568f3fc996f7",
+      "ps1_sha256": "4A38F3BDB07C6EBC93B2804D8880505E40E3CF14DFAC4BA3487986511BE940E2",
+      "cmd_sha256": "74220A29F6A5750848E48D2BE68F7142982B4D42F38B32DC71E7C5B98D0D3B4E",
+      "deployment_sha256": "8C5BE1A634D9BB66F04BAC64246BF9AEE169A6ED39D3F0F584174EF177AC4D6B"
+    },
+    "helpers": {
+      "source_commit": "adc990941e860e7d199faa2e4acb7d1cdc48c868",
+      "ps1_sha256": "8FCE652F0EF4ACD7FE2AFD95599944DF2E2854EEC0FBC2E4803FFE9F19D4914A",
+      "cmd_sha256": "74220A29F6A5750848E48D2BE68F7142982B4D42F38B32DC71E7C5B98D0D3B4E",
+      "deployment_sha256": "1D42D13953A0CC530D3D4DA422871C8C8ACD0D9001E5018F41B9DFAADE7AA517"
+    },
+    "source_review_sha256": "1931F7BE8BBA279C7C7DC5173E06D78CE53F83EA2CFCF562BC011EE300AFC579",
+    "source_test_evidence": {
+      "hosts": [
+        "WindowsPowerShell5.1",
+        "pwsh7"
+      ],
+      "checks_each": 32,
+      "failures_each": 0,
+      "legacy_red_failures": 4,
+      "basis": "frozen author logs and independent source review; not rerun by aggregate generator"
+    }
+  },
+  "failures": [
+    {
+      "id": "03",
+      "status": "FAILED_BIND",
+      "receipt_sha256": "D08DFDD106C3831C85B7C7979D6EE7FD9344C24FA3F79C194A107204512C3612",
+      "closed_stdout_sha256": "CCFD26F2751E2AA9EF728DBED03445736B697E36926914829F7B615A458C0EE8",
+      "observed": [
+        "bind10013",
+        "BackgroundService failed",
+        "StopHost"
+      ],
+      "interpretation": "Startup convention/configuration conflict, not evidence of a gameplay binary defect. Excluded2280-2379 range root-observed; independent frozen OS diagnostics must be separately attributed."
+    },
+    {
+      "id": "04",
+      "status": "FAILED_PRECHECK_BEFORE_CLAIM",
+      "receipt_sha256": "1C89257EF490E865E5C6BCE66D8B80C48CFD53606D00F47EDC46BE531858659A",
+      "server_started": false,
+      "interpretation": "WindowsPowerShell5.1 ANSI decoding of UTF8 config failed before Claim. Production helper uses explicitUTF8 and was not reached."
+    },
+    {
+      "id": "05",
+      "status": "FAILED_ACTIVE_LOG_SHARING",
+      "receipt_sha256": "CECA330387E352970DC93687EA6B3E05494CB7FE16F190A0E7A46B3E107CEB20",
+      "attempt_sha256": "C5C7C2DA3445EC980C8E4D2136D0058E2C6616AD59C08522FBBB07F2390E863F",
+      "server_started": true,
+      "pid": 75236,
+      "ready_observed": false,
+      "interpretation": "Actual WindowsPowerShell5.1 redirected stdout writer conflicted with production helper ReadAllText. Startup helper defect confirmed; no successful readiness. Earlier APPROVE is historical scope, superseded on this issue.",
+      "independent_review": {
+        "sha256": "5E9C391CC68C5C1F2C245122AFC481BB8F3B976B943641351FAE1DB9E00FEFA2",
+        "severity": "Important",
+        "confirmed_helper_defect": true
+      },
+      "environment_observation": {
+        "source_sha256": "FAD21E58851EFECABA0BBCDF9A95907C249320E04C66B3A9E51660A23E72FB8C",
+        "matched": true,
+        "entrypoint_completed": false,
+        "values_exported": false,
+        "before_count": 0,
+        "after_count": 0,
+        "before_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+        "after_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+      },
+      "old_helper_archive_manifest_sha256": "DE968D4EB04C312D14404F08202CE18E0314D33148EBC3D8844AAE9F86132F64"
+    }
+  ],
+  "readiness": {
+    "status": "completed",
+    "phase": "06",
+    "receipt_sha256": "769CC11657058C0597BF2F32A946AB11F467EE5F747561D21413DA10A8226BC1",
+    "ready_sha256": "4C90C00DECA5A5C33126CA98CF716AFC946C3DC4F1F621BCF428F94F55BADB92",
+    "pid": 50700,
+    "start_time_utc": "2026-10-28T01:08:31.9154318Z",
+    "ports": [
+      27001,
+      7001
+    ],
+    "both_owned_same_pid": true,
+    "owned_process_identity_checked": true,
+    "normal_runtime_executable": true,
+    "hidden_child": true,
+    "server_arguments": [],
+    "unique_isolated_datapath": true,
+    "isolated_initial_sha256": "FB20572589A5CFB31D89E16EC6936DE96071630E432EDE787CCB0887930ABE52",
+    "isolated_final_sha256": "7E4407F4B183A975C4B3D2E59D50F52B77CE3FD07CCEFFC8F92FB88760EDD091",
+    "readonly_original_guards": 6,
+    "guard_share_mode": "Read",
+    "child_scoped_environment": true,
+    "environment_restored": true,
+    "stable_seconds": 2,
+    "no_startup_failure": true,
+    "stopped": true,
+    "final_absent": true,
+    "automatic_retry": false,
+    "automatic_rollback": false,
+    "recovery_review_sha256": "9B6D1C9B03C4A3C18B5485FFE1D8D3367B5598566BA9811F681DA5D5CDFD38CC",
+    "execution_review_sha256": "D5A4891B6AA03022BB02B3C9F90D7C2B5EF78D9D91BD814749157990BB9FDD60",
+    "environment_observation": {
+      "sha256": "A444A2A71A764D3FB2BA666FF1C9E7D994657E1225D6C95C762EADEFB3A171B5",
+      "host_version": "5.1.26100.9711",
+      "execute": true,
+      "entrypoint_completed": true,
+      "matched": true,
+      "before_count": 0,
+      "after_count": 0,
+      "before_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "after_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "values_exported": false,
+      "nonempty_environment_native_tested": false
+    },
+    "control_flow_basis": "Hash-bound source plus actual completed06 receipt: Hidden launch/noCLI, six FileShare.Read guards, child environment restoration, two-second owned dual-port gate and PID/path/start-checked cleanup. Not a separate visual or kernel trace of these controls."
+  },
+  "source_boundary": {
+    "count": 401,
+    "whole_physical_bytes_equal": true,
+    "whole_git_tree_equal": true,
+    "older_shared_files_unchanged": false,
+    "physical_recheck_sha256": "50128D677F8E68F24B50192BAAD8F281AFAFFBA63B994321D884D97EB9851BC3",
+    "historical_overlap_sha256": "ADFD5B7C1AF9AC15129112018989071AA5403528AE7D37C380F9AE898F7DB123",
+    "fresh_physical_recheck_sha256": "7DE7AEC35595179CA32980A16B598754D76398DAFB10055609A5B34CFDDBC84B",
+    "fresh_git_scope": "git diff5078 -- src tests returned exactly8 native paths; no nonnative changes. New startup helper/test lives under tools."
+  },
+  "components": [
+    {
+      "id": "diagnostics",
+      "actual_builds": [
+        "294fdf3"
+      ],
+      "limitations": [
+        "Native normal login/character selection only; actual CMD125 not naturally triggered. Handler grammar is automated evidence."
+      ],
+      "references": [
+        {
+          "asset": "2026-10-28-client-diagnostics/diagnostics-acceptance.json",
+          "sha256": "D3A118FCFDA5644C9ECDD04052432E90247878D6A5E8AA12A90FE39CADCE0277",
+          "bytes": 4346
+        }
+      ],
+      "aggregate_scope_status": "PASS_AS_SCOPED"
+    },
+    {
+      "id": "mentor_growth",
+      "actual_builds": [
+        "695232c",
+        "cacab restart"
+      ],
+      "limitations": [
+        "Historical seven native behavior predicates and restart durability; natural growth sweep not native-proven. Shared writers changed later; source/bridge binding is separate."
+      ],
+      "references": [
+        {
+          "asset": "2026-10-28-mentor-growth/native-review.json",
+          "sha256": "C3454E7079A4A77956CB69BAFE6BC5EB68AD95A99332D96BEECB5D1BD2DE4EBE",
+          "bytes": 3263
+        },
+        {
+          "asset": "2026-10-28-mentor-growth/native-source-proof.json",
+          "sha256": "89AA326DAD85E8F3D025C62A0FA2412EA8B72A464BD8EF042BBB475D9FCECEB7",
+          "bytes": 28228
+        },
+        {
+          "asset": "2026-10-28-mentor-growth/native-runtime-verification.json",
+          "sha256": "533DB004EB7E2AAC7B12ADEDDE0BAF54BFAD44FD5665EBA353E1CE9CEB534C9E",
+          "bytes": 529
+        },
+        {
+          "asset": "2026-10-28-mentor-growth/native-restart-proof.json",
+          "sha256": "F7DA412B0C2D72DB6FE17DC101861D9B23BE80C00070772730B85A762AF802B8",
+          "bytes": 7117
+        }
+      ],
+      "aggregate_scope_status": "PASS_AS_SCOPED",
+      "historical_native_predicates": {
+        "passed": 7,
+        "required": 7,
+        "restart": "PASS",
+        "natural_sweep_native_proven": false
+      }
+    },
+    {
+      "id": "pvp",
+      "actual_builds": [
+        "cacab/743 historical3",
+        "5078/30AD new1",
+        "5078/30AD channel restart"
+      ],
+      "limitations": [
+        "Final death match62/62 plus channel/restart43/43; retain historical743 three-match identity and old390 sampling boundary."
+      ],
+      "references": [
+        {
+          "asset": "2026-10-28-pvp-individual/sha256-manifest.json",
+          "sha256": "F4FD34ED93F8002B5CFF1D70C78D9335340661CF2552EA1F1A64F199AB4BE409",
+          "bytes": 6049
+        },
+        {
+          "asset": "2026-10-28-pvp-individual/final30ad-sha256-manifest.json",
+          "sha256": "D4A56307E5FD69F936C74AC28F87E985EACEE8C5F5D588F9C67D0D1945D8E456",
+          "bytes": 3440
+        },
+        {
+          "asset": "2026-10-28-pvp-individual/final30ad-check.json",
+          "sha256": "D1F8F5E1E752ED8176E11D6D3BB51B6109C45D5690F2EE3BC05869D761B7922D",
+          "bytes": 7079
+        },
+        {
+          "asset": "2026-10-28-pvp-individual/reentry30ad-sha256-manifest.json",
+          "sha256": "9A8A0B7A8B747F724E26D7D28ACB32AFB358F458BCD575F1AF53BF1BE0C2C091",
+          "bytes": 1598
+        },
+        {
+          "asset": "2026-10-28-pvp-individual/reentry30ad-check.json",
+          "sha256": "A9806D3525A727F4B6B99FEC9DAAF624062C6AC3081ADA90732C4D08DF4F46AC",
+          "bytes": 6204
+        }
+      ],
+      "aggregate_scope_status": "PASS_AS_SCOPED"
+    },
+    {
+      "id": "avatar_gift",
+      "actual_builds": [
+        "5078/743"
+      ],
+      "limitations": [
+        "7day/30day/permanent gift, unclaimed restart, selected ability4 selfbuy and quota; disclosed derived120second expiry, not natural7/30day passage."
+      ],
+      "references": [
+        {
+          "asset": "2026-10-28-avatar-gift/initial-frozen-proof.json",
+          "sha256": "E3FEE27FE3FAD6DE587D5AFC290AF1A376AC2CD8F817E32128F4A9CEC40636F2",
+          "bytes": 29579
+        },
+        {
+          "asset": "2026-10-28-avatar-gift/restart-claim-frozen-proof.json",
+          "sha256": "5A6DA8C608C4B25A269AA6E51F4708E5952C411E934F247A2D34D257EEB648BB",
+          "bytes": 29398
+        },
+        {
+          "asset": "2026-10-28-avatar-gift/thirty-day-frozen-proof.json",
+          "sha256": "6A7E95B79717C82219A7B032A4178E8D4FADEF7802ECB57DD396E8CE9B6D6E05",
+          "bytes": 39856
+        },
+        {
+          "asset": "2026-10-28-avatar-gift/permanent-selfbuy-frozen-proof.json",
+          "sha256": "BE585CFD85ED306F5FC6355B3B66B327F6BA0B9F3CB6AD449FBB4323F2F208FB",
+          "bytes": 49321
+        },
+        {
+          "asset": "2026-10-28-avatar-gift/short-expiry-frozen-proof.json",
+          "sha256": "2DF0778FE3EF67F36AB36F5EEA66FE12EB08EE926172D1FA147F4C338D440071",
+          "bytes": 31400
+        }
+      ],
+      "aggregate_scope_status": "PASS_AS_SCOPED"
+    },
+    {
+      "id": "creature_gift",
+      "actual_builds": [
+        "743 ENTRY_RED",
+        "C79 ENTRY_RED",
+        "5078/ab1/30AD final6stages"
+      ],
+      "limitations": [
+        "Original source failures remain; final105009 egg gift, exact unclaimed restart, claim/hatch/second restart57/57; not all15eggs native tested."
+      ],
+      "references": [
+        {
+          "asset": "2026-10-28-creature-gift/30AD-final-publication-manifest.json",
+          "sha256": "AEC085C8FA608052260623C2C81D2A85516C229DB58963FA9CCC5CA0469538C2",
+          "bytes": 11754
+        },
+        {
+          "asset": "2026-10-28-creature-gift/30AD-check-final-v3-corrected.json",
+          "sha256": "CF7E9F3695BEBBF1B61C398304FE84CF3640F4E045F00C23A8843176802C8744",
+          "bytes": 6674
+        },
+        {
+          "asset": "2026-10-28-creature-gift/30AD-native-final-supplement.json",
+          "sha256": "E23F7417FEBF3AE1ACEC364FF8DB53309C0FD815D3E88817FA3E64D9CF45AD34",
+          "bytes": 2663
+        },
+        {
+          "asset": "2026-10-28-creature-gift/C79-entry-red-summary.json",
+          "sha256": "E5A32825494B0993B5868F7B8FF22128FD4A7EEC49167A285BDD22CD1B51AE9C",
+          "bytes": 2304
+        }
+      ],
+      "aggregate_scope_status": "PASS_AS_SCOPED"
+    },
+    {
+      "id": "mentor_gold",
+      "actual_builds": [
+        "5078/743 flush",
+        "5078/C79 timer/offline",
+        "5078/30AD restart"
+      ],
+      "limitations": [
+        "Component bounded matrix closed; no fatigue/COF values and no native wallet-cap/trade-race claims."
+      ],
+      "references": [
+        {
+          "asset": "2026-10-28-mentor-master-gold/native-component-acceptance.json",
+          "sha256": "997A0F5F4A2361DA3E7135EC2F1406EC78953C6FBAD64CEB55EA472F1294B341",
+          "bytes": 2542
+        },
+        {
+          "asset": "2026-10-28-mentor-master-gold/native-public-proof.json",
+          "sha256": "01707E7BE9FA5CD791675B571A1291B65C07152D06373B3261BF48ACDB9D66DD",
+          "bytes": 22302
+        },
+        {
+          "asset": "2026-10-28-mentor-master-gold/native-C79-timer-offline-proof.json",
+          "sha256": "9C0F9F56D78F2D596B8109B69BE07ADD15AB22977817AB2304B103A9006575CD",
+          "bytes": 35594
+        },
+        {
+          "asset": "2026-10-28-mentor-master-gold/native-final30AD-relogin-proof.json",
+          "sha256": "A3B7E23E5B75C07451CA3918B19C3F13B6B75CCF836BD9DF2D182F29ED1B01A8",
+          "bytes": 8803
+        }
+      ],
+      "aggregate_scope_status": "PASS_AS_SCOPED"
+    }
+  ],
+  "limits": {
+    "diagnostic125_naturally_triggered": false,
+    "fatigue_cof_restored": false,
+    "all_game_restored": false,
+    "historical_native_relabelled": false
+  },
+  "known_artifact_hashes": [
+    {
+      "label": "publish48",
+      "sha256": "8E579F7F8B1E990D4586A150FA6B53F7658F10CDBCAFA5FBDBA99DEF63131451"
+    },
+    {
+      "label": "restore5",
+      "sha256": "98CC9EA40ED69A7191C602EF56AFA7F7CABA0F9E3C8C6AE6018120CB05C3E5C9"
+    },
+    {
+      "label": "fixture",
+      "sha256": "710825FA576280197A912403DB949A6362A6967A10FC6B73EBA12A994B78D7E8"
+    },
+    {
+      "label": "source-overlap-ab1",
+      "sha256": "ADFD5B7C1AF9AC15129112018989071AA5403528AE7D37C380F9AE898F7DB123"
+    },
+    {
+      "label": "source-overlap-ab1-prose",
+      "sha256": "AFCE5F83E706C5A680628F9CBE64559AAE6DE66AD1C9F1B7DE340437AE8A7C67"
+    },
+    {
+      "label": "source-overlap-c43-prose",
+      "sha256": "CB984FFC95A475BC11CE42D309BF422AE245F419B989B5E6897B433C970756C9"
+    },
+    {
+      "label": "readiness03-failure",
+      "sha256": "D08DFDD106C3831C85B7C7979D6EE7FD9344C24FA3F79C194A107204512C3612"
+    },
+    {
+      "label": "readiness03-prepared",
+      "sha256": "35CE243067388BA1A9EE054C813C569AD95EDDCCDE9B79962386B0EA1E6407D4"
+    },
+    {
+      "label": "source401-recheck",
+      "sha256": "50128D677F8E68F24B50192BAAD8F281AFAFFBA63B994321D884D97EB9851BC3"
+    },
+    {
+      "label": "package49",
+      "sha256": "09EFFBE39AB99B377AAFB540933EA75919E9E04642FCE79F4D6AF0CB1CC05204"
+    },
+    {
+      "label": "native832",
+      "sha256": "832A30A725206FE2A789EFAD4EE7A3194E03B49CCF781E3D931D4C3C99BB8CD8"
+    },
+    {
+      "label": "helper-deployment",
+      "sha256": "8C5BE1A634D9BB66F04BAC64246BF9AEE169A6ED39D3F0F584174EF177AC4D6B"
+    },
+    {
+      "label": "failure04",
+      "sha256": "1C89257EF490E865E5C6BCE66D8B80C48CFD53606D00F47EDC46BE531858659A"
+    },
+    {
+      "label": "startup-review",
+      "sha256": "4D18CA66121ACE80E72487DF8013AC8B9E52BA2AAD6758776BF4071775E1145A"
+    },
+    {
+      "label": "startup-helper",
+      "sha256": "4A38F3BDB07C6EBC93B2804D8880505E40E3CF14DFAC4BA3487986511BE940E2"
+    },
+    {
+      "label": "startup-command",
+      "sha256": "74220A29F6A5750848E48D2BE68F7142982B4D42F38B32DC71E7C5B98D0D3B4E"
+    },
+    {
+      "label": "failed03-stdout",
+      "sha256": "CCFD26F2751E2AA9EF728DBED03445736B697E36926914829F7B615A458C0EE8"
+    }
+  ],
+  "document_epoch": "References pin historical published assets. Current overview/coverage/component Markdown is not hash-pinned by this report.",
+  "closed_audit_sha256": "7467E861F008DDAEA88C049B1A4D9F8CA32AC266840B2EC985B8E1F10AFDD9B8",
+  "closed_evidence_hashes": [
+    {
+      "label": "recovery-receipt.json",
+      "sha256": "769CC11657058C0597BF2F32A946AB11F467EE5F747561D21413DA10A8226BC1"
+    },
+    {
+      "label": "ready.json",
+      "sha256": "4C90C00DECA5A5C33126CA98CF716AFC946C3DC4F1F621BCF428F94F55BADB92"
+    },
+    {
+      "label": "prepared.json",
+      "sha256": "D70BDE22CF08661ACE9445DBF85669EEB4F0D45D3CBA54B03C6990DA0303C5CB"
+    },
+    {
+      "label": "server-process.json",
+      "sha256": "7DD3AA73869BF83DFC86A1FE3C55A416BA04A05023AD3BBCA352A00858020E35"
+    },
+    {
+      "label": "helper-prepared.json",
+      "sha256": "E7AE45280DCE25DAE123A6A667ED74282384C3F53A6694C169D528FD02014BEE"
+    },
+    {
+      "label": "helper-ready.json",
+      "sha256": "3C76A766F9FC678C6C6ACB81829717A06041E7F54EEB014B325709B4B3240A94"
+    },
+    {
+      "label": "helper-server-process.json",
+      "sha256": "7DD3AA73869BF83DFC86A1FE3C55A416BA04A05023AD3BBCA352A00858020E35"
+    },
+    {
+      "label": "server.stdout.log",
+      "sha256": "E18F1A4DE331BC7AB74225673CC6FC9B14F4D5A22C69E15B36EF2E6CCE7FC330"
+    },
+    {
+      "label": "server.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "label": "environment06.json",
+      "sha256": "A444A2A71A764D3FB2BA666FF1C9E7D994657E1225D6C95C762EADEFB3A171B5"
+    },
+    {
+      "label": "review06.md",
+      "sha256": "9B6D1C9B03C4A3C18B5485FFE1D8D3367B5598566BA9811F681DA5D5CDFD38CC"
+    },
+    {
+      "label": "static/normal-runtime-startup-shared-log-source-review.md",
+      "sha256": "1931F7BE8BBA279C7C7DC5173E06D78CE53F83EA2CFCF562BC011EE300AFC579"
+    },
+    {
+      "label": "static/Test-NormalServerStartup.ps1",
+      "sha256": "6A2D8E432552F88E76BB0814C1AEFA23EE234DF855CAC3240BF42D4495F97D56"
+    },
+    {
+      "label": "static/Start-NormalServer.cmd",
+      "sha256": "74220A29F6A5750848E48D2BE68F7142982B4D42F38B32DC71E7C5B98D0D3B4E"
+    },
+    {
+      "label": "static/Start-NormalServer.ps1",
+      "sha256": "8FCE652F0EF4ACD7FE2AFD95599944DF2E2854EEC0FBC2E4803FFE9F19D4914A"
+    },
+    {
+      "label": "static/06-recovery-readiness-port27001-sharedlog.ps1",
+      "sha256": "66A919A542090748E5ECEFC0DE9261E5C623621B7973743FECA436B1C19309D9"
+    },
+    {
+      "label": "static/normal-runtime-startup-shared-log-deployment-receipt.json",
+      "sha256": "1D42D13953A0CC530D3D4DA422871C8C8ACD0D9001E5018F41B9DFAADE7AA517"
+    },
+    {
+      "label": "static/green-ps51.txt",
+      "sha256": "0EAAC519197EDE6BA776DF22F4F06BFB7C0A743EF8C65254957EA5094E1BEC2C"
+    },
+    {
+      "label": "static/green-pwsh.txt",
+      "sha256": "0EAAC519197EDE6BA776DF22F4F06BFB7C0A743EF8C65254957EA5094E1BEC2C"
+    },
+    {
+      "label": "static/Invoke-RootRecovery06.ps1",
+      "sha256": "F8D4218F42C68A069B946F5A1844524251FFAA5DE4762DCA0F3B1EE7515B15B6"
+    },
+    {
+      "label": "static/red-ps51.txt",
+      "sha256": "9FCE5716240CCFEFE4DF98FF9D14B0671763ABFEA741A4326BD388F1406211A1"
+    },
+    {
+      "label": "static/freeze06-manifest.json",
+      "sha256": "87E8D55804BDF23FDEA6E81F1A2C1D534052A9050BAAE6EE67B24E0CCFA3965D"
+    },
+    {
+      "label": "fixture-manifest.json",
+      "sha256": "710825FA576280197A912403DB949A6362A6967A10FC6B73EBA12A994B78D7E8"
+    },
+    {
+      "label": "native-approval.json",
+      "sha256": "832A30A725206FE2A789EFAD4EE7A3194E03B49CCF781E3D931D4C3C99BB8CD8"
+    },
+    {
+      "label": "package-manifest.json",
+      "sha256": "09EFFBE39AB99B377AAFB540933EA75919E9E04642FCE79F4D6AF0CB1CC05204"
+    },
+    {
+      "label": "pins06.json",
+      "sha256": "FE33EEBB7446E50B9B3CF3C86A222FB35929590498636957C13458F539136646"
+    },
+    {
+      "label": "frozen-fences.json",
+      "sha256": "113E8A58810EC9BFBFFCC96CF2A06D7857D3D55E2CF46934F3E78235207A0A1F"
+    },
+    {
+      "label": "source401-original.json",
+      "sha256": "50128D677F8E68F24B50192BAAD8F281AFAFFBA63B994321D884D97EB9851BC3"
+    },
+    {
+      "label": "execution-review.md",
+      "sha256": "D5A4891B6AA03022BB02B3C9F90D7C2B5EF78D9D91BD814749157990BB9FDD60"
+    }
+  ],
+  "historical_pending_resolution": "Old at-publication PENDING/NOT_READY fields remain byte-identical. This later aggregate closes only final deployment/restoration binding with actual06; each native component retains its original build and test scope. Receipt NativeAcceptance was a historical placeholder, resolved through separately pinned component evidence, not edited.",
+  "public_evidence": [
+    {
+      "file": "readiness06-public-proof.json",
+      "sha256": "4DE55CAD631E32CE486031D2BD6DCE967BE2001BF6FD8B55C8EE739A3161B8DC"
+    },
+    {
+      "file": "final-preservation-public-proof.json",
+      "sha256": "48B982A7C49796B8B87C5E6668C675208F98073931CC17755950426CFB7C976D"
+    },
+    {
+      "file": "startup-history-public-proof.json",
+      "sha256": "57B055CC08EADFCA926F199BA3C40750AB0DEF03A01915FD49B0D33144AC8D8A"
+    }
+  ]
+}

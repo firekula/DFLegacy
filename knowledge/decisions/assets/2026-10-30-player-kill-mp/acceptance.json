@@ -1,0 +1,242 @@
+{
+  "schema": "dfl-player-kill-mp-acceptance/v1",
+  "native_sha256": "E1CB3D51C9E3524035AACB0A378B8DA03FD4ADAFF9C90CE7CA285A0D18D50AB9",
+  "server_sha256": "E058182878E8176981C3D9649515F744035385E812525DBE14B4D2C8059193C0",
+  "roles": {
+    "A": "mageco",
+    "B": "heal1024",
+    "C": "fourC",
+    "D": "fourD"
+  },
+  "deaths": [
+    {
+      "role": "B",
+      "uid": 2,
+      "native": {
+        "request_id": 134377669974119101,
+        "operation": 6,
+        "target_id": 2,
+        "status": "applied",
+        "reason": "native_player_death_requested",
+        "server_committed": false,
+        "persistence_verified": false
+      },
+      "status": "synchronized",
+      "server_player_dead": true,
+      "observers": {
+        "1": {
+          "matched": true,
+          "context_matched": true,
+          "hp": 0,
+          "dead": true
+        },
+        "4": {
+          "matched": true,
+          "context_matched": true,
+          "hp": 0,
+          "dead": true
+        },
+        "2": {
+          "matched": true,
+          "context_matched": true,
+          "hp": 0,
+          "dead": true
+        },
+        "3": {
+          "matched": true,
+          "context_matched": true,
+          "hp": 0,
+          "dead": true
+        }
+      }
+    },
+    {
+      "role": "A",
+      "uid": 1,
+      "native": {
+        "request_id": 134377670009711275,
+        "operation": 6,
+        "target_id": 1,
+        "status": "applied",
+        "reason": "native_player_death_requested",
+        "server_committed": false,
+        "persistence_verified": false
+      },
+      "status": "synchronized",
+      "server_player_dead": true,
+      "observers": {
+        "1": {
+          "matched": true,
+          "context_matched": true,
+          "hp": 0,
+          "dead": true
+        },
+        "4": {
+          "matched": true,
+          "context_matched": true,
+          "hp": 0,
+          "dead": true
+        },
+        "2": {
+          "matched": true,
+          "context_matched": true,
+          "hp": 0,
+          "dead": true
+        },
+        "3": {
+          "matched": true,
+          "context_matched": true,
+          "hp": 0,
+          "dead": true
+        }
+      }
+    }
+  ],
+  "already_dead_rejected": {
+    "reason": "authoritative_living_player_required",
+    "request_unchanged": true
+  },
+  "final_member_life": {
+    "1": false,
+    "4": true,
+    "2": false,
+    "3": true
+  },
+  "mp_initial": {
+    "3": {
+      "mp": 245,
+      "max_mp": 245
+    },
+    "2": {
+      "mp": 200,
+      "max_mp": 200
+    },
+    "1": {
+      "mp": 2101,
+      "max_mp": 2101
+    },
+    "4": {
+      "mp": 270,
+      "max_mp": 270
+    }
+  },
+  "C_skill_mp": {
+    "before": 245,
+    "samples": [
+      {
+        "sequence": 652,
+        "tick": 406665796,
+        "mp": 239,
+        "max_mp": 245
+      },
+      {
+        "sequence": 653,
+        "tick": 406666000,
+        "mp": 239,
+        "max_mp": 245
+      },
+      {
+        "sequence": 654,
+        "tick": 406666203,
+        "mp": 239,
+        "max_mp": 245
+      },
+      {
+        "sequence": 655,
+        "tick": 406666406,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 656,
+        "tick": 406666609,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 657,
+        "tick": 406666812,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 658,
+        "tick": 406667015,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 659,
+        "tick": 406667218,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 660,
+        "tick": 406667421,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 661,
+        "tick": 406667625,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 662,
+        "tick": 406667828,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 663,
+        "tick": 406668031,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 664,
+        "tick": 406668234,
+        "mp": 240,
+        "max_mp": 245
+      },
+      {
+        "sequence": 665,
+        "tick": 406668437,
+        "mp": 241,
+        "max_mp": 245
+      },
+      {
+        "sequence": 666,
+        "tick": 406668640,
+        "mp": 241,
+        "max_mp": 245
+      }
+    ],
+    "observed_minimum": 239,
+    "last": 241,
+    "regenerated_to_full": true,
+    "final": {
+      "sequence": 766,
+      "mp": 245,
+      "max_mp": 245
+    }
+  },
+  "A_hotkey_attempt": {
+    "before": 2101,
+    "observed_decrease": false
+  },
+  "normal_state_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283",
+  "protected_files_verified": 16,
+  "test_configs_restored": 4,
+  "active_channel_sessions_at_stop": 0,
+  "limits": [
+    "High-level player kill supports current self in 2-4 member dungeon party only; solo session-private life is unknown.",
+    "No native ACK is a server or persistence receipt.",
+    "U11 dead-member ground removal and dead test-ground observation remain deferred.",
+    "MP is local dungeon observation only; peer/Town/v1 remain unknown.",
+    "Native maxMP base is float32 before multiplication/truncation; runtime x87 precision/rounding was not sampled.",
+    "A hotkey A caused no observed MP decrease; C native Z provided consumption evidence."
+  ]
+}

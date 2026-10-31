@@ -1,0 +1,45 @@
+{
+  "started": "2026-10-29T14:24:21.823+08:00",
+  "pid": 60624,
+  "client_dir": "G:\\Game\\DNF_ACT1\\Client_test2",
+  "label": "B-return-town-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T14:24:21.990+08:00",
+  "steps": [
+    {
+      "t": 100,
+      "op": "key",
+      "vk": 27,
+      "dur": 120
+    },
+    {
+      "t": 500,
+      "op": "move",
+      "x": 313,
+      "y": 325
+    },
+    {
+      "t": 800,
+      "op": "click",
+      "x": 313,
+      "y": 325,
+      "dur": 120
+    },
+    {
+      "t": 1420,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "65284c1fabf1ffb6117604386d836be6b0787f73cd37de8fffb21d9cc98ca03c",
+  "plan_written": "2026-10-29T14:24:21.990+08:00",
+  "focus_reassertions": 1,
+  "plan_completed": "2026-10-29T14:24:23.655+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\Client_test2\\ScreenShot\\ScreenShot00996.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\evidence-return-green\\B-return-town-input.jpg",
+  "own_pid_diag_lines": 4,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T14:24:23.830+08:00"
+}

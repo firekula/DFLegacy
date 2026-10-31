@@ -1,0 +1,60 @@
+{
+  "Schema": "native-image-and-summary-manifest/v1",
+  "Files": [
+    {
+      "File": "A-map.jpg",
+      "Bytes": 321234,
+      "Sha256": "E14EADFE5C7DC5425154D031E32CF87B7610C79EA98642739DECBC83824B6222",
+      "NativeEvidenceLabel": "nav4-A-map-arrived-visual",
+      "NativeSourceSha256": "E14EADFE5C7DC5425154D031E32CF87B7610C79EA98642739DECBC83824B6222",
+      "CopiedWithoutEditing": true
+    },
+    {
+      "File": "B-map.jpg",
+      "Bytes": 325371,
+      "Sha256": "CC30280788F0F359030C9B6A29AA4F1BFB69DD6095D15CAE48558C63718B762E",
+      "NativeEvidenceLabel": "nav4-B-map-arrived-visual",
+      "NativeSourceSha256": "CC30280788F0F359030C9B6A29AA4F1BFB69DD6095D15CAE48558C63718B762E",
+      "CopiedWithoutEditing": true
+    },
+    {
+      "File": "npc-dropdown.jpg",
+      "Bytes": 316071,
+      "Sha256": "20E8179E546896CEE90FC9DB0D0E9A543325FEFB9367557B8D6AAD6AA0C86DB3",
+      "NativeEvidenceLabel": "nav4-A-npc-filter-protected-input",
+      "NativeSourceSha256": "20E8179E546896CEE90FC9DB0D0E9A543325FEFB9367557B8D6AAD6AA0C86DB3",
+      "CopiedWithoutEditing": true
+    },
+    {
+      "File": "A-town.jpg",
+      "Bytes": 433167,
+      "Sha256": "055DE2F4B740310E4B5BF2F88B639C077BD992EED2A8BB2364D2E9E93F8251F1",
+      "NativeEvidenceLabel": "nav4-A-close-map-protected-input",
+      "NativeSourceSha256": "055DE2F4B740310E4B5BF2F88B639C077BD992EED2A8BB2364D2E9E93F8251F1",
+      "CopiedWithoutEditing": true
+    },
+    {
+      "File": "B-town.jpg",
+      "Bytes": 431849,
+      "Sha256": "1D7D335B941D2012C81562B7172EFE333A4624FE3165654007619B83F996B75B",
+      "NativeEvidenceLabel": "nav4-B-final-close-map-input",
+      "NativeSourceSha256": "1D7D335B941D2012C81562B7172EFE333A4624FE3165654007619B83F996B75B",
+      "CopiedWithoutEditing": true
+    },
+    {
+      "File": "B-dungeon.jpg",
+      "Bytes": 428761,
+      "Sha256": "3912960B0A79C179C236356187803EAA25212C6014C5A6B7986F5F27A3369C13",
+      "NativeEvidenceLabel": "nav4-B-dungeon-state-visual",
+      "NativeSourceSha256": "3912960B0A79C179C236356187803EAA25212C6014C5A6B7986F5F27A3369C13",
+      "CopiedWithoutEditing": true
+    },
+    {
+      "File": "summary.json",
+      "Bytes": 3220,
+      "Sha256": "C5F64B297AC6C0D2E4ACDA4A6EE9E0BB1E20D6AF0B2189D2DFF757B8F7EC760D"
+    }
+  ],
+  "Count": 7,
+  "Scope": "Six original native screenshots and compact summary; manifest excludes itself"
+}

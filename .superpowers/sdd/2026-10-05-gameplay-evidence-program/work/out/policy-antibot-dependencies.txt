@@ -1,0 +1,102 @@
+ELF_SHA256=486239c75293731c090b448921ccab522b9fade46ad966adc44b0566fff91043
+
+FUNCTION _ZN24AuthMobileRestrictPolicy11beginPolicyERKSs VA=0x0816d7ac SIZE=44
+0x0816d7ac push     ebp
+0x0816d7ad mov      ebp, esp
+0x0816d7af sub      esp, 0x18
+0x0816d7b2 mov      eax, dword ptr [ebp + 8]
+0x0816d7b5 lea      ecx, [eax + 0xc]
+0x0816d7b8 mov      eax, dword ptr [ebp + 8]
+0x0816d7bb mov      eax, dword ptr [eax + 8]
+0x0816d7be mov      edx, dword ptr [ebp + 0xc]
+0x0816d7c1 mov      dword ptr [esp + 8], edx
+0x0816d7c5 mov      dword ptr [esp + 4], ecx
+0x0816d7c9 mov      dword ptr [esp], eax
+0x0816d7cc call     0x816d490 ; _ZL19setPolicyApplyValueN16RestrictCategory4EnumER13ServicePolicyRKSs
+0x0816d7d1 mov      eax, 1
+0x0816d7d6 leave
+0x0816d7d7 ret
+
+FUNCTION _ZN13ServicePolicy4InitEv VA=0x0816ed70 SIZE=19
+0x0816ed70 push     ebp
+0x0816ed71 mov      ebp, esp
+0x0816ed73 sub      esp, 0x18
+0x0816ed76 mov      eax, dword ptr [ebp + 8]
+0x0816ed79 mov      dword ptr [esp], eax
+0x0816ed7c call     0x816eeb2 ; _ZNSt6vectorIsSaIsEE5clearEv
+0x0816ed81 leave
+0x0816ed82 ret
+
+FUNCTION _Z19CreateAntiServerObjPKc VA=0x082a6539 SIZE=283
+0x082a6539 push     ebp
+0x082a653a mov      ebp, esp
+0x082a653c push     edi
+0x082a653d push     ebx
+0x082a653e sub      esp, 0x120
+0x082a6544 lea      ebx, [ebp - 0x118]
+0x082a654a mov      eax, 0
+0x082a654f mov      edx, 0x41
+0x082a6554 mov      edi, ebx
+0x082a6556 mov      ecx, edx
+0x082a6558 rep stosd dword ptr es:[edi], eax
+0x082a655a mov      eax, dword ptr [ebp + 8]
+0x082a655d mov      dword ptr [esp], eax
+0x082a6560 call     0x807e3b0 ; strlen
+0x082a6565 mov      dword ptr [esp + 8], eax
+0x082a6569 mov      eax, dword ptr [ebp + 8]
+0x082a656c mov      dword ptr [esp + 4], eax
+0x082a6570 lea      eax, [ebp - 0x118]
+0x082a6576 mov      dword ptr [esp], eax
+0x082a6579 call     0x807e1a0 ; strncat
+0x082a657e mov      dword ptr [esp + 8], 0x14
+0x082a6586 mov      dword ptr [esp + 4], 0x8c16189
+0x082a658e lea      ebx, [ebp - 0x118]
+0x082a6594 lea      eax, [ebp - 0x118]
+0x082a659a mov      dword ptr [esp], eax
+0x082a659d call     0x807e3b0 ; strlen
+0x082a65a2 lea      eax, [ebx + eax]
+0x082a65a5 mov      dword ptr [esp], eax
+0x082a65a8 mov      eax, dword ptr [esp]
+0x082a65ab mov      dword ptr [esp], eax
+0x082a65ae call     0x807d8a0 ; memcpy
+0x082a65b3 mov      dword ptr [esp + 4], 2
+0x082a65bb lea      eax, [ebp - 0x118]
+0x082a65c1 mov      dword ptr [esp], eax
+0x082a65c4 call     0x807da80 ; dlopen
+0x082a65c9 mov      dword ptr [ebp - 0x14], eax
+0x082a65cc call     0x807e2c0 ; dlerror
+0x082a65d1 mov      dword ptr [ebp - 0x10], eax
+0x082a65d4 cmp      dword ptr [ebp - 0x10], 0
+0x082a65d8 je       0x82a65fc
+0x082a65da mov      eax, dword ptr [ebp - 0x10]
+0x082a65dd mov      dword ptr [esp + 8], eax
+0x082a65e1 mov      dword ptr [esp + 4], 0x8c16189
+0x082a65e9 mov      dword ptr [esp], 0x8c1619d
+0x082a65f0 call     0x807db60 ; printf
+0x082a65f5 mov      eax, 0
+0x082a65fa jmp      0x82a664a
+0x082a65fc mov      dword ptr [esp + 4], 0x8c161b5
+0x082a6604 mov      eax, dword ptr [ebp - 0x14]
+0x082a6607 mov      dword ptr [esp], eax
+0x082a660a call     0x807e730 ; dlsym
+0x082a660f mov      dword ptr [ebp - 0xc], eax
+0x082a6612 call     0x807e2c0 ; dlerror
+0x082a6617 mov      dword ptr [ebp - 0x10], eax
+0x082a661a cmp      dword ptr [ebp - 0x10], 0
+0x082a661e je       0x82a6645
+0x082a6620 mov      eax, dword ptr [ebp - 0x14]
+0x082a6623 mov      dword ptr [esp], eax
+0x082a6626 call     0x807dc10 ; dlclose
+0x082a662b mov      eax, dword ptr [ebp - 0x10]
+0x082a662e mov      dword ptr [esp + 4], eax
+0x082a6632 mov      dword ptr [esp], 0x8c161cc
+0x082a6639 call     0x807db60 ; printf
+0x082a663e mov      eax, 0
+0x082a6643 jmp      0x82a664a
+0x082a6645 mov      eax, dword ptr [ebp - 0xc]
+0x082a6648 call     eax
+0x082a664a add      esp, 0x120
+0x082a6650 pop      ebx
+0x082a6651 pop      edi
+0x082a6652 pop      ebp
+0x082a6653 ret

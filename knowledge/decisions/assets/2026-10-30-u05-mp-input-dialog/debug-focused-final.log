@@ -1,0 +1,15 @@
+Client state tests: 0 failures
+navigation tests: 0 failure(s)
+navigation runtime tests: 0 failure(s)
+party tests: 0 failure(s)
+party derived IO tests: 0 failure(s)
+party runtime tests: 0 failure(s)
+Town route catalog: 72 checks, 0 failures
+controller real PVF Start/Tick tests: skipped (no fixture)
+town route controller tests: 0 failure(s)
+town route adapter tests: 0 failure(s)
+town route IO tests: 0 failure(s)
+Native loop model: 0 failures
+Frame profile tests: 0 failures
+Frame profile IO tests: 0 failures
+Gameplay trace tests: 0 failures

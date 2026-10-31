@@ -1,0 +1,346 @@
+SHA256=8f6263dae6fcd1eb19baece6f7c9408d2161abd1a05bd492d398d5cb7783d2a7 DT_PLTGOT=0x294534
+
+FUNCTION _Z6CipheriPhjjb 0x1934c0 826
+001934c0 push     ebp
+001934c1 mov      ebp, esp
+001934c3 sub      esp, 0x38
+001934c6 mov      dword ptr [ebp - 4], edi
+001934c9 mov      edi, dword ptr [ebp + 0x10]
+001934cc movzx    eax, byte ptr [ebp + 0x18]
+001934d0 mov      dword ptr [ebp - 0xc], ebx
+001934d3 call     0x88577 ; __i686.get_pc_thunk.bx
+001934d8 add      ebx, 0x10105c
+001934de cmp      edi, 0xffff
+001934e4 mov      dword ptr [ebp - 8], esi
+001934e7 mov      esi, dword ptr [ebp + 8]
+001934ea mov      byte ptr [ebp - 0x21], al
+001934ed mov      dword ptr [ebp - 0x20], 0
+001934f4 jbe      0x193506
+001934f6 mov      eax, dword ptr [ebp - 0x20]
+001934f9 mov      ebx, dword ptr [ebp - 0xc]
+001934fc mov      esi, dword ptr [ebp - 8]
+001934ff mov      edi, dword ptr [ebp - 4]
+00193502 mov      esp, ebp
+00193504 pop      ebp
+00193505 ret
+00193506 lea      eax, [ebp - 0x10]
+00193509 mov      dword ptr [esp + 8], eax
+0019350d mov      eax, dword ptr [ebp + 0x14]
+00193510 mov      dword ptr [ebp - 0x10], 0
+00193517 mov      dword ptr [esp], esi
+0019351a mov      dword ptr [esp + 4], eax
+0019351e call     0x7d494 ; _Z6GenKeyijRPh
+00193523 cmp      esi, 0x13
+00193526 ja       0x193533
+00193528 mov      eax, dword ptr [ebx + esi*4 - 0x545f4]
+0019352f add      eax, ebx
+00193531 jmp      eax
+00193533 mov      dword ptr [ebp - 0x20], 0
+0019353a mov      eax, dword ptr [ebp - 0x10]
+0019353d test     eax, eax
+0019353f je       0x1934f6
+00193541 mov      dword ptr [esp], eax
+00193544 call     0x85a64 ; _ZdaPv
+00193549 jmp      0x1934f6
+0019354b mov      eax, dword ptr [ebp + 0xc]
+0019354e mov      dword ptr [esp + 0xc], edi
+00193552 mov      dword ptr [esp + 8], eax
+00193556 movzx    eax, byte ptr [ebp - 0x21]
+0019355a mov      dword ptr [esp + 4], eax
+0019355e mov      eax, dword ptr [ebp - 0x10]
+00193561 mov      dword ptr [esp], eax
+00193564 call     0x7bcd4 ; _Z7TenIdeaPhbS_j
+00193569 lea      esi, [esi]
+00193570 mov      dword ptr [ebp - 0x20], 1
+00193577 jmp      0x19353a
+00193579 mov      eax, dword ptr [ebp + 0xc]
+0019357c mov      dword ptr [esp + 0xc], edi
+00193580 mov      dword ptr [esp + 8], eax
+00193584 movzx    eax, byte ptr [ebp - 0x21]
+00193588 mov      dword ptr [esp + 4], eax
+0019358c mov      eax, dword ptr [ebp - 0x10]
+0019358f mov      dword ptr [esp], eax
+00193592 call     0x7de44 ; _Z10TenGeneNewPhbS_j
+00193597 jmp      0x193570
+00193599 mov      eax, dword ptr [ebp + 0xc]
+0019359c mov      dword ptr [esp + 0xc], edi
+001935a0 mov      dword ptr [esp + 8], eax
+001935a4 movzx    eax, byte ptr [ebp - 0x21]
+001935a8 mov      dword ptr [esp + 4], eax
+001935ac mov      eax, dword ptr [ebp - 0x10]
+001935af mov      dword ptr [esp], eax
+001935b2 call     0x832e4 ; _Z6TenRc5PhbS_j
+001935b7 jmp      0x193570
+001935b9 mov      eax, dword ptr [ebp + 0xc]
+001935bc mov      dword ptr [esp + 0xc], edi
+001935c0 mov      dword ptr [esp + 8], eax
+001935c4 movzx    eax, byte ptr [ebp - 0x21]
+001935c8 mov      dword ptr [esp + 4], eax
+001935cc mov      eax, dword ptr [ebp - 0x10]
+001935cf mov      dword ptr [esp], eax
+001935d2 call     0x83a54 ; _Z6TenRc6PhbS_j
+001935d7 jmp      0x193570
+001935d9 mov      eax, dword ptr [ebp + 0xc]
+001935dc mov      dword ptr [esp + 0xc], edi
+001935e0 mov      dword ptr [esp + 8], eax
+001935e4 movzx    eax, byte ptr [ebp - 0x21]
+001935e8 mov      dword ptr [esp + 4], eax
+001935ec mov      eax, dword ptr [ebp - 0x10]
+001935ef mov      dword ptr [esp], eax
+001935f2 call     0x7e284 ; _Z7TenGenePhbS_j
+001935f7 jmp      0x193570
+001935fc mov      eax, dword ptr [ebp + 0xc]
+001935ff mov      dword ptr [esp + 0xc], edi
+00193603 mov      dword ptr [esp + 8], eax
+00193607 movzx    eax, byte ptr [ebp - 0x21]
+0019360b mov      dword ptr [esp + 4], eax
+0019360f mov      eax, dword ptr [ebp - 0x10]
+00193612 mov      dword ptr [esp], eax
+00193615 call     0x83224 ; _Z10TenSeattosPhbS_j
+0019361a jmp      0x193570
+0019361f mov      eax, dword ptr [ebp + 0xc]
+00193622 mov      dword ptr [esp + 0xc], edi
+00193626 mov      dword ptr [esp + 8], eax
+0019362a movzx    eax, byte ptr [ebp - 0x21]
+0019362e mov      dword ptr [esp + 4], eax
+00193632 mov      eax, dword ptr [ebp - 0x10]
+00193635 mov      dword ptr [esp], eax
+00193638 call     0x834f4 ; _Z6TenRc4PhbS_j
+0019363d jmp      0x193570
+00193642 mov      eax, dword ptr [ebp + 0xc]
+00193645 mov      dword ptr [esp + 0xc], edi
+00193649 mov      dword ptr [esp + 8], eax
+0019364d movzx    eax, byte ptr [ebp - 0x21]
+00193651 mov      dword ptr [esp + 4], eax
+00193655 mov      eax, dword ptr [ebp - 0x10]
+00193658 mov      dword ptr [esp], eax
+0019365b call     0x85db4 ; _Z7TenMarsPhbS_j
+00193660 jmp      0x193570
+00193665 mov      eax, dword ptr [ebp + 0xc]
+00193668 mov      dword ptr [esp + 0xc], edi
+0019366c mov      dword ptr [esp + 8], eax
+00193670 movzx    eax, byte ptr [ebp - 0x21]
+00193674 mov      dword ptr [esp + 4], eax
+00193678 mov      eax, dword ptr [ebp - 0x10]
+0019367b mov      dword ptr [esp], eax
+0019367e call     0x7d374 ; _Z9TenSquarePhbS_j
+00193683 jmp      0x193570
+00193688 mov      eax, dword ptr [ebp + 0xc]
+0019368b mov      dword ptr [esp + 0xc], edi
+0019368f mov      dword ptr [esp + 8], eax
+00193693 movzx    eax, byte ptr [ebp - 0x21]
+00193697 mov      dword ptr [esp + 4], eax
+0019369b mov      eax, dword ptr [ebp - 0x10]
+0019369e mov      dword ptr [esp], eax
+001936a1 call     0x841f4 ; _Z12TenTwofish16PhbS_j
+001936a6 jmp      0x193570
+001936ab mov      eax, dword ptr [ebp + 0xc]
+001936ae mov      dword ptr [esp + 0xc], edi
+001936b2 mov      dword ptr [esp + 8], eax
+001936b6 movzx    eax, byte ptr [ebp - 0x21]
+001936ba mov      dword ptr [esp + 4], eax
+001936be mov      eax, dword ptr [ebp - 0x10]
+001936c1 mov      dword ptr [esp], eax
+001936c4 call     0x7f7a4 ; _Z7TenNseaPhbS_j
+001936c9 jmp      0x193570
+001936ce mov      eax, dword ptr [ebp + 0xc]
+001936d1 mov      dword ptr [esp + 0xc], edi
+001936d5 mov      dword ptr [esp + 8], eax
+001936d9 movzx    eax, byte ptr [ebp - 0x21]
+001936dd mov      dword ptr [esp + 4], eax
+001936e1 mov      eax, dword ptr [ebp - 0x10]
+001936e4 mov      dword ptr [esp], eax
+001936e7 call     0x7fee4 ; _Z6TenMmbPhbS_j
+001936ec jmp      0x193570
+001936f1 mov      eax, dword ptr [ebp + 0xc]
+001936f4 mov      dword ptr [esp + 0xc], edi
+001936f8 mov      dword ptr [esp + 8], eax
+001936fc movzx    eax, byte ptr [ebp - 0x21]
+00193700 mov      dword ptr [esp + 4], eax
+00193704 mov      eax, dword ptr [ebp - 0x10]
+00193707 mov      dword ptr [esp], eax
+0019370a call     0x86684 ; _Z12TenTwofish24PhbS_j
+0019370f jmp      0x193570
+00193714 mov      eax, dword ptr [ebp + 0xc]
+00193717 mov      dword ptr [esp + 0xc], edi
+0019371b mov      dword ptr [esp + 8], eax
+0019371f movzx    eax, byte ptr [ebp - 0x21]
+00193723 mov      dword ptr [esp + 4], eax
+00193727 mov      eax, dword ptr [ebp - 0x10]
+0019372a mov      dword ptr [esp], eax
+0019372d call     0x82da4 ; _Z12TenTwofish32PhbS_j
+00193732 jmp      0x193570
+00193737 mov      eax, dword ptr [ebp + 0xc]
+0019373a mov      dword ptr [esp + 0xc], edi
+0019373e mov      dword ptr [esp + 8], eax
+00193742 movzx    eax, byte ptr [ebp - 0x21]
+00193746 mov      dword ptr [esp + 4], eax
+0019374a mov      eax, dword ptr [ebp - 0x10]
+0019374d mov      dword ptr [esp], eax
+00193750 call     0x86024 ; _Z6TenRc2PhbS_j
+00193755 jmp      0x193570
+0019375a mov      eax, dword ptr [ebp + 0xc]
+0019375d mov      dword ptr [esp + 0xc], edi
+00193761 mov      dword ptr [esp + 8], eax
+00193765 movzx    eax, byte ptr [ebp - 0x21]
+00193769 mov      dword ptr [esp + 4], eax
+0019376d mov      eax, dword ptr [ebp - 0x10]
+00193770 mov      dword ptr [esp], eax
+00193773 call     0x86e84 ; _Z7TenTeanPhbS_j
+00193778 jmp      0x193570
+0019377d mov      eax, dword ptr [ebp + 0xc]
+00193780 mov      dword ptr [esp + 0xc], edi
+00193784 mov      dword ptr [esp + 8], eax
+00193788 movzx    eax, byte ptr [ebp - 0x21]
+0019378c mov      dword ptr [esp + 4], eax
+00193790 mov      eax, dword ptr [ebp - 0x10]
+00193793 mov      dword ptr [esp], eax
+00193796 call     0x81544 ; _Z7TenCastPhbS_j
+0019379b jmp      0x193570
+001937a0 mov      eax, dword ptr [ebp + 0xc]
+001937a3 mov      dword ptr [esp + 0xc], edi
+001937a7 mov      dword ptr [esp + 8], eax
+001937ab movzx    eax, byte ptr [ebp - 0x21]
+001937af mov      dword ptr [esp + 4], eax
+001937b3 mov      eax, dword ptr [ebp - 0x10]
+001937b6 mov      dword ptr [esp], eax
+001937b9 call     0x7d0a4 ; _Z9TenDesBigPhbS_j
+001937be jmp      0x193570
+001937c3 mov      eax, dword ptr [ebp + 0xc]
+001937c6 mov      dword ptr [esp + 0xc], edi
+001937ca mov      dword ptr [esp + 8], eax
+001937ce movzx    eax, byte ptr [ebp - 0x21]
+001937d2 mov      dword ptr [esp + 4], eax
+001937d6 mov      eax, dword ptr [ebp - 0x10]
+001937d9 mov      dword ptr [esp], eax
+001937dc call     0x86544 ; _Z9TenDesNewPhbS_j
+001937e1 jmp      0x193570
+001937e6 mov      dword ptr [esp], eax
+001937e9 call     0x83194 ; __cxa_begin_catch
+001937ee mov      esi, esi
+001937f0 call     0x7b624 ; __cxa_end_catch
+001937f5 jmp      0x193570
+
+FUNCTION _Z5Crc32Phj 0x19dc80 81
+0019dc80 push     ebp
+0019dc81 xor      eax, eax
+0019dc83 mov      ebp, esp
+0019dc85 mov      edx, dword ptr [ebp + 0xc]
+0019dc88 push     edi
+0019dc89 mov      ecx, dword ptr [ebp + 8]
+0019dc8c push     esi
+0019dc8d push     ebx
+0019dc8e call     0x88577 ; __i686.get_pc_thunk.bx
+0019dc93 add      ebx, 0xf68a1
+0019dc99 test     edx, edx
+0019dc9b je       0x19dccc
+0019dc9d xor      esi, esi
+0019dc9f mov      eax, 0xffffffff
+0019dca4 lea      edi, [ebx - 0x53e54]
+0019dcaa lea      esi, [esi]
+0019dcb0 mov      edx, eax
+0019dcb2 add      esi, 1
+0019dcb5 xor      al, byte ptr [ecx]
+0019dcb7 add      ecx, 1
+0019dcba shr      edx, 8
+0019dcbd movzx    eax, al
+0019dcc0 xor      edx, dword ptr [edi + eax*4]
+0019dcc3 cmp      dword ptr [ebp + 0xc], esi
+0019dcc6 mov      eax, edx
+0019dcc8 jne      0x19dcb0
+0019dcca not      eax
+0019dccc pop      ebx
+0019dccd pop      esi
+0019dcce pop      edi
+0019dccf pop      ebp
+0019dcd0 ret
+
+FUNCTION _ZNK9sec_proto18DPFixAlgorithmHead4packERN9tsf4g_tdr11TdrWriteBufEj 0x15ad90 234
+0015ad90 push     ebp
+0015ad91 mov      ebp, esp
+0015ad93 push     edi
+0015ad94 push     esi
+0015ad95 mov      ecx, dword ptr [ebp + 0xc]
+0015ad98 mov      eax, dword ptr [ebp + 8]
+0015ad9b mov      edi, dword ptr [ecx + 4]
+0015ad9e mov      esi, dword ptr [eax]
+0015ada0 mov      eax, dword ptr [ecx + 8]
+0015ada3 sub      eax, edi
+0015ada5 cmp      eax, 3
+0015ada8 jbe      0x15ae73
+0015adae mov      eax, esi
+0015adb0 mov      edx, esi
+0015adb2 and      eax, 0xff0000
+0015adb7 shr      eax, 8
+0015adba shr      edx, 0x18
+0015adbd or       edx, eax
+0015adbf mov      eax, esi
+0015adc1 and      eax, 0xff00
+0015adc6 shl      esi, 0x18
+0015adc9 shl      eax, 8
+0015adcc or       eax, esi
+0015adce or       edx, eax
+0015add0 mov      eax, dword ptr [ecx]
+0015add2 mov      dword ptr [eax + edi], edx
+0015add5 mov      edi, dword ptr [ecx + 4]
+0015add8 add      edi, 4
+0015addb mov      dword ptr [ecx + 4], edi
+0015adde mov      eax, dword ptr [ebp + 8]
+0015ade1 mov      esi, dword ptr [eax + 4]
+0015ade4 mov      eax, dword ptr [ecx + 8]
+0015ade7 sub      eax, edi
+0015ade9 cmp      eax, 3
+0015adec jbe      0x15ae73
+0015adf2 mov      eax, esi
+0015adf4 mov      edx, esi
+0015adf6 and      eax, 0xff0000
+0015adfb shr      eax, 8
+0015adfe shr      edx, 0x18
+0015ae01 or       edx, eax
+0015ae03 mov      eax, esi
+0015ae05 and      eax, 0xff00
+0015ae0a shl      esi, 0x18
+0015ae0d shl      eax, 8
+0015ae10 or       eax, esi
+0015ae12 or       edx, eax
+0015ae14 mov      eax, dword ptr [ecx]
+0015ae16 mov      dword ptr [eax + edi], edx
+0015ae19 mov      edi, dword ptr [ecx + 4]
+0015ae1c mov      edx, 0xffffffff
+0015ae21 add      edi, 4
+0015ae24 mov      dword ptr [ecx + 4], edi
+0015ae27 mov      eax, dword ptr [ebp + 8]
+0015ae2a mov      esi, dword ptr [eax + 8]
+0015ae2d mov      eax, dword ptr [ecx + 8]
+0015ae30 sub      eax, edi
+0015ae32 cmp      eax, 3
+0015ae35 ja       0x15ae40
+0015ae37 pop      esi
+0015ae38 mov      eax, edx
+0015ae3a pop      edi
+0015ae3b pop      ebp
+0015ae3c ret
+0015ae3d lea      esi, [esi]
+0015ae40 mov      eax, esi
+0015ae42 mov      edx, esi
+0015ae44 and      eax, 0xff0000
+0015ae49 shr      eax, 8
+0015ae4c shr      edx, 0x18
+0015ae4f or       edx, eax
+0015ae51 mov      eax, esi
+0015ae53 and      eax, 0xff00
+0015ae58 shl      esi, 0x18
+0015ae5b shl      eax, 8
+0015ae5e or       eax, esi
+0015ae60 or       edx, eax
+0015ae62 mov      eax, dword ptr [ecx]
+0015ae64 mov      dword ptr [eax + edi], edx
+0015ae67 xor      edx, edx
+0015ae69 add      dword ptr [ecx + 4], 4
+0015ae6d mov      eax, edx
+0015ae6f pop      esi
+0015ae70 pop      edi
+0015ae71 pop      ebp
+0015ae72 ret
+0015ae73 mov      edx, 0xffffffff
+0015ae78 jmp      0x15ae37

@@ -1,0 +1,55 @@
+{
+  "Schema": "party-native-phase/v1",
+  "Phase": "drop-red-drag",
+  "Status": "running",
+  "StartedAtUtc": "2026-10-29T01:47:54.2210284Z",
+  "StoppedAtUtc": null,
+  "BuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\build-manifest-red-native-17af172.json",
+  "BuildManifestSha256": "E8A2B339A15DD5ABF3A34B11AEF9ACA6C1529970EFAC10E0AF2A6285FD36063D",
+  "Runtime": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\runtime-drop-red-drag",
+  "State": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\state-drop-red-drag.json",
+  "InitialFixtureSha256": "DDD22D622814936B1084AC2F6812C265BAE7AA7223A31307E9FA406D44894AAB",
+  "Server": {
+    "Role": "server",
+    "Id": 7924,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\runtime-drop-red-drag\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-29T01:47:54.3730387Z"
+  },
+  "Clients": [
+    {
+      "Role": "A",
+      "Id": 24404,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T01:47:57.0311727Z"
+    },
+    {
+      "Role": "B",
+      "Id": 32980,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T01:47:57.8147972Z"
+    }
+  ],
+  "Launchers": [
+    {
+      "Role": "launcher-A",
+      "Id": 19468,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T01:47:56.6390443Z"
+    },
+    {
+      "Role": "launcher-B",
+      "Id": 47464,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T01:47:57.2904470Z"
+    }
+  ],
+  "Sink": null,
+  "SinkLog": null,
+  "Stdout": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\server-drop-red-drag.log",
+  "Stderr": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\server-drop-red-drag.err.log",
+  "PeerSink": false,
+  "RoleAccounts": {
+    "A": "shizuku",
+    "B": "test"
+  }
+}

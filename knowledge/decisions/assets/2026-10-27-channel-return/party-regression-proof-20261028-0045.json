@@ -1,0 +1,196 @@
+{
+  "schema": "dflegacy.final-party-room-proof.v1",
+  "date_local": "2026-10-28",
+  "timezone": "Asia/Shanghai",
+  "phase": "gift-online-restart",
+  "source_commit": "1d915dc",
+  "native_sha256": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121",
+  "sources": [
+    {
+      "name": "server-gift-online-restart.log",
+      "sha256": "3AFE39640F0C8F88220ACEE11AEB9A996CF6E9BBEAB566BA46D89D3CB7BC2343"
+    },
+    {
+      "name": "deployment-final-party-regression-paused.json",
+      "sha256": "7AA95F8CE27A5851BFB8DFBCDA2F3B6A2A886202DB1F1FD24CFEAA7A60F0FDD7"
+    },
+    {
+      "name": "state-final-party-regression-paused.json",
+      "sha256": "562CAF1CF686C9E7E9EFCE79977CC3DA791B81B6A472E9DC6186A9655BCE10E2"
+    },
+    {
+      "name": "gift-online-after-party.json",
+      "sha256": "AC9824E4E1695A45B8FD91FD655665D2FBCA532E402CE7E799DF199479F40A90"
+    }
+  ],
+  "checks": [
+    {
+      "name": "exact stopped regression deployment identity",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "frozen post-party state matches observer hash",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "two-member roster",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native party request accepted",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "party dungeon entry instance",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "B enters same room and map",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "first room fatigue A",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "first room fatigue B",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "first room all two loaded",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "next room fatigue B",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "next room fatigue A",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "next room all two loaded",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "opaque UDP A forwards to one peer",
+      "passed": true,
+      "details": {
+        "endpoint": "192.168.3.177:50284",
+        "count": 10269
+      }
+    },
+    {
+      "name": "opaque UDP B forwards to one peer",
+      "passed": true,
+      "details": {
+        "endpoint": "192.168.3.177:5063",
+        "count": 9635
+      }
+    },
+    {
+      "name": "gift sender cash preserved after ordinary combat",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "gift receive monthly count preserved",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "claimed item15 remains one",
+      "passed": true,
+      "details": {
+        "item15_count": 1
+      }
+    }
+  ],
+  "events": [
+    {
+      "line": 385,
+      "text": "00:17:09 info: DFLegacy.Server.PartyService[0] Party roster 1 published: nameSel 5->5, 2 member(s)."
+    },
+    {
+      "line": 394,
+      "text": "00:17:09 info: DFLegacy.Server.PartyService[0] heal1024 accepted the party request from mageco; party 1 now has 2 member(s)."
+    },
+    {
+      "line": 15478,
+      "text": "00:25:27 info: DFLegacy.Server.EntranceService[0] Dungeon 1 party instance 1 ready; entry requests posted to 1 member(s)."
+    },
+    {
+      "line": 15508,
+      "text": "00:25:27 info: DFLegacy.Server.EntranceService[0] Party member heal1024 (uid 2, slot 1) entered dungeon 1 instance 1 room (0,0) map 1."
+    },
+    {
+      "line": 15474,
+      "text": "00:25:27 info: DFLegacy.Server.EntranceService[0] Dungeon 1 room (0,0) consumed one fatigue for user 1: used 1->2, remaining=154/156."
+    },
+    {
+      "line": 15507,
+      "text": "00:25:27 info: DFLegacy.Server.EntranceService[0] Dungeon 1 room (0,0) consumed one fatigue for user 2: used 3->4, remaining=152/156."
+    },
+    {
+      "line": 15548,
+      "text": "00:25:28 info: DFLegacy.Server.EntranceService[0] Dungeon 1 party instance 1: all 2 member(s) finished loading; roster replayed for 1 other member(s), then NOTI 30 broadcast to the whole party."
+    },
+    {
+      "line": 38134,
+      "text": "00:34:35 info: DFLegacy.Server.EntranceService[0] Dungeon 1 room (1,0) consumed one fatigue for user 2: used 4->5, remaining=151/156."
+    },
+    {
+      "line": 38141,
+      "text": "00:34:35 info: DFLegacy.Server.EntranceService[0] Dungeon 1 room (1,0) consumed one fatigue for user 1: used 2->3, remaining=153/156."
+    },
+    {
+      "line": 38146,
+      "text": "00:34:35 info: DFLegacy.Server.EntranceService[0] Dungeon 1 party instance 1: all 2 member(s) finished loading; roster replayed for 1 other member(s), then NOTI 30 broadcast to the whole party."
+    }
+  ],
+  "udp_relay": {
+    "A": {
+      "endpoint": "192.168.3.177:50284",
+      "window_start": "00:25:27",
+      "window_end": "00:36:59",
+      "relay_count": 10270,
+      "one_of_one_peer_count": 10269,
+      "total_forwarded_bytes": 305683,
+      "first_line": 15459,
+      "last_line": 48875,
+      "application_crc_cipher_audit_warning_count": 6940
+    },
+    "B": {
+      "endpoint": "192.168.3.177:5063",
+      "window_start": "00:25:27",
+      "window_end": "00:36:59",
+      "relay_count": 9636,
+      "one_of_one_peer_count": 9635,
+      "total_forwarded_bytes": 259300,
+      "first_line": 15460,
+      "last_line": 48867,
+      "application_crc_cipher_audit_warning_count": 6282
+    }
+  },
+  "limitations": [
+    "Opaque UDP relay evidence does not claim that every application frame passed CRC/cipher validation. Application audit warnings are counted explicitly.",
+    "Pictures and ordinary native input verify the visible party/room result; this report does not inject or decode gameplay payloads."
+  ],
+  "summary": {
+    "passed": 17,
+    "total": 17,
+    "all_passed": true
+  }
+}

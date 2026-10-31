@@ -1,0 +1,74 @@
+[
+  {
+    "file": "src/DFLegacy.Debug/include/debug_api.h",
+    "sha256": "67C1D5DC58779C59E0D08C64FD380FB54291C1E229AC387B52A351EBD4BF64D8"
+  },
+  {
+    "file": "src/DFLegacy.Debug/src/native_loop_profile.cpp",
+    "sha256": "04234F08E22C9D5BF6FA3529D03C1739AE8FFFE2F9B0BC9181095ACA11257B85"
+  },
+  {
+    "file": "src/DFLegacy.Debug/src/native_loop_profile.h",
+    "sha256": "F7D5ED2458C0EDFC83391935BD6121C218278DA4BAF2E42C116FA4F3F54C8F6E"
+  },
+  {
+    "file": "src/DFLegacy.Ijl15/src/native_loop_probe.cpp",
+    "sha256": "FC87FCDC98E98EF7E40C5C9EAD55A021D1CA4EADB9CEE6280DB86D4588C9B3CD"
+  },
+  {
+    "file": "src/DFLegacy.Ijl15/src/native_loop_probe.h",
+    "sha256": "7FA1C2060A6EE5556C06A2B8C27476C110877672DE515AC355EDCC7B0483FD69"
+  },
+  {
+    "file": "src/DFLegacy.Ijl15/src/motion_test_probe.cpp",
+    "sha256": "2EF5F7A1425D9BC91F19DFD7D871BE934153D479EAAE9EF916155642D2AE501D"
+  },
+  {
+    "file": "src/DFLegacy.Ijl15/src/motion_test_probe.h",
+    "sha256": "6FF63E54BA9491A0FDAF64A0CEBAED5FF40184E61AE9697273AC833808ED24C8"
+  },
+  {
+    "file": "src/DFLegacy.Ijl15/src/provider_probe.cpp",
+    "sha256": "DD633226AEC5C0D31F01D0E160D66E5544F051AB644C3CBA9143164FCD9F99AD"
+  },
+  {
+    "file": "src/DFLegacy.Ijl15/src/provider_probe.h",
+    "sha256": "5092CE12058EF7013D0258A7DFF87EE7FD87CF51231A5C4356F135E6A0B7108D"
+  },
+  {
+    "file": "tools/debug/native_loop_profile.py",
+    "sha256": "396BFAB71C5FEEC661A744581C975AB20B4F04214EA34EAA82B0D2DAAC409996"
+  },
+  {
+    "file": "tools/debug/motion_test_trace.py",
+    "sha256": "6FE051597F286A6B6EAE3CC8F34A3D6852C1D16D14EE6B899B333C9E9A27E340"
+  },
+  {
+    "file": "tools/debug/provider_trace.py",
+    "sha256": "5E7DBB501040C25343579B4E34076AA0093A074CEAB986CE24BF6C3230BCDC76"
+  },
+  {
+    "file": "tools/acceptance/tests/test_native_loop_probe_abi.py",
+    "sha256": "AEAAA014AB2AD277373AE4E47AAA618548EE973D6FD0AF57AA8A5C7C39B6884A"
+  },
+  {
+    "file": "tools/acceptance/tests/test_motion_test_probe_abi.py",
+    "sha256": "EEA6DAFF045BF7F2197A1090377B90ACA3C3FC7C4EC76FCEA89851C02F03447B"
+  },
+  {
+    "file": "tools/acceptance/tests/test_motion_branch_probe_abi.py",
+    "sha256": "8FF713D58ABA810E92D8B2F9FF75B97D5FB46019C62F2BF42B6F3BB7E622E037"
+  },
+  {
+    "file": "tools/acceptance/tests/test_motion_patch_controlflow.py",
+    "sha256": "9EEF4B31B30AD6DEDCBF844C05575679A804C38A359DCE39B3A6A16482290D38"
+  },
+  {
+    "file": "tools/acceptance/tests/test_motion_grid_native.py",
+    "sha256": "4E82A9AE2C87C0F2B4F055EE5558F4F5A9C2A09ACEB18395EC7F0C8D99CD0DE3"
+  },
+  {
+    "file": "tools/acceptance/tests/test_provider_probe_abi.py",
+    "sha256": "28DD8721BFCFA5A80AE630B2337AE2FA4707DFF01D70E76C7FB0B6D8323426D3"
+  }
+]

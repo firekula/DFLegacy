@@ -1,0 +1,445 @@
+{
+  "source": "evidence-blockers-v9/collision-native-window.json",
+  "role": "B",
+  "monster_uid": 3,
+  "samples": [
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437338453,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          138.87026977539062,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -843.0
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          138.87026977539062,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -766.5
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          0,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 23797
+      }
+    },
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437338875,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          138.87026977539062,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -1153.5
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          138.87026977539062,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -766.5
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          0,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 24004
+      }
+    },
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437339265,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          138.87026977539062,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -1762.5
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          138.87026977539062,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -1516.5
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          0,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 24407
+      }
+    },
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437339671,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          138.87026977539062,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -243.0
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          138.87026977539062,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          0,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 24806
+      }
+    },
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437340093,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          139.95570373535156,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "ffffffff0000000024faffff101900004ca30000ffffffff01",
+        "native_velocity": [
+          6.4160003662109375,
+          0.0,
+          -1012.5
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          170.39328002929688,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -762.0
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          1,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 25218
+      }
+    },
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437340515,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          144.0930633544922,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "fdffffff0000000024faffff551f00004ca30000ffffffff01",
+        "native_velocity": [
+          24.064002990722656,
+          0.0,
+          -1641.0
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          201.97921752929688,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffbf1700004ca30000ffffffff00",
+        "native_velocity": [
+          6.079000949859619,
+          0.0,
+          -1515.0
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          1,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 25639
+      }
+    },
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437341343,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          159.87469482421875,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff944900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -2910.0
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          244.00990295410156,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff944900004ca30000ffffffff00",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -2517.0
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          0,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 26480
+      }
+    },
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437342203,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          159.87469482421875,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff944900004ca30000ffffffff01",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -4185.0
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          159.87469482421875,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffff944900004ca30000ffffffff00",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -4021.5
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          0,
+          0,
+          4
+        ],
+        "pause": 0,
+        "updated_raw": 27332
+      }
+    },
+    {
+      "role": "B",
+      "uid": 3,
+      "at_tick_ms": 437342625,
+      "actor": "0x861d040",
+      "controller": "0x83c9a28",
+      "current": {
+        "token": "0x83c9a30",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          244.00990295410156,
+          226.0,
+          -0.027000000700354576
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff00",
+        "native_velocity": [
+          0.0,
+          0.0,
+          -9.0
+        ]
+      },
+      "target": {
+        "token": "0x83c9a65",
+        "getter": "0x4736a0",
+        "known": true,
+        "xyz": [
+          244.00990295410156,
+          226.0,
+          0.0
+        ],
+        "raw_scalars_1c_34": "000000000000000024faffffb71900004ca30000ffffffff00",
+        "native_velocity": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "native_solver": {
+        "axis_results": [
+          0,
+          0,
+          3
+        ],
+        "pause": 0,
+        "updated_raw": 27752
+      }
+    }
+  ],
+  "original_client_sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5",
+  "site": "004C99EF",
+  "original": "8D571C",
+  "repaired": "8B53F4",
+  "guard_bytes": 23,
+  "scope": "The shared XYZ normal reconciliation guard now checks per-axis target acceleration. All zero acceleration positive durations use the existing500ms default, including small positive durations. Active acceleration, nonpositive duration, force0x10 and the remaining arithmetic are preserved. This fixes the captured arithmetic branch; it does not establish the cause of every natural divergence."
+}

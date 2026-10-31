@@ -1,0 +1,31 @@
+{
+  "source_hashes": {
+    "src/DFLegacy.Debug/src/client_map_feedback_runtime.h": "432ebd9c6285bccda941ca634c766f61e149972fddf145d8ade0e3a727b9f1c7",
+    "src/DFLegacy.Debug/src/client_map_feedback_runtime.cpp": "29c3b970f98b01b7cb2fc02e6ab657219d03168ee67a1963a070b2bb79ac24f6",
+    "src/DFLegacy.Debug/tests/map_click_feedback_runtime_tests.cpp": "d66c8470b47e1f134f837ebaa2537881ca9bd15318df7aa88e75c553abed352b"
+  },
+  "p2_red_exit": 2,
+  "p2_green_exit": 0,
+  "compiler": "MSVC14.51.36231 x86 /W4 /WX /EHsc /std:c++17 /MT /utf-8",
+  "live_calls_performed": false,
+  "preserved_artifacts": {
+    "green.cmd": "1757b75b3a16c8e3ec463d0d308a7cf4a1b2df12a355fe1380619d5c23d0fe00",
+    "green_tests.exe": "3593843f5dd041dc25ae0c73987d22fdfa0aab45714253c8e9e640f8c34d298a",
+    "green-build.log": "d48584803ac5f277611c5fbdd4d363445ea034317f850a6cc26281487dcc939c",
+    "green.log": "681cf0365055fef11477805f1d8a361cfffeae37cf82fde3049f3512b69f7f52",
+    "native-renderer-manifest.json": "520b6b36a62c251eb35fd3f36600684353b946ec7c844fb100fae1eec7cd1488",
+    "report.md": "a4c3346ceb6c0e055bece635e35c26d31034e39553e619e87ca9d4ffb5bd88f6",
+    "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\review\\source-review.md": "b796c637f88da6af10490bc83318c7908f616e397d07b1a5f79e781c83dd1f0f"
+  },
+  "new_artifacts": {
+    "P2-red.cmd": "d9f4dce19a6aec53ccc98956c04f8216ef91288513f1fb54f71f8375f11b85b0",
+    "P2-red-build.log": "d48584803ac5f277611c5fbdd4d363445ea034317f850a6cc26281487dcc939c",
+    "P2-red.log": "fcc4b993f4eecd51123acc113b1d1b063d76bfab9d629352b4b5e2cd08a0e0d8",
+    "P2-red-tests.exe": "50214936db8ba69a4a21335655b0a764d353e34913c01e9f860e2371d787847e",
+    "P2-green.cmd": "00923c0f1210a193c2ed9ff4e9211f249eebef2d655f11200bcc2b5d2ea9e65e",
+    "P2-green-build.log": "d48584803ac5f277611c5fbdd4d363445ea034317f850a6cc26281487dcc939c",
+    "P2-green.log": "9f14a1ff481a943dc4b41696741f2b1f1150e085b08fd7afeb6198cca9f3a400",
+    "P2-green-tests.exe": "b4a29214f8b30534334ddcd674013860ea3d73b5d3327e7925a0440718f1d8c8",
+    "p2-shutdown-report.md": "a5a17eee1cd76cfa5ee574b6b2872ae211a55152f6eef9f7386dbe7c731d0ebe"
+  }
+}

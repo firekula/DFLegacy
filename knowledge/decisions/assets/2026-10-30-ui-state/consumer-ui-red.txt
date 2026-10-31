@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\test_client_state.py", line 156, in test_selector_projection_is_bound_to_scene2_instance_and_index
+    self.assertEqual(self.api.get_known_field(self.load(), 'ui.dungeon_selector.selected_dungeon_id'), 31)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\codex_worktree\party-chat-gold\DFLegacy\tools\debug\client_state.py", line 335, in get_known_field
+    raise UnknownFieldError(dotted_path) from error
+tools.debug.client_state.UnknownFieldError: ui.dungeon_selector.selected_dungeon_id: unknown
+
+----------------------------------------------------------------------
+Ran 54 tests in 0.652s
+
+FAILED (errors=2)

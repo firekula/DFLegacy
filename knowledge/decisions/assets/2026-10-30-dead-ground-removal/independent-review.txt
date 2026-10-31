@@ -1,0 +1,16 @@
+Independent saved-evidence audit — /root/dead_remove_live_review, recorded by root.
+No builds, tests, live/process reads or edits by reviewer. No acceptance-blocking discrepancy found.
+168 ground samples independently recomputed: 21x4 for each phase; all PID/start/UID/generation/actor/user/map/stage bindings match.
+Same-room distinct sequences 11/10/10/10; after return10/10/10/10; observation spans1.828–2.031s.
+Setup ground1–5 active on all four BEFORE either player death. White/control share13201, distinct GUIDs.
+A/B alive C/D dead through generations1->2->3, map3->6->3. Away target absent all clients.
+C/D white/blue diagnostics death1 actor-map0 stage==ui-stage ready-dead-current-stage and deactivated.
+White event1, blueevent2 committed/persisted; blue original GUID01a18860-caab-7803-a562-f84ce92c8471 preserved.
+Final ground arrays exactly[1,3] all four; targets2/4/5 absent; control3active.
+Closed five owned equipment spaces plus mail attachments: white andblue eachoneAinventory; control0owned.
+Goldevent3 deltas50/50/0/0, native/closed50518/50239/50029/50036; exactlyone matchingledger.
+8closed hashes,13runtime hashes,16protected hashes valid; v3source seed matches sealedskillbarv4.
+Build8B060D IJL and1AFDF7 debug match; savedfinal4targetIJL8B plusnewdiagformat; currenttestdisk restored0F, notdeployed.
+Phase1actual0F is old-build reproduction, notfixedbuildfailure.
+Limits: no revival, live oldnonzeroactormap, payload epoch. Reviewer read31-root previousverification summary, didnotrehash historical31roots.
+Source review /root/dead_remove_review separately found noP1/P2 in four-file diff against3291f44; realcontext and objectguards retained.

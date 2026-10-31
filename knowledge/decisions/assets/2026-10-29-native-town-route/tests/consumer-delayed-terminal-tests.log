@@ -1,0 +1,18 @@
+test_delayed_arrival_cannot_bypass_current_sdk_position_or_identity (tools.debug.test_client_native_route.NativeRouteExecuteTests.test_delayed_arrival_cannot_bypass_current_sdk_position_or_identity) ... ok
+test_equal_tick_sdk_cannot_prove_arrival_and_wait_stays_bounded (tools.debug.test_client_native_route.NativeRouteExecuteTests.test_equal_tick_sdk_cannot_prove_arrival_and_wait_stays_bounded) ... ok
+test_superseded_command_still_fails_before_terminal_use (tools.debug.test_client_native_route.NativeRouteExecuteTests.test_superseded_command_still_fails_before_terminal_use) ... ok
+test_terminal_does_not_expire_while_waiting_for_fresh_sdk (tools.debug.test_client_native_route.NativeRouteExecuteTests.test_terminal_does_not_expire_while_waiting_for_fresh_sdk) ... ok
+test_terminal_with_unavailable_sdk_times_out_without_resend (tools.debug.test_client_native_route.NativeRouteExecuteTests.test_terminal_with_unavailable_sdk_times_out_without_resend) ... ok
+test_three_late_published_terminals_preserve_outcome_without_resend (tools.debug.test_client_native_route.NativeRouteExecuteTests.test_three_late_published_terminals_preserve_outcome_without_resend) ... ok
+test_bound_terminal_remains_usable_after_delayed_publication (tools.debug.test_client_native_route.NativeRouteWireTests.test_bound_terminal_remains_usable_after_delayed_publication) ... ok
+test_delayed_terminal_keeps_time_binding_and_arrival_proofs (tools.debug.test_client_native_route.NativeRouteWireTests.test_delayed_terminal_keeps_time_binding_and_arrival_proofs) ... ok
+test_future_old_or_wrong_source_result_cannot_be_used (tools.debug.test_client_native_route.NativeRouteWireTests.test_future_old_or_wrong_source_result_cannot_be_used) ... ok
+test_goal_result_checks_exact_original_binding_and_goal (tools.debug.test_client_native_route.NativeRouteWireTests.test_goal_result_checks_exact_original_binding_and_goal) ... ok
+test_new_wire_keeps_origin_and_final_area_separate (tools.debug.test_client_native_route.NativeRouteWireTests.test_new_wire_keeps_origin_and_final_area_separate) ... ok
+test_nonterminal_progress_still_expires_after_one_second (tools.debug.test_client_native_route.NativeRouteWireTests.test_nonterminal_progress_still_expires_after_one_second) ... ok
+test_queued_goal_cannot_be_reported_as_arrived (tools.debug.test_client_native_route.NativeRouteWireTests.test_queued_goal_cannot_be_reported_as_arrived) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.023s
+
+OK

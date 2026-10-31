@@ -1,0 +1,114 @@
+M0 验收 —— spec §2.2 四条可证伪判据的原始输出
+判据原文: docs/superpowers/specs/2026-10-05-gameplay-evidence-program-design.md §2.2
+二进制: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\df_game_r.bin  md5=7b2b22caea80752deaa403356ea867c0
+
+==============================================================================
+判据 1 —— 命令映射无余数（每条号都有归属或明确标记，不接受'未解释'）
+==============================================================================
+来源: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evidence-program\work\out\opcode-map.tsv
+命令表行数: CMD=608  NOTI=563  合计=1171
+状态分布（unknown 显式计数，含 0）:
+   mapped         = 428
+   no-dispatcher  = 741
+   unused         = 2
+   inter-server   = 0
+   unknown        = 0
+   状态加总      = 1171
+判定: 加总 == 行数 == 1171 且 CMD=608/NOTI=563 -> PASS
+unknown=0，spec §2.3 的改判线是 200 -> 未触发
+
+==============================================================================
+判据 2 —— 两个 demangler 结果一致（sidecar c++filt vs IDA，差异逐条解释）
+==============================================================================
+我方来源: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\game_r.syms.txt（mangled 名，c++filt 那一侧的输入）
+   行数=5475  唯一地址数=4622
+IDA 来源: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-10-05-gameplay-evidence-program\work\out\ida-dispatcher-names.txt（idautils.Names() 里的 mangled 名）
+   行数=4621  唯一地址数=4621
+集合差异: 仅我方 1 个地址；仅 IDA 0 个地址
+'仅我方'按符号类别归类:
+       1  FILE（其它）
+'仅我方'里 FUNC 类的样本（最多 10 条）:
+'仅 IDA' 的样本（最多 10 条）:
+两边都有的名字: 4621；其中地址集合**不同**的名字: 0
+判定: 差异全部可解释、且不存在'只有 IDA 有'的地址 -> PASS
+
+==============================================================================
+判据 3（补全件）—— 模块清单交叉 / 每家族的身份与所属 .cpp
+==============================================================================
+来源 family-evidence.py 的 DWARF 行: #DWARF	debug_info_cus=21	debug_line_cus=21	sample_source_files=ftinit.c|ftcalc.c|ttdriver.c|ttmtx.c|ftraster.c|ftgrays.c
+来源 family-evidence.py 的 vtable 全量目录 行: #VTABLE	records=1020	with_dispatcher_rtti=522
+来源 family-evidence.py 的 子要求一 行: #SUBCRIT1	stt_dispatcher_cpp=21	filepool_cpp=5	union=23	families=425
+
+(a) 为什么'家族 -> 所属 .cpp'在本二进制上没有权威来源（三条路实测，互为印证）:
+    ① symtab 的 STT_FILE 顺序邻接 —— 证伪：4184 条 dispatcher 行里 3668 条（87.7%）
+       落在同一个 XorRand.cpp 窗口（catch-all，不是编译单元边界）。
+    ② .idb 的行信息 —— 不可用：get_sourcefile 对 7649 个名字全返回空。
+    ③ 二进制自带 DWARF —— **不覆盖游戏代码**：.debug_info 仅 21 个 CU，
+       .debug_line 的 CU 是 FreeType 自己的源码（ftinit.c/ftcalc.c/ttdriver.c/ftgrays.c，
+       目录 /root/f248/src/…），即静态链接第三方库的调试信息。这同时解释了 ② 为什么是空的。
+
+(b) 替代证据 1 —— **全量**（不是抽样）vtable/RTTI 反查，读 .rodata 原始字节:
+    家族名字被独立确认 = 424 / 425
+    找到 vtable 但名字不符 = 0
+    找不到 vtable（无 dispatch_sig 也无 process 命中） = 1（BuyItemCheck：服务间派发器，本来就没有这两个成员）
+    **反向**：RTTI 里有、目录里没有的家族 = 0  => 没有漏家族（这正是判据 3 想验的东西，现在是穷尽的）
+
+(c) 替代证据 2 —— __FILE__ 串池给出的**精确** .cpp:
+    能指到精确 .cpp 的家族 = 56 / 425（13.2%）
+        39  PacketDispatcher_Impl_1.cpp
+         8  PacketDispatcher_Impl_2.cpp
+         7  localjapan/Arad_PacketDispatcher.cpp
+         1  localjapan/Arad_Dispatcher_BuyItemCheck_Impl.cpp
+         1  PacketDispatcher_Secu.cpp
+    其余家族在二进制里没有留下源码路径（本方法的限度：只扫家族自身函数体的直接立即数，
+    经由 helper 间接引用 .cpp 串的情形不会被捕获 ⇒ 13.2% 是**下界**）。
+
+(d) 子要求一（`*Dispatcher*.cpp` 条目数 vs 家族数'同量级'）:
+    spec 拿'类'与'文件'直接比：21 个 *Dispatcher*.cpp vs 425 个家族 = 20.2x，不成立。
+    修正量法（确实承载派发器代码的源文件数）见上面的 #SUBCRIT1 行
+    => 一个 TU 承载多个家族是常态，该子要求的前提不适用，**不是提取出错**。
+
+判定: 判据 3 以**修正形式**完成 —— 原两条子要求都不成立（原因已定位且可复现），
+      其目的（'提取与分类有没有出错、有没有漏'）由 (b) 的穷尽反查承担：
+      424/425 名字相符、0 处不符、0 个漏掉的家族。
+
+==============================================================================
+判据 4 —— 抽样反证（随机 10 个家族，用 dispatch_sig 地址反查 .rodata 的名字串）
+==============================================================================
+候选家族（有非零 dispatch_sig）: 242 个；随机种子 20261005 抽 10 个
+反查路径: dispatch_sig 地址 -> 在 .rodata 里搜它的 4 字节指针（vtable +20 槽位）
+          -> vtable 起点 = 命中处 - 20 -> +0 应为 0(offset-to-top)、+4 是 RTTI 指针
+          -> type_info: +0 是 vtable、+4 是 mangled 类名串
+
+家族 CreateAccountCargo  dispatch_sig=0x08224f7c
+   .rodata vtable=0x08bd6a80 word0=0x00000000 RTTI=0x08bdf464 name='29Dispatcher_CreateAccountCargo' -> 命中
+家族 P2PHolePunchingSuccessRateStatistics  dispatch_sig=0x082605fe
+   .rodata vtable=0x08bea2e0 word0=0x00000000 RTTI=0x08bea8cc name='47Dispatcher_P2PHolePunchingSuccessRateStatistics' -> 命中
+家族 DebugCommand  dispatch_sig=0x081fc4de
+   .rodata vtable=0x08bd91c0 word0=0x00000000 RTTI=0x08be1634 name='23DisPatcher_DebugCommand' -> 命中
+家族 Fish  dispatch_sig=0x081eddf6
+   .rodata vtable=0x08bd9700 word0=0x00000000 RTTI=0x08be1920 name='15DisPatcher_Fish' -> 命中
+家族 Card_Select_Right_State  dispatch_sig=0x081ff504
+   .rodata vtable=0x08bd8f40 word0=0x00000000 RTTI=0x08be1438 name='34Dispatcher_Card_Select_Right_State' -> 命中
+家族 BVHackInfo  dispatch_sig=0x08207568
+   .rodata vtable=0x08bd8340 word0=0x00000000 RTTI=0x08be0ab8 name='21Dispatcher_BVHackInfo' -> 命中
+家族 Pause  dispatch_sig=0x08140a1c
+   .rodata vtable=0x08b6ed20 word0=0x00000000 RTTI=0x08b6f054 name='N12advancealtar16Dispatcher_PauseE' -> 命中
+家族 New_Gmdebug_Command  dispatch_sig=0x0820bbde
+   .rodata vtable=0x08bd7cc0 word0=0x00000000 RTTI=0x08be0538 name='30Dispatcher_New_Gmdebug_Command' -> 命中
+家族 AradAvatarConvert  dispatch_sig=0x081a00be
+   .rodata vtable=0x08baa900 word0=0x00000000 RTTI=0x08baab58 name='N4ARAD10DISPATCHER28Dispatcher_AradAvatarConvertE' -> 命中
+家族 AvartarRoulette  dispatch_sig=0x0819ef54
+   .rodata vtable=0x08baaa80 word0=0x00000000 RTTI=0x08baad54 name='N4ARAD10DISPATCHER26Dispatcher_AvartarRouletteE' -> 命中
+
+命中 10/10 -> PASS
+注：这里保留计划要求的'随机 10 家族'抽样；**全量（424/425）**的同一反查由
+    family-evidence.py 完成，结果见判据 3 的 (b) —— 抽样通过 + 全量通过。
+
+==============================================================================
+汇总
+==============================================================================
+判据 1 命令映射无余数          : PASS
+判据 2 两个 demangler 一致      : PASS (仅我方 1 / 仅 IDA 0)
+判据 3 模块清单交叉            : 补全（修正形式） —— 原两条子要求不成立（原因在案），目的由穷尽反查承担：424/425 名字相符、0 漏
+判据 4 抽样反证（10 家族）      : PASS；全量反查 424/425 见判据 3(b)

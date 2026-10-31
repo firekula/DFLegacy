@@ -1,0 +1,181 @@
+{
+  "role": "D",
+  "pid": 48384,
+  "process_started_filetime": 134378108876069571,
+  "sampling": "read-only owned-process research; not SDK history",
+  "period_ms": 2,
+  "max_seconds": 10,
+  "samples": 71,
+  "read_calls": 3411,
+  "events": [
+    {
+      "tick_ms": 451205468,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451205578,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451205687,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451205796,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451205906,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451206015,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451206125,
+      "scene": 1,
+      "mouse_button_deferred": true,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 1,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451206140,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451206250,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451206359,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    },
+    {
+      "tick_ms": 451206468,
+      "scene": 1,
+      "mouse_button_deferred": false,
+      "actor_token": "0x8696180",
+      "command": {
+        "uid": 4,
+        "checker_token": "0x85b6d60",
+        "keyboard_lock_level": 0,
+        "mouse_lock_level": 0,
+        "checker_flag90_raw": false,
+        "physical_excluded": false,
+        "sdk_uid_bound": true
+      }
+    }
+  ],
+  "errors": [],
+  "phase": "ui-v1",
+  "build_manifest_sha256": "8E9065D1D1699ABF19F72D6C5846689CA05C4E70F6837C972D701666E3F9364C",
+  "journal_sha256": "71B8EF4A0C20770FE2F64708CA7FCDEB62763B67E2BB0B7F3FC3453DE1028A97"
+}

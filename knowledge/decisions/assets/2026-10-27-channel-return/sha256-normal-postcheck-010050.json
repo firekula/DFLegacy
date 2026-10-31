@@ -1,0 +1,41 @@
+{
+  "schema": "dflegacy.unaltered-evidence-copy.v1",
+  "files": [
+    {
+      "file": "normal-clients-reopened.json",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-clients-reopened.json",
+      "source_sha256": "60393AA790691E52F721B7B194DB271FB3D1868A885118FE47E28C6945E8676C",
+      "copy_sha256": "60393AA790691E52F721B7B194DB271FB3D1868A885118FE47E28C6945E8676C",
+      "bytes": 683,
+      "unaltered": true,
+      "visually_inspected": false
+    },
+    {
+      "file": "normal-postcheck.json",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-postcheck.json",
+      "source_sha256": "F056050406C34C09BF44623744719CDEECBCA1810161A1B3E6FA7EB7F0D1D093",
+      "copy_sha256": "F056050406C34C09BF44623744719CDEECBCA1810161A1B3E6FA7EB7F0D1D093",
+      "bytes": 7174,
+      "unaltered": true,
+      "visually_inspected": false
+    },
+    {
+      "file": "normal-A-channel-20261028.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-A-channel-20261028.jpg",
+      "source_sha256": "5B2A78E2A9B6900E1EE32B9656DFBC2B472201D6E1353B10E363527BDF5C44F2",
+      "copy_sha256": "5B2A78E2A9B6900E1EE32B9656DFBC2B472201D6E1353B10E363527BDF5C44F2",
+      "bytes": 43948,
+      "unaltered": true,
+      "visually_inspected": true
+    },
+    {
+      "file": "normal-B-channel-20261028.jpg",
+      "source": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\normal-B-channel-20261028.jpg",
+      "source_sha256": "906C3B7612F96064A2684B459CDC2ABED527C695B693C7E72A473785A1DBB29F",
+      "copy_sha256": "906C3B7612F96064A2684B459CDC2ABED527C695B693C7E72A473785A1DBB29F",
+      "bytes": 43990,
+      "unaltered": true,
+      "visually_inspected": true
+    }
+  ]
+}

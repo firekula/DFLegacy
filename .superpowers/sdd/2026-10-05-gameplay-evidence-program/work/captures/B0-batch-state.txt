@@ -1,0 +1,74 @@
+# B0 批次 — 环境状态与偏离（采集进行中，随时可据此恢复）
+
+生成时间：2026-10-05 20:0x（本地）。此文件是**进行中**的状态快照，最终报告见 `work/out/B0-batch-report.md`。
+
+## 1. 批次前状态（恢复目标，来自 Task 1 基线与本批次实测）
+
+| 项 | 批次前 |
+|---|---|
+| 宿主 7001/tcp、2311/udp 占用者 | pid **17428** = `DFLegacy.Server`，路径 `G:\Game\DNF_ACT1\DF\town-test\DFLegacy.Server.exe`，命令行即该 exe 全路径、**工作目录必须是 `G:\Game\DNF_ACT1\DF\town-test`**（它读同目录 `server.json`） |
+| netsh portproxy 规则 | **无**（`netsh interface portproxy show v4tov4` 空） |
+| 容器 `dnf` | Up，`7001/tcp`=`[]`、`2311/udp`=`[]`（申请了发布但宿主被占，没绑上） |
+| 容器发布 | `30011/tcp→30021`、`31011/udp→31021`、`5505/tcp→5505`、`7001/udp→7001`、`2312/udp`、`2313/udp`、`3306/tcp→13306`、`7300/tcp+udp` |
+| 容器 `dfl-recon` | Up，`NetworkMode=bridge`（**不在** dnf 的 netns 里）⇒ 提供 `c++filt`，与抓包无关 |
+
+## 2. 本批次做的写操作（逐条，可逆）
+
+1. `Stop-Process -Name DFLegacy.Server -Force`（pid 17428）→ 已验证 7001/2311 释放。
+2. `docker restart dnf` → **成功**，且 `7001/tcp` 与 `2311/udp` 现在**绑上了**（宿主 7001 实连测试 True）。
+3. `docker rm -f dfl-sniff`（无残留，等同没做）+ `docker run -d --name dfl-sniff --network container:dnf --cap-add=NET_RAW --cap-add=NET_ADMIN -v G:\Game\DNF_ACT1\DFLegacy:/w debian:trixie-slim sleep infinity`
+4. `apt-get install tcpdump iproute2 netcat-openbsd`（容器内，60 秒）
+5. 启动抓包（见下）
+6. 启动宿主中继（见下）
+
+## 3. 两处**计划前提不成立**（实测偏离，收尾要还原的是"实际状态"而不是计划里的写法）
+
+* **偏离 A：`netsh interface portproxy` 用不了 —— 需要管理员权限。**
+  实测：`netsh interface portproxy add v4tov4 listenport=30011 ... ` →
+  `The requested operation requires elevation (Run as administrator).`（exit 1）
+  （`iphlpsvc` 服务是 Running，失败原因是权限而非服务。）
+  ⇒ 改用**用户态 TCP 中继**：`work/batch-b0-relay.py`，监听 `127.0.0.1:30011` → 转发 `127.0.0.1:30021`。
+  对客户端与容器的可观测行为与 portproxy 等价（容器侧看到的都是宿主 docker 代理发起的连接）。
+  实测可用：`Test-NetConnection 127.0.0.1:30011` = True；中继日志记到 `conn#1 closed c->s=0B s->c=432B`
+  （探针没发数据、容器回了 432 字节 ⇒ 端到端通）。
+  **撤销 = 杀掉该后台作业**（不需要 netsh）。
+  若所有者希望用内核级 portproxy：管理员 shell 跑
+  `netsh interface portproxy add v4tov4 listenport=30011 listenaddress=127.0.0.1 connectport=30021 connectaddress=127.0.0.1`
+
+* **偏离 B：抓包 sidecar 不是 `dfl-recon`，而是独立的 `dfl-sniff`。**
+  计划 Step 6 说要 `docker rm -f dfl-recon` 再重建来抓包；但既有文档（`topology.md:400`、
+  `dual-evidence.md:57`）显示上一轮抓包用的是另一个容器 `dfl-sniff`，且 `dfl-recon` 在 bridge 网络、
+  **不在 dnf 的 netns 里**。重建 `dfl-recon` 只会毁掉 `c++filt`（本轮抓包用不到它，但后续可能要用）
+  ⇒ **不动 `dfl-recon`**，按上一轮验证过的配方另起 `dfl-sniff`。
+
+* **顺序（坑 9）**：`--network container:X` 的 sidecar 熬不过 `docker restart X` ⇒ 必须先重启 `dnf`、
+  再建 sidecar。本次顺序正确，且建后自检 `ip -o addr show` **有 `eth0` 172.17.0.2/16** ⇒ netns 有效。
+
+## 4. 抓包配置（当前正在跑）
+
+```
+docker exec dfl-sniff pidof tcpdump        # 本次 = 554
+tcpdump -i any -s 0 -U -w /w/.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/captures/e2e-official-to-game.pcap \
+        "tcp port 7001 or tcp port 30011 or udp port 2311 or udp port 31011"
+```
+* 过滤器**没有**用 `greater N`（`open-questions.md:601`：它按链路层长度算，会把 62 字节的小载荷帧整批滤掉）。
+* 链路类型 `LINUX_SLL2`（`-i any` 的必然结果），与上一轮 `pcap-streams.py` 处理过的一致。
+* 活性已验证：一次 30011 连接即可让 pcap 从 24 → 1264 字节。
+* 停止：sidecar 里**没有 `pkill`**（`open-questions.md:604`）⇒ 用 `kill $(pidof tcpdump)` 或 `docker rm -f dfl-sniff`。
+
+## 5. 待人工完成的部分
+
+用 `G:\Work\OpenDNF\_work\opendnf-win-0.0.3\llnut-launcher.exe` + 2012 客户端，
+走到 **选服 → 进频道 → 选角色 → 进游戏**。账号口令在 `%APPDATA%\llnut-launcher\credentials.dat`（DPAPI）。
+客户端 cfg 侧不用改：`this_ip=127.0.0.1`、`this_tcp_port=7001`（握手）；游戏服地址由容器内
+channel_info 表下发（= `30011`，本批次由中继补上落差）。
+
+## 6. 收尾必须做（Task 8 Step 3，坑 14）
+
+1. 停抓包：`docker exec dfl-sniff bash -lc 'kill $(pidof tcpdump)'`（或 `docker rm -f dfl-sniff`）；
+2. `docker stop dnf`；
+3. 起回 `DFLegacy.Server`（工作目录 `G:\Game\DNF_ACT1\DF\town-test`）；
+4. `docker start dnf`（起回来的容器会因宿主被占而**绑不上 7001** —— 这是**已知且可接受**的状态，
+   与批次前一致）；
+5. 杀掉中继作业；确认 `netsh portproxy show v4tov4` 仍为空（批次前就是空）；
+6. 会话收尾逐条记录端口占用对照。

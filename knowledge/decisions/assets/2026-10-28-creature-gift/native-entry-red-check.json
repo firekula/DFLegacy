@@ -1,0 +1,93 @@
+{
+  "schema": "act1-creature-gift-check/v1",
+  "stage": "entry-red",
+  "checks": [
+    {
+      "name": "closed INITIAL result is entry RED only",
+      "passed": true
+    },
+    {
+      "name": "source clone distinguished from postboot and closed hashes",
+      "passed": true
+    },
+    {
+      "name": "explicit raw input hashes retained",
+      "passed": true
+    },
+    {
+      "name": "recorded server24040 and clients76984/59440",
+      "passed": true
+    },
+    {
+      "name": "approved managed and native fingerprints",
+      "passed": true
+    },
+    {
+      "name": "both frozen clients independently decoded",
+      "passed": true
+    },
+    {
+      "name": "A PID start and frozen raw hash bound",
+      "passed": true
+    },
+    {
+      "name": "A complete raw capture and no layout errors",
+      "passed": true
+    },
+    {
+      "name": "A every TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "A zero recipient lookup and gift orders",
+      "passed": true
+    },
+    {
+      "name": "B PID start and frozen raw hash bound",
+      "passed": true
+    },
+    {
+      "name": "B complete raw capture and no layout errors",
+      "passed": true
+    },
+    {
+      "name": "B every TX CRC valid",
+      "passed": true
+    },
+    {
+      "name": "B zero recipient lookup and gift orders",
+      "passed": true
+    },
+    {
+      "name": "earlier filtered report independently redecoded",
+      "passed": true
+    },
+    {
+      "name": "selected cash quota items and mail unchanged",
+      "passed": true
+    },
+    {
+      "name": "cash A26600 B997790 quota0 no egg or gift",
+      "passed": true
+    },
+    {
+      "name": "post06 rollover contains only fatigue/default keys",
+      "passed": true
+    },
+    {
+      "name": "RED-phase full-state changes only town position",
+      "passed": true
+    }
+  ],
+  "passed": 19,
+  "total": 19,
+  "status": "PASS",
+  "native_result": "ENTRY_RED",
+  "native_acceptance": "GIFT_NOT_ACCEPTED",
+  "limitations": [
+    "PASS verifies the recorded failure to reach gift entry with zero orders, not successful native gifting.",
+    "Root-reviewed original screenshots establish the gray disabled row; protocol silence alone cannot prove UI state."
+  ],
+  "evidence_sha256": "37727DA1A01258BB67F645D2EDFE875C6BC4FBE12108D1A38D7B46D72A7CA528",
+  "checker_sha256": "A9285DEDD26E26B0C5D6439A4FDF77F1861407CDD5592FB7D007314FF06F47BB"
+}

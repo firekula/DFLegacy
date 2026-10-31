@@ -1,0 +1,8 @@
+{
+  "controller": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\tools\\acceptance\\native_control.py",
+  "controller_sha256": "EF5F0966BCA95E5932706E0E63EB12E5898AA8F9AC3584C218526C18205F6478",
+  "wrapper_sha256": "3F8A87AC1DB58D3E24EAAE406BB1065E1489DBD6AF3258F84CA109A147DE3337",
+  "driver_sha256": "BFEC410E346404E1C0B540FEA78A6CC8F012D14440B564BDE3A17881D070AFC3",
+  "default_capture": false,
+  "native_debug_dll_changed": false
+}

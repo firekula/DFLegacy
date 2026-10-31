@@ -1,0 +1,5 @@
+2026-10-29 18:47:14.623 [8820] focus request completed
+2026-10-29 18:47:14.667 [8820] plan armed (6 steps)
+2026-10-29 18:47:15.234 [8820] GetDeviceState calls=34595 res=0x0 nonzeroPeak=0 synthKeys=0
+2026-10-29 18:47:15.716 [8820] focus request completed
+2026-10-29 18:47:15.940 [8820] vk polled: 0x2Cx600

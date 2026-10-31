@@ -1,0 +1,29 @@
+[mech] get_dispatcher @0x085948e2 bound id<=0x25d (605)
+[mech] registrations parsed = 428  (ids 0..605)  distinct families = 423
+[mech] registration blocks my parser could not read: 0
+[mech] unregistered slots inside 0..605: [78, 92, 107, 109, 119, 127, 128, 130, 131, 132, 133, 134, 136, 142, 144, 147, 151, 176, 177, 178, 203, 206, 223, 224, 228, 229, 230, 231, 232, 233, 234, 237, 250, 257, 270, 277, 278, 279, 280, 281, 285, 293, 302, 303, 304, 305, 313, 314, 315, 321, 322, 323, 327, 328, 329, 337, 344, 345, 346, 354, 355, 357, 359, 360, 362, 363, 364, 373, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 402, 403, 409, 410, 418, 419, 420, 421, 422, 423, 428, 430, 434, 452, 455, 461, 462, 463, 464, 466, 467, 468, 472, 474, 475, 481, 482, 491, 497, 498, 500, 501, 502, 517, 518, 520, 521, 522, 523, 524, 525, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570, 571, 581, 582, 583, 584, 592, 593, 594, 595, 596, 598]
+[mech] registered families NOT in catalog: []
+[mech] catalog families NOT registered: 2 -> ['BuyItemCheck', 'MakeWarRoomTemp']
+[mech] registrations that needed the FALLBACK family pattern: 1
+        id= 456  DispatcherResetRandomOption::DispatcherResetRandomOption()  -> family 'ResetRandomOption'
+[mech] .rodata off->VA: va = 0x08ae5840 + (off - 0xa9d840)
+[mech] input rows whose address is outside .rodata: cmd=0 noti=0
+total=1171 mapped=428 no-dispatcher=741 unused=2
+
+[note] 逐条说明（可复核）:
+  CMD 606 END: id > 0x25d（查表上界）=> 无派发器
+  CMD 607 DISJOINT_ITEM: id > 0x25d（查表上界）=> 无派发器
+
+[sample] CMD id -> 注册家族（用于 Step 4 的 >=8/10 判据）:
+  CMD    0 CHECK_CONNECTION         -> CheckConn                          from DisPatcher_CheckConn::DisPatcher_CheckConn()
+  CMD    1 LOGIN                    -> Login                              from DisPatcher_Login::DisPatcher_Login()
+  CMD    2 SET_UDP_IP_PORT          -> SetIP                              from DisPatcher_SetIP::DisPatcher_SetIP()
+  CMD    3 EXIT                     -> Exit                               from DisPatcher_Exit::DisPatcher_Exit()
+  CMD    4 SELECT_CHARACTER         -> SelectCharac                       from DisPatcher_SelectCharac::DisPatcher_SelectCharac()
+  CMD    5 CREATE_CHARACTER         -> CreateCharac                       from DisPatcher_CreateCharac::DisPatcher_CreateCharac()
+  CMD    6 DELETE_CHARACTER         -> DeleteCharac                       from DisPatcher_DeleteCharac::DisPatcher_DeleteCharac()
+  CMD    7 RETURN_SELECT_CHARACTER  -> ReturnToSelectCharacter            from DisPatcher_ReturnToSelectCharacter::DisPatcher_ReturnToSelectCharacter()
+  CMD  100 PEER_CONNECT_RESULT      -> PeerConnectResult                  from Dispatcher_PeerConnectResult::Dispatcher_PeerConnectResult()
+  CMD  300 CONNECT_P2P_PVP          -> ConnectP2PPvP                      from Dispatcher_ConnectP2PPvP::Dispatcher_ConnectP2PPvP()
+
+[namecheck] rows whose .rodata string does not start with ENUM_<KIND>PACKET_<name>: 0

@@ -1,0 +1,1 @@
+Independent read-only reviewer /root/ui_state_review found one P2: projection and legacy selected index could mix two native selections. Added third-read index mutation: RED1 -> GREEN0. StableSelection now repeats selector projection/state and compares legacy index; reviewer confirmed closure. No reviewer build/edit/live operation.

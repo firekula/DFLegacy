@@ -1,0 +1,46 @@
+{
+  // 客户端主程序路径。支持相对路径，基准为 DFLegacy.Launcher.exe 所在目录（即发布输出目录）。
+  // 分发给他人时建议用相对路径（如 "../DNF.exe"，客户端放在发布目录的上一级），这样解压到任意位置都无需改；
+  // 本机调试若客户端在别处，可临时改回绝对路径（如 "D:\\DFLegacy\\DF2008\\DNF.exe"）。
+  "ClientPath": "../DNF.exe",
+  "EntranceHost": "127.0.0.1",
+  "EntrancePort": 2311,
+  // 账号服务端口：账号后台与入口共用同一个域名（EntranceHost），只是端口不同。
+  // 实际地址 = http://{EntranceHost}:{AccountServicePort}。发布前改这里的端口即可，域名不用改两处。
+  "AccountServicePort": 8081,
+  // 可选：直接覆盖账号 API 地址（留空即按上面的「域名:端口」自动拼，通常不用填）。
+  "AccountServiceUrl": "",
+  // 启动器界面主题：auto / light / dark。主窗口是原版皮肤（不受主题影响）；
+  // 主题只作用于注册/改密/找回/账号管理/设置这些窗口，默认 dark 与皮肤观感一致。
+  "Theme": "dark",
+  "Account": "test",
+  "Password": "test",
+  "Accounts": [
+    {
+      "Account": "test",
+      "Password": "test",
+      "DisplayName": "测试账号",
+      "CreateTime": "2026-09-26T12:00:00+08:00",
+      "OicqCode": null,
+      // 为 false 时该账号只保存空密码，启动前需在界面输入密码；无头启动（--headless / --account）需要存储密码。
+      "RememberPassword": true
+    }
+  ],
+  "AccountIndex": 0,
+  "StartServer": true,
+  "D3D9Adapter": 0,
+  "D3D9TimeoutSeconds": 30,
+  "D3D9RetryIntervalSeconds": 1,
+  "Relay": {
+    // 启用后启动器把本地中继托管在自己进程内，并让客户端连接 127.0.0.1，由中继拨号下面的 EntranceHost。
+    // 用于"客户端只能 IPv4、服务器只有 IPv6"的场景；此时 EntranceHost 必须是服务器地址（域名或 IP），
+    // 不能填 127.0.0.1。启用后启动器会驻留到客户端退出为止（不额外产生进程），无需手动清理。
+    "Enabled": false,
+    // 可选：需要转发的端口，留空使用中继默认值（TCP 2311,7001,8080 / UDP 2311,7002,7003）。
+    // 服务端改过端口时在这里同步；EntrancePort 总会被包含。
+    "TcpPorts": null,
+    "UdpPorts": null,
+    // 解析 EntranceHost 时优先使用的地址族：ipv6 或 ipv4。
+    "Preference": "ipv6"
+  }
+}

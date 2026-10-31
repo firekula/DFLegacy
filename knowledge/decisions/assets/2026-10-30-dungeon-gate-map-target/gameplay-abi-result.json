@@ -1,0 +1,15 @@
+{
+  "schema": "dfl-abi-command-result/v1",
+  "command": [
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\artifacts\\native\\debug-tests\\Release\\debug_tests.exe",
+    "--gameplay-abi",
+    "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\artifacts\\native\\debug\\Release\\debug.dll"
+  ],
+  "exit_code": 0,
+  "stdout_bytes": 0,
+  "stderr_bytes": 0,
+  "test_exe_sha256": "06111A93DBC7C09C738AA2512CA50CDDC147F8425B455A01431A71BAED076647",
+  "debug_dll_sha256": "0082559CB80050226500290C6BAB2CD482BD09B571682D0EAB614F3F5099CFCB",
+  "observed_at_utc": "2026-10-30T07:29:29.854363+00:00",
+  "reason": "Review requested a durable exit-code record because the successful ABI check emits no text"
+}

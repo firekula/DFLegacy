@@ -1,0 +1,854 @@
+family	sig_or_proc	vtable	rtti_name	match
+#DWARF	debug_info_cus=21	debug_line_cus=21	sample_source_files=ftinit.c|ftcalc.c|ttdriver.c|ttmtx.c|ftraster.c|ftgrays.c
+#VTABLE	records=1020	with_dispatcher_rtti=522
+AbnormalUseStackable	process	0x08becb60	31Dispatcher_AbnormalUseStackable	yes
+AchievementTrigger	process	0x08bda900	29Dispatcher_AchievementTrigger	yes
+AddFriend	process	0x08bdbb80	20DisPatcher_AddFriend	yes
+AddSocketToAvatar	dispatch_sig	0x08bd7740	28Dispatcher_AddSocketToAvatar	yes
+AgreeEnchant	dispatch_sig	0x08bd7f00	23Dispatcher_AgreeEnchant	yes
+Antibot	dispatch_sig	0x08bd7dc0	18Dispatcher_Antibot	yes
+Antibot_DP	dispatch_sig	0x08bd7e00	21Dispatcher_Antibot_DP	yes
+Antibot_DPCallBack	dispatch_sig	0x08bd7e40	29Dispatcher_Antibot_DPCallBack	yes
+ApproveJoinGuild	process	0x08bdad80	27Dispatcher_ApproveJoinGuild	yes
+AradAvatarConvert	dispatch_sig	0x08baa900	N4ARAD10DISPATCHER28Dispatcher_AradAvatarConvertE	yes
+AradEmblemCompound	dispatch_sig	0x08baa940	N4ARAD10DISPATCHER29Dispatcher_AradEmblemCompoundE	yes
+AradJumpingCharacter	dispatch_sig	0x08baaa00	N4ARAD10DISPATCHER31Dispatcher_AradJumpingCharacterE	yes
+AradUseAvatarRecharge	dispatch_sig	0x08baa980	N4ARAD10DISPATCHER32Dispatcher_AradUseAvatarRechargeE	yes
+AskRematch	dispatch_sig	0x08bd6580	21Dispatcher_AskRematch	yes
+AssertManager	dispatch_sig	0x08bd7400	24Dispatcher_AssertManager	yes
+AuctionAskAveragePrice	dispatch_sig	0x08bd7c40	33Dispatcher_AuctionAskAveragePrice	yes
+AuctionBidding	dispatch_sig	0x08bd7b40	25Dispatcher_AuctionBidding	yes
+AuctionBuyItemApiece	dispatch_sig	0x08bd7b80	31Dispatcher_AuctionBuyItemApiece	yes
+AuctionMyAuctionHistory	dispatch_sig	0x08bd7a00	34Dispatcher_AuctionMyAuctionHistory	yes
+AuctionMyBiddingInfo	dispatch_sig	0x08bd7a40	31Dispatcher_AuctionMyBiddingInfo	yes
+AuctionMyRegistedItemInfo	dispatch_sig	0x08bd7a80	36Dispatcher_AuctionMyRegistedItemInfo	yes
+AuctionRegistCancel	dispatch_sig	0x08bd7bc0	30Dispatcher_AuctionRegistCancel	yes
+AuctionRegistItem	dispatch_sig	0x08bd7c00	28Dispatcher_AuctionRegistItem	yes
+AuctionSearchByItemKey	dispatch_sig	0x08bd7b00	33Dispatcher_AuctionSearchByItemKey	yes
+AuctionSearchByNoItmeKey	dispatch_sig	0x08bd7ac0	35Dispatcher_AuctionSearchByNoItmeKey	yes
+AvartarCoinCount	dispatch_sig	0x08baaa40	N4ARAD10DISPATCHER27Dispatcher_AvartarCoinCountE	yes
+AvartarHiddenOptionChange	dispatch_sig	0x08baa9c0	N4ARAD10DISPATCHER36Dispatcher_AvartarHiddenOptionChangeE	yes
+AvartarRoulette	dispatch_sig	0x08baaa80	N4ARAD10DISPATCHER26Dispatcher_AvartarRouletteE	yes
+AvatarOptionChange	process	0x08bda1c0	29Dispatcher_AvatarOptionChange	yes
+Avatar_Disjoint_Random_Reward	process	0x08bda380	40Dispatcher_Avatar_Disjoint_Random_Reward	yes
+BVHackInfo	dispatch_sig	0x08bd8340	21Dispatcher_BVHackInfo	yes
+Back2Village	dispatch_sig	0x08bd8640	23Dispatcher_Back2Village	yes
+BiddingRoutingItem	dispatch_sig	0x08bd68c0	29Dispatcher_BiddingRoutingItem	yes
+BingoQuiz	process	0x08bea4a0	20Dispatcher_BingoQuiz	yes
+BingoReward	process	0x08bea4e0	22Dispatcher_BingoReward	yes
+BloodRoundUiPrepareFinish	dispatch_sig	0x08bd7000	36Dispatcher_BloodRoundUiPrepareFinish	yes
+BlueMarble	process	0x08bd9c80	21Dispatcher_BlueMarble	yes
+BlueMarbleConfirmInfo	process	0x08bd9c40	32Dispatcher_BlueMarbleConfirmInfo	yes
+BossDieCheck	process	0x08bdb880	23Dispatcher_BossDieCheck	yes
+Break_Away_Quest_Check	process	0x08bdaf40	33Dispatcher_Break_Away_Quest_Check	yes
+BuyAutomatItem	dispatch_sig	0x08bd9080	25Dispatcher_BuyAutomatItem	yes
+BuyCeraShopItem	dispatch_sig	0x08bd90c0	26Dispatcher_BuyCeraShopItem	yes
+BuyCeraShopLimitItem	dispatch_sig	0x08bd7140	31Dispatcher_BuyCeraShopLimitItem	yes
+BuyItem	dispatch_sig	0x08b6ee60	N12advancealtar18Dispatcher_BuyItemE	yes
+BuyItemCheck	-	-	-	no-vtable
+BuyPrivateStoreItem	dispatch_sig	0x08bd8bc0	30Dispatcher_BuyPrivateStoreItem	yes
+BuySkill	process	0x08bdc280	19DisPatcher_BuySkill	yes
+Buy_Charac_Status_Using_QP	process	0x08bdaac0	37Dispatcher_Buy_Charac_Status_Using_QP	yes
+CallGuildAllMembers	dispatch_sig	0x08bd8e80	30Dispatcher_CallGuildAllMembers	yes
+CallGuildCreateRight	dispatch_sig	0x08bd8e40	31Dispatcher_CallGuildCreateRight	yes
+CallGuildInfo	dispatch_sig	0x08bd8dc0	24Dispatcher_CallGuildInfo	yes
+CallGuildInvite	dispatch_sig	0x08bd8300	26Dispatcher_CallGuildInvite	yes
+CallGuildLevelUp	dispatch_sig	0x08bd8e00	27Dispatcher_CallGuildLevelUp	yes
+CallGuildMembers	dispatch_sig	0x08bd8ec0	27Dispatcher_CallGuildMembers	yes
+CallMemberList	process	0x08bdba40	25Dispatcher_CallMemberList	yes
+CallPartyMemberRealtimeInfo	process	0x08bdb740	38Dispatcher_CallPartyMemberRealtimeInfo	yes
+CancelJoinGuild	process	0x08bdadc0	26Dispatcher_CancelJoinGuild	yes
+Cancel_Quick_Party	process	0x08bda440	29Dispatcher_Cancel_Quick_Party	yes
+Card_Select_Right_State	dispatch_sig	0x08bd8f40	34Dispatcher_Card_Select_Right_State	yes
+Cera	dispatch_sig	0x08bd9100	15DisPatcher_Cera	yes
+CeraPackageOpen	process	0x08bd9b80	26Dispatcher_CeraPackageOpen	yes
+ChangeAnotherSkillTree	process	0x08bdb200	33Dispatcher_ChangeAnotherSkillTree	yes
+ChangeCharacName	dispatch_sig	0x08bd8600	27Dispatcher_ChangeCharacName	yes
+ChangeEmotion	process	0x08bdb240	24Dispatcher_ChangeEmotion	yes
+ChangeGuildName	dispatch_sig	0x08bd7c80	26Dispatcher_ChangeGuildName	yes
+ChangeHost	dispatch_sig	0x08bd8740	21Dispatcher_ChangeHost	yes
+ChangeHostWarRoom	process	0x08bdaa00	28Dispatcher_ChangeHostWarRoom	yes
+ChangeHp	dispatch_sig	0x08bd8380	19Dispatcher_ChangeHp	yes
+ChangeLetterStat	process	0x08bdb780	27Dispatcher_ChangeLetterStat	yes
+ChangeRandomOption	process	0x08bda600	29Dispatcher_ChangeRandomOption	yes
+ChangeSkill	process	0x08bdc240	22DisPatcher_ChangeSkill	yes
+ChangeTutorialFlag	dispatch_sig	0x08bd8500	29Dispatcher_ChangeTutorialFlag	yes
+Change_Charac_Slot	dispatch_sig	0x08bd6980	29Dispatcher_Change_Charac_Slot	yes
+Change_PartyMemberPosition	dispatch_sig	0x08bd65c0	37Dispatcher_Change_PartyMemberPosition	yes
+CharacSlotExtendEffect	process	0x08bda8c0	33Dispatcher_CharacSlotExtendEffect	yes
+CharacterStatistic	dispatch_sig	0x08bd86c0	29Dispatcher_CharacterStatistic	yes
+Check3rdPartyConcent	process	0x08bda300	31Dispatcher_Check3rdPartyConcent	yes
+CheckAssaultMotionHack	dispatch_sig	0x08bd7040	33Dispatcher_CheckAssaultMotionHack	yes
+CheckConn	dispatch_sig	0x08bd9940	20DisPatcher_CheckConn	yes
+CheckEnableServerMessage	dispatch_sig	0x08bd7440	35Dispatcher_CheckEnableServerMessage	yes
+CheckGuildAddressDouble	dispatch_sig	0x08bd8180	34Dispatcher_CheckGuildAddressDouble	yes
+CheckGuildNameDouble	dispatch_sig	0x08bd81c0	31Dispatcher_CheckGuildNameDouble	yes
+CheckJoinGuild	process	0x08bdae40	25Dispatcher_CheckJoinGuild	yes
+CheckSecurityProtection	process	0x08becba0	34DisPatcher_CheckSecurityProtection	yes
+ClearAction	dispatch_sig	0x08b5f3e0	N8APSystem22Dispatcher_ClearActionE	yes
+Clear_Used_QP	process	0x08bdaa80	24Dispatcher_Clear_Used_QP	yes
+Client_Spec_Statistic	process	0x08bdb6c0	32Dispatcher_Client_Spec_Statistic	yes
+CloseDisjointStore	process	0x08bdb400	29Dispatcher_CloseDisjointStore	yes
+CodeCheckSum	dispatch_sig	0x08bd8840	23Dispatcher_CodeCheckSum	yes
+CollectItems	process	0x08bd9f00	23Dispatcher_CollectItems	yes
+ComboSkill	process	0x08bea420	21Dispatcher_ComboSkill	yes
+ComboSkillExtensionQuickSlotReset	process	0x08bea3e0	44Dispatcher_ComboSkillExtensionQuickSlotReset	yes
+CompatibilityIndex	process	0x08bda040	29Dispatcher_CompatibilityIndex	yes
+CompleteDisplay	dispatch_sig	0x08bd8a80	26Dispatcher_CompleteDisplay	yes
+CompleteLoadAfterAssault	dispatch_sig	0x08bd84c0	35Dispatcher_CompleteLoadAfterAssault	yes
+CompleteLoadAssault	dispatch_sig	0x08bd8440	30Dispatcher_CompleteLoadAssault	yes
+CompleteLoadPvP	dispatch_sig	0x08bd6940	26Dispatcher_CompleteLoadPvP	yes
+Compound	dispatch_sig	0x08bd9900	19DisPatcher_Compound	yes
+CompoundEmblem	dispatch_sig	0x08bd7080	25Dispatcher_CompoundEmblem	yes
+CompoundItemByExpertJob	dispatch_sig	0x08bd7280	34Dispatcher_CompoundItemByExpertJob	yes
+Compound_Avatar	dispatch_sig	0x08bd98c0	26Dispatcher_Compound_Avatar	yes
+Compound_Equipment_Upgrade_Card	dispatch_sig	0x08bd6500	42Dispatcher_Compound_Equipment_Upgrade_Card	yes
+Compound_ExtreamItem	dispatch_sig	0x08bd6880	31Dispatcher_Compound_ExtreamItem	yes
+ConnectP2PAfterAssault	dispatch_sig	0x08bd8480	33Dispatcher_ConnectP2PAfterAssault	yes
+ConnectP2PAssault	dispatch_sig	0x08bd8400	28Dispatcher_ConnectP2PAssault	yes
+ConnectP2PPvP	dispatch_sig	0x08bd6900	24Dispatcher_ConnectP2PPvP	yes
+CranePickUp	dispatch_sig	0x08bd7580	22Dispatcher_CranePickUp	yes
+CreateAccountCargo	dispatch_sig	0x08bd6a80	29Dispatcher_CreateAccountCargo	yes
+CreateCharac	process	0x08bdc200	23DisPatcher_CreateCharac	yes
+CreateDisjointStore	process	0x08bdb540	30Dispatcher_CreateDisjointStore	yes
+CreatePrivateStore	dispatch_sig	0x08bd8b00	29Dispatcher_CreatePrivateStore	yes
+CreatureScriptMessage	dispatch_sig	0x08bd8700	32Dispatcher_CreatureScriptMessage	yes
+CreatureSendMessage	dispatch_sig	0x08bd87c0	30Dispatcher_CreatureSendMessage	yes
+DeathTowerStageCommand	dispatch_sig	0x08bd8100	33Dispatcher_DeathTowerStageCommand	yes
+DebugCommand	dispatch_sig	0x08bd91c0	23DisPatcher_DebugCommand	yes
+Debug_Clear_Quest	process	0x08bda280	28Dispatcher_Debug_Clear_Quest	yes
+DeleteCharac	process	0x08bdc180	23DisPatcher_DeleteCharac	yes
+DeleteItem	process	0x08bdc140	21DisPatcher_DeleteItem	yes
+DeleteToBlackList	process	0x08bdb800	28Dispatcher_DeleteToBlackList	yes
+Delete_GuildBoard_Text	process	0x08bdb000	33Dispatcher_Delete_GuildBoard_Text	yes
+DenyJoinGuild	process	0x08bdad40	24Dispatcher_DenyJoinGuild	yes
+DepositMoney	dispatch_sig	0x08bd6a00	23Dispatcher_DepositMoney	yes
+DieAssaultPlayer	dispatch_sig	0x08bd83c0	27Dispatcher_DieAssaultPlayer	yes
+DieBloodMonster	dispatch_sig	0x08bd70c0	26Dispatcher_DieBloodMonster	yes
+DieCharacInDungeon	process	0x08bdc100	29DisPatcher_DieCharacInDungeon	yes
+DieMob	dispatch_sig	0x08bd9880	17DisPatcher_DieMob	yes
+DieMobAll	dispatch_sig	0x08bd9840	20Dispatcher_DieMobAll	yes
+DiePvP	dispatch_sig	0x08bd9800	17DisPatcher_DiePvP	yes
+DieWarRoomCharacter	dispatch_sig	0x08bd8c00	30DisPatcher_DieWarRoomCharacter	yes
+Direct_Entrance_Quick_Party	process	0x08bda400	38Dispatcher_Direct_Entrance_Quick_Party	yes
+DisJointAvatar	dispatch_sig	0x08bd7800	25Dispatcher_DisJointAvatar	yes
+DisJointItem	dispatch_sig	0x08bd9240	23DisPatcher_DisJointItem	yes
+DisguiseCancel	dispatch_sig	0x08bd7640	25Dispatcher_DisguiseCancel	yes
+DisguiseRequest	dispatch_sig	0x08bd7680	26Dispatcher_DisguiseRequest	yes
+DonateGuildFund	process	0x08bdae80	26Dispatcher_DonateGuildFund	yes
+DropItem	process	0x08bdc0c0	19DisPatcher_DropItem	yes
+DungeonEventStoryPause	dispatch_sig	0x08bd79c0	33Dispatcher_DungeonEventStoryPause	yes
+DungeonNPCBuffInfo	dispatch_sig	0x08bd6dc0	29Dispatcher_DungeonNPCBuffInfo	yes
+EPLPCommand	dispatch_sig	0x08bd8fc0	22Dispatcher_EPLPCommand	yes
+EnchantByBead	process	0x08bdb1c0	24Dispatcher_EnchantByBead	yes
+Enchant_3rdChronicleItem	process	0x08bdaf80	35Dispatcher_Enchant_3rdChronicleItem	yes
+EndPvPResult	dispatch_sig	0x08bd9280	23DisPatcher_EndPvPResult	yes
+EnterDisjointStore	process	0x08bdb440	29Dispatcher_EnterDisjointStore	yes
+EnterPVP	dispatch_sig	0x08bd97c0	19DisPatcher_EnterPVP	yes
+EnterPrivateStore	dispatch_sig	0x08bd8b80	28Dispatcher_EnterPrivateStore	yes
+EnterWarRoom	dispatch_sig	0x08bd8c80	23DisPatcher_EnterWarRoom	yes
+Equipslot_Switch	process	0x08bdab00	27Dispatcher_Equipslot_Switch	yes
+EvadeAssault	process	0x08bdb700	23Dispatcher_EvadeAssault	yes
+EventCreateDnfRequest	dispatch_sig	0x08baa8c0	N4ARAD10DISPATCHER32Dispatcher_EventCreateDnfRequestE	yes
+EventDungeon_ClearRoom	process	0x08b66060	33DisPatcher_EventDungeon_ClearRoom	yes
+EventDungeon_DestoryObject	process	0x08b660a0	37DisPatcher_EventDungeon_DestoryObject	yes
+ExchangeSlot	dispatch_sig	0x08b6ed60	N12advancealtar23Dispatcher_ExchangeSlotE	yes
+Exchange_Random_Item_Reward	process	0x08bda3c0	38Dispatcher_Exchange_Random_Item_Reward	yes
+Exit	dispatch_sig	0x08bd9780	15DisPatcher_Exit	yes
+ExitPrivateStore	dispatch_sig	0x08bd8b40	27Dispatcher_ExitPrivateStore	yes
+Expand_Equipslot_Flag_Update	process	0x08bdab40	39Dispatcher_Expand_Equipslot_Flag_Update	yes
+ExpertExtraction	process	0x08bda840	27Dispatcher_ExpertExtraction	yes
+ExtendAvatar	dispatch_sig	0x08bd9740	23DisPatcher_ExtendAvatar	yes
+FairPvPScore	dispatch_sig	0x08bd6540	23Dispatcher_FairPvPScore	yes
+FatigueAttendance	process	0x08bda740	28Dispatcher_FatigueAttendance	yes
+FightVillageMonster	dispatch_sig	0x08bd6f80	30Dispatcher_FightVillageMonster	yes
+FinishLoad	process	0x08becae0	21DisPatcher_FinishLoad	yes
+FinishVillageMonsterFighting	dispatch_sig	0x08bd6f40	39Dispatcher_FinishVillageMonsterFighting	yes
+Fish	dispatch_sig	0x08bd9700	15DisPatcher_Fish	yes
+Float_RDATA_Modulation	process	0x08becb20	33Dispatcher_Float_RDATA_Modulation	yes
+FrameLagStatistics	dispatch_sig	0x08bd7940	29Dispatcher_FrameLagStatistics	yes
+GM_Command	dispatch_sig	0x08bd9200	21Dispatcher_GM_Command	yes
+GatheringPartyStatus	dispatch_sig	0x08bd8940	31Dispatcher_GatheringPartyStatus	yes
+GenCeraTicket	dispatch_sig	0x08bd9040	24Dispatcher_GenCeraTicket	yes
+GetAchievementReward	dispatch_sig	0x08b6ece0	N12advancealtar31Dispatcher_GetAchievementRewardE	yes
+GetItem	process	0x08bdc080	18DisPatcher_GetItem	yes
+GetTodayReward	dispatch_sig	0x08b5f3a0	N8APSystem25Dispatcher_GetTodayRewardE	yes
+GetUserInfo	process	0x08bdc040	22DisPatcher_GetUserInfo	yes
+GiveGiftToNPC	dispatch_sig	0x08bd73c0	24Dispatcher_GiveGiftToNPC	yes
+GiveUpGame	process	0x08bdbfc0	21DisPatcher_GiveUpGame	yes
+GiveupExpertJob	dispatch_sig	0x08bd7240	26Dispatcher_GiveupExpertJob	yes
+GoblinPadRequestCryptKey	dispatch_sig	0x08bd7340	35Dispatcher_GoblinPadRequestCryptKey	yes
+GoblinPadStatus	dispatch_sig	0x08bd7900	26Dispatcher_GoblinPadStatus	yes
+GoldTakeIncreasingAmount	process	0x08bdac40	35Dispatcher_GoldTakeIncreasingAmount	yes
+GrowthCreatureChangeInfinityCreature	process	0x08bd9ac0	47Dispatcher_GrowthCreatureChangeInfinityCreature	yes
+GrowthWeaponEventChangeInfinity	process	0x08bd9b40	42Dispatcher_GrowthWeaponEventChangeInfinity	yes
+GrowthWeaponEventUseMaterial	process	0x08bd9b00	39Dispatcher_GrowthWeaponEventUseMaterial	yes
+GuildAttendanceInfo	process	0x08bdac80	30Dispatcher_GuildAttendanceInfo	yes
+GuildCargo	process	0x08bdb380	21Dispatcher_GuildCargo	yes
+GuildCargoHistory	process	0x08bdb340	28Dispatcher_GuildCargoHistory	yes
+GuildCargoMoveItem	process	0x08bdb280	29Dispatcher_GuildCargoMoveItem	yes
+GuildCargoPopItem	process	0x08bdb2c0	28Dispatcher_GuildCargoPopItem	yes
+GuildCargoPushItem	process	0x08bdb300	29Dispatcher_GuildCargoPushItem	yes
+GuildJoinList	process	0x08bdad00	24Dispatcher_GuildJoinList	yes
+GuildMasterDelegate	dispatch_sig	0x08bd8200	30Dispatcher_GuildMasterDelegate	yes
+HatchCreature	process	0x08bdb8c0	24Dispatcher_HatchCreature	yes
+HellPartyStart	dispatch_sig	0x08bd74c0	25Dispatcher_HellPartyStart	yes
+HeroMissionEventState_Reward	dispatch_sig	0x08bea2a0	39Dispatcher_HeroMissionEventState_Reward	yes
+HumanCertify	dispatch_sig	0x08bd8540	23Dispatcher_HumanCertify	yes
+ImageCommunicationEquipmentUse	process	0x08bda080	41Dispatcher_ImageCommunicationEquipmentUse	yes
+IncreStatus	dispatch_sig	0x08bd96c0	22DisPatcher_IncreStatus	yes
+InformNotice	process	0x08bd9fc0	23Dispatcher_InformNotice	yes
+InformNotice_2nd	process	0x08bd9f80	27Dispatcher_InformNotice_2nd	yes
+InvestItemAmplifyOption	dispatch_sig	0x08bd7780	34Dispatcher_InvestItemAmplifyOption	yes
+ItemDictionary	process	0x08bda580	25Dispatcher_ItemDictionary	yes
+ItemHyperLinkMessage	process	0x08bda800	31Dispatcher_ItemHyperLinkMessage	yes
+JoinGuildInfo	process	0x08bdacc0	24Dispatcher_JoinGuildInfo	yes
+JoinPowerWar	dispatch_sig	0x08bd7980	23Dispatcher_JoinPowerWar	yes
+Join_Power	dispatch_sig	0x08bd7d40	21Dispatcher_Join_Power	yes
+Lag_Statistics	dispatch_sig	0x08bd6cc0	25Dispatcher_Lag_Statistics	yes
+LeaveParty	process	0x08bdbf80	21DisPatcher_LeaveParty	yes
+LevelupSupportReqestItem	dispatch_sig	0x08bea320	35Dispatcher_LevelupSupportReqestItem	yes
+LimitNpcBuyItem	process	0x08bda180	26Dispatcher_LimitNpcBuyItem	yes
+LoadingTimeReport	dispatch_sig	0x08bd71c0	28Dispatcher_LoadingTimeReport	yes
+LogIngameAdvertisement	process	0x08bd9dc0	33Dispatcher_LogIngameAdvertisement	yes
+Login	dispatch_sig	0x08bd9a40	16DisPatcher_Login	yes
+Lottery	dispatch_sig	0x08bd9300	18DisPatcher_Lottery	yes
+MailBox_Extract	process	0x08bdb940	26Dispatcher_MailBox_Extract	yes
+MailBox_Open	process	0x08bdb9c0	23Dispatcher_MailBox_Open	yes
+MailBox_Send	process	0x08bdb980	23Dispatcher_MailBox_Send	yes
+MakePVP	dispatch_sig	0x08bd9340	18DisPatcher_MakePVP	yes
+MakeWarRoomTemp	dispatch_sig	0x08bd8cc0	26DisPatcher_MakeWarRoomTemp	yes
+MemberEnterReply	process	0x08bdbac0	27Dispatcher_MemberEnterReply	yes
+MemberSecede	process	0x08bdba80	23Dispatcher_MemberSecede	yes
+Mercenary_Competition	process	0x08bda4c0	32Dispatcher_Mercenary_Competition	yes
+Mercenary_Info	process	0x08bda500	25Dispatcher_Mercenary_Info	yes
+Mercenary_Return	process	0x08bda540	27Dispatcher_Mercenary_Return	yes
+ModItemAttr	dispatch_sig	0x08bd8d40	22Dispatcher_ModItemAttr	yes
+MonstercardBind	process	0x08bda880	26Dispatcher_MonstercardBind	yes
+MotionHack	process	0x08becc20	21Dispatcher_MotionHack	yes
+MouseRegister	dispatch_sig	0x08becce0	24Dispatcher_MouseRegister	yes
+MoveItem	process	0x08bdbec0	19DisPatcher_MoveItem	yes
+MoveMap	process	0x08bdbf00	18DisPatcher_MoveMap	yes
+MoveToGate	dispatch_sig	0x08bd8a40	21Dispatcher_MoveToGate	yes
+MultiBoxLottery	dispatch_sig	0x08bd7d80	26DisPatcher_MultiBoxLottery	yes
+MultiMailBoxSend	dispatch_sig	0x08bd67c0	27Dispatcher_MultiMailBoxSend	yes
+New_Gmdebug_Command	dispatch_sig	0x08bd7cc0	30Dispatcher_New_Gmdebug_Command	yes
+NotifyMessageToGuild	dispatch_sig	0x08bd8240	31Dispatcher_NotifyMessageToGuild	yes
+ObjectBringUp	process	0x08bda140	24Dispatcher_ObjectBringUp	yes
+OneDayLetheTicket	dispatch_sig	0x08bd76c0	28DIspatcher_OneDayLetheTicket	yes
+OpenGuildCreateWindow	dispatch_sig	0x08bd8140	32Dispatcher_OpenGuildCreateWindow	yes
+Open_Guild_Board	process	0x08bdb080	27Dispatcher_Open_Guild_Board	yes
+OperateRidableObject	dispatch_sig	0x08bd6740	31Dispatcher_OperateRidableObject	yes
+Overflow_Info	dispatch_sig	0x08bd7380	24Dispatcher_Overflow_Info	yes
+P2PHolePunchingSuccessRateStatistics	dispatch_sig	0x08bea2e0	47Dispatcher_P2PHolePunchingSuccessRateStatistics	yes
+P2P_Statistics	process	0x08bda000	25Dispatcher_P2P_Statistics	yes
+PVPRequestFight	dispatch_sig	0x08bd8800	26Dispatcher_PVPRequestFight	yes
+PartyTeleport	process	0x08bda680	24Dispatcher_PartyTeleport	yes
+PartyTeleportConfirm	process	0x08bda640	31Dispatcher_PartyTeleportConfirm	yes
+Pause	dispatch_sig	0x08b6ed20	N12advancealtar16Dispatcher_PauseE	yes
+PcRoomPlayTimeReward	process	0x08bd9d80	31Dispatcher_PcRoomPlayTimeReward	yes
+PcRoomRentItem	process	0x08bd9d40	25Dispatcher_PcRoomRentItem	yes
+PeerConnectResult	dispatch_sig	0x08bd8a00	28Dispatcher_PeerConnectResult	yes
+PowerWarProcessInfo	dispatch_sig	0x08bd72c0	30Dispatcher_PowerWarProcessInfo	yes
+PrecheckSoloTeleport	process	0x08bda100	31Dispatcher_PrecheckSoloTeleport	yes
+PurifyItem	process	0x08bd77c0	21Dispatcher_PurifyItem	yes
+PutItemForEnchant	dispatch_sig	0x08bd7e80	28Dispatcher_PutItemForEnchant	yes
+PvPBuddyConnList	dispatch_sig	0x08bd6b40	27Dispatcher_PvPBuddyConnList	yes
+PvPChannelInfo	dispatch_sig	0x08bd78c0	25Dispatcher_PvPChannelInfo	yes
+PvPTimeout	process	0x08bdbe80	21DisPatcher_PvPTimeout	yes
+PvpHeartBeat	dispatch_sig	0x08bd8880	23DisPatcher_PvpHeartBeat	yes
+PvpMissionComboClear	process	0x08bdabc0	31Dispatcher_PvpMissionComboClear	yes
+PvpMissionHPPercent	process	0x08bdac00	30Dispatcher_PvpMissionHPPercent	yes
+QueryCharacInfo	dispatch_sig	0x08bd85c0	26Dispatcher_QueryCharacInfo	yes
+QueryCharacInfoMailbox	dispatch_sig	0x08bd6780	33Dispatcher_QueryCharacInfoMailbox	yes
+QuestAction	dispatch_sig	0x08bd9680	22DisPatcher_QuestAction	yes
+QuickJoinRoom	dispatch_sig	0x08bd89c0	24Dispatcher_QuickJoinRoom	yes
+RecoverStamina	process	0x08bdc000	25DisPatcher_RecoverStamina	yes
+Redeem	dispatch_sig	0x08bd6800	17Dispatcher_Redeem	yes
+RedeemList	dispatch_sig	0x08bd6840	21Dispatcher_RedeemList	yes
+RefreshGuildInfo	process	0x08bdaec0	27Dispatcher_RefreshGuildInfo	yes
+RefundSkill	process	0x08bda780	22Dispatcher_RefundSkill	yes
+RegenerationRandomOption	process	0x08bdaa40	34Dispather_RegenerationRandomOption	yes
+RegisterToBlackList	process	0x08bdb840	30Dispatcher_RegisterToBlackList	yes
+Register_Quick_Party	process	0x08bda480	31Dispatcher_Register_Quick_Party	yes
+RemoveFriend	process	0x08bdbb40	23DisPatcher_RemoveFriend	yes
+RemovePrivateStore	dispatch_sig	0x08bd8ac0	29Dispatcher_RemovePrivateStore	yes
+RemovePvPBuddy	dispatch_sig	0x08bd6b80	25Dispatcher_RemovePvPBuddy	yes
+RenameCreature	process	0x08bdb900	25Dispatcher_RenameCreature	yes
+RentAvatar	dispatch_sig	0x08bd9640	21DisPatcher_RentAvatar	yes
+RepairDisjointMachine	process	0x08bdb4c0	32Dispatcher_RepairDisjointMachine	yes
+RepairEquip	process	0x08bdbe40	22DisPatcher_RepairEquip	yes
+ReplyGuildInvite	dispatch_sig	0x08bd82c0	27Dispatcher_ReplyGuildInvite	yes
+ReportAbuseUser	dispatch_sig	0x08bd7200	26Dispatcher_ReportAbuseUser	yes
+ReportBadP2PUser	dispatch_sig	0x08bd9180	27Dispatcher_ReportBadP2PUser	yes
+ReportClient4Hack	dispatch_sig	0x08bd8900	28DisPatcher_ReportClient4Hack	yes
+ReportMannerlessUser	dispatch_sig	0x08bd8580	31Dispatcher_ReportMannerlessUser	yes
+ReqPeer	dispatch_sig	0x08bd9600	18DisPatcher_ReqPeer	yes
+Req_Urgent_Quest	process	0x08bda2c0	27Dispatcher_Req_Urgent_Quest	yes
+RequestAddPvPBuddy	dispatch_sig	0x08bd6c00	29Dispatcher_RequestAddPvPBuddy	yes
+RequestAssaultPrice	process	0x08bda340	30Dispatcher_RequestAssaultPrice	yes
+RequestBlackList	process	0x08bdb7c0	27Dispatcher_RequestBlackList	yes
+RequestCharacSkillInfo	process	0x08bd9e80	33Dispatcher_RequestCharacSkillInfo	yes
+RequestConditionEventReward	dispatch_sig	0x08bd6fc0	38Dispatcher_RequestConditionEventReward	yes
+RequestDisjointItem	process	0x08bdb500	30Dispatcher_RequestDisjointItem	yes
+RequestGuildSecede	dispatch_sig	0x08bd8280	29Dispatcher_RequestGuildSecede	yes
+RequestGuildWarInfo	dispatch_sig	0x08bd88c0	30DisPatcher_RequestGuildWarInfo	yes
+RequestIngameAdvertisement	process	0x08bd9e00	37Dispatcher_RequestIngameAdvertisement	yes
+RequestItemLock	dispatch_sig	0x08bd6ec0	26Dispatcher_RequestItemLock	yes
+RequestItemUnlock	dispatch_sig	0x08bd6e80	28Dispatcher_RequestItemUnlock	yes
+RequestItemUnlockCancel	dispatch_sig	0x08bd6e40	34Dispatcher_RequestItemUnlockCancel	yes
+RequestJoinGuild	process	0x08bdae00	27Dispatcher_RequestJoinGuild	yes
+RequestMatch	dispatch_sig	0x08bd7880	23Dispatcher_RequestMatch	yes
+RequestMemberEnter	process	0x08bdbb00	29Dispatcher_RequestMemberEnter	yes
+RequestOnTimeEventReward	dispatch_sig	0x08bd6c40	35Dispatcher_RequestOnTimeEventReward	yes
+RequestPCRoomPlayerCount	dispatch_sig	0x08bd7500	35Dispatcher_RequestPCRoomPlayerCount	yes
+RequestPCRoomPlayerList	dispatch_sig	0x08bd7540	34Dispatcher_RequestPCRoomPlayerList	yes
+RequestPrcoomDayilyReward	dispatch_sig	0x08baa880	N4ARAD10DISPATCHER36Dispatcher_RequestPrcoomDayilyRewardE	yes
+Request_PvpExpOfWeek	dispatch_sig	0x08bd9000	31Dispatcher_Request_PvpExpOfWeek	yes
+Request_Seria_Buff	process	0x08bda6c0	29Dispatcher_Request_Seria_Buff	yes
+ResPeer	dispatch_sig	0x08bd9580	18DisPatcher_ResPeer	yes
+ResPvpRank	dispatch_sig	0x08bd95c0	21DisPatcher_ResPvpRank	yes
+ResetRandomOption	process	0x08bda5c0	27DispatcherResetRandomOption	yes
+ResetStar	dispatch_sig	0x08b6eca0	N12advancealtar20Dispatcher_ResetStarE	yes
+ResponseAddPvPBuddy	dispatch_sig	0x08bd6bc0	30Dispatcher_ResponseAddPvPBuddy	yes
+ResponseCreature	dispatch_sig	0x08bd8980	27Dispatcher_ResponseCreature	yes
+ReturnToSelectCharacter	dispatch_sig	0x08bd9140	34DisPatcher_ReturnToSelectCharacter	yes
+SDC_ActiveStatus_Damage_Check	dispatch_sig	0x08bd99c0	40Dispatcher_SDC_ActiveStatus_Damage_Check	yes
+SDC_Damage_Check	dispatch_sig	0x08bd9a00	27Dispatcher_SDC_Damage_Check	yes
+SaveCharacterOption	process	0x08bdb680	30Dispatcher_SaveCharacterOption	yes
+SaveGameOption_1	process	0x08bdb640	27Dispatcher_SaveGameOption_1	yes
+SaveGameOption_2	process	0x08bdb600	27Dispatcher_SaveGameOption_2	yes
+SaveGameOption_ChattingEmoticon	process	0x08bdb580	42Dispatcher_SaveGameOption_ChattingEmoticon	yes
+SaveGameOption_QuickChatting	process	0x08bdb5c0	39Dispatcher_SaveGameOption_QuickChatting	yes
+SaveQuestNotify	process	0x08bea460	26Dispatcher_SaveQuestNotify	yes
+ScanBotByDll	process	0x08becc60	23Dispatcher_ScanBotByDll	yes
+ScanBotByDrv	process	0x08becbe0	23Dispatcher_ScanBotByDrv	yes
+Score_Scroll_State	dispatch_sig	0x08bd8f80	29Dispatcher_Score_Scroll_State	yes
+Secede_Power	dispatch_sig	0x08bd7d00	23Dispatcher_Secede_Power	yes
+SecretShopBuyItem	process	0x08bdb180	28Dispatcher_SecretShopBuyItem	yes
+SecretShopOpenClose	process	0x08bdb140	30Dispatcher_SecretShopOpenClose	yes
+SecuDataControl	dispatch_sig	0x08bd7180	26Dispatcher_SecuDataControl	yes
+SecurityCardAuthCancel	dispatch_sig	0x08bd7fc0	33Dispatcher_SecurityCardAuthCancel	yes
+SecurityCardAuthReq	dispatch_sig	0x08bd8000	30Dispatcher_SecurityCardAuthReq	yes
+SecurityCardAuthRpy	process	0x08becd20	30Dispatcher_SecurityCardAuthRpy	yes
+SecurityCardCertKey	dispatch_sig	0x08bd7f80	30Dispatcher_SecurityCardCertKey	yes
+SecurityCardDisuse	dispatch_sig	0x08bd8040	29Dispatcher_SecurityCardDisuse	yes
+SecurityCardIssue	dispatch_sig	0x08bd8080	28Dispatcher_SecurityCardIssue	yes
+SecurityCardRetransfer	dispatch_sig	0x08bd7f40	33Dispatcher_SecurityCardRetransfer	yes
+SecurityLog	process	0x08bea360	22Dispatcher_SecurityLog	yes
+Security_IPScan	dispatch_sig	0x08bd6d00	26Dispatcher_Security_IPScan	yes
+Security_MemoryIntegrity	dispatch_sig	0x08bd6ac0	35Dispatcher_Security_MemoryIntegrity	yes
+Security_NonClient_GetResponse	dispatch_sig	0x08bd6b00	41Dispatcher_Security_NonClient_GetResponse	yes
+Security_PI_HashModulation_C2C	dispatch_sig	0x08bd6680	41Dispatcher_Security_PI_HashModulation_C2C	yes
+Security_PI_HashModulation_S2C	dispatch_sig	0x08bd66c0	41Dispatcher_Security_PI_HashModulation_S2C	yes
+Security_PacketIntegrity	dispatch_sig	0x08bd6c80	35Dispatcher_Security_PacketIntegrity	yes
+Security_ProcessScan	dispatch_sig	0x08bd6d40	31Dispatcher_Security_ProcessScan	yes
+SelectCharac	process	0x08bdbe00	23DisPatcher_SelectCharac	yes
+SelectDungeon	process	0x08bdbdc0	24DisPatcher_SelectDungeon	yes
+SelectItem	dispatch_sig	0x08bd6400	21Dispatcher_SelectItem	yes
+SelectStriker	process	0x08bd9e40	24Dispatcher_SelectStriker	yes
+SelectUltimateDifficulty	dispatch_sig	0x08bd6700	35Dispatcher_SelectUltimateDifficulty	yes
+Select_3rdChronicleItem_ForEnchant	process	0x08bdafc0	45Dispatcher_Select_3rdChronicleItem_ForEnchant	yes
+Select_Card	dispatch_sig	0x08bd8f00	22Dispatcher_Select_Card	yes
+Select_Item_Grwoth_Power	process	0x08bda700	35Dispatcher_Select_Item_Grwoth_Power	yes
+SellItem	dispatch_sig	0x08bd9540	19DisPatcher_SellItem	yes
+SendMess	dispatch_sig	0x08bd9500	19DisPatcher_SendMess	yes
+SeriaRoom_Ani_Deco_Event	process	0x08bd9a80	35Dispatcher_SeriaRoom_Ani_Deco_Event	yes
+SeriaRoom_Deco_Event	process	0x08bd9cc0	31Dispatcher_SeriaRoom_Deco_Event	yes
+SetArea	process	0x08bdbd80	18DisPatcher_SetArea	yes
+SetIP	dispatch_sig	0x08bd94c0	16DisPatcher_SetIP	yes
+SetPVPMapIndex	dispatch_sig	0x08bd92c0	25DisPatcher_SetPVPMapIndex	yes
+SetPVPReady	process	0x08bdbd00	22DisPatcher_SetPVPReady	yes
+SetPVPSeat	dispatch_sig	0x08bd9440	21DisPatcher_SetPVPSeat	yes
+SetPVPTeam	dispatch_sig	0x08bd9400	21DisPatcher_SetPVPTeam	yes
+SetPartyInfo	process	0x08bdbf40	23DisPatcher_SetPartyInfo	yes
+SetPlayResult	dispatch_sig	0x08bd9480	24DisPatcher_SetPlayResult	yes
+SetPos	process	0x08bdbd40	17DisPatcher_SetPos	yes
+SetSlot	dispatch_sig	0x08b6ee20	N12advancealtar18Dispatcher_SetSlotE	yes
+SetSubGuildMaster	dispatch_sig	0x08bd8680	28Dispatcher_SetSubGuildMaster	yes
+SetTradeState	dispatch_sig	0x08bd93c0	24DisPatcher_SetTradeState	yes
+SetWarRoomSeatState	dispatch_sig	0x08bd8c40	30DisPatcher_SetWarRoomSeatState	yes
+Shop_Coin_Event	dispatch_sig	0x08bd9980	26Dispatcher_Shop_Coin_Event	yes
+SkillInit	process	0x08bd9d00	20Dispatcher_SkillInit	yes
+Skill_Command_All_Default	process	0x08bdb0c0	36Dispatcher_Skill_Command_All_Default	yes
+Skill_Command_Customizing	process	0x08bdb100	36Dispatcher_Skill_Command_Customizing	yes
+SoloTeleport	process	0x08bda0c0	23Dispatcher_SoloTeleport	yes
+SortItem	process	0x08bdbcc0	19DisPatcher_SortItem	yes
+StackableActionUse	process	0x08bea520	29Dispatcher_StackableActionUse	yes
+StartGame	process	0x08bdbc80	20DisPatcher_StartGame	yes
+StartWarRoomTemp	dispatch_sig	0x08bd8d00	27DisPatcher_StartWarRoomTemp	yes
+SummonUnit	dispatch_sig	0x08b6eda0	N12advancealtar21Dispatcher_SummonUnitE	yes
+Teleport	process	0x08bdb3c0	19Dispatcher_Teleport	yes
+TitleBookGet	process	0x08bda980	23Dispatcher_TitleBookGet	yes
+TitleBookOtherUser	process	0x08bda940	29Dispatcher_TitleBookOtherUser	yes
+TitleBookPut	process	0x08bda9c0	23Dispatcher_TitleBookPut	yes
+TournamentRewardSelect	process	0x08bda200	33Dispatcher_TournamentRewardSelect	yes
+TournamentRewardSelectState	process	0x08bda240	38Dispatcher_TournamentRewardSelectState	yes
+TraceError	dispatch_sig	0x08bd8780	21Dispatcher_TraceError	yes
+TryEnchant	dispatch_sig	0x08bd7ec0	21Dispatcher_TryEnchant	yes
+TutorialLevelUp	process	0x08bd9ec0	26Dispatcher_TutorialLevelUp	yes
+UdpCharacteristic	dispatch_sig	0x08bd7700	28DisPatcher_UdpCharacteristic	yes
+UnsealRandomOption	dispatch_sig	0x08bd6480	29Dispatcher_UnsealRandomOption	yes
+UpdateContractOfCubeInfo	process	0x08bea3a0	35Dispatcher_UpdateContractOfCubeInfo	yes
+UpdateServerMessage	dispatch_sig	0x08bd7480	30Dispatcher_UpdateServerMessage	yes
+UpgradeAccountCargo	dispatch_sig	0x08bd6a40	30Dispatcher_UpgradeAccountCargo	yes
+UpgradeCargo	dispatch_sig	0x08bd63c0	23Dispatcher_UpgradeCargo	yes
+UpgradeChronicle	dispatch_sig	0x08bd6e00	27Dispatcher_UpgradeChronicle	yes
+UpgradeDisjointMachine	process	0x08bdb480	33Dispatcher_UpgradeDisjointMachine	yes
+UpgradeGage	dispatch_sig	0x08b6ede0	N12advancealtar22Dispatcher_UpgradeGageE	yes
+UpgradeGuildCargo	dispatch_sig	0x08bd6f00	28Dispatcher_UpgradeGuildCargo	yes
+UpgradeInventory	dispatch_sig	0x08bd6380	27Dispatcher_UpgradeInventory	yes
+UpgradeItem	dispatch_sig	0x08bd8d80	22Dispatcher_UpgradeItem	yes
+UpgradeItemSeparate	process	0x08bdba00	30Dispatcher_UpgradeItemSeparate	yes
+UseBoosterItem	dispatch_sig	0x08bd80c0	25Dispatcher_UseBoosterItem	yes
+UseCoin	process	0x08bdbc40	18DisPatcher_UseCoin	yes
+UseCraneStart	dispatch_sig	0x08bd75c0	24Dispatcher_UseCraneStart	yes
+UseCreatureEvolutionItem	dispatch_sig	0x08bd64c0	35Dispatcher_UseCreatureEvolutionItem	yes
+UseDye	process	0x08bd9c00	17Dispatcher_UseDye	yes
+UseEquip	process	0x08bdc1c0	19DisPatcher_UseEquip	yes
+UseJewel	dispatch_sig	0x08bd7840	19Dispatcher_UseJewel	yes
+UseLimitCube	process	0x08bdaf00	23Dispatcher_UseLimitCube	yes
+UseRenameCard	process	0x08bd9bc0	24Dispatcher_UseRenameCard	yes
+UseRightOfChangeGrowType	process	0x08bea560	35Dispatcher_UseRightOfChangeGrowType	yes
+UseSharedEffectItem	dispatch_sig	0x08bd7100	30Dispatcher_UseSharedEffectItem	yes
+UseSkill	process	0x08bdbc00	19DisPatcher_UseSkill	yes
+UseStack	dispatch_sig	0x08bd9380	19DisPatcher_UseStack	yes
+UseVendingMachine	dispatch_sig	0x08bd7600	28Dispatcher_UseVendingMachine	yes
+UserHistoryLog	process	0x08bda7c0	25Dispatcher_UserHistoryLog	yes
+ValidateScriptHash	process	0x08becca0	29Dispatcher_ValidateScriptHash	yes
+VerifyCreatureQuest	process	0x08bd9f40	30Dispatcher_VerifyCreatureQuest	yes
+VerifyGold	dispatch_sig	0x08bd6d80	21Dispatcher_VerifyGold	yes
+VerifyPrivateStoreItem	dispatch_sig	0x08bd6440	33Dispatcher_VerifyPrivateStoreItem	yes
+WalkoutParty	process	0x08bdbbc0	23DisPatcher_WalkoutParty	yes
+WarRoomWpPerMonster	process	0x08bdab80	30Dispatcher_WarRoomWpPerMonster	yes
+WithdrawMoney	dispatch_sig	0x08bd69c0	24Dispatcher_WithdrawMoney	yes
+WriteGuildMemberMemo	dispatch_sig	0x08bd7300	31Dispatcher_WriteGuildMemberMemo	yes
+Write_On_The_GuildBoard	process	0x08bdb040	34Dispatcher_Write_On_The_GuildBoard	yes
+polic_one_to_one_chat_disable	dispatch_sig	0x08bd6640	39Dispatcer_polic_one_to_one_chat_disable	yes
+police_queryCharacName_useMid	dispatch_sig	0x08bd6600	40Dispatcher_police_queryCharacName_useMid	yes
+#CPP	AbnormalUseStackable	
+#CPP	AchievementTrigger	
+#CPP	AddFriend	PacketDispatcher_Impl_1.cpp
+#CPP	AddSocketToAvatar	
+#CPP	AgreeEnchant	
+#CPP	Antibot	
+#CPP	Antibot_DP	
+#CPP	Antibot_DPCallBack	
+#CPP	ApproveJoinGuild	
+#CPP	AradAvatarConvert	localjapan/Arad_PacketDispatcher.cpp
+#CPP	AradEmblemCompound	localjapan/Arad_PacketDispatcher.cpp
+#CPP	AradJumpingCharacter	localjapan/Arad_PacketDispatcher.cpp
+#CPP	AradUseAvatarRecharge	localjapan/Arad_PacketDispatcher.cpp
+#CPP	AskRematch	
+#CPP	AssertManager	
+#CPP	AuctionAskAveragePrice	
+#CPP	AuctionBidding	PacketDispatcher_Impl_1.cpp
+#CPP	AuctionBuyItemApiece	PacketDispatcher_Impl_1.cpp
+#CPP	AuctionMyAuctionHistory	
+#CPP	AuctionMyBiddingInfo	
+#CPP	AuctionMyRegistedItemInfo	
+#CPP	AuctionRegistCancel	
+#CPP	AuctionRegistItem	
+#CPP	AuctionSearchByItemKey	
+#CPP	AuctionSearchByNoItmeKey	
+#CPP	AvartarCoinCount	
+#CPP	AvartarHiddenOptionChange	localjapan/Arad_PacketDispatcher.cpp
+#CPP	AvartarRoulette	localjapan/Arad_PacketDispatcher.cpp
+#CPP	AvatarOptionChange	
+#CPP	Avatar_Disjoint_Random_Reward	
+#CPP	BVHackInfo	PacketDispatcher_Impl_1.cpp
+#CPP	Back2Village	
+#CPP	BiddingRoutingItem	
+#CPP	BingoQuiz	PacketDispatcher_Impl_2.cpp
+#CPP	BingoReward	PacketDispatcher_Impl_2.cpp
+#CPP	BloodRoundUiPrepareFinish	
+#CPP	BlueMarble	
+#CPP	BlueMarbleConfirmInfo	
+#CPP	BossDieCheck	
+#CPP	Break_Away_Quest_Check	PacketDispatcher_Impl_1.cpp
+#CPP	BuyAutomatItem	PacketDispatcher_Impl_1.cpp
+#CPP	BuyCeraShopItem	PacketDispatcher_Impl_1.cpp
+#CPP	BuyCeraShopLimitItem	
+#CPP	BuyItem	
+#CPP	BuyItemCheck	localjapan/Arad_Dispatcher_BuyItemCheck_Impl.cpp
+#CPP	BuyPrivateStoreItem	
+#CPP	BuySkill	
+#CPP	Buy_Charac_Status_Using_QP	
+#CPP	CallGuildAllMembers	
+#CPP	CallGuildCreateRight	
+#CPP	CallGuildInfo	
+#CPP	CallGuildInvite	
+#CPP	CallGuildLevelUp	
+#CPP	CallGuildMembers	
+#CPP	CallMemberList	
+#CPP	CallPartyMemberRealtimeInfo	
+#CPP	CancelJoinGuild	
+#CPP	Cancel_Quick_Party	
+#CPP	Card_Select_Right_State	
+#CPP	Cera	
+#CPP	CeraPackageOpen	
+#CPP	ChangeAnotherSkillTree	
+#CPP	ChangeCharacName	
+#CPP	ChangeEmotion	
+#CPP	ChangeGuildName	
+#CPP	ChangeHost	
+#CPP	ChangeHostWarRoom	
+#CPP	ChangeHp	
+#CPP	ChangeLetterStat	
+#CPP	ChangeRandomOption	
+#CPP	ChangeSkill	
+#CPP	ChangeTutorialFlag	
+#CPP	Change_Charac_Slot	
+#CPP	Change_PartyMemberPosition	
+#CPP	CharacSlotExtendEffect	PacketDispatcher_Impl_1.cpp
+#CPP	CharacterStatistic	
+#CPP	Check3rdPartyConcent	
+#CPP	CheckAssaultMotionHack	
+#CPP	CheckConn	
+#CPP	CheckEnableServerMessage	
+#CPP	CheckGuildAddressDouble	PacketDispatcher_Impl_1.cpp
+#CPP	CheckGuildNameDouble	PacketDispatcher_Impl_1.cpp
+#CPP	CheckJoinGuild	
+#CPP	CheckSecurityProtection	
+#CPP	ClearAction	
+#CPP	Clear_Used_QP	
+#CPP	Client_Spec_Statistic	
+#CPP	CloseDisjointStore	
+#CPP	CodeCheckSum	
+#CPP	CollectItems	
+#CPP	ComboSkill	
+#CPP	ComboSkillExtensionQuickSlotReset	
+#CPP	CompatibilityIndex	
+#CPP	CompleteDisplay	
+#CPP	CompleteLoadAfterAssault	
+#CPP	CompleteLoadAssault	
+#CPP	CompleteLoadPvP	
+#CPP	Compound	
+#CPP	CompoundEmblem	
+#CPP	CompoundItemByExpertJob	
+#CPP	Compound_Avatar	
+#CPP	Compound_Equipment_Upgrade_Card	
+#CPP	Compound_ExtreamItem	
+#CPP	ConnectP2PAfterAssault	
+#CPP	ConnectP2PAssault	
+#CPP	ConnectP2PPvP	
+#CPP	CranePickUp	
+#CPP	CreateAccountCargo	
+#CPP	CreateCharac	PacketDispatcher_Impl_1.cpp
+#CPP	CreateDisjointStore	
+#CPP	CreatePrivateStore	
+#CPP	CreatureScriptMessage	
+#CPP	CreatureSendMessage	
+#CPP	DeathTowerStageCommand	
+#CPP	DebugCommand	
+#CPP	Debug_Clear_Quest	
+#CPP	DeleteCharac	PacketDispatcher_Impl_1.cpp
+#CPP	DeleteItem	
+#CPP	DeleteToBlackList	
+#CPP	Delete_GuildBoard_Text	
+#CPP	DenyJoinGuild	
+#CPP	DepositMoney	
+#CPP	DieAssaultPlayer	
+#CPP	DieBloodMonster	
+#CPP	DieCharacInDungeon	
+#CPP	DieMob	
+#CPP	DieMobAll	
+#CPP	DiePvP	
+#CPP	DieWarRoomCharacter	
+#CPP	Direct_Entrance_Quick_Party	
+#CPP	DisJointAvatar	
+#CPP	DisJointItem	PacketDispatcher_Impl_1.cpp
+#CPP	DisguiseCancel	
+#CPP	DisguiseRequest	
+#CPP	DonateGuildFund	
+#CPP	DropItem	
+#CPP	DungeonEventStoryPause	
+#CPP	DungeonNPCBuffInfo	
+#CPP	EPLPCommand	
+#CPP	EnchantByBead	
+#CPP	Enchant_3rdChronicleItem	
+#CPP	EndPvPResult	PacketDispatcher_Impl_1.cpp
+#CPP	EnterDisjointStore	
+#CPP	EnterPVP	
+#CPP	EnterPrivateStore	
+#CPP	EnterWarRoom	
+#CPP	Equipslot_Switch	
+#CPP	EvadeAssault	
+#CPP	EventCreateDnfRequest	localjapan/Arad_PacketDispatcher.cpp
+#CPP	EventDungeon_ClearRoom	
+#CPP	EventDungeon_DestoryObject	
+#CPP	ExchangeSlot	
+#CPP	Exchange_Random_Item_Reward	
+#CPP	Exit	
+#CPP	ExitPrivateStore	
+#CPP	Expand_Equipslot_Flag_Update	
+#CPP	ExpertExtraction	
+#CPP	ExtendAvatar	
+#CPP	FairPvPScore	
+#CPP	FatigueAttendance	
+#CPP	FightVillageMonster	
+#CPP	FinishLoad	
+#CPP	FinishVillageMonsterFighting	
+#CPP	Fish	
+#CPP	Float_RDATA_Modulation	
+#CPP	FrameLagStatistics	
+#CPP	GM_Command	PacketDispatcher_Impl_1.cpp
+#CPP	GatheringPartyStatus	PacketDispatcher_Impl_1.cpp
+#CPP	GenCeraTicket	PacketDispatcher_Impl_1.cpp
+#CPP	GetAchievementReward	
+#CPP	GetItem	PacketDispatcher_Impl_1.cpp
+#CPP	GetTodayReward	
+#CPP	GetUserInfo	
+#CPP	GiveGiftToNPC	
+#CPP	GiveUpGame	
+#CPP	GiveupExpertJob	
+#CPP	GoblinPadRequestCryptKey	
+#CPP	GoblinPadStatus	
+#CPP	GoldTakeIncreasingAmount	
+#CPP	GrowthCreatureChangeInfinityCreature	
+#CPP	GrowthWeaponEventChangeInfinity	
+#CPP	GrowthWeaponEventUseMaterial	
+#CPP	GuildAttendanceInfo	
+#CPP	GuildCargo	
+#CPP	GuildCargoHistory	
+#CPP	GuildCargoMoveItem	
+#CPP	GuildCargoPopItem	
+#CPP	GuildCargoPushItem	
+#CPP	GuildJoinList	
+#CPP	GuildMasterDelegate	
+#CPP	HatchCreature	
+#CPP	HellPartyStart	
+#CPP	HeroMissionEventState_Reward	
+#CPP	HumanCertify	
+#CPP	ImageCommunicationEquipmentUse	
+#CPP	IncreStatus	
+#CPP	InformNotice	
+#CPP	InformNotice_2nd	
+#CPP	InvestItemAmplifyOption	
+#CPP	ItemDictionary	
+#CPP	ItemHyperLinkMessage	
+#CPP	JoinGuildInfo	
+#CPP	JoinPowerWar	
+#CPP	Join_Power	
+#CPP	Lag_Statistics	
+#CPP	LeaveParty	
+#CPP	LevelupSupportReqestItem	PacketDispatcher_Impl_2.cpp
+#CPP	LimitNpcBuyItem	
+#CPP	LoadingTimeReport	
+#CPP	LogIngameAdvertisement	
+#CPP	Login	PacketDispatcher_Impl_1.cpp
+#CPP	Lottery	
+#CPP	MailBox_Extract	
+#CPP	MailBox_Open	
+#CPP	MailBox_Send	PacketDispatcher_Impl_1.cpp
+#CPP	MakePVP	
+#CPP	MakeWarRoomTemp	PacketDispatcher_Impl_1.cpp
+#CPP	MemberEnterReply	
+#CPP	MemberSecede	
+#CPP	Mercenary_Competition	
+#CPP	Mercenary_Info	
+#CPP	Mercenary_Return	
+#CPP	ModItemAttr	
+#CPP	MonstercardBind	
+#CPP	MotionHack	
+#CPP	MouseRegister	PacketDispatcher_Secu.cpp
+#CPP	MoveItem	
+#CPP	MoveMap	
+#CPP	MoveToGate	
+#CPP	MultiBoxLottery	
+#CPP	MultiMailBoxSend	
+#CPP	New_Gmdebug_Command	PacketDispatcher_Impl_1.cpp
+#CPP	NotifyMessageToGuild	
+#CPP	ObjectBringUp	
+#CPP	OneDayLetheTicket	
+#CPP	OpenGuildCreateWindow	
+#CPP	Open_Guild_Board	
+#CPP	OperateRidableObject	
+#CPP	Overflow_Info	
+#CPP	P2PHolePunchingSuccessRateStatistics	PacketDispatcher_Impl_2.cpp
+#CPP	P2P_Statistics	
+#CPP	PVPRequestFight	
+#CPP	PartyTeleport	
+#CPP	PartyTeleportConfirm	
+#CPP	Pause	
+#CPP	PcRoomPlayTimeReward	
+#CPP	PcRoomRentItem	
+#CPP	PeerConnectResult	
+#CPP	PowerWarProcessInfo	
+#CPP	PrecheckSoloTeleport	
+#CPP	PurifyItem	
+#CPP	PutItemForEnchant	
+#CPP	PvPBuddyConnList	
+#CPP	PvPChannelInfo	
+#CPP	PvPTimeout	
+#CPP	PvpHeartBeat	
+#CPP	PvpMissionComboClear	
+#CPP	PvpMissionHPPercent	
+#CPP	QueryCharacInfo	
+#CPP	QueryCharacInfoMailbox	
+#CPP	QuestAction	PacketDispatcher_Impl_1.cpp
+#CPP	QuickJoinRoom	
+#CPP	RecoverStamina	
+#CPP	Redeem	
+#CPP	RedeemList	
+#CPP	RefreshGuildInfo	
+#CPP	RefundSkill	
+#CPP	RegenerationRandomOption	
+#CPP	RegisterToBlackList	
+#CPP	Register_Quick_Party	
+#CPP	RemoveFriend	
+#CPP	RemovePrivateStore	
+#CPP	RemovePvPBuddy	
+#CPP	RenameCreature	
+#CPP	RentAvatar	PacketDispatcher_Impl_1.cpp
+#CPP	RepairDisjointMachine	
+#CPP	RepairEquip	
+#CPP	ReplyGuildInvite	
+#CPP	ReportAbuseUser	
+#CPP	ReportBadP2PUser	
+#CPP	ReportClient4Hack	
+#CPP	ReportMannerlessUser	
+#CPP	ReqPeer	
+#CPP	Req_Urgent_Quest	
+#CPP	RequestAddPvPBuddy	
+#CPP	RequestAssaultPrice	
+#CPP	RequestBlackList	
+#CPP	RequestCharacSkillInfo	PacketDispatcher_Impl_1.cpp
+#CPP	RequestConditionEventReward	
+#CPP	RequestDisjointItem	
+#CPP	RequestGuildSecede	
+#CPP	RequestGuildWarInfo	
+#CPP	RequestIngameAdvertisement	
+#CPP	RequestItemLock	
+#CPP	RequestItemUnlock	
+#CPP	RequestItemUnlockCancel	
+#CPP	RequestJoinGuild	
+#CPP	RequestMatch	
+#CPP	RequestMemberEnter	
+#CPP	RequestOnTimeEventReward	
+#CPP	RequestPCRoomPlayerCount	
+#CPP	RequestPCRoomPlayerList	
+#CPP	RequestPrcoomDayilyReward	
+#CPP	Request_PvpExpOfWeek	
+#CPP	Request_Seria_Buff	
+#CPP	ResPeer	
+#CPP	ResPvpRank	
+#CPP	ResetRandomOption	
+#CPP	ResetStar	
+#CPP	ResponseAddPvPBuddy	
+#CPP	ResponseCreature	
+#CPP	ReturnToSelectCharacter	
+#CPP	SDC_ActiveStatus_Damage_Check	
+#CPP	SDC_Damage_Check	
+#CPP	SaveCharacterOption	
+#CPP	SaveGameOption_1	PacketDispatcher_Impl_1.cpp
+#CPP	SaveGameOption_2	PacketDispatcher_Impl_1.cpp
+#CPP	SaveGameOption_ChattingEmoticon	PacketDispatcher_Impl_1.cpp
+#CPP	SaveGameOption_QuickChatting	PacketDispatcher_Impl_1.cpp
+#CPP	SaveQuestNotify	PacketDispatcher_Impl_2.cpp
+#CPP	ScanBotByDll	
+#CPP	ScanBotByDrv	
+#CPP	Score_Scroll_State	
+#CPP	Secede_Power	
+#CPP	SecretShopBuyItem	
+#CPP	SecretShopOpenClose	
+#CPP	SecuDataControl	
+#CPP	SecurityCardAuthCancel	
+#CPP	SecurityCardAuthReq	
+#CPP	SecurityCardAuthRpy	
+#CPP	SecurityCardCertKey	
+#CPP	SecurityCardDisuse	
+#CPP	SecurityCardIssue	
+#CPP	SecurityCardRetransfer	
+#CPP	SecurityLog	PacketDispatcher_Impl_2.cpp
+#CPP	Security_IPScan	
+#CPP	Security_MemoryIntegrity	
+#CPP	Security_NonClient_GetResponse	
+#CPP	Security_PI_HashModulation_C2C	
+#CPP	Security_PI_HashModulation_S2C	
+#CPP	Security_PacketIntegrity	
+#CPP	Security_ProcessScan	
+#CPP	SelectCharac	PacketDispatcher_Impl_1.cpp
+#CPP	SelectDungeon	PacketDispatcher_Impl_1.cpp
+#CPP	SelectItem	
+#CPP	SelectStriker	PacketDispatcher_Impl_1.cpp
+#CPP	SelectUltimateDifficulty	PacketDispatcher_Impl_1.cpp
+#CPP	Select_3rdChronicleItem_ForEnchant	
+#CPP	Select_Card	
+#CPP	Select_Item_Grwoth_Power	
+#CPP	SellItem	
+#CPP	SendMess	
+#CPP	SeriaRoom_Ani_Deco_Event	
+#CPP	SeriaRoom_Deco_Event	
+#CPP	SetArea	
+#CPP	SetIP	PacketDispatcher_Impl_1.cpp
+#CPP	SetPVPMapIndex	
+#CPP	SetPVPReady	
+#CPP	SetPVPSeat	
+#CPP	SetPVPTeam	
+#CPP	SetPartyInfo	
+#CPP	SetPlayResult	
+#CPP	SetPos	
+#CPP	SetSlot	
+#CPP	SetSubGuildMaster	
+#CPP	SetTradeState	PacketDispatcher_Impl_1.cpp
+#CPP	SetWarRoomSeatState	
+#CPP	Shop_Coin_Event	
+#CPP	SkillInit	
+#CPP	Skill_Command_All_Default	
+#CPP	Skill_Command_Customizing	PacketDispatcher_Impl_1.cpp
+#CPP	SoloTeleport	
+#CPP	SortItem	
+#CPP	StackableActionUse	PacketDispatcher_Impl_2.cpp
+#CPP	StartGame	PacketDispatcher_Impl_1.cpp
+#CPP	StartWarRoomTemp	
+#CPP	SummonUnit	
+#CPP	Teleport	
+#CPP	TitleBookGet	
+#CPP	TitleBookOtherUser	
+#CPP	TitleBookPut	
+#CPP	TournamentRewardSelect	
+#CPP	TournamentRewardSelectState	
+#CPP	TraceError	
+#CPP	TryEnchant	
+#CPP	TutorialLevelUp	
+#CPP	UdpCharacteristic	
+#CPP	UnsealRandomOption	
+#CPP	UpdateContractOfCubeInfo	
+#CPP	UpdateServerMessage	
+#CPP	UpgradeAccountCargo	
+#CPP	UpgradeCargo	
+#CPP	UpgradeChronicle	
+#CPP	UpgradeDisjointMachine	
+#CPP	UpgradeGage	
+#CPP	UpgradeGuildCargo	
+#CPP	UpgradeInventory	
+#CPP	UpgradeItem	
+#CPP	UpgradeItemSeparate	
+#CPP	UseBoosterItem	
+#CPP	UseCoin	PacketDispatcher_Impl_1.cpp
+#CPP	UseCraneStart	
+#CPP	UseCreatureEvolutionItem	
+#CPP	UseDye	
+#CPP	UseEquip	
+#CPP	UseJewel	
+#CPP	UseLimitCube	PacketDispatcher_Impl_1.cpp
+#CPP	UseRenameCard	
+#CPP	UseRightOfChangeGrowType	PacketDispatcher_Impl_2.cpp
+#CPP	UseSharedEffectItem	
+#CPP	UseSkill	
+#CPP	UseStack	
+#CPP	UseVendingMachine	
+#CPP	UserHistoryLog	
+#CPP	ValidateScriptHash	
+#CPP	VerifyCreatureQuest	
+#CPP	VerifyGold	
+#CPP	VerifyPrivateStoreItem	
+#CPP	WalkoutParty	
+#CPP	WarRoomWpPerMonster	
+#CPP	WithdrawMoney	
+#CPP	WriteGuildMemberMemo	
+#CPP	Write_On_The_GuildBoard	
+#CPP	polic_one_to_one_chat_disable	
+#CPP	police_queryCharacName_useMid	
+#SUBCRIT1	stt_dispatcher_cpp=21	filepool_cpp=5	union=23	families=425

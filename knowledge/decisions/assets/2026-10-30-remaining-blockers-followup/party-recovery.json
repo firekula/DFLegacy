@@ -1,0 +1,827 @@
+{
+  "native_failure": {
+    "schema": "dfl-client-party-result/v1",
+    "pid": 40532,
+    "uid": 1,
+    "process_started_filetime": 134377943318376075,
+    "generation": 8,
+    "snapshot_sequence": 438,
+    "snapshot_tick_ms": 434087937,
+    "actor_token": "0x180889B0",
+    "map_token": "0x183CFCB0",
+    "user_token": "0x07236740",
+    "context_token": "0x0727F730",
+    "town_id": 1,
+    "area_id": 0,
+    "request_id": 6,
+    "operation": 1,
+    "target_uid": 4,
+    "window_token": "0x00000000",
+    "invitation_serial": 0,
+    "tick_ms": 434088406,
+    "status": "rejected",
+    "reason": "both_already_in_parties"
+  },
+  "failure_bindings": {
+    "A": {
+      "pid": 40532,
+      "process_started_filetime": 134377943318376075,
+      "local_party": "0x17b37600",
+      "users": [
+        {
+          "uid": 1,
+          "party": 502677272
+        },
+        {
+          "uid": 2,
+          "party": 502677272
+        },
+        {
+          "uid": 3,
+          "party": 502677272
+        },
+        {
+          "uid": 4,
+          "party": 502648472
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1df63f18",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        },
+        {
+          "token": "0x1df5ce98",
+          "slots": [
+            65535,
+            65535,
+            65535,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 1
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3
+      ]
+    },
+    "B": {
+      "pid": 60132,
+      "process_started_filetime": 134377943327015870,
+      "local_party": "0x822c330",
+      "users": [
+        {
+          "uid": 1,
+          "party": 397109368
+        },
+        {
+          "uid": 2,
+          "party": 397109368
+        },
+        {
+          "uid": 3,
+          "party": 397109368
+        },
+        {
+          "uid": 4,
+          "party": 397079416
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x17ab6878",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        },
+        {
+          "token": "0x17aaf378",
+          "slots": [
+            65535,
+            65535,
+            65535,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 1
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3
+      ]
+    },
+    "C": {
+      "pid": 50968,
+      "process_started_filetime": 134377943337099514,
+      "local_party": "0x8217c70",
+      "users": [
+        {
+          "uid": 1,
+          "party": 434273128
+        },
+        {
+          "uid": 2,
+          "party": 434273128
+        },
+        {
+          "uid": 3,
+          "party": 434273128
+        },
+        {
+          "uid": 4,
+          "party": 434245408
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x19e27b68",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        },
+        {
+          "token": "0x19e20f20",
+          "slots": [
+            65535,
+            65535,
+            65535,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 1
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3
+      ]
+    },
+    "D": {
+      "pid": 72728,
+      "process_started_filetime": 134377943346003263,
+      "local_party": "0x81fe470",
+      "users": [
+        {
+          "uid": 1,
+          "party": 396370280
+        },
+        {
+          "uid": 2,
+          "party": 396370280
+        },
+        {
+          "uid": 3,
+          "party": 396370280
+        },
+        {
+          "uid": 4,
+          "party": 396345008
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x17a02168",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        },
+        {
+          "token": "0x179fbeb0",
+          "slots": [
+            65535,
+            65535,
+            65535,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 1
+        }
+      ],
+      "sdk_roster": [
+        4
+      ]
+    }
+  },
+  "request": {
+    "schema": "dfl-client-party-result/v1",
+    "pid": 19928,
+    "uid": 1,
+    "process_started_filetime": 134377940290431218,
+    "generation": 8,
+    "snapshot_sequence": 718,
+    "snapshot_tick_ms": 433845656,
+    "actor_token": "0x073807A0",
+    "map_token": "0x08B8D7A8",
+    "user_token": "0x08685830",
+    "context_token": "0x0713A590",
+    "town_id": 1,
+    "area_id": 0,
+    "request_id": 8,
+    "operation": 1,
+    "target_uid": 4,
+    "window_token": "0x00000000",
+    "invitation_serial": 0,
+    "tick_ms": 433845968,
+    "status": "dispatched",
+    "reason": "native_request_sent"
+  },
+  "reply": {
+    "schema": "dfl-client-party-result/v1",
+    "pid": 58752,
+    "uid": 4,
+    "process_started_filetime": 134377940320592866,
+    "generation": 8,
+    "snapshot_sequence": 697,
+    "snapshot_tick_ms": 433845890,
+    "actor_token": "0x0710D188",
+    "map_token": "0x071C4678",
+    "user_token": "0x07144BB8",
+    "context_token": "0x0729A8A0",
+    "town_id": 1,
+    "area_id": 0,
+    "request_id": 2,
+    "operation": 2,
+    "target_uid": 1,
+    "window_token": "0x085E68C8",
+    "invitation_serial": 2,
+    "tick_ms": 433846218,
+    "status": "dispatched",
+    "reason": "native_accept_callback"
+  },
+  "before": {
+    "A": {
+      "pid": 19928,
+      "process_started_filetime": 134377940290431218,
+      "local_party": "0x82fc7e0",
+      "users": [
+        {
+          "uid": 1,
+          "party": 399740728
+        },
+        {
+          "uid": 2,
+          "party": 399740728
+        },
+        {
+          "uid": 3,
+          "party": 399740728
+        },
+        {
+          "uid": 4,
+          "party": null
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x17d38f38",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3
+      ]
+    },
+    "B": {
+      "pid": 73284,
+      "process_started_filetime": 134377940298898947,
+      "local_party": "0x82d52e0",
+      "users": [
+        {
+          "uid": 1,
+          "party": 448653992
+        },
+        {
+          "uid": 2,
+          "party": 448653992
+        },
+        {
+          "uid": 3,
+          "party": 448653992
+        },
+        {
+          "uid": 4,
+          "party": null
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1abdeaa8",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3
+      ]
+    },
+    "C": {
+      "pid": 10340,
+      "process_started_filetime": 134377940310120122,
+      "local_party": "0x8254350",
+      "users": [
+        {
+          "uid": 1,
+          "party": 437065752
+        },
+        {
+          "uid": 2,
+          "party": 437065752
+        },
+        {
+          "uid": 3,
+          "party": 437065752
+        },
+        {
+          "uid": 4,
+          "party": null
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1a0d1818",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3
+      ]
+    },
+    "D": {
+      "pid": 58752,
+      "process_started_filetime": 134377940320592866,
+      "local_party": "0x82d4170",
+      "users": [
+        {
+          "uid": 1,
+          "party": 451829176
+        },
+        {
+          "uid": 2,
+          "party": 451829176
+        },
+        {
+          "uid": 3,
+          "party": 451829176
+        },
+        {
+          "uid": 4,
+          "party": null
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1aee5db8",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        }
+      ],
+      "sdk_roster": [
+        4
+      ]
+    }
+  },
+  "after": {
+    "A": {
+      "pid": 19928,
+      "process_started_filetime": 134377940290431218,
+      "local_party": "0x82fc7e0",
+      "users": [
+        {
+          "uid": 1,
+          "party": 399740728
+        },
+        {
+          "uid": 2,
+          "party": 399740728
+        },
+        {
+          "uid": 3,
+          "party": 399740728
+        },
+        {
+          "uid": 4,
+          "party": 399740728
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x17d38f38",
+          "slots": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 4
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "B": {
+      "pid": 73284,
+      "process_started_filetime": 134377940298898947,
+      "local_party": "0x82d52e0",
+      "users": [
+        {
+          "uid": 1,
+          "party": 448653992
+        },
+        {
+          "uid": 2,
+          "party": 448653992
+        },
+        {
+          "uid": 3,
+          "party": 448653992
+        },
+        {
+          "uid": 4,
+          "party": 448653992
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1abdeaa8",
+          "slots": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 4
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "C": {
+      "pid": 10340,
+      "process_started_filetime": 134377940310120122,
+      "local_party": "0x8254350",
+      "users": [
+        {
+          "uid": 1,
+          "party": 437065752
+        },
+        {
+          "uid": 2,
+          "party": 437065752
+        },
+        {
+          "uid": 3,
+          "party": 437065752
+        },
+        {
+          "uid": 4,
+          "party": 437065752
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1a0d1818",
+          "slots": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 4
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "D": {
+      "pid": 58752,
+      "process_started_filetime": 134377940320592866,
+      "local_party": "0x82d4170",
+      "users": [
+        {
+          "uid": 1,
+          "party": 451829176
+        },
+        {
+          "uid": 2,
+          "party": 451829176
+        },
+        {
+          "uid": 3,
+          "party": 451829176
+        },
+        {
+          "uid": 4,
+          "party": 451829176
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1aee5db8",
+          "slots": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 4
+        }
+      ],
+      "sdk_roster": [
+        1,
+        2,
+        3,
+        4
+      ]
+    }
+  },
+  "scope": "Read-only user+FC and actual party+28/+2A/+2C/+2E slots. Discarded exploratory resolved_users projection from +10; it is not a user table. Native explicit singleton disband preceded recovery; all PID/start values remained unchanged.",
+  "original_failure_v1": {
+    "schema": "dfl-client-party-result/v1",
+    "pid": 19928,
+    "uid": 1,
+    "process_started_filetime": 134377940290431218,
+    "generation": 8,
+    "snapshot_sequence": 391,
+    "snapshot_tick_ms": 433779234,
+    "actor_token": "0x073807A0",
+    "map_token": "0x08B8D7A8",
+    "user_token": "0x08685830",
+    "context_token": "0x0713A590",
+    "town_id": 1,
+    "area_id": 0,
+    "request_id": 6,
+    "operation": 1,
+    "target_uid": 4,
+    "window_token": "0x00000000",
+    "invitation_serial": 0,
+    "tick_ms": 433779453,
+    "status": "rejected",
+    "reason": "native_action_failed"
+  },
+  "original_failure_bindings_v1": {
+    "A": {
+      "pid": 19928,
+      "process_started_filetime": 134377940290431218,
+      "local_party": "0x82fc7e0",
+      "users": [
+        {
+          "uid": 1,
+          "party": 399740728
+        },
+        {
+          "uid": 2,
+          "party": 399740728
+        },
+        {
+          "uid": 3,
+          "party": 399740728
+        },
+        {
+          "uid": 4,
+          "party": 399716032
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x17d38f38",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        },
+        {
+          "token": "0x17d32ec0",
+          "slots": [
+            65535,
+            65535,
+            65535,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 1
+        }
+      ]
+    },
+    "B": {
+      "pid": 73284,
+      "process_started_filetime": 134377940298898947,
+      "local_party": "0x82d52e0",
+      "users": [
+        {
+          "uid": 1,
+          "party": 448653992
+        },
+        {
+          "uid": 2,
+          "party": 448653992
+        },
+        {
+          "uid": 3,
+          "party": 448653992
+        },
+        {
+          "uid": 4,
+          "party": 448760840
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1abdeaa8",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        },
+        {
+          "token": "0x1abf8c08",
+          "slots": [
+            65535,
+            65535,
+            65535,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 1
+        }
+      ]
+    },
+    "C": {
+      "pid": 10340,
+      "process_started_filetime": 134377940310120122,
+      "local_party": "0x8254350",
+      "users": [
+        {
+          "uid": 1,
+          "party": 437065752
+        },
+        {
+          "uid": 2,
+          "party": 437065752
+        },
+        {
+          "uid": 3,
+          "party": 437065752
+        },
+        {
+          "uid": 4,
+          "party": 437037024
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1a0d1818",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        },
+        {
+          "token": "0x1a0ca7e0",
+          "slots": [
+            65535,
+            65535,
+            65535,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 1
+        }
+      ]
+    },
+    "D": {
+      "pid": 58752,
+      "process_started_filetime": 134377940320592866,
+      "local_party": "0x82d4170",
+      "users": [
+        {
+          "uid": 1,
+          "party": 451829176
+        },
+        {
+          "uid": 2,
+          "party": 451829176
+        },
+        {
+          "uid": 3,
+          "party": 451829176
+        },
+        {
+          "uid": 4,
+          "party": 451800160
+        }
+      ],
+      "parties": [
+        {
+          "token": "0x1aee5db8",
+          "slots": [
+            1,
+            2,
+            3,
+            65535
+          ],
+          "max_members": 4,
+          "native_count": 3
+        },
+        {
+          "token": "0x1aedec60",
+          "slots": [
+            65535,
+            65535,
+            65535,
+            4
+          ],
+          "max_members": 4,
+          "native_count": 1
+        }
+      ]
+    }
+  }
+}

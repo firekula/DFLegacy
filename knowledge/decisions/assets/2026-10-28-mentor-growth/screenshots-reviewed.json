@@ -1,0 +1,303 @@
+{
+  "schema": "mentor-growth-original-image-reviews/v1",
+  "native_capture_owner": "/root",
+  "evidence_reviewer": "/root/mentor_growth_evidence",
+  "images": [
+    {
+      "file": "017-growth-A-open-list.jpg",
+      "sha256": "989E231A51FB1C183FBAFB677F87CD682B73774689F58D1E59EA43CC9DDCC72A",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "initial_A",
+          "roles": [
+            "A"
+          ],
+          "claims": [
+            "growth_initial"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:32:19+08:00",
+          "finding": "Original017: A native mentor list, heal1024 relationLv1/empty progress bar; native relation success message. Packet/store establish0/3."
+        }
+      ]
+    },
+    {
+      "file": "018-growth-B-initial-list.jpg",
+      "sha256": "370DC1612CC389870188C93C7B75348C751D3410BFD63138FFD93AF5CAAE3D54",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "initial_B",
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "growth_initial"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:32:19+08:00",
+          "finding": "Original018: B native mentor list namesmageco as master, relationLv1/empty bar. Packet/store establish0/3."
+        }
+      ]
+    },
+    {
+      "file": "019-growth-two-ticks-list.jpg",
+      "sha256": "0C8C268E574204CC9E2204F67094AD48A1661E8CA388AF5A9F386377525CA5DE",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "two_ticks_B",
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "growth_progress"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:32:19+08:00",
+          "finding": "Original019: B nativeLv1 progress bar advanced after two endpoint ticks; exact cumulative2 is packet/store evidence."
+        }
+      ]
+    },
+    {
+      "file": "027-mentor-A-level2.jpg",
+      "sha256": "CA6783214763CF556C6B56491AED049D5B7E839ABAA7E1512A6E647F370D6BFB",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "level2_A",
+          "roles": [
+            "A"
+          ],
+          "claims": [
+            "growth_level2"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:32:19+08:00",
+          "finding": "Original027: A native roster showsLv2 relation/progress. Exact1of3 comes from strict roster/canonical projection."
+        }
+      ]
+    },
+    {
+      "file": "028-mentor-B-level2.jpg",
+      "sha256": "B1005B5707CF937BB8DEFA80FD78D48649419CF60542237FE02A11EDB7D343A2",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "level2_B",
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "growth_level2"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:32:19+08:00",
+          "finding": "Original028: B native rosterLv2 with native map tooltip overlay; no retouching. Exact1of3 from strict packet/store."
+        }
+      ]
+    },
+    {
+      "file": "044-mentor-party-B-clear.jpg",
+      "sha256": "E83CC5A56E85C29FD74D6986BBE445CCFC9904FE93B226AF385ED58DF4595C96",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "party1_clear_image",
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "online_clear",
+            "party_recipient"
+          ],
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:04:42+08:00",
+          "finding": "Viewed original044 JPG: actual result UI EXP317, 师父 label, mageco/heal1024 party portraits. Does not display numeric mentor8 or party-recipient5. Packet/log/source/canonical evidence establishes those numeric values."
+        }
+      ]
+    },
+    {
+      "file": "057-mentor-A-town-online-list-retry.jpg",
+      "sha256": "1657CBE62CEBB093EB518E0D776CC21195D833A56170CF84C4913B14EBD9CCC1",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "master_online_town_image",
+          "roles": [
+            "A"
+          ],
+          "claims": [
+            "online_direct"
+          ],
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:20:59+08:00",
+          "finding": "Viewed original057: A mageco active in town, mentor roster includes heal1024 and level3 relation; left-party text is visible. No numeric B award is claimed from this image."
+        }
+      ]
+    },
+    {
+      "file": "058-mentor-direct-B-clear.jpg",
+      "sha256": "4736EC03CF128F97AADCE9131EB12F77B9DDEE52405F464A8494A7ABF84E00C6",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "direct_continue_image",
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "online_direct"
+          ],
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:20:59+08:00",
+          "finding": "Viewed original058: B post-clear Continue menu/native boss-room scene. The EXP result panel has already closed; no visual numeric372/7/9 claim. Strict packets/independent basis/canonical save establish the award."
+        }
+      ]
+    },
+    {
+      "file": "060-mentor-B-master-offline-list.jpg",
+      "sha256": "804A82FF5C46AC689491351AA464488555D0BB5D79030E9EB1F0899A8957BA31",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "offline_context"
+          ],
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:20:59+08:00",
+          "finding": "Original060 nativeB roster retains masterLv3; actual process/presence proof determines offline eligibility. No inferred color-only online assertion."
+        }
+      ]
+    },
+    {
+      "file": "mentor-offline-B-D1-clear-finish.jpg",
+      "sha256": "8AE25EDEEF5EB0E4B510B88B7AC51CE79A08D9F5EB7BC0A20726D54C9547CA85",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "offline_clear_image",
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "offline_direct",
+            "offline_clear"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:32:19+08:00",
+          "finding": "Originaloffline result: blue performance UI, mid-animation EXP120, green+12, mentor tooltip. Not labeled final132 or visual mentor0; strict packets/source/save establish them."
+        }
+      ]
+    },
+    {
+      "file": "062-mentor-relogin-A-growth-list.jpg",
+      "sha256": "5970010BB35631CD801B2FB286C667BC5B77BC820772B7A5E8DD4BB90E821EBC",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "relogin_A",
+          "roles": [
+            "A"
+          ],
+          "claims": [
+            "relogin_no_catchup"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:32:19+08:00",
+          "finding": "Original062: new A nativeSeria mentor roster shows retainedLv3 edge. Exact4of5 verified by packet/store."
+        }
+      ]
+    },
+    {
+      "file": "064-mentor-relogin-B-growth-list.jpg",
+      "sha256": "1A4B2163212AE0066D9BD574A52963441A08D106D2DF8F80AFD16DEFBAE976C5",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "relogin_B",
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "relogin_no_catchup"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T04:32:19+08:00",
+          "finding": "Original064: B native roster with returned master andLv3 relation. Exact cumulative10/4of5 verified by packets/store."
+        }
+      ]
+    },
+    {
+      "file": "065-restart-A-mentor-list.jpg",
+      "sha256": "9679272E29CD3F762A6EC4BB18906BD673E80E276B0117D4BA83C6607EFB5B1C",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "restart_A_image",
+          "roles": [
+            "A"
+          ],
+          "claims": [
+            "restart"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T05:01:17+08:00",
+          "finding": "Viewed original restart mentor listLv3/progress retained. Strict roster current4/next5. Normal mentor characters before laterB52 selection."
+        }
+      ]
+    },
+    {
+      "file": "066-restart-B-mentor-list.jpg",
+      "sha256": "0D127DA6BC58B2B3FCB296AC4C89E9C1940EF610B0C5EF7128864D8DE19986CC",
+      "capture_owner": "/root",
+      "original_bytes_preserved": true,
+      "reviews": [
+        {
+          "source": "restart_B_image",
+          "roles": [
+            "B"
+          ],
+          "claims": [
+            "restart"
+          ],
+          "capture_owner": "/root",
+          "reviewer": "/root/mentor_growth_evidence",
+          "viewed_at": "2026-10-28T05:01:17+08:00",
+          "finding": "Viewed original restart mentor listLv3/progress retained. Strict roster current4/next5. Normal mentor characters before laterB52 selection."
+        }
+      ]
+    }
+  ],
+  "failed_attempts_excluded": [
+    "earlier solo D2 death/return",
+    "056 cross-focus screenshot failure"
+  ],
+  "note": "All14 selected public JPGs preserve original source bytes. Root owns native actions; worker independently viewed each. Restart proof is a distinct CACA phase, not a replay of695 awards."
+}

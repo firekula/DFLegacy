@@ -1,0 +1,93 @@
+判据 3 补全件 —— 每家族的独立身份证据与所属 .cpp
+二进制: G:\Game\DNF_ACT1\DFLegacy\.superpowers\sdd\2026-09-29-dungeon-party\work\official\df_game_r.bin  md5=7b2b22caea80752deaa403356ea867c0
+
+0) DWARF 覆盖率的实测（为什么'家族 -> .cpp'没有权威来源）
+   .debug_info: 659953 B, CU 数 = 21（版本 [2, 3]）
+   .debug_line: 72603 B, CU 数 = 21
+   这些 CU 的源码文件样本 = ['ftinit.c', 'ftcalc.c', 'ttdriver.c', 'ttmtx.c', 'ftraster.c', 'ftgrays.c']
+   => 调试信息属于**静态链接的第三方库**（/root/f248/ 是 FreeType 的构建树），
+      **不覆盖游戏自己的 C++ 代码**。这同时解释了 .idb 的 get_sourcefile 为什么全空。
+
+1) 全量 vtable 目录（直接读 .rodata/.data.rel.ro/.data 的原始字节）
+   候选记录（word0=0 且 +4 在 .rodata 且 +20 在 .text）= 1020
+   其中 RTTI 名含 ispatcher 的 = 522
+   样本: 0x08b5f3a0 N8APSystem25Dispatcher_GetTodayRewardE; 0x08b5f3e0 N8APSystem22Dispatcher_ClearActionE; 0x08b5f4c0 17IPacketDispatcherI8MSG_BASE9ParamBaseL8ch_state0EE
+
+2) 全量反查：每个家族的 dispatch_sig / process 是否出现在某个 vtable 里，且名字相符
+   名字相符（独立确认）           = 424 / 425
+   找到 vtable 但名字不含家族名   = 0
+   完全找不到 vtable（无 dispatch_sig 也无 process 命中） = 1
+       BuyItemCheck  (process=0x00000000 sig=0x00000000)
+
+3) 反向检查：RTTI 名字里有、而目录里没有的派发器（用于发现漏掉的家族）
+   目录外家族数 = 0
+
+4) __FILE__ 串池 -> 每家族的精确 .cpp（覆盖率是实测值）
+   .rodata 里含 .cpp 的串 = 166（去重 166）
+   家族总数 = 425；能指到精确 .cpp 的 = 56 （13.2%）
+   指不到的 = 369 —— 这些家族在二进制里**没有留下源码路径**
+   能指到的（全部列出，可核对）:
+       AddFriend                                  -> PacketDispatcher_Impl_1.cpp
+       AradAvatarConvert                          -> localjapan/Arad_PacketDispatcher.cpp
+       AradEmblemCompound                         -> localjapan/Arad_PacketDispatcher.cpp
+       AradJumpingCharacter                       -> localjapan/Arad_PacketDispatcher.cpp
+       AradUseAvatarRecharge                      -> localjapan/Arad_PacketDispatcher.cpp
+       AuctionBidding                             -> PacketDispatcher_Impl_1.cpp
+       AuctionBuyItemApiece                       -> PacketDispatcher_Impl_1.cpp
+       AvartarHiddenOptionChange                  -> localjapan/Arad_PacketDispatcher.cpp
+       AvartarRoulette                            -> localjapan/Arad_PacketDispatcher.cpp
+       BVHackInfo                                 -> PacketDispatcher_Impl_1.cpp
+       BingoQuiz                                  -> PacketDispatcher_Impl_2.cpp
+       BingoReward                                -> PacketDispatcher_Impl_2.cpp
+       Break_Away_Quest_Check                     -> PacketDispatcher_Impl_1.cpp
+       BuyAutomatItem                             -> PacketDispatcher_Impl_1.cpp
+       BuyCeraShopItem                            -> PacketDispatcher_Impl_1.cpp
+       BuyItemCheck                               -> localjapan/Arad_Dispatcher_BuyItemCheck_Impl.cpp
+       CharacSlotExtendEffect                     -> PacketDispatcher_Impl_1.cpp
+       CheckGuildAddressDouble                    -> PacketDispatcher_Impl_1.cpp
+       CheckGuildNameDouble                       -> PacketDispatcher_Impl_1.cpp
+       CreateCharac                               -> PacketDispatcher_Impl_1.cpp
+       DeleteCharac                               -> PacketDispatcher_Impl_1.cpp
+       DisJointItem                               -> PacketDispatcher_Impl_1.cpp
+       EndPvPResult                               -> PacketDispatcher_Impl_1.cpp
+       EventCreateDnfRequest                      -> localjapan/Arad_PacketDispatcher.cpp
+       GM_Command                                 -> PacketDispatcher_Impl_1.cpp
+       GatheringPartyStatus                       -> PacketDispatcher_Impl_1.cpp
+       GenCeraTicket                              -> PacketDispatcher_Impl_1.cpp
+       GetItem                                    -> PacketDispatcher_Impl_1.cpp
+       LevelupSupportReqestItem                   -> PacketDispatcher_Impl_2.cpp
+       Login                                      -> PacketDispatcher_Impl_1.cpp
+       MailBox_Send                               -> PacketDispatcher_Impl_1.cpp
+       MakeWarRoomTemp                            -> PacketDispatcher_Impl_1.cpp
+       MouseRegister                              -> PacketDispatcher_Secu.cpp
+       New_Gmdebug_Command                        -> PacketDispatcher_Impl_1.cpp
+       P2PHolePunchingSuccessRateStatistics       -> PacketDispatcher_Impl_2.cpp
+       QuestAction                                -> PacketDispatcher_Impl_1.cpp
+       RentAvatar                                 -> PacketDispatcher_Impl_1.cpp
+       RequestCharacSkillInfo                     -> PacketDispatcher_Impl_1.cpp
+       SaveGameOption_1                           -> PacketDispatcher_Impl_1.cpp
+       SaveGameOption_2                           -> PacketDispatcher_Impl_1.cpp
+       SaveGameOption_ChattingEmoticon            -> PacketDispatcher_Impl_1.cpp
+       SaveGameOption_QuickChatting               -> PacketDispatcher_Impl_1.cpp
+       SaveQuestNotify                            -> PacketDispatcher_Impl_2.cpp
+       SecurityLog                                -> PacketDispatcher_Impl_2.cpp
+       SelectCharac                               -> PacketDispatcher_Impl_1.cpp
+       SelectDungeon                              -> PacketDispatcher_Impl_1.cpp
+       SelectStriker                              -> PacketDispatcher_Impl_1.cpp
+       SelectUltimateDifficulty                   -> PacketDispatcher_Impl_1.cpp
+       SetIP                                      -> PacketDispatcher_Impl_1.cpp
+       SetTradeState                              -> PacketDispatcher_Impl_1.cpp
+       Skill_Command_Customizing                  -> PacketDispatcher_Impl_1.cpp
+       StackableActionUse                         -> PacketDispatcher_Impl_2.cpp
+       StartGame                                  -> PacketDispatcher_Impl_1.cpp
+       UseCoin                                    -> PacketDispatcher_Impl_1.cpp
+       UseLimitCube                               -> PacketDispatcher_Impl_1.cpp
+       UseRightOfChangeGrowType                   -> PacketDispatcher_Impl_2.cpp
+
+5) 子要求一（`*Dispatcher*.cpp` 条目数 vs 家族数'同量级'）的修正量法
+   STT_FILE 名字含 Dispatcher 的 .cpp          = 21
+   __FILE__ 池里被家族代码实际引用到的 .cpp     = 5
+   两者并集（= 确实承载派发器代码的源文件）      = 23
+   家族数 / 文件数 = 425/23 = 18.5 家族每文件
+   => spec 拿'类'与'文件'直接比'同量级'，前提不成立：一个 TU 承载多个家族是常态
+      （PacketDispatcher_Impl_1.cpp 一个 FILE 窗口内就有 461 条 dispatcher 符号行）。

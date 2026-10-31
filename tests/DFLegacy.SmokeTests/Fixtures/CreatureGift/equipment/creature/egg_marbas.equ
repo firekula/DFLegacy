@@ -1,0 +1,28 @@
+[name] `³èÎïµ° (Âê°ÍË¹)`
+[name2] `An Egg of Marbas`
+[attach type] `[sealing]`
+[rarity] 1
+[usable job]
+`[all]`
+[/usable job]
+[minimum level] 1
+
+[icon] `item/creature/creature_egg.img` 14
+[field image] `item/fieldimage.img` 30
+
+[equipment type] `[creature]` 0
+
+[sub type] 1
+[creature species] 16
+[output index] 63009
+
+[cool time] 10000
+
+[MP MAX rate] 5.00
+[physical critical hit] +2.00
+[magical critical hit] +2.00
+
+[move wav] `CREATURE_EGG_TOUCH`
+
+[set item master] -1
+

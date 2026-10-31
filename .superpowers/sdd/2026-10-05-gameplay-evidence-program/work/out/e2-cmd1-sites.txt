@@ -1,0 +1,364 @@
+
+=== BeginCommand @ 0x00419484  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00419468  ja       0x42a069
+  0x0041946e  mov      eax, dword ptr [ebp - 0x6114]
+  0x00419474  jmp      dword ptr [eax*4 + 0x42a081]
+  0x0041947b  push     0
+  0x0041947d  call     0x40d900
+  0x00419482  mov      ecx, eax
+  0x00419484  call     0x8b2650   <<< call BeginCommand
+  0x00419489  mov      ecx, 0xb5e554
+  0x0041948e  call     0x77f350
+  0x00419493  push     eax
+  0x00419494  call     0x40d900
+  0x00419499  mov      ecx, eax
+
+=== BeginCommand @ 0x0041fea0  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0041fe86  mov      ecx, dword ptr [0xb5dcc8]
+  0x0041fe8c  call     0x4fe850
+  0x0041fe91  mov      dword ptr [ebp - 0x1770], eax
+  0x0041fe97  push     0x31
+  0x0041fe99  call     0x40d900
+  0x0041fe9e  mov      ecx, eax
+  0x0041fea0  call     0x8b2650   <<< call BeginCommand
+  0x0041fea5  fild     dword ptr [ebp - 0x1770]
+  0x0041feab  fdivr    dword ptr [ebp - 0x176c]
+  0x0041feb1  call     0x91b708
+  0x0041feb6  push     eax
+  0x0041feb7  call     0x40d900
+
+=== BeginCommand @ 0x00425218  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x004251ff  call     0x418420
+  0x00425204  call     0x91b708
+  0x00425209  mov      dword ptr [ebp - 0x24f4], eax
+  0x0042520f  push     0x3d
+  0x00425211  call     0x40d900
+  0x00425216  mov      ecx, eax
+  0x00425218  call     0x8b2650   <<< call BeginCommand
+  0x0042521d  mov      cx, word ptr [ebp - 0x24e4]
+  0x00425224  push     ecx
+  0x00425225  call     0x40d900
+  0x0042522a  mov      ecx, eax
+  0x0042522c  call     0x40d8c0
+
+=== BeginCommand @ 0x00428ba3  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00428b94  test     eax, eax
+  0x00428b96  je       0x428b9a
+  0x00428b98  jmp      0x428bc9
+  0x00428b9a  push     0x79
+  0x00428b9c  call     0x40d900
+  0x00428ba1  mov      ecx, eax
+  0x00428ba3  call     0x8b2650   <<< call BeginCommand
+  0x00428ba8  push     0x20
+  0x00428baa  lea      ecx, [ebp - 0x4244]
+  0x00428bb0  push     ecx
+  0x00428bb1  call     0x40d900
+  0x00428bb6  mov      ecx, eax
+
+=== BeginCommand @ 0x00429595  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0042957f  call     0x417e00
+  0x00429584  test     eax, eax
+  0x00429586  jne      0x429630
+  0x0042958c  push     0xf
+  0x0042958e  call     0x40d900
+  0x00429593  mov      ecx, eax
+  0x00429595  call     0x8b2650   <<< call BeginCommand
+  0x0042959a  call     0x40d900
+  0x0042959f  mov      ecx, eax
+  0x004295a1  call     0x8b24c0
+  0x004295a6  mov      dword ptr [ebp - 0x4644], 0x2710
+  0x004295b0  mov      dword ptr [ebp - 0x4640], 0
+
+=== BeginCommand @ 0x00429611  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x004295f9  call     0x4180b0
+  0x004295fe  mov      ecx, eax
+  0x00429600  call     0x404390
+  0x00429605  push     0x99
+  0x0042960a  call     0x40d900
+  0x0042960f  mov      ecx, eax
+  0x00429611  call     0x8b2650   <<< call BeginCommand
+  0x00429616  push     0x1e
+  0x00429618  call     0x40d900
+  0x0042961d  mov      ecx, eax
+  0x0042961f  call     0x4179f0
+  0x00429624  call     0x40d900
+
+=== BeginCommand @ 0x0042f8e9  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0042f8da  push     esi
+  0x0042f8db  push     edi
+  0x0042f8dc  mov      ebx, ecx
+  0x0042f8de  mov      ecx, dword ptr [0xbf0a9c]
+  0x0042f8e4  push     1
+  0x0042f8e6  mov      dword ptr [ebp - 0x10], ebx
+  0x0042f8e9  call     0x8b2650   <<< call BeginCommand
+  0x0042f8ee  mov      edi, dword ptr [0xbf0a9c]
+  0x0042f8f4  lea      ecx, [ebx + 0x10c]
+  0x0042f8fa  call     0x8ac0f0
+  0x0042f8ff  mov      esi, eax
+  0x0042f901  test     esi, esi
+
+=== BeginCommand @ 0x00479ac1  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00479aac  mov      ecx, esi
+  0x00479aae  mov      edi, eax
+  0x00479ab0  call     dword ptr [edx + 0x88]
+  0x00479ab6  mov      ecx, dword ptr [0xbf0a9c]
+  0x00479abc  push     0x25
+  0x00479abe  mov      dword ptr [ebp - 0xc], eax
+  0x00479ac1  call     0x8b2650   <<< call BeginCommand
+  0x00479ac6  mov      ecx, dword ptr [0xbf0a9c]
+  0x00479acc  push     2
+  0x00479ace  lea      eax, [ebp - 8]
+  0x00479ad1  push     eax
+  0x00479ad2  mov      dword ptr [ebp - 8], edi
+
+=== BeginCommand @ 0x004feb1c  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x004feb08  push     0
+  0x004feb0a  call     0x4338f0
+  0x004feb0f  mov      ecx, dword ptr [0xbf0a9c]
+  0x004feb15  add      esp, 4
+  0x004feb18  push     0xa
+  0x004feb1a  mov      edi, eax
+  0x004feb1c  call     0x8b2650   <<< call BeginCommand
+  0x004feb21  mov      eax, dword ptr [ebp + 8]
+  0x004feb24  push     2
+  0x004feb26  lea      ecx, [ebp - 8]
+  0x004feb29  push     ecx
+  0x004feb2a  mov      ecx, dword ptr [0xbf0a9c]
+
+=== BeginCommand @ 0x0070da71  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0070da59  push     eax
+  0x0070da5a  lea      ecx, [ebp - 0x30]
+  0x0070da5d  call     0x402ba0
+  0x0070da62  mov      ecx, dword ptr [0xbf0a9c]
+  0x0070da68  push     0x7c
+  0x0070da6a  mov      dword ptr [ebp - 4], 0
+  0x0070da71  call     0x8b2650   <<< call BeginCommand
+  0x0070da76  mov      cl, byte ptr [0xb764ec]
+  0x0070da7c  push     1
+  0x0070da7e  lea      edx, [ebp - 0x10]
+  0x0070da81  mov      byte ptr [ebp - 0x10], cl
+  0x0070da84  mov      ecx, dword ptr [0xbf0a9c]
+
+=== BeginCommand @ 0x0070dbe1  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0070dbc9  push     eax
+  0x0070dbca  lea      ecx, [ebp - 0x30]
+  0x0070dbcd  call     0x402ba0
+  0x0070dbd2  mov      ecx, dword ptr [0xbf0a9c]
+  0x0070dbd8  push     0x7c
+  0x0070dbda  mov      dword ptr [ebp - 4], 0
+  0x0070dbe1  call     0x8b2650   <<< call BeginCommand
+  0x0070dbe6  mov      cl, byte ptr [0xb764e4]
+  0x0070dbec  push     1
+  0x0070dbee  lea      edx, [ebp - 0x10]
+  0x0070dbf1  mov      byte ptr [ebp - 0x10], cl
+  0x0070dbf4  mov      ecx, dword ptr [0xbf0a9c]
+
+=== BeginCommand @ 0x0078ddba  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0078dda9  idiv     ecx
+  0x0078ddab  add      esp, 4
+  0x0078ddae  cmp      edx, 0xa
+  0x0078ddb1  jge      0x78de16
+  0x0078ddb3  push     ecx
+  0x0078ddb4  mov      ecx, dword ptr [0xbf0a9c]
+  0x0078ddba  call     0x8b2650   <<< call BeginCommand
+  0x0078ddbf  test     ebx, ebx
+  0x0078ddc1  mov      ecx, dword ptr [0xbf0a9c]
+  0x0078ddc7  push     1
+  0x0078ddc9  jne      0x78ddd5
+  0x0078ddcb  lea      edx, [ebp + 0x13]
+
+=== BeginCommand @ 0x0078e940  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0078e92b  idiv     ecx
+  0x0078e92d  add      esp, 4
+  0x0078e930  cmp      edx, 0xa
+  0x0078e933  jge      0x78ead0
+  0x0078e939  push     ecx
+  0x0078e93a  mov      ecx, dword ptr [0xbf0a9c]
+  0x0078e940  call     0x8b2650   <<< call BeginCommand
+  0x0078e945  mov      ecx, dword ptr [0xbf0a9c]
+  0x0078e94b  push     1
+  0x0078e94d  lea      edx, [ebp - 0xc]
+  0x0078e950  push     edx
+  0x0078e951  mov      byte ptr [ebp - 0xc], 0
+
+=== BeginCommand @ 0x007fd081  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x007fd06f  push     eax
+  0x007fd070  push     0x23
+  0x007fd072  call     0x799ef0
+  0x007fd077  jmp      0x7fd091
+  0x007fd079  push     0x4c
+  0x007fd07b  mov      ecx, dword ptr [0xbf0a9c]
+  0x007fd081  call     0x8b2650   <<< call BeginCommand
+  0x007fd086  mov      ecx, dword ptr [0xbf0a9c]
+  0x007fd08c  call     0x8b24c0
+  0x007fd091  mov      edx, dword ptr [esi]
+  0x007fd093  mov      ecx, esi
+  0x007fd095  call     dword ptr [edx + 0x28]
+
+=== BeginCommand @ 0x00807f42  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00807f32  test     edi, edi
+  0x00807f34  jle      0x807fac
+  0x00807f36  mov      ecx, dword ptr [0xbf0a9c]
+  0x00807f3c  xor      edx, edx
+  0x00807f3e  mov      dl, byte ptr [esi + 0x40]
+  0x00807f41  push     edx
+  0x00807f42  call     0x8b2650   <<< call BeginCommand
+  0x00807f47  xor      eax, eax
+  0x00807f49  mov      ax, word ptr [esi + 0x44]
+  0x00807f4d  push     2
+  0x00807f4f  lea      ecx, [ebp - 8]
+  0x00807f52  push     ecx
+
+=== BeginCommand @ 0x00821f77  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00821f61  dec      eax
+  0x00821f62  jne      0x82202b
+  0x00821f68  call     0x462b70
+  0x00821f6d  mov      ecx, dword ptr [0xbf0a9c]
+  0x00821f73  push     0xb
+  0x00821f75  mov      edi, eax
+  0x00821f77  call     0x8b2650   <<< call BeginCommand
+  0x00821f7c  mov      ecx, dword ptr [0xbf0a9c]
+  0x00821f82  xor      edx, edx
+  0x00821f84  mov      dx, word ptr [esi + 0x38]
+  0x00821f88  push     2
+  0x00821f8a  lea      eax, [ebp - 8]
+
+=== BeginCommand @ 0x0084750f  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x008474fc  push     eax
+  0x008474fd  call     0x91b105
+  0x00847502  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847508  add      esp, 4
+  0x0084750b  push     0x41
+  0x0084750d  mov      ebx, eax
+  0x0084750f  call     0x8b2650   <<< call BeginCommand
+  0x00847514  mov      ecx, dword ptr [0xbf0a9c]
+  0x0084751a  push     1
+  0x0084751c  lea      edx, [ebp + 0xb]
+  0x0084751f  push     edx
+  0x00847520  mov      byte ptr [ebp + 0xb], 7
+
+=== BeginCommand @ 0x0084757e  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0084756b  push     eax
+  0x0084756c  call     0x91b105
+  0x00847571  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847577  add      esp, 4
+  0x0084757a  push     0x41
+  0x0084757c  mov      ebx, eax
+  0x0084757e  call     0x8b2650   <<< call BeginCommand
+  0x00847583  push     1
+  0x00847585  lea      ecx, [ebp + 0xb]
+  0x00847588  push     ecx
+  0x00847589  mov      ecx, dword ptr [0xbf0a9c]
+  0x0084758f  mov      byte ptr [ebp + 0xb], 8
+
+=== BeginCommand @ 0x0084763e  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0084762b  push     eax
+  0x0084762c  call     0x91b105
+  0x00847631  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847637  add      esp, 4
+  0x0084763a  push     0x41
+  0x0084763c  mov      esi, eax
+  0x0084763e  call     0x8b2650   <<< call BeginCommand
+  0x00847643  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847649  push     3
+  0x0084764b  call     0x40d8a0
+  0x00847650  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847656  push     esi
+
+=== BeginCommand @ 0x00847ac5  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00847ab2  push     eax
+  0x00847ab3  call     0x91b105
+  0x00847ab8  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847abe  add      esp, 4
+  0x00847ac1  push     0x41
+  0x00847ac3  mov      edi, eax
+  0x00847ac5  call     0x8b2650   <<< call BeginCommand
+  0x00847aca  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847ad0  push     5
+  0x00847ad2  call     0x40d8a0
+  0x00847ad7  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847add  push     esi
+
+=== BeginCommand @ 0x00847f2a  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00847f17  push     eax
+  0x00847f18  call     0x91b105
+  0x00847f1d  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847f23  add      esp, 4
+  0x00847f26  push     0x41
+  0x00847f28  mov      esi, eax
+  0x00847f2a  call     0x8b2650   <<< call BeginCommand
+  0x00847f2f  push     0xe
+  0x00847f31  jmp      0x847f9d
+  0x00847f33  mov      ecx, dword ptr [ebp - 0x18]
+  0x00847f36  push     0xa834b8
+  0x00847f3b  call     0x476e10
+
+=== BeginCommand @ 0x00847f96  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00847f83  push     eax
+  0x00847f84  call     0x91b105
+  0x00847f89  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847f8f  add      esp, 4
+  0x00847f92  push     0x41
+  0x00847f94  mov      esi, eax
+  0x00847f96  call     0x8b2650   <<< call BeginCommand
+  0x00847f9b  push     0xf
+  0x00847f9d  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847fa3  call     0x40d8a0
+  0x00847fa8  mov      ecx, dword ptr [0xbf0a9c]
+  0x00847fae  push     esi
+
+=== BeginCommand @ 0x0084844f  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x0084843c  push     eax
+  0x0084843d  call     0x91b105
+  0x00848442  mov      ecx, dword ptr [0xbf0a9c]
+  0x00848448  add      esp, 4
+  0x0084844b  push     0x21
+  0x0084844d  mov      esi, eax
+  0x0084844f  call     0x8b2650   <<< call BeginCommand
+  0x00848454  mov      ecx, dword ptr [0xbf0a9c]
+  0x0084845a  push     esi
+  0x0084845b  call     0x40d8c0
+  0x00848460  mov      ecx, dword ptr [0xbf0a9c]
+  0x00848466  call     0x8b24c0
+
+=== BeginCommand @ 0x008487c9  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x008487b6  push     eax
+  0x008487b7  call     0x91b105
+  0x008487bc  mov      ecx, dword ptr [0xbf0a9c]
+  0x008487c2  add      esp, 4
+  0x008487c5  push     0x41
+  0x008487c7  mov      esi, eax
+  0x008487c9  call     0x8b2650   <<< call BeginCommand
+  0x008487ce  mov      edx, dword ptr [ebp + 8]
+  0x008487d1  mov      ecx, dword ptr [0xbf0a9c]
+  0x008487d7  push     edx
+  0x008487d8  call     0x40d8a0
+  0x008487dd  mov      ecx, dword ptr [0xbf0a9c]
+
+=== BeginCommand @ 0x008525f6  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x008525de  push     eax
+  0x008525df  lea      ecx, [ebp - 0x2c]
+  0x008525e2  call     0x402ba0
+  0x008525e7  mov      ecx, dword ptr [0xbf0a9c]
+  0x008525ed  push     0x41
+  0x008525ef  mov      dword ptr [ebp - 4], 1
+  0x008525f6  call     0x8b2650   <<< call BeginCommand
+  0x008525fb  mov      ecx, dword ptr [0xbf0a9c]
+  0x00852601  push     1
+  0x00852603  lea      edx, [ebp - 0x10]
+  0x00852606  push     edx
+  0x00852607  mov      byte ptr [ebp - 0x10], 0xc
+
+=== BeginCommand @ 0x00888a3d  [cmd=None（命令号不是立即数，可能是变量）] ===
+  0x00888a28  cmp      esi, eax
+  0x00888a2a  je       0x888a31
+  0x00888a2c  jmp      0x888b47
+  0x00888a31  push     0x98
+  0x00888a36  call     0x40d900
+  0x00888a3b  mov      ecx, eax
+  0x00888a3d  call     0x8b2650   <<< call BeginCommand
+  0x00888a42  mov      ecx, dword ptr [ebp - 0x30]
+  0x00888a45  add      ecx, 0xc8
+  0x00888a4b  call     0x44c380
+  0x00888a50  push     eax
+  0x00888a51  call     0x40d900

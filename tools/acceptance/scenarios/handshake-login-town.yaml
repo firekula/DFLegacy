@@ -1,0 +1,16 @@
+id: handshake-login-town
+goal: 握手（11/5/9/1）→ 登录 → 选角 → 进城（本刀的门，拆分与单体两档逐字节一致）
+expect_t0: server-accept
+actors:
+  - {name: A, driver: real-client}
+steps:
+  - actor: A
+    action: 完成握手并登录
+    expect:
+      - {description: "c2s:connect（握手首帧）", level: "[存在]", pattern: "000B2B0000000000000001", evidence: "[抓包]"}
+      - {description: "s2c:connect-ack（12 号回包）", level: "[存在]", pattern: "000C2F0000000000000001", evidence: "[抓包]"}
+      - {description: "服务端入口监听就绪（逐进程日志）", level: "[存在]", pattern: "Entrance listener ready", evidence: "[静态]"}
+  - actor: A
+    action: 选角并进入城镇
+    expect:
+      - {description: "选角后进入城镇（人工确认同屏）", level: "[语义]"}

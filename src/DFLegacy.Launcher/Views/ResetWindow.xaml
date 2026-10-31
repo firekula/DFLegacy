@@ -1,0 +1,23 @@
+<Window x:Class="DFLegacy.Launcher.Views.ResetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
+        Title="找回密码" Height="320" Width="360"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <TextBlock Grid.Row="0" Text="用户名"/>
+    <TextBox    Grid.Row="1" x:Name="UserNameBox" Margin="0,4,0,8"/>
+    <TextBlock Grid.Row="2" Text="QQ"/>
+    <TextBox    Grid.Row="3" x:Name="OicqBox" Margin="0,4,0,8"/>
+    <TextBlock Grid.Row="4" Text="新密码（6-128）"/>
+    <PasswordBox Grid.Row="5" x:Name="PasswordBox" Margin="0,4,0,8"/>
+    <PasswordBox Grid.Row="6" x:Name="ConfirmBox" Margin="0,4,0,8"/>
+    <Button Grid.Row="7" x:Name="SubmitBtn" Content="重置密码" Height="36" Click="SubmitBtn_Click"/>
+  </Grid>
+</Window>

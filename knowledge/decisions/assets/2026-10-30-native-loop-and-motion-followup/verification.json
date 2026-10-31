@@ -1,0 +1,100 @@
+{
+  "python": {
+    "scopes": [
+      {
+        "path": "tests + tools/debug + tools/acceptance/tests",
+        "passed": 509,
+        "skipped": 1,
+        "subtests": 516,
+        "log": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\loop-sync-20261030\\final-python.log"
+      },
+      {
+        "path": "protocol/tests",
+        "passed": 97,
+        "log": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\.tmp\\loop-sync-20261030\\final-protocol-python.log"
+      }
+    ],
+    "total_passed": 606,
+    "conditional_skip": "Native test-control export roundtrip fixture was not supplied; it was not rerun.",
+    "diagnostics": "The completed pytest log includes Windows access-violation diagnostics inside Unicorn.mem_map; pytest exited0 and continued. Native game logs for the final four clients contain no exception records."
+  },
+  "native": {
+    "ijl_compatibility": "passed",
+    "debug_fixture_failures": 0,
+    "native_loop_model_failures": 0,
+    "frame_profile_failures": 0,
+    "gameplay_trace_failures": 0
+  },
+  "final_build": {
+    "Build": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\loop-sync-20261030\\runtime-v5",
+    "Files": [
+      {
+        "File": "DFLegacy.InterProcess.dll",
+        "Sha256": "20A89CE08458FB04AD065A28A6FD903EC93CB43C53A3A1EC0C80483611E8FADF"
+      },
+      {
+        "File": "DFLegacy.InterProcess.pdb",
+        "Sha256": "38349216CE3AB53B77693FC4DEB30DD6F4CDA5595C19172AA0C5745C7C7F8D6E"
+      },
+      {
+        "File": "DFLegacy.Protocol.dll",
+        "Sha256": "DE4970010061935B668E7CAAD6DE05D6716DAE221177897B23F06BB9F69A2501"
+      },
+      {
+        "File": "DFLegacy.Protocol.pdb",
+        "Sha256": "E08BF3CE40CE05CF7B4A5A5B87603ABB7F75F4DE5488C2AFC5218BBC5B05DB49"
+      },
+      {
+        "File": "DFLegacy.Server.deps.json",
+        "Sha256": "2DAEB1832EDF969061314A541B26ED75C9A558A5B4A267812E8E90D4B2A37959"
+      },
+      {
+        "File": "DFLegacy.Server.dll",
+        "Sha256": "AA11B5DB22B5C674E2041F3F72D44ADAE8009ACDB7A7AC3B9E73CDAC51081907"
+      },
+      {
+        "File": "DFLegacy.Server.exe",
+        "Sha256": "FC1A8675F47209FAC198F8D67C7D68FD0E0C6DBC0062C4801ADD51DA0AB52C54"
+      },
+      {
+        "File": "DFLegacy.Server.pdb",
+        "Sha256": "CEC085E5A5FD28BB8F7D7681010AAE55085CCCD2DFFD32A4570A03A0AFEFFBCF"
+      },
+      {
+        "File": "DFLegacy.Server.runtimeconfig.json",
+        "Sha256": "9FD781CDA327A8010D236D8B004D3A47D523C4AB220FBDC4D4636314896FC88D"
+      },
+      {
+        "File": "DFLegacy.Server.staticwebassets.endpoints.json",
+        "Sha256": "BD639124033477255219E94FAF3E18D1C3020F3A27DB5E9DA6DC6194E88FC8BA"
+      },
+      {
+        "File": "server.json",
+        "Sha256": "F58F03B94E4F3BB8DC49F5BEF2189556873A2F1C43FC1E1F090B0754B2BB40D7"
+      },
+      {
+        "File": "web.config",
+        "Sha256": "74056335736AC0DD02C899C0C1AB8B8ED46B5C770A8A53EA2596C0C075DAEE6D"
+      }
+    ],
+    "NativeFiles": {
+      "ijl15/Release/ijl15.dll": "0598B7C21F9960DAE0DD7A6D8B4A726240C84D08C12F2E0C6F69A883052734CB",
+      "debug/Release/debug.dll": "4C1E32CAF31C5FDC26DE22DD864A911CEEC143CFEBDF87FE8B1D0125126899C1"
+    },
+    "NativeChannelPort": 47001
+  },
+  "original_exe_sha256": "6B4850BEAF67EC61ADB04AE17F119F16278DD05E97B8FFCA871A9BDB547DE0D5",
+  "note": "The v4 diagnostic-induced crash is excluded from successful acceptance. A v5 actual-site CFG audit and same/cross-row native regression cover the corrected hook.",
+  "legacy_frozen_manifest_fields": {
+    "values": {
+      "NativeSha256": "4C1E32CAF31C5FDC26DE22DD864A911CEEC143CFEBDF87FE8B1D0125126899C1",
+      "IjlSha256": "E34395D945926B324670880FDBF2A1E4075B77E65448351FA257470261035020"
+    },
+    "scope": "Inherited from earlier manifests; these fields are not authoritative for final native DLL hashes. The immutable private manifest is retained as frozen. NativeFiles names the actual final native DLLs; runtime site verification corroborates installation."
+  },
+  "housekeeping": {
+    "pytest_cache_directory": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\tests\\__pycache__",
+    "retained_files": 4,
+    "cleanup_status": "Automatic approval review rejected the cleanup command with blocked by policy; generated caches retained."
+  }
+}

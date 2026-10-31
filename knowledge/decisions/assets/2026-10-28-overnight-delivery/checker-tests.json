@@ -1,0 +1,34 @@
+{
+  "schema": "act1-final-delivery-checker-tests/v1",
+  "status": "PASS",
+  "fixture": "Actual frozen06 selected evidence, no synthetic success receipt",
+  "semantic_checks": 29,
+  "semantic_negative_cases": 24,
+  "artifact_negative_cases": [
+    {
+      "case": "changed-component-hash",
+      "result": "REJECTED"
+    },
+    {
+      "case": "missing-component",
+      "result": "REJECTED"
+    },
+    {
+      "case": "changed-local-hash",
+      "result": "REJECTED"
+    },
+    {
+      "case": "escape-local-path",
+      "result": "REJECTED"
+    },
+    {
+      "case": "escape-component-path",
+      "result": "REJECTED"
+    }
+  ],
+  "commands": [
+    "python -B -m unittest -v test_final.py",
+    "read-only verify_files with five in-memory mutations"
+  ],
+  "runtime_operations": false
+}

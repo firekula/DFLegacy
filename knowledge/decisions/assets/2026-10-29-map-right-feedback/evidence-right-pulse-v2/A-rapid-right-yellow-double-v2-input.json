@@ -1,0 +1,58 @@
+{
+  "started": "2026-10-29T18:47:14.511+08:00",
+  "pid": 8820,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "A-rapid-right-yellow-double-v2-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T18:47:14.630+08:00",
+  "steps": [
+    {
+      "t": 100,
+      "op": "move",
+      "x": 255,
+      "y": 246
+    },
+    {
+      "t": 200,
+      "op": "rclick",
+      "x": 255,
+      "y": 246,
+      "dur": 80
+    },
+    {
+      "t": 600,
+      "op": "move",
+      "x": 260,
+      "y": 246
+    },
+    {
+      "t": 700,
+      "op": "rclick",
+      "x": 260,
+      "y": 246,
+      "dur": 80
+    },
+    {
+      "t": 850,
+      "op": "move",
+      "x": 600,
+      "y": 420
+    },
+    {
+      "t": 1350,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "5d3c2cbd084adfb35f0d24d554918284a055b1777ff8c6dfd583e9a7e04e0af9",
+  "plan_written": "2026-10-29T18:47:14.631+08:00",
+  "focus_reassertions": 1,
+  "plan_completed": "2026-10-29T18:47:16.246+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\DF\\ScreenShot\\ScreenShot01137.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\evidence-right-pulse-v2\\A-rapid-right-yellow-double-v2-input.jpg",
+  "own_pid_diag_lines": 5,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T18:47:16.443+08:00"
+}

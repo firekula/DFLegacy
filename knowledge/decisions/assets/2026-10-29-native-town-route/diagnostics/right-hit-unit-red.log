@@ -1,0 +1,15 @@
+FAIL navigation: consumed right canvas release selects current region with FD9 already zero
+FAIL navigation: right reader is independent of all left button fields
+FAIL navigation: right release selects another displayed town and area
+FAIL navigation: draw-phase native consumed event and root hit complete the two-stage release
+FAIL navigation: hit wrapper invokes original once before after-callback and preserves EAX
+FAIL navigation: original hit traversal always runs without a right release
+FAIL navigation: original hit traversal always runs without a right release
+FAIL navigation: both original CALL sites install in order
+FAIL navigation: right restore failure retains ownership and blocks unload
+FAIL navigation: right restore retries exact original hit CALL bytes
+FAIL navigation: failed second hook rolls back the first
+FAIL navigation: failed rollback preserves retained poll ownership
+FAIL navigation: first hook refusal never patches second site
+navigation tests: 13 failure(s)
+navigation runtime tests: 0 failure(s)

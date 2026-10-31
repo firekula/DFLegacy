@@ -1,0 +1,269 @@
+project: DFLegacy（DNF 赛里斯服 ACT1 客户端本地模拟服务端）
+entrypoint: .recon/onboarding.md
+
+# 语料与检索键见 .recon/keys.yml 与文件末尾的 corpus 段。
+tools:
+  # ---------------------------------------------------------------- 静态层（客户端 DNF.exe）
+  - name: ida-dec
+    kind: external
+    summary: 反编译 DNF.exe 里某个地址所在的函数（Hex-Rays C 伪码），或列出调用点/被调用目标
+    invoke:
+      - "{bash}"
+      - "{project_root}/.recon/run-ida.sh"
+      - "{script}"
+      - "{outfile}"
+      - "{cmd}"
+      - "{address}"
+    access: mutate
+    inputs:
+      bash:    { type: string, required: true }
+      script:  { type: string, required: true }
+      outfile: { type: string, required: true }
+      cmd:     { type: string, required: true }
+      address: { type: string, required: true }
+    outputs:
+      - { path: "{outfile}", required: true, nonEmpty: true }
+    output: { format: text }
+    timeoutMs: 300000
+    examples:
+      - bash: "D:/Program Files/Git/bin/bash.exe"
+        script: ".superpowers/sdd/2026-09-29-dungeon-party/work/ida_tool.py"
+        outfile: ".recon/out/ida-dec-example.txt"
+        cmd: "dec"
+        address: "0x82E3A0"
+    caveats: >-
+      实测（2026-09-30）：dec 0x82E3A0 与 dec 0x4C7890 分别取回 sub_82E3A0 / sub_4C7890，
+      参数转发正确、hexrays=True。**权威实现在 work/run_ida.sh**（本工具是它的薄包装，只做路径解析
+      与 Windows 形式转换）；要改行为改那一份。**必须用 Git Bash**（bash 入参）：PATH 里的 bash 是
+      WSL 的，会把 /d/... 当不存在的路径而报 "No such file or directory"，症状完全不同。
+      爆炸半径：idat.exe 退出时把改过的库写回 G:/Game/DNF_ACT1/DF/DNF.exe.idb（约 100MB，客户端静态
+      分析的唯一权威标注库；**32 位目标 → `.idb`**，64 位才是 `.i64`）——分析本身不破坏它，但**同一时刻
+      只允许一个 IDA 任务**，否则标注可能丢失或库损坏；跑一次是几十秒级（要加载约 100MB 库 + 反编译）。
+      同目录那个 `DNF.exe.i64`（99MB，mtime 停在 9/29）是 `work/build_db.py` 早期硬编码另存的**旧副本**，
+      不是活动库；单独把它拷走喂给 idat 会被拒收 `You can't disassemble file with such an extension`。
+      产物与同名 .ida.log 写在 outfile 所在
+      目录，可直接删。地址要填**虚拟地址**（基址 0x400000；采样器打印的 "模块+0xNNN" 是 VA−基址，
+      必须加回基址，否则反编译到别的函数）。另有既有噪声：IDA 的 WPeChatGPT 插件因缺 openai 模块
+      会在输出开头打一行 ModuleNotFoundError，与本工具无关，可忽略。
+
+  - name: ida-script
+    kind: external
+    summary: 在 DNF.exe 的 IDA 数据库上跑任意 IDAPython 脚本（一次性取数用）
+    invoke:
+      - "{bash}"
+      - "{project_root}/.recon/run-ida.sh"
+      - "{script}"
+      - "{outfile}"
+      - "{args}"
+    access: mutate
+    inputs:
+      bash:    { type: string, required: true }
+      script:  { type: string, required: true }
+      outfile: { type: string, required: true }
+      args:    { type: string, required: true }
+    outputs:
+      - { path: "{outfile}", required: true, nonEmpty: true }
+    output: { format: text }
+    timeoutMs: 600000
+    examples:
+      - bash: "D:/Program Files/Git/bin/bash.exe"
+        script: ".superpowers/sdd/2026-09-29-dungeon-party/work/ida_callers2.py"
+        outfile: ".recon/out/ida-script-example.txt"
+        args: "unused"
+    caveats: >-
+      与 ida-dec 同一条 IDA 路径（同一份 caveats 全部适用）：必须用 Git Bash；改动的库在 idat.exe 退出时
+      写回 DNF.exe.idb（32 位目标的活动库），同一时刻只允许一个 IDA 任务；一次几十秒级。**未单独实测**（ida-dec 已验证同一条
+      包装脚本与同一条 IDA 路径可用，但本工具自身的 ARGV 传递没跑过）。脚本以 idc.ARGV 收参数
+      （ARGV[1]=outfile、ARGV[2..]=args），所以 args 是**单个**空格分隔字符串，不能带需要引号的参数；
+      脚本要自己写，落盘产物即 outfile。
+
+  # ------------------------------------------------ 静态层（官服 df_game_r）
+  - name: demangle-catalog
+    kind: external
+    summary: 用 sidecar 的 c++filt 把 nm 转储的名字批量解名（纯净、无网依赖）
+    invoke: ["python", "{project_root}/.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/demangle-syms.py", "{src}", "{outfile}"]
+    access: read
+    inputs:
+      src:     { type: string, required: true }
+      outfile: { type: string, required: true }
+    outputs:
+      - { path: "{outfile}", required: true, nonEmpty: true }
+    output: { format: text }
+    timeoutMs: 600000
+    examples:
+      - src: ".superpowers/sdd/2026-09-29-dungeon-party/work/official/game_r.syms.txt"
+        outfile: ".superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/demangled-syms.tsv"
+    caveats: >-
+      依赖容器 sidecar `dfl-recon` 里的 `c++filt`（binutils 2.44，2026-10-05 实测可用）。
+      **本机 python `cxxfilt` 不可用**（`LibraryNotFound: Cannot find any of libraries: ('c',)`，Windows 无 libc），别去试它。
+      sidecar 的 netns 可能在 `docker restart dnf` 后失效 —— 那影响抓包，**不影响本工具**（纯 CPU 任务）。
+      爆炸半径：只读源文件、只写 outfile（默认指向 20+MB 的派生物，**不要提交进 git**）；
+      35 万行一次性喂给容器，实测约 2 秒（`2026-10-05` 实测：352694 rows，31.9MB）。
+
+  - name: ida-game
+    kind: external
+    summary: 在 df_game_r.bin.idb 上跑 IDAPython（对官服游戏服取数）
+    invoke: ["{bash}", "{project_root}/.recon/run-ida.sh", "--idb", "{idb}", "{script}", "{outfile}", "{args}"]
+    access: mutate
+    inputs:
+      bash:    { type: string, required: true }
+      idb:     { type: string, required: true }
+      script:  { type: string, required: true }
+      outfile: { type: string, required: true }
+      args:    { type: string, required: true }
+    outputs:
+      - { path: "{outfile}", required: true, nonEmpty: true }
+    output: { format: text }
+    timeoutMs: 900000
+    examples:
+      - bash: "D:/Program Files/Git/bin/bash.exe"
+        idb: ".superpowers/sdd/2026-09-29-dungeon-party/work/official/df_game_r.bin.idb"
+        script: ".superpowers/sdd/2026-10-05-gameplay-evidence-program/work/ida-game.py"
+        outfile: ".superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/ida-smoke.txt"
+        args: "smoke"
+    caveats: >-
+      **必须**用 Git Bash（PATH 里的 bash 是 WSL 的，会把 /d/... 当不存在）。
+      **关键差异**：本工具的目标库是 `df_game_r.bin.idb`（**170 MB**，官服游戏服），不是客户端 `DNF.exe.idb`。
+      库由 `--idb` 参数给（相对路径按项目根解析），`.recon/run-ida.sh` 把它转成 `DNF_IDB=`
+      交给权威实现 `work/run_ida.sh`（原件本来就是 `${DNF_IDB:-<客户端库>}`，2026-10-05 实测确认）。
+      **不要**另写一份包装 —— 那会制造"同一能力两份"。
+      IDA **单写**：同一时刻只能有一个 IDA 任务（并发会让标注丢失或库损坏），
+      且 170 MB 库**加载分钟级**（timeoutMs 已给到 15 分钟）⇒ 批量取数要**一个脚本一次跑完**，
+      别一条一条跑。爆炸半径：idat.exe 退出时把标注写回 `df_game_r.bin.idb`；
+      分析本身不破坏它，但**并发会**。产物与同名 `.ida.log` 写在 outfile 所在目录，可直接删。
+      另：本机 IDA 的 WPeChatGPT 插件会因缺 openai 模块在输出开头打一行 ModuleNotFoundError，与本工具无关。
+
+  # ---------------------------------------------------------------- 抓包层（参考服务端）
+  - name: ref-proxy
+    kind: external
+    summary: 起金标准抓包代理（参考实现 OpenDNF 的 TCP/UDP 逐包记录），或跑它的自检
+    invoke:
+      - "python"
+      - "{project_root}/.superpowers/sdd/2026-09-29-dungeon-party/work/ref_proxy.py"
+      - "--out"
+      - "{capture_dir}"
+      - "{proxy_args}"
+    access: mutate
+    inputs:
+      capture_dir: { type: string, required: true }
+      proxy_args:  { type: string, required: true }
+    outputs:
+      - { path: "{capture_dir}/run.log", required: false, nonEmpty: true }
+    output: { format: text }
+    timeoutMs: 600000
+    examples:
+      - capture_dir: ".recon/captures/reference"
+        proxy_args: "--selftest"
+    caveats: >-
+      实测（2026-09-30，手动跑、非经本模式）：`--selftest` 输出 "SELFTEST PASS: TCP/UDP 双向穿过代理、
+      源地址保持 127.0.0.1、落盘完整"，退出码 0，约 5 秒，可用。注意 selftest 会**忽略 --out**，
+      固定写进 .superpowers/sdd/2026-09-29-dungeon-party/work/proxy-selftest/。
+      爆炸半径：**抓一局会驻留几百秒直到 Ctrl+C**，超过本模式超时上限，所以长抓请人在终端里直接起这条
+      命令，本模式只适合跑 selftest。抓包模式占用 127.0.0.1:30011/31011/7001 并接管发往这些端口的客户端
+      流量，因此**参考服务端必须已在跑、且我们自己的 DFLegacy.Server 必须停掉**（端口冲突会让它 bind 失败）。
+      它只转发与记录，不改任何一方；退出不留进程，但输出目录会持续累积。
+
+  - name: capture-analyze
+    kind: external
+    summary: 分析 ref-proxy 的抓包目录：连接/包数/长度分布、逐包头部、载荷里的字符串与 ip:port 线索
+    invoke:
+      - "python"
+      - "{project_root}/.superpowers/sdd/2026-09-29-dungeon-party/work/analyze_capture.py"
+      - "{capture_dir}"
+      - "{mode}"
+    access: read
+    inputs:
+      capture_dir: { type: string, required: true }
+      mode:        { type: string, required: true }
+    output: { format: text }
+    timeoutMs: 180000
+    examples:
+      - capture_dir: ".superpowers/sdd/2026-09-29-dungeon-party/work/captured-run1"
+        mode: "--port=30011"
+    caveats: 只读抓包目录，不写任何文件；capture_dir 必须是已存在的 ref-proxy 产物目录。
+
+  # ---------------------------------------------------------------- 客户端运行时（真机）
+  - name: client-stacks
+    kind: external
+    summary: 采集正在运行的 DNF.exe 客户端线程栈（崩溃/卡死前的现场取证）
+    invoke:
+      - "pwsh"
+      - "-NoProfile"
+      - "-File"
+      - "{project_root}/.recon/collect-dnf-stacks.ps1"
+      - "-Seconds"
+      - "{seconds}"
+      - "-Exclude"
+      - "{excludepid}"
+      - "-TargetPid"
+      - "{target}"
+    access: read
+    inputs:
+      seconds:    { type: number, required: true }
+      excludepid: { type: number, required: true }
+      target:     { type: number, required: true }
+    outputs:
+      - { path: "{project_root}/.recon/captures/stacks_{target}.txt", required: false, nonEmpty: true }
+    output: { format: text }
+    timeoutMs: 420000
+    examples:
+      - seconds: 20
+        excludepid: 0
+        target: 0
+    caveats: >-
+      只读客户端进程内存（Wow64GetThreadContext + ReadProcessMemory），不写客户端、不挂调试器。
+      **前置条件**：DNF.exe 必须在运行，否则立刻 exit 2（预期情形，不是工具坏了；本工具不负责启动
+      客户端）。target=0 表示自动挑（有多个客户端时必须在 target 里指定 pid）。产物是
+      .recon/captures/stacks_<target>.txt（可删），随后用 analyze_hang.py 找"冻结"调用链、
+      用 recover_exception.py（2026-09-30 新增，取代 scan_exception.py 的定位作用）从转储里恢复
+      EXCEPTION_RECORD + WOW64 CONTEXT。seconds 允许 1..300。
+      实测（2026-09-30）：无客户端时 ~450ms 内 exit 2 并打印 PRECONDITION，脚本可执行。
+      **已修缺陷（2026-09-30）**：本工具包装脚本给 work/watch_clients.py 传了 `--pid`，而
+      watch_clients.py 当时按位置读参数 → 只要真有客户端在跑，就必定 float("--pid") 抛
+      ValueError（即"最需要它的那一刻必坏"，且无客户端时测不出来）。现已在 watch_clients.py
+      里实现 `--pid`。另：wow64_stack.py 的转储窗口原固定 0x600，而 party15 现场的异常帧在
+      handler-ESP+0x2F8(记录)/+0x348(上下文)、**出错帧本身在 +0x7B0**（窗口外），所以当时拿不到
+      调用链；现可用环境变量 DFLEGACY_STACK_DUMP_BYTES_ON_CRASH 单独放宽崩溃线程的窗口
+      （常规采样窗口不变，file 体积不受影响）。**有客户端时的完整采样路径仍未跑过**——
+      下一次真机（work/RUN-party16-protocol.md）就是它的第一次实测。
+
+  # ---------------------------------------------------------------- 回归层（我们自己的服务端）
+  - name: smoke-tests
+    kind: external
+    summary: 跑 DFLegacy 全量冒烟测试（协议字节级 + 业务规则），任何实现改动的第一道回归
+    invoke:
+      - "dotnet"
+      - "run"
+      - "--project"
+      - "{csproj}"
+      - "-c"
+      - "Release"
+    access: read
+    inputs:
+      csproj: { type: string, required: true }
+    output: { format: text }
+    timeoutMs: 900000
+    examples:
+      - csproj: "tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj"
+    caveats: >-
+      用例全部把夹具写在 %TEMP% 下、并以 ScriptPvfPath="" 建 store，所以**不碰仓库数据**；唯一写入是
+      dotnet 自己的 tests/**/bin、obj（已被 .gitignore 忽略）。它不看真实客户端，只看服务端逻辑。
+
+# ---------------------------------------------------------------- 检索键与语料（阶段 2 的输入）
+corpus:
+  - "docs/**/*.md"
+  # `.superpowers/sdd/*.md` 这一行已删（2026-09-30）：它被下面那条 `**/*.md` **完全包含**，
+  # 重叠导致任何天真索引器把这 19 个文件数两遍（作者已核实为方法缺陷）。
+  - ".superpowers/sdd/**/*.md"
+  - "STATUS.md"
+  - "README.md"
+  - "ADMIN_API.md"
+  - "DEPLOYING.md"
+  - "BUILDING.md"
+  - "src/DFLegacy.Protocol/**/*.cs"
+  - "src/DFLegacy.Server/**/*.cs"
+  - "tests/DFLegacy.SmokeTests/**/*.cs"
+  - ".superpowers/sdd/2026-09-29-dungeon-party/work/official/opcode_cmd.txt"
+  - ".superpowers/sdd/2026-09-29-dungeon-party/work/official/opcode_noti.txt"
+  - ".superpowers/sdd/2026-09-29-dungeon-party/work/official/STATIC-FINDINGS.md"
+keys: .recon/keys.yml

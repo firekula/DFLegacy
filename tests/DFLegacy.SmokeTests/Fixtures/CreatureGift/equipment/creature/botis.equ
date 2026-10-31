@@ -1,0 +1,26 @@
+[name] `²¨µÌË¹`
+[name2] `Botis`
+[attach type] `[trade delete]`
+[rarity] 1
+[usable job]
+`[all]`
+[/usable job]
+[minimum level] 1
+
+[icon] `item/creature/creature.img` 14
+[field image] `item/fieldimage.img` 30
+
+[equipment type] `[creature]` 0
+
+[sub type] 0
+[creature species] 15
+[cool time] 10000
+
+[move speed] +40
+
+[MP MAX rate] 5.00
+
+[move wav] `CREATURE_EQUIP_TOUCH`
+
+[set item master] -1
+

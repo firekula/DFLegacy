@@ -1,0 +1,51 @@
+==========================================================================
+token.py 离线自检（Task 10）
+==========================================================================
+来源与证据类别（每条结论都挂着它）：
+  [静态] 密钥：私钥 PEM 的模数 == 公钥 PEM 的模数（下面第 1 行结果即此判据）
+  [抓包] 三条真实令牌：来源链 =
+           $W\captures\e2e-login.pcap
+           -> pcap-streams.py 切出 streams5505\*.bin
+           -> body base64 -> nonce12|ct|tag16 AES-256-GCM
+              （密钥 GATE_AES_KEY，出自容器 14 个进程的 /proc/<pid>/environ）
+           -> 明文 `0|<base64>` -> 公钥模幂 -> 46 B 被签内容
+         重算命令：work\extract-gate-tokens.py（本自检的 §6 会自动调用它）
+         注意：**本模块不硬编码任何令牌**，所以'同形'不是与常量比出来的
+  [回放] §5 的 OpenSSL 校验：另一份独立实现（Git Bash 里 3.5.8）用公钥复算
+  [推断] 那 46 B 里**除 uid 外的 42 字节**（01×32 + 55 91 45 10 01 04 03 03 01 01）
+         语义**仍未解**（像版本/标志位）。本模块只保证与抓到的令牌逐字节可比，
+         **不**声称知道它们是什么意思 —— 别在后续单元里把它们当已知语义用。
+
+私钥        : .superpowers\sdd\2026-10-05-official-login-channel\work\container-privatekey.pem
+公钥        : .superpowers\sdd\2026-10-05-official-login-channel\work\container-game-publickey.pem
+模数 n      : 0xbba4ee404d6d7e2d6d9393046e73d64e…
+私钥模数 == 公钥模数 : True
+被签内容模板 : 00 00 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 55 91 45 10 01 04 03 03 01 01   (46 B)
+  = uid(4,BE) | 01×32 | 55 91 45 10 01 04 03 03 01 01
+
+[1] 期望块长度 256 B，前缀 00 01 ff ff，填充 ff×207
+    PASS
+[2] 签发 uid=1: 签名 256 B  head=67 d1 f7 9e 47 f3 dc 6c…
+    签名长度为 256 : PASS
+[3] 公钥模幂后块头: 00 01 ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+    前两字节 00 01            : PASS
+    取回内容 == 构造的 46 B   : PASS
+    取回内容 uid 字段(BE)     : 1
+[4] 反例：verify(sig, uid=1) = True, verify(sig, uid=2) = False  : PASS
+[5] OpenSSL(独立实现) 恢复出的被签内容: 00 00 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 55 91 45 10 01 04 03 03 01 01
+    长度 46 B（实测：verifyrecover 会剥掉填充，只给内容）
+    OpenSSL 取回内容 == 我们的 46 B : PASS
+    反例：翻转签名 1 bit 后 OpenSSL 拒绝（PASS）
+
+[6] 与抓到的令牌回归（重推自 .superpowers\sdd\2026-10-05-official-login-channel\work\captures\streams5505）
+    uid=1  (streams5505/5505-47072.bin resp#1)
+      抓到的签名 256 B; type-1=True; 被签内容 == 我们为该 uid 构造的 46 B: True
+      除 uid 外的 42 字节与模板一致: True
+    uid=2  (streams5505/5505-47062.bin resp#2)
+      抓到的签名 256 B; type-1=True; 被签内容 == 我们为该 uid 构造的 46 B: True
+      除 uid 外的 42 字节与模板一致: True
+    uid=3  (streams5505/5505-47072.bin resp#6)
+      抓到的签名 256 B; type-1=True; 被签内容 == 我们为该 uid 构造的 46 B: True
+      除 uid 外的 42 字节与模板一致: True
+
+VERDICT: PASS

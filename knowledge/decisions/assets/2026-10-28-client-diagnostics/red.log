@@ -1,0 +1,25 @@
+Client diagnostics smoke: 24 failures
+FAIL: ACT1 CMD125 type 2 is consumed without falling through to a command reply
+FAIL: CMD125 Parsed log preserves parsed fields, length and optional identity without a raw body
+FAIL: ACT1 CMD125 type 3 is consumed before character selection
+FAIL: CMD125 Parsed log preserves parsed fields, length and optional identity without a raw body
+FAIL: malformed ACT1 CMD125 body of length 0 is consumed silently
+FAIL: CMD125 Malformed log preserves parsed fields, length and optional identity without a raw body
+FAIL: malformed ACT1 CMD125 body of length 1 is consumed silently
+FAIL: CMD125 Malformed log preserves parsed fields, length and optional identity without a raw body
+FAIL: malformed ACT1 CMD125 body of length 2 is consumed silently
+FAIL: CMD125 Malformed log preserves parsed fields, length and optional identity without a raw body
+FAIL: malformed ACT1 CMD125 body of length 3 is consumed silently
+FAIL: CMD125 Malformed log preserves parsed fields, length and optional identity without a raw body
+FAIL: unknown ACT1 CMD125 type is consumed as a diagnostic
+FAIL: CMD125 UnknownType log preserves parsed fields, length and optional identity without a raw body
+FAIL: captured historical CMD118 report is still consumed
+FAIL: historical CMD118 logs code 8 / flag 1 without claiming ACT1 trace-error semantics or dumping the body
+FAIL: captured historical CMD118 report is still consumed
+FAIL: historical CMD118 logs code 8 / flag 1 without claiming ACT1 trace-error semantics or dumping the body
+FAIL: short historical CMD118 report remains consumed without throwing
+FAIL: short historical report is logged as malformed
+FAIL: short historical CMD118 report remains consumed without throwing
+FAIL: short historical report is logged as malformed
+FAIL: short historical CMD118 report remains consumed without throwing
+FAIL: short historical report is logged as malformed

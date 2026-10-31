@@ -1,0 +1,18 @@
+{
+  "DFLegacy": {
+    "SeedTestAccount": false,
+    "ScriptPvfPath": "resources/Script.pvf",
+    "DataPath": "data/game/state.json",
+    "Processes": { "Channel": { "Enabled": false, "LinkPort": 7004 }, "Game": { "EntranceBinding": true } },
+    "Admin": { "Host": "127.0.0.1", "Port": 8081, "Users": [] },
+    "Entrance": { "Enabled": true, "Host": "127.0.0.1", "Port": 2311, "AdditionalPorts": [7001, 8080] },
+    "CharacterDatagram": { "Enabled": true, "Host": "127.0.0.1", "Port": 2311 },
+    "GameplayDatagram": { "Enabled": true, "Host": "127.0.0.1", "PrimaryPort": 7002, "SecondaryPort": 7003, "AdvertisedHost": "127.0.0.1" },
+    "Channel": { "Name": "DFLegacy", "Host": "127.0.0.1", "Port": 7001, "MaximumUsers": 100 },
+    "FallbackRelay": { "Enabled": true, "Host": "", "AdvertisedHost": "", "TcpPort": 7005, "UdpPort": 7005 },
+    "Pvp": { "Enabled": false, "Port": 7004 },
+    "GameProbe": { "Enabled": false, "Host": "127.0.0.1", "Port": 17001 },
+    "Experience": { "MonsterMultiplier": 1.0, "ClearMultiplier": 1.0 },
+    "EnablePacketTracing": false
+  }
+}

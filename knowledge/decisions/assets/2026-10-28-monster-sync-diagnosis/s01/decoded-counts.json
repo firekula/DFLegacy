@@ -1,0 +1,1202 @@
+{
+  "Schema": "offline-act1-application-check/v1",
+  "Phases": {
+    "fallback-v3": {
+      "A": {
+        "CaptureSha256": "4c0b986f94bc58ec378ff7c91384fd244cc079a6490d375758469e6891e70835",
+        "Applications": 60941,
+        "UnresolvedOuterCrc": 0,
+        "OpaqueWrapperCount": 24285,
+        "AckRecords": 43996,
+        "EmptyBlocks": 0,
+        "Records": [
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 12
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 1,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 10536
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 259
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 32,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 68
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 14
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 19,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 68
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 21,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 5
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 29,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 21
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 34,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 118
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 390
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 5
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 6327
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 935
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 1,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 9884
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 3,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 3
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 533
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 32,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 82
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 43
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 2,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 19,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 107
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 21,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 9
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 29,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 28
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 34,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 141
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 21381
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 3
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 5
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 8445
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 1510
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 2,
+            "Protocol": 28,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          }
+        ]
+      },
+      "B": {
+        "CaptureSha256": "23c81b60be45e8dfb07f5ac07f93fcf7cda6399d46c836e5bc6988551972298d",
+        "Applications": 60941,
+        "UnresolvedOuterCrc": 0,
+        "OpaqueWrapperCount": 24283,
+        "AckRecords": 43998,
+        "EmptyBlocks": 0,
+        "Records": [
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 1,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 9883
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 3,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 533
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 32,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 82
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 41
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 2,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 19,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 107
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 21,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 9
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 29,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 28
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 34,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 141
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 21381
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 3
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 5
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 8445
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 1510
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 2,
+            "Protocol": 28,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 12
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 1,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 10540
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 259
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 32,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 68
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 14
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 19,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 68
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 21,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 5
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 29,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 21
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 34,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 118
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 390
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 5
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 6327
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 935
+          }
+        ]
+      }
+    },
+    "fallback-v4": {
+      "A": {
+        "CaptureSha256": "05cd797f3d7bcf12fe1bfe83f2c5068763aa8bdbd492a3e400a347cbfc1246c5",
+        "Applications": 8538,
+        "UnresolvedOuterCrc": 0,
+        "OpaqueWrapperCount": 1138,
+        "AckRecords": 8101,
+        "EmptyBlocks": 0,
+        "Records": [
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 6
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 1,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 1964
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 45
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 32,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 10
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 9
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 19,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 9
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 29,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 14
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 34,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 18
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 61
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 3
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1319
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 201
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 1,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 1857
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 3,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 3
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 218
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 32,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 21
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 25
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 2,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 19,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 31
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 21,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 7
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 29,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 21
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 34,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 28
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 488
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 3
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1820
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 348
+          }
+        ]
+      },
+      "B": {
+        "CaptureSha256": "29108275ac5d918ea74d84dbc1652b7a290983bbd77b6e60d0d1c7ad94bf8d99",
+        "Applications": 8535,
+        "UnresolvedOuterCrc": 0,
+        "OpaqueWrapperCount": 1137,
+        "AckRecords": 8102,
+        "EmptyBlocks": 0,
+        "Records": [
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 1,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 1855
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 3,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 218
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 32,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 21
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 24
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 2,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 19,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 31
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 21,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 7
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 29,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 21
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 34,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 28
+          },
+          {
+            "Direction": "RX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 488
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 3
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1819
+          },
+          {
+            "Direction": "RX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 348
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 2
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 0,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 6
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 1,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 1967
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 45
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 32,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 10
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 9
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 19,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 9
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 29,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 14
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 34,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 18
+          },
+          {
+            "Direction": "TX",
+            "Block": 1,
+            "Mode": 2,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 61
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 0,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 0,
+            "Protocol": 11,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 3
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 4,
+            "Codec": "rol1-xor56",
+            "CrcValid": true,
+            "Count": 1319
+          },
+          {
+            "Direction": "TX",
+            "Block": 2,
+            "Mode": 1,
+            "Protocol": 42,
+            "Codec": "plain",
+            "CrcValid": true,
+            "Count": 201
+          }
+        ]
+      }
+    }
+  },
+  "Scope": "Outer applications and reliable record boundaries only; GP42 plugin body stays opaque. No native dispatch/sequence acceptance or complete GP5/GP6 claim."
+}

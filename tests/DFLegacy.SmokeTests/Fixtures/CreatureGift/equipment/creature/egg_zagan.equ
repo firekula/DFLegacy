@@ -1,0 +1,26 @@
+[name] `³èÎïµ° (Èö¹²)`
+[name2] `An Egg of Zagan`
+[attach type] `[sealing]`
+[rarity] 1
+[usable job]
+`[all]`
+[/usable job]
+[minimum level] 1
+
+[icon] `item/creature/creature_egg.img` 11
+[field image] `item/fieldimage.img` 30
+
+[equipment type] `[creature]` 0
+
+[sub type] 1
+[creature species] 9
+[output index] 63019
+[cool time] 10000
+
+[MP MAX rate] 5.00
+[stuck] -1.00
+
+[move wav] `CREATURE_EGG_TOUCH`
+
+[set item master] -1
+

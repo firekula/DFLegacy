@@ -1,0 +1,5 @@
+# Dead test observation design
+
+Continue authorized U05: separate bounded ground/inventory observation from living-player mutation validation. Revalidate local process, scene3, user/actor/UID/death, current stage/map and fresh server lease before and after reads. Observation binds the stage map even when the dead actor is detached; export additive observer identity/death/map metadata. Truncated SDK may publish explicit unusable ground, independently bounded inventory. Never run native methods or mutate through this path; all existing operations still require living attached player.
+
+Consumers validate observer metadata against current SDK, with old v1 living snapshots compatible and old unbound dead snapshots unknown. Test dead attached/detached/current-stage versus stale actor map, identity/death/key/lease changes, truncation and zero action authorization. Isolated four-client acceptance uses existing player-kill, obtains new dead sequences and inventory/ground, preserves key original images, closes/restores before report. U11 removal behavior remains deferred last.

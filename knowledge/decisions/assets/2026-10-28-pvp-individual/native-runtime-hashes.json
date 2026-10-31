@@ -1,0 +1,63 @@
+{
+  "historical_managed_commit": "cacab2e",
+  "native_commit": "3a35188",
+  "runtime_files": [
+    {
+      "Name": "DFLegacy.InterProcess.dll",
+      "Sha256": "0ECFC8FD30FDB4F38AE74B3E96C430218F36BBC98441925FF21ED80CCCFB3E2E"
+    },
+    {
+      "Name": "DFLegacy.InterProcess.pdb",
+      "Sha256": "D40257D2A5DCE5E14214119D09C6D33F611C2DC6C31AF43BA2786901AA29BFC8"
+    },
+    {
+      "Name": "DFLegacy.Protocol.dll",
+      "Sha256": "5D70C11C12AB5A9A257669C65408ACE41F1C2BEDC22649A409C29F7F2B9EDABB"
+    },
+    {
+      "Name": "DFLegacy.Protocol.pdb",
+      "Sha256": "2AB0F64F69D5A1542B09C5300ABF9B80952FDA6BA681A579B4D24052457511F9"
+    },
+    {
+      "Name": "DFLegacy.RandomNative.dll",
+      "Sha256": "261883BD20CFF1CD882E89467D9F1851E4C63E92CA5D805CC9074ACE827AA583"
+    },
+    {
+      "Name": "DFLegacy.Server.deps.json",
+      "Sha256": "2DAEB1832EDF969061314A541B26ED75C9A558A5B4A267812E8E90D4B2A37959"
+    },
+    {
+      "Name": "DFLegacy.Server.dll",
+      "Sha256": "48244DCEC0EC9AC556D6C14CA3DC3CA6701CA6208A12E4D1FD679A0FB24E2B9A"
+    },
+    {
+      "Name": "DFLegacy.Server.exe",
+      "Sha256": "A2EBEA234289AA9ADA3F24C4DAB0E0A729EAAEC8D188A4048D81FE3CF2E85349"
+    },
+    {
+      "Name": "DFLegacy.Server.pdb",
+      "Sha256": "3A6EAF0208409465ED527DE814326DD907A95D28357A0DFEB63D42879DCD8B31"
+    },
+    {
+      "Name": "DFLegacy.Server.runtimeconfig.json",
+      "Sha256": "9FD781CDA327A8010D236D8B004D3A47D523C4AB220FBDC4D4636314896FC88D"
+    },
+    {
+      "Name": "DFLegacy.Server.staticwebassets.endpoints.json",
+      "Sha256": "D62E60BADFE7C8FE9F556B215F5FEFA83F65CFCB3923C1DB83665698373FF28D"
+    },
+    {
+      "Name": "ijl15.dll",
+      "Sha256": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC"
+    },
+    {
+      "Name": "server.json",
+      "Sha256": "D604F6F0F9F351745B306EAEEEC8DAD028BF0330D4071090BCE80176CCB8F47C"
+    },
+    {
+      "Name": "web.config",
+      "Sha256": "74056335736AC0DD02C899C0C1AB8B8ED46B5C770A8A53EA2596C0C075DAEE6D"
+    }
+  ],
+  "final_delivery_binding": "PENDING"
+}

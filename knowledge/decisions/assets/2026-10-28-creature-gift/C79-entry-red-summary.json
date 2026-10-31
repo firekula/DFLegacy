@@ -1,0 +1,73 @@
+{
+  "scope": "Existing closed C79 ENTRY_RED selected capture/observer summary; no new raw decoding in this export",
+  "native_sha256": "C79E139201E55DAE86AD6FD6ABE501A98759371269F937046E0C392B1830C912",
+  "source_capture_sha256": "AFD182EDE186602CE4B360E436EBD68CD9D11EEBD43D10787DA45AA6C80D002E",
+  "source_observer_sha256": "31E5DF69D6935743D586AF6AE2566B0BB13E615CF622DDA54327D4026A1E4D2D",
+  "state_sha256": "3E5A68F8F8322D1B726D1AF117CCB49433DE8B5F344DF307ADD3A33549B38665",
+  "roles": {
+    "A": {
+      "Cash": 26600,
+      "GiftReceiveCount": 0,
+      "GiftReceiveYearMonth": null,
+      "GiftReceiveKeysAbsent": true,
+      "Mails": [],
+      "Creatures": [],
+      "ScopedOrdinaryInventory": [],
+      "AvatarInventoryCount": 0,
+      "AvatarInventory": [],
+      "CountOrValueMeaning": "mail quantity=1; CreatureInventory CountOrValue is allocated wire UID, InstanceId is persistent UUID"
+    },
+    "B": {
+      "Cash": 997790,
+      "GiftReceiveCount": 0,
+      "GiftReceiveYearMonth": null,
+      "GiftReceiveKeysAbsent": true,
+      "Mails": [],
+      "Creatures": [],
+      "ScopedOrdinaryInventory": [],
+      "AvatarInventoryCount": 0,
+      "AvatarInventory": [],
+      "CountOrValueMeaning": "mail quantity=1; CreatureInventory CountOrValue is allocated wire UID, InstanceId is persistent UUID"
+    }
+  },
+  "captures": [
+    {
+      "role": "A",
+      "pid": 52752,
+      "counts": {
+        "TX_frames": 10,
+        "RX_frames": 31,
+        "TX_crc_valid": 10,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 5,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 4,
+        "RX_NOTI97": 1
+      }
+    },
+    {
+      "role": "B",
+      "pid": 71876,
+      "counts": {
+        "TX_frames": 10,
+        "RX_frames": 31,
+        "TX_crc_valid": 10,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 5,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 4,
+        "RX_NOTI97": 1
+      }
+    }
+  ],
+  "native_acceptance": "ENTRY_RED",
+  "private_raw_inputs_exported": false
+}

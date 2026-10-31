@@ -1,0 +1,6 @@
+SUBFAILED(scenario='room_changed') tests/test_debug_test_control.py::PlayerKillTests::test_incomplete_or_stale_observers_never_confirm_death
+FAILED tests/test_debug_test_control.py::PlayerKillTests::test_partial_native_player_death_is_observed_once_without_retransmission
+FAILED tests/test_debug_test_control.py::PlayerKillTests::test_player_death_wire_is_self_only_and_has_no_free_hp_operands
+FAILED tests/test_debug_test_control.py::PlayerKillTests::test_player_kill_cli_dispatches_separately_from_monster_kill
+FAILED tests/test_debug_test_control.py::PlayerKillTests::test_player_kill_requires_actual_server_self_and_peer_death
+10 failed, 1 passed, 56 deselected in 0.43s

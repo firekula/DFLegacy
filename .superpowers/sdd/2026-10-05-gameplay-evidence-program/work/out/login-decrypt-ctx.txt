@@ -1,0 +1,38 @@
+0x081e8fc0  mov     dword ptr [esp + 0xc], 0
+0x081e8fc8  mov     dword ptr [esp + 8], 0
+0x081e8fd0  mov     dword ptr [esp + 4], 0x8bd0860
+0x081e8fd8  mov     dword ptr [esp], 0x660d
+0x081e8fdf  call 0x085908d7  _Z8LineFunciPKcij
+0x081e8fe4  mov     ebx, eax
+0x081e8fe6  jmp     0x81e9e77
+0x081e8feb  mov     dword ptr [esp + 8], 0x801
+0x081e8ff3  mov     dword ptr [esp + 4], 0
+0x081e8ffb  mov     dword ptr [esp], 0x940a2e0
+0x081e9002  call 0x0807dcc0  _init
+0x081e9007  mov     eax, dword ptr [ebp - 0x88]
+0x081e900d  mov     dword ptr [esp + 0xc], eax
+0x081e9011  mov     dword ptr [esp + 8], 0x801
+0x081e9019  mov     dword ptr [esp + 4], 0x940a2e0
+0x081e9021  mov     eax, dword ptr [ebp + 0x10]
+0x081e9024  mov     dword ptr [esp], eax
+0x081e9027  call 0x0858d2bc  _ZN9PacketBuf7get_strEPcii
+0x081e902c  xor     eax, 1
+0x081e902f  test    al, al
+0x081e9031  je      0x81e905e
+0x081e9033  mov     dword ptr [esp + 0xc], 0
+0x081e903b  mov     dword ptr [esp + 8], 0
+0x081e9043  mov     dword ptr [esp + 4], 0x8bd0860
+0x081e904b  mov     dword ptr [esp], 0x6612
+0x081e9052  call 0x085908d7  _Z8LineFunciPKcij
+0x081e9057  mov     ebx, eax
+0x081e9059  jmp     0x81e9e77
+0x081e905e  mov     eax, dword ptr [ebp + 0xc]
+0x081e9061  mov     dword ptr [esp], eax
+0x081e9064  call 0x0816ee1e  _ZN5CUser17getGarenaAuthDataEv
+0x081e9069  mov     edx, dword ptr [ebp - 0x88]
+0x081e906f  mov     dword ptr [esp + 8], eax
+0x081e9073  mov     dword ptr [esp + 4], edx
+0x081e9077  mov     dword ptr [esp], 0x940a2e0
+0x081e907e  call 0x081731f2  _ZN6Taiwan15AuthGarenaToken7decryptEPKciRNS_14GarenaAuthDataE
+0x081e9083  test    eax, eax
+0x081e9085  setne   al

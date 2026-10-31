@@ -1,0 +1,5 @@
+# Bounded debug callback timing
+
+Continue authorized U08 diagnosis with a default-off ExportFrameProfile INI switch. Record QPC spans around the complete DebugRender callback, including content publication, and its state/navigation/party/test/render phases. Keep fixed-size one-second buckets and slow-event rings in memory; export at most five times per second from the existing worker via atomic replacement, without game-thread file IO. Bind PID/process-start, scene and foreground endpoints. Preserve unknown clock/foreground and missing bucket coverage.
+
+This measures debug callback wall duration and adjacent invocation intervals. It is not GPU Present, continuous foreground proof or attribution of native work outside DebugRender. No gameplay/protocol changes. Native deterministic tests first; isolated data-driven idle/continuous/short-plan/route/idle phases, no screenshots during timing and key image afterward; independent review, protected restoration, report/commit. Then U10/U09/U11last.

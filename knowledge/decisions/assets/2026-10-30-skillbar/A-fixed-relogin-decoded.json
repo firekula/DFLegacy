@@ -1,0 +1,221 @@
+{
+  "schema": "skillbar-only/v1",
+  "client": "A",
+  "input": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\skillbar-verification-20261030\\closed-skillbar-v3\\A-netdump.log",
+  "input_captured_length": 43060,
+  "input_captured_sha256": "43223DA20AAE8E6447565AE58EE9FDCD4C99FB01C333E3E7F6F73B0E01062D8A",
+  "complete_line_bytes": 43060,
+  "partial_final_line_bytes": 0,
+  "port": "7001",
+  "from": null,
+  "to": null,
+  "endpoint_inventory": {
+    "TX 127.0.0.1:9761 -\u003E 127.0.0.1:27001": 6,
+    "RX 127.0.0.1:9761 -\u003E 127.0.0.1:27001": 65,
+    "RX 192.168.3.177:9762 -\u003E 192.168.3.177:7001": 8,
+    "TX 192.168.3.177:9762 -\u003E 192.168.3.177:7001": 9
+  },
+  "rows": [
+    {
+      "client": "A",
+      "direction": "RX",
+      "protocol": "NOTI19",
+      "sp": 10,
+      "skills": [
+        {
+          "slot": 0,
+          "id": 57,
+          "level": 5
+        },
+        {
+          "slot": 2,
+          "id": 15,
+          "level": 10
+        },
+        {
+          "slot": 3,
+          "id": 27,
+          "level": 6
+        },
+        {
+          "slot": 4,
+          "id": 31,
+          "level": 5
+        },
+        {
+          "slot": 5,
+          "id": 55,
+          "level": 2
+        },
+        {
+          "slot": 6,
+          "id": 19,
+          "level": 10
+        },
+        {
+          "slot": 7,
+          "id": 17,
+          "level": 20
+        },
+        {
+          "slot": 8,
+          "id": 16,
+          "level": 5
+        },
+        {
+          "slot": 10,
+          "id": 18,
+          "level": 5
+        },
+        {
+          "slot": 11,
+          "id": 42,
+          "level": 1
+        },
+        {
+          "slot": 12,
+          "id": 2,
+          "level": 9
+        },
+        {
+          "slot": 13,
+          "id": 29,
+          "level": 7
+        },
+        {
+          "slot": 14,
+          "id": 38,
+          "level": 10
+        },
+        {
+          "slot": 15,
+          "id": 61,
+          "level": 6
+        },
+        {
+          "slot": 17,
+          "id": 64,
+          "level": 6
+        },
+        {
+          "slot": 90,
+          "id": 3,
+          "level": 1
+        },
+        {
+          "slot": 91,
+          "id": 37,
+          "level": 1
+        },
+        {
+          "slot": 92,
+          "id": 4,
+          "level": 1
+        },
+        {
+          "slot": 93,
+          "id": 14,
+          "level": 1
+        },
+        {
+          "slot": 94,
+          "id": 12,
+          "level": 1
+        },
+        {
+          "slot": 132,
+          "id": 28,
+          "level": 5
+        },
+        {
+          "slot": 137,
+          "id": 11,
+          "level": 1
+        },
+        {
+          "slot": 174,
+          "id": 181,
+          "level": 3
+        },
+        {
+          "slot": 175,
+          "id": 182,
+          "level": 3
+        },
+        {
+          "slot": 176,
+          "id": 184,
+          "level": 2
+        },
+        {
+          "slot": 177,
+          "id": 187,
+          "level": 1
+        },
+        {
+          "slot": 178,
+          "id": 179,
+          "level": 5
+        },
+        {
+          "slot": 179,
+          "id": 169,
+          "level": 1
+        },
+        {
+          "slot": 180,
+          "id": 170,
+          "level": 1
+        },
+        {
+          "slot": 181,
+          "id": 176,
+          "level": 10
+        },
+        {
+          "slot": 182,
+          "id": 175,
+          "level": 1
+        },
+        {
+          "slot": 183,
+          "id": 188,
+          "level": 9
+        },
+        {
+          "slot": 184,
+          "id": 180,
+          "level": 10
+        },
+        {
+          "slot": 185,
+          "id": 189,
+          "level": 1
+        }
+      ],
+      "first_line": 94,
+      "last_line": 94,
+      "time": "2026-10-30T03:50:24.093",
+      "wire_sha256": "0A6BCBFE476E7FD7DA892F2A2DED275E836A4547E84217F03A95C8A99ADA15F5",
+      "decode": "GamePayloadCipher.DecryptServerPayload"
+    }
+  ],
+  "errors": [],
+  "selected_decode_failures": 0,
+  "other_decode_failures": 0,
+  "streams": [
+    {
+      "flow": "RX 192.168.3.177:9762 -\u003E 192.168.3.177:7001",
+      "Failed": false,
+      "pending_bytes": 0,
+      "frames": 31
+    },
+    {
+      "flow": "TX 192.168.3.177:9762 -\u003E 192.168.3.177:7001",
+      "Failed": false,
+      "pending_bytes": 0,
+      "frames": 9
+    }
+  ],
+  "scope": "Only CMD30 slot requests/ACK and NOTI19 skill triples emitted. Socket return log timestamps are not native apply or wire transmission times. Last partial live record/frame remains pending; no scan resync."
+}

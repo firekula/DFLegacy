@@ -1,0 +1,784 @@
+{
+  "schema": "mentor-master-gold-native-public-proof/v1",
+  "scope": "Bounded selected economy and packets only; no full state, credentials, endpoints, names, UUIDs or raw packet bytes. Original UI screenshots are separate unchanged test-character evidence.",
+  "overall": "PARTIAL_NATIVE_NOT_READY",
+  "online": {
+    "phase": "mentor-gold-final-5078",
+    "server_pid": 60360,
+    "client_pids": {
+      "A": 25588,
+      "B": 64696
+    },
+    "before": {
+      "A": {
+        "gold": 50677,
+        "level": 45,
+        "experience": 38402107,
+        "relationship_experience": 0,
+        "canonical_master_role": null,
+        "awarded_receipt_count": 0,
+        "pending_dungeon_gold": 0,
+        "pending_store_gold": 0,
+        "pending_mentor_gold": 0
+      },
+      "B": {
+        "gold": 50351,
+        "level": 6,
+        "experience": 17743,
+        "relationship_experience": 10,
+        "canonical_master_role": "A",
+        "awarded_receipt_count": 0,
+        "pending_dungeon_gold": 0,
+        "pending_store_gold": 0,
+        "pending_mentor_gold": 0
+      }
+    },
+    "after": {
+      "A": {
+        "gold": 50680,
+        "level": 45,
+        "experience": 38402107,
+        "relationship_experience": 0,
+        "canonical_master_role": null,
+        "awarded_receipt_count": 1,
+        "pending_dungeon_gold": 0,
+        "pending_store_gold": 0,
+        "pending_mentor_gold": 0
+      },
+      "B": {
+        "gold": 50436,
+        "level": 6,
+        "experience": 18463,
+        "relationship_experience": 16,
+        "canonical_master_role": "A",
+        "awarded_receipt_count": 0,
+        "pending_dungeon_gold": 0,
+        "pending_store_gold": 0,
+        "pending_mentor_gold": 0
+      }
+    },
+    "packets": [
+      {
+        "role": "A",
+        "pid": 25588,
+        "counts": {
+          "TX_frames": 57,
+          "RX_frames": 80,
+          "TX_crc_valid": 57,
+          "TX_crc_errors": 0,
+          "selected_layout_errors": 0,
+          "selected_events": 7,
+          "incomplete_tcp_bytes": 0,
+          "disabled_flows": 0
+        },
+        "packets": [
+          {
+            "frame_ordinal": 1,
+            "source_line": 93,
+            "at": "2026-10-28 06:27:08.958",
+            "direction": "TX",
+            "type": 1,
+            "op": 4,
+            "event": "character_selection_request"
+          },
+          {
+            "frame_ordinal": 2,
+            "source_line": 99,
+            "at": "2026-10-28 06:27:09.412",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50677
+          },
+          {
+            "frame_ordinal": 6,
+            "source_line": 400,
+            "at": "2026-10-28 07:04:05.539",
+            "direction": "RX",
+            "type": 0,
+            "op": 76,
+            "event": "mentor_gold_award",
+            "actual_gold": 3,
+            "fatigue": 0,
+            "source_name_bytes_redacted": 8,
+            "source_name_matches_expected": true
+          },
+          {
+            "frame_ordinal": 7,
+            "source_line": 400,
+            "at": "2026-10-28 07:04:05.539",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50680
+          }
+        ]
+      },
+      {
+        "role": "B",
+        "pid": 64696,
+        "counts": {
+          "TX_frames": 146,
+          "RX_frames": 233,
+          "TX_crc_valid": 146,
+          "TX_crc_errors": 0,
+          "selected_layout_errors": 0,
+          "selected_events": 29,
+          "incomplete_tcp_bytes": 0,
+          "disabled_flows": 0
+        },
+        "packets": [
+          {
+            "frame_ordinal": 1,
+            "source_line": 93,
+            "at": "2026-10-28 06:28:14.679",
+            "direction": "TX",
+            "type": 1,
+            "op": 4,
+            "event": "character_selection_request"
+          },
+          {
+            "frame_ordinal": 2,
+            "source_line": 96,
+            "at": "2026-10-28 06:28:14.692",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50351
+          },
+          {
+            "frame_ordinal": 6,
+            "source_line": 400,
+            "at": "2026-10-28 06:58:50.280",
+            "direction": "TX",
+            "type": 1,
+            "op": 46,
+            "event": "pickup_request",
+            "ground_id": 1
+          },
+          {
+            "frame_ordinal": 7,
+            "source_line": 401,
+            "at": "2026-10-28 06:58:50.308",
+            "direction": "RX",
+            "type": 0,
+            "op": 39,
+            "event": "gold_pickup",
+            "ground_id": 1,
+            "actual_by_party_slot": [
+              20,
+              0,
+              0,
+              0
+            ],
+            "actual_total": 20
+          },
+          {
+            "frame_ordinal": 8,
+            "source_line": 402,
+            "at": "2026-10-28 06:58:50.318",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50371
+          },
+          {
+            "frame_ordinal": 10,
+            "source_line": 466,
+            "at": "2026-10-28 07:01:21.942",
+            "direction": "TX",
+            "type": 1,
+            "op": 46,
+            "event": "pickup_request",
+            "ground_id": 8
+          },
+          {
+            "frame_ordinal": 11,
+            "source_line": 467,
+            "at": "2026-10-28 07:01:21.948",
+            "direction": "RX",
+            "type": 0,
+            "op": 39,
+            "event": "gold_pickup",
+            "ground_id": 8,
+            "actual_by_party_slot": [
+              20,
+              0,
+              0,
+              0
+            ],
+            "actual_total": 20
+          },
+          {
+            "frame_ordinal": 12,
+            "source_line": 468,
+            "at": "2026-10-28 07:01:21.953",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50391
+          },
+          {
+            "frame_ordinal": 14,
+            "source_line": 483,
+            "at": "2026-10-28 07:01:58.900",
+            "direction": "TX",
+            "type": 1,
+            "op": 46,
+            "event": "pickup_request",
+            "ground_id": 10
+          },
+          {
+            "frame_ordinal": 16,
+            "source_line": 484,
+            "at": "2026-10-28 07:01:58.915",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50391
+          },
+          {
+            "frame_ordinal": 18,
+            "source_line": 485,
+            "at": "2026-10-28 07:01:59.352",
+            "direction": "TX",
+            "type": 1,
+            "op": 46,
+            "event": "pickup_request",
+            "ground_id": 9
+          },
+          {
+            "frame_ordinal": 19,
+            "source_line": 486,
+            "at": "2026-10-28 07:01:59.359",
+            "direction": "RX",
+            "type": 0,
+            "op": 39,
+            "event": "gold_pickup",
+            "ground_id": 9,
+            "actual_by_party_slot": [
+              21,
+              0,
+              0,
+              0
+            ],
+            "actual_total": 21
+          },
+          {
+            "frame_ordinal": 20,
+            "source_line": 486,
+            "at": "2026-10-28 07:01:59.359",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50412
+          },
+          {
+            "frame_ordinal": 22,
+            "source_line": 520,
+            "at": "2026-10-28 07:03:05.535",
+            "direction": "RX",
+            "type": 0,
+            "op": 35,
+            "event": "clear_card_previews",
+            "free_gold_by_column": [
+              24,
+              24,
+              24,
+              24
+            ]
+          },
+          {
+            "frame_ordinal": 23,
+            "source_line": 528,
+            "at": "2026-10-28 07:03:28.104",
+            "direction": "RX",
+            "type": 1,
+            "op": 74,
+            "event": "card_select_reply",
+            "columns": [
+              {
+                "column": 0,
+                "free_owner": 0,
+                "paid_owner": 255,
+                "paid_entries": []
+              },
+              {
+                "column": 1,
+                "free_owner": 255,
+                "paid_owner": 255,
+                "paid_entries": []
+              },
+              {
+                "column": 2,
+                "free_owner": 255,
+                "paid_owner": 255,
+                "paid_entries": []
+              },
+              {
+                "column": 3,
+                "free_owner": 255,
+                "paid_owner": 255,
+                "paid_entries": []
+              }
+            ]
+          },
+          {
+            "frame_ordinal": 24,
+            "source_line": 528,
+            "at": "2026-10-28 07:03:28.104",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50436
+          },
+          {
+            "frame_ordinal": 25,
+            "source_line": 548,
+            "at": "2026-10-28 07:04:27.698",
+            "direction": "TX",
+            "type": 1,
+            "op": 4,
+            "event": "character_selection_request"
+          },
+          {
+            "frame_ordinal": 26,
+            "source_line": 549,
+            "at": "2026-10-28 07:04:27.704",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50436
+          }
+        ]
+      }
+    ],
+    "flush": [
+      {
+        "server_line": 1109,
+        "at_local": "07:04:05",
+        "basis": 85,
+        "L": 4,
+        "N": 1,
+        "C": 10,
+        "requested": 3,
+        "actual": 3
+      }
+    ],
+    "award_receipts": [
+      {
+        "receipt_key": "ee8f8c0d973493c0",
+        "child_role": "B",
+        "source_name_bytes_redacted": 8,
+        "source_name_matches_expected": true,
+        "basis": 85,
+        "relationship_level": 4,
+        "connected_children": 1,
+        "capacity": 10,
+        "requested_gold": 3,
+        "actual_gold": 3,
+        "applied": true
+      }
+    ],
+    "formula": [
+      {
+        "receipt_key": "ee8f8c0d973493c0",
+        "basis": 85,
+        "L": 4,
+        "N": 1,
+        "C": 10,
+        "relationship_bits": "0ad7233d",
+        "online_bits": "0ad7a33b",
+        "rate_bits": "eb51383d",
+        "rate": 0.044999998062849045,
+        "requested": 3,
+        "expected_credited": 3,
+        "actual_credited": 3
+      }
+    ],
+    "source_totals": {
+      "generated_pickup_requested": 61,
+      "generated_pickup_actual": 61,
+      "free_cards": [
+        {
+          "receipt_key": "bfa1f7c6cdd26e5b",
+          "actual_gold_delta": 24,
+          "requested_from_packet_preview": 24,
+          "matching_CMD74_reply": true,
+          "manual_CMD74_seen": false
+        }
+      ]
+    },
+    "packet_order": [
+      {
+        "at": "2026-10-28 07:04:05.539",
+        "award_count": 1,
+        "delta": 3,
+        "prior_absolute": 50677,
+        "expected_absolute": 50680,
+        "observed_absolute": 50680
+      }
+    ],
+    "checks": [
+      {
+        "check": "strict_capture_A_25588",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "strict_capture_B_64696",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "no_receipt_loss",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "no_unsupported_card_layout",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "untruncated_state_evidence",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "official_formula_ee8f8c0d973493c0",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "receipt_identity_ee8f8c0d973493c0",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "own_edge_level_ee8f8c0d973493c0",
+        "status": "PASS",
+        "evidence": {
+          "before_level": 3,
+          "after_level": 4,
+          "expected_level": 4,
+          "changing_level_requires": "Explicit flush-time expected_relationship_level from bounded server evidence"
+        }
+      },
+      {
+        "check": "connected_count_ee8f8c0d973493c0",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "full_NOTI76_fields",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "N76_then_absolute_1",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "no_unpaired_NOTI76",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "positive_canonical_award_exists",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "native_NOTI76_exists",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "award_receipt_packet_values",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "canonical_and_HUD_wallet",
+        "status": "PASS",
+        "evidence": "Requires isolated master income in this bounded case; other income must be checked separately"
+      },
+      {
+        "check": "native_generated_pickup",
+        "status": "PASS",
+        "evidence": {
+          "requested": 61,
+          "actual": 61
+        }
+      },
+      {
+        "check": "native_free_card",
+        "status": "PASS",
+        "evidence": [
+          {
+            "receipt_key": "bfa1f7c6cdd26e5b",
+            "actual_gold_delta": 24,
+            "requested_from_packet_preview": 24,
+            "matching_CMD74_reply": true,
+            "manual_CMD74_seen": false
+          }
+        ]
+      },
+      {
+        "check": "pickup_request_notification_join",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "solo_pickup_actual_grants_match_ledger",
+        "status": "PASS",
+        "evidence": "Bounded solo window only: every Gold pickup notification must reconcile with the selected source-1 ledger"
+      },
+      {
+        "check": "complete_tax_basis",
+        "status": "PASS",
+        "evidence": null
+      }
+    ],
+    "automated_checks": "PASS",
+    "same_process_B_reentry": "One actual B character selection after the award; no second A NOTI76 observed. Not claimed as multiple A relogins.",
+    "ordinary_exit": {
+      "scope": "Literal TX CMD7 sequence-only body, complete raw capture CRC validated, frozen input SHA verified",
+      "return_selection": [
+        {
+          "at": "2026-10-28 07:04:05.491",
+          "line": 541,
+          "direction": "TX",
+          "type": 1,
+          "op": 7,
+          "event": "return_character_selection_request"
+        }
+      ],
+      "driver_phase_pid": 64696,
+      "driver_success": true
+    }
+  },
+  "restart": {
+    "phase": "gold-persist-relogin",
+    "server_pid": 55284,
+    "client_pids": {
+      "A": 12628,
+      "B": 56412
+    },
+    "before_equals_online_final": true,
+    "after": {
+      "A": {
+        "gold": 50680,
+        "level": 45,
+        "experience": 38402107,
+        "relationship_experience": 0,
+        "canonical_master_role": null,
+        "awarded_receipt_count": 1,
+        "pending_dungeon_gold": 0,
+        "pending_store_gold": 0,
+        "pending_mentor_gold": 0
+      },
+      "B": {
+        "gold": 50436,
+        "level": 6,
+        "experience": 18463,
+        "relationship_experience": 16,
+        "canonical_master_role": "A",
+        "awarded_receipt_count": 0,
+        "pending_dungeon_gold": 0,
+        "pending_store_gold": 0,
+        "pending_mentor_gold": 0
+      }
+    },
+    "packets": [
+      {
+        "role": "A",
+        "pid": 12628,
+        "counts": {
+          "TX_frames": 10,
+          "RX_frames": 32,
+          "TX_crc_valid": 10,
+          "TX_crc_errors": 0,
+          "selected_layout_errors": 0,
+          "selected_events": 5,
+          "incomplete_tcp_bytes": 0,
+          "disabled_flows": 0
+        },
+        "packets": [
+          {
+            "frame_ordinal": 1,
+            "source_line": 93,
+            "at": "2026-10-28 07:05:31.662",
+            "direction": "TX",
+            "type": 1,
+            "op": 4,
+            "event": "character_selection_request"
+          },
+          {
+            "frame_ordinal": 2,
+            "source_line": 99,
+            "at": "2026-10-28 07:05:32.273",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50680
+          }
+        ]
+      },
+      {
+        "role": "B",
+        "pid": 56412,
+        "counts": {
+          "TX_frames": 9,
+          "RX_frames": 31,
+          "TX_crc_valid": 9,
+          "TX_crc_errors": 0,
+          "selected_layout_errors": 0,
+          "selected_events": 5,
+          "incomplete_tcp_bytes": 0,
+          "disabled_flows": 0
+        },
+        "packets": [
+          {
+            "frame_ordinal": 1,
+            "source_line": 93,
+            "at": "2026-10-28 07:06:06.353",
+            "direction": "TX",
+            "type": 1,
+            "op": 4,
+            "event": "character_selection_request"
+          },
+          {
+            "frame_ordinal": 2,
+            "source_line": 94,
+            "at": "2026-10-28 07:06:06.358",
+            "direction": "RX",
+            "type": 0,
+            "op": 13,
+            "event": "absolute_gold",
+            "gold": 50436
+          }
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "check": "strict_capture_A_12628",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "strict_capture_B_56412",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "no_receipt_loss",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "no_unsupported_card_layout",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "untruncated_state_evidence",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "full_NOTI76_fields",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "no_unpaired_NOTI76",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "relogin_observed",
+        "status": "PASS",
+        "evidence": {
+          "observed": 1
+        }
+      },
+      {
+        "check": "relogin_existing_award_to_retain",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "relogin_no_replayed_popup_or_new_receipt",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "relogin_wallet_retained",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "relogin_absolute_wallet_observed",
+        "status": "PASS",
+        "evidence": null
+      },
+      {
+        "check": "relogin_receipts_stable",
+        "status": "PASS",
+        "evidence": null
+      }
+    ],
+    "both_roles_checks": {
+      "A_wallet_retained": true,
+      "A_receipts_unchanged": true,
+      "A_no_NOTI76": true,
+      "A_actual_character_login": true,
+      "B_wallet_retained": true,
+      "B_receipts_unchanged": true,
+      "B_no_NOTI76": true,
+      "B_actual_character_login": true,
+      "exactly_one_award_applied": true,
+      "pickup_and_card_receipts_unchanged": true,
+      "Pvp_three_receipts_preserved": true
+    },
+    "automated_checks": "PASS",
+    "scope": "One new login of each client after complete server/client restart; no new source or elapsed offline earning claimed."
+  },
+  "coverage": {
+    "online_generated_pickup": "PASS_NATIVE",
+    "automatic_free_card": "PASS_PACKET_LEDGER; no opened-card image available",
+    "ordinary_character_selection_flush": "PASS_NATIVE",
+    "named_master_gold_message": "PASS_NATIVE_ORIGINAL_IMAGE",
+    "full_service_restart_wallet_and_no_popup_replay": "PASS_NATIVE",
+    "master_offline_source_control": "PENDING_NATIVE",
+    "real_600_plus_random_timer_expiry": "PENDING_NATIVE",
+    "multi_child_cap_faults": "AUTOMATED_ONLY",
+    "fatigue_COF": "BLOCKED"
+  },
+  "integrity": {
+    "online_private_freeze_manifest_sha256": "E245517F3E332100632A9306E558B6EDF4E72AFF24F17E79FEBB17B596D56377",
+    "restart_private_freeze_manifest_sha256": "ABEB9FC7CC2E916A7C3F3D1E96EB42C4E2822C95055878CC51E8A68051CC2DDD",
+    "checker_sha256": "EEDA9D42D68915771E662D0DECFB793004C50483DEEE92069744B1A6F4C38498",
+    "checker_selftest": "PASS; 230 independent oracle rows at basis1000 and uintmax; invalid order/duplicate/wrong formula/missing evidence/replay rejected"
+  },
+  "limitations": [
+    "Raw snapshots and complete state hashes remain private. No current global live files were substituted.",
+    "Packet/state helper leaves native acceptance to original-screen review; images were viewed independently for this bounded report.",
+    "No manual CMD74 request and no opened-card screenshot: free card is proven by actual NOTI35/CMD74 and committed ledger.",
+    "No offline natural-source control or real 600+rand timer expiry in these two cases."
+  ]
+}

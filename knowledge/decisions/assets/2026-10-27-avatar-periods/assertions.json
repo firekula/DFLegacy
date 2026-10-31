@@ -1,0 +1,2679 @@
+{
+  "schema": "avatar-period-root-acceptance/v1",
+  "total": 527,
+  "passed": 527,
+  "checks": [
+    {
+      "name": "nonempty_complete_durable_acceptance",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: shop-native-baseline: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: shop-native-baseline: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: shop-native-baseline: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: shop-native-baseline: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: shop-native-baseline: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: shop-native-baseline: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: shop-native-baseline: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar projection f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: A finite avatar has no permanent legacy zero f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: short fixture deadline anchored once f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag: short fixture item identity f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag: previously seen expired short fixture is absent f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar projection 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar has no permanent legacy zero 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar projection a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: A finite avatar has no permanent legacy zero a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: previously seen expired short fixture is absent f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: short fixture deadline anchored once 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: short fixture item identity 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: short fixture deadline anchored once a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before: short fixture item identity a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar projection 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar has no permanent legacy zero 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar projection a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: A finite avatar has no permanent legacy zero a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: previously seen expired short fixture is absent f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: short fixture deadline anchored once 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: short fixture item identity 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: short fixture deadline anchored once a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean: short fixture item identity a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar projection a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: A finite avatar has no permanent legacy zero a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: previously seen expired short fixture is absent f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: previously seen expired short fixture is absent 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: short fixture deadline anchored once a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn: short fixture item identity a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar projection a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: A finite avatar has no permanent legacy zero a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: previously seen expired short fixture is absent f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: previously seen expired short fixture is absent 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: short fixture deadline anchored once a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag: short fixture item identity a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar projection 319dc773-c1b3-4b7b-b7ab-0ddf0431c367",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar has no permanent legacy zero 319dc773-c1b3-4b7b-b7ab-0ddf0431c367",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar projection a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar has no permanent legacy zero a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar projection ba3d73a4-15e4-45d9-9a6f-1fbf03ddc4cc",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: A finite avatar has no permanent legacy zero ba3d73a4-15e4-45d9-9a6f-1fbf03ddc4cc",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: previously seen expired short fixture is absent f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: previously seen expired short fixture is absent 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: short fixture deadline anchored once a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: short fixture item identity a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: short fixture deadline anchored once 319dc773-c1b3-4b7b-b7ab-0ddf0431c367",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: short fixture item identity 319dc773-c1b3-4b7b-b7ab-0ddf0431c367",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: short fixture deadline anchored once ba3d73a4-15e4-45d9-9a6f-1fbf03ddc4cc",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before: short fixture item identity ba3d73a4-15e4-45d9-9a6f-1fbf03ddc4cc",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: previously seen expired short fixture is absent f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: previously seen expired short fixture is absent 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: previously seen expired short fixture is absent a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: previously seen expired short fixture is absent 319dc773-c1b3-4b7b-b7ab-0ddf0431c367",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup: previously seen expired short fixture is absent ba3d73a4-15e4-45d9-9a6f-1fbf03ddc4cc",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: role A exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: role A character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: mageco stable character identity",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A finite avatar projection 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A finite avatar has no permanent legacy zero 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A finite avatar projection 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A finite avatar has no permanent legacy zero 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A finite avatar projection 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A finite avatar has no permanent legacy zero 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A finite avatar projection 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: A finite avatar has no permanent legacy zero 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: role B exists",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: role B character name",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: B instance IDs are unique across item spaces",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: previously seen expired short fixture is absent f6c45407-b057-4ba0-a3ad-77c992ce8d7a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: previously seen expired short fixture is absent 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: previously seen expired short fixture is absent a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: previously seen expired short fixture is absent 319dc773-c1b3-4b7b-b7ab-0ddf0431c367",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-login: previously seen expired short fixture is absent ba3d73a4-15e4-45d9-9a6f-1fbf03ddc4cc",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d -> after-cap-7d-purchased: new shop avatar has exactly one native term 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d -> after-cap-7d-purchased: exact shop debit for newly persisted avatars",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d -> after-cap-7d-purchased: observer account cash is unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased -> after-cap-30d-purchased: new shop avatar has exactly one native term 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased -> after-cap-30d-purchased: exact shop debit for newly persisted avatars",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased -> after-cap-30d-purchased: observer account cash is unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-7d-purchased -> after-cap-30d-purchased: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased -> after-cap-permanent-purchased: new shop avatar has exactly one native term 01a17dc0-df43-7608-9889-772da67fa7ba",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased -> after-cap-permanent-purchased: exact shop debit for newly persisted avatars",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased -> after-cap-permanent-purchased: observer account cash is unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased -> after-cap-permanent-purchased: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-30d-purchased -> after-cap-permanent-purchased: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased -> after-coat-7d-purchased: new shop avatar has exactly one native term 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased -> after-coat-7d-purchased: exact shop debit for newly persisted avatars",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased -> after-coat-7d-purchased: observer account cash is unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased -> after-coat-7d-purchased: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-permanent-purchased -> after-coat-7d-purchased: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased -> after-coat-30d-purchased: new shop avatar has exactly one native term 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased -> after-coat-30d-purchased: exact shop debit for newly persisted avatars",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased -> after-coat-30d-purchased: observer account cash is unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased -> after-coat-30d-purchased: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased -> after-coat-30d-purchased: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-7d-purchased -> after-coat-30d-purchased: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased -> after-all-six-purchases: new shop avatar has exactly one native term 01a17dc4-ce8b-7c05-a791-c99f75d566ab",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased -> after-all-six-purchases: exact shop debit for newly persisted avatars",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased -> after-all-six-purchases: observer account cash is unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased -> after-all-six-purchases: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased -> after-all-six-purchases: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased -> after-all-six-purchases: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-coat-30d-purchased -> after-all-six-purchases: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases -> after-cap-equip: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases -> after-cap-equip: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases -> after-cap-equip: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-all-six-purchases -> after-cap-equip: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip -> after-both-equip: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip -> after-both-equip: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip -> after-both-equip: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-cap-equip -> after-both-equip: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip -> purchased-town-visible: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip -> purchased-town-visible: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip -> purchased-town-visible: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: after-both-equip -> purchased-town-visible: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible -> expiry-first-before-bag: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible -> expiry-first-before-bag: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible -> expiry-first-before-bag: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: purchased-town-visible -> expiry-first-before-bag: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag -> expiry-first-after-bag: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag -> expiry-first-after-bag: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag -> expiry-first-after-bag: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-before-bag -> expiry-first-after-bag: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag -> expiry-pair-before: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag -> expiry-pair-before: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag -> expiry-pair-before: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-first-after-bag -> expiry-pair-before: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before -> expiry-pair-before-clean: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before -> expiry-pair-before-clean: A existing finite instance does not renew 7c888879-bd17-451a-96a3-996de766bb6a",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before -> expiry-pair-before-clean: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before -> expiry-pair-before-clean: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before -> expiry-pair-before-clean: A existing finite instance does not renew a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before -> expiry-pair-before-clean: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean -> expiry-pair-after-worn: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean -> expiry-pair-after-worn: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean -> expiry-pair-after-worn: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean -> expiry-pair-after-worn: A existing finite instance does not renew a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-before-clean -> expiry-pair-after-worn: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn -> expiry-pair-after-bag: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn -> expiry-pair-after-bag: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn -> expiry-pair-after-bag: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn -> expiry-pair-after-bag: A existing finite instance does not renew a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-worn -> expiry-pair-after-bag: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag -> offline-before: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag -> offline-before: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag -> offline-before: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag -> offline-before: A existing finite instance does not renew a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: expiry-pair-after-bag -> offline-before: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before -> offline-after-startup: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before -> offline-after-startup: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before -> offline-after-startup: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-before -> offline-after-startup: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup -> offline-after-login: A existing finite instance does not renew 01a17dbe-c660-7a07-8d14-55fb2964b402",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup -> offline-after-login: A existing finite instance does not renew 01a17dc3-5f1e-7869-ae15-dc0f4da7c7ff",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup -> offline-after-login: A existing finite instance does not renew 01a17dbf-c7d3-7000-9c36-0e68cc4cccac",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: offline-after-startup -> offline-after-login: A existing finite instance does not renew 01a17dc4-4b5a-7130-a70c-8aff60ce7c57",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture 19b376f4-72c7-4bc7-8316-4473f58a8dc2: actual duration equals recorded relative seconds",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture 19b376f4-72c7-4bc7-8316-4473f58a8dc2: no clock manipulation",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture f6c45407-b057-4ba0-a3ad-77c992ce8d7a: actual duration equals recorded relative seconds",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture f6c45407-b057-4ba0-a3ad-77c992ce8d7a: no clock manipulation",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture 7c888879-bd17-451a-96a3-996de766bb6a: actual duration equals recorded relative seconds",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture 7c888879-bd17-451a-96a3-996de766bb6a: no clock manipulation",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e: actual duration equals recorded relative seconds",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture a3ef29dd-1810-4ad3-b6fe-fdf7bd6cb00e: no clock manipulation",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture 319dc773-c1b3-4b7b-b7ab-0ddf0431c367: actual duration equals recorded relative seconds",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture 319dc773-c1b3-4b7b-b7ab-0ddf0431c367: no clock manipulation",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture ba3d73a4-15e4-45d9-9a6f-1fbf03ddc4cc: actual duration equals recorded relative seconds",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "durable: fixture ba3d73a4-15e4-45d9-9a6f-1fbf03ddc4cc: no clock manipulation",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: manifest anchors the prepared original hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: original live save remains byte-for-byte unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: independent original save backup",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: backup config Config-0.ini retains preparation hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: backup config Config-1.ini retains preparation hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: backup config launcher-A.json retains preparation hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: backup config launcher-B.json retains preparation hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: backup config server.json retains preparation hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native compatibility tests passed",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native build hash is the explicitly accepted build",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native source has the isolated final-native path",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native source hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native manifest has exactly the four authorized destinations",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 0 original hash retained",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 0 new hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 0 independent baseline backup",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 1 original hash retained",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 1 new hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 1 independent baseline backup",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 2 original hash retained",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 2 new hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 2 independent baseline backup",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 3 original hash retained",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 3 new hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native target 3 independent baseline backup",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved permanent-only patch table contains three disabled entries",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: approved native compatibility log hash matches its evidence",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: four native destinations use one consistent approved or baseline build",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: original EXE/PVF A/DNF.exe unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: original EXE/PVF A/Script.pvf unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: baseline native manifest A/ijl15.dll hash retained",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: native DLL A/ijl15.dll matches approved_update hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: original EXE/PVF B/DNF.exe unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: original EXE/PVF B/Script.pvf unchanged",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: baseline native manifest B/ijl15.dll hash retained",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: native DLL B/ijl15.dll matches approved_update hash",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: isolated save has a separate absolute path",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: all other character progress except shared account Cash is preserved",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "integrity: all other character Cash projections equal their current account wallet",
+      "passed": true,
+      "evidence": "state-report-final.json"
+    },
+    {
+      "name": "nonempty_native_purchase_acceptance",
+      "passed": true,
+      "evidence": "rx-report-all-assertions-final.json"
+    },
+    {
+      "name": "native: shop-native_native_six_options",
+      "passed": true,
+      "evidence": "rx-report-all-assertions-final.json"
+    },
+    {
+      "name": "native: shop-native_native_six_successes",
+      "passed": true,
+      "evidence": "rx-report-all-assertions-final.json"
+    },
+    {
+      "name": "native: shop-native_selected_capture_errors",
+      "passed": true,
+      "evidence": "rx-report-all-assertions-final.json"
+    },
+    {
+      "name": "native: original_live_save_unchanged",
+      "passed": true,
+      "evidence": "rx-report-all-assertions-final.json"
+    },
+    {
+      "name": "native: all_selected_capture_layouts_valid",
+      "passed": true,
+      "evidence": "rx-report-all-assertions-final.json"
+    },
+    {
+      "name": "native_lifetime: expiry_pair_A_witnessed_target_cap_worn_then_removed",
+      "passed": true,
+      "evidence": "rx-report-all-final.json"
+    },
+    {
+      "name": "native_lifetime: expiry_pair_A_full_mode1_omits_cap_after_deadline",
+      "passed": true,
+      "evidence": "rx-report-all-final.json"
+    },
+    {
+      "name": "native_lifetime: expiry_pair_A_base_stat_block_unchanged",
+      "passed": true,
+      "evidence": "rx-report-all-final.json"
+    },
+    {
+      "name": "native_lifetime: expiry_pair_B_witnessed_target_cap_worn_then_removed",
+      "passed": true,
+      "evidence": "rx-report-all-final.json"
+    },
+    {
+      "name": "native_lifetime: expiry_pair_B_full_mode1_omits_cap_after_deadline",
+      "passed": true,
+      "evidence": "rx-report-all-final.json"
+    },
+    {
+      "name": "native_lifetime: expiry_pair_B_base_stat_block_unchanged",
+      "passed": true,
+      "evidence": "rx-report-all-final.json"
+    },
+    {
+      "name": "A_receives_worn_avatar_removal",
+      "passed": true,
+      "evidence": {
+        "report": "rx-report-all-final.json",
+        "before": [
+          "2026-10-27 22:42:40.820",
+          "2026-10-27 22:42:40.837",
+          "2026-10-27 22:42:41.039",
+          "2026-10-27 22:42:41.039",
+          "2026-10-27 22:43:14.149",
+          "2026-10-27 22:43:14.149"
+        ],
+        "removed": [
+          "2026-10-27 22:47:14.638",
+          "2026-10-27 22:47:14.638"
+        ]
+      }
+    },
+    {
+      "name": "B_receives_worn_avatar_removal",
+      "passed": true,
+      "evidence": {
+        "report": "rx-report-all-final.json",
+        "before": [
+          "2026-10-27 22:43:18.085",
+          "2026-10-27 22:43:18.085"
+        ],
+        "removed": [
+          "2026-10-27 22:47:14.630",
+          "2026-10-27 22:47:14.630"
+        ]
+      }
+    },
+    {
+      "name": "A_no_gameplay_input_across_worn_deadline",
+      "passed": true,
+      "evidence": "rx-report-expiry-pair-idle-current.json: 22:44:10–22:47:15, CMD161 counted separately"
+    },
+    {
+      "name": "B_no_gameplay_input_across_worn_deadline",
+      "passed": true,
+      "evidence": "rx-report-expiry-pair-idle-current.json: 22:44:10–22:47:15, CMD161 counted separately"
+    },
+    {
+      "name": "offline_fixtures_expire_before_first_login",
+      "passed": true,
+      "evidence": [
+        "fixture-armed-offline-arm.json",
+        "offline-before.json",
+        "offline-after-startup.json"
+      ]
+    },
+    {
+      "name": "original_screenshots_were_independently_hashed",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\sha256.json"
+    },
+    {
+      "name": "unaltered_photo: 15-cap-period-menu-before-fix.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\15-cap-period-menu-before-fix.jpg"
+    },
+    {
+      "name": "unaltered_photo: 27-native-cap-periods-restored.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\27-native-cap-periods-restored.jpg"
+    },
+    {
+      "name": "unaltered_photo: 38-cap-month-select.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\38-cap-month-select.jpg"
+    },
+    {
+      "name": "unaltered_photo: 59-coat-seven-period-menu.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\59-coat-seven-period-menu.jpg"
+    },
+    {
+      "name": "unaltered_photo: 68-coat-permanent-confirm.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\68-coat-permanent-confirm.jpg"
+    },
+    {
+      "name": "unaltered_photo: 73-cap-seven-tooltip.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\73-cap-seven-tooltip.jpg"
+    },
+    {
+      "name": "unaltered_photo: 74-cap-month-tooltip.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\74-cap-month-tooltip.jpg"
+    },
+    {
+      "name": "unaltered_photo: 75-cap-permanent-tooltip.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\75-cap-permanent-tooltip.jpg"
+    },
+    {
+      "name": "unaltered_photo: 86-B-sees-purchased-avatars.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\86-B-sees-purchased-avatars.jpg"
+    },
+    {
+      "name": "unaltered_photo: 104-pair-B-before-expiry.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\104-pair-B-before-expiry.jpg"
+    },
+    {
+      "name": "unaltered_photo: 111-pair-B-after-worn.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\111-pair-B-after-worn.jpg"
+    },
+    {
+      "name": "unaltered_photo: 109-pair-worn-clean.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\109-pair-worn-clean.jpg"
+    },
+    {
+      "name": "unaltered_photo: 112-pair-A-after-worn.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\112-pair-A-after-worn.jpg"
+    },
+    {
+      "name": "unaltered_photo: 93-expiry-A-bag-before.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\93-expiry-A-bag-before.jpg"
+    },
+    {
+      "name": "unaltered_photo: 95-expiry-bag-after.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\95-expiry-bag-after.jpg"
+    },
+    {
+      "name": "unaltered_photo: 120-offline-A-clean.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\120-offline-A-clean.jpg"
+    },
+    {
+      "name": "unaltered_photo: 121-normal-A-channel.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\121-normal-A-channel.jpg"
+    },
+    {
+      "name": "unaltered_photo: 122-normal-B-channel.jpg",
+      "passed": true,
+      "evidence": "D:\\codex_worktree\\party-chat-gold\\DFLegacy\\knowledge\\decisions\\assets\\2026-10-27-avatar-periods\\122-normal-B-channel.jpg"
+    },
+    {
+      "name": "test_log: native-choice-full.log",
+      "passed": true,
+      "evidence": "native-choice-full.log"
+    },
+    {
+      "name": "test_log: review-final-focused.log",
+      "passed": true,
+      "evidence": "review-final-focused.log"
+    },
+    {
+      "name": "test_log: native-tests.log",
+      "passed": true,
+      "evidence": "native-tests.log"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_Config-0.ini",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_Config-1.ini",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_launcher-A.json",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_launcher-B.json",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_config_exact_server.json",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_native_G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_native_G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_native_G:\\Game\\DNF_ACT1\\DF\\town-test\\ijl15.dll",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_native_G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\ijl15.dll",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.InterProcess.dll",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.InterProcess.pdb",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Protocol.dll",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Protocol.pdb",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.deps.json",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.dll",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.exe",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.pdb",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.runtimeconfig.json",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_tested_build_DFLegacy.Server.staticwebassets.endpoints.json",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_listener_7001",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_listener_27001",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_listener_8080",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_listener_8081",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_original_save_unchanged",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_client_running_A",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    },
+    {
+      "name": "postdeploy: normal_client_running_B",
+      "passed": true,
+      "evidence": "normal-postcheck.json"
+    }
+  ],
+  "input_evidence_sha256": {
+    "state-report-final.json": "8A954941FCB2C09E926B93E1A12FBD061CF22A0B3E5E8887F022727E5750A8C3",
+    "rx-report-all-final.json": "3D46E558FEF18DBC697BF7AB0E4DF98BF5E2F64CAFE94AB4A24377DA049036B0",
+    "rx-report-all-assertions-final.json": "6EDC2CC4BEE74FB2498BD9C42ED6849852E2AA83935F6638E7029560A1848F65",
+    "rx-report-expiry-pair-idle-current.json": "5935489D172AAB11A05C9735EE29DD553D9FFE49212B7C0121EA9CA5D9C82BCE",
+    "normal-postcheck.json": "5770B90A2D9D5DD635F97C78968743D3B2E59884F0BA9FD5CE5E7E3621B1F551",
+    "normal-restored.json": "C63DDA1F470226F26991D5DA50C671451E493D1105BF4FF67C341493E3989EF4"
+  },
+  "scope": "Native purchases, own/peer worn removal, idle window, online bag evidence, offline cleanup, persistence, artifact integrity and normal deployment. Native mail/compound/dungeon numerical stats were not claimed."
+}

@@ -1,0 +1,22 @@
+FAIL map feedback runtime: original executes first exactly once and preserves full EAX
+FAIL map feedback runtime: render success/failure restores both original render states
+FAIL map feedback runtime: native local descriptor substitutes private texture and reencodes scale
+FAIL map feedback runtime: render success/failure restores both original render states
+FAIL map feedback runtime: native local descriptor substitutes private texture and reencodes scale
+FAIL map feedback runtime: restore failure is reported and both restores are attempted
+FAIL map feedback runtime: texture transaction publishes only completed object
+FAIL map feedback runtime: texture row pitch and padding preserved
+FAIL map feedback runtime: texture transaction publishes only completed object
+FAIL map feedback runtime: texture transaction publishes only completed object
+FAIL map feedback runtime: failed texture construction cleans each owned allocation once
+FAIL map feedback runtime: texture transaction publishes only completed object
+FAIL map feedback runtime: failed texture construction cleans each owned allocation once
+FAIL map feedback runtime: partial constructor uses raw allocation cleanup
+FAIL map feedback runtime: texture transaction publishes only completed object
+FAIL map feedback runtime: failed texture construction cleans each owned allocation once
+FAIL map feedback runtime: partial constructor uses raw allocation cleanup
+FAIL map feedback runtime: texture transaction publishes only completed object
+FAIL map feedback runtime: failed texture construction cleans each owned allocation once
+FAIL map feedback runtime: partial constructor uses raw allocation cleanup
+FAIL map feedback runtime: successful retry releases hook ownership
+FAIL map feedback runtime: unsupported image never installs hook or calls absolute game functions

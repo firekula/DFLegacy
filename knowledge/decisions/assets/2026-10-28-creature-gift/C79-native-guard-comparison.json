@@ -1,0 +1,65 @@
+[
+  {
+    "commodity": 105010,
+    "actual_item": 63013,
+    "native_price32": 0,
+    "native_price36": 0,
+    "native_price40": 9900,
+    "expected_cash": 9900,
+    "guards": {
+      "category": true,
+      "restriction_group": true,
+      "ability": true,
+      "quantity": true,
+      "sticker": true,
+      "attribute": true,
+      "giftban": true,
+      "materialized_readable": true,
+      "C79_price32_equals_cash": false,
+      "C79_price36_zero": true,
+      "C79_price40_zero": false
+    }
+  },
+  {
+    "commodity": 105009,
+    "actual_item": 63007,
+    "native_price32": 0,
+    "native_price36": 0,
+    "native_price40": 6600,
+    "expected_cash": 6600,
+    "guards": {
+      "category": true,
+      "restriction_group": true,
+      "ability": true,
+      "quantity": true,
+      "sticker": true,
+      "attribute": true,
+      "giftban": true,
+      "materialized_readable": true,
+      "C79_price32_equals_cash": false,
+      "C79_price36_zero": true,
+      "C79_price40_zero": false
+    }
+  },
+  {
+    "commodity": 105008,
+    "actual_item": 63006,
+    "native_price32": 0,
+    "native_price36": 0,
+    "native_price40": 9900,
+    "expected_cash": 9900,
+    "guards": {
+      "category": true,
+      "restriction_group": true,
+      "ability": true,
+      "quantity": true,
+      "sticker": true,
+      "attribute": true,
+      "giftban": true,
+      "materialized_readable": true,
+      "C79_price32_equals_cash": false,
+      "C79_price36_zero": true,
+      "C79_price40_zero": false
+    }
+  }
+]

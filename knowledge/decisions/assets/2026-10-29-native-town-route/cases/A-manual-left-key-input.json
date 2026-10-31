@@ -1,0 +1,24 @@
+{
+  "started": "2026-10-29T13:01:32.223+08:00",
+  "pid": 58960,
+  "client_dir": "G:\\Game\\DNF_ACT1\\DF",
+  "label": "A-manual-left-key-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T13:01:32.405+08:00",
+  "steps": [
+    {
+      "t": 500,
+      "op": "key",
+      "vk": 37,
+      "dur": 220
+    }
+  ],
+  "plan_sha256": "9f0c3e3afb61f64441c9f6e703ad716f377c993bd02778846adf4f1dbf26e798",
+  "plan_written": "2026-10-29T13:01:32.405+08:00",
+  "focus_reassertions": 0,
+  "plan_completed": "2026-10-29T13:01:33.212+08:00",
+  "own_pid_diag_lines": 3,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T13:01:33.212+08:00"
+}

@@ -1,0 +1,13 @@
+# ⚠️ 占位骨架（design §5.2「只需能被解析 + 正确报缺实现」）：期望里没有真实 `pattern`，
+# 判定按 description 当匹配串 ⇒ **有真实 netdump 时必然 red（恒红，不是产品坏了）**；
+# dry-run 没有产物，会按 missing-evidence/needs-human 出绿，那不代表这些断言成立。
+# 真要做这个场景，必须像 town-two-clients.yaml 那样换成抓包核验过的 hex pattern。
+id: town-position-sync
+goal: A 移动，B 侧同屏位置随动
+expect_t0: server-accept
+actors:
+  - {name: A, driver: real-client}
+  - {name: B, driver: real-client}
+steps:
+  - {actor: A, action: 在城镇里移动一段距离, expect: [{description: "s2c:position", level: "[存在]"}]}
+  - {actor: B, action: 观察 A 的位置, expect: [{description: "B 屏幕上 A 的位置随之变化", level: "[语义]"}]}

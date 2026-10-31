@@ -1,0 +1,67 @@
+U07 / 原版 Town USER_POSITION 消费合同（独立只读复核，2026-10-29）
+
+结论及边界
+原版客户端存在明确的“停止时逐轴小于50px保留当前位置”规则。NOTI22并非绝对坐标瞬移通知；同区远端actor收到方向5时，方向解码为(4,4)，其X/Y各自与当前原生整数坐标比较，差值绝对值<50的轴直接保留当前坐标为新目标。差值=50会接受收到坐标。这使41px、25px或7px的稳定偏差不需要丢包/预算/NPC碰撞才能出现。
+
+这是从指定原PE重读字节得到的静态合同；本轮六组JSON的目标/位移与该合同一致，是有明确条件的样本匹配推断。没有采集实际收包瞬间分支、protected speed、actor provider或碰撞分支，不能宣称已经hook证明本轮每次走了哪个分支。没有修改50px阈值、源代码、配置、PE/PVF、游戏内存；没有读取进程或操作UI。现有PID仅作为冻结JSON历史身份，不再访问。没有将默认10/s预算候选当本轮根因，也不宣称U07全范围或怪物移动已修复。
+
+原始来源与文件
+PE: G:\Game\DNF_ACT1\DF\DNF.exe
+SHA256: 6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5
+Capstone从该磁盘PE新导出21个有明确边界的range；其中function标记为complete的导出包含完整函数正文，switch case不是误称完整enclosing函数。每段.bin原字节、.asm反汇编、范围和SHA256均见manifest.json。没有改写party-client-static-20261024或本轮offline目录。
+
+分发与对象链
+419420读取packet+1的NOTI编号，在419474跳转[42A081+id*4]；磁盘表项42A0D9=41E878，因此NOTI22完整case为41E878..41E9C7(右端不含)。依次用8F5140/8F5120读uid:u16、x:i16、y:i16、direction:u8、movementValue:u16，后者预设100后仍执行读取。
+41E8EE..41E901比较local uid=[B75A40]的404A60取值；相同则跳过应用。远端UID经[B5DCB8].4FDDB0查user；417AA0返回user+10C上的Town actor。当前game(this)->+1C(417DF0)->+50(40ABC0)->+B0(404380)得到当前actor集合。集合存在且4C5310(actor)返回true（+10/+14 vector内有同一actor指针），才调用actor.v+170(x,y,direction,movementValue)。case内没有NPC查找/碰撞修正调用，membership失败或self UID会直接不应用。
+
+磁盘Town actor vtable=9988DC；表项原字节另存town-vtable.bin：
++170=478F00 (__thiscall, x:i32,y:i32,dir低u8,movementValue低16位; RET10h)
++174=4798A0 (__thiscall, x:i32,y:i32,axisX:i32,axisY:i32,movementValue低16位; RET14h)
++178=478F70 (__thiscall, x:i32,y:i32; RET8)
++1A4=4795F0 (__thiscall, no stack args; RET)
++84=407460 / +88=407470 为原生整数X/Y getter；+80=471610 -> 4C9BF0。
++154=47A8E0 为Town actor update。
+
+478F00方向与门控
+若actor+3C8非空且该对象+1A0字节非0，直接返回不应用。否则direction-1按3整除，映射1..9为：
+1=(0,3), 2=(4,3), 3=(1,3), 4=(0,4), 5=(4,4), 6=(1,4), 7=(0,2), 8=(4,2), 9=(1,2)。
+axisX=0左/1右/4停，axisY=2上/3下/4停；这是代码与后续速度符号共同支持的语义。未假设1..9之外的有效性。
+
+4798A0 movementValue与预测目标
+4798A3..479904只在低16位非0时更新速度系数；movsx ax按signed16取值，乘原float32[99A770]=0.009999999776482582（约0.01），编码写入actor+248索引对应的两份protected-float槽；actor+244是含该索引的包装器，418260读取该protected float。0意味着保留原速度系数，不是停止；100经float32写入为1.0。它不是本函数中的网络时延字段或“收到位置直接加100px”。
+依据该速度S，原ftol2转换后的X速度幅值=trunc(S*(axisY==4?223:186))，Y速度幅值=trunc(S*(axisX==4?149:122))；常量原字节记录于abi-and-constants.json。对非停止方向先外推500ms：axisX左/右时x += trunc(xSpeed*(-500/+500)/1000)，axisY上/下时y += trunc(ySpeed*(-500/+500)/1000)。axis本身4则该轴不外推。value100、纯水平移动通常外推±111px，纯竖直通常外推±74px；不是固定41/25px偏移。
+
+停止死区原文地址
+4799CE..4799DD要求axisX==4 && axisY==4。
+4799DF..479A03: currentX=actor.v+84(); 若 abs(targetX-currentX)<0x32，则targetX=actor.v+84()。
+479A05..479A29: currentY=actor.v+88(); 若 abs(targetY-currentY)<0x32，则targetY=actor.v+88()。
+最后479A2B..479A31调用v+178(targetX,targetY)。两轴完全独立，一个轴>=50不会阻止另一个轴<50被保留。
+478F70再次检查actor+3C8/+1A0门控；允许时写actor+23C/+240目的地，再立即v+1A4=4795F0。
+
+后续运动与量化
+4795F0按当前位置相对+23C/+240设置+234/+238方向，按同一速度系数/常量给actor+E0控制器两个轴写速度。其跨越目的地时有4715B0位置设置路径，但等于目的地的整数坐标时可直接令方向4，不要求把内部float精确写成收到整数。
+普通actor update 473490在4734D4先调用4C9F00更新控制器，再4735D3调用Town update v+154。完整47A8E0正文中远端分支47B3FD调用v+1A4；47B405..47B41F保存整数当前位置到+24C/+250。由此被死区替换为current的目标可以一直停留，无定时重试强制精确对齐的需求。
+整数getter在普通无active-provider路径：471610->4C9BF0取底层float，再433940把非负数+float32[ B0DF4C ]=0.5、负数-0.5后经原ftol2转整数（nearest, ties away from zero）。例如remote float1082.70874对应原生整数1083，所以小于0.5的float尾差本身可自然停止。active provider另走虚拟+28，未采实际provider状态，因此不能把普通getter路径无条件外推到所有模式。
+
+本轮六输入冻结JSON对照
+samples-and-semantic-model.json绑定六个原始JSON哈希、前后float/方向/目标及有条件模型。模型采用“首个peer位置”和“最终own位置经过普通原生getter取整预测的收到坐标”，不假冒真实收包时刻状态。四个49/50边界断言和方向1..9映射断言通过；这只是反汇编语义模型检查，不是执行游戏函数/实际分支验收。
+A-ground: owner1039,372全程未动；peer997.96814,372全程未动，目标998,372。此输入未证明原生地面走动成功。
+A-direction: owner1039->972.545776；peer997.968140全程不变，目标998。最终own getter预测973，与peer getter998差25<50，停止模型保留998，匹配实际目标998。
+A-destination: owner972.545776->1083；peer997.968140->1082.708740，目标1083。终点1083与原peer getter998差85>=50，停止模型接受1083，匹配实际目标。后续peer getter=1083，float尾差约0.29126符合整数停止语义。
+B-ground: owner1124.603516,372.403595全程未动；peer1125,379不变。未证明原生地面走动成功。
+B-direction: owner1124.603516->1190.612427；peer1125->1191.231812，目标1191；own getter预测1191，与原peer1125差66>=50，模型接受1191。Y轴own getter372和peer379差7<50，模型保留379，匹配实际目标。
+B-destination: owner1190.612427->1301.444824；peer1191.231812->1300.726196，目标1301；own getter1301与原peer getter1191差110>=50，模型接受1301。Y仍保留379。
+A原地基线1039与peer997.96814约41.03186差值，同样落X停止死区；但这次基线差值的最初形成过程没有本轮收包分支证据，不能归为已证明的最初根因。
+
+PVF/碰撞与结论限制
+这些端点位于Town2/0主可走矩形(2,224,2228,220)内部，静态地图边缘不要求产生41/25差值。实际provider、NPC/动态碰撞分支、收包瞬间的actor位置没有采样，未断言它们永远不参与，也不靠假设NPC/碰撞解释本轮。50px停止合同在不额外假设它们的条件下已经足以解释本轮稳定目标及逐轴残差。
+本报告不分析/重新读取原始netdump；服务器四条广播耗时、字节一致性由root/另一agent报告负责。本报告本身不证明3~5ms的网络事实。服务器预算值不构成这里的已证根因；保持原版客户端行为，不建议为使SDK绝对坐标相等而改阈值。
+
+关键原始范围SHA256（完整列表见manifest.json）
+noti22_case: 0x41e878..0x41e9c7 size=335 SHA256=02e0abcae5f359ef0579db0bb4d5e8b5701d3968f340ff8327cbe18f95abeb56
+remote_direction_decode: 0x478f00..0x478f6e size=110 SHA256=5e0e12e421d65e63df76005a00cfb899a68c99210c7546a7a4f33b271784afcb
+remote_extrapolate_stop_deadband: 0x4798a0..0x479a3e size=414 SHA256=4d768adb8d4e454bd77d6ef3a304c8d0e0509e41ec5fb72c1f8a0720da39f0fa
+set_town_destination: 0x478f70..0x478fa5 size=53 SHA256=39209a2104c3c4d86dc833ab7a70334e8ab47055e8abed909d8af0d1f8bfa791
+town_steer: 0x4795f0..0x479893 size=675 SHA256=ceb92c7d0b9688bab5cf246a55a095e9aec37c5729b0e1acd5024e7ca4f30a9b
+send_cmd37_if_position_changed: 0x479a40..0x479b65 size=293 SHA256=4b14ed7063fd4329dc6c1135b6149ea97a3f4ce8910ff0dbc05a0c2457161253
+town_actor_update: 0x47a8e0..0x47b5ea size=3338 SHA256=08983e4f65227b6d9756a03e1027a1a6ed4e4f227f369f4dc4f5bde067912c79

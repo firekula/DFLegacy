@@ -1,0 +1,8 @@
+test_captured_zero_acceleration_stale_duration_must_converge (tools.acceptance.tests.test_motion_horizon_native.MotionHorizonNativeTests.test_captured_zero_acceleration_stale_duration_must_converge) ... ok
+test_other_axes_active_acceleration_and_native_default_remain_identical (tools.acceptance.tests.test_motion_horizon_native.MotionHorizonNativeTests.test_other_axes_active_acceleration_and_native_default_remain_identical) ... ok
+test_zero_acceleration_small_positive_duration_and_terminal_velocity (tools.acceptance.tests.test_motion_horizon_native.MotionHorizonNativeTests.test_zero_acceleration_small_positive_duration_and_terminal_velocity) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.859s
+
+OK

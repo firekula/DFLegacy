@@ -1,0 +1,101 @@
+{
+  "scope": "Strict from-byte-zero TX TCP10-byte headers to private channel47001; encrypted bodies not decoded. No transfer/commit inference.",
+  "counts": {
+    "A": {
+      "segments": 37,
+      "frames": 37,
+      "forbidden_counts": {
+        "29": 0,
+        "44": 0,
+        "50": 0,
+        "63": 0,
+        "64": 0,
+        "97": 0,
+        "98": 0
+      },
+      "netdump_sha256": "6B5B86613995985EA690978F208265A0D97B4D6D8466F4E2E80301C1E7D8B94E"
+    },
+    "B": {
+      "segments": 31,
+      "frames": 31,
+      "forbidden_counts": {
+        "29": 0,
+        "44": 0,
+        "50": 0,
+        "63": 0,
+        "64": 0,
+        "97": 0,
+        "98": 0
+      },
+      "netdump_sha256": "A99174811EC5152C739D9F45FE5808FA61EEBDB4E7FDB29CABFE2493F3876AAC"
+    },
+    "C": {
+      "segments": 31,
+      "frames": 31,
+      "forbidden_counts": {
+        "29": 0,
+        "44": 0,
+        "50": 0,
+        "63": 0,
+        "64": 0,
+        "97": 0,
+        "98": 0
+      },
+      "netdump_sha256": "B3F46108F7A7EBDB96470D3D106E7F3399ED0D9C01A1EEE5D15EEA4B4770CED4"
+    },
+    "D": {
+      "segments": 31,
+      "frames": 31,
+      "forbidden_counts": {
+        "29": 0,
+        "44": 0,
+        "50": 0,
+        "63": 0,
+        "64": 0,
+        "97": 0,
+        "98": 0
+      },
+      "netdump_sha256": "AFBDAAE8C5E39549B759546EF0985D5CE0FC394C13FA4D8515CBCF77D15E950B"
+    }
+  },
+  "forbidden": {
+    "inventory_drop": 50,
+    "add_friend": 63,
+    "remove_friend": 64,
+    "send_mail": 97,
+    "extract_attachment": 98,
+    "use_lottery_item": 29,
+    "revive_coin_command": 44
+  },
+  "private_account_cash_friends_blacklist_unchanged": 4,
+  "private_combat_metadata": "Natural deaths, monster cleanup/EXP/weakness/last-seen may change; no claim that the whole private state is unchanged.",
+  "setup_monster_cleanup": [
+    {
+      "monster": 0,
+      "status": "synchronized",
+      "error": null
+    },
+    {
+      "monster": 1,
+      "status": "synchronized",
+      "error": null
+    },
+    {
+      "monster": 2,
+      "status": "synchronized",
+      "error": null
+    },
+    {
+      "monster": 3,
+      "status": "synchronized",
+      "error": null
+    }
+  ],
+  "restoration": {
+    "restored_files": 14,
+    "protected_files": 8,
+    "normal_save_sha256": "E0E2FB4BB53B9775463E9F54905CE9CB3426D72A9EB0BDADF845642ABB98A283"
+  },
+  "owned_processes_running": 0,
+  "header_label_note": "CMD29 is UseLotteryItemCommand, not a skill-use command; counts unchanged. No claim about gameplay skill-use messages from this header audit."
+}

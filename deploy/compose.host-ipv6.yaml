@@ -1,0 +1,30 @@
+# Standalone Linux host-network example:
+# docker compose --env-file .env -f deploy/compose.host-ipv6.yaml up -d
+services:
+  dflegacy:
+    image: ${DFLEGACY_IMAGE:?Set a versioned image or immutable digest}
+    network_mode: host
+    restart: unless-stopped
+    stop_grace_period: 45s
+    # Replace all image CLI flags so management stays on host loopback.
+    entrypoint: ["/app/DFLegacy.Manager", "--root", "/app", "--data-dir", "/app/data", "--listen", "127.0.0.1", "--port", "18080", "--no-browser"]
+    environment:
+      DFLegacy__ScriptPvfPath: /pvf/Script.pvf
+      DFLEGACY_MANAGER_ALLOWED_HOSTS: ${MANAGER_ALLOWED_HOSTS:-}
+      DFLEGACY_MANAGER_TRUSTED_PROXIES: ${MANAGER_TRUSTED_PROXIES:-}
+      DFLegacy__Entrance__Host: "::"
+      DFLegacy__CharacterDatagram__Host: "::"
+      DFLegacy__GameplayDatagram__Host: "::"
+      DFLegacy__Admin__Host: "::"
+    volumes:
+      - dflegacy-data:/app/data
+      - type: bind
+        source: ${PVF_PATH:?Set absolute path to your own Script.pvf}
+        target: /pvf/Script.pvf
+        read_only: true
+        bind:
+          create_host_path: false
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+volumes:
+  dflegacy-data:

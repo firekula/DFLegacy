@@ -1,0 +1,334 @@
+[
+  {
+    "trial": "A-destination.json",
+    "receive_socket_t": 2.89819,
+    "before_native_pair": {
+      "t": 2.8204454999649897,
+      "own": {
+        "position": {
+          "x": 1083.0,
+          "y": 372.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1083,
+          "y": 372
+        },
+        "start_qpc_ns": 384485067193100,
+        "end_qpc_ns": 384485067352600
+      },
+      "peer": {
+        "position": {
+          "x": 997.9681396484375,
+          "y": 372.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 998,
+          "y": 372
+        },
+        "start_qpc_ns": 384485067356000,
+        "end_qpc_ns": 384485067470300
+      },
+      "dx": 85.0318603515625,
+      "dy": 0.0
+    },
+    "after_native_pair": {
+      "t": 2.9011773999664,
+      "own": {
+        "position": {
+          "x": 1083.0,
+          "y": 372.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1083,
+          "y": 372
+        },
+        "start_qpc_ns": 384485147926500,
+        "end_qpc_ns": 384485148101800
+      },
+      "peer": {
+        "position": {
+          "x": 997.9681396484375,
+          "y": 372.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 1,
+          "y": 4
+        },
+        "destination": {
+          "x": 1083,
+          "y": 372
+        },
+        "start_qpc_ns": 384485148105200,
+        "end_qpc_ns": 384485148223600
+      },
+      "dx": 85.0318603515625,
+      "dy": 0.0
+    },
+    "note": "UTC start/QPC relative alignment; socket callback time is not apply time. Native before/after spans are retained, no exact execution assertion."
+  },
+  {
+    "trial": "A-direction.json",
+    "receive_socket_t": 2.933727,
+    "before_native_pair": {
+      "t": 2.903273999982048,
+      "own": {
+        "position": {
+          "x": 972.5457763671875,
+          "y": 372.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1039,
+          "y": 372
+        },
+        "start_qpc_ns": 384474072461100,
+        "end_qpc_ns": 384474072598200
+      },
+      "peer": {
+        "position": {
+          "x": 997.9681396484375,
+          "y": 372.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 998,
+          "y": 372
+        },
+        "start_qpc_ns": 384474072601000,
+        "end_qpc_ns": 384474072693300
+      },
+      "dx": -25.42236328125,
+      "dy": 0.0
+    },
+    "after_native_pair": {
+      "t": 2.9838075999869034,
+      "own": {
+        "position": {
+          "x": 972.5457763671875,
+          "y": 372.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1039,
+          "y": 372
+        },
+        "start_qpc_ns": 384474152994900,
+        "end_qpc_ns": 384474153140500
+      },
+      "peer": {
+        "position": {
+          "x": 997.9681396484375,
+          "y": 372.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 998,
+          "y": 372
+        },
+        "start_qpc_ns": 384474153144100,
+        "end_qpc_ns": 384474153238200
+      },
+      "dx": -25.42236328125,
+      "dy": 0.0
+    },
+    "note": "UTC start/QPC relative alignment; socket callback time is not apply time. Native before/after spans are retained, no exact execution assertion."
+  },
+  {
+    "trial": "B-destination.json",
+    "receive_socket_t": 2.955284,
+    "before_native_pair": {
+      "t": 2.9055730999680236,
+      "own": {
+        "position": {
+          "x": 1301.44482421875,
+          "y": 372.4035949707031,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1301,
+          "y": 372
+        },
+        "start_qpc_ns": 384518394950700,
+        "end_qpc_ns": 384518395157700
+      },
+      "peer": {
+        "position": {
+          "x": 1191.2318115234375,
+          "y": 379.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1191,
+          "y": 379
+        },
+        "start_qpc_ns": 384518395162300,
+        "end_qpc_ns": 384518395328500
+      },
+      "dx": 110.2130126953125,
+      "dy": -6.596405029296875
+    },
+    "after_native_pair": {
+      "t": 2.9860921999788843,
+      "own": {
+        "position": {
+          "x": 1301.44482421875,
+          "y": 372.4035949707031,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1301,
+          "y": 372
+        },
+        "start_qpc_ns": 384518475468800,
+        "end_qpc_ns": 384518475669000
+      },
+      "peer": {
+        "position": {
+          "x": 1196.806884765625,
+          "y": 379.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 1,
+          "y": 4
+        },
+        "destination": {
+          "x": 1301,
+          "y": 379
+        },
+        "start_qpc_ns": 384518475673400,
+        "end_qpc_ns": 384518475832000
+      },
+      "dx": 104.637939453125,
+      "dy": -6.596405029296875
+    },
+    "note": "UTC start/QPC relative alignment; socket callback time is not apply time. Native before/after spans are retained, no exact execution assertion."
+  },
+  {
+    "trial": "B-direction.json",
+    "receive_socket_t": 3.005746,
+    "before_native_pair": {
+      "t": 2.9821041999966837,
+      "own": {
+        "position": {
+          "x": 1190.6124267578125,
+          "y": 372.4035949707031,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1125,
+          "y": 372
+        },
+        "start_qpc_ns": 384507384792000,
+        "end_qpc_ns": 384507385017900
+      },
+      "peer": {
+        "position": {
+          "x": 1125.0,
+          "y": 379.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1125,
+          "y": 379
+        },
+        "start_qpc_ns": 384507385023100,
+        "end_qpc_ns": 384507385194100
+      },
+      "dx": 65.6124267578125,
+      "dy": -6.596405029296875
+    },
+    "after_native_pair": {
+      "t": 3.062666799989529,
+      "own": {
+        "position": {
+          "x": 1190.6124267578125,
+          "y": 372.4035949707031,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 4,
+          "y": 4
+        },
+        "destination": {
+          "x": 1125,
+          "y": 372
+        },
+        "start_qpc_ns": 384507465352700,
+        "end_qpc_ns": 384507465531100
+      },
+      "peer": {
+        "position": {
+          "x": 1137.26513671875,
+          "y": 379.0,
+          "z": 0.0
+        },
+        "direction": {
+          "x": 1,
+          "y": 4
+        },
+        "destination": {
+          "x": 1191,
+          "y": 379
+        },
+        "start_qpc_ns": 384507465534700,
+        "end_qpc_ns": 384507465657700
+      },
+      "dx": 53.3472900390625,
+      "dy": -6.596405029296875
+    },
+    "note": "UTC start/QPC relative alignment; socket callback time is not apply time. Native before/after spans are retained, no exact execution assertion."
+  }
+]

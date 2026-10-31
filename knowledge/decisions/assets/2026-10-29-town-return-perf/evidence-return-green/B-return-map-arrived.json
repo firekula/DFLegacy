@@ -1,0 +1,26 @@
+{
+  "started": "2026-10-29T14:25:49.065+08:00",
+  "pid": 60624,
+  "client_dir": "G:\\Game\\DNF_ACT1\\Client_test2",
+  "label": "B-return-map-arrived",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T14:25:49.277+08:00",
+  "steps": [
+    {
+      "t": 500,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "08445798a01317985eba5d52928dc03c4758dc96f6fa987e60b0689cda7191f7",
+  "plan_written": "2026-10-29T14:25:49.277+08:00",
+  "focus_reassertions": 0,
+  "plan_completed": "2026-10-29T14:25:50.032+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\Client_test2\\ScreenShot\\ScreenShot00998.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\evidence-return-green\\B-return-map-arrived.jpg",
+  "own_pid_diag_lines": 3,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T14:25:50.212+08:00"
+}

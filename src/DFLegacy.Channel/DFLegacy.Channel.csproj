@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+    <ProjectReference Include="../DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
+    <!-- 与 DFLegacy.Server 读同一份 server.json（同源配置）。Server 的等价项见
+         src/DFLegacy.Server/DFLegacy.Server.csproj:20-22；两个进程都靠这一份文件拿
+         DFLegacy section 的缺省值，缺了它 StartAsync 之前就会因为 optional:false 失败。 -->
+    <Content Include="../../server.json" Link="server.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

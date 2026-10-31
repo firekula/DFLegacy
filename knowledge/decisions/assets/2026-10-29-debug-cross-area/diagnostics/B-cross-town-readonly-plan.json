@@ -1,0 +1,180 @@
+{
+  "Role": "B",
+  "Snapshot": {
+    "schema": "dfl-client-state/v2",
+    "pid": 32980,
+    "process_started_filetime": 134377120778147972,
+    "sequence": 8902,
+    "captured_filetime": 134377139257453759,
+    "captured_tick_ms": 353556187,
+    "exported_filetime": 134377139257862613,
+    "layout_supported": true,
+    "valid": true,
+    "scene": 1,
+    "generation": 7,
+    "capture_duration_us": 4,
+    "skipped_publications": 0,
+    "truncated": false,
+    "errors": [],
+    "capabilities": {
+      "skill_levels": false,
+      "skill_cooldown": false,
+      "skill_usable": false
+    },
+    "server_context": null,
+    "room": null,
+    "town": {
+      "town_id": 1,
+      "area_id": 1,
+      "context_token": "0x07195A98",
+      "map_token": "0x186390B8",
+      "position": {
+        "x": 474,
+        "y": 333,
+        "z": 0
+      },
+      "destination": {
+        "x": 474,
+        "y": 333
+      },
+      "direction_raw": {
+        "x": 4,
+        "y": 4
+      },
+      "auto_move_active": false
+    },
+    "ui": {
+      "selection_mode_raw": 0,
+      "player_menu": {
+        "visible": false,
+        "target_uid": null,
+        "action_ids": null
+      },
+      "town_minimap": {
+        "visible": false,
+        "enabled": true
+      },
+      "dungeon_selector": {
+        "visible": null,
+        "active_raw": 1,
+        "selected": -1,
+        "hover": -1
+      },
+      "countdown": {
+        "state_raw": 0
+      }
+    },
+    "me": {
+      "uid": 2,
+      "user_token": "0x18153AA0",
+      "actor_token": "0x1821D858",
+      "map_token": "0x186390B8",
+      "hp": null,
+      "max_hp": null,
+      "mp": null,
+      "max_mp": null,
+      "dead": null,
+      "same_map": true,
+      "detached": false,
+      "position": {
+        "x": 474,
+        "y": 333,
+        "z": 0
+      }
+    },
+    "players": [
+      {
+        "uid": 2,
+        "user_token": "0x18153AA0",
+        "actor_token": "0x1821D858",
+        "map_token": "0x186390B8",
+        "hp": null,
+        "max_hp": null,
+        "mp": null,
+        "max_mp": null,
+        "dead": null,
+        "same_map": true,
+        "detached": false,
+        "position": {
+          "x": 474,
+          "y": 333,
+          "z": 0
+        }
+      }
+    ],
+    "enemies": [],
+    "skills": []
+  },
+  "Goal": {
+    "town_id": 2,
+    "area_id": 2,
+    "x": 575,
+    "y": 247
+  },
+  "PvfSha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+  "Portals": [
+    {
+      "source": [
+        1,
+        1
+      ],
+      "target": [
+        1,
+        0
+      ],
+      "point": [
+        474,
+        329
+      ]
+    },
+    {
+      "source": [
+        1,
+        0
+      ],
+      "target": [
+        2,
+        1
+      ],
+      "point": [
+        16,
+        264
+      ]
+    },
+    {
+      "source": [
+        2,
+        1
+      ],
+      "target": [
+        2,
+        0
+      ],
+      "point": [
+        1005,
+        178
+      ]
+    },
+    {
+      "source": [
+        2,
+        0
+      ],
+      "target": [
+        2,
+        2
+      ],
+      "point": [
+        339,
+        177
+      ]
+    }
+  ],
+  "FirstWaypoints": [
+    [
+      474,
+      329
+    ]
+  ],
+  "Source": "automatic catalog; no input on this probe"
+}

@@ -1,0 +1,34 @@
+工厂 0x0809df90(832 B)  跳转表 0x08b13c48(14 项)
+工厂内构造函数调用 14 个
+
+     枚举值  跳转目标         实例化的类
+       0  0x0809e092  CNCryptoShift::CNCryptoShift
+       1  0x0809dfe7  CNCryptoRijndael::CNCryptoRijndael
+       2  0x0809e020  CNCryptoBlowFish::CNCryptoBlowFish
+       3  0x0809e059  CNCryptoRc6::CNCryptoRc6
+       4  0x0809e0cb  CNCryptoTwoFish::CNCryptoTwoFish
+       5  0x0809dfae  CNCryptoTea::CNCryptoTea
+       6  0x0809e13d  CNCryptoKasumi::CNCryptoKasumi
+       7  0x0809e176  CNCryptoXTea::CNCryptoXTea
+       8  0x0809e1af  CNCryptoNoekeon::CNCryptoNoekeon
+       9  0x0809e257  CNCryptoKhazad::CNCryptoKhazad
+      10  0x0809e221  CNCryptoCast5::CNCryptoCast5
+      11  0x0809e104  CNCryptoSkipjack::CNCryptoSkipjack
+      12  0x0809e1e8  CNCryptoMulti2::CNCryptoMulti2
+      13  0x0809e28d  CNCryptoAnubis::CNCryptoAnubis
+
+=== 汇总（枚举值 -> 密码类）===
+   0 -> CNCryptoShift::CNCryptoShift
+   1 -> CNCryptoRijndael::CNCryptoRijndael
+   2 -> CNCryptoBlowFish::CNCryptoBlowFish
+   3 -> CNCryptoRc6::CNCryptoRc6
+   4 -> CNCryptoTwoFish::CNCryptoTwoFish
+   5 -> CNCryptoTea::CNCryptoTea
+   6 -> CNCryptoKasumi::CNCryptoKasumi
+   7 -> CNCryptoXTea::CNCryptoXTea
+   8 -> CNCryptoNoekeon::CNCryptoNoekeon
+   9 -> CNCryptoKhazad::CNCryptoKhazad
+  10 -> CNCryptoCast5::CNCryptoCast5
+  11 -> CNCryptoSkipjack::CNCryptoSkipjack
+  12 -> CNCryptoMulti2::CNCryptoMulti2
+  13 -> CNCryptoAnubis::CNCryptoAnubis

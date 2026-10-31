@@ -1,0 +1,13 @@
+scenario_id	step_index	expect_index	actor	action	level	pattern	evidence_class	mapped_opcodes	verified_run_id	verdict_result
+party-invite	1	1	A	邀请 B 组队	[存在]					
+party-invite	2	1	B	接受邀请	[存在]					
+party-invite	3	1	A	查看队伍名册	[语义]					
+town-position-sync	1	1	A	在城镇里移动一段距离	[存在]					
+town-position-sync	2	1	B	观察 A 的位置	[语义]					
+town-two-clients	1	1	A	登录并进到城镇	[存在]	000B2B0000000000000001	[抓包]	CMD:11	20261018T091951Z-2724238-town-two-clients	pass
+town-two-clients	1	2	A	登录并进到城镇	[存在]	000C2F0000000000000001	[抓包]	CMD:12	20261018T091951Z-2724238-town-two-clients	pass
+town-two-clients	2	1	B	登录并进到城镇	[存在]	000B2B0000000000000001	[抓包]	CMD:11	20261018T091951Z-2724238-town-two-clients	pass
+town-two-clients	3	1	A	走到 B 附近	[语义]				20261018T091951Z-2724238-town-two-clients	needs-human
+trade-open	1	1	A	右键 B 选择交易	[存在]					
+trade-open	2	1	B	接受交易	[存在]					
+trade-open	3	1	A	放入一件物品	[存在]					

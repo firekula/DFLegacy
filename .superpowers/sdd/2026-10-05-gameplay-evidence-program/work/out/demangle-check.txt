@@ -1,0 +1,26 @@
+rows = 352694
+Dispatcher lines = 5436
+--- samples ---
+0x08b98ec0	85	OBJECT	ARAD::Arad_Dispatcher_Login_Impl::account_password_check(SIG_LOGIN_DATA*, char*)::__PRETTY_FUNCTION__
+0x08bb6780	129	OBJECT	WongWork::CSimpleSSO::checkValidPassword_Jpn(unsigned int, char const*, char const*, WongWork::CSimpleSSO::stOutputData_t&)::__PRETTY_FUNCTION__
+0x081b26e8	28	FUNC	global constructors keyed to WongWork::CSimpleSSO::checkValidPassword_Jpn(unsigned int, char const*, char const*, WongWork::CSimpleSSO::stOutputData_t&)
+0x08bd0860	63	OBJECT	DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)::__PRETTY_FUNCTION__
+0x0940a2e0	2049	OBJECT	DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)::garenaToken
+0x08cdd1e0	141	OBJECT	WongWork::CSimpleSSO::checkValidPassword(unsigned int, char const*, char const*, WongWork::CSimpleSSO::stOutputData_t&)::__PRETTY_FUNCTION__
+0x081b25ec	188	FUNC	WongWork::CSimpleSSO::checkValidPassword_Jpn(unsigned int, char const*, char const*, WongWork::CSimpleSSO::stOutputData_t&)
+0x086028c6	64	FUNC	WongWork::CSimpleSSO::checkValidPassword(unsigned int, char const*, char const*, WongWork::CSimpleSSO::stOutputData_t&)
+0x0818f746	553	FUNC	ARAD::Arad_Dispatcher_Login_Impl::account_password_check(SIG_LOGIN_DATA*, char*)
+0x081e8c78	4619	FUNC	DisPatcher_Login::dispatch_sig(CUser*, PacketBuf&)
+0x080b7636	1001	FUNC	CRijndael::EncryptBlock(char const*, char*)
+--- supplementary (NOT part of the acceptance criteria; recorded for Task 3) ---
+case-sensitive spelling counts over demangled-syms.tsv:
+  DisPatcher_      = 1064
+  Dispatcher_      = 4360
+  Arad_Dispatcher_ = 48
+  DIspatcher_      = 12   <== FOURTH SPELLING, not covered by the plan's Task 3 PATTERNS
+    e.g. DIspatcher_OneDayLetheTicket::dispatch_sig(CUser*, PacketBuf&)
+absent-symbol finding (recorded as-is, criteria NOT adjusted): onCS_ASK_CHANNEL_INFO = 0 hits; 'ASK_CHANNEL' = 0 hits in this binary => the symbol is not in df_game_r.
+  'CHANNEL_INFO' does occur (731 lines); first 3:
+    0x08af2d54	4	OBJECT	MAX_PVP_CHANNEL_INFO_NUM
+    0x08b25834	4	OBJECT	MAX_PVP_CHANNEL_INFO_NUM
+    0x08b26534	4	OBJECT	MAX_PVP_CHANNEL_INFO_NUM

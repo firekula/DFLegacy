@@ -1,0 +1,30 @@
+# Set DFLEGACY_IMAGE, start, then upload Script.pvf through Manager.
+services:
+  dflegacy:
+    image: ${DFLEGACY_IMAGE:?Set a versioned image or immutable image digest in .env}
+    restart: unless-stopped
+    stop_grace_period: 45s
+    environment:
+      DFLEGACY_MANAGER_ALLOWED_HOSTS: ${MANAGER_ALLOWED_HOSTS:-}
+      DFLEGACY_MANAGER_TRUSTED_PROXIES: ${MANAGER_TRUSTED_PROXIES:-}
+    ports:
+      - "${MANAGER_BIND:-127.0.0.1}:${MANAGER_PORT:-18080}:18080/tcp"
+      - "${GAME_API_BIND:-0.0.0.0}:${GAME_API_PORT:-8081}:8081/tcp"
+      - "${GAME_BIND:-0.0.0.0}:2311:2311/tcp"
+      - "${GAME_BIND:-0.0.0.0}:7001:7001/tcp"
+      - "${GAME_BIND:-0.0.0.0}:8080:8080/tcp"
+      - "${GAME_BIND:-0.0.0.0}:7004:7004/tcp" # Optional PvP; disabled in server configuration by default.
+      - "${GAME_BIND:-0.0.0.0}:7005:7005/tcp"
+      - "${GAME_BIND:-0.0.0.0}:2311:2311/udp"
+      - "${GAME_BIND:-0.0.0.0}:7002:7002/udp"
+      - "${GAME_BIND:-0.0.0.0}:7003:7003/udp"
+      - "${GAME_BIND:-0.0.0.0}:7005:7005/udp"
+    volumes:
+      - type: volume
+        source: dflegacy-data
+        target: /app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+volumes:
+  dflegacy-data:

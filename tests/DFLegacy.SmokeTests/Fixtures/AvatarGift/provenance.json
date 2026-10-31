@@ -1,0 +1,22 @@
+{
+  "source_pvf": "G:\\Game\\DNF_ACT1\\DF\\Script.pvf",
+  "source_pvf_sha256": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f",
+  "encoding": "CP936; original decoded-entry bytes unchanged",
+  "items": [
+    {
+      "item_id": 51020,
+      "pvf_path": "equipment/character/mage/avatar/cap/aband_wtwinghair2.equ",
+      "sha256": "5a8723b613df1c7906f4a5a15e20af9c7f996b49f2d5a88af7ce19000a8e0c04"
+    },
+    {
+      "item_id": 52641,
+      "pvf_path": "equipment/character/mage/avatar/coat/atop_rubyjewel2.equ",
+      "sha256": "af17712f5d3f069d393f961db267ac9b1c8a42cb0e51c37810b5443a213deb39"
+    },
+    {
+      "item_id": 42201,
+      "pvf_path": "equipment/character/swordman/avatar/skin/askin_sunburned.equ",
+      "sha256": "e0cca63995a4a647d969c8a10b538655bc7299372043016546ac52aab9cf24b7"
+    }
+  ]
+}

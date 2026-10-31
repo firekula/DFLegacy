@@ -1,0 +1,32 @@
+{
+  "started": "2026-10-29T11:19:22.230+08:00",
+  "pid": 32980,
+  "client_dir": "G:\\Game\\DNF_ACT1\\Client_test2",
+  "label": "cross-area-B-v5-room-input",
+  "interface": "IJL15 file input only",
+  "success": true,
+  "focus_acknowledged": "2026-10-29T11:19:22.422+08:00",
+  "steps": [
+    {
+      "t": 100,
+      "op": "key",
+      "vk": 44,
+      "dur": 900
+    },
+    {
+      "t": 1500,
+      "op": "key",
+      "vk": 44,
+      "dur": 200
+    }
+  ],
+  "plan_sha256": "19fedda069159f501f0d6510de19bafe84357ac4de6398aa5c88610b2357dabb",
+  "plan_written": "2026-10-29T11:19:22.422+08:00",
+  "focus_reassertions": 1,
+  "plan_completed": "2026-10-29T11:19:24.340+08:00",
+  "screenshot_source": "G:\\Game\\DNF_ACT1\\Client_test2\\ScreenShot\\ScreenShot00988.JPG",
+  "screenshot": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\active-drop-acceptance-20261029\\evidence-drop-red-drag\\cross-area-B-v5-room-input.jpg",
+  "own_pid_diag_lines": 5,
+  "own_plan_armed": true,
+  "finished": "2026-10-29T11:19:24.472+08:00"
+}

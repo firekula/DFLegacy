@@ -1,0 +1,33 @@
+{
+  "SourcePath": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\final-native-gift\\ijl15.dll",
+  "Sha256": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121",
+  "CompatibilityTestsPassed": true,
+  "CompatibilityTestsLogSha256": "7D0DFD34CEE5C57F01CDD6D1EE6DF4BBF1FB0FB06BB533232B31023D9A19B547",
+  "SourceCommit": "1d915dc",
+  "Targets": [
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\ijl15.dll",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\native-reentry\\ijl15-0.dll",
+      "OriginalSha256": "9D6D9C72D5C3288CA6EE81072D2117D5F4B2E3E7874178A61395B6F9260C782C",
+      "NewSha256": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\ijl15.dll",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\native-reentry\\ijl15-1.dll",
+      "OriginalSha256": "9D6D9C72D5C3288CA6EE81072D2117D5F4B2E3E7874178A61395B6F9260C782C",
+      "NewSha256": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\ijl15.dll",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\native-reentry\\ijl15-2.dll",
+      "OriginalSha256": "9D6D9C72D5C3288CA6EE81072D2117D5F4B2E3E7874178A61395B6F9260C782C",
+      "NewSha256": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121"
+    },
+    {
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\ijl15.dll",
+      "Backup": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\channel-return-20261027\\backup\\native-reentry\\ijl15-3.dll",
+      "OriginalSha256": "9D6D9C72D5C3288CA6EE81072D2117D5F4B2E3E7874178A61395B6F9260C782C",
+      "NewSha256": "82EE8D8E5B7F50DBD663D3DA91925C57BE25B595A38DF7B1F6A7CB28BC74E121"
+    }
+  ]
+}

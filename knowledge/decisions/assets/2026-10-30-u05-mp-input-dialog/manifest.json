@@ -1,0 +1,186 @@
+{
+  "files": [
+    {
+      "file": "A-chat-lock.jpg",
+      "sha256": "1EFA7EA0D9BA9A359F77A0152175572411D42C2207D90C3B81CC8F9969C105AA",
+      "bytes": 365310
+    },
+    {
+      "file": "A-chat-verification.json",
+      "sha256": "C80B5CC687BB22FBAAD014D0CF994AC231AC86FBE20DDC32334CE567D3BBF861",
+      "bytes": 49780
+    },
+    {
+      "file": "A-peer-prompt-final.jpg",
+      "sha256": "7458F81DAAEAF2AD5F2EBFBAB4183AC40ED5CAD5295F284484F4A9ED584A1001",
+      "bytes": 428217
+    },
+    {
+      "file": "A-prompt-placement.json",
+      "sha256": "4EF559E443B3AB50506F9F00D9BAA27C0C0FF17FA86C9C18526B15E76464A68D",
+      "bytes": 12818
+    },
+    {
+      "file": "B-chat-verification.json",
+      "sha256": "93A2D21AB80D0CE0B56FF14D84761E4C51FCE346722295DBA7C9D2D320CC5DA6",
+      "bytes": 49799
+    },
+    {
+      "file": "B-peer-prompt.jpg",
+      "sha256": "B4CB8AC7AB60B7BCD5C5E2DB27CF99AA61A352BC00CB3B9667E2F29D71263857",
+      "bytes": 429077
+    },
+    {
+      "file": "B-prompt-placement.json",
+      "sha256": "B75EAE082DD647D0975B5071ED82E9393C05102C8DA2BE91597A0114688BBC5E",
+      "bytes": 24476
+    },
+    {
+      "file": "C-chat-verification.json",
+      "sha256": "4BB5DA3C3187C20D5CF1965970619716829F74BE5E9A1B058B086D3875F8E5AF",
+      "bytes": 49835
+    },
+    {
+      "file": "C-mp-consumption.jpg",
+      "sha256": "FBE3C1167C78737A77F677604F5F294B75ED381BBC498F57CFA260F3CCFB9B86",
+      "bytes": 430816
+    },
+    {
+      "file": "C-prompt-placement.json",
+      "sha256": "FF901E429F0B7A24AC8F5863745216DA14EA586F91C64381395DA6569143C349",
+      "bytes": 31446
+    },
+    {
+      "file": "chat-four-result.json",
+      "sha256": "694DA242D503886FC831EA2D0CFB7366A0368CCD3D5FB6721ED6706C6B7AD2EB",
+      "bytes": 1246
+    },
+    {
+      "file": "cli-four-result.json",
+      "sha256": "7B47B936D7AD854C4C41F8970EEBD0F0908276C9C9DDF2651640CD639D07586D",
+      "bytes": 27672
+    },
+    {
+      "file": "D-chat-verification.json",
+      "sha256": "17CE02EF048F301D3522AD3286F54CAA091BF8E8FE00F1821ECCCE6302D2D824",
+      "bytes": 49886
+    },
+    {
+      "file": "D-prompt-placement.json",
+      "sha256": "A287865755F5A0B6819296E1CFCAA350042903104A68A7FD5368CEC8DEA04FE9",
+      "bytes": 40710
+    },
+    {
+      "file": "D-town-mp.jpg",
+      "sha256": "856B7E262467156E715755577CC6036F3C51AA189CDCBD9BD41ABED819D43681",
+      "bytes": 436431
+    },
+    {
+      "file": "debug-focused-final.log",
+      "sha256": "D74F6A388A467B9FCDBE63980685F45E303CC2CB7C37493269B13D4A4D5D2CB6",
+      "bytes": 559
+    },
+    {
+      "file": "debug-overlay-full.log",
+      "sha256": "30B0EE49F488B8121438039C23794D97A2D600F4E6F07ED8579A2F0645D579B3",
+      "bytes": 307
+    },
+    {
+      "file": "debug-town-real-pvf-final.log",
+      "sha256": "E0F856C29AC31E8097D21F329503531B263333A87A0D4C2C06C701EA18E2AE34",
+      "bytes": 161
+    },
+    {
+      "file": "final-town-mp.json",
+      "sha256": "38955F5D01F2A5775CA73D5B829269CE388EFB1FADE8926ABA2A62FE1D0C369F",
+      "bytes": 18746
+    },
+    {
+      "file": "guard-replay.json",
+      "sha256": "EC6B502ABA4BDC653A4157344D6FEB778CCC79A68845D4411F8FFE9ADFA84E65",
+      "bytes": 1975
+    },
+    {
+      "file": "identities.json",
+      "sha256": "9AEFBED1338144266631188989C9C2B5722C2E27E144F1F5464DBD94BDEA17E9",
+      "bytes": 2143
+    },
+    {
+      "file": "ijl15-full.log",
+      "sha256": "A533638D252529C4539E2797C226302454B76C085C50A282BA958A7B1729066F",
+      "bytes": 224
+    },
+    {
+      "file": "mp-consumption.json",
+      "sha256": "A620AA5B146961E82830DC68545BA11385AD19D6AA3408EC84799FBC9C25DEA0",
+      "bytes": 374909
+    },
+    {
+      "file": "python-final.log",
+      "sha256": "1F8226FD02912A7F9B0E05C24AB673C96FA7CBFAF29486EBE969E110748B4253",
+      "bytes": 409102
+    },
+    {
+      "file": "python-native-observer-fixture-final.log",
+      "sha256": "D124F9696ED40502B4B30C0104E7D254A7E35A3D854991F72025BA67C7E5C805",
+      "bytes": 100
+    },
+    {
+      "file": "restoration.json",
+      "sha256": "389889A6B4C1803D0FD9C64C50A49D9BBB921D14C6FD0F860DB8307DE01C8911",
+      "bytes": 3739
+    },
+    {
+      "file": "static/kind-category-contract.asm",
+      "sha256": "759FA3F932F30E787FF3FF03414707D40CDC59C0645ECE892B7F408E6D96B214",
+      "bytes": 121837
+    },
+    {
+      "file": "static/kind-category-contract.json",
+      "sha256": "C5179655F06F2B19566BC22E82FC528B064141F96F9928A9C12F9FD147186F58",
+      "bytes": 23110
+    },
+    {
+      "file": "static/mp-input-native-evidence.txt",
+      "sha256": "3E258C9C54A1CE7718DCF98205D020F86CDCABE7C2BF2F70744870B12D1213B1",
+      "bytes": 24550
+    },
+    {
+      "file": "static/native-contract.asm",
+      "sha256": "0DB92A309A3C0B09DCA2CEACA6964B4DAB596BD5D85F46FD6D8C84457B4FAE34",
+      "bytes": 66983
+    },
+    {
+      "file": "static/native-ranges.json",
+      "sha256": "CDD06A522E332D256BF467EF17D225D35C73FD6B512A0CFC7E456EC8E1C4F8F3",
+      "bytes": 14397
+    },
+    {
+      "file": "static/review-contract.json",
+      "sha256": "21D88D88DB620AC01CF05A2DBCCBD1D740ED283ABF8D1C5556F283EF741DF040",
+      "bytes": 5040
+    },
+    {
+      "file": "static/static-inputs.json",
+      "sha256": "D4ADA0B585A0B6B59C6EAF0153CC0B22C34BDAFD2B6E79AA1BE02037CF171D9C",
+      "bytes": 2831
+    },
+    {
+      "file": "town-nonfull-peer.json",
+      "sha256": "E84D40CB493834A4E92A735B65998BB40629A957DD7F76CDBE950923EBA806B6",
+      "bytes": 8481
+    },
+    {
+      "file": "town-party-before.json",
+      "sha256": "33E916C9DF571E10820BB64F4BB94977FACBB3CBAE6960A36BA9310F319AD761",
+      "bytes": 23393
+    },
+    {
+      "file": "verification.json",
+      "sha256": "BF617497C7EC3B6CE83FD3632F7AA052AD9423599F6F941988726AEF44692817",
+      "bytes": 3603
+    }
+  ],
+  "key_screenshot_count": 5,
+  "unmodified_native_jpeg": true
+}

@@ -1,0 +1,1037 @@
+{
+  "schema": "avatar-gift-restart-proof/v1",
+  "case": "avatar7d",
+  "phase": "unclaimed-restart",
+  "checked_at": "2026-10-28T05:42:30.731430+08:00",
+  "status": "seven_day_restart_claim_passed_remaining_pending",
+  "native_acceptance": "PARTIAL",
+  "passed": 65,
+  "total": 65,
+  "checks": [
+    {
+      "name": "initial real gift checks all passed",
+      "passed": true,
+      "actual": [
+        58,
+        58
+      ],
+      "expected": [
+        58,
+        58
+      ]
+    },
+    {
+      "name": "initial checker unchanged",
+      "passed": true,
+      "actual": "8F623316A77E61ED2C5E3C71006D125D2D2A06686113A37FE2C6D3F179E5AD8A",
+      "expected": "8F623316A77E61ED2C5E3C71006D125D2D2A06686113A37FE2C6D3F179E5AD8A"
+    },
+    {
+      "name": "initial frozen manifest unchanged",
+      "passed": true,
+      "actual": "8A4EB2836DF3A0920D6F380D29E534061499FF53ADDBB3D4B9A0F166A4F3C6F6",
+      "expected": "8A4EB2836DF3A0920D6F380D29E534061499FF53ADDBB3D4B9A0F166A4F3C6F6"
+    },
+    {
+      "name": "restart phase frozen identity",
+      "passed": true,
+      "actual": [
+        "avatar7d",
+        "unclaimed-restart"
+      ],
+      "expected": [
+        "avatar7d",
+        "unclaimed-restart"
+      ]
+    },
+    {
+      "name": "restart frozen SHA256 netdump-56268.log",
+      "passed": true,
+      "actual": "6DF7714A66AA71AF90F1FEA3EA6C7686D5F42E94FBCBB697E50B884CE14176D9",
+      "expected": "6DF7714A66AA71AF90F1FEA3EA6C7686D5F42E94FBCBB697E50B884CE14176D9"
+    },
+    {
+      "name": "restart frozen SHA256 netdump-69400.log",
+      "passed": true,
+      "actual": "0A2D39435174B7D2250C80C9D7F29EEFE17CA64B4F9DFEB37F653CC4D8F73E9F",
+      "expected": "0A2D39435174B7D2250C80C9D7F29EEFE17CA64B4F9DFEB37F653CC4D8F73E9F"
+    },
+    {
+      "name": "restart frozen SHA256 server-unclaimed-restart.log",
+      "passed": true,
+      "actual": "7ACFED5C66B11AA3779CFF028B654C9CEAB1F484A07AFF36643003ACDA5A90AC",
+      "expected": "7ACFED5C66B11AA3779CFF028B654C9CEAB1F484A07AFF36643003ACDA5A90AC"
+    },
+    {
+      "name": "restart frozen SHA256 server-unclaimed-restart.err.log",
+      "passed": true,
+      "actual": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "expected": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "restart frozen SHA256 deployment-claimed-final-paused.json",
+      "passed": true,
+      "actual": "1451E0F99DB1F59CF37B1AC7D2732CFDEBCCC968FCFB1C624288A1B2392615D2",
+      "expected": "1451E0F99DB1F59CF37B1AC7D2732CFDEBCCC968FCFB1C624288A1B2392615D2"
+    },
+    {
+      "name": "restart frozen SHA256 state-claimed-final-paused.json",
+      "passed": true,
+      "actual": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B",
+      "expected": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B"
+    },
+    {
+      "name": "claimed frozen state expected hash",
+      "passed": true,
+      "actual": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B",
+      "expected": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B"
+    },
+    {
+      "name": "same-case paused restart input hash",
+      "passed": true,
+      "actual": "7B05C243A004B0CFC3D5F8F248A9F495268BA6535A3A1EDEEADA9B0993BF25E1",
+      "expected": "7B05C243A004B0CFC3D5F8F248A9F495268BA6535A3A1EDEEADA9B0993BF25E1"
+    },
+    {
+      "name": "before-restart journal equals prior frozen journal",
+      "passed": true,
+      "actual": "33C6E8AC960320ACBDBD98FF6CCED302D37C7B1E9778162383E50461C05C926E",
+      "expected": "33C6E8AC960320ACBDBD98FF6CCED302D37C7B1E9778162383E50461C05C926E"
+    },
+    {
+      "name": "restart journal stopped",
+      "passed": true,
+      "actual": "stopped",
+      "expected": "stopped"
+    },
+    {
+      "name": "A TX_crc_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A selected_layout_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A incomplete_tcp_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A disabled_flows",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A omitted_selected_events",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A pending_log_line_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A appended_after_snapshot_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "A actual gameplay TX CRC count",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B TX_crc_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B selected_layout_errors",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B incomplete_tcp_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B disabled_flows",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B omitted_selected_events",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B pending_log_line_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B appended_after_snapshot_bytes",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "B actual gameplay TX CRC count",
+      "passed": true,
+      "actual": 15,
+      "expected": 15
+    },
+    {
+      "name": "A stayed channel-only, no game packet evidence",
+      "passed": true,
+      "actual": [
+        "not_ready",
+        0,
+        0,
+        []
+      ],
+      "expected": [
+        "not_ready",
+        0,
+        0,
+        []
+      ]
+    },
+    {
+      "name": "B has actual gameplay capture",
+      "passed": true,
+      "actual": "observed",
+      "expected": "observed"
+    },
+    {
+      "name": "B actual all game TX CRCs",
+      "passed": true,
+      "actual": [
+        15,
+        15
+      ],
+      "expected": [
+        15,
+        15
+      ]
+    },
+    {
+      "name": "after claim observation phase",
+      "passed": true,
+      "actual": "unclaimed-restart",
+      "expected": "unclaimed-restart"
+    },
+    {
+      "name": "after claim observation frozen hash",
+      "passed": true,
+      "actual": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B",
+      "expected": "7C1B190875E2EF9CC7AC1B4F85D0D67B506F24F83D7ED15FA8D113D5BB33414B"
+    },
+    {
+      "name": "closed canonical equals claim observation",
+      "passed": true,
+      "actual": {
+        "A": {
+          "Cash": 26300,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1159876143,
+              "SentAt": 1793136933,
+              "ExpiresAt": 1795728933,
+              "Attachment": null
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [
+            {
+              "Slot": 0,
+              "ItemId": 51020,
+              "CountOrValue": 1,
+              "State": 0,
+              "Durability": 0,
+              "SealState": 0,
+              "InstanceId": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14",
+              "AvatarExpireAt": 604800,
+              "AvatarAbilityIndex": 4,
+              "AvatarExpiresAtUnixSeconds": 1793741733,
+              "CreatureStomach": null,
+              "CreatureStomachRemainderSeconds": null,
+              "CreatureExperience": null,
+              "CreatureLevel": null,
+              "CreatureName": null,
+              "CreatureNoCharge": null
+            }
+          ],
+          "CreatureInventory": []
+        }
+      },
+      "expected": {
+        "A": {
+          "Cash": 26300,
+          "Gold": 50604,
+          "GiftReceiveYearMonth": null,
+          "GiftReceiveCount": 0,
+          "GiftReceiveKeysAbsent": true,
+          "Mails": [],
+          "Inventory": [],
+          "AvatarInventory": [],
+          "CreatureInventory": []
+        },
+        "B": {
+          "Cash": 997790,
+          "Gold": 50176,
+          "GiftReceiveYearMonth": 202610,
+          "GiftReceiveCount": 1,
+          "GiftReceiveKeysAbsent": false,
+          "Mails": [
+            {
+              "Id": 1159876143,
+              "SentAt": 1793136933,
+              "ExpiresAt": 1795728933,
+              "Attachment": null
+            }
+          ],
+          "Inventory": [],
+          "AvatarInventory": [
+            {
+              "Slot": 0,
+              "ItemId": 51020,
+              "CountOrValue": 1,
+              "State": 0,
+              "Durability": 0,
+              "SealState": 0,
+              "InstanceId": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14",
+              "AvatarExpireAt": 604800,
+              "AvatarAbilityIndex": 4,
+              "AvatarExpiresAtUnixSeconds": 1793741733,
+              "CreatureStomach": null,
+              "CreatureStomachRemainderSeconds": null,
+              "CreatureExperience": null,
+              "CreatureLevel": null,
+              "CreatureName": null,
+              "CreatureNoCharge": null
+            }
+          ],
+          "CreatureInventory": []
+        }
+      }
+    },
+    {
+      "name": "sender canonical unchanged across restart and claim",
+      "passed": true,
+      "actual": {
+        "Cash": 26300,
+        "Gold": 50604,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": 0,
+        "GiftReceiveKeysAbsent": true,
+        "Mails": [],
+        "Inventory": [],
+        "AvatarInventory": [],
+        "CreatureInventory": []
+      },
+      "expected": {
+        "Cash": 26300,
+        "Gold": 50604,
+        "GiftReceiveYearMonth": null,
+        "GiftReceiveCount": 0,
+        "GiftReceiveKeysAbsent": true,
+        "Mails": [],
+        "Inventory": [],
+        "AvatarInventory": [],
+        "CreatureInventory": []
+      }
+    },
+    {
+      "name": "recipient cash gold and quota unchanged",
+      "passed": true,
+      "actual": [
+        997790,
+        50176,
+        202610,
+        1
+      ],
+      "expected": [
+        997790,
+        50176,
+        202610,
+        1
+      ]
+    },
+    {
+      "name": "recipient gift no ordinary or creature bag",
+      "passed": true,
+      "actual": [
+        [],
+        []
+      ],
+      "expected": [
+        [],
+        []
+      ]
+    },
+    {
+      "name": "recipient exactly one avatar bag item",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "claimed item retains InstanceId",
+      "passed": true,
+      "actual": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14",
+      "expected": "01a17f4a-3bf8-73ce-9a35-3d0696cf6e14"
+    },
+    {
+      "name": "claimed item retains ItemId",
+      "passed": true,
+      "actual": 51020,
+      "expected": 51020
+    },
+    {
+      "name": "claimed item retains AvatarAbilityIndex",
+      "passed": true,
+      "actual": 4,
+      "expected": 4
+    },
+    {
+      "name": "claimed item retains AvatarExpiresAtUnixSeconds",
+      "passed": true,
+      "actual": 1793741733,
+      "expected": 1793741733
+    },
+    {
+      "name": "claimed item retains AvatarExpireAt",
+      "passed": true,
+      "actual": 604800,
+      "expected": 604800
+    },
+    {
+      "name": "claimed item retains CountOrValue",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "claimed bag slot",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "mail entry retained and attachment cleared",
+      "passed": true,
+      "actual": [
+        {
+          "Id": 1159876143,
+          "SentAt": 1793136933,
+          "ExpiresAt": 1795728933,
+          "Attachment": null
+        }
+      ],
+      "expected": [
+        {
+          "Id": 1159876143,
+          "SentAt": 1793136933,
+          "ExpiresAt": 1795728933,
+          "Attachment": null
+        }
+      ]
+    },
+    {
+      "name": "one native mail open request/reply",
+      "passed": true,
+      "actual": [
+        1,
+        [
+          [
+            true,
+            0
+          ]
+        ]
+      ],
+      "expected": [
+        1,
+        [
+          [
+            true,
+            0
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "native mail read request/reply",
+      "passed": true,
+      "actual": [
+        [
+          [
+            1159876143,
+            2
+          ]
+        ],
+        [
+          [
+            true,
+            1159876143,
+            2
+          ]
+        ]
+      ],
+      "expected": [
+        [
+          [
+            1159876143,
+            2
+          ]
+        ],
+        [
+          [
+            true,
+            1159876143,
+            2
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "native claim request/reply",
+      "passed": true,
+      "actual": [
+        [
+          1159876143
+        ],
+        [
+          [
+            true,
+            1159876143
+          ]
+        ]
+      ],
+      "expected": [
+        [
+          1159876143
+        ],
+        [
+          [
+            true,
+            1159876143
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "unclaimed mail observed at login and open",
+      "passed": true,
+      "actual": 2,
+      "expected": 2
+    },
+    {
+      "name": "mail wire identity 0",
+      "passed": true,
+      "actual": [
+        1159876143,
+        51020,
+        4,
+        1793136933
+      ],
+      "expected": [
+        1159876143,
+        51020,
+        4,
+        1793136933
+      ]
+    },
+    {
+      "name": "mail remaining naturally reduced 0",
+      "passed": true,
+      "actual": 604660,
+      "expected": 604660
+    },
+    {
+      "name": "mail wire identity 1",
+      "passed": true,
+      "actual": [
+        1159876143,
+        51020,
+        4,
+        1793136933
+      ],
+      "expected": [
+        1159876143,
+        51020,
+        4,
+        1793136933
+      ]
+    },
+    {
+      "name": "mail remaining naturally reduced 1",
+      "passed": true,
+      "actual": 604621,
+      "expected": 604621
+    },
+    {
+      "name": "one received avatar row",
+      "passed": true,
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "claimed native list1 slot/item/ability",
+      "passed": true,
+      "actual": [
+        0,
+        51020,
+        4
+      ],
+      "expected": [
+        0,
+        51020,
+        4
+      ]
+    },
+    {
+      "name": "claim remaining uses original deadline",
+      "passed": true,
+      "actual": 604579,
+      "expected": 604579
+    },
+    {
+      "name": "claim remaining not renewed",
+      "passed": true,
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "no second shop order in restart",
+      "passed": true,
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "same frozen runtime identity",
+      "passed": true,
+      "actual": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\runtime-initial",
+      "expected": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\runtime-initial"
+    },
+    {
+      "name": "same retained artifact DFLegacy.Server.dll",
+      "passed": true,
+      "actual": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+      "expected": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134"
+    },
+    {
+      "name": "same retained artifact DFLegacy.Protocol.dll",
+      "passed": true,
+      "actual": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+      "expected": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E"
+    },
+    {
+      "name": "same retained artifact ijl15.dll",
+      "passed": true,
+      "actual": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC",
+      "expected": "7431347A19A5D8B0B963B474B9739288BA8755895B260DF04A51D80BFF65B3DC"
+    }
+  ],
+  "journals": [
+    {
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\frozen-native-unclaimed-restart\\deployment-claimed-final-paused.json",
+      "sha256": "1451E0F99DB1F59CF37B1AC7D2732CFDEBCCC968FCFB1C624288A1B2392615D2",
+      "phase": "unclaimed-restart",
+      "status": "stopped",
+      "server_pid": 48252,
+      "server_start_time_utc": "2026-10-27T21:36:32.0257899Z"
+    }
+  ],
+  "captures": [
+    {
+      "phase": "unclaimed-restart",
+      "role": "A",
+      "pid": 56268,
+      "start_time_utc": "2026-10-27T21:36:34.7154746Z",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\frozen-native-unclaimed-restart\\netdump-56268.log",
+      "journal_refs": [
+        0
+      ],
+      "original_capture_path": "G:\\Game\\DNF_ACT1\\DF\\netdump-56268.log",
+      "sha256": "6DF7714A66AA71AF90F1FEA3EA6C7686D5F42E94FBCBB697E50B884CE14176D9",
+      "snapshot_bytes": 35865,
+      "events": [],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "6DF7714A66AA71AF90F1FEA3EA6C7686D5F42E94FBCBB697E50B884CE14176D9",
+      "capture_start_local": "2026-10-28 05:36:34",
+      "appended_after_snapshot_bytes": 0,
+      "counts": {
+        "TX_frames": 0,
+        "RX_frames": 0,
+        "TX_crc_valid": 0,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {},
+      "status": "not_ready"
+    },
+    {
+      "phase": "unclaimed-restart",
+      "role": "B",
+      "pid": 69400,
+      "start_time_utc": "2026-10-27T21:36:35.4837078Z",
+      "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\overnight-20261028\\native-cases\\avatar7d\\frozen-native-unclaimed-restart\\netdump-69400.log",
+      "journal_refs": [
+        0
+      ],
+      "original_capture_path": "G:\\Game\\DNF_ACT1\\Client_test2\\netdump-69400.log",
+      "sha256": "0A2D39435174B7D2250C80C9D7F29EEFE17CA64B4F9DFEB37F653CC4D8F73E9F",
+      "snapshot_bytes": 45925,
+      "events": [
+        {
+          "at": "2026-10-28 05:37:53.218",
+          "completed_at": "2026-10-28 05:37:53.218",
+          "line": 100,
+          "last_line": 100,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 369,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 0,
+          "item_count": 30,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:37:53.218",
+          "completed_at": "2026-10-28 05:37:53.218",
+          "line": 100,
+          "last_line": 100,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:37:53.218",
+          "completed_at": "2026-10-28 05:37:53.218",
+          "line": 100,
+          "last_line": 100,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 2,
+          "list_parameter": 8,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:37:53.218",
+          "completed_at": "2026-10-28 05:37:53.218",
+          "line": 100,
+          "last_line": 100,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 7,
+          "item_count": 0,
+          "target_items": [],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        },
+        {
+          "at": "2026-10-28 05:37:53.218",
+          "completed_at": "2026-10-28 05:37:53.218",
+          "line": 100,
+          "last_line": 100,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1159876143,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 51020,
+              "seal": 0,
+              "count_or_value": 604660,
+              "durability": 4,
+              "state": 0,
+              "sent_at": 1793136933,
+              "body_join_id": 1159876143
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1159876143,
+              "expires_at": 1795728933,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793136933,
+              "state": 1
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 05:38:32.589",
+          "completed_at": "2026-10-28 05:38:32.589",
+          "line": 108,
+          "last_line": 108,
+          "direction": "TX",
+          "type": 1,
+          "op": 99,
+          "wire_length": 12,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_open_request",
+          "sequence": 10
+        },
+        {
+          "at": "2026-10-28 05:38:32.596",
+          "completed_at": "2026-10-28 05:38:32.596",
+          "line": 109,
+          "last_line": 109,
+          "direction": "RX",
+          "type": 1,
+          "op": 99,
+          "wire_length": 9,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_open_reply",
+          "success": true,
+          "not_loaded_count": 0
+        },
+        {
+          "at": "2026-10-28 05:38:32.596",
+          "completed_at": "2026-10-28 05:38:32.596",
+          "line": 109,
+          "last_line": 109,
+          "direction": "RX",
+          "type": 0,
+          "op": 97,
+          "wire_length": 96,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_list",
+          "reset": true,
+          "package_count": 1,
+          "body_count": 1,
+          "not_loaded_count": 0,
+          "target_packages": [
+            {
+              "mail_id": 1159876143,
+              "sender_bytes_redacted": 6,
+              "gold": 0,
+              "item_id": 51020,
+              "seal": 0,
+              "count_or_value": 604621,
+              "durability": 4,
+              "state": 0,
+              "sent_at": 1793136933,
+              "body_join_id": 1159876143
+            }
+          ],
+          "target_bodies": [
+            {
+              "mail_id": 1159876143,
+              "expires_at": 1795728933,
+              "sender_bytes_redacted": 6,
+              "text_bytes_redacted": 20,
+              "sent_at": 1793136933,
+              "state": 1
+            }
+          ]
+        },
+        {
+          "at": "2026-10-28 05:38:59.329",
+          "completed_at": "2026-10-28 05:38:59.329",
+          "line": 113,
+          "last_line": 113,
+          "direction": "TX",
+          "type": 1,
+          "op": 144,
+          "wire_length": 18,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_state_request",
+          "sequence": 11,
+          "mail_id": 1159876143,
+          "state": 2
+        },
+        {
+          "at": "2026-10-28 05:38:59.374",
+          "completed_at": "2026-10-28 05:38:59.374",
+          "line": 114,
+          "last_line": 114,
+          "direction": "RX",
+          "type": 1,
+          "op": 144,
+          "wire_length": 13,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_state_reply",
+          "success": true,
+          "mail_id": 1159876143,
+          "state": 2
+        },
+        {
+          "at": "2026-10-28 05:39:14.200",
+          "completed_at": "2026-10-28 05:39:14.200",
+          "line": 116,
+          "last_line": 116,
+          "direction": "TX",
+          "type": 1,
+          "op": 98,
+          "wire_length": 16,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_claim_request",
+          "sequence": 12,
+          "mail_id": 1159876143
+        },
+        {
+          "at": "2026-10-28 05:39:14.213",
+          "completed_at": "2026-10-28 05:39:14.213",
+          "line": 117,
+          "last_line": 117,
+          "direction": "RX",
+          "type": 1,
+          "op": 98,
+          "wire_length": 11,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "mail_claim_reply",
+          "success": true,
+          "mail_id": 1159876143
+        },
+        {
+          "at": "2026-10-28 05:39:14.213",
+          "completed_at": "2026-10-28 05:39:14.213",
+          "line": 117,
+          "last_line": 117,
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "wire_length": 21,
+          "local_endpoint": "endpoint-1",
+          "remote_endpoint": "endpoint-2",
+          "event": "item_list",
+          "list_type": 1,
+          "item_count": 1,
+          "target_items": [
+            {
+              "slot": 0,
+              "item_id": 51020,
+              "count_or_value": 604579,
+              "state": 0,
+              "durability": 4,
+              "seal": 0
+            }
+          ],
+          "scope": "Selected item rows only; UUID/deadline/default creature state require canonical observation"
+        }
+      ],
+      "errors": [],
+      "pending_log_line_bytes": 0,
+      "parsed_prefix_sha256": "0A2D39435174B7D2250C80C9D7F29EEFE17CA64B4F9DFEB37F653CC4D8F73E9F",
+      "capture_start_local": "2026-10-28 05:36:35",
+      "appended_after_snapshot_bytes": 0,
+      "counts": {
+        "TX_frames": 15,
+        "RX_frames": 36,
+        "TX_crc_valid": 15,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 13,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "observed_packet_counts": {
+        "RX_NOTI13": 5,
+        "RX_NOTI97": 2,
+        "TX_CMD99": 1,
+        "RX_CMD99": 1,
+        "TX_CMD144": 1,
+        "RX_CMD144": 1,
+        "TX_CMD98": 1,
+        "RX_CMD98": 1
+      },
+      "status": "observed"
+    }
+  ],
+  "checker_sha256": "541483CBAE00035AC30DCC663E4B4AAE193ECBEB9BC26F86D71C7499F4656704",
+  "frozen_manifest_sha256": "08EFF3C2AF25EA307E5E79718FEE4A4F7282A26B068FFE9083A61982C7F29EFA",
+  "initial_proof_sha256": "E3FEE27FE3FAD6DE587D5AFC290AF1A376AC2CD8F817E32128F4A9CEC40636F2",
+  "observer_sha256": "B44785A6CBB1B0EA8F8BD5F98ED7F9AF310656AF16E5CE669B90542D3C193AAF",
+  "pending": [
+    "independent 30-day gift",
+    "independent permanent gift",
+    "gift0 selected ability",
+    "explicit expiry scenario",
+    "final deployment and original environment restore"
+  ],
+  "caveats": [
+    "A stayed at channel selection in restart; no A game packet is claimed.",
+    "Original AvatarExpireAt remains grant duration in JSON; absolute deadline is authoritative and native remaining decreases.",
+    "Raw authentication packets/full state stay private; no screenshot semantics inferred from packet/state alone."
+  ]
+}

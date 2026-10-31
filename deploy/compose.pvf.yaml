@@ -1,0 +1,12 @@
+# Optional read-only PVF deployment: docker compose -f compose.yaml -f compose.pvf.yaml up -d
+services:
+  dflegacy:
+    environment:
+      DFLegacy__ScriptPvfPath: /pvf/Script.pvf
+    volumes:
+      - type: bind
+        source: ${PVF_PATH:?Set the absolute path to your own Script.pvf}
+        target: /pvf/Script.pvf
+        read_only: true
+        bind:
+          create_host_path: false

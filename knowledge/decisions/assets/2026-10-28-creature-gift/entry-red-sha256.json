@@ -1,0 +1,17 @@
+[
+  {
+    "file": "native-entry-red.json",
+    "sha256": "37727DA1A01258BB67F645D2EDFE875C6BC4FBE12108D1A38D7B46D72A7CA528",
+    "matches_frozen_original": true
+  },
+  {
+    "file": "A-Chax-egg-selected.jpg",
+    "sha256": "EBC007B8760B3EE8AD7A9CCE93206F81963E1BA606282163B0E0257C548E37CF",
+    "matches_frozen_original": true
+  },
+  {
+    "file": "A-Chax-gift-disabled-click.jpg",
+    "sha256": "BEDF9F32DD0A554ABB06DD9CB2D858C3041F71E74D2ACEADD016D253C36FF1BC",
+    "matches_frozen_original": true
+  }
+]

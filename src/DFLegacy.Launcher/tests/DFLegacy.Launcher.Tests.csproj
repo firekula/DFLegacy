@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>DFLegacy.Launcher.Tests</AssemblyName>
+    <TestIjl15Path Condition="'$(Ijl15PrebuiltPath)' != ''">$(Ijl15PrebuiltPath)</TestIjl15Path>
+    <TestIjl15Path Condition="'$(TestIjl15Path)' == ''">../../../artifacts/native/ijl15/$(Configuration)/ijl15.dll</TestIjl15Path>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <ProjectReference Include="../DFLegacy.Launcher.csproj" />
+    <Content Include="$(TestIjl15Path)" Link="ijl15.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../DFLegacy.Ijl15/Config.ini" Link="Config.ini" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

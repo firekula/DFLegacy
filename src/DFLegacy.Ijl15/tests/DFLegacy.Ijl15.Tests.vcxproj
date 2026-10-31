@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Native tests for DFLegacy.Ijl15.
+
+  The tests were previously reachable only through build-native.ps1, which needs
+  CMake. CMake is not installed on every machine that has to run them (measured
+  2026-10-04: no cmake.exe anywhere in PATH or under the VS install, so
+  build-native.ps1 stops at its first check while MSBuild and the x86 toolset are
+  both present). This project makes the same test source buildable with the
+  toolchain the release pipeline already uses, and DFLegacy.Emulator.slnx
+  includes it, so the tests cannot silently stop running again.
+
+  CMakeLists.txt still defines the CMake target: when CMake is available, either
+  path builds the same file.
+-->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{7C1A6F42-3E5B-4A88-9D21-5B0E8C4A1D77}</ProjectGuid>
+    <RootNamespace>DFLegacyIjl15Tests</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' &gt;= '18.0'">v145</PlatformToolset>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' &lt; '18.0'">v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' &gt;= '18.0'">v145</PlatformToolset>
+    <PlatformToolset Condition="'$(VisualStudioVersion)' &lt; '18.0'">v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <OutDir>$(MSBuildProjectDirectory)\..\..\..\artifacts\native\ijl15-tests\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\..\artifacts\native\ijl15-tests-vcx\$(Configuration)\</IntDir>
+    <TargetName>ijl15_tests</TargetName>
+    <!-- The test loads ijl15.dll by bare name, so it resolves the module built
+         next to it rather than any ijl15 the host happens to have. -->
+    <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>..\include;..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>shlwapi.lib;ws2_32.lib;winhttp.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <Optimization>MaxSpeed</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>UNICODE;_UNICODE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>..\include;..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>shlwapi.lib;ws2_32.lib;winhttp.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <PostBuildEvent>
+      <!-- The tests load ijl15.dll by bare name, so the module under test has to
+           sit beside the test executable instead of in the host's search path. -->
+      <Command>powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $src=Join-Path '$(MSBuildThisFileDirectory)..\..\..\artifacts\native\ijl15\$(Configuration)' 'ijl15.dll'; $dst=Join-Path '$(OutDir)' 'ijl15.dll'; Copy-Item -LiteralPath $src -Destination $dst -Force; $cfgSrc=Join-Path '$(MSBuildThisFileDirectory)..' 'Config.ini'; $cfgDst=Join-Path '$(OutDir)' 'Config.ini'; Copy-Item -LiteralPath $cfgSrc -Destination $cfgDst -Force; Write-Host ('copied ' + $src + ' and ' + $cfgSrc + ' -> ' + '$(OutDir)')"</Command>
+      <Message>Copying the ijl15 module under test next to the test executable</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\auto_input.cpp" />
+    <ClCompile Include="auto_input_drag_tests.cpp" />
+    <ClCompile Include="..\src\external_string_table.cpp" />
+    <ClCompile Include="..\src\ijl15_config.cpp" />
+    <ClCompile Include="..\src\presentation_scaling.cpp" />
+    <ClCompile Include="..\src\d3d8_hooks.cpp" />
+    <ClCompile Include="..\src\d3d8_presenter.cpp" />
+    <ClCompile Include="..\src\window_input_scaling.cpp" />
+    <ClCompile Include="..\src\memory_patch.cpp" />
+    <ClCompile Include="..\src\net_dump.cpp" />
+    <ClCompile Include="..\src\output_paths.cpp" />
+    <ClCompile Include="..\src\stage_follow.cpp" />
+    <ClCompile Include="stage_follow_tests.cpp" />
+    <ClCompile Include="..\src\summon_owner_death.cpp" />
+    <ClCompile Include="summon_owner_death_tests.cpp" />
+    <ClCompile Include="..\src\party_combat_detail.cpp" />
+    <ClCompile Include="party_combat_detail_tests.cpp" />
+    <ClCompile Include="..\src\mage_skill_contact.cpp" />
+    <ClCompile Include="mage_skill_contact_tests.cpp" />
+    <ClCompile Include="..\src\boss_room_death.cpp" />
+    <ClCompile Include="boss_room_death_tests.cpp" />
+    <ClCompile Include="..\src\channel_reentry.cpp" />
+    <ClCompile Include="..\src\channel_switch.cpp" />
+    <ClCompile Include="..\src\creature_gift_row.cpp" />
+    <ClCompile Include="..\src\countdown_coin.cpp" />
+    <ClCompile Include="countdown_coin_tests.cpp" />
+    <ClCompile Include="..\src\dungeon_tooltip.cpp" />
+    <ClCompile Include="dungeon_tooltip_tests.cpp" />
+    <ClCompile Include="channel_reentry_tests.cpp" />
+    <ClCompile Include="channel_switch_tests.cpp" />
+    <ClCompile Include="creature_gift_row_tests.cpp" />
+    <ClCompile Include="..\src\priest_heal_target.cpp" />
+    <ClCompile Include="priest_heal_target_tests.cpp" />
+    <ClCompile Include="..\src\ground_item_removal.cpp" />
+    <ClCompile Include="ground_item_removal_tests.cpp" />
+    <ClCompile Include="..\src\motion_horizon.cpp" />
+    <ClCompile Include="motion_horizon_tests.cpp" /><ClCompile Include="native_loop_probe_tests.cpp" />
+    <ClCompile Include="..\src\party_card_display.cpp" />
+    <ClCompile Include="party_card_display_tests.cpp" />
+    <ClCompile Include="..\src\relay_send_queue.cpp" />
+    <ClCompile Include="relay_send_queue_tests.cpp" />
+    <ClCompile Include="ijl15_tests.cpp" />
+    <ClCompile Include="client_service_url_tests.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\channel_switch.h" />
+    <ClInclude Include="..\src\creature_gift_row.h" />
+    <ClInclude Include="..\src\countdown_coin.h" />
+    <ClInclude Include="..\src\dungeon_tooltip.h" />
+    <ClInclude Include="..\src\auto_input.h" />
+    <ClInclude Include="..\src\external_string_table.h" />
+    <ClInclude Include="..\src\ijl15_config.h" />
+    <ClInclude Include="..\src\memory_patch.h" />
+    <ClInclude Include="..\src\net_dump.h" />
+    <ClInclude Include="..\src\output_paths.h" />
+    <ClInclude Include="..\src\stage_follow.h" />
+    <ClInclude Include="..\src\summon_owner_death.h" />
+    <ClInclude Include="..\src\party_combat_detail.h" />
+    <ClInclude Include="..\src\mage_skill_contact.h" />
+    <ClInclude Include="..\src\boss_room_death.h" />
+    <ClInclude Include="..\src\priest_heal_target.h" />
+    <ClInclude Include="..\src\ground_item_removal.h" />
+    <ClInclude Include="..\src\party_card_display.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DFLegacy.Ijl15.vcxproj" Condition="'$(BuildProjectReferences)' != 'false'">
+      <Project>{b5e9130b-04a6-46a2-8a4e-fe5b77f307be}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

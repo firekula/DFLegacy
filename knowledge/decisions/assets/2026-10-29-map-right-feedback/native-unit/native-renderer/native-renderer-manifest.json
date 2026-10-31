@@ -1,0 +1,10 @@
+{
+  "src/DFLegacy.Debug/src/client_map_feedback_runtime.h": "a3ec136aaa04315f84020c4cfedc330294b403d4e27ed58d6c5e03755598b026",
+  "src/DFLegacy.Debug/src/client_map_feedback_runtime.cpp": "326c3ff966e73494ecca4ac6924566687615a4d7f2c183571590ac18e5b891cf",
+  "src/DFLegacy.Debug/tests/map_click_feedback_runtime_tests.cpp": "1f22a7da26f0ff54568ba7fcd22cf0b986a8df35a6fb5064d5b27503b27368a5",
+  "red_exit": 22,
+  "green_exit": 0,
+  "compiler": "MSVC14.51.36231 x86 /W4 /WX /EHsc /std:c++17 /MT /utf-8",
+  "live_calls_performed": false,
+  "source_pe_sha256": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5"
+}

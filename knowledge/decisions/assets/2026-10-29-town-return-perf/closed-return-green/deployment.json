@@ -1,0 +1,57 @@
+{
+  "Schema": "party-native-phase/v1",
+  "Phase": "return-green",
+  "Status": "stopped",
+  "StartedAtUtc": "2026-10-29T06:21:32.9388428Z",
+  "StoppedAtUtc": "2026-10-29T06:27:15.8424584Z",
+  "BuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\build-manifest-return-green.json",
+  "BuildManifestSha256": "76F9EF9A2750BCC39B0D4E4E124A983640E85F59391EE9D2EF8D19E65F626FAA",
+  "Runtime": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\runtime-return-green",
+  "State": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\state-return-green.json",
+  "InitialFixtureSha256": "414B70DB31F6E25D57830127BA89A39A12320E4A7C68F7BB23561282935F7C28",
+  "Server": {
+    "Role": "server",
+    "Id": 59168,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\runtime-return-green\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-29T06:21:33.0781161Z"
+  },
+  "Clients": [
+    {
+      "Role": "A",
+      "Id": 64280,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T06:21:35.7567115Z"
+    },
+    {
+      "Role": "B",
+      "Id": 60624,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T06:21:36.6393813Z"
+    }
+  ],
+  "Launchers": [
+    {
+      "Role": "launcher-A",
+      "Id": 54876,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T06:21:35.3553894Z"
+    },
+    {
+      "Role": "launcher-B",
+      "Id": 75980,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T06:21:36.0928756Z"
+    }
+  ],
+  "Sink": null,
+  "SinkLog": null,
+  "Stdout": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\server-return-green.log",
+  "Stderr": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\town-return-perf-20261029\\server-return-green.err.log",
+  "PeerSink": false,
+  "RoleAccounts": {
+    "B": "test",
+    "A": "shizuku"
+  },
+  "ObservedActiveChannelSessionsBeforeStop": 0,
+  "ChannelCleanupEvidence": "Every recorded7001 connection has its post-Runtime.Remove disconnected log; no admin authentication attempted"
+}

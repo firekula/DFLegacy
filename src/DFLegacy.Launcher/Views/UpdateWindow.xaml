@@ -1,0 +1,23 @@
+<Window x:Class="DFLegacy.Launcher.Views.UpdateWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:c="clr-namespace:DFLegacy.Launcher.Controls" Title="客户端更新" Width="567" Height="512"
+ WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent"
+ WindowStartupLocation="CenterOwner" UseLayoutRounding="True" SnapsToDevicePixels="True" PreviewKeyDown="OnKey" MouseLeftButtonDown="OnDrag">
+ <Window.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="ClassicStyles.xaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></Window.Resources>
+ <Canvas Width="567" Height="512">
+  <Image Width="567" Height="512" Source="../Assets/Skin/classic-update-panel.png" IsHitTestVisible="False"/>
+  <c:SkinButton x:Name="CloseButton" Canvas.Left="526" Canvas.Top="57" Width="25" Height="23"
+   Style="{StaticResource ClassicImageButton}" NormalSource="../Assets/Skin/buton_close00.png"
+   HoverSource="../Assets/Skin/buton_close01.png" PressedSource="../Assets/Skin/buton_close02.png"
+   IsEnabled="{Binding IsEnabled,ElementName=BackButton}" AutomationProperties.Name="关闭更新并返回登录" Click="OnBack"/>
+  <c:PixelText Canvas.Left="25" Canvas.Top="87" Width="135" Height="21" FontSize="15" Text="客户端更新" Foreground="{StaticResource ClassicGold}"/>
+  <c:SkinButton x:Name="RetryButton" Canvas.Left="161" Canvas.Top="85" Width="70" Height="23" FontSize="12" Content="检查更新" Style="{StaticResource ClassicButton}" Click="OnRetry"/>
+  <c:SkinButton x:Name="InstallButton" Canvas.Left="359" Canvas.Top="85" Width="90" Height="23" FontSize="12" Content="重启安装" Style="{StaticResource ClassicButton}" Click="OnInstall" IsEnabled="False"/>
+  <c:SkinButton x:Name="BackButton" Canvas.Left="457" Canvas.Top="85" Width="80" Height="23" FontSize="12" Content="返回登录" Style="{StaticResource ClassicButton}" Click="OnBack"/>
+  <ScrollViewer x:Name="StatusScroll" Canvas.Left="35" Canvas.Top="362" Width="500" Height="47" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+   <StackPanel x:Name="StatusBlocks"><c:PixelText x:Name="StatusText" VerticalContentAlignment="Top"/></StackPanel>
+  </ScrollViewer>
+  <c:OriginalProgressStrip x:Name="DownloadProgress" Canvas.Left="35" Canvas.Top="414" Width="500" Height="8"/>
+  <c:PixelText x:Name="AmountText" Canvas.Left="35" Canvas.Top="432" Width="500" Height="19" TextWrapping="NoWrap"/>
+ </Canvas>
+</Window>

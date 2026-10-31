@@ -1,0 +1,2732 @@
+{
+  "results": {
+    "A": {
+      "raw": {
+        "role": "A",
+        "pid": 72288,
+        "process_started_filetime": 134378108829074150,
+        "sampling": "read-only owned-process research; not SDK history",
+        "period_ms": 10,
+        "max_seconds": 15,
+        "samples": 194,
+        "read_calls": 9315,
+        "events": [
+          {
+            "tick_ms": 451024515,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451024625,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451024750,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451024859,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451024968,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025031,
+            "scene": 1,
+            "mouse_button_deferred": true,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 1,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025046,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025156,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025265,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025375,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025484,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025593,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025703,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025812,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451025921,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026031,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026140,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026250,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026359,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026468,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026578,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026687,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026796,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451026906,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451027015,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451027125,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451027234,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451027343,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451027453,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8735070",
+            "command": {
+              "uid": 1,
+              "checker_token": "0x85f63d8",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          }
+        ],
+        "errors": [],
+        "phase": "ui-v1",
+        "build_manifest_sha256": "8E9065D1D1699ABF19F72D6C5846689CA05C4E70F6837C972D701666E3F9364C",
+        "journal_sha256": "71B8EF4A0C20770FE2F64708CA7FCDEB62763B67E2BB0B7F3FC3453DE1028A97"
+      },
+      "snapshot": {
+        "schema": "dfl-client-state/v2",
+        "pid": 72288,
+        "process_started_filetime": 134378108829074150,
+        "sequence": 2333,
+        "captured_filetime": 134378113992458740,
+        "captured_tick_ms": 451027421,
+        "exported_filetime": 134378113992929788,
+        "layout_supported": true,
+        "valid": true,
+        "scene": 1,
+        "generation": 2,
+        "capture_duration_us": 13,
+        "skipped_publications": 0,
+        "truncated": false,
+        "errors": [],
+        "capabilities": {
+          "skill_levels": false,
+          "skill_cooldown": false,
+          "skill_usable": false
+        },
+        "server_context": null,
+        "room": null,
+        "town": {
+          "town_id": 1,
+          "area_id": 1,
+          "context_token": "0x07086F70",
+          "map_token": "0x086E8EE8",
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          },
+          "destination": {
+            "x": 474,
+            "y": 234
+          },
+          "direction_raw": {
+            "x": 4,
+            "y": 4
+          },
+          "auto_move_active": false
+        },
+        "ui": {
+          "selection_mode_raw": 0,
+          "player_menu": {
+            "visible": false,
+            "target_uid": null,
+            "action_ids": null
+          },
+          "town_minimap": {
+            "visible": false,
+            "enabled": true
+          },
+          "dungeon_selector": {
+            "visible": null,
+            "active_raw": 1,
+            "selected": -1,
+            "hover": -1,
+            "instance_token": null,
+            "transition_pending": null,
+            "phase_raw": null,
+            "stage_token": null,
+            "input_suppression_raw": null,
+            "record_count": null,
+            "selected_dungeon_id": null,
+            "difficulty_raw": null,
+            "maximum_difficulty_raw": null
+          },
+          "countdown": {
+            "state_raw": 0
+          },
+          "dialogs": {
+            "valid": true,
+            "truncated": false,
+            "items": [],
+            "covered_class_ids": [
+              7,
+              9,
+              35,
+              37,
+              48,
+              86,
+              89,
+              106
+            ]
+          },
+          "command_input": {
+            "scope": "native_command_checker_type0",
+            "actor_token": "0x08735070",
+            "uid": 1,
+            "checker_token": "0x085F63D8",
+            "keyboard_lock_level": 0,
+            "keyboard_suppressed": false,
+            "mouse": {
+              "scope": "native_command_checker_type1",
+              "lock_level": 0,
+              "lock_suppressed": false,
+              "checker_flag90_raw": false,
+              "physical_excluded": false
+            }
+          },
+          "mouse_button_state": {
+            "scope": "engine_mouse_button_state",
+            "deferred": false
+          },
+          "input_blocked": null
+        },
+        "me": {
+          "uid": 1,
+          "user_token": "0x0859F990",
+          "actor_token": "0x0875B980",
+          "map_token": "0x086E8EE8",
+          "hp": null,
+          "max_hp": null,
+          "mp": 2101,
+          "max_mp": 2101,
+          "mp_source": {
+            "actor_token": "0x08735070",
+            "local": true
+          },
+          "dead": null,
+          "same_map": true,
+          "detached": false,
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          }
+        },
+        "players": [
+          {
+            "uid": 1,
+            "user_token": "0x0859F990",
+            "actor_token": "0x0875B980",
+            "map_token": "0x086E8EE8",
+            "hp": null,
+            "max_hp": null,
+            "mp": 2101,
+            "max_mp": 2101,
+            "mp_source": {
+              "actor_token": "0x08735070",
+              "local": true
+            },
+            "dead": null,
+            "same_map": true,
+            "detached": false,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            }
+          }
+        ],
+        "enemies": [],
+        "skills": []
+      }
+    },
+    "B": {
+      "raw": {
+        "role": "B",
+        "pid": 55920,
+        "process_started_filetime": 134378108846400065,
+        "sampling": "read-only owned-process research; not SDK history",
+        "period_ms": 10,
+        "max_seconds": 15,
+        "samples": 71,
+        "read_calls": 3411,
+        "events": [
+          {
+            "tick_ms": 451072421,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451072531,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451072640,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451072750,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451072859,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451072968,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451072984,
+            "scene": 1,
+            "mouse_button_deferred": true,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 1,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451073000,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451073109,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451073218,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451073328,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451073437,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x878fc80",
+            "command": {
+              "uid": 2,
+              "checker_token": "0x85a2d70",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          }
+        ],
+        "errors": [],
+        "phase": "ui-v1",
+        "build_manifest_sha256": "8E9065D1D1699ABF19F72D6C5846689CA05C4E70F6837C972D701666E3F9364C",
+        "journal_sha256": "71B8EF4A0C20770FE2F64708CA7FCDEB62763B67E2BB0B7F3FC3453DE1028A97"
+      },
+      "snapshot": {
+        "schema": "dfl-client-state/v2",
+        "pid": 55920,
+        "process_started_filetime": 134378108846400065,
+        "sequence": 2551,
+        "captured_filetime": 134378114447964658,
+        "captured_tick_ms": 451072984,
+        "exported_filetime": 134378114448027882,
+        "layout_supported": true,
+        "valid": true,
+        "scene": 1,
+        "generation": 2,
+        "capture_duration_us": 18,
+        "skipped_publications": 0,
+        "truncated": false,
+        "errors": [],
+        "capabilities": {
+          "skill_levels": false,
+          "skill_cooldown": false,
+          "skill_usable": false
+        },
+        "server_context": null,
+        "room": null,
+        "town": {
+          "town_id": 1,
+          "area_id": 1,
+          "context_token": "0x07249AC0",
+          "map_token": "0x0873EA28",
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          },
+          "destination": {
+            "x": 474,
+            "y": 234
+          },
+          "direction_raw": {
+            "x": 4,
+            "y": 4
+          },
+          "auto_move_active": false
+        },
+        "ui": {
+          "selection_mode_raw": 17,
+          "player_menu": {
+            "visible": false,
+            "target_uid": null,
+            "action_ids": null
+          },
+          "town_minimap": {
+            "visible": false,
+            "enabled": true
+          },
+          "dungeon_selector": {
+            "visible": null,
+            "active_raw": 1,
+            "selected": -1,
+            "hover": -1,
+            "instance_token": null,
+            "transition_pending": null,
+            "phase_raw": null,
+            "stage_token": null,
+            "input_suppression_raw": null,
+            "record_count": null,
+            "selected_dungeon_id": null,
+            "difficulty_raw": null,
+            "maximum_difficulty_raw": null
+          },
+          "countdown": {
+            "state_raw": 0
+          },
+          "dialogs": {
+            "valid": true,
+            "truncated": false,
+            "items": [],
+            "covered_class_ids": [
+              7,
+              9,
+              35,
+              37,
+              48,
+              86,
+              89,
+              106
+            ]
+          },
+          "command_input": {
+            "scope": "native_command_checker_type0",
+            "actor_token": "0x0878FC80",
+            "uid": 2,
+            "checker_token": "0x085A2D70",
+            "keyboard_lock_level": 1,
+            "keyboard_suppressed": true,
+            "mouse": {
+              "scope": "native_command_checker_type1",
+              "lock_level": 0,
+              "lock_suppressed": false,
+              "checker_flag90_raw": false,
+              "physical_excluded": false
+            }
+          },
+          "mouse_button_state": {
+            "scope": "engine_mouse_button_state",
+            "deferred": true
+          },
+          "input_blocked": null
+        },
+        "me": {
+          "uid": 2,
+          "user_token": "0x08702AA8",
+          "actor_token": "0x087C7B40",
+          "map_token": "0x0873EA28",
+          "hp": null,
+          "max_hp": null,
+          "mp": 200,
+          "max_mp": 200,
+          "mp_source": {
+            "actor_token": "0x0878FC80",
+            "local": true
+          },
+          "dead": null,
+          "same_map": true,
+          "detached": false,
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          }
+        },
+        "players": [
+          {
+            "uid": 2,
+            "user_token": "0x08702AA8",
+            "actor_token": "0x087C7B40",
+            "map_token": "0x0873EA28",
+            "hp": null,
+            "max_hp": null,
+            "mp": 200,
+            "max_mp": 200,
+            "mp_source": {
+              "actor_token": "0x0878FC80",
+              "local": true
+            },
+            "dead": null,
+            "same_map": true,
+            "detached": false,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            }
+          }
+        ],
+        "enemies": [],
+        "skills": []
+      },
+      "closed": {
+        "schema": "dfl-client-state/v2",
+        "pid": 55920,
+        "process_started_filetime": 134378108846400065,
+        "sequence": 2557,
+        "captured_filetime": 134378114460212297,
+        "captured_tick_ms": 451074203,
+        "exported_filetime": 134378114460613579,
+        "layout_supported": true,
+        "valid": true,
+        "scene": 1,
+        "generation": 2,
+        "capture_duration_us": 12,
+        "skipped_publications": 0,
+        "truncated": false,
+        "errors": [],
+        "capabilities": {
+          "skill_levels": false,
+          "skill_cooldown": false,
+          "skill_usable": false
+        },
+        "server_context": null,
+        "room": null,
+        "town": {
+          "town_id": 1,
+          "area_id": 1,
+          "context_token": "0x07249AC0",
+          "map_token": "0x0873EA28",
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          },
+          "destination": {
+            "x": 474,
+            "y": 234
+          },
+          "direction_raw": {
+            "x": 4,
+            "y": 4
+          },
+          "auto_move_active": false
+        },
+        "ui": {
+          "selection_mode_raw": 0,
+          "player_menu": {
+            "visible": false,
+            "target_uid": null,
+            "action_ids": null
+          },
+          "town_minimap": {
+            "visible": false,
+            "enabled": true
+          },
+          "dungeon_selector": {
+            "visible": null,
+            "active_raw": 1,
+            "selected": -1,
+            "hover": -1,
+            "instance_token": null,
+            "transition_pending": null,
+            "phase_raw": null,
+            "stage_token": null,
+            "input_suppression_raw": null,
+            "record_count": null,
+            "selected_dungeon_id": null,
+            "difficulty_raw": null,
+            "maximum_difficulty_raw": null
+          },
+          "countdown": {
+            "state_raw": 0
+          },
+          "dialogs": {
+            "valid": true,
+            "truncated": false,
+            "items": [],
+            "covered_class_ids": [
+              7,
+              9,
+              35,
+              37,
+              48,
+              86,
+              89,
+              106
+            ]
+          },
+          "command_input": {
+            "scope": "native_command_checker_type0",
+            "actor_token": "0x0878FC80",
+            "uid": 2,
+            "checker_token": "0x085A2D70",
+            "keyboard_lock_level": 0,
+            "keyboard_suppressed": false,
+            "mouse": {
+              "scope": "native_command_checker_type1",
+              "lock_level": 0,
+              "lock_suppressed": false,
+              "checker_flag90_raw": false,
+              "physical_excluded": false
+            }
+          },
+          "mouse_button_state": {
+            "scope": "engine_mouse_button_state",
+            "deferred": false
+          },
+          "input_blocked": null
+        },
+        "me": {
+          "uid": 2,
+          "user_token": "0x08702AA8",
+          "actor_token": "0x087C7B40",
+          "map_token": "0x0873EA28",
+          "hp": null,
+          "max_hp": null,
+          "mp": 200,
+          "max_mp": 200,
+          "mp_source": {
+            "actor_token": "0x0878FC80",
+            "local": true
+          },
+          "dead": null,
+          "same_map": true,
+          "detached": false,
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          }
+        },
+        "players": [
+          {
+            "uid": 2,
+            "user_token": "0x08702AA8",
+            "actor_token": "0x087C7B40",
+            "map_token": "0x0873EA28",
+            "hp": null,
+            "max_hp": null,
+            "mp": 200,
+            "max_mp": 200,
+            "mp_source": {
+              "actor_token": "0x0878FC80",
+              "local": true
+            },
+            "dead": null,
+            "same_map": true,
+            "detached": false,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            }
+          }
+        ],
+        "enemies": [],
+        "skills": []
+      },
+      "cli_released": {
+        "ok": true,
+        "status": "matched",
+        "summary": {
+          "pid": 55920,
+          "sequence": 2553,
+          "generation": 2,
+          "scene": 1,
+          "room": null,
+          "me": {
+            "uid": 2,
+            "hp": null,
+            "max_hp": null,
+            "dead": null,
+            "detached": false,
+            "mp": 200,
+            "max_mp": 200,
+            "mp_source": {
+              "actor_token": "0x0878FC80",
+              "local": true
+            }
+          },
+          "enemies": 0,
+          "doors": {
+            "enabled_directions": [],
+            "unknown": []
+          },
+          "skills": {
+            "levels": false,
+            "cooldown": false,
+            "usable": false
+          },
+          "players": [
+            {
+              "uid": 2,
+              "mp": 200,
+              "max_mp": 200,
+              "mp_source": {
+                "actor_token": "0x0878FC80",
+                "local": true
+              }
+            }
+          ],
+          "town": {
+            "town_id": 1,
+            "area_id": 1,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            },
+            "destination": {
+              "x": 474,
+              "y": 234
+            },
+            "direction_raw": {
+              "x": 4,
+              "y": 4
+            },
+            "auto_move_active": false
+          },
+          "ui": {
+            "selection_mode_raw": 0,
+            "player_menu": {
+              "visible": false,
+              "target_uid": null,
+              "action_ids": null
+            },
+            "town_minimap": {
+              "visible": false,
+              "enabled": true
+            },
+            "dungeon_selector": {
+              "visible": null,
+              "active_raw": 1,
+              "selected": -1,
+              "hover": -1,
+              "instance_token": null,
+              "transition_pending": null,
+              "phase_raw": null,
+              "stage_token": null,
+              "input_suppression_raw": null,
+              "record_count": null,
+              "selected_dungeon_id": null,
+              "difficulty_raw": null,
+              "maximum_difficulty_raw": null
+            },
+            "countdown": {
+              "state_raw": 0
+            },
+            "dialogs": {
+              "valid": true,
+              "truncated": false,
+              "items": [],
+              "covered_class_ids": [
+                7,
+                9,
+                35,
+                37,
+                48,
+                86,
+                89,
+                106
+              ]
+            },
+            "command_input": {
+              "scope": "native_command_checker_type0",
+              "actor_token": "0x0878FC80",
+              "uid": 2,
+              "checker_token": "0x085A2D70",
+              "keyboard_lock_level": 0,
+              "keyboard_suppressed": false,
+              "mouse": {
+                "scope": "native_command_checker_type1",
+                "lock_level": 0,
+                "lock_suppressed": false,
+                "checker_flag90_raw": false,
+                "physical_excluded": false
+              }
+            },
+            "mouse_button_state": {
+              "scope": "engine_mouse_button_state",
+              "deferred": false
+            },
+            "input_blocked": null
+          }
+        }
+      }
+    },
+    "C": {
+      "raw": {
+        "role": "C",
+        "pid": 31384,
+        "process_started_filetime": 134378108861689757,
+        "sampling": "read-only owned-process research; not SDK history",
+        "period_ms": 10,
+        "max_seconds": 15,
+        "samples": 72,
+        "read_calls": 3459,
+        "events": [
+          {
+            "tick_ms": 451075093,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075187,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075296,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075406,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075515,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075562,
+            "scene": 1,
+            "mouse_button_deferred": true,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 1,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075578,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075687,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075796,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451075906,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451076015,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451076125,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8643048",
+            "command": {
+              "uid": 3,
+              "checker_token": "0x854dca0",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          }
+        ],
+        "errors": [],
+        "phase": "ui-v1",
+        "build_manifest_sha256": "8E9065D1D1699ABF19F72D6C5846689CA05C4E70F6837C972D701666E3F9364C",
+        "journal_sha256": "71B8EF4A0C20770FE2F64708CA7FCDEB62763B67E2BB0B7F3FC3453DE1028A97"
+      },
+      "snapshot": {
+        "schema": "dfl-client-state/v2",
+        "pid": 31384,
+        "process_started_filetime": 134378108861689757,
+        "sequence": 2552,
+        "captured_filetime": 134378114474542458,
+        "captured_tick_ms": 451075640,
+        "exported_filetime": 134378114474781043,
+        "layout_supported": true,
+        "valid": true,
+        "scene": 1,
+        "generation": 2,
+        "capture_duration_us": 14,
+        "skipped_publications": 0,
+        "truncated": false,
+        "errors": [],
+        "capabilities": {
+          "skill_levels": false,
+          "skill_cooldown": false,
+          "skill_usable": false
+        },
+        "server_context": null,
+        "room": null,
+        "town": {
+          "town_id": 1,
+          "area_id": 1,
+          "context_token": "0x070408A8",
+          "map_token": "0x08614B38",
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          },
+          "destination": {
+            "x": 474,
+            "y": 234
+          },
+          "direction_raw": {
+            "x": 4,
+            "y": 4
+          },
+          "auto_move_active": false
+        },
+        "ui": {
+          "selection_mode_raw": 0,
+          "player_menu": {
+            "visible": false,
+            "target_uid": null,
+            "action_ids": null
+          },
+          "town_minimap": {
+            "visible": false,
+            "enabled": true
+          },
+          "dungeon_selector": {
+            "visible": null,
+            "active_raw": 1,
+            "selected": -1,
+            "hover": -1,
+            "instance_token": null,
+            "transition_pending": null,
+            "phase_raw": null,
+            "stage_token": null,
+            "input_suppression_raw": null,
+            "record_count": null,
+            "selected_dungeon_id": null,
+            "difficulty_raw": null,
+            "maximum_difficulty_raw": null
+          },
+          "countdown": {
+            "state_raw": 0
+          },
+          "dialogs": {
+            "valid": true,
+            "truncated": false,
+            "items": [],
+            "covered_class_ids": [
+              7,
+              9,
+              35,
+              37,
+              48,
+              86,
+              89,
+              106
+            ]
+          },
+          "command_input": {
+            "scope": "native_command_checker_type0",
+            "actor_token": "0x08643048",
+            "uid": 3,
+            "checker_token": "0x0854DCA0",
+            "keyboard_lock_level": 0,
+            "keyboard_suppressed": false,
+            "mouse": {
+              "scope": "native_command_checker_type1",
+              "lock_level": 0,
+              "lock_suppressed": false,
+              "checker_flag90_raw": false,
+              "physical_excluded": false
+            }
+          },
+          "mouse_button_state": {
+            "scope": "engine_mouse_button_state",
+            "deferred": false
+          },
+          "input_blocked": null
+        },
+        "me": {
+          "uid": 3,
+          "user_token": "0x0863F4C8",
+          "actor_token": "0x06FD4628",
+          "map_token": "0x08614B38",
+          "hp": null,
+          "max_hp": null,
+          "mp": 270,
+          "max_mp": 270,
+          "mp_source": {
+            "actor_token": "0x08643048",
+            "local": true
+          },
+          "dead": null,
+          "same_map": true,
+          "detached": false,
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          }
+        },
+        "players": [
+          {
+            "uid": 3,
+            "user_token": "0x0863F4C8",
+            "actor_token": "0x06FD4628",
+            "map_token": "0x08614B38",
+            "hp": null,
+            "max_hp": null,
+            "mp": 270,
+            "max_mp": 270,
+            "mp_source": {
+              "actor_token": "0x08643048",
+              "local": true
+            },
+            "dead": null,
+            "same_map": true,
+            "detached": false,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            }
+          }
+        ],
+        "enemies": [],
+        "skills": []
+      },
+      "closed": {
+        "schema": "dfl-client-state/v2",
+        "pid": 31384,
+        "process_started_filetime": 134378108861689757,
+        "sequence": 2558,
+        "captured_filetime": 134378114486794631,
+        "captured_tick_ms": 451076859,
+        "exported_filetime": 134378114486930133,
+        "layout_supported": true,
+        "valid": true,
+        "scene": 1,
+        "generation": 2,
+        "capture_duration_us": 22,
+        "skipped_publications": 0,
+        "truncated": false,
+        "errors": [],
+        "capabilities": {
+          "skill_levels": false,
+          "skill_cooldown": false,
+          "skill_usable": false
+        },
+        "server_context": null,
+        "room": null,
+        "town": {
+          "town_id": 1,
+          "area_id": 1,
+          "context_token": "0x070408A8",
+          "map_token": "0x08614B38",
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          },
+          "destination": {
+            "x": 474,
+            "y": 234
+          },
+          "direction_raw": {
+            "x": 4,
+            "y": 4
+          },
+          "auto_move_active": false
+        },
+        "ui": {
+          "selection_mode_raw": 0,
+          "player_menu": {
+            "visible": false,
+            "target_uid": null,
+            "action_ids": null
+          },
+          "town_minimap": {
+            "visible": false,
+            "enabled": true
+          },
+          "dungeon_selector": {
+            "visible": null,
+            "active_raw": 1,
+            "selected": -1,
+            "hover": -1,
+            "instance_token": null,
+            "transition_pending": null,
+            "phase_raw": null,
+            "stage_token": null,
+            "input_suppression_raw": null,
+            "record_count": null,
+            "selected_dungeon_id": null,
+            "difficulty_raw": null,
+            "maximum_difficulty_raw": null
+          },
+          "countdown": {
+            "state_raw": 0
+          },
+          "dialogs": {
+            "valid": true,
+            "truncated": false,
+            "items": [],
+            "covered_class_ids": [
+              7,
+              9,
+              35,
+              37,
+              48,
+              86,
+              89,
+              106
+            ]
+          },
+          "command_input": {
+            "scope": "native_command_checker_type0",
+            "actor_token": "0x08643048",
+            "uid": 3,
+            "checker_token": "0x0854DCA0",
+            "keyboard_lock_level": 0,
+            "keyboard_suppressed": false,
+            "mouse": {
+              "scope": "native_command_checker_type1",
+              "lock_level": 0,
+              "lock_suppressed": false,
+              "checker_flag90_raw": false,
+              "physical_excluded": false
+            }
+          },
+          "mouse_button_state": {
+            "scope": "engine_mouse_button_state",
+            "deferred": false
+          },
+          "input_blocked": null
+        },
+        "me": {
+          "uid": 3,
+          "user_token": "0x0863F4C8",
+          "actor_token": "0x06FD4628",
+          "map_token": "0x08614B38",
+          "hp": null,
+          "max_hp": null,
+          "mp": 270,
+          "max_mp": 270,
+          "mp_source": {
+            "actor_token": "0x08643048",
+            "local": true
+          },
+          "dead": null,
+          "same_map": true,
+          "detached": false,
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          }
+        },
+        "players": [
+          {
+            "uid": 3,
+            "user_token": "0x0863F4C8",
+            "actor_token": "0x06FD4628",
+            "map_token": "0x08614B38",
+            "hp": null,
+            "max_hp": null,
+            "mp": 270,
+            "max_mp": 270,
+            "mp_source": {
+              "actor_token": "0x08643048",
+              "local": true
+            },
+            "dead": null,
+            "same_map": true,
+            "detached": false,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            }
+          }
+        ],
+        "enemies": [],
+        "skills": []
+      },
+      "cli_released": {
+        "ok": true,
+        "status": "matched",
+        "summary": {
+          "pid": 31384,
+          "sequence": 2554,
+          "generation": 2,
+          "scene": 1,
+          "room": null,
+          "me": {
+            "uid": 3,
+            "hp": null,
+            "max_hp": null,
+            "dead": null,
+            "detached": false,
+            "mp": 270,
+            "max_mp": 270,
+            "mp_source": {
+              "actor_token": "0x08643048",
+              "local": true
+            }
+          },
+          "enemies": 0,
+          "doors": {
+            "enabled_directions": [],
+            "unknown": []
+          },
+          "skills": {
+            "levels": false,
+            "cooldown": false,
+            "usable": false
+          },
+          "players": [
+            {
+              "uid": 3,
+              "mp": 270,
+              "max_mp": 270,
+              "mp_source": {
+                "actor_token": "0x08643048",
+                "local": true
+              }
+            }
+          ],
+          "town": {
+            "town_id": 1,
+            "area_id": 1,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            },
+            "destination": {
+              "x": 474,
+              "y": 234
+            },
+            "direction_raw": {
+              "x": 4,
+              "y": 4
+            },
+            "auto_move_active": false
+          },
+          "ui": {
+            "selection_mode_raw": 0,
+            "player_menu": {
+              "visible": false,
+              "target_uid": null,
+              "action_ids": null
+            },
+            "town_minimap": {
+              "visible": false,
+              "enabled": true
+            },
+            "dungeon_selector": {
+              "visible": null,
+              "active_raw": 1,
+              "selected": -1,
+              "hover": -1,
+              "instance_token": null,
+              "transition_pending": null,
+              "phase_raw": null,
+              "stage_token": null,
+              "input_suppression_raw": null,
+              "record_count": null,
+              "selected_dungeon_id": null,
+              "difficulty_raw": null,
+              "maximum_difficulty_raw": null
+            },
+            "countdown": {
+              "state_raw": 0
+            },
+            "dialogs": {
+              "valid": true,
+              "truncated": false,
+              "items": [],
+              "covered_class_ids": [
+                7,
+                9,
+                35,
+                37,
+                48,
+                86,
+                89,
+                106
+              ]
+            },
+            "command_input": {
+              "scope": "native_command_checker_type0",
+              "actor_token": "0x08643048",
+              "uid": 3,
+              "checker_token": "0x0854DCA0",
+              "keyboard_lock_level": 0,
+              "keyboard_suppressed": false,
+              "mouse": {
+                "scope": "native_command_checker_type1",
+                "lock_level": 0,
+                "lock_suppressed": false,
+                "checker_flag90_raw": false,
+                "physical_excluded": false
+              }
+            },
+            "mouse_button_state": {
+              "scope": "engine_mouse_button_state",
+              "deferred": false
+            },
+            "input_blocked": null
+          }
+        }
+      }
+    },
+    "D": {
+      "raw": {
+        "role": "D",
+        "pid": 48384,
+        "process_started_filetime": 134378108876069571,
+        "sampling": "read-only owned-process research; not SDK history",
+        "period_ms": 10,
+        "max_seconds": 15,
+        "samples": 175,
+        "read_calls": 8403,
+        "events": [
+          {
+            "tick_ms": 451077718,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451077828,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451077937,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078046,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078156,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078265,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078375,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078484,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078593,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078703,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078812,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451078921,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079031,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079140,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079250,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079359,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079468,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079578,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079687,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079796,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451079906,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451080015,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451080125,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451080234,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          },
+          {
+            "tick_ms": 451080343,
+            "scene": 1,
+            "mouse_button_deferred": false,
+            "actor_token": "0x8696180",
+            "command": {
+              "uid": 4,
+              "checker_token": "0x85b6d60",
+              "keyboard_lock_level": 0,
+              "mouse_lock_level": 0,
+              "checker_flag90_raw": false,
+              "physical_excluded": false,
+              "sdk_uid_bound": true
+            }
+          }
+        ],
+        "errors": [],
+        "phase": "ui-v1",
+        "build_manifest_sha256": "8E9065D1D1699ABF19F72D6C5846689CA05C4E70F6837C972D701666E3F9364C",
+        "journal_sha256": "71B8EF4A0C20770FE2F64708CA7FCDEB62763B67E2BB0B7F3FC3453DE1028A97"
+      },
+      "snapshot": {
+        "schema": "dfl-client-state/v2",
+        "pid": 48384,
+        "process_started_filetime": 134378108876069571,
+        "sequence": 2562,
+        "captured_filetime": 134378114517057760,
+        "captured_tick_ms": 451079890,
+        "exported_filetime": 134378114517251109,
+        "layout_supported": true,
+        "valid": true,
+        "scene": 1,
+        "generation": 2,
+        "capture_duration_us": 14,
+        "skipped_publications": 0,
+        "truncated": false,
+        "errors": [],
+        "capabilities": {
+          "skill_levels": false,
+          "skill_cooldown": false,
+          "skill_usable": false
+        },
+        "server_context": null,
+        "room": null,
+        "town": {
+          "town_id": 1,
+          "area_id": 1,
+          "context_token": "0x0702D3C8",
+          "map_token": "0x0866AC08",
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          },
+          "destination": {
+            "x": 474,
+            "y": 234
+          },
+          "direction_raw": {
+            "x": 4,
+            "y": 4
+          },
+          "auto_move_active": false
+        },
+        "ui": {
+          "selection_mode_raw": 0,
+          "player_menu": {
+            "visible": false,
+            "target_uid": null,
+            "action_ids": null
+          },
+          "town_minimap": {
+            "visible": false,
+            "enabled": true
+          },
+          "dungeon_selector": {
+            "visible": null,
+            "active_raw": 1,
+            "selected": -1,
+            "hover": -1,
+            "instance_token": null,
+            "transition_pending": null,
+            "phase_raw": null,
+            "stage_token": null,
+            "input_suppression_raw": null,
+            "record_count": null,
+            "selected_dungeon_id": null,
+            "difficulty_raw": null,
+            "maximum_difficulty_raw": null
+          },
+          "countdown": {
+            "state_raw": 0
+          },
+          "dialogs": {
+            "valid": true,
+            "truncated": false,
+            "items": [],
+            "covered_class_ids": [
+              7,
+              9,
+              35,
+              37,
+              48,
+              86,
+              89,
+              106
+            ]
+          },
+          "command_input": {
+            "scope": "native_command_checker_type0",
+            "actor_token": "0x08696180",
+            "uid": 4,
+            "checker_token": "0x085B6D60",
+            "keyboard_lock_level": 0,
+            "keyboard_suppressed": false,
+            "mouse": {
+              "scope": "native_command_checker_type1",
+              "lock_level": 0,
+              "lock_suppressed": false,
+              "checker_flag90_raw": false,
+              "physical_excluded": false
+            }
+          },
+          "mouse_button_state": {
+            "scope": "engine_mouse_button_state",
+            "deferred": false
+          },
+          "input_blocked": null
+        },
+        "me": {
+          "uid": 4,
+          "user_token": "0x08612A18",
+          "actor_token": "0x071EBBA8",
+          "map_token": "0x0866AC08",
+          "hp": null,
+          "max_hp": null,
+          "mp": 300,
+          "max_mp": 300,
+          "mp_source": {
+            "actor_token": "0x08696180",
+            "local": true
+          },
+          "dead": null,
+          "same_map": true,
+          "detached": false,
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          }
+        },
+        "players": [
+          {
+            "uid": 4,
+            "user_token": "0x08612A18",
+            "actor_token": "0x071EBBA8",
+            "map_token": "0x0866AC08",
+            "hp": null,
+            "max_hp": null,
+            "mp": 300,
+            "max_mp": 300,
+            "mp_source": {
+              "actor_token": "0x08696180",
+              "local": true
+            },
+            "dead": null,
+            "same_map": true,
+            "detached": false,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            }
+          }
+        ],
+        "enemies": [],
+        "skills": []
+      },
+      "closed": {
+        "schema": "dfl-client-state/v2",
+        "pid": 48384,
+        "process_started_filetime": 134378108876069571,
+        "sequence": 2568,
+        "captured_filetime": 134378114529297358,
+        "captured_tick_ms": 451081109,
+        "exported_filetime": 134378114529369303,
+        "layout_supported": true,
+        "valid": true,
+        "scene": 1,
+        "generation": 2,
+        "capture_duration_us": 13,
+        "skipped_publications": 0,
+        "truncated": false,
+        "errors": [],
+        "capabilities": {
+          "skill_levels": false,
+          "skill_cooldown": false,
+          "skill_usable": false
+        },
+        "server_context": null,
+        "room": null,
+        "town": {
+          "town_id": 1,
+          "area_id": 1,
+          "context_token": "0x0702D3C8",
+          "map_token": "0x0866AC08",
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          },
+          "destination": {
+            "x": 474,
+            "y": 234
+          },
+          "direction_raw": {
+            "x": 4,
+            "y": 4
+          },
+          "auto_move_active": false
+        },
+        "ui": {
+          "selection_mode_raw": 0,
+          "player_menu": {
+            "visible": false,
+            "target_uid": null,
+            "action_ids": null
+          },
+          "town_minimap": {
+            "visible": false,
+            "enabled": true
+          },
+          "dungeon_selector": {
+            "visible": null,
+            "active_raw": 1,
+            "selected": -1,
+            "hover": -1,
+            "instance_token": null,
+            "transition_pending": null,
+            "phase_raw": null,
+            "stage_token": null,
+            "input_suppression_raw": null,
+            "record_count": null,
+            "selected_dungeon_id": null,
+            "difficulty_raw": null,
+            "maximum_difficulty_raw": null
+          },
+          "countdown": {
+            "state_raw": 0
+          },
+          "dialogs": {
+            "valid": true,
+            "truncated": false,
+            "items": [],
+            "covered_class_ids": [
+              7,
+              9,
+              35,
+              37,
+              48,
+              86,
+              89,
+              106
+            ]
+          },
+          "command_input": {
+            "scope": "native_command_checker_type0",
+            "actor_token": "0x08696180",
+            "uid": 4,
+            "checker_token": "0x085B6D60",
+            "keyboard_lock_level": 0,
+            "keyboard_suppressed": false,
+            "mouse": {
+              "scope": "native_command_checker_type1",
+              "lock_level": 0,
+              "lock_suppressed": false,
+              "checker_flag90_raw": false,
+              "physical_excluded": false
+            }
+          },
+          "mouse_button_state": {
+            "scope": "engine_mouse_button_state",
+            "deferred": false
+          },
+          "input_blocked": null
+        },
+        "me": {
+          "uid": 4,
+          "user_token": "0x08612A18",
+          "actor_token": "0x071EBBA8",
+          "map_token": "0x0866AC08",
+          "hp": null,
+          "max_hp": null,
+          "mp": 300,
+          "max_mp": 300,
+          "mp_source": {
+            "actor_token": "0x08696180",
+            "local": true
+          },
+          "dead": null,
+          "same_map": true,
+          "detached": false,
+          "position": {
+            "x": 474,
+            "y": 234,
+            "z": 0
+          }
+        },
+        "players": [
+          {
+            "uid": 4,
+            "user_token": "0x08612A18",
+            "actor_token": "0x071EBBA8",
+            "map_token": "0x0866AC08",
+            "hp": null,
+            "max_hp": null,
+            "mp": 300,
+            "max_mp": 300,
+            "mp_source": {
+              "actor_token": "0x08696180",
+              "local": true
+            },
+            "dead": null,
+            "same_map": true,
+            "detached": false,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            }
+          }
+        ],
+        "enemies": [],
+        "skills": []
+      },
+      "cli_released": {
+        "ok": true,
+        "status": "matched",
+        "summary": {
+          "pid": 48384,
+          "sequence": 2564,
+          "generation": 2,
+          "scene": 1,
+          "room": null,
+          "me": {
+            "uid": 4,
+            "hp": null,
+            "max_hp": null,
+            "dead": null,
+            "detached": false,
+            "mp": 300,
+            "max_mp": 300,
+            "mp_source": {
+              "actor_token": "0x08696180",
+              "local": true
+            }
+          },
+          "enemies": 0,
+          "doors": {
+            "enabled_directions": [],
+            "unknown": []
+          },
+          "skills": {
+            "levels": false,
+            "cooldown": false,
+            "usable": false
+          },
+          "players": [
+            {
+              "uid": 4,
+              "mp": 300,
+              "max_mp": 300,
+              "mp_source": {
+                "actor_token": "0x08696180",
+                "local": true
+              }
+            }
+          ],
+          "town": {
+            "town_id": 1,
+            "area_id": 1,
+            "position": {
+              "x": 474,
+              "y": 234,
+              "z": 0
+            },
+            "destination": {
+              "x": 474,
+              "y": 234
+            },
+            "direction_raw": {
+              "x": 4,
+              "y": 4
+            },
+            "auto_move_active": false
+          },
+          "ui": {
+            "selection_mode_raw": 0,
+            "player_menu": {
+              "visible": false,
+              "target_uid": null,
+              "action_ids": null
+            },
+            "town_minimap": {
+              "visible": false,
+              "enabled": true
+            },
+            "dungeon_selector": {
+              "visible": null,
+              "active_raw": 1,
+              "selected": -1,
+              "hover": -1,
+              "instance_token": null,
+              "transition_pending": null,
+              "phase_raw": null,
+              "stage_token": null,
+              "input_suppression_raw": null,
+              "record_count": null,
+              "selected_dungeon_id": null,
+              "difficulty_raw": null,
+              "maximum_difficulty_raw": null
+            },
+            "countdown": {
+              "state_raw": 0
+            },
+            "dialogs": {
+              "valid": true,
+              "truncated": false,
+              "items": [],
+              "covered_class_ids": [
+                7,
+                9,
+                35,
+                37,
+                48,
+                86,
+                89,
+                106
+              ]
+            },
+            "command_input": {
+              "scope": "native_command_checker_type0",
+              "actor_token": "0x08696180",
+              "uid": 4,
+              "checker_token": "0x085B6D60",
+              "keyboard_lock_level": 0,
+              "keyboard_suppressed": false,
+              "mouse": {
+                "scope": "native_command_checker_type1",
+                "lock_level": 0,
+                "lock_suppressed": false,
+                "checker_flag90_raw": false,
+                "physical_excluded": false
+              }
+            },
+            "mouse_button_state": {
+              "scope": "engine_mouse_button_state",
+              "deferred": false
+            },
+            "input_blocked": null
+          }
+        }
+      }
+    }
+  },
+  "phase": "ui-v1",
+  "build_manifest_sha256": "8E9065D1D1699ABF19F72D6C5846689CA05C4E70F6837C972D701666E3F9364C",
+  "journal_sha256": "71B8EF4A0C20770FE2F64708CA7FCDEB62763B67E2BB0B7F3FC3453DE1028A97"
+}

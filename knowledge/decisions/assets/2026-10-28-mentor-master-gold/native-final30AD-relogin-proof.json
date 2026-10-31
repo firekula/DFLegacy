@@ -1,0 +1,302 @@
+{
+  "schema": "mentor-master-gold-final30AD-relogin-public-proof/v1",
+  "component_case": "PASS_NATIVE_AS_SCOPED",
+  "overall_delivery": "PENDING_ROOT_RESTORE_AND_INTEGRATION",
+  "scope": "Stopped final30AD restart after C79 offline25. Exact baseline bytes linked privately; no future/current mutable inputs or full state exported.",
+  "identity": {
+    "phase": "gold-offline-final-relogin-30AD",
+    "server_pid": 61388,
+    "client_pids": {
+      "A": 74644,
+      "B": 57968
+    },
+    "managed_source": "5078da27a4807695f002ceea61333c43e1932ce4",
+    "managed_sha256": "A0EE99650A49011B9527E06BB8E1C19E6A7E5D284CC51D8F9865597C9E133134",
+    "protocol_sha256": "5A55089D384EFA9E4ACEC5A211EE5C551668CDDB5C93ED46A698D50250E04A4E",
+    "native_sha256": "30AD9A4A3CD565DE845F74AB3D6C6D60EED1F3429EC7D53929D912F158246584",
+    "native_source": "ab1e6b685021f6cd6f8d125fc04dc0c5c50e931f",
+    "combined_build_manifest_sha256": "09EFFBE39AB99B377AAFB540933EA75919E9E04642FCE79F4D6AF0CB1CC05204",
+    "native_deployment_receipt_sha256": "832A30A725206FE2A789EFAD4EE7A3194E03B49CCF781E3D931D4C3C99BB8CD8"
+  },
+  "before_exactly_previous_C79_final": true,
+  "before": {
+    "A": {
+      "gold": 50681,
+      "level": 45,
+      "experience": 38402107,
+      "relationship_experience": 0,
+      "canonical_master_role": null,
+      "awarded_receipt_count": 2,
+      "pending_dungeon_gold": 0,
+      "pending_store_gold": 0,
+      "pending_mentor_gold": 0
+    },
+    "B": {
+      "gold": 50495,
+      "level": 6,
+      "experience": 19018,
+      "relationship_experience": 18,
+      "canonical_master_role": "A",
+      "awarded_receipt_count": 0,
+      "pending_dungeon_gold": 0,
+      "pending_store_gold": 0,
+      "pending_mentor_gold": 0
+    }
+  },
+  "after": {
+    "A": {
+      "gold": 50681,
+      "level": 45,
+      "experience": 38402107,
+      "relationship_experience": 0,
+      "canonical_master_role": null,
+      "awarded_receipt_count": 2,
+      "pending_dungeon_gold": 0,
+      "pending_store_gold": 0,
+      "pending_mentor_gold": 0
+    },
+    "B": {
+      "gold": 50495,
+      "level": 6,
+      "experience": 19018,
+      "relationship_experience": 18,
+      "canonical_master_role": "A",
+      "awarded_receipt_count": 0,
+      "pending_dungeon_gold": 0,
+      "pending_store_gold": 0,
+      "pending_mentor_gold": 0
+    }
+  },
+  "captures": [
+    {
+      "role": "A",
+      "pid": 74644,
+      "counts": {
+        "TX_frames": 10,
+        "RX_frames": 32,
+        "TX_crc_valid": 10,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 5,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "packets": [
+        {
+          "frame_ordinal": 1,
+          "source_line": 93,
+          "at": "2026-10-28 07:35:23.179",
+          "event": "character_selection_request",
+          "direction": "TX",
+          "type": 1,
+          "op": 4
+        },
+        {
+          "frame_ordinal": 2,
+          "source_line": 99,
+          "at": "2026-10-28 07:35:23.754",
+          "event": "absolute_gold",
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "gold": 50681
+        },
+        {
+          "frame_ordinal": 3,
+          "source_line": 99,
+          "at": "2026-10-28 07:35:23.754",
+          "event": "item_list_without_gold",
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "gold": null
+        },
+        {
+          "frame_ordinal": 4,
+          "source_line": 99,
+          "at": "2026-10-28 07:35:23.754",
+          "event": "item_list_without_gold",
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "gold": null
+        },
+        {
+          "frame_ordinal": 5,
+          "source_line": 99,
+          "at": "2026-10-28 07:35:23.754",
+          "event": "item_list_without_gold",
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "gold": null
+        }
+      ]
+    },
+    {
+      "role": "B",
+      "pid": 57968,
+      "counts": {
+        "TX_frames": 9,
+        "RX_frames": 31,
+        "TX_crc_valid": 9,
+        "TX_crc_errors": 0,
+        "selected_layout_errors": 0,
+        "selected_events": 5,
+        "incomplete_tcp_bytes": 0,
+        "disabled_flows": 0
+      },
+      "packets": [
+        {
+          "frame_ordinal": 1,
+          "source_line": 93,
+          "at": "2026-10-28 07:36:12.507",
+          "event": "character_selection_request",
+          "direction": "TX",
+          "type": 1,
+          "op": 4
+        },
+        {
+          "frame_ordinal": 2,
+          "source_line": 94,
+          "at": "2026-10-28 07:36:12.513",
+          "event": "absolute_gold",
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "gold": 50495
+        },
+        {
+          "frame_ordinal": 3,
+          "source_line": 94,
+          "at": "2026-10-28 07:36:12.513",
+          "event": "item_list_without_gold",
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "gold": null
+        },
+        {
+          "frame_ordinal": 4,
+          "source_line": 94,
+          "at": "2026-10-28 07:36:12.513",
+          "event": "item_list_without_gold",
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "gold": null
+        },
+        {
+          "frame_ordinal": 5,
+          "source_line": 94,
+          "at": "2026-10-28 07:36:12.513",
+          "event": "item_list_without_gold",
+          "direction": "RX",
+          "type": 0,
+          "op": 13,
+          "gold": null
+        }
+      ]
+    }
+  ],
+  "gold_checks": [
+    {
+      "check": "strict_capture_A_74644",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "strict_capture_B_57968",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "no_receipt_loss",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "no_unsupported_card_layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "untruncated_state_evidence",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "full_NOTI76_fields",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "no_unpaired_NOTI76",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "relogin_observed",
+      "status": "PASS",
+      "evidence": {
+        "observed": 1
+      }
+    },
+    {
+      "check": "relogin_existing_award_to_retain",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "relogin_no_replayed_popup_or_new_receipt",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "relogin_wallet_retained",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "relogin_absolute_wallet_observed",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "check": "relogin_receipts_stable",
+      "status": "PASS",
+      "evidence": null
+    }
+  ],
+  "both_roles_checks": {
+    "A_canonical_and_absolute_wallet_retained": true,
+    "A_no_mentor_award_packet": true,
+    "A_one_native_new_login": true,
+    "A_award_receipts_unchanged": true,
+    "A_pending_zero": true,
+    "B_canonical_and_absolute_wallet_retained": true,
+    "B_no_mentor_award_packet": true,
+    "B_one_native_new_login": true,
+    "B_award_receipts_unchanged": true,
+    "B_pending_zero": true,
+    "two_awards_applied": true,
+    "pickup_card_receipts_unchanged": true,
+    "existing_three_Pvp_receipts_preserved": true,
+    "B_edge_experience18_retained": true
+  },
+  "all_TX_crc_valid": 19,
+  "native_images_reviewed": [
+    "offline-final-A-world.jpg",
+    "offline-final-B-world.jpg"
+  ],
+  "limitations": [
+    "Exactly one new login per client after this full restart; do not describe it as arbitrary repeated-login stress.",
+    "C79 timer/offline behavior remains bound to C79. This30AD phase proves retention/no delayed offline payout and final identity bridge, not a replay of all earlier combat/timer actions.",
+    "Native wallet cap, trade race, forced-replacement/fault/multi-child edge cases remain automated evidence only.",
+    "Fatigue/COF remain BLOCKED. Final runtime/config restoration and whole-round integration remain root-owned pending work."
+  ],
+  "integrity": {
+    "private_freeze_manifest_sha256": "9EF0471BFDD895A189F2215D5D5D4504E8572A2F2D539DE863BA3CB0AD55EF0F",
+    "economy_checker_sha256": "EEDA9D42D68915771E662D0DECFB793004C50483DEEE92069744B1A6F4C38498"
+  }
+}

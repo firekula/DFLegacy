@@ -1,0 +1,55 @@
+{
+  "Schema": "party-native-phase/v1",
+  "Phase": "right-pulse-v2",
+  "Status": "running",
+  "StartedAtUtc": "2026-10-29T10:42:33.8844284Z",
+  "StoppedAtUtc": null,
+  "BuildManifest": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\build-manifest-right-pulse-v2.json",
+  "BuildManifestSha256": "00F9C92D246464AE84DD398C0C24EB0185F4C5ACCAC9702799A26502923AF41E",
+  "Runtime": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\runtime-right-pulse-v2",
+  "State": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\state-right-pulse-v2.json",
+  "InitialFixtureSha256": "E8407BD0B6B8D010C8C77743C295EC354E26E47D8F4284D445F2A5BA7527C5A1",
+  "Server": {
+    "Role": "server",
+    "Id": 77044,
+    "Path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\runtime-right-pulse-v2\\DFLegacy.Server.exe",
+    "StartTimeUtc": "2026-10-29T10:42:34.1023234Z"
+  },
+  "Clients": [
+    {
+      "Role": "A",
+      "Id": 8820,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T10:42:36.5015453Z"
+    },
+    {
+      "Role": "B",
+      "Id": 8568,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DNF.exe",
+      "StartTimeUtc": "2026-10-29T10:42:37.2443797Z"
+    }
+  ],
+  "Launchers": [
+    {
+      "Role": "launcher-A",
+      "Id": 57056,
+      "Path": "G:\\Game\\DNF_ACT1\\DF\\town-test\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T10:42:36.0999334Z"
+    },
+    {
+      "Role": "launcher-B",
+      "Id": 60000,
+      "Path": "G:\\Game\\DNF_ACT1\\Client_test2\\DFLegacy-launcher\\DFLegacy.Launcher.exe",
+      "StartTimeUtc": "2026-10-29T10:42:36.7502881Z"
+    }
+  ],
+  "Sink": null,
+  "SinkLog": null,
+  "Stdout": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\server-right-pulse-v2.log",
+  "Stderr": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\map-right-pulse-20261029\\server-right-pulse-v2.err.log",
+  "PeerSink": false,
+  "RoleAccounts": {
+    "A": "shizuku",
+    "B": "test"
+  }
+}
