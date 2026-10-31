@@ -6,6 +6,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Windows.Media.Imaging;
+using DFLegacy.Launcher.Controls;
 using DFLegacy.AccountClient;
 using HandyControl.Controls;
 
@@ -20,6 +22,10 @@ public partial class MainWindow : System.Windows.Window
     private AccountServiceClient _account;
     private readonly DispatcherTimer _statusTimer;
     private LauncherOptions _options;
+    private LocalServerSelection? _serverSelection;
+    private readonly Dictionary<string, ImageSource> _artwork = [];
+    private bool _refreshingStatus;
+    private static readonly string[] BannerTitles = ["勇士，欢迎重返阿拉德", "经典职业，再次集结", "携手伙伴，开启冒险", "熟悉的世界，新的旅程", "准备出发，探索阿拉德"];
 
     public MainWindow()
     {
@@ -28,29 +34,10 @@ public partial class MainWindow : System.Windows.Window
         // 账号服务地址 = 入口域名 + 账号服务端口（可用 AccountServiceUrl 覆盖），发布前只改端口。
         _account = new AccountServiceClient(_options.ResolveAccountServiceUrl());
 
-        // 原版三态图片按钮：位置/尺寸见 MainWindow.xaml（取自 QQLogin.xml），
-        // 标签烙在图片里，点击动作用这里注入。
-        _ = new SkinImage(CloseImage, "buton_close00.png", "buton_close01.png", "buton_close02.png",
-            () => Close());
-        _ = new SkinImage(RegisterImage, "buton_zczh00.png", "buton_zczh01.png", "buton_zczh02.png",
-            () => RegisterBtn_Click(this, new RoutedEventArgs()));
-        _ = new SkinImage(SiteImage, "buton_gfwz00.png", "buton_gfwz01.png", "buton_gfwz02.png",
-            () => OpenUrl("http://dnf.qq.com/"));
-        _ = new SkinImage(ServiceImage, "buton_kffw00.png", "buton_kffw01.png", "buton_kffw02.png",
-            () => OpenUrl("http://gcs.qq.com/gcs/index.shtml"));
-        _ = new SkinImage(PayImage, "buton_sccz00.png", "buton_sccz01.png", "buton_sccz02.png",
-            () => OpenUrl("http://dnf.qq.com/web200805/pay.htm"));
-        _ = new SkinImage(ForumImage, "buton_yxlt00.png", "buton_yxlt01.png", "buton_yxlt02.png",
-            () => OpenUrl("http://gamebbs.qq.com/"));
-        _ = new SkinImage(AccountsImage, "buton_bs03.png", "buton_bs03.png", "buton_bs03.png",
-            () => AccountEditBtn_Click(this, new RoutedEventArgs()));
-        _ = new SkinImage(SettingsImage, "choose_00.png", "choose_01.png", "choose_02.png",
-            () => ConfigBtn_Click(this, new RoutedEventArgs()));
-        _ = new SkinImage(EnterImage, "enter_00.png", "enter_01.png", "enter_02.png",
-            StartGame);
-
+        ShowBanner(0);
         RefreshAccounts();
         AccountText.TextChanged += (_, _) => UpdateAccountHint();
+        PasswordText.PasswordChanged += (_, _) => UpdateAccountHint();
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
@@ -92,42 +79,57 @@ public partial class MainWindow : System.Windows.Window
         UpdateAccountHint();
     }
 
-    private void UpdateAccountHint() =>
+    private void UpdateAccountHint()
+    {
         AccountHint.Visibility = string.IsNullOrEmpty(AccountText.Text) ? Visibility.Visible : Visibility.Collapsed;
+        PasswordHint.Visibility = string.IsNullOrEmpty(PasswordText.Password) ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     // 状态灯语义按原版：探的是游戏入口（EntranceHost:EntrancePort），不是本机账号 API。
     // 账号 API（注册/改密/找回用）单独一行显示，避免"远端服务端明明在跑却提示不可达"的误解。
     private async Task RefreshStatusAsync()
     {
+        if (_refreshingStatus) return;
+        _refreshingStatus = true;
+        var options = _options; var accountClient = _account;
+        try
+        {
         try
         {
             var entranceUp = await ProbeTcpAsync(
-                _options.EntranceHost, _options.EntrancePort, TimeSpan.FromSeconds(2));
+                options.EntranceHost, options.EntrancePort, TimeSpan.FromSeconds(2));
+            if (!ReferenceEquals(options, _options)) return;
             ServerDot.Fill = entranceUp ? Brushes.LimeGreen : Brushes.IndianRed;
-            ServerText.Text = entranceUp ? "服务端已上线" : "服务端未上线";
-            ServerAddr.Text = $"{_options.EntranceHost}:{_options.EntrancePort}";
+            ServerText.Text = entranceUp ? "服务端：可连接" : "服务端：未上线";
+            ServerAddr.Text = $"{options.EntranceHost}:{options.EntrancePort}";
+            SetServerArtwork(entranceUp);
         }
         catch (Exception)
         {
+            if (!ReferenceEquals(options, _options)) return;
             ServerDot.Fill = Brushes.IndianRed;
             ServerText.Text = "服务端未上线";
+            SetServerArtwork(false);
         }
 
         try
         {
-            var apiUp = await _account.CheckHealthAsync();
+            var apiUp = await accountClient.CheckHealthAsync();
+            if (!ReferenceEquals(options, _options)) return;
             ApiDot.Fill = apiUp ? Brushes.LimeGreen : Brushes.Gray;
-            ApiText.Text = apiUp
-                ? $"账号服务：可达（{_options.ResolveAccountServiceUrl()}）"
-                : $"账号服务：不可达（{_options.ResolveAccountServiceUrl()}）";
+            ApiText.Text = apiUp ? "账号服务：可达" : "账号服务：不可达";
+            ApiText.ToolTip = options.ResolveAccountServiceUrl();
         }
         catch (Exception)
         {
             // CheckHealthAsync 只捕获 HttpRequestException，超时会以 TaskCanceledException 冒出；
             // DispatcherTimer 的 Tick 是 async void，任何失败都按不可达处理，避免拖垮应用。
+            if (!ReferenceEquals(options, _options)) return;
             ApiDot.Fill = Brushes.Gray;
             ApiText.Text = "账号服务：不可达";
         }
+        }
+        finally { _refreshingStatus = false; }
     }
 
     private static async Task<bool> ProbeTcpAsync(string host, int port, TimeSpan timeout)
@@ -209,8 +211,16 @@ public partial class MainWindow : System.Windows.Window
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Handled) return;
+        if (ServerPage.Visibility == Visibility.Visible)
+        {
+            if (e.Key == Key.Enter) { ConfirmServer_Click(this, new RoutedEventArgs()); e.Handled = true; }
+            else if (e.Key == Key.Escape) { BackToLogin_Click(this, new RoutedEventArgs()); e.Handled = true; }
+            return;
+        }
         if (e.Key == Key.Enter)
         {
+            if (Keyboard.FocusedElement is Button) return;
             StartGame();
             e.Handled = true;
         }
@@ -267,7 +277,7 @@ public partial class MainWindow : System.Windows.Window
             Growl.Warning($"打开注册窗口失败：{ex.Message}");
             return;
         }
-        win.ShowDialog();
+        ShowOwnedDialog(win);
     }
 
     private void OnRegistered(LauncherAccountProfile profile, bool remember)
@@ -308,7 +318,7 @@ public partial class MainWindow : System.Windows.Window
             Growl.Warning($"打开找回密码窗口失败：{ex.Message}");
             return;
         }
-        win.ShowDialog();
+        ShowOwnedDialog(win);
     }
 
     private void ModifyBtn_Click(object sender, RoutedEventArgs e)
@@ -331,7 +341,7 @@ public partial class MainWindow : System.Windows.Window
             win.UserName.Text = account;
         }
 
-        win.ShowDialog();
+        ShowOwnedDialog(win);
     }
 
     private void OnPasswordChanged(string userName, string newPassword)
@@ -369,7 +379,7 @@ public partial class MainWindow : System.Windows.Window
             return;
         }
 
-        win.ShowDialog();
+        ShowOwnedDialog(win);
         try
         {
             _options = _store.Load();      // 编辑后重新加载
@@ -383,6 +393,9 @@ public partial class MainWindow : System.Windows.Window
     }
 
     private void ConfigBtn_Click(object sender, RoutedEventArgs e)
+        => OpenConfig(false);
+
+    private void OpenConfig(bool connection)
     {
         Views.ConfigWindow win;
         try
@@ -390,6 +403,7 @@ public partial class MainWindow : System.Windows.Window
             // 配置窗口在构造里会 Load 一份 launcher.json 快照，文件损坏时这里就抛；
             // 不能让异常沿事件处理器冒泡成进程崩溃。
             win = new Views.ConfigWindow(_store) { Owner = this };
+            if (connection) win.ShowConnectionPage();
         }
         catch (Exception ex)
         {
@@ -397,7 +411,7 @@ public partial class MainWindow : System.Windows.Window
             return;
         }
 
-        win.ShowDialog();
+        ShowOwnedDialog(win);
         try
         {
             _options = _store.Load();      // 设置变更后重新加载（host/url/relay 等）
@@ -421,4 +435,98 @@ public partial class MainWindow : System.Windows.Window
     }
 
     public sealed record AccountItem(string Display, string Account);
+
+    private ImageSource Artwork(string name)
+    {
+        if (_artwork.TryGetValue(name, out var image)) return image;
+        var bitmap = new BitmapImage(new Uri($"pack://application:,,,/Assets/Skin/{name}", UriKind.Absolute));
+        bitmap.Freeze(); _artwork[name] = bitmap; return bitmap;
+    }
+    private void SetServerArtwork(bool online)
+    {
+        var prefix = online ? "classic-row" : "classic-offline";
+        ServerChoiceButton.NormalSource = Artwork(prefix + "0.png");
+        ServerChoiceButton.HoverSource = Artwork(prefix + "1.png");
+        ServerChoiceButton.PressedSource = Artwork(prefix + "2.png");
+    }
+    private void ShowBanner(int index)
+    {
+        index = Math.Clamp(index, 0, 4); BannerImage.Source = Artwork($"classic-banner{index}.png");
+        BannerCaption.Text = BannerTitles[index];
+        var buttons = new[] { Slide0, Slide1, Slide2, Slide3, Slide4 };
+        for (var i = 0; i < buttons.Length; i++)
+        {
+            buttons[i].NormalSource = Artwork(i == index ? "classic-small1.png" : "classic-small0.png");
+            System.Windows.Automation.AutomationProperties.SetHelpText(buttons[i], i == index ? "当前宣传图" : "切换宣传图");
+        }
+    }
+    private void Slide_Click(object sender, RoutedEventArgs e)
+    { if (sender is SkinButton button && int.TryParse(button.Tag?.ToString(), out var index)) ShowBanner(index); }
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void EnterGame_Click(object sender, RoutedEventArgs e) => StartGame();
+    private void MoreServices_Click(object sender, RoutedEventArgs e)
+    {
+        MoreServicesButton.ContextMenu.PlacementTarget = MoreServicesButton;
+        MoreServicesButton.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        MoreServicesButton.ContextMenu.IsOpen = true;
+    }
+    private void ServiceUrl_Click(object sender, RoutedEventArgs e)
+    { if (sender is MenuItem { Tag: string url }) OpenUrl(url); }
+    private void News_Click(object sender, RoutedEventArgs e)
+    {
+        switch ((sender as SkinButton)?.Tag?.ToString())
+        {
+            case "display": ConfigBtn_Click(this, e); break;
+            case "connection": OpenConfig(true); break;
+            case "account": RegisterBtn_Click(this, e); break;
+            case "install": Growl.Info("将玩家 ZIP 解压到 DNF.exe 所在目录，选择服务器并输入账号、密码后进入游戏。"); break;
+            default: Growl.Info("欢迎来到阿拉德大陆。选择服务器，输入账号和密码，开始冒险。"); break;
+        }
+    }
+    private void SelectServer_Click(object sender, RoutedEventArgs e)
+    {
+        LoginPage.Visibility = Visibility.Collapsed; ServerPage.Visibility = Visibility.Visible;
+        ReloadServerSelection();
+    }
+    private void ReloadServerSelection()
+    {
+        _serverSelection = null;
+        try
+        {
+            _serverSelection = LocalServerSelection.Open(_store); var choice = _serverSelection.Choices[0];
+            ServerEndpointText.Text = "连接地址　　" + choice.Endpoint; SelectedServerText.Text = choice.Name;
+            ServerSelectionError.Text = ""; ServerChoiceButton.IsEnabled = true; ConfirmServerButton.IsEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            ServerSelectionError.Text = "无法读取服务器配置：" + ex.Message;
+            ServerEndpointText.Text = "返回登录页，在游戏设置中保存连接配置。";
+            ServerChoiceButton.IsEnabled = false; ConfirmServerButton.IsEnabled = false;
+        }
+    }
+    private void ServerChoice_Click(object sender, RoutedEventArgs e) => SelectedServerText.Text = "本地服务器";
+    private void BackToLogin_Click(object sender, RoutedEventArgs e)
+    { ServerPage.Visibility = Visibility.Collapsed; LoginPage.Visibility = Visibility.Visible; }
+    private void ConfirmServer_Click(object sender, RoutedEventArgs e)
+    {
+        if (_serverSelection is null) return;
+        try
+        {
+            var options = _serverSelection.Confirm(_store);
+            var accountClient = new AccountServiceClient(options.ResolveAccountServiceUrl());
+            var typedAccount = AccountText.Text; var typedPassword = PasswordText.Password;
+            _options = options; _account = accountClient;
+            RefreshAccounts(); AccountText.Text = typedAccount; PasswordText.Password = typedPassword;
+            UpdateAccountHint(); BackToLogin_Click(this, e); _ = RefreshStatusAsync();
+        }
+        catch (InvalidOperationException ex)
+        { ReloadServerSelection(); ServerSelectionError.Text = ex.Message; }
+        catch (Exception ex) { ServerSelectionError.Text = "无法确认服务器：" + ex.Message; }
+    }
+    private void ShowOwnedDialog(System.Windows.Window window)
+    {
+        ModalShade.Visibility = Visibility.Visible;
+        try { window.ShowDialog(); }
+        finally { ModalShade.Visibility = Visibility.Collapsed; }
+    }
 }

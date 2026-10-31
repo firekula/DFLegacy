@@ -25,7 +25,7 @@
     <Setter Property="Padding" Value="8,0"/><Setter Property="MinWidth" Value="70"/><Setter Property="Height" Value="30"/>
     <Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
     <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="c:SkinButton">
-      <Grid>
+      <Grid Background="Transparent">
         <c:SkinFrame x:Name="Frame" Source="{TemplateBinding NormalSource}" Insets="5,4,5,4" Fill="#27261D"/>
         <c:PixelText Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" FontSize="{TemplateBinding FontSize}" Foreground="{TemplateBinding Foreground}" Padding="{TemplateBinding Padding}" TextWrapping="NoWrap" TextAlignment="Center" IsHitTestVisible="False"/>
         <Border x:Name="Focus" BorderBrush="#FFE5AD" BorderThickness="1" Margin="2" Visibility="Collapsed" IsHitTestVisible="False"/>
@@ -41,7 +41,7 @@
   <Style x:Key="ClassicImageButton" TargetType="c:SkinButton" BasedOn="{StaticResource ClassicButton}">
     <Setter Property="MinWidth" Value="0"/><Setter Property="Padding" Value="0"/>
     <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="c:SkinButton">
-      <Grid>
+      <Grid Background="Transparent">
         <Image x:Name="Artwork" Source="{TemplateBinding NormalSource}" Stretch="Fill"/>
         <c:PixelText Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" Padding="{TemplateBinding Padding}" TextAlignment="Center" TextWrapping="NoWrap" IsHitTestVisible="False"/>
         <Border x:Name="Focus" BorderBrush="#FFE5AD" BorderThickness="1" Margin="2" Visibility="Collapsed" IsHitTestVisible="False"/>

@@ -45,6 +45,9 @@ public partial class ConfigWindow : System.Windows.Window
         ClientPathBox.TextChanged += (_, _) => UpdateDisplayAvailability();
         UpdateAccountUrlHint();
         MaxHeight = Math.Max(MinHeight, SystemParameters.WorkArea.Height - 24);
+        MaxWidth = Math.Max(MinWidth, SystemParameters.WorkArea.Width - 24);
+        Width = Math.Min(Width, MaxWidth);
+        Height = Math.Min(Height, MaxHeight);
         Loaded += (_, _) => UpdateDisplayAvailability();
         LoadDisplay();
     }
@@ -177,7 +180,7 @@ public partial class ConfigWindow : System.Windows.Window
             : ready && !supported ? "此自定义尺寸只保留旧版兼容行为。使用增强画质前，请选择列表中的 4:3 分辨率。" : "";
         DisplayDescriptionText.Text = mode switch
         {
-            "sharp" => "尽量保留像素边缘，同时减轻非整数放大的生硬感。800 × 600 推荐此模式。",
+            "sharp" => "保留像素边缘，减轻非整数放大的生硬感。",
             "point" => "保留像素边缘；非整数倍尺寸下，笔画可能粗细不均。",
             "linear" => "边缘更平滑，但文字和像素图可能偏软。",
             _ => "保留原呈现方式，并沿用已有的纹理过滤设置。"
@@ -212,4 +215,10 @@ public partial class ConfigWindow : System.Windows.Window
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
+    internal void ShowConnectionPage() => SettingsTabs.SelectedIndex = 0;
+
+    private void Chrome_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.GetPosition(this).Y < 93) DragMove();
+    }
 }

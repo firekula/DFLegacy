@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DFLegacy.Launcher.Controls;
+using DFLegacy.Launcher;
+using DFLegacy.Launcher.Views;
 
 internal static class ClassicUiTests
 {
@@ -48,6 +51,12 @@ internal static class ClassicUiTests
                 var pixels = Pixels(rendered);
                 var rows = Enumerable.Range(0, 17).Where(y => Enumerable.Range(0, 150).Any(x => pixels[(y * 150 + x) * 4 + 3] > 0)).ToArray();
                 check(rows.Length > 0 && Math.Abs(rows[0] - (16 - rows[^1])) <= 1, "actual WPF placeholder ink is vertically centered in original 17px field");
+                hint.Foreground = Brushes.Lime;
+                hint.UpdateLayout();
+                var recolored = new RenderTargetBitmap(150, 17, 96, 96, PixelFormats.Pbgra32); recolored.Render(hint);
+                var changed = Pixels(recolored);
+                check(Enumerable.Range(0, changed.Length / 4).Any(i => changed[i * 4 + 1] == 255 && changed[i * 4 + 2] == 0),
+                    "changing a live pixel label foreground redraws its actual WPF drawing");
                 var path = new PixelText { Text = @"G:\very-long-client-installation\中文路径🙂\ImagePacks2\DNF.exe", FontSize = 13,
                     TextWrapping = TextWrapping.Wrap };
                 path.Measure(new Size(130, double.PositiveInfinity));
@@ -70,6 +79,45 @@ internal static class ClassicUiTests
                         && panelPixels[offset + 2] > panelPixels[offset] * 1.7) red++;
                 }
                 check(red == 0, "embedded panel cannot recreate the old stretched red title strip");
+                var styles = (ResourceDictionary)Application.LoadComponent(new Uri("/DFLegacy.Launcher;component/Views/ClassicStyles.xaml", UriKind.Relative));
+                var button = new SkinButton { Content = "游戏设置", Style = (Style)styles["ClassicButton"], Width = 70, Height = 21 };
+                var ownedWindow = new Window { Title = "DFLegacy owned control test", Content = button, Width = 70, Height = 21,
+                    WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false, ShowActivated = false, Left = -32000, Top = -32000 };
+                try
+                {
+                    ownedWindow.Show(); ownedWindow.UpdateLayout();
+                    var hit = ownedWindow.InputHitTest(new Point(35, 10)) as DependencyObject;
+                    while (hit is not null && !ReferenceEquals(hit, button)) hit = VisualTreeHelper.GetParent(hit);
+                    check(ReferenceEquals(hit, button), "real styled toolbar button receives mouse hit testing over its decorative children");
+                }
+                finally { ownedWindow.Close(); }
+                var scratch = Path.Combine(Path.GetTempPath(), "dflegacy-classic-ui-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(scratch);
+                try
+                {
+                    var store = new LauncherAccountStore(Path.Combine(scratch, "launcher.json"));
+                    store.Save(new LauncherOptions { ClientPath = Path.Combine(scratch, "missing-client", "DNF.exe") });
+                    var settings = new ConfigWindow(store) { Height = 360, WindowStartupLocation = WindowStartupLocation.Manual,
+                        Left = -32000, Top = -32000, ShowActivated = false, ShowInTaskbar = false };
+                    try
+                    {
+                        settings.Show(); settings.UpdateLayout();
+                        var error = (PixelText)settings.FindName("DisplayErrorText");
+                        var save = (SkinButton)settings.FindName("DisplaySaveButton");
+                        var reload = (SkinButton)settings.FindName("DisplayReloadButton");
+                        check(!string.IsNullOrWhiteSpace(error.Text) && !save.IsEnabled && reload.IsEnabled,
+                            "missing client remains visible as an error and cannot be saved in classic settings");
+                        error.Text = string.Concat(Enumerable.Repeat("无法读取客户端配置，原文件保持不变。", 16)); settings.UpdateLayout();
+                        check(reload.TranslatePoint(new Point(0, reload.ActualHeight), settings).Y <= settings.ActualHeight
+                            && save.TranslatePoint(new Point(0, save.ActualHeight), settings).Y <= settings.ActualHeight,
+                            "long errors at 360px height cannot push reload/save below the window");
+                        DependencyObject? parent = error;
+                        while (parent is not null && parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
+                        check(parent is ScrollViewer { ScrollableHeight: > 0 }, "long error text has a real scrollable viewport at minimum height");
+                    }
+                    finally { settings.Close(); }
+                }
+                finally { Directory.Delete(scratch, true); }
             }
             catch (Exception ex) { failure = ex; }
         });
