@@ -80,19 +80,23 @@
 - [x] Run launcher suite and actual UI inspection; use temporary installation fixtures for process handoff/restart. No deployment into user's open client. Record code/asset checks and proof of configuration preservation.
 - [x] Commit and write report.
 
-### Task 5: Client update asset, GitHub publication and exact-source acceptance
+### Task 5: Client update asset and GitHub publication implementation
 
 **Files:** Modify `tools/release/release.py`, `tools/release/ci.py`, `.gitea/workflows/release.yaml`, release tests, `src/DFLegacy.Manager/ClientPackageExporter.cs` and manager tests as needed; create focused GitHub publisher module and tests; add documentation report.
 
 **Interfaces:** Build fixed-name updateZIP from already verified win-x64 launcher+native outputs, manifest matches Task3. Publish same version/commit on publicGitHub with prerelease rule matching Gitea metadata. Existing Gitea fiveRID/service+Docker contracts stay intact. Generated player ZIP carries update options but no release credentials or player account data.
 
-- [ ] Add failing release tests for exact update whitelist/hash/schema, excluded player data, stable/dev mapping, same-identity rerun/different-byte refusal and download verification before publish. Add manager export checks for preserved bootstrap/profile fields and enabled public update configuration.
-- [ ] Observe RED; implement package/publisher and gatedCI integration; optional Github credentials absent must produce explicit CI capability status, never silently claim GitHub publication. Controller configures available authorized credentials without printing secrets.
-- [ ] Run launcher/manager/release/Python checks appropriate to changed code and a whole-branch independent review; resolve required findings before pushing.
+- [x] Add failing release tests for exact update whitelist/hash/schema, excluded player data, stable/dev mapping, same-identity rerun/different-byte refusal and download verification before publish. Add manager export checks for preserved bootstrap/profile fields and enabled public update configuration.
+- [x] Observe RED; implement package/publisher and gatedCI integration; optional Github credentials absent must produce explicit CI capability status, never silently claim GitHub publication. Controller configures available authorized credentials without printing secrets.
+- [x] Run launcher/manager/release/Python checks appropriate to changed code and the task-scoped independent review; resolve required findings before the controller release gates.
+
+## Controller release acceptance
+
+- [ ] Independent whole-branch review and required fixes before merge/push.
 - [ ] Controller pushes/merges using existing authorization while preserving all unrelated main-checkout dirty/untracked state; run actual Windows/Linux CI+fiveRID+Docker gates. Publish verified dedicated update asset to GitHub and check downloaded bytes and release identity.
 - [ ] Verify realGitHub download→helper apply→restart in isolated client fixture, backups and unrelated config byte preservation, UI click/layout acceptance. Original DLL source unchanged; verify bundled bytes and applicable native compatibility gates from CI.
 - [ ] Restore runners' paused state, keep user server running, finalize report with exact links/versions/tests/limits; mark all completed plan/ledger steps with evidence and commit docs.
 
 ## Controller self-review
 
-All spec requirements map to Tasks1–5. Shared launcher/UI/test entry files are intentionally sequential. Manifest and artifact names fixed across engine/UI/publisher. Current local baseline launcher checks passed at95b6a6d before changes. Publication and live update acceptance belong to the controller; implementer reports alone cannot certify them.
+All spec requirements map to local implementation Tasks1–5 and the explicit controller release acceptance gates. Shared launcher/UI/test entry files are intentionally sequential. Manifest and artifact names fixed across engine/UI/publisher. Current local baseline launcher checks passed at95b6a6d before changes. Publication and live update acceptance belong to the controller; implementer reports alone cannot certify them.
