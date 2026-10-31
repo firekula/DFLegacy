@@ -1,10 +1,8 @@
 using System.Windows;
 using DFLegacy.AccountClient;
-using HandyControl.Controls;
 
 namespace DFLegacy.Launcher.Views;
 
-// Window 必须写全限定名：using HandyControl.Controls 后 Window 与 System.Windows.Window 歧义（CS0104）。
 // 构造函数用 internal：回调签名里的 LauncherAccountProfile 是 internal（CS0051）。
 public partial class RegisterWindow : System.Windows.Window
 {
@@ -25,11 +23,11 @@ public partial class RegisterWindow : System.Windows.Window
         var confirm = ConfirmBox.Password;
         var oicq = string.IsNullOrWhiteSpace(OicqBox.Text) ? null : OicqBox.Text.Trim();
         var test = TestAccountBox.IsChecked == true;
-        if (pass != confirm) { Growl.Info("两次密码不一致。"); return; }
+        if (pass != confirm) { ClassicMessage.Show(this, "两次密码不一致。"); return; }
         if (user.Length is < 4 or > 32 || pass.Length is < 6 or > 128
             || oicq is null || oicq.Length is < 5 or > 32)
         {
-            Growl.Info("账号 4-32、密码 6-128、QQ 不能为空且至少 5 位。");
+            ClassicMessage.Show(this, "账号 4-32、密码 6-128、QQ 不能为空且至少 5 位。");
             return;
         }
 
@@ -42,19 +40,19 @@ public partial class RegisterWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Info($"请求失败：{ex.Message}");
+            ClassicMessage.Show(this, $"请求失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
         }
 
         if (r.Outcome != RegistrationOutcome.Success)
         {
-            Growl.Warning(r.Outcome == RegistrationOutcome.AlreadyExists ? "账号已存在。" : (r.Error ?? "注册失败。"));
+            ClassicMessage.Show(this, r.Outcome == RegistrationOutcome.AlreadyExists ? "账号已存在。" : (r.Error ?? "注册失败。"));
             SubmitBtn.IsEnabled = true;
             return;
         }
 
-        Growl.Success($"注册成功：{r.Account?.UserName}");
+        ClassicMessage.Show(this, $"注册成功：{r.Account?.UserName}");
         var profile = new LauncherAccountProfile
         {
             Account = user, Password = pass, DisplayName = user,
@@ -67,7 +65,7 @@ public partial class RegisterWindow : System.Windows.Window
         catch (Exception ex)
         {
             // 服务端账号已创建，只是本地 launcher.json 保存失败：不关窗，可重试或稍后在账号管理处理。
-            Growl.Warning($"注册成功，但保存到本地账号列表失败：{ex.Message}");
+            ClassicMessage.Show(this, $"注册成功，但保存到本地账号列表失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
         }

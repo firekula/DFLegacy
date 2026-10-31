@@ -1,9 +1,7 @@
 using System.Windows;
-using HandyControl.Controls;
 
 namespace DFLegacy.Launcher.Views;
 
-// Window 必须写全限定名：using HandyControl.Controls 后 Window 与 System.Windows.Window 歧义（CS0104）。
 // 构造函数用 internal：签名里的 LauncherAccountStore / LauncherOptions 是 internal（CS0051）。
 // 本窗口纯本地：只读写 launcher.json，不触碰服务端。
 public partial class AccountEditWindow : System.Windows.Window
@@ -35,7 +33,7 @@ public partial class AccountEditWindow : System.Windows.Window
 
     private void EditSelected()
     {
-        if (Grid.SelectedItem is not LauncherAccountProfile p) { Growl.Info("请先选择账号。"); return; }
+        if (Grid.SelectedItem is not LauncherAccountProfile p) { ClassicMessage.Show(this, "请先选择账号。"); return; }
         if (!EditProfile(p, isNew: false)) return;
         if (!SaveOptions()) return;
         Reload();
@@ -64,7 +62,7 @@ public partial class AccountEditWindow : System.Windows.Window
         if (Grid.SelectedIndex is int i and >= 0)
         {
             _options.AccountIndex = i;
-            if (SaveOptions()) Growl.Success("已设为默认。");
+            if (SaveOptions()) ClassicMessage.Show(this, "已设为默认。");
         }
     }
 
@@ -82,7 +80,7 @@ public partial class AccountEditWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Warning($"保存本地账号列表失败：{ex.Message}");
+            ClassicMessage.Show(this, $"保存本地账号列表失败：{ex.Message}");
             try
             {
                 _options = _store.Load();
@@ -91,7 +89,7 @@ public partial class AccountEditWindow : System.Windows.Window
             catch (Exception loadEx)
             {
                 // 磁盘也读不回来时只能提示；内存保留当前态，等下一次操作再试。
-                Growl.Warning($"重新读取本地账号列表失败：{loadEx.Message}");
+                ClassicMessage.Show(this, $"重新读取本地账号列表失败：{loadEx.Message}");
             }
             return false;
         }

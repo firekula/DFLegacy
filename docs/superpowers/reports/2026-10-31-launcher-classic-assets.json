@@ -1,5 +1,5 @@
 {
-  "approved": "User accepted revision2 login/settings and original server page in chat",
+  "approved": "User accepted revision2 login/settings, original server page and RT_BITMAP314 message panel in chat",
   "build_dependency": "none; all PNG files checked in and embedded by WPF",
   "assets": [
     {
@@ -324,6 +324,66 @@
         }
       ],
       "operation": "original gray server state; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-message-panel.png",
+      "sha256": "d7fab5f9198f7ec780857efeddfefbf1162b229d16290f5b730e2792ffbe1d87",
+      "pixels": [
+        286,
+        170
+      ],
+      "sources": [
+        {
+          "file": "images/image-0056.png",
+          "sha256": "0e5016ef3148145b16bb233396511f5e4587a84ffdbe3cadb4083e6dda84d045"
+        }
+      ],
+      "operation": "original RT_BITMAP314 panel at native286x170; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-message-confirm0.png",
+      "sha256": "aed319d6758be893e679b373a3cdb7bc3a100efd227a763a2f809f1317903383",
+      "pixels": [
+        80,
+        29
+      ],
+      "sources": [
+        {
+          "file": "loose/data/ui/button_yes00.png",
+          "sha256": "d8f91b770c85081183a907ba041eff6a9db707dd097cc713cbe628e0aa3c8cb6"
+        }
+      ],
+      "operation": "original HintMsg.xml yes-button state; native80x29 pixels unchanged"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-message-confirm1.png",
+      "sha256": "cca4bd50e49c9a5de513e200ae3fc2b1e818cce6b5b2e3b031468acdfd4d1e31",
+      "pixels": [
+        80,
+        29
+      ],
+      "sources": [
+        {
+          "file": "loose/data/ui/button_yes01.png",
+          "sha256": "b2cfad7a4947ada524341d2f800b838de019ae9bed89d017b2c232f9c38754f7"
+        }
+      ],
+      "operation": "original HintMsg.xml yes-button state; native80x29 pixels unchanged"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-message-confirm2.png",
+      "sha256": "f7860bf3236ab5dd24548e0179dbee11ae49ddb86f0345b020e629241fbf1eb8",
+      "pixels": [
+        80,
+        29
+      ],
+      "sources": [
+        {
+          "file": "loose/data/ui/button_yes02.png",
+          "sha256": "d57ce3f9cd24986f0206929b5fc397fbebc38d7cb1dd5bbef97de7a6d3f8ea56"
+        }
+      ],
+      "operation": "original HintMsg.xml yes-button state; native80x29 pixels unchanged"
     }
   ]
 }

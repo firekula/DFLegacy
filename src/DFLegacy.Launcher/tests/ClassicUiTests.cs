@@ -24,6 +24,13 @@ internal static class ClassicUiTests
             try
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                ClassicMessageTests.Run(check);
+                var messageCloser = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Background,
+                    (_, _) =>
+                    {
+                        foreach (var message in application.Windows.OfType<ClassicMessageWindow>().ToArray()) message.Close();
+                    }, Dispatcher.CurrentDispatcher);
+                messageCloser.Start();
                 var plain = PixelRasterizer.Render("窗口分辨率", 13, Colors.White, 0);
                 var edged = PixelRasterizer.Render("窗口分辨率", 13, Colors.Gold, 1);
                 byte[] Pixels(BitmapSource image)

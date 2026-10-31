@@ -8,7 +8,6 @@ using System.Windows.Threading;
 using System.Windows.Media.Imaging;
 using DFLegacy.Launcher.Controls;
 using DFLegacy.AccountClient;
-using HandyControl.Controls;
 
 namespace DFLegacy.Launcher;
 
@@ -92,7 +91,7 @@ public partial class MainWindow : System.Windows.Window
         if (!EnsureRuntimeServerSelected()) return;
         if (AgreeBox.IsChecked != true)
         {
-            Growl.Info("请先勾选同意服务条款。");
+            ClassicMessage.Show(this, "请先勾选同意服务条款。");
             return;
         }
 
@@ -100,14 +99,14 @@ public partial class MainWindow : System.Windows.Window
         var password = PasswordText.Password;
         if (string.IsNullOrEmpty(account))
         {
-            Growl.Info("请输入账号。");
+            ClassicMessage.Show(this, "请输入账号。");
             AccountText.Focus();
             return;
         }
 
         if (string.IsNullOrEmpty(password))
         {
-            Growl.Info("请输入密码。");
+            ClassicMessage.Show(this, "请输入密码。");
             PasswordText.Focus();
             return;
         }
@@ -138,7 +137,7 @@ public partial class MainWindow : System.Windows.Window
         {
             Program.WriteLauncherLog($"Launcher failed: {ex}");
             Show();
-            Growl.Info($"启动失败：{ex.Message}");
+            ClassicMessage.Show(this, $"启动失败：{ex.Message}");
         }
     }
 
@@ -167,7 +166,7 @@ public partial class MainWindow : System.Windows.Window
         }
     }
 
-    private static void OpenUrl(string url)
+    private void OpenUrl(string url)
     {
         try
         {
@@ -175,18 +174,18 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Warning($"打开链接失败：{ex.Message}");
+            ClassicMessage.Show(this, $"打开链接失败：{ex.Message}");
         }
     }
 
-    private static void OpenTerms()
+    private void OpenTerms()
     {
         try
         {
             var path = Path.Combine(AppContext.BaseDirectory, "Assets", "Skin", "fwtk.html");
             if (!File.Exists(path))
             {
-                Growl.Warning("未找到服务条款页（Assets/Skin/fwtk.html）。");
+                ClassicMessage.Show(this, "未找到服务条款页（Assets/Skin/fwtk.html）。");
                 return;
             }
 
@@ -194,7 +193,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Warning($"打开服务条款失败：{ex.Message}");
+            ClassicMessage.Show(this, $"打开服务条款失败：{ex.Message}");
         }
     }
 
@@ -216,7 +215,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Warning($"打开注册窗口失败：{ex.Message}");
+            ClassicMessage.Show(this, $"打开注册窗口失败：{ex.Message}");
             return;
         }
         ShowOwnedDialog(win);
@@ -258,7 +257,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Warning($"打开找回密码窗口失败：{ex.Message}");
+            ClassicMessage.Show(this, $"打开找回密码窗口失败：{ex.Message}");
             return;
         }
         ShowOwnedDialog(win);
@@ -274,7 +273,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Warning($"打开修改密码窗口失败：{ex.Message}");
+            ClassicMessage.Show(this, $"打开修改密码窗口失败：{ex.Message}");
             return;
         }
 
@@ -319,7 +318,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Warning($"加载本地账号列表失败：{ex.Message}");
+            ClassicMessage.Show(this, $"加载本地账号列表失败：{ex.Message}");
             return;
         }
 
@@ -331,7 +330,7 @@ public partial class MainWindow : System.Windows.Window
         catch (Exception ex)
         {
             // 重载失败时内存保留编辑前快照：提示用户但不崩溃，下次启动以磁盘为准。
-            Growl.Warning($"重新加载本地账号列表失败：{ex.Message}");
+            ClassicMessage.Show(this, $"重新加载本地账号列表失败：{ex.Message}");
         }
     }
 
@@ -350,7 +349,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Warning($"加载配置失败：{ex.Message}");
+            ClassicMessage.Show(this, $"加载配置失败：{ex.Message}");
             return;
         }
 
@@ -363,7 +362,7 @@ public partial class MainWindow : System.Windows.Window
         catch (Exception ex)
         {
             // 重载失败时内存保留打开设置前的快照：提示用户但不崩溃，下次启动以磁盘为准。
-            Growl.Warning($"重新加载配置失败：{ex.Message}");
+            ClassicMessage.Show(this, $"重新加载配置失败：{ex.Message}");
         }
     }
 
@@ -413,8 +412,8 @@ public partial class MainWindow : System.Windows.Window
             case "display": ConfigBtn_Click(this, e); break;
             case "connection": OpenConfig(true); break;
             case "account": RegisterBtn_Click(this, e); break;
-            case "install": Growl.Info("将玩家 ZIP 解压到 DNF.exe 所在目录，选择服务器并输入账号、密码后进入游戏。"); break;
-            default: Growl.Info("欢迎来到阿拉德大陆。选择服务器，输入账号和密码，开始冒险。"); break;
+            case "install": ClassicMessage.Show(this, "将玩家 ZIP 解压到 DNF.exe 所在目录，选择服务器并输入账号、密码后进入游戏。"); break;
+            default: ClassicMessage.Show(this, "欢迎来到阿拉德大陆。选择服务器，输入账号和密码，开始冒险。"); break;
         }
     }
     private void ShowOwnedDialog(System.Windows.Window window)

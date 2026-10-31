@@ -1,10 +1,8 @@
 using System.Windows;
 using DFLegacy.AccountClient;
-using HandyControl.Controls;
 
 namespace DFLegacy.Launcher.Views;
 
-// Window 必须写全限定名：using HandyControl.Controls 后 Window 与 System.Windows.Window 歧义（CS0104）。
 // 用户名框 x:Name="UserName"：主窗口打开前用 win.UserName.Text 预填当前选中账号。
 public partial class ModifyWindow : System.Windows.Window
 {
@@ -23,8 +21,8 @@ public partial class ModifyWindow : System.Windows.Window
         var user = UserName.Text.Trim();
         var oldP = OldBox.Password;
         var newP = NewBox.Password;
-        if (newP != ConfirmBox.Password) { Growl.Info("两次新密码不一致。"); return; }
-        if (user.Length is < 4 or > 32 || newP.Length is < 6 or > 128) { Growl.Info("账号 4-32、新密码 6-128。"); return; }
+        if (newP != ConfirmBox.Password) { ClassicMessage.Show(this, "两次新密码不一致。"); return; }
+        if (user.Length is < 4 or > 32 || newP.Length is < 6 or > 128) { ClassicMessage.Show(this, "账号 4-32、新密码 6-128。"); return; }
 
         SubmitBtn.IsEnabled = false;
         // 8081 对外后改密接口要求身份：先用旧密码登录换 token（失败限流集中在登录一处，
@@ -37,21 +35,21 @@ public partial class ModifyWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Info($"请求失败：{ex.Message}");
+            ClassicMessage.Show(this, $"请求失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
         }
 
         if (login.Outcome == LoginOutcome.Locked)
         {
-            Growl.Warning(login.Error ?? "失败次数过多，请稍后再试。");
+            ClassicMessage.Show(this, login.Error ?? "失败次数过多，请稍后再试。");
             SubmitBtn.IsEnabled = true;
             return;
         }
 
         if (login.Outcome != LoginOutcome.Success)
         {
-            Growl.Warning(login.Error ?? "账号或密码错误（旧密码不正确）。");
+            ClassicMessage.Show(this, login.Error ?? "账号或密码错误（旧密码不正确）。");
             SubmitBtn.IsEnabled = true;
             return;
         }
@@ -63,19 +61,19 @@ public partial class ModifyWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
-            Growl.Info($"请求失败：{ex.Message}");
+            ClassicMessage.Show(this, $"请求失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
         }
 
         if (r.Outcome != PasswordOutcome.Success)
         {
-            Growl.Warning(r.Error ?? "修改失败。");
+            ClassicMessage.Show(this, r.Error ?? "修改失败。");
             SubmitBtn.IsEnabled = true;
             return;
         }
 
-        Growl.Success("密码已修改。");
+        ClassicMessage.Show(this, "密码已修改。");
         try
         {
             _onChanged(user, newP);
@@ -83,7 +81,7 @@ public partial class ModifyWindow : System.Windows.Window
         catch (Exception ex)
         {
             // 服务端密码已改，只是本地 launcher.json 保存失败：不关窗，可重试或稍后在账号管理处理。
-            Growl.Warning($"密码已修改，但保存到本地账号列表失败：{ex.Message}");
+            ClassicMessage.Show(this, $"密码已修改，但保存到本地账号列表失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
         }

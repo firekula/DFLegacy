@@ -44,6 +44,14 @@ for index,number in enumerate([102,103,104]):
   for x in range(image.width):
    if pixels[x,y][:3]==(255,0,255):pixels[x,y]=(0,0,0,0)
  save('offline'+str(index),image,[audit/'images'/f'image-{number:04d}.png'],'original gray server state; magenta colour key to transparency')
+# Original HintMsg.xml uses RT_BITMAP314 at native 286x170 with an 80x29 yes button.
+message=source(56)
+message.putdata([(r,g,b,0 if (r,g,b)==(255,0,255) else a) for r,g,b,a in message.get_flattened_data()])
+save('message-panel',message,[audit/'images/image-0056.png'],
+     'original RT_BITMAP314 panel at native286x170; magenta colour key to transparency')
+for index in range(3):
+ copy('message-confirm'+str(index),audit/'loose/data/ui'/('button_yes0'+str(index)+'.png'),
+      'original HintMsg.xml yes-button state; native80x29 pixels unchanged')
 out=repo/'docs/superpowers/reports/2026-10-31-launcher-classic-assets.json'
-out.write_text(json.dumps({'approved':'User accepted revision2 login/settings and original server page in chat','build_dependency':'none; all PNG files checked in and embedded by WPF','assets':records},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+out.write_text(json.dumps({'approved':'User accepted revision2 login/settings, original server page and RT_BITMAP314 message panel in chat','build_dependency':'none; all PNG files checked in and embedded by WPF','assets':records},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print(json.dumps({'embedded_png_files':len(records),'manifest':str(out)}))

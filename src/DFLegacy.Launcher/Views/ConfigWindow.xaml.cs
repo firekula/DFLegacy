@@ -1,5 +1,4 @@
 using System.Windows;
-using HandyControl.Controls;
 using Microsoft.Win32;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -7,7 +6,6 @@ using System.Text.Json;
 
 namespace DFLegacy.Launcher.Views;
 
-// Window 必须写全限定名：using HandyControl.Controls 后 Window 与 System.Windows.Window 歧义（CS0104）。
 // 构造函数用 internal：签名里的 LauncherAccountStore / LauncherOptions 是 internal（CS0051）。
 public partial class ConfigWindow : System.Windows.Window
 {
@@ -110,11 +108,11 @@ public partial class ConfigWindow : System.Windows.Window
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         if (!int.TryParse(PortBox.Text, out var port) || port is < 1 or > 65535)
-        { Growl.Info("入口端口须为 1-65535。"); return; }
+        { ClassicMessage.Show(this, "入口端口须为 1-65535。"); return; }
         if (!int.TryParse(AccountPortBox.Text, out var accountPort) || accountPort is < 1 or > 65535)
-        { Growl.Info("账号服务端口须为 1-65535。"); return; }
+        { ClassicMessage.Show(this, "账号服务端口须为 1-65535。"); return; }
         if (string.IsNullOrWhiteSpace(HostBox.Text))
-        { Growl.Info("入口 Host 不能为空。"); return; }
+        { ClassicMessage.Show(this, "入口 Host 不能为空。"); return; }
 
         try
         {
@@ -139,7 +137,7 @@ public partial class ConfigWindow : System.Windows.Window
             // 落盘失败：不能应用主题也不能提示成功（内存不能看起来"已保存"）。
             // 按磁盘重同步内存（磁盘为权威，Task 6 同一策略）；表单字段保留用户输入，
             // 排除占用/权限问题后可直接再点保存，无需重新输入。
-            Growl.Warning($"保存配置失败：{ex.Message}");
+            ClassicMessage.Show(this, $"保存配置失败：{ex.Message}");
             try
             {
                 _options = _store.Load();
@@ -147,14 +145,14 @@ public partial class ConfigWindow : System.Windows.Window
             catch (Exception loadEx)
             {
                 // 磁盘也读不回来时只能提示；内存保留当前态，等下一次操作再试。
-                Growl.Warning($"重新读取配置失败：{loadEx.Message}");
+                ClassicMessage.Show(this, $"重新读取配置失败：{loadEx.Message}");
             }
             UpdateDisplayAvailability();
             return;
         }
         App.ApplyTheme(_options.Theme);
         LoadDisplay();
-        Growl.Success("已保存。");
+        ClassicMessage.Show(this, "已保存。");
     }
 
     private void LoadDisplay()
