@@ -20,6 +20,7 @@ internal static class ClassicUiTests
         Exception? failure = null;
         var thread = new Thread(() =>
         {
+            var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             try
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
@@ -242,6 +243,8 @@ internal static class ClassicUiTests
                             catch (IOException) { }
                         }
                         var slowServe = Serve(slowApi, true); var fastServe = Serve(fastApi, false);
+                        localOptions.Accounts = [new() { Account = "first", Password = "saved-first" }, new() { Account = "second", Password = "saved-second" }];
+                        localOptions.AccountIndex = 1;
                         localOptions.Servers = Enumerable.Range(0, 36).Select(i => new LauncherServerProfile {
                             Id = "region-" + i, Name = i == 0 ? new string('长', 120) + "🙂服务器" : "服务器 " + i,
                             Region = i < 32 ? "telecom" : "netcom", Host = "127.0.0.1", Port = i == 0 ? oldPort : livePort,
@@ -280,6 +283,81 @@ internal static class ClassicUiTests
                         confirm.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                         check(accountInput.Text == "typed-account" && passwordInput.Password == "typed-password", "confirmation preserves typed credentials");
                         check(File.ReadAllBytes(Path.Combine(scratch, "launcher.json")).SequenceEqual(unchanged), "UI confirm never writes config bytes");
+                        void InvokeEvent(object target, string method) => target.GetType().GetMethod(method,
+                            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(target, [target, new RoutedEventArgs()]);
+                        void DialogRoundtrip(string method, Action<Window> action)
+                        {
+                            Exception? error = null;
+                            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                            {
+                                var dialog = main.OwnedWindows.Cast<Window>().Single();
+                                try { action(dialog); }
+                                catch (Exception ex) { error = ex; }
+                                finally { dialog.Close(); }
+                            }));
+                            InvokeEvent(main, method);
+                            if (error is not null) throw error;
+                        }
+                        var accountList = (ListBox)main.FindName("AccountList");
+                        accountList.SelectedIndex = 0;
+                        accountInput.Text = "typed-account"; passwordInput.Password = "typed-password";
+                        void AssertRuntimeB(string operation)
+                        {
+                            var runtime = (LauncherOptions)typeof(MainWindow).GetField("_options", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(main)!;
+                            var api = typeof(MainWindow).GetField("_account", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(main)!;
+                            var http = (System.Net.Http.HttpClient)api.GetType().GetField("_http", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(api)!;
+                            check(runtime.EntrancePort == livePort && runtime.SelectedServerId == "region-1"
+                                && runtime.ResolveAccountServiceUrl().TrimEnd('/') == http.BaseAddress!.ToString().TrimEnd('/')
+                                && http.BaseAddress.Port == ((IPEndPoint)fastApi.LocalEndpoint).Port,
+                                operation + " preserves confirmed B entrance and matching B account API");
+                            check(accountInput.Text == "typed-account" && passwordInput.Password == "typed-password"
+                                && accountList.SelectedItem is MainWindow.AccountItem { Account: "first" },
+                                operation + " preserves typed credentials and selected account identity");
+                        }
+                        DialogRoundtrip("AccountEditBtn_Click", _ => { }); AssertRuntimeB("cancel account management");
+                        DialogRoundtrip("AccountEditBtn_Click", dialog =>
+                        {
+                            var grid = (DataGrid)dialog.FindName("Grid"); grid.SelectedIndex = 0;
+                            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                            {
+                                var fields = dialog.OwnedWindows.Cast<Window>().Single();
+                                ((TextBox)fields.FindName("DisplayNameBox")).Text = "edited display";
+                                ((PasswordBox)fields.FindName("PasswordBox")).Password = "edited-password";
+                                InvokeEvent(fields, "Ok_Click");
+                            }));
+                            InvokeEvent(dialog, "Edit_Click");
+                        });
+                        check(store.Load().Accounts[0].Password == "edited-password", "real account edit dialog persists edited account");
+                        AssertRuntimeB("edit account management");
+                        DialogRoundtrip("ConfigBtn_Click", _ => { }); AssertRuntimeB("cancel display settings");
+                        DialogRoundtrip("ConfigBtn_Click", dialog =>
+                        {
+                            ((ComboBox)dialog.FindName("ThemeBox")).SelectedValue = "dark";
+                            InvokeEvent(dialog, "Save_Click");
+                        }); AssertRuntimeB("save unrelated settings");
+                        check(store.Load().Theme == "dark", "real settings save roundtrip persists unrelated setting");
+                        DialogRoundtrip("AccountEditBtn_Click", _ => store.Update(o => o.Servers[1].Port = oldPort));
+                        check(((FrameworkElement)main.FindName("ServerPage")).Visibility == Visibility.Visible && !confirm.IsEnabled
+                            && endpoint.Text.Contains("重新选择"), "changed confirmed profile explicitly requires reselection after account reload");
+                        check(accountInput.Text == "typed-account" && passwordInput.Password == "typed-password", "profile invalidation preserves typed credentials");
+                        void ConfirmB()
+                        {
+                            store.Update(o => o.Servers = localOptions.Servers);
+                            main.ReloadServerSelection(); main.UpdateLayout();
+                            Descendants<SkinButton>(main).Single(b => b.Tag is LocalServerChoice { Id: "region-1" }).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                            confirm.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                        }
+                        ConfirmB(); AssertRuntimeB("reconfirmed profile");
+                        DialogRoundtrip("ConfigBtn_Click", _ => store.Update(o => o.Servers.RemoveAt(1)));
+                        check(((FrameworkElement)main.FindName("ServerPage")).Visibility == Visibility.Visible && !confirm.IsEnabled
+                            && endpoint.Text.Contains("重新选择"), "deleted confirmed profile explicitly requires reselection after settings reload");
+                        InvokeEvent(main, "BackToLogin_Click");
+                        InvokeEvent(main, "EnterGame_Click");
+                        check(((FrameworkElement)main.FindName("ServerPage")).Visibility == Visibility.Visible,
+                            "invalid runtime target routes attempted launch back to explicit selection");
+                        Descendants<SkinButton>(main).First(b => b.Tag is LocalServerChoice).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                        check(confirm.IsEnabled, "reselection page remains usable after returning to login with an invalid target");
+                        ConfirmB(); AssertRuntimeB("restored and reconfirmed profile");
                         File.WriteAllText(Path.Combine(scratch, "launcher.json"), "{broken");
                         main.ReloadServerSelection(); main.UpdateLayout();
                         check(endpoint.Text.Contains("无法") && !confirm.IsEnabled,
@@ -309,6 +387,7 @@ internal static class ClassicUiTests
                 finally { Directory.Delete(scratch, true); }
             }
             catch (Exception ex) { failure = ex; }
+            finally { application.Shutdown(); }
         });
         thread.SetApartmentState(ApartmentState.STA); thread.Start();
         if (!thread.Join(TimeSpan.FromSeconds(30))) throw new TimeoutException("Classic UI raster tests hung.");

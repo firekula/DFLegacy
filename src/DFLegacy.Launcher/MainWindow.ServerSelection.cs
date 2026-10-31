@@ -15,6 +15,54 @@ public partial class MainWindow
     private CancellationTokenSource? _serverRequest;
     private long _serverGeneration;
     private bool _windowClosed;
+    // This validated snapshot survives closing the selection page; it is never persisted here.
+    private LocalServerSelection? _confirmedServerSelection;
+    private bool _requiresServerSelection;
+
+    private void ApplyRuntimeOptions(LauncherOptions options, AccountServiceClient account)
+    {
+        var typedAccount = AccountText.Text; var typedPassword = PasswordText.Password;
+        var selectedAccount = (AccountList.SelectedItem as AccountItem)?.Account;
+        _options = options; _account = account;
+        RefreshAccounts();
+        if (selectedAccount is not null)
+        {
+            var index = _options.Accounts.FindIndex(p => p.Account == selectedAccount);
+            if (index >= 0) AccountList.SelectedIndex = index;
+        }
+        AccountText.Text = typedAccount; PasswordText.Password = typedPassword;
+        UpdateAccountHint();
+    }
+
+    private void ReloadRuntimeOptions()
+    {
+        if (_requiresServerSelection) { EnsureRuntimeServerSelected(); return; }
+        LauncherOptions options;
+        try { options = _confirmedServerSelection?.Confirm(_store) ?? _store.Load(); }
+        catch (Exception ex) when (_confirmedServerSelection is not null)
+        {
+            _requiresServerSelection = true;
+            LoginPage.Visibility = Visibility.Collapsed; ServerPage.Visibility = Visibility.Visible;
+            ReloadServerSelection();
+            ShowServerSelectionError("服务器配置已变化或无法读取，请重新选择", ex);
+            return;
+        }
+        var account = new AccountServiceClient(options.ResolveAccountServiceUrl());
+        CancelServerRequests(); _serverSelection = null;
+        ApplyRuntimeOptions(options, account);
+    }
+
+    private bool EnsureRuntimeServerSelected()
+    {
+        if (!_requiresServerSelection) return true;
+        LoginPage.Visibility = Visibility.Collapsed; ServerPage.Visibility = Visibility.Visible;
+        if (_serverSelection is null)
+        {
+            ReloadServerSelection();
+            ServerEndpointText.Text = "服务器配置已变化，请重新选择";
+        }
+        return false;
+    }
 
     private void CancelServerRequests()
     {
@@ -26,7 +74,7 @@ public partial class MainWindow
 
     internal async Task RefreshStatusAsync()
     {
-        if (_windowClosed) return;
+        if (_windowClosed || (_requiresServerSelection && _serverSelection is null)) return;
         var selection = _serverSelection;
         var target = selection?.SelectedChoice;
         if (selection is not null && target is null) return;
@@ -185,10 +233,10 @@ public partial class MainWindow
         {
             var options = _serverSelection.Confirm(_store);
             var accountClient = new AccountServiceClient(options.ResolveAccountServiceUrl());
-            var typedAccount = AccountText.Text; var typedPassword = PasswordText.Password;
-            _options = options; _account = accountClient;
-            RefreshAccounts(); AccountText.Text = typedAccount; PasswordText.Password = typedPassword;
-            UpdateAccountHint(); BackToLogin_Click(this, e);
+            ApplyRuntimeOptions(options, accountClient);
+            _confirmedServerSelection = _serverSelection;
+            _requiresServerSelection = false;
+            BackToLogin_Click(this, e);
             if (_refreshStatus) _ = RefreshStatusAsync();
         }
         catch (InvalidOperationException ex) { ReloadServerSelection(); ShowServerSelectionError("配置已变化，请重新选择", ex); }

@@ -89,6 +89,7 @@ public partial class MainWindow : System.Windows.Window
 
     private void StartGame()
     {
+        if (!EnsureRuntimeServerSelected()) return;
         if (AgreeBox.IsChecked != true)
         {
             Growl.Info("请先勾选同意服务条款。");
@@ -207,6 +208,7 @@ public partial class MainWindow : System.Windows.Window
 
     private void RegisterBtn_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsureRuntimeServerSelected()) return;
         Views.RegisterWindow win;
         try
         {
@@ -248,6 +250,7 @@ public partial class MainWindow : System.Windows.Window
 
     private void ResetBtn_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsureRuntimeServerSelected()) return;
         Views.ResetWindow win;
         try
         {
@@ -263,6 +266,7 @@ public partial class MainWindow : System.Windows.Window
 
     private void ModifyBtn_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsureRuntimeServerSelected()) return;
         Views.ModifyWindow win;
         try
         {
@@ -322,8 +326,7 @@ public partial class MainWindow : System.Windows.Window
         ShowOwnedDialog(win);
         try
         {
-            _options = _store.Load();      // 编辑后重新加载
-            RefreshAccounts();
+            ReloadRuntimeOptions();
         }
         catch (Exception ex)
         {
@@ -354,13 +357,8 @@ public partial class MainWindow : System.Windows.Window
         ShowOwnedDialog(win);
         try
         {
-            _options = _store.Load();      // 设置变更后重新加载（host/url/relay 等）
-            CancelServerRequests(); _serverSelection = null;
-            RefreshAccounts();
-            // 设置里改了账号 API URL 后必须重建客户端（_account 按构造时的 URL 创建），
-            // 否则状态点与注册/改密/找回窗口会一直打到旧地址；重建后立即重探一次状态。
-            _account = new AccountServiceClient(_options.ResolveAccountServiceUrl());
-            _ = RefreshStatusAsync();
+            ReloadRuntimeOptions();
+            if (_refreshStatus) _ = RefreshStatusAsync();
         }
         catch (Exception ex)
         {
