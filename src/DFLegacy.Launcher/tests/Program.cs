@@ -22,6 +22,7 @@ var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.Ne
 Directory.CreateDirectory(root);
 try
 {
+    DisplayConfigurationTests.Run(root, Check);
     byte[] BootstrapFixture(bool packed)
     {
         var image = new byte[0x1000];

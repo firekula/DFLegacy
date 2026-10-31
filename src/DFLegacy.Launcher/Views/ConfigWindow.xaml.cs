@@ -1,6 +1,8 @@
 using System.Windows;
 using HandyControl.Controls;
 using Microsoft.Win32;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace DFLegacy.Launcher.Views;
 
@@ -10,6 +12,12 @@ public partial class ConfigWindow : System.Windows.Window
 {
     private readonly LauncherAccountStore _store;
     private LauncherOptions _options;
+    private ClientDisplaySnapshot? _display;
+    private bool _loadingDisplay = true;
+    private sealed record ResolutionChoice(int Width, int Height, string Label)
+    {
+        public override string ToString() => Label;
+    }
 
     internal ConfigWindow(LauncherAccountStore store)
     {
@@ -33,7 +41,11 @@ public partial class ConfigWindow : System.Windows.Window
         HostBox.TextChanged += (_, _) => UpdateAccountUrlHint();
         AccountPortBox.TextChanged += (_, _) => UpdateAccountUrlHint();
         AccountUrlBox.TextChanged += (_, _) => UpdateAccountUrlHint();
+        ClientPathBox.TextChanged += (_, _) => UpdateDisplayAvailability();
         UpdateAccountUrlHint();
+        MaxHeight = Math.Max(MinHeight, SystemParameters.WorkArea.Height - 24);
+        Loaded += (_, _) => UpdateDisplayAvailability();
+        LoadDisplay();
     }
 
     /// <summary>实时展示账号服务「实际会用」的地址：域名跟随入口，端口可改，覆盖值优先。</summary>
@@ -95,7 +107,86 @@ public partial class ConfigWindow : System.Windows.Window
             return;
         }
         App.ApplyTheme(_options.Theme);
+        LoadDisplay();
         Growl.Success("已保存。");
+    }
+
+    private void LoadDisplay()
+    {
+        _loadingDisplay = true;
+        _display = null;
+        DisplaySaveResultText.Text = "";
+        DisplayErrorText.Text = "";
+        try
+        {
+            _display = ClientDisplayConfiguration.Load(_options.ClientPath);
+            DisplayTargetText.Text = _display.ClientPath;
+            var choices = ClientDisplayConfiguration.Presets.Select(p => new ResolutionChoice(p.Width, p.Height, p.ToString())).ToList();
+            if (!choices.Any(p => p.Width == _display.Width && p.Height == _display.Height))
+                choices.Add(new(_display.Width, _display.Height, $"当前自定义：{_display.Width} × {_display.Height}（旧配置）"));
+            ResolutionBox.ItemsSource = choices;
+            ResolutionBox.SelectedItem = choices.First(p => p.Width == _display.Width && p.Height == _display.Height);
+            PresentationBox.SelectedValue = _display.PresentationFilter;
+            DisplayRuntimeText.Text = "尚未读取运行结果。保存的设置在下次启动时应用。";
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+        {
+            DisplayTargetText.Text = _options.ClientPath;
+            DisplayErrorText.Text = "无法读取显示配置：" + ex.Message;
+        }
+        finally { _loadingDisplay = false; UpdateDisplayAvailability(); }
+    }
+
+    private void DisplaySelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_loadingDisplay && DisplayEditorPanel is not null) UpdateDisplayAvailability();
+    }
+
+    private void UpdateDisplayAvailability()
+    {
+        if (DisplayEditorPanel is null || _loadingDisplay) return;
+        var samePath = ClientDisplayConfiguration.SameClientPath(_options.ClientPath, ClientPathBox.Text);
+        var ready = _display is not null && samePath;
+        DisplayEditorPanel.IsEnabled = ready;
+        DisplayReloadButton.IsEnabled = samePath;
+        var choice = ResolutionBox.SelectedItem as ResolutionChoice;
+        var mode = PresentationBox.SelectedValue as string;
+        var supported = choice is not null && (mode == "legacy" || ClientDisplayConfiguration.Presets.Any(p => p.Width == choice.Width && p.Height == choice.Height));
+        DisplaySaveButton.IsEnabled = ready && supported && mode is not null;
+        DisplayWarningText.Text = !samePath ? "客户端路径已修改，请先在连接页保存路径，再修改显示设置。"
+            : ready && !supported ? "此自定义尺寸只保留旧版兼容行为。使用增强画质前，请选择列表中的 4:3 分辨率。" : "";
+        DisplayDescriptionText.Text = mode switch
+        {
+            "sharp" => "尽量保留像素边缘，同时减轻非整数放大的生硬感。800 × 600 推荐此模式。",
+            "point" => "保留像素边缘；非整数倍尺寸下，笔画可能粗细不均。",
+            "linear" => "边缘更平滑，但文字和像素图可能偏软。",
+            _ => "保留原呈现方式，并沿用已有的纹理过滤设置。"
+        };
+        if (ready && supported && choice is not null)
+        {
+            var dpi = VisualTreeHelper.GetDpi(this);
+            if (choice.Width + 32 > SystemParameters.WorkArea.Width * dpi.DpiScaleX
+                || choice.Height + 48 > SystemParameters.WorkArea.Height * dpi.DpiScaleY)
+                DisplayWarningText.Text = "此窗口可能超出当前屏幕可用区域；保存时仍会保留你的选择。";
+        }
+    }
+
+    private void DisplayReload_Click(object sender, RoutedEventArgs e) => LoadDisplay();
+
+    private void DisplaySave_Click(object sender, RoutedEventArgs e)
+    {
+        if (_display is null || !ClientDisplayConfiguration.SameClientPath(_options.ClientPath, ClientPathBox.Text)
+            || ResolutionBox.SelectedItem is not ResolutionChoice choice || PresentationBox.SelectedValue is not string mode)
+        { UpdateDisplayAvailability(); return; }
+        try
+        {
+            _display = ClientDisplayConfiguration.Save(_display, choice.Width, choice.Height, mode);
+            DisplaySaveResultText.Text = "已保存显示设置，下次启动游戏生效。";
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+        {
+            DisplaySaveResultText.Text = "保存失败，原配置未被覆盖：" + ex.Message;
+        }
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
