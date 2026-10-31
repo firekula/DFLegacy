@@ -7,6 +7,7 @@
     <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../../../src/DFLegacy.Launcher/ClientPackageManifest.cs" Link="ClientPackageManifest.cs" />
     <Compile Include="../../../../src/DFLegacy.Launcher/Updates/UpdatePackage.cs" Link="UpdatePackage.cs" />
     <Compile Include="../../../../src/DFLegacy.Launcher/Updates/UpdateSafety.cs" Link="UpdateSafety.cs" />
     <Compile Include="../../../../src/DFLegacy.Launcher/Updates/UpdateModels.cs" Link="UpdateModels.cs" />

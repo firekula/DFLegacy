@@ -1,4 +1,8 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
@@ -62,6 +66,11 @@ internal static class HttpBehaviorTests
                 check((await client.SendAsync(hostile)).StatusCode == HttpStatusCode.Forbidden, "hostile Origin is rejected even with a session cookie");
             }
             client.DefaultRequestHeaders.Add("X-CSRF-Token", csrf);
+            using (var invalidExport = await client.PostAsJsonAsync("/api/export/client", new { testBuild = "true" }))
+            {
+                var error = await invalidExport.Content.ReadAsStringAsync();
+                check(invalidExport.StatusCode == HttpStatusCode.BadRequest && error.Contains("testBuild"), "export rejects non-boolean testBuild before asset lookup");
+            }
             using (var hostileUpload = new HttpRequestMessage(HttpMethod.Post, "/api/resources/pvf"))
             {
                 hostileUpload.Headers.Add("Origin", "http://hostile.example.test"); hostileUpload.Content = PvfBody([0]);
@@ -86,6 +95,34 @@ internal static class HttpBehaviorTests
             var savedState = await client.GetFromJsonAsync<JsonObject>("/api/status");
             check(savedState!["server"]!["state"]!.GetValue<string>() == "stopped", "first successful config save moves the dashboard from unconfigured to stopped");
             check((await client.GetAsync("/")).IsSuccessStatusCode, "browser dashboard assets are available from the packaged application");
+            var assetFiles = new Dictionary<string, string>
+            {
+                ["launcher/DFLegacy.Launcher.exe"] = "fixture launcher", ["patch/DFLegacy.Client.dll"] = "fixture core",
+                ["patch/Config.ini"] = "[Features]\nEnableDebugOverlay=0\n", ["patch/debug.dll"] = "fixture debug"
+            };
+            foreach (var (name, contents) in assetFiles)
+            {
+                var target = Path.Combine(paths.AssetsDirectory, name); Directory.CreateDirectory(Path.GetDirectoryName(target)!); File.WriteAllText(target, contents);
+            }
+            var manifestFile = Path.Combine(paths.AssetsDirectory, "manifest.json");
+            var commit = new string('a', 40);
+            File.WriteAllText(manifestFile, JsonSerializer.Serialize(new { version = "v1.2.3", commit, files = assetFiles.Select(pair => new { path = pair.Key, sha256 = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(pair.Value))) }) }));
+            File.WriteAllText(Path.Combine(paths.Root, "release-manifest.json"), JsonSerializer.Serialize(new { version = "v1.2.3", commit, files = new[] { new { path = "client-assets/manifest.json", sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(manifestFile))) } } }));
+            foreach (var (kind, body, test) in new[] { ("client", "{}", false), ("client", "{\"testBuild\":false}", false), ("client", "{\"testBuild\":true}", true), ("patch", "{\"testBuild\":true}", false), ("launcher", "{\"testBuild\":true}", false) })
+            {
+                using var exported = await client.PostAsync("/api/export/" + kind, new StringContent(body, Encoding.UTF8, "application/json"));
+                check(exported.IsSuccessStatusCode, "HTTP export accepts selected flavor " + kind + " " + test);
+                using var data = new MemoryStream(await exported.Content.ReadAsByteArrayAsync());
+                using var zip = new ZipArchive(data);
+                using var package = new StreamReader(zip.GetEntry("client-package.json")!.Open());
+                var installed = JsonNode.Parse(package.ReadToEnd())!;
+                check(installed["flavor"]!.GetValue<string>() == (test ? "test" : "normal") && (zip.GetEntry("debug.dll") is not null) == test, "HTTP export captures exact testBuild selection");
+            }
+            foreach (var body in new[] { "{\"testBuild\":1}", "{\"testBuild\":null}", "{\"testBuild\":true,\"testBuild\":false}", "[]" })
+            {
+                using var invalid = await client.PostAsync("/api/export/client", new StringContent(body, Encoding.UTF8, "application/json"));
+                check(invalid.StatusCode == HttpStatusCode.BadRequest, "HTTP export refuses ambiguous or invalid bool");
+            }
             await client.PostAsJsonAsync("/api/logout", new { });
             check((await client.GetAsync("/api/status")).StatusCode == HttpStatusCode.Unauthorized, "logout removes control access");
             for (var attempt = 0; attempt < 10; attempt++) await client.PostAsJsonAsync("/api/login", new { userName = "operator", password = "wrong" });

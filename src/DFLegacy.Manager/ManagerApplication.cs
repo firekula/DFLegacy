@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Diagnostics;
 using System.Net;
 using System.Security.Claims;
@@ -145,7 +146,24 @@ public static class ManagerApplication
             api.MapPost("/game-admin", async (InitialGameAdmin request, HttpContext context) => { await supervisor.InitializeAdminAsync(request, context.RequestAborted); return Results.Ok(new { created = true }); });
             api.MapPost("/export/{kind}", async (string kind, HttpContext context) =>
             {
-                var path = await exporter.ExportAsync(kind, config.Read().Effective, context.RequestAborted);
+                var testBuild = false;
+                if (kind == "client" && context.Request.ContentLength != 0)
+                {
+                    try
+                    {
+                        using var request = await JsonDocument.ParseAsync(context.Request.Body, cancellationToken: context.RequestAborted);
+                        if (request.RootElement.ValueKind != JsonValueKind.Object) return Results.BadRequest(new { error = "testBuild 必须是 JSON bool。" });
+                        var seen = false;
+                        foreach (var property in request.RootElement.EnumerateObject())
+                        {
+                            if (property.Name != "testBuild" || seen || property.Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                                return Results.BadRequest(new { error = "testBuild 必须是唯一的 JSON bool。" });
+                            seen = true; testBuild = property.Value.GetBoolean();
+                        }
+                    }
+                    catch (JsonException) { return Results.BadRequest(new { error = "testBuild 请求 JSON 无效。" }); }
+                }
+                var path = await exporter.ExportAsync(kind, config.Read().Effective, testBuild: testBuild, cancellationToken: context.RequestAborted);
                 return Results.File(path, "application/zip", Path.GetFileName(path));
             });
             var browserHost = options.Listen.Equals(IPAddress.Any) ? IPAddress.Loopback : options.Listen.Equals(IPAddress.IPv6Any) ? IPAddress.IPv6Loopback : options.Listen;

@@ -77,10 +77,11 @@ class Bundles(unittest.TestCase):
     def assets(self):
         source = app(self.root / "launcher-input", "DFLegacy.Launcher", "win-x64")
         write(source, "launcher.json", '{"Password":"PRIVATE", "ClientPath":"C:\\\\private\\\\DNF.exe"}')
-        native = write(self.root, "native/ijl15.dll")
+        native = write(self.root, "native/DFLegacy.Client.dll")
         config = write(self.root, "native/Config.ini", "[Window]\nWidth=640\n[Debug]\nEnabled=1\n")
         output = self.root / "assets"
-        release.build_client_assets(source, native, config, output, VERSION, COMMIT)
+        debug = write(self.root, "native/debug.dll", b"paired debug fixture")
+        release.build_client_assets(source, native, config, output, VERSION, COMMIT, debug)
         return output
 
     def test_production_rejects_complete_loose_launcher_before_player_export(self):
@@ -89,7 +90,7 @@ class Bundles(unittest.TestCase):
             write(legacy, name)
         write(legacy, "DFLegacy.Launcher.deps.json", '{"targets":{}}')
         write(legacy, "DFLegacy.Launcher.runtimeconfig.json", '{}')
-        native = write(self.root, "legacy-native/ijl15.dll")
+        native = write(self.root, "legacy-native/DFLegacy.Client.dll")
         config = write(self.root, "legacy-native/Config.ini", '[Features]\nEnableDebugOverlay=0\n')
         with self.assertRaisesRegex(release.ReleaseError, "single-file"):
             release.build_client_assets(legacy, native, config, self.root / "bad-legacy-assets", VERSION, COMMIT)
@@ -139,7 +140,9 @@ class Bundles(unittest.TestCase):
     def test_assets_clean_credentials_and_keep_complete_runtime(self):
         assets = self.assets()
         manifest = release.verify_assets(assets, VERSION, COMMIT)
-        self.assertEqual(len(manifest["files"]), 6)
+        self.assertEqual({row["path"] for row in manifest["files"]}, {
+            "launcher/DFLegacy.Launcher.exe", "launcher/DFLegacy.Client.dll", "launcher/launcher.json", "launcher/Config.ini",
+            "patch/DFLegacy.Client.dll", "patch/debug.dll", "patch/Config.ini"})
         config = json.loads((assets / "launcher/launcher.json").read_text())
         self.assertEqual(config["Accounts"], [])
         self.assertEqual(config["Password"], "")
@@ -216,7 +219,7 @@ class Bundles(unittest.TestCase):
         assets = self.assets()
         with self.assertRaises(release.ReleaseError):
             release.verify_assets(assets, VERSION, "b" * 40)
-        write(assets, "patch/ijl15.dll", "tampered")
+        write(assets, "patch/DFLegacy.Client.dll", "tampered")
         with self.assertRaises(release.ReleaseError):
             release.verify_assets(assets, VERSION, COMMIT)
         write(assets, "secret.txt", "private")
