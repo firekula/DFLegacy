@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include "presentation_scaling.h"
 
 namespace dfl::ijl15_config
 {
@@ -39,6 +40,8 @@ namespace dfl::ijl15_config
         char ClientDiamondUrl[ClientPageUrlCapacity];
         bool ExportGameplayTrace=false;
         bool ExportNativeLoopProfile=false;
+        presentation::Mode PresentationFilter=presentation::Mode::Legacy;
+        bool InvalidPresentationFilter=false;
     };
 
     // Load once from Config.ini beside the client executable. Missing or

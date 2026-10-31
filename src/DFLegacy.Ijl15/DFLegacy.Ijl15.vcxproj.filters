@@ -27,6 +27,9 @@
     <ClInclude Include="src\presentation_scaling.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\d3d8_hooks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\boss_room_death.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -93,6 +96,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\presentation_scaling.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\d3d8_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\boss_room_death.cpp">

@@ -23,6 +23,7 @@ Directory.CreateDirectory(root);
 try
 {
     DisplayConfigurationTests.Run(root, Check);
+    RenderDiagnosticTests.Run(root, Check);
     byte[] BootstrapFixture(bool packed)
     {
         var image = new byte[0x1000];

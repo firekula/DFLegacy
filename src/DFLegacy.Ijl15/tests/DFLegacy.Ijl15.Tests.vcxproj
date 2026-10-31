@@ -121,6 +121,7 @@
     <ClCompile Include="auto_input_drag_tests.cpp" />
     <ClCompile Include="..\src\external_string_table.cpp" />
     <ClCompile Include="..\src\ijl15_config.cpp" />
+    <ClCompile Include="..\src\presentation_scaling.cpp" />
     <ClCompile Include="..\src\memory_patch.cpp" />
     <ClCompile Include="..\src\net_dump.cpp" />
     <ClCompile Include="..\src\output_paths.cpp" />

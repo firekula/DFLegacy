@@ -6,14 +6,40 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <dbghelp.h>
+#include <fstream>
+#include <iterator>
+#include <string>
 #include "../src/d3d8_abi.h"
 #include "../src/d3d8_presenter.h"
+#include "../src/d3d8_hooks.h"
 
 namespace a = dfl::d3d8;
 namespace p = dfl::presentation;
 namespace
 {
     int Failures = 0;
+    LONG WINAPI Crash(EXCEPTION_POINTERS* exception)
+    {
+        const HANDLE process=GetCurrentProcess();SymSetOptions(SYMOPT_UNDNAME|SYMOPT_LOAD_LINES);SymInitialize(process,nullptr,TRUE);
+        auto context=*exception->ContextRecord;STACKFRAME64 frame{};frame.AddrPC.Offset=context.Eip;frame.AddrPC.Mode=AddrModeFlat;
+        frame.AddrFrame.Offset=context.Ebp;frame.AddrFrame.Mode=AddrModeFlat;frame.AddrStack.Offset=context.Esp;frame.AddrStack.Mode=AddrModeFlat;
+        std::fprintf(stderr,"GPU_CRASH code%08lX at%08lX access%lu address%lX\n",exception->ExceptionRecord->ExceptionCode,context.Eip,exception->ExceptionRecord->ExceptionInformation[0],exception->ExceptionRecord->ExceptionInformation[1]);
+        std::fprintf(stderr,"REG eax%08lX ebx%08lX ecx%08lX edx%08lX esi%08lX edi%08lX\n",context.Eax,context.Ebx,context.Ecx,context.Edx,context.Esi,context.Edi);
+        for(int i=0;i<24;++i)
+        {
+            alignas(SYMBOL_INFO) char bytes[sizeof(SYMBOL_INFO)+1024]{};auto* symbol=reinterpret_cast<SYMBOL_INFO*>(bytes);symbol->SizeOfStruct=sizeof(SYMBOL_INFO);symbol->MaxNameLen=1023;DWORD64 delta=0;
+            if(SymFromAddr(process,frame.AddrPC.Offset,&delta,symbol))std::fprintf(stderr,"STACK %llX %s+%llu\n",frame.AddrPC.Offset,symbol->Name,delta);
+            else std::fprintf(stderr,"STACK %llX\n",frame.AddrPC.Offset);
+            IMAGEHLP_LINE64 line{};line.SizeOfStruct=sizeof(line);DWORD displacement=0;
+            if(SymGetLineFromAddr64(process,frame.AddrPC.Offset,&displacement,&line))std::fprintf(stderr,"LINE %s:%lu\n",line.FileName,line.LineNumber);
+            BYTE instructions[64]{};SIZE_T read=0;
+            if(ReadProcessMemory(process,reinterpret_cast<const void*>(static_cast<ULONG_PTR>(frame.AddrPC.Offset-48)),instructions,sizeof(instructions),&read)&&read==sizeof(instructions))
+            {std::fprintf(stderr,"CODE %llX ",frame.AddrPC.Offset-48);for(const auto byte:instructions)std::fprintf(stderr,"%02X",byte);std::fputs("\n",stderr);}
+            if(!StackWalk64(IMAGE_FILE_MACHINE_I386,process,GetCurrentThread(),&frame,&context,nullptr,SymFunctionTableAccess64,SymGetModuleBase64,nullptr))break;
+        }
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
     void Check(bool result, const char* text) { if (!result) { std::fprintf(stderr,"FAIL: %s\n",text); ++Failures; } }
     struct Ref
     {
@@ -22,6 +48,13 @@ namespace
         void Reset() { if (Value != nullptr) { a::Call<ULONG>(Value, 2); Value = nullptr; } }
     };
     unsigned Channel(DWORD pixel, int c) { return (pixel >> (c * 8)) & 255; }
+    bool EffectiveSharp()
+    {
+        wchar_t executable[MAX_PATH]{};GetModuleFileNameW(nullptr,executable,MAX_PATH);std::wstring path(executable);path.resize(path.find_last_of(L"\\/"));
+        path+=L"\\render-diagnostics\\"+std::to_wstring(GetCurrentProcessId())+L".json";
+        std::ifstream file(path,std::ios::binary);const std::string text((std::istreambuf_iterator<char>(file)),{});
+        return text.find("\"effective\":\"sharp\"")!=std::string::npos;
+    }
     DWORD Pixel(unsigned x, unsigned y)
     {
         return 0xff000000U | (((x * 7 + y * 3) & 255) << 16) | (((x * 11 + y * 13) & 255) << 8) | ((x * 23 + y * 5) & 255);
@@ -43,6 +76,8 @@ namespace
 
 int main()
 {
+    std::setvbuf(stdout,nullptr,_IONBF,0);
+    SetUnhandledExceptionFilter(&Crash);
     const auto instance=GetModuleHandleW(nullptr);
     WNDCLASSW wc{};wc.hInstance=instance;wc.lpfnWndProc=DefWindowProcW;wc.lpszClassName=L"DFLegacy.Presentation.GpuTest";
     if (!RegisterClassW(&wc)) return 2;
@@ -156,6 +191,30 @@ int main()
         std::printf("D3D8 device texture caps: %ux%u flags=0x%08lX\n",caps.MaxTextureWidth,caps.MaxTextureHeight,static_cast<unsigned long>(caps.TextureCaps));
     }
     const ULONG remaining=a::Call<ULONG>(device.Value,2);device.Value=nullptr;Check(remaining==0,"all presenter and captured COM resources released");
+    Check(dfl::d3d8_hooks::AttachFactory(factory.Value,{p::Mode::Sharp,dfl::ijl15_config::ScaleFilterMode::Point,nullptr,false}),"real factory attaches production hooks");
+    for(unsigned cycle=0;cycle<4;++cycle)
+    {
+        std::printf("HOOK_GPU cycle%u create\n",cycle);
+        Ref hooked;pp.BackBufferWidth=640;pp.BackBufferHeight=480;
+        hr=a::Call<HRESULT>(factory.Value,15,UINT(0),DWORD(1),window,DWORD(0x22),&pp,&hooked.Value);
+        Check(SUCCEEDED(hr),"real hooked device creation");if(FAILED(hr))break;
+        for(const auto size:{640U,800U,1280U})
+        {
+            std::printf("HOOK_GPU %u present\n",size);
+            SetWindowPos(window,nullptr,0,0,static_cast<int>(size),static_cast<int>(size*3/4),SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOZORDER);
+            std::puts("HOOK_GPU resized");
+            a::Call<HRESULT>(hooked.Value,36,DWORD(0),static_cast<const RECT*>(nullptr),DWORD(1),DWORD(0xff17395b),float(1),DWORD(0));
+            std::puts("HOOK_GPU cleared");
+            const auto present=a::Call<HRESULT>(hooked.Value,15,static_cast<const RECT*>(nullptr),static_cast<const RECT*>(nullptr),static_cast<HWND>(nullptr),static_cast<const RGNDATA*>(nullptr));
+            Check(SUCCEEDED(present),"real additional swap-chain production presentation");
+            Check(EffectiveSharp(),"real hooked rendering diagnostic confirms enhancement rather than successful original fallback");
+            Ref back;Check(SUCCEEDED(a::Call<HRESULT>(hooked.Value,16,UINT(0),DWORD(0),&back.Value)),"hooked original backbuffer still available");
+            a::SurfaceDescription main{};a::Call<HRESULT>(back.Value,8,&main);Check(main.Width==640&&main.Height==480,"hook never rewrites main device logical geometry");
+        }
+        Check(SUCCEEDED(a::Call<HRESULT>(hooked.Value,14,&pp)),"real Reset succeeds after production hook releases default resources");
+        std::puts("HOOK_GPU reset complete");
+        const ULONG refs=a::Call<ULONG>(hooked.Value,2);hooked.Value=nullptr;Check(refs==0,"real hooked device final Release has no resource cycle");
+    }
     factory.Reset();FreeLibrary(library);DestroyWindow(window);UnregisterClassW(wc.lpszClassName,instance);
     if(Failures==0)std::puts("D3D8 GPU presentation tests passed");return Failures==0?0:1;
 }

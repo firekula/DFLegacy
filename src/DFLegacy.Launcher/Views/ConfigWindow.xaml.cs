@@ -127,7 +127,7 @@ public partial class ConfigWindow : System.Windows.Window
             ResolutionBox.ItemsSource = choices;
             ResolutionBox.SelectedItem = choices.First(p => p.Width == _display.Width && p.Height == _display.Height);
             PresentationBox.SelectedValue = _display.PresentationFilter;
-            DisplayRuntimeText.Text = "尚未读取运行结果。保存的设置在下次启动时应用。";
+            DisplayRuntimeText.Text = ClientRenderDiagnostic.DescribeLatest(_display.ClientPath);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
         {

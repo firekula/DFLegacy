@@ -50,6 +50,8 @@ add_library(ijl15 SHARED
     src/party_card_display.h
     src/d3d8_scaler.cpp
     src/d3d8_scaler.h
+    src/d3d8_hooks.cpp
+    src/d3d8_hooks.h
     src/d3d8_abi.h
     src/d3d8_presenter.cpp
     src/d3d8_presenter.h
@@ -119,12 +121,17 @@ add_custom_command(TARGET ijl15 POST_BUILD
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(d3d8_hook_tests tests/d3d8_hook_tests.cpp src/ijl15_config.cpp src/presentation_scaling.cpp src/d3d8_hooks.cpp src/d3d8_presenter.cpp)
+    target_compile_options(d3d8_hook_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    target_link_libraries(d3d8_hook_tests PRIVATE user32 winhttp)
+    add_test(NAME d3d8_hook_lifecycle COMMAND d3d8_hook_tests)
     add_executable(presentation_scaling_tests tests/presentation_scaling_tests.cpp src/presentation_scaling.cpp)
     target_compile_options(presentation_scaling_tests PRIVATE /W4 /WX /utf-8 /EHsc)
     add_test(NAME presentation_scaling_policy COMMAND presentation_scaling_tests)
-    add_executable(d3d8_presenter_tests tests/d3d8_presenter_tests.cpp src/d3d8_presenter.cpp src/presentation_scaling.cpp)
-    target_compile_options(d3d8_presenter_tests PRIVATE /W4 /WX /utf-8 /EHsc)
-    target_link_libraries(d3d8_presenter_tests PRIVATE user32)
+    add_executable(d3d8_presenter_tests tests/d3d8_presenter_tests.cpp src/d3d8_presenter.cpp src/presentation_scaling.cpp src/d3d8_hooks.cpp)
+    target_compile_options(d3d8_presenter_tests PRIVATE /W4 /WX /utf-8 /EHsc /Zi)
+    target_link_options(d3d8_presenter_tests PRIVATE /DEBUG)
+    target_link_libraries(d3d8_presenter_tests PRIVATE user32 dbghelp)
     option(DFLEGACY_ENABLE_GPU_TESTS "Run D3D8 tests in an interactive graphics session" OFF)
     if(DFLEGACY_ENABLE_GPU_TESTS)
         add_test(NAME d3d8_presentation_gpu COMMAND d3d8_presenter_tests)
@@ -196,7 +203,7 @@ if(BUILD_TESTING)
         tests/party_card_display_tests.cpp
         tests/auto_input_drag_tests.cpp
         tests/ijl15_tests.cpp)
-    target_sources(ijl15_tests PRIVATE tests/client_service_url_tests.cpp)
+    target_sources(ijl15_tests PRIVATE tests/client_service_url_tests.cpp src/presentation_scaling.cpp)
     target_compile_options(ijl15_tests PRIVATE /W4 /WX /permissive- /EHsc)
     target_include_directories(ijl15_tests PRIVATE include src)
     target_link_libraries(ijl15_tests PRIVATE shlwapi ws2_32 user32 winhttp)

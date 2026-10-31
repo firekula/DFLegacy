@@ -56,12 +56,12 @@
 
 **Interfaces:** Scale presentation settings in native config map the four ASCII mode names and existing width/height; d3d8_scaler::Install() installs per-factory CreateDevice and per-device Present/Reset/Release hooks with original-call tables. Existing texture-state pump remains, forcing old filtering only in explicit legacy.
 
-- [ ] Add failing actual native-reader probes for new defaults/missing/unknown keys/encodings and hook fixtures for two independent devices, reentrancy, resource-held device references, final Release, Reset failure/retry, minimized/unsupported Present and fallback status.
-- [ ] Run probes/fixtures and observe RED for the missing presenter route and lifecycle behavior.
-- [ ] Implement per-object context ownership and per-thread recursion guards. Conservatively clear presenter resources before external device Release; do not rely on guessed external COM counts. Free cloned tables only after original final Release; internal presenter resource releases bypass cleanup under the guard.
-- [ ] Implement Present routing, reset handling and rate-limited per-process render diagnostics (request/effective mode, sizes, reason/HRESULT, time/PID). Preserve lost-device returns and original backbuffer; make fallback visible to the WPF display page.
-- [ ] Keep old missing-key INIs on legacy, new embedded defaults sharp. Unsupported4:3/caps go to marked original-present fallback without rewriting the file. Retain source instruction/image gates and all existing hooks.
-- [ ] Run full native and Launcher suites with the newly built matching DLL, actual GPU harness and fake-COM lifecycle tests; commit hook integration.
+- [x] Add failing actual native-reader probes for new defaults/missing/unknown keys/encodings and hook fixtures for two independent devices, reentrancy, resource-held device references, final Release, Reset failure/retry, minimized/unsupported Present and fallback status.
+- [x] Run probes/fixtures and observe RED for the missing presenter route and lifecycle behavior.
+- [x] Implement per-object context ownership and per-thread recursion guards. Conservatively clear presenter resources before external device Release; do not rely on guessed external COM counts. Free cloned tables only after original final Release; internal presenter resource releases bypass cleanup under the guard.
+- [x] Implement Present routing, reset handling and rate-limited per-process render diagnostics (request/effective mode, sizes, reason/HRESULT, time/PID). Preserve lost-device returns and original backbuffer; make fallback visible to the WPF display page.
+- [x] Keep old missing-key INIs on legacy, new embedded defaults sharp. Unsupported4:3/caps go to marked original-present fallback without rewriting the file. Retain source instruction/image gates and all existing hooks.
+- [x] Run full native and Launcher suites with the newly built matching DLL, actual GPU harness and fake-COM lifecycle tests; commit hook integration.
 
 ### Task 4: Actual UI/game acceptance, review, integration and publication
 

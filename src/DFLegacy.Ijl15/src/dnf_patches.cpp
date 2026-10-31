@@ -1130,12 +1130,9 @@ namespace dfl::dnf_patches
                 "DFLegacy.Ijl15: window scaling was not installed; using native size.\n");
         }
 
-        // 2008DF is a D3D8 client. The D3D9/XBRZ hook used by the newer
-        // client cannot be reused here, so install the compatible sampler
-        // policy before the client creates its D3D8 device.
-        if (dfl::ijl15_config::Get().ScaleFilter
-                != dfl::ijl15_config::ScaleFilterMode::Native
-            && !dfl::d3d8_scaler::Install())
+        // Capture the D3D8 factory before device creation, including enhanced
+        // presentation modes which preserve the game's own texture sampler.
+        if (!dfl::d3d8_scaler::Install())
         {
             OutputDebugStringA(
                 "DFLegacy.Ijl15: D3D8 scale filter was not installed; using native filtering.\n");

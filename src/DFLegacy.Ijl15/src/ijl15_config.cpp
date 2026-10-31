@@ -288,6 +288,12 @@ namespace dfl::ijl15_config
             CurrentSettings.ScaleFilter = ReadScaleFilter(
                 path,
                 DefaultSettings.ScaleFilter);
+            char presentation[64]{};
+            GetPrivateProfileStringA("Rendering","PresentationFilter","",presentation,sizeof(presentation),path);
+            CurrentSettings.PresentationFilter = presentation::ParseMode(presentation);
+            CurrentSettings.InvalidPresentationFilter = presentation[0] != '\0'
+                && CurrentSettings.PresentationFilter == presentation::Mode::Legacy
+                && _stricmp(presentation,"legacy") != 0;
             CurrentSettings.DumpNetwork = ReadBoolean(
                 path,
                 "Features",

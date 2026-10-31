@@ -1,0 +1,209 @@
+#include "../src/d3d8_hooks.h"
+#include "../src/d3d8_abi.h"
+#include <array>
+#include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <iterator>
+#include <string>
+#include <vector>
+
+namespace a=dfl::d3d8;
+namespace h=dfl::d3d8_hooks;
+namespace p=dfl::presentation;
+namespace c=dfl::ijl15_config;
+namespace
+{
+    int Failures=0;
+    void Check(bool result,const char* label){if(!result){++Failures;std::fprintf(stderr,"FAIL: %s\n",label);}}
+    struct GuardedTable
+    {
+        void* Allocation=VirtualAlloc(nullptr,8192,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
+        void** Table;
+        explicit GuardedTable(std::size_t count):Table(reinterpret_cast<void**>(static_cast<char*>(Allocation)+4096-count*sizeof(void*)))
+        {DWORD old=0;VirtualProtect(static_cast<char*>(Allocation)+4096,4096,PAGE_NOACCESS,&old);}
+        ~GuardedTable(){VirtualFree(Allocation,0,MEM_RELEASE);}
+    };
+    struct Device;
+    struct Resource
+    {
+        void** Table=nullptr;ULONG References=1;Device* Owner=nullptr;
+        UINT Width=640,Height=480;bool Heap=false;
+    };
+    struct Device
+    {
+        void** Table=nullptr;ULONG References=1;int Tag=0,Destroyed=0,Presents=0,Resets=0,Allocations=0,Draws=0;
+        DWORD LastFilter=0;HRESULT PresentResult=S_OK,ResetResult=S_OK,AllocationResult=S_OK,RestoreResult=S_OK;
+        Resource Source{},Target{},Chain{};
+        a::Viewport View{0,0,640,480,0,1};
+    };
+    std::array<void*,16> ResourceTable{};
+    ULONG WINAPI Add(void* value){return ++static_cast<Device*>(value)->References;}
+    ULONG WINAPI Release(void* value){auto& d=*static_cast<Device*>(value);const auto n=--d.References;if(!n)++d.Destroyed;return n;}
+    ULONG WINAPI RAdd(void* value){return ++static_cast<Resource*>(value)->References;}
+    ULONG WINAPI RRelease(void* value)
+    {
+        auto* r=static_cast<Resource*>(value);const auto n=--r->References;
+        if(!n){if(r->Owner)a::Call<ULONG>(r->Owner,2);if(r->Heap)delete r;}return n;
+    }
+    HRESULT WINAPI Description(void* value,a::SurfaceDescription* desc)
+    {auto& r=*static_cast<Resource*>(value);*desc={22,1,1,0,r.Width*r.Height*4,0,r.Width,r.Height};return S_OK;}
+    Resource* NewResource(Device* owner,UINT w,UINT height)
+    {auto* r=new Resource{ResourceTable.data(),1,owner,w,height,true};a::Call<ULONG>(owner,1);return r;}
+    HRESULT WINAPI Surface(void* value,UINT,void** output)
+    {auto* r=static_cast<Resource*>(value);*output=NewResource(r->Owner,r->Width,r->Height);return S_OK;}
+    HRESULT WINAPI SwapBuffer(void* value,UINT,DWORD,void** output){return Surface(value,0,output);}
+    HRESULT WINAPI SwapPresent(void*,const RECT*,const RECT*,HWND,const RGNDATA*){return S_OK;}
+    std::array<void*,5> SwapTable{};
+    HRESULT WINAPI Caps(void*,a::Caps* caps){caps->MaxTextureWidth=4096;caps->MaxTextureHeight=4096;caps->TextureCaps=0;return S_OK;}
+    HRESULT WINAPI Chain(void* value,a::PresentationParameters* pp,void** output)
+    {
+        auto& d=*static_cast<Device*>(value);++d.Allocations;
+        if(FAILED(d.AllocationResult))return d.AllocationResult;
+        auto* r=NewResource(&d,pp->BackBufferWidth,pp->BackBufferHeight);r->Table=SwapTable.data();*output=r;return S_OK;
+    }
+    HRESULT WINAPI Texture(void* value,UINT w,UINT height,UINT,DWORD,DWORD,DWORD,void** output)
+    {auto* d=static_cast<Device*>(value);*output=NewResource(d,w,height);return S_OK;}
+    HRESULT WINAPI BackBuffer(void* value,UINT,DWORD,void** output)
+    {auto& d=*static_cast<Device*>(value);*output=&d.Source;RAdd(*output);return S_OK;}
+    HRESULT WINAPI Target(void* value,void** output){auto& d=*static_cast<Device*>(value);*output=&d.Target;RAdd(*output);return S_OK;}
+    HRESULT WINAPI Depth(void*,void** output){*output=nullptr;return a::NotFound;}
+    HRESULT WINAPI Stream(void*,UINT,void** output,UINT* stride){*output=nullptr;*stride=0;return S_OK;}
+    HRESULT WINAPI Indices(void*,void** output,UINT* base){*output=nullptr;*base=0;return S_OK;}
+    HRESULT WINAPI GetView(void* value,a::Viewport* output){*output=static_cast<Device*>(value)->View;return S_OK;}
+    HRESULT WINAPI SetView(void*,const a::Viewport*){return S_OK;}
+    HRESULT WINAPI State(void*,DWORD,DWORD){return S_OK;}
+    HRESULT WINAPI Stage(void* value,DWORD,DWORD,DWORD filter){auto& d=*static_cast<Device*>(value);d.LastFilter=filter;return static_cast<HRESULT>(d.Tag);}
+    HRESULT WINAPI One(void*,DWORD){return S_OK;}
+    HRESULT WINAPI None(void*){return S_OK;}
+    HRESULT WINAPI SetTarget(void*,void*,void*){return S_OK;}
+    HRESULT WINAPI SetTexture(void*,DWORD,void*){return S_OK;}
+    HRESULT WINAPI SetStream(void*,UINT,void*,UINT){return S_OK;}
+    HRESULT WINAPI SetIndices(void*,void*,UINT){return S_OK;}
+    HRESULT WINAPI Block(void*,DWORD,DWORD* output){*output=1;return S_OK;}
+    HRESULT WINAPI Apply(void* value,DWORD){return static_cast<Device*>(value)->RestoreResult;}
+    HRESULT WINAPI Copy(void*,void*,const RECT*,UINT,void*,const POINT*){return S_OK;}
+    HRESULT WINAPI Draw(void* value,DWORD,UINT,const void*,UINT){++static_cast<Device*>(value)->Draws;return S_OK;}
+    HRESULT WINAPI Present(void* value,const RECT*,const RECT*,HWND,const RGNDATA*)
+    {auto& d=*static_cast<Device*>(value);++d.Presents;return d.PresentResult;}
+    HRESULT WINAPI Reset(void* value,a::PresentationParameters*)
+    {auto& d=*static_cast<Device*>(value);++d.Resets;Check(d.References==1,"Reset releases every default-pool resource before driver call");return d.ResetResult;}
+    struct Factory{void** Table;ULONG References=1;Device* Created;int Calls=0;};
+    ULONG WINAPI FRelease(void* value){return --static_cast<Factory*>(value)->References;}
+    HRESULT WINAPI Create(void* value,UINT,DWORD,HWND,DWORD,a::PresentationParameters*,void** output)
+    {auto& f=*static_cast<Factory*>(value);++f.Calls;*output=f.Created;return S_OK;}
+    void Initialize(GuardedTable& storage,Device& d,int tag)
+    {
+        auto** t=storage.Table;d.Table=t;d.Tag=tag;
+        d.Source.Table=ResourceTable.data();d.Target.Table=ResourceTable.data();
+        t[1]=reinterpret_cast<void*>(&Add);t[2]=reinterpret_cast<void*>(&Release);t[7]=reinterpret_cast<void*>(&Caps);
+        t[13]=reinterpret_cast<void*>(&Chain);t[14]=reinterpret_cast<void*>(&Reset);t[15]=reinterpret_cast<void*>(&Present);
+        t[16]=reinterpret_cast<void*>(&BackBuffer);t[20]=reinterpret_cast<void*>(&Texture);t[28]=reinterpret_cast<void*>(&Copy);
+        t[31]=reinterpret_cast<void*>(&SetTarget);t[32]=reinterpret_cast<void*>(&Target);t[33]=reinterpret_cast<void*>(&Depth);
+        t[34]=reinterpret_cast<void*>(&None);t[35]=reinterpret_cast<void*>(&None);t[40]=reinterpret_cast<void*>(&SetView);t[41]=reinterpret_cast<void*>(&GetView);
+        t[50]=reinterpret_cast<void*>(&State);t[54]=reinterpret_cast<void*>(&Apply);t[56]=reinterpret_cast<void*>(&One);t[57]=reinterpret_cast<void*>(&Block);
+        t[61]=reinterpret_cast<void*>(&SetTexture);t[63]=reinterpret_cast<void*>(&Stage);t[72]=reinterpret_cast<void*>(&Draw);
+        t[76]=reinterpret_cast<void*>(&One);t[83]=reinterpret_cast<void*>(&SetStream);t[84]=reinterpret_cast<void*>(&Stream);
+        t[85]=reinterpret_cast<void*>(&SetIndices);t[86]=reinterpret_cast<void*>(&Indices);t[88]=reinterpret_cast<void*>(&One);
+    }
+    bool Attach(GuardedTable& storage,Factory& f,Device& d,HWND window,p::Mode mode,c::ScaleFilterMode filter=c::ScaleFilterMode::Point)
+    {
+        f.Table=storage.Table;f.Created=&d;f.Table[2]=reinterpret_cast<void*>(&FRelease);f.Table[15]=reinterpret_cast<void*>(&Create);
+        if(!h::AttachFactory(&f,{mode,filter,nullptr,false}))return false;
+        a::PresentationParameters pp{};pp.DeviceWindow=window;pp.Windowed=TRUE;void* result=nullptr;
+        const auto hr=a::Call<HRESULT>(&f,15,UINT(0),DWORD(1),window,DWORD(0),&pp,&result);
+        return SUCCEEDED(hr)&&result==&d;
+    }
+    HRESULT Frame(Device& d){return a::Call<HRESULT>(&d,15,static_cast<const RECT*>(nullptr),static_cast<const RECT*>(nullptr),static_cast<HWND>(nullptr),static_cast<const RGNDATA*>(nullptr));}
+    std::string Diagnostic()
+    {
+        wchar_t path[MAX_PATH]{};GetModuleFileNameW(nullptr,path,MAX_PATH);std::wstring file(path);file.resize(file.find_last_of(L"\\/"));
+        file+=L"\\render-diagnostics\\"+std::to_wstring(GetCurrentProcessId())+L".json";
+        std::ifstream stream(file,std::ios::binary);return {(std::istreambuf_iterator<char>(stream)),{}};
+    }
+    void Hooks(HWND window)
+    {
+        ResourceTable[1]=reinterpret_cast<void*>(&RAdd);ResourceTable[2]=reinterpret_cast<void*>(&RRelease);ResourceTable[8]=reinterpret_cast<void*>(&Description);ResourceTable[15]=reinterpret_cast<void*>(&Surface);
+        SwapTable[1]=ResourceTable[1];SwapTable[2]=ResourceTable[2];SwapTable[3]=reinterpret_cast<void*>(&SwapPresent);SwapTable[4]=reinterpret_cast<void*>(&SwapBuffer);
+        GuardedTable dt1(97),dt2(97),ft1(16),ft2(16);Device d1,d2;Factory f1{},f2{};
+        Initialize(dt1,d1,11);Initialize(dt2,d2,22);
+        Check(Attach(ft1,f1,d1,window,p::Mode::Sharp),"attach first factory and device");
+        Check(Attach(ft2,f2,d2,window,p::Mode::Legacy),"attach independent second factory/device");
+        Check(a::Call<HRESULT>(&d1,63,DWORD(0),DWORD(16),DWORD(2))==11&&d1.LastFilter==2,"enhanced mode preserves game's texture sampler");
+        Check(a::Call<HRESULT>(&d2,63,DWORD(0),DWORD(16),DWORD(2))==22&&d2.LastFilter==1,"legacy original call table and sampler independent");
+        Check(Frame(d1)==S_OK&&d1.Draws==18&&d1.Presents==0,"sharp fractional frame routes through shared presenter and only extra chain presents");
+        const int allocations=d1.Allocations;
+        Check(Frame(d1)==S_OK&&d1.Allocations==allocations,"second frame caches chain and textures");
+        Check(d1.References>1,"presenter resources hold real simulated device references");
+        Check(Diagnostic().find("\"effective\":\"sharp\"")!=std::string::npos,"effective sharp diagnostic observable");
+        for(int frame=0;frame<330;++frame)Check(Frame(d1)==S_OK,"warm presentation sample succeeds");
+        Sleep(1100);Frame(d1);
+        Check(Diagnostic().find("\"performanceSamples\":256")!=std::string::npos,"bounded warmed CPU preparation and frame interval summary observable");
+        a::PresentationParameters pp{};pp.Windowed=TRUE;pp.DeviceWindow=window;d1.ResetResult=a::DeviceLost;
+        d1.Source.Width=320;Frame(d1);Sleep(1100);Frame(d1);
+        Check(Diagnostic().find("original-fallback")!=std::string::npos,"rate-limited permanent fallback eventually replaces previous success record");
+        d1.Source.Width=640;d1.Presents=0;
+        Check(a::Call<HRESULT>(&d1,14,&pp)==a::DeviceLost&&d1.References==1,"failed reset propagates and leaves no internal references");
+        d1.ResetResult=S_OK;Check(a::Call<HRESULT>(&d1,14,&pp)==S_OK&&Frame(d1)==S_OK,"successful reset lazily rebuilds");
+        // Release with an extra EXTERNAL reference must clear owned resources, without destroying a live device.
+        a::Call<ULONG>(&d1,1);Check(a::Call<ULONG>(&d1,2)==1&&d1.Destroyed==0,"external release breaks owned resource cycles under reentrancy guard");
+        Check(Frame(d1)==S_OK&&a::Call<ULONG>(&d1,2)==0&&d1.Destroyed==1,"final Release frees live cloned table only after original release");
+        // Reuse the exact COM address with a different original table.
+        Initialize(dt1,d1,33);d1.References=1;
+        Check(h::AttachFactory(&f1,{p::Mode::Sharp,c::ScaleFilterMode::Point,nullptr,false}),"repeated factory attach idempotent");
+        void* recreated=nullptr;Check(a::Call<HRESULT>(&f1,15,UINT(0),DWORD(1),window,DWORD(0),&pp,&recreated)==S_OK,"recreated device at same address");
+        Check(a::Call<HRESULT>(&d1,63,DWORD(0),DWORD(16),DWORD(2))==33,"address reuse never uses stale context");
+        d1.AllocationResult=E_OUTOFMEMORY;Check(Frame(d1)==S_OK&&d1.Presents==1,"allocation failure falls back to original intact frame");
+        Check(Diagnostic().find("original-fallback")!=std::string::npos,"fallback cannot claim enhanced mode");
+        d1.AllocationResult=S_OK;a::Call<HRESULT>(&d1,14,&pp);d1.AllocationResult=a::DeviceLost;
+        Check(Frame(d1)==a::DeviceLost&&d1.Presents==1,"device-lost allocation never swallowed by fallback");
+        d1.AllocationResult=S_OK;a::Call<HRESULT>(&d1,14,&pp);d1.RestoreResult=E_FAIL;
+        Check(Frame(d1)==E_FAIL&&d1.Presents==1,"state restore failure never concealed as original presentation");
+        d1.RestoreResult=S_OK;a::Call<HRESULT>(&d1,14,&pp);
+        const RECT source{0,0,320,240};
+        Check(a::Call<HRESULT>(&d1,15,&source,static_cast<const RECT*>(nullptr),static_cast<HWND>(nullptr),static_cast<const RGNDATA*>(nullptr))==S_OK&&d1.Presents==2,"unsupported Present arguments use explicit fallback");
+        ShowWindow(window,SW_MINIMIZE);const int before=d1.Allocations;Frame(d1);Check(d1.Allocations==before,"minimized window never allocates");ShowWindow(window,SW_HIDE);
+        Check(Frame(d2)==S_OK&&d2.Presents==1&&d2.Draws==0,"legacy uses its own original Present");
+        Check(a::Call<ULONG>(&d1,2)==0&&a::Call<ULONG>(&d2,2)==0,"all recreated devices reach final release");
+        Check(a::Call<ULONG>(&f1,2)==0&&a::Call<ULONG>(&f2,2)==0,"both factories final Release succeeds");
+    }
+    bool Child(const std::wstring& executable,const wchar_t* mode,int w=800,int height=600)
+    {
+        std::wstring command=L"\""+executable+L"\" --config-probe "+mode+L" "+std::to_wstring(w)+L" "+std::to_wstring(height);
+        STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION info{};
+        if(!CreateProcessW(executable.c_str(),command.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,nullptr,&startup,&info))return false;
+        const auto waited=WaitForSingleObject(info.hProcess,10000);DWORD code=1;GetExitCodeProcess(info.hProcess,&code);CloseHandle(info.hThread);CloseHandle(info.hProcess);return waited==WAIT_OBJECT_0&&code==0;
+    }
+    void Config()
+    {
+        wchar_t path[MAX_PATH]{};GetModuleFileNameW(nullptr,path,MAX_PATH);const std::wstring executable(path);
+        const auto file=executable.substr(0,executable.find_last_of(L"\\/"))+L"\\Config.ini";
+        std::ifstream input(file,std::ios::binary);const bool exists=input.good();const std::string original((std::istreambuf_iterator<char>(input)),{});input.close();
+        struct Restore{std::wstring Path;std::string Bytes;bool Exists;~Restore(){if(Exists)std::ofstream(Path,std::ios::binary|std::ios::trunc)<<Bytes;else DeleteFileW(Path.c_str());}} restore{file,original,exists};
+        Check(original.find("PresentationFilter=sharp")!=std::string::npos,"new distribution default explicitly selects sharp");
+        const std::vector<std::pair<std::string,const wchar_t*>> cases{
+            {"",L"legacy"},{"[Rendering]\r\nPresentationFilter=unknown\r\n",L"legacy"},
+            {"[Rendering]\r\nPresentationFilter=SHARP\r\n",L"sharp"},
+            {"[Rendering]\r\nPresentationFilter=point\r\n",L"point"},{"[Rendering]\r\nPresentationFilter=linear\r\n",L"linear"},
+            {"\xEF\xBB\xBF; comment\r\n[Rendering]\r\nPresentationFilter=sharp\r\n",L"sharp"},
+            {"[Rendering]\r\nPresentationFilter=sharp\r\n[Rendering]\r\nPresentationFilter=linear\r\n",L"sharp"},
+            {"[Rendering]\r\nPresentationFilter="+std::string(100,'x')+"\r\n",L"legacy"}};
+        for(const auto& item:cases){std::ofstream(file,std::ios::binary|std::ios::trunc)<<item.first;Check(Child(executable,item.second),"native reader mode/encoding case");}
+        const std::wstring wide=L"[Resolution]\r\nWidth=1280\r\nHeight=960\r\n[Rendering]\r\nPresentationFilter=sharp\r\n";
+        {std::ofstream out(file,std::ios::binary|std::ios::trunc);out.put('\xFF');out.put('\xFE');out.write(reinterpret_cast<const char*>(wide.data()),wide.size()*sizeof(wchar_t));}
+        Check(Child(executable,L"sharp",1280,960),"actual UTF16LE native reader dimensions and mode");
+        DeleteFileW(file.c_str());Check(Child(executable,L"legacy"),"absent existing file keeps old compatibility default");
+    }
+}
+int wmain(int argc,wchar_t** argv)
+{
+    if(argc==5&&std::wcscmp(argv[1],L"--config-probe")==0)
+    {
+        const auto& settings=c::Get();char mode[32]{};WideCharToMultiByte(CP_UTF8,0,argv[2],-1,mode,32,nullptr,nullptr);
+        return settings.PresentationFilter==p::ParseMode(mode)&&settings.WindowWidth==_wtoi(argv[3])&&settings.WindowHeight==_wtoi(argv[4])?0:1;
+    }
+    WNDCLASSW cls{};cls.lpfnWndProc=DefWindowProcW;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"DFLegacy.Hook.Fixture";RegisterClassW(&cls);
+    const auto window=CreateWindowExW(WS_EX_NOACTIVATE,cls.lpszClassName,L"DFLegacy hook test",WS_POPUP,0,0,800,600,nullptr,nullptr,cls.hInstance,nullptr);
+    if(!window)return 2;Config();Hooks(window);DestroyWindow(window);
+    std::printf("D3D8 native configuration and lifecycle fixtures: %d failures\n",Failures);return Failures?1:0;
+}
