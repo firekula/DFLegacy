@@ -20,6 +20,16 @@ internal static class UpdateUiTests
             check(window.ActualWidth==567 && window.ActualHeight==512,"update page keeps original native 567x512 geometry");
             var back=window.FindName("BackButton") as SkinButton; var retry=window.FindName("RetryButton") as SkinButton; var install=window.FindName("InstallButton") as SkinButton;
             check(back!=null && retry!=null && install!=null,"update page has functional back retry and explicit restart controls");
+            bool Within(DependencyObject? hit,DependencyObject target)
+            {
+                for(var current=hit;current!=null;current=VisualTreeHelper.GetParent(current)) if(ReferenceEquals(current,target)) return true;
+                return false;
+            }
+            window.Render(new(UpdatePhase.Error,"命中测试")); window.UpdateLayout();
+            check(retry!=null && !Within(window.InputHitTest(new Point(285,96)) as DependencyObject,retry),"logo artwork hit area is not covered by the retry button");
+            var close=window.FindName("CloseButton") as SkinButton;
+            check(close!=null && Within(window.InputHitTest(new Point(538,69)) as DependencyObject,close),"native painted X has a full live close-button hit area");
+            window.Render(new(UpdatePhase.Downloading,"正在下载", "dev-test",new(50,200,100))); window.UpdateLayout();
             var strip=(OriginalProgressStrip)window.FindName("DownloadProgress");
             check(Math.Abs(strip.FilledWidth-125)<0.1,"original progress texture fill follows actual received/total ratio");
             var amount=window.FindName("AmountText") as PixelText;
@@ -44,6 +54,11 @@ internal static class UpdateUiTests
             window.Render(new(UpdatePhase.Downloading,"正在下载更新包…", "dev-test",new(6220000,10000000,1200000))); window.UpdateLayout();
             var evidence=Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_UI_EVIDENCE");
             if(!string.IsNullOrEmpty(evidence)) { var bitmap=new RenderTargetBitmap(567,512,96,96,PixelFormats.Pbgra32); bitmap.Render(window); var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var file=File.Create(evidence); encoder.Save(file); }
+            if(close!=null)
+            {
+                close.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                check(!window.IsVisible && controller.State.Phase==UpdatePhase.Cancelled,"native X click closes update window and cancels through the back-to-login path");
+            }
         }
         finally { window.Close(); }
         var compact=new UpdateInstallWindow { ShowInTaskbar=false,ShowActivated=false,Left=-32000,Top=-32000,WindowStartupLocation=WindowStartupLocation.Manual };

@@ -29,16 +29,31 @@ public sealed partial class UpdateInstaller
             throw new InvalidDataException("只能更新当前登录器所在目录。");
         var state=ReadState();
         if(state!=null && update.Release.Id<=state.ReleaseId) throw new InvalidDataException("不能安装旧版本。");
+        var hash=UpdateSafety.Hash(executable);
+        var helper=CreateHelperCopy(executable,hash);
+        try
+        {
+            // Preparation owns the copy until a complete handoff is returned to the caller.
+            using var helperPin=UpdateSafety.PinDirectory(Path.GetDirectoryName(helper)!);
+            var snapshot=UpdateSafety.ReadJson<PreparedUpdate>(JsonSerializer.SerializeToUtf8Bytes(update,UpdateSafety.Json));
+            return new UpdateHandoff(new(target,snapshot,parent.Id,parent.StartTime.ToUniversalTime().Ticks,executable,helper,hash));
+        }
+        catch { UpdateArtifacts.DeleteUnstartedHelper(helper); throw; }
+    }
+    // Internal allocation boundary shared with real-file acquisition regression tests.
+    internal static string CreateHelperCopy(string executable,string expectedHash)
+    {
         var directory=Path.Combine(Path.GetTempPath(),"dflegacy-helper-"+Guid.NewGuid().ToString("N"));
         UpdateSafety.NoLinks(directory); Directory.CreateDirectory(directory);
-        using var helperPin=UpdateSafety.PinDirectory(directory);
         var helper=Path.Combine(directory,"DFLegacy.Launcher.exe");
-        File.Copy(executable,helper,false);
-        var hash=UpdateSafety.Hash(executable);
-        if(!UpdateSafety.Hash(helper).Equals(hash,StringComparison.Ordinal)) throw new IOException("临时安装助手复制校验失败。");
-        // Snapshot the manifest and release, so later caller mutation cannot change the handoff.
-        var snapshot=UpdateSafety.ReadJson<PreparedUpdate>(JsonSerializer.SerializeToUtf8Bytes(update,UpdateSafety.Json));
-        return new UpdateHandoff(new(target,snapshot,parent.Id,parent.StartTime.ToUniversalTime().Ticks,executable,helper,hash));
+        try
+        {
+            using var pin=UpdateSafety.PinDirectory(directory);
+            File.Copy(executable,helper,false);
+            if(!UpdateSafety.Hash(helper).Equals(expectedHash,StringComparison.Ordinal)) throw new IOException("临时安装助手复制校验失败。");
+            return helper;
+        }
+        catch { UpdateArtifacts.DeleteUnstartedHelper(helper); throw; }
     }
     public async Task<UpdateHelperHandle> StartHelperAsync(UpdateHandoff handoff,CancellationToken cancellationToken=default)
     {

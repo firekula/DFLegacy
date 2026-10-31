@@ -39,7 +39,10 @@ internal static class UpdateArtifactTests
             try
             {
                 await Task.Delay(100); check(!child.HasExited,"owned native helper fixture is running");
-                lease.MarkStarted(new(child.Id)); lease.Release(); UpdateArtifacts.Sweep(installation);
+                lease.MarkStarted(new(child.Id)); lease.Release();
+                UpdateArtifacts.DeleteUnstartedHelper(helperPath,true);
+                check(File.Exists(helperPath),"failed-acquisition cleanup write probe also preserves a running helper executable");
+                UpdateArtifacts.Sweep(installation);
                 check(File.Exists(helperPath) && File.Exists(Path.Combine(package.Directory,"ijl15.dll")),"active helper identity defers deletion of helper and staging inputs");
             }
             finally { if(!child.HasExited) child.Kill(); await child.WaitForExitAsync(); }
