@@ -19,6 +19,7 @@
 - Worktree `D:/codex_worktree/deployment-web-release/DFLegacy`, branch `codex/launcher-regions-auto-update`. Never reset/clean another checkout.
 - Keep user-requested local server PID38252/config `D:/DFLegacyCI/validation/sharp-scaling-20261031/test-server.json` running. Do not close user game/launcher. CI runners were paused; restore prior paused state after an authorized release run.
 - No native product DLL source changes, no permanent extra updater executable, no tokens in output. Only controller publishes or touches runner/service state.
+- SDD reports are ignored scratch: write them but never stage/commit them.
 - Read/write only this plan's SDD workspace. No implementer/reviewer may spawn agents. Commit only explicitly owned task files; docs may need `git add -f`.
 - Test launcher with `dotnet run --project src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj -c Release -p:BuildNativeAssets=false -p:Ijl15PrebuiltPath=D:/codex_worktree/deployment-web-release/DFLegacy/artifacts/native/ijl15/Release/ijl15.dll`.
 
