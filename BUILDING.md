@@ -68,18 +68,25 @@ MSBuild.exe .\src\DFLegacy.Debug\tests\DFLegacy.Debug.Tests.vcxproj /m /p:Config
 
 ## 构建不可变 Windows 客户端资源
 
-发行目录必须是新目录。完整自包含登录器输出不可只摘取一个 exe；工具校验 apphost、运行时、WPF 与 `.deps.json` 引用的依赖，替换发行配置并生成 SHA-256 清单。
+发行目录必须是新目录。先从同一个干净提交构建上述 Windows 原生项目，使用同一输出目录中的独立补丁、引导器和调试模块。登录器必须以自包含单文件形式发布；引导器内嵌，工具校验运行时、WPF 与内嵌 `.deps.json` 引用的依赖，替换发行配置并生成 SHA-256 清单。
 
 ```powershell
 $env:DFLEGACY_RELEASE_COMMIT = (git rev-parse HEAD).Trim()
 $env:DFLEGACY_RELEASE_VERSION = 'v1.2.3' # 正式版必须对应同名标签；开发版用下述 metadata 生成
-$ijl15 = Join-Path $PWD 'artifacts/native/ijl15/Release/ijl15.dll'
-dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -r win-x64 --self-contained true -p:BuildNativeAssets=false "-p:Ijl15PrebuiltPath=$ijl15" -o artifacts/launcher-v1.2.3
-py -3.12 tools/release/release.py build-client-assets --launcher-output artifacts/launcher-v1.2.3 --ijl15 $ijl15 --config src/DFLegacy.Ijl15/Config.ini --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --output client-assets
+$nativeOutput = Join-Path $PWD 'artifacts/native/ijl15/Release'
+$clientPatch = Join-Path $nativeOutput 'DFLegacy.Client.dll'
+$clientBootstrap = Join-Path $nativeOutput 'DFLegacy.Bootstrap32.exe'
+$debug = Join-Path $nativeOutput 'debug.dll'
+$launcherOutput = Join-Path $PWD ("artifacts/launcher-" + $env:DFLEGACY_RELEASE_VERSION)
+dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=embedded -p:PublishTrimmed=false -p:BuildNativeAssets=false "-p:ClientPatchPrebuiltPath=$clientPatch" "-p:ClientBootstrapPrebuiltPath=$clientBootstrap" -p:ContinuousIntegrationBuild=true -o $launcherOutput
+py -3.12 tools/release/release.py build-client-assets --launcher-output $launcherOutput --client-patch $clientPatch --debug $debug --config src/DFLegacy.Ijl15/Config.ini --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --output client-assets
 py -3.12 tools/release/release.py verify client-assets --client-assets --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT
+py -3.12 tools/release/release.py build-client-packages --client-assets client-assets --output artifacts --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT
 ```
 
-`--debug <debug.dll>` 是明确选用的测试资源；普通资源不包括它，调试浮窗始终默认关闭。完整登录器模板账号、密码与账号列表为空，`StartServer=false`，`ClientPath=../DNF.exe`。不得把游戏客户端、PVF、存档、个人路径、凭据或 CI secret 放入资源。
+完整四附件发行必须提供同次原生构建的 `--debug` 资源：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。普通包只包含登录器和独立补丁，测试包另外包含同版本 `debug.dll`；普通包不会因资源目录存在 debug 而包含或启用它。测试模式增加本地诊断，自动输入和其他测试控制仍需显式开启。工具包包含安装清单、摘要和迁移说明，不含玩家配置或游戏文件。
+
+完整登录器模板账号、密码与账号列表为空，`StartServer=false`，`ClientPath=DNF.exe`。不得把游戏客户端、PVF、存档、个人路径、凭据或 CI secret 放入资源。若只准备普通版管理器资源，可省略 `--debug`；此时不能构建完整四附件或导出测试包。
 
 同一个干净提交的自动化入口为：
 
@@ -91,7 +98,7 @@ py -3.12 tools/release/ci.py metadata
 py -3.12 tools/release/ci.py windows --version <显示的版本> --commit $env:BUILD_COMMIT
 ```
 
-`windows` 入口实际运行原生和登录器测试，构建 Windows 发行包并启动解压后的 Manager 检查 `/health` 与停服时 `/ready=503`，生成 `artifacts/client-assets.tar.gz` 用于跨主机传输。不要在同一个工作目录重复调用；保留输出后换干净检出或新目录。
+`windows` 入口实际运行原生和登录器测试，构建 Windows 发行包并启动解压后的 Manager 检查 `/health` 与停服时 `/ready=503`，生成四个公开客户端附件及 `artifacts/client-assets.tar.gz`，后者用于跨主机传输。不要在同一个工作目录重复调用；保留输出后换干净检出或新目录。
 
 ## 五个平台的自包含发行包
 
