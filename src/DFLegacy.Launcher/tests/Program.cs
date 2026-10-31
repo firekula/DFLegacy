@@ -22,6 +22,13 @@ var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.Ne
 Directory.CreateDirectory(root);
 try
 {
+    if (args.Contains("--server-selection-tests"))
+    {
+        ClassicUiTests.Run(Check);
+        LocalServerSelectionTests.Run(root, Check);
+        Console.WriteLine(failures == 0 ? "Server selection tests passed" : $"Server selection tests failed: {failures}");
+        return failures == 0 ? 0 : 1;
+    }
     DisplayConfigurationTests.Run(root, Check);
     RenderDiagnosticTests.Run(root, Check);
     ClassicUiTests.Run(Check);

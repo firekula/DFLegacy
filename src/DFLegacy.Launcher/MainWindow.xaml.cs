@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -23,10 +22,8 @@ public partial class MainWindow : System.Windows.Window
     private readonly DispatcherTimer _statusTimer;
     private LauncherOptions _options;
     private LocalServerSelection? _serverSelection;
-    private AccountServiceClient? _serverHealthAccount;
     private readonly bool _refreshStatus;
     private readonly Dictionary<string, ImageSource> _artwork = [];
-    private bool _refreshingStatus;
     private static readonly string[] BannerTitles = ["勇士，欢迎重返阿拉德", "经典职业，再次集结", "携手伙伴，开启冒险", "熟悉的世界，新的旅程", "准备出发，探索阿拉德"];
 
     public MainWindow() : this(new LauncherAccountStore(Path.Combine(AppContext.BaseDirectory, "launcher.json"))) { }
@@ -88,70 +85,6 @@ public partial class MainWindow : System.Windows.Window
     {
         AccountHint.Visibility = string.IsNullOrEmpty(AccountText.Text) ? Visibility.Visible : Visibility.Collapsed;
         PasswordHint.Visibility = string.IsNullOrEmpty(PasswordText.Password) ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    // 状态灯语义按原版：探的是游戏入口（EntranceHost:EntrancePort），不是本机账号 API。
-    // 账号 API（注册/改密/找回用）单独一行显示，避免"远端服务端明明在跑却提示不可达"的误解。
-    internal async Task RefreshStatusAsync()
-    {
-        if (_refreshingStatus) return;
-        _refreshingStatus = true;
-        var options = _options; var selection = _serverSelection;
-        var target = selection?.Choices[0] ?? new LocalServerChoice("本地服务器", options.EntranceHost ?? "", options.EntrancePort);
-        var accountClient = _serverHealthAccount ?? _account;
-        try
-        {
-        try
-        {
-            var entranceUp = await ProbeTcpAsync(
-                target.Host, target.Port, TimeSpan.FromSeconds(2));
-            if (!ReferenceEquals(options, _options) || !ReferenceEquals(selection, _serverSelection)) return;
-            ServerDot.Fill = entranceUp ? Brushes.LimeGreen : Brushes.IndianRed;
-            ServerText.Text = entranceUp ? "服务端：可连接" : "服务端：未上线";
-            ServerAddr.Text = target.Endpoint;
-            SetServerArtwork(entranceUp);
-        }
-        catch (Exception)
-        {
-            if (!ReferenceEquals(options, _options) || !ReferenceEquals(selection, _serverSelection)) return;
-            ServerDot.Fill = Brushes.IndianRed;
-            ServerText.Text = "服务端未上线";
-            SetServerArtwork(false);
-        }
-
-        try
-        {
-            var apiUp = await accountClient.CheckHealthAsync();
-            if (!ReferenceEquals(options, _options) || !ReferenceEquals(selection, _serverSelection)) return;
-            ApiDot.Fill = apiUp ? Brushes.LimeGreen : Brushes.Gray;
-            ApiText.Text = apiUp ? "账号服务：可达" : "账号服务：不可达";
-            ApiText.ToolTip = selection?.AccountServiceUrl ?? options.ResolveAccountServiceUrl();
-        }
-        catch (Exception)
-        {
-            // CheckHealthAsync 只捕获 HttpRequestException，超时会以 TaskCanceledException 冒出；
-            // DispatcherTimer 的 Tick 是 async void，任何失败都按不可达处理，避免拖垮应用。
-            if (!ReferenceEquals(options, _options) || !ReferenceEquals(selection, _serverSelection)) return;
-            ApiDot.Fill = Brushes.Gray;
-            ApiText.Text = "账号服务：不可达";
-        }
-        }
-        finally { _refreshingStatus = false; }
-    }
-
-    private static async Task<bool> ProbeTcpAsync(string host, int port, TimeSpan timeout)
-    {
-        try
-        {
-            using var client = new TcpClient();
-            using var timeoutSource = new CancellationTokenSource(timeout);
-            await client.ConnectAsync(host, port, timeoutSource.Token);
-            return true;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
     }
 
     private void StartGame()
@@ -422,7 +355,7 @@ public partial class MainWindow : System.Windows.Window
         try
         {
             _options = _store.Load();      // 设置变更后重新加载（host/url/relay 等）
-            _serverSelection = null; _serverHealthAccount = null;
+            CancelServerRequests(); _serverSelection = null;
             RefreshAccounts();
             // 设置里改了账号 API URL 后必须重建客户端（_account 按构造时的 URL 创建），
             // 否则状态点与注册/改密/找回窗口会一直打到旧地址；重建后立即重探一次状态。
@@ -439,6 +372,8 @@ public partial class MainWindow : System.Windows.Window
     protected override void OnClosing(CancelEventArgs e)
     {
         _statusTimer.Stop();
+        _windowClosed = true;
+        CancelServerRequests();
         base.OnClosing(e);
     }
 
@@ -449,13 +384,6 @@ public partial class MainWindow : System.Windows.Window
         if (_artwork.TryGetValue(name, out var image)) return image;
         var bitmap = new BitmapImage(new Uri($"pack://application:,,,/DFLegacy.Launcher;component/Assets/Skin/{name}", UriKind.Absolute));
         bitmap.Freeze(); _artwork[name] = bitmap; return bitmap;
-    }
-    private void SetServerArtwork(bool online)
-    {
-        var prefix = online ? "classic-row" : "classic-offline";
-        ServerChoiceButton.NormalSource = Artwork(prefix + "0.png");
-        ServerChoiceButton.HoverSource = Artwork(prefix + "1.png");
-        ServerChoiceButton.PressedSource = Artwork(prefix + "2.png");
     }
     private void ShowBanner(int index)
     {
@@ -490,53 +418,6 @@ public partial class MainWindow : System.Windows.Window
             case "install": Growl.Info("将玩家 ZIP 解压到 DNF.exe 所在目录，选择服务器并输入账号、密码后进入游戏。"); break;
             default: Growl.Info("欢迎来到阿拉德大陆。选择服务器，输入账号和密码，开始冒险。"); break;
         }
-    }
-    private void SelectServer_Click(object sender, RoutedEventArgs e)
-    {
-        LoginPage.Visibility = Visibility.Collapsed; ServerPage.Visibility = Visibility.Visible;
-        ReloadServerSelection();
-    }
-    internal void ReloadServerSelection()
-    {
-        _serverSelection = null;
-        _serverHealthAccount = null;
-        ServerDot.Fill = ApiDot.Fill = Brushes.Gray;
-        ServerText.Text = "服务端：检测中…"; ApiText.Text = "账号服务：检测中…";
-        SetServerArtwork(false);
-        try
-        {
-            var selection = LocalServerSelection.Open(_store); var choice = selection.Choices[0];
-            _serverHealthAccount = new AccountServiceClient(selection.AccountServiceUrl); _serverSelection = selection;
-            ServerEndpointText.Text = "连接地址　　" + choice.Endpoint; SelectedServerText.Text = choice.Name;
-            ServerSelectionError.Text = ""; ServerChoiceButton.IsEnabled = true; ConfirmServerButton.IsEnabled = true;
-            if (_refreshStatus) _ = RefreshStatusAsync();
-        }
-        catch (Exception ex)
-        {
-            ServerSelectionError.Text = "无法读取服务器配置：" + ex.Message;
-            ServerEndpointText.Text = "返回登录页，在游戏设置中保存连接配置。";
-            ServerChoiceButton.IsEnabled = false; ConfirmServerButton.IsEnabled = false;
-        }
-    }
-    private void ServerChoice_Click(object sender, RoutedEventArgs e) => SelectedServerText.Text = "本地服务器";
-    private void BackToLogin_Click(object sender, RoutedEventArgs e)
-    { ServerPage.Visibility = Visibility.Collapsed; LoginPage.Visibility = Visibility.Visible; }
-    private void ConfirmServer_Click(object sender, RoutedEventArgs e)
-    {
-        if (_serverSelection is null) return;
-        try
-        {
-            var options = _serverSelection.Confirm(_store);
-            var accountClient = new AccountServiceClient(options.ResolveAccountServiceUrl());
-            var typedAccount = AccountText.Text; var typedPassword = PasswordText.Password;
-            _options = options; _account = accountClient;
-            _serverSelection = null; _serverHealthAccount = null;
-            RefreshAccounts(); AccountText.Text = typedAccount; PasswordText.Password = typedPassword;
-            UpdateAccountHint(); BackToLogin_Click(this, e); _ = RefreshStatusAsync();
-        }
-        catch (InvalidOperationException ex)
-        { ReloadServerSelection(); ServerSelectionError.Text = ex.Message; }
-        catch (Exception ex) { ServerSelectionError.Text = "无法确认服务器：" + ex.Message; }
     }
     private void ShowOwnedDialog(System.Windows.Window window)
     {

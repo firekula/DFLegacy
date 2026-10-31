@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace DFLegacy.Launcher;
 
 internal sealed class LauncherOptions
@@ -18,6 +21,11 @@ internal sealed class LauncherOptions
     /// 留空即按「入口域名 + 账号服务端口」自动拼。
     /// </summary>
     public string AccountServiceUrl { get; set; } = string.Empty;
+
+    public List<LauncherServerProfile> Servers { get; set; } = [];
+    public string? SelectedServerId { get; set; }
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 
     public string Theme { get; set; } = "auto";
     public string Account { get; set; } = string.Empty;
@@ -47,6 +55,8 @@ internal sealed class LauncherOptions
 
 internal sealed class LauncherAccountProfile
 {
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
     public string Account { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string? DisplayName { get; set; }
@@ -57,8 +67,23 @@ internal sealed class LauncherAccountProfile
 
 internal sealed class LauncherRelayOptions
 {
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
     public bool Enabled { get; set; }
     public string? TcpPorts { get; set; }
     public string? UdpPorts { get; set; }
     public string Preference { get; set; } = "ipv6";
+}
+
+internal sealed class LauncherServerProfile
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Region { get; set; } = "telecom";
+    public string Host { get; set; } = string.Empty;
+    public int Port { get; set; } = 2311;
+    public int AccountServicePort { get; set; } = 8081;
+    public string AccountServiceUrl { get; set; } = string.Empty;
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }

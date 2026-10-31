@@ -201,14 +201,108 @@ internal static class ClassicUiTests
                             while (parent is not null && parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
                             check(parent is ScrollViewer { ScrollableHeight: > 0 }, "long server endpoint and diagnostics are readable by scrolling");
                         }
-                        localOptions.EntrancePort = livePort; store.Save(localOptions); main.ReloadServerSelection();
-                        var statusTask = main.RefreshStatusAsync(); var timeout = Stopwatch.StartNew();
-                        while (!statusTask.IsCompleted && timeout.Elapsed < TimeSpan.FromSeconds(6))
-                        { Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { })); Thread.Sleep(1); }
-                        check(statusTask.IsCompleted, "local status probe completes against owned loopback endpoints");
-                        if (statusTask.IsCompleted) statusTask.GetAwaiter().GetResult();
-                        check(endpoint.Text.Contains(":" + livePort) && ((PixelText)main.FindName("ServerText")).Text.Contains("可连接"),
-                            "server page health probes the newly displayed saved endpoint rather than the old cached endpoint");
+                        localOptions.EntrancePort = livePort; store.Save(localOptions); main.ReloadServerSelection(); main.UpdateLayout();
+                        var confirm = (SkinButton)main.FindName("ConfirmServerButton");
+                        check(!confirm.IsEnabled && ((PixelText)main.FindName("SelectedServerText")).Text.Contains("请选择"), "server page starts unselected with confirmation disabled");
+                        var choiceButton = Descendants<SkinButton>(main).Single(b => b.Tag is LocalServerChoice);
+                        check(((BitmapImage)choiceButton.NormalSource!).UriSource.ToString().EndsWith("classic-row0.png"), "unselected row uses original default265 art");
+                        var hit = main.InputHitTest(choiceButton.TranslatePoint(new Point(3, 3), main)) as DependencyObject;
+                        while (hit is not null && !ReferenceEquals(hit, choiceButton)) hit = VisualTreeHelper.GetParent(hit);
+                        check(ReferenceEquals(hit, choiceButton), "whole server row artwork is a real clickable target");
+                        choiceButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                        void Pump(Task task)
+                        {
+                            var timeout = Stopwatch.StartNew();
+                            while (!task.IsCompleted && timeout.Elapsed < TimeSpan.FromSeconds(6))
+                            { Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { })); Thread.Sleep(1); }
+                            check(task.IsCompleted, "owned loopback status request completes");
+                            if (task.IsCompleted) task.GetAwaiter().GetResult();
+                        }
+                        Pump(main.RefreshStatusAsync()); main.UpdateLayout();
+                        check(confirm.IsEnabled && endpoint.Text.Contains(":" + livePort)
+                            && ((PixelText)main.FindName("ServerText")).Text.Contains("可连接")
+                            && ((PixelText)main.FindName("SelectedServerText")).Text.Contains("ms"), "selected entrance reports real TCP latency and current endpoint");
+                        check(choiceButton.NormalSource == choiceButton.HoverSource && choiceButton.NormalSource == choiceButton.PressedSource,
+                            "selected green art persists during hover and press after health update");
+                        choiceButton.Focus(); main.UpdateLayout();
+                        var renderedArt = (Image)choiceButton.Template.FindName("Artwork", choiceButton);
+                        check(ReferenceEquals(renderedArt.Source, choiceButton.NormalSource)
+                            && ((BitmapImage)renderedArt.Source).UriSource.ToString().EndsWith("classic-row2.png"),
+                            "actual focused WPF template keeps selected264 image");
+                        using var slowApi = new TcpListener(IPAddress.Loopback, 0); slowApi.Start();
+                        using var fastApi = new TcpListener(IPAddress.Loopback, 0); fastApi.Start();
+                        var releaseSlow = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        var slowReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        async Task Serve(TcpListener listener, bool slow)
+                        {
+                            using var client = await listener.AcceptTcpClientAsync();
+                            var stream = client.GetStream(); var buffer = new byte[1]; await stream.ReadExactlyAsync(buffer);
+                            if (slow) { slowReceived.SetResult(); await releaseSlow.Task; }
+                            try { await stream.WriteAsync(System.Text.Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK")); }
+                            catch (IOException) { }
+                        }
+                        var slowServe = Serve(slowApi, true); var fastServe = Serve(fastApi, false);
+                        localOptions.Servers = Enumerable.Range(0, 36).Select(i => new LauncherServerProfile {
+                            Id = "region-" + i, Name = i == 0 ? new string('长', 120) + "🙂服务器" : "服务器 " + i,
+                            Region = i < 32 ? "telecom" : "netcom", Host = "127.0.0.1", Port = i == 0 ? oldPort : livePort,
+                            AccountServicePort = ((IPEndPoint)(i == 0 ? slowApi : fastApi).LocalEndpoint).Port }).ToList();
+                        store.Save(localOptions); var unchanged = File.ReadAllBytes(Path.Combine(scratch, "launcher.json"));
+                        main.ReloadServerSelection(); main.UpdateLayout();
+                        var buttons = Descendants<SkinButton>(main).Where(b => b.Tag is LocalServerChoice).ToArray();
+                        check(buttons.Length == 36, "both regions render every configured choice");
+                        var telecom = (ScrollViewer)main.FindName("TelecomScroll"); var netcom = (ScrollViewer)main.FindName("NetcomScroll");
+                        check(telecom.ScrollableHeight > 0 && netcom.ExtentWidth <= netcom.ViewportWidth + 1, "four-column overflow scrolls within its region");
+                        check(buttons[0].ToolTip?.ToString()?.Contains(localOptions.Servers[0].Name) == true,
+                            "long Unicode server name has complete tooltip");
+                        check(buttons.Take(4).Select(b => b.TranslatePoint(new Point(), telecom).Y).Distinct().Count() == 1
+                            && buttons[4].TranslatePoint(new Point(), telecom).Y > buttons[0].TranslatePoint(new Point(), telecom).Y,
+                            "server entries use four columns before wrapping");
+                        buttons[0].RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                        var staleTask = main.RefreshStatusAsync(); Pump(slowReceived.Task);
+                        check(buttons[0].NormalSource == buttons[0].HoverSource
+                            && Descendants<System.Windows.Shapes.Ellipse>((DependencyObject)buttons[0].Parent).Single().Fill == Brushes.IndianRed,
+                            "unreachable selected server keeps green selection with an independent red health lamp");
+                        buttons[1].RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                        Pump(main.RefreshStatusAsync()); releaseSlow.SetResult(); Pump(staleTask); Pump(slowServe); Pump(fastServe);
+                        check(((PixelText)main.FindName("SelectedServerText")).Text.Contains("服务器 1")
+                            && ((PixelText)main.FindName("ServerText")).Text.Contains("可连接")
+                            && ((PixelText)main.FindName("ApiText")).ToolTip?.ToString()?.Contains(":" + ((IPEndPoint)fastApi.LocalEndpoint).Port) == true,
+                            "stale probe and account results cannot overwrite newer selection");
+                        main.UpdateLayout();
+                        var footer = confirm.TranslatePoint(new Point(confirm.ActualWidth, confirm.ActualHeight), main);
+                        check(footer.Y <= main.ActualHeight && footer.X <= main.ActualWidth && confirm.IsEnabled,
+                            "overflow and long names keep confirmation reachable");
+                        var actual = new RenderTargetBitmap(567, 512, 96, 96, PixelFormats.Pbgra32); actual.Render(main);
+                        var evidence = Environment.GetEnvironmentVariable("DFLEGACY_UI_EVIDENCE");
+                        if (!string.IsNullOrEmpty(evidence)) { var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(actual)); using var file = File.Create(evidence); encoder.Save(file); }
+                        var accountInput = (TextBox)main.FindName("AccountText"); var passwordInput = (PasswordBox)main.FindName("PasswordText");
+                        accountInput.Text = "typed-account"; passwordInput.Password = "typed-password";
+                        confirm.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                        check(accountInput.Text == "typed-account" && passwordInput.Password == "typed-password", "confirmation preserves typed credentials");
+                        check(File.ReadAllBytes(Path.Combine(scratch, "launcher.json")).SequenceEqual(unchanged), "UI confirm never writes config bytes");
+                        File.WriteAllText(Path.Combine(scratch, "launcher.json"), "{broken");
+                        main.ReloadServerSelection(); main.UpdateLayout();
+                        check(endpoint.Text.Contains("无法") && !confirm.IsEnabled,
+                            "corrupt config shows failure on the visible first footer line without requiring a scroll");
+                        check(File.ReadAllText(Path.Combine(scratch, "launcher.json")) == "{broken", "UI reload preserves corrupt bytes");
+                        store.Save(localOptions);
+                        var closeReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        var closeRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        async Task CloseServer()
+                        {
+                            using var client = await slowApi.AcceptTcpClientAsync();
+                            var buffer = new byte[1]; await client.GetStream().ReadExactlyAsync(buffer);
+                            closeReceived.SetResult(); await closeRelease.Task;
+                        }
+                        var closeServer = CloseServer();
+                        ((FrameworkElement)main.FindName("LoginPage")).Visibility = Visibility.Collapsed;
+                        ((FrameworkElement)main.FindName("ServerPage")).Visibility = Visibility.Visible;
+                        main.ReloadServerSelection(); main.UpdateLayout();
+                        check(!confirm.IsEnabled, "re-entering the server page clears prior highlight and requires a new choice");
+                        Descendants<SkinButton>(main).First(b => b.Tag is LocalServerChoice).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                        var closingProbe = main.RefreshStatusAsync(); Pump(closeReceived.Task);
+                        var closeTimer = Stopwatch.StartNew(); main.Close(); Pump(closingProbe); closeRelease.SetResult(); Pump(closeServer);
+                        check(closeTimer.Elapsed < TimeSpan.FromSeconds(1), "closing the owned window cancels outstanding account health immediately");
                     }
                     finally { main.Close(); }
                 }

@@ -23,8 +23,21 @@ banner_sources=[(7,(17,113,550,316)),(7,(200,115,510,314)),(7,(38,175,370,345)),
 for index,(number,rect) in enumerate(banner_sources):
  save('banner'+str(index),ImageOps.fit(source(number).crop(rect),(315,202),method=Image.Resampling.LANCZOS),[audit/'images'/f'image-{number:04d}.png'],'manual banner crop; first crop matches approved revision2 exactly')
 copy('settings-panel',audit/'preview/revision-2/settings-panel.png','approved480x428 full panel, clean border and single non-cyclic stone field')
-for name in ['crest','server','small0','small1','small2','row0','row1','row2','confirm0','confirm1','confirm2']:
+for name in ['crest','small0','small1','small2','confirm0','confirm1','confirm2']:
  copy(name,audit/'preview/assets'/(name+'.png'),'approved source-derived UI asset; original images preserved in audit')
+# Original RT_BITMAP311 operator labels and status legend. Only the painted,
+# nonfunctional full-screen checkbox is replaced by the prior clean map patch.
+server=source(106)
+server.putdata([(r,g,b,0 if (r,g,b)==(255,0,255) else a) for r,g,b,a in server.get_flattened_data()])
+clean=Image.open(audit/'preview/assets/server.png').convert('RGBA')
+server.paste(clean.crop((417,372,526,398)),(417,372))
+save('server',server,[audit/'images/image-0106.png',audit/'preview/assets/server.png'],
+     'RT_BITMAP311 labels/legend preserved; remove only painted nonfunctional full-screen checkbox using existing clean map patch')
+for index,number in enumerate([94,95,93]):
+ image=source(number)
+ image.putdata([(r,g,b,0 if (r,g,b)==(255,0,255) else a) for r,g,b,a in image.get_flattened_data()])
+ save('row'+str(index),image,[audit/'images'/f'image-{number:04d}.png'],
+      'RT_BITMAP265 default / 266 hover / 264 selected; magenta colour key to transparency')
 for index,number in enumerate([102,103,104]):
  image=source(number);pixels=image.load()
  for y in range(image.height):

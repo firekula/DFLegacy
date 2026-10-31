@@ -67,26 +67,28 @@
     <Canvas x:Name="ServerPage" Width="567" Height="512" Visibility="Collapsed">
       <Image Width="567" Height="512" Source="Assets/Skin/classic-server.png"/>
       <c:SkinButton Canvas.Left="526" Canvas.Top="57" Width="25" Height="23" Style="{StaticResource ClassicImageButton}" NormalSource="Assets/Skin/buton_close00.png" HoverSource="Assets/Skin/buton_close01.png" PressedSource="Assets/Skin/buton_close02.png" AutomationProperties.Name="关闭登录器" Click="Close_Click"/>
-      <c:PixelText Canvas.Left="369" Canvas.Top="90" Width="178" Height="20" FontSize="12" Text="当前仅配置本地服务器" Foreground="#D7CDAE" TextWrapping="NoWrap"/>
-      <c:PixelText Canvas.Left="47" Canvas.Top="147" Width="22" Height="24" Text="本" FontSize="18" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
-      <c:PixelText Canvas.Left="47" Canvas.Top="170" Width="22" Height="24" Text="地" FontSize="18" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
-      <c:SkinButton x:Name="ServerChoiceButton" Canvas.Left="88" Canvas.Top="157" Width="101" Height="25" FontSize="12" Padding="12,0,0,0" Style="{StaticResource ClassicImageButton}" NormalSource="Assets/Skin/classic-offline0.png" HoverSource="Assets/Skin/classic-offline1.png" PressedSource="Assets/Skin/classic-offline2.png" Content="本地服务器" Click="ServerChoice_Click"/>
-      <c:PixelText Canvas.Left="47" Canvas.Top="304" Width="22" Height="24" Text="信" FontSize="18" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
-      <c:PixelText Canvas.Left="47" Canvas.Top="327" Width="22" Height="24" Text="息" FontSize="18" Foreground="{StaticResource ClassicGold}" TextWrapping="NoWrap"/>
-      <ScrollViewer Canvas.Left="88" Canvas.Top="304" Width="420" Height="95" Style="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ScrollViewer x:Name="TelecomScroll" Canvas.Left="88" Canvas.Top="151" Width="427" Height="123" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="TelecomChoices"/>
+      </ScrollViewer>
+      <ScrollViewer x:Name="NetcomScroll" Canvas.Left="88" Canvas.Top="303" Width="427" Height="61" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="NetcomChoices"/>
+      </ScrollViewer>
+      <ScrollViewer Canvas.Left="88" Canvas.Top="376" Width="420" Height="26" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel>
-          <c:PixelText x:Name="ServerEndpointText" Margin="0,0,8,6"/>
-          <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="200"/><ColumnDefinition/></Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal"><Ellipse x:Name="ServerDot" Width="7" Height="7" Fill="Gray" Margin="0,0,8,0"/><c:PixelText x:Name="ServerText" Text="服务端：检测中…" FontSize="12"/></StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal"><Ellipse x:Name="ApiDot" Width="7" Height="7" Fill="Gray" Margin="0,0,8,0"/><c:PixelText x:Name="ApiText" Text="账号服务：检测中…" FontSize="12"/></StackPanel>
-          </Grid>
+          <c:PixelText x:Name="ServerEndpointText" FontSize="11"/>
+          <StackPanel Orientation="Horizontal" Visibility="Collapsed">
+            <Ellipse x:Name="ServerDot" Width="7" Height="7" Fill="Gray" Margin="0,0,5,0"/>
+            <c:PixelText x:Name="ServerText" Text="服务端：未选择" FontSize="11" Margin="0,0,12,0"/>
+            <Ellipse x:Name="ApiDot" Width="7" Height="7" Fill="Gray" Margin="0,0,5,0"/>
+            <c:PixelText x:Name="ApiText" Text="账号服务：未选择" FontSize="11"/>
+          </StackPanel>
           <c:PixelText x:Name="ServerAddr" Visibility="Collapsed"/>
-          <c:PixelText x:Name="ServerSelectionError" Foreground="#FFE0A0" FontSize="12" Margin="0,0,8,0"/>
+          <c:PixelText x:Name="ServerSelectionError" Foreground="#FFE0A0" FontSize="11"/>
         </StackPanel>
       </ScrollViewer>
-      <c:PixelText x:Name="SelectedServerText" Canvas.Left="230" Canvas.Top="424" Width="165" Height="22" Text="本地服务器" TextWrapping="NoWrap"/>
+      <c:PixelText x:Name="SelectedServerText" Canvas.Left="222" Canvas.Top="424" Width="145" Height="22" FontSize="11" Text="请选择服务器" TextWrapping="NoWrap"/>
       <c:SkinButton Canvas.Left="25" Canvas.Top="429" Width="70" Height="21" FontSize="12" Style="{StaticResource ClassicButton}" Content="返回登录" Click="BackToLogin_Click"/>
-      <c:SkinButton x:Name="ConfirmServerButton" Canvas.Left="428" Canvas.Top="416" Width="110" Height="40" Style="{StaticResource ClassicImageButton}" NormalSource="Assets/Skin/classic-confirm0.png" HoverSource="Assets/Skin/classic-confirm1.png" PressedSource="Assets/Skin/classic-confirm2.png" AutomationProperties.Name="确认选择" Click="ConfirmServer_Click"/>
+      <c:SkinButton x:Name="ConfirmServerButton" IsEnabled="False" Canvas.Left="428" Canvas.Top="416" Width="110" Height="40" Style="{StaticResource ClassicImageButton}" NormalSource="Assets/Skin/classic-confirm0.png" HoverSource="Assets/Skin/classic-confirm1.png" PressedSource="Assets/Skin/classic-confirm2.png" AutomationProperties.Name="确认选择" Click="ConfirmServer_Click"/>
     </Canvas>
     <Border x:Name="ModalShade" Background="#96000000" Visibility="Collapsed"><Border.OpacityMask><ImageBrush ImageSource="Assets/Skin/classic-login-background.png" Stretch="Fill"/></Border.OpacityMask></Border>
   </Grid>
