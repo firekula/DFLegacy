@@ -112,6 +112,9 @@
     <ClInclude Include="src\motion_horizon.h" />
     <ClInclude Include="src\party_card_display.h" />
     <ClInclude Include="src\d3d8_scaler.h" />
+    <ClInclude Include="src\d3d8_abi.h" />
+    <ClInclude Include="src\d3d8_presenter.h" />
+    <ClInclude Include="src\presentation_scaling.h" />
     <ClInclude Include="src\dnf_patches.h" />
     <ClInclude Include="src\external_string_table.h" />
     <ClInclude Include="src\ijl15_config.h" />
@@ -142,6 +145,8 @@
     <ClCompile Include="src\motion_horizon.cpp" /><ClCompile Include="src\native_loop_probe.cpp" /><ClCompile Include="src\motion_test_probe.cpp" /><ClCompile Include="src\provider_probe.cpp" />
     <ClCompile Include="src\party_card_display.cpp" />
     <ClCompile Include="src\d3d8_scaler.cpp" />
+    <ClCompile Include="src\d3d8_presenter.cpp" />
+    <ClCompile Include="src\presentation_scaling.cpp" />
     <ClCompile Include="src\dnf_patches.cpp" />
     <ClCompile Include="src\external_string_table.cpp" />
     <ClCompile Include="src\ijl15_config.cpp" />

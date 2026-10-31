@@ -50,6 +50,11 @@ add_library(ijl15 SHARED
     src/party_card_display.h
     src/d3d8_scaler.cpp
     src/d3d8_scaler.h
+    src/d3d8_abi.h
+    src/d3d8_presenter.cpp
+    src/d3d8_presenter.h
+    src/presentation_scaling.cpp
+    src/presentation_scaling.h
     src/dnf_patches.cpp
     src/dnf_patches.h
     src/external_string_table.cpp
@@ -114,6 +119,16 @@ add_custom_command(TARGET ijl15 POST_BUILD
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(presentation_scaling_tests tests/presentation_scaling_tests.cpp src/presentation_scaling.cpp)
+    target_compile_options(presentation_scaling_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    add_test(NAME presentation_scaling_policy COMMAND presentation_scaling_tests)
+    add_executable(d3d8_presenter_tests tests/d3d8_presenter_tests.cpp src/d3d8_presenter.cpp src/presentation_scaling.cpp)
+    target_compile_options(d3d8_presenter_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    target_link_libraries(d3d8_presenter_tests PRIVATE user32)
+    option(DFLEGACY_ENABLE_GPU_TESTS "Run D3D8 tests in an interactive graphics session" OFF)
+    if(DFLEGACY_ENABLE_GPU_TESTS)
+        add_test(NAME d3d8_presentation_gpu COMMAND d3d8_presenter_tests)
+    endif()
     # The same test source also builds from tests/DFLegacy.Ijl15.Tests.vcxproj,
     # which is what DFLegacy.Emulator.slnx uses. CMake is not installed on every
     # machine that has to run these (measured 2026-10-04: no cmake.exe in PATH or

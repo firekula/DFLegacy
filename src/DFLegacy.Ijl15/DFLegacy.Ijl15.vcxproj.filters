@@ -18,6 +18,15 @@
     <ClInclude Include="src\d3d8_scaler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\d3d8_abi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\d3d8_presenter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\presentation_scaling.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\boss_room_death.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -78,6 +87,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\d3d8_scaler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\d3d8_presenter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\presentation_scaling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\boss_room_death.cpp">

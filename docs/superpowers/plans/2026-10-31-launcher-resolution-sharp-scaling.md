@@ -32,23 +32,23 @@
 
 **Interfaces:** IniConfiguration.Load(path) captures bytes/encoding and supports Read(section,key), With(updates), SaveExpected(path,expectedBytes,outputBytes). ClientDisplayConfiguration.Load(clientPath) returns a snapshot with Width,Height,PresentationFilter,OriginalBytes,ConfigPath; Save(snapshot,width,height,mode) validates presets, compares bytes, preserves unknown content and atomically replaces. UI writes only the display snapshot; connection save remains LauncherAccountStore.
 
-- [ ] Write regressions against real temporary files: three-key update preserves unrelated bytes in ANSI/UTF8/UTF16, duplicate sections read back correctly, missing file creates embedded defaults, locked/stale/UTF32/invalid geometry fail without writes; no-op preserves mtime; edited launcher path invalidates display save.
-- [ ] Run `dotnet run --project src/DFLegacy.Launcher/tests -c Release -p:BuildNativeAssets=false -p:Ijl15PrebuiltPath=<matching native DLL>`; observe missing API and behavior RED.
-- [ ] Implement the immutable snapshot and preserving editor; keep ClientServiceConfiguration's current strict URL validation and use the shared edit primitive without weakening its byte-preservation tests.
-- [ ] Add connection/game-display tabs, native preset/mode controls and independent save. Show actual target, dirty-path prerequisite, restart note, old-custom-size state and read/IO errors. Keep all controls within a scrollable bounded work area and keyboard order.
-- [ ] Run the complete Launcher suite and inspect compile/runtime output; commit configuration and UI deliverable.
+- [x] Write regressions against real temporary files: three-key update preserves unrelated bytes in ANSI/UTF8/UTF16, duplicate sections read back correctly, missing file creates embedded defaults, locked/stale/UTF32/invalid geometry fail without writes; no-op preserves mtime; edited launcher path invalidates display save.
+- [x] Run `dotnet run --project src/DFLegacy.Launcher/tests -c Release -p:BuildNativeAssets=false -p:Ijl15PrebuiltPath=<matching native DLL>`; observe missing API and behavior RED.
+- [x] Implement the immutable snapshot and preserving editor; keep ClientServiceConfiguration's current strict URL validation and use the shared edit primitive without weakening its byte-preservation tests.
+- [x] Add connection/game-display tabs, native preset/mode controls and independent save. Show actual target, dirty-path prerequisite, restart note, old-custom-size state and read/IO errors. Keep all controls within a scrollable bounded work area and keyboard order.
+- [x] Run the complete Launcher suite and inspect compile/runtime output; commit configuration and UI deliverable.
 
 ### Task 2: D3D8 production presenter and GPU acceptance
 
 **Files:** Create src/DFLegacy.Ijl15/src/d3d8_abi.h, presentation_scaling.h/.cpp, d3d8_presenter.h/.cpp, tests/d3d8_presenter_tests.cpp. Modify CMakeLists.txt and aligned vcxproj/.filters.
 
-**Interfaces:** presentation_scaling::Plan(width,height,mode,caps) yields supported dimensions/integer factor and failure reason. d3d8_presenter::Presenter(device,original device-call table) owns source/intermediate/swap-chain resources; Present(width,height,mode) returns HRESULT plus effective outcome; Clear() releases GPU resources without owning a lasting device reference. API is shared by real hooks and GPU harness.
+**Interfaces:** presentation_scaling::Plan(width,height,mode,caps) yields supported dimensions/integer factor and failure reason. d3d8_presenter::Presenter(device,original device-call table) owns source/intermediate textures; Render(source,target,plan) returns RenderResult(Status,RestoreStatus,Stage). The hook context owns the output swap chain and supplies its surface. Clear() releases GPU resources without owning a lasting device reference. API is shared by real hooks and GPU harness.
 
-- [ ] Create failing policy/GPU tests: 800 sharp must use1280×960 intermediate; original backbuffer unchanged; true2×2 pixel blocks at1280; aligned color/checker/edge outputs match CPU reference; state/viewport/render-target/stream restored; unsupported target and lost-device outcomes explicit.
-- [ ] Build/run the new tests against missing implementation and observe RED. The GPU harness dynamically loads the installed d3d8 runtime and creates a test-owned window/device; it never manipulates the user's game.
-- [ ] Implement exact ABI declarations, scoped COM helpers and fixed-function passes. Preserve all game state, clamp valid texels/POT padding, cache resources, propagate HRESULTs and release every temporary/captured reference. Use point short paths at integer sizes.
-- [ ] Test actual GPU output including every preset, POT allocation edges and repeated Clear/rebuild; write private readback images/results only under this plan's validation path. GPU absence is a distinct failure for local acceptance, not a silent pass.
-- [ ] Run native suites including new GPU test and commit presenter deliverable.
+- [x] Create failing policy/GPU tests: 800 sharp must use1280×960 intermediate; original backbuffer unchanged; true2×2 pixel blocks at1280; aligned color/checker/edge outputs match CPU reference; state/viewport/render-target/stream restored; unsupported target and lost-device outcomes explicit.
+- [x] Build/run the new tests against missing implementation and observe RED. The GPU harness dynamically loads the installed d3d8 runtime and creates a test-owned window/device; it never manipulates the user's game.
+- [x] Implement exact ABI declarations, scoped COM helpers and fixed-function passes. Preserve all game state, clamp valid texels/POT padding, cache resources, propagate HRESULTs and release every temporary/captured reference. Use point short paths at integer sizes.
+- [x] Test actual GPU output including every preset, POT allocation edges and repeated Clear/rebuild; write private readback images/results only under this plan's validation path. GPU absence is a distinct failure for local acceptance, not a silent pass.
+- [x] Run native suites including new GPU test and commit presenter deliverable.
 
 ### Task 3: Per-device hook lifecycle and native configuration
 
