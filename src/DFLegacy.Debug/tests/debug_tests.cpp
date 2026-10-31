@@ -10,6 +10,7 @@
 #include <iterator>
 #include <string>
 #include <vector>
+#include <atomic>
 #include "../include/debug_api.h"
 #include "../src/debug_model.h"
 #include "../../DFLegacy.Ijl15/src/client_debug_state.h"
@@ -18,6 +19,34 @@ namespace
 {
     int Failures = 0;
     void Check(bool value,const char* message);
+    constexpr UINT ResizeFixtureMessage = WM_APP + 0x315;
+    std::atomic<WNDPROC> ResizeOriginalProcedure{nullptr};
+    LRESULT CALLBACK ResizeFixtureProcedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
+    {
+        const auto original = ResizeOriginalProcedure.load(std::memory_order_acquire);
+        if (message == ResizeFixtureMessage)
+        {
+            // Real nonclient sizing and WM_EXITSIZEMOVE run on this window's thread.
+            // Keep that transaction together: the periodic worker must not re-place
+            // the old bounds between a foreign-thread SetWindowPos and its commit.
+            if (!SetWindowPos(window, nullptr, 0, 0, LOWORD(wparam), HIWORD(wparam),
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE)) return 0;
+            CallWindowProcW(original, window, WM_EXITSIZEMOVE, 0, 0);
+            return 1;
+        }
+        return CallWindowProcW(original, window, message, wparam, lparam);
+    }
+    bool ResizeOnWindowThread(HWND window, int width, int height)
+    {
+        const auto original = reinterpret_cast<WNDPROC>(GetWindowLongPtrW(window, GWLP_WNDPROC));
+        if (original == nullptr) return false;
+        ResizeOriginalProcedure.store(original, std::memory_order_release);
+        const auto previous = SetWindowLongPtrW(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&ResizeFixtureProcedure));
+        if (previous == 0) return false;
+        const auto result = SendMessageW(window, ResizeFixtureMessage, MAKEWPARAM(width, height), 0);
+        SetWindowLongPtrW(window, GWLP_WNDPROC, previous);
+        return result == 1;
+    }
     DWORD ObserverBefore=0,ObserverAfter=0;
     FARPROC ObserverEntry=nullptr;
     int CheckObserverAbi(const char* path)
@@ -371,9 +400,11 @@ int main(int argc, char** argv)
     Check(restored.right - restored.left == full.right - full.left,
         "clicking the dot restores the panel size");
     Check(GetForegroundWindow() == focusedBefore, "panel controls preserve the foreground window");
-    SetWindowPos(panel, nullptr, 0, 0, 320, 180, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-    SendMessageW(panel, WM_EXITSIZEMOVE, 0, 0); pump(50);
+    Check(ResizeOnWindowThread(panel, 320, 180), "resize transaction completes on the panel thread");
+    pump(80);
     RECT resized{}; GetWindowRect(panel, &resized);
+    std::printf("Resize transaction: final=%ldx%ld foreground-owner=%d\n",
+        resized.right-resized.left, resized.bottom-resized.top, GetForegroundWindow()==owner);
     Check(resized.right - resized.left == 320 && resized.bottom - resized.top == 180,
         "user resizing survives subsequent render updates");
     SendMessageW(panel, WM_CLOSE, 0, 0); pump(50);
