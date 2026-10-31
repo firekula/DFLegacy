@@ -1,6 +1,6 @@
 # Public source snapshot
 
-The current public tree mirrors Gitea source commit `373ecbe2b3bc3a8744d29f0fa8704dc08b2d1c04`. This repository began with a sanitized snapshot; private development history is intentionally not imported.
+The current public tree mirrors Gitea source commit `d372f04707ab1acd3e67de505ef832bac0bcd850`. This repository began with a sanitized snapshot; private development history is intentionally not imported.
 
 Application, tests, build tools, deployment files and protocol data retain their source bytes and modes. A local VM database password in ten historical investigation files is replaced with `REDACTED_VM_DB_PASSWORD`; those scripts require your own VM configuration.
 
