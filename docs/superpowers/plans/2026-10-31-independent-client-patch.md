@@ -85,10 +85,10 @@
 
 **Interfaces:** GitHub client selects fixed V2 asset from installed manifest flavor. Update manifest matches the fixed contract; installer writes validated installed manifest alongside exact binary set and treats it as journaled transaction metadata. Public updates never read arbitrary repositories or send credentials. Existing UI/helper state machine and consent protections remain.
 
-- [ ] Add RED tests `normal_update_rejects_test_or_legacy`, `test_update_requires_same_version_debug`, `schema2_metadata_rollback_at_each_boundary`, `manual_migration_preserves_player_configuration`, `retained_debug_is_not_loaded_by_normal_mode`; test missing/hash-mismatched metadata and cancellation/restart paths.
-- [ ] Run focused tests to show RED.
-- [ ] Implement flavor selection, V2 strict extraction and installed metadata transaction; adapt fixed-file checks/cleanup/rollback to exact normal/test sets without widening paths. Keep protected player config and game assets out of the update transaction; never downgrade to V1.
-- [ ] Run complete update engine/UI-boundary/helper fixture suites and full launcher tests, preserving previously fixed Enter/decline consent behavior. Commit.
+- [x] Add RED tests `normal_update_rejects_test_or_legacy`, `test_update_requires_same_version_debug`, `schema2_metadata_rollback_at_each_boundary`, `manual_migration_preserves_player_configuration`, `retained_debug_is_not_loaded_by_normal_mode`; test missing/hash-mismatched metadata and cancellation/restart paths.
+- [x] Run focused tests to show RED.
+- [x] Implement flavor selection, V2 strict extraction and installed metadata transaction; adapt fixed-file checks/cleanup/rollback to exact normal/test sets without widening paths. Keep protected player config and game assets out of the update transaction; never downgrade to V1.
+- [x] Run complete update engine/UI-boundary/helper fixture suites and full launcher tests, preserving previously fixed Enter/decline consent behavior. Commit.
 
 ## Task 5: Manager checkbox, release packages and CI wiring
 
@@ -141,6 +141,6 @@ All approved spec sections map to tasks1–6; native helpers precede managed con
 - [x] Finish the narrow call-chain check for show/hide and any hidden-window refresh affecting tab memory. Establish whether suppressing full-refresh auto-selection alone covers both reported cases; prefer the smallest proven change. Do not disable manual tab clicks or useful drag behavior.
 - [x] Add a failing native executable fixture exercising the actual compatible x86 refresh/call contract with deterministic fake inventory/UI state. Cover all four tabs, populated mixed categories ending in Materials/Quest, empty list, repeated sort, close/reopen with intervening refresh, first-open equipment default, manual switch still effective, and unaffected other inventory spaces. Validate supported instruction bytes; unknown/already modified sites must be safe and not partially patched.
 - [x] Implement the proven scoped native correction in the common core so normal and test modes behave identically. Keep original files unchanged on disk. Verify fixture RED/GREEN plus existing native regression suite; record exact site/signature and evidence. Runtime integration must not require diagnostic exports or auto input in normal mode.
-- [ ] Controller later performs real-client sort/reopen acceptance once physical UI operation resumes; fixture results must not be described as that manual/gameplay check. Commit scoped correction/tests.
+- [x] Controller later performs real-client sort/reopen acceptance once physical UI operation resumes; fixture results must not be described as that manual/gameplay check. Commit scoped correction/tests.
 
 **Reviewed result:** NOTI13-only suppression left hidden NOTI14 insertions and stack increases able to change the tab. The final correction guards the 13-byte selector tail at `0x7AAB4D` and suppresses only the three-byte automatic tab store at `0x7AAB52`; manual/drag writes and first-open initialization remain intact. Automatic synchronization retains the chosen tab whether visible or hidden. The additional partial-update fixture failed 36 checks before the correction and passes afterward; final coverage executes 234 insertion calls, 32 amount-update calls and 273 native selector lookups. Initial native regression passed 35/35; the scoped correction passed 2/2 focused tests and all three acceptance scenarios. Physical UI operation has now resumed; live-game acceptance remains pending the new launcher.
