@@ -248,7 +248,12 @@ namespace
             return Error(nonce, "handshake_failed", "Cannot restrict child handles or ownership.");
         STARTUPINFOEXW startup{}; startup.StartupInfo.cb = sizeof(startup); startup.lpAttributeList = attributes.list;
         PROCESS_INFORMATION pi{};
-        std::wstring command = Quote(exePath) + L" " + Quote(argv[12]);
+        // The supported game's WinMain parses the raw tail, including its first
+        // numeric '?' field. Preserve whitespace-free launcher data verbatim;
+        // CRT quoting is needed only for an empty argument, whitespace or quotes.
+        const std::wstring data = argv[12];
+        const bool quoteData = data.empty() || data.find_first_of(L" \t\n\r\v\"") != std::wstring::npos;
+        std::wstring command = Quote(exePath) + L" " + (quoteData ? Quote(data) : data);
         const std::wstring directory = exePath.substr(0, separator);
         if (!CreateProcessW(exePath.c_str(), command.data(), nullptr, nullptr, TRUE,
             CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW,

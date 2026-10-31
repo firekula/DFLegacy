@@ -116,7 +116,14 @@ int wmain(int argc, wchar_t** argv)
         { std::ofstream file(npk); file << "untouched NPK fixture"; }
         const auto ijlHash = Hash(ijl), pvfHash = Hash(pvf), npkHash = Hash(npk);
         const std::string exeHash = Hash(exe), dllHash = Hash(dll);
-        if (test == L"reject")
+        if (test == L"raw-tail")
+        {
+            Launch run; run.Start(argv[2],exe,dll,L"99?127.0.0.1?2311?fixture?synthetic",dllHash);
+            run.Ready(run.Line()); run.Ack(); Check(run.Exit()==0,"raw-tail commit");
+            for(int i=0;i<100 && !fs::exists(root/L"raw-entry.marker");i++) Sleep(10);
+            Check(fs::exists(root/L"raw-entry.marker"),"WinMain receives exact unquoted raw 99 launcher-data tail");
+        }
+        else if (test == L"reject")
         {
             Launch bad; bad.Start(argv[2], exe, dll, marker, std::string(64, '0'));
             Check(bad.Line().find("hash_mismatch") != std::string::npos && bad.Exit() == 1, "bad hash rejected");

@@ -14,7 +14,10 @@ DFLegacy.Bootstrap32.exe --client <absoluteExe> --patch <absoluteDll> --sha256 <
 
 Exactly these arguments, in this order, are accepted. Paths are limited to
 1023 UTF-16 code units; launcher data is at most 16384 code units and is passed
-as exactly one argument with Windows command-line quoting. The helper never
+as exactly one argument with Windows command-line quoting when needed (empty,
+whitespace or quote characters). Whitespace-free launcher data is emitted
+verbatim so the game's raw WinMain command-line parser sees the initial `99`
+field without a leading quote; the executable path is always quoted. The helper never
 prints launcher data. The launcher must supply redirected stdin/stdout pipes.
 The game working directory is the selected executable's canonical directory.
 

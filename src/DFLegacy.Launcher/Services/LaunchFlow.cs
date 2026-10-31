@@ -8,7 +8,9 @@ internal static class LaunchFlow
     public static async Task RunAsync(
         LauncherOptions options,
         LauncherAccountProfile account,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<IjlMigrationInspection,bool>? confirmMigration = null,
+        Action<string>? reportWarning = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Program.ValidateOptions(options);
@@ -17,14 +19,32 @@ internal static class LaunchFlow
 
         var clientPath = Program.ResolveClientPath(options.ClientPath);
         Program.ValidateClient(clientPath);
+        Program.LogClientPath = clientPath;
+        ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
+        var manifest = ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!);
         ClientBootstrapInspector.ValidateForLaunch(clientPath);
         Program.ValidateScriptPvf(clientPath);
         await Program.EnsureD3D9AvailableAsync(options);
         cancellationToken.ThrowIfCancellationRequested();
-        var ijl15 = Ijl15ReplacementInstaller.Install(clientPath, options.ResolveAccountServiceUrl());
-        if (ijl15.Installed)
-            Program.WriteLauncherLog(
-                $"Installed x86 ijl15 replacement at {ijl15.TargetPath}; sha256={ijl15.Sha256}; backup={ijl15.BackupPath ?? "(none)"}.");
+        var migration = ClientIjlMigration.Inspect(clientPath);
+        if(migration.State != IjlMigrationState.Original)
+        {
+            if(migration.State != IjlMigrationState.RestoreRequired || migration.CandidatePath is null)
+                throw new InvalidDataException("客户端需要校验通过的原版 ijl15.dll。未找到可信原版备份；未知文件不会被覆盖。请手动恢复你持有的原版文件。");
+            if(confirmMigration?.Invoke(migration)!=true)
+                throw new InvalidDataException("已取消原版 IJL 恢复，游戏未启动。请在登录器中确认一次性迁移后重试。");
+            cancellationToken.ThrowIfCancellationRequested();
+            ClientIjlMigration.RestoreConfirmed(migration,true);
+            Program.WriteLauncherLog("Confirmed legacy IJL migration completed; original hash verified and old patch backed up.");
+        }
+        StandaloneClientInstaller.Configure(clientPath,options.ResolveAccountServiceUrl());
+        ClientLogPaths.ArchiveLegacy(clientPath);
+        if(!ClientLogPaths.TryWrite(clientPath,"Preparing standalone client bootstrap."))
+        {
+            Program.LogWarning = "客户端 Logs/DFLegacy 无法写入，诊断日志不可用。请检查目录权限。";
+            if(reportWarning is not null) reportWarning(Program.LogWarning);
+            else Console.Error.WriteLine(Program.LogWarning);
+        }
 
         var relay = await Program.StartRelayIfConfiguredAsync(options);
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -44,7 +64,7 @@ internal static class LaunchFlow
                 "0","0","0","0","0","0","0","0"
             ]);
             await ClientProcessLifetime.RunAsync(
-                () => ClientProcessLauncher.Start(clientPath, launcherData),
+                () => ClientProcessLauncher.StartAsync(clientPath, launcherData,manifest,cancellationToken),
                 async (client, token) =>
                 {
                     Program.TryRaisePriority(client);

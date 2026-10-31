@@ -132,12 +132,19 @@ public partial class MainWindow : System.Windows.Window
         try
         {
             Hide();
-            await LaunchFlow.RunAsync(_options, profile);
+            await LaunchFlow.RunAsync(_options, profile, confirmMigration: migration =>
+            {
+                var dialog = new Views.ClassicMessageWindow(
+                    "需要一次性恢复原版 IJL。已按原版 SHA-256 验证备份：\n" + migration.CandidatePath +
+                    "\n确认后将备份当前旧补丁并恢复原版，今后由独立补丁启动。取消将阻止进入游戏。",true,"取消");
+                dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                dialog.ShowDialog(); return dialog.Accepted;
+            }, reportWarning: warning => ClassicMessage.Show(null,warning));
             Close();
         }
         catch (Exception ex)
         {
-            Program.WriteLauncherLog($"Launcher failed: {ex}");
+            Program.WriteLauncherLog($"Launcher failed: {ex.GetType().Name}");
             Show();
             ClassicMessage.Show(this, $"启动失败：{ex.Message}");
         }
