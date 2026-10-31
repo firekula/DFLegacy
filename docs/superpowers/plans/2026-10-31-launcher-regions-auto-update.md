@@ -75,10 +75,10 @@
 
 **Interfaces:** Consume Task3 report's exact API and Task2 ClassicMessage. Startup asynchronously checks once with5s timeout, also manual “检查更新”. Main update artRT_BITMAP198, compact install artLauncherUpdator132, original progress249. Option default dev feed includes prereleases; support stable-only. `LauncherOptions` update configuration defaults repository to firekula/DFLegacy, preserving old config and headless behavior.
 
-- [ ] Add failing tests for startup nonblocking/no releases/error recovery, explicit retry/cancel/back, real byte progress, install-confirm handoff, game file lock and owned helper, update-state suppression of repeated install; test actual WPF progress/error/button layout.
-- [ ] Observe RED; implement approved two-stage update UI with actual progress/versions, automatic check/download then user-confirmed restart installation. Manual operation remains available after failures. UI thread remains responsive; closed-window callbacks ignored; helper mode dispatch before main UI/headless initialization.
-- [ ] Run launcher suite and actual UI inspection; use temporary installation fixtures for process handoff/restart. No deployment into user's open client. Record code/asset checks and proof of configuration preservation.
-- [ ] Commit and write report.
+- [x] Add failing tests for startup nonblocking/no releases/error recovery, explicit retry/cancel/back, real byte progress, install-confirm handoff, game file lock and owned helper, update-state suppression of repeated install; test actual WPF progress/error/button layout.
+- [x] Observe RED; implement approved two-stage update UI with actual progress/versions, automatic check/download then user-confirmed restart installation. Manual operation remains available after failures. UI thread remains responsive; closed-window callbacks ignored; helper mode dispatch before main UI/headless initialization.
+- [x] Run launcher suite and actual UI inspection; use temporary installation fixtures for process handoff/restart. No deployment into user's open client. Record code/asset checks and proof of configuration preservation.
+- [x] Commit and write report.
 
 ### Task 5: Client update asset, GitHub publication and exact-source acceptance
 
