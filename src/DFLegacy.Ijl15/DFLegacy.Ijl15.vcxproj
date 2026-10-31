@@ -116,6 +116,7 @@
     <ClInclude Include="src\d3d8_presenter.h" />
     <ClInclude Include="src\presentation_scaling.h" />
     <ClInclude Include="src\d3d8_hooks.h" />
+    <ClInclude Include="src\diagnostic_delivery.h" />
     <ClInclude Include="src\pe_import.h" />
     <ClInclude Include="src\window_input_scaling.h" />
     <ClInclude Include="src\dnf_patches.h" />

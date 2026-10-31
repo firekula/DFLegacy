@@ -52,6 +52,7 @@ add_library(ijl15 SHARED
     src/d3d8_scaler.h
     src/d3d8_hooks.cpp
     src/d3d8_hooks.h
+    src/diagnostic_delivery.h
     src/pe_import.h
     src/window_input_scaling.cpp
     src/window_input_scaling.h

@@ -6,6 +6,7 @@ internal static class DisplayConfigurationTests
 {
     internal static void Run(string parent, Action<bool, string> check)
     {
+        TargetAuthority(parent, check);
         var root = Path.Combine(parent, "display");
         Directory.CreateDirectory(root);
         var client = Path.Combine(root, "DNF.exe");
@@ -25,6 +26,18 @@ internal static class DisplayConfigurationTests
         }
 
         // Literal legacy ANSI bytes must survive; decoding them as UTF8 would destroy them.
+        File.WriteAllText(path, "[Rendering]\nPresentationFilter=\u00a0sharp\u00a0\n", Encoding.Unicode);
+        check(ClientDisplayConfiguration.Load(client).PresentationFilter == "legacy", "non-ASCII padding cannot silently promote a mode the native ANSI reader rejects");
+        foreach (var commented in new[] { "[Resolution] ; resolution comment", "[Resolution] trailing text", "[ Resolution ]", "[Resolution" })
+        {
+            var headers = "[Features]\r\nKeep=1\r\n" + commented + "\r\nWidth=777\r\nHeight=555\r\n[Rendering] ; rendering comment\r\nPresentationFilter=legacy\r\n[Custom] ; unrelated section\r\nWidth=7\r\nHeight=9\r\nPresentationFilter=keep\r\n";
+            File.WriteAllText(path, headers, Encoding.Unicode);
+            ClientDisplayConfiguration.Save(ClientDisplayConfiguration.Load(client), 800, 600, "sharp");
+            var edited = File.ReadAllText(path, Encoding.Unicode);
+            check(edited.EndsWith("[Custom] ; unrelated section\r\nWidth=7\r\nHeight=9\r\nPresentationFilter=keep\r\n", StringComparison.Ordinal), "commented custom section remains byte-for-byte outside managed sections");
+            check(Read(path, "Resolution", "Width") == "800" && Read(path, "Resolution", "Height") == "600"
+                && Read(path, "Rendering", "PresentationFilter") == "sharp" && Read(path, "Custom", "Width") == "7", "native reader sees edits in commented managed headers without shadow sections");
+        }
         var ansi = Encoding.ASCII.GetBytes("; ").Concat(new byte[] { 0xD6, 0xD0, 0xCE, 0xC4 }).Concat(Encoding.ASCII.GetBytes("\n[Resolution]\nWidth=800\nHeight=600\n[Rendering]\nScaleFilter=point\n")).ToArray();
         File.WriteAllBytes(path, ansi);
         ClientDisplayConfiguration.Save(ClientDisplayConfiguration.Load(client), 800, 600, "sharp");
@@ -78,6 +91,55 @@ internal static class DisplayConfigurationTests
         check(!ClientDisplayConfiguration.SameClientPath(client, Path.Combine(root, "other", "DNF.exe")), "unsaved different client path invalidates the display target");
         ExpectFailure<FileNotFoundException>(() => ClientDisplayConfiguration.Load(Path.Combine(root, "not-installed.exe")), check, "display cannot target a missing installation");
         Console.WriteLine("Display configuration behavior checks executed");
+    }
+
+    private static void TargetAuthority(string parent, Action<bool, string> check)
+    {
+        var root = Path.Combine(parent, "target-authority");
+        var a = Path.Combine(root, "a", "DNF.exe"); var b = Path.Combine(root, "b", "DNF.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(a)!); Directory.CreateDirectory(Path.GetDirectoryName(b)!);
+        File.WriteAllBytes(a, []); File.WriteAllBytes(b, []);
+        var iniA = Path.Combine(Path.GetDirectoryName(a)!, "Config.ini"); var iniB = Path.Combine(Path.GetDirectoryName(b)!, "Config.ini");
+        const string original = "[Resolution]\nWidth=800\nHeight=600\n[Rendering]\nPresentationFilter=legacy\n";
+        File.WriteAllText(iniA, original); File.WriteAllText(iniB, original);
+        var storePath = Path.Combine(root, "launcher.json"); var store = new LauncherAccountStore(storePath);
+        store.Save(new LauncherOptions { ClientPath = a }); var snapshot = ClientDisplayConfiguration.Load(a);
+        void Refuse(string cached, string edited, string reason)
+        {
+            var rejected = false;
+            try { ClientDisplayConfiguration.SaveWithAuthority(store, snapshot, cached, edited, 1280, 960, "sharp"); }
+            catch (Exception ex) when (ex is IOException or InvalidDataException) { rejected = true; }
+            check(rejected && File.ReadAllText(iniA) == original && File.ReadAllText(iniB) == original, reason);
+        }
+        store.Save(new LauncherOptions { ClientPath = b });
+        Refuse(a, a, "external persisted client path switch cannot save the old displayed installation");
+        store.Save(new LauncherOptions { ClientPath = a });
+        Refuse(b, b, "snapshot path must agree with edited and cached client paths");
+        using (File.Open(storePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var saveFailed = false; var loadFailed = false;
+            try { store.Save(new LauncherOptions { ClientPath = b }); } catch (IOException) { saveFailed = true; }
+            try { store.Load(); } catch (IOException) { loadFailed = true; }
+            check(saveFailed && loadFailed, "connection save and recovery load can both fail under a real exclusive lock");
+            Refuse(b, b, "unreadable saved-path authority cannot save an old display snapshot");
+        }
+        Refuse(b, b, "failed connection save/load state cannot re-enable an old snapshot for a new cached path");
+        ClientDisplayConfiguration.SaveWithAuthority(store, snapshot, a, a, 800, 600, "sharp");
+        check(Read(iniA, "Rendering", "PresentationFilter") == "sharp" && File.ReadAllText(iniB) == original, "verified persisted/edited/snapshot target can save only installation A");
+        using (store.AcquireReadLease())
+        {
+            var blocked = false;try { store.Save(new LauncherOptions { ClientPath = b }); } catch (IOException) { blocked = true; }
+            check(blocked, "saved client authority lease prevents a concurrent connection overwrite");
+        }
+        File.WriteAllText(storePath, File.ReadAllText(storePath), Encoding.Unicode);
+        var wideStore = File.ReadAllBytes(storePath); var wideAccepted = false;
+        try
+        {
+            ClientDisplayConfiguration.SaveWithAuthority(store, ClientDisplayConfiguration.Load(a), a, a, 1024, 768, "sharp");
+            wideAccepted = true;
+        }
+        catch (System.Text.Json.JsonException) { }
+        check(wideAccepted && File.ReadAllBytes(storePath).SequenceEqual(wideStore), "authority lease preserves existing UTF16 launcher JSON compatibility without rewriting it");
     }
 
     private static void ExpectFailure<T>(Action action, Action<bool, string> check, string name) where T : Exception

@@ -1,6 +1,7 @@
 #include "d3d8_hooks.h"
 #include "d3d8_abi.h"
 #include "d3d8_presenter.h"
+#include "diagnostic_delivery.h"
 #include <array>
 #include <cstdio>
 #include <cstring>
@@ -62,8 +63,7 @@ namespace
         dfl::d3d8_presenter::Presenter Presenter;
         Reference Chain,Output;
         UINT Width=0,Height=0;DWORD Format=0;
-        std::string LastRecord,PendingRecord;
-        ULONGLONG LastWritten=0;
+        dfl::diagnostics::Delivery Records;
         LARGE_INTEGER Frequency{},LastTick{};
         unsigned WarmFrames=0,SampleCount=0,ChainCreations=0,MeasuredChainCreations=0;
         std::array<std::uint64_t,256> Preparation{},Intervals{};
@@ -145,27 +145,25 @@ namespace
                 std::snprintf(fields+length,sizeof(fields)-length,",\"performanceSamples\":256,\"warmupFrames\":64,\"prepareP50Us\":%llu,\"prepareP95Us\":%llu,\"preparePeakUs\":%llu,\"intervalP50Us\":%llu,\"intervalP95Us\":%llu,\"intervalPeakUs\":%llu,\"outputChainCreationsAtSample\":%u",
                     context.PreparationP50,context.PreparationP95,context.PreparationPeak,context.IntervalP50,context.IntervalP95,context.IntervalPeak,context.MeasuredChainCreations);
             }
-            if(context.LastRecord==fields){context.PendingRecord.clear();return;}
-            context.PendingRecord=fields;
+            context.Records.Update(fields);
             }
-            if(context.PendingRecord.empty())return;
-            const ULONGLONG now=GetTickCount64();
-            // Unstable window/driver errors cannot produce per-frame disk writes. Retry the latest record later.
-            if(context.LastWritten&&now-context.LastWritten<1000)return;
+            context.Records.Flush(GetTickCount64(),[&](const std::string& pending)
+            {
             std::lock_guard<std::mutex> lock(DiagnosticMutex);
             wchar_t executable[32768]{};const auto length=GetModuleFileNameW(nullptr,executable,32768);
-            if(!length||length>=32768)return;
+            if(!length||length>=32768)return false;
             std::wstring directory(executable,length);directory.resize(directory.find_last_of(L"\\/"));directory+=L"\\render-diagnostics";
-            if(!CreateDirectoryW(directory.c_str(),nullptr)&&GetLastError()!=ERROR_ALREADY_EXISTS)return;
+            if(!CreateDirectoryW(directory.c_str(),nullptr)&&GetLastError()!=ERROR_ALREADY_EXISTS)return false;
             const std::wstring target=directory+L"\\"+std::to_wstring(GetCurrentProcessId())+L".json",temporary=target+L".tmp";
             FILETIME created{},exit{},kernel{},user{},utc{};GetProcessTimes(GetCurrentProcess(),&created,&exit,&kernel,&user);GetSystemTimeAsFileTime(&utc);
             char prefix[256]{};std::snprintf(prefix,sizeof(prefix),"{\"version\":1,\"pid\":%lu,\"processStartFileTime\":%llu,\"writtenFileTime\":%llu,",GetCurrentProcessId(),FileTimeValue(created),FileTimeValue(utc));
-            const std::string bytes=std::string(prefix)+context.PendingRecord+"}\n";
+            const std::string bytes=std::string(prefix)+pending+"}\n";
             const HANDLE file=CreateFileW(temporary.c_str(),GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
-            if(file==INVALID_HANDLE_VALUE)return;
+            if(file==INVALID_HANDLE_VALUE)return false;
             DWORD written=0;const bool okay=WriteFile(file,bytes.data(),static_cast<DWORD>(bytes.size()),&written,nullptr)&&written==bytes.size();CloseHandle(file);
-            if(okay&&MoveFileExW(temporary.c_str(),target.c_str(),MOVEFILE_REPLACE_EXISTING)){context.LastRecord=context.PendingRecord;context.PendingRecord.clear();context.LastWritten=now;}
-            else DeleteFileW(temporary.c_str());
+            if(okay&&MoveFileExW(temporary.c_str(),target.c_str(),MOVEFILE_REPLACE_EXISTING))return true;
+            DeleteFileW(temporary.c_str());return false;
+            });
         }
         catch(...) {OutputDebugStringA("DFLegacy: render diagnostic could not be written.\n");}
     }

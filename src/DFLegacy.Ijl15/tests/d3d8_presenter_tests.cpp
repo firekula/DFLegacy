@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -19,6 +20,8 @@ namespace p = dfl::presentation;
 namespace
 {
     int Failures = 0;
+    void** OriginalDrawTable=nullptr;
+    bool SawWrongResultDestination=false;
     LONG WINAPI Crash(EXCEPTION_POINTERS* exception)
     {
         const HANDLE process=GetCurrentProcess();SymSetOptions(SYMOPT_UNDNAME|SYMOPT_LOAD_LINES);SymInitialize(process,nullptr,TRUE);
@@ -41,6 +44,13 @@ namespace
         return EXCEPTION_EXECUTE_HANDLER;
     }
     void Check(bool result, const char* text) { if (!result) { std::fprintf(stderr,"FAIL: %s\n",text); ++Failures; } }
+    HRESULT WINAPI ObserveDraw(void* device,DWORD primitive,UINT count,const void* vertices,UINT stride)
+    {
+        DWORD destination=0;const auto hr=a::Call<HRESULT>(device,62,DWORD(0),DWORD(28),&destination);
+        if((FAILED(hr)||destination!=1)&&!SawWrongResultDestination)
+        {SawWrongResultDestination=true;Check(false,"production fixed-function draw explicitly targets CURRENT rather than inherited TEMP");}
+        return a::CallTable<HRESULT>(device,OriginalDrawTable,72,primitive,count,vertices,stride);
+    }
     struct Ref
     {
         void* Value = nullptr;
@@ -114,8 +124,11 @@ int main()
         a::Call<HRESULT>(device.Value,83,UINT(0),vertex.Value,UINT(24));a::Call<HRESULT>(device.Value,85,index.Value,UINT(7));
         a::Call<HRESULT>(device.Value,61,DWORD(0),texture.Value);a::Call<HRESULT>(device.Value,50,DWORD(27),DWORD(1));
         a::Call<HRESULT>(device.Value,50,DWORD(60),DWORD(0x11223344));a::Call<HRESULT>(device.Value,76,DWORD(0x142));
+        Check(SUCCEEDED(a::Call<HRESULT>(device.Value,63,DWORD(0),DWORD(28),DWORD(5))),"incoming game stage writes its result to TEMP");
         const a::Viewport viewport{3,4,600,450,.2f,.8f};a::Call<HRESULT>(device.Value,40,&viewport);
-        dfl::d3d8_presenter::Presenter presenter(device.Value,*reinterpret_cast<void***>(device.Value));
+        OriginalDrawTable=*reinterpret_cast<void***>(device.Value);
+        std::array<void*,a::DeviceMethods> observedTable{};std::copy_n(OriginalDrawTable,observedTable.size(),observedTable.begin());observedTable[72]=reinterpret_cast<void*>(&ObserveDraw);
+        dfl::d3d8_presenter::Presenter presenter(device.Value,observedTable.data());
         const p::Capabilities actual{caps.MaxTextureWidth,caps.MaxTextureHeight,(caps.TextureCaps&2)!=0,(caps.TextureCaps&0x20)!=0};
         const auto unsupported=presenter.Render(source.Value,source.Value,p::MakePlan(800,600,p::Mode::Sharp,actual));
         Check(unsupported.Status==a::InvalidCall&&SUCCEEDED(unsupported.RestoreStatus),"wrong target dimensions are rejected before rendering");
@@ -147,6 +160,8 @@ int main()
             a::Call<HRESULT>(device.Value,51,DWORD(27),&state);Check(state==1,"alpha blend restored");
             a::Call<HRESULT>(device.Value,51,DWORD(60),&state);Check(state==0x11223344,"texture factor restored");
             a::Call<HRESULT>(device.Value,77,&fvf);Check(fvf==0x142,"game vertex shader/FVF restored");
+            DWORD resultArgument=0;a::Call<HRESULT>(device.Value,62,DWORD(0),DWORD(28),&resultArgument);
+            Check(resultArgument==5,"game texture-stage TEMP result destination restored");
             lock={};hr=a::Call<HRESULT>(target.Value,9,&lock,static_cast<const RECT*>(nullptr),DWORD(0x10));Check(SUCCEEDED(hr),"test-only output readback");
             unsigned maximum=0;std::size_t wrong=0;
             if(SUCCEEDED(hr))

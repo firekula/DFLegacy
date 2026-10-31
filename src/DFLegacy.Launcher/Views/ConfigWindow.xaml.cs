@@ -3,6 +3,7 @@ using HandyControl.Controls;
 using Microsoft.Win32;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Text.Json;
 
 namespace DFLegacy.Launcher.Views;
 
@@ -74,23 +75,26 @@ public partial class ConfigWindow : System.Windows.Window
         if (string.IsNullOrWhiteSpace(HostBox.Text))
         { Growl.Info("入口 Host 不能为空。"); return; }
 
-        _options.EntranceHost = HostBox.Text.Trim();
-        _options.EntrancePort = port;
-        _options.AccountServicePort = accountPort;
-        // 覆盖地址可以为空（为空即按 域名:端口 自动拼）。
-        _options.AccountServiceUrl = AccountUrlBox.Text.Trim();
-        _options.ClientPath = ClientPathBox.Text.Trim();
-        _options.StartServer = StartServerBox.IsChecked == true;
-        _options.Relay.Enabled = RelayEnabledBox.IsChecked == true;
-        _options.Relay.TcpPorts = string.IsNullOrWhiteSpace(TcpPortsBox.Text) ? null : TcpPortsBox.Text.Trim();
-        _options.Relay.Preference = PreferenceBox.SelectedValue as string ?? "ipv6";
-        _options.Theme = ThemeBox.SelectedValue as string ?? "auto";
         try
         {
-            _store.Save(_options);
+            var candidate = _store.Load();
+            candidate.EntranceHost = HostBox.Text.Trim();
+            candidate.EntrancePort = port;
+            candidate.AccountServicePort = accountPort;
+            // 覆盖地址可以为空（为空即按 域名:端口 自动拼）。
+            candidate.AccountServiceUrl = AccountUrlBox.Text.Trim();
+            candidate.ClientPath = ClientPathBox.Text.Trim();
+            candidate.StartServer = StartServerBox.IsChecked == true;
+            candidate.Relay.Enabled = RelayEnabledBox.IsChecked == true;
+            candidate.Relay.TcpPorts = string.IsNullOrWhiteSpace(TcpPortsBox.Text) ? null : TcpPortsBox.Text.Trim();
+            candidate.Relay.Preference = PreferenceBox.SelectedValue as string ?? "ipv6";
+            candidate.Theme = ThemeBox.SelectedValue as string ?? "auto";
+            _store.Save(candidate);
+            _options = candidate;
         }
         catch (Exception ex)
         {
+            _display = null;
             // 落盘失败：不能应用主题也不能提示成功（内存不能看起来"已保存"）。
             // 按磁盘重同步内存（磁盘为权威，Task 6 同一策略）；表单字段保留用户输入，
             // 排除占用/权限问题后可直接再点保存，无需重新输入。
@@ -104,6 +108,7 @@ public partial class ConfigWindow : System.Windows.Window
                 // 磁盘也读不回来时只能提示；内存保留当前态，等下一次操作再试。
                 Growl.Warning($"重新读取配置失败：{loadEx.Message}");
             }
+            UpdateDisplayAvailability();
             return;
         }
         App.ApplyTheme(_options.Theme);
@@ -119,6 +124,7 @@ public partial class ConfigWindow : System.Windows.Window
         DisplayErrorText.Text = "";
         try
         {
+            _options = _store.Load();
             _display = ClientDisplayConfiguration.Load(_options.ClientPath);
             DisplayTargetText.Text = _display.ClientPath;
             var choices = ClientDisplayConfiguration.Presets.Select(p => new ResolutionChoice(p.Width, p.Height, p.ToString())).ToList();
@@ -129,7 +135,7 @@ public partial class ConfigWindow : System.Windows.Window
             PresentationBox.SelectedValue = _display.PresentationFilter;
             DisplayRuntimeText.Text = ClientRenderDiagnostic.DescribeLatest(_display.ClientPath);
         }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or JsonException)
         {
             DisplayTargetText.Text = _options.ClientPath;
             DisplayErrorText.Text = "无法读取显示配置：" + ex.Message;
@@ -146,6 +152,20 @@ public partial class ConfigWindow : System.Windows.Window
     {
         if (DisplayEditorPanel is null || _loadingDisplay) return;
         var samePath = ClientDisplayConfiguration.SameClientPath(_options.ClientPath, ClientPathBox.Text);
+        if (_display is not null && samePath)
+        {
+            try
+            {
+                using var authority = _store.AcquireReadLease();
+                ClientDisplayConfiguration.RequireCurrentTarget(authority.Options.ClientPath, _options.ClientPath, ClientPathBox.Text, _display);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or JsonException)
+            {
+                _display = null;
+                DisplayErrorText.Text = "无法确认已保存的客户端路径，请重新打开设置或先保存连接配置：" + ex.Message;
+                DisplaySaveResultText.Text = "";
+            }
+        }
         var ready = _display is not null && samePath;
         DisplayEditorPanel.IsEnabled = ready;
         DisplayReloadButton.IsEnabled = samePath;
@@ -180,12 +200,14 @@ public partial class ConfigWindow : System.Windows.Window
         { UpdateDisplayAvailability(); return; }
         try
         {
-            _display = ClientDisplayConfiguration.Save(_display, choice.Width, choice.Height, mode);
+            _display = ClientDisplayConfiguration.SaveWithAuthority(_store, _display, _options.ClientPath, ClientPathBox.Text, choice.Width, choice.Height, mode);
             DisplaySaveResultText.Text = "已保存显示设置，下次启动游戏生效。";
         }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or JsonException)
         {
             DisplaySaveResultText.Text = "保存失败，原配置未被覆盖：" + ex.Message;
+            _display = null;
+            UpdateDisplayAvailability();
         }
     }
 

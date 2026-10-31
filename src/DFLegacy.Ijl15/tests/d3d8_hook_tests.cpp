@@ -1,6 +1,7 @@
 #include "../src/d3d8_hooks.h"
 #include "../src/d3d8_abi.h"
 #include "../src/window_input_scaling.h"
+#include "../src/diagnostic_delivery.h"
 #include <array>
 #include <cstdio>
 #include <cstring>
@@ -17,6 +18,41 @@ namespace
 {
     int Failures=0;
     void Check(bool result,const char* label){if(!result){++Failures;std::fprintf(stderr,"FAIL: %s\n",label);}}
+    void DiagnosticDelivery()
+    {
+        wchar_t directory[MAX_PATH]{},path[MAX_PATH]{};
+        Check(GetTempPathW(MAX_PATH,directory)!=0&&GetTempFileNameW(directory,L"dfl",0,path)!=0,"diagnostic test owns a unique temporary path");
+        if(!path[0])return;
+        DeleteFileW(path);Check(CreateDirectoryW(path,nullptr)!=FALSE,"directory deliberately blocks file publication");
+        struct Cleanup {const wchar_t* Path;~Cleanup(){DeleteFileW(Path);RemoveDirectoryW(Path);}} cleanup{path};
+        dfl::diagnostics::Delivery delivery;unsigned attempts=0;std::string published;
+        const auto write=[&](const std::string& bytes)
+        {
+            ++attempts;const auto file=CreateFileW(path,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+            if(file==INVALID_HANDLE_VALUE)return false;
+            DWORD written=0;const bool okay=WriteFile(file,bytes.data(),static_cast<DWORD>(bytes.size()),&written,nullptr)&&written==bytes.size();CloseHandle(file);
+            if(okay)published=bytes;return okay;
+        };
+        delivery.Update("first");for(const auto now:{0ULL,10ULL,100ULL,999ULL})delivery.Flush(now,write);
+        Check(attempts==1,"persistently failing destination receives at most one attempt in the first second, including tick zero");
+        delivery.Update("newest");delivery.Flush(1000,write);Check(attempts==2,"failed attempts themselves advance the rate limit");
+        Check(RemoveDirectoryW(path)!=FALSE,"test destination becomes writable without changing security settings");
+        delivery.Flush(1999,write);Check(attempts==2,"destination recovery cannot trigger an early retry");
+        Check(delivery.Flush(2000,write)&&attempts==3&&published=="newest","pending newest status is published after recovery");
+        std::ifstream read(path,std::ios::binary);const std::string actual((std::istreambuf_iterator<char>(read)),{});read.close();
+        Check(actual=="newest","recovery writes actual latest bytes");
+        delivery.Update("newest");delivery.Flush(2001,write);Check(attempts==3,"an unchanged successful record is never rewritten");
+        const auto locked=CreateFileW(path,GENERIC_READ,0,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+        Check(locked!=INVALID_HANDLE_VALUE,"published diagnostic can be exclusively locked");
+        delivery.Update("after-success");delivery.Flush(3000,write);delivery.Flush(3010,write);delivery.Flush(3999,write);
+        Check(attempts==4,"a failed write after an aged successful record is also rate limited");
+        if(locked!=INVALID_HANDLE_VALUE)
+        {
+            char preserved[32]{};DWORD received=0;ReadFile(locked,preserved,sizeof(preserved),&received,nullptr);CloseHandle(locked);
+            Check(std::string(preserved,received)=="newest","a failed locked write leaves the old published bytes intact");
+        }
+        Check(delivery.Flush(4000,write)&&attempts==5&&published=="after-success","unlocking eventually publishes the latest pending record");
+    }
     struct GuardedTable
     {
         void* Allocation=VirtualAlloc(nullptr,8192,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
@@ -34,7 +70,8 @@ namespace
     struct Device
     {
         void** Table=nullptr;void** Identity=nullptr;ULONG References=1;int Tag=0,Destroyed=0,Presents=0,Resets=0,Allocations=0,Draws=0;
-        DWORD LastFilter=0;HRESULT PresentResult=S_OK,ResetResult=S_OK,AllocationResult=S_OK,RestoreResult=S_OK;
+        DWORD LastFilter=0;HRESULT PresentResult=S_OK,ResetResult=S_OK,AllocationResult=S_OK,RestoreResult=S_OK,DrawResult=S_OK,EndResult=S_OK,RestoreTargetResult=S_OK;
+        bool Restoring=false;
         Resource Source{},Target{},Chain{};
         a::Viewport View{0,0,640,480,0,1};
     };
@@ -77,14 +114,16 @@ namespace
     HRESULT WINAPI Stage(void* value,DWORD,DWORD,DWORD filter){auto& d=*static_cast<Device*>(value);d.LastFilter=filter;return static_cast<HRESULT>(d.Tag);}
     HRESULT WINAPI One(void*,DWORD){return S_OK;}
     HRESULT WINAPI None(void*){return S_OK;}
-    HRESULT WINAPI SetTarget(void*,void*,void*){return S_OK;}
+    HRESULT WINAPI Begin(void* value){static_cast<Device*>(value)->Restoring=false;return S_OK;}
+    HRESULT WINAPI End(void* value){auto& d=*static_cast<Device*>(value);d.Restoring=true;return d.EndResult;}
+    HRESULT WINAPI SetTarget(void* value,void*,void*){auto& d=*static_cast<Device*>(value);return d.Restoring?d.RestoreTargetResult:S_OK;}
     HRESULT WINAPI SetTexture(void*,DWORD,void*){return S_OK;}
     HRESULT WINAPI SetStream(void*,UINT,void*,UINT){return S_OK;}
     HRESULT WINAPI SetIndices(void*,void*,UINT){return S_OK;}
     HRESULT WINAPI Block(void*,DWORD,DWORD* output){*output=1;return S_OK;}
     HRESULT WINAPI Apply(void* value,DWORD){return static_cast<Device*>(value)->RestoreResult;}
     HRESULT WINAPI Copy(void*,void*,const RECT*,UINT,void*,const POINT*){return S_OK;}
-    HRESULT WINAPI Draw(void* value,DWORD,UINT,const void*,UINT){++static_cast<Device*>(value)->Draws;return S_OK;}
+    HRESULT WINAPI Draw(void* value,DWORD,UINT,const void*,UINT){auto& d=*static_cast<Device*>(value);++d.Draws;return d.DrawResult;}
     HRESULT WINAPI Present(void* value,const RECT*,const RECT*,HWND,const RGNDATA*)
     {auto& d=*static_cast<Device*>(value);++d.Presents;return d.PresentResult;}
     HRESULT WINAPI Reset(void* value,a::PresentationParameters*)
@@ -103,7 +142,7 @@ namespace
         t[13]=reinterpret_cast<void*>(&Chain);t[14]=reinterpret_cast<void*>(&Reset);t[15]=reinterpret_cast<void*>(&Present);
         t[16]=reinterpret_cast<void*>(&BackBuffer);t[20]=reinterpret_cast<void*>(&Texture);t[28]=reinterpret_cast<void*>(&Copy);
         t[31]=reinterpret_cast<void*>(&SetTarget);t[32]=reinterpret_cast<void*>(&Target);t[33]=reinterpret_cast<void*>(&Depth);
-        t[34]=reinterpret_cast<void*>(&None);t[35]=reinterpret_cast<void*>(&None);t[40]=reinterpret_cast<void*>(&SetView);t[41]=reinterpret_cast<void*>(&GetView);
+        t[34]=reinterpret_cast<void*>(&Begin);t[35]=reinterpret_cast<void*>(&End);t[40]=reinterpret_cast<void*>(&SetView);t[41]=reinterpret_cast<void*>(&GetView);
         t[50]=reinterpret_cast<void*>(&State);t[54]=reinterpret_cast<void*>(&Apply);t[56]=reinterpret_cast<void*>(&One);t[57]=reinterpret_cast<void*>(&Block);
         t[61]=reinterpret_cast<void*>(&SetTexture);t[63]=reinterpret_cast<void*>(&Stage);t[72]=reinterpret_cast<void*>(&Draw);
         t[76]=reinterpret_cast<void*>(&One);t[83]=reinterpret_cast<void*>(&SetStream);t[84]=reinterpret_cast<void*>(&Stream);
@@ -180,6 +219,14 @@ namespace
         d1.AllocationResult=S_OK;a::Call<HRESULT>(&d1,14,&pp);d1.RestoreResult=E_FAIL;
         Check(Frame(d1)==E_FAIL&&d1.Presents==1,"state restore failure never concealed as original presentation");
         d1.RestoreResult=S_OK;a::Call<HRESULT>(&d1,14,&pp);
+        const auto originalPresents=d1.Presents;
+        d1.DrawResult=a::DeviceLost;d1.RestoreResult=a::InvalidCall;
+        Check(Frame(d1)==a::DeviceLost&&d1.Presents==originalPresents,"draw loss takes precedence over a generic restoration failure without fallback Present");
+        d1.DrawResult=E_FAIL;d1.RestoreResult=S_OK;d1.EndResult=a::DeviceLost;a::Call<HRESULT>(&d1,14,&pp);
+        Check(Frame(d1)==a::DeviceLost&&d1.Presents==originalPresents,"EndScene device loss cannot be erased by an earlier generic draw failure");
+        d1.DrawResult=S_OK;d1.EndResult=S_OK;d1.RestoreTargetResult=E_FAIL;d1.RestoreResult=a::DeviceNotReset;a::Call<HRESULT>(&d1,14,&pp);
+        Check(Frame(d1)==a::DeviceNotReset&&d1.Presents==originalPresents,"later restoration loss takes precedence over the first generic restoration error");
+        d1.RestoreTargetResult=S_OK;d1.RestoreResult=S_OK;d1.Presents=originalPresents;a::Call<HRESULT>(&d1,14,&pp);
         const RECT source{0,0,320,240};
         Check(a::Call<HRESULT>(&d1,15,&source,static_cast<const RECT*>(nullptr),static_cast<HWND>(nullptr),static_cast<const RGNDATA*>(nullptr))==S_OK&&d1.Presents==2,"unsupported Present arguments use explicit fallback");
         ShowWindow(window,SW_MINIMIZE);const int before=d1.Allocations;d1.PresentResult=a::DeviceLost;
@@ -228,6 +275,6 @@ int wmain(int argc,wchar_t** argv)
     }
     WNDCLASSW cls{};cls.lpfnWndProc=DefWindowProcW;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"DFLegacy.Hook.Fixture";RegisterClassW(&cls);
     const auto window=CreateWindowExW(WS_EX_NOACTIVATE,cls.lpszClassName,L"DFLegacy hook test",WS_POPUP,0,0,800,600,nullptr,nullptr,cls.hInstance,nullptr);
-    if(!window)return 2;Config();Hooks(window);DestroyWindow(window);
+    if(!window)return 2;DiagnosticDelivery();Config();Hooks(window);DestroyWindow(window);
     std::printf("D3D8 native configuration and lifecycle fixtures: %d failures\n",Failures);return Failures?1:0;
 }

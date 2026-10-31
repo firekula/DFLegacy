@@ -6,6 +6,7 @@
 namespace
 {
     namespace a = dfl::d3d8;
+    bool Lost(HRESULT hr) noexcept {return hr==a::DeviceLost||hr==a::DeviceNotReset;}
     struct Reference
     {
         void* Value = nullptr;
@@ -76,7 +77,7 @@ namespace dfl::d3d8_presenter
             HRESULT Restore()
             {
                 HRESULT result=S_OK;
-                const auto keep=[&](HRESULT hr){if(FAILED(hr)&&SUCCEEDED(result))result=hr;};
+                const auto keep=[&](HRESULT hr){if(FAILED(hr)&&!Lost(result)&&(SUCCEEDED(result)||Lost(hr)))result=hr;};
                 keep(Owner.D(31,Target.Value,Depth.Value));
                 keep(Owner.D(54,Block));
                 keep(Owner.D(40,&View));
@@ -94,7 +95,7 @@ namespace dfl::d3d8_presenter
             constexpr std::pair<DWORD,DWORD> states[]={{7,0},{8,3},{9,2},{14,0},{15,0},{19,2},{20,1},{22,1},{26,0},
                 {27,0},{28,0},{52,0},{128,0},{136,0},{137,0},{152,0},{161,0},{168,15}};
             for(const auto& state:states){hr=D(50,state.first,state.second);if(FAILED(hr))return hr;}
-            constexpr std::pair<DWORD,DWORD> stage[]={{1,2},{2,2},{4,2},{5,2},{11,0},{13,3},{14,3},{18,0},{24,0}};
+            constexpr std::pair<DWORD,DWORD> stage[]={{1,2},{2,2},{4,2},{5,2},{11,0},{13,3},{14,3},{18,0},{24,0},{28,1}};
             for(const auto& state:stage){hr=D(63,DWORD(0),state.first,state.second);if(FAILED(hr))return hr;}
             hr=D(63,DWORD(1),DWORD(1),DWORD(1));if(FAILED(hr))return hr;
             return D(63,DWORD(1),DWORD(4),DWORD(1));
@@ -155,8 +156,10 @@ namespace dfl::d3d8_presenter
                     plan.IntermediateAllocationWidth,plan.IntermediateAllocationHeight,plan.Width,plan.Height,true)
                     :Draw(target,SourceTexture.Value,640,480,plan.SourceAllocationWidth,plan.SourceAllocationHeight,plan.Width,plan.Height,plan.Filter==presentation::Mode::Linear);
             }
-            const HRESULT ended=D(35);if(SUCCEEDED(hr)&&FAILED(ended)){hr=ended;stage="end-scene";}
-            const HRESULT restored=saved.Restore();if(FAILED(restored))return {restored,restored,"restore"};
+            const HRESULT ended=D(35);
+            if(FAILED(ended)&&(SUCCEEDED(hr)||(!Lost(hr)&&Lost(ended)))){hr=ended;stage="end-scene";}
+            const HRESULT restored=saved.Restore();
+            if(FAILED(restored))return {Lost(hr)?hr:restored,restored,Lost(hr)?stage:"restore"};
             return {hr,S_OK,SUCCEEDED(hr)?"ok":stage};
         }
     };

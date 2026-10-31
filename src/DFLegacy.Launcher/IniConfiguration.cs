@@ -40,7 +40,17 @@ internal sealed class IniConfiguration
         return new(bytes, Encoding.Latin1, []);
     }
 
-    internal bool HasSection => Regex.IsMatch(_text, @"(?m)^\s*\[[^\]\r\n]+\]\s*\r?$", RegexOptions.CultureInvariant);
+    // Win32 ends the name at the first ']' (or end of line), not at the
+    // end of a commented header. Only native ASCII padding is insignificant.
+    private static string? SectionName(string content)
+    {
+        var line = content.TrimStart(' ', '\t');
+        if (!line.StartsWith('[')) return null;
+        var end = line.IndexOf(']', 1);
+        return line[1..(end < 0 ? line.Length : end)].Trim(' ', '\t');
+    }
+
+    internal bool HasSection => Regex.Split(_text, "\r\n|\n|\r").Any(line => SectionName(line) is { Length: > 0 });
 
     internal byte[] With(params IniValue[] updates)
     {
@@ -55,18 +65,19 @@ internal sealed class IniConfiguration
             var firstHasKey = false;
             for (var i = 0; i < parts.Length; i += 2)
             {
-                var line = parts[i].Trim();
-                if (line.StartsWith('[') && line.EndsWith(']'))
+                var line = parts[i].Trim(' ', '\t');
+                var section = SectionName(parts[i]);
+                if (section is not null)
                 {
                     sectionStart = i;
-                    inSection = line[1..^1].Trim().Equals(update.Section, StringComparison.OrdinalIgnoreCase);
+                    inSection = section.Equals(update.Section, StringComparison.OrdinalIgnoreCase);
                     if (inSection && firstSection < 0) firstSection = i;
                     continue;
                 }
                 if (!inSection || line.StartsWith(';') || line.StartsWith('#')) continue;
                 var equals = parts[i].IndexOf('=');
-                if (equals < 0 || !parts[i][..equals].Trim().Equals(update.Key, StringComparison.OrdinalIgnoreCase)) continue;
-                if (!parts[i][(equals + 1)..].Trim().Equals(update.Value, StringComparison.Ordinal))
+                if (equals < 0 || !parts[i][..equals].Trim(' ', '\t').Equals(update.Key, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!parts[i][(equals + 1)..].Trim(' ', '\t').Equals(update.Value, StringComparison.Ordinal))
                     parts[i] = parts[i][..(equals + 1)] + update.Value;
                 // First section stops at its next header, including another section with the same name.
                 if (sectionStart == firstSection) firstHasKey = true;

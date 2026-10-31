@@ -30,6 +30,9 @@
     <ClInclude Include="src\d3d8_hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\diagnostic_delivery.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\pe_import.h">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -29,7 +29,7 @@ internal static class ClientDisplayConfiguration
         var height = Math.Clamp(unchecked((int)GetPrivateProfileInt("Resolution", "Height", 600, path)), 480, 8192);
         var value = new StringBuilder(64);
         GetPrivateProfileString("Rendering", "PresentationFilter", "legacy", value, value.Capacity, path);
-        var mode = value.ToString().Trim().ToLowerInvariant();
+        var mode = value.ToString().Trim(' ', '\t').ToLowerInvariant();
         if (!IsMode(mode)) mode = "legacy";
         return new(client, path, document.OriginalBytes, width, height, mode);
     }
@@ -55,6 +55,21 @@ internal static class ClientDisplayConfiguration
             new("Rendering", "PresentationFilter", mode));
         IniConfiguration.SaveExpected(snapshot.ConfigPath, snapshot.OriginalBytes, output);
         return snapshot with { OriginalBytes = output, Width = width, Height = height, PresentationFilter = mode };
+    }
+
+    internal static void RequireCurrentTarget(string persistedPath, string cachedPath, string editedPath, ClientDisplaySnapshot snapshot)
+    {
+        if (!SameClientPath(persistedPath, cachedPath) || !SameClientPath(persistedPath, editedPath)
+            || !SameClientPath(persistedPath, snapshot.ClientPath))
+            throw new InvalidDataException("已保存的客户端路径或显示目标已经变化，请重新打开设置并确认连接路径。");
+    }
+
+    internal static ClientDisplaySnapshot SaveWithAuthority(LauncherAccountStore store, ClientDisplaySnapshot snapshot,
+        string cachedPath, string editedPath, int width, int height, string mode)
+    {
+        using var lease = store.AcquireReadLease();
+        RequireCurrentTarget(lease.Options.ClientPath, cachedPath, editedPath, snapshot);
+        return Save(snapshot, width, height, mode);
     }
 
     internal static bool SameClientPath(string savedPath, string editedPath)
