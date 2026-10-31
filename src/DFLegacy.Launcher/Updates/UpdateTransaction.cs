@@ -111,7 +111,10 @@ internal static class UpdateTransaction
                 foreach(var name in UpdateSafety.Names)
                 {
                     var path=Path.Combine(target,name); var original=new UpdateFile(name,UpdateSafety.Hash(path),new FileInfo(path).Length);
-                    File.Copy(path,Path.Combine(backup,name));
+                    // Backup data must reach disk before either durable recovery record.
+                    using(var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
+                    using(var output=new FileStream(Path.Combine(backup,name),FileMode.CreateNew,FileAccess.Write,FileShare.None))
+                    { input.CopyTo(output); output.Flush(true); }
                     if(!Matches(Path.Combine(backup,name),original)) throw new IOException("更新备份未通过校验。");
                     originals.Add(original);
                 }
@@ -134,7 +137,11 @@ internal static class UpdateTransaction
             bool restarted;
             try { restarted=restart(Path.Combine(target,"DFLegacy.Launcher.exe")); } catch { restarted=false; }
             var result=new UpdateApplyResult(true,restarted,restarted?"更新完成。":"更新已完成，但自动重启失败；请手动启动登录器。备份已保留。",backup);
-            WriteJson(Path.Combine(stateDirectory,"last-result.json"),result);
+            // The binaries and release state have committed. A receipt failure cannot
+            // undo that outcome or change whether the restart actually succeeded.
+            try { WriteJson(Path.Combine(stateDirectory,"last-result.json"),result); }
+            catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or ArgumentException)
+            { result=result with { Message=result.Message+" 更新结果记录未能保存；已安装版本与上述重启结果不受影响。" }; }
             return result;
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or ArgumentException)

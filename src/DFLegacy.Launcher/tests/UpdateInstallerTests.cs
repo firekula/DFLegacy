@@ -41,6 +41,26 @@ internal static class UpdateInstallerTests
         var duplicate=Installation(root); Directory.CreateDirectory(Path.Combine(duplicate,".dflegacy"));
         using(var exclusive=new FileStream(Path.Combine(duplicate,".dflegacy","update.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None))
         { result=UpdateTransaction.Apply(duplicate,prepared,_=>true); check(!result.Success && Old(duplicate),"exclusive updater lock rejects simultaneous installation"); }
+        foreach(var restartSucceeded in new[]{true,false})
+        {
+            var receiptLocked=Installation(root); var metadata=Path.Combine(receiptLocked,".dflegacy"); Directory.CreateDirectory(metadata);
+            var resultPath=Path.Combine(metadata,"last-result.json"); File.WriteAllText(resultPath,"previous receipt");
+            var restartCalls=0;
+            using(var resultLock=new FileStream(resultPath,FileMode.Open,FileAccess.Read,FileShare.Read))
+            {
+                result=UpdateTransaction.Apply(receiptLocked,prepared,_=>{ restartCalls++; return restartSucceeded; });
+                check(result.Success && result.Restarted==restartSucceeded && restartCalls==1,
+                    "locked result receipt preserves committed install and actual restart outcome: "+restartSucceeded);
+                check(File.ReadAllText(Path.Combine(receiptLocked,"DFLegacy.Launcher.exe"))=="new executable" && File.ReadAllText(Path.Combine(receiptLocked,"ijl15.dll"))=="new dll" &&
+                    new UpdateInstaller(receiptLocked).ReadState()?.ReleaseId==7 && !File.Exists(Path.Combine(metadata,"pending.json")),
+                    "locked result receipt does not roll back committed binaries or state");
+                check(result.BackupDirectory!=null && File.ReadAllText(Path.Combine(result.BackupDirectory,"ijl15.dll"))=="old dll",
+                    "locked result receipt retains recovery backup");
+                check(File.ReadAllText(resultPath)=="previous receipt" && result.Message.Contains("记录"),
+                    "locked result receipt preserves old receipt and reports metadata warning");
+                Console.WriteLine($"Result receipt lock: restartRequested={restartSucceeded}; Success={result.Success}; Restarted={result.Restarted}; restartCalls={restartCalls}");
+            }
+        }
         File.AppendAllText(Path.Combine(prepared.Directory,"ijl15.dll"),"tampered"); var tampered=Installation(root);
         result=UpdateTransaction.Apply(tampered,prepared,_=>true); check(!result.Success && Old(tampered),"modified stage rejected before writing target");
         Console.WriteLine("Update installer tests completed");
