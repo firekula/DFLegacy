@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 #include "../src/presentation_scaling.h"
 
 int main()
@@ -10,6 +11,9 @@ int main()
     const auto small = MakePlan(640, 480, Mode::Sharp, modern);
     check(small.Supported && !small.UseIntermediate && small.Factor == 1, "native size is a direct point copy");
     const auto sharp = MakePlan(800, 600, Mode::Sharp, modern);
+    const auto virtualized=MakeWindowPlan(800,600,1000,750,Mode::Sharp,modern);
+    check(!virtualized.Supported&&std::strcmp(virtualized.Reason,"dpi-virtualized")==0,"DPI virtualization cannot silently add a second system stretch");
+    check(MakeWindowPlan(800,600,800,600,Mode::Sharp,modern).Supported,"physical pixel window uses the requested enhanced output");
     check(sharp.Supported && sharp.UseIntermediate && sharp.Factor == 2 && sharp.IntermediateWidth == 1280 && sharp.IntermediateHeight == 960,
         "800 sharp uses a 1280x960 nearest intermediate");
     const auto fractional = MakePlan(1024, 768, Mode::Sharp, modern);
@@ -35,6 +39,6 @@ int main()
     check(ParseMode(nullptr) == Mode::Legacy && ParseMode("unknown") == Mode::Legacy, "missing and unknown keys preserve legacy mode");
     check(ParseMode(" SHARP ") == Mode::Sharp && ParseMode("point") == Mode::Point && ParseMode("linear") == Mode::Linear,
         "managed/native mode spellings agree");
-    if (failed == 0) std::puts("Presentation scaling policy: 15 checks passed");
+    if (failed == 0) std::puts("Presentation scaling policy: 17 checks passed");
     return failed == 0 ? 0 : 1;
 }

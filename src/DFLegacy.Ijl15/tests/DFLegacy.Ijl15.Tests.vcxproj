@@ -122,6 +122,9 @@
     <ClCompile Include="..\src\external_string_table.cpp" />
     <ClCompile Include="..\src\ijl15_config.cpp" />
     <ClCompile Include="..\src\presentation_scaling.cpp" />
+    <ClCompile Include="..\src\d3d8_hooks.cpp" />
+    <ClCompile Include="..\src\d3d8_presenter.cpp" />
+    <ClCompile Include="..\src\window_input_scaling.cpp" />
     <ClCompile Include="..\src\memory_patch.cpp" />
     <ClCompile Include="..\src\net_dump.cpp" />
     <ClCompile Include="..\src\output_paths.cpp" />

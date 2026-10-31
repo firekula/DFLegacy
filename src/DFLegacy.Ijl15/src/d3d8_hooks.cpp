@@ -49,11 +49,15 @@ namespace
     struct DeviceContext
     {
         void* Device;
+        void** Identity;
         std::array<void*,a::DeviceMethods> Original{};
         std::vector<void*> Clone;
         Options Policy;
+        std::recursive_mutex Gate;
         HWND Window;
-        bool Windowed,Disabled=false;
+        bool Windowed,Disabled=false,FixedFrame=false;
+        const char* DisabledReason="unsupported";
+        HRESULT DisabledStatus=E_FAIL;
         a::Caps Caps{};
         dfl::d3d8_presenter::Presenter Presenter;
         Reference Chain,Output;
@@ -64,7 +68,7 @@ namespace
         unsigned WarmFrames=0,SampleCount=0,ChainCreations=0,MeasuredChainCreations=0;
         std::array<std::uint64_t,256> Preparation{},Intervals{};
         std::uint64_t PreparationP50=0,PreparationP95=0,PreparationPeak=0,IntervalP50=0,IntervalP95=0,IntervalPeak=0;
-        DeviceContext(void* device,const Options& policy,HWND window,bool windowed):Device(device),Policy(policy),Window(window),Windowed(windowed),Presenter(device,Original.data())
+        DeviceContext(void* device,const Options& policy,HWND window,bool windowed):Device(device),Identity(*static_cast<void***>(device)),Policy(policy),Window(window),Windowed(windowed),Presenter(device,Original.data())
         {
             std::memcpy(Original.data(),*static_cast<void***>(device),sizeof(Original));Clone=CloneTable(device,a::DeviceMethods);
             a::CallTable<HRESULT>(Device,Original.data(),7,&Caps);
@@ -75,10 +79,12 @@ namespace
     };
     struct FactoryContext
     {
+        void** Identity;
         std::array<void*,a::FactoryMethods> Original{};
         std::vector<void*> Clone;
         Options Policy;
-        FactoryContext(void* factory,const Options& policy):Policy(policy)
+        std::recursive_mutex Gate;
+        FactoryContext(void* factory,const Options& policy):Identity(*static_cast<void***>(factory)),Policy(policy)
         {std::memcpy(Original.data(),*static_cast<void***>(factory),sizeof(Original));Clone=CloneTable(factory,a::FactoryMethods);}
     };
     std::mutex ContextMutex,DiagnosticMutex;
@@ -102,6 +108,12 @@ namespace
         DWORD old=0;if(!VirtualProtect(object,sizeof(void*),PAGE_READWRITE,&old))return false;
         *static_cast<void***>(object)=replacement;DWORD ignored=0;VirtualProtect(object,sizeof(void*),old,&ignored);return true;
     }
+    template<class T> struct OriginalObject
+    {
+        void* Object;T& Context;bool Valid,Alive=true;
+        OriginalObject(void* object,T& context):Object(object),Context(context),Valid(Replace(object,context.Identity)){}
+        ~OriginalObject(){if(Valid&&Alive)Replace(Object,Context.Clone.data());}
+    };
     bool Lost(HRESULT hr){return hr==a::DeviceLost||hr==a::DeviceNotReset;}
     void Observe(DeviceContext& c,LARGE_INTEGER started)
     {
@@ -161,14 +173,18 @@ namespace
     {return c.Call(15,source,target,window,dirty);}
     HRESULT Fallback(DeviceContext& c,const char* reason,HRESULT hr,const RECT* source,const RECT* target,HWND window,const RGNDATA* dirty,const p::Plan* plan=nullptr,bool disable=false)
     {
-        c.Clear();c.Disabled=disable;Record(c,"original-fallback",reason,hr,plan);
-        return OriginalPresent(c,source,target,window,dirty);
+        c.Clear();c.Disabled=disable;c.DisabledReason=reason;c.DisabledStatus=hr;Record(c,"original-fallback",reason,hr,plan);
+        const HRESULT native=OriginalPresent(c,source,target,window,dirty);
+        if(Lost(native))Record(c,"device-lost","original-present",native,plan);
+        return native;
     }
     HRESULT WINAPI PresentProxy(void* device,const RECT* source,const RECT* target,HWND overrideWindow,const RGNDATA* dirty)
     {
         const auto lease=FindDevice(device);if(!lease)return E_FAIL;auto& c=*lease;
         if(InternalDepth)return OriginalPresent(c,source,target,overrideWindow,dirty);
         Internal guard;
+        std::lock_guard<std::recursive_mutex> lock(c.Gate);
+        OriginalObject original(device,c);if(!original.Valid)return E_FAIL;
         LARGE_INTEGER started{};QueryPerformanceCounter(&started);
         Record(c,nullptr,nullptr,S_OK); // Flush a throttled transition even after permanent fallback.
         if(c.Policy.Filter==p::Mode::Legacy)
@@ -176,21 +192,38 @@ namespace
             RECT client{};if(GetClientRect(c.Window,&client)){c.Width=static_cast<UINT>(client.right);c.Height=static_cast<UINT>(client.bottom);}
             Observe(c,started);Record(c,"legacy",c.Policy.InvalidMode?"unknown-mode":"legacy",S_OK);return OriginalPresent(c,source,target,overrideWindow,dirty);
         }
-        if(c.Disabled)return OriginalPresent(c,source,target,overrideWindow,dirty);
+        if(c.Disabled)
+        {
+            const HRESULT native=OriginalPresent(c,source,target,overrideWindow,dirty);
+            Record(c,Lost(native)?"device-lost":"original-fallback",Lost(native)?"original-present":c.DisabledReason,Lost(native)?native:c.DisabledStatus);
+            return native;
+        }
         if(!c.Windowed||source||target||dirty||(overrideWindow&&overrideWindow!=c.Window))
             return Fallback(c,"present-arguments",a::InvalidCall,source,target,overrideWindow,dirty);
         RECT client{};
         if(!IsWindow(c.Window)||!GetClientRect(c.Window,&client))return Fallback(c,"window",E_INVALIDARG,source,target,overrideWindow,dirty);
         if(IsIconic(c.Window)||client.right<=0||client.bottom<=0)
-        {Record(c,"original-fallback","minimized",S_OK);return OriginalPresent(c,source,target,overrideWindow,dirty);}
+        {
+            const HRESULT native=OriginalPresent(c,source,target,overrideWindow,dirty);
+            if(Lost(native))c.Clear();Record(c,Lost(native)?"device-lost":"original-fallback","minimized",native);return native;
+        }
         const p::Capabilities caps{c.Caps.MaxTextureWidth,c.Caps.MaxTextureHeight,(c.Caps.TextureCaps&2U)!=0,(c.Caps.TextureCaps&32U)!=0};
-        const auto plan=p::MakePlan(static_cast<UINT>(client.right),static_cast<UINT>(client.bottom),c.Policy.Filter,caps);
+        using PhysicalPoint=BOOL(WINAPI*)(HWND,LPPOINT);
+        static const auto physical=[]()
+        {
+            const auto user=GetModuleHandleW(L"user32.dll");auto proc=GetProcAddress(user,"LogicalToPhysicalPointForPerMonitorDPI");
+            if(!proc)proc=GetProcAddress(user,"LogicalToPhysicalPoint");return reinterpret_cast<PhysicalPoint>(proc);
+        }();
+        POINT first{0,0},last{client.right,client.bottom};
+        if(!physical||!ClientToScreen(c.Window,&first)||!ClientToScreen(c.Window,&last)||!physical(c.Window,&first)||!physical(c.Window,&last))
+            return Fallback(c,"window-coordinates",E_FAIL,source,target,overrideWindow,dirty);
+        const auto plan=p::MakeWindowPlan(static_cast<UINT>(client.right),static_cast<UINT>(client.bottom),static_cast<UINT>(last.x-first.x),static_cast<UINT>(last.y-first.y),c.Policy.Filter,caps);
         if(!plan.Supported)return Fallback(c,plan.Reason,a::InvalidCall,source,target,overrideWindow,dirty,&plan);
         Reference input;HRESULT hr=c.Call(16,UINT(0),DWORD(0),&input.Value);
         if(FAILED(hr))
         {if(Lost(hr)){c.Clear();Record(c,"device-lost","backbuffer",hr,&plan);return hr;}return Fallback(c,"backbuffer",hr,source,target,overrideWindow,dirty,&plan,true);}
         a::SurfaceDescription description{};hr=a::Call<HRESULT>(input.Value,8,&description);
-        if(SUCCEEDED(hr)&&(description.Width!=640||description.Height!=480))hr=a::InvalidCall;
+        if(SUCCEEDED(hr)){c.FixedFrame=description.Width==640&&description.Height==480;if(!c.FixedFrame)hr=a::InvalidCall;}
         if(FAILED(hr))
         {if(Lost(hr)){c.Clear();Record(c,"device-lost","backbuffer-layout",hr,&plan);return hr;}return Fallback(c,"backbuffer-layout",hr,source,target,overrideWindow,dirty,&plan,true);}
         if(!c.Chain.Value||c.Width!=plan.Width||c.Height!=plan.Height||c.Format!=description.Format)
@@ -221,8 +254,10 @@ namespace
     {
         const auto lease=FindDevice(device);if(!lease)return E_FAIL;auto& c=*lease;
         if(InternalDepth)return c.Call(14,pp);
-        Internal guard;c.Clear();const HRESULT hr=c.Call(14,pp);
-        if(SUCCEEDED(hr)&&pp){c.Windowed=pp->Windowed!=FALSE;if(pp->DeviceWindow)c.Window=pp->DeviceWindow;c.Disabled=false;}
+        Internal guard;std::lock_guard<std::recursive_mutex> lock(c.Gate);
+        OriginalObject original(device,c);if(!original.Valid)return E_FAIL;
+        c.Clear();const HRESULT hr=c.Call(14,pp);
+        if(SUCCEEDED(hr)&&pp){c.Windowed=pp->Windowed!=FALSE;if(pp->DeviceWindow)c.Window=pp->DeviceWindow;c.FixedFrame=pp->BackBufferWidth==640&&pp->BackBufferHeight==480;c.Disabled=false;}
         else if(FAILED(hr))Record(c,"device-lost","reset",hr);
         return hr;
     }
@@ -230,9 +265,19 @@ namespace
     {
         const auto lease=FindDevice(device);if(!lease)return 0;auto& c=*lease;
         if(InternalDepth)return c.Call<ULONG>(2);
-        Internal guard;c.Clear();const ULONG count=c.Call<ULONG>(2);
-        if(!count)Erase(Devices,device,lease);
+        Internal guard;std::lock_guard<std::recursive_mutex> lock(c.Gate);
+        OriginalObject original(device,c);if(!original.Valid)return 0;
+        c.Clear();const ULONG count=c.Call<ULONG>(2);
+        if(!count){original.Alive=false;Erase(Devices,device,lease);}
         return count; // lease keeps the executing clone/context alive until after the driver returns.
+    }
+    HRESULT WINAPI DeviceQuery(void* device,const GUID* iid,void** output)
+    {
+        const auto lease=FindDevice(device);if(!lease)return E_FAIL;auto& c=*lease;
+        if(InternalDepth)return c.Call(0,iid,output);
+        Internal guard;std::lock_guard<std::recursive_mutex> lock(c.Gate);
+        OriginalObject original(device,c);if(!original.Valid)return E_FAIL;
+        return c.Call(0,iid,output);
     }
     HRESULT WINAPI StageProxy(void* device,DWORD stage,DWORD type,DWORD value)
     {
@@ -253,7 +298,8 @@ namespace
         {
             if(!device)return false;if(Find(Devices,device))return true;
             auto context=std::make_shared<DeviceContext>(device,policy,pp&&pp->DeviceWindow?pp->DeviceWindow:focus,pp&&pp->Windowed);
-            context->Clone[2]=reinterpret_cast<void*>(&ReleaseProxy);context->Clone[14]=reinterpret_cast<void*>(&ResetProxy);
+            context->FixedFrame=pp&&pp->BackBufferWidth==640&&pp->BackBufferHeight==480;
+            context->Clone[0]=reinterpret_cast<void*>(&DeviceQuery);context->Clone[2]=reinterpret_cast<void*>(&ReleaseProxy);context->Clone[14]=reinterpret_cast<void*>(&ResetProxy);
             context->Clone[15]=reinterpret_cast<void*>(&PresentProxy);context->Clone[63]=reinterpret_cast<void*>(&StageProxy);
             std::lock_guard<std::mutex> lock(ContextMutex);
             const auto inserted=Devices.emplace(device,context);
@@ -265,7 +311,11 @@ namespace
     HRESULT WINAPI CreateProxy(void* factory,UINT adapter,DWORD type,HWND focus,DWORD flags,a::PresentationParameters* pp,void** device)
     {
         const auto context=Find(Factories,factory);if(!context)return E_FAIL;
+        std::lock_guard<std::recursive_mutex> lock(context->Gate);
+        OriginalObject original(factory,*context);if(!original.Valid)return E_FAIL;
+        OutputDebugStringA("DFLegacy: entering hooked D3D8 CreateDevice.\n");
         const HRESULT hr=a::CallTable<HRESULT>(factory,context->Original.data(),15,adapter,type,focus,flags,pp,device);
+        OutputDebugStringA(SUCCEEDED(hr)?"DFLegacy: original D3D8 CreateDevice succeeded.\n":"DFLegacy: original D3D8 CreateDevice failed.\n");
         if(SUCCEEDED(hr)&&device&&*device&&!AttachDevice(*device,context->Policy,focus,pp))
             OutputDebugStringA("DFLegacy: D3D8 presentation hook failed; original device retained.\n");
         return hr;
@@ -273,19 +323,38 @@ namespace
     ULONG WINAPI FactoryRelease(void* factory)
     {
         const auto context=Find(Factories,factory);if(!context)return 0;
+        std::lock_guard<std::recursive_mutex> lock(context->Gate);
+        OriginalObject original(factory,*context);if(!original.Valid)return 0;
         const ULONG count=a::CallTable<ULONG>(factory,context->Original.data(),2);
-        if(!count)Erase(Factories,factory,context);return count;
+        if(!count){original.Alive=false;Erase(Factories,factory,context);}return count;
+    }
+    HRESULT WINAPI FactoryQuery(void* factory,const GUID* iid,void** output)
+    {
+        const auto context=Find(Factories,factory);if(!context)return E_FAIL;
+        std::lock_guard<std::recursive_mutex> lock(context->Gate);
+        OriginalObject original(factory,*context);if(!original.Valid)return E_FAIL;
+        return a::CallTable<HRESULT>(factory,context->Original.data(),0,iid,output);
     }
 }
 namespace dfl::d3d8_hooks
 {
+    bool UsesFixedFrameInput(HWND window) noexcept
+    {
+        std::lock_guard<std::mutex> lock(ContextMutex);
+        for(const auto& entry:Devices)
+        {
+            const auto& context=*entry.second;
+            if(context.Window==window&&context.Windowed&&context.FixedFrame&&context.Policy.Filter!=p::Mode::Legacy)return true;
+        }
+        return false;
+    }
     bool AttachFactory(void* factory,const Options& options) noexcept
     {
         try
         {
             if(!factory||!*static_cast<void***>(factory))return false;if(Find(Factories,factory))return true;
             auto context=std::make_shared<FactoryContext>(factory,options);
-            context->Clone[2]=reinterpret_cast<void*>(&FactoryRelease);context->Clone[15]=reinterpret_cast<void*>(&CreateProxy);
+            context->Clone[0]=reinterpret_cast<void*>(&FactoryQuery);context->Clone[2]=reinterpret_cast<void*>(&FactoryRelease);context->Clone[15]=reinterpret_cast<void*>(&CreateProxy);
             std::lock_guard<std::mutex> lock(ContextMutex);
             const auto inserted=Factories.emplace(factory,context);
             if(!inserted.second)return true;

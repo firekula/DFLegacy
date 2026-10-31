@@ -130,7 +130,7 @@ def windows(version, commit):
     # Tar transport keeps the immutable assets together. All receivers verify it.
     make_archive(assets, REPO / "artifacts/client-assets.tar.gz", "linux-x64")
     _, archive = publish("win-x64", version, commit, assets, REPO / "artifacts" / ("DFLegacy-" + version + "-win-x64"),
-                         verification="Windows x64 CI: managed/native tests and packaged Manager health/readiness; no graphical game acceptance")
+                         verification="Windows x64 CI: managed/native tests and packaged Manager health/readiness; GPU and graphical game acceptance are not executed in headless CI")
     smoke_archive(archive)
 
 

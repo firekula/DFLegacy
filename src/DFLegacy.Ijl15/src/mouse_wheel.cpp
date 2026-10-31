@@ -10,6 +10,7 @@
 
 #include "memory_patch.h"
 #include "mouse_wheel.h"
+#include "window_input_scaling.h"
 
 namespace
 {
@@ -614,6 +615,7 @@ namespace
         {
             return false;
         }
+        dfl::window_input_scaling::ClientToLogical(message.hwnd,cursor);
 
         const int x = static_cast<int>(cursor.x)
             + ReadCoordinateOffset(MouseCoordinateXOffset);

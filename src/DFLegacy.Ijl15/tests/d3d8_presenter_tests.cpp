@@ -211,6 +211,17 @@ int main()
             Ref back;Check(SUCCEEDED(a::Call<HRESULT>(hooked.Value,16,UINT(0),DWORD(0),&back.Value)),"hooked original backbuffer still available");
             a::SurfaceDescription main{};a::Call<HRESULT>(back.Value,8,&main);Check(main.Width==640&&main.Height==480,"hook never rewrites main device logical geometry");
         }
+        ShowWindow(window,SW_SHOWMINNOACTIVE);
+        const auto minimized=a::Call<HRESULT>(hooked.Value,15,static_cast<const RECT*>(nullptr),static_cast<const RECT*>(nullptr),static_cast<HWND>(nullptr),static_cast<const RGNDATA*>(nullptr));
+        Check(SUCCEEDED(minimized)||minimized==a::DeviceLost,"real minimized device propagates loss or native present result");
+        ShowWindow(window,SW_RESTORE);ShowWindow(window,SW_HIDE);
+        auto restored=a::Call<HRESULT>(hooked.Value,15,static_cast<const RECT*>(nullptr),static_cast<const RECT*>(nullptr),static_cast<HWND>(nullptr),static_cast<const RGNDATA*>(nullptr));
+        if(restored==a::DeviceLost||restored==a::DeviceNotReset)
+        {
+            Check(SUCCEEDED(a::Call<HRESULT>(hooked.Value,14,&pp)),"real minimized device resets after restoration");
+            restored=a::Call<HRESULT>(hooked.Value,15,static_cast<const RECT*>(nullptr),static_cast<const RECT*>(nullptr),static_cast<HWND>(nullptr),static_cast<const RGNDATA*>(nullptr));
+        }
+        Check(SUCCEEDED(restored),"real GPU resumes enhanced presentation after minimize/restore");
         Check(SUCCEEDED(a::Call<HRESULT>(hooked.Value,14,&pp)),"real Reset succeeds after production hook releases default resources");
         std::puts("HOOK_GPU reset complete");
         const ULONG refs=a::Call<ULONG>(hooked.Value,2);hooked.Value=nullptr;Check(refs==0,"real hooked device final Release has no resource cycle");

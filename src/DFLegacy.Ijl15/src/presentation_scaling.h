@@ -25,4 +25,5 @@ namespace dfl::presentation
     Mode ParseMode(const char* value) noexcept;
     const char* ModeName(Mode mode) noexcept;
     Plan MakePlan(std::uint32_t width, std::uint32_t height, Mode mode, const Capabilities& caps) noexcept;
+    Plan MakeWindowPlan(std::uint32_t width,std::uint32_t height,std::uint32_t physicalWidth,std::uint32_t physicalHeight,Mode mode,const Capabilities& caps) noexcept;
 }

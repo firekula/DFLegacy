@@ -64,4 +64,10 @@ namespace dfl::presentation
         plan.Supported = true; plan.Filter = mode; plan.Reason = "ok";
         return plan;
     }
+    Plan MakeWindowPlan(std::uint32_t width,std::uint32_t height,std::uint32_t physicalWidth,std::uint32_t physicalHeight,Mode mode,const Capabilities& caps) noexcept
+    {
+        if(width!=physicalWidth||height!=physicalHeight)
+        {Plan unsupported;unsupported.Width=width;unsupported.Height=height;unsupported.Reason="dpi-virtualized";return unsupported;}
+        return MakePlan(width,height,mode,caps);
+    }
 }

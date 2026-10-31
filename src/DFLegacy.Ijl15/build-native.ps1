@@ -2,10 +2,12 @@
 param(
     [ValidateSet("Debug", "Release")]
     [string] $Configuration = "Release",
-    [switch] $RunTests
+    [switch] $RunTests,
+    [switch] $RunGpuTests
 )
 
 $ErrorActionPreference = "Stop"
+if ($RunGpuTests -and -not $RunTests) { throw "RunGpuTests requires RunTests and an interactive graphics session." }
 
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 $visualStudio = if (Test-Path -LiteralPath $vswhere) {
@@ -59,8 +61,9 @@ if (Test-Path -LiteralPath $cachePath) {
     }
 }
 
+$gpuTests = if ($RunGpuTests) { "ON" } else { "OFF" }
 & $cmake -S $projectDirectory -B $buildDirectory `
-    -G $generator -A Win32
+    -G $generator -A Win32 "-DDFLEGACY_ENABLE_GPU_TESTS=$gpuTests"
 if ($LASTEXITCODE -ne 0) {
     throw "CMake configuration failed with exit code $LASTEXITCODE."
 }

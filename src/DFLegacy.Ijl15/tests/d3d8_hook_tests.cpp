@@ -1,5 +1,6 @@
 #include "../src/d3d8_hooks.h"
 #include "../src/d3d8_abi.h"
+#include "../src/window_input_scaling.h"
 #include <array>
 #include <cstdio>
 #include <cstring>
@@ -32,7 +33,7 @@ namespace
     };
     struct Device
     {
-        void** Table=nullptr;ULONG References=1;int Tag=0,Destroyed=0,Presents=0,Resets=0,Allocations=0,Draws=0;
+        void** Table=nullptr;void** Identity=nullptr;ULONG References=1;int Tag=0,Destroyed=0,Presents=0,Resets=0,Allocations=0,Draws=0;
         DWORD LastFilter=0;HRESULT PresentResult=S_OK,ResetResult=S_OK,AllocationResult=S_OK,RestoreResult=S_OK;
         Resource Source{},Target{},Chain{};
         a::Viewport View{0,0,640,480,0,1};
@@ -87,14 +88,16 @@ namespace
     HRESULT WINAPI Present(void* value,const RECT*,const RECT*,HWND,const RGNDATA*)
     {auto& d=*static_cast<Device*>(value);++d.Presents;return d.PresentResult;}
     HRESULT WINAPI Reset(void* value,a::PresentationParameters*)
-    {auto& d=*static_cast<Device*>(value);++d.Resets;Check(d.References==1,"Reset releases every default-pool resource before driver call");return d.ResetResult;}
-    struct Factory{void** Table;ULONG References=1;Device* Created;int Calls=0;};
-    ULONG WINAPI FRelease(void* value){return --static_cast<Factory*>(value)->References;}
+    {auto& d=*static_cast<Device*>(value);++d.Resets;Check(d.Table==d.Identity,"device Reset preserves compatibility-layer identity");Check(d.References==1,"Reset releases every default-pool resource before driver call");return d.ResetResult;}
+    struct Factory{void** Table;ULONG References=1;Device* Created;int Calls=0;void** Identity=nullptr;};
+    ULONG WINAPI FRelease(void* value){auto& f=*static_cast<Factory*>(value);Check(f.Table==f.Identity,"factory Release sees its registered native identity");return --f.References;}
+    HRESULT WINAPI FQuery(void* value,const GUID*,void** output)
+    {auto& f=*static_cast<Factory*>(value);if(f.Table!=f.Identity)return E_FAIL;*output=value;++f.References;return S_OK;}
     HRESULT WINAPI Create(void* value,UINT,DWORD,HWND,DWORD,a::PresentationParameters*,void** output)
-    {auto& f=*static_cast<Factory*>(value);++f.Calls;*output=f.Created;return S_OK;}
+    {auto& f=*static_cast<Factory*>(value);++f.Calls;if(f.Table!=f.Identity)return E_FAIL;*output=f.Created;return S_OK;}
     void Initialize(GuardedTable& storage,Device& d,int tag)
     {
-        auto** t=storage.Table;d.Table=t;d.Tag=tag;
+        auto** t=storage.Table;d.Table=t;d.Identity=t;d.Tag=tag;
         d.Source.Table=ResourceTable.data();d.Target.Table=ResourceTable.data();
         t[1]=reinterpret_cast<void*>(&Add);t[2]=reinterpret_cast<void*>(&Release);t[7]=reinterpret_cast<void*>(&Caps);
         t[13]=reinterpret_cast<void*>(&Chain);t[14]=reinterpret_cast<void*>(&Reset);t[15]=reinterpret_cast<void*>(&Present);
@@ -108,9 +111,9 @@ namespace
     }
     bool Attach(GuardedTable& storage,Factory& f,Device& d,HWND window,p::Mode mode,c::ScaleFilterMode filter=c::ScaleFilterMode::Point)
     {
-        f.Table=storage.Table;f.Created=&d;f.Table[2]=reinterpret_cast<void*>(&FRelease);f.Table[15]=reinterpret_cast<void*>(&Create);
+        f.Table=storage.Table;f.Identity=storage.Table;f.Created=&d;f.Table[0]=reinterpret_cast<void*>(&FQuery);f.Table[2]=reinterpret_cast<void*>(&FRelease);f.Table[15]=reinterpret_cast<void*>(&Create);
         if(!h::AttachFactory(&f,{mode,filter,nullptr,false}))return false;
-        a::PresentationParameters pp{};pp.DeviceWindow=window;pp.Windowed=TRUE;void* result=nullptr;
+        a::PresentationParameters pp{};pp.DeviceWindow=window;pp.Windowed=TRUE;pp.BackBufferWidth=640;pp.BackBufferHeight=480;void* result=nullptr;
         const auto hr=a::Call<HRESULT>(&f,15,UINT(0),DWORD(1),window,DWORD(0),&pp,&result);
         return SUCCEEDED(hr)&&result==&d;
     }
@@ -129,6 +132,20 @@ namespace
         Initialize(dt1,d1,11);Initialize(dt2,d2,22);
         Check(Attach(ft1,f1,d1,window,p::Mode::Sharp),"attach first factory and device");
         Check(Attach(ft2,f2,d2,window,p::Mode::Legacy),"attach independent second factory/device");
+        MSG physical{};physical.hwnd=window;physical.message=WM_MOUSEMOVE;physical.wParam=MK_LBUTTON;physical.lParam=MAKELPARAM(400,300);physical.pt={1200,-40};MSG logical{};
+        Check(dfl::window_input_scaling::Translate(physical,logical)&&LOWORD(logical.lParam)==320&&HIWORD(logical.lParam)==240
+            &&logical.wParam==MK_LBUTTON&&logical.pt.x==1200&&logical.pt.y==-40,"physical mouse coordinates map to fixed logical frame without changing capture/buttons/screen point");
+        physical.message=WM_LBUTTONDBLCLK;physical.lParam=MAKELPARAM(799,599);
+        Check(dfl::window_input_scaling::Translate(physical,logical)&&LOWORD(logical.lParam)==639&&HIWORD(logical.lParam)==479,"double clicks reach exact last logical pixel");
+        physical.message=WM_MOUSEMOVE;physical.lParam=MAKELPARAM(-1,-1);
+        Check(dfl::window_input_scaling::Translate(physical,logical)&&static_cast<short>(LOWORD(logical.lParam))==-1
+            &&static_cast<short>(HIWORD(logical.lParam))==-1,"captured dragging preserves negative coordinates");
+        physical.message=WM_MOUSEWHEEL;physical.lParam=MAKELPARAM(800,500);
+        Check(!dfl::window_input_scaling::Translate(physical,logical)&&logical.lParam==physical.lParam,"screen-coordinate wheel messages are not double transformed");
+        physical.hwnd=nullptr;physical.message=WM_LBUTTONDOWN;
+        Check(!dfl::window_input_scaling::Translate(physical,logical)&&logical.lParam==physical.lParam,"unrelated windows are untouched");
+        GUID iid{};void* queried=nullptr;
+        Check(a::Call<HRESULT>(&f1,0,&iid,&queried)==S_OK&&queried==&f1&&a::Call<ULONG>(&f1,2)==1,"factory QueryInterface preserves identity and hook lifetime");
         Check(a::Call<HRESULT>(&d1,63,DWORD(0),DWORD(16),DWORD(2))==11&&d1.LastFilter==2,"enhanced mode preserves game's texture sampler");
         Check(a::Call<HRESULT>(&d2,63,DWORD(0),DWORD(16),DWORD(2))==22&&d2.LastFilter==1,"legacy original call table and sampler independent");
         Check(Frame(d1)==S_OK&&d1.Draws==18&&d1.Presents==0,"sharp fractional frame routes through shared presenter and only extra chain presents");
@@ -155,6 +172,9 @@ namespace
         Check(a::Call<HRESULT>(&d1,63,DWORD(0),DWORD(16),DWORD(2))==33,"address reuse never uses stale context");
         d1.AllocationResult=E_OUTOFMEMORY;Check(Frame(d1)==S_OK&&d1.Presents==1,"allocation failure falls back to original intact frame");
         Check(Diagnostic().find("original-fallback")!=std::string::npos,"fallback cannot claim enhanced mode");
+        d1.PresentResult=a::DeviceLost;Sleep(1100);
+        Check(Frame(d1)==a::DeviceLost&&Diagnostic().find("\"effective\":\"device-lost\"")!=std::string::npos,"loss during latched original fallback is observable");
+        d1.PresentResult=S_OK;d1.Presents=1;
         d1.AllocationResult=S_OK;a::Call<HRESULT>(&d1,14,&pp);d1.AllocationResult=a::DeviceLost;
         Check(Frame(d1)==a::DeviceLost&&d1.Presents==1,"device-lost allocation never swallowed by fallback");
         d1.AllocationResult=S_OK;a::Call<HRESULT>(&d1,14,&pp);d1.RestoreResult=E_FAIL;
@@ -162,7 +182,11 @@ namespace
         d1.RestoreResult=S_OK;a::Call<HRESULT>(&d1,14,&pp);
         const RECT source{0,0,320,240};
         Check(a::Call<HRESULT>(&d1,15,&source,static_cast<const RECT*>(nullptr),static_cast<HWND>(nullptr),static_cast<const RGNDATA*>(nullptr))==S_OK&&d1.Presents==2,"unsupported Present arguments use explicit fallback");
-        ShowWindow(window,SW_MINIMIZE);const int before=d1.Allocations;Frame(d1);Check(d1.Allocations==before,"minimized window never allocates");ShowWindow(window,SW_HIDE);
+        ShowWindow(window,SW_MINIMIZE);const int before=d1.Allocations;d1.PresentResult=a::DeviceLost;
+        Sleep(1100);Check(Frame(d1)==a::DeviceLost,"minimized native device-lost result propagates");Sleep(1100);Frame(d1);
+        Check(d1.Allocations==before,"minimized window never allocates");
+        Check(Diagnostic().find("\"effective\":\"device-lost\"")!=std::string::npos,"minimized device loss cannot be recorded as a successful fallback");
+        d1.PresentResult=S_OK;ShowWindow(window,SW_HIDE);
         Check(Frame(d2)==S_OK&&d2.Presents==1&&d2.Draws==0,"legacy uses its own original Present");
         Check(a::Call<ULONG>(&d1,2)==0&&a::Call<ULONG>(&d2,2)==0,"all recreated devices reach final release");
         Check(a::Call<ULONG>(&f1,2)==0&&a::Call<ULONG>(&f2,2)==0,"both factories final Release succeeds");
