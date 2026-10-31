@@ -62,12 +62,12 @@
 
 **Interfaces:** `GitHubUpdateClient(HttpClient client, string repository, bool includePrereleases = true)` with `CheckAsync(..., CancellationToken)` and `DownloadAsync(..., IProgress<UpdateProgress>?, CancellationToken)` returning validated `UpdateRelease` / `PreparedUpdate`; `UpdateInstaller` prepares and runs a same-EXE helper handoff, revalidates target/package and reports `UpdateApplyResult`. Pin complete exact callable signatures in report for Task4. Update manifest: schemaVersion=1, version, commit, files array of `{path,sha256,size}`; exactly the two allowed root binaries, manifest entry `update-manifest.json`.
 
-- [ ] Write failing tests against bounded HTTP fixtures and real temporary ZIP/files/directories: release selection/stable-preview, 404/429/timeout/cancel, digest/size mismatch, safe archive whitelist/duplicates/traversal/symlink/reparse, already-current hashes, older release ID.
-- [ ] Observe RED; implement bounded async public GitHub client with only trusted HTTPS GitHub release URLs and no credentials; validate outer digest, internal manifest and all bytes before preparing install.
-- [ ] Add failing real temporary-file/process tests for parent/target identity, tampered helper plan/staging, simultaneous lock, locked DLL, failed second replace and complete rollback, preservation of Config.ini/launcher.json/DNF/resources, backup integrity and controlled restart.
-- [ ] Observe RED; implement same-EXE temporary helper, exclusive update lock, parent validation/wait, backups, transaction/rollback and state. Never kill player processes. No arbitrary plan files or extra update targets, no permanent helper.
-- [ ] Run full launcher tests, self-review security/recovery boundaries and record exact RED/GREEN commands and coverage limits.
-- [ ] Commit engine/tests and write concise handoff report including exact integration API and fixture process mode.
+- [x] Write failing tests against bounded HTTP fixtures and real temporary ZIP/files/directories: release selection/stable-preview, 404/429/timeout/cancel, digest/size mismatch, safe archive whitelist/duplicates/traversal/symlink/reparse, already-current hashes, older release ID.
+- [x] Observe RED; implement bounded async public GitHub client with only trusted HTTPS GitHub release URLs and no credentials; validate outer digest, internal manifest and all bytes before preparing install.
+- [x] Add failing real temporary-file/process tests for parent/target identity, tampered helper plan/staging, simultaneous lock, locked DLL, failed second replace and complete rollback, preservation of Config.ini/launcher.json/DNF/resources, backup integrity and controlled restart.
+- [x] Observe RED; implement same-EXE temporary helper, exclusive update lock, parent validation/wait, backups, transaction/rollback and state. Never kill player processes. No arbitrary plan files or extra update targets, no permanent helper.
+- [x] Run full launcher tests, self-review security/recovery boundaries and record exact RED/GREEN commands and coverage limits.
+- [x] Commit engine/tests and write concise handoff report including exact integration API and fixture process mode.
 
 ### Task 4: Startup update flow and original update artwork
 
