@@ -24,6 +24,7 @@
       <c:SkinButton Canvas.Left="406" Canvas.Top="85" Width="70" Height="21" FontSize="12" Style="{StaticResource ClassicButton}" Content="游戏设置" Click="ConfigBtn_Click"/>
       <c:SkinButton x:Name="MoreServicesButton" Canvas.Left="476" Canvas.Top="85" Width="70" Height="21" FontSize="12" Style="{StaticResource ClassicButton}" Content="更多服务" Click="MoreServices_Click">
         <c:SkinButton.ContextMenu><ContextMenu Background="#24271E" BorderBrush="#987D4F" BorderThickness="1" Padding="6" ItemContainerStyle="{StaticResource ClassicMenuItem}">
+          <MenuItem x:Name="CheckUpdatesMenu" Header="检查更新" Click="CheckUpdates_Click"/>
           <MenuItem Header="官方网站" Tag="http://dnf.qq.com/" Click="ServiceUrl_Click"/><MenuItem Header="客服服务" Tag="http://gcs.qq.com/gcs/index.shtml" Click="ServiceUrl_Click"/>
           <MenuItem Header="商城充值" Tag="http://dnf.qq.com/web200805/pay.htm" Click="ServiceUrl_Click"/><MenuItem Header="游戏论坛" Tag="http://gamebbs.qq.com/" Click="ServiceUrl_Click"/>
         </ContextMenu></c:SkinButton.ContextMenu>

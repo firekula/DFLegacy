@@ -24,6 +24,7 @@ internal static class ClassicUiTests
             try
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                UpdateUiTests.Run(check);
                 ClassicMessageTests.Run(check);
                 var messageCloser = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Background,
                     (_, _) =>
@@ -321,6 +322,13 @@ internal static class ClassicUiTests
                                 && accountList.SelectedItem is MainWindow.AccountItem { Account: "first" },
                                 operation + " preserves typed credentials and selected account identity");
                         }
+                        var updateOptions = (LauncherOptions)typeof(MainWindow).GetField("_options", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(main)!;
+                        check(main.FindName("CheckUpdatesMenu") is MenuItem, "More Services exposes manual update check");
+                        // Invalid repository stops before network but exercises the actual menu/error path.
+                        updateOptions.UpdateRepository = "invalid-fixture";
+                        InvokeEvent(main,"CheckUpdates_Click");
+                        updateOptions.UpdateRepository = "firekula/DFLegacy";
+                        AssertRuntimeB("manual update failure");
                         DialogRoundtrip("AccountEditBtn_Click", _ => { }); AssertRuntimeB("cancel account management");
                         DialogRoundtrip("AccountEditBtn_Click", dialog =>
                         {

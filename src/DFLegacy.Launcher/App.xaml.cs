@@ -12,7 +12,14 @@ public partial class App : Application
     {
         if (e.Args.Contains("--dflegacy-apply-update", StringComparer.Ordinal))
         {
-            Shutdown(await Updates.UpdateInstaller.RunHelperAsync(e.Args));
+            // Keep the engine result authoritative when the only helper window closes.
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            // Helper UI has only embedded native artwork; it never reads launcher.json/theme.
+            var progress = new Views.UpdateInstallWindow();
+            progress.Show();
+            var result = await Updates.UpdateInstaller.RunHelperAsync(e.Args);
+            progress.Finish();
+            Shutdown(result);
             return;
         }
         base.OnStartup(e);

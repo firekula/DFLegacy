@@ -30,6 +30,10 @@ try
         Console.WriteLine(failures == 0 ? "Server selection tests passed" : $"Server selection tests failed: {failures}");
         return failures == 0 ? 0 : 1;
     }
+    await UpdateControllerTests.Run(root, Check);
+    await UpdateArtifactTests.Run(root, Check);
+    await UpdateStartupTests.Run(root, Check);
+    if (args.Contains("--update-ui-tests")) { ClassicUiTests.Run(Check); return failures == 0 ? 0 : 1; }
     await UpdateTransportTests.Run(root, Check);
     await UpdateInstallerTests.Run(root, Check);
     await UpdateHelperTests.Run(root, Check);

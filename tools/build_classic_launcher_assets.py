@@ -52,6 +52,13 @@ save('message-panel',message,[audit/'images/image-0056.png'],
 for index in range(3):
  copy('message-confirm'+str(index),audit/'loose/data/ui'/('button_yes0'+str(index)+'.png'),
       'original HintMsg.xml yes-button state; native80x29 pixels unchanged')
+# Approved update surfaces stay at native size; strip stretches only along its fill axis.
+for name,number,description in [('update-panel',63,'DNFchina.exe RT_BITMAP198 native567x512'),
+                                ('install-panel',115,'LauncherUpdator.exe RT_BITMAP132 native286x104'),
+                                ('update-progress',81,'DNFchina.exe RT_BITMAP249 original progress texture')]:
+ image=source(number)
+ image.putdata([(r,g,b,0 if (r,g,b)==(255,0,255) else a) for r,g,b,a in image.get_flattened_data()])
+ save(name,image,[audit/'images'/f'image-{number:04d}.png'],description+'; magenta colour key to transparency')
 out=repo/'docs/superpowers/reports/2026-10-31-launcher-classic-assets.json'
 out.write_text(json.dumps({'approved':'User accepted revision2 login/settings, original server page and RT_BITMAP314 message panel in chat','build_dependency':'none; all PNG files checked in and embedded by WPF','assets':records},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print(json.dumps({'embedded_png_files':len(records),'manifest':str(out)}))

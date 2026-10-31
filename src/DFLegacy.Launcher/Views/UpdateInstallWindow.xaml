@@ -1,0 +1,11 @@
+<Window x:Class="DFLegacy.Launcher.Views.UpdateInstallWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:c="clr-namespace:DFLegacy.Launcher.Controls" Title="安装客户端更新" Width="286" Height="104"
+ WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent" WindowStartupLocation="CenterScreen"
+ UseLayoutRounding="True" SnapsToDevicePixels="True" ShowInTaskbar="True">
+ <Canvas Width="286" Height="104">
+  <Image Source="../Assets/Skin/classic-install-panel.png" Width="286" Height="104"/>
+  <c:PixelText x:Name="InstallStatus" Canvas.Left="15" Canvas.Top="42" Width="256" Height="24" Text="正在等待登录器退出并安装更新…" FontSize="12" Foreground="#F4DCAF" TextAlignment="Center"/>
+  <c:OriginalProgressStrip x:Name="InstallProgress" Canvas.Left="14" Canvas.Top="74" Width="258" Height="8"/>
+ </Canvas>
+</Window>

@@ -43,7 +43,7 @@ public partial class MainWindow : System.Windows.Window
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
-        if (refreshStatus) { _statusTimer.Start(); _ = RefreshStatusAsync(); }
+        if (refreshStatus) { _statusTimer.Start(); _ = RefreshStatusAsync(); Loaded += (_, _) => StartUpdates(); }
     }
 
     private void RefreshAccounts()
@@ -368,6 +368,7 @@ public partial class MainWindow : System.Windows.Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
+        updateCoordinator?.Dispose();
         _statusTimer.Stop();
         _windowClosed = true;
         CancelServerRequests();

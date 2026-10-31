@@ -384,6 +384,51 @@
         }
       ],
       "operation": "original HintMsg.xml yes-button state; native80x29 pixels unchanged"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-update-panel.png",
+      "sha256": "55c0434ec2f23ef56c1690d3436f4f3ce70f455723ffbecb9134cab00c2e8f75",
+      "pixels": [
+        567,
+        512
+      ],
+      "sources": [
+        {
+          "file": "images/image-0063.png",
+          "sha256": "a6d69df0f514690c88275fe90b06b5bad45f0a2485f7c3219ebdb10ffe5a86f6"
+        }
+      ],
+      "operation": "DNFchina.exe RT_BITMAP198 native567x512; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-install-panel.png",
+      "sha256": "ad12ed5065245eb625908aa0b1d4d03c43d52e4063f38bfecedb8652426485b9",
+      "pixels": [
+        286,
+        104
+      ],
+      "sources": [
+        {
+          "file": "images/image-0115.png",
+          "sha256": "1c4ffd6d175787104863c5730e8c47cc0455df9d78e118feb2a48d24073989b1"
+        }
+      ],
+      "operation": "LauncherUpdator.exe RT_BITMAP132 native286x104; magenta colour key to transparency"
+    },
+    {
+      "file": "src/DFLegacy.Launcher/Assets/Skin/classic-update-progress.png",
+      "sha256": "009568306e1aceb492a326657b578701e73423f521fb862c788c2cebb4263f74",
+      "pixels": [
+        2,
+        8
+      ],
+      "sources": [
+        {
+          "file": "images/image-0081.png",
+          "sha256": "009568306e1aceb492a326657b578701e73423f521fb862c788c2cebb4263f74"
+        }
+      ],
+      "operation": "DNFchina.exe RT_BITMAP249 original progress texture; magenta colour key to transparency"
     }
   ]
 }

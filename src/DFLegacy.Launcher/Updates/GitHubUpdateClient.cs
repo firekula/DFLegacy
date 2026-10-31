@@ -104,7 +104,7 @@ public sealed class GitHubUpdateClient
             timeout.Token.ThrowIfCancellationRequested();
             return UpdatePackage.Extract(release,directory,archive,timeout.Token);
         }
-        catch { Directory.Delete(directory,true); throw; }
+        catch { UpdateArtifacts.DeleteStage(directory); throw; }
     }
     private static async Task<long> CopyBounded(Stream input,Stream output,long limit,Action<long>? progress,CancellationToken token)
     {
