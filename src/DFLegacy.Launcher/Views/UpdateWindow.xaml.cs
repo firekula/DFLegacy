@@ -22,9 +22,10 @@ public partial class UpdateWindow : Window
     {
         var busy=state.Phase is UpdatePhase.Checking or UpdatePhase.Downloading or UpdatePhase.Installing;
         RetryButton.IsEnabled=!busy; InstallButton.IsEnabled=state.Phase==UpdatePhase.Ready;
+        InstallButton.Content=state.IsRecovery?"重启恢复":"重启安装";
         BackButton.IsEnabled=state.Phase!=UpdatePhase.Installing;
         var text=state.Message+"\n当前："+controller.InstalledVersion+(state.Version.Length==0?"":"    可用："+state.Version);
-        if(state.Phase==UpdatePhase.Downloading) text+="\n文件："+GitHubUpdateClient.AssetName;
+        if(state.Phase==UpdatePhase.Downloading && state.AssetName.Length!=0) text+="\n文件："+state.AssetName;
         // Bound each native raster input, while keeping long diagnostic text scrollable.
         StatusBlocks.Children.Clear();
         for(int offset=0;offset<Math.Min(text.Length,16384);)
@@ -43,7 +44,7 @@ public partial class UpdateWindow : Window
         else
         {
             DownloadProgress.Set(state.Phase==UpdatePhase.Ready?1:0,state.Phase is UpdatePhase.Checking or UpdatePhase.Installing);
-            AmountText.Text=state.Phase==UpdatePhase.Ready?"校验完成，等待确认重启安装":state.Phase==UpdatePhase.Installing?"准备交接中，请稍候…":"可以返回登录；稍后从更多服务重新检查。";
+            AmountText.Text=state.Phase==UpdatePhase.Ready?(state.IsRecovery?"恢复资料已校验，等待确认重启恢复":"校验完成，等待确认重启安装"):state.Phase==UpdatePhase.Installing?"准备交接中，请稍候…":"可以返回登录；稍后从更多服务重新检查。";
         }
     }
     private static string Bytes(long value)=>value<1024?$"{value} B":value<1024*1024?$"{value/1024d:F1} KB":$"{value/(1024d*1024):F1} MB";
@@ -51,11 +52,11 @@ public partial class UpdateWindow : Window
     private async void OnInstall(object sender,RoutedEventArgs e)
     {
         if(controller.State.Phase!=UpdatePhase.Ready) return;
-        await controller.InstallAsync(ConfirmRestart(this));
+        await controller.InstallAsync(ConfirmRestart(this,controller.State.IsRecovery));
     }
-    internal static bool ConfirmRestart(Window owner)
+    internal static bool ConfirmRestart(Window owner,bool recovery=false)
     {
-        var dialog=new ClassicMessageWindow("更新已下载并校验完成。\n确认退出登录器、安装并重新启动？",confirmRestart:true) { Owner=owner };
+        var dialog=new ClassicMessageWindow(recovery?"恢复上次未完成的更新。\n确认退出登录器、恢复原版本并重新启动？":"更新已下载并校验完成。\n确认退出登录器、安装并重新启动？",confirmRestart:true) { Owner=owner };
         dialog.ShowDialog(); return dialog.Accepted;
     }
     private void OnBack(object sender,RoutedEventArgs e)=>Close();

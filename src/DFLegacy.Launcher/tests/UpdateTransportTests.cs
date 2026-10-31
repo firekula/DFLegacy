@@ -12,21 +12,21 @@ internal static class UpdateTransportTests
     internal static byte[] Package(string variant = "valid")
     {
         var binary = Encoding.UTF8.GetBytes("new executable"); var dll = Encoding.UTF8.GetBytes("new dll");
-        var files = new[] { new { path = "DFLegacy.Launcher.exe", sha256 = Hash(binary), size = binary.Length }, new { path = "ijl15.dll", sha256 = variant == "hash" ? new string('0',64) : Hash(dll), size = dll.Length + (variant == "size" ? 1 : 0) } };
+        var files = new[] { new { path = "DFLegacy.Launcher.exe", sha256 = Hash(binary), size = binary.Length }, new { path = "DFLegacy.Client.dll", sha256 = variant == "hash" ? new string('0',64) : Hash(dll), size = dll.Length + (variant == "size" ? 1 : 0) } };
         using var stream = new MemoryStream();
         using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, true))
         {
             void Add(string name, byte[] bytes, bool link = false) { var entry = zip.CreateEntry(name); if (link) entry.ExternalAttributes = (0xA000 | 0x1FF) << 16; using var output = entry.Open(); output.Write(bytes); }
-            Add("update-manifest.json", JsonSerializer.SerializeToUtf8Bytes(new { schemaVersion = variant == "schema" ? 2 : 1, version = "dev-test", commit = new string('a',40), files }));
+            Add("update-manifest.json", JsonSerializer.SerializeToUtf8Bytes(new { schemaVersion = variant == "schema" ? 1 : 2, flavor = "normal", version = "dev-test", commit = new string('a',40), files }));
             Add("DFLegacy.Launcher.exe", binary, variant == "symlink");
-            if (variant != "missing") Add("ijl15.dll", dll);
+            if (variant != "missing") Add("DFLegacy.Client.dll", dll);
             if (variant == "extra") Add("Config.ini", [1]);
-            if (variant == "duplicate") Add("IJL15.DLL", dll);
+            if (variant == "duplicate") Add("DFLEGACY.CLIENT.DLL", dll);
             if (variant == "traversal") Add("../escape", [1]);
         }
         return stream.ToArray();
     }
-    internal static UpdateRelease Release(byte[] bytes, long id = 7) => new(id,"dev-test",DateTimeOffset.UtcNow,true,new Uri("https://github.com/firekula/DFLegacy/releases/download/dev-test/DFLegacy-client-update-win-x64.zip"),bytes.Length,Hash(bytes));
+    internal static UpdateRelease Release(byte[] bytes, long id = 7) => new(id,"dev-test",DateTimeOffset.UtcNow,true,new Uri("https://github.com/firekula/DFLegacy/releases/download/dev-test/DFLegacy-client-update-v2-win-x64.zip"),bytes.Length,Hash(bytes));
     internal sealed class Handler(Func<HttpRequestMessage,CancellationToken,Task<HttpResponseMessage>> send) : HttpMessageHandler
     { protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => send(request,token); }
     internal static HttpClient Client(byte[] bytes, HttpStatusCode status = HttpStatusCode.OK) => new(new Handler((_,_) => Task.FromResult(new HttpResponseMessage(status) { Content = new ByteArrayContent(bytes) })));
@@ -45,9 +45,9 @@ internal static class UpdateTransportTests
     internal static async Task Run(string root, Action<bool,string> check)
     {
         byte[] Feed() => JsonSerializer.SerializeToUtf8Bytes(new[] {
-            new { id=5,tag_name="zzz",published_at="2026-01-01T00:00:00Z",draft=false,prerelease=false,assets=new[]{new {name="DFLegacy-client-update-win-x64.zip",size=12,browser_download_url="https://github.com/firekula/DFLegacy/releases/download/zzz/DFLegacy-client-update-win-x64.zip",digest="sha256:"+new string('a',64)}} },
-            new { id=7,tag_name="aaa",published_at="2026-02-01T00:00:00Z",draft=false,prerelease=true,assets=new[]{new {name="DFLegacy-client-update-win-x64.zip",size=12,browser_download_url="https://github.com/firekula/DFLegacy/releases/download/aaa/DFLegacy-client-update-win-x64.zip",digest="sha256:"+new string('a',64)}} },
-            new { id=9,tag_name="draft",published_at="2026-03-01T00:00:00Z",draft=true,prerelease=false,assets=new[]{new {name="DFLegacy-client-update-win-x64.zip",size=12,browser_download_url="https://github.com/firekula/DFLegacy/releases/download/draft/DFLegacy-client-update-win-x64.zip",digest="sha256:"+new string('a',64)}} }
+            new { id=5,tag_name="zzz",published_at="2026-01-01T00:00:00Z",draft=false,prerelease=false,assets=new[]{new {name="DFLegacy-client-update-v2-win-x64.zip",size=12,browser_download_url="https://github.com/firekula/DFLegacy/releases/download/zzz/DFLegacy-client-update-v2-win-x64.zip",digest="sha256:"+new string('a',64)}} },
+            new { id=7,tag_name="aaa",published_at="2026-02-01T00:00:00Z",draft=false,prerelease=true,assets=new[]{new {name="DFLegacy-client-update-v2-win-x64.zip",size=12,browser_download_url="https://github.com/firekula/DFLegacy/releases/download/aaa/DFLegacy-client-update-v2-win-x64.zip",digest="sha256:"+new string('a',64)}} },
+            new { id=9,tag_name="draft",published_at="2026-03-01T00:00:00Z",draft=true,prerelease=false,assets=new[]{new {name="DFLegacy-client-update-v2-win-x64.zip",size=12,browser_download_url="https://github.com/firekula/DFLegacy/releases/download/draft/DFLegacy-client-update-v2-win-x64.zip",digest="sha256:"+new string('a',64)}} }
         });
         using var http = Client(Feed());
         var client = new GitHubUpdateClient(http,"firekula/DFLegacy");
@@ -79,7 +79,7 @@ internal static class UpdateTransportTests
         {
             var bytes=Package(variant); using var download=Client(bytes);
             var transport=new GitHubUpdateClient(download,"firekula/DFLegacy");
-            if(variant=="valid") { var prepared=await transport.DownloadAsync(Release(bytes),root); check(File.ReadAllText(Path.Combine(prepared.Directory,"ijl15.dll"))=="new dll","valid package fully extracted"); }
+            if(variant=="valid") { var prepared=await transport.DownloadAsync(Release(bytes),root); check(File.ReadAllText(Path.Combine(prepared.Directory,"DFLegacy.Client.dll"))=="new dll","valid package fully extracted"); }
             else await Reject(async()=>await transport.DownloadAsync(Release(bytes),root),check,"reject package "+variant);
         }
         var valid=Package(); using var data=Client(valid);

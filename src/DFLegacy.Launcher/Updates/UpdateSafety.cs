@@ -8,7 +8,8 @@ internal static class UpdateSafety
 {
     internal const long MaxZip = 256L * 1024 * 1024;
     internal const long MaxExpanded = 512L * 1024 * 1024;
-    internal static readonly string[] Names = ["DFLegacy.Launcher.exe", "ijl15.dll"];
+    internal const string InstalledManifestName = "client-package.json";
+    internal static IEnumerable<string> TransactionNames(UpdateManifest manifest) => manifest.Files.Select(f=>f.Path).Append(InstalledManifestName);
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = false };
     internal static bool IsHash(string? value) => value is { Length: 64 } && value.All(Uri.IsHexDigit);
     internal static string Hash(string file) { using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete); return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant(); }
@@ -41,18 +42,21 @@ internal static class UpdateSafety
     private static extern SafeFileHandle CreateFile(string path, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
     internal static void ValidateManifest(UpdateManifest manifest)
     {
-        if (manifest is null || manifest.SchemaVersion != 1 || string.IsNullOrWhiteSpace(manifest.Version) || manifest.Version.Length > 200 ||
-            manifest.Commit is not { Length: 40 } || !manifest.Commit.All(Uri.IsHexDigit) || manifest.Files is not { Length: 2 } || manifest.Files.Any(f=>f is null))
-            throw new InvalidDataException("更新清单无效。");
-        long total = 0;
-        foreach (var name in Names)
-        {
-            var matches = manifest.Files.Where(f => f.Path == name).ToArray();
-            if (matches.Length != 1 || !IsHash(matches[0].Sha256) || matches[0].Size <= 0 || matches[0].Size > MaxExpanded)
-                throw new InvalidDataException("更新文件清单无效。");
-            total += matches[0].Size;
-        }
-        if (total > MaxExpanded) throw new InvalidDataException("更新解压大小超出限制。");
+        _ = ReadManifest(JsonSerializer.SerializeToUtf8Bytes(manifest,Json));
+    }
+    internal static UpdateManifest ReadManifest(byte[] bytes)
+    {
+        var parsed=ClientPackageManifest.Parse(bytes,string.Empty);
+        if(parsed.Files.Any(f=>f.Size>MaxExpanded) || parsed.Files.Sum(f=>f.Size)>MaxExpanded) throw new InvalidDataException("更新解压大小超出限制。");
+        return new(2,parsed.Version,parsed.Commit,parsed.Files.Select(f=>new UpdateFile(f.Path,f.Sha256,f.Size)).ToArray(),parsed.Flavor);
+    }
+    internal static ClientPackageManifest ValidateInstalled(string target, UpdateManifest update)
+    {
+        NoLinks(Path.Combine(target,InstalledManifestName));
+        foreach(var name in update.Files.Select(f=>f.Path)) NoLinks(Path.Combine(target,name));
+        var installed=ClientPackageManifest.LoadAndValidate(target);
+        if(installed.Flavor!=update.Flavor) throw new InvalidDataException("更新包类型与已安装客户端不同，请使用同类型的 V2 更新包。");
+        return installed;
     }
     internal static T ReadJson<T>(byte[] bytes)
     {

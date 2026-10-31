@@ -11,6 +11,7 @@ if (args.Length == 2 && args[0] == "--startup-test-child")
 }
 
 if (await UpdateHelperTests.Dispatch(args) is int helperExit) return helperExit;
+if (await UpdateRecoveryTests.Dispatch(args) is int recoveryExit) return recoveryExit;
 if (await BootstrapManagedTests.Dispatch(args) is int bootstrapExit) return bootstrapExit;
 var failures = 0;
 var checks = 0;
@@ -27,6 +28,9 @@ Directory.CreateDirectory(root);
 try
 {
     if(args.Contains("--bootstrap-first-only")) { await BootstrapManagedTests.Run(root,Check,initialOnly:true); return failures==0?0:1; }
+    if(args.Contains("--update-v2-tests")) { await UpdateV2Tests.Run(root,Check); Console.WriteLine($"Update V2 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--update-helper-tests")) { await UpdateHelperTests.Run(root,Check); Console.WriteLine($"Update helper tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--update-recovery-tests")) { await UpdateRecoveryTests.Run(root,Check); Console.WriteLine($"Update recovery tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Length==0 || args.Contains("--standalone-tests")) await StandaloneTests.Run(root, Check);
     if (args.Contains("--standalone-tests")) { Console.WriteLine($"Standalone tests: {failures} failures"); return failures == 0 ? 0 : 1; }
     if (args.Contains("--login-input-tests"))
@@ -49,10 +53,12 @@ try
     await UpdateStartupTests.Run(root, Check);
     if (args.Contains("--update-ui-tests")) { ClassicUiTests.Run(Check); return failures == 0 ? 0 : 1; }
     await UpdateTransportTests.Run(root, Check);
+    await UpdateV2Tests.Run(root, Check);
+    await UpdateRecoveryTests.Run(root, Check);
     await UpdateInstallerTests.Run(root, Check);
     await UpdateHelperTests.Run(root, Check);
     await UpdateBoundaryTests.Run(root, Check);
-    if (args.Contains("--update-tests")) return failures == 0 ? 0 : 1;
+    if (args.Contains("--update-tests")) { Console.WriteLine($"Update tests: {checks} assertions, {failures} failures"); return failures == 0 ? 0 : 1; }
     DisplayConfigurationTests.Run(root, Check);
     RenderDiagnosticTests.Run(root, Check);
     ClassicUiTests.Run(Check);

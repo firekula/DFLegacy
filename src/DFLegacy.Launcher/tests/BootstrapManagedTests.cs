@@ -65,6 +65,11 @@ internal static class BootstrapManagedTests
         StandaloneTests.WriteManifest(root,"test"); var testManifest=ClientPackageManifest.LoadAndValidate(root);
         using(var p=await ClientBootstrapLauncher.StartCoreAsync(client,Path.Combine(root,"test-mode.marker"),testManifest,CancellationToken.None,Path.Combine(native,"Release/DFLegacy.Bootstrap32.exe"),TimeSpan.FromSeconds(20))) { p.Kill(); await p.WaitForExitAsync(); }
         StandaloneTests.WriteManifest(root);
+        using(var p=await ClientBootstrapLauncher.StartCoreAsync(client,Path.Combine(root,"retained-debug-normal.marker"),ClientPackageManifest.LoadAndValidate(root),CancellationToken.None,Path.Combine(native,"Release/DFLegacy.Bootstrap32.exe"),TimeSpan.FromSeconds(20)))
+        {
+            check(File.Exists(Path.Combine(root,"debug.dll")) && !p.Modules.Cast<ProcessModule>().Any(m=>m.ModuleName.Equals("debug.dll",StringComparison.OrdinalIgnoreCase)),"retained_debug_is_not_loaded_by_normal_mode: actual owned child modules");
+            p.Kill(); await p.WaitForExitAsync();
+        }
         foreach(var mode in new[]{"fail","timeout"})
         {
             try { using var p=await ClientBootstrapLauncher.StartCoreAsync(client,mode,manifest,CancellationToken.None,Path.Combine(native,"Release/DFLegacy.Bootstrap32.exe"),TimeSpan.FromSeconds(15)); check(false,"native initialization failure blocks entry"); }
