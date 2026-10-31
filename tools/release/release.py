@@ -323,10 +323,22 @@ def build_client_assets(launcher, ijl15, config, output, version, commit, debug=
     return output
 
 
-def verify_client_update(archive, version=None, commit=None):
-    """Check the deliberately smaller, root-only public updater contract."""
+def read_client_update(archive):
+    """Read one bounded immutable snapshot; later path changes cannot alter it."""
     archive = Path(archive)
-    if archive.is_symlink() or archive.is_junction() or not 0 < archive.stat().st_size <= MAX_UPDATE_ZIP:
+    if archive.is_symlink() or archive.is_junction():
+        raise ReleaseError("invalid update archive size or file")
+    with archive.open("rb") as source:
+        content = source.read(MAX_UPDATE_ZIP + 1)
+    if not 0 < len(content) <= MAX_UPDATE_ZIP:
+        raise ReleaseError("invalid update archive size or file")
+    return content
+
+
+def verify_client_update(archive, version=None, commit=None):
+    """Check a path or immutable bytes against the root-only updater contract."""
+    content = archive if isinstance(archive, bytes) else read_client_update(archive)
+    if not 0 < len(content) <= MAX_UPDATE_ZIP:
         raise ReleaseError("invalid update archive size or file")
     def unique_object(pairs):
         result = {}
@@ -336,7 +348,7 @@ def verify_client_update(archive, version=None, commit=None):
             result[key] = value
         return result
     try:
-        with zipfile.ZipFile(archive) as z:
+        with zipfile.ZipFile(io.BytesIO(content)) as z:
             entries = z.infolist()
             if len(entries) != 3 or {e.filename for e in entries} != {*UPDATE_FILES, "update-manifest.json"}:
                 raise ReleaseError("update archive must contain exactly the two programs and manifest")

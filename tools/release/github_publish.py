@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, digest, validate_identity, verify_client_update
+from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, read_client_update, validate_identity, verify_client_update
 
 REPOSITORY = 'firekula/DFLegacy'
 ASSET_NAME = UPDATE_ASSET
@@ -197,8 +197,11 @@ def publish(api, version, commit, archive, check_only=False):
     archive = Path(archive)
     if archive.name != ASSET_NAME:
         raise ReleaseError('client update asset name must be ' + ASSET_NAME)
-    verify_client_update(archive, version, commit)
-    sha, size = digest(archive), archive.stat().st_size
+    # Validate, reserve and upload exactly this immutable, bounded snapshot.
+    # Reopening the path after validation could publish unchecked private data.
+    content = read_client_update(archive)
+    verify_client_update(content, version, commit)
+    sha, size = hashlib.sha256(content).hexdigest(), len(content)
     branch = preflight(api)
     prerelease = bool(DEV.fullmatch(version))
     body = f'{MARKER}\nversion={version}\nsource-commit={commit}\nasset-sha256={sha}\nasset-size={size}\n\nPublic client binaries only. Built from the pinned Gitea source commit above.\n'
@@ -272,9 +275,6 @@ def publish(api, version, commit, archive, check_only=False):
     if check_only or not current['draft']:
         return outcome('draft' if current['draft'] else 'already-published', current)
     if not present:
-        content = archive.read_bytes()
-        if len(content) != size or hashlib.sha256(content).hexdigest() != sha:
-            raise ReleaseError('local update changed after release reservation')
         try:
             api.upload(current['id'], ASSET_NAME, content)
         except ReleaseError:

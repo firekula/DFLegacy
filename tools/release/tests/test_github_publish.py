@@ -95,10 +95,47 @@ class UpdatePackageTests(unittest.TestCase):
         for name, data in [('launcher.json', b'{"Password":"secret"}'), ('ijl15.dll', b'changed'), ('../Config.ini', b'x')]:
             altered = self.root / (str(len(name)) + '.zip')
             altered.write_bytes(archive.read_bytes())
-            with zipfile.ZipFile(altered, 'a') as z:
-                z.writestr(name, data)
+            if name == 'ijl15.dll':
+                with self.assertWarnsRegex(UserWarning, "Duplicate name"):
+                    with zipfile.ZipFile(altered, 'a') as z:
+                        z.writestr(name, data)
+            else:
+                with zipfile.ZipFile(altered, 'a') as z:
+                    z.writestr(name, data)
             with self.assertRaises(release.ReleaseError):
                 release.verify_client_update(altered, VERSION, COMMIT)
+
+    def test_publisher_uploads_only_validated_snapshot_after_path_mutation(self):
+        assets = self.assets()
+        archive = release.build_client_update(assets, self.root / 'out', VERSION, COMMIT)
+        original_bytes = archive.read_bytes()
+        original_verifier = release.verify_client_update
+        for mutation in ('append', 'replace'):
+            with self.subTest(mutation=mutation):
+                archive.write_bytes(original_bytes)
+                def verify_then_mutate(content, version, commit):
+                    result = original_verifier(content, version, commit)
+                    if mutation == 'replace':
+                        replacement = self.root / 'replacement.zip'
+                        with zipfile.ZipFile(replacement, 'w') as z:
+                            z.writestr('launcher.json', b'synthetic-private-marker')
+                        replacement.replace(archive)
+                    else:
+                        with zipfile.ZipFile(archive, 'a') as z:
+                            z.writestr('launcher.json', b'synthetic-private-marker')
+                    return result
+                api = FakeGitHub()
+                with patch.object(github, 'verify_client_update', side_effect=verify_then_mutate):
+                    outcome = github.publish(api, VERSION, COMMIT, archive)
+                self.assertEqual(outcome['status'], 'published')
+                self.assertEqual(api.content, original_bytes)
+                self.assertEqual(outcome['sha256'], hashlib.sha256(original_bytes).hexdigest())
+                self.assertEqual(outcome['size'], len(original_bytes))
+                with zipfile.ZipFile(io.BytesIO(api.content)) as z:
+                    self.assertEqual(set(z.namelist()), {*release.UPDATE_FILES, 'update-manifest.json'})
+                    self.assertNotIn(b'synthetic-private-marker', b''.join(z.read(name) for name in z.namelist()))
+                with self.assertRaises(release.ReleaseError):
+                    original_verifier(archive, VERSION, COMMIT)
 
     def test_real_client_parser_accepts_produced_archive(self):
         assets = self.assets()
