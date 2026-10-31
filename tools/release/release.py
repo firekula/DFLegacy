@@ -37,6 +37,10 @@ OWNER_MARKER = "<!-- dflegacy-release-pipeline:v1 -->"
 DEV = re.compile(r"dev-\d{8}T\d{6}Z-[a-f0-9]{12}\Z")
 OFFICIAL = re.compile(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\Z")
 MAX_ARCHIVE = 8 * 1024**3
+UPDATE_ASSET = "DFLegacy-client-update-win-x64.zip"
+UPDATE_FILES = ("DFLegacy.Launcher.exe", "ijl15.dll")
+MAX_UPDATE_ZIP = 256 * 1024**2
+MAX_UPDATE_EXPANDED = 512 * 1024**2
 
 
 class ReleaseError(Exception):
@@ -317,6 +321,87 @@ def build_client_assets(launcher, ijl15, config, output, version, commit, debug=
         verify_assets(stage, version, commit)
         stage.rename(output)
     return output
+
+
+def verify_client_update(archive, version=None, commit=None):
+    """Check the deliberately smaller, root-only public updater contract."""
+    archive = Path(archive)
+    if archive.is_symlink() or archive.is_junction() or not 0 < archive.stat().st_size <= MAX_UPDATE_ZIP:
+        raise ReleaseError("invalid update archive size or file")
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key.casefold() in {k.casefold() for k in result}:
+                raise ReleaseError("duplicate update JSON property")
+            result[key] = value
+        return result
+    try:
+        with zipfile.ZipFile(archive) as z:
+            entries = z.infolist()
+            if len(entries) != 3 or {e.filename for e in entries} != {*UPDATE_FILES, "update-manifest.json"}:
+                raise ReleaseError("update archive must contain exactly the two programs and manifest")
+            if sum(e.file_size for e in entries) > MAX_UPDATE_EXPANDED:
+                raise ReleaseError("expanded update exceeds limit")
+            for entry in entries:
+                mode = entry.external_attr >> 16
+                if entry.file_size <= 0 or stat.S_IFMT(mode) not in (0, stat.S_IFREG) or entry.external_attr & 0x410:
+                    raise ReleaseError("update contains link, directory or empty entry")
+            if z.getinfo("update-manifest.json").file_size > 65536:
+                raise ReleaseError("update manifest exceeds limit")
+            data = json.loads(z.read("update-manifest.json"), object_pairs_hook=unique_object)
+            if not isinstance(data, dict) or set(data) != {"schemaVersion", "version", "commit", "files"} or type(data["schemaVersion"]) is not int or data["schemaVersion"] != 1:
+                raise ReleaseError("invalid update manifest schema")
+            validate_identity(data["version"], data["commit"])
+            if (version is not None and version != data["version"]) or (commit is not None and commit != data["commit"]):
+                raise ReleaseError("mixed update identity")
+            rows = data["files"]
+            if not isinstance(rows, list) or len(rows) != 2:
+                raise ReleaseError("invalid update file list")
+            names = set()
+            for row in rows:
+                if not isinstance(row, dict) or set(row) != {"path", "sha256", "size"} or row["path"] not in UPDATE_FILES or row["path"] in names:
+                    raise ReleaseError("invalid update file entry")
+                names.add(row["path"])
+                if type(row["size"]) is not int or row["size"] <= 0 or row["size"] != z.getinfo(row["path"]).file_size or not isinstance(row["sha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", row["sha256"]):
+                    raise ReleaseError("invalid update size or digest")
+                with z.open(row["path"]) as stream:
+                    if hashlib.file_digest(stream, "sha256").hexdigest() != row["sha256"]:
+                        raise ReleaseError("update file digest differs")
+            return data
+    except (zipfile.BadZipFile, ValueError, KeyError, TypeError, RuntimeError) as error:
+        raise ReleaseError("invalid client update archive") from error
+
+
+def build_client_update(client_assets, output, version, commit):
+    """Package only verified program bytes; player configuration never enters this ZIP."""
+    root = Path(client_assets)
+    verified = verify_assets(root, version, commit)
+    sources = dict(zip(UPDATE_FILES, (root / "launcher/DFLegacy.Launcher.exe", root / "patch/ijl15.dll")))
+    anchored = {row["path"]: row["sha256"] for row in verified["files"]}
+    data = {"schemaVersion": 1, "version": version, "commit": commit,
+            "files": [{"path": name, "sha256": anchored[path.relative_to(root).as_posix()], "size": path.stat().st_size} for name, path in sources.items()]}
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    destination = output / UPDATE_ASSET
+    if destination.exists() or destination.is_symlink():
+        raise ReleaseError("update archive already exists")
+    with tempfile.TemporaryDirectory(prefix="dflegacy-update-", dir=output) as temporary:
+        archive = Path(temporary) / UPDATE_ASSET
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+            for name in (*UPDATE_FILES, "update-manifest.json"):
+                info = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | 0o644) << 16
+                info.compress_type = zipfile.ZIP_DEFLATED
+                with z.open(info, "w") as target:
+                    if name in sources:
+                        with sources[name].open("rb") as source:
+                            shutil.copyfileobj(source, target, 1024 * 1024)
+                    else:
+                        target.write((json.dumps(data, sort_keys=True, indent=2) + "\n").encode())
+        verify_client_update(archive, version, commit)
+        archive.rename(destination)
+    return destination
 
 
 def dotnet_environment():
@@ -717,6 +802,13 @@ def parser():
     for name in ("launcher-output", "ijl15", "config", "output", "version", "commit"):
         build.add_argument("--" + name, required=True)
     build.add_argument("--debug")
+    update = sub.add_parser("build-client-update")
+    for name in ("client-assets", "output", "version", "commit"):
+        update.add_argument("--" + name, required=True)
+    update_check = sub.add_parser("verify-client-update")
+    update_check.add_argument("path")
+    update_check.add_argument("--version")
+    update_check.add_argument("--commit")
     package = sub.add_parser("publish")
     for name in ("rid", "version", "commit", "client-assets", "output"):
         package.add_argument("--" + name, required=True, choices=RIDS if name == "rid" else None)
@@ -755,6 +847,10 @@ def main(argv=None):
             return subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(Path(__file__).parent / "tests"), "-v"], cwd=REPO).returncode
         if args.command == "build-client-assets":
             print(build_client_assets(args.launcher_output, args.ijl15, args.config, args.output, args.version, args.commit, args.debug))
+        elif args.command == "build-client-update":
+            print(build_client_update(args.client_assets, args.output, args.version, args.commit))
+        elif args.command == "verify-client-update":
+            print(json.dumps(verify_client_update(args.path, args.version, args.commit)))
         elif args.command == "publish":
             _, archive = publish(args.rid, args.version, args.commit, args.client_assets, args.output, args.manager_output, args.server_output, args.channel_output, args.verification)
             print(archive)

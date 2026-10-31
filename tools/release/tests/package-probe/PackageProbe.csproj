@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../../src/DFLegacy.Launcher/Updates/UpdatePackage.cs" Link="UpdatePackage.cs" />
+    <Compile Include="../../../../src/DFLegacy.Launcher/Updates/UpdateSafety.cs" Link="UpdateSafety.cs" />
+    <Compile Include="../../../../src/DFLegacy.Launcher/Updates/UpdateModels.cs" Link="UpdateModels.cs" />
+  </ItemGroup>
+</Project>

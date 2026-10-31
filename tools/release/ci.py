@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from release import REPO, ReleaseError, build_client_assets, dotnet_environment, make_archive, new_output, publish, read_json, unpack, validate_identity, verify, verify_assets, write_json
+from release import REPO, ReleaseError, build_client_assets, build_client_update, dotnet_environment, make_archive, new_output, publish, read_json, unpack, validate_identity, verify, verify_assets, write_json
 
 
 def build_version(ref, commit, timestamp):
@@ -132,6 +132,7 @@ def windows(version, commit):
     _, archive = publish("win-x64", version, commit, assets, REPO / "artifacts" / ("DFLegacy-" + version + "-win-x64"),
                          verification="Windows x64 CI: managed/native tests and packaged Manager health/readiness; GPU and graphical game acceptance are not executed in headless CI")
     smoke_archive(archive)
+    build_client_update(assets, REPO / "artifacts", version, commit)
 
 
 def linux(version, commit, archive):

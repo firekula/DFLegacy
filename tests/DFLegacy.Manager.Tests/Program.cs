@@ -171,6 +171,13 @@ try
     {
         string Read(string name) { using var reader = new StreamReader(archive.GetEntry(name)!.Open()); return reader.ReadToEnd(); }
         var launcher = JsonNode.Parse(Read("launcher.json"))!;
+        var loaded = JsonSerializer.Deserialize<DFLegacy.Launcher.LauncherOptions>(Read("launcher.json"))!;
+        Check(loaded.UpdateRepository == "firekula/DFLegacy" && loaded.IncludePrereleaseUpdates,
+            "fresh exported player JSON resolves the real launcher's public update defaults");
+        Check(loaded.ClientPath == "DNF.exe" && loaded.EntranceHost == "game.example.test"
+            && loaded.AccountServiceUrl == "https://accounts.example.test" && loaded.Accounts.Count == 0
+            && loaded.Account == "" && loaded.Password == "" && !loaded.StartServer && loaded.Relay.Enabled,
+            "real launcher options preserve exported bootstrap, profile privacy and relay settings");
         Check(launcher["Account"]!.GetValue<string>() == "" && launcher["Password"]!.GetValue<string>() == "" && launcher["Accounts"]!.AsArray().Count == 0,
             "exported launcher never carries bundled accounts or passwords");
         Check(!launcher["StartServer"]!.GetValue<bool>() && launcher["ClientPath"]!.GetValue<string>() == "DNF.exe", "player bundle uses relative client path and remote-only startup");

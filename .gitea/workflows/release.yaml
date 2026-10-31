@@ -103,7 +103,8 @@ jobs:
           name: windows-${{ gitea.sha }}
           path: |
             artifacts/client-assets.tar.gz
-            artifacts/DFLegacy-*-win-x64.zip
+            artifacts/DFLegacy-${{ steps.meta.outputs.version }}-win-x64.zip
+            artifacts/DFLegacy-client-update-win-x64.zip
             artifacts/native-test-fixtures/
             artifacts/python-complete.xml
           if-no-files-found: error
@@ -215,14 +216,14 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$REGISTRY_IMAGE" && test -n "$REGISTRY_HOST" && test -n "$REGISTRY_USER"
-          for package in incoming/windows/DFLegacy-*.zip incoming/linux/DFLegacy-*.tar.gz; do
+          for package in incoming/windows/DFLegacy-"$DFLEGACY_RELEASE_VERSION"-win-x64.zip incoming/linux/DFLegacy-*.tar.gz; do
             python3 tools/release/release.py verify "$package" --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT"
           done
           (cd incoming/linux && sha256sum -c dflegacy-image.oci.tar.sha256 --ignore-missing)
           extra=()
           if test "$ALLOW_HTTP" = true; then extra+=(--allow-http); fi
           args=()
-          for package in incoming/windows/DFLegacy-*.zip incoming/linux/DFLegacy-*.tar.gz; do args+=(--archive "$package"); done
+          for package in incoming/windows/DFLegacy-"$DFLEGACY_RELEASE_VERSION"-win-x64.zip incoming/linux/DFLegacy-*.tar.gz; do args+=(--archive "$package"); done
           digest=$(python3 -c 'import json; print(json.load(open("incoming/linux/oci-metadata.json"))["containerimage.digest"])')
           # CreateRelease tag uniqueness chooses one full inventory/image digest.
           # An identical retry is read-only or resumes that same draft; a different
@@ -263,7 +264,7 @@ jobs:
           extra=()
           if test "$ALLOW_HTTP" = true; then extra+=(--allow-http); fi
           args=()
-          for package in incoming/windows/DFLegacy-*.zip incoming/linux/DFLegacy-*.tar.gz; do args+=(--archive "$package"); done
+          for package in incoming/windows/DFLegacy-"$DFLEGACY_RELEASE_VERSION"-win-x64.zip incoming/linux/DFLegacy-*.tar.gz; do args+=(--archive "$package"); done
           python3 tools/release/release.py release --gitea-url "$GITEA_URL" --repository "$GITEA_REPOSITORY" \
             --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT" --image-digest "$REGISTRY_IMAGE@$(cat incoming/image-digest.txt)" "${extra[@]}" "${args[@]}"
       - name: Advance latest only after a complete official release
@@ -280,3 +281,35 @@ jobs:
           if test "$ALLOW_HTTP_REGISTRY" = true; then tls+=(--tls-verify=false); copy_tls+=(--src-tls-verify=false --dest-tls-verify=false); fi
           printf '%s' "$REGISTRY_TOKEN" | skopeo login "${tls[@]}" --authfile "$auth" --username "$REGISTRY_USER" --password-stdin "$REGISTRY_HOST"
           skopeo copy "${copy_tls[@]}" --all --preserve-digests --authfile "$auth" "docker://$REGISTRY_IMAGE@$(cat incoming/image-digest.txt)" "docker://$REGISTRY_IMAGE:latest"
+
+  publish-github:
+    needs: [windows, test-linux, linux-packages-and-image, publish]
+    if: (gitea.event_name == 'push' || (gitea.event_name == 'workflow_dispatch' && inputs.publish == 'true')) && (gitea.ref == 'refs/heads/main' || startsWith(gitea.ref, 'refs/tags/v'))
+    runs-on: dflegacy-windows-x64
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DFLEGACY_RELEASE_VERSION: ${{ needs.windows.outputs.version }}
+      DFLEGACY_RELEASE_COMMIT: ${{ needs.windows.outputs.commit }}
+    steps:
+      - uses: https://github.com/actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: https://github.com/actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b
+        with:
+          name: windows-${{ gitea.sha }}
+          path: incoming/windows
+      # The protected Windows runner's existing GCM store is used by default.
+      # Other deployments may supply DFLEGACY_GITHUB_RELEASE_TOKEN in the host
+      # process environment. Never use the Gitea GITHUB_TOKEN alias for GitHub.
+      - name: Require explicit GitHub publication capability
+        run: |
+          $ErrorActionPreference = 'Stop'
+          py -3.12 tools/release/github_publish.py --preflight
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub publication capability unavailable; no release was published by this job' }
+      - name: Publish verified public client update through a draft
+        run: |
+          $ErrorActionPreference = 'Stop'
+          py -3.12 tools/release/github_publish.py --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --archive incoming/windows/DFLegacy-client-update-win-x64.zip
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub client release was not confirmed; inspect the matching draft before retrying' }
