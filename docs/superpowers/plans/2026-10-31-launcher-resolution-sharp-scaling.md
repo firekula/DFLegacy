@@ -69,12 +69,12 @@
 
 **Interfaces:** final published x86 DLL and single-file Launcher from Tasks1–3; existing tools/release and Gitea pipeline. Final reviewer receives spec, plan, ledger and full base-to-head diff.
 
-- [ ] Run real WPF settings cancel/save/path-change/reload through computer-use; inspect final portable binary. Use exact owned processes and preserve user authentication/security handoffs.
-- [ ] With verified backup and no conflicting live game, test actual800 sharp,640 and1280 at G:/dnf_local/DNF_2008. Capture real output-mode diagnostics and screenshots; verify mouse hover/click alignment, image edges, restore/AltTab and snapshots. Do not claim gameplay beyond what was actually exercised.
-- [ ] Measure warmed legacy/sharp presentation CPU cost and frame intervals; report p50/p95/peaks and caching/lifetime behavior. Address regressions before making the mode default; record limitations accurately.
-- [ ] Run full relevant native/Launcher/managed/Python/release suites; fresh whole-branch review and one RED→GREEN fix pass for all material findings, with green suites afterward.
-- [ ] Preserve main's exact dirty content/status while fast-forwarding approved source. Temporarily resume runners, push main, monitor CI and resolve actual failures without weakening gates. Independently download all release assets and verify manifests, hashes and private dual-arch OCI.
-- [ ] Install only the validated binary and chosen display keys after verified backups; compare original426 resource hashes and unrelated config. Restore runner pause, record final acceptance, and push documentation with[skip ci]. Keep the user's current services and resources.
+- [x] Run real WPF settings cancel/save/path-change/reload through computer-use; inspect final portable binary. Use exact owned processes and preserve user authentication/security handoffs.
+- [x] With verified backup and no conflicting live game, test actual800 sharp,640 and1280 at G:/dnf_local/DNF_2008. Capture real output-mode diagnostics and screenshots; verify mouse hover/click alignment, image edges, restore/AltTab and snapshots. Do not claim gameplay beyond what was actually exercised.
+- [x] Measure warmed legacy/sharp presentation CPU cost and frame intervals; report p50/p95/peaks and caching/lifetime behavior. Address regressions before making the mode default; record limitations accurately.
+- [x] Run full relevant native/Launcher/managed/Python/release suites; fresh whole-branch review and one RED→GREEN fix pass for all material findings, with green suites afterward.
+- [x] Preserve main's exact dirty content/status while fast-forwarding approved source. Temporarily resume runners, push main, monitor CI and resolve actual failures without weakening gates. Independently download all release assets and verify manifests, hashes and private dual-arch OCI.
+- [x] Install only the validated binary and chosen display keys after verified backups; compare original426 resource hashes and unrelated config. Restore runner pause, record final acceptance, and push documentation with[skip ci]. Keep the user's current services and resources.
 
 ## Self-review and execution rulings
 

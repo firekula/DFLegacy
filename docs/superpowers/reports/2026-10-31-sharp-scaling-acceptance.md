@@ -1,6 +1,6 @@
 # 登录器分辨率与清晰平滑缩放验收
 
-批准设计：`../specs/2026-10-31-launcher-resolution-sharp-scaling-design.md`。实现基线：`aba40c4a48a170ee5d41bee9aeee2000a1f1871b`；最终代码：`27eb78f234b1619de1cbcc60b87e766dc55013bd`。
+批准设计：`../specs/2026-10-31-launcher-resolution-sharp-scaling-design.md`。实现基线：`aba40c4a48a170ee5d41bee9aeee2000a1f1871b`；原生缩放最终修复：`27eb78f234b1619de1cbcc60b87e766dc55013bd`；最终发行源提交：`be3d6efe243942f8aafeb9ce4df9a298d263bd10`。
 
 ## 交付行为
 
@@ -25,7 +25,7 @@
 
 在 `G:/dnf_local/DNF_2008` 用正常登录器进入真实客户端，分别验证 640×480、800×600、1280×960 的输出尺寸、频道与开始按钮坐标、角色界面及 800×600 鬼剑士预览的字体和透明边缘。800 模式完成 Alt+Tab 往返；真实 D3D8 测试窗口完成四轮最小化、恢复、Reset 和最终释放。没有创建角色或宣称完成城镇、战斗与实际游戏拖放/滚轮场景验收。
 
-最后代码实机 PID 46252：800×600，requested/effective=sharp，reason=ok，中间 1280×960，64 帧预热后采样 256 帧；准备 CPU 时间 p50/p95/峰值为 60/172/260 微秒，帧调用间隔 904/1416/2743 微秒，仅创建一次输出链。通过游戏“结束游戏”退出，原生进程句柄确认退出码 0。此前 640/1280 准备 p95 为 131/139 微秒；800 兼容对照准备为 0、间隔 p50/p95/峰值 766/1017/1200 微秒。这些是启动/菜单 CPU 准备和调用间隔，排除原始 Present 等待及作用域入口/出口，并非 GPU 计时或战斗性能数据。
+独立复核后本地代码实机 PID 46252：800×600，requested/effective=sharp，reason=ok，中间 1280×960，64 帧预热后采样 256 帧；准备 CPU 时间 p50/p95/峰值为 60/172/260 微秒，帧调用间隔 904/1416/2743 微秒，仅创建一次输出链。通过游戏“结束游戏”退出，原生进程句柄确认退出码 0。此前 640/1280 准备 p95 为 131/139 微秒；800 兼容对照准备为 0、间隔 p50/p95/峰值 766/1017/1200 微秒。这些是启动/菜单 CPU 准备和调用间隔，排除原始 Present 等待及作用域入口/出口，并非 GPU 计时或战斗性能数据。
 
 ## 独立复核和单轮修复
 
@@ -69,8 +69,17 @@ GDI分配失败时保留WPF文字回退，可能使用抗锯齿。视觉检查�
 
 ## 远程发布与最终安装
 
-原生缩放阶段的run14已4/4成功；其后用户要求的原版界面和本轮修正尚待以最终提交重新运行CI、下载校验、安装验证及恢复Runner暂停。仅全部完成后更新本节为完成。
+已完成：[Gitea CI run16](http://firekula.site:3000/firekula/DFLegacy/actions/runs/16) 的4个工作全部成功；[Release dev-20261031T082951Z-be3d6efe2439](http://firekula.site:3000/firekula/DFLegacy/releases/tag/dev-20261031T082951Z-be3d6efe2439) 已发布并认证下载校验。main原3个未提交跟踪文件及163条工作区状态保持不变。
 
 ### CI尺寸夹具时序修正
 
-run15在既有debug_overlay尺寸断言处失败，发行被阻止。取证显示面板为前台时，测试线程的SetWindowPos与WM_EXITSIZEMOVE之间，窗口线程可按旧Bounds重新布局；注入调度间隔后，实际立即/提交前/最终均500×260（期望320×180），前台同条件RED。真实非客户区尺寸事务在窗口线程执行，测试现以仅测试EXE中的临时窗口过程在该线程完成尺寸设置和提交，之后继续泵消息验证尺寸仍保留。前台同条件GREEN，原断言保留；产品DLL代码不变。完整本地原生/GPU17/17再次通过，39.70秒；下一轮CI将重新执行全部门禁。证据resize-fixture-foreground-{red,green}.log与classic-integration-native-all.log。
+run15在既有debug_overlay尺寸断言处失败，发行被阻止。取证显示面板为前台时，测试线程的SetWindowPos与WM_EXITSIZEMOVE之间，窗口线程可按旧Bounds重新布局；注入调度间隔后，实际立即/提交前/最终均500×260（期望320×180），前台同条件RED。真实非客户区尺寸事务在窗口线程执行，测试现以仅测试EXE中的临时窗口过程在该线程完成尺寸设置和提交，之后继续泵消息验证尺寸仍保留。前台同条件GREEN，原断言保留；产品DLL代码不变。完整本地原生/GPU17/17再次通过，39.70秒；随后run16重新执行全部门禁并全部成功。证据resize-fixture-foreground-{red,green}.log与classic-integration-native-all.log。
+
+### 最终发行验证记录
+
+- 最终源码 `be3d6efe243942f8aafeb9ce4df9a298d263bd10`，版本 `dev-20261031T082951Z-be3d6efe2439`；4/4 CI工作成功。Windows完整Python JUnit1297、0失败/错误/跳过，原生16/16及随机数1/1；最新本地原生/GPU17/17、Launcher与协议smoke通过，Manager100/0、发行工具46/46。
+- 认证下载全部10项资产；5个RID（linux-arm64, linux-x64, osx-arm64, osx-x64, win-x64）清单、SHA、版本和提交一致，Linux/macOS脚本执行位正确；macOS及Linux ARM64程序为交叉构建，未在原生硬件运行。私有OCI验证linux/amd64及linux/arm64索引/清单/配置摘要、源码标签、非root用户和匿名拒绝。
+- 实际CI生成的单文件登录器已通过Sky实机界面检查；下载的Windows ZIP及EXE哈希与该验收对象完全一致。原客户端目录仅更新DFLegacy.Launcher.exe、ijl15.dll，备份：`G:/dnf_local/DNF_2008/.dflegacy-backups/20261031-sharp-release-171447`。
+- 最终发布程序再次拉起真实客户端PID 41912：请求/实际均sharp，800×600，中间1280×960，reason=ok。通过游戏结束入口退出，保留原生进程句柄确认退出码0；没有据此新增城镇或战斗验收声明。
+- 原DNF.exe、玩家launcher.json及无关INI字节保留，426个原资源哈希不变；测试服务/游戏/登录器均已停止，两个Runner标记逐字节恢复并暂停，数据卷保留。
+- 两份执行账本和测试证据保存在私人验证目录；全部32项实现裁定及代价见[完整裁定记录](2026-10-31-launcher-execution-rulings.md)。延期Minor为0。host管理的工作树和功能分支保留。

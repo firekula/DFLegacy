@@ -53,6 +53,6 @@
 
 **Interfaces:** Corrected single-file launcher plus previously verified native scaling; original Task4 publication/download/install/pause gates.
 
-- [ ] Preserve exact main dirty bytes/status, fast-forward final UI commit, verify merged Launcher gate and push a complete CI run.
-- [ ] Verify all final Release assets/manifests and dual-arch private OCI, actual packaged game and matching binaries; install only validated client files with backups and preserve original426 resources/configuration.
-- [ ] Restore Runner pause and owned process baseline; complete original Task4, preserve ledgers/rulings, record final acceptance and push docs.
+- [x] Preserve exact main dirty bytes/status, fast-forward final UI commit, verify merged Launcher gate and push a complete CI run.
+- [x] Verify all final Release assets/manifests and dual-arch private OCI, actual packaged game and matching binaries; install only validated client files with backups and preserve original426 resources/configuration.
+- [x] Restore Runner pause and owned process baseline; complete original Task4, preserve ledgers/rulings, record final acceptance and push docs.
