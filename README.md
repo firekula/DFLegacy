@@ -88,7 +88,7 @@
 | `DFLegacy.Launcher` | Windows 启动器：WPF 交互式登录壳，含注册/登录/改密/找回/账号管理/配置；检查运行环境、验证独立客户端包并通过内嵌 x86 引导器启动客户端，可按需启动本地服务端。`--headless`/`--account` 仍支持双击即玩。 |
 | `DFLegacy.AccountClient` | 启动器使用的账号 HTTP 客户端（注册、改密、找回密码、健康检查）。 |
 | `DFLegacy.Client` | 独立 x86 客户端补丁 `DFLegacy.Client.dll` 与内嵌引导器；普通版和测试版共用完整游戏优化核心。 |
-| `DFLegacy.Ijl15` | 32 位 C++ `ijl15.dll` 兼容模块，提供客户端所需的 JPEG 功能及进程内兼容补丁、窗口缩放等功能。 |
+| `DFLegacy.Client` / `DFLegacy.Ijl15` | 独立 32 位 `DFLegacy.Client.dll` 提供进程内兼容补丁和窗口缩放；原版 IJL 保留，旧 `ijl15.dll` 构建用于兼容回归。 |
 | `DFLegacy.Debug` | 可选的 32 位 `debug.dll`，由 IJL15 延迟加载；提供浮动面板、结构化状态、城镇寻路及组队操作接口。另有默认关闭、需新鲜服务端租约的隔离测试控制。 |
 | `DFLegacy.RandomNative` | 64 位 C++ 硬件随机种子桥接，为玩法随机提供 RDSEED 支持；不支持该指令时自动回退，不是运行必需项。 |
 | `wwwroot/admin` | 独立的中文后台管理页面，使用现代浏览器访问，不依赖前端构建工具。需登录：管理员看到全部 GM 功能与「用户角色」，普通玩家只看到自己的角色（另有独立的玩家页 `player.html`）。 |
@@ -105,7 +105,7 @@
 | 服务端容器镜像 | 支持 | 支持 | 支持 | 见 [DEPLOYING.md](DEPLOYING.md#5-容器部署docker--podman)；宿主只需能运行 Docker 或 Podman |
 | `DFLegacy.Launcher` | 支持 | 不支持 | 不支持 | WPF 程序，且需要检测 D3D9 设备 |
 | `DFLegacy.Ijl15`（32 位客户端补丁） | 支持 | 不支持 | 不支持 | 原生 C++，用于替换客户端模块 |
-| `DFLegacy.Debug`（调试覆盖层） | 支持 | 不支持 | 不支持 | 可选，需与服务端共享本机调试快照目录 |
+| `DFLegacy.Debug`（调试覆盖层） | 支持 | 不支持 | 不支持 | 测试版默认本地诊断；仅服务端覆盖数据需共享本机快照目录 |
 | `DFLegacy.RandomNative`（64 位随机桥） | 支持 | 不支持 | 不支持 | 可选；缺失或不可用时自动回退到托管随机 |
 | 游戏客户端 | 支持 | 不支持 | 不支持 | 原版 32 位 Windows 客户端 |
 
@@ -323,7 +323,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 
 新版使用独立 `DFLegacy.Client.dll`，通过登录器内嵌的 x86 引导器在游戏入口前加载；保持原始 EXE、DLL、PVF、NPK 不变。仅支持已验证的同版本兼容展开客户端，不修复原始旧壳的现代 Windows 兼容性。旧版用户需手动迁移一次：退出游戏并备份客户端，使用新登录器验证原版恢复，不能根据 `ijl15.original.dll` 等备份文件名猜测原版。
 
-部署管理器下载卡片默认导出普通版；勾选“测试版（包含 debug.dll，便于诊断）”加入同版本诊断模块。普通版同样包含完整游戏优化。测试控制、自动输入和组队文件命令仍需显式开启；服务端覆盖信息只支持共享本机目录，不自动同步远程数据。缺失或不匹配的测试资源会阻止测试包导出。
+部署管理器下载卡片默认导出普通版；勾选“测试版（包含 debug.dll，便于诊断）”加入同版本诊断模块，并默认在首个游戏内画面加载本地诊断，不改写旧 `EnableDebugOverlay` 配置。普通版同样包含完整游戏优化且不加载诊断。测试控制、自动输入和组队文件命令仍需显式开启；仅服务端覆盖数据需要共享本机目录，不自动同步远程数据。缺失或不匹配的测试资源会阻止测试包导出。补丁、引导器和登录器内嵌 Detours 完整许可与版本，运行 `DFLegacy.Launcher.exe --third-party-notices | more` 可查看。
 
 玩家 ZIP 解压到 `DNF.exe` 所在目录，含 `client-package.json`、单文件登录器、独立补丁及安全生成的服务器连接配置；已有 `Config.ini` 继续保留。GitHub 的手动迁移工具包不含 `Config.ini`、`launcher.json`、游戏文件或账号。迁移后按已安装普通／测试类型自动使用对应 schema 2 更新包；不会新发 schema 1 桥接包。
 

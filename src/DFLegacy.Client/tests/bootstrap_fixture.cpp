@@ -20,6 +20,15 @@ bool InitializeClient() noexcept
         return false;
     };
     if (!dfl::client_bootstrap::IsStandalone()) return status("not-standalone");
+    // The production runtime uses the compatible client's absolute addresses.
+    // Keep fixture assumptions executable, including the raw WinMain fixture.
+    const auto image = reinterpret_cast<const unsigned char*>(GetModuleHandleW(nullptr));
+    if (reinterpret_cast<ULONG_PTR>(image) != 0x400000) return status("fixture-image-base");
+    const auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(image);
+    const auto nt = reinterpret_cast<const IMAGE_NT_HEADERS32*>(image + dos->e_lfanew);
+    if (nt->OptionalHeader.ImageBase != 0x400000
+        || (nt->OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE))
+        return status("fixture-image-flags");
     if (wcsstr(GetCommandLineW(), L"fail")) return status("requested-failure");
     if (wcsstr(GetCommandLineW(), L"timeout")) { Sleep(20000); return false; }
     const auto expectedMode = wcsstr(GetCommandLineW(), L"test-mode")

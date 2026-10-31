@@ -51,6 +51,8 @@
     </Content>
     <EmbeddedResource Include="$(ClientBootstrapPrebuiltPath)" LogicalName="DFLegacy.Launcher.Bootstrap32.exe" />
     <EmbeddedResource Include="../DFLegacy.Ijl15/Config.ini" LogicalName="DFLegacy.Launcher.DefaultConfig.ini" />
+    <EmbeddedResource Include="../../third_party/detours/LICENSE" LogicalName="DFLegacy.Launcher.Detours.LICENSE" />
+    <EmbeddedResource Include="../../third_party/detours/PROVENANCE.md" LogicalName="DFLegacy.Launcher.Detours.PROVENANCE" />
   </ItemGroup>
   <Target Name="BuildStandaloneNative" BeforeTargets="PrepareForBuild"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeAssets)' == 'true'">

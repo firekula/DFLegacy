@@ -8,6 +8,7 @@
 #include "client_debug_state.h"
 #include "debug_module.h"
 #include "../../DFLegacy.Client/player_runtime.h"
+#include "../../DFLegacy.Client/bootstrap_runtime.h"
 #include "../../DFLegacy.Client/client_paths.h"
 #include "ijl15_config.h"
 #include "performance_overlay.h"
@@ -275,7 +276,10 @@ namespace dfl::debug_module
     {
         // Apply runs in IJL15 DllMain. Load debug.dll on the first render,
         // outside the loader lock; never start or wait on workers in DllMain.
-        Enabled = player_runtime::DiagnosticsAllowed() && ijl15_config::Get().EnableDebugOverlay;
+        // Standalone flavor is authenticated by bootstrap and never rewrites
+        // player configuration. The old IJL path retains its explicit opt-in.
+        Enabled = player_runtime::DiagnosticsAllowed()
+            && (client_bootstrap::IsStandalone() || ijl15_config::Get().EnableDebugOverlay);
         // All gameplay dispatch hooks are installed with the other IJL patches,
         // before the game starts. Never rewrite an executing dispatch call.
         if(Enabled&&ijl15_config::Get().ExportGameplayTrace&&!InstallGameplayProbe())

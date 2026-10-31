@@ -97,7 +97,7 @@ Docker build/多架构发行见 [BUILDING.md](BUILDING.md)。Gitea Registry 使�
 
 ZIP 包含单文件 WPF 登录器、独立的 `DFLegacy.Client.dll` 和 `client-package.json`、空凭据连接配置、条款、说明和摘要，直接解压到 `DNF.exe` 所在目录。游戏退出后先备份再替换；ZIP 不直接包含 `Config.ini`，登录器仅在缺少配置时从内嵌模板生成，保留已有设置。玩家包不包含管理凭据、游戏存档、PVF 或预置游戏账号，玩家自行登录/注册。
 
-调试浮窗默认关闭。`debug.dll` 依赖本机共享快照目录，不能声称远程 Linux/macOS/Docker 已支持该调试传输。兼容补丁和普通性能浮窗与调试功能分别设置。第三方可选 `d3d8to9` 不会自动分发，使用时自行核对仓库附带许可与兼容性。
+独立普通版不加载诊断；测试版默认在首个游戏内画面加载 `debug.dll` 本地诊断，不改写旧 `EnableDebugOverlay` 配置。仅服务端覆盖数据依赖本机共享快照目录，不支持远程 Linux/macOS/Docker 调试数据同步。自动输入等主动控制仍需显式开启。第三方可选 `d3d8to9` 不会自动分发，使用时自行核对仓库附带许可与兼容性。
 
 ## 导入、备份、升级与恢复
 
@@ -117,7 +117,7 @@ ZIP 包含单文件 WPF 登录器、独立的 `DFLegacy.Client.dll` 和 `client-
 
 ### 独立客户端包与 CI 夹具
 
-管理器下载默认普通版；测试版复选框只加入同版本 `debug.dll`，不自动启用输入、组队文件命令等测试控制。普通版包含完整游戏优化。旧用户先退出游戏、备份客户端并完成一次可见的原版验证迁移，不能靠备份文件名推断原版。只支持已验证的兼容展开客户端，不修复原始旧壳；原始 EXE/DLL/PVF/NPK 保持不变。服务端覆盖信息依赖本机共享目录，不提供远程目录同步。
+管理器下载默认普通版；测试版加入同版本 `debug.dll` 并默认加载本地诊断，不自动启用输入、组队文件命令等测试控制。普通版包含完整游戏优化。新版补丁为独立 `DFLegacy.Client.dll`。旧用户先退出游戏、备份客户端，并确认一次可见且经哈希验证的原版 IJL 恢复，不能靠备份文件名推断原版。只支持已验证的兼容展开客户端，不修复原始旧壳；原始 EXE/DLL/PVF/NPK 保持不变。仅服务端覆盖数据依赖本机共享目录，不提供远程目录同步。补丁、引导器和登录器内嵌 Detours 完整许可与版本，运行 `DFLegacy.Launcher.exe --third-party-notices | more` 可直接查看。
 
 公开发布固定包含四个附件：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。V2 更新包只有该类型的项目程序和 `update-manifest.json`；tools 包另含安装清单、摘要和迁移说明，不含玩家配置或游戏资源。发布器校验完整四附件集合及共同程序的哈希，再发布草稿并匿名回读；部分发布不得作为成功重试。旧已发布版本保持不变。公开标签指向预先导出的脱敏公开源码快照；私有构建提交仍作为包身份，不推送私有历史。
 

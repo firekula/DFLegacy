@@ -127,9 +127,10 @@ public sealed class ClientPackageExporter
                         UdpPorts = string.Join(',', config.ForwardedUdpPorts()), Preference = config.RelayPreference }
                 };
                 await Add("launcher.json", JsonSerializer.Serialize(launcher, new JsonSerializerOptions { WriteIndented = true }));
-                await Add("README.txt", $"DFLegacy {version}\n提交：{commit}\n\n旧版用户需先手动迁移一次：退出游戏并备份客户端，由新登录器验证原版恢复；不要按备份文件名猜测原版。\n"
+                await Add("README.txt", $"DFLegacy {version}\n提交：{commit}\n\n新版使用独立 DFLegacy.Client.dll。旧版用户需先迁移一次：退出游戏并备份客户端，在新登录器中确认经哈希验证的原版 IJL 恢复；不要按备份文件名猜测原版。\n"
                     + "将 ZIP 内容直接解压到 DNF.exe 所在目录，运行 DFLegacy.Launcher.exe；首次自行注册或输入账号。\n默认配置内嵌，已有 Config.ini 仅更新必要连接字段并保留窗口设置。\n"
-                    + "保持原始 EXE、DLL、PVF、NPK 不变；仅支持已验证的同版本兼容展开客户端，不修复原始旧壳。\n不包含客户端或 Script.pvf，请自行提供与服务端匹配的资源。\n普通版包含完整游戏优化；测试包仅增加本地诊断，自动输入和测试控制仍需显式启用。服务端覆盖信息仅适用于共享本机目录，不自动同步远程数据。\n");
+                    + "保持原始 EXE、DLL、PVF、NPK 不变；仅支持已验证的同版本兼容展开客户端，不修复原始旧壳。\n不包含客户端或 Script.pvf，请自行提供与服务端匹配的资源。\n普通版包含完整游戏优化且不加载诊断；测试包默认在首个游戏内画面加载本地诊断，自动输入和测试控制仍需显式启用。仅服务端覆盖数据需要共享本机目录，不自动同步远程数据。\n"
+                    + "Detours 完整许可和版本信息已内嵌于补丁、引导器和登录器。查看：DFLegacy.Launcher.exe --third-party-notices | more\n");
                 var checksumData = Encoding.UTF8.GetBytes(sums.ToString());
                 await using var checksum = archive.CreateEntry("SHA256SUMS").Open();
                 await checksum.WriteAsync(checksumData, cancellationToken);

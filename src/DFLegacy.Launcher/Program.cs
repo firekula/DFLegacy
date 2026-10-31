@@ -21,6 +21,19 @@ internal static class Program
     // headless 分支由 App.OnStartup 调用本方法，保留原 Main 的全部行为。
     internal static async Task<int> RunHeadlessAsync(string[] args)
     {
+        // Read-only, works without a client/configuration and creates no files.
+        if (args.Contains("--third-party-notices", StringComparer.OrdinalIgnoreCase))
+        {
+            foreach (var name in new[] { "PROVENANCE", "LICENSE" })
+            {
+                using var stream = typeof(Program).Assembly.GetManifestResourceStream("DFLegacy.Launcher.Detours." + name)
+                    ?? throw new InvalidDataException("Missing embedded Detours notice.");
+                using var reader = new StreamReader(stream);
+                Console.Write(reader.ReadToEnd());
+                if (name == "PROVENANCE") Console.Write('\n');
+            }
+            return 0;
+        }
         var noDialog = args.Contains("--no-dialog", StringComparer.OrdinalIgnoreCase)
             || args.Contains("--self-test", StringComparer.OrdinalIgnoreCase)
             || args.Contains("--install-ijl15", StringComparer.OrdinalIgnoreCase)

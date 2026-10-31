@@ -67,7 +67,8 @@ struct Launch
     }
     void Ready(const std::string& line)
     {
-        if (line.find("\"event\":\"ready\"") == std::string::npos) std::cerr << line << '\n';
+        if (line.find("\"event\":\"ready\"") == std::string::npos)
+        { std::cerr << line << '\n'; Exit(); }
         Check(line.find("\"event\":\"ready\"") != std::string::npos, "expected ready JSON");
         Check(line.find("\"schemaVersion\":1") != std::string::npos && line.find("0123456789abcdef0123456789abcdef") != std::string::npos, "schema/nonce");
         const auto pos = line.find("\"pid\":"); Check(pos != std::string::npos, "pid missing");

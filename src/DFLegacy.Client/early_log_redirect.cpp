@@ -5,6 +5,11 @@
 #include "client_paths.h"
 #include "early_log_redirect.h"
 #include "../DFLegacy.Ijl15/src/pe_import.h"
+#ifdef FIXTURE_DLL
+#include "tests/bootstrap_diagnostics.h"
+#else
+#define DFL_FIXTURE_OBSERVE(stage, expression) (expression)
+#endif
 namespace
 {
     decltype(&CreateFileA) Original=nullptr;
@@ -37,9 +42,9 @@ namespace dfl::client_paths
         if(!slot)return false;
         // A failed directory creation intentionally suppresses only this log;
         // never fall back to a root file, nor redirect any unrelated filename.
-        BuildLogPath(L"rs_log.txt",RsLog,32768);
-        DWORD old=0;if(!VirtualProtect(slot,sizeof(*slot),PAGE_READWRITE,&old))return false;
+        DFL_FIXTURE_OBSERVE("rs-log-path",BuildLogPath(L"rs_log.txt",RsLog,32768));
+        DWORD old=0;if(!DFL_FIXTURE_OBSERVE("rs-slot-writable",VirtualProtect(slot,sizeof(*slot),PAGE_READWRITE,&old)))return false;
         Original=reinterpret_cast<decltype(&CreateFileA)>(*slot);*slot=reinterpret_cast<void*>(&OpenRsLog);
-        DWORD ignored=0;return VirtualProtect(slot,sizeof(*slot),old,&ignored)!=FALSE;
+        DWORD ignored=0;return DFL_FIXTURE_OBSERVE("rs-slot-restored",VirtualProtect(slot,sizeof(*slot),old,&ignored))!=FALSE;
     }
 }

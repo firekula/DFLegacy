@@ -195,6 +195,8 @@ def windows(version, commit):
                          verification="Windows x64 CI: managed/native tests and packaged Manager health/readiness; GPU and graphical game acceptance are not executed in headless CI")
     smoke_archive(archive)
     build_client_packages(assets, REPO / "artifacts", version, commit)
+    run(sys.executable, "tools/release/tests/verify_client_notices.py", "--native", native.parent,
+        "--launcher", launcher / "DFLegacy.Launcher.exe", "--packages", REPO / "artifacts")
 
 
 def linux(version, commit, archive):

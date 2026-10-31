@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(DFLegacy.Ijl15 LANGUAGES CXX)
+project(DFLegacy.Ijl15 LANGUAGES CXX RC)
 
 if(NOT WIN32)
     message(FATAL_ERROR "DFLegacy.Ijl15 only supports Windows.")
@@ -23,6 +23,9 @@ add_library(detours STATIC
     ${DETOURS_DIR}/disolia64.cpp ${DETOURS_DIR}/disolarm.cpp ${DETOURS_DIR}/disolarm64.cpp)
 target_include_directories(detours PUBLIC ${DETOURS_DIR})
 target_compile_options(detours PRIVATE /W4 /WX /Brepro)
+set(DETOURS_LICENSE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/detours/LICENSE")
+set(DETOURS_PROVENANCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/detours/PROVENANCE.md")
+configure_file(../DFLegacy.Client/detours_notices.rc.in detours_notices.rc @ONLY)
 
 add_library(ijl15 SHARED
     include/ijl15.h
@@ -163,6 +166,15 @@ add_custom_command(TARGET ijl15 POST_BUILD
 
 include(CTest)
 if(BUILD_TESTING)
+    add_library(debug_loading_fixture SHARED ../DFLegacy.Client/tests/debug_loading_fixture.cpp)
+    add_executable(debug_loading_tests ../DFLegacy.Client/tests/debug_loading_tests.cpp
+        src/ijl15_config.cpp src/presentation_scaling.cpp ../DFLegacy.Client/client_paths.cpp)
+    target_compile_options(debug_loading_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    target_link_libraries(debug_loading_tests PRIVATE winhttp)
+    foreach(case test-missing test-0 normal-1 legacy-0 legacy-1)
+        string(REPLACE "-" ";" parts "${case}")
+        add_test(NAME debug_loading_${case} COMMAND debug_loading_tests $<TARGET_FILE:debug_loading_fixture> ${parts})
+    endforeach()
     add_executable(inventory_tab_tests tests/inventory_tab_tests.cpp src/inventory_tab.cpp src/memory_patch.cpp)
     target_include_directories(inventory_tab_tests PRIVATE src)
     target_compile_options(inventory_tab_tests PRIVATE /W4 /WX /utf-8 /EHsc)
@@ -175,7 +187,13 @@ set_target_properties(client_bootstrap PROPERTIES OUTPUT_NAME "DFLegacy.Bootstra
 target_compile_options(client_bootstrap PRIVATE /W4 /WX /utf-8 /EHsc /Brepro)
 target_link_options(client_bootstrap PRIVATE /Brepro /INCREMENTAL:NO /PDBALTPATH:DFLegacy.Bootstrap32.pdb)
 target_link_libraries(client_bootstrap PRIVATE detours bcrypt)
+target_sources(client_patch PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/detours_notices.rc")
+target_sources(client_bootstrap PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/detours_notices.rc")
 if(BUILD_TESTING)
+    add_executable(bootstrap_diagnostic ../DFLegacy.Client/bootstrap_main.cpp)
+    target_compile_definitions(bootstrap_diagnostic PRIVATE FIXTURE_BOOTSTRAP)
+    target_compile_options(bootstrap_diagnostic PRIVATE /W4 /WX /utf-8 /EHsc /Brepro)
+    target_link_libraries(bootstrap_diagnostic PRIVATE detours bcrypt)
     add_library(bootstrap_original_ijl SHARED ../DFLegacy.Client/tests/bootstrap_fixture.cpp)
     target_compile_definitions(bootstrap_original_ijl PRIVATE FIXTURE_ORIGINAL_IJL)
     set_target_properties(bootstrap_original_ijl PROPERTIES OUTPUT_NAME "ijl15"
@@ -185,10 +203,15 @@ if(BUILD_TESTING)
     set_target_properties(bootstrap_rs PROPERTIES OUTPUT_NAME "RS")
     add_executable(bootstrap_fixture ../DFLegacy.Client/tests/bootstrap_fixture.cpp)
     target_link_libraries(bootstrap_fixture PRIVATE bootstrap_original_ijl bootstrap_rs)
+    # Match the supported client's fixed image layout. A randomized synthetic
+    # EXE below 0x80000 can hit the pinned Detours trampoline allocation floor;
+    # that layout is outside the absolute-address client runtime contract.
+    target_link_options(bootstrap_fixture PRIVATE /DYNAMICBASE:NO /BASE:0x400000)
     add_executable(bootstrap_winmain_fixture WIN32 ../DFLegacy.Client/tests/bootstrap_fixture.cpp)
     target_compile_definitions(bootstrap_winmain_fixture PRIVATE FIXTURE_WINMAIN)
     target_compile_options(bootstrap_winmain_fixture PRIVATE /W4 /WX /utf-8 /EHsc /Brepro)
     target_link_libraries(bootstrap_winmain_fixture PRIVATE bootstrap_original_ijl bootstrap_rs)
+    target_link_options(bootstrap_winmain_fixture PRIVATE /DYNAMICBASE:NO /BASE:0x400000)
     add_library(bootstrap_fixture_dll SHARED ../DFLegacy.Client/tests/bootstrap_fixture.cpp ../DFLegacy.Client/bootstrap_runtime.cpp)
     target_sources(bootstrap_fixture_dll PRIVATE ../DFLegacy.Client/client_paths.cpp ../DFLegacy.Client/client_entry.cpp ../DFLegacy.Client/client.def ../DFLegacy.Client/early_log_redirect.cpp)
     target_link_libraries(bootstrap_fixture_dll PRIVATE detours)

@@ -279,8 +279,18 @@ namespace
             if (status != WAIT_TIMEOUT) break;
         }
         if (status != WAIT_OBJECT_0 || state.initialized != 1)
+        {
+#ifdef FIXTURE_BOOTSTRAP
+            DWORD childExit=0; GetExitCodeProcess(pi.hProcess,&childExit);
+            char detail[240]{};
+            sprintf_s(detail,"Fixture init failed: wait=%lu initialized=%ld child_exit=%lu child_pid=%lu module_path_set=%u volume=%lu",
+                status,state.initialized,childExit,pi.dwProcessId,state.modulePath[0]?1u:0u,state.volume);
+            return Error(nonce, status == WAIT_TIMEOUT ? "initialization_timeout" : "initialization_failed", detail);
+#else
             return Error(nonce, status == WAIT_TIMEOUT ? "initialization_timeout" : "initialization_failed",
                 "Client patch initialization failed; this client image may be unsupported.");
+#endif
+        }
         if (state.volume != expected.dwVolumeSerialNumber || state.fileIndexHigh != expected.nFileIndexHigh
             || state.fileIndexLow != expected.nFileIndexLow || state.modulePath[PathCapacity - 1] != 0
             || _wcsicmp(state.modulePath, dllPath.c_str()))

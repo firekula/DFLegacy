@@ -411,13 +411,14 @@ def verify_client_update(archive, version=None, commit=None):
 
 def migration_instructions(version, commit, flavor):
     return (f"DFLegacy {version}\nSource commit: {commit}\nFlavor: {flavor}\n\n"
-            "Exit the game and back up your client before installation. Old patched clients require one manual migration.\n"
-            "Extract these tools into the DNF.exe directory and use the launcher's verified original-file migration.\n"
+            "The patch is the independent DFLegacy.Client.dll. Exit the game and back up your client before installation.\n"
+            "Extract these tools into the DNF.exe directory. Old patched clients require one visible, hash-verified original IJL restoration in the launcher.\n"
             "Never infer an original DLL from a backup filename. Keep original EXE/DLL/PVF/NPK files intact.\n"
             "Only verified compatible unpacked clients are supported; the original packed shell is not repaired.\n"
             "No game binaries or player configuration are included. Preserve Config.ini and launcher.json.\n"
-            "Normal includes all gameplay optimizations; test adds local diagnostics. Automation controls require explicit opt-in.\n"
-            "Server overlay data requires a shared local directory; remote data is not synchronized.\n"
+            "Normal includes all gameplay optimizations without diagnostics; test defaults to local diagnostics on the first in-world frame. Automation controls require explicit opt-in.\n"
+            "Only server overlay data requires a shared local directory; remote data is not synchronized.\n"
+            "Full Detours license and version are embedded in patch/helper/launcher. Read: DFLegacy.Launcher.exe --third-party-notices | more\n"
             "After migration the launcher updates the installed normal/test flavor through schema 2 packages.\n").encode("utf-8")
 
 

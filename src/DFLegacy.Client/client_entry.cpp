@@ -10,7 +10,11 @@ static bool InitializeClient() noexcept
     return dfl::dnf_patches::IsTargetProcess() && dfl::dnf_patches::Apply();
 }
 #else
+#include "tests/bootstrap_diagnostics.h"
 bool InitializeClient() noexcept;
+#endif
+#ifndef FIXTURE_DLL
+#define DFL_FIXTURE_OBSERVE(stage, expression) (expression)
 #endif
 
 namespace dfl::client_bootstrap { void SetStandaloneMode(Mode mode) noexcept; }
@@ -66,12 +70,12 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID)
     release = reinterpret_cast<HANDLE>(payload->release);
     self = instance;
     SetStandaloneMode(shared->mode ? Mode::Test : Mode::Normal);
-    if(!dfl::client_paths::InstallEarlyRsLogRedirect())return FALSE;
-    originalEntry = reinterpret_cast<Entry>(DetourGetEntryPoint(GetModuleHandleW(nullptr)));
-    if (!originalEntry || !DetourRestoreAfterWith()) return FALSE;
-    if (DetourTransactionBegin() != NO_ERROR) return FALSE;
-    if (DetourUpdateThread(GetCurrentThread()) != NO_ERROR
-        || DetourAttach(reinterpret_cast<PVOID*>(&originalEntry), EntryGate) != NO_ERROR)
+    if(!DFL_FIXTURE_OBSERVE("early-rs",dfl::client_paths::InstallEarlyRsLogRedirect()))return FALSE;
+    originalEntry = reinterpret_cast<Entry>(DFL_FIXTURE_OBSERVE("entry-point",DetourGetEntryPoint(GetModuleHandleW(nullptr))));
+    if (!originalEntry || !DFL_FIXTURE_OBSERVE("restore-imports",DetourRestoreAfterWith())) return FALSE;
+    if (DFL_FIXTURE_OBSERVE("detour-begin",DetourTransactionBegin()) != NO_ERROR) return FALSE;
+    if (DFL_FIXTURE_OBSERVE("detour-thread",DetourUpdateThread(GetCurrentThread())) != NO_ERROR
+        || DFL_FIXTURE_OBSERVE("detour-attach",DetourAttach(reinterpret_cast<PVOID*>(&originalEntry), EntryGate)) != NO_ERROR)
     { DetourTransactionAbort(); return FALSE; }
-    return DetourTransactionCommit() == NO_ERROR;
+    return DFL_FIXTURE_OBSERVE("detour-commit",DetourTransactionCommit()) == NO_ERROR;
 }

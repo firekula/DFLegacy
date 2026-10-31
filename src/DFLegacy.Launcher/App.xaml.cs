@@ -6,7 +6,7 @@ namespace DFLegacy.Launcher;
 public partial class App : Application
 {
     private static readonly string[] HeadlessArgs =
-        ["--headless", "--account", "--account-index", "--self-test", "--install-ijl15", "--check-d3d9", "--no-dialog"];
+        ["--headless", "--account", "--account-index", "--self-test", "--install-ijl15", "--check-d3d9", "--no-dialog", "--third-party-notices"];
 
     protected override async void OnStartup(StartupEventArgs e)
     {
