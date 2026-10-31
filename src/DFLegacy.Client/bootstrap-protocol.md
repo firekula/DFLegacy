@@ -61,8 +61,11 @@ commit <same nonce>\n
 ```
 
 Here `\n` means one LF byte, not two literal characters. CRLF, a wrong nonce,
-unexpected bytes, stdin EOF, child exit or 15 seconds without a complete
-acknowledgement all fail. The helper tears down its owned child and exits 1.
+unexpected bytes (including bytes already queued after the sole expected
+line), stdin EOF before a complete acknowledgement, child exit or 15 seconds
+without a complete acknowledgement all fail. A complete exact line succeeds
+whether the writer stays open or closes immediately after writing it; EOF is
+not required to commit. The helper tears down its owned child on failure and exits 1.
 After `ready` it emits **no second JSON line**; the nonzero exit is the
 failure signal. The launcher must observe **exit 0 after commit** before it
 considers ownership transferred. On valid commit the helper clears its job's

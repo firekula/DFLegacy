@@ -185,7 +185,18 @@ namespace
             if (!ReadFile(input, &byte, 1, &count, nullptr) || count != 1) return false;
             received += byte;
             if (received.size() > expected.size() || expected.compare(0, received.size(), received) != 0) return false;
-            if (byte == '\n') return received == expected;
+            if (byte == '\n')
+            {
+                // This is a single-line handoff, not a stream of commands.
+                // Reject data already queued after the complete line without
+                // requiring the launcher to close its writer to commit.
+                DWORD trailing = 0;
+                if (PeekNamedPipe(input, nullptr, 0, nullptr, &trailing, nullptr))
+                    return trailing == 0;
+                // A writer may close immediately after writing the exact ack.
+                // Once all its bytes were read, EOF is still a valid handoff.
+                return GetLastError() == ERROR_BROKEN_PIPE;
+            }
         }
         return false;
     }

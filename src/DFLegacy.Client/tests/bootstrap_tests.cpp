@@ -87,7 +87,15 @@ struct Launch
         return code;
     }
     void Ack(const char* value = "commit 0123456789abcdef0123456789abcdef\n")
-    { DWORD count = 0; Check(WriteFile(input, value, static_cast<DWORD>(strlen(value)), &count, nullptr) != FALSE, "ack write"); }
+    { AckBytes(value, static_cast<DWORD>(strlen(value))); }
+    void AckBytes(const char* value, DWORD length)
+    { DWORD count = 0; Check(WriteFile(input, value, length, &count, nullptr) && count == length, "ack write"); }
+    void NoMoreOutput()
+    {
+        DWORD available = 0;
+        const BOOL readable = PeekNamedPipe(output, nullptr, 0, nullptr, &available, nullptr);
+        Check((readable && available == 0) || (!readable && GetLastError() == ERROR_BROKEN_PIPE), "helper must not emit a second JSON line");
+    }
 };
 int wmain(int argc, wchar_t** argv)
 {
@@ -160,19 +168,34 @@ int wmain(int argc, wchar_t** argv)
             // No write/delete replacement is possible while ownership is retained.
             HANDLE writer = CreateFileW(dll.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
             Check(writer == INVALID_HANDLE_VALUE && GetLastError() == ERROR_SHARING_VIOLATION, "patch file held against replacement");
-            if (test == L"eof" || test == L"mismatch" || test == L"uncommitted" || test == L"killed")
+            const bool trailing = test == L"ack-trailing" || test == L"ack-trailing-closed" || test == L"ack-trailing-binary";
+            if (test == L"eof" || test == L"mismatch" || test == L"uncommitted" || test == L"killed" || trailing)
             {
                 if (test == L"mismatch") run.Ack("commit ffffffffffffffffffffffffffffffff\n");
+                else if (trailing)
+                {
+                    if (test == L"ack-trailing-binary")
+                    {
+                        constexpr char bytes[] = "commit 0123456789abcdef0123456789abcdef\n\0\xff";
+                        run.AckBytes(bytes, sizeof(bytes) - 1);
+                    }
+                    else run.Ack("commit 0123456789abcdef0123456789abcdef\nEXTRA\n");
+                    if (test == L"ack-trailing-closed") { CloseHandle(run.input); run.input = nullptr; }
+                }
                 else if (test == L"killed") Check(TerminateProcess(run.process, 98) != FALSE, "cancel helper");
                 else if (test == L"eof") { CloseHandle(run.input); run.input = nullptr; }
                 Check(run.Exit() == (test == L"killed" ? 98u : 1u), "uncommitted helper fails with expected exit code");
+                run.NoMoreOutput();
                 Check(WaitForSingleObject(run.child, 1000) == WAIT_OBJECT_0, "owned child terminated");
                 Check(!fs::exists(marker), "uncommitted entry never ran");
                 if (unrelated.child) Check(WaitForSingleObject(unrelated.child, 0) == WAIT_TIMEOUT, "unrelated process survives rejected commit");
             }
             else
             {
-                run.Ack(); Check(run.Exit() == 0, "commit succeeds");
+                run.Ack();
+                if (test == L"ack-closed") { CloseHandle(run.input); run.input = nullptr; }
+                Check(run.Exit() == 0, "commit succeeds");
+                run.NoMoreOutput();
                 for (int i = 0; i < 200 && !fs::exists(marker); ++i) Sleep(10);
                 Check(fs::exists(marker), "entry runs after initialization and commit");
                 Check(WaitForSingleObject(run.child, 0) == WAIT_TIMEOUT, "committed child survives helper");
