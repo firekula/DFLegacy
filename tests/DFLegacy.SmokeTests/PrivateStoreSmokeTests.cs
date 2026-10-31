@@ -447,6 +447,9 @@ internal static class PrivateStoreSmokeTests
             await store.CreateAccountAsync(new("bobby", "password", OicqCode: "123456"));
             var a = (await store.CreateCharacterAsync("alice", new("Seller"))).Character!;
             var b = (await store.CreateCharacterAsync("bobby", new("Buyer"))).Character!;
+            // Permit-purchase assertions start from a fixture-owned Cash wallet.
+            await store.GrantCeraToAccountAsync("alice", 50_000);
+            await store.GrantCeraToAccountAsync("bobby", 50_000);
             a = (await store.SaveCharacterInventoryAsync("alice", a.Id, 1000,
                 [new(73, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid()), new(9, TradeFixtures.SwordItemId, 1, 3, 19, EquipmentQualitySeed: 37, InstanceId: Guid.NewGuid())], []))!;
             b = (await store.SaveCharacterInventoryAsync("bobby", b.Id, 1000, [], []))!;

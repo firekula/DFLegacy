@@ -9,6 +9,23 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--new-character-defaults"))
+{
+    await NewCharacterDefaultsSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"New-character defaults smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--trade") || args.Contains("--party"))
+{
+    if (args.Contains("--trade")) await TradeSmokeTests.RunAsync(Check);
+    else await PartySmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Trade/party fixture smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--script-path-case"))
 {
     ScriptFileSystemCaseSmokeTests.Run(Check);
@@ -287,6 +304,7 @@ static ScriptFileSystem CreateScripts(ServerOptions options) =>
 static ItemCatalog CreateItems(ScriptFileSystem scripts) =>
     new(scripts, NullLogger<ItemCatalog>.Instance);
 
+await NewCharacterDefaultsSmokeTests.RunAsync(Check);
 AccountClientSmokeTests.Run(Check);
 ScriptFileSystemCaseSmokeTests.Run(Check);
 await DeploymentHostingSmokeTests.RunAsync(Check);
@@ -4672,9 +4690,8 @@ try
     Check(firstTestUidStarterItems.Count == 13
         && lastTestUidStarterItems.SequenceEqual(firstTestUidStarterItems)
         && reservedUidStarterItems.Count == 0
-        && normalUidStarterItems.SequenceEqual(
-            new (ushort ItemId, uint Count)[] { (26043, 1), (8, 100) }),
-        "starter inventory keeps the full debug grant in the test UID range and gives normal accounts only title 26043 plus one stack of 100 item 8");
+        && normalUidStarterItems.Count == 0,
+        "starter inventory keeps the explicit test preset grant in the test UID range and gives normal accounts no gifts");
 
     var normalAccountCreation = await identityStore.CreateAccountAsync(
         new CreateAccountRequest(
@@ -4753,6 +4770,8 @@ try
         && !testCharacter.Character.TutorialStarted,
         "test account custom roles start with zero SP, share the global CharacterNo sequence and require the tutorial");
 
+    // The recovery scenario pays its own fixture-owned gold.
+    await identityStore.SaveCharacterInventoryAsync("test-identity", testCharacter.Character!.Id, 50_000, [], []);
     var weakenedCharacter = await identityStore.SetCharacterWeaknessRecoveryAsync(
         testCharacter.Character!.Id,
         recovery: 0);

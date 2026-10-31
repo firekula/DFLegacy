@@ -322,9 +322,15 @@ internal static partial class CeraGiftSmokeTests
         {
             await store.CreateAccountAsync(new("sender", "password", OicqCode: "123456"));
             await store.CreateAccountAsync(new("target", "password", OicqCode: "123456"));
-            return ((await store.CreateCharacterAsync("sender", new("Sender", Level: 1))).Character!,
+            var roster = ((await store.CreateCharacterAsync("sender", new("Sender", Level: 1))).Character!,
                 (await store.CreateCharacterAsync("target", new("收礼", Job: 1, GrowType: 2, Level: 1))).Character!,
                 (await store.CreateCharacterAsync("target", new("Sibling", Level: 1))).Character!);
+            // Gift transactions need their own funded test wallets.
+            await store.GrantCeraToAccountAsync("sender", 50_000);
+            await store.GrantCeraToAccountAsync("target", 50_000);
+            return ((await store.GetCharacterAsync("sender", roster.Item1.Id))!,
+                (await store.GetCharacterAsync("target", roster.Item2.Id))!,
+                (await store.GetCharacterAsync("target", roster.Item3.Id))!);
         }
         internal Task<CeraGiftResult> Gift(JsonGameStore store, CharacterRecord a, string name, uint commodity = 100018) =>
             store.GiftCeraShopAsync("sender", a.Id, name, [new(0xFF, 0, commodity)], Shop);
