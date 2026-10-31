@@ -51,10 +51,10 @@
 
 **Interfaces:** Consumes ClassicStyles/PixelText and task1 MainWindow. Produces `ClassicMessage.Show(Window? owner, string message)` usable in main and owned dialogs; same underlying UI for info/success/warning/error without generic gray Growl. Constructor/render tests can instantiate without showing blocking dialogs.
 
-- [ ] Add failing real WPF tests for native286×170 panel, readable long message scrolling, Enter/Escape and actual full confirmation hit target; pin no generic Growl in normal product paths.
-- [ ] Observe RED, then implement owner-centered original message panel with accessible labels, pixel text and no rectangular backdrop outside artwork. Preserve existing operation semantics, including error paths.
-- [ ] Run launcher checks, inspect resource/image layout and self-review.
-- [ ] Commit and write report; do not change update engine or publication files.
+- [x] Add failing real WPF tests for native286×170 panel, readable long message scrolling, Enter/Escape and actual full confirmation hit target; pin no generic Growl in normal product paths.
+- [x] Observe RED, then implement owner-centered original message panel with accessible labels, pixel text and no rectangular backdrop outside artwork. Preserve existing operation semantics, including error paths.
+- [x] Run launcher checks, inspect resource/image layout and self-review.
+- [x] Commit and write report; do not change update engine or publication files.
 
 ### Task 3: Verified GitHub download and recoverable two-binary installer
 
