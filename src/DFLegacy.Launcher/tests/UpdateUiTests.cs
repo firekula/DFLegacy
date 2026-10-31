@@ -51,6 +51,18 @@ internal static class UpdateUiTests
             check(Confirm(dialog=>((SkinButton)dialog.FindName("ConfirmButton")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent))),"native confirmation requires explicit yes and returns acceptance");
             check(!Confirm(dialog=>((Grid)dialog.Content).Children.OfType<SkinButton>().Single(b=>Equals(b.Content,"稍后")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent))),"native confirmation later action defers installation");
             check(Confirm(dialog=>dialog.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(dialog),0,Key.Enter) { RoutedEvent=Keyboard.PreviewKeyDownEvent })),"native restart confirmation supports explicit Enter acceptance");
+            foreach(var later in new[]{true,false})
+            foreach(var key in new[]{Key.Enter,Key.Escape})
+            {
+                var accepted=Confirm(dialog=>
+                {
+                    var button=later?((Grid)dialog.Content).Children.OfType<SkinButton>().Single(b=>Equals(b.Content,"稍后")):(SkinButton)dialog.FindName("ConfirmButton");
+                    dialog.Activate(); button.Focus(); Keyboard.Focus(button);
+                    check(button.IsKeyboardFocused,"owned confirmation button receives actual keyboard focus");
+                    button.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(button),0,key) { RoutedEvent=Keyboard.PreviewKeyDownEvent });
+                });
+                check(accepted==(!later && key==Key.Enter),$"focused {(later?"Later":"Confirm")} {key} preserves restart consent");
+            }
             window.Render(new(UpdatePhase.Downloading,"正在下载更新包…", "dev-test",new(6220000,10000000,1200000))); window.UpdateLayout();
             var evidence=Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_UI_EVIDENCE");
             if(!string.IsNullOrEmpty(evidence)) { var bitmap=new RenderTargetBitmap(567,512,96,96,PixelFormats.Pbgra32); bitmap.Render(window); var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var file=File.Create(evidence); encoder.Save(file); }
@@ -69,6 +81,41 @@ internal static class UpdateUiTests
             if(!string.IsNullOrEmpty(evidence)) { var bitmap=new RenderTargetBitmap(286,104,96,96,PixelFormats.Pbgra32); bitmap.Render(compact); var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var file=File.Create(Path.ChangeExtension(evidence,"install.png")); encoder.Save(file); }
         }
         finally { compact.Finish(); }
+        var outcomeRoot=Path.Combine(Path.GetTempPath(),"dflegacy-outcome-ui-"+Guid.NewGuid().ToString("N")); Directory.CreateDirectory(outcomeRoot);
+        try
+        {
+            var prepared=Task.Run(()=>UpdateInstallerTests.Prepare(outcomeRoot)).GetAwaiter().GetResult();
+            foreach(var mode in new[]{"rollback","restart-failure","stage-failure"})
+            {
+                var target=UpdateInstallerTests.Installation(outcomeRoot);
+                if(mode=="stage-failure") File.AppendAllText(Path.Combine(prepared.Directory,"ijl15.dll"),"tampered");
+                using var second=mode=="rollback"?new FileStream(Path.Combine(target,"ijl15.dll"),FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite):null;
+                var result=UpdateTransaction.Apply(target,prepared,UpdateInstaller.Restart);
+                var helper=new UpdateInstallWindow { ShowInTaskbar=false,ShowActivated=false,Left=-32000,Top=-32000,WindowStartupLocation=WindowStartupLocation.Manual };
+                helper.Show(); bool displayed=false;
+                var closer=new DispatcherTimer(TimeSpan.FromMilliseconds(10),DispatcherPriority.Background,(_,_)=>
+                {
+                    foreach(var dialog in helper.OwnedWindows.OfType<ClassicMessageWindow>().ToArray())
+                    {
+                        displayed=true;
+                        var blocks=(StackPanel)dialog.FindName("MessageBlocks");
+                        var text=string.Concat(blocks.Children.OfType<PixelText>().Select(b=>b.Text));
+                        check(text.Contains(result.Message) && text.Contains(target) && text.Contains(result.BackupDirectory??".dflegacy-backups"),"immediate helper feedback retains actual outcome, installation and recovery path");
+                        check(text.Contains("手动") && text.Contains("登录器"),"immediate helper feedback gives manual next action");
+                        check(helper.IsVisible,"helper stays visible until outcome is acknowledged");
+                        ((SkinButton)dialog.FindName("ConfirmButton")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                    }
+                },Dispatcher.CurrentDispatcher);
+                try
+                {
+                    helper.Finish(result,target);
+                    check(displayed,$"owned helper shows {mode} before closing");
+                    check(!helper.IsVisible,"acknowledging helper outcome allows owned helper to close");
+                }
+                finally { closer.Stop(); helper.Finish(); }
+            }
+        }
+        finally { Directory.Delete(outcomeRoot,true); }
         Console.WriteLine("Update WPF page and helper layout checks executed");
     }
 }

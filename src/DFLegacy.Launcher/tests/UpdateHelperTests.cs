@@ -7,7 +7,12 @@ internal static class UpdateHelperTests
 {
     internal static async Task<int?> Dispatch(string[] args)
     {
-        if(args.Length>0 && args[0]=="--dflegacy-apply-update") return await UpdateInstaller.RunHelperAsync(args);
+        if(args.Length>0 && args[0]=="--dflegacy-apply-update")
+        {
+            var outcome=await UpdateInstaller.RunHelperWithOutcomeAsync(args);
+            File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"helper-outcome.json"),JsonSerializer.Serialize(outcome,UpdateSafety.Json));
+            return outcome.ExitCode;
+        }
         if(args.Length==3 && args[0]=="--update-parent")
         {
             var target=AppContext.BaseDirectory;
@@ -77,13 +82,18 @@ internal static class UpdateHelperTests
     internal static async Task Run(string root,Action<bool,string> check)
     {
         check(await UpdateInstaller.RunHelperAsync(["--dflegacy-apply-update","arbitrary-plan.json"])!=0,"helper rejects arbitrary plan filenames");
-        foreach(var mode in new[]{"valid","stage-tamper","helper-tamper","parent-tamper","target-tamper","raw-parent","raw-target","late-stage"})
+        foreach(var mode in new[]{"valid","stage-tamper","helper-tamper","parent-tamper","target-tamper","raw-parent","raw-target","late-stage","restart-failure","rollback"})
         {
             var target=Path.Combine(root,"process-"+mode); Directory.CreateDirectory(target); CopySidecars(target);
             var executable=Path.Combine(target,"DFLegacy.Launcher.exe"); var own=Environment.ProcessPath!;
             File.Copy(own,executable); File.WriteAllBytes(Path.Combine(target,"ijl15.dll"),[1,2,3]);
             File.WriteAllText(Path.Combine(target,"fixture-owned.marker"),"owned");
-            File.WriteAllBytes(Path.Combine(target,"fixture.zip"),Package(File.ReadAllBytes(own)));
+            File.WriteAllBytes(Path.Combine(target,"fixture.zip"),Package(mode=="restart-failure"?new byte[]{1,2,3}:File.ReadAllBytes(own)));
+            var needsFeedback=mode is "late-stage" or "restart-failure" or "rollback";
+            var receipt=Path.Combine(target,".dflegacy","last-result.json");
+            if(needsFeedback) { Directory.CreateDirectory(Path.GetDirectoryName(receipt)!); File.WriteAllText(receipt,"unchanged receipt"); }
+            using var receiptLock=needsFeedback?new FileStream(receipt,FileMode.Open,FileAccess.Read,FileShare.Read):null;
+            using var secondLock=mode=="rollback"?new FileStream(Path.Combine(target,"ijl15.dll"),FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite):null;
             var info=new ProcessStartInfo(executable) { UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=target };
             info.ArgumentList.Add("--update-parent"); info.ArgumentList.Add(root); info.ArgumentList.Add(mode);
             using var parent=Process.Start(info)!; using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(25));
@@ -98,11 +108,26 @@ internal static class UpdateHelperTests
                 if(File.Exists(Path.Combine(target,"ready.marker")))
                 { try { using var helper=Process.GetProcessById(int.Parse(File.ReadAllText(Path.Combine(target,"ready.marker")))); await helper.WaitForExitAsync(timeout.Token); } catch(ArgumentException) {} }
             }
-            else if(mode=="late-stage")
+            else if(needsFeedback)
             {
                 if(File.Exists(Path.Combine(target,"ready.marker")))
                 { try { using var helper=Process.GetProcessById(int.Parse(File.ReadAllText(Path.Combine(target,"ready.marker")))); await helper.WaitForExitAsync(timeout.Token); } catch(ArgumentException) {} }
-                check(File.ReadAllBytes(Path.Combine(target,"ijl15.dll")).SequenceEqual(new byte[]{1,2,3}) && !File.Exists(Path.Combine(target,"restarted.marker")),"helper rechecks stage after parent exit");
+                var expected=mode=="restart-failure"?new byte[]{11,22,33,44}:new byte[]{1,2,3};
+                using(var dll=new FileStream(Path.Combine(target,"ijl15.dll"),FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
+                using(var content=new MemoryStream())
+                { dll.CopyTo(content); check(content.ToArray().SequenceEqual(expected) && !File.Exists(Path.Combine(target,"restarted.marker")),"helper preserves truthful file outcome after parent exit: "+mode); }
+                var helperDirectory=Path.GetDirectoryName(File.ReadAllText(Path.Combine(target,"helper.path")))!;
+                using var outcome=JsonDocument.Parse(File.ReadAllText(Path.Combine(helperDirectory,"helper-outcome.json")));
+                var result=outcome.RootElement.GetProperty("result");
+                check(result.ValueKind==JsonValueKind.Object,"helper retains immediate structured outcome despite unwritable receipt: "+mode);
+                if(result.ValueKind==JsonValueKind.Object)
+                {
+                    check(result.GetProperty("success").GetBoolean()==(mode=="restart-failure") && !result.GetProperty("restarted").GetBoolean(),"helper immediate outcome matches committed files and failed restart: "+mode);
+                    check(outcome.RootElement.GetProperty("target").GetString()==Path.TrimEndingDirectorySeparator(target),"helper feedback identifies authenticated installation");
+                    if(mode=="rollback") check(File.Exists(Path.Combine(result.GetProperty("backupDirectory").GetString()!,"receipt.json")),"rollback feedback retains actual recovery location");
+                }
+                check(outcome.RootElement.GetProperty("exitCode").GetInt32()!=0,"helper exit signals missing restart/failure: "+mode);
+                check(File.ReadAllText(receipt)=="unchanged receipt","immediate feedback does not require receipt writes: "+mode);
             }
             else check(parent.ExitCode!=0 && File.ReadAllBytes(Path.Combine(target,"ijl15.dll")).SequenceEqual(new byte[]{1,2,3}),"helper rejects "+mode+" and preserves target");
             if(mode.StartsWith("raw-")) check(File.Exists(Path.Combine(target,"raw-rejected.marker")),"raw malicious handoff rejected by helper itself");

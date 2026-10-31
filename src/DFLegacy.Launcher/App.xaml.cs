@@ -17,9 +17,9 @@ public partial class App : Application
             // Helper UI has only embedded native artwork; it never reads launcher.json/theme.
             var progress = new Views.UpdateInstallWindow();
             progress.Show();
-            var result = await Updates.UpdateInstaller.RunHelperAsync(e.Args);
-            progress.Finish();
-            Shutdown(result);
+            var outcome = await Updates.UpdateInstaller.RunHelperWithOutcomeAsync(e.Args);
+            progress.Finish(outcome.Result,outcome.Target);
+            Shutdown(outcome.ExitCode);
             return;
         }
         base.OnStartup(e);

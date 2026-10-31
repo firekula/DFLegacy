@@ -13,6 +13,7 @@ public sealed class UpdateHandoff
 }
 internal sealed record UpdatePlan(string Target, PreparedUpdate Update, int ParentId, long ParentStartTicks, string ParentPath, string HelperPath, string ExecutableHash);
 public sealed record UpdateHelperHandle(int ProcessId);
+internal sealed record UpdateHelperOutcome(int ExitCode, UpdateApplyResult? Result=null, string? Target=null);
 public sealed partial class UpdateInstaller
 {
     public Task<UpdateHandoff> PrepareAsync(PreparedUpdate update,CancellationToken cancellationToken=default)
@@ -107,24 +108,26 @@ public sealed partial class UpdateInstaller
         if(!UpdateSafety.Hash(plan.HelperPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("临时助手文件已改变。");
     }
     public static async Task<int> RunHelperAsync(string[] args)
+        => (await RunHelperWithOutcomeAsync(args).ConfigureAwait(false)).ExitCode;
+    internal static async Task<UpdateHelperOutcome> RunHelperWithOutcomeAsync(string[] args)
     {
-        if(args.Length!=2 || args[0]!="--dflegacy-apply-update" || !args[1].StartsWith("dflegacy-update-",StringComparison.Ordinal) || !Guid.TryParseExact(args[1][16..],"N",out _)) return 2;
-        UpdatePlan? plan=null; bool validated=false;
+        if(args.Length!=2 || args[0]!="--dflegacy-apply-update" || !args[1].StartsWith("dflegacy-update-",StringComparison.Ordinal) || !Guid.TryParseExact(args[1][16..],"N",out _)) return new(2);
+        UpdatePlan? plan=null; bool parentExited=false;
         try
         {
             using var pipe=new NamedPipeClientStream(".",args[1],PipeDirection.InOut,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
             using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(15));
             await pipe.ConnectAsync(timeout.Token).ConfigureAwait(false);
-            if(!GetNamedPipeServerProcessId(pipe.SafePipeHandle,out var parentId)) return 2;
+            if(!GetNamedPipeServerProcessId(pipe.SafePipeHandle,out var parentId)) return new(2);
             var length=new byte[4]; await pipe.ReadExactlyAsync(length,timeout.Token).ConfigureAwait(false);
-            var size=BitConverter.ToInt32(length); if(size<=0 || size>65536) return 2;
+            var size=BitConverter.ToInt32(length); if(size<=0 || size>65536) return new(2);
             var bytes=new byte[size]; await pipe.ReadExactlyAsync(bytes,timeout.Token).ConfigureAwait(false);
             plan=UpdateSafety.ReadJson<UpdatePlan>(bytes);
             if(string.IsNullOrWhiteSpace(plan.Target) || string.IsNullOrWhiteSpace(plan.ParentPath) || string.IsNullOrWhiteSpace(plan.HelperPath) ||
                plan.Update is null || plan.Update.Release is null || string.IsNullOrWhiteSpace(plan.Update.Directory) || !UpdateSafety.IsHash(plan.ExecutableHash))
                 throw new InvalidDataException("更新交接缺少字段。");
             ValidateParent(plan,checked((int)parentId));
-            if(!Path.GetFullPath(Environment.ProcessPath!).Equals(plan.HelperPath,StringComparison.OrdinalIgnoreCase)) return 2;
+            if(!Path.GetFullPath(Environment.ProcessPath!).Equals(plan.HelperPath,StringComparison.OrdinalIgnoreCase)) return new(2);
             ValidateHelperPath(plan);
             using var targetPin=UpdateSafety.PinDirectory(plan.Target);
             using var stagePin=UpdateSafety.PinDirectory(plan.Update.Directory);
@@ -132,20 +135,28 @@ public sealed partial class UpdateInstaller
             using var parent=Process.GetProcessById(plan.ParentId);
             // Hold the actual parent process handle, preventing PID reuse after readiness.
             _=parent.SafeHandle;
-            validated=true;
             await pipe.WriteAsync(new byte[]{1},timeout.Token).ConfigureAwait(false); await pipe.FlushAsync(timeout.Token).ConfigureAwait(false);
-            var commit=new byte[1]; await pipe.ReadExactlyAsync(commit,timeout.Token).ConfigureAwait(false); if(commit[0]!=1) return 2;
+            var commit=new byte[1]; await pipe.ReadExactlyAsync(commit,timeout.Token).ConfigureAwait(false); if(commit[0]!=1) return new(2);
             using var exitTimeout=new CancellationTokenSource(TimeSpan.FromSeconds(60));
             await parent.WaitForExitAsync(exitTimeout.Token).ConfigureAwait(false);
+            parentExited=true;
             if(!UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("安装目标在交接后已改变。");
             var result=UpdateTransaction.Apply(plan.Target,plan.Update,Restart);
             SaveResult(plan.Target,result);
-            return result.Success?0:1;
+            return new(result.Success && result.Restarted?0:1,result,plan.Target);
         }
         catch(Exception ex) when(ex is IOException or InvalidDataException or UnauthorizedAccessException or OperationCanceledException or ArgumentException or JsonException or System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            if(validated && plan!=null) SaveResult(plan.Target,new(false,false,"更新未完成，原安装文件未替换。请重新检查更新。"));
-            return 1;
+            // Only an authenticated, committed handoff whose parent has exited
+            // owns the user's next action. Rejected/abandoned handoffs must not
+            // leave an orphan modal while the original launcher is still alive.
+            if(parentExited && plan!=null)
+            {
+                var result=new UpdateApplyResult(false,false,"更新未完成，安装助手未能完成替换。请重新检查更新。\n"+ex.Message);
+                SaveResult(plan.Target,result);
+                return new(1,result,plan.Target);
+            }
+            return new(1);
         }
     }
     private static void SaveResult(string target,UpdateApplyResult result)
@@ -157,7 +168,7 @@ public sealed partial class UpdateInstaller
             using var statePin=UpdateSafety.PinDirectory(directory);
             UpdateTransaction.WriteJson(Path.Combine(directory,"last-result.json"),result);
         }
-        catch(IOException) {} catch(UnauthorizedAccessException) {}
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or ArgumentException) {}
     }
     [DllImport("kernel32.dll",SetLastError=true)] private static extern bool GetNamedPipeClientProcessId(SafePipeHandle pipe,out uint id);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern bool GetNamedPipeServerProcessId(SafePipeHandle pipe,out uint id);

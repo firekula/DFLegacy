@@ -55,15 +55,8 @@ public partial class UpdateWindow : Window
     }
     internal static bool ConfirmRestart(Window owner)
     {
-        var accepted=false;
-        var dialog=new ClassicMessageWindow("更新已下载并校验完成。\n确认退出登录器、安装并重新启动？") { Owner=owner };
-        var yes=(SkinButton)dialog.FindName("ConfirmButton");
-        yes.Margin=new Thickness(48,137,0,0); yes.IsCancel=false;
-        yes.Click+=(_,_)=>accepted=true;
-        var cancel=new SkinButton { Content="稍后",Width=80,Height=29,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(158,137,0,0),Style=(Style)dialog.FindResource("ClassicButton") };
-        cancel.Click+=(_,_)=>dialog.Close(); ((System.Windows.Controls.Grid)dialog.Content).Children.Add(cancel);
-        dialog.AddHandler(Keyboard.PreviewKeyDownEvent,new KeyEventHandler((_,e)=> { if(e.Key==Key.Enter) accepted=true; }),true);
-        dialog.ShowDialog(); return accepted;
+        var dialog=new ClassicMessageWindow("更新已下载并校验完成。\n确认退出登录器、安装并重新启动？",confirmRestart:true) { Owner=owner };
+        dialog.ShowDialog(); return dialog.Accepted;
     }
     private void OnBack(object sender,RoutedEventArgs e)=>Close();
     private void OnKey(object sender,KeyEventArgs e) { if(e.Key==Key.Escape && BackButton.IsEnabled) { e.Handled=true; Close(); } }

@@ -54,7 +54,8 @@ public sealed class GitHubUpdateClient
     {
         using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken); timeout.CancelAfter(TimeSpan.FromSeconds(5));
         var found=new List<UpdateRelease>();
-        // Bounded pagination: GitHub lists newest releases first. Never follow arbitrary Link URLs.
+        // Never follow arbitrary Link URLs. A full final page cannot prove that
+        // the search is complete (a stable release may follow many previews).
         for(int page=1;page<=3;page++)
         {
             using var response=await Get(new Uri($"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}"),false,timeout.Token).ConfigureAwait(false);
@@ -77,6 +78,7 @@ public sealed class GitHubUpdateClient
                 found.Add(new(id,item.GetProperty("tag_name").GetString()!,item.GetProperty("published_at").GetDateTimeOffset(),item.GetProperty("prerelease").GetBoolean(),uri,size,digest[7..]));
             }
             if(doc.RootElement.GetArrayLength()<100) break;
+            if(page==3 && found.Count==0) throw new IOException("更新列表尚未查询完整，暂时无法确认最新版本。请稍后重试或查看官方发布页。");
         }
         return found.OrderByDescending(r=>r.PublishedAt).ThenByDescending(r=>r.Id).FirstOrDefault();
     }

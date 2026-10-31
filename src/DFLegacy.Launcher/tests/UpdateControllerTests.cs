@@ -48,6 +48,15 @@ internal static class UpdateControllerTests
             check(controller.State.Phase==UpdatePhase.Cancelled && closed==0,"cancel unblocks outstanding check without closing login");
         }
         session=new Session();
+        using(var previews=UpdateTransportTests.PagedPreviews(_=>{}))
+        using(var controller=new UpdateController(session,install,()=>closed++))
+        {
+            var transport=new GitHubUpdateClient(previews,"firekula/DFLegacy",false);
+            session.Feed=token=>transport.CheckAsync(cancellationToken:token);
+            await controller.CheckAsync();
+            check(controller.State.Phase==UpdatePhase.Error && controller.State.Message.Contains("重试") && session.Downloads==0 && closed==0,"truncated stable feed stays retryable without false Current or closing login");
+        }
+        session=new Session();
         using(var controller=new UpdateController(session,install,()=>closed++))
         {
             session.Feed=async token=>{ await Task.Delay(80,token); return null; };

@@ -30,6 +30,16 @@ internal static class UpdateTransportTests
     internal sealed class Handler(Func<HttpRequestMessage,CancellationToken,Task<HttpResponseMessage>> send) : HttpMessageHandler
     { protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => send(request,token); }
     internal static HttpClient Client(byte[] bytes, HttpStatusCode status = HttpStatusCode.OK) => new(new Handler((_,_) => Task.FromResult(new HttpResponseMessage(status) { Content = new ByteArrayContent(bytes) })));
+    internal static HttpClient PagedPreviews(Action<int> requested, int fullPages=3) => new(new Handler((request,_) =>
+    {
+        var page=int.Parse(request.RequestUri!.Query.Split("page=").Last()); requested(page);
+        var entries=Enumerable.Range(0,page<=fullPages?100:page==4?1:0).Select(i=>new {
+            id=page==4?700:1400-page*100-i,tag_name=page==4?"stable":"dev-"+(page*100+i),
+            published_at="2026-01-01T00:00:00Z",draft=false,prerelease=page!=4,
+            assets=new[]{new {name=GitHubUpdateClient.AssetName,size=12,browser_download_url="https://github.com/firekula/DFLegacy/releases/download/stable/"+GitHubUpdateClient.AssetName,digest="sha256:"+new string('a',64)}}
+        });
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content=new ByteArrayContent(JsonSerializer.SerializeToUtf8Bytes(entries)) });
+    }));
     internal static async Task Reject(Func<Task> action, Action<bool,string> check, string name)
     { try { await action(); check(false,name); } catch (Exception ex) when (ex is InvalidDataException or HttpRequestException or OperationCanceledException or IOException or InvalidOperationException) {} }
     internal static async Task Run(string root, Action<bool,string> check)
@@ -44,6 +54,20 @@ internal static class UpdateTransportTests
         check((await client.CheckAsync())?.Id == 7,"release selection uses publication time and ignores drafts");
         check((await new GitHubUpdateClient(http,"firekula/DFLegacy",false).CheckAsync())?.Id == 5,"stable feed excludes preview");
         check(await client.CheckAsync(7) is null,"recorded release prevents downgrade/repeat");
+        var pages=new List<int>();
+        using(var previews=PagedPreviews(pages.Add))
+        {
+            await Reject(async()=>await new GitHubUpdateClient(previews,"firekula/DFLegacy",false).CheckAsync(),check,"300 previews before eligible stable must produce explicit incomplete search, never false current");
+            check(pages.SequenceEqual(new[]{1,2,3}),"incomplete release search retains three-request bound");
+            try { check((await new GitHubUpdateClient(previews,"firekula/DFLegacy",true).CheckAsync())?.Id==1300,"bounded full feed retains available eligible update selection"); }
+            catch(IOException) { check(false,"bounded full feed must not suppress an available eligible update"); }
+        }
+        pages.Clear();
+        using(var exhausted=PagedPreviews(pages.Add,2))
+        {
+            check(await new GitHubUpdateClient(exhausted,"firekula/DFLegacy",false).CheckAsync() is null,"two full preview pages followed by empty page definitively has no stable update");
+            check(pages.SequenceEqual(new[]{1,2,3}),"definitive exhaustion reads the final empty page");
+        }
         using var missing = Client([],HttpStatusCode.NotFound);
         check(await new GitHubUpdateClient(missing,"firekula/DFLegacy").CheckAsync() is null,"empty repository 404 is no update");
         using var limited = Client([],HttpStatusCode.TooManyRequests);
