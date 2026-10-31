@@ -7,13 +7,22 @@ namespace DFLegacy.Launcher.Updates;
 /// <summary>Public unauthenticated transport. Inject a client with redirects/cookies disabled; CreateHttpClient supplies the production configuration.</summary>
 public sealed class GitHubUpdateClient
 {
-    public const string AssetName="DFLegacy-client-update-win-x64.zip";
+    public const string AssetName="DFLegacy-client-update-v2-win-x64.zip";
+    public const string TestAssetName="DFLegacy-client-update-v2-test-win-x64.zip";
+    private readonly string flavor;
+    private string SelectedAssetName => flavor=="test" ? TestAssetName : AssetName;
     private readonly HttpClient client;
     private readonly string repository;
     private readonly bool includePrereleases;
-    public GitHubUpdateClient(HttpClient client, string repository, bool includePrereleases=true)
+    internal static void ValidateRepository(string repository)
     {
         if(repository!="firekula/DFLegacy") throw new ArgumentException("仅允许配置的公开更新仓库。",nameof(repository));
+    }
+    public GitHubUpdateClient(HttpClient client, string repository, bool includePrereleases=true, string flavor="normal")
+    {
+        ValidateRepository(repository);
+        if(flavor is not ("normal" or "test")) throw new ArgumentException("无效的客户端包类型。",nameof(flavor));
+        this.flavor=flavor;
         this.client=client; this.repository=repository; this.includePrereleases=includePrereleases;
     }
     public static HttpClient CreateHttpClient() => new(new HttpClientHandler { AllowAutoRedirect=false, UseCookies=false, UseDefaultCredentials=false, Credentials=null }) { Timeout=Timeout.InfiniteTimeSpan };
@@ -25,7 +34,7 @@ public sealed class GitHubUpdateClient
     private void ValidateAsset(Uri url, bool redirect=false)
     {
         if(url.Scheme!="https" || !url.IsDefaultPort || url.UserInfo.Length!=0 || url.Fragment.Length!=0) throw new InvalidDataException("更新下载地址无效。");
-        if(url.Host=="github.com" && url.AbsolutePath.StartsWith("/"+repository+"/releases/download/",StringComparison.Ordinal) && url.AbsolutePath.EndsWith("/"+AssetName,StringComparison.Ordinal)) return;
+        if(url.Host=="github.com" && url.AbsolutePath.StartsWith("/"+repository+"/releases/download/",StringComparison.Ordinal) && url.AbsolutePath.EndsWith("/"+SelectedAssetName,StringComparison.Ordinal)) return;
         if(redirect && (url.Host=="release-assets.githubusercontent.com" || url.Host=="objects.githubusercontent.com")) return;
         throw new InvalidDataException("更新下载域名不受信任。");
     }
@@ -69,7 +78,7 @@ public sealed class GitHubUpdateClient
             {
                 if(item.GetProperty("draft").GetBoolean() || (!includePrereleases && item.GetProperty("prerelease").GetBoolean())) continue;
                 var id=item.GetProperty("id").GetInt64(); if(id<=installedReleaseId) continue;
-                var assets=item.GetProperty("assets").EnumerateArray().Where(a=>a.GetProperty("name").GetString()==AssetName).ToArray();
+                var assets=item.GetProperty("assets").EnumerateArray().Where(a=>a.GetProperty("name").GetString()==SelectedAssetName).ToArray();
                 if(assets.Length!=1) continue;
                 var asset=assets[0]; var digest=asset.TryGetProperty("digest",out var d)?d.GetString():null;
                 if(digest==null || !digest.StartsWith("sha256:",StringComparison.Ordinal) || !UpdateSafety.IsHash(digest[7..])) continue;
@@ -104,7 +113,7 @@ public sealed class GitHubUpdateClient
                 if(copied!=release.Size) throw new InvalidDataException("更新附件未完整下载。");
             }
             timeout.Token.ThrowIfCancellationRequested();
-            return UpdatePackage.Extract(release,directory,archive,timeout.Token);
+            return UpdatePackage.Extract(release,directory,archive,timeout.Token,flavor);
         }
         catch { UpdateArtifacts.DeleteStage(directory); throw; }
     }

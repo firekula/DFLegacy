@@ -3,7 +3,8 @@ param(
     [ValidateSet("Debug", "Release")]
     [string] $Configuration = "Release",
     [switch] $RunTests,
-    [switch] $RunGpuTests
+    [switch] $RunGpuTests,
+    [string] $BuildDirectory
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,7 +30,12 @@ if (-not $cmake) {
 
 $projectDirectory = $PSScriptRoot
 $repositoryRoot = Split-Path (Split-Path $projectDirectory -Parent) -Parent
-$buildDirectory = Join-Path $repositoryRoot "artifacts\native\ijl15"
+if (-not $BuildDirectory) { $BuildDirectory = Join-Path $repositoryRoot "artifacts\native\ijl15" }
+$buildDirectory = [IO.Path]::GetFullPath($BuildDirectory)
+if ($buildDirectory -eq [IO.Path]::GetPathRoot($buildDirectory) -or
+    $buildDirectory -eq [IO.Path]::GetFullPath($repositoryRoot)) {
+    throw "BuildDirectory must be a dedicated build subdirectory."
+}
 
 $cmakeHelp = & $cmake --help
 $generator = @(
@@ -49,15 +55,7 @@ if (Test-Path -LiteralPath $cachePath) {
         Where-Object { $_ -like "CMAKE_GENERATOR:INTERNAL=*" } |
         Select-Object -First 1
     if ($cachedGenerator -ne "CMAKE_GENERATOR:INTERNAL=$generator") {
-        $resolvedBuild = [IO.Path]::GetFullPath($buildDirectory)
-        $resolvedArtifacts = [IO.Path]::GetFullPath(
-            (Join-Path $repositoryRoot "artifacts"))
-        if (-not $resolvedBuild.StartsWith(
-                $resolvedArtifacts + [IO.Path]::DirectorySeparatorChar,
-                [StringComparison]::OrdinalIgnoreCase)) {
-            throw "Refusing to remove unexpected build directory: $resolvedBuild"
-        }
-        Remove-Item -LiteralPath $resolvedBuild -Recurse -Force
+        throw "Build directory uses a different generator. Choose a fresh BuildDirectory; existing files will not be removed."
     }
 }
 

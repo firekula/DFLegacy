@@ -11,9 +11,13 @@ if (args.Length == 2 && args[0] == "--startup-test-child")
 }
 
 if (await UpdateHelperTests.Dispatch(args) is int helperExit) return helperExit;
+if (await UpdateRecoveryTests.Dispatch(args) is int recoveryExit) return recoveryExit;
+if (await BootstrapManagedTests.Dispatch(args) is int bootstrapExit) return bootstrapExit;
 var failures = 0;
+var checks = 0;
 void Check(bool condition, string message)
 {
+    checks++;
     if (condition) return;
     Console.Error.WriteLine("FAIL: " + message);
     failures++;
@@ -23,6 +27,13 @@ var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.Ne
 Directory.CreateDirectory(root);
 try
 {
+    if(args.Contains("--launch-ui-tests")) { ClassicUiTests.Run(Check,launchOnly:true); Console.WriteLine($"Launch UI tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--bootstrap-first-only")) { await BootstrapManagedTests.Run(root,Check,initialOnly:true); return failures==0?0:1; }
+    if(args.Contains("--update-v2-tests")) { await UpdateV2Tests.Run(root,Check); Console.WriteLine($"Update V2 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--update-helper-tests")) { await UpdateHelperTests.Run(root,Check); Console.WriteLine($"Update helper tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--update-recovery-tests")) { await UpdateRecoveryTests.Run(root,Check); Console.WriteLine($"Update recovery tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Length==0 || args.Contains("--standalone-tests")) await StandaloneTests.Run(root, Check);
+    if (args.Contains("--standalone-tests")) { Console.WriteLine($"Standalone tests: {failures} failures"); return failures == 0 ? 0 : 1; }
     if (args.Contains("--login-input-tests"))
     {
         ClassicUiTests.Run(Check, loginOnly: true);
@@ -43,10 +54,12 @@ try
     await UpdateStartupTests.Run(root, Check);
     if (args.Contains("--update-ui-tests")) { ClassicUiTests.Run(Check); return failures == 0 ? 0 : 1; }
     await UpdateTransportTests.Run(root, Check);
+    await UpdateV2Tests.Run(root, Check);
+    await UpdateRecoveryTests.Run(root, Check);
     await UpdateInstallerTests.Run(root, Check);
     await UpdateHelperTests.Run(root, Check);
     await UpdateBoundaryTests.Run(root, Check);
-    if (args.Contains("--update-tests")) return failures == 0 ? 0 : 1;
+    if (args.Contains("--update-tests")) { Console.WriteLine($"Update tests: {checks} assertions, {failures} failures"); return failures == 0 ? 0 : 1; }
     DisplayConfigurationTests.Run(root, Check);
     RenderDiagnosticTests.Run(root, Check);
     ClassicUiTests.Run(Check);
@@ -230,10 +243,13 @@ try
             AccountServiceUrl = "https://remote.example/service", StartServer = false
         }));
         var exitCode = await DFLegacy.Launcher.Program.RunHeadlessAsync(["--install-ijl15", "--no-dialog"]);
-        Check(exitCode == 0, "patch installation accepts an empty release account list");
+        Check(exitCode == 1, "obsolete production IJL replacement is explicitly rejected even without credentials");
         var installedConfig = Path.Combine(clientDirectory, "Config.ini");
-        Check(File.Exists(installedConfig) && File.ReadAllText(installedConfig).Contains("ClientServiceUrl=https://remote.example/service"),
-            "headless install propagates the resolved account service URL");
+        Check(!File.Exists(installedConfig) && !File.Exists(Path.Combine(clientDirectory,"ijl15.dll")),
+            "rejected obsolete install makes zero config/IJL writes");
+        StandaloneClientInstaller.Configure(clientPath,"https://remote.example/service");
+        Check(File.ReadAllText(installedConfig).Contains("ClientServiceUrl=https://remote.example/service") && !File.Exists(Path.Combine(clientDirectory,"ijl15.dll")),
+            "standalone configuration propagates service URL without replacing IJL");
     }
     finally
     {
@@ -311,7 +327,7 @@ try
     }
 }
 finally { Directory.Delete(root, recursive: true); }
-Console.WriteLine(failures == 0 ? "Launcher configuration tests passed" : $"Launcher configuration tests failed: {failures}");
+Console.WriteLine(failures == 0 ? $"Launcher configuration tests passed ({checks} assertions)" : $"Launcher configuration tests failed: {failures} / {checks}");
 return failures == 0 ? 0 : 1;
 
 internal static class NativeProfile

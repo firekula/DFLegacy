@@ -28,10 +28,10 @@ class UpdatePackageTests(unittest.TestCase):
         assets = self.assets()
         archive = release.build_client_update(assets, self.root / 'out', VERSION, COMMIT)
         with zipfile.ZipFile(archive) as z:
-            self.assertEqual(z.namelist(), ['DFLegacy.Launcher.exe', 'ijl15.dll', 'update-manifest.json'])
+            self.assertEqual(z.namelist(), ['DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'update-manifest.json'])
             manifest = json.loads(z.read('update-manifest.json'))
-            self.assertEqual(set(manifest), {'schemaVersion', 'version', 'commit', 'files'})
-            self.assertEqual((manifest['schemaVersion'], manifest['version'], manifest['commit']), (1, VERSION, COMMIT))
+            self.assertEqual(set(manifest), {'schemaVersion', 'version', 'commit', 'flavor', 'files'})
+            self.assertEqual((manifest['schemaVersion'], manifest['version'], manifest['commit']), (2, VERSION, COMMIT))
             for row in manifest['files']:
                 data = z.read(row['path'])
                 self.assertEqual(set(row), {'path', 'sha256', 'size'})
@@ -42,6 +42,38 @@ class UpdatePackageTests(unittest.TestCase):
         self.assertEqual(archive.name, github.ASSET_NAME)
         self.assertEqual(archive.read_bytes(), second.read_bytes())
         release.verify_client_update(archive, VERSION, COMMIT)
+
+    def test_four_public_flavors_have_exact_inventory_and_paired_debug(self):
+        assets = self.assets()
+        packages = release.build_client_packages(assets, self.root / 'public', VERSION, COMMIT)
+        self.assertEqual({p.name for p in packages}, {
+            'DFLegacy-client-update-v2-win-x64.zip', 'DFLegacy-client-update-v2-test-win-x64.zip',
+            'DFLegacy-client-tools-win-x64.zip', 'DFLegacy-client-tools-test-win-x64.zip'})
+        for package in packages:
+            data = release.verify_client_package(package, VERSION, COMMIT, package.name)
+            test = '-test-' in package.name
+            self.assertEqual(data['flavor'], 'test' if test else 'normal')
+            with zipfile.ZipFile(package) as z:
+                binaries = {'DFLegacy.Launcher.exe', 'DFLegacy.Client.dll'} | ({'debug.dll'} if test else set())
+                metadata = {'client-package.json', 'SHA256SUMS', 'README.txt'} if '-tools-' in package.name else {'update-manifest.json'}
+                self.assertEqual(set(z.namelist()), binaries | metadata)
+                for info in z.infolist(): self.assertEqual(info.external_attr >> 16, 0o100644)
+                self.assertEqual({r['path'] for r in data['files']}, binaries)
+                if test: self.assertEqual(z.read('debug.dll'), (assets / 'patch/debug.dll').read_bytes())
+        self.assertFalse((self.root / 'public/DFLegacy-client-update-win-x64.zip').exists())
+
+    def test_tools_reject_private_configuration_changed_instructions_and_checksums(self):
+        assets = self.assets()
+        package = release.build_client_update(assets, self.root / 'out', VERSION, COMMIT, tools=True)
+        original = package.read_bytes()
+        for name in ('Config.ini', 'launcher.json', 'README.txt', 'SHA256SUMS'):
+            with zipfile.ZipFile(io.BytesIO(original)) as z:
+                contents = {entry: z.read(entry) for entry in z.namelist()}
+            contents[name] = b'private or altered content'
+            with zipfile.ZipFile(package, 'w') as z:
+                for entry, content in contents.items(): z.writestr(entry, content)
+            with self.subTest(name=name), self.assertRaises(release.ReleaseError):
+                release.verify_client_package(package, VERSION, COMMIT, package.name)
 
     def test_manifest_types_links_and_limits_are_enforced(self):
         assets = self.assets()
@@ -62,7 +94,7 @@ class UpdatePackageTests(unittest.TestCase):
                         data = json.dumps(manifest).encode()
                         if mutation == 'case-duplicate-json': data = data.replace(b'{', b'{"SchemaVersion":1,', 1)
                     info = zipfile.ZipInfo(name)
-                    if mutation == 'link' and name == 'ijl15.dll': info.external_attr = 0o120777 << 16
+                    if mutation == 'link' and name == 'DFLegacy.Client.dll': info.external_attr = 0o120777 << 16
                     target.writestr(info, data)
             with self.subTest(mutation=mutation), self.assertRaises(release.ReleaseError):
                 release.verify_client_update(archive)
@@ -74,7 +106,7 @@ class UpdatePackageTests(unittest.TestCase):
         assets = self.assets()
         with self.assertRaises(release.ReleaseError):
             release.build_client_update(assets, self.root / 'bad', VERSION, 'b' * 40)
-        (assets / 'patch/ijl15.dll').write_bytes(b'changed')
+        (assets / 'patch/DFLegacy.Client.dll').write_bytes(b'changed')
         with self.assertRaises(release.ReleaseError):
             release.build_client_update(assets, self.root / 'bad2', VERSION, COMMIT)
 
@@ -83,7 +115,7 @@ class UpdatePackageTests(unittest.TestCase):
         original = release.verify_assets
         def changed(*args):
             verified = original(*args)
-            (assets / 'patch/ijl15.dll').write_bytes(b'changed after verification')
+            (assets / 'patch/DFLegacy.Client.dll').write_bytes(b'changed after verification')
             return verified
         with patch.object(release, 'verify_assets', side_effect=changed):
             with self.assertRaises(release.ReleaseError):
@@ -92,10 +124,10 @@ class UpdatePackageTests(unittest.TestCase):
     def test_extra_duplicate_or_modified_entries_are_rejected(self):
         assets = self.assets()
         archive = release.build_client_update(assets, self.root / 'out', VERSION, COMMIT)
-        for name, data in [('launcher.json', b'{"Password":"secret"}'), ('ijl15.dll', b'changed'), ('../Config.ini', b'x')]:
+        for name, data in [('launcher.json', b'{"Password":"secret"}'), ('DFLegacy.Client.dll', b'changed'), ('../Config.ini', b'x')]:
             altered = self.root / (str(len(name)) + '.zip')
             altered.write_bytes(archive.read_bytes())
-            if name == 'ijl15.dll':
+            if name == 'DFLegacy.Client.dll':
                 with self.assertWarnsRegex(UserWarning, "Duplicate name"):
                     with zipfile.ZipFile(altered, 'a') as z:
                         z.writestr(name, data)
@@ -107,14 +139,15 @@ class UpdatePackageTests(unittest.TestCase):
 
     def test_publisher_uploads_only_validated_snapshot_after_path_mutation(self):
         assets = self.assets()
-        archive = release.build_client_update(assets, self.root / 'out', VERSION, COMMIT)
-        original_bytes = archive.read_bytes()
-        original_verifier = release.verify_client_update
+        packages = release.build_client_packages(assets, self.root / 'out', VERSION, COMMIT)
+        original_bytes = {p.name: p.read_bytes() for p in packages}
+        original_verifier = release.verify_client_package
         for mutation in ('append', 'replace'):
             with self.subTest(mutation=mutation):
-                archive.write_bytes(original_bytes)
-                def verify_then_mutate(content, version, commit):
-                    result = original_verifier(content, version, commit)
+                for package in packages: package.write_bytes(original_bytes[package.name])
+                def verify_then_mutate(content, version, commit, name):
+                    result = original_verifier(content, version, commit, name)
+                    archive = next(p for p in packages if p.name == name)
                     if mutation == 'replace':
                         replacement = self.root / 'replacement.zip'
                         with zipfile.ZipFile(replacement, 'w') as z:
@@ -125,33 +158,50 @@ class UpdatePackageTests(unittest.TestCase):
                             z.writestr('launcher.json', b'synthetic-private-marker')
                     return result
                 api = FakeGitHub()
-                with patch.object(github, 'verify_client_update', side_effect=verify_then_mutate):
-                    outcome = github.publish(api, VERSION, COMMIT, archive)
+                with patch.object(github, 'verify_client_package', side_effect=verify_then_mutate):
+                    outcome = github.publish(api, VERSION, COMMIT, packages)
                 self.assertEqual(outcome['status'], 'published')
-                self.assertEqual(api.content, original_bytes)
-                self.assertEqual(outcome['sha256'], hashlib.sha256(original_bytes).hexdigest())
-                self.assertEqual(outcome['size'], len(original_bytes))
-                with zipfile.ZipFile(io.BytesIO(api.content)) as z:
-                    self.assertEqual(set(z.namelist()), {*release.UPDATE_FILES, 'update-manifest.json'})
-                    self.assertNotIn(b'synthetic-private-marker', b''.join(z.read(name) for name in z.namelist()))
-                with self.assertRaises(release.ReleaseError):
-                    original_verifier(archive, VERSION, COMMIT)
+                self.assertEqual(api.contents, original_bytes)
+                for package in packages:
+                    self.assertEqual(outcome['assets'][package.name]['sha256'], hashlib.sha256(original_bytes[package.name]).hexdigest())
+                    with self.assertRaises(release.ReleaseError):
+                        original_verifier(package, VERSION, COMMIT, package.name)
 
-    def test_real_client_parser_accepts_produced_archive(self):
+    def test_public_set_rejects_mixed_shared_binaries_before_remote_calls(self):
         assets = self.assets()
-        archive = release.build_client_update(assets, self.root / 'out', VERSION, COMMIT)
+        packages = release.build_client_packages(assets, self.root / 'out', VERSION, COMMIT)
+        package = packages[0]
+        with zipfile.ZipFile(package) as z:
+            contents = {name: z.read(name) for name in z.namelist()}
+        contents['DFLegacy.Client.dll'] = b'other independently valid patch'
+        manifest = json.loads(contents['update-manifest.json'])
+        row = next(row for row in manifest['files'] if row['path'] == 'DFLegacy.Client.dll')
+        row['size'] = len(contents[row['path']]); row['sha256'] = hashlib.sha256(contents[row['path']]).hexdigest()
+        contents['update-manifest.json'] = json.dumps(manifest).encode()
+        with zipfile.ZipFile(package, 'w') as z:
+            for name, content in contents.items(): z.writestr(name, content)
+        release.verify_client_package(package, VERSION, COMMIT, package.name)
+        api = FakeGitHub()
+        with self.assertRaises(release.ReleaseError): github.publish(api, VERSION, COMMIT, packages)
+        self.assertEqual(api.calls, [])
+
+    def test_real_client_parser_accepts_all_four_produced_archives(self):
+        assets = self.assets()
+        packages = release.build_client_packages(assets, self.root / 'out', VERSION, COMMIT)
         project = Path(__file__).parent / 'package-probe/PackageProbe.csproj'
         result = subprocess.run(['dotnet', 'run', '--project', str(project), '-c', 'Release',
-                                 '--artifacts-path', str(self.root / 'probe-build'), '--', str(archive), VERSION, COMMIT],
+                                 '--artifacts-path', str(self.root / 'probe-build'), '--', VERSION, COMMIT, *map(str, packages)],
                                 capture_output=True, text=True, env=release.dotnet_environment())
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn('actual UpdatePackage parser accepted', result.stdout)
+        self.assertEqual(result.stdout.count('actual UpdatePackage parser accepted'), 2)
+        self.assertEqual(result.stdout.count('actual ClientPackageManifest parser accepted'), 2)
 
 
 class FakeGitHub:
     def __init__(self, empty=False):
         self.current = None
         self.assets = []
+        self.contents = {}
         self.calls = []
         self.empty = empty
         self.corrupt = False
@@ -182,14 +232,15 @@ class FakeGitHub:
 
     def upload(self, release_id, name, content):
         self.calls.append(('UPLOAD', name, None))
-        self.assets.append({'id': 7, 'name': name, 'size': len(content), 'digest': 'sha256:' + hashlib.sha256(content).hexdigest(),
+        self.assets.append({'id': 7 + len(self.assets), 'name': name, 'size': len(content), 'digest': 'sha256:' + hashlib.sha256(content).hexdigest(),
                             'browser_download_url': 'https://github.com/firekula/DFLegacy/releases/download/' + self.current['tag_name'] + '/' + name})
         self.content = content
+        self.contents[name] = content
         if self.upload_timeout: raise release.ReleaseError('lost upload response')
 
     def attachment_digest(self, asset, size, draft=False):
         self.calls.append(('VERIFY-DRAFT' if draft else 'VERIFY-PUBLIC', str(asset['id']), None))
-        return '0' * 64 if self.corrupt else hashlib.sha256(self.content).hexdigest()
+        return '0' * 64 if self.corrupt else hashlib.sha256(self.contents[asset['name']]).hexdigest()
 
 
 class PublisherTests(unittest.TestCase):
@@ -198,12 +249,36 @@ class PublisherTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.path = Path(self.tmp.name) / github.ASSET_NAME
         self.path.write_bytes(b'archive-fixture')
-        self.verifier = patch.object(github, 'verify_client_update', return_value={})
+        self.paths = [Path(self.tmp.name) / name for name in (
+            'DFLegacy-client-update-v2-win-x64.zip', 'DFLegacy-client-update-v2-test-win-x64.zip',
+            'DFLegacy-client-tools-win-x64.zip', 'DFLegacy-client-tools-test-win-x64.zip')]
+        for path in self.paths: path.write_bytes(b'archive-fixture')
+        self.verifier = patch.object(github, 'verify_client_package', return_value={'files': []})
         self.verifier.start()
         self.addCleanup(self.verifier.stop)
 
     def publish(self, api, version=VERSION, **kwargs):
-        return github.publish(api, version, COMMIT, self.path, **kwargs)
+        return github.publish(api, version, COMMIT, self.paths, **kwargs)
+
+    def test_partial_published_release_is_never_complete(self):
+        api = FakeGitHub(); self.publish(api)
+        api.assets.pop()
+        api.calls.clear()
+        with self.assertRaises(release.ReleaseError): self.publish(api)
+        self.assertFalse(any(c[0] in ('UPLOAD', 'PATCH', 'POST', 'PUT') for c in api.calls))
+
+    def test_partial_draft_resumes_only_missing_assets(self):
+        api = FakeGitHub(); self.publish(api)
+        api.current['draft'] = True
+        missing = api.assets.pop()['name']
+        api.calls.clear()
+        self.assertEqual(self.publish(api)['status'], 'published')
+        self.assertEqual([c[1] for c in api.calls if c[0] == 'UPLOAD'], [missing])
+
+    def test_partial_local_inventory_rejected_before_remote_access(self):
+        api = FakeGitHub()
+        with self.assertRaises(release.ReleaseError): github.publish(api, VERSION, COMMIT, self.paths[:-1])
+        self.assertEqual(api.calls, [])
 
     def test_draft_verify_publish_public_verify_and_idempotent_retry(self):
         api = FakeGitHub()
@@ -238,7 +313,7 @@ class PublisherTests(unittest.TestCase):
     def test_resume_after_lost_upload_response(self):
         api = FakeGitHub(); api.upload_timeout = True
         self.assertEqual(self.publish(api)['status'], 'published')
-        self.assertEqual(len(api.assets), 1)
+        self.assertEqual(len(api.assets), 4)
 
     def test_draft_lookup_uses_authenticated_listing_when_tag_endpoint_is_published_only(self):
         api = FakeGitHub(); api.hide_drafts_by_tag = True
@@ -267,9 +342,8 @@ class PublisherTests(unittest.TestCase):
 
     def test_concurrent_publication_still_checks_anonymous_bytes(self):
         api = FakeGitHub()
-        api.corrupt = True
-        with self.assertRaises(release.ReleaseError): self.publish(api)
-        api.corrupt = False
+        self.publish(api)
+        api.current['draft'] = True
         api.calls.clear()
         original = api.attachment_digest
         def concurrent(asset, size, draft=False):
@@ -301,7 +375,7 @@ class PublisherTests(unittest.TestCase):
             return result
         api.request = lost_response
         self.assertEqual(self.publish(api)['status'], 'published')
-        self.assertEqual(len(api.assets), 1)
+        self.assertEqual(len(api.assets), 4)
 
     def test_missing_permission_and_private_repo_cannot_mutate(self):
         for repository in ({'private': True, 'permissions': {'push': True}}, {'private': False, 'permissions': {'push': False}}):
@@ -327,6 +401,15 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(kwargs['env']['GIT_TERMINAL_PROMPT'], '0')
             self.assertEqual(kwargs['env']['GCM_INTERACTIVE'], 'Never')
             self.assertIn('credential.interactive=never', args[0])
+
+    def test_transport_whitelists_exactly_the_four_public_names(self):
+        api = github.GitHub('secret')
+        for name in release.PUBLIC_ASSETS:
+            api._validate_api('https://uploads.github.com/repos/firekula/DFLegacy/releases/1/assets?name=' + name)
+            api._validate_download('https://github.com/firekula/DFLegacy/releases/download/v1.2.3/' + name)
+        for name in ('DFLegacy-client-update-win-x64.zip', 'private.zip', '../' + release.UPDATE_ASSET):
+            with self.assertRaises(release.ReleaseError): api._validate_api('https://uploads.github.com/repos/firekula/DFLegacy/releases/1/assets?name=' + name)
+            with self.assertRaises(release.ReleaseError): api._validate_download('https://github.com/firekula/DFLegacy/releases/download/v1.2.3/' + name)
 
     def test_api_and_upload_host_path_allowlist_before_auth(self):
         api = github.GitHub('secret')
@@ -409,8 +492,9 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('github_publish.py', job)
         self.assertNotIn('secrets.GITHUB_TOKEN', job)
         self.assertNotIn('git push', job)
-        self.assertIn('DFLegacy-client-update-win-x64.zip', text)
-        self.assertIn('build_client_update', Path(release.REPO / 'tools/release/ci.py').read_text())
+        self.assertNotIn('DFLegacy-client-update-win-x64.zip', text)
+        for name in release.PUBLIC_ASSETS: self.assertIn(name, text)
+        self.assertIn('build_client_packages', Path(release.REPO / 'tools/release/ci.py').read_text())
         self.assertNotIn('incoming/windows/DFLegacy-*.zip', text,
                          'the update ZIP must not be mistaken for a sixth Gitea platform package')
 

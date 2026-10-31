@@ -1,9 +1,10 @@
 #pragma once
 #include <cstdint>
+#include "../../DFLegacy.Client/player_runtime.h"
 
 namespace dfl::debug_api
 {
-    constexpr std::uint32_t Version = 2;
+    constexpr std::uint32_t Version = 3;
     using DrawText = void (__stdcall*)(int x, int y, std::uint32_t color, const char* text);
     struct Host
     {
@@ -12,6 +13,7 @@ namespace dfl::debug_api
         DrawText drawText;
         void* gameWindow;
         const wchar_t* settingsPath;
+        const player_runtime::SharedState* sharedState;
     };
     struct Frame
     {
@@ -24,7 +26,7 @@ namespace dfl::debug_api
     using Initialize = int (__stdcall*)(const Host*, const wchar_t* directory);
     using Render = void (__stdcall*)(const Frame*);
     using Shutdown = int (__stdcall*)();
-    // Optional exports; Host/Frame v2 ABI remains unchanged. Same QPC clock
+    // Optional exports retain their existing ABI independently of Host v3. Same QPC clock
     // domain as the original callback profiler, fixed five-section payload.
     struct PipelineSample
     {

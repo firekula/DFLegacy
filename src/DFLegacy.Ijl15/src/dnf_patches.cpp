@@ -10,6 +10,7 @@
 
 #include "auto_input.h"
 #include "debug_module.h"
+#include "../../DFLegacy.Client/player_runtime.h"
 #include "boss_room_death.h"
 #include "channel_reentry.h"
 #include "relay_send_queue.h"
@@ -18,11 +19,13 @@
 #include "countdown_coin.h"
 #include "dungeon_tooltip.h"
 #include "ground_item_removal.h"
+#include "inventory_tab.h"
 #include "motion_horizon.h"
 #include "native_loop_probe.h"
 #include "motion_test_probe.h"
 #include "provider_probe.h"
 #include "dnf_patches.h"
+#include "../../DFLegacy.Client/bootstrap_runtime.h"
 #include "d3d8_scaler.h"
 #include "external_string_table.h"
 #include "ijl15_config.h"
@@ -348,8 +351,8 @@ namespace
         {
             true,
             // Always enter the 2008DF performance call site. The hook below
-            // decides whether to run the native renderer and always draws
-            // the IJL15 FPS/Committed overlay.
+            // ticks the common player runtime and independently selects
+            // the native renderer and optional FPS/Committed overlay.
             0x0083F992,
             {0x75, 0x07, 0x8B, 0xCF, 0xE8, 0xF5},
             {0x90, 0x90, 0x8B, 0xCF, 0xE8, 0xF5}
@@ -489,16 +492,9 @@ namespace
         }
     } };
 
-    constexpr std::uintptr_t PerformanceOverlayGate = 0x0083F992;
-
     bool IsPatchEnabled(const CodePatch& patch) noexcept
     {
-        if (patch.Address == PerformanceOverlayGate)
-        {
-            return dfl::ijl15_config::Get().EnablePerformanceOverlay
-                || dfl::ijl15_config::Get().EnableDebugOverlay
-                || dfl::ijl15_config::Get().EnableAutoInput;
-        }
+        // The frame gate is a player runtime requirement, independent of visible FPS/debug UI.
         return patch.Enabled;
     }
 
@@ -801,7 +797,8 @@ namespace dfl::dnf_patches
                 continue;
             }
             states[index] = Inspect(Patches[index]);
-            if (states[index] == PatchState::Mismatch)
+            if (states[index] == PatchState::Mismatch
+                || (dfl::client_bootstrap::IsStandalone() && states[index] != PatchState::Original))
             {
                 OutputDebugStringA(
                     "DFLegacy.Ijl15: DNF patch bytes do not match.\n");
@@ -1068,10 +1065,7 @@ namespace dfl::dnf_patches
             stringTableHookChanged = true;
         }
 
-        if ((dfl::ijl15_config::Get().EnablePerformanceOverlay
-                || dfl::ijl15_config::Get().EnableDebugOverlay
-                || dfl::ijl15_config::Get().EnableAutoInput)
-            && !dfl::performance_overlay::InstallCallHook())
+        if (!dfl::performance_overlay::InstallCallHook())
         {
             for (std::size_t rollback = 0; rollback < Patches.size(); ++rollback)
             {
@@ -1157,7 +1151,7 @@ namespace dfl::dnf_patches
         // Why here and not in a capture: the party/dungeon traffic between two
         // clients on one machine is Windows loopback, which packet capture does
         // not see (2026-10-04: 184 MB pktmon capture, zero loopback UDP).
-        if (dfl::ijl15_config::Get().DumpNetwork
+        if (dfl::player_runtime::DiagnosticsAllowed() && dfl::ijl15_config::Get().DumpNetwork
             && !dfl::net_dump::Install())
         {
             OutputDebugStringA(
@@ -1250,6 +1244,9 @@ namespace dfl::dnf_patches
                 "DFLegacy.Ijl15: ground item removal repair was not installed.\n");
         }
 
+        if (!dfl::inventory_tab::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: backpack tab preservation was not installed.\n");
+
         if (!dfl::motion_horizon::Install())
             OutputDebugStringA("DFLegacy.Ijl15: ACT1 inactive-acceleration interpolation repair was not installed.\n");
 
@@ -1258,12 +1255,12 @@ namespace dfl::dnf_patches
             OutputDebugStringA("DFLegacy.Ijl15: debug overlay unavailable; gameplay continues.\n");
         }
 
-        if (!dfl::native_loop_probe::Install())
+        if (dfl::player_runtime::DiagnosticsAllowed() && !dfl::native_loop_probe::Install())
             OutputDebugStringA("DFLegacy.Ijl15: native loop timing not installed; original gameplay continues.\n");
 
-        if (!dfl::provider_probe::Install())
+        if (dfl::player_runtime::DiagnosticsAllowed() && !dfl::provider_probe::Install())
             OutputDebugStringA("DFLegacy.Ijl15: provider observation not installed; original gameplay continues.\n");
-        if (!dfl::motion_test_probe::Install())
+        if (dfl::player_runtime::DiagnosticsAllowed() && !dfl::motion_test_probe::Install())
             OutputDebugStringA("DFLegacy.Ijl15: motion-test observation not installed; original gameplay continues.\n");
 
         if (dfl::ijl15_config::Get().EnableAutoInput
@@ -1285,14 +1282,4 @@ namespace dfl::dnf_patches
         }
         return true;
     }
-}
-
-BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
-{
-    if (reason == DLL_PROCESS_ATTACH
-        && dfl::dnf_patches::IsTargetProcess())
-    {
-        return dfl::dnf_patches::Apply() ? TRUE : FALSE;
-    }
-    return TRUE;
 }

@@ -3,6 +3,9 @@
 from datetime import datetime, timezone
 import argparse
 import json
+import hashlib
+import uuid
+import urllib.parse
 import os
 import re
 from pathlib import Path
@@ -16,7 +19,7 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from release import REPO, ReleaseError, build_client_assets, build_client_update, dotnet_environment, make_archive, new_output, publish, read_json, unpack, validate_identity, verify, verify_assets, write_json
+from release import REPO, ReleaseError, build_client_assets, build_client_packages, dotnet_environment, make_archive, new_output, publish, read_json, unpack, validate_identity, verify, verify_assets, write_json
 
 
 def build_version(ref, commit, timestamp):
@@ -112,6 +115,56 @@ def metadata():
     print(json.dumps({"version": version, "commit": commit, "source_date_epoch": int(epoch)}))
 
 
+LEGACY_FIXTURE_NAME = "DFLegacy-client-update-win-x64.zip"
+LEGACY_FIXTURE_SHA256 = "4851bfc41b1c39799ba7ed735954c1d6fd1cbc91fba0d8b2a201eb2c7977e0f5"
+LEGACY_FIXTURE_SIZE = 63332728
+LEGACY_FIXTURE_URL = ("https://github.com/firekula/DFLegacy/releases/download/"
+                      "dev-20261031T114502Z-4a0e12555c17/" + LEGACY_FIXTURE_NAME)
+
+
+def open_legacy_fixture():
+    class Redirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, request, response, code, message, headers, url):
+            parsed = urllib.parse.urlsplit(url)
+            if parsed.scheme != "https" or parsed.hostname not in ("github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com") or parsed.username or parsed.password or parsed.port not in (None, 443):
+                raise ReleaseError("untrusted legacy fixture redirect")
+            return super().redirect_request(request, response, code, message, headers, url)
+    return urllib.request.build_opener(Redirect()).open(LEGACY_FIXTURE_URL, timeout=120)
+
+
+def legacy_patch_fixture(cache):
+    """Fetch only the pinned project-owned prior patch; never game/original IJL files."""
+    cache = Path(cache)
+    cache.mkdir(parents=True, exist_ok=True)
+    if cache.is_symlink() or cache.is_junction():
+        raise ReleaseError("legacy fixture cache cannot be a link")
+    destination = cache / LEGACY_FIXTURE_NAME
+    def verified(path):
+        if path.is_symlink() or path.is_junction():
+            raise ReleaseError("legacy fixture cannot be a link")
+        if not path.is_file() or path.stat().st_size != LEGACY_FIXTURE_SIZE:
+            return False
+        with path.open('rb') as stream:
+            return hashlib.file_digest(stream, 'sha256').hexdigest() == LEGACY_FIXTURE_SHA256
+    if verified(destination):
+        return destination
+    temporary = cache / (uuid.uuid4().hex + '.part')
+    try:
+        with open_legacy_fixture() as source, temporary.open('xb') as target:
+            size = 0
+            while block := source.read(min(1024 * 1024, LEGACY_FIXTURE_SIZE - size + 1)):
+                size += len(block)
+                if size > LEGACY_FIXTURE_SIZE:
+                    raise ReleaseError("legacy fixture exceeds pinned size")
+                target.write(block)
+        if not verified(temporary):
+            raise ReleaseError("legacy fixture size or SHA256 differs")
+        temporary.replace(destination)
+        return destination
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def windows(version, commit):
     if os.name != "nt":
         raise ReleaseError("Windows asset build requires Windows")
@@ -119,20 +172,31 @@ def windows(version, commit):
     # Clean checkout in CI; source scripts fail on any native build/test failure.
     run("pwsh", "-NoProfile", "-File", "src/DFLegacy.Ijl15/build-native.ps1", "-Configuration", "Release", "-RunTests")
     run("pwsh", "-NoProfile", "-File", "src/DFLegacy.RandomNative/build-native.ps1", "-Configuration", "Release", "-RunTests")
-    native = REPO / "artifacts/native/ijl15/Release/ijl15.dll"
+    native_build = REPO / "artifacts/native/ijl15"
+    native = native_build / "Release/DFLegacy.Client.dll"
+    bootstrap = native_build / "Release/DFLegacy.Bootstrap32.exe"
+    debug = native_build / "Release/debug.dll"
+    fixture = legacy_patch_fixture(REPO / "artifacts/test-fixture-cache")
+    os.environ["DFL_NATIVE_FIXTURES"] = str(native_build)
+    os.environ["DFL_LEGACY_PATCH_ARCHIVE"] = str(fixture)
+    native_properties = ("-p:BuildNativeAssets=false", "-p:ClientPatchPrebuiltPath=" + str(native),
+                         "-p:ClientBootstrapPrebuiltPath=" + str(bootstrap),
+                         "-p:Ijl15PrebuiltPath=" + str(native_build / "Release/ijl15.dll"))
     run("dotnet", "run", "--project", "src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj", "-c", "Release",
-        "-p:BuildNativeAssets=false", "-p:Ijl15PrebuiltPath=" + str(native))
+        *native_properties)
     launcher = new_output(REPO / "artifacts" / ("launcher-" + version))
     run("dotnet", "publish", "src/DFLegacy.Launcher/DFLegacy.Launcher.csproj", "-c", "Release", "-r", "win-x64", "--self-contained", "true",
         "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:DebugType=embedded", "-p:PublishTrimmed=false",
-        "-p:BuildNativeAssets=false", "-p:Ijl15PrebuiltPath=" + str(native), "-p:ContinuousIntegrationBuild=true", "-o", launcher)
-    assets = build_client_assets(launcher, native, REPO / "src/DFLegacy.Ijl15/Config.ini", REPO / "client-assets", version, commit)
+        *native_properties, "-p:ContinuousIntegrationBuild=true", "-o", launcher)
+    assets = build_client_assets(launcher, native, REPO / "src/DFLegacy.Ijl15/Config.ini", REPO / "client-assets", version, commit, debug=debug)
     # Tar transport keeps the immutable assets together. All receivers verify it.
     make_archive(assets, REPO / "artifacts/client-assets.tar.gz", "linux-x64")
     _, archive = publish("win-x64", version, commit, assets, REPO / "artifacts" / ("DFLegacy-" + version + "-win-x64"),
                          verification="Windows x64 CI: managed/native tests and packaged Manager health/readiness; GPU and graphical game acceptance are not executed in headless CI")
     smoke_archive(archive)
-    build_client_update(assets, REPO / "artifacts", version, commit)
+    build_client_packages(assets, REPO / "artifacts", version, commit)
+    run(sys.executable, "tools/release/tests/verify_client_notices.py", "--native", native.parent,
+        "--launcher", launcher / "DFLegacy.Launcher.exe", "--packages", REPO / "artifacts")
 
 
 def linux(version, commit, archive):

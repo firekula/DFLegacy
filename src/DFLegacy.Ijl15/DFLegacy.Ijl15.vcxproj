@@ -65,7 +65,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>src\ijl15.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>bcrypt.lib;ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
@@ -89,7 +89,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>src\ijl15.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>bcrypt.lib;ole32.lib;psapi.lib;shlwapi.lib;windowscodecs.lib;ws2_32.lib;winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX86</TargetMachine>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
@@ -109,6 +109,7 @@
     <ClInclude Include="src\channel_reentry.h" />
     <ClInclude Include="src\relay_send_queue.h" />
     <ClInclude Include="src\ground_item_removal.h" />
+    <ClInclude Include="src\inventory_tab.h" />
     <ClInclude Include="src\motion_horizon.h" />
     <ClInclude Include="src\party_card_display.h" />
     <ClInclude Include="src\d3d8_scaler.h" />
@@ -136,6 +137,18 @@
     <ClInclude Include="src\window_scaling.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\DFLegacy.Client\player_runtime.cpp" />
+    <ClCompile Include="..\DFLegacy.Client\client_paths.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\client_state.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\client_state_json.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\client_navigation.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\client_navigation_runtime.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\map_click_feedback.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\client_map_feedback_runtime.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\town_route_catalog.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\town_route_controller.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\client_town_route_contract.cpp" />
+    <ClCompile Include="..\DFLegacy.Debug\src\client_town_route_runtime.cpp" />
     <ClCompile Include="src\auto_input.cpp" />
     <ClCompile Include="src\debug_module.cpp" />
     <ClCompile Include="src\boss_room_death.cpp" />
@@ -146,6 +159,7 @@
     <ClCompile Include="src\countdown_coin.cpp" />
     <ClCompile Include="src\dungeon_tooltip.cpp" />
     <ClCompile Include="src\ground_item_removal.cpp" />
+    <ClCompile Include="src\inventory_tab.cpp" />
     <ClCompile Include="src\motion_horizon.cpp" /><ClCompile Include="src\native_loop_probe.cpp" /><ClCompile Include="src\motion_test_probe.cpp" /><ClCompile Include="src\provider_probe.cpp" />
     <ClCompile Include="src\party_card_display.cpp" />
     <ClCompile Include="src\d3d8_scaler.cpp" />
@@ -154,6 +168,8 @@
     <ClCompile Include="src\d3d8_hooks.cpp" />
     <ClCompile Include="src\window_input_scaling.cpp" />
     <ClCompile Include="src\dnf_patches.cpp" />
+    <ClCompile Include="src\ijl15_entry.cpp" />
+    <ClCompile Include="..\DFLegacy.Client\bootstrap_runtime.cpp" />
     <ClCompile Include="src\external_string_table.cpp" />
     <ClCompile Include="src\ijl15_config.cpp" />
     <ClCompile Include="src\ijl15.cpp" />

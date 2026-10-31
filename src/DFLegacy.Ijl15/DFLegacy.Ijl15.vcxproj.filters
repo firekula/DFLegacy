@@ -45,6 +45,9 @@
     <ClInclude Include="src\ground_item_removal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\inventory_tab.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\ijl15.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -117,6 +120,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ground_item_removal.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\inventory_tab.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\dnf_patches.cpp">

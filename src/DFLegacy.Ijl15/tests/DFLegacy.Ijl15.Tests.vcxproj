@@ -117,6 +117,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\DFLegacy.Client\client_paths.cpp" />
+    <ClCompile Include="..\..\DFLegacy.Client\bootstrap_runtime.cpp" />
     <ClCompile Include="..\src\auto_input.cpp" />
     <ClCompile Include="auto_input_drag_tests.cpp" />
     <ClCompile Include="..\src\external_string_table.cpp" />

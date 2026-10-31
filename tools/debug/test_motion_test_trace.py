@@ -37,6 +37,14 @@ class MotionTestTraceTests(unittest.TestCase):
             struct.pack_into('<QQ4I2i6I',a,64+(serial-1)%256*64,serial,1000,99,0x10000,0x20000,0x4B3C30,127,252,0,529,0x30000,12,13,0)
         v=self.decode(a);self.assertEqual(v['events'][0]['serial'],3);self.assertEqual(v['overwrites'],2)
 
+    def test_standalone_module_is_selected_before_original_ijl(self):
+        modules=[(10,'G:/game/ijl15.dll'),(20,'G:/game/DFLegacy.Client.dll')]
+        self.assertEqual(m.select_patch_module(modules,'G:/game/DNF.exe'),20)
+    def test_legacy_module_selection_rejects_foreign_and_ambiguous_modules(self):
+        self.assertEqual(m.select_patch_module([(10,'G:/game/ijl15.dll')],'G:/game/DNF.exe'),10)
+        for modules in [[(10,'G:/foreign/DFLegacy.Client.dll')],[(10,'G:/game/DFLegacy.Client.dll'),(20,'G:/game/DFLegacy.Client.dll')]]:
+            with self.assertRaises(m.MotionTraceError):m.select_patch_module(modules,'G:/game/DNF.exe')
+
     def test_reader_requests_query_information_for_named_module_query(self):
         # GetModuleFileNameEx(non-null module) requires QUERY_INFORMATION,
         # whereas QueryFullProcessImageName alone also accepts LIMITED.

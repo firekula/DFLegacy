@@ -132,6 +132,7 @@ internal static partial class CeraGiftSmokeTests
             var store = f.Open(); var (a, b) = await f.Seed(store);
             await store.CreateAccountAsync(new("other", "password", OicqCode: "123456"));
             var other = (await store.CreateCharacterAsync("other", new("OtherBuyer"))).Character!;
+            await store.GrantCeraToAccountAsync("other", 50_000);
             var outcomes = await Task.WhenAll(f.Gift(store, a, b.Name),
                 store.GiftCeraShopAsync("other", other.Id, b.Name, [new(4, 1, 270000)], f.Shop));
             check(outcomes.Count(r => r.Status == DungeonRewardLedgerStatus.Committed) == 1

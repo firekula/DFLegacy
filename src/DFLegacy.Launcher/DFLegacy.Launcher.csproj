@@ -10,8 +10,8 @@
     <Ijl15ProjectDirectory>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\DFLegacy.Ijl15'))</Ijl15ProjectDirectory>
     <Ijl15BuildScript>$(Ijl15ProjectDirectory)\build-native.ps1</Ijl15BuildScript>
     <BuildNativeAssets Condition="'$(BuildNativeAssets)' == ''">true</BuildNativeAssets>
-    <Ijl15Output Condition="'$(Ijl15PrebuiltPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\ijl15.dll'))</Ijl15Output>
-    <Ijl15Output Condition="'$(Ijl15PrebuiltPath)' != ''">$([System.IO.Path]::GetFullPath('$(Ijl15PrebuiltPath)'))</Ijl15Output>
+    <ClientPatchPrebuiltPath Condition="'$(ClientPatchPrebuiltPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\DFLegacy.Client.dll'))</ClientPatchPrebuiltPath>
+    <ClientBootstrapPrebuiltPath Condition="'$(ClientBootstrapPrebuiltPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\DFLegacy.Bootstrap32.exe'))</ClientBootstrapPrebuiltPath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
@@ -41,43 +41,32 @@
     <ProjectReference Include="../DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
     <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
     <ProjectReference Include="../DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
-    <ProjectReference Include="../DFLegacy.Ijl15/DFLegacy.Ijl15.vcxproj"
-                      ReferenceOutputAssembly="false"
-                      Condition="'$(MSBuildRuntimeType)' != 'Core' and '$(BuildNativeAssets)' == 'true' and '$(Ijl15PrebuiltPath)' == ''" />
     <Content Include="../../launcher.json" Link="launcher.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </Content>
     <Content Include="../DFLegacy.Ijl15/Config.ini" Link="Config.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </Content>
+    <EmbeddedResource Include="$(ClientBootstrapPrebuiltPath)" LogicalName="DFLegacy.Launcher.Bootstrap32.exe" />
     <EmbeddedResource Include="../DFLegacy.Ijl15/Config.ini" LogicalName="DFLegacy.Launcher.DefaultConfig.ini" />
+    <EmbeddedResource Include="../../third_party/detours/LICENSE" LogicalName="DFLegacy.Launcher.Detours.LICENSE" />
+    <EmbeddedResource Include="../../third_party/detours/PROVENANCE.md" LogicalName="DFLegacy.Launcher.Detours.PROVENANCE" />
   </ItemGroup>
-  <Target Name="BuildIjl15"
-          BeforeTargets="Build"
-          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeAssets)' == 'true' and '$(Ijl15PrebuiltPath)' == '' and '$(MSBuildRuntimeType)' == 'Core'">
+  <Target Name="BuildStandaloneNative" BeforeTargets="PrepareForBuild"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeAssets)' == 'true'">
     <Exec Command="pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(Ijl15BuildScript)&quot; -Configuration &quot;$(Configuration)&quot;" />
   </Target>
-  <Target Name="ValidateIjl15Asset" BeforeTargets="CopyIjl15ToOutput;CopyIjl15ToPublish"
+  <Target Name="ValidateStandaloneAssets" BeforeTargets="PrepareForBuild" DependsOnTargets="BuildStandaloneNative"
           Condition="'$(DesignTimeBuild)' != 'true'">
-    <Error Condition="'$(BuildNativeAssets)' != 'true' and '$(Ijl15PrebuiltPath)' == ''"
-           Text="BuildNativeAssets=false requires an explicit Ijl15PrebuiltPath to the matching revision's x86 ijl15.dll." />
-    <Error Condition="!Exists('$(Ijl15Output)')" Text="Required ijl15.dll asset does not exist: $(Ijl15Output)" />
+    <Error Condition="!Exists('$(ClientPatchPrebuiltPath)')" Text="Required standalone x86 ClientPatchPrebuiltPath is missing: $(ClientPatchPrebuiltPath)" />
+    <Error Condition="!Exists('$(ClientBootstrapPrebuiltPath)')" Text="Required standalone x86 ClientBootstrapPrebuiltPath is missing: $(ClientBootstrapPrebuiltPath)" />
   </Target>
-  <Target Name="CopyIjl15ToOutput"
-          AfterTargets="Build"
-          DependsOnTargets="BuildIjl15"
-          Condition="'$(DesignTimeBuild)' != 'true'">
-    <Copy SourceFiles="$(Ijl15Output)"
-          DestinationFiles="$(TargetDir)ijl15.dll"
-          SkipUnchangedFiles="true" />
+  <Target Name="CopyStandaloneToOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Copy SourceFiles="$(ClientPatchPrebuiltPath)" DestinationFiles="$(TargetDir)DFLegacy.Client.dll" SkipUnchangedFiles="true" />
   </Target>
-  <Target Name="CopyIjl15ToPublish"
-          AfterTargets="Publish"
-          DependsOnTargets="BuildIjl15"
-          Condition="'$(DesignTimeBuild)' != 'true'">
-    <Copy SourceFiles="$(Ijl15Output)"
-          DestinationFiles="$(PublishDir)ijl15.dll"
-          SkipUnchangedFiles="true" />
+  <Target Name="CopyStandaloneToPublish" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Copy SourceFiles="$(ClientPatchPrebuiltPath)" DestinationFiles="$(PublishDir)DFLegacy.Client.dll" SkipUnchangedFiles="true" />
   </Target>
 </Project>

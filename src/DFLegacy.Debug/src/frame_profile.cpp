@@ -66,6 +66,12 @@ namespace dfl::frame_profile
         active=true;sample.scene=scene;sample.beginUs=last=Counter();sample.tickMs=GetTickCount64();
         sample.foregroundKnown=WindowHandle&&IsWindow(WindowHandle);sample.foregroundBegin=Foreground();
     }
+    Frame::Frame(std::uint32_t scene,std::uint64_t captureUs,std::uint64_t navigationUs) noexcept : Frame(scene)
+    {
+        if(!active)return;
+        if(captureUs>sample.beginUs||navigationUs>sample.beginUs-captureUs){clockValid=false;return;}
+        sample.beginUs-=captureUs+navigationUs;sample.parts[0]=captureUs;sample.parts[1]=navigationUs;next=2;
+    }
     void Frame::Mark() noexcept
     {
         if(!active||next>=Parts-1)return;
@@ -128,7 +134,7 @@ namespace dfl::frame_profile
             }
             o<<"],\"scope\":\""<<(pipeline?
                 "IJL performance-overlay call through text draw, including DebugRender and its bookkeeping. Native work outside this call, producer and recorder overhead, GPU Present and continuous foreground are not measured.":
-                "Existing DebugRender workload through content publication; profiler bookkeeping/export excluded. Invocation intervals are not GPU Present or continuous foreground proof. Native input/network/render outside this hook are not timed.")<<"\"}";
+                "Core state/navigation durations plus DebugRender workload through content publication; intervening renderer setup excluded; profiler bookkeeping/export excluded. Invocation intervals are not GPU Present or continuous foreground proof. Native input/network/render outside this hook are not timed.")<<"\"}";
             const auto json=o.str();wchar_t path[MAX_PATH]{},temporary[MAX_PATH]{};
             if(swprintf_s(path,L"%s\\dfdebug-frame-%s-%lu.json",Directory,pipeline?L"pipeline":L"profile",Native.pid)<0||swprintf_s(temporary,L"%s.tmp",path)<0)return;
             const auto file=CreateFileW(temporary,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(file==INVALID_HANDLE_VALUE)return;

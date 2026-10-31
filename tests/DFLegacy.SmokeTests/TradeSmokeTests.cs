@@ -2182,6 +2182,10 @@ internal sealed class TradeHarness : IAsyncDisposable
         var bravo = (await store.CreateCharacterAsync(
             "bobby", new CreateCharacterRequest("布拉沃", GrowType: 3), CancellationToken.None)).Character!;
 
+        // Fund this private trade fixture explicitly; ordinary creation is empty.
+        alpha = (await store.SaveCharacterInventoryAsync("alice", alpha.Id, 50_000, [], []))!;
+        bravo = (await store.SaveCharacterInventoryAsync("bobby", bravo.Id, 50_000, [], []))!;
+
         var harness = new TradeHarness(root, options, items, stats, store, directory);
         harness._packets["阿尔法"] = [];
         harness._packets["布拉沃"] = [];

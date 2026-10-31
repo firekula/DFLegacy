@@ -1700,6 +1700,9 @@ internal sealed class PartyHarness : IAsyncDisposable
                 account,
                 new CreateCharacterRequest(name),
                 CancellationToken.None)).Character!;
+            // Party/drop/PvP fixtures exercise funded economic transactions.
+            created = (await store.SaveCharacterInventoryAsync(account, created.Id, 50_000, [], []))!;
+            await store.GrantCeraToAccountAsync(account, 50_000);
             harness._packets[name] = [];
             harness._characters[name] = (created.Id, account);
             harness._sessionIds[name] = Guid.NewGuid();

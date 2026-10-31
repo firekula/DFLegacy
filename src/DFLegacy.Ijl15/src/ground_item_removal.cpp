@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include "../../DFLegacy.Client/client_paths.h"
 
 #include <array>
 #include <cstdint>
@@ -28,13 +29,9 @@ namespace
         const dfl::ground_item_removal::detail::PickupRemoval& removal = {},
         const dfl::ground_item_removal::detail::MapContext* context = nullptr) noexcept
     {
-        wchar_t path[MAX_PATH]{};
-        const DWORD length = GetModuleFileNameW(nullptr, path, MAX_PATH);
-        if (length == 0 || length >= MAX_PATH) return;
-        DWORD filename = length;
-        while (filename != 0 && path[filename - 1] != L'\\') --filename;
-        if (_snwprintf_s(path + filename, MAX_PATH - filename, _TRUNCATE,
-                L"ground-item-removal-%lu.log", GetCurrentProcessId()) < 0) return;
+        wchar_t path[MAX_PATH]{},leaf[100]{};
+        if(swprintf_s(leaf,L"ground-item-removal-%lu.log",GetCurrentProcessId())<0
+            || !dfl::client_paths::BuildLogPath(leaf,path,MAX_PATH))return;
         const HANDLE file = CreateFileW(path, FILE_APPEND_DATA,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
             nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);

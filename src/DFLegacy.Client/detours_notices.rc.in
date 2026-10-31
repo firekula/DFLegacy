@@ -1,0 +1,3 @@
+// Embed original vendor files verbatim in both statically linked binaries.
+DETOURS_LICENSE RCDATA "@DETOURS_LICENSE_FILE@"
+DETOURS_PROVENANCE RCDATA "@DETOURS_PROVENANCE_FILE@"

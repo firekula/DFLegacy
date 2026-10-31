@@ -12,9 +12,10 @@ public sealed class ClientPackageExporter
     private readonly SemaphoreSlim _gate = new(1);
     public ClientPackageExporter(ManagerPaths paths) => _paths = paths;
 
-    public async Task<string> ExportAsync(string kind, DeploymentConfig config, CancellationToken cancellationToken = default)
+    public async Task<string> ExportAsync(string kind, DeploymentConfig config, bool testBuild = false, CancellationToken cancellationToken = default)
     {
         if (kind is not ("client" or "patch" or "launcher")) throw new ArgumentException("未知客户端包类型。");
+        testBuild = kind == "client" && testBuild;
         kind = "client";
         ConfigurationStore.Validate(config);
         if (!await _gate.WaitAsync(0, cancellationToken)) throw new InvalidOperationException("正在生成其他客户端包，请稍后重试。");
@@ -24,31 +25,35 @@ public sealed class ClientPackageExporter
             var manifestPath = Path.Combine(_paths.AssetsDirectory, "manifest.json");
             if (!File.Exists(manifestPath)) throw new InvalidDataException("未安装配套 Windows 客户端资源，请使用完整发行包。");
             if (new FileInfo(manifestPath).Length > 1024 * 1024) throw new InvalidDataException("客户端资源清单过大。");
-            var manifest = JsonNode.Parse(await File.ReadAllTextAsync(manifestPath, cancellationToken)) ?? throw new InvalidDataException("客户端资源清单损坏。");
+            var manifestBytes = await File.ReadAllBytesAsync(manifestPath, cancellationToken);
+            ValidateJson(manifestBytes);
+            var manifest = JsonNode.Parse(manifestBytes) as JsonObject ?? throw new InvalidDataException("客户端资源清单损坏。");
+            if (!manifest.Select(p => p.Key).Order().SequenceEqual(new[] { "commit", "files", "version" })) throw new InvalidDataException("客户端资源清单格式无效。");
             var releaseFile = Path.Combine(_paths.Root, "release-manifest.json");
             if (!File.Exists(releaseFile)) throw new InvalidDataException("缺少发行版本清单。");
             var release = JsonNode.Parse(await File.ReadAllTextAsync(releaseFile, cancellationToken))!;
             var anchoredAssetManifest = release["files"]?.AsArray().FirstOrDefault(entry => entry?["path"]?.GetValue<string>() == "client-assets/manifest.json");
-            await using (var manifestStream = File.OpenRead(manifestPath))
-            {
-                var actual = Convert.ToHexStringLower(await SHA256.HashDataAsync(manifestStream, cancellationToken));
-                if (!actual.Equals(anchoredAssetManifest?["sha256"]?.GetValue<string>(), StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("客户端资源清单与发行摘要不一致，请重新安装完整发行包。");
-            }
+            var manifestHash = Convert.ToHexStringLower(SHA256.HashData(manifestBytes));
+            if (!manifestHash.Equals(anchoredAssetManifest?["sha256"]?.GetValue<string>(), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("客户端资源清单与发行摘要不一致，请重新安装完整发行包。");
             var version = manifest["version"]?.GetValue<string>() ?? "";
             var commit = manifest["commit"]?.GetValue<string>() ?? "";
             if (version.Length is < 1 or > 100 || !version.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '+')
-                || commit.Length != 40 || !commit.All(Uri.IsHexDigit) || release["version"]?.GetValue<string>() != version || release["commit"]?.GetValue<string>() != commit)
+                || commit.Length != 40 || !commit.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f') || release["version"]?.GetValue<string>() != version || release["commit"]?.GetValue<string>() != commit)
                 throw new InvalidDataException("客户端资源与当前服务版本不一致，拒绝混用。");
             var entries = manifest["files"]?.AsArray() ?? throw new InvalidDataException("缺少客户端文件清单。");
             if (entries.Count is < 1 or > 4096) throw new InvalidDataException("客户端文件数量不合理。");
             var files = new Dictionary<string, (string FullPath, string Hash)>(StringComparer.OrdinalIgnoreCase);
             long bytes = 0;
+            var declared = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var entry in entries)
             {
                 var name = entry?["path"]?.GetValue<string>() ?? "";
                 var hash = entry?["sha256"]?.GetValue<string>() ?? "";
-                if (!SafeAssetName(name) || hash.Length != 64 || !hash.All(Uri.IsHexDigit)) throw new InvalidDataException("客户端文件清单包含不安全路径或摘要。");
+                if (!SafeAssetName(name) || hash.Length != 64 || !hash.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f')) throw new InvalidDataException("客户端文件清单包含不安全路径或摘要。");
+                if (entry is not JsonObject row || !row.Select(p => p.Key).Order().SequenceEqual(new[] { "path", "sha256" }) || !declared.Add(name))
+                    throw new InvalidDataException("客户端文件清单格式无效或路径重复。");
+                if (name == "patch/debug.dll" && !testBuild) continue;
                 var path = Path.GetFullPath(name.Replace('/', Path.DirectorySeparatorChar), _paths.AssetsDirectory);
                 if (!path.StartsWith(_paths.AssetsDirectory + Path.DirectorySeparatorChar, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                     throw new InvalidDataException("客户端文件超出资源目录。");
@@ -66,8 +71,12 @@ public sealed class ClientPackageExporter
                 var actual = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, cancellationToken));
                 if (!actual.Equals(hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"客户端资源校验失败：{name}");
             }
-            foreach (var required in new[] { "patch/ijl15.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe" })
+            foreach (var required in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe" })
                 if (!files.ContainsKey(required)) throw new InvalidDataException($"客户端资源不完整：{required}");
+
+            if (testBuild && !files.ContainsKey("patch/debug.dll")) throw new InvalidDataException("缺少配套测试资源 debug.dll，请安装同版本完整发行包。");
+            if (files.TryGetValue("launcher/DFLegacy.Client.dll", out var bundledPatch) && bundledPatch.Hash != files["patch/DFLegacy.Client.dll"].Hash)
+                throw new InvalidDataException("客户端资源混用了不同版本补丁。");
 
             foreach (var old in new DirectoryInfo(_paths.Exports).GetFiles("dflegacy-*.zip").Where(file => file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1))) old.Delete();
             destination = Path.Combine(_paths.Exports, $"dflegacy-{kind}-{version}-{Guid.NewGuid():N}.zip");
@@ -82,11 +91,13 @@ public sealed class ClientPackageExporter
                     await target.WriteAsync(data, cancellationToken);
                     sums.Append(Convert.ToHexStringLower(SHA256.HashData(data))).Append("  ").Append(name).Append('\n');
                 }
+                var installedFiles = new List<object>();
                 foreach (var (name, file) in files)
                 {
                     var zipName = name switch
                     {
-                        "patch/ijl15.dll" => "ijl15.dll",
+                        "patch/DFLegacy.Client.dll" => "DFLegacy.Client.dll",
+                        "patch/debug.dll" => "debug.dll",
                         "launcher/DFLegacy.Launcher.exe" => "DFLegacy.Launcher.exe",
                         "launcher/Assets/Skin/fwtk.html" => "Assets/Skin/fwtk.html",
                         _ => null
@@ -100,7 +111,13 @@ public sealed class ClientPackageExporter
                     var actual = Convert.ToHexStringLower(digest.GetHashAndReset());
                     if (!actual.Equals(file.Hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"生成时客户端资源已发生变更：{name}");
                     sums.Append(actual).Append("  ").Append(zipName).Append('\n');
+                    if (zipName is "DFLegacy.Launcher.exe" or "DFLegacy.Client.dll" or "debug.dll")
+                    {
+                        if (source.Length <= 0) throw new InvalidDataException("客户端程序为空。");
+                        installedFiles.Add(new { path = zipName, size = source.Length, sha256 = actual });
+                    }
                 }
+                await Add("client-package.json", JsonSerializer.Serialize(new { schemaVersion = 2, version, commit, flavor = testBuild ? "test" : "normal", files = installedFiles }));
                 var launcher = new
                 {
                     ClientPath = "DNF.exe", EntranceHost = config.AdvertisedHost, config.EntrancePort, AccountServicePort = config.AdminPort,
@@ -110,9 +127,10 @@ public sealed class ClientPackageExporter
                         UdpPorts = string.Join(',', config.ForwardedUdpPorts()), Preference = config.RelayPreference }
                 };
                 await Add("launcher.json", JsonSerializer.Serialize(launcher, new JsonSerializerOptions { WriteIndented = true }));
-                await Add("README.txt", $"DFLegacy {version}\n提交：{commit}\n\n请先退出游戏并备份客户端 ijl15.dll 和 Config.ini。\n"
+                await Add("README.txt", $"DFLegacy {version}\n提交：{commit}\n\n新版使用独立 DFLegacy.Client.dll。旧版用户需先迁移一次：退出游戏并备份客户端，在新登录器中确认经哈希验证的原版 IJL 恢复；不要按备份文件名猜测原版。\n"
                     + "将 ZIP 内容直接解压到 DNF.exe 所在目录，运行 DFLegacy.Launcher.exe；首次自行注册或输入账号。\n默认配置内嵌，已有 Config.ini 仅更新必要连接字段并保留窗口设置。\n"
-                    + "不包含客户端或 Script.pvf，请自行提供与服务端匹配的资源。\n远程调试浮窗默认关闭；当前调试浮窗需要与服务端共享本机目录。\n");
+                    + "保持原始 EXE、DLL、PVF、NPK 不变；仅支持已验证的同版本兼容展开客户端，不修复原始旧壳。\n不包含客户端或 Script.pvf，请自行提供与服务端匹配的资源。\n普通版包含完整游戏优化且不加载诊断；测试包默认在首个游戏内画面加载本地诊断，自动输入和测试控制仍需显式启用。仅服务端覆盖数据需要共享本机目录，不自动同步远程数据。\n"
+                    + "Detours 完整许可和版本信息已内嵌于补丁、引导器和登录器。查看：DFLegacy.Launcher.exe --third-party-notices | more\n");
                 var checksumData = Encoding.UTF8.GetBytes(sums.ToString());
                 await using var checksum = archive.CreateEntry("SHA256SUMS").Open();
                 await checksum.WriteAsync(checksumData, cancellationToken);
@@ -128,14 +146,32 @@ public sealed class ClientPackageExporter
         if (name.Length is < 3 or > 512 || name.Contains('\\') || name.Contains(':') || name.Any(char.IsControl) || name.StartsWith('/')) return false;
         var parts = name.Split('/');
         if (parts.Any(part => part is "" or "." or ".." || part.StartsWith('.'))) return false;
-        if (name.StartsWith("patch/", StringComparison.Ordinal)) return parts.Length == 2 && parts[1] is "ijl15.dll" or "debug.dll" or "Config.ini";
-        if (!name.StartsWith("launcher/", StringComparison.Ordinal)) return false;
-        if (parts.Length == 2)
-            return parts[1] is "launcher.json" or "Config.ini" or "DFLegacy.Launcher.deps.json" or "DFLegacy.Launcher.runtimeconfig.json"
-                || parts[1].EndsWith(".dll", StringComparison.OrdinalIgnoreCase) || parts[1].EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || parts[1].EndsWith(".pdb", StringComparison.OrdinalIgnoreCase);
-        if (name == "launcher/Assets/Skin/fwtk.html") return true;
-        return parts.Length == 3 && parts[1].Length is >= 2 and <= 12 && parts[1].All(character => char.IsAsciiLetter(character) || character == '-')
-            && parts[2].EndsWith(".resources.dll", StringComparison.OrdinalIgnoreCase);
+        return name is "patch/DFLegacy.Client.dll" or "patch/debug.dll" or "patch/Config.ini"
+            or "launcher/DFLegacy.Launcher.exe" or "launcher/DFLegacy.Client.dll" or "launcher/launcher.json"
+            or "launcher/Config.ini" or "launcher/Assets/Skin/fwtk.html";
+    }
+
+    private static void ValidateJson(byte[] bytes)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(bytes);
+            void Visit(JsonElement element)
+            {
+                if (element.ValueKind == JsonValueKind.Object)
+                {
+                    var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        if (!names.Add(property.Name)) throw new InvalidDataException("客户端清单存在重复字段。");
+                        Visit(property.Value);
+                    }
+                }
+                else if (element.ValueKind == JsonValueKind.Array) foreach (var item in element.EnumerateArray()) Visit(item);
+            }
+            Visit(document.RootElement);
+        }
+        catch (JsonException error) { throw new InvalidDataException("客户端清单 JSON 无效。", error); }
     }
 
     internal static string SetIni(string text, string section, string key, string value)

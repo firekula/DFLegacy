@@ -133,14 +133,11 @@ try
     var assetFiles = new Dictionary<string, string>
     {
         ["launcher/DFLegacy.Launcher.exe"] = "fake self-contained launcher host",
-        ["launcher/DFLegacy.Launcher.dll"] = "fake managed launcher",
-        ["launcher/DFLegacy.Launcher.deps.json"] = "{}",
-        ["launcher/DFLegacy.Launcher.runtimeconfig.json"] = "{}",
-        ["launcher/coreclr.dll"] = "fake runtime marker",
         ["launcher/launcher.json"] = "{\"Account\":\"private-user\",\"Password\":\"do not export\"}",
         ["launcher/Config.ini"] = "[Features]\nEnableDebugOverlay=1\n[Network]\nClientServiceUrl=http://old-host\n",
-        ["launcher/ijl15.dll"] = "native patch",
-        ["patch/ijl15.dll"] = "native patch",
+        ["launcher/DFLegacy.Client.dll"] = "native patch",
+        ["patch/debug.dll"] = "same release debug",
+        ["patch/DFLegacy.Client.dll"] = "native patch",
         ["patch/Config.ini"] = "[Resolution]\nWidth=800\nHeight=600\n[Features]\nEnableDebugOverlay=0\n"
     };
     foreach (var (name, body) in assetFiles)
@@ -186,10 +183,41 @@ try
             && launcher["Relay"]!["UdpPorts"]!.GetValue<string>().Split(',').Contains("7005"),
             "default native fallback TCP and UDP ports are forwarded by exported local relay");
         Check(launcher["AccountServiceUrl"]!.GetValue<string>() == "https://accounts.example.test", "embedded client pages use the deployed account API origin");
-        Check(archive.GetEntry("Config.ini") is null && archive.GetEntry("DFLegacy.Launcher.exe") is not null && archive.GetEntry("ijl15.dll") is not null, "root player bundle includes launcher and patch without overwriting existing Config.ini");
+        Check(archive.GetEntry("Config.ini") is null && archive.GetEntry("DFLegacy.Launcher.exe") is not null && archive.GetEntry("DFLegacy.Client.dll") is not null, "root player bundle includes launcher and patch without overwriting existing Config.ini");
         Check(archive.Entries.All(entry => !entry.FullName.StartsWith("DFLegacyLauncher/") && !entry.FullName.EndsWith("coreclr.dll")), "player ZIP has no wrapper directory or loose runtime files");
         Check(archive.GetEntry("SHA256SUMS") is not null && archive.GetEntry("README.txt") is not null, "client package includes checksums and install instructions");
         Check(archive.Entries.All(entry => !entry.FullName.Contains("state.json") && !entry.FullName.Contains("Script.pvf")), "exports never include saved games or private PVF resources");
+    }
+    using (var archive = ZipFile.OpenRead(zipPath))
+    {
+        Check(archive.GetEntry("client-package.json") is not null, "normal export includes installed schema2 manifest");
+        Check(archive.GetEntry("ijl15.dll") is null && archive.GetEntry("debug.dll") is null, "normal export preserves original IJL and excludes debug");
+    }
+    var testZip = await exporter.ExportAsync("client", edited, testBuild: true);
+    using (var archive = ZipFile.OpenRead(testZip))
+    {
+        Check(archive.GetEntry("debug.dll") is not null && archive.GetEntry("ijl15.dll") is null, "test export includes debug but never IJL");
+        using var reader = new StreamReader(archive.GetEntry("client-package.json")!.Open());
+        var installed = JsonNode.Parse(reader.ReadToEnd())!;
+        Check(installed["schemaVersion"]!.GetValue<int>() == 2 && installed["flavor"]!.GetValue<string>() == "test" && installed["files"]!.AsArray().Count == 3, "test manifest records exact schema2 flavor and files");
+    }
+    var debugPath = Path.Combine(paths.AssetsDirectory, "patch/debug.dll");
+    File.Delete(debugPath);
+    Check(File.Exists(await exporter.ExportAsync("client", edited)), "missing optional debug does not break normal export");
+    try { await exporter.ExportAsync("client", edited, testBuild: true); Check(false, "test export requires debug payload"); }
+    catch (InvalidDataException) { Check(true, "test export requires debug payload"); }
+    File.WriteAllText(debugPath, "wrong debug version");
+    try { await exporter.ExportAsync("client", edited, testBuild: true); Check(false, "test export rejects mixed debug hash"); }
+    catch (InvalidDataException) { Check(true, "test export rejects mixed debug hash"); }
+    File.WriteAllText(debugPath, assetFiles["patch/debug.dll"]);
+    var aliasZip = await exporter.ExportAsync("patch", edited, testBuild: true);
+    using (var archive = ZipFile.OpenRead(aliasZip)) Check(archive.GetEntry("debug.dll") is null, "old aliases always return normal");
+    foreach (var (package, flavor) in new[] { (zipPath, "normal"), (testZip, "test") })
+    {
+        var unpacked = Path.Combine(scratch, "parser-" + flavor);
+        ZipFile.ExtractToDirectory(package, unpacked);
+        var installed = DFLegacy.Launcher.ClientPackageManifest.LoadAndValidate(unpacked);
+        Check(installed.Flavor == flavor && installed.Commit == commit, "actual launcher parser validates Manager " + flavor + " export");
     }
     var pvpDocument = config.ReadServerDocument();
     pvpDocument["DFLegacy"]!["Pvp"] = new JsonObject { ["Enabled"] = true, ["Port"] = 9051 };
@@ -205,13 +233,28 @@ try
     pvpDocument["DFLegacy"]!["Pvp"]!["Enabled"] = false;
     File.WriteAllText(paths.ServerConfig, pvpDocument.ToJsonString());
     var patchPath = await exporter.ExportAsync("patch", edited);
-    using (var archive = ZipFile.OpenRead(patchPath)) Check(archive.GetEntry("ijl15.dll") is not null && archive.GetEntry("DFLegacy.Launcher.exe") is not null,
+    using (var archive = ZipFile.OpenRead(patchPath)) Check(archive.GetEntry("DFLegacy.Client.dll") is not null && archive.GetEntry("DFLegacy.Launcher.exe") is not null,
         "legacy patch export alias now returns the same complete root player bundle");
     async Task RejectExport(string message)
     {
         try { await exporter.ExportAsync("launcher", edited); Check(false, message); }
         catch (InvalidDataException) { Check(true, message); }
     }
+    assetFiles.Remove("patch/debug.dll");
+    WriteAssets(commit);
+    Check(File.Exists(await exporter.ExportAsync("client", edited)), "normal export allows absent optional debug declaration");
+    try { await exporter.ExportAsync("client", edited, testBuild: true); Check(false, "test export requires anchored debug declaration"); }
+    catch (InvalidDataException) { Check(true, "test export requires anchored debug declaration"); }
+    WriteAssets(commit, new { path = "patch/debug.dll", sha256 = "invalid" });
+    await RejectExport("normal validates optional debug hash declaration without loading payload");
+    WriteAssets(commit, new { path = "launcher/unapproved.dll", sha256 = new string('0', 64) });
+    await RejectExport("normal rejects unknown metadata paths even if not selected");
+    assetFiles["patch/debug.dll"] = "same release debug";
+    WriteAssets(commit);
+    var manifestFile = Path.Combine(paths.AssetsDirectory, "manifest.json");
+    File.WriteAllText(manifestFile, File.ReadAllText(manifestFile).Replace("{", "{\"Version\":\"v1.2.3\",", StringComparison.Ordinal));
+    WriteRelease();
+    await RejectExport("case duplicate metadata fields are rejected even when anchored");
     WriteAssets(new string('b', 40));
     await RejectExport("assets from another commit are rejected");
     WriteAssets(commit, new { path = "../secret.txt", sha256 = new string('0', 64) });
@@ -226,7 +269,7 @@ try
     File.AppendAllText(Path.Combine(paths.AssetsDirectory, "manifest.json"), "\n");
     await RejectExport("resource manifest must match the immutable release manifest digest");
     WriteAssets(commit);
-    File.AppendAllText(Path.Combine(paths.AssetsDirectory, "patch/ijl15.dll"), "tampering");
+    File.AppendAllText(Path.Combine(paths.AssetsDirectory, "patch/DFLegacy.Client.dll"), "tampering");
     await RejectExport("modified client DLL is rejected before packaging");
 
     if (args.Contains("--http")) await HttpBehaviorTests.RunAsync(Check);

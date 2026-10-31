@@ -9,11 +9,11 @@ public partial class ClassicMessageWindow : Window
 {
     private SkinButton? laterButton;
     internal bool Accepted { get; private set; }
-    internal ClassicMessageWindow(string message, bool confirmRestart) : this(message)
+    internal ClassicMessageWindow(string message, bool confirmRestart, string cancelText = "稍后") : this(message)
     {
         if(!confirmRestart) return;
         ConfirmButton.Margin=new Thickness(48,137,0,0); ConfirmButton.IsCancel=false;
-        laterButton=new SkinButton { Content="稍后",Width=80,Height=29,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(158,137,0,0),Style=(Style)FindResource("ClassicButton"),IsCancel=true };
+        laterButton=new SkinButton { Content=cancelText,Width=80,Height=29,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(158,137,0,0),Style=(Style)FindResource("ClassicButton"),IsCancel=true };
         laterButton.Click+=(_,_)=>Close(); ((Grid)Content).Children.Add(laterButton);
     }
     public ClassicMessageWindow(string message)

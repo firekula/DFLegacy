@@ -22,17 +22,18 @@ internal static class UpdateHelperTests
             var installer=new UpdateInstaller(target);
             try
             {
-                var handoff=await installer.PrepareAsync(prepared);
+                using var session=new UpdateSession(target,new DFLegacy.Launcher.LauncherOptions());
+                var handoff=await session.PrepareAsync(prepared,CancellationToken.None);
                 File.WriteAllText(Path.Combine(target,"helper.path"),handoff.HelperPath);
                 CopySidecars(Path.GetDirectoryName(handoff.HelperPath)!);
-                if(args[2]=="stage-tamper") File.AppendAllText(Path.Combine(prepared.Directory,"ijl15.dll"),"tamper");
+                if(args[2]=="stage-tamper") File.AppendAllText(Path.Combine(prepared.Directory,"DFLegacy.Client.dll"),"tamper");
                 if(args[2]=="helper-tamper") File.AppendAllText(handoff.HelperPath,"tamper");
                 if(args[2]=="parent-tamper") handoff=new UpdateHandoff(handoff.Plan with { ParentStartTicks=handoff.Plan.ParentStartTicks+1 });
                 if(args[2]=="target-tamper") handoff=new UpdateHandoff(handoff.Plan with { Target=args[1] });
                 if(args[2]=="raw-parent") await SendRaw(handoff.Plan with { ParentStartTicks=handoff.Plan.ParentStartTicks+1 });
                 if(args[2]=="raw-target") await SendRaw(handoff.Plan with { Target=args[1] });
                 var helper=await installer.StartHelperAsync(handoff);
-                if(args[2]=="late-stage") File.AppendAllText(Path.Combine(prepared.Directory,"ijl15.dll"),"tampered after readiness");
+                if(args[2]=="late-stage") File.AppendAllText(Path.Combine(prepared.Directory,"DFLegacy.Client.dll"),"tampered after readiness");
                 File.WriteAllText(Path.Combine(target,"ready.marker"),helper.ProcessId.ToString());
                 return 0;
             }
@@ -57,25 +58,25 @@ internal static class UpdateHelperTests
         File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"raw-rejected.marker"),"rejected");
         throw new InvalidDataException("Raw handoff rejected by helper");
     }
-    private static void CopySidecars(string destination)
+    internal static void CopySidecars(string destination)
     {
         Directory.CreateDirectory(destination);
         foreach(var source in Directory.EnumerateFiles(AppContext.BaseDirectory))
         {
             var name=Path.GetFileName(source);
-            if(name.EndsWith(".dll",StringComparison.OrdinalIgnoreCase) && name!="ijl15.dll" || name.EndsWith(".deps.json") || name.EndsWith(".runtimeconfig.json"))
+            if(name.EndsWith(".dll",StringComparison.OrdinalIgnoreCase) && name!="DFLegacy.Client.dll" || name.EndsWith(".deps.json") || name.EndsWith(".runtimeconfig.json"))
                 File.Copy(source,Path.Combine(destination,name),true);
         }
     }
     private static byte[] Package(byte[] exe)
     {
         byte[] dll=[11,22,33,44];
-        var manifest=new { schemaVersion=1, version="dev-test", commit=new string('a',40), files=new[]{new{path="DFLegacy.Launcher.exe",sha256=UpdateTransportTests.Hash(exe),size=exe.Length},new{path="ijl15.dll",sha256=UpdateTransportTests.Hash(dll),size=dll.Length}}};
+        var manifest=new { schemaVersion=2, flavor="normal", version="dev-test", commit=new string('a',40), files=new[]{new{path="DFLegacy.Launcher.exe",sha256=UpdateTransportTests.Hash(exe),size=exe.Length},new{path="DFLegacy.Client.dll",sha256=UpdateTransportTests.Hash(dll),size=dll.Length}}};
         using var memory=new MemoryStream();
         using(var zip=new ZipArchive(memory,ZipArchiveMode.Create,true))
         {
             void Add(string name,byte[] bytes) { using var output=zip.CreateEntry(name).Open(); output.Write(bytes); }
-            Add("DFLegacy.Launcher.exe",exe); Add("ijl15.dll",dll); Add("update-manifest.json",JsonSerializer.SerializeToUtf8Bytes(manifest));
+            Add("DFLegacy.Launcher.exe",exe); Add("DFLegacy.Client.dll",dll); Add("update-manifest.json",JsonSerializer.SerializeToUtf8Bytes(manifest));
         }
         return memory.ToArray();
     }
@@ -86,14 +87,15 @@ internal static class UpdateHelperTests
         {
             var target=Path.Combine(root,"process-"+mode); Directory.CreateDirectory(target); CopySidecars(target);
             var executable=Path.Combine(target,"DFLegacy.Launcher.exe"); var own=Environment.ProcessPath!;
-            File.Copy(own,executable); File.WriteAllBytes(Path.Combine(target,"ijl15.dll"),[1,2,3]);
+            File.Copy(own,executable); File.WriteAllBytes(Path.Combine(target,"DFLegacy.Client.dll"),[1,2,3]);
+            UpdateV2Tests.InstallMetadata(target);
             File.WriteAllText(Path.Combine(target,"fixture-owned.marker"),"owned");
             File.WriteAllBytes(Path.Combine(target,"fixture.zip"),Package(mode=="restart-failure"?new byte[]{1,2,3}:File.ReadAllBytes(own)));
             var needsFeedback=mode is "late-stage" or "restart-failure" or "rollback";
             var receipt=Path.Combine(target,".dflegacy","last-result.json");
             if(needsFeedback) { Directory.CreateDirectory(Path.GetDirectoryName(receipt)!); File.WriteAllText(receipt,"unchanged receipt"); }
             using var receiptLock=needsFeedback?new FileStream(receipt,FileMode.Open,FileAccess.Read,FileShare.Read):null;
-            using var secondLock=mode=="rollback"?new FileStream(Path.Combine(target,"ijl15.dll"),FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite):null;
+            using var secondLock=mode=="rollback"?new FileStream(Path.Combine(target,"DFLegacy.Client.dll"),FileMode.Open,FileAccess.Read,FileShare.ReadWrite):null;
             var info=new ProcessStartInfo(executable) { UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=target };
             info.ArgumentList.Add("--update-parent"); info.ArgumentList.Add(root); info.ArgumentList.Add(mode);
             using var parent=Process.Start(info)!; using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(25));
@@ -104,7 +106,7 @@ internal static class UpdateHelperTests
                 var end=DateTime.UtcNow.AddSeconds(15);
                 while(!File.Exists(Path.Combine(target,"restarted.marker")) && DateTime.UtcNow<end) await Task.Delay(50);
                 check(File.Exists(Path.Combine(target,"restarted.marker")),"same-exe helper waits for parent then restarts new launcher");
-                check(File.ReadAllBytes(Path.Combine(target,"ijl15.dll")).SequenceEqual(new byte[]{11,22,33,44}),"helper installs package after parent exit");
+                check(File.ReadAllBytes(Path.Combine(target,"DFLegacy.Client.dll")).SequenceEqual(new byte[]{11,22,33,44}),"helper installs package after parent exit");
                 if(File.Exists(Path.Combine(target,"ready.marker")))
                 { try { using var helper=Process.GetProcessById(int.Parse(File.ReadAllText(Path.Combine(target,"ready.marker")))); await helper.WaitForExitAsync(timeout.Token); } catch(ArgumentException) {} }
             }
@@ -113,7 +115,7 @@ internal static class UpdateHelperTests
                 if(File.Exists(Path.Combine(target,"ready.marker")))
                 { try { using var helper=Process.GetProcessById(int.Parse(File.ReadAllText(Path.Combine(target,"ready.marker")))); await helper.WaitForExitAsync(timeout.Token); } catch(ArgumentException) {} }
                 var expected=mode=="restart-failure"?new byte[]{11,22,33,44}:new byte[]{1,2,3};
-                using(var dll=new FileStream(Path.Combine(target,"ijl15.dll"),FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
+                using(var dll=new FileStream(Path.Combine(target,"DFLegacy.Client.dll"),FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
                 using(var content=new MemoryStream())
                 { dll.CopyTo(content); check(content.ToArray().SequenceEqual(expected) && !File.Exists(Path.Combine(target,"restarted.marker")),"helper preserves truthful file outcome after parent exit: "+mode); }
                 var helperDirectory=Path.GetDirectoryName(File.ReadAllText(Path.Combine(target,"helper.path")))!;
@@ -129,7 +131,7 @@ internal static class UpdateHelperTests
                 check(outcome.RootElement.GetProperty("exitCode").GetInt32()!=0,"helper exit signals missing restart/failure: "+mode);
                 check(File.ReadAllText(receipt)=="unchanged receipt","immediate feedback does not require receipt writes: "+mode);
             }
-            else check(parent.ExitCode!=0 && File.ReadAllBytes(Path.Combine(target,"ijl15.dll")).SequenceEqual(new byte[]{1,2,3}),"helper rejects "+mode+" and preserves target");
+            else check(parent.ExitCode!=0 && File.ReadAllBytes(Path.Combine(target,"DFLegacy.Client.dll")).SequenceEqual(new byte[]{1,2,3}),"helper rejects "+mode+" and preserves target");
             if(mode.StartsWith("raw-")) check(File.Exists(Path.Combine(target,"raw-rejected.marker")),"raw malicious handoff rejected by helper itself");
             var helperRecord=Path.Combine(target,"helper.path");
             if(File.Exists(helperRecord))

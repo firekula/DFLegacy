@@ -8,6 +8,8 @@ namespace DFLegacy.Launcher;
 
 internal static class Program
 {
+    internal static string? LogClientPath { get; set; }
+    internal static string? LogWarning { get; set; }
     internal const string DefaultClientPath = @"D:\DFLegacy\DF2008\DNF.exe";
     private const int ServerStartupAttempts = 40;
     private static readonly TimeSpan PortProbeTimeout = TimeSpan.FromMilliseconds(250);
@@ -19,6 +21,19 @@ internal static class Program
     // headless 分支由 App.OnStartup 调用本方法，保留原 Main 的全部行为。
     internal static async Task<int> RunHeadlessAsync(string[] args)
     {
+        // Read-only, works without a client/configuration and creates no files.
+        if (args.Contains("--third-party-notices", StringComparer.OrdinalIgnoreCase))
+        {
+            foreach (var name in new[] { "PROVENANCE", "LICENSE" })
+            {
+                using var stream = typeof(Program).Assembly.GetManifestResourceStream("DFLegacy.Launcher.Detours." + name)
+                    ?? throw new InvalidDataException("Missing embedded Detours notice.");
+                using var reader = new StreamReader(stream);
+                Console.Write(reader.ReadToEnd());
+                if (name == "PROVENANCE") Console.Write('\n');
+            }
+            return 0;
+        }
         var noDialog = args.Contains("--no-dialog", StringComparer.OrdinalIgnoreCase)
             || args.Contains("--self-test", StringComparer.OrdinalIgnoreCase)
             || args.Contains("--install-ijl15", StringComparer.OrdinalIgnoreCase)
@@ -37,15 +52,11 @@ internal static class Program
 
             var clientPath = ResolveClientPath(options.ClientPath);
             ValidateClient(clientPath);
+            LogClientPath = clientPath;
             ValidateScriptPvf(clientPath);
-            var bundledIjl15 = Ijl15ReplacementInstaller.ValidateBundledReplacement();
             if (args.Contains("--install-ijl15", StringComparer.OrdinalIgnoreCase))
             {
-                var install = Ijl15ReplacementInstaller.Install(clientPath, options.ResolveAccountServiceUrl());
-                WriteLauncherLog(install.Installed
-                    ? $"Installed x86 ijl15 replacement at {install.TargetPath}; sha256={install.Sha256}; backup={install.BackupPath ?? "(none)"}."
-                    : $"x86 ijl15 replacement is already installed at {install.TargetPath}; sha256={install.Sha256}.");
-                return 0;
+                throw new InvalidDataException("不再支持覆盖安装 ijl15.dll。请将完整独立补丁工具包放入客户端根目录，并在登录器中确认原版恢复。");
             }
 
             _ = BuildLauncherData(options); // Actual login requires explicit credentials.
@@ -53,19 +64,24 @@ internal static class Program
             if (args.Contains("--self-test", StringComparer.OrdinalIgnoreCase))
             {
                 ClientBootstrapInspector.ValidateForLaunch(clientPath);
-                WriteLauncherLog($"Self-test passed for DFLegacy client {clientPath} (bootstrap layout checked; file version is metadata only); ijl15={bundledIjl15.Sha256}.");
+                ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
+                var manifest=ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!);
+                StandaloneClientInstaller.EnsureHelper(manifest.DirectoryPath);
+                if(ClientIjlMigration.Inspect(clientPath).State!=IjlMigrationState.Original) throw new InvalidDataException("原版 IJL 尚未恢复，请先在登录器中确认迁移。");
+                WriteLauncherLog($"Self-test passed: standalone package {manifest.Version}, flavor={manifest.Flavor}; bootstrap layout checked.");
                 return 0;
             }
 
             await LaunchFlow.RunAsync(options, options.GetSelectedAccount());
+            if(LogWarning is { } warning) Console.Error.WriteLine(warning);
             return 0;
         }
         catch (Exception exception)
         {
-            WriteLauncherLog($"Launcher failed: {exception}");
+            WriteLauncherLog($"Launcher failed: {exception.GetType().Name}");
+            Console.Error.WriteLine(exception.Message);
             if (!noDialog)
-                MessageBox.Show(exception.Message, "DFLegacy 启动失败",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ClassicMessage.Show(null,exception.Message);
             return 1;
         }
     }
@@ -430,15 +446,6 @@ internal static class Program
 
     internal static void WriteLauncherLog(string message)
     {
-        try
-        {
-            File.AppendAllText(
-                Path.Combine(AppContext.BaseDirectory, "launcher.log"),
-                $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}");
-        }
-        catch
-        {
-            // Logging must never prevent the target process from starting.
-        }
+        if(!ClientLogPaths.TryWrite(LogClientPath,message)) LogWarning="客户端 Logs/DFLegacy 无法写入，诊断日志不可用。请检查目录权限。";
     }
 }

@@ -104,7 +104,10 @@ jobs:
           path: |
             artifacts/client-assets.tar.gz
             artifacts/DFLegacy-${{ steps.meta.outputs.version }}-win-x64.zip
-            artifacts/DFLegacy-client-update-win-x64.zip
+            artifacts/DFLegacy-client-update-v2-win-x64.zip
+            artifacts/DFLegacy-client-update-v2-test-win-x64.zip
+            artifacts/DFLegacy-client-tools-win-x64.zip
+            artifacts/DFLegacy-client-tools-test-win-x64.zip
             artifacts/native-test-fixtures/
             artifacts/python-complete.xml
           if-no-files-found: error
@@ -311,5 +314,5 @@ jobs:
       - name: Publish verified public client update through a draft
         run: |
           $ErrorActionPreference = 'Stop'
-          py -3.12 tools/release/github_publish.py --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --archive incoming/windows/DFLegacy-client-update-win-x64.zip
+          py -3.12 tools/release/github_publish.py --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --archive incoming/windows/DFLegacy-client-update-v2-win-x64.zip --archive incoming/windows/DFLegacy-client-update-v2-test-win-x64.zip --archive incoming/windows/DFLegacy-client-tools-win-x64.zip --archive incoming/windows/DFLegacy-client-tools-test-win-x64.zip
           if ($LASTEXITCODE -ne 0) { throw 'GitHub client release was not confirmed; inspect the matching draft before retrying' }

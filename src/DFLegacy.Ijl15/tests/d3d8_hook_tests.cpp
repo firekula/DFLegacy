@@ -160,7 +160,7 @@ namespace
     std::string Diagnostic()
     {
         wchar_t path[MAX_PATH]{};GetModuleFileNameW(nullptr,path,MAX_PATH);std::wstring file(path);file.resize(file.find_last_of(L"\\/"));
-        file+=L"\\render-diagnostics\\"+std::to_wstring(GetCurrentProcessId())+L".json";
+        file+=L"\\Logs\\DFLegacy\\render-diagnostics\\"+std::to_wstring(GetCurrentProcessId())+L".json";
         std::ifstream stream(file,std::ios::binary);return {(std::istreambuf_iterator<char>(stream)),{}};
     }
     void Hooks(HWND window)

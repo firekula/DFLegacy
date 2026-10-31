@@ -196,7 +196,7 @@ $("#uploadPvf").addEventListener("click", () => withBusy(async () => {
 $("#exportClient").addEventListener("click", () => withBusy(async () => {
   const kind = "client";
   toast("正在生成客户端包，请稍候…");
-  const response = await request("/api/export/" + kind, { method: "POST", body: "{}" }, true);
+  const response = await request("/api/export/" + kind, { method: "POST", body: JSON.stringify({ testBuild: $("#testBuild").checked }) }, true);
   const blob = await response.blob(), url = URL.createObjectURL(blob), link = document.createElement("a");
   const match = /filename="?([^";]+)"?/.exec(response.headers.get("Content-Disposition") || "");
   link.href = url; link.download = match ? match[1].replace(/[^a-zA-Z0-9_.-]/g, "_") : "dflegacy-" + kind + ".zip";

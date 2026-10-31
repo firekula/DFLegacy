@@ -5,9 +5,12 @@ import tempfile
 import unittest
 import sys
 import json
+import hashlib
+import io
 import os
 import subprocess
 from unittest.mock import patch
+from types import SimpleNamespace
 
 spec = importlib.util.spec_from_file_location("release_ci", Path(__file__).parents[1] / "ci.py")
 ci = importlib.util.module_from_spec(spec)
@@ -16,6 +19,34 @@ if Path(spec.origin).exists():
 
 
 class Metadata(unittest.TestCase):
+    def test_legacy_fixture_download_is_bounded_verified_and_cached(self):
+        content = b'public-project-owned-fixture'
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.object(ci, 'LEGACY_FIXTURE_SIZE', len(content)), patch.object(ci, 'LEGACY_FIXTURE_SHA256', hashlib.sha256(content).hexdigest()):
+                with patch.object(ci, 'open_legacy_fixture', return_value=io.BytesIO(content)) as opening:
+                    path = ci.legacy_patch_fixture(Path(temporary))
+                    self.assertEqual(path.read_bytes(), content)
+                    self.assertEqual(ci.legacy_patch_fixture(Path(temporary)), path)
+                    self.assertEqual(opening.call_count, 1)
+                for bad in (b'short', b'x' * len(content), content + b'extra'):
+                    path.unlink()
+                    with patch.object(ci, 'open_legacy_fixture', return_value=io.BytesIO(bad)):
+                        with self.assertRaises(ci.ReleaseError): ci.legacy_patch_fixture(Path(temporary))
+                    self.assertFalse(path.exists())
+                    self.assertEqual(list(Path(temporary).glob('*.part')), [])
+                    path.write_bytes(b'corrupt cached fixture')
+
+    def test_windows_build_passes_matching_native_paths_and_both_flavors(self):
+        calls = []
+        with tempfile.TemporaryDirectory() as temporary, patch.object(ci, 'REPO', Path(temporary)), patch.dict(os.environ), patch.object(ci, 'os', SimpleNamespace(name='nt', environ=os.environ)):
+            with patch.object(ci, 'run', side_effect=lambda *args: calls.append(args)), patch.object(ci, 'legacy_patch_fixture', return_value=Path(temporary) / 'prior.zip'), patch.object(ci, 'build_client_assets', return_value=Path(temporary) / 'assets') as assets, patch.object(ci, 'make_archive'), patch.object(ci, 'publish', return_value=(None, Path(temporary) / 'win.zip')), patch.object(ci, 'smoke_archive'), patch.object(ci, 'build_client_packages') as packages:
+                ci.windows('v1.2.3', 'a' * 40)
+                launcher_run = next(call for call in calls if 'src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj' in call)
+                self.assertTrue(any(str(arg).endswith('DFLegacy.Client.dll') and str(arg).startswith('-p:ClientPatchPrebuiltPath=') for arg in launcher_run))
+                self.assertTrue(any(str(arg).endswith('DFLegacy.Bootstrap32.exe') and str(arg).startswith('-p:ClientBootstrapPrebuiltPath=') for arg in launcher_run))
+                self.assertEqual(assets.call_args.kwargs['debug'].name, 'debug.dll')
+                packages.assert_called_once()
+
     def test_metadata_exports_qualified_version_variables_that_allow_real_dotnet_restore(self):
         with tempfile.TemporaryDirectory(prefix="metadata SDK fixture ") as temporary:
             root = Path(temporary)

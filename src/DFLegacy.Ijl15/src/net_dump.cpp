@@ -1,3 +1,4 @@
+#include "../../DFLegacy.Client/client_paths.h"
 // Network dump for the 2008DF client: log every TCP segment and UDP datagram the
 // game itself sends or receives.
 //
@@ -679,45 +680,16 @@ namespace
 
     bool OpenLogFile(const char* explicitPath) noexcept
     {
-        char path[MAX_PATH * 2]{};
-        if (explicitPath != nullptr && explicitPath[0] != '\0')
-        {
-            _snprintf_s(path, sizeof(path), _TRUNCATE, "%s", explicitPath);
-        }
+        wchar_t path[MAX_PATH*2]{};
+        if(explicitPath && explicitPath[0])
+        {if(!MultiByteToWideChar(CP_ACP,MB_ERR_INVALID_CHARS,explicitPath,-1,path,MAX_PATH*2))return false;}
         else
         {
-            char executablePath[MAX_PATH]{};
-            const DWORD length = GetModuleFileNameA(
-                nullptr,
-                executablePath,
-                static_cast<DWORD>(sizeof(executablePath)));
-            if (length == 0 || length >= sizeof(executablePath))
-            {
-                return false;
-            }
-
-            char* separator = std::strrchr(executablePath, '\\');
-            if (separator == nullptr)
-            {
-                separator = std::strrchr(executablePath, '/');
-            }
-            if (separator == nullptr)
-            {
-                return false;
-            }
-            *(separator + 1) = '\0';
-
-            _snprintf_s(
-                path,
-                sizeof(path),
-                _TRUNCATE,
-                "%s%s%lu.log",
-                executablePath,
-                LogFileNamePrefix,
-                GetCurrentProcessId());
+            wchar_t leaf[100]{};
+            if(swprintf_s(leaf,L"%hs%lu.log",LogFileNamePrefix,GetCurrentProcessId())<0
+                ||!dfl::client_paths::BuildLogPath(leaf,path,MAX_PATH*2))return false;
         }
-
-        LogFile = CreateFileA(
+        LogFile = CreateFileW(
             path,
             GENERIC_WRITE,
             FILE_SHARE_READ,

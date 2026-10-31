@@ -66,6 +66,12 @@ int RunClientNavigationRuntimeTests()
     int failures=0;
     auto check=[&](bool condition,const char* label)
     { if (!condition) { ++failures;std::fprintf(stderr,"FAIL navigation runtime: %s\n",label); } };
+    // Core player navigation is enabled even with a missing/old debug setting.
+    dfl::client_state::Reader ordinary{};ordinary.read=&TrackingMemory::Read;ordinary.pid=7;ordinary.processStartedFileTime=999;
+    ordinary.supported=&UnsupportedNavigationImage;ordinary.tickMs=&NavigationTestTick;
+    Initialize(L"C:\\missing-player-settings.ini", L"C:\\unused-player-state", ordinary);
+    check(IsEnabled(), "ordinary_navigation_without_debug_or_export_state");
+    Shutdown();
     for (unsigned test=0;test<3;++test)
     {
         // supported=false is unconditional: this process cannot install the hook or call game code.

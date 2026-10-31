@@ -19,7 +19,8 @@ public sealed partial class UpdateInstaller
     {
         UpdateSafety.ValidateManifest(update.Manifest);
         using var pin=UpdateSafety.PinDirectory(target);
-        return update.Manifest.Files.All(file=>UpdateTransaction.Matches(Path.Combine(target,file.Path),file));
+        var installed=UpdateSafety.ValidateInstalled(target,update.Manifest);
+        return installed.Version==update.Manifest.Version && installed.Commit==update.Manifest.Commit && update.Manifest.Files.All(file=>UpdateTransaction.Matches(Path.Combine(target,file.Path),file));
     }
     public bool RecordCurrentIfMatching(PreparedUpdate update)
     {

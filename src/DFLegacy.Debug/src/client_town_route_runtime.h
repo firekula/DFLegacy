@@ -12,7 +12,7 @@ namespace dfl::client_town_route
     using ApplyDestination = bool (*)(const client_navigation::Request&) noexcept;
     using SupersedeLegacy = void (*)() noexcept;
     void Initialize(const wchar_t* settings, const wchar_t* directory,
-                    client_state::Reader, ApplyDestination, SupersedeLegacy) noexcept;
+                    client_state::Reader, ApplyDestination, SupersedeLegacy, bool diagnostics = true, bool commands = true) noexcept;
     bool BeginCanvasGoal(const client_state::Snapshot&, const client_navigation::CanvasGoal&) noexcept;
     void OnFrame(const client_state::Snapshot&) noexcept;
     void LegacyTakeover() noexcept;

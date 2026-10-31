@@ -37,6 +37,19 @@ internal static class ClassicMessageTests
         owner.Show();
         try
         {
+            foreach(var accept in new[]{false,true})
+            {
+                var migration=new DFLegacy.Launcher.Views.ClassicMessageWindow("已校验原版备份；确认后备份旧补丁并恢复。取消阻止游戏启动。",true,"取消")
+                    {Owner=owner,ShowActivated=false,ShowInTaskbar=false};
+                migration.Show(); migration.UpdateLayout();
+                check(!migration.Accepted,"migration requires explicit acceptance");
+                var grid=(Grid)migration.Content;
+                check(grid.Children.OfType<SkinButton>().Any(b=>Equals(b.Content,"取消")),"migration has readable explicit cancel action");
+                if(accept) ((SkinButton)migration.FindName("ConfirmButton")).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                else Key(migration,migration,System.Windows.Input.Key.Escape);
+                check(migration.Accepted==accept,"classic migration acceptance/cancellation is explicit");
+                migration.Close();
+            }
             foreach (var key in new[] { System.Windows.Input.Key.Enter, System.Windows.Input.Key.Escape })
             {
                 var window = Create("欢迎来到阿拉德大陆。\n选择服务器，输入账号和密码，\n开始冒险。");

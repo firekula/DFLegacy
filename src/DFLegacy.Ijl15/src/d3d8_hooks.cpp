@@ -1,3 +1,4 @@
+#include "../../DFLegacy.Client/client_paths.h"
 #include "d3d8_hooks.h"
 #include "d3d8_abi.h"
 #include "d3d8_presenter.h"
@@ -150,11 +151,10 @@ namespace
             context.Records.Flush(GetTickCount64(),[&](const std::string& pending)
             {
             std::lock_guard<std::mutex> lock(DiagnosticMutex);
-            wchar_t executable[32768]{};const auto length=GetModuleFileNameW(nullptr,executable,32768);
-            if(!length||length>=32768)return false;
-            std::wstring directory(executable,length);directory.resize(directory.find_last_of(L"\\/"));directory+=L"\\render-diagnostics";
-            if(!CreateDirectoryW(directory.c_str(),nullptr)&&GetLastError()!=ERROR_ALREADY_EXISTS)return false;
-            const std::wstring target=directory+L"\\"+std::to_wstring(GetCurrentProcessId())+L".json",temporary=target+L".tmp";
+            wchar_t path[32768]{};
+            if(!dfl::client_paths::BuildLogPath(L"render-diagnostics",path,32768))return false;
+            if(!CreateDirectoryW(path,nullptr)&&GetLastError()!=ERROR_ALREADY_EXISTS)return false;
+            const std::wstring target=std::wstring(path)+L"\\"+std::to_wstring(GetCurrentProcessId())+L".json",temporary=target+L".tmp";
             FILETIME created{},exit{},kernel{},user{},utc{};GetProcessTimes(GetCurrentProcess(),&created,&exit,&kernel,&user);GetSystemTimeAsFileTime(&utc);
             char prefix[256]{};std::snprintf(prefix,sizeof(prefix),"{\"version\":1,\"pid\":%lu,\"processStartFileTime\":%llu,\"writtenFileTime\":%llu,",GetCurrentProcessId(),FileTimeValue(created),FileTimeValue(utc));
             const std::string bytes=std::string(prefix)+pending+"}\n";

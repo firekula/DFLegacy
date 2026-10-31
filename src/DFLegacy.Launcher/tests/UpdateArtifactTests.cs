@@ -43,7 +43,7 @@ internal static class UpdateArtifactTests
                 UpdateArtifacts.DeleteUnstartedHelper(helperPath,true);
                 check(File.Exists(helperPath),"failed-acquisition cleanup write probe also preserves a running helper executable");
                 UpdateArtifacts.Sweep(installation);
-                check(File.Exists(helperPath) && File.Exists(Path.Combine(package.Directory,"ijl15.dll")),"active helper identity defers deletion of helper and staging inputs");
+                check(File.Exists(helperPath) && File.Exists(Path.Combine(package.Directory,"DFLegacy.Client.dll")),"active helper identity defers deletion of helper and staging inputs");
             }
             finally { if(!child.HasExited) child.Kill(); await child.WaitForExitAsync(); }
         }

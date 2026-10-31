@@ -13,12 +13,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, read_client_update, validate_identity, verify_client_update
+from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, PUBLIC_ASSETS, read_client_update, validate_identity, verify_client_package
 
 REPOSITORY = 'firekula/DFLegacy'
 ASSET_NAME = UPDATE_ASSET
+ASSET_NAMES = PUBLIC_ASSETS
 TOKEN_ENV = 'DFLEGACY_GITHUB_RELEASE_TOKEN'
-MARKER = '<!-- dflegacy-client-update:v1 -->'
+MARKER = '<!-- dflegacy-client-update:v2 -->'
 README = b'# DFLegacy client updates\n\nThis repository distributes public client releases only. Source development and build history are maintained separately.\n'
 
 
@@ -66,7 +67,7 @@ class GitHub:
         if any(part in ('.', '..') for part in decoded.split('/')) or '\\' in decoded:
             raise ReleaseError('untrusted GitHub API path')
         if p.hostname == 'uploads.github.com':
-            allowed = re.fullmatch(r'/releases/[1-9]\d*/assets', path) and p.query == 'name=' + ASSET_NAME
+            allowed = re.fullmatch(r'/releases/[1-9]\d*/assets', path) and p.query in {'name=' + name for name in ASSET_NAMES}
         else:
             allowed = path in ('', '/releases', '/commits', '/contents/README.md') or re.fullmatch(r'/releases/(?:[1-9]\d*(?:/assets)?|assets/[1-9]\d*|tags/[A-Za-z0-9.%-]+)', path) or re.fullmatch(r'/git/ref/heads/[A-Za-z0-9._%/-]+', path)
             allowed = allowed and (p.query in ('', 'per_page=1') or re.fullmatch(r'per_page=100&page=([1-9]\d?|100)', p.query))
@@ -107,9 +108,9 @@ class GitHub:
                 raise ReleaseError('invalid GitHub API response') from None
 
     def upload(self, release_id, name, content):
-        if type(release_id) is not int or release_id <= 0 or name != ASSET_NAME:
+        if type(release_id) is not int or release_id <= 0 or name not in ASSET_NAMES:
             raise ReleaseError('invalid GitHub upload identity')
-        url = f'https://uploads.github.com{self.prefix}/releases/{release_id}/assets?name={ASSET_NAME}'
+        url = f'https://uploads.github.com{self.prefix}/releases/{release_id}/assets?name={name}'
         with self._open(url, 'POST', content, 'application/zip') as response:
             if response.status != 201:
                 raise ReleaseError(f'GitHub upload failed (HTTP {response.status}); inspect draft before retrying')
@@ -118,7 +119,7 @@ class GitHub:
         p = urllib.parse.urlsplit(url)
         if p.scheme != 'https' or p.port not in (None, 443) or p.username or p.password or p.fragment:
             raise ReleaseError('untrusted GitHub asset origin')
-        if p.hostname == 'github.com' and re.fullmatch(re.escape('/' + REPOSITORY + '/releases/download/') + r'[A-Za-z0-9._%-]+/' + re.escape(ASSET_NAME), p.path) and not p.query:
+        if p.hostname == 'github.com' and re.fullmatch(re.escape('/' + REPOSITORY + '/releases/download/') + r'[A-Za-z0-9._%-]+/' + '(?:' + '|'.join(re.escape(name) for name in ASSET_NAMES) + ')', p.path) and not p.query:
             return
         if redirect and p.hostname in ('release-assets.githubusercontent.com', 'objects.githubusercontent.com'):
             return
@@ -192,19 +193,30 @@ def target_commit(api, branch):
     return sha
 
 
-def publish(api, version, commit, archive, check_only=False):
+def publish(api, version, commit, archives, check_only=False):
     validate_identity(version, commit)
-    archive = Path(archive)
-    if archive.name != ASSET_NAME:
-        raise ReleaseError('client update asset name must be ' + ASSET_NAME)
-    # Validate, reserve and upload exactly this immutable, bounded snapshot.
-    # Reopening the path after validation could publish unchecked private data.
-    content = read_client_update(archive)
-    verify_client_update(content, version, commit)
-    sha, size = hashlib.sha256(content).hexdigest(), len(content)
+    if isinstance(archives, (str, Path)):
+        raise ReleaseError('all four public archives are required')
+    paths = [Path(path) for path in archives]
+    if len(paths) != len(ASSET_NAMES) or {path.name for path in paths} != set(ASSET_NAMES):
+        raise ReleaseError('public asset inventory must match all four approved names')
+    # Snapshot every archive before any remote calls; never reopen validated paths.
+    contents, inventory, binaries = {}, {}, {}
+    for name in ASSET_NAMES:
+        content = read_client_update(next(path for path in paths if path.name == name))
+        manifest = verify_client_package(content, version, commit, name)
+        for row in manifest['files']:
+            identity = (row['size'], row['sha256'])
+            if row['path'] in binaries and binaries[row['path']] != identity:
+                raise ReleaseError('public packages mix binary versions')
+            binaries[row['path']] = identity
+        contents[name] = content
+        inventory[name] = {'sha256': hashlib.sha256(content).hexdigest(), 'size': len(content)}
     branch = preflight(api)
     prerelease = bool(DEV.fullmatch(version))
-    body = f'{MARKER}\nversion={version}\nsource-commit={commit}\nasset-sha256={sha}\nasset-size={size}\n\nPublic client binaries only. Built from the pinned Gitea source commit above.\n'
+    body = (f'{MARKER}\nversion={version}\nsource-commit={commit}\n' +
+            ''.join(f'asset={name} sha256={item["sha256"]} size={item["size"]}\n' for name, item in inventory.items()) +
+            '\nPublic client binaries and migration instructions. Built from the pinned Gitea source commit above.\n')
     tag = '/releases/tags/' + urllib.parse.quote(version, safe='')
 
     def fetch():
@@ -232,33 +244,37 @@ def publish(api, version, commit, archive, check_only=False):
 
     def outcome(status, current):
         return {'status': status, 'repository': REPOSITORY, 'version': version, 'commit': commit,
-                'sha256': sha, 'size': size, 'release_id': current['id'] if current else None}
+                'assets': inventory, 'release_id': current['id'] if current else None}
 
     def inspect():
         current = fetch()
         if current is None:
             raise ReleaseError('GitHub reserved release disappeared')
         assets = api.request('GET', f'/releases/{current["id"]}/assets?per_page=100&page=1')
-        if not isinstance(assets, list) or len(assets) > 1:
+        if not isinstance(assets, list) or len(assets) > len(ASSET_NAMES):
             raise ReleaseError('unexpected GitHub release assets')
-        if assets:
-            asset = assets[0]
-            if not isinstance(asset, dict) or asset.get('name') != ASSET_NAME or asset.get('digest') != 'sha256:' + sha:
+        present = set()
+        for asset in assets:
+            if not isinstance(asset, dict) or asset.get('name') not in inventory or asset['name'] in present:
+                raise ReleaseError('unexpected or duplicate GitHub release asset')
+            name = asset['name']; item = inventory[name]
+            if asset.get('digest') != 'sha256:' + item['sha256']:
                 raise ReleaseError('GitHub asset identity or published digest differs')
-            if api.attachment_digest(asset, size, draft=current['draft']) != sha:
+            if api.attachment_digest(asset, item['size'], draft=current['draft']) != item['sha256']:
                 raise ReleaseError('GitHub downloaded asset digest differs')
-        if not current['draft'] and not assets:
+            present.add(name)
+        if not current['draft'] and present != set(ASSET_NAMES):
             raise ReleaseError('published GitHub release is incomplete')
         latest = fetch()
         if latest is None or latest['id'] != current['id']:
             raise ReleaseError('GitHub release changed during verification')
-        if not latest['draft'] and not assets:
+        if not latest['draft'] and present != set(ASSET_NAMES):
             raise ReleaseError('published GitHub release is incomplete')
         if current['draft'] and not latest['draft']:
             # A competing run published while we were checking private draft
             # bytes. Repeat through the anonymous public download boundary.
             return inspect()
-        return latest, bool(assets)
+        return latest, present
 
     current = fetch()
     if current is None:
@@ -274,15 +290,17 @@ def publish(api, version, commit, archive, check_only=False):
     current, present = inspect()
     if check_only or not current['draft']:
         return outcome('draft' if current['draft'] else 'already-published', current)
-    if not present:
+    for name in ASSET_NAMES:
+        if name in present:
+            continue
         try:
-            api.upload(current['id'], ASSET_NAME, content)
+            api.upload(current['id'], name, contents[name])
         except ReleaseError:
             current, present = inspect()
-            if not present:
+            if name not in present:
                 raise
         current, present = inspect()
-    if not present:
+    if present != set(ASSET_NAMES):
         raise ReleaseError('GitHub draft is incomplete')
     if current['draft']:
         try:
@@ -291,7 +309,7 @@ def publish(api, version, commit, archive, check_only=False):
             if fetch()['draft']:
                 raise
     current, present = inspect()  # Anonymous public bytes must also match.
-    if current['draft'] or not present:
+    if current['draft'] or present != set(ASSET_NAMES):
         raise ReleaseError('GitHub publication not confirmed')
     return outcome('published', current)
 
@@ -300,7 +318,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--preflight', action='store_true', help='read-only credential and repository capability check')
     parser.add_argument('--check-only', action='store_true', help='verify identity and any existing bytes without mutation')
-    for name in ('version', 'commit', 'archive'):
+    parser.add_argument('--archive', action='append')
+    for name in ('version', 'commit'):
         parser.add_argument('--' + name)
     args = parser.parse_args(argv)
     try:

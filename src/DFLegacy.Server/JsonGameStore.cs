@@ -1849,6 +1849,12 @@ public sealed partial class JsonGameStore(
             request.Level,
             Sp: 0,
             Cash: Math.Max(0, account.Cash ?? DefaultAccountCash),
+            Gold: 0,
+            Inventory: [],
+            Equipment: [],
+            Warehouse: [],
+            AvatarInventory: [],
+            CreatureInventory: [],
             Experience: experienceCatalog?.GetMinimumCumulativeExperience(request.Level) ?? 0,
             CharacterNo: AllocateCharacterNoLocked(),
             AccountUid: account.AccountUid,
@@ -1911,7 +1917,7 @@ public sealed partial class JsonGameStore(
                 [],
                 accountUid,
                 PresetCharactersInitialized: !request.TestAccount,
-                Cash: DefaultAccountCash,
+                Cash: request.TestAccount ? DefaultAccountCash : 0,
                 OicqCode: oicqCode,
                 // 新账号一律是普通玩家。引导管理员【只在启动时】提升（ApplyBootstrapAdminsAsync）：
                 // 如果注册时就按名单提升，那么"名单里的账号尚未注册"的部署窗口里，

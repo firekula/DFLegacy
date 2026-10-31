@@ -539,7 +539,10 @@ static int RunDungeonAndExportTests()
     swprintf_s(stateFile, L"%s\\dfdebug-client-%lu.json", directory, GetCurrentProcessId());
     DeleteFileW(stateFile);
     WritePrivateProfileStringW(L"DebugOverlay", L"ExportState", L"0", settings);
-    Initialize(settings, directory); CaptureFrame(); ExportLatest(); Shutdown();
+    Initialize(settings, directory); CaptureFrame(); ExportLatest();
+    auto ordinary=std::make_unique<Snapshot>();
+    Check(CopyLatest(*ordinary)&&ordinary->sequence>0,"ordinary capture remains available with ExportState off");
+    Shutdown();
     Check(GetFileAttributesW(stateFile) == INVALID_FILE_ATTRIBUTES, "new state export defaults off");
     WritePrivateProfileStringW(L"DebugOverlay", L"ExportState", L"1", settings);
     Initialize(settings, directory); CaptureFrame(); ExportLatest();
@@ -549,6 +552,8 @@ static int RunDungeonAndExportTests()
         return std::string((std::istreambuf_iterator<char>(input)), {});
     };
     const auto originalFile = contents();
+    auto published=std::make_unique<Snapshot>();Check(CopyLatest(*published),"export uses shared published capture");
+    const auto initialSequence=published->sequence;
     if (originalFile.empty())
     {
         auto owned_diagnostic=std::make_unique<Snapshot>();auto& diagnostic=*owned_diagnostic;
@@ -566,14 +571,14 @@ static int RunDungeonAndExportTests()
     Sleep(225); ExportLatest();
     Check(contents() == originalFile, "stopped rendering plus worker IO cannot refresh an old capture");
     CaptureFrame(); ExportLatest(); const auto secondFile = contents();
-    Check(secondFile != originalFile && secondFile.find("\"sequence\":2") != std::string::npos,
+    Check(secondFile != originalFile && secondFile.find("\"sequence\":"+std::to_string(initialSequence+1)) != std::string::npos,
           "new render capture advances sequence and capture time");
     CaptureFrame(); ExportLatest();
     Check(contents() == secondFile, "samples within 200ms do not advance sequence");
     Shutdown(); Sleep(10); CaptureFrame(); ExportLatest();
     Check(contents() == secondFile, "shutdown prevents both capture and export");
     Initialize(settings, directory); CaptureFrame(); ExportLatest();
-    Check(contents().find("\"sequence\":3") != std::string::npos,
+    Check(contents().find("\"sequence\":"+std::to_string(initialSequence+2)) != std::string::npos,
           "same-process reinitialization never regresses the sample sequence");
     Shutdown();
     DeleteFileW(stateFile); DeleteFileW(settings); RemoveDirectoryW(directory);

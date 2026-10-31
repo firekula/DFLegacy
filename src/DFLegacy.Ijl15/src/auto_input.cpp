@@ -1,3 +1,5 @@
+#include "../../DFLegacy.Client/client_paths.h"
+#include "../../DFLegacy.Client/bootstrap_runtime.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -42,7 +44,7 @@ namespace dfl::auto_input
 
     bool IsEnabled() noexcept
     {
-        return dfl::ijl15_config::Get().EnableAutoInput;
+        return dfl::client_bootstrap::AllowTestInput(dfl::ijl15_config::Get().EnableAutoInput);
     }
 
     // ------------------------------------------------------------------
@@ -85,8 +87,8 @@ namespace dfl::auto_input
         bool g_fromFile = false;
         bool g_doneMarked = false;
         bool g_renamedCleanly = true;  // a failed .done rename stops the poll
-        char g_planPath[MAX_PATH] = {};
-        char g_donePath[MAX_PATH] = {};
+        wchar_t g_planPath[MAX_PATH] = {};
+        wchar_t g_donePath[MAX_PATH] = {};
 
         bool g_downDone[kMaxSteps] = {};
         bool g_upDone[kMaxSteps] = {};   // key/click: up fired; move: the move fired
@@ -1804,48 +1806,20 @@ namespace dfl::auto_input
             }
         }
 
-        bool BuildExeRelativePath(const char* fileName, char* out, int cap)
-        {
-            char exe[MAX_PATH] = {};
-            const DWORD written = GetModuleFileNameA(nullptr, exe, MAX_PATH);
-            if (written == 0 || written >= MAX_PATH)
-            {
-                return false;
-            }
-            int cut = -1;
-            for (DWORD i = 0; i < written; ++i)
-            {
-                if (exe[i] == '\\' || exe[i] == '/')
-                {
-                    cut = static_cast<int>(i);
-                }
-            }
-            if (cut < 0)
-            {
-                return false;
-            }
-            const int dirLen = cut + 1;  // keep the separator itself
-            const int nameLen = static_cast<int>(std::strlen(fileName));
-            if (dirLen + nameLen + 1 > cap)
-            {
-                return false;
-            }
-            std::memcpy(out, exe, static_cast<size_t>(dirLen));
-            std::memcpy(out + dirLen, fileName, static_cast<size_t>(nameLen) + 1);
-            return true;
-        }
+        bool BuildExeRelativePath(const wchar_t* fileName,wchar_t* out,int cap)
+        {return dfl::client_paths::BuildClientPath(fileName,out,static_cast<std::size_t>(cap));}
 
         // Real-machine diagnostic: OutputDebugStringA is invisible without a
         // debugger-style listener, so the runbook evidence lives in a file
-        // beside DNF.exe instead. One short line per call, append mode.
+        // in the client Logs/DFLegacy directory. One short line per call, append mode.
         void DiagLine(const char* text) noexcept
         {
-            char path[MAX_PATH] = {};
-            if (!BuildExeRelativePath("auto-input-diag.log", path, MAX_PATH))
+            wchar_t path[MAX_PATH] = {};
+            if (!dfl::client_paths::BuildLogPath(L"auto-input-diag.log",path,MAX_PATH))
             {
                 return;
             }
-            const HANDLE handle = CreateFileA(
+            const HANDLE handle = CreateFileW(
                 path,
                 FILE_APPEND_DATA,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -1930,14 +1904,14 @@ namespace dfl::auto_input
             if (now - lastPollMs < 100) return;
             lastPollMs = now;
 
-            char path[MAX_PATH]{};
-            char donePath[MAX_PATH]{};
-            if (!BuildExeRelativePath("auto-input.focus", path, MAX_PATH)
-                || !BuildExeRelativePath("auto-input.focus.done", donePath, MAX_PATH))
+            wchar_t path[MAX_PATH]{};
+            wchar_t donePath[MAX_PATH]{};
+            if (!BuildExeRelativePath(L"auto-input.focus", path, MAX_PATH)
+                || !BuildExeRelativePath(L"auto-input.focus.done", donePath, MAX_PATH))
             {
                 return;
             }
-            const HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ,
+            const HANDLE file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ,
                 nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
             if (file == INVALID_HANDLE_VALUE) return;
             LARGE_INTEGER size{};
@@ -1973,7 +1947,7 @@ namespace dfl::auto_input
                 }
             }
             if (OwnsForegroundWindow()
-                && MoveFileExA(path, donePath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+                && MoveFileExW(path, donePath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
             {
                 DiagLine("focus request completed");
             }
@@ -2601,11 +2575,11 @@ namespace dfl::auto_input
             if (g_fromFile && !g_doneMarked)
             {
                 g_doneMarked = true;  // fire once, whatever the rename does
-                if (GetFileAttributesA(g_donePath) != INVALID_FILE_ATTRIBUTES)
+                if (GetFileAttributesW(g_donePath) != INVALID_FILE_ATTRIBUTES)
                 {
-                    DeleteFileA(g_donePath);
+                    DeleteFileW(g_donePath);
                 }
-                g_renamedCleanly = MoveFileA(g_planPath, g_donePath) != FALSE;
+                g_renamedCleanly = MoveFileW(g_planPath, g_donePath) != FALSE;
                 if (!g_renamedCleanly)
                 {
                     // Two clients can share one exe directory (Tier 2/3 dual
@@ -2614,7 +2588,7 @@ namespace dfl::auto_input
                     // benign race -- this client executed the very same plan --
                     // so only a failure with the source still present means a
                     // stuck plan worth suppressing the poll for.
-                    if (GetFileAttributesA(g_planPath) == INVALID_FILE_ATTRIBUTES)
+                    if (GetFileAttributesW(g_planPath) == INVALID_FILE_ATTRIBUTES)
                     {
                         g_renamedCleanly = true;
                         OutputDebugStringA("auto_input: another client consumed the shared plan file");
@@ -2641,15 +2615,15 @@ namespace dfl::auto_input
 
     bool LoadPlanFile()
     {
-        char planPath[MAX_PATH] = {};
-        char donePath[MAX_PATH] = {};
-        if (!BuildExeRelativePath("auto-input.json", planPath, MAX_PATH)
-            || !BuildExeRelativePath("auto-input.done.json", donePath, MAX_PATH))
+        wchar_t planPath[MAX_PATH] = {};
+        wchar_t donePath[MAX_PATH] = {};
+        if (!BuildExeRelativePath(L"auto-input.json", planPath, MAX_PATH)
+            || !BuildExeRelativePath(L"auto-input.done.json", donePath, MAX_PATH))
         {
             return false;
         }
 
-        const HANDLE handle = CreateFileA(
+        const HANDLE handle = CreateFileW(
             planPath,
             GENERIC_READ,
             FILE_SHARE_READ,
@@ -2709,7 +2683,7 @@ namespace dfl::auto_input
         // the platform's wait_ready() (marker gone = taken) is defined on
         // this clear, and the marker of a finished previous plan is stale
         // evidence at this point.
-        DeleteFileA(donePath);
+        DeleteFileW(donePath);
         OutputDebugStringA("auto_input: plan armed\n");
         {
             char note[32] = {};

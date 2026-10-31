@@ -153,7 +153,7 @@ namespace dfl::client_state
     bool TryPublish(Publication&, const Snapshot&) noexcept;
     bool TryCopy(Publication&, Snapshot&) noexcept;
     std::string ToJson(const Snapshot&, std::uint64_t exportedFileTime);
-    void Initialize(const wchar_t* settingsPath, const wchar_t* directory) noexcept;
+    void Initialize(const wchar_t* settingsPath, const wchar_t* directory, bool allowExport = true) noexcept;
     void CaptureFrame() noexcept;
     void ExportLatest() noexcept;
     // Read-only callbacks reuse the worker's original-image gate. Capture itself

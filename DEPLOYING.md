@@ -95,9 +95,9 @@ Docker build/多架构发行见 [BUILDING.md](BUILDING.md)。Gitea Registry 使�
 
 在 Manager 中确认公布地址、账号 API URL、端口和 Relay 偏好后，点击“生成并下载玩家包 ZIP”。所有系统使用随版 Windows 资源离线组包，不需要在服务器上安装 VS 或 WPF。
 
-ZIP 包含单文件 WPF 登录器、必需的 `ijl15.dll`、空凭据连接配置、条款、说明和摘要，直接解压到 `DNF.exe` 所在目录。游戏退出后先备份再替换；ZIP 不直接包含 `Config.ini`，登录器仅在缺少配置时从内嵌模板生成，保留已有设置。玩家包不包含管理凭据、游戏存档、PVF 或预置游戏账号，玩家自行登录/注册。
+ZIP 包含单文件 WPF 登录器、独立的 `DFLegacy.Client.dll` 和 `client-package.json`、空凭据连接配置、条款、说明和摘要，直接解压到 `DNF.exe` 所在目录。游戏退出后先备份再替换；ZIP 不直接包含 `Config.ini`，登录器仅在缺少配置时从内嵌模板生成，保留已有设置。玩家包不包含管理凭据、游戏存档、PVF 或预置游戏账号，玩家自行登录/注册。
 
-调试浮窗默认关闭。`debug.dll` 依赖本机共享快照目录，不能声称远程 Linux/macOS/Docker 已支持该调试传输。兼容补丁和普通性能浮窗与调试功能分别设置。第三方可选 `d3d8to9` 不会自动分发，使用时自行核对仓库附带许可与兼容性。
+独立普通版不加载诊断；测试版默认在首个游戏内画面加载 `debug.dll` 本地诊断，不改写旧 `EnableDebugOverlay` 配置。仅服务端覆盖数据依赖本机共享快照目录，不支持远程 Linux/macOS/Docker 调试数据同步。自动输入等主动控制仍需显式开启。第三方可选 `d3d8to9` 不会自动分发，使用时自行核对仓库附带许可与兼容性。
 
 ## 导入、备份、升级与恢复
 
@@ -113,3 +113,14 @@ ZIP 包含单文件 WPF 登录器、必需的 `ijl15.dll`、空凭据连接配�
 ## 验收范围
 
 自动测试覆盖公开 fixture、身份/HTTP 边界、子进程生命周期、真实 ZIP/TAR、摘要和假 Gitea HTTP 流程。源码构建成功不等于客户端进图成功；首次正式发布前须记录 Windows 客户端分别连接 Windows、Linux、Docker 的人工验收。当前未接入 Runner/Registry、Docker daemon 未启动或没有 macOS/ARM 原生机器时，相应检查必须列为未执行，不能用交叉构建替代。
+
+
+### 独立客户端包与 CI 夹具
+
+管理器下载默认普通版；测试版加入同版本 `debug.dll` 并默认加载本地诊断，不自动启用输入、组队文件命令等测试控制。普通版包含完整游戏优化。新版补丁为独立 `DFLegacy.Client.dll`。旧用户先退出游戏、备份客户端，并确认一次可见且经哈希验证的原版 IJL 恢复，不能靠备份文件名推断原版。只支持已验证的兼容展开客户端，不修复原始旧壳；原始 EXE/DLL/PVF/NPK 保持不变。仅服务端覆盖数据依赖本机共享目录，不提供远程目录同步。补丁、引导器和登录器内嵌 Detours 完整许可与版本，运行 `DFLegacy.Launcher.exe --third-party-notices | more` 可直接查看。
+
+公开发布固定包含四个附件：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。V2 更新包只有该类型的项目程序和 `update-manifest.json`；tools 包另含安装清单、摘要和迁移说明，不含玩家配置或游戏资源。发布器校验完整四附件集合及共同程序的哈希，再发布草稿并匿名回读；部分发布不得作为成功重试。旧已发布版本保持不变。公开标签指向预先导出的脱敏公开源码快照；私有构建提交仍作为包身份，不推送私有历史。
+
+Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试及发布传入 `ClientPatchPrebuiltPath`、`ClientBootstrapPrebuiltPath`，`Ijl15PrebuiltPath` 仅用于旧补丁回归。测试显式设置 `DFL_NATIVE_FIXTURES` 为匹配的 CMake 构建目录（不是 Release 子目录），`DFL_LEGACY_PATCH_ARCHIVE` 为验证过的历史项目补丁 ZIP。`ci.py windows` 只从固定公开地址下载版本 `dev-20261031T114502Z-4a0e12555c17` 的 `DFLegacy-client-update-win-x64.zip` 并缓存到 `artifacts/test-fixture-cache`；严格校验大小 63332728 和 SHA256 `4851bfc41b1c39799ba7ed735954c1d6fd1cbc91fba0d8b2a201eb2c7977e0f5`。这是历史项目自有测试夹具，不是原版 IJL 或新 schema 1 发行附件；测试本身不联网，不依赖真实游戏盘。
+
+本地 Launcher 全套测试也需要上述两个显式环境变量及同版本原生预构建路径。只验证发布包解析可运行 `python -m unittest discover -s tools/release/tests -p test_github_publish.py -k real_client_parser -v`，它调用真实 Launcher 的安装清单和更新解析器检查四种合成包，不启动游戏或操作界面。完整发布工具测试为 `python -m unittest discover -s tools/release/tests -v`。

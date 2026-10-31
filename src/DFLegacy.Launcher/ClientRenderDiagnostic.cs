@@ -10,10 +10,10 @@ internal static class ClientRenderDiagnostic
     {
         try
         {
-            var folder = Path.Combine(Path.GetDirectoryName(Program.ResolveClientPath(clientPath))!, "render-diagnostics");
-            if (!Directory.Exists(folder)) return "尚无运行记录。保存的设置在下次启动游戏时应用。";
-            var paths = new DirectoryInfo(folder).EnumerateFiles("*.json")
-                .OrderByDescending(f => f.LastWriteTimeUtc).Take(32).ToArray();
+            var resolved=Program.ResolveClientPath(clientPath);
+            var folders = new[]{Path.Combine(ClientLogPaths.GetDirectory(resolved),"render-diagnostics"),Path.Combine(Path.GetDirectoryName(resolved)!,"render-diagnostics"),Path.Combine(ClientLogPaths.GetDirectory(resolved),"legacy","render-diagnostics")};
+            var paths = folders.Where(p=>Directory.Exists(p) && !ClientLogPaths.HasLink(p)).SelectMany(p=>new DirectoryInfo(p).EnumerateFiles("*.json")
+                .Where(f=>!ClientLogPaths.HasLink(f.FullName)).OrderByDescending(f=>f.LastWriteTimeUtc).Take(32)).ToArray();
             foreach (var file in paths)
             {
                 try

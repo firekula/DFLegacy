@@ -137,11 +137,6 @@ public sealed class EntranceService(
         (20093, 1), (24032, 1), (27546, 1), (28223, 1),
         (3037, 1000)
     ];
-    private static readonly (ushort ItemId, uint Count)[] NormalStarterInventoryItems =
-    [
-        (26043, 1),
-        (8, 100)
-    ];
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -5745,7 +5740,7 @@ public sealed class EntranceService(
                                 && definition.InventoryCategory == ItemInventoryCategory.Creature;
 
                             var savedInventory = character.Inventory
-                                ?? CreateStarterInventory(accountUid);
+                                ?? (character.IsPreset ? CreateStarterInventory(accountUid) : []);
                             var savedWarehouse = character.Warehouse ?? [];
                             var residualWarehouseUpgrades =
                                 CharacterWarehouseProgression.SettleUpgradeItems(
@@ -16274,9 +16269,7 @@ public sealed class EntranceService(
         GetStarterInventoryItems(uint accountUid) =>
         AccountUidRules.IsTest(accountUid)
             ? TestStarterInventoryItems
-            : AccountUidRules.IsNormal(accountUid)
-                ? NormalStarterInventoryItems
-                : [];
+            : [];
 
     private List<CharacterItemRecord> CreateStarterInventory(uint accountUid) =>
         GetStarterInventoryItems(accountUid)

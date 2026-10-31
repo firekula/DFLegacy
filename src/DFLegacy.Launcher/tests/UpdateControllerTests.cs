@@ -125,6 +125,7 @@ internal static class UpdateControllerTests
         UpdateArtifacts.Sweep(install);
         check(!Directory.Exists(helperDir),"completed owned handoff artifacts are reclaimed on next sweep");
         foreach(var f in package.Manifest.Files) File.Copy(Path.Combine(package.Directory,f.Path),Path.Combine(install,f.Path),true);
+        UpdateV2Tests.InstallMetadata(install,version:"dev-test");
         var realInstaller=new UpdateInstaller(install);
         session=new Session {Package=package,Feed=_=>Task.FromResult<UpdateRelease?>(release),Installer=realInstaller};
         using(var controller=new UpdateController(session,install,()=>closed++))
@@ -143,7 +144,7 @@ internal static class UpdateControllerTests
             check(controller.State.Phase==UpdatePhase.Error && closed==priorClose && File.ReadAllBytes(Path.Combine(install,"DFLegacy.Launcher.exe")).SequenceEqual(beforeExe),"unwritable update state remains a retryable error and leaves login/installed bytes intact");
         }
         using(var realSession=new UpdateSession(install,new LauncherOptions()))
-        using(var gameLock=new FileStream(Path.Combine(install,"ijl15.dll"),FileMode.Open,FileAccess.Read,FileShare.Read))
+        using(var gameLock=new FileStream(Path.Combine(install,"DFLegacy.Client.dll"),FileMode.Open,FileAccess.Read,FileShare.Read))
         {
             try { await realSession.PrepareAsync(package,CancellationToken.None); check(false,"real game DLL lock must defer helper preparation"); }
             catch(IOException) { }

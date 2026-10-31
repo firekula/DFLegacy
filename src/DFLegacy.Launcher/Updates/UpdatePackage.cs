@@ -5,13 +5,20 @@ namespace DFLegacy.Launcher.Updates;
 
 internal static class UpdatePackage
 {
-    internal static PreparedUpdate Extract(UpdateRelease release, string directory, string archive, CancellationToken cancellationToken=default)
+    internal static PreparedUpdate Extract(UpdateRelease release, string directory, string archive, CancellationToken cancellationToken=default, string? expectedFlavor=null)
     {
         using var archiveStream=new FileStream(archive,FileMode.Open,FileAccess.Read,FileShare.Read);
         if (archiveStream.Length!=release.Size || !Convert.ToHexString(SHA256.HashData(archiveStream)).Equals(release.Sha256,StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("更新压缩包 SHA256 不匹配。");
         archiveStream.Position=0;
         using var zip = new ZipArchive(archiveStream,ZipArchiveMode.Read);
-        var expected = new HashSet<string>(UpdateSafety.Names.Append("update-manifest.json"),StringComparer.Ordinal);
+        var manifests=zip.Entries.Where(e=>e.FullName=="update-manifest.json").ToArray();
+        if(manifests.Length!=1) throw new InvalidDataException("更新包缺少清单或清单重复。");
+        var manifestEntry=manifests[0];
+        if(manifestEntry.Length is <=0 or >16384) throw new InvalidDataException("更新清单过大。");
+        using var memory=new MemoryStream(); CopyEntry(manifestEntry,memory,cancellationToken);
+        var manifest=UpdateSafety.ReadManifest(memory.ToArray());
+        if(manifest.Version!=release.Version || expectedFlavor!=null && manifest.Flavor!=expectedFlavor) throw new InvalidDataException("更新版本或类型不匹配。");
+        var expected = new HashSet<string>(manifest.Files.Select(f=>f.Path).Append("update-manifest.json"),StringComparer.Ordinal);
         long total=0;
         foreach(var entry in zip.Entries)
         {
@@ -21,12 +28,6 @@ internal static class UpdatePackage
             total+=entry.Length;
         }
         if(expected.Count!=0 || total>UpdateSafety.MaxExpanded) throw new InvalidDataException("更新包缺少文件或大小超限。");
-        var manifestEntry=zip.GetEntry("update-manifest.json")!;
-        if(manifestEntry.Length>64*1024) throw new InvalidDataException("更新清单过大。");
-        using var memory=new MemoryStream(); CopyEntry(manifestEntry,memory,cancellationToken);
-        var manifest=UpdateSafety.ReadJson<UpdateManifest>(memory.ToArray());
-        UpdateSafety.ValidateManifest(manifest);
-        if(manifest.Version!=release.Version) throw new InvalidDataException("更新版本不匹配。");
         foreach(var file in manifest.Files)
         {
             var entry=zip.GetEntry(file.Path)!;
