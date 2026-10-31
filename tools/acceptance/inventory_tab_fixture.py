@@ -1,9 +1,10 @@
 """Run bounded native backpack-tab fixtures; never start or inspect a game.
 
 The native executable owns its synthetic image, model and window state. It
-executes the compatible x86 NOTI13 insertion-call bytes and the production
-installer with the real in-process memory writer. This is fixture evidence,
-not controller-owned live Sort/reopen acceptance.
+executes compatible x86 NOTI13/NOTI14 insertion calls, amount-increase calls,
+and the original automatic selector with deterministic slot lookup. It applies
+the production installer with the real in-process memory writer. This is
+fixture evidence, not controller-owned live Sort/reopen acceptance.
 """
 
 import argparse
@@ -21,6 +22,7 @@ def main():
     for scenario, arguments in (
         ("original_control", ["--original-control"]),
         ("preservation_and_signature_safety", []),
+        ("partial_updates", ["--partial-updates-only"]),
     ):
         result = subprocess.run(
             [str(executable), *arguments], capture_output=True, text=True,

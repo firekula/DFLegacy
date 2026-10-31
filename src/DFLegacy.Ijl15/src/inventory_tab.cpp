@@ -9,13 +9,14 @@
 
 namespace
 {
-    constexpr std::uintptr_t RefreshCallOffset = 0x1D1FB;
-    // NOTI13 full-list insertion: push autoSelect; push item; push slot;
-    // ECX=inventory; call45E280. Validate the complete original call target.
-    constexpr std::array<unsigned char, 28> Original{
-        0x6A,0x01,0x8B,0x8D,0x98,0xEF,0xFF,0xFF,0x51,
-        0x0F,0xB7,0x95,0xAC,0xEF,0xFF,0xFF,0x52,
-        0x8B,0x8D,0xB8,0xEF,0xFF,0xFF,0xE8,0x69,0x10,0x04,0x00};
+    constexpr std::uintptr_t SelectorTailOffset = 0x3AAB4D;
+    constexpr std::size_t StoreOffset = 5;
+    constexpr std::size_t StoreSize = 3;
+    // Automatic selector 7AAAF0 is called by item insertion 45E280 and amount
+    // increase 45CC10. Retain its computation/return and suppress only its final
+    // mov [esi+3C],edx. The neighboring branch and ret4 must remain compatible.
+    constexpr std::array<unsigned char, 13> Original{
+        0x83,0xFA,0xFF,0x74,0x03,0x89,0x56,0x3C,0x5E,0x5D,0xC2,0x04,0x00};
 
     bool Matches(std::uintptr_t address, const unsigned char* bytes) noexcept
     {
@@ -28,19 +29,20 @@ namespace dfl::inventory_tab
 {
     bool detail::InstallImage(std::uintptr_t image, PatchWriter write) noexcept
     {
-        if (!image || !write || image > UINT32_MAX - RefreshCallOffset - Original.size())
+        if (!image || !write || image > UINT32_MAX - SelectorTailOffset - Original.size())
             return false;
-        const auto site = image + RefreshCallOffset;
+        const auto site = image + SelectorTailOffset;
         auto installed = Original;
-        installed[1] = 0;
+        for (std::size_t i = 0; i < StoreSize; ++i) installed[StoreOffset + i] = 0x90;
         if (Matches(site, installed.data())) return true;
         if (!Matches(site, Original.data())) return false;
-        // Only full-list auto-selection changes. Native model/owner updates,
-        // constructor tab0, clicks, drag and other insertion callers survive.
-        if (!write(site + 1, &installed[1], 1))
+        // Automatic synchronization retains the last user-selected tab whether
+        // visible or hidden. Model/owner/amount updates and manual/drag writes
+        // remain native; no window-visibility or additional state hook is needed.
+        if (!write(site + StoreOffset, installed.data() + StoreOffset, StoreSize))
         {
             // The writer may fail after a protection/cache operation has written.
-            write(site + 1, &Original[1], 1);
+            write(site + StoreOffset, Original.data() + StoreOffset, StoreSize);
             return false;
         }
         return true;
