@@ -60,11 +60,11 @@
 
 **Interfaces:** Consumes task1 mode API. Produces `dfl::player_runtime::Initialize() noexcept`, `OnFrame() noexcept`, `Shutdown() noexcept` and one state/navigation ownership implementation; debug ABI may increment with explicit size/version checks and tests. Produces `client_paths::BuildLogPath` above. Public player/runtime diagnostics must not depend on Debug DLL globals; legacy test-only IJL links the same runtime.
 
-- [ ] Add RED fixtures `ordinary_navigation_without_debug_or_export_state`, `test_mode_does_not_duplicate_hooks`, `normal_mode_ignores_leftover_debug`, `test_mode_keeps_input_control_opt_in`, and path tests for Unicode, rejected traversal, directory creation, failed writes and exact original log names.
-- [ ] Run the focused failures and record them.
-- [ ] Move player state sampling, town navigation/routes and map feedback to the one core runtime. Decouple disk export from sampling; eliminate Debug duplicate OnFrame/worker/hook ownership. Keep test-only file commands gated; do not accidentally disable normal right-click while disabling command polling. Preserve all existing profiling/test observability through versioned access to shared runtime.
-- [ ] Route direct native log writers and render diagnostics through shared wide-char paths; identify rs_log.txt's actual writer before redirecting it. Keep original client Logs hook, screenshots and control/state channels distinct. No fallback root logs on write failure. Fix native config resolution for Unicode paths touched by independent launch.
-- [ ] Run full native and relevant existing Python acceptance/contract suites with built binaries; report inherited failures separately and fix regressions. Commit and report runtime/debug ABI changes for task3.
+- [x] Add RED fixtures `ordinary_navigation_without_debug_or_export_state`, `test_mode_does_not_duplicate_hooks`, `normal_mode_ignores_leftover_debug`, `test_mode_keeps_input_control_opt_in`, and path tests for Unicode, rejected traversal, directory creation, failed writes and exact original log names.
+- [x] Run the focused failures and record them.
+- [x] Move player state sampling, town navigation/routes and map feedback to the one core runtime. Decouple disk export from sampling; eliminate Debug duplicate OnFrame/worker/hook ownership. Keep test-only file commands gated; do not accidentally disable normal right-click while disabling command polling. Preserve all existing profiling/test observability through versioned access to shared runtime.
+- [x] Route direct native log writers and render diagnostics through shared wide-char paths; identify rs_log.txt's actual writer before redirecting it. Keep original client Logs hook, screenshots and control/state channels distinct. No fallback root logs on write failure. Fix native config resolution for Unicode paths touched by independent launch.
+- [x] Run full native and relevant existing Python acceptance/contract suites with built binaries; report inherited failures separately and fix regressions. Commit and report runtime/debug ABI changes for task3.
 
 ## Task 3: Launcher integration, visible migration and managed logging
 
