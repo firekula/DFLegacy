@@ -24,6 +24,7 @@ try
 {
     DisplayConfigurationTests.Run(root, Check);
     RenderDiagnosticTests.Run(root, Check);
+    ClassicUiTests.Run(Check);
     byte[] BootstrapFixture(bool packed)
     {
         var image = new byte[0x1000];
