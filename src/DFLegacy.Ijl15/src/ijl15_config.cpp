@@ -8,6 +8,7 @@
 #include <cstring>
 
 #include "ijl15_config.h"
+#include "../../DFLegacy.Client/client_paths.h"
 
 namespace
 {
@@ -16,7 +17,21 @@ namespace
     constexpr int DefaultWindowWidth = 800;
     constexpr int DefaultWindowHeight = 600;
     constexpr int MaximumWindowDimension = 8192;
-    constexpr char ConfigFileName[] = "Config.ini";
+    DWORD ReadAscii(const char* section,const char* key,const char*,char* output,DWORD capacity,const wchar_t* path) noexcept
+    {
+        wchar_t wideSection[64]{},wideKey[64]{},value[2048]{};
+        if(!MultiByteToWideChar(CP_ACP,0,section,-1,wideSection,64)||!MultiByteToWideChar(CP_ACP,0,key,-1,wideKey,64))return 0;
+        const auto length=GetPrivateProfileStringW(wideSection,wideKey,L"",value,2048,path);
+        if(length>=capacity){output[capacity-1]=0;return capacity-1;}
+        for(DWORD i=0;i<length;++i){if(value[i]>127){output[0]=0;return 0;}output[i]=static_cast<char>(value[i]);}
+        output[length]=0;return length;
+    }
+    UINT ReadInt(const char* section,const char* key,int fallback,const wchar_t* path) noexcept
+    {
+        wchar_t wideSection[64]{},wideKey[64]{};
+        if(!MultiByteToWideChar(CP_ACP,0,section,-1,wideSection,64)||!MultiByteToWideChar(CP_ACP,0,key,-1,wideKey,64))return fallback;
+        return GetPrivateProfileIntW(wideSection,wideKey,fallback,path);
+    }
 
     // net_dump: 0 payload bytes means "dump the whole packet"; the size cap keeps
     // an unattended client from filling the disk.
@@ -42,12 +57,12 @@ namespace
     dfl::ijl15_config::Settings CurrentSettings = DefaultSettings;
     bool ConfigLoaded = false;
 
-    void ReadClientServiceUrls(const char* path) noexcept
+    void ReadClientServiceUrls(const wchar_t* path) noexcept
     {
         // One extra byte beyond the accepted maximum distinguishes a truncated
         // INI read from a valid URL at the boundary. Never patch a truncated URL.
         char base[dfl::ijl15_config::MaximumClientServiceUrlLength + 2]{};
-        const DWORD length = GetPrivateProfileStringA("Network", "ClientServiceUrl",
+        const DWORD length = ReadAscii("Network", "ClientServiceUrl",
             "", base, static_cast<DWORD>(sizeof(base)), path);
         if (length == 0 || length > dfl::ijl15_config::MaximumClientServiceUrlLength)
             return;
@@ -109,11 +124,11 @@ namespace
     }
 
     dfl::ijl15_config::ScaleFilterMode ReadScaleFilter(
-        const char* path,
+        const wchar_t* path,
         dfl::ijl15_config::ScaleFilterMode defaultValue) noexcept
     {
         char value[32]{};
-        const DWORD length = GetPrivateProfileStringA(
+        const DWORD length = ReadAscii(
             "Rendering",
             "ScaleFilter",
             "",
@@ -156,13 +171,13 @@ namespace
     }
 
     bool ReadBoolean(
-        const char* path,
+        const wchar_t* path,
         const char* section,
         const char* key,
         bool defaultValue) noexcept
     {
         char value[32]{};
-        const DWORD length = GetPrivateProfileStringA(
+        const DWORD length = ReadAscii(
             section,
             key,
             "",
@@ -184,56 +199,12 @@ namespace
         return defaultValue;
     }
 
-    bool BuildConfigPath(char* path, std::size_t capacity) noexcept
-    {
-        if (path == nullptr || capacity == 0)
-        {
-            return false;
-        }
-
-        char executablePath[MAX_PATH]{};
-        const DWORD length = GetModuleFileNameA(
-            nullptr,
-            executablePath,
-            static_cast<DWORD>(sizeof(executablePath)));
-        if (length == 0 || length >= sizeof(executablePath))
-        {
-            return false;
-        }
-
-        char* separator = std::strrchr(executablePath, '\\');
-        if (separator == nullptr)
-        {
-            separator = std::strrchr(executablePath, '/');
-        }
-        if (separator == nullptr)
-        {
-            return false;
-        }
-
-        *separator = '\0';
-        const std::size_t directoryLength = std::strlen(executablePath);
-        const std::size_t fileNameLength = std::strlen(ConfigFileName);
-        if (directoryLength + 1 + fileNameLength + 1 > capacity)
-        {
-            return false;
-        }
-
-        std::memcpy(path, executablePath, directoryLength);
-        path[directoryLength] = '\\';
-        std::memcpy(
-            path + directoryLength + 1,
-            ConfigFileName,
-            fileNameLength + 1);
-        return true;
-    }
-
     int ReadWindowDimension(
-        const char* path,
+        const wchar_t* path,
         const char* key,
         int fallback) noexcept
     {
-        const int value = static_cast<int>(GetPrivateProfileIntA(
+        const int value = static_cast<int>(ReadInt(
             "Resolution",
             key,
             fallback,
@@ -252,8 +223,8 @@ namespace dfl::ijl15_config
         }
 
         CurrentSettings = DefaultSettings;
-        char path[MAX_PATH * 2]{};
-        if (BuildConfigPath(path, sizeof(path)))
+        wchar_t path[MAX_PATH * 2]{};
+        if (client_paths::BuildClientPath(L"Config.ini",path,MAX_PATH*2))
         {
             ReadClientServiceUrls(path);
             CurrentSettings.WindowWidth = ReadWindowDimension(
@@ -289,7 +260,7 @@ namespace dfl::ijl15_config
                 path,
                 DefaultSettings.ScaleFilter);
             char presentation[64]{};
-            GetPrivateProfileStringA("Rendering","PresentationFilter","",presentation,sizeof(presentation),path);
+            ReadAscii("Rendering","PresentationFilter","",presentation,sizeof(presentation),path);
             CurrentSettings.PresentationFilter = presentation::ParseMode(presentation);
             CurrentSettings.InvalidPresentationFilter = presentation[0] != '\0'
                 && CurrentSettings.PresentationFilter == presentation::Mode::Legacy
@@ -300,7 +271,7 @@ namespace dfl::ijl15_config
                 "DumpNetwork",
                 DefaultSettings.DumpNetwork);
             CurrentSettings.DumpNetworkPayloadBytes = std::clamp(
-                static_cast<int>(GetPrivateProfileIntA(
+                static_cast<int>(ReadInt(
                     "Features",
                     "DumpNetworkPayloadBytes",
                     DefaultSettings.DumpNetworkPayloadBytes,
@@ -308,7 +279,7 @@ namespace dfl::ijl15_config
                 0,
                 MaximumDumpNetworkPayloadBytes);
             CurrentSettings.DumpNetworkMaxMegabytes = std::clamp(
-                static_cast<int>(GetPrivateProfileIntA(
+                static_cast<int>(ReadInt(
                     "Features",
                     "DumpNetworkMaxMegabytes",
                     DefaultSettings.DumpNetworkMaxMegabytes,

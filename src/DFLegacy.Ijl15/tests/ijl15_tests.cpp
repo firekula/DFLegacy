@@ -1,3 +1,4 @@
+#include "../../DFLegacy.Client/client_paths.h"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <winsock2.h>
@@ -587,19 +588,21 @@ bool TestNetDumpFromConfiguration()
     }
     dfl::net_dump::UninstallForTest();
 
-    // The log Install() created sits beside the executable, named after the pid.
+    // Install() preserves the PID leaf in the common client log directory.
     char logName[64]{};
     std::snprintf(
         logName,
         sizeof(logName),
         "netdump-%lu.log",
         static_cast<unsigned long>(GetCurrentProcessId()));
-    if (ok && !std::ifstream(logName, std::ios::binary).good())
+    wchar_t logLeaf[64]{},logPath[MAX_PATH]{};
+    swprintf_s(logLeaf,L"netdump-%lu.log",GetCurrentProcessId());
+    if (ok && (!dfl::client_paths::BuildLogPath(logLeaf,logPath,MAX_PATH) || !std::ifstream(logPath, std::ios::binary).good()))
     {
-        std::fprintf(stderr, "net dump: %s was not created beside the executable\n", logName);
+        std::fprintf(stderr, "net dump: %s was not created in Logs/DFLegacy\n", logName);
         ok = false;
     }
-    DeleteFileA(logName);
+    DeleteFileW(logPath);
 
     writeFile(ConfigName, original.c_str());
     DeleteFileA(DisabledConfigName);

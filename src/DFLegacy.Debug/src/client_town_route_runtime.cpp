@@ -192,10 +192,11 @@ namespace dfl::client_town_route
             ReleaseSRWLockExclusive(&InboxLock);
         }
     }
+    namespace { bool Diagnostics=true, Commands=true; }
     void Initialize(const wchar_t* settings,const wchar_t* directory,client_state::Reader reader,
-                    ApplyDestination apply,SupersedeLegacy supersede) noexcept
+                    ApplyDestination apply,SupersedeLegacy supersede,bool diagnostics,bool commands) noexcept
     {
-        (void)settings;InterlockedExchange(&Enabled,0);
+        (void)settings;InterlockedExchange(&Enabled,0); Diagnostics=diagnostics; Commands=commands;
         if(!directory||wcsnlen_s(directory,MAX_PATH)>=MAX_PATH-100||!reader.pid||!reader.processStartedFileTime||!apply)return;
         Native=reader;Apply=apply;Supersede=supersede;wcscpy_s(Directory,directory);
         Controller={};CaptureHistory={};PublishedCatalog.reset();CatalogAttempted=HaveInbox=HaveCommandFile=HavePending=HaveDeferred=false;
@@ -295,11 +296,12 @@ namespace dfl::client_town_route
                     }
                 }
             }
-            if(Now()-LastPoll>=50){LastPoll=Now();ReadCommand();}
+            if(Commands && Now()-LastPoll>=50){LastPoll=Now();ReadCommand();}
             for(unsigned i=0;i<8;++i)
             {
                 const LONG read=InterlockedCompareExchange(&Read,0,0);
                 if(read==InterlockedCompareExchange(&Written,0,0))break;
+                if(!Diagnostics){InterlockedExchange(&Read,read+1);continue;}
                 const auto result=Results[static_cast<unsigned long>(read)%Results.size()];
                 const auto json=Json(result);wchar_t path[MAX_PATH]{};
                 bool saved=true;

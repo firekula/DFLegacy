@@ -2,6 +2,7 @@
 #include <detours.h>
 #include "bootstrap_protocol.h"
 #include "bootstrap_runtime.h"
+#include "early_log_redirect.h"
 #ifndef FIXTURE_DLL
 #include "../DFLegacy.Ijl15/src/dnf_patches.h"
 static bool InitializeClient() noexcept
@@ -65,6 +66,7 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID)
     release = reinterpret_cast<HANDLE>(payload->release);
     self = instance;
     SetStandaloneMode(shared->mode ? Mode::Test : Mode::Normal);
+    if(!dfl::client_paths::InstallEarlyRsLogRedirect())return FALSE;
     originalEntry = reinterpret_cast<Entry>(DetourGetEntryPoint(GetModuleHandleW(nullptr)));
     if (!originalEntry || !DetourRestoreAfterWith()) return FALSE;
     if (DetourTransactionBegin() != NO_ERROR) return FALSE;

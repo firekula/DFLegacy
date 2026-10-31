@@ -31,9 +31,10 @@ bool InitializeClient() noexcept
 }
 #else
 extern "C" __declspec(dllimport) int OriginalIjlFixture();
+extern "C" __declspec(dllimport) int RsFixture();
 int wmain(int argc, wchar_t** argv)
 {
-    if (argc != 2 || OriginalIjlFixture() != 1508) return 2;
+    if (argc != 2 || OriginalIjlFixture() != 1508 || RsFixture()!=17) return 2;
     const HANDLE marker = CreateFileW(argv[1], GENERIC_WRITE, FILE_SHARE_READ,
         nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (marker == INVALID_HANDLE_VALUE) return 3;

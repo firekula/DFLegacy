@@ -49,6 +49,8 @@ int RunFrameProfileRuntimeTests()
           "outer pipeline has a separate process-bound evidence stream");
     check(pipelineJson.find("\"parts_us\":[100,200,300,59000,400]")!=std::string::npos,
           "slow memory query remains attributable outside DebugRender");
+    {Frame composed(1,123,456);composed.Mark();composed.Mark();}
+    check(Model.value.total.maximumParts[0]>=123&&Model.value.total.maximumParts[1]>=456,"shared core capture/navigation remain attributed in frame profiler");
     Shutdown();check(!PipelineEnabled(),"shutdown disables the optional outer producer");
     auto size=json.size();{Frame f(1);for(int i=0;i<4;++i)f.Mark();}RecordPipeline(pipeline);Export();
     std::ifstream after(output,std::ios::binary);std::string stopped(std::istreambuf_iterator<char>(after),{});after.close();

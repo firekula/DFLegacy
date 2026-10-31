@@ -39,6 +39,20 @@ def grid_cells(x,y):
     plus=((y+1+0x80000000)&0xffffffff)-0x80000000
     return divide(x,16),divide(y,12),divide(plus,12)
 
+def select_patch_module(modules,exe):
+    directory=Path(exe).resolve().parent
+    candidates={'dflegacy.client.dll':[],'ijl15.dll':[]}
+    for base,path in modules:
+        path=Path(path).resolve();name=path.name.lower()
+        if name not in candidates:continue
+        require(path.parent==directory,'foreign_patch_module')
+        candidates[name].append(base)
+    for name in ('dflegacy.client.dll','ijl15.dll'):
+        require(len(candidates[name])<=1,'ambiguous_patch_module')
+    selected=candidates['dflegacy.client.dll'] or candidates['ijl15.dll']
+    require(len(selected)==1,'unique_patch_required')
+    return selected[0]
+
 class Reader:
     def __init__(self,pid,started,exe,*,symbol=b'DflMotionTestTrace',block_size=SIZE):
         self.pid=pid;self.started=started;self.handle=None
@@ -59,10 +73,11 @@ class Reader:
             modules=(c.c_void_p*1024)();needed=c.c_ulong()
             require(self.k.K32EnumProcessModulesEx(self.handle,modules,c.sizeof(modules),c.byref(needed),3)
                 and needed.value<=c.sizeof(modules),'module_list_failed')
-            bases=[]
+            candidates=[]
             for base in modules[:needed.value//c.sizeof(c.c_void_p)]:
-                if self.k.K32GetModuleFileNameExW(self.handle,c.c_void_p(base),name,len(name)) and Path(name.value).name.lower()=='ijl15.dll':bases.append(base)
-            require(len(bases)==1,'unique_ijl_required');self.base=bases[0];self.address=self._export()
+                require(self.k.K32GetModuleFileNameExW(self.handle,c.c_void_p(base),name,len(name)),'module_name_failed')
+                candidates.append((base,name.value))
+            self.base=select_patch_module(candidates,exe);self.address=self._export()
         except BaseException:self.close();raise
     def close(self):
         if self.handle:self.k.CloseHandle(self.handle);self.handle=None

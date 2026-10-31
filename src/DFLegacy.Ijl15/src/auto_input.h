@@ -9,7 +9,7 @@ namespace dfl::auto_input
     // Cancels the timeline, releases held synthetic input while its native
     // bridge is still active, then restores the installed hook entries.
     void Restore() noexcept;
-    // Mirrors dfl::ijl15_config::Get().EnableAutoInput.
+    // Explicit EnableAutoInput opt-in, allowed only in standalone test or legacy mode.
     bool IsEnabled() noexcept;
     // Frame pump: advances the timeline with the current tick. The call site
     // in performance_overlay.cpp gates this on IsEnabled().

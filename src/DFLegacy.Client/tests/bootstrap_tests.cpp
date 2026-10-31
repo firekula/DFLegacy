@@ -101,7 +101,7 @@ int wmain(int argc, wchar_t** argv)
 {
     try
     {
-        Check(argc == 7, "usage: tests case helper fixture-exe fixture-dll production-dll original-ijl");
+        Check(argc == 8, "usage: tests case helper fixture-exe fixture-dll production-dll original-ijl rs-fixture");
         const std::wstring test = argv[1];
         const fs::path root = fs::temp_directory_path() / (L"DFLegacy native \u4e2d\u6587 " + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
         fs::create_directories(root);
@@ -111,6 +111,7 @@ int wmain(int argc, wchar_t** argv)
         fs::copy_file(argv[test == L"unknown" ? 5 : 4], dll, fs::copy_options::overwrite_existing);
         const fs::path ijl = root / L"ijl15.dll", pvf = root / L"Script.pvf", npk = root / L"sprite.npk";
         fs::copy_file(argv[6], ijl);
+        fs::copy_file(argv[7],root/L"RS.dll");
         { std::ofstream file(pvf); file << "untouched PVF fixture"; }
         { std::ofstream file(npk); file << "untouched NPK fixture"; }
         const auto ijlHash = Hash(ijl), pvfHash = Hash(pvf), npkHash = Hash(npk);
@@ -165,6 +166,12 @@ int wmain(int argc, wchar_t** argv)
             }
             Launch run; run.Start(argv[2], exe, dll, marker, dllHash, test == L"unicode");
             run.Ready(run.Line()); Check(!fs::exists(marker), "entry must wait for commit");
+            if(test==L"rs-log")
+            {
+                Check(fs::exists(root/L"Logs"/L"DFLegacy"/L"rs_log.txt"),"RS DllMain log redirected before entry");
+                Check(!fs::exists(root/L"rs_log.txt"),"no early RS root log");
+                Check(fs::exists(root/L"unrelated.txt")&&!fs::exists(root/L"Logs"/L"DFLegacy"/L"unrelated.txt"),"RS hook never redirects unrelated TXT");
+            }
             // No write/delete replacement is possible while ownership is retained.
             HANDLE writer = CreateFileW(dll.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
             Check(writer == INVALID_HANDLE_VALUE && GetLastError() == ERROR_SHARING_VIOLATION, "patch file held against replacement");

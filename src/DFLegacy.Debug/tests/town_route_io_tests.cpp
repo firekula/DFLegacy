@@ -49,6 +49,14 @@ int RunTownRouteIoTests()
         OnFrame({});
         check(!Controller.Active(),"full ring or mid-frame rejection cancels before any automatic continuation");
     }
+    Shutdown();
+    Initialize(nullptr,folder,reader,&ApplyIo,nullptr,false,false);CatalogAttempted=true;
+    for(unsigned iteration=0;iteration<1024;++iteration)
+    {
+        request.requestId=iteration+1;Publish(request,"minimap","arrived","position_observed",{});PumpWorker();
+        check(Read==Written&&!HavePending&&!HaveDeferred,"repeated ordinary navigation drains without export backpressure");
+    }
+    check(LastPoll==0,"normal mode never polls test file commands");
     Shutdown();DeleteFileW(perId);DeleteFileW(latest);RemoveDirectoryW(folder);
     std::printf("town route IO tests: %d failure(s)\n",failures);return failures;
 }
