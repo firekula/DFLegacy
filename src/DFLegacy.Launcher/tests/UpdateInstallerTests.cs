@@ -2,6 +2,11 @@ using DFLegacy.Launcher.Updates;
 using System.Text.Json;
 internal static class UpdateInstallerTests
 {
+    private sealed class Milestones : IProgress<UpdateInstallProgress>
+    {
+        internal readonly List<UpdateInstallProgress> Values=[];
+        public void Report(UpdateInstallProgress value)=>Values.Add(value);
+    }
     internal static async Task<PreparedUpdate> Prepare(string root)
     {
         var bytes=UpdateTransportTests.Package(); using var http=UpdateTransportTests.Client(bytes);
@@ -20,6 +25,17 @@ internal static class UpdateInstallerTests
     internal static async Task Run(string root,Action<bool,string> check)
     {
         var prepared=await Prepare(root); var target=Installation(root);
+        var milestones=new Milestones(); var measuredTarget=Installation(root);
+        var measured=UpdateTransaction.Apply(measuredTarget,prepared,_=>true,milestones);
+        check(measured.Success && measured.Restarted && milestones.Values.Count>=7,"real backup/replacement/verification/restart emits installation milestones");
+        check(milestones.Values.Zip(milestones.Values.Skip(1)).All(p=>p.First.Fraction<=p.Second.Fraction) && milestones.Values.Last().Fraction==1,"installation fill only advances from completed work and reaches full after successful restart");
+        milestones=new(); measured=UpdateTransaction.Apply(Installation(root),prepared,_=>false,milestones);
+        check(measured.Success && !measured.Restarted && milestones.Values.All(p=>p.Fraction<1),"failed restart never presents completed automatic-update progress");
+        using(var occupied=new FileStream(Path.Combine(target,"DFLegacy.Client.dll"),FileMode.Open,FileAccess.Read,FileShare.Read))
+        {
+            milestones=new(); measured=UpdateTransaction.Apply(target,prepared,_=>true,milestones);
+            check(!measured.Success && Old(target) && milestones.Values.All(p=>p.Fraction<1),"occupied game fails safely before any completed progress");
+        }
         var result=UpdateTransaction.Apply(target,prepared,UpdateInstaller.Restart);
         check(result.Success && !result.Restarted,"successful install survives restart failure");
         check(File.ReadAllText(Path.Combine(target,"DFLegacy.Launcher.exe"))=="new executable" && File.ReadAllText(Path.Combine(target,"DFLegacy.Client.dll"))=="new dll","both binaries replaced");

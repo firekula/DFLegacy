@@ -8,27 +8,72 @@ internal sealed class UpdateCoordinator : IDisposable
     private readonly IUpdateSession session;
     private readonly UpdateController controller;
     private readonly string installation;
-    private UpdateWindow? window;
+    private readonly Action<string> notify;
+    private readonly Func<Window,bool> confirmRecovery;
+    private UpdateInstallWindow? window;
+    private Task operation=Task.CompletedTask;
     private bool disposed;
     internal UpdateCoordinator(Window owner,LauncherOptions options,string installation)
+        : this(owner,installation,new UpdateSession(installation,options),()=>owner.Dispatcher.BeginInvoke(new Action(()=>Application.Current.Shutdown()))) { }
+    internal UpdateCoordinator(Window owner,string installation,IUpdateSession session,Action shutdown,Action<string>? notify=null,Func<Window,bool>? confirmRecovery=null)
     {
-        this.owner=owner; this.installation=installation; session=new UpdateSession(installation,options);
-        controller=new(session,installation,()=>owner.Dispatcher.BeginInvoke(new Action(()=>Application.Current.Shutdown())));
+        this.owner=owner; this.installation=installation; this.session=session;
+        this.notify=notify??(message=>ClassicMessage.Show(owner,message));
+        this.confirmRecovery=confirmRecovery??(parent=>UpdateWindow.ConfirmRestart(parent,true));
+        controller=new(session,installation,shutdown); controller.Changed+=Changed;
+        owner.Closed+=OwnerClosed;
     }
-    internal void Start()
+    internal void Start()=>_=StartAsync();
+    internal Task StartAsync()=>Run(controller.StartAsync);
+    internal void Check()=>_=Run(controller.CheckAsync);
+    private Task Run(Func<Task> check)
     {
-        Show(); _=controller.StartAsync(); _=ShowPreviousWarning();
+        if(disposed || !operation.IsCompleted) return operation;
+        owner.Hide(); operation=RunCore(check); return operation;
     }
-    internal void Check() { Show(); _=controller.CheckAsync(); }
-    private void Show()
+    private async Task RunCore(Func<Task> check)
+    {
+        await check();
+        if(disposed) return;
+        if(controller.State.Phase==UpdatePhase.Ready)
+        {
+            ShowProgress(controller.State);
+            // The user requested automatic regular updates. Interrupted transactions
+            // still require explicit consent before restoring an earlier installation.
+            var confirmed=!controller.State.IsRecovery || confirmRecovery(window!);
+            await controller.InstallAsync(confirmed);
+        }
+        if(disposed || controller.State.Phase==UpdatePhase.Installing) return;
+        ShowLogin();
+        if(controller.State.Phase==UpdatePhase.Error) notify(controller.State.Message);
+        await ShowPreviousWarning();
+    }
+    private void Changed(UpdateViewState state)
+    {
+        if(disposed || owner.Dispatcher.HasShutdownStarted) return;
+        owner.Dispatcher.BeginInvoke(new Action(()=>
+        {
+            if(!disposed && ReferenceEquals(controller.State,state) && state.Phase is UpdatePhase.Downloading or UpdatePhase.Ready or UpdatePhase.Installing)
+                ShowProgress(state);
+        }));
+    }
+    private void ShowProgress(UpdateViewState state)
     {
         if(disposed) return;
+        owner.Hide();
         if(window==null)
         {
-            window=new UpdateWindow(controller) { Owner=owner };
-            window.Closed+=(_,_)=>window=null; window.Show();
+            window=new UpdateInstallWindow();
+            window.CancelRequested+=()=>controller.Cancel();
+            window.Show();
         }
-        else { window.WindowState=WindowState.Normal; window.Activate(); }
+        window.Render(state);
+    }
+    private void ShowLogin()
+    {
+        if(disposed) return;
+        // Keep an interactive window alive while the compact one closes.
+        owner.Show(); window?.Finish(); window=null;
     }
     private async Task ShowPreviousWarning()
     {
@@ -46,10 +91,12 @@ internal sealed class UpdateCoordinator : IDisposable
                 return UpdateArtifacts.PresentOnce(installation,text)?text:null;
             }
         });
-        if(!disposed && warning!=null && owner.IsVisible) ClassicMessage.Show(window is {IsVisible:true}?window:owner,warning);
+        if(!disposed && warning!=null && owner.IsVisible) notify(warning);
     }
+    private void OwnerClosed(object? sender,EventArgs e)=>Dispose();
     public void Dispose()
     {
-        if(disposed) return; disposed=true; controller.Dispose(); window?.Close(); (session as IDisposable)?.Dispose();
+        if(disposed) return; disposed=true; owner.Closed-=OwnerClosed;
+        controller.Changed-=Changed; controller.Dispose(); window?.Finish(); window=null; (session as IDisposable)?.Dispose();
     }
 }

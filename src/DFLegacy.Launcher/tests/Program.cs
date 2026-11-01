@@ -27,6 +27,8 @@ var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.Ne
 Directory.CreateDirectory(root);
 try
 {
+    if(args.Contains("--update-public-smoke")) { await UpdatePublicSmokeTests.Run(root); return 0; }
+    if(args.Contains("--compact-update-tests")) { UpdateStartupFlowTests.RunOnSta(Check); Console.WriteLine($"Compact update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--launch-ui-tests")) { ClassicUiTests.Run(Check,launchOnly:true); Console.WriteLine($"Launch UI tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--bootstrap-first-only")) { await BootstrapManagedTests.Run(root,Check,initialOnly:true); return failures==0?0:1; }
     if(args.Contains("--update-v2-tests")) { await UpdateV2Tests.Run(root,Check); Console.WriteLine($"Update V2 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
@@ -49,6 +51,7 @@ try
     }
     await UpdateAcquisitionTests.Run(root, Check);
     if (args.Contains("--update-acquisition-tests")) return failures == 0 ? 0 : 1;
+    await UpdateSessionVersionTests.Run(root, Check);
     await UpdateControllerTests.Run(root, Check);
     await UpdateArtifactTests.Run(root, Check);
     await UpdateStartupTests.Run(root, Check);

@@ -2,17 +2,17 @@ using System.Net.Http;
 namespace DFLegacy.Launcher.Updates;
 internal sealed class UpdateSession : IUpdateSession, IDisposable
 {
-    private readonly HttpClient http=GitHubUpdateClient.CreateHttpClient();
+    private readonly HttpClient http;
     private readonly string repository;
     private readonly bool includePrereleases;
     private readonly UpdateInstaller installer;
     private readonly string installation;
-    internal UpdateSession(string installation, LauncherOptions options)
+    internal UpdateSession(string installation, LauncherOptions options,HttpClient? http=null)
     {
         this.installation=installation;
         repository=options.UpdateRepository; includePrereleases=options.IncludePrereleaseUpdates;
         GitHubUpdateClient.ValidateRepository(repository);
-        installer=new(installation);
+        this.http=http??GitHubUpdateClient.CreateHttpClient(); installer=new(installation);
     }
     // Installed-package validation happens inside controller operations so missing legacy metadata becomes
     // a visible migration error instead of preventing the launcher window from opening.
@@ -26,7 +26,17 @@ internal sealed class UpdateSession : IUpdateSession, IDisposable
     public UpdateState? ReadState()=>installer.ReadState();
     public Task<UpdateHandoff> PrepareRecoveryAsync(UpdateRecovery recovery,CancellationToken token)=>installer.PrepareRecoveryAsync(recovery,token);
     public UpdateApplyResult? ReadLastResult()=>installer.ReadLastResult();
-    public Task<UpdateRelease?> CheckAsync(long installed,CancellationToken token)=>Client().CheckAsync(installed,token);
+    public async Task<UpdateRelease?> CheckAsync(long installed,CancellationToken token)
+    {
+        var client=Client();
+        var manifest=ClientPackageManifest.LoadAndValidate(installation);
+        var release=await client.CheckAsync(installed,token).ConfigureAwait(false);
+        // A fresh tools package has no updater state yet. Its validated version
+        // already identifies an identical release without a redundant ZIP download.
+        if(release?.Version!=manifest.Version) return release;
+        if(!installer.RecordInstalledReleaseIfMatching(release)) throw new IOException("检查期间安装文件已变化，请重新检查更新。");
+        return null;
+    }
     public Task<PreparedUpdate> DownloadAsync(UpdateRelease release,string root,IProgress<UpdateProgress> progress,CancellationToken token)=>Client().DownloadAsync(release,root,progress,token);
     public bool Adopt(PreparedUpdate update)=>installer.RecordCurrentIfMatching(update);
     public Task<UpdateHandoff> PrepareAsync(PreparedUpdate update,CancellationToken token)
