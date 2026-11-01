@@ -118,7 +118,7 @@ public sealed partial class UpdateInstaller
     }
     public static async Task<int> RunHelperAsync(string[] args)
         => (await RunHelperWithOutcomeAsync(args).ConfigureAwait(false)).ExitCode;
-    internal static async Task<UpdateHelperOutcome> RunHelperWithOutcomeAsync(string[] args)
+    internal static async Task<UpdateHelperOutcome> RunHelperWithOutcomeAsync(string[] args,IProgress<UpdateInstallProgress>? progress=null)
     {
         if(args.Length!=2 || args[0]!="--dflegacy-apply-update" || !args[1].StartsWith("dflegacy-update-",StringComparison.Ordinal) || !Guid.TryParseExact(args[1][16..],"N",out _)) return new(2);
         UpdatePlan? plan=null; bool parentExited=false;
@@ -149,8 +149,9 @@ public sealed partial class UpdateInstaller
             using var exitTimeout=new CancellationTokenSource(TimeSpan.FromSeconds(60));
             await parent.WaitForExitAsync(exitTimeout.Token).ConfigureAwait(false);
             parentExited=true;
+            UpdateInstallProgress.Report(progress,.86,"登录器已退出，正在校验更新…");
             if(!UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("安装目标在交接后已改变。");
-            var result=plan.Recovery is {} recovery ? UpdateTransaction.RecoverAndRestart(plan.Target,recovery,plan.ExecutableHash,Restart) : UpdateTransaction.Apply(plan.Target,plan.Update!,Restart);
+            var result=plan.Recovery is {} recovery ? UpdateTransaction.RecoverAndRestart(plan.Target,recovery,plan.ExecutableHash,Restart,progress) : UpdateTransaction.Apply(plan.Target,plan.Update!,Restart,progress);
             SaveResult(plan.Target,result);
             return new(result.Success && result.Restarted?0:1,result,plan.Target);
         }

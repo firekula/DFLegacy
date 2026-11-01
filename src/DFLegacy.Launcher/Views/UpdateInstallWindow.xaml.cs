@@ -5,7 +5,29 @@ namespace DFLegacy.Launcher.Views;
 public partial class UpdateInstallWindow : Window
 {
     private bool finished;
-    internal UpdateInstallWindow() { InitializeComponent(); InstallProgress.Set(0,true); }
+    private bool canCancel;
+    internal event Action? CancelRequested;
+    internal UpdateInstallWindow() { InitializeComponent(); InstallProgress.Set(.85,false); }
+    internal void Render(UpdateInstallProgress progress)
+    {
+        if(finished) return;
+        canCancel=false; InstallStatus.Text=progress.Message; InstallProgress.Set(progress.Fraction,false);
+    }
+    internal void Render(UpdateViewState state)
+    {
+        if(finished) return;
+        canCancel=state.Phase is UpdatePhase.Downloading or UpdatePhase.Ready;
+        var fraction=state.Progress is {TotalBytes:>0} p?Math.Clamp((double)p.BytesReceived/p.TotalBytes,0,1):0;
+        var value=state.Phase switch { UpdatePhase.Downloading=>.8*fraction,UpdatePhase.Ready=>.82,UpdatePhase.Installing=>.85,_=>0 };
+        InstallProgress.Set(value,false);
+        InstallStatus.Text=state.Phase switch
+        {
+            UpdatePhase.Downloading=>$"正在下载更新… {fraction:P0}",
+            UpdatePhase.Ready=>state.IsRecovery?"发现未完成的更新，等待确认恢复…":"下载校验完成，正在准备安装…",
+            UpdatePhase.Installing=>state.IsRecovery?"正在准备安全恢复助手…":"正在准备更新助手…",
+            _=>state.Message
+        };
+    }
     internal void Finish(UpdateApplyResult? result,string? target)
     {
         if(result!=null && (!result.Success || !result.Restarted))
@@ -18,5 +40,9 @@ public partial class UpdateInstallWindow : Window
         Finish();
     }
     internal void Finish() { finished=true; Close(); }
-    protected override void OnClosing(CancelEventArgs e) { if(!finished) e.Cancel=true; base.OnClosing(e); }
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if(!finished) { e.Cancel=true; if(canCancel) CancelRequested?.Invoke(); }
+        base.OnClosing(e);
+    }
 }

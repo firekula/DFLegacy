@@ -5,7 +5,7 @@ using DFLegacy.Launcher;
 
 internal static class UpdateControllerTests
 {
-    private sealed class Session : IUpdateSession
+    internal sealed class Session : IUpdateSession
     {
         internal Func<CancellationToken, Task<UpdateRelease?>> Feed = _ => Task.FromResult<UpdateRelease?>(null);
         internal int Checks, Downloads, Starts; internal long LastInstalled; internal bool Current = false; internal UpdateInstaller? Installer; internal Exception? StateError;
@@ -13,6 +13,10 @@ internal static class UpdateControllerTests
         internal Func<PreparedUpdate,CancellationToken,Task<UpdateHandoff>>? Prepare;
         internal Func<UpdateHandoff,CancellationToken,Task<UpdateHelperHandle>>? Start;
         internal Func<string,IProgress<UpdateProgress>,CancellationToken,Task<PreparedUpdate>>? Download;
+        internal UpdateRecovery? Recovery;
+        internal Func<UpdateRecovery,CancellationToken,Task<UpdateHandoff>>? PrepareRecovery;
+        public UpdateRecovery? ReadRecovery()=>Recovery;
+        public Task<UpdateHandoff> PrepareRecoveryAsync(UpdateRecovery recovery,CancellationToken token)=>PrepareRecovery!(recovery,token);
         public UpdateState? ReadState() { if (StateError != null) throw StateError; return Installer?.ReadState(); }
         public UpdateApplyResult? ReadLastResult() => null;
         public Task<UpdateRelease?> CheckAsync(long installed, CancellationToken token) { Checks++; LastInstalled=installed; return Feed(token); }
@@ -46,6 +50,9 @@ internal static class UpdateControllerTests
             check(!pending.IsCompleted,"startup/check is asynchronous while UI remains responsive");
             controller.Cancel(); await pending;
             check(controller.State.Phase==UpdatePhase.Cancelled && closed==0,"cancel unblocks outstanding check without closing login");
+            session.Feed=_=>throw new OperationCanceledException("transport timeout");
+            await controller.CheckAsync();
+            check(controller.State.Phase==UpdatePhase.Error && controller.State.Message.Contains("重试"),"internal transport timeout is a retryable error, distinct from explicit user cancellation");
         }
         session=new Session();
         using(var previews=UpdateTransportTests.PagedPreviews(_=>{}))

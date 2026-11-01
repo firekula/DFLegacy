@@ -37,6 +37,22 @@ public sealed partial class UpdateInstaller
         UpdateTransaction.WriteJson(Path.Combine(directory,"state.json"),new UpdateState(update.Release.Id,update.Manifest.Version,update.Manifest.Files));
         return true;
     }
+    internal bool RecordInstalledReleaseIfMatching(UpdateRelease release)
+    {
+        using var targetPin=UpdateSafety.PinDirectory(target);
+        var directory=Path.Combine(target,".dflegacy"); UpdateSafety.NoLinks(directory); Directory.CreateDirectory(directory);
+        using var statePin=UpdateSafety.PinDirectory(directory);
+        var lockPath=Path.Combine(directory,"update.lock"); UpdateSafety.NoLinks(lockPath);
+        using var exclusive=new FileStream(lockPath,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
+        if(File.Exists(Path.Combine(directory,"pending.json"))) throw new InvalidDataException("存在未完成的更新，请先恢复。");
+        UpdateSafety.NoLinks(Path.Combine(target,UpdateSafety.InstalledManifestName));
+        var manifest=ClientPackageManifest.LoadAndValidate(target);
+        if(manifest.Version!=release.Version) return false;
+        var state=ReadState();
+        if(state==null || state.ReleaseId<release.Id)
+            UpdateTransaction.WriteJson(Path.Combine(directory,"state.json"),new UpdateState(release.Id,manifest.Version,manifest.Files.Select(f=>new UpdateFile(f.Path,f.Sha256,f.Size)).ToArray()));
+        return true;
+    }
     public UpdateApplyResult? ReadLastResult()
     {
         var path=Path.Combine(target,".dflegacy","last-result.json"); UpdateSafety.NoLinks(path);

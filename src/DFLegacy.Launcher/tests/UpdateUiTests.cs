@@ -85,6 +85,7 @@ internal static class UpdateUiTests
         try
         {
             compact.Show(); compact.UpdateLayout(); check(compact.ActualWidth==286 && compact.ActualHeight==104,"install helper uses native 286x104 geometry"); check(compact.FindName("InstallStatus") is PixelText,"helper displays truthful phase without invented percentage");
+            compact.Render(new UpdateViewState(UpdatePhase.Downloading,"正在下载更新…",Progress:new(50,100,10))); compact.UpdateLayout();
             var evidence=Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_UI_EVIDENCE");
             if(!string.IsNullOrEmpty(evidence)) { var bitmap=new RenderTargetBitmap(286,104,96,96,PixelFormats.Pbgra32); bitmap.Render(compact); var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var file=File.Create(Path.ChangeExtension(evidence,"install.png")); encoder.Save(file); }
         }
@@ -124,6 +125,7 @@ internal static class UpdateUiTests
             }
         }
         finally { Directory.Delete(outcomeRoot,true); }
+        UpdateStartupFlowTests.Run(check);
         Console.WriteLine("Update WPF page and helper layout checks executed");
     }
 }

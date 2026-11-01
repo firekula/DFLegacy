@@ -109,7 +109,7 @@ internal static class UpdateTransaction
         using var pin=UpdateSafety.PinDirectory(backup);
         Restore(target,backup,receipt);
     }
-    internal static UpdateApplyResult RecoverAndRestart(string target,UpdateRecovery recovery,string executableHash,Func<string,bool> restart)
+    internal static UpdateApplyResult RecoverAndRestart(string target,UpdateRecovery recovery,string executableHash,Func<string,bool> restart,IProgress<UpdateInstallProgress>? progress=null)
     {
         string? backup=null;
         try
@@ -124,14 +124,17 @@ internal static class UpdateTransaction
                 throw new InvalidDataException("恢复记录或登录器身份已改变。");
             backup=Path.Combine(target,".dflegacy-backups",receipt.TransactionId);
             using var backupPin=UpdateSafety.PinDirectory(backup);
+            UpdateInstallProgress.Report(progress,.87,"正在恢复并校验原版本…");
             Restore(target,backup,receipt);
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or ArgumentException)
         { return new(false,false,"恢复未完成；请关闭占用文件的游戏后重试。原文件和恢复资料已保留。",backup); }
+        UpdateInstallProgress.Report(progress,.99,"恢复校验完成，正在启动登录器…");
         bool restarted; try { restarted=restart(Path.Combine(target,"DFLegacy.Launcher.exe")); } catch { restarted=false; }
+        if(restarted) UpdateInstallProgress.Report(progress,1,"恢复完成，正在打开登录器…");
         return new(true,restarted,restarted?"已恢复上次更新前的完整客户端。":"恢复已完成，但自动重启失败；请手动启动登录器。",backup);
     }
-    internal static UpdateApplyResult Apply(string target,PreparedUpdate update,Func<string,bool> restart)
+    internal static UpdateApplyResult Apply(string target,PreparedUpdate update,Func<string,bool> restart,IProgress<UpdateInstallProgress>? progress=null)
     {
         string? backup=null; UpdateReceipt? receipt=null;
         try
@@ -145,6 +148,7 @@ internal static class UpdateTransaction
             using var stagePin=UpdateSafety.PinDirectory(update.Directory);
             ValidateStage(update);
             UpdateSafety.ValidateInstalled(target,update.Manifest);
+            UpdateInstallProgress.Report(progress,.87,"更新文件已校验，正在检查安装目录…");
             var installer=new UpdateInstaller(target); var previous=installer.ReadState();
             if(previous!=null && update.Release.Id<=previous.ReleaseId) return new(false,false,"该版本已安装或比当前版本更旧。");
             if(installer.IsCurrent(update))
@@ -170,6 +174,7 @@ internal static class UpdateTransaction
                 var id=Guid.NewGuid().ToString("N"); backup=Path.Combine(backupRoot,id); Directory.CreateDirectory(backup);
                 using var backupPin=UpdateSafety.PinDirectory(backup);
                 var originals=new List<UpdateFile>();
+                var originalCount=UpdateSafety.TransactionNames(update.Manifest).Count();
                 foreach(var name in UpdateSafety.TransactionNames(update.Manifest))
                 {
                     var path=Path.Combine(target,name); var original=new UpdateFile(name,UpdateSafety.Hash(path),new FileInfo(path).Length);
@@ -179,6 +184,7 @@ internal static class UpdateTransaction
                     { input.CopyTo(output); output.Flush(true); }
                     if(!Matches(Path.Combine(backup,name),original)) throw new IOException("更新备份未通过校验。");
                     originals.Add(original);
+                    UpdateInstallProgress.Report(progress,.88+.06*originals.Count/originalCount,"正在备份原版本…");
                 }
                 // Reject a mixed original snapshot before the recovery journal can authorize writes.
                 UpdateSafety.ValidateInstalled(backup,update.Manifest);
@@ -186,12 +192,18 @@ internal static class UpdateTransaction
                 WriteJson(Path.Combine(backup,"receipt.json"),receipt); WriteJson(Path.Combine(stateDirectory,"pending.json"),receipt);
                 try
                 {
-                    foreach(var file in update.Manifest.Files) ReplaceFrom(Path.Combine(update.Directory,file.Path),Path.Combine(target,file.Path));
+                    var replaced=0;
+                    foreach(var file in update.Manifest.Files)
+                    {
+                        ReplaceFrom(Path.Combine(update.Directory,file.Path),Path.Combine(target,file.Path));
+                        UpdateInstallProgress.Report(progress,.94+.04*++replaced/update.Manifest.Files.Length,"正在安装更新文件…");
+                    }
                     WriteJson(Path.Combine(target,UpdateSafety.InstalledManifestName),update.Manifest);
                     foreach(var file in update.Manifest.Files) if(!Matches(Path.Combine(target,file.Path),file)) throw new IOException("安装后校验失败。");
                     UpdateSafety.ValidateInstalled(target,update.Manifest);
                     WriteJson(Path.Combine(stateDirectory,"state.json"),receipt.NewState);
                     File.Delete(Path.Combine(stateDirectory,"pending.json"));
+                    UpdateInstallProgress.Report(progress,.99,"安装校验完成，正在启动登录器…");
                 }
                 catch
                 {
@@ -202,6 +214,7 @@ internal static class UpdateTransaction
             finally { foreach(var file in held) file.Dispose(); }
             bool restarted;
             try { restarted=restart(Path.Combine(target,"DFLegacy.Launcher.exe")); } catch { restarted=false; }
+            if(restarted) UpdateInstallProgress.Report(progress,1,"更新完成，正在打开登录器…");
             var result=new UpdateApplyResult(true,restarted,restarted?"更新完成。":"更新已完成，但自动重启失败；请手动启动登录器。备份已保留。",backup);
             // The binaries and release state have committed. A receipt failure cannot
             // undo that outcome or change whether the restart actually succeeded.

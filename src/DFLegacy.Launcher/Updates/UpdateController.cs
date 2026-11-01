@@ -73,7 +73,7 @@ internal sealed class UpdateController(IUpdateSession session, string installati
             token.ThrowIfCancellationRequested();
             Set(UpdatePhase.Ready,"下载及校验完成。点击“重启安装”确认；也可返回登录稍后更新。",release.Version);
         }
-        catch(OperationCanceledException) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消更新，可重试或返回登录。"); }
+        catch(OperationCanceledException) when(token.IsCancellationRequested) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消更新，可重试或返回登录。"); }
         catch(Exception ex) { Cleanup(); Set(UpdatePhase.Error,"更新未完成，可重试或返回登录。\n"+ex.Message); }
     }
     internal Task InstallAsync(bool confirmed)
@@ -95,7 +95,7 @@ internal sealed class UpdateController(IUpdateSession session, string installati
                     handedOff=true; artifacts.MarkStarted(helper); artifacts.Release(); artifacts=null;
                     lock(gate) { if(!disposed) shutdown(); }
                 }
-                catch(OperationCanceledException) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消安装，可返回登录。"); }
+                catch(OperationCanceledException) when(token.IsCancellationRequested) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消安装，可返回登录。"); }
                 catch(Exception ex) { Cleanup(); Set(UpdatePhase.Error,"暂时无法安装，请关闭游戏后重试。\n"+ex.Message); }
             }); return operation;
         }
