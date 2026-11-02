@@ -391,6 +391,13 @@ function renderUsers() {
     }
     button.addEventListener("click", () => setUserRole(account.userName, target));
     actionCell.append(button);
+    const kindButton = document.createElement("button");
+    kindButton.type = "button";
+    kindButton.className = "secondary-button small-button";
+    const nextKind = Number(account.kind) === 1 ? "Normal" : "Test";
+    kindButton.textContent = nextKind === "Test" ? "设为测试账号" : "设为普通账号";
+    kindButton.addEventListener("click", () => setUserKind(account.userName, nextKind));
+    actionCell.append(kindButton);
     row.append(actionCell);
 
     body.append(row);
@@ -437,6 +444,18 @@ async function setUserRole(userName, role) {
   } catch (error) {
     showToast(errorMessage(error), true);
   }
+}
+
+async function setUserKind(userName, kind) {
+  const label = kind === "Test" ? "测试账号" : "普通账号";
+  if (!window.confirm(`确认将 ${userName} 改为${label}？请先退出所有游戏连接；账号权限、余额和物品保持不变。`)) return;
+  try {
+    await api(`/api/admin/users/${encodeURIComponent(userName)}/kind`, {
+      method: "PUT", body: JSON.stringify({ kind })
+    });
+    showToast(`${userName} 已设为${label}，请重新登录。`);
+    await refreshUsers();
+  } catch (error) { showToast(errorMessage(error), true); }
 }
 
 // 玩家与管理员都能读自己的角色列表，用它同时完成 token 校验。

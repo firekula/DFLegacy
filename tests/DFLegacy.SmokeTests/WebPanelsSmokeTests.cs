@@ -100,10 +100,21 @@ internal static class WebPanelsSmokeTests
                     using var denied = await Get(player, path); check(denied.StatusCode == HttpStatusCode.NotFound, "player denies privileged surface " + path);
                 }
                 using var cross = await Get(gm, "/admin/player.html"); check(cross.StatusCode == HttpStatusCode.NotFound, "GM port rejects player page");
+                using var registration = await client.PostAsync($"http://127.0.0.1:{api}/api/accounts", new StringContent("{\"userName\":\"ordinarynew\",\"password\":\"new-password\",\"oicqCode\":\"123456\",\"testAccount\":true}", Encoding.UTF8, "application/json"));
+                using var registered = JsonDocument.Parse(await registration.Content.ReadAsStringAsync());
+                check(registration.StatusCode == HttpStatusCode.Created && registered.RootElement.GetProperty("kind").GetInt32() == (int)AccountKind.Normal,
+                    "public registration ignores forged test-account flag");
+                using var anonymousKind = await client.PutAsync($"http://127.0.0.1:{gm}/api/admin/users/ordinarynew/kind", new StringContent("{\"kind\":\"Test\"}", Encoding.UTF8, "application/json"));
+                check(anonymousKind.StatusCode == HttpStatusCode.Unauthorized, "kind changes require administrator authentication");
                 using var authRequired = await Get(gm, "/api/status"); check(authRequired.StatusCode == HttpStatusCode.Unauthorized, "GM API still requires authentication");
                 using var login = await client.PostAsync($"http://127.0.0.1:{gm}/api/auth/login", new StringContent("{\"userName\":\"paneladmin\",\"password\":\"panel-password\"}", Encoding.UTF8, "application/json"));
                 using var loginJson = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
                 client.DefaultRequestHeaders.Authorization = new("Bearer", loginJson.RootElement.GetProperty("token").GetString());
+                using var kindChange = await client.PutAsync($"http://127.0.0.1:{gm}/api/admin/users/ordinarynew/kind", new StringContent("{\"kind\":\"Test\"}", Encoding.UTF8, "application/json"));
+                using var changedKind = JsonDocument.Parse(kindChange.IsSuccessStatusCode ? await kindChange.Content.ReadAsStringAsync() : "{}");
+                check(kindChange.IsSuccessStatusCode && changedKind.RootElement.TryGetProperty("kind", out var kindValue) && kindValue.GetString() == "Test", "GM can change account kind through actual HTTP endpoint");
+                using var playerKind = await client.PutAsync($"http://127.0.0.1:{player}/api/admin/users/ordinarynew/kind", new StringContent("{\"kind\":\"Normal\"}", Encoding.UTF8, "application/json"));
+                check(playerKind.StatusCode == HttpStatusCode.NotFound, "player listener cannot change account kind even with admin token");
                 using var authorized = await Get(gm, "/api/status"); check(authorized.StatusCode == HttpStatusCode.OK, "GM bearer authenticates actual admin API");
                 using var deniedToken = await Get(player, "/api/status"); check(deniedToken.StatusCode == HttpStatusCode.NotFound, "even admin token cannot expose admin API on player listener");
                 client.DefaultRequestHeaders.Authorization = null;

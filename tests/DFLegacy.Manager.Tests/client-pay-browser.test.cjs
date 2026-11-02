@@ -44,6 +44,37 @@ for (const name of ['client_pay.htm', 'client_pay_bank.htm']) {
   });
 }
 
+test('sandbox diamond uses the character form without requiring administrator XHR', () => {
+  const p = paymentPage('client_diamond.htm', undefined, true);
+  p.form.elements.account.value = '  PlayerCharacter  ';
+  assert.equal(vm.runInContext('submitDiamondForm()', p.context), false);
+  assert.equal(p.form.submitted, true);
+  assert.equal(p.form.elements.characterName.value, 'PlayerCharacter');
+  assert.equal(p.form.action, '/api/client-pay/test-diamond');
+  assert.equal(p.form.method, 'post');
+  assert.equal(p.form.target, 'diamondResult');
+  assert.match(p.html, /accept-charset="UTF-8"/);
+  assert.match(p.html, /name="days" value="30" checked/);
+});
+
+test('GM kind action confirms and submits account type without changing role', async () => {
+  const source = fs.readFileSync(path.join(root, '../admin/admin.js'), 'utf8');
+  const start = source.indexOf('async function setUserKind(');
+  assert.ok(start >= 0, 'GM account type action exists');
+  const end = source.indexOf('\n// 玩家', start);
+  const requests = [];
+  let refreshed = false;
+  const context = vm.createContext({ window: { confirm: () => true }, JSON,
+    api: async (url, options) => { requests.push({ url, options }); return { kind: 'Test' }; },
+    refreshUsers: async () => { refreshed = true; }, showToast() {}, errorMessage: String });
+  vm.runInContext(source.slice(start, end), context);
+  await vm.runInContext('setUserKind("normal player", "Test")', context);
+  assert.equal(requests[0].url, '/api/admin/users/normal%20player/kind');
+  assert.equal(requests[0].options.method, 'PUT');
+  assert.deepEqual(JSON.parse(requests[0].options.body), { kind: 'Test' });
+  assert.equal(refreshed, true);
+});
+
 for (const [name, submit, message] of [
   ['client_pay.htm', 'submitPayForm', 'pay_msg'],
   ['client_pay_bank.htm', 'submitPayForm', 'pay_msg'],

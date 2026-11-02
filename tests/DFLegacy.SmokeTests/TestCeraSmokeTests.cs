@@ -12,6 +12,9 @@ internal static class TestCeraSmokeTests
         check(grant is not null, "test Cera character grant exists");
         if (flag is null || grant is null) return;
         check(AdminAccessPolicy.Resolve("POST", "/api/client-pay/test-cera").Access == AdminAccess.Admin, "test Cera fails closed by default");
+        check(AdminAccessPolicy.Resolve("POST", "/api/client-pay/test-diamond").Access == AdminAccess.Admin, "sandbox diamond fails closed by default");
+        check(AdminAccessPolicy.Resolve("POST", "/api/client-pay/test-diamond", true).Access == AdminAccess.Public, "sandbox diamond enabled for all account kinds");
+        check(AdminAccessPolicy.Resolve("PUT", "/api/admin/users/ordinary/kind", true).Access == AdminAccess.Admin, "changing kind remains GM-only");
         var policy = typeof(AdminAccessPolicy).GetMethods().Single(m => m.Name == "Resolve");
         foreach (var path in new[] { "/api/client-pay/test-cera", "/api/client-pay/cera", "/api/client-pay/diamond" })
             check(((AdminAccessDecision)policy.Invoke(null, new object[] { "POST", path, true })!).Access ==
@@ -35,10 +38,12 @@ internal static class TestCeraSmokeTests
                 return (bool)result.GetType().GetProperty("Success")!.GetValue(result)!;
             }
             check(await Grant("tArGeT", 7), "character grant accepts case-insensitive name and non-hundred amount");
+            check(await Grant("Normal", 7), "character Cera grant accepts ordinary accounts");
             var reload = Open(); await reload.InitializeAsync();
             check((await reload.GetAccountAsync("testtopup"))!.Cash == 50007 &&
                 (await reload.GetCharactersAsync("testtopup")).All(c => c.Cash == 50007), "grant persists shared account and character Cera");
-            foreach (var pair in new[] { ("Missing", 7), ("Normal", 7), ("Target", 0), ("Target", -1), ("Target", 1000001) })
+            check((await reload.GetAccountAsync("ordinary"))!.Cash == 7, "ordinary account Cera grant persists");
+            foreach (var pair in new[] { ("Missing", 7), ("Target", 0), ("Target", -1), ("Target", 1000001) })
                 check(!await Grant(pair.Item1, pair.Item2), "grant rejects " + pair);
             var sessions = new CharacterSessionRegistry(NullLogger<CharacterSessionRegistry>.Instance);
             var target = (await store.GetCharactersAsync("testtopup")).Single(c => c.Name == "Target");
@@ -63,7 +68,10 @@ internal static class TestCeraSmokeTests
             var success = await Post("characterName=Target&amount=3");
             check(((Microsoft.AspNetCore.Http.IStatusCodeHttpResult)success).StatusCode == 200 && notifiedCash == 50010 && persistedAtNotification,
                 "form endpoint returns success and notifies online session after persistence");
-            foreach (var body in new[] { "characterName=Target&amount=1.5", "characterName=Target&amount=+2", "characterName=Target&amount=1&amount=2", "characterName=Normal&amount=1" })
+            var ordinarySuccess = await Post("characterName=Normal&amount=1");
+            check(ordinarySuccess.StatusCode == 200 && (await store.GetAccountAsync("ordinary"))!.Cash == 8,
+                "form endpoint grants ordinary accounts by character name");
+            foreach (var body in new[] { "characterName=Target&amount=1.5", "characterName=Target&amount=+2", "characterName=Target&amount=1&amount=2" })
             {
                 var rejected = await Post(body);
                 check(((Microsoft.AspNetCore.Http.IStatusCodeHttpResult)rejected).StatusCode == 400 && notifiedCash == 50010,
@@ -105,5 +113,6 @@ internal static class TestCeraSmokeTests
             check(!await Grant("Target", 1), "ambiguous character ownership refuses grant");
         }
         finally { Directory.Delete(root, true); }
+        await TestDiamondSmokeTests.RunAsync(check);
     }
 }

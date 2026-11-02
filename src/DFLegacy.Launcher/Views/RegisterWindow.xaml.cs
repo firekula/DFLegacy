@@ -22,7 +22,6 @@ public partial class RegisterWindow : System.Windows.Window
         var pass = PasswordBox.Password;
         var confirm = ConfirmBox.Password;
         var oicq = string.IsNullOrWhiteSpace(OicqBox.Text) ? null : OicqBox.Text.Trim();
-        var test = TestAccountBox.IsChecked == true;
         if (pass != confirm) { ClassicMessage.Show(this, "两次密码不一致。"); return; }
         if (user.Length is < 4 or > 32 || pass.Length is < 6 or > 128
             || oicq is null || oicq.Length is < 5 or > 32)
@@ -36,7 +35,7 @@ public partial class RegisterWindow : System.Windows.Window
         try
         {
             // try/catch 只包网络请求：本地持久化失败不能伪装成"请求失败"。
-            r = await _account.RegisterAsync(user, pass, oicq, test);
+            r = await _account.RegisterAsync(user, pass, oicq, testAccount: false);
         }
         catch (Exception ex)
         {

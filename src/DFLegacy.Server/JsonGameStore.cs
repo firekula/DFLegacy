@@ -1850,7 +1850,7 @@ public sealed partial class JsonGameStore(
             Sp: 0,
             Cash: Math.Max(0, account.Cash ?? DefaultAccountCash),
             Gold: 0,
-            Inventory: [],
+            Inventory: [new(CharacterInventoryLayout.RevivalCoinSlot, CharacterInventoryLayout.RevivalCoinItemId, 10)],
             Equipment: [],
             Warehouse: [],
             AvatarInventory: [],

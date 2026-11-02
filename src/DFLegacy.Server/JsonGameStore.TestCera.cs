@@ -16,9 +16,10 @@ public sealed partial class JsonGameStore
         {
             var owners = _accounts.Where(a => a.Characters.Any(c =>
                 string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase))).ToArray();
-            if (owners.Length != 1) return Refuse("角色不存在或角色名不唯一。");
+            if (owners.Length != 1 || owners[0].Characters.Count(c =>
+                string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)) != 1)
+                return Refuse("角色不存在或角色名不唯一。");
             var account = owners[0];
-            if (!AccountUidRules.IsTest(account.AccountUid)) return Refuse("仅允许测试账号的角色充值。");
             var cash = Math.Max(0, account.Cash ?? DefaultAccountCash);
             if (cash > int.MaxValue - amount) return Refuse("点券余额超出上限。");
             var updated = SetAccountCash(account, cash + amount);

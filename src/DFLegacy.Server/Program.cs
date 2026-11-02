@@ -711,6 +711,7 @@ app.MapPut("/api/admin/characters/{characterId:guid}/dungeons/{dungeonId:int}", 
 // Test top-ups are explicitly opt-in; production payment mutations remain admin-only.
 app.MapGet("/client/client-pay-settings.js", TestCeraEndpoint.Settings);
 app.MapPost("/api/client-pay/test-cera", TestCeraEndpoint.HandleAsync);
+app.MapPost("/api/client-pay/test-diamond", TestCeraEndpoint.HandleDiamondAsync);
 app.MapPost("/api/client-pay/cera", async (
     ClientCeraTopUpRequest request,
     JsonGameStore store,
@@ -914,9 +915,29 @@ app.MapPut("/api/admin/users/{userName}/role", async (
     });
 });
 
+app.MapPut("/api/admin/users/{userName}/kind", async (
+    string userName, SetAccountKindRequest request, JsonGameStore store,
+    RuntimeState runtime, AdminAuthService auth, CancellationToken token) =>
+{
+    var kind = request.Kind?.Trim().ToLowerInvariant() switch
+    {
+        "test" => (AccountKind?)AccountKind.Test,
+        "normal" => AccountKind.Normal,
+        _ => null
+    };
+    if (kind is null) return Results.BadRequest(new { error = "账号类型仅支持 Test 或 Normal。" });
+    var result = await store.SetAccountKindAsync(userName, kind.Value, token,
+        () => runtime.Sessions().Any(session => session.Service.StartsWith("entrance:", StringComparison.Ordinal)
+            || session.Service.StartsWith("channel:", StringComparison.Ordinal)));
+    if (!result.Updated) return Results.BadRequest(new { error = result.Error });
+    var revoked = auth.RevokeUser(userName);
+    return Results.Ok(new { success = true, userName = result.Account!.UserName,
+        kind = result.Account.Kind.ToString(), accountUid = result.Account.AccountUid, revokedTokens = revoked });
+});
+
 app.MapPost("/api/accounts", async (CreateAccountRequest request, JsonGameStore store, CancellationToken token) =>
 {
-    var result = await store.CreateAccountAsync(request, token);
+    var result = await store.CreateAccountAsync(request with { TestAccount = false }, token);
     if (result.Created)
     {
         return Results.Created($"/api/accounts/{result.Account!.UserName}", result.Account);

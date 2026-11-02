@@ -5,7 +5,14 @@
 <meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
 <title>D&F</title>
 <link href="css/commen.css" rel="stylesheet" type="text/css" />
-<script type="text/javascript" src="client-auth.js"></script><script type="text/javascript">
+<script type="text/javascript" src="client-pay-settings.js"></script><script type="text/javascript" src="client-auth.js"></script><script type="text/javascript">
+
+function configureDiamondMode() {
+ if (window.DFLegacyClientPay && window.DFLegacyClientPay.testCeraEnabled === true) {
+  document.getElementById("diamond_identity_label").innerHTML = "\u89d2\u8272\u540d\u79f0\uff1a";
+  setDiamondMessage("\u6d4b\u8bd5\u73af\u5883\uff1a\u4e3a\u8be5\u89d2\u8272\u6240\u5c5e\u8d26\u53f7\u5f00\u901a30\u5929\u9ed1\u94bb\u3002", false);
+ }
+}
 function jsonEscape(value) {
 	return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r/g, "\\r").replace(/\n/g, "\\n");
 }
@@ -24,6 +31,14 @@ function submitDiamondForm() {
 	var form = document.forms["diamondForm"];
 	var account = form.elements["account"].value.replace(/^\s+|\s+$/g, "");
 	var days = 30;
+
+ if (window.DFLegacyClientPay && window.DFLegacyClientPay.testCeraEnabled === true) {
+  if (!account) { setDiamondMessage("\u8bf7\u8f93\u5165\u89d2\u8272\u540d\u3002", true); return false; }
+  form.elements["characterName"].value = account;
+  form.method = "post"; form.action = "/api/client-pay/test-diamond"; form.target = "diamondResult";
+  document.getElementById("diamondResult").style.display = "block";
+  setDiamondMessage("", false); form.submit(); return false;
+ }
 	if (!account) {
 		setDiamondMessage("请输入游戏账号。", true);
 		return false;
@@ -45,7 +60,7 @@ function resetDiamondForm() {
 }
 </script>
 </head>
-<body oncontextmenu="return false;" ondragstart="return false;" scroll="no">
+<body onload="configureDiamondMode();" oncontextmenu="return false;" ondragstart="return false;" scroll="no">
 <div id="wrapper">
 <div id="navi" class="navi">
 	<ul id="swapNavi">
@@ -62,10 +77,10 @@ function resetDiamondForm() {
 <div id="details" class="details">
     
 	<div class="boxer">
-		<form name="diamondForm" id="diamond_form" method="get" action="#" onsubmit="return false;">
+		<form accept-charset="UTF-8" name="diamondForm" id="diamond_form" method="get" action="#" onsubmit="return false;">
 			<ul>
 				<li>
-					<h3>游戏账号：</h3>
+					<h3 id="diamond_identity_label">游戏账号：</h3>
 					<input type="text" name="account" maxlength="32"/>
 				</li>
 				<li class="radio diamondDuration">
@@ -81,8 +96,8 @@ function resetDiamondForm() {
 					<a href="#" onclick="return resetDiamondForm();">重置</a>
 				</li>
 			</ul>
-			<p class="notice" id="diamond_msg"><span class="noticeLink" role="button" tabindex="0" title="玩家条例" onclick="return false;">黑钻会员使用有期限，详情请参见《玩家条例》</span></p>
-		</form>
+			<iframe id="diamondResult" name="diamondResult" title="Diamond result" frameborder="0" allowtransparency="true" style="display:none;width:100%;height:36px;border:0;"></iframe><p class="notice" id="diamond_msg"><span class="noticeLink" role="button" tabindex="0" title="玩家条例" onclick="return false;">黑钻会员使用有期限，详情请参见《玩家条例》</span></p>
+		<input type="hidden" name="characterName" value="" /></form>
 	</div>
 </div>
 </div>
