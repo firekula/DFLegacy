@@ -5,6 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using DFLegacy.Manager;
 
+if (args.Contains("--logs-only")) return LogRecoveryTests.Run();
+if (LogRecoveryTests.Run() != 0) return 1;
+
 if (args.Contains("--startup-only")) return await StartupRecoveryTests.RunAsync();
 if (args.Contains("--pvf-only")) return await PvfUploadTests.RunAsync();
 if (await StartupRecoveryTests.RunAsync() != 0) return 1;
@@ -42,6 +45,9 @@ try
     Check(Path.GetDirectoryName(paths.ServerConfig) == Path.Combine(paths.Data, "config"), "user config lives in the selected data directory");
     var edited = original with { BindHost = "0.0.0.0", AdvertisedHost = "game.example.test", FallbackRelayAdvertisedHost = "203.0.113.42", AccountServiceUrl = "https://accounts.example.test", ChannelName = "测试频道", MonsterExperienceMultiplier = 2.5 };
     config.Save(edited);
+    foreach (var loopbackApi in new[] { "http://127.0.0.1:8081", "http://localhost:8081", "http://[::1]:8081" })
+        Reject(() => ConfigurationStore.Validate(edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "", AccountServiceUrl = loopbackApi }),
+            "remote relay player package must not send account requests to player loopback: " + loopbackApi);
     var savedDocument = JsonNode.Parse(File.ReadAllText(paths.ServerConfig))!;
     Check(savedDocument["Keep"]!["Nested"]!.GetValue<int>() == 42 && savedDocument["DFLegacy"]!["UnknownFuture"]!["retain"]!.GetValue<int>() == 123,
         "editing basic fields retains unknown future configuration");
@@ -163,7 +169,13 @@ try
     WriteAssets(commit);
     WriteRelease();
     var exporter = new ClientPackageExporter(paths);
-    var zipPath = await exporter.ExportAsync("client", edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "" });
+    var exportProgress = new List<ClientExportProgress>();
+    var zipPath = await exporter.ExportAsync("client", edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "" }, progress: exportProgress.Add);
+    Check(exportProgress.Any(p => p.Stage == "validating") && exportProgress.Any(p => p.Stage == "compressing")
+        && exportProgress.Last().Stage == "ready", "export reports validation, compression and completed stages");
+    Check(exportProgress.Where(p => p.Stage == "compressing").All(p => p.CompletedBytes <= p.TotalBytes)
+        && exportProgress.Any(p => p.Stage == "compressing" && p.CompletedBytes == p.TotalBytes && p.TotalBytes > 0),
+        "compression progress counts actual input bytes through completion");
     using (var archive = ZipFile.OpenRead(zipPath))
     {
         string Read(string name) { using var reader = new StreamReader(archive.GetEntry(name)!.Open()); return reader.ReadToEnd(); }
@@ -220,6 +232,24 @@ try
         Check(installed.Flavor == flavor && installed.Commit == commit, "actual launcher parser validates Manager " + flavor + " export");
     }
     var pvpDocument = config.ReadServerDocument();
+    var jobLog = new ManagerLog(paths);
+    var jobs = new ClientExportJobs(exporter, jobLog);
+    var startedJob = jobs.Start(edited);
+    var jobDeadline = DateTime.UtcNow.AddSeconds(15);
+    while (jobs.Read(startedJob.Id)!.State == "running" && DateTime.UtcNow < jobDeadline) await Task.Delay(10);
+    Check(jobs.Read(startedJob.Id) is { State: "ready", Size: > 0 } && File.Exists(jobs.Download(startedJob.Id)),
+        "background export publishes a completed, downloadable archive");
+    Check(jobs.Download("../server.json") is null && jobs.Read("unknown") is null,
+        "download identifiers cannot select arbitrary paths");
+    Check(jobLog.Read(0).Any(line => line.Source == "export" && line.Text.Contains("生成完成")),
+        "background generation writes lifecycle events into runtime logs");
+    using var canceledJob = new CancellationTokenSource();
+    canceledJob.Cancel();
+    var canceled = jobs.Start(edited, canceledJob.Token);
+    jobDeadline = DateTime.UtcNow.AddSeconds(15);
+    while (jobs.Read(canceled.Id)!.State == "running" && DateTime.UtcNow < jobDeadline) await Task.Delay(10);
+    Check(jobs.Read(canceled.Id) is { State: "failed", Error: not null } && jobs.Download(canceled.Id) is null,
+        "host cancellation reports failure without exposing a partial download");
     pvpDocument["DFLegacy"]!["Pvp"] = new JsonObject { ["Enabled"] = true, ["Port"] = 9051 };
     File.WriteAllText(paths.ServerConfig, pvpDocument.ToJsonString());
     var pvpZip = await exporter.ExportAsync("launcher", config.Read().Effective);

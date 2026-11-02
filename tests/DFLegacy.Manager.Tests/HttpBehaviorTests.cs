@@ -59,6 +59,8 @@ internal static class HttpBehaviorTests
             var csrf = session!["csrf"]!.GetValue<string>();
             check(session["userName"]!.GetValue<string>() == "operator" && csrf.Length >= 32, "authenticated session returns independent user identity and anti-forgery token");
             check((await client.PostAsJsonAsync("/api/server/start", new { })).StatusCode == HttpStatusCode.Forbidden, "state-changing cookie requests require CSRF proof");
+            check((await client.PostAsJsonAsync("/api/exports", new { })).StatusCode == HttpStatusCode.Forbidden,
+                "background export creation requires CSRF proof");
             check((await client.PostAsync("/api/resources/pvf", PvfBody([0]))).StatusCode == HttpStatusCode.Forbidden, "PVF upload requires CSRF proof");
             using (var hostile = new HttpRequestMessage(HttpMethod.Post, "/api/server/start"))
             {
@@ -95,6 +97,84 @@ internal static class HttpBehaviorTests
             var savedState = await client.GetFromJsonAsync<JsonObject>("/api/status");
             check(savedState!["server"]!["state"]!.GetValue<string>() == "stopped", "first successful config save moves the dashboard from unconfigured to stopped");
             check((await client.GetAsync("/")).IsSuccessStatusCode, "browser dashboard assets are available from the packaged application");
+            var jobResponse = await client.PostAsJsonAsync("/api/exports", new { });
+            check(jobResponse.StatusCode == HttpStatusCode.Accepted, "background export returns a short accepted response");
+            var exportJob = await jobResponse.Content.ReadFromJsonAsync<JsonObject>();
+            var exportId = exportJob!["id"]!.GetValue<string>();
+            JsonObject? jobStatus = null;
+            for (var attempt = 0; attempt < 100; attempt++)
+            {
+                jobStatus = await client.GetFromJsonAsync<JsonObject>("/api/exports/" + exportId);
+                if (jobStatus!["state"]!.GetValue<string>() != "running") break;
+                await Task.Delay(10);
+            }
+            check(jobStatus?["state"]?.GetValue<string>() == "failed" && jobStatus["error"] is not null,
+                "missing bundled assets are reported as a terminal job failure");
+            check((await client.GetAsync("/api/exports/" + exportId + "/download")).StatusCode == HttpStatusCode.NotFound,
+                "failed generation never downloads a partial archive");
+            check((await client.GetFromJsonAsync<JsonArray>("/api/logs"))!.Any(line => line?["source"]?.GetValue<string>() == "export"),
+                "generation failures are visible in the authenticated runtime log feed");
+            // Use real incompressible input so generation is still in flight
+            // while ordinary management requests are exercised.
+            var exportFiles = new List<object>();
+            foreach (var name in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe" })
+            {
+                var assetPath = Path.Combine(paths.AssetsDirectory, name.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(assetPath)!);
+                var content = name.EndsWith(".exe") ? RandomNumberGenerator.GetBytes(32 * 1024 * 1024) : "fixture"u8.ToArray();
+                File.WriteAllBytes(assetPath, content);
+                exportFiles.Add(new { path = name, sha256 = Convert.ToHexStringLower(SHA256.HashData(content)) });
+            }
+            var assetManifest = Path.Combine(paths.AssetsDirectory, "manifest.json");
+            File.WriteAllText(assetManifest, JsonSerializer.Serialize(new { version = "v1.2.3", commit = new string('a', 40), files = exportFiles }));
+            File.WriteAllText(Path.Combine(root, "release-manifest.json"), JsonSerializer.Serialize(new
+            {
+                version = "v1.2.3", commit = new string('a', 40),
+                files = new[] { new { path = "client-assets/manifest.json", sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(assetManifest))) } }
+            }));
+            var acceptedTimer = Stopwatch.StartNew();
+            using var accepted = await client.PostAsJsonAsync("/api/exports", new { });
+            var active = await accepted.Content.ReadFromJsonAsync<JsonObject>();
+            var activeId = active!["id"]!.GetValue<string>();
+            check(accepted.StatusCode == HttpStatusCode.Accepted && acceptedTimer.Elapsed < TimeSpan.FromSeconds(3),
+                "large package generation is accepted without waiting for compression");
+            var sawRunning = false;
+            var checkedDuplicate = false;
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (DateTime.UtcNow < deadline)
+            {
+                jobStatus = await client.GetFromJsonAsync<JsonObject>("/api/exports/" + activeId);
+                if (jobStatus!["state"]!.GetValue<string>() != "running") break;
+                sawRunning = true;
+                var responses = await Task.WhenAll(client.GetAsync("/health"), client.GetAsync("/api/status"), client.GetAsync("/api/logs"));
+                check(responses.All(response => response.IsSuccessStatusCode), "health, status and logs respond during real ZIP generation");
+                foreach (var response in responses) response.Dispose();
+                if (!checkedDuplicate)
+                {
+                    checkedDuplicate = true;
+                    using var duplicate = await client.PostAsJsonAsync("/api/exports", new { });
+                    // If generation completed between requests, the new job is legitimate.
+                    if (duplicate.StatusCode == HttpStatusCode.Accepted)
+                    {
+                        var next = await duplicate.Content.ReadFromJsonAsync<JsonObject>();
+                        activeId = next!["id"]!.GetValue<string>();
+                    }
+                    else check(duplicate.StatusCode == HttpStatusCode.BadRequest, "overlapping generation is rejected rather than queued");
+                }
+                await Task.Delay(100);
+            }
+            check(sawRunning && jobStatus?["state"]?.GetValue<string>() == "ready", "real background ZIP generation reaches ready");
+            using (var downloading = await client.GetAsync("/api/exports/" + activeId + "/download", HttpCompletionOption.ResponseHeadersRead))
+            {
+                check(downloading.IsSuccessStatusCode && downloading.Content.Headers.ContentLength > 32 * 1024 * 1024,
+                    "completed archive returns streaming download headers and size");
+                await using var stream = await downloading.Content.ReadAsStreamAsync();
+                var buffer = new byte[1024];
+                await stream.ReadExactlyAsync(buffer);
+                var responses = await Task.WhenAll(client.GetAsync("/health"), client.GetAsync("/api/status"), client.GetAsync("/api/logs"));
+                check(responses.All(response => response.IsSuccessStatusCode), "management stays responsive while a download body is left unread");
+                foreach (var response in responses) response.Dispose();
+            }
             var assetFiles = new Dictionary<string, string>
             {
                 ["launcher/DFLegacy.Launcher.exe"] = "fixture launcher", ["patch/DFLegacy.Client.dll"] = "fixture core",
@@ -122,8 +202,31 @@ internal static class HttpBehaviorTests
             {
                 using var invalid = await client.PostAsync("/api/export/client", new StringContent(body, Encoding.UTF8, "application/json"));
                 check(invalid.StatusCode == HttpStatusCode.BadRequest, "HTTP export refuses ambiguous or invalid bool");
+                using var invalidJob = await client.PostAsync("/api/exports", new StringContent(body, Encoding.UTF8, "application/json"));
+                check(invalidJob.StatusCode == HttpStatusCode.BadRequest, "background export refuses ambiguous or invalid bool");
+            }
+            foreach (var test in new[] { false, true })
+            {
+                using var created = await client.PostAsJsonAsync("/api/exports", new { testBuild = test });
+                var selected = await created.Content.ReadFromJsonAsync<JsonObject>();
+                var id = selected!["id"]!.GetValue<string>();
+                for (var attempt = 0; attempt < 100; attempt++)
+                {
+                    selected = await client.GetFromJsonAsync<JsonObject>("/api/exports/" + id);
+                    if (selected!["state"]!.GetValue<string>() != "running") break;
+                    await Task.Delay(10);
+                }
+                check(selected?["state"]?.GetValue<string>() == "ready", "background export completes selected flavor");
+                using var data = new MemoryStream(await client.GetByteArrayAsync("/api/exports/" + id + "/download"));
+                using var zip = new ZipArchive(data);
+                using var package = new StreamReader(zip.GetEntry("client-package.json")!.Open());
+                check(JsonNode.Parse(package.ReadToEnd())!["flavor"]!.GetValue<string>() == (test ? "test" : "normal")
+                    && (zip.GetEntry("debug.dll") is not null) == test, "background export preserves the selected V2 client flavor");
             }
             await client.PostAsJsonAsync("/api/logout", new { });
+            check((await client.GetAsync("/api/exports/" + exportId)).StatusCode == HttpStatusCode.Unauthorized
+                && (await client.GetAsync("/api/exports/" + exportId + "/download")).StatusCode == HttpStatusCode.Unauthorized,
+                "export status and downloads require an authenticated session");
             check((await client.GetAsync("/api/status")).StatusCode == HttpStatusCode.Unauthorized, "logout removes control access");
             for (var attempt = 0; attempt < 10; attempt++) await client.PostAsJsonAsync("/api/login", new { userName = "operator", password = "wrong" });
             check(!(await client.PostAsJsonAsync("/api/login", new { userName = "operator", password = "A strong password 123!" })).IsSuccessStatusCode,

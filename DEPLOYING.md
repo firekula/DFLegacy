@@ -67,6 +67,12 @@ Manager `/health` 只表示管理器可响应；`/ready` 表示私有通道与�
 
 ## Docker / Compose
 
+GHCR 镜像地址为 `ghcr.io/firekula/dflegacy:<版本号>`，开发预发布使用明确版本标签，不能依赖 `latest`。公开包可匿名拉取，私有包先登录 GHCR。
+
+升级前软停止游戏并备份整个持久化数据卷，然后修改 `.env` 的 `DFLEGACY_IMAGE`，执行 `docker compose pull` 和 `docker compose up -d`。保持原 Compose 项目名和卷映射，不执行 `down -v`。Podman 部署把命令替换为 `podman compose`，在配置文件所在目录执行，或用 `-f` 指定路径。
+
+客户端打包使用后台任务并显示阶段进度，完成后通过独立下载请求交给浏览器；具体进度、重试及日志行为见 [部署管理器说明](DEPLOYMENT_MANAGER.md#客户端生成进度与下载)。
+
 镜像内 Manager 根为 `/app`，持久化数据为 `/app/data`；默认从管理页上传 PVF，保存到 `/app/data/resources/`。镜像使用非 root `app` 用户，命名卷首次自动建立为可写目录；不需要挂载 Docker socket。单文件程序首次运行可将原生依赖解压到数据卷的 `.net` 缓存目录。
 
 1. 复制 `.env.example` 为 `.env`。

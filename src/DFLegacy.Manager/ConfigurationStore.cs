@@ -204,6 +204,8 @@ public sealed class ConfigurationStore
         if (config.AccountServiceUrl.Length > 1000 || config.AccountServiceUrl.Any(character => character < 33 || character > 126 || character is '%' or '\\' or '"' or '?' or '#' or '@'))
             throw new ArgumentException("客户端网页基址须为最多 1000 字节的 ASCII HTTP(S) 地址，不能包含百分号、空白、凭据或查询参数。");
         ValidateDestination(api.Host.Trim('[', ']'));
+        if (config.RelayEnabled && api.IsLoopback)
+            throw new ArgumentException("启用玩家本机中继时，玩家账号服务 URL 不能指向 127.0.0.1、localhost 或 ::1。注册请求直接连接账号服务，请填写玩家可访问的服务器域名或 IP（例如 http://服务器地址:8081）。");
         if (config.RelayPreference is not ("ipv4" or "ipv6")) throw new ArgumentException("Relay 地址族必须为 ipv4 或 ipv6。");
         if (config.RelayEnabled && (config.AdvertisedHost.Equals("localhost", StringComparison.OrdinalIgnoreCase)
             || IPAddress.TryParse(config.AdvertisedHost, out var address) && IPAddress.IsLoopback(address))) throw new ArgumentException("Relay 的服务器地址不能是本机回环地址。");

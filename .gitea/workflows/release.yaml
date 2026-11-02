@@ -37,6 +37,7 @@ jobs:
           PYTHONPATH="$PWD/tools" .venv-ci/bin/python -m pytest tools/acceptance/tests tools/debug/test_drop_control.py -q
           dotnet run --project tests/DFLegacy.SmokeTests -c Release
           dotnet run --project tests/DFLegacy.Manager.Tests -c Release -- --http --server-dir "$PWD/src/DFLegacy.Server/bin/Release/net10.0"
+          node --test tests/DFLegacy.Manager.Tests/manager-browser.test.cjs
           python3 tools/release/release.py test
 
   windows:
@@ -76,6 +77,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Default smoke failed' }
           dotnet run --project tests/DFLegacy.Manager.Tests -c Release -- --http --server-dir (Join-Path $PWD 'src/DFLegacy.Server/bin/Release/net10.0')
           if ($LASTEXITCODE -ne 0) { throw 'Manager suite failed' }
+          node --test tests/DFLegacy.Manager.Tests/manager-browser.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Manager browser flow suite failed' }
           py -3.12 tools/release/release.py test
           if ($LASTEXITCODE -ne 0) { throw 'Release tool suite failed' }
       - name: Native tests, immutable Windows assets and self-contained package

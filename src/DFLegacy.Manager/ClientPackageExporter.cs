@@ -6,13 +6,15 @@ using System.Text.Json.Nodes;
 
 namespace DFLegacy.Manager;
 
+public sealed record ClientExportProgress(string Stage, long CompletedBytes, long TotalBytes, string Message);
+
 public sealed class ClientPackageExporter
 {
     private readonly ManagerPaths _paths;
     private readonly SemaphoreSlim _gate = new(1);
     public ClientPackageExporter(ManagerPaths paths) => _paths = paths;
 
-    public async Task<string> ExportAsync(string kind, DeploymentConfig config, bool testBuild = false, CancellationToken cancellationToken = default)
+    public async Task<string> ExportAsync(string kind, DeploymentConfig config, bool testBuild = false, CancellationToken cancellationToken = default, Action<ClientExportProgress>? progress = null)
     {
         if (kind is not ("client" or "patch" or "launcher")) throw new ArgumentException("未知客户端包类型。");
         testBuild = kind == "client" && testBuild;
@@ -22,6 +24,7 @@ public sealed class ClientPackageExporter
         string? destination = null;
         try
         {
+            progress?.Invoke(new("preparing", 0, 0, "正在读取发行清单…"));
             var manifestPath = Path.Combine(_paths.AssetsDirectory, "manifest.json");
             if (!File.Exists(manifestPath)) throw new InvalidDataException("未安装配套 Windows 客户端资源，请使用完整发行包。");
             if (new FileInfo(manifestPath).Length > 1024 * 1024) throw new InvalidDataException("客户端资源清单过大。");
@@ -46,6 +49,7 @@ public sealed class ClientPackageExporter
             var files = new Dictionary<string, (string FullPath, string Hash)>(StringComparer.OrdinalIgnoreCase);
             long bytes = 0;
             var declared = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var fileIndex = 0;
             foreach (var entry in entries)
             {
                 var name = entry?["path"]?.GetValue<string>() ?? "";
@@ -68,7 +72,19 @@ public sealed class ClientPackageExporter
                 if (bytes > 1024L * 1024 * 1024) throw new InvalidDataException("客户端资源超过 1 GiB 上限。");
                 if (!files.TryAdd(name, (path, hash))) throw new InvalidDataException("客户端文件路径重复。");
                 await using var stream = File.OpenRead(path);
-                var actual = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, cancellationToken));
+                fileIndex++;
+                using var hashState = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                var hashBuffer = new byte[81920];
+                long verifiedBytes = 0;
+                progress?.Invoke(new("validating", 0, stream.Length, $"校验资源 {fileIndex}/{entries.Count}：{name}"));
+                int count;
+                while ((count = await stream.ReadAsync(hashBuffer, cancellationToken)) != 0)
+                {
+                    hashState.AppendData(hashBuffer, 0, count);
+                    verifiedBytes += count;
+                    progress?.Invoke(new("validating", verifiedBytes, stream.Length, $"校验资源 {fileIndex}/{entries.Count}：{name}"));
+                }
+                var actual = Convert.ToHexStringLower(hashState.GetHashAndReset());
                 if (!actual.Equals(hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"客户端资源校验失败：{name}");
             }
             foreach (var required in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe" })
@@ -81,6 +97,10 @@ public sealed class ClientPackageExporter
             foreach (var old in new DirectoryInfo(_paths.Exports).GetFiles("dflegacy-*.zip").Where(file => file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1))) old.Delete();
             destination = Path.Combine(_paths.Exports, $"dflegacy-{kind}-{version}-{Guid.NewGuid():N}.zip");
             var sums = new StringBuilder();
+            var compressionTotal = files.Where(file => file.Key is "patch/DFLegacy.Client.dll" or "patch/debug.dll" or "launcher/DFLegacy.Launcher.exe" or "launcher/Assets/Skin/fwtk.html")
+                .Sum(file => new FileInfo(file.Value.FullPath).Length);
+            long compressedBytes = 0;
+            progress?.Invoke(new("compressing", 0, compressionTotal, "正在压缩客户端资源…"));
             await using (var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: false, Encoding.UTF8))
             {
@@ -107,7 +127,13 @@ public sealed class ClientPackageExporter
                     await using var target = archive.CreateEntry(zipName, CompressionLevel.Fastest).Open();
                     using var digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                     var buffer = new byte[81920]; int read;
-                    while ((read = await source.ReadAsync(buffer, cancellationToken)) != 0) { digest.AppendData(buffer, 0, read); await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken); }
+                    while ((read = await source.ReadAsync(buffer, cancellationToken)) != 0)
+                    {
+                        digest.AppendData(buffer, 0, read);
+                        await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                        compressedBytes += read;
+                        progress?.Invoke(new("compressing", compressedBytes, compressionTotal, $"正在压缩：{zipName}"));
+                    }
                     var actual = Convert.ToHexStringLower(digest.GetHashAndReset());
                     if (!actual.Equals(file.Hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"生成时客户端资源已发生变更：{name}");
                     sums.Append(actual).Append("  ").Append(zipName).Append('\n');
@@ -117,6 +143,7 @@ public sealed class ClientPackageExporter
                         installedFiles.Add(new { path = zipName, size = source.Length, sha256 = actual });
                     }
                 }
+                progress?.Invoke(new("finalizing", 0, 0, "正在写入连接配置和校验清单…"));
                 await Add("client-package.json", JsonSerializer.Serialize(new { schemaVersion = 2, version, commit, flavor = testBuild ? "test" : "normal", files = installedFiles }));
                 var launcher = new
                 {
@@ -135,6 +162,7 @@ public sealed class ClientPackageExporter
                 await using var checksum = archive.CreateEntry("SHA256SUMS").Open();
                 await checksum.WriteAsync(checksumData, cancellationToken);
             }
+            progress?.Invoke(new("ready", new FileInfo(destination).Length, new FileInfo(destination).Length, "客户端包生成完成，准备下载。"));
             return destination;
         }
         catch { if (destination is not null && File.Exists(destination)) File.Delete(destination); throw; }
