@@ -1,6 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
 <title>D&F</title>
 <link href="css/commen.css" rel="stylesheet" type="text/css" />
@@ -27,10 +28,14 @@ function submitDiamondForm() {
 		setDiamondMessage("请输入游戏账号。", true);
 		return false;
 	}
-		PayAuth.post("/api/client-pay/diamond", { account: account, days: days }, function (ok, status) {
-			if (ok) { setPayMessage("\u5f00\u901a\u6210\u529f\uff0c\u8bf7\u91cd\u65b0\u767b\u5f55\u6e38\u620f\u67e5\u770b\u9ed1\u94bb\u72b6\u6001\u3002", false); }
-			else if (status === 401 || status === 403) { setPayMessage("\u5f00\u901a\u5931\u8d25\uff1a\u9700\u8981\u7ba1\u7406\u5458\u767b\u5f55\uff08\u9ed1\u94bb\u5f00\u901a\u4ec5\u7ba1\u7406\u5458\u53ef\u7528\uff09\u3002", true); }
-			else { setPayMessage("\u64cd\u4f5c\u5931\u8d25\uff08HTTP " + status + "\uff09\u3002", true); }
+	if (!window.PayAuth || typeof window.PayAuth.post != "function") {
+		setDiamondMessage("\u9274\u6743\u7ec4\u4ef6\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u8d26\u53f7\u670d\u52a1\u5730\u5740\u6216\u7f51\u7edc\u62e6\u622a\u540e\u5237\u65b0\u91cd\u8bd5\u3002", true);
+		return false;
+	}
+		window.PayAuth.post("/api/client-pay/diamond", { account: account, days: days }, function (ok, status) {
+			if (ok) { setDiamondMessage("\u5f00\u901a\u6210\u529f\uff0c\u8bf7\u91cd\u65b0\u767b\u5f55\u6e38\u620f\u67e5\u770b\u9ed1\u94bb\u72b6\u6001\u3002", false); }
+			else if (status === 401 || status === 403) { setDiamondMessage("\u5f00\u901a\u5931\u8d25\uff1a\u9700\u8981\u7ba1\u7406\u5458\u767b\u5f55\uff08\u9ed1\u94bb\u5f00\u901a\u4ec5\u7ba1\u7406\u5458\u53ef\u7528\uff09\u3002", true); }
+			else { setDiamondMessage("\u64cd\u4f5c\u5931\u8d25\uff08HTTP " + status + "\uff09\u3002", true); }
 		});
 		return false;
 }
@@ -81,6 +86,7 @@ function resetDiamondForm() {
 	</div>
 </div>
 </div>
+<script type="text/javascript" src="client-layout.js"></script>
 </body>
 </html>
 <!--[if !IE]>|xGv00|a6d52f33a4440f62252c0fc0c6894fa5<![endif]-->

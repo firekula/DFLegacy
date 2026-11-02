@@ -1547,6 +1547,10 @@ internal static class ChannelProcessSmokeTests
                 startInfo.Environment[pair.Key] = pair.Value;
             }
 
+            // These gameplay fixtures do not own public web panel ports.
+            startInfo.Environment["DFLegacy__WebPanels__Gm__Enabled"] = "false";
+            startInfo.Environment["DFLegacy__WebPanels__Player__Enabled"] = "false";
+
             var process = new Process { StartInfo = startInfo };
             var child = new ChildProcess(process);
             process.OutputDataReceived += (_, args) => child.Append(args.Data);

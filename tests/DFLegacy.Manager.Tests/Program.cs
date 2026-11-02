@@ -39,6 +39,10 @@ try
         """);
     var config = new ConfigurationStore(paths, new Dictionary<string, string?>());
     var original = config.Read().Saved;
+    Check(original.GmPanelPort == 18081 && original.PlayerPanelPort == 18082, "panels default to dedicated ports");
+    Reject(() => config.Save(original with { GmPanelPort = original.AdminPort }), "panel and API port collisions rejected");
+    Check(ConfigurationStore.PanelUrl("http://[::1]:8081/base", 18082) == "http://[::1]:18082/", "panel link uses its root and preserves IPv6 host");
+    Check(ConfigurationStore.PanelUrl("https://game.example/accounts", 18081) == "http://game.example:18081/", "direct panel listener uses HTTP independently of account proxy TLS");
     Reject(() => config.Save(original with { AdvertisedHost = "dns.example.test" }),
         "default native fallback refuses a DNS advertisement without an explicit IPv4 address");
     Check(Path.IsPathFullyQualified(original.ScriptPvfPath), "PVF resolves independently of current working directory");

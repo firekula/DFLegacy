@@ -54,6 +54,19 @@ test('status polling never accumulates requests while a response is pending', as
   assert.equal(p.run('statusPending'), false);
 });
 
+test('dashboard opens dedicated panel roots and hides disabled panels', async () => {
+  const p = await page(); p.run('loggedIn = true');
+  const status = { server: { state: 'running' }, accountServiceUrl: 'http://game.example:8081', gmPanelUrl: 'http://game.example:18081/', playerPanelUrl: 'http://game.example:18082/' };
+  p.context.fetch = async url => p.response(url === '/api/status' ? status : { available: false });
+  await p.run('refreshStatus()');
+  assert.equal(p.element('#gmLink').href, status.gmPanelUrl);
+  assert.equal(p.element('#playerLink').href, status.playerPanelUrl);
+  status.playerPanelUrl = null;
+  await p.run('refreshStatus()');
+  assert.equal(p.element('#playerLink').hidden, true);
+  assert.equal(p.element('#playerLink').href, undefined);
+});
+
 test('completed generation hands off a direct download without buffering ZIP in JavaScript', async () => {
   const p = await page(); p.run('loggedIn = true');
   const requests = [];

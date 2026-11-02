@@ -63,6 +63,13 @@ if (hosting.InitializeAdmin)
     return;
 }
 
+try { WebPanelHosting.Validate(options); }
+catch (InvalidOperationException exception)
+{
+    Console.Error.WriteLine(exception.Message);
+    Environment.ExitCode = 2;
+    return;
+}
 options.Pvp.Validate(options);
 options.FallbackRelay.Validate(options);
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -71,7 +78,7 @@ var clientTextEncoding = Encoding.GetEncoding(
     EncoderFallback.ExceptionFallback,
     DecoderFallback.ExceptionFallback);
 builder.WebHost.ConfigureKestrel(kestrel =>
-    kestrel.Listen(IPAddress.Parse(options.Admin.Host), options.Admin.Port));
+    WebPanelHosting.Listen(kestrel, options));
 
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<ListenerReadiness>();
@@ -331,6 +338,8 @@ await gameStore.MigrateLegacyQuestRewardsAsync(
     itemCatalog,
     skillCatalog: app.Services.GetRequiredService<SkillCatalog>());
 
+app.UseWebPanels(options);
+app.UseRouting();
 app.UseManagerControl(Environment.GetEnvironmentVariable(ManagerControl.TokenEnvironmentVariable));
 app.UseStaticFiles();
 
@@ -341,7 +350,8 @@ app.Use(async (context, next) =>
 {
     var decision = AdminAccessPolicy.Resolve(
         context.Request.Method,
-        context.Request.Path.Value ?? "/");
+        context.Request.Path.Value ?? "/",
+        options.EnableTestCeraTopUp);
     if (decision.Access == AdminAccess.Public)
     {
         await next(context);
@@ -698,8 +708,9 @@ app.MapPut("/api/admin/characters/{characterId:guid}/dungeons/{dungeonId:int}", 
     });
 });
 
-// These client-pay mutations are intentionally on the loopback admin listener;
-// the embedded IE page uses the same origin and does not carry a separate login.
+// Test top-ups are explicitly opt-in; production payment mutations remain admin-only.
+app.MapGet("/client/client-pay-settings.js", TestCeraEndpoint.Settings);
+app.MapPost("/api/client-pay/test-cera", TestCeraEndpoint.HandleAsync);
 app.MapPost("/api/client-pay/cera", async (
     ClientCeraTopUpRequest request,
     JsonGameStore store,

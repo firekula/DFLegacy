@@ -108,7 +108,10 @@ add_library(ijl15 SHARED
     src/summon_owner_death.cpp
     src/summon_owner_death.h
     src/window_scaling.cpp
-    src/window_scaling.h)
+    src/window_scaling.h
+    src/payment_window_scaling.cpp
+    src/payment_window_scaling.h
+    src/payment_window_layout.h)
 
 target_compile_definitions(ijl15 PRIVATE
     IJL15_EXPORTS
@@ -166,6 +169,9 @@ add_custom_command(TARGET ijl15 POST_BUILD
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(payment_window_layout_tests tests/payment_window_layout_tests.cpp)
+    target_compile_options(payment_window_layout_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    add_test(NAME payment_window_layout COMMAND payment_window_layout_tests)
     add_library(debug_loading_fixture SHARED ../DFLegacy.Client/tests/debug_loading_fixture.cpp)
     add_executable(debug_loading_tests ../DFLegacy.Client/tests/debug_loading_tests.cpp
         src/ijl15_config.cpp src/presentation_scaling.cpp ../DFLegacy.Client/client_paths.cpp)

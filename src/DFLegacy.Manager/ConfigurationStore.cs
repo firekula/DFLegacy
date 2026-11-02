@@ -21,6 +21,12 @@ public sealed class ConfigurationStore
         [nameof(DeploymentConfig.EntrancePort)] = "Entrance:Port",
         [nameof(DeploymentConfig.ChannelPort)] = "Channel:Port",
         [nameof(DeploymentConfig.AdminPort)] = "Admin:Port",
+        [nameof(DeploymentConfig.GmPanelHost)] = "WebPanels:Gm:Host",
+        [nameof(DeploymentConfig.GmPanelPort)] = "WebPanels:Gm:Port",
+        [nameof(DeploymentConfig.GmPanelEnabled)] = "WebPanels:Gm:Enabled",
+        [nameof(DeploymentConfig.PlayerPanelHost)] = "WebPanels:Player:Host",
+        [nameof(DeploymentConfig.PlayerPanelPort)] = "WebPanels:Player:Port",
+        [nameof(DeploymentConfig.PlayerPanelEnabled)] = "WebPanels:Player:Enabled",
         [nameof(DeploymentConfig.CharacterPort)] = "CharacterDatagram:Port",
         [nameof(DeploymentConfig.GameplayPrimaryPort)] = "GameplayDatagram:PrimaryPort",
         [nameof(DeploymentConfig.GameplaySecondaryPort)] = "GameplayDatagram:SecondaryPort",
@@ -177,7 +183,8 @@ public sealed class ConfigurationStore
         if (string.IsNullOrWhiteSpace(config.ScriptPvfPath) || config.ScriptPvfPath.Length > 4096) throw new ArgumentException("请指定 Script.pvf 路径。");
         if (!IPAddress.TryParse(config.BindHost, out _) || !IPAddress.TryParse(config.AdminHost, out _)) throw new ArgumentException("监听地址必须为 IP 地址，不能使用域名。");
         ValidateDestination(config.AdvertisedHost);
-        var tcp = config.ForwardedTcpPorts().Append(config.AdminPort).ToArray();
+        if (config.PanelListeners().Any(listener => !IPAddress.TryParse(listener.Host, out _))) throw new ArgumentException("面板监听地址必须为 IP 地址。");
+        var tcp = config.ForwardedTcpPorts().Append(config.AdminPort).Concat(config.PanelListeners().Select(listener => listener.Port)).ToArray();
         var udp = config.ForwardedUdpPorts();
         if (tcp.Concat(udp).Any(port => port is < 1 or > 65535)) throw new ArgumentException("端口必须为 1–65535。");
         if (tcp.Distinct().Count() != tcp.Length || udp.Distinct().Count() != udp.Length) throw new ArgumentException("同类 TCP 或 UDP 监听端口不能重复。");
@@ -210,6 +217,9 @@ public sealed class ConfigurationStore
         if (config.RelayEnabled && (config.AdvertisedHost.Equals("localhost", StringComparison.OrdinalIgnoreCase)
             || IPAddress.TryParse(config.AdvertisedHost, out var address) && IPAddress.IsLoopback(address))) throw new ArgumentException("Relay 的服务器地址不能是本机回环地址。");
     }
+
+    public static string PanelUrl(string accountServiceUrl, int port) => new UriBuilder(accountServiceUrl)
+        { Scheme = "http", Port = port, Path = "/", Query = "", Fragment = "" }.Uri.AbsoluteUri;
 
     public static void ValidateDestination(string host)
     {

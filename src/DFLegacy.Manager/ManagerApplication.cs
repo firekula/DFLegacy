@@ -138,6 +138,8 @@ public static class ManagerApplication
                 var configuration = config.Read();
                 return new { server = supervisor.Snapshot, configuration.Configured, dataDirectory = paths.Data, version = ReadVersion(paths), assetsAvailable = File.Exists(Path.Combine(paths.AssetsDirectory, "manifest.json")),
                     accountServiceUrl = configuration.Effective.AccountServiceUrl, entranceHost = configuration.Effective.AdvertisedHost,
+                    gmPanelUrl = configuration.Effective.GmPanelEnabled ? ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.GmPanelPort) : null,
+                    playerPanelUrl = configuration.Effective.PlayerPanelEnabled ? ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.PlayerPanelPort) : null,
                     entrancePort = configuration.Effective.EntrancePort, gameplayAdvertisedHost = configuration.Effective.GameplayAdvertisedHost };
             });
             api.MapGet("/logs", (long? after) => log.Read(after ?? 0));

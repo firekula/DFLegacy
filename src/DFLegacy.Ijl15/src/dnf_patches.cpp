@@ -41,6 +41,7 @@
 #include "summon_owner_death.h"
 #include "mouse_wheel.h"
 #include "window_scaling.h"
+#include "payment_window_scaling.h"
 
 namespace
 {
@@ -1123,6 +1124,9 @@ namespace dfl::dnf_patches
             OutputDebugStringA(
                 "DFLegacy.Ijl15: window scaling was not installed; using native size.\n");
         }
+
+        if (!dfl::payment_window_scaling::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: payment window scaling was not installed.\n");
 
         // Capture the D3D8 factory before device creation, including enhanced
         // presentation modes which preserve the game's own texture sampler.

@@ -63,7 +63,7 @@ async function loadConfig() {
     if (input.type === "checkbox") input.checked = value; else input.value = name === "dropRatePercent" ? value / 100 : value;
     input.disabled = false;
   }
-  const mapping = { fallbackRelayEnabled: "FallbackRelay__Enabled", fallbackRelayAdvertisedHost: "FallbackRelay__AdvertisedHost", fallbackRelayTcpPort: "FallbackRelay__TcpPort", fallbackRelayUdpPort: "FallbackRelay__UdpPort", pvpEnabled: "Pvp__Enabled", pvpPort: "Pvp__Port", scriptPvfPath: "ScriptPvfPath", bindHost: "Entrance__Host", adminHost: "Admin__Host", entrancePort: "Entrance__Port", channelPort: "Channel__Port", adminPort: "Admin__Port", characterPort: "CharacterDatagram__Port", gameplayPrimaryPort: "GameplayDatagram__PrimaryPort", gameplaySecondaryPort: "GameplayDatagram__SecondaryPort", channelName: "Channel__Name", maximumUsers: "Channel__MaximumUsers", monsterExperienceMultiplier: "Experience__MonsterMultiplier", clearExperienceMultiplier: "Experience__ClearMultiplier", dropRatePercent: "Drop__RatePercent", dropEconomicRate: "Drop__EconomicRate", additionalEntrancePort: "Entrance__AdditionalPorts__1" };
+  const mapping = { gmPanelPort: "WebPanels__Gm__Port", playerPanelPort: "WebPanels__Player__Port", fallbackRelayEnabled: "FallbackRelay__Enabled", fallbackRelayAdvertisedHost: "FallbackRelay__AdvertisedHost", fallbackRelayTcpPort: "FallbackRelay__TcpPort", fallbackRelayUdpPort: "FallbackRelay__UdpPort", pvpEnabled: "Pvp__Enabled", pvpPort: "Pvp__Port", scriptPvfPath: "ScriptPvfPath", bindHost: "Entrance__Host", adminHost: "Admin__Host", entrancePort: "Entrance__Port", channelPort: "Channel__Port", adminPort: "Admin__Port", characterPort: "CharacterDatagram__Port", gameplayPrimaryPort: "GameplayDatagram__PrimaryPort", gameplaySecondaryPort: "GameplayDatagram__SecondaryPort", channelName: "Channel__Name", maximumUsers: "Channel__MaximumUsers", monsterExperienceMultiplier: "Experience__MonsterMultiplier", clearExperienceMultiplier: "Experience__ClearMultiplier", dropRatePercent: "Drop__RatePercent", dropEconomicRate: "Drop__EconomicRate", additionalEntrancePort: "Entrance__AdditionalPorts__1" };
   for (const [name, key] of Object.entries(mapping)) {
     if ((snapshot.environmentOverrides || []).some(variable => variable.toLowerCase() === ("DFLegacy__" + key).toLowerCase())) {
       const input = fields.namedItem(name); if (!input) continue; input.disabled = true;
@@ -114,8 +114,10 @@ async function refreshStatusCore() {
   $("#assetNotice").hidden = status.assetsAvailable;
   $("#exportClient").disabled = busy || exportPending || !status.assetsAvailable || !status.configured;
   await refreshPvf();
-  const base = status.accountServiceUrl.replace(/\/+$/, "");
-  $("#gmLink").href = base + "/admin/index.html"; $("#playerLink").href = base + "/admin/player.html";
+  for (const [selector, url] of [["#gmLink", status.gmPanelUrl], ["#playerLink", status.playerPanelUrl]]) {
+    $(selector).hidden = !url;
+    if (url) $(selector).href = url; else $(selector).removeAttribute("href");
+  }
   $("#gameLinksNote").textContent = running ? "使用游戏管理员账号登录 GM 后台。" : "游戏服务当前已停止，这些页面将在启动后可用。";
 }
 

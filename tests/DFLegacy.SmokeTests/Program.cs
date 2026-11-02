@@ -9,6 +9,22 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--web-panels-only"))
+{
+    await WebPanelsSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Web panels smoke: {failures.Count} failures" );
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--test-cera-only"))
+{
+    await TestCeraSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Test Cera smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--new-character-defaults"))
 {
     await NewCharacterDefaultsSmokeTests.RunAsync(Check);
@@ -311,6 +327,8 @@ await DeploymentHostingSmokeTests.RunAsync(Check);
 ClientDiagnosticsSmokeTests.Run(Check);
 await FallbackRelayProtocolSmokeTests.RunAsync(Check);
 await FallbackRelaySmokeTests.RunAsync(Check);
+await TestCeraSmokeTests.RunAsync(Check);
+await WebPanelsSmokeTests.RunAsync(Check);
 await AdminAuthSmokeTests.RunAsync(Check);
 await TownSyncSmokeTests.RunAsync(Check);
 await FriendSmokeTests.RunAsync(Check);
