@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, PUBLIC_ASSETS, read_client_update, validate_identity, verify_client_package
+from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, UPDATE_TEST_ASSET, PUBLIC_ASSETS, read_client_update, validate_identity, verify_client_package
 
 REPOSITORY = 'firekula/DFLegacy'
 ASSET_NAME = UPDATE_ASSET
@@ -193,16 +193,17 @@ def target_commit(api, branch):
     return sha
 
 
-def publish(api, version, commit, archives, check_only=False):
+def publish(api, version, commit, archives, check_only=False, updates_only=False):
     validate_identity(version, commit)
+    approved_names = (UPDATE_ASSET, UPDATE_TEST_ASSET) if updates_only else ASSET_NAMES
     if isinstance(archives, (str, Path)):
-        raise ReleaseError('all four public archives are required')
+        raise ReleaseError('public archives must be supplied as a list')
     paths = [Path(path) for path in archives]
-    if len(paths) != len(ASSET_NAMES) or {path.name for path in paths} != set(ASSET_NAMES):
-        raise ReleaseError('public asset inventory must match all four approved names')
+    if len(paths) != len(approved_names) or {path.name for path in paths} != set(approved_names):
+        raise ReleaseError('public asset inventory must match the approved names')
     # Snapshot every archive before any remote calls; never reopen validated paths.
     contents, inventory, binaries = {}, {}, {}
-    for name in ASSET_NAMES:
+    for name in approved_names:
         content = read_client_update(next(path for path in paths if path.name == name))
         manifest = verify_client_package(content, version, commit, name)
         for row in manifest['files']:
@@ -216,7 +217,8 @@ def publish(api, version, commit, archives, check_only=False):
     prerelease = bool(DEV.fullmatch(version))
     body = (f'{MARKER}\nversion={version}\nsource-commit={commit}\n' +
             ''.join(f'asset={name} sha256={item["sha256"]} size={item["size"]}\n' for name, item in inventory.items()) +
-            '\nPublic client binaries and migration instructions. Built from the pinned Gitea source commit above.\n')
+            ('\nAutomatic update packages for existing installations. Built from the pinned source commit above.\n' if updates_only else
+             '\nPublic client binaries and migration instructions. Built from the pinned Gitea source commit above.\n'))
     tag = '/releases/tags/' + urllib.parse.quote(version, safe='')
 
     def fetch():
@@ -251,7 +253,7 @@ def publish(api, version, commit, archives, check_only=False):
         if current is None:
             raise ReleaseError('GitHub reserved release disappeared')
         assets = api.request('GET', f'/releases/{current["id"]}/assets?per_page=100&page=1')
-        if not isinstance(assets, list) or len(assets) > len(ASSET_NAMES):
+        if not isinstance(assets, list) or len(assets) > len(approved_names):
             raise ReleaseError('unexpected GitHub release assets')
         present = set()
         for asset in assets:
@@ -263,12 +265,12 @@ def publish(api, version, commit, archives, check_only=False):
             if api.attachment_digest(asset, item['size'], draft=current['draft']) != item['sha256']:
                 raise ReleaseError('GitHub downloaded asset digest differs')
             present.add(name)
-        if not current['draft'] and present != set(ASSET_NAMES):
+        if not current['draft'] and present != set(approved_names):
             raise ReleaseError('published GitHub release is incomplete')
         latest = fetch()
         if latest is None or latest['id'] != current['id']:
             raise ReleaseError('GitHub release changed during verification')
-        if not latest['draft'] and present != set(ASSET_NAMES):
+        if not latest['draft'] and present != set(approved_names):
             raise ReleaseError('published GitHub release is incomplete')
         if current['draft'] and not latest['draft']:
             # A competing run published while we were checking private draft
@@ -290,7 +292,7 @@ def publish(api, version, commit, archives, check_only=False):
     current, present = inspect()
     if check_only or not current['draft']:
         return outcome('draft' if current['draft'] else 'already-published', current)
-    for name in ASSET_NAMES:
+    for name in approved_names:
         if name in present:
             continue
         try:
@@ -300,7 +302,7 @@ def publish(api, version, commit, archives, check_only=False):
             if name not in present:
                 raise
         current, present = inspect()
-    if present != set(ASSET_NAMES):
+    if present != set(approved_names):
         raise ReleaseError('GitHub draft is incomplete')
     if current['draft']:
         try:
@@ -309,7 +311,7 @@ def publish(api, version, commit, archives, check_only=False):
             if fetch()['draft']:
                 raise
     current, present = inspect()  # Anonymous public bytes must also match.
-    if current['draft'] or present != set(ASSET_NAMES):
+    if current['draft'] or present != set(approved_names):
         raise ReleaseError('GitHub publication not confirmed')
     return outcome('published', current)
 
@@ -319,6 +321,7 @@ def main(argv=None):
     parser.add_argument('--preflight', action='store_true', help='read-only credential and repository capability check')
     parser.add_argument('--check-only', action='store_true', help='verify identity and any existing bytes without mutation')
     parser.add_argument('--archive', action='append')
+    parser.add_argument('--updates-only', action='store_true', help='publish only the normal and test automatic update ZIPs')
     for name in ('version', 'commit'):
         parser.add_argument('--' + name)
     args = parser.parse_args(argv)
@@ -331,7 +334,7 @@ def main(argv=None):
         else:
             if not all((args.version, args.commit, args.archive)):
                 raise ReleaseError('--version, --commit and --archive are required')
-            print(json.dumps(publish(api, args.version, args.commit, args.archive, args.check_only)))
+            print(json.dumps(publish(api, args.version, args.commit, args.archive, args.check_only, args.updates_only)))
         return 0
     except (ReleaseError, OSError):
         # Fixed errors only: no exception chain, raw server body or credential helper output.

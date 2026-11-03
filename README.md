@@ -64,6 +64,12 @@
 | [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
 | [DEPLOYMENT_MANAGER.md](DEPLOYMENT_MANAGER.md) | 跨平台部署管理器、首次设置、客户端包导出及验证范围。 |
 
+## 本次更新
+
+- 新增七个 ACT1 地区频道。通关结算按所选频道读取 PVF 地区经验比例，启用方法见[地区经验频道](DEPLOYMENT_MANAGER.md#地区经验频道)。
+- 恢复仓库升级按钮。实机点击已打开购买确认框，仓库扩容沿用商城购买流程。
+- GitHub 提供现有客户端自动更新 ZIP，服务端发布至 GHCR。见[部署指南](DEPLOYING.md#docker--compose)。
+
 ## 一键部署与自动发行
 
 新增 `DFLegacy.Manager`，Windows、Linux、macOS 与 Docker 共用中文 Web 管理页面。本机启动管理器会打开浏览器；管理器与游戏服务分别运行，停止游戏服务后仍可修改配置、查看日志、初始化游戏管理员及导出客户端补丁/登录器。

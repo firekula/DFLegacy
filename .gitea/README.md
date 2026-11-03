@@ -60,3 +60,7 @@ metadata 只导出 `DFLEGACY_RELEASE_VERSION`、`DFLEGACY_RELEASE_COMMIT` 与 `S
 手工 `workflow_dispatch` 默认只运行完整测试/构建并保留 artifact。仅在 main 或正式标签上把 `publish` 精确设为 `true`，才在全部门禁通过后进入相同发布 job；不提供跳过测试的手动发布路径。完整 Release 除五个归档和 inventory 外，单独附 bridge Compose、host IPv6 Compose 和 `.env.example` 并记录摘要。镜像 `latest` 仅在正式标签完整发布成功后更新，开发版始终使用自己的版本标签。
 
 prune 任务需要额外 `code: write` 删除其选中的开发 Git 标签；此权限仅用于 main 上人工触发的清理任务。普通测试不具有写权限。
+
+## 仅发布 GitHub 更新
+
+如只需 GitHub 更新，可将源码推送普通分支，然后用已验证的同提交资源构建 GHCR 镜像及 V2 更新包。`tools/release/github_publish.py --updates-only` 仅接收普通版和测试版更新 ZIP。普通分支构建不触发 Gitea Release 或 Registry 发布。

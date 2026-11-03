@@ -260,6 +260,14 @@ class PublisherTests(unittest.TestCase):
     def publish(self, api, version=VERSION, **kwargs):
         return github.publish(api, version, COMMIT, self.paths, **kwargs)
 
+    def test_updates_only_publishes_both_updater_flavors(self):
+        api = FakeGitHub()
+        outcome = github.publish(api, VERSION, COMMIT, self.paths[:2], updates_only=True)
+        self.assertEqual(outcome['status'], 'published')
+        self.assertEqual(set(outcome['assets']), {path.name for path in self.paths[:2]})
+        self.assertEqual(sum(call[0] == 'UPLOAD' for call in api.calls), 2)
+        self.assertEqual(sum(call[0] == 'VERIFY-PUBLIC' for call in api.calls), 2)
+
     def test_partial_published_release_is_never_complete(self):
         api = FakeGitHub(); self.publish(api)
         api.assets.pop()

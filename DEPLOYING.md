@@ -54,6 +54,7 @@ CLI：`--root <目录> --data-dir <目录> --listen <IP> --port <端口> --no-br
 | 18080 | TCP HTTP | 部署Manager；默认宿主loopback |
 | 8081 | TCP HTTP | 玩家账号API与既有GM/玩家网页 |
 | 2311、7001、8080 | TCP | 登录、频道及附加入口 |
+| 7100–7105 | TCP | 可选地区频道 |
 | 2311 | UDP | 角色数据报 |
 | 7002、7003 | UDP | 玩法数据报 |
 
@@ -97,6 +98,10 @@ host 模式直接占用宿主业务端口，Manager 仍监听 `127.0.0.1`。IPv4
 
 Docker build/多架构发行见 [BUILDING.md](BUILDING.md)。Gitea Registry 使用 `registry/owner/image` 命名；若实例仅提供 HTTP，部署者需明确设置 Docker/Skopeo 对该 Registry 的信任，脚本不会修改 Docker 全局配置。`DFLEGACY_ALLOW_HTTP_API` 仅控制 Release HTTP API，不能替代 Registry TLS 配置。
 
+### 启用地区频道
+
+在现有 Compose 服务的 `environment` 增加 `DFLegacy__Channel__RegionalChannelsEnabled: "true"`，在 `ports` 增加 `"7100-7105:7100-7105/tcp"`，并放行对应 TCP 端口。host 网络部署直接放行宿主端口。本机中继玩家需在 `Relay.TcpPorts` 保留已有值并加入这六个端口，或使用管理器重新导出的配置。地区及经验比例见[管理器指南](DEPLOYMENT_MANAGER.md#地区经验频道)。
+
 ## 导出玩家包
 
 在 Manager 中确认公布地址、账号 API URL、端口和 Relay 偏好后，点击“生成并下载玩家包 ZIP”。所有系统使用随版 Windows 资源离线组包，不需要在服务器上安装 VS 或 WPF。
@@ -125,7 +130,7 @@ ZIP 包含单文件 WPF 登录器、独立的 `DFLegacy.Client.dll` 和 `client-
 
 管理器下载默认普通版；测试版加入同版本 `debug.dll` 并默认加载本地诊断，不自动启用输入、组队文件命令等测试控制。普通版包含完整游戏优化。新版补丁为独立 `DFLegacy.Client.dll`。旧用户先退出游戏、备份客户端，并确认一次可见且经哈希验证的原版 IJL 恢复，不能靠备份文件名推断原版。只支持已验证的兼容展开客户端，不修复原始旧壳；原始 EXE/DLL/PVF/NPK 保持不变。仅服务端覆盖数据依赖本机共享目录，不提供远程目录同步。补丁、引导器和登录器内嵌 Detours 完整许可与版本，运行 `DFLegacy.Launcher.exe --third-party-notices | more` 可直接查看。
 
-公开发布固定包含四个附件：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。V2 更新包只有该类型的项目程序和 `update-manifest.json`；tools 包另含安装清单、摘要和迁移说明，不含玩家配置或游戏资源。发布器校验完整四附件集合及共同程序的哈希，再发布草稿并匿名回读；部分发布不得作为成功重试。旧已发布版本保持不变。公开标签指向预先导出的脱敏公开源码快照；私有构建提交仍作为包身份，不推送私有历史。
+完整客户端发行可包含四个附件：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。V2 更新包只有该类型的项目程序和 `update-manifest.json`；tools 包另含安装清单、摘要和迁移说明，不含玩家配置或游戏资源。GitHub 仅更新发行使用前两个 V2 ZIP。发布器按所选模式核对全部附件和共同程序哈希，发布后匿名回读。旧已发布版本保持不变。公开标签指向预先导出的脱敏公开源码快照；私有构建提交仍作为包身份，不推送私有历史。
 
 Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试及发布传入 `ClientPatchPrebuiltPath`、`ClientBootstrapPrebuiltPath`，`Ijl15PrebuiltPath` 仅用于旧补丁回归。测试显式设置 `DFL_NATIVE_FIXTURES` 为匹配的 CMake 构建目录（不是 Release 子目录），`DFL_LEGACY_PATCH_ARCHIVE` 为验证过的历史项目补丁 ZIP。`ci.py windows` 只从固定公开地址下载版本 `dev-20261031T114502Z-4a0e12555c17` 的 `DFLegacy-client-update-win-x64.zip` 并缓存到 `artifacts/test-fixture-cache`；严格校验大小 63332728 和 SHA256 `4851bfc41b1c39799ba7ed735954c1d6fd1cbc91fba0d8b2a201eb2c7977e0f5`。这是历史项目自有测试夹具，不是原版 IJL 或新 schema 1 发行附件；测试本身不联网，不依赖真实游戏盘。
 
