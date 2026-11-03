@@ -78,7 +78,7 @@
 - 首次设置凭据只使用一次，保存在数据目录 `management/setup-token.txt`；双击启动时由本机浏览器自动携带。管理账号与游戏账号分开，发行模板不生成 `test/test`。
 - 服务端配置、存档、日志保存在独立 `data/` 目录。升级先停服、备份数据，将新版本解压到新目录，再复用数据目录；不要直接覆盖正在运行的安装。
 - 各平台和容器都使用同版本预构建的 Windows 客户端资源导出 ZIP，包含空凭据登录器、IJL15、配置和摘要。游戏内充值/黑钻页面保留 460×315 布局，GM 后台和玩家中心继续使用普通浏览器。
-- `.gitea/workflows/release.yaml` 在提交后测试并构建；`main` 成功后发布开发预发布版，`vX.Y.Z` 标签发布正式版和镜像。需要先配置 Windows/Linux Runner 与 Registry，见 [部署说明](DEPLOYING.md)。
+- Gitea 在提交后运行源码测试。服务端 Docker 镜像与双架构客户端更新使用 GitHub 分发，见 [构建与发布](BUILDING.md#源码与产物发布)。
 
 这些是新增部署能力；真实客户端跨机进图、macOS 原生运行和远端 CI 发布的验收状态，见 [部署管理说明](DEPLOYMENT_MANAGER.md)。
 
