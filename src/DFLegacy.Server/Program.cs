@@ -71,6 +71,7 @@ catch (InvalidOperationException exception)
     return;
 }
 options.Pvp.Validate(options);
+PvpChannelConfiguration.ValidateRegionalChannels(options);
 options.FallbackRelay.Validate(options);
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var clientTextEncoding = Encoding.GetEncoding(

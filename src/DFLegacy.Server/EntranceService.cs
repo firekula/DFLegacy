@@ -212,7 +212,8 @@ public sealed class EntranceService(
             var remoteEndpoint = client.Client.RemoteEndPoint as IPEndPoint;
             var remote = remoteEndpoint?.ToString() ?? "unknown";
             var isPvpChannel = options.Pvp.Enabled && localPort == options.Pvp.Port;
-            var isChannelPort = localPort == options.Channel.Port || isPvpChannel;
+            var channel = PvpChannelConfiguration.GameplayChannels(options).FirstOrDefault(c => c.Port == localPort);
+            var isChannelPort = channel.Port != 0;
             var runtimeSession = runtime.Add($"{(isChannelPort ? "channel" : "entrance")}:{localPort}", remote);
             if (isChannelPort && remoteEndpoint is not null)
             {
@@ -15116,7 +15117,7 @@ public sealed class EntranceService(
                                                     MentorBonusRate: await mentorService.GetExperienceBonusRateAsync(
                                                         activeCharacter.Id, runtimeSession.Id, serverToken),
                                                     EventBonusRate: dungeonExperienceCatalog.GetEventBonusRate(DateTimeOffset.UtcNow),
-                                                    ChannelBonusRate: dungeonExperienceCatalog.GetChannelBonusRate(currentDungeonId)))
+                                                    ChannelBonusRate: dungeonExperienceCatalog.GetChannelBonusRate(currentDungeonId, channel.Number)))
                                             : GameDungeonClearExperienceBreakdown.Empty;
 
                                     if (activeCharacter is not null
@@ -15849,11 +15850,11 @@ public sealed class EntranceService(
                         var gameReply = request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.CheckConnectionCommand
                             ? GameProtocolEngine.CreateChannelInfo(
-                                ClientEncoding.GetBytes(isPvpChannel ? $"{options.Pvp.Name} {options.Pvp.ChannelNumber}" : $"{options.Channel.Name} {options.Channel.ChannelNumber}"),
+                                ClientEncoding.GetBytes($"{channel.Name} {channel.Number}"),
                                 channelType: 1,
                                 result: 1,
                                 serverId: 1,
-                                channelNumber: checked((byte)(isPvpChannel ? options.Pvp.ChannelNumber : options.Channel.ChannelNumber)),
+                                channelNumber: checked((byte)channel.Number),
                                 seed: checked((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
                                 [Encoding.ASCII.GetBytes(options.GameplayDatagram.ResolveAdvertisedHost())],
                                 port1: checked((uint)options.GameplayDatagram.PrimaryPort),

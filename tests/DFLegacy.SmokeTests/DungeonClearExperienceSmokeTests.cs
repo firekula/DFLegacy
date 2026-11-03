@@ -24,6 +24,7 @@ internal static class DungeonClearExperienceSmokeTests
                 [/dungeon]
                 [server]
                 1 // server id
+                1 `Starter` 2 `[test_area]` 7 0 0 0 0 0 0 0 0 0 0
                 15 <4::channel_name_999> 0 `[test_area]` 10 0 0 1 0 0 0 0 0 0 0
                 16 `Other channel` 0 `[test_area]` 30 0 0 0 0 0 0 0 0 0 0
                 [/server]
@@ -52,6 +53,30 @@ internal static class DungeonClearExperienceSmokeTests
             check(catalog.GetChannelBonusRate(1) == 0.1 && catalog.GetChannelBonusRate(2) == 0.1
                 && catalog.GetChannelBonusRate(3) == 0 && catalog.GetChannelBonusRate(999) == 0,
                 "channel EXP matches server, channel and dungeon group without parsing localized-name digits");
+            options.Channel.RegionalChannelsEnabled = true;
+            var advertised = PvpChannelConfiguration.Channels(options);
+            check(advertised.Select(c => c.ChannelNumber).SequenceEqual(new[] { 1, 10, 15, 20, 23, 24, 27 })
+                && advertised.Select(c => c.Port).SequenceEqual(new[] { 7001, 7100, 7101, 7102, 7103, 7104, 7105 })
+                && EntranceMetadata.BuildLocalChannels(advertised).Length == 4 + 9 * (24 + 7 * 48),
+                "seven regional profiles advertise distinct selectable ports");
+            PvpChannelConfiguration.ValidateRegionalChannels(options);
+            options.Entrance.AdditionalPorts = [7100];
+            try
+            {
+                PvpChannelConfiguration.ValidateRegionalChannels(options);
+                check(false, "regional channel rejects an occupied entrance port");
+            }
+            catch (InvalidOperationException)
+            {
+                check(true, "regional channel rejects an occupied entrance port");
+            }
+            options.Entrance.AdditionalPorts = [];
+            var regional = new DungeonExperienceCatalog(options, scripts, NullLogger<DungeonExperienceCatalog>.Instance);
+            check(regional.GetChannelBonusRate(1, 1) == 0.07
+                && regional.GetChannelBonusRate(1, 15) == 0.1
+                && regional.GetChannelBonusRate(3, 15) == 0
+                && regional.GetChannelBonusRate(1, 10) == 0,
+                "regional EXP uses the connected channel's PVF row and dungeon coverage");
             check(catalog.GetEventBonusRate(starts.AddTicks(-1)) == 0
                 && catalog.GetEventBonusRate(starts) == 0.5
                 && catalog.GetEventBonusRate(starts.AddDays(1)) == 0,

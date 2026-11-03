@@ -88,6 +88,7 @@ public sealed class ChannelOptions
     public string Host { get; set; } = "127.0.0.1";
     public int Port { get; set; } = 7001;
     public int ChannelNumber { get; set; } = 1;
+    public bool RegionalChannelsEnabled { get; set; }
     public int MaximumUsers { get; set; } = 100;
     public int CurrentUsers { get; set; } = 1;
 }

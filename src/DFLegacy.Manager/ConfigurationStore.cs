@@ -35,6 +35,7 @@ public sealed class ConfigurationStore
         [nameof(DeploymentConfig.FallbackRelayTcpPort)] = "FallbackRelay:TcpPort",
         [nameof(DeploymentConfig.FallbackRelayUdpPort)] = "FallbackRelay:UdpPort",
         [nameof(DeploymentConfig.PvpEnabled)] = "Pvp:Enabled",
+        [nameof(DeploymentConfig.RegionalChannelsEnabled)] = "Channel:RegionalChannelsEnabled",
         [nameof(DeploymentConfig.PvpPort)] = "Pvp:Port",
         [nameof(DeploymentConfig.ChannelName)] = "Channel:Name",
         [nameof(DeploymentConfig.MaximumUsers)] = "Channel:MaximumUsers",

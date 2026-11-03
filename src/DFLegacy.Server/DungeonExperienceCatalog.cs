@@ -38,6 +38,7 @@ public sealed class DungeonExperienceCatalog
     private readonly DateTimeOffset? _eventStartsAt;
     private readonly DateTimeOffset? _eventEndsAt;
     private readonly IReadOnlyDictionary<ushort, double> _channelBonusRates;
+    private readonly Dictionary<int, IReadOnlyDictionary<ushort, double>> _regionalBonusRates = new();
 
     public DungeonExperienceCatalog(
         ServerOptions options,
@@ -56,6 +57,9 @@ public sealed class DungeonExperienceCatalog
         _eventStartsAt = options.Experience?.ClearEventStartsAt;
         _eventEndsAt = options.Experience?.ClearEventEndsAt;
         _channelBonusRates = LoadChannelBonusRates(scripts, options.Channel.ServerNumber, options.Channel.ChannelNumber);
+        if (options.Channel.RegionalChannelsEnabled)
+            foreach (var channel in PvpChannelConfiguration.GameplayChannels(options))
+                _regionalBonusRates[channel.Number] = LoadChannelBonusRates(scripts, options.Channel.ServerNumber, channel.Number);
 
         logger.LogInformation(
             "Loaded dungeon EXP rates from {Source}: monster={MonsterRate}, clear={ClearRate}, party=[{PartyRates}], difficulty=[{DifficultyRates}], rank=[{RankRates}], kind=[{KindRates}], operatorMonster={OperatorMonster}, operatorClear={OperatorClear}.",
@@ -81,6 +85,11 @@ public sealed class DungeonExperienceCatalog
     public double ClearBonusRate => _rates.ClearBonusRate;
 
     public double GetChannelBonusRate(ushort dungeonId) => _channelBonusRates.GetValueOrDefault(dungeonId);
+
+    public double GetChannelBonusRate(ushort dungeonId, int channelNumber) =>
+        _regionalBonusRates.TryGetValue(channelNumber, out var rates)
+            ? rates.GetValueOrDefault(dungeonId)
+            : GetChannelBonusRate(dungeonId);
 
     public double GetEventBonusRate(DateTimeOffset now) =>
         (!_eventStartsAt.HasValue || now >= _eventStartsAt.Value)

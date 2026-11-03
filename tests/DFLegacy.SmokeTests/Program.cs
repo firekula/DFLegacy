@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--channel-exp-only"))
+{
+    DungeonClearExperienceSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Channel EXP smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--web-panels-only"))
 {
     await WebPanelsSmokeTests.RunAsync(Check);
