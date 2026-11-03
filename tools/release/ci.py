@@ -200,7 +200,8 @@ def windows(version, commit, client_only=False):
         smoke_archive(archive)
     build_client_packages(assets, REPO / "artifacts", version, commit)
     run(sys.executable, "tools/release/tests/verify_client_notices.py", "--native", native.parent,
-        "--launcher", launcher / "DFLegacy.Launcher.exe", "--packages", REPO / "artifacts")
+        "--launcher", launcher / "DFLegacy.Launcher.exe", "--launcher-x86", launcher_x86 / "DFLegacy.Launcher.exe",
+        "--packages", REPO / "artifacts")
     run(sys.executable, "tools/release/tests/verify_client_notices.py", "--native", native.parent,
         "--launcher", launcher_x86 / "DFLegacy.Launcher.exe", "--launcher-rid", "win-x86")
 
