@@ -108,6 +108,8 @@ GitHub Releases 分发 Windows x86 和 x64 两条更新线，各有普通版和�
 
 从 18083 迁移时，从 Compose 移除 `DFLEGACY_UPDATE_PUBLIC_URL`（标准模板清空 `UPDATE_PUBLIC_URL`），并移除自定义的 18083 端口映射。更新镜像后，玩家覆盖一次后台导出的同架构、同类型内层 ZIP。保留账号和现有连接设置时，在原 `launcher.json` 中把 `UpdateServiceUrl` 设为空字符串、`DisableGitHubUpdates` 设为 `false`。已经使用 GitHub 更新的 x64 玩家可直接自动更新。客户端需要访问 GitHub 的 HTTPS API 和下载地址。
 
+如果曾通过 18083 成功安装过自动更新，先完成任何待恢复的更新，然后退出游戏和登录器，将客户端目录中的 `.dflegacy/state.json` 改名为 `state.hosted-backup.json`。这个文件记录的是旧更新源的版本 ID。完成一次覆盖安装后重新启动，登录器会记录 GitHub 的版本 ID。
+
 ### 可选的自托管客户端更新
 
 使用独立 HTTP 端口直连时，设置 `DFLEGACY_UPDATE_PUBLIC_URL=http://games.example.com:18083`，并将容器端口发布为 `"18083:18083/tcp"`。标准 Compose 可在 `.env` 设置 `UPDATE_PUBLIC_URL=http://games.example.com:18083` 和 `UPDATE_BIND=0.0.0.0`。放行 TCP 18083 后，客户端可直接访问。HTTP 的版本清单和 ZIP 都可能被中途替换，公开部署可使用以下 HTTPS 配置校验服务器身份。
