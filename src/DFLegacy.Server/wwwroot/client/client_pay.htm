@@ -32,6 +32,8 @@ function updatePayAmount(value) {
 }
 function resetPayForm() {
 	document.forms["formMain"].reset();
+	document.getElementById("payResult").style.display = "none";
+	document.getElementById("pay_msg").innerHTML = "";
 	document.getElementById("amount_other_wrap").style.display = "none";
 	document.getElementById("amount_value").value = "500";
 	return false;

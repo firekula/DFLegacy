@@ -62,8 +62,9 @@ namespace
         // One extra byte beyond the accepted maximum distinguishes a truncated
         // INI read from a valid URL at the boundary. Never patch a truncated URL.
         char base[dfl::ijl15_config::MaximumClientServiceUrlLength + 2]{};
-        const DWORD length = ReadAscii("Network", "ClientServiceUrl",
-            "", base, static_cast<DWORD>(sizeof(base)), path);
+        DWORD length = GetEnvironmentVariableA("DFLEGACY_LOCAL_PAYMENT_URL", base, static_cast<DWORD>(sizeof(base)));
+        if (length == 0)
+            length = ReadAscii("Network", "ClientServiceUrl", "", base, static_cast<DWORD>(sizeof(base)), path);
         if (length == 0 || length > dfl::ijl15_config::MaximumClientServiceUrlLength)
             return;
 

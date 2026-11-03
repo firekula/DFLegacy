@@ -482,9 +482,9 @@ def build_client_update(client_assets, output, version, commit, test_build=False
     return destination
 
 
-def build_client_packages(client_assets, output, version, commit):
+def build_client_packages(client_assets, output, version, commit, updates_only=False):
     packages = [build_client_update(client_assets, output, version, commit, test, tools)
-                for tools in (False, True) for test in (False, True)]
+                for tools in ((False,) if updates_only else (False, True)) for test in (False, True)]
     if (Path(client_assets) / "launcher-x86").is_dir():
         packages.extend(build_client_update(client_assets, output, version, commit, test, architecture="x86")
                         for test in (False, True))
@@ -900,6 +900,7 @@ def parser():
     all_packages = sub.add_parser("build-client-packages")
     for name in ("client-assets", "output", "version", "commit"):
         all_packages.add_argument("--" + name, required=True)
+    all_packages.add_argument("--updates-only", action="store_true")
     update_check = sub.add_parser("verify-client-update")
     update_check.add_argument("path")
     update_check.add_argument("--version")
@@ -947,7 +948,7 @@ def main(argv=None):
         elif args.command == "build-client-update":
             print(build_client_update(args.client_assets, args.output, args.version, args.commit, args.test_build, args.tools))
         elif args.command == "build-client-packages":
-            print(json.dumps([str(p) for p in build_client_packages(args.client_assets, args.output, args.version, args.commit)]))
+            print(json.dumps([str(p) for p in build_client_packages(args.client_assets, args.output, args.version, args.commit, args.updates_only)]))
         elif args.command == "verify-client-update":
             print(json.dumps(verify_client_update(args.path, args.version, args.commit)))
         elif args.command == "publish":

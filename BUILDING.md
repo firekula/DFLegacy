@@ -144,3 +144,16 @@ Gitea 接收源码并运行 [只读测试](.gitea/README.md)。Windows、Linux �
 在干净的发布检出中，使用 `python tools/release/ci.py windows --client-only --version <版本> --commit <提交>` 构建并测试 Windows 客户端资源。使用生成的 `client-assets` 从同一提交构建 Linux amd64/arm64 OCI 镜像，按上文命令推送到 `ghcr.io/firekula/dflegacy`。
 
 传给 `python tools/release/github_publish.py --updates-only --version <版本> --commit <提交>` 四个 `--archive` 参数，分别指向 `DFLegacy-client-update-v2[-test]-win-{x64,x86}.zip`。发布器校验普通／测试类型、程序摘要和共同补丁，完整上传后公开并匿名回读。玩家使用管理后台生成的对应架构安装包接入游戏。
+
+
+## Windows 离线客户端打包器
+
+```powershell
+dotnet publish src/DFLegacy.ClientPackager -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/client-packager
+```
+
+运行输出目录里的 `DFLegacy.ClientPackager.exe`。发行资源目录选择含双架构 `client-assets/manifest.json` 的上一级目录。资源可由上文的 `ci.py windows --client-only` 生成，也可从匹配的发行镜像中提取。首次使用可导入部署数据目录下的 `config` 文件夹，其中有 `server.json` 和 `manager.json`。Compose 覆盖值以线上实际配置为准。填写连接地址、账号 API、端口与中继偏好后，可保存为 JSON 方案。
+
+「仅生成」可离线生成普通版或测试版安装包，内含 x86 和 x64 两套 ZIP。无需 Script.pvf、部署管理服务或 Python。「生成并发布到 GitHub」另外生成四个更新 ZIP，使用 Python 3.12 和 GitHub 发布凭据，复用发布器草稿与摘要校验流程。请保留输出目录内的 `tools/release`，并为 Git Credential Manager 配好可写凭据，或在启动进程的环境中设置 `DFLEGACY_GITHUB_RELEASE_TOKEN`。更新包沿用资源清单的版本和提交，发布新版本前先用新版本号构建资源。同版本仅允许重试同一套字节。更新 ZIP 不包含服务器连接配置。
+
+发布 v0.1.3 时，使用该版 `client-assets` 在本机生成并上传更新。内嵌充值页面和自动移鼠标缩放由登录器与原生补丁一起更新，现有测试充值接口可继续由 v0.1.2 服务端提供。

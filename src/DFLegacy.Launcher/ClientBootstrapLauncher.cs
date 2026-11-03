@@ -7,17 +7,17 @@ namespace DFLegacy.Launcher;
 
 internal static class ClientBootstrapLauncher
 {
-    internal static Task<Process> StartAsync(string clientPath,string launcherData,ClientPackageManifest manifest,CancellationToken cancellationToken)
+    internal static Task<Process> StartAsync(string clientPath,string launcherData,ClientPackageManifest manifest,CancellationToken cancellationToken,string? paymentUrl=null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
         ClientFileIdentity.RequireSameDirectory(manifest.DirectoryPath,Path.GetDirectoryName(clientPath)!);
         var helper=StandaloneClientInstaller.EnsureHelper(manifest.DirectoryPath);
-        return StartCoreAsync(clientPath,launcherData,manifest,cancellationToken,helper,TimeSpan.FromSeconds(25),verifyEmbedded:true);
+        return StartCoreAsync(clientPath,launcherData,manifest,cancellationToken,helper,TimeSpan.FromSeconds(25),verifyEmbedded:true,paymentUrl:paymentUrl);
     }
     // Internal seam for isolated process fixtures. Production always uses the embedded helper and one installation root.
     internal static async Task<Process> StartCoreAsync(string clientPath,string launcherData,ClientPackageManifest manifest,CancellationToken cancellationToken,
-        string helperPath,TimeSpan timeout,Action<string>? readyPath=null,Func<string,ProcessStartInfo>? fixtureStart=null,bool verifyEmbedded=false)
+        string helperPath,TimeSpan timeout,Action<string>? readyPath=null,Func<string,ProcessStartInfo>? fixtureStart=null,bool verifyEmbedded=false,string? paymentUrl=null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var locks=new List<FileStream>(); Process? helper=null; Process? child=null; var transferred=false; var childValidated=false;
@@ -36,6 +36,7 @@ internal static class ClientBootstrapLauncher
             start.UseShellExecute=false; start.CreateNoWindow=true; start.RedirectStandardInput=true; start.RedirectStandardOutput=true;
             start.StandardInputEncoding=new UTF8Encoding(false,true); start.StandardOutputEncoding=new UTF8Encoding(false,true);
             start.WorkingDirectory=Path.GetDirectoryName(clientPath)!;
+            if(paymentUrl is not null) start.Environment["DFLEGACY_LOCAL_PAYMENT_URL"]=paymentUrl;
             if(fixtureStart is null)
                 foreach(var argument in new[]{"--client",ClientFileIdentity.Canonical(exe.SafeFileHandle),"--patch",patchPath,"--sha256",manifest.Files.Single(f=>f.Path=="DFLegacy.Client.dll").Sha256,"--mode",manifest.Flavor,"--nonce",nonce,"--",launcherData}) start.ArgumentList.Add(argument);
             helper=Process.Start(start) ?? throw Failure("create_failed");

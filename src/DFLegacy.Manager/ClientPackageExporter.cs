@@ -12,7 +12,12 @@ public sealed class ClientPackageExporter
 {
     private readonly ManagerPaths _paths;
     private readonly SemaphoreSlim _gate = new(1);
-    public ClientPackageExporter(ManagerPaths paths) => _paths = paths;
+    private readonly bool _allowUnpackagedAssets;
+    public ClientPackageExporter(ManagerPaths paths, bool allowUnpackagedAssets = false)
+    {
+        _paths = paths;
+        _allowUnpackagedAssets = allowUnpackagedAssets;
+    }
 
     public async Task<string> ExportPairAsync(DeploymentConfig config, bool testBuild, ClientUpdateStore? updates,
         CancellationToken cancellationToken, Action<ClientExportProgress>? progress)
@@ -84,17 +89,22 @@ public sealed class ClientPackageExporter
             var manifest = JsonNode.Parse(manifestBytes) as JsonObject ?? throw new InvalidDataException("客户端资源清单损坏。");
             if (!manifest.Select(p => p.Key).Order().SequenceEqual(new[] { "commit", "files", "version" })) throw new InvalidDataException("客户端资源清单格式无效。");
             var releaseFile = Path.Combine(_paths.Root, "release-manifest.json");
-            if (!File.Exists(releaseFile)) throw new InvalidDataException("缺少发行版本清单。");
-            var release = JsonNode.Parse(await File.ReadAllTextAsync(releaseFile, cancellationToken))!;
-            var anchoredAssetManifest = release["files"]?.AsArray().FirstOrDefault(entry => entry?["path"]?.GetValue<string>() == "client-assets/manifest.json");
-            var manifestHash = Convert.ToHexStringLower(SHA256.HashData(manifestBytes));
-            if (!manifestHash.Equals(anchoredAssetManifest?["sha256"]?.GetValue<string>(), StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("客户端资源清单与发行摘要不一致，请重新安装完整发行包。");
             var version = manifest["version"]?.GetValue<string>() ?? "";
             var commit = manifest["commit"]?.GetValue<string>() ?? "";
             if (version.Length is < 1 or > 100 || !version.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '+')
-                || commit.Length != 40 || !commit.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f') || release["version"]?.GetValue<string>() != version || release["commit"]?.GetValue<string>() != commit)
-                throw new InvalidDataException("客户端资源与当前服务版本不一致，拒绝混用。");
+                || commit.Length != 40 || !commit.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f'))
+                throw new InvalidDataException("客户端资源版本或提交格式无效。");
+            if (File.Exists(releaseFile))
+            {
+                var release = JsonNode.Parse(await File.ReadAllTextAsync(releaseFile, cancellationToken))!;
+                var anchoredAssetManifest = release["files"]?.AsArray().FirstOrDefault(entry => entry?["path"]?.GetValue<string>() == "client-assets/manifest.json");
+                var manifestHash = Convert.ToHexStringLower(SHA256.HashData(manifestBytes));
+                if (!manifestHash.Equals(anchoredAssetManifest?["sha256"]?.GetValue<string>(), StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("客户端资源清单与发行摘要不一致，请重新安装完整发行包。");
+                if (release["version"]?.GetValue<string>() != version || release["commit"]?.GetValue<string>() != commit)
+                    throw new InvalidDataException("客户端资源与当前服务版本不一致，拒绝混用。");
+            }
+            else if (!_allowUnpackagedAssets) throw new InvalidDataException("缺少发行版本清单。");
             var entries = manifest["files"]?.AsArray() ?? throw new InvalidDataException("缺少客户端文件清单。");
             if (entries.Count is < 1 or > 4096) throw new InvalidDataException("客户端文件数量不合理。");
             var files = new Dictionary<string, (string FullPath, string Hash)>(StringComparer.OrdinalIgnoreCase);

@@ -233,11 +233,23 @@ public sealed class ConfigurationStore
         else if (Uri.CheckHostName(host) != UriHostNameType.Dns || host.Contains(':')) throw new ArgumentException("玩家连接地址格式错误。");
     }
 
-    private DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings)
+    public static DeploymentConfig ReadSavedClientConfiguration(string directory)
+    {
+        var section = ParseFile(Path.Combine(directory, "server.json"))["DFLegacy"] as JsonObject
+            ?? throw new InvalidDataException("配置缺少 DFLegacy 节。");
+        var settings = JsonSerializer.Deserialize<ManagerSettings>(File.ReadAllText(Path.Combine(directory, "manager.json")), Json)
+            ?? throw new InvalidDataException("管理器配置为空。");
+        return ReadConfig(section, settings, "Script.pvf");
+    }
+
+    private DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings) =>
+        ReadConfig(node, settings, Path.Combine(_paths.Root, "resources", "Script.pvf"));
+
+    private static DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings, string defaultPvf)
     {
         var values = JsonSerializer.SerializeToNode(new DeploymentConfig
         {
-            ScriptPvfPath = Path.Combine(_paths.Root, "resources", "Script.pvf"), AdvertisedHost = settings.AdvertisedHost,
+            ScriptPvfPath = defaultPvf, AdvertisedHost = settings.AdvertisedHost,
             AccountServiceUrl = settings.AccountServiceUrl, RelayEnabled = settings.RelayEnabled, RelayPreference = settings.RelayPreference, Autostart = settings.Autostart
         })!.AsObject();
         foreach (var (field, path) in Fields) { var value = Get(node, path); if (value is not null) values[field] = value.DeepClone(); }
