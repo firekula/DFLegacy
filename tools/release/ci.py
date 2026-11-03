@@ -165,7 +165,7 @@ def legacy_patch_fixture(cache):
         temporary.unlink(missing_ok=True)
 
 
-def windows(version, commit):
+def windows(version, commit, client_only=False):
     if os.name != "nt":
         raise ReleaseError("Windows asset build requires Windows")
     validate_identity(version, commit)
@@ -194,9 +194,10 @@ def windows(version, commit):
                                  debug=debug, launcher_x86=launcher_x86)
     # Tar transport keeps the immutable assets together. All receivers verify it.
     make_archive(assets, REPO / "artifacts/client-assets.tar.gz", "linux-x64")
-    _, archive = publish("win-x64", version, commit, assets, REPO / "artifacts" / ("DFLegacy-" + version + "-win-x64"),
+    if not client_only:
+        _, archive = publish("win-x64", version, commit, assets, REPO / "artifacts" / ("DFLegacy-" + version + "-win-x64"),
                          verification="Windows x64 CI: managed/native tests and packaged Manager health/readiness; GPU and graphical game acceptance are not executed in headless CI")
-    smoke_archive(archive)
+        smoke_archive(archive)
     build_client_packages(assets, REPO / "artifacts", version, commit)
     run(sys.executable, "tools/release/tests/verify_client_notices.py", "--native", native.parent,
         "--launcher", launcher / "DFLegacy.Launcher.exe", "--packages", REPO / "artifacts")
@@ -229,6 +230,8 @@ def main():
         child = sub.add_parser(command)
         child.add_argument("--version", required=True)
         child.add_argument("--commit", required=True)
+        if command == "windows":
+            child.add_argument("--client-only", action="store_true")
         if command == "linux":
             child.add_argument("--assets-archive", required=True)
     child = sub.add_parser("smoke")
@@ -241,7 +244,7 @@ def main():
         if args.command == "metadata":
             metadata()
         elif args.command == "windows":
-            windows(args.version, args.commit)
+            windows(args.version, args.commit, args.client_only)
         elif args.command == "linux":
             linux(args.version, args.commit, args.assets_archive)
         elif args.command == "image-metadata":

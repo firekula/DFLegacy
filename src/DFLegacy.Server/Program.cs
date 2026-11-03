@@ -844,18 +844,16 @@ app.MapPost("/api/auth/login", async (
 
     auth.RegisterAttempt(source);
 
-    var account = await store.AuthenticateAsync(userName, request.Password, token);
-    if (account is null)
+    var login = await store.AuthenticateWebAsync(userName, request.Password, auth, token);
+    if (login is null)
     {
         auth.RegisterFailure(userName, source);
         return Results.Unauthorized();
     }
 
-    auth.ClearFailures(account.UserName);
-    var role = await store.GetRoleAsync(account.UserName, token);
     // token 不进任何缓存（含中间代理）。
     http.Response.Headers.CacheControl = "no-store";
-    return Results.Ok(auth.IssueToken(account.UserName, role));
+    return Results.Ok(login);
 });
 
 app.MapPost("/api/auth/logout", (AdminAuthService auth, HttpContext http) =>
@@ -878,6 +876,36 @@ app.MapGet("/api/accounts/{userName}/characters", async (
 
 app.MapGet("/api/admin/users", async (JsonGameStore store, CancellationToken token) =>
     Results.Ok(await store.GetAccountsAsync(token)));
+
+app.MapPut("/api/admin/users/{userName}/password", async (
+    string userName, AdminSetAccountPasswordRequest request, JsonGameStore store,
+    AdminAuthService auth, HttpContext http, CancellationToken token) =>
+    ModerationReply(await store.SetAccountPasswordByAdminAsync(userName, ModerationActor(http), request, auth, token)));
+
+app.MapPut("/api/admin/users/{userName}/ban", async (
+    string userName, AdminSetAccountBanRequest request, JsonGameStore store,
+    AdminAuthService auth, CharacterSessionRegistry sessions, HttpContext http, CancellationToken token) =>
+    ModerationReply(await store.SetAccountBanByAdminAsync(userName, ModerationActor(http), request, auth, sessions, token)));
+
+app.MapDelete("/api/admin/users/{userName}/ban", async (
+    string userName, JsonGameStore store, AdminAuthService auth, HttpContext http, CancellationToken token) =>
+    ModerationReply(await store.ClearAccountBanByAdminAsync(userName, ModerationActor(http), auth, token)));
+
+app.MapDelete("/api/admin/characters/{characterId:guid}", async (
+    Guid characterId, JsonGameStore store, CharacterSessionRegistry sessions, HttpContext http, CancellationToken token) =>
+    ModerationReply(await store.DeleteOfflineCharacterByAdminAsync(characterId, ModerationActor(http), sessions, token)));
+
+static string ModerationActor(HttpContext http) =>
+    ((AdminTokenInfo)http.Items[AdminAccessPolicy.TokenInfoKey]!).UserName;
+
+static IResult ModerationReply(ModerationResult result) => result.Status switch
+{
+    ModerationStatus.Success => Results.Ok(new { success = true, result.RevokedTokens, result.Ban }),
+    ModerationStatus.InvalidRequest => Results.BadRequest(new { error = result.Error }),
+    ModerationStatus.NotFound => Results.NotFound(new { error = result.Error }),
+    ModerationStatus.Conflict => Results.Conflict(new { error = result.Error }),
+    _ => Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status503ServiceUnavailable)
+};
 
 app.MapPut("/api/admin/users/{userName}/role", async (
     string userName,

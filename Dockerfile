@@ -29,7 +29,7 @@ COPY client-assets/ client-assets/
 RUN python3 tools/release/release.py verify client-assets --client-assets --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT" \
     && case "$TARGETARCH" in amd64) rid=linux-x64;; arm64) rid=linux-arm64;; *) exit 2;; esac \
     && python3 tools/release/release.py publish --rid "$rid" --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT" \
-       --client-assets client-assets --output /out/DFLegacy \
+       --client-assets client-assets --output /out/DFLegacy --directory-only \
        --verification "Docker cross-build for $TARGETARCH; container execution is validated separately by CI"
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-noble AS runtime

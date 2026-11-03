@@ -137,12 +137,10 @@ SDK stage 使用构建主机平台，通过目标 RID 交叉发布；runtime sta
 
 CI 使用 [Git 提交时间固定 BuildKit 时间戳](https://docs.docker.com/build/ci/github-actions/reproducible-builds/)，并关闭非确定性的 provenance/SBOM 附件、清理 apt 动态日志、规范化 ASP.NET 生成的 HTTP Last-Modified。重试发布应复用原先通过门禁的 artifacts；基础镜像、apt 或 NuGet 内容变动会改变构建输入，此时完整 inventory 预留应拒绝覆盖已有版本。
 
-## Gitea CI 与发布
+## 源码与产物发布
 
-完整流程和 Runner 配置见 [.gitea/README.md](.gitea/README.md)。工作流只使用自托管标签，不会凭空提供 Windows/Linux 机器。所有必过测试和构建先完成；`main` 发布开发预发布、`vX.Y.Z` 标签发布正式版，其他分支与 PR 只生成 artifact。正式发布前仍须做 Windows 客户端连接 Windows/Linux/Docker 的真实手工验收。
+Gitea 接收源码并运行 [只读测试](.gitea/README.md)。Windows、Linux 和 macOS 的独立服务端归档可手工构建。
 
-`release.py release` 要求五个验证通过的归档；另附独立 `compose.yaml`、`compose.host-ipv6.yaml` 和 `.env.example`，全部纳入发行 inventory 摘要，先上传草稿，全部成功后再公开。`--check-only` 可在任何外部写入前核对整套归档和远端版本身份。匹配提交与摘要的中断草稿可重试；已公开版本拒绝覆盖。工作流支持手工触发，默认只测试构建；显式 `publish=true` 也需通过所有门禁。镜像 `latest` 仅在正式标签完整发布成功后更新，开发版不更新该别名。`prune` 默认 dry-run，只选择本流程标记的开发预发布与对应标签，保留最近 20 个，需 `--apply` 才删除。脚本不自动更新在线服务器。
+在干净的发布检出中，使用 `python tools/release/ci.py windows --client-only --version <版本> --commit <提交>` 构建并测试 Windows 客户端资源。使用生成的 `client-assets` 从同一提交构建 Linux amd64/arm64 OCI 镜像，按上文命令推送到 `ghcr.io/firekula/dflegacy`。
 
-## GitHub 镜像与客户端更新发行
-
-仅发布 GitHub 更新时，使用同一提交的 Windows 客户端资源构建服务端 Docker 镜像并推送 GHCR。传入 `github_publish.py --updates-only` 及两个 V2 更新 ZIP，发布器校验普通版、测试版和共享二进制的摘要，公开后匿名读回。源码分支推送与产物发布分开执行。
+传给 `python tools/release/github_publish.py --updates-only --version <版本> --commit <提交>` 四个 `--archive` 参数，分别指向 `DFLegacy-client-update-v2[-test]-win-{x64,x86}.zip`。发布器校验普通／测试类型、程序摘要和共同补丁，完整上传后公开并匿名回读。玩家使用管理后台生成的对应架构安装包接入游戏。

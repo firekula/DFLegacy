@@ -20,7 +20,7 @@ internal sealed class UpdateSession : IUpdateSession, IDisposable
     {
         this.installation=installation;
         repository=options.UpdateRepository; includePrereleases=options.IncludePrereleaseUpdates;
-        githubEnabled = !options.DisableGitHubUpdates && ArchitectureName == "x64";
+        githubEnabled = !options.DisableGitHubUpdates && ArchitectureName is not null;
         if (!string.IsNullOrWhiteSpace(options.UpdateServiceUrl))
             hostedOrigin = HostedUpdateClient.ParseOrigin(options.UpdateServiceUrl);
         else if (githubEnabled)
@@ -44,7 +44,7 @@ internal sealed class UpdateSession : IUpdateSession, IDisposable
         if (architecture is null || hostedOrigin is null && !githubEnabled) return null;
         var manifest = ReadManifest();
         var release = hostedOrigin is null
-            ? await new GitHubUpdateClient(http, repository, includePrereleases, manifest.Flavor).CheckAsync(installed, token).ConfigureAwait(false)
+            ? await new GitHubUpdateClient(http, repository, includePrereleases, manifest.Flavor, architecture).CheckAsync(installed, token).ConfigureAwait(false)
             : await new HostedUpdateClient(http, hostedOrigin, architecture, manifest.Flavor).CheckAsync(installed, token).ConfigureAwait(false);
         // A fresh tools package has no updater state yet. Its validated version
         // already identifies an identical release without a redundant ZIP download.
@@ -59,7 +59,7 @@ internal sealed class UpdateSession : IUpdateSession, IDisposable
             throw new InvalidOperationException("当前架构未配置更新源。");
         var flavor = ReadManifest().Flavor;
         return hostedOrigin is null
-            ? new GitHubUpdateClient(http, repository, includePrereleases, flavor).DownloadAsync(release, root, progress, token)
+            ? new GitHubUpdateClient(http, repository, includePrereleases, flavor, architecture).DownloadAsync(release, root, progress, token)
             : new HostedUpdateClient(http, hostedOrigin, architecture, flavor).DownloadAsync(release, root, progress, token);
     }
     public bool Adopt(PreparedUpdate update)=>installer.RecordCurrentIfMatching(update);

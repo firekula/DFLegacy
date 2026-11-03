@@ -54,6 +54,17 @@ internal static class UpdateTransportTests
         check((await client.CheckAsync())?.Id == 7,"release selection uses publication time and ignores drafts");
         check((await new GitHubUpdateClient(http,"firekula/DFLegacy",false).CheckAsync())?.Id == 5,"stable feed excludes preview");
         check(await client.CheckAsync(7) is null,"recorded release prevents downgrade/repeat");
+        const string x86Test = "DFLegacy-client-update-v2-test-win-x86.zip";
+        using var dualFeed = Client(JsonSerializer.SerializeToUtf8Bytes(new[] {
+            new { id=10, tag_name="dual", published_at="2026-01-01T00:00:00Z", draft=false, prerelease=false,
+                assets=new[]{GitHubUpdateClient.AssetName, x86Test}.Select(name => new {
+                    name, size=12, browser_download_url="https://github.com/firekula/DFLegacy/releases/download/dual/"+name,
+                    digest="sha256:"+new string('a',64) }) }
+        }));
+        var x86TestRelease = await new GitHubUpdateClient(dualFeed,"firekula/DFLegacy",flavor:"test",architecture:"x86").CheckAsync();
+        check(x86TestRelease?.DownloadUrl.Segments.Last() == x86Test,"x86 test launcher chooses only the matching GitHub asset");
+        check(await new GitHubUpdateClient(dualFeed,"firekula/DFLegacy",architecture:"x86").CheckAsync() is null,
+            "x86 normal launcher does not fall back to x64 or test assets");
         var pages=new List<int>();
         using(var previews=PagedPreviews(pages.Add))
         {

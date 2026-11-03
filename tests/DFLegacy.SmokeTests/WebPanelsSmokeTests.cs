@@ -38,7 +38,64 @@ internal static class WebPanelsSmokeTests
         var invalidHost = new ServerOptions(); invalidHost.WebPanels.Player.Host = "not-an-address";
         try { WebPanelHosting.Validate(invalidHost); check(false, "invalid panel host rejected"); }
         catch (InvalidOperationException exception) { check(exception.Message.Contains("WebPanels.Player.Host"), "invalid host reports configuration path"); }
+        await ModerationStoreAsync(check);
         await HttpAsync(check);
+    }
+
+    private static async Task ModerationStoreAsync(Action<bool, string> check)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dflegacy-moderation-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var options = new ServerOptions { DataPath = Path.Combine(root, "state.json"), SeedTestAccount = false };
+            var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+            await store.InitializeAsync();
+            await store.CreateAccountAsync(new("moderated", "old-password", OicqCode: "123456"));
+            var result = await store.CreateCharacterAsync("moderated", new("ModeratedChar", Level: 1));
+            var character = result.Character!;
+            var sessions = new CharacterSessionRegistry(NullLogger<CharacterSessionRegistry>.Instance);
+            var kicked = false;
+            var runtime = new RuntimeState();
+            using var contexts = new GameplayDatagramService(options, runtime, NullLogger<GameplayDatagramService>.Instance);
+            var channel = runtime.Add("channel:test", "127.0.0.1:41000");
+            contexts.RegisterChannelSession(channel, IPAddress.Loopback);
+            var lease = await sessions.ClaimAsync(character.Id, channel.Id, () => kicked = true, default);
+            var auth = new AdminAuthService(options, TimeProvider.System);
+            var oldToken = (await store.AuthenticateWebAsync("moderated", "old-password", auth, default))!.Token;
+
+            check((await store.DeleteOfflineCharacterByAdminAsync(character.Id, "operator", sessions, default)).Status == ModerationStatus.Conflict,
+                "GM deletion refuses an attached character");
+            var ban = await store.SetAccountBanByAdminAsync("moderated", "operator", new(1, "fixture"), auth, sessions, default);
+            check(ban.Status == ModerationStatus.Success && ban.Ban?.ExpiresAt > DateTimeOffset.UtcNow && kicked && auth.Validate(oldToken) is null,
+                "timed ban persists expiry, revokes web token, and kicks attached game character");
+            check(await ChannelLoginAuthentication.AuthenticateAsync(store, contexts, channel.Id, "moderated", "old-password") is null
+                && await ChannelLoginAuthentication.AuthenticateAsync(store, contexts, channel.Id, "moderated", null) is null,
+                "ban blocks both password and legacy username-only game login");
+
+            var stored = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+            await stored.InitializeAsync();
+            check((await stored.GetAccountAsync("moderated"))?.Ban == ban.Ban
+                && await stored.AuthenticateWebAsync("moderated", "old-password", auth, default) is null,
+                "active ban survives store reload and blocks player center authentication");
+            check(await stored.AuthenticateAsync("moderated", "old-password") is null,
+                "persisted ban blocks password game authentication");
+
+            // Keep the loaded record intact except for moving its expiry into the past.
+            var json = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(options.DataPath))!;
+            json["Accounts"]![0]!["Ban"]!["ExpiresAt"] = DateTimeOffset.UtcNow.AddMinutes(-1);
+            await File.WriteAllTextAsync(options.DataPath, json.ToJsonString());
+            var expired = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance);
+            await expired.InitializeAsync();
+            check((await expired.GetAccountAsync("moderated"))?.Ban is null
+                && await expired.AuthenticateWebAsync("moderated", "old-password", auth, default) is not null,
+                "expired timed ban allows login without manual unban");
+            sessions.Release(lease);
+            check((await expired.DeleteOfflineCharacterByAdminAsync(character.Id, "operator", sessions, default)).Status == ModerationStatus.Success
+                && (await expired.GetAccountAsync("moderated"))?.Characters.Count == 0,
+                "offline delete removes the selected storage ID");
+        }
+        finally { Directory.Delete(root, true); }
     }
 
     private static int Port()
@@ -117,6 +174,9 @@ internal static class WebPanelsSmokeTests
                 check(playerKind.StatusCode == HttpStatusCode.NotFound, "player listener cannot change account kind even with admin token");
                 using var authorized = await Get(gm, "/api/status"); check(authorized.StatusCode == HttpStatusCode.OK, "GM bearer authenticates actual admin API");
                 using var deniedToken = await Get(player, "/api/status"); check(deniedToken.StatusCode == HttpStatusCode.NotFound, "even admin token cannot expose admin API on player listener");
+                var adminToken = client.DefaultRequestHeaders.Authorization?.Parameter;
+                client.DefaultRequestHeaders.Authorization = null;
+                await ModerationHttpAsync(client, gm, player, adminToken, check);
                 client.DefaultRequestHeaders.Authorization = null;
                 using var oldPage = await Get(api, "/admin/index.html"); check(oldPage.StatusCode == HttpStatusCode.OK, "legacy API-port page remains compatible");
                 using var playerLogin = await client.PostAsync($"http://127.0.0.1:{player}/api/auth/login", new StringContent("{\"userName\":\"paneladmin\",\"password\":\"panel-password\"}", Encoding.UTF8, "application/json"));
@@ -126,4 +186,67 @@ internal static class WebPanelsSmokeTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    private static async Task ModerationHttpAsync(HttpClient client, int gm, int player, string? adminToken, Action<bool, string> check)
+    {
+        async Task<HttpResponseMessage> Call(int port, HttpMethod method, string path, object? data = null, string? bearer = null)
+        {
+            using var request = new HttpRequestMessage(method, $"http://127.0.0.1:{port}{path}");
+            if (data is not null) request.Content = new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json");
+            if (bearer is not null) request.Headers.Authorization = new("Bearer", bearer);
+            return await client.SendAsync(request);
+        }
+
+        const string account = "/api/admin/users/ordinarynew";
+        using var firstLogin = await Call(player, HttpMethod.Post, "/api/auth/login", new { userName = "ordinarynew", password = "new-password" });
+        using var firstBody = JsonDocument.Parse(await firstLogin.Content.ReadAsStringAsync());
+        var playerToken = firstBody.RootElement.GetProperty("token").GetString();
+        using var unauthorized = await Call(gm, HttpMethod.Put, account + "/password", new { newPassword = "replaced-password" }, playerToken);
+        check(unauthorized.StatusCode == HttpStatusCode.Forbidden, "ordinary player cannot reset another password through GM API");
+        using var wrongPort = await Call(player, HttpMethod.Put, account + "/password", new { newPassword = "replaced-password" }, adminToken);
+        check(wrongPort.StatusCode == HttpStatusCode.NotFound, "player listener hides moderation API from administrator");
+        using var protectedAdmin = await Call(gm, HttpMethod.Put, "/api/admin/users/paneladmin/password", new { newPassword = "replaced-password" }, adminToken);
+        check(protectedAdmin.StatusCode == HttpStatusCode.Conflict, "GM cannot reset an administrator password through moderation");
+
+        using var reset = await Call(gm, HttpMethod.Put, account + "/password", new { newPassword = "replaced-password" }, adminToken);
+        using var stale = await Call(player, HttpMethod.Get, "/api/accounts/ordinarynew/characters", bearer: playerToken);
+        using var oldPassword = await Call(player, HttpMethod.Post, "/api/auth/login", new { userName = "ordinarynew", password = "new-password" });
+        check(reset.IsSuccessStatusCode && stale.StatusCode == HttpStatusCode.Unauthorized && oldPassword.StatusCode == HttpStatusCode.Unauthorized,
+            "GM reset changes the password and invalidates old player token");
+
+        using var secondLogin = await Call(player, HttpMethod.Post, "/api/auth/login", new { userName = "ordinarynew", password = "replaced-password" });
+        using var secondBody = JsonDocument.Parse(await secondLogin.Content.ReadAsStringAsync());
+        playerToken = secondBody.RootElement.GetProperty("token").GetString();
+        using var missingDuration = await Call(gm, HttpMethod.Put, account + "/ban", new { reason = "fixture" }, adminToken);
+        check(missingDuration.StatusCode == HttpStatusCode.BadRequest, "ban must specify a duration or explicit null");
+        using var permanent = await Call(gm, HttpMethod.Put, account + "/ban", new { durationHours = (int?)null, reason = "fixture" }, adminToken);
+        using var banned = await Call(player, HttpMethod.Post, "/api/auth/login", new { userName = "ordinarynew", password = "replaced-password" });
+        using var revoked = await Call(player, HttpMethod.Get, "/api/accounts/ordinarynew/characters", bearer: playerToken);
+        using var accounts = await Call(gm, HttpMethod.Get, "/api/admin/users", bearer: adminToken);
+        using var accountsBody = JsonDocument.Parse(await accounts.Content.ReadAsStringAsync());
+        var row = accountsBody.RootElement.EnumerateArray().Single(value => value.GetProperty("userName").GetString() == "ordinarynew");
+        check(permanent.IsSuccessStatusCode && banned.StatusCode == HttpStatusCode.Unauthorized && revoked.StatusCode == HttpStatusCode.Unauthorized
+            && row.GetProperty("ban").GetProperty("expiresAt").ValueKind == JsonValueKind.Null,
+            "permanent ban revokes sessions, blocks player center login and is visible in account list");
+        using var clear = await Call(gm, HttpMethod.Delete, account + "/ban", bearer: adminToken);
+        using var restored = await Call(player, HttpMethod.Post, "/api/auth/login", new { userName = "ordinarynew", password = "replaced-password" });
+        check(clear.IsSuccessStatusCode && restored.IsSuccessStatusCode, "GM unban restores player center login");
+        using var restoredBody = JsonDocument.Parse(await restored.Content.ReadAsStringAsync());
+        playerToken = restoredBody.RootElement.GetProperty("token").GetString();
+
+        var character = row.GetProperty("characters").EnumerateArray().FirstOrDefault();
+        if (character.ValueKind == JsonValueKind.Undefined)
+        {
+            using var created = await Call(gm, HttpMethod.Post, "/api/accounts/ordinarynew/characters", new { name = "DeletionFixture", level = 1 }, adminToken);
+            using var createdBody = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+            character = createdBody.RootElement.Clone();
+        }
+        var id = character.GetProperty("id").GetGuid();
+        using var deniedDelete = await Call(gm, HttpMethod.Delete, $"/api/admin/characters/{id}", bearer: playerToken);
+        using var deleted = await Call(gm, HttpMethod.Delete, $"/api/admin/characters/{id}", bearer: adminToken);
+        using var repeated = await Call(gm, HttpMethod.Delete, $"/api/admin/characters/{id}", bearer: adminToken);
+        check(deniedDelete.StatusCode == HttpStatusCode.Forbidden && deleted.IsSuccessStatusCode && repeated.StatusCode == HttpStatusCode.NotFound,
+            "GM delete removes an offline character and a repeated request is harmless");
+    }
+
 }

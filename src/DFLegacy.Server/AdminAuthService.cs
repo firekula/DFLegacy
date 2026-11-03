@@ -164,22 +164,22 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
     /// </summary>
     public AdminTokenInfo? Validate(string? token)
     {
-        if (string.IsNullOrEmpty(token) || !_tokens.TryGetValue(token, out var info))
+        if (string.IsNullOrEmpty(token)) return null;
+        while (_tokens.TryGetValue(token, out var info))
         {
-            return null;
-        }
+            var now = clock.GetUtcNow();
+            var absoluteDeadline = info.IssuedAt + AbsoluteTokenLifetime;
+            if (info.ExpiresAt <= now || absoluteDeadline <= now)
+            {
+                if (_tokens.TryRemove(new KeyValuePair<string, AdminTokenInfo>(token, info))) return null;
+                continue;
+            }
 
-        var now = clock.GetUtcNow();
-        var absoluteDeadline = info.IssuedAt + AbsoluteTokenLifetime;
-        if (info.ExpiresAt <= now || absoluteDeadline <= now)
-        {
-            _tokens.TryRemove(token, out _);
-            return null;
+            var renewed = info with { ExpiresAt = Min(now + TokenLifetime, absoluteDeadline) };
+            // Renewal can race a moderation action. Never recreate a removed token.
+            if (_tokens.TryUpdate(token, renewed, info)) return renewed;
         }
-
-        var renewed = info with { ExpiresAt = Min(now + TokenLifetime, absoluteDeadline) };
-        _tokens[token] = renewed;
-        return renewed;
+        return null;
     }
 
     public void Logout(string? token)

@@ -46,6 +46,7 @@ internal static class PrivateStoreSmokeTests
             && !GameProtocolEngine.TryReadPrivateStoreDisplay(Convert.FromHexString("0100FFFFFFFF"), out _, out _)
             && !GameProtocolEngine.TryReadPrivateStoreDisplay(Convert.FromHexString("0100010000000000"), out _, out _), "display rejects extra puppet fields, truncation, oversized lengths and NUL titles");
         await CheckDomainAsync(check);
+        await CheckIdentitylessMaterialAsync(check);
         await CheckRecoveryAsync(check);
         await CheckRacesAndCapacityAsync(check);
         await CheckRejectionsAsync(check);
@@ -116,6 +117,32 @@ internal static class PrivateStoreSmokeTests
         check((await loaded.GetCharactersAsync("alice"))[0].Gold == 1121
             && (await loaded.GetCharactersAsync("bobby"))[0].Gold == 875, "completed store balances survive restart");
     }
+    private static async Task CheckIdentitylessMaterialAsync(Action<bool, string> check)
+    {
+        await using var f = await StoreFixture.CreateAsync(identitylessMaterial: true);
+        var material = f.A.Inventory!.Single(i => i.Slot == 73);
+        check(material.InstanceId == Guid.Empty, "ordinary material stacks have no per-instance identifier");
+        var token = Guid.NewGuid();
+        check(f.Store.Commerce.TryAcquire(CommerceActivity.Store, token, f.A.Id), "store acquires canonical material source");
+
+        var display = await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [new(0, 101, 0, 73, 5)]);
+        check(display.Status == DungeonRewardLedgerStatus.Committed,
+            $"canonical material can be listed for sale (status {display.Status}, error {display.Error})");
+        if (display.Status != DungeonRewardLedgerStatus.Committed) return;
+        check(display.Character?.PrivateStoreStock?.Listings.Single() is
+                { Quantity: 5, SourceInstanceId: var sourceId, Item.InstanceId: var escrowId }
+            && sourceId == Guid.Empty && escrowId == Guid.Empty, "splitting a material stack creates no equipment identity");
+
+        var purchase = await f.Store.BuyPrivateStoreAsync(f.B.Id, f.A.Id, token, 0, 2);
+        check(purchase.Status == DungeonRewardLedgerStatus.Committed
+            && purchase.Item is { CountOrValue: 2, InstanceId: var buyerId } && buyerId == Guid.Empty,
+            "partial material sale transfers the quantity without an equipment identity");
+        var close = await f.Store.ClosePrivateStoreAsync(f.A.Id, token, false);
+        check(close.Status == DungeonRewardLedgerStatus.Committed && close.Character?.PrivateStoreStock is null
+            && close.Character?.Inventory?.Single(i => i.Slot == 73) == material with { CountOrValue = 8 },
+            "closing returns only unsold material to its original identityless stack");
+    }
+
     private static async Task CheckLifecycleAsync(Action<bool, string> check)
     {
         await using var f = await StoreFixture.CreateAsync();
@@ -430,7 +457,7 @@ internal static class PrivateStoreSmokeTests
         public Task<CharacterRecord> ReadA() => Read("alice");
         private async Task<CharacterRecord> Read(string account) => (await Store.GetCharactersAsync(account))[0];
         public JsonGameStore Reload() => new(Options, NullLogger<JsonGameStore>.Instance, itemCatalog: Items, statCatalog: Stats, privateStoreCatalog: Catalog);
-        public static async Task<StoreFixture> CreateAsync()
+        public static async Task<StoreFixture> CreateAsync(bool identitylessMaterial = false)
         {
             var root = Path.Combine(Path.GetTempPath(), "dflegacy-store-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root); TradeFixtures.Create(root);
@@ -451,7 +478,7 @@ internal static class PrivateStoreSmokeTests
             await store.GrantCeraToAccountAsync("alice", 50_000);
             await store.GrantCeraToAccountAsync("bobby", 50_000);
             a = (await store.SaveCharacterInventoryAsync("alice", a.Id, 1000,
-                [new(73, TradeFixtures.PotionItemId, 10, InstanceId: Guid.NewGuid()), new(9, TradeFixtures.SwordItemId, 1, 3, 19, EquipmentQualitySeed: 37, InstanceId: Guid.NewGuid())], []))!;
+                [new(73, TradeFixtures.PotionItemId, 10, InstanceId: identitylessMaterial ? Guid.Empty : Guid.NewGuid()), new(9, TradeFixtures.SwordItemId, 1, 3, 19, EquipmentQualitySeed: 37, InstanceId: Guid.NewGuid())], []))!;
             b = (await store.SaveCharacterInventoryAsync("bobby", b.Id, 1000, [], []))!;
             return new() { Root = root, Options = options, Store = store, Items = items, Stats = stats, Catalog = catalog, A = a, B = b };
         }

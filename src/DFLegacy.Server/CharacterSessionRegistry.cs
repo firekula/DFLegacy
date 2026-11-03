@@ -415,6 +415,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
 
     public bool IsOnline(Guid characterId) => FindByCharacterId(characterId) is not null;
 
+    internal void Disconnect(Guid characterId) => FindByCharacterId(characterId)?.Kick();
+
     private CharacterSessionLease? FindByCharacterId(Guid characterId)
     {
         if (_activeCharacters.TryGetValue(

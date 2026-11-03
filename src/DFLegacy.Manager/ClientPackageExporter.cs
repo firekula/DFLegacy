@@ -200,7 +200,7 @@ public sealed class ClientPackageExporter
                 var launcher = new
                 {
                     ClientPath = "DNF.exe", EntranceHost = config.AdvertisedHost, config.EntrancePort, AccountServicePort = config.AdminPort,
-                    config.AccountServiceUrl, UpdateServiceUrl = updateUrl ?? "", DisableGitHubUpdates = isPair, Theme = "dark", Account = "", Password = "", Accounts = Array.Empty<object>(), AccountIndex = 0, StartServer = false,
+                    config.AccountServiceUrl, UpdateServiceUrl = updateUrl ?? "", DisableGitHubUpdates = updateUrl is not null, Theme = "dark", Account = "", Password = "", Accounts = Array.Empty<object>(), AccountIndex = 0, StartServer = false,
                     D3D9Adapter = 0, D3D9TimeoutSeconds = 30, D3D9RetryIntervalSeconds = 1,
                     Relay = new { Enabled = config.RelayEnabled, TcpPorts = string.Join(',', config.ForwardedTcpPorts()),
                         UdpPorts = string.Join(',', config.ForwardedUdpPorts()), Preference = config.RelayPreference }

@@ -387,6 +387,8 @@ public sealed record AccountRecord(
     public int GiftReceiveYearMonth { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int GiftReceiveCount { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AccountBan? Ban { get; init; }
 }
 
 public sealed record ClientCeraTopUpRequest(string Account, int Amount);
@@ -448,7 +450,8 @@ public sealed record PublicAccountRecord(
     uint AccountUid = 0,
     AccountKind Kind = AccountKind.Invalid,
     int Cash = 0,
-    AccountRole Role = AccountRole.Player);
+    AccountRole Role = AccountRole.Player,
+    AccountBan? Ban = null);
 
 public sealed record CreateAccountRequest(
     string UserName,
@@ -1553,7 +1556,7 @@ public sealed partial class JsonGameStore(
         try
         {
             var account = FindAccountLocked(userName);
-            return account is not null && PasswordMatches(account, password)
+            return account is not null && !IsBanned(account) && PasswordMatches(account, password)
                 ? ToAuthenticatedAccount(account)
                 : null;
         }
@@ -1675,7 +1678,7 @@ public sealed partial class JsonGameStore(
         try
         {
             var account = FindAccountLocked(userName);
-            return account is null ? null : ToAuthenticatedAccount(account);
+            return account is null || IsBanned(account) ? null : ToAuthenticatedAccount(account);
         }
         finally
         {
@@ -2052,21 +2055,7 @@ public sealed partial class JsonGameStore(
                 return (false, null, "Character slot is empty.");
             }
 
-            var character = account.Characters[slot];
-            account.Characters.RemoveAt(slot);
-            ReindexCharacterSlotsLocked(account);
-            var notices = PrepareRemovedMentorEdgesLocked(accounts);
-            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
-                return (false, null, "Character deletion outcome is uncertain; store quarantined.");
-            PublishMentorRemovalNotices(notices);
-            logger.LogInformation(
-                "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
-                character.Name,
-                character.CharacterNo,
-                character.Id,
-                slot,
-                account.AccountUid);
-            return (true, character, null);
+            return await DeleteCharacterAtSlotLockedAsync(accounts, account, slot, cancellationToken);
         }
         finally
         {
@@ -2101,26 +2090,32 @@ public sealed partial class JsonGameStore(
                 return (false, null, "Character slot is empty.");
             }
 
-            var character = account.Characters[slot];
-            account.Characters.RemoveAt(slot);
-            ReindexCharacterSlotsLocked(account);
-            var notices = PrepareRemovedMentorEdgesLocked(accounts);
-            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
-                return (false, null, "Character deletion outcome is uncertain; store quarantined.");
-            PublishMentorRemovalNotices(notices);
-            logger.LogInformation(
-                "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
-                character.Name,
-                character.CharacterNo,
-                character.Id,
-                slot,
-                account.AccountUid);
-            return (true, character, null);
+            return await DeleteCharacterAtSlotLockedAsync(accounts, account, slot, cancellationToken);
         }
         finally
         {
             _gate.Release();
         }
+    }
+
+    private async Task<(bool Deleted, CharacterRecord? Character, string? Error)> DeleteCharacterAtSlotLockedAsync(
+        List<AccountRecord> accounts, AccountRecord account, int slot, CancellationToken cancellationToken)
+    {
+        var character = account.Characters[slot];
+        account.Characters.RemoveAt(slot);
+        ReindexCharacterSlotsLocked(account);
+        var notices = PrepareRemovedMentorEdgesLocked(accounts);
+        if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+            return (false, null, "Character deletion outcome is uncertain; store quarantined.");
+        PublishMentorRemovalNotices(notices);
+        logger.LogInformation(
+            "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
+            character.Name,
+            character.CharacterNo,
+            character.Id,
+            slot,
+            account.AccountUid);
+        return (true, character, null);
     }
 
     public async Task<(bool Replaced, int CharacterCount, string? Error)> ReplaceAllCharactersAsync(
@@ -6831,7 +6826,8 @@ public sealed partial class JsonGameStore(
             account.AccountUid,
             AccountUidRules.Classify(account.AccountUid),
             Math.Max(0, account.Cash ?? DefaultAccountCash),
-            account.Role);
+            account.Role,
+            IsBanned(account) ? account.Ban : null);
 
     private static AuthenticatedAccount ToAuthenticatedAccount(AccountRecord account) =>
         new(account.AccountUid, account.UserName, AccountUidRules.Classify(account.AccountUid));

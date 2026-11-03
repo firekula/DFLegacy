@@ -13,11 +13,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, UPDATE_TEST_ASSET, PUBLIC_ASSETS, read_client_update, validate_identity, verify_client_package
+from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, UPDATE_TEST_ASSET, PUBLIC_ASSETS, X86_UPDATE_ASSETS, read_client_update, validate_identity, verify_client_package
 
 REPOSITORY = 'firekula/DFLegacy'
 ASSET_NAME = UPDATE_ASSET
 ASSET_NAMES = PUBLIC_ASSETS
+ALLOWED_ASSET_NAMES = (*ASSET_NAMES, *X86_UPDATE_ASSETS)
 TOKEN_ENV = 'DFLEGACY_GITHUB_RELEASE_TOKEN'
 MARKER = '<!-- dflegacy-client-update:v2 -->'
 README = b'# DFLegacy client updates\n\nThis repository distributes public client releases only. Source development and build history are maintained separately.\n'
@@ -67,7 +68,7 @@ class GitHub:
         if any(part in ('.', '..') for part in decoded.split('/')) or '\\' in decoded:
             raise ReleaseError('untrusted GitHub API path')
         if p.hostname == 'uploads.github.com':
-            allowed = re.fullmatch(r'/releases/[1-9]\d*/assets', path) and p.query in {'name=' + name for name in ASSET_NAMES}
+            allowed = re.fullmatch(r'/releases/[1-9]\d*/assets', path) and p.query in {'name=' + name for name in ALLOWED_ASSET_NAMES}
         else:
             allowed = path in ('', '/releases', '/commits', '/contents/README.md') or re.fullmatch(r'/releases/(?:[1-9]\d*(?:/assets)?|assets/[1-9]\d*|tags/[A-Za-z0-9.%-]+)', path) or re.fullmatch(r'/git/ref/heads/[A-Za-z0-9._%/-]+', path)
             allowed = allowed and (p.query in ('', 'per_page=1') or re.fullmatch(r'per_page=100&page=([1-9]\d?|100)', p.query))
@@ -108,7 +109,7 @@ class GitHub:
                 raise ReleaseError('invalid GitHub API response') from None
 
     def upload(self, release_id, name, content):
-        if type(release_id) is not int or release_id <= 0 or name not in ASSET_NAMES:
+        if type(release_id) is not int or release_id <= 0 or name not in ALLOWED_ASSET_NAMES:
             raise ReleaseError('invalid GitHub upload identity')
         url = f'https://uploads.github.com{self.prefix}/releases/{release_id}/assets?name={name}'
         with self._open(url, 'POST', content, 'application/zip') as response:
@@ -119,7 +120,7 @@ class GitHub:
         p = urllib.parse.urlsplit(url)
         if p.scheme != 'https' or p.port not in (None, 443) or p.username or p.password or p.fragment:
             raise ReleaseError('untrusted GitHub asset origin')
-        if p.hostname == 'github.com' and re.fullmatch(re.escape('/' + REPOSITORY + '/releases/download/') + r'[A-Za-z0-9._%-]+/' + '(?:' + '|'.join(re.escape(name) for name in ASSET_NAMES) + ')', p.path) and not p.query:
+        if p.hostname == 'github.com' and re.fullmatch(re.escape('/' + REPOSITORY + '/releases/download/') + r'[A-Za-z0-9._%-]+/' + '(?:' + '|'.join(re.escape(name) for name in ALLOWED_ASSET_NAMES) + ')', p.path) and not p.query:
             return
         if redirect and p.hostname in ('release-assets.githubusercontent.com', 'objects.githubusercontent.com'):
             return
@@ -199,6 +200,8 @@ def publish(api, version, commit, archives, check_only=False, updates_only=False
     if isinstance(archives, (str, Path)):
         raise ReleaseError('public archives must be supplied as a list')
     paths = [Path(path) for path in archives]
+    if updates_only and any(path.name in X86_UPDATE_ASSETS for path in paths):
+        approved_names = (*approved_names, *X86_UPDATE_ASSETS)
     if len(paths) != len(approved_names) or {path.name for path in paths} != set(approved_names):
         raise ReleaseError('public asset inventory must match the approved names')
     # Snapshot every archive before any remote calls; never reopen validated paths.
@@ -208,9 +211,10 @@ def publish(api, version, commit, archives, check_only=False, updates_only=False
         manifest = verify_client_package(content, version, commit, name)
         for row in manifest['files']:
             identity = (row['size'], row['sha256'])
-            if row['path'] in binaries and binaries[row['path']] != identity:
+            key = (row['path'], name.rsplit('-', 1)[-1] if row['path'] == 'DFLegacy.Launcher.exe' else None)
+            if key in binaries and binaries[key] != identity:
                 raise ReleaseError('public packages mix binary versions')
-            binaries[row['path']] = identity
+            binaries[key] = identity
         contents[name] = content
         inventory[name] = {'sha256': hashlib.sha256(content).hexdigest(), 'size': len(content)}
     branch = preflight(api)

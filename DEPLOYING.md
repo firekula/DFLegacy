@@ -96,13 +96,19 @@ host 模式直接占用宿主业务端口，Manager 仍监听 `127.0.0.1`。IPv4
 
 如将数据改成宿主绑定目录，先让镜像 `app` UID 有读写权限（官方 .NET 镜像通常 UID 1654，可运行 `docker run --rm --entrypoint id <镜像> app` 核对），再替换卷映射。SELinux 主机按当地策略标记目录。不要通过以 root 运行服务来跳过权限问题。
 
-Docker build/多架构发行见 [BUILDING.md](BUILDING.md)。Gitea Registry 使用 `registry/owner/image` 命名；若实例仅提供 HTTP，部署者需明确设置 Docker/Skopeo 对该 Registry 的信任，脚本不会修改 Docker 全局配置。`DFLEGACY_ALLOW_HTTP_API` 仅控制 Release HTTP API，不能替代 Registry TLS 配置。
+Docker 镜像和客户端的发布流程见 [BUILDING.md](BUILDING.md)。
 
 ### 启用地区频道
 
 在现有 Compose 服务的 `environment` 增加 `DFLegacy__Channel__RegionalChannelsEnabled: "true"`，在 `ports` 增加 `"7100-7105:7100-7105/tcp"`，并放行对应 TCP 端口。host 网络部署直接放行宿主端口。本机中继玩家需在 `Relay.TcpPorts` 保留已有值并加入这六个端口，或使用管理器重新导出的配置。地区及经验比例见[管理器指南](DEPLOYMENT_MANAGER.md#地区经验频道)。
 
-## 自托管客户端更新
+## 客户端自动更新
+
+GitHub Releases 分发 Windows x86 和 x64 两条更新线，各有普通版和测试版。管理后台默认生成指向 GitHub 的安装包，游戏连接地址仍由后台的部署配置决定。服务端镜像从 GHCR 拉取。
+
+从 18083 迁移时，从 Compose 移除 `DFLEGACY_UPDATE_PUBLIC_URL`（标准模板清空 `UPDATE_PUBLIC_URL`），并移除自定义的 18083 端口映射。更新镜像后，玩家覆盖一次后台导出的同架构、同类型内层 ZIP。保留账号和现有连接设置时，在原 `launcher.json` 中把 `UpdateServiceUrl` 设为空字符串、`DisableGitHubUpdates` 设为 `false`。已经使用 GitHub 更新的 x64 玩家可直接自动更新。客户端需要访问 GitHub 的 HTTPS API 和下载地址。
+
+### 可选的自托管客户端更新
 
 使用独立 HTTP 端口直连时，设置 `DFLEGACY_UPDATE_PUBLIC_URL=http://games.example.com:18083`，并将容器端口发布为 `"18083:18083/tcp"`。标准 Compose 可在 `.env` 设置 `UPDATE_PUBLIC_URL=http://games.example.com:18083` 和 `UPDATE_BIND=0.0.0.0`。放行 TCP 18083 后，客户端可直接访问。HTTP 的版本清单和 ZIP 都可能被中途替换，公开部署可使用以下 HTTPS 配置校验服务器身份。
 
@@ -139,14 +145,14 @@ Docker build/多架构发行见 [BUILDING.md](BUILDING.md)。Gitea Registry 使�
 
 ## 验收范围
 
-自动测试覆盖公开 fixture、身份/HTTP 边界、子进程生命周期、真实 ZIP/TAR、摘要和假 Gitea HTTP 流程。源码构建成功不等于客户端进图成功；首次正式发布前须记录 Windows 客户端分别连接 Windows、Linux、Docker 的人工验收。当前未接入 Runner/Registry、Docker daemon 未启动或没有 macOS/ARM 原生机器时，相应检查必须列为未执行，不能用交叉构建替代。
+自动测试覆盖公开 fixture、身份/HTTP 边界、子进程生命周期、真实 ZIP/TAR、摘要和假 Gitea HTTP 流程。源码构建成功不等于客户端进图成功；发布检查分别记录两条客户端更新线和 Docker 镜像的验证范围。
 
 
 ### 独立客户端包与 CI 夹具
 
 管理器下载默认普通版；测试版加入同版本 `debug.dll` 并默认加载本地诊断，不自动启用输入、组队文件命令等测试控制。普通版包含完整游戏优化。新版补丁为独立 `DFLegacy.Client.dll`。旧用户先退出游戏、备份客户端，并确认一次可见且经哈希验证的原版 IJL 恢复，不能靠备份文件名推断原版。只支持已验证的兼容展开客户端，不修复原始旧壳；原始 EXE/DLL/PVF/NPK 保持不变。仅服务端覆盖数据依赖本机共享目录，不提供远程目录同步。补丁、引导器和登录器内嵌 Detours 完整许可与版本，运行 `DFLegacy.Launcher.exe --third-party-notices | more` 可直接查看。
 
-完整客户端发行可包含四个附件：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。V2 更新包只有该类型的项目程序和 `update-manifest.json`；tools 包另含安装清单、摘要和迁移说明，不含玩家配置或游戏资源。GitHub 仅更新发行使用前两个 V2 ZIP。发布器按所选模式核对全部附件和共同程序哈希，发布后匿名回读。旧已发布版本保持不变。公开标签指向预先导出的脱敏公开源码快照；私有构建提交仍作为包身份，不推送私有历史。
+旧版完整客户端发行包含四个附件：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。V2 更新包只有该类型的项目程序和 `update-manifest.json`；tools 包另含安装清单、摘要和迁移说明，不含玩家配置或游戏资源。当前 GitHub 发行包含 x64 普通／测试及 x86 普通／测试共四个 V2 更新 ZIP。发布器按所选模式核对全部附件和共同程序哈希，发布后匿名回读。旧已发布版本保持不变。公开包记录构建提交，源码历史保存在 Gitea。
 
 Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试及发布传入 `ClientPatchPrebuiltPath`、`ClientBootstrapPrebuiltPath`，`Ijl15PrebuiltPath` 仅用于旧补丁回归。测试显式设置 `DFL_NATIVE_FIXTURES` 为匹配的 CMake 构建目录（不是 Release 子目录），`DFL_LEGACY_PATCH_ARCHIVE` 为验证过的历史项目补丁 ZIP。`ci.py windows` 只从固定公开地址下载版本 `dev-20261031T114502Z-4a0e12555c17` 的 `DFLegacy-client-update-win-x64.zip` 并缓存到 `artifacts/test-fixture-cache`；严格校验大小 63332728 和 SHA256 `4851bfc41b1c39799ba7ed735954c1d6fd1cbc91fba0d8b2a201eb2c7977e0f5`。这是历史项目自有测试夹具，不是原版 IJL 或新 schema 1 发行附件；测试本身不联网，不依赖真实游戏盘。
 

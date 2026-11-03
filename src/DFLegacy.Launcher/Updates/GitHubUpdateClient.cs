@@ -9,7 +9,8 @@ public sealed class GitHubUpdateClient
     public const string AssetName="DFLegacy-client-update-v2-win-x64.zip";
     public const string TestAssetName="DFLegacy-client-update-v2-test-win-x64.zip";
     private readonly string flavor;
-    private string SelectedAssetName => flavor=="test" ? TestAssetName : AssetName;
+    private readonly string architecture;
+    private string SelectedAssetName => $"DFLegacy-client-update-v2{(flavor == "test" ? "-test" : "")}-win-{architecture}.zip";
     private readonly HttpClient client;
     private readonly string repository;
     private readonly bool includePrereleases;
@@ -17,10 +18,12 @@ public sealed class GitHubUpdateClient
     {
         if(repository!="firekula/DFLegacy") throw new ArgumentException("仅允许配置的公开更新仓库。",nameof(repository));
     }
-    public GitHubUpdateClient(HttpClient client, string repository, bool includePrereleases=true, string flavor="normal")
+    public GitHubUpdateClient(HttpClient client, string repository, bool includePrereleases=true, string flavor="normal", string architecture="x64")
     {
         ValidateRepository(repository);
         if(flavor is not ("normal" or "test")) throw new ArgumentException("无效的客户端包类型。",nameof(flavor));
+        if (architecture is not ("x64" or "x86")) throw new ArgumentException("无效的客户端架构。", nameof(architecture));
+        this.architecture = architecture;
         this.flavor=flavor;
         this.client=client; this.repository=repository; this.includePrereleases=includePrereleases;
     }
