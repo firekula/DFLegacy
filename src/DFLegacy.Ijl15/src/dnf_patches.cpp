@@ -20,6 +20,7 @@
 #include "dungeon_tooltip.h"
 #include "ground_item_removal.h"
 #include "inventory_tab.h"
+#include "warehouse_upgrade_button.h"
 #include "motion_horizon.h"
 #include "native_loop_probe.h"
 #include "motion_test_probe.h"
@@ -1127,6 +1128,12 @@ namespace dfl::dnf_patches
 
         if (!dfl::payment_window_scaling::Install())
             OutputDebugStringA("DFLegacy.Ijl15: payment window scaling was not installed.\n");
+
+        // Restore the original paid-upgrade entry which ACT1's layout disables.
+        // Unknown signatures retain the native disabled button without making
+        // the JPEG compatibility layer unavailable.
+        if (!dfl::warehouse_upgrade_button::Install())
+            OutputDebugStringA("DFLegacy.Ijl15: warehouse Upgrade button was not restored.\n");
 
         // Capture the D3D8 factory before device creation, including enhanced
         // presentation modes which preserve the game's own texture sampler.

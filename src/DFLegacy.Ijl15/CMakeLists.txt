@@ -52,6 +52,8 @@ add_library(ijl15 SHARED
     src/ground_item_removal.h
     src/inventory_tab.cpp
     src/inventory_tab.h
+    src/warehouse_upgrade_button.cpp
+    src/warehouse_upgrade_button.h
     src/motion_horizon.cpp
     src/motion_horizon.h
     src/native_loop_probe.cpp
@@ -187,6 +189,12 @@ if(BUILD_TESTING)
     target_link_options(inventory_tab_tests PRIVATE /DYNAMICBASE:NO /BASE:0x10000000)
     add_test(NAME inventory_tab_preservation COMMAND inventory_tab_tests)
     add_test(NAME inventory_tab_original_control COMMAND inventory_tab_tests --original-control)
+    add_executable(warehouse_upgrade_button_tests tests/warehouse_upgrade_button_tests.cpp src/warehouse_upgrade_button.cpp src/memory_patch.cpp)
+    target_include_directories(warehouse_upgrade_button_tests PRIVATE src)
+    target_compile_options(warehouse_upgrade_button_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    target_link_options(warehouse_upgrade_button_tests PRIVATE /DYNAMICBASE:NO /BASE:0x10000000)
+    add_test(NAME warehouse_upgrade_button COMMAND warehouse_upgrade_button_tests)
+    add_test(NAME warehouse_upgrade_original_control COMMAND warehouse_upgrade_button_tests --original-control)
 endif()
 add_executable(client_bootstrap ../DFLegacy.Client/bootstrap_main.cpp)
 set_target_properties(client_bootstrap PROPERTIES OUTPUT_NAME "DFLegacy.Bootstrap32")
