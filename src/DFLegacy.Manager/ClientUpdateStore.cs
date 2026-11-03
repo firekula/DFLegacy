@@ -15,9 +15,9 @@ public sealed class ClientUpdateStore
 
     public ClientUpdateStore(ManagerPaths paths, string publicUrl)
     {
-        if (!Uri.TryCreate(publicUrl, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps
-            || uri.UserInfo.Length != 0 || uri.PathAndQuery != "/" || uri.Fragment.Length != 0)
-            throw new ArgumentException("DFLEGACY_UPDATE_PUBLIC_URL 必须为 HTTPS 地址，可带端口。");
+        if (!Uri.TryCreate(publicUrl, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")
+            || uri.Host.Length == 0 || uri.UserInfo.Length != 0 || uri.PathAndQuery != "/" || uri.Fragment.Length != 0)
+            throw new ArgumentException("DFLEGACY_UPDATE_PUBLIC_URL 必须为 HTTP 或 HTTPS 地址，可带端口。");
         PublicUrl = uri.GetLeftPart(UriPartial.Authority);
         _directory = Path.Combine(paths.Data, "client-updates");
     }

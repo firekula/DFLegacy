@@ -214,7 +214,7 @@ try
     File.WriteAllText(Path.Combine(paths.AssetsDirectory, x86Asset), "x86 launcher fixture");
     assetFiles.Add(x86Asset, "x86 launcher fixture");
     WriteAssets(commit);
-    var updateStore = new ClientUpdateStore(paths, "https://games.example.test:18443");
+    var updateStore = new ClientUpdateStore(paths, "http://games.example.test:18083");
     var dualPath = await exporter.ExportPairAsync(edited, false, updateStore, default, null);
     using (var dual = ZipFile.OpenRead(dualPath))
     {
@@ -222,8 +222,8 @@ try
         {
             using var inner = new ZipArchive(dual.GetEntry($"DFLegacy-client-win-{architecture}.zip")!.Open(), ZipArchiveMode.Read);
             using var configReader = new StreamReader(inner.GetEntry("launcher.json")!.Open());
-            Check(JsonDocument.Parse(configReader.ReadToEnd()).RootElement.GetProperty("UpdateServiceUrl").GetString() == "https://games.example.test:18443",
-                $"{architecture} installer points to dedicated HTTPS port");
+            Check(JsonDocument.Parse(configReader.ReadToEnd()).RootElement.GetProperty("UpdateServiceUrl").GetString() == "http://games.example.test:18083",
+                $"{architecture} installer points to dedicated HTTP port");
             var current = updateStore.Latest(architecture, "normal")!;
             var package = updateStore.Package(architecture, "normal", current.Sha256)!;
             Check(current.Version == "v1.2.3" && current.Size == new FileInfo(package).Length
@@ -242,7 +242,7 @@ try
     }
     catch (InvalidDataException)
     {
-        var reopened = new ClientUpdateStore(paths, "https://games.example.test:18443");
+        var reopened = new ClientUpdateStore(paths, "http://games.example.test:18083");
         Check(reopened.Latest("x86", "normal") == previousUpdate
             && reopened.Latest("x64", "normal")?.Id == previousUpdate?.Id,
             "failed second architecture leaves both persisted indexes intact");

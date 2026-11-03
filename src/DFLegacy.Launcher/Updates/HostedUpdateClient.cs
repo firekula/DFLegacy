@@ -11,10 +11,10 @@ internal sealed class HostedUpdateClient(HttpClient http, Uri origin, string arc
 
     internal static Uri ParseOrigin(string value)
     {
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")
             || uri.Host.Length == 0 || uri.UserInfo.Length != 0 || uri.AbsolutePath != "/"
             || uri.Query.Length != 0 || uri.Fragment.Length != 0)
-            throw new ArgumentException("更新服务器必须使用 HTTPS 域名或地址，可指定独立端口。");
+            throw new ArgumentException("更新服务器必须使用 HTTP 或 HTTPS 域名或地址，可指定独立端口。");
         return uri;
     }
 

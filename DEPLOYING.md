@@ -104,6 +104,8 @@ Docker build/多架构发行见 [BUILDING.md](BUILDING.md)。Gitea Registry 使�
 
 ## 自托管客户端更新
 
+使用独立 HTTP 端口直连时，设置 `DFLEGACY_UPDATE_PUBLIC_URL=http://games.example.com:18083`，并将容器端口发布为 `"18083:18083/tcp"`。标准 Compose 可在 `.env` 设置 `UPDATE_PUBLIC_URL=http://games.example.com:18083` 和 `UPDATE_BIND=0.0.0.0`。放行 TCP 18083 后，客户端可直接访问。HTTP 的版本清单和 ZIP 都可能被中途替换，公开部署可使用以下 HTTPS 配置校验服务器身份。
+
 同一域名可以使用独立 HTTPS 端口，例如 `https://games.example.com:18443`。
 在标准 Compose 的 `.env` 设置 `UPDATE_PUBLIC_URL=https://games.example.com:18443`。
 容器更新监听使用 TCP 18083，默认只映射到宿主机回环地址。让宿主机的 HTTPS 反向代理监听 TCP 18443，并将整个端口转发到 `http://127.0.0.1:18083`。

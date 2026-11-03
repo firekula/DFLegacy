@@ -13,6 +13,7 @@ internal static class HostedUpdateTests
         const long id = 1793665367000;
         var sha256 = new string('a', 64);
         var metadata = JsonSerializer.SerializeToUtf8Bytes(new { id, version = "dev-test", publishedAt = DateTimeOffset.UtcNow, size = 12, sha256 });
+        foreach (var endpoint in new[] { origin, "http://games.example.test:18083" })
         foreach (var arch in new[] { "x86", "x64" })
         foreach (var flavor in new[] { "normal", "test" })
         {
@@ -22,11 +23,11 @@ internal static class HostedUpdateTests
                 requestUri = request.RequestUri;
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(metadata) });
             }));
-            var client = new HostedUpdateClient(http, HostedUpdateClient.ParseOrigin(origin), arch, flavor);
+            var client = new HostedUpdateClient(http, HostedUpdateClient.ParseOrigin(endpoint), arch, flavor);
             var release = await client.CheckAsync(7, CancellationToken.None);
-            check(requestUri?.AbsoluteUri == $"{origin}/v1/{arch}/{flavor}/latest"
-                && release?.DownloadUrl.AbsoluteUri == $"{origin}/v1/{arch}/{flavor}/{sha256}.zip"
-                && release.Id == id, "hosted feed selects exact architecture, flavor and custom HTTPS port");
+            check(requestUri?.AbsoluteUri == $"{endpoint}/v1/{arch}/{flavor}/latest"
+                && release?.DownloadUrl.AbsoluteUri == $"{endpoint}/v1/{arch}/{flavor}/{sha256}.zip"
+                && release.Id == id, "hosted feed selects exact architecture, flavor and configured scheme and custom port");
             check(await client.CheckAsync(id, CancellationToken.None) is null, "hosted feed does not repeat installed release");
             await UpdateTransportTests.Reject(() => client.DownloadAsync(release! with { DownloadUrl = new Uri("https://other.example.test/payload.zip") }, root, null, CancellationToken.None),
                 check, "hosted updater rejects off-origin downloads");
@@ -56,10 +57,20 @@ internal static class HostedUpdateTests
             .DownloadAsync(Download(oppositeArchitecture), root, null, CancellationToken.None), check, "hosted download rejects wrong-architecture executable in valid ZIP");
         await UpdateTransportTests.Reject(() => new HostedUpdateClient(redirected, HostedUpdateClient.ParseOrigin(origin), currentArchitecture, "normal")
             .DownloadAsync(Download(currentArchitecture), root, null, CancellationToken.None), check, "hosted package refuses redirects");
-        foreach (var invalid in new[] { "http://games.example.test:18443", origin + "/updates", origin + "?feed=other", "https://user@games.example.test:18443" })
+        const string plainOrigin = "http://games.example.test:18083";
+        var plainRelease = Download(currentArchitecture) with
         {
-            try { HostedUpdateClient.ParseOrigin(invalid); check(false, "hosted origin rejects insecure or ambiguous URL"); }
-            catch (ArgumentException) { check(true, "hosted origin rejects insecure or ambiguous URL"); }
+            DownloadUrl = new Uri($"{plainOrigin}/v1/{currentArchitecture}/normal/{hash}.zip")
+        };
+        var plainClient = new HostedUpdateClient(download, HostedUpdateClient.ParseOrigin(plainOrigin), currentArchitecture, "normal");
+        check((await plainClient.DownloadAsync(plainRelease, root, null, CancellationToken.None)).Manifest.Version == "dev-test",
+            "explicit HTTP origin downloads and verifies a matching update");
+        await UpdateTransportTests.Reject(() => plainClient.DownloadAsync(Download(currentArchitecture), root, null, CancellationToken.None),
+            check, "HTTP update origin rejects a different scheme and port");
+        foreach (var invalid in new[] { "ftp://games.example.test:18443", origin + "/updates", origin + "?feed=other", "https://user@games.example.test:18443" })
+        {
+            try { HostedUpdateClient.ParseOrigin(invalid); check(false, "hosted origin rejects unsupported or ambiguous URL"); }
+            catch (ArgumentException) { check(true, "hosted origin rejects unsupported or ambiguous URL"); }
         }
         var installation = UpdateV2Tests.Installation(root);
         using var session = new UpdateSession(installation, new LauncherOptions { UpdateServiceUrl = origin, UpdateRepository = "unused" }, UpdateTransportTests.Client(metadata));
