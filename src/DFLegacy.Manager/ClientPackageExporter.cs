@@ -14,13 +14,64 @@ public sealed class ClientPackageExporter
     private readonly SemaphoreSlim _gate = new(1);
     public ClientPackageExporter(ManagerPaths paths) => _paths = paths;
 
-    public async Task<string> ExportAsync(string kind, DeploymentConfig config, bool testBuild = false, CancellationToken cancellationToken = default, Action<ClientExportProgress>? progress = null)
+    public async Task<string> ExportPairAsync(DeploymentConfig config, bool testBuild, ClientUpdateStore? updates,
+        CancellationToken cancellationToken, Action<ClientExportProgress>? progress)
+    {
+        if (!await _gate.WaitAsync(0, cancellationToken)) throw new InvalidOperationException("正在生成其他客户端包，请稍后重试。");
+        string? x64 = null, x86 = null, combined = null;
+        try
+        {
+            x64 = await ExportCoreAsync("client", config, testBuild, cancellationToken, progress, "x64", updates?.PublicUrl, isPair: true);
+            if (updates is null && !File.Exists(Path.Combine(_paths.AssetsDirectory, "launcher-x86", "DFLegacy.Launcher.exe")))
+            {
+                var legacy = x64;
+                x64 = null;
+                return legacy;
+            }
+            x86 = await ExportCoreAsync("client", config, testBuild, cancellationToken, progress, "x86", updates?.PublicUrl, isPair: true);
+            combined = Path.Combine(_paths.Exports, $"dflegacy-client-win-x86-x64-{Guid.NewGuid():N}.zip");
+            progress?.Invoke(new("finalizing", 0, 0, "正在合并两个安装包并发布更新…"));
+            using (var archive = ZipFile.Open(combined, ZipArchiveMode.Create))
+            {
+                foreach (var (arch, path) in new[] { ("x86", x86), ("x64", x64) })
+                {
+                    await using var source = File.OpenRead(path);
+                    await using var output = archive.CreateEntry($"DFLegacy-client-win-{arch}.zip", CompressionLevel.NoCompression).Open();
+                    await source.CopyToAsync(output, cancellationToken);
+                }
+            }
+            if (updates is not null) await updates.PublishAsync(x86, x64, testBuild, cancellationToken);
+            var size = new FileInfo(combined).Length;
+            progress?.Invoke(new("ready", size, size, "两个客户端包生成完成。"));
+            return combined;
+        }
+        catch { if (combined is not null) File.Delete(combined); throw; }
+        finally
+        {
+            try
+            {
+                if (x86 is not null) File.Delete(x86);
+                if (x64 is not null) File.Delete(x64);
+            }
+            finally { _gate.Release(); }
+        }
+    }
+
+    public async Task<string> ExportAsync(string kind, DeploymentConfig config, bool testBuild = false,
+        CancellationToken cancellationToken = default, Action<ClientExportProgress>? progress = null)
+    {
+        if (!await _gate.WaitAsync(0, cancellationToken)) throw new InvalidOperationException("正在生成其他客户端包，请稍后重试。");
+        try { return await ExportCoreAsync(kind, config, testBuild, cancellationToken, progress, "x64", null); }
+        finally { _gate.Release(); }
+    }
+
+    private async Task<string> ExportCoreAsync(string kind, DeploymentConfig config, bool testBuild, CancellationToken cancellationToken, Action<ClientExportProgress>? progress, string arch, string? updateUrl, bool isPair = false)
     {
         if (kind is not ("client" or "patch" or "launcher")) throw new ArgumentException("未知客户端包类型。");
         testBuild = kind == "client" && testBuild;
         kind = "client";
         ConfigurationStore.Validate(config);
-        if (!await _gate.WaitAsync(0, cancellationToken)) throw new InvalidOperationException("正在生成其他客户端包，请稍后重试。");
+        var launcherAsset = arch == "x86" ? "launcher-x86/DFLegacy.Launcher.exe" : "launcher/DFLegacy.Launcher.exe";
         string? destination = null;
         try
         {
@@ -68,6 +119,7 @@ public sealed class ClientPackageExporter
                     if (!File.Exists(component) && !Directory.Exists(component)) throw new InvalidDataException($"缺少客户端文件：{name}");
                     if ((File.GetAttributes(component) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("客户端资源不允许符号链接。");
                 }
+                if ((name is "launcher/DFLegacy.Launcher.exe" or "launcher-x86/DFLegacy.Launcher.exe") && name != launcherAsset) continue;
                 bytes = checked(bytes + new FileInfo(path).Length);
                 if (bytes > 1024L * 1024 * 1024) throw new InvalidDataException("客户端资源超过 1 GiB 上限。");
                 if (!files.TryAdd(name, (path, hash))) throw new InvalidDataException("客户端文件路径重复。");
@@ -87,7 +139,7 @@ public sealed class ClientPackageExporter
                 var actual = Convert.ToHexStringLower(hashState.GetHashAndReset());
                 if (!actual.Equals(hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"客户端资源校验失败：{name}");
             }
-            foreach (var required in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe" })
+            foreach (var required in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", launcherAsset })
                 if (!files.ContainsKey(required)) throw new InvalidDataException($"客户端资源不完整：{required}");
 
             if (testBuild && !files.ContainsKey("patch/debug.dll")) throw new InvalidDataException("缺少配套测试资源 debug.dll，请安装同版本完整发行包。");
@@ -97,7 +149,7 @@ public sealed class ClientPackageExporter
             foreach (var old in new DirectoryInfo(_paths.Exports).GetFiles("dflegacy-*.zip").Where(file => file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1))) old.Delete();
             destination = Path.Combine(_paths.Exports, $"dflegacy-{kind}-{version}-{Guid.NewGuid():N}.zip");
             var sums = new StringBuilder();
-            var compressionTotal = files.Where(file => file.Key is "patch/DFLegacy.Client.dll" or "patch/debug.dll" or "launcher/DFLegacy.Launcher.exe" or "launcher/Assets/Skin/fwtk.html")
+            var compressionTotal = files.Where(file => file.Key is "patch/DFLegacy.Client.dll" or "patch/debug.dll" or "launcher/Assets/Skin/fwtk.html" || file.Key == launcherAsset)
                 .Sum(file => new FileInfo(file.Value.FullPath).Length);
             long compressedBytes = 0;
             progress?.Invoke(new("compressing", 0, compressionTotal, "正在压缩客户端资源…"));
@@ -118,7 +170,7 @@ public sealed class ClientPackageExporter
                     {
                         "patch/DFLegacy.Client.dll" => "DFLegacy.Client.dll",
                         "patch/debug.dll" => "debug.dll",
-                        "launcher/DFLegacy.Launcher.exe" => "DFLegacy.Launcher.exe",
+                        _ when name == launcherAsset => "DFLegacy.Launcher.exe",
                         "launcher/Assets/Skin/fwtk.html" => "Assets/Skin/fwtk.html",
                         _ => null
                     };
@@ -148,7 +200,7 @@ public sealed class ClientPackageExporter
                 var launcher = new
                 {
                     ClientPath = "DNF.exe", EntranceHost = config.AdvertisedHost, config.EntrancePort, AccountServicePort = config.AdminPort,
-                    config.AccountServiceUrl, Theme = "dark", Account = "", Password = "", Accounts = Array.Empty<object>(), AccountIndex = 0, StartServer = false,
+                    config.AccountServiceUrl, UpdateServiceUrl = updateUrl ?? "", DisableGitHubUpdates = isPair, Theme = "dark", Account = "", Password = "", Accounts = Array.Empty<object>(), AccountIndex = 0, StartServer = false,
                     D3D9Adapter = 0, D3D9TimeoutSeconds = 30, D3D9RetryIntervalSeconds = 1,
                     Relay = new { Enabled = config.RelayEnabled, TcpPorts = string.Join(',', config.ForwardedTcpPorts()),
                         UdpPorts = string.Join(',', config.ForwardedUdpPorts()), Preference = config.RelayPreference }
@@ -162,11 +214,11 @@ public sealed class ClientPackageExporter
                 await using var checksum = archive.CreateEntry("SHA256SUMS").Open();
                 await checksum.WriteAsync(checksumData, cancellationToken);
             }
-            progress?.Invoke(new("ready", new FileInfo(destination).Length, new FileInfo(destination).Length, "客户端包生成完成，准备下载。"));
+            if (!isPair || arch == "x64" && updateUrl is null && !File.Exists(Path.Combine(_paths.AssetsDirectory, "launcher-x86", "DFLegacy.Launcher.exe")))
+                progress?.Invoke(new("ready", new FileInfo(destination).Length, new FileInfo(destination).Length, "客户端包生成完成，准备下载。"));
             return destination;
         }
         catch { if (destination is not null && File.Exists(destination)) File.Delete(destination); throw; }
-        finally { _gate.Release(); }
     }
 
     private static bool SafeAssetName(string name)
@@ -175,7 +227,7 @@ public sealed class ClientPackageExporter
         var parts = name.Split('/');
         if (parts.Any(part => part is "" or "." or ".." || part.StartsWith('.'))) return false;
         return name is "patch/DFLegacy.Client.dll" or "patch/debug.dll" or "patch/Config.ini"
-            or "launcher/DFLegacy.Launcher.exe" or "launcher/DFLegacy.Client.dll" or "launcher/launcher.json"
+            or "launcher/DFLegacy.Launcher.exe" or "launcher-x86/DFLegacy.Launcher.exe" or "launcher/DFLegacy.Client.dll" or "launcher/launcher.json"
             or "launcher/Config.ini" or "launcher/Assets/Skin/fwtk.html";
     }
 

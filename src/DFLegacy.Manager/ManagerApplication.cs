@@ -26,7 +26,11 @@ public static class ManagerApplication
             log.AddSecret(identity.SetupToken);
             var supervisor = new ServerSupervisor(paths, config, log);
             var exporter = new ClientPackageExporter(paths);
-            var exportJobs = new ClientExportJobs(exporter, log);
+            var publicUpdateUrl = Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_PUBLIC_URL");
+            var updates = string.IsNullOrWhiteSpace(publicUpdateUrl) ? null : new ClientUpdateStore(paths, publicUpdateUrl);
+            if (updates is not null && options.Port == ClientUpdateStore.Port)
+                throw new ArgumentException("管理端口不能与更新端口相同。");
+            var exportJobs = new ClientExportJobs(exporter, log, updates);
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
                 Args = [], ContentRootPath = AppContext.BaseDirectory, WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
@@ -38,6 +42,7 @@ public static class ManagerApplication
             builder.WebHost.ConfigureKestrel(server =>
             {
                 server.Listen(options.Listen, options.Port);
+                if (updates is not null) server.Listen(options.Listen, ClientUpdateStore.Port);
                 server.Limits.MaxRequestBodySize = 64 * 1024;
             });
             var keyDirectory = Directory.CreateDirectory(Path.Combine(paths.Management, "keys"));
@@ -61,6 +66,9 @@ public static class ManagerApplication
             var forwarded = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto };
             foreach (var address in (Environment.GetEnvironmentVariable("DFLEGACY_MANAGER_TRUSTED_PROXIES") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 forwarded.KnownProxies.Add(IPAddress.Parse(address));
+            if (updates is not null)
+                app.MapWhen(context => context.Connection.LocalPort == ClientUpdateStore.Port,
+                    updateApp => updateApp.Run(context => updates.Serve(context).ExecuteAsync(context)));
             app.UseForwardedHeaders(forwarded);
             app.Use(async (context, next) =>
             {

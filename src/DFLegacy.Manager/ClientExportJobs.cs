@@ -4,7 +4,7 @@ public sealed record ClientExportJobStatus(string Id, string State, ClientExport
 
 // One active generation, bounded completed history. A disconnected browser must
 // not cancel generation; the host lifetime owns cancellation instead.
-public sealed class ClientExportJobs(ClientPackageExporter exporter, ManagerLog log)
+public sealed class ClientExportJobs(ClientPackageExporter exporter, ManagerLog log, ClientUpdateStore? updates = null)
 {
     private sealed class Job(string id)
     {
@@ -29,7 +29,7 @@ public sealed class ClientExportJobs(ClientPackageExporter exporter, ManagerLog 
             {
                 try
                 {
-                    var path = await exporter.ExportAsync("client", config, testBuild, stopping, value =>
+                    var path = await exporter.ExportPairAsync(config, testBuild, updates, stopping, value =>
                     {
                         lock (_gate)
                         {

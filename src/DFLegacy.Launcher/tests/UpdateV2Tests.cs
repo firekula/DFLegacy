@@ -35,10 +35,10 @@ internal static class UpdateV2Tests
         }
         InstallMetadata(target,flavor); return target;
     }
-    internal static byte[] Package(string root, string flavor = "normal", string variant = "valid")
+    internal static byte[] Package(string root, string flavor = "normal", string variant = "valid", byte[]? launcher = null)
     {
         var stage = Installation(root,flavor);
-        File.WriteAllText(Path.Combine(stage,"DFLegacy.Launcher.exe"),"new executable");
+        File.WriteAllBytes(Path.Combine(stage,"DFLegacy.Launcher.exe"),launcher ?? Encoding.UTF8.GetBytes("new executable"));
         File.WriteAllText(Path.Combine(stage,"DFLegacy.Client.dll"),"new dll");
         File.WriteAllText(Path.Combine(stage,"debug.dll"),"new debug");
         var manifest = Manifest(stage,flavor,"dev-test",variant=="legacy");
@@ -63,6 +63,7 @@ internal static class UpdateV2Tests
     }
     internal static async Task Run(string root,Action<bool,string> check)
     {
+        await HostedUpdateTests.Run(root, check);
         // Omitting V2 selection must fail at transport, before any target is changed.
         var bytes=Package(root);
         using(var http=UpdateTransportTests.Client(bytes))
@@ -112,8 +113,8 @@ internal static class UpdateV2Tests
             var bad=Installation(root);
             if(invalid=="missing") File.Delete(Path.Combine(bad,"client-package.json")); else File.AppendAllText(Path.Combine(bad,"DFLegacy.Client.dll"),"tamper");
             check(!UpdateTransaction.Apply(bad,prepared,_=>true).Success && File.ReadAllText(Path.Combine(bad,"DFLegacy.Launcher.exe"))=="old exe","invalid installed metadata cannot enter transaction: "+invalid);
-            using var session=new UpdateSession(bad,new LauncherOptions());
-            await UpdateTransportTests.Reject(async()=>await session.CheckAsync(0,CancellationToken.None),check,"invalid installed metadata rejects before public network check: "+invalid);
+            using var session=new UpdateSession(bad,new LauncherOptions { UpdateServiceUrl = "https://games.example.test:18083" });
+            await UpdateTransportTests.Reject(async()=>await session.CheckAsync(0,CancellationToken.None),check,"invalid installed metadata rejects before hosted network check: "+invalid);
         }
         // Real sharing violations exercise each replacement boundary, including metadata and state.
         foreach(var flavor in new[]{"normal","test"})

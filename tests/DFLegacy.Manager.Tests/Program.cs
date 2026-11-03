@@ -209,6 +209,47 @@ try
         Check(archive.GetEntry("client-package.json") is not null, "normal export includes installed schema2 manifest");
         Check(archive.GetEntry("ijl15.dll") is null && archive.GetEntry("debug.dll") is null, "normal export preserves original IJL and excludes debug");
     }
+    var x86Asset = "launcher-x86/DFLegacy.Launcher.exe";
+    Directory.CreateDirectory(Path.Combine(paths.AssetsDirectory, "launcher-x86"));
+    File.WriteAllText(Path.Combine(paths.AssetsDirectory, x86Asset), "x86 launcher fixture");
+    assetFiles.Add(x86Asset, "x86 launcher fixture");
+    WriteAssets(commit);
+    var updateStore = new ClientUpdateStore(paths, "https://games.example.test:18443");
+    var dualPath = await exporter.ExportPairAsync(edited, false, updateStore, default, null);
+    using (var dual = ZipFile.OpenRead(dualPath))
+    {
+        foreach (var architecture in new[] { "x86", "x64" })
+        {
+            using var inner = new ZipArchive(dual.GetEntry($"DFLegacy-client-win-{architecture}.zip")!.Open(), ZipArchiveMode.Read);
+            using var configReader = new StreamReader(inner.GetEntry("launcher.json")!.Open());
+            Check(JsonDocument.Parse(configReader.ReadToEnd()).RootElement.GetProperty("UpdateServiceUrl").GetString() == "https://games.example.test:18443",
+                $"{architecture} installer points to dedicated HTTPS port");
+            var current = updateStore.Latest(architecture, "normal")!;
+            var package = updateStore.Package(architecture, "normal", current.Sha256)!;
+            Check(current.Version == "v1.2.3" && current.Size == new FileInfo(package).Length
+                && current.Sha256 == Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(package))), $"{architecture} update metadata matches immutable archive");
+            using var update = ZipFile.OpenRead(package);
+            Check(update.Entries.Select(e => e.FullName).Order().SequenceEqual(new[] { "DFLegacy.Client.dll", "DFLegacy.Launcher.exe", "update-manifest.json" }),
+                $"{architecture} update omits installer configuration");
+        }
+    }
+    var previousUpdate = updateStore.Latest("x86", "normal");
+    File.AppendAllText(Path.Combine(paths.AssetsDirectory, x86Asset), "corrupted");
+    try
+    {
+        await exporter.ExportPairAsync(edited, false, updateStore, default, null);
+        Check(false, "corrupt x86 must reject the complete export");
+    }
+    catch (InvalidDataException)
+    {
+        var reopened = new ClientUpdateStore(paths, "https://games.example.test:18443");
+        Check(reopened.Latest("x86", "normal") == previousUpdate
+            && reopened.Latest("x64", "normal")?.Id == previousUpdate?.Id,
+            "failed second architecture leaves both persisted indexes intact");
+    }
+    File.Delete(Path.Combine(paths.AssetsDirectory, x86Asset));
+    assetFiles.Remove(x86Asset);
+    WriteAssets(commit);
     var testZip = await exporter.ExportAsync("client", edited, testBuild: true);
     using (var archive = ZipFile.OpenRead(testZip))
     {

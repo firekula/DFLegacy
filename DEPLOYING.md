@@ -102,11 +102,25 @@ Docker build/多架构发行见 [BUILDING.md](BUILDING.md)。Gitea Registry 使�
 
 在现有 Compose 服务的 `environment` 增加 `DFLegacy__Channel__RegionalChannelsEnabled: "true"`，在 `ports` 增加 `"7100-7105:7100-7105/tcp"`，并放行对应 TCP 端口。host 网络部署直接放行宿主端口。本机中继玩家需在 `Relay.TcpPorts` 保留已有值并加入这六个端口，或使用管理器重新导出的配置。地区及经验比例见[管理器指南](DEPLOYMENT_MANAGER.md#地区经验频道)。
 
+## 自托管客户端更新
+
+同一域名可以使用独立 HTTPS 端口，例如 `https://games.example.com:18443`。
+在标准 Compose 的 `.env` 设置 `UPDATE_PUBLIC_URL=https://games.example.com:18443`。
+容器更新监听使用 TCP 18083，默认只映射到宿主机回环地址。让宿主机的 HTTPS 反向代理监听 TCP 18443，并将整个端口转发到 `http://127.0.0.1:18083`。
+使用 host 网络时，更新监听同样随 Manager 绑定在宿主机回环。只需对外放行代理的 HTTPS 端口。
+
+已有自定义 Compose 时，把 `DFLEGACY_UPDATE_PUBLIC_URL` 加入服务的 `environment`，并在 `ports` 中添加 `"127.0.0.1:18083:18083/tcp"`。
+更新端口只响应版本查询和 ZIP 下载。管理后台继续使用 18080。更新包与发布索引保存在 `/app/data/client-updates`。
+
+后台一次生成所选版本的 x86 和 x64 安装包，并在两套更新包写入完成后发布。
+普通版和测试版独立发布。已有 GitHub 客户端需手动覆盖一次新导出的同架构、同类型安装包，以取得新更新地址。
+首次迁移时，如需保留已保存的账号，先备份原 `launcher.json`，将新包里的 `UpdateServiceUrl` 和 `DisableGitHubUpdates` 合并到原配置。后续自动更新只替换程序与补丁。
+
 ## 导出玩家包
 
 在 Manager 中确认公布地址、账号 API URL、端口和 Relay 偏好后，点击“生成并下载玩家包 ZIP”。所有系统使用随版 Windows 资源离线组包，不需要在服务器上安装 VS 或 WPF。
 
-ZIP 包含单文件 WPF 登录器、独立的 `DFLegacy.Client.dll` 和 `client-package.json`、空凭据连接配置、条款、说明和摘要，直接解压到 `DNF.exe` 所在目录。游戏退出后先备份再替换；ZIP 不直接包含 `Config.ini`，登录器仅在缺少配置时从内嵌模板生成，保留已有设置。玩家包不包含管理凭据、游戏存档、PVF 或预置游戏账号，玩家自行登录/注册。
+外层 ZIP 包含 x86 和 x64 两个内层 ZIP。按 Windows 系统位数选择其一。内层 ZIP 包含单文件 WPF 登录器、独立的 `DFLegacy.Client.dll` 和 `client-package.json`、空凭据连接配置、条款、说明和摘要，直接解压到 `DNF.exe` 所在目录。游戏退出后先备份再替换；ZIP 不直接包含 `Config.ini`，登录器仅在缺少配置时从内嵌模板生成，保留已有设置。玩家包不包含管理凭据、游戏存档、PVF 或预置游戏账号，玩家自行登录/注册。
 
 独立普通版不加载诊断；测试版默认在首个游戏内画面加载 `debug.dll` 本地诊断，不改写旧 `EnableDebugOverlay` 配置。仅服务端覆盖数据依赖本机共享快照目录，不支持远程 Linux/macOS/Docker 调试数据同步。自动输入等主动控制仍需显式开启。第三方可选 `d3d8to9` 不会自动分发，使用时自行核对仓库附带许可与兼容性。
 

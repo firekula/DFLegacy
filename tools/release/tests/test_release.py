@@ -74,15 +74,27 @@ class Bundles(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = pathlib.Path(self.tmp.name)
 
-    def assets(self):
+    def assets(self, launcher_x86=None):
         source = app(self.root / "launcher-input", "DFLegacy.Launcher", "win-x64")
         write(source, "launcher.json", '{"Password":"PRIVATE", "ClientPath":"C:\\\\private\\\\DNF.exe"}')
         native = write(self.root, "native/DFLegacy.Client.dll")
         config = write(self.root, "native/Config.ini", "[Window]\nWidth=640\n[Debug]\nEnabled=1\n")
         output = self.root / "assets"
         debug = write(self.root, "native/debug.dll", b"paired debug fixture")
-        release.build_client_assets(source, native, config, output, VERSION, COMMIT, debug)
+        release.build_client_assets(source, native, config, output, VERSION, COMMIT, debug, launcher_x86=launcher_x86)
         return output
+
+    def test_assets_include_only_the_verified_x86_executable_from_its_publish_output(self):
+        source_x86 = app(self.root / "launcher-input-x86", "DFLegacy.Launcher", "win-x86")
+        write(source_x86, "launcher.json", '{"Password":"PRIVATE"}')
+        assets = self.assets(source_x86)
+        self.assertEqual({p.name for p in (assets / "launcher-x86").iterdir()}, {"DFLegacy.Launcher.exe"})
+        manifest = release.verify_assets(assets, VERSION, COMMIT)
+        self.assertIn("launcher-x86/DFLegacy.Launcher.exe", {row["path"] for row in manifest["files"]})
+        app(assets / "launcher-x86", "DFLegacy.Launcher", "win-x64")
+        refresh_manifest(assets, "manifest.json")
+        with self.assertRaisesRegex(release.ReleaseError, "architecture"):
+            release.verify_assets(assets, VERSION, COMMIT)
 
     def test_production_rejects_complete_loose_launcher_before_player_export(self):
         legacy = self.root / "legacy-launcher"

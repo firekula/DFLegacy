@@ -185,10 +185,13 @@ def windows(version, commit):
     run("dotnet", "run", "--project", "src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj", "-c", "Release",
         *native_properties)
     launcher = new_output(REPO / "artifacts" / ("launcher-" + version))
-    run("dotnet", "publish", "src/DFLegacy.Launcher/DFLegacy.Launcher.csproj", "-c", "Release", "-r", "win-x64", "--self-contained", "true",
-        "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:DebugType=embedded", "-p:PublishTrimmed=false",
-        *native_properties, "-p:ContinuousIntegrationBuild=true", "-o", launcher)
-    assets = build_client_assets(launcher, native, REPO / "src/DFLegacy.Ijl15/Config.ini", REPO / "client-assets", version, commit, debug=debug)
+    launcher_x86 = new_output(REPO / "artifacts" / ("launcher-x86-" + version))
+    for rid, destination in (("win-x64", launcher), ("win-x86", launcher_x86)):
+        run("dotnet", "publish", "src/DFLegacy.Launcher/DFLegacy.Launcher.csproj", "-c", "Release", "-r", rid, "--self-contained", "true",
+            "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:DebugType=embedded", "-p:PublishTrimmed=false",
+            *native_properties, "-p:ContinuousIntegrationBuild=true", "-o", destination)
+    assets = build_client_assets(launcher, native, REPO / "src/DFLegacy.Ijl15/Config.ini", REPO / "client-assets", version, commit,
+                                 debug=debug, launcher_x86=launcher_x86)
     # Tar transport keeps the immutable assets together. All receivers verify it.
     make_archive(assets, REPO / "artifacts/client-assets.tar.gz", "linux-x64")
     _, archive = publish("win-x64", version, commit, assets, REPO / "artifacts" / ("DFLegacy-" + version + "-win-x64"),
@@ -197,6 +200,8 @@ def windows(version, commit):
     build_client_packages(assets, REPO / "artifacts", version, commit)
     run(sys.executable, "tools/release/tests/verify_client_notices.py", "--native", native.parent,
         "--launcher", launcher / "DFLegacy.Launcher.exe", "--packages", REPO / "artifacts")
+    run(sys.executable, "tools/release/tests/verify_client_notices.py", "--native", native.parent,
+        "--launcher", launcher_x86 / "DFLegacy.Launcher.exe", "--launcher-rid", "win-x86")
 
 
 def linux(version, commit, archive):

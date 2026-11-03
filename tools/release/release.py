@@ -250,7 +250,7 @@ def verify_assets(root, version=None, commit=None):
     root = Path(root)
     data = check_manifest(root, "manifest.json", version, commit)
     paths = [row["path"] for row in data["files"]]
-    allowed = {"launcher/DFLegacy.Launcher.exe", "launcher/DFLegacy.Client.dll", "launcher/Config.ini", "launcher/launcher.json",
+    allowed = {"launcher/DFLegacy.Launcher.exe", "launcher-x86/DFLegacy.Launcher.exe", "launcher/DFLegacy.Client.dll", "launcher/Config.ini", "launcher/launcher.json",
                "launcher/Assets/Skin/fwtk.html", "patch/DFLegacy.Client.dll", "patch/debug.dll", "patch/Config.ini"}
     if any(p not in allowed for p in paths):
         raise ReleaseError("client asset outside whitelist")
@@ -258,6 +258,8 @@ def verify_assets(root, version=None, commit=None):
         if required not in paths:
             raise ReleaseError("missing client asset: " + required)
     check_app(root / "launcher", "DFLegacy.Launcher", "win-x64", wpf=True)
+    if "launcher-x86/DFLegacy.Launcher.exe" in paths:
+        check_app(root / "launcher-x86", "DFLegacy.Launcher", "win-x86", wpf=True)
     launcher = read_json(root / "launcher/launcher.json")
     client_paths = {"DNF.exe"}
     if launcher.get("Accounts") != [] or launcher.get("Account") != "" or launcher.get("Password") != "" or launcher.get("StartServer") is not False or launcher.get("ClientPath") not in client_paths:
@@ -282,11 +284,16 @@ def copy_tree(source, output):
         shutil.copy2(path, destination)
 
 
-def build_client_assets(launcher, client_patch, config, output, version, commit, debug=None):
+def build_client_assets(launcher, client_patch, config, output, version, commit, debug=None, launcher_x86=None):
     validate_identity(version, commit)
     output = new_output(output)
     launcher, client_patch, config = Path(launcher), Path(client_patch), Path(config)
     check_app(launcher, "DFLegacy.Launcher", "win-x64", wpf=True)
+    if launcher_x86 is not None:
+        launcher_x86 = Path(launcher_x86)
+        if launcher_x86 / "DFLegacy.Launcher.exe" not in files(launcher_x86):
+            raise ReleaseError("missing regular x86 launcher executable")
+        check_app(launcher_x86, "DFLegacy.Launcher", "win-x86", wpf=True)
     for native in (client_patch, config, *((Path(debug),) if debug else ())):
         if not native.is_file() or native.is_symlink():
             raise ReleaseError("missing regular native asset")
@@ -294,6 +301,9 @@ def build_client_assets(launcher, client_patch, config, output, version, commit,
         stage = Path(temp) / "bundle"
         stage.mkdir()
         copy_tree(launcher, stage / "launcher")
+        if launcher_x86 is not None:
+            (stage / "launcher-x86").mkdir()
+            shutil.copy2(launcher_x86 / "DFLegacy.Launcher.exe", stage / "launcher-x86/DFLegacy.Launcher.exe")
         (stage / "patch").mkdir()
         shutil.copy2(client_patch, stage / "patch/DFLegacy.Client.dll")
         shutil.copy2(client_patch, stage / "launcher/DFLegacy.Client.dll")
@@ -867,6 +877,7 @@ def parser():
     for name in ("launcher-output", "client-patch", "config", "output", "version", "commit"):
         build.add_argument("--" + name, required=True)
     build.add_argument("--debug")
+    build.add_argument("--launcher-x86-output")
     update = sub.add_parser("build-client-update")
     for name in ("client-assets", "output", "version", "commit"):
         update.add_argument("--" + name, required=True)
@@ -916,7 +927,8 @@ def main(argv=None):
         if args.command == "test":
             return subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(Path(__file__).parent / "tests"), "-v"], cwd=REPO).returncode
         if args.command == "build-client-assets":
-            print(build_client_assets(args.launcher_output, args.client_patch, args.config, args.output, args.version, args.commit, args.debug))
+            print(build_client_assets(args.launcher_output, args.client_patch, args.config, args.output, args.version, args.commit,
+                                      args.debug, launcher_x86=args.launcher_x86_output))
         elif args.command == "build-client-update":
             print(build_client_update(args.client_assets, args.output, args.version, args.commit, args.test_build, args.tools))
         elif args.command == "build-client-packages":

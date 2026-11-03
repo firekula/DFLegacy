@@ -45,6 +45,10 @@ class Metadata(unittest.TestCase):
                 self.assertTrue(any(str(arg).endswith('DFLegacy.Client.dll') and str(arg).startswith('-p:ClientPatchPrebuiltPath=') for arg in launcher_run))
                 self.assertTrue(any(str(arg).endswith('DFLegacy.Bootstrap32.exe') and str(arg).startswith('-p:ClientBootstrapPrebuiltPath=') for arg in launcher_run))
                 self.assertEqual(assets.call_args.kwargs['debug'].name, 'debug.dll')
+                for rid in ('win-x64', 'win-x86'):
+                    publish_call = next(call for call in calls if 'src/DFLegacy.Launcher/DFLegacy.Launcher.csproj' in call and rid in call)
+                    self.assertTrue(any(str(arg).startswith('-p:ClientBootstrapPrebuiltPath=') for arg in publish_call))
+                    self.assertEqual(publish_call[-1], assets.call_args.kwargs['launcher_x86'] if rid == 'win-x86' else assets.call_args.args[0])
                 packages.assert_called_once()
 
     def test_metadata_exports_qualified_version_variables_that_allow_real_dotnet_restore(self):

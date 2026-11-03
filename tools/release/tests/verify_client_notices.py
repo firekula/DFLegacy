@@ -52,6 +52,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--native", required=True, type=Path)
     parser.add_argument("--launcher", type=Path)
+    parser.add_argument("--launcher-rid", choices=("win-x64", "win-x86"), default="win-x64")
     parser.add_argument("--packages", type=Path)
     args = parser.parse_args()
     notices = {"DETOURS_LICENSE": (REPO/"third_party/detours/LICENSE").read_bytes(),
@@ -75,7 +76,7 @@ def main():
                   equal(resource(args.native/leaf, name), expected))
     if args.launcher:
         def managed():
-            assembly = bundle.read_bundle(args.launcher, "win-x64").read("DFLegacy.Launcher.dll")
+            assembly = bundle.read_bundle(args.launcher, args.launcher_rid).read("DFLegacy.Launcher.dll")
             for content in notices.values():
                 assert content in assembly, "managed assembly omits full source notice/provenance"
             assert (args.native/"DFLegacy.Bootstrap32.exe").read_bytes() in assembly, "embedded helper differs from matching native build"
